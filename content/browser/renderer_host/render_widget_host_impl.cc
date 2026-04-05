@@ -850,7 +850,7 @@ void RenderWidgetHostImpl::WasHidden() {
 }
 
 void RenderWidgetHostImpl::WasShown(
-    blink::mojom::RecordContentToVisibleTimeRequestPtr
+    std::optional<blink::RecordContentToVisibleTimeRequest>
         record_tab_switch_time_request) {
   // The page should never be visible during prerendering.
   CHECK(!frame_tree_ || !frame_tree_->is_prerendering());
@@ -932,9 +932,8 @@ void RenderWidgetHostImpl::WasShown(
 }
 
 void RenderWidgetHostImpl::RequestSuccessfulPresentationTimeForNextFrame(
-    blink::mojom::RecordContentToVisibleTimeRequestPtr visible_time_request) {
+    blink::RecordContentToVisibleTimeRequest visible_time_request) {
   CHECK(!is_hidden_);
-  CHECK(visible_time_request);
   if (waiting_for_init_) {
     // This method should only be called if the RWHI is already visible, meaning
     // there will be a WasShown call that's queued until init. Update that with
@@ -956,7 +955,7 @@ void RenderWidgetHostImpl::CancelSuccessfulPresentationTimeRequest() {
     // there will be a WasShown call that's queued until init. Update that to
     // clear any request that was set.
     CHECK(pending_show_params_);
-    pending_show_params_->visible_time_request = nullptr;
+    pending_show_params_->visible_time_request.reset();
     return;
   }
   CHECK(!pending_show_params_);
@@ -2844,8 +2843,8 @@ void RenderWidgetHostImpl::UpdateBrowserControlsState(
 }
 
 void RenderWidgetHostImpl::StartDragging(
+    RenderFrameHost& source_rfh,
     blink::mojom::DragDataPtr drag_data,
-    const url::Origin& source_origin,
     DragOperationsMask drag_operations_mask,
     const SkBitmap& bitmap,
     const gfx::Vector2d& cursor_offset_in_dip,
@@ -2865,6 +2864,16 @@ void RenderWidgetHostImpl::StartDragging(
     process->FilterURL(true, &url_info.url);
   }
   process->FilterURL(false, &filtered_data.html_base_url);
+
+  if (filtered_data.download_metadata) {
+    // If download metadata is populated, the url should be valid and non-empty.
+    if (RenderProcessHost::FilterURLResult::kAllowed !=
+        process->FilterURL(/*empty_allowed=*/false,
+                           &filtered_data.download_metadata->url)) {
+      filtered_data.download_metadata.reset();
+    }
+  }
+
   // Filter out any paths that the renderer didn't have access to. This prevents
   // the following attack on a malicious renderer:
   // 1. StartDragging IPC sent with renderer-specified filesystem paths that it
@@ -2934,9 +2943,32 @@ void RenderWidgetHostImpl::StartDragging(
   scaled_rect.Scale(scale);
   rect = gfx::ToRoundedRect(scaled_rect);
 #endif
-  view->StartDragging(filtered_data, source_origin, drag_operations_mask, image,
-                      offset, rect, *event_info, this);
+  view->StartDragging(source_rfh, filtered_data, drag_operations_mask, image,
+                      offset, rect, *event_info);
 }
+
+#if BUILDFLAG(IS_ANDROID)
+void RenderWidgetHostImpl::AsyncStartDragging(
+    WeakDocumentPtr source_document,
+    blink::mojom::DragDataPtr drag_data,
+    blink::DragOperationsMask drag_operations_mask,
+    const SkBitmap& unsafe_bitmap,
+    const gfx::Vector2d& cursor_offset_in_dip,
+    const gfx::Rect& drag_obj_rect_in_dip,
+    blink::mojom::DragEventSourceInfoPtr event_info) {
+  RenderFrameHost* source_rfh = source_document.AsRenderFrameHostIfValid();
+  if (!source_rfh) {
+    // This should be relatively rare: if the drag can't start because the
+    // source document is already gone, the input sequence is consumed and
+    // nothing will happen.
+    return;
+  }
+
+  StartDragging(*source_rfh, std::move(drag_data), drag_operations_mask,
+                unsafe_bitmap, cursor_offset_in_dip, drag_obj_rect_in_dip,
+                std::move(event_info));
+}
+#endif
 
 // static
 bool RenderWidgetHostImpl::DidVisualPropertiesSizeChange(
@@ -4013,7 +4045,8 @@ RenderWidgetHostImpl::MainFramePropagationProperties::
 
 RenderWidgetHostImpl::PendingShowParams::PendingShowParams(
     bool is_evicted,
-    blink::mojom::RecordContentToVisibleTimeRequestPtr visible_time_request)
+    std::optional<blink::RecordContentToVisibleTimeRequest>
+        visible_time_request)
     : is_evicted(is_evicted),
       visible_time_request(std::move(visible_time_request)) {}
 

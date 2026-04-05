@@ -128,8 +128,6 @@
 #include "content/browser/screen_orientation/screen_orientation_provider.h"
 #include "content/browser/shared_storage/shared_storage_budget_charger.h"
 #include "content/browser/site_instance_impl.h"
-#include "content/browser/tpcd_heuristics/opener_heuristic_tab_helper.h"
-#include "content/browser/tpcd_heuristics/redirect_heuristic_tab_helper.h"
 #include "content/browser/wake_lock/wake_lock_context_host.h"
 #include "content/browser/web_contents/file_chooser_impl.h"
 #include "content/browser/web_contents/java_script_dialog_commit_deferring_condition.h"
@@ -199,6 +197,7 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/loader/resource_type_util.h"
 #include "third_party/blink/public/common/mime_util/mime_util.h"
+#include "third_party/blink/public/common/page/content_to_visible_time_request.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
 #include "third_party/blink/public/common/page_state/page_state.h"
 #include "third_party/blink/public/common/permissions/permission_utils.h"
@@ -441,9 +440,9 @@ void RecordMaxFrameCountUMA(size_t max_frame_count) {
 // WebContents::GetFirstWebContentsInLiveOriginalOpenerChain() and
 // WebContents::GetOuterWebContents(). The |web_contents| parameter will be
 // included in the returned set.
-base::flat_set<WebContentsImpl*> GetAllOpeningWebContents(
+base::flat_set<raw_ptr<WebContentsImpl>> GetAllOpeningWebContents(
     WebContentsImpl* web_contents) {
-  base::flat_set<WebContentsImpl*> result;
+  base::flat_set<raw_ptr<WebContentsImpl>> result;
   base::flat_set<WebContentsImpl*> current;
 
   current.insert(web_contents);
@@ -4376,8 +4375,6 @@ void WebContentsImpl::Init(const WebContents::CreateParams& params,
   SchedulerLoopQuarantineWebContentsObserver::MaybeCreateForWebContents(this);
   RedirectChainDetector::CreateForWebContents(this);
   BtmWebContentsObserver::MaybeCreateForWebContents(this);
-  RedirectHeuristicTabHelper::CreateForWebContents(this);
-  OpenerHeuristicTabHelper::CreateForWebContents(this);
 
   // BrowserPluginGuest::Init needs to be called after this WebContents has
   // a RenderWidgetHostViewChildFrame. That is, |view_->CreateView| above.
@@ -4811,7 +4808,7 @@ bool WebContentsImpl::CanEnterFullscreenMode(
   // WebContents has an active blocker.
   return delegate_ &&
          std::ranges::all_of(GetAllOpeningWebContents(this),
-                             [](auto* opener) {
+                             [](auto opener) {
                                return opener->fullscreen_blocker_count_ == 0;
                              }) &&
          delegate_->CanEnterFullscreenModeForTab(requesting_frame);
@@ -7457,7 +7454,7 @@ base::ScopedClosureRunner WebContentsImpl::ForSecurityDropFullscreen(
 
   std::vector<base::WeakPtr<WebContentsImpl>> blocked_contentses;
 
-  for (auto* opener : GetAllOpeningWebContents(this)) {
+  for (auto opener : GetAllOpeningWebContents(this)) {
     if (is_fullscreen(opener, display_id)) {
       opener->ExitFullscreen(true);
     }
@@ -12375,9 +12372,10 @@ void WebContentsImpl::SetV8CompileHints(base::ReadOnlySharedMemoryRegion data) {
 void WebContentsImpl::SetTabSwitchStartTime(base::TimeTicks start_time,
                                             bool destination_is_loaded) {
   GetVisibleTimeRequestTrigger().UpdateRequest(
-      start_time, destination_is_loaded,
-      /*show_reason_tab_switching=*/true,
-      /*show_reason_bfcache_restore=*/false);
+      blink::RecordContentToVisibleTimeRequest{
+          .event_start_time = start_time,
+          .destination_is_loaded = destination_is_loaded,
+          .show_reason_tab_switching = true});
 }
 
 bool WebContentsImpl::IsInPreviewMode() const {

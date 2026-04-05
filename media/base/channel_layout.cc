@@ -10,9 +10,11 @@
 #include <array>
 
 #include "base/check_op.h"
+#include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "media/base/limits.h"
+#include "media/base/media_switches.h"
 
 namespace media {
 
@@ -191,9 +193,16 @@ int ComputeChannelCount(ChannelLayout channel_layout, int channels) {
 
     return channels;
   } else if (channel_layout == CHANNEL_LAYOUT_5_1_4_DOWNMIX && channels != 0) {
-    // For CHANNEL_LAYOUT_5_1_4_DOWNMIX we can set a custom number of channels,
-    // but we are not forced to.
-    return channels;
+    // `channels` should really only be 6 here, but we might end up with the
+    // original 5.1.4 channel count. For now, handle this gracefully, and force
+    // the value down to 6. Eventually, we should remove this special case
+    // altogether.
+    CHECK(channels == 6 || channels == 10);
+
+    // TODO(crbug.com/486962136): Track whether this condition arises in the
+    // wild, and remove this branch entirely.
+    CHECK_NE(channels, 10, base::NotFatalUntil::M153);
+    return 6;
   }
   const int calculated_channel_count =
       ChannelLayoutToChannelCount(channel_layout);
@@ -204,9 +213,16 @@ int ComputeChannelCount(ChannelLayout channel_layout, int channels) {
 
 }  // namespace
 
+int GetConcurrentMaxChannels() {
+  if (base::FeatureList::IsEnabled(kEnableHighChannelLayouts)) {
+    return 12;
+  }
+  return 8;
+}
+
 int ChannelLayoutToChannelCount(ChannelLayout layout) {
   DCHECK_LT(static_cast<size_t>(layout), std::size(kLayoutToChannels));
-  DCHECK_LE(kLayoutToChannels[layout], kMaxConcurrentChannels);
+  DCHECK_LE(kLayoutToChannels[layout], GetConcurrentMaxChannels());
   return kLayoutToChannels[layout];
 }
 
@@ -214,9 +230,11 @@ int ChannelLayoutToChannelCount(ChannelLayout layout) {
 ChannelLayout GuessChannelLayout(int channels) {
   // Use discrete layout for higher channel counts to facilitate
   // audio passthrough, thus avoiding channel mixing.
-  if (channels > kMaxConcurrentChannels && channels <= limits::kMaxChannels) {
+  if (channels > GetConcurrentMaxChannels() &&
+      channels <= limits::kMaxChannels) {
     return CHANNEL_LAYOUT_DISCRETE;
   }
+
   switch (channels) {
     case 1:
       return CHANNEL_LAYOUT_MONO;
@@ -234,6 +252,14 @@ ChannelLayout GuessChannelLayout(int channels) {
       return CHANNEL_LAYOUT_6_1;
     case 8:
       return CHANNEL_LAYOUT_7_1;
+    case 9:
+      return CHANNEL_LAYOUT_DISCRETE;
+    case 10:
+      return CHANNEL_LAYOUT_5_1_4;
+    case 11:
+      return CHANNEL_LAYOUT_DISCRETE;
+    case 12:
+      return CHANNEL_LAYOUT_7_1_4;
     default:
       DVLOG(1) << "Unsupported channel count: " << channels;
   }

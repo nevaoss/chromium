@@ -98,10 +98,8 @@ source_set("host_main_headers") {
     "//remoting/host/win:remoting_desktop",
     "//remoting/host/win:remoting_me2me_host",
   ]
-  sources = [
-    "host_export.h",
-    "host_main.h",
-  ]
+  sources = [ "host_main.h" ]
+  public_deps = [ "//remoting/base:remoting_export" ]
 }
 
 source_set("common_headers") {
@@ -1274,6 +1272,9 @@ if (enable_me2me_host) {
   } else {
     shared_library("remoting_core") {
       deps = [ ":implementation" ]
+      if (is_posix) {
+        deps += [ "//remoting/base:security_key_socket_name" ]
+      }
 
       if (!is_component_build) {
         if (is_linux) {

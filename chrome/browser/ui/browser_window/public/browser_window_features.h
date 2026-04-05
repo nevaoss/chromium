@@ -42,6 +42,7 @@ class BrowserSyncedWindowDelegate;
 class BrowserUserEducationInterface;
 class BrowserView;
 class BrowserWindowInterface;
+class BrowserWindowThemeObserver;
 class CallToActionLock;
 class ChromeLabsCoordinator;
 class ColorProviderBrowserHelper;
@@ -70,7 +71,7 @@ class InitialWebUIManager;
 class InitialWebUIWindowMetricsManager;
 class LocationBarModel;
 class MemorySaverOptInIPHController;
-class PinnedToolbarActionsController;
+class PinnedToolbarActions;
 class ProfileMenuCoordinator;
 class ProjectsPanelStateController;
 class ReadingListSidePanelCoordinator;
@@ -277,16 +278,8 @@ class BrowserWindowFeatures {
     return cast_browser_controller_.get();
   }
 
-  HistorySidePanelCoordinator* history_side_panel_coordinator() {
-    return history_side_panel_coordinator_.get();
-  }
-
   BookmarksSidePanelCoordinator* bookmarks_side_panel_coordinator() {
     return bookmarks_side_panel_coordinator_.get();
-  }
-
-  CommentsSidePanelCoordinator* comments_side_panel_coordinator() {
-    return comments_side_panel_coordinator_.get();
   }
 
   ExtensionInstalledWatcher* extension_installed_watcher() {
@@ -297,8 +290,8 @@ class BrowserWindowFeatures {
     return glic_iph_controller_.get();
   }
 
-  PinnedToolbarActionsController* pinned_toolbar_actions_controller() {
-    return pinned_toolbar_actions_controller_.get();
+  PinnedToolbarActions* pinned_toolbar_actions() {
+    return pinned_toolbar_actions_;
   }
 
   // TODO(crbug.com/346158959): For historical reasons, side_panel_ui is an
@@ -407,10 +400,6 @@ class BrowserWindowFeatures {
   // an owned member of BrowserWindowFeatures.
   LocationBar* location_bar();
   const LocationBar* location_bar() const;
-
-  ReadingListSidePanelCoordinator* reading_list_side_panel_coordinator() {
-    return reading_list_side_panel_coordinator_.get();
-  }
 
   new_tab_footer::NewTabFooterController* new_tab_footer_controller() {
     return new_tab_footer_controller_.get();
@@ -583,9 +572,7 @@ class BrowserWindowFeatures {
 
   std::unique_ptr<CommentsSidePanelCoordinator>
       comments_side_panel_coordinator_;
-
-  std::unique_ptr<PinnedToolbarActionsController>
-      pinned_toolbar_actions_controller_;
+  raw_ptr<PinnedToolbarActions> pinned_toolbar_actions_ = nullptr;
 
   std::unique_ptr<ExtensionInstalledWatcher> extension_installed_watcher_;
 
@@ -812,6 +799,8 @@ class BrowserWindowFeatures {
 
   std::unique_ptr<contextual_cueing::ContextualCueingController>
       contextual_cueing_controller_;
+
+  std::unique_ptr<BrowserWindowThemeObserver> browser_window_theme_observer_;
 
   // Keep this member last to ensure embedder features are torn down first, in
   // reverse order of initialization.

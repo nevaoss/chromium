@@ -97,15 +97,17 @@ class GlicPreloadHandler : public glic::mojom::GlicPreloadHandler {
                         perfetto::Flow::FromPointer(this));
 
     auto wrapped_callback = base::BindOnce(
-        [](GlicPreloadHandler* origin_this,
+        [](base::WeakPtr<GlicPreloadHandler> origin_this,
            mojom::GlicPreloadHandler::PrepareForClientCallback callback,
            mojom::PrepareForClientResult result) {
-          TRACE_EVENT_INSTANT(
-              "browser", "GlicPreloadHandler::PrepareForClient - Response",
-              perfetto::TerminatingFlow::FromPointer(origin_this));
+          if (origin_this) {
+            TRACE_EVENT_INSTANT(
+                "browser", "GlicPreloadHandler::PrepareForClient - Response",
+                perfetto::TerminatingFlow::FromPointer(origin_this.get()));
+          }
           std::move(callback).Run(std::move(result));
         },
-        base::Unretained(this), std::move(callback));
+        this->weak_ptr_factory_.GetWeakPtr(), std::move(callback));
 
     GetGlicService()->GetAuthController().CheckAuthBeforeLoad(
         std::move(wrapped_callback));
@@ -125,6 +127,8 @@ class GlicPreloadHandler : public glic::mojom::GlicPreloadHandler {
   mojo::Receiver<glic::mojom::GlicPreloadHandler> receiver_;
   mojo::Remote<glic::mojom::PreloadPage> preload_page_;
   std::vector<base::CallbackListSubscription> subscriptions_;
+
+  base::WeakPtrFactory<GlicPreloadHandler> weak_ptr_factory_{this};
 };
 
 // static
@@ -169,6 +173,7 @@ GlicUI::GlicUI(content::WebUI* web_ui)
       {"offlineNoticeAction", IDS_GLIC_OFFLINE_NOTICE_ACTION},
       {"offlineNoticeActionButton", IDS_GLIC_OFFLINE_NOTICE_ACTION_BUTTON},
       {"offlineNoticeHeader", IDS_GLIC_OFFLINE_NOTICE_HEADER},
+      {"zoomLabel", IDS_TOOLTIP_ZOOM},
       {"signInNotice", IDS_GLIC_SIGN_IN_NOTICE},
       {"signInNoticeActionButton", IDS_GLIC_SIGN_IN_NOTICE_ACTION_BUTTON},
       {"signInNoticeHeader", IDS_GLIC_SIGN_IN_NOTICE_HEADER},

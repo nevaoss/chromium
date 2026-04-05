@@ -245,9 +245,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             iconModels.add(buildForwardActionModel(currentTab));
             iconModels.add(buildBookmarkActionModel(currentTab));
             iconModels.add(buildDownloadActionModel(currentTab));
-            if (ChromeFeatureList.sGlic.isEnabled()) {
-                iconModels.add(buildGlicActionModel(currentTab));
-            } else if (!ChromeFeatureList.sThreeDotMenuBackButton.isEnabled()) {
+            if (!ChromeFeatureList.sThreeDotMenuBackButton.isEnabled()) {
                 iconModels.add(buildPageInfoModel(currentTab));
             }
 
@@ -305,16 +303,21 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             modelList.add(buildHistoryItem());
         }
 
+        boolean isPageInfoItemShown = shouldShowPageInfoItem();
+
         // Quick Delete
         if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
                 && shouldShowQuickDeleteItem()) {
             modelList.add(buildQuickDeleteItem());
-            maybeAddDividerLine(modelList, R.id.quick_delete_divider_line_id);
+            if (!isPageInfoItemShown) {
+                maybeAddDividerLine(modelList, R.id.quick_delete_divider_line_id);
+            }
         }
 
         // Page info
-        if (shouldShowPageInfoItem()) {
+        if (isPageInfoItemShown) {
             modelList.add(buildPageInfoItem(currentTab));
+            maybeAddDividerLine(modelList, R.id.page_info_divider_line_id);
         }
 
         // Downloads
@@ -684,23 +687,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         R.id.manage_all_windows_menu_id,
                         R.string.menu_manage_all_windows,
                         shouldShowIconBeforeItem() ? R.drawable.ic_select_window : 0));
-    }
-
-    // TODO(b/493264902): Remove page info icon omnibox for secure websites.
-    private boolean shouldShowPageInfoItem() {
-        return ChromeFeatureList.sAndroidPageInfoAsAppMenuItem.isEnabled();
-    }
-
-    private MVCListAdapter.ListItem buildPageInfoItem(@Nullable Tab currentTab) {
-        MVCListAdapter.ListItem item =
-                new MVCListAdapter.ListItem(
-                        AppMenuHandler.AppMenuItemType.STANDARD,
-                        buildModelForStandardMenuItem(
-                                R.id.info_menu_id,
-                                R.string.menu_site_controls,
-                                shouldShowIconBeforeItem() ? R.drawable.ic_settings_tune_24dp : 0));
-        item.model.set(AppMenuItemProperties.ENABLED, currentTab != null);
-        return item;
     }
 
     private boolean shouldShowHistoryParentItem() {

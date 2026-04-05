@@ -87,6 +87,7 @@
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window_state.h"
+#include "chrome/browser/ui/browser_window_theme_observer.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/context_highlight/context_highlight_window_feature.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
@@ -1066,6 +1067,12 @@ BrowserView::BrowserView(Browser* browser)
 
   browser_->GetFeatures().InitPostBrowserViewConstruction(this);
 
+  if (auto* theme_observer = BrowserWindowThemeObserver::From(browser_.get())) {
+    theme_changed_subscription_ =
+        theme_observer->RegisterThemeChangedCallback(base::BindRepeating(
+            &BrowserView::UserChangedTheme, base::Unretained(this)));
+  }
+
   if (vertical_tab_strip_state_controller) {
     vertical_tab_subscription_ =
         vertical_tab_strip_state_controller->RegisterOnModeChanged(
@@ -1520,6 +1527,16 @@ bool BrowserView::IsInSplitView() const {
 
 void BrowserView::OnVerticalTabStripModeChanged(
     tabs::VerticalTabStripStateController* controller) {
+  // Clear selection model
+  if (auto* active_tab = browser_->tab_strip_model()->GetActiveTab()) {
+    tabs::TabStripModelSelectionState selection_state(
+        browser_->tab_strip_model());
+    selection_state.SetActiveTab(active_tab);
+    selection_state.SetAnchorTab(active_tab);
+    browser_->tab_strip_model()->SetSelectionFromModel(
+        std::move(selection_state));
+  }
+
   if (controller->ShouldDisplayVerticalTabs()) {
     horizontal_tab_strip_region_view_->ResetTabStrip();
     vertical_tab_strip_region_view_->InitializeTabStrip();

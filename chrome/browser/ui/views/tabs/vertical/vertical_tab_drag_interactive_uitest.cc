@@ -33,8 +33,8 @@
 #include "ui/base/test/ui_controls.h"
 #include "ui/events/event.h"
 #include "ui/events/keycodes/keyboard_codes.h"
-#include "ui/views/interaction/interaction_test_util_mouse.h"
 #include "ui/views/interaction/interactive_views_test.h"
+#include "ui/views/interaction/mouse/interaction_test_util_mouse.h"
 #include "ui/views/test/views_test_utils.h"
 #include "ui/views/view.h"
 #include "url/gurl.h"
@@ -130,6 +130,10 @@ class VerticalTabDragTest
   ~VerticalTabDragTest() override = default;
 
  protected:
+  auto RunScheduledLayout() {
+    return Do([&]() { views::test::RunScheduledLayout(&GetBrowserView()); });
+  }
+
   auto NameTabViewAt(std::string_view tab_name, int tab_index) {
     return NameView(
         tab_name, base::BindLambdaForTesting([&, tab_index]() {
@@ -156,7 +160,7 @@ class VerticalTabDragTest
         If([this]() { return mouse_util().GetTouchMode(); },
            Then(Steps(PollState(kDragStatePoller, GetDragActive()),
                       WaitForState(kDragStatePoller, true)))),
-        MoveMouseTo(kTabToDragTo));
+        MoveMouseTo(kTabToDragTo), RunScheduledLayout());
   }
 
   auto StartDragFromGroupToTab(int from_group_index, int to_tab_index) {
@@ -169,14 +173,16 @@ class VerticalTabDragTest
             kBrowserViewElementId, kGroupToDragFrom, from_group_index),
         NameTabViewAt(kTabToDragTo, to_tab_index),
         MoveMouseTo(kGroupToDragFrom),
-        DragMouseTo(kTabToDragTo, CenterPoint(), /*release=*/false));
+        DragMouseTo(kTabToDragTo, CenterPoint(), /*release=*/false),
+        RunScheduledLayout());
   }
 
   auto ContinueDragToTab(int to_tab_index) {
     const char kTabToDragTo[] = "Tab to drag to";
     return Steps(
         Log("Continue drag to tab at " + base::NumberToString(to_tab_index)),
-        NameTabViewAt(kTabToDragTo, to_tab_index), MoveMouseTo(kTabToDragTo));
+        NameTabViewAt(kTabToDragTo, to_tab_index), MoveMouseTo(kTabToDragTo),
+        RunScheduledLayout());
   }
 
   auto PressEscAsync() {
@@ -780,7 +786,7 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragTest, DragGroupHeader) {
       ReleaseMouse());
 }
 
-IN_PROC_BROWSER_TEST_F(VerticalTabDragTest, DragCollapsedGroup) {
+IN_PROC_BROWSER_TEST_F(VerticalTabDragTest, DragCollapsedGroupStaysCollapsed) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFourthTab);
   TabStripModel* tab_strip_model = browser()->tab_strip_model();
   ASSERT_NE(nullptr, tab_strip_model);
@@ -810,6 +816,43 @@ IN_PROC_BROWSER_TEST_F(VerticalTabDragTest, DragCollapsedGroup) {
                         ->visual_data()
                         ->is_collapsed());
       }),
+      ReleaseMouse());
+}
+
+IN_PROC_BROWSER_TEST_F(VerticalTabDragTest,
+                       DragCollapsedGroupOverExpandedGroup) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFourthTab);
+  TabStripModel* tab_strip_model = browser()->tab_strip_model();
+  ASSERT_NE(nullptr, tab_strip_model);
+  RunTestSequence(
+      AddInstrumentedTab(kSecondTab, GURL(chrome::kChromeUIBookmarksURL), 1),
+      AddInstrumentedTab(kThirdTab, GURL(chrome::kChromeUISettingsURL), 2),
+      AddInstrumentedTab(kFourthTab, GURL(chrome::kChromeUIVersionURL), 3),
+      AddTabsToNewGroup({0, 1}), AddTabsToNewGroup({2}), CollapseGroup(1),
+      Do([&]() {
+        std::vector<tab_groups::TabGroupId> groups =
+            tab_strip_model->group_model()->ListTabGroups();
+        ASSERT_EQ(2u, groups.size());
+        EXPECT_TRUE(tab_strip_model->group_model()
+                        ->GetTabGroup(groups[1])
+                        ->visual_data()
+                        ->is_collapsed());
+      }),
+      PollState(kTabOrderPoller, GetTabOrder(tab_strip_model)),
+      WaitForState(kTabOrderPoller,
+                   URLs({TabGroupURLs({url::kAboutBlankURL,
+                                       chrome::kChromeUIBookmarksURL}),
+                         TabGroupURLs({chrome::kChromeUISettingsURL}),
+                         chrome::kChromeUIVersionURL})),
+
+      StartDragFromGroupToTab(1, 0),
+      PollState(kDragStatePoller, GetDragActive()),
+      WaitForState(kDragStatePoller, true),
+      WaitForState(kTabOrderPoller,
+                   URLs({TabGroupURLs({chrome::kChromeUISettingsURL}),
+                         TabGroupURLs({url::kAboutBlankURL,
+                                       chrome::kChromeUIBookmarksURL}),
+                         chrome::kChromeUIVersionURL})),
       ReleaseMouse());
 }
 

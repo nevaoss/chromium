@@ -291,7 +291,7 @@ void ContextualTasksPageHandler::OpenHelpUi() {
     }
   }
 
-  ui_service_->OpenHelpUi(browser, page_url);
+  ui_service_->OpenFeedbackUi(browser, page_url);
 }
 
 void ContextualTasksPageHandler::OpenOnboardingHelpUi() {
@@ -487,7 +487,7 @@ void ContextualTasksPageHandler::UpdateContextForTask(
     return;
   }
   contextual_tasks_service_->GetContextForTask(
-      task_id, {contextual_tasks::ContextualTaskContextSource::kTabStrip},
+      task_id, {},
       std::make_unique<contextual_tasks::ContextDecorationParams>(),
       base::BindOnce(
           [](base::WeakPtr<ContextualTasksPageHandler> self,

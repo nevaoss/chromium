@@ -136,6 +136,20 @@ ui::mojom::WindowShowState GetShowState(views::Widget* widget) {
 
 }  // namespace
 
+class Widget::ScopedCallStackLock {
+ public:
+  explicit ScopedCallStackLock(Widget* widget)
+      : reset_(&widget->on_call_stack_, true) {}
+
+  ScopedCallStackLock(const ScopedCallStackLock&) = delete;
+  ScopedCallStackLock& operator=(const ScopedCallStackLock&) = delete;
+
+  ~ScopedCallStackLock() = default;
+
+ private:
+  base::AutoReset<bool> reset_;
+};
+
 // static
 Widget::DisableActivationChangeHandlingType
     Widget::g_disable_activation_change_handling_ =
@@ -242,6 +256,13 @@ Widget::Widget(InitParams params) {
 }
 
 Widget::~Widget() {
+  CHECK(!on_call_stack_);
+
+  // It's illegal for any of the body of this destructor to re-enter this
+  // destructor, because if that happened the outer destructor would
+  // use-after-free once it returns.
+  ScopedCallStackLock on_stack(this);
+
   // DestroyRootView() will cause InvalidateLayout() to ScheduleLayout() which
   // is unnecessary.
   is_destroying_ = true;
@@ -257,6 +278,8 @@ Widget::~Widget() {
   // CLIENT_OWNS_WIDGET, all events are emitted in ~Widget.
 
   if (widget_delegate_ && ownership_ != InitParams::CLIENT_OWNS_WIDGET) {
+    // It's illegal for WidgetDestroying() to re-enter the Widget destructor,
+    // because then the other destructor will use-after-free.
     widget_delegate_->WidgetDestroying();
   }
   if (ownership_ == InitParams::WIDGET_OWNS_NATIVE_WIDGET) {
@@ -538,11 +561,6 @@ void Widget::Init(InitParams params) {
   // set based on the display.
   should_set_initial_bounds = !params.display_id.has_value();
 #endif
-#if BUILDFLAG(IS_WIN)
-  // force_system_menu_for_frameless only applies to frameless windows.
-  CHECK(!params.force_system_menu_for_frameless ||
-        params.type == Widget::InitParams::TYPE_WINDOW_FRAMELESS);
-#endif  // BUILDFLAG(IS_WIN)
   background_color_ = params.background_color;
   native_widget_->InitNativeWidget(std::move(params));
   if (type == InitParams::TYPE_MENU) {
@@ -978,6 +996,7 @@ void Widget::CloseWithReason(ClosedReason closed_reason) {
 
   ax_mode_observation_.Reset();
 
+  ScopedCallStackLock on_stack(this);
   observers_.Notify(&WidgetObserver::OnWidgetClosing, this);
 
   internal::AnyWidgetObserverSingleton::GetInstance()->OnAnyWidgetClosing(this);
@@ -1007,12 +1026,17 @@ void Widget::CloseNow() {
 
   ax_mode_observation_.Reset();
 
-  observers_.Notify(&WidgetObserver::OnWidgetClosing, this);
-  internal::AnyWidgetObserverSingleton::GetInstance()->OnAnyWidgetClosing(this);
+  {
+    ScopedCallStackLock on_stack(this);
+    observers_.Notify(&WidgetObserver::OnWidgetClosing, this);
+    internal::AnyWidgetObserverSingleton::GetInstance()->OnAnyWidgetClosing(
+        this);
+  }
 
   DCHECK(native_widget_initialized_) << "Native widget is never initialized.";
-
   if (native_widget_) {
+    // The Widget may be destroyed inside CloseNow(), so *DO NOT* use this after
+    // this point.
     native_widget_->CloseNow();
   }
 }
@@ -1320,11 +1344,11 @@ SublevelManager* Widget::GetSublevelManager() {
   return sublevel_manager_.get();
 }
 
-void Widget::RunShellDrag(View* view,
-                          std::unique_ptr<ui::OSExchangeData> data,
-                          const gfx::Point& location,
-                          int operation,
-                          ui::mojom::DragEventSource source) {
+void Widget::RunDragDropLoop(View* view,
+                             std::unique_ptr<ui::OSExchangeData> data,
+                             const gfx::Point& location,
+                             int operation,
+                             ui::mojom::DragEventSource source) {
   if (view) {
     CHECK_EQ(view->GetWidget(), this);
   }
@@ -1333,9 +1357,9 @@ void Widget::RunShellDrag(View* view,
     return;
   }
   dragged_view_ = view;
-  OnDragWillStart();
+  OnDragDropWillStart();
 
-  observers_.Notify(&WidgetObserver::OnWidgetDragWillStart, this);
+  observers_.Notify(&WidgetObserver::OnWidgetDragDropWillStart, this);
 
   if (view && view->drag_controller()) {
     view->drag_controller()->OnWillStartDragForView(view);
@@ -1348,7 +1372,8 @@ void Widget::RunShellDrag(View* view,
     // tasks need to run. Only views:: and ui::EventDispatcher stacks are
     // present, which expect this re-entrancy.
     base::CurrentThread::ScopedAllowApplicationTasksInNativeNestedLoop allow;
-    native_widget_->RunShellDrag(std::move(data), location, operation, source);
+    native_widget_->RunDragDropLoop(std::move(data), location, operation,
+                                    source);
   }
 
   // The widget may be destroyed during the drag operation.
@@ -1368,17 +1393,17 @@ void Widget::RunShellDrag(View* view,
     dragged_view_ = nullptr;
     view->OnDragDone();
   }
-  OnDragComplete();
+  OnDragDropCompleted();
 
-  observers_.Notify(&WidgetObserver::OnWidgetDragComplete, this);
+  observers_.Notify(&WidgetObserver::OnWidgetDragDropCompleted, this);
 }
 
-void Widget::CancelShellDrag(View* view) {
+void Widget::CancelDragDropLoop(View* view) {
   if (!native_widget_) {
     return;
   }
 
-  native_widget_->CancelShellDrag(view);
+  native_widget_->CancelDragDropLoop(view);
 }
 
 void Widget::SchedulePaintInRect(const gfx::Rect& rect) {
@@ -2022,6 +2047,7 @@ void Widget::OnNativeWidgetMove() {
   }
   NotifyCaretBoundsChanged(GetInputMethod());
 
+  ScopedCallStackLock on_stack(this);
   observers_.Notify(&WidgetObserver::OnWidgetBoundsChanged, this,
                     GetWindowBoundsInScreen());
 }
@@ -2039,6 +2065,7 @@ void Widget::OnNativeWidgetSizeChanged(const gfx::Size& new_size) {
 
   base::AutoReset auto_reset(&save_window_placement_allowed_, false);
 
+  ScopedCallStackLock on_stack(this);
   observers_.Notify(&WidgetObserver::OnWidgetBoundsChanged, this,
                     GetWindowBoundsInScreen());
 
@@ -2571,9 +2598,9 @@ void Widget::DestroyRootView() {
   root_view_.reset();
 }
 
-void Widget::OnDragWillStart() {}
+void Widget::OnDragDropWillStart() {}
 
-void Widget::OnDragComplete() {}
+void Widget::OnDragDropCompleted() {}
 
 const ui::NativeTheme* Widget::GetNativeTheme() const {
   if (native_theme_) {

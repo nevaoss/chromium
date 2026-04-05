@@ -290,6 +290,11 @@ BASE_FEATURE_PARAM(bool,
 
 // If enabled, AutofillAi supports shipment entities.
 BASE_FEATURE(kAutofillAiShipment, base::FEATURE_DISABLED_BY_DEFAULT);
+// Controls whether a banner is shown in settings when wallet data sharing is
+// disabled.
+
+BASE_FEATURE(kAutofillAiShowWalletDisabledBanner,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, the client may trigger the server model for AutofillAI type
 // predictions using Private AI Compute.
@@ -1134,5 +1139,10 @@ BASE_FEATURE(kYourSavedInfoPolicyAndExtentionToggleIndicators,
 // Defines if the "Your Saved Info" page is eligible to be shown in Chrome
 // settings.
 BASE_FEATURE(kYourSavedInfoSettingsPage, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Defines if the shipping and order data is included in the "Your Saved Info"
+// settings page.
+BASE_FEATURE(kYourSavedInfoSettingsPageShoppingIntegration,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace autofill::features

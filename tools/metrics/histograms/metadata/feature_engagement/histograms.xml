@@ -57,6 +57,7 @@ chromium-metrics-reviews@google.com.
                their home screen (using a text bubble)"/>
   <variant name="IPH_AndroidTabDeclutter"
       summary="Shows how to access tabs which have been archived."/>
+  <variant name="IPH_AppRatingPrompt" summary="App Rating Prompt action"/>
   <variant name="IPH_AppSpecificHistory" summary="App Specific History action"/>
   <variant name="IPH_AutoDarkOptOut"
       summary="educating users about disabling auto dark feature globally"/>
@@ -657,7 +658,7 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_TabGroupsYourTabsTogether"
       summary="tab switcher cards with multiple tab thumbnails"/>
   <variant name="IPH_TabOrganizationSuccess"
-      summary="tab organization success"/>
+      summary="(obsolete) tab organization success"/>
   <variant name="IPH_TabSearch" summary="tab search discovery"/>
   <variant name="IPH_TabSearchComboButton"
       summary="IPH for the first time a user opens Chrome with tab search
@@ -790,7 +791,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="InProductHelp.NotifyEventReadyState.{IPHFeature}"
-    enum="BooleanSuccess" expires_after="2026-07-26">
+    enum="BooleanSuccess" expires_after="2026-09-27">
   <owner>nyquist@chromium.org</owner>
   <summary>
     Records if the model is ready when in-product help event happens for
@@ -800,7 +801,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="InProductHelp.ShouldTriggerHelpUI.{IPHFeature}"
-    enum="TriggerHelpUIResult" expires_after="2026-07-26">
+    enum="TriggerHelpUIResult" expires_after="2026-09-27">
   <owner>nyquist@chromium.org</owner>
   <summary>
     Records if in-product help for {IPHFeature} is shown to the user, and the

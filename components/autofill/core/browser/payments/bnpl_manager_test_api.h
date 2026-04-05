@@ -56,6 +56,8 @@ class BnplManagerTestApi {
 
   void Reset() { bnpl_manager_->Reset(); }
 
+  void CancelOngoingRequests() { bnpl_manager_->CancelOngoingRequests(); }
+
   void OnIssuerAccepted(BnplIssuer selected_issuer) {
     bnpl_manager_->OnIssuerAccepted(selected_issuer);
   }
@@ -93,6 +95,20 @@ class BnplManagerTestApi {
 
   bool HasSeenAmountExtractionAiTerms() {
     return bnpl_manager_->HasSeenAmountExtractionAiTerms();
+  }
+
+  void UpdateSuggestionsOnAiAmountExtractionResponse(
+      const std::vector<BnplIssuerContext>& issuer_contexts) {
+    bnpl_manager_->UpdateSuggestionsOnAiAmountExtractionResponse(
+        issuer_contexts);
+  }
+
+  void ShowProgressUiForPayLaterTab() {
+    bnpl_manager_->ShowProgressUiForPayLaterTab();
+  }
+
+  void SetCachedSuggestions(std::vector<Suggestion> suggestions) {
+    bnpl_manager_->cached_suggestions_ = std::move(suggestions);
   }
 
  private:

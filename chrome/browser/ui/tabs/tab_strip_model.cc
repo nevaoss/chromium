@@ -54,6 +54,7 @@
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_bubble.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/features.h"
@@ -1663,8 +1664,22 @@ void TabStripModel::SetSelectionFromModel(ui::ListSelectionModel source) {
 }
 
 void TabStripModel::SetSelectionFromModel(
-    const tabs::TabStripModelSelectionState& source) {
+    tabs::TabStripModelSelectionState source) {
   CHECK(source.active_tab());
+
+  const std::unordered_set<raw_ptr<tabs::TabInterface>> sel =
+      source.selected_tabs();
+  for (auto& selected_tab : sel) {
+    auto split_id = selected_tab->GetSplit();
+    if (split_id.has_value()) {
+      auto* split_data = GetSplitData(split_id.value());
+      CHECK(split_data);
+      for (auto* split_tab : split_data->ListTabs()) {
+        source.AddTabToSelection(split_tab);
+      }
+    }
+  }
+
   SetSelection(source, TabStripModelObserver::CHANGE_REASON_NONE,
                /*triggered_by_other_operation=*/false);
 }
@@ -2947,7 +2962,7 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
       base::UmaHistogramCounts1000(
           "Tab.ContextMenu.ToggleVertical.SelectedTabsCount",
           selection_model_.size());
-      const Browser* const browser =
+      const BrowserWindowInterface* const browser =
           chrome::FindBrowserWithTab(GetWebContentsAt(context_index));
       if (auto* controller =
               tabs::VerticalTabStripStateController::From(browser)) {

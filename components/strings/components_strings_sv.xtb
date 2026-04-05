@@ -1446,7 +1446,6 @@ Gå till <ph name="BEGIN_LINK" />betalningsinställningarna<ph name="END_LINK" /
 <translation id="3238395604961564389">Öppna länk i inkognitofönster</translation>
 <translation id="3240683217920639535"><ph name="MANAGE_CHROME_THEMES_FOCUSED_FRIENDLY_MATCH_TEXT" />: tryck på Tabb och sedan på Retur om du vill anpassa webbläsarens utseende</translation>
 <translation id="3240791268468473923">Arbetsblad för användaruppgifter för säker betalning utan överensstämmande användaruppgifter är öppet</translation>
-<translation id="324180406144491771"><ph name="HOST_NAME" />-länkarna har blockerats</translation>
 <translation id="3243650379537999343">Rita</translation>
 <translation id="3248329428895535435">Visa inte på den här sidan</translation>
 <translation id="3249102948665905108">Filuppladdningen till <ph name="CLOUD_PROVIDER" /> har slutförts med fel</translation>
@@ -2362,7 +2361,7 @@ Gå till <ph name="BEGIN_LINK" />betalningsinställningarna<ph name="END_LINK" /
 <translation id="4698692901173737941">Kampsport</translation>
 <translation id="4701488924964507374"><ph name="SENTENCE1" /> <ph name="SENTENCE2" /></translation>
 <translation id="4702504834785592287">Sida</translation>
-<translation id="4702656508969495934">Live Caption visas. Använd fönsterbyte för att ändra fokus</translation>
+<translation id="4702656508969495934">Livetextning visas. Använd fönsterbyte för att ändra fokus</translation>
 <translation id="4703342001883078444">Familj och relationer</translation>
 <translation id="4704745399240123930">Kort som inte godkänns av den här säljaren, till exempel virtuella kort, inaktiveras.</translation>
 <translation id="4705573018059932476">Du har valt att verifiera dig med <ph name="AUTHENTICATOR" /> på webbplatser där <ph name="PROVIDER_ORIGIN" /> används. Den här leverantören kan ha lagrat uppgifter om hur du betalar som du kan <ph name="LINK_TEXT" />.</translation>
@@ -2419,6 +2418,7 @@ Gå till <ph name="BEGIN_LINK" />betalningsinställningarna<ph name="END_LINK" /
 <translation id="477945296921629067">{NUM_POPUPS,plural, =1{Popup-fönster har blockerats}other{# popup-fönster har blockerats}}</translation>
 <translation id="4780320432697076749">Fotoprogram</translation>
 <translation id="4780366598804516005">Postfack 1</translation>
+<translation id="4785273477715803444">Filterloggar</translation>
 <translation id="4785376858512657294">Hantera Google-kontot</translation>
 <translation id="4785689107224900852">Byt till den här fliken</translation>
 <translation id="4785998536350006000">Söker efter <ph name="SEARCH_QUERY" /></translation>
@@ -3061,6 +3061,7 @@ Gå till <ph name="BEGIN_LINK" />betalningsinställningarna<ph name="END_LINK" /
 <translation id="5759751709240058861">Använda och röra din kamera</translation>
 <translation id="5762131895127128324">Körkort · Id-kort · Pass</translation>
 <translation id="5763042198335101085">Ange en giltig e-postadress</translation>
+<translation id="5763338081255973061">{DAYS,plural, =0{Aktiv i dag}=1{Aktiv för 1 dag sedan}other{Aktiv för # dagar sedan}}</translation>
 <translation id="5764725887548570807">Ogiltigt ursprungsformat.</translation>
 <translation id="5764920692828389743">Skicka till <ph name="EMAIL_ADDRESS" /></translation>
 <translation id="5765072501007116331">Välj en adress för att visa leveranssätt och krav</translation>
@@ -3171,7 +3172,7 @@ Gå till <ph name="BEGIN_LINK" />betalningsinställningarna<ph name="END_LINK" /
 <translation id="5951495562196540101">Det går inte att registrera enheten med ett konsumentkonto (paketerad licens är tillgänglig).</translation>
 <translation id="5952076224478208938">Märke</translation>
 <translation id="5952196777020238475">Licensnummer</translation>
-<translation id="5953516610448771166">Live Caption är inte tillgängligt för den här mediefilen. Blockera <ph name="CONTENT_SETTINGS" /> för den här webbplatsen om du vill använda textning.</translation>
+<translation id="5953516610448771166">Livetextning är inte tillgängligt för den här mediefilen. Blockera <ph name="CONTENT_SETTINGS" /> för den här webbplatsen om du vill använda textning.</translation>
 <translation id="5960795367348889467">Verifiering</translation>
 <translation id="5963413905009737549">Avsnitt</translation>
 <translation id="5964247741333118902">Inbäddat innehåll</translation>
@@ -3368,6 +3369,7 @@ Gå till <ph name="BEGIN_LINK" />betalningsinställningarna<ph name="END_LINK" /
 <translation id="6246316216123107851"><ph name="NUM_DAYS" /> dagar sedan</translation>
 <translation id="6246382863801034910">Fordon</translation>
 <translation id="6246868321321344665">Organisationen kan se webbinformation, till exempel lösenord och historik, i både jobbprofiler och personliga profiler</translation>
+<translation id="6248988683584659830">Sök i inställningar</translation>
 <translation id="6250932670816326647">Bad- och kroppsprodukter</translation>
 <translation id="6251906504834538140">{0,plural, =1{Filen har blockerats från att flyttas}other{<ph name="FILE_COUNT" /> filer har blockerats från att flyttas}}</translation>
 <translation id="6252613631861574218"><ph name="MANAGE_CHROME_DOWNLOADS_FOCUSED_FRIENDLY_MATCH_TEXT" />: tryck på Tabb och sedan på Retur om du vill hantera filer som laddats ned i Chrome</translation>
@@ -3585,7 +3587,6 @@ Gå till <ph name="BEGIN_LINK" />betalningsinställningarna<ph name="END_LINK" /
 <translation id="6567832540451970450">Administratören tillåter <ph name="PERMISSION" /> för den här webbplatsen</translation>
 <translation id="6568793038316600992">Knappen Hantera betalningsmetoder: aktivera om du vill hantera betalningar och kreditkortsuppgifter i inställningarna för Chrome</translation>
 <translation id="6569060085658103619">Du visar en tilläggssida</translation>
-<translation id="6571992525120410251">Fråga <ph name="ENGINE_NAME" /> vad som helst</translation>
 <translation id="6573200754375280815">Två hål till höger</translation>
 <translation id="6573973523249076555">Google Chrome försöker fylla i dina känsliga uppgifter i <ph name="APP_NAME" />.</translation>
 <translation id="6575408526598156416">Spara i kontot</translation>

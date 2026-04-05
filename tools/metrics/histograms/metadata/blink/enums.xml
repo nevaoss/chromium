@@ -4847,7 +4847,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="4376" label="EligibleForImageLoadingPrioritizationFix"/>
   <int value="4377" label="ExecutedNonTrivialJavaScriptURL"/>
   <int value="4378" label="StorageBucketsOpen"/>
-  <int value="4379" label="PerformanceEntryBufferSwaps"/>
+  <int value="4379" label="OBSOLETE_PerformanceEntryBufferSwaps"/>
   <int value="4380" label="ClearPerformanceEntries"/>
   <int value="4381"
       label="ViewportDependentLazyLoadedImageWithoutSizesAttribute"/>
@@ -6502,6 +6502,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5861"
       label="NoscriptMarkupWithScriptingDisabledNoBrowsingContext"/>
   <int value="5862" label="SingleAxisScroller"/>
+  <int value="5863" label="V8HoleyArrayReadthrough"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -6698,6 +6699,32 @@ Called by update_permissions_policy_enum.py.-->
 </enum>
 
 <!-- LINT.ThenChange(//content/browser/webid/idp_network_request_manager.h:AccountsResponseInvalidReason) -->
+
+<!-- LINT.IfChange(FedCmAmbientClick) -->
+
+<enum name="FedCmAmbientClick">
+  <int value="0" label="SignIn Chip"/>
+  <int value="1" label="SignUp Chip"/>
+  <int value="2" label="SignIn Anchored message"/>
+  <int value="3" label="SignUp Anchored message"/>
+  <int value="4" label="SignIn Icon"/>
+  <int value="5" label="SignUp Icon"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/ui/webid/identity_ui_utils.h:AmbientClick) -->
+
+<!-- LINT.IfChange(FedCmAmbientImpression) -->
+
+<enum name="FedCmAmbientImpression">
+  <int value="0" label="SignIn Chip"/>
+  <int value="1" label="SignUp Chip"/>
+  <int value="2" label="SignIn Anchored message"/>
+  <int value="3" label="SignUp Anchored message"/>
+  <int value="4" label="SignIn Icon"/>
+  <int value="5" label="SignUp Icon"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/ui/webid/identity_ui_utils.h:AmbientImpression) -->
 
 <!-- LINT.IfChange(FedCmCancelReason) -->
 
@@ -7325,6 +7352,17 @@ Called by update_permissions_policy_enum.py.-->
       label="Specified frame was different from the cached node so the image
              was not retrieved."/>
 </enum>
+
+<!-- LINT.IfChange(InlineScriptCacheFetchResult) -->
+
+<enum name="InlineScriptCacheFetchResult">
+  <int value="0" label="Fetch succeeded with non-empty cache"/>
+  <int value="1" label="Fetch succeeded with empty cache"/>
+  <int value="2" label="Fetch timed out"/>
+  <int value="3" label="Fetch skipped because script is too small"/>
+</enum>
+
+<!-- LINT.ThenChange(//third_party/blink/renderer/platform/loader/fetch/code_cache_host.cc:InlineScriptCacheFetchResult) -->
 
 <enum name="InnerHTMLFastPathParserParseResult">
   <int value="0" label="Content was successfully parsed"/>

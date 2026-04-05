@@ -10,6 +10,33 @@ import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 import {ContextUploadErrorType, ContextUploadStatus, InputType} from './composebox_query.mojom-webui.js';
 import type {InputState, ModelMode, ToolMode} from './composebox_query.mojom-webui.js';
 
+// LINT.IfChange(FileValidationError)
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+export enum ComposeboxFileValidationError {
+  NONE = 0,
+  TOO_MANY_FILES = 1,
+  FILE_EMPTY = 2,
+  FILE_SIZE_TOO_LARGE = 3,
+  MAX_VALUE = FILE_SIZE_TOO_LARGE,
+}
+
+// LINT.ThenChange(//tools/metrics/histograms/metadata/contextual_search/enums.xml:FileValidationError)
+
+// These values are sorted by precedence. The error with the highest value
+// will be the one shown to the user if multiple errors apply.
+export enum ProcessFilesError {
+  NONE = 0,
+  INVALID_TYPE = 1,
+  FILE_TOO_LARGE = 2,
+  FILE_EMPTY = 3,
+  MAX_FILES_EXCEEDED = 4,
+  MAX_IMAGES_EXCEEDED = 5,
+  MAX_PDFS_EXCEEDED = 6,
+  FILE_UPLOAD_NOT_ALLOWED = 7,
+}
+
 export const FILE_VALIDATION_ERRORS_MAP =
     new Map<ContextUploadErrorType, string>([
       [
@@ -132,6 +159,15 @@ export enum GlifAnimationState {
   STARTED = 'started',
   FINISHED = 'finished',
 }
+
+// LINT.IfChange(ContextualSearchInputStateDeletionType)
+export enum ContextualSearchInputStateDeletionType {
+  FILE = 0,
+  TAB = 1,
+  TOOL = 2,
+  MAX_VALUE = 2,
+}
+// LINT.ThenChange(//tools/metrics/histograms/metadata/contextual_search/enums.xml:ContextualSearchInputStateDeletionType)
 
 export function recordEnumerationValue(
     metricName: string, value: number, enumSize: number) {

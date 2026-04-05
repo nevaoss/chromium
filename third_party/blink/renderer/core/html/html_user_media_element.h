@@ -20,16 +20,24 @@ class CORE_EXPORT HTMLUserMediaElement
   static bool isTypeSupported(const AtomicString& type);
 
   explicit HTMLUserMediaElement(Document& document);
+  void Trace(Visitor*) const override;
 
   DEFINE_ATTRIBUTE_EVENT_LISTENER(stream, kStream)
 
   // HTML Element
-  HTMLElementType GetHTMLElementType() const final {
-    return HTMLElementType::kHTMLUserMediaElement;
+  ElementType GetElementType() const final {
+    return ElementType::kHTMLUserMediaElement;
   }
   bool IsHTMLUserMediaElement() const final { return true; }
 
   void AttributeChanged(const AttributeModificationParams& params) override;
+
+  // HTMLCapabilityElementBase
+  void OnPermissionStatusChange(mojom::blink::PermissionName permission_name,
+                                mojom::blink::PermissionStatus status) override;
+  void DefaultEventHandler(Event& event) override;
+  mojom::blink::EmbeddedPermissionRequestDescriptorPtr
+  CreateEmbeddedPermissionRequestDescriptor() override;
 
   Vector<mojom::blink::PermissionDescriptorPtr> ParseType(
       const AtomicString& type);
@@ -41,10 +49,16 @@ class CORE_EXPORT HTMLUserMediaElement
   // <usermedia> element is stable.
   bool IsLegacyMode() const;
 
-  // HTMLCapabilityElementBase:
-  void Trace(Visitor*) const override;
-  mojom::blink::EmbeddedPermissionRequestDescriptorPtr
-  CreateEmbeddedPermissionRequestDescriptor() override;
+  void OnConstraintsSet(bool has_video, bool has_audio);
+
+  const Vector<mojom::blink::PermissionDescriptorPtr>&
+  GetPermissionDescriptors() const {
+    return permission_descriptors_;
+  }
+
+ private:
+  void StartMediaStreamRequest();
+  bool has_constraints_ = false;
 };
 
 // The custom type casting is required for the UserMediaElement OT because the

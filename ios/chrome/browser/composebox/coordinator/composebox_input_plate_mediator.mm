@@ -14,6 +14,7 @@
 #import <utility>
 
 #import "base/apple/foundation_util.h"
+#import "base/debug/dump_without_crashing.h"
 #import "base/files/file_path.h"
 #import "base/functional/bind.h"
 #import "base/ios/block_types.h"
@@ -111,7 +112,14 @@ ComposeboxModelOption ModelOptionForModelMode(omnibox::ModelMode model_mode) {
     case omnibox::ModelMode::MODEL_MODE_GEMINI_PRO_NO_GEN_UI:
       return ComposeboxModelOption::kThinkingNoGenUI;
     case omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR:
+    case omnibox::ModelMode::MODEL_MODE_UNSPECIFIED:
+      return ComposeboxModelOption::kRegular;
     default:
+      // `ModelMode` is an open enum and prohibits exhaustive switch statements.
+      // See https://protobuf.dev/programming-guides/enum/
+      //
+      // Dump without crashing if the received model is not interpreted iOS.
+      base::debug::DumpWithoutCrashing();
       return ComposeboxModelOption::kRegular;
   }
 }
@@ -609,15 +617,15 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
   [self.delegate refineWithText:text];
 }
 
-- (void)processPDFFileURL:(GURL)PDFFileURL {
+- (void)processFileURL:(GURL)fileURL isPDF:(BOOL)isPDF {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
-  NSString* assetID = base::SysUTF8ToNSString(PDFFileURL.spec());
+  NSString* assetID = base::SysUTF8ToNSString(fileURL.spec());
   if ([_items assetAlreadyLoaded:assetID]) {
     return;
   }
 
   // Check file size.
-  NSURL* nsURL = net::NSURLWithGURL(PDFFileURL);
+  NSURL* nsURL = net::NSURLWithGURL(fileURL);
   NSError* error = nil;
   NSNumber* fileSize =
       [[nsURL resourceValuesForKeys:@[ NSURLFileSizeKey ]
@@ -627,11 +635,14 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
     return;
   }
 
-  ComposeboxInputItem* item = [[ComposeboxInputItem alloc]
-      initWithComposeboxInputItemType:ComposeboxInputItemType::
-                                          kComposeboxInputItemTypeFile
-                              assetID:assetID];
-  item.title = base::SysUTF8ToNSString(PDFFileURL.ExtractFileName());
+  ComposeboxInputItemType itemType =
+      isPDF ? ComposeboxInputItemType::kComposeboxInputItemTypePDF
+            : ComposeboxInputItemType::kComposeboxInputItemTypeRawFile;
+
+  ComposeboxInputItem* item =
+      [[ComposeboxInputItem alloc] initWithComposeboxInputItemType:itemType
+                                                           assetID:assetID];
+  item.title = base::SysUTF8ToNSString(fileURL.ExtractFileName());
   [self addItem:item];
   base::UnguessableToken identifier = item.identifier;
 
@@ -639,10 +650,10 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
   __weak __typeof(self) weakSelf = self;
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
-      base::BindOnce(&ReadDataFromURL, PDFFileURL),
+      base::BindOnce(&ReadDataFromURL, fileURL),
       base::BindOnce(^(NSData* data) {
         [weakSelf onDataReadForItemWithIdentifier:identifier
-                                          fromURL:PDFFileURL
+                                          fromURL:fileURL
                                          withData:data];
       }));
 }
@@ -913,10 +924,6 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
     }
   }
   return webStateIDs;
-}
-
-- (NSUInteger)nonTabAttachmentCount {
-  return _items.nonTabAttachmentCount;
 }
 
 - (NSUInteger)maxTabAttachmentCount {
@@ -1335,7 +1342,8 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
   switch (item.type) {
     case ComposeboxInputItemType::kComposeboxInputItemTypeImage:
       return composebox_debugger::AttachmentType::kImage;
-    case ComposeboxInputItemType::kComposeboxInputItemTypeFile:
+    case ComposeboxInputItemType::kComposeboxInputItemTypeRawFile:
+    case ComposeboxInputItemType::kComposeboxInputItemTypePDF:
       return composebox_debugger::AttachmentType::kFile;
     case ComposeboxInputItemType::kComposeboxInputItemTypeTab:
       return composebox_debugger::AttachmentType::kTab;
@@ -1512,8 +1520,11 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
       _contextualSearchSession ? _contextualSearchSession->GetMetricsRecorder()
                                : nullptr;
   if (recorder) {
-    recorder->RecordModesOnSubmission(_inputState.active_tool,
-                                      _inputState.active_model);
+    std::vector<omnibox::InputType> active_input_types =
+        contextual_search::InputStateModel::GetCurrentInputTypes(
+            _contextualSearchSession.get());
+    recorder->RecordModesOnSubmission(
+        _inputState.active_tool, _inputState.active_model, active_input_types);
   }
 }
 
@@ -1753,19 +1764,42 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
 
 // Handles uploading the context after the snapshot is generated.
 - (void)didRetrieveColorSnapshot:(UIImage*)image
-                       inputData:(std::unique_ptr<lens::ContextualInputData>)
-                                     input_data
+                       inputData:
+                           (std::unique_ptr<lens::ContextualInputData>)inputData
                       identifier:(base::UnguessableToken)identifier {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
-  if (image) {
-    NSData* data = UIImagePNGRepresentation(image);
-    std::vector<uint8_t> image_vector_data([data length]);
-    [data getBytes:image_vector_data.data() length:[data length]];
-    input_data->viewport_screenshot_bytes = std::move(image_vector_data);
-  }
   [self didLoadPreviewImage:image forItemWithIdentifier:identifier];
 
-  [self uploadTabForIdentifier:identifier inputData:std::move(input_data)];
+  if (!image) {
+    [self uploadTabForIdentifier:identifier inputData:std::move(inputData)];
+    return;
+  }
+
+  __block std::unique_ptr<lens::ContextualInputData> blockInputData =
+      std::move(inputData);
+  __weak __typeof(self) weakSelf = self;
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+      base::BindOnce(&UIImagePNGRepresentation, image),
+      base::BindOnce(^(NSData* data) {
+        [weakSelf handleTabUploadWithPNGData:data
+                                   inputData:std::move(blockInputData)
+                                  identifier:identifier];
+      }));
+}
+
+// Handles the tab data after it has been converted, and uploads it.
+- (void)handleTabUploadWithPNGData:(NSData*)data
+                         inputData:(std::unique_ptr<lens::ContextualInputData>)
+                                       inputData
+                        identifier:(base::UnguessableToken)identifier {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
+  if (data) {
+    std::vector<uint8_t> image_vector_data([data length]);
+    [data getBytes:image_vector_data.data() length:[data length]];
+    inputData->viewport_screenshot_bytes = std::move(image_vector_data);
+  }
+  [self uploadTabForIdentifier:identifier inputData:std::move(inputData)];
 }
 
 // Handles the read `data` from the given `url` for the item with the given
@@ -2328,26 +2362,30 @@ std::vector<lens::MimeType> MimeTypesFromCollection(
   BOOL showShortcuts =
       !hasContent && !canSend &&
       !base::FeatureList::IsEnabled(kHideFuseboxVoiceLensActions);
-
+  // Hide the plus button is different from !allowsMultimodalActions. When the
+  // plus button is hidden, the user can still use multimodal actions from other
+  // sources such as drag and drop.
+  BOOL hidePlusButton = NO;
   if (IsComposeboxConditionalPlusButtonEnabled() && !isCobrowse &&
       _modeHolder.isRegularSearch && compactMode) {
     BOOL isPreEditURL = !_userInputInProgress && _hasText;
     BOOL isURLQuery = _userInputInProgress && _hasText && !_isSearchQuery;
-    allowsMultimodalActions = !isURLQuery;
+    hidePlusButton = isURLQuery;
     if (GetComposeboxConditionalPlusButtonVariant() ==
             ComposeboxConditionalPlusButtonVariant::kHideInPreEdit &&
         isPreEditURL) {
-      allowsMultimodalActions = YES;
+      hidePlusButton = YES;
     }
   }
 
   BOOL showLeadingImage =
-      !isCobrowse && (!compactMode || !allowsMultimodalActions);
+      !isCobrowse &&
+      (!compactMode || !allowsMultimodalActions || hidePlusButton);
   BOOL shouldPersistAIMButton =
       IsComposeboxAIMNudgeEnabled() && !compactMode && allowsMultimodalActions;
 
   ComposeboxInputPlateControls leadingAction =
-      allowsMultimodalActions ? kPlus : kNone;
+      (allowsMultimodalActions && !hidePlusButton) ? kPlus : kNone;
 
   ComposeboxInputPlateControls leadingImage =
       showLeadingImage ? kLeadingImage : kNone;

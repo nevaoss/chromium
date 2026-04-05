@@ -71,6 +71,7 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.Callback;
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.shared_preferences.SharedPreferencesManager;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
@@ -1318,7 +1319,7 @@ public class NtpCustomizationUtilsUnitTest {
     }
 
     @Test
-    public void testGetSearchBoxHeightWithShadows() {
+    public void testGetSearchBoxHeight() {
         // Mock dimension values.
         int searchBoxHeightTall =
                 mResources.getDimensionPixelSize(R.dimen.ntp_search_box_height_tall);
@@ -1327,14 +1328,13 @@ public class NtpCustomizationUtilsUnitTest {
         // Test case 1: Tall search box.
         int expectedHeight = searchBoxHeightTall;
         int actualHeight =
-                NtpCustomizationUtils.getSearchBoxHeightWithShadows(
-                        mResources, /* showSearchBoxTall= */ true);
+                NtpCustomizationUtils.getSearchBoxHeight(mResources, /* showSearchBoxTall= */ true);
         assertEquals(expectedHeight, actualHeight);
 
         // Test case 2: Regular search box.
         expectedHeight = searchBoxHeight;
         actualHeight =
-                NtpCustomizationUtils.getSearchBoxHeightWithShadows(
+                NtpCustomizationUtils.getSearchBoxHeight(
                         mResources, /* showSearchBoxTall= */ false);
         assertEquals(expectedHeight, actualHeight);
     }
@@ -1485,5 +1485,24 @@ public class NtpCustomizationUtilsUnitTest {
                 4,
                 NtpCustomizationUtils.calculateInSampleSize(
                         options, /* reqWidth= */ 500, /* reqHeight= */ 500));
+    }
+
+    @Test
+    public void testIsNtpSimplificationEnabledOnDesktop_enabled() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        assertTrue(NtpCustomizationUtils.isNtpSimplificationEnabledOnDesktop());
+
+        DeviceInfo.setIsDesktopForTesting(false);
+        assertFalse(NtpCustomizationUtils.isNtpSimplificationEnabledOnDesktop());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.NTP_SIMPLIFICATION)
+    public void testIsNtpSimplificationEnabledOnDesktop_disabled() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        assertFalse(NtpCustomizationUtils.isNtpSimplificationEnabledOnDesktop());
+
+        DeviceInfo.setIsDesktopForTesting(false);
+        assertFalse(NtpCustomizationUtils.isNtpSimplificationEnabledOnDesktop());
     }
 }

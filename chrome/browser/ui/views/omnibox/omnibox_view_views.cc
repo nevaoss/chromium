@@ -80,13 +80,13 @@
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/search/search.h"
+#include "components/search_engines/search_engines_switches.h"
 #include "components/security_state/core/security_state.h"
 #include "components/send_tab_to_self/metrics_util.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/url_formatter/elide_url.h"
 #include "components/url_formatter/url_fixer.h"
 #include "components/url_formatter/url_formatter.h"
-#include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/focused_node_details.h"
@@ -2365,8 +2365,11 @@ void OmniboxViewViews::UpdateContextMenu(ui::SimpleMenuModel* menu_contents) {
 
   menu_contents->AddSeparator(ui::NORMAL_SEPARATOR);
 
-  menu_contents->AddItemWithStringId(IDC_EDIT_SEARCH_ENGINES,
-                                     IDS_MANAGE_SEARCH_ENGINES_AND_SITE_SEARCH);
+  menu_contents->AddItemWithStringId(
+      IDC_EDIT_SEARCH_ENGINES,
+      base::FeatureList::IsEnabled(switches::kSearchSettingsUpdate)
+          ? IDS_MANAGE_SEARCH_ENGINES_AND_SHORTCUTS
+          : IDS_MANAGE_SEARCH_ENGINES_AND_SITE_SEARCH);
 
   const PrefService::Preference* show_full_urls_pref =
       location_bar_view_->GetProfile()->GetPrefs()->FindPreference(

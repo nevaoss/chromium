@@ -52,8 +52,8 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/password_manager/chrome_password_manager_client.h"
+#include "chrome/browser/password_manager/factories/password_manager_settings_service_factory.h"
 #include "chrome/browser/password_manager/password_field_classification_model_handler_factory.h"
-#include "chrome/browser/password_manager/password_manager_settings_service_factory.h"
 #include "chrome/browser/plus_addresses/plus_address_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -558,8 +558,7 @@ accessibility_annotator::AccessibilityQueryService*
 ChromeAutofillClient::GetAccessibilityQueryService() {
   Profile* profile =
       Profile::FromBrowserContext(web_contents()->GetBrowserContext());
-  return accessibility_annotator::AccessibilityQueryServiceFactory::
-      GetForProfile(profile);
+  return AccessibilityQueryServiceFactory::GetForProfile(profile);
 }
 
 PasswordManagerDelegate* ChromeAutofillClient::GetPasswordManagerDelegate(
@@ -1093,7 +1092,9 @@ bool ChromeAutofillClient::IsWalletPublicPassStorageEnabled() const {
   account_settings::AccountSettingService* setting_service =
       AccountSettingServiceFactory::GetForBrowserContext(GetProfile());
   return setting_service &&
-         setting_service->IsWalletPrivacyContextualSurfacingEnabled();
+         setting_service
+             ->GetBoolean(account_settings::kWalletPrivacyContextualSurfacing)
+             .value_or(false);
 }
 
 bool ChromeAutofillClient::IsPasswordManagerEnabled() const {
@@ -1165,7 +1166,7 @@ ChromeAutofillClient::GetAutofillMessageController() {
 #endif
 
 std::unique_ptr<device_reauth::DeviceAuthenticator>
-ChromeAutofillClient::GetDeviceAuthenticator(std::string histogram) {
+ChromeAutofillClient::GetDeviceAuthenticator(std::string histogram) const {
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS)
   device_reauth::DeviceAuthParams params(

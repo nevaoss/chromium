@@ -90,6 +90,10 @@ time spent triaging those reports in detail is time not spent triaging bugs
 which _are_ valid. As a rule:
 
 * If the bug is **not probably valid**, WontFix
+* If the bug is a duplicate of an existing bug (the bug tracker will surface
+  some candidates for you), mark it as a duplicate. Do **not** CC the reporter
+  into the canonical bug unless the canonical bug is already public. If
+  reporters ask to be CCed, tell them to email product-security@chromium.org.
 * If the bug is probably valid but doesn't have security consequences,
   change it to type Bug and remove visibility restrictions
 * If the bug is probably valid but you're missing something critical
@@ -145,11 +149,12 @@ the bug report.
 
 If the report requires you to enable a specific feature or pass a specific
 command-line argument, and that feature isn't default-enabled **for any Chrome
-users**, then add the bug to the `Security_Impact-None` hotlist at this stage,
-which exempts it from the usual severity-based fix SLOs. Note that features can
-be enabled by Finch studies or origin trials, so don't just base your decision
-on the default state of the feature. The [Finch state
-dashboard](https://uma.googleplex.com/p/chrome/variations/state) may be helpful.
+users**, then add the bug to the [Security_Impact-None](https://issues.chromium.org/hotlists/5433277)
+(hotlistid:5433277) hotlist at this stage, which exempts it from the usual
+severity-based fix SLOs. Note that features can be enabled by Finch studies
+or origin trials, so don't just base your decision on the default state of
+the feature. The [Finch state dashboard](https://uma.googleplex.com/p/chrome/variations/state)
+may be helpful.
 
 If you're in doubt about severity, ask for help in the Shepherd chat. This step
 benefits a lot from judgment and experience!

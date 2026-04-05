@@ -51,8 +51,8 @@ export function getHtml(this: ComposeboxElement) {
           .submitEnabled="${this.submitEnabled}"
           .entrypointName="${this.entrypointName}"
           .cancelButtonTitle="${this.computeCancelButtonTitle_()}"
-          @input-input="${this.onInputInput_}"
-          @input-focusin="${this.onInputFocusin_}"
+          @input-input="${this.onInputInput}"
+          @input-focusin="${this.onInputFocusin}"
           @cancel-click="${this.onCancelClick_}">
       </cr-composebox-input>
       <div id="context" part="context-entrypoint"
@@ -104,7 +104,7 @@ export function getHtml(this: ComposeboxElement) {
               .maxSuggestions="${this.maxSuggestions}"
               .toolMode="${this.inputState?.activeTool || ToolMode.kUnspecified}"
               @selected-match-index-changed="${this.onSelectedMatchIndexChanged}"
-              @match-focusin="${this.onMatchFocusin_}"
+              @match-focusin="${this.onMatchFocusin}"
               @match-click="${this.onMatchClick_}"
               ?hidden="${!this.showDropdown || !this.dropdownNeeded}"
               .lastQueriedInput="${this.lastQueriedInput}">

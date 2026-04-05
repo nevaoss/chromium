@@ -10,24 +10,45 @@
 
 #container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: absolute;
-  bottom: 20px;
-  inset-inline-end: 20px;
+  flex-direction: row;
+  align-items: flex-end;
 }
 
-#persona-container {
-  /* Allow clicks on the character UI only */
-  pointer-events: auto;
+#mock-buttons-column {
+  width: 100%;
+  max-height: 100px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  display: flex;
+  flex-direction: column;
+}
+
+#mock-buttons-column[hidden] {
+  display: none;
+}
+
+#main-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+video {
+  /* The resources are 4:3 aspect ratio but include extra space on the sides.
+   * Use a square and object-fit: cover to clip the empty space. */
+  width: 240px;
+  height: 240px;
+  object-fit: cover;
+}
+
+video[hidden],
+#initializerState[hidden] {
+  display: none;
+}
+
+#initializerState {
   width: 100px;
   height: 100px;
-  cursor: pointer;
-}
-
-#stateButton {
-  width: 100%;
-  height: 100%;
   border-radius: 50%;
   border: 4px solid var(--color-ref-neutral80);
   box-sizing: border-box;
@@ -36,37 +57,19 @@
   background-color: var(--color-ref-neutral50);
 }
 
-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-video[hidden],
-#stateButton[hidden] {
-  display: none;
-}
-
-#stateButton.inert {
+#initializerState.uninitialized {
   background-color: var(--color-ref-neutral50);
   transform: scale(0.7);
 }
 
-#stateButton.connecting {
+#initializerState.connecting {
   background-color: var(--color-ref-primary90);
   transform: scale(0.80);
   animation: connecting-pulse 1.5s infinite ease-in-out;
 }
 
-#stateButton.idle {
-  background-color: var(--color-ref-primary70);
-  animation: pulse 2s infinite ease-in-out;
-}
-
-#stateButton.speaking {
-  background-color: var(--color-sys-tertiary);
-  border-color: var(--color-sys-positive-container);
-  animation: talking-pulse 0.85s infinite linear;
+#initializerState.error {
+  background-color: var(--color-ref-error50);
 }
 
 @keyframes connecting-pulse {
@@ -81,37 +84,10 @@ video[hidden],
   }
 }
 
-@keyframes pulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes talking-pulse {
-  0% { transform: scale(1); }
-  5% { transform: scale(1.05); }
-  10% { transform: scale(1); }
-  15% { transform: scale(1.07); }
-  25% { transform: scale(1); }
-  60% { transform: scale(1.05); }
-  65% { transform: scale(1.1); }
-  70% { transform: scale(1); }
-  80% { transform: scale(1.1); }
-  88% { transform: scale(1.02); }
-  100% { transform: scale(1); }
-}
-
 #transcription {
   margin-bottom: 20px;
   max-width: 300px;
   text-align: right;
-  pointer-events: none;
 }
 
 #transcription[hidden] {
@@ -130,12 +106,23 @@ video[hidden],
 }
 
 .inject-audio {
-  margin-top: 10px;
-  padding: 8px 16px;
+  margin: 0;
   cursor: pointer;
-  pointer-events: auto;
   width: 150px;
+  box-sizing: border-box;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: bold;
+  font-size: 13px;
+  text-align: right;
+  color: white;
+  -webkit-text-stroke: 0.5px black;
+  text-shadow: 1px 1px 1px black;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.inject-audio:hover {
+  text-decoration: underline;
 }

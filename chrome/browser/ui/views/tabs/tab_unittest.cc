@@ -711,27 +711,38 @@ TEST_F(TabTest, CloseButtonVisibilityInDeclutteredState) {
       CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
   Tab* tab = widget->SetContentsView(
       std::make_unique<Tab>(tabs::TabHandle(1), controller.get()));
-  const int min_width = ui::TouchUiController::Get()->touch_ui()
-                            ? Tab::kTouchMinimumContentsWidthForCloseButtons
-                            : Tab::kMinimumContentsWidthForCloseButtons;
-  const int width =
-      tab->tab_style_views()->GetContentsInsets().width() + min_width;
-  tab->SetBounds(0, 0, width, 50);
+
+  // Use a large enough initial width to ensure non-decluttered state.
+  const int initial_available_width = 150;
+  const int initial_width =
+      tab->tab_style_views()->GetContentsInsets().width() +
+      initial_available_width + gfx::kFaviconSize;
+  tab->parent()->SetBounds(0, 0, initial_width, 50);
   const views::View* close = GetCloseButton(tab);
 
   widget->Show();
   widget->Activate();
+  tab->GetFocusManager()->ClearFocus();
 
-  // In non-decluttered state (tab count < min), close button should be visible.
-  controller->set_tab_count(TabStyle::kTabStripDeclutterMinTabsForCloseHide -
-                            1);
+  // In non-decluttered state (available width > max), close button should be
+  // visible. We add favicon width because it's subtracted before the declutter
+  // check.
+  const int non_decluttered_available_width = 150;
+  const int non_decluttered_width =
+      tab->tab_style_views()->GetContentsInsets().width() +
+      non_decluttered_available_width + gfx::kFaviconSize;
+  tab->parent()->SetBounds(0, 0, non_decluttered_width, 50);
   tab->InvalidateLayout();
   LayoutTab(tab);
   EXPECT_TRUE(close->GetVisible());
 
-  // In decluttered state (tab count >= min), close button should be hidden for
-  // an inactive, unhovered tab.
-  controller->set_tab_count(TabStyle::kTabStripDeclutterMinTabsForCloseHide);
+  // In decluttered state (available width <= max), close button should be
+  // hidden for an inactive, unhovered tab.
+  const int decluttered_available_width = 80;
+  const int decluttered_width =
+      tab->tab_style_views()->GetContentsInsets().width() +
+      decluttered_available_width + gfx::kFaviconSize;
+  tab->parent()->SetBounds(0, 0, decluttered_width, 50);
   tab->InvalidateLayout();
   LayoutTab(tab);
   EXPECT_FALSE(close->GetVisible());
@@ -752,19 +763,22 @@ TEST_F(TabTest, CloseButtonVisibilityInDeclutteredState) {
   // If the tab is focused, the close button becomes visible and can then be
   // focused.
   tab->GetFocusManager()->SetFocusedView(tab);
+  tab->InvalidateLayout();
   LayoutTab(tab);
   EXPECT_TRUE(close->GetVisible());
 
   // If focus moves to the close button, it should remain visible.
   tab->GetFocusManager()->SetFocusedView(const_cast<views::View*>(close));
+  tab->InvalidateLayout();
   LayoutTab(tab);
   EXPECT_TRUE(close->GetVisible());
 
   tab->GetFocusManager()->ClearFocus();
+  tab->InvalidateLayout();
   LayoutTab(tab);
   EXPECT_FALSE(close->GetVisible());
 
-  // Active tab should always show close button.
+  // Active tab should always show close button, even at decluttered width.
   controller->set_active_tab(tab);
   tab->InvalidateLayout();
   LayoutTab(tab);
@@ -1140,4 +1154,80 @@ TEST_F(TabTest, TabCloseButtonSizeInTouchMode) {
   TabCloseButton* button = GetCloseButton(tab);
   EXPECT_EQ(24, GetLayoutConstant(LayoutConstant::kTabCloseButtonSize));
   EXPECT_EQ(gfx::Size(36, 36), button->GetPreferredSize());
+}
+
+TEST_F(TabTest, SingleElementCentering) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kTabStripDeclutter);
+
+  auto controller = std::make_unique<FakeTabSlotController>();
+  std::unique_ptr<views::Widget> widget =
+      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+
+  // Put the tab in a container to prevent the widget from resizing it.
+  views::View* container =
+      widget->SetContentsView(std::make_unique<views::View>());
+  Tab* tab = container->AddChildView(
+      std::make_unique<Tab>(tabs::TabHandle(1), controller.get()));
+
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(16, 16);
+
+  {
+    SCOPED_TRACE("Favicon only");
+    tabs::TabData data;
+    data.favicon = ui::ImageModel::FromImageSkia(
+        gfx::ImageSkia::CreateFrom1xBitmap(bitmap));
+    data.should_display_favicon = true;
+    data.alert_state = std::nullopt;
+    tab->SetDataForTesting(data);
+    StopFadeAnimationIfNecessary(*tab);
+    // Inactive tab doesn't show close button by default if small.
+    controller->set_active_tab(nullptr);
+    // Small width to hide title, but large enough for favicon.
+    tab->SetBounds(0, 0, 40, 50);
+    LayoutTab(tab);
+    EXPECT_TRUE(tab->showing_icon());
+    EXPECT_FALSE(tab->showing_alert_indicator());
+    EXPECT_FALSE(tab->showing_close_button());
+    EXPECT_FALSE(GetTabTitle(tab)->GetVisible());
+    EXPECT_EQ(tab->width() / 2, GetTabIcon(tab)->bounds().CenterPoint().x());
+  }
+
+  {
+    SCOPED_TRACE("Alert indicator only");
+    tabs::TabData data;
+    data.should_display_favicon = false;
+    data.alert_state = {tabs::TabAlert::kAudioPlaying};
+    tab->SetDataForTesting(data);
+    StopFadeAnimationIfNecessary(*tab);
+    tab->SetBounds(0, 0, 40, 50);
+    LayoutTab(tab);
+    EXPECT_FALSE(tab->showing_icon());
+    EXPECT_TRUE(tab->showing_alert_indicator());
+    EXPECT_FALSE(tab->showing_close_button());
+    EXPECT_EQ(tab->width() / 2,
+              GetAlertIndicator(tab)->bounds().CenterPoint().x());
+  }
+
+  {
+    SCOPED_TRACE("Close button only");
+    tabs::TabData data;
+    data.should_display_favicon = false;
+    data.alert_state = std::nullopt;
+    tab->SetDataForTesting(data);
+    StopFadeAnimationIfNecessary(*tab);
+    // Active tab always shows close button.
+    controller->set_active_tab(tab);
+    tab->ActiveStateChanged();
+    // Width small enough that favicon/alert wouldn't fit, and title is hidden.
+    tab->SetBounds(0, 0, 40, 50);
+    LayoutTab(tab);
+    EXPECT_TRUE(tab->IsActive());
+    EXPECT_FALSE(tab->showing_icon());
+    EXPECT_FALSE(tab->showing_alert_indicator());
+    EXPECT_TRUE(tab->showing_close_button());
+    EXPECT_EQ(tab->width() / 2,
+              GetCloseButton(tab)->bounds().CenterPoint().x());
+  }
 }

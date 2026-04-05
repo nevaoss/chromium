@@ -27,6 +27,7 @@
 #import "ios/chrome/browser/intents/model/intents_constants.h"
 #import "ios/chrome/browser/intents/model/user_activity_compatibility_util.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
+#import "ios/chrome/browser/reading_list/model/reading_list_browser_agent.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_controller.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_state.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
@@ -39,6 +40,10 @@
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
 #import "ios/chrome/common/intents/AddBookmarkToChromeIntent.h"
+#import "ios/chrome/common/intents/AddReadingListItemToChromeIntent.h"
+#import "ios/chrome/common/intents/OpenInChromeIncognitoIntent.h"
+#import "ios/chrome/common/intents/OpenInChromeIntent.h"
+#import "net/base/apple/url_conversions.h"
 
 namespace {
 
@@ -244,6 +249,15 @@ UserActivityType UserActivityTypeOf(NSUserActivity* user_activity) {
   return UserActivityType::kInvalid;
 }
 
+// Returns a completion block that opens the reading list.
+void OpenReadingListWithBrowser(base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    id<BrowserCoordinatorCommands> handler = HandlerForProtocol(
+        browser->GetCommandDispatcher(), BrowserCoordinatorCommands);
+    [handler showReadingList];
+  }
+}
+
 // Navigates to the bookmark manager UI.
 void OpenBookmarksWithBrowser(base::WeakPtr<Browser> weak_browser) {
   if (Browser* browser = weak_browser.get()) {
@@ -268,6 +282,49 @@ void AddBookmarkToChromeWithIntent(INIntent* intent,
   }
 }
 
+// Adds url to reading list.
+void AddReadingListToChromeWithIntent(INIntent* intent,
+                                      base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    AddReadingListItemToChromeIntent* typed_intent =
+        base::apple::ObjCCastStrict<AddReadingListItemToChromeIntent>(intent);
+    if (typed_intent && typed_intent.url && typed_intent.url.count > 0) {
+      ReadingListBrowserAgent* readingListBrowserAgent =
+          ReadingListBrowserAgent::FromBrowser(browser);
+      readingListBrowserAgent->BulkAddURLsToReadingListWithViewSnackbar(
+          typed_intent.url);
+    }
+  }
+}
+
+std::vector<GURL> GURLVectorWithNSURLArray(NSArray<NSURL*>* intent_urls) {
+  if (!intent_urls) {
+    return {};
+  }
+  std::vector<GURL> urls;
+  urls.reserve(intent_urls.count);
+  for (NSURL* intent_url in intent_urls) {
+    if (GURL url = net::GURLWithNSURL(intent_url); url.is_valid()) {
+      urls.push_back(std::move(url));
+    }
+  }
+  return urls;
+}
+
+// Returns the list of URLs from an `OpenInChromeIncognitoIntent`.
+std::vector<GURL> GetURLsFromOpenInIncognitoIntent(INIntent* intent) {
+  OpenInChromeIncognitoIntent* incognito_intent =
+      base::apple::ObjCCastStrict<OpenInChromeIncognitoIntent>(intent);
+  return GURLVectorWithNSURLArray(incognito_intent.url);
+}
+
+// Returns the list of URLs from an `OpenInChromeIntent`.
+std::vector<GURL> GetURLsFromOpenInChromeIntent(INIntent* intent) {
+  OpenInChromeIntent* typed_intent =
+      base::apple::ObjCCastStrict<OpenInChromeIntent>(intent);
+  return GURLVectorWithNSURLArray(typed_intent.url);
+}
+
 }  // namespace
 
 @implementation TaskRequestForUserActivity {
@@ -288,6 +345,10 @@ void AddBookmarkToChromeWithIntent(INIntent* intent,
 }
 
 - (void)execute {
+  // Ignore invalid user activities.
+  if (_userActivityType == UserActivityType::kInvalid) {
+    return;
+  }
   SceneState* sceneState = [self sceneStateFromSessionID];
   CHECK(sceneState);
   Browser* browser =
@@ -309,7 +370,7 @@ void AddBookmarkToChromeWithIntent(INIntent* intent,
 #pragma mark - Private
 
 - (void)handleUserActivityWithSceneState:(SceneState*)sceneState {
-  GURL webpageGURL;
+  std::vector<GURL> webpageGURLs;
   ProceduralBlock completion = nil;
   id<TabOpening> tabOpener = sceneState.controller;
   Browser* browser =
@@ -326,30 +387,38 @@ void AddBookmarkToChromeWithIntent(INIntent* intent,
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kOpenInChrome:
-      // TODO(crbug.com/492115056): Add implementation.
+      webpageGURLs =
+          GetURLsFromOpenInChromeIntent(_userActivity.interaction.intent);
       break;
     case UserActivityType::kOpenInIncognito:
-      // TODO(crbug.com/492115056): Add implementation.
+      webpageGURLs =
+          GetURLsFromOpenInIncognitoIntent(_userActivity.interaction.intent);
+      _targetMode = ApplicationModeForTabOpening::INCOGNITO;
       break;
     case UserActivityType::kAddBookmarkToChrome:
       completion = base::CallbackToBlock(base::BindRepeating(
           &AddBookmarkToChromeWithIntent, _userActivity.interaction.intent,
           browser->AsWeakPtr()));
-      webpageGURL = GURL(kChromeUINewTabURL);
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kAddReadingListItemToChrome:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(base::BindRepeating(
+          &AddReadingListToChromeWithIntent, _userActivity.interaction.intent,
+          browser->AsWeakPtr()));
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kOpenLatestTab:
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kOpenReadingList:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(base::BindRepeating(
+          &OpenReadingListWithBrowser, browser->AsWeakPtr()));
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kOpenBookmarks:
       completion = base::CallbackToBlock(
           base::BindRepeating(&OpenBookmarksWithBrowser, browser->AsWeakPtr()));
-      webpageGURL = GURL(kChromeUINewTabURL);
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kOpenRecentTabs:
       // TODO(crbug.com/492115056): Add implementation.
@@ -397,22 +466,36 @@ void AddBookmarkToChromeWithIntent(INIntent* intent,
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kInvalid:
+      NOTREACHED();
+  }
+
+  // Handle the case where multiple URLS need to be opened.
+  if (webpageGURLs.size() > 1) {
+    [tabOpener
+        dismissModalsAndOpenMultipleTabsWithURLs:webpageGURLs
+                                 inIncognitoMode:
+                                     (_targetMode ==
+                                      ApplicationModeForTabOpening::INCOGNITO)
+                                  dismissOmnibox:YES
+                                      completion:completion];
+  } else if (webpageGURLs.size() == 1) {
+    const GURL& webpageGURL = webpageGURLs[0];
+    if (!webpageGURL.is_valid()) {
       return;
-  }
+    }
 
-  if (!webpageGURL.is_valid()) {
-    return;
-  }
+    // TODO(crbug.com/462018636): Find a centralized solition for dino game
+    // intents. Potentially move this logic inside TabOpener.
+    UrlLoadParams params = UrlLoadParams::InNewTab(webpageGURL);
+    if (_userActivityType == UserActivityType::kPlayDinoGame) {
+      params.web_params.transition_type = ui::PAGE_TRANSITION_AUTO_BOOKMARK;
+    }
 
-  UrlLoadParams params = UrlLoadParams::InNewTab(webpageGURL);
-  if (_userActivityType == UserActivityType::kPlayDinoGame) {
-    params.web_params.transition_type = ui::PAGE_TRANSITION_AUTO_BOOKMARK;
+    [tabOpener dismissModalsAndMaybeOpenSelectedTabInMode:_targetMode
+                                        withUrlLoadParams:params
+                                           dismissOmnibox:YES
+                                               completion:completion];
   }
-
-  [tabOpener dismissModalsAndMaybeOpenSelectedTabInMode:_targetMode
-                                      withUrlLoadParams:params
-                                         dismissOmnibox:YES
-                                             completion:completion];
 
   // TODO(crbug.com/492115056): In new implementation if an action is allowed
   // when there is an enterprise policy (incognito forced or incognito disabled)

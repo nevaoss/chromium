@@ -44,11 +44,13 @@
 #include "device/vr/buildflags/buildflags.h"
 #include "device/vr/public/mojom/vr_service.mojom-blink-forward.h"
 #include "gpu/GLES2/gl2extchromium.h"
+#include "gpu/command_buffer/client/client_shared_image.h"
 #include "gpu/command_buffer/client/gles2_interface.h"
 #include "gpu/command_buffer/client/shared_image_interface.h"
 #include "gpu/command_buffer/common/capabilities.h"
 #include "gpu/config/gpu_driver_bug_workaround_type.h"
 #include "gpu/config/gpu_feature_info.h"
+#include "media/base/format_utils.h"
 #include "media/base/video_frame.h"
 #include "media/renderers/paint_canvas_video_renderer.h"
 #include "third_party/blink/public/common/features.h"
@@ -124,7 +126,6 @@
 #include "third_party/blink/renderer/modules/xr/xr_system.h"
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
-#include "third_party/blink/renderer/platform/bindings/v8_binding_macros.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_non2d_snapshot_provider_bitmap.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
@@ -850,6 +851,7 @@ scoped_refptr<StaticBitmapImage> WebGLRenderingContextBase::GetImage() {
 
   std::unique_ptr<CanvasNon2DResourceProviderSharedImage> resource_provider;
   if (SharedGpuContext::IsGpuCompositingEnabled()) {
+    // Create an accelerated CRP in order to produce an accelerated snapshot.
     resource_provider = CanvasNon2DResourceProviderSharedImage::Create(
         size, GetSharedImageFormat(), GetAlphaType(), GetColorSpace(),
         SharedGpuContext::ContextProviderWrapper(), shared_image_usages);
@@ -858,14 +860,16 @@ scoped_refptr<StaticBitmapImage> WebGLRenderingContextBase::GetImage() {
       return nullptr;
     }
 
-    if (!CopyRenderingResultsFromDrawingBuffer(resource_provider.get(),
-                                               kBackBuffer)) {
+    bool copy_succeeded = CopyRenderingResultsFromDrawingBufferAccelerated(
+        resource_provider.get(), kBackBuffer);
+    if (!copy_succeeded) {
       return nullptr;
     }
     return resource_provider->Snapshot();
   } else {
     // Match the SBI configuration to that produced when using GPU compositing:
-    // N32 and premul (as set by `CopyRenderingResultsFromDrawingBuffer`) and
+    // N32 and premul (as set by
+    // `CopyRenderingResultsFromDrawingBufferAccelerated`) and
     // top-left origin (the orientation that is used by
     // `CanvasResourceProvider::Snapshot()` when it is not passed an orientation
     // explicitly).
@@ -1635,11 +1639,10 @@ bool WebGLRenderingContextBase::PushFrameWithCopy() {
 
   // Note: we push a frame only if (a) there is fresh content to produce and
   // (b) we successfully produced that content.
-  auto* resource_provider =
-      PaintRenderingResultsToResourceProvider(kBackBuffer);
-  if (resource_provider && resource_provider_has_content_for_frame_push_) {
-    submitted_frame =
-        Host()->PushFrame(resource_provider->ProduceCanvasResource());
+  if (scoped_refptr<CanvasResource> resource =
+          CopyRenderingResultsFromDrawingBufferToResource(
+              kBackBuffer, /*only_if_fresh_content=*/true)) {
+    submitted_frame = Host()->PushFrame(std::move(resource));
     resource_provider_has_content_for_frame_push_ = false;
   }
   MarkLayerComposited();
@@ -1874,7 +1877,8 @@ WebGLRenderingContextBase::PaintRenderingResultsToSnapshot(
   if (!resource_provider) {
     // As a last resort, try to create and return an unaccelerated snapshot.
     // Match the SBI configuration to that produced when using GPU compositing:
-    // N32 and premul (as set by `CopyRenderingResultsFromDrawingBuffer`) and
+    // N32 and premul (as set by
+    // `CopyRenderingResultsFromDrawingBuffer{Accelerated, Unaccelerated}`) and
     // top-left origin (the orientation that is used by
     // `CanvasResourceProvider::Snapshot()` when it is not passed an
     // orientation explicitly).
@@ -1907,7 +1911,11 @@ WebGLRenderingContextBase::PaintRenderingResultsToSnapshot(
   }
 
   bool copy_succeeded =
-      CopyRenderingResultsFromDrawingBuffer(resource_provider, source_buffer);
+      resource_provider->IsAccelerated()
+          ? CopyRenderingResultsFromDrawingBufferAccelerated(resource_provider,
+                                                             source_buffer)
+          : CopyRenderingResultsFromDrawingBufferUnaccelerated(
+                resource_provider, source_buffer);
   if (!copy_succeeded) {
     return nullptr;
   }
@@ -1930,10 +1938,7 @@ WebGLRenderingContextBase::PaintRenderingResultsToResource(
     return ExportLowLatencyCanvasResource(source_buffer);
   }
 
-  auto* resource_provider =
-      PaintRenderingResultsToResourceProvider(source_buffer);
-  return resource_provider ? resource_provider->ProduceCanvasResource()
-                           : nullptr;
+  return CopyRenderingResultsFromDrawingBufferToResource(source_buffer);
 }
 
 CanvasNon2DResourceProviderSharedImage*
@@ -2001,12 +2006,13 @@ WebGLRenderingContextBase::GetSharedImageResourceProvider() {
   return resource_provider_.get();
 }
 
-CanvasNon2DResourceProviderSharedImage*
-WebGLRenderingContextBase::PaintRenderingResultsToResourceProvider(
-    SourceDrawingBuffer source_buffer) {
-  TRACE_EVENT0(
-      "blink",
-      "WebGLRenderingContextBase::PaintRenderingResultsToResourceProvider");
+scoped_refptr<CanvasResource>
+WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBufferToResource(
+    SourceDrawingBuffer source_buffer,
+    bool only_if_fresh_content) {
+  TRACE_EVENT0("blink",
+               "WebGLRenderingContextBase::"
+               "CopyRenderingResultsFromDrawingBufferToResource");
 
   if (isContextLost() || !GetDrawingBuffer()) {
     return nullptr;
@@ -2024,15 +2030,20 @@ WebGLRenderingContextBase::PaintRenderingResultsToResourceProvider(
   // is backgrounded.
 
   if (!must_paint_to_canvas_ && !cleared_content && resource_provider_.get()) {
+    if (only_if_fresh_content &&
+        !resource_provider_has_content_for_frame_push_) {
+      return nullptr;
+    }
     // `resource_provider_` already has the current contents, so it can can be
     // used by the caller as-is.
-    return resource_provider_.get();
+    return resource_provider_->ProduceCanvasResource();
   }
 
   CanvasNon2DResourceProviderSharedImage* resource_provider =
       GetSharedImageResourceProvider();
-  if (!resource_provider)
+  if (!resource_provider) {
     return nullptr;
+  }
 
   ScopedPixelLocalStorageInterrupt scoped_pls_interrupt(this);
   // TODO(sunnyps): Why is a texture restorer needed? See if it can be removed.
@@ -2042,11 +2053,16 @@ WebGLRenderingContextBase::PaintRenderingResultsToResourceProvider(
   // In rare situations on macOS the drawing buffer can be destroyed
   // during the resolve process, specifically during automatic
   // graphics switching. Guard against this.
-  if (!GetDrawingBuffer()->ResolveAndBindForReadAndDraw())
+  if (!GetDrawingBuffer()->ResolveAndBindForReadAndDraw()) {
     return nullptr;
+  }
 
-  bool copy_succeeded = CopyRenderingResultsFromDrawingBuffer(
-      resource_provider_.get(), source_buffer);
+  bool copy_succeeded =
+      resource_provider->IsAccelerated()
+          ? CopyRenderingResultsFromDrawingBufferAccelerated(
+                resource_provider_.get(), source_buffer)
+          : CopyRenderingResultsFromDrawingBufferUnaccelerated(
+                resource_provider_.get(), source_buffer);
   if (!copy_succeeded) {
     return nullptr;
   }
@@ -2054,18 +2070,21 @@ WebGLRenderingContextBase::PaintRenderingResultsToResourceProvider(
   // We successfully painted the contents to the resource provider.
   must_paint_to_canvas_ = false;
   resource_provider_has_content_for_frame_push_ = true;
-  return resource_provider;
+  return resource_provider->ProduceCanvasResource();
 }
 
-bool WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBuffer(
-    CanvasNon2DResourceProviderSharedImage* resource_provider,
-    SourceDrawingBuffer source_buffer) {
+bool WebGLRenderingContextBase::
+    CopyRenderingResultsFromDrawingBufferAccelerated(
+        CanvasNon2DResourceProviderSharedImage* resource_provider,
+        SourceDrawingBuffer source_buffer) {
   DCHECK(resource_provider);
   DCHECK(!resource_provider->IsSingleBuffered());
+  CHECK(resource_provider->IsAccelerated());
 
   // Early-out if the context has been lost.
-  if (!GetDrawingBuffer())
+  if (!GetDrawingBuffer()) {
     return false;
+  }
 
   ScopedPixelLocalStorageInterrupt scoped_pls_interrupt(this);
   ScopedFramebufferRestorer fbo_restorer(this);
@@ -2073,36 +2092,58 @@ bool WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBuffer(
   // during the resolve process, specifically during automatic
   // graphics switching. Guard against this.
   // This is a no-op if already called higher up the stack from here.
-  if (!GetDrawingBuffer()->ResolveAndBindForReadAndDraw())
+  if (!GetDrawingBuffer()->ResolveAndBindForReadAndDraw()) {
     return false;
+  }
 
-  if (resource_provider->IsAccelerated()) {
-    base::WeakPtr<WebGraphicsContext3DProviderWrapper> shared_context_wrapper =
-        SharedGpuContext::ContextProviderWrapper();
-    if (!shared_context_wrapper) {
-      return false;
-    }
-    gpu::raster::RasterInterface* raster_interface =
-        shared_context_wrapper->ContextProvider().RasterInterface();
-    gpu::SyncToken sync_token;
-    auto client_si = resource_provider->BeginExternalWrite(
-        sync_token, /*is_overwrite=*/false);
-    if (!client_si) {
-      return false;
-    }
+  base::WeakPtr<WebGraphicsContext3DProviderWrapper> shared_context_wrapper =
+      SharedGpuContext::ContextProviderWrapper();
+  if (!shared_context_wrapper) {
+    return false;
+  }
+  gpu::raster::RasterInterface* raster_interface =
+      shared_context_wrapper->ContextProvider().RasterInterface();
+  gpu::SyncToken sync_token;
+  auto client_si =
+      resource_provider->BeginExternalWrite(sync_token, /*is_overwrite=*/false);
+  if (!client_si) {
+    return false;
+  }
 
-    // TODO(xlai): Flush should not be necessary if the synchronization in
-    // CopyToPlatformTexture is done correctly. See crbug.com/794706.
-    raster_interface->Flush();
+  // TODO(xlai): Flush should not be necessary if the synchronization in
+  // CopyToPlatformTexture is done correctly. See crbug.com/794706.
+  raster_interface->Flush();
 
-    std::optional<gpu::SyncToken> external_sync_token =
-        GetDrawingBuffer()->CopyToPlatformSharedImage(
-            raster_interface, client_si, sync_token, source_buffer);
+  std::optional<gpu::SyncToken> external_sync_token =
+      GetDrawingBuffer()->CopyToPlatformSharedImage(raster_interface, client_si,
+                                                    sync_token, source_buffer);
+  if (external_sync_token) {
+    resource_provider->EndExternalWrite(external_sync_token.value());
+  }
+  return external_sync_token.has_value();
+}
 
-    if (external_sync_token) {
-      resource_provider->EndExternalWrite(external_sync_token.value());
-    }
-    return external_sync_token.has_value();
+bool WebGLRenderingContextBase::
+    CopyRenderingResultsFromDrawingBufferUnaccelerated(
+        CanvasNon2DResourceProviderSharedImage* resource_provider,
+        SourceDrawingBuffer source_buffer) {
+  DCHECK(resource_provider);
+  DCHECK(!resource_provider->IsSingleBuffered());
+  CHECK(!resource_provider->IsAccelerated());
+
+  // Early-out if the context has been lost.
+  if (!GetDrawingBuffer()) {
+    return false;
+  }
+
+  ScopedPixelLocalStorageInterrupt scoped_pls_interrupt(this);
+  ScopedFramebufferRestorer fbo_restorer(this);
+  // In rare situations on macOS the drawing buffer can be destroyed
+  // during the resolve process, specifically during automatic
+  // graphics switching. Guard against this.
+  // This is a no-op if already called higher up the stack from here.
+  if (!GetDrawingBuffer()->ResolveAndBindForReadAndDraw()) {
+    return false;
   }
 
   // As the resource provider is not accelerated, we don't need an accelerated
@@ -2112,8 +2153,9 @@ bool WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBuffer(
           kBackBuffer, viz::SharedImageFormat::N32Format(), kPremul_SkAlphaType,
           kBottomLeft_GrSurfaceOrigin);
 
-  if (!image || !image->PaintImageForCurrentFrame())
+  if (!image || !image->PaintImageForCurrentFrame()) {
     return false;
+  }
 
   gfx::Rect src_rect(image->Size());
   gfx::Rect dest_rect(resource_provider->Size());
@@ -6389,13 +6431,37 @@ void WebGLRenderingContextBase::TexImageHelperMediaVideoFrame(
     // Go through the fast path doing a GPU-GPU textures copy without a readback
     // to system memory if possible.  Otherwise, it will fall back to the normal
     // SW path.
-    if (media_video_frame->HasSharedImage() &&
-        video_renderer->CopyVideoFrameTexturesToGLTexture(
-            raster_context_provider, ContextGL(), media_video_frame,
-            params.target, texture->Object(), adjusted_internalformat,
-            params.format, params.type, params.level,
-            params.GetDestinationAlphaType(), params.GetDestinationOrigin())) {
-      return;
+    if (media_video_frame->HasSharedImage()) {
+      auto* gl = ContextGL();
+      const auto shared_image = media_video_frame->shared_image();
+      SkAlphaType dst_alpha_type = params.GetDestinationAlphaType();
+      if (gl->CanCopySharedImageDirectlyToGLTexture(
+              media::IsOpaque(media_video_frame->format()), shared_image.get(),
+              params.target, adjusted_internalformat, params.type, params.level,
+              dst_alpha_type)) {
+        std::unique_ptr<gpu::RasterScopedAccess> destination_access =
+            gl->CopySharedImageDirectlyToGLTexture(
+                media_video_frame->visible_rect(), shared_image.get(),
+                media_video_frame->acquire_sync_token(),
+                media::IsOpaque(media_video_frame->format()), params.target,
+                texture->Object(), adjusted_internalformat, params.format,
+                params.type, params.level, dst_alpha_type,
+                params.GetDestinationOrigin());
+
+        media::PaintCanvasVideoRenderer::SynchronizeVideoFrameRead(
+            std::move(media_video_frame), gl,
+            raster_context_provider->ContextSupport(),
+            std::move(destination_access));
+        return;
+      }
+
+      if (video_renderer->CopyVideoFrameTexturesToGLTextureViaIntermediateSI(
+              raster_context_provider, gl, media_video_frame, params.target,
+              texture->Object(), adjusted_internalformat, params.format,
+              params.type, params.level, dst_alpha_type,
+              params.GetDestinationOrigin())) {
+        return;
+      }
     }
   }
 
@@ -6810,7 +6876,7 @@ void WebGLRenderingContextBase::TexElementImage2DInternal(
     return;
   }
 
-  scoped_refptr<Image> image =
+  scoped_refptr<StaticBitmapImage> image =
       GetElementImage(element, sx, sy, swidth, sheight, width, height,
                       "texElementImage2D()", exception_state);
   if (!image) {
@@ -6837,18 +6903,8 @@ void WebGLRenderingContextBase::TexElementImage2DInternal(
     exception_state.ThrowTypeError("ValidateTexFunc failure");
     return;
   }
-  ImageExtractor image_extractor(
-      image.get(), params.GetDestinationAlphaType(),
-      params.unpack_colorspace_conversion
-          ? PredefinedColorSpaceToSkColorSpace(unpack_color_space_)
-          : nullptr);
-  auto sk_image = image_extractor.GetSkImage();
-  if (!sk_image) {
-    exception_state.ThrowTypeError("GetSkImage failure");
-    return;
-  }
 
-  TexImageSkImage(params, std::move(sk_image));
+  TexImageStaticBitmapImage(params, image.get(), /*allow_copy_via_gpu=*/true);
 }
 
 void WebGLRenderingContextBase::texSubImage2D(

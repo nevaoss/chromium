@@ -60,8 +60,9 @@ class VerticalTabGroupView
   bool ContinueHeaderDrag(const ui::LocatedEvent& event) override;
   void CancelHeaderDrag() override;
   const TabGroup& GetTabGroup() const override;
-  void UpdateHoverCard() const override;
-  void HideHoverCard() const override;
+  void UpdateHoverCard(int update_type) const override;
+  void HideHoverCard(int update_type) const override;
+  bool IsFocusInTabStrip() override;
   void ShiftGroupUp() override;
   void ShiftGroupDown() override;
 
@@ -91,8 +92,8 @@ class VerticalTabGroupView
   void UpdateTargetLayoutForDrag(
       const std::vector<const views::View*>& views_to_snap) override;
   const views::ProposedLayout& GetLayoutForDrag() const override;
-  void HandleTabDragInContainer(const gfx::Rect& dragged_tab_bounds) override;
-  void OnTabDragExited(const gfx::Point& point_in_screen) override;
+  const TabCollectionNode* GetCollectionNodeFromView(
+      const views::View& view) const override;
 
   void AttachChildView(std::unique_ptr<views::View> child_view,
                        const gfx::Rect& previous_bounds_in_screen);

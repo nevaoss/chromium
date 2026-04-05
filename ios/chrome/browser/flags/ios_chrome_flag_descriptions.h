@@ -418,6 +418,9 @@ extern const char kGeminiBinaryMigrationDescription[];
 extern const char kGeminiChatPersistenceName[];
 extern const char kGeminiChatPersistenceDescription[];
 
+extern const char kGeminiClientMigrationName[];
+extern const char kGeminiClientMigrationDescription[];
+
 extern const char kGeminiCopresenceName[];
 extern const char kGeminiCopresenceDescription[];
 
@@ -469,8 +472,8 @@ extern const char kHideToolbarsInOverflowMenuDescription[];
 extern const char kHttpsUpgradesName[];
 extern const char kHttpsUpgradesDescription[];
 
-extern const char kIOSActuationToolsName[];
-extern const char kIOSActuationToolsDescription[];
+extern const char kIOSActorToolsName[];
+extern const char kIOSActorToolsDescription[];
 
 extern const char kIOSBrowserEditMenuMetricsName[];
 extern const char kIOSBrowserEditMenuMetricsDescription[];
@@ -594,6 +597,9 @@ extern const char kLensCameraUnbinnedCaptureFormatsPreferredDescription[];
 
 extern const char kLensContinuousZoomEnabledName[];
 extern const char kLensContinuousZoomEnabledDescription[];
+
+extern const char kLensEnableSendRawFileMediaTypesName[];
+extern const char kLensEnableSendRawFileMediaTypesDescription[];
 
 extern const char kLensEnableSendUrlsInComposeboxesName[];
 extern const char kLensEnableSendUrlsInComposeboxesDescription[];

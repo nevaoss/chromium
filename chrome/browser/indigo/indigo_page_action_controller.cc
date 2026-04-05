@@ -27,7 +27,6 @@
 #include "chrome/grit/branded_strings.h"
 #include "components/optimization_guide/core/hints/optimization_guide_decider.h"
 #include "components/optimization_guide/core/hints/optimization_guide_decision.h"
-#include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/storage_partition.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
@@ -239,9 +238,12 @@ void IndigoPageActionController::UpdateEntryPointsState() {
                              IDS_INDIGO_ENTRYPOINT_ANCHORED_MESSAGE_TEXT));
       page_action_controller_->ShowAnchoredMessage(kActionIndigo);
       indigo_service_->AnchoredMessageShown();
+      base::RecordAction(
+          base::UserMetricsAction("Indigo.PageAction.ShowAnchoredMessage"));
     } else {
       page_action_controller_->ShowSuggestionChip(kActionIndigo);
     }
+    base::RecordAction(base::UserMetricsAction("Indigo.PageAction.Show"));
   } else {
     page_action_controller_->Hide(kActionIndigo);
   }

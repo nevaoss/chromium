@@ -8,6 +8,7 @@
 #include "base/feature_list.h"
 #include "base/strings/string_split.h"
 #include "base/time/time.h"
+#include "build/android_buildflags.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/common/chrome_switches.h"
@@ -272,8 +273,6 @@ const char kGlicActorUiToastName[] = "glic-actor-ui-toast";
 const char kGlicActorUiHandoffButtonName[] = "glic-actor-ui-handoff-button";
 const char kGlicActorUiTabIndicatorName[] = "glic-actor-ui-tab-indicator";
 const char kGlicActorUiBorderGlowName[] = "glic-actor-ui-border-glow";
-const char kGlicActorUiStandaloneBorderGlowName[] =
-    "glic-actor-ui-standalone-border-glow";
 const char kGlicActorUiDebounceTimerName[] = "glic-actor-ui-debounce-timer";
 
 // Controls whether the task icon in the actor ui is enabled.
@@ -294,10 +293,6 @@ const base::FeatureParam<bool> kGlicActorUiTabIndicator{
 // Controls whether the actor border glow in the actor ui is enabled.
 const base::FeatureParam<bool> kGlicActorUiBorderGlow{
     &kGlicActorUi, kGlicActorUiBorderGlowName, true};
-// Controls whether the actor border glow uses a standalone implementation or a
-// shared implementation with context sharing glow.
-const base::FeatureParam<bool> kGlicActorUiStandaloneBorderGlow{
-    &kGlicActorUi, kGlicActorUiStandaloneBorderGlowName, true};
 // Controls the debounce timer for the Glic Actor UI Tab Controller, in
 // milliseconds. This is used to debounce hover events on the actor overlay and
 // handoff button.
@@ -445,12 +440,12 @@ BASE_FEATURE(kGlicUseMainPartitionForUnifiedFre,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls the Glic Trust First Onboarding experience.
-BASE_FEATURE(kGlicTrustFirstOnboarding, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicTrustFirstOnboarding, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicMessageFirstFre, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<int> kGlicTrustFirstOnboardingArmParam{
-    &kGlicTrustFirstOnboarding, "arm", 1 /* kStartChat */};
+    &kGlicTrustFirstOnboarding, "arm", 2 /* kWelcomeScreen */};
 // Controls whether the Glic feature is enabled.
 // IMPORTANT: this feature should never be expired! It is used as the main
 // kill-switch for Glic and can be used in the future to handle unsupported
@@ -740,7 +735,6 @@ BASE_FEATURE(kGlicScrollTo, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicCaptureRegion, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicUseNonClient, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether we enforce that documentId (an optional parameter) is set
 // when trying to scroll all documents except PDFs (and fail the request if
@@ -875,8 +869,6 @@ BASE_FEATURE(kGlicExtensions, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicMultitabUnderlines, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicHandleDraggingNatively, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, the X-Glic headers will be attached to requests as specified by
 // the kGlicHeaderRequestTypes param.
 BASE_FEATURE(kGlicHeader, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -911,7 +903,11 @@ BASE_FEATURE(kGlicButtonAltLabel, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicButtonAltLabelVariant{
     &kGlicButtonAltLabel, "glic-button-alt-label-variant", 0};
 
+#if BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_DESKTOP_ANDROID)
+BASE_FEATURE(kGlicDaisyChainNewTabs, base::FEATURE_DISABLED_BY_DEFAULT);
+#else
 BASE_FEATURE(kGlicDaisyChainNewTabs, base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
 
 BASE_FEATURE(kGlicLiveModeOnlyGlow, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1249,6 +1245,8 @@ BASE_FEATURE(kNativeNotifications, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables installation of the content script for chrome/browser/indigo/ via
 // component update.
 BASE_FEATURE(kIndigoComponent, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<std::string> kIndigoComponentAttribute{
+    &kIndigoComponent, "indigo_component_attribute", ""};
 
 BASE_FEATURE(kSystemNotifications, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1332,32 +1330,23 @@ BASE_FEATURE(kSafetyHubExtensionsOffStoreTrigger,
 BASE_FEATURE(kSafetyHubThreeDotDetails, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSafetyHubDisruptiveNotificationRevocation,
-#if BUILDFLAG(IS_ANDROID)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
-
-constexpr base::FeatureParam<int>
-    kSafetyHubDisruptiveNotificationRevocationExperimentVersion{
-        &kSafetyHubDisruptiveNotificationRevocation,
-        /*name=*/"experiment_version", /*default_value=*/1};
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 constexpr base::FeatureParam<bool>
     kSafetyHubDisruptiveNotificationRevocationShadowRun{
         &kSafetyHubDisruptiveNotificationRevocation,
         /*name=*/"shadow_run", /*default_value=*/false};
 
+#if BUILDFLAG(IS_ANDROID)
+constexpr base::FeatureParam<int>
+    kSafetyHubDisruptiveNotificationRevocationExperimentVersion{
+        &kSafetyHubDisruptiveNotificationRevocation,
+        /*name=*/"experiment_version", /*default_value=*/1};
+
 constexpr base::FeatureParam<int>
     kSafetyHubDisruptiveNotificationRevocationMinNotificationCount{
         &kSafetyHubDisruptiveNotificationRevocation,
         /*name=*/"min_notification_count", /*default_value=*/4};
-
-constexpr base::FeatureParam<double>
-    kSafetyHubDisruptiveNotificationRevocationMaxEngagementScore{
-        &kSafetyHubDisruptiveNotificationRevocation,
-        /*name=*/"max_engagement_score", /*default_value=*/0.0};
 
 constexpr base::FeatureParam<base::TimeDelta>
     kSafetyHubDisruptiveNotificationRevocationWaitingTimeAsProposed{
@@ -1369,6 +1358,27 @@ constexpr base::FeatureParam<int>
         &kSafetyHubDisruptiveNotificationRevocation,
         /*name=*/"notification_timeout_seconds",
         /*default_value=*/7 * 24 * 3600};
+#else
+constexpr base::FeatureParam<int>
+    kSafetyHubDisruptiveNotificationRevocationExperimentVersion{
+        &kSafetyHubDisruptiveNotificationRevocation,
+        /*name=*/"experiment_version", /*default_value=*/2};
+
+constexpr base::FeatureParam<int>
+    kSafetyHubDisruptiveNotificationRevocationMinNotificationCount{
+        &kSafetyHubDisruptiveNotificationRevocation,
+        /*name=*/"min_notification_count", /*default_value=*/6};
+
+constexpr base::FeatureParam<base::TimeDelta>
+    kSafetyHubDisruptiveNotificationRevocationWaitingTimeAsProposed{
+        &kSafetyHubDisruptiveNotificationRevocation,
+        /*name=*/"waiting_time_as_proposed", /*default_value=*/base::Days(14)};
+#endif
+
+constexpr base::FeatureParam<double>
+    kSafetyHubDisruptiveNotificationRevocationMaxEngagementScore{
+        &kSafetyHubDisruptiveNotificationRevocation,
+        /*name=*/"max_engagement_score", /*default_value=*/0.0};
 
 constexpr base::FeatureParam<int>
     kSafetyHubDisruptiveNotificationRevocationMinFalsePositiveCooldown{
@@ -1787,6 +1797,12 @@ BASE_FEATURE(kWebUIBackForwardButton, base::FEATURE_DISABLED_BY_DEFAULT);
 // from chrome://webui-toolbar.top-chrome.
 // crbug.com/474061420
 BASE_FEATURE(kWebUIPinnedToolbarActions, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, location bar RHS content settings icons will be replaced with
+// WebUI loaded from chrome://webui-toolbar.top-chrome.
+// crbug.com/489109708
+BASE_FEATURE(kWebUIContentSettingsIcons, base::FEATURE_DISABLED_BY_DEFAULT);
+
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables the User-Agent override fix for SearchPrefetch. This will work only

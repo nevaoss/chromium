@@ -1290,6 +1290,7 @@ html element ul
     property compact
     property type
 html element usermedia
+    property error
     property initialPermissionStatus
     property invalidReason
     property isValid
@@ -1299,6 +1300,7 @@ html element usermedia
     property onvalidationstatuschange
     property permissionStatus
     property setConstraints
+    property stream
     property type
 html element var
 html element video

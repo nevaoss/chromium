@@ -87,11 +87,6 @@ uploading your change for review.  These are checked by presubmit scripts.
   <int value="8" label="New device and Remote playback source"/>
 </enum>
 
-<enum name="AccessCodeCastUiTabSwitcherUsage">
-  <int value="0" label="Tab switcher UI shown and not used"/>
-  <int value="1" label="Tab switcher UI shown and used to switch tabs"/>
-</enum>
-
 <enum name="AccessibilityHighContrastColorScheme">
   <summary>Tracks the color scheme used when high contrast is enabled.</summary>
   <int value="0" label="None"/>
@@ -2684,12 +2679,6 @@ Called by update_net_error_codes.py.-->
   <int value="3" label="Both read and wrote cookies"/>
 </enum>
 
-<enum name="CookieHeuristicInteractionType">
-  <int value="0" label="Authentication"/>
-  <int value="1" label="UserActivation"/>
-  <int value="2" label="NoInteraction"/>
-</enum>
-
 <enum name="CopylessCacheHit">
   <int value="0" label="Cache hit with entity"/>
   <int value="1" label="Cache hit without entity"/>
@@ -4732,12 +4721,6 @@ Called by update_net_error_codes.py.-->
       label="Last time the survey was attempted to be shown too recent"/>
 </enum>
 
-<enum name="HasSameSiteIframe">
-  <int value="0" label="Unknown"/>
-  <int value="1" label="False"/>
-  <int value="2" label="True"/>
-</enum>
-
 <enum name="HdcpVersion">
   <int value="0" label="HdcpVersionNone"/>
   <int value="1" label="HdcpVersion1_0"/>
@@ -5749,6 +5732,9 @@ Called by update_net_error_codes.py.-->
   <int value="42" label="kBrowserInitiatedErrorPage">
     The browser process navigated a frame to an error page based on behavior in
     the currently committed page.
+  </int>
+  <int value="43" label="kDidChangeOpener">
+    A request was received to change window.opener to a frame in BFCache.
   </int>
 </enum>
 
@@ -10835,6 +10821,7 @@ from previous Chrome versions.
   <int value="-1080700029" label="ShowFeaturedEnterpriseSiteSearch:disabled"/>
   <int value="-1080220553" label="PrinterSettingsRevamp:enabled"/>
   <int value="-1078746384" label="MemoryUsageInHovercards:enabled"/>
+  <int value="-1078131133" label="UsePersistentCacheForCodeCache:enabled"/>
   <int value="-1078093206" label="ash-debug-shortcuts"/>
   <int value="-1077767597" label="IwaKeyDistributionComponent:disabled"/>
   <int value="-1077752943" label="enable-password-generation"/>
@@ -13897,6 +13884,7 @@ from previous Chrome versions.
   <int value="-48187847" label="OneTimePermission:enabled"/>
   <int value="-48132632" label="HappyEyeballsV3:disabled"/>
   <int value="-48100173" label="ContextualCueing:enabled"/>
+  <int value="-47028295" label="InlineScriptCache:enabled"/>
   <int value="-46847847" label="EstablishGpuChannelAsync:disabled"/>
   <int value="-46622176" label="NtpModulesHeaderIcon:enabled"/>
   <int value="-45849989" label="ModeSpecificPowerButton:disabled"/>
@@ -14450,6 +14438,7 @@ from previous Chrome versions.
   <int value="134009318" label="FastPairSavedDevices:enabled"/>
   <int value="134124472" label="NearbySharingWifiDirect:enabled"/>
   <int value="134136822" label="VcDlcUi:enabled"/>
+  <int value="134493403" label="OmniboxItemDecoration:enabled"/>
   <int value="135017596" label="OverlayScrollbarsOSSetting:disabled"/>
   <int value="136557248" label="PartitionAllocMemoryTagging:enabled"/>
   <int value="136924140" label="OfflineIndicatorV2:enabled"/>
@@ -14594,6 +14583,7 @@ from previous Chrome versions.
   <int value="188610022" label="NewMessageListView:enabled"/>
   <int value="189721469" label="kEnableOidcProfileRemoteCommands:enabled"/>
   <int value="189728101" label="FasterLocationReload:disabled"/>
+  <int value="189765932" label="WebNNLiteRT:disabled"/>
   <int value="189777537" label="DisableInitialMostVisitedFadeIn:enabled"/>
   <int value="190395448" label="SearchWebInSidePanel:enabled"/>
   <int value="190906756"
@@ -15280,6 +15270,7 @@ from previous Chrome versions.
   <int value="409566604" label="IntentPickerPWAPersistence:enabled"/>
   <int value="409622437" label="disable-buffer-bw-compression"/>
   <int value="409978710" label="GetAllScreensMedia:disabled"/>
+  <int value="410101856" label="PictureInPictureMuteControl:enabled"/>
   <int value="410400234" label="WebAppEnableProtocolHandlers:disabled"/>
   <int value="411250226" label="AutoplayMutedVideos:disabled"/>
   <int value="411536809" label="AutofillAcrossIframes:enabled"/>
@@ -15293,6 +15284,7 @@ from previous Chrome versions.
   <int value="412989824" label="SRIMessageSignatureEnforcement:disabled"/>
   <int value="413062443" label="MessagesForAndroidInfrastructure:disabled"/>
   <int value="413081240" label="enable-new-md-input-view"/>
+  <int value="413095991" label="ImportExportFlags:disabled"/>
   <int value="413528228" label="AutofillFixFillableFieldTypes:disabled"/>
   <int value="413695227" label="NTPSuggestionsStandaloneUI:enabled"/>
   <int value="413701020" label="CollaborationMessaging:enabled"/>
@@ -16666,6 +16658,7 @@ from previous Chrome versions.
   <int value="880201245" label="NewTabPageTilesTitleWrapAround:disabled"/>
   <int value="880510010" label="enable-permissions-bubbles"/>
   <int value="880638328" label="DriveFsShowCSEFiles:enabled"/>
+  <int value="880713705" label="OmniboxItemDecoration:disabled"/>
   <int value="880771977" label="NTPEnterpriseShortcuts:disabled"/>
   <int value="881920916" label="CrosWebAppInstallDialog:disabled"/>
   <int value="882103442" label="FloatWindow:disabled"/>
@@ -17401,6 +17394,7 @@ from previous Chrome versions.
   <int value="1133207726" label="MediaInspectorLogging:enabled"/>
   <int value="1133581555" label="AllowPolyDevicePairing:enabled"/>
   <int value="1133635187" label="force-gpu-rasterization"/>
+  <int value="1134928664" label="ImportExportFlags:enabled"/>
   <int value="1134969852" label="NtpPhotosModuleCustomizedOptInTitle:enabled"/>
   <int value="1135562460"
       label="ClearInstanceInfoWhenClosedIntentionally:enabled"/>
@@ -17702,6 +17696,7 @@ from previous Chrome versions.
   <int value="1236772382" label="BiometricAuthenticationInSettings:disabled"/>
   <int value="1236821372"
       label="SupervisedUserMergeDeviceParentalControlsAndFamilyLinkPrefs:enabled"/>
+  <int value="1237160871" label="LogoViewRefactor:enabled"/>
   <int value="1237297772" label="no-pings"/>
   <int value="1237420037" label="SeedAccountsRevamp:disabled"/>
   <int value="1237514437" label="ShareCustomActionsInCCT:enabled"/>
@@ -18747,6 +18742,7 @@ from previous Chrome versions.
   <int value="1577205328"
       label="DataReductionProxyEnabledWithNetworkService:enabled"/>
   <int value="1577651674" label="SafetyHub:enabled"/>
+  <int value="1578493560" label="WebNNLiteRT:enabled"/>
   <int value="1578770829" label="PersistAcrossReboots:disabled"/>
   <int value="1579084737" label="TemporaryUnexpireFlagsM80:disabled"/>
   <int value="1579461102" label="MemoryCoordinator:disabled"/>
@@ -18875,6 +18871,7 @@ from previous Chrome versions.
   <int value="1622672308" label="ReaderMode:enabled"/>
   <int value="1623345369" label="OmniboxAdaptNarrowTabletWindows:enabled"/>
   <int value="1624232586" label="CCTContextualMenuItems:enabled"/>
+  <int value="1624491797" label="UsePersistentCacheForCodeCache:disabled"/>
   <int value="1625208388" label="SyncWalletFlightReservations:disabled"/>
   <int value="1625829110" label="CCTRevampedBranding:enabled"/>
   <int value="1625988511" label="DurableClientHintsCache:enabled"/>
@@ -19222,6 +19219,7 @@ from previous Chrome versions.
   <int value="1731522433" label="enable-offer-store-unmasked-wallet-cards"/>
   <int value="1731612996" label="CrostiniFiles:disabled"/>
   <int value="1731642759" label="CrOSLateBootPermissiveUsbPassthrough:enabled"/>
+  <int value="1731714994" label="PictureInPictureMuteControl:disabled"/>
   <int value="1732358292"
       label="SafetyHubAbusiveNotificationRevocation:disabled"/>
   <int value="1732903790" label="KeyboardLockApiOnAndroid:enabled"/>
@@ -19419,6 +19417,7 @@ from previous Chrome versions.
   <int value="1796592669" label="InstalledAppsInCbd:disabled"/>
   <int value="1797002314" label="HatsUseNewHistograms:enabled"/>
   <int value="1797226735" label="ImageServiceSuggestPoweredImages:enabled"/>
+  <int value="1797351186" label="LogoViewRefactor:disabled"/>
   <int value="1797761235" label="AppBrowserUseNewLayout:disabled"/>
   <int value="1798055501" label="WebAppDedupeInstallUrls:enabled"/>
   <int value="1798347197"
@@ -20407,6 +20406,7 @@ from previous Chrome versions.
   <int value="2122876605" label="enable-bleeding-edge-rendering-fast-paths"/>
   <int value="2123183411" label="BlinkHeapIncrementalMarking:enabled"/>
   <int value="2123567684" label="OptimizeLoadingIPCForSmallResources:enabled"/>
+  <int value="2123779715" label="InlineScriptCache:disabled"/>
   <int value="2123977420" label="ZeroSuggestPrefetchDebouncing:disabled"/>
   <int value="2124727851" label="data-sharing-debug-logs"/>
   <int value="2125732298" label="RetailCoupons:disabled"/>
@@ -21543,6 +21543,8 @@ Called by update_net_error_codes.py.-->
   <int value="3" label="Disabled"/>
 </enum>
 
+<!-- LINT.IfChange(NotificationCatalogName) -->
+
 <enum name="NotificationCatalogName">
 <!-- Defined in ash/constants/notifier_catalogs.h -->
 
@@ -21747,7 +21749,10 @@ Called by update_net_error_codes.py.-->
   <int value="201" label="Incompatible Charger"/>
   <int value="202" label="Camera Upload"/>
   <int value="203" label="Frozen Update Notification"/>
+  <int value="204" label="Geolocation Reported"/>
 </enum>
+
+<!-- LINT.ThenChange(//ash/constants/notifier_catalogs.h:NotificationCatalogName) -->
 
 <enum name="NQEObservationSource">
   <int value="0" label="HTTP"/>
@@ -22841,15 +22846,6 @@ Called by update_net_error_codes.py.-->
   <int value="123" label="ENOMEDIUM">No medium found</int>
 </enum>
 
-<enum name="PopupProvider">
-<!--
-      Privacy Team wants to monitor additions to this enum.
--->
-
-  <int value="0" label="Unknown"/>
-  <int value="1" label="Google"/>
-</enum>
-
 <enum name="PopupSafeBrowsingStatus">
   <int value="0" label="Popup has no safe-browsing status"/>
   <int value="1"
@@ -23478,6 +23474,7 @@ Called by update_net_error_codes.py.-->
   <int value="86" label="kPrerenderFailedDuringPrefetch"/>
   <int value="87" label="kBrowsingDataRemoved"/>
   <int value="88" label="kPrerenderHostReused"/>
+  <int value="89" label="kFormSubmitWhenPrerendering"/>
 </enum>
 
 <enum name="PrimaryButtonRight">
@@ -23522,6 +23519,7 @@ Called by update_net_error_codes.py.-->
   <int value="10" label="Timeout"/>
   <int value="11" label="ClientAttestationFailed"/>
   <int value="12" label="Destroyed"/>
+  <int value="13" label="UnusedConnection"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/private_ai/error_code.h:ErrorCode) -->
@@ -23956,6 +23954,7 @@ Called by update_net_error_codes.py.-->
   <int value="5" label="Opened via tab switch"/>
   <int value="6"
       label="Opened via toggle presentation button in Reading mode settings"/>
+  <int value="7" label="Opened via keyboard shortcut"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/read_anything/read_anything_enums.h:ReadAnythingOpenTrigger) -->
@@ -25073,6 +25072,8 @@ Called by update_net_error_codes.py.-->
   </int>
 </enum>
 
+<!-- LINT.IfChange(SidePanelOpenTrigger) -->
+
 <enum name="SidePanelOpenTrigger">
   <int value="0" label="Opened from toolbar button"/>
   <int value="1" label="Opened from lens context menu"/>
@@ -25103,7 +25104,10 @@ Called by update_net_error_codes.py.-->
   <int value="24" label="Opened from Read Anything omnibox chip"/>
   <int value="25"
       label="Opened from Immersive Reading Mode toggle presentation button"/>
+  <int value="26" label="Opened from the Reading Mode keyboard shortcut"/>
 </enum>
+
+<!-- LINT.ThenChange(//chrome/browser/ui/side_panel/side_panel_enums.h:SidePanelOpenTrigger) -->
 
 <enum name="SignedExchangeLoadResult">
   <int value="0" label="Loaded successfully"/>

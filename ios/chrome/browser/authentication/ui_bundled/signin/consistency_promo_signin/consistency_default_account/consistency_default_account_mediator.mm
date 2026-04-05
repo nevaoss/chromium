@@ -124,7 +124,6 @@ NSString* GetPromoLabelString(
     case signin_metrics::AccessPoint::kSaveToPhotosIos:
     case signin_metrics::AccessPoint::kChromeSigninInterceptBubble:
     case signin_metrics::AccessPoint::kRestorePrimaryAccountOnProfileLoad:
-    case signin_metrics::AccessPoint::kTabOrganization:
     case signin_metrics::AccessPoint::kTipsNotification:
     case signin_metrics::AccessPoint::kSigninChoiceRemembered:
     case signin_metrics::AccessPoint::kProfileMenuSignoutConfirmationPrompt:
@@ -164,6 +163,7 @@ NSString* GetPromoLabelString(
     case signin_metrics::AccessPoint::kAshChromeSessionManager:
     case signin_metrics::AccessPoint::kAvatarPillExpandPromo:
     case signin_metrics::AccessPoint::kSearchAIModeBubble:
+    case signin_metrics::AccessPoint::kIosPageActionMenu:
     case signin_metrics::AccessPoint::kIosAppBar:
       // Nothing prevents instantiating ConsistencyDefaultAccountViewController
       // with an arbitrary entry point, API-wise. In doubt, no label is a good,

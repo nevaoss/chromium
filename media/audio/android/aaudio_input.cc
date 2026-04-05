@@ -70,11 +70,13 @@ void AAudioInputStream::Start(AudioInputCallback* callback) {
     callback_ = callback;
   }
 
+  audio_manager_->OnPrepareToStartAAudioInputStream(this);
   if (stream_wrapper_->Start()) {
     // Successfully started `stream_wrapper_`.
     audio_manager_->OnStartAAudioInputStream(this);
     return;
   }
+  audio_manager_->OnFailedToStartAAudioInputStream(this);
 
   {
     base::AutoLock al(lock_);
@@ -165,25 +167,38 @@ void AAudioInputStream::HandleDeviceChange() {
 
   bool open_success = stream_wrapper_->Open();
 
-  base::AutoLock al(lock_);
-  if (!open_success) {
-    if (callback_) {
-      callback_->OnError();
-    } else {
-      // Report this error at the next start() call.
-      error_during_device_change_ = true;
+  {
+    base::AutoLock al(lock_);
+    if (!open_success) {
+      if (callback_) {
+        callback_->OnError();
+      } else {
+        // Report this error at the next start() call.
+        error_during_device_change_ = true;
+      }
+      return;
     }
-    return;
+
+    if (!callback_) {
+      // `this` might have been stopped between OnDeviceChange() and now.
+      return;
+    }
   }
 
-  if (!callback_) {
-    // `this` might have been stopped between OnDeviceChange() and now.
-    return;
-  }
+  // Notify AudioManager before starting the new stream so that global
+  // audio routing (e.g. Bluetooth SCO) can be configured correctly.
+  audio_manager_->OnAAudioInputStreamDeviceChanged(this);
 
   if (!stream_wrapper_->Start()) {
-    callback_->OnError();
+    base::AutoLock al(lock_);
+    if (callback_) {
+      callback_->OnError();
+    }
   }
+}
+
+bool AAudioInputStream::IsExplicitlyRequestingBluetoothSco() {
+  return device_.GetType() == android::AudioDeviceType::kBluetoothSco;
 }
 
 std::optional<android::AudioDeviceId> AAudioInputStream::GetActualDeviceId() {

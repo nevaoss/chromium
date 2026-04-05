@@ -6,6 +6,8 @@ static_library("core") {
   sources = [
     "finds_features.cc",
     "finds_features.h",
+    "finds_metrics.cc",
+    "finds_metrics.h",
     "finds_pref_names.cc",
     "finds_pref_names.h",
     "finds_service.cc",
@@ -15,6 +17,12 @@ static_library("core") {
     "finds_utils.cc",
     "finds_utils.h",
   ]
+
+  # We include the platform header here as a source to satisfy GN checks
+  # for JNI without creating circular deps with the android target.
+  if (is_android) {
+    sources += [ "../android/finds_service_android.h" ]
+  }
 
   deps = [
     "//base",
@@ -33,6 +41,7 @@ static_library("core") {
 source_set("unit_tests") {
   testonly = true
   sources = [
+    "finds_metrics_unittest.cc",
     "finds_service_unittest.cc",
     "finds_utils_unittest.cc",
   ]

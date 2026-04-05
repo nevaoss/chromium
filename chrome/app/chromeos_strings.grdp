@@ -1235,11 +1235,11 @@
   <message name="IDS_FJORD_IMAGE_SELECTION_TITLE" desc="Title of the OOBE screen for choosing the device enrollment type.">
     Choose device enrollment type
   </message>
-  <message name="IDS_FJORD_IMAGE_SELECTION_MEET_LABEL" desc="Label for the radio button option to enroll the device as Google Beam with Meet.">
-    Google Beam with Meet
+  <message name="IDS_FJORD_IMAGE_SELECTION_MEET_LABEL" desc="Label for the radio button option to enroll the device as Google Beam for Meet.">
+    Google Beam for Meet
   </message>
-  <message name="IDS_FJORD_IMAGE_SELECTION_ZOOM_LABEL" desc="Label for the radio button option to enroll the device as Google Beam with Zoom.">
-    Google Beam with Zoom
+  <message name="IDS_FJORD_IMAGE_SELECTION_ZOOM_LABEL" desc="Label for the radio button option to enroll the device as Google Beam for Zoom.">
+    Google Beam for Zoom
   </message>
   <message name="IDS_FJORD_IMAGE_SELECTION_NEXT_BUTTON_TEXT" desc="Button shown to the user to go to the next step.">
     Next
@@ -5378,20 +5378,6 @@ Your <ph name="DEVICE_TYPE">{0}<ex>Chromebook</ex></ph> will be locked now.
   </message>
   <message name="IDS_SECURITY_TOKEN_SESSION_LOGOUT_MESSAGE_BODY" desc="This is the text of a notification appearing the first time the a user was logged out because they removed their smart card. This only applies to users that authenticate with a smart card and for who this behavior was enabled by a policy.">
     <ph name="DOMAIN">$1<ex>example.com</ex></ph> requires you to keep your smart card inserted.
-  </message>
-
-  <!-- Strings for multi-capture -->
-  <message name="IDS_MULTI_CAPTURE_NOTIFICATION_TITLE" desc="This is the title of the notification when an application starts capturing multiple surfaces.">
-    <ph name="APP_ORIGIN">$1</ph> is recording your screen
-  </message>
-  <message name="IDS_MULTI_CAPTURE_NOTIFICATION_MESSAGE" desc="This is the message of the notification when an application starts capturing multiple surfaces.">
-    Your system administrator has allowed <ph name="APP_ORIGIN">$1</ph> to record your screen
-  </message>
-  <message name="IDS_MULTI_CAPTURE_NOTIFICATION_ON_LOGIN_TITLE" desc="This is the title of the notification on login when multi capture is enabled and capturing potentially could happen.">
-    Your screen might be recorded
-  </message>
-  <message name="IDS_MULTI_CAPTURE_NOTIFICATION_ON_LOGIN_MESSAGE" desc="This is the message of the notification on login when multi capture is enabled and capturing potentially could happen.">
-    You'll see a notification if recording starts on this managed device
   </message>
 
   <!-- Strings for Projector-->

@@ -1244,7 +1244,8 @@ std::optional<bubble_anchor_util::AnchorConfiguration>
 LocationBarView::GetChipAnchor() {
   auto* chip = GetChipController()->chip();
   if (chip->GetVisible()) {
-    return {{chip, PermissionChipView::kPermissionRequestChipElementId,
+    return {{views::BubbleAnchor(chip),
+             PermissionChipView::kPermissionRequestChipElementId,
              views::BubbleBorder::TOP_LEFT}};
   }
   return std::nullopt;
@@ -1631,8 +1632,8 @@ bool LocationBarView::RefreshContentSettingViews() {
   for (ContentSettingImageView* v : content_setting_views_) {
     const bool was_visible = v->GetVisible();
     // The Left-Hand Side indicators currently supports only
-    // `ImageType::MEDIASTREAM`.
-    if (v->GetType() == ContentSettingImageModel::ImageType::MEDIASTREAM &&
+    // `ImageType::kMediaStream`.
+    if (v->GetType() == ContentSettingImageModel::ImageType::kMediaStream &&
         // WebApps do not support the Left-Hand Side indicators.
         !web_app::AppBrowserController::IsWebApp(browser_) &&
         base::FeatureList::IsEnabled(
@@ -2267,7 +2268,8 @@ bool LocationBarView::ShowPageInfoDialog() {
   DCHECK(GetWidget());
 
   std::unique_ptr<PageInfoBubbleSpecification> specification =
-      PageInfoBubbleSpecification::Builder(this, GetWidget()->GetNativeWindow(),
+      PageInfoBubbleSpecification::Builder(views::BubbleAnchor(this),
+                                           GetWidget()->GetNativeWindow(),
                                            contents, entry->GetVirtualURL())
           .AddInitializedCallback(
               GetPageInfoDialogCreatedCallbackForTesting()

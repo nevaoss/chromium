@@ -1521,10 +1521,6 @@ inline constexpr char kGlicUseToolbarHeightSidePanelName[] =
 inline constexpr char kGlicUseToolbarHeightSidePanelDescription[] =
     "Enables Glic to use the toolbar height side panel instead of content "
     "height side panel when enabled to use side panel";
-inline constexpr char kGlicUseNonClientName[] = "Glic Use NonClientView";
-inline constexpr char kGlicUseNonClientDescription[] =
-    "Renders the window using NonClientView/FrameView which grants the window "
-    "access to standard window management features on ChromeOS.";
 inline constexpr char kGlicGuestUrlPresetsName[] = "Glic guest URL presets";
 inline constexpr char kGlicGuestUrlPresetsDescription[] =
     "Overrides the Bluebird environment URL used for Glic with user-configured "
@@ -2111,12 +2107,6 @@ inline constexpr char
         "Predicts the scroll amount after the vsync time to more closely match "
         "when the frame is visible.";
 
-inline constexpr char kEnableWebAppPredictableAppUpdatingName[] =
-    "Enable predictable app updating for PWAs";
-inline constexpr char kEnableWebAppPredictableAppUpdatingDescription[] =
-    "Enables PWA updates to be more predictable by considering changes in icon "
-    "urls specified in the manifest";
-
 inline constexpr char kExcludePipFromScreenCaptureName[] =
     "Exclude Picture-in-Picture windows from screen capture";
 inline constexpr char kExcludePipFromScreenCaptureDescription[] =
@@ -2653,6 +2643,10 @@ inline constexpr char kIgnoreGpuBlocklistDescription[] =
     "Overrides the built-in software rendering list and enables "
     "GPU-acceleration on unsupported system configurations.";
 
+inline constexpr char kImportExportFlagsName[] = "Import and export flags";
+inline constexpr char kImportExportFlagsDescription[] =
+    "Enables importing and exporting flags from chrome://flags.";
+
 inline constexpr char kInfobarPrioritizationName[] = "Infobar Prioritization";
 inline constexpr char kInfobarPrioritizationDescription[] =
     "Shows the infobars by priority starting by critical ones by respecting a "
@@ -2676,6 +2670,11 @@ inline constexpr char kInlinePdfV2Name[] = "Inline PDF V2";
 inline constexpr char kInlinePdfV2Description[] =
     "Provides users a seamless, productive, and performant way to view, "
     "navigate, and edit PDF files inline in Clank.";
+
+inline constexpr char kInlineScriptCacheName[] = "Inline Script Cache";
+inline constexpr char kInlineScriptCacheDescription[] =
+    "Enables caching of inline scripts. This flag only works if "
+    "#use-persistent-cache-for-code-cache is enabled.";
 
 inline constexpr char kInProductHelpDemoModeChoiceName[] =
     "In-Product Help Demo Mode";
@@ -3040,6 +3039,11 @@ inline constexpr char kWebNNOnnxRuntimeDescription[] =
     "Enables using ONNX Runtime for CPU, GPU and NPU inference with the WebNN "
     "API. Disabling this flag enables a fallback to DirectML or TFLite.";
 
+inline constexpr char kWebNNLiteRTName[] = "LiteRT backend for WebNN";
+inline constexpr char kWebNNLiteRTDescription[] =
+    "Enables the LiteRT backend for WebNN. Disabling this flag enables a "
+    "fallback to TFLite.";
+
 inline constexpr char kSystemProxyForSystemServicesName[] =
     "Enable system-proxy for selected system services";
 inline constexpr char kSystemProxyForSystemServicesDescription[] =
@@ -3124,6 +3128,11 @@ inline constexpr char kOmniboxGroupingFrameworkNonZPSName[] =
 inline constexpr char kOmniboxGroupingFrameworkDescription[] =
     "Enables an alternative grouping implementation for omnibox "
     "autocompletion.";
+
+inline constexpr char kOmniboxItemDecorationName[] = "Omnibox ItemDecoration";
+inline constexpr char kOmniboxItemDecorationDescription[] =
+    "Migrates the Omnibox suggestion list header and group separator views to "
+    "use RecyclerView.ItemDecoration instead of individual View items.";
 
 inline constexpr char kOmniboxMultilineEditFieldName[] =
     "Omnibox Multiline edit field";
@@ -4435,20 +4444,6 @@ inline constexpr char kUiPartialSwapName[] = "Partial swap";
 inline constexpr char kUiPartialSwapDescription[] =
     "Sets partial swap behavior.";
 
-inline constexpr char kTpcdHeuristicsGrantsName[] =
-    "Third-party Cookie Grants Heuristics Testing";
-inline constexpr char kTpcdHeuristicsGrantsDescription[] =
-    "Enables temporary storage access grants for certain user behavior "
-    "heuristics. See "
-    "https://github.com/amaliev/3pcd-exemption-heuristics/blob/main/"
-    "explainer.md for more details.";
-
-inline constexpr char kTpcdMetadataGrantsName[] =
-    "Third-Party Cookie Deprecation Metadata Grants for Testing";
-inline constexpr char kTpcdMetadataGrantsDescription[] =
-    "Provides a control for enabling/disabling Third-Party Cookie Deprecation "
-    "Metadata Grants (WRT its default state) for testing.";
-
 inline constexpr char kUndoMigrationOfSyncingUserToSignedInName[] =
     "Undo the migration of syncing users to signed-in state";
 inline constexpr char kUndoMigrationOfSyncingUserToSignedInDescription[] =
@@ -4809,6 +4804,12 @@ inline constexpr char kUsePassthroughCommandDecoderName[] =
 inline constexpr char kUsePassthroughCommandDecoderDescription[] =
     "Use chrome passthrough command decoder instead of validating command "
     "decoder.";
+
+inline constexpr char kUsePersistentCacheForCodeCacheName[] =
+    "Use PersistentCache for Code Cache";
+inline constexpr char kUsePersistentCacheForCodeCacheDescription[] =
+    "Use PersistentCache backend for code cache for JavaScript and "
+    "WebAssembly.";
 
 inline constexpr char kUsePrimaryAndTonalButtonsForPromosName[] =
     "Use primary and tonal buttons for promos";
@@ -5689,6 +5690,10 @@ inline constexpr char kHomeModulePrefRefactorDescription[] =
     "Use UserPrefs for home module customization settings (for the "
     "NTP).";
 
+inline constexpr char kLogoViewRefactorName[] = "Logo View Refactor";
+inline constexpr char kLogoViewRefactorDescription[] =
+    "Enables the Logo View Refactor feature.";
+
 inline constexpr char kMaliciousApkDownloadCheckName[] =
     "Malicious APK download check";
 inline constexpr char kMaliciousApkDownloadCheckDescription[] =
@@ -6138,6 +6143,11 @@ inline constexpr char kDialMediaRouteProviderName[] =
 inline constexpr char kDialMediaRouteProviderDescription[] =
     "Enable/Disable the browser discovery of the DIAL support cast device."
     "It sends a discovery SSDP message every 120 seconds";
+
+inline constexpr char kPictureInPictureMuteControlName[] =
+    "Picture-in-Picture Mute Control";
+inline constexpr char kPictureInPictureMuteControlDescription[] =
+    "Adds a mute/unmute button to the Video Picture-in-Picture window.";
 
 inline constexpr char kPictureInPictureShowWindowAnimationName[] =
     "Picture-in-Picture show window animation";

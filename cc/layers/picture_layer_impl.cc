@@ -118,9 +118,6 @@ PictureLayerImpl::~PictureLayerImpl() {
         ->paint_worklet_tracker()
         .UpdatePaintWorkletInputProperties({}, this);
   }
-
-  // Unregister for all images on the current raster source.
-  UnregisterAnimatedImages();
 }
 
 mojom::LayerType PictureLayerImpl::GetLayerType() const {
@@ -480,6 +477,25 @@ bool PictureLayerImpl::UpdateTiles() {
   return updated;
 }
 
+bool PictureLayerImpl::HasAnimatedImages() const {
+  return discardable_image_map_ &&
+         discardable_image_map_->animated_images_metadata().size();
+}
+
+void PictureLayerImpl::AnnotateAnimatedImages(
+    base::flat_map<PaintImage::Id, bool>& image_map) const {
+  if (!discardable_image_map_) {
+    return;
+  }
+  for (const auto& data : discardable_image_map_->animated_images_metadata()) {
+    if (ShouldAnimate(data.first)) {
+      image_map.insert_or_assign(data.first, true);
+    } else {
+      image_map.try_emplace(data.first, false);
+    }
+  }
+}
+
 void PictureLayerImpl::UpdateViewportRectForTilePriorityInContentSpace() {
   // If visible_layer_rect() is empty or viewport_rect_for_tile_priority is
   // set to be different from the device viewport, try to inverse project the
@@ -607,11 +623,14 @@ void PictureLayerImpl::UpdateRasterSourceInternal(
     // During activation, check if we need to pull the discardable image map
     // from the pending tree.
     if (pending_discardable_image_map != discardable_image_map_) {
+      bool had_animated_images = HasAnimatedImages();
       CHECK(pending_paint_worklet_records);
       paint_worklet_records_ = *pending_paint_worklet_records;
-      UnregisterAnimatedImages();
       discardable_image_map_ = pending_discardable_image_map;
-      RegisterAnimatedImages();
+      if (had_animated_images != HasAnimatedImages()) {
+        layer_tree_impl()->NotifyLayerHasAnimatedImagesChanged(
+            this, HasAnimatedImages());
+      }
     }
   } else if (recording_updated) {
     layer_tree_impl()->AddLayerNeedingUpdateDiscardableImageMap(this);
@@ -663,20 +682,28 @@ void PictureLayerImpl::SetRasterSourceForTesting(
 
 void PictureLayerImpl::RegenerateDiscardableImageMap() {
   CHECK(layer_tree_impl()->IsSyncTree());
-  UnregisterAnimatedImages();
+  bool had_animated_images = HasAnimatedImages();
   if (const auto* display_list = raster_source_->GetDisplayItemList().get()) {
     DiscardableImageMap::DecodingModeMap decoding_mode_map;
     DiscardableImageMap::PaintWorkletInputs paint_worklet_inputs;
     discardable_image_map_ = display_list->GenerateDiscardableImageMap(
         GetRasterInducingScrollOffsets(), &decoding_mode_map,
         &paint_worklet_inputs);
+    auto* controller = layer_tree_impl()->image_animation_controller();
+    for (const auto& data :
+         discardable_image_map_->animated_images_metadata()) {
+      controller->UpdateAnimatedImage(data.second);
+    }
     SetPaintWorkletInputs(paint_worklet_inputs);
     layer_tree_impl()->UpdateImageDecodingHints(decoding_mode_map);
   } else {
     SetPaintWorkletInputs({});
     discardable_image_map_ = nullptr;
   }
-  RegisterAnimatedImages();
+  if (had_animated_images != HasAnimatedImages()) {
+    layer_tree_impl()->NotifyLayerHasAnimatedImagesChanged(this,
+                                                           HasAnimatedImages());
+  }
 }
 
 void PictureLayerImpl::UpdateCanUseLCDText(
@@ -985,59 +1012,6 @@ bool PictureLayerImpl::ShouldAnimate(PaintImage::Id paint_image_id) const {
 
 gfx::Size PictureLayerImpl::CalculateTileSize(const gfx::Size& content_bounds) {
   return tile_size_calculator_.CalculateTileSize(content_bounds);
-}
-
-void PictureLayerImpl::GetContentsResourceId(
-    viz::ResourceId* resource_id,
-    gfx::Size* resource_size,
-    gfx::SizeF* resource_uv_size) const {
-  *resource_id = viz::kInvalidResourceId;
-
-  // We need contents resource for backdrop filter masks only.
-  if (!is_backdrop_filter_mask()) {
-    return;
-  }
-
-  if (!ValidateTilingSetForContentsResourceId()) {
-    return;
-  }
-
-  const float max_contents_scale = GetMaximumContentsScaleForUseInAppendQuads();
-  gfx::Rect content_rect =
-      gfx::ScaleToEnclosingRect(gfx::Rect(bounds()), max_contents_scale);
-  auto iter =
-      Cover(content_rect, max_contents_scale, GetIdealContentsScaleKey());
-
-  // Mask resource not ready yet.
-  if (!iter || !*iter) {
-    return;
-  }
-
-  // Masks only supported if they fit on exactly one tile.
-  DCHECK(iter.geometry_rect() == content_rect)
-      << "iter rect " << iter.geometry_rect().ToString() << " content rect "
-      << content_rect.ToString();
-
-  auto resource_id_opt = iter->GetResourceId();
-  auto resource_size_opt = iter->GetResourceSize();
-  if (!resource_id_opt || !resource_size_opt) {
-    return;
-  }
-
-  *resource_id = *resource_id_opt;
-  *resource_size = *resource_size_opt;
-  // |resource_uv_size| represents the range of UV coordinates that map to the
-  // content being drawn. Typically, we draw to the entire texture, so these
-  // coordinates are (1.0f, 1.0f). However, if we are rasterizing to an
-  // over-large texture, this size will be smaller, mapping to the subset of the
-  // texture being used.
-  gfx::SizeF requested_tile_size =
-      gfx::SizeF(iter->tiling()->tiling_data()->tiling_rect().size());
-  DCHECK_LE(requested_tile_size.width(), resource_size->width());
-  DCHECK_LE(requested_tile_size.height(), resource_size->height());
-  *resource_uv_size =
-      gfx::SizeF(requested_tile_size.width() / resource_size->width(),
-                 requested_tile_size.height() / resource_size->height());
 }
 
 void PictureLayerImpl::UpdateDirectlyCompositedImageFromRasterSource() {
@@ -2007,31 +1981,6 @@ void PictureLayerImpl::SetPaintWorkletRecord(
     PaintRecord record) {
   DCHECK(paint_worklet_records_.contains(input));
   paint_worklet_records_[input].second = std::move(record);
-}
-
-void PictureLayerImpl::RegisterAnimatedImages() {
-  if (!discardable_image_map_) {
-    return;
-  }
-
-  auto* controller = layer_tree_impl()->image_animation_controller();
-  for (const auto& data : discardable_image_map_->animated_images_metadata()) {
-    // Only update the metadata from updated recordings received from a commit.
-    if (layer_tree_impl()->IsSyncTree())
-      controller->UpdateAnimatedImage(data.second);
-    controller->RegisterAnimationDriver(data.second.paint_image_id, this);
-  }
-}
-
-void PictureLayerImpl::UnregisterAnimatedImages() {
-  if (!discardable_image_map_) {
-    return;
-  }
-
-  auto* controller = layer_tree_impl()->image_animation_controller();
-  for (const auto& data : discardable_image_map_->animated_images_metadata()) {
-    controller->UnregisterAnimationDriver(data.second.paint_image_id, this);
-  }
 }
 
 void PictureLayerImpl::SetPaintWorkletInputs(

@@ -142,6 +142,7 @@ chrome_ios_eg2_test("ios_chrome_settings_eg2tests_module") {
   xcode_test_application_name = "ios_chrome_eg2tests"
 
   deps = [
+    "//ios/chrome/browser/settings/autofill/autofill_ai/test:eg2_tests",
     "//ios/chrome/browser/settings/clear_browsing_data/quick_delete_browsing_data/test:eg2_tests",
     "//ios/chrome/browser/settings/clear_browsing_data/quick_delete_other_data/test:eg2_tests",
     "//ios/chrome/browser/settings/clear_browsing_data/test:eg2_tests",
@@ -222,9 +223,8 @@ chrome_ios_eg2_test("ios_chrome_ui_eg2tests_module") {
     "//ios/chrome/browser/home_customization/test:eg2_tests",
     "//ios/chrome/browser/incognito_interstitial/ui_bundled:eg2_tests",
     "//ios/chrome/browser/infobars/ui_bundled:eg2_tests",
-    "//ios/chrome/browser/intelligence/actuation/test:eg2_tests",
+    "//ios/chrome/browser/intelligence/actor/tools/test:eg2_tests",
     "//ios/chrome/browser/intelligence/bwg/ui:eg2_tests",
-    "//ios/chrome/browser/intelligence/explain_with_gemini/coordinator:eg2_tests",
     "//ios/chrome/browser/keyboard/ui_bundled:eg2_tests",
     "//ios/chrome/browser/lens_overlay/ui:eg2_tests",
     "//ios/chrome/browser/link_to_text/ui_bundled:eg2_tests",

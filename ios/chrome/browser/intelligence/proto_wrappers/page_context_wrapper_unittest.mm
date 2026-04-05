@@ -67,6 +67,7 @@
 #import "ios/web/public/test/web_task_environment.h"
 #import "ios/web/public/test/web_view_interaction_test_util.h"
 #import "ios/web/public/web_state.h"
+#import "ios/web/public/web_state_id.h"
 #import "net/test/embedded_test_server/embedded_test_server.h"
 #import "net/test/embedded_test_server/request_handler_util.h"
 #import "testing/gmock/include/gmock/gmock.h"
@@ -355,6 +356,8 @@ TEST_P(PageContextWrapperTest, PopulatePageContext) {
   const auto& annotated_page_content = page_context->annotated_page_content();
   EXPECT_EQ(annotated_page_content.version(),
             optimization_guide::proto::ANNOTATED_PAGE_CONTENT_VERSION_1_0);
+  EXPECT_EQ(annotated_page_content.tab_id(),
+            web_state()->GetUniqueIdentifier().identifier());
 
   const auto& root_node = annotated_page_content.root_node();
   EXPECT_EQ(root_node.content_attributes().attribute_type(),
@@ -871,6 +874,8 @@ TEST_P(PageContextWrapperTest, PopulatePageContextWithCrossOriginFrame) {
   EXPECT_THAT(inner_text, testing::HasSubstr("Child frame cross-origin text"));
 
   const auto& annotated_page_content = page_context->annotated_page_content();
+  EXPECT_EQ(annotated_page_content.tab_id(),
+            web_state()->GetUniqueIdentifier().identifier());
   const auto& root_node = annotated_page_content.root_node();
   // There should be one text node and one iframe node.
   ASSERT_EQ(root_node.children_nodes_size(), 2);
@@ -1940,6 +1945,9 @@ TEST_P(PageContextWrapperTest, PopulatePageContext_RichExtraction) {
 
   EXPECT_EQ(actual_apc.version(),
             optimization_guide::proto::ANNOTATED_PAGE_CONTENT_VERSION_1_0);
+
+  EXPECT_EQ(actual_apc.tab_id(),
+            web_state()->GetUniqueIdentifier().identifier());
 
   // Main frame data
   const auto& main_frame = actual_apc.main_frame_data();
@@ -5206,6 +5214,64 @@ TEST_P(PageContextWrapperTest, PopulatePageContext_RichExtraction_AriaLabel) {
 
   const auto& button_node = root_node.children_nodes(3);
   EXPECT_EQ(button_node.content_attributes().label(), "Label 1 Label 2");
+}
+
+// Tests that label nodes are correctly associated with their `for` elements.
+TEST_P(PageContextWrapperTest, PopulatePageContext_ApcV2_LabelForDomNodeId) {
+  if (!IsRefactored()) {
+    return;
+  }
+  auto page_structure =
+      HtmlPage("Label Test", RawHtml("<label for='myInput'><span>My "
+                                     "<strong>Label</strong></span></"
+                                     "label><input id='myInput' type='text'>"));
+  std::string main_html = page_helper_->Build(page_structure);
+  web::test::LoadHtml(base::SysUTF8ToNSString(main_html),
+                      test_server_.GetURL(kMainPagePath), web_state());
+
+  PageContextWrapperConfig config =
+      PageContextWrapperConfigBuilder()
+          .SetUseRichExtraction(true)
+          .SetUseRichExtractionWithActionable(true)
+          .Build();
+
+  PageContextWrapperCallbackResponse response = RunPageContextWrapperWithConfig(
+      web_state(), config, ^(PageContextWrapper* wrapper) {
+        wrapper.shouldGetAnnotatedPageContent = YES;
+      });
+
+  ASSERT_TRUE(response.has_value());
+  std::unique_ptr<optimization_guide::proto::PageContext> page_context =
+      std::move(response.value());
+  ASSERT_TRUE(page_context);
+
+  const auto& root = page_context->annotated_page_content().root_node();
+  ASSERT_EQ(root.children_nodes_size(), 2);
+
+  const auto& label_node = root.children_nodes(0);
+  const auto& input_node = root.children_nodes(1);
+
+  ASSERT_EQ(label_node.content_attributes().attribute_type(),
+            optimization_guide::proto::CONTENT_ATTRIBUTE_CONTAINER);
+  ASSERT_EQ(input_node.content_attributes().attribute_type(),
+            optimization_guide::proto::CONTENT_ATTRIBUTE_FORM_CONTROL);
+
+  EXPECT_TRUE(
+      input_node.content_attributes().has_common_ancestor_dom_node_id());
+  EXPECT_EQ(label_node.content_attributes().label_for_dom_node_id(),
+            input_node.content_attributes().common_ancestor_dom_node_id());
+
+  // The label node should have retained its underlying text child.
+  ASSERT_EQ(label_node.children_nodes_size(), 2);
+  EXPECT_EQ(label_node.children_nodes(0)
+                    .content_attributes()
+                    .text_data()
+                    .text_content() +
+                label_node.children_nodes(1)
+                    .content_attributes()
+                    .text_data()
+                    .text_content(),
+            "My Label");
 }
 
 INSTANTIATE_TEST_SUITE_P(,

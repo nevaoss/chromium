@@ -151,7 +151,6 @@
 <translation id="1517166097004694782">Ocultar la opción "Continuar en esta pestaña"</translation>
 <translation id="1520027731907768768">Recibe alertas de reducción de precio para los productos que sigues.</translation>
 <translation id="1521366073263497277">Ve a la cuadrícula de pestañas.</translation>
-<translation id="1521774566618522728">Activo hoy</translation>
 <translation id="1523567067736644845">Desbloquea el dispositivo para mostrar la contraseña</translation>
 <translation id="1524563461097350801">No, gracias</translation>
 <translation id="1531038290222364269">Mostrar las pestañas</translation>
@@ -376,6 +375,7 @@
 <translation id="2299218006564889602">Las contraseñas se encriptan en tu dispositivo antes de guardarse en el Administrador de contraseñas de Google.</translation>
 <translation id="2306265833370324042">Mostrar detalles de <ph name="SEARCH_ENGINE_NAME" /></translation>
 <translation id="2309265394777270359">Cerrar pestaña</translation>
+<translation id="2310789833878085574">Guardar y autocompletar</translation>
 <translation id="2311077293164383652">Cerrar la pestaña fija</translation>
 <translation id="2316129865977710310">No, gracias</translation>
 <translation id="2320166752086256636">Ocultar el teclado</translation>
@@ -1148,7 +1148,6 @@
 <translation id="5119329531859909472">Para hacer un seguimiento del producto, presiona Realizar seguimiento</translation>
 <translation id="5121618895923301719">Ya estás realizando un seguimiento de este producto. Se guardó esta página en <ph name="BEGIN_LINK" />Favoritos del celular<ph name="END_LINK" />.</translation>
 <translation id="512533434554095351">Tienes varios problemas relacionados con las contraseñas.</translation>
-<translation id="5127538504377457572">Activo hace <ph name="DAYS" /> días</translation>
 <translation id="5128788795241319992">Explora el nuevo menú</translation>
 <translation id="5132942445612118989">Sincroniza tus contraseñas, historial y más en todos los dispositivos</translation>
 <translation id="5141363746588976328">Ocultar la tarjeta Reducciones de precio en las pestañas</translation>
@@ -1353,6 +1352,7 @@ Handoff también debe estar habilitado en la sección General de la configuraci�
 <translation id="5819208479324046259">Administrado por <ph name="MANAGER" />. <ph name="BEGIN_LINK" />Más información<ph name="END_LINK" /></translation>
 <translation id="5827266244928330802">Safari</translation>
 <translation id="5829649908290113115">Sincronizando…</translation>
+<translation id="5831217499016131155">Google Wallet</translation>
 <translation id="583281660410589416">Desconocido</translation>
 <translation id="5838430324585198889">Desbloquea más funciones para tu iPad con las apps de Google</translation>
 <translation id="583923961930319521">Usa contraseñas en todos tus dispositivos</translation>
@@ -1650,6 +1650,7 @@ Handoff también debe estar habilitado en la sección General de la configuraci�
 <translation id="6806550742467879742">Herramientas de la página</translation>
 <translation id="6807287147325542056">Contraseñas en otras apps</translation>
 <translation id="681368974849482173">Elemento creado</translation>
+<translation id="6820686453637990663">CVC</translation>
 <translation id="6825078212112407882">{count,plural, =1{Se guardó el favorito en tu Cuenta de Google ({email})}other{Se guardaron {count} favoritos en tu Cuenta de Google ({email})}}</translation>
 <translation id="6826004672264649705">Estás realizando un seguimiento de este producto. Abre para ver el historial de precios</translation>
 <translation id="6830728435402077660">No seguro</translation>
@@ -1963,7 +1964,6 @@ Handoff también debe estar habilitado en la sección General de la configuraci�
 <translation id="7952670906562503188">Estás a punto de borrar {passkey_count} llaves de acceso y la lista de sitios y apps para las que elegiste no guardar información de acceso. No se borrarán las cuentas que hayas creado para sitios y apps.</translation>
 <translation id="7958575506592576831">Información de seguridad de la página</translation>
 <translation id="7961015016161918242">Nunca</translation>
-<translation id="7971136598759319605">Activo hace 1 día</translation>
 <translation id="7972837668077967426">Canvas</translation>
 <translation id="7975036700432177008">Probar</translation>
 <translation id="797588153137233716">Menú → Historial → Borrar datos de navegación</translation>

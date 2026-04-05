@@ -612,12 +612,9 @@ crbug.com/378046059 virtual/gpu-rasterization/external/wpt/css/css-images/object
 crbug.com/1042783 external/wpt/css/css-backgrounds/background-size/background-size-near-zero-png.html [ Failure ]
 crbug.com/1042783 external/wpt/css/css-backgrounds/background-size/background-size-near-zero-svg.html [ Failure ]
 # border-area tests
-crbug.com/329302543 external/wpt/css/css-backgrounds/background-clip/clip-border-area-background-geometry.html [ Failure ]
-crbug.com/329302543 external/wpt/css/css-backgrounds/background-clip/clip-border-area-border-image.html [ Failure ]
-crbug.com/329302543 external/wpt/css/css-backgrounds/background-clip/clip-border-area-border-on-top.html [ Failure ]
-crbug.com/329302543 external/wpt/css/css-backgrounds/background-clip/clip-border-area-box-decoration-break.html [ Failure ]
-crbug.com/329302543 external/wpt/css/css-backgrounds/background-clip/clip-border-area-multiple-backgrounds.html [ Failure Timeout ]
-crbug.com/329302543 external/wpt/css/css-backgrounds/background-clip/clip-border-area.html [ Failure ]
+crbug.com/329302543 external/wpt/css/css-backgrounds/background-clip/clip-border-area-multiple-backgrounds.html [ Failure ]
+# border-area clipping does not yet account for border-shape geometry
+crbug.com/329302543 external/wpt/css/css-backgrounds/background-clip/clip-border-area-border-shape.html [ Failure ]
 
 crbug.com/429459566 [ Mac ] external/wpt/css/css-image-animation/image-animation-img-running.tentative.html [ Failure Pass ]
 crbug.com/429459566 [ Mac ] external/wpt/css/css-image-animation/image-animation-img-running-to-normal.tentative.html [ Failure Pass ]
@@ -1069,7 +1066,6 @@ crbug.com/1375884 external/wpt/css/css-fonts/rlh-in-monospace.html [ Failure ]
 # Flaky layout tests
 crbug.com/1356336 fast/block/float/shrink-to-avoid-float-complexity.html [ Failure Pass ]
 
-crbug.com/448472314 external/wpt/css/css-anchor-position/anchor-scroll-chained-003.html [ Failure ]
 crbug.com/457967584 external/wpt/css/css-anchor-position/anchored-transition-display-none-001.html [ Pass Timeout ]
 crbug.com/457527725 external/wpt/css/css-anchor-position/position-area-inset-one-side-auto.tentative.html [ Failure ]
 crbug.com/431611648 external/wpt/css/css-anchor-position/position-area-percents-001.html [ Failure ]
@@ -1255,7 +1251,6 @@ crbug.com/369883705 external/wpt/css/css-shadow/has-slotted-functional-flattened
 crbug.com/359703395 external/wpt/css/css-shadow/host-has-001.tentative.html [ Failure ]
 crbug.com/359703395 external/wpt/css/css-shadow/host-has-002.tentative.html [ Failure ]
 crbug.com/359703395 external/wpt/css/css-shadow/host-has-003.tentative.html [ Failure ]
-crbug.com/626703 external/wpt/css/css-shadow/part/animation-part.html [ Failure ]
 crbug.com/448972968 external/wpt/css/css-shadow/part/exportparts-layered.html [ Failure ]
 crbug.com/393395931 external/wpt/css/css-shadow/slotted-has-001.html [ Failure ]
 crbug.com/393395931 external/wpt/css/css-shadow/slotted-has-002.html [ Failure ]
@@ -2441,6 +2436,8 @@ crbug.com/40268415 [ Debug Win11-arm64 ] external/wpt/webaudio/the-audio-api/the
 # Test Expectations for Chrome Android/WebView
 # Incompatible with both Chrome Android and Webview
 # SharedWorker interface
+# Although SharedWorker is enabled on all platforms, these tests still fail
+# on Android/Webview due to other platform limitations (e.g., Notification).
 crbug.com/40290702 [ Android ] external/wpt/background-fetch/idlharness.https.any.sharedworker.html [ Failure ]
 crbug.com/40290702 [ Android ] external/wpt/content-index/idlharness.https.any.sharedworker.html [ Failure ]
 crbug.com/40290702 [ Android ] external/wpt/cookiestore/idlharness.https.any.sharedworker.html [ Failure ]
@@ -2929,9 +2926,6 @@ crbug.com/491070386 virtual/rust-xml/external/wpt/svg/painting/inner-outer-svg-o
 crbug.com/490449804 external/wpt/html/semantics/forms/the-select-element/customizable-select/select-optgroup-legend-label.html [ Failure ]
 crbug.com/490449804 external/wpt/html/semantics/forms/the-select-element/customizable-select/select-picker-pseudo-selection.html [ Failure ]
 crbug.com/490449804 external/wpt/html/semantics/forms/the-select-element/customizable-select/select-picker-pseudo-target-text.html [ Failure ]
-crbug.com/490449804 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/select-optgroup-legend-label.html [ Failure ]
-crbug.com/490449804 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/select-picker-pseudo-selection.html [ Failure ]
-crbug.com/490449804 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/select-picker-pseudo-target-text.html [ Failure ]
 crbug.com/490449804 virtual/option-mutation-observer-improvement-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/select-optgroup-legend-label.html [ Failure ]
 crbug.com/490449804 virtual/option-mutation-observer-improvement-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/select-picker-pseudo-selection.html [ Failure ]
 crbug.com/490449804 virtual/option-mutation-observer-improvement-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/select-picker-pseudo-target-text.html [ Failure ]
@@ -3012,8 +3006,6 @@ crbug.com/489875800 external/wpt/css/css-text/hanging-punctuation/hanging-punctu
 crbug.com/489875800 external/wpt/css/css-text/hanging-punctuation/hanging-punctuation-last-whitespace.html [ Failure ]
 crbug.com/489875800 external/wpt/css/css-text/hanging-punctuation/hanging-punctuation-last.html [ Failure ]
 crbug.com/489875800 external/wpt/css/css-text/hanging-punctuation/hanging-punctuation-variable-font-size.html [ Failure ]
-crbug.com/489882869 [ Mac ] external/wpt/html/semantics/forms/the-select-element/customizable-select/checkmark-animation-002.html [ Failure ]
-crbug.com/489882869 [ Mac ] external/wpt/html/semantics/forms/the-select-element/customizable-select/picker-icon-animation-002.html [ Failure ]
 crbug.com/489882869 external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-optgroup-no-shadow-tree-after-select.html [ Failure ]
 crbug.com/489882869 external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-optgroup-no-shadow-tree.html [ Failure ]
 crbug.com/489882869 external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-option-no-shadow-tree-after-select.html [ Failure ]
@@ -3021,10 +3013,6 @@ crbug.com/489882869 external/wpt/html/semantics/forms/the-select-element/customi
 crbug.com/489879856 [ Win ] external/wpt/orientation-sensor/RelativeOrientationSensor.https.html [ Failure Timeout ]
 crbug.com/489883801 external/wpt/webdriver/tests/classic/get_current_url/get.py [ Failure ]
 crbug.com/489883800 external/wpt/webrtc-encoded-transform/RTCEncodedFrame-copy-construction.https.html [ Skip Timeout ]
-crbug.com/489882869 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-optgroup-no-shadow-tree-after-select.html [ Failure ]
-crbug.com/489882869 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-optgroup-no-shadow-tree.html [ Failure ]
-crbug.com/489882869 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-option-no-shadow-tree-after-select.html [ Failure ]
-crbug.com/489882869 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-option-no-shadow-tree.html [ Failure ]
 crbug.com/489882869 virtual/option-mutation-observer-improvement-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-optgroup-no-shadow-tree-after-select.html [ Failure ]
 crbug.com/489882869 virtual/option-mutation-observer-improvement-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-optgroup-no-shadow-tree.html [ Failure ]
 crbug.com/489882869 virtual/option-mutation-observer-improvement-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select/standalone-option-no-shadow-tree-after-select.html [ Failure ]
@@ -3784,9 +3772,7 @@ crbug.com/388063576 [ Mac14 ] external/wpt/webrtc-encoded-transform/idlharness.h
 crbug.com/388073800 [ Mac13 ] external/wpt/webrtc/RTCPeerConnection-setLocalDescription-parameterless.https.html?interop-2026 [ Timeout ]
 crbug.com/388073800 [ Mac13 ] external/wpt/webrtc/RTCPeerConnection-setLocalDescription-parameterless.https.html?rest [ Timeout ]
 crbug.com/387777047 external/wpt/css/css-align/blocks/align-content-block-012.html [ Failure ]
-crbug.com/387626415 external/wpt/css/css-backgrounds/background-clip/clip-border-area-on-body-not-propagated-to-root.html [ Failure ]
 crbug.com/387378128 external/wpt/css/css-text/line-breaking/segment-break-transformation-punctuation-001.html [ Failure ]
-crbug.com/387626415 virtual/threaded/external/wpt/css/css-backgrounds/background-clip/clip-border-area-on-body-not-propagated-to-root.html [ Failure ]
 crbug.com/385918146 [ Win11 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedVideoFrame-clone.https.html [ Timeout ]
 crbug.com/386128935 [ Mac12 ] external/wpt/css/css-position/position-fixed-scroll-nested-fixed.html [ Failure ]
 crbug.com/386128935 [ Mac13 ] external/wpt/css/css-position/position-fixed-scroll-nested-fixed.html [ Failure ]
@@ -4168,8 +4154,7 @@ crbug.com/347071494 [ Linux ] external/wpt/css/css-text/hyphens/hyphens-vs-float
 crbug.com/347071494 [ Win ] external/wpt/css/css-text/hyphens/hyphens-vs-float-clearance-001.html [ Failure ]
 crbug.com/347071494 [ Linux ] external/wpt/css/css-text/hyphens/hyphens-vs-float-clearance-002.html [ Failure ]
 crbug.com/347071494 [ Win ] external/wpt/css/css-text/hyphens/hyphens-vs-float-clearance-002.html [ Failure ]
-crbug.com/347071495 external/wpt/svg/animations/conditional-processing-01.html [ Failure ]
-crbug.com/347071495 external/wpt/svg/animations/switch-animation-02.html [ Failure ]
+crbug.com/347071495 external/wpt/svg/animations/conditional-processing-02.html [ Failure ]
 crbug.com/347804255 [ Mac14 ] virtual/force-renderer-accessibility/external/wpt/accessibility/crashtests/slot-assignment-lockup.html [ Crash ]
 crbug.com/347804255 [ Win11-arm64 ] virtual/force-renderer-accessibility/external/wpt/accessibility/crashtests/slot-assignment-lockup.html [ Crash ]
 crbug.com/347055177 external/wpt/geolocation/non-fully-active.https.html [ Timeout ]
@@ -6726,18 +6711,6 @@ crbug.com/40253999 virtual/indexeddb_sqlite/external/wpt/storage/partitioned-est
 # Flaky on headless_shell_wpt_tests
 crbug.com/40146374 external/wpt/html/semantics/forms/the-select-element/customizable-select/select-option-images.html [ Failure Pass ]
 
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select-listbox/customizable-select-listbox-appearance.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select-listbox/customizable-select-listbox-keyboard-behavior.optional.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select-listbox/customizable-select-listbox-mouse-behavior.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select-listbox/select-listbox-typeahead.optional.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select-multiple-popup/select-multiple-popup-appearance.tentative.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select-listbox/customizable-select-listbox-sizing.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select-listbox/select-listbox-home-end-pagedown-pageup.optional.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/customizable-select-listbox/customizable-select-listbox-appearance-focused.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/filterable-select/filterable-select-keyboard-behavior.tentative.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/filterable-select/filterable-select-filtered-pseudo.tentative.html [ Failure ]
-crbug.com/357649033 virtual/customizable-select-listbox-disabled/external/wpt/html/semantics/forms/the-select-element/filterable-select/filterable-select-appearance.html [ Failure ]
-
 # These tests are included in the virtual test suite just to make sure that
 # they don't crash when the flag is disabled.
 crbug.com/458113204 external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-restore.html [ Failure ]
@@ -7436,6 +7409,10 @@ crbug.com/1466721 external/wpt/fedcm/fedcm-userinfo.https.html [ Pass Timeout ]
 crbug.com/1404951 [ Win ] external/wpt/fedcm/fedcm-nonce-is-optional.https.html [ Pass Timeout ]
 
 crbug.com/1480054 [ Win ] external/wpt/fedcm/fedcm-loginhint.https.html [ Pass Timeout ]
+
+# Temporarily disabled to change to the new behavior in V8.
+crbug.com/336347912 external/wpt/wasm/jsapi/exception/constructor.tentative.any.html [ Failure Pass ]
+crbug.com/336347912 external/wpt/wasm/jsapi/exception/constructor.tentative.any.worker.html [ Failure Pass ]
 
 # WebAssembly ESM integration is not yet implemented.
 crbug.com/40575658 external/wpt/wasm/webapi/esm-integration/exported-names.tentative.html [ Timeout ]
@@ -9744,9 +9721,6 @@ crbug.com/466303347 [ Linux ] http/tests/misc/object-embedding-svg-delayed-size-
 crbug.com/486315292 external/wpt/geolocation/enabled-on-self-origin-by-permissions-policy.https.sub.html [ Failure Pass Timeout ]
 crbug.com/486315292 external/wpt/geolocation/enabled-by-permissions-policy.https.sub.html [ Failure Pass Timeout ]
 
-# Temporary to unblock crrev.com/c/7639450 landing.
-crbug.com/490314415 http/tests/devtools/elements/elements-img-tooltip.js [ Failure Pass ]
-
 
 # Gardener 2026-03-03: Flaky on multiple Mac bots
 crbug.com/489297473 [ Mac ] virtual/webnn-service-on-cpu/external/wpt/webnn/conformance_tests/gemm.https.any.html?cpu [ Failure Pass ]
@@ -9793,10 +9767,12 @@ crbug.com/494567940 [ Linux ] external/wpt/webdriver/tests/bidi/browsing_context
 crbug.com/495568057 [ Linux ] wpt_internal/svg/use-count-svg-filter-nested-iframe.sub.https.html [ Failure Pass ]
 
 # Gardener 2026-03-24
-crbug.com/495770240 [ Linux ] external/wpt/css/css-ruby/ruby-text-combine-upright-001a.html [ Failure Pass ]
-crbug.com/495770240 [ Linux ] external/wpt/css/css-ruby/ruby-text-combine-upright-001b.html [ Failure Pass ]
 crbug.com/495770240 [ Linux ] external/wpt/css/css-ruby/ruby-text-combine-upright-002b.html [ Failure Pass ]
 crbug.com/495770240 [ Linux ] external/wpt/css/css-writing-modes/text-combine-upright-decorations-001.html [ Failure Pass ]
 
 # Gardener 2026-03-25
 crbug.com/496047707 external/wpt/html/semantics/embedded-content/the-img-element/sizes/sizes-auto-dynamic-attributes.html [ Failure Pass ]
+
+# Gardener 2026-03-31
+crbug.com/431038526 external/wpt/css/css-ruby/ruby-text-combine-upright-001a.html [ Failure Pass ]
+crbug.com/431038526 external/wpt/css/css-ruby/ruby-text-combine-upright-001b.html [ Failure Pass ]

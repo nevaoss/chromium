@@ -28,16 +28,16 @@
 #include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
 #include "chrome/browser/favicon/favicon_service_factory.h"
 #include "chrome/browser/history/history_tab_helper.h"
-#include "chrome/browser/password_manager/account_password_store_factory.h"
 #include "chrome/browser/password_manager/android/first_cct_page_load_marker.h"
 #include "chrome/browser/password_manager/chrome_password_change_service.h"
 #include "chrome/browser/password_manager/chrome_webauthn_credentials_delegate.h"
 #include "chrome/browser/password_manager/chrome_webauthn_credentials_delegate_factory.h"
+#include "chrome/browser/password_manager/factories/account_password_store_factory.h"
 #include "chrome/browser/password_manager/factories/field_info_manager_factory.h"
+#include "chrome/browser/password_manager/factories/password_manager_settings_service_factory.h"
 #include "chrome/browser/password_manager/factories/password_reuse_manager_factory.h"
+#include "chrome/browser/password_manager/factories/profile_password_store_factory.h"
 #include "chrome/browser/password_manager/password_change_service_factory.h"
-#include "chrome/browser/password_manager/password_manager_settings_service_factory.h"
-#include "chrome/browser/password_manager/profile_password_store_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -1349,7 +1349,8 @@ void ChromePasswordManagerClient::NavigateToManagePasswordsPage(
   if (!browser) {
     browser = chrome::FindLastActive();
   }
-  ::NavigateToManagePasswordsPage(browser, referrer);
+  ::NavigateToManagePasswordsPage(browser->GetBrowserForMigrationOnly(),
+                                  referrer);
 #endif
 }
 
@@ -1583,15 +1584,16 @@ void ChromePasswordManagerClient::PresaveGeneratedPassword(
     return;
   }
 
+  PasswordManagerDriver* driver =
+      password_manager::ContentPasswordManagerDriver::GetForRenderFrameHost(
+          rfh);
+
 #if !BUILDFLAG(IS_ANDROID)
-  if (popup_controller_) {
+  if (popup_controller_ && popup_controller_->driver().get() == driver) {
     popup_controller_->UpdateGeneratedPassword(password_value);
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-  PasswordManagerDriver* driver =
-      password_manager::ContentPasswordManagerDriver::GetForRenderFrameHost(
-          rfh);
   // This method is called over Mojo via a RenderFrameHostReceiverSet; the
   // current target frame must be live.
   CHECK(driver);

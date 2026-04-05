@@ -66,6 +66,7 @@ import com.google.android.material.color.DynamicColorsOptions;
 
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.IntentUtils;
 import org.chromium.base.Log;
 import org.chromium.base.ResettersForTesting;
@@ -270,6 +271,11 @@ public class NtpCustomizationUtils {
     public static boolean isNtpThemeCustomizationEnabled() {
         return ChromeFeatureList.sNewTabPageCustomizationV2.isEnabled()
                 && NtpCustomizationPolicyManager.getInstance().isNtpCustomBackgroundEnabled();
+    }
+
+    /** Returns whether the NTP simplification is enabled on desktop. */
+    public static boolean isNtpSimplificationEnabledOnDesktop() {
+        return ChromeFeatureList.sNtpSimplification.isEnabled() && DeviceInfo.isDesktop();
     }
 
     /**
@@ -1433,11 +1439,8 @@ public class NtpCustomizationUtils {
      *
      * @param resources The resources to get dimens.
      * @param showSearchBoxTall Whether to show a tall search box.
-     * @param hasShadowApplied Whether a shadow is shown on the search box. Drawing shadow requires
-     *     extra paddings on top and bottom of the search box.
      */
-    public static int getSearchBoxHeightWithShadows(
-            Resources resources, boolean showSearchBoxTall) {
+    public static int getSearchBoxHeight(Resources resources, boolean showSearchBoxTall) {
         int searchBoxHeight =
                 showSearchBoxTall
                         ? resources.getDimensionPixelSize(R.dimen.ntp_search_box_height_tall)

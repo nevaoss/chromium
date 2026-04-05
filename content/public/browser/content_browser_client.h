@@ -945,20 +945,6 @@ class CONTENT_EXPORT ContentBrowserClient {
       const GURL& scope,
       BrowserContext* browser_context);
 
-  // Allows the embedder to enable process-wide blink features before starting a
-  // service worker. This is similar to
-  // `blink.mojom.CommitNavigationParams.force_enabled_origin_trials` but for
-  // RuntimeFeatures instead of Origin Trials.
-  //
-  // This method is only called when the process that will run the Service
-  // Worker is isolated. These features can be highly privileged, so the
-  // renderer process with such features enabled shouldn't be used for other
-  // sites.
-  virtual void UpdateEnabledBlinkRuntimeFeaturesInIsolatedWorker(
-      BrowserContext* context,
-      const GURL& script_url,
-      std::vector<std::string>& out_forced_enabled_runtime_features);
-
   // Allow the embedder to control if a Shared Worker can be connected from a
   // given tab.
   // This is called on the UI thread.
@@ -1282,35 +1268,6 @@ class CONTENT_EXPORT ContentBrowserClient {
   virtual bool IsServiceWorkerSyntheticResponseAllowed(
       content::BrowserContext* browser_context,
       const GURL& url);
-
-  // Temporarily allow `accessing_site` to access cookies when embedded on
-  // `top_frame_site` when third-party cookies are otherwise blocked. After
-  // `ttl` has passed, the access will be revoked. If `ignore_schemes` is true,
-  // then cookie access will be allowed for the sites for all schemes.
-  //
-  // Note that this is not a query to check whether cookie access is permitted.
-  // It is a request that such access *be* permitted; i.e., until `ttl` expires,
-  // `IsFullCookieAccessAllowed()` should return true when called with an URL
-  // belonging to `accessing_site` and a storage key belonging to
-  // `top_frame_site`.
-  //
-  // This method will only be called by cookie access heuristics, described at
-  // https://github.com/amaliev/3pcd-exemption-heuristics/blob/main/explainer.md
-  // "DueToHeuristic" is in the name so that embedders can optionally treat
-  // these grants differently from grants due to other causes, if other types
-  // are added in the future.
-  //
-  // This should only be called on the UI thread.
-  //
-  // TODO: crbug.com/40883201 - this is temporarily only called by code in
-  // //chrome. Once the cookie access heuristics move to //content, it will be
-  // called by code in //content.
-  virtual void GrantCookieAccessDueToHeuristic(
-      content::BrowserContext* browser_context,
-      const net::SchemefulSite& top_frame_site,
-      const net::SchemefulSite& accessing_site,
-      base::TimeDelta ttl,
-      bool ignore_schemes);
 
   // Returns whether third-party cookies are allowed by default.
   //

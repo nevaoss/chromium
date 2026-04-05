@@ -11,11 +11,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.content.ComponentCallbacks;
 import android.content.Context;
+import android.content.res.Configuration;
+import android.view.View;
 import android.widget.FrameLayout;
 
 import androidx.test.core.app.ApplicationProvider;
@@ -35,6 +40,7 @@ import org.robolectric.annotation.Config;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.StateChangeReason;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -50,18 +56,22 @@ public class TabBottomSheetCoordinatorTest {
     @Mock private CoBrowseViews mCoBrowseViews;
     @Captor private ArgumentCaptor<TabBottomSheetContent> mBottomSheetContentArgumentCaptor;
     @Captor private ArgumentCaptor<BottomSheetObserver> mBottomSheetObserverArgumentCaptor;
+    @Captor private ArgumentCaptor<ComponentCallbacks> mComponentCallbacksArgumentCaptor;
 
     private Context mContext;
+    private View mView;
     private TabBottomSheetCoordinator mCoordinator;
     private PropertyModel mCoordinatorModel;
 
     @Before
     public void setUp() {
-        mContext = ApplicationProvider.getApplicationContext();
+        mContext = spy(ApplicationProvider.getApplicationContext());
+        mView = new FrameLayout(mContext);
+        when(mCoBrowseViews.getView()).thenReturn(mView);
 
-        when(mCoBrowseViews.getView()).thenReturn(new FrameLayout(mContext));
-
-        mCoordinator = new TabBottomSheetCoordinator(mMockBottomSheetController, mCoBrowseViews);
+        mCoordinator =
+                new TabBottomSheetCoordinator(
+                        mContext, mMockBottomSheetController, mCoBrowseViews, null);
         mCoordinatorModel = mCoordinator.getModelForTesting();
     }
 
@@ -87,6 +97,14 @@ public class TabBottomSheetCoordinatorTest {
         assertNotNull(
                 "Coordinator's observer should be set after successful show.", coordinatorObserver);
         verify(mMockBottomSheetController).addObserver(eq(coordinatorObserver));
+        doAnswer(
+                        invocation -> {
+                            coordinatorObserver.onSheetStateChanged(
+                                    SheetState.HIDDEN, StateChangeReason.NONE);
+                            return null;
+                        })
+                .when(mMockBottomSheetController)
+                .hideContent(any(), anyBoolean(), anyInt());
         return coordinatorObserver;
     }
 
@@ -141,5 +159,65 @@ public class TabBottomSheetCoordinatorTest {
         TabBottomSheetContent content = mBottomSheetContentArgumentCaptor.getValue();
         assertNotNull(content);
         assertTrue(content.hasCustomLifecycle());
+    }
+
+    @Test
+    public void testComponentCallbacksRegistration() {
+        simulateShowSuccessAndGetObserver();
+        verify(mContext).registerComponentCallbacks(any(ComponentCallbacks.class));
+
+        mCoordinator.destroy();
+        verify(mContext).unregisterComponentCallbacks(any(ComponentCallbacks.class));
+    }
+
+    @Test
+    public void testDoNotExpandWhenInsufficientSpace() {
+        when(mMockBottomSheetController.getContainerHeight()).thenReturn(100);
+        simulateShowSuccessAndGetObserver();
+
+        verify(mMockBottomSheetController, never()).expandSheet();
+    }
+
+    @Test
+    public void testOnConfigurationChanged() {
+        BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
+
+        verify(mContext).registerComponentCallbacks(mComponentCallbacksArgumentCaptor.capture());
+        ComponentCallbacks callbacks = mComponentCallbacksArgumentCaptor.getValue();
+
+        // Simulate configuration change
+        callbacks.onConfigurationChanged(new Configuration());
+
+        assertTrue(mCoordinator.isExpectingLayoutChangeForTesting());
+
+        // Trigger the layout changed
+        observer.onContainerSizeChanged(500, 500);
+
+        verify(mMockBottomSheetController).collapseSheet(true);
+        assertFalse(mCoordinator.isExpectingLayoutChangeForTesting());
+    }
+
+    @Test
+    public void testOnConfigurationChanged_whileNotManaged() {
+        BottomSheetObserver observer = simulateShowSuccessAndGetObserver();
+
+        verify(mContext).registerComponentCallbacks(mComponentCallbacksArgumentCaptor.capture());
+        ComponentCallbacks callbacks = mComponentCallbacksArgumentCaptor.getValue();
+
+        // Destroy the coordinator so it's no longer managed
+        mCoordinator.destroy();
+
+        // Configuration change should not run its internal logic
+        callbacks.onConfigurationChanged(new Configuration());
+
+        assertFalse(mCoordinator.isExpectingLayoutChangeForTesting());
+
+        // Try invoking layout change, nothing should happen
+        observer.onContainerSizeChanged(500, 500);
+
+        // Collapse sheet should NOT be called after destruction (aside from the one in destroy())
+        // In destroy(), hideContent is called, but collapseSheet is what the runnable does.
+        verify(mMockBottomSheetController, never()).collapseSheet(anyBoolean());
+        assertFalse(mCoordinator.isExpectingLayoutChangeForTesting());
     }
 }

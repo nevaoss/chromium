@@ -58,6 +58,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/browser_window/public/embedder_browser_window_features.h"
+#include "chrome/browser/ui/browser_window_theme_observer.h"
 #include "chrome/browser/ui/call_to_action/call_to_action_lock.h"
 #include "chrome/browser/ui/context_highlight/context_highlight_window_feature.h"
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
@@ -110,6 +111,7 @@
 #include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/immersive_mode_controller.h"
 #include "chrome/browser/ui/views/frame/immersive_mode_controller_stub.h"
+#include "chrome/browser/ui/views/frame/multi_contents_view.h"
 #include "chrome/browser/ui/views/frame/scrim_view_controller.h"
 #include "chrome/browser/ui/views/fullscreen_control/fullscreen_control_host.h"
 #include "chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.h"
@@ -131,11 +133,11 @@
 #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/reading_list/reading_list_side_panel_coordinator.h"
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
+#include "chrome/browser/ui/views/tabs/groups/recent_activity_bubble_dialog_view.h"
 #include "chrome/browser/ui/views/tabs/projects/projects_panel_utils.h"
-#include "chrome/browser/ui/views/tabs/recent_activity_bubble_dialog_view.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_action_container.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
-#include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions_controller.h"
+#include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/translate/translate_bubble_controller.h"
 #include "chrome/browser/ui/views/upgrade_notification_controller.h"
@@ -414,8 +416,8 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       GetUserDataFactory().CreateInstance<SidePanelRegistry>(*browser, browser);
 
   reading_list_side_panel_coordinator_ =
-      std::make_unique<ReadingListSidePanelCoordinator>(
-          profile, browser->GetTabStripModel());
+      GetUserDataFactory().CreateInstance<ReadingListSidePanelCoordinator>(
+          *browser, browser, profile, browser->GetTabStripModel());
 
   bookmarks_side_panel_coordinator_ =
       std::make_unique<BookmarksSidePanelCoordinator>();
@@ -480,6 +482,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 
   context_highlight_window_feature_ =
       std::make_unique<ContextHighlightWindowFeature>(*browser);
+
+  browser_window_theme_observer_ =
+      GetUserDataFactory().CreateInstance<BrowserWindowThemeObserver>(*browser,
+                                                                      browser);
 
   call_to_action_lock_ =
       GetUserDataFactory().CreateInstance<CallToActionLock>(*browser, browser);
@@ -562,15 +568,10 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
         send_tab_to_self::SendTabToSelfToolbarBubbleController>(browser);
 
     if (browser_view) {
-      // The controller should only be created if the
-      // PinnedToolbarActions exists for the browser, this might not be
-      // the case for browsers with a custom tab toolbar.
-      if (auto* pinned_toolbar_actions = browser_view->toolbar_button_provider()
-                                             ->GetPinnedToolbarActions()) {
-        pinned_toolbar_actions_controller_ =
-            std::make_unique<PinnedToolbarActionsController>(
-                pinned_toolbar_actions);
-      }
+      // Get the PinnedToolbarActions for the browser; it might not exist for
+      // browsers with a custom tab toolbar.
+      pinned_toolbar_actions_ =
+          browser_view->toolbar_button_provider()->GetPinnedToolbarActions();
     }
 
     // TODO(crbug.com/350508658): Ideally, we don't pass in a reference to
@@ -632,7 +633,7 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
     if (browser_view) {
       split_tab_highlight_controller_ =
           std::make_unique<split_tabs::SplitTabHighlightController>(
-              browser_view);
+              browser_view->browser(), browser_view->multi_contents_view());
     }
 
     if (base::FeatureList::IsEnabled(
@@ -769,8 +770,8 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
                                                                 browser_view);
 
   if (HistorySidePanelCoordinator::IsSupported()) {
-    history_side_panel_coordinator_ =
-        std::make_unique<HistorySidePanelCoordinator>(browser_view->browser());
+    GetUserDataFactory().CreateInstance<HistorySidePanelCoordinator>(
+        *browser_view->browser(), browser_view->browser());
   }
 
   history_clusters_side_panel_coordinator_ =
@@ -779,7 +780,8 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
 
   if (CommentsSidePanelCoordinator::IsSupported()) {
     comments_side_panel_coordinator_ =
-        std::make_unique<CommentsSidePanelCoordinator>(browser_view->browser());
+        GetUserDataFactory().CreateInstance<CommentsSidePanelCoordinator>(
+            *browser_view->browser(), browser_view->browser());
   }
 
   if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks)) {
@@ -801,7 +803,9 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
                 contextual_tasks_entry_point_eligibility_manager_.get());
 
     if (contextual_tasks::kShowEntryPoint.Get() ==
-        contextual_tasks::EntryPointOption::kToolbarRevisit) {
+            contextual_tasks::EntryPointOption::kToolbarRevisit ||
+        contextual_tasks::kShowEntryPoint.Get() ==
+            contextual_tasks::EntryPointOption::kToolbarEphemeralBranded) {
       contextual_tasks_ephemeral_button_controller_ =
           GetUserDataFactory()
               .CreateInstance<ContextualTasksEphemeralButtonController>(
@@ -1035,9 +1039,7 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   // Destroy fullscreen control host before exclusive access manager.
   fullscreen_control_host_.reset();
 
-  if (pinned_toolbar_actions_controller_) {
-    pinned_toolbar_actions_controller_->TearDown();
-  }
+  pinned_toolbar_actions_ = nullptr;
 
   // TODO(crbug.com/423956131): Update reset order once FindBarController is
   // deterministically constructed.

@@ -34,6 +34,9 @@ BASE_FEATURE(kCreateNewTabGroupAppMenuTopLevel,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTabStripDeclutter, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kImportExportFlags, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kGlassToolbar, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kToolbarGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDetachedTabs, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -390,6 +393,8 @@ bool IsNewTabAddsToActiveGroupEnabled() {
   return base::FeatureList::IsEnabled(kNewTabAddsToActiveGroup);
 }
 
+BASE_FEATURE(kWebUIAvatarButton, base::FEATURE_DISABLED_BY_DEFAULT);
+
 bool IsWebUIReloadButtonEnabled() {
   return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          base::FeatureList::IsEnabled(features::kWebUIReloadButton);
@@ -415,16 +420,27 @@ bool IsWebUISplitTabsButtonEnabled() {
          base::FeatureList::IsEnabled(features::kWebUISplitTabsButton);
 }
 
+bool IsWebUIAvatarButtonEnabled() {
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+         base::FeatureList::IsEnabled(features::kWebUIAvatarButton);
+}
+
 bool IsWebUILocationBarEnabled() {
   return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
          base::FeatureList::IsEnabled(features::kWebUILocationBar);
+}
+
+bool IsWebUIContentSettingsIconsEnabled() {
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+         base::FeatureList::IsEnabled(features::kWebUIContentSettingsIcons);
 }
 
 bool IsWebUIToolbarEnabled() {
   return IsWebUIReloadButtonEnabled() || IsWebUISplitTabsButtonEnabled() ||
          IsWebUIHomeButtonEnabled() || IsWebUILocationBarEnabled() ||
          IsWebUIBackForwardButtonEnabled() ||
-         IsWebUIPinnedToolbarActionsEnabled();
+         IsWebUIPinnedToolbarActionsEnabled() || IsWebUIAvatarButtonEnabled() ||
+         IsWebUIContentSettingsIconsEnabled();
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -437,8 +453,6 @@ bool IsAndroidAnimatedProgressBarInBrowserEnabled() {
       features::kAndroidAnimatedProgressBarInBrowser);
 }
 #endif  // BUILDFLAG(IS_ANDROID)
-
-BASE_FEATURE(kWhatsNewDesktopRefresh, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAiOverlayDialog, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(std::string,

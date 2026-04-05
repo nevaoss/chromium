@@ -73,6 +73,9 @@
 #include "chrome/browser/chrome_content_browser_client_parts.h"
 #include "chrome/browser/content_settings/cookie_settings_factory.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_url_loader_factory_interceptor.h"
 #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
 #include "chrome/browser/data_saver/data_saver.h"
 #include "chrome/browser/defaults.h"
@@ -528,9 +531,6 @@
 #include "chrome/browser/actor/actor_features.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_keyed_service_factory.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
-#include "chrome/browser/contextual_tasks/contextual_tasks_url_loader_factory_interceptor.h"
 #include "chrome/browser/devtools/chrome_devtools_manager_delegate.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/digital_credentials/digital_identity_provider_desktop.h"
@@ -550,6 +550,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_list.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -640,6 +641,7 @@
 #include "extensions/common/mojom/context_type.mojom.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "extensions/common/switches.h"
+#include "extensions/common/user_script.h"
 
 #if BUILDFLAG(ENABLE_GUEST_VIEW)
 #include "extensions/browser/guest_view/web_view/web_view_guest.h"
@@ -664,7 +666,6 @@
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "extensions/browser/api/web_request/web_request_proxying_webtransport.h"
-#include "extensions/common/user_script.h"
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
 
 #if BUILDFLAG(ENABLE_PLUGINS)
@@ -3804,24 +3805,6 @@ bool ChromeContentBrowserClient::IsServiceWorkerSyntheticResponseAllowed(
   return true;
 }
 
-void ChromeContentBrowserClient::GrantCookieAccessDueToHeuristic(
-    content::BrowserContext* browser_context,
-    const net::SchemefulSite& top_frame_site,
-    const net::SchemefulSite& accessing_site,
-    base::TimeDelta ttl,
-    bool ignore_schemes) {
-  scoped_refptr<content_settings::CookieSettings> cookie_settings =
-      CookieSettingsFactory::GetForProfile(
-          Profile::FromBrowserContext(browser_context));
-  if (!cookie_settings) {
-    return;
-  }
-
-  cookie_settings->SetTemporaryCookieGrantForHeuristic(
-      accessing_site.GetURL(), top_frame_site.GetURL(), ttl,
-      /*use_schemeless_patterns=*/ignore_schemes);
-}
-
 bool ChromeContentBrowserClient::AreThirdPartyCookiesGenerallyAllowed(
     content::BrowserContext* browser_context,
     content::WebContents* web_contents) {
@@ -4483,7 +4466,6 @@ bool ChromeContentBrowserClient::CanCreateWindow(
   DCHECK(profile);
   *no_javascript_access = false;
 
-#if !BUILDFLAG(IS_ANDROID)
   // This block gives the Contextual Tasks feature the opportunity to intercept
   // tab creation in the event it doesn't go directly through the feature's
   // navigation throttle. When a new tab/window is created, it is done before
@@ -4507,7 +4489,6 @@ bool ChromeContentBrowserClient::CanCreateWindow(
       return false;
     }
   }
-#endif  // !BUILDFLAG(IS_ANDROID)
 
   // If the opener is trying to create a background window but doesn't have
   // the appropriate permission, fail the attempt.
@@ -4814,11 +4795,14 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
       // if the app navigates off scope. This is not a problem because we still
       // want to use the scope of the app associated with the window, not the
       // WebContents.
-      Browser* browser = chrome::FindBrowserWithTab(web_contents);
-      if (browser && browser->app_controller()) {
+      BrowserWindowInterface* browser =
+          chrome::FindBrowserWithTab(web_contents);
+      web_app::AppBrowserController* app_controller =
+          browser ? web_app::AppBrowserController::From(browser) : nullptr;
+      if (app_controller) {
         web_app::WebAppProvider* const web_app_provider =
             web_app::WebAppProvider::GetForLocalAppsUnchecked(profile);
-        const webapps::AppId& app_id = browser->app_controller()->app_id();
+        const webapps::AppId& app_id = app_controller->app_id();
         const web_app::WebAppRegistrar& registrar =
             web_app_provider->registrar_unsafe();
         if (registrar.AppMatches(app_id,
@@ -4828,7 +4812,7 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
 
         // IWA with window management permission can close windows and
         // focus windows without user gesture.
-        if (browser->app_controller()->IsIsolatedWebApp() &&
+        if (app_controller->IsIsolatedWebApp() &&
             profile->GetPermissionController()
                     ->GetPermissionStatusForCurrentDocument(
                         content::PermissionDescriptorUtil::
@@ -4840,7 +4824,7 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
           web_prefs->allow_unrestricted_window_focus = true;
         }
 #if BUILDFLAG(IS_CHROMEOS)
-        auto* system_app = browser->app_controller()->system_app();
+        auto* system_app = app_controller->system_app();
         if (system_app) {
           web_prefs->allow_scripts_to_close_windows =
               system_app->ShouldAllowScriptsToCloseWindows();
@@ -6367,7 +6351,8 @@ void AddChromeSchemeFactories(
     content::WebContents* web_contents,
     const extensions::Extension* extension,
     ChromeContentBrowserClient::NonNetworkURLLoaderFactoryMap* factories) {
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+  // Android does not support instant.
+#if !BUILDFLAG(IS_ANDROID)
   Profile* profile =
       Profile::FromBrowserContext(web_contents->GetBrowserContext());
   InstantService* instant_service =
@@ -6385,7 +6370,7 @@ void AddChromeSchemeFactories(
                            frame_host, chrome::kChromeSearchScheme,
                            /*allowed_hosts=*/base::flat_set<std::string>()));
   }
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+#endif  // !BUILDFLAG(IS_ANDROID)
 
   extensions::ExtensionWebContentsObserver* web_observer =
       extensions::ExtensionWebContentsObserver::GetForWebContents(web_contents);
@@ -6580,16 +6565,16 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
   }
 #endif
 
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_GUEST_VIEW)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks)) {
     contextual_tasks::MaybeInterceptURLLoaderFactory(frame, factory_builder);
   }
-#endif  // !BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(ENABLE_GUEST_VIEW) && !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#else   // !BUILDFLAG (ENABLE_EXTENSIONS_CORE)
   guest_view::MaybeInterceptURLLoaderFactoryForSlimWebView(
       frame, factory_builder, header_client);
-#endif
+#endif  // BUILDFLAG (ENABLE_EXTENSIONS_CORE)
+#endif  // BUILDFLAG(ENABLE_GUEST_VIEW)
 
   // WARNING: This must be the last interceptor in the chain as the proxying
   // URLLoaderFactory installed by this needs to be the one actually sending
@@ -6837,7 +6822,7 @@ bool ChromeContentBrowserClient::ShouldForceDownloadResource(
     content::BrowserContext* browser_context,
     const GURL& url,
     const std::string& mime_type) {
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   // Special-case user scripts to get downloaded instead of viewed.
   if (extensions::UserScript::IsURLUserScript(url, mime_type)) {
     return true;
@@ -6861,7 +6846,7 @@ bool ChromeContentBrowserClient::ShouldForceDownloadResource(
     }
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   return false;
 }
 
@@ -9023,7 +9008,9 @@ ChromeContentBrowserClient::GetClipboardTypesIfPolicyApplied(
 
 bool ChromeContentBrowserClient::UsePrefetchPrerenderIntegration() {
   return base::FeatureList::IsEnabled(features::kBookmarkTriggerForPrefetch) ||
-         base::FeatureList::IsEnabled(features::kNewTabPageTriggerForPrefetch);
+         base::FeatureList::IsEnabled(
+             features::kNewTabPageTriggerForPrefetch) ||
+         base::FeatureList::IsEnabled(features::kDsePreload2);
 }
 
 #if !BUILDFLAG(IS_ANDROID)

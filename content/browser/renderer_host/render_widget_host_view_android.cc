@@ -233,7 +233,7 @@ std::string CompressAndSaveBitmap(const std::string& dir,
   return screenshot_path.value();
 }
 
-blink::mojom::RecordContentToVisibleTimeRequestPtr
+std::optional<blink::RecordContentToVisibleTimeRequest>
 TakeContentToVisibleTimeRequest(RenderWidgetHostImpl* host) {
   return host->GetVisibleTimeRequestTrigger().TakeRequest();
 }
@@ -2820,8 +2820,8 @@ bool RenderWidgetHostViewAndroid::IsTouchSequencePotentiallyActiveOnViz() {
 }
 
 void RenderWidgetHostViewAndroid::RequestInputBackForDragAndDrop(
+    WeakDocumentPtr source_document,
     blink::mojom::DragDataPtr drag_data,
-    const url::Origin& source_origin,
     blink::DragOperationsMask drag_operations_mask,
     SkBitmap bitmap,
     gfx::Vector2d cursor_offset_in_dip,
@@ -2836,11 +2836,11 @@ void RenderWidgetHostViewAndroid::RequestInputBackForDragAndDrop(
       base::BindOnce(&RenderWidgetHostViewAndroid::CleanupDraggingCallback,
                      GetWeakPtrAndroid()));
   CHECK(host());
-  start_dragging_callback_ =
-      base::BindOnce(&RenderWidgetHostImpl::StartDragging, host()->GetWeakPtr(),
-                     std::move(drag_data), source_origin, drag_operations_mask,
-                     std::move(bitmap), std::move(cursor_offset_in_dip),
-                     std::move(drag_obj_rect_in_dip), std::move(event_info));
+  start_dragging_callback_ = base::BindOnce(
+      &RenderWidgetHostImpl::AsyncStartDragging, host()->GetWeakPtr(),
+      std::move(source_document), std::move(drag_data), drag_operations_mask,
+      std::move(bitmap), std::move(cursor_offset_in_dip),
+      std::move(drag_obj_rect_in_dip), std::move(event_info));
 }
 
 void RenderWidgetHostViewAndroid::DismissTextHandles() {
@@ -3147,17 +3147,6 @@ void RenderWidgetHostViewAndroid::OnDetachCompositor() {
 void RenderWidgetHostViewAndroid::OnAnimate(base::TimeTicks begin_frame_time) {
   if (Animate(begin_frame_time))
     SetNeedsAnimate();
-}
-
-void RenderWidgetHostViewAndroid::OnUnfoldStarted(
-    base::TimeTicks unfold_begin_time) {
-  TRACE_EVENT0("browser", "RenderWidgetHostViewAndroid::OnUnfoldStarted");
-  host()->RequestSuccessfulPresentationTimeForNextFrame(
-      blink::mojom::RecordContentToVisibleTimeRequest::New(
-          unfold_begin_time, /*destination_is_loaded=*/false,
-          /*show_reason_tab_switching=*/false,
-          /*show_reason_bfcache_restore=*/false,
-          /*show_reason_unfolding=*/true));
 }
 
 void RenderWidgetHostViewAndroid::OnActivityStopped() {
@@ -3490,7 +3479,8 @@ void RenderWidgetHostViewAndroid::OverrideDisplayFeatureForEmulation(
 }
 
 void RenderWidgetHostViewAndroid::NotifyHostAndDelegateOnWasShown(
-    blink::mojom::RecordContentToVisibleTimeRequestPtr visible_time_request) {
+    std::optional<blink::RecordContentToVisibleTimeRequest>
+        visible_time_request) {
   // Whether evicted or not, we stop batching for rotation in order to get
   // content ready for the new orientation.
   bool rotation_override = in_rotation_;
@@ -3543,19 +3533,16 @@ void RenderWidgetHostViewAndroid::NotifyHostAndDelegateOnWasShown(
                            : false;
   bool has_saved_frame = delegated_frame_host_->HasSavedFrame();
   if (show_reason_bfcache_restore) {
-    host()->WasShown(visible_time_request.Clone());
+    host()->WasShown(visible_time_request);
   } else {
-    host()->WasShown(has_saved_frame
-                         ? blink::mojom::RecordContentToVisibleTimeRequestPtr()
-                         : visible_time_request.Clone());
+    host()->WasShown(has_saved_frame ? std::nullopt : visible_time_request);
   }
 
   if (delegated_frame_host_) {
     delegated_frame_host_->WasShown(
         local_surface_id_allocator_.GetCurrentLocalSurfaceId(),
         GetCompositorViewportPixelSize(), host()->delegate()->IsFullscreen(),
-        has_saved_frame ? std::move(visible_time_request)
-                        : blink::mojom::RecordContentToVisibleTimeRequestPtr());
+        has_saved_frame ? std::move(visible_time_request) : std::nullopt);
   }
 
   if (view_.parent() && view_.GetWindowAndroid()) {
@@ -3597,13 +3584,11 @@ void RenderWidgetHostViewAndroid::NotifyHostAndDelegateOnWasShown(
 
 void RenderWidgetHostViewAndroid::
     RequestSuccessfulPresentationTimeFromHostOrDelegate(
-        blink::mojom::RecordContentToVisibleTimeRequestPtr
-            visible_time_request) {
+        blink::RecordContentToVisibleTimeRequest visible_time_request) {
   bool has_saved_frame = delegated_frame_host_->HasSavedFrame();
   // No need to check for saved frames for the case of bfcache restore.
-  if (visible_time_request->show_reason_bfcache_restore || !has_saved_frame) {
-    host()->RequestSuccessfulPresentationTimeForNextFrame(
-        visible_time_request.Clone());
+  if (visible_time_request.show_reason_bfcache_restore || !has_saved_frame) {
+    host()->RequestSuccessfulPresentationTimeForNextFrame(visible_time_request);
   }
 
   // If the frame for the renderer is already available, then the

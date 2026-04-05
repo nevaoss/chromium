@@ -50,15 +50,26 @@ VerticalTabStripStateController::VerticalTabStripStateController(
       browser_window_(browser_window),
       scoped_unowned_user_data_(browser_window->GetUnownedUserDataHost(),
                                 *this) {
+  pref_change_registrar_.Init(pref_service_);
+
   is_vertical_tabs_enabled_ =
       pref_service_->GetBoolean(prefs::kVerticalTabsEnabled);
-
-  pref_change_registrar_.Init(pref_service_);
 
   pref_change_registrar_.Add(
       prefs::kVerticalTabsEnabled,
       base::BindRepeating(&VerticalTabStripStateController::OnModeChanged,
                           base::Unretained(this)));
+
+  if (IsVerticalTabsExpandOnHoverFeatureEnabled()) {
+    is_expand_on_hover_enabled_ =
+        pref_service_->GetBoolean(prefs::kVerticalTabsExpandOnHoverEnabled);
+
+    pref_change_registrar_.Add(
+        prefs::kVerticalTabsExpandOnHoverEnabled,
+        base::BindRepeating(
+            &VerticalTabStripStateController::OnExpandOnHoverEnabledChanged,
+            base::Unretained(this)));
+  }
 
   if (restored_state_collapsed.has_value()) {
     SetCollapsed(restored_state_collapsed.value());
@@ -96,7 +107,7 @@ VerticalTabStripStateController::~VerticalTabStripStateController() {
 }
 
 VerticalTabStripStateController::ScopedEnableStateLock::ScopedEnableStateLock(
-    base::WeakPtr<VerticalTabStripStateController> controller)
+    VerticalTabStripStateController* controller)
     : controller_(controller) {
   if (controller_) {
     controller_->OnLockCreated();
@@ -112,8 +123,7 @@ VerticalTabStripStateController::ScopedEnableStateLock::
 
 std::unique_ptr<VerticalTabStripStateController::ScopedEnableStateLock>
 VerticalTabStripStateController::GetEnableStateLock() {
-  return std::make_unique<ScopedEnableStateLock>(
-      weak_ptr_factory_.GetWeakPtr());
+  return std::make_unique<ScopedEnableStateLock>(this);
 }
 
 // static
@@ -168,8 +178,7 @@ void VerticalTabStripStateController::SetUncollapsedWidth(int width) {
 }
 
 bool VerticalTabStripStateController::IsExpandOnHoverEnabled() const {
-  return IsVerticalTabsExpandOnHoverFeatureEnabled() &&
-         pref_service_->GetBoolean(prefs::kVerticalTabsExpandOnHoverEnabled);
+  return is_expand_on_hover_enabled_;
 }
 
 void VerticalTabStripStateController::SetExpandOnHoverEnabled(bool enabled) {
@@ -234,6 +243,11 @@ void VerticalTabStripStateController::OnModeChanged() {
       pref_service_->GetBoolean(prefs::kVerticalTabsEnabled);
 
   NotifyModeChanged();
+}
+
+void VerticalTabStripStateController::OnExpandOnHoverEnabledChanged() {
+  is_expand_on_hover_enabled_ =
+      pref_service_->GetBoolean(prefs::kVerticalTabsExpandOnHoverEnabled);
 }
 
 void VerticalTabStripStateController::OnLockCreated() {

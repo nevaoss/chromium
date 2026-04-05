@@ -1315,6 +1315,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kNumber;
   (*s_allowlist)[contextual_tasks::kContextualTasksShareOpenTabsEveryThread] =
       settings_api::PrefType::kBoolean;
+  (*s_allowlist)[contextual_tasks::kContextualTasksSiteExclusions] =
+      settings_api::PrefType::kDictionary;
 
   // AI enterprise prefs
   (*s_allowlist)
@@ -1357,6 +1359,8 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
     (*s_allowlist)[glic::prefs::kGlicUserEnabledActuationOnWeb] =
         settings_api::PrefType::kBoolean;
     (*s_allowlist)[glic::prefs::kGlicKeepSidepanelOpenOnNewTabsEnabled] =
+        settings_api::PrefType::kBoolean;
+    (*s_allowlist)[glic::prefs::kGlicExperimentalTriggeringEnabled] =
         settings_api::PrefType::kBoolean;
   }
 

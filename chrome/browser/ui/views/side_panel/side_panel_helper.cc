@@ -27,9 +27,8 @@ void SidePanelHelper::PopulateGlobalEntries(
     Browser* browser,
     SidePanelRegistry* window_registry) {
   // Add reading list.
-  browser->browser_window_features()
-      ->reading_list_side_panel_coordinator()
-      ->CreateAndRegisterEntry(window_registry);
+  ReadingListSidePanelCoordinator::From(browser)->CreateAndRegisterEntry(
+      window_registry);
 
   // Add bookmarks.
   browser->browser_window_features()
@@ -52,16 +51,14 @@ void SidePanelHelper::PopulateGlobalEntries(
 
   // Add history.
   if (HistorySidePanelCoordinator::IsSupported()) {
-    browser->browser_window_features()
-        ->history_side_panel_coordinator()
-        ->CreateAndRegisterEntry(window_registry);
+    HistorySidePanelCoordinator::From(browser)->CreateAndRegisterEntry(
+        window_registry);
   }
 
   // Add comments.
   if (CommentsSidePanelCoordinator::IsSupported()) {
-    browser->browser_window_features()
-        ->comments_side_panel_coordinator()
-        ->CreateAndRegisterEntry(window_registry);
+    CommentsSidePanelCoordinator::From(browser)->CreateAndRegisterEntry(
+        window_registry);
   }
 }
 

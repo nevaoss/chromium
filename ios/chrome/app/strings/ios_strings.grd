@@ -577,6 +577,12 @@
       <message name="IDS_IOS_AUTOFILL_AI_OTHER_TITLE" desc="Title for the other section in Addresses and more page for entities that are not identity docs, nor travel docs. [iOS only]">
         Other
       </message>
+      <message name="IDS_IOS_AUTOFILL_AI_SAVED_LOCALLY_FOOTER" desc="The notice text displayed in the footer when the Autofill AI entity (ex. Passport, Vehicle info etc.) is saved locally. [iOS only]">
+          Your info is saved to your device
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_SAVED_TO_WALLET_FOOTER" desc="The notice text displayed in the footer when the Autofill AI entity (ex. Passport, Vehicle info etc.) are saved to Google Wallet. [iOS only]">
+          Your info is saved to Google Wallet for <ph name="USER_EMAIL">$1<ex>peter.parker@gmail.com</ex></ph>. You can use it across Google products to fill forms faster.
+      </message>
       <message name="IDS_IOS_AUTOFILL_AI_SAVE_FALLBACK_BODY" desc="Body text of the alert shown when saving to Wallet fails but saving to device succeeds. [iOS only]">
       You’ll have the chance to save this info to Wallet the next time you fill a relevant form.
       </message>
@@ -666,6 +672,9 @@
       <message name="IDS_IOS_AUTOFILL_EMAIL" desc="Title of the field of a profile address representing the email address of the addressee. [Length: 15em] [iOS only]">
         Email
       </message>
+      <message name="IDS_IOS_AUTOFILL_EXP_DATE" desc="Title of the field representing the expiration date of a credit card. [iOS only]">
+        Expiration Date
+      </message>
       <message name="IDS_IOS_AUTOFILL_EXP_MONTH" desc="Title of the field representing the expiration month of a credit card. [Length: 15em] [iOS only]">
         Expiration month
       </message>
@@ -723,6 +732,9 @@
       <message name="IDS_IOS_AUTOFILL_REAUTH_REASON" desc="Message explaining that the reason why we are requiring the user to re-authenticate is to be able to use the password. This is shown by iOS in the Touch ID reauthentication system dialogue, right under the OS string 'Touch ID for $BROWSER_NAME'. [CHAR_LIMIT=22]">
         Use password
       </message>
+      <message name="IDS_IOS_AUTOFILL_SAVE_AND_AUTOFILL" desc="Title for the button to save a credit card and autofill the form. [iOS only]">
+        Save and autofill
+      </message>
       <message name="IDS_IOS_AUTOFILL_SAVE_CARD" desc="Title for the view for saving a credit card. [Length: 15em] [iOS only]">
         Save card
       </message>
@@ -737,6 +749,15 @@
       </message>
       <message name="IDS_IOS_AUTOFILL_SAVE_ELLIPSIS" desc="Title for the button that presents the View for Saving a credit card. The ellipsis indicate that a following action (the presentation) will take place. [Length: 10em] [iOS only]">
         Save…
+      </message>
+      <message name="IDS_IOS_AUTOFILL_SCAN_CARD_CVC" desc="The placeholder text for credit card security code in the payments card unmask dialog. [iOS only]">
+        CVC
+      </message>
+      <message name="IDS_IOS_AUTOFILL_SCAN_CARD_PLACEHOLDER_CARD_NUMBER" desc="The placeholder text for credit card number in the payments card unmask dialog. [iOS only]">
+        Card Number
+      </message>
+      <message name="IDS_IOS_AUTOFILL_SCAN_CARD_PLACEHOLDER_EXPIRY_DATE" desc="The placeholder text for credit card expiration date (month and year) in the payments card unmask dialog. [iOS only]">
+        MM/YY
       </message>
       <message name="IDS_IOS_AUTOFILL_SECURITY_CODE" desc="Title of the field representing the CVC of a credit card. [Length: 4em] [iOS only]">
         Security code
@@ -3394,7 +3415,7 @@
         Pick a theme, color, or more for your background
       </message>
       <message name="IDS_IOS_HOME_BACKGROUND_CUSTOMIZATION_USER_UPLOAD_NOT_SYNCED_SNACKBAR" desc="The snackbar displayed at the bottom of the screen informing the user that their uploaded background image will not be synced to other devices.">
-        Photos from Camera Roll won’t sync across your devices
+        Homepage photos from your photo library won't sync across your devices.
       </message>
       <message name="IDS_IOS_HOME_CUSTOMIZATION_ACCESSIBILITY_LABEL" desc="Accessibility label for the Home Customization menu in the new tab page.">
         Customize your home screen
@@ -6500,6 +6521,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SAFE_MODE_UNKNOWN_CAUSE" desc="The message indicating that Chrome crashed for an unknown reason. [Length: 140em]">
         Something went really wrong. We'll work on that.
       </message>
+      <message name="IDS_IOS_SAVE_ENTITY_IN_SETTINGS_BUTTON_TEXT" desc="Button text used to save an Autofill AI entity (such as vehicle information) in settings.">
+        Save
+      </message>
       <message name="IDS_IOS_SAVE_IMAGE_ERROR" desc="Message informing the user that the image could not be saved because there was an error.">
         Error saving image.
       </message>
@@ -6694,15 +6718,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_SEND_TAB_TO_SELF_TARGET_DEVICE_ACTION" desc="Button label for the Send Tab To Self modal dialog that sends the current tab to a user's other device. [iOS only]">
         Send to your device
-      </message>
-      <message name="IDS_IOS_SEND_TAB_TO_SELF_TARGET_DEVICE_ITEM_SUBTITLE_DAY" desc="Text label for the Send Tab To Self modal dialog that shows the last active time of a user's device. [iOS only]">
-        Active 1 day ago
-      </message>
-      <message name="IDS_IOS_SEND_TAB_TO_SELF_TARGET_DEVICE_ITEM_SUBTITLE_DAYS" desc="Text label for the Send Tab To Self modal dialog that shows the last active time of a user's devicet. [iOS only]">
-        Active <ph name="Days">$1<ex>2</ex></ph> days ago
-      </message>
-      <message name="IDS_IOS_SEND_TAB_TO_SELF_TARGET_DEVICE_ITEM_SUBTITLE_TODAY" desc="Text label for the Send Tab To Self modal dialog that shows the last active time of a user's device. [iOS only]">
-        Active today
       </message>
       <message name="IDS_IOS_SEND_TAB_TO_SELF_TARGET_DEVICE_TITLE" desc="Title for the Send Tab To Self modal dialog that chooses the device to which the current tab will be sent. [iOS only]">
         Send webpage

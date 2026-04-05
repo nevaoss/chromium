@@ -8,9 +8,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.app.Activity;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -27,14 +29,20 @@ import org.chromium.base.Callback;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.segmentation_platform.SegmentationPlatformServiceFactory;
+import org.chromium.components.feature_engagement.FeatureConstants;
+import org.chromium.components.feature_engagement.Tracker;
+import org.chromium.components.prefs.PrefService;
 import org.chromium.components.segmentation_platform.ClassificationResult;
 import org.chromium.components.segmentation_platform.PredictionOptions;
 import org.chromium.components.segmentation_platform.SegmentationPlatformConstants;
 import org.chromium.components.segmentation_platform.SegmentationPlatformService;
 import org.chromium.components.segmentation_platform.prediction_status.PredictionStatus;
+import org.chromium.components.user_prefs.UserPrefs;
 
 /** Unit tests for {@link AppRatingPromoController}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -45,31 +53,79 @@ public class AppRatingPromoControllerTest {
     @Mock private Profile mProfile;
     @Mock private SegmentationPlatformService mSegmentationService;
     @Mock private AppRatingManager mAppRatingManager;
+    @Mock private PrefService mPrefService;
+    @Mock private Tracker mTracker;
     @Captor private ArgumentCaptor<Callback<ClassificationResult>> mCallbackCapturer;
+    @Captor private ArgumentCaptor<Runnable> mRunnableCapturer;
 
     private Activity mActivity;
-    private AppRatingPromoController mController;
 
     @Before
     public void setUp() {
+        UserPrefs.setPrefServiceForTesting(mPrefService);
+
         mActivity = Robolectric.buildActivity(Activity.class).setup().get();
         SegmentationPlatformServiceFactory.setForTests(mSegmentationService);
         AppRatingManagerFactory.setInstanceForTesting(mAppRatingManager);
-        mController = new AppRatingPromoController(mProfile, mActivity);
+        TrackerFactory.setTrackerForTests(mTracker);
+        when(mTracker.wouldTriggerHelpUi(FeatureConstants.APP_RATING_PROMPT_FEATURE))
+                .thenReturn(true);
+        when(mTracker.shouldTriggerHelpUi(FeatureConstants.APP_RATING_PROMPT_FEATURE))
+                .thenReturn(true);
     }
 
     @Test
     @DisableFeatures(ChromeFeatureList.ANDROID_APP_RATING_PROMPT)
     public void testMaybeShowPromo_FeatureDisabled() {
-        mController.maybeShowPromo();
+        Assert.assertFalse(
+                "Promo should not be shown when feature is disabled.",
+                AppRatingPromoController.maybeShowPromo(mProfile, mActivity));
         verify(mSegmentationService, never()).getClassificationResult(any(), any(), any(), any());
         verify(mAppRatingManager, never()).requestAndShowReviewFlow(any(), any());
     }
 
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_APP_RATING_PROMPT)
+    public void testMaybeShowPromo_AlreadyShown() {
+        when(mPrefService.getBoolean(Pref.APP_RATING_PROMPT_SHOWN)).thenReturn(true);
+        Assert.assertFalse(
+                "Promo should not be shown when already shown before.",
+                AppRatingPromoController.maybeShowPromo(mProfile, mActivity));
+        verify(mSegmentationService, never()).getClassificationResult(any(), any(), any(), any());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_APP_RATING_PROMPT + ":bypass_checks/true")
+    public void testMaybeShowPromo_BypassChecks() {
+        // Even if it was already shown, bypass_checks should trigger it.
+        when(mPrefService.getBoolean(Pref.APP_RATING_PROMPT_SHOWN)).thenReturn(true);
+
+        AppRatingPromoController.maybeShowPromo(mProfile, mActivity);
+
+        // Should bypass segmentation entirely.
+        verify(mSegmentationService, never()).getClassificationResult(any(), any(), any(), any());
+
+        // Should trigger the review flow immediately.
+        verify(mAppRatingManager).requestAndShowReviewFlow(eq(mActivity), any());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_APP_RATING_PROMPT)
+    public void testMaybeShowPromo_WouldNotTriggerHelpUi() {
+        when(mTracker.wouldTriggerHelpUi(FeatureConstants.APP_RATING_PROMPT_FEATURE))
+                .thenReturn(false);
+        Assert.assertFalse(
+                "Promo should not be shown if Tracker says it would not trigger.",
+                AppRatingPromoController.maybeShowPromo(mProfile, mActivity));
+        verify(mSegmentationService, never()).getClassificationResult(any(), any(), any(), any());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_APP_RATING_PROMPT)
     public void testMaybeShowPromo_QueriesSegmentation() {
-        mController.maybeShowPromo();
+        Assert.assertTrue(
+                "Promo should potentially be shown if all conditions are met.",
+                AppRatingPromoController.maybeShowPromo(mProfile, mActivity));
         verify(mSegmentationService)
                 .getClassificationResult(
                         eq(SegmentationPlatformConstants.POWER_USER_KEY),
@@ -81,7 +137,9 @@ public class AppRatingPromoControllerTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_APP_RATING_PROMPT)
     public void testOnSegmentationResultReceived_HighEngagement() {
-        mController.maybeShowPromo();
+        Assert.assertTrue(
+                "Promo should potentially be shown if all conditions are met.",
+                AppRatingPromoController.maybeShowPromo(mProfile, mActivity));
         verify(mSegmentationService)
                 .getClassificationResult(any(), any(), any(), mCallbackCapturer.capture());
 
@@ -94,13 +152,22 @@ public class AppRatingPromoControllerTest {
         mCallbackCapturer.getValue().onResult(result);
 
         // Verify the review flow is triggered for high engagement users.
-        verify(mAppRatingManager).requestAndShowReviewFlow(eq(mActivity), any());
+        verify(mTracker).shouldTriggerHelpUi(FeatureConstants.APP_RATING_PROMPT_FEATURE);
+        verify(mPrefService).setBoolean(Pref.APP_RATING_PROMPT_SHOWN, true);
+        verify(mAppRatingManager)
+                .requestAndShowReviewFlow(eq(mActivity), mRunnableCapturer.capture());
+
+        // Complete the review flow
+        mRunnableCapturer.getValue().run();
+        verify(mTracker).dismissed(FeatureConstants.APP_RATING_PROMPT_FEATURE);
     }
 
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_APP_RATING_PROMPT)
     public void testOnSegmentationResultReceived_LowEngagement() {
-        mController.maybeShowPromo();
+        Assert.assertTrue(
+                "Promo should potentially be shown if all conditions are met.",
+                AppRatingPromoController.maybeShowPromo(mProfile, mActivity));
         verify(mSegmentationService)
                 .getClassificationResult(any(), any(), any(), mCallbackCapturer.capture());
 
@@ -114,12 +181,39 @@ public class AppRatingPromoControllerTest {
 
         // Verify the review flow is NOT triggered for low engagement users.
         verify(mAppRatingManager, never()).requestAndShowReviewFlow(any(), any());
+        verify(mTracker, never()).shouldTriggerHelpUi(FeatureConstants.APP_RATING_PROMPT_FEATURE);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_APP_RATING_PROMPT)
+    public void testOnSegmentationResultReceived_ShouldNotTriggerHelpUi() {
+        Assert.assertTrue(
+                "Promo should potentially be shown if all conditions are met.",
+                AppRatingPromoController.maybeShowPromo(mProfile, mActivity));
+        verify(mSegmentationService)
+                .getClassificationResult(any(), any(), any(), mCallbackCapturer.capture());
+
+        when(mTracker.shouldTriggerHelpUi(FeatureConstants.APP_RATING_PROMPT_FEATURE))
+                .thenReturn(false);
+
+        ClassificationResult result =
+                new ClassificationResult(
+                        PredictionStatus.SUCCEEDED,
+                        new String[] {SegmentationPlatformConstants.SEARCH_USER_MODEL_LABEL_HIGH},
+                        0L);
+
+        mCallbackCapturer.getValue().onResult(result);
+
+        // Verify the review flow is NOT triggered if the tracker rejects the UI trigger.
+        verify(mAppRatingManager, never()).requestAndShowReviewFlow(any(), any());
     }
 
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_APP_RATING_PROMPT)
     public void testOnSegmentationResultReceived_ActivityDestroyed() {
-        mController.maybeShowPromo();
+        Assert.assertTrue(
+                "Promo should potentially be shown if all conditions are met.",
+                AppRatingPromoController.maybeShowPromo(mProfile, mActivity));
         verify(mSegmentationService)
                 .getClassificationResult(any(), any(), any(), mCallbackCapturer.capture());
 
@@ -135,5 +229,6 @@ public class AppRatingPromoControllerTest {
 
         // Verify the review flow is NOT triggered if activity is finishing.
         verify(mAppRatingManager, never()).requestAndShowReviewFlow(any(), any());
+        verify(mTracker, never()).shouldTriggerHelpUi(any());
     }
 }

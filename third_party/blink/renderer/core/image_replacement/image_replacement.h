@@ -12,6 +12,7 @@
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_receiver.h"
 #include "third_party/blink/renderer/platform/mojo/heap_mojo_remote.h"
+#include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 namespace blink {
 class Document;
@@ -41,9 +42,16 @@ class CORE_EXPORT ImageReplacement : public GarbageCollected<ImageReplacement>,
   // Creates the shadow tree in `html_image_element` for the image replacement.
   static void CreateImageReplacementShadowTree(base::PassKey<HTMLImageElement>,
                                                HTMLImageElement& image_element);
+
   // Returns true if the original image should be painted (and the remote
   // content should be kept invisible).
   bool ShouldPaintOriginalImage() const { return should_paint_original_image_; }
+  const AtomicString& OriginalImageSourceURL() const {
+    return original_image_source_url_;
+  }
+  // Resumes and completes a pending replacement if it was waiting for an image
+  // load. Returns true if replacement was completed, false otherwise.
+  bool ResumeReplacementAfterImageLoad();
 
   void Trace(Visitor*) const;
 
@@ -63,6 +71,8 @@ class CORE_EXPORT ImageReplacement : public GarbageCollected<ImageReplacement>,
   HeapMojoReceiver<mojom::blink::ImageReplacement, ImageReplacement> receiver_;
   HeapMojoRemote<mojom::blink::ImageReplacementHost> host_;
   bool should_paint_original_image_ = true;
+  AtomicString original_image_source_url_;
+  mojo::PendingRemote<mojom::blink::ImageReplacementHost> pending_host_remote_;
 };
 
 }  // namespace blink

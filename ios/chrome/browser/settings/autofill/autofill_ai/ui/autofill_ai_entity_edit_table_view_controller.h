@@ -6,13 +6,23 @@
 #define IOS_CHROME_BROWSER_SETTINGS_AUTOFILL_AUTOFILL_AI_UI_AUTOFILL_AI_ENTITY_EDIT_TABLE_VIEW_CONTROLLER_H_
 
 #import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_edit_consumer.h"
+#import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_edit_date_item.h"
 #import "ios/chrome/browser/settings/autofill/ui/autofill_edit_table_view_controller.h"
 
 @protocol AutofillAIEntityEditTableViewControllerDelegate;
 @protocol AutofillAIEntityEditMutator;
 
+// Defines the presentation and behavioral mode of the view controller.
+enum class AutofillAIEntityEditMode {
+  // Used when viewing an existing entity.
+  kViewAndEdit,
+  // Used when creating a new entity from scratch.
+  kCreate,
+};
+
 @interface AutofillAIEntityEditTableViewController
     : AutofillEditTableViewController <AutofillAIEntityEditConsumer,
+                                       AutofillAIEntityEditDateItemDelegate,
                                        UITextFieldDelegate>
 
 @property(nonatomic, weak) id<AutofillAIEntityEditTableViewControllerDelegate>
@@ -21,8 +31,8 @@
 // Mutator for this view controller.
 @property(nonatomic, weak) id<AutofillAIEntityEditMutator> mutator;
 
-// Whether to start in edit mode.
-@property(nonatomic, assign) BOOL startInEditMode;
+// The mode in which this view controller operates.
+@property(nonatomic, assign) AutofillAIEntityEditMode mode;
 
 @end
 

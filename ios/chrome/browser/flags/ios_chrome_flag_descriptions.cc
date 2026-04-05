@@ -678,6 +678,11 @@ const char kGeminiChatPersistenceName[] = "Gemini Chat Persistence";
 const char kGeminiChatPersistenceDescription[] =
     "Enables improvements to Gemini Chat persistence.";
 
+const char kGeminiClientMigrationName[] = "Gemini Client Migration";
+const char kGeminiClientMigrationDescription[] =
+    "Enables the client migration for Gemini, adding the infrastructure for "
+    "several key features that render more than just text.";
+
 const char kGeminiCopresenceName[] = "Gemini Copresence";
 const char kGeminiCopresenceDescription[] =
     "Enables the Gemini Copresence feature, which provides a persistent Gemini "
@@ -751,9 +756,8 @@ const char kHttpsUpgradesDescription[] =
     "When enabled, eligible navigations will automatically be upgraded to "
     "HTTPS.";
 
-const char kIOSActuationToolsName[] = "iOS Actuation Tools";
-const char kIOSActuationToolsDescription[] =
-    "Enables all actuation tools on iOS.";
+const char kIOSActorToolsName[] = "iOS Actor Tools";
+const char kIOSActorToolsDescription[] = "Enables all actor tools on iOS.";
 
 const char kIOSBrowserEditMenuMetricsName[] = "Browser edit menu metrics";
 const char kIOSBrowserEditMenuMetricsDescription[] =
@@ -955,6 +959,11 @@ const char kLensContinuousZoomEnabledName[] =
     "Enable Lens camera continuous zoom";
 const char kLensContinuousZoomEnabledDescription[] =
     "When enabled, Lens camera supports continuous zoom.";
+
+const char kLensEnableSendRawFileMediaTypesName[] =
+    "Lens enable send raw file media types";
+const char kLensEnableSendRawFileMediaTypesDescription[] =
+    "Enables sending raw file media types in the Lens overlay.";
 
 const char kLensEnableSendUrlsInComposeboxesName[] =
     "Lens enable send urls in composeboxes";

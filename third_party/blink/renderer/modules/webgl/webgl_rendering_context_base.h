@@ -779,7 +779,10 @@ class MODULES_EXPORT WebGLRenderingContextBase
       std::unique_ptr<WebGraphicsContext3DProvider>,
       const Platform::WebGLContextInfo&);
   void SetupFlags();
-  bool CopyRenderingResultsFromDrawingBuffer(
+  bool CopyRenderingResultsFromDrawingBufferAccelerated(
+      CanvasNon2DResourceProviderSharedImage*,
+      SourceDrawingBuffer);
+  bool CopyRenderingResultsFromDrawingBufferUnaccelerated(
       CanvasNon2DResourceProviderSharedImage*,
       SourceDrawingBuffer);
 
@@ -2032,11 +2035,12 @@ class MODULES_EXPORT WebGLRenderingContextBase
 
   CanvasNon2DResourceProviderSharedImage* GetSharedImageResourceProvider();
 
-  // Attempts to paint the most recent rendering results into a
-  // CanvasNon2DResourceProviderSharedImage. Returns the provider if the paint
-  // succeeded; otherwise returns nullptr.
-  CanvasNon2DResourceProviderSharedImage*
-  PaintRenderingResultsToResourceProvider(SourceDrawingBuffer source_buffer);
+  // Attempts to copy the most recent rendering results from the drawing buffer
+  // into a CanvasResource. Returns the resource if the copy succeeded;
+  // otherwise returns nullptr.
+  scoped_refptr<CanvasResource> CopyRenderingResultsFromDrawingBufferToResource(
+      SourceDrawingBuffer source_buffer,
+      bool only_if_fresh_content = false);
   void TexImageHelperMediaVideoFrame(
       TexImageParams,
       WebGLTexture*,

@@ -108,6 +108,9 @@ class InteractiveTestPrivateFrameworkBase
   // browser tests.
   virtual void DoTestTearDown() {}
 
+  // Called whenever the default context is updated.
+  virtual void OnDefaultContextSet() {}
+
   // Called when the sequence ends, but before we break out of the run loop
   // in RunTestSequenceImpl().
   virtual void OnSequenceComplete() {}
@@ -253,10 +256,12 @@ class InteractiveTestPrivate {
 
   base::WeakPtr<InteractiveTestPrivate> GetAsWeakPtr();
 
-  void set_default_context(ElementContext default_context) {
-    default_context_ = default_context;
-  }
+  void SetDefaultContext(ElementContext default_context,
+                         gfx::NativeWindow default_context_window);
+
   ElementContext default_context() const { return default_context_; }
+
+  gfx::NativeWindow GetDefaultContextWindow() const;
 
   // Fetch the native window for the given element.
   gfx::NativeWindow GetNativeWindowFor(const ui::TrackedElement* el) const;
@@ -416,6 +421,16 @@ class InteractiveTestPrivate {
 
   FrameworkSpecificRegistrationList<InteractiveTestPrivateFrameworkBase>
       framework_implementations_;
+
+  // Safely tracks the most recent native window targeted in each context.
+  // For actions like ClickMouse() or ReleaseMouse(), a pivot element is used
+  // so only the context is known; since there can be multiple native windows in
+  // a given context, this tracks the most recently used native window so the
+  // click (or other action) continues to target the most recently hit window.
+  class NativeWindowReference;
+  mutable std::map<ui::ElementContext, NativeWindowReference>
+      most_recent_windows_;
+  std::unique_ptr<NativeWindowReference> default_context_window_;
 
   base::WeakPtrFactory<InteractiveTestPrivate> weak_ptr_factory_{this};
 

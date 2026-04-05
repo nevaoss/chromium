@@ -655,7 +655,7 @@ bool NotificationChannelsProviderAndroid::UpdateLastUsedTime(
   return false;
 }
 
-bool NotificationChannelsProviderAndroid::ResetLastVisitTime(
+bool NotificationChannelsProviderAndroid::UpdateLastVisitTime(
     const ContentSettingsPattern& primary_pattern,
     const ContentSettingsPattern& secondary_pattern,
     ContentSettingsType content_type) {
@@ -663,11 +663,11 @@ bool NotificationChannelsProviderAndroid::ResetLastVisitTime(
   return false;
 }
 
-bool NotificationChannelsProviderAndroid::UpdateLastVisitTime(
+bool NotificationChannelsProviderAndroid::SetAutorevocationBypassedByUser(
     const ContentSettingsPattern& primary_pattern,
     const ContentSettingsPattern& secondary_pattern,
     ContentSettingsType content_type) {
-  // Last visited tracking is not implemented for this type.
+  // Autorevocation does not include this type.
   return false;
 }
 

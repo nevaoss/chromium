@@ -105,7 +105,7 @@ WebString WebString::FromLatin1(std::string_view s) {
 }
 
 std::string WebString::Ascii() const {
-  DCHECK(ContainsOnlyASCII());
+  DCHECK(ContainsOnlyAscii());
 
   if (IsEmpty())
     return std::string();
@@ -119,11 +119,11 @@ std::string WebString::Ascii() const {
   return std::string(utf16.begin(), utf16.end());
 }
 
-bool WebString::ContainsOnlyASCII() const {
+bool WebString::ContainsOnlyAscii() const {
   return String(impl_).ContainsOnlyAsciiOrEmpty();
 }
 
-WebString WebString::FromASCII(std::string_view s) {
+WebString WebString::FromAscii(std::string_view s) {
   DCHECK(base::IsStringASCII(s));
   return FromLatin1(s);
 }

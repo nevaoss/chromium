@@ -55,8 +55,6 @@ chromium-metrics-reviews@google.com.
   <variant name="SideBySideLinkMenuNewBadge"
       summary="Promotion for Split View in the render view context menu when
                right clicking a link."/>
-  <variant name="TabOrganization"
-      summary="Promotion for Organize Tabs in the app menu."/>
   <variant name="TabstripDeclutter"
       summary="Promotion for Close Unused Tabs in the app menu."/>
   <variant name="VerticalTabsNewBadge"
@@ -153,7 +151,8 @@ chromium-metrics-reviews@google.com.
       summary="the module for Wallet integration in Autofill"/>
   <variant name="TabGroupsSync"
       summary="the module for Tab Groups that Sync (obsolete)"/>
-  <variant name="TabOrganizer" summary="the module for Tab Organizer"/>
+  <variant name="TabOrganizer"
+      summary="the module for Tab Organizer (obsolete)"/>
   <variant name="TestDefaultModule"
       summary="the default module used for testing only"/>
   <variant name="TestModule" summary="the module used for testing only"/>
@@ -420,7 +419,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="UserEducation.Session.ActivePeriodDuration.Min.Under1Hour"
-    units="minutes" expires_after="2026-07-26">
+    units="minutes" expires_after="2026-09-27">
   <owner>mickeyburks@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -456,7 +455,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="UserEducation.Session.IdlePeriodDuration.Min.Under24Hours"
-    units="minutes" expires_after="2026-07-26">
+    units="minutes" expires_after="2026-09-27">
   <owner>mickeyburks@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -479,7 +478,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="UserEducation.Session.MonthlyActiveDays" units="count"
-    expires_after="2026-07-26">
+    expires_after="2026-09-27">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -491,7 +490,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="UserEducation.Session.RecentActiveDays" units="count"
-    expires_after="2026-07-26">
+    expires_after="2026-09-27">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>
@@ -503,7 +502,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="UserEducation.Session.RecentActiveWeeks" units="count"
-    expires_after="2026-07-26">
+    expires_after="2026-09-27">
   <owner>dfried@chromium.org</owner>
   <owner>frizzle-team@google.com</owner>
   <summary>

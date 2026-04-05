@@ -422,7 +422,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.Canvas.MaximumInflightResources"
-    units="canvas resources" expires_after="2026-07-26">
+    units="canvas resources" expires_after="2026-09-27">
   <owner>aaronhk@chromium.org</owner>
   <owner>fserb@chromium.org</owner>
   <summary>
@@ -1390,7 +1390,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.FedCm.AccountLabel.NumMatchingAccounts"
-    enum="FedCmNumAccounts" expires_after="2026-06-28">
+    enum="FedCmNumAccounts" expires_after="2026-09-27">
   <owner>cbiesinger@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
@@ -1434,6 +1434,29 @@ chromium-metrics-reviews@google.com.
     Records the size of the accounts received from the IdP after applying the
     filters. Records one sample per accounts fetch if there's at least one
     account left after filtering.
+  </summary>
+</histogram>
+
+<histogram name="Blink.FedCm.Ambient.ClickSource" enum="FedCmAmbientClick"
+    expires_after="2026-09-30">
+  <owner>goto@chromium.org</owner>
+  <owner>web-identity-eng@google.com</owner>
+  <summary>
+    Records the click source of the FedCM ambient UI. Recorded when the user
+    clicks on the omnibox icon, chip or the anchored message's button or close
+    button (but not when the user clicks on the avatar or strings). Multiple
+    clicks can happen per API call.
+  </summary>
+</histogram>
+
+<histogram name="Blink.FedCm.Ambient.Impression" enum="FedCmAmbientImpression"
+    expires_after="2026-09-30">
+  <owner>goto@chromium.org</owner>
+  <owner>web-identity-eng@google.com</owner>
+  <summary>
+    Records when the FedCM ambient UI is shown. Recorded when the omnibox icon,
+    chip and anchored message is displayed to the user (can happen more than
+    once per API call).
   </summary>
 </histogram>
 
@@ -1590,7 +1613,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.FedCm.Button.LoadingDialogResult"
-    enum="FedCmLoadingDialogResult" expires_after="2026-07-26">
+    enum="FedCmLoadingDialogResult" expires_after="2026-09-27">
   <owner>yigu@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>
@@ -2716,7 +2739,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.Fonts.FontServiceThread.OpenStreamTime"
-    units="microseconds" expires_after="2026-07-26">
+    units="microseconds" expires_after="2026-09-27">
   <owner>nidhijaju@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -4398,7 +4421,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.Network.ParseDataURLTime{Type}{CharacterCount}"
-    units="microseconds" expires_after="2026-07-26">
+    units="microseconds" expires_after="2026-09-27">
   <owner>nidhijaju@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -5163,6 +5186,29 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Blink.Script.InlineScriptCache.FetchResult"
+    enum="InlineScriptCacheFetchResult" expires_after="2027-03-25">
+  <owner>tnak@chromium.org</owner>
+  <owner>chrome-loading@chromium.org</owner>
+  <summary>
+    The result of inline script cache fetch attempts. This is recorded for each
+    inline script only if the inline script caching is enabled and cache fetch
+    is not skipped (e.g., for small scripts).
+  </summary>
+</histogram>
+
+<histogram name="Blink.Script.InlineScriptCache.FetchTime" units="ms"
+    expires_after="2027-03-25">
+  <owner>tnak@chromium.org</owner>
+  <owner>chrome-loading@chromium.org</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Time spent fetching an inline script cache from a worker thread. This is
+    recorded for each inline script only if the inline script caching is
+    enabled.
+  </summary>
+</histogram>
+
 <histogram
     name="Blink.Script.PostTaskWithLowPriorityUntilTimeout.RaceTaskPriority"
     enum="RaceTaskPriority" expires_after="2027-01-10">
@@ -5761,7 +5807,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.UseCounter.PermissionsPolicy.Allow2"
-    enum="FeaturePolicyFeature" expires_after="2026-07-26">
+    enum="FeaturePolicyFeature" expires_after="2026-09-27">
   <owner>iclelland@chromium.org</owner>
   <owner>feature-control@chromium.org</owner>
   <summary>

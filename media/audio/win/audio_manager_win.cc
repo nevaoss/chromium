@@ -127,7 +127,7 @@ void AudioManagerWin::ShutdownOnAudioThread() {
   // TODO(crbug.com/40066532): Remove this call when kAudioServiceOutOfProcess
   // is removed on Windows; `weak_factory_on_audio_thread_` will be guaranteed
   // to be destroyed/invalidated on the right thread then.
-  weak_factory_on_audio_thread_.InvalidateWeakPtrs();
+  weak_factory_on_audio_thread_.InvalidateWeakPtrsAndDoom();
 
   AudioManagerBase::ShutdownOnAudioThread();
 
@@ -271,7 +271,7 @@ AudioOutputStream* AudioManagerWin::MakeLowLatencyOutputStream(
     const LogCallback& log_callback) {
   DCHECK_EQ(params.format(), AudioParameters::AUDIO_PCM_LOW_LATENCY);
 
-  if (params.channels() > kMaxConcurrentChannels) {
+  if (params.channels() > GetConcurrentMaxChannels()) {
     return nullptr;
   }
 

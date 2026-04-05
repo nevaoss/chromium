@@ -33,6 +33,8 @@ BASE_DECLARE_FEATURE(kFewerUpdateConfirmations);
 BASE_DECLARE_FEATURE(kTabStripDeclutter);
 BASE_DECLARE_FEATURE(kGlassToolbar);
 
+BASE_DECLARE_FEATURE(kImportExportFlags);
+
 BASE_DECLARE_FEATURE(kToolbarGlowUp);
 
 BASE_DECLARE_FEATURE(kDetachedTabs);
@@ -327,6 +329,12 @@ bool IsWebUIPinnedToolbarActionsEnabled();
 
 bool IsWebUISplitTabsButtonEnabled();
 
+// Controls whether the WebUI version of the Avatar Button is used.
+BASE_DECLARE_FEATURE(kWebUIAvatarButton);
+bool IsWebUIAvatarButtonEnabled();
+
+bool IsWebUIContentSettingsIconsEnabled();
+
 bool IsWebUILocationBarEnabled();
 
 bool IsWebUIToolbarEnabled();
@@ -345,9 +353,6 @@ BASE_DECLARE_FEATURE(kAndroidAnimatedProgressBarInBrowser);
 
 bool IsAndroidAnimatedProgressBarInBrowserEnabled();
 #endif  // BUILDFLAG(IS_ANDROID)
-
-// Controls whether the updated What's New page is enabled.
-BASE_DECLARE_FEATURE(kWhatsNewDesktopRefresh);
 
 BASE_DECLARE_FEATURE(kAiOverlayDialog);
 BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogApiKey);

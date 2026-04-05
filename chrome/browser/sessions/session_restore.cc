@@ -26,7 +26,6 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/field_trial.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/observer_list.h"
 #include "base/run_loop.h"
 #include "base/scoped_observation.h"
@@ -1480,10 +1479,12 @@ WebContents* SessionRestore::RestoreForeignSessionTab(
     const sessions::SessionTab& tab,
     WindowOpenDisposition disposition,
     bool skip_renderer_creation) {
-  Browser* browser = chrome::FindBrowserWithTab(source_web_contents);
-  Profile* profile = browser->profile();
+  BrowserWindowInterface* browser =
+      chrome::FindBrowserWithTab(source_web_contents);
+  Profile* profile = browser->GetProfile();
   StartupTabs startup_tabs;
-  SessionRestoreImpl restorer(profile, browser, true, false, false,
+  SessionRestoreImpl restorer(profile, browser->GetBrowserForMigrationOnly(),
+                              true, false, false,
                               /* restore_apps */ false,
                               /* restore_browser */ true,
                               /* log_event */ false, startup_tabs);

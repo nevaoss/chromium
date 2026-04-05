@@ -88,6 +88,13 @@ class BnplManager : public AutofillManager::Observer {
       base::span<const Suggestion> suggestions,
       UpdateSuggestionsCallback update_suggestions_callback);
 
+  // Runs after the user selects the Pay Now tab during the BNPL flow. It will
+  // cancel all pending server requests and reset partial BNPL flow cache,
+  // depending on the current flow status.
+  // If the checkout amount is retrieved, it will update the current suggestion
+  // list with the BNPL suggestions.
+  virtual void OnUserDecisionToUseSavedCards();
+
   // Runs after amount extraction completion and collects the amount extraction
   // result. This must be called after `NotifyOfSuggestionGeneration()`, so
   // that the manager can update suggestions for buy-now-pay-later.
@@ -102,6 +109,10 @@ class BnplManager : public AutofillManager::Observer {
   // Returns true if the issuer for the ongoing flow contains the required
   // action `PaymentInstrument::ActionRequired::kAcceptTos`.
   bool AcceptTosActionRequired() const;
+
+  // Returns the cached suggestions. This will return an empty vector if there
+  // are no cached suggestions present.
+  const std::vector<Suggestion>& GetCachedSuggestions() const;
 
   // AutofillManager::Observer:
   void OnSuggestionsHidden(AutofillManager& manager,
@@ -174,6 +185,10 @@ class BnplManager : public AutofillManager::Observer {
   // callback contains the result of the call as well as the VCN details.
   void OnVcnDetailsFetched(PaymentsAutofillClient::PaymentsRpcResult result,
                            const BnplFetchVcnResponseDetails& response_details);
+
+  // Cancels in-progress requests to `PaymentsNetworkInterface` and invalidates
+  // `BnplManager` weak pointers from the factory.
+  void CancelOngoingRequests();
 
   // Cancels in-progress requests to `PaymentsNetworkInterface` and resets the
   // BNPL flow state. Also invalidates `BnplManager` weak pointers from the
@@ -301,6 +316,10 @@ class BnplManager : public AutofillManager::Observer {
   // progress UI.
   void HideSuggestionsOrRemoveSelectBnplIssuerOrProgressUi();
 
+  // Helper function to update the suggestions list and store the new
+  // suggestions into `cached_suggestions_`.
+  void UpdateAndCacheSuggestions(std::vector<Suggestion> updated_suggestions);
+
 #if BUILDFLAG(IS_ANDROID)
   // Callback triggered when Issuer selection is cancelled during Touch To Fill
   // flow.
@@ -350,6 +369,14 @@ class BnplManager : public AutofillManager::Observer {
   // True if the user has seen the amount extraction AI terms before. Set when
   // suggestions are shown, and reset when a BNPL flow is ended.
   std::optional<bool> user_has_seen_bnpl_ai_terms_before_;
+
+  // Cache for suggestions to preserve state between suggestion list
+  // re-generations. Only used when `kAutofillEnablePayNowPayLaterTabs` is
+  // enabled and is empty otherwise. Set when suggestions are shown, or when
+  // they are updated during AI amount extraction. Cleared in `Reset()` upon
+  // flow completion (which includes when the user manually closes the
+  // suggestion popup).
+  std::vector<Suggestion> cached_suggestions_;
 
   // Observes the AutofillManager so the BnplManager will be notified when
   // autofill suggestions are hidden.

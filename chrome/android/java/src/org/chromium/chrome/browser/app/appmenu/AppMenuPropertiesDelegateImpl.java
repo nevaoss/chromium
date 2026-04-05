@@ -748,15 +748,22 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
         return downloadButton;
     }
 
-    protected PropertyModel buildGlicActionModel(@Nullable Tab currentTab) {
-        PropertyModel glicButton =
-                buildModelForIcon(
-                        R.id.glic_menu_id,
-                        R.string.glic_button_entrypoint_ask_gemini_label,
-                        R.string.glic_button_entrypoint_label,
-                        R.drawable.ic_spark_24dp);
-        glicButton.set(AppMenuItemProperties.ENABLED, true);
-        return glicButton;
+    protected boolean shouldShowPageInfoItem() {
+        return ChromeFeatureList.sAndroidPageInfoAsAppMenuItem.isEnabled()
+                || ChromeFeatureList.sThreeDotMenuBackButton.isEnabled();
+    }
+
+    /** Construct the page info menu item. */
+    protected MVCListAdapter.ListItem buildPageInfoItem(@Nullable Tab currentTab) {
+        MVCListAdapter.ListItem item =
+                new MVCListAdapter.ListItem(
+                        AppMenuHandler.AppMenuItemType.STANDARD,
+                        buildModelForStandardMenuItem(
+                                R.id.info_menu_id,
+                                R.string.menu_site_controls,
+                                shouldShowIconBeforeItem() ? R.drawable.ic_settings_tune_24dp : 0));
+        item.model.set(AppMenuItemProperties.ENABLED, currentTab != null);
+        return item;
     }
 
     /** Build the PropertyModel for the page info action. */

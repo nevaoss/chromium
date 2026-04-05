@@ -102,6 +102,7 @@
 #include "chrome/browser/ash/policy/handlers/adb_sideloading_allowance_mode_policy_handler.h"
 #include "chrome/browser/ash/policy/handlers/minimum_version_policy_handler.h"
 #include "chrome/browser/ash/policy/handlers/tpm_auto_update_mode_policy_handler.h"
+#include "chrome/browser/ash/policy/remote_commands/device_command_query_geolocation_job.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "chrome/browser/ash/profiles/signin_profile_handler.h"
 #include "chrome/browser/ash/settings/about_flags.h"
@@ -2226,6 +2227,9 @@ void UserSessionManager::ShowNotificationsIfNeeded(Profile* profile) {
 
   GetMinimumVersionPolicyHandler()->MaybeShowNotificationOnLogin();
 
+  policy::DeviceCommandQueryGeolocationJob::
+      ShowLocationReportedNotificationIfNeeded();
+
   // Show a notification about ADB sideloading policy change if applicable.
   g_browser_process->platform_part()
       ->browser_policy_connector_ash()
@@ -2380,13 +2384,14 @@ UserSessionManager::GetDefaultIMEState(Profile* profile) {
 void UserSessionManager::CheckEolInfo(Profile* profile) {
   if (!EolNotification::ShouldShowEolNotification())
     return;
+  user_manager::User* user = ProfileHelper::Get()->GetUserByProfile(profile);
 
   std::map<Profile*, std::unique_ptr<EolNotification>, ProfileCompare>::iterator
       iter = eol_notification_handler_.find(profile);
   if (iter == eol_notification_handler_.end()) {
     auto eol_notification =
         eol_notification_handler_test_factory_.is_null()
-            ? std::make_unique<EolNotification>(profile)
+            ? std::make_unique<EolNotification>(user)
             : eol_notification_handler_test_factory_.Run(profile);
 
     iter = eol_notification_handler_
@@ -2406,7 +2411,9 @@ void UserSessionManager::CheckFrozenUpdateInfo(user_manager::User* user) {
   auto iter = frozen_update_notification_handler_.find(user->GetAccountId());
   if (iter == frozen_update_notification_handler_.end()) {
     auto frozen_update_notification =
-        std::make_unique<FrozenUpdateNotification>(*prefs);
+        frozen_update_notification_handler_test_factory_.is_null()
+            ? std::make_unique<FrozenUpdateNotification>(*prefs)
+            : frozen_update_notification_handler_test_factory_.Run(*prefs);
 
     iter = frozen_update_notification_handler_
                .insert(std::make_pair(user->GetAccountId(),
@@ -2699,6 +2706,13 @@ void UserSessionManager::SetEolNotificationHandlerFactoryForTesting(
     const EolNotificationHandlerFactoryCallback&
         eol_notification_handler_factory) {
   eol_notification_handler_test_factory_ = eol_notification_handler_factory;
+}
+
+void UserSessionManager::SetFrozenUpdateNotificationHandlerFactoryForTesting(
+    const FrozenUpdateNotificationHandlerFactoryCallback&
+        frozen_update_notification_handler_factory) {
+  frozen_update_notification_handler_test_factory_ =
+      frozen_update_notification_handler_factory;
 }
 
 void UserSessionManager::SetOnPendingUserSessionRestoreFinishedForTesting(

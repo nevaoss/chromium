@@ -554,10 +554,34 @@ export class SettingsAppearancePageElement extends
     return !this.showProjectsPanelEnabled_ && this.showEverythingMenuEnabled_;
   }
 
+  private onShowTabSearchButtonChange_(event: CustomEvent<boolean>) {
+    this.metricsBrowserProxy_.recordAction(
+        event.detail ? 'TabStripComboButton.TabSearch.Pinned' :
+                       'TabStripComboButton.TabSearch.Unpinned');
+  }
+
+  private onShowProjectsPanelButtonChange_(event: CustomEvent<boolean>) {
+    this.metricsBrowserProxy_.recordAction(
+        event.detail ? 'TabStripComboButton.ProjectsPanel.Pinned' :
+                       'TabStripComboButton.ProjectsPanel.Unpinned');
+  }
+
+  private onShowEverythingMenuButtonChange_(event: CustomEvent<boolean>) {
+    this.metricsBrowserProxy_.recordAction(
+        event.detail ? 'TabStripComboButton.EverythingMenu.Pinned' :
+                       'TabStripComboButton.EverythingMenu.Unpinned');
+  }
+
   private onHoverCardImagesToggleChange_(event: Event) {
     const enabled = (event.target as SettingsToggleButtonElement).checked;
     this.appearanceBrowserProxy_.recordHoverCardImagesEnabledChanged(enabled);
   }
+
+  private showVerticalTabsExpandOnHoverSetting_(): boolean {
+    return this.showVerticalTabsExpandOnHoverEnabled_ &&
+        this.getPref<boolean>('vertical_tabs.enabled').value;
+  }
+
 
   private onManagedDialogClosed_() {
     this.showManagedThemeDialog_ = false;

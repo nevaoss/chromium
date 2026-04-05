@@ -71,6 +71,10 @@ CC_BASE_EXPORT BASE_DECLARE_FEATURE(kCCSlimming);
 // Check if the above feature is enabled. For performance purpose.
 CC_BASE_EXPORT bool IsCCSlimmingEnabled();
 
+// When enabled, the scheduler will use SlimSchedulerStateMachine which ensures
+// that each action is returned only once per begin frame.
+CC_BASE_EXPORT BASE_DECLARE_FEATURE(kSlimScheduler);
+
 // Modes for `kWaitForLateScrollEvents` changing event dispatch. Where the
 // default is to just always enqueue scroll events.
 //
@@ -222,11 +226,6 @@ CC_BASE_EXPORT BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
 // When enabled, slim will receive CompositorFrameSink messages directly without
 // the intermediate IO-thread hop.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kSlimDirectReceiverIpc);
-
-// When enabled, the overscroll behavior will be respected on all scroll
-// containers.
-CC_BASE_EXPORT BASE_DECLARE_FEATURE(
-    kOverscrollBehaviorRespectedOnAllScrollContainers);
 
 // When enabled, the overscroll effect will display on non-root scrollers.
 CC_BASE_EXPORT BASE_DECLARE_FEATURE(kOverscrollEffectOnNonRootScrollers);

@@ -5,18 +5,28 @@
 #import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_edit_table_view_controller.h"
 
 #import "base/apple/foundation_util.h"
+#import "base/strings/sys_string_conversions.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/public/autofill_ai_settings_constants.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_country_item.h"
+#import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_edit_date_item.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_edit_item.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_edit_mutator.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_edit_table_view_controller_delegate.h"
 #import "ios/chrome/browser/settings/ui_bundled/settings_navigation_controller.h"
+#import "ios/chrome/browser/shared/ui/table_view/cells/table_view_link_header_footer_item.h"
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_text_edit_item.h"
 #import "ios/chrome/browser/shared/ui/table_view/table_view_utils.h"
+#import "ios/chrome/common/ui/util/chrome_button.h"
+#import "ios/chrome/grit/ios_strings.h"
+#import "ui/base/l10n/l10n_util.h"
 
 namespace {
 typedef NS_ENUM(NSInteger, SectionIdentifier) {
   SectionIdentifierAttributes = kSectionIdentifierEnumZero,
+};
+
+typedef NS_ENUM(NSInteger, ItemType) {
+  ItemTypeFooter = kItemTypeEnumZero,
 };
 }  // namespace
 
@@ -29,6 +39,12 @@ typedef NS_ENUM(NSInteger, SectionIdentifier) {
 
   // Denotes the entity is saved in wallet.
   BOOL _isServerWalletItem;
+
+  // The user's email address to display in the footer.
+  NSString* _userEmail;
+
+  // The bottom save button displayed when creating a new entity.
+  ChromeButton* _saveButton;
 }
 
 #pragma mark - UIViewController
@@ -39,8 +55,14 @@ typedef NS_ENUM(NSInteger, SectionIdentifier) {
   self.shouldShowDeleteButtonInToolbar = YES;
   self.tableView.allowsSelectionDuringEditing = YES;
 
-  if (self.startInEditMode) {
+  if (self.mode == AutofillAIEntityEditMode::kCreate) {
     [self setEditing:YES animated:NO];
+    self.shouldHideDoneButton = YES;
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc]
+        initWithBarButtonSystemItem:UIBarButtonSystemItemClose
+                             target:self
+                             action:@selector(didTapCancel)];
+    [self setupBottomSaveButton];
   } else {
     self.navigationItem.rightBarButtonItem = [self editButtonItem];
   }
@@ -74,14 +96,68 @@ typedef NS_ENUM(NSInteger, SectionIdentifier) {
         countryItem.accessoryType = UITableViewCellAccessoryNone;
         countryItem.selectionStyle = UITableViewCellSelectionStyleNone;
       }
+    } else if ([item isKindOfClass:[AutofillAIEntityEditDateItem class]]) {
+      AutofillAIEntityEditDateItem* dateItem =
+          (AutofillAIEntityEditDateItem*)item;
+      dateItem.editingEnabled = self.tableView.editing;
+      dateItem.delegate = self;
     }
   }
+
+  TableViewLinkHeaderFooterItem* footer =
+      [[TableViewLinkHeaderFooterItem alloc] initWithType:ItemTypeFooter];
+
+  if (_isServerWalletItem && _userEmail.length > 0) {
+    footer.text =
+        l10n_util::GetNSStringF(IDS_IOS_AUTOFILL_AI_SAVED_TO_WALLET_FOOTER,
+                                base::SysNSStringToUTF16(_userEmail));
+  } else {
+    footer.text =
+        l10n_util::GetNSString(IDS_IOS_AUTOFILL_AI_SAVED_LOCALLY_FOOTER);
+  }
+
+  [model setFooter:footer forSectionWithIdentifier:SectionIdentifierAttributes];
+}
+
+#pragma mark - Setup
+
+- (void)setupBottomSaveButton {
+  _saveButton = [[ChromeButton alloc] initWithStyle:ChromeButtonStylePrimary];
+  _saveButton.title =
+      l10n_util::GetNSString(IDS_IOS_SAVE_ENTITY_IN_SETTINGS_BUTTON_TEXT);
+  _saveButton.translatesAutoresizingMaskIntoConstraints = NO;
+  [_saveButton addTarget:self
+                  action:@selector(didTapSaveNewEntity)
+        forControlEvents:UIControlEventTouchUpInside];
+
+  [self.view addSubview:_saveButton];
+
+  [NSLayoutConstraint activateConstraints:@[
+    [_saveButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+    [_saveButton.widthAnchor constraintEqualToAnchor:self.view.widthAnchor
+                                            constant:-32],
+    [_saveButton.bottomAnchor
+        constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor
+                       constant:-16]
+  ]];
+
+  // Add bottom inset to the table view so the last cell doesn't get hidden
+  // behind the button.
+  self.tableView.contentInset = UIEdgeInsetsMake(0, 0, 80, 0);
 }
 
 #pragma mark - SettingsRootTableViewController
 
 - (BOOL)shouldShowEditButton {
+  if (self.mode == AutofillAIEntityEditMode::kCreate) {
+    return NO;
+  }
   return _editingAllowed || _isServerWalletItem;
+}
+
+- (BOOL)shouldShowEditDoneButton {
+  // Only show the top right Done button if we are editing an existing entity.
+  return self.mode == AutofillAIEntityEditMode::kViewAndEdit;
 }
 
 #pragma mark - AutofillAIEntityEditConsumer
@@ -110,12 +186,68 @@ typedef NS_ENUM(NSInteger, SectionIdentifier) {
   _isServerWalletItem = isServerWalletItem;
 }
 
+- (void)setUserEmail:(NSString*)userEmail {
+  _userEmail = [userEmail copy];
+}
+
 - (void)updateItem:(TableViewItem*)item {
   [self reconfigureCellsForItems:@[ item ]];
 }
 
 - (void)reloadData {
   [self.tableView reloadData];
+}
+
+- (void)showLoadingState {
+  _saveButton.enabled = NO;
+
+  UIButtonConfiguration* buttonConfig = _saveButton.configuration;
+  if (buttonConfig) {
+    buttonConfig.showsActivityIndicator = YES;
+    _saveButton.configuration = buttonConfig;
+  }
+
+  // Prevent user from interacting with the form or dismissing the view.
+  self.tableView.userInteractionEnabled = NO;
+  self.navigationItem.leftBarButtonItem.enabled = NO;
+  self.navigationItem.rightBarButtonItem.enabled = NO;
+
+  // Prevent swipe-to-dismiss for modals.
+  self.modalInPresentation = YES;
+  // Prevent edge-swipe back gesture.
+  self.navigationController.interactivePopGestureRecognizer.enabled = NO;
+}
+
+- (void)hideLoadingState {
+  _saveButton.enabled = YES;
+
+  UIButtonConfiguration* buttonConfig = _saveButton.configuration;
+  if (buttonConfig) {
+    buttonConfig.showsActivityIndicator = NO;
+    _saveButton.configuration = buttonConfig;
+  }
+
+  // Restore user interaction.
+  self.tableView.userInteractionEnabled = YES;
+  self.navigationItem.leftBarButtonItem.enabled = YES;
+  self.navigationItem.rightBarButtonItem.enabled = YES;
+  self.modalInPresentation = NO;
+  self.navigationController.interactivePopGestureRecognizer.enabled = YES;
+}
+
+- (void)didFinishSavingWithLocalFallback:(BOOL)isLocalFallback {
+  if (isLocalFallback) {
+    [self.delegate didFinishSavingToLocalAsFallback:self];
+  } else if (self.mode == AutofillAIEntityEditMode::kCreate) {
+    [self.delegate didTapCloseButton:self];
+  }
+}
+
+#pragma mark - AutofillAIEntityEditDateItemDelegate
+
+- (void)didChangeDate:(NSDate*)date
+              forItem:(AutofillAIEntityEditDateItem*)item {
+  [self.mutator didChangeDate:date forItem:item];
 }
 
 #pragma mark - Actions
@@ -145,6 +277,11 @@ typedef NS_ENUM(NSInteger, SectionIdentifier) {
   if (wasEditing && !self.tableView.editing) {
     [self.mutator saveEntityInstance];
   }
+}
+
+- (void)didTapSaveNewEntity {
+  CHECK(self.mode == AutofillAIEntityEditMode::kCreate);
+  [self.mutator saveEntityInstance];
 }
 
 #pragma mark -

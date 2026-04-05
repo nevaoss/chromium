@@ -4,12 +4,14 @@
 
 import {SubmitButtonIconType} from 'chrome://new-tab-page/lazy_load.js';
 import {$$} from 'chrome://new-tab-page/new_tab_page.js';
+import {ContextualSearchInputStateDeletionType} from 'chrome://resources/cr_components/composebox/common.js';
 import {ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import type {SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {InputState} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {MockTimer} from 'chrome://webui-test/mock_timer.js';
 import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {assertStyle} from '../test_support.js';
@@ -939,9 +941,11 @@ suite('NewTabPageComposeboxTest', () => {
     assertEquals(ToolMode.kUnspecified, activeTool);
 
     const metricName =
-        'ContextualSearch.UserAction.InputStateDeletion.Tool.NewTabPage';
-    assertEquals(1, testProxy.metrics.count(metricName, 0));
-    assertEquals(1, testProxy.metrics.count(metricName, true));
+        'ContextualSearch.UserAction.InputStateDeletion.NewTabPage';
+    assertEquals(
+        1,
+        testProxy.metrics.count(
+            metricName, ContextualSearchInputStateDeletionType.TOOL));
   });
 
   test('ShowContextMenuDescription', async () => {
@@ -966,5 +970,142 @@ suite('NewTabPageComposeboxTest', () => {
     entrypoint = $$(testProxy.element, '#contextEntrypoint');
     assertTrue(!!entrypoint);
     assertTrue(entrypoint.hasAttribute('show-context-menu-description'));
+  });
+});
+
+suite('NewTabPageComposeboxResizeObserverTest', () => {
+  const testProxy = setupComposeboxTest();
+  // Keep this aligned with DEBOUNCE_TIMEOUT_MS in composebox.ts.
+  const RESIZE_DEBOUNCE_TIMEOUT_MS = 20;
+  let originalResizeObserver: typeof ResizeObserver;
+  let mockTimer: MockTimer;
+
+  class MockResizeObserver implements ResizeObserver {
+    static instances: MockResizeObserver[] = [];
+    observedTargets: Element[] = [];
+    disconnected = false;
+
+    constructor(private callback: ResizeObserverCallback) {
+      MockResizeObserver.instances.push(this);
+    }
+
+    disconnect() {
+      this.disconnected = true;
+    }
+
+    observe(target: Element, _options?: ResizeObserverOptions) {
+      this.observedTargets.push(target);
+    }
+
+    takeRecords(): ResizeObserverEntry[] {
+      return [];
+    }
+
+    unobserve(_target: Element) {}
+
+    trigger() {
+      this.callback([], this);
+    }
+  }
+
+  function getObserversForTarget(target: Element): MockResizeObserver[] {
+    return MockResizeObserver.instances.filter(
+        observer => observer.observedTargets.includes(target));
+  }
+
+  function getActiveObserversForTarget(target: Element): MockResizeObserver[] {
+    return getObserversForTarget(target).filter(
+        observer => !observer.disconnected);
+  }
+
+  async function flushComposebox() {
+    await testProxy.element.updateComplete;
+    await testProxy.element.getInputElement().updateComplete;
+    await microtasksFinished();
+  }
+
+  setup(() => {
+    originalResizeObserver = window.ResizeObserver;
+    window.ResizeObserver =
+        MockResizeObserver as unknown as typeof ResizeObserver;
+    MockResizeObserver.instances = [];
+    mockTimer = new MockTimer();
+  });
+
+  teardown(() => {
+    window.ResizeObserver = originalResizeObserver;
+    mockTimer.uninstall();
+  });
+
+  test('observeResize emits composebox resize events for host and dropdown',
+      async () => {
+        createComposeboxElement(testProxy, {observeResize: true});
+        await flushComposebox();
+
+        const hostObserver = getActiveObserversForTarget(testProxy.element);
+        const dropdownObserver =
+            getActiveObserversForTarget(testProxy.element.$.matches);
+        assertEquals(1, hostObserver.length);
+        assertEquals(1, dropdownObserver.length);
+
+        const hostResizeEvent =
+            eventToPromise('composebox-resize', testProxy.element);
+        hostObserver[0]!.trigger();
+        // Advance the debounce used by setupResizeObservers_().
+        mockTimer.tick(RESIZE_DEBOUNCE_TIMEOUT_MS);
+        await microtasksFinished();
+        const hostEvent: any = await hostResizeEvent;
+        assertTrue(hostEvent.detail.height !== undefined);
+
+        const dropdownResizeEvent =
+            eventToPromise('composebox-resize', testProxy.element);
+        dropdownObserver[0]!.trigger();
+        mockTimer.tick(RESIZE_DEBOUNCE_TIMEOUT_MS);
+        await microtasksFinished();
+        const dropdownEvent: any = await dropdownResizeEvent;
+        assertTrue(dropdownEvent.detail.dropdownHeight !== undefined);
+      });
+
+  test('observeResize false skips public resize observers', async () => {
+    createComposeboxElement(testProxy, {observeResize: false});
+    await flushComposebox();
+
+    const inputWrapper = testProxy.element.getInputElement().shadowRoot
+                               .querySelector<HTMLElement>('#inputWrapper');
+    assertTrue(!!inputWrapper);
+
+    assertEquals(0, getActiveObserversForTarget(testProxy.element).length);
+    assertEquals(0, getActiveObserversForTarget(testProxy.element.$.matches)
+                        .length);
+    assertEquals(1, getActiveObserversForTarget(inputWrapper).length);
+  });
+
+  test('observeResize changes resync public resize observers', async () => {
+    createComposeboxElement(testProxy, {observeResize: false});
+    await flushComposebox();
+
+    assertEquals(0, getActiveObserversForTarget(testProxy.element).length);
+    assertEquals(0, getActiveObserversForTarget(testProxy.element.$.matches)
+                        .length);
+
+    testProxy.element.observeResize = true;
+    await flushComposebox();
+
+    assertEquals(1, getActiveObserversForTarget(testProxy.element).length);
+    assertEquals(1, getActiveObserversForTarget(testProxy.element.$.matches)
+                        .length);
+
+    const composeboxObservers = [
+      ...getObserversForTarget(testProxy.element),
+      ...getObserversForTarget(testProxy.element.$.matches),
+    ];
+
+    testProxy.element.observeResize = false;
+    await flushComposebox();
+
+    assertEquals(0, getActiveObserversForTarget(testProxy.element).length);
+    assertEquals(0, getActiveObserversForTarget(testProxy.element.$.matches)
+                        .length);
+    assertTrue(composeboxObservers.every(observer => observer.disconnected));
   });
 });

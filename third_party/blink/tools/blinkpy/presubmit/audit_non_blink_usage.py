@@ -158,6 +158,7 @@ _CONFIG = [
             'base::ScopedFD',
             'base::Seconds',
             'base::sequence_manager::TaskTimeObserver',
+            'base::sequence_manager::SequenceManager',
             'base::SequencedTaskRunner',
             'base::SingleThreadTaskRunner',
             'base::span',
@@ -472,6 +473,14 @@ _CONFIG = [
     {
         'paths': ['third_party/blink/common/manifest/manifest_util.cc'],
         'allowed': ['base::EqualsCaseInsensitiveASCII'],
+    },
+    {
+        'paths': [
+            'third_party/blink/common/page/content_to_visible_time_reporter.cc',
+        ],
+        'allowed': [
+            'viz::FrameTimingDetails',
+        ],
     },
     {
         'paths': [
@@ -1566,6 +1575,16 @@ _CONFIG = [
         'allowed': [
             'v8::Local',
             'v8::Value',
+        ],
+    },
+    {
+        'paths': [
+            'third_party/blink/public/web/web_node.h',
+        ],
+        'allowed': [
+            # Explicit ::blink qualifier is needed to disambiguate from member
+            # function named `To`.
+            'blink::To',
         ],
     },
     {

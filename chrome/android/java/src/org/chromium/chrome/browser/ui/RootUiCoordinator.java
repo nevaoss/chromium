@@ -59,6 +59,7 @@ import org.chromium.chrome.browser.app.tabmodel.ArchivedTabModelOrchestrator;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.automotivetoolbar.AutomotiveBackButtonToolbarCoordinator;
 import org.chromium.chrome.browser.back_press.BackPressManager;
+import org.chromium.chrome.browser.bookmarks.BookmarkAllTabsHandler;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.bookmarks.TabBookmarker;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
@@ -332,8 +333,6 @@ public class RootUiCoordinator
 
     private @Nullable BottomSheetManager mBottomSheetManager;
     private @Nullable ManagedBottomSheetController mBottomSheetController;
-    private final SettableMonotonicObservableSupplier<SnackbarManager>
-            mBottomSheetSnackbarManagerSupplier = ObservableSuppliers.createMonotonic();
 
     private final ToolbarActionModeCallback mActionModeControllerCallback;
     private final SettableNonNullObservableSupplier<Boolean> mOmniboxFocusStateSupplier =
@@ -402,6 +401,7 @@ public class RootUiCoordinator
     private @Nullable ReaderModeBottomSheetManager mReaderModeBottomSheetManager;
     private @Nullable AppMenuObserver mAppMenuObserver;
     private @Nullable LinkHoverStatusBarCoordinator mLinkHoverStatusBarCoordinator;
+    private @Nullable BookmarkAllTabsHandler mBookmarkAllTabsHandler;
 
     private final OneshotSupplierImpl<ToolbarManager> mToolbarManagerOneshotSupplier =
             new OneshotSupplierImpl<>();
@@ -600,6 +600,12 @@ public class RootUiCoordinator
                 savedIncognitoReauthPending || persistedIncognitoReauthPending;
 
         mMenuOrKeyboardActionController.registerMenuOrKeyboardActionHandler(this);
+
+        mBookmarkAllTabsHandler =
+                new BookmarkAllTabsHandler(
+                        mTabModelSelectorSupplier, mSnackbarManagerSupplier, mWindowAndroid);
+        mMenuOrKeyboardActionController.registerMenuOrKeyboardActionHandler(
+                mBookmarkAllTabsHandler);
 
         // This little bit of arithmetic is necessary because of Java doesn't like accepting
         // Supplier<BaseImpl> where Supplier<Base> is expected. We should remove the need for
@@ -811,10 +817,10 @@ public class RootUiCoordinator
         //  other than the mActivity. If the nulling calls are not necessary, we can remove them.
         mCallbackController.destroy();
         mMenuOrKeyboardActionController.unregisterMenuOrKeyboardActionHandler(this);
-
-        SnackbarManager bottomSheetSnackbarManager = mBottomSheetSnackbarManagerSupplier.get();
-        if (bottomSheetSnackbarManager != null) {
-            bottomSheetSnackbarManager.destroy();
+        if (mBookmarkAllTabsHandler != null) {
+            mMenuOrKeyboardActionController.unregisterMenuOrKeyboardActionHandler(
+                    mBookmarkAllTabsHandler);
+            mBookmarkAllTabsHandler = null;
         }
 
         destroyUnownedUserDataSuppliers();
@@ -858,11 +864,6 @@ public class RootUiCoordinator
             }
             mToolbarManager.destroy();
             mToolbarManager = null;
-        }
-
-        if (mOmniboxChipManager != null) {
-            mOmniboxChipManager.destroy();
-            mOmniboxChipManager = null;
         }
 
         if (mAdaptiveToolbarUiCoordinator != null) {
@@ -2186,21 +2187,6 @@ public class RootUiCoordinator
      * until content is requested in the sheet.
      */
     private void initializeBottomSheetController() {
-        // TODO(crbug.com/40135254): Componentize SnackbarManager so BottomSheetController can own
-        // this.
-        Callback<View> sheetInitializedCallback =
-                (view) -> {
-                    // The bottom sheet already accounts for internal offsets (e.g. E2E offsets), so
-                    // there is no need to provide an additionalBottomMarginPxSupplier.
-                    mBottomSheetSnackbarManagerSupplier.set(
-                            new SnackbarManager(
-                                    mActivity,
-                                    view.findViewById(R.id.bottom_sheet_snackbar_container),
-                                    mWindowAndroid,
-                                    /* additionalBottomMarginPxSupplier= */ null,
-                                    mModalDialogManagerSupplier.get()));
-                };
-
         Supplier<@Nullable OverlayPanelManager> panelManagerSupplier =
                 () -> {
                     var compositorViewHolder = mCompositorViewHolderSupplier.get();
@@ -2216,7 +2202,6 @@ public class RootUiCoordinator
         mBottomSheetController =
                 BottomSheetControllerFactory.createBottomSheetController(
                         mScrimManagerSupplier,
-                        sheetInitializedCallback,
                         mActivity.getWindow(),
                         mWindowAndroid.getKeyboardDelegate(),
                         () -> {
@@ -2242,7 +2227,6 @@ public class RootUiCoordinator
                         mActivityTabProvider,
                         mBrowserControlsManager,
                         mExpandedBottomSheetHelper,
-                        mBottomSheetSnackbarManagerSupplier,
                         mOmniboxFocusStateSupplier,
                         panelManagerSupplier,
                         mLayoutStateProviderOneShotSupplier);
@@ -2394,13 +2378,6 @@ public class RootUiCoordinator
     /** Returns the {@link ScrimManager} to control scrims over the activity. */
     public ScrimManager getScrimManager() {
         return mScrimManagerSupplier.asNonNull().get();
-    }
-
-    /**
-     * @return The {@link SnackbarManager} for the {@link BottomSheetController}.
-     */
-    public SnackbarManager getBottomSheetSnackbarManager() {
-        return mBottomSheetSnackbarManagerSupplier.asNonNull().get();
     }
 
     /**

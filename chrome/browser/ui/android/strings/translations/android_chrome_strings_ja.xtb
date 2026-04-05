@@ -104,7 +104,6 @@
 <translation id="1381838868249179644">安全を確保するため、いくつかのサイトから権限を削除しました</translation>
 <translation id="1383876407941801731">検索</translation>
 <translation id="1384704387250346179">Google レンズで画像を翻訳 <ph name="BEGIN_NEW" />New<ph name="END_NEW" /></translation>
-<translation id="1386674309198842382">最終同期: <ph name="LAST_UPDATED" /> 日前</translation>
 <translation id="1390418506739274310">Chrome でリンクを開く他のアプリの履歴が表示されることがあります。お使いの Google アカウントの <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> に、他の形式の閲覧履歴が記録されている場合があります。</translation>
 <translation id="139752016751285248">価格分析情報のボトムシートが最大の高さで開かれています</translation>
 <translation id="1397811292916898096"><ph name="PRODUCT_NAME" /> で検索</translation>
@@ -136,7 +135,6 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="1513352483775369820">ブックマークとウェブ履歴</translation>
 <translation id="1515901671075971249">タブ ナビゲーションのショートカット</translation>
 <translation id="1516966594427080024">新しいウィンドウをシークレット モードで開く</translation>
-<translation id="1521774566618522728">最終同期: 今日</translation>
 <translation id="153446405401665083">Chrome の新しいバージョンをご利用いただけます</translation>
 <translation id="1540012742443808215">現在アドレスバーは上部にあります</translation>
 <translation id="1544084554881119930">お支払い方法と住所は暗号化されません。また、Chrome の閲覧履歴は同期されません。
@@ -222,6 +220,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="1925021887439448749">カスタムのウェブアドレスを入力</translation>
 <translation id="1928618076168182477">ビジュアル表示を表示しています</translation>
 <translation id="1928696683969751773">更新</translation>
+<translation id="1934545916152269346">最近の検索</translation>
 <translation id="1943398124995840148">XR で開いているタブのデザインが更新されました</translation>
 <translation id="1944535645109964458">利用可能なパスキーがありません</translation>
 <translation id="1957557050935255529">PDF を読み込んでいます…</translation>
@@ -1259,6 +1258,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="6251449557817521191">Chrome 履歴がここに表示されます</translation>
 <translation id="6254139308321626268">PDF ファイルを表示しています</translation>
 <translation id="6255809143828972562">Chrome のツールを使って、自分で管理しながら安全にブラウジングできます</translation>
+<translation id="6260260490042862943">サイトの設定</translation>
 <translation id="6264376385120300461">ダウンロードを続行</translation>
 <translation id="6264485186158353794">セキュリティで保護されたページに戻る</translation>
 <translation id="6267106249090587268">通知 <ph name="SEPARATOR" /> スパムまたは虚偽のコンテンツのため、権限を削除しました</translation>
@@ -1727,7 +1727,6 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="7968014550143838305">リーディング リストに追加しました</translation>
 <translation id="7968982339740310781">詳細を表示</translation>
 <translation id="7969391000881506217">有効期限*</translation>
-<translation id="7971136598759319605">最終同期: 1 日前</translation>
 <translation id="7975379999046275268">ページをプレビュー <ph name="BEGIN_NEW" />New<ph name="END_NEW" /></translation>
 <translation id="7977451675950311423">データ侵害で流出したパスワードを使用すると警告します。</translation>
 <translation id="7987499071758862048"><ph name="PERMISSION_1" />、<ph name="PERMISSION_2" />、<ph name="PERMISSION_3" /> <ph name="SEPARATOR" /> 最近アクセスしていないため、サイトから権限を削除しました</translation>
@@ -1800,7 +1799,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="82296173028782770">検索語句「<ph name="SEARCH_QUERY" />」を編集します</translation>
 <translation id="8236097722223016103">ブックマークに追加</translation>
 <translation id="8243077599929149377">ユーザー名を追加</translation>
-<translation id="8244387390464017490">新しいタブページをカスタマイズ</translation>
+<translation id="8244387390464017490">新しいタブページを編集</translation>
 <translation id="8244444485683708655">カメラの写真を添付</translation>
 <translation id="8250920743982581267">ドキュメント</translation>
 <translation id="8257429805444572809"><ph name="DOMAIN" /> の登録を解除しました</translation>

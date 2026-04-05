@@ -968,7 +968,7 @@ const FeatureEntry::FeatureParam kBestOfAppFREArm4Upload[] = {
 
 const FeatureEntry::FeatureVariation kBestOfAppFREVariations[] = {
     {" - Variant A: Lens Interactive Promo", kBestOfAppFREArm1, nullptr},
-    {" - Variant A: Lens Animated Promo", kBestOfAppFREArm2, nullptr},
+    {" - Variant B: Lens Animated Promo", kBestOfAppFREArm2, nullptr},
     {" - Variant D: Guided Tour", kBestOfAppFREArm4, nullptr},
     {" - Variant D: Guided Tour with manual metric upload",
      kBestOfAppFREArm4Upload, nullptr},
@@ -2166,6 +2166,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kLensEnableSendUrlsInComposeboxesDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(lens::features::kLensSendUrlsInComposeboxes)},
+    {"lens-enable-raw-file-media-types",
+     flag_descriptions::kLensEnableSendRawFileMediaTypesName,
+     flag_descriptions::kLensEnableSendRawFileMediaTypesDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(lens::features::kLensSendRawFileMediaTypes)},
     {"lens-initial-lvf-zoom-level-90-percent",
      flag_descriptions::kLensInitialLvfZoomLevel90PercentName,
      flag_descriptions::kLensInitialLvfZoomLevel90PercentDescription,
@@ -2727,9 +2732,12 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kOpenEditGroupViewByTappingTitleName,
      flag_descriptions::kOpenEditGroupViewByTappingTitleDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kOpenEditGroupViewByTappingTitle)},
-    {"ios-actuation-tools", flag_descriptions::kIOSActuationToolsName,
-     flag_descriptions::kIOSActuationToolsDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kActuationTools)},
+    {"ios-actor-tools", flag_descriptions::kIOSActorToolsName,
+     flag_descriptions::kIOSActorToolsDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kActorTools)},
+    {"gemini-client-migration", flag_descriptions::kGeminiClientMigrationName,
+     flag_descriptions::kGeminiClientMigrationDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiClientMigration)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

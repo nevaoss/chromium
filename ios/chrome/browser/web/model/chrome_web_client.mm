@@ -46,9 +46,9 @@
 #import "ios/chrome/browser/enterprise/connectors/reporting/ios_reporting_event_router_factory.h"
 #import "ios/chrome/browser/flags/chrome_switches.h"
 #import "ios/chrome/browser/https_upgrades/model/https_upgrade_service_factory.h"
-#import "ios/chrome/browser/intelligence/actuation/model/tools/actuation_target_java_script_feature.h"
-#import "ios/chrome/browser/intelligence/actuation/model/tools/click_tool_java_script_feature.h"
-#import "ios/chrome/browser/intelligence/actuation/model/tools/type_tool_java_script_feature.h"
+#import "ios/chrome/browser/intelligence/actor/tools/model/action_target_java_script_feature.h"
+#import "ios/chrome/browser/intelligence/actor/tools/model/click_tool_java_script_feature.h"
+#import "ios/chrome/browser/intelligence/actor/tools/model/type_tool_java_script_feature.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/proto_wrappers/page_context_extractor_java_script_feature.h"
 #import "ios/chrome/browser/link_to_text/model/link_to_text_java_script_feature.h"
@@ -67,6 +67,7 @@
 #import "ios/chrome/browser/safe_browsing/model/safe_browsing_blocking_page.h"
 #import "ios/chrome/browser/search_engines/model/search_engine_java_script_feature.h"
 #import "ios/chrome/browser/search_engines/model/search_engine_tab_helper_factory.h"
+#import "ios/chrome/browser/send_tab_to_self/model/send_tab_to_self_text_fragment_selector_generator.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
@@ -113,6 +114,7 @@
 #import "ios/components/ui_util/dynamic_type_util.h"
 #import "ios/components/webui/web_ui_url_constants.h"
 #import "ios/net/protocol_handler_util.h"
+#import "ios/public/provider/chrome/browser/cobalt/cobalt_api.h"
 #import "ios/public/provider/chrome/browser/fullscreen/fullscreen_api.h"
 #import "ios/public/provider/chrome/browser/url_rewriters/url_rewriters_api.h"
 #import "ios/web/common/features.h"
@@ -433,6 +435,7 @@ std::vector<web::JavaScriptFeature*> ChromeWebClient::GetJavaScriptFeatures(
   }
 
   features.push_back(LinkToTextJavaScriptFeature::GetInstance());
+  features.push_back(SendTabToSelfTextFragmentSelectorGenerator::GetInstance());
   features.push_back(WebSelectionJavaScriptFeature::GetInstance());
 
   SearchEngineJavaScriptFeature::GetInstance()->SetDelegate(
@@ -448,8 +451,8 @@ std::vector<web::JavaScriptFeature*> ChromeWebClient::GetJavaScriptFeatures(
   features.push_back(ChooseFileJavaScriptFeature::GetInstance());
   features.push_back(PageContextExtractorJavaScriptFeature::GetInstance());
 
-  if (base::FeatureList::IsEnabled(kActuationTools)) {
-    features.push_back(ActuationTargetJavaScriptFeature::GetInstance());
+  if (base::FeatureList::IsEnabled(kActorTools)) {
+    features.push_back(ActionTargetJavaScriptFeature::GetInstance());
     features.push_back(ClickToolJavaScriptFeature::GetInstance());
     features.push_back(TypeToolJavaScriptFeature::GetInstance());
   }
@@ -469,6 +472,13 @@ std::vector<web::JavaScriptFeature*> ChromeWebClient::GetJavaScriptFeatures(
     }
     if (MediaAPIUsageJavaScriptFeature::ShouldOverrideAPI()) {
       features.push_back(MediaAPIUsageJavaScriptFeature::GetInstance());
+    }
+  }
+  if (web::features::IsCobaltEnabled()) {
+    web::JavaScriptFeature* cobalt_feature =
+        ios::provider::GetCobaltJavascriptFeatureForProfile(profile);
+    if (cobalt_feature) {
+      features.push_back(cobalt_feature);
     }
   }
 

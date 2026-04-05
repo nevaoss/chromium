@@ -345,6 +345,9 @@ BASE_FEATURE(kOverlayFullscreenVideo,
 // previous behavior if we find any problems while disabling this feature.
 BASE_FEATURE(kPauseBackgroundTimer, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Adds a mute/unmute button to the Video Picture-in-Picture overlay window.
+BASE_FEATURE(kPictureInPictureMuteControl, base::FEATURE_DISABLED_BY_DEFAULT);
+
 #if !BUILDFLAG(IS_ANDROID)
 // Enables tracking the position of picture-in-picture windows to know when they
 // occlude certain widgets.
@@ -375,6 +378,9 @@ BASE_FEATURE(kEncryptedMediaOcclusionTracking,
 // Enables extended video bitstream validation for H.264 and H.265.
 BASE_FEATURE(kExtendedVideoBitstreamValidation,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables support for >8 audio channel layouts (i.e., 5.1.4 and 7.1.4).
+BASE_FEATURE(kEnableHighChannelLayouts, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables user control over muting tab audio from the tab strip.
 BASE_FEATURE(kEnableTabMuting, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1010,6 +1016,12 @@ BASE_FEATURE(kAutoPictureInPicturePageInfoDetails,
 // recovery point with `recovery_frame_cnt=0` has been found.
 BASE_FEATURE(kParseSEIRecoveryPoints, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// When enabled, H.264 keyframe detection becomes stricter for samples whose avc
+// config does not provide SPS/PPS. In that case, an IDR alone is not
+// sufficient, SPS+PPS must appear in-band to mark it as a keyframe.
+BASE_FEATURE(kH264IDRKeyframeRequiresParameterSets,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Allows media to autoplay without a user gesture if the site has been
 // granted microphone or camera permissions.
 BASE_FEATURE(kAutoplayBypassForMicCamera, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1157,6 +1169,10 @@ BASE_FEATURE(kNdkVideoEncodeAcceleratorNativeSvc,
 // Allows setting SVC bitrate layers for NdkVideoEncodeAccelerator.
 BASE_FEATURE(kNdkVideoEncodeAcceleratorBitrateLayering,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables skipping MediaCodec reallocation if input buffer requirements
+// are already met.
+BASE_FEATURE(kSkipMediaCodecReallocation, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(IS_ANDROID)
 

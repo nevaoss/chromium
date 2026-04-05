@@ -31,6 +31,7 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features;
@@ -262,6 +263,16 @@ public class NewTabPageCoordinatorUnitTest {
     }
 
     @Test
+    public void testInitializeHomeModules_NtpSimplificationEnabledOnDesktop() {
+        mCoordinator.destroy();
+        DeviceInfo.setIsDesktopForTesting(true);
+
+        createCoordinator();
+
+        assertNull(mCoordinator.getHomeModulesCoordinatorForTesting());
+    }
+
+    @Test
     public void testDestroy() {
         mCoordinator.initializeLayoutChangeListener();
         PropertyModel model = mCoordinator.getModelForTesting();
@@ -289,6 +300,14 @@ public class NewTabPageCoordinatorUnitTest {
                         mTab,
                         mTabModelSelector,
                         mModuleRegistrySupplier,
+                        mProfile,
+                        mWindowAndroid,
+                        mActivityResultTracker,
+                        mBottomSheetController,
+                        mModalDialogManager,
+                        mSnackbarManager,
+                        /* isTablet= */ false,
+                        mTabStripHeightSupplier,
                         mHomeSurfaceTracker);
 
         mCoordinator.initialize(
@@ -299,14 +318,6 @@ public class NewTabPageCoordinatorUnitTest {
                 mTouchEnabledDelegate,
                 mUiConfig,
                 mLifecycleDispatcher,
-                mProfile,
-                mWindowAndroid,
-                mActivityResultTracker,
-                mBottomSheetController,
-                mModalDialogManager,
-                mSnackbarManager,
-                /* isTablet= */ false,
-                mTabStripHeightSupplier,
                 mComposeplateUrlSupplier);
     }
 

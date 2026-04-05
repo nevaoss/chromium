@@ -298,6 +298,13 @@ std::u16string GetBnplIssuerSelectionOptionText(
     case BnplIssuerEligibilityForPage::kNotEligibleCheckoutAmountTooLow:
       // Divide displayed price by `1'000'000.0` to convert from micros and
       // retain decimals.
+      if (base::FeatureList::IsEnabled(
+              features::kAutofillEnablePayNowPayLaterTabs)) {
+        return l10n_util::GetStringFUTF16(
+            IDS_AUTOFILL_CARD_BNPL_PAY_LATER_PAYMENT_OPTION_CHECKOUT_AMOUNT_TOO_LOW,
+            formatter.Format(base::NumberToString(
+                eligible_price_range->price_lower_bound / 1'000'000.0)));
+      }
       return l10n_util::GetStringFUTF16(
           IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_PAYMENT_OPTION_CHECKOUT_AMOUNT_TOO_LOW,
           formatter.Format(base::NumberToString(
@@ -305,6 +312,13 @@ std::u16string GetBnplIssuerSelectionOptionText(
     case BnplIssuerEligibilityForPage::kNotEligibleCheckoutAmountTooHigh:
       // Divide displayed price by `1'000'000.0` to convert from micros and
       // retain decimals.
+      if (base::FeatureList::IsEnabled(
+              features::kAutofillEnablePayNowPayLaterTabs)) {
+        return l10n_util::GetStringFUTF16(
+            IDS_AUTOFILL_CARD_BNPL_PAY_LATER_PAYMENT_OPTION_CHECKOUT_AMOUNT_TOO_HIGH,
+            formatter.Format(base::NumberToString(
+                eligible_price_range->price_upper_bound / 1'000'000.0)));
+      }
       return l10n_util::GetStringFUTF16(
           IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_PAYMENT_OPTION_CHECKOUT_AMOUNT_TOO_HIGH,
           formatter.Format(base::NumberToString(
@@ -425,6 +439,15 @@ bool ShouldStartPayLaterWithLoadingSpinner(
     const PaymentsDataManager& payments_data_manager) {
   return payments_data_manager
       .IsAutofillAmountExtractionAiTermsSeenPrefEnabled();
+}
+
+bool ShouldShowBnplLinkedPill(const Suggestion& suggestion) {
+  const auto* bnpl_payload =
+      std::get_if<Suggestion::BnplIssuer>(&suggestion.payload);
+  return suggestion.type == SuggestionType::kBnplEntry && bnpl_payload &&
+         bnpl_payload->value().payment_instrument().has_value() &&
+         base::FeatureList::IsEnabled(
+             features::kAutofillEnablePayNowPayLaterTabs);
 }
 
 }  // namespace autofill::payments

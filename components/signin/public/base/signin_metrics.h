@@ -235,7 +235,7 @@ enum class AccessPoint : int {
   // Restore primary account info in case it was lost.
   kRestorePrimaryAccountOnProfileLoad = 55,
   // Access point for the tab organization UI within the tab search bubble.
-  kTabOrganization = 56,
+  // kTabOrganization = 56, no longer used.
   // Access point for the Save to Drive feature on iOS.
   kSaveToDriveIos = 57,
   // Access point for the Tips Notification on iOS.
@@ -338,10 +338,12 @@ enum class AccessPoint : int {
   kSearchAIModeBubble = 98,
   // Sign in from IOS app bar.
   kIosAppBar = 99,
+  // Sign in from the Page Action Menu.
+  kIosPageActionMenu = 100,
   // Add values above this line with a corresponding label to the
   // "SigninAccessPoint" enum in
   // tools/metrics/histograms/metadata/signin/enums.xml.
-  kMaxValue = kIosAppBar,  // This must be last.
+  kMaxValue = kIosPageActionMenu,  // This must be last.
 };
 // LINT.ThenChange(/tools/metrics/histograms/metadata/signin/enums.xml)
 

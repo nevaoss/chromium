@@ -7,7 +7,6 @@
 
 #include "base/callback_list.h"
 #include "base/memory/raw_ptr.h"
-#include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "chrome/browser/sessions/session_service_base_observer.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
@@ -34,14 +33,13 @@ class VerticalTabStripStateController : public SessionServiceBaseObserver,
 
   class ScopedEnableStateLock {
    public:
-    explicit ScopedEnableStateLock(
-        base::WeakPtr<VerticalTabStripStateController> controller);
+    explicit ScopedEnableStateLock(VerticalTabStripStateController* controller);
     ScopedEnableStateLock(const ScopedEnableStateLock&) = delete;
     ScopedEnableStateLock& operator=(const ScopedEnableStateLock&) = delete;
     ~ScopedEnableStateLock();
 
    private:
-    base::WeakPtr<VerticalTabStripStateController> controller_;
+    raw_ptr<VerticalTabStripStateController> controller_;
   };
 
   explicit VerticalTabStripStateController(
@@ -99,6 +97,7 @@ class VerticalTabStripStateController : public SessionServiceBaseObserver,
   void NotifyModeChanged();
 
   void OnModeChanged();
+  void OnExpandOnHoverEnabledChanged();
 
   // Updates the SessionService with the current state (collapsed status and
   // uncollapsed width) for the associated session ID.
@@ -144,7 +143,7 @@ class VerticalTabStripStateController : public SessionServiceBaseObserver,
   bool is_vertical_tabs_enabled_ = false;
   int enable_state_lock_count_ = 0;
 
-  base::WeakPtrFactory<VerticalTabStripStateController> weak_ptr_factory_{this};
+  bool is_expand_on_hover_enabled_ = false;
 };
 
 }  // namespace tabs

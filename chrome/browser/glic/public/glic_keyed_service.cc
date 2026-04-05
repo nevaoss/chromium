@@ -12,7 +12,6 @@
 #include "base/feature_list.h"
 #include "base/location.h"
 #include "base/metrics/histogram_functions.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/notimplemented.h"
 #include "base/notreached.h"
 #include "base/rand_util.h"
@@ -41,6 +40,7 @@
 #include "chrome/browser/glic/host/context/glic_sharing_manager_impl.h"
 #include "chrome/browser/glic/host/context/glic_tab_data.h"
 #include "chrome/browser/glic/host/context/glic_tab_data_observer.h"
+#include "chrome/browser/glic/host/context/glic_tab_favicon_observer.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_web_client_access.h"
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
@@ -203,6 +203,7 @@ GlicKeyedService::GlicKeyedService(
               : nullptr),
 #endif
       tab_data_observer_(std::make_unique<GlicTabDataObserver>()),
+      tab_favicon_observer_(std::make_unique<GlicTabFaviconObserver>()),
       web_contents_warming_pool_(
           std::make_unique<GlicWebContentsWarmingPool>(profile)),
       contextual_cueing_service_(contextual_cueing_service) {
@@ -742,7 +743,9 @@ void GlicKeyedService::ResumeActorTask(
   }
 }
 
-void GlicKeyedService::InterruptActorTask(actor::TaskId task_id) {
+void GlicKeyedService::InterruptActorTask(
+    actor::TaskId task_id,
+    std::optional<mojom::ActorTaskInterruptReason> interrupt_reason) {
   if (actor_task_manager_) {
     actor_task_manager_->InterruptActorTask(task_id);
   }

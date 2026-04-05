@@ -53,10 +53,10 @@
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_widget.h"
 #include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
+#include "chrome/browser/ui/views/tabs/groups/tab_group_accessibility.h"
 #include "chrome/browser/ui/views/tabs/tab.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_accessibility.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_context_menu_controller.h"
-#include "chrome/browser/ui/views/tabs/tab_group_accessibility.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_types.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
@@ -214,6 +214,11 @@ void BrowserTabStripController::InitFromModel(TabStrip* tabstrip) {
   for (const split_tabs::SplitTabId& split_id : model_->ListSplits()) {
     split_tabs::SplitTabData* data = model_->GetSplitData(split_id);
     tabstrip_->OnSplitCreated(data->GetIndexRange().ToIntVector(), split_id);
+  }
+
+  // Set the active selected tab.
+  if (!model_->empty()) {
+    tabstrip_->SetSelection(GetSelectionModel());
   }
 
   tabstrip_->StopAnimating();

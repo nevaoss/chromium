@@ -1177,6 +1177,7 @@ Ndryshe kjo do të bllokohet nga cilësimet e tua të privatësisë. Kjo do ta l
 <translation id="2837891525090413132">Mund të kërkojë për të kyçur dhe përdorur tastierën tënde</translation>
 <translation id="2839032553903800133">Njoftimet janë bllokuar</translation>
 <translation id="2839501879576190149">Sajt i rremë përpara</translation>
+<translation id="2840680829170913626">Përmbajtja nga faqja e përfundimit të blerjes ndahet me Google për të ofruar këto opsione. Planet e pagesave janë objekt i kualifikueshmërisë. Për të fshehur opsionet e "Paguaj më vonë" te plotësimi automatik, shko te <ph name="IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT" />.</translation>
 <translation id="2843623755398178332">Të lëvizet dhe të zmadhohet skeda e ndarë?</translation>
 <translation id="2851291081585704741">Je offline</translation>
 <translation id="2854163610915391726">Menaxho se çfarë informacionesh të Chrome ruhen në "Llogarinë tënde të Google"</translation>
@@ -1388,6 +1389,7 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="3162070126914310576">Kjo pajisje nuk mund të regjistrohet për momentin sepse njësia jote e organizatës ka arritur kufirin e regjistrimeve fillestare. Kontakto me administratorin tënd për ndihmë.</translation>
 <translation id="3162559335345991374">Lidhja Wi-Fi që po përdor mund të të kërkojë që të vizitosh faqen e saj të identifikimit.</translation>
 <translation id="316638481603975524">Mund të kërkojë të instalojë aplikacione uebi</translation>
+<translation id="3166788340998560642">Chrome do të ofrojë që ta ruajë atë te "<ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" />" herën tjetër kur ta përdorësh.</translation>
 <translation id="3168744840365648658">Pajisje radiofonike</translation>
 <translation id="3168938241115725594">Automjete klasike</translation>
 <translation id="3169472444629675720">Discover</translation>
@@ -1444,7 +1446,6 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="3238395604961564389">Hape lidhjen në një dritare të fshehtë</translation>
 <translation id="3240683217920639535"><ph name="MANAGE_CHROME_THEMES_FOCUSED_FRIENDLY_MATCH_TEXT" />. Shtyp "Tab" dhe më pas "Enter" për të personalizuar pamjen e shfletuesit tënd</translation>
 <translation id="3240791268468473923">Kredenciali i pagesës së sigurt pa fletë përkatëse kredenciali është i hapur</translation>
-<translation id="324180406144491771">Lidhjet e "<ph name="HOST_NAME" />" janë bllokuar</translation>
 <translation id="3243650379537999343">Vizato</translation>
 <translation id="3248329428895535435">Mos e shfaq në këtë sajt</translation>
 <translation id="3249102948665905108">Ngarkimi i skedarëve te "<ph name="CLOUD_PROVIDER" />" u përfundua me gabime</translation>
@@ -2417,6 +2418,7 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="477945296921629067">{NUM_POPUPS,plural, =1{Një dritare kërcyese u bllokua}other{# dritare kërcyese u bllokuan}}</translation>
 <translation id="4780320432697076749">Softuer i fotografive</translation>
 <translation id="4780366598804516005">Kutia postare 1</translation>
+<translation id="4785273477715803444">Filtro evidencat</translation>
 <translation id="4785376858512657294">Menaxho "Llogarinë e Google"</translation>
 <translation id="4785689107224900852">Kalo te kjo skedë</translation>
 <translation id="4785998536350006000">Po kërkon për "<ph name="SEARCH_QUERY" />"</translation>
@@ -3059,6 +3061,7 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="5759751709240058861">Të përdorë dhe të lëvizë kamerën tënde</translation>
 <translation id="5762131895127128324">Lejet e drejtimit · Kartat e identitetit · Pasaportat</translation>
 <translation id="5763042198335101085">Fut një adresë të vlefshme email-i</translation>
+<translation id="5763338081255973061">{DAYS,plural, =0{Aktive sot}=1{Aktive 1 ditë më parë}other{Aktive # ditë më parë}}</translation>
 <translation id="5764725887548570807">Format i pavlefshëm i origjinës.</translation>
 <translation id="5764920692828389743">Dërgo te <ph name="EMAIL_ADDRESS" /></translation>
 <translation id="5765072501007116331">Për të parë mënyrat dhe kërkesat e dorëzimit, zgjidh një adresë</translation>
@@ -3365,6 +3368,7 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="6246316216123107851"><ph name="NUM_DAYS" /> ditë më parë</translation>
 <translation id="6246382863801034910">Automjet</translation>
 <translation id="6246868321321344665">Organizata jote mund të shohë të dhënat e shfletimit, si p.sh. fjalëkalimet dhe historikun, në profilin e punës dhe atë personal</translation>
+<translation id="6248988683584659830">Cilësimet e kërkimit</translation>
 <translation id="6250932670816326647">Produktet për larjen dhe trupin</translation>
 <translation id="6251906504834538140">{0,plural, =1{Zhvendosja e skedarit është bllokuar}other{Zhvendosja e <ph name="FILE_COUNT" /> skedarëve është bllokuar}}</translation>
 <translation id="6252613631861574218"><ph name="MANAGE_CHROME_DOWNLOADS_FOCUSED_FRIENDLY_MATCH_TEXT" />. Shtyp "Tab" dhe më pas "Enter" për të menaxhuar skedarët që ke shkarkuar në Chrome</translation>
@@ -3582,7 +3586,6 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="6567832540451970450">Administratori yt lejon <ph name="PERMISSION" /> për këtë sajt</translation>
 <translation id="6568793038316600992">Butoni "Menaxho mënyrat e pagesës". Aktivizoje për të menaxhuar informacionet e pagesave dhe të kartave të kreditit te cilësimet e Chrome</translation>
 <translation id="6569060085658103619">Po shikon një faqe të shtesës</translation>
-<translation id="6571992525120410251">Pyet <ph name="ENGINE_NAME" /> për çdo gjë</translation>
 <translation id="6573200754375280815">Dy shpime djathtas</translation>
 <translation id="6573973523249076555">Google Chrome po përpiqet të plotësojë informacionet e tua delikate në <ph name="APP_NAME" />.</translation>
 <translation id="6575408526598156416">Ruaje te llogaria</translation>

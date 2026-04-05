@@ -167,9 +167,9 @@ void SetUpSeedFileTrial(
     return;
   }
 
-  // Only 1% of clients on stable should participate in the experiment.
+  // Only 10% of clients on stable should participate in the experiment.
   base::FieldTrial::Probability group_probability =
-      channel == version_info::Channel::STABLE ? 1 : 50;
+      channel == version_info::Channel::STABLE ? 10 : 50;
 
   scoped_refptr<base::FieldTrial> trial(
       base::FieldTrialList::FactoryGetFieldTrial(
@@ -354,7 +354,7 @@ SeedReaderWriter::SeedReaderWriter(
   if (!seed_file_dir.empty()) {
     seed_writer_ = std::make_unique<base::ImportantFileWriter>(
         GetFilePath(seed_file_dir, seed_filename), file_task_runner_,
-        kSeedWriterHistogramSuffix);
+        /*interval=*/base::Seconds(1), kSeedWriterHistogramSuffix);
     old_seed_file_path_ = GetFilePath(seed_file_dir, old_seed_filename);
   }
   if (IsEligibleForSeedFileTrial(channel, seed_file_dir, entropy_providers)) {

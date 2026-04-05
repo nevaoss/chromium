@@ -45,6 +45,13 @@ class RangeTestFullscreenBrowserAgentObserver
     agent->AddObscuredInsetRange(edge_, min_, max_);
   }
 
+  void WillUpdateState(FullscreenBrowserAgent* agent) override {
+    CGFloat progress = edge_ == UIRectEdgeBottom ? agent->bottom_progress()
+                                                 : agent->top_progress();
+    CGFloat current = min_ + (max_ - min_) * progress;
+    agent->AddObscuredInset(edge_, current);
+  }
+
  private:
   UIRectEdge edge_;
   CGFloat min_;
@@ -152,6 +159,8 @@ TEST_F(FullscreenBrowserAgentTest, IncrementalScroll) {
 
   EXPECT_EQ(0.5, agent->top_progress());
   EXPECT_NEAR(0.6666, agent->bottom_progress(), 0.001);
+  EXPECT_EQ(30.0, agent->insets().top);
+  EXPECT_NEAR(60.0, agent->insets().bottom, 0.001);
 
   EXPECT_TRUE(base_observer.will_update_called_);
   EXPECT_TRUE(base_observer.did_update_called_);
@@ -161,16 +170,57 @@ TEST_F(FullscreenBrowserAgentTest, IncrementalScroll) {
 
   EXPECT_EQ(0.0, agent->top_progress());
   EXPECT_EQ(0.0, agent->bottom_progress());
+  EXPECT_EQ(10.0, agent->insets().top);
+  EXPECT_EQ(20.0, agent->insets().bottom);
 
   // Fast scroll up to check 1.0 bounds clamping.
   agent->IncrementalScroll(-500.0, PassKey());
 
   EXPECT_EQ(1.0, agent->top_progress());
   EXPECT_EQ(1.0, agent->bottom_progress());
+  EXPECT_EQ(50.0, agent->insets().top);
+  EXPECT_EQ(80.0, agent->insets().bottom);
 
   agent->RemoveObserver(&base_observer);
   agent->RemoveObserver(&observer1);
   agent->RemoveObserver(&observer2);
+}
+
+// Tests that EnterFullscreen and ExitFullscreen correctly update progress.
+TEST_F(FullscreenBrowserAgentTest, EnterExitFullscreen) {
+  FullscreenBrowserAgent::CreateForBrowser(browser_.get());
+  FullscreenBrowserAgent* agent =
+      FullscreenBrowserAgent::FromBrowser(browser_.get());
+
+  TestFullscreenBrowserAgentObserver base_observer;
+  agent->AddObserver(&base_observer);
+
+  // Initialize ranges. Top delta = 40.
+  RangeTestFullscreenBrowserAgentObserver observer1(UIRectEdgeTop, 10.0, 50.0);
+  agent->AddObserver(&observer1);
+  InvalidateInsetRange(agent);
+
+  EXPECT_EQ(1.0, agent->top_progress());
+
+  // Enter Fullscreen.
+  agent->EnterFullscreen(PassKey(), /*animated=*/false);
+  EXPECT_EQ(0.0, agent->top_progress());
+  EXPECT_EQ(10.0, agent->insets().top);
+  EXPECT_TRUE(base_observer.will_update_called_);
+  EXPECT_TRUE(base_observer.did_update_called_);
+
+  base_observer.will_update_called_ = false;
+  base_observer.did_update_called_ = false;
+
+  // Exit Fullscreen.
+  agent->ExitFullscreen(PassKey(), /*animated=*/false);
+  EXPECT_EQ(1.0, agent->top_progress());
+  EXPECT_EQ(50.0, agent->insets().top);
+  EXPECT_TRUE(base_observer.will_update_called_);
+  EXPECT_TRUE(base_observer.did_update_called_);
+
+  agent->RemoveObserver(&base_observer);
+  agent->RemoveObserver(&observer1);
 }
 
 // Tests that the disabled counter increments and decrements correctly.

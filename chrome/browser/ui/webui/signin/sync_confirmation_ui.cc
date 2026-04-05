@@ -241,6 +241,8 @@ void SyncConfirmationUI::InitializeForSyncConfirmation(
       IDR_SIGNIN_SYNC_CONFIRMATION_SYNC_CONFIRMATION_HTML);
 
   if (is_first_run_desktop_refresh_enabled) {
+    source->SetDefaultResource(
+        IDR_SIGNIN_SYNC_CONFIRMATION_SYNC_CONFIRMATION_REFRESH_HTML);
     source->AddResourcePath(
         "sync_confirmation_app_refresh.js",
         IDR_SIGNIN_SYNC_CONFIRMATION_SYNC_CONFIRMATION_APP_REFRESH_JS);
@@ -250,8 +252,6 @@ void SyncConfirmationUI::InitializeForSyncConfirmation(
     source->AddResourcePath(
         "sync_confirmation_app_refresh.html.js",
         IDR_SIGNIN_SYNC_CONFIRMATION_SYNC_CONFIRMATION_APP_REFRESH_HTML_JS);
-    source->SetDefaultResource(
-        IDR_SIGNIN_SYNC_CONFIRMATION_SYNC_CONFIRMATION_REFRESH_HTML);
     source->AddResourcePath(
         "images/profile_picker_light_background.svg",
         IDR_SIGNIN_IMAGES_PROFILE_PICKER_LIGHT_BACKGROUND_SVG);

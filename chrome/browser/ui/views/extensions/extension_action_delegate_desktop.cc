@@ -186,7 +186,7 @@ void ExtensionActionDelegateDesktop::HidePopup() {
   }
 }
 
-gfx::NativeView ExtensionActionDelegateDesktop::GetPopupNativeView() {
+gfx::NativeView ExtensionActionDelegateDesktop::GetPopupNativeViewForTesting() {
   return popup_host_ ? popup_host_->view()->GetNativeView() : gfx::NativeView();
 }
 
@@ -209,16 +209,7 @@ bool ExtensionActionDelegateDesktop::CloseOverflowMenuIfOpen() {
 
 bool ExtensionActionDelegateDesktop::AcceleratorPressed(
     const ui::Accelerator& accelerator) {
-  DCHECK(model_->CanHandleAccelerators());
-
-  if (model_->IsShowingPopup()) {
-    model_->HidePopup();
-  } else {
-    model_->ExecuteUserAction(
-        ToolbarActionViewModel::InvocationSource::kCommand);
-  }
-
-  return true;
+  return model_->TryHandleAcceleratorPress();
 }
 
 bool ExtensionActionDelegateDesktop::CanHandleAccelerators() const {

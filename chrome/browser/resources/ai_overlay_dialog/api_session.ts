@@ -2,7 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-const kLogWebSocketMessages = false;
+import {assert} from '//resources/js/assert.js';
+import {debugLog, DebugLogTag, errorLog, log, warnLog} from './logging.js';
+
+const FILE = 'ApiSession';
 
 /**
  * API session WebSocket protocol types.
@@ -32,6 +35,7 @@ export interface FunctionResponse {
   id: string;
   name: string;
   response: any;
+  scheduling?: string;
 }
 
 interface SetupMessage {
@@ -58,10 +62,10 @@ interface SetupMessage {
 
 interface RealtimeInputMessage {
   realtimeInput: {
-    mediaChunks: Array<{
+    audio: {
       data: string,
       mimeType: string,
-    }>,
+    },
   };
 }
 
@@ -89,10 +93,12 @@ interface ServerContentMessage {
   toolCall?: ToolCall;
 }
 
-export interface ApiConfig {
+export interface ApiSessionConfig {
   endpointUrl: string;
   model: string;
   apiKey: string;
+  systemInstruction: string;
+  voiceName: string;
 }
 
 export interface ApiSessionDelegate {
@@ -104,39 +110,51 @@ export interface ApiSessionDelegate {
   onToolCall(toolCall: ToolCall): void;
 }
 
-function log(msg: string, ...args: any[]) {
-  console.info(
-      `[${performance.now().toFixed(2)}] [ApiSession] ${msg}`, ...args);
-}
-
 /**
  * Manages the connection and communication with the server.
  */
 export class ApiSession {
-  private readonly systemInstruction: string;
-  private readonly config: ApiConfig;
+  private readonly config: ApiSessionConfig;
   private readonly toolDefinitions: Tool[];
 
   private ws: WebSocket|null = null;
 
+  // Buffers audio messages that are sent while the WebSocket is still in the
+  // CONNECTING state. These are flushed as soon as the connection opens.
+  private audioQueue: RealtimeInputMessage[] = [];
+
   private delegate: ApiSessionDelegate;
 
+  private setupCompletedCallback: (() => void)|null = null;
+
   constructor(
-      systemInstruction: string, config: ApiConfig, toolDefinitions: Tool[],
+      config: ApiSessionConfig, toolDefinitions: Tool[],
       delegate: ApiSessionDelegate) {
-    this.systemInstruction = systemInstruction;
     this.config = config;
     this.toolDefinitions = toolDefinitions;
     this.delegate = delegate;
   }
 
-  connect() {
+  // Setsup the WebSocket connection. Returns once the setup message has been
+  // responded to and the connection is ready for input.
+  async connect() {
     const url = `${this.config.endpointUrl}?key=${this.config.apiKey}`;
     this.ws = new WebSocket(url);
 
+    const setupCompletedPromise =
+        new Promise<void>(resolve => this.setupCompletedCallback = resolve);
+
     this.ws.onopen = () => {
-      log('WebSocket Opened');
+      log(FILE, 'WebSocket Opened');
       this.sendSetup();
+
+      if (this.audioQueue.length > 0) {
+        log(FILE, `Flushing ${this.audioQueue.length} queued audio chunks`);
+        for (const msg of this.audioQueue) {
+          this.ws?.send(JSON.stringify(msg));
+        }
+        this.audioQueue = [];
+      }
     };
 
     this.ws.onmessage = async (event) => {
@@ -146,7 +164,7 @@ export class ApiSession {
           const text = await event.data.text();
           jsonPayload = JSON.parse(text);
         } catch (e) {
-          console.error('WebSocket Failed message decode: ', e);
+          errorLog(FILE, 'WebSocket Failed message decode: ', e);
           return;
         }
       } else if (typeof event.data === 'string') {
@@ -154,38 +172,40 @@ export class ApiSession {
       }
 
       if (jsonPayload) {
-        // Seeing all messages in the socket can be useful but is very verbose
-        // so it's behind a bool to avoid flooding the console during normal
-        // usage.
-        if (kLogWebSocketMessages) {
-          console.info(JSON.stringify(jsonPayload, (key, value) => {
-            // Don't print the audio data so that the output is more easily
-            // readable.
-            return key === 'data' ? '<data>' : value;
-          }, 2));
-        }
+        debugLog(
+            FILE, DebugLogTag.WEB_SOCKET_MSG,
+            JSON.stringify(jsonPayload, (key, value) => {
+              // Don't print the audio data so that the output is more easily
+              // readable.
+              return key === 'data' ? '<data>' : value;
+            }, 2));
 
         this.handleMessage(jsonPayload);
       }
     };
 
     this.ws.onclose = (e) => {
-      log('WebSocket Closed: ', e);
+      log(FILE,
+          `WebSocket Closed: code=${e.code}, reason=${e.reason}, wasClean=${
+              e.wasClean}`);
       this.delegate.onConnectionChanged(false);
       this.stop();
     };
 
     this.ws.onerror = (error) => {
-      console.error('WebSocket Error:', error);
+      errorLog(FILE, '[ApiSession] WebSocket Error:', error);
       this.delegate.onConnectionChanged(false);
       this.stop();
     };
+
+    await setupCompletedPromise;
   }
 
   stop() {
-    log('stop()');
+    log(FILE, 'stop()');
     this.ws?.close();
     this.ws = null;
+    this.audioQueue = [];
   }
 
   private sendSetup() {
@@ -195,12 +215,13 @@ export class ApiSession {
         generationConfig: {
           responseModalities: ['AUDIO'],
           speechConfig: {
-            voiceConfig: {prebuiltVoiceConfig: {voiceName: 'Puck'}},
+            voiceConfig:
+                {prebuiltVoiceConfig: {voiceName: this.config.voiceName}},
           },
         },
         systemInstruction: {
           parts: [{
-            text: this.systemInstruction,
+            text: this.config.systemInstruction,
           }],
         },
         tools: this.toolDefinitions,
@@ -208,20 +229,24 @@ export class ApiSession {
         outputAudioTranscription: {},
       },
     };
-    log('Sending Setup Message', setup);
+    log(FILE, 'Sending Setup Message', setup);
     this.ws?.send(JSON.stringify(setup));
   }
 
   sendAudio(sampleRate: number, base64Data: string) {
     const msg: RealtimeInputMessage = {
       realtimeInput: {
-        mediaChunks: [{
+        audio: {
           data: base64Data,
           mimeType: `audio/pcm;rate=${sampleRate}`,
-        }],
+        },
       },
     };
-    this.ws?.send(JSON.stringify(msg));
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    } else if (this.ws?.readyState === WebSocket.CONNECTING) {
+      this.audioQueue.push(msg);
+    }
   }
 
   sendToolResponse(responses: FunctionResponse[]) {
@@ -231,22 +256,33 @@ export class ApiSession {
                                            id: response.id,
                                            name: response.name,
                                            response: response.response,
+                                           scheduling: response.scheduling,
                                          })),
       },
     };
-    log('Sending Tool Response', msg);
-    this.ws?.send(JSON.stringify(msg));
+    log(FILE, 'Sending Tool Response', msg);
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    } else {
+      warnLog(
+          FILE,
+          '[ApiSession] Dropping tool response because WebSocket is not OPEN');
+    }
   }
 
   private handleMessage(msg: ServerContentMessage) {
+    // The top-level BidiGenerateContentServerMessage acts as a union and will
+    // only contain exactly one of setupComplete, toolCall, or serverContent.
     if (msg.setupComplete) {
-      log('SetupComplete');
+      log(FILE, 'SetupComplete received from server.');
+      assert(this.setupCompletedCallback);
+      this.setupCompletedCallback();
       this.delegate.onConnectionChanged(true);
       return;
     }
 
     if (msg.toolCall) {
-      log('Received toolCall', msg.toolCall);
+      log(FILE, 'Received toolCall', msg.toolCall);
       this.delegate.onToolCall(msg.toolCall);
       return;
     }
@@ -256,13 +292,16 @@ export class ApiSession {
       return;
     }
 
+    // Inside serverContent, multiple fields (like modelTurn and turnComplete)
+    // can be present simultaneously, so we process each independently without
+    // if/else chains.
     if (content.inputTranscription?.text) {
-      log('Input transcription:', content.inputTranscription.text);
+      log(FILE, 'Input transcription:', content.inputTranscription.text);
       this.delegate.onTranscription(content.inputTranscription.text, true);
     }
 
     if (content.outputTranscription?.text) {
-      log('Output transcription:', content.outputTranscription.text);
+      log(FILE, 'Output transcription:', content.outputTranscription.text);
       this.delegate.onTranscription(content.outputTranscription.text, false);
     }
 
@@ -275,12 +314,12 @@ export class ApiSession {
     }
 
     if (content.turnComplete) {
-      log('TurnComplete');
+      log(FILE, 'TurnComplete');
       this.delegate.onTurnComplete();
     }
 
     if (content.interrupted) {
-      log('Interrupted');
+      log(FILE, 'Interrupted');
       this.delegate.interrupt();
     }
   }

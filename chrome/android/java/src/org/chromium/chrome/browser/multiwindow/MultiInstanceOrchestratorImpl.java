@@ -7,29 +7,34 @@ package org.chromium.chrome.browser.multiwindow;
 import static org.chromium.chrome.browser.multiwindow.MultiInstanceManager.INVALID_WINDOW_ID;
 
 import android.app.Activity;
+import android.content.Intent;
+
+import androidx.annotation.StringRes;
 
 import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationStatus;
+import org.chromium.base.Callback;
 import org.chromium.base.ResettersForTesting;
+import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.BuildConfig;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
+import org.chromium.chrome.browser.IntentHandler;
+import org.chromium.chrome.browser.app.tab_activity_glue.ReparentingTabsTask;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.NewWindowAppSource;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabUtils;
+import org.chromium.chrome.browser.tabmodel.TabGroupMetadata;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.document.ChromeAsyncTabLauncher;
 import org.chromium.content_public.browser.LoadUrlParams;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /** Implements {@link MultiInstanceOrchestrator} as a singleton. */
 @NullMarked
@@ -67,13 +72,61 @@ import java.util.Set;
     }
 
     @Override
+    public @Nullable Intent createNewWindowIntent(
+            Activity sourceActivity, boolean isIncognito, @NewWindowAppSource int source) {
+        boolean isInMultiWindowMode =
+                MultiWindowUtils.getInstance().isInMultiWindowMode(sourceActivity);
+        boolean isInMultiDisplayMode =
+                MultiWindowUtils.getInstance().isInMultiDisplayMode(sourceActivity);
+
+        if (MultiWindowUtils.isMultiInstanceApi31Enabled()) {
+            boolean openAdjacently =
+                    (MultiWindowUtils.canEnterMultiWindowMode()
+                                    || isInMultiWindowMode
+                                    || isInMultiDisplayMode)
+                            && MultiWindowUtils.shouldOpenInAdjacentWindow(sourceActivity);
+
+            Intent intent =
+                    MultiWindowUtils.createNewWindowIntent(
+                            sourceActivity,
+                            MultiInstanceManager.INVALID_WINDOW_ID,
+                            /* preferNew= */ true,
+                            openAdjacently,
+                            source);
+            intent.putExtra(IntentHandler.EXTRA_OPEN_NEW_INCOGNITO_WINDOW, isIncognito);
+            return intent;
+        }
+
+        assert !isIncognito : "Opening an incognito window isn't supported";
+        assert isInMultiWindowMode || isInMultiDisplayMode
+                : "Current windowing mode doesn't support opening a new window";
+
+        Class<? extends Activity> targetActivity =
+                MultiWindowUtils.getInstance().getOpenInOtherWindowActivity(sourceActivity);
+        if (targetActivity == null) return null;
+
+        Intent intent = new Intent(sourceActivity, targetActivity);
+        MultiWindowUtils.setOpenInOtherWindowIntentExtras(intent, sourceActivity, targetActivity);
+
+        intent.putExtra(IntentHandler.EXTRA_NEW_WINDOW_APP_SOURCE, source);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        if (MultiWindowUtils.shouldOpenInAdjacentWindow(sourceActivity)) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_LAUNCH_ADJACENT);
+        }
+
+        return intent;
+    }
+
+    @Override
     public void moveTabsToNewWindow(
             List<Tab> tabs, @Nullable Runnable finalizeCallback, @NewWindowAppSource int source) {
         if (!MultiWindowUtils.isMultiInstanceApi31Enabled()) return;
         if (tabs.isEmpty()) return;
         Activity sourceActivity = TabUtils.getActivity(tabs.get(0));
+        if (sourceActivity == null) return;
 
-        if (!MultiWindowUtils.canCreateNewWindow()) {
+        if (!MultiWindowUtils.isWithinInstanceLimit()) {
             var multiInstanceManager = getMultiInstanceManager(sourceActivity);
             if (multiInstanceManager != null) {
                 multiInstanceManager.showInstanceCreationLimitMessage();
@@ -81,9 +134,7 @@ import java.util.Set;
             return;
         }
 
-        boolean openAdjacently =
-                sourceActivity == null
-                        || MultiWindowUtils.shouldOpenInAdjacentWindow(sourceActivity);
+        boolean openAdjacently = MultiWindowUtils.shouldOpenInAdjacentWindow(sourceActivity);
         mTabReparentingDelegate.reparentTabsToNewWindow(
                 tabs, INVALID_WINDOW_ID, openAdjacently, finalizeCallback, source);
     }
@@ -135,6 +186,144 @@ import java.util.Set;
         }
     }
 
+    @Override
+    public void moveTabsToOtherWindow(List<Tab> tabs, @NewWindowAppSource int source) {
+        if (tabs.isEmpty()) return;
+        if (!MultiWindowUtils.isMultiInstanceApi31Enabled()) {
+            moveTabsToOtherWindowPreApi31(tabs);
+            return;
+        }
+
+        @PersistedInstanceType int instanceType = PersistedInstanceType.ACTIVE;
+        if (IncognitoUtils.shouldOpenIncognitoAsWindow()) {
+            instanceType |=
+                    (tabs.get(0).isIncognitoBranded()
+                            ? PersistedInstanceType.OFF_THE_RECORD
+                            : PersistedInstanceType.REGULAR);
+        }
+        int instanceCount = MultiWindowUtils.getInstanceCount(instanceType);
+
+        Activity sourceActivity = TabUtils.getActivity(tabs.get(0));
+        MultiInstanceManager multiInstanceManager = getMultiInstanceManager(sourceActivity);
+        if (instanceCount <= 1) {
+            moveTabsToNewWindow(tabs, /* finalizeCallback= */ null, source);
+
+            // Close the source instance window, if needed.
+            if (multiInstanceManager != null) {
+                multiInstanceManager.closeChromeWindowIfEmpty(
+                        multiInstanceManager.getCurrentInstanceId());
+            }
+            return;
+        }
+
+        if (multiInstanceManager != null) {
+            ((MultiInstanceManagerApi31) multiInstanceManager)
+                    .showTargetSelectorDialog(
+                            (instanceInfo) -> {
+                                moveTabsToWindowByIdChecked(
+                                        instanceInfo.instanceId,
+                                        tabs,
+                                        /* destTabIndex= */ TabList.INVALID_TAB_INDEX,
+                                        /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
+                                        /* bringToFront= */ true);
+                                // Close the source instance window, if needed.
+                                multiInstanceManager.closeChromeWindowIfEmpty(
+                                        multiInstanceManager.getCurrentInstanceId());
+                            },
+                            instanceType,
+                            R.string.menu_move_tab_to_other_window);
+        }
+    }
+
+    @Override
+    public void moveTabGroupToNewWindow(
+            TabGroupMetadata tabGroupMetadata, @NewWindowAppSource int source) {
+        if (!MultiWindowUtils.isMultiInstanceApi31Enabled()) return;
+
+        Activity sourceActivity = MultiWindowUtils.getActivityById(tabGroupMetadata.sourceWindowId);
+        if (sourceActivity == null) return;
+
+        if (!MultiWindowUtils.isWithinInstanceLimit()) {
+            MultiInstanceManager multiInstanceManager = getMultiInstanceManager(sourceActivity);
+            if (multiInstanceManager != null) {
+                multiInstanceManager.showInstanceCreationLimitMessage();
+            }
+        } else {
+            boolean openAdjacently = MultiWindowUtils.shouldOpenInAdjacentWindow(sourceActivity);
+            mTabReparentingDelegate.reparentTabGroupToNewWindow(
+                    tabGroupMetadata, INVALID_WINDOW_ID, openAdjacently, source);
+        }
+    }
+
+    @Override
+    public void moveTabGroupToWindowByIdChecked(
+            int destWindowId,
+            TabGroupMetadata tabGroupMetadata,
+            int destTabIndex,
+            boolean bringToFront) {
+        if (!MultiWindowUtils.isMultiInstanceApi31Enabled()) return;
+
+        Activity sourceActivity = MultiWindowUtils.getActivityById(tabGroupMetadata.sourceWindowId);
+        Activity destActivity = MultiWindowUtils.getActivityById(destWindowId);
+        if (destActivity != null) {
+            mTabReparentingDelegate.reparentTabGroupToExistingWindow(
+                    (ChromeTabbedActivity) destActivity,
+                    tabGroupMetadata,
+                    destTabIndex,
+                    bringToFront);
+        } else {
+            boolean openAdjacently =
+                    sourceActivity != null
+                            && MultiWindowUtils.shouldOpenInAdjacentWindow(sourceActivity);
+            mTabReparentingDelegate.reparentTabGroupToNewWindow(
+                    tabGroupMetadata,
+                    destWindowId,
+                    openAdjacently,
+                    NewWindowAppSource.TAB_REPARENTING_TO_INSTANCE_WITH_NO_ACTIVITY);
+        }
+    }
+
+    @Override
+    public void moveTabGroupToOtherWindow(
+            TabGroupMetadata tabGroupMetadata, @NewWindowAppSource int source) {
+        if (!MultiWindowUtils.isMultiInstanceApi31Enabled()) return;
+
+        // Check the number of instances that the tab group is able to move into.
+        @PersistedInstanceType int instanceType = PersistedInstanceType.ACTIVE;
+        if (IncognitoUtils.shouldOpenIncognitoAsWindow()) {
+            instanceType |=
+                    (tabGroupMetadata.isIncognito
+                            ? PersistedInstanceType.OFF_THE_RECORD
+                            : PersistedInstanceType.REGULAR);
+        }
+        int instanceCount = MultiWindowUtils.getInstanceCount(instanceType);
+
+        if (instanceCount <= 1) {
+            moveTabGroupToNewWindow(tabGroupMetadata, source);
+            return;
+        }
+
+        Activity sourceActivity = MultiWindowUtils.getActivityById(tabGroupMetadata.sourceWindowId);
+        MultiInstanceManagerApi31 multiInstanceManager =
+                (MultiInstanceManagerApi31) getMultiInstanceManager(sourceActivity);
+        if (multiInstanceManager != null) {
+            multiInstanceManager.showTargetSelectorDialog(
+                    (instanceInfo) -> {
+                        moveTabGroupToWindowByIdChecked(
+                                instanceInfo.instanceId,
+                                tabGroupMetadata,
+                                TabList.INVALID_TAB_INDEX,
+                                /* bringToFront= */ true);
+
+                        // Close the source instance window, if needed.
+                        multiInstanceManager.closeChromeWindowIfEmpty(
+                                tabGroupMetadata.sourceWindowId);
+                    },
+                    instanceType,
+                    R.string.menu_move_group_to_other_window);
+        }
+    }
+
     /**
      * Opens a URL in a new or existing window.
      *
@@ -161,28 +350,95 @@ import java.util.Set;
     @Override
     public boolean openUrlInOtherWindow(
             Tab sourceTab, LoadUrlParams loadUrlParams, boolean preferNew) {
-        if (!MultiWindowUtils.isMultiInstanceApi31Enabled()) {
-            // TODO (crbug.com/475571336): Move ChromeAsyncTabLauncher URL launch for pre-Api31 to
-            // this method.
-            return false;
-        }
         int parentTabId = sourceTab.getParentId();
+        boolean isIncognitoTab = sourceTab.isIncognitoBranded();
         Activity sourceActivity = TabUtils.getActivity(sourceTab);
-        MultiInstanceManager multiInstanceManager = getMultiInstanceManager(sourceActivity);
+        if (sourceActivity == null) return false;
 
-        boolean incognitoInstance = sourceTab.isIncognitoBranded();
+        if (!MultiWindowUtils.isMultiInstanceApi31Enabled()) {
+            Activity otherActivity = MultiWindowUtils.getForegroundWindowActivity(sourceActivity);
+            return launchUrlInOtherWindow(
+                    sourceActivity,
+                    /* isIncognitoWindow= */ false,
+                    loadUrlParams,
+                    parentTabId,
+                    otherActivity,
+                    /* preferNew= */ false);
+        }
+
         @PersistedInstanceType int instanceType = PersistedInstanceType.ACTIVE;
         if (IncognitoUtils.shouldOpenIncognitoAsWindow()) {
             instanceType |=
-                    (incognitoInstance
+                    (isIncognitoTab
                             ? PersistedInstanceType.OFF_THE_RECORD
                             : PersistedInstanceType.REGULAR);
         }
 
-        // Check the number of instances that the url can be launched in.
-        int instanceCount = MultiWindowUtils.getInstanceCount(instanceType);
-        if (instanceCount <= 1 || preferNew) {
-            if (preferNew && !MultiWindowUtils.canCreateNewWindow()) {
+        return openUrlInWindowApi31(sourceTab, loadUrlParams, preferNew, instanceType);
+    }
+
+    @Override
+    public void openUrlInIncognitoWindow(Tab sourceTab, LoadUrlParams loadUrlParams) {
+        if (!IncognitoUtils.shouldOpenIncognitoAsWindow()) {
+            // This also means that Android S+ multi-instance support is disabled.
+            return;
+        }
+
+        @PersistedInstanceType
+        int instanceType = PersistedInstanceType.ACTIVE | PersistedInstanceType.OFF_THE_RECORD;
+        openUrlInWindowApi31(sourceTab, loadUrlParams, /* preferNew= */ false, instanceType);
+    }
+
+    private void moveTabsToOtherWindowPreApi31(List<Tab> tabs) {
+        if (tabs.isEmpty()) return;
+        Activity sourceActivity = TabUtils.getActivity(tabs.get(0));
+        if (sourceActivity == null) return;
+
+        Class<? extends Activity> targetActivity =
+                MultiWindowUtils.getInstance().getOpenInOtherWindowActivity(sourceActivity);
+        if (targetActivity == null) return;
+
+        Intent intent = new Intent(sourceActivity, targetActivity);
+        MultiWindowUtils.setOpenInOtherWindowIntentExtras(intent, sourceActivity, targetActivity);
+
+        MultiInstanceManager.onMultiInstanceModeStarted();
+        ReparentingTabsTask.from(tabs)
+                .begin(
+                        sourceActivity,
+                        intent,
+                        /* startActivityOptions= */ null,
+                        /* finalizeCallback= */ null);
+        RecordUserAction.record("MobileMenuMoveToOtherWindow");
+    }
+
+    private boolean openUrlInWindowApi31(
+            Tab sourceTab,
+            LoadUrlParams loadUrlParams,
+            boolean preferNew,
+            @PersistedInstanceType int targetInstanceType) {
+        int parentTabId = sourceTab.getParentId();
+        Activity sourceActivity = TabUtils.getActivity(sourceTab);
+        if (sourceActivity == null) return false;
+
+        var multiInstanceManager =
+                (MultiInstanceManagerApi31) getMultiInstanceManager(sourceActivity);
+        int instanceCount = MultiWindowUtils.getInstanceCount(targetInstanceType);
+        boolean isTargetIncognitoWindow =
+                IncognitoUtils.shouldOpenIncognitoAsWindow()
+                        && ((targetInstanceType & PersistedInstanceType.OFF_THE_RECORD) != 0);
+
+        if (sourceActivity instanceof ChromeTabbedActivity cta) {
+            // Exclude the current activity from instance count if it is of the same instance type
+            // as the target window, because we will not open the URL in this window even though it
+            // is eligible.
+            if ((cta.isIncognitoWindow() && isTargetIncognitoWindow)
+                    || (!cta.isIncognitoWindow() && !isTargetIncognitoWindow)) {
+                instanceCount -= 1;
+            }
+        }
+
+        if (instanceCount == 0 || preferNew) {
+            if (!MultiWindowUtils.isWithinInstanceLimit()) {
                 if (multiInstanceManager != null) {
                     multiInstanceManager.showInstanceCreationLimitMessage();
                 }
@@ -191,57 +447,75 @@ import java.util.Set;
 
             return launchUrlInOtherWindow(
                     sourceActivity,
-                    incognitoInstance,
+                    sourceTab.isIncognitoBranded() || isTargetIncognitoWindow,
                     loadUrlParams,
                     parentTabId,
                     /* otherActivity= */ null,
-                    preferNew);
+                    /* preferNew= */ true);
+        }
+
+        if (isTargetIncognitoWindow) {
+            // Launch the URL in the last accessed incognito window.
+            Activity destActivity =
+                    MultiWindowUtils.getForegroundWindowActivityWithProfileType(
+                            sourceActivity, /* incognito= */ true);
+            if (destActivity != null) {
+                launchUrlInOtherWindow(
+                        sourceActivity,
+                        /* isIncognitoWindow= */ true,
+                        loadUrlParams,
+                        parentTabId,
+                        destActivity,
+                        /* preferNew= */ false);
+                return true;
+            }
+            return false;
         }
 
         if (multiInstanceManager != null) {
-            ((MultiInstanceManagerApi31) multiInstanceManager)
-                    .showTargetSelectorDialog(
-                            (instanceInfo) -> {
-                                ChromeTabbedActivity selectedActivity =
-                                        (ChromeTabbedActivity)
-                                                MultiWindowUtils.getActivityById(
-                                                        instanceInfo.instanceId);
-                                launchUrlInOtherWindow(
-                                        sourceActivity,
-                                        /* isIncognito= */ selectedActivity != null
-                                                && selectedActivity.isIncognitoWindow(),
-                                        loadUrlParams,
-                                        parentTabId,
-                                        selectedActivity,
-                                        /* preferNew= */ false);
-                            },
-                            instanceType,
-                            R.string.contextmenu_open_in_other_window);
+            @StringRes int title = R.string.contextmenu_open_in_other_window;
+            multiInstanceManager.showTargetSelectorDialog(
+                    onWindowSelectedForUrlLaunch(
+                            sourceActivity,
+                            parentTabId,
+                            loadUrlParams,
+                            /* isIncognitoWindow= */ false),
+                    targetInstanceType,
+                    title);
         }
         return true;
     }
 
-    @Override
-    public Set<Integer> getUsableWindowIds(@PersistedInstanceType int type) {
-        Set<Integer> ids = MultiWindowUtils.getPersistedInstanceIds(type);
-        Set<Integer> usableIds = new HashSet<>();
-        for (int id : ids) {
-            if (!ChromeMultiInstancePersistentStore.readMarkedForDeletion(id)) {
-                usableIds.add(id);
+    static Callback<InstanceInfo> onWindowSelectedForUrlLaunch(
+            Activity sourceActivity,
+            int parentTabId,
+            LoadUrlParams loadUrlParams,
+            boolean isIncognitoWindow) {
+        return (instanceInfo) -> {
+            Activity selectedActivity = MultiWindowUtils.getActivityById(instanceInfo.instanceId);
+            if (selectedActivity != null) {
+                launchUrlInOtherWindow(
+                        sourceActivity,
+                        isIncognitoWindow,
+                        loadUrlParams,
+                        parentTabId,
+                        selectedActivity,
+                        /* preferNew= */ false);
             }
-        }
-        return usableIds;
+            // TODO (crbug.com/495856301): Handle URL launches for active instances with
+            // destroyed activities.
+        };
     }
 
-    private boolean launchUrlInOtherWindow(
-            @Nullable Activity sourceActivity,
-            boolean isIncognito,
+    private static boolean launchUrlInOtherWindow(
+            Activity sourceActivity,
+            boolean isIncognitoWindow,
             LoadUrlParams loadUrlParams,
             int parentId,
             @Nullable Activity otherActivity,
             boolean preferNew) {
-        if (sourceActivity == null) return false;
-        ChromeAsyncTabLauncher chromeAsyncTabLauncher = new ChromeAsyncTabLauncher(isIncognito);
+        ChromeAsyncTabLauncher chromeAsyncTabLauncher =
+                new ChromeAsyncTabLauncher(isIncognitoWindow);
         chromeAsyncTabLauncher.launchTabInOtherWindow(
                 loadUrlParams,
                 sourceActivity,

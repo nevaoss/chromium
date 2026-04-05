@@ -71,11 +71,6 @@ var ENTITY_INSTANCE = {
   shouldAuthenticateToView: false,
   storedInWallet: false,
 };
-// An EntityUiContext populated with non-existent dummy string IDs.
-var ENTITY_UI_CONTEXT = {
-  uiStringIds: [1, 2],
-  clickedButtonStringId: 3,
-};
 
 var UPDATED_ENTITY_INSTANCE = structuredClone(ENTITY_INSTANCE);
 UPDATED_ENTITY_INSTANCE.attributeInstances[0].value = 'Mark Hanks';
@@ -934,8 +929,7 @@ var availableTests = [
               [ENTITY_INSTANCE.guid],
               entityInstancesWithLabelsList.map((instance) => instance.guid));
         }));
-    chrome.autofillPrivate.addOrUpdateEntityInstance(
-        ENTITY_INSTANCE, ENTITY_UI_CONTEXT);
+    chrome.autofillPrivate.addOrUpdateEntityInstance(ENTITY_INSTANCE);
   },
 
   async function testExpectedLabelsAreGenerated() {
@@ -1216,17 +1210,17 @@ var availableTests = [
     entityInstancesWithExpectedLabels.forEach(
         async (entityWithExpectedLabel) =>
             chrome.autofillPrivate.addOrUpdateEntityInstance(
-                entityWithExpectedLabel.entity, ENTITY_UI_CONTEXT));
+                entityWithExpectedLabel.entity));
   },
 
   async function testExpectedObfuscatedLabelsAreGenerated() {
     // Add 2 Passports, their labels should be:
     //
     // Passport
-    // •⁠ ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠1234
+    // ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠1234
     //
     // Passport
-    // •⁠ ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠5678
+    // ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠•⁠ ⁠5678
     var entityInstancesWithExpectedLabels = [
       {
         entity: {
@@ -1253,8 +1247,7 @@ var availableTests = [
         },
         // Obfuscated Number
         // "...1234"
-        expectedLabel: OBFUSCATION_DOT + OBFUSCATION_DOT +
-            OBFUSCATION_DOT + OBFUSCATION_DOT + OBFUSCATION_DOT +
+        expectedLabel: OBFUSCATION_DOT + OBFUSCATION_DOT + OBFUSCATION_DOT +
             OBFUSCATION_DOT + '1234'
       },
       {
@@ -1281,8 +1274,7 @@ var availableTests = [
           nickname: 'Passport 2',
         },
         // "...5678"
-        expectedLabel: OBFUSCATION_DOT + OBFUSCATION_DOT +
-            OBFUSCATION_DOT + OBFUSCATION_DOT + OBFUSCATION_DOT +
+        expectedLabel: OBFUSCATION_DOT + OBFUSCATION_DOT + OBFUSCATION_DOT +
             OBFUSCATION_DOT + '5678'
       },
     ];
@@ -1305,12 +1297,12 @@ var availableTests = [
     entityInstancesWithExpectedLabels.forEach(
         async (entityWithExpectedLabel) =>
             chrome.autofillPrivate.addOrUpdateEntityInstance(
-                entityWithExpectedLabel.entity, ENTITY_UI_CONTEXT));
+                entityWithExpectedLabel.entity));
   },
 
   async function addEntityInstanceWithIncompleteDate() {
     chrome.autofillPrivate.addOrUpdateEntityInstance(
-        ENTITY_INSTANCE_WITH_INCOMPLETE_DATE, ENTITY_UI_CONTEXT, () => {
+        ENTITY_INSTANCE_WITH_INCOMPLETE_DATE, () => {
           chrome.test.assertLastError(
               'Add or update entity instance - The provided Autofill AI entity/attribute is invalid.');
           chrome.test.succeed();
@@ -1325,8 +1317,7 @@ var availableTests = [
               [UPDATED_ENTITY_INSTANCE.guid],
               entityInstancesWithLabelsList.map(entity => entity.guid));
         }));
-    chrome.autofillPrivate.addOrUpdateEntityInstance(
-        UPDATED_ENTITY_INSTANCE, ENTITY_UI_CONTEXT);
+    chrome.autofillPrivate.addOrUpdateEntityInstance(UPDATED_ENTITY_INSTANCE);
   },
 
   async function entitiesHaveCorrectLabels() {
@@ -1337,8 +1328,7 @@ var availableTests = [
               [UPDATED_ENTITY_INSTANCE.guid],
               entityInstancesWithLabelsList.map(entity => entity.guid));
         }));
-    chrome.autofillPrivate.addOrUpdateEntityInstance(
-        UPDATED_ENTITY_INSTANCE, ENTITY_UI_CONTEXT);
+    chrome.autofillPrivate.addOrUpdateEntityInstance(UPDATED_ENTITY_INSTANCE);
   },
 
   async function removeEntityInstance() {
@@ -1445,7 +1435,7 @@ var availableTests = [
       },
       {
         typeName: 7,
-        typeNameAsString: 'Number',
+        typeNameAsString: 'License Number',
         dataType: AttributeTypeDataType.STRING,
       },
       {
@@ -1463,14 +1453,14 @@ var availableTests = [
     chrome.test.succeed();
   },
 
-  async function getAllAttributeTypesForEntityTypeName() {
+  async function getRequiredAttributeTypesForEntityTypeName() {
     const attributeTypesList =
         await chrome.autofillPrivate.getRequiredAttributeTypesForEntityTypeName(
             /*entityTypeName=*/ 1);
     const expectedAttributeTypesList = [
       {
         typeName: 7,
-        typeNameAsString: 'Number',
+        typeNameAsString: 'License Number',
         dataType: AttributeTypeDataType.STRING,
       },
     ];
@@ -1512,8 +1502,7 @@ var availableTests = [
     await new Promise(resolve => {
       chrome.test.listenOnce(
           chrome.autofillPrivate.onEntityInstancesChanged, resolve);
-      chrome.autofillPrivate.addOrUpdateEntityInstance(
-          ENTITY_INSTANCE, ENTITY_UI_CONTEXT);
+      chrome.autofillPrivate.addOrUpdateEntityInstance(ENTITY_INSTANCE);
     });
 
     const entityInstancesWithLabelsList =
@@ -1618,8 +1607,7 @@ var availableTests = [
       await new Promise(resolve => {
         chrome.test.listenOnce(
             chrome.autofillPrivate.onEntityInstancesChanged, resolve);
-        chrome.autofillPrivate.addOrUpdateEntityInstance(
-            entity, ENTITY_UI_CONTEXT);
+        chrome.autofillPrivate.addOrUpdateEntityInstance(entity);
       });
     };
 

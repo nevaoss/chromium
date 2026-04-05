@@ -32,6 +32,7 @@ import android.view.animation.Interpolator;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.DrawableRes;
+import androidx.annotation.Px;
 import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.content.res.AppCompatResources;
 
@@ -307,6 +308,8 @@ public class StripLayoutHelperManager
     private final SettableNonNullObservableSupplier<@StripVisibilityState Integer>
             mStripVisibilityStateSupplier =
                     ObservableSuppliers.createNonNull(StripVisibilityState.VISIBLE);
+    private final SettableNonNullObservableSupplier<Integer> mStripBottomPxSupplier =
+            ObservableSuppliers.createNonNull(0);
     private final @Nullable NonNullObservableSupplier<Boolean> mXrSpaceModeObservableSupplier;
 
     // Drag-Drop
@@ -1057,6 +1060,7 @@ public class StripLayoutHelperManager
                     mBrowserControlsStateProvider.getTopControlOffset() / mDensity;
             mSceneLayerVisibleHeight = getVisibleHeightDp(topControlOffsetDp);
             mSceneLayerYOffset = getAdjustedYOffset(topControlOffsetDp);
+            updateStripBottomPx();
         }
 
         pushAndUpdateStrip(mSceneLayerYOffset, mSceneLayerVisibleHeight);
@@ -1265,6 +1269,7 @@ public class StripLayoutHelperManager
             mSceneLayerYOffset = yOffsetDp;
             mSceneLayerVisibleHeight = visibleHeightDp;
             pushAndUpdateStrip(mSceneLayerYOffset, mSceneLayerVisibleHeight);
+            updateStripBottomPx();
         }
     }
 
@@ -1734,10 +1739,8 @@ public class StripLayoutHelperManager
                 mTabModelSelector.getModel(true),
                 tabCreatorManager.getTabCreator(true),
                 tabStateInitialized);
-        mNormalHelper.setTabGroupModelFilter(
-                assumeNonNull(mTabModelSelector.getTabGroupModelFilter(false)));
-        mIncognitoHelper.setTabGroupModelFilter(
-                assumeNonNull(mTabModelSelector.getTabGroupModelFilter(true)));
+        mNormalHelper.setTabGroupModelFilter(mTabModelSelector.getModel(false));
+        mIncognitoHelper.setTabGroupModelFilter(mTabModelSelector.getModel(true));
         tabModelSwitched(mTabModelSelector.isIncognitoSelected());
         // Manually called on initialization, since the logic in #tabModelSwitched only runs if the
         // Incognito state actually changes. Since mIncognito defaults to false, it may not actually
@@ -2114,6 +2117,18 @@ public class StripLayoutHelperManager
         @StripVisibilityState int curVisibility = mStripVisibilityStateSupplier.get();
         mStripVisibilityStateSupplier.set(
                 clear ? (curVisibility & ~visibilityState) : (curVisibility | visibilityState));
+    }
+
+    /** Returns a {@link NonNullObservableSupplier} for the bottom of the tab strip in px. */
+    public NonNullObservableSupplier<Integer> getStripBottomPxSupplier() {
+        return mStripBottomPxSupplier;
+    }
+
+    private void updateStripBottomPx() {
+        @Px
+        int tabStripBottomPx =
+                Math.round(mDensity * (mSceneLayerYOffset + mSceneLayerVisibleHeight));
+        mStripBottomPxSupplier.set(tabStripBottomPx);
     }
 
     void simulateHoverEventForTesting(int event, float x, float y) {

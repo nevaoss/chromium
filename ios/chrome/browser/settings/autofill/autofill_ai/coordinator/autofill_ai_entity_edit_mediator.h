@@ -14,6 +14,7 @@
 namespace autofill {
 class EntityDataManager;
 class EntityInstance;
+class WalletPassAccessManager;
 }  // namespace autofill
 
 @protocol AutofillAIEntityEditConsumer;
@@ -31,10 +32,11 @@ class EntityInstance;
 // The fetched country list.
 @property(nonatomic, strong, readonly) NSArray<CountryItem*>* allCountries;
 
-- (instancetype)initWithEntityInstance:(autofill::EntityInstance)entityInstance
-                     entityDataManager:
-                         (autofill::EntityDataManager*)entityDataManager
-    NS_DESIGNATED_INITIALIZER;
+- (instancetype)
+    initWithEntityInstance:(autofill::EntityInstance)entityInstance
+         entityDataManager:(autofill::EntityDataManager*)entityDataManager
+         walletPassManager:(autofill::WalletPassAccessManager*)walletPassManager
+                 userEmail:(NSString*)userEmail NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;
 

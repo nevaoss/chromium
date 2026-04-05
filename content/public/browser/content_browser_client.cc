@@ -514,11 +514,6 @@ bool ContentBrowserClient::ShouldTryToUpdateServiceWorkerRegistration(
   return true;
 }
 
-void ContentBrowserClient::UpdateEnabledBlinkRuntimeFeaturesInIsolatedWorker(
-    BrowserContext* context,
-    const GURL& script_url,
-    std::vector<std::string>& out_forced_enabled_runtime_features) {}
-
 bool ContentBrowserClient::AllowSharedWorker(
     const GURL& worker_url,
     const net::SiteForCookies& site_for_cookies,
@@ -755,13 +750,6 @@ bool ContentBrowserClient::IsServiceWorkerSyntheticResponseAllowed(
     const GURL& url) {
   return false;
 }
-
-void ContentBrowserClient::GrantCookieAccessDueToHeuristic(
-    content::BrowserContext* browser_context,
-    const net::SchemefulSite& top_frame_site,
-    const net::SchemefulSite& accessing_site,
-    base::TimeDelta ttl,
-    bool ignore_schemes) {}
 
 bool ContentBrowserClient::AreThirdPartyCookiesGenerallyAllowed(
     content::BrowserContext* browser_context,

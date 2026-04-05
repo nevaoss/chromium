@@ -844,6 +844,9 @@ StyleDifference ComputedStyle::VisualInvalidationDiff(
   if (field_diff & kClipPath) {
     diff.clip_path_changed = true;
   }
+  if (field_diff & kBoxPaintProperty) {
+    diff.needs_box_paint_property_update = true;
+  }
   if (field_diff & kColor) {
     diff.text_decoration_or_color_changed = true;
   }
@@ -1378,7 +1381,8 @@ bool ComputedStyle::RequireTransformOrigin(
 }
 
 InterpolationQuality ComputedStyle::GetInterpolationQuality() const {
-  if (ImageRendering() == EImageRendering::kPixelated) {
+  if (ImageRendering() == EImageRendering::kPixelated ||
+      ImageRendering() == EImageRendering::kCrispEdges) {
     return kInterpolationNone;
   }
 
@@ -3058,8 +3062,11 @@ ComputedStyleBuilder::ComputedStyleBuilder(
     SetUserSelect(EUserSelect::kAuto);  // FIXME(sesse): Is this right?
   }
 
-  // TODO(sesse): Why do we do this?
-  SetBaseTextDecorationData(parent_style.AppliedTextDecorationData());
+  // NOTE: BaseTextDecorationData also “inherits” in our implementation
+  // (from EffectiveTextDecorationData), but since it inherits from the
+  // layout parent and also not in all cases (it depends on e.g. the
+  // computed display property), that inheritance happens in StyleAdjuster,
+  // not here.
 }
 
 const ComputedStyle* ComputedStyleBuilder::TakeStyle() {

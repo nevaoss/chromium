@@ -19,6 +19,8 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/task/task_traits.h"
+#include "base/task/thread_pool.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "base/trace_event/trace_event.h"
@@ -44,6 +46,7 @@
 #include "chrome/browser/glic/host/auth_controller.h"
 #include "chrome/browser/glic/host/context/glic_tab_data.h"
 #include "chrome/browser/glic/host/context/glic_tab_data_observer.h"
+#include "chrome/browser/glic/host/context/glic_tab_favicon_observer.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_annotation_manager.h"
 #include "chrome/browser/glic/host/glic_features.mojom.h"
@@ -456,14 +459,8 @@ class JournalHandler {
         base::CommandLine::ForCurrentProcess()->GetSwitchValuePath(
             kGlicActorJournalLog);
     if (!path.empty()) {
-      path = base::GetUniquePathWithSuffixFormat(path, "_%d");
-      LOG(ERROR) << "Glic Journal: " << path;
-      file_journal_serializer_ =
-          std::make_unique<actor::AggregatedJournalFileSerializer>(
-              actor_keyed_service_->GetJournal());
-      file_journal_serializer_->Init(
-          path, base::BindOnce(&JournalHandler::FileInitDone,
-                               base::Unretained(this)));
+      GetUniquePath(path, base::BindOnce(&JournalHandler::OnUniquePathReceived,
+                                         base::Unretained(this)));
     }
   }
 
@@ -616,6 +613,25 @@ class JournalHandler {
 #endif
   }
 
+  void GetUniquePath(const base::FilePath& file_path,
+                     base::OnceCallback<void(const base::FilePath&)> callback) {
+    base::ThreadPool::PostTaskAndReplyWithResult(
+        FROM_HERE, {base::MayBlock(), base::TaskPriority::BEST_EFFORT},
+        base::BindOnce(&base::GetUniquePathWithSuffixFormat, file_path,
+                       base::cstring_view("_%d")),
+        std::move(callback));
+  }
+
+  void OnUniquePathReceived(const base::FilePath& unique_path) {
+    LOG(ERROR) << "Glic Journal: " << unique_path;
+    file_journal_serializer_ =
+        std::make_unique<actor::AggregatedJournalFileSerializer>(
+            actor_keyed_service_->GetJournal());
+    file_journal_serializer_->Init(
+        unique_path,
+        base::BindOnce(&JournalHandler::FileInitDone, base::Unretained(this)));
+  }
+
   void FileInitDone(bool success) {
     if (!success) {
       file_journal_serializer_.reset();
@@ -666,6 +682,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         receiver_(this, std::move(receiver)),
         annotation_manager_(
             std::make_unique<GlicAnnotationManager>(glic_service_)) {
+    VLOG(1) << "Glic [WebClientHandler] Constructor";
     if (base::FeatureList::IsEnabled(features::kGlicActor)) {
       journal_handler_ = std::make_unique<JournalHandler>(profile_);
     }
@@ -673,6 +690,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   ~GlicWebClientHandler() override {
+    VLOG(1) << "Glic [WebClientHandler] Destructor";
     active_state_calculator_.RemoveObserver(this);
     if (web_client_) {
       Uninstall();
@@ -723,6 +741,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   void WebClientCreated(
       ::mojo::PendingRemote<glic::mojom::WebClient> web_client,
       WebClientCreatedCallback callback) override {
+    VLOG(1) << "Glic [WebClientHandler] WebClientCreated";
     web_client_.Bind(std::move(web_client));
     web_client_.set_disconnect_handler(base::BindOnce(
         &GlicWebClientHandler::WebClientDisconnected, base::Unretained(this)));
@@ -964,6 +983,8 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         GlicEnabling::HasConsentedForProfile(profile_);
     state->enable_skills =
         base::FeatureList::IsEnabled(features::kSkillsEnabled);
+    state->enable_get_tab_favicon_by_id =
+        base::FeatureList::IsEnabled(features::kGlicGetTabFaviconById);
 
     std::move(callback).Run(std::move(state));
   }
@@ -973,6 +994,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   void WebClientInitialized() override {
+    VLOG(1) << "Glic [WebClientHandler] WebClientInitialized";
     host().SetWebClient(this);
     // If chrome://glic is opened in a tab for testing, send a synthetic open
     // signal.
@@ -1276,13 +1298,16 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
         actor::TaskId(task_id), *context_options, std::move(callback));
   }
 
-  void InterruptActorTask(int32_t task_id) override {
+  void InterruptActorTask(int32_t task_id,
+                          std::optional<glic::mojom::ActorTaskInterruptReason>
+                              interrupt_reason) override {
     if (!base::FeatureList::IsEnabled(features::kGlicActor)) {
       receiver_.ReportBadMessage(
           "InterruptActorTask cannot be called without GlicActor enabled.");
       return;
     }
-    host().instance_delegate().InterruptActorTask(actor::TaskId(task_id));
+    host().instance_delegate().InterruptActorTask(actor::TaskId(task_id),
+                                                  interrupt_reason);
   }
 
   void UninterruptActorTask(int32_t task_id) override {
@@ -1996,6 +2021,13 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
                                                           std::move(receiver));
   }
 
+  void SubscribeToTabFavicon(
+      int32_t tab_id,
+      ::mojo::PendingRemote<mojom::TabFaviconHandler> receiver) override {
+    glic_service_->tab_favicon_observer().SubscribeToTabFavicon(
+        tab_id, std::move(receiver));
+  }
+
   void NotifyContextualSkillPreviewsChanged(
       std::vector<mojom::SkillPreviewPtr> contextual_skill_previews) override {
     web_client_->NotifyContextualSkillPreviewsChanged(
@@ -2113,7 +2145,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     }
   }
 
-  void WebClientDisconnected() { Uninstall(); }
+  void WebClientDisconnected() {
+    VLOG(1) << "Glic [WebClientHandler] WebClientDisconnected";
+    Uninstall();
+  }
 
   void OnPrefChanged(const std::string& pref_name) {
     if (pref_name == prefs::kGlicMicrophoneEnabled) {
@@ -2460,6 +2495,7 @@ GlicPageHandler::GlicPageHandler(
       browser_context_(webui_contents->GetBrowserContext()),
       receiver_(this, std::move(receiver)),
       page_(std::move(page)) {
+  VLOG(1) << "Glic [PageHandler] Constructor";
   GetGlicService()->host_manager().WebUIPageHandlerAdded(this, host_.get());
   host_->AddPanelStateObserver(this);
   UpdatePageState(host_->GetPanelState(web_client_handler_.get()).kind);
@@ -2473,6 +2509,7 @@ GlicPageHandler::GlicPageHandler(
 }
 
 GlicPageHandler::~GlicPageHandler() {
+  VLOG(1) << "Glic [PageHandler] Destructor";
   host_->RemovePanelStateObserver(this);
   WebUiStateChanged(glic::mojom::WebUiState::kUninitialized);
   // `GlicWebClientHandler` holds a pointer back to us, so delete it first.
@@ -2496,25 +2533,28 @@ void GlicPageHandler::CreateWebClient(
 
 void GlicPageHandler::PrepareForClient(
     base::OnceCallback<void(mojom::PrepareForClientResult)> callback) {
-  TRACE_EVENT_INSTANT("browser", "GlicPageHandler::PrepareForClient - Request",
+  TRACE_EVENT_INSTANT("glic", "GlicPageHandler::PrepareForClient - Request",
                       perfetto::Flow::FromPointer(this));
 
   auto wrapped_callback = base::BindOnce(
-      [](GlicPageHandler* origin_this,
+      [](base::WeakPtr<GlicPageHandler> origin_this,
          base::OnceCallback<void(mojom::PrepareForClientResult)> callback,
          mojom::PrepareForClientResult result) {
-        TRACE_EVENT_INSTANT(
-            "browser", "GlicPageHandler::PrepareForClient - Response",
-            perfetto::TerminatingFlow::FromPointer(origin_this));
+        if (origin_this) {
+          TRACE_EVENT_INSTANT(
+              "glic", "GlicPageHandler::PrepareForClient - Response",
+              perfetto::TerminatingFlow::FromPointer(origin_this.get()));
+        }
         std::move(callback).Run(std::move(result));
       },
-      base::Unretained(this), std::move(callback));
+      this->weak_ptr_factory_.GetWeakPtr(), std::move(callback));
 
   GetGlicService()->GetAuthController().CheckAuthBeforeLoad(
       std::move(wrapped_callback));
 }
 
 void GlicPageHandler::WebviewCommitted(const GURL& url) {
+  VLOG(1) << "Glic [PageHandler] WebviewCommitted, url=" << url.spec();
   // TODO(crbug.com/388328847): Remove this code once launch issues are ironed
   // out.
   if (url.DomainIs("login.corp.google.com") ||

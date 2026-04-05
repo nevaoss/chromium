@@ -21,6 +21,8 @@
 #include <utility>
 #include <vector>
 
+#include "base/check.h"
+#include "base/check_op.h"
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/containers/unique_ptr_adapters.h"
@@ -115,6 +117,8 @@
 #include "mojo/public/cpp/system/data_pipe.h"
 #include "net/base/isolation_info.h"
 #include "net/base/network_isolation_key.h"
+#include "net/cookies/canonical_cookie.h"
+#include "net/cookies/cookie_change_dispatcher.h"
 #include "net/cookies/cookie_setting_override.h"
 #include "net/net_buildflags.h"
 #include "services/device/public/mojom/vibration_manager.mojom.h"
@@ -389,6 +393,11 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // leading to security failures. If there is a `RenderFrameHostImpl` with a
   // matching document token but not a matching process ID, invokes
   // `process_mismatch_callback` (if non-null) and returns `nullptr`.
+  static RenderFrameHostImpl* FromDocumentToken(
+      ChildProcessId process_id,
+      const blink::DocumentToken& document_token,
+      mojo::ReportBadMessageCallback* process_mismatch_callback = nullptr);
+  // TODO(crbug.com/379869738) Remove this method when usages are ported.
   static RenderFrameHostImpl* FromDocumentToken(
       int process_id,
       const blink::DocumentToken& document_token,
@@ -1538,7 +1547,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // of whether any cookie/HTTPOnly cookie had been changed before, which can be
   // used to determine if a document with Cache-control: no-store header set is
   // eligible for BFCache.
-  class CookieChangeListener : public network::mojom::CookieChangeListener {
+  class CONTENT_EXPORT CookieChangeListener
+      : public network::mojom::CookieChangeListener {
    public:
     struct CookieChangeInfo {
       // The number of observed cookie modifications.
@@ -1564,9 +1574,16 @@ class CONTENT_EXPORT RenderFrameHostImpl
         base::PassKey<content::NavigationRequest> navigation_request,
         const net::CanonicalCookie& cookie);
 
+    void AddNavigationCookieToIgnoreForTesting(
+        const net::CanonicalCookie& cookie);
+    void OnCookieChangeForTesting(const net::CookieChangeInfo& change);
+
    private:
     // network::mojom::CookieChangeListener
     void OnCookieChange(const net::CookieChangeInfo& change) override;
+
+    void AddNavigationCookieToIgnoreInternal(
+        const net::CanonicalCookie& cookie);
 
     mojo::Receiver<network::mojom::CookieChangeListener>
         cookie_change_listener_receiver_{this};
@@ -3042,6 +3059,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
       const url::Origin& effective_origin,
       bool is_payment_credential_get_assertion,
       const std::optional<url::Origin>& remote_desktop_client_override_origin,
+      const std::optional<std::string>& app_id,
       base::OnceCallback<void(blink::mojom::AuthenticatorStatus, bool)>
           callback);
   void PerformMakeCredentialWebAuthSecurityChecks(
@@ -3049,6 +3067,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
       const url::Origin& effective_origin,
       bool is_payment_credential_creation,
       const std::optional<url::Origin>& remote_desktop_client_override_origin,
+      const std::optional<std::string>& app_id,
       base::OnceCallback<void(blink::mojom::AuthenticatorStatus, bool)>
           callback);
   void PerformReportWebAuthSecurityChecks(
@@ -3370,7 +3389,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // made to mojom::NavigationClient.
   // These exist to be overridden in tests to retain mojo callbacks.
   virtual void SendCommitNavigation(
-      mojom::NavigationClient* navigation_client,
       NavigationRequest* navigation_request,
       blink::mojom::CommonNavigationParamsPtr common_params,
       blink::mojom::CommitNavigationParamsPtr commit_params,
@@ -3394,7 +3412,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
       const blink::DocumentToken& document_token,
       const base::UnguessableToken& devtools_navigation_token);
   virtual void SendCommitFailedNavigation(
-      mojom::NavigationClient* navigation_client,
       NavigationRequest* navigation_request,
       blink::mojom::CommonNavigationParamsPtr common_params,
       blink::mojom::CommitNavigationParamsPtr commit_params,
@@ -4256,7 +4273,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
       LifecycleStateImpl state);
 
   // Check the renderer provided sandbox flags matches with what the browser
-  // process computed on its own. This triggers DCHECK and DumpWithoutCrashing()
+  // process computed on its own. This triggers CHECK and DumpWithoutCrashing()
   //
   // TODO(crbug.com/40051217) Remove this when we are confident the value
   // computed from the browser is always matching.

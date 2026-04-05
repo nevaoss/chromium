@@ -42,6 +42,7 @@
 #include "chrome/browser/ui/views/tabs/vertical/vertical_split_tab_view.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_drag_handler.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_controller.h"
+#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_utils.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_view.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/grit/generated_resources.h"
@@ -665,6 +666,12 @@ void VerticalTabView::OnBlur() {
   if (collection_node_ && collection_node_->GetController()) {
     collection_node_->GetController()->TabKeyboardFocusChangedTo(nullptr);
   }
+
+  if (auto* tab_strip_view = GetVerticalTabStripView(this)) {
+    if (!tab_strip_view->IsFocusInTabStrip()) {
+      UpdateHoverCard(nullptr, TabSlotController::HoverCardUpdateType::kFocus);
+    }
+  }
 }
 
 void VerticalTabView::OnBoundsChanged(const gfx::Rect& previous_bounds) {
@@ -714,10 +721,14 @@ gfx::Rect VerticalTabView::GetChildBounds(const gfx::Rect& container,
 }
 
 absl::flat_hash_map<views::View*, bool>
-VerticalTabView::CalculateChildVisibilities() const {
+VerticalTabView::CalculateChildVisibilities(const int width) const {
   absl::flat_hash_map<views::View*, bool> child_visibility_map;
 
-  child_visibility_map[title_] = !pinned_;
+  // Pinned titles should be visible in the expand on hover state when the width
+  // is sufficient to show the title.
+  child_visibility_map[title_] =
+      !pinned_ ||
+      (collapsed_ && width >= VerticalTabStripRegionView::kCollapsedWidth);
 
   child_visibility_map[alert_indicator_] =
       alert_indicator_->showing_alert_state().has_value();
@@ -744,13 +755,12 @@ VerticalTabView::CalculateChildVisibilities() const {
 
 views::ProposedLayout VerticalTabView::CalculateProposedLayout(
     const views::SizeBounds& size_bounds) const {
-  auto child_visibility_map = CalculateChildVisibilities();
-
   const int width = size_bounds.width().value_or(
       VerticalTabStripRegionView::kUncollapsedMaxWidth);
   const int height =
       GetLayoutConstant(pinned_ ? LayoutConstant::kVerticalTabPinnedHeight
                                 : LayoutConstant::kVerticalTabHeight);
+  auto child_visibility_map = CalculateChildVisibilities(width);
 
   views::ProposedLayout layouts;
   layouts.host_size = gfx::Size(width, height);
@@ -761,8 +771,9 @@ views::ProposedLayout VerticalTabView::CalculateProposedLayout(
   // If the tab is collapsed but animating with a wider width then we shouldn't
   // center the contents.
   const bool is_centered =
-      (collapsed_ && width < VerticalTabStripRegionView::kCollapsedWidth) ||
-      pinned_;
+      (pinned_ && !collapsed_) ||
+      ((pinned_ || collapsed_) &&
+       width < VerticalTabStripRegionView::kCollapsedWidth);
 
   int placed_children = 0;
   for (const auto& child : tab_children_configs_) {
@@ -880,6 +891,7 @@ const views::View* VerticalTabView::GetAnchorView() const {
 
 void VerticalTabView::ResetCollectionNode() {
   CHECK(collection_node_);
+
   TabHoverCardController* hover_card_controller =
       collection_node_->GetController()->GetHoverCardController();
   if (hover_card_controller && hover_card_controller->target_tab() == this) {
@@ -892,7 +904,7 @@ void VerticalTabView::ResetCollectionNode() {
   active_ = false;
   selected_ = false;
 
-  // Update the callbacks for the buttons so that we dont call anything that
+  // Update the callbacks for the buttons so that we don't call anything that
   // needs the node.
   close_button_->SetCallback(base::RepeatingClosure(base::DoNothing()));
 
@@ -1092,13 +1104,7 @@ void VerticalTabView::CloseButtonPressed(const ui::Event& event) {
 }
 
 void VerticalTabView::RecordMousePressedInTab() {
-  views::View* parent_view = parent();
-  while (parent_view &&
-         !views::IsViewClass<VerticalTabStripView>(parent_view)) {
-    parent_view = parent_view->parent();
-  }
-
-  auto* tab_strip_view = views::AsViewClass<VerticalTabStripView>(parent_view);
+  auto* tab_strip_view = GetVerticalTabStripView(this);
   CHECK(tab_strip_view);
   tab_strip_view->RecordMousePressedInTab();
 }

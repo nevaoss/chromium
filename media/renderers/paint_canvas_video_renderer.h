@@ -30,6 +30,8 @@ class RectF;
 }
 
 namespace gpu {
+class ContextSupport;
+class RasterScopedAccess;
 struct Capabilities;
 
 namespace gles2 {
@@ -132,10 +134,11 @@ class MEDIA_EXPORT PaintCanvasVideoRenderer {
       viz::RasterContextProvider* raster_context_provider,
       viz::SharedImageFormat::ChannelFormat channel_format);
 
-  // Copy the contents of |video_frame| to |texture| of |destination_gl|.
+  // Copy the contents of |video_frame| to |texture| of |destination_gl| using
+  // an intermediate SharedImage.
   //
   // The format of |video_frame| must be VideoFrame::NATIVE_TEXTURE.
-  bool CopyVideoFrameTexturesToGLTexture(
+  bool CopyVideoFrameTexturesToGLTextureViaIntermediateSI(
       viz::RasterContextProvider* raster_context_provider,
       gpu::gles2::GLES2Interface* destination_gl,
       scoped_refptr<VideoFrame> video_frame,
@@ -207,6 +210,13 @@ class MEDIA_EXPORT PaintCanvasVideoRenderer {
                             int yoffset,
                             GrSurfaceOrigin dst_origin,
                             SkAlphaType dst_alpha_type);
+
+  // Ensures that the GPU has finished reading the video frame.
+  static void SynchronizeVideoFrameRead(
+      scoped_refptr<VideoFrame> video_frame,
+      gpu::gles2::GLES2Interface* gl,
+      gpu::ContextSupport* context_support,
+      std::unique_ptr<gpu::RasterScopedAccess> ri_access = nullptr);
 
   // Copies VideoFrame contents to the `destination` shared image. if
   // `use_visible_rect` is set to true, only `VideoFrame::visible_rect()`

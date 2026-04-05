@@ -2451,7 +2451,7 @@ int Element::OffsetLeft() {
       this, DocumentUpdateReason::kJavaScript);
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
-               layout_object->OffsetLeft(OffsetParent()),
+               layout_object->OffsetPoint(OffsetParent()).left,
                layout_object->StyleRef())
         .Round();
   }
@@ -2463,7 +2463,7 @@ int Element::OffsetTop() {
       this, DocumentUpdateReason::kJavaScript);
   if (const auto* layout_object = GetLayoutBoxModelObject()) {
     return AdjustForAbsoluteZoom::AdjustLayoutUnit(
-               layout_object->OffsetTop(OffsetParent()),
+               layout_object->OffsetPoint(OffsetParent()).top,
                layout_object->StyleRef())
         .Round();
   }
@@ -4461,7 +4461,7 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
 
     if (DisplayAdElementMonitor* ad_monitor =
             data->GetDisplayAdElementMonitor()) {
-      ad_monitor->OnElementRemovedOrUntagged();
+      ad_monitor->OnElementRemoved();
     }
   }
 
@@ -8898,8 +8898,6 @@ bool Element::ActivateDisplayLockIfNeeded(DisplayLockActivationReason reason) {
 }
 
 void Element::SetIsAdRelated(AdProvenance ad_provenance) {
-  DCHECK(!IsA<HTMLFrameOwnerElement>(this));
-
   UnpackAndRefresh(EnsureRareData().EnsureDisplayAdElementMonitor(
       this, std::move(ad_provenance)));
 }
@@ -8940,6 +8938,21 @@ bool Element::HasUndoStack() const {
 
 void Element::SetHasUndoStack(bool value) {
   EnsureRareData().SetHasUndoStack(value);
+}
+
+void Element::SetHasBeenHeuristicCustomPasswordCSS() {
+  if (HasBeenHeuristicCustomPasswordCSS()) {
+    return;
+  }
+
+  EnsureRareData().SetHasBeenHeuristicCustomPasswordCSS();
+}
+
+bool Element::HasBeenHeuristicCustomPasswordCSS() const {
+  if (const ElementRareDataVector* data = RareData()) {
+    return data->HasBeenHeuristicCustomPasswordCSS();
+  }
+  return false;
 }
 
 void Element::SetPseudoElementStylesChangeCounters(bool value) {

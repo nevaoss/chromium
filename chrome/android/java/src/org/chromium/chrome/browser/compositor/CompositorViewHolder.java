@@ -83,6 +83,7 @@ import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.chrome.browser.theme.TopUiThemeColorProvider;
 import org.chromium.chrome.browser.toolbar.ControlContainer;
+import org.chromium.chrome.browser.ui.side_panel.AndroidSidePanelEnabledFn;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
 import org.chromium.chrome.browser.ui.side_ui.SideUiObserver;
 import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
@@ -172,7 +173,6 @@ public class CompositorViewHolder extends FrameLayout
             ObservableSuppliers.createNonNull(false);
 
     private boolean mIsKeyboardShowing;
-    private boolean mIsTabContentObscured;
     private boolean mNativeInitialized;
     private LayoutManagerImpl mLayoutManager;
     private Activity mActivity;
@@ -831,11 +831,9 @@ public class CompositorViewHolder extends FrameLayout
 
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent e) {
-        if (mIsTabContentObscured && ChromeFeatureList.sCompositorViewHolderObscuring.isEnabled()) {
+        if (mLayoutManager != null && mLayoutManager.dispatchGenericMotionEvent(e)) {
             return true;
         }
-
-        if (mLayoutManager != null && mLayoutManager.dispatchGenericMotionEvent(e)) return true;
         return super.dispatchGenericMotionEvent(e);
     }
 
@@ -894,10 +892,6 @@ public class CompositorViewHolder extends FrameLayout
 
     @Override
     public boolean dispatchHoverEvent(MotionEvent e) {
-        if (mIsTabContentObscured && ChromeFeatureList.sCompositorViewHolderObscuring.isEnabled()) {
-            return true;
-        }
-
         if (mNodeProvider != null) {
             if (mNodeProvider.dispatchHoverEvent(e)) {
                 return true;
@@ -925,11 +919,6 @@ public class CompositorViewHolder extends FrameLayout
     @Override
     public boolean dispatchTouchEvent(MotionEvent e) {
         assert e != null : "The motion event dispatched shouldn't be null!";
-
-        if (mIsTabContentObscured && ChromeFeatureList.sCompositorViewHolderObscuring.isEnabled()) {
-            return true;
-        }
-
         if (mNativeInitialized) {
             InputHintChecker.onCompositorViewHolderTouchEvent();
         }
@@ -1029,7 +1018,7 @@ public class CompositorViewHolder extends FrameLayout
         // The view size takes into account side-anchored UI whose width should be subtracted from
         // the view if they are visible, therefore shrinking the Blink-side view size.
         int horizontalViewportInsets = 0;
-        if (ChromeFeatureList.sEnableAndroidSidePanel.isEnabled() && mSideUiStateProvider != null) {
+        if (AndroidSidePanelEnabledFn.isEnabled() && mSideUiStateProvider != null) {
             SideUiSpecs sideUiSpecs = mSideUiStateProvider.getCurrentSideUiSpecs();
             horizontalViewportInsets =
                     sideUiSpecs.mStartContainerWidth + sideUiSpecs.mEndContainerWidth;
@@ -1903,7 +1892,6 @@ public class CompositorViewHolder extends FrameLayout
 
     @Override
     public void updateObscured(boolean obscureTabContent, boolean obscureToolbar) {
-        mIsTabContentObscured = obscureTabContent;
         if (ChromeFeatureList.sCompositorViewHolderObscuring.isEnabled()) {
             updateFocusability(!obscureTabContent, /* blockDescendants= */ true);
         } else {

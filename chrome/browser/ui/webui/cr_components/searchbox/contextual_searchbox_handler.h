@@ -204,6 +204,12 @@ class ContextualSearchboxHandler
 
   virtual void OpenUrl(GURL url, const WindowOpenDisposition disposition);
 
+  void ContextualizeQueryAndOpenUrl(
+      const std::string& query_text,
+      WindowOpenDisposition disposition,
+      omnibox::ChromeAimEntryPoint aim_entry_point,
+      std::map<std::string, std::string> additional_params);
+
   void ComputeAndOpenQueryUrl(
       const std::string& query_text,
       WindowOpenDisposition disposition,
@@ -269,6 +275,8 @@ class ContextualSearchboxHandler
   GetTabViewportEncodingOptionsForQueryContextualizer() override;
   void OnPageContextIneligible() override;
   void OnTabProcessedForQueryContextualization(int32_t id) override;
+  contextual_search::ContextualSearchSessionHandle*
+  GetOrCreateSessionHandleForQueryContextualizer() override;
 
   std::unique_ptr<contextual_search::InputStateModel> input_state_model_;
 

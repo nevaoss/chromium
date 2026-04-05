@@ -957,6 +957,8 @@ BASE_FEATURE(kForceOffTextAutosizing, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kForceSkcmsICCParsing, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kForceSkExifCppParsing, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Automatically convert light-themed pages to use a Blink-generated dark theme
 BASE_FEATURE(kForceWebContentsDarkMode,
              "WebContentsForceDark",
@@ -1041,6 +1043,19 @@ constexpr base::FeatureParam<int>
         &features::kIndexedDBCompressValuesWithSnappy,
         /*name=*/"compression-threshold",
         /*default_value=*/-1};
+
+BASE_FEATURE(kInlineScriptCache, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE_PARAM(size_t,
+                   kInlineScriptCacheMinScriptLength,
+                   &kInlineScriptCache,
+                   "min_script_length",
+                   1024);
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kInlineScriptCacheTimeout,
+                   &kInlineScriptCache,
+                   "timeout",
+                   base::Milliseconds(100));
 
 BASE_FEATURE(kInputPredictorTypeChoice, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -2735,6 +2750,12 @@ bool IsMemoryPurgeOnBackgroundingEnabled() {
       true
 #endif
       ;
+}
+
+bool IsInlineScriptCacheEnabled() {
+  // Inline script cache is built on top of PersistentCodeCache.
+  return base::FeatureList::IsEnabled(kInlineScriptCache) &&
+         IsPersistentCacheForCodeCacheEnabled();
 }
 
 bool IsParkableStringsToDiskEnabled() {

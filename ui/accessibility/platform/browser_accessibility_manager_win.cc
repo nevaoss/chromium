@@ -132,9 +132,9 @@ HWND BrowserAccessibilityManagerWin::GetParentHWND() const {
     return nullptr;
   }
 
-  // For views-sourced managers (e.g. WidgetAXManager), each widget can
-  // resolve its own HWND directly — there is no root-frame hierarchy.
-  // For web content, walk up to the root frame manager's delegate.
+  // For non-web-content sources (e.g., Views), the delegate directly provides
+  // the HWND. For web content, we must walk up to the root frame manager to
+  // find the HWND, because child frames (iframes) share the top-level HWND.
   if (!delegate()->AccessibilityIsWebContentSource()) {
     return delegate()->AccessibilityGetAcceleratedWidget();
   }
@@ -1148,6 +1148,11 @@ void BrowserAccessibilityManagerWin::FinalizeSelectionEvents(
 void BrowserAccessibilityManagerWin::HandleAriaPropertiesChangedEvent(
     BrowserAccessibility& node) {
   DCHECK_IN_ON_ACCESSIBILITY_EVENTS();
+  // ARIA properties are a web concept; skip for non-web-content sources
+  // (e.g. Views-sourced managers via WidgetAXManager).
+  if (delegate_ && !delegate_->AccessibilityIsWebContentSource()) {
+    return;
+  }
   aria_properties_events_.insert(&node);
 }
 

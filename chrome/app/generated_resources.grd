@@ -11831,6 +11831,12 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       <message name="IDS_PICTURE_IN_PICTURE_UNMUTE_MICROPHONE_TEXT" desc="Text label of the unmute microphone control button. The button appears when the user hovers over the Picture-in-Picture window.">
         Unmute microphone
       </message>
+      <message name="IDS_PICTURE_IN_PICTURE_MUTE_TEXT" desc="Text label of the mute audio control button. The button appears when the user hovers over the Picture-in-Picture window.">
+        Mute
+      </message>
+      <message name="IDS_PICTURE_IN_PICTURE_UNMUTE_TEXT" desc="Text label of the unmute audio control button. The button appears when the user hovers over the Picture-in-Picture window.">
+        Unmute
+      </message>
       <message name="IDS_PICTURE_IN_PICTURE_TURN_ON_CAMERA_TEXT" desc="Text label of the turn on camera control button. The button appears when the user hovers over the Picture-in-Picture window.">
         Turn on camera
       </message>
@@ -13768,15 +13774,6 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       </message>
       <message name="IDS_OMNIBOX_TOOLTIP_SEND_TAB_TO_SELF" desc="The label of item for share this tab to other devices in different context menus.">
         Send this page
-      </message>
-      <message name="IDS_OMNIBOX_BUBBLE_ITEM_SUBTITLE_TODAY_SEND_TAB_TO_SELF" desc="The label of valid device button inside omnibox bubble, which shows the last activated time of a valid device.">
-        Active today
-      </message>
-      <message name="IDS_OMNIBOX_BUBBLE_ITEM_SUBTITLE_DAY_SEND_TAB_TO_SELF" desc="The label of valid device button inside omnibox bubble, which shows the last activated time of a valid device.">
-        Active <ph name="DEVICE_LAST_ACTIVATED_TIME">$1<ex>- 1 day ago</ex></ph> day ago
-      </message>
-      <message name="IDS_OMNIBOX_BUBBLE_ITEM_SUBTITLE_DAYS_SEND_TAB_TO_SELF" desc="The label of valid device button inside omnibox bubble, which shows the last activated time of a valid device.">
-        Active <ph name="DEVICE_LAST_ACTIVATED_TIME">$1<ex>- 3 days ago</ex></ph> days ago
       </message>
       <message name="IDS_TOOLBAR_BUTTON_SEND_TAB_TO_SELF_FROM_DEVICE" desc="The label for the device a received tab was sent from. Shown in the toolbar bubble.">
         Shared from <ph name="DEVICE_NAME">$1<ex>Ted's Pixel2</ex></ph>
@@ -19200,6 +19197,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_GLIC_SELECTION_OVERLAY_RENDERER_LABEL" desc="The label for the renderer process housing the Gemini's selection overlay.">
         Gemini Selection Overlay
       </message>
+      <message name="IDS_GLIC_SELECTION_OVERLAY_PRESELECTION_BUBBLE_TEXT" desc="Text that is shown in the Glic selection overlay preselection bubble. Informs the user to select text or image to ask Gemini.">
+        Select any text or image to ask Gemini
+      </message>
       <message name="IDS_COPIED_TO_CLIPBOARD_TOAST_BODY" desc="Text on a toast notification that is shown when an item has been copied to clipboard.">
         Copied to clipboard
       </message>
@@ -19868,6 +19868,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
       <message name="IDS_UPDATER_EXPAND_ALL" desc="Label for a button that expands all collapsed items in a list.">
         Expand All
+      </message>
+      <message name="IDS_UPDATER_EXPORT_HISTORY_FILE" desc="Label for the button that redirects users to Chrome's support tool, allowing them to export Chrome Updater's history files.">
+        Export History Files
       </message>
       <message name="IDS_UPDATER_FILTER_CHIP_APP" desc="Text displayed in a filter chip showing the selected application's names or identifier strings.">
         App: <ph name="APPS">$1<ex>Google Chrome, Google Chrome Beta, Google Chrome Canary, {6BBAE539-2232-434A-A4E5-9A33560C6284}</ex></ph>

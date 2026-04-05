@@ -27,6 +27,15 @@ enum class ManagedAccountSigninMode;
                                               signin::ManagedAccountSigninMode>)
                                               mode;
 
+// Called when the Managed Profile Creation must be stopped, without the user
+// having tapped on one of the view’s button. This should be very rare. It can
+// occurs either if the profile was removed from the device (this could be done
+// from another application), or if the user signed-in into an account (this
+// could be done by using a second view, with a managed profile, and switching
+// to a personal profile).
+- (void)managedProfileCreationCoordinatorWantsToBeStopped:
+    (ManagedProfileCreationCoordinator*)coordinator;
+
 @end
 
 // Coordinator to present managed profile creation.
@@ -36,6 +45,8 @@ enum class ManagedAccountSigninMode;
 // in `viewController`. UIViewController::presentViewController will be used
 // to show the ViewController created and owned by
 // ManagedProfileCreationCoordinator.
+// `identity` must be non nil.
+// `hostedDomain` may be nil.
 - (instancetype)initWithBaseViewController:(UIViewController*)viewController
                                   identity:(id<SystemIdentity>)identity
                               hostedDomain:(NSString*)hostedDomain

@@ -2309,6 +2309,11 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     prefs::kRestrictCoreSharingOnRenderer,
     base::Value::Type::BOOLEAN },
 #endif  // BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_ANDROID)
+    { key::kAndroidEntraSsoEnabled,
+    prefs::kAndroidEntraSSOEnabled,
+    base::Value::Type::INTEGER },
+#endif
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX)
   { key::kOutOfProcessSystemDnsResolutionEnabled,
     prefs::kOutOfProcessSystemDnsResolutionEnabled,
@@ -2372,6 +2377,11 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kAutofillPredictionSettings,
     optimization_guide::prefs::kAutofillPredictionImprovementsEnterprisePolicyAllowed,
     base::Value::Type::INTEGER},
+#if BUILDFLAG(IS_ANDROID)
+  { key::kFindsSettings,
+    optimization_guide::prefs::kFindsEnterprisePolicyAllowed,
+    base::Value::Type::INTEGER},
+#endif
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_ANDROID)
   { key::kChromeForTestingAllowed,
     prefs::kChromeForTestingAllowed,
@@ -3509,6 +3519,11 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       key::kGenAIInlineImageSettings,
       ash::prefs::kLobsterEnterprisePolicySettings);
 #endif  // BUILDFLAG(IS_CHROMEOS)
+#if BUILDFLAG(IS_ANDROID)
+  gen_ai_default_policies.emplace_back(
+      key::kFindsSettings,
+      optimization_guide::prefs::kFindsEnterprisePolicyAllowed);
+#endif  // BUILDFLAG(IS_ANDROID)
 #if !BUILDFLAG(IS_ANDROID)
   gen_ai_default_policies.emplace_back(
       key::kLensOverlaySettings, lens::prefs::kLensOverlaySettings,

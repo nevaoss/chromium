@@ -20,7 +20,7 @@
 #import "ios/chrome/browser/browsing_data/model/browsing_data_remover_factory.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/test/test_fullscreen_controller.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_service.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_service_factory.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_prefs.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
@@ -100,8 +100,8 @@ class AppBarMediatorTest : public PlatformTest {
             std::make_unique<FakeAuthenticationServiceDelegate>()));
     builder.AddTestingFactory(SyncServiceFactory::GetInstance(),
                               base::BindRepeating(&CreateMockSyncService));
-    builder.AddTestingFactory(BwgServiceFactory::GetInstance(),
-                              BwgServiceFactory::GetDefaultFactory());
+    builder.AddTestingFactory(GeminiServiceFactory::GetInstance(),
+                              GeminiServiceFactory::GetDefaultFactory());
     builder.AddTestingFactory(
         OptimizationGuideServiceFactory::GetInstance(),
         OptimizationGuideServiceFactory::GetDefaultFactory());
@@ -538,6 +538,43 @@ TEST_F(AppBarMediatorTest, TestInTabGroup) {
   // Remove from group.
   OCMExpect([consumer_ setInTabGroup:NO]);
   regular_web_state_list_->RemoveFromGroups({0});
+  EXPECT_OCMOCK_VERIFY(consumer_);
+}
+
+// Tests that the consumer is updated with the incognito state.
+TEST_F(AppBarMediatorTest, TestIncognitoState) {
+  tab_grid_state_.tabGridVisible = NO;
+  incognito_state_.incognitoContentVisible = NO;
+
+  // Initial state should be non-incognito.
+  OCMExpect([consumer_ setIncognito:NO]);
+  [mediator_ updateConsumer];
+  EXPECT_OCMOCK_VERIFY(consumer_);
+
+  // Switch to incognito.
+  OCMExpect([consumer_ setIncognito:YES]);
+  incognito_state_.incognitoContentVisible = YES;
+  EXPECT_OCMOCK_VERIFY(consumer_);
+
+  // Switch back to regular.
+  OCMExpect([consumer_ setIncognito:NO]);
+  incognito_state_.incognitoContentVisible = NO;
+  EXPECT_OCMOCK_VERIFY(consumer_);
+}
+
+// Tests that the consumer is updated with the incognito state in the tab grid.
+TEST_F(AppBarMediatorTest, TestIncognitoStateTabGrid) {
+  tab_grid_state_.tabGridVisible = YES;
+  tab_grid_state_.currentPage = TabGridPageRegularTabs;
+
+  // Initial state in regular tab grid should be non-incognito.
+  OCMExpect([consumer_ setIncognito:NO]);
+  [mediator_ updateConsumer];
+  EXPECT_OCMOCK_VERIFY(consumer_);
+
+  // Switch to incognito page in tab grid.
+  OCMExpect([consumer_ setIncognito:YES]);
+  tab_grid_state_.currentPage = TabGridPageIncognitoTabs;
   EXPECT_OCMOCK_VERIFY(consumer_);
 }
 

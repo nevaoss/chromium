@@ -399,6 +399,19 @@
       public: true,
     },
     {
+      // Gates access to legacy aliases of renamed "AIPromptAPI" identifiers.
+      // TODO(crbug.com/498228550): Remove after extension context usage drops.
+      name: "AIPromptAPILegacyIdentifiers",
+      public: true,
+    },
+    {
+      // Gates access to legacy sampling parameter surfaces for "AIPromptAPI".
+      // Enabled in extension contexts, and for API enhancement experiments.
+      name: "AIPromptAPILegacyParams",
+      public: true,
+      implied_by: ["AIPromptAPIParams"],
+    },
+    {
       name: "AIPromptAPIMultimodalInput",
       status: {
         "Win": "experimental",
@@ -412,6 +425,18 @@
       origin_trial_allows_third_party: true,
       base_feature_status: "enabled",
       copied_from_base_feature_if: "overridden",
+    },
+    {
+      // Gates access to inference parameter enhancements for "AIPromptAPI".
+      // This feature alone does not expose any "AIPromptAPI" feature access.
+      name: "AIPromptAPIParams",
+      status: {
+        "Win": "experimental",
+        "Mac": "experimental",
+        "Linux": "experimental",
+        "ChromeOS": "experimental",
+        "default": "",
+      },
     },
     {
       // Gates access to the responseConstraint enhancement for "AIPromptAPI".
@@ -1309,7 +1334,7 @@
     },
     {
       name: "ContainerNameOnly",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "ContainerTiming",
@@ -1449,6 +1474,10 @@
       // https://drafts.csswg.org/css-counter-styles/#counter-style-speak-as
       name: "CSSAtRuleCounterStyleSpeakAsDescriptor",
       status: "test",
+    },
+    {
+      name: "CSSBackgroundClipBorderArea",
+      status: "experimental",
     },
     // https://chromestatus.com/feature/5459864205393920
     {
@@ -1976,16 +2005,9 @@
       depends_on: ["AppearanceBase"],
     },
     {
-      // appearance:base-select for <select multiple> and <select size=n>
-      // https://issues.chromium.org/issues/357649033
-      name: "CustomizableSelectListbox",
-      status: "stable",
-    },
-    {
       // appearance:base-select for <select multiple size=1> with a picker.
       name: "CustomizableSelectMultiplePopup",
       status: "experimental",
-      depends_on: ["CustomizableSelectListbox"],
     },
     // see crbug.com/341313078
     {
@@ -2106,22 +2128,19 @@
     },
     {
       name: "DirectSockets",
-      public: true,
-      status: "stable",
+      base_feature_status: "enabled",
+      copied_from_base_feature_if: "overridden",
+      browser_process_read_write_access: true,
     },
     {
       // Experimental support for the Direct Sockets API in Service Workers.
       // https://github.com/WICG/direct-sockets
       name: "DirectSocketsInServiceWorkers",
-      status: "test",
-      depends_on: ["DirectSockets"],
     },
     {
       // Experimental support for the Direct Sockets API in Shared Workers.
       // https://github.com/WICG/direct-sockets
       name: "DirectSocketsInSharedWorkers",
-      status: "test",
-      depends_on: ["DirectSockets"],
     },
     {
       name: "DisableDifferentOriginSubframeDialogSuppression",
@@ -2160,6 +2179,10 @@
       // This landed in M146 and can be removed in M148.
       name: "DisallowPickerForReadonlyInputs",
       status: "stable",
+    },
+    {
+      name: "DisconnectWebSocketOnBFCache",
+      status: "test",
     },
     {
       // `kHidden` and `kHiddenButPainting` visibility states are treated as
@@ -2708,7 +2731,6 @@
       // listbox select element to perform filtering.
       name: "FilterableSelect",
       status: "experimental",
-      depends_on: ["CustomizableSelectListbox"],
     },
     {
       // Fix for https://crbug.com/41153707
@@ -3234,6 +3256,14 @@
       status: "stable",
     },
     {
+      // Srcset images respond to viewport/zoom changes by
+      // re-selecting the best candidate, including for
+      // x-descriptors.
+      // https://crbug.com/41385706
+      name: "ImageSrcsetReselection",
+      status: "stable",
+    },
+    {
       name: "ImplicitRootScroller",
       public: true,
       settable_from_internals: true,
@@ -3412,10 +3442,6 @@
     },
     {
       name: "LanguageDetectionAPIForWorkers",
-      public: true,
-    },
-    {
-      name: "LanguageModelLegacyParamsAndAttributes",
       public: true,
     },
     {
@@ -4135,12 +4161,6 @@
       status: "experimental",
     },
     {
-      // Exposes unused speculation data (preloads, prefetches, prerenders)
-      // on the pagehide event.
-      name: "PageHideSpeculations",
-      status: "experimental",
-    },
-    {
       name: "PagePopup",
       // Android does not have support for PagePopup
       status: {"Android": "", "iOS": "", "default": "stable"},
@@ -4701,7 +4721,7 @@
     },
     {
       name: "ResourceTimingContentType",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "ResourceTimingInitiator",
@@ -5222,13 +5242,7 @@
     {
       name: "SharedWorker",
       public: true,
-      // Android does not yet support SharedWorker. crbug.com/154571
-      status: {"Android": "", "default": "stable"},
-
-      // Allow Android to run the origin trial.
-      origin_trial_feature_name: "SharedWorkerOnAndroid",
-      origin_trial_os: ["android"],
-      origin_trial_allows_third_party: true,
+      status: "stable",
     },
     {
       // If enabled, SharedWorker supports extendedLifetime

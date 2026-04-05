@@ -14,9 +14,13 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/finds/android/finds_service_android.h"
+#endif
 #include "chrome/browser/finds/core/finds_features.h"
 #include "chrome/browser/finds/core/finds_pref_names.h"
 #include "chrome/browser/finds/core/finds_utils.h"
+#include "chrome/browser/notifications/scheduler/public/client_overview.h"
 #include "chrome/browser/notifications/scheduler/public/notification_data.h"
 #include "chrome/browser/notifications/scheduler/public/notification_params.h"
 #include "chrome/browser/notifications/scheduler/public/notification_schedule_service.h"
@@ -40,19 +44,11 @@ namespace finds {
 
 namespace {
 
-// The duration of history to look back when gathering URLs for theme
-// suggestions.
-// TODO(crbug.com/493283477): Align with notif cooldown.
-constexpr base::TimeDelta kHistoryLookbackInterval = base::Days(7);
 
 // If the finds::features::kNotificationStartTimeMinutes param is set to less
 // than this threshold, it is considered to be for testing and will bypass the
 // notification scheduling throttling safeguards.
 constexpr int kThresholdMinutesForTesting = 5;
-
-// The number of times a theme should be visited in order for a user to be
-// eligible to receive the opt in promo for finds.
-constexpr int kThemeUrlVisitCountForOptIn = 3;
 
 std::string FindsSuggestionResponseToHumanReadableString(
     const optimization_guide::proto::FindsSuggestionResponse& response) {
@@ -83,8 +79,7 @@ bool IsModelExecutionCooldownPassed(const PrefService* pref_service) {
   const base::Time last_execution_time =
       base::Time::FromMillisecondsSinceUnixEpoch(last_timestamp_value);
   return (base::Time::Now() - last_execution_time) >=
-         base::Days(
-             finds::features::kModelExecutionCooldownDurationInDays.Get());
+         GetModelExecutionCooldownDurationTimeDelta();
 }
 
 bool IsThemeCooldownPassed(const PrefService* pref_service,
@@ -114,17 +109,13 @@ bool IsThemeCooldownPassed(const PrefService* pref_service,
          base::Days(finds::features::kThemeCooldownDurationInDays.Get());
 }
 
-void SetModelExecutionCooldownTimestamp(PrefService* pref_service) {
-  pref_service->SetInt64(prefs::kFindsModelExecutionLastTimestamp,
-                         base::Time::Now().InMillisecondsSinceUnixEpoch());
-}
-
 const SuggestionTheme* GetHighestScoredThemeIfPossible(
     PrefService* pref_service,
-    const ::google::protobuf::RepeatedPtrField<SuggestionTheme>& suggestions) {
+    const ::google::protobuf::RepeatedPtrField<SuggestionTheme>&
+        suggestion_themes) {
   // Sort the suggestion themes by best score.
   std::vector<const SuggestionTheme*> sorted_themes;
-  for (const auto& theme : suggestions) {
+  for (const auto& theme : suggestion_themes) {
     sorted_themes.push_back(&theme);
   }
   std::sort(sorted_themes.begin(), sorted_themes.end(),
@@ -133,6 +124,9 @@ const SuggestionTheme* GetHighestScoredThemeIfPossible(
             });
 
   for (const auto* theme : sorted_themes) {
+    if (theme->theme_suggested_contents().empty()) {
+      continue;
+    }
     if (IsThemeCooldownPassed(pref_service, theme->theme_type())) {
       return theme;
     }
@@ -206,6 +200,13 @@ void FindsService::RegisterProfilePrefs(PrefRegistrySimple* registry) {
   registry->RegisterDictionaryPref(
       prefs::kFindsNotInterestedThemesLastTimestamp);
   registry->RegisterBooleanPref(prefs::kFindsOptInPromoUserInteracted, false);
+  // TODO(crbug.com/497928018): Remove the deprecated user interacted pref.
+  registry->RegisterIntegerPref(prefs::kFindsOptInPromoInteractedCount, 0);
+  // TODO(crbug.com/497928018): Remove the deprecated user interacted pref.
+  registry->RegisterInt64Pref(prefs::kFindsOptInPromoLastInteractedTimestamp,
+                              0);
+  registry->RegisterIntegerPref(prefs::kFindsOptInPromoShownCount, 0);
+  registry->RegisterInt64Pref(prefs::kFindsOptInPromoLastShownTimestamp, 0);
 }
 
 FindsService::FindsService(
@@ -219,8 +220,9 @@ FindsService::FindsService(
       notification_schedule_service_(notification_schedule_service) {
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
-      base::BindOnce(&FindsService::CheckModelCooldownCriteriaAndMaybeExecute,
-                     weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(
+          &FindsService::CheckFindsNotificationsEnabledAndMaybeExecute,
+          weak_ptr_factory_.GetWeakPtr()));
 }
 
 FindsService::~FindsService() {
@@ -233,10 +235,6 @@ void FindsService::AddObserver(Observer* observer) {
 
 void FindsService::RemoveObserver(Observer* observer) {
   observers_.RemoveObserver(observer);
-}
-
-void FindsService::MarkNotificationShown(PrefService* pref_service) {
-  SetModelExecutionCooldownTimestamp(pref_service);
 }
 
 void FindsService::ExecuteModelAndScheduleNotification(
@@ -264,7 +262,9 @@ void FindsService::ExecuteModelAndScheduleNotification(
   }
 
   history::QueryOptions options;
-  options.begin_time = base::Time::Now() - kHistoryLookbackInterval;
+  options.begin_time =
+      base::Time::Now() - GetModelExecutionCooldownDurationTimeDelta();
+  options.max_count = finds::features::kMaxHistoryEntries.Get();
 
   history_service_->QueryHistory(
       std::u16string(), options,
@@ -282,11 +282,25 @@ void FindsService::RecordThemeURLVisited(
   // Increment the theme url visit count for the given theme type and notify
   // observers if the threshold is met.
   theme_url_visit_count_[theme_type]++;
-  if (theme_url_visit_count_[theme_type] >= kThemeUrlVisitCountForOptIn) {
+  if (theme_url_visit_count_[theme_type] >=
+      finds::features::kThemeUrlVisitCountForOptIn.Get()) {
     for (auto& observer : observers_) {
       observer.OnOptInCriteriaFulfilled();
+
+      // Reset the count for the theme type.
+      theme_url_visit_count_[theme_type] = 0;
     }
   }
+}
+
+void FindsService::MaybeRescheduleNotifications() {
+  if (!notification_schedule_service_) {
+    return;
+  }
+  notification_schedule_service_->GetClientOverview(
+      notifications::SchedulerClientType::kChromeFinds,
+      base::BindOnce(&FindsService::OnGetClientOverview,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 bool FindsService::ScheduleNotificationForInternalsPage() {
@@ -305,8 +319,18 @@ bool FindsService::ScheduleNotificationForInternalsPage() {
   return ScheduleNotificationWithModelResult(theme);
 }
 
-void FindsService::CheckModelCooldownCriteriaAndMaybeExecute() {
+void FindsService::CheckFindsNotificationsEnabledAndMaybeExecute() {
+  // TODO(crbug.com/497928018): Remove this when deprecated pref removed.
+  pref_service_->ClearPref(prefs::kFindsOptInPromoInteractedCount);
+  pref_service_->ClearPref(prefs::kFindsOptInPromoLastInteractedTimestamp);
+
+#if BUILDFLAG(IS_ANDROID)
+  FindsServiceAndroid::CheckAreFindsNotificationsEnabledAndroid(
+      base::BindOnce(&FindsService::OnCheckAreFindsNotificationsEnabled,
+                     weak_ptr_factory_.GetWeakPtr()));
+#else
   ExecuteModelAndScheduleNotification(base::DoNothing());
+#endif
 }
 
 void FindsService::OnHistoryQueryComplete(
@@ -385,6 +409,8 @@ void FindsService::OnModelExecutionComplete(
     return;
   }
 
+  // Shouldn't trigger since empty themes are filtered by
+  // GetHighestScoredThemeIfPossible.
   if (best_theme->theme_suggested_contents().empty()) {
     RecordFindsResultAndRunCallback(
         std::move(callback), {Result::Status::kNoSuggestionsForTheme,
@@ -406,6 +432,25 @@ void FindsService::OnModelExecutionComplete(
        FindsSuggestionResponseToHumanReadableString(*response)});
 }
 
+void FindsService::OnGetClientOverview(notifications::ClientOverview overview) {
+  if (overview.scheduled_notifications.empty()) {
+    return;
+  }
+
+  // There should only ever be 1 notification scheduled at a time for finds.
+  DCHECK_EQ(overview.scheduled_notifications.size(), 1u);
+  const auto* entry = overview.scheduled_notifications[0];
+  notifications::NotificationData data = entry->notification_data;
+  notifications::ScheduleParams params = GetCurrentScheduleParams();
+
+  notification_schedule_service_->DeleteNotifications(
+      notifications::SchedulerClientType::kChromeFinds);
+  notification_schedule_service_->Schedule(
+      std::make_unique<notifications::NotificationParams>(
+          notifications::SchedulerClientType::kChromeFinds, std::move(data),
+          std::move(params)));
+}
+
 bool FindsService::ScheduleNotificationWithModelResult(
     const SuggestionTheme& theme) {
   if (!notification_schedule_service_) {
@@ -422,6 +467,12 @@ bool FindsService::ScheduleNotificationWithModelResult(
           notifications::SchedulerClientType::kChromeFinds, std::move(data),
           std::move(scheduler_params)));
   return true;
+}
+
+void FindsService::OnCheckAreFindsNotificationsEnabled(bool enabled) {
+  if (enabled) {
+    ExecuteModelAndScheduleNotification(base::DoNothing());
+  }
 }
 
 }  // namespace finds

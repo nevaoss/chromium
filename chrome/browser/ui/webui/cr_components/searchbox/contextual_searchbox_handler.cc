@@ -326,6 +326,11 @@ void ContextualSearchboxHandler::OnTabProcessedForQueryContextualization(
   // No-op.
 }
 
+contextual_search::ContextualSearchSessionHandle*
+ContextualSearchboxHandler::GetOrCreateSessionHandleForQueryContextualizer() {
+  return GetContextualSessionHandle();
+}
+
 void ContextualSearchboxHandler::OnTabAdded(TabListInterface& tab_list,
                                             tabs::TabInterface* tab,
                                             int index) {
@@ -787,6 +792,23 @@ void ContextualSearchboxHandler::OpenAutocompleteMatch(uint8_t line,
                                           meta_key, shift_key);
 }
 
+void ContextualSearchboxHandler::OnContextUploadStatusChanged(
+    const base::UnguessableToken& context_token,
+    lens::MimeType mime_type,
+    contextual_search::ContextUploadStatus context_upload_status,
+    const std::optional<contextual_search::ContextUploadErrorType>&
+        error_type) {
+  if (IsRemoteBound()) {
+    page_->OnContextualInputStatusChanged(context_token, context_upload_status,
+                                          error_type);
+  }
+
+  // Ensure `input_state_model_` is updated when file is uploaded.
+  if (input_state_model_) {
+    input_state_model_->OnContextChanged();
+  }
+}
+
 void ContextualSearchboxHandler::SubmitQuery(const std::string& query_text,
                                              uint8_t mouse_button,
                                              bool alt_key,
@@ -803,6 +825,15 @@ void ContextualSearchboxHandler::SubmitQuery(const std::string& query_text,
           omnibox_controller()->client()->GetPageClassification(
               /*is_prefetch=*/false));
 
+  ContextualizeQueryAndOpenUrl(query_text, disposition, aim_entry_point,
+                               /*additional_params=*/{});
+}
+
+void ContextualSearchboxHandler::ContextualizeQueryAndOpenUrl(
+    const std::string& query_text,
+    WindowOpenDisposition disposition,
+    omnibox::ChromeAimEntryPoint aim_entry_point,
+    std::map<std::string, std::string> additional_params) {
   if (query_contextualizer_) {
     auto* browser_window_interface =
         webui::GetBrowserWindowInterface(web_contents_);
@@ -814,35 +845,30 @@ void ContextualSearchboxHandler::SubmitQuery(const std::string& query_text,
             sessions::SessionTabHelper::IdForTab(active_web_contents).id();
         query_contextualizer_->Contextualize(
             GetTaskId(), query_text, {active_tab_id}, {},
-            GetContextualSessionHandle(),
-            base::BindOnce(&ContextualSearchboxHandler::ComputeAndOpenQueryUrl,
-                           weak_ptr_factory_.GetWeakPtr(), query_text,
-                           disposition, aim_entry_point,
-                           std::map<std::string, std::string>()));
+            base::BindOnce(
+                [](base::WeakPtr<ContextualSearchboxHandler> self,
+                   const std::string& query, WindowOpenDisposition disp,
+                   omnibox::ChromeAimEntryPoint entry_point,
+                   std::map<std::string, std::string> params,
+                   base::WeakPtr<
+                       contextual_search::ContextualSearchSessionHandle>
+                       handle) {
+                  // The session handle is accessed via
+                  // GetContextualSessionHandle(), so we ignore it here.
+                  if (self) {
+                    self->ComputeAndOpenQueryUrl(query, disp, entry_point,
+                                                 std::move(params));
+                  }
+                },
+                weak_ptr_factory_.GetWeakPtr(), query_text, disposition,
+                aim_entry_point, std::move(additional_params)));
         return;
       }
     }
   }
 
   ComputeAndOpenQueryUrl(query_text, disposition, aim_entry_point,
-                         /*additional_params=*/{});
-}
-
-void ContextualSearchboxHandler::OnContextUploadStatusChanged(
-    const base::UnguessableToken& context_token,
-    lens::MimeType mime_type,
-    contextual_search::ContextUploadStatus context_upload_status,
-    const std::optional<contextual_search::ContextUploadErrorType>&
-        error_type) {
-  if (IsRemoteBound()) {
-    page_->OnContextualInputStatusChanged(context_token, context_upload_status,
-                                          error_type);
-  }
-
-  // Ensure `input_state_model_` is updated when file is uploaded.
-  if (input_state_model_) {
-    input_state_model_->OnContextChanged();
-  }
+                         std::move(additional_params));
 }
 
 void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(

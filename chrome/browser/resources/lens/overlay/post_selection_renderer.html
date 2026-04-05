@@ -168,6 +168,15 @@
     pointer-events: auto;
     z-index: 5;
     cursor: pointer;
+    border: 2px solid transparent;
+    border-radius: var(--post-selection-cutout-corner-radius);
+    background: linear-gradient(to right, #C6E6FF, #E0E7FF) border-box;
+    -webkit-mask:
+      linear-gradient(#fff 0 0) padding-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+    box-sizing: border-box;
   }
 
   .static-region-cutout {

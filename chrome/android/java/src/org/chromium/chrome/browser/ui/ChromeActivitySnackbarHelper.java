@@ -4,6 +4,9 @@
 
 package org.chromium.chrome.browser.ui;
 
+import android.app.Activity;
+import android.view.ViewGroup;
+
 import androidx.annotation.Px;
 
 import org.chromium.base.Callback;
@@ -13,8 +16,13 @@ import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
+import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
+import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager.ParentOverrideSlot;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 import org.chromium.components.browser_ui.bottomsheet.EmptyBottomSheetObserver;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeSupplier.ChangeObserver;
@@ -27,9 +35,12 @@ import org.chromium.ui.edge_to_edge.EdgeToEdgeSupplier.ChangeObserver;
 public class ChromeActivitySnackbarHelper implements ChangeObserver {
     private final SettableNonNullObservableSupplier<Integer> mSupplier =
             ObservableSuppliers.createNonNull(0);
+    private final NonNullObservableSupplier<Integer> mZeroBottomMarginSupplier =
+            ObservableSuppliers.alwaysZero();
     private final MonotonicObservableSupplier<EdgeToEdgeController> mEdgeToEdgeControllerSupplier;
     private final Callback<EdgeToEdgeController> mEdgeToEdgeControllerObserver =
             this::onEdgeToEdgeControllerChanged;
+    private final Activity mActivity;
     private final BottomSheetController mBottomSheetController;
     private final BottomSheetObserver mBottomSheetObserver =
             new EmptyBottomSheetObserver() {
@@ -37,19 +48,83 @@ public class ChromeActivitySnackbarHelper implements ChangeObserver {
                 public void onSheetOffsetChanged(float heightFraction, float offsetPx) {
                     updateMargin();
                 }
+
+                @Override
+                public void onSheetContentChanged(@Nullable BottomSheetContent newContent) {
+                    updateSnackbarForBottomSheet(
+                            newContent, mBottomSheetController.getSheetState());
+                }
+
+                @Override
+                public void onSheetStateChanged(int newState, int reason) {
+                    updateSnackbarForBottomSheet(
+                            mBottomSheetController.getCurrentSheetContent(), newState);
+                }
+
+                private void updateSnackbarForBottomSheet(
+                        @Nullable BottomSheetContent content, int newState) {
+                    if (mSnackbarManager == null) return;
+
+                    boolean allowInSheetSnackbars =
+                            content != null && content.allowInSheetContentSnackbars();
+                    assert content == null
+                                    || content.allowInSheetContentSnackbars()
+                                    || content.hasCustomScrimLifecycle()
+                                    || content.hasCustomLifecycle()
+                            : "BottomSheetContent can only prevent out-of-sheet snackbars if it has"
+                                    + " a custom (scrim) lifecycle.";
+
+                    boolean shouldOverride =
+                            (newState == SheetState.HALF || newState == SheetState.FULL)
+                                    && allowInSheetSnackbars;
+                    boolean shouldPop =
+                            newState == SheetState.HIDDEN
+                                    || newState == SheetState.PEEK
+                                    || !allowInSheetSnackbars;
+
+                    if (shouldOverride && !mHasSnackbarOverride) {
+                        if (mBottomSheetSnackbarContainer == null) {
+                            mBottomSheetSnackbarContainer =
+                                    mActivity.findViewById(R.id.bottom_sheet_snackbar_container);
+                        }
+                        assert mBottomSheetSnackbarContainer != null;
+                        // Dismiss all snackbars before overriding the parent view to avoid them
+                        // jumping to a new location.
+                        mSnackbarManager.dismissAllSnackbars();
+
+                        mHasSnackbarOverride = true;
+                        mSnackbarManager.pushParentViewOverride(
+                                ParentOverrideSlot.BOTTOM_SHEET,
+                                mBottomSheetSnackbarContainer,
+                                mZeroBottomMarginSupplier);
+                    } else if (shouldPop && mHasSnackbarOverride) {
+                        // Dismiss all snackbars before popping the override stack to avoid them
+                        // jumping to a new location.
+                        mSnackbarManager.dismissAllSnackbars();
+
+                        mSnackbarManager.popParentViewOverride(ParentOverrideSlot.BOTTOM_SHEET);
+                        mHasSnackbarOverride = false;
+                    }
+                }
             };
 
+    private @Nullable ViewGroup mBottomSheetSnackbarContainer;
     private @Nullable EdgeToEdgeController mCurrentEdgeToEdgeController;
+    private @Nullable SnackbarManager mSnackbarManager;
+    private boolean mHasSnackbarOverride;
 
     /**
      * Constructs a new ChromeActivitySnackbarHelper.
      *
+     * @param activity The activity.
      * @param edgeToEdgeControllerSupplier The supplier for the EdgeToEdgeController.
      * @param bottomSheetController The {@link BottomSheetController} to observe.
      */
     public ChromeActivitySnackbarHelper(
+            Activity activity,
             MonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeControllerSupplier,
             BottomSheetController bottomSheetController) {
+        mActivity = activity;
         mEdgeToEdgeControllerSupplier = edgeToEdgeControllerSupplier;
         mBottomSheetController = bottomSheetController;
 
@@ -57,6 +132,15 @@ public class ChromeActivitySnackbarHelper implements ChangeObserver {
         bottomSheetController.addObserver(mBottomSheetObserver);
 
         updateMargin();
+    }
+
+    /**
+     * Sets the {@link SnackbarManager} instance.
+     *
+     * @param snackbarManager The SnackbarManager.
+     */
+    public void setSnackbarManager(SnackbarManager snackbarManager) {
+        mSnackbarManager = snackbarManager;
     }
 
     /** Returns the supplier for the snackbar bottom margin. */

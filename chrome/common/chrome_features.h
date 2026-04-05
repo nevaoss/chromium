@@ -215,8 +215,6 @@ extern const base::FeatureParam<bool>(kGlicActorUiTabIndicator);
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<bool>(kGlicActorUiBorderGlow);
 COMPONENT_EXPORT(CHROME_FEATURES)
-extern const base::FeatureParam<bool>(kGlicActorUiStandaloneBorderGlow);
-COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta>(kGlicActorUiDebounceTimer);
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<int>(
@@ -488,7 +486,6 @@ COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicScrollTo);
 
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicCaptureRegion);
 
-COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicUseNonClient);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<bool> kGlicScrollToEnforceDocumentId;
@@ -609,9 +606,6 @@ BASE_DECLARE_FEATURE(kGlicIgnoreOfflineState);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicMultitabUnderlines);
-
-COMPONENT_EXPORT(CHROME_FEATURES)
-BASE_DECLARE_FEATURE(kGlicHandleDraggingNatively);
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicCaaGuestError);
@@ -898,6 +892,8 @@ COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kListWebAppsSwitch);
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kNativeNotifications);
 
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kIndigoComponent);
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<std::string> kIndigoComponentAttribute;
 
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kSystemNotifications);
 
@@ -1007,9 +1003,11 @@ extern const base::FeatureParam<base::TimeDelta>
 
 // Timeout in seconds for the Safety Hub OS notification informing users about
 // revoked notification permissions.
+#if BUILDFLAG(IS_ANDROID)
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<int>
     kSafetyHubDisruptiveNotificationRevocationNotificationTimeoutSeconds;
+#endif
 
 // The minimum number of days since the revocation until a site can be
 // considered a false positive disruptive notification revocation. The cooldown
@@ -1279,6 +1277,8 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kWebUISplitTabsButton);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kWebUILocationBar);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kWebUIContentSettingsIcons);
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 COMPONENT_EXPORT(CHROME_FEATURES)

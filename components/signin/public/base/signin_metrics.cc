@@ -102,7 +102,6 @@ std::optional<AccessPoint> AccessPointFromInt(int value) {
     case AccessPoint::kSaveToPhotosIos:
     case AccessPoint::kChromeSigninInterceptBubble:
     case AccessPoint::kRestorePrimaryAccountOnProfileLoad:
-    case AccessPoint::kTabOrganization:
     case AccessPoint::kSaveToDriveIos:
     case AccessPoint::kTipsNotification:
     case AccessPoint::kNotificationsOptInScreenContentToggle:
@@ -144,6 +143,7 @@ std::optional<AccessPoint> AccessPointFromInt(int value) {
     case AccessPoint::kAvatarPillExpandPromo:
     case AccessPoint::kSearchAIModeBubble:
     case AccessPoint::kIosAppBar:
+    case AccessPoint::kIosPageActionMenu:
       return access_point;
   }
 
@@ -646,10 +646,6 @@ void RecordSigninUserActionForAccessPoint(AccessPoint access_point) {
       base::RecordAction(base::UserMetricsAction(
           "Signin_Signin_FromChromeSigninInterceptBubble"));
       break;
-    case AccessPoint::kTabOrganization:
-      base::RecordAction(
-          base::UserMetricsAction("Signin_Signin_FromTabOrganization"));
-      break;
     case AccessPoint::kTipsNotification:
       base::RecordAction(
           base::UserMetricsAction("Signin_Signin_FromTipsNotification"));
@@ -733,6 +729,10 @@ void RecordSigninUserActionForAccessPoint(AccessPoint access_point) {
     case AccessPoint::kIosAppBar:
       base::RecordAction(
           base::UserMetricsAction("Signin_Signin_FromIOSAppBar"));
+      break;
+    case AccessPoint::kIosPageActionMenu:
+      base::RecordAction(
+          base::UserMetricsAction("Signin_Signin_FromPageActionMenu"));
       break;
   }
 }
@@ -883,7 +883,6 @@ void RecordSigninImpressionUserActionForAccessPoint(AccessPoint access_point) {
     case AccessPoint::kReauthInfoBar:
     case AccessPoint::kAccountConsistencyService:
     case AccessPoint::kRestorePrimaryAccountOnProfileLoad:
-    case AccessPoint::kTabOrganization:
     case AccessPoint::kProfileMenuSignoutConfirmationPrompt:
     case AccessPoint::kSettingsSignoutConfirmationPrompt:
     case AccessPoint::kOidcRedirectionInterception:
@@ -913,6 +912,7 @@ void RecordSigninImpressionUserActionForAccessPoint(AccessPoint access_point) {
     case AccessPoint::kAshUserSessionManager:
     case AccessPoint::kAshChromeSessionManager:
     case AccessPoint::kAvatarPillExpandPromo:
+    case AccessPoint::kIosPageActionMenu:
       NOTREACHED() << "Signin_Impression_From* user actions are not recorded "
                       "for access point "
                    << static_cast<int>(access_point);

@@ -888,6 +888,8 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
        IDS_SETTINGS_GLIC_PERMISSIONS_WEB_ACTUATION_TOGGLE_WHEN_ON_2},
       {"glicWebActuationToggleConsider1",
        IDS_SETTINGS_GLIC_PERMISSIONS_WEB_ACTUATION_TOGGLE_CONSIDER_1},
+      {"glicExperimentalTriggering",
+       IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_TOGGLE},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
 
@@ -986,6 +988,10 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
   html_source->AddBoolean(
       "glicSelectionFeatureEnabled",
       base::FeatureList::IsEnabled(features::kGlicCaptureRegion));
+  html_source->AddBoolean(
+      "showGlicExperimentalTriggering",
+      base::FeatureList::IsEnabled(features::kGlicExperimentalTriggering) &&
+          GlicHandler::ShouldShowWebActuationToggle(profile));
 }
 
 void AddResetStrings(content::WebUIDataSource* html_source, Profile* profile) {
@@ -2845,6 +2851,28 @@ void AddSearchStrings(content::WebUIDataSource* html_source, Profile* profile) {
       {"searchEnginesCancelButton", IDS_CANCEL},
       {"searchEnginesConfirmationToastLabel",
        IDS_SEARCH_ENGINE_CHOICE_SETTINGS_CONFIRMATION_TOAST_LABEL},
+      {"defaultSearch", IDS_SETTINGS_DEFAULT_SEARCH},
+      {"searchActivate", IDS_SETTINGS_SEARCH_ACTIVATE},
+      {"searchDeactivate", IDS_SETTINGS_SEARCH_DEACTIVATE},
+      {"searchActivateShortcut", IDS_SETTINGS_SEARCH_ACTIVATE_SHORTCUT},
+      {"searchDeactivateShortcut", IDS_SETTINGS_SEARCH_DEACTIVATE_SHORTCUT},
+      {"searchDisableExtension", IDS_SETTINGS_SEARCH_DISABLE_EXTENSION},
+      {"searchManageExtension", IDS_SETTINGS_SEARCH_MANAGE_EXTENSION},
+      {"edit", IDS_EDIT2},
+      {"searchFeatureShortcuts", IDS_SETTINGS_SEARCH_EXTENSION_ENGINES},
+      {"searchFeatureShortcutsActiveShortcuts",
+       IDS_SETTINGS_SEARCH_EXTENSION_ENGINES_ACTIVE_SHORTCUTS},
+      {"searchFeatureShortcutsActiveShortcutsExplanation",
+       IDS_SETTINGS_SEARCH_EXTENSION_ENGINES_ACTIVE_SHORTCUTS_EXPLANATION},
+      {"searchFeatureShortcutsInactiveShortcuts",
+       IDS_SETTINGS_SEARCH_EXTENSION_ENGINES_INACTIVE_SHORTCUTS},
+      {"searchFeatureShortcutsInactiveShortcutsExplanation",
+       IDS_SETTINGS_SEARCH_EXTENSION_ENGINES_INACTIVE_SHORTCUTS_EXPLANATION},
+      {"searchNoFeatureShortcutsFound",
+       IDS_SETTINGS_SEARCH_NO_FEATURE_SHORTCUTS},
+      {"searchKeyboardKeyTitle", IDS_SETTINGS_SEARCH_KEYBOARD_KEY_TITLE},
+      {"searchKeyboardKeyDescription",
+       IDS_SETTINGS_SEARCH_KEYBOARD_KEY_DESCRIPTION},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
   html_source->AddString("searchExplanationLearnMoreURL",

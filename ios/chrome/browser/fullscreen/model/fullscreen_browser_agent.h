@@ -7,6 +7,7 @@
 
 #import <UIKit/UIKit.h>
 
+#import "base/memory/weak_ptr.h"
 #import "base/observer_list.h"
 #import "base/types/pass_key.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent_observer.h"
@@ -37,7 +38,12 @@ class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
   // during WillUpdateObscuredInsetRange().
   void AddObscuredInsetRange(UIRectEdge edge, CGFloat min, CGFloat max);
 
-  // Accessors for the min and max insets.
+  // Adds an obscured inset for the given edge. Observers should call this
+  // during WillUpdateState().
+  void AddObscuredInset(UIRectEdge edge, CGFloat amount);
+
+  // Accessors for the insets.
+  UIEdgeInsets insets() const { return insets_; }
   UIEdgeInsets min_insets() const { return min_insets_; }
   UIEdgeInsets max_insets() const { return max_insets_; }
 
@@ -73,12 +79,21 @@ class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
 
   explicit FullscreenBrowserAgent(Browser* browser);
 
+  // Updates the progress and broadcasts the change to observers.
+  void UpdateProgressAndBroadcast(CGFloat top_progress,
+                                  CGFloat bottom_progress,
+                                  bool animated);
+
+  // Notifies all observers of an updated state.
+  void NotifyObserversOfUpdatedState();
+
   base::ObserverList<FullscreenBrowserAgentObserver, true> observers_;
 
   // The number of features currently disabling fullscreen.
   size_t disabled_count_ = 0;
 
-  // The min and max insets.
+  // The insets.
+  UIEdgeInsets insets_ = UIEdgeInsetsZero;
   UIEdgeInsets min_insets_ = UIEdgeInsetsZero;
   UIEdgeInsets max_insets_ = UIEdgeInsetsZero;
 
@@ -91,6 +106,12 @@ class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
   // True if the agent is currently broadcasting WillUpdateObscuredInsetRange.
   // Used to ensure AddObscuredInsetRange() is only called at the correct time.
   bool updating_obscured_insets_ = false;
+
+  // True if the agent is currently broadcasting WillUpdateState. Used to
+  // ensure AddObscuredInset() is only called a the correct time.
+  bool updating_insets_ = false;
+
+  base::WeakPtrFactory<FullscreenBrowserAgent> weak_ptr_factory_{this};
 };
 
 #endif  // IOS_CHROME_BROWSER_FULLSCREEN_MODEL_FULLSCREEN_BROWSER_AGENT_H_

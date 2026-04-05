@@ -165,9 +165,9 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       toolbar_ui_api::mojom::ReloadControlState::New();
   last_queued_state_.home_control_state =
       toolbar_ui_api::mojom::HomeControlState::New();
-  last_queued_state_.content_setting_state =
-      toolbar_ui_api::mojom::ContentSettingState::New();
-  last_queued_state_.omnibox_view_state =
+  last_queued_state_.location_bar_state =
+      toolbar_ui_api::mojom::LocationBarState::New();
+  last_queued_state_.location_bar_state->omnibox_view_state =
       toolbar_ui_api::mojom::OmniboxViewState::New();
   last_queued_state_.layout_constants_version = 0;
   last_queued_state_.back_forward_control_state = GetBackForwardState();
@@ -555,8 +555,9 @@ void WebUIToolbarWebView::OnHomeControlStateChanged(
 
 void WebUIToolbarWebView::OnOmniboxViewStateChanged(
     toolbar_ui_api::mojom::OmniboxViewStatePtr state) {
-  if (*state != *last_queued_state_.omnibox_view_state) {
-    last_queued_state_.omnibox_view_state = std::move(state);
+  if (*state != *last_queued_state_.location_bar_state->omnibox_view_state) {
+    last_queued_state_.location_bar_state->omnibox_view_state =
+        std::move(state);
     PostPushNavigationState();
   }
 }
@@ -575,6 +576,13 @@ void WebUIToolbarWebView::OnTouchUiChanged() {
 }
 
 void WebUIToolbarWebView::PostPushNavigationState() {
+  // The toolbar is implemented by many individual elements that all update
+  // their state separately. To avoid significant visual flicker caused by
+  // repeated state pushes that only update individual elements, we delay
+  // the actual push until later by posting it here in the hopes that other
+  // controls will complete their state changes before we do the actual push.
+  // This way the eventual push updates all controls synchronously without
+  // inter-element flicker.
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&WebUIToolbarWebView::PushNavigationState,
                                 weak_ptr_factory_.GetWeakPtr(),
@@ -582,6 +590,15 @@ void WebUIToolbarWebView::PostPushNavigationState() {
 }
 
 void WebUIToolbarWebView::PushNavigationState(uint64_t state_generation) {
+  // As the comment above in PostPushNavigationState() elaborates on, we
+  // want to delay the actual monolithic state push until all controls
+  // have had a chance to update their state. We do this by ignoring
+  // intermediate state pushes here, and wait until the last posted
+  // invocation of this method. It is not enough just to pass along the
+  // latest queued state here. If the state has been modified since this
+  // task was posted, there is a fair chance that there may still be other
+  // pending tasks to further update the state, so wait until all pending
+  // PushNavigationState() tasks have been run before performing any update.
   if (state_generation == current_state_generation_) {
     if (WebUIToolbarUI* web_ui = GetWebUIToolbarUI()) {
       web_ui->OnNavigationControlsStateChanged(last_queued_state_.Clone());

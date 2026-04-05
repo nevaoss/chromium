@@ -99,7 +99,7 @@ should be able to be added at any place in this file.
   <variant name=".OpenItemInNewTabInGroup"
       summary="Open a suggested item in a new tab in group."/>
   <variant name=".OpenItemInNewWindow"
-      summary="Open a suggested item in a new window. (obsolete)"/>
+      summary="Open a suggested item in a new window."/>
   <variant name=".OpenItemInOtherWindow"
       summary="Open a suggested item in an other window."/>
   <variant name=".PinItem"
@@ -213,6 +213,7 @@ should be able to be added at any place in this file.
   <variant name="_AddToHomescreenTextBubble"
       summary="For AddToHomescreen IPH feature using text bubble (obsolete)."/>
   <variant name="_AndroidTabDeclutter" summary="For archived tabs on android."/>
+  <variant name="_AppRatingPrompt" summary="For App Rating Prompt feature."/>
   <variant name="_AppSpecificHistory"
       summary="For App Specific History feature."/>
   <variant name="_AutoDarkOptOut" summary="For AutoDarkOptOut dialog feature."/>
@@ -777,7 +778,7 @@ should be able to be added at any place in this file.
   <variant name="_TabGroupsYourTabsTogether"
       summary="For tab switcher with tab groups."/>
   <variant name="_TabOrganizationSuccess"
-      summary="For the tab organization feature."/>
+      summary="For the tab organization feature. (obsolete)"/>
   <variant name="_TabPinnedFeature" summary="For tab pinned overflow hint."/>
   <variant name="_TabSearch" summary="For the tab search feature."/>
   <variant name="_TabSearchComboButton"
@@ -923,7 +924,7 @@ should be able to be added at any place in this file.
   <variant name=".SyncAccountSettings"
       summary="Wallet integration in Autofill"/>
   <variant name=".TabGroupsSync" summary="Tab Groups Sync (obsolete)"/>
-  <variant name=".TabOrganizer" summary="Tab Organizer"/>
+  <variant name=".TabOrganizer" summary="Tab Organizer (obsolete)"/>
   <variant name=".TestDefaultModule" summary="Test default module"/>
   <variant name=".TestModule" summary="Test module"/>
   <variant name=".ToolbarPinning" summary="Toolbar Pinning"/>
@@ -3876,6 +3877,14 @@ should be able to be added at any place in this file.
   <description>User navigated to the Android in-app history page.</description>
 </action>
 
+<action name="Android.BookmarkAllTabs">
+  <owner>mklw@google.com</owner>
+  <description>
+    User tapped 'Bookmark all tabs' on the tab strip context menu or via
+    keyboard shortcut to bookmark all tabs.
+  </description>
+</action>
+
 <action name="Android.BookmarkPage.CopyLink">
   <owner>wylieb@google.com</owner>
   <owner>hocheung@chromium.org</owner>
@@ -4915,6 +4924,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Android.TabStripMenu.BookmarkAllTabs">
+  <obsolete>Generalized/renamed to Android.BookmarkAllTabs in 3/26.</obsolete>
   <owner>mklw@google.com</owner>
   <description>
     User tapped 'Bookmark all tabs' on the tab strip context menu to bookmark
@@ -16576,6 +16586,15 @@ should be able to be added at any place in this file.
   <owner>adithyas@chromium.org</owner>
   <owner>baranerf@google.com</owner>
   <description>The indigo page action was displayed.</description>
+</action>
+
+<action name="Indigo.PageAction.ShowAnchoredMessage" not_user_triggered="true">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    The indigo page action was displayed as an anchored message.
+  </description>
 </action>
 
 <action name="InfobarModalCancelButtonTap">
@@ -41148,6 +41167,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.AiPage.TabOrganization.LearnMoreClicked">
+  <obsolete>Deprecated 03/2026. Tab organization page was removed.</obsolete>
   <owner>zalmashni@google.com</owner>
   <owner>rainhard@chromium.org</owner>
   <owner>chrome-browser-privacy-team@google.com</owner>
@@ -41158,6 +41178,9 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.AiPage.TabOrganizationEntryPointClick">
+  <obsolete>
+    Deprecated 03/2026. Tab organization settings row was removed.
+  </obsolete>
   <owner>zalmashni@google.com</owner>
   <owner>rainhard@chromium.org</owner>
   <owner>chrome-browser-privacy-team@google.com</owner>
@@ -46331,6 +46354,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_Signin_FromPageActionMenu">
+  <owner>kanouche@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kIosPageActionMenu.
+  </description>
+</action>
+
 <action name="Signin_Signin_FromPasswordBubble">
   <owner>gogerald@chromium.org</owner>
   <description>
@@ -46496,6 +46528,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Signin_Signin_FromTabOrganization">
+  <obsolete>No longer recorded.</obsolete>
   <owner>emshack@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <description>
@@ -49450,6 +49483,36 @@ should be able to be added at any place in this file.
   <owner>cros-families@google.com</owner>
   <description>
     Emitted when the supervised user removes an extension.
+  </description>
+</action>
+
+<action name="SupervisedUsers_Extensions_AskParentDialog_Approved">
+  <owner>richui@chromium.org</owner>
+  <owner>agawronska@chromium.org</owner>
+  <owner>cros-edu-eng@google.com</owner>
+  <description>
+    Emitted when the user continues the request for parent approval, which will
+    trigger the parent authentication flow.
+  </description>
+</action>
+
+<action name="SupervisedUsers_Extensions_AskParentDialog_Canceled">
+  <owner>richui@chromium.org</owner>
+  <owner>agawronska@chromium.org</owner>
+  <owner>cros-edu-eng@google.com</owner>
+  <description>
+    Emitted when the user cancels the Ask Parent Dialog, denying the attempt to
+    enable an extension.
+  </description>
+</action>
+
+<action name="SupervisedUsers_Extensions_AskParentDialog_Opened">
+  <owner>richui@chromium.org</owner>
+  <owner>agawronska@chromium.org</owner>
+  <owner>cros-edu-eng@google.com</owner>
+  <description>
+    Emitted when a supervised user initiates the flow to install an extension
+    that requires parent approval, and opens the Ask Parent Dialog.
   </description>
 </action>
 

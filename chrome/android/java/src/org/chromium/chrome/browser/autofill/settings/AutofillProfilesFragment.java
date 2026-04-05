@@ -217,6 +217,9 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
         if (mAddressEditor != null) {
             mAddressEditor.onConfigurationChanged();
         }
+        if (mEntityEditor != null) {
+            mEntityEditor.onConfigurationChanged();
+        }
     }
 
     @Override
@@ -262,7 +265,8 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
         if (!disabledSettingsInThirdPartyMode(getProfile())
                 && entityDataManager != null
                 && !entityDataManager.isWalletPublicPassStorageEnabled()
-                && ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA)) {
+                && ChromeFeatureList.isEnabled(
+                        ChromeFeatureList.AUTOFILL_AI_SHOW_WALLET_DISABLED_BANNER)) {
             addDisabledWalletDataSharingDataCard(screen);
         }
 
@@ -457,6 +461,12 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
                             new EntityInstance.Builder(entityType)
                                     .setModifiedDate(modifiedDate)
                                     .setUseCount(0)
+                                    .setRecordType(
+                                            entityType.isEligibleForWalletStorage()
+                                                    ? org.chromium.components.autofill.autofill_ai
+                                                            .RecordType.SERVER_WALLET
+                                                    : org.chromium.components.autofill.autofill_ai
+                                                            .RecordType.LOCAL)
                                     .build());
                     return true;
                 });
@@ -519,7 +529,7 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
                 pref.setSummary(entity.getEntityInstanceSubLabel());
                 pref.setKey(entity.getGuid());
                 if (entity.isStoredInWallet()) {
-                    pref.setIcon(R.drawable.google_wallet_24dp);
+                    pref.setWidgetLayoutResource(R.layout.google_wallet_widget);
                 }
                 pref.setOnPreferenceClickListener(
                         preference -> {
@@ -729,7 +739,7 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
                             && entityDataManager != null
                             && !entityDataManager.isWalletPublicPassStorageEnabled()
                             && ChromeFeatureList.isEnabled(
-                                    ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA)) {
+                                    ChromeFeatureList.AUTOFILL_AI_SHOW_WALLET_DISABLED_BANNER)) {
                         addDisabledWalletDataSharingDataCard(indexData, getPrefFragmentName());
                     }
                     addAutofillSwitch(indexData);
@@ -785,7 +795,8 @@ public class AutofillProfilesFragment extends ChromeBaseSettingsFragment
         if (!disabledSettingsInThirdPartyMode
                 && entityDataManager != null
                 && !entityDataManager.isWalletPublicPassStorageEnabled()
-                && ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA)) {
+                && ChromeFeatureList.isEnabled(
+                        ChromeFeatureList.AUTOFILL_AI_SHOW_WALLET_DISABLED_BANNER)) {
             if (indexData.getEntryForKey(prefFragmentName, DISABLED_WALLET_DATA_SHARING) == null) {
                 addDisabledWalletDataSharingDataCard(indexData, prefFragmentName);
             }

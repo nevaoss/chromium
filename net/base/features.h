@@ -768,6 +768,15 @@ NET_EXPORT BASE_DECLARE_FEATURE(kTryQuicByDefault);
 // separate the values with a comma (e.g. "ABCD,EFGH").
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(std::string, kQuicOptions);
 
+// When enabled, allows the browser to ignore IP matching and rely on
+// the hostname being present in the existing session's certificate when
+// connection coalescing.
+NET_EXPORT BASE_DECLARE_FEATURE(kIgnoreIpMatching);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(std::string, kNoIPQuicOption);
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    bool,
+    kIgnoreIpMatchingWhenFindingExistingSessions);
+
 NET_EXPORT BASE_DECLARE_FEATURE(kDnsResponseDiscardPartialQuestions);
 
 // When enabled, allows DoH upgrade even if there are local nameservers.
@@ -776,6 +785,11 @@ NET_EXPORT BASE_DECLARE_FEATURE(kDohFallbackAllowedWithLocalNameservers);
 // When enabled, users can make Secure DNS in AUTOMATIC mode fallback to a
 // well-known DoH provider before using insecure DNS.
 NET_EXPORT BASE_DECLARE_FEATURE(kAddAutomaticWithDohFallbackMode);
+
+// When enabled, and when the configured secure_dns_mode is AUTOMATIC, the DoH
+// fallback setting (dns_over_https.automatic_mode_fallback_to_doh) should be
+// forced to be interpreted as enabled.
+NET_EXPORT BASE_DECLARE_FEATURE(kForceSecureDnsDohFallback);
 
 // If true, a CONNECT-UDP response is not needed to start sending datagrams.
 NET_EXPORT BASE_DECLARE_FEATURE(

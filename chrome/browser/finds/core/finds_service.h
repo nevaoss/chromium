@@ -25,6 +25,7 @@ class QueryResults;
 
 namespace notifications {
 class NotificationScheduleService;
+struct ClientOverview;
 }  // namespace notifications
 
 class OptimizationGuideKeyedService;
@@ -83,13 +84,13 @@ class FindsService : public KeyedService, public base::SupportsUserData {
     std::string message;
   };
 
-  // TODO(crbug.com/483107157): Migrate to finds_utils, call on notif showing.
-  void MarkNotificationShown(PrefService* pref_service);
   void ExecuteModelAndScheduleNotification(
       base::OnceCallback<void(Result)> callback);
   void RecordThemeURLVisited(
       optimization_guide::proto::FindsMetadata::ThemeType theme_type);
 
+  // Potentially requests that pending notifications be rescheduled.
+  void MaybeRescheduleNotifications();
   // Schedules a test notification using mocked data, bypassing model execution.
   // This is intended for use by the chrome-finds-internals page only. Do not
   // use in production code.
@@ -98,16 +99,18 @@ class FindsService : public KeyedService, public base::SupportsUserData {
  private:
   friend class FindsServiceTest;
 
-  void CheckModelCooldownCriteriaAndMaybeExecute();
+  void CheckFindsNotificationsEnabledAndMaybeExecute();
   void OnHistoryQueryComplete(base::OnceCallback<void(Result)> callback,
                               history::QueryResults results);
   void OnModelExecutionComplete(
       base::OnceCallback<void(Result)> callback,
       optimization_guide::OptimizationGuideModelExecutionResult result,
       std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry);
+  void OnGetClientOverview(notifications::ClientOverview overview);
   bool ScheduleNotificationWithModelResult(
       const optimization_guide::proto::FindsSuggestionResponse::SuggestionTheme&
           theme);
+  void OnCheckAreFindsNotificationsEnabled(bool enabled);
 
   raw_ptr<OptimizationGuideKeyedService> opt_guide_service_;
   raw_ptr<history::HistoryService> history_service_;

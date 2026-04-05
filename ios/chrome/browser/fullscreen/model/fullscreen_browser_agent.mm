@@ -7,6 +7,9 @@
 #import <algorithm>
 
 #import "base/check.h"
+#import "base/functional/bind.h"
+#import "base/functional/callback_helpers.h"
+#import "ios/chrome/common/material_timing.h"
 
 namespace {
 // Updates the fractional `progress` of the fullscreen UI layer by interpreting
@@ -52,20 +55,50 @@ void FullscreenBrowserAgent::IncrementalScroll(CGFloat amount, PassKey) {
     return;
   }
 
-  for (auto& observer : observers_) {
-    observer.WillUpdateState(this);
-  }
-  for (auto& observer : observers_) {
-    observer.DidUpdateState(this);
-  }
+  NotifyObserversOfUpdatedState();
 }
 
 void FullscreenBrowserAgent::EnterFullscreen(PassKey, bool animated) {
-  // TODO(crbug.com/496220121): Enter fullscreen.
+  UpdateProgressAndBroadcast(0.0, 0.0, animated);
 }
 
 void FullscreenBrowserAgent::ExitFullscreen(PassKey, bool animated) {
-  // TODO(crbug.com/496220121): Exit fullscreen.
+  UpdateProgressAndBroadcast(1.0, 1.0, animated);
+}
+
+void FullscreenBrowserAgent::UpdateProgressAndBroadcast(CGFloat top_progress,
+                                                        CGFloat bottom_progress,
+                                                        bool animated) {
+  if (top_progress_ == top_progress && bottom_progress_ == bottom_progress) {
+    return;
+  }
+  top_progress_ = top_progress;
+  bottom_progress_ = bottom_progress;
+
+  if (animated) {
+    auto update_state = base::CallbackToBlock(
+        base::BindOnce(&FullscreenBrowserAgent::NotifyObserversOfUpdatedState,
+                       weak_ptr_factory_.GetWeakPtr()));
+    [UIView animateWithDuration:kMaterialDuration1 animations:update_state];
+  } else {
+    NotifyObserversOfUpdatedState();
+  }
+}
+
+void FullscreenBrowserAgent::NotifyObserversOfUpdatedState() {
+  updating_insets_ = true;
+  UIEdgeInsets old_insets = insets_;
+  insets_ = UIEdgeInsetsZero;
+  for (auto& observer : observers_) {
+    observer.WillUpdateState(this);
+  }
+  updating_insets_ = false;
+
+  if (!UIEdgeInsetsEqualToEdgeInsets(old_insets, insets_)) {
+    for (auto& observer : observers_) {
+      observer.DidUpdateState(this);
+    }
+  }
 }
 
 void FullscreenBrowserAgent::IncrementDisabledCounter(PassKey pass_key) {
@@ -107,5 +140,15 @@ void FullscreenBrowserAgent::AddObscuredInsetRange(UIRectEdge edge,
   } else if (edge == UIRectEdgeBottom) {
     min_insets_.bottom += min;
     max_insets_.bottom += max;
+  }
+}
+
+void FullscreenBrowserAgent::AddObscuredInset(UIRectEdge edge, CGFloat amount) {
+  CHECK(updating_insets_);
+  CHECK(edge == UIRectEdgeTop || edge == UIRectEdgeBottom);
+  if (edge == UIRectEdgeTop) {
+    insets_.top += amount;
+  } else if (edge == UIRectEdgeBottom) {
+    insets_.bottom += amount;
   }
 }

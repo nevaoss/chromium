@@ -305,35 +305,6 @@ void SynchronizeVideoFrameRead(
   context_support->SignalQuery(query_id, std::move(on_query_done_cb));
 }
 
-void SynchronizeVideoFrameRead(
-    scoped_refptr<VideoFrame> video_frame,
-    gpu::gles2::GLES2Interface* gl,
-    gpu::ContextSupport* context_support,
-    std::unique_ptr<gpu::RasterScopedAccess> ri_access = nullptr) {
-  WaitAndReplaceSyncTokenClient client(gl, std::move(ri_access));
-  video_frame->UpdateReleaseSyncToken(&client);
-  if (!video_frame->metadata().read_lock_fences_enabled) {
-    return;
-  }
-
-  unsigned query_id = 0;
-  gl->GenQueriesEXT(1, &query_id);
-  DCHECK(query_id);
-  gl->BeginQueryEXT(GL_COMMANDS_COMPLETED_CHROMIUM, query_id);
-  gl->EndQueryEXT(GL_COMMANDS_COMPLETED_CHROMIUM);
-
-  // |on_query_done_cb| will keep |video_frame| alive.
-  auto on_query_done_cb = base::DoNothingWithBoundArgs(video_frame);
-  context_support->SignalQuery(query_id, std::move(on_query_done_cb));
-
-  // Delete the query immediately. This will cause |on_query_done_cb| to be
-  // issued prematurely. The alternative, deleting |query_id| within
-  // |on_query_done_cb|, can cause a crash because |gl| may not still exist
-  // at the time of the callback. This is incorrect behavior.
-  // https://crbug.com/1243763
-  gl->DeleteQueriesEXT(1, &query_id);
-}
-
 libyuv::FilterMode ToLibyuvFilterMode(
     PaintCanvasVideoRenderer::FilterMode filter) {
   switch (filter) {
@@ -1122,6 +1093,9 @@ scoped_refptr<VideoFrame> DownShiftHighbitVideoFrame(
   scoped_refptr<VideoFrame> ret = VideoFrame::CreateFrame(
       format, video_frame->coded_size(), video_frame->visible_rect(),
       video_frame->natural_size(), video_frame->timestamp());
+  if (!ret) {
+    return nullptr;
+  }
 
   ret->set_color_space(video_frame->ColorSpace());
   // Copy all metadata.
@@ -1297,6 +1271,35 @@ void TextureSubImageUsingIntermediate(unsigned target,
 }  // anonymous namespace
 
 // static
+void PaintCanvasVideoRenderer::SynchronizeVideoFrameRead(
+    scoped_refptr<VideoFrame> video_frame,
+    gpu::gles2::GLES2Interface* gl,
+    gpu::ContextSupport* context_support,
+    std::unique_ptr<gpu::RasterScopedAccess> ri_access) {
+  WaitAndReplaceSyncTokenClient client(gl, std::move(ri_access));
+  video_frame->UpdateReleaseSyncToken(&client);
+  if (!video_frame->metadata().read_lock_fences_enabled) {
+    return;
+  }
+
+  unsigned query_id = 0;
+  gl->GenQueriesEXT(1, &query_id);
+  DCHECK(query_id);
+  gl->BeginQueryEXT(GL_COMMANDS_COMPLETED_CHROMIUM, query_id);
+  gl->EndQueryEXT(GL_COMMANDS_COMPLETED_CHROMIUM);
+
+  // |on_query_done_cb| will keep |video_frame| alive.
+  auto on_query_done_cb = base::DoNothingWithBoundArgs(video_frame);
+  context_support->SignalQuery(query_id, std::move(on_query_done_cb));
+
+  // Delete the query immediately. This will cause |on_query_done_cb| to be
+  // issued prematurely. The alternative, deleting |query_id| within
+  // |on_query_done_cb|, can cause a crash because |gl| may not still exist
+  // at the time of the callback. This is incorrect behavior.
+  // https://crbug.com/1243763
+  gl->DeleteQueriesEXT(1, &query_id);
+}
+
 void PaintCanvasVideoRenderer::ConvertVideoFrameToRGBPixels(
     const VideoFrame* video_frame,
     base::span<uint8_t> rgb_pixels,
@@ -1337,6 +1340,11 @@ void PaintCanvasVideoRenderer::ConvertVideoFrameToRGBPixels(
       return;
     default:
       break;
+  }
+
+  // DownShiftHighbitVideoFrame may fail creation of the `temporary_frame`.
+  if (!video_frame) {
+    return;
   }
 
   const size_t n_tasks =
@@ -1396,18 +1404,19 @@ bool PaintCanvasVideoRenderer::MultiPlaneChannelFormatSupported(
   }
 }
 
-bool PaintCanvasVideoRenderer::CopyVideoFrameTexturesToGLTexture(
-    viz::RasterContextProvider* raster_context_provider,
-    gpu::gles2::GLES2Interface* destination_gl,
-    scoped_refptr<VideoFrame> video_frame,
-    unsigned int target,
-    unsigned int texture,
-    unsigned int internal_format,
-    unsigned int format,
-    unsigned int type,
-    int level,
-    SkAlphaType dst_alpha_type,
-    GrSurfaceOrigin dst_origin) {
+bool PaintCanvasVideoRenderer::
+    CopyVideoFrameTexturesToGLTextureViaIntermediateSI(
+        viz::RasterContextProvider* raster_context_provider,
+        gpu::gles2::GLES2Interface* destination_gl,
+        scoped_refptr<VideoFrame> video_frame,
+        unsigned int target,
+        unsigned int texture,
+        unsigned int internal_format,
+        unsigned int format,
+        unsigned int type,
+        int level,
+        SkAlphaType dst_alpha_type,
+        GrSurfaceOrigin dst_origin) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(video_frame);
   CHECK(video_frame->HasSharedImage());
@@ -1418,22 +1427,6 @@ bool PaintCanvasVideoRenderer::CopyVideoFrameTexturesToGLTexture(
   }
 
   const auto shared_image = video_frame->shared_image();
-
-  if (destination_gl->CanCopySharedImageDirectlyToGLTexture(
-          media::IsOpaque(video_frame->format()), shared_image.get(), target,
-          internal_format, type, level, dst_alpha_type)) {
-    std::unique_ptr<gpu::RasterScopedAccess> destination_access =
-        destination_gl->CopySharedImageDirectlyToGLTexture(
-            video_frame->visible_rect(), shared_image.get(),
-            video_frame->acquire_sync_token(),
-            media::IsOpaque(video_frame->format()), target, texture,
-            internal_format, format, type, level, dst_alpha_type, dst_origin);
-
-    SynchronizeVideoFrameRead(std::move(video_frame), destination_gl,
-                              raster_context_provider->ContextSupport(),
-                              std::move(destination_access));
-    return true;
-  }
 
   // Take the two-copy path:
   // * Copy the source SharedImage to a single-planar SI that's usable by GL
@@ -1802,9 +1795,9 @@ gpu::SyncToken PaintCanvasVideoRenderer::CopyVideoFrameToSharedImage(
     // If VideoFrame has textures, we need to update SyncToken or to keep frame
     // alive until gpu is done with copy if `read_lock_fences_enabled` is set.
     // This is to make sure decoder doesn't re-use frame before copy is done.
-    SynchronizeVideoFrameRead(std::move(video_frame), ri,
-                              raster_context_provider->ContextSupport(),
-                              std::move(src_ri_access));
+    ::media::SynchronizeVideoFrameRead(
+        std::move(video_frame), ri, raster_context_provider->ContextSupport(),
+        std::move(src_ri_access));
   } else {
     sync_token = ConvertYuvVideoFrameToRgbSharedImage(
         video_frame.get(), raster_context_provider, dest_shared_image,

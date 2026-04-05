@@ -97,6 +97,8 @@ BASE_DECLARE_FEATURE(kAutofillAiSetSyncablePrefFromAccountPref);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillAiShipment);
 COMPONENT_EXPORT(AUTOFILL)
+BASE_DECLARE_FEATURE(kAutofillAiShowWalletDisabledBanner);
+COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillAiUsePrivateAi);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillAiVoteForFormatStringsForFlightNumbers);
@@ -398,6 +400,8 @@ COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kYourSavedInfoPolicyAndExtentionToggleIndicators);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kYourSavedInfoSettingsPage);
+COMPONENT_EXPORT(AUTOFILL)
+BASE_DECLARE_FEATURE(kYourSavedInfoSettingsPageShoppingIntegration);
 
 }  // namespace autofill::features
 

@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include "base/time/time.h"
 #include "components/optimization_guide/proto/features/finds.pb.h"
 #include "components/prefs/pref_service.h"
 
@@ -19,12 +20,19 @@ std::string ThemeTypeEnumToString(
     optimization_guide::proto::FindsSuggestionResponse::SuggestionTheme::
         ThemeType theme_type);
 
+// Record metric that notification has been shown, also save in the pref service
+// the timestamp to mark the last model execution time for cooldown tracking.
+void MarkNotificationShown(PrefService* pref_service);
+
 // Mark theme as not interested in the PrefService. This is called when the user
 // clicks the finds notification unhelpful button.
 void MarkThemeAsNotInterested(
     PrefService* pref_service,
     optimization_guide::proto::FindsSuggestionResponse::SuggestionTheme::
         ThemeType theme_type);
+
+// Returns the model execution cooldown duration as a base::TimeDelta.
+base::TimeDelta GetModelExecutionCooldownDurationTimeDelta();
 
 }  // namespace finds
 

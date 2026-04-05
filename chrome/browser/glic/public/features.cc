@@ -13,6 +13,7 @@
 namespace features {
 
 BASE_FEATURE(kGlicTabRestoration, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicAndroidSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicChromeStatusIcon, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicChromeStatusIconSizePx{
@@ -96,5 +97,7 @@ const base::flat_set<int32_t>& GetGlicTieredRolloutV2EligibleTiers() {
 
 BASE_FEATURE(kGlicHorizontalTabToolbarButton,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicGetTabFaviconById, base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace features

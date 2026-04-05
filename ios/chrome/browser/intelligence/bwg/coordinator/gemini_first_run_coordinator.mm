@@ -12,9 +12,9 @@
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_first_run_mediator.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_first_run_mediator_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/ui/gemini_fre_wrapper_view_controller.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
@@ -48,6 +48,9 @@
   // The `gemini::EntryPoint` the coordinator was initialized from.
   gemini::EntryPoint _entryPoint;
 
+  // Type of Gemini FRE.
+  GeminiFREType _FREType;
+
   // Handler for sending IPH commands.
   id<HelpCommands> _helpCommandsHandler;
 
@@ -64,10 +67,12 @@
 - (instancetype)initWithBaseViewController:(UIViewController*)viewController
                                    browser:(Browser*)browser
                             fromEntryPoint:(gemini::EntryPoint)entryPoint
+                                   FREType:(GeminiFREType)FREType
                          completionHandler:(void (^)(BOOL success))completion {
   self = [super initWithBaseViewController:viewController browser:browser];
   if (self) {
     _entryPoint = entryPoint;
+    _FREType = FREType;
     _completion = completion;
   }
   return self;
@@ -95,7 +100,7 @@
       initWithPrefService:_prefService
              webStateList:self.browser->GetWebStateList()
        baseViewController:self.baseViewController
-               BWGService:BwgServiceFactory::GetForProfile(self.profile)
+               BWGService:GeminiServiceFactory::GetForProfile(self.profile)
        geminiBrowserAgent:GeminiBrowserAgent::FromBrowser(self.browser)
                   tracker:_tracker
                entryPoint:_entryPoint
@@ -109,7 +114,8 @@
 
   _viewController = [[GeminiFREWrapperViewController alloc]
          initWithPromo:_mediator.shouldShowPromo
-      isAccountManaged:[self isManagedAccount]];
+      isAccountManaged:[self isManagedAccount]
+               FREType:_FREType];
   _viewController.sheetPresentationController.delegate = self;
   _viewController.mutator = _mediator;
 

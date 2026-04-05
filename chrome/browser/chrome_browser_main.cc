@@ -166,7 +166,6 @@
 #include "chrome/browser/lifetime/smart_restart_metrics_observer.h"
 #include "chrome/browser/profiles/delete_profile_helper.h"
 #include "chrome/browser/resource_coordinator/tab_manager.h"
-#include "chrome/browser/resources_integrity.h"
 #include "chrome/browser/ui/uma_browsing_activity_observer.h"
 #include "chrome/browser/upgrade_detector/upgrade_detector.h"
 #include "chrome/browser/usb/web_usb_detector.h"
@@ -1028,16 +1027,18 @@ void ChromeBrowserMainParts::PreCreateMainMessageLoop() {
     chrome_extra_part->PreCreateMainMessageLoop();
   }
 
-  if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
-          switches::kDisableUpdaterScheduler)) {
-    updater::SchedulePeriodicTasks(
-#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_UPDATER)
-        base::BindRepeating(&ShowUpdaterPromotionInfoBar)
-#else
-        base::DoNothing()
-#endif
-    );
+  auto* command_line = base::CommandLine::ForCurrentProcess();
+  if (command_line->HasSwitch(switches::kDisableUpdaterScheduler) ||
+      command_line->HasSwitch(switches::kEnableBenchmarking)) {
+    return;
   }
+  updater::SchedulePeriodicTasks(
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_UPDATER)
+      base::BindRepeating(&ShowUpdaterPromotionInfoBar)
+#else
+      base::DoNothing()
+#endif
+  );
 }
 
 void ChromeBrowserMainParts::PostCreateMainMessageLoop() {
@@ -1625,10 +1626,6 @@ void ChromeBrowserMainParts::PreBrowserStart() {
   // Start the tab manager here so that we give the most amount of time for the
   // other services to start up before we start adjusting the oom priority.
   g_browser_process->GetTabManager()->Start();
-
-  if (base::FeatureList::IsEnabled(features::kReportPakFileIntegrity)) {
-    CheckPakFileIntegrity();
-  }
 #endif
 
   // The RulesetService will make the filtering rules available to renderers

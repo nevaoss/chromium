@@ -106,6 +106,7 @@ class ChromeAutofillClientIOS : public AutofillClientIOS {
   AutofillAiModelCache* GetAutofillAiModelCache() override;
   AutofillAiModelExecutor* GetAutofillAiModelExecutor() override;
   optimization_guide::RemoteModelExecutor* GetRemoteModelExecutor() override;
+  consent_auditor::ConsentAuditor* GetConsentAuditor() final;
   PrefService* GetPrefs() override;
   const PrefService* GetPrefs() const override;
   syncer::SyncService* GetSyncService() override;
@@ -155,7 +156,7 @@ class ChromeAutofillClientIOS : public AutofillClientIOS {
   // Returns a pointer to a DeviceAuthenticator. Might be nullptr if the given
   // platform is not supported.
   std::unique_ptr<device_reauth::DeviceAuthenticator> GetDeviceAuthenticator(
-      std::string histogram) override;
+      std::string histogram) const override;
   PasswordFormClassification ClassifyAsPasswordForm(
       AutofillManager& manager,
       FormGlobalId form_id,

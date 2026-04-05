@@ -11,7 +11,6 @@
 #include "base/containers/adapters.h"
 #include "base/file_version_info.h"
 #include "base/functional/bind.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
@@ -67,7 +66,7 @@ namespace {
 void UpdateProcessTypeAndTitles(
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
     const extensions::ExtensionSet* extension_set,
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
     ProcessMemoryInformation& process,
     content::RenderFrameHost* rfh) {
   // We check the title and the renderer type only of the primary main

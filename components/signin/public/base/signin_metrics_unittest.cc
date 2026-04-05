@@ -40,7 +40,6 @@ const AccessPoint kAccessPointsThatSupportUserAction[] = {
     AccessPoint::kReadingList,
     AccessPoint::kSetUpList,
     AccessPoint::kChromeSigninInterceptBubble,
-    AccessPoint::kTabOrganization,
     AccessPoint::kNotificationsOptInScreenContentToggle,
     AccessPoint::kAvatarBubbleSignInWithSyncPromo,
     AccessPoint::kProductSpecifications,
@@ -51,6 +50,7 @@ const AccessPoint kAccessPointsThatSupportUserAction[] = {
     AccessPoint::kUserManagerWithPrefilledEmail,
     AccessPoint::kEnterpriseDialogAfterSigninInterception,
     AccessPoint::kCredentialExchangeImport,
+    AccessPoint::kIosPageActionMenu,
 };
 
 const AccessPoint kAccessPointsThatSupportImpression[] = {
@@ -163,8 +163,6 @@ class SigninMetricsTest : public ::testing::Test {
         return "ChromeSigninInterceptBubble";
       case AccessPoint::kRestorePrimaryAccountOnProfileLoad:
         return "RestorePrimaryAccountinfoOnProfileLoad";
-      case AccessPoint::kTabOrganization:
-        return "TabOrganization";
       case AccessPoint::kTipsNotification:
         return "TipsNotification";
       case AccessPoint::kNotificationsOptInScreenContentToggle:
@@ -243,6 +241,8 @@ class SigninMetricsTest : public ::testing::Test {
         return "SearchAIModeBubble";
       case AccessPoint::kIosAppBar:
         return "IOSAppBar";
+      case AccessPoint::kIosPageActionMenu:
+        return "PageActionMenu";
     }
   }
 };

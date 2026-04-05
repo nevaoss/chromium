@@ -12,6 +12,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import org.jni_zero.CalledByNative;
+import org.jni_zero.JniType;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -62,8 +63,13 @@ public class CoBrowseViews {
     }
 
     /** Returns the view for the co-browse content. */
+    @CalledByNative
     public View getView() {
         return mView;
+    }
+
+    public boolean hasPeekView() {
+        return mPeekView != null;
     }
 
     /** Destroys the co-browse view and its components. */
@@ -100,7 +106,8 @@ public class CoBrowseViews {
 
     /** Sets the WebContents of the WebUi. */
     @CalledByNative
-    public void setWebContents(@Nullable WebContents webContents) {
+    public void setWebContents(
+            @Nullable @JniType("content::WebContents*") WebContents webContents) {
         if (mWebUi != null) {
             View oldView = mWebUi.getWebUiView();
             mWebUi.setWebContents(webContents);

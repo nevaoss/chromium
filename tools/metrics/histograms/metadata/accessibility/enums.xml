@@ -1756,7 +1756,7 @@ Unknown properties are collapsed to zero. -->
   <int value="31" label="Focus on inactive dialogs (not implemented)"/>
   <int value="32" label="Open bookmarks"/>
   <int value="33" label="Bookmark page"/>
-  <int value="34" label="Bookmark all tabs (not implemented)"/>
+  <int value="34" label="Bookmark all tabs"/>
   <int value="35" label="Show or hide the bookmarks bar"/>
   <int value="36" label="Toggle immersive mode (not implemented)"/>
   <int value="37" label="Exit immersive mode (not implemented)"/>
@@ -2383,6 +2383,7 @@ Unknown properties are collapsed to zero. -->
   <int value="7" label="Audio hardware"/>
   <int value="8" label="Network"/>
   <int value="9" label="Timeout engine stalled"/>
+  <int value="10" label="Timeout stalled after engine attempted recovery"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/resources/side_panel/read_anything/shared/metrics_browser_proxy.ts:ReadAnythingSpeechError) -->

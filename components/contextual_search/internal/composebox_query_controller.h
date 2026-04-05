@@ -11,6 +11,12 @@
 #include <string>
 #include <vector>
 
+#include "build/build_config.h"
+
+#if BUILDFLAG(IS_IOS)
+#include "base/ios/scoped_critical_action.h"
+#endif
+
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
@@ -223,6 +229,12 @@ class ComposeboxQueryController
     // StartFileUploadFlow() and decremented when successful network responses
     // are received.
     size_t num_outstanding_network_requests_ = 0;
+
+#if BUILDFLAG(IS_IOS)
+    // Background execution assertion to prevent iOS from suspending the app
+    // during a file upload.
+    std::unique_ptr<base::ios::ScopedCriticalAction> background_action;
+#endif
   };
 
   // Creates the request body proto for an image and calls the callback with the
@@ -386,9 +398,6 @@ class ComposeboxQueryController
   // Sets the query controller state and notifies the query controller state
   // changed callback if it has changed.
   void SetQueryControllerState(QueryControllerState new_state);
-
-  // Returns if context status is considered to be in the terminal state.
-  bool IsTerminalContextStatus(contextual_search::ContextUploadStatus status);
 
   // Marks context upload as in terminal state (success, replaced, failed,
   // expired, validation failed) for given context token, and if
