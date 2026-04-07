@@ -1,6 +1,3 @@
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
-
 # The Chrome Security team is working on migrating uses of image codecs to go
 # through Skia, for more flexibility about which backend is use. Try to do that
 # instead of adding a new direct dependency on libwep if possible.
@@ -27,9 +24,3 @@ cwebp_exe_allowed_visibility = [
   "//clank/android_webview/*",
   "//clank/java/*",
 ]
-
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-# Allow libavif dependency on libwebp_sharpyuv.
-if (disable_rust_for_neva) {
-  allowed_visibility += [ "//third_party/libavif:*" ]
-}

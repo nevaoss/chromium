@@ -7,9 +7,6 @@ import("//build/config/ui.gni")
 import("//mojo/features.gni")
 import("//testing/test.gni")
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
-
 group("mojo") {
   # Meta-target, don't link into production code.
   testonly = true
@@ -62,11 +59,6 @@ test("mojo_unittests") {
     "//mojo/public/js/ts/bindings/tests",
     "//mojo/public/rust:tests",
   ]
-
-   # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps -= [ "//mojo/public/rust:tests" ]
-  }
 
   if (is_linux && mojo_support_legacy_core) {
     deps += [ "//mojo/proxy:tests" ]

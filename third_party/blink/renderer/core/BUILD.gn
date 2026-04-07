@@ -12,8 +12,6 @@ import("//build/nocompile.gni")
 import("//build/toolchain/toolchain.gni")
 import("//content/public/common/features.gni")
 import("//media/media_options.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 import("//printing/buildflags/buildflags.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//third_party/blink/renderer/bindings/bindings.gni")
@@ -237,22 +235,19 @@ blink_python_runner("make_deprecation_info") {
   ]
 }
 
-# TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-if (!disable_rust_for_neva) {
-  rust_static_library("xml_ffi") {
-    allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
-    crate_root = "xml/parser/xml_ffi.rs"
-    sources = [
-      "xml/parser/entities.rs",
-      crate_root,
-    ]
-    cxx_bindings = [ crate_root ]
-    deps = [
-      "//third_party/blink/renderer/platform/wtf",
-      "//third_party/rust/cxx/v1:lib",
-      "//third_party/rust/xml/v1:lib",
-    ]
-  }
+rust_static_library("xml_ffi") {
+  allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
+  crate_root = "xml/parser/xml_ffi.rs"
+  sources = [
+    "xml/parser/entities.rs",
+    crate_root,
+  ]
+  cxx_bindings = [ crate_root ]
+  deps = [
+    "//third_party/blink/renderer/platform/wtf",
+    "//third_party/rust/cxx/v1:lib",
+    "//third_party/rust/xml/v1:lib",
+  ]
 }
 
 component("core") {
@@ -446,14 +441,6 @@ component("core") {
     "//ui/strings",
   ]
 
-  # TODO(neva_rust): Remove this when Neva supports Rust language.
-  if (disable_rust_for_neva) {
-    deps -= [
-      ":xml_ffi",
-      "//third_party/rust/xml/v1:lib",
-    ]
-  }
-
   if (is_mac) {
     deps += [ "//ui/base/mojom" ]
   }
@@ -525,11 +512,6 @@ blink_core_sources("core_hot") {
     "//third_party/blink/renderer/core/exported",
     "//third_party/blink/renderer/core/probe",
   ]
-
-  # TODO(neva_rust): Remove this when Neva supports Rust language.
-  if (disable_rust_for_neva) {
-    deps -= [ ":xml_ffi" ]
-  }
 
   if (enable_vectorized_html_scanning) {
     deps += [ "//third_party/highway:libhwy" ]

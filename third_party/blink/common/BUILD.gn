@@ -330,11 +330,6 @@ source_set("common") {
     "//ui/latency/mojom:shared_mojom_traits",
   ]
 
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps -= [ "//third_party/blink/common/rust_crash" ]
-  }
-
   # If use_blink is used then it needs to depend on //media
   if (use_blink) {
     deps += [ "//media" ]

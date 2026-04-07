@@ -3,8 +3,6 @@
 # found in the LICENSE file.
 
 import("//base/allocator/partition_allocator/partition_alloc.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 
 # Enable use of Javascript in PDFs.
 pdf_enable_v8_override = true
@@ -33,9 +31,3 @@ pdf_enable_fontations_override = false
 
 # Enable Rust-based PNG decoder and encoder in PDFium.
 pdf_enable_rust_png_override = true
-
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (disable_rust_for_neva) {
-    pdf_enable_rust_png_override = false
-}
-

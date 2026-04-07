@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
-
 group("codelabs") {
   testonly = true
   deps = [
@@ -12,11 +9,6 @@ group("codelabs") {
     "//codelabs/rust:codelab_rust",
     "//codelabs/threading_and_scheduling:codelab_threading_and_scheduling",
   ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps -= [ "//codelabs/rust:codelab_rust" ]
-  }
 
   # These examples rely on base::LaunchOptions which do not exist in the iOS
   # simulator.
