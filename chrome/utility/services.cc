@@ -19,11 +19,8 @@
 #include "components/services/patch/public/mojom/file_patcher.mojom.h"
 #include "components/services/unzip/public/mojom/unzipper.mojom.h"
 #include "components/services/unzip/unzipper_impl.h"
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "components/user_data_importer/content/content_bookmark_parser_in_utility_process.h"
 #include "components/user_data_importer/mojom/bookmark_html_parser.mojom.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "content/public/utility/utility_thread.h"
 #include "extensions/buildflags/buildflags.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -159,8 +156,6 @@ auto RunCSVPasswordParser(
       std::move(receiver));
 }
 
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 auto ContentBookmarkParser(
     mojo::PendingReceiver<user_data_importer::mojom::BookmarkHtmlParser>
         receiver) {
@@ -168,7 +163,6 @@ auto ContentBookmarkParser(
       user_data_importer::ContentBookmarkParserInUtilityProcess>(
       std::move(receiver));
 }
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 #if BUILDFLAG(IS_WIN)
 auto RunProcessorMetrics(
@@ -450,10 +444,7 @@ void RegisterMainThreadServices(mojo::ServiceFactory& services) {
   services.Add(RunFilePatcher);
   services.Add(RunUnzipper);
   services.Add(RunCSVPasswordParser);
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   services.Add(ContentBookmarkParser);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   services.Add(RunPassageEmbeddingsService);
 
 #if !BUILDFLAG(IS_ANDROID)

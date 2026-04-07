@@ -5,11 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_FONTS_OPENTYPE_FONT_FORMAT_CHECK_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_FONTS_OPENTYPE_FONT_FORMAT_CHECK_H_
 
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#include "build/build_config.h"
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/fonts/opentype/format_check.rs.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
@@ -52,13 +48,7 @@ class PLATFORM_EXPORT FontFormatCheck {
   enum class COLRVersion { kCOLRV0, kCOLRV1, kNoCOLR };
 
  private:
-  // TODO(neva_rust): Remove this when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   rust::Box<font_format_check::FontFormatInfo> format_info_;
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  TableTagsVector table_tags_;
-  COLRVersion colr_version_ = COLRVersion::kNoCOLR;
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 };
 
 }  // namespace blink

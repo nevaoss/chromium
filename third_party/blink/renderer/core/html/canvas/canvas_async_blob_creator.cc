@@ -33,12 +33,7 @@
 #include "third_party/blink/renderer/platform/wtf/text/base64.h"
 #include "third_party/blink/renderer/platform/wtf/text/strcat.h"
 #include "third_party/skia/include/core/SkSurface.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/encode/SkPngRustEncoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/encode/SkPngEncoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 namespace blink {
 
@@ -532,16 +527,8 @@ bool CanvasAsyncBlobCreator::InitializeEncoder(double quality) {
     // TODO(zakerinasab): Progressive encoding on webp image formats
     // (crbug.com/571399)
     DCHECK_EQ(kMimeTypePng, mime_type_);
-    // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    SkPngEncoder::Options options;
-    options.fFilterFlags = SkPngEncoder::FilterFlag::kSub;
-    options.fZLibLevel = 3;
-    encoder_ = ImageEncoder::Create(&encoded_image_, src_data_, options);
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     encoder_ = ImageEncoder::Create(&encoded_image_, src_data_,
                                     SkPngRustEncoder::CompressionLevel::kLow);
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   }
 
   return encoder_.get();

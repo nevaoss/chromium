@@ -8,12 +8,7 @@
 #include <memory>
 
 #include "base/compiler_specific.h"
-// TODO(neva_rust): Remove this when Neva supports rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/image-decoders/png/png_image_decoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/blink/renderer/platform/image-decoders/png/legacy/png_image_decoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 
 namespace blink {
@@ -224,16 +219,9 @@ bool ICOImageDecoder::DecodeAtIndex(wtf_size_t index) {
   if (!png_decoders_[index]) {
     AlphaOption alpha_option =
         premultiply_alpha_ ? kAlphaPremultiplied : kAlphaNotPremultiplied;
-// TODO(neva_rust): Remove this when Neva supports rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    png_decoders_[index] = std::make_unique<PNGImageDecoder>(
-        alpha_option, ImageDecoder::kDefaultBitDepth, color_behavior_,
-        max_decoded_bytes_, dir_entry.image_offset_);
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     png_decoders_[index] = std::make_unique<PngImageDecoder>(
         alpha_option, color_behavior_, max_decoded_bytes_,
         dir_entry.image_offset_);
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     SetDataForPNGDecoderAtIndex(index);
   }
   auto* png_decoder = png_decoders_[index].get();

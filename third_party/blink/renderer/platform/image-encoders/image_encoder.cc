@@ -6,10 +6,6 @@
 
 #include "base/notreached.h"
 #include "build/build_config.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/encode/SkPngEncoder.h"
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 #if BUILDFLAG(IS_WIN)
 #include <basetsd.h>  // Included before jpeglib.h because of INT32 clash
@@ -28,15 +24,6 @@ bool ImageEncoder::Encode(Vector<unsigned char>* dst,
   return SkJpegEncoder::Encode(&dst_stream, src, options);
 }
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-bool ImageEncoder::Encode(Vector<unsigned char>* dst,
-                          const SkPixmap& src,
-                          const SkPngEncoder::Options& options) {
-  VectorWStream dst_stream(dst);
-  return SkPngEncoder::Encode(&dst_stream, src, options);
-}
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 bool ImageEncoder::Encode(
     Vector<unsigned char>* dst,
     const SkPixmap& src,
@@ -45,7 +32,6 @@ bool ImageEncoder::Encode(
   SkPngRustEncoder::Options options = {.fCompressionLevel = compression_level};
   return SkPngRustEncoder::Encode(&dst_stream, src, options);
 }
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 bool ImageEncoder::Encode(Vector<unsigned char>* dst,
                           const SkPixmap& src,
@@ -73,15 +59,7 @@ bool ImageEncoder::Encode(Vector<unsigned char>* dst,
       return Encode(dst, src, options);
     }
     case kMimeTypePng: {
-      // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
       return Encode(dst, src, SkPngRustEncoder::CompressionLevel::kLow);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-      SkPngEncoder::Options options;
-      options.fFilterFlags = SkPngEncoder::FilterFlag::kSub;
-      options.fZLibLevel = 3;
-      return Encode(dst, src, options);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     }
   }
 }
@@ -100,22 +78,6 @@ std::unique_ptr<ImageEncoder> ImageEncoder::Create(
   return image_encoder;
 }
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-std::unique_ptr<ImageEncoder> ImageEncoder::Create(
-    Vector<unsigned char>* dst,
-    const SkPixmap& src,
-    const SkPngEncoder::Options& options) {
-  std::unique_ptr<ImageEncoder> image_encoder(new ImageEncoder(dst));
-  image_encoder->encoder_ =
-      SkPngEncoder::Make(&image_encoder->dst_, src, options);
-  if (!image_encoder->encoder_) {
-    return nullptr;
-  }
-
-  return image_encoder;
-}
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 std::unique_ptr<ImageEncoder> ImageEncoder::Create(
     Vector<unsigned char>* dst,
     const SkPixmap& src,
@@ -130,7 +92,6 @@ std::unique_ptr<ImageEncoder> ImageEncoder::Create(
 
   return image_encoder;
 }
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 int ImageEncoder::MaxDimension(ImageEncodingMimeType mime_type) {
   switch (mime_type) {

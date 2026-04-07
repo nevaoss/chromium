@@ -34,10 +34,7 @@
 #include "base/functional/callback.h"
 #include "base/immediate_crash.h"
 #include "base/logging/logging_settings.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "base/logging/rust_logger.rs.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "base/no_destructor.h"
 #include "base/path_service.h"
 #include "base/pending_task.h"
@@ -509,11 +506,8 @@ bool BaseInitLoggingImpl(const LoggingSettings& settings) {
   }
 #endif
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   // Connects Rust logging with the //base logging functionality.
   internal::init_rust_log_crate();
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
   // Ignore file options unless logging to file is set.
   if ((g_logging_destination & LOG_TO_FILE) == 0) {

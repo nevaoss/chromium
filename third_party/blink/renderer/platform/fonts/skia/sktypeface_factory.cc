@@ -28,12 +28,7 @@ sk_sp<SkTypeface> SkTypeface_Factory::FromFontConfigInterfaceIdAndTtcIndex(
   font_identity.fID = config_id;
   font_identity.fTTCIndex = ttc_index;
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   return fci->makeTypeface(font_identity, SkFontMgr_New_Fontations_Empty());
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  return fci->makeTypeface(font_identity, skia::DefaultFontMgr());
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 #else
   NOTREACHED();
@@ -47,13 +42,8 @@ sk_sp<SkTypeface> SkTypeface_Factory::FromFilenameAndTtcIndex(
 #if !BUILDFLAG(IS_WIN) && !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_FUCHSIA) && \
     !BUILDFLAG(IS_APPLE)
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   return SkFontMgr_New_Fontations_Empty()->makeFromFile(filename.c_str(),
                                                         ttc_index);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    return skia::DefaultFontMgr()->makeFromFile(filename.c_str(), ttc_index);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 #else
   NOTREACHED();

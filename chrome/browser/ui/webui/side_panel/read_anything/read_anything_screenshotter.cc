@@ -19,12 +19,7 @@
 #include "mojo/public/cpp/base/proto_wrapper.h"
 #include "third_party/skia/include/core/SkImage.h"
 #include "third_party/skia/include/core/SkStream.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/encode/SkPngRustEncoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/encode/SkPngEncoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "ui/gfx/geometry/rect.h"
 
 constexpr size_t kMaxScreenshotFileSize = 50 * 1000L * 1000L;  // 50 MB.
@@ -78,12 +73,7 @@ void WriteBitmapToPng(const SkBitmap& bitmap) {
     return;
   }
   bool success_encode =
-      // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
       SkPngRustEncoder::Encode(&out_file, cropped_pixmap, /*options=*/{});
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-      SkPngEncoder::Encode(&out_file, cropped_pixmap, /*options=*/{});
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   if (success_encode) {
     VLOG(2) << "Wrote debug file: " << screenshot_filepath;
   } else {
