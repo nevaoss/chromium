@@ -457,11 +457,6 @@ vars = {
   # the commit queue can handle CLs rolling wuffs
   # and whatever else without interference from each other.
   'wuffs_revision': 'e3f919ccfe3ef542cfc983a82146070258fb57f8',
-  # TODO(neva_rust): Please remove this workaround after Neva supports rust based CrabbyAvif.
-  # Three lines of non-changing comments so that
-  # the commit queue can handle CLs rolling libavif
-  # and whatever else without interference from each other.
-  'libavif_revision': 'e7b34a1f5e9f7024d08311c7bae156061b889882',
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling crabbyavif
   # and whatever else without interference from each other.
@@ -2355,10 +2350,6 @@ deps = {
 
   'src/third_party/libaom/source/libaom':
     Var('aomedia_git') + '/aom.git' + '@' +  '98ce0d2a610f1465ea14d525bce9fa46d4b05c03',
-
-  # TODO(neva_rust): Please remove this workaround after Neva supports rust based CrabbyAvif.
-  'src/third_party/libavif/src':
-    Var('chromium_git') + '/external/github.com/AOMediaCodec/libavif.git' + '@' + Var('libavif_revision'),
 
   'src/third_party/crabbyavif/src':
     Var('chromium_git') + '/external/github.com/webmproject/CrabbyAvif.git' + '@' + Var('crabbyavif_revision'),
