@@ -16,14 +16,11 @@ std::unique_ptr<ImageDecoder> CreateBmpImageDecoder(
     ColorBehavior color_behavior,
     wtf_size_t max_decoded_bytes,
     wtf_size_t offset) {
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   if (IsRustyBmpEnabled()) {
     return std::make_unique<BmpRustImageDecoder>(
         alpha_option, color_behavior, max_decoded_bytes, offset,
         high_bit_depth_decoding_option);
   }
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
   return std::make_unique<BMPImageDecoder>(alpha_option, color_behavior,
                                            max_decoded_bytes);

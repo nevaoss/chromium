@@ -12,12 +12,7 @@
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "third_party/skia/include/core/SkStream.h"
 #include "third_party/skia/include/encode/SkJpegEncoder.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/encode/SkPngRustEncoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/encode/SkPngEncoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/encode/SkWebpEncoder.h"
 
 namespace blink {
@@ -58,16 +53,9 @@ class PLATFORM_EXPORT ImageEncoder {
                      const SkPixmap& src,
                      const SkJpegEncoder::Options&);
 
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   static bool Encode(Vector<unsigned char>* dst,
                      const SkPixmap& src,
                      SkPngRustEncoder::CompressionLevel);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  static bool Encode(Vector<unsigned char>* dst,
-                     const SkPixmap& src,
-                     const SkPngEncoder::Options&);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
   static bool Encode(Vector<unsigned char>* dst,
                      const SkPixmap& src,
@@ -84,17 +72,10 @@ class PLATFORM_EXPORT ImageEncoder {
                                               const SkPixmap& src,
                                               const SkJpegEncoder::Options&);
 
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  static std::unique_ptr<ImageEncoder> Create(Vector<unsigned char>* dst,
-                                              const SkPixmap& src,
-                                              const SkPngEncoder::Options&);
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   static std::unique_ptr<ImageEncoder> Create(
       Vector<unsigned char>* dst,
       const SkPixmap& src,
       SkPngRustEncoder::CompressionLevel);
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
   bool encodeRows(int numRows) { return encoder_->encodeRows(numRows); }
 

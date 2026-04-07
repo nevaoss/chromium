@@ -42,12 +42,7 @@
 #include "third_party/blink/renderer/platform/image-decoders/gif/gif_image_decoder.h"
 #include "third_party/blink/renderer/platform/image-decoders/ico/ico_image_decoder.h"
 #include "third_party/blink/renderer/platform/image-decoders/jpeg/jpeg_image_decoder.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/image-decoders/png/png_image_decoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/blink/renderer/platform/image-decoders/png/legacy/png_image_decoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/image-decoders/webp/webp_image_decoder.h"
 #include "third_party/skia/include/core/SkColorSpace.h"
 #include "third_party/skia/include/private/SkExif.h"
@@ -55,12 +50,7 @@
 #include "ui/gfx/geometry/size_conversions.h"
 
 #if BUILDFLAG(ENABLE_AV1_DECODER)
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/image-decoders/avif/avif_image_decoder.h"
-#else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/blink/renderer/platform/image-decoders/avif/neva_avif_image_decoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #endif
 
 #if BUILDFLAG(ENABLE_JXL_DECODER)
@@ -226,12 +216,7 @@ String SniffMimeTypeInternal(scoped_refptr<SegmentReader> reader) {
     return "image/bmp";
   }
 #if BUILDFLAG(ENABLE_AV1_DECODER)
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  if (NevaAVIFImageDecoder::MatchesAVIFSignature(fast_reader)) {
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   if (AVIFImageDecoder::MatchesAVIFSignature(fast_reader)) {
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     return "image/avif";
   }
 #endif
@@ -329,16 +314,9 @@ std::unique_ptr<ImageDecoder> ImageDecoder::CreateByMimeType(
                                                  aux_image, max_decoded_bytes);
   } else if (mime_type == "image/png" || mime_type == "image/x-png" ||
              mime_type == "image/apng") {
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    decoder = std::make_unique<PNGImageDecoder>(
-        alpha_option, high_bit_depth_decoding_option, color_behavior,
-        max_decoded_bytes);
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     decoder = std::make_unique<PngImageDecoder>(
         alpha_option, color_behavior, max_decoded_bytes,
         PngImageDecoder::kNoReadingOffset, high_bit_depth_decoding_option);
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   } else if (mime_type == "image/gif") {
     decoder = std::make_unique<GIFImageDecoder>(alpha_option, color_behavior,
                                                 max_decoded_bytes);
@@ -355,16 +333,9 @@ std::unique_ptr<ImageDecoder> ImageDecoder::CreateByMimeType(
                               color_behavior, max_decoded_bytes);
 #if BUILDFLAG(ENABLE_AV1_DECODER)
   } else if (mime_type == "image/avif") {
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    decoder = std::make_unique<NevaAVIFImageDecoder>(
-        alpha_option, high_bit_depth_decoding_option, color_behavior, aux_image,
-        max_decoded_bytes, animation_option);
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     decoder = std::make_unique<AVIFImageDecoder>(
         alpha_option, high_bit_depth_decoding_option, color_behavior, aux_image,
         max_decoded_bytes, animation_option);
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #endif
 #if BUILDFLAG(ENABLE_JXL_DECODER)
   } else if (mime_type == "image/jxl" &&

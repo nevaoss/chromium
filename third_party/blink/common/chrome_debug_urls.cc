@@ -12,10 +12,7 @@
 #include "base/threading/platform_thread.h"
 #include "build/build_config.h"
 #include "third_party/blink/common/crash_helpers.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/common/rust_crash/src/lib.rs.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -43,26 +40,15 @@ bool IsRendererDebugURL(const GURL& url) {
   if (url == kChromeUICheckCrashURL || url == kChromeUIBadCastCrashURL ||
       url == kChromeUICrashURL || url == kChromeUIDumpURL ||
       url == kChromeUIKillURL || url == kChromeUIHangURL ||
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-      url == kChromeUIShorthangURL || url == kChromeUIMemoryExhaustURL ||
-      url == kChromeUICrashRustURL) {
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
       url == kChromeUIShorthangURL || url == kChromeUIMemoryExhaustURL) {
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     return true;
   }
 
 #if defined(ADDRESS_SANITIZER)
   if (url == kChromeUICrashHeapOverflowURL ||
       url == kChromeUICrashHeapUnderflowURL ||
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
       url == kChromeUICrashUseAfterFreeURL ||
       url == kChromeUICrashRustOverflowURL) {
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-      url == kChromeUICrashUseAfterFreeURL) {
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     return true;
   }
 #endif  // defined(ADDRESS_SANITIZER)
@@ -127,14 +113,11 @@ NOINLINE void MaybeTriggerAsanError(const GURL& url) {
                << " because user navigated to " << url.spec();
     base::debug::AsanCorruptHeap();
 #endif  // BUILDFLAG(IS_WIN)
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   } else if (url == kChromeUICrashRustOverflowURL) {
     // Ensure that ASAN works even in Rust code.
     LOG(ERROR) << "Intentionally causing ASAN heap overflow in Rust"
                << " because user navigated to " << url.spec();
     crash_in_rust_with_overflow();
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   }
 }
 #endif  // ADDRESS_SANITIZER
@@ -151,13 +134,10 @@ void HandleChromeDebugURL(const GURL& url) {
     LOG(ERROR) << "Intentionally crashing (with null pointer dereference)"
                << " because user navigated to " << url.spec();
     internal::CrashIntentionally();
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   } else if (url == kChromeUICrashRustURL) {
     // Cause a typical crash in Rust code, so we can test that call stack
     // collection and symbol mangling work across the language boundary.
     crash_in_rust();
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   } else if (url == kChromeUIDumpURL) {
     // This URL will only correctly create a crash dump file if content is
     // hosted in a process that has correctly called

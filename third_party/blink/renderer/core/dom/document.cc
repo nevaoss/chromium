@@ -359,10 +359,7 @@
 #include "third_party/blink/renderer/core/view_transition/view_transition_supplement.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_utils.h"
 #include "third_party/blink/renderer/core/xml/parser/xml_document_parser.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/core/xml/parser/xml_document_parser_rs.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/core/xml_names.h"
 #include "third_party/blink/renderer/core/xmlns_names.h"
 #include "third_party/blink/renderer/platform/bindings/dom_data_store.h"
@@ -3579,8 +3576,6 @@ DocumentParser* Document::CreateParser() {
                                                     parser_sync_policy_);
   }
 
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   data_->using_rust_xml_parser_ = false;
 
   // Use the Rust XML parser for situations non-XSLT situations: XMLHttpRequest,
@@ -3605,9 +3600,6 @@ DocumentParser* Document::CreateParser() {
   } else {
     return MakeGarbageCollected<XMLDocumentParser>(*this, View());
   }
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  return MakeGarbageCollected<XMLDocumentParser>(*this, View());
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 bool Document::IsFrameSet() const {

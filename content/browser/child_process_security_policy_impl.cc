@@ -28,10 +28,7 @@
 #include "base/strings/stringprintf.h"
 #include "build/build_config.h"
 #include "content/browser/bad_message.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "content/browser/child_process_security_policy_impl.rs.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "content/browser/isolated_origin_util.h"
 #include "content/browser/process_lock.h"
 #include "content/browser/renderer_host/render_process_host_impl.h"
@@ -81,8 +78,6 @@ namespace content {
 
 namespace {
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 // When enabled, replaces certain ChildProcessSecurityPolicy functionality with
 // an experimental Rust implementation. See https://crbug.com/482216433.
 BASE_FEATURE(kChildProcessSecurityPolicyRust,
@@ -175,7 +170,6 @@ T CheckAndReturnRustAndCppResults(const T& rust_result, const T& cpp_result) {
   }                                                                     \
   ReturnType cpp_result = cpp_function_call;                            \
   return CheckAndReturnRustAndCppResults(rust_result, cpp_result);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 // Used internally only. These bit positions have no relationship to any
 // underlying OS and can be changed to accommodate finer-grained permissions.
@@ -1221,14 +1215,9 @@ void ChildProcessSecurityPolicyImpl::SecurityStateMaps::PrepareToRemoveState(
 
 void ChildProcessSecurityPolicyImpl::RegisterWebSafeScheme(
     const std::string& scheme) {
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   RUST_CPP_VOID_FUNCTION(
       rust::child_process_security_policy::register_web_safe_scheme(scheme),
       RegisterWebSafeScheme_Cpp(scheme));
-#else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  RegisterWebSafeScheme_Cpp(scheme);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 void ChildProcessSecurityPolicyImpl::RegisterWebSafeScheme_Cpp(
@@ -1245,14 +1234,9 @@ void ChildProcessSecurityPolicyImpl::RegisterWebSafeScheme_Cpp(
 
 void ChildProcessSecurityPolicyImpl::RegisterWebSafeIsolatedScheme(
     const std::string& scheme) {
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   RUST_CPP_VOID_FUNCTION(rust::child_process_security_policy::
                              register_web_safe_request_only_scheme(scheme),
                          RegisterWebSafeIsolatedScheme_Cpp(scheme));
-#else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  RegisterWebSafeIsolatedScheme_Cpp(scheme);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 void ChildProcessSecurityPolicyImpl::RegisterWebSafeIsolatedScheme_Cpp(
@@ -1268,14 +1252,9 @@ void ChildProcessSecurityPolicyImpl::RegisterWebSafeIsolatedScheme_Cpp(
 
 bool ChildProcessSecurityPolicyImpl::IsWebSafeScheme(
     const std::string& scheme) {
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   RUST_CPP_RETURN_FUNCTION(
       rust::child_process_security_policy::is_web_safe_scheme(scheme),
       IsWebSafeScheme_Cpp(scheme), bool);
-#else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  return IsWebSafeScheme_Cpp(scheme);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 bool ChildProcessSecurityPolicyImpl::IsWebSafeScheme_Cpp(
@@ -1303,8 +1282,6 @@ bool ChildProcessSecurityPolicyImpl::IsPseudoScheme(const std::string& scheme) {
 
 void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting(
     const std::string& scheme) {
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   RUST_CPP_VOID_FUNCTION(
       rust::child_process_security_policy::clear_web_safe_scheme_for_testing(
           scheme),                                   // IN-TEST
@@ -1316,9 +1293,6 @@ void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting(
     base::AutoLock lock(schemes_lock_);
     pseudo_schemes_.erase(scheme);
   }
-#else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  ClearRegisteredSchemeForTesting_Cpp(scheme);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting_Cpp(
@@ -1736,15 +1710,10 @@ bool ChildProcessSecurityPolicyImpl::CanRedirectToURL(const GURL& url) {
 
 bool ChildProcessSecurityPolicyImpl::CanCommitSchemeInAnyProcess(
     const std::string& scheme) {
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   RUST_CPP_RETURN_FUNCTION(
       rust::child_process_security_policy::can_commit_scheme_in_any_process(
           scheme),
       CanCommitSchemeInAnyProcess_Cpp(scheme), bool);
-#else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  return CanCommitSchemeInAnyProcess_Cpp(scheme);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 bool ChildProcessSecurityPolicyImpl::CanCommitSchemeInAnyProcess_Cpp(
