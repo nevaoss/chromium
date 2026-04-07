@@ -4496,13 +4496,6 @@ hooks = [
     'action': ['git', '-C', 'src/third_party/pdfium', 'am',
               '../../neva/patches/0001-GCC-Explicitely-specify-span-template-type-in-PDFium.patch']
   },
-  # Apply 'V8: Rust: Disable Temporal API' patch
-  {
-    'name': 'V8-Rust-Disable-Temporal-API',
-    'pattern': '.',
-    'action': ['git', '-C', 'src/v8', 'am',
-              '../neva/patches/0012-V8-Disable-Temporal-API-from-build.patch']
-  },
   # Apply 'Remove-dl-linkage-from-rust-libc' patch
   {
     'name': 'Remove-dl-linkage-from-rust-libc',
