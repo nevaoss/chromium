@@ -21,8 +21,7 @@ declare_args() {
 
   # Enable JXL decoder in Blink for JPEG XL image decoding.
   # Downstream builds can set this to false to exclude JXL code.
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  enable_jxl_decoder = true && !disable_rust_for_neva
+  enable_jxl_decoder = true
 }
 
 declare_args() {

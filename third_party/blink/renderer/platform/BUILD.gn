@@ -9,8 +9,6 @@ import("//build/config/compiler/compiler.gni")
 import("//build/config/ui.gni")
 import("//build/nocompile.gni")
 import("//media/media_options.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//testing/test.gni")
 import("//third_party/blink/public/public_features.gni")
@@ -181,19 +179,16 @@ group("make_platform_generated") {
   ]
 }
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (!disable_rust_for_neva) {
-  rust_static_library("font_format_check") {
-    allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
-    crate_root = "fonts/opentype/format_check.rs"
-    sources = [ crate_root ]
-    cxx_bindings = [ crate_root ]
-    deps = [
-      "//third_party/rust/font_types/v0_11:lib",
-      "//third_party/rust/read_fonts/v0_37:lib",
-      "//third_party/rust/skrifa/v0_40:lib",
-    ]
-  }
+rust_static_library("font_format_check") {
+  allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
+  crate_root = "fonts/opentype/format_check.rs"
+  sources = [ crate_root ]
+  cxx_bindings = [ crate_root ]
+  deps = [
+    "//third_party/rust/font_types/v0_11:lib",
+    "//third_party/rust/read_fonts/v0_37:lib",
+    "//third_party/rust/skrifa/v0_40:lib",
+  ]
 }
 
 import("//build/config/pch.gni")
@@ -1865,11 +1860,6 @@ component("platform") {
     "//ui/gl:buildflags",
     "//ui/native_theme",
   ]
-
-  # TODO(neva_rust): Please remove Neva flag after Neva supports Rust.
-  if (disable_rust_for_neva) {
-    deps -= [ ":font_format_check" ]
-  }
 
   if (has_zstd_compression) {
     deps += [

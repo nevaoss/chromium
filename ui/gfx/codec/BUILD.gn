@@ -4,8 +4,6 @@
 
 import("//build/config/features.gni")
 import("//build/config/ui.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 
 component("codec") {
@@ -26,11 +24,6 @@ component("codec") {
     "//ui/gfx:gfx_skia",
     "//ui/gfx/geometry",
   ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps += [ "//third_party/zlib" ]
-  }
 
   public_deps = [ "//base" ]
 

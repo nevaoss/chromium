@@ -8,8 +8,6 @@ import("//chrome/services/speech/buildflags/buildflags.gni")
 import("//components/on_device_translation/buildflags/features.gni")
 import("//crypto/features.gni")
 import("//extensions/buildflags/buildflags.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 import("//pdf/features.gni")
 import("//printing/buildflags/buildflags.gni")
 import("//services/screen_ai/buildflags/features.gni")
@@ -151,15 +149,6 @@ static_library("utility") {
       "//services/proxy_resolver:lib",
       "//services/screen_ai",
     ]
-
-    # TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-    if (disable_rust_for_neva) {
-      deps -= [
-        "//components/user_data_importer/content",
-        "//components/user_data_importer/mojom",
-        "//components/user_data_importer/utility:bookmarks",
-      ]
-    }
   }
 
   if (enable_extensions) {
@@ -299,10 +288,5 @@ if (!is_android) {
       "//third_party/zlib/google:compression_utils",
       "//url",
     ]
-
-    # TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-    if (disable_rust_for_neva) {
-      deps -= [ "//components/user_data_importer/utility:safari_data_importer" ]
-    }
   }
 }
