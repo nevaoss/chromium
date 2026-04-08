@@ -732,7 +732,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                     new TabBookmarker(
                             this,
                             mBookmarkModelSupplier,
-                            mRootUiCoordinator::getBottomSheetController,
+                            mRootUiCoordinator.getBottomSheetControllerSupplier(),
                             this::getSnackbarManager,
                             new BookmarkManagerOpenerImpl(),
                             () ->
@@ -2766,6 +2766,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             if (currentTab.canGoBack()) {
                 currentTab.goBack();
                 RecordUserAction.record("MobileMenuBack");
+                TrackerFactory.getTrackerForProfile(currentTab.getProfile())
+                        .notifyEvent(EventConstants.THREE_DOT_MENU_BACK_BUTTON_CLICKED);
                 return true;
             }
             return false;
@@ -3107,13 +3109,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         // Derived classes that disable the toolbar should also have the Menu disabled without
         // having to explicitly disable the Menu as well.
         return getToolbarLayoutId() != ActivityUtils.NO_RESOURCE_ID;
-    }
-
-    /**
-     * @return Whether this activity supports the find in page feature.
-     */
-    public boolean supportsFindInPage() {
-        return true;
     }
 
     public RootUiCoordinator getRootUiCoordinatorForTesting() {

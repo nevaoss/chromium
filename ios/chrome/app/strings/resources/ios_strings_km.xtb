@@ -80,6 +80,7 @@
 <translation id="1285320974508926690">មិនបកប្រែគេហទំព័រនេះទៀតឡើយ</translation>
 <translation id="1287229685519872919">ទិន្នន័យ Google Workspace</translation>
 <translation id="1291506870746876680">ការអនុញ្ញាត <ph name="BEGIN_BOLD" />"<ph name="SITE_NAME" />"<ph name="END_BOLD" /> នឹងកំណត់ឡើងវិញទៅបិទ នៅពេលអ្នកចេញពីគេហទំព័រនេះ។</translation>
+<translation id="1293491796138057740">ព័ត៌មាន​របស់អ្នក​ត្រូវបាន​រក្សាទុក​ទៅ Google Wallet សម្រាប់ <ph name="USER_EMAIL" />។ អ្នកអាចប្រើវាលើផលិតផល Google ផ្សេងៗ ដើម្បីបំពេញទម្រង់បែបបទបានកាន់តែលឿន។</translation>
 <translation id="1293556467332435079">ឯកសារ</translation>
 <translation id="129553762522093515">បានបិទកន្លងទៅថ្មីៗ</translation>
 <translation id="1296581780163690620">ទាញយក​ឯកសារ​ឬ? (<ph name="FILE_SIZE" />)</translation>
@@ -107,6 +108,7 @@
 <translation id="1369286077209859800">បង្ហាញផ្ទាំងទាំងអស់នៅក្នុងក្រុមផ្ទាំង</translation>
 <translation id="136942498637440594">អ្នកអាច​ស្វែងរក​រូបភាព និង​អ្វីដែលអ្នក​មើលឃើញបាន។</translation>
 <translation id="1373120905936431262">បង្ហោះ​រូបភាព ដើម្បីច្នៃ​ដោយប្រើ Nano Banana</translation>
+<translation id="1377321085342047638">លេខកាត</translation>
 <translation id="1377508275003315939">ពាក្យ​សម្ងាត់</translation>
 <translation id="1381022135873211423">{count,plural, =1{អាសយដ្ឋានទី {position} នៃ {count}}other{អាសយដ្ឋានទី {position} នៃ {count}}}</translation>
 <translation id="1383876407941801731">ស្វែងរក</translation>
@@ -1099,7 +1101,6 @@
 <translation id="4944543191714094452">ស្វែងរក​ក្នុង​ទំព័រ…</translation>
 <translation id="4945756290001680296">ចូលប្រើការកំណត់​ពាក្យសម្ងាត់</translation>
 <translation id="4949302115427722371">គ្រប់គ្រងការកំណត់…</translation>
-<translation id="4952050521954075618">រូបថតពីរបុំ​កាមេរ៉ានឹងមិនធ្វើសមកាលកម្មនៅលើឧបករណ៍របស់អ្នកទេ</translation>
 <translation id="4958444002117714549">ពង្រីកបញ្ជី</translation>
 <translation id="496392417432935267">បានបើក​នៅកន្លែងផ្សេង</translation>
 <translation id="4970724460420203313">ការប្រើប្រាស់ Chrome តាមរយៈគណនី​របស់អ្នក​ដែលស្ថិត​ក្រោម​ការគ្រប់គ្រង ជួយអ្នក​ក្នុងការ​រក្សា​ការរុករក​ដែល​ពាក់ព័ន្ធនឹង​ស្ថាប័ន​របស់អ្នក (រួមទាំង​ផ្ទាំង ប្រវត្តិ និង​ពាក្យ​សម្ងាត់) ឱ្យនៅដាច់​ដោយឡែក​ពី​ការរុករក​ផ្សេងទៀត​របស់អ្នក</translation>
@@ -1265,6 +1266,7 @@ Handoff ត្រូវបើកដំណើរការនៅក្នុងផ
 <translation id="5556459405103347317">ដំណើរការឡើងវិញ</translation>
 <translation id="555749644339804659">កំពុងពិនិត្យពាក្យសម្ងាត់…</translation>
 <translation id="5559567453458728487">បំប្លែងឯកតារង្វាស់​ដែលបានរកឃើញនៅលើ​បណ្ដាញ</translation>
+<translation id="5560088892362098740">កាលបរិច្ឆេទ​ផុតកំណត់</translation>
 <translation id="556042886152191864">ប៊ូតុង</translation>
 <translation id="5565871407246142825">កាតឥណទាន</translation>
 <translation id="5566623128829375608">រក្សាទុក​ទៅក្នុង​ឧបករណ៍​របស់អ្នក។</translation>

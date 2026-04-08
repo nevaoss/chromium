@@ -80,6 +80,7 @@
 <translation id="1285320974508926690">ఈ సైట్‌ను ఎప్పటికీ అనువదించవద్దు</translation>
 <translation id="1287229685519872919">Google Workspace డేటా</translation>
 <translation id="1291506870746876680">మీరు ఈ సైట్‌ను వదిలి వెళ్లినప్పుడు <ph name="BEGIN_BOLD" />"<ph name="SITE_NAME" />"<ph name="END_BOLD" /> అనుమతులు ఆఫ్‌కు రీసెట్ చేయబడతాయి.</translation>
+<translation id="1293491796138057740">మీ సమాచారం <ph name="USER_EMAIL" /> కోసం, Google Walletలో సేవ్ అవుతుంది. ఫారమ్‌లను వేగంగా ఫిల్ చేయడానికి మీరు దీన్ని Google సర్వీస్‌లన్నింటిలో ఉపయోగించవచ్చు.</translation>
 <translation id="1293556467332435079">Files</translation>
 <translation id="129553762522093515">ఇటీవల మూసివేయబడినవి</translation>
 <translation id="1296581780163690620">ఫైల్‌ను డౌన్‌లోడ్ చేయాలా? (<ph name="FILE_SIZE" />)</translation>
@@ -107,6 +108,7 @@
 <translation id="1369286077209859800">ట్యాబ్ గ్రూప్‌లోని అన్ని ట్యాబ్‌లను చూడండి</translation>
 <translation id="136942498637440594">మీరు ఇమేజ్‌లను, మీరు చూసే వాటిని సెర్చ్ చేయవచ్చు.</translation>
 <translation id="1373120905936431262">Nano Bananaతో రీమిక్స్ చేయడానికి ఇమేజ్‌ను అప్‌లోడ్ చేయండి</translation>
+<translation id="1377321085342047638">కార్డ్ నంబర్</translation>
 <translation id="1377508275003315939">పాస్‌వర్డ్‌లు</translation>
 <translation id="1381022135873211423">{count,plural, =1{{count} అడ్రస్‌లో {position}వది}other{{count} అడ్రస్‌లలో {position}వది}}</translation>
 <translation id="1383876407941801731">సెర్చ్</translation>
@@ -1099,7 +1101,6 @@
 <translation id="4944543191714094452">పేజీలో కనుగొనండి…</translation>
 <translation id="4945756290001680296">పాస్‌వర్డ్ సెట్టింగ్‌లను యాక్సెస్ చేయండి</translation>
 <translation id="4949302115427722371">సెట్టింగ్‌లను మేనేజ్ చేయండి…</translation>
-<translation id="4952050521954075618">ఫోటోలు కెమెరా రోల్ నుండి, మీ డివైజ్‌లలోకి సింక్ అవ్వవు</translation>
 <translation id="4958444002117714549">లిస్ట్‌ను విస్తరించు</translation>
 <translation id="496392417432935267">మరొక విండోలో తెరవబడి ఉంది</translation>
 <translation id="4970724460420203313">మీ మేనేజ్ చేయబడే ఖాతాతో Chromeను ఉపయోగించడం వలన మీ సంస్థకు సంబంధించిన బ్రౌజింగ్‌ను (ట్యాబ్‌లు, హిస్టరీ, ఇంకా పాస్‌వర్డ్‌లతో సహా) మీ ఇతర బ్రౌజింగ్ నుండి వేరుగా ఉంచడంలో మీకు సహాయపడుతుంది</translation>
@@ -1265,6 +1266,7 @@
 <translation id="5556459405103347317">మళ్లీ లోడ్ చేయి</translation>
 <translation id="555749644339804659">పాస్‌వర్డ్‌ల చెకింగ్…</translation>
 <translation id="5559567453458728487">వెబ్‌లో కనుగొనబడిన మెజర్‌మెంట్ యూనిట్‌లను మార్చండి</translation>
+<translation id="5560088892362098740">గడువు ముగింపు తేదీ</translation>
 <translation id="556042886152191864">బటన్</translation>
 <translation id="5565871407246142825">క్రెడిట్ కార్డ్‌లు</translation>
 <translation id="5566623128829375608">మీ డివైజ్‌లో సేవ్ అవుతుంది.</translation>

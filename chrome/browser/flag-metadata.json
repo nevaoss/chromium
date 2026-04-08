@@ -665,7 +665,7 @@
   {
     "name": "audio-selection-improvement",
     "owners": [ "zhangwenyu@google.com", "cros-device-enablement@google.com" ],
-    "expiry_milestone": 148
+    "expiry_milestone": 151
   },
   {
     "name": "auto-doc-pip-permission-prompt-android",
@@ -756,8 +756,13 @@
     "name": "autofill-ai-wallet-private-passes",
     "owners": [ "brunobraga@google.com", "tchudakov@google.com" ],
     "expiry_milestone": 160
-  },
-  {
+    },
+    {
+    "name": "autofill-ai-wallet-private-passes-deep-link",
+    "owners": [ "brunobraga@google.com", "tchudakov@google.com" ],
+    "expiry_milestone": 160
+    },
+    {
     "name": "autofill-ai-wallet-vehicle-registration",
     "owners": [ "brunobraga@google.com", "tchudakov@google.com" ],
     "expiry_milestone": 160
@@ -860,22 +865,6 @@
     "name": "autofill-enable-card-info-runtime-retrieval",
     "owners": [ "hvs@google.com", "payments-autofill-team@google.com"],
     "expiry_milestone": 145
-  },
-  {
-    "name": "autofill-enable-cvc-storage-and-filling",
-    "owners": [
-      "koulvipul@google.com", "yiwenqian@google.com",
-      "payments-autofill-team@google.com"
-    ],
-    "expiry_milestone": 150
-  },
-  {
-    "name": "autofill-enable-cvc-storage-and-filling-enhancement",
-    "owners": [
-      "jialihuang@google.com", "yiwenqian@google.com",
-      "payments-autofill-team@google.com"
-    ],
-    "expiry_milestone": 150
   },
   {
     "name": "autofill-enable-cvc-storage-and-filling-standalone-form-enhancement",
@@ -1029,6 +1018,11 @@
     "expiry_milestone": 145
   },
   {
+    "name": "autofill-support-date-input",
+    "owners": [ "tmartino@chromium.org", "bling-transactions@google.com" ],
+    "expiry_milestone": 160
+  },
+  {
     "name": "autofill-throttle-doc-form-scans",
     "owners": ["vincb@google.com", "tmartino@google.com", "bling-transactions@google.com"],
     "expiry_milestone": 136
@@ -1173,7 +1167,7 @@
   {
     "name": "bookmark-pane-android",
     "owners": [ "wylieb@google.com", "clank-tab-dev@google.com" ],
-    "expiry_milestone": 145
+    "expiry_milestone": 160
   },
   {
     "name": "bookmark-tab-group-conversion",
@@ -2218,11 +2212,6 @@
     "expiry_milestone": 150
   },
   {
-    "name": "detached-tabs",
-    "owners": [ "emshack@chromium.org", "top-chrome-desktop-ui@google.com" ],
-    "expiry_milestone": 160
-  },
-  {
     "name": "device-posture",
     "owners": [ "alexis.menard@intel.com" ],
     "expiry_milestone": 140
@@ -3090,7 +3079,7 @@
   },
   {
     "name": "enable-desks-templates",
-    "owners": [ "dandersson@chromium.org", "janetmac@chromium.org", "richui@chromium.org", "yongshun@chromium.org" ],
+    "owners": [ "dandersson@chromium.org", "janetmac@chromium.org", "richui@chromium.org", "yongshun@google.com", "chromeos-wm@google.com" ],
     "expiry_milestone": 150
   },
   {
@@ -3896,11 +3885,6 @@
     "expiry_milestone": 160
   },
   {
-    "name": "enable-secure-payment-confirmation-ux-refresh",
-    "owners": ["darwinyang@chromium.org", "chrome-payments-eng@google.com"],
-    "expiry_milestone": 160
-  },
-  {
     "name": "enable-segmentation-internals-survey",
     "owners": ["ssid@chromium.org", "chrome-segmentation-team@google.com" ],
     "expiry_milestone": 132
@@ -4057,6 +4041,11 @@
       "dpad@google.com",
       "cros-device-enablement@google.com"
     ],
+    "expiry_milestone": 160
+  },
+  {
+    "name": "enable-toolbar-swipe-on-non-desktop-lff",
+    "owners": [ "massan@google.com" ],
     "expiry_milestone": 160
   },
   {
@@ -4302,17 +4291,6 @@
     "expiry_milestone": 150
   },
   {
-    "name": "enable-windows-gaming-input-data-fetcher",
-    "owners": ["gabrielbrito@microsoft.com", "qiaye@microsoft.com", "deviceapi-team@google.com" ],
-    // This flag selects the platform API used for Xbox-compatible gamepads on
-    // Windows. When disabled, the older XInput API is used which has better
-    // compatibility with unofficial controllers. The flag can be removed once
-    // Windows.Gaming.Input API supports all XInput-compatible gamepads, or
-    // when Chrome removes support for versions of Windows that ship with
-    // XInput. See https://crbug.com/1499321.
-    "expiry_milestone": -1
-  },
-  {
     "name": "enable-your-saved-info-settings-page",
     "owners": ["mikhe@google.com", "chrome-autofill@google.com" ],
     "expiry_milestone": 148
@@ -4322,6 +4300,11 @@
     "owners": [ "ccameron@chromium.org", "chrome-gpu@google.com" ],
     // This flag is commonly used when asking users to help gather debug info.
     "expiry_milestone": -1
+  },
+  {
+    "name": "enforce-incognito-isolation",
+    "owners": [ "shuyng@google.com", "clank-large-form-factors@google.com" ],
+    "expiry_milestone": 152
   },
   {
     "name": "enforce-management-disclaimer",
@@ -5294,14 +5277,6 @@
     "expiry_milestone": 152
   },
   {
-    "name": "glic-unified-fre-screen",
-    "owners": [
-      "michelleabreo@google.com",
-      "//chrome/browser/glic/OWNERS"
-    ],
-    "expiry_milestone": 150
-  },
-  {
     "name": "glic-z-order-changes",
     "owners": [
       "andreaxg@google.com",
@@ -5667,6 +5642,11 @@
   },
   {
     "name": "ios-cobalt",
+    "owners": [ "qpubert@google.com", "erahmaoui@google.com", "bling-squid-squad@google.com" ],
+    "expiry_milestone": 160
+  },
+  {
+    "name": "ios-cobalt-developer-mode",
     "owners": [ "qpubert@google.com", "erahmaoui@google.com", "bling-squid-squad@google.com" ],
     "expiry_milestone": 160
   },
@@ -7029,12 +7009,12 @@
   {
     "name": "omnibox-search-client-prefetch",
     "owners": ["nhiroki@chromium.org", "chrome-prerendering@google.com"],
-    "expiry_milestone": 145
+    "expiry_milestone": 155
   },
   {
     "name": "omnibox-search-prefetch",
     "owners": ["nhiroki@chromium.org", "chrome-prerendering@google.com"],
-    "expiry_milestone": 145
+    "expiry_milestone": 155
   },
   {
     "name": "omnibox-show-popup-on-mouse-released",
@@ -8110,7 +8090,7 @@
   {
     "name": "reset-audio-selection-improvement-pref",
     "owners": [ "zhangwenyu@google.com", "cros-device-enablement@google.com" ],
-    "expiry_milestone": 148
+    "expiry_milestone": 151
   },
   {
     "name": "reset-shortcut-customizations",
@@ -8308,6 +8288,11 @@
     "name": "search-settings-update",
     "owners": [ "amelies@google.com", "chrome-signin-desktop-team@google.com" ],
     "expiry_milestone": 158
+  },
+  {
+    "name": "searchbox-embedded-permission",
+    "owners": [ "jamesleung@google.com", "chrome-desktop-search@google.com"],
+    "expiry_milestone": 160
   },
   {
     "name": "send-tab-to-self-enhanced-handoff",
@@ -8616,6 +8601,11 @@
     "expiry_milestone": 150
   },
   {
+    "name": "split-view-link-open",
+    "owners": [ "helmut@januschka.com", "top-chrome-desktop-ui@google.com" ],
+    "expiry_milestone": 150
+  },
+  {
     "name": "startup-launch",
     "owners": [
       "top-chrome-desktop-ui@google.com",
@@ -8720,17 +8710,14 @@
     "expiry_milestone": 155
   },
   {
-    "name": "sync-autofill-valuable-metadata",
-    "owners": [ "brunobraga@google.com", "tchudakov@google.com" ],
+    "name": "sync-autofill-valuable",
+    "owners": [ "sugoi@google.com", "tmartino@google.com", "bling-transactions@google.com" ],
     "expiry_milestone": 160
   },
   {
-    "name": "sync-autofill-wallet-credential-data",
-    "owners": [
-      "koulvipul@google.com", "treib@chromium.org",
-      "yiwenqian@google.com", "payments-autofill-team@google.com"
-    ],
-    "expiry_milestone": 150
+    "name": "sync-autofill-valuable-metadata",
+    "owners": [ "brunobraga@google.com", "tchudakov@google.com" ],
+    "expiry_milestone": 160
   },
   {
     "name": "sync-gemini-threads",
@@ -9478,6 +9465,11 @@
     "name": "wake-on-wifi-allowed",
     "owners": [ "yenlinlai@chromium.org", "chromeos-wifi-team@google.com" ],
     "expiry_milestone": 95
+  },
+  {
+    "name": "wallet-api-private-passes-enabled",
+    "owners": [ "brunobraga@google.com", "chudakov@google.com" ],
+    "expiry_milestone": 160
   },
   {
     "name": "wallet-service-use-sandbox",

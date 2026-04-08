@@ -47,9 +47,16 @@ class TabStripComboButtonInteractiveUiTest
 
   auto CheckFlatEdge(ui::ElementIdentifier id,
                      TabStripFlatEdgeButton::FlatEdge expected) {
-    return CheckView(id, [expected](TabStripFlatEdgeButton* button) {
-      return button->flat_edge_for_testing() == expected;
-    });
+    using Observer =
+        views::test::PollingViewObserver<TabStripFlatEdgeButton::FlatEdge,
+                                         TabStripFlatEdgeButton>;
+    DEFINE_LOCAL_STATE_IDENTIFIER_VALUE(Observer, kFlatEdgeState);
+    return Steps(PollView(kFlatEdgeState, id,
+                          [](const TabStripFlatEdgeButton* button) {
+                            return button->flat_edge_for_testing();
+                          }),
+                 WaitForState(kFlatEdgeState, expected),
+                 StopObservingState(kFlatEdgeState));
   }
 
   auto SetOrientation(views::LayoutOrientation orientation) {
@@ -116,15 +123,8 @@ IN_PROC_BROWSER_TEST_F(TabStripComboButtonInteractiveUiTest,
       CheckUserAction("TabStripComboButton.ProjectsPanel.Pinned", 1));
 }
 
-// TODO(crbug.com/498634793): Flaky on Linux.
-#if BUILDFLAG(IS_LINUX)
-#define MAYBE_UpdateStylesOnOrientationChange \
-  DISABLED_UpdateStylesOnOrientationChange
-#else
-#define MAYBE_UpdateStylesOnOrientationChange UpdateStylesOnOrientationChange
-#endif
 IN_PROC_BROWSER_TEST_F(TabStripComboButtonInteractiveUiTest,
-                       MAYBE_UpdateStylesOnOrientationChange) {
+                       UpdateStylesOnOrientationChange) {
   using FlatEdge = TabStripFlatEdgeButton::FlatEdge;
   RunTestSequence(
       EnsureBothButtonsVisible(),

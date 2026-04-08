@@ -388,6 +388,7 @@ source_set("profiles_extra_parts_impl") {
     "//chrome/browser/consent_auditor",
     "//chrome/browser/content_index",
     "//chrome/browser/content_settings:content_settings_factory",
+    "//chrome/browser/contextual_cueing",
     "//chrome/browser/contextual_search",
     "//chrome/browser/contextual_tasks",
     "//chrome/browser/contextual_tasks:ui",
@@ -459,6 +460,7 @@ source_set("profiles_extra_parts_impl") {
     "//chrome/browser/serial",
     "//chrome/browser/sharing",
     "//chrome/browser/signin",
+    "//chrome/browser/speech",
     "//chrome/browser/storage",
     "//chrome/browser/storage_access_api",
     "//chrome/browser/subscription_eligibility",
@@ -522,6 +524,7 @@ source_set("profiles_extra_parts_impl") {
     ]
   } else {
     deps += [
+      "//chrome/browser/accessibility/phrase_segmentation",
       "//chrome/browser/accessibility/tree_fixing:service",
       "//chrome/browser/accessibility_annotator/content_annotator",
       "//chrome/browser/apps/app_service",

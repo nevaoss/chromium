@@ -11,6 +11,7 @@
 #include "base/time/time.h"
 #include "base/types/to_address.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/tabs/dragging/drag_session_data.h"
 #include "chrome/browser/ui/views/tabs/dragging/tab_drag_target.h"
 #include "chrome/browser/ui/views/tabs/tab_slot_view.h"
@@ -189,7 +190,8 @@ void VerticalDraggedTabsContainer::InitializeDragState(
           base::Unretained(this)));
 
   tab_strip_padding_ = GetLayoutConstant(
-      IsTabStripCollapsed()
+      GetTabStripCollapseState() !=
+              tabs::VerticalTabStripCollapseState::kExpanded
           ? LayoutConstant::kVerticalTabStripCollapsedPadding
           : LayoutConstant::kVerticalTabStripUncollapsedPadding);
 
@@ -494,7 +496,9 @@ VerticalDraggedTabsContainer::GetVisualDataForDraggedView(
 }
 
 bool VerticalDraggedTabsContainer::IsHorizontalDragSupported() const {
-  return drag_axes_ != DragAxes::kVerticalOnly;
+  return drag_axes_ != DragAxes::kVerticalOnly &&
+         GetTabStripCollapseState() ==
+             tabs::VerticalTabStripCollapseState::kExpanded;
 }
 
 bool VerticalDraggedTabsContainer::HasMinimumOverlap(
@@ -539,10 +543,14 @@ const VerticalTabDragHandler& VerticalDraggedTabsContainer::GetDragHandler()
   return collection_node_->GetController()->GetDragHandler();
 }
 
-bool VerticalDraggedTabsContainer::IsTabStripCollapsed() const {
-  CHECK(collection_node_);
-  const auto* controller = collection_node_->GetController();
-  return controller && controller->IsCollapsed();
+tabs::VerticalTabStripCollapseState
+VerticalDraggedTabsContainer::GetTabStripCollapseState() const {
+  const auto* controller =
+      collection_node_ ? collection_node_->GetController() : nullptr;
+  if (!controller) {
+    return tabs::VerticalTabStripCollapseState::kExpanded;
+  }
+  return controller->GetStateController()->GetCollapseState();
 }
 
 void VerticalDraggedTabsContainer::ResetCollectionNode() {

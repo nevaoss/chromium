@@ -115,7 +115,6 @@
 
 #if BUILDFLAG(ENABLE_HLS_DEMUXER)
 #include "media/filters/hls_data_source_provider_impl.h"
-#include "third_party/blink/renderer/platform/media/multi_buffer_data_source_factory.h"
 #endif  // BUILDFLAG(ENABLE_HLS_DEMUXER)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -1007,13 +1006,21 @@ void WebMediaPlayerImpl::DoLoad(LoadType load_type,
       &WebMediaPlayerImpl::MultiBufferDataSourceInitialized, weak_this_));
 }
 
+void WebMediaPlayerImpl::UnlockBackgroundPlayback() {
+  DVLOG(1) << __func__;
+  DCHECK(main_task_runner_->BelongsToCurrentThread());
+
+  // Authorized system resume unlocks background video playback.
+  allow_background_video_playback_ = true;
+}
+
 void WebMediaPlayerImpl::Play() {
   DVLOG(1) << __func__;
   DCHECK(main_task_runner_->BelongsToCurrentThread());
 
   // User initiated play unlocks background video playback.
   if (frame_->HasTransientUserActivation())
-    video_locked_when_paused_when_hidden_ = false;
+    allow_background_video_playback_ = true;
 
   // TODO(sandersd): Do we want to reset the idle timer here?
   delegate_->SetIdle(delegate_id_, false);
@@ -1064,7 +1071,7 @@ void WebMediaPlayerImpl::Pause(PauseReason pause_reason) {
 
   // User initiated pause locks background videos.
   if (frame_->HasTransientUserActivation())
-    video_locked_when_paused_when_hidden_ = true;
+    allow_background_video_playback_ = false;
 
   pipeline_controller_->SetPlaybackRate(0.0);
 
@@ -1734,7 +1741,7 @@ WebMediaPlayerImpl::GetHlsDataSourceProvider() {
   auto media_log = std::make_unique<media::NullMediaLog>();
   return base::SequenceBound<media::HlsDataSourceProviderImpl>(
       main_task_runner_,
-      std::make_unique<MultiBufferDataSourceFactory>(
+      std::make_unique<MultiBufferDataSource::Factory>(
           media_log.get(),
           blink::BindRepeating(&WebMediaPlayerImpl::GetUrlData,
                                weak_factory_.GetWeakPtr()),
@@ -2625,7 +2632,7 @@ void WebMediaPlayerImpl::OnPageHidden() {
 
   // Backgrounding a video requires a user gesture to resume playback.
   if (IsPageHidden()) {
-    video_locked_when_paused_when_hidden_ = true;
+    allow_background_video_playback_ = false;
   }
 
   if (watch_time_reporter_)
@@ -2662,7 +2669,7 @@ void WebMediaPlayerImpl::OnPageShown() {
   background_pause_timer_.Stop();
 
   // Foreground videos don't require user gesture to continue playback.
-  video_locked_when_paused_when_hidden_ = false;
+  allow_background_video_playback_ = true;
 
   was_suspended_for_frame_closed_or_frozen_ = false;
 
@@ -2722,7 +2729,7 @@ void WebMediaPlayerImpl::OnFrameShown() {
   background_pause_timer_.Stop();
 
   // Foreground videos don't require user gesture to continue playback.
-  video_locked_when_paused_when_hidden_ = false;
+  allow_background_video_playback_ = true;
 
   was_suspended_for_frame_closed_or_frozen_ = false;
 
@@ -2744,7 +2751,7 @@ void WebMediaPlayerImpl::OnFrameHidden() {
 
   // Backgrounding a video requires a user gesture to resume playback.
   if (IsFrameHidden()) {
-    video_locked_when_paused_when_hidden_ = true;
+    allow_background_video_playback_ = false;
   }
 
   if (watch_time_reporter_) {
@@ -3760,7 +3767,7 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
   // in the background.
   if (IsBackgroundSuspendEnabled(this)) {
     return !preserve_audio || (IsResumeBackgroundVideosEnabled() &&
-                               video_locked_when_paused_when_hidden_);
+                               !allow_background_video_playback_);
   }
 
   if (HasVideo() && IsVideoBeingCaptured())

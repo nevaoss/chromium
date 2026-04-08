@@ -5,7 +5,6 @@
 package org.chromium.chrome.browser.omnibox.status;
 
 import static org.chromium.build.NullUtil.assertNonNull;
-import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.animation.Animator;
 import android.app.Activity;
@@ -13,6 +12,7 @@ import android.content.res.Resources;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.view.View.OnClickListener;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.StringRes;
@@ -28,13 +28,11 @@ import org.chromium.chrome.browser.browser_controls.BrowserStateBrowserControlsV
 import org.chromium.chrome.browser.merchant_viewer.MerchantTrustSignalsCoordinator;
 import org.chromium.chrome.browser.omnibox.LocationBarDataProvider;
 import org.chromium.chrome.browser.omnibox.R;
-import org.chromium.chrome.browser.omnibox.UrlBarEditingTextStateProvider;
 import org.chromium.chrome.browser.page_info.ChromePageInfoHighlight;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.chrome.browser.user_education.UserEducationHelper;
-import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.omnibox.AutocompleteInput.SiteSearchData;
 import org.chromium.components.permissions.PermissionDialogController;
 import org.chromium.components.search_engines.TemplateUrlService;
@@ -50,7 +48,7 @@ import java.util.function.Supplier;
  * verbose status text.
  */
 @NullMarked
-public class StatusCoordinator implements View.OnClickListener, LocationBarDataProvider.Observer {
+public class StatusCoordinator implements LocationBarDataProvider.Observer {
 
     /** Interface for displaying page info popup on omnibox. */
     public interface PageInfoAction {
@@ -66,17 +64,13 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
     private final StatusMediator mMediator;
     private final PropertyModel mModel;
     private final boolean mIsTablet;
-    private final PageInfoAction mPageInfoAction;
     private LocationBarDataProvider mLocationBarDataProvider;
-    private boolean mUrlHasFocus;
-    private View.@Nullable OnClickListener mOnStatusIconNavigateBackButtonPress;
 
     /**
      * Creates a new {@link StatusCoordinator}.
      *
      * @param isTablet Whether the UI is shown on a tablet.
      * @param statusView The status view, used to supply and manipulate child views.
-     * @param urlBarEditingTextStateProvider The url coordinator.
      * @param templateUrlServiceSupplier A supplier for {@link TemplateUrlService} used to query the
      *     default search engine.
      * @param windowAndroid The {@link WindowAndroid} that is used by the owning {@link Activity}.
@@ -90,7 +84,6 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
     public StatusCoordinator(
             boolean isTablet,
             StatusView statusView,
-            UrlBarEditingTextStateProvider urlBarEditingTextStateProvider,
             LocationBarDataProvider locationBarDataProvider,
             OneshotSupplier<TemplateUrlService> templateUrlServiceSupplier,
             MonotonicObservableSupplier<Profile> profileSupplier,
@@ -103,7 +96,6 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
         mIsTablet = isTablet;
         mStatusView = statusView;
         mLocationBarDataProvider = locationBarDataProvider;
-        mPageInfoAction = pageInfoAction;
 
         mModel = new PropertyModel(StatusProperties.ALL_KEYS);
 
@@ -123,7 +115,6 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
                 new StatusMediator(
                         mModel,
                         mStatusView.getContext(),
-                        urlBarEditingTextStateProvider,
                         isTablet,
                         locationBarDataProvider,
                         PermissionDialogController.getInstance(),
@@ -131,7 +122,8 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
                         profileSupplier,
                         pageInfoIphController,
                         windowAndroid,
-                        merchantTrustSignalsCoordinatorSupplier);
+                        merchantTrustSignalsCoordinatorSupplier,
+                        pageInfoAction);
 
         Resources res = mStatusView.getResources();
         mMediator.setUrlMinWidth(
@@ -166,10 +158,6 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
     /** Signals that native initialization has completed. */
     public void onNativeInitialized() {
         mMediator.updateLocationBarIcon(StatusView.IconTransitionType.CROSSFADE);
-        mMediator.setStatusClickListener(
-                mOnStatusIconNavigateBackButtonPress != null
-                        ? mOnStatusIconNavigateBackButtonPress
-                        : this);
         mMediator.updateStatusVisibility();
         mMediator.setStoreIconController();
     }
@@ -179,16 +167,14 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
      */
     public void onUrlFocusChange(boolean urlHasFocus) {
         mMediator.setUrlHasFocus(urlHasFocus);
-        mUrlHasFocus = urlHasFocus;
         updateVerboseStatusVisibility();
     }
 
     /**
      * @param listener The custom listener that will execute when the status view is clicked.
      */
-    public void setOnStatusIconNavigateBackButtonPress(View.OnClickListener listener) {
-        mOnStatusIconNavigateBackButtonPress = listener;
-        mMediator.setStatusClickListener(listener != null ? listener : this);
+    public void setOnStatusIconNavigateBackButtonPress(OnClickListener listener) {
+        mMediator.setOnStatusIconNavigateBackButtonPress(listener);
     }
 
     /** Toggle whether the status icon should be hidden for secure origins. */
@@ -232,17 +218,9 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
     }
 
     // LocationBarDataProvider.Observer implementation.
-    // Using the default empty onPrimaryColorChanged.
-    // Using the default empty onTitleChanged.
-
     @Override
     public void onNtpStartedLoading() {
         mMediator.updateStatusVisibility();
-    }
-
-    @Override
-    public void onIncognitoStateChanged() {
-        mMediator.onIncognitoStateChanged();
     }
 
     @Override
@@ -253,7 +231,7 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
 
     @Override
     public void onUrlChanged(boolean isTabChanging) {
-        mMediator.onUrlChanged(isTabChanging);
+        mMediator.onUrlChanged();
     }
 
     @Override
@@ -316,21 +294,6 @@ public class StatusCoordinator implements View.OnClickListener, LocationBarDataP
                 mLocationBarDataProvider.getSecurityLevel(),
                 mLocationBarDataProvider.isOfflinePage(),
                 mLocationBarDataProvider.isPaintPreview());
-    }
-
-    @Override
-    public void onClick(View view) {
-        if (mUrlHasFocus) return;
-
-        if (!mLocationBarDataProvider.hasTab()
-                || assumeNonNull(mLocationBarDataProvider.getTab()).getWebContents() == null) {
-            return;
-        }
-
-        if (UrlUtilities.isNtpUrl(mLocationBarDataProvider.getCurrentGurl())) return;
-
-        mPageInfoAction.show(mLocationBarDataProvider.getTab(), mMediator.getPageInfoHighlight());
-        mMediator.onPageInfoOpened();
     }
 
     /**

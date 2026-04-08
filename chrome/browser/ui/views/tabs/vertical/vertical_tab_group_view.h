@@ -63,6 +63,7 @@ class VerticalTabGroupView
   void UpdateHoverCard(int update_type) const override;
   void HideHoverCard(int update_type) const override;
   bool IsFocusInTabStrip() override;
+  std::unique_ptr<ExpandOnHoverLock> AcquireExpandOnHoverLock() override;
   void ShiftGroupUp() override;
   void ShiftGroupDown() override;
 
@@ -103,7 +104,6 @@ class VerticalTabGroupView
   void OnDataChanged();
   void UpdateChildVisibilityForCollapseState(bool collapsed);
   bool GetIsShared();
-  bool IsTabStripCollapsed() const;
 
   raw_ptr<TabCollectionNode> collection_node_ = nullptr;
 

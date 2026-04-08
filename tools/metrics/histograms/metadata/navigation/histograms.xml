@@ -1688,7 +1688,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.MainFrameHasRTLDomain2" enum="Boolean"
-    expires_after="2026-04-07">
+    expires_after="2027-04-01">
   <owner>cthomp@chromium.org</owner>
   <owner>trusty-transport@chromium.org</owner>
   <summary>
@@ -1699,7 +1699,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.MainFrameHasRTLDomainDifferentPage2" enum="Boolean"
-    expires_after="2026-04-07">
+    expires_after="2027-04-01">
   <owner>cthomp@chromium.org</owner>
   <owner>trusty-transport@chromium.org</owner>
   <summary>
@@ -2191,6 +2191,22 @@ chromium-metrics-reviews@google.com.
     crrev.com/c/6238439/comment/fb22b7bc_c8962d32/.
   </summary>
   <token key="ProcessReuseOnCOOPType" variants="ProcessReuseOnCOOPType"/>
+</histogram>
+
+<histogram
+    name="Navigation.ProcessSwap.V8Optimizer.WouldSwapRendererInitiatedAboutBlankNavigation"
+    enum="BooleanOccurred" expires_after="2026-06-20">
+  <owner>tiffanysong@google.com</owner>
+  <owner>jacastro@chromium.org</owner>
+  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <summary>
+    Recorded on renderer-initiated navigations to about:blank when
+    ShouldSwapBrowsingInstancesForDifferentProcessFlags is called. Records
+    &quot;true&quot; when a process flag difference was detected. Records
+    &quot;false&quot; otherwise. Indicates whether a BrowsingInstance swap on a
+    renderer-initiated about:blank navigation would have occurred due to a
+    process flag difference.
+  </summary>
 </histogram>
 
 <histogram name="Navigation.QueueTime.{Method}.{FrameType}" units="ms"

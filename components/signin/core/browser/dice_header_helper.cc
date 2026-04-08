@@ -8,6 +8,7 @@
 
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
+#include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/escape.h"
@@ -16,6 +17,7 @@
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "components/signin/core/browser/signin_header_helper.h"
+#include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/tribool.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "google_apis/gaia/gaia_id.h"
@@ -48,9 +50,9 @@ const char kSignoutEmailAttrName[] = "email";
 const char kSignoutSessionIndexAttrName[] = "sessionindex";
 const char kSignoutObfuscatedIDAttrName[] = "obfuscatedid";
 
-// ConnectedAccounts metadata response parameters.
-constexpr char kConnectedAccountsInitiatorIdAttrName[] = "initiator_id";
-constexpr char kConnectedAccountsPrimaryIsConnectedAttrName[] =
+// LinkedAccounts metadata response parameters.
+constexpr char kLinkedAccountsInitiatorIdAttrName[] = "initiator_id";
+constexpr char kLinkedAccountsPrimaryIsConnectedAttrName[] =
     "primary_is_connected";
 
 // Determines the Dice action that has been passed from Gaia in the header.
@@ -119,7 +121,10 @@ DiceResponseParams::SigninInfo::SigninAccount BuildSigninAccount(
     } else if (key_name == kSigninEligibleForTokenBindingAttrName) {
       supported_algorithms_for_token_binding = value;
     } else if (key_name == kSigninMtlsTokenBindingAttrName) {
-      mtls_token_binding = true;
+      if (base::EqualsCaseInsensitiveASCII(value, "true") &&
+          base::FeatureList::IsEnabled(switches::kEnableMtlsTokenBinding)) {
+        mtls_token_binding = true;
+      }
     } else if (key_name == kSigninActionAttrName) {
       // Handled separately initially.
     } else {
@@ -273,14 +278,13 @@ DiceResponseParams DiceHeaderHelper::BuildDiceSignoutResponseParams(
 }
 
 // static
-DiceResponseParams::SigninInfo::ConnectedAccountsMetadata
-DiceHeaderHelper::ParseConnectedAccountsMetadata(
-    const std::string& header_value) {
+DiceResponseParams::SigninInfo::LinkedAccountsMetadata
+DiceHeaderHelper::ParseLinkedAccountsMetadata(const std::string& header_value) {
   if (header_value.empty()) {
-    return DiceResponseParams::SigninInfo::ConnectedAccountsMetadata();
+    return DiceResponseParams::SigninInfo::LinkedAccountsMetadata();
   }
 
-  DiceResponseParams::SigninInfo::ConnectedAccountsMetadata metadata;
+  DiceResponseParams::SigninInfo::LinkedAccountsMetadata metadata;
   for (std::string_view field :
        base::SplitStringPiece(header_value, ";", base::TRIM_WHITESPACE,
                               base::SPLIT_WANT_NONEMPTY)) {
@@ -295,9 +299,9 @@ DiceHeaderHelper::ParseConnectedAccountsMetadata(
         base::UnescapeRule::PATH_SEPARATORS |
             base::UnescapeRule::URL_SPECIAL_CHARS_EXCEPT_PATH_SEPARATORS);
 
-    if (key == kConnectedAccountsInitiatorIdAttrName) {
+    if (key == kLinkedAccountsInitiatorIdAttrName) {
       metadata.initiator_id = GaiaId(value);
-    } else if (key == kConnectedAccountsPrimaryIsConnectedAttrName) {
+    } else if (key == kLinkedAccountsPrimaryIsConnectedAttrName) {
       metadata.primary_is_connected =
           (value == "1") ? Tribool::kTrue : Tribool::kFalse;
     }

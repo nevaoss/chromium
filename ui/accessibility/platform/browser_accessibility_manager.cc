@@ -470,9 +470,13 @@ bool BrowserAccessibilityManager::OnAccessibilityEvents(
   // remove this exclusion.
   base::ScopedSafetyChecksExclusion scoped_unsafe;
 
-#if DCHECK_IS_ON()
+#if BUILDFLAG(IS_WIN)
+  CHECK(!in_on_accessibility_events_)
+      << "Should not re-enter OnAccessiblityEvents()";
+#endif  // BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || DCHECK_IS_ON()
   base::AutoReset<bool> auto_reset(&in_on_accessibility_events_, true);
-#endif  // DCHECK_IS_ON()
+#endif  // BUILDFLAG(IS_WIN) || DCHECK_IS_ON()
 
   // Update the cached device scale factor.
   if (!use_custom_device_scale_factor_for_testing_)
@@ -1928,6 +1932,13 @@ BrowserAccessibility* BrowserAccessibilityManager::ApproximateHitTest(
 }
 
 void BrowserAccessibilityManager::DetachFromParentManager() {
+  // Notify the parent to invalidate its hypertext cache before disconnecting,
+  // otherwise stale hyperlink IDs can cause type confusion after reassignment.
+  if (connected_to_parent_tree_node_) {
+    if (AXNode* parent = GetParentNodeFromParentTree()) {
+      UpdateAttributesOnParent(parent);
+    }
+  }
   connected_to_parent_tree_node_ = false;
 }
 

@@ -363,7 +363,6 @@ static_library("ui") {
     "//chrome/browser/sessions",
     "//chrome/browser/share",
     "//chrome/browser/signin",
-    "//chrome/browser/signin:identity_manager_provider",
     "//chrome/browser/signin:impl",
     "//chrome/browser/signin:signin_promo",
     "//chrome/browser/site_protection",
@@ -373,6 +372,7 @@ static_library("ui") {
     "//chrome/browser/task_manager:impl",
     "//chrome/browser/task_manager/common",
     "//chrome/browser/task_manager/common:impl",
+    "//chrome/browser/translate:impl",
     "//chrome/browser/trusted_vault",
     "//chrome/browser/ui/autofill",
     "//chrome/browser/ui/autofill:impl",
@@ -745,6 +745,11 @@ static_library("ui") {
   # TODO(crbug.com/41437292): Remove this circular dependency.
   # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
   # These are all-platform circular includes.
+  if (!is_android) {
+    # //chrome/browser/download:impl sources include headers from //chrome/browser/ui.
+    allow_circular_includes_from += [ "//chrome/browser/download:impl" ]
+  }
+
   allow_circular_includes_from += [
     "//chrome/browser/ui/autofill/payments",
     "//chrome/browser/ui/autofill/payments:impl",
@@ -814,6 +819,10 @@ static_library("ui") {
     # TODO(crbug.com/420905611): Remove this circular dependency when c/b/ui/browser_dialogs.h
     # gets componentized.
     "//chrome/browser/ui/extensions:impl",
+
+    # TODO(crbug.com/353332589): Remove this circular dependency when
+    # translate's impl no longer includes headers from //chrome/browser/ui.
+    "//chrome/browser/translate:impl",
   ]
 
   if (enable_vr && is_win) {
@@ -828,7 +837,10 @@ static_library("ui") {
   }
 
   if (!is_android) {
-    deps += [ "//chrome/browser/profile_resetter" ]
+    deps += [
+      "//chrome/browser/accessibility/phrase_segmentation",
+      "//chrome/browser/profile_resetter",
+    ]
   }
 
   if (enterprise_data_controls) {
@@ -1393,6 +1405,8 @@ static_library("ui") {
       "webui/side_panel/reading_list/reading_list_page_handler.h",
       "webui/side_panel/reading_list/reading_list_ui.cc",
       "webui/side_panel/reading_list/reading_list_ui.h",
+      "webui/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_ui.cc",
+      "webui/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_ui.h",
       "webui/suggest_internals/suggest_internals_handler.cc",
       "webui/suggest_internals/suggest_internals_handler.h",
       "webui/suggest_internals/suggest_internals_ui.cc",
@@ -1511,6 +1525,7 @@ static_library("ui") {
       "//chrome/browser/record_replay:impl",
       "//chrome/browser/send_tab_to_self",
       "//chrome/browser/signin:signin_promo",
+      "//chrome/browser/speech",
       "//chrome/browser/subscription_eligibility",
       "//chrome/browser/ui/browser_window:create_browser_window",
       "//chrome/browser/ui/contextual_search",
@@ -1559,6 +1574,7 @@ static_library("ui") {
       # No reason for this dependencies be out of alphabetical order.
       "//chrome/browser/content_extraction",
       "//chrome/browser/download",
+      "//chrome/browser/download:impl",
       "//chrome/browser/enterprise/watermark:watermark_view_lib",
       "//chrome/browser/feedback:feedback_enum",
       "//chrome/browser/headless:command_processor",
@@ -2398,7 +2414,6 @@ static_library("ui") {
       "//chrome/browser/policy:system_features_disable_list",
       "//chrome/browser/push_notification",
       "//chrome/browser/screen_ai/public:optical_character_recognizer",
-      "//chrome/browser/ui/ash/accessibility",
       "//chrome/browser/ui/ash/app_access",
       "//chrome/browser/ui/ash/arc",
       "//chrome/browser/ui/ash/arc/arc_app_dialog_view",
@@ -2854,7 +2869,6 @@ static_library("ui") {
       "//chrome/browser/chromeos/platform_keys",
       "//chrome/browser/chromeos/policy/dlp",
       "//chrome/browser/chromeos/tablet_mode",
-      "//chrome/browser/ui/ash/accessibility",
       "//chrome/browser/ui/ash/app_access",
       "//chrome/browser/ui/ash/arc",
       "//chrome/browser/ui/ash/arc/arc_app_dialog_view",
@@ -4325,8 +4339,6 @@ static_library("ui") {
       "views/payments/profile_list_view_controller.h",
       "views/payments/secure_payment_confirmation_dialog_view.cc",
       "views/payments/secure_payment_confirmation_dialog_view.h",
-      "views/payments/secure_payment_confirmation_no_creds_dialog_view.cc",
-      "views/payments/secure_payment_confirmation_no_creds_dialog_view.h",
       "views/payments/secure_payment_confirmation_views_util.cc",
       "views/payments/secure_payment_confirmation_views_util.h",
       "views/payments/shipping_address_editor_view_controller.cc",
@@ -4693,8 +4705,6 @@ static_library("ui") {
       "views/web_apps/web_app_diy_install_dialog.cc",
       "views/web_apps/web_app_icon_name_and_origin_view.cc",
       "views/web_apps/web_app_icon_name_and_origin_view.h",
-      "views/web_apps/web_app_identity_update_confirmation_view.cc",
-      "views/web_apps/web_app_identity_update_confirmation_view.h",
       "views/web_apps/web_app_install_dialog_delegate.cc",
       "views/web_apps/web_app_install_dialog_delegate.h",
       "views/web_apps/web_app_install_dialog_flow_view.cc",

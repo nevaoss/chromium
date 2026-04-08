@@ -63,7 +63,6 @@ import org.chromium.build.annotations.MonotonicNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.bookmarks.BookmarkAllTabsHandler;
 import org.chromium.chrome.browser.collaboration.CollaborationServiceFactory;
 import org.chromium.chrome.browser.compositor.LayerTitleCache;
 import org.chromium.chrome.browser.compositor.layouts.LayoutManagerHost;
@@ -73,6 +72,7 @@ import org.chromium.chrome.browser.compositor.layouts.LayoutUpdateHost;
 import org.chromium.chrome.browser.compositor.layouts.components.CompositorButton;
 import org.chromium.chrome.browser.compositor.layouts.components.CompositorButton.ButtonType;
 import org.chromium.chrome.browser.compositor.layouts.components.TintedCompositorButton;
+import org.chromium.chrome.browser.compositor.layouts.components.TintedCompositorTextButton;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutGroupTitle.StripLayoutGroupTitleDelegate;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutView.StripLayoutViewOnClickHandler;
 import org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutView.StripLayoutViewOnKeyboardFocusHandler;
@@ -93,9 +93,6 @@ import org.chromium.chrome.browser.layouts.animation.CompositorAnimationHandler;
 import org.chromium.chrome.browser.layouts.animation.CompositorAnimator;
 import org.chromium.chrome.browser.layouts.components.VirtualView;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
-import org.chromium.chrome.browser.multiwindow.UiUtils.NameWindowDialogSource;
-import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.MediaState;
@@ -114,7 +111,6 @@ import org.chromium.chrome.browser.tabmodel.TabGroupModelFilterObserver;
 import org.chromium.chrome.browser.tabmodel.TabGroupTitleUtils;
 import org.chromium.chrome.browser.tabmodel.TabGroupUtils.TabGroupCreationCallback;
 import org.chromium.chrome.browser.tabmodel.TabModel;
-import org.chromium.chrome.browser.tabmodel.TabModel.RecentlyClosedEntryType;
 import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.tabmodel.TabRemover;
@@ -530,7 +526,7 @@ public class StripLayoutHelper
     private final Set<StripLayoutGroupTitle> mClosingGroupTitles = new HashSet<>();
 
     private final TintedCompositorButton mNewTabButton;
-    private final @Nullable TintedCompositorButton mGlicButton;
+    private final @Nullable TintedCompositorTextButton mGlicButton;
     private final @Nullable CompositorButton mModelSelectorButton;
 
     // Layout Constants
@@ -730,7 +726,7 @@ public class StripLayoutHelper
             LayoutUpdateHost updateHost,
             LayoutRenderHost renderHost,
             boolean incognito,
-            @Nullable TintedCompositorButton glicButton,
+            @Nullable TintedCompositorTextButton glicButton,
             @Nullable CompositorButton modelSelectorButton,
             @Nullable TabStripDragHandler tabStripDragHandler,
             View toolbarContainerView,
@@ -3206,70 +3202,12 @@ public class StripLayoutHelper
     private void showTabStripContextMenu(float xDp, float yDp) {
         if (mTabStripContextMenuCoordinator == null) {
             mTabStripContextMenuCoordinator =
-                    new TabStripContextMenuCoordinator(
-                            mContext,
-                            new TabStripContextMenuDelegate() {
-                                @Override
-                                public void onNewTab() {
-                                    handleNewTabClick(NewTabSource.EMPTY_SPACE_CONTEXT_MENU);
-                                }
-
-                                @Override
-                                public @RecentlyClosedEntryType int getRecentlyClosedEntryType() {
-                                    return (mModel != null)
-                                            ? mModel.getMostRecentlyClosedEntryType()
-                                            : RecentlyClosedEntryType.NONE;
-                                }
-
-                                @Override
-                                public void onReopenClosedEntry() {
-                                    RecordUserAction.record(
-                                            "Android.TabStripMenu.ReopenClosedEntry");
-                                    if (mModel != null) {
-                                        RecordHistogram.recordBooleanHistogram(
-                                                "Android.TabStripMenu.ReopenClosedEntry.Result",
-                                                true);
-                                        mModel.openMostRecentlyClosedEntry();
-                                    } else {
-                                        RecordHistogram.recordBooleanHistogram(
-                                                "Android.TabStripMenu.ReopenClosedEntry.Result",
-                                                false);
-                                    }
-                                }
-
-                                @Override
-                                public int getTabCount() {
-                                    return mModel != null ? mModel.getCount() : 0;
-                                }
-
-                                @Override
-                                public void onBookmarkAllTabs() {
-                                    BookmarkAllTabsHandler.bookmarkAllTabs(
-                                            mModel, mWindowAndroid, mSnackbarManager);
-                                }
-
-                                @Override
-                                public void onNameWindow() {
-                                    mMultiInstanceManager.showNameWindowDialog(
-                                            NameWindowDialogSource.TAB_STRIP);
-                                }
-
-                                @Override
-                                public void onPinGlic() {
-                                    RecordUserAction.record("Android.TabStripMenu.PinGlic");
-                                    ChromeSharedPreferences.getInstance()
-                                            .writeBoolean(
-                                                    ChromePreferenceKeys.GLIC_BUTTON_PINNED, true);
-                                }
-
-                                @Override
-                                public void onUnpinGlic() {
-                                    RecordUserAction.record("Android.TabStripMenu.UnpinGlic");
-                                    ChromeSharedPreferences.getInstance()
-                                            .writeBoolean(
-                                                    ChromePreferenceKeys.GLIC_BUTTON_PINNED, false);
-                                }
-                            });
+                    TabStripContextMenuCoordinator.createContextMenuCoordinator(
+                            mModel,
+                            mMultiInstanceManager,
+                            mWindowAndroid,
+                            mSnackbarManager,
+                            () -> handleNewTabClick(NewTabSource.EMPTY_SPACE_CONTEXT_MENU));
         }
 
         // Determine the anchor view rect to position the menu.

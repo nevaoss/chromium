@@ -427,7 +427,7 @@ class CONTENT_EXPORT NavigationRequest
   void SetRequestHeader(std::string_view header_name,
                         std::string_view header_value) override;
   void SetLCPPNavigationHint(
-      const blink::mojom::LCPCriticalPathPredictorNavigationTimeHint& hint)
+      blink::mojom::LCPCriticalPathPredictorNavigationTimeHintPtr hint)
       override;
   const blink::mojom::LCPCriticalPathPredictorNavigationTimeHintPtr&
   GetLCPPNavigationHint() override;
@@ -1381,7 +1381,7 @@ class CONTENT_EXPORT NavigationRequest
   // URL's process (kDestinationProcess), an isolated process
   // (kIsolatedProcess), or is a post-commit error page that does not have any
   // specific process requirements and goes through the "normal navigation"
-  // path. Returns kNotErrorPage if the navigation is not anerror page
+  // path. Returns kNotErrorPage if the navigation is not an error page
   // navigation.
   ErrorPageProcess ComputeErrorPageProcess();
 
@@ -1809,7 +1809,7 @@ class CONTENT_EXPORT NavigationRequest
       bool from_begin_navigation,
       bool is_synchronous_renderer_commit,
       const FrameNavigationEntry* frame_navigation_entry,
-      NavigationEntryImpl* navitation_entry,
+      NavigationEntryImpl* navigation_entry,
       std::unique_ptr<NavigationUIData> navigation_ui_data,
       scoped_refptr<network::SharedURLLoaderFactory> blob_url_loader_factory,
       mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client,
@@ -2385,7 +2385,7 @@ class CONTENT_EXPORT NavigationRequest
   // response.
   void ComputePoliciesToCommitForError();
 
-  // CHECK that tranistioning from the current state to |state| valid. This
+  // CHECK that transitioning from the current state to |state| valid. This
   // does nothing in non-debug builds.
   void CheckStateTransition(NavigationState state) const;
 
@@ -3425,7 +3425,7 @@ class CONTENT_EXPORT NavigationRequest
   // will observe all device bound session changes starting from the
   // navigation/redirection, and it will be moved to the
   // `RenderFrameHostImpl` when the navigation is committed and
-  // continues observing until the destructoin of the document.
+  // continues observing until the destruction of the document.
   // See `RenderFrameHostImpl::DeviceBoundSessionObserver`.
   std::unique_ptr<RenderFrameHostImpl::DeviceBoundSessionObserver>
       device_bound_session_observer_;
@@ -3582,6 +3582,15 @@ class CONTENT_EXPORT NavigationRequest
   bool remove_extra_headers_on_cross_origin_redirect_ = false;
   mojo::PendingReceiver<blink::mojom::NavigationResumeDeferredCommitListener>
       resume_after_deferred_commit_listener_;
+
+  // If true, the destructor of the NavigationRequest is ongoing. The flag is
+  // added to avoid resuming the NavigationRequest in the destructor while
+  // calling DidFinishNavigation() back.
+  // TODO(crbug.com/496792860): Ideally we can destruct the navigation throttles
+  // first before issuing the DidFinishNavigation callback. However
+  // ContentSubresourceFilterThrottleManager currently relies on the throttle to
+  // be alive during the callback to work.
+  bool is_destructing_ = false;
 
   base::WeakPtrFactory<NavigationRequest> weak_factory_{this};
 };

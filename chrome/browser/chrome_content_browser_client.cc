@@ -415,7 +415,6 @@
 #include "third_party/blink/public/mojom/navigation/navigation_params.mojom.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom.h"
 #include "third_party/blink/public/public_buildflags.h"
-#include "third_party/widevine/cdm/buildflags.h"
 #include "ui/base/clipboard/clipboard_format_type.h"
 #include "ui/base/clipboard/clipboard_metadata.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -3698,25 +3697,6 @@ bool ChromeContentBrowserClient::IsSharedStorageSelectURLAllowed(
   return privacy_sandbox_settings->IsSharedStorageSelectURLAllowed(
       top_frame_origin, accessing_origin, out_debug_message,
       out_block_is_site_setting_specific);
-}
-
-bool ChromeContentBrowserClient::IsFencedStorageReadAllowed(
-    content::BrowserContext* browser_context,
-    content::RenderFrameHost* rfh,
-    const url::Origin& top_frame_origin,
-    const url::Origin& accessing_origin) {
-  Profile* profile = Profile::FromBrowserContext(browser_context);
-  auto* privacy_sandbox_settings =
-      PrivacySandboxSettingsFactory::GetForProfile(profile);
-  DCHECK(privacy_sandbox_settings);
-  bool allowed = privacy_sandbox_settings->IsFencedStorageReadAllowed(
-      top_frame_origin, accessing_origin, rfh);
-  if (rfh) {
-    content_settings::PageSpecificContentSettings::BrowsingDataAccessed(
-        rfh, blink::StorageKey::CreateFirstParty(accessing_origin),
-        BrowsingDataModel::StorageType::kSharedStorage, !allowed);
-  }
-  return allowed;
 }
 
 bool ChromeContentBrowserClient::IsPrivateAggregationAllowed(

@@ -243,7 +243,7 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   _locationBarModel = std::make_unique<LocationBarModelImpl>(
       _locationBarModelDelegate.get(), kMaxURLDisplayChars);
 
-  std::unique_ptr<OmniboxClient> omniboxClient;
+  std::unique_ptr<OmniboxClientIOS> omniboxClient;
   if (_entrypoint == ComposeboxEntrypoint::kCobrowse) {
     omniboxClient = std::make_unique<ComposeboxCobrowseOmniboxClient>(
         self.browser,
@@ -571,6 +571,8 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
     return;
   }
 
+  [_metricsRecorder recordImagesAttached:results.count];
+
   for (PHPickerResult* result in results) {
     [_mediator processImageItemProvider:result.itemProvider
                                 assetID:result.assetIdentifier];
@@ -585,6 +587,8 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
     return;
   }
 
+  [_metricsRecorder recordFilesAttached:urls.count];
+
   NSURL* selectedURL = urls.firstObject;
   if (!lens::features::IsLensSendRawFileMediaTypesEnabled()) {
     [_mediator processFileURL:net::GURLWithNSURL(selectedURL) isPDF:YES];
@@ -594,23 +598,40 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   NSError* error = nil;
   UTType* contentType = nil;
 
+  // Accessing the resource should be requested before using and relinquished
+  // when no longer needed.
+  // Revoking the access should be done once the resource is no longer needed,
+  // as requesting access again on a relinquished resource might fail.
+  BOOL accessing = [selectedURL startAccessingSecurityScopedResource];
   [selectedURL getResourceValue:&contentType
                          forKey:NSURLContentTypeKey
                           error:&error];
+
+  auto stopAccessScopedResourcesIfNeeded = ^{
+    if (accessing) {
+      [selectedURL stopAccessingSecurityScopedResource];
+    }
+  };
+
   if (contentType && !error) {
     if ([contentType conformsToType:UTTypeImage]) {
       NSItemProvider* provider =
           [[NSItemProvider alloc] initWithContentsOfURL:selectedURL];
       [_mediator processImageItemProvider:provider
-                                  assetID:contentType.identifier];
+                                  assetID:selectedURL.absoluteString
+                               completion:stopAccessScopedResourcesIfNeeded];
       return;
     } else if ([contentType conformsToType:UTTypePDF]) {
-      [_mediator processFileURL:net::GURLWithNSURL(selectedURL) isPDF:YES];
+      [_mediator processFileURL:net::GURLWithNSURL(selectedURL)
+                          isPDF:YES
+                     completion:stopAccessScopedResourcesIfNeeded];
       return;
     }
   }
 
-  [_mediator processFileURL:net::GURLWithNSURL(selectedURL) isPDF:NO];
+  [_mediator processFileURL:net::GURLWithNSURL(selectedURL)
+                      isPDF:NO
+                 completion:stopAccessScopedResourcesIfNeeded];
 }
 
 #pragma mark - UIImagePickerControllerDelegate

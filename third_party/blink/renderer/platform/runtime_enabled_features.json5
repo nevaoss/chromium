@@ -347,6 +347,11 @@
       name: "AIPageContentConvertNodeTextToUtf8",
       status: "stable"
     },
+    // When enabled, redact elements with --webkit-text-security.
+    {
+      name: "AIPageContentElementCSSRedaction",
+      status: "stable",
+    },
     {
       name: "AIPageContentIncludeSVGSubtree",
       status: "stable"
@@ -409,6 +414,9 @@
       // Enabled in extension contexts, and for API enhancement experiments.
       name: "AIPromptAPILegacyParams",
       public: true,
+      origin_trial_feature_name: "AIPromptAPIParams",
+      origin_trial_os: ["win", "mac", "linux", "chromeos"],
+      origin_trial_allows_third_party: true,
       implied_by: ["AIPromptAPIParams"],
     },
     {
@@ -437,6 +445,9 @@
         "ChromeOS": "experimental",
         "default": "",
       },
+      origin_trial_feature_name: "AIPromptAPIParams",
+      origin_trial_os: ["win", "mac", "linux", "chromeos"],
+      origin_trial_allows_third_party: true,
     },
     {
       // Gates access to the responseConstraint enhancement for "AIPromptAPI".
@@ -1165,10 +1176,6 @@
       status: "stable",
     },
     {
-      name: "CollectWidthAndHeightAsPresentationAttributesForUse",
-      status: "stable",
-    },
-    {
       name: "CollectWidthAndHeightAsStylesForNestedSvg",
       status: "stable",
     },
@@ -1373,6 +1380,12 @@
       // Cookie Store API.
       name: "CookieStoreAPIMaxAge",
       public: true,
+      status: "stable",
+    },
+    {
+      // Feature flag for stripping \t and space from Cookie names and values.
+      // https://crbug.com/437345480
+      name: "CookieStoreAPIWhitespaceStripping",
       status: "stable",
     },
     {
@@ -1751,7 +1764,7 @@
     },
     {
       name: "CSSPseudoElementInterface",
-      status: "stable",
+      status: "experimental",
     },
     {
       name: "CSSPseudoElementViewTransitions",
@@ -1885,6 +1898,13 @@
       base_feature: "CssSelectorFragmentAnchor",
     },
     {
+      // rect() and xywh() basic shapes for shape-outside.
+      // https://drafts.csswg.org/css-shapes-1/#basic-shape-functions
+      // https://drafts.csswg.org/css-shapes/#shape-outside-property
+      name: "CSSShapeOutsideRectAndXywhSupport",
+      status: "experimental",
+    },
+    {
       // https://drafts.csswg.org/cssom-1/#dom-cssstylesheetinit-baseurl
       name: "CSSStyleSheetInitBaseURL",
       status: "experimental",
@@ -1994,6 +2014,11 @@
       // https://chromestatus.com/feature/4850737974345728
       name: "CSSViewTransitionAutoName",
       status: "experimental",
+    },
+    {
+      // Shipping in M148 (or backported earlier), can be removed in M150.
+      name: "CustomElementsDisableFormattingFixups",
+      status: "stable",
     },
     {
       // appearance:base for the <datalist> element when it is invoked as a
@@ -2424,7 +2449,7 @@
     {
       // `event.pseudoTarget` property to represent pseudo-elements in events. Returns `CSSPseudoElement` or null.
       name: "EventPseudoTargetProperty",
-      status: "stable",
+      status: "experimental",
       depends_on: ["CSSPseudoElementInterface"],
     },
     {
@@ -2747,6 +2772,12 @@
     },
     {
       name: "FirstLineTextMetrics",
+      status: "stable",
+    },
+    // When enabled, HTMLFormControlElement::IsReadOnly() returns false for
+    // types that don't support readonly.
+    {
+      name: "FixHTMLFormControlElementIsReadOnly",
       status: "stable",
     },
     {
@@ -3416,6 +3447,13 @@
       status: "stable",
     },
     {
+      // Adds `encryptionScheme` field based on
+      // https://www.w3.org/TR/media-capabilities/#keysystemtrackconfiguration.
+      // See https://crbug.com/498284510 for more details.
+      name: "KeySystemTrackConfigurationEncryptionScheme",
+      status: "experimental",
+    },
+    {
       // Checks interactive content using EventPath captured at
       // dispatch start instead of current DOM state. This was
       // added in M145 and can be removed after M147.
@@ -3473,7 +3511,7 @@
       // allowing lazy loading similar to images.
       // https://crbug.com/469111735
       name: "LazyLoadVideoAndAudio",
-      status: "experimental",
+      status: "stable",
     },
     {
       // Allow triggering the word suggestion from left click.
@@ -3989,6 +4027,7 @@
       // for encapsulated content within <textarea> and <input> elements.
       // crbug.com/421421332
       name: "OpaqueRange",
+      origin_trial_feature_name: "OpaqueRange",
       status: "experimental",
     },
     {
@@ -4500,7 +4539,7 @@
       // Support hit-testing for ::after, ::before, ::marker
       // (e.g. for CSSPseudoElement).
       name: "PseudoElementsHitTestable",
-      status: "stable",
+      status: "experimental",
     },
     {
       // Support :hover on ::after, ::before, ::marker.
@@ -5013,18 +5052,6 @@
       base_feature: "none",
     },
     {
-      // Implements new UX for SPC including new output states, payment
-      // instrument details and payment entities logos.
-      name: "SecurePaymentConfirmationUxRefresh",
-      status: {
-        "Android": "stable",
-        "Mac": "stable",
-        "Win": "stable",
-        "iOS": "",
-        "default": "test",
-      },
-    },
-    {
       // SelectAudioOutput API
       // https://chromestatus.com/feature/5164535504437248
       name: "SelectAudioOutput",
@@ -5064,6 +5091,15 @@
     },
     {
       name: "SelectionCollapsedDirectionNone",
+      status: "stable",
+    },
+    {
+      // Fixes selection focus affinity at soft wrap boundaries. When the focus
+      // of a range selection is at a soft wrap boundary (a DOM offset shared by
+      // two visual lines), this ensures the correct affinity is used based on
+      // the selection direction.
+      // See https://crbug.com/40980028
+      name: "SelectionFocusAffinity",
       status: "stable",
     },
     {
@@ -5401,7 +5437,7 @@
       // API for accessing the Custom Dictionary for spell checking purpose.
       // https://chromestatus.com/feature/6185007701557248
       name: "SpellCheckCustomDictionaryAPI",
-      status: "test",
+      status: "experimental",
       public: true,
     },
     {
@@ -6674,10 +6710,6 @@
     {
       name: "WidthAndHeightAsPresentationAttributesOnNestedSvg",
       // Disabled due to web compat issues, see https://crbug.com/449170647.
-      status: "experimental",
-    },
-    {
-      name: "WidthAndHeightStylePropertiesOnUseAndSymbol",
       status: "experimental",
     },
     {

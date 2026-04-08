@@ -39,6 +39,12 @@ std::optional<AtMemoryDataType> ToAtMemoryDataType(
     INTENT_TO_FIELD_TYPE(kEmail, EMAIL_ADDRESS);
     INTENT_TO_FIELD_TYPE(kCompanyName, COMPANY_NAME);
     INTENT_TO_FIELD_TYPE(kIban, IBAN_VALUE);
+    INTENT_TO_FIELD_TYPE(kCreditCardNumber, CREDIT_CARD_NUMBER);
+    INTENT_TO_FIELD_TYPE(kCreditCardExpirationDate,
+                         CREDIT_CARD_EXP_DATE_4_DIGIT_YEAR);
+    INTENT_TO_FIELD_TYPE(kCreditCardSecurityCode,
+                         CREDIT_CARD_VERIFICATION_CODE);
+    INTENT_TO_FIELD_TYPE(kCreditCardNameOnCard, CREDIT_CARD_NAME_FULL);
     INTENT_TO_ENTITY_TYPE(kVehicle, kVehicle);
     INTENT_TO_ATTRIBUTE_TYPE(kVehicleMake);
     INTENT_TO_ATTRIBUTE_TYPE(kVehicleModel);
@@ -87,7 +93,6 @@ std::optional<AtMemoryDataType> ToAtMemoryDataType(
     INTENT_TO_ATTRIBUTE_TYPE(kOrderMerchantName);
     INTENT_TO_ATTRIBUTE_TYPE(kOrderMerchantDomain);
     INTENT_TO_ATTRIBUTE_TYPE(kOrderProductNames);
-    INTENT_TO_ATTRIBUTE_TYPE(kOrderGrandTotal);
     INTENT_TO_ENTITY_TYPE(kShipmentFull, kShipment);
     INTENT_TO_ATTRIBUTE_TYPE(kShipmentTrackingNumber);
     INTENT_TO_ATTRIBUTE_TYPE_WITH_NAME(kShipmentAssociatedOrderId,
@@ -97,13 +102,16 @@ std::optional<AtMemoryDataType> ToAtMemoryDataType(
     INTENT_TO_ATTRIBUTE_TYPE(kShipmentEstimatedDeliveryDate);
     case accessibility_annotator::QueryIntentType::kUnknown:
     case accessibility_annotator::QueryIntentType::kIbanNickname:
+    case accessibility_annotator::QueryIntentType::kCreditCardFull:
+    case accessibility_annotator::QueryIntentType::kCreditCardNickname:
     case accessibility_annotator::QueryIntentType::
         kFlightReservationArrivalDate:
-    // TODO(crbug.com/484094746): Map `delivery_zip_code` to
-    // `kShipmentDeliveryZipCode`. Since `delivery_zip_code` is a
+    case accessibility_annotator::QueryIntentType::kOrderGrandTotal:
+    // TODO(crbug.com/484094746): Map `delivery_address` to
+    // `kShipmentDeliveryZipCode`. Since `delivery_address` is a
     // `std::string`, it's unclear how we can process this (here and in
     // general).
-    case accessibility_annotator::QueryIntentType::kShipmentDeliveryZipCode:
+    case accessibility_annotator::QueryIntentType::kShipmentDeliveryAddress:
       return std::nullopt;
   }
 

@@ -273,43 +273,43 @@ typedef void (*SetFontFamilyWrapper)(blink::WebSettings*,
 void SetStandardFontFamilyWrapper(WebSettings* settings,
                                   const std::u16string& font,
                                   UScriptCode script) {
-  settings->SetStandardFontFamily(WebString::FromUTF16(font), script);
+  settings->SetStandardFontFamily(WebString::FromUtf16(font), script);
 }
 
 void SetFixedFontFamilyWrapper(WebSettings* settings,
                                const std::u16string& font,
                                UScriptCode script) {
-  settings->SetFixedFontFamily(WebString::FromUTF16(font), script);
+  settings->SetFixedFontFamily(WebString::FromUtf16(font), script);
 }
 
 void SetSerifFontFamilyWrapper(WebSettings* settings,
                                const std::u16string& font,
                                UScriptCode script) {
-  settings->SetSerifFontFamily(WebString::FromUTF16(font), script);
+  settings->SetSerifFontFamily(WebString::FromUtf16(font), script);
 }
 
 void SetSansSerifFontFamilyWrapper(WebSettings* settings,
                                    const std::u16string& font,
                                    UScriptCode script) {
-  settings->SetSansSerifFontFamily(WebString::FromUTF16(font), script);
+  settings->SetSansSerifFontFamily(WebString::FromUtf16(font), script);
 }
 
 void SetCursiveFontFamilyWrapper(WebSettings* settings,
                                  const std::u16string& font,
                                  UScriptCode script) {
-  settings->SetCursiveFontFamily(WebString::FromUTF16(font), script);
+  settings->SetCursiveFontFamily(WebString::FromUtf16(font), script);
 }
 
 void SetFantasyFontFamilyWrapper(WebSettings* settings,
                                  const std::u16string& font,
                                  UScriptCode script) {
-  settings->SetFantasyFontFamily(WebString::FromUTF16(font), script);
+  settings->SetFantasyFontFamily(WebString::FromUtf16(font), script);
 }
 
 void SetMathFontFamilyWrapper(WebSettings* settings,
                               const std::u16string& font,
                               UScriptCode script) {
-  settings->SetMathFontFamily(WebString::FromUTF16(font), script);
+  settings->SetMathFontFamily(WebString::FromUtf16(font), script);
 }
 
 // If |scriptCode| is a member of a family of "similar" script codes, returns
@@ -2505,8 +2505,10 @@ void WebViewImpl::SetPageLifecycleStateInternal(
       (new_state->pagehide_dispatch !=
        mojom::blink::PagehideDispatch::kNotDispatched) &&
       !GetPage()->DispatchedPagehideAndStillHidden();
-  bool dispatching_pageshow =
+  last_page_lifecycle_state_update_restored_from_bfcache_ =
       IsRestoredFromBackForwardCache(old_state, new_state);
+  bool dispatching_pageshow =
+      last_page_lifecycle_state_update_restored_from_bfcache_;
   bool eviction_changed =
       new_state->eviction_enabled != old_state->eviction_enabled;
 
@@ -3390,6 +3392,10 @@ void WebViewImpl::ResetScaleStateImmediately() {
 }
 
 void WebViewImpl::ResetScrollAndScaleState() {
+  // Skip scroll restoration when restoring from back-forward cache.
+  if (last_page_lifecycle_state_update_restored_from_bfcache_) {
+    return;
+  }
   GetPage()->GetVisualViewport().Reset();
 
   auto* main_local_frame = DynamicTo<LocalFrame>(GetPage()->MainFrame());
@@ -3589,14 +3595,14 @@ void WebViewImpl::UpdateFontRenderingFromRendererPrefs() {
 #if BUILDFLAG(IS_WIN)
   // Cache the system font metrics in blink.
   WebFontRendering::SetMenuFontMetrics(
-      WebString::FromUTF16(renderer_preferences_.menu_font_family_name),
+      WebString::FromUtf16(renderer_preferences_.menu_font_family_name),
       renderer_preferences_.menu_font_height);
   WebFontRendering::SetSmallCaptionFontMetrics(
-      WebString::FromUTF16(
+      WebString::FromUtf16(
           renderer_preferences_.small_caption_font_family_name),
       renderer_preferences_.small_caption_font_height);
   WebFontRendering::SetStatusFontMetrics(
-      WebString::FromUTF16(renderer_preferences_.status_font_family_name),
+      WebString::FromUtf16(renderer_preferences_.status_font_family_name),
       renderer_preferences_.status_font_height);
   WebFontRendering::SetAntialiasedTextEnabled(
       renderer_preferences_.should_antialias_text);
@@ -3905,6 +3911,7 @@ void WebViewImpl::DidCommitLoad(bool is_new_navigation,
       GetPageScaleConstraintsSet().SetNeedsReset(true);
   }
 
+  last_page_lifecycle_state_update_restored_from_bfcache_ = false;
   // Give the visual viewport's scroll layer its initial size.
   GetPage()->GetVisualViewport().MainFrameDidChangeSize();
 }

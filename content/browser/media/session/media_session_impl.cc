@@ -971,8 +971,9 @@ void MediaSessionImpl::OnSuspendInternal(SuspendType suspend_type,
     // SuspendType::CONTENT happens when the suspend action came from
     // the page in which case the player is already paused.
     // Otherwise, the players need to be paused.
+    const bool triggered_by_user = (suspend_type == SuspendType::kUI);
     for (const auto& it : normal_players_)
-      it.first.observer->OnSuspend(it.first.player_id);
+      it.first.observer->OnSuspend(it.first.player_id, triggered_by_user);
   }
   RebuildAndNotifyMediaSessionInfoChanged();
 }
@@ -981,8 +982,10 @@ void MediaSessionImpl::OnResumeInternal(SuspendType suspend_type) {
   if (suspend_type == SuspendType::kSystem && suspend_type_ != suspend_type)
     return;
 
+  const bool triggered_by_user = (suspend_type == SuspendType::kUI);
+
   for (const auto& it : normal_players_)
-    it.first.observer->OnResume(it.first.player_id);
+    it.first.observer->OnResume(it.first.player_id, triggered_by_user);
 
   RebuildAndNotifyMediaSessionInfoChanged();
 }
@@ -1228,7 +1231,8 @@ void MediaSessionImpl::FinishSystemAudioFocusRequest(
         // the same audio focus type.
         for (auto& player : normal_players_) {
           if (audio_focus_type == player.second)
-            player.first.observer->OnSuspend(player.first.player_id);
+            player.first.observer->OnSuspend(player.first.player_id,
+                                             /*triggered_by_user=*/false);
         }
         break;
     }
@@ -1663,11 +1667,13 @@ void MediaSessionImpl::DidReceiveAction(
         routed_service_ ? routed_service_->GetRenderFrameHost() : nullptr;
     for (const auto& player : normal_players_) {
       if (player.first.observer->render_frame_host() != rfh_of_routed_service)
-        player.first.observer->OnSuspend(player.first.player_id);
+        player.first.observer->OnSuspend(player.first.player_id,
+                                         /*triggered_by_user=*/false);
     }
     for (const auto& player : one_shot_players_) {
       if (player.observer->render_frame_host() != rfh_of_routed_service)
-        player.observer->OnSuspend(player.player_id);
+        player.observer->OnSuspend(player.player_id,
+                                   /*triggered_by_user=*/false);
     }
   }
 

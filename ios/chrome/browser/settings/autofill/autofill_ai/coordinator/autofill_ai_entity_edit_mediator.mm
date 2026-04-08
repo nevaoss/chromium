@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/settings/autofill/autofill_ai/coordinator/autofill_ai_entity_edit_mediator.h"
 
+#import <algorithm>
+
 #import "base/apple/foundation_util.h"
 #import "base/strings/sys_string_conversions.h"
 #import "components/application_locale_storage/application_locale_storage.h"
@@ -23,6 +25,9 @@
 #import "ios/chrome/browser/settings/autofill/autofill_ai/utils/autofill_ai_entity_instance_builder.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
+#import "ios/chrome/common/ui/reauthentication/reauthentication_protocol.h"
+#import "ios/chrome/grit/ios_strings.h"
+#import "ui/base/l10n/l10n_util.h"
 
 using autofill::AttributeInstance;
 using autofill::AttributeType;
@@ -42,6 +47,15 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
   dateFormatter.locale =
       [NSLocale localeWithLocaleIdentifier:base::SysUTF8ToNSString(locale)];
   return dateFormatter;
+}
+
+// Returns true if `attribute_type` is found in `required_fields`.
+bool IsFieldRequired(const EntityInstance& entity_instance,
+                     AttributeType attribute_type) {
+  return std::ranges::any_of(entity_instance.type().required_fields(),
+                             [&](const auto& required_set) {
+                               return required_set.contains(attribute_type);
+                             });
 }
 
 }  // namespace
@@ -73,15 +87,21 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
 
   // The user's primary account email.
   NSString* _userEmail;
+
+  // The reauthentication module.
+  __weak id<ReauthenticationProtocol> _reauthModule;
 }
 
-- (instancetype)initWithEntityInstance:(EntityInstance)entityInstance
-                     entityDataManager:(EntityDataManager*)entityDataManager
-                     walletPassManager:
-                         (autofill::WalletPassAccessManager*)walletPassManager
-                             userEmail:(NSString*)userEmail {
+- (instancetype)
+    initWithEntityInstance:(EntityInstance)entityInstance
+         entityDataManager:(EntityDataManager*)entityDataManager
+         walletPassManager:(autofill::WalletPassAccessManager*)walletPassManager
+              reauthModule:(id<ReauthenticationProtocol>)reauthModule
+                 userEmail:(NSString*)userEmail {
   self = [super init];
   if (self) {
+    CHECK(reauthModule);
+
     _entityInstance = std::move(entityInstance);
     _entityDataManager = entityDataManager;
     _walletPassManager = walletPassManager;
@@ -89,7 +109,9 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
     _dateFormatter = CreateDateFormatterForLocale(_locale);
     _itemFactory =
         [[AutofillAIEntityEditItemFactory alloc] initWithLocale:_locale
-                                                  dateFormatter:_dateFormatter];
+                                                  dateFormatter:_dateFormatter
+                                           userHasAuthenticated:NO];
+    _reauthModule = reauthModule;
     _userEmail = [userEmail copy];
   }
   return self;
@@ -110,13 +132,9 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
                  autofill::EntityInstance::RecordType::kServerWallet)];
   [consumer setUserEmail:_userEmail];
 
-  _editItems = [[NSMutableArray alloc] init];
-  for (AttributeInstance attribute : _entityInstance->attributes()) {
-    [_editItems addObject:[_itemFactory createItemForAttribute:attribute]];
-  }
-
-  [consumer setEditItems:_editItems];
   _consumer = consumer;
+
+  [self updateEditItemsWithAllAttributes:NO];
 }
 
 #pragma mark - AutofillAIEntityEditMutator
@@ -156,10 +174,11 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
           base::apple::ObjCCastStrict<AutofillAIEntityEditDateItem>(item);
       autofill::AttributeType attrType(dateItem.attributeType);
       autofill::AttributeInstance attrInstance(attrType);
-      attrInstance.SetInfo(attrType.field_type(),
-                           AttributeValueFromNSDate(dateItem.dateValue),
-                           _locale, GetAttributeFormatString(),
-                           autofill::VerificationStatus::kNoStatus);
+      attrInstance.SetInfo(
+          attrType.field_type(),
+          AttributeValueFromNSDate(dateItem.dateValue ?: [NSDate date]),
+          _locale, GetAttributeFormatString(),
+          autofill::VerificationStatus::kNoStatus);
       attrInstance.FinalizeInfo();
       updatedAttributes.insert(std::move(attrInstance));
     }
@@ -225,6 +244,72 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
   item.detailText = [_dateFormatter stringFromDate:date];
 }
 
+- (BOOL)isFieldRequired:(autofill::AttributeTypeName)attributeTypeName {
+  return IsFieldRequired(*_entityInstance,
+                         autofill::AttributeType(attributeTypeName));
+}
+
+- (void)requestEditingWithCompletion:
+    (void (^)(ReauthenticationResult result))completion {
+  CHECK(completion);
+
+  bool isMasked = autofill::IsMaskedStorageSupported(
+      _entityInstance->type(), _entityInstance->record_type());
+  bool hasObfuscatedFields =
+      std::ranges::any_of(_entityInstance->type().attributes(),
+                          &autofill::AttributeType::is_obfuscated);
+  if (!isMasked && !hasObfuscatedFields) {
+    [self updateEditItemsWithAllAttributes:YES];
+    completion(ReauthenticationResult::kSuccess);
+    return;
+  }
+
+  NSString* reason = l10n_util::GetNSString(IDS_IOS_AUTOFILL_REAUTH_REASON);
+  __weak AutofillAIEntityEditMediator* weakSelf = self;
+  [_reauthModule
+      attemptReauthWithLocalizedReason:reason
+                  canReusePreviousAuth:YES
+                               handler:^(ReauthenticationResult result) {
+                                 [weakSelf
+                                     onReauthenticationFinished:
+                                         result ==
+                                         ReauthenticationResult::kSuccess];
+                                 completion(result);
+                               }];
+}
+
+#pragma mark - Private
+
+- (void)onReauthenticationFinished:(BOOL)success {
+  if (success) {
+    [_itemFactory setUserHasAuthenticated:success];
+    [self updateEditItemsWithAllAttributes:YES];
+  }
+}
+
+- (void)updateEditItemsWithAllAttributes:(BOOL)showAllAttributes {
+  _editItems = [[NSMutableArray alloc] init];
+  if (showAllAttributes) {
+    for (AttributeType attributeType : _entityInstance->type().attributes()) {
+      base::optional_ref<const autofill::AttributeInstance> attribute =
+          _entityInstance->attribute(attributeType);
+      if (attribute.has_value()) {
+        [_editItems addObject:[_itemFactory createItemForAttribute:*attribute]];
+      } else {
+        autofill::AttributeInstance emptyAttribute(attributeType);
+        [_editItems
+            addObject:[_itemFactory createItemForAttribute:emptyAttribute]];
+      }
+    }
+  } else {
+    for (AttributeInstance attribute : _entityInstance->attributes()) {
+      [_editItems addObject:[_itemFactory createItemForAttribute:attribute]];
+    }
+  }
+
+  [_consumer setEditItems:_editItems];
+}
+
 #pragma mark - Public
 
 - (NSArray<CountryItem*>*)allCountries {
@@ -237,6 +322,7 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
 - (void)didSelectCountry:(CountryItem*)countryItem
                  forItem:(AutofillAIEntityCountryItem*)item {
   item.detailText = countryItem.text;
+  item.hasValidValueStatus = YES;
   [self.consumer updateItem:item];
 }
 

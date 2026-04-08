@@ -41,19 +41,6 @@ namespace net {
 
 namespace {
 
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-// LINT.IfChange(FallbackFromSecureTransactionPreferredReason)
-enum class FallbackFromSecureTransactionPreferredReason {
-  kFallbackNotPreferred = 0,
-  kFallbackPreferredCannotUseSecureDns = 1,
-  kFallbackPreferredCanaryDomainCheckPending = 2,
-  kFallbackPreferredCanaryDomainCheckNegative = 3,
-  kFallbackPreferredNoAvailableDohServers = 4,
-  kMaxValue = kFallbackPreferredNoAvailableDohServers,
-};
-// LINT.ThenChange(//tools/metrics/histograms/metadata/net/enums.xml:FallbackFromSecureTransactionPreferredReason)
-
 DnsConfigLocalNameserverState GetDnsConfigLocalNameserverState(
     bool has_loopback_nameserver,
     bool has_local_non_loopback_nameserver) {
@@ -232,6 +219,24 @@ class DnsClientImpl : public DnsClient {
           return true;
         case CanaryDomainCheckStatus::kInactive:
           NOTREACHED();
+      }
+    }
+
+    if (context->IsDohConfigFromFallbackDohNameservers()) {
+      if (!context->doh_fallback_upgrade_allowed()) {
+        RecordFallbackFromSecureTransactionPreferred(
+            FallbackFromSecureTransactionPreferredReason::
+                kFallbackPreferredDohFallbackUpgradeNotAllowed);
+        return true;
+      }
+      // It's important to check the feature flag after the other checks so that
+      // only eligible users get activated into the experiment.
+      if (!base::FeatureList::IsEnabled(
+              net::features::kForceSecureDnsDohFallback)) {
+        RecordFallbackFromSecureTransactionPreferred(
+            FallbackFromSecureTransactionPreferredReason::
+                kFallbackPreferredDohFallbackExperimentDisabled);
+        return true;
       }
     }
 

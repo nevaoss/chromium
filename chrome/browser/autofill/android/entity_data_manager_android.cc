@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <optional>
 
+#include "base/android/callback_android.h"
 #include "base/android/jni_android.h"
 #include "base/android/jni_array.h"
 #include "base/android/jni_string.h"
@@ -151,7 +152,8 @@ void EntityDataManagerAndroid::RemoveEntityInstance(JNIEnv* env,
 
 void EntityDataManagerAndroid::AddOrUpdateEntityInstance(
     JNIEnv* env,
-    const jni_zero::JavaRef<jobject>& jEntity) {
+    const jni_zero::JavaRef<jobject>& jEntity,
+    base::OnceClosure on_local_save_fallback) {
   EntityInstanceAndroid entity_android =
       EntityInstanceAndroid::FromJavaEntityInstance(env, jEntity);
 
@@ -165,12 +167,14 @@ void EntityDataManagerAndroid::AddOrUpdateEntityInstance(
       entity_android.ToEntityInstance(entity_data_manager_->GetEntityInstance(
           EntityInstance::EntityId(entity_android.guid)));
 
-  AddOrUpdateEntityInstance(std::move(entity_instance), targeted_record_type);
+  AddOrUpdateEntityInstance(std::move(entity_instance), targeted_record_type,
+                            std::move(on_local_save_fallback));
 }
 
 void EntityDataManagerAndroid::AddOrUpdateEntityInstance(
     EntityInstance entity_instance,
-    EntityInstance::RecordType targeted_record_type) {
+    EntityInstance::RecordType targeted_record_type,
+    base::OnceClosure on_local_save_fallback) {
   if (base::FeatureList::IsEnabled(features::kAutofillAiWalletPrivatePasses)) {
     const bool is_masked_storage_supported = IsMaskedStorageSupported(
         entity_instance.type(), entity_instance.record_type());
@@ -185,12 +189,16 @@ void EntityDataManagerAndroid::AddOrUpdateEntityInstance(
           entity_instance, consent_auditor::ConsentAuditor::GenerateSessionId(),
           base::BindOnce(
               &EntityDataManagerAndroid::OnSavePrivatePassToWalletFinished,
-              weak_ptr_factory_.GetWeakPtr(), entity_instance));
+              weak_ptr_factory_.GetWeakPtr(), std::move(on_local_save_fallback),
+              entity_instance));
     } else {
-      // TODO(crbug.com/467563385): Handle fallback to local if
-      // `IsMaskedStorageSupported` returns true for `entity_instance.type()`
-      // and `targeted_record_type`. This means the user initially wanted to
+      // If `IsMaskedStorageSupported` returns true for `entity_instance.type()`
+      // and `targeted_record_type` the user initially wanted to
       // store the entity on the server but became ineligible.
+      if (IsMaskedStorageSupported(entity_instance.type(),
+                                   targeted_record_type)) {
+        std::move(on_local_save_fallback).Run();
+      }
       entity_data_manager().AddOrUpdateEntityInstance(
           std::move(entity_instance));
     }
@@ -325,11 +333,13 @@ bool EntityDataManagerAndroid::IsEligibleForWalletStorage(
 }
 
 void EntityDataManagerAndroid::OnSavePrivatePassToWalletFinished(
+    base::OnceClosure on_local_save_fallback,
     EntityInstance original_entity,
     std::optional<EntityInstance> saved_entity) {
   if (saved_entity.has_value()) {
     entity_data_manager().AddOrUpdateEntityInstance(std::move(*saved_entity));
   } else {
+    std::move(on_local_save_fallback).Run();
     EntityInstance local_entity = original_entity.CopyWithNewRecordType(
         EntityInstance::RecordType::kLocal);
     entity_data_manager().AddOrUpdateEntityInstance(std::move(local_entity));

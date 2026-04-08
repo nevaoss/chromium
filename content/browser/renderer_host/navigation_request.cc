@@ -53,6 +53,7 @@
 #include "content/browser/browsing_topics/header_util.h"
 #include "content/browser/child_process_security_policy_impl.h"
 #include "content/browser/client_hints/client_hints.h"
+#include "content/browser/connection_allowlist_gating.h"
 #include "content/browser/devtools/devtools_instrumentation.h"
 #include "content/browser/devtools/network_service_devtools_observer.h"
 #include "content/browser/download/download_manager_impl.h"
@@ -1224,18 +1225,6 @@ net::StorageAccessApiStatus ShouldLoadWithStorageAccess(
   }
 }
 
-// Returns true if the parsed response headers contains a valid
-// "Connection-Allowlist" or "Connection-Allowlist-Report-Only" header.
-bool ResponseContainsConnectionAllowlist(
-    const network::mojom::URLResponseHead* response_head) {
-  return response_head && response_head->headers &&
-         response_head->parsed_headers &&
-         (response_head->parsed_headers->connection_allowlists.enforced
-              .has_value() ||
-          response_head->parsed_headers->connection_allowlists.report_only
-              .has_value());
-}
-
 const char* BeforeUnloadExecutionModeToString(
     NavigationHandle::BeforeUnloadExecutionMode mode) {
   switch (mode) {
@@ -1979,7 +1968,7 @@ NavigationRequest::NavigationRequest(
     // Wait for renderer-initiated cancellation if needed. Navigation can
     // proceed as soon as the corresponding JS task in the renderer finishes
     // without calling window.stop() or other navigation cancellation triggers.
-    // That means there is no need to synchronise this signal with other
+    // That means there is no need to synchronize this signal with other
     // renderer events, so this interface doesn't have to be associated and can
     // use a prioritized task runner.
     // kNavigationNetworkResponse is used as CommitNavigation typically already
@@ -2073,7 +2062,7 @@ NavigationRequest::NavigationRequest(
     }
 
     // If this NavigationRequest is for the current pending entry, make sure
-    // that we will discard the pending entry if all of associated its requests
+    // that we will discard the pending entry if all of its associated requests
     // go away, by creating a ref to it.
     if (entry == controller->GetPendingEntry())
       pending_entry_ref_ = controller->ReferencePendingEntry();
@@ -2305,6 +2294,7 @@ NavigationRequest::NavigationRequest(
 NavigationRequest::~NavigationRequest() {
   TRACE_EVENT("navigation", "NavigationRequest::~NavigationRequest",
               perfetto::TerminatingFlow::FromPointer(this));
+  is_destructing_ = true;
 #if DCHECK_IS_ON()
   // If |is_safe_to_delete_| is false, it means |this| is being deleted at an
   // unexpected time, more specifically a time that is likely to lead to
@@ -2391,7 +2381,7 @@ NavigationRequest::~NavigationRequest() {
     }
 
     // If subframe history navigations were deferred waiting for this request,
-    // the cancelation of this request should cancel them, too.
+    // the cancellation of this request should cancel them, too.
     for (auto& throttle : subframe_history_navigation_throttles_) {
       if (throttle) {
         throttle->Cancel();
@@ -2665,7 +2655,7 @@ bool NavigationRequest::MaybeStartPrerenderingActivationChecks() {
   }
 
   // Run CommitDeferringConditions before activating the prerendered page. See
-  // the comemnt on RunCommitDeferringConditions() for details.
+  // the comment on RunCommitDeferringConditions() for details.
   //
   // The prerendered page can be destroyed while the conditions are running.
   // In that case, this request gives up activating it and instead falls back to
@@ -3659,6 +3649,10 @@ void NavigationRequest::OnRequestRedirected(
   // for the redirected one.
   commit_params_->not_restored_reasons = nullptr;
 
+  // Reset the LCPP hint as the hint is for the original page and not for the
+  // redirected one.
+  commit_params_->lcpp_hint = nullptr;
+
   // Reset the tentative origin_to_commit, as the redirected one is different.
   tentative_data_origin_to_commit_ = std::nullopt;
 
@@ -4025,7 +4019,7 @@ void NavigationRequest::AddOriginAgentClusterStateIfNecessary(
             AgentClusterKey::OACStatus::kOriginKeyedByHeader);
 
   // Note: we don't handle IsIsolationImplied() cases here, since those only
-  // occur when OAC-by-default is enabled, and in that case we only pro-actively
+  // occur when OAC-by-default is enabled, and in that case we only proactively
   // record explicit opt-ins and opt-outs. Implicitly isolated origins only end
   // up recorded if a future request from the same origin attempts to opt-in or
   // opt-out, which would trigger a normal global walk and record that the
@@ -4902,7 +4896,7 @@ void NavigationRequest::OnResponseStarted(
   if (is_mhtml_archive && !IsInMainFrame()) {
     OnRequestFailedInternal(
         network::URLLoaderCompletionStatus(net::ERR_BLOCKED_BY_RESPONSE),
-        false /* skip_throttles */, std::nullopt /* error_page_contnet */,
+        false /* skip_throttles */, std::nullopt /* error_page_content */,
         false /* collapse_frame */);
     // DO NOT ADD CODE after this. The previous call to
     // OnRequestFailedInternal has destroyed the NavigationRequest.
@@ -5975,7 +5969,7 @@ network::mojom::WebSandboxFlags NavigationRequest::SandboxFlagsToCommit() {
 }
 
 void NavigationRequest::MaybeAddResourceTimingEntryForCancelledNavigation() {
-  // Some navigation are cancelled even before requesting and receiving a
+  // Some navigations are cancelled even before requesting and receiving a
   // response. Those cases are not supported and the ResourceTiming is not
   // reported to the parent.
   if (!response()) {
@@ -7452,6 +7446,12 @@ void NavigationRequest::UpdateNavigationHandleTimingsOnResponseReceived(
         .max_stream_limit_pending_delay =
             response_head_->load_timing_internal_info
                 ->max_stream_limit_pending_delay,
+        .resolution_source =
+            response_head_->load_timing_internal_info->resolution_details
+                    .has_value()
+                ? std::make_optional(response_head_->load_timing_internal_info
+                                         ->resolution_details->source)
+                : std::nullopt,
     };
   }
 
@@ -8422,6 +8422,12 @@ NavigatorDelegate* NavigationRequest::GetDelegate() const {
 void NavigationRequest::Resume(NavigationThrottle* resuming_throttle) {
   CHECK(resuming_throttle);
   CHECK(!is_resuming_) << "This call does not support re-entrancy.";
+  // We cannot resume the navigation during the destruction of the
+  // NavigationRequest. Otherwise the construction of the URL loader will crash
+  // because FrameTreeNode::navigation_request() returns nullptr.
+  if (is_destructing_) {
+    return;
+  }
   EnterChildTraceEvent("Resume", this);
 
   if (1u == throttle_registry_->GetDeferringThrottles().size()) {
@@ -8657,7 +8663,7 @@ void NavigationRequest::WillCommitWithoutUrlLoader() {
   throttle_registry_->RegisterNavigationThrottlesForCommitWithoutUrlLoader();
 
   // `CommitNavigation()` expects to be called once the request has reached
-  // at least `WILL_PROCESS_REPSONSE`. `WILL_COMMIT_WITHOUT_URL_LOADER` meets
+  // at least `WILL_PROCESS_RESPONSE`. `WILL_COMMIT_WITHOUT_URL_LOADER` meets
   // that requirement, and is useful to clarify which throttles we are waiting
   // for.
   SetState(WILL_COMMIT_WITHOUT_URL_LOADER);
@@ -8954,14 +8960,14 @@ bool NavigationRequest::NeedsUrlLoader() {
   }
 #endif  // BUILDFLAG(IS_ANDROID)
 
-  bool is_mhtml_subframe_loaded_from_achive =
+  bool is_mhtml_subframe_loaded_from_archive =
       IsForMhtmlSubframe() &&
       // Unlike all other MHTML subframe URLs, data-url are loaded via the
       // URL, not from the MHTML archive. See https://crbug.com/969696.
       !common_params_->url.SchemeIs(url::kDataScheme);
 
   return IsURLHandledByNetworkStack(common_params_->url) && !IsSameDocument() &&
-         !is_mhtml_subframe_loaded_from_achive;
+         !is_mhtml_subframe_loaded_from_archive;
 }
 
 void NavigationRequest::UpdateLocalNetworkAccessRequestPolicy() {
@@ -9558,10 +9564,10 @@ void NavigationRequest::SetRequestHeader(std::string_view header_name,
 }
 
 void NavigationRequest::SetLCPPNavigationHint(
-    const blink::mojom::LCPCriticalPathPredictorNavigationTimeHint& hint) {
+    blink::mojom::LCPCriticalPathPredictorNavigationTimeHintPtr hint) {
   CHECK(WILL_START_REQUEST == state_ || WILL_REDIRECT_REQUEST == state_)
       << state_;
-  commit_params_->lcpp_hint = hint.Clone();
+  commit_params_->lcpp_hint = std::move(hint);
 }
 
 const blink::mojom::LCPCriticalPathPredictorNavigationTimeHintPtr&
@@ -9982,7 +9988,9 @@ const GURL& NavigationRequest::GetPreviousPrimaryMainFrameURL() {
 }
 
 const GURL& NavigationRequest::GetPreviousMainFrameURL() const {
-  CHECK(state_ == DID_COMMIT || state_ == DID_COMMIT_ERROR_PAGE);
+  // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK once
+  // we are sure this isn't hit.
+  DCHECK(state_ == DID_COMMIT || state_ == DID_COMMIT_ERROR_PAGE);
   return previous_main_frame_url_;
 }
 
@@ -10829,26 +10837,20 @@ void NavigationRequest::ComputePoliciesToCommit() {
   }
 
   if (ResponseContainsConnectionAllowlist(response_head_.get()) &&
-      base::FeatureList::IsEnabled(network::features::kConnectionAllowlists)) {
+      base::FeatureList::IsEnabled(network::features::kConnectionAllowlists) &&
+      ResponseEnablesConnectionAllowlistsOriginTrial(
+          common_params_->url, response_head_->headers.get())) {
     // Connection allowlist needs to be enforced once the allowlist response
     // header is received. The origin trial token for this feature is received
     // within the same response. The token is parsed here to query the trial
     // status, instead of waiting for the response sent to renderer process,
     // where the trial status is first available for most other web platform
     // features. See https://wicg.github.io/connection-allowlists/.
-    bool connection_allowlist_origin_trial_enabled =
-        base::FeatureList::IsEnabled(
-            blink::features::kOverrideConnectionAllowlistOriginTrial) ||
-        blink::TrialTokenValidator().RequestEnablesFeature(
-            common_params_->url, response_head_->headers.get(),
-            "ConnectionAllowlist", base::Time::Now());
-
+    //
     // The allowlist is stored in the policy container only if both origin trial
     // and base::Feature are enabled.
-    if (connection_allowlist_origin_trial_enabled) {
-      policy_container_builder_->SetConnectionAllowlists(
-          std::move(response_head_->parsed_headers->connection_allowlists));
-    }
+    policy_container_builder_->SetConnectionAllowlists(
+        std::move(response_head_->parsed_headers->connection_allowlists));
   }
 
   if (!devtools_instrumentation::ShouldBypassCSP(*this)) {
@@ -11357,7 +11359,7 @@ void NavigationRequest::AddDeferredConsoleMessage(
 void NavigationRequest::SendDeferredConsoleMessages() {
   for (auto& message : console_messages_) {
     // TODO(crbug.com/40520047): We should have a way of sending console
-    // messaged to devtools without going through the renderer.
+    // messages to devtools without going through the renderer.
     GetRenderFrameHost()->AddMessageToConsole(message.level,
                                               std::move(message.message));
   }
@@ -11494,8 +11496,8 @@ NavigationRequest::ComputeWebExposedIsolationInfo() {
   // also take them into account. Because the CrossOriginOpenerPolicyStatus does
   // not take into account sandbox flags, it does not mandate a BrowsingInstance
   // switch when navigating between two same-origin pages where one of the pages
-  // has sandox flags that make its origin opaque. So the two pages are going to
-  // commit in the same BrowsingInstance. If we use an opaque origin here, we
+  // has sandbox flags that make its origin opaque. So the two pages are going
+  // to commit in the same BrowsingInstance. If we use an opaque origin here, we
   // would end up with a mismatch between the WebExposedIsolationInfo for the
   // navigation and that of the BrowsingInstance it is set to commit into.
   const url::Origin origin = GetOriginForURLLoaderFactoryUnchecked();
@@ -11899,7 +11901,7 @@ url::Origin NavigationRequest::GetOriginForURLLoaderFactoryUnchecked() {
     // VerifyBeginNavigationCommonParams), but as a defense-in-depth this is
     // also asserted below.
     // History navigations are exempt from this rule because, although they can
-    // be renderer-initaited via the js history API, the renderer does not
+    // be renderer-initiated via the js history API, the renderer does not
     // choose the url being navigated to. A renderer-initiated history
     // navigation may therefore navigate back to a previous browser-initiated
     // loadDataWithBaseUrl.

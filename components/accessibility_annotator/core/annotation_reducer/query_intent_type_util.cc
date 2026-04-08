@@ -156,6 +156,7 @@ bool IsFullQueryIntentType(QueryIntentType intent_type) {
     case QueryIntentType::kDriversLicenseFull:
     case QueryIntentType::kOrderFull:
     case QueryIntentType::kShipmentFull:
+    case QueryIntentType::kCreditCardFull:
       return true;
     case QueryIntentType::kNameFull:
     case QueryIntentType::kAddressFull:
@@ -191,7 +192,7 @@ bool IsFullQueryIntentType(QueryIntentType intent_type) {
     case QueryIntentType::kFlightReservationArrivalDate:
     case QueryIntentType::kShipmentTrackingNumber:
     case QueryIntentType::kShipmentAssociatedOrderId:
-    case QueryIntentType::kShipmentDeliveryZipCode:
+    case QueryIntentType::kShipmentDeliveryAddress:
     case QueryIntentType::kShipmentCarrierName:
     case QueryIntentType::kShipmentCarrierDomain:
     case QueryIntentType::kShipmentEstimatedDeliveryDate:
@@ -217,6 +218,11 @@ bool IsFullQueryIntentType(QueryIntentType intent_type) {
     case QueryIntentType::kOrderMerchantDomain:
     case QueryIntentType::kOrderProductNames:
     case QueryIntentType::kOrderGrandTotal:
+    case QueryIntentType::kCreditCardNumber:
+    case QueryIntentType::kCreditCardExpirationDate:
+    case QueryIntentType::kCreditCardSecurityCode:
+    case QueryIntentType::kCreditCardNameOnCard:
+    case QueryIntentType::kCreditCardNickname:
     case QueryIntentType::kUnknown:
       return false;
   }
@@ -447,8 +453,8 @@ AttributeResult GetShipmentAttributeResult(const Shipment& shipment,
   AddAttributeValue(shipment.associated_order_id,
                     QueryIntentType::kShipmentAssociatedOrderId, map,
                     &shipment_full);
-  AddAttributeValue(shipment.delivery_zip_code,
-                    QueryIntentType::kShipmentDeliveryZipCode, map,
+  AddAttributeValue(shipment.delivery_address,
+                    QueryIntentType::kShipmentDeliveryAddress, map,
                     &shipment_full);
   AddAttributeValue(shipment.carrier_name,
                     QueryIntentType::kShipmentCarrierName, map, &shipment_full);
@@ -538,7 +544,7 @@ EntityTypeEnumSet GetEntityTypesForQueryIntentType(
     case QueryIntentType::kShipmentFull:
     case QueryIntentType::kShipmentTrackingNumber:
     case QueryIntentType::kShipmentAssociatedOrderId:
-    case QueryIntentType::kShipmentDeliveryZipCode:
+    case QueryIntentType::kShipmentDeliveryAddress:
     case QueryIntentType::kShipmentCarrierName:
     case QueryIntentType::kShipmentCarrierDomain:
     case QueryIntentType::kShipmentEstimatedDeliveryDate:
@@ -582,6 +588,12 @@ EntityTypeEnumSet GetEntityTypesForQueryIntentType(
     case QueryIntentType::kCompanyName:
     case QueryIntentType::kIban:
     case QueryIntentType::kIbanNickname:
+    case QueryIntentType::kCreditCardFull:
+    case QueryIntentType::kCreditCardNumber:
+    case QueryIntentType::kCreditCardExpirationDate:
+    case QueryIntentType::kCreditCardSecurityCode:
+    case QueryIntentType::kCreditCardNameOnCard:
+    case QueryIntentType::kCreditCardNickname:
     case QueryIntentType::kRedressNumberFull:
     case QueryIntentType::kRedressNumberName:
     case QueryIntentType::kRedressNumberNumber:

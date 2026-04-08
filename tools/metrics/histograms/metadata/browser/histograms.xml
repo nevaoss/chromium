@@ -52,6 +52,8 @@ chromium-metrics-reviews@google.com.
   <variant name="OpenWithContentTransition" summary="tab to panel animation"/>
 </variants>
 
+<!-- LINT.IfChange(SidePanelEntry) -->
+
 <variants name="SidePanelEntry">
   <variant name="AboutThisSite" summary="about this site"/>
   <variant name="Assistant" summary="assistant"/>
@@ -73,8 +75,11 @@ chromium-metrics-reviews@google.com.
   <variant name="ReadingList" summary="reading list"/>
   <variant name="ShoppingInsights" summary="shopping insights"/>
   <variant name="SideSearch" summary="side search"/>
+  <variant name="TabsFromOtherDevices" summary="tabs from other devices"/>
   <variant name="WebView" summary="web view"/>
 </variants>
+
+<!-- LINT.ThenChange(//chrome/browser/ui/side_panel/side_panel_entry_id.h:SIDE_PANEL_ENTRY_IDS) -->
 
 <variants name="SidePanelType">
   <variant name="SidePanel" summary="content height side panel"/>
@@ -1193,6 +1198,17 @@ chromium-metrics-reviews@google.com.
     Maxinum compositor presentation time when dragging tabs. This metric is used
     to measure tab dragging performance. Record after a drag and drop session is
     ended.
+  </summary>
+</histogram>
+
+<histogram name="Browser.Tabs.TabShowReason.BothTabSwitchingAndBfcache"
+    enum="Boolean" expires_after="2027-04-02">
+  <owner>joenotcharles@google.com</owner>
+  <owner>catan-team@chromium.org</owner>
+  <summary>
+    Recorded when a tab is shown. Records whether both the tab switching and
+    bfcache restore show reasons are set. This is used to understand if there is
+    any overlap between these two events.
   </summary>
 </histogram>
 

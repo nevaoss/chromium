@@ -7,6 +7,7 @@
 #include <optional>
 #include <vector>
 
+#include "base/android/android_info.h"
 #include "base/check.h"
 #include "base/i18n/char_iterator.h"
 #include "base/strings/utf_string_conversions.h"
@@ -1103,7 +1104,10 @@ void BrowserAccessibilityManagerAndroid::
   if (!wcax) {
     return;
   }
-  wcax->ValidateA11yCacheForExperiment();
+  if (base::FeatureList::IsEnabled(
+          features::kAccessibilityRequestScopedContentChangedEvents)) {
+    wcax->ValidateA11yCacheForExperiment();
+  }
 }
 
 }  // namespace content

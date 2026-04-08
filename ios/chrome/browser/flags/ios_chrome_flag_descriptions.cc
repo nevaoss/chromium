@@ -85,6 +85,10 @@ const char kAutofillAiCreateEntityDataManagerName[] =
 const char kAutofillAiCreateEntityDataManagerDescription[] =
     "Enables Autofill AI Create Entity Data Manager.";
 
+const char kAutofillAiDedupeEntitiesName[] = "Autofill AI dedupe entities";
+const char kAutofillAiDedupeEntitiesDescription[] =
+    "Enables periodic deduplication of Autofill AI entities.";
+
 const char kAutofillAiReauthRequiredName[] = "Autofill AI Reauth Required";
 const char kAutofillAiReauthRequiredDescription[] =
     "Enables Autofill AI Reauth Required.";
@@ -230,6 +234,10 @@ const char kAutofillPaymentsSheetV2Description[] =
 const char kAutofillPruneSuggestionsName[] = "Autofill Prune Suggestions";
 const char kAutofillPruneSuggestionsDescription[] =
     "Further limits the number of suggestions in the Autofill dropdown.";
+
+const char kAutofillSupportDateInputName[] = "Autofill support for date input";
+const char kAutofillSupportDateInputDescription[] =
+    "Enables form filling and saving capabilities for <input type=\"date\">.";
 
 const char kAutofillThrottleDocumentFormScanName[] =
     "Throttle Autofill Document Form Scans";
@@ -776,6 +784,10 @@ const char kIOSChooseFromDriveDescription[] =
 const char kIOSChooseFromDriveSignedOutName[] = "Choose from Drive Signed Out";
 const char kIOSChooseFromDriveSignedOutDescription[] =
     "Enables the Choose from Drive feature to signed out users.";
+
+const char kIOSCobaltDeveloperModeName[] = "IOS Cobalt Developer Mode";
+const char kIOSCobaltDeveloperModeDescription[] =
+    "Enables the developer mode of the Cobalt feature on iOS.";
 
 const char kIOSCobaltName[] = "IOS Cobalt";
 const char kIOSCobaltDescription[] = "Enables the Cobalt feature on iOS.";
@@ -1607,6 +1619,10 @@ const char kSyncAutofillValuableMetadataName[] =
     "Sync autofill valuable metadata";
 const char kSyncAutofillValuableMetadataDescription[] =
     "Enables syncing valuable metadata for autofill to the server.";
+
+const char kSyncAutofillValuableName[] = "Sync autofill valuable";
+const char kSyncAutofillValuableDescription[] =
+    "Enables syncing valuable for autofill to the server.";
 
 const char kSyncSandboxName[] = "Use Chrome Sync sandbox";
 const char kSyncSandboxDescription[] =

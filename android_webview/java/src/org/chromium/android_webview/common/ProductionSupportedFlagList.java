@@ -1276,7 +1276,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("GCOnArrayBufferAllocationFailure"),
         Flag.baseFeature("RemoveCancelledScriptedIdleTasks"),
         Flag.baseFeature("SlimDirectReceiverIpc"),
-        Flag.baseFeature("FastPathNoRaster"),
         Flag.baseFeature("MemoryCacheChangeStrongReferencePruneDelay"),
         Flag.baseFeature("MemoryCacheStrongReference"),
         Flag.baseFeature("ReleaseResourceStrongReferencesOnMemoryPressure"),
@@ -1296,7 +1295,6 @@ public final class ProductionSupportedFlagList {
                 CcFeatures.THROTTLE_MAIN_FRAME_TO60_HZ_WEBVIEW,
                 "When enabled, requestAnimationFrame() and related main-thread effects are capped"
                         + " at 60Hz on 120Hz devices."),
-        Flag.baseFeature("JobPriorityBoosting"),
         Flag.baseFeature("IsolatesPriorityUseProcessPriority"),
         Flag.baseFeature(
                 "UseLockFreeX509Verification",

@@ -247,6 +247,15 @@ class ContextualTasksComposeboxHandlerTest
             context_upload_status, error_type));
   }
 
+  std::unique_ptr<contextual_search::InputStateModel>
+  CreateMockInputStateModel() {
+    omnibox::SearchboxConfig config;
+    auto model = std::make_unique<contextual_search::InputStateModel>(
+        *session_handle_, config, GURL(), false);
+    model->setActiveModel(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
+    return model;
+  }
+
   void SetUp() override {
     feature_list_.InitAndEnableFeature(contextual_tasks::kContextualTasks);
 
@@ -2728,9 +2737,12 @@ TEST_F(ContextualTasksComposeboxHandlerTest, ClearFiles_Delayed) {
 TEST_F(ContextualTasksComposeboxHandlerTest,
        ClearFiles_BlockAutoSuggestedTabs) {
   GURL url("https://example.com");
-  auto tab_info = searchbox::mojom::TabInfo::New();
-  tab_info->url = url;
-  tab_info->title = "Example";
+  auto create_tab_info = [&]() {
+    auto info = std::make_unique<contextual_tasks::SuggestedTabInfo>();
+    info->url = url;
+    info->title = u"Example";
+    return info;
+  };
 
   // 1. Initially, the suggestion should be allowed.
   EXPECT_CALL(mock_searchbox_page_, UpdateAutoSuggestedTabContext(testing::_))
@@ -2739,7 +2751,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
             << "Expected a non-null pointer for received_info.";
       });
 
-  handler_->UpdateSuggestedTabContext(tab_info.Clone());
+  handler_->UpdateSuggestedTabContext(create_tab_info());
 
   searchbox_page_receiver_.FlushForTesting();
   EXPECT_TRUE(handler_->has_suggested_tab_context());
@@ -2756,10 +2768,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
         EXPECT_TRUE(received_info.is_null())
             << "Expected a null pointer for received_info.";
       });
-  auto tab_info2 = searchbox::mojom::TabInfo::New();
-  tab_info2->url = url;
-  tab_info2->title = "Example";
-  handler_->UpdateSuggestedTabContext(tab_info2.Clone());
+  handler_->UpdateSuggestedTabContext(create_tab_info());
 
   searchbox_page_receiver_.FlushForTesting();
   EXPECT_FALSE(handler_->has_suggested_tab_context());
@@ -2767,9 +2776,12 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
 
 TEST_F(ContextualTasksComposeboxHandlerTest, UpdateSuggestedTabContext) {
   GURL url("https://example.com");
-  auto tab_info = searchbox::mojom::TabInfo::New();
-  tab_info->url = url;
-  tab_info->title = "Example";
+  auto create_tab_info = [&]() {
+    auto info = std::make_unique<contextual_tasks::SuggestedTabInfo>();
+    info->url = url;
+    info->title = u"Example";
+    return info;
+  };
 
   // 1. Initially, the suggestion should be allowed.
   EXPECT_CALL(mock_searchbox_page_, UpdateAutoSuggestedTabContext(testing::_))
@@ -2778,7 +2790,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest, UpdateSuggestedTabContext) {
             << "Expected a non-null pointer for received_info.";
       });
 
-  handler_->UpdateSuggestedTabContext(tab_info.Clone());
+  handler_->UpdateSuggestedTabContext(create_tab_info());
 
   searchbox_page_receiver_.FlushForTesting();
   EXPECT_TRUE(handler_->has_suggested_tab_context());
@@ -2795,7 +2807,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest, UpdateSuggestedTabContext) {
             << "Expected a null pointer for received_info.";
       });
 
-  handler_->UpdateSuggestedTabContext(tab_info.Clone());
+  handler_->UpdateSuggestedTabContext(create_tab_info());
 
   searchbox_page_receiver_.FlushForTesting();
   EXPECT_FALSE(handler_->has_suggested_tab_context());
@@ -2825,7 +2837,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest, UpdateSuggestedTabContext) {
             << "Expected a non-null pointer for received_info.";
         EXPECT_EQ(received_info->url, url);
       });
-  handler_->UpdateSuggestedTabContext(tab_info.Clone());
+  handler_->UpdateSuggestedTabContext(create_tab_info());
 
   searchbox_page_receiver_.FlushForTesting();
   EXPECT_TRUE(handler_->has_suggested_tab_context());
@@ -2833,8 +2845,11 @@ TEST_F(ContextualTasksComposeboxHandlerTest, UpdateSuggestedTabContext) {
 
 TEST_F(ContextualTasksComposeboxHandlerTest, ResetBlocklistedSuggestions) {
   GURL url("https://example.com");
-  auto tab_info = searchbox::mojom::TabInfo::New();
-  tab_info->url = url;
+  auto create_tab_info = [&]() {
+    auto info = std::make_unique<contextual_tasks::SuggestedTabInfo>();
+    info->url = url;
+    return info;
+  };
 
   // 1. Blocklist the URL.
   AddTab(browser(), url);
@@ -2846,7 +2861,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest, ResetBlocklistedSuggestions) {
         EXPECT_TRUE(received_info.is_null())
             << "Expected a null pointer for received_info.";
       });
-  handler_->UpdateSuggestedTabContext(tab_info.Clone());
+  handler_->UpdateSuggestedTabContext(create_tab_info());
 
   searchbox_page_receiver_.FlushForTesting();
   // 3. Reset the blocklist.
@@ -2860,7 +2875,7 @@ TEST_F(ContextualTasksComposeboxHandlerTest, ResetBlocklistedSuggestions) {
         EXPECT_EQ(received_info->url, url);
       });
 
-  handler_->UpdateSuggestedTabContext(tab_info.Clone());
+  handler_->UpdateSuggestedTabContext(create_tab_info());
 
   searchbox_page_receiver_.FlushForTesting();
 }
@@ -2933,14 +2948,9 @@ TEST_F(ContextualTasksComposeboxHandlerTest, ActiveModelIsPassed) {
   // 1. Arrange: Setup a mock callback to simulate ContextualTasksUI returning a
   // model. We explicitly set a distinct state (MODEL_MODE_GEMINI_PRO) to verify
   // it gets passed correctly.
-  auto mock_callback = base::BindLambdaForTesting(
-      [this]() -> std::unique_ptr<contextual_search::InputStateModel> {
-        omnibox::SearchboxConfig config;
-        auto model = std::make_unique<contextual_search::InputStateModel>(
-            *session_handle_, config, GURL(), false);
-        model->setActiveModel(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
-        return model;
-      });
+  auto mock_callback = base::BindRepeating(
+      &ContextualTasksComposeboxHandlerTest::CreateMockInputStateModel,
+      base::Unretained(this));
   mojo::PendingRemote<composebox::mojom::Page> page_remote;
   auto page_receiver = page_remote.InitWithNewPipeAndPassReceiver();
   auto custom_handler = std::make_unique<TestContextualTasksComposeboxHandler>(
@@ -2966,6 +2976,44 @@ TEST_F(ContextualTasksComposeboxHandlerTest, ActiveModelIsPassed) {
   ASSERT_NE(handler_model, nullptr);
   EXPECT_EQ(handler_model->get_state_for_testing().active_model,
             omnibox::ModelMode::MODEL_MODE_GEMINI_PRO);
+}
+
+TEST_F(ContextualTasksComposeboxHandlerTest, SuggestInputsCallbackWorks) {
+  auto mock_session =
+      std::make_unique<contextual_search::MockContextualSearchSessionHandle>();
+
+  lens::proto::LensOverlaySuggestInputs suggest_inputs;
+
+  EXPECT_CALL(*mock_session, GetSuggestInputs())
+      .WillRepeatedly(testing::Return(suggest_inputs));
+
+  auto mock_session_ptr = mock_session.get();
+
+  auto mock_get_session_callback = base::BindRepeating(
+      [](contextual_search::MockContextualSearchSessionHandle* ptr)
+          -> contextual_search::ContextualSearchSessionHandle* { return ptr; },
+      mock_session_ptr);
+
+  mojo::PendingRemote<composebox::mojom::Page> page_remote;
+  auto page_receiver = page_remote.InitWithNewPipeAndPassReceiver();
+
+  auto custom_handler = std::make_unique<TestContextualTasksComposeboxHandler>(
+      mock_ui_.get(), profile(), web_contents(),
+      mojo::PendingReceiver<composebox::mojom::PageHandler>(),
+      std::move(page_remote),
+      mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+      mock_get_session_callback,
+      base::BindRepeating(&ContextualTasksUI::ClearContextualSessionHandle,
+                          base::Unretained(mock_ui_.get())),
+      base::BindRepeating(&ContextualTasksUI::TakeInputStateModel,
+                          base::Unretained(mock_ui_.get())));
+
+  auto* client = static_cast<ContextualOmniboxClient*>(
+      custom_handler->GetOmniboxControllerForTesting()->client());
+
+  auto result = client->GetLensOverlaySuggestInputsForTesting();
+
+  ASSERT_TRUE(result.has_value());
 }
 
 TEST_F(ContextualTasksComposeboxHandlerTest,

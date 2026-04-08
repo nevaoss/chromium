@@ -319,7 +319,14 @@ test("webnn_graph_impl_fuzzer") {
     "webnn_test_utils.h",
   ]
 
-  fuzztests = [ "WebNNGraphImplFuzzer.SingleOpConv2d" ]
+  fuzztests = [
+    "WebNNGraphImplFuzzer_CPU.SingleOpConv2d",
+    "WebNNGraphImplFuzzer_GPU.SingleOpConv2d",
+    "WebNNGraphImplFuzzer_NPU.SingleOpConv2d",
+    "WebNNGraphImplFuzzer_CPU.SingleOpPool2d",
+    "WebNNGraphImplFuzzer_GPU.SingleOpPool2d",
+    "WebNNGraphImplFuzzer_NPU.SingleOpPool2d",
+  ]
 
   deps = [
     ":webnn_service",

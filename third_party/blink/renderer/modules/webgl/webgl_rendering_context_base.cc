@@ -59,6 +59,7 @@
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_union_element_elementimage.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_htmlcanvaselement_offscreencanvas.h"
 #include "third_party/blink/renderer/bindings/modules/v8/webgl_any.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
@@ -462,6 +463,22 @@ void WebGLRenderingContextBase::RestoreEvictedContext(
 
 namespace {
 
+void DrawImageToCanvas(StaticBitmapImage* image,
+                       cc::PaintCanvas& canvas,
+                       const gfx::Rect& dest_rect) {
+  CHECK(image);
+  CHECK(image->PaintImageForCurrentFrame());
+  gfx::Rect src_rect(image->Size());
+  cc::PaintFlags flags;
+  flags.setBlendMode(SkBlendMode::kSrc);
+  // We use this draw helper as we need to take into account the
+  // ImageOrientation of the UnacceleratedStaticBitmapImage.
+  ImageDrawOptions draw_options;
+  draw_options.clamping_mode = Image::kDoNotClampImageToSourceRect;
+  image->Draw(&canvas, flags, gfx::RectF(dest_rect), gfx::RectF(src_rect),
+              draw_options);
+}
+
 GLint Clamp(GLint value, GLint min, GLint max) {
   if (value < min)
     value = min;
@@ -740,8 +757,13 @@ ImageBitmap* WebGLRenderingContextBase::TransferToImageBitmapBase(
     return nullptr;
   }
 
-  return MakeGarbageCollected<ImageBitmap>(
-      GetDrawingBuffer()->TransferToStaticBitmapImage());
+  auto image = GetDrawingBuffer()->TransferToStaticBitmapImage();
+
+  // Per spec, the drawing buffer must be cleared after transferToImageBitmap(),
+  // regardless of preserveDrawingBuffer.
+  GetDrawingBuffer()->RequireExplicitBufferClear();
+
+  return MakeGarbageCollected<ImageBitmap>(std::move(image));
 }
 
 void WebGLRenderingContextBase::drawingBufferStorage(GLenum sizedformat,
@@ -1602,28 +1624,41 @@ bool WebGLRenderingContextBase::PushFrame() {
   TRACE_EVENT0("blink", "WebGLRenderingContextBase::PushFrame");
   DCHECK(Host());
   DCHECK(Host()->IsOffscreenCanvas());
-  if (isContextLost() || !GetDrawingBuffer())
-    return false;
-
-  bool cleared_content = ClearIfComposited(kClearCallerOther) != kSkipped;
-  if (!must_paint_to_canvas_ && !cleared_content) {
+  if (isContextLost() || !GetDrawingBuffer()) {
     return false;
   }
+
+  ClearIfComposited(kClearCallerOther);
+
+  bool submitted_frame = false;
 
   if (GetDrawingBuffer()->IsUsingGpuCompositing()) {
     // Export the DrawingBuffer's SI directly if possible.
-    if (PushFrameNoCopy())
-      return true;
+    if (auto canvas_resource = GetDrawingBuffer()->ExportCanvasResource()) {
+      submitted_frame = Host()->PushFrame(std::move(canvas_resource));
+      MarkLayerComposited();
+      if (submitted_frame) {
+        return true;
+      }
+    }
   }
 
-  return PushFrameWithCopy();
-}
-
-bool WebGLRenderingContextBase::PushFrameNoCopy() {
-  auto canvas_resource = GetDrawingBuffer()->ExportCanvasResource();
-  if (!canvas_resource)
+  // The above call to ExportCanvasResource() might have resulted in the context
+  // getting destroyed, so we need to recheck.
+  if (isContextLost() || !GetDrawingBuffer()) {
     return false;
-  const bool submitted_frame = Host()->PushFrame(std::move(canvas_resource));
+  }
+
+  if (resource_provider_.get() &&
+      resource_provider_.get()->Size() != GetDrawingBuffer()->Size()) {
+    resource_provider_.reset();
+    Host()->DiscardResources();
+  }
+
+  if (scoped_refptr<CanvasResource> resource =
+          CopyRenderingResultsFromDrawingBufferToResource(kBackBuffer)) {
+    submitted_frame = Host()->PushFrame(std::move(resource));
+  }
   MarkLayerComposited();
   return submitted_frame;
 }
@@ -1632,21 +1667,6 @@ void WebGLRenderingContextBase::Dispose() {
   resource_provider_.reset();
   cached_snapshot_.reset();
   CanvasRenderingContext::Dispose();
-}
-
-bool WebGLRenderingContextBase::PushFrameWithCopy() {
-  bool submitted_frame = false;
-
-  // Note: we push a frame only if (a) there is fresh content to produce and
-  // (b) we successfully produced that content.
-  if (scoped_refptr<CanvasResource> resource =
-          CopyRenderingResultsFromDrawingBufferToResource(
-              kBackBuffer, /*only_if_fresh_content=*/true)) {
-    submitted_frame = Host()->PushFrame(std::move(resource));
-    resource_provider_has_content_for_frame_push_ = false;
-  }
-  MarkLayerComposited();
-  return submitted_frame;
 }
 
 void WebGLRenderingContextBase::OnErrorMessage(const char* message,
@@ -1910,19 +1930,39 @@ WebGLRenderingContextBase::PaintRenderingResultsToSnapshot(
     return nullptr;
   }
 
-  bool copy_succeeded =
-      resource_provider->IsAccelerated()
-          ? CopyRenderingResultsFromDrawingBufferAccelerated(resource_provider,
-                                                             source_buffer)
-          : CopyRenderingResultsFromDrawingBufferUnaccelerated(
-                resource_provider, source_buffer);
+  bool copy_succeeded = false;
+  scoped_refptr<StaticBitmapImage> snapshot;
+  if (resource_provider->IsAccelerated()) {
+    copy_succeeded = CopyRenderingResultsFromDrawingBufferAccelerated(
+        resource_provider, source_buffer);
+    if (copy_succeeded) {
+      snapshot = resource_provider->Snapshot();
+    }
+  } else {
+    // As the resource provider is not accelerated, we don't need an accelerated
+    // image.
+    scoped_refptr<StaticBitmapImage> image =
+        GetDrawingBuffer()->GetUnacceleratedStaticBitmapImage(
+            kBackBuffer, viz::SharedImageFormat::N32Format(),
+            kPremul_SkAlphaType, kBottomLeft_GrSurfaceOrigin);
+    if (image && image->PaintImageForCurrentFrame()) {
+      gfx::Rect dest_rect(resource_provider->Size());
+      snapshot = resource_provider->DoExternalDrawAndSnapshot(
+          [&image, dest_rect](cc::PaintCanvas& canvas) {
+            DrawImageToCanvas(image.get(), canvas, dest_rect);
+          },
+          ImageOrientationEnum::kDefault);
+      copy_succeeded = true;
+    }
+  }
+
   if (!copy_succeeded) {
     return nullptr;
   }
 
   // We successfully painted the canvas' contents.
   must_paint_to_canvas_ = false;
-  return resource_provider->Snapshot();
+  return snapshot;
 }
 
 scoped_refptr<CanvasResource>
@@ -1936,6 +1976,19 @@ WebGLRenderingContextBase::PaintRenderingResultsToResource(
   if (Host()->LowLatencyEnabled() &&
       GetDrawingBuffer()->SupportsNoCopyExportForLowLatency()) {
     return ExportLowLatencyCanvasResource(source_buffer);
+  }
+
+  bool cleared_content = ClearIfComposited(kClearCallerOther) != kSkipped;
+
+  if (resource_provider_.get() &&
+      resource_provider_.get()->Size() != GetDrawingBuffer()->Size()) {
+    resource_provider_.reset();
+    Host()->DiscardResources();
+  }
+
+  if (!must_paint_to_canvas_ && !cleared_content && resource_provider_.get()) {
+    // `resource_provider_` already has the current contents.
+    return resource_provider_->ProduceCanvasResource();
   }
 
   return CopyRenderingResultsFromDrawingBufferToResource(source_buffer);
@@ -2008,36 +2061,10 @@ WebGLRenderingContextBase::GetSharedImageResourceProvider() {
 
 scoped_refptr<CanvasResource>
 WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBufferToResource(
-    SourceDrawingBuffer source_buffer,
-    bool only_if_fresh_content) {
+    SourceDrawingBuffer source_buffer) {
   TRACE_EVENT0("blink",
                "WebGLRenderingContextBase::"
                "CopyRenderingResultsFromDrawingBufferToResource");
-
-  if (isContextLost() || !GetDrawingBuffer()) {
-    return nullptr;
-  }
-
-  bool cleared_content = ClearIfComposited(kClearCallerOther) != kSkipped;
-
-  if (resource_provider_.get() &&
-      resource_provider_.get()->Size() != GetDrawingBuffer()->Size()) {
-    resource_provider_.reset();
-    Host()->DiscardResources();
-  }
-
-  // The host's ResourceProvider is purged to save memory when the tab
-  // is backgrounded.
-
-  if (!must_paint_to_canvas_ && !cleared_content && resource_provider_.get()) {
-    if (only_if_fresh_content &&
-        !resource_provider_has_content_for_frame_push_) {
-      return nullptr;
-    }
-    // `resource_provider_` already has the current contents, so it can can be
-    // used by the caller as-is.
-    return resource_provider_->ProduceCanvasResource();
-  }
 
   CanvasNon2DResourceProviderSharedImage* resource_provider =
       GetSharedImageResourceProvider();
@@ -2057,20 +2084,38 @@ WebGLRenderingContextBase::CopyRenderingResultsFromDrawingBufferToResource(
     return nullptr;
   }
 
-  bool copy_succeeded =
-      resource_provider->IsAccelerated()
-          ? CopyRenderingResultsFromDrawingBufferAccelerated(
-                resource_provider_.get(), source_buffer)
-          : CopyRenderingResultsFromDrawingBufferUnaccelerated(
-                resource_provider_.get(), source_buffer);
+  bool copy_succeeded = false;
+  scoped_refptr<CanvasResource> resource;
+  if (resource_provider->IsAccelerated()) {
+    copy_succeeded = CopyRenderingResultsFromDrawingBufferAccelerated(
+        resource_provider, source_buffer);
+    if (copy_succeeded) {
+      resource = resource_provider->ProduceCanvasResource();
+    }
+  } else {
+    // As the resource provider is not accelerated, we don't need an accelerated
+    // image.
+    scoped_refptr<StaticBitmapImage> image =
+        GetDrawingBuffer()->GetUnacceleratedStaticBitmapImage(
+            kBackBuffer, viz::SharedImageFormat::N32Format(),
+            kPremul_SkAlphaType, kBottomLeft_GrSurfaceOrigin);
+    if (image && image->PaintImageForCurrentFrame()) {
+      gfx::Rect dest_rect(resource_provider->Size());
+      resource = resource_provider->DoExternalDrawAndProduceResource(
+          [&image, dest_rect](cc::PaintCanvas& canvas) {
+            DrawImageToCanvas(image.get(), canvas, dest_rect);
+          });
+      copy_succeeded = true;
+    }
+  }
+
   if (!copy_succeeded) {
     return nullptr;
   }
 
   // We successfully painted the contents to the resource provider.
   must_paint_to_canvas_ = false;
-  resource_provider_has_content_for_frame_push_ = true;
-  return resource_provider->ProduceCanvasResource();
+  return resource;
 }
 
 bool WebGLRenderingContextBase::
@@ -2121,53 +2166,6 @@ bool WebGLRenderingContextBase::
     resource_provider->EndExternalWrite(external_sync_token.value());
   }
   return external_sync_token.has_value();
-}
-
-bool WebGLRenderingContextBase::
-    CopyRenderingResultsFromDrawingBufferUnaccelerated(
-        CanvasNon2DResourceProviderSharedImage* resource_provider,
-        SourceDrawingBuffer source_buffer) {
-  DCHECK(resource_provider);
-  DCHECK(!resource_provider->IsSingleBuffered());
-  CHECK(!resource_provider->IsAccelerated());
-
-  // Early-out if the context has been lost.
-  if (!GetDrawingBuffer()) {
-    return false;
-  }
-
-  ScopedPixelLocalStorageInterrupt scoped_pls_interrupt(this);
-  ScopedFramebufferRestorer fbo_restorer(this);
-  // In rare situations on macOS the drawing buffer can be destroyed
-  // during the resolve process, specifically during automatic
-  // graphics switching. Guard against this.
-  // This is a no-op if already called higher up the stack from here.
-  if (!GetDrawingBuffer()->ResolveAndBindForReadAndDraw()) {
-    return false;
-  }
-
-  // As the resource provider is not accelerated, we don't need an accelerated
-  // image.
-  scoped_refptr<StaticBitmapImage> image =
-      GetDrawingBuffer()->GetUnacceleratedStaticBitmapImage(
-          kBackBuffer, viz::SharedImageFormat::N32Format(), kPremul_SkAlphaType,
-          kBottomLeft_GrSurfaceOrigin);
-
-  if (!image || !image->PaintImageForCurrentFrame()) {
-    return false;
-  }
-
-  gfx::Rect src_rect(image->Size());
-  gfx::Rect dest_rect(resource_provider->Size());
-  cc::PaintFlags flags;
-  flags.setBlendMode(SkBlendMode::kSrc);
-  // We use this draw helper as we need to take into account the
-  // ImageOrientation of the UnacceleratedStaticBitmapImage.
-  ImageDrawOptions draw_options;
-  draw_options.clamping_mode = Image::kDoNotClampImageToSourceRect;
-  image->Draw(&resource_provider->GetCanvasDeprecated(), flags,
-              gfx::RectF(dest_rect), gfx::RectF(src_rect), draw_options);
-  return true;
 }
 
 scoped_refptr<StaticBitmapImage>
@@ -6456,7 +6454,8 @@ void WebGLRenderingContextBase::TexImageHelperMediaVideoFrame(
       }
 
       if (video_renderer->CopyVideoFrameTexturesToGLTextureViaIntermediateSI(
-              raster_context_provider, gl, media_video_frame, params.target,
+              raster_context_provider, gl, media_video_frame,
+              video_renderer->GetRGBSharedImageCache(), params.target,
               texture->Object(), adjusted_internalformat, params.format,
               params.type, params.level, dst_alpha_type,
               params.GetDestinationOrigin())) {
@@ -6728,68 +6727,13 @@ void WebGLRenderingContextBase::texParameteri(GLenum target,
   TexParameter(target, pname, 0, param, false);
 }
 
-void WebGLRenderingContextBase::texElement2D(GLenum target,
-                                             GLint level,
-                                             GLint internalformat,
-                                             GLenum format,
-                                             GLenum type,
-                                             Element* element,
-                                             ExceptionState& exception_state) {
-  texElementImage2D(target, level, internalformat, format, type, element,
-                    exception_state);
-}
-
-void WebGLRenderingContextBase::texElement2D(GLenum target,
-                                             GLint level,
-                                             GLint internalformat,
-                                             GLsizei width,
-                                             GLsizei height,
-                                             GLenum format,
-                                             GLenum type,
-                                             Element* element,
-                                             ExceptionState& exception_state) {
-  texElementImage2D(target, level, internalformat, width, height, format, type,
-                    element, exception_state);
-}
-
-void WebGLRenderingContextBase::texElement2D(GLenum target,
-                                             GLint level,
-                                             GLint internalformat,
-                                             GLfloat sx,
-                                             GLfloat sy,
-                                             GLfloat swidth,
-                                             GLfloat sheight,
-                                             GLenum format,
-                                             GLenum type,
-                                             Element* element,
-                                             ExceptionState& exception_state) {
-  texElementImage2D(target, level, internalformat, sx, sy, swidth, sheight,
-                    format, type, element, exception_state);
-}
-
-void WebGLRenderingContextBase::texElement2D(GLenum target,
-                                             GLint level,
-                                             GLint internalformat,
-                                             GLfloat sx,
-                                             GLfloat sy,
-                                             GLfloat swidth,
-                                             GLfloat sheight,
-                                             GLsizei width,
-                                             GLsizei height,
-                                             GLenum format,
-                                             GLenum type,
-                                             Element* element,
-                                             ExceptionState& exception_state) {
-  texElementImage2D(target, level, internalformat, sx, sy, swidth, sheight,
-                    width, height, format, type, element, exception_state);
-}
 void WebGLRenderingContextBase::texElementImage2D(
     GLenum target,
     GLint level,
     GLint internalformat,
     GLenum format,
     GLenum type,
-    Element* element,
+    const V8UnionElementOrElementImage* element,
     ExceptionState& exception_state) {
   TexElementImage2DInternal(target, level, internalformat,
                             /*sx*/ std::nullopt, /*sy*/ std::nullopt,
@@ -6806,7 +6750,7 @@ void WebGLRenderingContextBase::texElementImage2D(
     GLsizei height,
     GLenum format,
     GLenum type,
-    Element* element,
+    const V8UnionElementOrElementImage* element,
     ExceptionState& exception_state) {
   TexElementImage2DInternal(target, level, internalformat,
                             /*sx*/ std::nullopt, /*sy*/ std::nullopt,
@@ -6825,7 +6769,7 @@ void WebGLRenderingContextBase::texElementImage2D(
     GLfloat sheight,
     GLenum format,
     GLenum type,
-    Element* element,
+    const V8UnionElementOrElementImage* element,
     ExceptionState& exception_state) {
   TexElementImage2DInternal(target, level, internalformat, sx, sy, swidth,
                             sheight,
@@ -6845,7 +6789,7 @@ void WebGLRenderingContextBase::texElementImage2D(
     GLsizei height,
     GLenum format,
     GLenum type,
-    Element* element,
+    const V8UnionElementOrElementImage* element,
     ExceptionState& exception_state) {
   TexElementImage2DInternal(target, level, internalformat, sx, sy, swidth,
                             sheight, width, height, format, type, element,
@@ -6864,7 +6808,7 @@ void WebGLRenderingContextBase::TexElementImage2DInternal(
     std::optional<GLsizei> height,
     GLenum format,
     GLenum type,
-    Element* element,
+    const V8UnionElementOrElementImage* element,
     ExceptionState& exception_state) {
   CHECK(RuntimeEnabledFeatures::CanvasDrawElementEnabled());
 
@@ -6878,7 +6822,8 @@ void WebGLRenderingContextBase::TexElementImage2DInternal(
 
   scoped_refptr<StaticBitmapImage> image =
       GetElementImage(element, sx, sy, swidth, sheight, width, height,
-                      "texElementImage2D()", exception_state);
+                      gpu::SHARED_IMAGE_USAGE_GLES2_READ, "texElementImage2D()",
+                      exception_state);
   if (!image) {
     return;
   }

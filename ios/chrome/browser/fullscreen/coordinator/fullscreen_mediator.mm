@@ -9,6 +9,7 @@
 #import "base/memory/raw_ptr.h"
 #import "base/types/pass_key.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent.h"
+#import "ios/chrome/browser/fullscreen/ui_bundled/scoped_fullscreen_disabler.h"
 #import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent.h"
 #import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent_observer_bridge.h"
 #import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent_observing.h"
@@ -16,6 +17,7 @@
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list_observer_bridge.h"
 #import "ios/chrome/browser/web/model/web_view_proxy/web_view_proxy_tab_helper.h"
 #import "ios/chrome/browser/web/model/web_view_proxy/web_view_proxy_tab_helper_observer_bridge.h"
+#import "ios/web/public/navigation/navigation_context.h"
 #import "ios/web/public/ui/crw_web_view_proxy.h"
 #import "ios/web/public/ui/crw_web_view_scroll_view_proxy.h"
 #import "ios/web/public/web_state.h"
@@ -62,9 +64,11 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
   std::unique_ptr<WebViewProxyTabHelperObserverBridge> _webViewProxyObserver;
   std::unique_ptr<OmniboxPositionBrowserAgentObserverBridge>
       _omniboxPositionObserver;
+  std::unique_ptr<ScopedFullscreenDisabler> _voiceOverDisabler;
   CGFloat _lastContentOffset;
   BOOL _isBottomOmnibox;
-
+  // Indicates whether the inset ranges have been initialized on startup.
+  BOOL _hasInitializedInsets;
   // Scroll distance since the start of the drag, or since the scroll direction
   // changed.
   CGFloat _scrollTotal;
@@ -100,6 +104,10 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
            selector:@selector(voiceOverStatusDidChange)
                name:UIAccessibilityVoiceOverStatusDidChangeNotification
              object:nil];
+    [defaultCenter addObserver:self
+                      selector:@selector(orientationDidChange)
+                          name:UIDeviceOrientationDidChangeNotification
+                        object:nil];
     [defaultCenter addObserver:self
                       selector:@selector(applicationDidEnterBackground)
                           name:UIApplicationDidEnterBackgroundNotification
@@ -184,7 +192,17 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
 - (void)webStateWasShown:(web::WebState*)webState {
   // TODO(crbug.com/496229929): Call InvalidateInsetRange() from the correct
   // event(s).
-  _browserAgent->InvalidateInsetRange(PassKey());
+  if (!_hasInitializedInsets) {
+    _browserAgent->InvalidateInsetRange(PassKey());
+    _hasInitializedInsets = YES;
+  }
+}
+
+- (void)webState:(web::WebState*)webState
+    didFinishNavigation:(web::NavigationContext*)navigationContext {
+  if (!navigationContext->IsSameDocument()) {
+    _browserAgent->ExitFullscreen(PassKey(), /*animated=*/true);
+  }
 }
 
 - (void)webStateDestroyed:(web::WebState*)webState {
@@ -270,8 +288,8 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
   _browserAgent->ExitFullscreen(PassKey(), animated);
 }
 
-- (void)disableFullscreen {
-  _browserAgent->IncrementDisabledCounter(PassKey());
+- (void)disableFullscreenAnimated:(BOOL)animated {
+  _browserAgent->IncrementDisabledCounter(PassKey(), animated);
 }
 
 - (void)reenableFullscreen {
@@ -281,8 +299,13 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
 #pragma mark - System Notifications
 
 - (void)voiceOverStatusDidChange {
-  // TODO(crbug.com/493903024): Toggle fullscreen disabled with
-  // ScopedFullscreenDisabler.
+  _voiceOverDisabler = UIAccessibilityIsVoiceOverRunning()
+                           ? std::make_unique<ScopedFullscreenDisabler>(self)
+                           : nullptr;
+}
+
+- (void)orientationDidChange {
+  _browserAgent->InvalidateInsetRange(PassKey());
 }
 
 - (void)applicationDidEnterBackground {

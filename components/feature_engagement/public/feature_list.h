@@ -121,6 +121,7 @@ DEFINE_VARIATION_PARAM(kIPHDownloadInfoBarDownloadContinuingFeature,
 DEFINE_VARIATION_PARAM(kIPHDownloadInfoBarDownloadsAreFasterFeature,
                        "IPH_DownloadInfoBarDownloadsAreFaster");
 DEFINE_VARIATION_PARAM(kIPHEphemeralTabFeature, "IPH_EphemeralTab");
+DEFINE_VARIATION_PARAM(kIPHExtensionsManageFeature, "IPH_ExtensionsManage");
 DEFINE_VARIATION_PARAM(kIPHFeedCardMenuFeature, "IPH_FeedCardMenu");
 DEFINE_VARIATION_PARAM(kIPHFuseboxAttachmentFeature, "IPH_FuseboxAttachment");
 DEFINE_VARIATION_PARAM(kIPHGenericAlwaysTriggerHelpUiFeature,
@@ -684,6 +685,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHTabSwitcherButtonSwitchIncognitoFeature),
         VARIATION_ENTRY(kIPHTabSwitcherXR),
         VARIATION_ENTRY(kIPHTabTearingXR),
+        VARIATION_ENTRY(kIPHThreeDotMenuBackButton),
         VARIATION_ENTRY(kIPHTouchToSearchCalloutFeature),
         VARIATION_ENTRY(kIPHTranslateMenuButtonFeature),
         VARIATION_ENTRY(kIPHVideoTutorialNTPChromeIntroFeature),

@@ -80,6 +80,7 @@
 <translation id="1285320974508926690">ଏହି ସାଇଟ୍‍କୁ କଦାପି ଅନୁବାଦ କରନ୍ତୁ ନାହିଁ</translation>
 <translation id="1287229685519872919">Google Workspace ଡାଟା</translation>
 <translation id="1291506870746876680">ଆପଣ ଏହି ସାଇଟକୁ ଛାଡ଼ିବା ସମୟରେ <ph name="BEGIN_BOLD" />"<ph name="SITE_NAME" />"<ph name="END_BOLD" /> ଅନୁମତିଗୁଡ଼ିକ ବନ୍ଦରେ ରିସେଟ ହେବ।</translation>
+<translation id="1293491796138057740">ଆପଣଙ୍କ ସୂଚନାକୁ <ph name="USER_EMAIL" /> ପାଇଁ Google Walletରେ ସେଭ କରାଯାଇଛି। ଫର୍ମଗୁଡ଼ିକୁ ଶୀଘ୍ର ପୂରଣ କରିବା ପାଇଁ ଆପଣ ଏହାକୁ ସମଗ୍ର Google ପ୍ରଡକ୍ଟରେ ବ୍ୟବହାର କରିପାରିବେ।</translation>
 <translation id="1293556467332435079">Files</translation>
 <translation id="129553762522093515">ବର୍ତ୍ତମାନ ବନ୍ଦ ହୋଇଛି</translation>
 <translation id="1296581780163690620">ଫାଇଲ ଡାଉନଲୋଡ କରିବେ? (<ph name="FILE_SIZE" />)</translation>
@@ -107,6 +108,7 @@
 <translation id="1369286077209859800">ଟାବ ଗ୍ରୁପରେ ସମସ୍ତ ଟାବ ଦେଖାନ୍ତୁ</translation>
 <translation id="136942498637440594">ଆପଣ ଇମେଜ ଏବଂ ଯାହା ଦେଖୁଛନ୍ତି ତାହା ସର୍ଚ୍ଚ କରିପାରିବେ।</translation>
 <translation id="1373120905936431262">Nano Banana ସହ ରିମିକ୍ସ କରିବାକୁ ଏକ ଇମେଜ ଅପଲୋଡ କରନ୍ତୁ</translation>
+<translation id="1377321085342047638">କାର୍ଡ ନମ୍ଵର୍‌</translation>
 <translation id="1377508275003315939">ପାସୱାର୍ଡଗୁଡ଼ିକ</translation>
 <translation id="1381022135873211423">{count,plural, =1{{count} ମଧ୍ୟରୁ {position} ନମ୍ବର ଠିକଣା}other{{count} ମଧ୍ୟରୁ {position} ନମ୍ବର ଠିକଣା}}</translation>
 <translation id="1383876407941801731">ସର୍ଚ୍ଚ</translation>
@@ -1099,7 +1101,6 @@
 <translation id="4944543191714094452">ପୃଷ୍ଠାରେ ଖୋଜନ୍ତୁ…</translation>
 <translation id="4945756290001680296">ପାସ୍‌ୱାର୍ଡ ସେଟିଂସ୍ ଆକ୍ସେସ୍ କରନ୍ତୁ</translation>
 <translation id="4949302115427722371">ସେଟିଂସ ପରିଚାଳନା କରନ୍ତୁ…</translation>
-<translation id="4952050521954075618">କେମେରା ରୋଲରୁ ଫଟୋଗୁଡ଼ିକ ଆପଣଙ୍କ ସମଗ୍ର ଡିଭାଇସରେ ସିଙ୍କ ହେବ ନାହିଁ</translation>
 <translation id="4958444002117714549">ତାଲିକାକୁ ପ୍ରସାରିତ କରନ୍ତୁ</translation>
 <translation id="496392417432935267">ଅନ୍ୟ କୌଣସି ସ୍ଥାନରେ ଖୋଲାଯାଇଛି</translation>
 <translation id="4970724460420203313">ଆପଣଙ୍କ ପରିଚାଳିତ ଆକାଉଣ୍ଟ ମାଧ୍ୟମରେ Chrome ବ୍ୟବହାର କରିବା ଫଳରେ ଏହା ଆପଣଙ୍କୁ ଆପଣଙ୍କ ସଂସ୍ଥା ସହ ସମ୍ବନ୍ଧିତ ବ୍ରାଉଜିଂ (ଟାବ, ଇତିହାସ ଏବଂ ପାସୱାର୍ଡ ସମେତ)କୁ ଆପଣଙ୍କର ଅନ୍ୟ ବ୍ରାଉଜିଂଠାରୁ ଅଲଗା ରଖିବାରେ ସାହାଯ୍ୟ କରେ</translation>
@@ -1265,6 +1266,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="5556459405103347317">ପୁନଃ ଲୋଡ୍ କରନ୍ତୁ</translation>
 <translation id="555749644339804659">ପାସୱାର୍ଡ ଯାଞ୍ଚ କରାଯାଉଛି…</translation>
 <translation id="5559567453458728487">ୱେବରେ ମିଳୁଥିବା ପରିମାପ ୟୁନିଟଗୁଡ଼ିକୁ କନଭର୍ଟ କରନ୍ତୁ</translation>
+<translation id="5560088892362098740">ମିଆଦ ଶେଷ ହେଉଥିବା ତାରିଖ</translation>
 <translation id="556042886152191864">ବଟନ୍</translation>
 <translation id="5565871407246142825">କ୍ରେଡିଟ କାର୍ଡଗୁଡ଼ିକ</translation>
 <translation id="5566623128829375608">ଆପଣଙ୍କ ଡିଭାଇସରେ ସେଭ କରେ।</translation>

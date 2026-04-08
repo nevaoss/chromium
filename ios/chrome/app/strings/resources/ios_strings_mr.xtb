@@ -80,6 +80,7 @@
 <translation id="1285320974508926690">या साइटचा कधीही भाषांतर करु नका</translation>
 <translation id="1287229685519872919">Google Workspace डेटा</translation>
 <translation id="1291506870746876680">तुम्ही या साइटमधून बाहेर पडाल, तेव्हा <ph name="BEGIN_BOLD" />"<ph name="SITE_NAME" />"<ph name="END_BOLD" /> संबंधित परवानग्या बंदवर रीसेट केल्या जातील.</translation>
+<translation id="1293491796138057740"><ph name="USER_EMAIL" /> साठी तुमची माहिती Google Wallet मध्ये सेव्ह केली जाते. तुम्ही फॉर्म आणखी वेगाने भरण्यासाठी तो संपूर्ण Google उत्पादनांवर वापरू शकता.</translation>
 <translation id="1293556467332435079">Files</translation>
 <translation id="129553762522093515">अलीकडे बंद केलेले</translation>
 <translation id="1296581780163690620">फाइल डाउनलोड करायची आहे का? (<ph name="FILE_SIZE" />)</translation>
@@ -107,6 +108,7 @@
 <translation id="1369286077209859800">सर्व टॅब हे टॅब गटामध्ये दाखवा</translation>
 <translation id="136942498637440594">तुम्ही इमेज आणि तुम्ही काय पाहता ते शोधू शकता.</translation>
 <translation id="1373120905936431262">Nano Banana सह रीमिक्स करण्यासाठी इमेज अपलोड करा</translation>
+<translation id="1377321085342047638">कार्ड नंबर</translation>
 <translation id="1377508275003315939">पासवर्ड</translation>
 <translation id="1381022135873211423">{count,plural, =1{{count} पैकी {position} क्रमांकाचा पत्ता}other{{count} पैकी {position} क्रमांकाचा पत्ता}}</translation>
 <translation id="1383876407941801731">शोधा</translation>
@@ -1099,7 +1101,6 @@
 <translation id="4944543191714094452">या पेजमध्ये शोधा…</translation>
 <translation id="4945756290001680296">पासवर्ड सेटिंग्ज अ‍ॅक्सेस करा</translation>
 <translation id="4949302115427722371">सेटिंग्ज व्यवस्थापित करा…</translation>
-<translation id="4952050521954075618">कॅमेरा रोल मधील फोटो तुमच्या सर्व डिव्हाइसवर सिंक होणार नाहीत</translation>
 <translation id="4958444002117714549">सूची विस्तार करा</translation>
 <translation id="496392417432935267">इतरत्र उघडले आहे</translation>
 <translation id="4970724460420203313">तुमच्या व्यवस्थापित केलेल्या खात्यासह Chrome वापरल्यामुळे, तुम्हाला तुमच्या संस्थेशी संबंधित ब्राउझिंग (टॅब, इतिहास आणि पासवर्ड यांच्या समावेशासह) तुमच्या इतर ब्राउझिंगपासून वेगळे ठेवण्यात मदत होते</translation>
@@ -1265,6 +1266,7 @@
 <translation id="5556459405103347317">रीलोड करा</translation>
 <translation id="555749644339804659">पासवर्ड तपासत आहे…</translation>
 <translation id="5559567453458728487">वेबवर आढळलेल्या मापनाच्या युनिटचे रूपांतर करा</translation>
+<translation id="5560088892362098740">एक्सपायर होण्याची तारीख</translation>
 <translation id="556042886152191864">बटण</translation>
 <translation id="5565871407246142825">क्रेडिट कार्डे</translation>
 <translation id="5566623128829375608">ही माहिती तुमच्या डिव्हाइसवर सेव्ह होते.</translation>

@@ -18,6 +18,8 @@
 #import "ios/chrome/browser/autofill/model/ios_wallet_pass_access_manager_factory.h"
 #import "ios/chrome/browser/autofill/ui_bundled/address_editor/autofill_country_selection_table_view_controller.h"
 #import "ios/chrome/browser/autofill/ui_bundled/address_editor/cells/country_item.h"
+#import "ios/chrome/browser/device_reauth/model/reauthentication_service.h"
+#import "ios/chrome/browser/device_reauth/model/reauthentication_service_factory.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/coordinator/autofill_ai_entity_edit_coordinator_delegate.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/coordinator/autofill_ai_entity_edit_mediator.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_country_item.h"
@@ -128,10 +130,14 @@ autofill::EntityInstance GetEmptyEntityInstanceForType(
       IOSWalletPassAccessManagerFactory::GetForProfile(
           self.browser->GetProfile());
 
+  ReauthenticationService* reauthService =
+      ReauthenticationServiceFactory::GetForProfile(self.browser->GetProfile());
+
   _mediator = [[AutofillAIEntityEditMediator alloc]
       initWithEntityInstance:std::move(*instance)
            entityDataManager:entityDataManager
            walletPassManager:walletPassManager
+                reauthModule:reauthService->GetReauthModule()
                    userEmail:[self userEmail]];
 
   _viewController = [[AutofillAIEntityEditTableViewController alloc]
@@ -174,7 +180,7 @@ autofill::EntityInstance GetEmptyEntityInstanceForType(
 
 #pragma mark - AutofillAIEntityEditTableViewControllerDelegate
 
-- (void)didTapCloseButton:
+- (void)dismissViewController:
     (AutofillAIEntityEditTableViewController*)viewController {
   [self.delegate autofillAIEntityEditCoordinatorDidFinish:self];
 }
@@ -206,16 +212,21 @@ autofill::EntityInstance GetEmptyEntityInstanceForType(
       openURLInNewTab:[OpenNewTabCommand commandWithURLFromChrome:walletURL]];
 }
 
-- (void)didFinishSavingToLocalAsFallback:
-    (AutofillAIEntityEditTableViewController*)viewController {
+- (void)showLocalSaveFallbackAlert {
+  CHECK(_editMode == AutofillAIEntityEditMode::kCreate);
   id<AutofillCommands> autofillHandler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), AutofillCommands);
 
   autofill::AutofillAiErrorDialogContext errorContext;
   errorContext.type = autofill::AutofillAiErrorDialogType::kTypeLocalSave;
-  [autofillHandler showAutofillAiErrorDialog:errorContext];
+  errorContext.show_immediately = true;
 
-  [self.delegate autofillAIEntityEditCoordinatorDidFinish:self];
+  __weak __typeof(self) weakSelf = self;
+  errorContext.on_dismissed_callback = base::BindOnce(^{
+    [weakSelf.delegate autofillAIEntityEditCoordinatorDidFinish:weakSelf];
+  });
+
+  [autofillHandler showAutofillAiErrorDialog:std::move(errorContext)];
 }
 
 #pragma mark - AutofillCountrySelectionTableViewControllerDelegate

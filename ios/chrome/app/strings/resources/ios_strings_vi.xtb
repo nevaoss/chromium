@@ -80,6 +80,7 @@
 <translation id="1285320974508926690">Không bao giờ dịch trang web này</translation>
 <translation id="1287229685519872919">Dữ liệu trong Google Workspace</translation>
 <translation id="1291506870746876680">Các quyền của <ph name="BEGIN_BOLD" />"<ph name="SITE_NAME" />"<ph name="END_BOLD" /> sẽ được đặt lại thành tắt khi bạn rời khỏi trang web này.</translation>
+<translation id="1293491796138057740">Thông tin của bạn sẽ được lưu vào <ph name="USER_EMAIL" /> của tài khoản Google Wallet. Bạn có thể dùng thông tin này để điền vào biểu mẫu nhanh hơn trên các sản phẩm của Google.</translation>
 <translation id="1293556467332435079">Tệp</translation>
 <translation id="129553762522093515">Các thẻ đã đóng gần đây</translation>
 <translation id="1296581780163690620">Tải tệp xuống? (<ph name="FILE_SIZE" />)</translation>
@@ -107,6 +108,7 @@
 <translation id="1369286077209859800">Hiển thị tất cả các thẻ trong nhóm thẻ</translation>
 <translation id="136942498637440594">Bạn có thể tìm kiếm dựa trên hình ảnh và những gì bạn thấy.</translation>
 <translation id="1373120905936431262">Tải một hình ảnh lên để biến tấu bằng Nano Banana</translation>
+<translation id="1377321085342047638">Số thẻ</translation>
 <translation id="1377508275003315939">Mật khẩu</translation>
 <translation id="1381022135873211423">{count,plural, =1{{position}/{count} địa chỉ}other{{position}/{count} địa chỉ}}</translation>
 <translation id="1383876407941801731">Tìm kiếm</translation>
@@ -1099,7 +1101,6 @@
 <translation id="4944543191714094452">Tìm trong trang…</translation>
 <translation id="4945756290001680296">Truy cập vào phần cài đặt mật khẩu</translation>
 <translation id="4949302115427722371">Quản lý chế độ cài đặt…</translation>
-<translation id="4952050521954075618">Ảnh từ Thư viện ảnh sẽ không được đồng bộ hoá giữa các thiết bị của bạn</translation>
 <translation id="4958444002117714549">Mở rộng danh sách</translation>
 <translation id="496392417432935267">Đã mở bằng cửa sổ khác</translation>
 <translation id="4970724460420203313">Khi sử dụng Chrome bằng tài khoản được quản lý, bạn có thể tách biệt hoạt động duyệt web liên quan đến tổ chức (trong đó có các thẻ, nhật ký và mật khẩu) với hoạt động duyệt web khác của bạn</translation>
@@ -1265,6 +1266,7 @@
 <translation id="5556459405103347317">Tải lại</translation>
 <translation id="555749644339804659">Đang kiểm tra mật khẩu…</translation>
 <translation id="5559567453458728487">Chuyển đổi đơn vị đo lường có trên web</translation>
+<translation id="5560088892362098740">Ngày hết hạn</translation>
 <translation id="556042886152191864">Nút</translation>
 <translation id="5565871407246142825">Thẻ tín dụng</translation>
 <translation id="5566623128829375608">Lưu vào thiết bị của bạn.</translation>

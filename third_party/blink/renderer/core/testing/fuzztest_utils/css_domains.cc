@@ -445,8 +445,9 @@ fuzztest::Domain<std::string> AnyCSSAnimationIterationCountValue() {
 
 fuzztest::Domain<std::string> AnyCSSAnimationNameValue() {
   return fuzztest::ElementOf<std::string>(
-      {"fuzz-fade", "fuzz-hide", "fuzz-reveal", "fuzz-shrink", "fuzz-move",
-       "fuzz-spin", "fuzz-pulse", "fuzz-recolor", "fuzz-toggle-display",
+      {"fuzz-fade", "fuzz-hide", "fuzz-reveal", "fuzz-shrink",
+       "fuzz-shrink-to-zero", "fuzz-move", "fuzz-move-offscreen", "fuzz-spin",
+       "fuzz-tilt", "fuzz-pulse", "fuzz-recolor", "fuzz-toggle-display",
        "none"});
 }
 
@@ -579,6 +580,22 @@ fuzztest::Domain<std::string> AnyCSSTransformValue() {
       fuzztest::Just(std::string(GetCSSValueName(CSSValueID::kNone))),
       AnyCSSTranslateValue(), AnyCSSScaleValue(), AnyCSSRotateValue(),
       AnyCSSSkewValue(), AnyCSSPerspectiveValue(), AnyCSSMatrixValue());
+}
+
+fuzztest::Domain<WebAnimationParams> AnyWebAnimationParams() {
+  return fuzztest::FlatMap(
+      [](CSSPropertyID property) {
+        return fuzztest::StructOf<WebAnimationParams>(
+            fuzztest::Just(property), AnyPlausibleValueForCSSProperty(property),
+            AnyPlausibleValueForCSSProperty(property));
+      },
+      fuzztest::ElementOf<CSSPropertyID>(
+          {CSSPropertyID::kOpacity, CSSPropertyID::kTransform,
+           CSSPropertyID::kWidth, CSSPropertyID::kHeight,
+           CSSPropertyID::kDisplay, CSSPropertyID::kVisibility,
+           CSSPropertyID::kContentVisibility, CSSPropertyID::kColor,
+           CSSPropertyID::kBackgroundColor, CSSPropertyID::kMarginTop,
+           CSSPropertyID::kPaddingTop}));
 }
 
 fuzztest::Domain<std::string> AnyPlausibleValueForCSSProperty(

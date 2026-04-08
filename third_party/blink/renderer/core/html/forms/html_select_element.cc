@@ -1511,7 +1511,7 @@ String HTMLSelectElement::ItemText(const Element& element) const {
     item_string = option->TextIndentedToRespectGroupLabel();
 
   if (GetLayoutObject() && GetLayoutObject()->Style()) {
-    return GetLayoutObject()->Style()->ApplyTextTransform(item_string);
+    return GetLayoutObject()->StyleRef().ApplyTextTransform(item_string);
   }
   return item_string;
 }
@@ -2105,6 +2105,7 @@ void HTMLSelectElement::MoveActiveOptionForwards() {
     active_option_ = new_option;
     old_active_option->PseudoStateChanged(CSSSelector::kPseudoActiveOption);
     active_option_->PseudoStateChanged(CSSSelector::kPseudoActiveOption);
+    active_option_->scrollIntoViewIfNeeded(/*center_if_needed=*/false);
   }
 }
 
@@ -2118,6 +2119,7 @@ void HTMLSelectElement::MoveActiveOptionBackwards() {
     active_option_ = new_option;
     old_active_option->PseudoStateChanged(CSSSelector::kPseudoActiveOption);
     active_option_->PseudoStateChanged(CSSSelector::kPseudoActiveOption);
+    active_option_->scrollIntoViewIfNeeded(/*center_if_needed=*/false);
   }
 }
 

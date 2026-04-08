@@ -196,7 +196,6 @@ std::optional<EntityInstance> FromAccessibilityAnnotator(
             add(&aa::Order::merchant_name, kOrderMerchantName);
             add(&aa::Order::merchant_domain, kOrderMerchantDomain);
             add(&aa::Order::products, kOrderProductNames);
-            add(&aa::Order::grand_total, kOrderGrandTotal);
           },
 
           [&](const aa::Shipment& src) {
@@ -307,7 +306,6 @@ aa::QueryIntentType AttributeTypeToQueryIntentType(AttributeType type) {
     ATTRIBUTE_TO_QUERY_INTENT(kNationalIdCardExpirationDate);
     ATTRIBUTE_TO_QUERY_INTENT(kOrderAccount);
     ATTRIBUTE_TO_QUERY_INTENT(kOrderDate);
-    ATTRIBUTE_TO_QUERY_INTENT(kOrderGrandTotal);
     ATTRIBUTE_TO_QUERY_INTENT(kOrderId);
     ATTRIBUTE_TO_QUERY_INTENT(kOrderMerchantDomain);
     ATTRIBUTE_TO_QUERY_INTENT(kOrderMerchantName);
@@ -376,6 +374,18 @@ std::u16string GetEntryTypeNameForI18n(aa::QueryIntentType type) {
       return u"IBAN";
     case aa::QueryIntentType::kIbanNickname:
       return u"Name";
+    case aa::QueryIntentType::kCreditCardFull:
+      return u"Credit card";
+    case aa::QueryIntentType::kCreditCardNumber:
+      return u"Card number";
+    case aa::QueryIntentType::kCreditCardExpirationDate:
+      return u"Expiration date";
+    case aa::QueryIntentType::kCreditCardSecurityCode:
+      return u"Security code";
+    case aa::QueryIntentType::kCreditCardNameOnCard:
+      return u"Name on card";
+    case aa::QueryIntentType::kCreditCardNickname:
+      return u"Card Nickname";
     // Entity types:
     case aa::QueryIntentType::kVehicle:
     case aa::QueryIntentType::kPassportFull:
@@ -436,7 +446,7 @@ std::u16string GetEntryTypeNameForI18n(aa::QueryIntentType type) {
     case aa::QueryIntentType::kOrderGrandTotal:
     case aa::QueryIntentType::kShipmentTrackingNumber:
     case aa::QueryIntentType::kShipmentAssociatedOrderId:
-    case aa::QueryIntentType::kShipmentDeliveryZipCode:
+    case aa::QueryIntentType::kShipmentDeliveryAddress:
     case aa::QueryIntentType::kShipmentCarrierName:
     case aa::QueryIntentType::kShipmentCarrierDomain:
     case aa::QueryIntentType::kShipmentEstimatedDeliveryDate: {

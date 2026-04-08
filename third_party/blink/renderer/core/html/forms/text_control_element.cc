@@ -181,7 +181,7 @@ void TextControlElement::DispatchBlurEvent(
 void TextControlElement::DefaultEventHandler(Event& event) {
   // OpaqueRange snapshots on beforeinput and commits after the value
   // mutation, ensuring updates are visible before input listeners run.
-  if (RuntimeEnabledFeatures::OpaqueRangeEnabled() &&
+  if (RuntimeEnabledFeatures::OpaqueRangeEnabled(GetExecutionContext()) &&
       event.type() == event_type_names::kBeforeinput && event.IsInputEvent()) {
     CaptureOpaqueRangePreEdit();
   }
@@ -431,7 +431,7 @@ void TextControlElement::setRangeText(const String& replacement,
     ScopedSkipValueAutoDiff skip_value_auto_diff(*this);
     SetValue(text.ToString(), TextFieldEventBehavior::kDispatchNoEvent,
              TextControlSetValueSelection::kDoNotSet);
-    if (RuntimeEnabledFeatures::OpaqueRangeEnabled()) {
+    if (RuntimeEnabledFeatures::OpaqueRangeEnabled(GetExecutionContext())) {
       CommitProgrammaticOpaqueRangeEdit(original_text, start, end);
     }
   }
@@ -965,7 +965,7 @@ bool TextControlElement::IsPlaceholderBreakElement(const Node* node) {
 void TextControlElement::AdjustPlaceholderBreakElement() {
   HTMLElement* inner_editor = InnerEditorElement();
   if (inner_editor->GetLayoutObject() &&
-      inner_editor->GetLayoutObject()->Style()->ShouldCollapseBreaks()) {
+      inner_editor->GetLayoutObject()->StyleRef().ShouldCollapseBreaks()) {
     return;
   }
   Node* last_child = inner_editor->lastChild();
@@ -1346,7 +1346,7 @@ void TextControlElement::DisconnectAllOpaqueRanges() {
 
 void TextControlElement::RemovedFrom(ContainerNode& insertion_point) {
   if (insertion_point.isConnected() &&
-      RuntimeEnabledFeatures::OpaqueRangeEnabled()) {
+      RuntimeEnabledFeatures::OpaqueRangeEnabled(GetExecutionContext())) {
     DisconnectAllOpaqueRanges();
   }
   HTMLFormControlElementWithState::RemovedFrom(insertion_point);
@@ -1367,7 +1367,7 @@ OpaqueRange* TextControlElement::createValueRange(
     unsigned start_offset,
     unsigned end_offset,
     ExceptionState& exception_state) {
-  CHECK(RuntimeEnabledFeatures::OpaqueRangeEnabled());
+  CHECK(RuntimeEnabledFeatures::OpaqueRangeEnabled(GetExecutionContext()));
 
   const String value = Value();
   if (start_offset > value.length() || end_offset > value.length()) {
@@ -1389,7 +1389,7 @@ void TextControlElement::NotifyOpaqueRangesOfTextChange(
     unsigned change_offset,
     unsigned deleted_count,
     unsigned inserted_count) const {
-  DCHECK(RuntimeEnabledFeatures::OpaqueRangeEnabled());
+  DCHECK(RuntimeEnabledFeatures::OpaqueRangeEnabled(GetExecutionContext()));
   if (opaque_ranges_.empty()) {
     return;
   }
@@ -1400,7 +1400,7 @@ void TextControlElement::NotifyOpaqueRangesOfTextChange(
 }
 
 void TextControlElement::CaptureOpaqueRangePreEdit() {
-  DCHECK(RuntimeEnabledFeatures::OpaqueRangeEnabled());
+  DCHECK(RuntimeEnabledFeatures::OpaqueRangeEnabled(GetExecutionContext()));
   if (opaque_ranges_.empty()) {
     return;
   }
@@ -1412,7 +1412,7 @@ void TextControlElement::CaptureOpaqueRangePreEdit() {
 }
 
 void TextControlElement::CommitOpaqueRangeEdit() {
-  DCHECK(RuntimeEnabledFeatures::OpaqueRangeEnabled());
+  DCHECK(RuntimeEnabledFeatures::OpaqueRangeEnabled(GetExecutionContext()));
   if (opaque_ranges_.empty() || !pending_user_edit_) {
     pending_user_edit_.reset();
     return;
@@ -1479,7 +1479,8 @@ void TextControlElement::CommitProgrammaticOpaqueRangeEdit(
     const String& old_value,
     unsigned old_sel_start,
     unsigned old_sel_end) {
-  if (!RuntimeEnabledFeatures::OpaqueRangeEnabled() || opaque_ranges_.empty()) {
+  if (!RuntimeEnabledFeatures::OpaqueRangeEnabled(GetExecutionContext()) ||
+      opaque_ranges_.empty()) {
     return;
   }
   // Clear any pending user pre-edit snapshot to avoid applying a user-driven

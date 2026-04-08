@@ -111,6 +111,10 @@ removed_librs_template = "removed_lib.rs.hbs"
 remove_crates = []
 root = "chromium"
 
+[crate.addr2line]
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
+
 [crate.adler2.extra_kv]
 allow_unsafe = false
 
@@ -136,6 +140,11 @@ extra_kv = { allow_unsafe = true }
 [crate.anyhow.extra_kv]
 allow_unsafe = true
 
+[crate.arbitrary-int]
+group = 'test'
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = false }
+
 [crate.array-init]
 extra_kv = { allow_unsafe = true }
 
@@ -145,11 +154,25 @@ allow_unsafe = true
 [crate.autocfg.extra_kv]
 allow_unsafe = false
 
+[crate.backtrace]
+group = 'test'
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
+
 [crate.base64.extra_kv]
 allow_unsafe = false
 
 [crate.better_any]
 extra_kv = { allow_unsafe = true }
+
+[crate.bincode]
+group = 'test'
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = false }
+
+[crate.bincode_derive]
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = false }
 
 [crate.bit-set]
 extra_kv = { allow_unsafe = true }
@@ -294,6 +317,10 @@ allow_unsafe = true
 allow_first_party_usage = false
 extra_kv = { allow_unsafe = true }
 
+[crate.gimli]
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
+
 [crate.hashbrown.extra_kv]
 # `hashbrown` crate is implicitly trusted because it comes from
 # https://github.com/rust-lang/ (and we already implicitly trust maintainers of
@@ -326,7 +353,8 @@ visibility = [
 extra_kv = { allow_unsafe = true }
 
 [crate.icu_calendar.extra_kv]
-allow_unsafe = false
+# Simple ascii-only construction
+allow_unsafe = true
 
 [crate.icu_calendar_data]
 extra_input_roots = ['../data']
@@ -516,6 +544,10 @@ allow_unsafe = false
 [crate.num-traits]
 # Configures the has_total_cmp feature, not necessary
 remove_build_rs = true
+extra_kv = { allow_unsafe = true }
+
+[crate.object]
+allow_first_party_usage = false
 extra_kv = { allow_unsafe = true }
 
 [crate.once_cell]
@@ -733,10 +765,22 @@ allow_unsafe = true
 [crate.unicode-width.extra_kv]
 allow_unsafe = false
 
+[crate.unty]
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
+
+[crate.utf8_iter.extra_kv]
+# Crate exists to encapsulate common UTF8 decoding code
+allow_unsafe = true
+
 [crate.uuid]
 extra_kv = { allow_unsafe = true }
 
 [crate.version_check]
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = false }
+
+[crate.virtue]
 allow_first_party_usage = false
 extra_kv = { allow_unsafe = false }
 

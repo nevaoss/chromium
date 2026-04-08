@@ -209,8 +209,8 @@ void KeywordQueryClassify(std::u16string_view query,
   try_match(QueryIntentType::kShipmentTrackingNumber, u"tracking number");
   try_match(QueryIntentType::kShipmentAssociatedOrderId, u"associated order id",
             u"shipment order");
-  try_match(QueryIntentType::kShipmentDeliveryZipCode, u"delivery zip code",
-            u"shipping zip code");
+  try_match(QueryIntentType::kShipmentDeliveryAddress, u"delivery address",
+            u"shipping address");
   try_match(QueryIntentType::kShipmentCarrierName, u"carrier name",
             u"shipping company", u"shipper name");
   try_match(QueryIntentType::kShipmentCarrierDomain, u"carrier domain",
@@ -258,6 +258,20 @@ void KeywordQueryClassify(std::u16string_view query,
             u"ktn expiry");
   try_match(QueryIntentType::kKnownTravelerNumberFull, u"known traveler number",
             u"traveler number", u"ktn");
+
+  // Credit Card
+  try_match(QueryIntentType::kCreditCardNumber, u"credit card number",
+            u"debit card number", u"card number");
+  try_match(QueryIntentType::kCreditCardExpirationDate,
+            u"credit card expiration date", u"credit card expiry date",
+            u"credit card expiration");
+  try_match(QueryIntentType::kCreditCardSecurityCode,
+            u"credit card security code", u"card security code",
+            u"security code", u"cvv", u"cvc");
+  try_match(QueryIntentType::kCreditCardNameOnCard, u"cardholder name",
+            u"card name", u"name card");
+  try_match(QueryIntentType::kCreditCardFull, u"credit card", u"debit card",
+            u"payment method");
 
   // Driver's License
   try_match(QueryIntentType::kDriversLicenseNumber, u"drivers license number",

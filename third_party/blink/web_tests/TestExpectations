@@ -1319,10 +1319,8 @@ crbug.com/494341468 external/wpt/quirks/tables-inherit-color-from-body-quirk-005
 # Test expectations for SnapshotScrollTimelinesPostLayout runtime flag
 crbug.com/384523570 virtual/snapshot-scroll-timelines-post-layout/external/wpt/scroll-animations/css/view-timeline-paused-animations.html [ Failure Pass ]
 crbug.com/384523570 virtual/snapshot-scroll-timelines-post-layout/external/wpt/scroll-animations/scroll-timelines/scroll-animation-effect-phases.tentative.html [ Failure Pass ]
-crbug.com/384523570 virtual/snapshot-scroll-timelines-post-layout/external/wpt/scroll-animations/scroll-timelines/scroll-timeline-snapshotting.html [ Pass ]
 crbug.com/384523570 virtual/snapshot-scroll-timelines-post-layout/external/wpt/scroll-animations/scroll-timelines/updating-the-finished-state.html [ Pass Timeout ]
 crbug.com/384523570 virtual/snapshot-scroll-timelines-post-layout/fast/animation/scroll-animations/scroll-timeline-snapshotting.html [ Pass ]
-crbug.com/384523570 external/wpt/scroll-animations/scroll-timelines/scroll-timeline-snapshotting.html [ Failure ]
 crbug.com/384523570 fast/animation/scroll-animations/scroll-timeline-snapshotting.html [ Failure ]
 
 # Failing WPT html/semantics/* tests. Not all have been investigated.
@@ -2799,7 +2797,31 @@ crbug.com/494341371 [ Linux ] external/wpt/html/cross-origin-opener-policy/ifram
 # Flakily fails due to cookie leakage between unrelated tests
 crbug.com/438309773 external/wpt/service-workers/service-worker/fetch-request-xhr.https.html [ Crash Failure Pass ]
 
+crbug.com/499074021 external/wpt/paint-timing/fcp-only/fcp-broken-image.html [ Failure ]
+
+# [159563:1:0402/082414.321404:FATAL:third_party/blink/renderer/core/layout/block_layout_algorithm.cc:2590] DCHECK failed: layout_result->IsSelfCollapsing() == is_self_collapsing (0 vs. 1).
+crbug.com/499073668 virtual/fragmented-oof-in-cb/external/wpt/css/css-break/firefox-bug-2021187-crash.html [ Crash ]
+
+# UUID in `*-expected.txt`
+crbug.com/499074020 external/wpt/fetch/metadata/text.https.html [ Failure ]
+
 # ====== New tests from wpt-importer added here ======
+crbug.com/499073686 external/wpt/content-security-policy/connect-src/connect-src-text-import-blocked.sub.html [ Timeout ]
+crbug.com/499073784 external/wpt/css/css-anchor-position/position-area-alignment-inset-001.html [ Failure ]
+crbug.com/499073332 external/wpt/css/css-conditional/container-queries/multiple-conditions-001.html [ Failure ]
+crbug.com/499073332 external/wpt/css/css-conditional/container-queries/query-style-color.html [ Failure ]
+crbug.com/499073332 [ Win ] external/wpt/css/css-device-adapt/viewport-clamp-initial-scale-to-max.tentative.html [ Pass Timeout ]
+crbug.com/499073688 external/wpt/css/css-transforms/animation/rotate-explicit-and-implicit-keyframes.html [ Failure ]
+crbug.com/499074022 external/wpt/html/rendering/the-details-element/details-content-pseudo-attr.html [ Failure ]
+crbug.com/499073687 [ Win ] external/wpt/svg/animations/smil-clock-value-out-of-range-minutes.html [ Pass Timeout ]
+crbug.com/499073687 external/wpt/svg/text/reftests/textpath-side-003.svg [ Failure ]
+crbug.com/499073687 external/wpt/svg/text/reftests/textpath-side-005.svg [ Failure ]
+crbug.com/499073530 external/wpt/webdriver/tests/bidi/browser/set_client_window_state/invalid.py [ Failure ]
+crbug.com/499073530 external/wpt/webdriver/tests/bidi/browser/set_client_window_state/rect_state.py [ Failure ]
+crbug.com/499073530 external/wpt/webdriver/tests/bidi/browser/set_client_window_state/state.py [ Failure ]
+crbug.com/499073530 external/wpt/webdriver/tests/bidi/browser/set_client_window_state/stress.py [ Failure ]
+crbug.com/499073688 virtual/backface-visibility-interop/external/wpt/css/css-transforms/animation/rotate-explicit-and-implicit-keyframes.html [ Failure ]
+crbug.com/499073784 virtual/fragmented-oof-in-cb/external/wpt/css/css-anchor-position/position-area-alignment-inset-001.html [ Failure ]
 crbug.com/497404481 [ Android ] external/wpt/webdriver/tests/classic/find_element/user_prompts.py [ Failure ]
 crbug.com/497404481 [ Android ] external/wpt/webdriver/tests/classic/take_screenshot/user_prompts.py [ Failure ]
 crbug.com/497145619 external/wpt/credential-management/credentialscontainer-get-basics.https.html [ Timeout ]
@@ -3700,9 +3722,6 @@ crbug.com/397483597 [ Mac15-arm64 ] external/wpt/webrtc-encoded-transform/tentat
 crbug.com/397483597 [ Mac15 ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedFrame-timestamps.html [ Timeout ]
 crbug.com/397483597 [ Mac ] external/wpt/webrtc-encoded-transform/tentative/RTCEncodedAudioFrame-audiolevel.html [ Timeout ]
 crbug.com/397150490 external/wpt/speech-api/SpeechSynthesis-speak-without-activation-fails.tentative.html [ Failure Timeout ]
-crbug.com/396813145 virtual/threaded/external/wpt/css/css-view-transitions/animation-name-ua-prefix.html [ Failure ]
-crbug.com/396813145 virtual/view-transition-mpa-serialization/external/wpt/css/css-view-transitions/animation-name-ua-prefix.html [ Failure ]
-crbug.com/396813145 virtual/view-transition-wide-gamut/external/wpt/css/css-view-transitions/animation-name-ua-prefix.html [ Failure ]
 crbug.com/395921918 [ Mac12 ] external/wpt/speculation-rules/prerender/restriction-focus.https.html [ Crash Failure ]
 crbug.com/395482243 external/wpt/webdriver/tests/bidi/browsing_context/context_created/context_created.py [ Failure Timeout ]
 crbug.com/395482243 external/wpt/webdriver/tests/bidi/browsing_context/get_tree/original_opener.py [ Timeout ]
@@ -4621,6 +4640,7 @@ crbug.com/1500354 external/wpt/pointerevents/pointerevent_after_target_removed_i
 ### external/wpt/speculation-rules/prerender
 crbug.com/1126305 external/wpt/speculation-rules/prerender/restrictions.https.html [ Skip Timeout ]
 # Failures for other reasons.
+crbug.com/343754418 external/wpt/speculation-rules/prerender/no-vary-search-hint-target-blank.https.html?17-17 [ Failure ]
 crbug.com/343754418 external/wpt/speculation-rules/prerender/no-vary-search-hint.https.html?17-17 [ Failure ]
 crbug.com/383653154 external/wpt/speculation-rules/prerender/restriction-speech-synthesis.https.html [ Skip Timeout ]
 
@@ -5919,7 +5939,6 @@ crbug.com/1317079 external/wpt/html/infrastructure/safe-passing-of-structured-da
 crbug.com/1317079 external/wpt/html/infrastructure/safe-passing-of-structured-data/shared-array-buffers/broadcastchannel-success.https.html [ Timeout ]
 crbug.com/1223883 external/wpt/html/webappapis/dynamic-markup-insertion/opening-the-input-stream/location-set-and-document-open.html [ Timeout ]
 crbug.com/678633 external/wpt/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ Failure ]
-crbug.com/489128050 external/wpt/html/interaction/focus/focusgroup/tentative/behavior-tokens-comprehensive.html [ Timeout ]
 
 # Sheriff 2020-03-06
 crbug.com/1059262 virtual/threaded/http/tests/worklet/webexposed/global-interface-listing-paint-worklet.html [ Failure Pass ]
@@ -6018,15 +6037,6 @@ crbug.com/1042877 external/wpt/upgrade-insecure-requests/gen/iframe-blank-inheri
 crbug.com/1042877 external/wpt/upgrade-insecure-requests/gen/srcdoc-inherit.meta/unset/img-tag.https.html [ Failure ]
 crbug.com/1042877 external/wpt/upgrade-insecure-requests/gen/top.meta/unset/img-tag.https.html [ Failure ]
 crbug.com/1042877 http/tests/security/mixedContent/insecure-css-image-with-reload.html [ Failure ]
-crbug.com/1042877 http/tests/security/mixedContent/insecure-image-in-iframe.html [ Failure ]
-crbug.com/1042877 http/tests/security/mixedContent/insecure-image-in-main-frame-allowed.html [ Failure ]
-crbug.com/1042877 http/tests/security/mixedContent/insecure-image-in-main-frame-blocked.html [ Failure ]
-crbug.com/1042877 http/tests/security/mixedContent/insecure-image-in-main-frame.html [ Failure ]
-crbug.com/1042877 http/tests/security/mixedContent/preload-insecure-image-in-main-frame-blocked.html [ Failure ]
-crbug.com/1042877 http/tests/security/mixedContent/strict-mode-image-blocked.https.html [ Timeout ]
-crbug.com/1042877 http/tests/security/mixedContent/strict-mode-image-in-frame-blocked.https.html [ Failure ]
-crbug.com/1042877 http/tests/security/mixedContent/strict-mode-image-reportonly.https.php [ Failure ]
-crbug.com/1042877 http/tests/security/mixedContent/strict-mode-via-pref-image-blocked.https.html [ Failure ]
 
 crbug.com/333787229 http/tests/devtools/sources/debugger/anonymous-script-with-source-map-breakpoint.js [ Failure Pass ]
 
@@ -6365,7 +6375,6 @@ crbug.com/40770317 http/tests/devtools/bfcache/bfcache-elements-update.js [ Fail
 # CSS Highlight API painting issues related to general CSS highlight
 # pseudo-elements painting
 crbug.com/1163437 external/wpt/css/css-highlight-api/painting/custom-highlight-painting-below-grammar.html [ Failure ]
-crbug.com/1521187 external/wpt/css/css-highlight-api/painting/custom-highlight-painting-staticrange-005.html [ Failure Pass ]
 crbug.com/357946492 external/wpt/css/css-highlight-api/highlight-image.html [ Failure ]
 crbug.com/359253683 external/wpt/css/css-highlight-api/highlight-text-across-elements.html [ Failure Pass ]
 crbug.com/359253683 external/wpt/css/css-highlight-api/highlight-text-decorations.html [ Failure Pass ]

@@ -95,6 +95,13 @@ BASE_FEATURE(kContextualTasksHideMenuOnAiPage,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
+BASE_FEATURE(kContextualTasksUpdateModelOnNavigation,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+bool GetIsContextualTasksUpdateModeOnNavigationEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksUpdateModelOnNavigation);
+}
+
 const base::FeatureParam<bool> kContextualTasksLockAndUnlockInputCapability(
     &kContextualTasks,
     "ContextualTasksLockAndUnlockInputCapability",
@@ -133,6 +140,11 @@ const base::FeatureParam<bool> kContextualTasksContextSmartTabSharing(
     "ContextualTasksContextSmartTabSharing",
     false);
 
+const base::FeatureParam<base::TimeDelta> kSmartTabSharingTabSelectionTimeout(
+    &kContextualTasksContext,
+    "ContextualTasksContextSmartTabSharingTabSelectionTimeout",
+    base::Milliseconds(300));
+
 const base::FeatureParam<double> kContextualTasksContextLoggingSampleRate{
     &kContextualTasksContextLogging, "ContextualTasksContextLoggingSampleRate",
     1.0};
@@ -159,7 +171,7 @@ const base::FeatureParam<std::string> kContextualTasksForcedEmbeddedPageHost{
 // The base domains for the sign in page.
 const base::FeatureParam<std::string> kContextualTasksSignInDomains{
     &kContextualTasks, "contextual-tasks-sign-in-domains",
-    "accounts.google.com,login.corp.google.com"};
+    "login.corp.google.com"};
 
 constexpr base::FeatureParam<EntryPointOption>::Option kEntryPointOptions[] = {
     {EntryPointOption::kNoEntryPoint, "no-entry-point"},
@@ -183,11 +195,6 @@ const base::FeatureParam<ExpandButtonOption> kExpandButtonOptions(
     "ContextualTasksExpandButtonOptions",
     ExpandButtonOption::kToolbarCloseButton,
     &kExpandButtonOption);
-
-const base::FeatureParam<bool> kTaskScopedSidePanel(
-    &kContextualTasks,
-    "ContextualTasksTaskScopedSidePanel",
-    true);
 
 const base::FeatureParam<bool> kOpenSidePanelOnLinkClicked(
     &kContextualTasks,
@@ -411,6 +418,13 @@ bool GetIsContextualTasksSuggestionsEnabled() {
 bool GetIsSmartTabSharingEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksContext) &&
          kContextualTasksContextSmartTabSharing.Get();
+}
+
+base::TimeDelta GetSmartTabSharingTabSelectionTimeout() {
+  if (kSmartTabSharingTabSelectionTimeout.Get().is_positive()) {
+    return kSmartTabSharingTabSelectionTimeout.Get();
+  }
+  return base::Milliseconds(300);
 }
 
 bool GetIsTabAutoSuggestionChipEnabled() {

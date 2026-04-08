@@ -430,10 +430,6 @@ BASE_FEATURE(kGlicUseSessionCountryForFiltering,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicLocaleFiltering, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Controls whether the Glic FRE dialog is displayed in the same window as the
-// main app.
-BASE_FEATURE(kGlicUnifiedFreScreen, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Controls the bugfix where the unified FRE synchronizes cookies to the wrong
 // storage partition.
 BASE_FEATURE(kGlicUseMainPartitionForUnifiedFre,
@@ -465,13 +461,7 @@ BASE_FEATURE(kGlicDetached, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicMultiInstance, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether Glic warms up WebContents instead of a full instance.
-BASE_FEATURE(kGlicWebContentsWarming,
-#if !BUILDFLAG(IS_ANDROID)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else  // Android does not support instance warming, only web contents warming.
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
+BASE_FEATURE(kGlicWebContentsWarming, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls the delay before the WebContents is warmed. A large delay will
 // effectively turn off warming.
@@ -944,8 +934,7 @@ const base::FeatureParam<std::string> kGlicWebActuationAllowedTiers{
 
 // If enabled, show web actuation settings toggle if
 // kGlicWebActuationAllowedTiers is populated.
-BASE_FEATURE(kGlicWebActuationSettingsToggle,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicWebActuationSettingsToggle, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicMetricsSession, base::FEATURE_ENABLED_BY_DEFAULT);
 // The duration of inactivity after which a session is considered ended.
@@ -1699,7 +1688,7 @@ const base::FeatureParam<base::TimeDelta>
 #if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kWebAppPeriodicPreinstallUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kWebAppMigratePreinstalledChat, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebAppMigratePreinstalledChat, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebAppInstallDialog, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1797,12 +1786,6 @@ BASE_FEATURE(kWebUIBackForwardButton, base::FEATURE_DISABLED_BY_DEFAULT);
 // from chrome://webui-toolbar.top-chrome.
 // crbug.com/474061420
 BASE_FEATURE(kWebUIPinnedToolbarActions, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// When enabled, location bar RHS content settings icons will be replaced with
-// WebUI loaded from chrome://webui-toolbar.top-chrome.
-// crbug.com/489109708
-BASE_FEATURE(kWebUIContentSettingsIcons, base::FEATURE_DISABLED_BY_DEFAULT);
-
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables the User-Agent override fix for SearchPrefetch. This will work only

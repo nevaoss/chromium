@@ -193,10 +193,14 @@ ContextualTasksComposeboxHandler::ContextualTasksComposeboxHandler(
   // Set the callback for getting suggest inputs from the session.
   // The session is owned by WebUI controller and accessed via callback.
   // It is safe to use Unretained because omnibox client is owned by `this`.
-  static_cast<ContextualOmniboxClient*>(omnibox_controller()->client())
+  static_cast<ContextualTasksOmniboxClient*>(omnibox_controller()->client())
       ->SetSuggestInputsCallback(base::BindRepeating(
           &ContextualTasksComposeboxHandler::GetSuggestInputs,
           base::Unretained(this)));
+
+  if (contextual_tasks::GetIsContextualTasksUpdateModeOnNavigationEnabled()) {
+    InitializeInputStateModel();
+  }
 }
 
 ContextualTasksComposeboxHandler::~ContextualTasksComposeboxHandler() = default;
@@ -358,6 +362,15 @@ ContextualTasksComposeboxHandler::GetContextualTasksService() {
   return contextual_tasks_service_;
 }
 
+void ContextualTasksComposeboxHandler::ResetInputStateModel() {
+  ComposeboxHandler::ResetInputStateModel();
+}
+
+void ContextualTasksComposeboxHandler::UpdateModelFromUrl(const GURL& url) {
+  if (input_state_model()) {
+    input_state_model()->UpdateModelFromUrl(url);
+  }
+}
 
 void ContextualTasksComposeboxHandler::OnTaskChanged() {
   ClearFiles(/*should_block_auto_suggested_tabs=*/false);
@@ -367,7 +380,7 @@ void ContextualTasksComposeboxHandler::OnTaskChanged() {
 void ContextualTasksComposeboxHandler::InitializeInputStateModel() {
   if (take_input_model_callback_) {
     std::unique_ptr<contextual_search::InputStateModel> current_input_state =
-        std::move(take_input_model_callback_).Run();
+        take_input_model_callback_.Run();
 
     if (current_input_state) {
       ResetInputStateModel();
@@ -733,6 +746,14 @@ void ContextualTasksComposeboxHandler::AddTabContext(
                                                     std::move(callback));
 }
 
+bool ContextualTasksComposeboxHandler::has_suggested_tab_context() const {
+  return current_suggestion_.has_value();
+}
+
+void ContextualTasksComposeboxHandler::ResetBlocklistedSuggestions() {
+  blocklisted_suggestions_.clear();
+}
+
 void ContextualTasksComposeboxHandler::ClearFiles(
     bool should_block_auto_suggested_tabs) {
   // Clear all files from the UI.
@@ -936,19 +957,19 @@ void ContextualTasksComposeboxHandler::DeleteContext(
 }
 
 void ContextualTasksComposeboxHandler::UpdateSuggestedTabContext(
-    searchbox::mojom::TabInfoPtr candidate_tab_info) {
+    std::unique_ptr<contextual_tasks::SuggestedTabInfo> suggested_tab) {
   current_suggestion_ = std::nullopt;
-
-  // Allowed to be called/update frontend multiple times for the same tab
-  // since title updates can occur.
 
   // Filter the suggested tab info based on blocklisted URLs and update the UI.
   searchbox::mojom::TabInfoPtr filtered_suggestion;
-  if (contextual_tasks::GetIsTabAutoSuggestionChipEnabled() &&
-      candidate_tab_info &&
-      !blocklisted_suggestions_.contains(candidate_tab_info->url)) {
-    current_suggestion_ = candidate_tab_info->url;
-    filtered_suggestion = std::move(candidate_tab_info);
+  if (contextual_tasks::GetIsTabAutoSuggestionChipEnabled() && suggested_tab &&
+      !blocklisted_suggestions_.contains(suggested_tab->url)) {
+    current_suggestion_ = suggested_tab->url;
+    filtered_suggestion = searchbox::mojom::TabInfo::New();
+    filtered_suggestion->tab_id = suggested_tab->tab_id;
+    filtered_suggestion->title = base::UTF16ToUTF8(suggested_tab->title);
+    filtered_suggestion->url = suggested_tab->url;
+    filtered_suggestion->last_active = suggested_tab->last_active;
   }
 
   SearchboxHandler::page_->UpdateAutoSuggestedTabContext(

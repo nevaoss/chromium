@@ -359,6 +359,11 @@ void GlicInstanceImpl::Show(const ShowOptions& options) {
 
   EmbedderKey new_key = GetEmbedderKey(options);
 
+  // Look up the current embedder for that tab/key.
+  EmbedderEntry* entry = GetEmbedderEntry(new_key);
+  bool should_log_open =
+      !entry || !entry->embedder || !entry->embedder->IsShowing();
+
   GlicUiEmbedder* embedder_to_show = nullptr;
 
   if (IsActiveEmbedder(new_key)) {
@@ -381,6 +386,9 @@ void GlicInstanceImpl::Show(const ShowOptions& options) {
   MaybeShowHostUi(embedder_to_show, options.invocation_source,
                   options.prompt_suggestion, options.auto_send,
                   options.fre_override);
+  if (should_log_open) {
+    instance_metrics()->OnOpen(options.invocation_source, options);
+  }
   embedder_to_show->Show(options);
   if (options.focus_on_show) {
     embedder_to_show->Focus();
@@ -715,6 +723,10 @@ void GlicInstanceImpl::OnUserInputSubmitted(mojom::WebClientMode mode) {
   for (auto& [key, entry] : embedders_) {
     entry.user_input_submitted_while_bound = true;
   }
+  // TODO(harringtond): The only subscriber to this event is the tab underline
+  // controller and I think it makes more sense for it to get that signal from
+  // sharing manager instead of going through the keyed service.
+  service_->OnUserInputSubmitted(mode);
 }
 
 void GlicInstanceImpl::OnInteractionModeChange(mojom::WebClientMode new_mode) {

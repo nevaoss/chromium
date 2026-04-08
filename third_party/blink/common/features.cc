@@ -478,6 +478,8 @@ BASE_FEATURE(kCreateImageBitmapOrientationNone,
 BASE_FEATURE(kDeclarativeCSSModulesUseDataURI,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kDataUrlWorkerOpaqueOrigin, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kDeferRendererTasksAfterInput, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const char kDeferRendererTasksAfterInputPolicyParamName[] = "policy";
@@ -955,7 +957,7 @@ BASE_FEATURE(kForceHighPerformanceGPUForWebGL,
 // small screens. This feature is for disabling these heuristics.
 BASE_FEATURE(kForceOffTextAutosizing, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kForceSkcmsICCParsing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kForceSkcmsICCParsing, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kForceSkExifCppParsing, base::FEATURE_DISABLED_BY_DEFAULT);
 

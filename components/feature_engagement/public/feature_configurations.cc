@@ -732,6 +732,27 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
+  if (kIPHExtensionsManageFeature.name == feature->name) {
+    // Allows an IPH to be shown after a user installs an extension to inform
+    // them where it can be managed.
+    // Constraints:
+    // - Show at most once per year (360 days).
+    // - Only show if the user hasn't already clicked the extensions menu
+    //   button (puzzle piece) on their own.
+    // - session_rate is set to EQUAL, 0 to ensure we don't show this if another
+    //   IPH was already shown in the same session.
+    std::optional<FeatureConfig> config = FeatureConfig();
+    config->valid = true;
+    config->availability = Comparator(ANY, 0);
+    config->session_rate = Comparator(EQUAL, 0);
+    config->trigger = EventConfig("manage_extensions_iph_triggered",
+                                  Comparator(LESS_THAN, 1), 360, 360);
+    // Only show if the user hasn't already clicked the extension menu button.
+    config->used = EventConfig("extensions_menu_button_clicked",
+                               Comparator(EQUAL, 0), 360, 360);
+    return config;
+  }
+
   if (kIPHAndroidTabDeclutter.name == feature->name) {
     // Allows an IPH for tab declutter for the tab switcher button:
     // * Only once per week.
@@ -2118,29 +2139,36 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
   }
 
   if (kIPHThreeDotMenuBackButton.name == feature->name) {
-    // TODO(crbug.com/493306650): Add final values for IPH
     FeatureConfig config;
     config.valid = true;
-    config.availability = Comparator(ANY, 0);  // Always available
+    config.availability =
+        Comparator(GREATER_THAN_OR_EQUAL,
+                   4);  // Available after greater than three days
     config.session_rate = Comparator(
         EQUAL, 0);  // Only shows when no other IPH has been shown this session
 
-    // Only show the IPH once per year
+    // Only show the IPH no more than 2 times per year
     config.trigger = EventConfig("three_dot_menu_back_button_trigger",
-                                 Comparator(ANY, 0), 0, 360);
+                                 Comparator(LESS_THAN, 2), 360, 360);
+
+    // The IPH will only be shown if the back button has not been used in the
+    // last 360 days.
+    config.used = EventConfig("three_dot_menu_back_button_clicked",
+                              Comparator(EQUAL, 0), 360, 360);
     return config;
   }
 
   if (kIPHGestureUserEducation.name == feature->name) {
     FeatureConfig config;
     config.valid = true;
-    config.availability = Comparator(ANY, 0);  // Always available
+    config.availability = Comparator(
+        GREATER_THAN_OR_EQUAL, 4);  // Available after greater than 3 days.
     config.session_rate = Comparator(
         EQUAL, 0);  // Only shows when no other IPH has been shown this session
 
     // Only show the IPH once per year
     config.trigger = EventConfig("gesture_user_education_trigger",
-                                 Comparator(ANY, 0), 0, 360);
+                                 Comparator(ANY, 0), 360, 360);
     // The IPH will only be shown if the back swipe has been used less than two
     // times in the last 360 days.
     config.used = EventConfig("swipe_on_left_edge_for_navigation_used",

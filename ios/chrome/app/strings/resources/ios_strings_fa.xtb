@@ -80,6 +80,7 @@
 <translation id="1285320974508926690">این سایت هرگز ترجمه نشود</translation>
 <translation id="1287229685519872919">‏داده‌های Google Workspace</translation>
 <translation id="1291506870746876680">هرگاه این سایت را ترک کنید، اجازه‌های <ph name="BEGIN_BOLD" />«<ph name="SITE_NAME" />»<ph name="END_BOLD" /> به حالت خاموش برمی‌گردد.</translation>
+<translation id="1293491796138057740">‏اطلاعاتتان در «کیف پول Google» مربوط به <ph name="USER_EMAIL" /> ذخیره می‌شود. می‌توانید از آن در محصولات Google برای تکمیل سریع‌تر فرم‌ها استفاده کنید.</translation>
 <translation id="1293556467332435079">Files</translation>
 <translation id="129553762522093515">اخیراً بسته‌شده</translation>
 <translation id="1296581780163690620">فایل بارگیری شود؟ (<ph name="FILE_SIZE" />)</translation>
@@ -107,6 +108,7 @@
 <translation id="1369286077209859800">نمایش همه زبانه‌ها در گروه زبانه</translation>
 <translation id="136942498637440594">می‌توانید تصاویر و آنچه را که می‌بینید جستجو کنید.</translation>
 <translation id="1373120905936431262">‏تصویری را برای بازآمیزی با Nano Banana بارگذاری کنید</translation>
+<translation id="1377321085342047638">شماره کارت</translation>
 <translation id="1377508275003315939">گذرواژه‌ها</translation>
 <translation id="1381022135873211423">{count,plural, =1{‫{position} از {count} نشانی}one{‫{position} از {count} نشانی}other{‫{position} از {count} نشانی}}</translation>
 <translation id="1383876407941801731">جستجو</translation>
@@ -294,7 +296,7 @@
 <translation id="1993126639825654370">کپی کردن نشانی وب پیوند</translation>
 <translation id="199425419756152024">مشاهده گذرواژه</translation>
 <translation id="1996318269856535896">همچنان می‌توانید از داده‌های مرور موجود خود در این دستگاه استفاده کنید. برای استفاده از آن، از سیستم حساب مدیریت‌شده خود خارج شوید.</translation>
-<translation id="2010008505735295285">بار کردن مجدد</translation>
+<translation id="2010008505735295285">مجدد بار کردن</translation>
 <translation id="2012723204723845092">بازگشتتان را خوشامد می‌گوییم!</translation>
 <translation id="2015722694326466240">برای دیدن گذرنویسه‌ها، اول باید گذرنویسه‌ای برای دستگاه تنظیم کنید.</translation>
 <translation id="201759455285471444">ازهم باز کردن گروه زبانه.</translation>
@@ -1099,7 +1101,6 @@
 <translation id="4944543191714094452">یافتن در صفحه…</translation>
 <translation id="4945756290001680296">دسترسی به تنظیمات گذرواژه</translation>
 <translation id="4949302115427722371">مدیریت کردن تنظیمات…</translation>
-<translation id="4952050521954075618">عکس‌های «حلقه فیلم دوربین» در دستگاه‌هایتان همگام‌سازی نخواهد شد</translation>
 <translation id="4958444002117714549">بزرگ کردن فهرست</translation>
 <translation id="496392417432935267">در جای دیگری باز شده است</translation>
 <translation id="4970724460420203313">‏استفاده از Chrome با حساب مدیریت‌شده‌تان به شما کمک می‌کند داده‌های مرور مربوط به سازمانتان (مانند زبانه‌ها، سابقه، و گذرواژه‌ها) را از دیگر داده‌های مرور جدا نگه دارید</translation>
@@ -1262,9 +1263,10 @@
 
 Handoff باید در بخش عمومی تنظیمات نیز فعال شود و دستگاه‌های شما باید از یک حساب iCloud استفاده کنند.</translation>
 <translation id="5555008247722361784">‏با حساب <ph name="USER_EMAIL" /> به سیستم وارد شده‌اید. خطای «حساب Google». منوِ حساب را باز کنید.</translation>
-<translation id="5556459405103347317">بار کردن مجدد</translation>
+<translation id="5556459405103347317">مجدد بار کردن</translation>
 <translation id="555749644339804659">درحال بررسی گذرواژه‌ها…</translation>
 <translation id="5559567453458728487">تبدیل واحدهای اندازه‌گیری پیداشده در وب</translation>
+<translation id="5560088892362098740">تاریخ انقضا</translation>
 <translation id="556042886152191864">دکمه</translation>
 <translation id="5565871407246142825">کارت‌های اعتباری</translation>
 <translation id="5566623128829375608">در دستگاهتان ذخیره می‌کند.</translation>
@@ -1919,7 +1921,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="7807060072011926525">‏ارائه از Google</translation>
 <translation id="7812377703891978671">با انتخاب <ph name="HISTORY_BUTTON_ACCESSIBILITY_LABEL" /> می‌توانید به کل سابقه مرورتان دسترسی داشته باشید.</translation>
 <translation id="78146569776629510">بارگیری‌ها</translation>
-<translation id="7815852444315004084">فعلاً پنهان شود</translation>
+<translation id="7815852444315004084">فعلاً پنهان کردن</translation>
 <translation id="7825973332242257878">گروه زبانه</translation>
 <translation id="7839994177130598711">‏اعضای خانواده‌تان اکنون می‌توانند هنگام ورود به سیستم <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" /> بااستفاده از «مدیر گذرواژه Google»، نام کاربری و گذرواژه شما را به‌کار ببرند.</translation>
 <translation id="7841180087127694526">جستجوی نوشتار کپی‌شده</translation>

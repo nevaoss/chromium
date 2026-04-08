@@ -15,6 +15,7 @@
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/location.h"
+#include "base/logging.h"
 #include "base/memory/weak_ptr.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/sequenced_task_runner.h"
@@ -26,6 +27,24 @@
 
 namespace optimization_guide {
 
+TestManifestAssetManagerComponentState::InstallTarget::InstallTarget() =
+    default;
+
+TestManifestAssetManagerComponentState::InstallTarget::InstallTarget(
+    const std::string& public_key_hex,
+    const base::Version& version)
+    : public_key_hex(public_key_hex), version(version) {}
+
+TestManifestAssetManagerComponentState::InstallTarget::~InstallTarget() =
+    default;
+
+TestManifestAssetManagerComponentState::InstallTarget::InstallTarget(
+    const InstallTarget&) = default;
+
+TestManifestAssetManagerComponentState::InstallTarget&
+TestManifestAssetManagerComponentState::InstallTarget::operator=(
+    const InstallTarget&) = default;
+
 class TestManifestAssetManagerComponentState::DelegateImpl final
     : public ManifestAssetManager::Delegate {
  public:
@@ -35,7 +54,7 @@ class TestManifestAssetManagerComponentState::DelegateImpl final
   ~DelegateImpl() override = default;
 
   base::CallbackListSubscription ListenForManifestReady(
-      base::RepeatingCallback<void(base::FilePath)> on_ready) const override {
+      base::RepeatingCallback<void(base::FilePath)> on_ready) override {
     if (state_) {
       return state_->manifest_ready_callbacks_.Add(std::move(on_ready));
     }
@@ -49,8 +68,7 @@ class TestManifestAssetManagerComponentState::DelegateImpl final
     if (!state_) {
       return;
     }
-    state_->registered_components_.insert(public_key_hex);
-    state_->uninstalled_components_.erase(public_key_hex);
+    VLOG(2) << "Register " << public_key_hex << " V:" << target_version;
     Registration& registration = state_->registrations_[public_key_hex];
     CHECK(!registration.pending_registration);
     CHECK(!registration.pending_uninstall);
@@ -68,13 +86,13 @@ class TestManifestAssetManagerComponentState::DelegateImpl final
     if (!state_) {
       return;
     }
-    state_->uninstalled_components_.insert(public_key_hex);
-    state_->registered_components_.erase(public_key_hex);
+    VLOG(2) << "Uninstall " << public_key_hex;
     Registration& registration = state_->registrations_[public_key_hex];
     CHECK(!registration.pending_registration);
     CHECK(!registration.pending_uninstall);
     registration.manager = manager;
     registration.target.public_key_hex = public_key_hex;
+    registration.target.version = std::nullopt;
     registration.pending_uninstall = true;
 
     if (!state_->defer_registration_callbacks_) {
@@ -87,6 +105,7 @@ class TestManifestAssetManagerComponentState::DelegateImpl final
     if (!state_) {
       return;
     }
+    VLOG(2) << "RequestUpdate " << public_key_hex;
     Registration& registration = state_->registrations_[public_key_hex];
     if (is_background) {
       registration.has_background_update_requested = true;
@@ -169,7 +188,7 @@ void TestManifestAssetManagerComponentState::RunPendingRegistrations(
     if (registration.manager) {
       registration.manager->InstallerRegistered(
           registration.target.public_key_hex,
-          registration.target.version.GetString(), is_already_installed);
+          registration.target.version->GetString(), is_already_installed);
     }
     MaybeCompleteDownload(registration.target.public_key_hex);
   }
@@ -229,7 +248,7 @@ void TestManifestAssetManagerComponentState::MaybeCompleteDownload(
   registration.has_background_update_requested = false;
 
   registration.manager->OnAssetReady(inst_it->second.target.public_key_hex,
-                                     inst_it->second.target.version,
+                                     *inst_it->second.target.version,
                                      inst_it->second.install_dir);
 }
 
@@ -279,19 +298,32 @@ void TestManifestAssetManagerComponentState::UpdateLanguageDetectionModel(
 }
 
 void TestManifestAssetManagerComponentState::SimulateRestart() {
+  VLOG(2) << "SimulateRestart";
   registrations_.clear();
-  registered_components_.clear();
-  uninstalled_components_.clear();
 }
 
 bool TestManifestAssetManagerComponentState::IsRegistered(
     const std::string& public_key) const {
-  return registered_components_.contains(public_key);
+  auto it = registrations_.find(public_key);
+  return it != registrations_.end();
+}
+
+bool TestManifestAssetManagerComponentState::IsRegistered(
+    const InstallTarget& target) const {
+  auto it = registrations_.find(target.public_key_hex);
+  if (it == registrations_.end()) {
+    return false;
+  }
+  return target.version == it->second.target.version;
 }
 
 bool TestManifestAssetManagerComponentState::WasUninstallRequested(
     const std::string& public_key) const {
-  return uninstalled_components_.contains(public_key);
+  auto it = registrations_.find(public_key);
+  if (it == registrations_.end()) {
+    return false;
+  }
+  return !it->second.target.version;
 }
 
 bool TestManifestAssetManagerComponentState::WasOnDemandUpdateRequested(

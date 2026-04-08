@@ -546,9 +546,6 @@ void GlicInstanceMetrics::OnOpen(glic::mojom::InvocationSource source,
 void GlicInstanceMetrics::OnToggle(glic::mojom::InvocationSource source,
                                    const ShowOptions& options,
                                    bool is_showing) {
-  if (!is_showing) {
-    OnOpen(source, options);
-  }
   base::RecordAction(base::UserMetricsAction("Glic.Instance.Toggle"));
   if (std::holds_alternative<FloatingShowOptions>(options.embedder_options)) {
     base::UmaHistogramEnumeration("Glic.Instance.Floaty.ToggleSource", source);
@@ -696,6 +693,11 @@ void GlicInstanceMetrics::OnWebUiStateChanged(mojom::WebUiState state) {
       base::RecordAction(base::UserMetricsAction(
           "Glic.Instance.WebUiStateChanged.DisabledByAdmin"));
       LogEvent(GlicInstanceEvent::kWebUiStateDisabledByAdmin);
+      break;
+    case mojom::WebUiState::kWarmed:
+      base::RecordAction(
+          base::UserMetricsAction("Glic.Instance.WebUiStateChanged.kWarmed"));
+      LogEvent(GlicInstanceEvent::kWebUiStateWarmed);
       break;
   }
 }

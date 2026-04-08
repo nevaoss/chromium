@@ -16,8 +16,8 @@ class TabCollectionNode;
 class GlowHoverController;
 
 namespace tabs {
-class VerticalTabStripStateController;
-}
+enum class VerticalTabStripCollapseState;
+}  // namespace tabs
 
 // The view class for vertical split tab container. It manages layout
 // of the tabs within the split. It also ensures hover states are synchronized
@@ -65,8 +65,7 @@ class VerticalSplitTabView : public views::View, public views::LayoutDelegate {
   void UpdateBorder();
   void UpdateHovered(bool hovered);
 
-  void OnCollapsedStateChanged(
-      tabs::VerticalTabStripStateController* controller);
+  void OnCollapseStateChanged(tabs::VerticalTabStripCollapseState state);
 
   // Handles removing a `child_view` from `this` for reparenting to other
   // TabCollectionNode views. Records relevant metadata used for animating move

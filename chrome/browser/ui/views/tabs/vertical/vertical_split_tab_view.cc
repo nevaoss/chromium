@@ -10,7 +10,6 @@
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
-#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.h"
 #include "chrome/browser/ui/views/tabs/tab/glow_hover_controller.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_animating_layout_manager.h"
@@ -49,11 +48,11 @@ VerticalSplitTabView::VerticalSplitTabView(TabCollectionNode* collection_node)
   auto* state_controller =
       collection_node_->GetController()->GetStateController();
   CHECK(state_controller);
+  OnCollapseStateChanged(state_controller->GetCollapseState());
   collapsed_state_changed_subscription_ =
       state_controller->RegisterOnCollapseChanged(
-          base::BindRepeating(&VerticalSplitTabView::OnCollapsedStateChanged,
+          base::BindRepeating(&VerticalSplitTabView::OnCollapseStateChanged,
                               base::Unretained(this)));
-  collapsed_ = state_controller->IsCollapsed();
 
   // Ensures this view gets mouse events as well its children.
   SetNotifyEnterExitOnChild(true);
@@ -280,9 +279,9 @@ void VerticalSplitTabView::UpdateHovered(bool hovered) {
   SchedulePaint();
 }
 
-void VerticalSplitTabView::OnCollapsedStateChanged(
-    tabs::VerticalTabStripStateController* controller) {
-  collapsed_ = controller->IsCollapsed();
+void VerticalSplitTabView::OnCollapseStateChanged(
+    tabs::VerticalTabStripCollapseState state) {
+  collapsed_ = state == tabs::VerticalTabStripCollapseState::kCollapsed;
 }
 
 std::unique_ptr<views::View>

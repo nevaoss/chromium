@@ -200,6 +200,7 @@
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/context_menu_params.h"
 #include "content/public/browser/cookie_access_details.h"
+#include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/disallow_activation_reason.h"
 #include "content/public/browser/document_ref.h"
 #include "content/public/browser/document_service_internal.h"
@@ -9270,7 +9271,13 @@ void RenderFrameHostImpl::EnterFullscreen(
   if (had_fullscreen_token && !GetView()->HasFocus()) {
     GetView()->Focus();
   }
+  // This may spin the message loop and destroy this object.
+  // See crbug.com/1506535, crbug.com/498752242.
+  base::WeakPtr<RenderFrameHostImpl> weak_ptr = GetWeakPtr();
   delegate_->EnterFullscreenMode(this, *options);
+  if (!weak_ptr) {
+    return;
+  }
   delegate_->FullscreenStateChanged(this, /*is_fullscreen=*/true,
                                     std::move(options));
 
@@ -9309,7 +9316,9 @@ void RenderFrameHostImpl::SuddenTerminationDisablerChanged(
     blink::mojom::SuddenTerminationDisablerType disabler_type) {
   switch (disabler_type) {
     case blink::mojom::SuddenTerminationDisablerType::kBeforeUnloadHandler:
-      CHECK_NE(has_before_unload_handler_, present);
+      // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK
+      // once we are sure this isn't hit.
+      DCHECK_NE(has_before_unload_handler_, present);
       if (IsNestedWithinFencedFrame()) {
         bad_message::ReceivedBadMessage(
             GetProcess(),
@@ -9319,7 +9328,9 @@ void RenderFrameHostImpl::SuddenTerminationDisablerChanged(
       has_before_unload_handler_ = present;
       break;
     case blink::mojom::SuddenTerminationDisablerType::kPageHideHandler:
-      CHECK_NE(has_pagehide_handler_, present);
+      // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK
+      // once we are sure this isn't hit.
+      DCHECK_NE(has_pagehide_handler_, present);
       has_pagehide_handler_ = present;
       break;
     case blink::mojom::SuddenTerminationDisablerType::kUnloadHandler:
@@ -10599,17 +10610,12 @@ void RenderFrameHostImpl::CreateFencedFrame(
     return;
   }
 
-  // Ensure the devtools frame token doesn't exist in the FrameTree for
-  // this tab.
-  for (FrameTreeNode* node :
-       GetOutermostMainFrame()->frame_tree()->NodesIncludingInnerTreeNodes()) {
-    if (node->current_frame_host()->devtools_frame_token() ==
-        devtools_frame_token) {
-      bad_message::ReceivedBadMessage(
-          GetProcess(),
-          bad_message::RFHI_CREATE_FENCED_FRAME_BAD_DEVTOOLS_FRAME_TOKEN);
-      return;
-    }
+  // Ensure the devtools frame token doesn't exist globally.
+  if (DevToolsAgentHost::GetForId(devtools_frame_token.ToString())) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(),
+        bad_message::RFHI_CREATE_FENCED_FRAME_BAD_DEVTOOLS_FRAME_TOKEN);
+    return;
   }
 
   // Inactive pages cannot create fenced frames. If the page is in the BFCache,
@@ -19867,17 +19873,6 @@ bool RenderFrameHostImpl::ShouldChangeRenderFrameHostOnSameSiteNavigation()
       /*client_overrides_level=*/client_result ==
           ContentBrowserClient::ShouldAllowSameSiteRenderFrameHostChangeResult::
               kAllowedOverrideLevel);
-}
-
-bool RenderFrameHostImpl::CanReadFromSharedStorage() {
-  if (!IsNestedWithinFencedFrame()) {
-    return false;
-  }
-
-  auto properties = frame_tree_node()->GetFencedFrameProperties(
-      FencedFramePropertiesNodeSource::kFrameTreeRoot);
-  return properties.has_value() &&
-         properties->HasDisabledNetworkForCurrentAndDescendantFrameTrees();
 }
 
 std::optional<mojo::UrgentMessageScope>

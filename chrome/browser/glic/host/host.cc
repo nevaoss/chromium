@@ -28,7 +28,7 @@
 #include "chrome/browser/glic/public/glic_instance_metrics_backwards_compatibility.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
-#include "chrome/browser/glic/widget/glic_window_controller.h"
+#include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/common/actor_webui.mojom.h"
 #include "chrome/common/chrome_features.h"
 #include "components/autofill/core/browser/integrators/actor/actor_form_filling_types.h"
@@ -240,6 +240,8 @@ void Host::NotifyContextualSkillsChanged(
   if (auto* client = GetPrimaryWebClient()) {
     client->NotifyContextualSkillPreviewsChanged(
         std::move(contextual_skill_previews));
+  } else {
+    pending_contextual_skills_ = std::move(contextual_skill_previews);
   }
 }
 
@@ -323,6 +325,7 @@ void Host::PanelWillOpen(mojom::InvocationSource invocation_source,
                          PanelWillOpenOptions options) {
   VLOG(1) << "Glic [Host] PanelWillOpen";
   CHECK(delegate_);
+  panel_open_ = true;
   invocation_source_ = invocation_source;
   if (handler_info_ && handler_info_->web_client) {
     handler_info_->web_client->PanelWillOpen(
@@ -345,7 +348,7 @@ void Host::PanelWillOpen(mojom::InvocationSource invocation_source,
 
 void Host::PanelWasClosed() {
   VLOG(1) << "Glic [Host] PanelWasClosed";
-  invocation_source_ = std::nullopt;
+  panel_open_ = false;
   if (handler_info_ && handler_info_->web_client) {
     handler_info_->web_client->PanelWasClosed(base::DoNothing());
     handler_info_->open_complete = false;
@@ -440,12 +443,8 @@ GlicSkillsManager& Host::skills_manager() {
 }
 
 Host::InstanceDelegate& Host::instance_delegate() {
-#if !BUILDFLAG(IS_ANDROID)
-  return instance_delegate_ ? *instance_delegate_ : glic_service();
-#else
-  // Multi-instance always uses instance_delegate_.
+  CHECK(instance_delegate_);
   return *instance_delegate_;
-#endif
 }
 
 GlicPageHandler* Host::page_handler() const {
@@ -519,6 +518,16 @@ void Host::SetWebClient(GlicWebClientAccess* web_client) {
   CHECK(handler_info_);
   CHECK(web_client);
   handler_info_->web_client = web_client;
+
+  if (!pending_contextual_skills_.empty()) {
+    web_client->NotifyContextualSkillPreviewsChanged(
+        std::move(pending_contextual_skills_));
+    pending_contextual_skills_.clear();
+  }
+
+  if (is_manually_resizing_) {
+    web_client->ManualResizeChanged(true);
+  }
   if (invocation_source_ && web_client) {
     std::optional<std::string> prompt_suggestion;
     std::optional<std::vector<mojom::ConversationInfoPtr>>
@@ -539,6 +548,9 @@ void Host::SetWebClient(GlicWebClientAccess* web_client) {
       pending_panel_open_options_.reset();
     }
 
+    // Note: we're sending the open call even if the panel as since been closed.
+    // This ensure we don't drop the invocation information. Finally, a call to
+    // PanelWasClosed() resolves the discrepancy.
     web_client->PanelWillOpen(
         mojom::PanelOpeningData::New(
             glic_instance_ ? glic_instance_->GetPanelState().Clone()
@@ -553,6 +565,9 @@ void Host::SetWebClient(GlicWebClientAccess* web_client) {
             base::Unretained(this),
             // Unretained is safe because web_client is calling us.
             base::Unretained(web_client)));
+    if (!panel_open_) {
+      web_client->PanelWasClosed(base::DoNothing());
+    }
   }
   skills_manager().UpdateSkillPreviews(std::nullopt);
 
@@ -582,6 +597,13 @@ bool Host::IsContextAccessIndicatorEnabled() const {
 
 GlicWebClientAccess* Host::GetPrimaryWebClient() {
   return handler_info_ ? handler_info_->web_client : nullptr;
+}
+
+void Host::ManualResizeChanged(bool resizing) {
+  is_manually_resizing_ = resizing;
+  if (auto* client = GetPrimaryWebClient()) {
+    client->ManualResizeChanged(resizing);
+  }
 }
 
 bool Host::IsPrimaryClientOpen() {
@@ -643,7 +665,7 @@ void Host::PanelWillOpenComplete(GlicWebClientAccess* client,
                                  mojom::OpenPanelInfoPtr open_info) {
   CHECK(client);
   // If the panel was closed before opening finished, return early.
-  if (!invocation_source_) {
+  if (!panel_open_) {
     return;
   }
   if (handler_info_ && handler_info_->web_client == client) {
@@ -838,8 +860,9 @@ void Host::GuestAdded(content::WebContents* guest_contents) {
   web_client_contents_ = guest_contents->GetWeakPtr();
 }
 
-HostManager::HostManager(Profile* profile,
-                         base::WeakPtr<GlicWindowController> window_controller)
+HostManager::HostManager(
+    Profile* profile,
+    base::WeakPtr<GlicInstanceCoordinator> window_controller)
     : profile_(profile),
       window_controller_(window_controller),
       empty_embedder_delegate_(std::make_unique<EmptyEmbedderDelegate>()),
@@ -902,12 +925,6 @@ Host* HostManager::GetOrCreateHostForTab(content::WebContents* web_contents) {
   // In multi-instance mode, no instance is used for now. We should consider
   // just creating new instances for these hosts.
   GlicInstance* glic_instance = nullptr;
-#if !BUILDFLAG(IS_ANDROID)
-  if (!GlicEnabling::IsMultiInstanceEnabled()) {
-    glic_instance =
-        static_cast<GlicWindowControllerInterface*>(window_controller_.get());
-  }
-#endif
   tab_hosts_.push_back(std::make_unique<Host>(profile_, nullptr, glic_instance,
                                               instance_delegate_stub_.get()));
   Host* new_host = tab_hosts_.back().get();

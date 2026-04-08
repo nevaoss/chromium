@@ -66,10 +66,10 @@ export class TopToolbarElement extends CrLitElement {
         type: Boolean,
         reflect: true,
       },
-      logoImageUrl_: {type: String},
       title: {type: String},
       hideMenuButton_: {type: Boolean},
       showReopenTabs_: {type: Boolean},
+      isExpandButtonEnabled: {type: Boolean},
     };
   }
 
@@ -81,7 +81,7 @@ export class TopToolbarElement extends CrLitElement {
   accessor showReopenTabs_: boolean = false;
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
   private listenerIds_: number[] = [];
-  protected isExpandButtonEnabled: boolean =
+  protected accessor isExpandButtonEnabled: boolean =
       loadTimeData.getBoolean('expandButtonEnabled');
   private hideMenuOnAiPageEnabled_: boolean =
       loadTimeData.getBoolean('hideMenuOnAiPageEnabled');
@@ -173,13 +173,13 @@ export class TopToolbarElement extends CrLitElement {
     this.browserProxy_.handler.openMyActivityUi();
   }
 
-  protected onHelpClick_() {
+  protected onFeedbackClick_() {
     this.$.menu.get().close();
     chrome.metricsPrivate.recordUserAction(
         'ContextualTasks.WebUI.UserAction.OpenHelp');
     chrome.metricsPrivate.recordBoolean(
         'ContextualTasks.WebUI.UserAction.OpenHelp', true);
-    this.browserProxy_.handler.openHelpUi();
+    this.browserProxy_.handler.openFeedbackUi();
   }
 
   protected onReopenTabsReopenClick_() {

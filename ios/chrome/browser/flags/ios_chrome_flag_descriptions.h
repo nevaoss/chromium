@@ -71,6 +71,9 @@ extern const char kAutofillAcrossIframesDescription[];
 extern const char kAutofillAiCreateEntityDataManagerName[];
 extern const char kAutofillAiCreateEntityDataManagerDescription[];
 
+extern const char kAutofillAiDedupeEntitiesName[];
+extern const char kAutofillAiDedupeEntitiesDescription[];
+
 extern const char kAutofillAiReauthRequiredName[];
 extern const char kAutofillAiReauthRequiredDescription[];
 
@@ -148,6 +151,9 @@ extern const char kAutofillPaymentsSheetV2Description[];
 
 extern const char kAutofillPruneSuggestionsName[];
 extern const char kAutofillPruneSuggestionsDescription[];
+
+extern const char kAutofillSupportDateInputName[];
+extern const char kAutofillSupportDateInputDescription[];
 
 extern const char kAutofillThrottleDocumentFormScanName[];
 extern const char kAutofillThrottleDocumentFormScanDescription[];
@@ -486,6 +492,9 @@ extern const char kIOSChooseFromDriveDescription[];
 
 extern const char kIOSChooseFromDriveSignedOutName[];
 extern const char kIOSChooseFromDriveSignedOutDescription[];
+
+extern const char kIOSCobaltDeveloperModeName[];
+extern const char kIOSCobaltDeveloperModeDescription[];
 
 extern const char kIOSCobaltName[];
 extern const char kIOSCobaltDescription[];
@@ -981,6 +990,9 @@ extern const char kSyncAccountSettingsDescription[];
 
 extern const char kSyncAutofillValuableMetadataName[];
 extern const char kSyncAutofillValuableMetadataDescription[];
+
+extern const char kSyncAutofillValuableName[];
+extern const char kSyncAutofillValuableDescription[];
 
 extern const char kSyncSandboxName[];
 extern const char kSyncSandboxDescription[];

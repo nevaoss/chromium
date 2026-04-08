@@ -227,10 +227,10 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
   auto* state_controller =
       collection_node_->GetController()->GetStateController();
   CHECK(state_controller);
+  OnCollapseStateChanged(state_controller->GetCollapseState());
   collapsed_state_changed_subscription_ =
       state_controller->RegisterOnCollapseChanged(base::BindRepeating(
-          &VerticalTabView::OnCollapsedStateChanged, base::Unretained(this)));
-  collapsed_ = state_controller->IsCollapsed();
+          &VerticalTabView::OnCollapseStateChanged, base::Unretained(this)));
 
   set_context_menu_controller(this);
 }
@@ -726,9 +726,7 @@ VerticalTabView::CalculateChildVisibilities(const int width) const {
 
   // Pinned titles should be visible in the expand on hover state when the width
   // is sufficient to show the title.
-  child_visibility_map[title_] =
-      !pinned_ ||
-      (collapsed_ && width >= VerticalTabStripRegionView::kCollapsedWidth);
+  child_visibility_map[title_] = !pinned_ || IsInExpandOnHover(width);
 
   child_visibility_map[alert_indicator_] =
       alert_indicator_->showing_alert_state().has_value();
@@ -744,7 +742,7 @@ VerticalTabView::CalculateChildVisibilities(const int width) const {
 
   if (pinned_) {
     child_visibility_map[close_button_] = false;
-  } else if (collapsed_) {
+  } else if (IsCollapsedWidth(width)) {
     child_visibility_map[close_button_] = active_ && hovered_;
   } else {
     child_visibility_map[close_button_] = active_ || hovered_;
@@ -770,10 +768,7 @@ views::ProposedLayout VerticalTabView::CalculateProposedLayout(
 
   // If the tab is collapsed but animating with a wider width then we shouldn't
   // center the contents.
-  const bool is_centered =
-      (pinned_ && !collapsed_) ||
-      ((pinned_ || collapsed_) &&
-       width < VerticalTabStripRegionView::kCollapsedWidth);
+  const bool is_centered = (pinned_ || collapsed_) && !IsInExpandOnHover(width);
 
   int placed_children = 0;
   for (const auto& child : tab_children_configs_) {
@@ -931,9 +926,9 @@ void VerticalTabView::OnAXNameChanged(ax::mojom::StringAttribute attribute,
   }
 }
 
-void VerticalTabView::OnCollapsedStateChanged(
-    tabs::VerticalTabStripStateController* controller) {
-  collapsed_ = controller->IsCollapsed();
+void VerticalTabView::OnCollapseStateChanged(
+    tabs::VerticalTabStripCollapseState state) {
+  collapsed_ = state == tabs::VerticalTabStripCollapseState::kCollapsed;
 }
 
 void VerticalTabView::OnDataChanged() {
@@ -1149,6 +1144,14 @@ bool VerticalTabView::IsDragging() const {
   return collection_node_ && collection_node_->GetController() &&
          collection_node_->GetController()->GetDragHandler().IsViewDragging(
              *this);
+}
+
+bool VerticalTabView::IsCollapsedWidth(int width) const {
+  return width < VerticalTabStripRegionView::kCollapsedWidth;
+}
+
+bool VerticalTabView::IsInExpandOnHover(int width) const {
+  return collapsed_ && !IsCollapsedWidth(width);
 }
 
 const tabs::TabInterface* VerticalTabView::GetTabInterface() const {

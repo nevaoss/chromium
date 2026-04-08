@@ -107,6 +107,9 @@ public final class EventConstants {
     /** User has used Ephemeral Tab i.e. opened and browsed the content. */
     public static final String EPHEMERAL_TAB_USED = "ephemeral_tab_used";
 
+    /** The user clicked on the extensions menu button in the toolbar. */
+    public static final String EXTENSIONS_MENU_BUTTON_CLICKED = "extensions_menu_button_clicked";
+
     /** The feed swipe refresh event. */
     public static final String FEED_SWIPE_REFRESHED = "feed_swipe_refresh_shown";
 
@@ -246,6 +249,9 @@ public final class EventConstants {
 
     public static final String TAB_SWITCHER_BUTTON_LONG_CLICKED =
             "tab_switcher_button_long_clicked";
+
+    public static final String THREE_DOT_MENU_BACK_BUTTON_CLICKED =
+            "three_dot_menu_back_button_clicked";
 
     /** The `Translate` app menu button was clicked. */
     public static final String TRANSLATE_MENU_BUTTON_CLICKED = "translate_menu_button_clicked";

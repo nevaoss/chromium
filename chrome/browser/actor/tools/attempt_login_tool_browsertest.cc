@@ -141,7 +141,10 @@ class ActorAttemptLoginToolTest : public ActorToolsTest {
              kActorLoginPermissionsUseStrongAffiliations,
          password_manager::features::kActorLoginQualityLogs,
          features::kGlicActor},
-        /*disabled_features=*/{kGlicCrossOriginNavigationGating});
+        // TODO(crbug.com/480920277): Remove the FedCM flag once the prototyping
+        // is complete.
+        /*disabled_features=*/{kGlicCrossOriginNavigationGating,
+                               features::kFedCmEmbedderInitiatedLogin});
   }
 
   ~ActorAttemptLoginToolTest() override = default;
@@ -798,8 +801,7 @@ class ActorAttemptLoginToolFederatedTest : public ActorAttemptLoginToolTest {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/
         {password_manager::features::kActorLoginFederatedClickFromActor,
-         features::kFedCmEmbedderInitiatedLogin,
-         features::kFedCmNavigationInterception},
+         features::kFedCmEmbedderInitiatedLogin},
         /*disabled_features=*/{});
   }
 

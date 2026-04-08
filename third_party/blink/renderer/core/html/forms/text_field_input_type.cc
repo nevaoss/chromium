@@ -198,7 +198,9 @@ void TextFieldInputType::SetValue(const String& sanitized_value,
   // full-value replace. If the skip flag is set (e.g. by setRangeText), this
   // automatic update is skipped since the caller issues its own targeted range
   // update.
-  if (value_changed && RuntimeEnabledFeatures::OpaqueRangeEnabled() &&
+  if (value_changed &&
+      RuntimeEnabledFeatures::OpaqueRangeEnabled(
+          GetElement().GetExecutionContext()) &&
       !GetElement().ShouldSkipNextSetValueAutoDiff()) {
     GetElement().CommitProgrammaticOpaqueRangeEdit(
         old_value, /*old_sel_start=*/0u, /*old_sel_end=*/old_value.length());
@@ -274,19 +276,29 @@ bool TextFieldInputType::HandleKeydownForCustomizableCombobox(
                                    WebInputEvent::kMetaKey;
   const int ignore_modifiers = WebInputEvent::kShiftKey | tab_ignore_modifiers;
 
-  if (datalist->popoverOpen() && !(event.GetModifiers() & ignore_modifiers)) {
-    CHECK(datalist->ActiveOption());
-    if (key == keywords::kCapitalEnter) {
+  if (!(event.GetModifiers() & ignore_modifiers)) {
+    if (key == keywords::kCapitalEnter && datalist->popoverOpen()) {
+      CHECK(datalist->ActiveOption());
       datalist->ActiveOption()->ChooseOptionForCombobox(GetElement(),
                                                         *datalist);
       return true;
     } else if (key == keywords::kArrowUp) {
       // TODO(crbug.com/485286877): Consider looking at other arrow keys for
       // other writing modes.
-      datalist->MoveActiveOption(HTMLDataListElement::Direction::kBackwards);
+      if (datalist->popoverOpen()) {
+        datalist->MoveActiveOption(HTMLDataListElement::Direction::kBackwards);
+      } else {
+        datalist->ShowPopoverInternal(&GetElement(),
+                                      /*exception_state=*/nullptr);
+      }
       return true;
     } else if (key == keywords::kArrowDown) {
-      datalist->MoveActiveOption(HTMLDataListElement::Direction::kForwards);
+      if (datalist->popoverOpen()) {
+        datalist->MoveActiveOption(HTMLDataListElement::Direction::kForwards);
+      } else {
+        datalist->ShowPopoverInternal(&GetElement(),
+                                      /*exception_state=*/nullptr);
+      }
       return true;
     }
     // TODO(crbug.com/453705243): Handle PageUp and PageDown like
@@ -751,7 +763,8 @@ void TextFieldInputType::SubtreeHasChanged() {
   GetElement().PseudoStateChanged(CSSSelector::kPseudoInRange);
   GetElement().PseudoStateChanged(CSSSelector::kPseudoOutOfRange);
 
-  if (RuntimeEnabledFeatures::OpaqueRangeEnabled()) {
+  if (RuntimeEnabledFeatures::OpaqueRangeEnabled(
+          GetElement().GetExecutionContext())) {
     GetElement().CommitOpaqueRangeEdit();
   }
 
@@ -775,6 +788,16 @@ void TextFieldInputType::DidSetValueByUserEdit() {
       chrome_client->DidClearValueInTextField(GetElement());
     }
     chrome_client->DidChangeValueInTextField(GetElement());
+  }
+  if (GetElement().IsBaseAppearanceCombobox()) {
+    // TODO(https://crbug.com/453705243): Make IsBaseAppearanceCombobox return
+    // the datalist element since i am always using the datalist afterwards and
+    // checking that its valid.
+    HTMLDataListElement* datalist = GetElement().DataList();
+    CHECK(datalist);
+    if (!datalist->popoverOpen()) {
+      datalist->ShowPopoverInternal(&GetElement(), /*exception_state=*/nullptr);
+    }
   }
 }
 

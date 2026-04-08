@@ -73,7 +73,6 @@ source_set("glic") {
       "glic_tab_restore_helper.h",
       "host/context/glic_focused_tab_manager.h",
       "public/widget/glic_side_panel_coordinator_impl.h",
-      "widget/glic_window_controller.h",
     ]
 
     # Desktop-only sources
@@ -334,8 +333,6 @@ source_set("impl") {
       "widget/glic_window_animator.h",
       "widget/glic_window_config.cc",
       "widget/glic_window_config.h",
-      "widget/glic_window_controller_impl.cc",
-      "widget/glic_window_controller_impl.h",
       "widget/glic_window_resize_animation.cc",
       "widget/glic_window_resize_animation.h",
       "widget/inactive_view_controller.cc",
@@ -693,6 +690,7 @@ source_set("browser_tests") {
       "//chrome/browser/actor:test_support",
       "//chrome/browser/actor/ui",
       "//chrome/browser/actor/ui:test_support",
+      "//chrome/browser/enterprise/connectors/test:test_support",
       "//chrome/browser/extensions",
       "//chrome/browser/glic/common",
       "//chrome/browser/glic/common:browser_tests",
@@ -779,8 +777,7 @@ if (!is_android) {
       "host/glic_api_interactive_uitest.cc",
       "host/glic_ui_interactive_uitest.cc",
       "service/metrics/glic_instance_metrics_ui_test.cc",
-      "widget/glic_window_controller_interactive_uitest.cc",
-      "widget/glic_window_resize_animation_interactive_uitest.cc",
+      "widget/glic_instance_coordinator_interactive_uitest.cc",
     ]
 
     if (!is_mac && enterprise_cloud_content_analysis) {
@@ -808,7 +805,6 @@ if (!is_android) {
       "//chrome/browser/glic:mojo_bindings",
       "//chrome/browser/glic/browser_ui:interactive_ui_tests",
       "//chrome/browser/glic/fre",
-      "//chrome/browser/glic/fre:interactive_ui_tests",
       "//chrome/browser/glic/selection:interactive_ui_tests",
       "//chrome/browser/glic/suggestions",
       "//chrome/browser/glic/suggestions:test_support",

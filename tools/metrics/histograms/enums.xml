@@ -448,6 +448,14 @@ uploading your change for review.  These are checked by presubmit scripts.
   <int value="3" label="LAUNCH_CONTAINER_NONE (v2 packaged apps)"/>
 </enum>
 
+<enum name="AppRatingPromptStatus">
+  <int value="0" label="Success"/>
+  <int value="1" label="Play Store Not Found"/>
+  <int value="2" label="Invalid Request"/>
+  <int value="3" label="Internal Error"/>
+  <int value="4" label="Unknown Error"/>
+</enum>
+
 <!-- LINT.IfChange(AppStreamLaunchEntryPoint) -->
 
 <enum name="AppStreamLaunchEntryPoint">
@@ -8154,6 +8162,7 @@ from previous Chrome versions.
   <int value="-1964725496" label="AutofillEnableCvcStorageAndFilling:disabled"/>
   <int value="-1964343476" label="FullscreenInsetsApiMigration:disabled"/>
   <int value="-1964261747" label="WebVrVsyncAlign:disabled"/>
+  <int value="-1964261360" label="SplitViewLinkOpen:enabled"/>
   <int value="-1964008670" label="AndroidUseCorrectDisplayWorkArea:disabled"/>
   <int value="-1963995131" label="DesktopPWAsKeepAlive:disabled"/>
   <int value="-1963838301"
@@ -12319,6 +12328,7 @@ from previous Chrome versions.
   <int value="-577982497" label="CupsPrintersUiOverhaul:enabled"/>
   <int value="-577503348" label="GridTabSwitcherForTablets:disabled"/>
   <int value="-577443556" label="kTearOffWebAppTabOpensWebAppWindow:disabled"/>
+  <int value="-577317312" label="EnforceIncognitoIsolation:enabled"/>
   <int value="-576759065" label="HoldingSpaceInProgressAnimationV2:disabled"/>
   <int value="-576475188" label="BorealisForceDoubleScale:disabled"/>
   <int value="-576462208" label="PageContentCache:enabled"/>
@@ -12631,7 +12641,6 @@ from previous Chrome versions.
   <int value="-473052940" label="ContextualSearchLegacyHttpPolicy:enabled"/>
   <int value="-472783446"
       label="BoundaryEventDispatchTracksNodeRemoval:disabled"/>
-  <int value="-472726214" label="GlicUnifiedFreScreen:disabled"/>
   <int value="-472477695" label="AutofillSaveCardImprovedUserConsent:enabled"/>
   <int value="-472409457" label="ChromeFindsInternals:disabled"/>
   <int value="-472014137" label="HomepageTile:disabled"/>
@@ -12671,7 +12680,6 @@ from previous Chrome versions.
   <int value="-460081932" label="CustomFeedbackUi:disabled"/>
   <int value="-460062351" label="VariationsGoogleGroupFiltering:disabled"/>
   <int value="-459999278" label="OverviewScrollLayoutForClamshell:enabled"/>
-  <int value="-459926943" label="GlicUnifiedFreScreen:enabled"/>
   <int value="-459469509" label="SidePanelImprovedClobbering:enabled"/>
   <int value="-459318667" label="AccessiblePDFForm:enabled"/>
   <int value="-459050579" label="ComposeUpfrontInputModes:disabled"/>
@@ -12961,6 +12969,8 @@ from previous Chrome versions.
   <int value="-355278724" label="CorbAllowlistAlsoAppliesToOorCors:disabled"/>
   <int value="-355005246" label="CaptureModeAudioMixing:enabled"/>
   <int value="-354783358" label="NTPSaveToOffline:disabled"/>
+  <int value="-354021780"
+      label="AutofillAiWalletPrivatePassesDeepLink:enabled"/>
   <int value="-353182790" label="ConsistentOmniboxGeolocation:disabled"/>
   <int value="-353180213" label="DevicePosture:disabled"/>
   <int value="-352731236" label="DIPS:enabled"/>
@@ -13165,6 +13175,7 @@ from previous Chrome versions.
   <int value="-292450031"
       label="EnableWebUsbOnExtensionServiceWorker:disabled"/>
   <int value="-291936879" label="UsernameFirstFlowFilling:disabled"/>
+  <int value="-291806711" label="WalletApiPrivatePassesEnabled:enabled"/>
   <int value="-291747397" label="ForceDisableStackedTabs:enabled"/>
   <int value="-291221380" label="SmartLockUIRevamp:disabled"/>
   <int value="-290802952" label="OmniboxOnDeviceTailModel:enabled"/>
@@ -13369,6 +13380,8 @@ from previous Chrome versions.
   <int value="-220829663" label="TimeOfDayScreenSaver:disabled"/>
   <int value="-220599034" label="UsePdfCompositorServiceForPrint:enabled"/>
   <int value="-220298483" label="ImeOptionsInSettings:enabled"/>
+  <int value="-219700064"
+      label="AutofillAiWalletPrivatePassesDeepLink:disabled"/>
   <int value="-218873486" label="BookmarkTriggerForPrefetch:enabled"/>
   <int value="-218843425" label="auto-framing-override"/>
   <int value="-217930860" label="EnableAutomaticSnooze:disabled"/>
@@ -13552,6 +13565,7 @@ from previous Chrome versions.
       label="AuthenticateUsingUserConsentVerifierApi:disabled"/>
   <int value="-161284423" label="DesktopSharePreview:enabled"/>
   <int value="-160571071" label="InterestFeedV2:enabled"/>
+  <int value="-160177063" label="EmbeddedPermissionEnabled:enabled"/>
   <int value="-159877930" label="MaterialDesignUserManager:disabled"/>
   <int value="-159018555" label="ReadAloudAutoVoiceSwitching:enabled"/>
   <int value="-158938746" label="NtpRealboxPedals:enabled"/>
@@ -14074,6 +14088,7 @@ from previous Chrome versions.
   <int value="10929486" label="WebNNDirectML:disabled"/>
   <int value="11390425" label="TabGroupParityBottomSheetAndroid:disabled"/>
   <int value="11698808" label="enable-dom-distiller-button-animation"/>
+  <int value="11744127" label="EnableToolbarSwipeOnNonDesktopLff:disabled"/>
   <int value="11924259"
       label="AutofillEnableUpdateVirtualCardEnrollment:enabled"/>
   <int value="12016364" label="OmniboxBubbleUrlSuggestions:enabled"/>
@@ -14393,6 +14408,7 @@ from previous Chrome versions.
   <int value="120429808" label="disable-new-profile-management"/>
   <int value="120519004" label="NavigationPredictor:disabled"/>
   <int value="120825360" label="CustomizeTabGroupColorPalette:enabled"/>
+  <int value="120877820" label="EnableToolbarSwipeOnNonDesktopLff:enabled"/>
   <int value="120880746" label="NtpPhotosModuleSoftOptOut:disabled"/>
   <int value="121684313" label="QuickUnlockPin:enabled"/>
   <int value="121692330" label="CompareManagementInterface:enabled"/>
@@ -15860,6 +15876,7 @@ from previous Chrome versions.
   <int value="626413969" label="PinnedTabToastOnClose:enabled"/>
   <int value="626530588" label="LensOverlayVisualSelectionUpdates:enabled"/>
   <int value="626662478" label="Canvas2DHibernation:disabled"/>
+  <int value="627574505" label="EnforceIncognitoIsolation:disabled"/>
   <int value="628302973" label="NTPSnippets:enabled"/>
   <int value="628438173" label="AccessibilityPerformanceFiltering:enabled"/>
   <int value="628570445" label="AndroidAutofillAccessibility:enabled"/>
@@ -16553,6 +16570,7 @@ from previous Chrome versions.
   <int value="844878845" label="mantis-feature-key:enabled"/>
   <int value="845659238" label="DevicePosture:enabled"/>
   <int value="845666212" label="AutofillAiWithDataSchema:disabled"/>
+  <int value="846452845" label="SplitViewLinkOpen:disabled"/>
   <int value="846887449" label="BluetoothFlossTelephony:disabled"/>
   <int value="846951416" label="CopylessPaste:enabled"/>
   <int value="847000540" label="HoldingSpaceWallpaperNudge:disabled"/>
@@ -16723,6 +16741,7 @@ from previous Chrome versions.
   <int value="904437796" label="OmniboxBlurWithEscape:disabled"/>
   <int value="904441371" label="LocalNetworkAccessChecksWebRTC:disabled"/>
   <int value="904811479" label="query-tiles-enable-trending"/>
+  <int value="904886824" label="WalletApiPrivatePassesEnabled:disabled"/>
   <int value="905739808" label="GlobalMediaControlsUpdatedUI:disabled"/>
   <int value="905852983" label="ReadAnythingLineFocus:disabled"/>
   <int value="907051864" label="UseMultiPlaneFormatForHardwareVideo:disabled"/>
@@ -17302,6 +17321,7 @@ from previous Chrome versions.
   <int value="1105058168" label="CrosSafetyService:enabled"/>
   <int value="1105182444"
       label="ChromeCleanupScanCompletedNotification:disabled"/>
+  <int value="1105222851" label="EmbeddedPermissionEnabled:disabled"/>
   <int value="1105439588" label="enable-swipe-selection"/>
   <int value="1106307305" label="AutofillPrimaryInfoStyleExperiment:enabled"/>
   <int value="1106579567" label="ProfilesUIRevamp:enabled"/>
@@ -17470,6 +17490,7 @@ from previous Chrome versions.
   <int value="1164299747" label="PartialSplit:disabled"/>
   <int value="1164377197" label="SwipingFromLeftEdgeToGoBack:enabled"/>
   <int value="1164460660" label="AutofillEnableVirtualCard:enabled"/>
+  <int value="1164593042" label="WalletApiPrivatePassesEnabled:Debug"/>
   <int value="1165682330" label="AutofillSaveAndFillVPA:disabled"/>
   <int value="1165691812" label="CCTDestroyTabWhenModelIsEmpty:disabled"/>
   <int value="1165828757" label="kAutofillEnableOffersInDownstream:disabled"/>

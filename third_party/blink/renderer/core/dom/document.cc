@@ -8654,9 +8654,9 @@ void Document::ScheduleForTopLayerRemoval(Element* element,
   ScheduleLayoutTreeUpdateIfNeeded();
 }
 
-void Document::RemoveFinishedTopLayerElements() {
+bool Document::RemoveFinishedTopLayerElements() {
   if (top_layer_elements_pending_removal_.empty()) {
-    return;
+    return false;
   }
   HeapVector<Member<Element>> to_remove;
   for (const auto& pending_removal : top_layer_elements_pending_removal_) {
@@ -8670,9 +8670,12 @@ void Document::RemoveFinishedTopLayerElements() {
       to_remove.push_back(element);
     }
   }
+  bool removed = false;
   for (Element* remove_element : to_remove) {
     RemoveFromTopLayerImmediately(remove_element);
+    removed = true;
   }
+  return removed;
 }
 
 void Document::RemoveFromTopLayerImmediately(Element* element) {
@@ -10183,6 +10186,9 @@ Document* Document::parseHTMLUnsafe(ExecutionContext* context,
                                  /*context_element*/ doc, /*root_element*/ doc,
                                  FragmentParserOptions(options),
                                  exception_state);
+  if (exception_state.HadException()) {
+    return nullptr;
+  }
   return doc;
 }
 
@@ -10197,6 +10203,9 @@ Document* Document::parseHTML(ExecutionContext* context,
                                  /*context_element*/ doc, /*root_element*/ doc,
                                  FragmentParserOptions(options),
                                  exception_state);
+  if (exception_state.HadException()) {
+    return nullptr;
+  }
   return doc;
 }
 

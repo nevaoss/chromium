@@ -1781,6 +1781,32 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram
+    name="SafeBrowsing.HPRT.BackoffEnabled.Network.Result.WhenEnteredBackoff"
+    enum="CombinedHttpResponseAndNetErrorCode" expires_after="2026-10-02">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Response or error codes from SafeBrowsing hash-prefix real-time lookups when
+    the service is in backoff mode. This is the network result that was present
+    when we entered backoff mode. Logged when a lookup check is attempted while
+    in backoff.
+  </summary>
+</histogram>
+
+<histogram
+    name="SafeBrowsing.HPRT.BackoffEnabled.OperationOutcome.WhenEnteredBackoff"
+    enum="SafeBrowsingHPRTOperationOutcome" expires_after="2026-10-02">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records the operation outcome for hash-prefix real-time lookups when the
+    service is in backoff mode. This is the operation outcome that was present
+    when we entered backoff mode. Logged when a lookup check is attempted while
+    in backoff.
+  </summary>
+</histogram>
+
 <histogram name="SafeBrowsing.HPRT.BackoffState" enum="BooleanBackoff"
     expires_after="2027-02-05">
   <owner>thefrog@chromium.org</owner>
@@ -2105,14 +2131,22 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
-<histogram name="SafeBrowsing.HPRT.OhttpKeyService.Network.Time{Suffix}"
+<histogram
+    name="SafeBrowsing.HPRT.OhttpKeyService.Network.Time{Version}{Suffix}"
     units="ms" expires_after="2027-02-05">
   <owner>xinghuilu@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     Logs the roundtrip time it took to fetch a new OHTTP key. Logged on each key
-    fetch request that {Suffix}.
+    fetch request that {Suffix}. {Version}
   </summary>
+  <token key="Version">
+    <variant name="" summary=""/>
+    <variant name="2"
+        summary="This version of the histogram logs a larger set of buckets
+                 since the request timeout length is longer than the default
+                 max bucket of 10 seconds."/>
+  </token>
   <token key="Suffix">
     <variant name="" summary="is sent to the server"/>
     <variant name=".Empty" summary="is empty"/>
@@ -2173,6 +2207,16 @@ useful for Chirp alerts (go/crca-alerts). -->
     found in the local cache, if the lookup doesn't run because the service is
     in backoff mode, if the lookup doesn't run because the OHTTP key can't be
     fetched, or after the lookup network request returns.
+  </summary>
+</histogram>
+
+<histogram name="SafeBrowsing.HPRT.OperationOutcome.WhenEnteringBackoff"
+    enum="SafeBrowsingHPRTOperationOutcome" expires_after="2026-10-02">
+  <owner>thefrog@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records the operation outcome for hash-prefix real-time lookups when
+    entering backoff mode.
   </summary>
 </histogram>
 
@@ -3258,8 +3302,8 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="SafeBrowsing.SiteProtection.FamiliarityHeuristic.Engagement15OrVisitedBeforeTodayOrHighConfidence"
-    enum="BooleanMatched" expires_after="2026-04-05">
-  <owner>pkotwicz@chromium.org</owner>
+    enum="BooleanMatched" expires_after="2026-10-05">
+  <owner>jacastro@chromium.org</owner>
   <owner>chrome-counter-abuse-core@google.com</owner>
   <summary>
     Logged after each non-off-the-record page navigation. Logs whether the site

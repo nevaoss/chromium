@@ -20,6 +20,10 @@
 class TabCollectionNode;
 class VerticalTabDragHandler;
 
+namespace tabs {
+enum class VerticalTabStripCollapseState;
+}  // namespace tabs
+
 namespace views {
 class View;
 struct ProposedLayout;
@@ -115,6 +119,8 @@ class VerticalDraggedTabsContainer : public TabDragTarget,
   VerticalTabDragHandler& GetDragHandler();
   const VerticalTabDragHandler& GetDragHandler() const;
 
+  tabs::VerticalTabStripCollapseState GetTabStripCollapseState() const;
+
  private:
   // Returns the scroll view for the container.
   virtual views::ScrollView* GetScrollViewForContainer() const = 0;
@@ -156,9 +162,6 @@ class VerticalDraggedTabsContainer : public TabDragTarget,
   void AddViewToSquashedDragLayout(views::View* dragging_view,
                                    const gfx::Rect& view_bounds,
                                    bool is_source_dragged_view);
-
-  // Whether the tab strip is collapsed.
-  bool IsTabStripCollapsed() const;
 
   // Clears drag state and removes the transformations that were being used for
   // the drag.

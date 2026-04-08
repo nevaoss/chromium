@@ -226,6 +226,7 @@ import org.chromium.chrome.browser.ui.side_panel_container.dev.SidePanelDevFeatu
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinatorFactory;
 import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
+import org.chromium.chrome.browser.ui.signin.ForcedSigninController;
 import org.chromium.chrome.browser.ui.signin.FullscreenSigninPromoLauncher;
 import org.chromium.chrome.browser.ui.system.StatusBarColorController.StatusBarColorProvider;
 import org.chromium.chrome.browser.user_education.UserEducationUtils;
@@ -353,6 +354,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private ContextualTasksBridge mContextualTasksBridge;
     private @Nullable ActorOverlayCoordinator mActorOverlayCoordinator;
     private @Nullable ActorControlCoordinator mActorControlCoordinator;
+    private @Nullable ForcedSigninController mForcedSigninController;
 
     // Activity tab observer that updates the current tab used by various UI components.
     private class RootUiTabObserver extends ActivityTabTabObserver {
@@ -425,7 +427,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
      * @param modalDialogManagerSupplier Supplies the {@link ModalDialogManager}.
      * @param appMenuBlocker Controls the app menu blocking.
      * @param supportsAppMenuSupplier Supplies the support state for the app menu.
-     * @param supportsFindInPage Supplies the support state for find in page.
      * @param tabCreatorManagerSupplier Supplies the {@link TabCreatorManager}.
      * @param fullscreenManager Manages the fullscreen state.
      * @param compositorViewHolderSupplier Supplies the {@link CompositorViewHolder}.
@@ -483,7 +484,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             MonotonicObservableSupplier<ModalDialogManager> modalDialogManagerSupplier,
             AppMenuBlocker appMenuBlocker,
             BooleanSupplier supportsAppMenuSupplier,
-            BooleanSupplier supportsFindInPage,
             Supplier<TabCreatorManager> tabCreatorManagerSupplier,
             FullscreenManager fullscreenManager,
             Supplier<CompositorViewHolder> compositorViewHolderSupplier,
@@ -538,7 +538,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 modalDialogManagerSupplier.asNonNull(),
                 appMenuBlocker,
                 supportsAppMenuSupplier,
-                supportsFindInPage,
                 tabCreatorManagerSupplier,
                 fullscreenManager,
                 compositorViewHolderSupplier,
@@ -638,7 +637,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 new DataSharingTabManager(
                         mTabModelSelectorSupplier,
                         dataSharingTabGroupsDelegate,
-                        this::getBottomSheetController,
+                        getBottomSheetControllerSupplier(),
                         mShareDelegateSupplier,
                         mWindowAndroid,
                         mActivity.getResources(),
@@ -873,6 +872,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mGestureUserEducationIphController = null;
         }
 
+        if (mForcedSigninController != null) {
+            mForcedSigninController.destroy();
+            mForcedSigninController = null;
+        }
+
         destroySideUi();
 
         super.onDestroy();
@@ -913,6 +917,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         }
 
         super.initializeToolbar();
+
+        if (AndroidSidePanelEnabledFn.isEnabled()) {
+            mToolbarManager.setSideUiStateProviderSupplier(mSideUiStateProviderSupplier);
+        }
     }
 
     @Override
@@ -953,7 +961,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         Profile profile = tab.getProfile();
         mNavigationSheet =
                 NavigationSheet.create(
-                        tab.getContentView(), mActivity, this::getBottomSheetController, profile);
+                        tab.getContentView(),
+                        mActivity,
+                        getBottomSheetControllerSupplier(),
+                        profile);
         mNavigationSheet.setDelegate(
                 new TabbedSheetDelegate(
                         tab,
@@ -1170,6 +1181,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     new ActorControlCoordinator(
                             mActivity, (v) -> {}, (v) -> {}, mTabBottomSheetManager);
         }
+
+        mForcedSigninController =
+                new ForcedSigninController(
+                        mActivity,
+                        mProfileSupplier.get().getOriginalProfile(),
+                        SigninAndHistorySyncActivityLauncherImpl.get());
     }
 
     @Override
@@ -1195,7 +1212,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 mModalDialogManagerSupplier,
                 // TODO(agrieve): See if this can be changed to a NonNullObservableSupplier.
                 (MonotonicObservableSupplier<Integer>) mTabStripVisibilitySupplier,
-                () -> toggleGlic());
+                () -> toggleGlic(false));
     }
 
     @Override
@@ -2338,12 +2355,18 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mActivity.finishAndRemoveTask();
             return true;
         } else if (id == R.id.glic_menu_id) {
-            return toggleGlic();
+            return toggleGlic(false);
         }
         return false;
     }
 
-    public boolean toggleGlic() {
+    /**
+     * Toggles the Glic UI.
+     *
+     * @param preventClose whether to prevent closing the Glic UI if it's already open.
+     * @return whether the UI was successfully toggled.
+     */
+    public boolean toggleGlic(boolean preventClose) {
         // TODO(crbug.com/489548570): Remove this entry point into SidePanelDevFeature.
         if (mSidePanelDevFeature != null) {
             mSidePanelDevFeature.toggle();
@@ -2353,7 +2376,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         Profile profile = mTabModelSelectorSupplier.get().getCurrentModel().getProfile();
         assert profile != null;
 
-        return GlicKeyedServiceHandler.toggleGlic(profile, mChromeAndroidTaskSupplier.get());
+        return GlicKeyedServiceHandler.toggleGlic(
+                profile, mChromeAndroidTaskSupplier.get(), preventClose);
     }
 
     /* package */ KeyboardFocusRowManager getKeyboardFocusRowManagerForTesting() {

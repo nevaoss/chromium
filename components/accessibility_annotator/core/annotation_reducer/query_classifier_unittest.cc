@@ -134,6 +134,20 @@ TEST_F(QueryClassifierTest, PaymentIntents) {
             QueryIntentType::kIban);
 }
 
+// Tests that credit card-related queries are correctly classified.
+TEST_F(QueryClassifierTest, CreditCardIntents) {
+  EXPECT_EQ(RunClassifier(u"credit card").intent,
+            QueryIntentType::kCreditCardFull);
+  EXPECT_EQ(RunClassifier(u"credit card number").intent,
+            QueryIntentType::kCreditCardNumber);
+  EXPECT_EQ(RunClassifier(u"credit card expiration date").intent,
+            QueryIntentType::kCreditCardExpirationDate);
+  EXPECT_EQ(RunClassifier(u"CVV").intent,
+            QueryIntentType::kCreditCardSecurityCode);
+  EXPECT_EQ(RunClassifier(u"name on card").intent,
+            QueryIntentType::kCreditCardNameOnCard);
+}
+
 // Tests that entity-related queries are correctly classified.
 TEST_F(QueryClassifierTest, EntityIntents) {
   EXPECT_EQ(RunClassifier(u"license plate").intent,
@@ -210,8 +224,8 @@ TEST_F(QueryClassifierTest, EntityAttributeIntents) {
             QueryIntentType::kShipmentTrackingNumber);
   EXPECT_EQ(RunClassifier(u"associated order id").intent,
             QueryIntentType::kShipmentAssociatedOrderId);
-  EXPECT_EQ(RunClassifier(u"shipping zip code").intent,
-            QueryIntentType::kShipmentDeliveryZipCode);
+  EXPECT_EQ(RunClassifier(u"shipping address").intent,
+            QueryIntentType::kShipmentDeliveryAddress);
   EXPECT_EQ(RunClassifier(u"carrier name").intent,
             QueryIntentType::kShipmentCarrierName);
   EXPECT_EQ(RunClassifier(u"carrier website").intent,

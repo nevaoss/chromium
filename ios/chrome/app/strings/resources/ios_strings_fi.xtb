@@ -80,6 +80,7 @@
 <translation id="1285320974508926690">Älä käännä tätä sivustoa</translation>
 <translation id="1287229685519872919">Google Workspace ‐data</translation>
 <translation id="1291506870746876680">Luvat (<ph name="BEGIN_BOLD" /><ph name="SITE_NAME" /><ph name="END_BOLD" />) nollataan, kun poistut sivustolta.</translation>
+<translation id="1293491796138057740">Tietosi tallennetaan Google Walletiin (<ph name="USER_EMAIL" />). Voit käyttää niitä Googlen tuotteissa lomakkeiden nopeampaan täyttämiseen.</translation>
 <translation id="1293556467332435079">Tiedostot</translation>
 <translation id="129553762522093515">Hiljattain suljetut välilehdet</translation>
 <translation id="1296581780163690620">Ladataanko tiedosto? (<ph name="FILE_SIZE" />)</translation>
@@ -107,6 +108,7 @@
 <translation id="1369286077209859800">Näytä kaikki välilehdet välilehtiryhmässä</translation>
 <translation id="136942498637440594">Voit hakea kuvia ja näkemääsi sisältöä.</translation>
 <translation id="1373120905936431262">Lataa kuva, jonka haluat remiksata Nano Bananalla</translation>
+<translation id="1377321085342047638">Kortin numero</translation>
 <translation id="1377508275003315939">Salasanat</translation>
 <translation id="1381022135873211423">{count,plural, =1{{position}/{count} osoite}other{{position}/{count} osoitetta}}</translation>
 <translation id="1383876407941801731">Haku</translation>
@@ -1099,7 +1101,6 @@
 <translation id="4944543191714094452">Hae sivulta…</translation>
 <translation id="4945756290001680296">Siirry salasana-asetuksiin</translation>
 <translation id="4949302115427722371">Muuta asetuksia…</translation>
-<translation id="4952050521954075618">Kameran rullan kuvia ei synkronoida laitteiden välillä</translation>
 <translation id="4958444002117714549">Laajenna luettelo</translation>
 <translation id="496392417432935267">Avattu muualla</translation>
 <translation id="4970724460420203313">Kun käytät Chromea hallinnoidulla tilillä, voit erottaa organisaatioosi liittyvän selaamisen (esim. välilehdet, historian ja salasanat) muusta selaamisesta</translation>
@@ -1265,6 +1266,7 @@ Handoff täytyy ottaa käyttöön myös Asetusten Yleiset-osiossa. Lisäksi mole
 <translation id="5556459405103347317">Lataa uudelleen</translation>
 <translation id="555749644339804659">Tarkistetaan salasanoja…</translation>
 <translation id="5559567453458728487">Muunna verkosta löytyneet mittayksiköt</translation>
+<translation id="5560088892362098740">Viimeinen voimassaolopäivä</translation>
 <translation id="556042886152191864">Painike</translation>
 <translation id="5565871407246142825">Luottokortit</translation>
 <translation id="5566623128829375608">Tiedot tallennetaan laitteelle.</translation>

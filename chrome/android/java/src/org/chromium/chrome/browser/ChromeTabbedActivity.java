@@ -137,6 +137,7 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.feed.FeedSurfaceTracker;
 import org.chromium.chrome.browser.feed.FeedUma;
 import org.chromium.chrome.browser.feedback.OmniboxFeedbackSource;
+import org.chromium.chrome.browser.finds.FindsManager;
 import org.chromium.chrome.browser.finds.FindsService;
 import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -194,7 +195,6 @@ import org.chromium.chrome.browser.native_page.NativePageAssassin;
 import org.chromium.chrome.browser.navigation_predictor.NavigationPredictorBridge;
 import org.chromium.chrome.browser.new_tab_url.DseNewTabUrlManager;
 import org.chromium.chrome.browser.night_mode.NightModeStateProvider;
-import org.chromium.chrome.browser.notifications.finds.FindsManager;
 import org.chromium.chrome.browser.notifications.scheduler.TipsNotificationsFeatureType;
 import org.chromium.chrome.browser.notifications.tips.TipsPromoCoordinator;
 import org.chromium.chrome.browser.notifications.tips.TipsUtils;
@@ -1098,13 +1098,14 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             mRootUiCoordinator.getDesktopWindowStateManager(),
                             actionConfirmationManager,
                             mRootUiCoordinator.getDataSharingTabManager(),
-                            mRootUiCoordinator.getBottomSheetController(),
+                            assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                             mRootUiCoordinator.getShareDelegateSupplier(),
                             mXrSceneCoreSessionManagerSupplier.get(),
                             mBackPressManager,
                             getSnackbarManager(),
                             /* glicClickHandler= */ () ->
-                                    ((TabbedRootUiCoordinator) mRootUiCoordinator).toggleGlic());
+                                    ((TabbedRootUiCoordinator) mRootUiCoordinator)
+                                            .toggleGlic(false));
             mLayoutStateProviderSupplier.set(mLayoutManager);
         }
     }
@@ -1214,7 +1215,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                         mRootUiCoordinator.getScrimManager(),
                         getSnackbarManager(),
                         getModalDialogManager(),
-                        mRootUiCoordinator.getBottomSheetController(),
+                        assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                         mRootUiCoordinator.getDataSharingTabManager(),
                         mRootUiCoordinator.getIncognitoReauthControllerSupplier(),
                         mNewTabButtonClickListener,
@@ -1273,7 +1274,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 getWindowAndroid(),
                 this,
                 getSnackbarManager(),
-                mRootUiCoordinator::getBottomSheetController,
+                mRootUiCoordinator.getBottomSheetControllerSupplier().asNonNull(),
                 getModalDialogManagerSupplier().asNonNull(),
                 getActivityResultTracker(),
                 getCurrentTabModel().getCurrentTabSupplier());
@@ -1285,7 +1286,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 getWindowAndroid(),
                 this,
                 getSnackbarManager(),
-                mRootUiCoordinator::getBottomSheetController,
+                mRootUiCoordinator.getBottomSheetControllerSupplier(),
                 getActivityResultTracker(),
                 getProfileProviderSupplier());
     }
@@ -1544,7 +1545,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     mGroupSuggestionsPromotionCoordinator =
                             new GroupSuggestionsPromotionCoordinator(
                                     this,
-                                    mRootUiCoordinator.getBottomSheetController(),
+                                    assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                                     mTabModelSelector.getModel(false));
                 }
             }
@@ -1567,7 +1568,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             new FindsManager(
                                     this,
                                     profile,
-                                    mRootUiCoordinator.getBottomSheetController(),
+                                    assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                                     getSnackbarManager(),
                                     findsService);
                 }
@@ -2688,7 +2689,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     mTipsPromoCoordinator =
                             new TipsPromoCoordinator(
                                     this,
-                                    mRootUiCoordinator.getBottomSheetController(),
+                                    assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                                     getQuickDeleteController(),
                                     createBottomSheetSigninCoordinator(
                                             new BottomSheetSigninAndHistorySyncCoordinator
@@ -3115,7 +3116,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 getModalDialogManagerSupplier().asNonNull(),
                 /* appMenuBlocker= */ this,
                 this::supportsAppMenu,
-                this::supportsFindInPage,
                 getTabCreatorManagerSupplier(),
                 getFullscreenManager(),
                 getCompositorViewHolderSupplier(),
@@ -3523,7 +3523,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                         delegate,
                         DeviceLockActivityLauncherImpl.get(),
                         profileSupplier,
-                        mRootUiCoordinator::getBottomSheetController,
+                        mRootUiCoordinator.getBottomSheetControllerSupplier(),
                         getModalDialogManagerSupplier().get(),
                         getSnackbarManager(),
                         accessPoint);
@@ -3701,7 +3701,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             getShareDelegateSupplier(),
                             mRootUiCoordinator.getEphemeralTabCoordinatorSupplier(),
                             ((TabbedRootUiCoordinator) mRootUiCoordinator)::onContextMenuCopyLink,
-                            mRootUiCoordinator.getBottomSheetController(),
+                            assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                             /* chromeActivityNativeDelegate= */ this,
                             getBrowserControlsManager(),
                             getFullscreenManager(),
@@ -4080,7 +4080,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             new TabGroupMenuActionHandler(
                             this,
                             filter,
-                            mRootUiCoordinator.getBottomSheetController(),
+                            assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                             getModalDialogManager(),
                             profile)
                     .handleAddToGroupAction(currentTab);
@@ -4239,7 +4239,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             NtpCustomizationCoordinatorFactory.getInstance()
                     .create(
                             this,
-                            mRootUiCoordinator.getBottomSheetController(),
+                            assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                             profileSupplier,
                             NtpCustomizationCoordinator.BottomSheetType.MAIN,
                             getWindowAndroid(),
@@ -5194,7 +5194,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             mArchivedTabsAutoDeletePromoManager =
                     new ArchivedTabsAutoDeletePromoManager(
                             ChromeTabbedActivity.this,
-                            mRootUiCoordinator.getBottomSheetController(),
+                            assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                             new TabArchiveSettings(ChromeSharedPreferences.getInstance()),
                             ArchivedTabModelOrchestrator.getForProfile(
                                             mTabModelSelector.getCurrentModel().getProfile())

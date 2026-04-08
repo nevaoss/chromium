@@ -78,7 +78,7 @@ class CanvasNon2DResourceProviderSharedImage;
 class CanvasSnapshotProvider;
 class EXTDisjointTimerQuery;
 class EXTDisjointTimerQueryWebGL2;
-class Element;
+class V8UnionElementOrElementImage;
 class ExceptionState;
 class HTMLCanvasElement;
 class HTMLImageElement;
@@ -420,56 +420,12 @@ class MODULES_EXPORT WebGLRenderingContextBase
                   ImageBitmap*,
                   ExceptionState&);
 
-  void texElement2D(GLenum target,
-                    GLint level,
-                    GLint internalformat,
-                    GLenum format,
-                    GLenum type,
-                    Element* element,
-                    ExceptionState& exception_state);
-
-  void texElement2D(GLenum target,
-                    GLint level,
-                    GLint internalformat,
-                    GLsizei width,
-                    GLsizei height,
-                    GLenum format,
-                    GLenum type,
-                    Element* element,
-                    ExceptionState& exception_state);
-
-  void texElement2D(GLenum target,
-                    GLint level,
-                    GLint internalformat,
-                    GLfloat sx,
-                    GLfloat sy,
-                    GLfloat swidth,
-                    GLfloat sheight,
-                    GLenum format,
-                    GLenum type,
-                    Element* element,
-                    ExceptionState& exception_state);
-
-  void texElement2D(GLenum target,
-                    GLint level,
-                    GLint internalformat,
-                    GLfloat sx,
-                    GLfloat sy,
-                    GLfloat swidth,
-                    GLfloat sheight,
-                    GLsizei width,
-                    GLsizei height,
-                    GLenum format,
-                    GLenum type,
-                    Element* element,
-                    ExceptionState& exception_state);
-
   void texElementImage2D(GLenum target,
                          GLint level,
                          GLint internalformat,
                          GLenum format,
                          GLenum type,
-                         Element* element,
+                         const V8UnionElementOrElementImage* element,
                          ExceptionState& exception_state);
 
   void texElementImage2D(GLenum target,
@@ -479,7 +435,7 @@ class MODULES_EXPORT WebGLRenderingContextBase
                          GLsizei height,
                          GLenum format,
                          GLenum type,
-                         Element* element,
+                         const V8UnionElementOrElementImage* element,
                          ExceptionState& exception_state);
 
   void texElementImage2D(GLenum target,
@@ -491,7 +447,7 @@ class MODULES_EXPORT WebGLRenderingContextBase
                          GLfloat sheight,
                          GLenum format,
                          GLenum type,
-                         Element* element,
+                         const V8UnionElementOrElementImage* element,
                          ExceptionState& exception_state);
 
   void texElementImage2D(GLenum target,
@@ -505,7 +461,7 @@ class MODULES_EXPORT WebGLRenderingContextBase
                          GLsizei height,
                          GLenum format,
                          GLenum type,
-                         Element* element,
+                         const V8UnionElementOrElementImage* element,
                          ExceptionState& exception_state);
 
   void texParameterf(GLenum target, GLenum pname, GLfloat param);
@@ -780,9 +736,6 @@ class MODULES_EXPORT WebGLRenderingContextBase
       const Platform::WebGLContextInfo&);
   void SetupFlags();
   bool CopyRenderingResultsFromDrawingBufferAccelerated(
-      CanvasNon2DResourceProviderSharedImage*,
-      SourceDrawingBuffer);
-  bool CopyRenderingResultsFromDrawingBufferUnaccelerated(
       CanvasNon2DResourceProviderSharedImage*,
       SourceDrawingBuffer);
 
@@ -2039,8 +1992,7 @@ class MODULES_EXPORT WebGLRenderingContextBase
   // into a CanvasResource. Returns the resource if the copy succeeded;
   // otherwise returns nullptr.
   scoped_refptr<CanvasResource> CopyRenderingResultsFromDrawingBufferToResource(
-      SourceDrawingBuffer source_buffer,
-      bool only_if_fresh_content = false);
+      SourceDrawingBuffer source_buffer);
   void TexImageHelperMediaVideoFrame(
       TexImageParams,
       WebGLTexture*,
@@ -2067,13 +2019,6 @@ class MODULES_EXPORT WebGLRenderingContextBase
 
   void Dispose() override;
 
-  // PushFrameWithCopy will make a potential copy if the resource is accelerated
-  // or a drawImage if the resource is non accelerated.
-  bool PushFrameWithCopy();
-  // PushFrameNoCopy will try and export the content of the DrawingBuffer as a
-  // ExtenralCanvasResource.
-  bool PushFrameNoCopy();
-
   void TexElementImage2DInternal(GLenum target,
                                  GLint level,
                                  GLint internalformat,
@@ -2085,16 +2030,12 @@ class MODULES_EXPORT WebGLRenderingContextBase
                                  std::optional<GLsizei> height,
                                  GLenum format,
                                  GLenum type,
-                                 Element* element,
+                                 const V8UnionElementOrElementImage* element,
                                  ExceptionState& exception_state);
 
   // Used to provide accelerated snapshots and CanvasResources holding the
   // current content.
   std::unique_ptr<CanvasNon2DResourceProviderSharedImage> resource_provider_;
-
-  // Whether `resource_provider_` has fresh content that should be sent to the
-  // compositor in response to a PushFrame() call.
-  bool resource_provider_has_content_for_frame_push_ = false;
 
   // If PaintRenderingResultsToSnapshot() is unable to create
   // `resource_provider_`, it will attempt to create an unaccelerated snapshot

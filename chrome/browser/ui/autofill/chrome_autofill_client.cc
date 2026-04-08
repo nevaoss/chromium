@@ -93,6 +93,7 @@
 #include "components/autofill/content/browser/content_identity_credential_delegate.h"
 #include "components/autofill/content/browser/email_verifier_delegate.h"
 #include "components/autofill/core/browser/autofill_type.h"
+#include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
 #include "components/autofill/core/browser/data_manager/payments/payments_data_manager.h"
 #include "components/autofill/core/browser/data_manager/personal_data_manager.h"
 #include "components/autofill/core/browser/data_manager/valuables/valuables_data_manager.h"
@@ -126,6 +127,7 @@
 #include "components/autofill/core/common/form_field_data.h"
 #include "components/autofill/core/common/unique_ids.h"
 #include "components/compose/buildflags.h"
+#include "components/device_reauth/device_authenticator.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
@@ -192,6 +194,7 @@
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/page_info/page_info_dialog.h"
 #include "chrome/browser/ui/plus_addresses/plus_address_menu_model.h"  // nogncheck
 #include "chrome/browser/ui/tabs/public/tab_features.h"  // nogncheck
@@ -786,7 +789,7 @@ void ChromeAutofillClient::ShowAutofillSettings(
       NOTREACHED();
   }
 #else
-  Browser* browser = chrome::FindBrowserWithTab(web_contents());
+  BrowserWindowInterface* browser = chrome::FindBrowserWithTab(web_contents());
   if (browser) {
     switch (suggestion_type) {
       case SuggestionType::kManageAddress:
@@ -1275,6 +1278,17 @@ ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
 
   form_predictions_tracker_ = std::make_unique<FormPredictionsTracker>(this);
   actor_key_metrics_recorder_ = std::make_unique<ActorKeyMetricsRecorder>(this);
+
+  // Notify the EntityDataManager about the availability of device re-auth.
+  // This information is injected through the client because the device
+  // authenticator is tied to UI, even though the availability of device re-auth
+  // is independent of it.
+  if (EntityDataManager* edm =
+          base::FeatureList::IsEnabled(features::kAutofillAiWalletPrivatePasses)
+              ? GetEntityDataManager()
+              : nullptr) {
+    edm->SetReauthAvailability(SupportsDeviceReauth());
+  }
 }
 
 Profile* ChromeAutofillClient::GetProfile() const {

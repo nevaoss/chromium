@@ -1112,6 +1112,7 @@ source_set("extensions") {
         "//chrome/browser/chromeos/platform_keys",
         "//chrome/browser/chromeos/policy/dlp",
         "//chrome/browser/chromeos/upload_office_to_cloud",
+        "//chrome/browser/speech",
         "//chromeos/ash/components/browser_context_helper",
         "//chromeos/ash/components/platform_keys",
         "//chromeos/components/kiosk",
@@ -1662,6 +1663,7 @@ source_set("chrome_extensions_browser_client") {
   deps = [
     "//chrome/browser/app_mode",
     "//chrome/browser/content_settings:content_settings_factory",
+    "//chrome/browser/download",
     "//chrome/browser/extensions",
     "//chrome/browser/external_protocol",
     "//chrome/browser/media/webrtc",

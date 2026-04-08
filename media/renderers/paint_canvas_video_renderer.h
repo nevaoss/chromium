@@ -142,6 +142,7 @@ class MEDIA_EXPORT PaintCanvasVideoRenderer {
       viz::RasterContextProvider* raster_context_provider,
       gpu::gles2::GLES2Interface* destination_gl,
       scoped_refptr<VideoFrame> video_frame,
+      VideoFrameSharedImageCache* rgb_si_cache,
       unsigned int target,
       unsigned int texture,
       unsigned int internal_format,
@@ -150,6 +151,8 @@ class MEDIA_EXPORT PaintCanvasVideoRenderer {
       int level,
       SkAlphaType dst_alpha_type,
       GrSurfaceOrigin dst_origin);
+
+  VideoFrameSharedImageCache* GetRGBSharedImageCache();
 
   // Copy the CPU-side YUV contents of |video_frame| to texture |texture| in
   // context |destination_gl|.
@@ -251,7 +254,7 @@ class MEDIA_EXPORT PaintCanvasVideoRenderer {
   // not keep a reference to the VideoFrame so necessary data is extracted out
   // of it.
   struct Cache {
-    explicit Cache(VideoFrame::ID frame_id);
+    Cache(VideoFrame::ID frame_id, base::RepeatingClosure on_expire);
     ~Cache();
 
     // VideoFrame::unique_id() of the videoframe used to generate the cache.
@@ -273,6 +276,8 @@ class MEDIA_EXPORT PaintCanvasVideoRenderer {
     // no external users have access to this resource via SkImage. Returns true
     // if the existing resource can be recycled.
     bool Recycle();
+
+    base::RetainingOneShotTimer timer;
   };
 
   // Update the cache holding the most-recently-painted frame. Returns false
@@ -280,10 +285,10 @@ class MEDIA_EXPORT PaintCanvasVideoRenderer {
   bool UpdateLastImage(scoped_refptr<VideoFrame> video_frame,
                        viz::RasterContextProvider* raster_context_provider);
 
+  void OnCacheExpired();
+
   std::optional<Cache> cache_;
 
-  // If |cache_| is not used for a while, it's deleted to save memory.
-  base::DelayTimer cache_deleting_timer_;
   // Stable paint image id to provide to draw image calls.
   cc::PaintImage::Id renderer_stable_id_;
 

@@ -155,7 +155,8 @@ Canvas2DResourceProviderBitmap::Canvas2DResourceProviderBitmap(
       std::make_unique<MemoryManagedPaintRecorder>(Size(), this);
 }
 
-scoped_refptr<StaticBitmapImage> Canvas2DResourceProviderBitmap::Snapshot(
+scoped_refptr<StaticBitmapImage>
+Canvas2DResourceProviderBitmap::SnapshotForCanvas2D(
     ImageOrientation orientation) {
   TRACE_EVENT0("blink", "Canvas2DResourceProviderBitmap::Snapshot");
   return UnacceleratedSnapshotForCanvas2D(orientation);
@@ -966,7 +967,7 @@ bool CanvasResourceProviderSharedImage::IsSoftwareSharedImageGpuChannelLost()
          !shared_image_interface_provider_->SharedImageInterface();
 }
 
-bool CanvasResourceProviderSharedImage::IsValid() const {
+bool Canvas2DResourceProviderSharedImage::IsValid() const {
   if (is_software_) {
     // Software compositing (which always uses software raster).
     return !IsSoftwareSharedImageGpuChannelLost() && GetSkSurface();
@@ -979,6 +980,14 @@ bool CanvasResourceProviderSharedImage::IsValid() const {
 
   // GPU compositing and software raster.
   return !IsGpuContextLost() && GetSkSurface();
+}
+
+bool CanvasNon2DResourceProviderSharedImage::IsValid() const {
+  if (is_software_) {
+    return !IsSoftwareSharedImageGpuChannelLost() && GetSkSurface();
+  }
+
+  return !IsGpuContextLost();
 }
 
 bool CanvasResourceProviderSharedImage::IsSingleBuffered() const {
@@ -1012,16 +1021,11 @@ CanvasResourceProviderSharedImage::GetSharedImageUsageFlags() const {
   return image_pool_->GetImageInfo().usage;
 }
 
-void CanvasNon2DResourceProviderSharedImage::ExternalCanvasDrawHelper(
-    base::FunctionRef<void(cc::PaintCanvas&)> draw_callback) {
-  cached_snapshot_.reset();
-  draw_callback(GetCanvasDeprecated());
-}
-
 scoped_refptr<CanvasResource>
 CanvasNon2DResourceProviderSharedImage::DoExternalDrawAndProduceResource(
     base::FunctionRef<void(cc::PaintCanvas&)> draw_callback) {
-  ExternalCanvasDrawHelper(draw_callback);
+  cached_snapshot_.reset();
+  draw_callback(recorder_->getRecordingCanvas());
   return ProduceCanvasResource();
 }
 
@@ -1029,11 +1033,19 @@ scoped_refptr<StaticBitmapImage>
 CanvasNon2DResourceProviderSharedImage::DoExternalDrawAndSnapshot(
     base::FunctionRef<void(cc::PaintCanvas&)> draw_callback,
     ImageOrientation orientation) {
-  ExternalCanvasDrawHelper(draw_callback);
+  cached_snapshot_.reset();
+  draw_callback(recorder_->getRecordingCanvas());
+
+  if (!IsValid()) {
+    return nullptr;
+  }
+
+  FlushCanvas(/*is_overwrite=*/false);
   return Snapshot(orientation);
 }
 
-scoped_refptr<StaticBitmapImage> Canvas2DResourceProviderSharedImage::Snapshot(
+scoped_refptr<StaticBitmapImage>
+Canvas2DResourceProviderSharedImage::SnapshotForCanvas2D(
     ImageOrientation orientation) {
   TRACE_EVENT0("blink", "Canvas2DResourceProviderSharedImage::Snapshot");
   if (!IsValid()) {
@@ -1073,6 +1085,11 @@ scoped_refptr<StaticBitmapImage> Canvas2DResourceProviderSharedImage::Snapshot(
 }
 
 scoped_refptr<StaticBitmapImage>
+CanvasNon2DResourceProviderSharedImage::SnapshotForCanvas2D(ImageOrientation) {
+  NOTREACHED();
+}
+
+scoped_refptr<StaticBitmapImage>
 CanvasNon2DResourceProviderSharedImage::Snapshot(ImageOrientation orientation) {
   TRACE_EVENT0("blink", "CanvasNon2DResourceProviderSharedImage::Snapshot");
   if (!IsValid()) {
@@ -1084,10 +1101,6 @@ CanvasNon2DResourceProviderSharedImage::Snapshot(ImageOrientation orientation) {
   // while in this case we are simply returning the rendered CPU-side results to
   // the client.
   if (!is_accelerated_) {
-    if (!IsValid()) {
-      return nullptr;
-    }
-
     FlushCanvas(/*is_overwrite=*/false);
 
     cc::PaintImage paint_image;
@@ -1253,7 +1266,7 @@ void Canvas2DResourceProviderSharedImage::OnFlushForImage(
 
 void CanvasNon2DResourceProviderSharedImage::OnFlushForImage(
     cc::PaintImage::ContentId content_id) {
-  if (GetCanvasDeprecated().IsCachingImage(content_id)) {
+  if (recorder_->getRecordingCanvas().IsCachingImage(content_id)) {
     FlushCanvas(/*is_overwrite=*/false);
   }
   if (cached_snapshot_ &&
@@ -1708,8 +1721,10 @@ CanvasResourceProvider::CanvasResourceProvider(
       color_space_(color_space),
       delegate_(delegate),
       snapshot_paint_image_id_(cc::PaintImage::GetNextId()) {
-  max_recorded_op_bytes_ = static_cast<size_t>(kMaxRecordedOpKB.Get()) * 1024;
-  max_pinned_image_bytes_ = static_cast<size_t>(kMaxPinnedImageKB.Get()) * 1024;
+  max_recorded_op_bytes_for_canvas_2d_ =
+      static_cast<size_t>(kMaxRecordedOpKB.Get()) * 1024;
+  max_pinned_image_bytes_for_canvas_2d_ =
+      static_cast<size_t>(kMaxPinnedImageKB.Get()) * 1024;
 
   CanvasMemoryDumpProvider::Instance()->RegisterClient(this);
 }
@@ -1746,9 +1761,9 @@ void CanvasResourceProvider::FlushIfRecordingLimitExceededForCanvas2D() {
     return;
   }
   if (recorder_for_canvas_2d_->ReleasableOpBytesUsed() >
-          max_recorded_op_bytes_ ||
+          max_recorded_op_bytes_for_canvas_2d_ ||
       recorder_for_canvas_2d_->ReleasableImageBytesUsed() >
-          max_pinned_image_bytes_) [[unlikely]] {
+          max_pinned_image_bytes_for_canvas_2d_) [[unlikely]] {
     FlushCanvas2D();
   }
 }
@@ -1854,11 +1869,6 @@ MemoryManagedPaintCanvas&
 CanvasResourceProvider::GetCanvasForCanvas2DForTesting() {
   CHECK(IsCanvas2D());
   return recorder_for_canvas_2d_->getRecordingCanvas();
-}
-
-MemoryManagedPaintCanvas&
-CanvasNon2DResourceProviderSharedImage::GetCanvasDeprecated() {
-  return recorder_->getRecordingCanvas();
 }
 
 void CanvasResourceProvider::ReleaseLockedImages() {
@@ -2058,7 +2068,7 @@ Canvas2DResourceProviderSharedImage::Canvas2DResourceProviderSharedImage(
             .GetGpuFeatureInfo()
             .status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
         gpu::kGpuFeatureStatusEnabled) {
-      max_recorded_op_bytes_ =
+      max_recorded_op_bytes_for_canvas_2d_ =
           static_cast<size_t>(kMaxRecordedOpGraphiteKB.Get()) * 1024;
       recorder_for_canvas_2d_->DisableLineDrawingAsPaths();
     }
@@ -2106,8 +2116,6 @@ CanvasNon2DResourceProviderSharedImage::CanvasNon2DResourceProviderSharedImage(
             .GetGpuFeatureInfo()
             .status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
         gpu::kGpuFeatureStatusEnabled) {
-      max_recorded_op_bytes_ =
-          static_cast<size_t>(kMaxRecordedOpGraphiteKB.Get()) * 1024;
       recorder_->DisableLineDrawingAsPaths();
     }
   }

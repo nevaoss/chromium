@@ -107,6 +107,7 @@
 <translation id="1369286077209859800">ਟੈਬ ਗਰੁੱਪ ਵਿੱਚ ਸਾਰੀਆਂ ਟੈਬਾਂ ਦਿਖਾਓ</translation>
 <translation id="136942498637440594">ਤੁਸੀਂ ਚਿੱਤਰਾਂ ਅਤੇ ਤੁਹਾਨੂੰ ਦਿਸਣ ਵਾਲੀਆਂ ਚੀਜ਼ਾਂ ਸੰਬੰਧੀ ਜਾਣਕਾਰੀ ਖੋਜ ਸਕਦੇ ਹੋ।</translation>
 <translation id="1373120905936431262">Nano Banana ਨਾਲ ਰੀਮਿਕਸ ਕਰਨ ਲਈ ਕੋਈ ਚਿੱਤਰ ਅੱਪਲੋਡ ਕਰੋ</translation>
+<translation id="1377321085342047638">ਕਾਰਡ ਨੰਬਰ</translation>
 <translation id="1377508275003315939">ਪਾਸਵਰਡ</translation>
 <translation id="1381022135873211423">{count,plural, =1{{count} ਵਿੱਚੋਂ {position} ਪਤਾ}one{{count} ਵਿੱਚੋਂ {position} ਪਤਾ}other{{count} ਵਿੱਚੋਂ {position} ਪਤੇ}}</translation>
 <translation id="1383876407941801731">ਖੋਜੋ</translation>
@@ -1099,7 +1100,6 @@
 <translation id="4944543191714094452">ਪੰਨੇ ਵਿੱਚ ਲੱਭੋ…</translation>
 <translation id="4945756290001680296">ਪਾਸਵਰਡ ਸੈਟਿੰਗਾਂ ਤੱਕ ਪਹੁੰਚ ਕਰੋ</translation>
 <translation id="4949302115427722371">ਸੈਟਿੰਗਾਂ ਦਾ ਪ੍ਰਬੰਧਨ ਕਰੋ…</translation>
-<translation id="4952050521954075618">ਕੈਮਰਾ ਰੋਲ ਤੋਂ ਫ਼ੋਟੋਆਂ ਤੁਹਾਡੇ ਸਾਰੇ ਡੀਵਾਈਸਾਂ ਵਿੱਚ ਸਿੰਕ ਨਹੀਂ ਹੋਣਗੀਆਂ</translation>
 <translation id="4958444002117714549">ਸੂਚੀ ਦਾ ਵਿਸਤਾਰ ਕਰੋ</translation>
 <translation id="496392417432935267">ਹੋਰ ਕਿਤੇ ਖੋਲ੍ਹਿਆ ਗਿਆ</translation>
 <translation id="4970724460420203313">ਆਪਣੇ ਪ੍ਰਬੰਧਿਤ ਕੀਤੇ ਖਾਤੇ ਨਾਲ Chrome ਵਰਤਣ 'ਤੇ ਤੁਹਾਨੂੰ ਤੁਹਾਡੀ ਸੰਸਥਾ ਨਾਲ ਸੰਬੰਧਿਤ ਬ੍ਰਾਊਜ਼ਿੰਗ ਡਾਟੇ (ਟੈਬਾਂ, ਇਤਿਹਾਸ ਅਤੇ ਪਾਸਵਰਡ ਸਮੇਤ) ਨੂੰ ਤੁਹਾਡੇ ਹੋਰ ਬ੍ਰਾਊਜ਼ਿੰਗ ਡਾਟੇ ਤੋਂ ਵੱਖਰਾ ਰੱਖਣ ਵਿੱਚ ਮਦਦ ਮਿਲਦੀ ਹੈ</translation>
@@ -1265,6 +1265,7 @@ Handoff ਨੂੰ ਵੀ ਸੈਟਿੰਗਾਂ ਦੇ 'ਆਮ' ਸੈਕਸ਼�
 <translation id="5556459405103347317">ਰੀਲੋਡ ਕਰੋ</translation>
 <translation id="555749644339804659">ਪਾਸਵਰਡਾਂ ਦੀ ਜਾਂਚ ਕੀਤੀ ਜਾ ਰਹੀ ਹੈ…</translation>
 <translation id="5559567453458728487">ਵੈੱਬ 'ਤੇ ਮਿਲੀਆਂ ਮਾਪ ਇਕਾਈਆਂ ਨੂੰ ਰੂਪਾਂਤਰਿਤ ਕਰੋ</translation>
+<translation id="5560088892362098740">ਮਿਆਦ ਸਮਾਪਤੀ ਦੀ ਮਿਤੀ</translation>
 <translation id="556042886152191864">ਬਟਨ</translation>
 <translation id="5565871407246142825">ਕ੍ਰੈਡਿਟ ਕਾਰਡ</translation>
 <translation id="5566623128829375608">ਤੁਹਾਡੇ ਡੀਵਾਈਸ ਵਿੱਚ ਰੱਖਿਅਤ ਹੁੰਦੀ ਹੈ।</translation>
