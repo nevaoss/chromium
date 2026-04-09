@@ -178,6 +178,11 @@ std::vector<VEAFactoryFunction> CreateVEAFactoryFunctions(
     const gpu::GpuDriverBugWorkarounds& gpu_workarounds,
     const gpu::GPUInfo::GPUDevice& gpu_device) {
   std::vector<VEAFactoryFunction> funcs;
+
+#if defined(USE_WEBOS_CODEC)
+  funcs.push_back(base::BindRepeating(&CreateWebOSVEA));
+#endif
+
 #if BUILDFLAG(USE_VAAPI)
   funcs.push_back(base::BindRepeating(&CreateVaapiVEA));
 #elif BUILDFLAG(USE_V4L2_CODEC)
@@ -219,35 +224,6 @@ const std::vector<VEAFactoryFunction>& GetVEAFactoryFunctions(
       vea_factory_functions(CreateVEAFactoryFunctions(
           gpu_preferences, gpu_workarounds, gpu_device));
 
-<<<<<<< HEAD
-#if defined(USE_WEBOS_CODEC)
-  vea_factory_functions.push_back(base::BindRepeating(&CreateWebOSVEA));
-#endif
-
-#if BUILDFLAG(USE_VAAPI)
-  vea_factory_functions->push_back(base::BindRepeating(&CreateVaapiVEA));
-#elif BUILDFLAG(USE_V4L2_CODEC)
-  vea_factory_functions->push_back(base::BindRepeating(&CreateV4L2VEA));
-#endif
-
-#if BUILDFLAG(IS_ANDROID)
-  vea_factory_functions->push_back(
-      base::BindRepeating(&CreateAndroidVEA, gpu_workarounds));
-#endif
-#if BUILDFLAG(IS_MAC)
-  vea_factory_functions->push_back(base::BindRepeating(&CreateVTVEA));
-#endif
-#if BUILDFLAG(IS_WIN)
-  vea_factory_functions->push_back(
-      base::BindRepeating(&CreateD3D12VEA, gpu_workarounds, gpu_device));
-  vea_factory_functions->push_back(base::BindRepeating(
-      &CreateMediaFoundationVEA, gpu_preferences, gpu_workarounds, gpu_device));
-#endif
-#if BUILDFLAG(IS_FUCHSIA)
-  vea_factory_functions->push_back(base::BindRepeating(&CreateFuchsiaVEA));
-#endif
-=======
->>>>>>> 148.0.7778.0~1
   return *vea_factory_functions;
 }
 
