@@ -9,6 +9,7 @@
 #include <optional>
 
 #include "base/time/time.h"
+#include "build/build_config.h"
 #include "third_party/blink/public/platform/web_url_request.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/paint/timing/media_record_id.h"
@@ -161,7 +162,12 @@ class CORE_EXPORT ImageRecord final : public PaintTimingRecord {
   const MediaTiming* GetMediaTiming() const { return media_timing_; }
 
  private:
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  // TODO(neva): Try contribute it to upstream.
+  const Member<const MediaTiming> media_timing_;
+#else
   const WeakMember<const MediaTiming> media_timing_;
+#endif
   const MediaRecordIdHash hash_;
   base::TimeTicks load_time_;
   base::TimeTicks first_animated_frame_time_;
