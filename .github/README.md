@@ -59,4 +59,4 @@ Neva uses a two‑branch development model:
 ---
 
 ## 📦 How to build
-Instruction for building Neva for webOS/OSE target can be found in the [meva-neva](https://github.com/nevaoss/meta-neva) repository.
+Instruction for building Neva for webOS/OSE target can be found in the [meta-neva](https://github.com/nevaoss/meta-neva) repository.
