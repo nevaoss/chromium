@@ -115,13 +115,3 @@ declare_args() {
   # Use webOS codec
   use_webos_codec = false
 }
-
-declare_args() {
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  # Disable Rust in Neva. We already have an enable_rust arg in
-  # //build/config/rust.gni, but we must distinguish them, because enable_rust
-  # enabled by default and can`t be disabled at all. disable_rust_for_neva used
-  # only as a temporary workaround until Neva doesn`t support Rust. After Neva
-  # fully support Rust, this should be removed out to facilitate the upgrade.
-  disable_rust_for_neva = false
-}

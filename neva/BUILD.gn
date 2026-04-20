@@ -149,9 +149,4 @@ config("config") {
   if (enable_skia_force_invalidate) {
     defines += [ "ENABLE_SKIA_FORCE_INVALIDATE" ]
   }
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    defines += [ "DISABLE_RUST_FOR_NEVA=1" ]
-  }
 }
