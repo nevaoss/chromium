@@ -8,11 +8,7 @@
 #include "base/containers/span_rust.h"
 #include "base/numerics/byte_conversions.h"
 #include "third_party/blink/renderer/platform/fonts/opentype/format_check.rs.h"
-<<<<<<< HEAD
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
-=======
->>>>>>> neva-main
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 #include "third_party/skia/include/core/SkTypeface.h"
 

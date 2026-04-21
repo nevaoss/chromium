@@ -76,13 +76,6 @@ BASE_FEATURE(kDumpWithoutCrashingForMissingSecurityState,
 
 namespace content {
 
-<<<<<<< HEAD
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-=======
-namespace {
-
->>>>>>> neva-main
 // When enabled, replaces certain ChildProcessSecurityPolicy functionality with
 // an experimental Rust implementation. See https://crbug.com/482216433.
 BASE_FEATURE(kChildProcessSecurityPolicyRust,
@@ -1314,19 +1307,6 @@ void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting(
       rust::child_process_security_policy::clear_registered_scheme_for_testing(
           scheme),                                   // IN-TEST
       ClearRegisteredSchemeForTesting_Cpp(scheme));  // IN-TEST
-<<<<<<< HEAD
-#else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  ClearRegisteredSchemeForTesting_Cpp(scheme);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-=======
-
-  // TODO(crbug.com/482216433): Remove when pseudo_schemes_ is handled in Rust.
-  // For now, this C++ set still gets populated in RustOnly mode.
-  if (GetRustPolicy() == RustPolicy::kRustOnly) {
-    base::AutoLock lock(schemes_lock_);
-    pseudo_schemes_.erase(scheme);
-  }
->>>>>>> neva-main
 }
 
 void ChildProcessSecurityPolicyImpl::ClearRegisteredSchemeForTesting_Cpp(

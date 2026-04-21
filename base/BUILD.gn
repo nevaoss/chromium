@@ -2640,169 +2640,108 @@ if (is_android) {
   }
 }
 
-<<<<<<< HEAD
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (!disable_rust_for_neva) {
-  rust_static_library("scoped_refptr") {
-    sources = [ "memory/scoped_refptr.rs" ]
-    crate_root = "memory/scoped_refptr.rs"
-    allow_unsafe = true
+rust_static_library("scoped_refptr") {
+  sources = [ "memory/scoped_refptr.rs" ]
+  crate_root = "memory/scoped_refptr.rs"
+  allow_unsafe = true
 
-    # This file uses cxx APIs but doesn't have its own bindings
-    deps = [ "//third_party/rust/cxx/v1:lib" ]
-  }
-
-  rust_static_library("callback") {
-    sources = [ "functional/callback.rs" ]
-    crate_root = "functional/callback.rs"
-    cxx_bindings = [ "functional/callback.rs" ]
-    allow_unsafe = true
-    deps = [ ":scoped_refptr" ]
-  }
-
-  rust_static_library("run_loop") {
-    sources = [ "run_loop.rs" ]
-    crate_root = "run_loop.rs"
-    cxx_bindings = [ "run_loop.rs" ]
-    allow_unsafe = true
-    deps = [
-      ":run_loop_shim",
-      "//base",
-    ]
-  }
-
-  rust_static_library("sequenced_task_runner") {
-    sources = [ "task/sequenced_task_runner.rs" ]
-    crate_root = "task/sequenced_task_runner.rs"
-    cxx_bindings = [ "task/sequenced_task_runner.rs" ]
-    allow_unsafe = true
-    deps = [
-      ":callback",
-      ":run_loop",
-      ":scoped_refptr",
-      ":sequenced_task_runner_shim",
-      "//base",
-    ]
-  }
-
-  rust_static_library("sequenced_task_runner_test_bridge") {
-    testonly = true
-    sources = [ "task/sequenced_task_runner_test_bridge.rs" ]
-    crate_root = "task/sequenced_task_runner_test_bridge.rs"
-    cxx_bindings = [ "task/sequenced_task_runner_test_bridge.rs" ]
-    allow_unsafe = true
-    deps = [
-      ":base_rust",
-      ":scoped_refptr",
-      ":sequenced_task_runner_test_util",
-      "//base",
-    ]
-  }
-
-  source_set("sequenced_task_runner_test_util") {
-    testonly = true
-    sources = [
-      "task/sequenced_task_runner_test_util.cc",
-      "task/sequenced_task_runner_test_util.h",
-    ]
-    deps = [
-      "test:test_support",
-      "//base",
-    ]
-  }
-
-  source_set("run_loop_shim") {
-    sources = [
-      "run_loop_rust_shim.cc",
-      "run_loop_rust_shim.h",
-    ]
-
-    deps = [ "//base" ]
-  }
-
-  source_set("sequenced_task_runner_shim") {
-    sources = [
-      "task/sequenced_task_runner_rust_shim.cc",
-      "task/sequenced_task_runner_rust_shim.h",
-    ]
-
-    deps = [
-      ":callback",
-      "//base",
-    ]
-  }
-
-  rust_static_library("rust_sequences_unittests") {
-    testonly = true
-    is_gtest_unittests = true
-    allow_unsafe = true
-    sources = [ "task/sequenced_task_runner_unittest.rs" ]
-    crate_root = "task/sequenced_task_runner_unittest.rs"
-    deps = [
-      ":scoped_refptr",
-      ":sequenced_task_runner",
-      ":sequenced_task_runner_test_bridge",
-      "//base/test:task_environment",
-      "//testing/rust_gtest_interop",
-    ]
-  }
-=======
-rust_bindgen("logging_log_severity_bindgen") {
-  # TODO(danakj): Maybe combine all base bindgen targets, or all base/logging
-  # ones even) into a single GN target? But the GN rule needs to handle multiple
-  # headers then.
-  header = "logging/log_severity.h"
-  cpp = true
-  visibility = [ ":*" ]
-
-  # Transitive generated header dependency.
-  deps = [ ":debugging_buildflags" ]
+  # This file uses cxx APIs but doesn't have its own bindings
+  deps = [ "//third_party/rust/cxx/v1:lib" ]
 }
 
-rust_static_library("rust_logger") {
-  allow_unsafe = true  # Unsafe needed for FFI.
+rust_static_library("callback") {
+  sources = [ "functional/callback.rs" ]
+  crate_root = "functional/callback.rs"
+  cxx_bindings = [ "functional/callback.rs" ]
+  allow_unsafe = true
+  deps = [ ":scoped_refptr" ]
+}
+
+rust_static_library("run_loop") {
+  sources = [ "run_loop.rs" ]
+  crate_root = "run_loop.rs"
+  cxx_bindings = [ "run_loop.rs" ]
+  allow_unsafe = true
   deps = [
-    ":logging_log_severity_bindgen",
-    ":tracing_buildflags",
-    "//build:chromeos_buildflags",
-    "//third_party/rust/log/v0_4:lib",
-
-    # Needed because of circular dependency: base depends on this target and by
-    # extension the cxx-generated C++ code, but the cxx-generated code includes
-    # base headers and calls base code. This seems to generally not cause
-    # issues, except for partition_alloc which applies configs when depended on.
-    #
-    # This allows the generated C++ code to transitively include partition alloc
-    # headers without issue.
-    #
-    # TODO(collinbaker): determine how to handle these cxx bindings-induced
-    # circular dependencies more robustly.
-    "//base/allocator/partition_allocator:raw_ptr",
-
-    # Needed because logging/rust_logger.rs contains:
-    #   include!("base/logging/rust_log_integration.h");
-    # rust_log_integration.h ends up transitively #including
-    # debug/debugging_buildflags.h, which is a generated header that needs to
-    # be written first.
-    #
-    # Technically it would be more correct to depend on :base, which is the
-    # target for rust_log_integration.h, but that's not possible due to circular
-    # dependencies.
-    #
-    # Note if this is removed the build may still work by accident because
-    # debug/debugging_buildflags.h still ends up being generated through a
-    # dependency chain via :logging_log_severity_bindgen. But we should not
-    # rely on that.
-    #
-    # See also https://crbug.com/406267472.
-    ":debugging_buildflags",
+    ":run_loop_shim",
+    "//base",
   ]
-  visibility = [ ":base" ]
-  sources = [ "logging/rust_logger.rs" ]
-  crate_root = "logging/rust_logger.rs"
+}
 
-  cxx_bindings = [ "logging/rust_logger.rs" ]
->>>>>>> neva-main
+rust_static_library("sequenced_task_runner") {
+  sources = [ "task/sequenced_task_runner.rs" ]
+  crate_root = "task/sequenced_task_runner.rs"
+  cxx_bindings = [ "task/sequenced_task_runner.rs" ]
+  allow_unsafe = true
+  deps = [
+    ":callback",
+    ":run_loop",
+    ":scoped_refptr",
+    ":sequenced_task_runner_shim",
+    "//base",
+  ]
+}
+
+rust_static_library("sequenced_task_runner_test_bridge") {
+  testonly = true
+  sources = [ "task/sequenced_task_runner_test_bridge.rs" ]
+  crate_root = "task/sequenced_task_runner_test_bridge.rs"
+  cxx_bindings = [ "task/sequenced_task_runner_test_bridge.rs" ]
+  allow_unsafe = true
+  deps = [
+    ":base_rust",
+    ":scoped_refptr",
+    ":sequenced_task_runner_test_util",
+    "//base",
+  ]
+}
+
+source_set("sequenced_task_runner_test_util") {
+  testonly = true
+  sources = [
+    "task/sequenced_task_runner_test_util.cc",
+    "task/sequenced_task_runner_test_util.h",
+  ]
+  deps = [
+    "test:test_support",
+    "//base",
+  ]
+}
+
+source_set("run_loop_shim") {
+  sources = [
+    "run_loop_rust_shim.cc",
+    "run_loop_rust_shim.h",
+  ]
+
+  deps = [ "//base" ]
+}
+
+source_set("sequenced_task_runner_shim") {
+  sources = [
+    "task/sequenced_task_runner_rust_shim.cc",
+    "task/sequenced_task_runner_rust_shim.h",
+  ]
+
+  deps = [
+    ":callback",
+    "//base",
+  ]
+}
+
+rust_static_library("rust_sequences_unittests") {
+  testonly = true
+  is_gtest_unittests = true
+  allow_unsafe = true
+  sources = [ "task/sequenced_task_runner_unittest.rs" ]
+  crate_root = "task/sequenced_task_runner_unittest.rs"
+  deps = [
+    ":scoped_refptr",
+    ":sequenced_task_runner",
+    ":sequenced_task_runner_test_bridge",
+    "//base/test:task_environment",
+    "//testing/rust_gtest_interop",
+  ]
 }
 
 if (is_linux || is_chromeos) {
