@@ -4,8 +4,6 @@
 
 import("//build/buildflag_header.gni")
 import("//build/config/rust.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 
 declare_args() {
@@ -47,26 +45,18 @@ source_set("qr_code_generator") {
     ":error",
     "//base",
   ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps -= [ ":qr_code_generator_ffi_glue" ]
-  }
 }
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (!disable_rust_for_neva) {
-  rust_static_library("qr_code_generator_ffi_glue") {
-    allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
-    crate_root = "qr_code_generator_ffi_glue.rs"
-    sources = [ "qr_code_generator_ffi_glue.rs" ]
-    cxx_bindings = [ "qr_code_generator_ffi_glue.rs" ]
-    visibility = [ ":qr_code_generator" ]
-    deps = [
-      ":error",
-      "//third_party/rust/qr_code/v2:lib",
-    ]
-  }
+rust_static_library("qr_code_generator_ffi_glue") {
+  allow_unsafe = true  # Needed for FFI that underpins the `cxx` crate.
+  crate_root = "qr_code_generator_ffi_glue.rs"
+  sources = [ "qr_code_generator_ffi_glue.rs" ]
+  cxx_bindings = [ "qr_code_generator_ffi_glue.rs" ]
+  visibility = [ ":qr_code_generator" ]
+  deps = [
+    ":error",
+    "//third_party/rust/qr_code/v2:lib",
+  ]
 }
 
 source_set("unit_tests") {

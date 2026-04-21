@@ -43,10 +43,6 @@
 #include "third_party/blink/renderer/platform/wtf/text/text_encoding.h"
 #include "third_party/skia/include/core/SkImage.h"
 #include "third_party/skia/include/core/SkPictureRecorder.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/encode/SkPngEncoder.h"
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "ui/gfx/geometry/rect_f.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/geometry/skia_conversions.h"
@@ -122,16 +118,8 @@ Vector<uint8_t> PictureSnapshot::Replay(unsigned from_step,
   bool peekResult = bitmap.peekPixels(&src);
   DCHECK(peekResult);
 
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  SkPngEncoder::Options options;
-  options.fFilterFlags = SkPngEncoder::FilterFlag::kSub;
-  options.fZLibLevel = 3;
-  if (!ImageEncoder::Encode(&encoded_image, src, options)) {
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   if (!ImageEncoder::Encode(&encoded_image, src,
                             SkPngRustEncoder::CompressionLevel::kLow)) {
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     return Vector<uint8_t>();
   }
 

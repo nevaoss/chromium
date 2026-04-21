@@ -11,8 +11,6 @@ import("//build/config/rust.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/rust/rust_static_library.gni")
 import("//gpu/vulkan/features.gni")
-# TODO(neva_rust): Please remove Neva flag after Neva supports Rust.
-import("//neva/neva.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//testing/test.gni")
 import("//third_party/skia/gn/shared_sources.gni")
@@ -35,8 +33,6 @@ buildflag_header("buildflags") {
   ]
 }
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (!disable_rust_for_neva) {
 source_set("path_bridge") {
   sources = skia_fontations_path_bridge_sources
 }
@@ -58,7 +54,6 @@ rust_static_library("bridge_rust_side") {
     "//build/config/compiler:no_chromium_code",
   ]
   no_clippy = true  # TODO(https://crbug.com/472355480)
-}
 }
 
 # External-facing config for dependent code.
@@ -86,15 +81,6 @@ config("skia_config") {
     "SK_CODEC_COLOR_PROFILE_PARSE_WITH_RUST",
     "SK_EXIF_PARSE_WITH_RUST",
   ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    defines -= [ "SK_CODEC_DECODES_PNG_WITH_RUST" ]
-    defines += [ "SK_CODEC_DECODES_PNG_WITH_LIBPNG" ]
-    defines -= [ "SK_CODEC_ENCODES_PNG_WITH_RUST" ]
-    defines += [ "SK_CODEC_ENCODES_PNG_WITH_LIBPNG" ]
-    defines -= [ "SK_CODEC_DECODES_BMP_WITH_RUST" ]
-  }
 
   include_dirs = [
     "//third_party/skia",
@@ -202,10 +188,6 @@ config("skia_library_config") {
       "SK_TYPEFACE_FACTORY_FREETYPE",
       "SK_FONTMGR_FREETYPE_EMPTY_AVAILABLE",
     ]
-    # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-    if (disable_rust_for_neva) {
-      defines -= [ "SK_TYPEFACE_FACTORY_FONTATIONS" ]
-    }
   }
   if (is_win) {
     defines += [ "SK_TYPEFACE_FACTORY_DIRECTWRITE" ]
@@ -444,18 +426,6 @@ component("skia") {
       ":bridge_rust_side",
       ":path_bridge",
     ]
-
-    # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-    if (disable_rust_for_neva) {
-      sources -= [
-        skia_ports_typeface_fontations_sources,
-        skia_ports_fontmgr_fontations_sources,
-      ]
-      deps -= [
-        ":bridge_rust_side",
-        ":path_bridge",
-      ]
-    }
   }
 
   if (is_win) {
@@ -530,14 +500,6 @@ component("skia") {
     ":skia_core_and_effects",
     ":skia_core_public_headers",
   ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    sources += skia_codec_libpng_srcs
-    sources += skia_encode_libpng_srcs
-    deps += [ "//third_party/libpng" ]
-    deps -= [ ":rust_common_ffi" ]
-  }
 
   if (use_blink) {
     deps += [ "//third_party:jpeg" ]
@@ -652,23 +614,6 @@ component("skia") {
   # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
   # enable the diagnostic by removing this line.
   configs += [ "//build/config/compiler:no_exit_time_destructors" ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps -= [ ":rust_png_ffi" ]
-    public_deps -= [ ":rust_bmp_ffi" ]
-    public -= skia_codec_rust_png_public
-    sources -= skia_codec_rust_png
-    public -= skia_encode_rust_png_public
-    # Because SpanUtils.h is included in both skia_codec_rust_png and
-    # skia_encode_rust_png_srcs sources an error occurs on trying to remove it
-    # twice when removing skia_encode_rust_png_srcs after skia_codec_rust_png.
-    # So, add this file to sources before removing it again to avoid error.
-    sources += [
-      "//third_party/skia/rust/common/SpanUtils.h",
-    ]
-    sources -= skia_encode_rust_png_srcs
-  }
 }
 
 component("skia_switches") {
@@ -683,72 +628,71 @@ component("skia_switches") {
   deps = [ "//base" ]
 }
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (!disable_rust_for_neva) {
-  rust_static_library("rust_common_ffi") {
-    visibility = [ ":*" ]
-    crate_name = "skia_rust_common"
-    allow_unsafe = true  # For FFI
-    crate_root = skia_rust_common_ffi_crate_root
-    sources = skia_rust_common_ffi_rs_srcs
-    cxx_bindings = skia_rust_common_ffi_cxx_bridge_srcs
-    public_deps = [ ":rust_common_ffi_cpp" ]
-    configs -= [ "//build/config/compiler:chromium_code" ]
-    configs += [
-      ":skia_config",
-      "//build/config/compiler:no_chromium_code",
-    ]
-    no_clippy = true  # TODO(https://crbug.com/472355480)
-  }
+rust_static_library("rust_common_ffi") {
+  visibility = [ ":*" ]
+  crate_name = "skia_rust_common"
+  allow_unsafe = true  # For FFI
+  crate_root = skia_rust_common_ffi_crate_root
+  sources = skia_rust_common_ffi_rs_srcs
+  cxx_bindings = skia_rust_common_ffi_cxx_bridge_srcs
+  public_deps = [ ":rust_common_ffi_cpp" ]
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
+  no_clippy = true  # TODO(https://crbug.com/472355480)
+}
 
-  source_set("rust_common_ffi_cpp") {
-    visibility = [ ":*" ]
-    sources = skia_rust_common_ffi_cpp_srcs
-    public = skia_rust_common_ffi_cpp_hdrs
-    public_deps = [
-      ":skia_core_and_effects",
-      ":skia_core_public_headers",
-      "//build/rust:cxx_cppdeps",
-    ]
-    configs -= [ "//build/config/compiler:chromium_code" ]
-    configs += [
-      ":skia_config",
-      ":skia_library_config",
-      "//build/config/compiler:no_chromium_code",
-    ]
-  }
+source_set("rust_common_ffi_cpp") {
+  visibility = [ ":*" ]
+  sources = skia_rust_common_ffi_cpp_srcs
+  public = skia_rust_common_ffi_cpp_hdrs
+  public_deps = [
+    ":skia_core_and_effects",
+    ":skia_core_public_headers",
+    "//build/rust:cxx_cppdeps",
+  ]
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    ":skia_library_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
+}
 
-  rust_static_library("rust_png_ffi") {
-    visibility = [ ":*" ]
-    edition = "2021"
-    allow_unsafe = true  # For FFI
-    crate_root = skia_codec_rust_png_ffi_crate_root
-    sources = skia_codec_rust_png_ffi_rs_srcs
-    cxx_bindings = skia_codec_rust_png_ffi_cxx_bridge_srcs
-    public_deps = [ ":rust_png_ffi_cpp" ]
-    deps = [
-      ":rust_common_ffi",
-      "//third_party/rust/png/v0_18:lib",
-    ]
-    configs -= [ "//build/config/compiler:chromium_code" ]
-    configs += [
-      ":skia_config",
-      "//build/config/compiler:no_chromium_code",
-    ]
-    no_clippy = true  # TODO(https://crbug.com/472355480)
-  }
+rust_static_library("rust_png_ffi") {
+  visibility = [ ":*" ]
+  edition = "2021"
+  allow_unsafe = true  # For FFI
+  crate_root = skia_codec_rust_png_ffi_crate_root
+  sources = skia_codec_rust_png_ffi_rs_srcs
+  cxx_bindings = skia_codec_rust_png_ffi_cxx_bridge_srcs
+  public_deps = [ ":rust_png_ffi_cpp" ]
+  deps = [
+    ":rust_common_ffi",
+    "//third_party/rust/png/v0_18:lib",
+  ]
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
+  no_clippy = true  # TODO(https://crbug.com/472355480)
+}
 
-  source_set("rust_png_ffi_cpp") {
-    visibility = [ ":*" ]
-    public = skia_codec_rust_png_ffi_cpp_hdrs
-    configs -= [ "//build/config/compiler:chromium_code" ]
-    configs += [
-      ":skia_config",
-      ":skia_library_config",
-      "//build/config/compiler:no_chromium_code",
-    ]
-  }
+source_set("rust_png_ffi_cpp") {
+  visibility = [ ":*" ]
+  public = skia_codec_rust_png_ffi_cpp_hdrs
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    ":skia_library_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
+}
 
+<<<<<<< HEAD
   rust_static_library("rust_bmp_ffi") {
     visibility = [ ":*" ]
     allow_unsafe = true  # For FFI
@@ -854,12 +798,43 @@ source_set("rust_exif_ffi_cpp") {
   visibility = [ ":*" ]
   public = skia_rust_exif_ffi_cpp_hdrs
   sources = skia_rust_exif_ffi_cpp_srcs
+=======
+rust_static_library("rust_bmp_ffi") {
+  visibility = [ ":*" ]
+  allow_unsafe = true  # For FFI
+  crate_root = skia_codec_rust_bmp_ffi_crate_root
+  sources = skia_codec_rust_bmp_ffi_rs_srcs
+  cxx_bindings = skia_codec_rust_bmp_ffi_cxx_bridge_srcs
+  public_deps = [ ":rust_bmp_ffi_cpp" ]
+  deps = [
+    ":rust_common_ffi",
+    "//third_party/rust/image/v0_25:lib",
+  ]
+  configs -= [ "//build/config/compiler:chromium_code" ]
+  configs += [
+    ":skia_config",
+    "//build/config/compiler:no_chromium_code",
+  ]
+}
+
+source_set("rust_bmp_ffi_cpp") {
+  visibility = [
+    ":*",
+    "//third_party/blink/renderer/platform/image-decoders:*",
+  ]
+  public = skia_codec_rust_bmp_public
+  sources = skia_codec_rust_bmp
+>>>>>>> neva-main
   public_deps = [
     ":rust_common_ffi_cpp",
     ":skia_core_public_headers",
     "//build/rust:cxx_cppdeps",
   ]
+<<<<<<< HEAD
   deps = [ ":rust_exif_ffi_cxx_generated_gen" ]
+=======
+  deps = [ ":rust_bmp_ffi_cxx_generated_gen" ]
+>>>>>>> neva-main
   check_includes =
       false  # Logically part of skia, but split out for build reasons
   configs -= [ "//build/config/compiler:chromium_code" ]
@@ -965,8 +940,7 @@ skia_source_set("skia_core_and_effects") {
     # skia_core_and_effects rather than the other way around.
     public_deps = [ "//third_party/dawn/include/dawn:cpp_headers" ]
   }
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (use_blink && !disable_rust_for_neva) {
+  if (use_blink) {
     # Fontations Rust/C++ bridge interfaces, needed by SkTypeface.
     deps += [
       ":bridge_rust_side",

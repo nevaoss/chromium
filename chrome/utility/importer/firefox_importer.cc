@@ -23,12 +23,9 @@
 #include "components/user_data_importer/common/imported_bookmark_entry.h"
 #include "components/user_data_importer/common/importer_data_types.h"
 #include "components/user_data_importer/common/importer_url_row.h"
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "components/user_data_importer/content/content_bookmark_parser_utils.h"
 #include "components/user_data_importer/content/favicon_reencode.h"
 #include "components/user_data_importer/utility/bookmark_parser.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "sql/database.h"
 #include "sql/statement.h"
 #include "url/gurl.h"
@@ -84,15 +81,12 @@ bool SetFaviconData(std::string_view icon_url,
     return false;
   }
 
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   std::optional<std::vector<uint8_t>> png_data =
       importer::ReencodeFavicon(base::as_byte_span(icon_data));
   if (png_data) {
     usage_data->png_data = std::move(png_data).value();
     return true;
   }
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   return false;
 }
 
@@ -255,19 +249,13 @@ void FirefoxImporter::ImportBookmarks() {
   // ReadFileToString can return false, but still populate something into
   // `raw_html`. In that case, try to recover as much data as possible.
   base::ReadFileToString(bookmarks_file, &raw_html);
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   user_data_importer::BookmarkParser::ParsedBookmarks default_bookmarks =
       user_data_importer::ParseBookmarksUnsafe(raw_html);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
   std::set<GURL> default_urls;
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   for (const auto& bookmark : default_bookmarks.bookmarks) {
     default_urls.insert(bookmark.url);
   }
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
   BookmarkList list;
   GetTopBookmarkFolder(&db, toolbar_folder_id, &list);
@@ -376,8 +364,6 @@ void FirefoxImporter::ImportBookmarks() {
       }
       user_data_importer::SearchEngineInfo search_engine_info;
       std::string search_engine_url;
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
       if (item->url.is_valid()) {
         search_engine_info.url = base::UTF8ToUTF16(item->url.spec());
       } else if (user_data_importer::CanImportURLAsSearchEngine(
@@ -386,13 +372,6 @@ void FirefoxImporter::ImportBookmarks() {
       } else {
         continue;
       }
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-      if (item->url.is_valid()) {
-        search_engine_info.url = base::UTF8ToUTF16(item->url.spec());
-      } else {
-        continue;
-      }
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
       search_engine_info.keyword = base::UTF8ToUTF16(item->keyword);
       search_engine_info.display_name = item->title;
       search_engines.push_back(search_engine_info);

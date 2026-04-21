@@ -6,8 +6,6 @@ import("//build/config/chrome_build.gni")
 import("//build/config/gclient_args.gni")
 import("//chromeos/components/libsegmentation/buildflags.gni")
 import("//components/optimization_guide/features.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 
 declare_args() {
   is_cbx = is_chromeos && overlay_include_cbx
@@ -23,10 +21,6 @@ declare_args() {
   # Constraint code is disabled on platforms where the on-device model does not
   # run due to binary size.
   enable_constraints = use_on_device_model_service
-  # TODO(neva_rust): Please remove Neva flag after Neva supports Rust.
-  if (disable_rust_for_neva) {
-    enable_constraints = false
-  }
   enable_ml_internal =
       build_with_internal_optimization_guide && use_on_device_model_service
   use_chromeos_model_service = is_chrome_branded && is_cbx

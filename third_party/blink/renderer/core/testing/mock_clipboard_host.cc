@@ -14,12 +14,7 @@
 #include "third_party/blink/renderer/platform/image-encoders/image_encoder.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/skia/include/core/SkBitmap.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/encode/SkPngRustEncoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/encode/SkPngEncoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "ui/base/clipboard/clipboard_constants.h"
 
 namespace blink {
@@ -201,18 +196,8 @@ void MockClipboardHost::WriteImage(const SkBitmap& bitmap) {
     Reset();
   SkPixmap pixmap;
   bitmap.peekPixels(&pixmap);
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   // Use encoding options that favor speed over size.
   ImageEncoder::Encode(&png_, pixmap, SkPngRustEncoder::CompressionLevel::kLow);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  // Set encoding options to favor speed over size.
-  SkPngEncoder::Options options;
-  options.fZLibLevel = 1;
-  options.fFilterFlags = SkPngEncoder::FilterFlag::kNone;
-
-  ImageEncoder::Encode(&png_, pixmap, options);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 void MockClipboardHost::CommitWrite() {

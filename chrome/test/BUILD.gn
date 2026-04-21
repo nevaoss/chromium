@@ -38,8 +38,6 @@ import("//crypto/features.gni")
 import("//extensions/buildflags/buildflags.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 import("//net/features.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 import("//pdf/features.gni")
 import("//printing/buildflags/buildflags.gni")
 import("//remoting/remoting_enable.gni")
@@ -7602,11 +7600,6 @@ test("unit_tests") {
     "//v8",
   ]
 
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps -= [ "//third_party/rust/fend_core/v1/wrapper:unit_tests" ]
-  }
-
   # TODO(crbug.com/437811373): Remove this dependency when display_account_info_unittest.cc
   # gets componentized.
   deps += [ "//chrome/browser/ui/passwords" ]
@@ -8948,14 +8941,6 @@ test("unit_tests") {
       "//ui/webui/resources/js/browser_command:mojo_bindings",
       "//ui/webui/tracked_element:unit_tests",
     ]
-
-    # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-    if (disable_rust_for_neva) {
-      deps -= [
-        "//components/user_data_importer/content",
-        "//components/user_data_importer/content:test_support",
-      ]
-    }
 
     data += [ "//chromeos/ash/experiences/arc/test/data/icons/" ]
 

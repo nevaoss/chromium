@@ -456,11 +456,6 @@ vars = {
   # the commit queue can handle CLs rolling wuffs
   # and whatever else without interference from each other.
   'wuffs_revision': 'e3f919ccfe3ef542cfc983a82146070258fb57f8',
-  # TODO(neva_rust): Please remove this workaround after Neva supports rust based CrabbyAvif.
-  # Three lines of non-changing comments so that
-  # the commit queue can handle CLs rolling libavif
-  # and whatever else without interference from each other.
-  'libavif_revision': 'e7b34a1f5e9f7024d08311c7bae156061b889882',
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling crabbyavif
   # and whatever else without interference from each other.
@@ -2377,10 +2372,6 @@ deps = {
 
   'src/third_party/libaom/source/libaom':
     Var('aomedia_git') + '/aom.git' + '@' +  'b63f30b6d30028a3d7d9c5223def8f3ad97dcc4c',
-
-  # TODO(neva_rust): Please remove this workaround after Neva supports rust based CrabbyAvif.
-  'src/third_party/libavif/src':
-    Var('chromium_git') + '/external/github.com/AOMediaCodec/libavif.git' + '@' + Var('libavif_revision'),
 
   'src/third_party/crabbyavif/src':
     Var('chromium_git') + '/external/github.com/webmproject/CrabbyAvif.git' + '@' + Var('crabbyavif_revision'),
@@ -4503,13 +4494,6 @@ hooks = [
     'pattern': '.',
     'action': ['git', '-C', 'src/third_party/pdfium', 'am',
               '../../neva/patches/0001-GCC-Explicitely-specify-span-template-type-in-PDFium.patch']
-  },
-  # Apply 'V8: Rust: Disable Temporal API' patch
-  {
-    'name': 'V8-Rust-Disable-Temporal-API',
-    'pattern': '.',
-    'action': ['git', '-C', 'src/v8', 'am',
-              '../neva/patches/0012-V8-Disable-Temporal-API-from-build.patch']
   },
   # Apply 'Remove-dl-linkage-from-rust-libc' patch
   {

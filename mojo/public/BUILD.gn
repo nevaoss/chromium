@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
-
 group("public") {
   # Meta-target, don't link into production code.
   testonly = true
@@ -14,11 +11,6 @@ group("public") {
     "interfaces/bindings/tests:test_interfaces",
     "rust:all",
   ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps -= [ "rust:all" ]
-  }
 
   if (is_android) {
     deps += [
@@ -35,14 +27,6 @@ group("sdk") {
     "rust/bindings",
     "rust/system",
   ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps -= [
-      "rust/bindings",
-      "rust/system",
-     ]
-  }
 }
 
 group("fuzzers") {

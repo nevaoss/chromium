@@ -12,11 +12,8 @@
 #include "base/containers/span_reader.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "media/base/media_switches.h"
 #include "media/parsers/parse_jpeg_wrapper.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 #define READ_U8_OR_RETURN_FALSE(out)                                       \
   do {                                                                     \
@@ -583,12 +580,9 @@ bool ParseJpegPictureLegacy(base::span<const uint8_t> buffer,
 bool ParseJpegPicture(base::span<const uint8_t> buffer,
                       JpegParseResult* result) {
   CHECK(result);
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   if (base::FeatureList::IsEnabled(kUseRustJpegParser)) {
     return ParseJpegPictureRust(buffer, result);
   }
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   return ParseJpegPictureLegacy(buffer, result);
 }
 

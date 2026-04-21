@@ -52,20 +52,17 @@ if (is_android) {
   }
 }
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (!disable_rust_for_neva) {
-  rust_static_library("child_process_security_policy_impl") {
-    # allow_unsafe is needed for FFI that underpins the `cxx` crate. While this
-    # allows allow_unsafe for the entire crate, the Rust file also implements
-    # finer-grained controls that allow unsafe code only for FFI code while
-    # disallowing it by default for other code.
-    allow_unsafe = true
-    crate_root = "child_process_security_policy_impl.rs"
-    sources = [ "child_process_security_policy_impl.rs" ]
-    cxx_bindings = [ "child_process_security_policy_impl.rs" ]
-    visibility = [ ":browser" ]
-    deps = [ "//third_party/rust/cxx/v1:lib" ]
-  }
+rust_static_library("child_process_security_policy_impl") {
+  # allow_unsafe is needed for FFI that underpins the `cxx` crate. While this
+  # allows allow_unsafe for the entire crate, the Rust file also implements
+  # finer-grained controls that allow unsafe code only for FFI code while
+  # disallowing it by default for other code.
+  allow_unsafe = true
+  crate_root = "child_process_security_policy_impl.rs"
+  sources = [ "child_process_security_policy_impl.rs" ]
+  cxx_bindings = [ "child_process_security_policy_impl.rs" ]
+  visibility = [ ":browser" ]
+  deps = [ "//third_party/rust/cxx/v1:lib" ]
 }
 
 if (is_ios) {
@@ -368,11 +365,6 @@ source_set("browser") {
     "//v8",
     "//v8:v8_version",
   ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    deps -= [ ":child_process_security_policy_impl" ]
-  }
 
   public_deps = [
     "//base",

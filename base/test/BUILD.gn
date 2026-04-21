@@ -8,8 +8,6 @@ import("//build/config/ui.gni")
 import("//build/rust/rust_static_library.gni")
 import("//build/rust/rust_static_library.gni")
 import("//build_overrides/build.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 import("//third_party/protobuf/proto_library.gni")
 
 if (is_android) {
@@ -38,18 +36,15 @@ static_library("test_config") {
   ]
 }
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (!disable_rust_for_neva){
-  rust_static_library("test_rust_logger_consumer") {
-    allow_unsafe = true  # Unsafe needed for FFI
-    testonly = true
-    deps = [ "//third_party/rust/log/v0_4:lib" ]
-    sources = [ "logging/test_rust_logger_consumer.rs" ]
+rust_static_library("test_rust_logger_consumer") {
+  allow_unsafe = true  # Unsafe needed for FFI
+  testonly = true
+  deps = [ "//third_party/rust/log/v0_4:lib" ]
+  sources = [ "logging/test_rust_logger_consumer.rs" ]
 
-    crate_root = "logging/test_rust_logger_consumer.rs"
+  crate_root = "logging/test_rust_logger_consumer.rs"
 
-    cxx_bindings = [ "logging/test_rust_logger_consumer.rs" ]
-  }
+  cxx_bindings = [ "logging/test_rust_logger_consumer.rs" ]
 }
 
 rust_static_library("task_environment") {
@@ -242,11 +237,6 @@ static_library("test_support") {
     "//testing/gmock",
     "//testing/gtest",
   ]
-
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva){
-    public_deps -= [":test_rust_logger_consumer",]
-  }
 
   deps = [
     ":proto_test_support",

@@ -33,12 +33,7 @@
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/skia/include/codec/SkCodec.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/codec/SkPngRustDecoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/codec/SkPngDecoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/core/SkAlphaType.h"
 #include "third_party/skia/include/core/SkData.h"
 #include "third_party/skia/include/core/SkImage.h"
@@ -249,21 +244,11 @@ void CanvasHibernationHandler::Encode(
       break;
     case CompressionAlgorithm::kZstd: {
 #if BUILDFLAG(HAS_ZSTD_COMPRESSION)
-      // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-      // When the compression level is set to 0, no compression is done. Then we
-      // can pass the result to ZSTD. This won't produce a valid PNG, but it
-      // doesn't matter, as we don't write it to disk, and restore it ourselves.
-      constexpr int kZLibCompressionLevel = 0;
-      sk_sp<SkData> encoded_uncompressed = skia::EncodePngAsSkData(
-          nullptr, params->image.get(), kZLibCompressionLevel);
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
       // Do minimal PNG compression and then pass the result to ZSTD. This won't
       // produce a valid PNG, but it doesn't matter, as we don't write it to
       // disk, and restore it ourselves.
       sk_sp<SkData> encoded_uncompressed =
           skia::FastEncodePngAsSkData(nullptr, params->image.get());
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
       TRACE_EVENT_BEGIN2("blink", "ZstdCompression", "original_size", 0, "size",
                          0);
@@ -349,23 +334,13 @@ sk_sp<SkImage> CanvasHibernationHandler::GetImage() {
     }
   }
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   CHECK(SkPngRustDecoder::IsPng(png_data->data(), png_data->size()));
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  CHECK(SkPngDecoder::IsPng(png_data->data(), png_data->size()));
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
   base::TimeTicks before = base::TimeTicks::Now();
   // Note: not discarding the encoded image.
   sk_sp<SkImage> image = nullptr;
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   std::unique_ptr<SkCodec> codec = SkPngRustDecoder::Decode(
       std::make_unique<SkMemoryStream>(std::move(png_data)), nullptr);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  std::unique_ptr<SkCodec> codec = SkPngDecoder::Decode(png_data, nullptr);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   if (codec) {
     image = std::get<0>(codec->getImage());
   }

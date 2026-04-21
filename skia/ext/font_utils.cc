@@ -48,11 +48,6 @@
 #include "third_party/skia/include/ports/SkFontMgr_empty.h"
 #endif
 
-// TODO(neva_rust): Remove this after Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/ports/SkFontScanner_FreeType.h"
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-
 #include <mutex>
 
 namespace {
@@ -90,16 +85,9 @@ static sk_sp<SkFontMgr> fontmgr_factory() {
   return SkFontMgr_New_CoreText(nullptr);
 #elif BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
   sk_sp<SkFontConfigInterface> fci(SkFontConfigInterface::RefGlobal());
-// TODO(neva_rust): Remove this after Neva supports rust.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   return fci ? SkFontMgr_New_FCI(std::move(fci),
                                  SkFontScanner_Make_Fontations())
              : nullptr;
-#else  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  return fci ? SkFontMgr_New_FCI(std::move(fci),
-                                 SkFontScanner_Make_FreeType())
-             : nullptr;
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #elif BUILDFLAG(IS_FUCHSIA)
   fuchsia::fonts::ProviderSyncPtr provider;
   base::ComponentContextForProcess()->svc()->Connect(provider.NewRequest());

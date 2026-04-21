@@ -6,19 +6,13 @@ import("//build/rust/rust_static_library.gni")
 import("//media/media_options.gni")
 import("//third_party/libgav1/options.gni")
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
+rust_static_library("safe_parsers") {
+  crate_root = "parse_jpeg.rs"
+  sources = [ "parse_jpeg.rs" ]
+  cxx_bindings = [ "parse_jpeg.rs" ]
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (!disable_rust_for_neva) {
-  rust_static_library("safe_parsers") {
-    crate_root = "parse_jpeg.rs"
-    sources = [ "parse_jpeg.rs" ]
-    cxx_bindings = [ "parse_jpeg.rs" ]
-
-    # Required by Chromium policy because cxx generates unsafe code under the hood.
-    allow_unsafe = true
-  }
+  # Required by Chromium policy because cxx generates unsafe code under the hood.
+  allow_unsafe = true
 }
 
 source_set("parsers") {
@@ -74,15 +68,6 @@ source_set("parsers") {
     "//media/base",
     "//third_party/libgav1:libgav1_parser",
   ]
-
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  if (disable_rust_for_neva) {
-    sources -= [
-      "parse_jpeg_wrapper.cc",
-      "parse_jpeg_wrapper.h",
-    ]
-    deps -= [ ":safe_parsers" ]
-  }
 }
 
 static_library("test_support") {

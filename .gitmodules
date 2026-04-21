@@ -303,10 +303,6 @@
 [submodule "third_party/libaom/source/libaom"]
 	path = third_party/libaom/source/libaom
 	url = https://aomedia.googlesource.com/aom
-# TODO(neva_rust): Please remove this workaround after Neva supports rust based CrabbyAvif.
-[submodule "third_party/libavif/src"]
-	path = third_party/libavif/src
-	url = https://chromium.googlesource.com/external/github.com/AOMediaCodec/libavif
 [submodule "third_party/crabbyavif/src"]
 	path = third_party/crabbyavif/src
 	url = https://chromium.googlesource.com/external/github.com/webmproject/CrabbyAvif

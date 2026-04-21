@@ -2,9 +2,6 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
-
 blink_core_sources_xml = [
   "document_xml_tree_viewer.cc",
   "document_xml_tree_viewer.h",
@@ -66,15 +63,6 @@ blink_core_sources_xml = [
   "xslt_unicode_sort.cc",
   "xslt_unicode_sort.h",
 ]
-
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (disable_rust_for_neva) {
-  blink_core_sources_xml -= [
-    "parser/xml_document_parser_rs.cc",
-    "parser/xml_document_parser_rs.h",
-    "parser/xml_ffi_callbacks.h",
-  ]
-}
 
 blink_core_tests_xml = [
   "dom_parser_test.cc",

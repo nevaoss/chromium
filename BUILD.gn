@@ -885,14 +885,6 @@ group("all_rust") {
     deps += [ "//testing/rust_gtest_interop:rust_gtest_interop_unittests" ]
   }
 
-  # TODO(neva_rust): Remove this when Neva supports rust language.
-  if (disable_rust_for_neva) {
-    deps -= [
-      "//testing/rust_gtest_interop:rust_gtest_interop_unittests",
-      "//third_party/cloud_authenticator/processor",
-    ]
-  }
-
   if (!is_cronet_build) {
     deps += [ "//skia" ]
   }

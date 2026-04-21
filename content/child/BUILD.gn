@@ -167,16 +167,6 @@ target(link_target_type, "child") {
     ]
   }
 
-  # TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-  import("//neva/neva.gni")
-  if (disable_rust_for_neva) {
-    sources -= [
-      "font_data/font_data_manager.cc",
-      "font_data/font_data_manager.h",
-      "font_integration_init.cc",
-    ]
-  }
-
   if (is_mac) {
     sources += [
       "child_process_sandbox_support_impl_mac.cc",

@@ -5,19 +5,9 @@
 # list.
 
 import("//build/config/gclient_args.gni")
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-import("//neva/neva.gni")
 
 # Chrome does not (and should not) depend on `libpng`.
 visibility = []
-
-# TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-if (disable_rust_for_neva) {
-  visibility += [
-    "//skia/*",
-    "//third_party/pdfium/third_party:png",  # In Chromium
-  ]
-}
 
 # Dependency edges that are used in projects outside of Chromium that pull in
 # this directory (e.g. ones only needed in standalone PDFium builds).
@@ -81,9 +71,3 @@ libpng_testonly_visibility = [
 # Self-dependency (for internal targets defined in
 # `//third_party/libpng/BUILD.gn`).
 visibility += [ "//third_party/libpng/*" ]
-
-# TODO(neva_rust): Make libpng visible for Neva to support PNG decoding until
-# Neva supports Rust build.
-if (disable_rust_for_neva) {
-  visibility += [ "//third_party/blink/renderer/platform/*" ]
-}

@@ -318,6 +318,10 @@ gfx::Insets BrowserDesktopWindowTreeHostLinux::CalculateInsetsInDIP(
     ui::PlatformWindowState window_state) const {
   // If we are not showing frame, the insets should be zero.
   if (!browser_widget_ ||
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+      // TODO(neva): Try contribute it to upstream.
+      !browser_widget_->GetFrameView() ||
+#endif
       !IsShowingFrame(native_widget_->UseCustomFrame(), window_state)) {
     return gfx::Insets();
   }

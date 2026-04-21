@@ -12,22 +12,11 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
 #include "base/strings/string_util.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/codec/SkPngRustDecoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/codec/SkPngDecoder.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColorType.h"
 #include "third_party/skia/include/core/SkUnPreMultiply.h"
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "third_party/skia/include/encode/SkPngRustEncoder.h"
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-#include "third_party/skia/include/encode/SkPngEncoder.h"
-#include "third_party/zlib/zlib.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "ui/gfx/codec/vector_wstream.h"
 #include "ui/gfx/geometry/size.h"
 
@@ -45,12 +34,7 @@ namespace {
 
 std::unique_ptr<SkCodec> CreatePngDecoder(std::unique_ptr<SkStream> stream,
                                           SkCodec::Result* result) {
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   return SkPngRustDecoder::Decode(std::move(stream), result);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  return SkPngDecoder::Decode(std::move(stream), result);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 struct PreparationOutput {
@@ -186,12 +170,7 @@ SkBitmap PNGCodec::Decode(base::span<const uint8_t> input) {
 
 namespace {
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 void AddComments(SkPngRustEncoder::Options& options,
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-void AddComments(SkPngEncoder::Options& options,
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
                  const std::vector<PNGCodec::Comment>& comments) {
   std::vector<const char*> comment_pointers;
   std::vector<size_t> comment_sizes;
@@ -206,30 +185,6 @@ void AddComments(SkPngEncoder::Options& options,
       static_cast<int>(comment_pointers.size()));
 }
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-std::optional<std::vector<uint8_t>> EncodeSkPixmap(
-    const SkPixmap& src,
-    const std::vector<PNGCodec::Comment>& comments,
-    int zlib_level,
-    bool disable_filters) {
-  std::vector<uint8_t> output;
-  VectorWStream dst(&output);
-
-  SkPngEncoder::Options options;
-  AddComments(options, comments);
-  options.fZLibLevel = zlib_level;
-  if (disable_filters) {
-    options.fFilterFlags = SkPngEncoder::FilterFlag::kNone;
-  }
-
-  if (!SkPngEncoder::Encode(&dst, src, options)) {
-    return std::nullopt;
-  }
-
-  return output;
-}
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 std::optional<std::vector<uint8_t>> EncodeSkPixmap(
     const SkPixmap& src,
     const std::vector<PNGCodec::Comment>& comments,
@@ -246,19 +201,12 @@ std::optional<std::vector<uint8_t>> EncodeSkPixmap(
 
   return output;
 }
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 std::optional<std::vector<uint8_t>> EncodeSkPixmap(
     const SkPixmap& src,
     bool discard_transparency,
     const std::vector<PNGCodec::Comment>& comments,
-    // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     SkPngRustEncoder::CompressionLevel compression_level) {
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    int zlib_level,
-    bool disable_filters) {
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   if (discard_transparency) {
     SkImageInfo opaque_info = src.info().makeAlphaType(kOpaque_SkAlphaType);
     SkBitmap copy;
@@ -275,12 +223,7 @@ std::optional<std::vector<uint8_t>> EncodeSkPixmap(
         src.readPixels(opaque_info.makeAlphaType(kUnpremul_SkAlphaType),
                        opaque_pixmap.writable_addr(), opaque_pixmap.rowBytes());
     DCHECK(success);
-    // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     return EncodeSkPixmap(opaque_pixmap, comments, compression_level);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    return EncodeSkPixmap(opaque_pixmap, comments, zlib_level, disable_filters);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   }
 
   // If the image's pixels are all opaque, encode the PNG as opaque, regardless
@@ -288,37 +231,13 @@ std::optional<std::vector<uint8_t>> EncodeSkPixmap(
   if (src.info().alphaType() != kOpaque_SkAlphaType && src.computeIsOpaque()) {
     SkPixmap opaque_pixmap{src.info().makeAlphaType(kOpaque_SkAlphaType),
                            src.addr(), src.rowBytes()};
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-    return EncodeSkPixmap(opaque_pixmap, comments, zlib_level, disable_filters);
-  }
-
-  // Encode the PNG without any conversions.
-  return EncodeSkPixmap(src, comments, zlib_level, disable_filters);
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
     return EncodeSkPixmap(opaque_pixmap, comments, compression_level);
   }
 
   // Encode the PNG without any conversions.
   return EncodeSkPixmap(src, comments, compression_level);
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
-// TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-std::optional<std::vector<uint8_t>> EncodeSkBitmap(const SkBitmap& input,
-                                                   bool discard_transparency,
-                                                   int zlib_level,
-                                                   bool disable_filters) {
-  SkPixmap src;
-  if (!input.peekPixels(&src)) {
-    return std::nullopt;
-  }
-  return EncodeSkPixmap(src, discard_transparency,
-                        std::vector<PNGCodec::Comment>(), zlib_level,
-                        disable_filters);
-}
-#else   // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 std::optional<std::vector<uint8_t>> EncodeSkBitmap(
     const SkBitmap& input,
     bool discard_transparency,
@@ -330,7 +249,6 @@ std::optional<std::vector<uint8_t>> EncodeSkBitmap(
   return EncodeSkPixmap(src, discard_transparency,
                         std::vector<PNGCodec::Comment>(), compression_level);
 }
-#endif  // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
 }  // namespace
 
@@ -359,40 +277,22 @@ std::optional<std::vector<uint8_t>> PNGCodec::Encode(
   SkImageInfo info =
       SkImageInfo::Make(size.width(), size.height(), colorType, alphaType);
   SkPixmap src(info, input, row_byte_width);
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   return EncodeSkPixmap(src, discard_transparency, comments,
                         SkPngRustEncoder::CompressionLevel::kMedium);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  return EncodeSkPixmap(src, discard_transparency, comments,
-                        DEFAULT_ZLIB_COMPRESSION, /*disable_filters=*/false);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 std::optional<std::vector<uint8_t>> PNGCodec::EncodeBGRASkBitmap(
     const SkBitmap& input,
     bool discard_transparency) {
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   return EncodeSkBitmap(input, discard_transparency,
                         SkPngRustEncoder::CompressionLevel::kMedium);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  return EncodeSkBitmap(input, discard_transparency, DEFAULT_ZLIB_COMPRESSION,
-                        /*disable_filters=*/false);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 std::optional<std::vector<uint8_t>> PNGCodec::FastEncodeBGRASkBitmap(
     const SkBitmap& input,
     bool discard_transparency) {
-  // TODO(neva_rust): Remove this workaround once Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   return EncodeSkBitmap(input, discard_transparency,
                         SkPngRustEncoder::CompressionLevel::kLow);
-#else   // !BUILDFLAG(IS_NEVA_SUPPORT_RUST)
-  return EncodeSkBitmap(input, discard_transparency, Z_BEST_SPEED,
-                        /*disable_filters=*/true);
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 }
 
 PNGCodec::Comment::Comment(const std::string& k, const std::string& t)

@@ -20,11 +20,8 @@
 #include "components/url_formatter/url_fixer.h"
 #include "components/user_data_importer/common/imported_bookmark_entry.h"
 #include "components/user_data_importer/common/importer_data_types.h"
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "components/user_data_importer/content/content_bookmark_parser_utils.h"
 #include "components/user_data_importer/utility/bookmark_parser.h"
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 #include "content/public/common/url_constants.h"
 
 namespace internal {
@@ -102,8 +99,6 @@ void BookmarksFileImporter::StartImport(
   // ReadFileToString can return false, but still populate something into
   // `raw_html`. In that case, try to recover as much data as possible.
   base::ReadFileToString(source_profile.source_path, &raw_html);
-// TODO(neva_rust): Remove this workaround when Neva supports Rust build.
-#if BUILDFLAG(IS_NEVA_SUPPORT_RUST)
   user_data_importer::BookmarkParser::ParsedBookmarks parsed_bookmarks =
       user_data_importer::ParseBookmarksUnsafe(raw_html);
 
@@ -123,7 +118,6 @@ void BookmarksFileImporter::StartImport(
   if (!parsed_bookmarks.favicons.empty()) {
     bridge_->SetFavicons(parsed_bookmarks.favicons);
   }
-#endif  // BUILDFLAG(IS_NEVA_SUPPORT_RUST)
 
   bridge_->NotifyItemEnded(user_data_importer::FAVORITES);
   bridge_->NotifyEnded();
