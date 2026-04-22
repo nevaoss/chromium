@@ -2,6 +2,7 @@
 <!DOCTYPE translationbundle>
 <translationbundle lang="es-419">
 <translation id="1000436330784933699">Puedes abrir Lens aquí.</translation>
+<translation id="1005291068154454184">Video en pantalla completa sobre cómo configurar Chromium como navegador predeterminado</translation>
 <translation id="1042296835509784301">Abre el Administrador de contraseñas en Chromium.</translation>
 <translation id="1047130070405668746">Selecciona Chromium.</translation>
 <translation id="1091252999271033193">Esto significa que Chromium solicitará el sitio móvil cada vez.</translation>
@@ -70,9 +71,6 @@ No se pueden guardar nuevos favoritos en tu cuenta hasta que borres algunos. Si 
 <translation id="2313870531055795960">Revisa las URL con una lista de sitios no seguros almacenados en Chromium. Si un sitio intenta robar tu contraseña, o cuando descargas un archivo dañino, es posible que Chromium también envíe las URL, con partes del contenido de la página, a la Navegación segura.</translation>
 <translation id="2314220608288760290">Chromium abre automáticamente los vínculos de Incógnito de YouTube en modo Incógnito.</translation>
 <translation id="231828342043114302">Para recibir contenido personalizado en función de tus intereses, accede a Chromium.</translation>
-<translation id="2326738825692478496">Aún no se guardaron algunos de tus datos de Chromium en tu Cuenta de Google.
-
-Espera unos minutos antes de salir. Si sales ahora, se borrarán estos datos.</translation>
 <translation id="2334943301233020675">No se importaron las siguientes llaves de acceso al Administrador de contraseñas porque no cumplen con los requisitos.</translation>
 <translation id="2337722506862731008">Compartir Chromium</translation>
 <translation id="2340423701577464731">Agregar el elemento de la lista de lectura a Chromium</translation>

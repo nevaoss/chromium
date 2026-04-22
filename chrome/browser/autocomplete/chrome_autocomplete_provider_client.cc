@@ -18,8 +18,10 @@
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
+#include "chrome/browser/autocomplete/autocomplete_scoring_model_service_factory.h"
 #include "chrome/browser/autocomplete/document_suggestions_service_factory.h"
 #include "chrome/browser/autocomplete/in_memory_url_index_factory.h"
+#include "chrome/browser/autocomplete/on_device_tail_model_service_factory.h"
 #include "chrome/browser/autocomplete/provider_state_service_factory.h"
 #include "chrome/browser/autocomplete/remote_suggestions_service_factory.h"
 #include "chrome/browser/autocomplete/shortcuts_backend_factory.h"
@@ -66,14 +68,15 @@
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
 #include "components/omnibox/browser/autocomplete_match.h"
+#include "components/omnibox/browser/autocomplete_scoring_model_service.h"
 #include "components/omnibox/browser/lens_suggest_inputs_utils.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/browser/omnibox_triggered_feature_service.h"
+#include "components/omnibox/browser/on_device_tail_model_service.h"
 #include "components/omnibox/browser/shortcuts_backend.h"
 #include "components/omnibox/browser/tab_matcher.h"
 #include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/omnibox/common/omnibox_features.h"
-#include "components/optimization_guide/machine_learning_tflite_buildflags.h"
 #include "components/prefs/pref_service.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
 #include "components/signin/public/identity_manager/accounts_in_cookie_jar_info.h"
@@ -121,13 +124,6 @@
 #include "components/lens/lens_overlay_invocation_source.h"
 #endif
 
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
-#include "chrome/browser/autocomplete/autocomplete_scoring_model_service_factory.h"
-#include "chrome/browser/autocomplete/on_device_tail_model_service_factory.h"
-#include "components/omnibox/browser/autocomplete_scoring_model_service.h"
-#include "components/omnibox/browser/on_device_tail_model_service.h"
-#endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)
-
 namespace {
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -173,11 +169,19 @@ lens::LensSearchboxController* GetLensSearchboxController(
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-// Whether the given contextual search `feature` is enabled for the specified
-// `country` and `locale`.
-bool IsContextualSearchFeatureEnabled(const base::Feature& feature,
-                                      const std::string& country,
-                                      const std::string& locale) {
+constexpr char kEnglishLanguageCode[] = "en";
+constexpr std::string kEnglishExpansionCountryCodes[] = {"au", "ca", "gb",
+                                                         "nz", "us", "za"};
+
+// Whether the given contextual search `feature` is enabled.
+bool IsContextualSearchFeatureEnabled(
+    const base::Feature& feature,
+    AimEligibilityService* aim_eligibility_service) {
+  // If not AIM eligible, return false.
+  if (!aim_eligibility_service || !aim_eligibility_service->IsAimEligible()) {
+    return false;
+  }
+
   // If the feature is overridden (e.g. via server-side config or command-line),
   // use that state.
   auto* feature_list = base::FeatureList::GetInstance();
@@ -196,9 +200,12 @@ bool IsContextualSearchFeatureEnabled(const base::Feature& feature,
     return false;
   }
 
-  return variations_service->GetStoredPermanentCountry() == country &&
+  return std::ranges::contains(
+             kEnglishExpansionCountryCodes,
+             variations_service->GetStoredPermanentCountry()) &&
          features->application_locale_storage() &&
-         features->application_locale_storage()->Get() == locale;
+         features->application_locale_storage()->Get().starts_with(
+             kEnglishLanguageCode);
 }
 
 }  // namespace
@@ -433,20 +440,12 @@ signin::IdentityManager* ChromeAutocompleteProviderClient::GetIdentityManager()
 
 AutocompleteScoringModelService*
 ChromeAutocompleteProviderClient::GetAutocompleteScoringModelService() const {
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   return AutocompleteScoringModelServiceFactory::GetForProfile(profile_);
-#else
-  return nullptr;
-#endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)
 }
 
 OnDeviceTailModelService*
 ChromeAutocompleteProviderClient::GetOnDeviceTailModelService() const {
-#if BUILDFLAG(BUILD_WITH_TFLITE_LIB)
   return OnDeviceTailModelServiceFactory::GetForProfile(profile_);
-#else
-  return nullptr;
-#endif  // BUILDFLAG(BUILD_WITH_TFLITE_LIB)
 }
 
 ProviderStateService*
@@ -508,11 +507,6 @@ bool ChromeAutocompleteProviderClient::IsAuthenticated() const {
   return identity_manager && !identity_manager->GetAccountsInCookieJar()
                                   .GetPotentiallyInvalidSignedInAccounts()
                                   .empty();
-}
-
-bool ChromeAutocompleteProviderClient::IsSyncActive() const {
-  syncer::SyncService* sync = SyncServiceFactory::GetForProfile(profile_);
-  return sync && sync->IsSyncFeatureActive();
 }
 
 std::string ChromeAutocompleteProviderClient::ProfileUserName() const {
@@ -647,13 +641,13 @@ bool ChromeAutocompleteProviderClient::ShouldSendContextualUrlSuggestParam()
     const {
   return IsContextualSearchFeatureEnabled(
       omnibox_feature_configs::ContextualSearch::kSendContextualUrlSuggestParam,
-      /*country=*/"us", /*locale=*/"en-US");
+      GetAimEligibilityService());
 }
 
 bool ChromeAutocompleteProviderClient::ShouldSendPageTitleSuggestParam() const {
   return IsContextualSearchFeatureEnabled(
       omnibox_feature_configs::ContextualSearch::kSendPageTitleSuggestParam,
-      /*country=*/"us", /*locale=*/"en-US");
+      GetAimEligibilityService());
 }
 
 bool ChromeAutocompleteProviderClient::IsOmniboxNextLensSearchChipEnabled()
@@ -771,11 +765,13 @@ void ChromeAutocompleteProviderClient::IssueContextualSearchRequest(
     AutocompleteMatchType::Type match_type,
     bool is_zero_prefix_suggestion) {
 #if !BUILDFLAG(IS_ANDROID)
-  if (auto* lens_search_controller =
-          GetLensSearchController(GetWebContents(web_contents_getter_))) {
-    lens_search_controller->IssueContextualSearchRequest(
-        lens::LensOverlayInvocationSource::kOmniboxContextualSuggestion,
-        destination_url, match_type, is_zero_prefix_suggestion);
+  if (auto* web_contents = GetWebContents(web_contents_getter_)) {
+    web_contents->Focus();
+    if (auto* lens_search_controller = GetLensSearchController(web_contents)) {
+      lens_search_controller->IssueContextualSearchRequest(
+          lens::LensOverlayInvocationSource::kOmniboxContextualSuggestion,
+          destination_url, match_type, is_zero_prefix_suggestion);
+    }
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
 }

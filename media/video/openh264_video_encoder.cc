@@ -148,11 +148,27 @@ void SetUpOpenH264Params(VideoCodecProfile profile,
   }
 }
 
+// OpenH264 silently fails during preprocessing when a frame's area
+// exceeds its internal macroblock limit (MAX_MBS_PER_FRAME in
+// third_party/openh264). We must manually resize such frames.
+// MAX_MBS_PER_FRAME is 36864.
+constexpr int kOpenH264MaxMBs = 36864;
+
+bool IsFrameSizeTooLarge(const gfx::Size& frame_size) {
+  int mb_width = (frame_size.width() + 15) / 16;
+  int mb_height = (frame_size.height() + 15) / 16;
+  return mb_width * mb_height > kOpenH264MaxMBs;
+}
+
 // OpenH264 can resize frames automatically as long as
 // - the input and output aspect ratios are the same and
 // - the input is larger than the output in both dimensions.
 bool NeedsManualResizing(const gfx::Size& src, const gfx::Size& dst) {
   if (src.IsEmpty() || dst.IsEmpty()) {
+    return true;
+  }
+
+  if (IsFrameSizeTooLarge(src)) {
     return true;
   }
 
@@ -249,6 +265,14 @@ void OpenH264VideoEncoder::Initialize(VideoCodecProfile profile,
                       "Unsupported frame size which is less than 16"));
     return;
   }
+
+  if (IsFrameSizeTooLarge(options.frame_size)) {
+    std::move(done_cb).Run(EncoderStatus(
+        EncoderStatus::Codes::kEncoderUnsupportedConfig,
+        "Configured frame size exceeds OpenH264 max macroblocks"));
+    return;
+  }
+
   SetUpOpenH264Params(
       profile_, options,
       VideoColorSpace::FromGfxColorSpace(last_frame_color_space_), &params);
@@ -427,12 +451,18 @@ void OpenH264VideoEncoder::Encode(scoped_refptr<VideoFrame> frame,
     }
   }
 
-  if (frame->format() != PIXEL_FORMAT_I420 ||
-      NeedsManualResizing(frame->visible_rect().size(), options_.frame_size)) {
+  bool requires_copy =
+      frame->format() != PIXEL_FORMAT_I420 ||
+      NeedsManualResizing(frame->visible_rect().size(), options_.frame_size) ||
+      frame->stride(VideoFrame::Plane::kU) !=
+          frame->stride(VideoFrame::Plane::kV);
+
+  if (requires_copy) {
     // In cases where we need to
     // - enlarge the frame
-    // - change the pixel format or
-    // - change the aspect ratio
+    // - change the pixel format
+    // - change the aspect ratio or
+    // - use matching U and V strides
     // we are forced to convert and rescale manually.
     auto i420_frame = frame_pool_.CreateFrame(
         PIXEL_FORMAT_I420, options_.frame_size, gfx::Rect(options_.frame_size),
@@ -505,6 +535,20 @@ void OpenH264VideoEncoder::ChangeOptions(const Options& options,
   if (!codec_) {
     std::move(done_cb).Run(
         EncoderStatus::Codes::kEncoderInitializeNeverCompleted);
+    return;
+  }
+
+  if (options.frame_size.width() < 16 || options.frame_size.height() < 16) {
+    std::move(done_cb).Run(
+        EncoderStatus(EncoderStatus::Codes::kEncoderUnsupportedConfig,
+                      "Unsupported frame size which is less than 16"));
+    return;
+  }
+
+  if (IsFrameSizeTooLarge(options.frame_size)) {
+    std::move(done_cb).Run(EncoderStatus(
+        EncoderStatus::Codes::kEncoderUnsupportedConfig,
+        "Configured frame size exceeds OpenH264 max macroblocks"));
     return;
   }
 

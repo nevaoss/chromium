@@ -15,7 +15,7 @@ import type {AppElement, CustomizeButtonsElement} from 'chrome://new-tab-page/ne
 import type {PageRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {NtpBackgroundImageSource, PageCallbackRouter, PageHandlerRemote} from 'chrome://new-tab-page/new_tab_page.mojom-webui.js';
 import {PageCallbackRouter as ComposeboxPageCallbackRouter, PageHandlerRemote as ComposeboxPageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
-import {ToolMode as ComposeboxToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
+import {ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {SearchboxElement} from 'chrome://resources/cr_components/searchbox/searchbox.js';
 import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import type {CrToastElement} from 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
@@ -70,12 +70,16 @@ suite('NewTabPageAppTest', () => {
       doodle: null,
     });
     handler.setPromiseResolveFor('getModulesIdNames', {data: []});
-    windowProxy.setResultMapperFor('matchMedia', () => ({
-                                                   addListener() {},
-                                                   addEventListener() {},
-                                                   removeListener() {},
-                                                   removeEventListener() {},
-                                                 }));
+    handler.setPromiseResolveFor('getModulesOrder', {data: []});
+    windowProxy.setResultMapperFor(
+        'matchMedia', (query: string) => ({
+                        matches: false,
+                        media: query,
+                        addListener: () => {},
+                        addEventListener: () => {},
+                        removeListener: () => {},
+                        removeEventListener: () => {},
+                      }));
     windowProxy.setPromiseResolveFor('waitForLazyRender');
     windowProxy.setResultFor('createIframeSrc', '');
     windowProxy.setResultFor('url', url);
@@ -132,7 +136,7 @@ suite('NewTabPageAppTest', () => {
   }
 
   function getComposeButton(): HTMLElement|null {
-    const searchboxContainer = app.shadowRoot.querySelector('cr-searchbox');
+    const searchboxContainer = app.shadowRoot.querySelector('ntp-searchbox');
     assertTrue(!!searchboxContainer);
     return searchboxContainer.shadowRoot.querySelector<HTMLElement>(
         '#composeButton');
@@ -281,7 +285,7 @@ suite('NewTabPageAppTest', () => {
       const [_, {type, applyLightTheme}] =
           windowProxy.getArgs('postMessage')[0];
       assertEquals('updateAppearance', type);
-      assertEquals(true, applyLightTheme);
+      assertTrue(applyLightTheme);
       assertNotStyle($$(app, '#oneGoogleBarScrim')!, 'display', 'none');
     });
   });
@@ -488,7 +492,7 @@ suite('NewTabPageAppTest', () => {
             const [_, {type, applyLightTheme}] =
                 windowProxy.getArgs('postMessage')[0];
             assertEquals('updateAppearance', type);
-            assertEquals(true, applyLightTheme);
+            assertTrue(applyLightTheme);
           });
     });
 
@@ -734,7 +738,7 @@ suite('NewTabPageAppTest', () => {
     ([
       ['#content', NtpElement.BACKGROUND],
       ['ntp-logo', NtpElement.LOGO],
-      ['cr-searchbox', NtpElement.REALBOX],
+      ['ntp-searchbox', NtpElement.REALBOX],
       ['cr-most-visited', NtpElement.MOST_VISITED],
       ['ntp-middle-slot-promo', NtpElement.MIDDLE_SLOT_PROMO],
       ['#modules', NtpElement.MODULE],
@@ -1105,8 +1109,8 @@ suite('NewTabPageAppTest', () => {
         const composeButton = getComposeButton();
         assertTrue(!!composeButton);
 
-        // Dispatch the 'compose-click' event directly, which cr-searchbox
-        // listens for. This simulates the `cr-searchbox-compose-button`
+        // Dispatch the 'compose-click' event directly, which ntp-searchbox
+        // listens for. This simulates the `ntp-searchbox-compose-button`
         // child `cr-button` being clicked and its `onClick_` function being
         // called.
         composeButton.dispatchEvent(new CustomEvent(
@@ -1127,7 +1131,7 @@ suite('NewTabPageAppTest', () => {
           () => {
             // Assert compose button is present.
             const searchboxContainer =
-                app.shadowRoot.querySelector('cr-searchbox');
+                app.shadowRoot.querySelector('ntp-searchbox');
             const composeButton = getComposeButton();
             assertTrue(!!composeButton);
 
@@ -1137,8 +1141,8 @@ suite('NewTabPageAppTest', () => {
                 .querySelector<HTMLInputElement>('#input')!.dispatchEvent(
                     new InputEvent('input'));
 
-            // Dispatch the 'compose-click' event directly, which cr-searchbox
-            // listens for. This simulates the `cr-searchbox-compose-button`
+            // Dispatch the 'compose-click' event directly, which ntp-searchbox
+            // listens for. This simulates the `ntp-searchbox-compose-button`
             // child `cr-button` being clicked and its `onClick_` function being
             // called.
             composeButton.dispatchEvent(new CustomEvent(
@@ -1168,7 +1172,8 @@ suite('NewTabPageAppTest', () => {
           return null;
         };
 
-        const searchboxContainer = app.shadowRoot.querySelector('cr-searchbox');
+        const searchboxContainer =
+            app.shadowRoot.querySelector('ntp-searchbox');
         const composeButton = getComposeButton();
         assertTrue(!!composeButton);
 
@@ -1218,7 +1223,7 @@ suite('NewTabPageAppTest', () => {
         const composeButton = getComposeButton();
         assertTrue(!!composeButton);
 
-        // Dispatch the 'compose-click' event directly, which cr-searchbox
+        // Dispatch the 'compose-click' event directly, which ntp-searchbox
         // listens for. This simulates the `cr-searchbox-compose-button`
         // child `cr-button` being clicked and its `onClick_` function being
         // called.
@@ -1240,7 +1245,7 @@ suite('NewTabPageAppTest', () => {
           () => {
             // Assert compose button is present.
             const searchboxContainer =
-                app.shadowRoot.querySelector('cr-searchbox');
+                app.shadowRoot.querySelector('ntp-searchbox');
             const composeButton = getComposeButton();
             assertTrue(!!composeButton);
 
@@ -1287,8 +1292,6 @@ suite('NewTabPageAppTest', () => {
       loadTimeData.overrideValues({
         searchboxShowComposeEntrypoint: true,
         searchboxShowComposebox: true,
-        composeboxCloseByEscape: true,
-        composeboxCloseByClickOutside: true,
       });
       // Needed so `.click()` calls don't navigate.
       window.open = () => null;
@@ -1301,7 +1304,7 @@ suite('NewTabPageAppTest', () => {
 
       // Act.
       ($$(app, '#searchbox')!.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: '', contextFiles: []},
+        detail: {text: '', files: []},
       })));
       await microtasksFinished();
 
@@ -1320,18 +1323,18 @@ suite('NewTabPageAppTest', () => {
       const searchbox = $$(app, '#searchbox');
       assertTrue(!!searchbox);
       searchbox.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: '', contextFiles: []},
+        detail: {text: '', files: []},
       }));
       await microtasksFinished();
 
       const composebox = app.shadowRoot.querySelector('cr-composebox');
       assertTrue(!!composebox);
       // 1. Setup: Simulate input content.
-      composebox.$.input.value = 'test input';
-      composebox.$.input.dispatchEvent(new Event('input'));
+      composebox.getInputElement().$.input.value = 'test input';
+      composebox.getInputElement().$.input.dispatchEvent(new Event('input'));
       await microtasksFinished();
 
-      assertEquals('test input', composebox.$.input.value);
+      assertEquals('test input', composebox.getInputElement().$.input.value);
 
       // First ESC: Clear Input (Content present)
       const closePromise1 = eventToPromise('close-composebox', composebox);
@@ -1348,7 +1351,7 @@ suite('NewTabPageAppTest', () => {
           closedAfterFirstEsc,
           'First ESC should clear input, not close the box.');
       assertEquals(
-          '', composebox.$.input.value,
+          '', composebox.getInputElement().$.input.value,
           'Input must be cleared after first ESC.');
 
       // Second ESC: Close Box (Content empty)
@@ -1411,7 +1414,7 @@ suite('NewTabPageAppTest', () => {
         'Clicking the searchbox composebox button with text navigates',
         async () => {
           const searchboxContainer =
-              app.shadowRoot.querySelector('cr-searchbox');
+              app.shadowRoot.querySelector('ntp-searchbox');
           const composeButton = getComposeButton();
           assertTrue(!!composeButton);
 
@@ -1436,7 +1439,7 @@ suite('NewTabPageAppTest', () => {
       const searchbox = $$(app, '#searchbox');
       assertTrue(!!searchbox);
       searchbox.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: '', contextFiles: []},
+        detail: {text: '', files: []},
       }));
       await microtasksFinished();
       const composebox = $$(app, '#composebox');
@@ -1459,103 +1462,27 @@ suite('NewTabPageAppTest', () => {
             const searchbox = $$(app, '#searchbox');
             assertTrue(!!searchbox);
             searchbox.dispatchEvent(new CustomEvent('open-composebox', {
-              detail: {searchboxText: '', contextFiles: []},
+              detail: {text: '', files: []},
             }));
             await microtasksFinished();
             const composebox = app.shadowRoot.querySelector('cr-composebox');
-            composebox!.setText('hello');
+            composebox!.input = 'hello';
             const composeboxScrim =
                 app.shadowRoot.querySelector<HTMLElement>('#scrim');
             assertTrue(!!composeboxScrim);
-            assertEquals(composebox!.getText(), 'hello');
+            assertEquals(composebox!.input, 'hello');
             composeboxScrim.click();
             await microtasksFinished();
 
             const searchboxContainer =
-                app.shadowRoot.querySelector('cr-searchbox');
+                app.shadowRoot.querySelector('ntp-searchbox');
 
             assertEquals(
                 'hello',
-                searchboxContainer!.shadowRoot.querySelector('#input')!
-                    .shadowRoot!.querySelector<HTMLInputElement>(
-                                    '#input')!.value);
+                searchboxContainer!.shadowRoot
+                    .querySelector('cr-searchbox-input')!.shadowRoot
+                    .querySelector<HTMLInputElement>('#input')!.value);
           });
-    });
-    suite('Close options disabled', () => {
-      suiteSetup(() => {
-        loadTimeData.overrideValues({
-          composeboxCloseByEscape: false,
-          composeboxCloseByClickOutside: false,
-        });
-      });
-
-      test('Close by escape is disabled', async () => {
-        searchboxHandler.reset();
-        searchboxHandler.setResultFor('getInputState', Promise.resolve({
-          state: {
-            allowedModels: [],
-            allowedTools: [],
-            allowedInputTypes: [],
-            activeModel: 0,
-            activeTool: 0,
-            disabledModels: [],
-            disabledTools: [],
-            disabledInputTypes: [],
-          },
-        }));
-        assertEquals(
-            searchboxHandler.getCallCount('notifySessionAbandoned'), 0);
-        ($$(app,
-            '#searchbox')!.dispatchEvent(new CustomEvent('open-composebox', {
-          detail: {searchboxText: '', contextFiles: []},
-        })));
-        await microtasksFinished();
-        const escapeKeyEvent = new KeyboardEvent('keydown', {
-          key: 'Escape',
-          bubbles: true,
-          cancelable: true,
-        });
-        const composebox = app.shadowRoot.querySelector('cr-composebox');
-        assertTrue(!!composebox);
-        composebox.dispatchEvent(escapeKeyEvent);
-        await microtasksFinished();
-
-        // Assert.
-        assertEquals(
-            searchboxHandler.getCallCount('notifySessionAbandoned'), 0);
-      });
-
-      test('Exit by click outside is disabled', async () => {
-        searchboxHandler.reset();
-        searchboxHandler.setResultFor('getInputState', Promise.resolve({
-          state: {
-            allowedModels: [],
-            allowedTools: [],
-            allowedInputTypes: [],
-            activeModel: 0,
-            activeTool: 0,
-            disabledModels: [],
-            disabledTools: [],
-            disabledInputTypes: [],
-          },
-        }));
-        assertEquals(
-            searchboxHandler.getCallCount('notifySessionAbandoned'), 0);
-        ($$(app,
-            '#searchbox')!.dispatchEvent(new CustomEvent('open-composebox', {
-          detail: {searchboxText: '', contextFiles: []},
-        })));
-        await microtasksFinished();
-        const composeboxScrim =
-            app.shadowRoot.querySelector<HTMLElement>('#scrim');
-        assertTrue(!!composeboxScrim);
-        composeboxScrim.click();
-        await microtasksFinished();
-
-        // Assert.
-        assertEquals(
-            searchboxHandler.getCallCount('notifySessionAbandoned'), 0);
-      });
     });
   });
 
@@ -2155,7 +2082,6 @@ suite('NewTabPageAppTest', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         ntpRealboxNextEnabled: true,
-        realboxLayoutMode: 'Compact',
         composeboxCloseByClickOutside: true,
       });
     });
@@ -2169,17 +2095,18 @@ suite('NewTabPageAppTest', () => {
           const realbox = $$(app, '#searchbox');
           assertTrue(!!realbox);
           realbox.dispatchEvent(new CustomEvent('open-composebox', {
-            detail: {searchboxText: '', contextFiles: []},
+            detail: {text: '', files: []},
           }));
           await microtasksFinished();
           const composebox = app.shadowRoot.querySelector('cr-composebox');
           assertTrue(!!composebox);
-          composebox.$.input.dispatchEvent(new FocusEvent('focus'));
+          composebox.getInputElement().$.input.dispatchEvent(
+              new FocusEvent('focus'));
           await microtasksFinished();
 
           assertFalse(scrim.hidden);
 
-          composebox.$.input.dispatchEvent(
+          composebox.getInputElement().$.input.dispatchEvent(
               new FocusEvent('focusout', {relatedTarget: scrim}));
           await microtasksFinished();
           scrim.click();
@@ -2208,7 +2135,7 @@ suite('NewTabPageAppTest', () => {
       // Click on the context menu (the plus `+` button).
       // This fires open-composebox on the searchbox element.
       searchbox.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: '', contextFiles: []},
+        detail: {text: '', files: []},
       }));
       await microtasksFinished();
       assertFalse(scrim.hidden);
@@ -2228,7 +2155,7 @@ suite('NewTabPageAppTest', () => {
 
       // 3 & 4. Open composebox (Deep Search tool).
       searchbox.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: '', contextFiles: []},
+        detail: {text: '', files: []},
       }));
       await microtasksFinished();
       assertTrue((app as any).showComposebox_);
@@ -2256,17 +2183,15 @@ suite('NewTabPageAppTest', () => {
 
       // Act.
       ($$(app, '#searchbox')!.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: 'text', contextFiles: []},
+        detail: {text: 'text', files: []},
       })));
       await microtasksFinished();
 
       // Assert.
       const composebox = app.shadowRoot.querySelector('cr-composebox');
       assertTrue(!!composebox);
-      assertEquals(
-          'text',
-          composebox.shadowRoot.querySelector<HTMLInputElement>(
-                                   '#input')!.value);
+
+      assertEquals('text', composebox.getInputElement().$.input.value);
       assertStyle($$(app, '#searchbox')!, 'visibility', 'hidden');
     });
 
@@ -2310,6 +2235,7 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kFavicon,
               primaryText: {text: 'TabContext', a11yText: null},
               secondaryText: {text: 'tab-subtitle', a11yText: null},
+              preselectedTool: ToolMode.kUnspecified,
             },
             tab: fakeTab,
           },
@@ -2319,6 +2245,7 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kBanana,
               primaryText: {text: 'Nano Banana', a11yText: null},
               secondaryText: {text: 'image-subtitle', a11yText: null},
+              preselectedTool: ToolMode.kImageGen,
             },
             tab: null,
           },
@@ -2328,6 +2255,7 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kGlobeWithSearchLoop,
               primaryText: {text: 'DeepSearch', a11yText: null},
               secondaryText: {text: 'ds-subtitle', a11yText: null},
+              preselectedTool: ToolMode.kDeepSearch,
             },
             tab: null,
           },
@@ -2419,7 +2347,8 @@ suite('NewTabPageAppTest', () => {
               app.shadowRoot.querySelector('ntp-action-chips');
           assertTrue(!!actionChipsElement);
           const nanoBananaChip =
-              actionChipsElement.shadowRoot.getElementById('nano-banana');
+              actionChipsElement.shadowRoot.querySelector<HTMLDivElement>(
+                  '.icon-type-banana');
           assertTrue(!!nanoBananaChip);
 
           // Act.
@@ -2431,7 +2360,7 @@ suite('NewTabPageAppTest', () => {
           assertTrue(!!composebox);
           assertEquals(1, searchboxHandler.getCallCount('setActiveToolMode'));
           assertEquals(
-              ComposeboxToolMode.kImageGen,
+              ToolMode.kImageGen,
               searchboxHandler.getArgs('setActiveToolMode')[0]);
         });
     test(
@@ -2443,7 +2372,8 @@ suite('NewTabPageAppTest', () => {
 
           // Setup.
           const deepSearchChip =
-              actionChipsElement.shadowRoot.getElementById('deep-search');
+              actionChipsElement.shadowRoot.querySelector<HTMLDivElement>(
+                  '.icon-type-globe-with-search-loop');
           assertTrue(!!deepSearchChip);
           deepSearchChip.click();
           await microtasksFinished();
@@ -2453,7 +2383,7 @@ suite('NewTabPageAppTest', () => {
           assertTrue(!!composebox);
           assertEquals(1, searchboxHandler.getCallCount('setActiveToolMode'));
           assertEquals(
-              ComposeboxToolMode.kDeepSearch,
+              ToolMode.kDeepSearch,
               searchboxHandler.getArgs('setActiveToolMode')[0]);
         });
     test('Recent tab chip click opens composebox with context', async () => {
@@ -2463,7 +2393,8 @@ suite('NewTabPageAppTest', () => {
 
       // Setup.
       const tabChip =
-          actionChipsElement.shadowRoot.getElementById('tab-context');
+          actionChipsElement.shadowRoot.querySelector<HTMLDivElement>(
+              '.icon-type-favicon');
       assertTrue(!!tabChip);
       tabChip.click();
       await microtasksFinished();
@@ -2474,7 +2405,7 @@ suite('NewTabPageAppTest', () => {
       assertEquals(1, searchboxHandler.getCallCount('addTabContext'));
       const [tabId, delayUpload] = searchboxHandler.getArgs('addTabContext')[0];
       assertEquals(1, tabId);
-      assertEquals(true, delayUpload);
+      assertTrue(delayUpload);
     });
     test(
         'Deep dive chip click opens composebox with context and suggestion',
@@ -2487,6 +2418,7 @@ suite('NewTabPageAppTest', () => {
               typeIcon: IconType.kSubArrowRight,
               primaryText: {text: 'Deep dive', a11yText: null},
               secondaryText: {text: subtitle, a11yText: null},
+              preselectedTool: ToolMode.kUnspecified,
             },
             tab: {
               tabId: 1,
@@ -2502,7 +2434,8 @@ suite('NewTabPageAppTest', () => {
 
           // Setup.
           const deepDiveChip =
-              actionChipsElement.shadowRoot.getElementById('deep-dive-0');
+              actionChipsElement.shadowRoot.querySelector<HTMLButtonElement>(
+                  'button:has(.icon-type-sub-arrow-right)');
           assertTrue(!!deepDiveChip);
 
           const chipBody = deepDiveChip.querySelector('.chip-body');
@@ -2520,9 +2453,9 @@ suite('NewTabPageAppTest', () => {
           const [tabId, delayUpload] =
               searchboxHandler.getArgs('addTabContext')[0];
           assertEquals(1, tabId);
-          assertEquals(true, delayUpload);
-          assertTrue(!!composebox.$.input);
-          assertEquals(suggestion, composebox.$.input.value);
+          assertTrue(delayUpload);
+          assertTrue(!!composebox.getInputElement().$.input);
+          assertEquals(suggestion, composebox.getInputElement().$.input.value);
         });
   });
 
@@ -2540,7 +2473,7 @@ suite('NewTabPageAppTest', () => {
       const searchbox = $$(app, '#searchbox');
       assertTrue(!!searchbox);
       searchbox.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: '', contextFiles: []},
+        detail: {text: '', files: []},
       }));
       await microtasksFinished();
 
@@ -2553,7 +2486,7 @@ suite('NewTabPageAppTest', () => {
       const searchbox = $$(app, '#searchbox');
       assertTrue(!!searchbox);
       searchbox.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: '', contextFiles: []},
+        detail: {text: '', files: []},
       }));
       await microtasksFinished();
 
@@ -2565,7 +2498,7 @@ suite('NewTabPageAppTest', () => {
       await setThreadsRailEnabled(true);
       // Act: Open composebox to show threads rail.
       ($$(app, '#searchbox')!.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: '', contextFiles: []},
+        detail: {text: '', files: []},
       })));
       await microtasksFinished();
 
@@ -2577,7 +2510,7 @@ suite('NewTabPageAppTest', () => {
       await setThreadsRailEnabled(true);
       // Arrange: Open composebox.
       ($$(app, '#searchbox')!.dispatchEvent(new CustomEvent('open-composebox', {
-        detail: {searchboxText: '', contextFiles: []},
+        detail: {text: '', files: []},
       })));
       await microtasksFinished();
 
@@ -2623,6 +2556,13 @@ suite('NewTabPageAppReducedMotionTest', () => {
     windowProxy.setResultFor('waitForLazyRender', Promise.resolve());
     windowProxy.setResultFor('createIframeSrc', '');
     windowProxy.setResultFor('url', url);
+    windowProxy.setResultFor('matchMedia', {
+      matches: false,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+    });
     handler = installMock(
         PageHandlerRemote,
         mock => NewTabPageProxy.setInstance(mock, new PageCallbackRouter()));
@@ -2634,6 +2574,10 @@ suite('NewTabPageAppReducedMotionTest', () => {
       doodle: null,
     }));
     handler.setResultFor('getModulesIdNames', Promise.resolve({data: []}));
+    handler.setResultFor('getModulesEligibleForRemoval', Promise.resolve({
+      moduleIds: [],
+    }));
+    handler.setResultFor('getModulesOrder', Promise.resolve({moduleIds: []}));
     backgroundManager = installMock(
         BackgroundManager, (mock) => BackgroundManager.setInstance(mock));
     backgroundManager.setResultFor(
@@ -2663,6 +2607,8 @@ suite('NewTabPageAppReducedMotionTest', () => {
         disabledModels: [],
         disabledTools: [],
         disabledInputTypes: [],
+        toolConfigs: [],
+        modelConfigs: [],
       },
     }));
     installMock(
@@ -2678,42 +2624,16 @@ suite('NewTabPageAppReducedMotionTest', () => {
     await microtasksFinished();
   }
 
-  function setReducedMotionPreference(
-      reducedMotionPreferred: boolean,
-      addEventListener?: (t: string, l: any) => void) {
-    windowProxy.setResultMapperFor('matchMedia', (query: string) => {
-      return {
-        matches: query === '(prefers-reduced-motion: reduce)' &&
-            reducedMotionPreferred,
-        addEventListener: (type: string, listener: any) => {
-          if (addEventListener) {
-            addEventListener(type, listener);
-          }
-        },
-        removeEventListener: () => {},
-        addListener() {},
-        removeListener() {},
-      };
-    });
+  function setReducedMotionPreference(reducedMotionPreferred: boolean) {
+    if (reducedMotionPreferred) {
+      document.documentElement.style.setProperty(
+          '--cr-animations-disabled', '1');
+    } else {
+      document.documentElement.style.removeProperty('--cr-animations-disabled');
+    }
   }
 
   suite('Initialization', () => {
-    test(
-        'initializes as INELIGIBLE when reduced motion is preferred',
-        async () => {
-          createSetup();
-          setReducedMotionPreference(true);
-          await createAndAppendApp();
-          app.dispatchEvent(new CustomEvent(
-              'action-chips-retrieval-state-changed',
-              {detail: {state: ActionChipsRetrievalState.REQUESTED}}));
-          await microtasksFinished();
-
-          assertEquals(
-              GlifAnimationState.INELIGIBLE,
-              (app as any).contextMenuGlifAnimationState_);
-        });
-
     test(
         'initializes as SPINNER_ONLY when reduced motion is not preferred',
         async () => {
@@ -2729,46 +2649,6 @@ suite('NewTabPageAppReducedMotionTest', () => {
               GlifAnimationState.SPINNER_ONLY,
               (app as any).contextMenuGlifAnimationState_);
         });
-  });
-
-  suite('Event Handling', () => {
-    test(
-        'context menu animation is correct when action chips retrieval state ' +
-            'updates',
-        async () => {
-          createSetup();
-          setReducedMotionPreference(true);
-          await createAndAppendApp();
-
-          assertEquals(
-              GlifAnimationState.INELIGIBLE,
-              (app as any).contextMenuGlifAnimationState_);
-
-          app.dispatchEvent(new CustomEvent(
-              'action-chips-retrieval-state-changed',
-              {detail: {state: ActionChipsRetrievalState.REQUESTED}}));
-          await microtasksFinished();
-
-          assertEquals(
-              GlifAnimationState.INELIGIBLE,
-              (app as any).contextMenuGlifAnimationState_);
-        });
-
-    test.skip('updates when prefers-reduced-motion change occurs', async () => {
-      createSetup();
-      let listener: (e: MediaQueryListEvent) => void = () => {};
-      setReducedMotionPreference(true, (_, l) => listener = l);
-      await createAndAppendApp();
-
-      assertTrue((app as any).reducedMotionPreferred_);
-
-      // Act: Simulate media query change to "no preference".
-      listener({matches: false} as MediaQueryListEvent);
-      await microtasksFinished();
-
-      // Assert.
-      assertFalse((app as any).reducedMotionPreferred_);
-    });
   });
 
   suite('ReducedMotionScrim', () => {
@@ -2827,35 +2707,5 @@ suite('NewTabPageAppReducedMotionTest', () => {
                 'none');
           });
     });
-  });
-
-  suite('ReducedMotionIntegration', () => {
-    setup(() => {
-      loadTimeData.overrideValues({
-        ntpNextFeaturesEnabled: true,
-        ntpRealboxNextEnabled: true,
-        actionChipsEnabled: true,
-      });
-      createSetup();
-    });
-
-    test(
-        'action chips receive reduced-motion-preferred attribute', async () => {
-          setReducedMotionPreference(true);
-          await createAndAppendApp();
-
-          const actionChips = app.shadowRoot.querySelector('ntp-action-chips')!;
-          assertTrue(actionChips.hasAttribute('reduced-motion-preferred'));
-        });
-
-    test(
-        'action chips do not have reduced-motion-preferred attr. when disabled',
-        async () => {
-          setReducedMotionPreference(false);
-          await createAndAppendApp();
-
-          const actionChips = app.shadowRoot.querySelector('ntp-action-chips')!;
-          assertFalse(actionChips.hasAttribute('reduced-motion-preferred'));
-        });
   });
 });

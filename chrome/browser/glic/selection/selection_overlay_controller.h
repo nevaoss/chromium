@@ -18,6 +18,15 @@
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+#include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
+
+namespace content {
+class WebContents;
+}
+
+namespace input {
+struct NativeWebKeyboardEvent;
+}
 
 namespace glic {
 
@@ -31,14 +40,14 @@ class SelectionOverlayController
 
   DECLARE_USER_DATA(SelectionOverlayController);
 
-  // A simple utility that gets the the SelectionOverlayController TabFeature
+  // A simple utility that gets the SelectionOverlayController TabFeature
   // set by the embedding tab of a overlay WebUI hosted in
   // `overlay_web_contents`. May return nullptr if no SelectionOverlayController
   // TabFeature is associated with `overlay_web_contents`.
   static SelectionOverlayController* FromOverlayWebContents(
       content::WebContents* overlay_web_contents);
 
-  // A simple utility that gets the the SelectionOverlayController TabFeature
+  // A simple utility that gets the SelectionOverlayController TabFeature
   // set by the instances of WebContents associated with a tab. May return
   // nullptr if no SelectionOverlayController TabFeature is associated with
   // `tab_web_contents`.
@@ -52,15 +61,35 @@ class SelectionOverlayController
       mojo::PendingReceiver<selection::SelectionOverlayPageHandler> receiver,
       mojo::PendingRemote<selection::SelectionOverlayPage> page);
 
+  // Bind the legacy IPC endpoint. See the comment on
+  // `capture_region_observer_`.
+  void BindCaptureRegionObserver(
+      mojo::PendingRemote<mojom::CaptureRegionObserver> observer);
+
   void Show();
   void Close();
+
+  // `selection::SelectionOverlayPageHandler`:
+  void DeleteRegion(const base::UnguessableToken& id) override;
 
   std::optional<std::vector<uint8_t>>& GetEncodedData() { return encoded_; }
 
  private:
+  void WillDiscardContents(tabs::TabInterface* tab,
+                           content::WebContents* old_contents,
+                           content::WebContents* new_contents);
+  void WillDetach(tabs::TabInterface* tab,
+                  tabs::TabInterface::DetachReason reason);
+  void TabDeactivated(tabs::TabInterface* tab);
+
   void InitializeOverlay();
 
+  // `content::WebContentsDelegate`:
+  bool HandleKeyboardEvent(content::WebContents* source,
+                           const input::NativeWebKeyboardEvent& event) override;
+
   // OverlayBaseController overrides:
+  void CloseUI() override;
   void RequestSyncClose(DismissalSource dismissal_source) override;
   void StartScreenshotFlow() override;
   void NotifyOverlayClosing() override;
@@ -76,12 +105,12 @@ class SelectionOverlayController
   void NotifyPageNavigated() override;
   void NotifyTabForegrounded() override;
   void NotifyTabWillEnterBackground() override;
+  PreselectionBubbleResources GetPreselectionBubbleResources() override;
   bool IsOverlayViewShared() const override;
 
   // `selection::SelectionOverlayPageHandler`:
   void DismissOverlay(selection::DismissOverlayReason reason) override;
   void AdjustRegion(selection::SelectedRegionPtr target) override;
-  void DeleteRegion(const base::UnguessableToken& id) override;
   void ClosePreselectionBubble() override;
   void AddBackgroundBlur() override;
   void SetLiveBlur(bool enabled) override;
@@ -102,13 +131,18 @@ class SelectionOverlayController
 
   void Reset();
   glic::mojom::AdditionalContextPtr CreateAdditionalContext(
-      const std::vector<gfx::Rect>& regions);
+      const std::vector<std::pair<base::UnguessableToken, gfx::Rect>>& regions);
 
   // Connections to and from the overlay WebUI. Only valid while
   // `OverlayBaseController::overlay_view_` is showing and the underlying
   // renderer is alive.
   mojo::Receiver<selection::SelectionOverlayPageHandler> receiver_{this};
   mojo::Remote<selection::SelectionOverlayPage> page_;
+
+  // Legacy IPC that's used to signal the WebUI any browser side errors, and
+  // used to dismiss the overlay from the WebUI.
+  // TODO(b/452032491): Remove this once the old codepath is no longer used.
+  mojo::Remote<mojom::CaptureRegionObserver> capture_region_observer_;
 
   // Stateful members. They should be added to Reset().
   bool screenshot_available_ = false;
@@ -123,6 +157,11 @@ class SelectionOverlayController
 
   ui::ScopedUnownedUserData<SelectionOverlayController>
       scoped_unowned_user_data_;
+
+  // Holds subscriptions for TabInterface callbacks.
+  std::vector<base::CallbackListSubscription> tab_subscriptions_;
+
+  views::UnhandledKeyboardEventHandler unhandled_keyboard_event_handler_;
 
   // Must be the last member.
   base::WeakPtrFactory<SelectionOverlayController> weak_factory_{this};

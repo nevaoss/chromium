@@ -221,10 +221,7 @@ SkPath TabStyleViewsImpl::GetPath(TabStyle::PathType path_type,
                                   scale;
 
   // Selected, hover, and inactive tab fills are a detached squarcle tab.
-  // If kDetachedTabs is enabled, the active tab fill and border are also a
-  // detached tab.
-  if (base::FeatureList::IsEnabled(features::kDetachedTabs) ||
-      (path_type == TabStyle::PathType::kFill &&
+  if ((path_type == TabStyle::PathType::kFill &&
        state != TabStyle::TabSelectionState::kActive) ||
       path_type == TabStyle::PathType::kHighlight ||
       path_type == TabStyle::PathType::kInteriorClip ||
@@ -252,8 +249,9 @@ SkPath TabStyleViewsImpl::GetPath(TabStyle::PathType path_type,
     }
 
     float left = aligned_bounds.x() + extension_corner_radius;
-    int top = aligned_bounds.y() +
-              GetLayoutConstant(LayoutConstant::kTabStripPadding) * scale;
+    float top = aligned_bounds.y() +
+                GetLayoutConstant(LayoutConstant::kTabStripPadding) * scale;
+
     float right = aligned_bounds.right() - extension_corner_radius;
     const int bottom = top + tab_height;
 

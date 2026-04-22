@@ -166,8 +166,9 @@ void MerchantTrustChipButtonController::OpenPageInfoSubpage() {
 
   std::unique_ptr<PageInfoBubbleSpecification> specification =
       PageInfoBubbleSpecification::Builder(
-          location_icon_view_, chip_button_->GetWidget()->GetNativeWindow(),
-          web_contents(), entry->GetVirtualURL())
+          views::BubbleAnchor(location_icon_view_),
+          chip_button_->GetWidget()->GetNativeWindow(), web_contents(),
+          entry->GetVirtualURL())
           .AddInitializedCallback(
               GetPageInfoDialogCreatedCallbackForTesting()
                   ? std::move(GetPageInfoDialogCreatedCallbackForTesting())
@@ -192,11 +193,7 @@ void MerchantTrustChipButtonController::MaybeShowMerchantTrustFeaturePromo() {
   if (auto* interface =
           BrowserUserEducationInterface::MaybeGetForWebContentsInTab(
               web_contents())) {
-    bool can_show_promo = interface->CanShowFeaturePromo(
+    interface->MaybeShowFeaturePromo(
         feature_engagement::kIPHMerchantTrustFeature);
-    if (can_show_promo) {
-      interface->MaybeShowFeaturePromo(
-          feature_engagement::kIPHMerchantTrustFeature);
-    }
   }
 }

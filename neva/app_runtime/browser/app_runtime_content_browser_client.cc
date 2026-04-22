@@ -468,7 +468,7 @@ void AppRuntimeContentBrowserClient::
           },
           &render_frame_host));
 #if defined(USE_NEVA_CHROME_EXTENSIONS)
-  int render_process_id = render_frame_host.GetProcess()->GetDeprecatedID();
+  auto render_process_id = render_frame_host.GetProcess()->GetID();
   associated_registry.AddInterface<extensions::mojom::RendererHost>(
       base::BindRepeating(&extensions::RendererStartupHelper::BindForRenderer,
                           render_process_id));
@@ -618,7 +618,7 @@ void AppRuntimeContentBrowserClient::ExposeInterfacesToRenderer(
 
   associated_registry->AddInterface<extensions::mojom::RendererHost>(
       base::BindRepeating(&extensions::RendererStartupHelper::BindForRenderer,
-                          render_process_host->GetDeprecatedID()));
+                          render_process_host->GetID()));
 #endif
 
   for (auto& part : extra_parts_) {
@@ -783,7 +783,6 @@ void AppRuntimeContentBrowserClient::
   associated_registry.AddInterface<extensions::mojom::EventRouter>(
       base::BindRepeating(&extensions::EventRouter::BindForRenderer,
                           service_worker_version_info.process_id));
-
 }
 #endif  // defined(USE_NEVA_CHROME_EXTENSIONS)
 

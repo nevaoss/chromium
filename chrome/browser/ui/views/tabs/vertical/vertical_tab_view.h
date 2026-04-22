@@ -13,7 +13,7 @@
 #include "chrome/browser/ui/tabs/tab_data.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
-#include "chrome/browser/ui/views/tabs/hover_card_anchor_target.h"
+#include "chrome/browser/ui/views/tabs/hovercard/hover_card_anchor_target.h"
 #include "chrome/browser/ui/views/tabs/tab/alert_indicator_button.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_context_menu_controller.h"
 #include "chrome/common/buildflags.h"
@@ -35,10 +35,6 @@ class TabIcon;
 
 namespace views {
 class Label;
-}
-
-namespace tabs {
-class VerticalTabStripStateController;
 }
 
 namespace glic {
@@ -79,14 +75,14 @@ class VerticalTabView : public views::View,
   const TabCollectionNode* collection_node() const { return collection_node_; }
   const TabStyle* tab_style() const { return tab_style_; }
   float radial_highlight_opacity() { return radial_highlight_opacity_; }
+  const tabs::TabData& data() const { return tab_data_; }
+  bool IsActive() const { return active_; }
 
   TabCloseButton* close_button_for_testing() { return close_button_; }
-  bool collapsed_for_testing() { return collapsed_; }
 
   // HoverCardAnchorTarget:
-  bool IsActive() const override;
-  bool IsValid() const override;
-  const tabs::TabData& data() const override;
+  bool NeedsToShowThumbnail() const override;
+  bool IsValidHoverCardTarget() const override;
   views::BubbleBorder::Arrow GetAnchorPosition() const override;
   const views::View* GetAnchorView() const override;
 
@@ -131,6 +127,10 @@ class VerticalTabView : public views::View,
     int padding;
     bool align_leading;
     bool expand;
+    // Some alert indicators need to decorate the close button when the tab
+    // strip is collapsed. In that case, center the child and set a size of (0,
+    // 0).
+    bool decorate_on_collapse;
   };
 
   gfx::Rect GetChildBounds(const gfx::Rect& container,
@@ -138,7 +138,8 @@ class VerticalTabView : public views::View,
                            const bool center) const;
 
   // Calculates the visibilities of child views based on various states.
-  absl::flat_hash_map<views::View*, bool> CalculateChildVisibilities() const;
+  absl::flat_hash_map<views::View*, bool> CalculateChildVisibilities(
+      const int width) const;
 
   // views::LayoutDelegate
   views::ProposedLayout CalculateProposedLayout(
@@ -164,8 +165,7 @@ class VerticalTabView : public views::View,
   void UpdateAccessibleName();
   void OnAXNameChanged(ax::mojom::StringAttribute attribute,
                        const std::optional<std::string>& name);
-  void OnCollapsedStateChanged(
-      tabs::VerticalTabStripStateController* controller);
+  void OnCollapseStateChanged(tabs::VerticalTabStripCollapseState state);
   void OnDataChanged();
   void SetSelection(bool selected);
   void UpdateTabData(tabs::TabInterface* tab);
@@ -189,6 +189,8 @@ class VerticalTabView : public views::View,
   TabStyle::TabSelectionState GetSelectionState() const;
 
   bool IsDragging() const;
+  bool IsCollapsedWidth(int width) const;
+  bool IsInExpandOnHover(int width) const;
 
   const tabs::TabInterface* GetTabInterface() const;
 

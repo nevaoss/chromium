@@ -448,7 +448,7 @@ void WebMediaPlayerMS::Shutdown() {
     audio_renderer_->Stop();
   }
 
-  media_log_->AddEvent<media::MediaLogEvent::kWebMediaPlayerDestroyed>();
+  media_log_->OnWebMediaPlayerDestroyed();
 
   delegate_->PlayerGone(delegate_id_);
   delegate_->RemoveObserver(delegate_id_);
@@ -1691,6 +1691,13 @@ void WebMediaPlayerMS::RegisterFrameSinkHierarchy() {
 void WebMediaPlayerMS::UnregisterFrameSinkHierarchy() {
   if (bridge_)
     bridge_->UnregisterFrameSinkHierarchy();
+}
+
+void WebMediaPlayerMS::ReparentFrameSinkHierarchy(
+    const viz::FrameSinkId& new_parent_frame_sink_id) {
+  if (bridge_) {
+    bridge_->ReparentFrameSinkHierarchy(new_parent_frame_sink_id);
+  }
 }
 
 }  // namespace blink

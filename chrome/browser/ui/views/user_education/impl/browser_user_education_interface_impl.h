@@ -31,11 +31,11 @@ class BrowserUserEducationInterfaceImpl : public BrowserUserEducationInterface {
   // BrowserUserEducationInterface:
   bool IsFeaturePromoQueued(const base::Feature& iph_feature) const override;
   bool IsFeaturePromoActive(const base::Feature& iph_feature) const override;
-  user_education::FeaturePromoResult CanShowFeaturePromo(
+  bool HasFeaturePromoBeenDismissed(
       const base::Feature& iph_feature) const override;
-  void MaybeShowFeaturePromo(
+  bool MaybeShowFeaturePromo(
       user_education::FeaturePromoParams params) override;
-  void MaybeShowStartupFeaturePromo(
+  bool MaybeShowStartupFeaturePromo(
       user_education::FeaturePromoParams params) override;
   bool AbortFeaturePromo(const base::Feature& iph_feature) override;
   user_education::FeaturePromoHandle CloseFeaturePromoAndContinue(
@@ -47,6 +47,11 @@ class BrowserUserEducationInterfaceImpl : public BrowserUserEducationInterface {
   user_education::DisplayNewBadge MaybeShowNewBadgeFor(
       const base::Feature& feature) override;
   void NotifyNewBadgeFeatureUsed(const base::Feature& feature) override;
+
+ protected:
+  // BrowserUserEducationInterface:
+  user_education::FeaturePromoResult WouldShowFeaturePromoImpl(
+      const base::Feature& iph_feature) const override;
 
  private:
   // BrowserUserEducationInterface private methods:
@@ -71,7 +76,7 @@ class BrowserUserEducationInterfaceImpl : public BrowserUserEducationInterface {
           user_education::FeaturePromoResult::Failure::kError);
 
   // Implementation for showing a startup promo.
-  void MaybeShowStartupFeaturePromoImpl(
+  bool MaybeShowStartupFeaturePromoImpl(
       user_education::FeaturePromoParams params);
 
   enum class State {

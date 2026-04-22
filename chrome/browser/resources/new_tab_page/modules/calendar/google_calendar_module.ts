@@ -21,7 +21,7 @@ import {GoogleCalendarProxyImpl} from './google_calendar_proxy.js';
 export interface GoogleCalendarModuleElement {
   $: {
     calendar: CalendarElement,
-    moduleHeaderElementV2: ModuleHeaderElement,
+    moduleHeader: ModuleHeaderElement,
   };
 }
 
@@ -43,7 +43,7 @@ export class GoogleCalendarModuleElement extends
 
   static override get properties() {
     return {
-      events_: {type: Object},
+      events_: {type: Array},
       showInfoDialog_: {type: Boolean},
     };
   }

@@ -1,4 +1,4 @@
-// Copyright 2025 The Chromium Authors
+// Copyright 2026 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -10,6 +10,7 @@
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/shell_integration.h"
 #include "components/infobars/core/infobar_manager.h"
+#include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 
 class BrowserWindowInterface;
 
@@ -24,14 +25,18 @@ namespace default_browser {
 // not pinned to the taskbar. This infobar offers to pin Chrome to the taskbar.
 class PinInfoBarController : public infobars::InfoBarManager::Observer {
  public:
+  DECLARE_USER_DATA(PinInfoBarController);
   explicit PinInfoBarController(BrowserWindowInterface* browser);
   ~PinInfoBarController() override;
+
+  static PinInfoBarController* From(BrowserWindowInterface* window);
 
   // Callback passed to `BrowserWindowInterface::RegisterBrowserDidClose()`.
   void OnBrowserClosed(BrowserWindowInterface* browser);
 
-  // InfoBarManager::Observer:
+  // infobars::InfoBarManager::Observer:
   void OnInfoBarRemoved(infobars::InfoBar* infobar, bool animate) override;
+  void OnManagerWillBeDestroyed(infobars::InfoBarManager* manager) override;
 
   // Shows the pin-to-taskbar infobar on `browser` if `another_infobar_shown` is
   // false and it's appropriate to do so (see `MaybeShowInfoBar()` for
@@ -70,6 +75,8 @@ class PinInfoBarController : public infobars::InfoBarManager::Observer {
 
   // Enables `OnBrowserClosed()` to be called.
   std::vector<base::CallbackListSubscription> browser_subscriptions_;
+
+  ui::ScopedUnownedUserData<PinInfoBarController> scoped_unowned_user_data_;
 
   // Must be the last member variable.
   base::WeakPtrFactory<PinInfoBarController> weak_factory_{this};

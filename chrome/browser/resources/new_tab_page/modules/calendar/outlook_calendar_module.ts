@@ -20,7 +20,7 @@ import {OutlookCalendarProxyImpl} from './outlook_calendar_proxy.js';
 
 export interface OutlookCalendarModuleElement {
   $: {
-    moduleHeaderElementV2: ModuleHeaderElement,
+    moduleHeader: ModuleHeaderElement,
   };
 }
 
@@ -42,7 +42,7 @@ export class OutlookCalendarModuleElement extends
 
   static override get properties() {
     return {
-      events_: {type: Object},
+      events_: {type: Array},
       showInfoDialog_: {type: Boolean},
     };
   }

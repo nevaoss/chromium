@@ -30,6 +30,7 @@
 #include "chrome/browser/ui/views/omnibox/rounded_omnibox_results_frame.h"
 #include "chrome/browser/ui/views/theme_copying_widget.h"
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.h"
+#include "chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "ui/accessibility/ax_node_data.h"
@@ -44,15 +45,17 @@
 #include "ui/views/views_features.h"
 #include "ui/views/widget/widget.h"
 
-OmniboxPopupViewWebUI::OmniboxPopupViewWebUI(OmniboxViewViews* omnibox_view,
-                                             OmniboxController* controller,
-                                             LocationBarView* location_bar_view)
+OmniboxPopupViewWebUI::OmniboxPopupViewWebUI(
+    OmniboxView* omnibox_view,
+    OmniboxController* controller,
+    LocationBar* location_bar,
+    OmniboxPopupPresenterDelegate& presenter_delegate)
     : OmniboxPopupView(controller),
       construction_time_(base::TimeTicks::Now()),
       omnibox_view_(omnibox_view),
-      location_bar_view_(location_bar_view) {
-  presenter_ =
-      std::make_unique<OmniboxPopupPresenter>(location_bar_view, controller);
+      location_bar_(location_bar) {
+  presenter_ = std::make_unique<OmniboxPopupPresenter>(
+      location_bar, presenter_delegate, controller);
   controller->edit_model()->set_popup_view(this);
   edit_model_observation_.Observe(controller->edit_model());
 }
@@ -68,15 +71,25 @@ bool OmniboxPopupViewWebUI::IsOpen() const {
 void OmniboxPopupViewWebUI::InvalidateLine(size_t line) {}
 
 void OmniboxPopupViewWebUI::UpdatePopupAppearance() {
+  const bool has_results =
+      !controller()->autocomplete_controller()->result().empty();
+  // TODO(crbug.com/498556249): Consolidate/correct chip visibility logic.
+  // As written the code below is a bit misleading as the actual decision of
+  // whether or not to show chips is made in WebUI Typescript. This manifests as
+  // a bug where the popup will be visible if the user types something and
+  // backspaces when chips are enabled but no chips are actually shown due to
+  // the Typescript logic.
+  const bool has_contextual_chips =
+      controller()->autocomplete_controller()->result().has_contextual_chips();
+  const bool contextual_chips_feature_enabled =
+      omnibox::IsAimPopupEnabled(location_bar_->GetProfile()) &&
+      (omnibox::kShowRecentTabChip.Get() || omnibox::kShowLensSearchChip.Get());
+  const bool has_results_or_chips =
+      has_results || (contextual_chips_feature_enabled && has_contextual_chips);
   const bool should_be_visible =
       controller()->popup_state_manager()->popup_state() !=
           OmniboxPopupState::kAim &&
-      (!controller()->autocomplete_controller()->result().empty() ||
-       controller()
-           ->autocomplete_controller()
-           ->result()
-           .has_contextual_chips()) &&
-      !omnibox_view_->IsImeShowingPopup();
+      has_results_or_chips && !omnibox_view_->IsImeShowingPopup();
 
   if (!should_be_visible) {
     presenter_->Hide();
@@ -95,6 +108,14 @@ void OmniboxPopupViewWebUI::UpdatePopupAppearance() {
     const bool was_visible = IsOpen();
 
     presenter_->Show();
+    if (!was_visible) {
+      // Set the request time to now when the popup is first shown. This ensures
+      // that latency is measured from the user interaction to show, even if the
+      // WebUI was preloaded at startup.
+      WebUIContentsPreloadManager::GetInstance()->SetRequestTime(
+          presenter_->GetWebUIContent()->GetWebContents(),
+          base::TimeTicks::Now());
+    }
     // Update the popup state manager that the classic popup is opening.
     controller()->popup_state_manager()->SetPopupState(
         OmniboxPopupState::kClassic);
@@ -111,11 +132,11 @@ void OmniboxPopupViewWebUI::UpdatePopupAppearance() {
       }
     }
 
-    if (auto* handler = presenter()
-                            ->GetWebUIContent()
-                            ->contents_wrapper()
-                            ->GetWebUIController()
-                            ->omnibox_handler()) {
+    auto* controller = presenter()
+                           ->GetWebUIContent()
+                           ->contents_wrapper()
+                           ->GetWebUIController();
+    if (auto* handler = controller ? controller->omnibox_handler() : nullptr) {
       handler->SetAimButtonVisible(omnibox_view_->AimButtonVisible());
     }
   }
@@ -137,11 +158,9 @@ void OmniboxPopupViewWebUI::GetPopupAccessibleNodeData(
 void OmniboxPopupViewWebUI::StepSelection(
     OmniboxPopupSelection::Direction direction,
     OmniboxPopupSelection::Step step) {
-  if (auto* handler = presenter()
-                          ->GetWebUIContent()
-                          ->contents_wrapper()
-                          ->GetWebUIController()
-                          ->omnibox_handler()) {
+  auto* controller =
+      presenter()->GetWebUIContent()->contents_wrapper()->GetWebUIController();
+  if (auto* handler = controller ? controller->omnibox_handler() : nullptr) {
     handler->SetAimButtonVisible(omnibox_view_->AimButtonVisible());
     handler->StepSelection(direction, step);
   }
@@ -149,11 +168,9 @@ void OmniboxPopupViewWebUI::StepSelection(
 
 void OmniboxPopupViewWebUI::OpenCurrentSelection(
     WindowOpenDisposition disposition) {
-  if (auto* handler = presenter()
-                          ->GetWebUIContent()
-                          ->contents_wrapper()
-                          ->GetWebUIController()
-                          ->omnibox_handler()) {
+  auto* controller =
+      presenter()->GetWebUIContent()->contents_wrapper()->GetWebUIController();
+  if (auto* handler = controller ? controller->omnibox_handler() : nullptr) {
     handler->OpenCurrentSelection(disposition);
   }
 }

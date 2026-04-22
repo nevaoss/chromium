@@ -323,18 +323,17 @@ void TabAndroid::SetMediaState(int media_state) {
 }
 
 void TabAndroid::SetTabInterfaceAndroid(
-    base::PassKey<TabInterfaceAndroid>,
-    TabInterfaceAndroid* tab_interface_android) {
-  if (tab_interface_android_) {
-    CHECK(!tab_interface_android);
-  } else {
-    CHECK(tab_interface_android);
-  }
-  tab_interface_android_ = tab_interface_android;
+    TabInterfaceAndroid* tab_interface_android,
+    base::PassKey<TabInterfaceAndroid>) {
+  last_tab_interface_android_ = tab_interface_android;
 }
 
-void TabAndroid::ResetParentCollection(base::PassKey<TabInterfaceAndroid>) {
-  parent_collection_ = nullptr;
+void TabAndroid::ResetTabInterfaceAndroid(
+    TabInterfaceAndroid* tab_interface_android,
+    base::PassKey<TabInterfaceAndroid>) {
+  if (last_tab_interface_android_ == tab_interface_android) {
+    last_tab_interface_android_ = nullptr;
+  }
 }
 
 void TabAndroid::AddObserver(Observer* observer) {
@@ -534,6 +533,19 @@ void TabAndroid::ReleaseWebContents() {
   synced_tab_delegate_->ResetWebContents();
 }
 
+std::unique_ptr<content::WebContents> TabAndroid::TakeWebContentsAndDestroyTab(
+    base::PassKey<TabModelJniBridge>) {
+  content::WebContents* raw_contents = web_contents();
+  JNIEnv* env = base::android::AttachCurrentThread();
+  // Destroy the Tab object from both native and Java sides and release the
+  // WebContents.
+  Java_TabImpl_destroyInternal(env, GetJavaObject(),
+                               /*deleteNativeWebContents=*/false);
+
+  // Wrap and return the WebContents as a unique_ptr.
+  return base::WrapUnique(raw_contents);
+}
+
 bool TabAndroid::IsPhysicalBackingSizeEmpty(
     const JavaRef<jobject>& jweb_contents) {
   content::WebContents* web_contents =
@@ -619,6 +631,10 @@ base::CallbackListSubscription TabAndroid::RegisterDraggingChanged(
   return dragging_changed_callback_list_.Add(std::move(callback));
 }
 
+bool TabAndroid::HasTabInterfaceAndroid() const {
+  return last_tab_interface_android_ != nullptr;
+}
+
 scoped_refptr<content::DevToolsAgentHost> TabAndroid::GetDevToolsAgentHost() {
   return devtools_host_;
 }
@@ -635,25 +651,6 @@ bool TabAndroid::IsTrustedWebActivity() const {
     return false;
   }
   return Java_TabImpl_isTrustedWebActivity(env, obj);
-}
-
-tabs::TabCollection* TabAndroid::GetRootCollection() const {
-  tabs::TabCollection* root = parent_collection_;
-  if (!root) {
-    return nullptr;
-  }
-  // Split + Group + Unpinned + Strip
-  static constexpr int kMaxTabCollectionDepth = 4;
-  int depth = 0;
-  while (root->GetParentCollection() && depth < kMaxTabCollectionDepth) {
-    root = root->GetParentCollection();
-    depth++;
-  }
-  if (root->GetParentCollection()) {
-    LOG(ERROR) << "TabCollection depth exceeds limit";
-    return nullptr;
-  }
-  return root;
 }
 
 base::WeakPtr<TabAndroid> TabAndroid::GetTabAndroidWeakPtr() {

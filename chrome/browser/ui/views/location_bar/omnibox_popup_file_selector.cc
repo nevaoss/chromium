@@ -14,10 +14,10 @@
 #include "base/unguessable_token.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/chrome_select_file_policy.h"
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
 #include "chrome/browser/ui/omnibox/omnibox_context_menu_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/webui/cr_components/composebox/composebox_handler.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
@@ -25,8 +25,10 @@
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_search/contextual_search_types.h"
 #include "components/lens/lens_bitmap_processing.h"
+#include "components/lens/lens_features.h"
 #include "components/lens/lens_overlay_mime_type.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
+#include "components/omnibox/common/omnibox_metrics_utils.h"
 #include "content/public/browser/web_contents.h"
 #include "net/base/mime_util.h"
 #include "ui/base/base_window.h"
@@ -63,7 +65,7 @@ void OmniboxPopupFileSelector::OpenFileUploadDialog(
     std::vector<base::FilePath::StringType> extensions;
     net::GetExtensionsForMimeType("image/*", &extensions);
     file_types.extensions.push_back(extensions);
-  } else {
+  } else if (!lens::features::IsLensSendRawFileMediaTypesEnabled()) {
     file_types.extensions = {{FILE_PATH_LITERAL("pdf")}};
   }
 
@@ -110,10 +112,15 @@ void OmniboxPopupFileSelector::OnFileDataReady(
       /*ContextMenu*/ 0, 4);
 
   lens::MimeType mime_type;
-  if (file_data->mime_type.find("pdf") != std::string::npos) {
+  if (file_data->mime_type.find("pdf") != std::string::npos &&
+      !lens::features::IsLensSendRawFileMediaTypesEnabled()) {
     mime_type = lens::MimeType::kPdf;
   } else if (file_data->mime_type.find("image") != std::string::npos) {
     mime_type = lens::MimeType::kImage;
+  } else if (lens::features::IsLensSendRawFileMediaTypesEnabled()) {
+    // When raw file media types are enabled, all non-image files (including
+    // pdfs) should be treated as generic files.
+    mime_type = lens::MimeType::kUnknown;
   } else {
     UpdateSearchboxContextData(lens::MimeType::kUnknown, "", file_data->name,
                                file_data->mime_type,
@@ -163,9 +170,8 @@ void OmniboxPopupFileSelector::OnFileDataReady(
                                  : kClassicContextTypeHistogramPrefix;
   const std::string sliced_prefix = base::StrCat({prefix, ".Clicked"});
   base::UmaHistogramEnumeration(
-      sliced_prefix, is_image_
-                         ? OmniboxContextMenuController::ContextType::kImage
-                         : OmniboxContextMenuController::ContextType::kFile);
+      sliced_prefix,
+      is_image_ ? omnibox::ContextType::kImage : omnibox::ContextType::kFile);
 }
 
 void OmniboxPopupFileSelector::UpdateSearchboxContextData(

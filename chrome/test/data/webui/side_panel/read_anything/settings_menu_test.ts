@@ -154,6 +154,34 @@ suite('SettingsMenuElement', () => {
     assertTrue(imagesEnabledTogled);
   });
 
+  test('images toggle is disabled when speech is active', async () => {
+    const actionMenu = settingsMenu.$.lazyMenu.get();
+    const menuItems =
+        Array.from(actionMenu.querySelectorAll<HTMLButtonElement>('.menu-row'));
+    const targetItem =
+        menuItems.find(item => item.id === SettingsOption.IMAGES);
+    assertTrue(!!targetItem);
+
+    settingsMenu.isSpeechActive = true;
+    await microtasksFinished();
+
+    assertTrue(targetItem.disabled);
+    const toggle = targetItem.querySelector('cr-toggle');
+    assertTrue(!!toggle);
+    assertTrue(toggle.disabled);
+
+    let imagesEventWasFired = false;
+    settingsMenu.addEventListener(
+        ToolbarEvent.IMAGES, () => imagesEventWasFired = true);
+    let imagesEnabledTogled = false;
+    chrome.readingMode.onImagesEnabledToggled = () => imagesEnabledTogled =
+        true;
+
+    targetItem.click();
+    assertFalse(imagesEventWasFired);
+    assertFalse(imagesEnabledTogled);
+  });
+
   test('moving the mouse removes keyboard-nav class', () => {
     const actionMenu = settingsMenu.$.lazyMenu.get();
     actionMenu.classList.add(KEYBOARD_NAV_CLASS);
@@ -387,6 +415,34 @@ suite('SettingsMenuElement', () => {
     const linksItem = menuItems.find(item => item.id === SettingsOption.LINKS);
     assertTrue(!!linksItem);
     assertEquals('false', linksItem.getAttribute('aria-haspopup'));
+  });
+
+  test('menu items have correct aria-expanded attribute', async () => {
+    const actionMenu = settingsMenu.$.lazyMenu.get();
+    const menuItems =
+        Array.from(actionMenu.querySelectorAll<HTMLButtonElement>('.menu-row'));
+
+    // Submenu toggles should have aria-expanded false by default.
+    const fontItem = menuItems.find(item => item.id === SettingsOption.FONT);
+    assertTrue(!!fontItem);
+    assertEquals('false', fontItem.getAttribute('aria-expanded'));
+
+    // Toggles that are not submenus shouldn't have aria-expanded attribute.
+    const linksItem = menuItems.find(item => item.id === SettingsOption.LINKS);
+    assertTrue(!!linksItem);
+    assertFalse(linksItem.hasAttribute('aria-expanded'));
+
+    // Open the font submenu.
+    fontItem.click();
+    await microtasksFinished();
+
+    // The font item should now be expanded.
+    assertEquals('true', fontItem.getAttribute('aria-expanded'));
+    // Another submenu should still not be expanded.
+    const letterSpacingItem =
+        menuItems.find(item => item.id === SettingsOption.LETTER_SPACING);
+    assertTrue(!!letterSpacingItem);
+    assertEquals('false', letterSpacingItem.getAttribute('aria-expanded'));
   });
 
   test('pinned toggle has separator when links and images hidden', async () => {

@@ -149,8 +149,9 @@ public class TabGridView extends SelectableItemViewBase<TabListEditorItemSelecti
 
         spinner.setVisibility(isVisible ? View.VISIBLE : View.GONE);
         TabThumbnailView thumbnail = findViewById(R.id.tab_thumbnail);
-        if (thumbnail != null && isVisible) {
-            thumbnail.setThumbnailViewState(ThumbnailViewState.LOADING);
+        if (thumbnail != null) {
+            thumbnail.setThumbnailViewState(
+                    isVisible ? ThumbnailViewState.LOADING : ThumbnailViewState.PLACEHOLDER_LOADED);
         }
     }
 
@@ -328,29 +329,34 @@ public class TabGridView extends SelectableItemViewBase<TabListEditorItemSelecti
     }
 
     private void setTabActionButtonDrawable() {
+        int accessibilityMode = IMPORTANT_FOR_ACCESSIBILITY_YES;
         if (mTabActionButtonType == TabActionButtonType.OVERFLOW) {
             setTabActionButtonOverflowDrawable();
         } else if (mTabActionButtonType == TabActionButtonType.PIN) {
             setTabActionButtonPinDrawable();
+            accessibilityMode = IMPORTANT_FOR_ACCESSIBILITY_NO;
         } else {
             setTabActionButtonCloseDrawable();
         }
 
         applyActionButtonTint();
+        mActionButton.setImportantForAccessibility(accessibilityMode);
     }
 
     private @Nullable View getActorUi(boolean inflateIfMissing) {
         View actorContainer = fastFindViewById(R.id.actor_ui_container);
 
         if (actorContainer == null && inflateIfMissing) {
-            LayoutInflater.from(getContext()).inflate(R.layout.actor_gts_tab_indicator, this, true);
+            ViewGroup contentView = (ViewGroup) fastFindViewById(R.id.content_view);
+            if (contentView == null) return null;
+
+            LayoutInflater.from(getContext())
+                    .inflate(R.layout.actor_gts_tab_indicator, contentView, true);
 
             actorContainer = fastFindViewById(R.id.actor_ui_container);
 
-            assumeNonNull(actorContainer)
-                    .setLayoutParams(
-                            new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
-            bringChildToFront(actorContainer);
+            assumeNonNull(actorContainer);
+            contentView.bringChildToFront(actorContainer);
         }
         return actorContainer;
     }

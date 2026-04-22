@@ -32,6 +32,7 @@
 class GURL;
 class TabAndroidDataProvider;
 class TabInterfaceAndroid;
+class TabModelJniBridge;
 class Profile;
 
 namespace cc::slim {
@@ -176,9 +177,15 @@ class TabAndroid : public tabs::TabInterface,
   // Set the media state of the tab. This is called by MediaStateObserver.
   void SetMediaState(int media_state);
 
-  void SetTabInterfaceAndroid(base::PassKey<TabInterfaceAndroid>,
-                              TabInterfaceAndroid* tab_interface_android);
-  void ResetParentCollection(base::PassKey<TabInterfaceAndroid>);
+  // Sets and resets the TabInterfaceAndroid object for this TabAndroid. There
+  // should only ever be one TabInterfaceAndroid object for each TabAndroid.
+  // However, based on experience with crbug.com/488398095, there have been
+  // cases where there are multiple TabInterfaceAndroid objects for a single
+  // TabAndroid. Investigation is ongoing.
+  void SetTabInterfaceAndroid(TabInterfaceAndroid* tab_interface_android,
+                              base::PassKey<TabInterfaceAndroid>);
+  void ResetTabInterfaceAndroid(TabInterfaceAndroid* tab_interface_android,
+                                base::PassKey<TabInterfaceAndroid>);
 
   // Observers -----------------------------------------------------------------
 
@@ -208,6 +215,12 @@ class TabAndroid : public tabs::TabInterface,
   void SendDidInsertUpdate(JNIEnv* env);
   void DestroyWebContents();
   void ReleaseWebContents();
+
+  // Properly releases the WebContents from both native and Java sides. Should
+  // be called only when the tab has been removed from the tab model.
+  std::unique_ptr<content::WebContents> TakeWebContentsAndDestroyTab(
+      base::PassKey<TabModelJniBridge>);
+
   bool IsPhysicalBackingSizeEmpty(
       const base::android::JavaRef<jobject>& jweb_contents);
   void OnPhysicalBackingSizeChanged(
@@ -226,12 +239,11 @@ class TabAndroid : public tabs::TabInterface,
       base::RepeatingCallback<void(TabInterface*, bool)>;
   base::CallbackListSubscription RegisterDraggingChanged(
       DraggingChangedCallback callback);
+  bool HasTabInterfaceAndroid() const;
 
   scoped_refptr<content::DevToolsAgentHost> GetDevToolsAgentHost();
 
   void SetDevToolsAgentHost(scoped_refptr<content::DevToolsAgentHost> host);
-
-  tabs::TabCollection* GetRootCollection() const;
 
   base::WeakPtr<TabAndroid> GetTabAndroidWeakPtr();
 
@@ -319,7 +331,7 @@ class TabAndroid : public tabs::TabInterface,
   // Holds tab-scoped state. Constructed after tab_helpers.
   std::unique_ptr<tabs::TabFeatures> tab_features_;
 
-  raw_ptr<TabInterfaceAndroid> tab_interface_android_ = nullptr;
+  raw_ptr<TabInterfaceAndroid> last_tab_interface_android_ = nullptr;
   raw_ptr<tabs::TabCollection> parent_collection_ = nullptr;
 
   base::ObserverList<Observer> observers_;

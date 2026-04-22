@@ -11,6 +11,7 @@
 
 @protocol ComposeboxInputPlateMutator;
 @protocol ComposeboxInputPlateViewControllerDelegate;
+@class ComposeboxMetricsRecorder;
 @class ComposeboxTheme;
 @protocol TextFieldViewContaining;
 

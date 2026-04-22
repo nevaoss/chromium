@@ -7,6 +7,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/notimplemented.h"
 #include "base/uuid.h"
+#include "components/sync/base/deletion_origin.h"
 #include "components/sync/model/data_batch.h"
 #include "components/sync/model/in_memory_metadata_change_list.h"
 #include "components/sync/model/mutable_data_batch.h"
@@ -64,7 +65,7 @@ GeminiThreadSyncBridge::ApplyIncrementalSyncChanges(
     std::unique_ptr<syncer::MetadataChangeList> metadata_change_list,
     syncer::EntityChangeList entity_changes) {
   std::unique_ptr<syncer::DataTypeStore::WriteBatch> batch =
-      data_type_store_->CreateWriteBatch();
+      data_type_store_->CreateWriteBatch(std::move(metadata_change_list));
   std::vector<sync_pb::GeminiThreadSpecifics> added_or_updated;
   std::vector<base::Uuid> removed;
   for (const std::unique_ptr<syncer::EntityChange>& change : entity_changes) {
@@ -90,7 +91,6 @@ GeminiThreadSyncBridge::ApplyIncrementalSyncChanges(
     }
   }
 
-  batch->TakeMetadataChangesFrom(std::move(metadata_change_list));
   data_type_store_->CommitWriteBatch(
       std::move(batch),
       base::BindOnce(&GeminiThreadSyncBridge::OnDataTypeStoreCommit,
@@ -232,6 +232,25 @@ std::vector<Thread> GeminiThreadSyncBridge::GetThreads() const {
                          specifics.last_turn_time_unix_epoch_millis());
   }
   return threads;
+}
+
+void GeminiThreadSyncBridge::DeleteThread(const Thread& thread) {
+  if (!change_processor()->IsTrackingMetadata()) {
+    return;
+  }
+  std::unique_ptr<syncer::DataTypeStore::WriteBatch> batch =
+      data_type_store_->CreateWriteBatch();
+  change_processor()->Delete(thread.server_id,
+                             syncer::DeletionOrigin::Unspecified(),
+                             batch->GetMetadataChangeList());
+
+  gemini_thread_specifics_.erase(thread.server_id);
+  batch->DeleteData(thread.server_id);
+
+  data_type_store_->CommitWriteBatch(
+      std::move(batch),
+      base::BindOnce(&GeminiThreadSyncBridge::OnDataTypeStoreCommit,
+                     weak_ptr_factory_.GetWeakPtr()));
 }
 
 void GeminiThreadSyncBridge::AddObserver(Observer* observer) {

@@ -9,6 +9,7 @@
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/task/single_thread_task_runner.h"
+#include "content/browser/connection_allowlist_gating.h"
 #include "content/browser/data_url_loader_factory.h"
 #include "content/browser/devtools/devtools_agent_host_impl.h"
 #include "content/browser/devtools/devtools_instrumentation.h"
@@ -49,6 +50,7 @@
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/cpp/constants.h"
+#include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/ip_address_space_util.h"
 #include "services/network/public/cpp/permissions_policy/permissions_policy.h"
 #include "services/network/public/cpp/record_ontransfersizeupdate_utils.h"
@@ -173,13 +175,25 @@ void DidCreateScriptLoader(
     // be built from the
     // `main_script_load_params.response_head->parsed_headers`.
     PolicyContainerPolicies policies;
-    if (final_response_url.SchemeIsLocal() && creator_policies) {
-      policies.connection_allowlists =
-          std::move(creator_policies->connection_allowlists);
-    } else {
-      policies.connection_allowlists =
-          main_script_load_params->response_head->parsed_headers
-              ->connection_allowlists;
+    if (base::FeatureList::IsEnabled(
+            network::features::kConnectionAllowlists)) {
+      if (final_response_url.SchemeIsLocal() && creator_policies) {
+        policies.connection_allowlists =
+            std::move(creator_policies->connection_allowlists);
+      } else if (ResponseContainsConnectionAllowlist(
+                     main_script_load_params->response_head.get()) &&
+                 ResponseEnablesConnectionAllowlistsOriginTrial(
+                     final_response_url,
+                     main_script_load_params->response_head->headers.get())) {
+        // Connection allowlist needs to be enforced for workers once the
+        // allowlist response header is received. The origin trial token for
+        // this feature is received within the same response. The token is
+        // parsed here to query the trial status. See
+        // https://wicg.github.io/connection-allowlists/.
+        policies.connection_allowlists =
+            main_script_load_params->response_head->parsed_headers
+                ->connection_allowlists;
+      }
     }
 
     std::move(callback).Run(std::make_optional<WorkerScriptFetcherResult>(
@@ -192,20 +206,25 @@ void DidCreateScriptLoader(
 }
 
 bool ShouldCreateWebUILoader(RenderFrameHostImpl* creator_render_frame_host) {
-  if (!creator_render_frame_host)
+  if (!creator_render_frame_host) {
     return false;
+  }
 
-  if (creator_render_frame_host->GetWebUI() == nullptr)
+  if (creator_render_frame_host->GetWebUI() == nullptr) {
     return false;
+  }
 
   auto requesting_scheme =
       creator_render_frame_host->GetLastCommittedOrigin().scheme();
-  if (requesting_scheme == kChromeUIScheme)
+  if (requesting_scheme == kChromeUIScheme) {
     return true;
-  if (requesting_scheme == kChromeUIUntrustedScheme)
+  }
+  if (requesting_scheme == kChromeUIUntrustedScheme) {
     return true;
-  if (requesting_scheme == kChromeDevToolsScheme)
+  }
+  if (requesting_scheme == kChromeDevToolsScheme) {
     return true;
+  }
   return false;
 }
 
@@ -543,7 +562,9 @@ void WorkerScriptFetcher::CreateScriptLoader(
 
   if (worker_network_restrictions_id && creator_policies) {
     if (auto throttle = NetworkRestrictionsWorkerThrottle::Create(
-            factory_process->GetStoragePartition(),
+            static_cast<StoragePartitionImpl*>(
+                factory_process->GetStoragePartition())
+                ->GetWeakPtr(),
             *worker_network_restrictions_id, creator_policies->Clone())) {
       throttles.push_back(std::move(throttle));
     }
@@ -665,8 +686,9 @@ GURL WorkerScriptFetcher::DetermineFinalResponseUrl(
   }
 
   // Then check the list of redirects.
-  if (!main_script_load_params->redirect_infos.empty())
+  if (!main_script_load_params->redirect_infos.empty()) {
     return main_script_load_params->redirect_infos.back().new_url;
+  }
 
   // No redirection happened. The initial request URL was used for the response.
   return initial_request_url;
@@ -713,8 +735,9 @@ void WorkerScriptFetcher::OnReceiveResponse(
     std::optional<mojo_base::BigBuffer> cached_metadata) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   DCHECK(!cached_metadata);
-  if (!body)
+  if (!body) {
     return;
+  }
 
   CHECK(!main_script_load_params_);
   CHECK(url_loader_);

@@ -14,8 +14,10 @@
 #include "chrome/browser/ui/views/tabs/tab_strip_types.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_drag_handler.h"
 #include "components/tab_groups/tab_group_id.h"
+#include "ui/base/models/list_selection_model.h"
 
 class BrowserView;
+class ExpandOnHoverLock;
 class TabCollectionNode;
 class TabGroup;
 class TabHoverCardController;
@@ -55,6 +57,8 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
 
   void ShiftTabNext(const tabs::TabInterface* tab_interface);
   void ShiftTabPrevious(const tabs::TabInterface* tab_interface);
+  void ShiftGroupUp(const tab_groups::TabGroupId& group);
+  void ShiftGroupDown(const tab_groups::TabGroupId& group);
   void MoveTabFirst(const tabs::TabInterface* tab_interface);
   void MoveTabLast(const tabs::TabInterface* tab_interface);
   void SelectTab(const tabs::TabInterface* tab_interface,
@@ -63,17 +67,19 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
   void ToggleSelected(const tabs::TabInterface* tab_interface);
   void AddSelectionFromAnchorTo(const tabs::TabInterface* tab_interface);
   void ExtendSelectionTo(const tabs::TabInterface* tab_interface);
+  const ui::ListSelectionModel& GetSelectionModel() const;
   void ToggleTabGroupCollapsedState(const TabGroup* group,
                                     ToggleTabGroupCollapsedStateOrigin origin);
   void ShowGroupEditorBubble(const TabCollectionNode* group_node);
   views::Widget* ShowGroupEditorBubble(const tab_groups::TabGroupId& group_id,
                                        views::View* anchor_view,
                                        bool stop_context_menu_propagation);
-  bool IsCollapsed() const;
+  std::unique_ptr<ExpandOnHoverLock> AcquireExpandOnHoverLock();
 
   tab_groups::TabGroupSyncService* GetTabGroupSyncService();
 
   tabs::VerticalTabStripStateController* GetStateController();
+  const tabs::VerticalTabStripStateController* GetStateController() const;
 
   TabContextMenuController* GetTabContextMenuController() {
     return context_menu_controller_.get();
@@ -87,6 +93,8 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
   TabHoverCardController* GetHoverCardController() {
     return hover_card_controller_.get();
   }
+
+  const tabs::TabInterface* GetActiveTab() const;
 
   // Notifies BrowserCommandController that the tab with keyboard focus has
   // changed.
@@ -115,6 +123,7 @@ class VerticalTabStripController : public TabContextMenuController::Delegate {
       std::optional<tab_groups::TabGroupId> group);
 
   void ShiftTabRelative(const tabs::TabInterface* tab_interface, int offset);
+  void ShiftGroupRelative(const tab_groups::TabGroupId& group, int offset);
 
   void AnnounceTabAddedToGroup(tab_groups::TabGroupId group_id);
   void AnnounceTabRemovedFromGroup(tab_groups::TabGroupId group_id);

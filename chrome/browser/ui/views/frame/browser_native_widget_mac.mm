@@ -23,12 +23,12 @@
 #import "chrome/browser/ui/cocoa/touchbar/browser_window_touch_bar_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/tabs/vertical_tab_strip_metrics.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/browser_widget.h"
 #include "chrome/browser/ui/views/frame/immersive_mode_controller.h"
-#include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_metrics.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_utils.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/common/pref_names.h"
@@ -360,12 +360,16 @@ void BrowserNativeWidgetMac::ValidateUserInterfaceItem(
       // TODO(crbug.com/475222200): When in immersive, swapping between tab
       // strip types create duplicate tab strips. Until that is resolved,
       // disable the ability to swap between tab strips while in immersive.
-      result->set_hidden_state = true;
-      result->new_hidden_state =
-          ImmersiveModeController::From(browser)->IsEnabled();
-      result->new_toggle_state =
-          tabs::VerticalTabStripStateController::From(browser)
-              ->ShouldDisplayVerticalTabs();
+      if (auto* immersive_mode_controller =
+              ImmersiveModeController::From(browser)) {
+        result->set_hidden_state = true;
+        result->new_hidden_state = immersive_mode_controller->IsEnabled();
+      }
+      if (auto* vertical_tab_strip_state_controller =
+              tabs::VerticalTabStripStateController::From(browser)) {
+        result->new_toggle_state =
+            vertical_tab_strip_state_controller->ShouldDisplayVerticalTabs();
+      }
       break;
     }
     case IDC_TOGGLE_JAVASCRIPT_APPLE_EVENTS: {

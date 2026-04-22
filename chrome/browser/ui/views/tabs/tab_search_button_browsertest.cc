@@ -14,31 +14,32 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
+#include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
 #include "chrome/browser/ui/views/bubble/webui_bubble_dialog_view.h"
 #include "chrome/browser/ui/views/bubble/webui_bubble_manager.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
 #include "chrome/browser/ui/views/tab_search_bubble_host.h"
-#include "chrome/browser/ui/views/tabs/tab_search_button.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
+#include "components/saved_tab_groups/public/features.h"
 #include "content/public/test/browser_test.h"
 #include "ui/views/test/button_test_api.h"
 
 class TabSearchButtonBrowserTest : public InProcessBrowserTest {
  public:
   TabSearchButtonBrowserTest() {
-    feature_list_.InitAndDisableFeature(features::kGlic);
+    feature_list_.InitWithFeatures({}, {features::kGlic});
   }
 
   BrowserView* browser_view() {
     return BrowserView::GetBrowserViewForBrowser(browser());
   }
 
-  TabSearchButton* tab_search_button() {
-    return BrowserElementsViews::From(browser())->GetViewAs<TabSearchButton>(
+  views::LabelButton* tab_search_button() {
+    return BrowserElementsViews::From(browser())->GetViewAs<views::LabelButton>(
         kTabSearchButtonElementId);
   }
 
@@ -77,7 +78,7 @@ IN_PROC_BROWSER_TEST_F(TabSearchButtonBrowserTest, ButtonClickCreatesBubble) {
 class TabSearchButtonBrowserUITest : public DialogBrowserTest {
  public:
   TabSearchButtonBrowserUITest() {
-    feature_list_.InitAndDisableFeature(features::kGlic);
+    feature_list_.InitWithFeatures({}, {features::kGlic});
   }
 
   // DialogBrowserTest:
@@ -86,7 +87,7 @@ class TabSearchButtonBrowserUITest : public DialogBrowserTest {
     AppendTab(chrome::kChromeUIHistoryURL);
     AppendTab(chrome::kChromeUIBookmarksURL);
     auto* tab_search_button =
-        BrowserElementsViews::From(browser())->GetViewAs<TabSearchButton>(
+        BrowserElementsViews::From(browser())->GetViewAs<views::LabelButton>(
             kTabSearchButtonElementId);
     views::test::ButtonTestApi(tab_search_button).NotifyDefaultMouseClick();
   }

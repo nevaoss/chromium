@@ -31,7 +31,7 @@ static_library("neva") {
     "//base/allocator:buildflags",
     "//base/allocator/partition_allocator/src/partition_alloc:buildflags",
     "//base:debugging_buildflags",
-    "//base:feature_list_buildflags",
+    "//base:feature_buildflags",
     "//base:fuzzing_buildflags",
     "//base:synchronization_buildflags",
     "//base:tracing_buildflags",

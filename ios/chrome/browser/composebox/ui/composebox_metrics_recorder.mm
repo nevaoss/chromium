@@ -50,6 +50,19 @@ std::string GetStringForDragAndDropType(ComposeboxDragAndDropType type) {
   NOTREACHED();
 }
 
+/// Returns a string mapping to the input item type.
+std::string GetStringForInputItemType(ComposeboxInputItemType type) {
+  switch (type) {
+    case ComposeboxInputItemType::kComposeboxInputItemTypeTab:
+      return "Tab";
+    case ComposeboxInputItemType::kComposeboxInputItemTypeImage:
+      return "Image";
+    case ComposeboxInputItemType::kComposeboxInputItemTypeRawFile:
+    case ComposeboxInputItemType::kComposeboxInputItemTypePDF:
+      return "File";
+  }
+}
+
 }  // namespace
 
 @implementation ComposeboxMetricsRecorder {
@@ -112,6 +125,22 @@ std::string GetStringForDragAndDropType(ComposeboxDragAndDropType type) {
                               count);
 }
 
+- (void)recordAttachCountAtSubmission:(NSUInteger)count
+                              forType:(ComposeboxInputItemType)type {
+  std::string histogram_name =
+      "Omnibox.MobileFusebox.AttachmentCountAtSubmission.";
+  histogram_name += GetStringForInputItemType(type);
+  base::UmaHistogramCounts100(histogram_name, count);
+}
+
+- (void)recordImagesAttached:(NSUInteger)count {
+  base::UmaHistogramCounts100("Omnibox.MobileFusebox.ImagesAttached", count);
+}
+
+- (void)recordFilesAttached:(NSUInteger)count {
+  base::UmaHistogramCounts100("Omnibox.MobileFusebox.FilesAttached", count);
+}
+
 - (void)recordComposeboxFocusResultedInNavigation:(BOOL)navigation
                                   withAttachments:(BOOL)hasAttachments
                                       requestType:
@@ -168,6 +197,19 @@ std::string GetStringForDragAndDropType(ComposeboxDragAndDropType type) {
 - (void)recordQRScannerButtonUsed {
   base::RecordAction(
       base::UserMetricsAction("IOS.Omnibox.MobileFusebox.Action.QRScanner"));
+}
+
+- (void)recordAttachmentsMenuOpenedWithVisibleButtons:
+    (std::vector<FuseboxAttachmentButtonType>)visibleButtons {
+  [self recordAttachmentsMenuShown:YES];
+  for (FuseboxAttachmentButtonType buttonType : visibleButtons) {
+    [self recordAttachmentButtonShown:buttonType];
+  }
+}
+
+- (void)recordTextEditedBeforeAiMode:(BOOL)edited {
+  base::UmaHistogramBoolean("Omnibox.MobileFusebox.TextEditedBeforeAiMode",
+                            edited);
 }
 
 #pragma mark - private

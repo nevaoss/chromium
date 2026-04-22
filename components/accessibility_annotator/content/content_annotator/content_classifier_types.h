@@ -44,6 +44,7 @@ struct ContentClassificationInput {
 
   GURL url;
   ukm::SourceId ukm_source_id = ukm::kInvalidSourceId;
+  std::optional<int> tab_id;
   // LINT.IfChange
   std::optional<float> sensitivity_score;
   std::optional<base::Time> navigation_timestamp;
@@ -87,6 +88,7 @@ struct ContentClassificationResult {
 
   std::optional<Result> title_keyword_result;
   std::optional<Result> url_match_result;
+  std::optional<Result> semantic_match_result;
   std::optional<bool> is_sensitive;
   std::optional<bool> is_in_target_language;
 };

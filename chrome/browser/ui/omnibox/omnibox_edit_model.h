@@ -187,10 +187,6 @@ class OmniboxEditModel {
   // icon.
   ui::ImageModel GetSuperGIcon(int image_size, bool dark_mode) const;
 
-  // Whether the "Add Context" button should be shown in place of the location
-  // bar page info icon button.
-  bool ShouldShowAddContextButton() const;
-
   // Returns the "mega plus" icon associated with the "Add Context" button.
   ui::ImageModel GetAddContextIcon(int image_size) const;
 
@@ -203,10 +199,10 @@ class OmniboxEditModel {
   // that state has changed.
   void SetInputInProgress(bool in_progress);
 
-  // Calls SetInputInProgress, via SetInputInProgressNoNotify and
-  // NotifyObserversInputInProgress, calling the latter after
-  // StartAutocomplete, so that the result is only updated once.
-  void UpdateInput(bool has_selected_text, bool prevent_inline_autocomplete);
+  // Calls `SetInputInProgress()`, via `SetInputInProgressNoNotify()` and
+  // `NotifyObserversInputInProgress()`, calling the latter after
+  // `StartAutocomplete()`, so that the result is only updated once.
+  void UpdateInput(bool prevent_inline_autocomplete);
 
   // Resets the permanent display texts (display_text_ and url_for_editing_)
   // to those provided by the controller. Returns true if the display texts
@@ -237,10 +233,9 @@ class OmniboxEditModel {
   // no user input in progress).
   void Revert();
 
-  // Directs the popup to start autocomplete.  Makes use of the |view_| text and
-  // selection, so make sure to set those before calling StartAutocomplete().
-  void StartAutocomplete(bool has_selected_text,
-                         bool prevent_inline_autocomplete);
+  // Directs the popup to start autocomplete. Makes use of the `view_`
+  // selection, so make sure to set that before calling `StartAutocomplete()`.
+  void StartAutocomplete(bool prevent_inline_autocomplete);
 
   // Determines whether the user can "paste and go", given the specified text.
   bool CanPasteAndGo(const std::u16string& text) const;
@@ -255,6 +250,8 @@ class OmniboxEditModel {
   void ClassifyString(const std::u16string& text,
                       AutocompleteMatch* match,
                       GURL* alternate_nav_url) const;
+
+  void RecordAiModeButtonClick();
 
   // Navigates to AI Mode, with the contents of the currently selected match, if
   // any.
@@ -657,7 +654,7 @@ class OmniboxEditModel {
       const GURL& alternate_nav_url,
       const std::u16string& pasted_text,
       base::TimeTicks match_selection_timestamp,
-      bool proceed);
+      OmniboxClient::ExtensionControlledDialogResult proceed);
 
   // Updates the feedback type on the match at the given index and schedules a
   // repaint to update the suggestion view. On negative feedback, also shows the

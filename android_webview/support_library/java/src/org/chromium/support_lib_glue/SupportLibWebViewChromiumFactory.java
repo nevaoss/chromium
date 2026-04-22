@@ -108,6 +108,7 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
                 Features.SPECULATIVE_LOADING,
                 Features.BACK_FORWARD_CACHE,
                 Features.PREFETCH_WITH_URL,
+                Features.PREFETCH_WITH_CALLBACK_RESULT_V1,
                 Features.PREFETCH_CACHE + Features.DEV_SUFFIX,
                 Features.SET_MAX_PRERENDERS + Features.DEV_SUFFIX,
                 Features.DEFAULT_TRAFFICSTATS_TAGGING,
@@ -119,7 +120,7 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
                 Features.WEB_VIEW_NAVIGATION_CLIENT_BASIC_USAGE,
                 Features.PROVIDER_WEAKLY_REF_WEBVIEW,
                 Features.PAYMENT_REQUEST,
-                Features.WEBVIEW_BUILDER + Features.DEV_SUFFIX,
+                Features.WEBVIEW_BUILDER,
                 Features.COOKIE_INTERCEPT,
                 Features.WARM_UP_RENDERER_PROCESS,
                 Features.EXTRA_HEADER_FOR_ORIGINS,
@@ -129,17 +130,19 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
                 Features.ASYNC_WEBVIEW_STARTUP_ASYNC_STARTUP_LOCATIONS + Features.DEV_SUFFIX,
                 Features.CUSTOM_REQUEST_HEADERS,
                 Features.RENDERER_LIBRARY_PREFETCH_MODE + Features.DEV_SUFFIX,
-                Features.ASYNC_WEBVIEW_STARTUP_V2 + Features.DEV_SUFFIX,
+                Features.ASYNC_WEBVIEW_STARTUP_V2,
                 Features.WEB_VIEW_NAVIGATION_LISTENER_V1,
                 Features.ADD_QUIC_HINTS_V1,
                 Features.ON_NAVIGATION_COMPLETED_NON_COMMITTED,
                 Features.COMMITTED_NAVIGATION_GET_PAGE_NON_NULL,
                 Features.WEB_VIEW_NAVIGATION_LISTENER_V2,
-                Features.WEBVIEW_BUILDER_V2 + Features.DEV_SUFFIX,
+                Features.WEBVIEW_BUILDER_V2,
                 Features.BACK_FORWARD_CACHE_SETTINGS_V3,
                 Features.PAGE_GET_URL,
                 Features.JS_INJECTION_IN_FRAME_AND_WORLD,
                 Features.NAVIGATION_GET_WEB_RESOURCE_ERROR,
+                Features.BACK_FORWARD_CACHE_SETTINGS_V4,
+                Features.IGNORE_DUPLICATE_NAV + Features.DEV_SUFFIX,
                 // Add new features above. New features must include `+ Features.DEV_SUFFIX`
                 // when they're initially added (this can be removed in a future CL). The final
                 // feature should have a trailing comma for cleaner diffs.
@@ -330,6 +333,11 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
         ApiCall.SET_MAX_PRERENDERS,
         ApiCall.SET_MAX_PREFETCHES,
         ApiCall.SET_PREFETCH_TTL_SECONDS,
+        ApiCall.BACK_FORWARD_CACHE_SETTINGS_GET_KEEP_FORWARD_ENTRIES,
+        ApiCall.BACK_FORWARD_CACHE_SETTINGS_SET_KEEP_FORWARD_ENTRIES,
+        ApiCall.GET_MAX_PRERENDERS,
+        ApiCall.CLEAR_MAX_PREFETCHES,
+        ApiCall.CLEAR_PREFETCH_TTL,
         // Add new constants above. The final constant should have a trailing comma for cleaner
         // diffs.
         ApiCall.COUNT, // Added to suppress WrongConstant in #recordApiCall
@@ -520,8 +528,19 @@ public class SupportLibWebViewChromiumFactory implements WebViewProviderFactoryB
         int SET_MAX_PRERENDERS = 179;
         int SET_MAX_PREFETCHES = 180;
         int SET_PREFETCH_TTL_SECONDS = 181;
+        int BACK_FORWARD_CACHE_SETTINGS_GET_KEEP_FORWARD_ENTRIES = 182;
+        int BACK_FORWARD_CACHE_SETTINGS_SET_KEEP_FORWARD_ENTRIES = 183;
+        int SET_IGNORE_DUPLICATE_NAV_ENABLED = 184;
+        int GET_IGNORE_DUPLICATE_NAV_ENABLED = 185;
+        int SET_IGNORE_DUPLICATE_NAV_THRESHOLD_MS = 186;
+        int GET_IGNORE_DUPLICATE_NAV_THRESHOLD_MS = 187;
+        int GET_MAX_PRERENDERS = 188;
+        int GET_MAX_PREFETCHES = 189;
+        int GET_PREFETCH_TTL_SECONDS = 190;
+        int CLEAR_MAX_PREFETCHES = 191;
+        int CLEAR_PREFETCH_TTL = 192;
         // Remember to update AndroidXWebkitApiCall in enums.xml when adding new values here
-        int COUNT = 182;
+        int COUNT = 193;
     }
 
     // LINT.ThenChange(/tools/metrics/histograms/metadata/android/enums.xml:AndroidXWebkitApiCall)

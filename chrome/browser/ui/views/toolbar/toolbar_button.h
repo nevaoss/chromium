@@ -22,6 +22,7 @@
 #include "ui/base/ui_base_features.h"
 #include "ui/gfx/animation/animation_delegate.h"
 #include "ui/gfx/animation/slide_animation.h"
+#include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/vector_icon_types.h"
 #include "ui/views/context_menu_controller.h"
@@ -142,6 +143,10 @@ class ToolbarButton : public views::LabelButton,
   // button will have no accessible name.
   std::u16string GetAlternativeAccessibleName() const override;
 
+  ChromeColorIds GetDefaultBackgroundColorId() const {
+    return default_background_color_id_;
+  }
+
   // views::ContextMenuController:
   void ShowContextMenuForViewImpl(
       View* source,
@@ -159,6 +164,8 @@ class ToolbarButton : public views::LabelButton,
   ui::ElementIdentifier menu_identifier() const { return menu_identifier_; }
 
   bool GetVectorIconsHasValueForTesting() { return vector_icons_.has_value(); }
+
+  void SetInternalPadding(gfx::Insets insets);
 
  protected:
   struct VectorIcons {
@@ -232,7 +239,7 @@ class ToolbarButton : public views::LabelButton,
   const gfx::Size GetTargetSize() const;
 
   // Returns the button's rounded corner radius based on its size.
-  int GetRoundedCornerRadius() const;
+  virtual int GetRoundedCornerRadius() const;
 
   // Updates the images using the given icons and specific colors.
   void UpdateIconsWithColors(const gfx::VectorIcon& icon,
@@ -242,6 +249,11 @@ class ToolbarButton : public views::LabelButton,
                              SkColor disabled_color);
 
   std::optional<SkColor> GetBackgroundColor() const;
+
+  // views::LabelButton:
+  // Callers should use SetHighlight() instead which sets an optional color as
+  // well.
+  void SetText(std::u16string_view text) override;
 
  private:
   friend test::ToolbarButtonTestApi;
@@ -306,11 +318,6 @@ class ToolbarButton : public views::LabelButton,
 
   // Callback for MenuModelAdapter.
   void OnMenuClosed();
-
-  // views::LabelButton:
-  // This is private to avoid a foot-shooter. Callers should use SetHighlight()
-  // instead which sets an optional color as well.
-  void SetText(std::u16string_view text) override;
 
   // Sets the in product help promo. Called after the kHasInProductHelpPromoKey
   // property changes. When this button has an in product help promo, the button

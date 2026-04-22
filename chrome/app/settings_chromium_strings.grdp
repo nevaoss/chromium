@@ -105,6 +105,9 @@
     <message name="IDS_SETTINGS_DEFAULT_BROWSER_MAKE_DEFAULT_AND_PIN" desc="The text of the button to make Chromium the default browser and pin it to the taskbar.">
       Make Chromium the default browser and pin to the taskbar
     </message>
+    <message name="IDS_SETTINGS_DEFAULT_BROWSER_MAKE_DEFAULT_AND_PIN_USER_VALUE" desc="The text of the button to make Chromium the default browser and pin it to the taskbar.">
+      You can use Chromium anytime you click links in messages, documents, and other apps. It will also be pinned to your taskbar.
+    </message>
     <message name="IDS_SETTINGS_DEFAULT_BROWSER_ERROR" desc="The text displayed when Chrome cannot determine or set the default browser">
       Chromium cannot determine or set the default browser
     </message>
@@ -455,6 +458,9 @@
   </message>
   <message name="IDS_SETTINGS_SECURITY_JAVASCRIPT_GUARDRAILS_UNRECOGNIZED_SITES_DESCRIPTION" desc="Description of JavaScript Guardrails unrecognized sites option.">
     Enhanced protection turns off JavaScript optimization for sites Chromium doesn’t recognize
+  </message>
+  <message name="IDS_SETTINGS_SECURITY_BUNDLE_ENHANCED_BULLET_ONE" desc="First bullet point under the security settings enhanced bundle section">
+    Turns on additional features to provide Chromium’s strongest protections
   </message>
 
   <!-- Secure connections -->

@@ -9,7 +9,6 @@
 
 #include <memory>
 
-#include "base/android/jni_weak_ref.h"
 #include "base/memory/raw_ptr.h"
 #include "content/browser/android/render_widget_host_connector.h"
 #include "content/public/browser/android/selection_popup_delegate.h"
@@ -37,6 +36,8 @@ class SelectionPopupController : public RenderWidgetHostConnector {
   static SelectionPopupController* FromWebContents(WebContents& web_contents);
 
   explicit SelectionPopupController(WebContents* web_contents);
+
+  base::android::ScopedJavaLocalRef<jobject> GetJavaObject(JNIEnv* env) const;
 
   void SetTextHandlesHiddenForDropdownMenu(JNIEnv* env, bool hidden);
 
@@ -81,9 +82,7 @@ class SelectionPopupController : public RenderWidgetHostConnector {
 
  private:
   ~SelectionPopupController() override;
-  base::android::ScopedJavaLocalRef<jobject> GetContext(JNIEnv* env) const;
-  base::android::ScopedJavaLocalRef<jobject> GetJavaObject(JNIEnv* env) const;
-
+  base::android::ScopedJavaLocalRef<jobject> GetContext() const;
   raw_ptr<RenderWidgetHostViewAndroid> rwhva_ = nullptr;
   std::unique_ptr<SelectionPopupDelegate> selection_popup_delegate_;
   // Retained to keep the model in scope until the menu is dismissed.

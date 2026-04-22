@@ -146,16 +146,17 @@ struct OverflowMenuActionRow: View {
   var button: some View {
     if isEditing {
       rowContent
-    } else if let menu = action.menu {
-      Button(action: {}) {
+    } else if let menu = action.menu as? UIMenu {
+      UIMenuElementView(element: menu) {
         rowContent
+          .contentShape(Rectangle())
       }
-      .overlay(UIMenuPresenter(menu: menu))
     } else {
       Button(
         action: {
-          metricsHandler?.popupMenuTookAction()
+          metricsHandler?.popupMenuTriggerElement()
           metricsHandler?.popupMenuUserSelectedAction()
+          metricsHandler?.popupMenuDidTriggerAction(action.actionType)
           action.handler()
         },
         label: {
@@ -217,21 +218,5 @@ struct OverflowMenuActionRow: View {
         }
       }
       .accessibilityIdentifier("overflowRowIPHBadgeIdentifier")
-  }
-}
-
-/// A UIViewRepresentable that wraps a UIButton to present a UIMenu on primary tap.
-struct UIMenuPresenter: UIViewRepresentable {
-  /// The UIMenu to present.
-  let menu: UIMenu
-
-  func makeUIView(context: Context) -> UIButton {
-    let button = UIButton()
-    button.showsMenuAsPrimaryAction = true
-    return button
-  }
-
-  func updateUIView(_ uiView: UIButton, context: Context) {
-    uiView.menu = menu
   }
 }

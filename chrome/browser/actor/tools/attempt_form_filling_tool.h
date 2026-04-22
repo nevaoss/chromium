@@ -76,6 +76,10 @@ class AttemptFormFillingTool : public Tool,
   tabs::TabHandle tab_handle_;
   std::vector<AttemptFormFillingToolRequest::FormFillingRequest>
       tool_fill_requests_;
+  // Fill requests as determined by the ActorFormFillingService. Initially
+  // populated in TimeOfUseValidation and then updated in OnSuggestionsRetrieved
+  // to reflect the actual requests returned by the service, which may have
+  // been split.
   std::vector<std::pair<AttemptFormFillingToolRequest::RequestedData,
                         std::vector<autofill::FieldGlobalId>>>
       service_fill_requests_;

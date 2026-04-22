@@ -2,6 +2,7 @@
 <!DOCTYPE translationbundle>
 <translationbundle lang="kk">
 <translation id="1000436330784933699">Lens-ді осы жерден аша аласыз.</translation>
+<translation id="1005291068154454184">Chromium-ді әдепкі браузер ретінде орнату жолы көрсетілген толық экрандағы бейне</translation>
 <translation id="1042296835509784301">Chromium-нен "Password Manager" бөлімін ашады.</translation>
 <translation id="1047130070405668746">Chromium браузерін таңдаңыз.</translation>
 <translation id="1091252999271033193">Chromium браузерін әрдайым телефонда ашу қажет болады.</translation>
@@ -70,9 +71,6 @@
 <translation id="2313870531055795960">URL мекенжайларын Chromium браузерінде сақталған қауіпсіз емес сайттар тізімімен салыстырып тексереді. Егер сайт құпия сөзіңізді ұрлағысы келсе немесе зиянды файлды жүктеп алсаңыз, Chromium браузері URL мекенжайларын, сондай-ақ бет контенті бөліктерін Safe Browsing қызметіне жіберуі мүмкін.</translation>
 <translation id="2314220608288760290">Chromium браузері YouTube-тің инкогнито сілтемелерін автоматты түрде инкогнито режимінде ашады.</translation>
 <translation id="231828342043114302">Қызығушылықтарыңызға сай жекелендірілген контент алу үшін Chromium-ге кіріңіз.</translation>
-<translation id="2326738825692478496">Chromium деректерінің кейбірі Google аккаунтыңызда әлі сақталмаған.
-
-Шығу алдында бірнеше минут күтіп көріңіз. Қазір шықсаңыз, бұл деректер жойылады.</translation>
 <translation id="2334943301233020675">Келесі кіру кілттері Password Manager-ге импортталмады, себебі олар талаптарға сай емес.</translation>
 <translation id="2337722506862731008">Chromium-де бөлісу парағын ашу</translation>
 <translation id="2340423701577464731">Оқу тізімі элементін Chromium-ге қосу</translation>

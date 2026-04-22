@@ -12,8 +12,8 @@
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ref.h"
-#include "ui/gfx/animation/animation_delegate.h"
 #include "ui/gfx/animation/slide_animation.h"
+#include "ui/views/animation/animation_delegate_views.h"
 #include "ui/views/layout/layout_manager_base.h"
 #include "ui/views/layout/proposed_layout.h"
 
@@ -21,8 +21,9 @@
 // to child view bounds. It wraps another LayoutManager (the
 // target_layout_manager) which calculates the desired final positions. When the
 // target layout changes, this manager animates the transition.
-class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
-                                            public gfx::AnimationDelegate {
+class TabCollectionAnimatingLayoutManager
+    : public views::LayoutManagerBase,
+      public views::AnimationDelegateViews {
  public:
   // Controls along which axis view bounds are animated during animate-in and
   // animate-out transitions.
@@ -46,6 +47,7 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
 
   class Delegate {
    public:
+    virtual bool IsDragging() const;
     virtual bool IsViewDragging(const views::View& child_view) const;
     virtual bool ShouldSnapToTarget(const views::View& child_view) const;
     virtual bool ShouldAnimateOpacityForAddAndRemove(
@@ -77,8 +79,9 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
   gfx::Size GetMinimumSize(const views::View* host) const override;
   int GetPreferredHeightForWidth(const views::View* host,
                                  int width) const override;
+  void OnLayoutChanged() override;
 
-  // gfx::AnimationDelegate:
+  // views::AnimationDelegateViews:
   void AnimationProgressed(const gfx::Animation* animation) override;
   void AnimationEnded(const gfx::Animation* animation) override;
 
@@ -119,12 +122,14 @@ class TabCollectionAnimatingLayoutManager : public views::LayoutManagerBase,
   void SetStartingLayout(const views::ProposedLayout& starting_layout);
   void SetTargetLayout(const views::ProposedLayout& target_layout);
 
+  // Updates `current_layout_` to reflect the current state of `animation_`.
+  void UpdateCurrentLayout();
+
   // Recalculates the target layout and starts/updates animation if necessary.
-  // Note: Layout change (e.g. child added/removed) requires recalculation.
-  // However we don't need to call `RecalculateTarget()`  in `OnLayoutChanged()`
-  // directly because `LayoutImpl()` will be called shortly after invalidation
-  // happens.
-  void RecalculateTarget();
+  // Returns true if a new target layout was computed.
+  // Note: This is called in `OnLayoutChanged()` to ensure preferred size
+  // calculations immediately reflect the new target layout state.
+  bool RecalculateTarget();
 
   // Interpolates between `starting_layout_` and `target_layout_` based on
   // current `animation_` value.

@@ -14,6 +14,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
@@ -21,6 +22,7 @@
 #include "base/uuid.h"
 #include "base/version_info/channel.h"
 #include "components/contextual_search/contextual_search_service.h"
+#include "components/contextual_search/pref_names.h"
 #include "components/contextual_tasks/internal/composite_context_decorator.h"
 #include "components/contextual_tasks/internal/contextual_tasks_service_impl.h"
 #include "components/contextual_tasks/public/context_decoration_params.h"
@@ -33,9 +35,11 @@
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/sync/test/data_type_store_test_util.h"
 #include "components/sync/test/mock_data_type_local_change_processor.h"
+#include "net/base/url_util.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "url/gurl.h"
 
 namespace contextual_tasks {
@@ -59,13 +63,14 @@ class MockAimEligibilityService : public AimEligibilityService {
                               "en-US",
                               {}) {}
   MOCK_METHOD(bool, IsAimEligible, (), (const, override));
+  MOCK_METHOD(bool, IsCobrowseEligible, (), (const, override));
 
   // The following methods are marked as pure virtual in AimEligibilityService,
   // as they are implemented in ChromeAimEligibilityService which is the one
   // provided by the KeyedService factory. We therefore need to implement them
   // in this unit test.
   std::string GetCountryCode() const override { return "US"; }
-  std::string GetLocale() const override { return "en-US"; }
+  std::string GetLocaleImpl() const override { return "en-US"; }
 };
 
 class MockAiThreadSyncBridge : public AiThreadSyncBridge {
@@ -150,7 +155,14 @@ class ContextualTasksServiceImplTest : public testing::Test {
         pref_service_.registry());
     mock_aim_eligibility_service_ =
         std::make_unique<MockAimEligibilityService>(&pref_service_);
-    service_ = std::make_unique<ContextualTasksServiceImpl>(
+    service_ = BuildService(std::move(mock_decorator), true);
+  }
+
+  std::unique_ptr<ContextualTasksServiceImpl> BuildService(
+      std::unique_ptr<testing::NiceMock<MockCompositeContextDecorator>>
+          mock_decorator,
+      bool is_gemini_eligible) {
+    return std::make_unique<ContextualTasksServiceImpl>(
         version_info::Channel::UNKNOWN,
         syncer::DataTypeStoreTestUtil::FactoryForInMemoryStoreForTest(),
         std::move(mock_decorator), mock_aim_eligibility_service_.get(),
@@ -158,7 +170,9 @@ class ContextualTasksServiceImplTest : public testing::Test {
         SupportsEphemeralOnly(),
         base::BindRepeating(
             &MockGetActiveTaskCountCallback::Run,
-            base::Unretained(&mock_get_active_task_count_callback_)));
+            base::Unretained(&mock_get_active_task_count_callback_)),
+        base::BindRepeating([](bool eligible) { return eligible; },
+                            is_gemini_eligible));
   }
 
   virtual bool SupportsEphemeralOnly() { return false; }
@@ -1463,27 +1477,56 @@ TEST_F(ContextualTasksServiceImplTest, GetContextForTask_NotFound) {
 }
 
 TEST_F(ContextualTasksServiceImplTest, GetFeatureEligibility) {
-  // Test case 1: Feature flag enabled, AIM eligible.
+  // Setup default pref to true for context sharing.
+  pref_service_.SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+
+  // Test case 1: All features enabled.
   feature_list_.InitAndEnableFeature(kContextualTasks);
   EXPECT_CALL(*mock_aim_eligibility_service_, IsAimEligible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_aim_eligibility_service_, IsCobrowseEligible())
       .WillOnce(Return(true));
   EXPECT_TRUE(service_->GetFeatureEligibility().IsEligible());
 
   // Test case 2: Feature flag enabled, AIM not eligible.
   EXPECT_CALL(*mock_aim_eligibility_service_, IsAimEligible())
       .WillOnce(Return(false));
-  EXPECT_FALSE(service_->GetFeatureEligibility().IsEligible());
-
-  feature_list_.Reset();
-  // Test case 3: Feature flag disabled, AIM eligible.
-  feature_list_.InitAndDisableFeature(kContextualTasks);
-  EXPECT_CALL(*mock_aim_eligibility_service_, IsAimEligible())
+  EXPECT_CALL(*mock_aim_eligibility_service_, IsCobrowseEligible())
       .WillOnce(Return(true));
   EXPECT_FALSE(service_->GetFeatureEligibility().IsEligible());
 
-  // Test case 4: Feature flag disabled, AIM not eligible.
+  // Test case 3: Feature flag enabled, Cobrowse not eligible.
   EXPECT_CALL(*mock_aim_eligibility_service_, IsAimEligible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_aim_eligibility_service_, IsCobrowseEligible())
       .WillOnce(Return(false));
+  EXPECT_FALSE(service_->GetFeatureEligibility().IsEligible());
+
+  // Test case 4: Feature flag enabled, Context sharing not eligible.
+  EXPECT_CALL(*mock_aim_eligibility_service_, IsAimEligible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_aim_eligibility_service_, IsCobrowseEligible())
+      .WillOnce(Return(true));
+  pref_service_.SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kDisabled));
+  EXPECT_FALSE(service_->GetFeatureEligibility().IsEligible());
+
+  feature_list_.Reset();
+  // Test case 5: Feature flag disabled, everything else eligible.
+  pref_service_.SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+  feature_list_.InitAndDisableFeature(kContextualTasks);
+  EXPECT_CALL(*mock_aim_eligibility_service_, IsAimEligible())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*mock_aim_eligibility_service_, IsCobrowseEligible())
+      .WillOnce(Return(true));
   EXPECT_FALSE(service_->GetFeatureEligibility().IsEligible());
 }
 
@@ -1942,6 +1985,124 @@ TEST_F(ContextualTasksServiceImplTest,
   // Previously, re-associating an empty task triggered a disassociate -> delete
   // cycle while holding an iterator, causing a Use-After-Free.
   service_->AssociateTabWithTask(task.GetTaskId(), tab_id);
+}
+
+TEST_F(ContextualTasksServiceImplTest, GetThreadUrlFromTaskId_Aim) {
+  ContextualTask task = service_->CreateTask();
+
+  const std::string server_id = "1234";
+  const std::string title = "title";
+  const std::string turn_id = "5678";
+  service_->UpdateThreadForTask(task.GetTaskId(), ThreadType::kAiMode,
+                                server_id, turn_id, title);
+
+  base::RunLoop run_loop;
+  service_->GetThreadUrlFromTaskId(
+      task.GetTaskId(), "en-us",
+      omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+      base::BindOnce(
+          [](const std::string& server_id, const std::string& turn_id,
+             GURL url) {
+            ASSERT_TRUE(base::StartsWith(url.host(), "www.google.com"));
+            ASSERT_EQ("/search", url.path());
+
+            std::string mstk;
+            net::GetValueForKeyInQuery(url, "mstk", &mstk);
+            ASSERT_EQ(mstk, turn_id);
+
+            std::string mtid;
+            net::GetValueForKeyInQuery(url, "mtid", &mtid);
+            ASSERT_EQ(mtid, server_id);
+          },
+          server_id, turn_id)
+          .Then(run_loop.QuitClosure()));
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksServiceImplTest, GetThreadUrlFromTaskId_Gemini) {
+  ContextualTask task = service_->CreateTask();
+
+  const std::string server_id = "1234";
+  const std::string title = "title";
+  service_->UpdateThreadForTask(task.GetTaskId(), ThreadType::kGemini,
+                                server_id, std::nullopt, title);
+
+  base::RunLoop run_loop;
+  service_->GetThreadUrlFromTaskId(
+      task.GetTaskId(), "en-us",
+      omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+      base::BindOnce(
+          [](const std::string& server_id, GURL url) {
+            ASSERT_TRUE(base::StartsWith(url.host(), "gemini.google.com"));
+            ASSERT_TRUE(base::EndsWith(url.path(), server_id));
+          },
+          server_id)
+          .Then(run_loop.QuitClosure()));
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksServiceImplTest,
+       GetThreadUrlFromTaskId_GeminiWithPrefix) {
+  ContextualTask task = service_->CreateTask();
+
+  const std::string server_id = "1234";
+  const std::string server_id_with_prefix = "c_" + server_id;
+  const std::string title = "title";
+  service_->UpdateThreadForTask(task.GetTaskId(), ThreadType::kGemini,
+                                server_id_with_prefix, std::nullopt, title);
+
+  base::RunLoop run_loop;
+  service_->GetThreadUrlFromTaskId(
+      task.GetTaskId(), "en-us",
+      omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+      base::BindOnce(
+          [](const std::string& server_id,
+             const std::string& server_id_with_prefix, GURL url) {
+            ASSERT_TRUE(base::StartsWith(url.host(), "gemini.google.com"));
+            ASSERT_TRUE(base::EndsWith(url.path(), server_id));
+            ASSERT_EQ(std::string::npos,
+                      url.path().find(server_id_with_prefix));
+          },
+          server_id, server_id_with_prefix)
+          .Then(run_loop.QuitClosure()));
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksServiceImplTest, GetThreadUrlFromTaskId_NoThread) {
+  ContextualTask task = service_->CreateTask();
+  base::RunLoop run_loop;
+  service_->GetThreadUrlFromTaskId(
+      task.GetTaskId(), "en-us",
+      omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+      base::BindOnce([](GURL url) {
+        // Error case should still return a valid URL.
+        ASSERT_TRUE(url.is_valid());
+      }).Then(run_loop.QuitClosure()));
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksServiceImplTest, GetThreadUrlFromTaskId_NoTask) {
+  base::Uuid task_id =
+      base::Uuid::ParseLowercase("00000000-0000-0000-0000-000000000000");
+  base::RunLoop run_loop;
+  service_->GetThreadUrlFromTaskId(
+      task_id, "en-us", omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+      base::BindOnce([](GURL url) {
+        // Error case should still return a valid URL.
+        ASSERT_TRUE(url.is_valid());
+      }).Then(run_loop.QuitClosure()));
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksServiceImplTest, GeminiThreadsEnabled) {
+  EXPECT_TRUE(service_->IsGeminiThreadsEligible());
+}
+
+TEST_F(ContextualTasksServiceImplTest, GeminiThreadsNotEnabled) {
+  auto service = BuildService(
+      std::make_unique<testing::NiceMock<MockCompositeContextDecorator>>(),
+      false);
+  EXPECT_FALSE(service->IsGeminiThreadsEligible());
 }
 
 }  // namespace contextual_tasks

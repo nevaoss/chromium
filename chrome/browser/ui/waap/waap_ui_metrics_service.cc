@@ -72,8 +72,8 @@ enum class InitialWebUIView {
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:InitialWebUIView)
 
-// Emits a WaaP trace event asynchronously onto a perfetto::Track and records a
-// UMA histogram with the same event name.
+// Emits an Initial WebUI trace event asynchronously onto a perfetto::Track and
+// records a UMA histogram with the same event name.
 void EmitHistogramWithTraceEvent(const char* event_name,
                                  base::TimeTicks start_ticks,
                                  base::TimeTicks end_ticks) {
@@ -88,8 +88,8 @@ void EmitHistogramWithTraceEvent(const char* event_name,
   base::UmaHistogramLongTimes100(event_name, delta);
 }
 
-// Emits a WaaP trace event and records a UMA histogram with the given event
-// name and duration.
+// Emits an Initial WebUI trace event and records a UMA histogram with the given
+// event name and duration.
 void EmitReloadButtonHistogramWithTraceEvent(const char* event_name,
                                              base::TimeTicks start_ticks,
                                              base::TimeTicks end_ticks) {
@@ -171,6 +171,32 @@ void RecordNewWindowPaintMetric(std::string_view paint_metric_base,
                               start_time, paint_time);
 }
 
+// Records a new window paint metric which differentiates whether the new window
+// is for a profile with or without existing browser window for the given
+// `paint_metric_base`.
+void RecordNewWindowPaintMetric(std::string_view paint_metric_base,
+                                waap::NewWindowCreationSource source,
+                                bool with_existing_window,
+                                base::TimeTicks start_time,
+                                base::TimeTicks paint_time) {
+  const std::string_view with_existing_window_str =
+      with_existing_window ? "WithExistingWindow" : "WithoutExistingWindow";
+  // Record aggregated metric.
+  EmitHistogramWithTraceEvent(
+      base::StrCat({"InitialWebUI.NewWindow.AllSources.",
+                    with_existing_window_str, ".", paint_metric_base})
+          .c_str(),
+      start_time, paint_time);
+
+  // Record source-sliced metric.
+  std::string_view source_str = CreationSourceToString(source);
+  EmitHistogramWithTraceEvent(
+      base::StrCat({"InitialWebUI.NewWindow", source_str, ".",
+                    with_existing_window_str, ".", paint_metric_base})
+          .c_str(),
+      start_time, paint_time);
+}
+
 }  // namespace
 
 WaapUIMetricsService::WaapUIMetricsService(
@@ -192,6 +218,26 @@ void WaapUIMetricsService::OnBrowserWindowCreated() {
 void WaapUIMetricsService::OnReloadButtonCreated() {
   base::UmaHistogramEnumeration("InitialWebUI.View.Creation",
                                 InitialWebUIView::kReloadButton);
+}
+
+void WaapUIMetricsService::OnReloadButtonRendererProcessCreatedAndLaunched(
+    base::TimeTicks created_timestamp,
+    base::TimeTicks launched_timestamp) {
+  // TODO(crbug.com/490810407): Record this and the other metrics as UKM as
+  // well, so that we can see the progression of renderer process creation
+  // requested
+  // -> launched -> commit -> paint etc. UKM recording for topchrome is
+  // currently not working.
+  base::TimeTicks time_origin =
+      startup_metric_utils::GetBrowser().GetApplicationStartTicksForStartup();
+  if (!created_timestamp.is_null()) {
+    RecordStartupPaintMetric("ReloadButton.RendererProcessCreated", time_origin,
+                             created_timestamp);
+  }
+  if (!launched_timestamp.is_null()) {
+    RecordStartupPaintMetric("ReloadButton.RendererProcessLaunched",
+                             time_origin, launched_timestamp);
+  }
 }
 
 void WaapUIMetricsService::OnBrowserWindowFirstPresentation(
@@ -300,11 +346,28 @@ void WaapUIMetricsService::OnStartupBrowserWindowToReloadButtonFirstPaintGap(
 
 void WaapUIMetricsService::OnNewWindowBrowserWindowToReloadButtonFirstPaintGap(
     waap::NewWindowCreationSource source,
+    bool with_existing_window,
     base::TimeTicks browser_window_paint_time,
     base::TimeTicks reload_button_paint_time) {
   RecordNewWindowPaintMetric(
-      "BrowserWindowToReloadButton.FirstPaintGap", source,
+      "BrowserWindowToReloadButton.FirstPaintGap", source, with_existing_window,
       browser_window_paint_time, reload_button_paint_time);
+}
+
+void WaapUIMetricsService::OnStartupBrowserWindowShowRequestedToFirstPaint(
+    base::TimeTicks request_time,
+    base::TimeTicks paint_time) {
+  RecordStartupPaintMetric("BrowserWindow.ShowRequestedToFirstPaint",
+                           request_time, paint_time);
+}
+
+void WaapUIMetricsService::OnNewWindowBrowserWindowShowRequestedToFirstPaint(
+    waap::NewWindowCreationSource source,
+    base::TimeTicks request_time,
+    base::TimeTicks paint_time) {
+  RecordNewWindowPaintMetric(
+      "BrowserWindow.ShowRequestedToFirstPaint.FromConstructor", source,
+      request_time, paint_time);
 }
 
 void WaapUIMetricsService::OnReloadButtonMousePressToNextPaint(

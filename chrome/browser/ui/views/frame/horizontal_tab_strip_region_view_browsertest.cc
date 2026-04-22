@@ -310,10 +310,11 @@ IN_PROC_BROWSER_TEST_F(HorizontalTabStripRegionViewTest,
 class HorizontalTabStripRegionViewWithTabstripTabSearchTest
     : public HorizontalTabStripRegionViewTest {
  public:
+  HorizontalTabStripRegionViewWithTabstripTabSearchTest() {
+    scoped_feature_list_.InitWithFeaturesAndParameters({}, {features::kGlic});
+  }
+
   void SetUpCommandLine(base::CommandLine* command_line) override {
-    scoped_feature_list_.InitWithFeaturesAndParameters({}, {
-                                                               features::kGlic
-                                                           });
     HorizontalTabStripRegionViewTest::SetUpCommandLine(command_line);
   }
 

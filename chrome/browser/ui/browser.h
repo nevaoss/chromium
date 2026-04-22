@@ -24,7 +24,6 @@
 #include "base/types/expected.h"
 #include "build/build_config.h"
 #include "chrome/browser/tab_contents/web_contents_collection.h"
-#include "chrome/browser/themes/theme_service_observer.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
 #include "chrome/browser/ui/bookmarks/bookmark_tab_helper_observer.h"
@@ -125,7 +124,6 @@ class Browser : public TabStripModelObserver,
                 public ChromeWebModalDialogManagerDelegate,
                 public BookmarkTabHelperObserver,
                 public zoom::ZoomObserver,
-                public ThemeServiceObserver,
                 public BrowserWindowInterface,
                 public DesktopBrowserWindowCapabilitiesDelegate {
  public:
@@ -815,6 +813,7 @@ class Browser : public TabStripModelObserver,
   Browser* GetBrowserForMigrationOnly() override;
   const Browser* GetBrowserForMigrationOnly() const override;
   bool IsTabModalPopupDeprecated() const override;
+  bool CreatedBySessionRestore() const override;
   ui::BaseWindow* GetWindow() override;
   const ui::BaseWindow* GetWindow() const override;
   DesktopBrowserWindowCapabilities* capabilities() override;
@@ -1048,9 +1047,6 @@ class Browser : public TabStripModelObserver,
       zoom::ZoomController* zoom_controller) override;
   void OnZoomChanged(
       const zoom::ZoomController::ZoomChangedEventData& data) override;
-
-  // Overridden from ThemeServiceObserver:
-  void OnThemeChanged() override;
 
   // Command and state updating ///////////////////////////////////////////////
 

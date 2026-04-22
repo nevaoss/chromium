@@ -201,6 +201,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
   AppLaunchConfiguration config = [super appConfigurationForTestCase];
   config.features_enabled.push_back(kComposeboxIOS);
   config.features_enabled.push_back(kComposeboxIpad);
+  config.features_disabled.push_back(kComposeboxAIMDisabled);
   // Only rely on local conditions for AIM eligibility, so disable the
   // server-side checks.
   config.features_disabled.push_back(omnibox::kAimServerEligibilityEnabled);
@@ -216,6 +217,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that the Composebox is visible when tapping the omnibox.
 - (void)testComposeboxVisibility {
+  [ComposeboxAppInterface setFuseboxEligible:YES];
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
   [ChromeEarlGreyUI focusOmnibox];
 
@@ -243,7 +245,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that the Composebox is hidden when not eligible.
 - (void)testComposeboxHiddenWhenNotEligible {
-  [ComposeboxAppInterface setAimEligible:NO];
+  [ComposeboxAppInterface setFuseboxEligible:NO];
 
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
   [ChromeEarlGreyUI focusOmnibox];
@@ -257,15 +259,10 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that typing in the Composebox shows the Send button.
 - (void)testComposeboxSendButtonVisibility {
+  [ComposeboxAppInterface setFuseboxEligible:YES];
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
-  [ChromeEarlGreyUI focusOmnibox];
 
-  // Wait for the composebox to be visible.
-  [ChromeEarlGrey waitForUIElementToAppearWithMatcher:ComposeboxMatcher()];
-
-  // Type some long text that expands the composebox.
-  [[EarlGrey selectElementWithMatcher:ComposeboxMatcher()]
-      performAction:grey_typeText(kLongText)];
+  [ChromeEarlGreyUI focusOmniboxAndReplaceText:kLongText];
 
   // Send button is visible.
   [[EarlGrey
@@ -286,6 +283,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that image generation action is present when eligible.
 - (void)testComposeboxCreateImageEligible {
+  [ComposeboxAppInterface setFuseboxEligible:YES];
   [ComposeboxAppInterface setCreateImagesEligible:YES];
 
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
@@ -315,6 +313,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that the image generation action is not available when not eligible.
 - (void)testComposeboxCreateImageNotEligible {
+  [ComposeboxAppInterface setFuseboxEligible:YES];
   [ComposeboxAppInterface setCreateImagesEligible:NO];
 
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
@@ -338,7 +337,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that the AI mode action works as expected.
 - (void)testComposeboxAIModeAction {
-  [ComposeboxAppInterface setAimEligible:YES];
+  [ComposeboxAppInterface setFuseboxEligible:YES];
 
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
   [ChromeEarlGreyUI focusOmnibox];
@@ -378,6 +377,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 
 // Tests that all buttons in the plus menu are enabled.
 - (void)testPlusMenuButtonsEnabled {
+  [ComposeboxAppInterface setFuseboxEligible:YES];
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
   [ChromeEarlGreyUI focusOmnibox];
 
@@ -424,6 +424,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 // Tests that tapping the attach tabs button opens the tab picker. Ensures that
 // the title is set correctly and buttons are correctly enabled or disabled.
 - (void)testTabPickerUI {
+  [ComposeboxAppInterface setFuseboxEligible:YES];
   [ChromeEarlGrey loadURL:self.testServer->GetURL("/")];
   OpenTabPicker();
 
@@ -486,6 +487,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 // (User should not be able to attach NTPs to the composebox). It also ensure
 // that the user can dismiss the view.
 - (void)testTabPickerEmptyStateView {
+  [ComposeboxAppInterface setFuseboxEligible:YES];
   [ChromeEarlGrey closeAllNormalTabs];
   [ChromeEarlGrey openNewTab];
   [ChromeEarlGrey waitForMainTabCount:1];
@@ -521,6 +523,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 // Tests that multiple tabs selected from the tab picker are displayed in the
 // carousel, the attachment limit is respected, and the AIM button is visible.
 - (void)testAttachMultipleTabsAndLimit {
+  [ComposeboxAppInterface setFuseboxEligible:YES];
   std::vector<GURL> URLS;
   NSUInteger totalNumberOfTabs = kAttachmentLimit + 1;
   [ChromeEarlGrey closeAllNormalTabs];
@@ -620,6 +623,7 @@ void RemoveAttachmentWithTitle(NSString* title) {
 // Tests that a tab cannot be attached when in image generation mode, and that
 // image generation mode can be entered after attachments are removed.
 - (void)testNoTabAttachmentsInImageGeneration {
+  [ComposeboxAppInterface setFuseboxEligible:YES];
   [ComposeboxAppInterface setCreateImagesEligible:YES];
 
   // Add a tab and attach it.

@@ -12,6 +12,7 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/split_tab_highlight_controller.h"
 #include "chrome/browser/ui/toolbar/bookmark_sub_menu_model.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -30,6 +31,7 @@
 #include "chrome/browser/ui/views/side_panel/side_panel.h"
 #include "chrome/browser/ui/views/test/split_view_interactive_test_mixin.h"
 #include "chrome/browser/ui/views/test/tab_strip_interactive_test_mixin.h"
+#include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/interactive_test_utils.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
@@ -88,10 +90,20 @@ class MultiContentsViewUiTest
     : public SplitViewInteractiveTestMixin<
           TabStripInteractiveTestMixin<InteractiveBrowserTest>> {
  public:
+  MultiContentsViewUiTest() = default;
+
   void SetUpOnMainThread() override {
     SplitViewInteractiveTestMixin::SetUpOnMainThread();
+    browser()->profile()->GetPrefs()->SetBoolean(
+        prefs::kTabSearchPinnedToTabstrip, true);
     host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(embedded_test_server()->Start());
+  }
+
+  void TearDownOnMainThread() override {
+    browser()->profile()->GetPrefs()->ClearPref(
+        prefs::kTabSearchPinnedToTabstrip);
+    SplitViewInteractiveTestMixin::TearDownOnMainThread();
   }
 
  protected:
@@ -500,15 +512,10 @@ IN_PROC_BROWSER_TEST_F(MultiContentsViewUiTest, ResizesToSnapPointWidth) {
           kMultiContentsViewLayoutSnapResizeObserver));
 }
 
-// TODO(crbug.com/399212996): Flaky on linux_chromium_asan_rel_ng, linux-rel
-// and linux-chromeos-rel.
-#if (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS))
-#define MAYBE_ResizesToMinWidthPercentage DISABLED_ResizesToMinWidthPercentage
-#else
-#define MAYBE_ResizesToMinWidthPercentage ResizesToMinWidthPercentage
-#endif
+
+// TODO(crbug.com/399212996): Flaky on all platforms.
 IN_PROC_BROWSER_TEST_F(MultiContentsViewUiTest,
-                       MAYBE_ResizesToMinWidthPercentage) {
+                       DISABLED_ResizesToMinWidthPercentage) {
   RunTestSequence(
       CreateTabsAndEnterSplitView(), ResizeWindow(500), SetMinWidth(60),
       CheckResize(
@@ -902,6 +909,9 @@ class MultiContentsViewOutlineHighlightUiTest : public MultiContentsViewUiTest {
     AddDescriptionPrefix(result, "CheckOutlineHighlightState()");
     return result;
   }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(MultiContentsViewOutlineHighlightUiTest,

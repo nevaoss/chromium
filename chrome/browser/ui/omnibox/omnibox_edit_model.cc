@@ -42,6 +42,7 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
 #include "components/bookmarks/browser/bookmark_model.h"
+#include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/dom_distiller/core/url_constants.h"
 #include "components/dom_distiller/core/url_utils.h"
 #include "components/grit/components_scaled_resources.h"
@@ -467,7 +468,11 @@ void OmniboxEditModel::AdjustTextForCopy(int sel_min,
       controller_->IsPopupOpen()
           ? std::optional<AutocompleteMatch>(CurrentMatch())
           : std::nullopt,
-      controller_->client(), url_from_text, write_url);
+      controller_->client()->GetNavigationEntryURL(),
+      controller_->client()->GetAutocompleteClassifier(),
+      controller_->client()->GetPageClassification(/*is_prefetch=*/false),
+      controller_->client()->GetContextualTasksInnerFrameURL(), url_from_text,
+      write_url);
 }
 
 bool OmniboxEditModel::ShouldShowCurrentPageIcon() const {
@@ -511,19 +516,6 @@ ui::ImageModel OmniboxEditModel::GetSuperGIcon(int image_size,
 #endif
 }
 
-bool OmniboxEditModel::ShouldShowAddContextButton() const {
-  const bool aim_button_pref =
-      GetPrefService()->GetBoolean(omnibox::kShowAiModeOmniboxButton);
-  const bool is_aim_popup_enabled = controller_->client()->IsAimPopupEnabled();
-  const bool is_variant_inline =
-      omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.Get() ==
-      omnibox::AddContextButtonVariant::kInline;
-  const bool is_popup_open = controller_->IsPopupOpen();
-
-  return aim_button_pref && is_aim_popup_enabled && is_variant_inline &&
-         is_popup_open;
-}
-
 ui::ImageModel OmniboxEditModel::GetAddContextIcon(int image_size) const {
   return ui::ImageModel::FromVectorIcon(kAddChromeRefreshIcon,
                                         ui::kColorSysPrimary, image_size);
@@ -557,8 +549,7 @@ gfx::Image OmniboxEditModel::GetAgentspaceIcon(bool dark_mode) const {
 #endif
 }
 
-void OmniboxEditModel::UpdateInput(bool has_selected_text,
-                                   bool prevent_inline_autocomplete) {
+void OmniboxEditModel::UpdateInput(bool prevent_inline_autocomplete) {
   bool changed_to_user_input_in_progress = SetInputInProgressNoNotify(true);
   if (!has_focus()) {
     if (changed_to_user_input_in_progress) {
@@ -583,7 +574,7 @@ void OmniboxEditModel::UpdateInput(bool has_selected_text,
     StartZeroSuggestRequest(/*user_clobbered_permanent_text=*/true);
   } else {
     // Otherwise run the normal prefix (as-you-type) autocomplete.
-    StartAutocomplete(has_selected_text, prevent_inline_autocomplete);
+    StartAutocomplete(prevent_inline_autocomplete);
   }
 
   if (changed_to_user_input_in_progress) {
@@ -628,8 +619,7 @@ void OmniboxEditModel::Revert() {
   controller_->client()->OnRevert();
 }
 
-void OmniboxEditModel::StartAutocomplete(bool has_selected_text,
-                                         bool prevent_inline_autocomplete) {
+void OmniboxEditModel::StartAutocomplete(bool prevent_inline_autocomplete) {
   const std::u16string input_text = MaybePrependKeyword(user_text_);
 
   // This method currently only works when there's a view, but ideally the
@@ -663,10 +653,9 @@ void OmniboxEditModel::StartAutocomplete(bool has_selected_text,
       controller_->client()->IsUsingFakeHttpsForHttpsUpgradeTesting());
   input_.set_current_url(controller_->client()->GetURL());
   input_.set_current_title(controller_->client()->GetTitle());
-  input_.set_prevent_inline_autocomplete(
-      prevent_inline_autocomplete || just_deleted_text_ ||
-      (has_selected_text && inline_autocompletion_.empty()) ||
-      paste_state_ != PasteState::kNone);
+  input_.set_prevent_inline_autocomplete(prevent_inline_autocomplete ||
+                                         just_deleted_text_ ||
+                                         paste_state_ != PasteState::kNone);
   input_.set_prefer_keyword(is_keyword_selected());
   input_.set_allow_exact_keyword_match(is_keyword_selected() ||
                                        allow_exact_keyword_match_);
@@ -727,12 +716,6 @@ void OmniboxEditModel::EnterKeywordMode(
   DCHECK(template_url);
   controller_->StopAutocomplete(/*clear_result=*/false);
 
-  if (keyword_ != template_url->keyword()) {
-    // Note, this is not the only place that keyword mode can be entered, but
-    // it would be better to make it so than to add extra notification calls
-    // elsewhere. At present, the method is only meaningfully used for exit.
-    controller_->client()->OnKeywordModeChanged(true, template_url->keyword());
-  }
   SetKeyword(template_url->keyword());
   SetKeywordPlaceholder(placeholder_text);
   SetIsKeywordHint(false);
@@ -773,12 +756,31 @@ void OmniboxEditModel::EnterKeywordModeForDefaultSearchProvider(
                    u"");
 }
 
+void OmniboxEditModel::RecordAiModeButtonClick() {
+  OmniboxEventProto::PageClassification classification =
+      GetPageClassification();
+  const char* surface = "WebOmnibox";
+  if (omnibox::IsNtpOmnibox(classification)) {
+    surface = "NtpOmnibox";
+  } else if (omnibox::IsSearchResultsPage(classification)) {
+    surface = "SrpOmnibox";
+  }
+  std::string action =
+      base::StrCat({"ContextualSearch.AiModeButtonClick.", surface});
+  base::RecordAction(base::UserMetricsAction(action.c_str()));
+  base::UmaHistogramBoolean(action, true);
+}
+
 void OmniboxEditModel::OpenAiMode(bool via_keyboard, bool via_context_menu) {
   std::u16string query_text =
       AutocompleteMatch::IsSearchType(current_match_.type)
           ? current_match_.contents
           : u"";
   RecordAiModeMetrics(query_text, /*activated=*/true, via_keyboard);
+
+  if (!via_context_menu) {
+    RecordAiModeButtonClick();
+  }
 
   bool force_navigation_to_aim =
       !via_context_menu &&
@@ -818,9 +820,11 @@ void OmniboxEditModel::OpenAiMode(bool via_keyboard, bool via_context_menu) {
 
   // Queries from the AI mode button will never have context.
   base::RecordAction(base::UserMetricsAction(
-      "ContextualSearch.UserAction.SubmitQuery.WithoutContext.Omnibox"));
-  base::UmaHistogramBoolean(
-      "ContextualSearch.UserAction.SubmitQuery.WithoutContext.Omnibox", true);
+      "ContextualSearch.UserAction.SubmitQueryV2.WithoutContext.Omnibox"));
+  base::UmaHistogramEnumeration(
+      "ContextualSearch.UserAction.SubmitQueryV2.Omnibox",
+      contextual_search::ContextualSearchContextState::kWithoutContext,
+      contextual_search::ContextualSearchContextState::kMaxValue);
 
   GURL ai_mode_url =
       GetUrlForAim(controller_->client()->GetTemplateURLService(),
@@ -875,6 +879,17 @@ void OmniboxEditModel::OpenSelection(OmniboxPopupSelection selection,
 
   const AutocompleteMatch& match =
       autocomplete_controller()->result().match_at(selection.line);
+
+  // Selecting a featured search match should enter keyword mode instead of
+  // navigating to the suggestion.
+  if (selection.state == OmniboxPopupSelection::NORMAL &&
+      AutocompleteMatch::IsFeaturedSearchType(match.type)) {
+    ClearKeyword();
+    SetPopupSelection(OmniboxPopupSelection(
+        selection.line, OmniboxPopupSelection::LineState::KEYWORD_MODE));
+    AcceptKeyword(metrics::OmniboxEventProto::TAB);
+    return;
+  }
 
   if (selection.state == OmniboxPopupSelection::FOCUSED_BUTTON_THUMBS_UP) {
     UpdateFeedbackOnMatch(selection.line, FeedbackType::kThumbsUp);
@@ -931,7 +946,7 @@ void OmniboxEditModel::AcceptKeyword(
     selection.state = OmniboxPopupSelection::KEYWORD_MODE;
     SetPopupSelection(selection);
   } else {
-    StartAutocomplete(false, true);
+    StartAutocomplete(true);
   }
 
   // When user text is empty (the user hasn't typed anything beyond the
@@ -1688,7 +1703,7 @@ std::u16string OmniboxEditModel::MaybeStripKeyword(
 
 std::u16string OmniboxEditModel::MaybePrependKeyword(
     const std::u16string& text) const {
-  return is_keyword_selected() ? (keyword_ + u' ' + text) : text;
+  return is_keyword_selected() ? keyword_ + u' ' + text : text;
 }
 
 void OmniboxEditModel::GetInfoForCurrentText(AutocompleteMatch* match,
@@ -2548,20 +2563,24 @@ void OmniboxEditModel::OnDefaultSearchExtensionDialogDone(
     const GURL& alternate_nav_url,
     const std::u16string& pasted_text,
     base::TimeTicks match_selection_timestamp,
-    bool proceed) {
+    OmniboxClient::ExtensionControlledDialogResult proceed) {
   // Reaching here mean that the default search engine was initially overridden
   // by an extension and that user either accepted or rejected the change.
   //
-  // When `proceed` is true, it means that the user accepted the change the
+  // When `proceed` is kAccept, it means that the user accepted the change the
   // search will continue as normal.
   //
-  // When `proceed` is false, it means that the user rejected the change.
+  // When `proceed` is kReject, it means that the user rejected the change.
   // Therefore, It is necessary to re-classify the input text using the current
   // (restored) settings and build the new navigation url.
-  if (proceed) {
+  //
+  // When `proceed` is kCancel, the dialog was closed without making a choice,
+  // and we don't do a search.
+  if (proceed == OmniboxClient::ExtensionControlledDialogResult::kAccept) {
     OpenMatch(selection, match, disposition, alternate_nav_url, pasted_text,
               match_selection_timestamp);
-  } else {
+  } else if (proceed ==
+             OmniboxClient::ExtensionControlledDialogResult::kReject) {
     std::u16string input_text =
         pasted_text.empty()
             ? (user_input_in_progress_ ? user_text_ : url_for_editing_)
@@ -2579,6 +2598,8 @@ void OmniboxEditModel::OnDefaultSearchExtensionDialogDone(
     // The omnibox is focused during the string classification, so we need to
     // focus the web contents after the string classification.
     controller_->client()->FocusWebContents();
+  } else {
+    CHECK_EQ(proceed, OmniboxClient::ExtensionControlledDialogResult::kCancel);
   }
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
@@ -2774,6 +2795,7 @@ void OmniboxEditModel::OpenMatch(OmniboxPopupSelection selection,
   log.elapsed_time_since_user_focused_omnibox =
       elapsed_time_since_user_focused_omnibox;
   log.ukm_source_id = controller_->client()->GetUKMSourceId();
+  log.input_state = autocomplete_controller()->input().input_state();
 
   if ((disposition == WindowOpenDisposition::CURRENT_TAB) &&
       controller_->client()->CurrentPageExists()) {

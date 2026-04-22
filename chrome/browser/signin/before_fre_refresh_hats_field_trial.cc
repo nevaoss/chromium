@@ -59,15 +59,15 @@ void CreateBeforeFreRefreshHatsFieldTrial(
     case version_info::Channel::UNKNOWN:
     case version_info::Channel::CANARY:
     case version_info::Channel::DEV:
+    case version_info::Channel::BETA:
       enabled_percent = 50;
       disabled_percent = 50;
       default_percent = 0;
       break;
-    case version_info::Channel::BETA:
     case version_info::Channel::STABLE:
-      enabled_percent = 0;
-      disabled_percent = 0;
-      default_percent = 100;
+      enabled_percent = 5;
+      disabled_percent = 5;
+      default_percent = 90;
       break;
   }
   CHECK_EQ(kTotalProbability,

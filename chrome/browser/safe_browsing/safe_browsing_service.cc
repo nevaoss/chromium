@@ -23,7 +23,6 @@
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
-#include "chrome/browser/browser_features.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/download/download_item_warning_data.h"
@@ -51,6 +50,7 @@
 #include "chrome/common/url_constants.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/content_settings/core/common/features.h"
+#include "components/content_settings/core/common/pref_names.h"
 #include "components/download/public/common/download_item.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_service.h"
@@ -195,6 +195,19 @@ void TriggerSecuritySettingsBundleToastIfNeeded(
         // BUILDFLAG(IS_MAC)
 }
 
+// Helper function to determine if any Javascript Optimizer settings are
+// managed by a policy.
+// TODO(crbug.com/491533053): Find a better place to define this helper
+// function.
+bool IsJavascriptOptimizerPolicyManaged(const PrefService& prefs) {
+  return prefs.IsManagedPreference(
+             prefs::kManagedDefaultJavaScriptOptimizerSetting) ||
+         prefs.IsManagedPreference(
+             prefs::kManagedJavaScriptOptimizerAllowedForSites) ||
+         prefs.IsManagedPreference(
+             prefs::kManagedJavaScriptOptimizerBlockedForSites);
+}
+
 // Migrate enhanced-safe-browsing user to enhanced-security bundle if needed.
 void MigrateUserToEnhancedSecurityBundleIfNeeded(
     base::WeakPtr<Profile> profile) {
@@ -202,7 +215,14 @@ void MigrateUserToEnhancedSecurityBundleIfNeeded(
     return;
   }
 
+  // Do not perform migration if the any bundled settings are managed by a
+  // policy.
   PrefService* prefs = profile->GetPrefs();
+  if (IsSafeBrowsingPolicyManaged(*prefs) ||
+      IsJavascriptOptimizerPolicyManaged(*prefs)) {
+    return;
+  }
+
   if (!base::FeatureList::IsEnabled(kMigrateEnhancedSbUserToEnhancedBundle)) {
     return;
   }
@@ -234,60 +254,60 @@ void MigrateUserToEnhancedSecurityBundleIfNeeded(
   // LINT.ThenChange(//chrome/browser/resources/settings/privacy_page/security/security_page_v2.ts,//chrome/browser/safe_browsing/metrics/bundled_settings_metrics_provider.cc)
 
   SetSecurityBundleSetting(*prefs, SecuritySettingsBundleSetting::ENHANCED);
+
+  // TODO(crbug.com/491533053): Fix the circular dependency for generated
+  // preferences.
+  if (site_protection::CanEnableBlockingJavascriptOptimizersForUnfamiliarSites(
+          profile.get()) &&
+      site_protection::ComputeDefaultJavascriptOptimizerSetting(
+          profile.get()) ==
+          content_settings::JavascriptOptimizerSetting::kAllowed) {
+    HostContentSettingsMapFactory::GetForProfile(profile.get())
+        ->SetDefaultContentSetting(ContentSettingsType::JAVASCRIPT_OPTIMIZER,
+                                   CONTENT_SETTING_ALLOW);
+    prefs->SetBoolean(prefs::kJavascriptOptimizerBlockedForUnfamiliarSites,
+                      true);
+  }
+
   prefs->SetInteger(
       prefs::kSecuritySettingsBundleMigrationToastState,
       static_cast<int>(SecuritySettingsBundleToastState::kPending));
 }
 
-// Performs a one-time migration for the
-// kMigrateToBlockV8OptimizerOnUnfamiliarSites. The feature enables automatic
-// JavaScript optimizer blocking on unfamiliar sites for users that have the
-// setting available in the UI, have Safe Browsing enabled, and have not
-// explicitly disabled JavaScript optimizers for all sites.
+// Performs a one-time cleanup for the legacy,
+// kMigrateToBlockV8OptimizerOnUnfamiliarSites migration.
+//
+// Previously, the migration logic would explicitly set the user's
+// js-opt preference to
+// `JavascriptOptimizerSetting::kBlockedForUnfamiliarSites`. Now, the
+// setting is dynamically determined in
+// `site_protection::ComputeDefaultJavascriptOptimizerSetting`.
+//
+// This function clears the preference backing
+// kBlockedForUnfamiliarSites for users who were migrated by the legacy
+// functionality.
 void MigrateUserToAutomaticJavaScriptBlocking(base::WeakPtr<Profile> profile) {
   if (!profile) {
     return;
   }
 
-  const content_settings::JavascriptOptimizerSetting
-      current_js_optimizer_setting =
-          site_protection::ComputeDefaultJavascriptOptimizerSetting(
-              profile.get());
-
-  // Profiles that have JS optimizers blocked for all sites are not migrated.
-  if (current_js_optimizer_setting ==
-      content_settings::JavascriptOptimizerSetting::kBlocked) {
-    return;
-  }
-
-  if (!site_protection::CanEnableBlockingJavascriptOptimizersForUnfamiliarSites(
-          profile.get())) {
-    return;
-  }
-
   PrefService* pref_service = profile->GetPrefs();
-  const bool opted_self_out_of_feature =
-      pref_service->GetBoolean(
-          prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites) &&
-      current_js_optimizer_setting !=
-          content_settings::JavascriptOptimizerSetting::
-              kBlockedForUnfamiliarSites;
 
-  if (opted_self_out_of_feature ||
-      !base::FeatureList::IsEnabled(
-          kMigrateToBlockV8OptimizerOnUnfamiliarSites)) {
-    // opted_self_out_of_feature must be checked before feature state to ensure
-    // that only profiles that have kBlockedForUnfamiliarSites selected are
-    // included in the "Enabled" arm.
-    return;
+  if (pref_service->GetBoolean(
+          prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites)) {
+    if (pref_service->GetBoolean(
+            prefs::kJavascriptOptimizerBlockedForUnfamiliarSites)) {
+      // We can't differentiate whether the preference was set by the legacy
+      // migration or by the user themselves without additional state, so
+      // assume it was the migration and clear it to allow the new
+      // declarative implementation to take effect.
+      pref_service->ClearPref(
+          prefs::kJavascriptOptimizerBlockedForUnfamiliarSites);
+    }
+    // Clear the migration marker so this cleanup runs only once.
+    pref_service->ClearPref(
+        prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites);
   }
-
-  // Set pref to prevent future migrations.
-  pref_service->SetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites, true);
-
-  pref_service->SetBoolean(prefs::kJavascriptOptimizerBlockedForUnfamiliarSites,
-                           true);
 }
 }  // namespace
 

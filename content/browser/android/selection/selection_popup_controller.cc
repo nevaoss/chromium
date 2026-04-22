@@ -86,13 +86,14 @@ static int64_t JNI_SelectionPopupControllerImpl_Init(
 
 SelectionPopupController* SelectionPopupController::FromWebContents(
     WebContents& web_contents) {
+  ScopedJavaLocalRef<jobject> jweb_contents = web_contents.GetJavaWebContents();
   JNIEnv* env = AttachCurrentThread();
   // Call the Java-side fromWebContents method. This gets the Java
   // SelectionPopupController if it already exists. Otherwise, this will
   // instantiate the Java SelectionPopupController and store it in the web
   // contents.
   ScopedJavaLocalRef<jobject> jselection_popup_controller =
-      Java_SelectionPopupControllerImpl_fromWebContents(env, &web_contents);
+      Java_SelectionPopupControllerImpl_fromWebContents(env, jweb_contents);
   // Then get the native pointer from the newly-created
   // SelectionPopupController. The Java SelectionPopupController owns the C++
   // SelectionPopupController.
@@ -110,27 +111,25 @@ SelectionPopupController::~SelectionPopupController() {
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> obj = GetJavaObject(env);
   if (!obj.is_null()) {
-    Java_SelectionPopupControllerImpl_nativeSelectionPopupControllerDestroyed(
-        env, obj);
+    Java_SelectionPopupControllerImpl_destroyFromNative(env, obj);
   }
 }
 
-ScopedJavaLocalRef<jobject> SelectionPopupController::GetContext(
-    JNIEnv* env) const {
+base::android::ScopedJavaLocalRef<jobject>
+SelectionPopupController::GetJavaObject(JNIEnv* env) const {
+  return Java_SelectionPopupControllerImpl_get(
+      env, reinterpret_cast<intptr_t>(this));
+}
+
+ScopedJavaLocalRef<jobject> SelectionPopupController::GetContext() const {
+  JNIEnv* env = AttachCurrentThread();
+
   ScopedJavaLocalRef<jobject> obj = GetJavaObject(env);
   if (obj.is_null()) {
     return nullptr;
   }
 
   return Java_SelectionPopupControllerImpl_getContext(env, obj);
-}
-
-ScopedJavaLocalRef<jobject> SelectionPopupController::GetJavaObject(
-    JNIEnv* env) const {
-  WebContents* contents = web_contents();
-  CHECK(contents);
-  return Java_SelectionPopupControllerImpl_fromWebContentsNoCreate(env,
-                                                                   contents);
 }
 
 void SelectionPopupController::SetTextHandlesHiddenForDropdownMenu(
@@ -175,8 +174,7 @@ std::unique_ptr<ui::TouchHandleDrawable>
 SelectionPopupController::CreateTouchHandleDrawable(
     gfx::NativeView parent_native_view,
     cc::slim::Layer* parent_layer) {
-  JNIEnv* env = AttachCurrentThread();
-  ScopedJavaLocalRef<jobject> activityContext = GetContext(env);
+  ScopedJavaLocalRef<jobject> activityContext = GetContext();
   // If activityContext is null then Application context is used instead on
   // the java side in CompositedTouchHandleDrawable.
   return std::make_unique<CompositedTouchHandleDrawable>(

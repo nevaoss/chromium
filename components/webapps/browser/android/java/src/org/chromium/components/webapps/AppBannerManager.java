@@ -12,6 +12,7 @@ import androidx.annotation.VisibleForTesting;
 
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
+import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
 import org.chromium.base.ContextUtils;
@@ -60,8 +61,9 @@ public class AppBannerManager {
 
     // Using ScopedJavaGlobalRef in the owning C++ object to keep the Java object alive consumes an
     // entry per instance in the finite global ref table. This scales poorly with a large number of
-    // WebContents. As a workaround, the C++ owner uses a JavaObjectWeakGlobalRef and an entry is
-    // kept in the a static map of the native pointer to Java objects to prevent garbage collection.
+    // WebContents. As a workaround, we keep a static map of the native pointer to the Java object.
+    // This allows native code to route static JNI calls to the correct instance using the native
+    // pointer and retrieve values from Java without holding a global ref in C++.
     private static final Map<Long, AppBannerManager> sAppBannerManagerMap = new HashMap<>();
 
     /** Retrieves information about a given package. */
@@ -71,8 +73,8 @@ public class AppBannerManager {
     private long mNativePointer;
 
     /**
-     * The AppData associated with last app details update. Retained as a ref so C++ can hold a weak
-     * reference to it.
+     * The AppData associated with the last app details update. Retained here so it can be retrieved
+     * by C++ when needed.
      */
     @SuppressWarnings("unused")
     private @Nullable AppData mNativeAppData;
@@ -126,8 +128,7 @@ public class AppBannerManager {
      */
     private AppBannerManager(long nativePointer) {
         mNativePointer = nativePointer;
-        var oldValue = sAppBannerManagerMap.put(nativePointer, this);
-        assert oldValue == null;
+        sAppBannerManagerMap.put(nativePointer, this);
     }
 
     @CalledByNative
@@ -136,10 +137,31 @@ public class AppBannerManager {
     }
 
     @CalledByNative
-    private void destroy() {
-        var removedValue = sAppBannerManagerMap.remove(mNativePointer);
-        assert removedValue == this;
-        mNativePointer = 0;
+    private static AppBannerManager getJavaBannerManager(long nativePointer) {
+        AppBannerManager manager = sAppBannerManagerMap.get(nativePointer);
+        assert manager != null;
+        return manager;
+    }
+
+    @CalledByNative
+    private static @Nullable AppData getNativeAppData(long nativePointer) {
+        AppBannerManager manager = sAppBannerManagerMap.get(nativePointer);
+        assert manager != null;
+        return manager.mNativeAppData;
+    }
+
+    @CalledByNative
+    private static void clearNativeAppData(long nativePointer) {
+        AppBannerManager manager = sAppBannerManagerMap.get(nativePointer);
+        assert manager != null;
+        manager.mNativeAppData = null;
+    }
+
+    @CalledByNative
+    private static void destroy(long nativePointer) {
+        AppBannerManager manager = sAppBannerManagerMap.remove(nativePointer);
+        assert manager != null;
+        manager.mNativePointer = 0;
     }
 
     /**
@@ -149,19 +171,32 @@ public class AppBannerManager {
      * @param packageName Name of the package that is being advertised.
      */
     @CalledByNative
-    private void fetchAppDetails(
-            int requestId, String url, String packageName, String referrer, int iconSizeInDp) {
+    private static void fetchAppDetails(
+            long nativePointer,
+            int requestId,
+            @JniType("std::string") String url,
+            @JniType("std::string") String packageName,
+            @JniType("std::string") String referrer,
+            int iconSizeInDp) {
         if (sAppDetailsDelegate == null) return;
+
+        AppBannerManager manager = sAppBannerManagerMap.get(nativePointer);
+        assert manager != null;
 
         Context context = ContextUtils.getApplicationContext();
         int iconSizeInPx =
                 Math.round(context.getResources().getDisplayMetrics().density * iconSizeInDp);
         sAppDetailsDelegate.getAppDetailsAsynchronously(
-                createAppDetailsObserver(requestId), url, packageName, referrer, iconSizeInPx);
+                manager.createAppDetailsObserver(requestId),
+                url,
+                packageName,
+                referrer,
+                iconSizeInPx);
     }
 
     @CalledByNative
-    private static boolean isRelatedNonWebAppInstalled(String packageName) {
+    private static boolean isRelatedNonWebAppInstalled(
+            @JniType("std::u16string") String packageName) {
         return PackageUtils.isPackageInstalled(packageName);
     }
 
@@ -186,7 +221,6 @@ public class AppBannerManager {
                         .onAppDetailsRetrieved(
                                 mNativePointer,
                                 requestId,
-                                data,
                                 data.title(),
                                 data.packageName(),
                                 data.imageUrl());
@@ -198,7 +232,8 @@ public class AppBannerManager {
      * Returns the manifest id if the current page is installable, otherwise returns the empty
      * string.
      */
-    public static @Nullable String maybeGetManifestId(WebContents webContents) {
+    public static @Nullable String maybeGetManifestId(
+            @JniType("content::WebContents*") WebContents webContents) {
         AppBannerManager manager =
                 webContents != null ? AppBannerManager.forWebContents(webContents) : null;
         if (manager != null) {
@@ -208,7 +243,8 @@ public class AppBannerManager {
     }
 
     /** Returns true if the web app can be promoted into an installable application. */
-    public static boolean isProbablyPromotable(WebContents webContents) {
+    public static boolean isProbablyPromotable(
+            @JniType("content::WebContents*") WebContents webContents) {
         return AppBannerManagerJni.get().isProbablyPromotable(webContents);
     }
 
@@ -248,37 +284,42 @@ public class AppBannerManager {
     }
 
     /** Returns the AppBannerManager object. This is owned by the C++ banner manager. */
-    public static AppBannerManager forWebContents(WebContents contents) {
+    public static AppBannerManager forWebContents(
+            @JniType("content::WebContents*") WebContents contents) {
         ThreadUtils.assertOnUiThread();
         return AppBannerManagerJni.get().getJavaBannerManagerForWebContents(contents);
     }
 
-    public String getManifestId(WebContents contents) {
+    public String getManifestId(@JniType("content::WebContents*") WebContents contents) {
         return AppBannerManagerJni.get().getInstallableWebAppManifestId(contents);
     }
 
     /** Called every time the web contents updates its installability status. */
     @CalledByNative
-    private void onInstallabilityUpdated() {
+    private static void onInstallabilityUpdated(long nativePointer) {
+        AppBannerManager manager = sAppBannerManagerMap.get(nativePointer);
+        assert manager != null;
         for (Observer observer : sObservers) {
-            observer.onInstallabilityUpdated(this);
+            observer.onInstallabilityUpdated(manager);
         }
     }
 
     @NativeMethods
     @VisibleForTesting
     public interface Natives {
-        AppBannerManager getJavaBannerManagerForWebContents(WebContents webContents);
+        AppBannerManager getJavaBannerManagerForWebContents(
+                @JniType("content::WebContents*") WebContents webContents);
 
-        String getInstallableWebAppManifestId(WebContents webContents);
+        @JniType("std::string")
+        String getInstallableWebAppManifestId(
+                @JniType("content::WebContents*") WebContents webContents);
 
         void onAppDetailsRetrieved(
                 long nativeAppBannerManagerAndroid,
                 int requestId,
-                AppData data,
-                @Nullable String title,
-                String packageName,
-                @Nullable String imageUrl);
+                @JniType("std::u16string") @Nullable String title,
+                @JniType("std::string") String packageName,
+                @JniType("std::string") @Nullable String imageUrl);
 
         // Testing methods.
         void ignoreChromeChannelForTesting();
@@ -295,6 +336,6 @@ public class AppBannerManager {
 
         void setOverrideSegmentationResultForTesting(boolean show);
 
-        boolean isProbablyPromotable(WebContents contents);
+        boolean isProbablyPromotable(@JniType("content::WebContents*") WebContents contents);
     }
 }

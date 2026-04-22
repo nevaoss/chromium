@@ -5,9 +5,10 @@
 import 'chrome://settings/settings.js';
 
 import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
-import {AiPageActions, type CrCollapseElement} from 'chrome://settings/lazy_load.js';
+import {AiPageActions} from 'chrome://settings/lazy_load.js';
+import type {CrCollapseElement} from 'chrome://settings/lazy_load.js';
+import {CrSettingsPrefs, GlicBrowserProxyImpl, loadTimeData, MetricsBrowserProxyImpl, OpenWindowProxyImpl, resetRouterForTesting, Router, routes, SettingsGlicPageFeaturePrefName as PrefName} from 'chrome://settings/settings.js';
 import type {SettingsGlicSubpageElement, SettingsPrefsElement, SettingsToggleButtonElement} from 'chrome://settings/settings.js';
-import {CrSettingsPrefs, GlicBrowserProxyImpl, loadTimeData, MetricsBrowserProxyImpl, OpenWindowProxyImpl, resetRouterForTesting, SettingsGlicPageFeaturePrefName as PrefName} from 'chrome://settings/settings.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 import {TestOpenWindowProxy} from 'chrome://webui-test/test_open_window_proxy.js';
@@ -27,12 +28,15 @@ suite('GlicSubpage', function() {
   let openWindowProxy: TestOpenWindowProxy;
   let metricsBrowserProxy: TestMetricsBrowserProxy;
 
-  async function createGlicPage(initialShortcut: string) {
+  async function createGlicPage(
+      initialShortcut: string, webActuationVisible: boolean = false) {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     metricsBrowserProxy = new TestMetricsBrowserProxy();
     MetricsBrowserProxyImpl.setInstance(metricsBrowserProxy);
 
     glicBrowserProxy = new TestGlicBrowserProxy();
+    glicBrowserProxy.setWebActuationToggleVisibilityResponse(
+        webActuationVisible);
     glicBrowserProxy.setGlicShortcutResponse(initialShortcut);
     GlicBrowserProxyImpl.setInstance(glicBrowserProxy);
 
@@ -43,6 +47,12 @@ suite('GlicSubpage', function() {
     page.prefs = settingsPrefs.prefs;
     document.body.appendChild(page);
 
+    // Wait for the component to initialize and render completely:
+    // 1. First flush: renders the initial DOM template.
+    // 2. setTimeout: allows async browser proxy promises to resolve.
+    // 3. Second flush: renders any UI updates triggered by those promises.
+    await flushTasks();
+    await new Promise(resolve => setTimeout(resolve, 0));
     await flushTasks();
     disableAnimationForCrCollapseElements();
   }
@@ -96,6 +106,8 @@ suite('GlicSubpage', function() {
       showAiPage: true,
       showGlicSettings: true,
       glicDisallowedByAdmin: false,
+      glicSelectionFeatureEnabled: true,
+
     });
     resetRouterForTesting();
     return CrSettingsPrefs.initialized;
@@ -145,29 +157,34 @@ suite('GlicSubpage', function() {
       // launcher is disabled and shown when the launcher is enabled.
       test('KeyboardShortcutVisibility' + clickTypeName, async () => {
         const mainShortcutSettingId = 'mainShortcutSetting';
+        const selectionShortcutSettingId = 'selectionShortcutSetting';
 
         // The pref starts off disabled, the keyboard shortcut row should be
         // hidden.
         page.setPrefValue(PrefName.LAUNCHER_ENABLED, false);
         await flushTasks();
         assertFalse(isVisible($(mainShortcutSettingId)));
+        assertFalse(isVisible($(selectionShortcutSettingId)));
 
         // Enable using the launcher toggle, the row should show.
         await clickType();
         assertTrue(page.getPref(PrefName.LAUNCHER_ENABLED).value);
         await flushTasks();
         assertTrue(isVisible($(mainShortcutSettingId)));
+        assertTrue(isVisible($(selectionShortcutSettingId)));
 
         // Disable using the launcher toggle, the row should hide.
         await clickType();
         assertFalse(page.getPref(PrefName.LAUNCHER_ENABLED).value);
         await flushTasks();
         assertFalse(isVisible($(mainShortcutSettingId)));
+        assertFalse(isVisible($(selectionShortcutSettingId)));
 
         // Enable via pref, the row should show.
         page.setPrefValue(PrefName.LAUNCHER_ENABLED, true);
         await flushTasks();
         assertTrue(isVisible($(mainShortcutSettingId)));
+        assertTrue(isVisible($(selectionShortcutSettingId)));
       });
     }
 
@@ -318,10 +335,13 @@ suite('GlicSubpage', function() {
       page.setPrefValue(PrefName.TABSTRIP_BUTTON_ENABLED, true);
 
       const shortcutInputSelector = 'mainShortcutSetting .shortcut-input';
+      const selectionShortcutInputSelector =
+          'selectionShortcutSetting .shortcut-input';
 
       // Page starts off with policy enabled. The shortcut editor, info card
       // expand, and activity button are all present.
       assertTrue(isVisible($(shortcutInputSelector)));
+      assertTrue(isVisible($(selectionShortcutInputSelector)));
       assertTrue(!!$('activityButton'));
       assertTrue(!!$('tabAccessExpandButton'));
       assertTrue(!!$('tabAccessInfoCollapse'));
@@ -337,6 +357,7 @@ suite('GlicSubpage', function() {
       // and activity button should be removed. Toggles should all show "off"
       // and be disabled.
       assertFalse(!!$(shortcutInputSelector));
+      assertFalse(!!$(selectionShortcutInputSelector));
       assertFalse(!!$('activityButton'));
       assertFalse(!!$('tabAccessExpandButton'));
       assertFalse(!!$('tabAccessInfoCollapse'));
@@ -349,6 +370,7 @@ suite('GlicSubpage', function() {
       await setDisallowedByAdminAndSimulateUpdate(false);
 
       assertTrue(isVisible($(shortcutInputSelector)));
+      assertTrue(isVisible($(selectionShortcutInputSelector)));
       assertTrue(!!$('activityButton'));
       assertTrue(!!$('tabAccessExpandButton'));
       assertTrue(!!$('tabAccessInfoCollapse'));
@@ -477,6 +499,42 @@ suite('GlicSubpage', function() {
       const learnMoreElement = $('shortcutsLearnMoreLabel');
       assertFalse(isVisible(learnMoreElement));
     });
+
+    test('ActorLoginPermissionsButtonVisibleAndNavigates', async () => {
+      loadTimeData.overrideValues({
+        actorLoginFederatedLoginSupportEnabled: true,
+      });
+      resetRouterForTesting();
+      document.body.innerHTML = window.trustedTypes!.emptyHTML;
+      page = document.createElement('settings-glic-subpage');
+      page.prefs = settingsPrefs.prefs;
+      document.body.appendChild(page);
+      await flushTasks();
+
+      const button = page.shadowRoot!.querySelector<HTMLElement>(
+          '#actorLoginPermissionsButton');
+      assertTrue(!!button);
+      assertTrue(isVisible(button));
+
+      button.click();
+      assertEquals(routes.GEMINI_LOGIN, Router.getInstance().getCurrentRoute());
+    });
+
+    test('ActorLoginPermissionsButtonHidden', async () => {
+      loadTimeData.overrideValues({
+        actorLoginFederatedLoginSupportEnabled: false,
+      });
+      resetRouterForTesting();
+      document.body.innerHTML = window.trustedTypes!.emptyHTML;
+      page = document.createElement('settings-glic-subpage');
+      page.prefs = settingsPrefs.prefs;
+      document.body.appendChild(page);
+      await flushTasks();
+
+      const button = page.shadowRoot!.querySelector<HTMLElement>(
+          '#actorLoginPermissionsButton');
+      assertFalse(isVisible(button));
+    });
   });
 
   suite('LearnMoreEnabled', () => {
@@ -487,7 +545,7 @@ suite('GlicSubpage', function() {
 
       const learnMoreElement = $<HTMLAnchorElement>('shortcutsLearnMoreLabel');
       assertTrue(!!learnMoreElement);
-      assertEquals('https://google.com/', learnMoreElement.href);
+      assertEquals('https://google.com/?hl=en-US', learnMoreElement.href);
 
       learnMoreElement.click();
       await assertFeatureInteractionMetrics(
@@ -501,7 +559,7 @@ suite('GlicSubpage', function() {
           page.shadowRoot!.querySelector<HTMLElement>('#launcherToggle')!
               .shadowRoot!.querySelector<HTMLAnchorElement>('#learn-more');
       assertTrue(!!learnMoreElement);
-      assertEquals(learnMoreElement.href, 'https://google.com/');
+      assertEquals('https://google.com/?hl=en-US', learnMoreElement.href);
 
       learnMoreElement.click();
       await assertFeatureInteractionMetrics(
@@ -515,7 +573,7 @@ suite('GlicSubpage', function() {
           page.shadowRoot!.querySelector<HTMLElement>('#geolocationToggle')!
               .shadowRoot!.querySelector<HTMLAnchorElement>('#learn-more');
       assertTrue(!!learnMoreElement);
-      assertEquals(learnMoreElement.href, 'https://google.com/');
+      assertEquals('https://google.com/?hl=en-US', learnMoreElement.href);
 
       learnMoreElement.click();
       await assertFeatureInteractionMetrics(
@@ -701,6 +759,11 @@ suite('GlicSubpage', function() {
   });
 
   suite('WebActuationSettingFeatureEnabled', () => {
+    setup(async () => {
+      await createGlicPage(
+          /*initialShortcut=*/ '⌃A', /*webActuationVisible=*/ true);
+    });
+
     test('WebActuationSettingFeatureEnabled', () => {
       const webActuationToggle =
           $<SettingsToggleButtonElement>('webActuationToggle')!;
@@ -775,6 +838,28 @@ suite('GlicSubpage', function() {
       assertFalse(infoCard.opened);
     });
   });
+  suite('ExperimentalTriggeringToggle', () => {
+    test('ToggleVisibleWhenEnabled', async () => {
+      document.body.innerHTML = window.trustedTypes!.emptyHTML;
+      loadTimeData.overrideValues({
+        showGlicExperimentalTriggering: true,
+      });
+      await createGlicPage('⌃A');
+      const toggle = $<SettingsToggleButtonElement>('glicExperimentalTriggeringToggle');
+      assertTrue(!!toggle);
+      assertTrue(isVisible(toggle));
+    });
+
+    test('ToggleHiddenWhenDisabled', async () => {
+      document.body.innerHTML = window.trustedTypes!.emptyHTML;
+      loadTimeData.overrideValues({
+        showGlicExperimentalTriggering: false,
+      });
+      await createGlicPage('⌃A');
+      const toggle = $<SettingsToggleButtonElement>('glicExperimentalTriggeringToggle');
+      assertFalse(isVisible(toggle));
+    });
+  });
 
   suite('MicrophoneToggleVisible', () => {
     test('assert toggle is visible', () => {
@@ -807,6 +892,11 @@ suite('GlicSubpage', function() {
   });
 
   suite('WebActuationToggleVisible', () => {
+    setup(async () => {
+      await createGlicPage(
+          /*initialShortcut=*/ '⌃A', /*webActuationVisible=*/ true);
+    });
+
     test('assert toggle is visible', () => {
       const webActuationToggle =
           $<SettingsToggleButtonElement>('webActuationToggle')!;
@@ -823,6 +913,11 @@ suite('GlicSubpage', function() {
   });
 
   suite('WebActuationToggleVisibleLocked', () => {
+    setup(async () => {
+      await createGlicPage(
+          /*initialShortcut=*/ '⌃A', /*webActuationVisible=*/ true);
+    });
+
     test('assert toggle is enterprise enforced', () => {
       const webActuationToggle =
           page.shadowRoot!.querySelector<SettingsToggleButtonElement>(
@@ -837,7 +932,30 @@ suite('GlicSubpage', function() {
     });
   });
 
+  suite('SimulateWebActuationToggleVisibilityChanged', () => {
+    setup(async () => {
+      await createGlicPage(
+          /*initialShortcut=*/ '⌃A', /*webActuationVisible=*/ false);
+    });
+
+    test('ToggleVisibilityChangesFromEvent', async () => {
+      let webActuationToggle =
+          $<SettingsToggleButtonElement>('webActuationToggle')!;
+      assertFalse(isVisible(webActuationToggle));
+      webUIListenerCallback(
+          'glic-web-actuation-toggle-visibility-changed', true);
+      await flushTasks();
+      webActuationToggle =
+          $<SettingsToggleButtonElement>('webActuationToggle')!;
+      assertTrue(isVisible(webActuationToggle));
+    });
+  });
+
   suite('SimulateCanActOnWebOnAndOff', () => {
+    setup(async () => {
+      await createGlicPage(
+          /*initialShortcut=*/ '⌃A', /*webActuationVisible=*/ true);
+    });
     function waitOneTick() {
       return new Promise(resolve => setTimeout(resolve, 0));
     }
@@ -949,7 +1067,8 @@ suite('GlicSubpage', function() {
           tabAccessToggle.subLabel);
       const learnMoreLabel =
           $<HTMLAnchorElement>('shortcutTabAccessConsider1LearnMoreLabel')!;
-      assertEquals('https://example.com/data-protection', learnMoreLabel.href);
+      assertEquals(
+          'https://example.com/data-protection?hl=en-US', learnMoreLabel.href);
     });
 
     test('DataProtectionStringsNotShownForIneligibleUser', () => {
@@ -973,7 +1092,8 @@ suite('GlicSubpage', function() {
           page.i18n('glicTabAccessToggleSublabel'), tabAccessToggle.subLabel);
       const learnMoreLabel =
           $<HTMLAnchorElement>('shortcutTabAccessConsider1LearnMoreLabel')!;
-      assertEquals('https://example.com/tab-access', learnMoreLabel.href);
+      assertEquals(
+          'https://example.com/tab-access?hl=en-US', learnMoreLabel.href);
     });
   });
 
@@ -999,7 +1119,8 @@ suite('GlicSubpage', function() {
           page.i18n('glicTabAccessToggleSublabel'), tabAccessToggle.subLabel);
       const learnMoreLabel =
           $<HTMLAnchorElement>('shortcutTabAccessConsider1LearnMoreLabel')!;
-      assertEquals('https://example.com/tab-access', learnMoreLabel.href);
+      assertEquals(
+          'https://example.com/tab-access?hl=en-US', learnMoreLabel.href);
     });
   });
 });

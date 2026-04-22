@@ -11,8 +11,6 @@ import android.view.ViewGroup;
 import androidx.annotation.StyleRes;
 
 import org.chromium.build.annotations.NullMarked;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.util.BrowserUiUtils.ModuleTypeOnStartAndNtp;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -23,7 +21,6 @@ import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 public class ComposeplateCoordinator {
     private final PropertyModel mModel;
     private final ComposeplateView mView;
-    private final boolean mHideIncognitoButton;
     private final int mComposeplateViewMaxiumWidth;
 
     /**
@@ -36,31 +33,11 @@ public class ComposeplateCoordinator {
         mModel = new PropertyModel(ComposeplateProperties.ALL_KEYS);
         mView = parentView.findViewById(R.id.composeplate_view);
         PropertyModelChangeProcessor.create(mModel, mView, ComposeplateViewBinder::bind);
-        mHideIncognitoButton =
-                ChromeFeatureList.sAndroidComposeplateHideIncognitoButton.getValue()
-                        || !IncognitoUtils.isIncognitoModeEnabled(profile);
 
         mComposeplateViewMaxiumWidth =
                 parentView
                         .getResources()
                         .getDimensionPixelSize(R.dimen.composeplate_view_max_width);
-    }
-
-    /**
-     * Sets the visibility of the composeplate for V1 variations.
-     *
-     * @param visible Whether the composeplate should be visible.
-     * @param isCurrentPage whether the New Tab Page is the current page displayed to the user.
-     */
-    public void setVisibilityV1(boolean visible, boolean isCurrentPage) {
-        if (isCurrentPage && visible != mModel.get(ComposeplateProperties.IS_VISIBLE)) {
-            ComposeplateMetricsUtils.recordComposeplateImpression(visible);
-        }
-
-        mModel.set(ComposeplateProperties.IS_VISIBLE, visible);
-        mModel.set(
-                ComposeplateProperties.IS_INCOGNITO_BUTTON_VISIBLE,
-                visible && !mHideIncognitoButton);
     }
 
     /**
@@ -75,31 +52,6 @@ public class ComposeplateCoordinator {
         }
 
         mModel.set(ComposeplateProperties.IS_VISIBLE, visible);
-    }
-
-    /**
-     * Sets the click listener for the voice search button.
-     *
-     * @param voiceSearchClickListener The click listener for the voice search button.
-     */
-    public void setVoiceSearchClickListener(View.OnClickListener voiceSearchClickListener) {
-        mModel.set(
-                ComposeplateProperties.VOICE_SEARCH_CLICK_LISTENER,
-                createEnhancedClickListener(
-                        voiceSearchClickListener,
-                        ModuleTypeOnStartAndNtp.COMPOSEPLATE_VIEW_VOICE_SEARCH_BUTTON));
-    }
-
-    /**
-     * Sets the click listener for the lens button.
-     *
-     * @param lensClickListener The click listener for the lens button.
-     */
-    public void setLensClickListener(View.OnClickListener lensClickListener) {
-        mModel.set(
-                ComposeplateProperties.LENS_CLICK_LISTENER,
-                createEnhancedClickListener(
-                        lensClickListener, ModuleTypeOnStartAndNtp.COMPOSEPLATE_VIEW_LENS_BUTTON));
     }
 
     /**
@@ -170,14 +122,12 @@ public class ComposeplateCoordinator {
     }
 
     public void destroy() {
-        mModel.set(ComposeplateProperties.VOICE_SEARCH_CLICK_LISTENER, null);
-        mModel.set(ComposeplateProperties.LENS_CLICK_LISTENER, null);
         mModel.set(ComposeplateProperties.INCOGNITO_CLICK_LISTENER, null);
         mModel.set(ComposeplateProperties.COMPOSEPLATE_BUTTON_CLICK_LISTENER, null);
     }
 
-    public void applyWhiteBackgroundWithShadow(boolean apply) {
-        mModel.set(ComposeplateProperties.APPLY_WHITE_BACKGROUND_WITH_SHADOW, apply);
+    public void applyWhiteBackground(boolean apply) {
+        mModel.set(ComposeplateProperties.APPLY_WHITE_BACKGROUND, apply);
 
         ColorStateList colorStateList =
                 ComposeplateUtils.getSearchBoxIconColorTint(mView.getContext(), apply);

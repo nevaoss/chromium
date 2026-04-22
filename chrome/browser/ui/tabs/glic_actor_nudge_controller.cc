@@ -16,6 +16,8 @@
 #include "chrome/browser/ui/tabs/glic_actor_task_icon_manager.h"
 #include "chrome/browser/ui/tabs/glic_actor_task_icon_manager_factory.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_action_container.h"
+#include "chrome/browser/ui/views/toolbar/toolbar_glic_actor_task_icon.h"
+#include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/common/buildflags.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/grit/generated_resources.h"
@@ -25,31 +27,32 @@ namespace tabs {
 using actor::ui::ActorTaskNudgeState;
 using glic::GlicInstance;
 using glic::GlicKeyedService;
-using glic::GlicWindowController;
 using glic::Host;
 
 DEFINE_USER_DATA(GlicActorNudgeController);
 GlicActorNudgeController::GlicActorNudgeController(
     BrowserWindowInterface* browser,
-    TabStripActionContainer* tab_strip_action_container)
+    TabStripActionContainer* tab_strip_action_container,
+    ToolbarView* toolbar_view)
     : profile_(browser->GetProfile()),
       browser_(browser),
       tab_strip_action_container_(tab_strip_action_container),
+      toolbar_view_(toolbar_view),
       scoped_data_holder_(browser->GetUnownedUserDataHost(), *this) {
   if (base::FeatureList::IsEnabled(features::kGlicActorUi)) {
     RegisterActorNudgeStateCallback();
   }
 
-    ActorTaskListBubbleController* bubble_controller =
-        ActorTaskListBubbleController::From(browser_);
-    bubble_visibility_change_subscription_.push_back(
-        bubble_controller->RegisterBubbleShownCallback(base::BindRepeating(
-            &GlicActorNudgeController::OnBubbleVisibilityChange,
-            weak_ptr_factory_.GetWeakPtr(), /*is_bubble_open=*/true)));
-    bubble_visibility_change_subscription_.push_back(
-        bubble_controller->RegisterBubbleDestroyedCallback(base::BindRepeating(
-            &GlicActorNudgeController::OnBubbleVisibilityChange,
-            weak_ptr_factory_.GetWeakPtr(), /*is_bubble_open=*/false)));
+  ActorTaskListBubbleController* bubble_controller =
+      ActorTaskListBubbleController::From(browser_);
+  bubble_visibility_change_subscription_.push_back(
+      bubble_controller->RegisterBubbleShownCallback(base::BindRepeating(
+          &GlicActorNudgeController::OnBubbleVisibilityChange,
+          weak_ptr_factory_.GetWeakPtr(), /*is_bubble_open=*/true)));
+  bubble_visibility_change_subscription_.push_back(
+      bubble_controller->RegisterBubbleDestroyedCallback(base::BindRepeating(
+          &GlicActorNudgeController::OnBubbleVisibilityChange,
+          weak_ptr_factory_.GetWeakPtr(), /*is_bubble_open=*/false)));
 }
 
 GlicActorNudgeController::~GlicActorNudgeController() = default;
@@ -69,7 +72,12 @@ void GlicActorNudgeController::OnStateUpdate(
       GlicActorTaskIconManagerFactory::GetForProfile(profile_);
   DCHECK(manager);
   if (manager->actor_task_list_bubble_rows().empty()) {
-    tab_strip_action_container_->HideGlicActorTaskIcon();
+    if (tab_strip_action_container_->IsGlicAdded()) {
+      tab_strip_action_container_->HideGlicActorTaskIcon();
+    }
+    if (toolbar_view_->IsGlicAdded()) {
+      toolbar_view_->HideGlicActorTaskIcon();
+    }
     CloseBubble();
     return;
   }
@@ -77,9 +85,14 @@ void GlicActorNudgeController::OnStateUpdate(
   size_t num_tasks_need_processing = manager->GetNumActorTasksNeedProcessing();
   switch (actor_task_nudge_state.text) {
     case ActorTaskNudgeState::Text::kDefault:
+      if (tab_strip_action_container_->IsGlicAdded()) {
         tab_strip_action_container_->ShowGlicActorTaskIcon();
-      // In either case, close the bubble as the nudge has been either hidden or
-      // reset.
+      }
+      if (toolbar_view_->IsGlicAdded()) {
+        toolbar_view_->ShowGlicActorTaskIcon();
+      }
+      // In either case, close the bubble as the nudge has been either hidden
+      // or reset.
       CloseBubble();
       break;
     case ActorTaskNudgeState::Text::kNeedsAttention:
@@ -101,7 +114,7 @@ void GlicActorNudgeController::OnStateUpdate(
   }
 
   if (tab_strip_action_container_->GetIsShowingGlicActorTaskIconNudge()) {
-      actor::ui::RecordGlobalTaskIndicatorNudgeShown(actor_task_nudge_state);
+    actor::ui::RecordGlobalTaskIndicatorNudgeShown(actor_task_nudge_state);
   }
 }
 
@@ -111,12 +124,40 @@ void GlicActorNudgeController::UpdateNudgeLabelOrRetrigger(
   if (tab_strip_action_container_->GetIsShowingGlicActorTaskIconNudge()) {
     tab_strip_action_container_->glic_actor_task_icon()->ShowNudgeLabel(
         nudge_label_text);
+    toolbar_view_->glic_actor_task_icon()->ShowNudgeLabel(nudge_label_text);
   } else {
+    TriggerGlicActorNudgeOnAll(nudge_label_text);
+  }
+
+  if (toolbar_view_->GetIsShowingGlicActorTaskIconNudge()) {
+    tab_strip_action_container_->glic_actor_task_icon()->ShowNudgeLabel(
+        nudge_label_text);
+    toolbar_view_->glic_actor_task_icon()->ShowNudgeLabel(nudge_label_text);
+  } else {
+    TriggerGlicActorNudgeOnAll(nudge_label_text);
+  }
+
+  if (show_bubble) {
+    auto* vertical_tab_strip_state_controller =
+        tabs::VerticalTabStripStateController::From(browser_);
+    if (vertical_tab_strip_state_controller->ShouldDisplayVerticalTabs() &&
+        toolbar_view_->IsGlicAdded()) {
+      ActorTaskListBubbleController::From(browser_)->ShowBubble(
+          toolbar_view_->glic_actor_task_icon());
+    } else if (tab_strip_action_container_->IsGlicAdded()) {
+      ActorTaskListBubbleController::From(browser_)->ShowBubble(
+          tab_strip_action_container_->glic_actor_task_icon());
+    }
+  }
+}
+
+void GlicActorNudgeController::TriggerGlicActorNudgeOnAll(
+    std::u16string nudge_label_text) {
+  if (tab_strip_action_container_->IsGlicAdded()) {
     tab_strip_action_container_->TriggerGlicActorNudge(nudge_label_text);
   }
-  if (show_bubble) {
-    ActorTaskListBubbleController::From(browser_)->ShowBubble(
-        tab_strip_action_container_->glic_actor_task_icon());
+  if (toolbar_view_->IsGlicAdded()) {
+    toolbar_view_->TriggerGlicActorNudge(nudge_label_text);
   }
 }
 
@@ -150,8 +191,12 @@ void GlicActorNudgeController::CloseBubble() {
 }
 
 void GlicActorNudgeController::OnBubbleVisibilityChange(bool is_bubble_open) {
-  tab_strip_action_container_->glic_actor_task_icon()->SetPressedState(
-      is_bubble_open);
+  if (tab_strip_action_container_->IsGlicAdded()) {
+    tab_strip_action_container_->glic_actor_task_icon()->SetPressedState(
+        is_bubble_open);
+  }
+  if (toolbar_view_->IsGlicAdded()) {
+    toolbar_view_->glic_actor_task_icon()->SetPressedState(is_bubble_open);
+  }
 }
-
 }  // namespace tabs

@@ -52,12 +52,6 @@ BASE_FEATURE(kRealboxCr23Theming,
              "NtpRealboxCr23Theming",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, the real search box ("realbox") on the New Tab page will show a
-// Google (g) icon instead of the typical magnifying glass (aka loupe).
-BASE_FEATURE(kRealboxUseGoogleGIcon,
-             "NtpRealboxUseGoogleGIcon",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, alpha NTP backgrounds will show in Customize Chrome.
 // This is a development switch. Keep indefinitely.
 BASE_FEATURE(kNtpAlphaBackgroundCollections, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -143,30 +137,8 @@ BASE_FEATURE(kNtpOneGoogleBar, base::FEATURE_ENABLED_BY_DEFAULT);
 // If enabled, outlook calendar module will be shown.
 BASE_FEATURE(kNtpOutlookCalendarModule, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// If enabled, Google Photos module will be shown.
-BASE_FEATURE(kNtpPhotosModule, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, a customized title will be shown on the opt-in card.
-BASE_FEATURE(kNtpPhotosModuleCustomizedOptInTitle,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, a customized art work will be shown on the opt-in card.
-BASE_FEATURE(kNtpPhotosModuleCustomizedOptInArtWork,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, Google Photos opt-in card will show a button to soft opt-out.
-BASE_FEATURE(kNtpPhotosModuleSoftOptOut, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, the single svg image show in Photos opt-in screen will be
-// replaced by constituent images to support i18n.
-BASE_FEATURE(kNtpPhotosModuleSplitSvgOptInArtWork,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, Following Feed module will be shown.
 BASE_FEATURE(kNtpFeedModule, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// If enabled, SafeBrowsing module will be shown to a target user.
-BASE_FEATURE(kNtpSafeBrowsingModule, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, sharepoint module will be shown.
 BASE_FEATURE(kNtpSharepointModule, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -250,8 +222,17 @@ BASE_FEATURE(kNtpFeatureOptimizationShortcutsRemoval,
 BASE_FEATURE(kNtpFeatureOptimizationDismissModulesRemoval,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// If enabled, will support animated Doodles on the NTP.
+BASE_FEATURE(kNtpAnimatedDoodles, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, will support Doodle Murals on the NTP.
+BASE_FEATURE(kNtpDoodleMurals, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, animates the AIM caret on the NTP.
 BASE_FEATURE(kNtpAnimatedCaret, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// If enabled, adds a Whats New Page Edition for Next Features.
+BASE_FEATURE(kLightningTakeoverEdition, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const char kNtpModuleIgnoredCriteriaThreshold[] =
     "NtpModuleIgnoredCriteriaThreshold";
@@ -287,14 +268,6 @@ const char kNtpOutlookCalendarModuleDataParam[] =
     "NtpOutlookCalendarModuleDataParam";
 const char kNtpMiddleSlotPromoDismissalParam[] =
     "NtpMiddleSlotPromoDismissalParam";
-const char kNtpPhotosModuleDataParam[] = "NtpPhotosModuleDataParam";
-const char kNtpPhotosModuleOptInTitleParam[] = "NtpPhotosModuleOptInTitleParam";
-const char kNtpPhotosModuleOptInArtWorkParam[] =
-    "NtpPhotosModuleOptInArtWorkParam";
-const char kNtpSafeBrowsingModuleCooldownPeriodDaysParam[] =
-    "NtpSafeBrowsingModuleCooldownPeriodDaysParam";
-const char kNtpSafeBrowsingModuleCountMaxParam[] =
-    "NtpSafeBrowsingModuleCountMaxParam";
 const char kNtpMostRelevantTabResumptionModuleDataParam[] =
     "NtpMostRelevantTabResumptionModuleDataParam";
 const char kNtpMostRelevantTabResumptionModuleMaxVisitsParam[] =
@@ -326,26 +299,21 @@ const base::FeatureParam<bool> kNtpNextClientSensitivityCheckParam(
     &ntp_features::kNtpNextFeatures,
     "NtpNextClientSensitivityCheckParam",
     false);
-const base::FeatureParam<bool> kNtpNextShowDeepDiveSuggestionsParam(
-    &ntp_features::kNtpNextFeatures,
-    "NtpNextShowDeepDiveSuggestionsParam",
-    false);
-const base::FeatureParam<bool>
-    kNtpNextSuggestionsFromNewSearchSuggestionsEndpointParam(
-        &ntp_features::kNtpNextFeatures,
-        "NtpNextSuggestionsFromNewSearchSuggestionsEndpointParam",
-        false);
 const base::FeatureParam<bool> kNtpNextShowStaticRecentTabChipParam(
     &ntp_features::kNtpNextFeatures,
     "NtpNextShowStaticRecentTabChipParam",
     true);
-const base::FeatureParam<bool> kNtpNextShowSimplificationUIParam(
+const base::FeatureParam<bool> kNtpNextEnableCanvasChipParam(
     &ntp_features::kNtpNextFeatures,
-    "NtpNextShowSimplificationUIParam",
+    "NtpNextEnableCanvasChipParam",
     false);
 const base::FeatureParam<bool> kNtpNextShowDismissalUIParam(
     &ntp_features::kNtpNextFeatures,
     "NtpNextShowDismissalUIParam",
+    false);
+const base::FeatureParam<bool> kNtpNextDisablementContextMenuParam(
+    &ntp_features::kNtpNextFeatures,
+    "NtpNextDisablementContextMenuParam",
     false);
 const base::FeatureParam<int> kMaxTilesBeforeShowMore{
     &ntp_features::kNtpNextFeatures, "max_tiles_before_show_more", 5};

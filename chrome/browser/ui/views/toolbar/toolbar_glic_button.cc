@@ -7,6 +7,7 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
+#include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/glic/glic_button.h"
@@ -17,11 +18,15 @@
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
+#include "ui/gfx/geometry/insets.h"
+#include "ui/gfx/geometry/rounded_corners_f.h"
 #include "ui/gfx/vector_icon_types.h"
 #include "ui/views/animation/ink_drop.h"
+#include "ui/views/background.h"
 
 namespace {
 constexpr int kCloseButtonSize = 16;
+constexpr int kSpaceBetweenButtons = 2;
 }  // namespace
 
 namespace glic {
@@ -43,6 +48,8 @@ ToolbarGlicButton::ToolbarGlicButton(
 ToolbarGlicButton::~ToolbarGlicButton() = default;
 
 void ToolbarGlicButton::AddedToWidget() {
+  split_rounded_edge_radius_ = GetRoundedCornerRadius();
+  SetLeftRightCornerRadii(GetRoundedCornerRadius(), GetRoundedCornerRadius());
   SetDefaultBackgroundColorId(kColorToolbarGlicButtonBackgroundDefault);
   GlicButton<ToolbarButton>::AddedToWidget();
 }
@@ -69,6 +76,29 @@ void ToolbarGlicButton::SetBackgroundFrameInactiveColorId(
   UpdateColors();
 }
 
+void ToolbarGlicButton::SetLeftRightCornerRadii(int left, int right) {
+  left_corner_radius_ = left;
+  right_corner_radius_ = right;
+}
+
+float ToolbarGlicButton::GetCornerRadiusFor(ToolbarButton::Edge edge) const {
+  return edge == ToolbarButton::Edge::kLeft
+             ? left_corner_radius_.value_or(GetRoundedCornerRadius())
+             : right_corner_radius_.value_or(GetRoundedCornerRadius());
+}
+
+int ToolbarGlicButton::GetSplitRoundedEdgeRadius() {
+  return split_rounded_edge_radius_;
+}
+
+int ToolbarGlicButton::GetGlicIconSize() {
+  return kToolbarGlicIconSize;
+}
+
+int ToolbarGlicButton::GetIconSize() const {
+  return kToolbarGlicIconSize;
+}
+
 void ToolbarGlicButton::UpdateColors() {
   ToolbarButton::UpdateColorsAndInsets();
 }
@@ -80,7 +110,7 @@ void ToolbarGlicButton::AddCloseButton(PressedCallback pressed_callback) {
   auto close_button =
       std::make_unique<views::LabelButton>(std::move(pressed_callback));
   close_button->SetTooltipText(
-      l10n_util::GetStringUTF16(IDS_TOOLTIP_TAB_ORGANIZE_CLOSE));
+      l10n_util::GetStringUTF16(IDS_TOOLTIP_GLIC_CLOSE));
 
   const ui::ImageModel icon_image_model = ui::ImageModel::FromVectorIcon(
       vector_icons::kCloseChromeRefreshIcon,
@@ -131,6 +161,20 @@ BrowserFrameView* ToolbarGlicButton::GetBrowserFrameView() const {
 ui::ColorId ToolbarGlicButton::GetBackgroundColor() {
   std::optional<SkColor> background = ToolbarButton::GetBackgroundColor();
   return background.value_or(kColorToolbarButtonBackgroundHighlightedDefault);
+}
+
+void ToolbarGlicButton::Collapse() {
+  SetInternalPadding(gfx::Insets::TLBR(0, 0, 0, kSpaceBetweenButtons));
+  GlicButton<ToolbarButton>::Collapse();
+}
+
+void ToolbarGlicButton::Expand() {
+  SetInternalPadding(gfx::Insets());
+  GlicButton<ToolbarButton>::Expand();
+}
+
+void ToolbarGlicButton::ResetSplitButtonCornerStyling() {
+  SetLeftRightCornerRadii(GetRoundedCornerRadius(), GetRoundedCornerRadius());
 }
 
 BEGIN_METADATA(ToolbarGlicButton)

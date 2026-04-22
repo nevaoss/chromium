@@ -281,6 +281,14 @@ WebApp::WebApp(const webapps::ManifestId& manifest_id,
                          : std::nullopt),
       manifest_id_(manifest_id),
       parent_app_id_(parent_app_id) {
+  // Fix invalid scope values.
+  if (!scope_.is_valid() || !url::IsSameOriginWith(scope_, start_url_) ||
+      !base::StartsWith(start_url_.spec(), scope_.spec(),
+                        base::CompareCase::SENSITIVE)) {
+    DLOG(ERROR) << "Invalid scope " << scope_.possibly_invalid_spec()
+                << " for start_url " << start_url_;
+    scope_ = start_url_.GetWithoutFilename();
+  }
   // Must drop the fragments and queries per `scope` rules
   // https://w3c.github.io/manifest/#scope-member
   GURL::Replacements replacements;
@@ -658,6 +666,11 @@ void WebApp::SetScopeExtensions(
 void WebApp::SetValidatedScopeExtensions(
     base::flat_set<ScopeExtensionInfo> validated_scope_extensions) {
   validated_scope_extensions_ = std::move(validated_scope_extensions);
+}
+
+void WebApp::SetOriginAssociationLastValidationCheckTime(
+    const std::optional<base::Time>& time) {
+  origin_association_last_validation_check_time_ = time;
 }
 
 void WebApp::SetLockScreenStartUrl(const GURL& lock_screen_start_url) {
@@ -1155,6 +1168,7 @@ bool WebApp::operator==(const WebApp& other) const {
         app.disallowed_launch_protocols_,
         app.scope_extensions_,
         app.validated_scope_extensions_,
+        app.origin_association_last_validation_check_time_,
         app.lock_screen_start_url_,
         app.note_taking_new_note_url_,
         app.last_badging_time_,
@@ -1353,6 +1367,13 @@ base::Value WebApp::AsDebugValueWithOnlyPlatformAgnosticFields() const {
 
   root.Set("scope_extensions_validated",
            ConvertDebugValueList(validated_scope_extensions_));
+
+  if (origin_association_last_validation_check_time_.has_value()) {
+    root.Set("origin_association_last_validation_check_time",
+             base::ToString(*origin_association_last_validation_check_time_));
+  } else {
+    root.Set("origin_association_last_validation_check_time", base::Value());
+  }
 
   root.Set("window_controls_overlay_enabled", window_controls_overlay_enabled_);
 

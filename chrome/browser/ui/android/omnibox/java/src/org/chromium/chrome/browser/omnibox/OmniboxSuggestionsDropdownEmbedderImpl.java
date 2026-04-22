@@ -63,6 +63,7 @@ class OmniboxSuggestionsDropdownEmbedderImpl
     // Keeping it as a member lets us avoid allocating a temp array every time.
     private final int[] mPositionArray = new int[2];
     private int mVerticalOffsetInWindow;
+    private int mHorizontalOffsetInWindow;
     private int mWindowWidthDp;
     private int mWindowHeightDp;
     private int mTopPaddingForEdgeToEdge;
@@ -192,7 +193,9 @@ class OmniboxSuggestionsDropdownEmbedderImpl
     // OnGlobalLayoutListener
     @Override
     public void onGlobalLayout() {
-        if (offsetInWindowChanged(mAnchorView) || insetsHaveChanged(mAnchorView)) {
+        if (verticalOffsetInWindowChanged(mAnchorView)
+                || insetsHaveChanged(mAnchorView)
+                || horizontalOffsetInWindowChanged(mAlignmentView)) {
             recalculateOmniboxAlignment();
         }
     }
@@ -340,16 +343,19 @@ class OmniboxSuggestionsDropdownEmbedderImpl
             windowHeight = mWindowAndroid.getDisplay().getDisplayHeight();
         }
 
-        int paddingBottom = 0;
-        // Apply extra bottom padding if the keyboard isn't showing.
-        if (keyboardHeight <= 0) {
-            paddingBottom = mBottomWindowPaddingSupplier.get();
-            windowHeight += paddingBottom;
-        }
-
         int minSpaceAboveWindowBottom =
                 mContext.getResources()
                         .getDimensionPixelSize(R.dimen.omnibox_min_space_above_window_bottom);
+
+        int paddingBottom = 0;
+        // Apply extra bottom padding if the keyboard isn't showing. Reduce the padding applied by
+        // the "min height above window bottom".
+        if (keyboardHeight <= 0) {
+            paddingBottom =
+                    Math.max(mBottomWindowPaddingSupplier.get() - minSpaceAboveWindowBottom, 0);
+            windowHeight += paddingBottom;
+        }
+
         int windowSpace =
                 Math.min(windowHeight - keyboardHeight, windowHeight - minSpaceAboveWindowBottom);
 
@@ -397,13 +403,24 @@ class OmniboxSuggestionsDropdownEmbedderImpl
     }
 
     /**
-     * Returns whether the given view's position in the window has changed since the last call to
-     * offsetInWindowChanged().
+     * Returns whether the given view's vertical position in the window has changed since the last
+     * call to offsetInWindowChanged().
      */
-    private boolean offsetInWindowChanged(View view) {
+    private boolean verticalOffsetInWindowChanged(View view) {
         view.getLocationInWindow(mPositionArray);
         boolean result = mVerticalOffsetInWindow != mPositionArray[1];
         mVerticalOffsetInWindow = mPositionArray[1];
+        return result;
+    }
+
+    /**
+     * Returns whether the given view's position in the window has changed since the last call to
+     * offsetInWindowChanged().
+     */
+    private boolean horizontalOffsetInWindowChanged(View view) {
+        view.getLocationInWindow(mPositionArray);
+        boolean result = mHorizontalOffsetInWindow != mPositionArray[0];
+        mHorizontalOffsetInWindow = mPositionArray[0];
         return result;
     }
 

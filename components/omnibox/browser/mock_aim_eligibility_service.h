@@ -25,12 +25,13 @@ class MockAimEligibilityService : public AimEligibilityService {
   MOCK_METHOD(bool, IsCobrowseEligible, (), (const, override));
   MOCK_METHOD(bool, IsDeepSearchEligible, (), (const, override));
   MOCK_METHOD(bool, IsCreateImagesEligible, (), (const, override));
+  MOCK_METHOD(bool, IsFuseboxEligible, (), (const, override));
   MOCK_METHOD(base::CallbackListSubscription,
               RegisterEligibilityChangedCallback,
               (base::RepeatingClosure),
               (override));
   MOCK_METHOD(std::string, GetCountryCode, (), (const, override));
-  MOCK_METHOD(std::string, GetLocale, (), (const, override));
+  MOCK_METHOD(std::string, GetLocaleImpl, (), (const, override));
   MOCK_METHOD(bool, HasAimUrlParams, (const GURL& url), (const, override));
   MOCK_METHOD(const omnibox::AimEligibilityResponse&,
               GetMostRecentResponse,

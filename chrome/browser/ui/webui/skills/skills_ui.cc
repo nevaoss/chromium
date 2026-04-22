@@ -9,6 +9,7 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/webui/sanitized_image/sanitized_image_source.h"
 #include "chrome/browser/ui/webui/skills/skills_dialog_handler.h"
 #include "chrome/browser/ui/webui/skills/skills_page_handler.h"
 #include "chrome/grit/generated_resources.h"
@@ -18,6 +19,7 @@
 #include "components/skills/public/skill.h"
 #include "components/skills/public/skills_metrics.h"
 #include "components/strings/grit/components_strings.h"
+#include "content/public/browser/url_data_source.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -34,10 +36,19 @@ SkillsUI::SkillsUI(content::WebUI* web_ui) : ui::MojoWebUIController(web_ui) {
       profile, chrome::kChromeUISkillsHost);
   webui::SetupWebUIDataSource(source, kSkillsResources, IDR_SKILLS_SKILLS_HTML);
   source->AddResourcePath("dialog", IDR_SKILLS_SKILLS_DIALOG_HTML);
-  bool isGlicEnabled = glic::GlicEnabling::IsEnabledForProfile(profile);
-  source->AddBoolean("isGlicEnabled", isGlicEnabled);
+  source->AddBoolean("isGlicEnabled",
+                     glic::GlicEnabling::IsReadyForProfile(profile));
   source->AddInteger("MAX_NAME_CHAR_COUNT", kMaxNameCharCount);
   source->AddInteger("MAX_PROMPT_CHAR_COUNT", kMaxPromptCharCount);
+  source->AddBoolean(
+      "isRefinementEnabled",
+      base::FeatureList::IsEnabled(features::kSkillsRefinementEnabled));
+
+  content::URLDataSource::Add(profile,
+                              std::make_unique<SanitizedImageSource>(profile));
+  source->AddBoolean(
+      "isAutocompleteEnabled",
+      base::FeatureList::IsEnabled(features::kSkillsAutocomplete));
   static constexpr webui::LocalizedString kStrings[] = {
       {"cancel", IDS_CANCEL},
       {"edit", IDS_EDIT2},
@@ -80,6 +91,8 @@ SkillsUI::SkillsUI(content::WebUI* web_ui) : ui::MojoWebUIController(web_ui) {
       {"noSearchResultsTitle", IDS_SKILLS_NO_SEARCH_RESULT_TITLE},
       {"noSearchResultsDescription", IDS_SKILLS_NO_SEARCH_RESULT_DESCRIPTION},
       {"saveError", IDS_SKILLS_DIALOG_SAVE_ERROR},
+      {"emojiSearchPlaceholder", IDS_SKILLS_EMOJI_PICKER_SEARCH_PLACEHOLDER},
+      {"emojiPickerAriaLabel", IDS_SKILLS_EMOJI_PICKER_ARIA_LABEL},
   };
 
   source->AddLocalizedStrings(kStrings);
@@ -95,10 +108,12 @@ SkillsUI::SkillsUI(content::WebUI* web_ui) : ui::MojoWebUIController(web_ui) {
 
 void SkillsUI::InitializeDialog(base::WeakPtr<SkillsDialogDelegate> delegate,
                                 Skill skill,
-                                SkillsDialogEntryPoint entrypoint) {
+                                SkillsDialogEntryPoint entrypoint,
+                                mojom::SkillsDialogType dialog_type) {
   delegate_ = delegate;
   initial_skill_ = std::move(skill);
   entrypoint_ = entrypoint;
+  dialog_type_ = dialog_type;
 }
 
 void SkillsUI::BindInterface(
@@ -120,7 +135,7 @@ void SkillsUI::CreateDialogHandler(
       std::move(receiver), web_ui()->GetWebContents(),
       OptimizationGuideKeyedServiceFactory::GetForProfile(
           Profile::FromWebUI(web_ui())),
-      initial_skill_, entrypoint_, delegate_);
+      initial_skill_, entrypoint_, dialog_type_, delegate_);
 }
 
 WEB_UI_CONTROLLER_TYPE_IMPL(SkillsUI)

@@ -56,8 +56,8 @@ Origin Origin::Create(const GURL& url) {
     // If we're dealing with a 'blob:' URL, https://url.spec.whatwg.org/#origin
     // defines the origin as the origin of the URL which results from parsing
     // the "path", which boils down to everything after the scheme. GURL's
-    // 'GetContent()' gives us exactly that.
-    tuple = SchemeHostPort(GURL(url.GetContent()));
+    // 'GetContentPiece()' gives us exactly that.
+    tuple = SchemeHostPort(GURL(url.GetContentPiece()));
   } else {
     tuple = SchemeHostPort(url);
 
@@ -248,7 +248,7 @@ bool Origin::CanBeDerivedFrom(const GURL& url) const {
     if (!tuple_.IsValid())
       return true;
 
-    url_tuple = SchemeHostPort(GURL(url.GetContent()));
+    url_tuple = SchemeHostPort(GURL(url.GetContentPiece()));
     return url_tuple == tuple_;
   }
 
@@ -299,7 +299,8 @@ std::string Origin::GetDebugString(bool include_nonce) const {
   // For opaque origins, log the nonce and precursor as well. Without this,
   // EXPECT_EQ failures between opaque origins are nearly impossible to
   // understand.
-  std::string out = base::StrCat({Serialize(), " [internally:"});
+  std::string out = Serialize();
+  out += " [internally:";
   if (include_nonce) {
     out += " (";
     if (nonce_->raw_token().is_empty())
@@ -371,9 +372,10 @@ std::optional<Origin> Origin::Deserialize(std::string_view value) {
   base::PickleIterator reader =
       base::PickleIterator::WithData(base::as_byte_span(data));
 
-  std::string pickled_url;
-  if (!reader.ReadString(&pickled_url))
+  std::string_view pickled_url;
+  if (!reader.ReadStringPiece(&pickled_url)) {
     return std::nullopt;
+  }
   GURL url(pickled_url);
 
   // If only a tuple was serialized, then this origin is not opaque. For opaque
@@ -387,7 +389,7 @@ std::optional<Origin> Origin::Deserialize(std::string_view value) {
 
   // Possible successful early return if the pickled Origin was not opaque.
   if (!is_opaque) {
-    Origin origin(tuple);
+    Origin origin(std::move(tuple));
     if (origin.opaque())
       return std::nullopt;  // Something went horribly wrong.
     return origin;
@@ -411,7 +413,7 @@ std::optional<Origin> Origin::Deserialize(std::string_view value) {
   }
   Origin origin;
   origin.nonce_ = std::move(nonce);
-  origin.tuple_ = tuple;
+  origin.tuple_ = std::move(tuple);
   return origin;
 }
 

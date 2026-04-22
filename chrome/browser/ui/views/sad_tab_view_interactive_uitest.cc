@@ -3,19 +3,23 @@
 // found in the LICENSE file.
 
 #include "build/build_config.h"
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/frame/window_frame_util.h"
 #include "chrome/browser/ui/sad_tab.h"
 #include "chrome/browser/ui/sad_tab_controller.h"
 #include "chrome/browser/ui/sad_tab_helper.h"
+#include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/sad_tab_view.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+#include "chrome/common/pref_names.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/interactive_test_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/prefs/pref_service.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/common/result_codes.h"
@@ -32,6 +36,18 @@ class SadTabViewInteractiveUITest : public InProcessBrowserTest {
   SadTabViewInteractiveUITest(const SadTabViewInteractiveUITest&) = delete;
   SadTabViewInteractiveUITest& operator=(const SadTabViewInteractiveUITest&) =
       delete;
+
+  void SetUpOnMainThread() override {
+    InProcessBrowserTest::SetUpOnMainThread();
+    browser()->profile()->GetPrefs()->SetBoolean(
+        prefs::kTabSearchPinnedToTabstrip, true);
+  }
+
+  void TearDownOnMainThread() override {
+    browser()->profile()->GetPrefs()->ClearPref(
+        prefs::kTabSearchPinnedToTabstrip);
+    InProcessBrowserTest::TearDownOnMainThread();
+  }
 
  protected:
   void KillRendererForActiveWebContentsSync() {
@@ -88,6 +104,10 @@ class SadTabViewInteractiveUITest : public InProcessBrowserTest {
     return IsFocusedViewInsideViewClass<ToolbarView>();
   }
 
+  bool IsFocusedViewInsideTabStrip() {
+    return IsFocusedViewInsideViewClass<HorizontalTabStripRegionView>();
+  }
+
   bool IsFocusedViewOnActionButtonInSadTab() {
     return IsFocusedViewInsideViewClass<SadTabView>() &&
            IsFocusedViewInsideViewClass<views::MdTextButton>();
@@ -127,6 +147,7 @@ IN_PROC_BROWSER_TEST_F(SadTabViewInteractiveUITest,
   chrome::FocusLocationBar(browser());
   ASSERT_FALSE(IsFocusedViewInsideSadTab());
   ASSERT_TRUE(IsFocusedViewInsideBrowserToolbar());
+  ASSERT_FALSE(IsFocusedViewInsideTabStrip());
 
   // Kill the renderer process, resulting in a sad tab.
   KillRendererForActiveWebContentsSync();
@@ -135,23 +156,30 @@ IN_PROC_BROWSER_TEST_F(SadTabViewInteractiveUITest,
   ASSERT_TRUE(views::IsViewClass<views::MdTextButton>(GetFocusedView()));
   ASSERT_TRUE(IsFocusedViewInsideSadTab());
   ASSERT_FALSE(IsFocusedViewInsideBrowserToolbar());
+  ASSERT_FALSE(IsFocusedViewInsideTabStrip());
 
-  // Pressing the Tab key should cycle focus back to the toolbar or the browser
-  // frame if the tab search caption button is enabled.
+  // Pressing the Tab key should cycle focus back to the toolbar or the tab
+  // strip if the tab search button is enabled.
   PressTab();
   ASSERT_FALSE(IsFocusedViewInsideSadTab());
-  ASSERT_TRUE(IsFocusedViewInsideBrowserToolbar());
+  if (base::FeatureList::IsEnabled(tabs::kHorizontalTabStripComboButton)) {
+    ASSERT_TRUE(IsFocusedViewInsideTabStrip());
+  } else {
+    ASSERT_TRUE(IsFocusedViewInsideBrowserToolbar());
+  }
 
   // Keep pressing the Tab key and make sure we make it back to the sad tab.
   while (!IsFocusedViewInsideSadTab()) {
     PressTab();
   }
   ASSERT_FALSE(IsFocusedViewInsideBrowserToolbar());
+  ASSERT_FALSE(IsFocusedViewInsideTabStrip());
 
   // Press Shift-Tab and ensure we end up back in the toolbar.
   PressShiftTab();
   ASSERT_FALSE(IsFocusedViewInsideSadTab());
   ASSERT_TRUE(IsFocusedViewInsideBrowserToolbar());
+  ASSERT_FALSE(IsFocusedViewInsideTabStrip());
 }
 
 // TODO(crbug.com/40752417): flaky test.

@@ -4,8 +4,8 @@
 
 package org.chromium.chrome.browser.omnibox;
 
-import androidx.annotation.VisibleForTesting;
-
+import org.chromium.base.Callback;
+import org.chromium.base.ResettersForTesting;
 import org.chromium.base.UserData;
 import org.chromium.base.UserDataHost;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
@@ -15,10 +15,16 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList.FuseboxAttachmentChangeListener;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics;
+import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.omnibox.AutocompleteInput;
+import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxFeatures;
+import org.chromium.components.omnibox.ToolModeUtils;
+
+import java.util.Optional;
 
 /**
  * Fusebox / Omnibox session state object. Captures controllers and state details needed to fulfill
@@ -26,9 +32,24 @@ import org.chromium.components.omnibox.OmniboxFeatures;
  *
  * <p>Unlike the AutocompleteInput - this class is permitted to hold external controllers required
  * to fulfill navigation request.
+ *
+ * <ul>
+ *   <li>All FuseboxSessionState members should be considered `final` from the moment the session is
+ *       fully activated to the moment the session is deactivated.
+ *   <li>Consumers of FuseboxSessionState can cache individual fields of the FuseboxSessionState
+ *       between beginInput() and endInput() for easier access to relevant controllers and data.
+ *   <li>It is illegal to change reported instances or values once `onFullyActivated` callback has
+ *       been emitted, except if the session is being deactivated.
+ *   <li>If instances need to be changed for any reason, the caller must call endSession() and
+ *       deactivate() first. Once updates are applied, the caller must activate()
+ *       FuseboxSessionState and call beginInput() on appropriate consumers.
+ * </ul>
  */
 @NullMarked
 public class FuseboxSessionState implements UserData {
+    @SuppressWarnings("NullableOptional")
+    public static @Nullable Optional<FuseboxSessionState> sInstanceForTesting;
+
     private final FuseboxAttachmentChangeListener mFuseboxAttachmentChangeListener =
             new FuseboxAttachmentChangeListener() {
                 @Override
@@ -36,15 +57,18 @@ public class FuseboxSessionState implements UserData {
                     FuseboxSessionState.this.onAttachmentListChanged();
                 }
             };
+    private final Callback<Integer> mOnRequestTypeChanged = this::onRequestTypeChanged;
 
     /**
      * Details about the user input in the Omnibox. Retained to allow session reconstruction, for
      * example when the user switches tabs.
      */
-    private AutocompleteInput mAutocompleteInput = new AutocompleteInput();
+    private final AutocompleteInput mAutocompleteInput = new AutocompleteInput();
 
+    private @Nullable FuseboxMetrics mMetrics;
     private @Nullable Profile mProfile;
     private @Nullable ComposeboxQueryControllerBridge mComposeBoxQueryControllerBridge;
+    private @Nullable AutocompleteController mAutocomplete;
     private @Nullable FuseboxAttachmentModelList mFuseboxAttachmentModelList;
     private @Nullable OneShotCallback<Profile> mPendingProfileCallback;
     private boolean mIsActive;
@@ -58,6 +82,8 @@ public class FuseboxSessionState implements UserData {
      *     if the UserData to host the persisted session state is not available.
      */
     public static @Nullable FuseboxSessionState from(LocationBarDataProvider dataProvider) {
+        if (sInstanceForTesting != null) return sInstanceForTesting.orElse(null);
+
         var userDataHost = dataProvider.getUserDataHost();
         if (userDataHost == null) return null;
 
@@ -85,26 +111,13 @@ public class FuseboxSessionState implements UserData {
     }
 
     /** Constructs a new, empty FuseboxSessionState. */
-    private FuseboxSessionState() {}
-
-    /**
-     * Constructs a new FuseboxSessionState with a provided AutocompleteInput.
-     *
-     * @param input The initial AutocompleteInput for this session.
-     */
-    @VisibleForTesting
-    public FuseboxSessionState(
-            AutocompleteInput input,
-            @Nullable ComposeboxQueryControllerBridge composeboxQueryControllerBridge,
-            @Nullable FuseboxAttachmentModelList fuseboxAttachmentModelList) {
-        mAutocompleteInput = input;
-        mComposeBoxQueryControllerBridge = composeboxQueryControllerBridge;
-        mFuseboxAttachmentModelList = fuseboxAttachmentModelList;
+    private FuseboxSessionState() {
+        if (OmniboxFeatures.sShowModelPicker.getValue()) {
+            mAutocompleteInput.getRequestTypeSupplier().addSyncObserver(mOnRequestTypeChanged);
+        }
     }
 
-    /**
-     * @return The current {@link Profile} for this session.
-     */
+    /** Returns the current {@link Profile} for this session. */
     public @Nullable Profile getProfile() {
         return mProfile;
     }
@@ -125,6 +138,7 @@ public class FuseboxSessionState implements UserData {
         if (mIsActive) {
             // This session is being re-activated. It has already been fully initialized so simply
             // emit the event.
+            linkSessionControllers();
             if (onFullyActivated != null) onFullyActivated.run();
             return;
         }
@@ -140,6 +154,10 @@ public class FuseboxSessionState implements UserData {
             mAutocompleteInput.setUserText(editUrl).setSelection(0, Integer.MAX_VALUE);
         }
 
+        // The session is activated for the first time. Preserve the initial value of the User Text
+        // now. If the session is re-activated later, the user text will be preserved.
+        mAutocompleteInput.setInitialUserText(mAutocompleteInput.getUserText());
+
         // Stop here if we're already waiting for profile.
         // This makes sense in scenarios where session object goes through a full cycle
         // (active -> inactive -> active again) before Profile becomes available, to avoid
@@ -147,7 +165,7 @@ public class FuseboxSessionState implements UserData {
         if (mPendingProfileCallback != null) return;
 
         mPendingProfileCallback =
-                new OneShotCallback<Profile>(
+                new OneShotCallback<>(
                         profileSupplier, p -> setUpSessionControllers(p, onFullyActivated));
     }
 
@@ -183,11 +201,16 @@ public class FuseboxSessionState implements UserData {
         assert (mProfile == null);
         mProfile = profile;
 
+        // AutocompleteController is currently a Profile-keyed instance and does not require
+        // explicit destruction.
+        mAutocomplete = AutocompleteController.getForProfile(mProfile);
+
         mComposeBoxQueryControllerBridge =
                 ComposeboxQueryControllerBridge.createForProfile(mProfile);
 
         if (mComposeBoxQueryControllerBridge != null) {
             // Composebox Controller may not be instantiated if locale or policies prohibit AIM.
+            mMetrics = new FuseboxMetrics();
             // Create attachments list only if allowed.
             mFuseboxAttachmentModelList = new FuseboxAttachmentModelList();
             mFuseboxAttachmentModelList.setComposeboxQueryControllerBridge(
@@ -196,7 +219,16 @@ public class FuseboxSessionState implements UserData {
                     mFuseboxAttachmentChangeListener);
         }
 
+        linkSessionControllers();
         if (onFullyActivated != null) onFullyActivated.run();
+    }
+
+    @Override
+    public void destroy() {
+        tearDownSessionControllers();
+        if (OmniboxFeatures.sShowModelPicker.getValue()) {
+            mAutocompleteInput.getRequestTypeSupplier().removeObserver(mOnRequestTypeChanged);
+        }
     }
 
     /** Tear down session controllers. */
@@ -208,12 +240,28 @@ public class FuseboxSessionState implements UserData {
             mFuseboxAttachmentModelList = null;
         }
 
+        unlinkSessionControllers();
+
         if (mComposeBoxQueryControllerBridge != null) {
             mComposeBoxQueryControllerBridge.destroy();
-            mComposeBoxQueryControllerBridge = null;
         }
 
+        mComposeBoxQueryControllerBridge = null;
+        mMetrics = null;
+        mAutocomplete = null;
         mProfile = null;
+    }
+
+    private void linkSessionControllers() {
+        if (mAutocomplete == null) return;
+        // Write <null> if there's no ComposeBox Bridge (intentional) to ensure decoupled session
+        // when user jumps tabs.
+        mAutocomplete.setComposeboxQueryControllerBridge(mComposeBoxQueryControllerBridge);
+    }
+
+    private void unlinkSessionControllers() {
+        if (mAutocomplete == null) return;
+        mAutocomplete.setComposeboxQueryControllerBridge(null);
     }
 
     private void onAttachmentListChanged() {
@@ -224,36 +272,63 @@ public class FuseboxSessionState implements UserData {
         mAutocompleteInput.setHasAttachments(hasAttachments);
     }
 
-    /**
-     * @return Whether the Fusebox session is active.
-     */
+    private void onRequestTypeChanged(@AutocompleteRequestType int requestType) {
+        assert OmniboxFeatures.sShowModelPicker.getValue();
+        if (mComposeBoxQueryControllerBridge != null) {
+            int toolMode =
+                    ToolModeUtils.getToolModeForRequestType(
+                            requestType, /* hasAttachments= */ false);
+            mComposeBoxQueryControllerBridge.setActiveTool(toolMode);
+        }
+    }
+
+    /** Returns whether the Fusebox session is active. */
     public boolean isSessionActive() {
         return mIsActive;
     }
 
-    /** Applies the new AutocompleteInput to the current Session object. */
-    public void setAutocompleteInput(AutocompleteInput newInput) {
-        mAutocompleteInput = newInput;
+    /** Modifies this session input to have the values of the given input. */
+    public void applyAutocompleteInput(AutocompleteInput input) {
+        mAutocompleteInput.copyFrom(input);
     }
 
-    /**
-     * @return The current {@link AutocompleteInput} for this session.
-     */
+    /** Returns the current {@link AutocompleteInput} for this session. */
     public AutocompleteInput getAutocompleteInput() {
         return mAutocompleteInput;
     }
 
-    /**
-     * @return The current {@link ComposeboxQueryControllerBridge} for this session.
-     */
+    /** Returns the current {@link FuseboxMetrics} for this session. */
+    public @Nullable FuseboxMetrics getMetrics() {
+        return mMetrics;
+    }
+
+    /** Returns the current {@link ComposeboxQueryControllerBridge} for this session. */
     public @Nullable ComposeboxQueryControllerBridge getComposeboxQueryControllerBridge() {
         return mComposeBoxQueryControllerBridge;
     }
 
-    /**
-     * @return The current {@link FuseboxAttachmentModelList} for this session.
-     */
+    /** Returns the current {@link AutocompleteController} for this session. */
+    public @Nullable AutocompleteController getAutocompleteController() {
+        return mAutocomplete;
+    }
+
+    /** Returns the current {@link FuseboxAttachmentModelList} for this session. */
     public @Nullable FuseboxAttachmentModelList getFuseboxAttachmentModelList() {
         return mFuseboxAttachmentModelList;
+    }
+
+    /**
+     * Directly specify FuseboxSessionState object to be used to conduct tests.
+     *
+     * <p>Avoids creating real objects where mocks are needed.
+     */
+    public static void setInstanceForTesting(@Nullable FuseboxSessionState state) {
+        sInstanceForTesting = Optional.ofNullable(state);
+        ResettersForTesting.register(FuseboxSessionState::resetInstanceForTesting);
+    }
+
+    /** Revert all overrides for testing. */
+    public static void resetInstanceForTesting() {
+        sInstanceForTesting = null;
     }
 }

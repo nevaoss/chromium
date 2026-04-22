@@ -212,6 +212,7 @@ void AwSettings::UpdateEverythingLocked(JNIEnv* env,
   UpdateBackForwardCacheEnabledLocked(env, obj);
   UpdateBackForwardCacheSettingsTimeoutLocked(env, obj);
   UpdateBackForwardCacheSettingsMaxPagesInCacheLocked(env, obj);
+  UpdateBackForwardCacheSettingsKeepForwardEntriesLocked(env, obj);
   UpdateGeolocationEnabledLocked(env, obj);
 }
 
@@ -544,6 +545,22 @@ void AwSettings::UpdateBackForwardCacheSettingsMaxPagesInCacheLocked(
   back_forward_cache_max_pages_in_cache_ = max_pages_in_cache;
 }
 
+void AwSettings::UpdateBackForwardCacheSettingsKeepForwardEntriesLocked(
+    JNIEnv* env,
+    const JavaRef<jobject>& obj) {
+  bool keep_forward_entries =
+      Java_AwSettings_getBackForwardCacheSettingsKeepForwardEntries(env, obj);
+  if (web_contents()) {
+    if (keep_forward_entries != back_forward_cache_keep_forward_entries_) {
+      web_contents()
+          ->GetController()
+          .GetBackForwardCache()
+          .SetEmbedderSuppliedCacheForwardEntriesAllowed(keep_forward_entries);
+    }
+  }
+  back_forward_cache_keep_forward_entries_ = keep_forward_entries;
+}
+
 void AwSettings::UpdateGeolocationEnabledLocked(JNIEnv* env,
                                                 const JavaRef<jobject>& obj) {
   if (!web_contents()) {
@@ -767,6 +784,17 @@ void AwSettings::PopulateWebPreferencesLocked(JNIEnv* env,
 
   web_prefs->allow_mixed_content_upgrades =
       Java_AwSettings_getAllowMixedContentAutoupgradesLocked(env, obj);
+
+  web_prefs->ignore_duplicate_nav_enabled =
+      Java_AwSettings_getIgnoreDuplicateNavEnabledLocked(env, obj);
+  int ignore_duplicate_nav_threshold_ms =
+      Java_AwSettings_getIgnoreDuplicateNavThresholdLocked(env, obj);
+  // If the threshold is -1, which means it is the default value in WebView,
+  // then do not set the threshold in WebPreferences.
+  if (ignore_duplicate_nav_threshold_ms != -1) {
+    web_prefs->duplicate_nav_threshold =
+        base::Milliseconds(ignore_duplicate_nav_threshold_ms);
+  }
 
   if (AwDarkMode* aw_dark_mode = AwDarkMode::FromWebContents(web_contents())) {
     aw_dark_mode->PopulateWebPreferences(

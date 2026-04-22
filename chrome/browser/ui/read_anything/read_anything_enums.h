@@ -21,7 +21,8 @@ enum class ReadAnythingOpenTrigger {
   kOmniboxChip = 4,
   kTabSwitch = 5,
   kReadAnythingTogglePresentationButton = 6,
-  kMaxValue = kReadAnythingTogglePresentationButton,
+  kKeyboardShortcut = 7,
+  kMaxValue = kKeyboardShortcut,
 };
 // LINT.ThenChange(//tools/metrics/histograms/enums.xml:ReadAnythingOpenTrigger)
 
@@ -32,8 +33,27 @@ enum class ReadAnythingCloseReason {
   kToggledPresentation = 3,
   kRendererCrashed = 4,
   kControllerDestroyed = 5,
-  kMaxValue = kControllerDestroyed,
+  kPageChangedSoftNavigation = 6,  // When Single Page Application "soft
+                                   // navigation" page change is detected
+  kMaxValue = kPageChangedSoftNavigation,
 };
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// LINT.IfChange(ReadAnythingOmniboxChipDecision)
+enum class ReadAnythingOmniboxChipDecision {
+  kShowArticle = 0,
+  kShowPdf = 1,
+  kHideAppWindow = 2,
+  kHideNonHttp = 3,
+  kHideDenyList = 4,
+  kHideOptimizationGuide = 5,
+  kHideReadability = 6,
+  kHideShortPdf = 7,
+  kHideLowAlphabeticPdf = 8,
+  kMaxValue = kHideLowAlphabeticPdf,
+};
+// LINT.ThenChange(//tools/metrics/histograms/enums.xml:ReadAnythingOmniboxChipDecision)
 
 namespace read_anything {
 
@@ -54,6 +74,8 @@ inline SidePanelOpenTrigger ReadAnythingToSidePanelOpenTrigger(
       return SidePanelOpenTrigger::kTabChanged;
     case ReadAnythingOpenTrigger::kReadAnythingTogglePresentationButton:
       return SidePanelOpenTrigger::kReadAnythingTogglePresentationButton;
+    case ReadAnythingOpenTrigger::kKeyboardShortcut:
+      return SidePanelOpenTrigger::kReadAnythingKeyboardShortcut;
   }
 }
 
@@ -74,6 +96,8 @@ SidePanelToReadAnythingOpenTrigger(SidePanelOpenTrigger trigger) {
       return ReadAnythingOpenTrigger::kTabSwitch;
     case SidePanelOpenTrigger::kReadAnythingTogglePresentationButton:
       return ReadAnythingOpenTrigger::kReadAnythingTogglePresentationButton;
+    case SidePanelOpenTrigger::kReadAnythingKeyboardShortcut:
+      return ReadAnythingOpenTrigger::kKeyboardShortcut;
     default:
       return std::optional<ReadAnythingOpenTrigger>();
   }

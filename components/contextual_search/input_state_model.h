@@ -18,6 +18,7 @@
 #include "third_party/omnibox_proto/searchbox_config.pb.h"
 #include "third_party/omnibox_proto/tool_mode.pb.h"
 
+class GURL;
 class PrefService;
 namespace contextual_search {
 
@@ -38,11 +39,16 @@ class InputStateModel {
   explicit InputStateModel(
       contextual_search::ContextualSearchSessionHandle& session_handle,
       const SearchboxConfig& config,
+      const GURL& active_url,
       bool is_off_the_record);
   InputStateModel(
       const InputStateModel& other,
       contextual_search::ContextualSearchSessionHandle& new_session_handle);
   virtual ~InputStateModel();
+
+  // Returns the current input types from the session handle.
+  static std::vector<InputType> GetCurrentInputTypes(
+      const contextual_search::ContextualSearchSessionHandle* session_handle);
 
   // Add a subscriber to this model.
   base::CallbackListSubscription subscribe(Subscriber callback);
@@ -55,6 +61,7 @@ class InputStateModel {
 
   // Set a new model.
   void setActiveModel(ModelMode model);
+  void UpdateModelFromUrl(const GURL& url);
 
   // Called when an input of type `InputType` is added or deleted.
   void OnContextChanged();
@@ -101,6 +108,12 @@ class InputStateModel {
   // Helper to check if search content sharing is enabled based on the
   // user preference from enterprise policy.
   bool IsSearchContentSharingEnabled() const;
+
+  // Returns the rule for a given `model`.
+  const omnibox::ModelRule* GetModelRule(ModelMode model) const;
+
+  // Returns a rule for a given `tool`.
+  const omnibox::ToolRule* GetToolRule(ToolMode tool) const;
 
   InputState state_;
   omnibox::RuleSet rule_set_;

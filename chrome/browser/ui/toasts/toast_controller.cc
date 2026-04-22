@@ -148,6 +148,8 @@ void ToastController::OnWidgetActivationChanged(views::Widget* widget,
 #endif
 
 void ToastController::OnWidgetDestroyed(views::Widget* widget) {
+  currently_showing_toast_close_callback_.RunAndReset();
+
   // Inform subscribers that Widget was destroyed. Pass in toast_id_ before it
   // is set to null.
   on_widget_destroyed_callbacks_.Notify(currently_showing_toast_id_.value());
@@ -261,6 +263,8 @@ void ToastController::ShowToast(ToastParams params) {
         !params.body_string_cardinality_param.has_value());
 
   currently_showing_toast_id_ = params.toast_id;
+  currently_showing_toast_close_callback_ =
+      std::move(params.toast_close_callback);
   const bool is_actionable =
       current_toast_spec->action_button_string_id().has_value() ||
       current_toast_spec->has_menu();
@@ -298,10 +302,6 @@ void ToastController::CreateToast(ToastParams params,
     return;
   }
 
-  const ui::ImageModel* image_override = params.image_override.has_value()
-                                             ? &params.image_override.value()
-                                             : nullptr;
-
   const std::u16string body_string =
       params.body_string_override.has_value()
           ? params.body_string_override.value()
@@ -309,7 +309,7 @@ void ToastController::CreateToast(ToastParams params,
                          params.body_string_replacement_params,
                          params.body_string_cardinality_param);
   auto toast_view = std::make_unique<toasts::ToastView>(
-      anchor_view, body_string, spec->icon(), image_override,
+      anchor_view, body_string, spec->icon(), params.image_override,
       ShouldRenderToastOverWebContents(),
       base::BindRepeating(&RecordToastDismissReason, params.toast_id));
 

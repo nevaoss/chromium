@@ -8,6 +8,7 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/waap/waap_ui_metrics_service.h"
 #include "chrome/browser/ui/waap/waap_utils.h"
@@ -16,6 +17,8 @@
 #include "components/page_load_metrics/browser/page_load_metrics_observer_delegate.h"
 #include "components/page_load_metrics/browser/page_load_metrics_util.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/render_frame_host.h"
+#include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
 
 namespace {
@@ -94,6 +97,22 @@ InitialWebUIPageLoadMetricsObserver::OnPrerenderStart(
   return STOP_OBSERVING;
 }
 
+page_load_metrics::PageLoadMetricsObserver::ObservePolicy
+InitialWebUIPageLoadMetricsObserver::OnCommit(
+    content::NavigationHandle* navigation_handle) {
+  if (auto* rfh = navigation_handle->GetRenderFrameHost()) {
+    base::TimeTicks init_time = rfh->GetProcess()->GetLastInitTime();
+    base::TimeTicks launched_time = rfh->GetProcess()->GetProcessLaunchedTime();
+
+    if (auto* manager = GetMetricsManager()) {
+      // Record the renderer process creation timing.
+      manager->OnReloadButtonRendererProcessCreatedAndLaunched(init_time,
+                                                               launched_time);
+    }
+  }
+  return CONTINUE_OBSERVING;
+}
+
 WaapUIMetricsService* InitialWebUIPageLoadMetricsObserver::service() const {
   CHECK(GetDelegate().GetWebContents()->GetBrowserContext());
   auto* profile = Profile::FromBrowserContext(
@@ -119,7 +138,7 @@ InitialWebUIPageLoadMetricsObserver::GetMetricsManager() const {
   gfx::NativeWindow window = web_contents
                                  ? web_contents->GetTopLevelNativeWindow()
                                  : gfx::NativeWindow();
-  Browser* browser = chrome::FindBrowserWithWindow(window);
+  BrowserWindowInterface* browser = chrome::FindBrowserWithWindow(window);
   return browser ? InitialWebUIWindowMetricsManager::From(browser) : nullptr;
 }
 

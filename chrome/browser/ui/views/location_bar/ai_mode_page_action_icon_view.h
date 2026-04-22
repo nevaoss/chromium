@@ -39,9 +39,12 @@ class AiModePageActionIconView : public PageActionIconView {
   views::BubbleDialogDelegate* GetBubble() const override;
   void OnExecuting(PageActionIconView::ExecuteSource execute_source) override;
   const gfx::VectorIcon& GetVectorIcon() const override;
+  void UpdateIconImage() override;
 
   // views::View:
   bool OnKeyPressed(const ui::KeyEvent& event) override;
+  gfx::Size CalculatePreferredSize(
+      const views::SizeBounds& available_size) const override;
 
   void ExecuteWithKeyboardSourceForTesting();
 

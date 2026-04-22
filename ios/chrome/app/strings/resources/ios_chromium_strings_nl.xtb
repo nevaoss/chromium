@@ -2,6 +2,7 @@
 <!DOCTYPE translationbundle>
 <translationbundle lang="nl">
 <translation id="1000436330784933699">Je kunt Lens hier openen.</translation>
+<translation id="1005291068154454184">Video op volledig scherm over hoe je Chromium instelt als standaardbrowser</translation>
 <translation id="1042296835509784301">Opent Wachtwoordmanager in Chromium.</translation>
 <translation id="1047130070405668746">Selecteer Chromium</translation>
 <translation id="1091252999271033193">Dit betekent dat Chromium altijd de mobiele site opvraagt.</translation>
@@ -70,9 +71,6 @@ Je kunt pas nieuwe bookmarks opslaan in je account als je er een paar hebt verwi
 <translation id="2313870531055795960">Checkt URL's aan de hand van een lijst met onveilige sites die is opgeslagen in Chromium. Als een site je wachtwoord probeert te stelen of als je een schadelijk bestand downloadt, kan Chromium ook URL's, inclusief delen van de paginacontent, naar Safe Browsing sturen.</translation>
 <translation id="2314220608288760290">Chromium opent YouTube-incognitolinks automatisch in de incognitomodus.</translation>
 <translation id="231828342043114302">Log in bij Chromium om gepersonaliseerde content op basis van je interesses te krijgen.</translation>
-<translation id="2326738825692478496">Sommige van je Chromium-gegevens zijn nog niet opgeslagen in je Google-account.
-
-Wacht een paar minuten voordat je uitlogt. Als je nu uitlogt, worden deze gegevens verwijderd.</translation>
 <translation id="2334943301233020675">De volgende toegangssleutels zijn niet in Wachtwoordmanager geïmporteerd omdat ze niet aan de vereisten voldoen.</translation>
 <translation id="2337722506862731008">Chromium delen</translation>
 <translation id="2340423701577464731">Item toevoegen aan leeslijst in Chromium</translation>

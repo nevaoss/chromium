@@ -56,6 +56,8 @@ class UkmPageLoadMetricsObserver
   ~UkmPageLoadMetricsObserver() override;
 
   // page_load_metrics::PageLoadMetricsObserver implementation:
+  const char* GetObserverName() const override;
+  ObservePolicy ShouldObserveScheme(const GURL& url) const override;
   ObservePolicy OnStart(content::NavigationHandle* navigation_handle,
                         const GURL& currently_committed_url,
                         bool started_in_foreground) override;
@@ -99,9 +101,6 @@ class UkmPageLoadMetricsObserver
   void OnTimingUpdate(
       content::RenderFrameHost* subframe_rfh,
       const page_load_metrics::mojom::PageLoadTiming& timing) override;
-
-  void SetUpSharedMemoryForDroppedFrames(
-      const base::ReadOnlySharedMemoryRegion& dropped_frames_memory) override;
 
   void OnCpuTimingUpdate(
       content::RenderFrameHost* subframe_rfh,
@@ -187,7 +186,6 @@ class UkmPageLoadMetricsObserver
       ukm::builders::PageLoad& builder,
       const page_load_metrics::PageEndReason page_end_reason);
 
-  void RecordDroppedFramesMetrics();
   void RecordResponsivenessMetrics();
 
   void RecordPageLoadTimestampMetrics(ukm::builders::PageLoad& builder);
@@ -360,8 +358,6 @@ class UkmPageLoadMetricsObserver
 
   // The connection info for the committed URL.
   std::optional<net::HttpConnectionInfo> connection_info_;
-
-  base::ReadOnlySharedMemoryMapping ukm_dropped_frames_data_;
 
   // Only true if the page became hidden after the first time it was shown in
   // the foreground, no matter how it started.

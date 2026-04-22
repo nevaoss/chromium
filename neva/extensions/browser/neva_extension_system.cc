@@ -135,12 +135,6 @@ extensions::ContentVerifier* NevaExtensionSystem::content_verifier() {
   return nullptr;
 }
 
-std::unique_ptr<extensions::ExtensionSet>
-NevaExtensionSystem::GetDependentExtensions(
-    const extensions::Extension* extension) {
-  return std::make_unique<extensions::ExtensionSet>();
-}
-
 void NevaExtensionSystem::InstallUpdate(
     const std::string& extension_id,
     const std::string& public_key,

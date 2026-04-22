@@ -338,6 +338,21 @@ void ResponsivenessMetrics::HandleCompositionInteraction(
     return;
   }
 
+  // TODO(crbug.com/491152223): Handling these two events before the
+  // |kCompositionEndOnKeyup| case below matters, because these two events will
+  // not have a |key_code| and should not go to |HandleKeyboardInteraction|.
+  // Ideally, we replace the need to handle these and just use the |isComposing|
+  // property of events directly.
+  if (event_type == event_type_names::kCompositionupdate) {
+    SetInteractionId(new_entry, PerformanceTimelineEntryIdInfo::kNone);
+    return;
+  }
+  if (event_type == event_type_names::kCompositionend) {
+    composition_state_ = kCompositionEndOnKeyup;
+    SetInteractionId(new_entry, PerformanceTimelineEntryIdInfo::kNone);
+    return;
+  }
+
   // Immediately after compositionend we treat the next input & keyup as the
   // last composition related events-- otherwise we reset to non-composition
   // mode, and move to the keyboard handler.
@@ -350,18 +365,6 @@ void ResponsivenessMetrics::HandleCompositionInteraction(
     return;
   }
 
-  if (event_type == event_type_names::kCompositionupdate) {
-    CHECK_EQ(composition_state_, kCompositionActive);
-    SetInteractionId(new_entry, PerformanceTimelineEntryIdInfo::kNone);
-    return;
-  }
-
-  if (event_type == event_type_names::kCompositionend) {
-    CHECK_EQ(composition_state_, kCompositionActive);
-    composition_state_ = kCompositionEndOnKeyup;
-    SetInteractionId(new_entry, PerformanceTimelineEntryIdInfo::kNone);
-    return;
-  }
 
   if (event_type == event_type_names::kKeydown) {
     CHECK_EQ(composition_state_, kCompositionActive);
@@ -608,6 +611,8 @@ void ResponsivenessMetrics::RecordUserInteractionUKM(
     const PerformanceEventTiming& entry) {
   const auto* reporting_info = entry.GetEventTimingReportingInfo();
   base::TimeTicks event_start = reporting_info->creation_time;
+  base::TimeTicks event_processing_start =
+      reporting_info->processing_start_time;
   base::TimeTicks event_end = entry.GetEndTime();
   base::TimeTicks event_queued_main_thread =
       reporting_info->enqueued_to_main_thread_time;
@@ -619,8 +624,8 @@ void ResponsivenessMetrics::RecordUserInteractionUKM(
   if (!event_start.is_null() && duration.InMilliseconds() >= 0) {
     if (window->GetFrame()) {
       window->GetFrame()->Client()->DidObserveUserInteraction(
-          event_start, event_queued_main_thread, event_commit_finish, event_end,
-          interaction_offset);
+          event_start, event_queued_main_thread, event_processing_start,
+          event_commit_finish, event_end, interaction_offset);
     }
   }
 

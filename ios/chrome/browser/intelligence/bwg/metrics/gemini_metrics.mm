@@ -78,6 +78,8 @@ const char kEntryPointHistogram[] = "IOS.Gemini.EntryPoint";
 const char kEntryPointImpressionHistogram[] =
     "IOS.Gemini.EntryPoint.Impression";
 
+const char kEntryPointAvailableHistogram[] = "IOS.Gemini.EntryPoint.Available";
+
 const char kFeedbackHistogram[] = "IOS.Gemini.Feedback";
 
 const char kImageActionButtonHistogram[] = "IOS.Gemini.ImageActionButton";
@@ -91,12 +93,16 @@ const char kPromoActionHistogram[] = "IOS.Gemini.FRE.PromoAction";
 
 const char kConsentActionHistogram[] = "IOS.Gemini.FRE.ConsentAction";
 
+const char kGeminiPageAvailabilityHistogram[] = "IOS.Gemini.PageAvailability";
+
 const char kGeminiIneligibilityReasonHistogram[] =
     "IOS.Gemini.IneligibilityReason";
 
 const char kStartupTimeWithFREHistogram[] = "IOS.Gemini.StartupTime.FirstRun";
 
 const char kStartupTimeNoFREHistogram[] = "IOS.Gemini.StartupTime.NotFirstRun";
+
+const char kGeminiFREStateHistogram[] = "IOS.Gemini.FRE.State";
 
 const char kGeminiSessionCancellationHistogram[] =
     "IOS.Gemini.Session.CancellationReason";
@@ -218,8 +224,16 @@ void RecordFREConsentAction(IOSGeminiFREAction action) {
   base::UmaHistogramEnumeration(kConsentActionHistogram, action);
 }
 
+void RecordGeminiPageAvailability(IOSGeminiPageAvailability reason) {
+  base::UmaHistogramEnumeration(kGeminiPageAvailabilityHistogram, reason);
+}
+
 void RecordGeminiEligibility(bool eligible) {
   base::UmaHistogramBoolean(kEligibilityHistogram, eligible);
+}
+
+void RecordGeminiFREState(gemini::FREState state) {
+  base::UmaHistogramEnumeration(kGeminiFREStateHistogram, state);
 }
 
 void RecordGeminiIneligibilityReasons(gemini::IneligibilityReasons reasons) {
@@ -298,6 +312,12 @@ void RecordGeminiEntryPointImpression(gemini::EntryPoint entry_point) {
     base::UmaHistogramEnumeration(kEntryPointImpressionHistogram, entry_point);
     last_impression_time = now;
   }
+}
+
+void RecordGeminiEntryPointAvailable(gemini::EntryPoint entry_point) {
+  base::RecordAction(
+      base::UserMetricsAction("MobileGeminiEntryPointAvailable"));
+  base::UmaHistogramEnumeration(kEntryPointAvailableHistogram, entry_point);
 }
 
 void RecordFREShown() {

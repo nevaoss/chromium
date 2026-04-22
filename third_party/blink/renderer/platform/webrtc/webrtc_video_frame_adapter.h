@@ -5,11 +5,12 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_PLATFORM_WEBRTC_WEBRTC_VIDEO_FRAME_ADAPTER_H_
 #define THIRD_PARTY_BLINK_RENDERER_PLATFORM_WEBRTC_WEBRTC_VIDEO_FRAME_ADAPTER_H_
 
+#include <span>
+
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/sequence_checker.h"
 #include "base/synchronization/lock.h"
 #include "base/time/default_tick_clock.h"
 #include "base/time/time.h"
@@ -21,7 +22,6 @@
 #include "media/capture/video/video_capture_feedback.h"
 #include "media/video/gpu_video_accelerator_factories.h"
 #include "media/video/renderable_mappable_shared_image_video_frame_pool.h"
-#include "third_party/blink/renderer/platform/graphics/web_graphics_context_3d_provider_wrapper.h"
 #include "third_party/blink/renderer/platform/platform_export.h"
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
 #include "third_party/blink/renderer/platform/wtf/thread_safe_ref_counted.h"
@@ -132,8 +132,13 @@ class PLATFORM_EXPORT WebRtcVideoFrameAdapter
     virtual ~SharedResources();
 
    private:
-    void SetRasterContextProvider(
-        base::WeakPtr<WebGraphicsContext3DProviderWrapper>);
+    void SetRasterContextProvider(scoped_refptr<viz::RasterContextProvider>);
+
+    void OnAsyncReadbackCompleted(
+        scoped_refptr<media::VideoFrame> texture_frame,
+        scoped_refptr<media::VideoFrame> mapped_frame,
+        base::OnceCallback<void(scoped_refptr<media::VideoFrame>)> callback,
+        bool success);
 
     media::VideoFramePool pool_;
     media::VideoFramePool pool_for_mapped_frames_;
@@ -142,8 +147,11 @@ class PLATFORM_EXPORT WebRtcVideoFrameAdapter
         accelerated_frame_pool_;
     bool disable_gmb_frames_ = false;
 
-    bool async_rcp_request_ongoing_;
-    scoped_refptr<viz::RasterContextProvider> raster_context_provider_;
+    base::Lock raster_context_provider_lock_;
+    scoped_refptr<viz::RasterContextProvider> raster_context_provider_
+        GUARDED_BY(raster_context_provider_lock_);
+    bool async_rcp_request_in_flight_
+        GUARDED_BY(raster_context_provider_lock_) = false;
 
     raw_ptr<media::GpuVideoAcceleratorFactories> gpu_factories_;
 
@@ -154,8 +162,6 @@ class PLATFORM_EXPORT WebRtcVideoFrameAdapter
 
     // Contains feedback from the most recently destroyed Adapter.
     media::VideoCaptureFeedback last_feedback_ GUARDED_BY(feedback_lock_);
-
-    SEQUENCE_CHECKER(sequence_checker_);
   };
 
   struct PLATFORM_EXPORT ScaledBufferSize {
@@ -197,7 +203,7 @@ class PLATFORM_EXPORT WebRtcVideoFrameAdapter
     // Obtains a mapped buffer of this ScaledBuffer's size hard-applied. The
     // resulting buffer's type is the non-kNative type used internally.
     webrtc::scoped_refptr<webrtc::VideoFrameBuffer> GetMappedFrameBuffer(
-        webrtc::ArrayView<webrtc::VideoFrameBuffer::Type> types) override;
+        std::span<webrtc::VideoFrameBuffer::Type> types) override;
 
     // Soft-applies cropping and scaling. The result is another ScaledBuffer.
     webrtc::scoped_refptr<webrtc::VideoFrameBuffer> CropAndScale(
@@ -231,7 +237,7 @@ class PLATFORM_EXPORT WebRtcVideoFrameAdapter
 
   webrtc::scoped_refptr<webrtc::I420BufferInterface> ToI420() override;
   webrtc::scoped_refptr<webrtc::VideoFrameBuffer> GetMappedFrameBuffer(
-      webrtc::ArrayView<webrtc::VideoFrameBuffer::Type> types) override;
+      std::span<webrtc::VideoFrameBuffer::Type> types) override;
 
   // Soft-applies cropping and scaling. The result is a ScaledBuffer.
   webrtc::scoped_refptr<webrtc::VideoFrameBuffer> CropAndScale(

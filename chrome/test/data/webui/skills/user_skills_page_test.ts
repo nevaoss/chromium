@@ -7,9 +7,8 @@ import 'chrome://skills/user_skills_page.js';
 import {CrRouter} from 'chrome://resources/js/cr_router.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import type {Skill} from 'chrome://skills/skill.mojom-webui.js';
-import {SkillSource} from 'chrome://skills/skill.mojom-webui.js';
+import {SkillsDialogType, SkillSource} from 'chrome://skills/skill.mojom-webui.js';
 import {SkillsManagementAction, SkillsManagementPage} from 'chrome://skills/skill_metrics.mojom-webui.js';
-import {SkillsDialogType} from 'chrome://skills/skills.mojom-webui.js';
 import {SkillsPageBrowserProxy} from 'chrome://skills/skills_page_browser_proxy.js';
 import type {UserSkillsPageElement} from 'chrome://skills/user_skills_page.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -42,6 +41,7 @@ suite('UserSkillsPage', function() {
       icon: '',
       prompt: '',
       description: '',
+      imageUrl: '',
       source: SkillSource.kUserCreated,
       creationTime: {internalValue: 0n},
       lastUpdateTime: {internalValue: 0n},
@@ -50,9 +50,8 @@ suite('UserSkillsPage', function() {
   }
 
   async function setUserSkills(skills: Array<Partial<Skill>>) {
-    for (const skill of skills) {
-      browserProxy.callbackRouterRemote.updateSkill(createSkill(skill));
-    }
+    browserProxy.callbackRouterRemote.updateSkills(
+        skills.map(s => createSkill(s)));
     await microtasksFinished();
   }
 

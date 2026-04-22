@@ -5,19 +5,33 @@
 #ifndef COMPONENTS_DESKTOP_TO_MOBILE_PROMOS_FEATURES_H_
 #define COMPONENTS_DESKTOP_TO_MOBILE_PROMOS_FEATURES_H_
 
+#include "base/containers/enum_set.h"
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
 #include "components/desktop_to_mobile_promos/promos_types.h"
 
 // Enum to represent promo types of feature kMobilePromoOnDesktop.
+// LINT.IfChange(MobilePromoOnDesktopPromoType)
 enum class MobilePromoOnDesktopPromoType {
-  kAllPromos = 0,
+  kMinValue = 0,
+  // Indicates that all types of promos are enabled for the device.
+  kAllPromos = kMinValue,
   kLensPromo = 1,
   kESBPromo = 2,
   kAutofillPromo = 3,
   kTabGroups = 4,
   kPriceTracking = 5,
+  kMaxValue = kPriceTracking,
 };
+// LINT.ThenChange(/components/sync/protocol/sync_enums.proto:MobilePromoOnDesktopPromoType)
+
+// Represents a set of MobilePromoOnDesktopPromoType values.
+// Used primarily to sync the specific types of promos an iOS device is
+// eligible to receive to Desktop via DeviceInfo.
+using MobilePromoOnDesktopPromoTypeSet =
+    base::EnumSet<MobilePromoOnDesktopPromoType,
+                  MobilePromoOnDesktopPromoType::kMinValue,
+                  MobilePromoOnDesktopPromoType::kMaxValue>;
 
 // Enum to represent the forced promo type of feature
 // kMobilePromoOnDesktopForcePromoType.
@@ -37,6 +51,7 @@ enum class MobileNTPPromoOnDesktopVariation {
 // If this feature is enabled, show mobile promo on desktop with a "Remind Me"
 // button.
 BASE_DECLARE_FEATURE(kMobilePromoOnDesktopWithReminder);
+BASE_DECLARE_FEATURE(kMobilePromoOnDesktopWithReminderWave1);
 
 // If this feature is enabled, collect data for the mobile promo on desktop.
 BASE_DECLARE_FEATURE(kMobilePromoOnDesktopRecordActiveDays);
@@ -44,6 +59,7 @@ BASE_DECLARE_FEATURE(kMobilePromoOnDesktopRecordActiveDays);
 // If this feature is enabled, show the QR Code flow for the mobile
 // promo on desktop.
 BASE_DECLARE_FEATURE(kMobilePromoOnDesktopWithQRCode);
+BASE_DECLARE_FEATURE(kMobilePromoOnDesktopWithQRCodeWave1);
 
 // If this feature is enabled, force the iOS promo to be a specific type.
 BASE_DECLARE_FEATURE(kMobilePromoOnDesktopForcePromoType);

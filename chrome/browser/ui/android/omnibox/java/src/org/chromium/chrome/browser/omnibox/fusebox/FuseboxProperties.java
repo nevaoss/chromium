@@ -6,8 +6,12 @@ package org.chromium.chrome.browser.omnibox.fusebox;
 
 import android.graphics.Bitmap;
 
+import androidx.annotation.IntDef;
+
+import org.chromium.base.Callback;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.ui.modelutil.PropertyKey;
@@ -15,19 +19,54 @@ import org.chromium.ui.modelutil.PropertyModel.WritableBooleanPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+
 /** The properties associated with the Fusebox bar. */
 @NullMarked
 class FuseboxProperties {
+    @IntDef({PopupButtonType.ATTACHMENT, PopupButtonType.TOOL, PopupButtonType.MODEL})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface PopupButtonType {
+        int ATTACHMENT = 0;
+        int TOOL = 1;
+        int MODEL = 2;
+    }
+
+    /** Encapsulates the state for a button in the Fusebox popup. */
+    public static class PopupButtonData {
+        public final Runnable onClicked;
+        public final String text;
+        public final /*IconResourceIds*/ int iconId;
+        public final boolean enabled;
+        public final boolean selected;
+        public final @PopupButtonType int type;
+        public final int protoId;
+
+        public PopupButtonData(
+                Callback<PopupButtonData> onClicked,
+                String text,
+                int iconId,
+                boolean enabled,
+                boolean selected,
+                @PopupButtonType int type,
+                int protoId) {
+            this.onClicked = onClicked.bind(this);
+            this.text = text;
+            this.iconId = iconId;
+            this.enabled = enabled;
+            this.selected = selected;
+            this.type = type;
+            this.protoId = protoId;
+        }
+    }
+
     /** The adapter for the attachments RecyclerView. */
     public static final WritableObjectPropertyKey<SimpleRecyclerViewAdapter> ADAPTER =
             new WritableObjectPropertyKey<>();
 
     /** Whether the add button is visible. */
     public static final WritableBooleanPropertyKey ADD_BUTTON_VISIBLE =
-            new WritableBooleanPropertyKey();
-
-    /** Whether the attachments toolbar is visible. */
-    public static final WritableBooleanPropertyKey ATTACHMENTS_TOOLBAR_VISIBLE =
             new WritableBooleanPropertyKey();
 
     /** Whether the attachments RecyclerView is visible. */
@@ -50,8 +89,9 @@ class FuseboxProperties {
     public static final WritableObjectPropertyKey<@BrandedColorScheme Integer> COLOR_SCHEME =
             new WritableObjectPropertyKey<>();
 
-    /** Whether the UI is in compact mode. */
-    public static final WritableBooleanPropertyKey COMPACT_UI = new WritableBooleanPropertyKey();
+    /** The state the the UI of the fusebox should currently be in. */
+    public static final WritableObjectPropertyKey<@FuseboxState Integer> FUSEBOX_STATE =
+            new WritableObjectPropertyKey<>();
 
     /** Action to perform when the user clicks the Camera button in the popup. */
     public static final WritableObjectPropertyKey<Runnable> POPUP_ATTACH_CAMERA_CLICKED =
@@ -135,6 +175,18 @@ class FuseboxProperties {
     public static final WritableBooleanPropertyKey POPUP_ATTACH_TAB_PICKER_VISIBLE =
             new WritableBooleanPropertyKey();
 
+    /** Holds button data objects for each model that is to be shown. */
+    public static final WritableObjectPropertyKey<java.util.List<PopupButtonData>>
+            POPUP_MODEL_BUTTON_DATA_LIST = new WritableObjectPropertyKey<>();
+
+    /** Whether the models divider in the popup is visible. */
+    public static final WritableBooleanPropertyKey POPUP_MODEL_DIVIDER_VISIBLE =
+            new WritableBooleanPropertyKey();
+
+    /** Whether the models header in the popup is visible. */
+    public static final WritableBooleanPropertyKey POPUP_MODEL_HEADER_VISIBLE =
+            new WritableBooleanPropertyKey();
+
     /** Action to perform when the user clicks the AI Mode button in the popup. */
     public static final WritableObjectPropertyKey<Runnable> POPUP_TOOL_AI_MODE_CLICKED =
             new WritableObjectPropertyKey<>();
@@ -145,6 +197,18 @@ class FuseboxProperties {
 
     /** Whether the AI Mode button in the popup is visible. */
     public static final WritableBooleanPropertyKey POPUP_TOOL_AI_MODE_VISIBLE =
+            new WritableBooleanPropertyKey();
+
+    /** Action to perform when the user clicks the canvas tool button in the popup. */
+    public static final WritableObjectPropertyKey<Runnable> POPUP_TOOL_CANVAS_CLICKED =
+            new WritableObjectPropertyKey<>();
+
+    /** Whether the canvas tool button in the popup is enabled. */
+    public static final WritableBooleanPropertyKey POPUP_TOOL_CANVAS_ENABLED =
+            new WritableBooleanPropertyKey();
+
+    /** Whether the canvas tool button in the popup is visible. */
+    public static final WritableBooleanPropertyKey POPUP_TOOL_CANVAS_VISIBLE =
             new WritableBooleanPropertyKey();
 
     /** Action to perform when the user clicks the 'Create Image' button in the popup. */
@@ -159,6 +223,26 @@ class FuseboxProperties {
     public static final WritableBooleanPropertyKey POPUP_TOOL_CREATE_IMAGE_VISIBLE =
             new WritableBooleanPropertyKey();
 
+    /** Action to perform when the user clicks the Deep Search tool button in the popup */
+    public static final WritableObjectPropertyKey<Runnable> POPUP_TOOL_DEEP_SEARCH_CLICKED =
+            new WritableObjectPropertyKey<>();
+
+    /** Whether the deep search tool button in the popup is enabled. */
+    public static final WritableBooleanPropertyKey POPUP_TOOL_DEEP_SEARCH_ENABLED =
+            new WritableBooleanPropertyKey();
+
+    /** Whether the deep search tool button in the popup is visible. */
+    public static final WritableBooleanPropertyKey POPUP_TOOL_DEEP_SEARCH_VISIBLE =
+            new WritableBooleanPropertyKey();
+
+    /** Whether the tools divider in the popup is visible. */
+    public static final WritableBooleanPropertyKey POPUP_TOOL_DIVIDER_VISIBLE =
+            new WritableBooleanPropertyKey();
+
+    /** Whether the tools header in the popup is visible. */
+    public static final WritableBooleanPropertyKey POPUP_TOOL_HEADER_VISIBLE =
+            new WritableBooleanPropertyKey();
+
     /** Whether to show the dedicated AIMode button directly in the Fusebox. */
     public static final WritableBooleanPropertyKey SHOW_DEDICATED_MODE_BUTTON =
             new WritableBooleanPropertyKey();
@@ -167,13 +251,12 @@ class FuseboxProperties {
         // go/keep-sorted start
         ADAPTER,
         ADD_BUTTON_VISIBLE,
-        ATTACHMENTS_TOOLBAR_VISIBLE,
         ATTACHMENTS_VISIBLE,
         AUTOCOMPLETE_REQUEST_TYPE,
         AUTOCOMPLETE_REQUEST_TYPE_CLICKED,
         BUTTON_ADD_CLICKED,
         COLOR_SCHEME,
-        COMPACT_UI,
+        FUSEBOX_STATE,
         POPUP_ATTACH_CAMERA_CLICKED,
         POPUP_ATTACH_CAMERA_ENABLED,
         POPUP_ATTACH_CAMERA_VISIBLE,
@@ -193,12 +276,23 @@ class FuseboxProperties {
         POPUP_ATTACH_TAB_PICKER_CLICKED,
         POPUP_ATTACH_TAB_PICKER_ENABLED,
         POPUP_ATTACH_TAB_PICKER_VISIBLE,
+        POPUP_MODEL_BUTTON_DATA_LIST,
+        POPUP_MODEL_DIVIDER_VISIBLE,
+        POPUP_MODEL_HEADER_VISIBLE,
         POPUP_TOOL_AI_MODE_CLICKED,
         POPUP_TOOL_AI_MODE_ENABLED,
         POPUP_TOOL_AI_MODE_VISIBLE,
+        POPUP_TOOL_CANVAS_CLICKED,
+        POPUP_TOOL_CANVAS_ENABLED,
+        POPUP_TOOL_CANVAS_VISIBLE,
         POPUP_TOOL_CREATE_IMAGE_CLICKED,
         POPUP_TOOL_CREATE_IMAGE_ENABLED,
         POPUP_TOOL_CREATE_IMAGE_VISIBLE,
+        POPUP_TOOL_DEEP_SEARCH_CLICKED,
+        POPUP_TOOL_DEEP_SEARCH_ENABLED,
+        POPUP_TOOL_DEEP_SEARCH_VISIBLE,
+        POPUP_TOOL_DIVIDER_VISIBLE,
+        POPUP_TOOL_HEADER_VISIBLE,
         SHOW_DEDICATED_MODE_BUTTON
         // go/keep-sorted end
     };

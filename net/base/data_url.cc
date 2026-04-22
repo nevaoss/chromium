@@ -253,11 +253,16 @@ bool ParseMetadataWithParameterPreservation(
                                             nullptr)) {
     // Fallback to the default as recommended in RFC2045 when the mediatype
     // value is invalid. For this case, we don't respect |charset| but force
-    // it set to "US-ASCII".
+    // it set to "US-ASCII". Note: base64_encoded is intentionally preserved
+    // here. Per the Fetch Standard data: URL processor [1], base64 detection
+    // (step 11) happens before MIME type validation (step 13-14), so an invalid
+    // MIME type should not prevent base64 body decoding. This matches the
+    // legacy behavior and preserves backward compatibility with data URLs
+    // like "data:image;base64,..." or "data:image/image/jpeg;base64,...".
+    // [1] https://fetch.spec.whatwg.org/#data-url-processor
     *mime_type_value = "text/plain";
     *charset_value = "US-ASCII";
     parameters.clear();
-    *base64_encoded = false;
   }
 
   AppendParametersToMimeType(parameters, quoted_charset_value, mime_type_value);
@@ -472,19 +477,18 @@ Error DataURL::BuildResponse(const GURL& url,
   DCHECK(data);
   DCHECK(!*headers);
 
-  if (!DataURL::Parse(url, mime_type, charset, data))
+  std::string parsed_mime_type;
+  if (!DataURL::Parse(url, &parsed_mime_type, charset, data)) {
     return ERR_INVALID_URL;
+  }
 
-  // |mime_type| set by DataURL::Parse() is guaranteed to be in
-  //     token "/" token
-  // form. |charset| can be an empty string.
-  DCHECK(!mime_type->empty());
+  DCHECK(!parsed_mime_type.empty());
 
   // "charset" in the Content-Type header is specified explicitly to follow
   // the "token" ABNF in the HTTP spec. When the DataURL::Parse() call is
   // successful, it's guaranteed that the string in |charset| follows the
   // "token" ABNF.
-  std::string content_type = *mime_type;
+  std::string content_type = parsed_mime_type;
   if (!charset->empty())
     content_type.append(";charset=" + *charset);
   // The terminal double CRLF isn't needed by TryToCreateForDataURL().
@@ -493,6 +497,16 @@ Error DataURL::BuildResponse(const GURL& url,
   // there are nulls in the string, and DataURL::Parse() can't return nulls in
   // anything but the |data| argument.
   DCHECK(*headers);
+
+  // Return only the MIME type essence without parameters for compatibility
+  // with callers that expect token/token in the MIME type field.
+  std::optional<std::string> mime_type_without_parameters =
+      ExtractMimeTypeFromMediaType(parsed_mime_type,
+                                   /*accept_comma_separated=*/false);
+  if (!mime_type_without_parameters) {
+    return ERR_INVALID_URL;
+  }
+  *mime_type = std::move(*mime_type_without_parameters);
 
   if (base::EqualsCaseInsensitiveASCII(method, "HEAD"))
     data->clear();

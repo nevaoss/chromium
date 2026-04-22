@@ -210,7 +210,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         initializeCrossDeviceSettingImporter()
                 .askToApplyNtpSettingImportIfNeeded(
-                        preferencesToApply, /* onlyOmniboxPosition= */ false);
+                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -259,7 +259,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         initializeCrossDeviceSettingImporter()
                 .askToApplyNtpSettingImportIfNeeded(
-                        preferencesToApply, /* onlyOmniboxPosition= */ false);
+                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
 
         verify(mSnackbarManager, times(0)).showSnackbar(mSnackbarCaptor.capture());
     }
@@ -274,7 +274,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         initializeCrossDeviceSettingImporter()
                 .askToApplyNtpSettingImportIfNeeded(
-                        preferencesToApply, /* onlyOmniboxPosition= */ false);
+                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -321,7 +321,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         initializeCrossDeviceSettingImporter()
                 .askToApplyNtpSettingImportIfNeeded(
-                        preferencesToApply, /* onlyOmniboxPosition= */ false);
+                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -363,7 +363,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         initializeCrossDeviceSettingImporter()
                 .askToApplyNtpSettingImportIfNeeded(
-                        preferencesToApply, /* onlyOmniboxPosition= */ true);
+                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ true);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -390,7 +390,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         initializeCrossDeviceSettingImporter()
                 .askToApplyNtpSettingImportIfNeeded(
-                        preferencesToApply, /* onlyOmniboxPosition= */ true);
+                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ true);
 
         verify(mSnackbarManager, never()).showSnackbar(any(Snackbar.class));
     }
@@ -408,7 +408,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         initializeCrossDeviceSettingImporter()
                 .askToApplyNtpSettingImportIfNeeded(
-                        preferencesToApply, /* onlyOmniboxPosition= */ false);
+                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ false);
 
         verify(mSnackbarManager).showSnackbar(any(Snackbar.class));
     }
@@ -421,7 +421,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         initializeCrossDeviceSettingImporter()
                 .askToApplyNtpSettingImportIfNeeded(
-                        preferencesToApply, /* onlyOmniboxPosition= */ true);
+                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ true);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -540,41 +540,18 @@ public class CrossDeviceSettingImporterUnitTest {
 
     @Test
     public void testOnTabChange_TrackerNotReady_LocalDeviceInfoMissing_Waits() {
-        ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
-        ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
+        doTestOnTabChange_TrackerNotReady_Waits(ServiceStatus.LOCAL_DEVICE_INFO_MISSING);
+    }
 
-        when(mCrossDevicePrefTracker.getServiceStatus())
-                .thenReturn(ServiceStatus.LOCAL_DEVICE_INFO_MISSING);
-        when(mCrossDevicePrefTracker.getNativePtr()).thenReturn(0L);
+    @Test
+    public void testOnTabChange_TrackerNotReady_WaitingForInitialSync_Waits() {
+        doTestOnTabChange_TrackerNotReady_Waits(ServiceStatus.WAITING_FOR_INITIAL_SYNC);
+    }
 
-        // Use remote preferences that differ from local.
-        SyncedSetUpUtilsBridge.setCrossDeviceSettingsForTesting(
-                Map.of(Pref.MAGIC_STACK_HOME_MODULE_ENABLED, false));
-        when(mPrefService.getBoolean(Pref.MAGIC_STACK_HOME_MODULE_ENABLED)).thenReturn(true);
-
-        // Simulate tab change.
-        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
-
-        verify(mCrossDevicePrefTracker).addObserver(mTrackerObserverCaptor.capture());
-        // Haven't imported yet.
-        assertTrue(
-                "The preference for having imported all settings should not be set yet.",
-                !ChromeSharedPreferences.getInstance()
-                        .readBoolean(
-                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false));
-
-        // Simulate tracker becoming ready.
-        mTrackerObserverCaptor.getValue().onServiceStatusChanged(ServiceStatus.AVAILABLE);
-
-        verify(mSnackbarManager).showSnackbar(any());
-        assertTrue(
-                "The preference for having imported all settings should be set once the "
-                        + "tracker becomes ready.",
-                ChromeSharedPreferences.getInstance()
-                        .readBoolean(
-                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false));
+    @Test
+    public void testOnTabChange_TrackerNotReady_SyncNotConfiguredAndLocalDeviceInfoMissing_Waits() {
+        doTestOnTabChange_TrackerNotReady_Waits(
+                ServiceStatus.SYNC_NOT_CONFIGURED_AND_LOCAL_DEVICE_INFO_MISSING);
     }
 
     @Test
@@ -599,7 +576,7 @@ public class CrossDeviceSettingImporterUnitTest {
                         false));
         Map<String, Object> result =
                 initializeCrossDeviceSettingImporter()
-                        .getPrefsFromRemoteDevice(mCrossDevicePrefTracker, mProfile);
+                        .getPrefsFromRemoteDevice(mProfile, mCrossDevicePrefTracker);
 
         assertEquals("The result map should contain two preferences.", 2, result.size());
         assertTrue(
@@ -640,41 +617,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
     @Test
     public void testOnTabChange_TrackerNotReady_WaitsAndThenImports() {
-        ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
-        ChromeSharedPreferences.getInstance()
-                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
-
-        when(mCrossDevicePrefTracker.getServiceStatus())
-                .thenReturn(ServiceStatus.DEVICE_INFO_TRACKER_MISSING);
-        when(mCrossDevicePrefTracker.getNativePtr()).thenReturn(0L);
-
-        // Use remote preferences that differ from local.
-        SyncedSetUpUtilsBridge.setCrossDeviceSettingsForTesting(
-                Map.of(Pref.MAGIC_STACK_HOME_MODULE_ENABLED, false));
-        when(mPrefService.getBoolean(Pref.MAGIC_STACK_HOME_MODULE_ENABLED)).thenReturn(true);
-
-        // Simulate tab change.
-        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
-
-        verify(mCrossDevicePrefTracker).addObserver(mTrackerObserverCaptor.capture());
-        // Haven't imported yet.
-        assertTrue(
-                "The preference for having imported all settings should not be set yet.",
-                !ChromeSharedPreferences.getInstance()
-                        .readBoolean(
-                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false));
-
-        // Simulate tracker becoming ready.
-        mTrackerObserverCaptor.getValue().onServiceStatusChanged(ServiceStatus.AVAILABLE);
-
-        verify(mSnackbarManager).showSnackbar(any());
-        assertTrue(
-                "The preference for having imported all settings should be set once the "
-                        + "tracker becomes ready.",
-                ChromeSharedPreferences.getInstance()
-                        .readBoolean(
-                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false));
+        doTestOnTabChange_TrackerNotReady_Waits(ServiceStatus.DEVICE_INFO_TRACKER_MISSING);
     }
 
     @Test
@@ -735,7 +678,7 @@ public class CrossDeviceSettingImporterUnitTest {
 
         initializeCrossDeviceSettingImporter()
                 .askToApplyNtpSettingImportIfNeeded(
-                        preferencesToApply, /* onlyOmniboxPosition= */ true);
+                        mProfile, preferencesToApply, /* onlyOmniboxPosition= */ true);
 
         verify(mSnackbarManager).showSnackbar(mSnackbarCaptor.capture());
         Snackbar snackbar = mSnackbarCaptor.getValue();
@@ -772,5 +715,105 @@ public class CrossDeviceSettingImporterUnitTest {
         mCrossDeviceSettingImporter.destroy();
         verify(mTab2).removeObserver(any(TabObserver.class));
         assertTrue(!mActivityTabSupplier.hasObservers());
+    }
+
+    @Test
+    public void testOnServiceStatusChanged_TabBecomesNull_NoCrash() {
+        when(mCrossDevicePrefTracker.getServiceStatus())
+                .thenReturn(ServiceStatus.DEVICE_INFO_TRACKER_MISSING);
+
+        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
+
+        verify(mCrossDevicePrefTracker).addObserver(mTrackerObserverCaptor.capture());
+
+        // Simulate tab becoming null.
+        mActivityTabSupplier.set(null);
+
+        // Simulate tracker becoming ready.
+        // This should NOT crash even though mActivityTabSupplier.get() is null.
+        mTrackerObserverCaptor.getValue().onServiceStatusChanged(ServiceStatus.AVAILABLE);
+    }
+
+    @Test
+    public void testOnServiceStatusChanged_ProfileBecomesNull_NoCrash() {
+        when(mCrossDevicePrefTracker.getServiceStatus())
+                .thenReturn(ServiceStatus.DEVICE_INFO_TRACKER_MISSING);
+
+        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
+
+        verify(mCrossDevicePrefTracker).addObserver(mTrackerObserverCaptor.capture());
+
+        // Simulate profile becoming null on the tab.
+        when(mTab.getProfile()).thenReturn(null);
+
+        // Simulate tracker becoming ready.
+        // This should NOT crash even though tab.getProfile() is null.
+        mTrackerObserverCaptor.getValue().onServiceStatusChanged(ServiceStatus.AVAILABLE);
+    }
+
+    @Test
+    public void testOnTabChange_TrackerNotReady_ObserverRemovedWhenReady() {
+        when(mCrossDevicePrefTracker.getServiceStatus())
+                .thenReturn(ServiceStatus.LOCAL_DEVICE_INFO_MISSING);
+
+        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
+
+        verify(mCrossDevicePrefTracker).addObserver(mTrackerObserverCaptor.capture());
+
+        // Simulate tracker becoming ready.
+        mTrackerObserverCaptor.getValue().onServiceStatusChanged(ServiceStatus.AVAILABLE);
+
+        verify(mCrossDevicePrefTracker).removeObserver(mTrackerObserverCaptor.getValue());
+    }
+
+    @Test
+    public void testDestroy_RemovesTrackerObserver() {
+        when(mCrossDevicePrefTracker.getServiceStatus())
+                .thenReturn(ServiceStatus.LOCAL_DEVICE_INFO_MISSING);
+
+        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
+
+        verify(mCrossDevicePrefTracker).addObserver(mTrackerObserverCaptor.capture());
+
+        mCrossDeviceSettingImporter.destroy();
+
+        verify(mCrossDevicePrefTracker).removeObserver(mTrackerObserverCaptor.getValue());
+    }
+
+    private void doTestOnTabChange_TrackerNotReady_Waits(int status) {
+        ChromeSharedPreferences.getInstance()
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false);
+        ChromeSharedPreferences.getInstance()
+                .writeBoolean(ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX, false);
+
+        when(mCrossDevicePrefTracker.getServiceStatus()).thenReturn(status);
+        when(mCrossDevicePrefTracker.getNativePtr()).thenReturn(0L);
+
+        // Use remote preferences that differ from local.
+        SyncedSetUpUtilsBridge.setCrossDeviceSettingsForTesting(
+                Map.of(Pref.MAGIC_STACK_HOME_MODULE_ENABLED, false));
+        when(mPrefService.getBoolean(Pref.MAGIC_STACK_HOME_MODULE_ENABLED)).thenReturn(true);
+
+        // Simulate tab change.
+        initializeCrossDeviceSettingImporter().onTabChangeOrGainFocus(mTab);
+
+        verify(mCrossDevicePrefTracker).addObserver(mTrackerObserverCaptor.capture());
+        // Haven't imported yet.
+        assertTrue(
+                "The preference for having imported all settings should not be set yet.",
+                !ChromeSharedPreferences.getInstance()
+                        .readBoolean(
+                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false));
+
+        // Simulate tracker becoming ready.
+        mTrackerObserverCaptor.getValue().onServiceStatusChanged(ServiceStatus.AVAILABLE);
+
+        verify(mSnackbarManager).showSnackbar(any());
+        assertTrue(
+                "The preference for having imported all settings should be set once the "
+                        + "tracker becomes ready.",
+                ChromeSharedPreferences.getInstance()
+                        .readBoolean(
+                                ChromePreferenceKeys.CROSS_DEVICE_IMPORTED_ALL_SETTINGS, false));
     }
 }

@@ -20,7 +20,6 @@ import org.chromium.build.annotations.Initializer;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
-import org.chromium.components.omnibox.ToolModeProto.ToolMode;
 import org.chromium.url.GURL;
 
 import java.lang.annotation.Retention;
@@ -65,11 +64,11 @@ public class AutocompleteInput implements UserData {
         }
     }
 
+    // LINT.IfChange(Members)
     private long mUrlFocusTime;
     private GURL mPageUrl;
     private int mPageClassification;
     private String mPageTitle;
-    private String mUserText;
     private boolean mAllowExactKeywordMatch;
     private boolean mHasAttachments;
     private boolean mSuppressAutomaticSuggestionsUntilUserStartsTyping;
@@ -77,13 +76,20 @@ public class AutocompleteInput implements UserData {
     private @RefineActionUsage int mRefineActionUsage;
     private boolean mSuggestionsListScrolled;
     private @OmniboxFocusReason int mFocusReason;
+    private /* ModelMode */ int mModelMode;
+
+    private String mInitialUserText = "";
+    private final SettableNonNullObservableSupplier<String> mUserText =
+            ObservableSuppliers.createNonNull("");
+    private final SettableNonNullObservableSupplier<Boolean> mAllowUserTextAutocompletion =
+            ObservableSuppliers.createNonNull(true);
     private final SettableNonNullObservableSupplier<@AutocompleteRequestType Integer>
             mRequestTypeSupplier =
                     ObservableSuppliers.createNonNull(AutocompleteRequestType.SEARCH);
-    private final SettableNonNullObservableSupplier<Integer> mToolModeSupplier =
-            ObservableSuppliers.createNonNull(ToolMode.TOOL_MODE_UNSPECIFIED_VALUE);
     private final SettableNullableObservableSupplier<SiteSearchData> mSiteSearchData =
             ObservableSuppliers.createNullable();
+
+    // LINT.ThenChange(:CopyFrom)
 
     public AutocompleteInput() {
         reset();
@@ -99,6 +105,36 @@ public class AutocompleteInput implements UserData {
         mPageClassification = pageClassification;
         return this;
     }
+
+    /**
+     * Mutates this object to have the same values as {@code other}. Observers of the suppliers will
+     * not be copied, only the current values.
+     *
+     * @param other The {@link AutocompleteInput} to copy values from.
+     */
+    // LINT.IfChange(CopyFrom)
+    public void copyFrom(AutocompleteInput other) {
+        mUrlFocusTime = other.mUrlFocusTime;
+        mPageUrl = other.mPageUrl;
+        mPageClassification = other.mPageClassification;
+        mPageTitle = other.mPageTitle;
+        mAllowExactKeywordMatch = other.mAllowExactKeywordMatch;
+        mHasAttachments = other.mHasAttachments;
+        mSuppressAutomaticSuggestionsUntilUserStartsTyping =
+                other.mSuppressAutomaticSuggestionsUntilUserStartsTyping;
+        mSelection = other.mSelection;
+        mRefineActionUsage = other.mRefineActionUsage;
+        mSuggestionsListScrolled = other.mSuggestionsListScrolled;
+        mFocusReason = other.mFocusReason;
+        mModelMode = other.mModelMode;
+        mUserText.set(other.mUserText.get());
+        mAllowUserTextAutocompletion.set(other.mAllowUserTextAutocompletion.get());
+        mInitialUserText = other.mInitialUserText;
+        mRequestTypeSupplier.set(other.mRequestTypeSupplier.get());
+        mSiteSearchData.set(other.mSiteSearchData.get());
+    }
+
+    // LINT.ThenChange(:Members)
 
     private int getComposeboxEquivalentOfPageClassification() {
         return switch (mPageClassification) {
@@ -136,11 +172,9 @@ public class AutocompleteInput implements UserData {
 
     /** Returns the current page classification. */
     public int getPageClassification() {
-        return switch (mRequestTypeSupplier.get()) {
-            case AutocompleteRequestType.AI_MODE, AutocompleteRequestType.IMAGE_GENERATION ->
-                    getComposeboxEquivalentOfPageClassification();
-            default -> mPageClassification;
-        };
+        return ToolModeUtils.isAimRequest(mRequestTypeSupplier.get())
+                ? getComposeboxEquivalentOfPageClassification()
+                : mPageClassification;
     }
 
     /**
@@ -189,7 +223,6 @@ public class AutocompleteInput implements UserData {
     /** Set the AutocompleteRequestType */
     public AutocompleteInput setRequestType(@AutocompleteRequestType int type) {
         mRequestTypeSupplier.set(type);
-        updateToolMode();
         return this;
     }
 
@@ -242,9 +275,9 @@ public class AutocompleteInput implements UserData {
         return mRequestTypeSupplier.get() == AutocompleteRequestType.SEARCH;
     }
 
-    /** Returns a supplier for the Autocomplete Tool that is currently selected. */
-    public NonNullObservableSupplier</* ToolMode */ Integer> getToolModeSupplier() {
-        return mToolModeSupplier;
+    /** Returns the Autocomplete Tool that is currently selected. */
+    public int getToolMode() {
+        return ToolModeUtils.getToolModeForRequestType(getRequestType(), mHasAttachments);
     }
 
     /**
@@ -259,10 +292,12 @@ public class AutocompleteInput implements UserData {
      */
     public AutocompleteInput setUserText(@Nullable String text) {
         if (text == null) text = "";
-        if (TextUtils.equals(text, mUserText)) return this;
+
+        String oldText = mUserText.get();
+        if (TextUtils.equals(text, oldText)) return this;
 
         boolean oldTextUsesKeywordActivator =
-                !TextUtils.isEmpty(mUserText) && TextUtils.indexOf(mUserText, ' ') > 0;
+                !TextUtils.isEmpty(oldText) && TextUtils.indexOf(oldText, ' ') > 0;
         boolean newTextUsesKeywordActivator =
                 !TextUtils.isEmpty(text) && TextUtils.indexOf(text, ' ') > 0;
 
@@ -271,25 +306,99 @@ public class AutocompleteInput implements UserData {
         // Suppress Keyword mode when reverting back to the url.
         mAllowExactKeywordMatch &= !(oldTextUsesKeywordActivator && !newTextUsesKeywordActivator);
 
-        mUserText = text;
+        mUserText.set(text);
         // Place cursor at the end of text.
         mSelection = Range.create(text.length(), text.length());
         return this;
     }
 
+    /**
+     * Set the Initial Input - the one the session started with.
+     *
+     * <p>This is the default "revert-to" value.
+     */
+    public AutocompleteInput setInitialUserText(String userText) {
+        mInitialUserText = userText;
+        return this;
+    }
+
+    public String getInitialUserText() {
+        return mInitialUserText;
+    }
+
     /** Returns whether exact keyword match is allowed with current input. */
     public boolean allowExactKeywordMatch() {
-        return mAllowExactKeywordMatch;
+        return mAllowExactKeywordMatch || getSiteSearchData() != null;
+    }
+
+    /**
+     * Returns the user text formatted for autocomplete.
+     *
+     * <p>When the user is in Keyword mode (e.g., Site Search), this method concatenates the keyword
+     * and user text. This concatenation approach mirrors how Desktop/Views handles it: the UI
+     * separates the keyword into a chip visually, but silently prepends it to the query string
+     * right before passing it to the C++ controller. Doing it this way keeps the JNI boundary and
+     * cross-platform parsing logic unchanged.
+     *
+     * @return The text to be sent to the AutocompleteController.
+     */
+    public String getTextForAutocomplete() {
+        SiteSearchData siteSearchData = getSiteSearchData();
+        if (siteSearchData != null) {
+            return siteSearchData.keyword + " " + mUserText.get();
+        }
+        return mUserText.get();
+    }
+
+    /**
+     * Calculates the adjusted cursor position for autocomplete.
+     *
+     * <p>Adjusts the cursor position to account for the prepended keyword.
+     *
+     * @param currentCursorPosition The cursor position in the UI text field.
+     * @return The adjusted cursor position.
+     */
+    public int getCursorPositionForAutocomplete(int currentCursorPosition) {
+        SiteSearchData siteSearchData = getSiteSearchData();
+        if (siteSearchData != null && currentCursorPosition >= 0) {
+            // It's possible the UI text has not synchronously updated yet, meaning the reported
+            // cursor position is out of bounds for the logical text. Cap it to the length of the
+            // user text.
+            int safeCursorPosition = Math.min(currentCursorPosition, mUserText.get().length());
+            return safeCursorPosition + siteSearchData.keyword.length() + 1;
+        }
+        return currentCursorPosition;
     }
 
     /** Returns the text as currently typed by the User. */
     public String getUserText() {
+        return mUserText.get();
+    }
+
+    /** Returns the supplier for the text as currently typed by the User. */
+    public NonNullObservableSupplier<String> getUserTextSupplier() {
         return mUserText;
+    }
+
+    /** Sets whether user text should be autocompleted. */
+    public AutocompleteInput setAllowUserTextAutocompletion(boolean shouldAllow) {
+        mAllowUserTextAutocompletion.set(shouldAllow);
+        return this;
+    }
+
+    /** Returns whether user text can be autocompleted. */
+    public boolean shouldAllowUserTextAutocompletion() {
+        return mAllowUserTextAutocompletion.get();
+    }
+
+    /** Returns the supplier for the autocompletion status. */
+    public NonNullObservableSupplier<Boolean> getShouldAllowUserTextAutocompletionSupplier() {
+        return mAllowUserTextAutocompletion;
     }
 
     /** Returns whether current context represents zero-prefix context. */
     public boolean isInZeroPrefixContext() {
-        return TextUtils.isEmpty(mUserText);
+        return TextUtils.isEmpty(mUserText.get());
     }
 
     /** Returns whether current context enables suggestions caching. */
@@ -315,7 +424,6 @@ public class AutocompleteInput implements UserData {
 
     public void setHasAttachments(boolean hasAttachments) {
         mHasAttachments = hasAttachments;
-        updateToolMode();
     }
 
     public AutocompleteInput setSelection(int rangeStart, int rangeEnd) {
@@ -348,7 +456,6 @@ public class AutocompleteInput implements UserData {
      */
     @Initializer
     public AutocompleteInput reset() {
-        mUserText = "";
         mAllowExactKeywordMatch = false;
         mPageUrl = GURL.emptyGURL();
         mPageTitle = "";
@@ -358,12 +465,13 @@ public class AutocompleteInput implements UserData {
         mRefineActionUsage = RefineActionUsage.NOT_USED;
         mPageClassification = PageClassification.BLANK_VALUE;
         mFocusReason = OmniboxFocusReason.OMNIBOX_TAP;
+        mUserText.set("");
+        mAllowUserTextAutocompletion.set(true);
         mRequestTypeSupplier.set(AutocompleteRequestType.SEARCH);
         mSiteSearchData.set(null);
         mUrlFocusTime = 0;
         mSuggestionsListScrolled = false;
         mSuppressAutomaticSuggestionsUntilUserStartsTyping = false;
-        updateToolMode();
 
         return this;
     }
@@ -386,10 +494,16 @@ public class AutocompleteInput implements UserData {
     }
 
     /**
-     * Whether to instantly show suggestions for the supplied input (false), or wait until the user
-     * actually began typing query (true).
+     * Returns whether automatic suggestions should be suppressed until user starts typing.
+     * Internally tracks and updates own state to reflect typing started.
      */
     public boolean shouldSuppressAutomaticSuggestionsUntilUserStartsTyping() {
+        // Update own state. If user text diverged, we no longer want to suppress suggestions,
+        // even if the user reverts the text to its initial state.
+        mSuppressAutomaticSuggestionsUntilUserStartsTyping =
+                mSuppressAutomaticSuggestionsUntilUserStartsTyping
+                        && TextUtils.equals(mUserText.get(), mInitialUserText);
+
         return mSuppressAutomaticSuggestionsUntilUserStartsTyping;
     }
 
@@ -399,15 +513,13 @@ public class AutocompleteInput implements UserData {
         return this;
     }
 
-    private void updateToolMode() {
-        int mode =
-                switch (mRequestTypeSupplier.get()) {
-                    case AutocompleteRequestType.IMAGE_GENERATION ->
-                            mHasAttachments
-                                    ? ToolMode.TOOL_MODE_IMAGE_GEN_UPLOAD_VALUE
-                                    : ToolMode.TOOL_MODE_IMAGE_GEN_VALUE;
-                    default -> ToolMode.TOOL_MODE_UNSPECIFIED_VALUE;
-                };
-        mToolModeSupplier.set(mode);
+    /** Returns the current model mode or MODEL_MODE_UNSPECIFIED if never set. */
+    public /* ModelMode */ int getModelMode() {
+        return mModelMode;
+    }
+
+    /** Sets the ModelMode that should be used. */
+    public void setModelMode(int modelMode) {
+        mModelMode = modelMode;
     }
 }

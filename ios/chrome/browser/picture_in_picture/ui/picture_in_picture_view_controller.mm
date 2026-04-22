@@ -15,8 +15,11 @@
 #import "ios/chrome/browser/default_browser/model/utils.h"
 #import "ios/chrome/browser/picture_in_picture/public/picture_in_picture_configuration.h"
 #import "ios/chrome/browser/picture_in_picture/ui/picture_in_picture_mutator.h"
+#import "ios/chrome/browser/picture_in_picture/ui/picture_in_picture_player_view.h"
 #import "ios/chrome/browser/shared/public/commands/picture_in_picture_commands.h"
 #import "ios/chrome/common/ui/button_stack/button_stack_configuration.h"
+#import "ios/chrome/grit/ios_branded_strings.h"
+#import "ui/base/l10n/l10n_util.h"
 
 namespace {
 // Key path for time control status.
@@ -24,6 +27,14 @@ NSString* const kKeyPathTimeControlStatus = @"timeControlStatus";
 // Delay to wait before checking if the app was restored from picture in
 // picture or manually (App switcher, App icon...).
 constexpr base::TimeDelta kAppRestoreDelay = base::Milliseconds(50);
+// Accessibility label for the picture in picture view controller.
+NSString* accessibilityLabel(PictureInPictureFeature feature) {
+  switch (feature) {
+    case PictureInPictureFeature::kDefaultBrowser:
+      return l10n_util::GetNSString(
+          IDS_IOS_DEFAULT_BROWSER_PIP_ACCESSIBILITY_ANNOUNCEMENT);
+  }
+}
 }  // namespace
 
 @interface PictureInPictureViewController () <
@@ -40,15 +51,13 @@ constexpr base::TimeDelta kAppRestoreDelay = base::Milliseconds(50);
   // The feature for picture in picture.
   PictureInPictureFeature _feature;
   // The player view for picture in picture.
-  UIView* _playerView;
+  PictureInPicturePlayerView* _playerView;
   // The player for picture in picture.
   AVQueuePlayer* _player;
   // The player looper for picture in picture.
   AVPlayerLooper* _playerLooper;
   // The picture in picture controller.
   AVPictureInPictureController* _pipController;
-  // The player layer for picture in picture.
-  AVPlayerLayer* _playerLayer;
   // Flag set to true if the picture in picture should auto start.
   BOOL _shouldAutoStartPictureInPicture;
   // Flag set to true if the app was restored to foreground by the user tapping
@@ -90,7 +99,6 @@ constexpr base::TimeDelta kAppRestoreDelay = base::Milliseconds(50);
 
 - (void)viewDidLayoutSubviews {
   [super viewDidLayoutSubviews];
-  _playerLayer.frame = _playerView.bounds;
 }
 
 #pragma mark - Public
@@ -123,8 +131,10 @@ constexpr base::TimeDelta kAppRestoreDelay = base::Milliseconds(50);
 
 // Configures player for picture in picture.
 - (void)configurePlayer {
-  // Configure the player view.
-  _playerView = [[UIView alloc] init];
+  _playerView = [[PictureInPicturePlayerView alloc] init];
+  _playerView.isAccessibilityElement = YES;
+  _playerView.accessibilityTraits = UIAccessibilityTraitStartsMediaSession;
+  _playerView.accessibilityLabel = accessibilityLabel(_feature);
   _playerView.translatesAutoresizingMaskIntoConstraints = NO;
   [self.contentView addSubview:_playerView];
   [NSLayoutConstraint activateConstraints:@[
@@ -137,17 +147,16 @@ constexpr base::TimeDelta kAppRestoreDelay = base::Milliseconds(50);
         constraintEqualToAnchor:self.contentView.bottomAnchor],
   ]];
 
-  // Configure the player.
   AVPlayerItem* playerItem = [AVPlayerItem playerItemWithURL:_videoURL];
   _player = [AVQueuePlayer queuePlayerWithItems:@[ playerItem ]];
   _playerLooper = [AVPlayerLooper playerLooperWithPlayer:_player
                                             templateItem:playerItem];
-  _playerLayer = [AVPlayerLayer playerLayerWithPlayer:_player];
-  _playerLayer.videoGravity = AVLayerVideoGravityResizeAspect;
-  [_playerView.layer addSublayer:_playerLayer];
 
-  _pipController =
-      [[AVPictureInPictureController alloc] initWithPlayerLayer:_playerLayer];
+  _playerView.playerLayer.videoGravity = AVLayerVideoGravityResizeAspect;
+  _playerView.playerLayer.player = _player;
+
+  _pipController = [[AVPictureInPictureController alloc]
+      initWithPlayerLayer:_playerView.playerLayer];
   _pipController.delegate = self;
   _pipController.canStartPictureInPictureAutomaticallyFromInline = YES;
 

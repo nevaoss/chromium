@@ -8,6 +8,7 @@ import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import 'chrome://resources/cr_elements/cr_tooltip/cr_tooltip.js';
 import '//resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import '//resources/cr_elements/icons.html.js';
+import '//resources/cr_elements/cr_auto_img/cr_auto_img.js';
 import './icons.html.js';
 
 import type {CrActionMenuElement} from '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
@@ -18,9 +19,8 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {getCss} from './card.css.js';
 import {getHtml} from './card.html.js';
 import type {Skill} from './skill.mojom-webui.js';
-import {SkillSource} from './skill.mojom-webui.js';
+import {SkillsDialogType, SkillSource} from './skill.mojom-webui.js';
 import {SkillsManagementAction, SkillsManagementPage} from './skill_metrics.mojom-webui.js';
-import {SkillsDialogType} from './skills.mojom-webui.js';
 import {SkillsPageBrowserProxy} from './skills_page_browser_proxy.js';
 
 export enum CardType {
@@ -38,6 +38,7 @@ export interface SkillCardElement {
     moreButton: CrButtonElement,
     saveButton: CrButtonElement,
     editButton: CrButtonElement,
+    illustrationImage: HTMLImageElement,
   };
 }
 
@@ -71,6 +72,7 @@ export class SkillCardElement extends CrLitElement {
     // Default to user created since these are added by the user via the UI.
     source: SkillSource.kUserCreated,
     description: '',
+    imageUrl: '',
     creationTime: {internalValue: 0n},
     lastUpdateTime: {internalValue: 0n},
   };

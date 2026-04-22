@@ -14,6 +14,7 @@
 #import "components/favicon/ios/web_favicon_driver.h"
 #import "components/keyed_service/core/service_access_type.h"
 #import "components/optimization_guide/proto/features/common_quality_data.pb.h"
+#import "components/signin/public/identity_manager/primary_account_change_event.h"
 #import "ios/chrome/browser/favicon/model/favicon_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
@@ -56,9 +57,10 @@ class GeminiBrowserAgentTest : public PlatformTest {
   GeminiBrowserAgentTest()
       : web_client_(std::make_unique<web::FakeWebClient>()),
         task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {
-    feature_list_.InitWithFeatures({kPageContextExtractorRefactored,
-                                    kGeminiRefactoredFRE, kGeminiCopresence},
-                                   {});
+    feature_list_.InitWithFeatures(
+        {kPageActionMenu, kPageContextExtractorRefactored, kGeminiRefactoredFRE,
+         kGeminiCopresence},
+        {});
     static_cast<web::FakeWebClient*>(web_client_.Get())
         ->SetJavaScriptFeatures(
             {web::FindInPageJavaScriptFeature::GetInstance(),
@@ -163,6 +165,13 @@ class GeminiBrowserAgentTest : public PlatformTest {
     return gemini_browser_agent_->last_shown_view_state_;
   }
 
+  // Returns true if the conversation ID preference is empty.
+  bool IsConversationIdPrefCleared() {
+    return profile_->GetPrefs()
+        ->GetString(prefs::kGeminiConversationId)
+        .empty();
+  }
+
   // Setter for `is_floaty_invoked_`.
   void SetIsFloatyInvoked(bool is_invoked) {
     gemini_browser_agent_->is_floaty_invoked_ = is_invoked;
@@ -171,6 +180,11 @@ class GeminiBrowserAgentTest : public PlatformTest {
   // Clear `active_hiding_sources_`.
   void ClearActiveHidingSources() {
     gemini_browser_agent_->active_hiding_sources_.clear();
+  }
+
+  // Setter for `is_floaty_temporarily_hidden_`.
+  void SetIsFloatyTemporarilyHidden(bool is_hidden) {
+    gemini_browser_agent_->is_floaty_temporarily_hidden_ = is_hidden;
   }
 
   // Setter for `floaty_hidden_timestamp_`.
@@ -216,10 +230,6 @@ TEST_F(GeminiBrowserAgentTest, TestGeminiBrowserAgentStartGeminiFlow) {
       std::make_unique<base::Value>(std::move(result)).release(),
       "pageContextExtractor.extractPageContext");
 
-  // Set the BWG tab helper as backgrounded and assert.
-  bwg_tab_helper_->PrepareBwgFreBackgrounding();
-  ASSERT_TRUE(bwg_tab_helper_->GetIsBwgSessionActiveInBackground());
-
   // Simulate FRE completion.
   profile_->GetPrefs()->SetBoolean(prefs::kIOSBwgConsent, true);
 
@@ -253,9 +263,6 @@ TEST_F(GeminiBrowserAgentTest, TestGeminiBrowserAgentStartGeminiFlow) {
       base::test::RunUntil([delegate_called]() { return *delegate_called; }));
 
   [mock_delegate verify];
-
-  // Assert the BWG tab helper was set as foregrounded.
-  ASSERT_FALSE(bwg_tab_helper_->GetIsBwgSessionActiveInBackground());
 }
 
 TEST_F(GeminiBrowserAgentTest,
@@ -264,17 +271,10 @@ TEST_F(GeminiBrowserAgentTest,
   std::unique_ptr<optimization_guide::proto::PageContext> page_context =
       std::make_unique<optimization_guide::proto::PageContext>();
 
-  // Set the BWG tab helper as backgrounded and assert.
-  bwg_tab_helper_->PrepareBwgFreBackgrounding();
-  ASSERT_TRUE(bwg_tab_helper_->GetIsBwgSessionActiveInBackground());
-
   gemini_browser_agent_->PresentFloatyWithPendingContext(
       base_view_controller, std::move(page_context),
       [[GeminiStartupState alloc]
           initWithEntryPoint:gemini::EntryPoint::Promo]);
-
-  // Assert the BWG tab helper was set as foregrounded.
-  ASSERT_FALSE(bwg_tab_helper_->GetIsBwgSessionActiveInBackground());
 }
 
 // Tests that switching active web states handles observations correctly.
@@ -513,6 +513,9 @@ TEST_F(GeminiBrowserAgentTest,
 // controller is still presenting.
 TEST_F(GeminiBrowserAgentTest,
        TestFloatyRemainsHiddenWhenKeyboardDismissedIfViewPresent) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeatureWithParameters(
+      kGeminiCopresence, {{kGeminiCopresenceTrackSources, "true"}});
   SetIsFloatyInvoked(true);
   gemini_browser_agent_->HideFloatyIfInvoked(
       /*animated=*/true, /*source=*/gemini::FloatyUpdateSource::ViewTransition);
@@ -604,4 +607,49 @@ TEST_F(GeminiBrowserAgentTest, TestDismissGeminiFromOtherWindows) {
   run_loop.Run();
   [mock_second_handler verify];
   browser_list->RemoveBrowser(second_browser.get());
+}
+
+// Tests that the floaty is dismissed when the primary account changes.
+TEST_F(GeminiBrowserAgentTest, TestDismissedOnPrimaryAccountChanged) {
+  SetIsFloatyInvoked(true);
+  ClearActiveHidingSources();
+
+  signin::PrimaryAccountChangeEvent::State previous_state;
+  CoreAccountInfo account_info;
+  account_info.account_id = CoreAccountId::FromGaiaId(GaiaId("gaia_id"));
+  account_info.gaia = GaiaId("gaia_id");
+  account_info.email = "test@test.com";
+  signin::PrimaryAccountChangeEvent::State current_state(
+      account_info, signin::ConsentLevel::kSignin);
+
+  signin::PrimaryAccountChangeEvent event(
+      previous_state, current_state, signin_metrics::AccessPoint::kSettings);
+
+  gemini_browser_agent_->OnPrimaryAccountChanged(event);
+
+  EXPECT_FALSE(IsFloatyInvoked());
+  EXPECT_TRUE(IsConversationIdPrefCleared());
+}
+
+// Tests that the floaty is dismissed even if it is temporarily hidden.
+TEST_F(GeminiBrowserAgentTest, TestForceDismissedWhenTemporarilyHidden) {
+  SetIsFloatyInvoked(true);
+  SetIsFloatyTemporarilyHidden(true);
+
+  signin::PrimaryAccountChangeEvent::State previous_state;
+  CoreAccountInfo account_info;
+  account_info.account_id = CoreAccountId::FromGaiaId(GaiaId("gaia_id"));
+  account_info.gaia = GaiaId("gaia_id");
+  account_info.email = "test@test.com";
+  signin::PrimaryAccountChangeEvent::State current_state(
+      account_info, signin::ConsentLevel::kSignin);
+
+  signin::PrimaryAccountChangeEvent event(
+      previous_state, current_state, signin_metrics::AccessPoint::kSettings);
+
+  gemini_browser_agent_->OnPrimaryAccountChanged(event);
+
+  EXPECT_FALSE(IsFloatyInvoked());
+  EXPECT_FALSE(IsFloatyTemporarilyHidden());
+  EXPECT_TRUE(IsConversationIdPrefCleared());
 }

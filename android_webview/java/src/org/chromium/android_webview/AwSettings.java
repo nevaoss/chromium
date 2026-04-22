@@ -202,6 +202,8 @@ public class AwSettings {
     private boolean mEnableSupportedHardwareAcceleratedFeatures;
     private int mMixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW;
     private int mAttributionBehavior = AttributionBehavior.APP_SOURCE_AND_WEB_TRIGGER;
+    private boolean mIgnoreDuplicateNavEnabled;
+    private int mIgnoreDuplicateNavThresholdMs = -1;
 
     @SpeculativeLoadingAllowedFlags
     private int mSpeculativeLoadingAllowedFlags =
@@ -216,6 +218,7 @@ public class AwSettings {
 
     private long mBackForwardCacheTimeoutInSeconds;
     private int mBackForwardCacheMaxPagesInCache;
+    private boolean mBackForwardCacheKeepForwardEntries = true;
 
     private boolean mCssHexAlphaColorEnabled;
     private boolean mScrollTopLeftInteropEnabled;
@@ -371,6 +374,12 @@ public class AwSettings {
         void updateBackForwardCacheSettingsMaxPagesInCache() {
             runOnUiThreadBlockingAndLocked(
                     AwSettings.this::updateBackForwardCacheSettingsMaxPagesInCacheOnUiThreadLocked);
+        }
+
+        void updateBackForwardCacheSettingsKeepForwardEntries() {
+            runOnUiThreadBlockingAndLocked(
+                    AwSettings.this
+                            ::updateBackForwardCacheSettingsKeepForwardEntriesOnUiThreadLocked);
         }
 
         void updateGeolocationEnabled() {
@@ -792,6 +801,52 @@ public class AwSettings {
     public boolean getGeolocationEnabled() {
         synchronized (mAwSettingsLock) {
             return mGeolocationEnabled;
+        }
+    }
+
+    /**
+     * Sets whether WebView should ignore duplicate navigations. A navigation is considered a
+     * duplicate if it matches the URL, method, and initiator of an ongoing navigation. This helps
+     * prevent unintended multiple navigations from rapid user interactions, such as double clicks.
+     *
+     * @param enable whether to ignore duplicate navigations.
+     */
+    public void setIgnoreDuplicateNavEnabled(boolean enable) {
+        synchronized (mAwSettingsLock) {
+            if (mIgnoreDuplicateNavEnabled != enable) {
+                mIgnoreDuplicateNavEnabled = enable;
+                mEventHandler.updateWebkitPreferencesLocked();
+            }
+        }
+    }
+
+    @CalledByNative
+    public boolean getIgnoreDuplicateNavEnabled() {
+        synchronized (mAwSettingsLock) {
+            return mIgnoreDuplicateNavEnabled;
+        }
+    }
+
+    /**
+     * Sets the threshold in milliseconds for ignoring duplicate navigations. This threshold is only
+     * applied if {@link #setIgnoreDuplicateNavEnabled(boolean)} is set to true. When enabled, a
+     * value of -1 indicates that the system default threshold (3 seconds) should be used.
+     *
+     * @param thresholdMs the threshold in milliseconds.
+     */
+    public void setIgnoreDuplicateNavThreshold(int thresholdMs) {
+        synchronized (mAwSettingsLock) {
+            if (mIgnoreDuplicateNavThresholdMs != thresholdMs) {
+                mIgnoreDuplicateNavThresholdMs = thresholdMs;
+                mEventHandler.updateWebkitPreferencesLocked();
+            }
+        }
+    }
+
+    @CalledByNative
+    public int getIgnoreDuplicateNavThreshold() {
+        synchronized (mAwSettingsLock) {
+            return mIgnoreDuplicateNavThresholdMs;
         }
     }
 
@@ -1897,6 +1952,25 @@ public class AwSettings {
         }
     }
 
+    /**
+     * Sets whether to keep forward entries when the user navigates back. Disabling this saves
+     * memory by discarding unreachable pages.
+     */
+    public void setBackForwardCacheKeepForwardEntries(boolean keepForwardEntries) {
+        if (TRACE) {
+            Log.i(TAG, "setBackForwardCacheKeepForwardEntries=" + keepForwardEntries);
+        }
+        // Setting BackForwardCacheSettings implicitly enables BFCache as well.
+        setBackForwardCacheEnabled(true);
+        synchronized (mAwSettingsLock) {
+            if (mBackForwardCacheKeepForwardEntries == keepForwardEntries) {
+                return;
+            }
+            mBackForwardCacheKeepForwardEntries = keepForwardEntries;
+            mEventHandler.updateBackForwardCacheSettingsKeepForwardEntries();
+        }
+    }
+
     @CalledByNative
     public long getBackForwardCacheSettingsTimeout() {
         synchronized (mAwSettingsLock) {
@@ -1910,6 +1984,14 @@ public class AwSettings {
         synchronized (mAwSettingsLock) {
             assert Thread.holdsLock(mAwSettingsLock);
             return mBackForwardCacheMaxPagesInCache;
+        }
+    }
+
+    @CalledByNative
+    public boolean getBackForwardCacheSettingsKeepForwardEntries() {
+        synchronized (mAwSettingsLock) {
+            assert Thread.holdsLock(mAwSettingsLock);
+            return mBackForwardCacheKeepForwardEntries;
         }
     }
 
@@ -2021,6 +2103,18 @@ public class AwSettings {
             return mMixedContentMode == WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE;
         }
         return false;
+    }
+
+    @CalledByNative
+    private boolean getIgnoreDuplicateNavEnabledLocked() {
+        assert Thread.holdsLock(mAwSettingsLock);
+        return mIgnoreDuplicateNavEnabled;
+    }
+
+    @CalledByNative
+    private int getIgnoreDuplicateNavThresholdLocked() {
+        assert Thread.holdsLock(mAwSettingsLock);
+        return mIgnoreDuplicateNavThresholdMs;
     }
 
     public boolean getOffscreenPreRaster() {
@@ -2238,6 +2332,15 @@ public class AwSettings {
                         mNativeAwSettings, AwSettings.this);
     }
 
+    private void updateBackForwardCacheSettingsKeepForwardEntriesOnUiThreadLocked() {
+        assert mEventHandler.mHandler != null;
+        ThreadUtils.assertOnUiThread();
+        if (mNativeAwSettings == 0) return;
+        AwSettingsJni.get()
+                .updateBackForwardCacheSettingsKeepForwardEntriesLocked(
+                        mNativeAwSettings, AwSettings.this);
+    }
+
     private void updateGeolocationEnabledOnUiThreadLocked() {
         assert mEventHandler.mHandler != null;
         ThreadUtils.assertOnUiThread();
@@ -2399,6 +2502,9 @@ public class AwSettings {
         void updateBackForwardCacheSettingsTimeoutLocked(long nativeAwSettings, AwSettings caller);
 
         void updateBackForwardCacheSettingsMaxPagesInCacheLocked(
+                long nativeAwSettings, AwSettings caller);
+
+        void updateBackForwardCacheSettingsKeepForwardEntriesLocked(
                 long nativeAwSettings, AwSettings caller);
 
         boolean isForceDarkApplied(long nativeAwSettings, AwSettings caller);

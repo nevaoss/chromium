@@ -22,7 +22,8 @@ AppRuntimeTouchSelectionMenuRunner::AppRuntimeTouchSelectionMenuRunner() {}
 AppRuntimeTouchSelectionMenuRunner::~AppRuntimeTouchSelectionMenuRunner() {}
 
 bool AppRuntimeTouchSelectionMenuRunner::IsMenuAvailable(
-    const ui::TouchSelectionMenuClient* client) const {
+    const ui::TouchSelectionMenuClient* client,
+    bool can_paste) const {
   return false;
 }
 
@@ -30,7 +31,8 @@ void AppRuntimeTouchSelectionMenuRunner::OpenMenu(
     base::WeakPtr<ui::TouchSelectionMenuClient> client,
     const gfx::Rect& anchor_rect,
     const gfx::Size& handle_image_size,
-    aura::Window* context) {}
+    aura::Window* context,
+    bool can_paste) {}
 
 void AppRuntimeTouchSelectionMenuRunner::CloseMenu() {}
 

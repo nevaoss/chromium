@@ -4,11 +4,9 @@
 
 #include "chrome/browser/ui/layout_constants.h"
 
-#include "base/feature_list.h"
 #include "base/notreached.h"
 #include "build/build_config.h"
 #include "chrome/browser/ui/tabs/features.h"
-#include "chrome/browser/ui/ui_features.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/base/ui_base_features.h"
@@ -137,13 +135,13 @@ int GetLayoutConstant(LayoutConstant constant) {
     case LayoutConstant::kVerticalTabStripUncollapsedPadding:
       return 12;
     case LayoutConstant::kVerticalTabStripCollapsedPadding:
+      return 12;
+    case LayoutConstant::kVerticalTabStripCollapsedVerticalPadding:
       return 8;
-    case LayoutConstant::kVerticalTabStripCollapsedSeparatorWidth:
-      return 24;
-    case LayoutConstant::kVerticalTabStripTopButtonIconSize:
+    case LayoutConstant::kVerticalTabStripCollapsedSeparatorPadding:
+      return 12;
+    case LayoutConstant::kVerticalTabStripButtonIconSize:
       return 20;
-    case LayoutConstant::kVerticalTabStripBottomButtonIconSize:
-      return 18;
     case LayoutConstant::kVerticalTabStripTopButtonPadding:
       return 4;
     case LayoutConstant::kVerticalTabStripFlatEdgeButtonPadding:
@@ -207,7 +205,7 @@ gfx::Insets GetLayoutInsets(LayoutInset inset) {
       }
 
     case TOOLBAR_INTERIOR_MARGIN:
-      return touch_ui ? gfx::Insets::VH(4, 0) : gfx::Insets::VH(6, 5);
+      return touch_ui ? gfx::Insets::VH(4, 0) : gfx::Insets::VH(6, 6);
 
     case WEBUI_TAB_STRIP_TOOLBAR_INTERIOR_MARGIN:
       return gfx::Insets::VH(4, 0);

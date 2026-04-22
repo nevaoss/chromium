@@ -12,6 +12,7 @@
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_command_controller.h"
+#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/split_tab_util.h"
@@ -25,9 +26,9 @@
 #include "chrome/browser/ui/views/event_utils.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
+#include "chrome/browser/ui/views/tabs/groups/tab_group_accessibility.h"
+#include "chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_view.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_context_menu_controller.h"
-#include "chrome/browser/ui/views/tabs/tab_group_accessibility.h"
-#include "chrome/browser/ui/views/tabs/tab_group_editor_bubble_view.h"
 #include "chrome/browser/ui/views/tabs/vertical/root_tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_drag_handler.h"
@@ -38,6 +39,7 @@
 #include "components/tabs/public/tab_group.h"
 #include "components/tabs/public/tab_interface.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/view_utils.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -105,6 +107,16 @@ void VerticalTabStripController::ShiftTabNext(
 void VerticalTabStripController::ShiftTabPrevious(
     const tabs::TabInterface* tab_interface) {
   ShiftTabRelative(tab_interface, -1);
+}
+
+void VerticalTabStripController::ShiftGroupUp(
+    const tab_groups::TabGroupId& group) {
+  ShiftGroupRelative(group, -1);
+}
+
+void VerticalTabStripController::ShiftGroupDown(
+    const tab_groups::TabGroupId& group) {
+  ShiftGroupRelative(group, 1);
 }
 
 void VerticalTabStripController::MoveTabFirst(
@@ -248,6 +260,11 @@ void VerticalTabStripController::ExtendSelectionTo(
   model_->ExtendSelectionTo(tab_index.value());
 }
 
+const ui::ListSelectionModel& VerticalTabStripController::GetSelectionModel()
+    const {
+  return model_->selection_model().GetListSelectionModel();
+}
+
 void VerticalTabStripController::ToggleTabGroupCollapsedState(
     const TabGroup* group,
     ToggleTabGroupCollapsedStateOrigin origin) {
@@ -348,10 +365,12 @@ views::Widget* VerticalTabStripController::ShowGroupEditorBubble(
       /*stop_context_menu_propagation=*/stop_context_menu_propagation);
 }
 
-bool VerticalTabStripController::IsCollapsed() const {
-  const tabs::VerticalTabStripStateController* state_controller =
-      tabs::VerticalTabStripStateController::From(browser_view_->browser());
-  return state_controller && state_controller->IsCollapsed();
+std::unique_ptr<ExpandOnHoverLock>
+VerticalTabStripController::AcquireExpandOnHoverLock() {
+  CHECK(browser_view_);
+  CHECK(browser_view_->tab_strip_view());
+  return browser_view_->tab_strip_view()->GetExpandOnHoverLock(
+      ExpandOnHoverLockType::kKeepExpanded);
 }
 
 tab_groups::TabGroupSyncService*
@@ -362,7 +381,17 @@ VerticalTabStripController::GetTabGroupSyncService() {
 
 tabs::VerticalTabStripStateController*
 VerticalTabStripController::GetStateController() {
+  return const_cast<tabs::VerticalTabStripStateController*>(
+      std::as_const(*this).GetStateController());
+}
+
+const tabs::VerticalTabStripStateController*
+VerticalTabStripController::GetStateController() const {
   return tabs::VerticalTabStripStateController::From(browser_view_->browser());
+}
+
+const tabs::TabInterface* VerticalTabStripController::GetActiveTab() const {
+  return model_->GetActiveTab();
 }
 
 bool VerticalTabStripController::IsContextMenuCommandChecked(
@@ -524,10 +553,14 @@ void VerticalTabStripController::ShiftTabRelative(
           target_index = offset < 0 ? 0 : model_->count() - 1;
         }
       } else {
+        views::View* tab_view =
+            browser_view_->tab_strip_view()->GetTabAnchorViewAt(start_index);
         // Read before adding the tab to the group so that the group description
         // isn't the tab we just added.
         AnnounceTabAddedToGroup(target_group.value());
         model_->AddToExistingGroup({start_index}, target_group.value());
+        views::ElementTrackerViews::GetInstance()->NotifyCustomEvent(
+            kTabGroupedCustomEventId, tab_view);
         return;
       }
     }
@@ -537,6 +570,50 @@ void VerticalTabStripController::ShiftTabRelative(
   browser_view_->GetViewAccessibility().AnnounceText(
       l10n_util::GetStringUTF16((offset > 0) ? IDS_TAB_AX_ANNOUNCE_MOVED_DOWN
                                              : IDS_TAB_AX_ANNOUNCE_MOVED_UP));
+}
+
+void VerticalTabStripController::ShiftGroupRelative(
+    const tab_groups::TabGroupId& group,
+    int offset) {
+  CHECK_EQ(1, std::abs(offset))
+      << "Offset must be 1 or -1 to shift the group up or down.";
+
+  const TabGroup* tab_group = model_->group_model()->GetTabGroup(group);
+  if (!tab_group) {
+    return;
+  }
+  gfx::Range tabs_in_group = tab_group->ListTabs();
+
+  const int start_index = tabs_in_group.start();
+  const int index_of_skipped_over_tab =
+      offset == 1 ? tabs_in_group.end() : start_index - 1;
+
+  if (!model_->ContainsIndex(start_index) ||
+      !model_->ContainsIndex(index_of_skipped_over_tab)) {
+    return;
+  }
+
+  if (model_->IsTabPinned(index_of_skipped_over_tab)) {
+    return;
+  }
+
+  // Avoid moving into the middle of another group by accounting for its size.
+  std::optional<tab_groups::TabGroupId> target_group =
+      model_->GetTabGroupForTab(index_of_skipped_over_tab);
+  if (target_group.has_value()) {
+    CHECK_NE(target_group.value(), group)
+        << "The target group must be different from the current group to move.";
+  }
+
+  const int num_skipped_tabs = target_group.has_value()
+                                   ? model_->group_model()
+                                         ->GetTabGroup(target_group.value())
+                                         ->ListTabs()
+                                         .length()
+                                   : 1;
+
+  const int target_index = start_index + offset * num_skipped_tabs;
+  model_->MoveGroupTo(group, target_index);
 }
 
 void VerticalTabStripController::AnnounceTabAddedToGroup(

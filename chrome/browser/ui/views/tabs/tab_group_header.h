@@ -13,7 +13,8 @@
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
 #include "chrome/browser/ui/tabs/tab_group_attention_indicator.h"
-#include "chrome/browser/ui/views/tabs/tab_group_editor_bubble_tracker.h"
+#include "chrome/browser/ui/views/tabs/groups/tab_group_editor_bubble_tracker.h"
+#include "chrome/browser/ui/views/tabs/hovercard/hover_card_anchor_target.h"
 #include "chrome/browser/ui/views/tabs/tab_slot_view.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "ui/base/interaction/element_identifier.h"
@@ -40,12 +41,11 @@ class View;
 class TabGroupHeader : public TabSlotView,
                        public views::ContextMenuController,
                        public views::ViewTargeterDelegate,
-                       public TabGroupAttentionIndicator::Observer {
+                       public TabGroupAttentionIndicator::Observer,
+                       public HoverCardAnchorTarget {
   METADATA_HEADER(TabGroupHeader, TabSlotView)
 
  public:
-  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kAttentionIndicatorViewElementId);
-
   TabGroupHeader(TabSlotController& tab_slot_controller,
                  const tab_groups::TabGroupId& group,
                  const TabGroupStyle& style);
@@ -66,10 +66,16 @@ class TabGroupHeader : public TabSlotView,
   void OnMouseEntered(const ui::MouseEvent& event) override;
   void OnGestureEvent(ui::GestureEvent* event) override;
   void OnFocus() override;
+  void OnBlur() override;
   void OnThemeChanged() override;
   TabSlotView::ViewType GetTabSlotViewType() const override;
   TabSizeInfo GetTabSizeInfo() const override;
   gfx::Rect GetAnchorBoundsInScreen() const override;
+
+  // HoverCardAnchorTarget:
+  bool NeedsToShowThumbnail() const override;
+  bool IsValidHoverCardTarget() const override;
+  views::BubbleBorder::Arrow GetAnchorPosition() const override;
 
   void OnGroupContentsChanged();
 
@@ -107,6 +113,12 @@ class TabGroupHeader : public TabSlotView,
   int GetDesiredWidth() const;
   // Determines if the sync icon should be shown in the header.
   bool ShouldShowHeaderIcon() const;
+
+  // Returns the current animated height of the chip.
+  int GetChipHeight() const;
+
+  // Returns the current animated y-position of the chip.
+  int GetChipY() const;
 
   // Updates the local is_collapsed_ state.
   void SetCollapsedState();

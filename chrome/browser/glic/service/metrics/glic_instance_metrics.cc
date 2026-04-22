@@ -9,7 +9,6 @@
 #include <string>
 #include <string_view>
 
-#include "base/containers/enum_set.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
@@ -66,7 +65,11 @@ enum class GlicTurnSource {
 
 }  // namespace
 
-GlicInstanceMetrics::GlicInstanceMetrics() : session_manager_(this) {
+GlicInstanceMetrics::TurnInfo::TurnInfo() = default;
+GlicInstanceMetrics::TurnInfo::~TurnInfo() = default;
+
+GlicInstanceMetrics::GlicInstanceMetrics()
+    : creation_time_(base::TimeTicks::Now()), session_manager_(this) {
   // Used in the unit tests.
   base::RecordAction(base::UserMetricsAction("Glic.Instance.Created"));
   activity_tracker_ = std::make_unique<GlicStateTracker>(
@@ -77,7 +80,8 @@ GlicInstanceMetrics::GlicInstanceMetrics() : session_manager_(this) {
 }
 
 GlicInstanceMetrics::GlicInstanceMetrics(GlicSharingManager* sharing_manager)
-    : session_manager_(this),
+    : creation_time_(base::TimeTicks::Now()),
+      session_manager_(this),
       pinned_tabs_changed_subscription_(
           sharing_manager->AddPinnedTabsChangedCallback(
               base::BindRepeating(&GlicInstanceMetrics::OnPinnedTabsChanged,
@@ -305,6 +309,13 @@ void GlicInstanceMetrics::OnShowInSidePanel(tabs::TabInterface* tab) {
   if (!tab) {
     return;
   }
+  if (!initial_entrypoint_.has_value()) {
+    // If a side panel is opened outside of the ToggleFlow (e.g. for daisy
+    // chaining on new tab) we would log the default value "Other".
+    initial_entrypoint_ =
+        GetEntrypointFromInvocationSource(last_invocation_source_);
+  }
+
   if (side_panel_open_times_.contains(tab->GetHandle())) {
     base::UmaHistogramEnumeration(
         "Glic.Instance.Metrics.Error",
@@ -389,6 +400,17 @@ void GlicInstanceMetrics::OnSidePanelClosed(
   base::UmaHistogramCustomTimes("Glic.Instance.SidePanel.OpenDuration",
                                 base::TimeTicks::Now() - it->second,
                                 base::Milliseconds(1), base::Hours(1), 50);
+
+  if (!first_side_panel_close_recorded_) {
+    first_side_panel_close_recorded_ = true;
+    GlicEntrypoint entrypoint =
+        initial_entrypoint_.value_or(GlicEntrypoint::kOther);
+    base::UmaHistogramCustomTimes(
+        base::StrCat({"Glic.Instance.", GetEntrypointString(entrypoint),
+                      ".SidePanelFirstOpenDuration"}),
+        base::TimeTicks::Now() - it->second, base::Milliseconds(1),
+        base::Hours(1), 50);
+  }
   side_panel_open_times_.erase(it);
 }
 
@@ -416,7 +438,18 @@ void GlicInstanceMetrics::OnUnbindEmbedder(EmbedderKey key) {
       base::UmaHistogramCustomTimes("Glic.Instance.SidePanel.OpenDuration",
                                     base::TimeTicks::Now() - it->second,
                                     base::Milliseconds(1), base::Hours(1), 50);
+      if (!first_side_panel_close_recorded_) {
+        first_side_panel_close_recorded_ = true;
+        GlicEntrypoint entrypoint =
+            initial_entrypoint_.value_or(GlicEntrypoint::kOther);
+        base::UmaHistogramCustomTimes(
+            base::StrCat({"Glic.Instance.", GetEntrypointString(entrypoint),
+                          ".SidePanelFirstOpenDuration"}),
+            base::TimeTicks::Now() - it->second, base::Milliseconds(1),
+            base::Hours(1), 50);
+      }
       side_panel_open_times_.erase(it);
+
     } else {
       base::UmaHistogramEnumeration(
           "Glic.Instance.Metrics.Error",
@@ -501,6 +534,8 @@ void GlicInstanceMetrics::OnOpen(glic::mojom::InvocationSource source,
     base::UmaHistogramEnumeration("Glic.Instance.InitialInvocationSource",
                                   source);
   }
+  base::RecordAction(base::UserMetricsAction("Glic.Instance.Open"));
+  LogEvent(GlicInstanceEvent::kOpen);
   if (std::holds_alternative<FloatingShowOptions>(options.embedder_options)) {
     base::UmaHistogramEnumeration("Glic.Instance.Floaty.OpenSource", source);
   } else {
@@ -511,9 +546,6 @@ void GlicInstanceMetrics::OnOpen(glic::mojom::InvocationSource source,
 void GlicInstanceMetrics::OnToggle(glic::mojom::InvocationSource source,
                                    const ShowOptions& options,
                                    bool is_showing) {
-  if (!is_showing) {
-    OnOpen(source, options);
-  }
   base::RecordAction(base::UserMetricsAction("Glic.Instance.Toggle"));
   if (std::holds_alternative<FloatingShowOptions>(options.embedder_options)) {
     base::UmaHistogramEnumeration("Glic.Instance.Floaty.ToggleSource", source);
@@ -630,6 +662,14 @@ void GlicInstanceMetrics::OnWebUiStateChanged(mojom::WebUiState state) {
         base::UmaHistogramCustomTimes(
             base::StrCat({"Glic.Instance.WebUiLoadTime", visibility_suffix}),
             load_time, base::Milliseconds(1), base::Seconds(60), 50);
+        if (initial_entrypoint_.has_value()) {
+          std::string entrypoint_string =
+              GetEntrypointString(initial_entrypoint_.value());
+          base::UmaHistogramCustomTimes(
+              base::StrCat({"Glic.Instance.", entrypoint_string,
+                            ".WebUiLoadTime", visibility_suffix}),
+              load_time, base::Milliseconds(1), base::Seconds(60), 50);
+        }
         web_ui_load_start_time_ = base::TimeTicks();
       }
       break;
@@ -654,6 +694,11 @@ void GlicInstanceMetrics::OnWebUiStateChanged(mojom::WebUiState state) {
           "Glic.Instance.WebUiStateChanged.DisabledByAdmin"));
       LogEvent(GlicInstanceEvent::kWebUiStateDisabledByAdmin);
       break;
+    case mojom::WebUiState::kWarmed:
+      base::RecordAction(
+          base::UserMetricsAction("Glic.Instance.WebUiStateChanged.kWarmed"));
+      LogEvent(GlicInstanceEvent::kWebUiStateWarmed);
+      break;
   }
 }
 
@@ -673,10 +718,22 @@ void GlicInstanceMetrics::OnClientReady(EmbedderType type) {
 
 void GlicInstanceMetrics::LogEvent(GlicInstanceEvent event) {
   base::UmaHistogramEnumeration("Glic.Instance.EventCounts", event);
+  if (initial_entrypoint_.has_value()) {
+    std::string entrypoint_string =
+        GetEntrypointString(initial_entrypoint_.value());
+    base::UmaHistogramEnumeration(
+        "Glic.Instance." + entrypoint_string + ".EventCounts", event);
+  }
   if (event_counts_[event] == 0) {
     // This is recorded only the first time an event occurs within this sessions
     // lifetime.
     base::UmaHistogramEnumeration("Glic.Instance.HadEvent", event);
+    if (initial_entrypoint_.has_value()) {
+      std::string entrypoint_string =
+          GetEntrypointString(initial_entrypoint_.value());
+      base::UmaHistogramEnumeration(
+          "Glic.Instance." + entrypoint_string + ".HadEvent", event);
+    }
   }
   event_counts_[event]++;
 
@@ -742,8 +799,17 @@ void GlicInstanceMetrics::OnResponseStarted() {
   base::RecordAction(base::UserMetricsAction("GlicResponseStart"));
   turn_.response_started_ = true;
 
-  // It doesn't make sense to record response start without input submission.
-  if (turn_.input_submitted_time_.is_null()) {
+  bool is_response_for_actuation =
+      !turn_.action_result_submitted_time_.is_null();
+  if (is_response_for_actuation) {
+    base::UmaHistogramMediumTimes(
+        "Glic.Turn.Actuation.ResponseStartTime",
+        base::TimeTicks::Now() - turn_.action_result_submitted_time_);
+  }
+
+  // It doesn't make sense to record response start without input submission,
+  // unless we just submitted an actuation result.
+  if (turn_.input_submitted_time_.is_null() && !is_response_for_actuation) {
     base::UmaHistogramEnumeration(
         "Glic.Instance.Metrics.Error",
         GlicInstanceMetricsError::kResponseStartWithoutInput);
@@ -759,21 +825,28 @@ void GlicInstanceMetrics::OnResponseStarted() {
 
   base::RecordAction(base::UserMetricsAction("GlicResponse"));
 
-  base::TimeDelta start_time =
-      base::TimeTicks::Now() - turn_.input_submitted_time_;
-  base::UmaHistogramMediumTimes("Glic.Turn.ResponseStartTime", start_time);
-  std::string_view mode_string = GetInputModeString(input_mode_);
-  base::UmaHistogramMediumTimes(
-      base::StrCat({"Glic.Turn.ResponseStartTime.InputMode.", mode_string}),
-      start_time);
+  if (!turn_.input_submitted_time_.is_null()) {
+    base::TimeDelta start_time =
+        base::TimeTicks::Now() - turn_.input_submitted_time_;
+    base::UmaHistogramMediumTimes("Glic.Turn.ResponseStartTime", start_time);
+    std::string_view mode_string = GetInputModeString(input_mode_);
+    base::UmaHistogramMediumTimes(
+        base::StrCat({"Glic.Turn.ResponseStartTime.InputMode.", mode_string}),
+        start_time);
 
-  if (turn_.did_request_context_) {
-    base::UmaHistogramMediumTimes("Glic.Turn.ResponseStartTime.WithContext",
-                                  start_time);
-  } else {
-    base::UmaHistogramMediumTimes("Glic.Turn.ResponseStartTime.WithoutContext",
-                                  start_time);
+    if (turn_.did_request_context_) {
+      base::UmaHistogramMediumTimes("Glic.Turn.ResponseStartTime.WithContext",
+                                    start_time);
+    } else {
+      base::UmaHistogramMediumTimes(
+          "Glic.Turn.ResponseStartTime.WithoutContext", start_time);
+    }
   }
+
+  base::UmaHistogramEnumeration(
+      "Glic.Response.Segmentation",
+      GetResponseSegmentation(turn_.ui_mode_ == EmbedderType::kSidePanel,
+                              turn_.input_mode_, last_invocation_source_));
 
   ukm::builders::Glic_Response(turn_.chosen_source_id_)
       .SetAttached(turn_.ui_mode_ == EmbedderType::kSidePanel)
@@ -784,9 +857,13 @@ void GlicInstanceMetrics::OnResponseStarted() {
 
 void GlicInstanceMetrics::OnResponseStopped(mojom::ResponseStopCause cause) {
   LogEvent(GlicInstanceEvent::kResponseStopped);
+
+  bool has_input = !turn_.input_submitted_time_.is_null();
+  bool has_action_result = !turn_.action_result_submitted_time_.is_null();
+
   // The client may call "stopped" without "started" for very short responses.
   // We synthetically call it ourselves in this case.
-  if (!turn_.input_submitted_time_.is_null() && !turn_.response_started_) {
+  if ((has_input || has_action_result) && !turn_.response_started_) {
     OnResponseStarted();
   }
 
@@ -808,7 +885,7 @@ void GlicInstanceMetrics::OnResponseStopped(mojom::ResponseStopCause cause) {
       break;
   }
 
-  if (turn_.input_submitted_time_.is_null()) {
+  if (!has_input && !has_action_result) {
     base::UmaHistogramEnumeration(
         "Glic.Instance.Metrics.Error",
         GlicInstanceMetricsError::kResponseStopWithoutInput);
@@ -817,9 +894,20 @@ void GlicInstanceMetrics::OnResponseStopped(mojom::ResponseStopCause cause) {
         GlicInstanceMetricsError::kResponseStopWithoutInput);
   } else {
     base::TimeTicks now = base::TimeTicks::Now();
-    base::TimeDelta latency = now - turn_.input_submitted_time_;
-    base::UmaHistogramMediumTimes(
-        base::StrCat({"Glic.Turn.ResponseStopTime", cause_suffix}), latency);
+    base::TimeDelta latency;
+    if (has_input) {
+      latency = now - turn_.input_submitted_time_;
+      base::UmaHistogramMediumTimes("Glic.Turn.ResponseStopTime", latency);
+      base::UmaHistogramMediumTimes(
+          base::StrCat({"Glic.Turn.ResponseStopTime", cause_suffix}), latency);
+    } else if (has_action_result) {
+      latency = now - turn_.action_result_submitted_time_;
+      base::UmaHistogramMediumTimes("Glic.Turn.Actuation.ResponseStopTime",
+                                    latency);
+      base::UmaHistogramMediumTimes(
+          base::StrCat({"Glic.Turn.Actuation.ResponseStopTime", cause_suffix}),
+          latency);
+    }
     RecordResponseLatencyByAttachedTabCount(latency);
   }
 
@@ -921,6 +1009,11 @@ void GlicInstanceMetrics::OnReaction(
       }
       return;
   }
+}
+
+void GlicInstanceMetrics::OnActionSubmitted(bool is_retry) {
+  turn_.action_result_submitted_time_ = base::TimeTicks::Now();
+  base::UmaHistogramBoolean("Glic.Turn.Actuation.IsRetry", is_retry);
 }
 
 void GlicInstanceMetrics::OnSessionStarted() {

@@ -1,0 +1,71 @@
+From dd15f2dd4a9ce3c9f84baa29610ba9ab8d2e6e52 Mon Sep 17 00:00:00 2001
+From: Ekaterina Kulikova <kate.kulikova@lge.com>
+Date: Thu, 26 Mar 2026 11:32:35 +0300
+Subject: [PATCH] [build][webos] V8: Do not exit function while ICU is not
+ initialized in mksnapshot.cc
+
+:Release Notes:
+Do not exit function while ICU is not initialized in
+v8/src/snapshot/mksnapshot.cc for webOS after rolling to 148.0.7750.0~1
+
+:Detailed Notes:
+In the upstream V8 CL
+https://chromium-review.googlesource.com/c/v8/v8/+/7679153, which
+is rolled into Chromium in https://crrev.com/c/7684531, added better
+error messages for invalid ICU data files.
+
+It caused error on building com.webos.app.test.v8snapshot on webOS/OSE:
+ERROR: com.webos.app.test.v8snapshot-1.0.0-25-r6.1 do_compile: ExecutionError('/ssd/neva-main-rolling/build-webos/BUILD/work/raspberrypi4_64-webos-linux/com.webos.app.test.v8snapshot/1.0.0-25/temp/run.do_compile.1203745', 1, None, None)
+ERROR: Logfile of failure stored in: /ssd/neva-main-rolling/build-webos/BUILD/work/raspberrypi4_64-webos-linux/com.webos.app.test.v8snapshot/1.0.0-25/temp/log.do_compile.1203745
+Log data follows:
+| DEBUG: Executing shell function do_compile
+| NOTE: VERBOSE=1 cmake --build /ssd/neva-main-rolling/build-webos/BUILD/work/raspberrypi4_64-webos-linux/com.webos.app.test.v8snapshot/1.0.0-25/build --target all --
+| Change Dir: '/ssd/neva-main-rolling/build-webos/BUILD/work/raspberrypi4_64-webos-linux/com.webos.app.test.v8snapshot/1.0.0-25/build'
+|
+| Run Build Command(s): ninja -v -j 6 all
+| [1/2] cd /ssd/neva-main-rolling/build-webos/BUILD/work/raspberrypi4_64-webos-linux/com.webos.app.test.v8snapshot/1.0.0-25/build && mksnapshot-cross-aarch64 --startup-blob snapshot_blob.bin --turbo_instruction_scheduling /ssd/neva-main-rolling/build-webos/BUILD/work/raspberrypi4_64-webos-linux/com.webos.app.test.v8snapshot/1.0.0-25/git/com.webos.app.test.v8snapshot/snapshot_test.js
+| FAILED: snapshot_blob.bin /ssd/neva-main-rolling/build-webos/BUILD/work/raspberrypi4_64-webos-linux/com.webos.app.test.v8snapshot/1.0.0-25/build/snapshot_blob.bin
+| cd /ssd/neva-main-rolling/build-webos/BUILD/work/raspberrypi4_64-webos-linux/com.webos.app.test.v8snapshot/1.0.0-25/build && mksnapshot-cross-aarch64 --startup-blob snapshot_blob.bin --turbo_instruction_scheduling /ssd/neva-main-rolling/build-webos/BUILD/work/raspberrypi4_64-webos-linux/com.webos.app.test.v8snapshot/1.0.0-25/git/com.webos.app.test.v8snapshot/snapshot_test.js
+| mksnapshot-cross-aarch64: Failed to initialize ICU
+| ninja: build stopped: subcommand failed.
+|
+| WARNING: exit code 1 from a shell command.
+ERROR: Task (/ssd/neva-main-rolling/build-webos/meta-lg-webos/meta-webos/recipes-webos/test-apps/com.webos.app.test.v8snapshot.bb:do_compile) failed with exit code '1'
+
+Do not exit function while ICU is not initialized in
+v8/src/snapshot/mksnapshot.cc for webOS to fix this issue.
+
+:Issues Addressed:
+[NEVA-11130] Upgrade neva-main-rolling up to 7750 BUILD
+---
+ src/snapshot/mksnapshot.cc | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/snapshot/mksnapshot.cc b/src/snapshot/mksnapshot.cc
+index f0af1a915f7..904cb620593 100644
+--- a/src/snapshot/mksnapshot.cc
++++ b/src/snapshot/mksnapshot.cc
+@@ -8,6 +8,8 @@
+ 
+ #include <iomanip>
+ 
++// NOTE(neva): Required for usage of IS_WEBOS build flag.
++#include "build/build_config.h"
+ #include "include/libplatform/libplatform.h"
+ #include "include/v8-initialization.h"
+ #include "src/base/logging.h"
+@@ -251,7 +253,11 @@ int main(int argc, char** argv) {
+   i::CpuFeatures::Probe(true);
+   if (!v8::V8::InitializeICUDefaultLocation(argv[0])) {
+     i::PrintF(stderr, "%s: Failed to initialize ICU\n", argv[0]);
++    // TODO(neva): For some unknown reason ICU fails to initialize on webOS.
++    // Need to investigate.
++#if !BUILDFLAG(IS_WEBOS)
+     return 1;
++#endif  // !BUILDFLAG(IS_WEBOS)
+   }
+   std::unique_ptr<v8::Platform> platform = v8::platform::NewDefaultPlatform();
+   v8::V8::InitializePlatform(platform.get());
+-- 
+2.34.1
+

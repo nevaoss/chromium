@@ -1,4 +1,4 @@
-// Copyright 2025 The Chromium Authors
+// Copyright 2026 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -40,15 +40,22 @@
 
 namespace default_browser {
 
+DEFINE_USER_DATA(PinInfoBarController);
+
 PinInfoBarController::PinInfoBarController(BrowserWindowInterface* browser)
-    : browser_(browser) {
+    : browser_(browser),
+      scoped_unowned_user_data_(browser->GetUnownedUserDataHost(), *this) {
   CHECK(base::FeatureList::IsEnabled(features::kOfferPinToTaskbarInfoBar));
   browser_subscriptions_.push_back(
       browser_->RegisterBrowserDidClose(base::BindRepeating(
           &PinInfoBarController::OnBrowserClosed, base::Unretained(this))));
 }
 
-PinInfoBarController::~PinInfoBarController() = default;
+PinInfoBarController::~PinInfoBarController() {
+  if (infobar_manager_) {
+    infobar_manager_->RemoveObserver(this);
+  }
+}
 
 void PinInfoBarController::OnBrowserClosed(BrowserWindowInterface* browser) {
   if (infobar_) {
@@ -66,6 +73,20 @@ void PinInfoBarController::OnInfoBarRemoved(infobars::InfoBar* infobar,
   infobar_manager_ = nullptr;
 }
 
+void PinInfoBarController::OnManagerWillBeDestroyed(
+    infobars::InfoBarManager* manager) {
+  DCHECK_EQ(infobar_manager_, manager);
+  infobar_ = nullptr;
+  infobar_manager_->RemoveObserver(this);
+  infobar_manager_ = nullptr;
+}
+
+// static
+PinInfoBarController* PinInfoBarController::From(
+    BrowserWindowInterface* window) {
+  return Get(window->GetUnownedUserDataHost());
+}
+
 // static
 void PinInfoBarController::MaybeShowInfoBarForBrowser(
     base::WeakPtr<BrowserWindowInterface> browser,
@@ -77,8 +98,12 @@ void PinInfoBarController::MaybeShowInfoBarForBrowser(
     std::move(done_callback).Run(false);
     return;
   }
-  browser->GetFeatures().pin_infobar_controller()->MaybeShowInfoBar(
-      std::move(done_callback));
+  PinInfoBarController* controller = PinInfoBarController::From(browser.get());
+  if (controller) {
+    controller->MaybeShowInfoBar(std::move(done_callback));
+  } else {
+    std::move(done_callback).Run(false);
+  }
 }
 
 void PinInfoBarController::MaybeShowInfoBar(
@@ -139,13 +164,31 @@ void PinInfoBarController::OnShouldOfferToPinResult(
     return;
   }
 
-  // Show the pin-to-taskbar infobar.
+  // On startup, the TabStripModel might not have an active WebContents yet.
   content::WebContents* web_contents =
       browser_->GetTabStripModel()->GetActiveWebContents();
-  infobar_manager_ =
+  if (!web_contents) {
+    std::move(done_callback).Run(false);
+    return;
+  }
+
+  infobars::ContentInfoBarManager* infobar_manager =
       infobars::ContentInfoBarManager::FromWebContents(web_contents);
+  if (!infobar_manager) {
+    std::move(done_callback).Run(false);
+    return;
+  }
+
+  infobar_ = PinInfoBarDelegate::Create(infobar_manager);
+  if (!infobar_) {
+    std::move(done_callback).Run(false);
+    return;
+  }
+
+  // Only start observing after successful infobar creation to avoid leaks
+  // if creation fails (e.g., if an identical infobar already exists).
+  infobar_manager_ = infobar_manager;
   infobar_manager_->AddObserver(this);
-  infobar_ = PinInfoBarDelegate::Create(infobar_manager_);
   SetInfoBarShownRecently();
   std::move(done_callback).Run(true);
 }

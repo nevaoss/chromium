@@ -2,263 +2,46 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/test/metrics/histogram_tester.h"
-#include "base/test/scoped_feature_list.h"
-#include "chrome/browser/glic/host/glic.mojom.h"
-#include "chrome/browser/glic/host/glic_features.mojom.h"
-#include "chrome/browser/glic/test_support/interactive_glic_test.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/skills/skills_service_factory.h"
-#include "chrome/browser/skills/skills_ui_window_controller.h"
+#include "chrome/browser/skills/skills_interactive_uitest_base.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
-#include "chrome/browser/ui/views/test/tab_strip_interactive_test_mixin.h"
+#include "chrome/browser/ui/toasts/toast_view.h"
+#include "chrome/browser/ui/webui/skills/skills_dialog_view.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/test/base/interactive_test_utils.h"
-#include "chrome/test/base/ui_test_utils.h"
-#include "chrome/test/interaction/interactive_browser_window_test.h"
-#include "components/optimization_guide/core/hints/optimization_metadata.h"
-#include "components/optimization_guide/core/optimization_guide_proto_util.h"
 #include "components/optimization_guide/proto/hints.pb.h"
 #include "components/skills/features.h"
-#include "components/skills/public/skill.h"
-#include "components/skills/public/skills_service.h"
 #include "content/public/test/browser_test.h"
-#include "net/dns/mock_host_resolver.h"
 
-namespace {
-DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFirstTabId);
-DEFINE_LOCAL_STATE_IDENTIFIER_VALUE(ui::test::PollingStateObserver<GURL>,
-                                    kOpenedTabUrlState);
+namespace skills {
 
-using DeepQuery = WebContentsInteractionTestUtil::DeepQuery;
-
-static constexpr char kClickFn[] = "el => el.click()";
-
-optimization_guide::OptimizationMetadata SkillVectorToOptimizationMetaData(
-    std::vector<glic::mojom::SkillPtr> skills) {
-  skills::proto::SkillsList skills_list;
-  for (const auto& glicSkill : skills) {
-    skills::proto::Skill* skill = skills_list.add_skills();
-    skill->set_id(glicSkill->preview->id);
-    skill->set_name(glicSkill->preview->name);
-    skill->set_icon(glicSkill->preview->icon);
-    skill->set_description(glicSkill->preview->description);
-    skill->set_prompt(glicSkill->prompt);
-  }
-  optimization_guide::proto::Any any_metadata;
-  any_metadata.set_type_url("type.googleapis.com/skills.proto.SkillsList");
-  skills_list.SerializeToString(any_metadata.mutable_value());
-  optimization_guide::OptimizationMetadata metadata;
-  metadata.set_any_metadata(any_metadata);
-  return metadata;
-}
-
-}  // namespace
-
-class SkillsInteractiveUiTest
-    : public TabStripInteractiveTestMixin<glic::test::InteractiveGlicTest> {
- public:
-  SkillsInteractiveUiTest() {
-    scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{features::kGlic, features::kGlicRollout,
-                              features::kSkillsEnabled,
-                              features::kGlicMultitabUnderlines},
-        /*disabled_features=*/{features::kGlicWarming,
-                               features::kGlicTrustFirstOnboarding});
-    // Ensure that we open the FRE.
-    glic_test_environment().SetFreStatusForNewProfiles(std::nullopt);
-  }
-
-  ~SkillsInteractiveUiTest() override = default;
-
-  using StateChange = WebContentsInteractionTestUtil::StateChange;
-
-  void SetUpOnMainThread() override {
-    glic::test::InteractiveGlicTest::SetUpOnMainThread();
-
-    skills::SkillsServiceFactory::GetForProfile(browser()->profile())
-        ->SetServiceStatusForTesting(
-            skills::SkillsService::ServiceStatus::kReady);
-  }
-
-  auto UpdateContextualSkillPreviews(
-      std::vector<glic::mojom::SkillPreviewPtr> contextual_skill_previews) {
-    return Steps(Do([this, contextual_skill_previews =
-                               std::move(contextual_skill_previews)]() mutable {
-      glic_service()
-          ->GetInstanceForTab(browser()->GetActiveTabInterface())
-          ->host()
-          .NotifyContextualSkillsChanged(std::move(contextual_skill_previews));
-    }));
-  }
-
-  auto AddUserOwnedSkill(glic::mojom::SkillPtr skill,
-                         std::string* out_skill_id = nullptr) {
-    return Do([this, skill = std::move(skill), out_skill_id]() mutable {
-      skills::SkillsService* skills_service =
-          skills::SkillsServiceFactory::GetForProfile(browser()->profile());
-
-      auto* added_skill =
-          skills_service->AddSkill(skill->preview->id, skill->preview->name,
-                                   skill->preview->icon, skill->prompt);
-
-      if (out_skill_id && added_skill) {
-        *out_skill_id = added_skill->id;
-      }
-    });
-  }
-
-  auto InvokeSkillDirectly(std::string* skill_id_ptr) {
-    return Do([this, skill_id_ptr]() {
-      skills::SkillsUiWindowController::From(browser())->InvokeSkill(
-          *skill_id_ptr);
-    });
-  }
-
-  auto VerifyInvocationInWebUI(const std::string& expected_prompt) {
-    return Steps(
-        Log("Verifying Glic Panel Opened via Toast Interaction"),
-        WaitForShow(glic::test::kGlicHostElementId),
-
-        // This will now pass because test_client.js updates the value!
-        WaitForJsResult(
-            glic::test::kGlicContentsElementId,
-            base::StringPrintf(
-                "() => {"
-                "  const input = document.getElementById('skillPromptInput');"
-                "  return !!input && input.value === '%s';"
-                "}",
-                expected_prompt.c_str())));
-  }
-
-  auto ActivateTabAt(int tab_index) {
-    return Do([this, tab_index]() {
-      browser()->GetTabStripModel()->ActivateTabAt(tab_index);
-    });
-  }
-
-  auto WaitForSkillPreviewShown(std::string_view skill_name) {
-    DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kSkillPreviewShown);
-    StateChange state_change;
-    state_change.type = StateChange::Type::kExistsAndConditionTrue;
-    state_change.where = {"#skillsList > li > span.skill-name[value=\"" +
-                          std::string(skill_name) + "\"]"};
-    state_change.test_function = "el => el.checkVisibility()";
-    state_change.event = kSkillPreviewShown;
-    return WaitForStateChange(glic::test::kGlicContentsElementId, state_change);
-  }
-
-  auto ClickOnGlicClientElement(DeepQuery where) {
-    return ExecuteJsAt(glic::test::kGlicContentsElementId, where, kClickFn);
-  }
-
-  auto PollForAndAcceptFre() {
-    return Steps(
-        PollUntil(
-            [this]() {
-              return glic_service()->fre_controller().GetWebUiState() ==
-                     glic::mojom::FreWebUiState::kReady;
-            },
-            "polling until the fre is ready"),
-        Do([this]() { glic_service()->fre_controller().AcceptFre(nullptr); }));
-  }
-
-  // Waits for the nth `tab` to be open to `url`.
-  auto WaitForTabOpenedTo(int tab, GURL url) {
-    return Steps(
-        PollState(
-            kOpenedTabUrlState,
-            [this, tab]() {
-              auto* const model = browser()->tab_strip_model();
-              if (model->active_index() != tab) {
-                return GURL();
-              }
-              return model->GetTabAtIndex(tab)->GetContents()->GetVisibleURL();
-            }),
-        WaitForState(kOpenedTabUrlState, url),
-        StopObservingState(kOpenedTabUrlState));
-  }
-
- private:
-  base::HistogramTester histogram_tester_;
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
+class SkillsInteractiveUiTest : public SkillsInteractiveUiTestBase {};
 
 IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest, UpdateSkillPreviews) {
+  // Create a mock contextual 1P skill.
+  auto contextual_skill = GetMockSkill();
+  contextual_skill.name = "contextual_skill";
+  contextual_skill.source = sync_pb::SkillSource::SKILL_SOURCE_FIRST_PARTY;
   std::vector<glic::mojom::SkillPreviewPtr> skill_previews;
-  skill_previews.push_back(glic::mojom::SkillPreview::New(
-      "contextual_skill_id", "contextual_skill_name", "contextual_skill_icon",
-      glic::mojom::SkillSource::kFirstParty, "contextual_skill_description"));
+  skill_previews.push_back(SkillToGlicMojomSkillPreview(&contextual_skill));
 
-  glic::mojom::SkillPtr skill = glic::mojom::Skill::New(
-      glic::mojom::SkillPreview::New(
-          "test_skill_id", "test_skill_name", "test_skill_icon",
-          glic::mojom::SkillSource::kFirstParty, "test_skill_description"),
-      "test_prompt", std::optional<std::string>("test_skill_id"));
+  // Create a mock derived skill.
+  auto derived_skill = GetMockSkill();
+  derived_skill.source =
+      sync_pb::SkillSource::SKILL_SOURCE_DERIVED_FROM_FIRST_PARTY;
 
-  RunTestSequence(
-      ToggleGlicWindow(GlicWindowMode::kAttached), PollForAndAcceptFre(),
-      WaitForAndInstrumentGlic(GlicInstrumentMode::kHostAndContents),
-      UpdateContextualSkillPreviews(std::move(skill_previews)),
-      WaitForSkillPreviewShown("contextual_skill_name"),
-      AddUserOwnedSkill(std::move(skill)),
-      WaitForSkillPreviewShown("test_skill_name"));
-}
-
-IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest, InvokeSkill) {
-  const std::string kSkillPrompt = "Prompt from direct invocation";
-  std::string generated_skill_id;
-
-  glic::mojom::SkillPtr skill = glic::mojom::Skill::New(
-      glic::mojom::SkillPreview::New("temp_id", "Direct Skill", "http://icon",
-                                     glic::mojom::SkillSource::kFirstParty,
-                                     "Description"),
-      kSkillPrompt, std::nullopt);
-
-  RunTestSequence(
-      ToggleGlicWindow(GlicWindowMode::kAttached), PollForAndAcceptFre(),
-      WaitForAndInstrumentGlic(GlicInstrumentMode::kHostAndContents),
-      AddUserOwnedSkill(std::move(skill), &generated_skill_id),
-      InvokeSkillDirectly(&generated_skill_id),
-      VerifyInvocationInWebUI(kSkillPrompt));
-}
-
-IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest, UpdateContextualSkill) {
-  std::vector<glic::mojom::SkillPtr> contextual_skills;
-  glic::mojom::SkillPtr skill = glic::mojom::Skill::New(
-      glic::mojom::SkillPreview::New(
-          "contextual_skill_id", "contextual_skill_name",
-          "contextual_skill_icon", glic::mojom::SkillSource::kFirstParty,
-          "contextual_skill_description"),
-      "test_prompt", std::optional<std::string>("contextual_skill_id"));
-  contextual_skills.push_back(std::move(skill));
-
-  auto* optimization_guide_decider =
-      OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile());
-  optimization_guide_decider->AddHintForTesting(
-      GURL("https://enabled.com/"),
-      optimization_guide::proto::OptimizationType::SKILLS,
-      SkillVectorToOptimizationMetaData(std::move(contextual_skills)));
-
-  RunTestSequence(
-      InstrumentTab(kFirstTabId), ToggleGlicWindow(GlicWindowMode::kAttached),
-      PollForAndAcceptFre(),
-      WaitForAndInstrumentGlic(GlicInstrumentMode::kHostAndContents),
-      NavigateWebContents(kFirstTabId, GURL("https://enabled.com/")),
-      WaitForWebContentsReady(kFirstTabId),
-      WaitForSkillPreviewShown("contextual_skill_name"));
+  RunTestSequence(OpenGlicAcceptFreAndInstrument(),
+                  UpdateContextualSkillPreviews(std::move(skill_previews)),
+                  WaitForSkillPreviewShown(contextual_skill.name),
+                  AddUserOwnedSkill(derived_skill),
+                  WaitForSkillPreviewShown(derived_skill.name));
 }
 
 IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest, ShowManageSkillsUi) {
   const DeepQuery kManageSkillsBtn{{"#manageSkillsBtn"}};
   RunTestSequence(
-      InstrumentTab(kFirstTabId), ToggleGlicWindow(GlicWindowMode::kAttached),
-      PollForAndAcceptFre(),
-      WaitForAndInstrumentGlic(GlicInstrumentMode::kHostAndContents),
+      InstrumentTab(kFirstTabId), OpenGlicAcceptFreAndInstrument(),
       ClickOnGlicClientElement(kManageSkillsBtn),
       WaitForTabOpenedTo(1, GURL("chrome://skills/yourSkills")),
       ActivateTabAt(0),
@@ -268,3 +51,345 @@ IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest, ShowManageSkillsUi) {
       ClickOnGlicClientElement(kManageSkillsBtn), WaitForActiveTabChange(1));
   ASSERT_EQ(browser()->GetTabStripModel()->count(), 2);
 }
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest,
+                       GetSkill_CreatedViaCreateSkill) {
+  auto user_created_skill = GetMockSkill();
+  auto edited_skill = GetEditedSkill();
+
+  RunTestSequence(
+      OpenGlicAcceptFreAndInstrument(), CreateSkill(user_created_skill),
+      InstrumentNonTabWebView(kSkillsDialogElementId,
+                              SkillsDialogView::kSkillsDialogElementId),
+      VerifyAndEditSkillDialogInput(user_created_skill, edited_skill),
+      ClickButtonAndVerifyDialogHides(kSaveButtonQuery),
+      WaitForSkillPreviewShown(edited_skill.name));
+
+  // Verify skill was saved correctly in SkillsService.
+  const auto& user_skills = GetSkillsService()->GetSkills();
+  ASSERT_EQ(user_skills.size(), 1u);
+
+  auto added_skill = user_skills[0].get();
+  EXPECT_THAT(added_skill, VerifyUserCreatedSkill(edited_skill));
+
+  // Verify that the created skill can be retrieved via the API and is correct.
+  auto result = GetSkill(added_skill->id);
+  ASSERT_OK_AND_ASSIGN(glic::mojom::SkillPtr mojo_skill, std::move(result));
+
+  EXPECT_EQ(mojo_skill->preview->name, edited_skill.name);
+  EXPECT_EQ(mojo_skill->prompt, edited_skill.prompt);
+  EXPECT_EQ(mojo_skill->preview->source,
+            glic::mojom::SkillSource::kUserCreated);
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest,
+                       CreateUserSkill_NotSavedOnCancel) {
+  auto user_created_skill = GetMockSkill();
+  auto edited_skill = GetEditedSkill();
+
+  RunTestSequence(
+      OpenGlicAcceptFreAndInstrument(), CreateSkill(user_created_skill),
+      InstrumentNonTabWebView(kSkillsDialogElementId,
+                              SkillsDialogView::kSkillsDialogElementId),
+      VerifyAndEditSkillDialogInput(user_created_skill, edited_skill),
+      ClickButtonAndVerifyDialogHides(kCancelButtonQuery));
+
+  // Verify skill was not saved in SkillsService.
+  const auto& user_skills = GetSkillsService()->GetSkills();
+  ASSERT_EQ(user_skills.size(), 0u);
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest, UpdateUserSkill) {
+  // Used to initially create the skill and verify the dialog
+  // contents when update is triggered.
+  auto user_created_skill = GetMockSkill();
+  // Used to update the skill via the dialog and verify that
+  // the skill was updated correctly in SkillsService.
+  auto edited_skill = GetEditedSkill();
+  // Used to update the skill via the API.
+  std::string skill_id;
+
+  RunTestSequence(
+      OpenGlicAcceptFreAndInstrument(),
+      AddUserOwnedSkill(user_created_skill, &skill_id),
+      WaitForSkillPreviewShown(user_created_skill.name), UpdateSkill(&skill_id),
+      InstrumentNonTabWebView(kSkillsDialogElementId,
+                              SkillsDialogView::kSkillsDialogElementId),
+      VerifyAndEditSkillDialogInput(user_created_skill, edited_skill),
+      ClickButtonAndVerifyDialogHides(kSaveButtonQuery),
+      WaitForSkillPreviewShown(edited_skill.name));
+
+  // Verify skill was saved correctly in SkillsService.
+  const auto* updated_skill = GetSkillsService()->GetSkillById(skill_id);
+  ASSERT_TRUE(updated_skill);
+  EXPECT_THAT(updated_skill, VerifyUserCreatedSkill(edited_skill));
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest,
+                       UpdateUserSkill_NotSavedOnCancel) {
+  // `user_created_skill` is used to initially create the skill and verify the
+  // dialog contents when update is triggered. It is then used to verify that
+  // the skill was not changed in SkillsService.
+  auto user_created_skill = GetMockSkill();
+  auto edited_skill = GetEditedSkill();
+  std::string skill_id;
+
+  RunTestSequence(
+      OpenGlicAcceptFreAndInstrument(),
+      AddUserOwnedSkill(user_created_skill, &skill_id),
+      WaitForSkillPreviewShown(user_created_skill.name), UpdateSkill(&skill_id),
+      InstrumentNonTabWebView(kSkillsDialogElementId,
+                              SkillsDialogView::kSkillsDialogElementId),
+      VerifyAndEditSkillDialogInput(user_created_skill, edited_skill),
+      ClickButtonAndVerifyDialogHides(kCancelButtonQuery));
+
+  // Verify skill was NOT changed in SkillsService.
+  const auto* updated_skill = GetSkillsService()->GetSkillById(skill_id);
+  ASSERT_TRUE(updated_skill);
+  EXPECT_THAT(updated_skill, VerifyUserCreatedSkill(user_created_skill));
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest,
+                       RemixFirstPartySkillAndUpdateSkill) {
+  // Create a first party skill with a valid UUID and source.
+  auto first_party_skill = GetMockSkill();
+  first_party_skill.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  first_party_skill.source = sync_pb::SkillSource::SKILL_SOURCE_FIRST_PARTY;
+  // Used to edit the remixed skill in the creation dialog.
+  auto edited_skill = GetEditedSkill();
+  // Used to update the remixed skill in the update dialog.
+  auto updated_skill = Skill(/*id=*/"", /*name=*/"Updated Skill Name",
+                             /*icon=*/"⭐", /*prompt=*/"Updated Instructions",
+                             /*description=*/"");
+
+  std::string remixed_skill_id = "";
+
+  // Add a first party skill to the service.
+  GetSkillsService()->AddOrUpdateSkillFromSync(
+      first_party_skill.id, /*source_skill_id=*/"", first_party_skill.name,
+      first_party_skill.icon, first_party_skill.prompt,
+      first_party_skill.description,
+      /*creation_time=*/base::Time::Now(),
+      /*last_update_time=*/base::Time::Now(), first_party_skill.source);
+
+  RunTestSequence(
+      OpenGlicAcceptFreAndInstrument(), CreateSkill(first_party_skill),
+      InstrumentNonTabWebView(kSkillsDialogElementId,
+                              SkillsDialogView::kSkillsDialogElementId),
+      VerifyAndEditSkillDialogInput(first_party_skill, edited_skill),
+      ClickButtonAndVerifyDialogHides(kSaveButtonQuery),
+      WaitForSkillPreviewShown(edited_skill.name),
+      Do([this, &first_party_skill, &edited_skill, &remixed_skill_id]() {
+        // Verify skill was saved correctly as a derived skill in SkillsService.
+        const Skill* remixed_skill = nullptr;
+
+        for (const auto& skill : GetSkillsService()->GetSkills()) {
+          if (skill->source_skill_id == first_party_skill.id) {
+            remixed_skill = skill.get();
+            remixed_skill_id = skill->id;
+            break;
+          }
+        }
+        ASSERT_TRUE(remixed_skill);
+        EXPECT_THAT(remixed_skill, VerifyRemixedFirstPartySkill(
+                                       edited_skill, first_party_skill));
+        ASSERT_FALSE(remixed_skill_id.empty());
+      }),
+      // Call UpdateSkill on the remixed skill.
+      UpdateSkill(&remixed_skill_id),
+      UninstrumentWebContents(kSkillsDialogElementId,
+                              /*fail_if_not_instrumented=*/false),
+      InstrumentNonTabWebView(kSkillsDialogElementId,
+                              SkillsDialogView::kSkillsDialogElementId),
+      VerifyAndEditSkillDialogInput(edited_skill, updated_skill),
+      ClickButtonAndVerifyDialogHides(kSaveButtonQuery),
+      WaitForSkillPreviewShown(updated_skill.name));
+  // Verify skill was updated correctly in SkillsService.
+  const auto* updated_remixed_skill =
+      GetSkillsService()->GetSkillById(remixed_skill_id);
+  ASSERT_TRUE(updated_remixed_skill);
+  EXPECT_THAT(updated_remixed_skill,
+              VerifyRemixedFirstPartySkill(updated_skill, first_party_skill));
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest,
+                       UpdateSkillSortsByLastUpdateTime) {
+  std::string updated_skill_name = "Updated Skill";
+  std::string first_party_skill_name = "1P Skill";
+
+  std::vector<Skill> test_skills;
+  for (int i = 0; i <= 2; ++i) {
+    auto skill = GetMockSkill();
+    skill.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+    skill.name = base::StringPrintf("Skill %d", i);
+    test_skills.push_back(std::move(skill));
+  }
+
+  RunTestSequence(
+      OpenGlicAcceptFreAndInstrument(), Do([this, test_skills]() {
+        for (const auto& skill : test_skills) {
+          GetSkillsService()->AddOrUpdateSkillFromSync(
+              skill.id, /*source_skill_id=*/"", skill.name, skill.icon,
+              skill.prompt, skill.description,
+              /*creation_time=*/base::Time::Now(),
+              /*last_update_time=*/base::Time::Now(),
+              sync_pb::SkillSource::SKILL_SOURCE_USER_CREATED);
+        }
+      }),
+      // SkillPreviews should be sorted by last update time in descending order.
+      WaitForSkillPreviewOrder(
+          {test_skills[2].name, test_skills[1].name, test_skills[0].name}),
+      // Update oldest skill (Skill 0).
+      UpdateSkill(&test_skills[0].id),
+      InstrumentNonTabWebView(kSkillsDialogElementId,
+                              SkillsDialogView::kSkillsDialogElementId),
+      EditDialogInput(updated_skill_name, kNameInputQuery),
+      ClickButtonAndVerifyDialogHides(kSaveButtonQuery),
+      // Skill 0 should now move to the top because it was just updated.
+      WaitForSkillPreviewOrder(
+          {updated_skill_name, test_skills[2].name, test_skills[1].name}),
+      // Add a 1P skill with a creation and last update time older than all
+      // other user created skills.
+      Do([this, first_party_skill_name]() {
+        auto older_time = base::Time::Now() - base::Minutes(10);
+
+        GetSkillsService()->AddOrUpdateSkillFromSync(
+            base::Uuid::GenerateRandomV4().AsLowercaseString(),
+            /*source_skill_id=*/"", first_party_skill_name, "icon", "prompt",
+            "description", /*creation_time=*/older_time,
+            /*last_update_time=*/older_time,
+            sync_pb::SkillSource::SKILL_SOURCE_FIRST_PARTY);
+      }),
+      // Ensure the 1P skill is at the end of the list.
+      WaitForSkillPreviewOrder({updated_skill_name, test_skills[2].name,
+                                test_skills[1].name, first_party_skill_name}));
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest, Invoke1PSkillFromFloatyGic) {
+  proto::Skill skill_proto = GetFirstPartySkillProto();
+  std::string skill_id = skill_proto.id();
+  RunTestSequence(
+      Seed1PSkills({skill_proto}), ToggleGlicWindow(GlicWindowMode::kDetached),
+      PollForAndAcceptFre(),
+      WaitForAndInstrumentGlic(GlicInstrumentMode::kHostAndContents),
+      WaitFor1PSkills(), InvokeSkillDirectly(&skill_id),
+      VerifyInvocationInWebUI(skill_proto.prompt()));
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest, Invoke1PSkill) {
+  proto::Skill skill_proto = GetFirstPartySkillProto();
+  std::string skill_id = skill_proto.id();
+  RunTestSequence(
+      Seed1PSkills({skill_proto}), ToggleGlicWindow(GlicWindowMode::kAttached),
+      PollForAndAcceptFre(),
+      WaitForAndInstrumentGlic(GlicInstrumentMode::kHostAndContents),
+      WaitFor1PSkills(), InvokeSkillDirectly(&skill_id),
+      VerifyInvocationInWebUI(skill_proto.prompt()));
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest,
+                       NotifySkillToInvokeChanged_UpdatesGetSkillToInvoke) {
+  auto skill = GetMockSkill();
+  std::string generated_skill_id;
+
+  RunTestSequence(
+      OpenGlicAcceptFreAndInstrument(),
+      AddUserOwnedSkill(skill, &generated_skill_id),
+      // Simulate a notification that the skill to invoke has changed.
+      Do([this, skill, skill_id_ptr = &generated_skill_id]() mutable {
+        skill.id = *skill_id_ptr;
+        auto mojo_skill = glic::mojom::Skill::New(
+            SkillToGlicMojomSkillPreview(&skill), skill.prompt,
+            /*source_skill_id=*/std::nullopt);
+        glic_service()
+            ->GetInstanceForTab(browser()->GetActiveTabInterface())
+            ->host()
+            .NotifySkillToInvokeChanged(std::move(mojo_skill));
+      }),
+      // Verify the getSkillToInvoke() endpoint reflects the update.
+      VerifyInvocationInWebUI(skill.prompt));
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest, InvokeCreatedSkillViaToast) {
+  auto user_created_skill = GetMockSkill();
+  auto edited_skill = GetEditedSkill();
+
+  RunTestSequence(
+      OpenGlicAcceptFreAndInstrument(), CreateSkill(user_created_skill),
+      InstrumentNonTabWebView(kSkillsDialogElementId,
+                              SkillsDialogView::kSkillsDialogElementId),
+      VerifyAndEditSkillDialogInput(user_created_skill, edited_skill),
+      ClickButtonAndVerifyDialogHides(kSaveButtonQuery),
+      // Wait for the "Skill saved" toast and click its action button.
+      CheckToastIsShowing(ToastId::kSkillSaved),
+      PressButton(toasts::ToastView::kToastActionButton),
+      // Verify the action button invoked the created skill.
+      VerifyInvocationInWebUI(edited_skill.prompt));
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest,
+                       UpdateAndInvokeContextualSkill) {
+  auto contextual_skill = GetMockSkill();
+  contextual_skill.id = base::Uuid::GenerateRandomV4().AsLowercaseString();
+  contextual_skill.source = sync_pb::SkillSource::SKILL_SOURCE_FIRST_PARTY;
+
+  // Add a contextual skill to the optimization guide decider.
+  std::vector<glic::mojom::SkillPtr> contextual_skills;
+  contextual_skills.push_back(
+      glic::mojom::Skill::New(SkillToGlicMojomSkillPreview(&contextual_skill),
+                              contextual_skill.prompt, std::nullopt));
+
+  auto* optimization_guide_decider =
+      OptimizationGuideKeyedServiceFactory::GetForProfile(browser()->profile());
+  optimization_guide_decider->AddHintForTesting(
+      GURL("https://enabled.com/"),
+      optimization_guide::proto::OptimizationType::SKILLS,
+      SkillVectorToOptimizationMetaData(std::move(contextual_skills)));
+
+  // Add the contextual skill to SkillsService.
+  proto::Skill skill_proto = GetFirstPartySkillProto(contextual_skill);
+
+  RunTestSequence(
+      Seed1PSkills({skill_proto}), InstrumentTab(kFirstTabId),
+      OpenGlicAcceptFreAndInstrument(),
+      // Navigate to the site with contextual hint for `contextual_skill`.
+      NavigateWebContents(kFirstTabId, GURL("https://enabled.com/")),
+      WaitForWebContentsReady(kFirstTabId), WaitFor1PSkills(),
+      WaitForSkillPreviewShown(contextual_skill.name),
+      // Invoke the contextual skill and verify invocation WebUI.
+      InvokeSkillDirectly(&contextual_skill.id),
+      VerifyInvocationInWebUI(contextual_skill.prompt));
+}
+
+IN_PROC_BROWSER_TEST_F(SkillsInteractiveUiTest,
+                       DeleteAndUndoSkillUpdatesSkillPreviews) {
+  auto user_created_skill = GetMockSkill();
+
+  const DeepQuery kMenuButtonQuery =
+      GetSkillCardQuery("cr-icon-button#moreButton");
+  const DeepQuery kMenuDropdownQuery = GetSkillCardQuery("cr-action-menu#menu");
+  const DeepQuery kDeleteButtonQuery =
+      GetSkillCardQuery("cr-button#deleteButton");
+
+  RunTestSequence(
+      OpenGlicAcceptFreAndInstrument(), AddUserOwnedSkill(user_created_skill),
+      WaitForSkillPreviewOrder({user_created_skill.name}),
+      // Navigate to the "Your Skills" page.
+      InstrumentTab(kFirstTabId),
+      NavigateWebContents(kFirstTabId,
+                          GURL(chrome::kChromeUISkillsURL)
+                              .Resolve(chrome::kChromeUISkillsYourSkillsPath)),
+      WaitForWebContentsReady(kFirstTabId),
+      // Delete the skill via the skill card.
+      WaitForElementExists(kFirstTabId, kMenuButtonQuery),
+      MoveMouseTo(kFirstTabId, kMenuButtonQuery), ClickMouse(),
+      WaitForElementOpen(kFirstTabId, kMenuDropdownQuery),
+      MoveMouseTo(kFirstTabId, kDeleteButtonQuery), ClickMouse(),
+      // Verify deletion and toast is showing.
+      WaitForSkillPreviewOrder({}), CheckToastIsShowing(ToastId::kSkillDeleted),
+      // Undo the deletion and verify that the skill is restored.
+      PressButton(toasts::ToastView::kToastActionButton),
+      WaitForSkillPreviewOrder({user_created_skill.name}));
+}
+
+}  // namespace skills

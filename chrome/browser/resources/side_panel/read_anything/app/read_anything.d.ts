@@ -115,9 +115,6 @@ declare namespace chrome {
     // Whether Read Anything is pinned to the toolbar.
     let isReadAnythingPinned: boolean;
 
-    // Whether the TS text segmentation feature flag is enabled.
-    let isTsTextSegmentationEnabled: boolean;
-
     // Whether Readability.js is used as the primary distillation method.
     let isReadabilityEnabled: boolean;
 
@@ -381,6 +378,9 @@ declare namespace chrome {
 
     // Called by the Read Anything app to close the Read Anything UI.
     function close(): void;
+
+    // Called when the speech engine stalls.
+    function onSpeechEngineStalled(): void;
 
     // Called by the ReadAnything app to toggle the pin state.
     function togglePinState(): void;

@@ -199,7 +199,8 @@ class LensOverlayQueryController {
       lens::mojom::SemanticEvent event);
 
   bool IsPageContentUploadInProgress() const {
-    return page_content_endpoint_fetcher_.get() != nullptr;
+    return page_content_request_in_progress_ ||
+           page_content_endpoint_fetcher_.get() != nullptr;
   }
 
   // Returns whether the query controller is off.
@@ -350,7 +351,7 @@ class LensOverlayQueryController {
     kClusterInfoExpired = 6,
     // Permissions have not yet been granted, and a new query flow needs to be
     // started after they are granted.
-    kWaitingForPermissions = 6,
+    kWaitingForPermissions = 7,
   };
 
   // Data class for constructing a fetch request to the Lens servers.

@@ -108,9 +108,10 @@ bool HasNotificationExemption(const GURL& url) {
 // Find browser or app window from a given |web_contents|.
 gfx::NativeWindow FindParentWindowForWebContents(
     content::WebContents* web_contents) {
-  Browser* browser = chrome::FindBrowserWithTab(web_contents);
-  if (browser && browser->window())
-    return browser->window()->GetNativeWindow();
+  BrowserWindowInterface* browser = chrome::FindBrowserWithTab(web_contents);
+  if (browser && browser->GetWindow()) {
+    return browser->GetWindow()->GetNativeWindow();
+  }
 
   const extensions::AppWindowRegistry::AppWindowList& window_list =
       extensions::AppWindowRegistry::Get(web_contents->GetBrowserContext())
@@ -293,7 +294,7 @@ void DesktopCaptureAccessHandler::ProcessScreenCaptureAccessRequest(
               pending_request->request.render_frame_id))) {
     std::move(pending_request->callback)
         .Run(blink::mojom::StreamDevicesSet(),
-             MediaStreamRequestResult::FAILED_DUE_TO_SHUTDOWN,
+             MediaStreamRequestResult::FAILED_DUE_TO_SHUTDOWN_OTHER,
              /*ui=*/nullptr);
     return;
   }
@@ -431,7 +432,7 @@ void DesktopCaptureAccessHandler::HandleRequest(
   if (!main_frame) {
     std::move(pending_request->callback)
         .Run(blink::mojom::StreamDevicesSet(),
-             MediaStreamRequestResult::FAILED_DUE_TO_SHUTDOWN,
+             MediaStreamRequestResult::FAILED_DUE_TO_SHUTDOWN_OTHER,
              /*ui=*/nullptr);
     return;
   }

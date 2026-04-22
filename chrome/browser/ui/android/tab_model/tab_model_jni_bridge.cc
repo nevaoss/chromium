@@ -16,10 +16,14 @@
 #include "base/android/jni_string.h"
 #include "base/android/jni_weak_ref.h"
 #include "base/android/token_android.h"
+#include "base/check.h"
+#include "base/check_op.h"
+#include "base/logging.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notimplemented.h"
 #include "base/time/time.h"
 #include "base/token.h"
+#include "base/types/pass_key.h"
 #include "build/android_buildflags.h"
 #include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/browser_process.h"
@@ -479,18 +483,16 @@ void TabModelJniBridge::CloseTabsNavigatedInTimeWindow(
       env, java_object_.get(env), begin_time_ms, end_time_ms);
 }
 
-tabs::TabCollection* TabModelJniBridge::GetTabStripCollection() const {
+tabs::TabStripCollection* TabModelJniBridge::GetTabStripCollection(
+    base::PassKey<tabs_api::AndroidTabStripModelAdapter>) {
   JNIEnv* env = AttachCurrentThread();
-  // This may be invoked by tests without the Java side being initialized.
-  if (java_object_.is_uninitialized()) {
-    return nullptr;
-  }
   return Java_TabModelJniBridge_getTabStripCollection(env,
                                                       java_object_.get(env));
 }
 
 void TabModelJniBridge::ActivateTab(tabs::TabHandle tab) {
   int index = GetIndexOfTab(tab);
+  HighlightTabs(tab, {tab});
   CHECK_NE(-1, index);
   SetActiveIndex(index);
 }
@@ -631,6 +633,23 @@ void TabModelJniBridge::CloseTab(tabs::TabHandle tab) {
   JNIEnv* env = AttachCurrentThread();
   ScopedJavaLocalRef<jobject> jobj = java_object_.get(env);
   Java_TabModelJniBridge_closeTab(env, jobj, tab_android);
+}
+
+std::unique_ptr<content::WebContents> TabModelJniBridge::DetachWebContents(
+    tabs::TabHandle tab) {
+  TabAndroid* tab_android = TabAndroid::FromTabHandle(tab);
+  if (!tab_android) {
+    return nullptr;
+  }
+
+  JNIEnv* env = AttachCurrentThread();
+  ScopedJavaLocalRef<jobject> jobj = java_object_.get(env);
+  // Remove the tab from the Java model first without destroying it.
+  Java_TabModelJniBridge_removeTabWithoutDestroy(env, jobj, tab_android);
+
+  // Now properly release the WebContents and destroy the remaining tab object.
+  return tab_android->TakeWebContentsAndDestroyTab(
+      base::PassKey<TabModelJniBridge>());
 }
 
 std::vector<tabs::TabInterface*> TabModelJniBridge::GetAllTabs() {

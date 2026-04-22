@@ -27,6 +27,7 @@
 #include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "components/content_settings/core/common/features.h"
+#include "components/content_settings/core/common/pref_names.h"
 #include "components/download/public/common/download_danger_type.h"
 #include "components/download/public/common/mock_download_item.h"
 #include "components/prefs/testing_pref_service.h"
@@ -964,6 +965,213 @@ TEST_F(SafeBrowsingServiceEnhancedSecurityBundleMigrationTest,
             GetSecurityBundleSetting(*prefs));
 }
 
+// TODO(crbug.com/483770964): Create a parameterized test suite for the
+// migration tests.
+TEST_F(SafeBrowsingServiceEnhancedSecurityBundleMigrationTest,
+       EsbBundleMigrationJavaScriptOptimizerAllowedToBlockForUnfamiliarSites) {
+  // Set the initial pre-migration preference state.
+  auto profile = std::make_unique<TestingProfile>();
+  PrefService* prefs = profile->GetPrefs();
+  SetSecurityBundleSetting(*prefs, SecuritySettingsBundleSetting::STANDARD);
+  SetSafeBrowsingState(prefs, SafeBrowsingState::ENHANCED_PROTECTION);
+  HostContentSettingsMapFactory::GetForProfile(profile.get())
+      ->SetDefaultContentSetting(ContentSettingsType::JAVASCRIPT_OPTIMIZER,
+                                 CONTENT_SETTING_ALLOW);
+  prefs->SetBoolean(prefs::kJavascriptOptimizerBlockedForUnfamiliarSites,
+                    false);
+
+  // Verify the pre-migration preference state.
+  EXPECT_EQ(
+      site_protection::ComputeDefaultJavascriptOptimizerSetting(profile.get()),
+      content_settings::JavascriptOptimizerSetting::kAllowed);
+
+  // Migration ESB users to the enhanced bundle.
+  MigrateUserToEnhancedBundleIfNeeded(profile.get());
+
+  // Verify the post-migration preference state.
+  EXPECT_EQ(SecuritySettingsBundleSetting::ENHANCED,
+            GetSecurityBundleSetting(*prefs));
+  EXPECT_EQ(
+      site_protection::ComputeDefaultJavascriptOptimizerSetting(profile.get()),
+      content_settings::JavascriptOptimizerSetting::kBlockedForUnfamiliarSites);
+}
+
+TEST_F(
+    SafeBrowsingServiceEnhancedSecurityBundleMigrationTest,
+    EsbBundleMigrationJavaScriptOptimizerBlockForUnfamiliarSitesRemainsUnchanged) {
+  // Set the initial pre-migration preference state.
+  auto profile = std::make_unique<TestingProfile>();
+  PrefService* prefs = profile->GetPrefs();
+  SetSecurityBundleSetting(*prefs, SecuritySettingsBundleSetting::STANDARD);
+  SetSafeBrowsingState(prefs, SafeBrowsingState::ENHANCED_PROTECTION);
+  HostContentSettingsMapFactory::GetForProfile(profile.get())
+      ->SetDefaultContentSetting(ContentSettingsType::JAVASCRIPT_OPTIMIZER,
+                                 CONTENT_SETTING_ALLOW);
+  prefs->SetBoolean(prefs::kJavascriptOptimizerBlockedForUnfamiliarSites, true);
+
+  // Verify the pre-migration preference state.
+  EXPECT_EQ(
+      site_protection::ComputeDefaultJavascriptOptimizerSetting(profile.get()),
+      content_settings::JavascriptOptimizerSetting::kBlockedForUnfamiliarSites);
+
+  // Migration ESB users to the enhanced bundle.
+  MigrateUserToEnhancedBundleIfNeeded(profile.get());
+
+  // Verify the post-migration preference state.
+  EXPECT_EQ(SecuritySettingsBundleSetting::ENHANCED,
+            GetSecurityBundleSetting(*prefs));
+  EXPECT_EQ(
+      site_protection::ComputeDefaultJavascriptOptimizerSetting(profile.get()),
+      content_settings::JavascriptOptimizerSetting::kBlockedForUnfamiliarSites);
+}
+
+TEST_F(
+    SafeBrowsingServiceEnhancedSecurityBundleMigrationTest,
+    EsbBundleMigrationJavaScriptOptimizerBlockedForAllSitesRemainsUnchanged) {
+  // Set the initial pre-migration preference state.
+  auto profile = std::make_unique<TestingProfile>();
+  PrefService* prefs = profile->GetPrefs();
+  SetSecurityBundleSetting(*prefs, SecuritySettingsBundleSetting::STANDARD);
+  SetSafeBrowsingState(prefs, SafeBrowsingState::ENHANCED_PROTECTION);
+  HostContentSettingsMapFactory::GetForProfile(profile.get())
+      ->SetDefaultContentSetting(ContentSettingsType::JAVASCRIPT_OPTIMIZER,
+                                 CONTENT_SETTING_BLOCK);
+  prefs->SetBoolean(prefs::kJavascriptOptimizerBlockedForUnfamiliarSites,
+                    false);
+
+  // Verify the pre-migration preference state.
+  EXPECT_EQ(
+      site_protection::ComputeDefaultJavascriptOptimizerSetting(profile.get()),
+      content_settings::JavascriptOptimizerSetting::kBlocked);
+
+  // Migration ESB users to the enhanced bundle.
+  MigrateUserToEnhancedBundleIfNeeded(profile.get());
+
+  // Verify the post-migration preference state.
+  EXPECT_EQ(SecuritySettingsBundleSetting::ENHANCED,
+            GetSecurityBundleSetting(*prefs));
+  EXPECT_EQ(
+      site_protection::ComputeDefaultJavascriptOptimizerSetting(profile.get()),
+      content_settings::JavascriptOptimizerSetting::kBlocked);
+}
+
+TEST_F(SafeBrowsingServiceEnhancedSecurityBundleMigrationTest,
+       EsbBundleMigrationDisabledWhenEsbIsEnabledViaPolicy) {
+  // Set the initial pre-migration preference state.
+  auto profile = std::make_unique<TestingProfile>();
+  SetSafeBrowsingState(profile->GetPrefs(),
+                       SafeBrowsingState::ENHANCED_PROTECTION);
+  SetSecurityBundleSetting(*profile->GetPrefs(),
+                           SecuritySettingsBundleSetting::STANDARD);
+
+  // Set ESB preference via policy.
+  profile->GetTestingPrefService()->SetManagedPref(prefs::kSafeBrowsingEnhanced,
+                                                   base::Value(true));
+
+  // Verify the pre-migration preference state.
+  EXPECT_EQ(SecuritySettingsBundleSetting::STANDARD,
+            GetSecurityBundleSetting(*profile->GetPrefs()));
+
+  // Attempt migration ESB users to the enhanced bundle.
+  MigrateUserToEnhancedBundleIfNeeded(profile.get());
+
+  // Verify that migration did not run.
+  EXPECT_EQ(SecuritySettingsBundleSetting::STANDARD,
+            GetSecurityBundleSetting(*profile->GetPrefs()));
+}
+
+TEST_F(SafeBrowsingServiceEnhancedSecurityBundleMigrationTest,
+       EsbBundleMigrationDisabledWhenDefaultJSOptIsEnabledViaPolicy) {
+  // Set the initial pre-migration preference state.
+  auto profile = std::make_unique<TestingProfile>();
+  SetSafeBrowsingState(profile->GetPrefs(),
+                       SafeBrowsingState::ENHANCED_PROTECTION);
+  SetSecurityBundleSetting(*profile->GetPrefs(),
+                           SecuritySettingsBundleSetting::STANDARD);
+  profile->GetPrefs()->SetBoolean(
+      prefs::kJavascriptOptimizerBlockedForUnfamiliarSites, false);
+
+  // Set Javascript Optimizer preference via policy.
+  profile->GetTestingPrefService()->SetManagedPref(
+      prefs::kManagedDefaultJavaScriptOptimizerSetting,
+      base::Value(ContentSetting::CONTENT_SETTING_ALLOW));
+
+  // Verify the pre-migration preference state.
+  EXPECT_EQ(SecuritySettingsBundleSetting::STANDARD,
+            GetSecurityBundleSetting(*profile->GetPrefs()));
+
+  // Attempt migration ESB users to the enhanced bundle.
+  MigrateUserToEnhancedBundleIfNeeded(profile.get());
+
+  // Verify that migration did not run.
+  EXPECT_EQ(SecuritySettingsBundleSetting::STANDARD,
+            GetSecurityBundleSetting(*profile->GetPrefs()));
+}
+
+TEST_F(SafeBrowsingServiceEnhancedSecurityBundleMigrationTest,
+       EsbBundleMigrationDisabledWhenJSOptAllowedIsEnabledViaPolicy) {
+  // Set the initial pre-migration preference state.
+  auto profile = std::make_unique<TestingProfile>();
+  SetSafeBrowsingState(profile->GetPrefs(),
+                       SafeBrowsingState::ENHANCED_PROTECTION);
+  SetSecurityBundleSetting(*profile->GetPrefs(),
+                           SecuritySettingsBundleSetting::STANDARD);
+  profile->GetPrefs()->SetBoolean(
+      prefs::kJavascriptOptimizerBlockedForUnfamiliarSites, true);
+  HostContentSettingsMapFactory::GetForProfile(profile.get())
+      ->SetDefaultContentSetting(ContentSettingsType::JAVASCRIPT_OPTIMIZER,
+                                 CONTENT_SETTING_ALLOW);
+
+  // Set Javascript Optimizer preference via policy.
+  base::ListValue allowlist;
+  allowlist.Append("mydomain.com");
+  profile->GetTestingPrefService()->SetManagedPref(
+      prefs::kManagedJavaScriptOptimizerAllowedForSites, std::move(allowlist));
+
+  // Verify the pre-migration preference state.
+  EXPECT_EQ(SecuritySettingsBundleSetting::STANDARD,
+            GetSecurityBundleSetting(*profile->GetPrefs()));
+
+  // Attempt migration ESB users to the enhanced bundle.
+  MigrateUserToEnhancedBundleIfNeeded(profile.get());
+
+  // Verify that migration did not run.
+  EXPECT_EQ(SecuritySettingsBundleSetting::STANDARD,
+            GetSecurityBundleSetting(*profile->GetPrefs()));
+}
+
+TEST_F(SafeBrowsingServiceEnhancedSecurityBundleMigrationTest,
+       EsbBundleMigrationDisabledWhenJSOptBlockedIsEnabledViaPolicy) {
+  // Set the initial pre-migration preference state.
+  auto profile = std::make_unique<TestingProfile>();
+  SetSafeBrowsingState(profile->GetPrefs(),
+                       SafeBrowsingState::ENHANCED_PROTECTION);
+  SetSecurityBundleSetting(*profile->GetPrefs(),
+                           SecuritySettingsBundleSetting::STANDARD);
+  profile->GetPrefs()->SetBoolean(
+      prefs::kJavascriptOptimizerBlockedForUnfamiliarSites, false);
+  HostContentSettingsMapFactory::GetForProfile(profile.get())
+      ->SetDefaultContentSetting(ContentSettingsType::JAVASCRIPT_OPTIMIZER,
+                                 CONTENT_SETTING_ALLOW);
+
+  // Set Javascript Optimizer preference via policy.
+  base::ListValue blocklist;
+  blocklist.Append("mydomain.com");
+  profile->GetTestingPrefService()->SetManagedPref(
+      prefs::kManagedJavaScriptOptimizerBlockedForSites, std::move(blocklist));
+
+  // Verify the pre-migration preference state.
+  EXPECT_EQ(SecuritySettingsBundleSetting::STANDARD,
+            GetSecurityBundleSetting(*profile->GetPrefs()));
+
+  // Attempt migration ESB users to the enhanced bundle.
+  MigrateUserToEnhancedBundleIfNeeded(profile.get());
+
+  // Verify that migration did not run.
+  EXPECT_EQ(SecuritySettingsBundleSetting::STANDARD,
+            GetSecurityBundleSetting(*profile->GetPrefs()));
+}
+
 class SafeBrowsingServiceEnhancedSecurityBundleMigrationDisabledTest
     : public SafeBrowsingServiceEnhancedSecurityBundleMigrationTest {
  public:
@@ -992,17 +1200,15 @@ TEST_F(SafeBrowsingServiceEnhancedSecurityBundleMigrationDisabledTest,
             GetSecurityBundleSetting(*prefs));
 }
 
-// Base test fixture for JsOptimizerSettingMigration tests. Provides
-// convenience functions for setting and checking the state of the JavaScript
+// Test fixture for JsOptimizerSettingMigration tests. Provides
+// convenience functions for setting the state of the JavaScript
 // optimizer setting.
-class JsOptimizerSettingMigrationBaseTest
+class JsOptimizerSettingMigrationTest
     : public SafeBrowsingServiceMigrationTest {
  public:
   void SetUp() override {
     SafeBrowsingServiceMigrationTest::SetUp();
     profile_ = std::make_unique<TestingProfile>();
-    SetJsOptimizerSetting(
-        content_settings::JavascriptOptimizerSetting::kAllowed);
     profile()->GetPrefs()->SetBoolean(
         prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites, false);
   }
@@ -1016,169 +1222,51 @@ class JsOptimizerSettingMigrationBaseTest
     pref.SetPref(&value);
   }
 
-  void ExpectJsOptimizerSetting(
-      content_settings::JavascriptOptimizerSetting expected_setting) {
-    EXPECT_EQ(
-        site_protection::ComputeDefaultJavascriptOptimizerSetting(profile()),
-        expected_setting);
-  }
-
  private:
   base::test::ScopedFeatureList feature_list_;
   std::unique_ptr<TestingProfile> profile_;
 };
 
-class JsOptimizerSettingMigrationEnabledTest
-    : public JsOptimizerSettingMigrationBaseTest {
- public:
-  JsOptimizerSettingMigrationEnabledTest() {
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/
-        {content_settings::features::kBlockV8OptimizerOnUnfamiliarSitesSetting,
-         /*disabled_features=*/kMigrateToBlockV8OptimizerOnUnfamiliarSites},
-        {});
-  }
+TEST_F(JsOptimizerSettingMigrationTest, CleanupClearsOldMigrationPref) {
+  // Simulate old migration state: pref=true, old_migrated=true
+  profile()->GetPrefs()->SetBoolean(
+      prefs::kJavascriptOptimizerBlockedForUnfamiliarSites, true);
+  profile()->GetPrefs()->SetBoolean(
+      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites, true);
 
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
+  EXPECT_TRUE(profile()->GetPrefs()->HasPrefPath(
+      prefs::kJavascriptOptimizerBlockedForUnfamiliarSites));
 
-TEST_F(JsOptimizerSettingMigrationEnabledTest,
-       WhenUserHasDefaultSetting_UpdatesJsOptimizerSetting) {
   MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-  ExpectJsOptimizerSetting(
+
+  // Both setting and migration marker should be cleared.
+  EXPECT_FALSE(profile()->GetPrefs()->HasPrefPath(
+      prefs::kJavascriptOptimizerBlockedForUnfamiliarSites));
+  EXPECT_FALSE(profile()->GetPrefs()->HasPrefPath(
+      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
+}
+
+TEST_F(JsOptimizerSettingMigrationTest, CleanupRunsOnce) {
+  // The cleanup will clear the setting pref if it was set by the user or by the
+  // legacy migration. Demonstrate that this reset will happen at most once.
+  SetJsOptimizerSetting(
       content_settings::JavascriptOptimizerSetting::kBlockedForUnfamiliarSites);
-}
+  profile()->GetPrefs()->SetBoolean(
+      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites, true);
 
-TEST_F(JsOptimizerSettingMigrationEnabledTest,
-       WhenUserHasDefaultSetting_RecordsThatMigrationHappened) {
   MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
-}
 
-TEST_F(JsOptimizerSettingMigrationEnabledTest,
-       WhenUserHasDisabledSafeBrowsing_MigrationDoesNotHappen) {
-  safe_browsing::SetSafeBrowsingState(profile()->GetPrefs(),
-                                      SafeBrowsingState::NO_SAFE_BROWSING);
-  MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-  ExpectJsOptimizerSetting(
-      content_settings::JavascriptOptimizerSetting::kAllowed);
   EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
-}
-
-TEST_F(
-    JsOptimizerSettingMigrationEnabledTest,
-    WhenUserHasDisabledSafeBrowsingThenEnablesSafeBrowsing_MigrationHappens) {
-  safe_browsing::SetSafeBrowsingState(profile()->GetPrefs(),
-                                      SafeBrowsingState::NO_SAFE_BROWSING);
-  MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-  // Unfamiliar sites blocking will not be enabled.
-  ExpectJsOptimizerSetting(
-      content_settings::JavascriptOptimizerSetting::kAllowed);
-  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
-
-  // Now the user enables Safe Browsing, then restarts Chrome.
-  safe_browsing::SetSafeBrowsingState(profile()->GetPrefs(),
-                                      SafeBrowsingState::STANDARD_PROTECTION);
-  // Simulate restart by re-running the migration code.
-  MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-
-  // Ensure that the profile is migrated.
-  ExpectJsOptimizerSetting(
+      prefs::kJavascriptOptimizerBlockedForUnfamiliarSites));
+  // Since the migration already ran once, it shouldn't clear the setting a
+  // second time.
+  SetJsOptimizerSetting(
       content_settings::JavascriptOptimizerSetting::kBlockedForUnfamiliarSites);
+
+  MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
+
   EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
-}
-
-TEST_F(JsOptimizerSettingMigrationEnabledTest, MigrationHappensOnlyOnce) {
-  MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-  // Expect that the user was migrated.
-  ExpectJsOptimizerSetting(
-      content_settings::JavascriptOptimizerSetting::kBlockedForUnfamiliarSites);
-  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
-
-  // Simulate the user setting "allow always".
-  SetJsOptimizerSetting(content_settings::JavascriptOptimizerSetting::kAllowed);
-
-  // Attempt migration again.
-  MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-
-  // But this time, setting is not changed.
-  ExpectJsOptimizerSetting(
-      content_settings::JavascriptOptimizerSetting::kAllowed);
-  // But the profile is still marked as migrated.
-  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
-}
-
-TEST_F(JsOptimizerSettingMigrationEnabledTest,
-       WhenUserHasBlockSetting_DoesNotMigrateUser) {
-  SetJsOptimizerSetting(content_settings::JavascriptOptimizerSetting::kBlocked);
-
-  MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-  ExpectJsOptimizerSetting(
-      content_settings::JavascriptOptimizerSetting::kBlocked);
-
-  // Verify that this profile was not migrated.
-  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
-}
-
-class JsOptimizerSettingMigrationDisabledTest
-    : public JsOptimizerSettingMigrationBaseTest {
- public:
-  JsOptimizerSettingMigrationDisabledTest() {
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/
-        {
-            content_settings::features::
-                kBlockV8OptimizerOnUnfamiliarSitesSetting,
-        },
-        /*disabled_features=*/
-        {kMigrateToBlockV8OptimizerOnUnfamiliarSites});
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-TEST_F(JsOptimizerSettingMigrationDisabledTest,
-       WhenUserHasDefaultSetting_DoesNotMigrate) {
-  MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-  ExpectJsOptimizerSetting(
-      content_settings::JavascriptOptimizerSetting::kAllowed);
-  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
-}
-
-class JsOptimizerSettingUnavailableMigrationTest
-    : public JsOptimizerSettingMigrationBaseTest {
- public:
-  JsOptimizerSettingUnavailableMigrationTest() {
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/
-        {kMigrateToBlockV8OptimizerOnUnfamiliarSites},
-        /*disabled_features=*/
-        {
-            content_settings::features::
-                kBlockV8OptimizerOnUnfamiliarSitesSetting,
-        });
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-TEST_F(JsOptimizerSettingUnavailableMigrationTest, DoesNotMigrate) {
-  MigrateUserToAutomaticJavaScriptBlockingIfNeeded(profile());
-  ExpectJsOptimizerSetting(
-      content_settings::JavascriptOptimizerSetting::kAllowed);
-  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
-      prefs::kMigratedToJavascriptOptimizerBlockedForUnfamiliarSites));
+      prefs::kJavascriptOptimizerBlockedForUnfamiliarSites));
 }
 
 }  // namespace safe_browsing

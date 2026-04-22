@@ -8,9 +8,11 @@
 #include <stddef.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "base/android/callback_android.h"
 #include "base/android/jni_android.h"
@@ -60,10 +62,10 @@ using TabReadbackCallback = base::OnceCallback<void(float, const SkBitmap&)>;
 // After this amount of time we will give up waiting for the readback as it is
 // unlikely that it will complete. Having the callbacks continue to wait may
 // leak memory or cause callbacks to hang indefinitely.
-const base::TimeDelta kTabReadbackTimeout = base::Seconds(15);
+const base::TimeDelta kTabReadbackTimeout = base::Seconds(5);
 
 constexpr int kMaxReadbackRetries = 5;
-constexpr base::TimeDelta kReadbackRetryDelay = base::Milliseconds(20);
+constexpr base::TimeDelta kReadbackRetryDelay = base::Milliseconds(100);
 
 content::RenderWidgetHostView* GetRwhv(content::WebContents* web_contents) {
   content::RenderViewHost* rvh = web_contents->GetRenderViewHost();
@@ -398,6 +400,12 @@ void TabContentManager::NativeRemoveTabThumbnail(int tab_id) {
 
 void TabContentManager::RemoveTabThumbnail(JNIEnv* env, int32_t tab_id) {
   NativeRemoveTabThumbnail(tab_id);
+}
+
+void TabContentManager::RemoveAllTabThumbnailsExceptForIds(
+    JNIEnv* env,
+    std::vector<int> tab_ids) {
+  thumbnail_cache_.RemoveAllTabThumbnailsExceptForIds(tab_ids);
 }
 
 void TabContentManager::WaitForJpegTabThumbnail(

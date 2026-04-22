@@ -13,7 +13,9 @@
 #include "base/memory/ptr_util.h"
 #include "base/memory/ref_counted.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/strings/string_util.h"
 #include "base/types/optional_util.h"
+#include "components/accessibility_annotator/content/content_annotator/content_annotation_validator.h"
 #include "components/accessibility_annotator/content/content_annotator/content_classifier.h"
 #include "components/accessibility_annotator/content/content_annotator/content_classifier_types.h"
 #include "components/accessibility_annotator/core/accessibility_annotator_features.h"
@@ -25,6 +27,8 @@
 #include "components/optimization_guide/proto/string_value.pb.h"
 #include "components/page_content_annotations/content/page_embeddings_service.h"
 #include "components/page_content_annotations/core/page_content_annotation_type.h"
+#include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/translate/core/common/language_detection_details.h"
 #include "content/public/browser/page.h"
 
@@ -38,8 +42,43 @@ bool HasClassifierCategory(
 }
 
 bool PassesSafetyChecks(const ContentClassificationResult& result) {
+  // If language check isn't enabled, default to passing.
   return !result.is_sensitive.value_or(true) &&
-         result.is_in_target_language.value_or(false);
+         result.is_in_target_language.value_or(true);
+}
+
+// Strips markdown code blocks (e.g. ```json ... ```) from the input string.
+std::string StripMarkdown(std::string_view input) {
+  std::string_view result = base::TrimWhitespaceASCII(input, base::TRIM_ALL);
+  if (result.starts_with("```json")) {
+    result.remove_prefix(7);
+  } else if (result.starts_with("```")) {
+    result.remove_prefix(3);
+  }
+
+  if (result.ends_with("```")) {
+    result.remove_suffix(3);
+  }
+
+  return std::string(base::TrimWhitespaceASCII(result, base::TRIM_ALL));
+}
+
+base::DictValue ContentClassificationResultToDict(
+    const ContentClassificationResult& result) {
+  base::DictValue dict;
+  if (result.title_keyword_result.has_value()) {
+    dict.Set("title_keyword_result",
+             result.title_keyword_result->category.value_or("none"));
+  }
+  if (result.url_match_result.has_value()) {
+    dict.Set("url_match_result",
+             result.url_match_result->category.value_or("none"));
+  }
+  if (result.semantic_match_result.has_value()) {
+    dict.Set("semantic_match_result",
+             result.semantic_match_result->category.value_or("none"));
+  }
+  return dict;
 }
 
 }  // namespace
@@ -52,16 +91,25 @@ std::unique_ptr<ContentAnnotatorService> ContentAnnotatorService::Create(
         page_content_extraction_service,
     optimization_guide::RemoteModelExecutor&
         optimization_guide_remote_model_executor,
-    page_content_annotations::PageEmbeddingsService& page_embeddings_service) {
+    page_content_annotations::PageEmbeddingsService& page_embeddings_service,
+    AccessibilityAnnotatorBackend& accessibility_annotator_backend,
+    passage_embeddings::Embedder* embedder,
+    passage_embeddings::EmbedderMetadataProvider* embedder_metadata_provider) {
   std::unique_ptr<ContentClassifier> content_classifier =
-      ContentClassifier::Create();
+      ContentClassifier::Create(embedder);
   if (!content_classifier) {
+    return nullptr;
+  }
+  std::unique_ptr<ContentAnnotationValidator> validator =
+      ContentAnnotationValidator::Create();
+  if (!validator) {
     return nullptr;
   }
   return base::WrapUnique(new ContentAnnotatorService(
       page_content_annotations_service, page_content_extraction_service,
       optimization_guide_remote_model_executor, page_embeddings_service,
-      std::move(content_classifier)));
+      accessibility_annotator_backend, embedder, embedder_metadata_provider,
+      std::move(content_classifier), std::move(validator)));
 }
 
 ContentAnnotatorService::ContentAnnotatorService(
@@ -72,20 +120,30 @@ ContentAnnotatorService::ContentAnnotatorService(
     optimization_guide::RemoteModelExecutor&
         optimization_guide_remote_model_executor,
     page_content_annotations::PageEmbeddingsService& page_embeddings_service,
-    std::unique_ptr<ContentClassifier> content_classifier)
+    AccessibilityAnnotatorBackend& accessibility_annotator_backend,
+    passage_embeddings::Embedder* embedder,
+    passage_embeddings::EmbedderMetadataProvider* embedder_metadata_provider,
+    std::unique_ptr<ContentClassifier> content_classifier,
+    std::unique_ptr<ContentAnnotationValidator> validator)
     : page_content_annotations_service_(page_content_annotations_service),
-      page_content_extraction_service_(page_content_extraction_service),
       optimization_guide_remote_model_executor_(
           optimization_guide_remote_model_executor),
       page_embeddings_service_(page_embeddings_service),
-      join_entries_(kContentAnnotatorMaxPendingUrls.Get()),
-      content_classifier_(std::move(content_classifier)) {
+      accessibility_annotator_backend_(accessibility_annotator_backend),
+      embedder_(embedder),
+      join_entries_(features::kContentAnnotatorMaxPendingUrls.Get()),
+      content_classifier_(std::move(content_classifier)),
+      validator_(std::move(validator)) {
   CHECK(content_classifier_);
+  CHECK(validator_);
   page_content_annotations_service_->AddObserver(
       page_content_annotations::AnnotationType::kContentVisibility, this);
   page_content_extraction_service_observation_.Observe(
-      &page_content_extraction_service_.get());
+      &page_content_extraction_service);
   page_embeddings_service_observation_.Observe(&page_embeddings_service_.get());
+  if (embedder_metadata_provider) {
+    embedder_metadata_observation_.Observe(embedder_metadata_provider);
+  }
 }
 
 ContentAnnotatorService::~ContentAnnotatorService() {
@@ -122,6 +180,16 @@ void ContentAnnotatorService::OnPageContentExtracted(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(page_content);
 
+  std::optional<int> tab_id;
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(&page.GetMainDocument());
+  if (web_contents) {
+    SessionID id = sessions::SessionTabHelper::IdForTab(web_contents);
+    if (id.is_valid()) {
+      tab_id = id.id();
+    }
+  }
+
   CacheIterator it =
       GetOrCreateJoinEntry(page.GetMainDocument().GetLastCommittedURL());
   if (page_content->data.has_main_frame_data()) {
@@ -130,6 +198,7 @@ void ContentAnnotatorService::OnPageContentExtracted(
 
   it->second.annotated_page_content = std::move(page_content);
   it->second.ukm_source_id = page.GetMainDocument().GetPageUkmSourceId();
+  it->second.tab_id = tab_id;
   MaybeAnnotate(it);
 }
 
@@ -137,6 +206,18 @@ page_content_annotations::PageEmbeddingsService::UsageMode
 ContentAnnotatorService::GetUsageMode() const {
   return page_content_annotations::PageEmbeddingsService::UsageMode::
       kContinuous;
+}
+
+void ContentAnnotatorService::EmbedderMetadataUpdated(
+    passage_embeddings::EmbedderMetadata metadata) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+
+  if (embedder_metadata_.IsValid() || !metadata.IsValid()) {
+    // TODO(crbug.com/489566579): Handle runtime model changes.
+    return;
+  }
+  embedder_metadata_ = metadata;
+  content_classifier_->OnEmbedderModelChanged();
 }
 
 void ContentAnnotatorService::OnPageEmbeddingsAvailable(content::Page& page) {
@@ -194,48 +275,89 @@ void ContentAnnotatorService::MaybeAnnotate(CacheIterator it) {
   // finds relevant content.
   bool reached_annotation =
       (HasClassifierCategory(result.title_keyword_result) ||
-       HasClassifierCategory(result.url_match_result)) &&
+       HasClassifierCategory(result.url_match_result) ||
+       HasClassifierCategory(result.semantic_match_result)) &&
       PassesSafetyChecks(result);
   base::UmaHistogramBoolean("AccessibilityAnnotator.FullAnnotationReached",
                             reached_annotation);
-  if (reached_annotation && kContentAnnotatorEnableFullAnnotation.Get()) {
+  if (reached_annotation &&
+      features::kContentAnnotatorEnableFullAnnotation.Get()) {
+    base::DictValue classifier_values =
+        ContentClassificationResultToDict(result);
+
     optimization_guide::proto::PageContext page_context;
     page_context.set_url(complete_data.url.spec());
     page_context.set_title(complete_data.page_title.value());
     *page_context.mutable_annotated_page_content() =
         complete_data.annotated_page_content->data;
-    GenerateAnnotations(std::move(page_context));
+    GenerateAnnotations(std::move(page_context), complete_data.url,
+                        complete_data.tab_id, std::move(classifier_values));
   }
-  // TODO(crbug.com/485675335): Process classification result with gateway flag
-  // to full annotation.
 }
+
 void ContentAnnotatorService::GenerateAnnotations(
-    optimization_guide::proto::PageContext page_context) {
+    optimization_guide::proto::PageContext page_context,
+    const GURL& url,
+    std::optional<int> tab_id,
+    base::DictValue classifier_results) {
+  std::string page_title = page_context.title();
   optimization_guide::proto::ContentAnnotationRequest request;
   *request.mutable_page_context() = std::move(page_context);
 
   optimization_guide_remote_model_executor_->ExecuteModel(
       optimization_guide::ModelBasedCapabilityKey::kContentAnnotation,
       std::move(request),
-      {.execution_timeout = kContentAnnotatorAnnotationTimeout.Get()},
+      {.execution_timeout = features::kContentAnnotatorAnnotationTimeout.Get()},
       base::BindOnce(&ContentAnnotatorService::HandleModelExecutionResult,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     weak_ptr_factory_.GetWeakPtr(), url, tab_id,
+                     std::move(page_title), std::move(classifier_results)));
 }
 
 void ContentAnnotatorService::HandleModelExecutionResult(
+    const GURL& url,
+    std::optional<int> tab_id,
+    std::string page_title,
+    base::DictValue classifier_results,
     optimization_guide::OptimizationGuideModelExecutionResult result,
     std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry) {
-  const std::optional<std::string> extracted_data =
-      base::OptionalFromExpected(result.response)
-          .transform([](const optimization_guide::proto::Any& any) {
-            auto metadata = optimization_guide::ParsedAnyMetadata<
+  if (url.is_empty() || !url.is_valid()) {
+    return;
+  }
+
+  std::optional<optimization_guide::proto::ContentAnnotationResponse> response =
+      base::OptionalFromExpected(std::move(result.response))
+          .and_then([](const optimization_guide::proto::Any& any) {
+            return optimization_guide::ParsedAnyMetadata<
                 optimization_guide::proto::ContentAnnotationResponse>(any);
-            return metadata->extracted_data();
           });
 
-  if (extracted_data.has_value() && !extracted_data->empty()) {
-    // TODO(crbug.com/482383206): Handle model execution response.
-    DVLOG(1) << "Successfully extracted data: " << *extracted_data;
+  if (!response) {
+    return;
+  }
+
+  AccessibilityAnnotatorBackend::ContentAnnotationsData data;
+  data.page_title = std::move(page_title);
+  data.tab_id = tab_id;
+  data.classifier_results = std::move(classifier_results);
+  if (response->has_content_annotation()) {
+    // Store ContentAnnotation if the response has one.
+    std::optional<optimization_guide::proto::ContentAnnotation>
+        content_annotation = response->content_annotation();
+    if (content_annotation.has_value()) {
+      data.content_annotation = std::move(content_annotation);
+      accessibility_annotator_backend_->SetContentAnnotationsCacheData(
+          url, std::move(data));
+    }
+  } else if (response->has_extracted_data() &&
+             !response->extracted_data().empty()) {
+    // TODO(crbug.com/497903571): Remove this once the new schema is enabled.
+    std::optional<base::DictValue> extracted_data =
+        validator_->Validate(StripMarkdown(response->extracted_data()));
+    if (extracted_data.has_value()) {
+      data.annotations = std::move(extracted_data);
+      accessibility_annotator_backend_->SetContentAnnotationsCacheData(
+          url, std::move(data));
+    }
   }
 }
 

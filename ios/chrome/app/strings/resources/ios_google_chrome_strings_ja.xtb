@@ -81,9 +81,6 @@
 <translation id="2703746758996815929">Chrome を使いこなすヒントを受け取るには、iOS の設定で通知をオンにしてください。</translation>
 <translation id="2728851697704606655">Google レンズを使用して翻訳</translation>
 <translation id="2736805085127235148">現在、デバイスの設定で Chrome の通知がオフになっています。</translation>
-<translation id="2754428955276778271">Chrome データの一部が Google アカウントにまだ保存されていません。
-
-数分待ってからログアウトしてください。今すぐログアウトすると、このデータは削除されます。</translation>
 <translation id="2767464022270041271">保存されているパスワードがありません。パスワードを保存すると、Google パスワード マネージャーで確認できるようになります。</translation>
 <translation id="2788811701191021538">Chrome でお支払い方法の設定ページを開きます。</translation>
 <translation id="2876628302275096482"><ph name="BEGIN_LINK" />Chrome でユーザーデータのプライバシーを保護する方法<ph name="END_LINK" />についての詳細</translation>
@@ -164,7 +161,7 @@
 <translation id="484033449593719797">Chrome ベータ版ではサポートされていません</translation>
 <translation id="4840404732697892756">Google アカウントでログインすると、Google パスワード マネージャーでパスワードを確認できるようになります。</translation>
 <translation id="4903674399067644695">このカードでは、Chrome を最大限に活用するためのヒントを紹介しています。</translation>
-<translation id="49200511069271369">組織（<ph name="DOMAIN" />）が、ログインしているアカウントと Chrome の使用方法を管理しています。管理者は特定の機能を設定または制限できます。</translation>
+<translation id="49200511069271369">ログインしようとしているアカウントおよび Chrome の使用方法は、組織（<ph name="DOMAIN" />）によって管理されています。管理者は特定の機能を設定または制限できます。</translation>
 <translation id="4925322001044117929">iPad で Chrome をデフォルトで使用する</translation>
 <translation id="4934496192263958600">Chrome にログインして同じ設定やデータにアクセス</translation>
 <translation id="496747131578053942">Chrome のヒント: Google レンズで見たものをそのまま検索</translation>
@@ -188,6 +185,7 @@
 <translation id="5395376160638294582">Google アカウントの Chrome データを常に使用できるようにしてください</translation>
 <translation id="5404252374083197467">Chrome を既定に設定しますか？</translation>
 <translation id="5439191312780166229">標準保護機能より多くのサイトデータを分析して、危険なサイト（Google が認識していなかったサイトも含む）について警告します。Chrome の警告をスキップすることもできます。</translation>
+<translation id="5453077102022695084">Chrome を既定に設定する方法を説明したフルスクリーン動画</translation>
 <translation id="5460571915754665838">4. [Chrome] を選択する</translation>
 <translation id="5492504007368565877">現在、Google パスワード マネージャーではパスワードをチェックできません。</translation>
 <translation id="5525095647255982834">このタブを別のデバイスに送信するには、送信先のデバイスで Chrome にログインしてください。</translation>

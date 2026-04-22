@@ -19,6 +19,7 @@ enum class EntryPoint;
 enum class FloatyUpdateSource;
 enum class ImageActionButtonType;
 enum class InputPlateAttachmentOption;
+enum class FREState;
 // Encapsulates a set of ineligibility reasons computed during a single Gemini
 // eligibility check.
 struct IneligibilityReasons {
@@ -43,8 +44,14 @@ enum class GeminiViewState;
 // UMA histogram key for IOS.Gemini.Eligibility.
 extern const char kEligibilityHistogram[];
 
+// UMA histogram key for IOS.Gemini.FRE.State.
+extern const char kGeminiFREStateHistogram[];
+
 // UMA histogram key for IOS.Gemini.EntryPoint.
 extern const char kEntryPointHistogram[];
+
+// UMA histogram key for IOS.Gemini.EntryPoint.Available.
+extern const char kEntryPointAvailableHistogram[];
 
 // UMA histogram key for IOS.Gemini.FRE.EntryPoint.
 extern const char kFREEntryPointHistogram[];
@@ -76,6 +83,9 @@ extern const char kFloatyHiddenFromSourceHistogram[];
 // UMA histogram key for IOS.Gemini.Floaty.DismissedState.
 extern const char kFloatyDismissedStateHistogram[];
 
+// UMA histogram key for IOS.Gemini.PageAvailability.
+extern const char kGeminiPageAvailabilityHistogram[];
+
 // Enum for the IOS.Gemini.FRE.PromoAction and IOS.Gemini.FRE.ConsentAction
 // histograms.
 // LINT.IfChange(IOSGeminiFREAction)
@@ -92,6 +102,18 @@ void RecordFREPromoAction(IOSGeminiFREAction action);
 
 // Records the user action on the FRE Consent Screen.
 void RecordFREConsentAction(IOSGeminiFREAction action);
+
+// LINT.IfChange(IOSGeminiPageAvailability)
+enum class IOSGeminiPageAvailability {
+  kUnavailable = 0,
+  kAvailable = 1,
+  kSearchResultPage = 2,
+  kMaxValue = kSearchResultPage,
+};
+// LINT.ThenChange(/tools/metrics/histograms/metadata/ios/enums.xml:IOSGeminiPageAvailability)
+
+// Records the reason why Gemini is available or unavailable for a given page.
+void RecordGeminiPageAvailability(IOSGeminiPageAvailability reason);
 
 // Enum for tracking Gemini ineligibility reasons.
 // LINT.IfChange(IOSGeminiIneligibilityReason)
@@ -384,6 +406,12 @@ void RecordGeminiSessionLengthByType(base::TimeDelta session_duration,
 // Can be called once every 10 minutes to avoid spam logging.
 void RecordGeminiEntryPointImpression(gemini::EntryPoint entry_point);
 
+// Records when the Gemini entry point is available to the user.
+// Only used for entry points that are not available on almost all pages.
+// For example the edit menu entry point is only available once the user has
+// selected some text, and is eligible to use the feature.
+void RecordGeminiEntryPointAvailable(gemini::EntryPoint entry_point);
+
 // Records that the Gemini FRE was shown.
 void RecordFREShown();
 
@@ -456,6 +484,9 @@ void RecordFloatyMinimizedTime(base::TimeTicks elapsed_minimized_floaty_time);
 // Records whether a Gemini eligibility check was successful.
 void RecordGeminiEligibility(bool eligible);
 
+// Records the FRE state for Gemini.
+void RecordGeminiFREState(gemini::FREState state);
+
 // Records all of the Gemini ineligibility reasons. One record will be sent at
 // most per associated value of IOSGeminiIneligibilityReason.
 void RecordGeminiIneligibilityReasons(gemini::IneligibilityReasons reasons);
@@ -512,17 +543,8 @@ void RecordGeminiCameraFlowBegan();
 void RecordGeminiCameraFlowOSCameraAuthorizationInitialStatus(
     IOSGeminiOSCameraAuthorizationInitialStatus authorization_status);
 
-// Records the result of an OS-level camera authorization request.
-void RecordGeminiCameraFlowOSAuthorizationResult(bool granted);
-
-// Records the result of the alert directing users to OS settings.
-void RecordGeminiCameraFlowGoToOSSettingsAlertResult(bool accepted);
-
 // Records the initial Gemini camera permission value.
 void RecordGeminiCameraFlowGeminiCameraPermissionInitialValue(bool enabled);
-
-// Records the result of the Gemini camera permission alert.
-void RecordGeminiCameraFlowGeminiCameraPermissionAlertResult(bool accepted);
 
 // Records that the camera picker was presented.
 void RecordGeminiCameraFlowPresentCameraPicker();

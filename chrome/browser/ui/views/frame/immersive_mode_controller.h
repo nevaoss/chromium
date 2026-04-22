@@ -135,14 +135,16 @@ class ImmersiveModeController {
   // This is currently only used on macOS.
   virtual void OnContentFullscreenChanged(bool is_content_fullscreen) = 0;
 
-  // Called when the vertical tab strip is enabled or disabled.
-  virtual void OnVerticalTabStripModeChanged() {}
-
   virtual void AddObserver(Observer* observer);
   virtual void RemoveObserver(Observer* observer);
 
  protected:
-  base::ObserverList<Observer>::Unchecked observers_;
+  // TODO(crbug.com/484371187): Investigate if reentrancy can be removed.
+  base::ObserverList<
+      Observer,
+      /*check_empty=*/false,
+      base::ObserverListReentrancyPolicy::kAllowReentrancyUntriaged>::Unchecked
+      observers_;
   ui::ScopedUnownedUserData<ImmersiveModeController> scoped_unowned_user_data_;
 };
 

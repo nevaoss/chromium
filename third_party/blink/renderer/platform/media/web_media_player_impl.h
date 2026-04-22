@@ -180,6 +180,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
 
   // Playback controls.
   void Play() override;
+  void UnlockBackgroundPlayback() override;
   void Pause(PauseReason pause_reason) override;
   void Seek(double seconds) override;
   void SetRate(double rate) override;
@@ -333,6 +334,8 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
   base::WeakPtr<WebMediaPlayer> AsWeakPtr() override;
   void RegisterFrameSinkHierarchy() override;
   void UnregisterFrameSinkHierarchy() override;
+  void ReparentFrameSinkHierarchy(
+      const viz::FrameSinkId& new_parent_frame_sink_id) override;
 
   void RecordVideoOcclusionState(std::string_view occlusion_state) override;
   void SetVisibilityRatioAtPlaybackStart(double ratio) override;
@@ -1020,7 +1023,7 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
 
   // Whether the video requires a user gesture to resume after it was paused in
   // the background. Affects the value of ShouldPausePlaybackWhenHidden().
-  bool video_locked_when_paused_when_hidden_ = false;
+  bool allow_background_video_playback_ = true;
 
   // Whether embedded media experience is currently enabled.
   bool embedded_media_experience_enabled_ = false;
@@ -1126,6 +1129,13 @@ class PLATFORM_EXPORT WebMediaPlayerImpl
 
   // Count the number of times a video frame is being readback.
   unsigned video_frame_readback_count_ = 0;
+
+#if BUILDFLAG(IS_WIN)
+  // The media time when a hardware context reset occurs. Used to prevent having
+  // an infinite loop of the same error.
+  std::optional<base::TimeDelta> media_time_on_last_hardware_context_reset_;
+  bool has_reported_hardware_context_reset_recovery_umas_ = false;
+#endif  // BUILDFLAG(IS_WIN)
 
   base::WeakPtr<WebMediaPlayerImpl> weak_this_;
   base::WeakPtrFactory<WebMediaPlayerImpl> weak_factory_{this};

@@ -165,6 +165,7 @@ void RootTabCollectionNode::OnTabStripModelChanged(
     const TabStripModelChange& change,
     const TabStripSelectionChange& selection) {
   if (tab_strip_model->closing_all()) {
+    on_active_tab_changed_callback_list_.Notify(nullptr);
     return;
   }
 
@@ -208,6 +209,15 @@ void RootTabCollectionNode::OnTabStripModelChanged(
   }
 
   UpdateTabsData(changed_tabs);
+}
+
+void RootTabCollectionNode::OnTabWillBeAdded() {
+  GetController()->GetDragHandler().OnTabWillBeAdded();
+}
+
+void RootTabCollectionNode::OnTabWillBeRemoved(tabs::TabInterface* tab,
+                                               int index) {
+  GetController()->GetDragHandler().OnTabWillBeRemoved(tab->GetContents());
 }
 
 void RootTabCollectionNode::OnTabGroupChanged(const TabGroupChange& change) {

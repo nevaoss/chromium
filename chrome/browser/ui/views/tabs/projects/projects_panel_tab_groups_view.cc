@@ -9,7 +9,6 @@
 
 #include "base/functional/callback_helpers.h"
 #include "base/pickle.h"
-#include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_drag_data.h"
@@ -44,7 +43,7 @@
 #include "ui/views/view_utils.h"
 
 namespace {
-constexpr gfx::Insets kNoTabsInteriorMargins = gfx::Insets::VH(0, 8);
+constexpr gfx::Insets kNoTabsInteriorMargins = gfx::Insets::TLBR(0, 8, 8, 8);
 
 // Whether animations should be disabled.
 static bool disable_animations_for_testing_ = false;
@@ -66,8 +65,8 @@ ProjectsPanelTabGroupsView::ProjectsPanelTabGroupsView(
       tab_group_moved_callback_(std::move(tab_group_moved_callback)),
       drag_updated_callback_(std::move(drag_updated_callback)),
       drag_exited_callback_(std::move(drag_exited_callback)) {
-  auto* layout = SetLayoutManager(std::make_unique<views::BoxLayout>());
-  layout->SetOrientation(views::LayoutOrientation::kVertical);
+  layout_ = SetLayoutManager(std::make_unique<views::BoxLayout>());
+  layout_->SetOrientation(views::LayoutOrientation::kVertical);
 
   SetProperty(views::kElementIdentifierKey,
               kProjectsPanelTabGroupsViewElementId);
@@ -105,6 +104,11 @@ void ProjectsPanelTabGroupsView::SetTabGroups(
       item_views_.push_back(item);
     }
   }
+}
+
+void ProjectsPanelTabGroupsView::SetInsideBorderInsets(
+    const gfx::Insets& insets) {
+  layout_->set_inside_border_insets(insets);
 }
 
 bool ProjectsPanelTabGroupsView::GetDropFormats(
@@ -316,7 +320,9 @@ std::optional<gfx::Rect> ProjectsPanelTabGroupsView::GetDropIndicatorBounds()
       drop_info_->location.operation != ui::mojom::DragOperation::kNone) {
     // Draw an indicator in the list where the dropped item will move to.
     int x = 0;
-    int w = width();
+    // The inside border insets are not accounted for in the width, so we must
+    // factor them in here.
+    int w = width() - layout_->inside_border_insets().width();
     int y = 0;
 
     size_t index = *drop_info_->location.index;

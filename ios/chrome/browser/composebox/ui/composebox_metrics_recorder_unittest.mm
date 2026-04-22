@@ -146,3 +146,65 @@ TEST_F(ComposeboxMetricsRecorderTest, FocusResultedInNavigation) {
 
   histogram_tester_.ExpectTotalCount("Omnibox.FocusResultedInNavigation", 4);
 }
+
+TEST_F(ComposeboxMetricsRecorderTest, AttachmentsMenuOpenedWithVisibleButtons) {
+  std::vector<FuseboxAttachmentButtonType> visibleButtons = {
+      FuseboxAttachmentButtonType::kCamera,
+      FuseboxAttachmentButtonType::kFiles};
+  [recorder_ recordAttachmentsMenuOpenedWithVisibleButtons:visibleButtons];
+
+  histogram_tester_.ExpectBucketCount(
+      "Omnibox.MobileFusebox.AttachmentsPopupToggled", true, 1);
+  histogram_tester_.ExpectBucketCount(
+      "Omnibox.MobileFusebox.AttachmentButtonShown",
+      static_cast<int>(FuseboxAttachmentButtonType::kCamera), 1);
+  histogram_tester_.ExpectBucketCount(
+      "Omnibox.MobileFusebox.AttachmentButtonShown",
+      static_cast<int>(FuseboxAttachmentButtonType::kFiles), 1);
+}
+
+TEST_F(ComposeboxMetricsRecorderTest, TextEditedBeforeAiMode) {
+  [recorder_ recordTextEditedBeforeAiMode:YES];
+  histogram_tester_.ExpectBucketCount(
+      "Omnibox.MobileFusebox.TextEditedBeforeAiMode", true, 1);
+  [recorder_ recordTextEditedBeforeAiMode:NO];
+  histogram_tester_.ExpectBucketCount(
+      "Omnibox.MobileFusebox.TextEditedBeforeAiMode", false, 1);
+}
+
+TEST_F(ComposeboxMetricsRecorderTest, ImagesAttached) {
+  [recorder_ recordImagesAttached:1];
+  histogram_tester_.ExpectBucketCount("Omnibox.MobileFusebox.ImagesAttached", 1,
+                                      1);
+}
+
+TEST_F(ComposeboxMetricsRecorderTest, FilesAttached) {
+  [recorder_ recordFilesAttached:1];
+  histogram_tester_.ExpectBucketCount("Omnibox.MobileFusebox.FilesAttached", 1,
+                                      1);
+}
+
+TEST_F(ComposeboxMetricsRecorderTest, AttachmentCountAtSubmission) {
+  [recorder_ recordAttachCountAtSubmission:2
+                                   forType:ComposeboxInputItemType::
+                                               kComposeboxInputItemTypeTab];
+  histogram_tester_.ExpectBucketCount(
+      "Omnibox.MobileFusebox.AttachmentCountAtSubmission.Tab", 2, 1);
+
+  [recorder_ recordAttachCountAtSubmission:1
+                                   forType:ComposeboxInputItemType::
+                                               kComposeboxInputItemTypeImage];
+  histogram_tester_.ExpectBucketCount(
+      "Omnibox.MobileFusebox.AttachmentCountAtSubmission.Image", 1, 1);
+
+  [recorder_ recordAttachCountAtSubmission:3
+                                   forType:ComposeboxInputItemType::
+                                               kComposeboxInputItemTypeRawFile];
+  [recorder_ recordAttachCountAtSubmission:3
+                                   forType:ComposeboxInputItemType::
+                                               kComposeboxInputItemTypePDF];
+  // PDF and raw file both write to the same `AttachmentCountAtSubmission.File`
+  // bucket. 3 of each.
+  histogram_tester_.ExpectBucketCount(
+      "Omnibox.MobileFusebox.AttachmentCountAtSubmission.File", 3, 2);
+}

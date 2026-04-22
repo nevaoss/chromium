@@ -23,7 +23,7 @@ import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.chrome.browser.flags.CustomTabProfileType;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.NewWindowAppSource;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
-import org.chromium.chrome.browser.multiwindow.MultiInstanceManagerFactory;
+import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
@@ -279,6 +279,13 @@ public abstract class TabModelJniBridge implements TabModelInternal {
     protected abstract TabCreator getTabCreator(boolean isIncognito);
 
     /**
+     * Removes the given Tab from the TabModel without destroying it. This is used in scenarios
+     * where the WebContents needs to be retained for future use.
+     */
+    @CalledByNative
+    protected abstract void removeTabWithoutDestroy(@JniType("TabAndroid*") Tab tab);
+
+    /**
      * Creates a Tab with the given WebContents.
      *
      * @param parent The parent tab that creates the new tab.
@@ -401,11 +408,10 @@ public abstract class TabModelJniBridge implements TabModelInternal {
         LoadUrlParams loadParams = new LoadUrlParams(url);
         @TabLaunchType int launchType = TabLaunchType.FROM_CHROME_UI;
         if (!newWindow
-                || MultiWindowUtils.getInstanceCountWithFallback(PersistedInstanceType.ACTIVE)
+                || MultiWindowUtils.getInstanceCount(PersistedInstanceType.ACTIVE)
                         >= MultiWindowUtils.getMaxInstances()) {
-            return assumeNonNull(
-                    getTabCreator(/* isIncognito= */ false)
-                            .createNewTab(loadParams, launchType, null));
+            return getTabCreator(/* isIncognito= */ false)
+                    .createNewTab(loadParams, launchType, null);
         }
 
         // Creating a new window is asynchronous on Android, so create a background tab that we can
@@ -421,13 +427,11 @@ public abstract class TabModelJniBridge implements TabModelInternal {
         Tab tab = warmupManager.takeSpareTab(profile, /* initiallyHidden= */ false, launchType);
         tab.loadUrl(loadParams);
 
-        var multiInstanceManager = MultiInstanceManagerFactory.from(tab.getWindowAndroid());
-        if (multiInstanceManager != null) {
-            multiInstanceManager.moveTabsToNewWindow(
-                    Collections.singletonList(tab),
-                    /* finalizeCallback= */ null,
-                    NewWindowAppSource.DEV_TOOLS);
-        }
+        MultiInstanceOrchestratorFactory.getInstance()
+                .moveTabsToNewWindow(
+                        Collections.singletonList(tab),
+                        /* finalizeCallback= */ null,
+                        NewWindowAppSource.DEV_TOOLS);
 
         return tab;
     }
@@ -488,6 +492,11 @@ public abstract class TabModelJniBridge implements TabModelInternal {
         }
         TabCreatorUtil.launchNtp(getTabCreator(/* isIncognito= */ false));
     }
+
+    @CalledByNative
+    @Override
+    public abstract @Nullable @JniType("tabs::TabStripCollection*") TabStripCollection
+            getTabStripCollection();
 
     /** Returns whether or not a sync session is currently being restored. */
     @CalledByNative
@@ -567,15 +576,18 @@ public abstract class TabModelJniBridge implements TabModelInternal {
     @CalledByNative
     protected abstract @JniType("std::vector<base::Token>") List<Token> listTabGroups();
 
+    @Override
     @CalledByNative
-    protected abstract @JniType("std::u16string") String getTabGroupTitle(
+    public abstract @JniType("std::u16string") String getTabGroupTitle(
             @JniType("base::Token") Token tabGroupId);
 
+    @Override
     @CalledByNative
-    protected abstract int getTabGroupColor(@JniType("base::Token") Token tabGroupId);
+    public abstract int getTabGroupColor(@JniType("base::Token") Token tabGroupId);
 
+    @Override
     @CalledByNative
-    protected abstract boolean getTabGroupCollapsed(@JniType("base::Token") Token tabGroupId);
+    public abstract boolean getTabGroupCollapsed(@JniType("base::Token") Token tabGroupId);
 
     /**
      * Returns two integers representing a range of tab indices. The range is non-inclusive and
@@ -601,8 +613,6 @@ public abstract class TabModelJniBridge implements TabModelInternal {
     protected abstract @JniType("std::optional<base::Token>") @Nullable Token addTabsToGroup(
             @JniType("std::optional<base::Token>") @Nullable Token tabGroupId,
             @JniType("std::vector<TabAndroid*>") List<Tab> tabs);
-
-    protected abstract TabUngrouper getTabUngrouper();
 
     @CalledByNative
     protected void ungroup(@JniType("std::vector<TabAndroid*>") List<Tab> tabs) {
@@ -634,6 +644,8 @@ public abstract class TabModelJniBridge implements TabModelInternal {
         moveTabToWindow(tab, activity, newIndex);
     }
 
+    // TODO(https://crbug.com/495795228): add `bringToFront` parameter to indicate
+    // if the destination activity should be activated. See MultiInstanceOrchestrator.
     protected abstract void moveTabToWindow(
             @JniType("TabAndroid*") Tab tab, Activity activity, int newIndex);
 
@@ -644,6 +656,8 @@ public abstract class TabModelJniBridge implements TabModelInternal {
         moveTabGroupToWindow(tabGroupId, activity, newIndex);
     }
 
+    // TODO(https://crbug.com/495795228): add `bringToFront` parameter to indicate
+    // if the destination activity should be activated. See MultiInstanceOrchestrator.
     protected abstract void moveTabGroupToWindow(
             @JniType("base::Token") Token tabGroupId, Activity activity, int newIndex);
 
@@ -691,11 +705,6 @@ public abstract class TabModelJniBridge implements TabModelInternal {
                 .getActivityTypeForTesting( // IN-TEST
                         mNativeTabModelJniBridge);
     }
-
-    @CalledByNative
-    @Override
-    public abstract @Nullable @JniType("tabs::TabStripCollection*") TabStripCollection
-            getTabStripCollection();
 
     @CalledByNative
     private static boolean isTabLaunchedInForeground(

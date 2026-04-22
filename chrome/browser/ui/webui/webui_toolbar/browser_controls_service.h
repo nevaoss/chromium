@@ -19,7 +19,7 @@ class MetricsReporter;
 namespace browser_controls_api {
 
 class BrowserControlsService
-    : public browser_controls_api::mojom::BrowserControlsService {
+    : public mojom::BrowserControlsServiceDirectReturnStub {
  public:
   class BrowserControlsServiceDelegate {
    public:
@@ -41,14 +41,18 @@ class BrowserControlsService
   void SetDelegate(BrowserControlsServiceDelegate* delegate);
 
   // browser_controls_api::mojom::BrowserControlsService:
-  void ReloadFromClick(
+  ReloadFromClickResult ReloadFromClick(
       bool bypass_cache,
       const std::vector<mojom::ClickDispositionFlag>& click_flags) override;
-  void StopLoad() override;
-  void Back(const std::vector<mojom::ClickDispositionFlag>& flags) override;
-  void Forward(const std::vector<mojom::ClickDispositionFlag>& flags) override;
-  void BackButtonHovered() override;
-  void SplitActiveTab() override;
+  StopLoadResult StopLoad() override;
+  BackResult Back(
+      const std::vector<mojom::ClickDispositionFlag>& flags) override;
+  ForwardResult Forward(
+      const std::vector<mojom::ClickDispositionFlag>& flags) override;
+  BackButtonHoveredResult BackButtonHovered() override;
+  SplitActiveTabResult SplitActiveTab() override;
+  NavigateHomeResult NavigateHome(
+      const std::vector<mojom::ClickDispositionFlag>& click_flags) override;
 
  private:
   // Callback for `MetricsReporter::Measure()`. Records the resulting
@@ -57,6 +61,7 @@ class BrowserControlsService
                                    const std::string& start_mark,
                                    base::TimeDelta duration);
 
+  mojom::BrowserControlsServiceBridge bridge_{this};
   mojo::Receiver<browser_controls_api::mojom::BrowserControlsService> service_;
   std::unique_ptr<BrowserControlsAdapter> browser_adapter_;
 

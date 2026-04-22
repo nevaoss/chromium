@@ -1727,7 +1727,7 @@ Unknown properties are collapsed to zero. -->
   <int value="9" label="Move to tab right"/>
   <int value="10" label="Move to specific tab"/>
   <int value="11" label="Move to last tab"/>
-  <int value="12" label="Search currently-open tabs (not implemented)"/>
+  <int value="12" label="Search currently-open tabs"/>
   <int value="13" label="Toggle multi-task menu (not implemented)"/>
   <int value="14" label="Close tab"/>
   <int value="15" label="Close window"/>
@@ -1756,7 +1756,7 @@ Unknown properties are collapsed to zero. -->
   <int value="31" label="Focus on inactive dialogs (not implemented)"/>
   <int value="32" label="Open bookmarks"/>
   <int value="33" label="Bookmark page"/>
-  <int value="34" label="Bookmark all tabs (not implemented)"/>
+  <int value="34" label="Bookmark all tabs"/>
   <int value="35" label="Show or hide the bookmarks bar"/>
   <int value="36" label="Toggle immersive mode (not implemented)"/>
   <int value="37" label="Exit immersive mode (not implemented)"/>
@@ -1791,7 +1791,7 @@ Unknown properties are collapsed to zero. -->
   <int value="64" label="Zoom out (Visual/Legacy)"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/KeyboardShortcuts.java:KeyboardShortcutsSemanticMeaning, //tools/metrics/histograms/metadata/accessibility/histograms.xml:KeyboardShortcutsSemanticMeaning) -->
+<!-- LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/KeyboardShortcuts.java:KeyboardShortcutsSemanticMeaning) -->
 
 <enum name="KeyCode">
   <int value="0" label="UNKNOWN"/>
@@ -2304,6 +2304,23 @@ Unknown properties are collapsed to zero. -->
 
 <!-- LINT.ThenChange(//chrome/browser/resources/side_panel/read_anything/shared/metrics_browser_proxy.ts:ReadAnythingNewPage) -->
 
+<!-- LINT.IfChange(ReadAnythingOmniboxChipDecision) -->
+
+<enum name="ReadAnythingOmniboxChipDecision">
+  <int value="0" label="Shown on an article"/>
+  <int value="1" label="Shown on a PDF"/>
+  <int value="2" label="Not shown on app window"/>
+  <int value="3" label="Not shown on non-http(s)"/>
+  <int value="4" label="Not shown on block-listed site"/>
+  <int value="5" label="Not shown because of optimization guide"/>
+  <int value="6" label="Not shown because of Readability signal"/>
+  <int value="7" label="Not shown on a short PDF"/>
+  <int value="8"
+      label="Not shown on a PDF with too many non-alphabetic characters"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/ui/read_anything/read_anything_enums.h:ReadAnythingOmniboxChipDecision) -->
+
 <!-- LINT.IfChange(ReadAnythingReadAloudSettingsChange) -->
 
 <enum name="ReadAnythingReadAloudSettingsChange">
@@ -2365,6 +2382,8 @@ Unknown properties are collapsed to zero. -->
   <int value="6" label="Audio busy"/>
   <int value="7" label="Audio hardware"/>
   <int value="8" label="Network"/>
+  <int value="9" label="Timeout engine stalled"/>
+  <int value="10" label="Timeout stalled after engine attempted recovery"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/resources/side_panel/read_anything/shared/metrics_browser_proxy.ts:ReadAnythingSpeechError) -->

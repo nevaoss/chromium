@@ -136,6 +136,28 @@ constexpr char kWindowCreateCannotMoveIwaTabError[] =
     "The tab of an Isolated Web App cannot be moved to a new window.";
 #endif
 
+#if BUILDFLAG(IS_ANDROID)
+std::string WindowResizePrecheckResultToErrorMessage(
+    ui::WindowResizePrecheckResult result) {
+  switch (result) {
+    case ui::WindowResizePrecheckResult::kOk:
+      NOTREACHED();
+    case ui::WindowResizePrecheckResult::kAndroidBrowserRoleNotHeld:
+      return tabs_constants::kUnableToResizeErrorAndroidBrowserRoleNotHeld;
+    case ui::WindowResizePrecheckResult::kAndroidSdkTooLow:
+      return tabs_constants::kUnableToResizeErrorAndroidSdkTooLow;
+    case ui::WindowResizePrecheckResult::kAndroidNotAFreeformWindow:
+      return tabs_constants::kUnableToResizeErrorAndroidNotAFreeformWindow;
+    case ui::WindowResizePrecheckResult::kAndroidNullAppTask:
+      return tabs_constants::kUnableToResizeErrorAndroidNullAppTask;
+    case ui::WindowResizePrecheckResult::kAndroidNoActivity:
+      [[fallthrough]];
+    case ui::WindowResizePrecheckResult::kAndroidNullAconfigFlaggedApiDelegate:
+      return tabs_constants::kUnableToResizeErrorAndroidUnsupportedOperation;
+  }
+}
+#endif
+
 bool IsValidStateForWindowsCreateFunction(
     const windows::Create::Params::CreateData* create_data) {
   if (!create_data) {
@@ -163,39 +185,33 @@ bool IsValidStateForWindowsCreateFunction(
 
 // Sets the opener of the given `tab` to `opener`. Returns true on success;
 // on failure, populates `error`.
-bool SetOpenerOfTab(content::WebContents& tab,
-                    content::WebContents& opener,
+bool SetOpenerOfTab(Profile& profile,
+                    ::tabs::TabInterface& tab,
+                    ::tabs::TabInterface& opener,
                     std::string& error) {
   // Bug fix for crbug.com/1197888. Don't let the extension update the tab
   // if the user is dragging tabs.
-  if (!ExtensionTabUtil::IsTabStripEditable(
-          *Profile::FromBrowserContext(tab.GetBrowserContext()))) {
+  if (!ExtensionTabUtil::IsTabStripEditable(profile)) {
     error = ExtensionTabUtil::kTabStripNotEditableError;
     return false;
   }
 
   BrowserWindowInterface* opener_browser =
-      browser_window_util::GetBrowserForTabContents(opener);
+      browser_window_util::GetBrowserForTabContents(*opener.GetContents());
   // NOTE: This would be more efficient if there were a
   // TabListInterface::GetIndexOfWebContents() or similar, since then we could
   // just check `opener_browser->GetIndexOfWebContents(&tab)` instead of looking
   // up the tab's browser.
   BrowserWindowInterface* tab_browser =
-      browser_window_util::GetBrowserForTabContents(tab);
+      browser_window_util::GetBrowserForTabContents(*tab.GetContents());
   if (!opener_browser || opener_browser != tab_browser) {
     error = "Tab opener must be in the same window as the updated tab.";
     return false;
   }
 
-  // TODO(https://crbug.com/371432155): Support this on desktop android.
-#if !BUILDFLAG(IS_ANDROID)
-  TabStripModel* tab_strip =
-      tab_browser->GetBrowserForMigrationOnly()->tab_strip_model();
-  int tab_index = tab_strip->GetIndexOfWebContents(&tab);
-  CHECK_NE(TabStripModel::kNoTab, tab_index);
-  tab_strip->SetOpenerOfTabAt(tab_index,
-                              ::tabs::TabInterface::GetFromContents(&opener));
-#endif
+  TabListInterface* tab_list = TabListInterface::From(tab_browser);
+  CHECK(tab_list);
+  tab_list->SetOpenerForTab(tab.GetHandle(), opener.GetHandle());
 
   return true;
 }
@@ -1416,6 +1432,22 @@ ExtensionFunction::ResponseAction WindowsUpdateFunction::Run() {
     }
   }
 
+#if BUILDFLAG(IS_ANDROID)
+  if (set_window_bounds ||
+      show_state == ui::mojom::WindowShowState::kMaximized ||
+      show_state == ui::mojom::WindowShowState::kNormal) {
+    ui::WindowResizePrecheckResult resize_precheck_result;
+    if (!browser_window->CanResize(resize_precheck_result)) {
+      return RespondNow(Error(
+          WindowResizePrecheckResultToErrorMessage(resize_precheck_result)));
+    }
+  }
+
+  if (show_state == ui::mojom::WindowShowState::kFullscreen) {
+    return RespondNow(Error(tabs_constants::kUnableToEnterFullScreenAndroid));
+  }
+#endif
+
   // Parameters are valid. Now to perform the actual updates.
   MaybeSetLockedFullscreenState(*params, browser, is_locked_fullscreen);
 
@@ -1988,6 +2020,22 @@ ExtensionFunction::ResponseAction TabsCreateFunction::Run() {
     create_if_needed = true;
   }
 
+  // TODO(crbug.com/491910697): This is a short-term solution for Android to
+  // ensure new tabs are routed to a tabbed browser when the current browser
+  // is non-NORMAL (e.g., a PWA). The long-term goal is to unify this with
+  // the cross-platform logic below by making the tab creation process
+  // (specifically OpenTabHelper::OpenTab) asynchronous, which is required
+  // on Android when a new window needs to be created.
+#if BUILDFLAG(IS_ANDROID)
+  // TODO(crbug.com/496733610): Supporting CCT/PWA/TWA is currently not possible
+  // in C++ browser tests on Android. Add tests once that's supported.
+  if (browser && browser->GetType() != BrowserWindowInterface::TYPE_NORMAL) {
+    browser = nullptr;
+    fallback_to_tabbed_browser = true;
+    create_if_needed = true;
+  }
+#endif
+
   // This check (for the opener) comes last. It will fail (by design) if
   // we're intending to create a new browser; that's good, because the new
   // browser would never match the one with the opener.
@@ -2093,7 +2141,23 @@ void TabsCreateFunction::OpenTabInBrowser(BrowserWindowInterface& browser,
 
   if (opener_tab) {
     std::string error;
-    SetOpenerOfTab(*new_contents, *opener_tab, error);
+
+    // We know these should never be null:
+    // * We just created the tab in OpenTabHelper::OpenTab() above, and verified
+    //   it returned a valid contents.
+    // * The `opener_tab` is fetched from GetTabById(), which only returns tab
+    //   contents, so if `opener_tab` is non-null, there should always be a
+    //   TabInterface for it.
+    ::tabs::TabInterface* tab_interface =
+        ::tabs::TabInterface::GetFromContents(new_contents);
+    CHECK(tab_interface);
+    ::tabs::TabInterface* opener_interface =
+        ::tabs::TabInterface::GetFromContents(opener_tab);
+    CHECK(opener_interface);
+    Profile* profile =
+        Profile::FromBrowserContext(new_contents->GetBrowserContext());
+    SetOpenerOfTab(*profile, *tab_interface, *opener_interface, error);
+
     // Since we've already created the new browser, we ignore the error (if
     // any).
   }
@@ -2144,6 +2208,17 @@ ExtensionFunction::ResponseAction TabsDuplicateFunction::Run() {
     return RespondNow(Error(tabs_constants::kCannotDuplicateTab,
                             base::NumberToString(tab_id)));
   }
+
+#if BUILDFLAG(IS_ANDROID)
+  // TODO(crbug.com/496733610): Supporting CCT/PWA/TWA is currently not possible
+  // in C++ browser tests on Android. Add tests once that's supported.
+  if (browser->GetType() == BrowserWindowInterface::TYPE_CUSTOM_TAB ||
+      browser->GetType() == BrowserWindowInterface::TYPE_APP) {
+    return RespondNow(Error(
+        tabs_constants::kAndroidCannotDuplicateTabInCctOrWebAppWindowError));
+  }
+#endif
+
   ::tabs::TabInterface* tab_interface =
       ::tabs::TabInterface::MaybeGetFromContents(web_contents);
   // We found the tab above, so we should always, always have a TabInterface
@@ -2255,6 +2330,20 @@ ExtensionFunction::ResponseAction TabsHighlightFunction::Run() {
   CHECK(active_tab_index >= 0 && active_tab_index <= tab_list->GetTabCount());
   ::tabs::TabInterface* active_tab = tab_list->GetTab(active_tab_index);
 
+#if BUILDFLAG(IS_ANDROID)
+  // TODO(crbug.com/496733610): Supporting CCT/PWA/TWA is currently not possible
+  // in C++ browser tests on Android. Add tests once that's supported.
+  BrowserWindowInterface* browser =
+      window_controller->GetBrowserWindowInterface();
+  auto browser_type = browser->GetType();
+  if ((browser_type == BrowserWindowInterface::TYPE_CUSTOM_TAB ||
+       browser_type == BrowserWindowInterface::TYPE_APP) &&
+      active_tab_index != tab_list->GetActiveIndex()) {
+    return RespondNow(Error(
+        tabs_constants::kAndroidCannotHighlightTabInCctOrWebAppWindowError));
+  }
+#endif
+
   tab_list->HighlightTabs(active_tab->GetHandle(), tabs);
 
   return RespondNow(
@@ -2307,8 +2396,9 @@ ExtensionFunction::ResponseAction TabsUpdateFunction::Run() {
   TabListInterface* tab_list =
       TabListInterface::From(window->GetBrowserWindowInterface());
   CHECK(tab_list);
-  if (!UpdateActiveTab(*params, *window->profile(), *tab_list, tab_index,
-                       error)) {
+  if (!UpdateActiveTab(*params, *window->profile(),
+                       *window->GetBrowserWindowInterface(), *tab_list,
+                       tab_index, error)) {
     return RespondNow(Error(std::move(error)));
   }
 
@@ -2341,7 +2431,10 @@ ExtensionFunction::ResponseAction TabsUpdateFunction::Run() {
                                          base::NumberToString(opener_id))));
     }
 
-    if (!SetOpenerOfTab(*original_contents, *opener_contents, error)) {
+    ::tabs::TabInterface* opener_tab =
+        ::tabs::TabInterface::GetFromContents(opener_contents);
+    CHECK(opener_tab);
+    if (!SetOpenerOfTab(*window->profile(), *target_tab, *opener_tab, error)) {
       return RespondNow(Error(std::move(error)));
     }
   }
@@ -2437,6 +2530,7 @@ bool TabsUpdateFunction::ComputeDefaultTabId(int& tab_id,
 bool TabsUpdateFunction::UpdateActiveTab(
     const api::tabs::Update::Params& params,
     Profile& profile,
+    BrowserWindowInterface& browser,
     TabListInterface& tab_list,
     int tab_index,
     std::string& error) {
@@ -2456,6 +2550,18 @@ bool TabsUpdateFunction::UpdateActiveTab(
     // Nothing to activate.
     return true;
   }
+
+#if BUILDFLAG(IS_ANDROID)
+  // TODO(crbug.com/496733610): Supporting CCT/PWA/TWA is currently not possible
+  // in C++ browser tests on Android. Add tests once that's supported.
+  auto browser_type = browser.GetType();
+  if ((browser_type == BrowserWindowInterface::TYPE_CUSTOM_TAB ||
+       browser_type == BrowserWindowInterface::TYPE_APP) &&
+      tab_index != tab_list.GetActiveIndex()) {
+    error = tabs_constants::kAndroidCannotActivateTabInCctOrWebAppWindowError;
+    return false;
+  }
+#endif
 
   // Bug fix for crbug.com/1197888. Don't let the extension update the tab
   // if the user is dragging tabs.
@@ -2674,13 +2780,43 @@ bool TabsMoveFunction::MoveTab(int tab_id,
     return false;
   }
 
+#if BUILDFLAG(IS_ANDROID)
+  // TODO(crbug.com/496733610): Supporting CCT/PWA/TWA is currently not possible
+  // in C++ browser tests on Android. Add tests once that's supported
+  BrowserWindowInterface* source_browser =
+      source_window->GetBrowserWindowInterface();
+  bool is_source_window_cct_or_app_on_android =
+      source_browser &&
+      (source_browser->GetType() == BrowserWindowInterface::TYPE_CUSTOM_TAB ||
+       source_browser->GetType() == BrowserWindowInterface::TYPE_APP);
+#endif
+
   if (window_id && *window_id != ExtensionTabUtil::GetWindowIdOfTab(contents)) {
+#if BUILDFLAG(IS_ANDROID)
+    if (is_source_window_cct_or_app_on_android &&
+        contents != source_window->GetActiveTab()) {
+      *error = tabs_constants::
+          kAndroidOnlyActiveTabCanBeMovedFromCctOrWebAppWindowError;
+      return false;
+    }
+#endif
+
     WindowController* target_controller =
         ExtensionTabUtil::GetControllerFromWindowID(
             ChromeExtensionFunctionDetails(this), *window_id, error);
     if (!target_controller) {
       return false;
     }
+
+#if BUILDFLAG(IS_ANDROID)
+    if (is_source_window_cct_or_app_on_android &&
+        target_controller->GetBrowserWindowInterface()->GetType() !=
+            BrowserWindowInterface::TYPE_NORMAL) {
+      *error =
+          tabs_constants::kAndroidCanOnlyMoveCctOrWebAppTabsToNormalWindowError;
+      return false;
+    }
+#endif
 
     BrowserWindowInterface* target_browser =
         target_controller->GetBrowserWindowInterface();
@@ -2713,6 +2849,14 @@ bool TabsMoveFunction::MoveTab(int tab_id,
   // Clamp move location to the last position.
   // This is ">=" because the move must be to an existing location.
   // -1 means set the move location to the last position.
+
+#if BUILDFLAG(IS_ANDROID)
+  if (is_source_window_cct_or_app_on_android) {
+    *error = tabs_constants::kAndroidCannotMoveTabsWithinCctOrWebAppWindowError;
+    return false;
+  }
+#endif
+
   TabListInterface* source_tab_list =
       TabListInterface::From(source_window->GetBrowserWindowInterface());
   if (*new_index >= source_tab_list->GetTabCount() || *new_index < 0) {
@@ -2851,12 +2995,7 @@ bool TabsRemoveFunction::RemoveTab(int tab_id, std::string* error) {
   }
 
   // Don't let the extension remove a tab if the user is dragging tabs around.
-  // TODO(https://crbug.com/482088886): Update this to check all tab lists for
-  // a profile.
-  TabListInterface* tab_list =
-      TabListInterface::From(window->GetBrowserWindowInterface());
-  CHECK(tab_list);
-  if (!tab_list->IsThisTabListEditable()) {
+  if (!ExtensionTabUtil::IsTabStripEditable(*window->profile())) {
     *error = ExtensionTabUtil::kTabStripNotEditableError;
     return false;
   }

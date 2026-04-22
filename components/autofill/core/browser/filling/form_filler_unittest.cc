@@ -24,6 +24,7 @@
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/autofill_format_string.h"
 #include "components/autofill/core/browser/autofill_trigger_source.h"
+#include "components/autofill/core/browser/country_type.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_profile.h"
 #include "components/autofill/core/browser/data_model/payments/credit_card.h"
 #include "components/autofill/core/browser/field_types.h"
@@ -489,7 +490,7 @@ TEST_F(FormFillerTest, UndoSavesFormFillingDataForAutofillAi) {
   EntityInstance passport = test::GetPassportEntityInstance();
   autofill_manager().FillOrPreviewForm(
       mojom::ActionPersistence::kFill, form, form.fields().front().global_id(),
-      &passport, AutofillTriggerSource::kPopup);
+      &passport, AutofillTriggerSource::kPopup, /*blocked_fields=*/{});
   autofill_manager().UndoAutofill(mojom::ActionPersistence::kFill, form,
                                   form.fields().front());
 }
@@ -1676,7 +1677,7 @@ TEST_F(FormFillerTest, FillPassportEntity) {
     std::vector<FieldType> actual_types = base::ToVector(
         form_structure->fields()[field_index]->server_predictions(),
         [](const auto& p) {
-          return ToSafeFieldType(p.type(), NO_SERVER_DATA);
+          return ToSafeFieldType(p.type()).value_or(NO_SERVER_DATA);
         });
     CHECK(expected_types == actual_types);
   };
@@ -2223,64 +2224,27 @@ TEST_F(RefillTest, FormChanged_IrrelevantFieldChanges) {
     fields.front().set_css_classes(u"field-css-classes");
     form.set_fields(std::move(fields));
   };
-  {
-    base::test::ScopedFeatureList scoped_feature_list;
-    scoped_feature_list.InitWithFeatures(
-        /*enabled_features=*/{features::kAutofillFixFormEquality},
-        /*disabled_features=*/{features::kAutofillFewerTrivialRefills});
-    FormData form = test::GetFormData(
-        {.fields = {{.role = NAME_FULL, .autocomplete_attribute = "name"}}});
-    FormsSeen({form});
-    AutofillForm(form, form.fields().front(), &profile);
-    EXPECT_CALL(mock_form_filler(), ScheduleRefill).Times(1);
-    change_field_css_classes(form);
-    FormsSeen({form});
-  }
-  {
-    base::test::ScopedFeatureList scoped_feature_list;
-    scoped_feature_list.InitWithFeatures(
-        /*enabled_features=*/{features::kAutofillFixFormEquality,
-                              features::kAutofillFewerTrivialRefills},
-        /*disabled_features=*/{});
-    FormData form = test::GetFormData(
-        {.fields = {{.role = NAME_FULL, .autocomplete_attribute = "name"}}});
-    FormsSeen({form});
-    AutofillForm(form, form.fields().front(), &profile);
-    EXPECT_CALL(mock_form_filler(), ScheduleRefill).Times(0);
-    change_field_css_classes(form);
-    FormsSeen({form});
-  }
+
+  FormData form = test::GetFormData(
+      {.fields = {{.role = NAME_FULL, .autocomplete_attribute = "name"}}});
+  FormsSeen({form});
+  AutofillForm(form, form.fields().front(), &profile);
+  EXPECT_CALL(mock_form_filler(), ScheduleRefill).Times(0);
+  change_field_css_classes(form);
+  FormsSeen({form});
 }
 
 TEST_F(RefillTest, SelectOptionsChanged_IrrelevantSelectField) {
   AutofillProfile profile = test::GetFullProfile();
-  {
-    base::test::ScopedFeatureList scoped_feature_list;
-    scoped_feature_list.InitAndDisableFeature(
-        features::kAutofillFewerTrivialRefills);
-    FormData form = test::GetFormData(
-        {.fields = {
-             {.role = NAME_FULL, .autocomplete_attribute = "name"},
-             {.form_control_type = mojom::FormControlType::kSelectOne}}});
-    FormsSeen({form});
-    AutofillForm(form, form.fields().front(), &profile);
-    EXPECT_CALL(mock_form_filler(), ScheduleRefill).Times(1);
-    autofill_manager().OnSelectFieldOptionsDidChange(
-        form, form.fields().back().global_id());
-  }
-  {
-    base::test::ScopedFeatureList scoped_feature_list{
-        features::kAutofillFewerTrivialRefills};
-    FormData form = test::GetFormData(
-        {.fields = {
-             {.role = NAME_FULL, .autocomplete_attribute = "name"},
-             {.form_control_type = mojom::FormControlType::kSelectOne}}});
-    FormsSeen({form});
-    AutofillForm(form, form.fields().front(), &profile);
-    EXPECT_CALL(mock_form_filler(), ScheduleRefill).Times(0);
-    autofill_manager().OnSelectFieldOptionsDidChangeImpl(
-        form, form.fields().back().global_id());
-  }
+
+  FormData form = test::GetFormData(
+      {.fields = {{.role = NAME_FULL, .autocomplete_attribute = "name"},
+                  {.form_control_type = mojom::FormControlType::kSelectOne}}});
+  FormsSeen({form});
+  AutofillForm(form, form.fields().front(), &profile);
+  EXPECT_CALL(mock_form_filler(), ScheduleRefill).Times(0);
+  autofill_manager().OnSelectFieldOptionsDidChangeImpl(
+      form, form.fields().back().global_id());
 }
 
 // Test fixture for FormFiller::SuppressAutomaticRefills().
@@ -2647,6 +2611,46 @@ TEST_F(FormFillerTest, GlicFillingDoeNotSetIsAutofilled) {
             standard_filled_form.fields()[0].value());
   EXPECT_FALSE(
       glic_filled_form.fields()[0].is_autofilled_according_to_renderer());
+}
+
+// Tests that when autofilling a select field, we correctly set the
+// `selected_option_text` to send to the renderer, even if the field contains
+// multiple options with the same value.
+TEST_F(FormFillerTest, SelectElementWithDuplicateValuesAndDistinctTexts) {
+  FormData us_filled_form = test::GetFormData(
+      {.fields = {
+           {.role = NAME_FULL},
+           {.role = PHONE_HOME_COUNTRY_CODE,
+            .form_control_type = FormControlType::kSelectOne,
+            .select_options = {{.value = u"1", .text = u"Canada (+1)"},
+                               {.value = u"1", .text = u"United States (+1)"}}},
+           {.role = PHONE_HOME_CITY_AND_NUMBER_WITHOUT_TRUNK_PREFIX}}});
+
+  FormData ca_filled_form = test::GetFormData(
+      {.fields = {
+           {.role = NAME_FULL},
+           {.role = PHONE_HOME_COUNTRY_CODE,
+            .form_control_type = FormControlType::kSelectOne,
+            .select_options = {{.value = u"1", .text = u"Canada (+1)"},
+                               {.value = u"1", .text = u"United States (+1)"}}},
+           {.role = PHONE_HOME_CITY_AND_NUMBER_WITHOUT_TRUNK_PREFIX}}});
+
+  FormsSeen({us_filled_form, ca_filled_form});
+
+  AutofillProfile us_profile = test::GetFullProfile(AddressCountryCode("US"));
+  AutofillProfile ca_profile = test::GetFullProfile(AddressCountryCode("CA"));
+
+  us_filled_form = AutofillForm(us_filled_form, us_filled_form.fields().front(),
+                                &us_profile);
+  ca_filled_form = AutofillForm(ca_filled_form, ca_filled_form.fields().front(),
+                                &ca_profile);
+
+  ASSERT_THAT(us_filled_form.fields()[1], AutofilledWith(u"1"));
+  ASSERT_THAT(ca_filled_form.fields()[1], AutofilledWith(u"1"));
+
+  EXPECT_EQ(us_filled_form.fields()[1].selected_option_text(),
+            u"United States (+1)");
+  EXPECT_EQ(ca_filled_form.fields()[1].selected_option_text(), u"Canada (+1)");
 }
 
 }  // namespace autofill

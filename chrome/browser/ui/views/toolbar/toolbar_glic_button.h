@@ -7,11 +7,14 @@
 
 #include "chrome/browser/ui/views/glic/glic_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
+#include "chrome/browser/ui/views/toolbar/toolbar_glic_constants.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 
 class BrowserFrameView;
 
 namespace glic {
+inline constexpr int kToolbarGlicIconSize = 16;
+
 class ToolbarGlicButton : public GlicButton<ToolbarButton> {
   METADATA_HEADER(ToolbarGlicButton, ToolbarButton)
  public:
@@ -39,11 +42,25 @@ class ToolbarGlicButton : public GlicButton<ToolbarButton> {
   void SetForegroundFrameInactiveColorId(ui::ColorId new_color_id) override;
   void SetBackgroundFrameActiveColorId(ui::ColorId new_color_id) override;
   void SetBackgroundFrameInactiveColorId(ui::ColorId new_color_id) override;
+  void ResetSplitButtonCornerStyling() override;
+  void SetLeftRightCornerRadii(int left, int right) override;
+  float GetCornerRadiusFor(ToolbarButton::Edge edge) const override;
+  int GetSplitRoundedEdgeRadius() override;
+  int GetIconSize() const override;
+  int GetGlicIconSize() override;
   ui::ColorId GetBackgroundColor();
+
+  void Collapse() override;
+  void Expand() override;
 
  private:
   void UpdateBackground();
   void UpdateInkDrop();
+
+  std::optional<int> left_corner_radius_;
+  std::optional<int> right_corner_radius_;
+
+  int split_rounded_edge_radius_ = kDefaultSplitButtonRoundedCornerRadius;
 };
 }  // namespace glic
 

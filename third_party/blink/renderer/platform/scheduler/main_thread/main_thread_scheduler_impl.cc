@@ -91,6 +91,10 @@ namespace scheduler {
 BASE_FEATURE(kBusyLoopAggressiveAfterCommittedLoad,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+namespace {
+constexpr base::TimeDelta kBusyLoopAggressiveTime = base::Milliseconds(500);
+}
+
 // When scrolling and the main thread is not expected to be blocking, decrease
 // its thread priority, so as not to contend with the actually display critical
 // threads.
@@ -276,9 +280,18 @@ perfetto::StaticString RenderingPrioritizationStateToString(
 }
 
 // Treat "input handling" specially in V8.
-BASE_FEATURE(kInputHandlingModeFromUseCase, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kInputHandlingModeFromUseCase, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kInputHandlingModeFromPerformanceScenario,
              base::FEATURE_DISABLED_BY_DEFAULT);
+// Attempt to treat inputs as one longer window, instead of many shorter ones.
+BASE_FEATURE(kUseCaseLongerInputWindow, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kUseCaseLongerInputWindowExtensionMs,
+                   &kUseCaseLongerInputWindow,
+                   "use_case_longer_input_window_extension_ms",
+                   base::Milliseconds(50));
+
+// Treat "loading" specially in V8.
 BASE_FEATURE(kLoadingModeFromRAILMode, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLoadingModeFromPerformanceScenario,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -577,8 +590,10 @@ void MainThreadSchedulerImpl::OnInputScenarioChanged(
     performance_scenarios::ScenarioScope scope,
     performance_scenarios::InputScenario old_scenario,
     performance_scenarios::InputScenario new_scenario) {
-  DCHECK(
-      base::FeatureList::IsEnabled(kInputHandlingModeFromPerformanceScenario));
+  if (!base::FeatureList::IsEnabled(
+          kInputHandlingModeFromPerformanceScenario)) {
+    return;
+  }
   if (isolate()) {
     isolate()->SetIsInputHandling(
         ComputeIsInputHandlingFromPerformanceScenario(new_scenario));
@@ -589,7 +604,9 @@ void MainThreadSchedulerImpl::OnLoadingScenarioChanged(
     performance_scenarios::ScenarioScope scope,
     performance_scenarios::LoadingScenario old_scenario,
     performance_scenarios::LoadingScenario new_scenario) {
-  DCHECK(base::FeatureList::IsEnabled(kLoadingModeFromPerformanceScenario));
+  if (!base::FeatureList::IsEnabled(kLoadingModeFromPerformanceScenario)) {
+    return;
+  }
   if (isolate()) {
     isolate()->SetIsLoading(
         ComputeIsLoadingFromPerformanceScenario(new_scenario));
@@ -1734,21 +1751,31 @@ void MainThreadSchedulerImpl::UpdatePolicyLocked(UpdateType update_type) {
   // (main_thread_compositing_is_fast) that may have been updated here.
   UpdateCompositorTaskQueuePriority();
 
+  if (base::FeatureList::IsEnabled(kInputHandlingModeFromUseCase)) {
+    if (isolate()) {
+      const bool was_input_handling = ComputeIsInputHandlingFromUseCase(
+          main_thread_only().current_policy.use_case);
+      const bool is_input_handling =
+          ComputeIsInputHandlingFromUseCase(new_policy.use_case);
+      if (was_input_handling && !is_input_handling) {
+        last_input_use_case_time_ = base::TimeTicks::Now();
+      }
+
+      isolate()->SetIsInputHandling(
+          is_input_handling ||
+          (base::FeatureList::IsEnabled(kUseCaseLongerInputWindow) &&
+           last_input_use_case_time_ +
+                   kUseCaseLongerInputWindowExtensionMs.Get() >=
+               base::TimeTicks::Now()));
+    }
+  }
+
   // TODO(alexclarke): Can we get rid of force update now?
   // talp: Can't get rid of this, as per-agent scheduling happens on top of the
   //  policy, based on agent states.
   if (update_type == UpdateType::kMayEarlyOutIfPolicyUnchanged &&
       new_policy == main_thread_only().current_policy) {
     return;
-  }
-
-  if (new_policy.use_case != main_thread_only().current_policy.use_case) {
-    if (isolate()) {
-      if (base::FeatureList::IsEnabled(kInputHandlingModeFromUseCase)) {
-        isolate()->SetIsInputHandling(
-            ComputeIsInputHandlingFromUseCase(new_policy.use_case));
-      }
-    }
   }
 
   // NOTE: Code below only executes for forced updates or when the policy has
@@ -2299,6 +2326,12 @@ void MainThreadSchedulerImpl::DidCommitProvisionalLoad(
   if (base::FeatureList::IsEnabled(kBusyLoopOnRendererMain) &&
       base::FeatureList::IsEnabled(kBusyLoopAggressiveAfterCommittedLoad)) {
     main_thread_only().last_committed_load_time = NowTicks();
+    // This will go back to the normal factor in the future.
+    control_task_queue_->GetTaskRunnerWithDefaultTaskType()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&MainThreadSchedulerImpl::MaybeSetBusyLoop,
+                       weak_factory_.GetWeakPtr()),
+        kBusyLoopAggressiveTime);
   }
 
   // If this either isn't a history inert commit or it's a reload then we must
@@ -2934,10 +2967,6 @@ void MainThreadSchedulerImpl::MaybeUpdatePolicyOnTaskCompleted(
     }
   }
 
-  if (!main_thread_only().last_committed_load_time.is_null()) {
-    needs_policy_update = true;
-  }
-
   RenderingPrioritizationState old_state =
       main_thread_only().main_frame_prioritization_state;
   UpdateRenderingPrioritizationStateOnTaskCompleted(queue, task_timing);
@@ -3190,7 +3219,7 @@ void MainThreadSchedulerImpl::MaybeSetBusyLoop() {
   if (busy_loop_scale_factor != 0.f &&
       !main_thread_only().last_committed_load_time.is_null()) {
     if (NowTicks() - main_thread_only().last_committed_load_time <
-        base::Milliseconds(500)) {
+        kBusyLoopAggressiveTime) {
       busy_loop_scale_factor = 1.5;
     } else {
       main_thread_only().last_committed_load_time = base::TimeTicks();

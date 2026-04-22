@@ -11,6 +11,12 @@
 #include <string>
 #include <vector>
 
+#include "build/build_config.h"
+
+#if BUILDFLAG(IS_IOS)
+#include "base/ios/scoped_critical_action.h"
+#endif
+
 #include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
@@ -19,6 +25,7 @@
 #include "components/endpoint_fetcher/endpoint_fetcher.h"
 #include "components/lens/lens_overlay_request_id_generator.h"
 #include "components/lens/proto/server/lens_overlay_response.pb.h"
+#include "net/base/backoff_entry.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "third_party/lens_server_proto/added_inputs.pb.h"
 #include "third_party/lens_server_proto/aim_communication.pb.h"
@@ -80,14 +87,15 @@ class ComposeboxQueryController
 
   // ContextualSearchContextController:
   void InitializeIfNeeded() override;
+  void SetIsBackgrounded(bool backgrounded) override;
   void CreateSearchUrl(
       std::unique_ptr<CreateSearchUrlRequestInfo> search_url_request_info,
       base::OnceCallback<void(GURL)> callback) override;
   lens::ClientToAimMessage CreateClientToAimRequest(
       std::unique_ptr<CreateClientToAimRequestInfo>
           create_client_to_aim_request_info) override;
-  void AddObserver(FileUploadStatusObserver* obs) override;
-  void RemoveObserver(FileUploadStatusObserver* obs) override;
+  void AddObserver(ContextUploadStatusObserver* obs) override;
+  void RemoveObserver(ContextUploadStatusObserver* obs) override;
   void StartFileUploadFlow(
       const base::UnguessableToken& file_token,
       std::unique_ptr<lens::ContextualInputData> contextual_input_data,
@@ -117,7 +125,8 @@ class ComposeboxQueryController
 
   // Returns the string representation of the mime type, for use in calculating
   // the AddedInputs proto.
-  static std::optional<std::string> MimeTypeToString(lens::MimeType mime_type);
+  static std::optional<std::string> MimeTypeStringFromFileInfo(
+      const contextual_search::FileInfo& file_info);
 
   uint16_t get_num_context_uploading() {
     return static_cast<uint16_t>(pending_context_uploads_.size());
@@ -134,11 +143,11 @@ class ComposeboxQueryController
     return !pending_search_url_request_.is_null();
   }
 
-  void update_file_upload_status_for_testing(
-      const base::UnguessableToken& file_token,
-      contextual_search::FileUploadStatus status,
-      std::optional<contextual_search::FileUploadErrorType> error_type) {
-    UpdateFileUploadStatus(file_token, status, error_type);
+  void update_context_upload_status_for_testing(
+      const base::UnguessableToken& context_token,
+      contextual_search::ContextUploadStatus status,
+      std::optional<contextual_search::ContextUploadErrorType> error_type) {
+    UpdateContextUploadStatus(context_token, status, error_type);
   }
 
   // Enum for testing to track the state of the query controller.
@@ -208,10 +217,10 @@ class ComposeboxQueryController
 
     std::vector<uint8_t> file_content;
 
-    // The access token fetcher used for getting OAuth for the file upload
+    // The access token fetcher used for getting OAuth for the context upload
     // request. Will be discarded after the OAuth headers are created.
     std::unique_ptr<signin::PrimaryAccountAccessTokenFetcher>
-        file_upload_access_token_fetcher_;
+        context_upload_access_token_fetcher_;
 
     // The upload requests.
     std::vector<std::unique_ptr<UploadRequest>> upload_requests_;
@@ -220,6 +229,12 @@ class ComposeboxQueryController
     // StartFileUploadFlow() and decremented when successful network responses
     // are received.
     size_t num_outstanding_network_requests_ = 0;
+
+#if BUILDFLAG(IS_IOS)
+    // Background execution assertion to prevent iOS from suspending the app
+    // during a file upload.
+    std::unique_ptr<base::ios::ScopedCriticalAction> background_action;
+#endif
   };
 
   // Creates the request body proto for an image and calls the callback with the
@@ -384,17 +399,14 @@ class ComposeboxQueryController
   // changed callback if it has changed.
   void SetQueryControllerState(QueryControllerState new_state);
 
-  // Returns if file status is considered to be in the terminal state.
-  bool IsTerminalFileStatus(contextual_search::FileUploadStatus status);
+  // Marks context upload as in terminal state (success, replaced, failed,
+  // expired, validation failed) for given context token, and if
+  // there are no more contexts to upload, create search URL.
+  void MarkContextUploadAsInTerminalState(base::UnguessableToken context_token);
 
-  // Marks file upload as in terminal state (success, replaced, failed,
-  // expired, validation failed) for given file token, and if
-  // there are no more files to upload, create search URL.
-  void MarkFileUploadAsInTerminalState(base::UnguessableToken file_token);
-
-  // Updates the file upload status and notifies the file upload status
+  // Updates the context upload status and notifies the context upload status
   // observers with an optional error type if the upload failed.
-  void UpdateFileUploadStatus(
+  void UpdateContextUploadStatus(
       base::UnguessableToken file_token,
       contextual_search::ContextUploadStatus status,
       std::optional<contextual_search::ContextUploadErrorType> error_type);
@@ -510,6 +522,12 @@ class ComposeboxQueryController
   // The last received cluster info.
   std::optional<lens::LensOverlayClusterInfo> cluster_info_ = std::nullopt;
 
+  // Whether the app is currently in the background.
+  bool is_backgrounded_ = false;
+
+  // The number of times fetching cluster info has failed.
+  int cluster_info_retries_ = 0;
+
   // The endpoint fetcher used for the cluster info request.
   std::unique_ptr<endpoint_fetcher::EndpointFetcher>
       cluster_info_endpoint_fetcher_;
@@ -536,13 +554,16 @@ class ComposeboxQueryController
   lens::LensOverlayRequestIdGenerator request_id_generator_;
 
   // The observer list, managed via AddObserver() and RemoveObserver().
-  base::ObserverList<FileUploadStatusObserver> observers_;
+  base::ObserverList<ContextUploadStatusObserver> observers_;
 
   // Owned by the Profile, and thus guaranteed to outlive this instance.
   const raw_ptr<TemplateURLService> template_url_service_;
 
   // Owned by the Profile, and thus guaranteed to outlive this instance.
   const raw_ptr<variations::VariationsClient> variations_client_;
+
+  // Backoff entry used to control the retry logic for the cluster info request.
+  net::BackoffEntry cluster_info_backoff_;
 
   // Whether or not to send the lns_surface parameter.
   // TODO(crbug.com/430070871): Remove this once the server supports the
@@ -588,7 +609,7 @@ class ComposeboxQueryController
   // The set of file tokens for files that are currently in a non-terminal
   // upload status. This is different from `active_files_` because
   // that map tracks files that are able to be part of a query based on
-  // `IsValidFileUploadStatusForMultimodalRequest()`, whereas
+  // `IsValidContextUploadStatusForMultimodalRequest()`, whereas
   // this tracks which of those active files are still uploading.
   std::set<base::UnguessableToken> pending_context_uploads_;
 

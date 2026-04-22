@@ -16,7 +16,6 @@ import android.widget.TextView;
 import androidx.annotation.ColorRes;
 import androidx.annotation.StringRes;
 import androidx.appcompat.content.res.AppCompatResources;
-import androidx.core.widget.ImageViewCompat;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -113,7 +112,14 @@ public class ListMenuItemViewBinder {
             }
         } else if (propertyKey == ListMenuItemProperties.START_ICON_BITMAP) {
             Bitmap bitmap = model.get(ListMenuItemProperties.START_ICON_BITMAP);
-            if (hasStartIcon == (bitmap != null)) {
+            if (bitmap == null) {
+                // We specifically need to check whether bitmap == null. If we do not, creating a
+                // BitmapDrawable from null does not fail; it instead creates an empty drawable and
+                // makes it visible. To achieve the correct behavior of hiding the start icon, we
+                // therefore need to perform a separate check for the bitmap being null and hide the
+                // start icon if so.
+                hideStartIcon(startIcon, keepIconSpacing);
+            } else if (hasStartIcon) {
                 Drawable drawable = new BitmapDrawable(view.getResources(), bitmap);
                 setStartIcon(startIcon, endIcon, drawable, keepIconSpacing);
             }
@@ -152,18 +158,7 @@ public class ListMenuItemViewBinder {
         } else if (propertyKey == ListMenuItemProperties.ICON_TINT_COLOR_STATE_LIST_ID) {
             @ColorRes
             int tintColorId = model.get(ListMenuItemProperties.ICON_TINT_COLOR_STATE_LIST_ID);
-            if (tintColorId != Resources.ID_NULL) {
-                ImageViewCompat.setImageTintList(
-                        startIcon,
-                        AppCompatResources.getColorStateList(view.getContext(), tintColorId));
-                ImageViewCompat.setImageTintList(
-                        endIcon,
-                        AppCompatResources.getColorStateList(view.getContext(), tintColorId));
-            } else {
-                // No tint.
-                ImageViewCompat.setImageTintList(startIcon, null);
-                ImageViewCompat.setImageTintList(endIcon, null);
-            }
+            ListMenuUtils.applyTintToAllIcons(view, tintColorId);
         } else if (propertyKey == ListMenuItemProperties.TEXT_APPEARANCE_ID) {
             textView.setTextAppearance(model.get(ListMenuItemProperties.TEXT_APPEARANCE_ID));
         } else if (propertyKey == ListMenuItemProperties.IS_TEXT_ELLIPSIZED_AT_END) {

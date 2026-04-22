@@ -6,11 +6,14 @@
 #define CHROME_BROWSER_UI_WEBUI_FEEDBACK_REPORT_UNSAFE_SITE_REPORT_UNSAFE_SITE_HANDLER_H_
 
 #include "base/memory/weak_ptr.h"
-#include "chrome/browser/feedback/screenshot_taker.h"
+#include "chrome/browser/feedback/report_unsafe_site/screenshot_taker.h"
 #include "chrome/browser/ui/webui/feedback/report_unsafe_site/report_unsafe_site.mojom.h"
 #include "chrome/browser/ui/webui/top_chrome/top_chrome_web_ui_controller.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
+#include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/views/widget/widget.h"
+#include "url/gurl.h"
 
 namespace content {
 class WebContents;
@@ -24,8 +27,8 @@ class ReportUnsafeSitePageHandler
       GetTriggeringPageInfoCallback GetTriggeringPageInfoCallback;
 
   ReportUnsafeSitePageHandler(
-      base::WeakPtr<TopChromeWebUIController::Embedder> embedder,
       base::WeakPtr<content::WebContents> triggering_web_contents,
+      base::WeakPtr<views::Widget> dialog,
       std::unique_ptr<feedback::ScreenshotTaker> screenshot_taker,
       mojo::PendingReceiver<feedback::report_unsafe_site::mojom::PageHandler>
           receiver);
@@ -38,14 +41,28 @@ class ReportUnsafeSitePageHandler
 
   // report_unsafe_site::mojom::PageHandler:
   void GetTriggeringPageInfo(GetTriggeringPageInfoCallback callback) override;
+  void SendReport(bool include_screenshot,
+                  SendReportCallback callback) override;
   void CloseDialog() override;
 
  private:
-  const base::WeakPtr<TopChromeWebUIController::Embedder> embedder_;
+  void OnGotScreenshot(
+      base::OnceCallback<void(const std::string&, const GURL&)> callback,
+      const SkBitmap& screenshot);
+
+
+  bool was_report_button_clicked_ = false;
   const base::WeakPtr<content::WebContents> triggering_web_contents_;
+  const base::WeakPtr<views::Widget> dialog_;
   std::unique_ptr<feedback::ScreenshotTaker> screenshot_taker_;
   const mojo::Receiver<feedback::report_unsafe_site::mojom::PageHandler>
       receiver_;
+
+  // Last committed URL.
+  GURL page_url_;
+  SkBitmap screenshot_;
+
+  base::WeakPtrFactory<ReportUnsafeSitePageHandler> weak_ptr_factory_{this};
 };
 
 #endif  // CHROME_BROWSER_UI_WEBUI_FEEDBACK_REPORT_UNSAFE_SITE_REPORT_UNSAFE_SITE_HANDLER_H_

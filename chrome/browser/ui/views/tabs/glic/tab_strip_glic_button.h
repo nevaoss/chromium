@@ -12,6 +12,7 @@
 #include "chrome/browser/ui/views/glic/glic_button_interface.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_nudge_button.h"
 #include "chrome/common/buildflags.h"
+#include "ui/base/class_property.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/gfx/vector_icon_types.h"
 #include "ui/views/controls/menu/menu_model_adapter.h"
@@ -124,6 +125,12 @@ class TabStripGlicButton : public TabStripNudgeButton,
   void OnBrowserWindowDidBecomeInactive(BrowserWindowInterface* bwi);
   void UpdateInkdropHoverColor(bool is_frame_active);
 
+  // TODO(crbug.com/485257764): Remove once TabStripGlicButton inherits from
+  // GlicButton<T>
+  bool GetVisible() override;
+  float GetWidthFactor() const override;
+  ui::PropertyHandler* GetPropertyHandler() override;
+
  private:
   // views::LabelButton:
   void SetText(std::u16string_view text) override;
@@ -143,8 +150,6 @@ class TabStripGlicButton : public TabStripNudgeButton,
 
   void UpdateTextAndBackgroundColors();
   void UpdateIcon();
-  bool IsHighlightVisible() const;
-  void CreateIconAndLabelContainer();
   void SetCloseButtonVisible(bool visible);
 
   void ShowNudge();
@@ -152,7 +157,6 @@ class TabStripGlicButton : public TabStripNudgeButton,
   void ApplyTextAndFadeIn(std::optional<std::u16string> text,
                           base::TimeDelta delay,
                           base::TimeDelta duration);
-  void MaybeFadeHighlightOnHover(float final_opacity);
   int CalculateExpandedWidth();
 
   bool IsAnimatingTextVisibility() const;
@@ -165,7 +169,6 @@ class TabStripGlicButton : public TabStripNudgeButton,
 
   void SetLabelMargins();
 
-  views::View* highlight_view() { return highlight_view_; }
   WidthState width_state() { return width_state_; }
 
   void OnLabelVisibilityChanged();
@@ -197,12 +200,6 @@ class TabStripGlicButton : public TabStripNudgeButton,
   // Start and end values for width animations.
   int start_width_ = 0;
   int end_width_ = 0;
-
-  // View to be drawn behind the icon and label with a background color.
-  raw_ptr<View> highlight_view_ = nullptr;
-
-  // Container view for the icon and label, and the highlight drawn behind them.
-  raw_ptr<View> icon_label_highlight_view_ = nullptr;
 
   // Holds the incoming nudge text until the point in the animation when it can
   // be applied.

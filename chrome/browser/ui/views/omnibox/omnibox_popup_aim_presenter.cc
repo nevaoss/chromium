@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.h"
+#include "chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.h"
 
 #include <optional>
 #include <string_view>
@@ -18,15 +19,25 @@
 OmniboxPopupAimPresenter::OmniboxPopupAimPresenter(
     LocationBarView* location_bar_view,
     OmniboxController* controller)
-    : OmniboxPopupPresenterBase(location_bar_view), controller_(controller) {
+    : OmniboxPopupPresenterBase(location_bar_view, *location_bar_view),
+      controller_(controller),
+      location_bar_view_(location_bar_view) {
   SetWebUIContent(std::make_unique<OmniboxAimPopupWebUIContent>(
-      this, this->location_bar_view(), controller));
+      this, location_bar_view_, controller));
 }
 
 OmniboxPopupAimPresenter::~OmniboxPopupAimPresenter() = default;
 
 void OmniboxPopupAimPresenter::Show() {
+  const bool was_shown = IsShown();
   OmniboxPopupPresenterBase::Show();
+  if (!was_shown && IsShown()) {
+    // Set the request time to now when the popup is first shown. This ensures
+    // that latency is measured from the user interaction to show, even if the
+    // WebUI was preloaded at startup.
+    WebUIContentsPreloadManager::GetInstance()->SetRequestTime(
+        GetWebUIContent()->GetWebContents(), base::TimeTicks::Now());
+  }
   if (GetWidget() && !widget_observation_.IsObserving()) {
     widget_observation_.Observe(GetWidget());
   }
@@ -49,9 +60,10 @@ void OmniboxPopupAimPresenter::OnWidgetActivationChanged(views::Widget* widget,
   // Separately, if a user opens a context menu inside this popup. The context
   // menu is a child widget so this popup widget is still considered active. We
   // will not hide the popup.
-  if (!active && controller_->popup_state_manager()->popup_state() ==
-                     OmniboxPopupState::kAim &&
-                    !location_bar_view()->in_popup_state_transition()) {
+  if (!active &&
+      controller_->popup_state_manager()->popup_state() ==
+          OmniboxPopupState::kAim &&
+      !location_bar_view_->in_popup_state_transition()) {
     // Don't close popup if there's an active permission prompt. This check can
     // be reached when the permission prompt has just been shown for Voice
     // permission from the omnibox popup and interacting with the prompt has

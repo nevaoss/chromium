@@ -12,6 +12,7 @@
 #include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/path_service.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_split.h"
@@ -56,12 +57,32 @@ using mojom::OnDeviceTranslationServiceConfigPtr;
 
 // Prefix for the display name of the on-device translation service. The origin
 // is appended to the prefix.
-const char kOnDeviceTranslationServiceDisplayNamePrefix[] =
+constexpr std::string_view kOnDeviceTranslationServiceDisplayNamePrefix =
     "On-device Translation Service: ";
+
+constexpr std::string_view kCreateTranslatorMetricActionName =
+    "CreateTranslator";
+constexpr std::string_view kCanTranslateMetricActionName = "CanTranslate";
+
+constexpr std::string_view
+    kCreateTranslatorSourceLanguageIsSupportedMetricName =
+        "Translate.OnDeviceTranslation.CreateTranslator."
+        "IsSourceLanguageSupported";
+constexpr std::string_view
+    kCreateTranslatorTargetLanguageIsSupportedMetricName =
+        "Translate.OnDeviceTranslation.CreateTranslator."
+        "IsTargetLanguageSupported";
+constexpr std::string_view kCanTranslateSourceLanguageIsSupportedMetricName =
+    "Translate.OnDeviceTranslation.CanTranslate.IsSourceLanguageSupported";
+constexpr std::string_view kCanTranslateTargetLanguageIsSupportedMetricName =
+    "Translate.OnDeviceTranslation.CanTranslate.IsTargetLanguageSupported";
 
 // TODO(crbug.com/419848973): This is a workaround until the "he" language code
 // is fully supported.
 std::string SwitchLanguageCodeToIwIfHe(std::string_view language_code) {
+  if (language_code == "he") {
+    return "iw";
+  }
   auto split = base::SplitStringOnce(language_code, "-");
   if (!split || split->first != "he") {
     return std::string(language_code);
@@ -70,9 +91,23 @@ std::string SwitchLanguageCodeToIwIfHe(std::string_view language_code) {
   return base::StrCat({"iw-", split->second});
 }
 
+std::string SwitchLanguageCodeForChinese(std::string_view language_code) {
+  std::string lower_code = base::ToLowerASCII(language_code);
+  if (lower_code == "zh-cn" || lower_code == "zh-hans-cn" ||
+      lower_code == "cmn-hans-cn") {
+    return "zh";
+  }
+  if (lower_code == "zh-tw" || lower_code == "zh-hant-tw" ||
+      lower_code == "cmn-hant-tw") {
+    return "zh-Hant";
+  }
+  return std::string(language_code);
+}
+
 std::optional<std::string> GetBestFitLanguageCode(
     std::string_view language_code) {
   std::string best_fit = SwitchLanguageCodeToIwIfHe(language_code);
+  best_fit = SwitchLanguageCodeForChinese(best_fit);
   return LookupMatchingLocaleByBestFit(kSupportedLanguageCodes,
                                        std::move(best_fit));
 }
@@ -89,7 +124,7 @@ std::string ToString(const base::FilePath& path) {
 std::vector<base::FilePath> GetLanguagePackInfo(
     std::vector<mojom::OnDeviceTranslationLanguagePackagePtr>& packages) {
   CHECK(packages.empty());
-  std::vector<base::FilePath> package_pathes;
+  std::vector<base::FilePath> package_paths;
   for (const auto& it : kLanguagePackComponentConfigMap) {
     auto file_path =
         OnDeviceTranslationInstaller::GetInstance()->GetLanguagePackPath(
@@ -98,11 +133,11 @@ std::vector<base::FilePath> GetLanguagePackInfo(
       packages.push_back(mojom::OnDeviceTranslationLanguagePackage::New(
           std::string(ToLanguageCode(it.second->language1)),
           std::string(ToLanguageCode(it.second->language2))));
-      package_pathes.push_back(file_path);
+      package_paths.push_back(file_path);
     }
   }
 
-  return package_pathes;
+  return package_paths;
 }
 
 LanguagePackRequirements GetLanguagePackRequirements(
@@ -187,18 +222,28 @@ void OnDeviceTranslationServiceController::CreateTranslator(
     const std::string& source_lang,
     const std::string& target_lang,
     base::OnceCallback<
-        void(base::expected<mojo::PendingRemote<mojom::Translator>,
+        void(base::expected<mojo::PendingRemote<mojom::OnDeviceTranslator>,
                             CreateTranslatorError>)> callback) {
   std::optional<std::string> best_fit_source_language =
       GetBestFitLanguageCode(source_lang);
   std::optional<std::string> best_fit_target_language =
       GetBestFitLanguageCode(target_lang);
+  base::UmaHistogramBoolean(
+      kCreateTranslatorSourceLanguageIsSupportedMetricName,
+      best_fit_source_language.has_value());
+  base::UmaHistogramBoolean(
+      kCreateTranslatorTargetLanguageIsSupportedMetricName,
+      best_fit_target_language.has_value());
   if (!best_fit_source_language.has_value() ||
       !best_fit_target_language.has_value()) {
     std::move(callback).Run(
         base::unexpected(CreateTranslatorError::kNotSupportedLanguage));
     return;
   }
+
+  RecordOnDeviceTranslationCallForLanguagePair(
+      kCreateTranslatorMetricActionName, *best_fit_source_language,
+      *best_fit_target_language);
 
   LanguagePackRequirements language_pack_requirements =
       GetLanguagePackRequirements(source_lang, target_lang);
@@ -248,9 +293,9 @@ void OnDeviceTranslationServiceController::CreateTranslatorImpl(
     const std::string& source_lang,
     const std::string& target_lang,
     base::OnceCallback<
-        void(base::expected<mojo::PendingRemote<mojom::Translator>,
+        void(base::expected<mojo::PendingRemote<mojom::OnDeviceTranslator>,
                             CreateTranslatorError>)> callback) {
-  mojo::PendingRemote<mojom::Translator> pending_remote;
+  mojo::PendingRemote<mojom::OnDeviceTranslator> pending_remote;
   auto pending_receiver = pending_remote.InitWithNewPipeAndPassReceiver();
 
   if (!MaybeStartService()) {
@@ -267,9 +312,10 @@ void OnDeviceTranslationServiceController::CreateTranslatorImpl(
       mojo::WrapCallbackWithDropHandler(
           base::BindOnce(
               [](base::OnceCallback<void(
-                     base::expected<mojo::PendingRemote<mojom::Translator>,
-                                    CreateTranslatorError>)> callback,
-                 mojo::PendingRemote<mojom::Translator> pending_remote,
+                     base::expected<
+                         mojo::PendingRemote<mojom::OnDeviceTranslator>,
+                         CreateTranslatorError>)> callback,
+                 mojo::PendingRemote<mojom::OnDeviceTranslator> pending_remote,
                  CreateTranslatorResult result) {
                 if (result == CreateTranslatorResult::kSuccess) {
                   std::move(callback).Run(std::move(pending_remote));
@@ -292,12 +338,19 @@ void OnDeviceTranslationServiceController::CanTranslate(
       GetBestFitLanguageCode(source_lang_arg);
   std::optional<std::string> best_fit_target_language =
       GetBestFitLanguageCode(target_lang_arg);
+  base::UmaHistogramBoolean(kCanTranslateSourceLanguageIsSupportedMetricName,
+                            best_fit_source_language.has_value());
+  base::UmaHistogramBoolean(kCanTranslateTargetLanguageIsSupportedMetricName,
+                            best_fit_target_language.has_value());
   if (!best_fit_source_language.has_value() ||
       !best_fit_target_language.has_value()) {
     std::move(callback).Run(CanTranslateResult::kNoNotSupportedLanguage);
     return;
   }
 
+  RecordOnDeviceTranslationCallForLanguagePair(kCanTranslateMetricActionName,
+                                               *best_fit_source_language,
+                                               *best_fit_target_language);
   std::string source_lang = std::move(*best_fit_source_language);
   std::string target_lang = std::move(*best_fit_target_language);
   std::move(callback).Run(CanTranslateImpl(source_lang, target_lang));
@@ -346,13 +399,6 @@ void OnDeviceTranslationServiceController::OnLanguagePackInstallationChanged(
 }
 
 void OnDeviceTranslationServiceController::OnInstallationChanged() {
-  service_remote_.reset();
-  MaybeRunPendingTasks();
-}
-
-// Called when the TranslateKitBinaryPath pref is changed.
-void OnDeviceTranslationServiceController::OnTranslateKitBinaryPathChanged(
-    const std::string& pref_name) {
   service_remote_.reset();
   MaybeRunPendingTasks();
 }

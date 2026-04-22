@@ -87,6 +87,7 @@ export function getHtml(this: ReadAnythingToolbarElement) {
         iron-icon="read-anything:highlight-on"
         title="${this.getHighlightButtonLabel_()}"
         aria-label="${this.getHighlightButtonLabel_()}"
+        aria-haspopup="menu"
         @click="${this.onHighlightClick_}">
     </cr-icon-button>
 
@@ -138,6 +139,7 @@ export function getHtml(this: ReadAnythingToolbarElement) {
       .settingsPrefs="${this.settingsPrefs}"
       .isImmersiveMode="${this.isImmersiveMode}"
       .isReadAnythingPinned="${this.isReadAnythingPinned}"
+      .isSpeechActive="${this.isSpeechActive}"
       @close-submenu-requested="${this.onCloseSubmenuRequested_}"
       @close-all-menus="${this.onCloseAllMenus_}"
       @open-settings-submenu="${this.onOpenSettingsSubmenu_}">
@@ -177,7 +179,8 @@ export function getHtml(this: ReadAnythingToolbarElement) {
   <cr-lazy-render-lit id="fontSizeMenu" .template='${() => html`
   <cr-action-menu @keydown="${this.onFontSizeMenuKeydown_}"
       accessibility-label="$i18n{fontSizeTitle}"
-      role-description="$i18n{menu}">
+      role-description="$i18n{menu}"
+      class="${this.isImmersiveEnabled_ ? 'immersive-font-size-menu' : ''}">
     <cr-icon-button class="font-size" role="menuitem"
         id="font-size-decrease"
         aria-label="$i18n{decreaseFontSizeLabel}"

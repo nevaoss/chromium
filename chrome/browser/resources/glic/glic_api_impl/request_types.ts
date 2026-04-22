@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import type {WebClientInitialState} from '../glic.mojom-webui.js';
-import type {ActorTaskPauseReason, ActorTaskState, ActorTaskStopReason, AdditionalContext, AdditionalContextPart, AnnotatedPageData, AutofillSuggestion, CancelActionsResult, CaptureRegionErrorReason, CaptureRegionResult, ChromeVersion, ConversationInfo, CreateSkillRequest, Credential, DraggableArea, ErrorReasonTypes, ErrorWithReason, FocusedTabDataHasFocus, FocusedTabDataHasNoFocus, FormFactor, FormFillingRequest, FormFillingResponse, GetPinCandidatesOptions, HostCapability, InvokeOptions, Journal, MetricUserInputReactionType, MicrophoneStatus, NavigationConfirmationRequest, NavigationConfirmationResponse, OnResponseStoppedDetails, OpenPanelInfo, OpenSettingsOptions, PageMetadata, PanelOpeningData, PanelState, PdfDocumentData, PinCandidate, PinTabsOptions, Platform, ResumeActorTaskResult, Screenshot, ScrollToParams, SelectAutofillSuggestionsDialogRequest, SelectAutofillSuggestionsDialogResponse, SelectCredentialDialogRequest, SelectCredentialDialogResponse, Skill, SkillPreview, SkillsWebClientEvent, TabContextOptions, TabContextResult, TabData, TaskOptions, UnpinTabsOptions, UpdateSkillRequest, UserConfirmationDialogRequest, UserConfirmationDialogResponse, UserProfileInfo, WebClientMode, ZeroStateSuggestions, ZeroStateSuggestionsOptions, ZeroStateSuggestionsV2} from '../glic_api/glic_api.js';
+import type {ActorTaskInterruptReason, ActorTaskPauseReason, ActorTaskState, ActorTaskStopReason, AdditionalContext, AdditionalContextPart, AnnotatedPageData, AutofillSuggestion, CancelActionsResult, CaptureRegionErrorReason, CaptureRegionResult, ChromeVersion, ClientCapabilities, ConversationInfo, CreateSkillRequest, Credential, DraggableArea, ErrorReasonTypes, ErrorWithReason, FocusedTabDataHasFocus, FocusedTabDataHasNoFocus, FormFactor, FormFillingRequest, FormFillingResponse, GetPinCandidatesOptions, HostCapability, InvokeOptions, Journal, MetricUserInputReactionType, MicrophoneStatus, NavigationConfirmationRequest, NavigationConfirmationResponse, OnResponseStoppedDetails, OpenPanelInfo, OpenSettingsOptions, PageMetadata, PanelOpeningData, PanelState, PdfDocumentData, PinCandidate, PinTabsOptions, Platform, ResumeActorTaskResult, Screenshot, ScrollToParams, SelectAutofillSuggestionsDialogRequest, SelectAutofillSuggestionsDialogResponse, SelectCredentialDialogRequest, SelectCredentialDialogResponse, Skill, SkillPreview, SkillsWebClientEvent, TabContextOptions, TabContextResult, TabData, TaskOptions, UnpinTabsOptions, UpdateSkillRequest, UserConfirmationDialogRequest, UserConfirmationDialogResponse, UserProfileInfo, WebClientMode, ZeroStateSuggestions, ZeroStateSuggestionsOptions, ZeroStateSuggestionsV2} from '../glic_api/glic_api.js';
 
 /*
 This file defines messages sent over postMessage in-between the Glic WebUI
@@ -44,6 +44,9 @@ export declare type HostRequestTypes = ValidateRequestMap<{
   // This message is sent just before calling initialize() on the web client.
   // It is not part of the GlicBrowserHost public API.
   glicBrowserWebClientCreated: {
+    request: {
+      clientCapabilities: ClientCapabilities[],
+    },
     response: {
       initialState: WebClientInitialStatePrivate,
     },
@@ -201,6 +204,7 @@ export declare type HostRequestTypes = ValidateRequestMap<{
   glicBrowserInterruptActorTask: {
     request: {
       taskId: number,
+      interruptReason?: ActorTaskInterruptReason,
     },
     backgroundAllowed: true,
   },
@@ -433,6 +437,12 @@ export declare type HostRequestTypes = ValidateRequestMap<{
   glicBrowserOnClosedCaptionsShown: {
     backgroundAllowed: true,
   },
+  glicBrowserOnActionSubmitted: {
+    request: {
+      isRetry?: boolean,
+    },
+    backgroundAllowed: true,
+  },
   glicBrowserScrollTo: {
     request: {
       params: ScrollToParams,
@@ -540,6 +550,13 @@ export declare type HostRequestTypes = ValidateRequestMap<{
     },
     backgroundAllowed: true,
   },
+  glicBrowserDeleteCapturedRegion: {
+    request: {
+      tabId: string,
+      regionId: string,
+    },
+    backgroundAllowed: true,
+  },
 
   glicBrowserGetZeroStateSuggestionsForFocusedTab: {
     request: {
@@ -593,6 +610,14 @@ export declare type HostRequestTypes = ValidateRequestMap<{
     backgroundAllowed: true,
   },
   glicBrowserSubscribeToTabData: {
+    request: {
+      tabId: string,
+      observationId: number,
+      cancel: boolean,
+    },
+    backgroundAllowed: true,
+  },
+  glicBrowserSubscribeToTabFavicon: {
     request: {
       tabId: string,
       observationId: number,
@@ -875,6 +900,15 @@ export declare type WebClientRequestTypes = ValidateRequestMap<{
     },
     backgroundAllowed: true,
   },
+  glicWebClientTabFaviconChanged: {
+    request: {
+      observationId: number,
+      // If true, the tab was removed and no more updates will be received.
+      tabRemoved?: boolean,
+      favicon?: RgbaImage,
+    },
+    backgroundAllowed: true,
+  },
   glicWebClientInvoke: {
     request: {
       options: InvokeOptionsPrivate,
@@ -987,6 +1021,9 @@ export const HOST_REQUEST_TYPES: HostRequestEnumNamesType&{MAX_VALUE: number} =
         AutofillSuggestionDialogOnFormConfirmed: 89,
         OnMicrophoneStatusChange: 90,
         RecordSkillsWebClientEvent: 91,
+        DeleteCapturedRegion: 92,
+        OnActionSubmitted: 93,
+        SubscribeToTabFavicon: 94,
       };
       return {...result, MAX_VALUE: Math.max(...Object.values(result))};
     })();
@@ -1081,7 +1118,6 @@ export type WebClientInitialStatePrivate =
       enableZeroStateSuggestions: boolean,
       enableCachedGetUserProfileInfo: boolean,
       hostCapabilities: HostCapability[],
-      rgbaToBmp: boolean,
     }>;
 
 // TabData format for postMessage transport.
@@ -1113,6 +1149,7 @@ export enum ImageAlphaType {
 // Chromium currently only uses a single color type for BitmapN32.
 export enum ImageColorType {
   BGRA = 0,
+  RGBA = 1,
 }
 
 // FocusedTabData data for postMessage transport.

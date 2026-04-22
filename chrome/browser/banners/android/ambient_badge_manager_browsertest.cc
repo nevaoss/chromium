@@ -32,6 +32,7 @@
 
 using ::base::android::AttachCurrentThread;
 using ::base::android::ScopedJavaGlobalRef;
+using ::base::android::ScopedJavaLocalRef;
 using ::base::test::RunOnceCallback;
 using testing::_;
 
@@ -120,13 +121,17 @@ class TestAppBannerManager : public AppBannerManagerAndroid {
     ambient_badge_test_->WaitForState(target_badge_state_,
                                       std::move(on_badge_done_));
 
-    auto native_java_app_data = ScopedJavaGlobalRef<jobject>(
-        AttachCurrentThread(), GetNativeJavaAppDataForTesting());
+    JNIEnv* env = AttachCurrentThread();
+    ScopedJavaLocalRef<jobject> native_java_app_data =
+        GetNativeJavaAppData(env);
+    auto global_native_java_app_data =
+        ScopedJavaGlobalRef<jobject>(env, native_java_app_data);
+
+    WebappInstallSource install_source = InstallableMetrics::GetInstallSource(
+        &GetWebContents(), InstallTrigger::AMBIENT_BADGE);
     std::unique_ptr<AddToHomescreenParams> a2hs_params =
         AppBannerManagerAndroid::CreateAddToHomescreenParams(
-            install_config, native_java_app_data,
-            InstallableMetrics::GetInstallSource(
-                &GetWebContents(), InstallTrigger::AMBIENT_BADGE));
+            install_config, global_native_java_app_data, install_source);
 
     ambient_badge_test_->MaybeShow(
         install_config.validated_url, install_config.GetWebOrNativeAppName(),
@@ -136,7 +141,7 @@ class TestAppBannerManager : public AppBannerManagerAndroid {
                        GetAndroidWeakPtr(), install_config),
         // Create the params, then pass them to MaybeShow.
         base::BindOnce(&AppBannerManagerAndroid::CreateAddToHomescreenParams,
-                       install_config, native_java_app_data)
+                       install_config, global_native_java_app_data)
             .Then(base::BindOnce(
                 &PwaBottomSheetController::MaybeShow,
                 app_banner_manager()->web_contents(),

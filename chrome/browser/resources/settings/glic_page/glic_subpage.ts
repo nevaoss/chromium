@@ -11,6 +11,7 @@ import 'chrome://resources/cr_elements/cr_expand_button/cr_expand_button.js';
 import 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
 import '../icons.html.js';
 import '../settings_page/settings_subpage.js';
+import './glic_login_permissions_page.js';
 // <if expr="_google_chrome">
 import '../internal/icons.html.js';
 
@@ -31,6 +32,8 @@ import {AiPageActions} from '../ai_page/constants.js';
 import type {SettingsToggleButtonElement} from '../controls/settings_toggle_button.js';
 import type {MetricsBrowserProxy} from '../metrics_browser_proxy.js';
 import {MetricsBrowserProxyImpl} from '../metrics_browser_proxy.js';
+import {routes} from '../route.js';
+import {Router} from '../router.js';
 import {SettingsViewMixin} from '../settings_page/settings_view_mixin.js';
 
 import type {GlicBrowserProxy} from './glic_browser_proxy.js';
@@ -48,6 +51,7 @@ export enum SettingsGlicPageFeaturePrefName {
   USER_STATUS = 'glic.user_status',
   DEFAULT_TAB_CONTEXT_ENABLED = 'glic.default_tab_context_enabled',
   WEB_ACTUATION_ENABLED = 'glic.user_enabled_actuation_on_web',
+  EXPERIMENTAL_TRIGGERING_ENABLED = 'glic.experimental_triggering_enabled',
   KEEP_SIDEPANEL_OPEN_ON_NEW_TABS_ENABLED =
       'glic.keep_sidepanel_open_on_new_tabs_enabled',
 }
@@ -91,6 +95,11 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
         value: '',
       },
 
+      registeredSelectionShortcut_: {
+        type: String,
+        value: '',
+      },
+
       tabAccessToggleExpanded_: {
         type: Boolean,
         value: false,
@@ -101,11 +110,11 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
       // real pref which could be either value.
       fakePref_: {
         type: Object,
-        value: {
+        value: () => ({
           key: 'glic.fake_pref',
           type: chrome.settingsPrivate.PrefType.BOOLEAN,
           value: 0,
-        },
+        }),
       },
 
       closedCaptionsToggleEnabled_: {
@@ -128,10 +137,20 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
             loadTimeData.getBoolean('glicUserStatusCheckFeatureEnabled'),
       },
 
+      glicSelectionFeatureEnabled_: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('glicSelectionFeatureEnabled'),
+      },
+
       showGlicDefaultTabContextSetting_: {
         type: Boolean,
         value: () =>
             loadTimeData.getBoolean('showGlicDefaultTabContextSetting'),
+      },
+
+      showGlicExperimentalTriggering_: {
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('showGlicExperimentalTriggering'),
       },
 
       showGlicPersonalContextLink_: {
@@ -218,10 +237,7 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
 
       webActuationFeatureEnabled_: {
         type: Boolean,
-        value: () => {
-          return loadTimeData.getBoolean('glicWebActuationFeatureEnabled') &&
-              loadTimeData.getBoolean('glicActorEnabled');
-        },
+        value: false,
       },
 
       isWebActuationDisabledForEnterprise_: {
@@ -259,7 +275,12 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
         type: String,
         computed: `computeWebActuationLearnMoreUrl_(prefs.${
             SettingsGlicPageFeaturePrefName.USER_STATUS}.value)`,
+      },
 
+      actorLoginFederatedLoginSupportEnabled_: {
+        type: Boolean,
+        value: () =>
+            loadTimeData.getBoolean('actorLoginFederatedLoginSupportEnabled'),
       },
     };
   }
@@ -281,10 +302,12 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
 
   private shortcutInput_: string;
   private focusToggleShortcutInput_: string;
+  private selectionShortcutInput_: string;
   private removedShortcut_: string|null = null;
   declare private disallowedByAdmin_: boolean;
   declare private registeredShortcut_: string;
   declare private registeredFocusToggleShortcut_: string;
+  declare private registeredSelectionShortcut_: string;
   declare private fakePref_: chrome.settingsPrivate.PrefObject;
   private browserProxy_: GlicBrowserProxy = GlicBrowserProxyImpl.getInstance();
   private metricsBrowserProxy_: MetricsBrowserProxy =
@@ -294,7 +317,9 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
   declare private closedCaptionsToggleEnabled_: boolean;
   declare private glicExtensionsFeatureEnabled_: boolean;
   declare private glicUserStatusCheckFeatureEnabled_: boolean;
+  declare private glicSelectionFeatureEnabled_: boolean;
   declare private showGlicDefaultTabContextSetting_: boolean;
+  declare private showGlicExperimentalTriggering_: boolean;
   declare private showGlicPersonalContextLink_: boolean;
   declare private showGlicInstructionLink_: boolean;
   declare private showGlicKeepSidepanelOpenOnNewTabsSetting_: boolean;
@@ -315,6 +340,7 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
   declare private webActuationDisabledForEnterprisePref_:
       chrome.settingsPrivate.PrefObject<boolean>;
   declare private webActuationEnabledExpanded_: boolean;
+  declare private actorLoginFederatedLoginSupportEnabled_: boolean;
 
   override async connectedCallback() {
     super.connectedCallback();
@@ -327,9 +353,21 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
         'glic-web-actuation-capability-changed',
         (canActOnWeb: boolean) =>
             this.onWebActuationCapabilityChanged_(canActOnWeb));
+    this.addWebUiListener(
+        'glic-web-actuation-toggle-visibility-changed',
+        (visible: boolean) =>
+            this.onWebActuationToggleVisibilityChanged_(visible));
+
+    this.browserProxy_.getWebActuationToggleVisibility().then(
+        (visible: boolean) => {
+            this.onWebActuationToggleVisibilityChanged_(visible);
+        });
+
     this.registeredShortcut_ = await this.browserProxy_.getGlicShortcut();
     this.registeredFocusToggleShortcut_ =
         await this.browserProxy_.getGlicFocusToggleShortcut();
+    this.registeredSelectionShortcut_ =
+        await this.browserProxy_.getGlicSelectionShortcut();
     await CrSettingsPrefs.initialized;
   }
 
@@ -401,6 +439,15 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
     this.metricsBrowserProxy_.recordBooleanHistogram(
         'Glic.Focus.Settings.Shortcut.Customized',
         !!this.focusToggleShortcutInput_);
+  }
+
+  private async onSelectionShortcutUpdated_(event: CustomEvent<string>) {
+    this.selectionShortcutInput_ = event.detail;
+    await this.browserProxy_.setGlicSelectionShortcut(
+        this.selectionShortcutInput_);
+    this.registeredSelectionShortcut_ =
+        await this.browserProxy_.getGlicSelectionShortcut();
+    this.hideHelpBubble(OS_WIDGET_KEYBOARD_SHORTCUT_ELEMENT_ID);
   }
 
   // Records whether the shortcut enablement state transitioned from disabled to
@@ -480,6 +527,10 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
   private onActivityRowClick_() {
     OpenWindowProxyImpl.getInstance().openUrl(
         this.i18n('glicActivityButtonUrl'));
+  }
+
+  private onActorLoginPermissionsRowClick_() {
+    Router.getInstance().navigateTo(routes.GEMINI_LOGIN);
   }
 
   private onExtensionsRowClick_() {
@@ -607,6 +658,15 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
     this.shadowRoot!.querySelector('settings-subpage')!.focusBackButton();
   }
 
+  // SettingsViewMixin implementation.
+  override getAssociatedControlFor(childViewId: string): HTMLElement {
+    assert(childViewId === 'geminiLoginPermissions');
+    const element = this.shadowRoot!.querySelector<HTMLElement>(
+        '#actorLoginPermissionsButton');
+    assert(element);
+    return element;
+  }
+
   private onWebActuationToggleChange_(event: CustomEvent) {
     const target = event.target as SettingsToggleButtonElement;
     const enabled = target.checked;
@@ -637,6 +697,10 @@ export class SettingsGlicSubpageElement extends SettingsGlicSubpageElementBase {
     if (this.isWebActuationDisabledForEnterprise_) {
       this.webActuationEnabledExpanded_ = false;
     }
+  }
+
+  private onWebActuationToggleVisibilityChanged_(visible: boolean) {
+    this.webActuationFeatureEnabled_ = visible;
   }
 }
 

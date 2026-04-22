@@ -12,14 +12,14 @@ import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 
 import type {ComposeboxFile} from './common.js';
-import {ContextUploadStatus} from './composebox_query.mojom-webui.js';
+import {ContextUploadStatus, InputType} from './composebox_query.mojom-webui.js';
 import {getCss} from './file_thumbnail.css.js';
 import {getHtml} from './file_thumbnail.html.js';
 
 export interface ComposeboxFileThumbnailElement {
   $: {
     removeImgButton: HTMLElement,
-    removePdfButton: HTMLElement,
+    removeDocumentButton: HTMLElement,
     removeTabButton: HTMLElement,
   };
 }
@@ -50,6 +50,7 @@ export class ComposeboxFileThumbnailElement extends CrLitElement {
   accessor file: ComposeboxFile = {
     name: '',
     type: '',
+    inputType: InputType.kLensFile,
     objectUrl: null,
     dataUrl: null,
     uuid: '',
@@ -61,7 +62,19 @@ export class ComposeboxFileThumbnailElement extends CrLitElement {
     supportsUnimodal: true,
   };
 
+  getIsUploadingForTesting(): boolean {
+    return this.isUploading_;
+  }
+
+  protected lensSendRawFileMediaTypesEnabled_: boolean =
+      loadTimeData.getBoolean('lensSendRawFileMediaTypesEnabled');
+
   protected accessor isUploading_: boolean = false;
+
+  protected get usePdfIcon_(): boolean {
+    return !this.lensSendRawFileMediaTypesEnabled_ ||
+        this.file.type === 'pdf' || this.file.type === 'application/pdf';
+  }
 
   override willUpdate(changedProperties: PropertyValues<this>) {
     super.willUpdate(changedProperties);

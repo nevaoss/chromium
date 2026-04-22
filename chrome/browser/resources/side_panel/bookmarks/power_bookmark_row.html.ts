@@ -38,7 +38,7 @@ ${this.shouldExpand_() ? html`
     </power-bookmark-row-item>
   </cr-expand-button>
   ${this.toggleExpand ? html`
-    ${this.sortedChildren.map(item => html`
+    ${this.bookmark.children!.map(item => html`
       <power-bookmark-row
           id="bookmark-${item.id}"
           .bookmark="${item}"
@@ -51,13 +51,13 @@ ${this.shouldExpand_() ? html`
           .renamingId="${this.renamingId}"
           .imageUrls="${this.imageUrls}"
           .shoppingCollectionFolderId="${this.shoppingCollectionFolderId}"
-          .draggable="${String(this.canDrag)}"
+          ?draggable="${this.canDrag}"
           ?can-drag="${this.canDrag}"
           ?has-active-drag="${this.hasActiveDrag}"
           .activeFolderPath="${this.activeFolderPath}"
           .contextMenuBookmark="${this.contextMenuBookmark}"
           .activeSortIndex="${this.activeSortIndex}"
-          ?has-folders="${true}">
+          has-folders>
       </power-bookmark-row>
     `)}
   `: ''}

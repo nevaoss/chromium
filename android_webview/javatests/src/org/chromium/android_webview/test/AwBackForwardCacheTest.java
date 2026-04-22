@@ -135,6 +135,31 @@ public class AwBackForwardCacheTest extends AwParameterizedTest {
                 true, pageFullyLoadedFuture.get(SCALED_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS));
     }
 
+    private void navigateForwardToUrl(String url) throws Throwable {
+        // Create a new future to avoid the future set in the initial load.
+        SettableFuture<Boolean> pageFullyLoadedFuture = SettableFuture.create();
+        mLoadedNotifier.setFuture(pageFullyLoadedFuture);
+        // Traditionally we use onPageFinishedHelper which is no longer
+        // valid with BFCache working.
+        // The onPageFinishedHelper is called in `DidFinishLoad` callback
+        // in the web contents observer. If the page is restored from the
+        // BFCache, this function will not get called since the onload event
+        // is already fired when the page was navigated into for the first time.
+        // We use onPageStartedHelper instead. This function correspond to
+        // `didFinishNavigationInPrimaryMainFrame`.
+        OnPageStartedHelper startHelper = mContentsClient.getOnPageStartedHelper();
+        int originalCallCount = startHelper.getCallCount();
+        HistoryUtils.goForwardSync(
+                InstrumentationRegistry.getInstrumentation(),
+                mAwContents.getWebContents(),
+                startHelper);
+        Assert.assertEquals(startHelper.getUrl(), url);
+        Assert.assertEquals(startHelper.getCallCount(), originalCallCount + 1);
+        // Wait for the page to be fully loaded
+        Assert.assertEquals(
+                true, pageFullyLoadedFuture.get(SCALED_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS));
+    }
+
     private void navigateForwardAndBack() throws Throwable {
         navigateForward();
         navigateBack();
@@ -267,6 +292,56 @@ public class AwBackForwardCacheTest extends AwParameterizedTest {
         // Verify that BFCache still works for subsequent navigations.
         navigateForwardAndBack();
         Assert.assertTrue(isPageShowPersisted());
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    public void testBFCacheWithKeepForwardEntries() throws Exception, Throwable {
+        mAwContents.getSettings().setBackForwardCacheEnabled(true);
+
+        mAwContents.getSettings().setBackForwardCacheMaxPagesInCache(3);
+        mAwContents.getSettings().setBackForwardCacheTimeoutInSeconds(600);
+        mAwContents.getSettings().setBackForwardCacheKeepForwardEntries(true);
+
+        // Navigate to the initial page.
+        mActivityTestRule.loadUrlSync(
+                mAwContents, mContentsClient.getOnPageFinishedHelper(), mInitialUrl);
+
+        // Navigate forward and back. The page should be restored from BFCache.
+        navigateForwardAndBack();
+        Assert.assertEquals("\"null\"", getNotRestoredReasons());
+        Assert.assertTrue(isPageShowPersisted());
+
+        // Navigate forward again to mForwardUrl. The page should be restored from BFCache.
+        navigateForwardToUrl(mForwardUrl);
+        Assert.assertEquals("\"null\"", getNotRestoredReasons());
+        Assert.assertTrue(isPageShowPersisted());
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    public void testBFCacheWithKeepForwardEntriesDisabled() throws Exception, Throwable {
+        mAwContents.getSettings().setBackForwardCacheEnabled(true);
+
+        mAwContents.getSettings().setBackForwardCacheMaxPagesInCache(3);
+        mAwContents.getSettings().setBackForwardCacheTimeoutInSeconds(600);
+        mAwContents.getSettings().setBackForwardCacheKeepForwardEntries(false);
+
+        // Navigate to the initial page.
+        mActivityTestRule.loadUrlSync(
+                mAwContents, mContentsClient.getOnPageFinishedHelper(), mInitialUrl);
+
+        // Navigate forward and back. The page should be restored from BFCache.
+        navigateForwardAndBack();
+        Assert.assertEquals("\"null\"", getNotRestoredReasons());
+        Assert.assertTrue(isPageShowPersisted());
+
+        // Navigate forward again to mForwardUrl. The page should NOT be restored from BFCache.
+        navigateForwardToUrl(mForwardUrl);
+        Assert.assertNotEquals("\"null\"", getNotRestoredReasons());
+        Assert.assertFalse(isPageShowPersisted());
     }
 
     @Test
@@ -719,5 +794,72 @@ public class AwBackForwardCacheTest extends AwParameterizedTest {
         // Test BFCache can still work for future navigations
         navigateForwardAndBack();
         Assert.assertTrue(isPageShowPersisted());
+    }
+
+    /**
+     * Regression test for https://crbug.com/390075233. Tests that the scroll position is preserved
+     * when the page is restored from back-forward cache.
+     */
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    public void testBfcacheScrollPreservation() throws Exception, Throwable {
+        mAwContents.getSettings().setBackForwardCacheEnabled(true);
+
+        mActivityTestRule.loadUrlSync(
+                mAwContents, mContentsClient.getOnPageFinishedHelper(), mInitialUrl);
+        mActivityTestRule.executeJavaScriptAndWaitForResult(
+                mAwContents, mContentsClient, "document.body.style.height = '2000px';");
+
+        // Scroll to a position in the middle of the page.
+        final double targetScrollY = 500.0;
+        mActivityTestRule.executeJavaScriptAndWaitForResult(
+                mAwContents, mContentsClient, "window.scrollTo(0, " + targetScrollY + ");");
+
+        // Verify that the scroll position is set to the target scroll position.
+        double initialScroll =
+                Double.parseDouble(
+                        mActivityTestRule.executeJavaScriptAndWaitForResult(
+                                mAwContents, mContentsClient, "window.scrollY"));
+        // Use a delta of 1.0 to handle subpixel precision in scroll offsets.
+        Assert.assertEquals(targetScrollY, initialScroll, 1.0);
+
+        // Navigate forward and back to restore the page from back-forward cache.
+        navigateForwardAndBack();
+
+        // Verify that the page is restored from back-forward cache.
+        Assert.assertEquals("\"null\"", getNotRestoredReasons());
+        Assert.assertTrue(isPageShowPersisted());
+
+        // Verify that the scroll position is preserved.
+        double restoredScroll =
+                Double.parseDouble(
+                        mActivityTestRule.executeJavaScriptAndWaitForResult(
+                                mAwContents, mContentsClient, "window.scrollY"));
+        // Use a delta of 1.0 to handle subpixel precision in scroll offsets.
+        Assert.assertEquals(
+                "Scroll position should be preserved", targetScrollY, restoredScroll, 1.0);
+
+        // Verify that the scroll position is preserved even after a frame.
+        mActivityTestRule.executeJavaScriptAndWaitForResult(
+                mAwContents,
+                mContentsClient,
+                "window.afterFrameScroll = -1;"
+                        + "requestAnimationFrame(() => {"
+                        + "  window.afterFrameScroll = window.scrollY;"
+                        + "});");
+        org.chromium.base.test.util.CriteriaHelper.pollInstrumentationThread(
+                () -> {
+                    String val =
+                            mActivityTestRule.executeJavaScriptAndWaitForResult(
+                                    mAwContents, mContentsClient, "window.afterFrameScroll");
+                    return !val.equals("-1");
+                });
+        double restoredScrollAfterFrame =
+                Double.parseDouble(
+                        mActivityTestRule.executeJavaScriptAndWaitForResult(
+                                mAwContents, mContentsClient, "window.afterFrameScroll"));
+        // Use a delta of 1.0 to handle subpixel precision in scroll offsets.
+        Assert.assertEquals(targetScrollY, restoredScrollAfterFrame, 1.0);
     }
 }

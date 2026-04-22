@@ -45,6 +45,10 @@ class AimEligibilityServiceFriend {
         response, AimEligibilityService::EligibilityResponseSource::kUser,
         AimEligibilityService::AuthenticationMethod::kNone);
   }
+
+  static bool IsIetfBcp47(const std::string& locale) {
+    return AimEligibilityService::IsIetfBcp47(locale);
+  }
 };
 
 namespace {
@@ -66,7 +70,7 @@ class MockAimEligibilityServiceForInterception : public AimEligibilityService {
   ~MockAimEligibilityServiceForInterception() override = default;
 
   MOCK_METHOD(std::string, GetCountryCode, (), (const, override));
-  MOCK_METHOD(std::string, GetLocale, (), (const, override));
+  MOCK_METHOD(std::string, GetLocaleImpl, (), (const, override));
 
   void SetAimEligibilityResponse(omnibox::AimEligibilityResponse response) {
     AimEligibilityServiceFriend::UpdateMostRecentResponse(this, response);
@@ -195,7 +199,7 @@ TEST_F(AimEligibilityServiceTest, ClientLocaleParam) {
       {{"mode", "get_with_locale"}});
 
   // Set the locale.
-  EXPECT_CALL(*aim_eligibility_service_, GetLocale())
+  EXPECT_CALL(*aim_eligibility_service_, GetLocaleImpl())
       .WillRepeatedly(testing::Return("es-419"));
 
   // Trigger the request.
@@ -210,6 +214,18 @@ TEST_F(AimEligibilityServiceTest, ClientLocaleParam) {
   EXPECT_TRUE(
       net::GetValueForKeyInQuery(request->url, "client_locale", &value));
   EXPECT_EQ(value, "es-419");
+}
+
+TEST_F(AimEligibilityServiceTest, UdmParamAppended) {
+  test_url_loader_factory_.pending_requests()->clear();
+  aim_eligibility_service_->StartServerEligibilityRequestForDebugging();
+
+  const network::ResourceRequest* request =
+      &test_url_loader_factory_.GetPendingRequest(0)->request;
+  EXPECT_TRUE(request);
+  std::string value;
+  EXPECT_TRUE(net::GetValueForKeyInQuery(request->url, "udm", &value));
+  EXPECT_EQ(value, "50");
 }
 
 TEST_F(AimEligibilityServiceTest, RequestMode_Disabled) {
@@ -239,7 +255,7 @@ TEST_F(AimEligibilityServiceTest, RequestMode_GetWithLocale) {
       omnibox::kAimServerEligibilityIncludeClientLocale,
       {{"mode", "get_with_locale"}});
 
-  EXPECT_CALL(*aim_eligibility_service_, GetLocale())
+  EXPECT_CALL(*aim_eligibility_service_, GetLocaleImpl())
       .WillRepeatedly(testing::Return("es-419"));
 
   EXPECT_EQ(
@@ -265,7 +281,7 @@ TEST_F(AimEligibilityServiceTest, RequestMode_EnabledDefault) {
   feature_list.InitAndEnableFeature(
       omnibox::kAimServerEligibilityIncludeClientLocale);
 
-  EXPECT_CALL(*aim_eligibility_service_, GetLocale())
+  EXPECT_CALL(*aim_eligibility_service_, GetLocaleImpl())
       .WillRepeatedly(testing::Return("es-419"));
 
   // Default when enabled without params is now GetWithLocale.
@@ -293,7 +309,7 @@ TEST_F(AimEligibilityServiceTest, RequestMode_PostWithProto) {
       omnibox::kAimServerEligibilityIncludeClientLocale,
       {{"mode", "post_with_proto"}});
 
-  EXPECT_CALL(*aim_eligibility_service_, GetLocale())
+  EXPECT_CALL(*aim_eligibility_service_, GetLocaleImpl())
       .WillRepeatedly(testing::Return("es-419"));
 
   EXPECT_EQ(
@@ -326,11 +342,13 @@ TEST_F(AimEligibilityServiceTest, IsCobrowseEligible) {
 
   omnibox::AimEligibilityResponse response;
   response.set_is_cobrowse_eligible(true);
+  response.set_is_eligible(true);
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
   EXPECT_TRUE(aim_eligibility_service_->IsCobrowseEligible());
 
   omnibox::AimEligibilityResponse response2;
   response2.set_is_cobrowse_eligible(false);
+  response.set_is_eligible(true);
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response2));
   EXPECT_FALSE(aim_eligibility_service_->IsCobrowseEligible());
 }
@@ -345,8 +363,9 @@ TEST_F(AimEligibilityServiceTest, FetchEligibility) {
 
 TEST_F(AimEligibilityServiceTest, IsCobrowseEligible_FeatureDisabled) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      omnibox::kAimCoBrowseEligibilityCheckEnabled);
+  feature_list.InitWithFeatures({},
+                                {omnibox::kAimCoBrowseEligibilityCheckEnabled,
+                                 omnibox::kAimServerEligibilityEnabled});
 
   omnibox::AimEligibilityResponse response;
   response.set_is_cobrowse_eligible(false);
@@ -459,11 +478,13 @@ TEST_F(AimEligibilityServiceTest, IsFuseboxEligible_FeatureEnabled) {
       omnibox::kAimFuseboxEligibilityCheckEnabled);
 
   omnibox::AimEligibilityResponse response;
+  response.set_is_eligible(true);
   response.set_is_fusebox_eligible(true);
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
   EXPECT_TRUE(aim_eligibility_service_->IsFuseboxEligible());
 
   omnibox::AimEligibilityResponse response2;
+  response2.set_is_eligible(true);
   response2.set_is_fusebox_eligible(false);
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response2));
   EXPECT_FALSE(aim_eligibility_service_->IsFuseboxEligible());
@@ -471,13 +492,28 @@ TEST_F(AimEligibilityServiceTest, IsFuseboxEligible_FeatureEnabled) {
 
 TEST_F(AimEligibilityServiceTest, IsFuseboxEligible_FeatureDisabled) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      omnibox::kAimFuseboxEligibilityCheckEnabled);
+  feature_list.InitWithFeatures({},
+                                {omnibox::kAimFuseboxEligibilityCheckEnabled,
+                                 omnibox::kAimServerEligibilityEnabled});
 
   omnibox::AimEligibilityResponse response;
+  response.set_is_eligible(true);
   response.set_is_fusebox_eligible(false);
   aim_eligibility_service_->SetAimEligibilityResponse(std::move(response));
 
   // Should be true regardless of response if feature is disabled.
   EXPECT_TRUE(aim_eligibility_service_->IsFuseboxEligible());
+}
+
+TEST_F(AimEligibilityServiceTest, IsIetfBcp47) {
+  // Valid BCP 47 strings (no underscores)
+  EXPECT_TRUE(AimEligibilityServiceFriend::IsIetfBcp47("en"));
+  EXPECT_TRUE(AimEligibilityServiceFriend::IsIetfBcp47("en-US"));
+  EXPECT_TRUE(AimEligibilityServiceFriend::IsIetfBcp47("es-419"));
+  EXPECT_TRUE(AimEligibilityServiceFriend::IsIetfBcp47("sr-Latn-RS"));
+
+  // Invalid strings (contains underscores)
+  EXPECT_FALSE(AimEligibilityServiceFriend::IsIetfBcp47("en_US"));
+  EXPECT_FALSE(AimEligibilityServiceFriend::IsIetfBcp47("fr_CA"));
+  EXPECT_FALSE(AimEligibilityServiceFriend::IsIetfBcp47("sr_Latn_RS"));
 }

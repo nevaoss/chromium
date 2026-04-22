@@ -170,7 +170,7 @@ void AppRuntimeContentRendererClient::WillSendRequest(
         !file_access_controller->IsAccessAllowed(file_path, webview_info_)) {
       blink::WebConsoleMessage error_msg;
       error_msg.level = blink::mojom::ConsoleMessageLevel::kError;
-      error_msg.text = blink::WebString::FromASCII(
+      error_msg.text = blink::WebString::FromAscii(
           "Access is blocked to resource: " + target_url.GetString().Ascii());
       frame->AddMessageToConsole(error_msg);
 

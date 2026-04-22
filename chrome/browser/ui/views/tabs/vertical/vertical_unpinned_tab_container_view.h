@@ -43,6 +43,7 @@ class VerticalUnpinnedTabContainerView
   gfx::Size GetMinimumSize() const override;
 
   // TabCollectionAnimatingLayoutManager::Delegate:
+  bool IsDragging() const override;
   bool IsViewDragging(const views::View& child_view) const override;
   bool ShouldSnapToTarget(const views::View& child_view) const override;
   bool ShouldAnimateOpacityForAddAndRemove(
@@ -61,7 +62,8 @@ class VerticalUnpinnedTabContainerView
   void UpdateTargetLayoutForDrag(
       const std::vector<const views::View*>& views_to_snap) override;
   const views::ProposedLayout& GetLayoutForDrag() const override;
-  void HandleTabDragInContainer(const gfx::Rect& dragged_tab_bounds) override;
+  const TabCollectionNode* GetCollectionNodeFromView(
+      const views::View& view) const override;
 
   // Returns whether a drag that is currently being handled by the given
   // `group_view` should continue being handled by it.
@@ -70,7 +72,6 @@ class VerticalUnpinnedTabContainerView
                                const gfx::Point& point_in_screen) const;
 
   void ResetCollectionNode();
-  bool IsTabStripCollapsed() const;
 
   raw_ptr<TabCollectionNode> collection_node_;
   const raw_ref<TabCollectionAnimatingLayoutManager> layout_manager_;

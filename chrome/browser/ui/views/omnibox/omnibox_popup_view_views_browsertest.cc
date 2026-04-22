@@ -60,6 +60,10 @@
 #include "ui/views/widget/widget.h"
 #include "url/gurl.h"
 
+#if BUILDFLAG(IS_OZONE)
+#include "ui/ozone/public/ozone_platform.h"
+#endif
+
 #if defined(USE_AURA)
 #include "ui/aura/window.h"
 #endif
@@ -391,7 +395,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewViewsTest,
   EXPECT_EQ(observer.text_changed_on_listboxoption_count(), 0);
 
   edit_model()->SetUserText(u"bar");
-  edit_model()->StartAutocomplete(false, false);
+  edit_model()->StartAutocomplete(false);
   popup_view()->UpdatePopupAppearance();
   EXPECT_EQ(observer.text_changed_on_listboxoption_count(), 1);
   EXPECT_EQ(observer.selected_children_changed_count(), 1);
@@ -478,7 +482,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewViewsTest,
       matches);
   popup_view()->UpdatePopupAppearance();
   edit_model()->SetUserText(u"bar");
-  edit_model()->StartAutocomplete(false, false);
+  edit_model()->StartAutocomplete(false);
   popup_view()->UpdatePopupAppearance();
 
   edit_model()->SetPopupSelection(OmniboxPopupSelection(1));
@@ -720,7 +724,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewViewsTest, AccessibleResultName) {
       matches);
   popup_view()->UpdatePopupAppearance();
   edit_model()->SetUserText(u"bar");
-  edit_model()->StartAutocomplete(false, false);
+  edit_model()->StartAutocomplete(false);
   popup_view()->UpdatePopupAppearance();
 
   edit_model()->SetPopupSelection(OmniboxPopupSelection(1));
@@ -833,7 +837,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewViewsTest,
   location_bar()->GetOmniboxController()->client()->GetPrefs()->SetBoolean(
       omnibox::kKeywordSpaceTriggeringEnabled, true);
   omnibox_view()->SetUserText(u"@bookmarks");
-  edit_model()->StartAutocomplete(false, false);
+  edit_model()->StartAutocomplete(false);
   popup_view()->UpdatePopupAppearance();
 
   EXPECT_FALSE(edit_model()->is_keyword_selected());
@@ -890,7 +894,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewViewsTest,
 
   // Check accessibility when popup is open.
   ax_node_data_omnibox = ui::AXNodeData();
-  edit_model()->StartAutocomplete(false, false);
+  edit_model()->StartAutocomplete(false);
   omnibox_view()->GetViewAccessibility().GetAccessibleNodeData(
       &ax_node_data_omnibox);
   EXPECT_TRUE(controller()->IsPopupOpen());
@@ -932,7 +936,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupViewViewsTest, AccessibleControlIds) {
 
   // Check accessibility when popup is open.
   ax_node_data_omnibox = ui::AXNodeData();
-  edit_model()->StartAutocomplete(false, false);
+  edit_model()->StartAutocomplete(false);
   omnibox_view()->GetViewAccessibility().GetAccessibleNodeData(
       &ax_node_data_omnibox);
   EXPECT_TRUE(controller()->IsPopupOpen());
@@ -1101,4 +1105,36 @@ IN_PROC_BROWSER_TEST_F(OmniboxPopupSuggestionGroupHeadersTest,
     EXPECT_FALSE(popup_view()->header_view_at(2)->GetVisible());
     EXPECT_TRUE(popup_view()->result_view_at(2)->GetVisible());
   }
+}
+
+// Verifies that the TopChromeUI metrics are recorded for native UI.
+IN_PROC_BROWSER_TEST_F(OmniboxPopupViewViewsTest,
+                       EmitTopChromeWebUIMetricsNative) {
+#if BUILDFLAG(IS_OZONE)
+  // TODO(crbug.com/491337216): This is flaky on Wayland because presentation
+  // feedback can be dropped if it arrives before the submission ACK (race
+  // condition in GbmSurfacelessWayland).
+  if (ui::OzonePlatform::RunningOnWaylandForTest()) {
+    GTEST_SKIP()
+        << "Flaky on Wayland due to presentation feedback race condition.";
+  }
+#endif
+  base::HistogramTester histogram_tester;
+
+  CreatePopupForTestQuery();
+  popup_view()->UpdatePopupAppearance();
+
+  // For native popup, metrics are recorded via a presentation callback.
+  // Wait for the presentation to be processed.
+  base::RunLoop run_loop;
+  GetPopupWidget()
+      ->GetCompositor()
+      ->RequestSuccessfulPresentationTimeForNextFrame(
+          base::BindOnce(base::IgnoreArgs<const viz::FrameTimingDetails&>(
+              run_loop.QuitClosure())));
+  run_loop.Run();
+
+  // Check consolidated metric.
+  histogram_tester.ExpectTotalCount(
+      "TopChromeUI.OmniboxPopup.RequestToFirstContentfulPaint", 1);
 }

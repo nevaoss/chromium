@@ -14,9 +14,13 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
+#include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/browser/glic/common/future_browser_features.h"
+#include "chrome/browser/glic/host/context/glic_page_features_manager.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/common/chrome_features.h"
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/favicon/core/favicon_driver_observer.h"
@@ -56,6 +60,14 @@ std::string TabDataDebugString(const mojom::TabData& tab_data) {
   }
   if (tab_data.is_observable) {
     dict.Set("is_observable", *tab_data.is_observable);
+  }
+  if (tab_data.lightweight_page_features) {
+    base::ListValue features_list;
+    for (const mojom::LightweightPageFeature feature :
+         *tab_data.lightweight_page_features) {
+      features_list.Append(static_cast<int>(feature));
+    }
+    dict.Set("lightweight_page_features", std::move(features_list));
   }
   return dict.DebugString();
 }
@@ -121,11 +133,13 @@ TabDataObserver::TabDataObserver(
       tab_data_changed_(std::move(tab_data_changed)),
       tab_(tab) {
   if (web_contents) {
+#if !BUILDFLAG(IS_ANDROID)
     auto* favicon_driver =
         favicon::ContentFaviconDriver::FromWebContents(web_contents);
     if (favicon_driver) {
       favicon_driver->AddObserver(this);
     }
+#endif
     tab_detach_subscription_ = tab->RegisterWillDetach(base::BindRepeating(
         &TabDataObserver::OnTabWillDetach, base::Unretained(this)));
   }
@@ -141,6 +155,7 @@ void TabDataObserver::ClearObservation() {
   // observer if the web contents is destroyed.
   // Note, we do not used a scoped observation because there is no event
   // notifying us when a web contents is destroyed.
+#if !BUILDFLAG(IS_ANDROID)
   if (web_contents()) {
     auto* favicon_driver =
         favicon::ContentFaviconDriver::FromWebContents(web_contents());
@@ -148,6 +163,7 @@ void TabDataObserver::ClearObservation() {
       favicon_driver->RemoveObserver(this);
     }
   }
+#endif
   Observe(nullptr);
   deferred_update_.Stop();
   ReportUpdatesPerNavigation();
@@ -209,6 +225,7 @@ void TabDataObserver::SendUpdate() {
   change_causes_ = {};
 }
 
+#if !BUILDFLAG(IS_ANDROID)
 void TabDataObserver::OnFaviconUpdated(
     favicon::FaviconDriver* favicon_driver,
     NotificationIconType notification_icon_type,
@@ -218,6 +235,7 @@ void TabDataObserver::OnFaviconUpdated(
   change_causes_.Put(TabDataChangeCause::kFavicon);
   SendUpdate();
 }
+#endif
 
 void TabDataObserver::OnTabWillDetach(tabs::TabInterface* tab,
                                       tabs::TabInterface::DetachReason reason) {
@@ -256,9 +274,10 @@ glic::mojom::TabDataPtr CreateTabData(tabs::TabInterface* tab) {
   }
 
   SkBitmap favicon;
+  std::optional<GURL> favicon_url;
+#if !BUILDFLAG(IS_ANDROID)
   auto* favicon_driver =
       favicon::ContentFaviconDriver::FromWebContents(web_contents);
-  std::optional<GURL> favicon_url;
   if (favicon_driver && favicon_driver->FaviconIsValid()) {
     // Attempt to get a 32x32 favicon by default (16x16 DIP at 2x scale).
     favicon = favicon_driver->GetFavicon()
@@ -269,6 +288,7 @@ glic::mojom::TabDataPtr CreateTabData(tabs::TabInterface* tab) {
       favicon_url = GURL(skia::EncodePngAsDataUri(favicon.pixmap()));
     }
   }
+#endif
 
   // TODO(b/426644734): investigate triggering updates due to changes to
   // observability for focused tab data.
@@ -291,13 +311,21 @@ glic::mojom::TabDataPtr CreateTabData(tabs::TabInterface* tab) {
     is_window_active = true;
 #endif
   }
+  std::optional<std::vector<mojom::LightweightPageFeature>>
+      lightweight_page_features;
+  if (base::FeatureList::IsEnabled(features::kGlicSummarizeVideoSuggestion)) {
+    if (auto* manager = glic::GlicPageFeaturesManager::From(tab)) {
+      lightweight_page_features = manager->GetFeatures();
+    }
+  }
+
   return glic::mojom::TabData::New(
       GetTabId(web_contents),
       sessions::SessionTabHelper::IdForWindowContainingTab(web_contents).id(),
       GetTabUrl(web_contents), base::UTF16ToUTF8(web_contents->GetTitle()),
       favicon, favicon_url, web_contents->GetContentsMimeType(), is_observable,
       is_audible, is_tab_content_captured, is_active_in_window,
-      is_window_active);
+      is_window_active, std::move(lightweight_page_features));
 }
 
 // CreateFocusedTabData Implementation:

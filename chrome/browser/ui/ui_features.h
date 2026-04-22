@@ -33,7 +33,10 @@ BASE_DECLARE_FEATURE(kFewerUpdateConfirmations);
 BASE_DECLARE_FEATURE(kTabStripDeclutter);
 BASE_DECLARE_FEATURE(kGlassToolbar);
 
-BASE_DECLARE_FEATURE(kDetachedTabs);
+BASE_DECLARE_FEATURE(kImportExportFlags);
+
+BASE_DECLARE_FEATURE(kToolbarGlowUp);
+
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 
@@ -48,7 +51,6 @@ BASE_DECLARE_FEATURE(kExtensionsCollapseMainMenu);
 BASE_DECLARE_FEATURE(kInfobarRefresh);
 
 #if BUILDFLAG(IS_WIN)
-BASE_DECLARE_FEATURE(kOfferPinToTaskbarWhenSettingToDefault);
 BASE_DECLARE_FEATURE(kOfferPinToTaskbarInFirstRunExperience);
 BASE_DECLARE_FEATURE(kOfferPinToTaskbarInSettings);
 #endif
@@ -150,23 +152,34 @@ BASE_DECLARE_FEATURE(kPreloadTopChromeWebUILessNavigations);
 
 BASE_DECLARE_FEATURE(kPressAndHoldEscToExitBrowserFullscreen);
 
-BASE_DECLARE_FEATURE(kScrimForBrowserWindowModal);
+#if BUILDFLAG(IS_WIN)
+BASE_DECLARE_FEATURE(kProcessIsolationSettings);
+#endif  // BUILDFLAG(IS_WIN)
 
-BASE_DECLARE_FEATURE(kSideBySide);
+BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kShowDropTargetForTabDelay);
 
-BASE_DECLARE_FEATURE(kSideBySideLinkMenuNewBadge);
+// Overrides the `kSplitViewTabDraggingUpdates` feature flag if set.
+// The drop target is only shown if the mouse hasn't moved a certain distance
+// over a period of time. The timer and distance used scales linearly with the
+// size of the drop target.
+BASE_DECLARE_FEATURE(kSplitViewDragAndDropVelocity);
+BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kSplitViewDragAndDropMinDelay);
+BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kSplitViewDragAndDropMaxDelay);
+BASE_DECLARE_FEATURE_PARAM(int, kSplitViewDragAndDropMinDistanceThreshold);
+BASE_DECLARE_FEATURE_PARAM(int, kSplitViewDragAndDropMaxDistanceThreshold);
 
 BASE_DECLARE_FEATURE(kTabDuplicateMetrics);
 
 BASE_DECLARE_FEATURE(kTabGroupsCollapseFreezing);
-BASE_DECLARE_FEATURE(kTabGroupHoverCards);
 
 #if !BUILDFLAG(IS_ANDROID)
 // General improvements to tab group menus
-BASE_DECLARE_FEATURE(kTabGroupMenuImprovements);
-bool IsTabGroupMenuImprovementsEnabled();
+
 BASE_DECLARE_FEATURE(kTabGroupMenuMoreEntryPoints);
 bool IsTabGroupMenuMoreEntryPointsEnabled();
+
+BASE_DECLARE_FEATURE(kTabGroupHoverCards);
+bool IsTabGroupHoverCardsEnabled();
 
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -203,34 +216,6 @@ inline constexpr char kTabHoverCardAdditionalMaxWidthDelay[] =
 
 // If enabled, use desktop widget to show tab modal dialogs.
 BASE_DECLARE_FEATURE(kTabModalUsesDesktopWidget);
-
-BASE_DECLARE_FEATURE(kTabOrganization);
-bool IsTabOrganization();
-
-// The target (and minimum) interval between proactive nudge triggers. Measured
-// against a clock that only runs while Chrome is in the foreground.
-BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kTabOrganizationTriggerPeriod);
-
-// The base to use for the trigger logic's exponential backoff.
-BASE_DECLARE_FEATURE_PARAM(double, kTabOrganizationTriggerBackoffBase);
-
-// The minimum score threshold for proactive nudge triggering to occur.
-BASE_DECLARE_FEATURE_PARAM(double, kTabOrganizationTriggerThreshold);
-
-// The maximum sensitivity score for a tab to contribute to trigger scoring.
-BASE_DECLARE_FEATURE_PARAM(double, kTabOrganizationTriggerSensitivityThreshold);
-
-// Enable 'demo mode' for Tab Organization triggering, which triggers much more
-// predictably and frequently.
-BASE_DECLARE_FEATURE_PARAM(bool, KTabOrganizationTriggerDemoMode);
-
-BASE_DECLARE_FEATURE(kTabOrganizationAppMenuItem);
-
-BASE_DECLARE_FEATURE(kTabOrganizationModelStrategy);
-
-BASE_DECLARE_FEATURE(kTabOrganizationEnableNudgeForEnterprise);
-
-BASE_DECLARE_FEATURE(kTabOrganizationUserInstruction);
 
 BASE_DECLARE_FEATURE(kTearOffWebAppTabOpensWebAppWindow);
 
@@ -269,7 +254,6 @@ BASE_DECLARE_FEATURE(kWebUITabStripContextMenuAfterTap);
 
 // Cocoa to views migration.
 #if BUILDFLAG(IS_MAC)
-BASE_DECLARE_FEATURE(kViewsFirstRunDialog);
 BASE_DECLARE_FEATURE(kViewsJSAppModalDialog);
 #endif
 
@@ -283,10 +267,6 @@ BASE_DECLARE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection);
 
 // Feature for the promotion banner on the top of chrome://management page
 BASE_DECLARE_FEATURE(kEnableManagementPromotionBanner);
-
-// Enable display for the Chrome Enterprise Core promotion banner on
-// the chrome://policy page.
-BASE_DECLARE_FEATURE(kEnablePolicyPromotionBanner);
 
 // Controls whether a performance improvement in browser feature support
 // checking is enabled.
@@ -306,11 +286,7 @@ BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationZoom);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationFileSystemAccess);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationManagePasswords);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationCookieControls);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAutofillAddress);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationFind);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationCollaborationMessaging);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAutofillMandatoryReauth);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationClickToCall);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationSharingHub);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAiMode);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationVirtualCard);
@@ -332,6 +308,9 @@ BASE_DECLARE_FEATURE(kShowTabGroupsMacSystemMenu);
 // If enabled, the by date history will show in the side panel.
 BASE_DECLARE_FEATURE(kByDateHistoryInSidePanel);
 
+// If enabled, the "Tabs from other devices" side panel will be available.
+BASE_DECLARE_FEATURE(kTabsFromOtherDevicesSidePanel);
+
 // Controls whether to use the TabStrip browser api's controller.
 BASE_DECLARE_FEATURE(kTabStripBrowserApi);
 
@@ -352,6 +331,10 @@ bool IsWebUIPinnedToolbarActionsEnabled();
 
 bool IsWebUISplitTabsButtonEnabled();
 
+// Controls whether the WebUI version of the Avatar Button is used.
+BASE_DECLARE_FEATURE(kWebUIAvatarButton);
+bool IsWebUIAvatarButtonEnabled();
+
 bool IsWebUILocationBarEnabled();
 
 bool IsWebUIToolbarEnabled();
@@ -371,16 +354,14 @@ BASE_DECLARE_FEATURE(kAndroidAnimatedProgressBarInBrowser);
 bool IsAndroidAnimatedProgressBarInBrowserEnabled();
 #endif  // BUILDFLAG(IS_ANDROID)
 
-// Controls whether the updated What's New page is enabled.
-BASE_DECLARE_FEATURE(kWhatsNewDesktopRefresh);
+BASE_DECLARE_FEATURE(kAiOverlayDialog);
+BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogApiKey);
+BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogMockJsonPath);
 
 BASE_DECLARE_FEATURE(kTabGroupsFocusing);
 BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusingPinnedTabs);
+BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusingAutoClose);
 BASE_DECLARE_FEATURE_PARAM(bool, kTabGroupsFocusingDefaultToFocused);
-
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-BASE_DECLARE_FEATURE(kUpdaterUI);
-#endif
 
 }  // namespace features
 
