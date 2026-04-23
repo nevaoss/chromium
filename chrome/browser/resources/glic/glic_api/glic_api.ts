@@ -575,6 +575,8 @@ export declare interface GlicBrowserHost {
   /**
    * Requests that the web client's panel be detached from a browser window
    * (floats free).
+   *
+   * @throws {Error} If NO_LIVE_MODE is enabled.
    */
   detachPanel?(): void;
 

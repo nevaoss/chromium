@@ -4,9 +4,12 @@
 
 #import "ios/chrome/browser/cobrowse/coordinator/assistant_aim_coordinator.h"
 
+#import <vector>
+
 #import "ios/chrome/browser/assistant/coordinator/assistant_container_commands.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_delegate.h"
 #import "ios/chrome/browser/assistant/ui/assistant_container_detent.h"
+#import "ios/chrome/browser/assistant/ui/assistant_container_view_controller.h"
 #import "ios/chrome/browser/cobrowse/coordinator/assistant_aim_mediator.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_browser_agent.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
@@ -27,13 +30,35 @@
                                        AssistantContainerDelegate,
                                        AssistantAIMMediatorDelegate,
                                        TabGridStateObserver>
+
+// Returns whether the tab grid is currently visible.
+- (BOOL)isTabGridVisible;
+
 @end
+
+namespace {
+
+class AssistantAIMUIStateProvider
+    : public CobrowseBrowserAgent::UIStateProvider {
+ public:
+  explicit AssistantAIMUIStateProvider(AssistantAIMCoordinator* coordinator)
+      : coordinator_(coordinator) {}
+
+  bool IsTabGridVisible() override { return [coordinator_ isTabGridVisible]; }
+
+ private:
+  __weak AssistantAIMCoordinator* coordinator_;
+};
+
+}  // namespace
 
 @implementation AssistantAIMCoordinator {
   AssistantAIMViewController* _viewController;
   AssistantAIMMediator* _mediator;
   ComposeboxInputPlateCoordinator* _inputPlateCoordinator;
   ComposeboxModeHolder* _modeHolder;
+  std::unique_ptr<AssistantAIMUIStateProvider> _uiStateProvider;
+  AssistantContainerDetent _currentDetent;
 
   // Handler for container related interactions.
   __weak id<AssistantContainerCommands> _containerHandler;
@@ -42,11 +67,18 @@
 
 - (void)start {
   CHECK(IsAimCobrowseEnabled());
+  _currentDetent = AssistantContainerDetent::kMinimized;
   if (self.browser->GetProfile()->IsOffTheRecord()) {
     return;
   }
 
   [self.browser->GetSceneState().tabGridState addObserver:self];
+
+  CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
+  if (agent) {
+    _uiStateProvider = std::make_unique<AssistantAIMUIStateProvider>(self);
+    agent->SetUIStateProvider(_uiStateProvider.get());
+  }
 
   _viewController = [[AssistantAIMViewController alloc] init];
   _viewController.delegate = self;
@@ -58,7 +90,6 @@
                                               delegate:self];
 
   web::WebState::CreateParams params(self.browser->GetProfile());
-  CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
   CobrowseContext* context = agent ? agent->GetCobrowseContext() : nil;
   if (!context) {
     context = [CobrowseContext defaultContext];
@@ -92,6 +123,12 @@
 - (void)stop {
   [self.browser->GetSceneState().tabGridState removeObserver:self];
 
+  CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
+  if (agent) {
+    agent->SetUIStateProvider(nullptr);
+  }
+  _uiStateProvider.reset();
+
   [_mediator disconnect];
   _mediator = nil;
 
@@ -103,6 +140,12 @@
     _viewController = nil;
     [self dismissAssistantContainerAnimated:NO];
   }
+}
+
+#pragma mark - CobrowseBrowserAgent::UIStateProvider
+
+- (BOOL)isTabGridVisible {
+  return self.browser->GetSceneState().tabGridState.tabGridVisible;
 }
 
 #pragma mark - TabGridStateObserver
@@ -150,13 +193,6 @@
   [_inputPlateCoordinator endEditing];
 }
 
-#pragma mark - AssistantContainerDelegate
-
-- (void)assistantContainer:(AssistantContainerViewController*)container
-      didDisappearAnimated:(BOOL)animated {
-  [self stop];
-}
-
 #pragma mark - Private
 
 // Dismisses the assistant container safely.
@@ -176,6 +212,11 @@
 #pragma mark - AssistantContainerDelegate
 
 - (void)assistantContainer:(AssistantContainerViewController*)container
+      didDisappearAnimated:(BOOL)animated {
+  [self stop];
+}
+
+- (void)assistantContainer:(AssistantContainerViewController*)container
     didUpdateExpandPercentage:(CGFloat)percentage {
   [_viewController adjustForContainerOpenPercentage:percentage];
 }
@@ -189,6 +230,7 @@
 
 - (void)assistantContainer:(AssistantContainerViewController*)container
            didChangeDetent:(AssistantContainerDetent)newDetent {
+  _currentDetent = newDetent;
   // Attempt to dismiss the keyboard when the sheet is collapsing.
   if (newDetent == AssistantContainerDetent::kMedium) {
     [_inputPlateCoordinator endEditing];
@@ -199,6 +241,17 @@
 
 - (void)assistantAIMMediatorDidLoadQuery:(AssistantAIMMediator*)mediator {
   [_inputPlateCoordinator endEditing];
+}
+
+- (BOOL)assistantContainer:(AssistantContainerViewController*)container
+     shouldPauseScrollView:(UIScrollView*)scrollView
+                forGesture:(UIGestureRecognizer*)otherGesture {
+  const std::vector<AssistantContainerDetent>& detents = container.detents;
+  BOOL isInLargestDetent = (_currentDetent == detents.back());
+
+  return [_viewController shouldPauseScrollView:scrollView
+                                     forGesture:otherGesture
+                              isInLargestDetent:isInLargestDetent];
 }
 
 @end

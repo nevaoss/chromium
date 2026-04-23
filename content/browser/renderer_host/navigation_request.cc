@@ -127,6 +127,7 @@
 #include "content/public/browser/commit_deferring_condition.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/cookie_access_details.h"
+#include "content/public/browser/direct_sockets_delegate.h"
 #include "content/public/browser/global_request_id.h"
 #include "content/public/browser/isolated_context_util.h"
 #include "content/public/browser/navigation_controller.h"
@@ -460,16 +461,6 @@ void AddAdditionalRequestHeaders(
   if (frame_tree_node->frame_tree().is_prerendering()) {
     PrerenderHost::GetFromFrameTreeNode(*frame_tree_node)
         .AddAdditionalRequestHeaders(*headers, *frame_tree_node);
-  } else if (frame_tree_node->frame_tree()
-                 .page_delegate()
-                 ->IsPageInPreviewMode()) {
-    // Preview mode sends similar request so that it is compatible with
-    // prerendering as we can as possible, but adds `preview` for sites that
-    // need to identify the preview case from prerendering.
-    // Do not send the `Purpose` header as the preview mode is new and don't
-    // need to be careful about the compatibility breakage here.
-    headers->SetHeader(blink::kSecPurposeHeaderName,
-                       blink::kSecPurposePrefetchPrerenderPreviewHeaderValue);
   }
 }
 
@@ -2018,7 +2009,10 @@ NavigationRequest::NavigationRequest(
     // TODO(acolwell): Move this below so it can be enforced on all paths.
     // This requires auditing same-document and other navigations that don't
     // have |from_begin_navigation_| or |entry| set.
-    CHECK(!RequiresInitiatorBasedSourceSiteInstance() || source_site_instance_);
+    // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK once
+    // we are sure this isn't hit.
+    DCHECK(!RequiresInitiatorBasedSourceSiteInstance() ||
+           source_site_instance_);
   }
 
   // Let the NTP override the navigation params and pretend that this is a
@@ -7446,12 +7440,8 @@ void NavigationRequest::UpdateNavigationHandleTimingsOnResponseReceived(
         .max_stream_limit_pending_delay =
             response_head_->load_timing_internal_info
                 ->max_stream_limit_pending_delay,
-        .resolution_source =
-            response_head_->load_timing_internal_info->resolution_details
-                    .has_value()
-                ? std::make_optional(response_head_->load_timing_internal_info
-                                         ->resolution_details->source)
-                : std::nullopt,
+        .resolution_details =
+            response_head_->load_timing_internal_info->resolution_details,
     };
   }
 
@@ -8876,9 +8866,14 @@ void NavigationRequest::DidCommitNavigation(
 
   if (!IsSameDocument() && IsInOutermostMainFrame() &&
       params.url.SchemeIsHTTPOrHTTPS()) {
+    const auto mode = GetBeforeUnloadExecutionMode();
+    const char kBaseName[] =
+        "Navigation.BeforeUnloadExecutionMode.IsInOutermostMainFrame";
+    base::UmaHistogramEnumeration(kBaseName, mode);
     base::UmaHistogramEnumeration(
-        "Navigation.BeforeUnloadExecutionMode.IsInOutermostMainFrame",
-        GetBeforeUnloadExecutionMode());
+        base::StrCat(
+            {kBaseName, IsSameOrigin() ? ".SameOrigin" : ".CrossOrigin"}),
+        mode);
   }
   TRACE_EVENT_INSTANT(
       "navigation", "BeforeUnloadExecutionMode", "BeforeUnloadExecutionMode",
@@ -9176,7 +9171,14 @@ void NavigationRequest::ReadyToCommitNavigation(bool is_error) {
   }
 
 #if !BUILDFLAG(IS_ANDROID)
-  if (IsIsolatedContext(GetRenderFrameHost()->GetProcess())) {
+  if (IsIsolatedContext(GetRenderFrameHost()->GetProcess()) ||
+      (origin_to_commit &&
+       GetContentClient()->browser()->GetDirectSocketsDelegate() &&
+       GetContentClient()
+           ->browser()
+           ->GetDirectSocketsDelegate()
+           ->AreDirectSocketsAllowed(GetRenderFrameHost()->GetBrowserContext(),
+                                     *origin_to_commit))) {
     GetMutableRuntimeFeatureStateContext().SetDirectSocketsEnabled(
         base::FeatureList::IsEnabled(blink::features::kDirectSockets));
   }
@@ -9600,7 +9602,9 @@ NavigationRequest::MakeDidCommitProvisionalLoadParamsForActivation() {
 
   CHECK_EQ(params->post_id, -1);
   params->navigation_token = commit_params().navigation_token;
-  CHECK_EQ(params->url, common_params().url);
+  // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK once
+  // we are sure this isn't hit.
+  DCHECK_EQ(params->url, common_params().url);
   params->should_update_history = true;
   CHECK_EQ(params->method, common_params().method);
   params->item_sequence_number = frame_entry_item_sequence_number_;
@@ -12078,7 +12082,8 @@ bool NavigationRequest::ShouldRecordNavigationTimelineUkm() const {
   return !IsSameDocument() && !IsRestore() &&
          !NavigationTypeUtils::IsHistory(common_params_->navigation_type) &&
          !NavigationTypeUtils::IsReload(common_params_->navigation_type) &&
-         common_params_->url.SchemeIsHTTPOrHTTPS() &&
+         (common_params_->url.SchemeIsHTTPOrHTTPS() ||
+          common_params_->url.SchemeIs(content::kChromeUIScheme)) &&
          !IsPrerenderedPageActivation();
 }
 
@@ -12419,6 +12424,14 @@ NavigationRequest::GenerateNavigationTimelineForMetrics(
   // `NavigationTimeline` so that it can be accessed by PageLoadMetricsObservers
   // via `NavigationRequest::GetNavigationHandleTiming()`.
   UpdateNavigationHandleTimingsFromNavigationTimeline(timeline);
+
+  // Populate the renderer process creation and launch times.
+  if (GetRenderFrameHost() && GetRenderFrameHost()->GetProcess()) {
+    timeline.renderer_process_created =
+        GetRenderFrameHost()->GetProcess()->GetLastInitTime();
+    timeline.renderer_process_launched =
+        GetRenderFrameHost()->GetProcess()->GetProcessLaunchedTime();
+  }
 
   return timeline;
 }

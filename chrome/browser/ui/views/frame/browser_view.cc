@@ -86,6 +86,7 @@
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window_state.h"
 #include "chrome/browser/ui/browser_window_theme_observer.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
@@ -224,6 +225,7 @@
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.h"
 #include "chrome/browser/ui/window_sizer/window_sizer.h"
+#include "chrome/browser/ui/zoom/browser_window_zoom_observer.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/browser/user_education/user_education_service_factory.h"
 #include "chrome/common/channel_info.h"
@@ -960,7 +962,7 @@ BrowserView::BrowserView(Browser* browser)
   set_contents_view(contents_container_);
 
   contents_height_side_panel_ = AddChildView(std::make_unique<SidePanel>(
-      this, SidePanelEntry::PanelType::kContent, /*has_border=*/true));
+      this, SidePanelType::kContent, /*has_border=*/true));
 
   // InfoBarContainer needs to be added as a child here for drop-shadow, but
   // needs to come after toolbar in focus order (see EnsureFocusOrder()).
@@ -979,7 +981,7 @@ BrowserView::BrowserView(Browser* browser)
   // TODO(crbug.com/454362874): Support dynamic horizontal alignment.
 
   toolbar_height_side_panel_ = AddChildView(std::make_unique<SidePanel>(
-      this, SidePanelEntry::PanelType::kToolbar, /*has_border=*/false));
+      this, SidePanelType::kToolbar, /*has_border=*/false));
 
   // Tabstrip comes basically last because it should be before toolbar in the
   // focus order but also needs to paint on top of everything.
@@ -1071,6 +1073,12 @@ BrowserView::BrowserView(Browser* browser)
     theme_changed_subscription_ =
         theme_observer->RegisterThemeChangedCallback(base::BindRepeating(
             &BrowserView::UserChangedTheme, base::Unretained(this)));
+  }
+
+  if (auto* zoom_observer = BrowserWindowZoomObserver::From(browser_.get())) {
+    zoom_changed_subscription_ =
+        zoom_observer->RegisterZoomChangedCallback(base::BindRepeating(
+            &BrowserView::ZoomChangedForActiveTab, base::Unretained(this)));
   }
 
   if (vertical_tab_strip_state_controller) {
@@ -1168,7 +1176,7 @@ BrowserWindow* BrowserWindow::FindBrowserWindowWithWebContents(
         widget->GetNativeWindow());
   }
   const auto* browser = chrome::FindBrowserWithTab(web_contents);
-  return browser ? browser->window() : nullptr;
+  return browser ? browser->GetBrowserForMigrationOnly()->window() : nullptr;
 }
 
 // static
@@ -2774,7 +2782,7 @@ bool BrowserView::IsUnframedModeEnabled() const {
 
 void BrowserView::ShowChromeLabs() {
   CHECK(IsChromeLabsEnabled());
-  browser_->GetFeatures().chrome_labs_coordinator()->ShowOrHide();
+  ChromeLabsCoordinator::From(browser_)->ShowOrHide();
 }
 
 views::WebView* BrowserView::GetActiveContentsWebView() {
@@ -3046,7 +3054,8 @@ void BrowserView::MaybeShowTabStripToolbarButtonIPH() {
   bool should_show =
       tabs::GetTabSearchPosition(browser()) ==
           tabs::TabSearchPosition::kToolbarButton &&
-      toolbar_->pinned_toolbar_actions()->IsActionPinned(kActionTabSearch);
+      toolbar_button_provider()->GetPinnedToolbarActions()->IsActionPinned(
+          kActionTabSearch);
   if (should_show) {
     BrowserUserEducationInterface::From(browser())
         ->MaybeShowStartupFeaturePromo(
@@ -4435,7 +4444,7 @@ void BrowserView::UpdateTabSearchBubbleHost() {
     tab_search_bubble_host_ = std::make_unique<TabSearchBubbleHost>(
         toolbar_->tab_search_button(), browser_.get());
     auto* toolbar_button_controller =
-        browser_->GetFeatures().tab_search_toolbar_button_controller();
+        TabSearchToolbarButtonController::From(browser_.get());
     CHECK(toolbar_button_controller);
     toolbar_button_controller->UpdateBubbleHost(tab_search_bubble_host_.get());
   } else {
@@ -5385,8 +5394,7 @@ void BrowserView::MaybeInitializeWebUITabStrip() {
 
       // Do not show Tab Search toolbar button when WebUI Tab Strip is enabled.
       if (auto* tab_search_toolbar_button_controller =
-              browser_->browser_window_features()
-                  ->tab_search_toolbar_button_controller()) {
+              TabSearchToolbarButtonController::From(browser_.get())) {
         tab_search_toolbar_button_controller->UpdateBubbleHost(nullptr);
       }
     }
@@ -5401,8 +5409,7 @@ void BrowserView::MaybeInitializeWebUITabStrip() {
 
     // Show Tab Search pinned toolbar button when WebUI Tab Strip is disabled.
     if (auto* tab_search_toolbar_button_controller =
-            browser_->browser_window_features()
-                ->tab_search_toolbar_button_controller()) {
+            TabSearchToolbarButtonController::From(browser_.get())) {
       tab_search_toolbar_button_controller->UpdateBubbleHost(
           tab_search_bubble_host_.get());
     }
@@ -6072,11 +6079,11 @@ void BrowserView::ActivateAppModalDialog() const {
     return;
   }
 
-  Browser* modal_browser =
+  BrowserWindowInterface* modal_browser =
       chrome::FindBrowserWithTab(active_dialog->web_contents());
   if (modal_browser && (browser_.get() != modal_browser)) {
-    modal_browser->window()->FlashFrame(true);
-    modal_browser->window()->Activate();
+    modal_browser->GetWindow()->FlashFrame(true);
+    modal_browser->GetWindow()->Activate();
   }
 
   javascript_dialogs::AppModalDialogQueue::GetInstance()->ActivateModalDialog();

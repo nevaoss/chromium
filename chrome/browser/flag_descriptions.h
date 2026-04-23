@@ -281,6 +281,14 @@ inline constexpr char kBlockV8OptimizerOnUnfamiliarSitesSettingDescription[] =
     "Adds an option to the V8 optimizer content setting that disables the "
     "JavaScript optimizer on sites that are unfamiliar to the user.";
 
+inline constexpr char kBlockingFocusWithoutUserActivationName[] =
+    "Blocking Focus Without User Activation";
+inline constexpr char kBlockingFocusWithoutUserActivationDescription[] =
+    "When enabled, the focus-without-user-activation permissions policy can "
+    "be used by embedders to block programmatic focus calls "
+    "(element.focus(), window.focus(), autofocus) from iframes unless "
+    "triggered by a user gesture.";
+
 inline constexpr char kBookmarksTreeViewName[] =
     "Top Chrome Bookmarks Tree View";
 inline constexpr char kBookmarksTreeViewDescription[] =
@@ -306,6 +314,12 @@ inline constexpr char kBrowsingHistorySimilarVisitsGroupingDescription[] =
 inline constexpr char kGlicTabRestorationName[] = "Glic Tab Restoration";
 inline constexpr char kGlicTabRestorationDescription[] =
     "Enables Glic instance restore when tabs are restored.";
+
+inline constexpr char kGlicButtonAutoSummarizeName[] =
+    "Glic Button Auto Summarize";
+inline constexpr char kGlicButtonAutoSummarizeDescription[] =
+    "Automatically triggers a summary when the Glic button is clicked on a "
+    "certain page (ex. PDF).";
 
 inline constexpr char kBundledSecuritySettingsName[] =
     "Bundled Security Settings";
@@ -1428,6 +1442,11 @@ inline constexpr char kGlicActorEnableScriptToolsName[] =
     "Glic actor script tools";
 inline constexpr char kGlicActorEnableScriptToolsDescription[] =
     "Enables script tools for the Glic actor.";
+inline constexpr char kGlicActorTransientTasksName[] =
+    "Glic actor transient tasks";
+inline constexpr char kGlicActorTransientTasksDescription[] =
+    "Support for transient tasks in actor. If enabled, all tasks will use the "
+    "transient actor UI.";
 inline constexpr char kGlicCaptureRegionDescription[] =
     "Enables Glic to capture a region of the screen.";
 inline constexpr char kGlicCaptureRegionName[] = "Glic Capture Region";
@@ -1476,10 +1495,6 @@ inline constexpr char kGlicPrintMenuItemDescription[] =
 inline constexpr char kGlicWarmingName[] = "Glic Pre-Warming";
 inline constexpr char kGlicWarmingDescription[] =
     "Enables the pre-warming of the Glic panel's web client.";
-inline constexpr char kGlicEntrypointVariationsName[] =
-    "Glic Entrypoint Variations";
-inline constexpr char kGlicEntrypointVariationsDescription[] =
-    "Enables visual tweaks to the Glic entry button in the tab strip.";
 inline constexpr char kGlicContextualCueBubbleName[] =
     "Glic contextual cue bubble";
 inline constexpr char kGlicContextualCueBubbleDescription[] =
@@ -2887,11 +2902,23 @@ inline constexpr char kLogJsConsoleMessagesDescription[] =
     "Enable logging JS console messages in system logs, please note that they "
     "may contain PII.";
 
+inline constexpr char kMacAccessibilityTextOperationName[] =
+    "Enable text editing through accessibility APIs";
+inline constexpr char kMacAccessibilityTextOperationDescription[] =
+    "Enables support for performing text editing operations through "
+    "the AXTextOperation accessibility API.";
+
 inline constexpr char kMediaRouterCastAllowAllIPsName[] =
     "Connect to Cast devices on all IP addresses";
 inline constexpr char kMediaRouterCastAllowAllIPsDescription[] =
     "Have the Media Router connect to Cast devices on all IP addresses, not "
     "just RFC1918/RFC4193 private addresses.";
+
+inline constexpr char kMigrateEnhancedSbUserToEnhancedBundleName[] =
+    "Migrate Enhanced Safe Browsing User to Enhanced Bundle";
+inline constexpr char kMigrateEnhancedSbUserToEnhancedBundleDescription[] =
+    "Enables the migration of enhanced Safe Browsing users to the enhanced "
+    "bundle. Requires chrome://flags#bundled-security-settings to be enabled.";
 
 inline constexpr char kMigrateSyncingUserToSignedInName[] =
     "Migrate syncing user to signed in state";
@@ -2972,6 +2999,10 @@ inline constexpr char kMultiInstanceSharedPrefsMigrationDescription[] =
     "dual write(updating both files) to ensure data persistence during a "
     "potential downgrade. When disabled, we perform all operations on the old "
     "file and purges the new file.";
+
+inline constexpr char kMenuSimplificationName[] = "Menu Simplification";
+inline constexpr char kMenuSimplificationDescription[] =
+    "Enables the menu simplification feature.";
 
 inline constexpr char kSourceSpecificMulticastInDirectSocketsName[] =
     "Source-Specific Multicast in Direct Sockets API";
@@ -5459,28 +5490,12 @@ inline constexpr char kClankDefaultBrowserPromoRoleManagerDescription[] =
     "Sets the Role Manager Default Browser Promo for testing the new "
     "Default Browser Promo Feature";
 
-inline constexpr char kClientSideDetectionSendIntelligentScanInfoAndroidName[] =
-    "Client Side Detection Send Brand and Intent on Android";
-inline constexpr char
-    kClientSideDetectionSendIntelligentScanInfoAndroidDescription[] =
-        "Enables on device LLM output on pages to inquire for brand and intent "
-        "of "
-        "the page on Android.";
-
 inline constexpr char
     kClientSideDetectionServerModelForScamDetectionAndroidName[] =
         "Client Side Detection Server Model for Scam Detection on Android";
 inline constexpr char
     kClientSideDetectionServerModelForScamDetectionAndroidDescription[] =
         "Enables server model for scam detection on Android.";
-
-inline constexpr char kClientSideDetectionShowScamVerdictWarningAndroidName[] =
-    "Client Side Detection Show Scam Verdict Warning on Android";
-inline constexpr char
-    kClientSideDetectionShowScamVerdictWarningAndroidDescription[] =
-        "Show warnings based on the scam verdict field in Client Side "
-        "Detection "
-        "response on Android.";
 
 inline constexpr char kCompositorViewRemeasureFixName[] =
     "compositor-view-remeasure-fix";
@@ -6165,6 +6180,11 @@ inline constexpr char kCastMirroringTargetPlayoutDelay300ms[] = "300ms.";
 inline constexpr char kCastMirroringTargetPlayoutDelay350ms[] = "350ms.";
 inline constexpr char kCastMirroringTargetPlayoutDelay400ms[] = "400ms.";
 
+inline constexpr char kComposeboxDriveContextMenuOptionName[] =
+    "Composebox Drive Context Menu Option";
+inline constexpr char kComposeboxDriveContextMenuOptionDescription[] =
+    "Enables Google Drive option in the Composebox context menu.";
+
 inline constexpr char kEnableHeadlessLiveCaptionName[] =
     "Headless Live Captions";
 inline constexpr char kEnableHeadlessLiveCaptionDescription[] =
@@ -6259,16 +6279,6 @@ inline constexpr char kReadAnythingWithReadabilityName[] =
 inline constexpr char kReadAnythingWithReadabilityDescription[] =
     "Enables the experimental text webpage distillation using readability.js "
     "method for reading mode.";
-
-inline constexpr char kLinkPreviewName[] = "Link Preview";
-inline constexpr char kLinkPreviewDescription[] =
-    "When enabled, Link Preview feature gets to be available to preview a "
-    "linked page in a dedicated small window before navigating to the linked "
-    "page. The feature can be triggered from a context menu item, or users' "
-    "actions. We are evaluating multiple actions in our experiment to "
-    "understand what's to be the best for users from the viewpoint of "
-    "security, privacy, and usability. The feature might be unstable and "
-    "unusable on some platforms, e.g. macOS or touch devices.";
 
 inline constexpr char kMarkAllCredentialsAsLeakedName[] =
     "Mark all credential as leaked";
@@ -6461,6 +6471,10 @@ inline constexpr char
         "Permit a set of origins to request a uniquely identifying enterprise "
         "attestation statement from a security key when creating a Web "
         "Authentication credential.";
+
+inline constexpr char kNtpShortcutsRedesignName[] = "NTP Shortcuts Redesign";
+inline constexpr char kNtpShortcutsRedesignDescription[] =
+    "Enables the redesigned shortcuts on the New Tab Page.";
 
 // Windows ---------------------------------------------------------------------
 
@@ -7127,13 +7141,6 @@ inline constexpr char kEnableExternalKeyboardsInDiagnosticsAppDescription[] =
     "Shows external keyboards in the Diagnostics App's input section. Requires "
     "#enable-input-in-diagnostics-app to be enabled.";
 
-inline constexpr char kEnableFastInkForSoftwareCursorName[] =
-    "Enable fast ink for software cursor";
-inline constexpr char kEnableFastInkForSoftwareCursorDescription[] =
-    "When enabled, software cursor will use fast ink to display cursor with "
-    "minimal latency. "
-    "However, it might also cause tearing artifacts.";
-
 inline constexpr char kEnableGesturePropertiesDBusServiceName[] =
     "Enable gesture properties D-Bus service";
 inline constexpr char kEnableGesturePropertiesDBusServiceDescription[] =
@@ -7704,6 +7711,11 @@ inline constexpr char kSupportF11AndF12ShortcutsDescription[] =
     "allow users to use shortcuts to remap to the F11 and F12 keys in the "
     "Customize keyboard keys "
     "page.";
+
+inline constexpr char kSupportForcedSigninPolicyName[] =
+    "Support Forced Sign-in";
+inline constexpr char kSupportForcedSigninPolicyDescription[] =
+    "Enables the SupportForcedSignin policy to require sign-in to Chrome.";
 
 inline constexpr char kTerminalDevName[] = "Terminal dev";
 inline constexpr char kTerminalDevDescription[] =

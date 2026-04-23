@@ -69,7 +69,6 @@
 #include "chrome/renderer/trusted_vault_encryption_keys_extension.h"
 #include "chrome/renderer/url_loader_throttle_provider_impl.h"
 #include "chrome/renderer/v8_unwinder.h"
-#include "chrome/renderer/web_link_preview_triggerer_impl.h"
 #include "chrome/renderer/websocket_handshake_throttle_provider_impl.h"
 #include "chrome/renderer/webui_browser/webui_browser_renderer_extension.h"
 #include "chrome/renderer/worker_content_settings_client.h"
@@ -198,6 +197,7 @@
 #else
 #include "chrome/common/record_replay/record_replay_features.h"
 #include "chrome/renderer/indigo/indigo_agent.h"
+#include "chrome/renderer/indigo/onboarding_agent.h"
 #include "chrome/renderer/record_replay/record_replay_agent.h"
 #include "chrome/renderer/searchbox/searchbox.h"
 #include "chrome/renderer/searchbox/searchbox_extension.h"
@@ -707,6 +707,7 @@ void ChromeContentRendererClient::RenderFrameCreated(
     new record_replay::RecordReplayAgent(render_frame, associated_interfaces);
   }
   indigo::IndigoAgent::MaybeCreate(render_frame, associated_interfaces);
+  indigo::OnboardingAgent::MaybeCreate(render_frame, associated_interfaces);
 #endif
 
   if (content_capture::features::IsContentCaptureEnabled()) {
@@ -828,9 +829,7 @@ bool ChromeContentRendererClient::IsPluginHandledExternally(
   // not supported. Here it suffices to return false but there should perhaps be
   // a more unified approach to avoid sending the IPC twice.
   chrome::mojom::PluginInfoPtr plugin_info = chrome::mojom::PluginInfo::New();
-  plugin_info_host->GetPluginInfo(
-      original_url, render_frame->GetWebFrame()->Top()->GetSecurityOrigin(),
-      mime_type, &plugin_info);
+  plugin_info_host->GetPluginInfo(original_url, mime_type, &plugin_info);
   // TODO(ekaramad): Not continuing here due to a disallowed status should take
   // us to CreatePlugin. See if more in depths investigation of |status| is
   // necessary here (see https://crbug.com/41460326). For now, returning false
@@ -896,7 +895,7 @@ bool ChromeContentRendererClient::OverrideCreatePlugin(
     WebPlugin** plugin) {
   std::string orig_mime_type = params.mime_type.Utf8();
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
+#if BUILDFLAG(ENABLE_SURFACE_EMBED) && !BUILDFLAG(IS_ANDROID)
   if (base::FeatureList::IsEnabled(surface_embed::features::kSurfaceEmbed)) {
     GURL url = render_frame->GetWebFrame()->GetDocument().Url();
     if (url.SchemeIs(content::kChromeUIScheme) &&
@@ -906,7 +905,7 @@ bool ChromeContentRendererClient::OverrideCreatePlugin(
       }
     }
   }
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
+#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED) && !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   // Used for plugins.
@@ -923,9 +922,7 @@ bool ChromeContentRendererClient::OverrideCreatePlugin(
       &plugin_info_host);
 
   chrome::mojom::PluginInfoPtr plugin_info = chrome::mojom::PluginInfo::New();
-  plugin_info_host->GetPluginInfo(
-      url, render_frame->GetWebFrame()->Top()->GetSecurityOrigin(),
-      orig_mime_type, &plugin_info);
+  plugin_info_host->GetPluginInfo(url, orig_mime_type, &plugin_info);
   *plugin = CreatePlugin(render_frame, params, *plugin_info);
 #else  // !BUILDFLAG(ENABLE_PLUGINS)
   if (orig_mime_type == pdf::kPDFMimeType) {
@@ -1637,7 +1634,3 @@ void ChromeContentRendererClient::AppendContentSecurityPolicy(
 #endif
 }
 
-std::unique_ptr<blink::WebLinkPreviewTriggerer>
-ChromeContentRendererClient::CreateLinkPreviewTriggerer() {
-  return ::CreateWebLinkPreviewTriggerer();
-}

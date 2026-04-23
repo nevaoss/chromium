@@ -5137,6 +5137,8 @@ TEST_F(HostResolverManagerDnsTest, ServeFromHosts) {
       HostPortPair("nx_ipv4", 80), NetworkAnonymizationKey(),
       NetLogWithSource(), std::nullopt, resolve_context_.get()));
   EXPECT_THAT(response_ipv4.result_error(), IsOk());
+  EXPECT_EQ(response_ipv4.request()->GetResolutionDetails()->source,
+            ResolutionSource::kLocal);
   EXPECT_THAT(response_ipv4.request()->GetAddressResults(),
               testing::ElementsAre(CreateExpected("127.0.0.1", 80)));
   EXPECT_THAT(response_ipv4.request()->GetEndpointResults(),
@@ -5149,6 +5151,8 @@ TEST_F(HostResolverManagerDnsTest, ServeFromHosts) {
       HostPortPair("nx_ipv6", 80), NetworkAnonymizationKey(),
       NetLogWithSource(), std::nullopt, resolve_context_.get()));
   EXPECT_THAT(response_ipv6.result_error(), IsOk());
+  EXPECT_EQ(response_ipv6.request()->GetResolutionDetails()->source,
+            ResolutionSource::kLocal);
   EXPECT_THAT(response_ipv6.request()->GetAddressResults(),
               testing::ElementsAre(CreateExpected("::1", 80)));
   EXPECT_THAT(response_ipv6.request()->GetEndpointResults(),
@@ -5161,6 +5165,8 @@ TEST_F(HostResolverManagerDnsTest, ServeFromHosts) {
       HostPortPair("nx_both", 80), NetworkAnonymizationKey(),
       NetLogWithSource(), std::nullopt, resolve_context_.get()));
   EXPECT_THAT(response_both.result_error(), IsOk());
+  EXPECT_EQ(response_both.request()->GetResolutionDetails()->source,
+            ResolutionSource::kLocal);
   EXPECT_THAT(response_both.request()->GetAddressResults(),
               testing::UnorderedElementsAre(CreateExpected("127.0.0.1", 80),
                                             CreateExpected("::1", 80)));
@@ -14510,6 +14516,70 @@ TEST_F(HostResolverManagerTest,
 TEST_F(HostResolverManagerTest,
        IPv4AddressLiteralInIPv6OnlyNetworkBadAddressSync) {
   IPv4AddressLiteralInIPv6OnlyNetworkBadAddressTest(false);
+}
+
+TEST_F(HostResolverManagerDnsTest, ResolutionDetails_InsecureDnsSuccess) {
+  ChangeDnsConfig(CreateValidDnsConfig());
+
+  ResolveHostResponseHelper response(resolver_->CreateRequest(
+      HostPortPair("4slow_ok", 80), NetworkAnonymizationKey(),
+      NetLogWithSource(), std::nullopt, resolve_context_.get()));
+
+  // Fast forward time by exactly 100ms.
+  FastForwardBy(base::Milliseconds(100));
+  mock_dns_client_->CompleteDelayedTransactions();
+
+  EXPECT_THAT(response.result_error(), IsOk());
+  const auto& details = response.request()->GetResolutionDetails();
+  ASSERT_TRUE(details.has_value());
+  EXPECT_EQ(ResolutionSource::kInsecure, details->source);
+  ASSERT_TRUE(details->task_completion_delay.has_value());
+  EXPECT_EQ(base::Milliseconds(100), details->task_completion_delay.value());
+  EXPECT_FALSE(details->secure_dns_attempted);
+}
+
+TEST_F(HostResolverManagerDnsTest,
+       ResolutionDetails_SecureDnsFallbackToInsecure) {
+  MockDnsClientRuleList rules;
+  rules.emplace_back(
+      "secure_slow_nx_insecure_4slow_ok", dns_protocol::kTypeA,
+      /*secure=*/true,
+      MockDnsClientRule::Result(MockDnsClientRule::ResultType::kFail),
+      /*delay=*/true);
+  rules.emplace_back(
+      "secure_slow_nx_insecure_4slow_ok", dns_protocol::kTypeA,
+      /*secure=*/false,
+      MockDnsClientRule::Result(MockDnsClientRule::ResultType::kOk),
+      /*delay=*/true);
+  DnsConfigOverrides overrides;
+  overrides.secure_dns_mode = SecureDnsMode::kAutomatic;
+  resolver_->SetDnsConfigOverrides(overrides);
+
+  UseMockDnsClient(CreateValidDnsConfig(), std::move(rules));
+
+  HostResolver::ResolveHostParameters parameters;
+  parameters.dns_query_type = DnsQueryType::A;
+
+  ResolveHostResponseHelper response(resolver_->CreateRequest(
+      HostPortPair("secure_slow_nx_insecure_4slow_ok", 80),
+      NetworkAnonymizationKey(), NetLogWithSource(), parameters,
+      resolve_context_.get()));
+
+  // Advance time for the secure attempt.
+  FastForwardBy(base::Milliseconds(50));
+  mock_dns_client_->CompleteDelayedTransactions();
+
+  // Advance time for the insecure attempt.
+  FastForwardBy(base::Milliseconds(100));
+  mock_dns_client_->CompleteDelayedTransactions();
+
+  EXPECT_THAT(response.result_error(), IsOk());
+  const auto& details = response.request()->GetResolutionDetails();
+  ASSERT_TRUE(details.has_value());
+  EXPECT_EQ(ResolutionSource::kInsecure, details->source);
+  ASSERT_TRUE(details->task_completion_delay.has_value());
+  EXPECT_EQ(base::Milliseconds(100), details->task_completion_delay.value());
+  EXPECT_TRUE(details->secure_dns_attempted);
 }
 
 }  // namespace net

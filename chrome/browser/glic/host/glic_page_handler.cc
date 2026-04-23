@@ -146,7 +146,6 @@
 #include "chrome/browser/glic/host/context/glic_focused_browser_manager.h"
 #include "chrome/browser/media/audio_ducker.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "extensions/browser/guest_view/web_view/web_view_guest.h"
@@ -958,7 +957,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       state->host_capabilities.push_back(
           mojom::HostCapability::kShareAdditionalImageContext);
     }
-    if (!base::FeatureList::IsEnabled(features::kGlicLiveMode)) {
+    if (!GlicEnabling::IsLiveAndFloatyEnabledByFlags()) {
       state->host_capabilities.push_back(mojom::HostCapability::kNoLiveMode);
     }
     if (base::FeatureList::IsEnabled(features::kFedCmEmbedderInitiatedLogin)) {

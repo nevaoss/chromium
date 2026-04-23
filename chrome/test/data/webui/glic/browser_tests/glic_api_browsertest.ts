@@ -51,21 +51,12 @@ class ApiTests extends ApiTestFixtureBase {
 
   async testDoNothing() {}
 
-  async testInvocationSource() {
-    const expectedSource = this.testParams as number;
-    const panelOpenData =
-        checkDefined(this.client.panelOpenData.getCurrentValue());
-    assertEquals(panelOpenData.invocationSource, expectedSource);
-  }
-
   async testDefaultInvocationSource() {
     const panelOpenData =
         checkDefined(this.client.panelOpenData.getCurrentValue());
     assertEquals(
         panelOpenData.invocationSource, InvocationSource.TOP_CHROME_BUTTON);
   }
-
-  async testWebClientReadyOnFullLoad() {}
 
   async testWebClientReadyOnPreload() {}
 
@@ -307,6 +298,17 @@ class ApiTests extends ApiTestFixtureBase {
     // this.host.attachPanel();
     // await panelStates.waitFor(state => state.kind ===
     //    PanelStateKind.ATTACHED);
+  }
+
+  async testDetachPanelNoFloatyOrLiveMode() {
+    assertDefined(this.host.getPanelState);
+    // getPanelState and notifyPanelWillOpen should signal the ATTACHED state.
+    const panelStates = observeSequence(this.host.getPanelState());
+    await panelStates.waitFor(state => state.kind === PanelStateKind.ATTACHED);
+
+    assertRejects((async () => {
+      this.host.detachPanel?.();
+    })());
   }
 
   async testCanAttachPanelSidePanel() {

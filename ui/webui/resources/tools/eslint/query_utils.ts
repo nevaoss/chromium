@@ -96,6 +96,10 @@ export function isIdentifier(node: TSESTree.Node): node is TSESTree.Identifier {
   return node.type === AST_NODE_TYPES.Identifier;
 }
 
+export function isLiteral(node: TSESTree.Node): node is TSESTree.Literal {
+  return node.type === AST_NODE_TYPES.Literal;
+}
+
 export function dashCaseToCamelCase(string: string): string {
   return string.replace(/-([a-z])/g, group => group[1]!.toUpperCase());
 }
@@ -110,11 +114,11 @@ interface ClassImportInfo {
 // Extracts information about the imported element class from a Lit element
 // template file.
 export function extractClassImport(
-    node: TSESTree.FunctionDeclaration,
+    node: TSESTree.FunctionDeclarationWithName,
     programNode: TSESTree.Program): ClassImportInfo {
   assert.ok(
       node.type === AST_NODE_TYPES.FunctionDeclaration &&
-      node.id!.name === 'getHtml');
+      node.id.name === 'getHtml');
   const paramSelector = esquery.parse('Identifier[name="this"]');
   const matchingNodes =
       esquery.match(node, paramSelector) as TSESTree.Identifier[];

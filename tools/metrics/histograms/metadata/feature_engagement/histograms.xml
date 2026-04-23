@@ -218,6 +218,9 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_ExtensionsManageFeature"
       summary="message shown informing users they can manage their extensions
                in the extensions menu."/>
+  <variant name="IPH_ExtensionsManageMainMenuFeature"
+      summary="message shown informing users they can manage their extensions
+               in the main menu."/>
   <variant name="IPH_ExtensionsMenu" summary="extensions menu opened"/>
   <variant name="IPH_ExtensionsRequestAccessButton"
       summary="extensions request access button shown"/>
@@ -745,7 +748,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="InProductHelp.Db.TotalEvents" units="events"
-    expires_after="2026-07-26">
+    expires_after="2026-10-04">
   <owner>nyquist@chromium.org</owner>
   <summary>
     Records the total number of event records in the database for in-product

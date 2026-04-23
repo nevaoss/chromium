@@ -3,9 +3,9 @@
 // found in the LICENSE file.
 
 import {ClientCapabilities} from '/glic/glic_api/glic_api.js';
-import type {GlicWebClient, Observable, TabData} from '/glic/glic_api/glic_api.js';
+import type {GlicWebClient, InvokeOptions, Observable, OpenPanelInfo, PanelOpeningData, PanelState, TabData} from '/glic/glic_api/glic_api.js';
 
-import {ApiTestFixtureBase, assertDefined, assertUndefined, mapObservable, observeSequence, testMain} from './browser_test_base.js';
+import {ApiTestFixtureBase, assertDefined, assertEquals, assertUndefined, mapObservable, observeSequence, runUntil, testMain, WebClient} from './browser_test_base.js';
 
 class ApiTests extends ApiTestFixtureBase {
   override async setUpTest() {
@@ -13,6 +13,12 @@ class ApiTests extends ApiTestFixtureBase {
   }
 
   async testDoNothing() {}
+
+  async testInvocationSource() {
+    const expectedSource = this.testParams as number;
+    await observeSequence(this.client.panelOpenData)
+        .waitFor((data) => data && data.invocationSource === expectedSource);
+  }
 }
 
 class FaviconTest extends ApiTests {
@@ -156,6 +162,8 @@ class FaviconTest extends ApiTests {
     // We should see the generic globe icon. Just assert there is a change.
     await faviconColors.waitFor((colors) => colors !== '#00ff');
   }
+
+  async testWebClientReadyOnFullLoad() {}
 }
 
 class FaviconOmittedTest extends FaviconTest {
@@ -177,10 +185,39 @@ class FaviconOmittedTest extends FaviconTest {
   }
 }
 
+class InvokeClient extends WebClient {
+  calls: string[] = [];
+  override async notifyPanelWillOpen(
+      panelOpeningData: PanelOpeningData&PanelState): Promise<OpenPanelInfo> {
+    this.calls.push('notifyPanelWillOpen');
+    return super.notifyPanelWillOpen!(panelOpeningData);
+  }
+
+  async invoke?(_options: InvokeOptions): Promise<void> {
+    this.calls.push('invoke');
+  }
+}
+
+class InvokeTest extends ApiTests {
+  override createWebClient() {
+    return new InvokeClient();
+  }
+
+  async testInvokeWaitsForNotifyPanelWillOpen() {
+    const client: InvokeClient = this.client as InvokeClient;
+    await runUntil(() => {
+      return client.calls.length === 2;
+    });
+
+    assertEquals('notifyPanelWillOpen,invoke', client.calls.join(','));
+  }
+}
+
 const TEST_FIXTURES = [
   ApiTests,
   FaviconTest,
   FaviconOmittedTest,
+  InvokeTest,
 ];
 
 testMain(TEST_FIXTURES);

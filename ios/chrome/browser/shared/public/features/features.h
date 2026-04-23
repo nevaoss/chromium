@@ -917,10 +917,31 @@ BASE_DECLARE_FEATURE(kYourSavedInfoSettingsPageIos);
 // Returns true if the YourSavedInfoSettingsPageIos feature is enabled.
 bool IsYourSavedInfoSettingsPageIosEnabled();
 
+// Arms for the BackgroundRefreshRegressionTest experiment.
+enum class BackgroundRefreshRegressionTestArm {
+  kControl = 0,
+  kBaseline = 1,
+  kShortPersistenceDelay = 2,
+  kLongRefreshInterval = 3,
+  kNoBeacon = 4,
+};
+
+// Feature flag for the BackgroundRefreshRegressionTest experiment.
+BASE_DECLARE_FEATURE(kBackgroundRefreshRegressionTest);
+
+// Returns the current arm for the BackgroundRefreshRegressionTest experiment.
+BackgroundRefreshRegressionTestArm GetBackgroundRefreshRegressionTestArm();
+
 // Enables the OpenEditGroupViewByTappingTitle feature.
 BASE_DECLARE_FEATURE(kOpenEditGroupViewByTappingTitle);
 
 // Returns true if the OpenEditGroupViewByTappingTitle feature is enabled.
 bool IsOpenEditGroupViewByTappingTitleEnabled();
+
+// Enables the SyncedGroupColor feature.
+BASE_DECLARE_FEATURE(kSyncedGroupColor);
+
+// Returns true if the SyncedGroupColor feature is enabled.
+bool IsSyncedGroupColorEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

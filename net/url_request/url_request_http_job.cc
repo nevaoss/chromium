@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "base/base_switches.h"
+#include "base/byte_size.h"
 #include "base/check_op.h"
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
@@ -263,16 +264,6 @@ ContentEncodingType ToContentEncodingType(SourceStreamType type) {
   }
 }
 
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-enum class HttpRequestStsState {
-  kUnknown = 0,
-  kUnprotectedHttps = 1,
-  kProtectedHttps = 2,
-  kUnprotectedHttp = 3,
-  kProtectedHttp = 4,
-  kMaxValue = kProtectedHttp,
-};
 
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused.
@@ -324,16 +315,6 @@ void RecordSTSHistograms(SSLUpgradeDecision upgrade_decision,
   if (!(load_flags & LOAD_MAIN_FRAME_DEPRECATED)) {
     return;
   }
-  const bool sts_enabled = upgrade_decision != SSLUpgradeDecision::kNoUpgrade;
-  HttpRequestStsState sts_state = HttpRequestStsState::kUnknown;
-  if (is_secure) {
-    sts_state = (sts_enabled ? HttpRequestStsState::kProtectedHttps
-                             : HttpRequestStsState::kUnprotectedHttps);
-  } else {
-    sts_state = (sts_enabled ? HttpRequestStsState::kProtectedHttp
-                             : HttpRequestStsState::kUnprotectedHttp);
-  }
-  UMA_HISTOGRAM_ENUMERATION("Net.HttpRequestStsState", sts_state);
 
   UMA_HISTOGRAM_ENUMERATION(
       "Net.HttpRequestSSLUpgradeDecision",
@@ -662,9 +643,9 @@ void URLRequestHttpJob::DestroyTransaction() {
   DoneWithRequest(ABORTED);
 
   total_received_bytes_from_previous_transactions_ +=
-      transaction_->GetTotalReceivedBytes();
+      transaction_->GetTotalReceivedBytes().InBytes();
   total_sent_bytes_from_previous_transactions_ +=
-      transaction_->GetTotalSentBytes();
+      transaction_->GetTotalSentBytes().InBytes();
   response_info_ = nullptr;
   transaction_.reset();
   override_response_headers_ = nullptr;
@@ -829,7 +810,9 @@ void URLRequestHttpJob::AddCookieHeaderAndStart() {
       request_->force_ignore_site_for_cookies();
   if (cookie_store->cookie_access_delegate() &&
       cookie_store->cookie_access_delegate()->ShouldIgnoreSameSiteRestrictions(
-          request_->url(), request_->site_for_cookies())) {
+          request_->url(), request_->site_for_cookies(),
+          request_->isolation_info().top_frame_origin().value_or(
+              url::Origin()))) {
     force_ignore_site_for_cookies = true;
   }
   bool is_main_frame_navigation =
@@ -1054,7 +1037,9 @@ void URLRequestHttpJob::SaveCookiesAndNotifyHeadersComplete(int result) {
       request_->force_ignore_site_for_cookies();
   if (cookie_store->cookie_access_delegate() &&
       cookie_store->cookie_access_delegate()->ShouldIgnoreSameSiteRestrictions(
-          request_->url(), request_->site_for_cookies())) {
+          request_->url(), request_->site_for_cookies(),
+          request_->isolation_info().top_frame_origin().value_or(
+              url::Origin()))) {
     force_ignore_site_for_cookies = true;
   }
   bool is_main_frame_navigation =
@@ -1830,7 +1815,7 @@ int64_t URLRequestHttpJob::GetTotalReceivedBytes() const {
   int64_t total_received_bytes =
       total_received_bytes_from_previous_transactions_;
   if (transaction_) {
-    total_received_bytes += transaction_->GetTotalReceivedBytes();
+    total_received_bytes += transaction_->GetTotalReceivedBytes().InBytes();
   }
   return total_received_bytes;
 }
@@ -1838,14 +1823,14 @@ int64_t URLRequestHttpJob::GetTotalReceivedBytes() const {
 int64_t URLRequestHttpJob::GetTotalSentBytes() const {
   int64_t total_sent_bytes = total_sent_bytes_from_previous_transactions_;
   if (transaction_) {
-    total_sent_bytes += transaction_->GetTotalSentBytes();
+    total_sent_bytes += transaction_->GetTotalSentBytes().InBytes();
   }
   return total_sent_bytes;
 }
 
 int64_t URLRequestHttpJob::GetReceivedBodyBytes() const {
   if (transaction_) {
-    return transaction_->GetReceivedBodyBytes();
+    return transaction_->GetReceivedBodyBytes().InBytes();
   }
   return 0;
 }

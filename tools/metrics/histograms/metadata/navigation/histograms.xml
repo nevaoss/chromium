@@ -89,7 +89,6 @@ chromium-metrics-reviews@google.com.
   <variant name=".Embedder_BookmarkBar"/>
   <variant name=".Embedder_DefaultSearchEngine"/>
   <variant name=".Embedder_DirectURLInput"/>
-  <variant name=".Embedder_LinkPreview"/>
   <variant name=".Embedder_NewTabPage"/>
   <variant name=".Embedder_PrewarmDefaultSearchEngine"/>
   <variant name=".Embedder_WebView"/>
@@ -400,7 +399,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="BackForwardCache.History.EntryMatch"
-    enum="BackForwardCacheEntryMatchResult" expires_after="2026-08-01">
+    enum="BackForwardCacheEntryMatchResult" expires_after="2026-10-04">
   <owner>annasato@chromium.org</owner>
   <owner>bfcache-dev@chromium.org</owner>
   <summary>
@@ -413,7 +412,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="BackForwardCache.History.ForwardEntriesCount" units="entries"
-    expires_after="2026-08-01">
+    expires_after="2026-10-04">
   <owner>annasato@chromium.org</owner>
   <owner>bfcache-dev@chromium.org</owner>
   <summary>
@@ -909,15 +908,22 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Navigation.BeforeUnloadExecutionMode.IsInOutermostMainFrame"
+<histogram
+    name="Navigation.BeforeUnloadExecutionMode.IsInOutermostMainFrame{SameOrCrossOrigin}"
     enum="BeforeUnloadExecutionMode" expires_after="2027-02-04">
   <owner>chikamune@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
     Records the execution mode of beforeunload handlers for a navigation.
-    Recorded at the time of navigation commit for cross-document outermost main
-    frame navigations. Only recorded for HTTP or HTTPS schemes.
+    Recorded at the time of navigation commit for cross-document
+    {SameOrCrossOrigin} outermost main frame navigations. Only recorded for HTTP
+    or HTTPS schemes.
   </summary>
+  <token key="SameOrCrossOrigin">
+    <variant name="" summary=""/>
+    <variant name=".CrossOrigin" summary="cross-origin"/>
+    <variant name=".SameOrigin" summary="same-origin"/>
+  </token>
 </histogram>
 
 <histogram name="Navigation.BlurTransitionAnimation.ExitReason"
@@ -1160,7 +1166,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.EarlyRenderFrameHostSwap.HasCommitted"
-    enum="Boolean" expires_after="2026-08-03">
+    enum="Boolean" expires_after="2026-10-04">
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
   <summary>
@@ -1173,7 +1179,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.EarlyRenderFrameHostSwap.IsInOutermostMainFrame"
-    enum="BooleanMainFrame" expires_after="2026-08-03">
+    enum="BooleanMainFrame" expires_after="2026-10-04">
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
   <summary>
@@ -2198,7 +2204,7 @@ chromium-metrics-reviews@google.com.
     enum="BooleanOccurred" expires_after="2026-06-20">
   <owner>tiffanysong@google.com</owner>
   <owner>jacastro@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
     Recorded on renderer-initiated navigations to about:blank when
     ShouldSwapBrowsingInstancesForDifferentProcessFlags is called. Records
@@ -2466,7 +2472,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.RenderFrameDelete" units="ms"
-    expires_after="2026-08-02">
+    expires_after="2026-10-04">
   <owner>rakina@chromium.org</owner>
   <owner>chrome-security-architecture@google.com</owner>
   <summary>
@@ -2476,7 +2482,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.RenderFrameHostConstructor" units="ms"
-    expires_after="2026-08-02">
+    expires_after="2026-10-04">
   <owner>rakina@chromium.org</owner>
   <owner>chrome-security-architecture@google.com</owner>
   <summary>
@@ -2486,7 +2492,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.RenderFrameHostDestructor" units="ms"
-    expires_after="2026-08-02">
+    expires_after="2026-10-04">
   <owner>rakina@chromium.org</owner>
   <owner>chrome-security-architecture@google.com</owner>
   <summary>
@@ -3332,7 +3338,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.UserAgentStringType" enum="UserAgentStringType"
-    expires_after="2026-08-02">
+    expires_after="2026-10-04">
   <owner>miketaylr@chromium.org</owner>
   <owner>katabolism-finch@google.com</owner>
   <summary>
@@ -3474,7 +3480,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.{Stage}ToCompositorCreation" units="ms"
-    expires_after="2026-08-02">
+    expires_after="2026-10-04">
   <owner>rakina@chromium.org</owner>
   <owner>bfcache-dev@chromium.org</owner>
   <summary>

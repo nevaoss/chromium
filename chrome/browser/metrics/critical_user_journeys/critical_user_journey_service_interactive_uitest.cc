@@ -87,19 +87,19 @@ class TestCriticalUserJourneyService : public CriticalUserJourneyService {
             .AddAnyOf({
                 Branch(kNewTabButtonElementId,
                        ui::InteractionSequence::StepType::kActivated, 2),
-                Branch(kReloadButtonElementId,
+                Branch(kToolbarForwardButtonElementId,
                        ui::InteractionSequence::StepType::kActivated, 3),
             })
             .Build());
 
-    // AnyOf Start Journey: Click New Tab button or Avatar button (triggers
+    // AnyOf Start Journey: Click New Tab button or Location Icon (triggers
     // start), then click the App Menu Button.
     registry->AddJourney(
         CriticalUserJourney::Builder(&kAnyOfStartJourney)
             .AddAnyOf({
                 Branch(kNewTabButtonElementId,
                        ui::InteractionSequence::StepType::kActivated, 1),
-                Branch(kReloadButtonElementId,
+                Branch(kLocationIconElementId,
                        ui::InteractionSequence::StepType::kActivated, 2),
             })
             .AddStep(kToolbarAppMenuButtonElementId,
@@ -179,6 +179,42 @@ IN_PROC_BROWSER_TEST_F(CriticalUserJourneyServiceInteractiveTest,
 }
 
 IN_PROC_BROWSER_TEST_F(CriticalUserJourneyServiceInteractiveTest,
+                       DuplicateJourneyPreemptsOldOne) {
+  base::HistogramTester histograms;
+
+  const std::string step_reached =
+      base::StrCat({GetMetricJourneyPrefix(kAppMenuJourney), ".StepReached"});
+  const std::string result =
+      base::StrCat({GetMetricJourneyPrefix(kAppMenuJourney), ".Result"});
+
+  RunTestSequence(
+      // 1. Click App Menu (triggers first session).
+      PressButton(kToolbarAppMenuButtonElementId),
+
+      // 2. Click App Menu again (should preempt first session).
+      PressButton(kToolbarAppMenuButtonElementId),
+
+      // 3. Click New Tab button (completes the second session).
+      PressButton(kNewTabButtonElementId));
+
+  // Verification: The journey should complete asynchronously.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return histograms.GetBucketCount(
+               result, CriticalUserJourneySession::JourneyResult::kCompleted) >
+           0;
+  }));
+
+  // Both sessions reached step 1.
+  histograms.ExpectBucketCount(step_reached, 1, 2);
+  // Only the second session reached step 2.
+  histograms.ExpectBucketCount(step_reached, 2, 1);
+
+  // Only one session (the second one) completed.
+  histograms.ExpectUniqueSample(
+      result, CriticalUserJourneySession::JourneyResult::kCompleted, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(CriticalUserJourneyServiceInteractiveTest,
                        BranchingJourneyCompletion) {
   base::HistogramTester histograms;
 
@@ -245,8 +281,8 @@ IN_PROC_BROWSER_TEST_F(CriticalUserJourneyServiceInteractiveTest,
       base::StrCat({GetMetricJourneyPrefix(kAnyOfStartJourney), ".Result"});
 
   RunTestSequence(
-      // Step 1: Click the Avatar Button (triggers start).
-      PressButton(kReloadButtonElementId),
+      // Step 1: Click the Location Icon (triggers start).
+      PressButton(kLocationIconElementId),
 
       // Step 2: Click the App Menu Button.
       PressButton(kToolbarAppMenuButtonElementId));

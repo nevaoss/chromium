@@ -170,6 +170,9 @@ extern const char kAutofillVcnEnrollStrikeExpiryTimeDescription[];
 extern const char kBWGPromoConsentName[];
 extern const char kBWGPromoConsentDescription[];
 
+extern const char kBackgroundRefreshRegressionTestName[];
+extern const char kBackgroundRefreshRegressionTestDescription[];
+
 extern const char kBestFeaturesScreenInFirstRunName[];
 extern const char kBestFeaturesScreenInFirstRunDescription[];
 
@@ -181,6 +184,9 @@ extern const char kBlueDotOnToolsMenuButtonDescription[];
 
 extern const char kBreakpadNoDelayInitialUploadName[];
 extern const char kBreakpadNoDelayInitialUploadDescription[];
+
+extern const char kBuildExternalPrivacyContextName[];
+extern const char kBuildExternalPrivacyContextDescription[];
 
 extern const char kCacheIdentityListInChromeName[];
 extern const char kCacheIdentityListInChromeDescription[];
@@ -234,9 +240,6 @@ extern const char kComposeboxImmersiveSRPDescription[];
 
 extern const char kComposeboxIpadName[];
 extern const char kComposeboxIpadDescription[];
-
-extern const char kComposeboxMenuTitleName[];
-extern const char kComposeboxMenuTitleDescription[];
 
 extern const char kComposeboxServerSideStateName[];
 extern const char kComposeboxServerSideStateDescription[];
@@ -968,6 +971,12 @@ extern const char kSmartTabGroupingDescription[];
 extern const char kSmoothScrollingUseDelegateName[];
 extern const char kSmoothScrollingUseDelegateDescription[];
 
+extern const char kSnapshotCompressedJPEGQualityName[];
+extern const char kSnapshotCompressedJPEGQualityDescription[];
+
+extern const char kSnapshotDownsampleImageName[];
+extern const char kSnapshotDownsampleImageDescription[];
+
 extern const char kStrokesAPIEnabledName[];
 extern const char kStrokesAPIEnabledDescription[];
 
@@ -984,6 +993,9 @@ extern const char
 
 extern const char kSupervisedUserUseUrlFilteringServiceName[];
 extern const char kSupervisedUserUseUrlFilteringServiceDescription[];
+
+extern const char kSyncAIThreadsName[];
+extern const char kSyncAIThreadsDescription[];
 
 extern const char kSyncAccountSettingsName[];
 extern const char kSyncAccountSettingsDescription[];
@@ -1008,6 +1020,9 @@ extern const char kSyncWalletFlightReservationsDescription[];
 
 extern const char kSyncWalletVehicleRegistrationsName[];
 extern const char kSyncWalletVehicleRegistrationsDescription[];
+
+extern const char kSyncedGroupColorName[];
+extern const char kSyncedGroupColorDescription[];
 
 extern const char kTabGridNewTransitionsName[];
 extern const char kTabGridNewTransitionsDescription[];

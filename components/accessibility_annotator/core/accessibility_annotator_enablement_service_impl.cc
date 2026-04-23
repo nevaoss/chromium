@@ -8,8 +8,12 @@
 
 #include "base/feature_list.h"
 #include "base/strings/strcat.h"
+#include "base/strings/string_util.h"
+#include "components/accessibility_annotator/core/accessibility_annotator_debug_features.h"
 #include "components/accessibility_annotator/core/accessibility_annotator_features.h"
+#include "components/accessibility_annotator/core/country_type.h"
 #include "components/account_settings/account_setting_service.h"
+#include "components/prefs/pref_service.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 
 namespace accessibility_annotator {
@@ -82,14 +86,45 @@ void MaybeOutputReason(std::string* out, std::string_view message) {
   // TODO(crbug.com/494149753) Implement
   return true;
 }
+
+// Checks whether miscellaneous "other" requirements (e.g. Geo-IP)
+// are satisfied.
+[[nodiscard]] bool SatisfiesMiscellaneousRequirements(
+    GeoIpCountryCode country_code,
+    std::string* debug_message = nullptr) {
+  if (country_code != GeoIpCountryCode("US")) {
+    MaybeOutputReason(debug_message, "Unsupported GeoIp.");
+    return false;
+  }
+
+  return true;
+}
+
+// Checks whether preference requirements are satisfied.
+[[nodiscard]] RemoteAnnotatorEnablementState SatisfiesPreferenceRequirements(
+    PrefService* pref_service,
+    std::string* debug_message = nullptr) {
+  using enum RemoteAnnotatorEnablementState;
+
+  if (!pref_service) {
+    MaybeOutputReason(debug_message, "Prefs are not available.");
+    return kDisabledNotEligible;
+  }
+  // TODO(crbug.com/494149753): Implement preference checks.
+  return kEnabled;
+}
 }  // namespace
 
 AccessibilityAnnotatorEnablementServiceImpl::
     AccessibilityAnnotatorEnablementServiceImpl(
         account_settings::AccountSettingService* account_settings_service,
-        signin::IdentityManager* identity_manager)
+        signin::IdentityManager* identity_manager,
+        PrefService* pref_service,
+        GeoIpCountryCode country_code)
     : account_settings_service_(account_settings_service),
-      identity_manager_(identity_manager) {}
+      identity_manager_(identity_manager),
+      pref_service_(pref_service),
+      country_code_(std::move(country_code)) {}
 
 AccessibilityAnnotatorEnablementServiceImpl::
     ~AccessibilityAnnotatorEnablementServiceImpl() = default;
@@ -107,6 +142,13 @@ void AccessibilityAnnotatorEnablementServiceImpl::RemoveObserver(
 RemoteAnnotatorEnablementState
 AccessibilityAnnotatorEnablementServiceImpl::GetEnablementState() {
   using enum RemoteAnnotatorEnablementState;
+  if (base::FeatureList::IsEnabled(
+          features::debug::kAccessibilityAnnotatorForceEnablementState)) {
+    return static_cast<RemoteAnnotatorEnablementState>(
+        features::debug::kAccessibilityAnnotatorForceEnablementStateParam
+            .Get());
+  }
+
   if (!SatisfiesFeatureRequirements()) {
     return kDisabledNotEligible;
   }
@@ -119,7 +161,11 @@ AccessibilityAnnotatorEnablementServiceImpl::GetEnablementState() {
     return kDisabledNotEligible;
   }
 
-  return kEnabled;
+  if (!SatisfiesMiscellaneousRequirements(country_code_)) {
+    return kDisabledNotEligible;
+  }
+
+  return SatisfiesPreferenceRequirements(pref_service_.get());
 }
 
 }  // namespace accessibility_annotator

@@ -755,6 +755,7 @@ chromium-metrics-reviews@google.com.
   <int value="190" label="WebSettingsCompat.getPrefetchTtlSeconds"/>
   <int value="191" label="WebSettingsCompat.clearMaxPrefetches"/>
   <int value="192" label="WebSettingsCompat.clearPrefetchTtl"/>
+  <int value="193" label="WebSettingsCompat.clearMaxPrerenders"/>
 <!-- LINT.ThenChange(/android_webview/support_library/java/src/org/chromium/support_lib_glue/SupportLibWebViewChromiumFactory.java:ApiCall) -->
 
 </enum>
@@ -1269,6 +1270,15 @@ chromium-metrics-reviews@google.com.
   <int value="8" label="DroppedTransferBackToBrowserFailed"/>
   <int value="9" label="SpeculativeTransferStateReplaced"/>
 </enum>
+
+<!-- LINT.IfChange(LauncherShortcutUpdateFailure) -->
+
+<enum name="LauncherShortcutUpdateFailure">
+  <int value="0" label="Rate Limited"/>
+  <int value="1" label="Limit Exceeded"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/LauncherShortcutActivity.java:UpdateFailure) -->
 
 <enum name="LightTheme">
   <int value="0" label="undefined"/>
@@ -2657,6 +2667,15 @@ chromium-metrics-reviews@google.com.
   <int value="0" label="Always allow"/>
   <int value="1" label="Never allow"/>
   <int value="2" label="Compatibility Mode"/>
+</enum>
+
+<enum name="WebViewNavigationType">
+  <int value="0" label="Initial"/>
+  <int value="1" label="Same-document"/>
+  <int value="2" label="Browser-initiated same-origin"/>
+  <int value="3" label="Browser-initiated cross-origin"/>
+  <int value="4" label="Renderer-initiated same-origin"/>
+  <int value="5" label="Renderer-initiated cross-origin"/>
 </enum>
 
 <enum name="WebViewNightModeVsLightTheme">

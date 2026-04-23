@@ -268,6 +268,12 @@ const char kBWGPromoConsentDescription[] =
     "Whether the promo consent flow is composed of a single or a double screen "
     "view.";
 
+const char kBackgroundRefreshRegressionTestName[] =
+    "Background Refresh Regression Test";
+const char kBackgroundRefreshRegressionTestDescription[] =
+    "Enables the Background Refresh Regression Test with multiple arms "
+    "to test various refresh and persistence parameters.";
+
 const char kBestFeaturesScreenInFirstRunName[] =
     "Display Best Features screen in the FRE";
 const char kBestFeaturesScreenInFirstRunDescription[] =
@@ -285,6 +291,14 @@ const char kBreakpadNoDelayInitialUploadDescription[] =
     "When enabled, the initial crash uploading will not be delayed. When "
     "disabled, initial upload is delayed until deferred initialization. This "
     "does not affect recovery mode.";
+
+const char kBuildExternalPrivacyContextName[] =
+    "Build external privacy context";
+const char kBuildExternalPrivacyContextDescription[] =
+    "When enabled, checks if the account can be signed in on the device "
+    "according to the capabilities. This needs `can_sign_in_to_chrome` "
+    "capability to be fetched (controlled by "
+    "kEnforceCanSignInToChromeCapability flag).";
 
 const char kCacheIdentityListInChromeName[] = "Cache identity list in chrome.";
 const char kCacheIdentityListInChromeDescription[] =
@@ -368,10 +382,6 @@ const char kComposeboxImmersiveSRPDescription[] =
 
 const char kComposeboxIpadName[] = "ComposeboxIpad";
 const char kComposeboxIpadDescription[] = "Enables the composeboxIpad feature.";
-
-const char kComposeboxMenuTitleName[] = "ComposeboxMenuTitle";
-const char kComposeboxMenuTitleDescription[] =
-    "Enables the ComposeboxMenuTitle feature.";
 
 const char kComposeboxServerSideStateName[] =
     "Enable server side state in Composebox";
@@ -1581,6 +1591,18 @@ const char kSmoothScrollingUseDelegateDescription[] =
     "When enabled, the SmoothScrollingDefault experiment uses the regular "
     "UIScrollViewDelegate instead of KVO and broadcasting.";
 
+const char kSnapshotCompressedJPEGQualityName[] =
+    "Snapshot Compressed JPEG Quality";
+const char kSnapshotCompressedJPEGQualityDescription[] =
+    "Reduces snapshot JPEG quality from 1.0 to 0.97 for visually lossless "
+    "compression, reducing file size by ~3-5x.";
+
+const char kSnapshotDownsampleImageName[] =
+    "Snapshot Downsample Image";
+const char kSnapshotDownsampleImageDescription[] =
+    "Downsamples tab snapshots to half resolution before writing to disk, "
+    "reducing storage and I/O while keeping full resolution in memory.";
+
 const char kStrokesAPIEnabledName[] = "Enable Strokes API for Lens";
 const char kStrokesAPIEnabledDescription[] =
     "When enabled, Lens will use the Strokes API.";
@@ -1610,6 +1632,10 @@ const char kSupervisedUserUseUrlFilteringServiceDescription[] =
     "Use the SupervisedUserUrlFilteringService to get URL filtering settings "
     "directly from supervision services instead of using PrefService (no "
     "user-visible effect).";
+
+const char kSyncAIThreadsName[] = "Sync AI Threads";
+const char kSyncAIThreadsDescription[] =
+    "Enables syncing of AI threads across devices.";
 
 const char kSyncAccountSettingsName[] = "Sync account settings";
 const char kSyncAccountSettingsDescription[] =
@@ -1647,6 +1673,10 @@ const char kSyncWalletVehicleRegistrationsName[] =
     "Sync wallet vehicle registrations";
 const char kSyncWalletVehicleRegistrationsDescription[] =
     "Enables syncing vehicle registrations in the wallet to the server.";
+
+const char kSyncedGroupColorName[] = "SyncedGroupColor";
+const char kSyncedGroupColorDescription[] =
+    "Enables the SyncedGroupColor feature.";
 
 const char kTabGridNewTransitionsName[] = "Enable new TabGrid transitions";
 const char kTabGridNewTransitionsDescription[] =

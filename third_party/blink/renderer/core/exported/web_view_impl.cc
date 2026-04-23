@@ -362,7 +362,7 @@ void ApplyCommandLineToSettings(WebSettings* settings) {
         WebSettings::SelectionStrategyType::kDirection);
   }
 
-  WebString network_quiet_timeout = WebString::FromUTF8(
+  WebString network_quiet_timeout = WebString::FromUtf8(
       command_line.GetSwitchValueASCII(switches::kNetworkQuietTimeout));
   if (!network_quiet_timeout.IsEmpty()) {
     auto network_quiet_timeout_seconds =
@@ -1745,6 +1745,7 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
   settings->SetDontSendKeyEventsToJavascript(
       prefs.dont_send_key_events_to_javascript);
   settings->SetWebAppScope(WebString::FromAscii(prefs.web_app_scope.spec()));
+  settings->SetIsInitialProfile(prefs.is_initial_profile);
 
 #if BUILDFLAG(IS_ANDROID)
   settings->SetAllowCustomScrollbarInMainFrame(false);
@@ -1840,6 +1841,10 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
 
   settings->SetPictureInPictureEnabled(prefs.picture_in_picture_enabled &&
                                        ::features::UseSurfaceLayerForVideo());
+
+  settings->SetImmersiveVideoPlaybackEnabled(
+      prefs.immersive_video_playback_enabled &&
+      ::features::UseSurfaceLayerForVideo());
 
   settings->SetRootScrollbarThemeColor(prefs.root_scrollbar_theme_color);
   settings->SetLazyLoadEnabled(prefs.lazy_load_enabled);
@@ -3622,7 +3627,7 @@ void WebViewImpl::UpdateFontRenderingFromRendererPrefs() {
       renderer_preferences_.use_subpixel_positioning);
 #if BUILDFLAG(IS_LINUX)
   if (!renderer_preferences_.system_font_family_name.empty()) {
-    WebFontRenderStyle::SetSystemFontFamily(blink::WebString::FromUTF8(
+    WebFontRenderStyle::SetSystemFontFamily(blink::WebString::FromUtf8(
         renderer_preferences_.system_font_family_name));
   }
 #endif  // BUILDFLAG(IS_LINUX)

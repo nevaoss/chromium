@@ -880,15 +880,6 @@ extern const base::FeatureParam<std::string> kGlicCaaGuestRedirectPatterns{
     "https://access.workspace.google.com https://admin.google.com "
     "https://accounts.google.com/info/servicerestricted"};
 
-BASE_FEATURE(kGlicEntrypointVariations, base::FEATURE_ENABLED_BY_DEFAULT);
-const base::FeatureParam<bool> kGlicEntrypointVariationsShowLabel{
-    &kGlicEntrypointVariations, "glic-entrypoint-variations-show-label", true};
-const base::FeatureParam<bool> kGlicEntrypointVariationsAltIcon{
-    &kGlicEntrypointVariations, "glic-entrypoint-variations-alt-icon", true};
-const base::FeatureParam<bool> kGlicEntrypointVariationsHighlightNudge{
-    &kGlicEntrypointVariations, "glic-entrypoint-variations-highlight-nudge",
-    false};
-
 BASE_FEATURE(kGlicButtonAltLabel, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicButtonAltLabelVariant{
     &kGlicButtonAltLabel, "glic-button-alt-label-variant", 0};
@@ -934,7 +925,8 @@ const base::FeatureParam<std::string> kGlicWebActuationAllowedTiers{
 
 // If enabled, show web actuation settings toggle if
 // kGlicWebActuationAllowedTiers is populated.
-BASE_FEATURE(kGlicWebActuationSettingsToggle, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicWebActuationSettingsToggle,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicMetricsSession, base::FEATURE_ENABLED_BY_DEFAULT);
 // The duration of inactivity after which a session is considered ended.

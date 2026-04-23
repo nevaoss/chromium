@@ -31,9 +31,12 @@
 #include "ui/views/view_class_properties.h"
 
 namespace {
-constexpr int kRegionVerticalPadding = 5;
 constexpr int kComboButtonCollapsedPadding = 2;
 }
+
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(
+    VerticalTabStripTopContainer,
+    kToggleVerticalTabsExpandOnHoverElementId);
 
 VerticalTabStripTopContainer::VerticalTabStripTopContainer(
     tabs::VerticalTabStripStateController* state_controller,
@@ -171,9 +174,13 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
                                           combo_button_->GetVisible(), bounds);
         host_size.SetToMax(gfx::Size(bounds.right(), 0));
 
-        current_y += pref_size.height() + kRegionVerticalPadding;
+        current_y +=
+            pref_size.height() +
+            GetLayoutConstant(
+                LayoutConstant::kVerticalTabStripCollapsedVerticalPadding);
       } else if (caption_button_width_ != 0) {
-        current_y += kRegionVerticalPadding;
+        current_y += GetLayoutConstant(
+            LayoutConstant::kVerticalTabStripCollapsedVerticalPadding);
       }
     }
 
@@ -319,6 +326,9 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
         IDC_TOGGLE_VERTICAL_TABS_EXPAND_ON_HOVER,
         l10n_util::GetStringUTF16(
             IDS_VERTICAL_TABS_COLLAPSE_BUTTON_TOGGLE_EXPAND_ON_HOVER));
+    context_menu_model_->SetElementIdentifierAt(
+        context_menu_model_->GetItemCount() - 1,
+        kToggleVerticalTabsExpandOnHoverElementId);
 
     int32_t menu_runner_flags =
         views::MenuRunner::HAS_MNEMONICS | views::MenuRunner::CONTEXT_MENU;

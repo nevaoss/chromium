@@ -118,6 +118,7 @@
 #import "ios/chrome/browser/settings/ui_bundled/password/password_manager_ui_features.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/public/features/system_flags.h"
+#import "ios/chrome/browser/snapshots/model/features.h"
 #import "ios/chrome/browser/start_surface/ui_bundled/start_surface_features.h"
 #import "ios/chrome/browser/text_selection/model/text_selection_util.h"
 #import "ios/chrome/browser/variations/model/ios_chrome_variations_seed_fetcher.h"
@@ -959,6 +960,29 @@ const FeatureEntry::FeatureVariation kWelcomeBackVariations[] = {
     {" - Variant D: Sign-in Benefits", kWelcomeBackArm4, nullptr},
 };
 
+const FeatureEntry::FeatureParam kBackgroundRefreshRegressionTestControl[] = {
+    {"regression_test_arm", "control"}};
+const FeatureEntry::FeatureParam kBackgroundRefreshRegressionTestBaseline[] = {
+    {"regression_test_arm", "baseline"}};
+const FeatureEntry::FeatureParam
+    kBackgroundRefreshRegressionTestShortPersistenceDelay[] = {
+        {"regression_test_arm", "short-persistence-delay"}};
+const FeatureEntry::FeatureParam
+    kBackgroundRefreshRegressionTestLongRefreshInterval[] = {
+        {"regression_test_arm", "long-refresh-interval"}};
+const FeatureEntry::FeatureParam kBackgroundRefreshRegressionTestNoBeacon[] = {
+    {"regression_test_arm", "no-beacon"}};
+
+const FeatureEntry::FeatureVariation
+    kBackgroundRefreshRegressionTestVariations[] = {
+        {"Control", kBackgroundRefreshRegressionTestControl, nullptr},
+        {"Baseline", kBackgroundRefreshRegressionTestBaseline, nullptr},
+        {"Short Persistence Delay",
+         kBackgroundRefreshRegressionTestShortPersistenceDelay, nullptr},
+        {"Long Refresh Interval",
+         kBackgroundRefreshRegressionTestLongRefreshInterval, nullptr},
+        {"No Beacon", kBackgroundRefreshRegressionTestNoBeacon, nullptr}};
+
 const FeatureEntry::FeatureParam kBestOfAppFREArm1[] = {{"variant", "1"}};
 const FeatureEntry::FeatureParam kBestOfAppFREArm2[] = {{"variant", "2"}};
 const FeatureEntry::FeatureParam kBestOfAppFREArm4[] = {{"variant", "4"}};
@@ -1354,6 +1378,11 @@ const FeatureEntry::FeatureVariation kAssistantContainerVariations[] = {
 //
 // When adding a new choice, add it to the end of the list.
 constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
+    {"build-external-privacy-context",
+     flag_descriptions::kBuildExternalPrivacyContextName,
+     flag_descriptions::kBuildExternalPrivacyContextDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(switches::kBuildExternalPrivacyContext)},
     {"in-product-help-demo-mode-choice",
      flag_descriptions::kInProductHelpDemoModeName,
      flag_descriptions::kInProductHelpDemoModeDescription, flags_ui::kOsIos,
@@ -1451,6 +1480,16 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"shared-highlighting-ios", flag_descriptions::kSharedHighlightingIOSName,
      flag_descriptions::kSharedHighlightingIOSDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kSharedHighlightingIOS)},
+    {"snapshot-compressed-jpeg-quality",
+     flag_descriptions::kSnapshotCompressedJPEGQualityName,
+     flag_descriptions::kSnapshotCompressedJPEGQualityDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kSnapshotCompressedJPEGQuality)},
+    {"snapshot-downsample-image",
+     flag_descriptions::kSnapshotDownsampleImageName,
+     flag_descriptions::kSnapshotDownsampleImageDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kSnapshotDownsampleImage)},
     {"ios-reactivation-notifications",
      flag_descriptions::kIOSReactivationNotificationsName,
      flag_descriptions::kIOSReactivationNotificationsDescription,
@@ -1772,6 +1811,13 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"app-background-refresh-ios", flag_descriptions::kAppBackgroundRefreshName,
      flag_descriptions::kAppBackgroundRefreshDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kEnableAppBackgroundRefresh)},
+    {"background-refresh-regression-test",
+     flag_descriptions::kBackgroundRefreshRegressionTestName,
+     flag_descriptions::kBackgroundRefreshRegressionTestDescription,
+     flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kBackgroundRefreshRegressionTest,
+                                    kBackgroundRefreshRegressionTestVariations,
+                                    "BackgroundRefreshRegressionTest")},
     {"autofill-support-date-input",
      flag_descriptions::kAutofillSupportDateInputName,
      flag_descriptions::kAutofillSupportDateInputDescription, flags_ui::kOsIos,
@@ -2469,9 +2515,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSWebContextMenuNewTitleName,
      flag_descriptions::kIOSWebContextMenuNewTitleDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSWebContextMenuNewTitle)},
-    {"composebox-menu-title", flag_descriptions::kComposeboxMenuTitleName,
-     flag_descriptions::kComposeboxMenuTitleDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kComposeboxMenuTitle)},
     {"gemini-refactored-fre", flag_descriptions::kGeminiRefactoredFREName,
      flag_descriptions::kGeminiRefactoredFREDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiRefactoredFRE)},
@@ -2606,6 +2649,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"sync-account-settings", flag_descriptions::kSyncAccountSettingsName,
      flag_descriptions::kSyncAccountSettingsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(syncer::kSyncAccountSettings)},
+    {"sync-ai-threads", flag_descriptions::kSyncAIThreadsName,
+     flag_descriptions::kSyncAIThreadsDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(syncer::kSyncAIThread)},
     {"sync-autofill-valuable", flag_descriptions::kSyncAutofillValuableName,
      flag_descriptions::kSyncAutofillValuableDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(syncer::kSyncAutofillValuable)},
@@ -2753,6 +2799,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kIOSCobaltDeveloperModeName,
      flag_descriptions::kIOSCobaltDeveloperModeDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(web::features::kIOSCobaltDeveloperMode)},
+    {"synced-group-color", flag_descriptions::kSyncedGroupColorName,
+     flag_descriptions::kSyncedGroupColorDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kSyncedGroupColor)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

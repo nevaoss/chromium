@@ -43,6 +43,7 @@ class BrowserUserEducationInterface;
 class BrowserView;
 class BrowserWindowInterface;
 class BrowserWindowThemeObserver;
+class BrowserWindowZoomObserver;
 class CallToActionLock;
 class ChromeLabsCoordinator;
 class ColorProviderBrowserHelper;
@@ -270,10 +271,6 @@ class BrowserWindowFeatures {
     return mv2_disabled_dialog_controller_.get();
   }
 
-  ChromeLabsCoordinator* chrome_labs_coordinator() {
-    return chrome_labs_coordinator_.get();
-  }
-
   ImmersiveModeController* immersive_mode_controller() {
     return immersive_mode_controller_.get();
   }
@@ -301,10 +298,6 @@ class BrowserWindowFeatures {
   // of this class, we use lowercase_with_underscores even though the
   // implementation is not inlined.
   SidePanelUI* side_panel_ui();
-
-  lens::LensOverlayEntryPointController* lens_overlay_entry_point_controller() {
-    return lens_overlay_entry_point_controller_.get();
-  }
 
   lens::LensRegionSearchController* lens_region_search_controller() {
     return lens_region_search_controller_.get();
@@ -357,10 +350,6 @@ class BrowserWindowFeatures {
   tab_groups::SharedTabGroupFeedbackController*
   shared_tab_group_feedback_controller() {
     return shared_tab_group_feedback_controller_.get();
-  }
-
-  TabSearchToolbarButtonController* tab_search_toolbar_button_controller() {
-    return tab_search_toolbar_button_controller_.get();
   }
 
   BrowserSyncedWindowDelegate* synced_window_delegate() {
@@ -809,6 +798,8 @@ class BrowserWindowFeatures {
       contextual_cueing_controller_;
 
   std::unique_ptr<BrowserWindowThemeObserver> browser_window_theme_observer_;
+
+  std::unique_ptr<BrowserWindowZoomObserver> browser_window_zoom_observer_;
 
   // Keep this member last to ensure embedder features are torn down first, in
   // reverse order of initialization.

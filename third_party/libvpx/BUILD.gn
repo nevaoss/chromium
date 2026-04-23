@@ -29,6 +29,7 @@ if (current_cpu == "x86") {
     cpu_arch_full = "arm-neon"
   }
 } else if (current_cpu == "arm64" || current_cpu == "arm64e") {
+<<<<<<< HEAD
   # TODO(neva): Remove "!is_webos' if webos toolchain supports arm64-highbd.
   if ((is_linux || is_win || is_chromeos || is_mac || is_ios ||
       is_desktop_android) && !is_webos) {
@@ -37,7 +38,14 @@ if (current_cpu == "x86") {
     # os_category).
     cpu_arch_full = "arm64-highbd"
   } else {
+=======
+  # We support vp9 profile 2 for SW decoding on all platforms except mobile
+  # Android or Fuchsia.
+  if ((is_android && !is_desktop_android) || is_fuchsia) {
+>>>>>>> 149.0.7781.0~1
     cpu_arch_full = "arm64"
+  } else {
+    cpu_arch_full = "arm64-highbd"
   }
 } else if (current_cpu == "riscv64") {
   cpu_arch_full = "generic"

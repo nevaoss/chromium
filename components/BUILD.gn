@@ -368,8 +368,6 @@ test("components_unittests") {
     "//components/system_media_controls:unit_tests",
     "//components/test:run_all_unittests",
     "//components/themes:unit_tests",
-    "//components/tpcd/metadata/browser:unit_tests",
-    "//components/tpcd/metadata/common:unit_tests",
     "//components/translate/core/browser:unit_tests",
     "//components/translate/core/common:unit_tests",
     "//components/translate/core/language_detection:unit_tests",
@@ -420,7 +418,7 @@ test("components_unittests") {
     ]
   }
 
-  if (is_linux) {
+  if (is_linux || is_mac) {
     deps += [ "//components/gapis:unit_tests" ]
   }
 
@@ -783,7 +781,10 @@ test("components_unittests") {
     ]
   }
 
-  if (enable_guest_contents) {
+  if ((enable_guest_contents || enable_surface_embed) && use_blink) {
+    # guest_contents is a supporting component for any solution that embeds
+    # unowned inner WebContents. As it is for embedding WebContents, only
+    # add the deps when use_blink is true.
     deps += [ "//components/guest_contents/browser:unit_tests" ]
   }
 
@@ -1181,6 +1182,7 @@ if (use_blink) {
       "//components/optimization_guide/content/browser",
       "//components/optimization_guide/content/browser:test_support",
       "//components/optimization_guide/content/renderer",
+      "//components/page_content_annotations/content",
       "//components/paint_preview/renderer",
       "//components/password_manager/content/browser",
       "//components/performance_manager:browser_tests",

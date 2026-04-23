@@ -1162,12 +1162,28 @@ class PaintCanvasVideoRendererWithGLTest : public testing::Test {
 
   void TearDown() override {
     renderer_.ResetCache();
+    rgb_shared_image_cache_.reset();
+    yuv_shared_image_cache_.reset();
     destination_context_.reset();
     raster_context_.reset();
     media_context_.reset();
     enable_pixels_.reset();
     viz::TestGpuServiceHolder::ResetInstance();
     gl::GLSurfaceTestSupport::ShutdownGL(display_);
+  }
+
+  VideoFrameSharedImageCache* GetRGBSharedImageCache() {
+    if (!rgb_shared_image_cache_) {
+      rgb_shared_image_cache_ = std::make_unique<VideoFrameSharedImageCache>();
+    }
+    return rgb_shared_image_cache_.get();
+  }
+
+  VideoFrameSharedImageCache* GetYUVSharedImageCache() {
+    if (!yuv_shared_image_cache_) {
+      yuv_shared_image_cache_ = std::make_unique<VideoFrameSharedImageCache>();
+    }
+    return yuv_shared_image_cache_.get();
   }
 
   // Copies |frame| into a GL texture, reads back its contents, and runs
@@ -1201,10 +1217,12 @@ class PaintCanvasVideoRendererWithGLTest : public testing::Test {
           destination_context_->ContextSupport(),
           std::move(destination_access));
     } else {
-      renderer_.CopyVideoFrameTexturesToGLTextureViaIntermediateSI(
-          media_context_.get(), destination_gl, frame,
-          renderer_.GetRGBSharedImageCache(), target, texture, GL_RGBA, GL_RGBA,
-          GL_UNSIGNED_BYTE, 0, kUnpremul_SkAlphaType, kTopLeft_GrSurfaceOrigin);
+      PaintCanvasVideoRenderer::
+          CopyVideoFrameTexturesToGLTextureViaIntermediateSI(
+              media_context_.get(), destination_gl, frame,
+              GetRGBSharedImageCache(), target, texture, GL_RGBA, GL_RGBA,
+              GL_UNSIGNED_BYTE, 0, kUnpremul_SkAlphaType,
+              kTopLeft_GrSurfaceOrigin);
     }
 
     base::HeapArray<uint8_t> pixels =
@@ -1347,6 +1365,8 @@ class PaintCanvasVideoRendererWithGLTest : public testing::Test {
   scoped_refptr<viz::TestInProcessContextProvider> destination_context_;
 
   PaintCanvasVideoRenderer renderer_;
+  std::unique_ptr<VideoFrameSharedImageCache> rgb_shared_image_cache_;
+  std::unique_ptr<VideoFrameSharedImageCache> yuv_shared_image_cache_;
   scoped_refptr<VideoFrame> cropped_frame_;
   base::test::TaskEnvironment task_environment_;
   raw_ptr<gl::GLDisplay> display_ = nullptr;
@@ -1360,8 +1380,9 @@ TEST_F(PaintCanvasVideoRendererWithGLTest, CopyVideoFrameYUVDataToGLTexture) {
   destination_gl->GenTextures(1, &texture);
   destination_gl->BindTexture(target, texture);
 
-  renderer_.CopyVideoFrameYUVDataToGLTexture(
-      media_context_.get(), destination_gl, cropped_frame(), target, texture,
+  PaintCanvasVideoRenderer::CopyVideoFrameYUVDataToGLTexture(
+      media_context_.get(), destination_gl, cropped_frame(),
+      GetRGBSharedImageCache(), GetYUVSharedImageCache(), target, texture,
       GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, 0, kUnpremul_SkAlphaType,
       kTopLeft_GrSurfaceOrigin);
 
@@ -1392,8 +1413,9 @@ TEST_F(PaintCanvasVideoRendererWithGLTest,
   destination_gl->GenTextures(1, &texture);
   destination_gl->BindTexture(target, texture);
 
-  renderer_.CopyVideoFrameYUVDataToGLTexture(
-      media_context_.get(), destination_gl, cropped_frame(), target, texture,
+  PaintCanvasVideoRenderer::CopyVideoFrameYUVDataToGLTexture(
+      media_context_.get(), destination_gl, cropped_frame(),
+      GetRGBSharedImageCache(), GetYUVSharedImageCache(), target, texture,
       GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE, 0, kUnpremul_SkAlphaType,
       kBottomLeft_GrSurfaceOrigin);
 

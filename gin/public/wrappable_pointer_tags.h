@@ -83,6 +83,7 @@ enum WrappablePointerTag : uint16_t {
   kWebAXObjectProxy,             // content::WebAXObjectProxy
   kWrappedExceptionHandler,      // extensions::WrappedExceptionHandler
   kIndigoContext,                // indigo::IndigoContext
+<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   kBrowserControlInjection,
   kBrowserShellCookieManager,
@@ -113,6 +114,10 @@ enum WrappablePointerTag : uint16_t {
 #else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
   kLastPointerTag = kIndigoContext,
 #endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+  kIndigoOnboarding,             // indigo::OnboardingContext
+  kLastPointerTag = kIndigoOnboarding,
+>>>>>>> 149.0.7781.0~1
 };
 
 static_assert(kLastPointerTag <

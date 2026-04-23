@@ -75,6 +75,7 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/actor/ui/actor_overlay_ui.h"
 #include "chrome/browser/ui/tabs/tab_group_home/tab_group_home_ui.h"
+#include "chrome/browser/ui/webui/accessibility_annotator/accessibility_annotator_info_ui.h"
 #include "chrome/browser/ui/webui/content_annotator_internals/content_annotator_internals_ui.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_ui.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
@@ -181,6 +182,7 @@
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_DESKTOP_ANDROID)
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "chrome/browser/ui/webui/feature_showcase/feature_showcase_ui.h"
 #include "chrome/browser/ui/webui/signin/batch_upload_ui.h"
 #include "chrome/browser/ui/webui/signin/dice_web_signin_intercept_ui.h"
 #include "chrome/browser/ui/webui/signin/signout_confirmation/signout_confirmation_ui.h"
@@ -322,10 +324,13 @@ void RegisterChromeWebUIConfigs() {
   map.AddWebUIConfig(
       std::make_unique<
           content_annotator_internals::ContentAnnotatorInternalsUIConfig>());
+  map.AddWebUIConfig(std::make_unique<media_router::AccessCodeCastUIConfig>());
+  map.AddWebUIConfig(
+      std::make_unique<
+          accessibility_annotator::info::AccessibilityAnnotatorInfoUIConfig>());
   map.AddWebUIConfig(std::make_unique<actor::ui::ActorOverlayUIConfig>());
   map.AddWebUIConfig(std::make_unique<AppServiceInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<AutofillMlInternalsUIConfig>());
-  map.AddWebUIConfig(std::make_unique<media_router::AccessCodeCastUIConfig>());
   map.AddWebUIConfig(std::make_unique<BookmarksSidePanelUIConfig>());
   map.AddWebUIConfig(std::make_unique<BookmarksUIConfig>());
   map.AddWebUIConfig(std::make_unique<ColorPipelineInternalsUIConfig>());
@@ -434,6 +439,7 @@ void RegisterChromeWebUIConfigs() {
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   map.AddWebUIConfig(std::make_unique<BatchUploadUIConfig>());
   map.AddWebUIConfig(std::make_unique<DiceWebSigninInterceptUIConfig>());
+  map.AddWebUIConfig(std::make_unique<FeatureShowcaseUIConfig>());
   map.AddWebUIConfig(std::make_unique<SignoutConfirmationUIConfig>());
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 

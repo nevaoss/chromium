@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/check.h"
 #include "base/check_deref.h"
 #include "base/compiler_specific.h"
 #include "base/containers/fixed_flat_map.h"
@@ -86,6 +87,9 @@ constexpr char kUndeterminedLocale[] = "und";
 // The number of seconds to wait before distilling after a user has stopped
 // entering text into a richly editable text field.
 const double kPostInputDistillSeconds = 1.5;
+
+// The amount of time after a distillation for a PDF to wait before drawing.
+const int kPdfDrawDebounceMs = 500;
 
 // The following methods convert v8::Value types to an AXTreeUpdate. This is not
 // a complete conversion (thus way gin::Converter<ui::AXTreeUpdate> is not used
@@ -438,6 +442,11 @@ ReadAnythingAppController::ReadAnythingAppController(
       base::BindRepeating(&ReadAnythingAppController::Draw,
                           weak_ptr_factory_.GetWeakPtr(),
                           /* recompute_display_nodes= */ true));
+  pdf_draw_debouncer_ = std::make_unique<base::RetainingOneShotTimer>(
+      FROM_HERE, base::Milliseconds(kPdfDrawDebounceMs),
+      base::BindRepeating(&ReadAnythingAppController::Draw,
+                          weak_ptr_factory_.GetWeakPtr(),
+                          /* recompute_display_nodes= */ false));
   renderer_load_triggered_time_ms_ = base::TimeTicks::Now();
   distiller_ = std::make_unique<AXTreeDistiller>(
       render_frame,
@@ -461,6 +470,7 @@ ReadAnythingAppController::ReadAnythingAppController(
 ReadAnythingAppController::~ReadAnythingAppController() {
   RecordNumSelections();
   post_user_entry_draw_timer_->Stop();
+  pdf_draw_debouncer_->Stop();
 }
 
 void ReadAnythingAppController::OnDestruct() {
@@ -651,6 +661,13 @@ void ReadAnythingAppController::ProcessModelUpdates() {
     post_user_entry_draw_timer_->Reset();
     model_.set_reset_draw_timer(false);
   }
+
+  // If a subtree was created in a PDF, this value will be true and it will
+  // reset the timer to distill.
+  if (model_.reset_distillation_delay_timer()) {
+    pdf_draw_debouncer_->Reset();
+    model_.set_reset_distillation_delay_timer(false);
+  }
 }
 
 void ReadAnythingAppController::AccessibilityLocationChangesReceived(
@@ -739,10 +756,14 @@ void ReadAnythingAppController::OnActiveAXTreeIDChanged(
 
   // Cancel any running draw timers.
   post_user_entry_draw_timer_->Stop();
+  pdf_draw_debouncer_->Stop();
 
   model_.SetRootTreeId(tree_id);
   model_.SetUkmSourceIdForTree(tree_id, ukm_source_id);
   model_.set_is_pdf(is_pdf);
+  if (is_pdf) {
+    pdf_draw_debouncer_->Reset();
+  }
 
   if (read_aloud_model_.speech_playing()) {
     model_.SetUrlInformationCallback(
@@ -1034,10 +1055,11 @@ void ReadAnythingAppController::OnAXTreeDistilled(
   }
 
   if (model_.is_empty()) {
-    // For Google Docs, the initial AXTree may be empty while the document is
-    // loading. Therefore, to avoid displaying an empty side panel, wait for
-    // Google Docs to finish loading.
-    if (!IsGoogleDocs() || model_.page_finished_loading()) {
+    // For Google Docs and PDFs, the initial AXTree may be empty while the
+    // document is loading. Therefore, to avoid displaying an empty side panel,
+    // wait for the page to finish loading.
+    if (!pdf_draw_debouncer_->IsRunning() &&
+        (!IsGoogleDocs() || model_.page_finished_loading())) {
       if (features::IsImmersiveReadAnythingEnabled()) {
         SetDistillationState(
             read_anything::mojom::ReadAnythingDistillationState::
@@ -1112,7 +1134,8 @@ bool ReadAnythingAppController::PostProcessSelection() {
 
 void ReadAnythingAppController::Draw(bool recompute_display_nodes) {
   // For Google Docs, do not show any text before the doc finishing loading.
-  if (IsGoogleDocs() && !model_.page_finished_loading()) {
+  if (pdf_draw_debouncer_->IsRunning() ||
+      (IsGoogleDocs() && !model_.page_finished_loading())) {
     return;
   }
   if (recompute_display_nodes && !model_.content_node_ids().empty()) {
@@ -1453,6 +1476,8 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
       .SetMethod("togglePinState", &ReadAnythingAppController::TogglePinState)
       .SetMethod("sendPinStateRequest",
                  &ReadAnythingAppController::SendPinStateRequest)
+      .SetMethod("onSpeechEngineFirstStall",
+                 &ReadAnythingAppController::OnSpeechEngineFirstStall)
       .SetMethod("onSpeechEngineStalled",
                  &ReadAnythingAppController::OnSpeechEngineStalled);
 }
@@ -2474,7 +2499,12 @@ void ReadAnythingAppController::OnReadingModeHidden(bool tab_active) {
   RecordEstimatedWordsHeard();
 }
 
+void ReadAnythingAppController::OnSpeechEngineFirstStall() {
+  DUMP_WILL_BE_CHECK(false) << "Speech engine stalled after 10 seconds";
+}
+
 void ReadAnythingAppController::OnSpeechEngineStalled() {
+  DUMP_WILL_BE_CHECK(false) << "Speech engine stalled after recovery timeout";
   page_handler_->OnSpeechEngineStalled();
 }
 

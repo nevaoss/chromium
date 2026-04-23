@@ -643,7 +643,9 @@ void TabStripSceneLayer::PutStripTabLayer(
     bool is_pinned,
     float pinned_icon_offset_x,
     bool is_underlined,
-    int32_t underline_color) {
+    int32_t underline_start_color,
+    int32_t underline_end_color,
+    int32_t underline_width_threshold) {
   DCHECK(layer_title_cache_);
   scoped_refptr<TabHandleLayer> layer = GetNextTabLayer(layer_title_cache_);
 
@@ -707,7 +709,8 @@ void TabStripSceneLayer::PutStripTabLayer(
       is_keyboard_focused, keyboard_focus_ring_drawable,
       keyboard_focus_ring_offset, stroke_width, folio_foot_length,
       width_to_hide_tab_title, pinned_icon_offset_x, is_underlined,
-      static_cast<SkColor>(underline_color));
+      static_cast<SkColor>(underline_start_color),
+      static_cast<SkColor>(underline_end_color), underline_width_threshold);
 }
 
 void TabStripSceneLayer::PutGroupIndicatorLayer(

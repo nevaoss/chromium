@@ -105,6 +105,9 @@ const base::FeatureParam<double> kCsdCreditCardFormSampleRate{
 const base::FeatureParam<int> kCsdCreditCardFormMaxUserVisit{
     &kClientSideDetectionCreditCardForm, "MaxUserVisit",
     /*default_value=*/1};
+const base::FeatureParam<int> kCsdCreditCardFormUserVisitLookback{
+    &kClientSideDetectionCreditCardForm, "UserVisitLookback",
+    /*default_value=*/10};
 const base::FeatureParam<bool> kCsdCreditCardFormEnableNewSiteFilter{
     &kClientSideDetectionCreditCardForm, "EnableNewSiteFilter",
     /*default_value=*/false};
@@ -128,9 +131,6 @@ const base::FeatureParam<bool> kCsdImageEmbeddingMatchWithIntelligentScan{
     "CsdImageEmbeddingMatchWithIntelligentScan", /*default_value=*/false};
 
 BASE_FEATURE(kClientSideDetectionKillswitch, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kClientSideDetectionLlamaForcedTriggerInfoForScamDetection,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kClientSideDetectionNewObservers,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -156,28 +156,12 @@ constexpr base::FeatureParam<int> kClientSideDetectionRetryLimitTime{
 BASE_FEATURE(kClientSideDetectionSamplePing, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kClientSideDetectionSendIntelligentScanInfoAndroid,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
-
-BASE_FEATURE(kClientSideDetectionSendLlamaForcedTriggerInfo,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-#if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kClientSideDetectionServerModelForScamDetectionAndroid,
              base::FEATURE_DISABLED_BY_DEFAULT);
 constexpr base::FeatureParam<int> kClientSideDetectionServerModelMaxScansPerDay{
     &kClientSideDetectionServerModelForScamDetectionAndroid,
     "MaxIntelligentScansPerDay",
     /*default_value=*/5};
-#endif
-
-BASE_FEATURE(kClientSideDetectionShowLlamaScamVerdictWarning,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-#if BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kClientSideDetectionShowScamVerdictWarningAndroid,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 BASE_FEATURE(kClientSideDetectionSkipErrorPage,

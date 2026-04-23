@@ -44,6 +44,7 @@ class SkBitmap;
 
 namespace contextual_tasks {
 class ContextualTasksContextService;
+class DesktopQueryContextualizerDelegate;
 }  // namespace contextual_tasks
 
 namespace lens {
@@ -92,8 +93,7 @@ class ContextualSearchboxHandler
     : public contextual_search::ContextualSearchContextController::
           ContextUploadStatusObserver,
       public SearchboxHandler,
-      public TabListInterfaceObserver,
-      public contextual_tasks::QueryContextualizer::Delegate {
+      public TabListInterfaceObserver {
  public:
   using RecontextualizeTabCallback = base::OnceCallback<void(bool)>;
 
@@ -203,6 +203,9 @@ class ContextualSearchboxHandler
   // SearchboxHandler:
   omnibox::InputState GetInputState() const override;
 
+  // Returns true if smart tab sharing is active for the current query.
+  virtual bool IsSmartTabSharingActive() const;
+
   virtual void OpenUrl(GURL url, const WindowOpenDisposition disposition);
 
   void ContextualizeQueryAndOpenUrl(
@@ -237,6 +240,9 @@ class ContextualSearchboxHandler
   std::optional<lens::ImageEncodingOptions> CreateTabPreviewEncodingOptions(
       content::WebContents* web_contents);
 
+  // Creates the image encoding options used for uploading images.
+  static std::optional<lens::ImageEncodingOptions> CreateImageEncodingOptions();
+
   contextual_search::ContextualSearchMetricsRecorder* GetMetricsRecorder();
 
   raw_ptr<contextual_tasks::ContextualTasksService> contextual_tasks_service_;
@@ -263,21 +269,6 @@ class ContextualSearchboxHandler
                             bool is_tab_suggestion_chip);
 
   virtual void InitializeInputStateModel();
-
-  // contextual_tasks::QueryContextualizer::Delegate:
-  GURL GetTabUrl(int32_t id) override;
-  SessionID GetTabSessionId(int32_t id) override;
-  void GetPageContext(
-      int32_t id,
-      base::OnceCallback<void(std::unique_ptr<lens::ContextualInputData>)>
-          callback) override;
-  bool IsTabValid(int32_t id) override;
-  std::optional<lens::ImageEncodingOptions>
-  GetTabViewportEncodingOptionsForQueryContextualizer() override;
-  void OnPageContextIneligible() override;
-  void OnTabProcessedForQueryContextualization(int32_t id) override;
-  contextual_search::ContextualSearchSessionHandle*
-  GetOrCreateSessionHandleForQueryContextualizer() override;
 
   std::unique_ptr<contextual_search::InputStateModel> input_state_model_;
 
@@ -309,7 +300,7 @@ class ContextualSearchboxHandler
       WindowOpenDisposition disposition,
       omnibox::ChromeAimEntryPoint aim_entry_point,
       std::map<std::string, std::string> additional_params,
-      std::vector<content::WebContents*> relevant_tabs);
+      std::vector<base::WeakPtr<content::WebContents>> relevant_tabs);
 
   std::optional<base::Uuid> GetTaskId();
 
@@ -317,6 +308,9 @@ class ContextualSearchboxHandler
                           std::unique_ptr<lens::ContextualInputData>>>
       tab_context_snapshot_;
 
+  // Delegate handling desktop-specific operations for QueryContextualizer.
+  std::unique_ptr<contextual_tasks::DesktopQueryContextualizerDelegate>
+      desktop_delegate_;
   std::unique_ptr<contextual_tasks::QueryContextualizer> query_contextualizer_;
 
   raw_ptr<contextual_tasks::ContextualTasksContextService>

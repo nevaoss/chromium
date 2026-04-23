@@ -538,15 +538,32 @@ cssvalue::CSSBasicShapePolygonValue* ConsumeBasicShapePolygon(
     const CSSParserContext& context,
     CSSParserLocalContext& local_context) {
   auto* shape = MakeGarbageCollected<cssvalue::CSSBasicShapePolygonValue>();
+  bool has_optional_prefix = false;
   if (IdentMatches<CSSValueID::kEvenodd, CSSValueID::kNonzero>(
           args.Peek().Id())) {
     shape->SetWindRule(args.ConsumeIncludingWhitespace().Id() ==
                                CSSValueID::kEvenodd
                            ? RULE_EVENODD
                            : RULE_NONZERO);
-    if (!ConsumeCommaIncludingWhitespace(args)) {
+    has_optional_prefix = true;
+  }
+
+  if (ConsumeIdent<CSSValueID::kRound>(args)) {
+    if (!RuntimeEnabledFeatures::CSSPolygonRoundingEnabled()) {
       return nullptr;
     }
+    CSSPrimitiveValue* rounding_radius =
+        ConsumeLength(args, context, local_context,
+                      CSSPrimitiveValue::ValueRange::kNonNegative);
+    if (!rounding_radius) {
+      return nullptr;
+    }
+    shape->SetRoundingRadius(rounding_radius);
+    has_optional_prefix = true;
+  }
+
+  if (has_optional_prefix && !ConsumeCommaIncludingWhitespace(args)) {
+    return nullptr;
   }
 
   do {
@@ -4207,15 +4224,25 @@ bool IsBaselineKeyword(CSSValueID id) {
                       CSSValueID::kBaseline>(id);
 }
 
-bool IsSelfPositionKeyword(CSSValueID id) {
+bool IsSelfAlignmentKeyword(CSSValueID id) {
   return IdentMatches<CSSValueID::kStart, CSSValueID::kEnd, CSSValueID::kCenter,
                       CSSValueID::kSelfStart, CSSValueID::kSelfEnd,
                       CSSValueID::kFlexStart, CSSValueID::kFlexEnd,
                       CSSValueID::kAnchorCenter>(id);
 }
 
-bool IsSelfPositionOrLeftOrRightKeyword(CSSValueID id) {
-  return IsSelfPositionKeyword(id) || IsLeftOrRightKeyword(id);
+bool IsSelfAlignmentOrLeftOrRightKeyword(CSSValueID id) {
+  return IsSelfAlignmentKeyword(id) || IsLeftOrRightKeyword(id);
+}
+
+bool IsDefaultAlignmentKeyword(CSSValueID id) {
+  return IdentMatches<CSSValueID::kStart, CSSValueID::kEnd, CSSValueID::kCenter,
+                      CSSValueID::kSelfStart, CSSValueID::kSelfEnd,
+                      CSSValueID::kFlexStart, CSSValueID::kFlexEnd>(id);
+}
+
+bool IsDefaultAlignmentOrLeftOrRightKeyword(CSSValueID id) {
+  return IsDefaultAlignmentKeyword(id) || IsLeftOrRightKeyword(id);
 }
 
 bool IsContentPositionKeyword(CSSValueID id) {
@@ -7647,7 +7674,37 @@ CSSValue* ParseGridLanesDirection(CSSParserTokenStream& stream) {
   }
   CSSValue* second_reverse_value = css_parsing_utils::ConsumeIdent(stream);
   list->Append(*second_reverse_value);
+  return list;
+}
 
+CSSValue* ConsumeHangingPunctuation(CSSParserTokenStream& stream) {
+  if (stream.Peek().Id() == CSSValueID::kNone) {
+    return ConsumeIdent(stream);
+  }
+
+  CSSValueList* list = CSSValueList::CreateSpaceSeparated();
+  CSSIdentifierValue* first = nullptr;
+  CSSIdentifierValue* allow_end = nullptr;
+  CSSIdentifierValue* last = nullptr;
+
+  while (true) {
+    CSSValueID id = stream.Peek().Id();
+    if (id == CSSValueID::kFirst && !first) {
+      first = ConsumeIdent(stream);
+      list->Append(*first);
+    } else if (id == CSSValueID::kAllowEnd && !allow_end) {
+      allow_end = ConsumeIdent(stream);
+      list->Append(*allow_end);
+    } else if (id == CSSValueID::kLast && !last) {
+      last = ConsumeIdent(stream);
+      list->Append(*last);
+    } else {
+      break;
+    }
+  }
+  if (list->length() == 0) {
+    return nullptr;
+  }
   return list;
 }
 

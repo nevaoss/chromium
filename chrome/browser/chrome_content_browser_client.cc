@@ -534,6 +534,7 @@
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/digital_credentials/digital_identity_provider_desktop.h"
 #include "chrome/browser/direct_sockets/chrome_direct_sockets_delegate.h"
+#include "chrome/browser/indigo/onboarding/indigo_onboarding_dialog.h"
 #include "chrome/browser/metrics/usage_scenario/chrome_responsiveness_calculator_delegate.h"
 #include "chrome/browser/new_tab_page/new_tab_page_util.h"
 #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_helper.h"
@@ -548,14 +549,13 @@
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/waap/waap_utils.h"
 #include "chrome/browser/ui/webui/chrome_content_browser_client_webui_part.h"
-#include "chrome/browser/ui/webui/webui_util_desktop.h"
+#include "chrome/browser/ui/webui/util/webui_util_desktop.h"
 #include "chrome/browser/web_applications/isolated_web_apps/chrome_content_browser_client_isolated_web_apps_part.h"
 #include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_error_page.h"
 #include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_url_info.h"
@@ -571,7 +571,7 @@
 #include "chrome/browser/webauthn/authenticator_request_scheduler.h"
 #include "chrome/browser/webauthn/chrome_authenticator_request_delegate.h"
 #include "chrome/browser/webauthn/chrome_web_authentication_delegate.h"
-#include "chrome/grit/chrome_unscaled_resources.h"  // nogncheck crbug.com/1125897
+#include "chrome/grit/chrome_unscaled_resources.h"  // nogncheck crbug.com/40147906
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/keep_alive_registry/keep_alive_registry.h"
 #include "components/password_manager/content/common/web_ui_constants.h"
@@ -751,7 +751,7 @@
 #endif  // BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
 
 #if BUILDFLAG(ENABLE_REQUEST_HEADER_INTEGRITY)
-#include "chrome/common/request_header_integrity/request_header_integrity_url_loader_throttle.h"  // nogncheck crbug.com/1125897
+#include "chrome/common/request_header_integrity/request_header_integrity_url_loader_throttle.h"  // nogncheck crbug.com/40147906
 #endif
 
 #include "base/win/windows_h_disallowed.h"
@@ -1052,22 +1052,6 @@ bool URLHasExtensionPermission(extensions::ProcessMap* process_map,
          extension->permissions_data()->HasAPIPermission(permission) &&
          process_map->Contains(extension->id(), render_process_id);
 }
-
-// Returns true if |extension_id| is allowed to run as an Isolated Context,
-// giving it access to additional APIs.
-bool IsExtensionIdAllowedToUseIsolatedContext(std::string_view extension_id) {
-  constexpr auto kAllowedIsolatedContextExtensionIds =
-      base::MakeFixedFlatSet<std::string_view>({
-          "algkcnfjnajfhgimadimbjhmpaeohhln",  // Secure Shell Extension (dev)
-          "iodihamcpbpeioajjeobimgagajmlibd",  // Secure Shell Extension
-                                               // (stable)
-          // Extension IDs used in tests.
-          "bbobefdodiifgmhhdijgpelmkdaebfpn",  // Controlled Frame Service
-                                               // Worker Test
-      });
-  return kAllowedIsolatedContextExtensionIds.contains(extension_id);
-}
-
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 mojo::PendingRemote<prerender::mojom::NoStatePrefetchCanceler>
@@ -2696,27 +2680,6 @@ bool ChromeContentBrowserClient::IsInitialWebUIURL(const GURL& url) {
 
 bool ChromeContentBrowserClient::IsTopChromeWebUIURL(const GURL& url) {
   return ::IsTopChromeWebUIURL(url);
-}
-
-bool ChromeContentBrowserClient::IsIsolatedContextAllowedForUrl(
-    content::BrowserContext* browser_context,
-    const GURL& lock_url) {
-#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-  if (ChromeContentBrowserClientExtensionsPart::AreExtensionsDisabledForProfile(
-          browser_context)) {
-    return false;
-  }
-
-  // Allow restricted context APIs in Chrome Apps.
-  auto* extension = extensions::ExtensionRegistry::Get(browser_context)
-                        ->enabled_extensions()
-                        .GetExtensionOrAppByURL(lock_url);
-  return extension &&
-         (extension->is_platform_app() ||
-          IsExtensionIdAllowedToUseIsolatedContext(extension->id()));
-#else
-  return false;
-#endif
 }
 
 bool ChromeContentBrowserClient::IsMultiCaptureAllowed(
@@ -4462,10 +4425,10 @@ bool ChromeContentBrowserClient::CanCreateWindow(
         web_contents->GetResponsibleWebContents();
     bool is_from_embedded_page = web_contents != responsible_web_contents;
     if (contextual_tasks_ui_service &&
-        contextual_tasks_ui_service->HandleNavigation(
-            std::move(url_params), responsible_web_contents,
-            is_from_embedded_page,
-            /*is_to_new_tab=*/true)) {
+        contextual_tasks_ui_service->HandleNavigation(std::move(url_params),
+                                                      responsible_web_contents,
+                                                      is_from_embedded_page,
+                                                      /*is_to_new_tab=*/true)) {
       return false;
     }
   }
@@ -4814,6 +4777,10 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
     }
 #endif
 
+    web_prefs->is_initial_profile =
+        profile->GetOriginalProfile()->GetBaseName() ==
+        ProfileManager::GetInitialProfileDir();
+
     web_prefs->immersive_mode_enabled = vr::VrTabHelper::IsInVr(web_contents);
   }
 
@@ -4918,6 +4885,11 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
       base::FeatureList::IsEnabled(::features::kDevToolsAiOriginTrialsApis)) {
     web_prefs->ai_ot_apis_enabled = true;
   }
+
+#if !BUILDFLAG(IS_ANDROID)
+  web_prefs->is_indigo_onboarding =
+      indigo::IndigoOnboardingDialog::IsOnboardingWebContents(web_contents);
+#endif
 }
 
 bool ChromeContentBrowserClientParts::OverrideWebPreferencesAfterNavigation(
@@ -5460,14 +5432,6 @@ void ChromeContentBrowserClient::
   // RegisterChromeMojoBinderPoliciesForSameOriginPrerendering() which requires
   // security review.
   RegisterChromeMojoBinderPoliciesForSameOriginPrerendering(policy_map);
-}
-
-void ChromeContentBrowserClient::RegisterMojoBinderPoliciesForPreview(
-    content::MojoBinderPolicyMap& policy_map) {
-  // Changes to `policy_map` should be made in
-  // RegisterChromeMojoBinderPoliciesForPreview() which requires security
-  // review.
-  RegisterChromeMojoBinderPoliciesForPreview(policy_map);
 }
 
 void ChromeContentBrowserClient::OpenURL(

@@ -1945,27 +1945,6 @@
     ]
   },
   {
-    "prefix": "lcpp-fetched-fonts",
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "http/tests/lcpp_fetched_fonts"
-    ],
-    "exclusive_tests": "ALL",
-    "args": [
-      "--enable-features=LCPPFontURLPredictor"
-    ],
-    "expires": "Apr 1, 2026",
-    "owners": [
-      "yyanagisawa@chromium.org",
-      "kouhei@chromium.org",
-      "yoichio@chromium.org"
-    ]
-  },
-  {
     "prefix": "lcpp-timing-predictor",
     "platforms": [
       "Linux",
@@ -2340,7 +2319,7 @@
     "owners": [
       "ikilpatrick@chromium.org"
     ],
-    "expires": "Jul 1, 2025"
+    "expires": "Dec 1, 2026"
   },
   {
     "prefix": "option-mutation-observer-improvement-disabled",
@@ -6399,15 +6378,12 @@
     "expires": "Dec 31, 2026"
   },
   {
-    "prefix": "single-axis-scroll-containers",
+    "prefix": "disable-single-axis-scroll-containers",
     "platforms": ["Linux", "Mac", "Win", "Android"],
     "bases": [
-      "external/wpt/css/css-position/sticky/position-sticky-single-axis-basic.html",
-      "external/wpt/css/css-position/sticky/position-sticky-single-axis-dynamic.html",
-      "external/wpt/css/css-position/sticky/position-sticky-single-axis-nested.html"
+      "external/wpt/css/css-position/sticky/"
     ],
-    "exclusive_tests": "ALL",
-    "args": ["--enable-blink-features=SingleAxisScrollContainers"],
+    "args": ["--disable-blink-features=SingleAxisScrollContainers"],
     "owners": [
       "freedebreuil@google.com"
     ],

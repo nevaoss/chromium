@@ -931,7 +931,10 @@ public abstract class ChromeFeatureList {
                     /* defaultValue= */ false,
                     /* defaultValueInTests= */ true);
     public static final CachedFlag sDesktopAndroidLinkCapturing =
-            newCachedFlag(DESKTOP_ANDROID_LINK_CAPTURING, false);
+            newCachedFlag(
+                    DESKTOP_ANDROID_LINK_CAPTURING,
+                    /* defaultValue= */ false,
+                    /* defaultValueInTests= */ true);
     public static final CachedFlag sDesktopUAOnConnectedDisplay =
             newCachedFlag(
                     DESKTOP_UA_ON_CONNECTED_DISPLAY,
@@ -1439,10 +1442,12 @@ public abstract class ChromeFeatureList {
             newMutableFlagWithSafeDefault(INCOGNITO_NTP_SMALL_ICON, false);
     public static final MutableFlagWithSafeDefault sIncognitoScreenshot =
             newMutableFlagWithSafeDefault(INCOGNITO_SCREENSHOT, false);
+    public static final MutableFlagWithSafeDefault sInlinePdfV2 =
+            newMutableFlagWithSafeDefault(INLINE_PDF_V2, false);
     public static final MutableFlagWithSafeDefault sLockTopControlsOnLargeTablets =
             newMutableFlagWithSafeDefault(LOCK_TOP_CONTROLS_ON_LARGE_TABLETS, false);
     public static final MutableFlagWithSafeDefault sMediaIndicatorsAndroid =
-            newMutableFlagWithSafeDefault(MEDIA_INDICATORS_ANDROID, false);
+            newMutableFlagWithSafeDefault(MEDIA_INDICATORS_ANDROID, true);
     public static final MutableFlagWithSafeDefault sNoVisibleHintForDifferentTLD =
             newMutableFlagWithSafeDefault(ANDROID_NO_VISIBLE_HINT_FOR_DIFFERENT_TLD, true);
     public static final MutableFlagWithSafeDefault sOmniboxAutofocusOnIncognitoNtp =

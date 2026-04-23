@@ -233,7 +233,8 @@ class VerticalTabStripRegionView final
   void OnChildrenRemoved();
   void OnChildMoved();
 
-  void UpdateExpandOnHoverState();
+  void OnExpandOnHoverEnabledChanged(bool enabled);
+  void UpdateExpandOnHoverState(std::optional<bool> hovered = std::nullopt);
   void AnimateExpandOnHover(bool expand);
 
   void RegisterExpandOnHoverLock(VerticalTabStripExpandOnHoverLock* lock);
@@ -292,8 +293,9 @@ class VerticalTabStripRegionView final
   std::unique_ptr<TabHoverCardController> hover_card_controller_;
   std::unique_ptr<HoverTabSelector> hover_tab_selector_;
 
-  base::CallbackListSubscription collapsed_state_will_change_subscription_;
   base::CallbackListSubscription collapsed_state_changed_subscription_;
+  std::optional<base::CallbackListSubscription>
+      expand_on_hover_enabled_changed_subscription_;
   base::CallbackListSubscription paint_as_active_subscription_;
   std::optional<base::CallbackListSubscription> on_children_added_subscription_;
   std::optional<base::CallbackListSubscription>

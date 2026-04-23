@@ -88,7 +88,7 @@
 #include "chrome/browser/ui/tabs/tab_group_deletion_dialog_controller.h"
 #include "chrome/browser/ui/tabs/tab_list_bridge.h"
 #include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_model_impl/tab_strip_model_injector.h"
-#include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_mojo_handler.h"
+#include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/tabs/vertical_tab_iph_controller.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
@@ -153,6 +153,7 @@
 #include "chrome/browser/ui/webui_browser/webui_browser_exclusive_access_context.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+#include "chrome/browser/ui/zoom/browser_window_zoom_observer.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
 #include "components/breadcrumbs/core/breadcrumbs_status.h"
@@ -376,11 +377,13 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   // but is only initialized for normal browser windows. This simplifies the
   // logic for code shared by both normal and non-normal windows.
   lens_overlay_entry_point_controller_ =
-      std::make_unique<lens::LensOverlayEntryPointController>();
+      GetUserDataFactory()
+          .CreateInstance<lens::LensOverlayEntryPointController>(*browser,
+                                                                 browser);
   lens_region_search_controller_ =
       std::make_unique<lens::LensRegionSearchController>();
 
-  tab_strip_service_feature_ = std::make_unique<TabStripServiceMojoHandler>(
+  tab_strip_service_feature_ = std::make_unique<TabStripServiceFeature>(
       std::make_unique<tabs_api::tab_strip_model::TabStripModelInjector>(
           browser, tab_strip_model_));
 
@@ -420,7 +423,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       GetUserDataFactory().CreateInstance<ReadingListSidePanelCoordinator>(
           *browser, browser, profile, browser->GetTabStripModel());
 
-  if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported()) {
+  if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(profile)) {
     tabs_from_other_devices_side_panel_coordinator_ =
         std::make_unique<TabsFromOtherDevicesSidePanelCoordinator>(browser,
                                                                    profile);
@@ -495,6 +498,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       GetUserDataFactory().CreateInstance<BrowserWindowThemeObserver>(*browser,
                                                                       browser);
 
+  browser_window_zoom_observer_ =
+      GetUserDataFactory().CreateInstance<BrowserWindowZoomObserver>(*browser,
+                                                                     browser);
+
   call_to_action_lock_ =
       GetUserDataFactory().CreateInstance<CallToActionLock>(*browser, browser);
 
@@ -563,7 +570,8 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
   if (browser->is_type_normal()) {
     if (IsChromeLabsEnabled()) {
       chrome_labs_coordinator_ =
-          std::make_unique<ChromeLabsCoordinator>(browser);
+          GetUserDataFactory().CreateInstance<ChromeLabsCoordinator>(*browser,
+                                                                     browser);
     }
 
     if (MobilePromoOnDesktopEnabled()) {
@@ -902,7 +910,8 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
     if (features::HasTabSearchToolbarButton() ||
         tabs::IsVerticalTabsFeatureEnabled()) {
       tab_search_toolbar_button_controller_ =
-          std::make_unique<TabSearchToolbarButtonController>(browser_view);
+          GetUserDataFactory().CreateInstance<TabSearchToolbarButtonController>(
+              *browser_, browser_.get(), browser_view);
     }
   }
 

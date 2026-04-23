@@ -155,6 +155,11 @@
 #include "third_party/skia/include/core/SkImage.h"
 #include "ui/gfx/geometry/size.h"
 
+// Killswitch guarding WebGL creating its CanvasResourceProvider with the size
+// of its DrawingBuffer rather than the size of its Host.
+BASE_FEATURE(kWebGLCanvasResourceProviderDrawingBufferSize,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Populates parameters from texImage2D except for border, width, height, and
 // depth (which are not present for all texImage2D functions).
 #define POPULATE_TEX_IMAGE_2D_PARAMS(params, src_type) \
@@ -2013,14 +2018,26 @@ WebGLRenderingContextBase::GetSharedImageResourceProvider() {
     return nullptr;
   }
 
-  if (!Host()->IsValidImageSize()) {
+  if (!base::FeatureList::IsEnabled(
+          kWebGLCanvasResourceProviderDrawingBufferSize) &&
+      !Host()->IsValidImageSize()) {
     did_fail_to_create_resource_provider_ = true;
+    return nullptr;
+  }
+
+  if (base::FeatureList::IsEnabled(
+          kWebGLCanvasResourceProviderDrawingBufferSize) &&
+      !GetDrawingBuffer()) {
     return nullptr;
   }
 
   const SkAlphaType alpha_type = GetAlphaType();
   const viz::SharedImageFormat format = GetSharedImageFormat();
   const gfx::ColorSpace color_space = GetColorSpace();
+  const gfx::Size size = base::FeatureList::IsEnabled(
+                             kWebGLCanvasResourceProviderDrawingBufferSize)
+                             ? GetDrawingBuffer()->Size()
+                             : Host()->Size();
   // Note: We must not initialize the CRP using Skia. The CRP can have bottom
   // left origin in which case Skia Graphite won't be able to render into it,
   // and WebGL is responsible for clearing the CRP when it renders anyway and
@@ -2033,13 +2050,13 @@ WebGLRenderingContextBase::GetSharedImageResourceProvider() {
       shared_image_usage_flags |= gpu::SHARED_IMAGE_USAGE_SCANOUT;
     }
     resource_provider_ = CanvasNon2DResourceProviderSharedImage::Create(
-        Host()->Size(), format, alpha_type, color_space,
+        size, format, alpha_type, color_space,
         SharedGpuContext::ContextProviderWrapper(), shared_image_usage_flags,
         Host());
   } else {
     resource_provider_ =
         CanvasNon2DResourceProviderSharedImage::CreateForSoftwareCompositor(
-            Host()->Size(), format, alpha_type, color_space,
+            size, format, alpha_type, color_space,
             SharedGpuContext::SharedImageInterfaceProvider(), Host());
   }
   Host()->UpdateMemoryUsage();
@@ -6253,10 +6270,14 @@ void WebGLRenderingContextBase::TexImageHelperHTMLVideoElement(
   }
 
   media::PaintCanvasVideoRenderer* video_renderer = nullptr;
+  media::VideoFrameSharedImageCache* rgb_si_cache = nullptr;
+  media::VideoFrameSharedImageCache* yuv_si_cache = nullptr;
   scoped_refptr<media::VideoFrame> media_video_frame;
   if (auto* wmp = video->GetWebMediaPlayer()) {
     media_video_frame = wmp->GetCurrentFrameThenUpdate();
     video_renderer = wmp->GetPaintCanvasVideoRenderer();
+    rgb_si_cache = wmp->GetRGBSharedImageCache();
+    yuv_si_cache = wmp->GetYUVSharedImageCache();
   }
 
   if (!media_video_frame || !video_renderer)
@@ -6265,7 +6286,7 @@ void WebGLRenderingContextBase::TexImageHelperHTMLVideoElement(
   // This is enforced by ValidateHTMLVideoElement(), but DCHECK to be sure.
   DCHECK(!WouldTaintCanvasOrigin(video));
   TexImageHelperMediaVideoFrame(params, texture, std::move(media_video_frame),
-                                video_renderer);
+                                video_renderer, rgb_si_cache, yuv_si_cache);
 }
 
 void WebGLRenderingContextBase::TexImageHelperVideoFrame(
@@ -6307,8 +6328,8 @@ void WebGLRenderingContextBase::TexImageHelperVideoFrame(
     return;
   }
 
-  TexImageHelperMediaVideoFrame(params, texture, local_handle->frame(),
-                                nullptr);
+  TexImageHelperMediaVideoFrame(params, texture, local_handle->frame(), nullptr,
+                                nullptr, nullptr);
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -6326,7 +6347,9 @@ void WebGLRenderingContextBase::TexImageHelperMediaVideoFrame(
     TexImageParams params,
     WebGLTexture* texture,
     scoped_refptr<media::VideoFrame> media_video_frame,
-    media::PaintCanvasVideoRenderer* video_renderer) {
+    media::PaintCanvasVideoRenderer* video_renderer,
+    media::VideoFrameSharedImageCache* rgb_si_cache,
+    media::VideoFrameSharedImageCache* yuv_si_cache) {
   DCHECK(!isContextLost());
   DCHECK(texture);
   DCHECK(media_video_frame);
@@ -6366,6 +6389,17 @@ void WebGLRenderingContextBase::TexImageHelperMediaVideoFrame(
   if (!video_renderer) {
     local_video_renderer = std::make_unique<media::PaintCanvasVideoRenderer>();
     video_renderer = local_video_renderer.get();
+  }
+
+  std::unique_ptr<media::VideoFrameSharedImageCache> local_rgb_si_cache;
+  if (!rgb_si_cache) {
+    local_rgb_si_cache = std::make_unique<media::VideoFrameSharedImageCache>();
+    rgb_si_cache = local_rgb_si_cache.get();
+  }
+  std::unique_ptr<media::VideoFrameSharedImageCache> local_yuv_si_cache;
+  if (!yuv_si_cache) {
+    local_yuv_si_cache = std::make_unique<media::VideoFrameSharedImageCache>();
+    yuv_si_cache = local_yuv_si_cache.get();
   }
 
   if (source_image_rect_is_default && media_video_frame->HasDirectCpuAccess() &&
@@ -6418,10 +6452,10 @@ void WebGLRenderingContextBase::TexImageHelperMediaVideoFrame(
     // (e.g. video camera frames): upload them to the GPU, do a GPU decode, and
     // then copy into the target texture.
     if (!media_video_frame->HasSharedImage() &&
-        video_renderer->CopyVideoFrameYUVDataToGLTexture(
+        media::PaintCanvasVideoRenderer::CopyVideoFrameYUVDataToGLTexture(
             raster_context_provider, ContextGL(), media_video_frame,
-            params.target, texture->Object(), adjusted_internalformat,
-            params.format, params.type, params.level,
+            rgb_si_cache, yuv_si_cache, params.target, texture->Object(),
+            adjusted_internalformat, params.format, params.type, params.level,
             params.GetDestinationAlphaType(), params.GetDestinationOrigin())) {
       return;
     }
@@ -6453,12 +6487,12 @@ void WebGLRenderingContextBase::TexImageHelperMediaVideoFrame(
         return;
       }
 
-      if (video_renderer->CopyVideoFrameTexturesToGLTextureViaIntermediateSI(
-              raster_context_provider, gl, media_video_frame,
-              video_renderer->GetRGBSharedImageCache(), params.target,
-              texture->Object(), adjusted_internalformat, params.format,
-              params.type, params.level, dst_alpha_type,
-              params.GetDestinationOrigin())) {
+      if (media::PaintCanvasVideoRenderer::
+              CopyVideoFrameTexturesToGLTextureViaIntermediateSI(
+                  raster_context_provider, gl, media_video_frame, rgb_si_cache,
+                  params.target, texture->Object(), adjusted_internalformat,
+                  params.format, params.type, params.level, dst_alpha_type,
+                  params.GetDestinationOrigin())) {
         return;
       }
     }
@@ -6810,7 +6844,8 @@ void WebGLRenderingContextBase::TexElementImage2DInternal(
     GLenum type,
     const V8UnionElementOrElementImage* element,
     ExceptionState& exception_state) {
-  CHECK(RuntimeEnabledFeatures::CanvasDrawElementEnabled());
+  CHECK(RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+      Host()->GetTopExecutionContext()));
 
   if (isContextLost()) {
     return;

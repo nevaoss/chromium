@@ -231,6 +231,7 @@ class GlicInstanceImpl : public GlicInstance,
   glic::GlicInstanceMetrics* instance_metrics() override;
   glic::GlicInstanceMetricsBackwardsCompatibility&
   instance_metrics_backwards_compatibility() override;
+  void OnSelectionAreasChanged(int count) override;
 
   // GlicUiEmbedder::Delegate:
   void OnEmbedderWindowActivationChanged(bool has_focus) override;
@@ -341,6 +342,7 @@ class GlicInstanceImpl : public GlicInstance,
           callback,
       std::vector<std::string> returned_suggestions);
   void MaybeDeactivateEmbedder(EmbedderKey key);
+  void MaybeWarmZeroStateSuggestions();
 
   bool IsActiveEmbedder(EmbedderKey key) const;
 

@@ -3833,16 +3833,54 @@ auto GraphBuilderTflite::SerializeArgMinMax(const mojom::ArgMinMax& arg_min_max)
                        /*operation_supports_float16=*/false, fuse_dequantize));
   ASSIGN_OR_RETURN(const TensorInfo output_tensor_info,
                    SerializeOutputTensorInfo(arg_min_max.output_operand_id));
+
+  TensorIndex arg_min_max_output_index = output_tensor_info.index;
+
+  // Create a temporary tensor to catch the dropped-dimension output if needed.
+  if (arg_min_max.keep_dimensions) {
+    const auto& input_shape =
+        GetOperand(arg_min_max.input_operand_id).descriptor.shape();
+    base::FixedArray<int32_t> intermediate_shape(input_shape.size() - 1);
+    for (size_t i = 0, j = 0; i < input_shape.size(); ++i) {
+      if (i != checked_axis.ValueOrDie()) {
+        intermediate_shape[j++] = base::checked_cast<int32_t>(input_shape[i]);
+      }
+    }
+
+    ASSIGN_OR_RETURN(arg_min_max_output_index,
+                     SerializeTemporaryTensorWithByteSizeCheck(
+                         intermediate_shape, output_type));
+  }
+
   const OperatorCodeIndex operator_code_index =
       GetOperatorCodeIndex(operator_code);
   const std::array<TensorIndex, 2> op_inputs = {input_tensor_info.index,
                                                 axis_tensor_index};
-  const std::array<TensorIndex, 1> op_outputs = {output_tensor_info.index};
-  return ::tflite::CreateOperator(
-      builder_, operator_code_index,
-      builder_.CreateVector<TensorIndex>(op_inputs),
-      builder_.CreateVector<TensorIndex>(op_outputs), builtin_options_type,
-      builtin_options);
+  const std::array<TensorIndex, 1> op_outputs = {arg_min_max_output_index};
+
+  OperatorOffset arg_min_max_operator =
+      ::tflite::CreateOperator(builder_, operator_code_index,
+                               builder_.CreateVector<TensorIndex>(op_inputs),
+                               builder_.CreateVector<TensorIndex>(op_outputs),
+                               builtin_options_type, builtin_options);
+
+  // Reshape operator to keep the dimensions if needed.
+  if (arg_min_max.keep_dimensions) {
+    operators_.emplace_back(arg_min_max_operator);
+
+    const auto& output_shape = output_operand.descriptor.shape();
+    base::FixedArray<int32_t> target_shape(output_shape.size());
+    for (size_t i = 0; i < output_shape.size(); ++i) {
+      target_shape[i] = base::checked_cast<int32_t>(output_shape[i]);
+    }
+
+    return SerializeReshapeOperation(
+        /*input_tensor_index=*/arg_min_max_output_index,
+        /*output_tensor_index=*/output_tensor_info.index,
+        /*new_shape=*/target_shape);
+  }
+
+  return arg_min_max_operator;
 }
 
 auto GraphBuilderTflite::SerializeBatchNormalization(
@@ -4170,12 +4208,16 @@ auto GraphBuilderTflite::SerializeConv2d(const mojom::Conv2d& conv2d)
         output_shape[2] * input_channels * filter_size2d.height *
         filter_size2d.width;
 
+    // Check indirection buffer size.
+    const base::CheckedNumeric<int32_t> checked_indirection_buffer_size =
+        im2col_elements * base::CheckedNumeric<int32_t>(sizeof(void*));
+
     // Check against the 32-bit signed integer limit to avoid overflow in
     // TFLite.
-    if (!im2col_elements.IsValid()) {
+    if (!checked_indirection_buffer_size.IsValid()) {
       return base::unexpected(
           "Conv2d doesn't support configurations that require an internal "
-          "computation buffer exceeding INT32_MAX elements.");
+          "computation buffer exceeding the maximum size.");
     }
   }
 
@@ -4187,12 +4229,16 @@ auto GraphBuilderTflite::SerializeConv2d(const mojom::Conv2d& conv2d)
         input_size2d.width * filter_size2d.height * filter_size2d.width *
         output_channels;
 
+    // Check indirection buffer size.
+    const base::CheckedNumeric<int32_t> checked_indirection_buffer_size =
+        col2im_elements * base::CheckedNumeric<int32_t>(sizeof(void*));
+
     // Check against the 32-bit signed integer limit to avoid overflow in
     // TFLite.
-    if (!col2im_elements.IsValid()) {
+    if (!checked_indirection_buffer_size.IsValid()) {
       return base::unexpected(
           "convTranspose2d doesn't support configurations that require an "
-          "internal computation buffer exceeding INT32_MAX elements.");
+          "internal computation buffer exceeding the maximum size.");
     }
   }
 

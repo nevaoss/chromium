@@ -37,6 +37,10 @@ dashboard](https://goto.google.com/chrome-security-bugs).  You do that by
 filling in missing fields on the bugs and assigning them to engineers who will
 fix them.
 
+If you are `chrome-security-shepherds-1`: you are responsible for all the
+bugs in the `Shepherd 1` tab. If you are `chrome-security-shepherds-2`, you are
+responsible for the `Shepherd 2` tab.
+
 To actually triage a report, you go through several steps. On a _new_ bug
 report:
 
@@ -109,7 +113,8 @@ which _are_ valid. As a rule:
 * **If the bug is an in-the-wild report**:
     * Start a thread in the Shepherding chat immediately
 * Is the bug eligible for [delegated triage](delegated-triage.md)?:
-    * If it's a GPU bug, put it in [https://b.corp.google.com/hotlists/8198490][hotlist 8198490]
+    * If it's a GPU bug, put it in [hotlist 8198490](https://b.corp.google.com/hotlists/8198490)
+    * If it's a BoringSSL bug, put it in [component 1590116](https://b.corp.google.com/components/1590116)
     * TODO: add more here :)
     * You are now done triaging this bug, congratulations!
 * If the bug is a v8 bug (including wasm):

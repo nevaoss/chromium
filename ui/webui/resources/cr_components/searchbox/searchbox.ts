@@ -6,26 +6,20 @@ import './searchbox_compose_button.js';
 import './searchbox_dropdown.js';
 import './searchbox_icon.js';
 import './searchbox_thumbnail.js';
-import '//resources/cr_components/composebox/composebox_file_inputs.js';
-import '//resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
 import '//resources/cr_components/search/animated_glow.js';
 import './searchbox_input.js';
 
-import type {ComposeboxState, ContextualUpload, TabUpload, TabUploadOrigin} from '//resources/cr_components/composebox/common.js';
-import {GlifAnimationState, recordContextAdditionMethod} from '//resources/cr_components/composebox/common.js';
+import type {ComposeboxState, ContextualUpload} from '//resources/cr_components/composebox/common.js';
+import {ContextType, GlifAnimationState, recordContextAdditionMethod, recordContextualElementClickedMetric, recordModelModeSelection, recordToolModeSelection} from '//resources/cr_components/composebox/common.js';
 import {ComposeboxContextAddedMethod, GlowAnimationState} from '//resources/cr_components/search/constants.js';
-import type {DragAndDropHandler} from '//resources/cr_components/search/drag_drop_handler.js';
-import type {DragAndDropHost} from '//resources/cr_components/search/drag_drop_host.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {WebUiListenerMixinLit} from '//resources/cr_elements/web_ui_listener_mixin_lit.js';
 import {assert} from '//resources/js/assert.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
-import type {AutocompleteMatch, PageCallbackRouter, PageHandlerInterface, TabInfo} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {InputState} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
+import type {AutocompleteMatch, PageCallbackRouter, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {ModelMode, ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
-import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
 import {getCss} from './searchbox.css.js';
 import {getHtml} from './searchbox.html.js';
@@ -60,7 +54,7 @@ const SearchboxElementBase =
 
 /** A real search box that behaves just like the Omnibox. */
 export class SearchboxElement extends SearchboxElementBase implements
-    DragAndDropHost, SearchboxMixinInterface {
+    SearchboxMixinInterface {
   static get is() {
     return 'cr-searchbox';
   }
@@ -183,12 +177,6 @@ export class SearchboxElement extends SearchboxElementBase implements
         type: Boolean,
         reflect: true,
       },
-      tabSuggestions_: {type: Array},
-      inputState_: {type: Object},
-      isDraggingFile: {
-        reflect: true,
-        type: Boolean,
-      },
       animationState: {
         reflect: true,
         type: String,
@@ -210,7 +198,6 @@ export class SearchboxElement extends SearchboxElementBase implements
       GlifAnimationState.INELIGIBLE;
   accessor showThumbnail: boolean = false;
   accessor placeholderText: string = '';
-  accessor isDraggingFile: boolean = false;
   accessor animationState: GlowAnimationState = GlowAnimationState.NONE;
   protected accessor isLensSearchbox_: boolean =
       loadTimeData.getBoolean('isLensSearchbox');
@@ -225,17 +212,12 @@ export class SearchboxElement extends SearchboxElementBase implements
   protected accessor thumbnailUrl_: string = '';
   protected accessor isThumbnailDeletable_: boolean = false;
   protected accessor useWebkitSearchIcons_: boolean = false;
-  protected accessor tabSuggestions_: TabInfo[] = [];
-  protected accessor inputState_: InputState|null = null;
 
+  protected callbackRouter_: PageCallbackRouter;
   private pageHandler_: PageHandlerInterface;
-  private callbackRouter_: PageCallbackRouter;
-  protected dragAndDropHandler: DragAndDropHandler|null = null;
 
   private autocompleteResultChangedListenerId_: number|null = null;
   private thumbnailChangedListenerId_: number|null = null;
-  private onTabStripChangedListenerId_: number|null = null;
-  private contextMenuOpened_: boolean = false;
 
   constructor() {
     performance.mark('realbox-creation-start');
@@ -245,7 +227,7 @@ export class SearchboxElement extends SearchboxElementBase implements
     this.callbackRouter_ = SearchboxBrowserProxy.getInstance().callbackRouter;
   }
 
-  override async connectedCallback() {
+  override connectedCallback() {
     super.connectedCallback();
     this.autocompleteResultChangedListenerId_ =
         this.callbackRouter_.autocompleteResultChanged.addListener(
@@ -253,13 +235,6 @@ export class SearchboxElement extends SearchboxElementBase implements
     this.thumbnailChangedListenerId_ =
         this.callbackRouter_.setThumbnail.addListener(
             this.onSetThumbnail_.bind(this));
-    this.onTabStripChangedListenerId_ =
-        this.callbackRouter_.onTabStripChanged.addListener(
-            this.refreshTabSuggestions_.bind(this));
-    this.inputState_ = (await this.pageHandler_.getInputState()).state;
-    if (this.inputState_) {
-      this.inputState_.activeModel = ModelMode.kUnspecified;
-    }
   }
 
   override disconnectedCallback() {
@@ -270,8 +245,6 @@ export class SearchboxElement extends SearchboxElementBase implements
         this.autocompleteResultChangedListenerId_);
     assert(this.thumbnailChangedListenerId_);
     this.callbackRouter_.removeListener(this.thumbnailChangedListenerId_);
-    assert(this.onTabStripChangedListenerId_);
-    this.callbackRouter_.removeListener(this.onTabStripChangedListenerId_);
   }
 
   override willUpdate(changedProperties: PropertyValues<this>) {
@@ -318,14 +291,6 @@ export class SearchboxElement extends SearchboxElementBase implements
 
   override pageHandler(): PageHandlerInterface {
     return this.pageHandler_;
-  }
-
-  getDropTarget() {
-    return this;
-  }
-
-  addDroppedFiles(files: FileList) {
-    this.processFiles_(files, ComposeboxContextAddedMethod.DRAG_AND_DROP);
   }
 
   isInputEmpty(): boolean {
@@ -382,7 +347,7 @@ export class SearchboxElement extends SearchboxElementBase implements
   // Event handlers
   //============================================================================
 
-  protected onInputFocus_() {
+  protected onInputFocusin_() {
     this.pageHandler_.onFocusChanged(true);
   }
 
@@ -484,80 +449,16 @@ export class SearchboxElement extends SearchboxElementBase implements
     this.dispatchEvent(new Event('open-lens-search'));
   }
 
-  protected onFileChange_(e: CustomEvent<{files: FileList}>) {
-    this.processFiles_(
-        e.detail.files, ComposeboxContextAddedMethod.CONTEXT_MENU);
-  }
-
-  protected onAddTabContext_(e: CustomEvent<{
-    id: number,
-    title: string,
-    url: Url,
-    delayUpload: boolean,
-    origin: TabUploadOrigin,
-  }>) {
-    const attachment: TabUpload = {
-      tabId: e.detail.id,
-      url: e.detail.url,
-      title: e.detail.title,
-      delayUpload: e.detail.delayUpload,
-      origin: e.detail.origin,
-    };
-    this.openComposebox_([attachment]);
-  }
-
-  protected async refreshTabSuggestions_(forceRefresh: boolean = false) {
-    // Only refresh tab suggestions if the context menu is opened.
-    const requiresRefresh = forceRefresh || this.contextMenuOpened_;
-    if (!requiresRefresh) {
-      return;
-    }
-    const {tabs} = await this.pageHandler_.getRecentTabs();
-    this.tabSuggestions_ = [...tabs];
-  }
-
-  protected async onGetTabPreview_(e: CustomEvent<{
-    tabId: number,
-    onPreviewFetched: (previewDataUrl: string) => void,
-  }>) {
-    const {previewDataUrl} =
-        await this.pageHandler_.getTabPreview(e.detail.tabId);
-    e.detail.onPreviewFetched(previewDataUrl || '');
-  }
-
-  protected onContextMenuClosed_() {
-    this.contextMenuOpened_ = false;
-    this.blur();
-  }
-
-  protected onContextMenuOpened_() {
-    this.contextMenuOpened_ = true;
-    this.refreshTabSuggestions_(/*forceRefresh=*/ true);
-  }
-
-  protected onContextMenuEntrypointClick_() {
-    this.pageHandler_.activateMetricsFunnel('PlusButton');
-  }
-
-  protected onToolClick_(e: CustomEvent<{toolMode: ToolMode}>) {
-    this.openComposebox_([], e.detail.toolMode);
-  }
-
-  protected onDeepSearchClick_() {
-    this.openComposebox_([], ToolMode.kDeepSearch);
-  }
-
-  protected onCreateImageClick_() {
-    this.openComposebox_([], ToolMode.kImageGen);
-  }
-
-  protected onModelClick_(e: CustomEvent<{model: ModelMode}>) {
-    this.openComposebox_([], ToolMode.kUnspecified, e.detail.model);
-  }
-
   protected openComposebox_(
       uploads: ContextualUpload[] = [], mode: ToolMode = ToolMode.kUnspecified,
       model: ModelMode = ModelMode.kUnspecified) {
+    if (mode !== ToolMode.kUnspecified) {
+      recordToolModeSelection(mode, this.composeboxSource, 'ClassicPopup');
+    }
+    if (model !== ModelMode.kUnspecified) {
+      recordModelModeSelection(model, this.composeboxSource, 'ClassicPopup');
+    }
+
     this.fire<ComposeboxState>('open-composebox', {
       text: this.$.input.inputElement.value,
       files: uploads,
@@ -630,14 +531,25 @@ export class SearchboxElement extends SearchboxElementBase implements
     return this.searchboxLayoutMode === 'Compact';
   }
 
-  private processFiles_(
+  protected processFiles_(
       files: FileList|null,
       contextAdditionMethod: ComposeboxContextAddedMethod) {
     if (!files || files.length === 0) {
       return;
     }
-    recordContextAdditionMethod(
-        contextAdditionMethod, loadTimeData.getString('composeboxSource'));
+    recordContextAdditionMethod(contextAdditionMethod, this.composeboxSource);
+
+    if (contextAdditionMethod === ComposeboxContextAddedMethod.CONTEXT_MENU) {
+      // In practice, the `files` list will only contain a single file when
+      // using the CONTEXT_MENU context addition method in the searchbox.
+      for (const file of files) {
+        const contextType =
+            file.type.includes('image') ? ContextType.IMAGE : ContextType.FILE;
+        recordContextualElementClickedMetric(
+            this.composeboxSource, 'ClassicPopup', contextType);
+      }
+    }
+
     this.openComposebox_(Array.from(files, (file) => ({file})));
   }
 }

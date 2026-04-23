@@ -2825,6 +2825,19 @@ inline constexpr char kSessionWaitForInitialUserActivity[] =
     "session.wait_for_initial_user_activity";
 
 //-----------------------------------------------------------------------------
+// Automatic reboot related Prefs
+//-----------------------------------------------------------------------------
+
+// Whether an automatic reboot should be scheduled when an update has been
+// applied and a reboot is required to complete the update process.
+inline constexpr char kRebootAfterUpdate[] =
+    "automatic_reboot.reboot_after_update";
+
+// The length of device uptime after which an automatic reboot is scheduled,
+// expressed in seconds.
+inline constexpr char kUptimeLimit[] = "automatic_reboot.uptime_limit";
+
+//-----------------------------------------------------------------------------
 // Kiosk related Prefs
 //-----------------------------------------------------------------------------
 
@@ -3001,6 +3014,28 @@ inline constexpr char kKerberosRememberPasswordEnabled[] =
 // Tied to KerberosUseCustomPrefilledConfig policy.
 inline constexpr char kKerberosUseCustomPrefilledConfig[] =
     "kerberos.use_custom_prefilled_config";
+
+//-----------------------------------------------------------------------------
+// TPM related Prefs
+//-----------------------------------------------------------------------------
+
+// Boolean pref indicating whether the user has previously dismissed the
+// one-time notification indicating the need for a cleanup powerwash after TPM
+// firmware update that didn't flush the TPM SRK.
+inline constexpr char kTPMFirmwareUpdateCleanupDismissed[] =
+    "tpm_firmware_update.cleanup_dismissed";
+
+// Boolean pref indicating whether the notification informing the user that an
+// auto-update that will clear all the user data at next reboot was shown.
+inline constexpr char kTPMUpdateOnNextRebootNotificationShown[] =
+    "tpm_auto_update.update_on_reboot_notification_shown";
+
+// Int64 pref indicating the time in microseconds since Windows epoch
+// (1601-01-01 00:00:00 UTC) when the notification informing the user about a
+// planned TPM update that will clear all user data was shown. If the
+// notification was not yet shown the pref holds the value Time::Min().
+inline constexpr char kTPMUpdatePlannedNotificationShownTime[] =
+    "tpm_auto_update.planned_notification_shown_time";
 
 //-----------------------------------------------------------------------------
 // File manager/file system related Prefs

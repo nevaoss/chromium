@@ -167,6 +167,14 @@ public class EntityEditorModuleTest {
                     .setUseCount(0)
                     .build();
 
+    private static final EntityInstance NEW_WALLET_PASSPORT =
+            new EntityInstance.Builder(PASSPORT_TYPE)
+                    .setGUID("")
+                    .setRecordType(RecordType.SERVER_WALLET)
+                    .setModifiedDate(LocalDate.of(2026, 2, 15))
+                    .setUseCount(0)
+                    .build();
+
     private static final EntityInstance WALLET_PASSPORT =
             new EntityInstance.Builder(PASSPORT_TYPE)
                     .setGUID("guid")
@@ -250,6 +258,21 @@ public class EntityEditorModuleTest {
         showEditorDialog(NEW_LOCAL_PASSPORT);
         EditorDialogToolbar toolbar = mContainerView.findViewById(R.id.action_bar);
         assertEquals(PASSPORT_TYPE.getAddEntityTypeString(), toolbar.getTitle());
+        assertFalse(toolbar.getBrandingIconForTest().isVisible());
+        assertTrue(mCoordinator.getEditorModelForTest().get(EntityEditorProperties.VISIBLE));
+    }
+
+    @Test
+    @SmallTest
+    public void testShowEditorDialogForNewWalletEntity() {
+        when(mPersonalDataManager.getDefaultCountryCodeForNewAddress()).thenReturn("US");
+        showEditorDialog(NEW_WALLET_PASSPORT);
+        EditorDialogToolbar toolbar = mContainerView.findViewById(R.id.action_bar);
+        assertEquals(PASSPORT_TYPE.getAddEntityTypeString(), toolbar.getTitle());
+        assertTrue(toolbar.getBrandingIconForTest().isVisible());
+        assertEquals(
+                mActivity.getString(R.string.autofill_google_wallet_title),
+                toolbar.getBrandingIconForTest().getTitle());
         assertTrue(mCoordinator.getEditorModelForTest().get(EntityEditorProperties.VISIBLE));
     }
 
@@ -260,6 +283,7 @@ public class EntityEditorModuleTest {
         showEditorDialog(LOCAL_PASSPORT);
         EditorDialogToolbar toolbar = mContainerView.findViewById(R.id.action_bar);
         assertEquals(PASSPORT_TYPE.getEditEntityTypeString(), toolbar.getTitle());
+        assertFalse(toolbar.getBrandingIconForTest().isVisible());
         assertTrue(mCoordinator.getEditorModelForTest().get(EntityEditorProperties.VISIBLE));
     }
 
@@ -373,6 +397,9 @@ public class EntityEditorModuleTest {
         showEditorDialog(LOCAL_PASSPORT);
 
         PropertyModel model = mCoordinator.getEditorModelForTest();
+        verifyRequiredFieldsItem(
+                model.get(EntityEditorProperties.EDITOR_FIELDS),
+                mActivity.getString(R.string.payments_required_field_message));
         verifySourceNotice(
                 model.get(EntityEditorProperties.EDITOR_FIELDS),
                 mActivity.getString(R.string.autofill_ai_local_entity_editor_source_notice));
@@ -385,6 +412,9 @@ public class EntityEditorModuleTest {
         showEditorDialog(WALLET_PASSPORT);
 
         PropertyModel model = mCoordinator.getEditorModelForTest();
+        verifyRequiredFieldsItem(
+                model.get(EntityEditorProperties.EDITOR_FIELDS),
+                mActivity.getString(R.string.payments_required_field_message));
         verifySourceNotice(
                 model.get(EntityEditorProperties.EDITOR_FIELDS),
                 mActivity
@@ -592,6 +622,17 @@ public class EntityEditorModuleTest {
         assertFalse(item.model.get(IS_REQUIRED));
         assertEquals(label, item.model.get(LABEL));
         assertEquals(value, item.model.get(VALUE));
+    }
+
+    private void verifyRequiredFieldsItem(ListModel<EditorItem> editorFields, String expectedText) {
+        for (EditorItem item : editorFields) {
+            if (item.type == NOTICE && expectedText.equals(item.model.get(NOTICE_TEXT))) {
+                assertFalse(item.model.get(SHOW_BACKGROUND));
+                assertFalse(item.model.get(IMPORTANT_FOR_ACCESSIBILITY));
+                return;
+            }
+        }
+        fail("Required fields notice not found");
     }
 
     private void verifySourceNotice(ListModel<EditorItem> editorFields, String expectedNoticeText) {

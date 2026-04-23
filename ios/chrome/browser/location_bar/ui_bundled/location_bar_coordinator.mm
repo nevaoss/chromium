@@ -181,6 +181,10 @@ const size_t kMaxURLDisplayChars = 32 * 1024;
   return self.browser ? self.browser->GetWebStateList() : nullptr;
 }
 
+- (id<ReaderModeChipCommands>)readerModeChipHandler {
+  return self.readerModeChipCoordinator;
+}
+
 #pragma mark - Public
 
 - (UIViewController*)locationBarViewController {
@@ -304,7 +308,7 @@ const size_t kMaxURLDisplayChars = 32 * 1024;
         didMoveToParentViewController:self.viewController];
   }
 
-  if (IsReaderModeAvailable() && !IsChromeNextIaEnabled()) {
+  if (IsReaderModeAvailable()) {
     self.readerModeChipCoordinator = [[ReaderModeChipCoordinator alloc]
         initWithBaseViewController:self.viewController
                            browser:self.browser];
@@ -352,7 +356,7 @@ const size_t kMaxURLDisplayChars = 32 * 1024;
 
   // Create incognito badge view controller and mediator for an incognito
   // profile.
-  if (isIncognito) {
+  if (isIncognito && !IsChromeNextIaEnabled()) {
     self.incognitoBadgeViewController = [[IncognitoBadgeViewController alloc]
         initWithButtonFactory:buttonFactory];
     if (!IsLocationBarBadgeMigrationEnabled()) {
@@ -529,6 +533,10 @@ const size_t kMaxURLDisplayChars = 32 * 1024;
       startDispatchingToTarget:self.viewController
                                    .pageActionMenuEntryPointHandler
                    forProtocol:@protocol(PageActionMenuEntryPointCommands)];
+}
+
+- (void)setLocationBarActive:(BOOL)active {
+  [self.badgeMediator setActive:active];
 }
 
 #pragma mark - LocationBarURLLoader
@@ -739,10 +747,14 @@ const size_t kMaxURLDisplayChars = 32 * 1024;
 - (void)notifyContextualPanelEntrypointIPHDismissed {
   [self.locationBarBadgeCoordinator
           notifyContextualPanelEntrypointIPHDismissed];
+  [self.contextualPanelEntrypointCoordinator
+          notifyContextualPanelEntrypointIPHDismissed];
 }
 
 - (void)cancelContextualPanelEntrypointLoudMoment {
   [self.locationBarBadgeCoordinator cancelContextualPanelEntrypointLoudMoment];
+  [self.contextualPanelEntrypointCoordinator
+          cancelContextualPanelEntrypointLoudMoment];
 }
 
 #pragma mark - ContextualPanelEntrypointCoordinatorDelegate

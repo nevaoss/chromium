@@ -866,9 +866,6 @@ bool ShouldShowKeyboardAccessoryFeatures() {
 BASE_FEATURE(kLocationBarBadgeMigration, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsLocationBarBadgeMigrationEnabled() {
-  if (IsChromeNextIaEnabled()) {
-    return true;
-  }
   return base::FeatureList::IsEnabled(kLocationBarBadgeMigration);
 }
 
@@ -887,6 +884,9 @@ bool IsComposeboxIOSEnabled() {
 BASE_FEATURE(kTabGroupColorOnSurface, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsTabGroupColorOnSurfaceEnabled() {
+  if (IsSyncedGroupColorEnabled()) {
+    return true;
+  }
   return base::FeatureList::IsEnabled(kTabGroupColorOnSurface);
 }
 
@@ -1106,9 +1106,40 @@ bool IsYourSavedInfoSettingsPageIosEnabled() {
   return base::FeatureList::IsEnabled(kYourSavedInfoSettingsPageIos);
 }
 
+BASE_FEATURE(kBackgroundRefreshRegressionTest,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+namespace {
+const base::FeatureParam<BackgroundRefreshRegressionTestArm>::Option
+    kBackgroundRefreshRegressionTestArmOptions[] = {
+        {BackgroundRefreshRegressionTestArm::kControl, "control"},
+        {BackgroundRefreshRegressionTestArm::kBaseline, "baseline"},
+        {BackgroundRefreshRegressionTestArm::kShortPersistenceDelay,
+         "short-persistence-delay"},
+        {BackgroundRefreshRegressionTestArm::kLongRefreshInterval,
+         "long-refresh-interval"},
+        {BackgroundRefreshRegressionTestArm::kNoBeacon, "no-beacon"}};
+}  // namespace
+
+const base::FeatureParam<BackgroundRefreshRegressionTestArm>
+    kBackgroundRefreshRegressionTestArmParam{
+        &kBackgroundRefreshRegressionTest, "regression_test_arm",
+        BackgroundRefreshRegressionTestArm::kControl,
+        &kBackgroundRefreshRegressionTestArmOptions};
+
+BackgroundRefreshRegressionTestArm GetBackgroundRefreshRegressionTestArm() {
+  return kBackgroundRefreshRegressionTestArmParam.Get();
+}
+
 BASE_FEATURE(kOpenEditGroupViewByTappingTitle,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsOpenEditGroupViewByTappingTitleEnabled() {
   return base::FeatureList::IsEnabled(kOpenEditGroupViewByTappingTitle);
+}
+
+BASE_FEATURE(kSyncedGroupColor, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsSyncedGroupColorEnabled() {
+  return base::FeatureList::IsEnabled(kSyncedGroupColor);
 }

@@ -7,8 +7,10 @@
 #import "base/strings/sys_string_conversions.h"
 #import "components/strings/grit/components_strings.h"
 #import "ios/chrome/browser/autofill/autofill_ai/public/autofill_ai_constants.h"
+#import "ios/chrome/browser/autofill/autofill_ai/public/autofill_ai_ui_util.h"
 #import "ios/chrome/browser/autofill/autofill_ai/ui/autofill_ai_save_entity_mutator.h"
 #import "ios/chrome/browser/autofill/autofill_ai/ui/autofill_ai_save_entity_table_view_controller.h"
+#import "ios/chrome/browser/autofill/autofill_ai/ui/autofill_ai_save_entity_table_view_controller_delegate.h"
 #import "ios/chrome/browser/shared/public/commands/autofill_commands.h"
 #import "ios/chrome/browser/shared/ui/table_view/table_view_utils.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
@@ -20,6 +22,10 @@ constexpr CGFloat kButtonStackSpacing = 8;
 constexpr CGFloat kButtonStackHorizontalMargin = 16;
 constexpr CGFloat kButtonStackVerticalMargin = 16;
 }  // namespace
+
+@interface AutofillAISaveEntityContainerViewController () <
+    AutofillAISaveEntityTableViewControllerDelegate>
+@end
 
 @implementation AutofillAISaveEntityContainerViewController {
   // The table view containing the entity attributes.
@@ -47,6 +53,7 @@ constexpr CGFloat kButtonStackVerticalMargin = 16;
     _saveButtonEnabled = YES;
     _tableViewController = [[AutofillAISaveEntityTableViewController alloc]
         initWithStyle:ChromeTableViewStyle()];
+    _tableViewController.delegate = self;
   }
   return self;
 }
@@ -126,7 +133,11 @@ constexpr CGFloat kButtonStackVerticalMargin = 16;
                            oldEntity:oldEntity
                            userEmail:userEmail];
 
-  self.title = base::SysUTF16ToNSString(newEntity.type().GetNameForI18n());
+  autofill::EntityTypeName typeName = newEntity.type().name();
+  self.title = oldEntity.has_value()
+                   ? autofill::GetDialogTitleForUpdateEntity(typeName)
+                   : autofill::GetDialogTitleForSaveEntity(typeName);
+
   _saveIsSynchronous = saveIsSynchronous;
 
   // Update the button title based on whether it's an update or save.
@@ -174,6 +185,12 @@ constexpr CGFloat kButtonStackVerticalMargin = 16;
   if (_saveIsSynchronous) {
     [self.autofillHandler dismissSaveEntityDialog];
   }
+}
+
+#pragma mark - AutofillAISaveEntityTableViewControllerDelegate
+
+- (void)didTapLinkWithURL:(CrURL*)url {
+  [self.delegate didTapLinkWithURL:url];
 }
 
 @end

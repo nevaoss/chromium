@@ -714,7 +714,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.AssistContent.WebPageContentProvider.GetAssistantPackageResult"
-    enum="BooleanSuccess" expires_after="2026-08-02">
+    enum="BooleanSuccess" expires_after="2026-10-04">
   <owner>salg@google.com</owner>
   <owner>ssid@google.com</owner>
   <summary>
@@ -729,7 +729,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.AssistContent.WebPageContentProvider.Latency.CreateToExtractionStart.{RequestType}.{Format}"
-    units="ms" expires_after="2026-08-02">
+    units="ms" expires_after="2026-10-04">
   <owner>salg@google.com</owner>
   <owner>ssid@google.com</owner>
   <summary>
@@ -1141,7 +1141,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackPress.MinimizeAppAndCloseTab.CustomTab.{Task}"
-    enum="MinimizeAppAndCloseTabType" expires_after="2026-08-02">
+    enum="MinimizeAppAndCloseTabType" expires_after="2026-10-04">
   <owner>lazzzis@chromium.org</owner>
   <owner>src/chrome/browser/back_press/android/OWNERS</owner>
   <summary>
@@ -1228,7 +1228,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.BottomControlsStacker.PercentageOfWindowUsedByBottomControlsAtMaxHeight"
-    units="%" expires_after="2026-08-02">
+    units="%" expires_after="2026-10-04">
   <owner>pnoland@chromium.org</owner>
   <owner>wenyufu@chromium.org</owner>
   <summary>
@@ -1241,7 +1241,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.BottomControlsStacker.PercentageOfWindowUsedByBottomControlsAtMinHeight"
-    units="%" expires_after="2026-08-02">
+    units="%" expires_after="2026-10-04">
   <owner>pnoland@chromium.org</owner>
   <owner>wenyufu@chromium.org</owner>
   <summary>
@@ -1314,7 +1314,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BrowserControls.RenderDrivenShowConstraint"
-    enum="Boolean" expires_after="2026-08-02">
+    enum="Boolean" expires_after="2026-10-04">
   <owner>wenyufu@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
   <summary>
@@ -1476,7 +1476,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcessConectionEventCounts"
-    enum="AndroidChildProcessConnectionEvents" expires_after="2026-08-02">
+    enum="AndroidChildProcessConnectionEvents" expires_after="2026-10-04">
   <owner>boliu@chromium.org</owner>
   <owner>yfriedman@chromium.org</owner>
   <summary>
@@ -1500,7 +1500,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcessConnection.OnServiceConnectedCounts"
-    units="count" expires_after="2026-08-02">
+    units="count" expires_after="2026-10-04">
   <owner>boliu@chromium.org</owner>
   <owner>kawasin@chromium.org</owner>
   <owner>yfriedman@chromium.org</owner>
@@ -1515,7 +1515,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcessRanking.{RankType}.Count" units="count"
-    expires_after="2026-08-02">
+    expires_after="2026-10-04">
   <owner>kawasin@google.com</owner>
   <owner>clank-performance-team@google.com</owner>
   <summary>
@@ -2831,7 +2831,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.InputOnViz.Browser.TransferInputToVizResult2"
-    enum="TransferInputToVizResult" expires_after="2026-08-02">
+    enum="TransferInputToVizResult" expires_after="2026-10-04">
   <owner>kartarsingh@google.com</owner>
   <owner>amanvr@google.com</owner>
   <owner>woa-performance-team@google.com</owner>
@@ -3165,6 +3165,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.LauncherShortcut.UpdateFailure"
+    enum="LauncherShortcutUpdateFailure" expires_after="2026-10-08">
+  <owner>shuyng@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records failures when trying to update dynamic shortcuts in
+    LauncherShortcutActivity. Recorded when setDynamicShortcuts is rate-limited
+    or exceeds the maximum number of shortcuts.
+  </summary>
+</histogram>
+
 <histogram name="Android.LibraryLoader.Prefetch.Duration" units="ms"
     expires_after="2026-12-22">
   <owner>ziadyoussef@chromium.org</owner>
@@ -3297,7 +3308,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Messages.Enqueued.Hidden" enum="MessageIdentifier"
-    expires_after="2026-08-02">
+    expires_after="2026-10-04">
   <owner>lazzzis@chromium.org</owner>
   <owner>src/components/messages/OWNERS</owner>
   <summary>
@@ -3486,7 +3497,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MultiInstance.MaxInstanceCount" units="instances"
-    expires_after="2026-08-02">
+    expires_after="2026-10-04">
   <owner>jinsukkim@chromium.org</owner>
   <owner>twellington@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
@@ -3708,6 +3719,36 @@ chromium-metrics-reviews@google.com.
     Records whether multiple user profiles are present in Android.
 
     This is recorded every time a metrics log is created.
+  </summary>
+</histogram>
+
+<histogram name="Android.MultiWindow.WindowZOrder.DisplaysCount" units="count"
+    expires_after="2027-04-02">
+  <owner>kalutes@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records the number of displays being tracked for WindowZOrderTracker.
+    Recorded every 5 minutes.
+  </summary>
+</histogram>
+
+<histogram name="Android.MultiWindow.WindowZOrder.FocusChangedCount"
+    units="count" expires_after="2027-04-02">
+  <owner>kalutes@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records the number of window focus change events handled by
+    WindowZOrderTracker over the preceding 5 minutes.
+  </summary>
+</histogram>
+
+<histogram name="Android.MultiWindow.WindowZOrder.TrackedWindowsCount"
+    units="count" expires_after="2027-04-02">
+  <owner>kalutes@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records the number of windows tracked by WindowZOrderTracker. Recorded every
+    5 minutes.
   </summary>
 </histogram>
 
@@ -6434,7 +6475,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ToolbarPosition.PositionAtStartup"
-    enum="ToolbarPosition" expires_after="2026-08-02">
+    enum="ToolbarPosition" expires_after="2026-10-04">
   <owner>pnoland@chromium.org</owner>
   <owner>gangwu@chromium.org</owner>
   <summary>
@@ -6450,7 +6491,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ToolbarPosition.PositionPrefChanged"
-    enum="ToolbarPosition" expires_after="2026-08-02">
+    enum="ToolbarPosition" expires_after="2026-10-04">
   <owner>pnoland@chromium.org</owner>
   <owner>gangwu@chromium.org</owner>
   <summary>
@@ -8198,6 +8239,20 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.WebView.Navigation.MainFrame"
+    enum="WebViewNavigationType" expires_after="2026-09-30">
+  <owner>torne@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    For each committed navigation in the main frame of a WebView, records
+    whether this was the initial navigation, a same-document navigation, or in
+    all other cases whether it is same- or cross-origin and whether it was
+    triggered by the browser or renderer.
+
+    Navigations that do not commit (interrupted, HTTP 204, etc) are not counted.
+  </summary>
+</histogram>
+
 <histogram name="Android.WebView.NonAppUid" enum="AndroidUidType"
     expires_after="2025-12-31">
   <owner>torne@chromium.org</owner>
@@ -9551,6 +9606,16 @@ chromium-metrics-reviews@google.com.
   <summary>
     Reports whether or not the warm up renderer process API call starts a new
     process. Recorded once per call to the warm up renderer process API.
+  </summary>
+</histogram>
+
+<histogram name="Android.Window.OcclusionExperimental.Duration" units="ms"
+    expires_after="2027-04-02">
+  <owner>kalutes@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records the duration a window was occluded. Recorded when a window is
+    unoccluded or destroyed.
   </summary>
 </histogram>
 

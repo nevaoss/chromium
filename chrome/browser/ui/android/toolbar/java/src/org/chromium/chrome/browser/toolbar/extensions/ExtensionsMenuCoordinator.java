@@ -18,6 +18,7 @@ import org.chromium.base.lifetime.Destroyable;
 import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
@@ -30,6 +31,7 @@ import org.chromium.chrome.browser.ui.extensions.ExtensionsToolbarBridge;
 import org.chromium.chrome.browser.ui.extensions.R;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.embedder_support.util.UrlConstants;
+import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.PageTransition;
@@ -49,7 +51,10 @@ import org.chromium.ui.widget.RectProvider;
  * responsible for the button and the menu.
  */
 @NullMarked
-public class ExtensionsMenuCoordinator implements Destroyable, ExtensionsToolbarBridge.Observer {
+public class ExtensionsMenuCoordinator
+        implements Destroyable,
+                ExtensionsToolbarBridge.Observer,
+                ExtensionsToolbarBridge.MenuDelegate {
     private final Context mContext;
     private final ListMenu mExtensionsMenu;
     private final ListMenuButton mExtensionsMenuButton;
@@ -102,6 +107,8 @@ public class ExtensionsMenuCoordinator implements Destroyable, ExtensionsToolbar
         mExtensionsToolbarBridge = extensionsToolbarBridge;
         mMenuButtonPinningDelegate = menuButtonPinningDelegate;
 
+        mExtensionsToolbarBridge.setMenuDelegate(this);
+
         mContentView = LayoutInflater.from(mContext).inflate(R.layout.extensions_menu, null, false);
 
         mExtensionsMenu =
@@ -140,6 +147,8 @@ public class ExtensionsMenuCoordinator implements Destroyable, ExtensionsToolbar
         // Menu mediator is created when menu is triggered.
         mExtensionsMenuButton.setOnClickListener(
                 (view) -> {
+                    TrackerFactory.getTrackerForProfile(mProfile)
+                            .notifyEvent(EventConstants.EXTENSIONS_MENU_BUTTON_CLICKED);
                     createMediator();
                 });
 
@@ -169,6 +178,7 @@ public class ExtensionsMenuCoordinator implements Destroyable, ExtensionsToolbar
         // Create the site permissions page property model and bind it to its view.
         mSitePermissionsPageModel =
                 new PropertyModel.Builder(SitePermissionsPageProperties.ALL_KEYS).build();
+        setupSitePermissionsPageModel();
         View sitePermissionsView =
                 mContentView.findViewById(R.id.extensions_menu_site_permissions_page);
         mSitePermissionsPageChangeProcessor =
@@ -277,6 +287,13 @@ public class ExtensionsMenuCoordinator implements Destroyable, ExtensionsToolbar
                 mMenuButtonPinningDelegate.isMenuButtonPinned());
         mMainPageModel.set(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_VISIBLE, true);
         mMainPageModel.set(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_CHECKED, true);
+        mMainPageModel.set(
+                ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_CLICK_LISTENER,
+                (buttonView, isChecked) -> {
+                    if (mMediator != null) {
+                        mMediator.onSiteSettingsToggleChanged(isChecked);
+                    }
+                });
         mMainPageModel.set(ExtensionsMenuProperties.SITE_SETTINGS_LABEL, "");
         mMainPageModel.set(
                 ExtensionsMenuProperties.OPTIONAL_SECTION_TYPE,
@@ -307,6 +324,26 @@ public class ExtensionsMenuCoordinator implements Destroyable, ExtensionsToolbar
                 });
     }
 
+    private void setupSitePermissionsPageModel() {
+        mSitePermissionsPageModel.set(
+                SitePermissionsPageProperties.BACK_CLICK_LISTENER,
+                (view) -> {
+                    if (mMediator != null) {
+                        mMediator.onBackButtonClicked();
+                    }
+                });
+        mSitePermissionsPageModel.set(
+                SitePermissionsPageProperties.CLOSE_CLICK_LISTENER,
+                (view) -> mExtensionsMenuButton.dismiss());
+        mSitePermissionsPageModel.set(
+                SitePermissionsPageProperties.MANAGE_EXTENSION_CLICK_LISTENER,
+                (view) -> {
+                    if (mMediator != null) {
+                        mMediator.onManageThisExtensionClicked(this::openUrlFromMenu);
+                    }
+                });
+    }
+
     private static void setUpExtensionsRecyclerView(
             View contentView, Context context, ModelList extensionModels) {
         RecyclerView extensionRecyclerView = contentView.findViewById(R.id.extensions_menu_items);
@@ -315,7 +352,7 @@ public class ExtensionsMenuCoordinator implements Destroyable, ExtensionsToolbar
 
         extensionsAdapter.registerType(
                 0,
-                new LayoutViewBuilder(R.layout.extensions_menu_item),
+                new LayoutViewBuilder<>(R.layout.extensions_menu_item),
                 ExtensionsMenuItemViewBinder::bind);
 
         extensionRecyclerView.setAdapter(extensionsAdapter);
@@ -386,6 +423,11 @@ public class ExtensionsMenuCoordinator implements Destroyable, ExtensionsToolbar
     @Override
     public void onActionUpdated(String actionId) {
         updateButtonState();
+    }
+
+    @Override
+    public void closeExtensionsMenuIfOpen() {
+        mExtensionsMenuButton.dismiss();
     }
 
     @Override

@@ -37,6 +37,7 @@ BASE_DECLARE_FEATURE(kImportExportFlags);
 
 BASE_DECLARE_FEATURE(kToolbarGlowUp);
 
+BASE_DECLARE_FEATURE(kMenuSimplification);
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 
@@ -239,6 +240,8 @@ BASE_DECLARE_FEATURE(kToolbarHeightSidePanel);
 BASE_DECLARE_FEATURE(kSidePanelFlyoverAnimation);
 bool UseSidePanelFlyoverAnimation();
 
+BASE_DECLARE_FEATURE_PARAM(int, kSidePanelFlyoverDurationMs);
+
 // TODO(crbug.com/460764864): Cleanup all the enterprise badging feature flags.
 BASE_DECLARE_FEATURE(kEnterpriseProfileBadgingForMenu);
 BASE_DECLARE_FEATURE(kNTPFooterBadgingPolicies);
@@ -311,8 +314,6 @@ BASE_DECLARE_FEATURE(kByDateHistoryInSidePanel);
 // If enabled, the "Tabs from other devices" side panel will be available.
 BASE_DECLARE_FEATURE(kTabsFromOtherDevicesSidePanel);
 
-// Controls whether to use the TabStrip browser api's controller.
-BASE_DECLARE_FEATURE(kTabStripBrowserApi);
 
 #if !BUILDFLAG(IS_ANDROID)
 // Controls whether to add new tabs to active tab group or to the end of the

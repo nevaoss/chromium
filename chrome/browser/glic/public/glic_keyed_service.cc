@@ -25,7 +25,6 @@
 #include "chrome/browser/actor/ui/actor_ui_state_manager_interface.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
-#include "chrome/browser/glic/actor/glic_actor_task_manager.h"
 #include "chrome/browser/glic/common/application_hotkey_delegate.h"
 #include "chrome/browser/glic/common/future_browser_features.h"
 #include "chrome/browser/glic/common/glic_navigation.h"
@@ -72,6 +71,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_context.h"
+#include "content/public/browser/media_session.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/common/url_constants.h"
@@ -194,12 +194,6 @@ GlicKeyedService::GlicKeyedService(
 
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
       occlusion_notifier_(nullptr),
-      actor_task_manager_(
-          actor_keyed_service
-              ? std::make_unique<GlicActorTaskManager>(profile,
-                                                       actor_keyed_service,
-                                                       *actor_policy_checker_)
-              : nullptr),
 #endif
       tab_data_observer_(std::make_unique<GlicTabDataObserver>()),
       tab_favicon_observer_(std::make_unique<GlicTabFaviconObserver>()),
@@ -572,10 +566,6 @@ base::CallbackListSubscription GlicKeyedService::AddUserInputSubmittedCallback(
 }
 
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
-void GlicKeyedService::OnTabAddedToTask(
-    actor::TaskId task_id,
-    const tabs::TabInterface::Handle& tab_handle) {}
-
 void GlicKeyedService::CaptureRegion(
     tabs::TabInterface* tab,
     mojo::PendingRemote<mojom::CaptureRegionObserver> observer) {
@@ -724,6 +714,22 @@ GlicInstance* GlicKeyedService::GetInstanceForActiveTab(
   return instance_coordinator().GetInstanceForTab(tab_list->GetActiveTab());
 }
 
+bool GlicKeyedService::IsMediaRequestFromGlic(
+    const std::string& request_id) const {
+  for (GlicInstance* instance : instance_coordinator().GetInstances()) {
+    if (!instance->host().web_client_contents()) {
+      continue;
+    }
+
+    if (content::MediaSession::GetRequestIdFromWebContents(
+            instance->host().web_client_contents())
+            .ToString() == request_id) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void GlicKeyedService::SendAdditionalContext(
     tabs::TabHandle tab_handle,
     mojom::AdditionalContextPtr context) {
@@ -741,39 +747,6 @@ void GlicKeyedService::Archive(
     content::RenderFrameHost* outermost_render_frame_host) {
   instance_coordinator().ArchiveInstanceWithFrame(outermost_render_frame_host);
 }
-
-#if !BUILDFLAG(IS_ANDROID)  // Single instance only
-void GlicKeyedService::RequestToShowCredentialSelectionDialog(
-    actor::TaskId task_id,
-    const base::flat_map<std::string, gfx::Image>& icons,
-    const std::vector<actor_login::Credential>& credentials,
-    actor::ActorTaskDelegate::CredentialSelectedCallback callback) {
-  NOTREACHED();  // deprecated
-}
-
-void GlicKeyedService::RequestToShowUserConfirmationDialog(
-    actor::TaskId task_id,
-    const url::Origin& navigation_origin,
-    bool for_blocklisted_origin,
-    actor::ActorTaskDelegate::UserConfirmationDialogCallback callback) {
-  NOTREACHED();  // deprecated
-}
-
-void GlicKeyedService::RequestToConfirmNavigation(
-    actor::TaskId task_id,
-    const url::Origin& navigation_origin,
-    actor::ActorTaskDelegate::NavigationConfirmationCallback callback) {
-  NOTREACHED();  // deprecated
-}
-
-void GlicKeyedService::RequestToShowAutofillSuggestionsDialog(
-    actor::TaskId task_id,
-    std::vector<autofill::ActorFormFillingRequest> requests,
-    base::WeakPtr<actor::AutofillSelectionDialogEventHandler> event_handler,
-    AutofillSuggestionSelectedCallback callback) {
-  NOTREACHED();  // deprecated
-}
-#endif
 
 base::CallbackListSubscription
 GlicKeyedService::AddActOnWebCapabilityChangedCallback(

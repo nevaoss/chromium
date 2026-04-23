@@ -1052,6 +1052,9 @@ BASE_FEATURE(kBrowserInitiatedAutomaticPictureInPictureDryRun,
 BASE_FEATURE(kMatchSourceAudioChannelLayout, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
+// Enables media capturing to continue in the background.
+BASE_FEATURE(kAndroidEnableBackgroundMediaCapturing,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 // Allows media playback to start when the audio focus request is delayed
 // (e.g. during a phone call).
 BASE_FEATURE(kAllowDelayedAudioFocusGainAndroid,
@@ -1074,8 +1077,7 @@ BASE_FEATURE(kAutoPictureInPictureAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables audio power level analysis on Android to determine webcontents
 // audibility changes. This modifies the behavior of the MediaIndicatorsAndroid
 // feature to achieve a more responsive UI update when audio starts or stops.
-BASE_FEATURE(kEnableAudioMonitoringOnAndroid,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kEnableAudioMonitoringOnAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables Picture-in-Picture menu item on the video context menu on Android.
 BASE_FEATURE(kContextMenuPictureInPictureAndroid,

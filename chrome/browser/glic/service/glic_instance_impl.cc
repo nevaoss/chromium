@@ -39,6 +39,7 @@
 #include "chrome/browser/glic/public/glic_side_panel_coordinator.h"
 #include "chrome/browser/glic/service/glic_ui_embedder.h"
 #include "chrome/browser/glic/service/glic_ui_types.h"
+#include "chrome/browser/glic/suggestions/contextual_cueing_features.h"
 #include "chrome/browser/glic/suggestions/contextual_cueing_service.h"
 #include "chrome/browser/glic/suggestions/contextual_cueing_service_factory.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
@@ -76,7 +77,6 @@
 #include "chrome/browser/glic/widget/glic_floating_ui.h"
 #include "chrome/browser/glic/widget/glic_inactive_side_panel_ui.h"
 #include "chrome/browser/glic/widget/glic_side_panel_ui.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #endif
 
@@ -318,6 +318,10 @@ GlicInstanceImpl::instance_metrics_backwards_compatibility() {
   return instance_metrics_;
 }
 
+void GlicInstanceImpl::OnSelectionAreasChanged(int count) {
+  instance_metrics_.OnSelectionAreasChanged(count);
+}
+
 bool GlicInstanceImpl::IsShowing() const {
   return active_embedder_key_.has_value();
 }
@@ -383,6 +387,8 @@ void GlicInstanceImpl::Show(const ShowOptions& options) {
     SetActiveEmbedderAndNotifyStateChange(new_key);
   }
 
+  MaybeWarmZeroStateSuggestions();
+
   MaybeShowHostUi(embedder_to_show, options.invocation_source,
                   options.prompt_suggestion, options.auto_send,
                   options.fre_override);
@@ -396,6 +402,8 @@ void GlicInstanceImpl::Show(const ShowOptions& options) {
 }
 
 void GlicInstanceImpl::Detach(tabs::TabInterface& tab) {
+  CHECK(GlicEnabling::IsLiveAndFloatyEnabledByFlags())
+      << "Detach called when floaty is disabled by flags.";
   instance_metrics_.OnDetach();
   auto show_options =
       ShowOptions::ForFloating(tab.GetHandle(), interaction_mode_);
@@ -929,6 +937,8 @@ GlicUiEmbedder* GlicInstanceImpl::CreateActiveEmbedder(
                        return CreateActiveEmbedderForSidePanel(opts);
                      },
                      [&](const FloatingShowOptions& opts) {
+                       CHECK(base::FeatureList::IsEnabled(
+                           features::kGlicLiveMode));
                        return CreateActiveEmbedderForFloaty(opts.initial_bounds,
                                                             opts.source_tab);
                      }},
@@ -947,6 +957,7 @@ GlicUiEmbedder* GlicInstanceImpl::CreateActiveEmbedderForSidePanel(
 GlicUiEmbedder* GlicInstanceImpl::CreateActiveEmbedderForFloaty(
     const gfx::Rect& initial_bounds,
     tabs::TabInterface::Handle source_tab) {
+  CHECK(GlicEnabling::IsLiveAndFloatyEnabledByFlags());
   if (coordinator_delegate_) {
     coordinator_delegate_->OnWillCreateFloaty();
   }
@@ -1120,6 +1131,19 @@ void GlicInstanceImpl::MaybeDeactivateEmbedder(EmbedderKey key) {
                        weak_ptr_factory_.GetWeakPtr()),
         base::Milliseconds(30));
   }
+}
+
+void GlicInstanceImpl::MaybeWarmZeroStateSuggestions() {
+  if (conversation_id() ||
+      !GlicEnabling::IsEnabledAndConsentForProfile(profile_) ||
+      !IsZeroStateSuggestionsEnabled()) {
+    return;
+  }
+
+  // Warm ZSS to reduce latency. But only do it for new conversations.
+  // Conversations with an ID won't have ZSS.
+  FetchZeroStateSuggestions(/*is_first_run=*/false, std::nullopt,
+                            base::DoNothing());
 }
 
 bool GlicInstanceImpl::ShouldPinOnBind() const {

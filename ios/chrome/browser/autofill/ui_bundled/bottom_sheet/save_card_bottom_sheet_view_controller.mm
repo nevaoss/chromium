@@ -7,8 +7,8 @@
 #import "build/branding_buildflags.h"
 #import "components/strings/grit/components_strings.h"
 #import "ios/chrome/browser/autofill/model/message/save_card_message_with_links.h"
-#import "ios/chrome/browser/autofill/ui_bundled/autofill_credit_card_util.h"
 #import "ios/chrome/browser/autofill/ui_bundled/bottom_sheet/bottom_sheet_constants.h"
+#import "ios/chrome/browser/autofill/ui_bundled/util/autofill_credit_card_util.h"
 #import "ios/chrome/browser/net/model/crurl.h"
 #import "ios/chrome/browser/shared/ui/bottom_sheet/table_view_bottom_sheet_view_controller+subclassing.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
@@ -313,6 +313,17 @@ CGFloat const kChromeLogoHeight = 22;
             kGPayPillIconSymbol, kGoogleWalletLogoHeight));
 
     configuration.trailingConfiguration = trailingImageConfiguration;
+
+    if (_cardAccessibilityLabel.length) {
+      configuration.customAccessibilityLabel =
+          [NSString stringWithFormat:
+                        @"%@, %@", _cardAccessibilityLabel,
+                        l10n_util::GetNSString(
+                            IDS_AUTOFILL_GOOGLE_WALLET_LOGO_ACCESSIBLE_NAME)];
+    } else {
+      configuration.customAccessibilityLabel = l10n_util::GetNSString(
+          IDS_AUTOFILL_GOOGLE_WALLET_LOGO_ACCESSIBLE_NAME);
+    }
   }
 #endif
 

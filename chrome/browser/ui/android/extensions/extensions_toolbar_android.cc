@@ -113,8 +113,8 @@ void ExtensionsToolbarAndroid::HideActivePopup() {
 }
 
 void ExtensionsToolbarAndroid::CloseExtensionsMenuIfOpen() {
-  // TODO(crbug.com/461981075)
-  NOTIMPLEMENTED();
+  Java_ExtensionsToolbarBridge_closeExtensionsMenuIfOpen(AttachCurrentThread(),
+                                                         java_object_);
 }
 
 bool ExtensionsToolbarAndroid::CanShowToolbarActionPopupForAPICall(
@@ -124,8 +124,14 @@ bool ExtensionsToolbarAndroid::CanShowToolbarActionPopupForAPICall(
 }
 
 void ExtensionsToolbarAndroid::ToggleExtensionsMenu() {
-  // TODO(crbug.com/461981075)
+  // On Android, the menu is tied to the extensions menu button within Java and
+  // therefore this method is not used.
   NOTIMPLEMENTED();
+}
+
+void ExtensionsToolbarAndroid::ShowManageExtensionsIPH() {
+  Java_ExtensionsToolbarBridge_showManageExtensionsIPH(AttachCurrentThread(),
+                                                       java_object_);
 }
 
 void ExtensionsToolbarAndroid::OnActionsInitialized() {

@@ -485,8 +485,10 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
 }
 #endif
 
-IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
-                       TabContentsDaisyChainingSuppressedWhenUnifiedFreShown) {
+// Flaky test. crbug.com/498990943
+IN_PROC_BROWSER_TEST_F(
+    GlicInstanceCoordinatorBrowserTest,
+    DISABLED_TabContentsDaisyChainingSuppressedWhenUnifiedFreShown) {
   auto* instance = OpenGlicForActiveTab();
   ASSERT_TRUE(instance);
   tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();
@@ -523,9 +525,10 @@ class GlicInstanceCoordinatorTrustFirstOnboardingArm1BrowserTest
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
+// Flaky test. crbug.com/498990943
 IN_PROC_BROWSER_TEST_F(
     GlicInstanceCoordinatorTrustFirstOnboardingArm1BrowserTest,
-    TabContentsDaisyChainingNotSuppressedWhenTrustFirstArm1Shown) {
+    DISABLED_TabContentsDaisyChainingNotSuppressedWhenTrustFirstArm1Shown) {
   // Open FRE.
   GetProfile()->GetPrefs()->SetInteger(
       prefs::kGlicCompletedFre,
@@ -1175,8 +1178,8 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
   auto* instance = coordinator().GetInstanceForTab(tab);
 
   // Wait until setup is complete
-  ASSERT_TRUE(
-      base::test::RunUntil([&]() { return instance->host().IsReady(); }));
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return instance->host().IsWebClientConnected(); }));
 
   // Now, invoke should hit the fast path.
   base::test::TestFuture<void> success_future;
@@ -1407,6 +1410,57 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorDefaultToLastActiveBrowserTest,
   // With the feature enabled, the same instance should be reused since it was
   // the last active and the recency limit was less than 20 minutes (default).
   EXPECT_EQ(instance1, instance2);
+}
+
+class GlicInstanceCoordinatorDefaultToLastActiveActuatingBrowserTest
+    : public GlicInstanceCoordinatorDefaultToLastActiveBrowserTest {
+ public:
+  GlicInstanceCoordinatorDefaultToLastActiveActuatingBrowserTest() {
+    feature_list_.InitAndEnableFeatureWithParameters(
+        ::features::kGlicActor,
+        {{::features::kGlicActorPolicyControlExemption.name, "true"}});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(
+    GlicInstanceCoordinatorDefaultToLastActiveActuatingBrowserTest,
+    NewTabDoesNotDefaultToLastActiveIfActuating) {
+  auto* instance1 = OpenGlicForActiveTab();
+  ASSERT_TRUE(instance1);
+
+  PreventDeletionOnClose(instance1, "test_conversation_1");
+
+  // Wait for the instance to be ready so we can create a task.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return instance1->host().GetPrimaryWebUiState() ==
+               glic::mojom::WebUiState::kReady &&
+           instance1->host().GetPrimaryWebClient();
+  }));
+
+  // Create a task to make it "actuating".
+  base::test::TestFuture<
+      base::expected<int32_t, glic::mojom::CreateTaskErrorReason>>
+      create_task_future;
+  instance1->CreateTask(nullptr, actor::webui::mojom::TaskOptions::New(),
+                        create_task_future.GetCallback());
+  ASSERT_TRUE(create_task_future.Get().has_value());
+  EXPECT_TRUE(instance1->IsActuating());
+
+  // Close the side panel on tab 1 to prevent new tab daisy chaining.
+  ASSERT_TRUE(CloseGlicForTabAndWait(GetTabListInterface()->GetActiveTab()));
+
+  // Switch to Tab 2
+  CreateAndActivateTab(GURL("about:blank"));
+
+  // Open Glic for Tab 2
+  auto* instance2 = OpenGlicForActiveTab();
+  ASSERT_TRUE(instance2);
+
+  // Since instance1 was actuating, it should NOT be reused.
+  EXPECT_NE(instance1, instance2);
 }
 
 class GlicInstanceCoordinatorDefaultToLastActiveExpiredBrowserTest

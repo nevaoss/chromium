@@ -175,7 +175,10 @@ const CSSValue* AlignItems::ParseSingleValue(CSSParserTokenStream& stream,
     return nullptr;
   }
   return css_parsing_utils::ConsumeSelfPositionOverflowPosition(
-      stream, css_parsing_utils::IsSelfPositionKeyword);
+      stream,
+      RuntimeEnabledFeatures::DisableAnchorCenterOnAlignJustifyItemsEnabled()
+          ? css_parsing_utils::IsDefaultAlignmentKeyword
+          : css_parsing_utils::IsSelfAlignmentKeyword);
 }
 
 const CSSValue* AlignItems::CSSValueFromComputedStyleInternal(
@@ -191,7 +194,7 @@ const CSSValue* AlignSelf::ParseSingleValue(CSSParserTokenStream& stream,
                                             const CSSParserContext& context,
                                             CSSParserLocalContext&) const {
   return css_parsing_utils::ConsumeSelfPositionOverflowPosition(
-      stream, css_parsing_utils::IsSelfPositionKeyword);
+      stream, css_parsing_utils::IsSelfAlignmentKeyword);
 }
 
 const CSSValue* AlignSelf::CSSValueFromComputedStyleInternal(
@@ -5650,6 +5653,22 @@ const CSSValue* Height::ParseSingleValue(
       stream, context, local_context, css_parsing_utils::UnitlessQuirk::kAllow);
 }
 
+const CSSValue* HangingPunctuation::ParseSingleValue(
+    CSSParserTokenStream& stream,
+    const CSSParserContext&,
+    CSSParserLocalContext&) const {
+  return css_parsing_utils::ConsumeHangingPunctuation(stream);
+}
+
+const CSSValue* HangingPunctuation::CSSValueFromComputedStyleInternal(
+    const ComputedStyle& style,
+    const LayoutObject* layout_object,
+    bool allow_visited_style,
+    CSSValuePhase value_phase) const {
+  return ComputedStyleUtils::ValueForHangingPunctuation(
+      style.GetHangingPunctuation());
+}
+
 bool Height::IsLayoutDependent(const ComputedStyle* style,
                                LayoutObject* layout_object) const {
   return layout_object && (layout_object->IsBox() || layout_object->IsSVG());
@@ -6844,7 +6863,10 @@ const CSSValue* JustifyItems::ParseSingleValue(
   }
 
   return css_parsing_utils::ConsumeSelfPositionOverflowPosition(
-      stream, css_parsing_utils::IsSelfPositionOrLeftOrRightKeyword);
+      stream,
+      RuntimeEnabledFeatures::DisableAnchorCenterOnAlignJustifyItemsEnabled()
+          ? css_parsing_utils::IsDefaultAlignmentOrLeftOrRightKeyword
+          : css_parsing_utils::IsSelfAlignmentOrLeftOrRightKeyword);
 }
 
 const CSSValue* JustifyItems::CSSValueFromComputedStyleInternal(
@@ -6863,7 +6885,7 @@ const CSSValue* JustifySelf::ParseSingleValue(
     const CSSParserContext& context,
     CSSParserLocalContext& local_context) const {
   return css_parsing_utils::ConsumeSelfPositionOverflowPosition(
-      stream, css_parsing_utils::IsSelfPositionOrLeftOrRightKeyword);
+      stream, css_parsing_utils::IsSelfAlignmentOrLeftOrRightKeyword);
 }
 
 const CSSValue* JustifySelf::CSSValueFromComputedStyleInternal(

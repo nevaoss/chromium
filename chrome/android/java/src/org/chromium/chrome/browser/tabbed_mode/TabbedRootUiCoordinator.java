@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.tabbed_mode;
 
+import static org.chromium.build.NullUtil.assertNonNull;
 import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.annotation.SuppressLint;
@@ -1179,7 +1180,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         if (ChromeFeatureList.sGlic.isEnabled()) {
             mActorControlCoordinator =
                     new ActorControlCoordinator(
-                            mActivity, (v) -> {}, (v) -> {}, mTabBottomSheetManager);
+                            mActivity,
+                            (v) -> {},
+                            (v) -> {},
+                            mActivityTabProvider.asObservable(),
+                            mTabBottomSheetManager);
         }
 
         mForcedSigninController =
@@ -1764,7 +1769,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mActivity,
                             mWindowAndroid,
                             getBottomSheetController(),
-                            mLayoutStateProviderOneShotSupplier);
+                            mLayoutStateProviderOneShotSupplier,
+                            assertNonNull(mCompositorViewHolderSupplier.get()));
         }
     }
 

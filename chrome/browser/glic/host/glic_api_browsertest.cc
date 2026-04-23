@@ -12,7 +12,6 @@
 #include <string_view>
 #include <utility>
 
-#include "base/callback_list.h"
 #include "base/command_line.h"
 #include "base/containers/to_vector.h"
 #include "base/feature_list.h"
@@ -195,6 +194,7 @@ std::vector<std::string> GetTestSuiteNames() {
       "GlicApiTestHibernateOnMemoryUsage",
       "GlicApiTestWithDaisyChain",
       "GlicApiTestWithSkills",
+      "GlicApiTestNoFloatyOrLiveMode",
   };
 }
 
@@ -439,6 +439,20 @@ class GlicApiTestWithMqlsIdGetterDisabled : public GlicApiTestWithOneTab {
         {},
         /*disabled_features=*/
         {mojom::features::kGlicAppendModelQualityClientId});
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+class GlicApiTestNoFloatyOrLiveMode : public GlicApiTest {
+ public:
+  GlicApiTestNoFloatyOrLiveMode() {
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/
+        {},
+        /*disabled_features=*/
+        {features::kGlicLiveMode});
   }
 
  private:
@@ -767,21 +781,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testDoNothing) {
 }
 
 // TODO(crbug.com/486793948): Fix and re-enable or remove the test.
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, DISABLED_testInvocationSource) {
-  for (const auto source : {
-           mojom::InvocationSource::kOsHotkey,
-           mojom::InvocationSource::kOsButton,
-           mojom::InvocationSource::kNudge,
-       }) {
-    RunTestSequence(CloseGlic(), WaitForGlicClose(),
-                    ToggleGlicWindowFromSource(GlicWindowMode::kDetached,
-                                               ui::ElementIdentifier(), source),
-                    WaitForGlicOpen());
-    ExecuteJsTest({.params = base::Value(static_cast<int>(source))});
-  }
-}
-
-// TODO(crbug.com/486793948): Fix and re-enable or remove the test.
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
                        DISABLED_testDefaultInvocationSource) {
   RunTestSequence(CloseGlic(), WaitForGlicClose(),
@@ -790,15 +789,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
                       mojom::InvocationSource::kTopChromeButton),
                   WaitForGlicOpen());
   ExecuteJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithWebContentsWarming,
-                       testWebClientReadyOnFullLoad) {
-  // Opening the glic window will trigger the bootstrap, which should transition
-  // the WebUI state to kReady.
-  NavigateTabAndOpenGlic();
-  ExecuteJsTest();
-  WaitForWebUiState(mojom::WebUiState::kReady);
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithWebContentsWarming,
@@ -1401,7 +1391,14 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testGetPanelStateAttachedHidden) {
   ContinueJsTest();
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testDetachPanel) {
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testDetachPanel) {
+  NavigateTabAndOpenGlic();
+  ExecuteJsTest();
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiTestNoFloatyOrLiveMode,
+                       testDetachPanelNoFloatyOrLiveMode) {
+  NavigateTabAndOpenGlic();
   ExecuteJsTest();
 }
 
@@ -3558,7 +3555,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testPanelWillOpenBeforeClientReady) {
   options.conversation_info->conversation_id = "test_conversation_id";
   options.conversation_info->conversation_title = "Test Conversation Title";
   options.conversation_info->client_data = "test_client_data_from_cc";
-  ASSERT_FALSE(GetHost()->IsReady());
+  ASSERT_FALSE(GetHost()->IsWebClientConnected());
   GetHost()->PanelWillOpen(mojom::InvocationSource::kTopChromeButton,
                            std::move(options));
   ExecuteJsTest();
@@ -4160,6 +4157,10 @@ INSTANTIATE_TEST_SUITE_P(,
                          &WithTestParams::PrintTestVariant);
 INSTANTIATE_TEST_SUITE_P(,
                          GlicApiTestWithSkills,
+                         DefaultTestParamSet(),
+                         &WithTestParams::PrintTestVariant);
+INSTANTIATE_TEST_SUITE_P(,
+                         GlicApiTestNoFloatyOrLiveMode,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
 }  // namespace

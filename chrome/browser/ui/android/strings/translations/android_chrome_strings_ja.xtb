@@ -397,7 +397,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="2687009626279857299">このデバイスでは動作を停止しました</translation>
 <translation id="2693387519545954740"><ph name="TAB_TITLE" />、音声ありのタブ</translation>
 <translation id="2702516483241149200">新規: このテキストにスクロールするリンクを共有できます</translation>
-<translation id="2708226184420201102"><ph name="PRODUCT_NAME" />　ブラウザで開く</translation>
+<translation id="2708226184420201102"><ph name="PRODUCT_NAME" /> ブラウザで開く</translation>
 <translation id="271033894570825754">New</translation>
 <translation id="2718352093833049315">Wi-Fi接続時のみ</translation>
 <translation id="2718846868787000099">ご希望の言語でコンテンツを表示するため、アクセス先のサイトには設定内容が伝えられます</translation>
@@ -684,6 +684,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="3927692899758076493">Sans Serif</translation>
 <translation id="3931947361983910192">過去 4 週間</translation>
 <translation id="393697183122708255">有効な音声検索がありません</translation>
+<translation id="3941718885865495207">Chrome Finds のオプトイン メッセージのボトムシート</translation>
 <translation id="3943322906274039960"><ph name="TAB_TITLE" />、ピクチャー イン ピクチャーの固定タブ</translation>
 <translation id="3950820424414687140">ログイン</translation>
 <translation id="395377504920307820">アカウントなしで使用</translation>
@@ -1189,6 +1190,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="6011308810877101166">検索候補の関連性を高める</translation>
 <translation id="6013305291643746595">古い順に並べ替え</translation>
 <translation id="6022659036123304283">Chrome を自分用にカスタマイズ</translation>
+<translation id="6023820583797130428">戻るにはメニューを開きます</translation>
 <translation id="6026538407078977628">フルスクリーンで拡大表示</translation>
 <translation id="6030719887161080597">広告効果を測定するためにサイトで使用される情報を管理します</translation>
 <translation id="6039379616847168523">次のタブに移動する</translation>
@@ -1633,6 +1635,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="7597601275223325603">{NUMBER_OF_TABS,plural, =1{<ph name="TABS_COUNT_ONE" /> 個の標準のタブ}other{<ph name="TABS_COUNT_MANY" /> 個の標準のタブ}}</translation>
 <translation id="7603168929588204083">日付が無効です</translation>
 <translation id="7605594153474022051">同期が機能していません</translation>
+<translation id="7608245556672190037">Chrome Finds のオプトイン メッセージが画面全体に表示されています</translation>
 <translation id="7612619742409846846">Google にログイン済みのユーザー</translation>
 <translation id="7612989789287281429">ログインしています…</translation>
 <translation id="7619072057915878432">ネットワーク障害が発生したため、<ph name="FILE_NAME" /> をダウンロードできませんでした。</translation>
@@ -1640,6 +1643,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="7628417132421583481">パスワード マネージャーに移動</translation>
 <translation id="7630202231528827509">プロバイダの URL</translation>
 <translation id="7638584964844754484">パスフレーズが正しくありません</translation>
+<translation id="764047009170754705">Chrome Finds のオプトイン メッセージが閉じられました</translation>
 <translation id="7646499124171960488">安全でない公開サイトについて警告する</translation>
 <translation id="7646772052135772216">パスワード同期が機能していません</translation>
 <translation id="7655240423373329753">過去 7 日間</translation>
@@ -1864,6 +1868,7 @@ Chrome を使いやすくするためにデータを使用するその他の設�
 <translation id="8473863474539038330">住所やその他の情報</translation>
 <translation id="847433688444405067">複数のデバイスでブラウジング</translation>
 <translation id="8477178913400731244">データを削除</translation>
+<translation id="8481771036036087705">Chrome Finds のオプトイン メッセージが画面の下半分に表示されています</translation>
 <translation id="8485434340281759656"><ph name="FILE_SIZE" /> <ph name="SEPARATOR" /> <ph name="DESCRIPTION" /></translation>
 <translation id="8491317241605644838">非アクティブなウィンドウはありません</translation>
 <translation id="8493948351860045254">容量を空ける</translation>

@@ -31,6 +31,9 @@
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/side_panel/side_panel_entry.h"
+#include "chrome/browser/ui/side_panel/side_panel_enums.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
@@ -48,6 +51,8 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom.h"
 #include "components/collaboration/public/features.h"
+#include "components/contextual_tasks/public/features.h"
+#include "components/data_sharing/public/features.h"
 #include "components/metrics/content/subprocess_metrics_provider.h"
 #include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
@@ -2303,7 +2308,11 @@ class WebUIPinnedToolbarActionsBrowserTest
              // Need non-zero initial toolbar size, otherwise hidden on Mac.
              features::kWebUIReloadButton,
              // Facilitate testing kActionSidePanelShowComments
-             collaboration::features::kCollaborationComments},
+             collaboration::features::kCollaborationComments,
+             // Facilitate testing kActionsSidePanelShowContextualTasks
+             contextual_tasks::kContextualTasks,
+             // Facilitate testing kActionSendSharedTabGroupFeedback
+             data_sharing::features::kDataSharingFeature},
             {}) {}
 
   void SetUpOnMainThread() override {
@@ -2433,15 +2442,8 @@ class WebUIPinnedToolbarActionsBrowserTest
       };
 };
 
-// TODO(crbug.com/499825436): Fix and enable these tests on Windows and
-// ChromeOS.
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN)
-#define MAYBE_PinUnpinIndividually DISABLED_PinUnpinIndividually
-#else
-#define MAYBE_PinUnpinIndividually PinUnpinIndividually
-#endif
 IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
-                       MAYBE_PinUnpinIndividually) {
+                       PinUnpinIndividually) {
   WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
   views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
   content::WebContents* web_contents = web_view->GetWebContents();
@@ -2463,13 +2465,7 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
   }
 }
 
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN)
-#define MAYBE_PinAllTogether DISABLED_PinAllTogether
-#else
-#define MAYBE_PinAllTogether PinAllTogether
-#endif
-IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
-                       MAYBE_PinAllTogether) {
+IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, PinAllTogether) {
   WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
   views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
   content::WebContents* web_contents = web_view->GetWebContents();
@@ -2484,13 +2480,40 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
   }
 }
 
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN)
-#define MAYBE_InvokeActions DISABLED_InvokeActions
-#else
-#define MAYBE_InvokeActions InvokeActions
-#endif
-IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
-                       MAYBE_InvokeActions) {
+IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, SidePanelToggle) {
+  WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
+  views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  actions::ActionId action_id = kActionSidePanelShowCustomizeChrome;
+  auto mojom_action =
+      toolbar_ui_api::mojom::PinnedToolbarAction::kSidePanelShowCustomizeChrome;
+
+  model_->UpdatePinnedState(action_id, true);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return IsPinnedButtonVisible(web_contents, mojom_action); }));
+
+  auto* side_panel_ui = browser()->GetFeatures().side_panel_ui();
+  auto is_any_side_panel_showing = [&]() {
+    for (auto type : SidePanelTypes::All()) {
+      if (side_panel_ui->IsSidePanelShowing(type)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Show side panel.
+  EXPECT_TRUE(ClickPinnedButton(web_contents, mojom_action));
+  ASSERT_TRUE(base::test::RunUntil(is_any_side_panel_showing));
+
+  // Dismiss side panel.
+  EXPECT_TRUE(ClickPinnedButton(web_contents, mojom_action));
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !is_any_side_panel_showing(); }));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, InvokeActions) {
   WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
   views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
   content::WebContents* web_contents = web_view->GetWebContents();
@@ -2875,13 +2898,8 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, ToolbarDivider) {
   ASSERT_TRUE(base::test::RunUntil([&]() { return !is_divider_visible(); }));
 }
 
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN)
-#define MAYBE_SetActionElementIdentifier DISABLED_SetActionElementIdentifier
-#else
-#define MAYBE_SetActionElementIdentifier SetActionElementIdentifier
-#endif
 IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
-                       MAYBE_SetActionElementIdentifier) {
+                       SetActionElementIdentifier) {
   WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
   views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
   content::WebContents* web_contents = web_view->GetWebContents();

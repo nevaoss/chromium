@@ -1435,7 +1435,7 @@ class DiscardedRFHProcessHelper : public base::SupportsUserData::Data,
           }
         });
 
-    // Attempt a shutdown if the the renderer is hosting only discarded frames.
+    // Attempt a shutdown if the renderer is hosting only discarded frames.
     if (discarded_widgets.empty() || !only_discarded_frames) {
       return;
     }
@@ -1942,6 +1942,18 @@ void RecordNavigationTraceEventsAndMetrics(
   }
 
   if (ukm_builder.has_value()) {
+    if (!timeline.renderer_process_created.is_null() &&
+        timeline.renderer_process_created >= timeline.start) {
+      ukm_builder->SetRendererProcessCreated(
+          (timeline.renderer_process_created - timeline.start)
+              .InMilliseconds());
+    }
+    if (!timeline.renderer_process_launched.is_null() &&
+        timeline.renderer_process_launched >= timeline.start) {
+      ukm_builder->SetRendererProcessLaunched(
+          (timeline.renderer_process_launched - timeline.start)
+              .InMilliseconds());
+    }
     ukm_builder->Record(ukm::UkmRecorder::Get());
   }
 }
@@ -2124,7 +2136,7 @@ class RenderFrameHostImpl::SubresourceLoaderFactoriesConfig {
   // TODO(crbug.com/40523839): ForPendingOrLastCommittedNavigation might
   // not be needed once we have RenderDocumentHost (e.g. we swap on every
   // cross-document navigation), because with RenderDocumentHost there is no
-  // risk of sending last-commited-navigation-based subresource loaders to a
+  // risk of sending last-committed-navigation-based subresource loaders to a
   // document different from the last-committed one.
   static SubresourceLoaderFactoriesConfig ForPendingOrLastCommittedNavigation(
       RenderFrameHostImpl& frame) {
@@ -2214,7 +2226,7 @@ class PendingNavigation {
   blink::mojom::CommonNavigationParamsPtr common_params_;
   blink::mojom::BeginNavigationParamsPtr begin_navigation_params_;
   mojo::Remote<blink::mojom::NavigationStateKeepAliveHandle>
-      opener_keep_alive_handle_;
+      initiator_navigation_state_keep_alive_handle_;
   scoped_refptr<network::SharedURLLoaderFactory> blob_url_loader_factory_;
   mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client_;
   mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
@@ -2227,6 +2239,8 @@ class PendingNavigation {
       blink::mojom::BeginNavigationParamsPtr begin_navigation_params,
       scoped_refptr<network::SharedURLLoaderFactory> blob_url_loader_factory,
       mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client,
+      mojo::PendingRemote<blink::mojom::NavigationStateKeepAliveHandle>
+          initiator_navigation_state_keep_alive_handle,
       mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
           renderer_cancellation_listener,
       mojo::PendingReceiver<
@@ -2240,6 +2254,8 @@ PendingNavigation::PendingNavigation(
     blink::mojom::BeginNavigationParamsPtr begin_navigation_params,
     scoped_refptr<network::SharedURLLoaderFactory> blob_url_loader_factory,
     mojo::PendingAssociatedRemote<mojom::NavigationClient> navigation_client,
+    mojo::PendingRemote<blink::mojom::NavigationStateKeepAliveHandle>
+        initiator_navigation_state_keep_alive_handle,
     mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
         renderer_cancellation_listener,
     mojo::PendingReceiver<blink::mojom::NavigationResumeDeferredCommitListener>
@@ -2253,9 +2269,16 @@ PendingNavigation::PendingNavigation(
           std::move(renderer_cancellation_listener)),
       deferred_commit_resume_listener_(
           std::move(deferred_commit_resume_listener)) {
-  if (initiator_frame) {
+  if (initiator_navigation_state_keep_alive_handle) {
+    initiator_navigation_state_keep_alive_handle_.Bind(
+        std::move(initiator_navigation_state_keep_alive_handle));
+  } else if (initiator_frame) {
+    // TODO(500074274): It would be ideal to drop this in favor of something
+    // like `CHECK(!initiator_frame ||
+    //             initiator_navigation_state_keep_alive_handle)`.
     initiator_frame->IssueKeepAliveHandle(
-        opener_keep_alive_handle_.BindNewPipeAndPassReceiver());
+        initiator_navigation_state_keep_alive_handle_
+            .BindNewPipeAndPassReceiver());
   }
 }
 
@@ -11666,6 +11689,7 @@ void RenderFrameHostImpl::BeginNavigation(
     pending_navigate_ = std::make_unique<PendingNavigation>(
         std::move(validated_common_params), std::move(begin_params),
         std::move(blob_url_loader_factory), std::move(navigation_client),
+        std::move(initiator_navigation_state_keep_alive_handle),
         std::move(renderer_cancellation_listener),
         std::move(deferred_commit_resume_listener), initiator_frame);
     return;
@@ -13957,12 +13981,6 @@ void RenderFrameHostImpl::CreateBrokerHolder() {
             base::Unretained(this)));
     broker_holder_->broker().ApplyMojoBinderPolicies(
         mojo_binder_policy_applier_.get());
-  } else if (frame_tree_->page_delegate()->IsPageInPreviewMode()) {
-    mojo_binder_policy_applier_ = MojoBinderPolicyApplier::CreateForPreview(
-        base::BindOnce(&RenderFrameHostImpl::CancelPreviewByMojoBinderPolicy,
-                       base::Unretained(this)));
-    broker_holder_->broker().ApplyMojoBinderPolicies(
-        mojo_binder_policy_applier_.get());
   }
 }
 
@@ -14781,11 +14799,6 @@ void RenderFrameHostImpl::CancelPrerenderingByMojoBinderPolicy(
   CHECK(canceled);
 }
 
-void RenderFrameHostImpl::CancelPreviewByMojoBinderPolicy(
-    const std::string& interface_name) {
-  frame_tree_->page_delegate()->CancelPreviewByMojoBinderPolicy(interface_name);
-}
-
 void RenderFrameHostImpl::RendererWillActivateForPrerenderingOrPreview() {
   // Loosen the policies of the Mojo capability control during dispatching the
   // prerenderingchange event in Blink, because the page may start legitimately
@@ -15269,8 +15282,10 @@ RenderFrameHostImpl::CreateNavigationRequestForSynchronousRendererCommit(
         is_same_document);
   CHECK(!is_same_document_history_api_navigation || is_same_document);
   CHECK(!IsPendingDeletion());     // IPC is filtered out by the caller.
-  CHECK(!IsInBackForwardCache());  // A page in the BackForwardCache is fully
-                                   // loaded and has no pending navigations.
+  // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK once
+  // we are sure this isn't hit.
+  DCHECK(!IsInBackForwardCache());  // A page in the BackForwardCache is fully
+                                    // loaded and has no pending navigations.
   // See `owner_` invariants about IsPendingDeletion() and
   // IsInBackForwardCache().
   CHECK(owner_);
@@ -15851,7 +15866,7 @@ blink::mojom::ReferrerPtr GetReferrerForDidCommitParams(
   }
 
   // Otherwise, return the sanitized referrer saved in the NavigationRequest.
-  // - For client redirects, this will be the the URL that initiated the
+  // - For client redirects, this will be the URL that initiated the
   // navigation. (Note: this will only be sanitized at the start, and not after
   // any redirects, including cross-origin ones. See https://crbug.com/1218786)
   // - For other navigations, this will be the referrer used after the final
@@ -16761,7 +16776,7 @@ void RenderFrameHostImpl::OnSameDocumentCommitProcessed(
   auto request = same_document_navigation_requests_.find(navigation_token);
   if (request == same_document_navigation_requests_.end()) {
     // OnSameDocumentCommitProcessed will be called after DidCommitNavigation on
-    // successfull same-document commits, so |request| should already be deleted
+    // successful same-document commits, so |request| should already be deleted
     // by the time we got here.
     CHECK_EQ(result, blink::mojom::CommitResult::Ok);
     return;

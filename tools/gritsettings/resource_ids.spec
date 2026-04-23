@@ -178,9 +178,6 @@
   "chrome/browser/resources/preinstalled_web_apps/resources.grd": {
     "includes": [2500],
   },
-  "chrome/browser/test_dummy/internal/android/resources/resources.grd": {
-    "includes": [2520],
-  },
   # chrome/browser/glic/resources/internal/browser_resources.grd and
   # chrome/browser/glic/resources/browser_resources.grd must share the same id
   # because they define the same resources, but only one of them is built
@@ -208,6 +205,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/accessibility/resources.grd": {
     "META": {"sizes": {"includes": [10],}},
     "includes": [2740],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/accessibility_annotator_info/resources.grd": {
+    "META": {"sizes": {"includes": [10],}},
+    "includes": [2745],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/actor_internals/resources.grd": {
     "META": {"sizes": {"includes": [10],}},
@@ -1320,6 +1321,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/unexportable_keys_internals/resources.grd": {
     "META": {"sizes": {"includes": [10]}},
     "includes": [7495],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/feature_showcase/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [7505],
   },
   # END components/ section.
 

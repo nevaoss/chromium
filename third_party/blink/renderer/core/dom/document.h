@@ -1185,7 +1185,6 @@ class CORE_EXPORT Document : public ContainerNode,
   // Updates for :target (CSS3 selector).
   void SetCSSTarget(Element*);
   Element* CssTarget() const { return css_target_.Get(); }
-  void SetSelectorFragmentAnchorCSSTarget(Element*);
 
   void ScheduleLayoutTreeUpdateIfNeeded();
   bool HasPendingForcedStyleRecalc() const;
@@ -1985,6 +1984,10 @@ class CORE_EXPORT Document : public ContainerNode,
   // Manifest. If the document doesn't run in a context of a Web App or has no
   // associated Web App Manifest, it will return false.
   bool IsInWebAppScope() const;
+
+  // Returns whether this document is associated with the browser's initial
+  // ("Default") profile.
+  bool IsInitialProfile() const;
 
   void DispatchHandleLoadStart();
   void DispatchHandleLoadComplete();
@@ -2852,7 +2855,6 @@ class CORE_EXPORT Document : public ContainerNode,
   bool should_update_selection_after_layout_ = false;
 
   WeakMember<Element> css_target_;
-  bool css_target_is_selector_fragment_ = false;
 
   bool was_discarded_ = false;
 

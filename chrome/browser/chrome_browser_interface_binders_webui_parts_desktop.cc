@@ -30,6 +30,8 @@
 #include "chrome/browser/ui/views/side_panel/tabs_from_other_devices/tabs_from_other_devices_side_panel_coordinator.h"
 #include "chrome/browser/ui/webui/access_code_cast/access_code_cast.mojom.h"
 #include "chrome/browser/ui/webui/access_code_cast/access_code_cast_ui.h"
+#include "chrome/browser/ui/webui/accessibility_annotator/accessibility_annotator_info.mojom.h"
+#include "chrome/browser/ui/webui/accessibility_annotator/accessibility_annotator_info_ui.h"
 #include "chrome/browser/ui/webui/ai_overlay_dialog/ai_overlay_dialog.mojom.h"
 #include "chrome/browser/ui/webui/ai_overlay_dialog/ai_overlay_dialog_untrusted_ui.h"
 #include "chrome/browser/ui/webui/app_service_internals/app_service_internals.mojom.h"
@@ -68,7 +70,7 @@
 #include "chrome/browser/ui/webui/privacy_sandbox/related_website_sets/related_website_sets.mojom.h"
 #include "chrome/browser/ui/webui/private_ai_internals/private_ai_internals.mojom.h"
 #include "chrome/browser/ui/webui/private_ai_internals/private_ai_internals_ui.h"
-#include "chrome/browser/ui/webui/search_engine_choice/search_engine_choice.mojom.h"  // nogncheck crbug.com/1125897
+#include "chrome/browser/ui/webui/search_engine_choice/search_engine_choice.mojom.h"  // nogncheck crbug.com/40147906
 #include "chrome/browser/ui/webui/search_engine_choice/search_engine_choice_ui.h"
 #include "chrome/browser/ui/webui/settings/settings_ui.h"
 #include "chrome/browser/ui/webui/side_panel/bookmarks/bookmarks_side_panel_ui.h"
@@ -100,7 +102,7 @@
 #include "components/autofill/core/browser/ml_model/logging/autofill_ml_internals.mojom.h"
 #include "components/browser_apis/browser_controls/browser_controls_api.mojom.h"
 #include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api.mojom.h"
-#include "components/commerce/core/mojom/shopping_service.mojom.h"  // nogncheck crbug.com/1125897
+#include "components/commerce/core/mojom/shopping_service.mojom.h"  // nogncheck crbug.com/40147906
 #include "components/contextual_tasks/public/features.h"
 #include "components/data_sharing/public/features.h"
 #include "components/guest_contents/common/guest_contents.mojom.h"
@@ -137,7 +139,7 @@
 #include "ui/webui/resources/cr_components/most_visited/most_visited.mojom.h"
 #include "ui/webui/resources/cr_components/theme_color_picker/theme_color_picker.mojom.h"
 #include "ui/webui/resources/js/browser_command/browser_command.mojom.h"
-#include "ui/webui/resources/js/tracked_element/tracked_element.mojom.h"  // nogncheck crbug.com/1125897
+#include "ui/webui/resources/js/tracked_element/tracked_element.mojom.h"  // nogncheck crbug.com/40147906
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 #include "chrome/browser/ui/webui/app_home/app_home.mojom.h"
@@ -189,7 +191,7 @@
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if !defined(OFFICIAL_BUILD)
-#include "chrome/browser/ui/webui/new_tab_page/foo/foo.mojom.h"  // nogncheck crbug.com/1125897
+#include "chrome/browser/ui/webui/new_tab_page/foo/foo.mojom.h"  // nogncheck crbug.com/40147906
 #endif  // defined(OFFICIAL_BUILD)
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -301,7 +303,9 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
     RegisterWebUIControllerInterfaceBinder<history::mojom::PageHandler,
                                            HistoryUI>(map);
   }
-  if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported()) {
+  if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(
+          Profile::FromBrowserContext(
+              render_frame_host->GetBrowserContext()))) {
     RegisterWebUIControllerInterfaceBinder<
         history::mojom::ForeignSessionPageHandler, HistoryUI,
         TabsFromOtherDevicesSidePanelUI>(map);
@@ -506,6 +510,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
   RegisterWebUIControllerInterfaceBinder<
       accessibility_annotator_internals::mojom::PageHandlerFactory,
       content_annotator_internals::ContentAnnotatorInternalsUI>(map);
+
+  RegisterWebUIControllerInterfaceBinder<
+      accessibility_annotator::info::mojom::PageHandler,
+      accessibility_annotator::info::AccessibilityAnnotatorInfoUI>(map);
 
   RegisterWebUIControllerInterfaceBinder<
       ::mojom::app_service_internals::AppServiceInternalsPageHandler,

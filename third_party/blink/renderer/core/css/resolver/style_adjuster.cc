@@ -716,7 +716,9 @@ void StyleAdjuster::AdjustOverflow(ComputedStyleBuilder& builder,
 // to have a stacking context and become a containing block for all descendants.
 static bool ForceStackingAndContainingBlockForCanvasLayoutSubtree(
     const Element* element) {
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled() && element &&
+  if (element &&
+      RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+          element->GetExecutionContext()) &&
       element->IsCanvasOrInCanvasSubtree()) {
     if (const auto* canvas =
             DynamicTo<HTMLCanvasElement>(element->parentElement())) {
@@ -728,7 +730,8 @@ static bool ForceStackingAndContainingBlockForCanvasLayoutSubtree(
 }
 
 static bool IsCanvasWithDrawElements(const Element* element) {
-  if (!RuntimeEnabledFeatures::CanvasDrawElementEnabled() || !element) {
+  if (!element || !RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+                      element->GetExecutionContext())) {
     return false;
   }
 
@@ -1032,7 +1035,8 @@ void StyleAdjuster::AdjustForForcedColorsMode(ComputedStyleBuilder& builder,
   }
   const ui::ColorProvider* color_provider =
       document.GetColorProviderForPainting(color_scheme);
-  auto is_in_web_app_scope = document.IsInWebAppScope();
+  auto can_expose_accent_color =
+      document.IsInWebAppScope() && document.IsInitialProfile();
 
   // Re-resolve some internal forced color properties whose initial
   // values are system colors. This is necessary to ensure we get
@@ -1041,7 +1045,7 @@ void StyleAdjuster::AdjustForForcedColorsMode(ComputedStyleBuilder& builder,
   if (builder.InternalForcedBackgroundColor().IsSystemColor()) {
     builder.SetInternalForcedBackgroundColor(
         builder.InternalForcedBackgroundColor().ResolveSystemColor(
-            color_scheme, color_provider, is_in_web_app_scope));
+            color_scheme, color_provider, can_expose_accent_color));
   }
   // Per the CSS Color Adjustment specification [1]:
   // In forced-colors mode, if 'font-variant-emoji' computes to 'normal' or
@@ -1057,12 +1061,12 @@ void StyleAdjuster::AdjustForForcedColorsMode(ComputedStyleBuilder& builder,
   if (builder.InternalForcedColor().IsSystemColor()) {
     builder.SetInternalForcedColor(
         builder.InternalForcedColor().ResolveSystemColor(
-            color_scheme, color_provider, is_in_web_app_scope));
+            color_scheme, color_provider, can_expose_accent_color));
   }
   if (builder.InternalForcedVisitedColor().IsSystemColor()) {
     builder.SetInternalForcedVisitedColor(
         builder.InternalForcedVisitedColor().ResolveSystemColor(
-            color_scheme, color_provider, is_in_web_app_scope));
+            color_scheme, color_provider, can_expose_accent_color));
   }
 }
 
@@ -1296,9 +1300,16 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
   // https://drafts.csswg.org/css-color-adjust-1/#forced-colors-properties.
   AdjustForForcedColorsMode(builder, state.GetDocument());
 
-  // Let the theme also have a crack at adjusting the style.
-  LayoutTheme::GetTheme().AdjustStyle(
-      element ? element : state.GetPseudoElement(), builder);
+  // The layout theme has its own style adjustment, mostly related to
+  // the appearance property (although it can also modify display,
+  // seemingly for historical reasons).
+  if (builder.Appearance() == AppearanceValue::kNone ||
+      (!element && !state.GetPseudoElement())) {
+    builder.SetEffectiveAppearance(AppearanceValue::kNone);
+  } else {
+    LayoutTheme::GetTheme().AdjustStyle(
+        element ? *element : *state.GetPseudoElement(), builder);
+  }
 
   AdjustStyleForEditing(builder, element);
 

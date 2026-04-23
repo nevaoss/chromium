@@ -38,6 +38,18 @@ namespace blink {
 
 namespace {
 
+bool IsInCanvasChild(const EffectPaintPropertyNodeOrAlias& starting_effect) {
+  for (const auto* effect = &starting_effect.Unalias(); effect;
+       effect = effect->UnaliasedParent()) {
+    // Compositing is disabled under canvas children, so we can stop once the
+    // first effect node with compositing reasons is found.
+    if (effect->HasDirectCompositingReasons()) {
+      return effect->RequiresCompositingForCanvasChild();
+    }
+  }
+  return false;
+}
+
 // Adapts cc::PaintOpBuffer to provide cc::DisplayItemList API with empty
 // implementations.
 class PaintOpBufferExt : public cc::PaintOpBuffer {
@@ -981,7 +993,7 @@ ConversionContext<cc::DisplayItemList>::ComputeScrollTranslationAction(
     return {};
   }
 
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled() &&
+  if (IsInCanvasChild(chunk_to_layer_mapper_.ChunkState().Effect()) &&
       target_scroll_translation.ScrollNode() &&
       target_scroll_translation.ScrollNode()
               ->GetCompositedScrollingPreference() ==
@@ -1294,8 +1306,7 @@ TouchAction LayerPropertiesUpdater::ShouldDisableCursorControl() {
       break;
     }
     // If it is not kAuto, scroll can't propagate, so break here.
-    if (scroll_node->OverscrollBehaviorX() !=
-        cc::OverscrollBehavior::Type::kAuto) {
+    if (!scroll_node->OverscrollBehavior().PropagatesXScroll()) {
       break;
     }
   }
@@ -1378,7 +1389,7 @@ void LayerPropertiesUpdater::UpdateScrollHitTestData(const PaintChunk& chunk) {
 
   if (RuntimeEnabledFeatures::RasterInducingScrollEnabled() &&
       hit_test_data.scroll_translation) {
-    if (!RuntimeEnabledFeatures::CanvasDrawElementEnabled() ||
+    if (!IsInCanvasChild(chunk.properties.Effect()) ||
         hit_test_data.scroll_translation->ScrollNode()
                 ->GetCompositedScrollingPreference() !=
             CompositedScrollingPreference::kNotPreferred) {

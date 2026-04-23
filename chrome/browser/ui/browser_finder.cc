@@ -14,7 +14,6 @@
 #include "chrome/browser/sessions/app_session_service_factory.h"
 #include "chrome/browser/sessions/session_service_factory.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
@@ -324,13 +323,6 @@ Browser* FindTabbedBrowser(const Profile* profile,
   BrowserWindowInterface* browser = FindBrowserWithTabbedOrAnyType(
       profile, true, match_original_profiles,
       /*match_current_workspace=*/true, display_id);
-  return browser ? browser->GetBrowserForMigrationOnly() : nullptr;
-}
-
-Browser* FindAnyBrowser(const Profile* profile, bool match_original_profiles) {
-  BrowserWindowInterface* browser =
-      FindBrowserWithTabbedOrAnyType(profile, false, match_original_profiles,
-                                     /*match_current_workspace=*/false);
   return browser ? browser->GetBrowserForMigrationOnly() : nullptr;
 }
 

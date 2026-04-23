@@ -35,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
+import org.chromium.base.Callback;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -53,6 +54,7 @@ import org.chromium.chrome.browser.ui.extensions.ExtensionsMenuTypes;
 import org.chromium.chrome.browser.ui.extensions.FakeExtensionActionsBridgeRule;
 import org.chromium.chrome.browser.ui.extensions.FakeExtensionUiBackendRule;
 import org.chromium.chrome.browser.ui.extensions.R;
+import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.hierarchicalmenu.HierarchicalMenuController;
 import org.chromium.ui.listmenu.ListMenuButton;
@@ -663,15 +665,7 @@ public class ExtensionsMenuMediatorTest {
 
     @Test
     public void testSiteSettingsToggle_ClickCallsBridge() {
-        ArgumentCaptor<android.widget.CompoundButton.OnCheckedChangeListener> captor =
-                ArgumentCaptor.forClass(
-                        android.widget.CompoundButton.OnCheckedChangeListener.class);
-        verify(mMenuPropertyModel)
-                .set(
-                        eq(ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_CLICK_LISTENER),
-                        captor.capture());
-
-        captor.getValue().onCheckedChanged(null, true);
+        mMenuMediator.onSiteSettingsToggleChanged(true);
         verify(mExtensionsMenuBridgeJniMock)
                 .onSiteSettingsToggleChanged(EXTENSIONS_MENU_BRIDGE_POINTER, true);
     }
@@ -1091,17 +1085,43 @@ public class ExtensionsMenuMediatorTest {
                 .set(SitePermissionsPageProperties.EXTENSION_NAME, "Extension A");
 
         // Trigger the back button on the site permissions page.
-        ArgumentCaptor<View.OnClickListener> backButtonCaptor =
-                ArgumentCaptor.forClass(View.OnClickListener.class);
-        verify(mSitePermissionsPropertyModel)
-                .set(
-                        eq(SitePermissionsPageProperties.BACK_CLICK_LISTENER),
-                        backButtonCaptor.capture());
-        backButtonCaptor.getValue().onClick(null);
+        mMenuMediator.onBackButtonClicked();
 
         // Verify menu is back to the main page.
         verify(mMenuPropertyModel)
                 .set(ExtensionsMenuProperties.CURRENT_PAGE, ExtensionsMenuProperties.Page.MAIN);
+    }
+
+    /**
+     * Tests that clicking on the 'manage this extension' button on the site permissions page opens
+     * the extensions management page for that specific extension.
+     */
+    @Test
+    public void testSitePermissionsPage_OnManageThisExtensionClicked() {
+        // Add extension with host permissions.
+        List<ExtensionsMenuTypes.MenuEntryState> entries = new ArrayList<>();
+        entries.add(
+                ExtensionTestUtils.createMenuEntryWithHostPermissions(
+                        "id_a", "Extension A", ICON_RED, /* isPinned= */ false));
+        when(mExtensionsMenuBridgeJniMock.getMenuEntries(anyLong())).thenReturn(entries);
+
+        // Open extensions menu and go to the site permissions page.
+        mBridgeCaptor.getValue().onReady();
+        PropertyModel itemModel = mActionModels.get(0).model;
+        itemModel.get(ExtensionsMenuItemProperties.SITE_PERMISSIONS_BUTTON_ON_CLICK).onClick(null);
+
+        // Mock the state as if we navigated (since property models are mocks).
+        when(mMenuPropertyModel.get(ExtensionsMenuProperties.CURRENT_PAGE))
+                .thenReturn(ExtensionsMenuProperties.Page.SITE_PERMISSIONS);
+        when(mSitePermissionsPropertyModel.get(SitePermissionsPageProperties.EXTENSION_ID))
+                .thenReturn("id_a");
+
+        // Click on 'manage this extension'.
+        Callback<String> openUrlCallback = mock(Callback.class);
+        mMenuMediator.onManageThisExtensionClicked(openUrlCallback);
+
+        // Verify extension page was opened for the extension.
+        verify(openUrlCallback).onResult(UrlConstants.CHROME_EXTENSIONS_ID_URL + "id_a");
     }
 
     /** Helper to assert that the item at the given index has the correct information. */

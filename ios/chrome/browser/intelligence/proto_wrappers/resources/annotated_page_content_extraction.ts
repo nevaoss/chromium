@@ -552,7 +552,7 @@ function getFormControlType(element: HTMLElement): FormControlType|undefined {
  * @return An array of PageContentAnchorRel, defaulting to [RELATION_UNKNOWN] if
  *     none found.
  */
-function getAnchorRel(anchorElement: HTMLAnchorElement):
+function getAnchorRel(anchorElement: HTMLAnchorElement|SVGAElement):
     PageContentAnchorRel[] {
   const rels = anchorElement.relList;
   if (!rels) {
@@ -802,10 +802,12 @@ function getScrollerInfo(element: HTMLElement, style: CSSStyleDeclaration):
  *
  * @param element The element to process.
  * @param actionableMode Whether to extract actionable interaction info.
+ * @param hasCanvas Whether there is a canvas element on the page.
  * @return The populated PageContentNodeInteractionInfo or undefined if none.
  */
-function getNodeInteractionInfo(element: HTMLElement, actionableMode: boolean):
-    PageContentNodeInteractionInfo|undefined {
+function getNodeInteractionInfo(
+    element: HTMLElement, actionableMode: boolean,
+    hasCanvas: boolean): PageContentNodeInteractionInfo|undefined {
   const interactionInfo: PageContentNodeInteractionInfo = {
     clickabilityReasons: [],
     isDisabled: false,
@@ -813,20 +815,24 @@ function getNodeInteractionInfo(element: HTMLElement, actionableMode: boolean):
     isFocusable: false,
   };
 
+  // If we are not in actionable mode and there is no canvas, we can skip
+  // everything. This assumes that scroller info is only used to compute the
+  // canvas heavy heuristic.
+  if (!actionableMode && !hasCanvas) {
+    return undefined;
+  }
+
   const style = window.getComputedStyle(element);
 
-  // Scroller Info.
+  // Scroller Info
   const scrollerInfo = getScrollerInfo(element, style);
   if (scrollerInfo) {
     interactionInfo.scrollerInfo = scrollerInfo;
   }
 
+  // Just return the scroller info when not in actionable mode.
   if (!actionableMode) {
-    // Just return the scroller info when not in actionable mode.
-    if (interactionInfo.scrollerInfo) {
-      return interactionInfo;
-    }
-    return undefined;
+    return scrollerInfo ? interactionInfo : undefined;
   }
 
   // TODO(crbug.com/486460634): Double check that everything is there to support
@@ -1007,6 +1013,23 @@ function extractMediaData(document: Document): PageContentMediaData|undefined {
 }
 
 /**
+ * Gets the DOM node ID of the currently focused element in the document.
+ *
+ * @param document The document to extract data from.
+ * @return The DOM node ID of the focused element, or undefined if none.
+ */
+function getFocusedNodeId(document: Document): number|undefined {
+  const activeElement = document.activeElement;
+  if (activeElement) {
+    const id = getOrCreateNodeId(activeElement);
+    if (id !== null) {
+      return id;
+    }
+  }
+  return undefined;
+}
+
+/**
  * Extracts the frame interaction info (selection).
  *
  * @param document The document to extract data from.
@@ -1015,6 +1038,12 @@ function extractMediaData(document: Document): PageContentMediaData|undefined {
 function extractFrameInteractionInfo(document: Document):
     PageContentFrameInteractionInfo {
   const frameInteractionInfo: PageContentFrameInteractionInfo = {};
+
+  const focusedId = getFocusedNodeId(document);
+  if (focusedId !== undefined) {
+    frameInteractionInfo.focusedDomNodeId = focusedId;
+  }
+
   const selection = document.getSelection();
   if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
     const range = selection.getRangeAt(0);
@@ -1851,8 +1880,10 @@ function getBasicContentForNonGenericElement(
           ...BASIC_CONTENT_ATTRIBUTES,
           attributeType: PageContentAttributeType.ANCHOR,
           anchorData: {
-            url: (domNode as HTMLAnchorElement).href,
-            rel: getAnchorRel(domNode as HTMLAnchorElement),
+            url: (domNode instanceof SVGAElement) ?
+                (domNode as SVGAElement).href.baseVal :
+                (domNode as HTMLAnchorElement).href,
+            rel: getAnchorRel(domNode as HTMLAnchorElement | SVGAElement),
           },
         },
       };
@@ -2144,17 +2175,20 @@ function addAnnotatedRoles(
  *
  * @param domNode The DOM node to process (Element or Text).
  * @param nonce Unique identifier for the extraction run.
- * @param interactiveNodeIds Specific node IDs verified as interactive.
- * @param paidNodesSet Set of DOM nodes verified as paid content.
+ * @param depth Current recursion depth.
+ * @param maxDepth The maximum recursion depth.
  * @param interactiveNodeIds A map of interactive node IDs to their
  *     interaction info.
  * @param actionableMode Whether to extract actionable interaction info.
+ * @param paidContentContext Context regarding paid content.
+ * @param hasCanvas Whether there is a canvas element on the page.
  * @return A new PageContentNode if valid content was found, null otherwise.
  */
 function maybeGenerateContentNode(
     domNode: Node, nonce: string, depth: number, maxDepth: number,
     interactiveNodeIds: InteractiveNodeIds, actionableMode: boolean,
-    paidContentContext: PaidContentExtractionContext): PageContentNode|null {
+    paidContentContext: PaidContentExtractionContext,
+    hasCanvas: boolean): PageContentNode|null {
   let contentAttributes: PageContentAttributes|null = null;
   if (domNode.nodeType === Node.TEXT_NODE) {
     contentAttributes = getAttributesForTextNode(domNode);
@@ -2172,7 +2206,8 @@ function maybeGenerateContentNode(
     const element = domNode as HTMLElement;
     const annotatedRoles: PageContentAnnotatedRole[] = [];
     addAnnotatedRoles(element, annotatedRoles, paidContentContext);
-    const interactionInfo = getNodeInteractionInfo(element, actionableMode);
+    const interactionInfo =
+        getNodeInteractionInfo(element, actionableMode, hasCanvas);
 
     const contentNode = getContentForElementNode(
         element, nonce, depth, maxDepth, annotatedRoles, interactionInfo,
@@ -2268,12 +2303,15 @@ interface AncestorStackItem {
  * @param ancestorStack The stack of ancestors that provides the parent node and
  *     where the new node is pushed as the next closest parent.
  * @param interactiveNodeIds Specific node IDs verified as interactive.
- * @param paidNodesSet Set of DOM nodes verified as paid content.
+ * @param actionableMode Whether to extract actionable interaction info.
+ * @param paidContentContext Context regarding paid content.
+ * @param hasCanvas Whether there is a canvas element on the page.
  */
 function generateAndPushContentNode(
     node: Node, nonce: string, maxDepth: number,
     ancestorStack: AncestorStackItem[], interactiveNodeIds: InteractiveNodeIds,
-    actionableMode: boolean, paidContentContext: PaidContentExtractionContext) {
+    actionableMode: boolean, paidContentContext: PaidContentExtractionContext,
+    hasCanvas: boolean) {
   const parentStackItem = ancestorStack[ancestorStack.length - 1]!;
 
   // 2. Generate Content Node. Skip nodes that are too deep while keep
@@ -2286,7 +2324,7 @@ function generateAndPushContentNode(
 
   const newApcNode = maybeGenerateContentNode(
       node, nonce, currentDepth, maxDepth, interactiveNodeIds, actionableMode,
-      paidContentContext);
+      paidContentContext, hasCanvas);
   if (!newApcNode) {
     // Ignore the node if it can't be parsed. That node cannot be a parent
     // either where another node in the ancestor stack will be picked as the
@@ -2329,13 +2367,12 @@ function generateAndPushContentNode(
 function extractPageInteractionInfo(document: Document):
     PageContentPageInteractionInfo {
   const pageInteractionInfo: PageContentPageInteractionInfo = {};
-  const activeElement = document.activeElement;
-  if (activeElement) {
-    const focusedId = getOrCreateNodeId(activeElement);
-    if (focusedId !== null) {
-      pageInteractionInfo.focusedDomNodeId = focusedId;
-    }
+
+  const focusedId = getFocusedNodeId(document);
+  if (focusedId !== undefined) {
+    pageInteractionInfo.focusedDomNodeId = focusedId;
   }
+
   return pageInteractionInfo;
 }
 
@@ -2348,13 +2385,12 @@ function extractPageInteractionInfo(document: Document):
  */
 function getInteractiveNodeIds(document: Document): InteractiveNodeIds {
   const interactiveNodeIds: InteractiveNodeIds = new Set();
-  const focusedElement = document.activeElement;
-  if (focusedElement) {
-    const id = getOrCreateNodeId(focusedElement);
-    if (id !== null) {
-      interactiveNodeIds.add(id);
-    }
+
+  const focusedId = getFocusedNodeId(document);
+  if (focusedId !== undefined) {
+    interactiveNodeIds.add(focusedId);
   }
+
   const selection = document.getSelection();
   if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
     const range = selection.getRangeAt(0);
@@ -2449,6 +2485,13 @@ export function extractAnnotatedPageContent(
   }
   root.setAttribute(NONCE_ATTR, nonce);
 
+  // TODO(crbug.com/480945289): Assume there is a canvas when feature is
+  // disabled. We only need to extract the scroller info for nodes when there is
+  // a canvas on the page. It is required to compute the canvas heavy heuristic.
+  const hasCanvas = isPageContextIPCOptimizationEnabled() ?
+      document.querySelector('canvas') !== null :
+      true;
+
   // Perform pre-walk extraction of paid content globals and specific nodes.
   const paidContentContext = extractContainsPaidContent(
       document, extractPaidContent, attemptPaidContentJsonFixing);
@@ -2532,7 +2575,7 @@ export function extractAnnotatedPageContent(
     // walking the tree since future nodes might be shallow enough.
     generateAndPushContentNode(
         currentNode, nonce, maxDepth, ancestorStack, interactiveNodeIds,
-        actionableMode, paidContentContext);
+        actionableMode, paidContentContext, hasCanvas);
 
     currentNode = walker.nextNode();
   }

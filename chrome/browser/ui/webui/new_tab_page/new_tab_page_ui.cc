@@ -50,7 +50,6 @@
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
@@ -239,8 +238,14 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
       "prerenderOnPressEnabled",
       base::FeatureList::IsEnabled(features::kNewTabPageTriggerForPrerender2));
 
-  source->AddInteger("maxTilesBeforeShowMore",
-                     ntp_features::GetMaxTilesBeforeShowMore());
+  source->AddInteger("maxTilesInCollapsedState",
+                     ntp_features::GetMaxTilesInCollapsedState());
+  source->AddInteger("maxShortcutsInExpandedState",
+                     ntp_features::GetMaxShortcutsInExpandedState());
+  source->AddInteger("maxMostVisitedTilesInExpandedState",
+                     ntp_features::GetMaxMostVisitedTilesInExpandedState());
+  source->AddInteger("maxEnterpriseShortcuts",
+                     ntp_features::GetMaxEnterpriseShortcuts());
 
   source->AddBoolean(
       "ntpNextFeaturesEnabled",
@@ -936,6 +941,8 @@ void NewTabPageUI::RegisterProfilePrefs(PrefRegistrySimple* registry) {
       ntp_prefs::kNtpModulesAutoRemovalDisabledDict);
   registry->RegisterBooleanPref(ntp_prefs::kNtpAnimatedDoodlesEnabled, true);
   registry->RegisterBooleanPref(ntp_prefs::kNtpDoodleMuralsEnabled, true);
+  registry->RegisterInt64Pref(ntp_prefs::kNtpMostVisitedTileHoverCount, 0);
+  registry->RegisterInt64Pref(ntp_prefs::kNtpMostVisitedTileNavigationCount, 0);
 }
 
 // static
@@ -955,6 +962,8 @@ void NewTabPageUI::ResetProfilePrefs(PrefService* prefs) {
                  base::DictValue());
   prefs->SetBoolean(ntp_prefs::kNtpAnimatedDoodlesEnabled, true);
   prefs->SetBoolean(ntp_prefs::kNtpDoodleMuralsEnabled, true);
+  prefs->SetInt64(ntp_prefs::kNtpMostVisitedTileHoverCount, 0);
+  prefs->SetInt64(ntp_prefs::kNtpMostVisitedTileNavigationCount, 0);
 }
 
 // static

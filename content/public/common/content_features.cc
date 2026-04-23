@@ -40,10 +40,6 @@ BASE_FEATURE(kAndroidCaretBrowsing, base::FEATURE_DISABLED_BY_DEFAULT);
 // DevTools frontend for Android.
 BASE_FEATURE(kAndroidDevToolsFrontend, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables media capturing to continue in the background.
-BASE_FEATURE(kAndroidEnableBackgroundMediaCapturing,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables media to continue playing in the background.
 BASE_FEATURE(kAndroidEnableBackgroundMediaLargeFormFactors,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -965,7 +961,7 @@ BASE_FEATURE(kWebOTP, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Trial to disable synchronous draw for synchronous compositor (ie Android
 // WebView).
-BASE_FEATURE(kWebViewAsyncDrawOnly, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebViewAsyncDrawOnly, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enable the web lockscreen API implementation
 // (https://github.com/WICG/lock-screen) in Chrome.

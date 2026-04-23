@@ -100,11 +100,14 @@ class DummyManifest {
                           {}, 100)));
       builder.Add(asset.asset_id + "_solution",
                   SolutionRecipe(asset.asset_id + "_base_model", "",
-                                 FileReference(asset.asset_id, "config.pb")));
+                                 FileReference("manifest", "config.pb")));
       builder.Add(DeviceUseCase{DeviceCategory::kGpuHighTier, asset.use_case},
                   asset.asset_id + "_solution");
     }
-    return std::make_unique<ManifestComponentDirectory>(builder.Build());
+    auto component =
+        std::make_unique<ManifestComponentDirectory>(builder.Build());
+    component->Add("config.pb", proto::SolutionConfig());
+    return component;
   }
 
   const std::vector<DummyAsset>& assets() const { return assets_; }
@@ -285,10 +288,9 @@ TEST_F(ManifestAssetManagerTest, SimulatesAssetReady) {
 
   MakeAssetInstallable(asset);
 
-  CanCreateSessionFuture future2;
-  subscriber.CanCreateSession({}, future2.GetCallback());
-  // TODO(holte): Doesn't pass yet.
-  // EXPECT_EQ(future2.Get<UnavailableReason>(), std::nullopt);
+  base::test::TestFuture<base::WeakPtr<ModelClient>> client_future;
+  subscriber.WaitForClient(client_future.GetCallback());
+  EXPECT_TRUE(client_future.Get());
 }
 
 TEST_F(ManifestAssetManagerTest, ResumesInstallationOnStartup) {
@@ -302,21 +304,6 @@ TEST_F(ManifestAssetManagerTest, ResumesInstallationOnStartup) {
   // and trigger registration again.
   StartupWithManifest(DummyManifest().Add(asset));
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
-}
-
-TEST_F(ManifestAssetManagerTest, UninstallOutOfRetentionOnStartup) {
-  DummyAsset compose_asset = DummyAsset::For("compose");
-  DummyAsset test_asset = DummyAsset::For("test");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(compose_asset.use_case);
-  SetupReadyComponents(DummyManifest().Add(compose_asset));
-  SimulateShutdown();
-
-  task_environment_.FastForwardBy(features::GetOnDeviceModelRetentionTime() +
-                                  base::Days(1));
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(test_asset.use_case);
-  StartupWithManifest(DummyManifest().Add(compose_asset).Add(test_asset));
-
-  EXPECT_TRUE(component_state_.WaitForUninstall(compose_asset.public_key));
 }
 
 TEST_F(ManifestAssetManagerTest, ObsoleteVersionOnStartup) {
@@ -416,24 +403,16 @@ TEST_F(ManifestAssetManagerTest, UninstallsWhenPublicKeyChanged) {
   EXPECT_TRUE(component_state_.WaitForUninstall(asset_v1.public_key));
 }
 
-TEST_F(ManifestAssetManagerTest, UninstallsWhenOutOfRetention) {
-  DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
-  SetupReadyComponents(DummyManifest().Add(asset));
-  task_environment_.FastForwardBy(features::GetOnDeviceModelRetentionTime() +
-                                  base::Days(1));
-  UpdateManifest(DummyManifest().Add(asset));
-  EXPECT_TRUE(component_state_.WaitForUninstall(asset.public_key));
-}
-
 TEST_F(ManifestAssetManagerTest, UninstallsWhenRunningOutOfDiskSpace) {
   DummyAsset asset = DummyAsset::For("compose");
   usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
   SetupReadyComponents(DummyManifest().Add(asset));
+  EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
+  SimulateShutdown();
   // 5gb is the default in `IsFreeDiskSpaceTooLowForOnDeviceModelInstall`.
   component_state_.SetFreeDiskSpace(base::GiB(5) - base::ByteCount(1));
   task_environment_.FastForwardBy(base::Seconds(11));
-  UpdateManifest(DummyManifest().Add(asset));
+  StartupWithManifest(DummyManifest().Add(asset));
   EXPECT_TRUE(component_state_.WaitForUninstall(asset.public_key));
 }
 

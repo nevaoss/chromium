@@ -219,7 +219,7 @@
 #include "chromeos/dbus/power/power_policy_controller.h"
 #include "chromeos/ui/wm/fullscreen/pref_names.h"
 #include "components/account_manager_core/pref_names.h"
-#include "components/drive/drive_pref_names.h"  // nogncheck crbug.com/1125897
+#include "components/drive/drive_pref_names.h"  // nogncheck crbug.com/40147906
 #include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
 #include "components/user_manager/user_manager_pref_names.h"
@@ -261,7 +261,7 @@
 #include "chrome/browser/enterprise/idle/action.h"
 #include "chrome/browser/enterprise/signin/enterprise_signin_prefs.h"
 #include "chrome/browser/external_protocol/auto_launch_protocols_policy_handler.h"
-#include "components/device_signals/core/browser/pref_names.h"  // nogncheck due to crbug.com/1125897
+#include "components/device_signals/core/browser/pref_names.h"  // nogncheck due to crbug.com/40147906
 #include "components/proxy_config/proxy_config_pref_names.h"
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
@@ -1424,7 +1424,7 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     ash::prefs::kPersonalizationKeyboardBacklightColor,
     base::Value::Type::INTEGER },
   { key::kRebootAfterUpdate,
-    prefs::kRebootAfterUpdate,
+    ash::prefs::kRebootAfterUpdate,
     base::Value::Type::BOOLEAN },
   { key::kChromeOsMultiProfileUserBehavior,
     user_manager::prefs::kMultiProfileUserBehaviorPref,
@@ -3186,7 +3186,7 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       key::kUserActivityScreenDimDelayScale,
       ash::prefs::kPowerUserActivityScreenDimDelayFactor, 100, INT_MAX, true));
   handlers->AddHandler(std::make_unique<IntRangePolicyHandler>(
-      key::kUptimeLimit, prefs::kUptimeLimit, 3600, INT_MAX, true));
+      key::kUptimeLimit, ash::prefs::kUptimeLimit, 3600, INT_MAX, true));
   handlers->AddHandler(std::make_unique<IntRangePolicyHandler>(
       key::kDeviceLoginScreenDefaultScreenMagnifierType, nullptr,
       static_cast<int>(MagnifierType::kDisabled),

@@ -290,14 +290,17 @@ static_library("ui") {
     "//chrome/browser/breadcrumbs",
     "//chrome/browser/commerce",
     "//chrome/browser/complex_tasks",
+    "//chrome/browser/component_updater",
     "//chrome/browser/content_settings",
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/content_settings:content_settings_factory_impl",
     "//chrome/browser/content_settings:content_settings_util",
     "//chrome/browser/content_settings:content_settings_util_impl",
+    "//chrome/browser/contextual_cueing",
     "//chrome/browser/contextual_tasks:ui",
     "//chrome/browser/crash_upload_list",
     "//chrome/browser/data_sharing",
+    "//chrome/browser/device_reauth",
     "//chrome/browser/devtools",
     "//chrome/browser/engagement",
     "//chrome/browser/enterprise/browser_management:management_identity",
@@ -334,6 +337,8 @@ static_library("ui") {
     "//chrome/browser/page_content_annotations:fetcher",
     "//chrome/browser/page_image_service",
     "//chrome/browser/page_info",
+    "//chrome/browser/performance_manager",
+    "//chrome/browser/performance_manager:impl",
     "//chrome/browser/permissions",
     "//chrome/browser/picture_in_picture",
     "//chrome/browser/picture_in_picture:impl",
@@ -623,6 +628,7 @@ static_library("ui") {
     "//components/sync_preferences",
     "//components/sync_sessions",
     "//components/tab_groups",
+    "//components/tabs:public",
     "//components/tracing:tracing_config",
     "//components/translate/translate_internals",
     "//components/ui_devtools",
@@ -777,6 +783,7 @@ static_library("ui") {
     # TODO(crbug.com/353284909): Remove this circular dependency.
     "//chrome/browser/media/webrtc",
     "//chrome/browser/memory",
+    "//chrome/browser/performance_manager:impl",
 
     # TODO(crbug.com/360599255): Remove this circular dependency.
     # - chrome_popup_navigation_delegate.cc includes //c/b/ui/browser_navigator.h.
@@ -975,6 +982,7 @@ static_library("ui") {
       "//chrome/browser/android/webapk:webapk_sources",
       "//chrome/browser/autofill/android:jni_headers",
       "//chrome/browser/facilitated_payments",
+      "//chrome/browser/feed",
       "//chrome/browser/flags:flags_android",
       "//chrome/browser/image_decoder",
       "//chrome/browser/keyboard_accessory/android:public",
@@ -1148,8 +1156,6 @@ static_library("ui") {
       "focus_tab_after_navigation_helper.h",
       "intent_picker_tab_helper.cc",
       "intent_picker_tab_helper.h",
-      "read_anything/read_anything_prefs.cc",
-      "read_anything/read_anything_prefs.h",
       "sad_tab.cc",
       "sad_tab.h",
       "sad_tab_controller.cc",
@@ -1447,8 +1453,6 @@ static_library("ui") {
       "webui/webui_gallery/webui_gallery_ui.h",
       "webui/webui_js_error/webui_js_error_ui.cc",
       "webui/webui_js_error/webui_js_error_ui.h",
-      "webui/webui_util_desktop.cc",
-      "webui/webui_util_desktop.h",
     ]
 
     if (is_chrome_branded) {
@@ -1567,6 +1571,7 @@ static_library("ui") {
       "//chrome/browser/ui/webui/feedback/report_unsafe_site:mojo_bindings",
       "//chrome/browser/ui/webui/omnibox_popup/mojom",
       "//chrome/browser/ui/webui/sanitized_image:sanitized_image_source",
+      "//chrome/browser/ui/webui/util:impl",
       "//chrome/browser/usb",
       "//chrome/browser/webauthn:local_credential_management",
       "//components/password_manager/core/browser/actor_login:permissions_manager_impl",
@@ -1810,6 +1815,7 @@ static_library("ui") {
 
     # Non-android public_deps for "ui" target.
     public_deps += [
+      "//chrome/browser/accessibility_annotator/first_run",
       "//chrome/browser/importer",
       "//chrome/browser/importer:impl",
       "//chrome/browser/ui:browser_list",
@@ -1821,6 +1827,7 @@ static_library("ui") {
       "//chrome/browser/ui/waap:manager",
       "//chrome/browser/ui/webui/feedback/report_unsafe_site",
       "//chrome/browser/ui/webui/on_device_internals",
+      "//chrome/browser/ui/webui/util",
       "//chrome/browser/ui/webui/webnn_internals",
       "//components/page_image_service/mojom:mojo_bindings",
     ]
@@ -1835,6 +1842,10 @@ static_library("ui") {
     # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
     # Non-android circular dependencies
     allow_circular_includes_from += [
+      # //chrome/browser/ui/webui/util/webui_util_desktop.h is included by
+      # :ui and its implementation is in //chrome/browser/ui/webui/util:impl.
+      "//chrome/browser/ui/webui/util:impl",
+
       # TODO(crbug.com/40110173): Resolve circular dependencies.
       "//chrome/browser/media/router",
       "//chrome/browser/ui/desktop_to_mobile_promos:service",
@@ -3193,7 +3204,10 @@ static_library("ui") {
         "webui/signin/batch_upload_ui.h",
       ]
 
-      deps += [ "webui/signin/batch_upload:mojo_bindings" ]
+      deps += [
+        "webui/signin/batch_upload:mojo_bindings",
+        "//chrome/browser/ui/webui/feature_showcase",
+      ]
     }
   }
 
@@ -3467,9 +3481,17 @@ static_library("ui") {
 
     public_deps += [ "//ui/base/mojom:ui_base_types" ]
 
+    public_deps += [
+      "//chrome/browser/win",
+      "//chrome/browser/win:jumplist",
+    ]
+
+    allow_circular_includes_from += [ "//chrome/browser/win:impl" ]
+
     deps += [
       "//chrome/browser:titlebar_config",
       "//chrome/browser/taskbar",
+      "//chrome/browser/win:impl",
       "//chrome/browser/win:mica_titlebar",
       "//chrome/browser/win/conflicts:module_info",
       "//chrome/credential_provider/common:common_constants",
@@ -4845,6 +4867,7 @@ static_library("ui") {
       "//chrome/browser/preloading/new_tab_page_preload",
       "//chrome/browser/preloading/prerender",
       "//chrome/browser/profiles/keep_alive",
+      "//chrome/browser/sharing/click_to_call",
       "//chrome/browser/ui/actions",
       "//chrome/browser/ui/actions:actions_headers",
       "//chrome/browser/ui/animation",
@@ -4869,6 +4892,7 @@ static_library("ui") {
       "//chrome/browser/ui/tabs/tab_strip_api/tab_strip_model_impl",
       "//chrome/browser/ui/tabs/tab_strip_api/tab_strip_model_impl/converters",
       "//chrome/browser/ui/views",
+      "//chrome/browser/ui/views/accessibility_annotator",
       "//chrome/browser/ui/views/animations",
       "//chrome/browser/ui/views/bubble",
       "//chrome/browser/ui/views/download",
@@ -5584,13 +5608,6 @@ static_library("ui") {
       "//chrome/common/compose:mojo_bindings",
       "//components/compose/core/browser",
       "//components/compose/core/browser:mojo_bindings",
-    ]
-  }
-
-  if (enable_webui_generate_code_cache) {
-    deps += [
-      "//chrome/browser/resources:code_cache_resources",
-      "//ui/webui/resources:code_cache_resources",
     ]
   }
 

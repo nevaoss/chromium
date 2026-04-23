@@ -8,6 +8,7 @@
 #include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
+#include "base/test/bind.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/buildflag.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
@@ -316,6 +317,17 @@ class NtpRealboxUiTestBase
     return WaitForStateChange(kNtpElementId, state_change);
   }
 
+  auto WaitForSubmitEnabled() {
+    DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kSubmitEnabledEvent);
+    WebContentsInteractionTestUtil::StateChange submit_enabled;
+    submit_enabled.event = kSubmitEnabledEvent;
+    submit_enabled.where = kComposeboxSubmitButton;
+    submit_enabled.test_function =
+        "(el) => el && el.querySelector('#submitIcon') && "
+        "!el.querySelector('#submitIcon').hasAttribute('disabled')";
+    return WaitForStateChange(kNtpElementId, submit_enabled);
+  }
+
  protected:
   static std::vector<base::test::FeatureRefAndParams> GetEnabledFeatures(
       bool compose_button_enabled = true) {
@@ -338,6 +350,18 @@ class NtpRealboxUiTestBase
     }
 
     return enabled_features;
+  }
+
+  void SetUpOnMainThread() override {
+    SearchboxInteractiveTestMixin<
+        WebUiInteractiveTestMixin<InteractiveBrowserTest>>::SetUpOnMainThread();
+    SetUpUrlLoaderInterceptor();
+  }
+
+  void TearDownOnMainThread() override {
+    TearDownUrlLoaderInterceptor();
+    SearchboxInteractiveTestMixin<WebUiInteractiveTestMixin<
+        InteractiveBrowserTest>>::TearDownOnMainThread();
   }
 
   void SetUpBrowserContextKeyedServices(
@@ -381,10 +405,6 @@ class NtpRealboxUiScreenshotTest
                                                 disabled_features);
 
     NtpRealboxUiTestBase::SetUp();
-  }
-
-  void SetUpOnMainThread() override {
-    NtpRealboxUiTestBase::SetUpOnMainThread();
   }
 
   void SetUpBrowserContextKeyedServices(
@@ -484,6 +504,30 @@ class NtpRealboxInteractiveTest : public NtpRealboxUiTestBase {
   base::test::ScopedFeatureList feature_list_;
 };
 
+IN_PROC_BROWSER_TEST_F(NtpRealboxInteractiveTest, ComposeboxTypedSuggestions) {
+  const DeepQuery kComposeboxMatch1 = {"ntp-app", "#composebox", "#matches",
+                                       "#match1", "#textContainer"};
+
+  RunTestSequence(
+      // Load NTP.
+      AddInstrumentedTab(kNtpElementId, GURL(chrome::kChromeUINewTabURL)),
+      WaitForElementToRender(kNtpElementId, kRealbox),
+      WaitForElementToRender(kNtpElementId, kComposeButton),
+      // Click on the compose button.
+      ClickElement(kNtpElementId, kComposeButton),
+      // Observe/assert that the composebox dialog is open.
+      WaitForDialogStateChange(kComposeboxDialog, /*expected_open=*/true),
+      // Type "t" into composebox input.
+      ClickElement(kNtpElementId, kComposeboxInput),
+      SendKeyPress(kNtpElementId, ui::VKEY_T),
+      // Wait for suggestion to appear.
+      WaitForMatch(kNtpElementId, kComposeboxMatch1, "suggestion-1"),
+      // Click the match.
+      ClickElement(kNtpElementId, kComposeboxMatch1),
+      // Ensure google search occurs.
+      WaitForGoogleSearch(kNtpElementId, "suggestion-1"));
+}
+
 IN_PROC_BROWSER_TEST_F(NtpRealboxInteractiveTest, RealboxMultilineInputTest) {
 #if BUILDFLAG(IS_CHROMEOS)
   // TODO(crbug.com/496928186): Re-enable after de-flaking.
@@ -563,21 +607,12 @@ IN_PROC_BROWSER_TEST_F(NtpRealboxInteractiveTest,
 
 IN_PROC_BROWSER_TEST_F(NtpRealboxInteractiveTest,
                        ContextualEntrypointAttachTabTriggersComposebox) {
-  DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kSubmitEnabledEvent);
-
   const DeepQuery kFirstTabItem = {"ntp-app", "ntp-searchbox", "#context",
                                    "#menu", ".dropdown-item[data-index='0']"};
   const DeepQuery kComposeboxFirstTabItem = {
       "ntp-app",  "#composebox",
       "#context", "#contextEntrypoint",
       "#menu",    ".dropdown-item[data-index='0']"};
-
-  WebContentsInteractionTestUtil::StateChange submit_enabled;
-  submit_enabled.event = kSubmitEnabledEvent;
-  submit_enabled.where = kComposeboxSubmitButton;
-  submit_enabled.test_function =
-      "(el) => el && el.querySelector('#submitIcon') && "
-      "!el.querySelector('#submitIcon').hasAttribute('disabled')";
 
   RunTestSequence(
       // 1. Open a webpage and NTP in separate tabs.
@@ -614,7 +649,7 @@ IN_PROC_BROWSER_TEST_F(NtpRealboxInteractiveTest,
       // 11. Focus composebox input and type something.
       FocusAndInputText(kNtpElementId, kComposeboxInput),
       // 12. Wait for submit button to be enabled and click it.
-      WaitForStateChange(kNtpElementId, submit_enabled),
+      WaitForSubmitEnabled(),
       ClickElement(kNtpElementId, kComposeboxSubmitButton),
       // 13. Ensure google search occurs.
       WaitForGoogleSearch(kNtpElementId, "test"));
@@ -661,15 +696,6 @@ IN_PROC_BROWSER_TEST_P(NtpRealboxUploadInteractiveTest,
   ui::SelectFileDialog::SetFactory(
       std::make_unique<content::FakeSelectFileDialogFactory>(
           std::vector<base::FilePath>{file_path}));
-
-  DEFINE_LOCAL_CUSTOM_ELEMENT_EVENT_TYPE(kSubmitEnabledEvent);
-
-  WebContentsInteractionTestUtil::StateChange submit_enabled;
-  submit_enabled.event = kSubmitEnabledEvent;
-  submit_enabled.where = kComposeboxSubmitButton;
-  submit_enabled.test_function =
-      "(el) => el && el.querySelector('#submitIcon') && "
-      "!el.querySelector('#submitIcon').hasAttribute('disabled')";
 
   RunTestSequence(
       // Open NTP.
@@ -719,7 +745,7 @@ IN_PROC_BROWSER_TEST_P(NtpRealboxUploadInteractiveTest,
       // Focus composebox input and type something.
       FocusAndInputText(kNtpElementId, kComposeboxInput),
       // Wait for submit button to be enabled and click it.
-      WaitForStateChange(kNtpElementId, submit_enabled),
+      WaitForSubmitEnabled(),
       ClickElement(kNtpElementId, kComposeboxSubmitButton),
       // Ensure google search occurs.
       WaitForGoogleSearch(kNtpElementId, "test"),
@@ -896,6 +922,7 @@ IN_PROC_BROWSER_TEST_P(NtpComposeboxSearchFulfillmentTest,
                   TriggerAimVoiceSearch(kNtpElementId, kComposeboxVoiceSearch,
                                         query))
           : Steps(FocusAndInputText(kNtpElementId, kComposeboxInput),
+                  WaitForSubmitEnabled(),
                   param.submit_via_keyboard
                       ? Steps(SendKeyPress(kNtpElementId, ui::VKEY_RETURN))
                       : Steps(ClickElement(kNtpElementId,

@@ -755,6 +755,8 @@ ContextualTasksUI::GetOrCreateContextualSessionHandle() {
       task_id_.has_value() ? helper->GetSessionForTask(task_id_.value())
                            : helper->session_handle();
   if (existing_session) {
+    existing_session->GetMetricsRecorder()->UpdateContextualSearchSource(
+        contextual_search::ContextualSearchSource::kContextualTasks);
     return existing_session;
   }
 
@@ -984,7 +986,8 @@ bool ContextualTasksUI::CanUpdateSuggestedTabContext(
   }
 
   if (!last_committed_url.is_valid() ||
-      !last_committed_url.SchemeIsHTTPOrHTTPS()) {
+      !(last_committed_url.SchemeIsHTTPOrHTTPS() ||
+        last_committed_url.SchemeIsFile())) {
     return false;
   }
 

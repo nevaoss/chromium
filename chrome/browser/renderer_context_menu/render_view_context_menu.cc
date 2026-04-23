@@ -95,7 +95,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_window.h"
@@ -116,6 +115,7 @@
 #include "chrome/browser/ui/read_anything/read_anything_entry_point_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller_utils.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_bubble.h"
+#include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_context_menu_delegate.h"
 #include "chrome/browser/ui/tab_contents/core_tab_helper.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
@@ -179,6 +179,7 @@
 #include "components/search_engines/search_engines_pref_names.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_service.h"
+#include "components/send_tab_to_self/features.h"
 #include "components/send_tab_to_self/metrics_util.h"
 #include "components/services/app_service/public/cpp/app_launch_params.h"
 #include "components/services/app_service/public/cpp/app_launch_util.h"
@@ -551,7 +552,6 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS, 141},
        {IDC_CONTENT_CONTEXT_SEARCHLENSFORVIDEOFRAME, 142},
        {IDC_CONTENT_CONTEXT_SEARCHWEBFORVIDEOFRAME, 143},
-       {IDC_CONTENT_CONTEXT_OPENLINKPREVIEW, 144},
        {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PLUS_ADDRESS, 145},
        // Removed: {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS, 146},
        {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_PASSWORDS_SELECT_PASSWORD, 147},
@@ -616,7 +616,6 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        // Removed: {IDC_CONTENT_CONTEXT_TRANSLATEIMAGEWITHWEB, 27},
        // Removed: {IDC_CONTENT_CONTEXT_TRANSLATEIMAGEWITHLENS, 28},
        {IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB, 29},
-       {IDC_CONTENT_CONTEXT_OPENLINKPREVIEW, 30},
        {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 31},
        {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 32},
        // To add new items:
@@ -1825,36 +1824,6 @@ void RenderViewContextMenu::AppendLinkItems() {
                  : IDS_CONTENT_CONTEXT_OPENLINKOFFTHERECORD);
     }
 
-#if !BUILDFLAG(IS_ANDROID)
-    if (base::FeatureList::IsEnabled(blink::features::kLinkPreview) &&
-        params_.link_url.SchemeIsHTTPOrHTTPS() && !is_link_to_iwa &&
-        !extensions::WebViewGuest::FromRenderFrameHost(GetRenderFrameHost())) {
-      menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPENLINKPREVIEW,
-                                      IDS_CONTENT_CONTEXT_OPENLINKPREVIEW);
-      // We don't show in-production-help for ChromeOS for now because we should
-      // use a different trigger.
-      //
-      // TODO(b:325390312): Update trigger for ChromeOS and show
-      // in-production-help.
-#if !BUILDFLAG(IS_CHROMEOS)
-      int string_id;
-      switch (blink::features::kLinkPreviewTriggerType.Get()) {
-        case blink::features::LinkPreviewTriggerType::kAltClick:
-          string_id = IDS_CONTENT_CONTEXT_OPENLINKPREVIEW_TRIGGER_ALTCLICK;
-          break;
-        case blink::features::LinkPreviewTriggerType::kAltHover:
-          string_id = IDS_CONTENT_CONTEXT_OPENLINKPREVIEW_TRIGGER_ALTHOVER;
-          break;
-        case blink::features::LinkPreviewTriggerType::kLongPress:
-          string_id = IDS_CONTENT_CONTEXT_OPENLINKPREVIEW_TRIGGER_LONGPRESS;
-          break;
-      }
-      menu_model_.SetMinorText(menu_model_.GetItemCount() - 1,
-                               l10n_util::GetStringUTF16(string_id));
-#endif  // !BUILDFLAG(IS_CHROMEOS)
-    }
-#endif  // !BUILDFLAG(IS_ANDROID)
-
     AppendOpenInWebAppLinkItems();
     AppendOpenWithLinkItems();
 
@@ -2102,9 +2071,8 @@ void RenderViewContextMenu::AppendSearchWebForImageItems() {
 
   const int search_for_image_idc = GetSearchForImageIdc();
   auto* entry_point_controller =
-      GetBrowser()
-          ? GetBrowser()->GetFeatures().lens_overlay_entry_point_controller()
-          : nullptr;
+      GetBrowser() ? lens::LensOverlayEntryPointController::From(GetBrowser())
+                   : nullptr;
   if (entry_point_controller && entry_point_controller->IsEnabled() &&
       lens::features::UseLensOverlayForImageSearch()) {
     // If the entrypoint is ephermally hidden, don't add the item.
@@ -2204,9 +2172,8 @@ void RenderViewContextMenu::AppendVideoItems() {
   if (base::FeatureList::IsEnabled(media::kContextMenuSearchForVideoFrame)) {
     const int search_for_video_frame_idc = GetSearchForVideoFrameIdc();
     auto* entry_point_controller =
-        GetBrowser()
-            ? GetBrowser()->GetFeatures().lens_overlay_entry_point_controller()
-            : nullptr;
+        GetBrowser() ? lens::LensOverlayEntryPointController::From(GetBrowser())
+                     : nullptr;
     if (entry_point_controller && entry_point_controller->IsEnabled() &&
         lens::features::UseLensOverlayForVideoFrameSearch()) {
       // If the entrypoint is ephermally hidden, exit early so the item is not
@@ -2794,9 +2761,8 @@ void RenderViewContextMenu::AppendClickToCallItem() {
 
 void RenderViewContextMenu::AppendRegionSearchItem() {
   auto* entry_point_controller =
-      GetBrowser()
-          ? GetBrowser()->GetFeatures().lens_overlay_entry_point_controller()
-          : nullptr;
+      GetBrowser() ? lens::LensOverlayEntryPointController::From(GetBrowser())
+                   : nullptr;
   if (entry_point_controller && entry_point_controller->IsEnabled()) {
     // If the entrypoint is ephermally hidden, exit early so the item is not
     // added.
@@ -2983,7 +2949,6 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
     case IDC_CONTENT_CONTEXT_OPENLINKINPROFILE:
     case IDC_CONTENT_CONTEXT_OPENLINKNEWTAB:
     case IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW:
-    case IDC_CONTENT_CONTEXT_OPENLINKPREVIEW:
       return navigation_allowed && params_.link_url.is_valid() &&
              IsOpenLinkAllowedByDlp(params_.link_url);
 
@@ -3340,10 +3305,6 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
 
     case IDC_CONTENT_CONTEXT_OPENLINKBOOKMARKAPP:
       ExecOpenWebApp();
-      break;
-
-    case IDC_CONTENT_CONTEXT_OPENLINKPREVIEW:
-      ExecOpenLinkPreview();
       break;
 
     case IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW:
@@ -3840,9 +3801,7 @@ bool RenderViewContextMenu::ShouldOpenTextQueryInLens() const {
   return lens::features::
              IsLensOverlayTextSelectionContextMenuEntrypointEnabled() &&
          browser &&
-         browser->GetFeatures()
-             .lens_overlay_entry_point_controller()
-             ->IsEnabled();
+         lens::LensOverlayEntryPointController::From(browser)->IsEnabled();
 }
 
 // Controller functions --------------------------------------------------------
@@ -4075,10 +4034,7 @@ bool RenderViewContextMenu::IsRegionSearchEnabled() const {
     return false;
   }
 
-  if (GetBrowser()
-          ->GetFeatures()
-          .lens_overlay_entry_point_controller()
-          ->IsEnabled()) {
+  if (lens::LensOverlayEntryPointController::From(GetBrowser())->IsEnabled()) {
     return true;
   }
 
@@ -4139,6 +4095,30 @@ void RenderViewContextMenu::AppendSendTabToSelfItem(bool add_separator) {
   if (add_separator) {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
   }
+
+  if (base::FeatureList::IsEnabled(
+          send_tab_to_self::kSendTabToSelfShowTargetsInContextMenus)) {
+    send_tab_to_self_submenu_delegate_ =
+        std::make_unique<send_tab_to_self::SendTabToSelfContextMenuDelegate>(
+            embedder_web_contents_);
+    send_tab_to_self_submenu_ = std::make_unique<ui::SimpleMenuModel>(
+        send_tab_to_self_submenu_delegate_.get());
+    send_tab_to_self_submenu_delegate_->PopulateSubmenu(
+        send_tab_to_self_submenu_.get());
+
+#if BUILDFLAG(IS_MAC)
+    menu_model_.AddSubMenu(IDC_SEND_TAB_TO_SELF,
+                           l10n_util::GetStringUTF16(IDS_MENU_SEND_TAB_TO_SELF),
+                           send_tab_to_self_submenu_.get());
+#else
+    menu_model_.AddSubMenuWithStringIdAndIcon(
+        IDC_SEND_TAB_TO_SELF, IDS_MENU_SEND_TAB_TO_SELF,
+        send_tab_to_self_submenu_.get(),
+        ui::ImageModel::FromVectorIcon(kDevicesIcon));
+#endif
+    return;
+  }
+
 #if BUILDFLAG(IS_MAC)
   menu_model_.AddItem(IDC_SEND_TAB_TO_SELF,
                       l10n_util::GetStringUTF16(IDS_MENU_SEND_TAB_TO_SELF));
@@ -4205,14 +4185,6 @@ void RenderViewContextMenu::ExecOpenWebApp() {
   launch_params.override_url = params_.link_url;
   apps::AppServiceProxyFactory::GetForProfile(GetProfile())
       ->LaunchAppWithParams(std::move(launch_params));
-}
-
-void RenderViewContextMenu::ExecOpenLinkPreview() {
-  CHECK(embedder_web_contents_);
-  CHECK(embedder_web_contents_->GetDelegate());
-
-  embedder_web_contents_->GetDelegate()->InitiatePreview(
-      *embedder_web_contents_, params_.link_url);
 }
 
 void RenderViewContextMenu::ExecProtocolHandler(int event_flags,
@@ -4530,10 +4502,7 @@ void RenderViewContextMenu::ExecSearchLensForImage(int event_flags) {
       IsLensOptionEnteredThroughKeyboard(event_flags) &&
       !lens::features::IsLensOverlayKeyboardSelectionEnabled();
   bool lens_overlay_for_image_search_enabled =
-      GetBrowser()
-          ->GetFeatures()
-          .lens_overlay_entry_point_controller()
-          ->IsEnabled() &&
+      lens::LensOverlayEntryPointController::From(GetBrowser())->IsEnabled() &&
       lens::features::UseLensOverlayForImageSearch();
   if (lens_overlay_for_image_search_enabled &&
       !use_keyboard_accessibility_fallback) {
@@ -4602,10 +4571,7 @@ void RenderViewContextMenu::ExecRegionSearch(
   CHECK(browser);
 
   bool lens_overlay_for_region_search_enabled =
-      GetBrowser()
-          ->GetFeatures()
-          .lens_overlay_entry_point_controller()
-          ->IsEnabled();
+      lens::LensOverlayEntryPointController::From(GetBrowser())->IsEnabled();
   // If Lens overlay is enabled but keyboard selection is disabled and the user
   // triggered the context menu option via keyboard, use the Lens region search
   // flow (with results forced into a new tab) instead of the Lens Overlay flow.
@@ -4915,10 +4881,7 @@ void RenderViewContextMenu::SearchForVideoFrame(
   }
 
   bool lens_overlay_for_video_search_enabled =
-      GetBrowser()
-          ->GetFeatures()
-          .lens_overlay_entry_point_controller()
-          ->IsEnabled() &&
+      lens::LensOverlayEntryPointController::From(GetBrowser())->IsEnabled() &&
       lens::features::UseLensOverlayForVideoFrameSearch() && is_lens_query;
   // TODO(crbug/353984457): Clean this branching when the new server
   // results flow is ready.
