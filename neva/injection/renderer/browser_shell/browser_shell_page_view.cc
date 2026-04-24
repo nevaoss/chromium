@@ -17,6 +17,7 @@
 #include "neva/injection/renderer/browser_shell/browser_shell_page_view.h"
 
 #include "base/functional/bind.h"
+#include "base/logging.h"
 #include "gin/arguments.h"
 #include "gin/dictionary.h"
 #include "gin/function_template.h"

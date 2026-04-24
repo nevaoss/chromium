@@ -20,6 +20,7 @@
 
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
+#include "base/logging.h"
 #include "base/notimplemented.h"
 #include "base/values.h"
 #include "extensions/common/url_pattern.h"

@@ -19,6 +19,7 @@
 #include <tuple>
 
 #include "base/functional/bind.h"
+#include "base/logging.h"
 #include "gin/arguments.h"
 #include "gin/function_template.h"
 #include "neva/injection/renderer/grit/injection_resources.h"

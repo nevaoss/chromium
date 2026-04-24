@@ -18,6 +18,7 @@
 
 #include "base/containers/fixed_flat_set.h"
 #include "base/json/json_reader.h"
+#include "base/logging.h"
 #include "components/url_formatter/url_fixer.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/navigation_entry.h"

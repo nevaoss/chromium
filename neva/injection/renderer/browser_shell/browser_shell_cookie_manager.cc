@@ -16,6 +16,8 @@
 
 #include "neva/injection/renderer/browser_shell/browser_shell_cookie_manager.h"
 
+#include "base/logging.h"
+
 namespace injections {
 
 namespace {
