@@ -16,6 +16,7 @@
 
 #include "neva/injection/renderer/browser_shell/browser_shell_dialog_controller.h"
 
+#include "base/logging.h"
 #include "gin/arguments.h"
 
 namespace injections {

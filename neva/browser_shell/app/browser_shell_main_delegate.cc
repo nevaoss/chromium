@@ -21,6 +21,7 @@
 #include "base/command_line.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
+#include "base/logging.h"
 #include "base/neva/base_switches.h"
 #include "base/run_loop.h"
 #include "base/strings/string_split.h"

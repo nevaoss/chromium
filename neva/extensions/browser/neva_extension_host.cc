@@ -16,6 +16,8 @@
 
 #include "neva/extensions/browser/neva_extension_host.h"
 
+#include "base/logging.h"
+
 namespace neva {
 
 NevaExtensionHost::NevaExtensionHost(const extensions::Extension* extension,

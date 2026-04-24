@@ -21,6 +21,7 @@
 
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
+#include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/rand_util.h"
 #include "base/values.h"

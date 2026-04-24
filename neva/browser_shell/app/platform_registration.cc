@@ -17,6 +17,7 @@
 #include "neva/browser_shell/app/platform_registration.h"
 
 #include "base/command_line.h"
+#include "base/logging.h"
 #include "neva/app_runtime/app/app_runtime_page_contents.h"
 #include "neva/app_runtime/app/app_runtime_page_view.h"
 #include "neva/app_runtime/app/app_runtime_shell_window.h"
