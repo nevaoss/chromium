@@ -85,8 +85,7 @@ class CalculationValueHandleMap
     // FIXME calc(): https://bugs.webkit.org/show_bug.cgi?id=80489
     // This monotonically increasing handle generation scheme is potentially
     // wasteful of the handle space. Consider reusing empty handles.
-<<<<<<< HEAD
-    while (map_.Contains(index_))
+    do {
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
       // Mantissa has only 23bits. So many numbers above 0x1000000(16777216)
       // cannot be represented properly with accuracy of 32-bit floating point
@@ -97,15 +96,8 @@ class CalculationValueHandleMap
 #else
       index_++;
 #endif
-
-    map_.Set(index_, MemberWithCount(calc_value, 1u));
-
-=======
-    do {
-      index_++;
     } while (IsHashTraitsEmptyOrDeletedValue<HashTraits<unsigned>>(index_) ||
              !map_.insert(index_, calc_value).is_new_entry);
->>>>>>> 149.0.7794.0~1
     return index_;
   }
 
