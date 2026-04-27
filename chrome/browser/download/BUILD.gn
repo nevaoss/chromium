@@ -163,7 +163,9 @@ source_set("impl") {
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/content_settings:content_settings_util",
     "//chrome/browser/devtools",
+    "//chrome/browser/enterprise",
     "//chrome/browser/history",
+    "//chrome/browser/net",
     "//chrome/browser/notifications",
     "//chrome/browser/offline_items_collection",
     "//chrome/browser/optimization_guide",
@@ -282,6 +284,8 @@ source_set("impl") {
       "download_status_updater_mac.mm",
       "drag_download_item_mac.mm",
     ]
+
+    deps += [ "//chrome/browser/ui/cocoa" ]
   }
 
   if (is_linux) {

@@ -53,7 +53,7 @@ class AppModalDialogController : public content::WebContentsObserver {
   ~AppModalDialogController() override;
 
   // Called by the AppModalDialogQueue to show this dialog.
-  void ShowModalDialog();
+  virtual void ShowModalDialog();
 
   // Called by the AppModalDialogQueue to activate the dialog.
   void ActivateModalDialog();
@@ -98,6 +98,15 @@ class AppModalDialogController : public content::WebContentsObserver {
   // content::WebContentsObserver overrides:
   void WebContentsDestroyed() final;
 
+ protected:
+  // Completes dialog handling, shows next modal dialog from the queue.
+  // TODO(beng): Get rid of this method.
+  void CompleteDialog();
+
+  // The toolkit-specific implementation of the app modal dialog box. When
+  // non-null, |view_| owns |this|.
+  raw_ptr<AppModalDialogView> view_ = nullptr;
+
  private:
   // Notifies the delegate with the result of the dialog.
   void NotifyDelegate(bool success,
@@ -107,20 +116,12 @@ class AppModalDialogController : public content::WebContentsObserver {
   void CallDialogClosedCallback(bool success,
                                 const std::u16string& prompt_text);
 
-  // Completes dialog handling, shows next modal dialog from the queue.
-  // TODO(beng): Get rid of this method.
-  void CompleteDialog();
-
   // The title of the dialog.
   const std::u16string title_;
 
   // False if the dialog should no longer be shown, e.g. because the underlying
   // tab navigated away while the dialog was queued.
   bool valid_ = true;
-
-  // The toolkit-specific implementation of the app modal dialog box. When
-  // non-null, |view_| owns |this|.
-  raw_ptr<AppModalDialogView> view_ = nullptr;
 
   // A map of extra Chrome-only data associated with the delegate_. Can be
   // inspected via |extra_data_map_[web_contents_]|.
@@ -137,9 +138,8 @@ class AppModalDialogController : public content::WebContentsObserver {
   content::JavaScriptDialogManager::DialogClosedCallback callback_;
 
   // Used only for testing. Specifies alternative prompt text that should be
-  // used when notifying the delegate, if |use_override_prompt_text_| is true.
-  std::u16string override_prompt_text_;
-  bool use_override_prompt_text_;
+  // used when notifying the delegate.
+  std::optional<std::u16string> override_prompt_text_;
 };
 
 // An interface to observe that a modal dialog is shown.

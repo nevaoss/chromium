@@ -48,7 +48,6 @@
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/natural_sizing_info.h"
-#include "third_party/blink/renderer/core/layout/text_autosizer.h"
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
 #include "third_party/blink/renderer/core/loader/mixed_content_checker.h"
@@ -297,7 +296,6 @@ void RemoteFrame::Navigate(FrameLoadRequest& frame_request,
     params->source_location->line = source_location->LineNumber();
     params->source_location->column = source_location->ColumnNumber();
   }
-  params->storage_access_api_status = window->GetStorageAccessApiStatus();
 
   params->impression = frame_request.Impression();
 
@@ -859,19 +857,6 @@ void RemoteFrame::SetOpener(Frame* opener_frame) {
   SetOpenerDoNotNotify(opener_frame);
 }
 
-void RemoteFrame::UpdateTextAutosizerPageInfo(
-    mojom::blink::TextAutosizerPageInfoPtr mojo_remote_page_info) {
-  TRACE_EVENT("navigation", "RemoteFrame::UpdateTextAutosizerPageInfo");
-  // Only propagate the remote page info if our main frame is remote.
-  DCHECK(IsMainFrame());
-  Frame* root_frame = GetPage()->MainFrame();
-  DCHECK(root_frame->IsRemoteFrame());
-  if (*mojo_remote_page_info == GetPage()->TextAutosizerPageInfo())
-    return;
-
-  GetPage()->SetTextAutosizerPageInfo(*mojo_remote_page_info);
-  TextAutosizer::UpdatePageInfoInAllFrames(root_frame);
-}
 
 void RemoteFrame::WasAttachedAsRemoteMainFrame(
     mojo::PendingAssociatedReceiver<mojom::blink::RemoteMainFrame> main_frame) {

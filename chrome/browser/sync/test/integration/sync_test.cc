@@ -880,6 +880,11 @@ bool SyncTest::SetupSyncWithMode(SetupSyncMode setup_mode,
   return true;
 }
 
+bool SyncTest::SignIn(SyncTestAccount account) {
+  return SetupSyncWithMode(SetupSyncMode::kSyncTransportOnly,
+                           WAIT_FOR_COMMITS_TO_COMPLETE, account);
+}
+
 void SyncTest::SetUpOnMainThread() {
   switch (server_type_) {
     case EXTERNAL_LIVE_SERVER:
@@ -1364,12 +1369,12 @@ syncer::DataTypeSet AllowedTypesInStandaloneTransportMode() {
       }
     }
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
     if (switches::IsExtensionsExplicitBrowserSigninEnabled()) {
       allowed_types.Put(syncer::EXTENSIONS);
       allowed_types.Put(syncer::EXTENSION_SETTINGS);
     }
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   }
   allowed_types.Put(syncer::AUTOFILL_VALUABLE);
 

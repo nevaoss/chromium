@@ -38,6 +38,7 @@ BASE_DECLARE_FEATURE(kImportExportFlags);
 BASE_DECLARE_FEATURE(kToolbarGlowUp);
 
 BASE_DECLARE_FEATURE(kMenuSimplification);
+BASE_DECLARE_FEATURE(kTabGroupColorRefresh);
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 
@@ -51,13 +52,7 @@ BASE_DECLARE_FEATURE(kExtensionsCollapseMainMenu);
 // Controls whether the refreshed infobar is enabled.
 BASE_DECLARE_FEATURE(kInfobarRefresh);
 
-#if BUILDFLAG(IS_WIN)
-BASE_DECLARE_FEATURE(kOfferPinToTaskbarInFirstRunExperience);
-BASE_DECLARE_FEATURE(kOfferPinToTaskbarInSettings);
-#endif
-
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
-BASE_DECLARE_FEATURE(kOfferPinToTaskbarInfoBar);
 BASE_DECLARE_FEATURE(kPdfInfoBar);
 BASE_DECLARE_FEATURE(kSeparateDefaultAndPinPrompt);
 BASE_DECLARE_FEATURE_PARAM(int, kSeparateDefaultAndPinPromptRandSeed);
@@ -287,7 +282,6 @@ BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationEnableAll);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationIntentPicker);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationZoom);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationFileSystemAccess);
-BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationManagePasswords);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationCookieControls);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationAutofillMandatoryReauth);
 BASE_DECLARE_FEATURE_PARAM(bool, kPageActionsMigrationSharingHub);

@@ -108,6 +108,7 @@ public class TabStripSceneLayerTest {
         mGlicButton =
                 new TintedCompositorTextButton(
                         mContext,
+                        false,
                         ButtonType.GLIC,
                         null,
                         32.f,
@@ -115,13 +116,14 @@ public class TabStripSceneLayerTest {
                         mTooltipHandler,
                         mOnClickHandler,
                         mKeyboardFocusHandler,
-                        R.drawable.ic_spark_16dp,
+                        R.drawable.ic_spark_4c_16dp,
                         8.f,
                         /* hasLongClickAction= */ false,
                         /* dismissButton= */ null);
         mModelSelectorButton =
                 new TintedCompositorButton(
                         mContext,
+                        false,
                         ButtonType.INCOGNITO_SWITCHER,
                         null,
                         32.f,
@@ -130,10 +132,12 @@ public class TabStripSceneLayerTest {
                         mOnClickHandler,
                         mKeyboardFocusHandler,
                         R.drawable.ic_incognito,
+                        R.drawable.bg_circle_tab_strip_button,
                         8.f);
         mNewTabButton =
                 new TintedCompositorButton(
                         mContext,
+                        false,
                         ButtonType.NEW_TAB,
                         null,
                         32.f,
@@ -142,6 +146,7 @@ public class TabStripSceneLayerTest {
                         mOnClickHandler,
                         mKeyboardFocusHandler,
                         R.drawable.ic_new_tab_button,
+                        R.drawable.bg_circle_tab_strip_button,
                         8.f);
         mStripLayoutTab =
                 spy(

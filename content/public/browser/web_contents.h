@@ -26,7 +26,6 @@
 #include "base/time/time.h"
 #include "build/build_config.h"
 #include "cc/input/browser_controls_state.h"
-#include "components/surface_embed/buildflags/buildflags.h"
 #include "content/common/content_export.h"
 #include "content/public/browser/frame_tree_node_id.h"
 #include "content/public/browser/invalidate_type.h"
@@ -137,6 +136,7 @@ class RenderWidgetHost;
 class RenderWidgetHostView;
 class ScreenOrientationDelegate;
 class SiteInstance;
+class SurfaceEmbedConnector;
 class UnownedInnerWebContentsClient;
 class WebContentsDelegate;
 class WebUI;
@@ -147,10 +147,6 @@ class PreloadingAttempt;
 #if BUILDFLAG(IS_ANDROID)
 class SelectionPopupDelegate;
 #endif
-
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
-class SurfaceEmbedConnector;
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
 // WebContents is the core class in content/. A WebContents renders web content
 // (usually HTML) in a rectangular area.
@@ -446,11 +442,9 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   virtual WebContentsDelegate* GetDelegate() = 0;
   virtual void SetDelegate(WebContentsDelegate* delegate) = 0;
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
   // Gets the SurfaceEmbedConnector for this WebContents, or nullptr if this
   // WebContents is not embedded with SurfaceEmbed.
   virtual SurfaceEmbedConnector* GetSurfaceEmbedConnector() const = 0;
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
   // Gets the NavigationController for primary frame tree of this WebContents.
   // See comments on NavigationController for more details.
@@ -1702,8 +1696,11 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // ResourceCoordinatorTabHelper::IsLoaded() is true for the new tab contents.
   // These will be used to record metrics with the latency between the input
   // event and the time when the WebContents is painted.
+  // `had_saved_frame_at_start` is true if a compositor frame for this view was
+  // already available when the tab switch started.
   virtual void SetTabSwitchStartTime(base::TimeTicks start_time,
-                                     bool destination_is_loaded) = 0;
+                                     bool destination_is_loaded,
+                                     bool had_saved_frame_at_start) = 0;
 
   // Starts browser-initiated prefetch, triggered by embedder.
   // - `prefetch_url` is the url the prefetch will be performed.

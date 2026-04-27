@@ -51,6 +51,7 @@ import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
+import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.build.annotations.MonotonicNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -102,6 +103,7 @@ import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.merchant_viewer.MerchantTrustSignalsCoordinator;
+import org.chromium.chrome.browser.merchant_viewer.PageInfoStoreInfoController.StoreInfoActionHandler;
 import org.chromium.chrome.browser.metrics.UmaActivityObserver;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
@@ -143,6 +145,7 @@ import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
 import org.chromium.chrome.browser.tab_ui.TabModelDotInfo;
 import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
+import org.chromium.chrome.browser.tabmodel.OverridableTabCount;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -451,7 +454,7 @@ public class ToolbarManager
     private @Nullable IncognitoNtpOmniboxAutofocusManager mIncognitoNtpOmniboxAutofocusManager;
     private final @Nullable BottomBarHostManager mBottomBarHostManager;
 
-    private CustomTabCount mCustomTabCount;
+    private OverridableTabCount mOverridableTabCount;
     private int mIncognitoNtpViewIdForA11y = View.NO_ID;
     private @Nullable OverscrollGlowCoordinator mOverscrollGlowCoordinator;
     private final NullableObservableSupplier<Profile> mProfileSupplier;
@@ -825,7 +828,8 @@ public class ToolbarManager
             @Nullable DataSharingTabManager dataSharingTabManager,
             TabContentManager tabContentManager,
             TabCreatorManager tabCreatorManager,
-            Supplier<MerchantTrustSignalsCoordinator> merchantTrustSignalsCoordinatorSupplier,
+            MonotonicObservableSupplier<MerchantTrustSignalsCoordinator>
+                    merchantTrustSignalsCoordinatorSupplier,
             OmniboxActionDelegateImpl omniboxActionDelegate,
             MonotonicObservableSupplier<EphemeralTabCoordinator> ephemeralTabCoordinatorSupplier,
             boolean initializeWithIncognitoColors,
@@ -878,7 +882,7 @@ public class ToolbarManager
         mTabBookmarkerSupplier = tabBookmarkerSupplier;
         mTopInsetProvider = topInsetProvider;
         mIsTablet = DeviceFormFactor.isNonMultiDisplayContextOnTablet(mActivity);
-        mCustomTabCount = new CustomTabCount(tabModelSelectorSupplier);
+        mOverridableTabCount = new OverridableTabCount(tabModelSelectorSupplier);
         mProfileSupplier = profileSupplier;
         mChromeAndroidTaskSupplier = chromeAndroidTaskSupplier;
         mBottomBarHostManager = bottomBarHostManager;
@@ -1255,7 +1259,9 @@ public class ToolbarManager
                             modalDialogManagerSupplier,
                             null,
                             OpenedFromSource.TOOLBAR,
-                            merchantTrustSignalsCoordinatorSupplier::get,
+                            SupplierUtils.upcast(
+                                    merchantTrustSignalsCoordinatorSupplier,
+                                    StoreInfoActionHandler.class),
                             mEphemeralTabCoordinatorSupplier,
                             mTabCreatorManager.getTabCreator(
                                     mIncognitoStateProvider.isIncognitoSelected()));
@@ -1937,6 +1943,7 @@ public class ToolbarManager
                         mControlContainer,
                         mToolbarLayout,
                         mBottomControlsStacker,
+                        mBottomSheetController,
                         mBottomToolbarControlsOffsetSupplier,
                         mProgressBarContainer,
                         controlContainerTranslationSupplier,
@@ -2031,7 +2038,7 @@ public class ToolbarManager
                         mMenuButtonCoordinator,
                         assertNonNull(mMenuButtonCoordinator.getMenuButtonHelperSupplier()),
                         mTabSwitcherButtonCoordinator,
-                        mCustomTabCount.getObservable(),
+                        mOverridableTabCount.getObservable(),
                         mHomepageEnabledSupplier,
                         mCompositorViewHolder::getResourceManager,
                         historyDelegate,
@@ -2141,9 +2148,9 @@ public class ToolbarManager
         return mNtpSearchBoxTransitionPercentageSupplier;
     }
 
-    /** Returns the {@link CustomTabCount} object to overwrite the tab count in the toolbar. */
-    public CustomTabCount getCustomTabCount() {
-        return mCustomTabCount;
+    /** Returns the {@link OverridableTabCount} object to overwrite the tab count in the toolbar. */
+    public OverridableTabCount getOverridableTabCount() {
+        return mOverridableTabCount;
     }
 
     // Base abstract implementation of NewTabPageDelegate for phone/table toolbar layout.
@@ -2357,10 +2364,6 @@ public class ToolbarManager
                         mUndoBarThrottle,
                         mTabBookmarkerSupplier,
                         mShareDelegateSupplier);
-        var tabGroupUiBottomControlsContentDelegateSupplier =
-                (OneshotSupplier<BottomControlsContentDelegate>)
-                        ((OneshotSupplier<? extends BottomControlsContentDelegate>)
-                                mTabGroupUiOneshotSupplier);
         var tabGroupUiBottomControlsCoordinator =
                 new BottomControlsCoordinator(
                         mWindowAndroid,
@@ -2372,7 +2375,8 @@ public class ToolbarManager
                         mEdgeToEdgeControllerSupplier,
                         (ScrollingBottomViewResourceFrameLayout) tabGroupUiContainer,
                         LayerType.TABSTRIP_TOOLBAR,
-                        tabGroupUiBottomControlsContentDelegateSupplier,
+                        SupplierUtils.upcast(
+                                mTabGroupUiOneshotSupplier, BottomControlsContentDelegate.class),
                         mTabObscuringHandler,
                         mOverlayPanelVisibilitySupplier,
                         mConstraintsSupplier,
@@ -2400,7 +2404,8 @@ public class ToolbarManager
         BottomBarContainerCoordinator bottomBarContainerCoordinator =
                 new BottomBarContainerCoordinator(
                         bottomAppBarContainer.findViewById(R.id.bottom_container_slot),
-                        mBottomControlsStacker::requestLayerUpdate);
+                        mBottomControlsStacker::requestLayerUpdate,
+                        mCurrentTabSupplier);
         bottomBarContainerOneshotSupplier.set(bottomBarContainerCoordinator);
 
         if (mBottomBarHostManager != null) {
@@ -2504,7 +2509,8 @@ public class ToolbarManager
                                 getBrowsingModeThemeColorProvider(),
                                 (ToolbarTablet) mToolbarLayout,
                                 contextMenuPopulatorFactory,
-                                selectionDropdownMenuDelegate);
+                                selectionDropdownMenuDelegate,
+                                mTabModelSelector);
                 if (mExtensionsToolbarCoordinator != null) {
                     mToolbar.setExtensionsToolbarCoordinator(mExtensionsToolbarCoordinator);
                 }
@@ -2524,7 +2530,7 @@ public class ToolbarManager
             mTabSwitcherButtonCoordinator.initializeWithNative(
                     v -> openGridTabSwitcherHandler.run(),
                     tabSwitcherLongClickListener,
-                    mCustomTabCount.getObservable(),
+                    mOverridableTabCount.getObservable(),
                     archivedTabCountSupplier,
                     tabModelNotificationDotSupplier,
                     () -> TabArchiveSettings.setIphShownThisSession(true),
@@ -2873,9 +2879,9 @@ public class ToolbarManager
             mMiniOriginBarController = null;
         }
 
-        if (mCustomTabCount != null) {
-            mCustomTabCount.destroy();
-            mCustomTabCount = null;
+        if (mOverridableTabCount != null) {
+            mOverridableTabCount.destroy();
+            mOverridableTabCount = null;
         }
 
         if (mSideUiStateProvider != null && mSideUiObserver != null) {

@@ -134,8 +134,8 @@
 #import "ios/chrome/browser/first_run/omnibox_position/coordinator/omnibox_position_choice_coordinator.h"
 #import "ios/chrome/browser/fullscreen/coordinator/fullscreen_coordinator.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent.h"
+#import "ios/chrome/browser/fullscreen/public/fullscreen_metrics.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
-#import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_metrics.h"
 #import "ios/chrome/browser/google_one/coordinator/google_one_coordinator.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_mediator.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_scene_agent.h"
@@ -143,9 +143,9 @@
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/bwg_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_first_run_coordinator.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/enhanced_calendar/coordinator/enhanced_calendar_coordinator.h"
@@ -259,6 +259,7 @@
 #import "ios/chrome/browser/shared/public/commands/enterprise_commands.h"
 #import "ios/chrome/browser/shared/public/commands/file_upload_panel_commands.h"
 #import "ios/chrome/browser/shared/public/commands/find_in_page_commands.h"
+#import "ios/chrome/browser/shared/public/commands/fullscreen_commands.h"
 #import "ios/chrome/browser/shared/public/commands/google_one_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_overlay_commands.h"
@@ -831,6 +832,12 @@ const char kChromeAppStoreUrl[] =
 
   // The coordinator for Cobalt.
   ChromeCoordinator* _cobaltCoordinator;
+
+  // The coordinator for Cobalt alerts.
+  ChromeCoordinator* _cobaltAlertCoordinator;
+
+  // The coordinator for Cobalt popups.
+  ChromeCoordinator* _cobaltPopupCoordinator;
 }
 
 #pragma mark - ReaderModeBrowserAgentDelegate
@@ -1003,6 +1010,18 @@ const char kChromeAppStoreUrl[] =
 }
 
 #pragma mark - Private
+
+// Exits fullscreen mode.
+- (void)exitFullscreen {
+  if (IsFullscreenRefactoringEnabled()) {
+    [HandlerForProtocol(_dispatcher, FullscreenCommands)
+        exitFullscreenWithTrigger:FullscreenModeTransitionTrigger::kForcedByCode
+                         animated:YES];
+  } else {
+    _fullscreenController->ExitFullscreen(
+        FullscreenModeTransitionTrigger::kForcedByCode);
+  }
+}
 
 - (void)stopSendTabToSelf {
   [_sendTabToSelfCoordinator stop];
@@ -1845,6 +1864,8 @@ const char kChromeAppStoreUrl[] =
 
   [self hideDriveFilePicker];
   [self hideCobalt];
+  [self hideCobaltAlert];
+  [self hideCobaltPopup];
   if (@available(iOS 18.4, *)) {
     if (base::FeatureList::IsEnabled(kIOSCustomFileUploadMenu)) {
       [self hideFileUploadPanel];
@@ -2045,8 +2066,7 @@ const char kChromeAppStoreUrl[] =
   SharingParams* params = [[SharingParams alloc] initWithScenario:scenario];
 
   // Exit fullscreen if needed to make sure that share button is visible.
-  _fullscreenController->ExitFullscreen(
-      FullscreenModeTransitionTrigger::kForcedByCode);
+  [self exitFullscreen];
 
   if (!shareButton) {
     shareButton = _toolbarCoordinator.shareButton;
@@ -2084,8 +2104,7 @@ const char kChromeAppStoreUrl[] =
                                 scenario:SharingScenario::ShareChrome];
 
   // Exit fullscreen if needed to make sure that share button is visible.
-  _fullscreenController->ExitFullscreen(
-      FullscreenModeTransitionTrigger::kForcedByCode);
+  [self exitFullscreen];
 
   UIView* originView =
       [_layoutGuideCenter referencedViewUnderName:kToolsMenuGuide];
@@ -2877,6 +2896,15 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)forceFullscreenMode:(FullscreenModeTransitionTrigger)trigger {
+  if (IsFullscreenRefactoringEnabled()) {
+    // TODO(crbug.com/500414020): Implement force fullscreen in refactored code.
+    // For now, we will simply enter Fullscreen.
+    [HandlerForProtocol(_dispatcher, FullscreenCommands)
+        enterFullscreenWithTrigger:FullscreenModeTransitionTrigger::
+                                       kForcedByCode
+                          animated:YES];
+    return;
+  }
   _fullscreenController->EnterForceFullscreenMode(
       /*insets_update_enabled=*/true, trigger);
 }
@@ -2907,10 +2935,7 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)showComposebox {
-  if (_fullscreenController) {
-    _fullscreenController->ExitFullscreen(
-        FullscreenModeTransitionTrigger::kForcedByCode);
-  }
+  [self exitFullscreen];
 
   if (IsComposeboxIOSEnabled()) {
     [self showComposeboxFromEntrypoint:ComposeboxEntrypoint::kOther
@@ -2928,7 +2953,7 @@ const char kChromeAppStoreUrl[] =
     return;
   }
 
-  CHECK(base::FeatureList::IsEnabled(kComposeboxIOS));
+  CHECK(IsComposeboxIOSEnabled());
   if (_composeboxCoordinator) {
     return;
   }
@@ -2970,6 +2995,8 @@ const char kChromeAppStoreUrl[] =
   [self hideSaveToDrive];
   [self hideDriveFilePicker];
   [self hideCobalt];
+  [self hideCobaltAlert];
+  [self hideCobaltPopup];
   if (@available(iOS 18.4, *)) {
     if (base::FeatureList::IsEnabled(kIOSCustomFileUploadMenu)) {
       [self hideFileUploadPanel];
@@ -3114,6 +3141,51 @@ const char kChromeAppStoreUrl[] =
 - (void)hideCobalt {
   [_cobaltCoordinator stop];
   _cobaltCoordinator = nil;
+}
+
+- (void)showCobaltAlertWithTitle:(NSString*)title
+                         message:(NSString*)message
+                      completion:(void (^)(bool))completion {
+  // If `_cobaltAlertCoordinator` is present hide it first.
+  if (_cobaltAlertCoordinator) {
+    [self hideCobaltAlert];
+  }
+
+  // If `_cobaltCoordinator` is present hide it first.
+  if (_cobaltCoordinator) {
+    [self hideCobalt];
+  }
+  _cobaltAlertCoordinator = ios::provider::CreateCobaltAlertCoordinator(
+      self.viewController, self.browser, title, message, completion);
+  CHECK(_cobaltAlertCoordinator);
+  [_cobaltAlertCoordinator start];
+}
+
+- (void)hideCobaltAlert {
+  [_cobaltAlertCoordinator stop];
+  _cobaltAlertCoordinator = nil;
+}
+
+- (void)showCobaltPopupViewController:(UIViewController*)popupViewController
+                           completion:(void (^)(NSError*))completion {
+  // If `_cobaltPopupCoordinator` is present hide it first.
+  if (_cobaltPopupCoordinator) {
+    [self hideCobaltPopup];
+  }
+
+  // If `_cobaltCoordinator` is present hide it first.
+  if (_cobaltCoordinator) {
+    [self hideCobalt];
+  }
+  _cobaltPopupCoordinator = ios::provider::CreateCobaltPopupCoordinator(
+      self.viewController, self.browser, popupViewController, completion);
+  CHECK(_cobaltPopupCoordinator);
+  [_cobaltPopupCoordinator start];
+}
+
+- (void)hideCobaltPopup {
+  [_cobaltPopupCoordinator stop];
+  _cobaltPopupCoordinator = nil;
 }
 
 #pragma mark - ContextualPanelEntrypointIPHCommands
@@ -3494,9 +3566,7 @@ const char kChromeAppStoreUrl[] =
     // Hide the Omnibox to avoid user's confusion about which text field is
     // currently focused. The mode is force to avoid the bottom Omnibox
     // appearing above the find in page collapsed toolbar when scrolling.
-    _fullscreenController->EnterForceFullscreenMode(
-        /* insets_update_enabled */ true,
-        FullscreenModeTransitionTrigger::kForcedByCode);
+    [self forceFullscreenMode:FullscreenModeTransitionTrigger::kForcedByCode];
     helper->SetFindUIActive(true);
   }
 
@@ -3601,7 +3671,8 @@ const char kChromeAppStoreUrl[] =
 }
 
 - (void)showBWGPromoIfPageIsEligible {
-  BwgService* geminiService = GeminiServiceFactory::GetForProfile(self.profile);
+  GeminiService* geminiService =
+      GeminiServiceFactory::GetForProfile(self.profile);
   BwgTabHelper* geminiTabHelper =
       BwgTabHelper::FromWebState(self.activeWebState);
   if (geminiTabHelper && geminiTabHelper->IsGeminiAvailableForWebState() &&
@@ -3663,7 +3734,8 @@ const char kChromeAppStoreUrl[] =
 
   GeminiBrowserAgent* geminiBrowserAgent =
       GeminiBrowserAgent::FromBrowser(self.browser);
-  BwgService* geminiService = GeminiServiceFactory::GetForProfile(self.profile);
+  GeminiService* geminiService =
+      GeminiServiceFactory::GetForProfile(self.profile);
   BwgTabHelper* geminiTabHelper =
       BwgTabHelper::FromWebState(self.activeWebState);
   if (!IsGeminiCopresenceEnabled() || !geminiBrowserAgent || !geminiTabHelper ||
@@ -3841,6 +3913,11 @@ const char kChromeAppStoreUrl[] =
 #pragma mark - PageActionMenuCommands
 
 - (void)showPageActionMenu {
+  if (!self.activeWebState) {
+    // The page action menu requires an active tab. Return early if there is
+    // none.
+    return;
+  }
   // TODO(crbug.com/465505528) Propagate page action menu entry point source to
   // page action menu coordinator.
   _pageActionMenuCoordinator = [[PageActionMenuCoordinator alloc]
@@ -4784,8 +4861,13 @@ const char kChromeAppStoreUrl[] =
     return lensOverlayTabHelper->GetSnapshotInsets();
   }
 
-  UIEdgeInsets maxViewportInsets =
-      _fullscreenController->GetMaxViewportInsets();
+  UIEdgeInsets maxViewportInsets;
+  if (IsFullscreenRefactoringEnabled()) {
+    maxViewportInsets =
+        FullscreenBrowserAgent::FromBrowser(self.browser)->max_insets();
+  } else {
+    maxViewportInsets = _fullscreenController->GetMaxViewportInsets();
+  }
 
   if (IsVisibleURLNewTabPage(webState)) {
     const BOOL canShowTabStrip = CanShowTabStrip(self.viewController);
@@ -4813,8 +4895,12 @@ const char kChromeAppStoreUrl[] =
     // and doesn't need to be inset.  If fullscreen uses the content inset, then
     // the WebState view is laid out fullscreen and should be inset by the
     // viewport insets.
-    return _fullscreenController->ResizesScrollView() ? UIEdgeInsetsZero
-                                                      : maxViewportInsets;
+    if (IsFullscreenRefactoringEnabled()) {
+      return maxViewportInsets;
+    } else {
+      return _fullscreenController->ResizesScrollView() ? UIEdgeInsetsZero
+                                                        : maxViewportInsets;
+    }
   }
 }
 
@@ -5124,6 +5210,11 @@ const char kChromeAppStoreUrl[] =
 - (FullscreenController*)fullscreenControllerForOverscrollActionsController:
     (OverscrollActionsController*)controller {
   return _fullscreenController;
+}
+
+- (id<FullscreenCommands>)fullscreenHandlerForOverscrollActionsController:
+    (OverscrollActionsController*)controller {
+  return HandlerForProtocol(self.dispatcher, FullscreenCommands);
 }
 
 #pragma mark - PasswordControllerDelegate methods

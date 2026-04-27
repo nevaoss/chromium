@@ -153,12 +153,12 @@ class UserSecuritySignalsServiceTest : public testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   TestingPrefServiceSimple testing_prefs_;
-  std::unique_ptr<UserSecuritySignalsService> service_ = nullptr;
   testing::StrictMock<MockUserSecuritySignalsServiceDelegate> delegate_;
   network::TestCookieManager test_cookie_manager_;
   testing::NiceMock<policy::MockPolicyService> policy_service_;
   base::HistogramTester histogram_tester_;
   base::test::ScopedFeatureList feature_list_;
+  std::unique_ptr<UserSecuritySignalsService> service_ = nullptr;
 };
 
 TEST_F(UserSecuritySignalsServiceTest, NotStarted) {

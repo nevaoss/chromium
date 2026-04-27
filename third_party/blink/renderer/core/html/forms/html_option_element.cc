@@ -369,8 +369,7 @@ void HTMLOptionElement::SetSelectedState(bool selected,
     }
   }
 
-  if (RuntimeEnabledFeatures::OptionMutationObserverImprovementEnabled() &&
-      !skip_mutation_observer_update) {
+  if (!skip_mutation_observer_update) {
     UpdateMutationObserver(/*in_style_recalc=*/false);
   }
 }
@@ -429,13 +428,6 @@ void HTMLOptionElement::UpdateMutationObserver(bool in_style_recalc) {
 bool HTMLOptionElement::NeedsMutationObserver() {
   if (!was_element_inserted_) {
     return false;
-  }
-
-  // This flag check runs after was_element_inserted_ in order to match the
-  // behavior before the flag was added, which was that a MutationObserver is
-  // always registered when an element is inserted.
-  if (!RuntimeEnabledFeatures::OptionMutationObserverImprovementEnabled()) {
-    return true;
   }
 
   HTMLSelectElement* select = OwnerSelectElement();
@@ -600,8 +592,7 @@ void HTMLOptionElement::RemovedFrom(ContainerNode& insertion_point) {
     CHECK(old_ancestor_select);
     const bool should_skip_option_removed =
         !parentNode() && insertion_point == old_ancestor_select;
-    if (!RuntimeEnabledFeatures::SelectChildrenRemovedFixEnabled() ||
-        !should_skip_option_removed) {
+    if (!should_skip_option_removed) {
       // If this option was removed from a select element as a direct child,
       // then let HTMLSelectElement::ChildrenChanged make the call to
       // OptionRemoved in order to avoid

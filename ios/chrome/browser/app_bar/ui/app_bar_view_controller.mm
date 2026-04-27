@@ -9,6 +9,7 @@
 #import "components/strings/grit/components_strings.h"
 #import "ios/chrome/browser/app_bar/ui/app_bar_constants.h"
 #import "ios/chrome/browser/app_bar/ui/app_bar_mutator.h"
+#import "ios/chrome/browser/app_bar/ui/app_bar_utils.h"
 #import "ios/chrome/browser/app_bar/ui/app_bar_view.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
@@ -28,33 +29,33 @@
 namespace {
 
 // The font size for the tab count label.
-const CGFloat kTabGridFontSize = 11;
+constexpr CGFloat kTabGridFontSize = 11;
 // The size of the button images.
-const CGFloat kButtonImageSize = 23;
+constexpr CGFloat kButtonImageSize = 23;
 // The padding between the image and the text in the buttons.
-const CGFloat kButtonImagePadding = 3;
+constexpr CGFloat kButtonImagePadding = 3;
 // The shadow radius for the buttons.
-const CGFloat kButtonShadowRadius = 3;
+constexpr CGFloat kButtonShadowRadius = 3;
 // The shadow opacity for the buttons.
-const CGFloat kButtonShadowOpacity = 0.2;
+constexpr CGFloat kButtonShadowOpacity = 0.2;
 // The shadow offset for the buttons.
-const CGFloat kButtonShadowOffset = 1;
+constexpr CGFloat kButtonShadowOffset = 1;
 // The duration of the animation to update the TabGrid button.
-const CGFloat kTabGridAnimationDuration = 0.25;
+constexpr CGFloat kTabGridAnimationDuration = 0.25;
 // Spacing between tab grid button and the tab grid spotlight view anchor.
-const CGFloat kSpotlightViewHorizontalInset = 12;
-const CGFloat kSpotlightViewVerticalInset = 2;
+constexpr CGFloat kSpotlightViewHorizontalInset = 12;
+constexpr CGFloat kSpotlightViewVerticalInset = 2;
 // Offset of the tab count label in the tab grid button tab group state.
-const CGFloat kTabGroupLabelOffset = 3;
+constexpr CGFloat kTabGroupLabelOffset = 3;
 
 // The spacing inside the stack view.
-const CGFloat kStackViewSpacing = 4;
+constexpr CGFloat kStackViewSpacing = 4;
 // The horizontal margins of the stack view.
-const CGFloat kStackViewHorizontalMargin = 8;
+constexpr CGFloat kStackViewHorizontalMargin = 8;
 
 // The inner padding of the buttons.
-const CGFloat kButtonHorizontalPadding = 4;
-const CGFloat kButtonVerticalPadding = 12;
+constexpr CGFloat kButtonHorizontalPadding = 4;
+constexpr CGFloat kButtonVerticalPadding = 12;
 
 // Returns the color to be used as foreground color for the buttons.
 UIColor* ButtonsForegroundColor() {
@@ -131,6 +132,20 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   AppBarView* _backgroundView;
 }
 
+#pragma mark - Accessors & Mutators
+
+- (void)setButtonsTitleAlpha:(CGFloat)buttonsTitleAlpha {
+  if (buttonsTitleAlpha == self.buttonsTitleAlpha) {
+    return;
+  }
+  _buttonsTitleAlpha = buttonsTitleAlpha;
+  [_assistantButton setNeedsUpdateConfiguration];
+  [_openNewTabButton setNeedsUpdateConfiguration];
+  [_tabGridButton setNeedsUpdateConfiguration];
+}
+
+#pragma mark - Public
+
 - (void)updateForAngle:(CGFloat)angle {
   [self loadViewIfNeeded];
 
@@ -139,6 +154,13 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   _openNewTabButton.transform = transform;
   _tabGridButton.transform = transform;
 }
+
+- (void)toggleSpotlightView:(BOOL)shouldShow {
+  CHECK(IsBestOfAppGuidedTourEnabled());
+  _spotlightView.hidden = !shouldShow;
+}
+
+#pragma mark - UIViewController
 
 - (void)viewDidLoad {
   [super viewDidLoad];
@@ -186,11 +208,27 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   [self.layoutGuideCenter referenceView:stackView underName:kAppBarGuide];
 }
 
-#pragma mark - Public
+- (void)viewWillLayoutSubviews {
+  [super viewWillLayoutSubviews];
+  [self updateAssistantButtonTitleIfNeeded];
+  [self updateTabGridButtonTitleIfNeeded];
+  [self updateOpenNewTabButtonTitleIfNeeded];
+}
 
-- (void)toggleSpotlightView:(BOOL)shouldShow {
-  CHECK(IsBestOfAppGuidedTourEnabled());
-  _spotlightView.hidden = !shouldShow;
+#pragma mark - UIContentContainer
+
+- (void)viewWillTransitionToSize:(CGSize)size
+       withTransitionCoordinator:
+           (id<UIViewControllerTransitionCoordinator>)coordinator {
+  [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+
+  __weak __typeof__(self) weakSelf = self;
+  [coordinator
+      animateAlongsideTransition:^(
+          id<UIViewControllerTransitionCoordinatorContext> context) {
+        [weakSelf updateUIForTransitionToSize:size];
+      }
+                      completion:nil];
 }
 
 #pragma mark - AppBarConsumer
@@ -242,6 +280,14 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   NOTREACHED();
 }
 
+- (void)setAssistantButtonState:(AppBarAssistantButtonState)state
+                         avatar:(UIImage*)avatar {
+  _assistantButtonState = state;
+  _assistantButtonAvatar = avatar;
+
+  [self updateAssistantButton];
+}
+
 - (void)setTabGroupsPageVisible:(BOOL)tabGroupsPageVisible {
   if (tabGroupsPageVisible == _isTabGroupsPageVisible) {
     return;
@@ -268,27 +314,30 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
 #pragma mark - FullscreenUIElement
 
 - (void)updateForFullscreenProgress:(CGFloat)progress {
-  self.buttonsTitleAlpha = progress;
-  [_assistantButton setNeedsUpdateConfiguration];
-  [_openNewTabButton setNeedsUpdateConfiguration];
-  [_tabGridButton setNeedsUpdateConfiguration];
+  // The App Bar and the button titles should be fully visible in landscape
+  // orientation.
+  self.buttonsTitleAlpha =
+      AppBarPositionForView(self.view) == AppBarPosition::kBottom ? progress
+                                                                  : 1.0;
 }
 
-- (void)setAssistantButtonState:(AppBarAssistantButtonState)state
-                         avatar:(UIImage*)avatar {
-  _assistantButtonState = state;
-  _assistantButtonAvatar = avatar;
+#pragma mark - FullscreenBrowserAgentObserving
 
-  [self updateAssistantButton];
+- (void)fullscreenWillUpdateState:(FullscreenBrowserAgent*)agent {
+  if (AppBarPositionForView(self.view) != AppBarPosition::kBottom) {
+    return;
+  }
+
+  [self updateForFullscreenProgress:agent->bottom_progress()];
 }
 
 #pragma mark - Private
 
-- (void)viewWillLayoutSubviews {
-  [super viewWillLayoutSubviews];
-  [self updateAssistantButtonTitleIfNeeded];
-  [self updateTabGridButtonTitleIfNeeded];
-  [self updateOpenNewTabButtonTitleIfNeeded];
+// Handles updating the UI for a size transition.
+- (void)updateUIForTransitionToSize:(CGSize)size {
+  if (size.width > size.height) {
+    [self updateForFullscreenProgress:1.0];
+  }
 }
 
 // Returns `fullTitle` if it fits within the available width for the
@@ -618,6 +667,8 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
                   }
                   completion:nil];
 }
+
+#pragma mark - Actions
 
 // Called when the Assistant button is tapped.
 - (void)didTapAssistantButton {

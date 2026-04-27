@@ -134,6 +134,8 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_AddressData) {
           u"Elysium", u"City",
           UnorderedElementsAre(
               IsMetadata(EntryType::kNameFull, u"John H. Doe"),
+              IsMetadata(EntryType::kAddressStreetAddress,
+                         u"666 Erebus St.\nApt 8"),
               IsMetadata(EntryType::kAddressState, u"CA"),
               IsMetadata(EntryType::kAddressZip, u"91111"),
               IsMetadata(EntryType::kAddressCountry, u"United States")))));
@@ -145,6 +147,8 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_AddressData) {
           u"91111", u"Zip",
           UnorderedElementsAre(
               IsMetadata(EntryType::kNameFull, u"John H. Doe"),
+              IsMetadata(EntryType::kAddressStreetAddress,
+                         u"666 Erebus St.\nApt 8"),
               IsMetadata(EntryType::kAddressCity, u"Elysium"),
               IsMetadata(EntryType::kAddressState, u"CA"),
               IsMetadata(EntryType::kAddressCountry, u"United States")))));
@@ -156,6 +160,8 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_AddressData) {
           u"CA", u"State",
           UnorderedElementsAre(
               IsMetadata(EntryType::kNameFull, u"John H. Doe"),
+              IsMetadata(EntryType::kAddressStreetAddress,
+                         u"666 Erebus St.\nApt 8"),
               IsMetadata(EntryType::kAddressCity, u"Elysium"),
               IsMetadata(EntryType::kAddressZip, u"91111"),
               IsMetadata(EntryType::kAddressCountry, u"United States")))));
@@ -166,6 +172,8 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_AddressData) {
       UnorderedElementsAre(IsMemorySearchResult(
           u"United States", u"Country",
           UnorderedElementsAre(IsMetadata(EntryType::kNameFull, u"John H. Doe"),
+                               IsMetadata(EntryType::kAddressStreetAddress,
+                                          u"666 Erebus St.\nApt 8"),
                                IsMetadata(EntryType::kAddressCity, u"Elysium"),
                                IsMetadata(EntryType::kAddressState, u"CA"),
                                IsMetadata(EntryType::kAddressZip, u"91111")))));
@@ -176,6 +184,8 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_AddressData) {
       UnorderedElementsAre(IsMemorySearchResult(
           u"John H. Doe", u"Name",
           UnorderedElementsAre(
+              IsMetadata(EntryType::kAddressStreetAddress,
+                         u"666 Erebus St.\nApt 8"),
               IsMetadata(EntryType::kAddressCity, u"Elysium"),
               IsMetadata(EntryType::kAddressState, u"CA"),
               IsMetadata(EntryType::kAddressZip, u"91111"),
@@ -188,6 +198,8 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_AddressData) {
           u"johndoe@hades.com", u"Email",
           UnorderedElementsAre(
               IsMetadata(EntryType::kNameFull, u"John H. Doe"),
+              IsMetadata(EntryType::kAddressStreetAddress,
+                         u"666 Erebus St.\nApt 8"),
               IsMetadata(EntryType::kAddressCity, u"Elysium"),
               IsMetadata(EntryType::kAddressState, u"CA"),
               IsMetadata(EntryType::kAddressZip, u"91111"),
@@ -200,6 +212,8 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_AddressData) {
           u"16502111111", u"Phone",
           UnorderedElementsAre(
               IsMetadata(EntryType::kNameFull, u"John H. Doe"),
+              IsMetadata(EntryType::kAddressStreetAddress,
+                         u"666 Erebus St.\nApt 8"),
               IsMetadata(EntryType::kAddressCity, u"Elysium"),
               IsMetadata(EntryType::kAddressState, u"CA"),
               IsMetadata(EntryType::kAddressZip, u"91111"),
@@ -215,6 +229,8 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_AddressData) {
           u"Address",
           UnorderedElementsAre(
               IsMetadata(EntryType::kNameFull, u"John H. Doe"),
+              IsMetadata(EntryType::kAddressStreetAddress,
+                         u"666 Erebus St.\nApt 8"),
               IsMetadata(EntryType::kAddressCity, u"Elysium"),
               IsMetadata(EntryType::kAddressZip, u"91111"),
               IsMetadata(EntryType::kAddressState, u"CA"),
@@ -237,6 +253,74 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_IbanData) {
                            /*is_obfuscated=*/true)));
   ASSERT_FALSE(results[0].reveal_callback.is_null());
   EXPECT_EQ(results[0].reveal_callback.Run(), iban.value());
+}
+
+// Tests that RetrieveAll correctly fetches and formats credit card data.
+TEST_F(AutofillDataProviderImplTest, RetrieveAll_CreditCardData) {
+  CreditCard credit_card = test::WithCvc(test::GetCreditCard(), u"123");
+  credit_card.SetExpirationYear(2030);
+  credit_card.SetExpirationMonth(10);
+  credit_card.SetNickname(u"My Credit Card");
+  client().GetPersonalDataManager().test_payments_data_manager().AddCreditCard(
+      credit_card);
+
+  std::vector<MemorySearchResult> number_results = RetrieveAllHelper(
+      retriever(), accessibility_annotator::EntryType::kCreditCardNumber);
+  EXPECT_THAT(
+      number_results,
+      UnorderedElementsAre(IsMemorySearchResult(
+          credit_card.ObfuscatedNumberWithVisibleLastFourDigits(),
+          GetEntryTypeNameForI18n(EntryType::kCreditCardNumber),
+          UnorderedElementsAre(
+              IsMetadata(EntryType::kCreditCardNameOnCard,
+                         credit_card.GetRawInfo(CREDIT_CARD_NAME_FULL)),
+              IsMetadata(
+                  EntryType::kCreditCardExpirationDate,
+                  credit_card.GetRawInfo(CREDIT_CARD_EXP_DATE_4_DIGIT_YEAR)),
+              IsMetadata(EntryType::kCreditCardNickname, u"My Credit Card")))));
+
+  std::vector<MemorySearchResult> cvc_results = RetrieveAllHelper(
+      retriever(),
+      accessibility_annotator::EntryType::kCreditCardSecurityCode);
+  EXPECT_THAT(
+      cvc_results,
+      UnorderedElementsAre(IsMemorySearchResult(
+          std::u16string(3, kMidlineEllipsisPlainDot),
+          GetEntryTypeNameForI18n(EntryType::kCreditCardSecurityCode),
+          UnorderedElementsAre(
+              IsMetadata(EntryType::kCreditCardNameOnCard,
+                         credit_card.GetRawInfo(CREDIT_CARD_NAME_FULL)),
+              IsMetadata(
+                  EntryType::kCreditCardExpirationDate,
+                  credit_card.GetRawInfo(CREDIT_CARD_EXP_DATE_4_DIGIT_YEAR)),
+              IsMetadata(EntryType::kCreditCardNickname, u"My Credit Card")))));
+
+  std::vector<MemorySearchResult> name_results = RetrieveAllHelper(
+      retriever(),
+      accessibility_annotator::EntryType::kCreditCardNameOnCard);
+  EXPECT_THAT(
+      name_results,
+      UnorderedElementsAre(IsMemorySearchResult(
+          credit_card.GetRawInfo(CREDIT_CARD_NAME_FULL),
+          GetEntryTypeNameForI18n(EntryType::kCreditCardNameOnCard),
+          UnorderedElementsAre(
+              IsMetadata(
+                  EntryType::kCreditCardExpirationDate,
+                  credit_card.GetRawInfo(CREDIT_CARD_EXP_DATE_4_DIGIT_YEAR)),
+              IsMetadata(EntryType::kCreditCardNickname, u"My Credit Card")))));
+
+  std::vector<MemorySearchResult> exp_results = RetrieveAllHelper(
+      retriever(),
+      accessibility_annotator::EntryType::kCreditCardExpirationDate);
+  EXPECT_THAT(
+      exp_results,
+      UnorderedElementsAre(IsMemorySearchResult(
+          credit_card.GetRawInfo(CREDIT_CARD_EXP_DATE_4_DIGIT_YEAR),
+          GetEntryTypeNameForI18n(EntryType::kCreditCardExpirationDate),
+          UnorderedElementsAre(
+              IsMetadata(EntryType::kCreditCardNameOnCard,
+                         credit_card.GetRawInfo(CREDIT_CARD_NAME_FULL)),
+              IsMetadata(EntryType::kCreditCardNickname, u"My Credit Card")))));
 }
 
 // Tests that RetrieveAll correctly fetches and formats data from
@@ -373,6 +457,8 @@ TEST_F(AutofillDataProviderImplTest, RetrieveAll_AddressFull_PartialAddress) {
           u"742 Evergreen Terrace, Springfield, United States", u"Address",
           UnorderedElementsAre(
               IsMetadata(EntryType::kNameFull, u"Homer Simpson"),
+              IsMetadata(EntryType::kAddressStreetAddress,
+                         u"742 Evergreen Terrace"),
               IsMetadata(EntryType::kAddressCity, u"Springfield"),
               IsMetadata(EntryType::kAddressCountry, u"United States")))));
 }

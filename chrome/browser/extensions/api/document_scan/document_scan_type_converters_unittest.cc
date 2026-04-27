@@ -657,85 +657,65 @@ TEST(DocumentScanTypeConvertersTest, SetOptionsResponse_NonEmpty) {
   EXPECT_TRUE(output.options->additional_properties.contains("option2"));
 }
 
-TEST(DocumentScanTypeConvertersTest, StartScanOptions_Empty) {
-  document_scan::StartScanOptions input;
-  auto output = mojom::StartScanOptions::From(input);
-  EXPECT_TRUE(output->format.empty());
-}
-
-TEST(DocumentScanTypeConvertersTest, StartScanOptions_Success) {
-  document_scan::StartScanOptions input;
-  input.format = "format";
-  auto output = mojom::StartScanOptions::From(input);
-  EXPECT_EQ(output->format, "format");
-  EXPECT_FALSE(output->max_read_size.has_value());
-}
-
-TEST(DocumentScanTypeConvertersTest, StartScanOptions_WithMaxReadSize) {
-  document_scan::StartScanOptions input;
-  input.format = "format";
-  input.max_read_size = 100000;
-  auto output = mojom::StartScanOptions::From(input);
-  EXPECT_EQ(output->format, "format");
-  ASSERT_TRUE(output->max_read_size.has_value());
-  EXPECT_EQ(output->max_read_size.value(), 100000U);
-}
-
 TEST(DocumentScanTypeConvertersTest, StartScanResponse_Empty) {
-  auto input = mojom::StartPreparedScanResponse::New();
-  auto output = input.To<document_scan::StartScanResponse>();
+  lorgnette::StartPreparedScanResponse input;
+  auto output = document_scan::ConvertLorgnetteStartPreparedScanResponse(input);
   EXPECT_EQ(output.result, document_scan::OperationResult::kUnknown);
   EXPECT_TRUE(output.scanner_handle.empty());
   EXPECT_FALSE(output.job.has_value());
 }
 
 TEST(DocumentScanTypeConvertersTest, StartScanResponse_Success) {
-  auto input = mojom::StartPreparedScanResponse::New();
-  input->scanner_handle = "scanner-handle";
-  input->result = mojom::ScannerOperationResult::kSuccess;
-  input->job_handle = "job-handle";
+  lorgnette::StartPreparedScanResponse input;
+  input.mutable_scanner()->set_token("scanner-handle");
+  input.set_result(lorgnette::OPERATION_RESULT_SUCCESS);
+  input.mutable_job_handle()->set_token("job-handle");
 
-  auto output = input.To<document_scan::StartScanResponse>();
+  auto output = document_scan::ConvertLorgnetteStartPreparedScanResponse(input);
   EXPECT_EQ(output.result, document_scan::OperationResult::kSuccess);
   EXPECT_EQ(output.scanner_handle, "scanner-handle");
   ASSERT_TRUE(output.job.has_value());
   EXPECT_EQ(output.job.value(), "job-handle");
 }
 
-TEST(DocumentScanTypeConvertersTest, ReadScanDataResponse_Empty) {
-  auto input = mojom::ReadScanDataResponse::New();
-  auto output = input.To<document_scan::ReadScanDataResponse>();
+TEST(DocumentScanTypeConvertersTest,
+     ConvertLorgnetteReadScanDataResponse_Empty) {
+  lorgnette::ReadScanDataResponse input;
+
+  auto output = document_scan::ConvertLorgnetteReadScanDataResponse(input);
   EXPECT_EQ(output.result, document_scan::OperationResult::kUnknown);
   EXPECT_TRUE(output.job.empty());
   EXPECT_FALSE(output.data.has_value());
   EXPECT_FALSE(output.estimated_completion.has_value());
 }
 
-TEST(DocumentScanTypeConvertersTest, ReadScanDataResponse_NonEmpty) {
-  auto input = mojom::ReadScanDataResponse::New();
-  input->job_handle = "job-handle";
-  input->result = mojom::ScannerOperationResult::kEndOfData;
-  input->data = std::vector<int8_t>('a', 10 * 1024 * 1024);
-  input->estimated_completion = 42;
+TEST(DocumentScanTypeConvertersTest,
+     ConvertLorgnetteReadScanDataResponse_NonEmpty) {
+  lorgnette::ReadScanDataResponse input;
+  input.mutable_job_handle()->set_token("job-handle");
+  input.set_result(lorgnette::OPERATION_RESULT_EOF);
+  input.set_data(std::string(10 * 1024 * 1024, 'a'));
+  input.set_estimated_completion(42);
 
-  auto output = input.To<document_scan::ReadScanDataResponse>();
+  auto output = document_scan::ConvertLorgnetteReadScanDataResponse(input);
   EXPECT_EQ(output.result, document_scan::OperationResult::kEof);
   EXPECT_EQ(output.job, "job-handle");
   ASSERT_TRUE(output.data.has_value());
   EXPECT_THAT(output.data.value(),
-              ElementsAreArray(input->data->data(), input->data->size()));
+              ElementsAreArray(input.data().data(), input.data().size()));
   ASSERT_TRUE(output.estimated_completion.has_value());
   EXPECT_EQ(output.estimated_completion.value(), 42);
 }
 
-TEST(DocumentScanTypeConvertersTest, ReadScanDataResponse_ZeroData) {
-  auto input = mojom::ReadScanDataResponse::New();
-  input->job_handle = "job-handle";
-  input->result = mojom::ScannerOperationResult::kEndOfData;
-  input->data = std::vector<int8_t>{};
-  input->estimated_completion = 42;
+TEST(DocumentScanTypeConvertersTest,
+     ConvertLorgnetteReadScanDataResponse_ZeroData) {
+  lorgnette::ReadScanDataResponse input;
+  input.mutable_job_handle()->set_token("job-handle");
+  input.set_result(lorgnette::OPERATION_RESULT_EOF);
+  input.set_data("");
+  input.set_estimated_completion(42);
 
-  auto output = input.To<document_scan::ReadScanDataResponse>();
+  auto output = document_scan::ConvertLorgnetteReadScanDataResponse(input);
   EXPECT_EQ(output.result, document_scan::OperationResult::kEof);
   EXPECT_EQ(output.job, "job-handle");
   ASSERT_TRUE(output.data.has_value());

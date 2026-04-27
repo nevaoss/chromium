@@ -29,11 +29,10 @@
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/extensions/api/webstore_private/extension_install_status.h"
-#include "chrome/browser/extensions/extension_allowlist.h"
+#include "chrome/browser/extensions/extension_allowlist_factory.h"
 #include "chrome/browser/extensions/extension_management.h"
 #include "chrome/browser/extensions/install_tracker_factory.h"
 #include "chrome/browser/extensions/manifest_v2_experiment_manager.h"
-#include "chrome/browser/extensions/mv2_experiment_stage.h"
 #include "chrome/browser/policy/policy_ui_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_observer.h"
@@ -60,6 +59,7 @@
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/browser/api/management/management_api.h"
+#include "extensions/browser/extension_allowlist.h"
 #include "extensions/browser/extension_dialog_auto_confirm.h"
 #include "extensions/browser/extension_function_constants.h"
 #include "extensions/browser/extension_registry.h"
@@ -67,6 +67,7 @@
 #include "extensions/browser/extensions_browser_client.h"
 #include "extensions/browser/install_approval.h"
 #include "extensions/browser/install_tracker.h"
+#include "extensions/browser/mv2_experiment_stage.h"
 #include "extensions/browser/pref_names.h"
 #include "extensions/browser/scoped_active_install.h"
 #include "extensions/buildflags/buildflags.h"
@@ -721,6 +722,17 @@ void WebstorePrivateBeginInstallWithManifest3Function::
 
 void WebstorePrivateBeginInstallWithManifest3Function::OnExtensionApprovalDone(
     SupervisedExtensionApprovalResult result) {
+#if BUILDFLAG(IS_ANDROID)
+  if (result != SupervisedExtensionApprovalResult::kApproved &&
+      supervised_user::AreExtensionsPermissionsEnabled(profile_) &&
+      !supervised_user::SupervisedUserCanSkipExtensionParentApprovals(
+          profile_)) {
+    supervised_user_extensions_metrics_recorder_.RecordEnablementUmaMetrics(
+        SupervisedUserExtensionsMetricsRecorder::EnablementState::
+            kFailedToEnable);
+  }
+#endif  // BUILDFLAG(IS_ANDROID)
+
   switch (result) {
     case SupervisedExtensionApprovalResult::kApproved:
       OnExtensionApprovalApproved();
@@ -1017,7 +1029,8 @@ bool WebstorePrivateBeginInstallWithManifest3Function::ShouldShowFrictionDialog(
   }
 
   // Only show friction if the allowlist warnings are enabled for the profile.
-  return ExtensionAllowlist::Get(profile)->warnings_enabled();
+  return ExtensionAllowlistFactory::GetForBrowserContext(profile)
+      ->warnings_enabled();
 }
 
 void WebstorePrivateBeginInstallWithManifest3Function::

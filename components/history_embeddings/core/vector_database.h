@@ -140,8 +140,6 @@ struct UrlScore {
 
 // A single embedding and its associated metadata.
 struct PassageEmbedding {
-  bool operator==(const PassageEmbedding&) const;
-
   passage_embeddings::Embedding embedding;
   size_t word_count = 0;
 };
@@ -156,8 +154,6 @@ struct UrlData {
   UrlData& operator=(UrlData&&);
   ~UrlData();
 
-  bool operator==(const UrlData&) const;
-
   // Finds score of embedding nearest to query, also taking passages
   // into consideration since some should be skipped. The passages
   // correspond to the embeddings 1:1 by index.
@@ -170,7 +166,7 @@ struct UrlData {
   history::VisitID visit_id;
   base::Time visit_time;
   proto::PassagesValue passages;
-  std::vector<PassageEmbedding> passage_embeddings;
+  std::vector<std::optional<PassageEmbedding>> passage_embeddings;
 };
 
 // This base class decouples storage classes and inverts the dependency so that

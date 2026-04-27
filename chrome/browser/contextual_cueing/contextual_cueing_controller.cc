@@ -4,14 +4,18 @@
 
 #include "chrome/browser/contextual_cueing/contextual_cueing_controller.h"
 
+#include <algorithm>
 #include <memory>
 #include <optional>
+#include <vector>
 
+#include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros_local.h"
 #include "base/notimplemented.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/time/time.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
 #include "chrome/browser/contextual_cueing/features.h"
@@ -31,6 +35,7 @@
 #include "ui/actions/actions.h"
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/page_action/page_action_controller.h"
 #endif
 
@@ -63,6 +68,24 @@ std::optional<CueTargetType> GetTargetType(
     default:
       return std::nullopt;
   }
+}
+
+optimization_guide::proto::Tab GetTabProtoFromWebContents(
+    content::WebContents* web_contents) {
+  optimization_guide::proto::Tab tab;
+  tab.set_url(web_contents->GetLastCommittedURL().spec());
+  tab.set_title(base::UTF16ToUTF8(web_contents->GetTitle()));
+  SessionID tab_id = sessions::SessionTabHelper::IdForTab(web_contents);
+  if (tab_id.is_valid()) {
+    tab.set_tab_id(tab_id.id());
+  }
+  return tab;
+}
+
+bool AreTabsEqual(optimization_guide::proto::Tab tab1,
+                  optimization_guide::proto::Tab tab2) {
+  return tab1.tab_id() == tab2.tab_id() && tab1.url() == tab2.url() &&
+         tab1.title() == tab2.title();
 }
 
 }  // namespace
@@ -165,6 +188,12 @@ void ContextualCueingController::InitiateModelExecutionRequest() {
       active_web_contents->GetLastCommittedURL().spec());
   request.mutable_active_tab_page_context()->set_title(
       base::UTF16ToUTF8(active_web_contents->GetTitle()));
+
+  struct BackgroundTabInfo {
+    base::Time last_active_time;
+    raw_ptr<content::WebContents> contents;
+  };
+  std::vector<BackgroundTabInfo> background_tabs;
   for (int i = 0; i < tab_list_interface_->GetTabCount(); ++i) {
     tabs::TabInterface* tab = tab_list_interface_->GetTab(i);
     if (tab == tab_list_interface_->GetActiveTab()) {
@@ -178,15 +207,23 @@ void ContextualCueingController::InitiateModelExecutionRequest() {
     if (!tab_contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
       continue;
     }
-    SessionID tab_id = sessions::SessionTabHelper::IdForTab(tab_contents);
-    if (!tab_id.is_valid()) {
-      continue;
-    }
-    auto* background_tab = request.add_background_tabs();
-    background_tab->set_url(tab_contents->GetURL().spec());
-    background_tab->set_title(base::UTF16ToUTF8(tab_contents->GetTitle()));
-    background_tab->set_tab_id(tab_id.id());
+    background_tabs.push_back(
+        {.last_active_time = tab_contents->GetLastActiveTime(),
+         .contents = tab_contents});
   }
+
+  std::sort(background_tabs.begin(), background_tabs.end(),
+            [](const BackgroundTabInfo& a, const BackgroundTabInfo& b) {
+              return a.last_active_time > b.last_active_time;
+            });
+
+  for (size_t i = 0; i < std::min<size_t>(background_tabs.size(),
+                                          kMaxNumBackgroundTabs.Get());
+       ++i) {
+    *request.add_background_tabs() =
+        GetTabProtoFromWebContents(background_tabs[i].contents);
+  }
+
   LOCAL_HISTOGRAM_COUNTS_100("ContextualCueing.V2.NumRequestedBackgroundTabs",
                              request.background_tabs_size());
   optimization_guide_keyed_service_->ExecuteModel(
@@ -194,14 +231,25 @@ void ContextualCueingController::InitiateModelExecutionRequest() {
       /*options=*/{},
       base::BindOnce(
           &ContextualCueingController::OnModelExecutionResponseReceived,
-          weak_ptr_factory_.GetWeakPtr()));
+          weak_ptr_factory_.GetWeakPtr(),
+          GetTabProtoFromWebContents(active_web_contents)));
 }
 
 void ContextualCueingController::OnModelExecutionResponseReceived(
+    optimization_guide::proto::Tab active_tab,
     optimization_guide::OptimizationGuideModelExecutionResult result,
     std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry) {
-  // TODO: b/496000131 - Ensure we are still on the same tab that we requested
-  // for.
+  tabs::TabInterface* current_active_tab = tab_list_interface_->GetActiveTab();
+  if (!current_active_tab || !current_active_tab->GetContents() ||
+      !AreTabsEqual(active_tab, GetTabProtoFromWebContents(
+                                    current_active_tab->GetContents()))) {
+    MODEL_EXECUTION_LOG(
+        "Model execution returned but tab for generated cue is no longer "
+        "active.");
+    RecordContextualCueingDecision(
+        ContextualCueingDecision::kNoLongerActiveTabAfterModelExecution);
+    return;
+  }
 
   if (!result.response.has_value()) {
     MODEL_EXECUTION_LOG("Model execution to generate cue failed.");
@@ -270,14 +318,17 @@ void ContextualCueingController::ShowCue(
   NOTIMPLEMENTED()
       << "Contextual cueing anchored message UI is not implemented for Android";
 #else
-  // TODO: b/496000131 - Ensure we are still on the same tab that we requested
-  // for.
-
-  tabs::TabInterface* tab = tab_list_interface_->GetActiveTab();
-  if (!tab || !tab->GetTabFeatures()) {
-    RecordContextualCueingDecision(ContextualCueingDecision::kNoActiveTab);
+  auto* browser_user_education_interface =
+      BrowserUserEducationInterface::From(browser_window_interface_);
+  if (browser_user_education_interface &&
+      browser_user_education_interface->IsAnyFeaturePromoActive()) {
+    RecordContextualCueingDecision(
+        ContextualCueingDecision::kFeaturePromoActive);
     return;
   }
+
+  tabs::TabInterface* tab = tab_list_interface_->GetActiveTab();
+  CHECK(tab);
 
   auto* action =
       actions::ActionManager::Get().FindAction(kActionAnchoredContextualCue);
@@ -302,7 +353,9 @@ void ContextualCueingController::ShowCue(
       kActionAnchoredContextualCue, base::UTF8ToUTF16(strings.action_text()));
   page_action_controller->OverrideImage(kActionAnchoredContextualCue,
                                         target.GetIcon());
-  page_action_controller->ShowAnchoredMessage(kActionAnchoredContextualCue);
+  page_action_controller->ShowAnchoredMessage(
+      kActionAnchoredContextualCue,
+      {.priority = page_actions::PageActionPriorityCategory::kContextualCue});
 
   MODEL_EXECUTION_LOG(base::StringPrintf(
       "Showing cue for CUJ %s: %s [%s]", response.suggested_cuj(),

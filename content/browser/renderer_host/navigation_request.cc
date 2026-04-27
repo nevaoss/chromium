@@ -159,6 +159,7 @@
 #include "net/base/registry_controlled_domains/registry_controlled_domain.h"
 #include "net/base/url_util.h"
 #include "net/cookies/cookie_access_result.h"
+#include "net/cookies/cookie_setting_override.h"
 #include "net/filter/source_stream_type.h"
 #include "net/http/http_request_headers.h"
 #include "net/http/http_status_code.h"
@@ -382,6 +383,7 @@ void AddAdditionalRequestHeaders(
     return;
 
   bool is_reload = NavigationTypeUtils::IsReload(navigation_type);
+  bool is_history = NavigationTypeUtils::IsHistory(navigation_type);
   RenderViewHostImpl* render_view_host =
       frame_tree_node->current_frame_host()->render_view_host();
   const blink::RendererPreferences& render_prefs =
@@ -416,7 +418,7 @@ void AddAdditionalRequestHeaders(
         url, origin_header_value, referrer->policy);
     std::string serialized_origin = origin_header_value.Serialize();
     if (existing_origin && existing_origin != serialized_origin &&
-        !is_browser_initiated &&
+        !is_browser_initiated && !is_history &&
         base::FeatureList::IsEnabled(features::kDumpOnOriginHeaderMismatch)) {
       // TODO(https://crbug.com/487795397): this should
       // be a `bad_message::ReceivedBadMessage` and return `false` once
@@ -431,7 +433,7 @@ void AddAdditionalRequestHeaders(
       base::debug::DumpWithoutCrashing();
     }
     headers->SetHeader(net::HttpRequestHeaders::kOrigin, serialized_origin);
-  } else if (existing_origin && !is_browser_initiated &&
+  } else if (existing_origin && !is_browser_initiated && !is_history &&
              base::FeatureList::IsEnabled(
                  features::kDumpOnUnexpectedOriginHeader)) {
     // TODO(https://crbug.com/40093290): this should
@@ -1192,28 +1194,28 @@ net::StorageAccessApiStatus ShouldLoadWithStorageAccess(
 
   // Storage Access API: https://privacycg.github.io/storage-access/#navigation
   //
-  // If a document has storage access, and initiates a navigation in the same
-  // frame toward a document from the same origin, the `has storage access` bit
-  // is inherited.
-  //
-  // This doesn't hold if there is a cross-origin redirect in between.
-  //
-  // Note: `begin_params` and `common_params` are not trusted, so we have to
-  // check the frame token.
-  switch (begin_params.storage_access_api_status) {
-    case net::StorageAccessApiStatus::kNone:
-      return net::StorageAccessApiStatus::kNone;
-    case net::StorageAccessApiStatus::kAccessViaAPI:
-      return common_params.initiator_origin &&
-                     common_params.initiator_origin->IsSameOriginWith(
-                         response_url) &&
-                     begin_params.initiator_frame_token &&
-                     begin_params.initiator_frame_token ==
-                         previous_document_rfh->GetFrameToken() &&
-                     !did_encounter_cross_origin_redirect
-                 ? begin_params.storage_access_api_status
-                 : net::StorageAccessApiStatus::kNone;
+  // If a document has storage access, and initiates a same-origin navigation in
+  // the same frame toward a document from the same origin, the `has storage
+  // access` bit is inherited.
+  if (!previous_document_rfh->document_associated_data()
+           .cookie_setting_overrides()
+           .Has(net::CookieSettingOverride::kStorageAccessGrantEligible)) {
+    // Frame was missing the grant eligible override, so there's no access to
+    // carry over.
+    return net::StorageAccessApiStatus::kNone;
   }
+  if (begin_params.initiator_frame_token !=
+      previous_document_rfh->GetFrameToken()) {
+    // Navigation was not self-initiated.
+    return net::StorageAccessApiStatus::kNone;
+  }
+  if (!common_params.initiator_origin ||
+      !common_params.initiator_origin->IsSameOriginWith(response_url) ||
+      did_encounter_cross_origin_redirect) {
+    // Navigation is not fully same-origin.
+    return net::StorageAccessApiStatus::kNone;
+  }
+  return net::StorageAccessApiStatus::kAccessViaAPI;
 }
 
 const char* BeforeUnloadExecutionModeToString(
@@ -1266,7 +1268,7 @@ std::unique_ptr<NavigationRequest> NavigationRequest::CreateBrowserInitiated(
       /*started_by_ad=*/false, is_pdf,
       is_embedder_initiated_fenced_frame_navigation,
       /*is_container_initiated=*/false, /*has_rel_opener=*/false,
-      net::StorageAccessApiStatus::kNone, embedder_shared_storage_context);
+      embedder_shared_storage_context);
   // It is only possible for a null NavigationRequest to be returned if an
   // initiator_frame_token is provided.
   CHECK(request);
@@ -1294,7 +1296,6 @@ std::unique_ptr<NavigationRequest> NavigationRequest::Create(
     bool is_embedder_initiated_fenced_frame_navigation,
     bool is_container_initiated,
     bool has_rel_opener,
-    net::StorageAccessApiStatus storage_access_api_status,
     std::optional<std::u16string> embedder_shared_storage_context) {
   TRACE_EVENT("navigation", "NavigationRequest::Create", "browser_initiated",
               browser_initiated);
@@ -1318,7 +1319,7 @@ std::unique_ptr<NavigationRequest> NavigationRequest::Create(
       base::TimeTicks() /* before_unload_dialog_opened */,
       base::TimeTicks() /* before_unload_dialog_closed */,
       started_with_transient_activation, started_by_ad, is_container_initiated,
-      storage_access_api_status, has_rel_opener);
+      has_rel_opener, std::nullopt /* script_tool_invocation_id */);
 
   // Shift-Reload forces bypassing caches and service workers.
   if (common_params->navigation_type ==
@@ -1387,6 +1388,7 @@ std::unique_ptr<NavigationRequest> NavigationRequest::Create(
       initiator_process_id, was_opener_suppressed, is_pdf,
       is_embedder_initiated_fenced_frame_navigation,
       mojo::NullReceiver() /* renderer_cancellation_listener */,
+      mojo::NullReceiver() /* renderer_ignore_duplicate_navigation_listener */,
       mojo::NullReceiver() /* deferred_commit_resume_listener */,
       embedder_shared_storage_context));
 
@@ -1408,6 +1410,9 @@ std::unique_ptr<NavigationRequest> NavigationRequest::CreateRendererInitiated(
         prefetched_signed_exchange_cache,
     mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
         renderer_cancellation_listener,
+    mojo::PendingReceiver<
+        mojom::NavigationRendererIgnoreDuplicateNavigationListener>
+        renderer_ignore_duplicate_navigation_listener,
     mojo::PendingReceiver<blink::mojom::NavigationResumeDeferredCommitListener>
         deferred_commit_resume_listener) {
   TRACE_EVENT("navigation", "NavigationRequest::CreateRendererInitiated");
@@ -1527,6 +1532,7 @@ std::unique_ptr<NavigationRequest> NavigationRequest::CreateRendererInitiated(
       /*was_opener_suppressed=*/false, /*is_pdf=*/false,
       /*is_embedder_initiated_fenced_frame_navigation=*/false,
       std::move(renderer_cancellation_listener),
+      std::move(renderer_ignore_duplicate_navigation_listener),
       std::move(deferred_commit_resume_listener)));
 
   return navigation_request;
@@ -1735,6 +1741,9 @@ NavigationRequest::NavigationRequest(
     bool is_embedder_initiated_fenced_frame_navigation,
     mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
         renderer_cancellation_listener,
+    mojo::PendingReceiver<
+        mojom::NavigationRendererIgnoreDuplicateNavigationListener>
+        renderer_ignore_duplicate_navigation_listener,
     mojo::PendingReceiver<blink::mojom::NavigationResumeDeferredCommitListener>
         deferred_commit_resume_listener,
     std::optional<std::u16string> embedder_shared_storage_context)
@@ -1969,6 +1978,11 @@ NavigationRequest::NavigationRequest(
       renderer_cancellation_listener_.Bind(
           std::move(renderer_cancellation_listener),
           GetUIThreadTaskRunner({BrowserTaskType::kNavigationNetworkResponse}));
+    }
+    if (renderer_ignore_duplicate_navigation_listener.is_valid()) {
+      renderer_ignore_duplicate_navigation_listener_.Bind(
+          std::move(renderer_ignore_duplicate_navigation_listener),
+          GetUIThreadTaskRunner({BrowserTaskType::kDefault}));
     }
   } else if (entry) {
     CHECK(!navigation_client.is_valid());
@@ -8863,6 +8877,11 @@ void NavigationRequest::DidCommitNavigation(
           pending_commit_metrics_.blocked_commit_count);
     }
   }
+  if (ignored_duplicate_navigation_count_ > 0) {
+    base::UmaHistogramCounts100(
+        "Navigation.DuplicateNavigationsIgnoredCountPerNavigation",
+        ignored_duplicate_navigation_count_);
+  }
 
   if (!IsSameDocument() && IsInOutermostMainFrame() &&
       params.url.SchemeIsHTTPOrHTTPS()) {
@@ -9396,7 +9415,9 @@ NavigationRequest::GetOriginForURLLoaderFactoryAfterResponse() {
       !IsForMhtmlSubframe()) {
     int process_id = GetRenderFrameHost()->GetProcess()->GetDeprecatedID();
     auto* policy = ChildProcessSecurityPolicyImpl::GetInstance();
-    CHECK(policy->CanAccessOrigin(
+    // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK once
+    // we are sure this isn't hit.
+    DCHECK(policy->CanAccessOrigin(
         process_id, origin,
         ChildProcessSecurityPolicyImpl::AccessType::kCanCommitNewOrigin));
   }
@@ -9457,6 +9478,14 @@ void NavigationRequest::CancelNavigationTimeout() {
 void NavigationRequest::SetAllowCookiesFromBrowser(
     bool allow_cookies_from_browser) {
   allow_cookies_from_browser_ = allow_cookies_from_browser;
+}
+
+void NavigationRequest::DidIgnoreDuplicateNavigation() {
+  ignored_duplicate_navigation_count_++;
+}
+
+size_t NavigationRequest::GetIgnoredDuplicateNavigationCount() const {
+  return ignored_duplicate_navigation_count_;
 }
 
 void NavigationRequest::GetResponseBody(ResponseBodyCallback callback) {
@@ -9606,7 +9635,9 @@ NavigationRequest::MakeDidCommitProvisionalLoadParamsForActivation() {
   // we are sure this isn't hit.
   DCHECK_EQ(params->url, common_params().url);
   params->should_update_history = true;
-  CHECK_EQ(params->method, common_params().method);
+  // TODO(https://crbug.com/497761255): CHECK-exclusion: Convert to CHECK once
+  // we are sure this isn't hit.
+  DCHECK_EQ(params->method, common_params().method);
   params->item_sequence_number = frame_entry_item_sequence_number_;
   params->document_sequence_number = frame_entry_document_sequence_number_;
   params->transition = ui::PageTransitionFromInt(common_params().transition);
@@ -9718,6 +9749,17 @@ RenderFrameHostImpl* NavigationRequest::GetParentFrameOrOuterDocument() {
 
 bool NavigationRequest::IsInPrimaryMainFrame() const {
   return GetNavigatingFrameType() == FrameType::kPrimaryMainFrame;
+}
+
+const std::optional<base::UnguessableToken>&
+NavigationRequest::GetScriptToolInvocationId() const {
+  static const std::optional<base::UnguessableToken> empty_id = std::nullopt;
+  if (!begin_params_) {
+    return empty_id;
+  }
+  CHECK(!begin_params_->script_tool_invocation_id ||
+        !commit_params_->is_browser_initiated);
+  return begin_params_->script_tool_invocation_id;
 }
 
 bool NavigationRequest::IsInOutermostMainFrame() const {

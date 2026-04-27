@@ -103,6 +103,7 @@
 #include "services/network/public/cpp/url_loader_completion_status.h"
 #include "services/network/public/mojom/client_security_state.mojom-shared.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
+#include "services/network/public/mojom/device_bound_sessions.mojom.h"
 #include "services/network/public/mojom/devtools_observer.mojom.h"
 #include "services/network/public/mojom/http_raw_headers.mojom.h"
 #include "services/network/public/mojom/network_context.mojom-forward.h"
@@ -806,11 +807,11 @@ bool GetPostData(
   }
   for (const auto& element : *elements) {
     // TODO(caseq): Also support blobs.
-    if (element.type() != network::DataElement::Tag::kBytes) {
+    const auto* bytes_element = element.TryAs<network::DataElementBytes>();
+    if (!bytes_element) {
       return false;
     }
-    base::span<const uint8_t> bytes =
-        element.As<network::DataElementBytes>().bytes();
+    base::span<const uint8_t> bytes = bytes_element->bytes();
     auto data_entry = protocol::Network::PostDataEntry::Create().Build();
     data_entry->SetBytes(protocol::Binary::fromSpan(bytes));
     data_entries->push_back(std::move(data_entry));
@@ -1092,8 +1093,6 @@ Network::CookieExemptionReason GetProtocolCookieExemptionReason(
       return Network::CookieExemptionReasonEnum::None;
     case net::CookieInclusionStatus::ExemptionReason::kUserSetting:
       return Network::CookieExemptionReasonEnum::UserSetting;
-    case net::CookieInclusionStatus::ExemptionReason::k3PCDMetadata:
-      return Network::CookieExemptionReasonEnum::TPCDMetadata;
     case net::CookieInclusionStatus::ExemptionReason::kEnterprisePolicy:
       return Network::CookieExemptionReasonEnum::EnterprisePolicy;
     case net::CookieInclusionStatus::ExemptionReason::kStorageAccess:
@@ -1341,7 +1340,8 @@ NetworkHandler::NetworkHandler(
           std::move(update_loader_factories_callback)),
       cleanup_after_modifications_callback_(
           std::move(cleanup_after_modifications_callback)),
-      root_session_(*session->GetRootSession()) {
+      root_session_(*session->GetRootSession()),
+      throttling_client_id_(base::UnguessableToken::Create()) {
   DCHECK(io_context_);
   static bool have_configured_service_worker_context = false;
   if (have_configured_service_worker_context) {
@@ -2161,6 +2161,9 @@ String BuildProtocolDeviceBoundSessionRefreshResult(
     case net::device_bound_sessions::RefreshResult::kRefreshed:
       return protocol::Network::RefreshEventDetails::RefreshResultEnum::
           Refreshed;
+    case net::device_bound_sessions::RefreshResult::kRefreshedAsWaiter:
+      return protocol::Network::RefreshEventDetails::RefreshResultEnum::
+          RefreshedAsWaiter;
     case net::device_bound_sessions::RefreshResult::kInitializedService:
       return protocol::Network::RefreshEventDetails::RefreshResultEnum::
           InitializedService;
@@ -2227,6 +2230,9 @@ String BuildProtocolDeviceBoundSessionDeletionReason(
     case net::device_bound_sessions::DeletionReason::kRefreshFatalError:
       return protocol::Network::TerminationEventDetails::DeletionReasonEnum::
           RefreshFatalError;
+    case net::device_bound_sessions::DeletionReason::kDevTools:
+      return protocol::Network::TerminationEventDetails::DeletionReasonEnum::
+          DevTools;
   }
 }
 
@@ -2351,6 +2357,36 @@ Response NetworkHandler::EnableDeviceBoundSessions(bool enable) {
   return Response::Success();
 }
 
+Response NetworkHandler::DeleteDeviceBoundSession(
+    std::unique_ptr<protocol::Network::DeviceBoundSessionKey> key) {
+  if (!storage_partition_ || !host_ ||
+      !base::FeatureList::IsEnabled(features::kDeviceBoundSessionsDevTools)) {
+    return Response::InternalError();
+  }
+
+  GURL site_url(key->GetSite());
+  if (!site_url.is_valid()) {
+    return Response::InvalidParams("Invalid site URL");
+  }
+
+  if (!client_->MayAttachToURL(site_url, host_->web_ui())) {
+    return Response::InvalidParams("Cannot access session for this site");
+  }
+
+  mojo::Remote<network::mojom::DeviceBoundSessionManager> manager;
+  storage_partition_->GetNetworkContext()->GetDeviceBoundSessionManager(
+      manager.BindNewPipeAndPassReceiver());
+
+  net::device_bound_sessions::SessionKey session_key(
+      net::SchemefulSite(site_url),
+      net::device_bound_sessions::Session::Id(key->GetId()));
+
+  manager->DeleteSession(net::device_bound_sessions::DeletionReason::kDevTools,
+                         session_key);
+
+  return Response::Success();
+}
+
 Response NetworkHandler::FetchSchemefulSite(const std::string& origin,
                                             std::string* schemeful_site) {
   *schemeful_site = net::SchemefulSite(GURL(origin)).Serialize();
@@ -2358,6 +2394,11 @@ Response NetworkHandler::FetchSchemefulSite(const std::string& origin,
 }
 #else
 Response NetworkHandler::EnableDeviceBoundSessions(bool enable) {
+  return Response::MethodNotFound("not implemented");
+}
+
+Response NetworkHandler::DeleteDeviceBoundSession(
+    std::unique_ptr<protocol::Network::DeviceBoundSessionKey> key) {
   return Response::MethodNotFound("not implemented");
 }
 
@@ -2793,7 +2834,8 @@ Response NetworkHandler::EmulateNetworkConditions(
 }
 
 Response NetworkHandler::EmulateNetworkConditionsByRule(
-    bool offline,
+    std::optional<bool> offline,
+    std::optional<bool> emulate_offline_service_worker,
     std::unique_ptr<protocol::Array<protocol::Network::NetworkConditions>>
         matched_network_conditions,
     std::unique_ptr<protocol::Array<String>>* rule_ids_result) {
@@ -2805,7 +2847,9 @@ Response NetworkHandler::EmulateNetworkConditionsByRule(
         network::mojom::MatchedNetworkConditions::New();
     conditions->pattern = matched_condition->GetUrlPattern();
     conditions->conditions = network::mojom::NetworkConditions::New();
-    conditions->conditions->offline = offline;
+    conditions->conditions->offline =
+        offline.has_value() ? offline.value()
+                            : matched_condition->GetOffline(false);
     conditions->conditions->latency =
         base::Milliseconds(matched_condition->GetLatency());
     conditions->conditions->download_throughput =
@@ -2821,7 +2865,9 @@ Response NetworkHandler::EmulateNetworkConditionsByRule(
     rule_ids_result->get()->push_back(rule_id.ToString());
     matched_conditions.emplace_back(std::move(conditions));
   }
-  SetNetworkConditions(std::move(matched_conditions), offline);
+  SetNetworkConditions(
+      std::move(matched_conditions),
+      emulate_offline_service_worker.value_or(offline.value_or(false)));
   return Response::Success();
 }
 
@@ -4272,7 +4318,7 @@ void NetworkHandler::SetNetworkConditions(
       storage_partition_->GetNetworkContext();
 
   if (!devtools_token_.is_empty()) {
-    context->SetNetworkConditions(devtools_token_,
+    context->SetNetworkConditions(devtools_token_, throttling_client_id_,
                                   std::move(matched_conditions));
   }
 

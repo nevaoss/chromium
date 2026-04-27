@@ -12,6 +12,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
+#include "chrome/browser/contextual_tasks/test_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -87,11 +88,13 @@ class TestingContextualTasksUiService
       contextual_tasks::ContextualTasksService* contextual_tasks_service,
       signin::IdentityManager* identity_manager,
       AimEligibilityService* aim_eligibility_service)
-      : ContextualTasksUiService(profile,
-                                 /*delegate=*/nullptr,
-                                 contextual_tasks_service,
-                                 identity_manager,
-                                 aim_eligibility_service) {}
+      : ContextualTasksUiService(
+            profile,
+            std::make_unique<
+                contextual_tasks::TestContextualTasksUiServiceDelegate>(),
+            contextual_tasks_service,
+            identity_manager,
+            aim_eligibility_service) {}
   ~TestingContextualTasksUiService() override = default;
 
   bool CookieJarContainsPrimaryAccount() override {
@@ -341,12 +344,13 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksButtonInteractiveTest,
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
 class ContextualTasksEphemeralButtonInteractiveTest
-    : public ContextualTasksButtonInteractiveTestBase {
+    : public ContextualTasksButtonInteractiveTestBase,
+      public testing::WithParamInterface<std::string> {
  public:
   void SetUp() override {
     scoped_feature_list_.InitWithFeaturesAndParameters(
         {{contextual_tasks::kContextualTasks,
-          {{"ContextualTasksEntryPoint", "toolbar-revisit"},
+          {{"ContextualTasksEntryPoint", GetParam()},
            {"ContextualTasksExpandButtonOptions", "toolbar-close-button"}}}},
         {});
     InteractiveBrowserTest::SetUp();
@@ -428,7 +432,7 @@ class ContextualTasksEphemeralButtonInteractiveTest
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralButtonInteractiveTest,
                        ButtonShowsAfterSidePanelWasClosed) {
   RunTestSequence(
       SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
@@ -443,7 +447,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
       WaitForShow(ContextualTasksButton::kContextualTasksToolbarButton));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralButtonInteractiveTest,
                        ButtonVisibilityIsTiedToTab) {
   RunTestSequence(
       SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
@@ -457,7 +461,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
       WaitForHide(ContextualTasksButton::kContextualTasksToolbarButton));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralButtonInteractiveTest,
                        HideButtonWhenNotAssociatedToTask) {
   RunTestSequence(
       SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
@@ -471,7 +475,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
       WaitForHide(ContextualTasksButton::kContextualTasksToolbarButton));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralButtonInteractiveTest,
                        ButtonVisibilityIsTiedToAimCobrowseEligibility) {
   RunTestSequence(
       SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
@@ -487,8 +491,12 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
       WaitForShow(ContextualTasksButton::kContextualTasksToolbarButton));
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
+IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralButtonInteractiveTest,
                        ButtonVisibilityIsPreservedAsSidePanelToggles) {
+  if (GetParam() == "toolbar-ephemeral-branded") {
+    GTEST_SKIP() << "Branded variant button visibility behavior differs.";
+  }
+
   RunTestSequence(
       SignIntoEligibleAccount(), InstrumentTab(kFirstTab),
       AddInstrumentedTab(kSecondTab, GetTestURL()),
@@ -512,3 +520,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksEphemeralButtonInteractiveTest,
       EnsureNotPresent(
           ContextualTasksCloseTabButton::kContextualTasksCloseTabButton));
 }
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ContextualTasksEphemeralButtonInteractiveTest,
+                         testing::Values("toolbar-revisit",
+                                         "toolbar-ephemeral-branded"));

@@ -60,7 +60,6 @@
 #include "third_party/blink/renderer/core/layout/layout_view.h"
 #include "third_party/blink/renderer/core/layout/physical_box_fragment.h"
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_inline_text.h"
-#include "third_party/blink/renderer/core/layout/text_autosizer.h"
 #include "third_party/blink/renderer/core/paint/object_paint_invalidator.h"
 #include "third_party/blink/renderer/platform/fonts/character_range.h"
 #include "third_party/blink/renderer/platform/heap/disallow_new_wrapper.h"
@@ -156,15 +155,12 @@ class SelectionDisplayItemClient
 };
 
 using SelectionDisplayItemClientMap =
-    HeapHashMap<WeakMember<const LayoutText>,
-                Member<SelectionDisplayItemClient>>;
+    GCedHeapHashMap<WeakMember<const LayoutText>,
+                    Member<SelectionDisplayItemClient>>;
 SelectionDisplayItemClientMap& GetSelectionDisplayItemClientMap() {
-  using SelectionDisplayItemClientMapHolder =
-      DisallowNewWrapper<SelectionDisplayItemClientMap>;
-  DEFINE_STATIC_LOCAL(
-      Persistent<SelectionDisplayItemClientMapHolder>, holder,
-      (MakeGarbageCollected<SelectionDisplayItemClientMapHolder>()));
-  return holder->Value();
+  DEFINE_STATIC_LOCAL(Persistent<SelectionDisplayItemClientMap>, holder,
+                      (MakeGarbageCollected<SelectionDisplayItemClientMap>()));
+  return *holder;
 }
 
 }  // anonymous namespace
@@ -201,22 +197,6 @@ bool LayoutText::IsWordBreak() const {
   return false;
 }
 
-void LayoutText::StyleWillChange(StyleDifference diff,
-                                 const ComputedStyle& new_style,
-                                 StyleChangeContext& style_change_context) {
-  NOT_DESTROYED();
-
-  if (const ComputedStyle* current_style = Style()) {
-    // Process accessibility for style changes that affect text.
-    if (current_style->Visibility() != new_style.Visibility() ||
-        current_style->IsInert() != new_style.IsInert()) {
-      if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
-        cache->StyleChanged(this, /*visibility_or_inertness_changed*/ true);
-      }
-    }
-  }
-}
-
 void LayoutText::StyleDidChange(
     StyleDifference diff,
     const ComputedStyle* old_style,
@@ -250,13 +230,15 @@ void LayoutText::StyleDidChange(
     new_style.GetFont()->WillUseFontData(TransformedText());
   }
 
-  TextAutosizer* text_autosizer = GetDocument().GetTextAutosizer();
-  if (!old_style && text_autosizer)
-    text_autosizer->Record(this);
-
   if (diff.needs_reshape) {
     valid_ng_items_ = false;
     SetNeedsCollectInlines();
+  }
+
+  if (diff.ax_visibility_or_inert_changed) {
+    if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
+      cache->StyleChanged(this, /*visibility_or_inertness_changed*/ true);
+    }
   }
 
   SetHorizontalWritingMode(new_style.IsHorizontalWritingMode());
@@ -279,8 +261,6 @@ void LayoutText::WillBeDestroyed() {
   if (SecureTextTimer* timer = GetSecureTextTimers().Take(this))
     timer->Stop();
 
-  GetSelectionDisplayItemClientMap().erase(this);
-
   if (node_id_ != kInvalidDOMNodeId) {
     if (auto* manager = GetOrResetContentCaptureManager())
       manager->OnLayoutTextWillBeDestroyed(*GetNode());
@@ -293,7 +273,6 @@ void LayoutText::WillBeDestroyed() {
 
   // We skip invoking LayoutObject::WillBeDestroyed as all of the logic (except
   // for removing from the tree) doesn't apply to LayoutText.
-  Remove();
 
 #if DCHECK_IS_ON()
   if (IsInLayoutNGInlineFormattingContext())
@@ -1081,10 +1060,6 @@ void LayoutText::TextDidChangeWithoutInvalidation() {
   if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache())
     cache->TextChanged(this);
 
-  TextAutosizer* text_autosizer = GetDocument().GetTextAutosizer();
-  if (text_autosizer)
-    text_autosizer->Record(this);
-
   if (HasNodeId()) {
     if (auto* content_capture_manager = GetOrResetContentCaptureManager())
       content_capture_manager->OnNodeTextChanged(*GetNode());
@@ -1432,14 +1407,16 @@ const DisplayItemClient* LayoutText::GetSelectionDisplayItemClient() const {
       [[unlikely]] {
     return text_combine;
   }
-  if (!IsSelected())
+  if (!IsSelected()) {
     return nullptr;
-  auto it = GetSelectionDisplayItemClientMap().find(this);
-  if (it != GetSelectionDisplayItemClientMap().end())
-    return &*it->value;
-  return GetSelectionDisplayItemClientMap()
-      .insert(this, MakeGarbageCollected<SelectionDisplayItemClient>())
-      .stored_value->value.Get();
+  }
+
+  auto result = GetSelectionDisplayItemClientMap().insert(this, nullptr);
+  if (result.is_new_entry) {
+    result.stored_value->value =
+        MakeGarbageCollected<SelectionDisplayItemClient>();
+  }
+  return result.stored_value->value.Get();
 }
 
 PhysicalRect LayoutText::DebugRect() const {

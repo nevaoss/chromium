@@ -12,29 +12,103 @@
 #include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/service/glic_instance_helper.h"
 #include "chrome/browser/glic/service/glic_instance_impl.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
+#include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_finder.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/common/chrome_features.h"
+#include "chrome/common/url_constants.h"
+#include "content/public/browser/navigation_handle.h"
 namespace glic {
 
 constexpr base::TimeDelta kDefaultTimeout = base::Minutes(1);
 
+static tabs::TabInterface* CreateBrowserAndGetActiveTab(Profile* profile) {
+  BrowserWindowCreateParams params(*profile, /*from_user_gesture=*/false);
+  BrowserWindowInterface* browser = CreateBrowserWindow(std::move(params));
+  if (!browser) {
+    return nullptr;
+  }
+  tabs::TabInterface* tab = TabListInterface::From(browser)->GetActiveTab();
+  if (!tab) {
+    tab = TabListInterface::From(browser)->OpenTab(
+        GURL(chrome::kChromeUINewTabURL), -1);
+  }
+  return tab;
+}
+
+// static
+GlicInvokeHandler::ResolvedTarget GlicInvokeHandler::ResolveTargetSurface(
+    Profile* profile,
+    const Target& target) {
+  if (const auto* default_surface =
+          std::get_if<DefaultSurface>(&target.surface)) {
+    BrowserWindowInterface* browser = default_surface->browser;
+    if (browser) {
+      tabs::TabInterface* tab = TabListInterface::From(browser)->GetActiveTab();
+      if (tab) {
+        return {tab, /*is_new=*/false};
+      }
+    }
+
+    tabs::TabInterface* tab = CreateBrowserAndGetActiveTab(profile);
+    if (tab) {
+      return {tab, /*is_new=*/true};
+    }
+
+    return {nullptr, /*is_new=*/false};
+  } else if (const auto* new_tab_opt = std::get_if<NewTab>(&target.surface)) {
+    BrowserWindowInterface* browser = new_tab_opt->window;
+    if (!browser) {
+      tabs::TabInterface* tab = CreateBrowserAndGetActiveTab(profile);
+      if (tab) {
+        return {tab, /*is_new=*/true};
+      }
+      return {nullptr, /*is_new=*/false};
+    }
+    tabs::TabInterface* tab = TabListInterface::From(browser)->OpenTab(
+        GURL(chrome::kChromeUINewTabURL), -1);
+    if (tab) {
+      return {tab, /*is_new=*/true};
+    }
+    return {nullptr, /*is_new=*/false};
+  }
+
+  if (const auto* tab_ptr =
+          std::get_if<raw_ptr<tabs::TabInterface>>(&target.surface)) {
+    return {tab_ptr->get(), /*is_new=*/false};
+  }
+
+  return {nullptr, /*is_new=*/false};
+}
+
 GlicInvokeHandler::GlicInvokeHandler(
     GlicInstanceImpl& instance,
-    tabs::TabInterface* tab,
+    ResolvedTarget resolved_target,
     GlicInvokeOptions options,
     std::optional<InvokeWithAutoSubmitPasskey> auto_submit_passkey,
     CompletionCallback completion_callback)
     : instance_(instance),
-      tab_(tab),
+      tab_(resolved_target.tab),
       options_(std::move(options)),
       auto_submit_passkey_(auto_submit_passkey),
       completion_callback_(std::move(completion_callback)) {
-  if (tab && GlicInstanceHelper::From(tab)) {
+  if (tab_ && GlicInstanceHelper::From(tab_)) {
     tab_destruction_subscription_ =
-        GlicInstanceHelper::From(tab)->SubscribeToDestruction(
+        GlicInstanceHelper::From(tab_)->SubscribeToDestruction(
             base::BindRepeating(&GlicInvokeHandler::OnTabClosed,
                                 weak_ptr_factory_.GetWeakPtr()));
+  }
+  if (resolved_target.is_new && tab_ && tab_->GetContents() &&
+      tab_->GetContents()->HasUncommittedNavigationInPrimaryMainFrame()) {
+    // NOTE: This simple check won't do the right thing for chained navigations
+    // or potentially redirects, as the first navigation will finish and we will
+    // proceed, but then another navigation will start.
+    waiting_for_load_ = true;
   }
 }
 
@@ -53,6 +127,15 @@ void GlicInvokeHandler::Invoke() {
     return;
   }
 
+  if (waiting_for_load_) {
+    Observe(tab_->GetContents());
+    return;
+  }
+
+  ContinueInvoke();
+}
+
+void GlicInvokeHandler::ContinueInvoke() {
   auto show_options = ShowOptions::ForSidePanel(
       *tab_, GlicPinTrigger::kInstanceCreation, options_.invocation_source);
   if (options_.fre_override != mojom::FreOverride::kUnspecified) {
@@ -71,17 +154,64 @@ void GlicInvokeHandler::Invoke() {
 
   instance_->Show(show_options);
 
+  MaybeWaitForWebClientReady();
+}
+
+void GlicInvokeHandler::MaybeWaitForWebClientReady() {
   if (instance_->host().IsWebClientConnected()) {
-    SendToClient();
+    OnWebClientReady();
+  } else {
+    host_observation_.Observe(&instance_->host());
+  }
+}
+
+void GlicInvokeHandler::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  if (!navigation_handle->IsInPrimaryMainFrame() ||
+      !navigation_handle->HasCommitted()) {
     return;
   }
-
-  host_observation_.Observe(&instance_->host());
+  Observe(nullptr);
+  waiting_for_load_ = false;
+  ContinueInvoke();
 }
 
 void GlicInvokeHandler::WebClientConnected() {
   host_observation_.Reset();
-  SendToClient();
+  OnWebClientReady();
+}
+
+void GlicInvokeHandler::OnWebClientReady() {
+  MaybeWaitForPanelOpen();
+}
+
+void GlicInvokeHandler::MaybeWaitForPanelOpen() {
+  if (options_.wait_for_panel_open) {
+    MaybeWaitForStableWidth();
+  } else {
+    MaybeWaitForFreCompletion();
+  }
+}
+
+void GlicInvokeHandler::MaybeWaitForStableWidth() {
+  if (tab_ && tab_->GetContents()) {
+    Observe(tab_->GetContents());
+  }
+
+  stabilization_timer_.Start(FROM_HERE, base::Milliseconds(300),
+                             base::BindOnce(&GlicInvokeHandler::OnStabilized,
+                                            weak_ptr_factory_.GetWeakPtr()));
+}
+
+void GlicInvokeHandler::PrimaryMainFrameWasResized(bool width_changed) {
+  if (stabilization_timer_.IsRunning()) {
+    stabilization_timer_.Reset();
+  }
+}
+
+void GlicInvokeHandler::OnStabilized() {
+  Observe(nullptr);
+  MaybeWaitForFreCompletion();
 }
 
 bool GlicInvokeHandler::RequiresAutoSubmitIncompatibleFre() const {
@@ -103,6 +233,43 @@ bool GlicInvokeHandler::RequiresOverrideIncompatibleFre() const {
   }
   return !GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(
       instance_->profile());
+}
+
+bool GlicInvokeHandler::ShouldWaitForFreCompletion() const {
+  if (GlicEnabling::HasConsentedForProfile(instance_->profile())) {
+    return false;
+  }
+  if (options_.fre_override == mojom::FreOverride::kTrustFirstClick) {
+    return true;
+  }
+  if (options_.fre_override == mojom::FreOverride::kUnspecified) {
+    return GlicEnabling::IsTrustFirstOnboardingEnabledForProfile(
+               instance_->profile()) &&
+           features::kGlicTrustFirstOnboardingArmParam.Get() == 2;
+  }
+  return false;
+}
+
+void GlicInvokeHandler::MaybeWaitForFreCompletion() {
+  if (ShouldWaitForFreCompletion()) {
+    if (!profile_ready_state_subscription_) {
+      profile_ready_state_subscription_ =
+          GlicKeyedService::Get(instance_->profile())
+              ->enabling()
+              .RegisterProfileReadyStateChanged(base::BindRepeating(
+                  &GlicInvokeHandler::OnProfileReadyStateChanged,
+                  weak_ptr_factory_.GetWeakPtr()));
+    }
+    return;
+  }
+  SendToClient();
+}
+
+void GlicInvokeHandler::OnProfileReadyStateChanged() {
+  if (GlicEnabling::HasConsentedForProfile(instance_->profile())) {
+    profile_ready_state_subscription_ = {};
+    SendToClient();
+  }
 }
 
 void GlicInvokeHandler::SendToClient() {

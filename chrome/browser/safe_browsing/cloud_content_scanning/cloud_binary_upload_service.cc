@@ -49,12 +49,6 @@ using ::enterprise_connectors::IsConsumerScanRequest;
 constexpr base::TimeDelta kAuthTimeout = base::Seconds(10);
 constexpr base::TimeDelta kScanningTimeout = base::Minutes(5);
 
-const char kSbEnterpriseUploadUrl[] =
-    "https://safebrowsing.google.com/safebrowsing/uploads/scan";
-
-const char kSbConsumerUploadUrl[] =
-    "https://safebrowsing.google.com/safebrowsing/uploads/consumer";
-
 net::NetworkTrafficAnnotationTag GetTrafficAnnotationTag(bool is_app) {
   if (is_app) {
     return net::DefineNetworkTrafficAnnotation(
@@ -195,30 +189,19 @@ bool IgnoreErrorResultForResumableUpload(
 
 }  // namespace
 
-// static
-size_t CloudBinaryUploadService::GetParallelActiveRequestsMax() {
-  size_t experiment_max =
-      enterprise_connectors::kParallelContentAnalysisRequestCountMax.Get();
-  if (experiment_max > 0) {
-    return experiment_max;
-  }
-
-  return enterprise_connectors::kDefaultMaxParallelActiveRequests;
-}
-
 CloudBinaryUploadService::CloudBinaryUploadService(Profile* profile)
-    : ui_task_runner_(content::GetUIThreadTaskRunner({})),
-      url_loader_factory_(profile->GetURLLoaderFactory()),
-      profile_(profile),
-      weakptr_factory_(this) {}
+    : profile_(profile) {
+  url_loader_factory_ = profile->GetURLLoaderFactory();
+  ui_task_runner_ = content::GetUIThreadTaskRunner({});
+}
 
 CloudBinaryUploadService::CloudBinaryUploadService(
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
     Profile* profile)
-    : ui_task_runner_(content::GetUIThreadTaskRunner({})),
-      url_loader_factory_(url_loader_factory),
-      profile_(profile),
-      weakptr_factory_(this) {}
+    : profile_(profile) {
+  url_loader_factory_ = url_loader_factory;
+  ui_task_runner_ = content::GetUIThreadTaskRunner({});
+}
 
 CloudBinaryUploadService::~CloudBinaryUploadService() = default;
 
@@ -305,6 +288,37 @@ void CloudBinaryUploadService::MaybeCancelRequests(
   std::string action_id = cancel->get_user_action_id();
   if (user_action_data_.contains(action_id)) {
     user_action_data_[action_id].cancelled_time = base::TimeTicks::Now();
+  }
+
+  if (!base::FeatureList::IsEnabled(
+          enterprise_connectors::kEnableCancelUploadOnContentAnalysis)) {
+    return;
+  }
+
+  base::EraseIf(
+      request_queue_,
+      [&cancel](const std::unique_ptr<BinaryUploadRequest>& request) {
+        if (request->user_action_id() == cancel->get_user_action_id()) {
+          request->FinishRequest(
+              enterprise_connectors::ScanRequestUploadResult::kUserCancelled,
+              enterprise_connectors::ContentAnalysisResponse());
+          return true;
+        }
+        return false;
+      });
+
+  // Also cancel active requests.
+  std::vector<BinaryUploadRequest::Id> ids_to_cancel;
+  for (const auto& it : active_requests_) {
+    if (it.second->user_action_id() == cancel->get_user_action_id()) {
+      ids_to_cancel.push_back(it.first);
+    }
+  }
+
+  for (const auto& id : ids_to_cancel) {
+    FinishIfActive(
+        id, enterprise_connectors::ScanRequestUploadResult::kUserCancelled,
+        enterprise_connectors::ContentAnalysisResponse());
   }
 }
 
@@ -536,116 +550,6 @@ void CloudBinaryUploadService::OnGetRequestData(
   active_uploads_[request_id] = std::move(upload_request);
 }
 
-void CloudBinaryUploadService::OnUploadComplete(
-    BinaryUploadRequest::Id request_id,
-    bool success,
-    int http_status,
-    const std::string& response_data) {
-  OnGetContentAnalysisResponse(request_id, success, http_status, response_data);
-  OnContentUploaded(request_id);
-}
-
-void CloudBinaryUploadService::OnContentUploaded(
-    BinaryUploadRequest::Id request_id) {
-  if (BinaryUploadRequest* request = GetRequest(request_id); request) {
-    CleanupRequest(request);
-  }
-}
-
-void CloudBinaryUploadService::OnGetContentAnalysisResponse(
-    BinaryUploadRequest::Id request_id,
-    bool success,
-    int http_status,
-    const std::string& response_data) {
-  BinaryUploadRequest* request = GetRequest(request_id);
-  if (!request) {
-    return;
-  }
-
-  if (http_status == net::HTTP_UNAUTHORIZED) {
-    FinishRequest(request,
-                  enterprise_connectors::ScanRequestUploadResult::kUnauthorized,
-                  enterprise_connectors::ContentAnalysisResponse());
-    return;
-  }
-
-  if (http_status == net::HTTP_TOO_MANY_REQUESTS) {
-    FinishRequest(
-        request,
-        enterprise_connectors::ScanRequestUploadResult::kTooManyRequests,
-        enterprise_connectors::ContentAnalysisResponse());
-    return;
-  }
-
-  if (!success) {
-    FinishRequest(
-        request, enterprise_connectors::ScanRequestUploadResult::kUploadFailure,
-        enterprise_connectors::ContentAnalysisResponse());
-    return;
-  }
-
-  enterprise_connectors::ContentAnalysisResponse response;
-  if (!response.ParseFromString(response_data)) {
-    FinishRequest(
-        request, enterprise_connectors::ScanRequestUploadResult::kUploadFailure,
-        enterprise_connectors::ContentAnalysisResponse());
-    return;
-  }
-
-  // Synchronous scans can return results in the initial response proto, so
-  // check for those.
-  OnGetResponse(request_id, response);
-}
-
-void CloudBinaryUploadService::OnGetResponse(
-    BinaryUploadRequest::Id request_id,
-    enterprise_connectors::ContentAnalysisResponse response) {
-  BinaryUploadRequest* request = GetRequest(request_id);
-  if (!request) {
-    return;
-  }
-
-  for (const auto& result : response.results()) {
-    if (result.has_tag() && !result.tag().empty()) {
-      DVLOG(1) << "BinaryUploadRequest " << request->request_token()
-               << " finished scanning tag <" << result.tag() << ">";
-      received_connector_results_[request_id][result.tag()] = result;
-    }
-  }
-
-  MaybeFinishRequest(request_id);
-}
-
-void CloudBinaryUploadService::MaybeFinishRequest(
-    BinaryUploadRequest::Id request_id) {
-  BinaryUploadRequest* request = GetRequest(request_id);
-  if (!request) {
-    return;
-  }
-
-  // It's OK to move here since the map entry is about to be removed.
-  enterprise_connectors::ContentAnalysisResponse response;
-  response.set_request_token(request->request_token());
-  for (auto& tag_and_result : received_connector_results_[request_id]) {
-    *response.add_results() = std::move(tag_and_result.second);
-  }
-
-  // Set `result` to be INCOMPLETE_RESPONSE, if the request is terminated with incomplete
-  // response.
-  enterprise_connectors::ScanRequestUploadResult result =
-      enterprise_connectors::ScanRequestUploadResult::kSuccess;
-  if (!ResponseIsComplete(request_id)) {
-    result =
-        enterprise_connectors::ScanRequestUploadResult::kIncompleteResponse;
-  } else if (request->is_content_too_large()) {
-    result = enterprise_connectors::ScanRequestUploadResult::kFileTooLarge;
-  } else if (request->is_content_encrypted()) {
-    result = enterprise_connectors::ScanRequestUploadResult::kFileEncrypted;
-  }
-
-  FinishRequest(request, result, std::move(response));
-}
-
 void CloudBinaryUploadService::FinishIfActive(
     BinaryUploadRequest::Id request_id,
     enterprise_connectors::ScanRequestUploadResult result,
@@ -654,187 +558,6 @@ void CloudBinaryUploadService::FinishIfActive(
   if (request) {
     FinishAndCleanupRequest(request, result, response);
   }
-}
-
-void CloudBinaryUploadService::FinishAndCleanupRequest(
-    BinaryUploadRequest* request,
-    enterprise_connectors::ScanRequestUploadResult result,
-    enterprise_connectors::ContentAnalysisResponse response) {
-  FinishRequest(request, result, response);
-  CleanupRequest(request);
-}
-
-void CloudBinaryUploadService::MaybeTrackUploadUserCancellation(
-    const std::string& action_id) {
-  // Record metrics for the user action duration if this is the last request for
-  // the batch cancelled by user.
-  if (!action_id.empty() && user_action_data_.contains(action_id) &&
-      user_action_data_[action_id].cancelled_time.has_value() &&
-      CheckForUserActionDone(action_id)) {
-    base::TimeDelta total_duration =
-        base::TimeTicks::Now() -
-        user_action_data_[action_id].cancelled_time.value();
-    RecordDeepScanMetrics(user_action_data_[action_id].is_cloud,
-                          user_action_data_[action_id].access_point,
-                          total_duration, 0, "CancelledByUserCancellationTime",
-                          false);
-
-    user_action_data_.erase(action_id);
-  }
-}
-
-bool CloudBinaryUploadService::CheckForUserActionDone(
-    const std::string& action_id) {
-  for (const auto& request : request_queue_) {
-    if (request->user_action_id() == action_id) {
-      return false;
-    }
-  }
-  for (const auto& it : active_requests_) {
-    if (it.second->user_action_id() == action_id) {
-      return false;
-    }
-  }
-  return true;
-}
-
-void CloudBinaryUploadService::FinishRequest(
-    BinaryUploadRequest* request,
-    enterprise_connectors::ScanRequestUploadResult result,
-    enterprise_connectors::ContentAnalysisResponse response) {
-  RecordRequestMetrics(request->id(), result, response);
-  std::string upload_info = "None";
-  if (!request->IsAuthRequest()) {
-    if (const auto it = active_uploads_.find(request->id());
-        it != active_uploads_.end()) {
-      upload_info = it->second->GetUploadInfo();
-    }
-  }
-
-  // Always record deep scan request here to ensure it is invoked after http
-  // headers are attached.
-  WebUIContentInfoSingleton::GetInstance()->AddToDeepScanRequests(
-      request->per_profile_request(), request->access_token(), upload_info,
-      request->GetUrlWithParams().spec(), request->content_analysis_request());
-  WebUIContentInfoSingleton::GetInstance()->AddToDeepScanResponses(
-      active_tokens_[request->id()],
-      enterprise_connectors::ScanRequestUploadResultToString(result), response);
-
-  request->FinishRequest(result, response);
-}
-
-void CloudBinaryUploadService::CleanupRequest(BinaryUploadRequest* request) {
-  AssertCalledOnUIThread();
-  BinaryUploadRequest::Id request_id = request->id();
-  std::string dm_token = request->device_token();
-  auto connector = request->analysis_connector();
-  std::string action_id = request->user_action_id();
-  active_requests_.erase(request_id);
-  active_timers_.erase(request_id);
-  active_uploads_.erase(request_id);
-  received_connector_results_.erase(request_id);
-  active_tokens_.erase(request_id);
-  start_times_.erase(request_id);
-
-  MaybeRunAuthorizationCallbacks(dm_token, connector);
-  MaybeTrackUploadUserCancellation(action_id);
-  // Now that a request has been cleaned up, we can try to allocate resources
-  // for queued uploads.
-  PopRequestQueue();
-}
-
-void CloudBinaryUploadService::RecordRequestMetrics(
-    BinaryUploadRequest::Id request_id,
-    enterprise_connectors::ScanRequestUploadResult result) {
-  base::UmaHistogramEnumeration("SafeBrowsingBinaryUploadRequest.Result",
-                                result);
-
-  auto duration = base::TimeTicks::Now() - start_times_[request_id];
-  base::UmaHistogramCustomTimes("SafeBrowsingBinaryUploadRequest.Duration",
-                                duration, base::Milliseconds(1),
-                                base::Minutes(6), 50);
-
-  BinaryUploadRequest* request = GetRequest(request_id);
-  if (request && !IsConsumerScanRequest(*request)) {
-    std::string request_type;
-    switch (request->analysis_connector()) {
-      case enterprise_connectors::FILE_DOWNLOADED:
-      case enterprise_connectors::FILE_ATTACHED:
-      case enterprise_connectors::FILE_TRANSFER:
-        request_type = "File";
-        break;
-      case enterprise_connectors::BULK_DATA_ENTRY:
-        request_type = "Text";
-        break;
-      case enterprise_connectors::PRINT:
-        request_type = "Print";
-        break;
-      case enterprise_connectors::ANALYSIS_CONNECTOR_UNSPECIFIED:
-        break;
-    }
-    if (request_type.empty()) {
-      return;
-    }
-
-    std::string protocol = enterprise_connectors::IsResumableUpload(*request)
-                               ? "Resumable"
-                               : "Multipart";
-
-    // Example values:
-    //   "Enterprise.ResumableRequest.Print.Duration
-    //   "Enterprise.MultipartRequest.Text.Duration
-    //   "Enterprise.ResumableRequest.File.Result
-    base::UmaHistogramCustomTimes(
-        base::StrCat(
-            {"Enterprise.", protocol, "Request.", request_type, ".Duration"}),
-        duration, base::Milliseconds(1), base::Minutes(6), 50);
-    base::UmaHistogramEnumeration(
-        base::StrCat(
-            {"Enterprise.", protocol, "Request.", request_type, ".Result"}),
-        result);
-  }
-}
-
-void CloudBinaryUploadService::RecordRequestMetrics(
-    BinaryUploadRequest::Id request_id,
-    enterprise_connectors::ScanRequestUploadResult result,
-    const enterprise_connectors::ContentAnalysisResponse& response) {
-  RecordRequestMetrics(request_id, result);
-  for (const auto& response_result : response.results()) {
-    if (response_result.tag() == "malware") {
-      base::UmaHistogramBoolean(
-          "SafeBrowsingBinaryUploadRequest.MalwareResult",
-          response_result.status() !=
-              enterprise_connectors::ContentAnalysisResponse::Result::FAILURE);
-    }
-    if (response_result.tag() == "dlp") {
-      base::UmaHistogramBoolean(
-          "SafeBrowsingBinaryUploadRequest.DlpResult",
-          response_result.status() !=
-              enterprise_connectors::ContentAnalysisResponse::Result::FAILURE);
-    }
-  }
-}
-
-bool CloudBinaryUploadService::ResponseIsComplete(
-    BinaryUploadRequest::Id request_id) {
-  BinaryUploadRequest* request = GetRequest(request_id);
-  if (!request) {
-    return false;
-  }
-
-  for (const std::string& tag : request->content_analysis_request().tags()) {
-    if (tag == enterprise_connectors::kMalwareTag &&
-        request->should_skip_malware_scan()) {
-      // If the content is too large, we don't do a malware scan.
-      continue;
-    }
-    if (received_connector_results_[request_id].count(tag) == 0) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 bool CloudBinaryUploadService::ShouldTerminateRequestEarly(
@@ -860,131 +583,6 @@ bool CloudBinaryUploadService::ShouldTerminateRequestEarly(
   }
 
   return false;
-}
-
-std::unique_ptr<enterprise_connectors::ConnectorUploadRequest>
-CloudBinaryUploadService::CreateUploadRequest(
-    BinaryUploadRequest* request,
-    const BinaryUploadRequest::Id& request_id,
-    const GURL& url,
-    const std::string& metadata,
-    const std::string& histogram_suffix,
-    bool force_sync_upload,
-    net::NetworkTrafficAnnotationTag traffic_annotation,
-    BinaryUploadRequest::Data data,
-    enterprise_connectors::ScanRequestUploadResult result,
-    enterprise_connectors::ResumableUploadRequestBase::
-        OnceRegisterOnGotHashCallback register_on_got_hash_callback) {
-  auto callback = base::BindOnce(&CloudBinaryUploadService::OnUploadComplete,
-                                 weakptr_factory_.GetWeakPtr(), request_id);
-  auto verdict_received_callback =
-      base::BindOnce(&CloudBinaryUploadService::OnGetContentAnalysisResponse,
-                     weakptr_factory_.GetWeakPtr(), request_id);
-  auto content_uploaded_callback =
-      base::BindOnce(&CloudBinaryUploadService::OnContentUploaded,
-                     weakptr_factory_.GetWeakPtr(), request_id);
-
-  std::unique_ptr<enterprise_connectors::ConnectorUploadRequest> upload_request;
-  if (request->IsAuthRequest()) {
-    upload_request = MultipartUploadRequest::CreateStringRequest(
-        url_loader_factory_, url, metadata, data.contents, histogram_suffix,
-        std::move(traffic_annotation), std::move(callback),
-        content::GetUIThreadTaskRunner({}));
-  } else if (!data.contents.empty()) {
-    upload_request =
-        (enterprise_connectors::IsResumableUpload(*request) &&
-         base::FeatureList::IsEnabled(
-             enterprise_connectors::kDlpScanPastedImages))
-            ? ResumableUploadRequest::CreateStringRequest(
-                  url_loader_factory_, url, metadata, data.contents,
-                  request->image_paste()
-                      ? enterprise_connectors::ConnectorUploadRequest::IMAGE
-                      : enterprise_connectors::ConnectorUploadRequest::STRING,
-                  histogram_suffix, std::move(traffic_annotation),
-                  std::move(verdict_received_callback),
-                  std::move(content_uploaded_callback), force_sync_upload,
-                  content::GetUIThreadTaskRunner({}))
-            : MultipartUploadRequest::CreateStringRequest(
-                  url_loader_factory_, url, metadata, data.contents,
-                  histogram_suffix, std::move(traffic_annotation),
-                  std::move(callback), content::GetUIThreadTaskRunner({}));
-  } else if (!data.path.empty()) {
-    upload_request =
-        enterprise_connectors::IsResumableUpload(*request)
-            ? ResumableUploadRequest::CreateFileRequest(
-                  url_loader_factory_, url, metadata, result, data.path,
-                  data.size, data.is_obfuscated, histogram_suffix,
-                  std::move(traffic_annotation),
-                  std::move(verdict_received_callback),
-                  std::move(content_uploaded_callback), force_sync_upload,
-                  std::move(register_on_got_hash_callback),
-                  content::GetUIThreadTaskRunner({}))
-            : MultipartUploadRequest::CreateFileRequest(
-                  url_loader_factory_, url, metadata, data.path, data.size,
-                  data.is_obfuscated, histogram_suffix,
-                  std::move(traffic_annotation), std::move(callback),
-                  content::GetUIThreadTaskRunner({}));
-
-  } else if (data.page.IsValid()) {
-    upload_request =
-        enterprise_connectors::IsResumableUpload(*request)
-            ? ResumableUploadRequest::CreatePageRequest(
-                  url_loader_factory_, url, metadata, result,
-                  std::move(data.page), histogram_suffix,
-                  std::move(traffic_annotation),
-                  std::move(verdict_received_callback),
-                  std::move(content_uploaded_callback), force_sync_upload,
-                  content::GetUIThreadTaskRunner({}))
-            : MultipartUploadRequest::CreatePageRequest(
-                  url_loader_factory_, url, metadata, std::move(data.page),
-                  histogram_suffix, std::move(traffic_annotation),
-                  std::move(callback), content::GetUIThreadTaskRunner({}));
-  } else {
-    NOTREACHED();
-  }
-
-  return upload_request;
-}
-
-BinaryUploadRequest* CloudBinaryUploadService::GetRequest(
-    BinaryUploadRequest::Id request_id) {
-  auto it = active_requests_.find(request_id);
-  if (it != active_requests_.end()) {
-    return it->second.get();
-  }
-
-  return nullptr;
-}
-
-class ValidateDataUploadRequest : public BinaryUploadRequest {
- public:
-  ValidateDataUploadRequest(
-      BinaryUploadRequest::ContentAnalysisCallback callback,
-      enterprise_connectors::CloudAnalysisSettings settings)
-      : BinaryUploadRequest(std::move(callback),
-                            enterprise_connectors::CloudOrLocalAnalysisSettings(
-                                std::move(settings)),
-                            base::BindRepeating(&GetBrowserPolicyConnector)) {}
-  ValidateDataUploadRequest(const ValidateDataUploadRequest&) = delete;
-  ValidateDataUploadRequest& operator=(const ValidateDataUploadRequest&) =
-      delete;
-  ~ValidateDataUploadRequest() override = default;
-
- private:
-  // BinaryUploadRequest implementation.
-  void GetRequestData(DataCallback callback) override;
-
-  bool IsAuthRequest() const override;
-};
-
-inline void ValidateDataUploadRequest::GetRequestData(DataCallback callback) {
-  std::move(callback).Run(
-      enterprise_connectors::ScanRequestUploadResult::kSuccess,
-      BinaryUploadRequest::Data());
-}
-
-bool ValidateDataUploadRequest::IsAuthRequest() const {
-  return true;
 }
 
 void CloudBinaryUploadService::IsAuthorized(
@@ -1024,7 +622,7 @@ void CloudBinaryUploadService::IsAuthorized(
           base::BindOnce(&CloudBinaryUploadService::
                              ValidateDataUploadRequestConnectorCallback,
                          weakptr_factory_.GetWeakPtr(), dm_token, connector),
-          std::move(settings));
+          std::move(settings), base::BindRepeating(&GetBrowserPolicyConnector));
       request->set_device_token(dm_token);
       request->set_analysis_connector(connector);
       request->set_per_profile_request(per_profile_request);
@@ -1054,29 +652,6 @@ void CloudBinaryUploadService::ValidateDataUploadRequestConnectorCallback(
   TokenAndConnector token_and_connector = {dm_token, connector};
   pending_validate_data_upload_request_.erase(token_and_connector);
   can_upload_enterprise_data_[token_and_connector] = result;
-}
-
-void CloudBinaryUploadService::MaybeRunAuthorizationCallbacks(
-    const std::string& dm_token,
-    enterprise_connectors::AnalysisConnector connector) {
-  TokenAndConnector token_and_connector = {dm_token, connector};
-  if (!can_upload_enterprise_data_.contains(token_and_connector)) {
-    return;
-  }
-
-  // TODO(crbug.com/402435358): Add test coverage to catch this regression
-  // after FCM service is completely removed.
-  auto it = authorization_callbacks_.find(token_and_connector);
-  if (it == authorization_callbacks_.end()) {
-    return;
-  }
-  // To avoid race condition, save the callback and erase it from the map
-  // before running it.
-  std::unique_ptr<base::OnceCallbackList<void(
-      enterprise_connectors::ScanRequestUploadResult)>>
-      callbacks = std::move(it->second);
-  authorization_callbacks_.erase(it);
-  callbacks->Notify(can_upload_enterprise_data_[token_and_connector]);
 }
 
 void CloudBinaryUploadService::ResetAuthorizationData(const GURL& url) {
@@ -1114,29 +689,6 @@ void CloudBinaryUploadService::SetAuthForTesting(
 void CloudBinaryUploadService::SetTokenFetcherForTesting(
     std::unique_ptr<SafeBrowsingTokenFetcher> token_fetcher) {
   token_fetcher_ = std::move(token_fetcher);
-}
-
-// static
-GURL CloudBinaryUploadService::GetUploadUrl(bool is_consumer_scan_eligible) {
-  if (is_consumer_scan_eligible) {
-    return GURL(kSbConsumerUploadUrl);
-  } else {
-    return GURL(kSbEnterpriseUploadUrl);
-  }
-}
-
-void CloudBinaryUploadService::PopRequestQueue() {
-  AssertCalledOnUIThread();
-  while (active_requests_.size() < GetParallelActiveRequestsMax() &&
-         !request_queue_.empty()) {
-    auto request = std::move(request_queue_.front());
-    request_queue_.pop_front();
-    UploadForDeepScanning(std::move(request));
-  }
-}
-
-void CloudBinaryUploadService::AssertCalledOnUIThread() {
-  DCHECK(ui_task_runner_ && ui_task_runner_->RunsTasksInCurrentSequence());
 }
 
 }  // namespace safe_browsing

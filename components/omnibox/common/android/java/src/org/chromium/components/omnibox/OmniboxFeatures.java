@@ -175,10 +175,10 @@ public class OmniboxFeatures {
             newFlag(OmniboxFeatureList.ANDROID_HUB_SEARCH_TAB_GROUPS, FeatureState.ENABLED_IN_PROD);
 
     public static final CachedFlag sOmniboxImprovementForLFF =
-            newFlag(OmniboxFeatureList.OMNIBOX_IMPROVEMENT_FOR_LFF, FeatureState.ENABLED_IN_TEST);
+            newFlag(OmniboxFeatureList.OMNIBOX_IMPROVEMENT_FOR_LFF, FeatureState.ENABLED_IN_PROD);
 
-    public static final CachedFlag sRemoveSearchReadyOmnibox =
-            newFlag(OmniboxFeatureList.REMOVE_SEARCH_READY_OMNIBOX, FeatureState.DISABLED);
+    public static final CachedFlag sAIMSuppressVerbatimMatch =
+            newFlag(OmniboxFeatureList.AIM_SUPPRESS_VERBATIM_MATCH, FeatureState.ENABLED_IN_PROD);
 
     public static final CachedFlag sOmniboxItemDecoration =
             newFlag(OmniboxFeatureList.OMNIBOX_ITEM_DECORATION, FeatureState.DISABLED);
@@ -191,9 +191,6 @@ public class OmniboxFeatures {
     public static final CachedFlag sResetSuggestionsScroll =
             newFlag(OmniboxFeatureList.RESET_SUGGESTIONS_SCROLL, FeatureState.DISABLED);
 
-    public static final BooleanCachedFeatureParam sRemoveSroIncludingVerbatimMatch =
-            newBooleanParam(
-                    sRemoveSearchReadyOmnibox, "remove_sro_including_verbatim_match", false);
     public static final IntCachedFeatureParam sGeolocationRequestTimeoutMinutes =
             newIntParam(
                     sUseFusedLocationProvider,
@@ -252,13 +249,13 @@ public class OmniboxFeatures {
 
     // This parameter enables showing the switch-to-tab chip on large form factors.
     public static final BooleanCachedFeatureParam sOmniboxImprovementForLFFSwitchToTabChip =
-            newBooleanParam(sOmniboxImprovementForLFF, "switch_to_tab_chip", false);
+            newBooleanParam(sOmniboxImprovementForLFF, "switch_to_tab_chip", true);
 
     // This parameter enables removing suggestion via "x" button.
     public static final BooleanCachedFeatureParam
             sOmniboxImprovementForLFFRemoveSuggestionViaButton =
                     newBooleanParam(
-                            sOmniboxImprovementForLFF, "remove_suggestion_via_button", false);
+                            sOmniboxImprovementForLFF, "remove_suggestion_via_button", true);
 
     // This parameter enables persisting editing state.
     public static final BooleanCachedFeatureParam sOmniboxImprovementForLFFPersistEditingState =

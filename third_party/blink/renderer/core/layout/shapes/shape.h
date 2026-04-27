@@ -115,8 +115,7 @@ class CORE_EXPORT Shape {
   float ShapeMargin() const { return margin_; }
 
  private:
-  static std::unique_ptr<Shape> CreateEmptyRasterShape(WritingMode,
-                                                       float margin);
+  static std::unique_ptr<Shape> CreateEmptyRasterShape(float margin);
 
   bool LineOverlapsBoundingBox(LayoutUnit line_top,
                                LayoutUnit line_height,
@@ -129,7 +128,6 @@ class CORE_EXPORT Shape {
            (!line_height && line_top == rect_line_top);
   }
 
-  WritingMode writing_mode_ = WritingMode::kHorizontalTb;
   float margin_ = 0;
 };
 

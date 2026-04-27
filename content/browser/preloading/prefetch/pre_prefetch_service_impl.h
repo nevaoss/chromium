@@ -8,6 +8,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/threading/sequence_bound.h"
+#include "content/browser/preloading/prefetch/prefetch_streaming_url_loader_common_types.h"
 #include "content/common/content_export.h"
 #include "content/public/browser/pre_prefetch_handle.h"
 #include "content/public/browser/pre_prefetch_service.h"
@@ -19,7 +20,29 @@
 
 namespace content {
 
+class PrefetchRequest;
 class PrePrefetchServiceCore;
+
+// The subset of `PrefetchRequest` members that `PrePrefetchService` has to
+// distinguish when comparing the pre-calculated headers. There are other
+// `PrefetchRequest` members that can affect header construction generally
+// (e.g., `browser_context`, `prefetch_type`, `referring_web_contents`), but
+// they are not included here since they are fixed values among the requests
+// handled by this `PrePrefetchService. `additional_headers` are not included in
+// the pre-calculation (see `MakeInitialResourceRequestForPrePrefetch()`), so it
+// is also omitted here.
+struct PrePrefetchPreCalculatedHeadersKey {
+  url::Origin origin;
+  bool javascript_enabled = false;
+  bool should_append_variations_header = true;
+
+  bool operator<(const PrePrefetchPreCalculatedHeadersKey& other) const {
+    return std::tie(origin, javascript_enabled,
+                    should_append_variations_header) <
+           std::tie(other.origin, other.javascript_enabled,
+                    other.should_append_variations_header);
+  }
+};
 
 // Responsible for starting PrePrefetches based on an associated
 // `BrowserContext` given via ctor.
@@ -36,7 +59,10 @@ class PrePrefetchServiceCore;
 // simultaneously, otherwise this will lead a data race for `core_`.
 class CONTENT_EXPORT PrePrefetchServiceImpl : public PrePrefetchService {
  public:
-  explicit PrePrefetchServiceImpl(BrowserContext* browser_context);
+  PrePrefetchServiceImpl(BrowserContext* browser_context,
+                         std::optional<url::Origin> initial_origin_hint,
+                         bool initial_javascript_enabled_hint,
+                         bool initial_should_append_variations_header_hint);
   ~PrePrefetchServiceImpl() override;
 
   // Starts PrePrefetch for the given `url`, for embedder triggers.
@@ -57,12 +83,28 @@ class CONTENT_EXPORT PrePrefetchServiceImpl : public PrePrefetchService {
       bool should_disable_block_until_head_timeout,
       bool should_bypass_http_cache) override;
 
+  [[nodiscard]] std::unique_ptr<PrePrefetchHandle>
+  StartPrePrefetchRequestForTesting(
+      std::unique_ptr<const PrefetchRequest> prefetch_request);
+
   // Sets the URLLoaderFactory for testing. The caller must keep the ownership
   // of the factory during the test.
   static void SetURLLoaderFactoryForTesting(
       network::SharedURLLoaderFactory* url_loader_factory);
 
  private:
+  [[nodiscard]] std::unique_ptr<PrePrefetchHandle>
+  StartPrePrefetchRequestInternal(
+      std::unique_ptr<const PrefetchRequest> prefetch_request);
+
+  PrefetchUpdateHeadersParams PreCalculatePrePrefetchHeadersOnUI(
+      BrowserContext* browser_context,
+      const PrePrefetchPreCalculatedHeadersKey& key) const;
+
+  // This is UI-thread bound, and must not be dereferenced during this
+  // `PrePrefetchServiceCore` sequence.
+  base::WeakPtr<BrowserContext> browser_context_weak_on_ui_thread_;
+
   scoped_refptr<base::SequencedTaskRunner> core_task_runner_;
   base::SequenceBound<PrePrefetchServiceCore> core_;
 };

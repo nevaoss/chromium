@@ -100,6 +100,7 @@ class ContextualSearchboxHandler
   explicit ContextualSearchboxHandler(
       mojo::PendingReceiver<searchbox::mojom::PageHandler>
           pending_searchbox_handler,
+      mojo::PendingRemote<searchbox::mojom::Page> pending_page,
       Profile* profile,
       content::WebContents* web_contents,
       std::unique_ptr<OmniboxController> controller,
@@ -135,6 +136,19 @@ class ContextualSearchboxHandler
                              bool ctrl_key,
                              bool meta_key,
                              bool shift_key) override;
+  void ShouldShowDriveDisclaimer(
+      ShouldShowDriveDisclaimerCallback callback) override;
+  void OnDriveDisclaimerAccepted() override;
+  void QueryAutocomplete(const std::u16string& input,
+                         bool prevent_inline_autocomplete) override;
+
+  // Returns true if smart tab sharing is active for the current query.
+  virtual bool IsSmartTabSharingActive() const;
+
+  virtual void SetSmartTabSharingActive(bool active);
+  virtual void GetSmartTabSharingActive(
+      composebox::mojom::PageHandler::GetSmartTabSharingActiveCallback
+          callback);
 
   // Continues the process of adding tab context for a given `tab_id`.
   // This method is used when a `context_token` has already been generated
@@ -202,9 +216,6 @@ class ContextualSearchboxHandler
  protected:
   // SearchboxHandler:
   omnibox::InputState GetInputState() const override;
-
-  // Returns true if smart tab sharing is active for the current query.
-  virtual bool IsSmartTabSharingActive() const;
 
   virtual void OpenUrl(GURL url, const WindowOpenDisposition disposition);
 
@@ -302,6 +313,11 @@ class ContextualSearchboxHandler
       std::map<std::string, std::string> additional_params,
       std::vector<base::WeakPtr<content::WebContents>> relevant_tabs);
 
+  // Callback invoked when relevant tabs are determined for the query to inform
+  // if the smart tab sharing promo should be shown to the user.
+  void OnRelevantTabsReceivedToMaybeShowPromo(
+      std::vector<base::WeakPtr<content::WebContents>> relevant_tabs);
+
   std::optional<base::Uuid> GetTaskId();
 
   std::optional<std::pair<base::UnguessableToken,
@@ -330,6 +346,8 @@ class ContextualSearchboxHandler
       tab_list_observation_{this};
 
  protected:
+  std::optional<bool> smart_tab_sharing_active_for_thread_;
+
   base::WeakPtrFactory<ContextualSearchboxHandler> weak_ptr_factory_{this};
 };
 

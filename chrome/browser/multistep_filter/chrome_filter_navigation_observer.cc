@@ -14,6 +14,7 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "components/multistep_filter/content/filter_navigation_observer.h"
 #include "components/multistep_filter/core/multistep_filter_service.h"
+#include "components/multistep_filter/core/multistep_filter_ui_delegate.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents.h"
 
@@ -63,7 +64,7 @@ class UiDelegateImpl : public MultistepFilterUiDelegate {
     return FilterUiController::From(&tab_.get());
   }
 
-  const raw_ref<tabs::TabInterface> tab_;
+  raw_ref<tabs::TabInterface> tab_;
   base::WeakPtrFactory<UiDelegateImpl> weak_ptr_factory_{this};
 };
 

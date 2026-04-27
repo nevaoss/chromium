@@ -228,6 +228,8 @@ should be able to be added at any place in this file.
   <variant name="_AutofillAiOptIn" summary="For AutofillAiOptIn feature."/>
   <variant name="_AutofillAiValuables"
       summary="For AutofillAiValuables feature."/>
+  <variant name="_AutofillAtMemory"
+      summary="For AutofillAtMemory IPH feature."/>
   <variant name="_AutofillBnplAffirmOrZipSuggestion"
       summary="For AutofillBnplAffirmOrZipSuggestion IPH feature."/>
   <variant name="_AutofillBnplAffirmZipOrKlarnaSuggestion"
@@ -360,10 +362,10 @@ should be able to be added at any place in this file.
   <variant name="_ExplicitBrowserSigninPreferenceRemembered"
       summary="For Explicit Browser Signin Preference Remembered feature."/>
   <variant name="_ExploreSitesTile" summary="For Explore Sites feature."/>
-  <variant name="_ExtensionsManageFeature"
-      summary="For managaging your extension feature."/>
-  <variant name="_ExtensionsManageMainMenuFeature"
-      summary="For managing your extensions from the main menu feature."/>
+  <variant name="_ExtensionsManageAppMenuFeature"
+      summary="For managing your extensions from the app menu feature."/>
+  <variant name="_ExtensionsManageToolbarFeature"
+      summary="For managing your extension feature in the toolbar."/>
   <variant name="_ExtensionsMenu" summary="For Extensions menu opening."/>
   <variant name="_ExtensionsRequestAccessButton"
       summary="For Extensions request access button feature."/>
@@ -809,6 +811,9 @@ should be able to be added at any place in this file.
   <variant name="_TranslateMenuButton" summary="For translate menu button."/>
   <variant name="_UpdatedConnectionSecurityIndicators"
       summary="For updated omnibox connection security indicators."/>
+  <variant name="_VerticalTabsExpandOnHoverFeature"
+      summary="For showing the vertical tabs expand on hover feature when in
+               vertical tabs mode."/>
   <variant name="_VerticalTabstripTutorialFeature"
       summary="For showing the vertical tabs feature when the horizontal
                tabstrip is crowded."/>
@@ -3372,6 +3377,24 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="AccessibilityAnnotator.RemoteAnnotatorInfo.LearnMoreLinkClick">
+  <owner>tommasin@chromium.org</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <description>
+    Recorded when the user clicks the Learn More link in the Accessibility
+    Annotator info dialog.
+  </description>
+</action>
+
+<action name="AccessibilityAnnotator.RemoteAnnotatorInfo.SettingsLinkClick">
+  <owner>tommasin@chromium.org</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <description>
+    Recorded when the user clicks the Manage Settings link in the Accessibility
+    Annotator info dialog.
+  </description>
+</action>
+
 <action name="ActionBox.ClickButton">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
@@ -4901,48 +4924,6 @@ should be able to be added at any place in this file.
   <owner>mpearson@chromium.org</owner>
   <description>
     A user clicked on a telephone number link in Chrome content.
-  </description>
-</action>
-
-<action name="Android.Settings.Opened">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>User opened Settings activity.</description>
-</action>
-
-<action name="Android.Settings.Search.NoMatchFound">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>
-    Settings search found no match to the entered query.
-  </description>
-</action>
-
-<action name="Android.Settings.Search.Performed">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>User entered a new query for search.</description>
-</action>
-
-<action name="Android.Settings.Search.ResultClicked">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>
-    User clicked the search result to open the corresponding entry.
-  </description>
-</action>
-
-<action name="Android.Settings.Search.UiOpened">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>User tapped search bar UI.</description>
-</action>
-
-<action name="Android.Settings.Search.UiOpenedPerSession">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>
-    Same as above, but recorded only once since user opens Settings.
   </description>
 </action>
 
@@ -11135,12 +11116,13 @@ should be able to be added at any place in this file.
 </action>
 
 <action
-    name="ContextualSearch.ZeroSuggestClick.{Type}.{ContextualSearchSource}">
+    name="ContextualSearch.ZeroSuggestClickV2.{Type}.{ContextualSearchSource}">
   <owner>niharm@google.com</owner>
   <owner>chrome-desktop-search@google.com</owner>
   <description>
     Recorded when a user clicks on a {Type} suggestion in the zero-suggest mode
-    from {ContextualSearchSource}.
+    from {ContextualSearchSource}. A query that is submitted with a file
+    uploaded and no text is considered a non-contextual zero suggest click.
   </description>
   <token key="Type">
     <variant name="Contextual" summary=""/>
@@ -14995,6 +14977,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.CheckAuthBeforeShowSync" not_user_triggered="true">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
   <description>
@@ -29347,6 +29330,15 @@ should be able to be added at any place in this file.
   <description>
     Android: User navigated back to the NTP after reading an opened (clicked)
     snippet card.
+  </description>
+</action>
+
+<action name="MobileNTPAIMPlusButtonTapped">
+  <owner>radunitescu@google.com</owner>
+  <owner>bling-search@google.com</owner>
+  <description>
+    Recorded when the user taps on the AIM plus button in the fakebox on NTP.
+    iOS only.
   </description>
 </action>
 
@@ -49972,6 +49964,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="SystemBack">
+  <obsolete>Unused as of Oct 29, 2024</obsolete>
   <owner>lazzzis@google.com</owner>
   <description>
     The user triggered system back **after** Native is initialized. This action

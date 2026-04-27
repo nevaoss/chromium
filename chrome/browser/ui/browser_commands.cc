@@ -74,6 +74,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/dialogs/outdated_upgrade_bubble.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
@@ -220,10 +221,6 @@
 
 #if BUILDFLAG(ENABLE_RLZ)
 #include "components/rlz/rlz_tracker.h"  // nogncheck
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/chromeos/printing/print_preview/print_view_manager_common.h"
 #endif
 
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -1493,6 +1490,11 @@ void NewSplitTab(BrowserWindowInterface* browser,
       tab_strip_model->IsTabPinned(active_index));
   tab_strip_model->AddToNewSplit({active_index},
                                  split_tabs::SplitTabVisualData(), source);
+
+  if (content::WebContents* active_contents =
+          tab_strip_model->GetActiveWebContents()) {
+    active_contents->Focus();
+  }
 }
 
 void AddNewTabToGroup(BrowserWindowInterface* browser) {
@@ -1795,8 +1797,6 @@ bool CanBookmarkCurrentTab(BrowserWindowInterface* browser) {
 
 void BookmarkAllTabs(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("BookmarkAllTabs"));
-  RecordBookmarkAllTabsWithTabsCount(browser->GetProfile(),
-                                     browser->GetTabStripModel()->count());
 
   bookmarks::ShowBookmarkAllTabsDialog(browser);
 }
@@ -1838,9 +1838,6 @@ void MoveTabsToReadLater(BrowserWindowInterface* browser,
                              /*creation_time=*/std::nullopt);
     BrowserUserEducationInterface::From(browser)->MaybeShowFeaturePromo(
         feature_engagement::kIPHReadingListDiscoveryFeature);
-    base::UmaHistogramEnumeration(
-        "ReadingList.BookmarkBarState.OnEveryAddToReadingList",
-        BookmarkBarController::From(browser)->bookmark_bar_state());
     added_to_read_later += 1;
   }
 
@@ -2113,20 +2110,6 @@ void Print(BrowserWindowInterface* browser) {
 #if BUILDFLAG(ENABLE_PRINTING)
   auto* const web_contents =
       browser->GetTabStripModel()->GetActiveWebContents();
-
-  // Launch ChromeOS print preview only if in a ChromeOS build and
-  // `kPrintPreviewCrosPrimary` enabled. Otherwise use browser print preview.
-#if BUILDFLAG(IS_CHROMEOS)
-  if (base::FeatureList::IsEnabled(::features::kPrintPreviewCrosPrimary)) {
-    chromeos::printing::StartPrint(
-        web_contents,
-        /*print_renderer=*/mojo::NullAssociatedRemote(),
-        browser->GetProfile()->GetPrefs()->GetBoolean(
-            prefs::kPrintPreviewDisabled),
-        /*has_selection=*/false);
-    return;
-  }
-#endif
 
   printing::StartPrint(web_contents,
 #if BUILDFLAG(IS_CHROMEOS)
@@ -2545,7 +2528,8 @@ BrowserWindowInterface* OpenInChrome(
     BrowserWindowInterface* hosted_app_browser) {
   // Find a non-incognito browser.
   BrowserWindowInterface* target_browser =
-      chrome::FindTabbedBrowser(hosted_app_browser->GetProfile(), false);
+      ProfileBrowserCollection::GetForProfile(hosted_app_browser->GetProfile())
+          ->FindTabbedBrowser();
 
   if (!target_browser) {
     target_browser = Browser::Create(

@@ -7,11 +7,14 @@
 #include "chrome/browser/glic/selection/selection_overlay_controller.h"
 #include "chrome/browser/glic/test_support/interactive_glic_test.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/color/chrome_color_id.h"
+#include "chrome/browser/ui/lens/lens_preselection_bubble.h"
 #include "chrome/common/chrome_features.h"
 #include "content/public/test/browser_test.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/ozone_buildflags.h"
 #include "ui/gfx/geometry/point.h"
+#include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/interaction/element_tracker_views.h"
 
 namespace glic {
@@ -197,13 +200,51 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest, DeleteActiveRegion) {
                   GetPointWithOffset(350, 350)),
       WaitForJsResultAt(kOverlayWebContentsId, kRenderer,
                         "el => el.hasSelection() && "
-                        "el.selectedRegions.length === 1"),
-      // Click the close button for closing second region.
-      ClickElement(kOverlayWebContentsId, kCloseButton),
-      // Verify there is no active regions or static regions.
-      WaitForJsResultAt(kOverlayWebContentsId, kRenderer,
-                        "el => !el.hasSelection() && "
-                        "el.selectedRegions.length === 0"));
+                        "el.selectedRegions.length === 1"));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest, DeleteLastRegionClosesUI) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayWebContentsId);
+  const DeepQuery kOverlayApp = {"selection-overlay-app"};
+  const DeepQuery kRenderer = {"selection-overlay-app",
+                               "glic-selection-overlay",
+                               "post-selection-renderer"};
+  const DeepQuery kCloseButton = {"selection-overlay-app",
+                                  "glic-selection-overlay",
+                                  "post-selection-renderer", ".close-button"};
+
+  RunTestSequence(
+      InstrumentTab(kActiveTab), OpenGlic(),
+      ClickMockGlicElement({"#captureRegionBtn"}),
+      WaitForShow(OverlayBaseController::kOverlayId),
+      InstrumentNonTabWebView(kOverlayWebContentsId,
+                              OverlayBaseController::kOverlayId),
+      WaitForJsResultAt(kOverlayWebContentsId, kOverlayApp,
+                        "el => el.screenshot_ !== null"),
+
+      // 1. Draw a region (drag from 50,50 to 150,150).
+      MoveMouseTo(OverlayBaseController::kOverlayId,
+                  GetPointWithOffset(50, 50)),
+      DragMouseTo(OverlayBaseController::kOverlayId,
+                  GetPointWithOffset(150, 150)),
+      // Verify this region is active.
+      WaitForJsResultAt(
+          kOverlayWebContentsId, kRenderer,
+          "el => el.hasSelection() && el.selectedRegions.length === 1"),
+
+      // 2. Move mouse back over the close button.
+      MoveMouseTo(OverlayBaseController::kOverlayId,
+                  GetPointWithOffset(100, 100)),
+
+      // 3. Move mouse directly to the close button.
+      MoveMouseTo(kOverlayWebContentsId, kCloseButton),
+
+      // 4. Click the mouse. This avoids failing if the element disappears immediately.
+      ClickMouse(),
+
+      // 5. Verify that the overlay is dismissed.
+      WaitForHide(OverlayBaseController::kOverlayId));
 }
 
 IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest,
@@ -343,6 +384,43 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest,
       DragMouseTo(OverlayBaseController::kOverlayId,
                   GetPointWithOffset(100, 100)),
       WaitForState(kGlicHasFocus, true));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest, BubbleUIColor) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+
+  RunTestSequence(
+      InstrumentTab(kActiveTab), OpenGlic(),
+      ClickMockGlicElement({"#captureRegionBtn"}),
+      WaitForShow(OverlayBaseController::kOverlayId),
+      WaitForShow(kLensPreselectionBubbleElementId),
+      WaitForShow(lens::LensPreselectionBubble::kCancelButtonElementId),
+      CheckView(kLensPreselectionBubbleElementId,
+                [](views::View* view) {
+                  auto* bubble =
+                      static_cast<views::BubbleDialogDelegateView*>(view);
+                  return bubble->background_color() ==
+                         kColorGlicSelectionOverlayToast;
+                }),
+      CheckView(lens::LensPreselectionBubble::kCancelButtonElementId,
+                [](views::View* view) {
+                  auto* button = static_cast<views::MdTextButton*>(view);
+                  return button->GetBgColorIdOverride() ==
+                         kColorGlicSelectionOverlayToast;
+                }));
+}
+
+IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest, BubbleUICancelClicked) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kActiveTab);
+
+  RunTestSequence(
+      InstrumentTab(kActiveTab), OpenGlic(),
+      ClickMockGlicElement({"#captureRegionBtn"}),
+      WaitForShow(OverlayBaseController::kOverlayId),
+      WaitForShow(kLensPreselectionBubbleElementId),
+      WaitForShow(lens::LensPreselectionBubble::kCancelButtonElementId),
+      PressButton(lens::LensPreselectionBubble::kCancelButtonElementId),
+      WaitForHide(OverlayBaseController::kOverlayId));
 }
 
 }  // namespace glic

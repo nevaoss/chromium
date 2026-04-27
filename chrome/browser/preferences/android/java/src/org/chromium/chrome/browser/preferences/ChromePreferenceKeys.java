@@ -232,10 +232,6 @@ public final class ChromePreferenceKeys {
     public static final String NTP_CUSTOMIZATION_BACKGROUND_INFO =
             "Chrome.NtpCustomization.BackgroundInfo";
 
-    /** Whether the NTP customization bottom sheet has been opened. */
-    public static final String NTP_CUSTOMIZATION_MAIN_BOTTOM_SHEET_SHOWN =
-            "Chrome.NtpCustomization.MainBottomSheetShown";
-
     /** Whether daily refresh is enabled for Chrome Color. */
     public static final String NTP_CUSTOMIZATION_CHROME_COLOR_DAILY_REFRESH_ENABLED =
             "Chrome.NtpCustomization.ChromeColorDailyRefreshEnabled";
@@ -409,6 +405,9 @@ public final class ChromePreferenceKeys {
     /** Whether the auto-browse setting is enabled for Glic */
     public static final String GLIC_AUTO_BROWSE_SETTING_ENABLED =
             "Chrome.Glic.AutoBrowseSettingEnabled";
+
+    /** Whether the Glic button should be shown. */
+    public static final String GLIC_PROMO_ACCEPTED = "Chrome.Glic.PromoAccepted";
 
     public static final String HISTORY_SHOW_HISTORY_INFO = "history_home_show_info";
 
@@ -1158,7 +1157,6 @@ public final class ChromePreferenceKeys {
                 NTP_BACKGROUND_IMAGE_PORTRAIT_INFO,
                 NTP_BACKGROUND_IMAGE_LANDSCAPE_INFO,
                 NTP_CUSTOMIZATION_BACKGROUND_INFO,
-                NTP_CUSTOMIZATION_MAIN_BOTTOM_SHEET_SHOWN,
                 NTP_CUSTOMIZATION_CHROME_COLOR_DAILY_REFRESH_ENABLED,
                 NTP_CUSTOMIZATION_LAST_DAILY_REFRESH_TIMESTAMP,
                 NTP_CUSTOMIZATION_PRIMARY_COLOR_FOR_DAILY_REFRESH,
@@ -1194,6 +1192,7 @@ public final class ChromePreferenceKeys {
                 GLIC_PRECISE_LOCATION_SETTING_ENABLED,
                 GLIC_SHARE_CURRENT_TAB_DEFAULT_ACCESS_ENABLED,
                 GLIC_AUTO_BROWSE_SETTING_ENABLED,
+                GLIC_PROMO_ACCEPTED,
                 HISTORY_APP_SPECIFIC_INFO_SEEN,
                 HOME_MODULE_CARDS_ENABLED,
                 HOME_MODULES_MODULE_TYPE.pattern(),

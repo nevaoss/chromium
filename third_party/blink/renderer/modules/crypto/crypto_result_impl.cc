@@ -41,6 +41,9 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_object_builder.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_throw_dom_exception.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_crypto_key.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_crypto_key_pair.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_encapsulated_bits.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_encapsulated_key.h"
 #include "third_party/blink/renderer/core/dom/dom_exception.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_observer.h"
@@ -193,16 +196,63 @@ void CryptoResultImpl::CompleteWithKeyPair(const WebCryptoKey& public_key,
   if (!resolver_)
     return;
 
+  auto* result = CryptoKeyPair::Create();
+  result->setPublicKey(MakeGarbageCollected<CryptoKey>(public_key));
+  result->setPrivateKey(MakeGarbageCollected<CryptoKey>(private_key));
+
+  if (type_ == ResolverType::kTyped) {
+    resolver_->DowncastTo<CryptoKeyPair>()->Resolve(result);
+  } else {
+    ScriptState* script_state = resolver_->GetScriptState();
+    ScriptState::Scope scope(script_state);
+    resolver_->DowncastTo<IDLAny>()->Resolve(result->ToV8(script_state));
+  }
+  ClearResolver();
+}
+
+void CryptoResultImpl::CompleteWithEncapsulatedKey(
+    const WebCryptoKey& shared_key,
+    base::span<const uint8_t> ciphertext) {
+  if (!resolver_) {
+    return;
+  }
+
   ScriptState* script_state = resolver_->GetScriptState();
   ScriptState::Scope scope(script_state);
 
-  V8ObjectBuilder key_pair(script_state);
+  auto* result = EncapsulatedKey::Create();
+  result->setSharedKey(MakeGarbageCollected<CryptoKey>(shared_key));
+  result->setCiphertext(DOMArrayBuffer::Create(ciphertext));
 
-  key_pair.Add("publicKey", MakeGarbageCollected<CryptoKey>(public_key));
-  key_pair.Add("privateKey", MakeGarbageCollected<CryptoKey>(private_key));
+  if (type_ == ResolverType::kTyped) {
+    resolver_->DowncastTo<EncapsulatedKey>()->Resolve(result);
+  } else {
+    resolver_->DowncastTo<IDLAny>()->Resolve(
+        ToV8Traits<EncapsulatedKey>::ToV8(script_state, result));
+  }
+  ClearResolver();
+}
 
-  CHECK_EQ(type_, ResolverType::kAny);
-  resolver_->DowncastTo<IDLAny>()->Resolve(key_pair.V8Object());
+void CryptoResultImpl::CompleteWithEncapsulatedBits(
+    base::span<const uint8_t> shared_key,
+    base::span<const uint8_t> ciphertext) {
+  if (!resolver_) {
+    return;
+  }
+
+  ScriptState* script_state = resolver_->GetScriptState();
+  ScriptState::Scope scope(script_state);
+
+  auto* result = EncapsulatedBits::Create();
+  result->setSharedKey(DOMArrayBuffer::Create(shared_key));
+  result->setCiphertext(DOMArrayBuffer::Create(ciphertext));
+
+  if (type_ == ResolverType::kTyped) {
+    resolver_->DowncastTo<EncapsulatedBits>()->Resolve(result);
+  } else {
+    resolver_->DowncastTo<IDLAny>()->Resolve(
+        ToV8Traits<EncapsulatedBits>::ToV8(script_state, result));
+  }
   ClearResolver();
 }
 

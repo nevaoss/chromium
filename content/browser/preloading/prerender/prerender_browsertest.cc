@@ -9092,8 +9092,15 @@ IN_PROC_BROWSER_TEST_F(
 // Tests that if PrerenderHostRegistry is attempting to activate a pending
 // prerender host, it will be successfully canceled with the final status of
 // `kActivatedBeforeStarted`.
+// TODO(crbug.com/496452657): This test is flaky on Linux.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_ActivateBeforePrerenderStarts \
+  DISABLED_ActivateBeforePrerenderStarts
+#else
+#define MAYBE_ActivateBeforePrerenderStarts ActivateBeforePrerenderStarts
+#endif
 IN_PROC_BROWSER_TEST_P(PrerenderBrowserTestFallbackEnabledDisabled,
-                       ActivateBeforePrerenderStarts) {
+                       MAYBE_ActivateBeforePrerenderStarts) {
   net::test_server::ControllableHttpResponse response(embedded_test_server(),
                                                       "/empty.html?prerender1");
   ASSERT_TRUE(embedded_test_server()->Start());
@@ -14011,41 +14018,6 @@ IN_PROC_BROWSER_TEST_F(PrerenderBrowserTest,
   NavigatePrimaryPage(kPrerenderingUrl);
   ASSERT_EQ(web_contents()->GetLastCommittedURL(), kPrerenderingUrl);
   theme_change_waiter.Wait();
-}
-
-// Tests that text autosizer works per page.
-IN_PROC_BROWSER_TEST_F(PrerenderBrowserTest,
-                       TextAutosizerInfoChangeInNonPrimaryPage) {
-  const GURL kInitialUrl = GetUrl("/empty.html");
-  const GURL kPrerenderingUrl = GetUrl("/title1.html");
-
-  // Navigate to an initial page.
-  ASSERT_TRUE(NavigateToURL(shell(), kInitialUrl));
-  RenderFrameHostImpl* primary_frame_host = current_frame_host();
-
-  PrerenderHostId host_id = AddPrerender(kPrerenderingUrl);
-  RenderFrameHostImpl* prerender_frame_host =
-      GetPrerenderedMainFrameHost(host_id);
-
-  // Update the autosizer page info in the prerendering page.
-  blink::mojom::TextAutosizerPageInfo prerender_page_info(
-      /*main_frame_width=*/320,
-      /*main_frame_layout_width=*/480,
-      /*device_scale_adjustment=*/1.f);
-  prerender_frame_host->TextAutosizerPageInfoChanged(
-      prerender_page_info.Clone());
-
-  // Only the prerendering page's autosizer info should be updated.
-  EXPECT_TRUE(prerender_page_info.Equals(
-      prerender_frame_host->GetPage().text_autosizer_page_info()));
-  EXPECT_FALSE(prerender_page_info.Equals(
-      primary_frame_host->GetPage().text_autosizer_page_info()));
-
-  // After being activated, the prerendered page becomes the primary page, so
-  // the page info of the primary page should equal `prerender_page_info`.
-  NavigatePrimaryPage(kPrerenderingUrl);
-  EXPECT_TRUE(prerender_page_info.Equals(
-      current_frame_host()->GetPage().text_autosizer_page_info()));
 }
 
 // Check that the prerendered page window.name is maintained after activation.

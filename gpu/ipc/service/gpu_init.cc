@@ -751,6 +751,16 @@ bool GpuInit::InitializeAndStartSandbox(base::CommandLine* command_line,
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(USE_WEBGPU_ON_VULKAN_VIA_GL_INTEROP)
+#if BUILDFLAG(IS_OZONE)
+  if (!ui::OzonePlatform::GetInstance()
+           ->GetPlatformProperties()
+           .webgpu_on_vulkan_via_gl_interop) {
+    gpu_feature_info_
+        .status_values[GPU_FEATURE_TYPE_WEBGPU_ON_VK_VIA_GL_INTEROP] =
+        kGpuFeatureStatusDisabled;
+  }
+#endif  // BUILDFLAG(IS_OZONE)
+
   if (gpu_feature_info_
           .status_values[GPU_FEATURE_TYPE_WEBGPU_ON_VK_VIA_GL_INTEROP] ==
       kGpuFeatureStatusEnabled) {
@@ -759,7 +769,7 @@ bool GpuInit::InitializeAndStartSandbox(base::CommandLine* command_line,
     }
     gpu_preferences_.enable_webgpu_on_vk_via_gl_interop = true;
   }
-#endif
+#endif  // BUILDFLAG(USE_WEBGPU_ON_VULKAN_VIA_GL_INTEROP)
 
   if (!(gpu_feature_info_.status_values[GPU_FEATURE_TYPE_VULKAN] ==
             kGpuFeatureStatusEnabled ||
@@ -956,12 +966,15 @@ bool GpuInit::InitializeAndStartSandbox(base::CommandLine* command_line,
 #if BUILDFLAG(IS_WIN)
   {
     Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
+    Microsoft::WRL::ComPtr<ID3D12CommandQueue> d3d12_command_queue;
     if (dawn_context_provider_) {
       d3d11_device = dawn_context_provider_->GetD3D11Device();
+      d3d12_command_queue = dawn_context_provider_->GetD3D12CommandQueue();
     } else {
       d3d11_device = gl::QueryD3D11DeviceObjectFromANGLE();
     }
-    gl::InitializeDirectComposition(std::move(d3d11_device));
+    gl::InitializeDirectComposition(std::move(d3d11_device),
+                                    std::move(d3d12_command_queue));
   }
 #endif  // BUILDFLAG(IS_WIN)
 

@@ -24,6 +24,8 @@ source_set("glic") {
     "glic_pref_names.h",
     "glic_profile_manager.h",
     "glic_settings_util.h",
+    "glic_tab_restore_data.h",
+    "glic_tab_restore_helper.h",
     "glic_user_status_code.h",
     "glic_user_status_fetcher.h",
     "glic_user_status_request.h",
@@ -68,9 +70,6 @@ source_set("glic") {
     # TODO(b/470059315): Make these work on Android, or move them to the
     # desktop-only section.
     sources += [
-      "fre/glic_fre_ui.h",
-      "glic_tab_restore_data.h",
-      "glic_tab_restore_helper.h",
       "host/context/glic_focused_tab_manager.h",
       "public/widget/glic_side_panel_coordinator_impl.h",
     ]
@@ -178,6 +177,7 @@ if (is_android) {
     ]
     deps = [
       "//base:log_java",
+      "//base:resetters_java",
       "//base:supplier_java",
       "//chrome/browser/glic/android:jni_headers_java",
       "//chrome/browser/profiles/android:java",
@@ -213,6 +213,8 @@ source_set("impl") {
     "glic_pref_names.cc",
     "glic_profile_manager.cc",
     "glic_settings_util.cc",
+    "glic_tab_restore_data.cc",
+    "glic_tab_restore_helper.cc",
     "glic_user_status_fetcher.cc",
     "glic_user_status_request.cc",
     "glic_zero_state_suggestions_manager.cc",
@@ -310,8 +312,6 @@ source_set("impl") {
       "glic_occlusion_notifier.cc",
       "glic_occlusion_notifier.h",
       "glic_selection_observer.cc",
-      "glic_tab_restore_data.cc",
-      "glic_tab_restore_helper.cc",
       "host/context/glic_focused_browser_manager_impl.cc",
       "host/context/glic_focused_browser_manager_impl.h",
       "host/context/glic_focused_tab_manager.cc",
@@ -366,7 +366,6 @@ source_set("impl") {
     "//chrome/browser/glic/common",
     "//chrome/browser/glic/fre",
     "//chrome/browser/glic/media",
-    "//chrome/browser/glic/shared",
     "//chrome/browser/glic/suggestions",
     "//chrome/browser/lifetime:termination_notification",
     "//chrome/browser/media/webrtc",
@@ -375,7 +374,6 @@ source_set("impl") {
     "//chrome/browser/profiles:profile_util",
     "//chrome/browser/profiles/keep_alive",
     "//chrome/browser/resources/glic:resources",
-    "//chrome/browser/resources/glic/fre:resources",
     "//chrome/browser/signin",
     "//chrome/browser/skills",
     "//chrome/browser/skills:public",
@@ -627,6 +625,7 @@ source_set("browser_tests") {
   testonly = true
   defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   sources = [
+    "glic_tab_restore_helper_browsertest.cc",
     "host/context/glic_delegating_sharing_manager_browsertest.cc",
     "host/glic_web_contents_warming_pool_browsertest.cc",
     "host/new_glic_api_browsertest.cc",
@@ -642,7 +641,6 @@ source_set("browser_tests") {
       "glic_net_log_browsertest.cc",
       "glic_policy_browsertest.cc",
       "glic_profile_manager_browsertest.cc",
-      "glic_tab_restore_helper_browsertest.cc",
       "glic_user_status_browsertest.cc",
       "host/context/glic_active_instance_sharing_manager_browsertest.cc",
       "host/context/glic_active_pinned_focused_tab_manager_browsertest.cc",
@@ -670,11 +668,15 @@ source_set("browser_tests") {
     "//chrome/browser/glic/fre",
     "//chrome/browser/glic/test_support",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/skills",
+    "//chrome/browser/skills:public",
     "//chrome/browser/tab_list",
     "//chrome/common:chrome_features",
     "//chrome/test:test_support",
     "//components/favicon/content",
     "//components/prefs",
+    "//components/skills:features",
+    "//components/skills/public",
     "//content/test:test_support",
     "//third_party/blink/public/common:headers",
     "//ui/gfx/geometry",

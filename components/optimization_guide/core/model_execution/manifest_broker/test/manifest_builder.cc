@@ -149,6 +149,15 @@ ManifestBuilder& ManifestBuilder::Add(const DeviceUseCase& use_case,
   return *this;
 }
 
+ManifestBuilder& ManifestBuilder::SetFeatureConfig(DeviceCategory device,
+                                                   const std::string& name,
+                                                   proto::Any config) {
+  proto::DeviceCategoryConfig& category_config =
+      (*manifest_.mutable_category_configs())[base::ToString(device)];
+  (*category_config.mutable_feature_configs())[name] = std::move(config);
+  return *this;
+}
+
 proto::Manifest ManifestBuilder::Build() {
   return manifest_;
 }
@@ -156,10 +165,16 @@ proto::Manifest ManifestBuilder::Build() {
 ManifestComponentDirectory::ManifestComponentDirectory(
     const proto::Manifest& manifest) {
   CHECK(temp_dir_.CreateUniqueTempDir());
-  CHECK(base::WriteFile(temp_dir_.GetPath().Append(kManifestFileName),
-                        manifest.SerializeAsString()));
+  Add(manifest);
 }
 ManifestComponentDirectory::~ManifestComponentDirectory() = default;
+
+ManifestComponentDirectory& ManifestComponentDirectory::Add(
+    const proto::Manifest& manifest) {
+  CHECK(base::WriteFile(temp_dir_.GetPath().Append(kManifestFileName),
+                        manifest.SerializeAsString()));
+  return *this;
+}
 
 ManifestComponentDirectory& ManifestComponentDirectory::Add(
     const std::string& filename,

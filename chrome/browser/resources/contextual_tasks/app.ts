@@ -20,6 +20,8 @@ import './error_page.js';
 import './ghost_loader.js';
 import './top_toolbar.js';
 
+import {isFullWebView} from './web_view_type.js';
+import type {LoadAbortEvent, LoadEvent, NewWindowEvent, PermissionRequestEvent, WebViewType} from './web_view_type.js';
 import type {ChromeEvent} from '/tools/typescript/definitions/chrome_event.js';
 import {assert} from 'chrome://resources/js/assert.js';
 import {EventTracker} from 'chrome://resources/js/event_tracker.js';
@@ -40,12 +42,13 @@ import {getNonOccludedClipPath} from './utils/clip_path.js';
 
 declare global {
   interface HTMLElementEventMap {
-    'loadstart': chrome.webviewTag.LoadStartEvent;
+    'loadstart': chrome.webviewTag.LoadStartEvent|LoadEvent;
     'loadredirect': chrome.webviewTag.LoadRedirectEvent;
-    'loadabort': chrome.webviewTag.LoadAbortEvent;
-    'loadcommit': chrome.webviewTag.LoadCommitEvent;
-    'newwindow': chrome.webviewTag.NewWindowEvent;
-    'permissionrequest': chrome.webviewTag.PermissionRequestEvent;
+    'loadabort': chrome.webviewTag.LoadAbortEvent|LoadAbortEvent;
+    'loadcommit': chrome.webviewTag.LoadCommitEvent|LoadEvent;
+    'newwindow': chrome.webviewTag.NewWindowEvent|NewWindowEvent;
+    'permissionrequest': chrome.webviewTag.PermissionRequestEvent|
+        PermissionRequestEvent;
   }
 }
 
@@ -74,7 +77,7 @@ const COMPOSEBOX_BORDER_RADIUS_PX = 24;
 
 export interface ContextualTasksAppElement {
   $: {
-    threadFrame: chrome.webviewTag.WebView,
+    threadFrame: WebViewType,
     composeboxHeaderWrapper: HTMLElement,
     composeboxHeader: HTMLElement,
     flexCenterContainer: HTMLElement,
@@ -233,7 +236,7 @@ export class ContextualTasksAppElement extends CrLitElement {
   // Whether top-level navigation failed. Initialized based on online status
   // though top-level navigation could fail for numerous reasons.
   protected accessor isLoadError_: boolean = !window.navigator.onLine;
-  protected accessor isAiPage_: boolean = true;
+  protected accessor isAiPage_: boolean = loadTimeData.getBoolean('isAiPage');
   protected accessor isLensOverlayShowing_: boolean = false;
   protected accessor isOverlayOpenForAimVisualSearch_: boolean = false;
   // Indicates if in tab mode. Most start in a tab.
@@ -244,10 +247,15 @@ export class ContextualTasksAppElement extends CrLitElement {
   protected accessor threadTitle_: string = '';
   protected accessor isInBasicMode_: boolean = false;
   protected accessor isErrorPageVisible_: boolean = false;
-  protected accessor isZeroState_: boolean|undefined = undefined;
+  // Whether no queries have been submitted in the current AIM thread. This
+  // can be undefined on initial load to prevent the composebox from flashing
+  // briefly before the zero state is rendered.
+  protected accessor isZeroState_: boolean|undefined =
+      loadTimeData.getBoolean('isGhostLoaderVisible') ? false : undefined;
   protected accessor enableNativeZeroStateSuggestions_: boolean =
       loadTimeData.getBoolean('enableNativeZeroStateSuggestions');
-  protected accessor isGhostLoaderVisible_: boolean = false;
+  protected accessor isGhostLoaderVisible_: boolean =
+      loadTimeData.getBoolean('isGhostLoaderVisible');
   protected accessor useStratusDarkModeColors_: boolean =
       loadTimeData.getBoolean('useStratusDarkModeColors');
   protected accessor isInputLocked_: boolean = false;
@@ -305,7 +313,7 @@ export class ContextualTasksAppElement extends CrLitElement {
   // distinguish between the two cases, since load start will always be called
   // even if the load is aborted and the frame therefore never changes.
   private lastThreadFrameLoadStartEvent_: chrome.webviewTag.LoadStartEvent|
-      null = null;
+      LoadEvent|null = null;
 
   private get composebox_(): ContextualTasksComposeboxElement|null {
     // <if expr="not is_android">
@@ -663,7 +671,8 @@ export class ContextualTasksAppElement extends CrLitElement {
     this.composebox_?.style.setProperty(variable, `${value}px`);
   }
 
-  private onThreadFrameLoadStart(ev: chrome.webviewTag.LoadStartEvent) {
+  private onThreadFrameLoadStart(e: Event) {
+    const ev = e as chrome.webviewTag.LoadStartEvent | LoadEvent;
     // If is from inner iframe and not from main webview URL:
     if (!ev.isTopLevel) {
       return;
@@ -683,7 +692,8 @@ export class ContextualTasksAppElement extends CrLitElement {
     this.lastThreadFrameLoadStartEvent_ = ev;
   }
 
-  private onThreadFrameLoadRedirect(ev: chrome.webviewTag.LoadRedirectEvent) {
+  private onThreadFrameLoadRedirect(e: Event) {
+    const ev = e as chrome.webviewTag.LoadRedirectEvent;
     // If is from inner iframe and not from main webview URL:
     if (!ev.isTopLevel) {
       return;
@@ -692,7 +702,8 @@ export class ContextualTasksAppElement extends CrLitElement {
     this.maybeOnThreadFrameTopLevelNavigation(ev.oldUrl);
   }
 
-  private onThreadFrameLoadCommit(ev: chrome.webviewTag.LoadCommitEvent) {
+  private onThreadFrameLoadCommit(e: Event) {
+    const ev = e as chrome.webviewTag.LoadCommitEvent | LoadEvent;
     // If is from inner iframe and not from main webview URL:
     if (!ev.isTopLevel) {
       return;
@@ -708,10 +719,16 @@ export class ContextualTasksAppElement extends CrLitElement {
     this.updateBasicModeAfterNavigation();
   }
 
-  private async onThreadFrameLoadAbort(e: chrome.webviewTag.LoadAbortEvent) {
+  private async onThreadFrameLoadAbort(ev: Event) {
+    const e = ev as chrome.webviewTag.LoadAbortEvent | LoadAbortEvent;
+    // It is possible for a redirect to abort a load before committing. To
+    // prevent ghost loader flickers in this case, only hide the ghost loader if
+    // the frame was previously set to loading.
+    if (this.isFrameLoading) {
+      this.setIsGhostLoaderVisible(false);
+    }
     this.isFrameLoading = false;
     this.isLoadingZeroStateFromResults_ = false;
-    this.setIsGhostLoaderVisible(false);
 
     // The navigation aborted, so reset the last thread frame load start event,
     // since the frame is no longer loading. Without this, every
@@ -745,8 +762,8 @@ export class ContextualTasksAppElement extends CrLitElement {
     }
   }
 
-  private async onThreadFrameTopLevelNavigation(
-      ev: chrome.webviewTag.LoadStartEvent) {
+  private async onThreadFrameTopLevelNavigation(e: Event) {
+    const ev = e as chrome.webviewTag.LoadStartEvent | LoadEvent;
     // Reset the composebox bounds and the occluders since the embedded page is
     // reloading.
     this.forcedComposeboxBounds_ = null;
@@ -1047,32 +1064,39 @@ export class ContextualTasksAppElement extends CrLitElement {
   }
 
   private setupWebviewRequestOverrides() {
-    this.$.threadFrame.request.onBeforeRequest.addListener(
-        this.onBeforeRequest, {
-          types: ['main_frame'] as any,
-          urls: ['<all_urls>'],
-        },
-        ['blocking']);
+    if (isFullWebView(this.$.threadFrame)) {
+      this.$.threadFrame.request.onBeforeRequest.addListener(
+          this.onBeforeRequest, {
+            types: ['main_frame'] as any,
+            urls: ['<all_urls>'],
+          },
+          ['blocking']);
 
-    // Allow downloading files. This is necessary since aim can generate images
-    // for download.
-    this.$.threadFrame.addEventListener(
-        'permissionrequest', (e: chrome.webviewTag.PermissionRequestEvent) => {
-          if (e.permission === 'download') {
-            e.request.allow();
-          }
-        });
+      // Allow downloading files. This is necessary since aim can generate
+      // images for download.
+      this.$.threadFrame.addEventListener(
+          'permissionrequest',
+          (e: chrome.webviewTag.PermissionRequestEvent|
+           PermissionRequestEvent) => {
+            if (e.permission === 'download') {
+              e.request.allow();
+            }
+          });
 
-    // Sets the user agent to the default user agent + the contextual tasks
-    // custom suffix.
-    const userAgent = this.$.threadFrame.getUserAgent();
-    const userAgentSuffix = loadTimeData.getString('userAgentSuffix');
-    this.$.threadFrame.setUserAgentOverride(`${userAgent} ${userAgentSuffix}`);
+      // Sets the user agent to the default user agent + the contextual tasks
+      // custom suffix.
+      const userAgent = this.$.threadFrame.getUserAgent();
+      const userAgentSuffix = loadTimeData.getString('userAgentSuffix');
+      this.$.threadFrame.setUserAgentOverride(
+          `${userAgent} ${userAgentSuffix}`);
+    }
   }
 
   private removeWebviewRequestOverrides() {
-    this.$.threadFrame.request.onBeforeRequest.removeListener(
-        this.onBeforeRequest);
+    if (isFullWebView(this.$.threadFrame)) {
+      this.$.threadFrame.request.onBeforeRequest.removeListener(
+          this.onBeforeRequest);
+    }
   }
 
   private addCommonSearchParams(url: URL): URL {
@@ -1214,11 +1238,13 @@ export class ContextualTasksAppElement extends CrLitElement {
     return this.isFrameLoading;
   }
 
-  onThreadFrameLoadStartForTesting(event: chrome.webviewTag.LoadStartEvent) {
+  onThreadFrameLoadStartForTesting(
+      event: chrome.webviewTag.LoadStartEvent|LoadEvent) {
     this.onThreadFrameLoadStart(event);
   }
 
-  onThreadFrameLoadCommitForTesting(event: chrome.webviewTag.LoadCommitEvent) {
+  onThreadFrameLoadCommitForTesting(
+      event: chrome.webviewTag.LoadCommitEvent|LoadEvent) {
     this.onThreadFrameLoadCommit(event);
   }
 
@@ -1226,7 +1252,8 @@ export class ContextualTasksAppElement extends CrLitElement {
     this.onThreadFrameContentLoad();
   }
 
-  async onThreadFrameLoadAbortForTesting(event: chrome.webviewTag.LoadAbortEvent) {
+  async onThreadFrameLoadAbortForTesting(
+      event: chrome.webviewTag.LoadAbortEvent|LoadAbortEvent) {
     await this.onThreadFrameLoadAbort(event);
   }
 

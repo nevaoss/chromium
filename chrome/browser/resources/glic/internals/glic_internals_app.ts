@@ -7,7 +7,7 @@ import '//resources/cr_elements/cr_tabs/cr_tabs.js';
 
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
 
-import {ActuationEligibility, AllowedInflightNavigation, FreOverride, InternalsPageHandlerFactory, InternalsPageHandlerRemote, InvocationSource} from '../glic.mojom-webui.js';
+import {ActuationEligibility, AllowedInflightNavigation, FeatureMode, FreOverride, InternalsPageHandlerFactory, InternalsPageHandlerRemote, InvocationSource} from '../glic.mojom-webui.js';
 import type {InternalsDataPayload} from '../glic.mojom-webui.js';
 
 import {getCss} from './glic_internals_app.css.js';
@@ -33,9 +33,13 @@ export class GlicInternalsAppElement extends CrLitElement {
       invokePrompt_: {type: String},
       invokeAutoSubmit_: {type: Boolean},
       invokeFreOverride_: {type: Number},
+      invokeFeatureMode_: {type: Number},
+      invokeInvocationSource_: {type: Number},
+      invokeWaitForPanelOpen_: {type: Boolean},
       invokeLogs_: {type: Array},
       selectedTabIndex_: {type: Number},
       tabNames_: {type: Array},
+      featureModeEnumValues_: {type: Array},
     };
   }
 
@@ -43,9 +47,18 @@ export class GlicInternalsAppElement extends CrLitElement {
   protected accessor invokePrompt_: string = '';
   protected accessor invokeAutoSubmit_: boolean = true;
   protected accessor invokeFreOverride_: FreOverride = FreOverride.kUnspecified;
+  protected accessor invokeFeatureMode_: FeatureMode = FeatureMode.kUnspecified;
+  protected accessor invokeInvocationSource_: InvocationSource =
+      InvocationSource.kOsButton;
+  protected accessor invokeWaitForPanelOpen_: boolean = false;
   protected accessor invokeLogs_: string[] = [];
   protected accessor selectedTabIndex_: number = 0;
   protected accessor tabNames_: string[] = ['General', 'Debug Controls'];
+  protected accessor featureModeEnumValues_:
+      Array<{name: string, value: number}> =
+          Object.entries(FeatureMode)
+              .filter(([key]) => isNaN(Number(key)))
+              .map(([name, value]) => ({name, value: value as number}));
 
 
 
@@ -198,6 +211,12 @@ export class GlicInternalsAppElement extends CrLitElement {
     ];
   }
 
+  protected getInvocationSourceOptions_() {
+    return Object.entries(InvocationSource)
+        .filter(([_, value]) => typeof value === 'number')
+        .map(([key, value]) => ({name: key, value: value}));
+  }
+
   protected onInvokePromptInput_(e: Event) {
     this.invokePrompt_ = (e.target as HTMLInputElement).value;
   }
@@ -210,17 +229,28 @@ export class GlicInternalsAppElement extends CrLitElement {
     this.invokeFreOverride_ = Number((e.target as HTMLSelectElement).value);
   }
 
+  protected onInvokeFeatureModeChange_(e: Event) {
+    this.invokeFeatureMode_ = Number((e.target as HTMLSelectElement).value);
+  }
+
+  protected onInvokeInvocationSourceChange_(e: Event) {
+    this.invokeInvocationSource_ =
+        Number((e.target as HTMLSelectElement).value);
+  }
+  protected onInvokeWaitForPanelOpenChange_(e: Event) {
+    this.invokeWaitForPanelOpen_ = (e.target as HTMLInputElement).checked;
+  }
   protected onTriggerInvokeClick_() {
     this.invokeLogs_ =
         [`[${new Date().toLocaleTimeString()}] TRIGGERING INVOKE...`];
     console.info(this.invokeLogs_[0]);
 
     const options = {
-      invocationSource: InvocationSource.kOsButton,
+      invocationSource: this.invokeInvocationSource_,
       prompts: this.invokePrompt_ ? [this.invokePrompt_] : [],
       additionalContext: null,
       conversation: {defaultConversation: {}},
-      featureMode: null,
+      featureMode: this.invokeFeatureMode_,
       disableZss: false,
       skillId: null,
       errorMessage: null,
@@ -228,6 +258,7 @@ export class GlicInternalsAppElement extends CrLitElement {
       allowedInflightNavigation: AllowedInflightNavigation.kNone,
       autoSubmit: this.invokeAutoSubmit_,
       freOverride: this.invokeFreOverride_,
+      waitForPanelOpen: this.invokeWaitForPanelOpen_,
     };
 
     this.pageHandler_.triggerInvokeFromInternalsAction(options).then(

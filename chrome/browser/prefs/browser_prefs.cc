@@ -78,7 +78,6 @@
 #include "chrome/browser/signin/chrome_signin_client.h"
 #include "chrome/browser/signin/signin_promo_util.h"
 #include "chrome/browser/ssl/ssl_config_service_manager.h"
-#include "chrome/browser/subscription_eligibility/subscription_eligibility_prefs.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/tracing/chrome_tracing_delegate.h"
 #include "chrome/browser/ui/browser_ui_prefs.h"
@@ -103,6 +102,7 @@
 #include "chrome/common/buildflags.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/secure_origin_allowlist.h"
+#include "components/accessibility_annotator/core/prefs.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/blocked_content/safe_browsing_triggered_popup_blocker.h"
 #include "components/breadcrumbs/core/breadcrumbs_status.h"
@@ -186,6 +186,7 @@
 #include "components/site_engagement/content/site_engagement_service.h"
 #include "components/subresource_filter/content/browser/ruleset_service.h"
 #include "components/subresource_filter/core/common/constants.h"
+#include "components/subscription_eligibility/subscription_eligibility_prefs.h"
 #include "components/supervised_user/core/browser/supervised_user_preferences.h"
 #include "components/sync/base/pref_names.h"
 #include "components/sync/service/device_statistics_scheduler.h"
@@ -555,6 +556,10 @@
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 #include "components/safe_browsing/content/common/file_type_policies_prefs.h"
+#endif
+
+#if BUILDFLAG(CHROME_FOR_TESTING)
+#include "chrome/browser/chrome_for_testing/prefs.h"
 #endif
 
 namespace {
@@ -1370,6 +1375,9 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   browser_shutdown::RegisterPrefs(registry);
   BrowserProcessImpl::RegisterPrefs(registry);
   ChromeContentBrowserClient::RegisterLocalStatePrefs(registry);
+#if BUILDFLAG(CHROME_FOR_TESTING)
+  chrome_for_testing::RegisterPrefs(registry);
+#endif
   chrome_labs_prefs::RegisterLocalStatePrefs(registry);
   chrome_urls::RegisterPrefs(registry);
   ChromeMetricsServiceClient::RegisterPrefs(registry);
@@ -1678,6 +1686,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   // User prefs. Please keep this list alphabetized.
   AccessibilityLabelsService::RegisterProfilePrefs(registry);
   AccessibilityUIMessageHandler::RegisterProfilePrefs(registry);
+  accessibility_annotator::prefs::RegisterProfilePrefs(registry);
   AimEligibilityService::RegisterProfilePrefs(registry);
   AnnouncementNotificationService::RegisterProfilePrefs(registry);
   autofill::prefs::RegisterProfilePrefs(registry);
@@ -1730,7 +1739,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
 #endif  // BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
   optimization_guide::prefs::RegisterProfilePrefs(registry);
   optimization_guide::model_execution::prefs::RegisterProfilePrefs(registry);
+#if !BUILDFLAG(IS_ANDROID)
   PageColorsController::RegisterProfilePrefs(registry);
+#endif
   password_manager::PasswordManager::RegisterProfilePrefs(registry);
   payments::RegisterProfilePrefs(registry);
   performance_manager::user_tuning::prefs::RegisterProfilePrefs(registry);
@@ -2544,7 +2555,9 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 #endif  // BUILDFLAG(IS_ANDROID)
 
   // Added 09/2025.
+#if !BUILDFLAG(IS_ANDROID)
   PageColorsController::MigrateObsoleteProfilePrefs(profile_prefs);
+#endif
   profile_prefs->ClearPref(kGaiaCookieLastListAccountsData);
 
   // Added 09/2025.

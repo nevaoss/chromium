@@ -8,10 +8,12 @@
 #include <memory>
 #include <string>
 
+#include "base/containers/circular_deque.h"
 #include "base/containers/lru_cache.h"
 #include "base/files/file_path.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/weak_ptr.h"
+#include "base/observer_list.h"
 #include "base/scoped_observation.h"
 #include "base/threading/sequence_bound.h"
 #include "base/types/optional_ref.h"
@@ -62,13 +64,23 @@ class AccessibilityAnnotatorBackendImpl
   void Init() override;
   base::WeakPtr<syncer::DataTypeControllerDelegate>
   GetAccessibilityAnnotationControllerDelegate() override;
+  void AddObserver(AccessibilityAnnotatorBackend::Observer* observer) override;
+  void RemoveObserver(
+      AccessibilityAnnotatorBackend::Observer* observer) override;
   base::optional_ref<const ContentAnnotationsData>
-  GetContentAnnotationsCacheData(const GURL& url) const override;
-  void SetContentAnnotationsCacheData(const GURL& url,
+  GetContentAnnotationsCacheData(history::VisitID visit_id) const override;
+  void SetContentAnnotationsCacheData(history::VisitID visit_id,
                                       ContentAnnotationsData data) override;
-  void RemoveContentAnnotationsCacheData(base::span<const GURL> urls) override;
+  void RemoveContentAnnotationsCacheData(
+      base::span<const history::VisitID> visit_ids) override;
   void ClearContentAnnotationsCache() override;
   base::Value GetDebugUICacheData() const override;
+
+  const base::circular_deque<optimization_guide::proto::ContentAnnotation>&
+  GetMergedMultipageAnnotationsForTesting() const {
+    return merged_multipage_annotations_;
+  }
+
   void GetSyncAnnotationsByTypes(
       EntityTypeEnumSet types,
       base::OnceCallback<void(
@@ -95,15 +107,30 @@ class AccessibilityAnnotatorBackendImpl
       override;
 
  private:
+  // Performs a lookback through recent pages with the same tab and eTLD+1 to
+  // join annotations that span across multiple pages. The function merges
+  // structured data from recent entries in reverse chronological order and
+  // writes to `merged_multipage_annotations_`. This function is called only
+  // when a confirmed status is detected in `data`.
+  void ProcessConfirmedStatusLookback(const ContentAnnotationsData& data);
+
+  // Deep merges `source_structured_data` into `target_structured_data`. For any
+  // field that is set in both, the existing value in `target_structured_data`
+  // takes precedence.
+  void MergeContentAnnotationStructuredData(
+      optimization_guide::proto::StructuredData* target_structured_data,
+      const optimization_guide::proto::StructuredData& source_structured_data);
+
   const base::FilePath db_path_;
   base::SequenceBound<AccessibilityAnnotatorDatabase> db_;
   std::unique_ptr<AccessibilityAnnotationSyncBridge>
       accessibility_annotation_sync_bridge_;
 
-  // Stores annotations keyed by the URL they are associated with. The cache
-  // size is `kContentAnnotatorMaxCacheAnnotations`. When the cache is full, the
-  // least recently used entry is evicted.
-  base::LRUCache<GURL, ContentAnnotationsData> content_annotations_cache_;
+  // Stores annotations keyed by the visit ID they are associated with. The
+  // cache size is `kContentAnnotatorMaxCacheAnnotations`. When the cache is
+  // full, the least recently used entry is evicted.
+  base::LRUCache<history::VisitID, ContentAnnotationsData>
+      content_annotations_cache_;
 
   base::ScopedObservation<AccessibilityAnnotationSyncBridge,
                           AccessibilityAnnotationSyncBridge::Observer>
@@ -111,6 +138,12 @@ class AccessibilityAnnotatorBackendImpl
   base::ScopedObservation<history::HistoryService,
                           history::HistoryServiceObserver>
       history_service_observation_{this};
+
+  base::ObserverList<AccessibilityAnnotatorBackend::Observer> observers_;
+
+  // Holds multi-page merged annotations during confirmed status lookback.
+  base::circular_deque<optimization_guide::proto::ContentAnnotation>
+      merged_multipage_annotations_;
 };
 
 }  // namespace accessibility_annotator

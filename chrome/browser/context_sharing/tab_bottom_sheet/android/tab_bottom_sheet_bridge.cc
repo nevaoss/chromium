@@ -22,16 +22,32 @@ using base::android::AttachCurrentThread;
 
 namespace context_sharing {
 
-void JNI_TabBottomSheetNativeInterface_OnClose(
+void JNI_TabBottomSheetNativeInterface_OnClosed(
     JNIEnv* env,
     int64_t native_tab_bottom_sheet_bridge) {
   reinterpret_cast<TabBottomSheetBridge*>(native_tab_bottom_sheet_bridge)
-      ->OnClose(env);
+      ->OnClosed(env);
+}
+
+void JNI_TabBottomSheetNativeInterface_OnSuppressed(
+    JNIEnv* env,
+    int64_t native_tab_bottom_sheet_bridge) {
+  reinterpret_cast<TabBottomSheetBridge*>(native_tab_bottom_sheet_bridge)
+      ->OnSuppressed(env);
+}
+
+void JNI_TabBottomSheetNativeInterface_OnOpened(
+    JNIEnv* env,
+    int64_t native_tab_bottom_sheet_bridge,
+    bool is_expanded) {
+  reinterpret_cast<TabBottomSheetBridge*>(native_tab_bottom_sheet_bridge)
+      ->OnOpened(env, is_expanded);
 }
 
 TabBottomSheetBridge::TabBottomSheetBridge(Observer* observer,
-                                           tabs::TabInterface* tab)
-    : observer_(observer), tab_(*tab) {
+                                           tabs::TabInterface* tab,
+                                           bool show_fusebox)
+    : observer_(observer), tab_(*tab), show_fusebox_(show_fusebox) {
   JNIEnv* env = AttachCurrentThread();
   java_bridge_.Reset(Java_TabBottomSheetNativeInterface_Constructor(
       env, reinterpret_cast<intptr_t>(this), GetTabAndroid()->GetJavaObject()));
@@ -48,6 +64,10 @@ TabBottomSheetBridge::~TabBottomSheetBridge() {
 }
 
 void TabBottomSheetBridge::SetWebContents(content::WebContents* web_contents) {
+  if (web_contents) {
+    web_contents->SetIgnoreZoomGestures(true);
+  }
+
   if (!co_browse_views_) {
     CreateCoBrowseViews(web_contents);
     return;
@@ -55,6 +75,15 @@ void TabBottomSheetBridge::SetWebContents(content::WebContents* web_contents) {
 
   Java_CoBrowseViews_setWebContents(AttachCurrentThread(), co_browse_views_,
                                     web_contents);
+}
+
+void TabBottomSheetBridge::ResetTouchOffset(
+    content::WebContents* web_contents) {
+  if (!java_bridge_) {
+    return;
+  }
+  Java_TabBottomSheetNativeInterface_resetTouchOffset(
+      AttachCurrentThread(), java_bridge_, web_contents);
 }
 
 bool TabBottomSheetBridge::Show(bool animate, bool starts_expanded) {
@@ -73,8 +102,16 @@ void TabBottomSheetBridge::Close() {
   Java_TabBottomSheetNativeInterface_close(AttachCurrentThread(), java_bridge_);
 }
 
-void TabBottomSheetBridge::OnClose(JNIEnv* env) {
-  observer_->OnClose();
+void TabBottomSheetBridge::OnClosed(JNIEnv* env) {
+  observer_->OnClosed();
+}
+
+void TabBottomSheetBridge::OnSuppressed(JNIEnv* env) {
+  observer_->OnSuppressed();
+}
+
+void TabBottomSheetBridge::OnOpened(JNIEnv* env, bool is_expanded) {
+  observer_->OnOpened(is_expanded);
 }
 
 void TabBottomSheetBridge::CreateCoBrowseViews(
@@ -101,8 +138,9 @@ void TabBottomSheetBridge::CreateCoBrowseViews(
 
   JNIEnv* env = base::android::AttachCurrentThread();
   // Call Factory to get CoBrowseViews and save it
-  co_browse_views_.Reset(Java_CoBrowseViewFactory_getCoBrowseViews(
-      env, window_android, web_contents));
+  co_browse_views_.Reset(Java_CoBrowseViewFactory_buildCoBrowseViews(
+      env, window_android, web_contents, /*show_toolbar=*/false,
+      show_fusebox_));
 }
 
 void TabBottomSheetBridge::DestroyCoBrowseViews() {

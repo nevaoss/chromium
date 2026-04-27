@@ -23,7 +23,9 @@
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/actor/ui/actor_overlay_web_view.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/browsing_data/browsing_data_important_sites_util.h"
 #include "chrome/browser/defaults.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/devtools/features.h"
@@ -52,11 +54,13 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/bubble_anchor_util.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/customize_chrome/side_panel_controller.h"
@@ -98,6 +102,7 @@
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
+#include "components/bookmarks/browser/bookmark_model_load_waiter.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
 #include "components/dom_distiller/core/dom_distiller_features.h"
 #include "components/input/native_web_keyboard_event.h"
@@ -131,6 +136,9 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/devtools/devtools_policy_dialog.h"
+#include "chrome/browser/ui/interaction/browser_elements.h"
+#include "ui/base/interaction/element_identifier.h"
+#include "ui/base/interaction/element_tracker.h"
 #endif
 
 #if BUILDFLAG(IS_MAC)
@@ -196,7 +204,8 @@ void AppInfoDialogClosedCallback(SessionID session_id,
   // Ensure that the session id we have is still valid. It's possible
   // (though unlikely) that either the browser or session has been pulled
   // out from underneath us.
-  BrowserWindowInterface* const browser = chrome::FindBrowserWithID(session_id);
+  BrowserWindowInterface* const browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithID(session_id);
   if (!browser) {
     return;
   }
@@ -364,6 +373,23 @@ BrowserCommandController::BrowserCommandController(BrowserWindowInterface* bwi)
   }
 
   InitCommandState();
+
+  // Bookmark editing commands depend on the bookmark model to be loaded.
+  // Schedule a callback to update them once the model is loaded instead of just
+  // relying on other updates like TabStateChanged.
+  //
+  // In some cases, such as when the user sets their homepage to about:blank
+  // and bookmarks encryption is enabled, the other updates are triggered
+  // before the bookmark model is loaded.
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile());
+  if (bookmark_model) {
+    bookmarks::ScheduleCallbackOnBookmarkModelLoad(
+        *bookmark_model,
+        base::BindOnce(
+            &BrowserCommandController::UpdateCommandsForBookmarkEditing,
+            weak_ptr_factory_.GetWeakPtr()));
+  }
 
   sessions::TabRestoreService* tab_restore_service =
       TabRestoreServiceFactory::GetForProfile(profile());
@@ -1141,6 +1167,18 @@ bool BrowserCommandController::ExecuteCommandWithDisposition(
       } else {
         ShowClearBrowsingDataDialog(browser_->GetBrowserForOpeningWebUi());
       }
+#if !BUILDFLAG(IS_ANDROID)
+      ui::ElementContext context =
+          BrowserElements::From(browser_)->GetContext();
+      ui::TrackedElement* const tracked_element =
+          ui::ElementTracker::GetElementTracker()->GetUniqueElement(
+              kBrowserViewElementId, context);
+      if (tracked_element) {
+        ui::ElementTracker::GetFrameworkDelegate()->NotifyCustomEvent(
+            tracked_element, browsing_data_important_sites_util::
+                                 kShowClearBrowsingDataDialogEventId);
+      }
+#endif  // !BUILDFLAG(IS_ANDROID)
       break;
     }
     case IDC_IMPORT_SETTINGS:

@@ -293,6 +293,7 @@
 <translation id="2251809247798634662">Новое окно в режиме инкогнито</translation>
 <translation id="2253927598983295051">Выберите, чем поделиться с <ph name="APP_NAME" /></translation>
 <translation id="2261570557291037252">Подробнее о приложении</translation>
+<translation id="2270544918551255912">Чтобы вернуться, проведите по экрану от края экрана</translation>
 <translation id="2276696007612801991">Чтобы проверить пароли, войдите в свой аккаунт Google.</translation>
 <translation id="2281243904606300427">Выбранная вкладка инкогнито "<ph name="TAB_TITLE" />"</translation>
 <translation id="2286841657746966508">Платежный адрес</translation>
@@ -480,6 +481,7 @@
 <translation id="2989523299700148168">Недавние</translation>
 <translation id="2992473221983447149">Описания изображений</translation>
 <translation id="2996291259634659425">Придумайте кодовую фразу</translation>
+<translation id="2996682533106928201">Нажмите, чтобы закрыть</translation>
 <translation id="2996809686854298943">Необходимо указать URL</translation>
 <translation id="3024215143424744261">Настройки режима чтения закрыты</translation>
 <translation id="3026955690410463085">Добавить ссылку</translation>
@@ -831,6 +833,7 @@
 <translation id="4521489764227272523">Выбранные данные удалены из Chrome и с синхронизированных устройств.
 
 Остальная история ваших действий в Интернете может храниться в аккаунте Google, например в виде поисковых запросов и сведений из наших сервисов. Она доступна на странице <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
+<translation id="4521637321901000942">Управлять расширениями на панели инструментов</translation>
 <translation id="4523326818319942067">за последний час</translation>
 <translation id="452750746583162491">Проверить синхронизированные данные</translation>
 <translation id="4532845899244822526">Выбор папки</translation>
@@ -1296,6 +1299,7 @@
 <translation id="6380100320871303656">Chrome чаще предзагружает страницы, которые вы с большой вероятностью посетите. Может увеличиться расход трафика.</translation>
 <translation id="6382848304055775421">Экспорт…</translation>
 <translation id="6388152137132427505">Отправляйте ссылку только тем пользователям, которым вы доверяете. Она действительна 48 часов.</translation>
+<translation id="6389513857577090038">Разрешить расширение "<ph name="EXTENSION_NAME" />"?</translation>
 <translation id="6394791151443660613">Поиск по запросу "<ph name="SEARCH_QUERY" />"</translation>
 <translation id="6397616442223433927">Подключение восстановлено</translation>
 <translation id="6399363707848566877">Теперь вы можете легко группировать вкладки</translation>

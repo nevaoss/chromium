@@ -59,6 +59,12 @@ class MockToolbarUIServiceDelegate
                const gfx::RectF&,
                ui::mojom::MenuSourceType),
               (override));
+  MOCK_METHOD(void,
+              ShowContentSettingsBubble,
+              (::toolbar_ui_api::mojom::ContentSettingImageType type,
+               ::toolbar_ui_api::mojom::ToolbarUIService::
+                   ShowContentSettingsBubbleCallback callback),
+              (override));
   MOCK_METHOD(void, OnPageInitialized, (), (override));
   MOCK_METHOD(void,
               InvokePinnedToolbarAction,
@@ -80,6 +86,8 @@ class MockToolbarUIServiceDelegate
               OnLhsChipCollapseAnimationEnded,
               (toolbar_ui_api::mojom::LhsChipIdentifier),
               (override));
+  MOCK_METHOD(void, OnHomeButtonDropUrl, (const GURL&), (override));
+  MOCK_METHOD(void, OnHomeButtonDropFile, (const gfx::PointF&), (override));
 };
 
 class MockBrowserControlsServiceDelegate

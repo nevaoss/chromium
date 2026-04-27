@@ -127,6 +127,7 @@ if (is_android) {
       "//chrome/browser/first_run/android:java",
       "//chrome/browser/flags:java",
       "//chrome/browser/fullscreen/android:java",
+      "//chrome/browser/glic:public_java",
       "//chrome/browser/gsa:java",
       "//chrome/browser/history:java",
       "//chrome/browser/history_clusters:java",
@@ -1182,6 +1183,7 @@ if (is_android) {
 
     deps = [
       ":chrome_junit_tests_helper",
+      "//chrome/browser/glic/android:java",
       "//chrome/browser/ui/android/extensions:buildflags_java",
       "//chrome/browser/ui/android/extensions:java",
       "//components/browser_ui/accessibility/android:page_zoom_utils_java",
@@ -1365,7 +1367,9 @@ if (is_android) {
   robolectric_library("chrome_junit_tests_org.chromium.chrome.browser.ui") {
     sources = [
       "src/org/chromium/chrome/browser/ui/AppLaunchDrawBlockerUnitTest.java",
+      "src/org/chromium/chrome/browser/ui/BottomSheetManagerUnitTest.java",
       "src/org/chromium/chrome/browser/ui/ChromeActivitySnackbarHelperUnitTest.java",
+      "src/org/chromium/chrome/browser/ui/ExclusiveAccessBubbleTest.java",
       "src/org/chromium/chrome/browser/ui/ExpandedSheetHelperImplUnitTest.java",
       "src/org/chromium/chrome/browser/ui/IncognitoRestoreAppLaunchDrawBlockerUnitTest.java",
       "src/org/chromium/chrome/browser/ui/activity_recreation/ActivityRecreationControllerUnitTest.java",

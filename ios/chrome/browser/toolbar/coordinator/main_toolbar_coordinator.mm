@@ -57,6 +57,8 @@
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/public/toolbar_utils.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/secondary_toolbar_coordinator.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/toolbar_coordinatee.h"
+#import "ios/chrome/browser/toolbar/tab_group/coordinator/tab_group_indicator_coordinator.h"
+#import "ios/chrome/browser/toolbar/tab_group/ui/tab_group_indicator_constants.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button_factory.h"
 #import "ios/chrome/browser/toolbar/ui/toolbar_constants.h"
 #import "ios/chrome/browser/toolbar/ui/toolbar_utils.h"
@@ -126,6 +128,8 @@
   std::unique_ptr<FullscreenUIUpdater> _topToolbarFullscreenUIUpdater;
   /// Top location bar coordinator.
   LocationBarCoordinator* _topLocationBarCoordinator;
+  /// Coordinator for the tab group indicator.
+  TabGroupIndicatorCoordinator* _tabGroupIndicatorCoordinator;
   /// Bottom toolbar mediator.
   ToolbarMediator* _bottomToolbarMediator;
   /// Bottom toolbar view controller.
@@ -198,7 +202,8 @@
 
   if (IsChromeNextIaEnabled()) {
     _topLocationBarCoordinator =
-        [self createLocationBarCoordinatorActive:!isOmniboxInBottomPosition];
+        [self createLocationBarCoordinatorActive:!isOmniboxInBottomPosition
+                                     topPosition:YES];
     _topToolbarMediator = [self createToolbarMediatorTopPosition:YES];
     _topToolbarViewController = [self
         createToolbarViewControllerForMediator:_topToolbarMediator
@@ -207,8 +212,18 @@
     _topToolbarFullscreenUIUpdater = std::make_unique<FullscreenUIUpdater>(
         FullscreenController::FromBrowser(browser), _topToolbarViewController);
 
+    _tabGroupIndicatorCoordinator = [[TabGroupIndicatorCoordinator alloc]
+        initWithBaseViewController:self.baseViewController
+                           browser:browser];
+    _tabGroupIndicatorCoordinator.toolbarHeightDelegate =
+        self.toolbarHeightDelegate;
+    [_tabGroupIndicatorCoordinator start];
+    [_topToolbarViewController
+        setTabGroupIndicatorView:_tabGroupIndicatorCoordinator.view];
+
     _bottomLocationBarCoordinator =
-        [self createLocationBarCoordinatorActive:isOmniboxInBottomPosition];
+        [self createLocationBarCoordinatorActive:isOmniboxInBottomPosition
+                                     topPosition:NO];
     _bottomToolbarMediator = [self createToolbarMediatorTopPosition:NO];
     _bottomToolbarViewController = [self
         createToolbarViewControllerForMediator:_bottomToolbarMediator
@@ -501,15 +516,23 @@
 
 - (CGFloat)expandedPrimaryToolbarHeight {
   if (IsChromeNextIaEnabled()) {
-    if ([self isOmniboxInBottomPosition]) {
+    BOOL isOmniboxInBottomPosition = [self isOmniboxInBottomPosition];
+    CGFloat height = 0;
+    if (_tabGroupIndicatorCoordinator.viewVisible) {
+      height += kTabGroupIndicatorHeight;
+      if (isOmniboxInBottomPosition) {
+        height -= kTopToolbarUnsplitMargin;
+      }
+    }
+    if (isOmniboxInBottomPosition) {
       // TODO(crbug.com/40279063): Find out why primary toolbar height cannot be
       // zero. This is a temporary fix for the pdf bug.
-      return 1;
+      return height > 0 ? height : 1;
     }
     if (ShouldHaveFullHeightTopToolbar(self.traitEnvironment)) {
-      return kToolbarHeight;
+      return height + kToolbarHeight;
     }
-    return kTopToolbarIPhonePortraitHeight;
+    return height + kTopToolbarIPhonePortraitHeight;
   }
   CGFloat height =
       self.primaryToolbarViewController.view.intrinsicContentSize.height;
@@ -594,6 +617,10 @@
 #pragma mark - NewTabPageControllerDelegate
 
 - (void)setScrollProgressForTabletOmnibox:(CGFloat)progress {
+  if (IsChromeNextIaEnabled() && CanShowTabStrip(self.traitEnvironment)) {
+    [_topToolbarViewController setScrollProgressForTabletOmnibox:progress];
+    return;
+  }
   for (id<NewTabPageControllerDelegate> coordinator in self.coordinators) {
     [coordinator setScrollProgressForTabletOmnibox:progress];
   }
@@ -1160,10 +1187,13 @@
 }
 
 // Creates a new location bar coordinator.
-- (LocationBarCoordinator*)createLocationBarCoordinatorActive:(BOOL)active {
+- (LocationBarCoordinator*)createLocationBarCoordinatorActive:(BOOL)active
+                                                  topPosition:
+                                                      (BOOL)topPosition {
   LocationBarCoordinator* coordinator =
       [[LocationBarCoordinator alloc] initWithBrowser:self.browser];
   [coordinator start];
+  [coordinator setTopPosition:topPosition];
   [coordinator setLocationBarActive:active];
 
   return coordinator;

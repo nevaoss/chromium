@@ -488,6 +488,9 @@ BASE_FEATURE(kPlatformAudioEncoder,
 // Has no effect if ENABLE_CDM_HOST_VERIFICATION buildflag is false.
 BASE_FEATURE(kCdmHostVerification, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Reorders video context menu items if enabled.
+BASE_FEATURE(kContextMenu2026, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables the "Copy Video Frame" context menu item.
 BASE_FEATURE(kContextMenuCopyVideoFrame,
 #if BUILDFLAG(IS_ANDROID)
@@ -974,6 +977,13 @@ BASE_FEATURE(kProtectedMediaIdentifierIndicator,
 // This feature only affects MediaFoundation OS CDMs.
 BASE_FEATURE(kHardwareSecureDecryptionRequireServerCert,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables positioning the virtual video window and triggering Media
+// Foundation's GPU adapter selection based on the frame's screen rect.
+// This helps ensure the correct GPU adapter is used for HWDRM playback
+// on multi-GPU/multi-display systems.
+BASE_FEATURE(kMediaFoundationMultiGpuAdapterSelection,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 // Enables handling of hardware media keys for controlling media.
@@ -1561,6 +1571,10 @@ BASE_FEATURE(kFuchsiaMediacodecVideoEncoder, base::FEATURE_DISABLED_BY_DEFAULT);
 // smaller than maximum supported decodes as advertiszed by decoder.
 // Note: This is controlled on a per-board basis by ChromeOS and must be kept.
 BASE_FEATURE(kVideoDecodeBatching, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Validates that the EncryptionPattern parameters are within the bounds
+// specified by ISO/IEC 23001-7:2016.
+BASE_FEATURE(kValidateEncryptionPatternSize, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Safety switch to allow us to revert to the previous behavior of using the
 // cached bounds when the permission prompt is visible. If this feature is

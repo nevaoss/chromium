@@ -677,8 +677,6 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
 // WebGL contexts.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kForceHighPerformanceGPUForWebGL);
 
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kForceOffTextAutosizing);
-
 // When enabled, forces ICC profile parsing to use skcms instead of the Rust
 // moxcms parser. Acts as a kill-switch for the Rust ICC parser.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kForceSkcmsICCParsing);
@@ -1301,6 +1299,17 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
 // A feature to enable the new value-based, multi-tiered pruning strategy
 // for the MemoryCache's strong references.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kMemoryCacheIntelligentPruning);
+
+enum class MemoryCacheCostScoringModel {
+  kOriginal,
+  kValueDensity,
+  kLogPenalty,
+};
+
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(MemoryCacheCostScoringModel,
+                                               kMemoryCacheCostScoringModel);
+
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(double, kMemoryCacheDecayRate);
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
     double,

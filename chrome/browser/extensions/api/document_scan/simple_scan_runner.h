@@ -51,8 +51,9 @@ class SimpleScanRunner {
       const std::optional<lorgnette::ListScannersResponse>& response);
   void OnOpenScannerResponse(crosapi::mojom::OpenScannerResponsePtr response);
   void OnStartPreparedScanResponse(
-      crosapi::mojom::StartPreparedScanResponsePtr response);
-  void OnReadScanDataResponse(crosapi::mojom::ReadScanDataResponsePtr response);
+      const std::optional<lorgnette::StartPreparedScanResponse>& response);
+  void OnReadScanDataResponse(
+      const std::optional<lorgnette::ReadScanDataResponse>& response);
   void OnCloseScannerResponse(
       const std::optional<lorgnette::CloseScannerResponse>& response);
   void OnSimpleScanCompleted(crosapi::mojom::ScanFailureMode failure_mode);

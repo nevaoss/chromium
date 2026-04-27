@@ -32,6 +32,7 @@ class BrowserContext;
 
 namespace lorgnette {
 class CloseScannerResponse;
+class StartPreparedScanResponse;
 }  // namespace lorgnette
 
 namespace extensions {
@@ -256,11 +257,10 @@ class DocumentScanAPIHandler : public BrowserContextKeyedAPI,
   void OnSetOptionsResponse(SetOptionsCallback callback,
                             crosapi::mojom::SetOptionsResponsePtr response);
   void OnStartScanResponse(
+      const std::string& scanner_handle,
       std::unique_ptr<StartScanRunner> runner,
       StartScanCallback callback,
-      crosapi::mojom::StartPreparedScanResponsePtr response);
-  void OnReadScanDataResponse(ReadScanDataCallback callback,
-                              crosapi::mojom::ReadScanDataResponsePtr response);
+      const std::optional<lorgnette::StartPreparedScanResponse>& response);
 
   raw_ptr<content::BrowserContext> browser_context_;
   raw_ptr<crosapi::mojom::DocumentScan> document_scan_;

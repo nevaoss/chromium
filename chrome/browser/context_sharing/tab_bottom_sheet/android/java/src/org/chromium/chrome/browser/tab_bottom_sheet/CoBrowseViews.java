@@ -11,6 +11,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.Px;
 import androidx.annotation.VisibleForTesting;
 
 import org.jni_zero.CalledByNative;
@@ -19,6 +20,8 @@ import org.jni_zero.JniType;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.context_sharing.R;
+import org.chromium.chrome.browser.contextual_tasks.fusebox.ContextualTasksFusebox;
+import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetProperties.ResizingState;
 import org.chromium.content_public.browser.WebContents;
 
 /**
@@ -29,7 +32,7 @@ import org.chromium.content_public.browser.WebContents;
 public class CoBrowseViews {
     private final @Nullable TabBottomSheetToolbar mToolbar;
     private final @Nullable TabBottomSheetWebUi mWebUi;
-    private final @Nullable TabBottomSheetFusebox mFusebox;
+    private final @Nullable ContextualTasksFusebox mFusebox;
     private final View mView;
     private @Nullable View mPeekView;
 
@@ -45,7 +48,7 @@ public class CoBrowseViews {
             Context context,
             @Nullable TabBottomSheetToolbar toolbar,
             @Nullable TabBottomSheetWebUi webUi,
-            @Nullable TabBottomSheetFusebox fusebox) {
+            @Nullable ContextualTasksFusebox fusebox) {
         mToolbar = toolbar;
         mWebUi = webUi;
         mFusebox = fusebox;
@@ -128,11 +131,18 @@ public class CoBrowseViews {
         return mWebUi != null ? mWebUi.getWebContents() : null;
     }
 
-    /** Sets the sheet's height. */
-    public void setSheetHeight(int height) {
+    /** Sets whether the sheet is resizing. */
+    public void setIsResizing(boolean isResizing) {
+        if (mWebUi != null) {
+            mWebUi.setIsResizing(isResizing);
+        }
+    }
+
+    /** Sets the resizing state of the sheet. */
+    public void setResizingState(ResizingState resizingState) {
+        @Px int height = resizingState.webUiContainerHeight;
         ViewGroup sheetContent = mView.findViewById(R.id.expanded_content_group);
         ViewGroup.LayoutParams sheetContentParams = sheetContent.getLayoutParams();
-
         if (sheetContentParams.height != height) {
             sheetContentParams.height = height;
             sheetContent.setLayoutParams(sheetContentParams);

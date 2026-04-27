@@ -141,7 +141,6 @@
 #include "third_party/blink/renderer/core/inspector/dev_tools_emulator.h"
 #include "third_party/blink/renderer/core/layout/layout_embedded_content.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
-#include "third_party/blink/renderer/core/layout/text_autosizer.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
 #include "third_party/blink/renderer/core/loader/frame_loader.h"
@@ -768,7 +767,7 @@ float WebViewImpl::MaximumLegiblePageScale() const {
   // Allow the user to always zoom more on Chrome Android.. Allow on WebView if
   // the Java developer has enabled autosizing.
   const bool is_webview = settings.GetWideViewportQuirkEnabled();
-  if (!is_webview || settings.GetTextAutosizingEnabled()) {
+  if (!is_webview) {
     return maximum_legible_scale_ * settings.GetAccessibilityFontScaleFactor();
   }
 
@@ -1342,16 +1341,11 @@ void WebViewImpl::ResizeViewWhileAnchored(
                                                       /* force_update= */ true);
   }
 
-  {
-    // Avoids unnecessary invalidations while various bits of state in
-    // TextAutosizer are updated.
-    TextAutosizer::DeferUpdatePageInfo defer_update_page_info(GetPage());
-    LocalFrameView* frame_view = MainFrameImpl()->GetFrameView();
-    gfx::Size old_size = frame_view->Size();
-    UpdateICBAndResizeViewport(visible_viewport_size);
-    if (old_size != frame_view->Size()) {
-      frame_view->InvalidateLayoutForViewportConstrainedObjects();
-    }
+  LocalFrameView* frame_view = MainFrameImpl()->GetFrameView();
+  gfx::Size old_size = frame_view->Size();
+  UpdateICBAndResizeViewport(visible_viewport_size);
+  if (old_size != frame_view->Size()) {
+    frame_view->InvalidateLayoutForViewportConstrainedObjects();
   }
 
   fullscreen_controller_->UpdateSize();
@@ -1736,7 +1730,6 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
                                       prefs.default_maximum_page_scale_factor);
 
   settings->SetFullscreenSupported(prefs.fullscreen_supported);
-  settings->SetTextAutosizingEnabled(prefs.text_autosizing_enabled);
   settings->SetDoubleTapToZoomEnabled(prefs.double_tap_to_zoom_enabled);
   blink::WebNetworkStateNotifier::SetNetworkQualityWebHoldback(
       static_cast<blink::WebEffectiveConnectionType>(
@@ -1753,7 +1746,6 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
   settings->SetAccessibilityFontWeightAdjustment(prefs.font_weight_adjustment);
   settings->SetAccessibilityTextSizeContrastFactor(
       prefs.text_size_contrast_factor);
-  settings->SetDeviceScaleAdjustment(prefs.device_scale_adjustment);
   web_view_impl->SetIgnoreViewportTagScaleLimits(prefs.force_enable_zoom);
   settings->SetDefaultVideoPosterURL(
       WebString::FromAscii(prefs.default_video_poster_url.spec()));
@@ -1834,6 +1826,8 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
   settings->SetPresentationReceiver(prefs.presentation_receiver);
 
   settings->SetMediaControlsEnabled(prefs.media_controls_enabled);
+
+  settings->SetHighlightAds(prefs.highlight_ads);
 
   settings->SetLowPriorityIframesThreshold(
       static_cast<blink::WebEffectiveConnectionType>(
@@ -2277,8 +2271,10 @@ void WebViewImpl::ComputeScaleAndScrollForEditableElementRects(
       MainFrameImpl()->GetFrame()->View()->GetScrollableArea();
 
   // If the caret is offscreen, then animate.
-  if (!root_viewport->VisibleContentRect().Contains(caret_bounds_in_content))
+  if (!root_viewport->VisibleContentRect(kExcludeScrollbars)
+           .Contains(caret_bounds_in_content)) {
     need_animation = true;
+  }
 
   // If the box is partially offscreen and it's possible to bring it fully
   // onscreen, then animate.
@@ -2286,8 +2282,10 @@ void WebViewImpl::ComputeScaleAndScrollForEditableElementRects(
           element_bounds_in_content.width() &&
       visual_viewport.VisibleRect().height() >=
           element_bounds_in_content.height() &&
-      !root_viewport->VisibleContentRect().Contains(element_bounds_in_content))
+      !root_viewport->VisibleContentRect(kExcludeScrollbars)
+           .Contains(element_bounds_in_content)) {
     need_animation = true;
+  }
 
   if (!need_animation)
     return;
@@ -2771,11 +2769,6 @@ void WebViewImpl::DispatchPersistedPageshow(base::TimeTicks navigation_start) {
         performance->AddBackForwardCacheRestoration(
             navigation_start, pageshow_start_time, pageshow_end_time);
       }
-      if (frame->IsOutermostMainFrame()) {
-        UMA_HISTOGRAM_BOOLEAN(
-            "BackForwardCache.MainFrameHasPageshowListenersOnRestore",
-            window->HasEventListeners(event_type_names::kPageshow));
-      }
     }
   }
 }
@@ -3009,8 +3002,6 @@ void WebViewImpl::UpdatePageDefinedViewportConstraints(
   }
 
   UpdateMainFrameLayoutSize();
-
-  TextAutosizer::UpdatePageInfoInAllFrames(GetPage()->MainFrame());
 }
 
 void WebViewImpl::UpdateMainFrameLayoutSize() {
@@ -3859,7 +3850,7 @@ void WebViewImpl::UpdateWebPreferences(
     web_preferences_.default_maximum_page_scale_factor = 1.f;
     web_preferences_.shrinks_viewport_contents_to_fit = false;
     web_preferences_.main_frame_resizes_are_orientation_changes = false;
-    web_preferences_.text_autosizing_enabled = false;
+    web_preferences_.text_size_adjust_enabled = false;
 
     // Insecure content should not be allowed in a fenced frame.
     web_preferences_.allow_running_insecure_content = false;
@@ -4021,12 +4012,6 @@ void WebViewImpl::OutermostMainFrameScrollOffsetChanged() {
   }
 }
 
-void WebViewImpl::TextAutosizerPageInfoChanged(
-    const mojom::blink::TextAutosizerPageInfo& page_info) {
-  DCHECK(MainFrameImpl());
-  local_main_frame_host_remote_->TextAutosizerPageInfoChanged(
-      page_info.Clone());
-}
 
 void WebViewImpl::SetBackgroundColorOverrideForFullscreenController(
     std::optional<SkColor> optional_color) {

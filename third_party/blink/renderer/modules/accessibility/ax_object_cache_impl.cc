@@ -39,8 +39,6 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
-#include "services/metrics/public/cpp/ukm_builders.h"
-#include "services/metrics/public/cpp/ukm_recorder.h"
 #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/mojom/render_accessibility.mojom-blink.h"
@@ -1896,7 +1894,8 @@ void AXObjectCacheImpl::Remove(AXID ax_id, bool notify_parent) {
 
   // RemoveReferencesToAXID can cause the object to detach, in this case,
   // fail gracefully rather than attempting to double detach.
-  DUMP_WILL_BE_CHECK(!obj->IsDetached()) << obj;
+  // TODO(crbug.com/500774799): Investigate and convert to CHECK.
+  DCHECK(!obj->IsDetached()) << obj;
   if (obj->IsDetached()) {
     // TODO(accessibility): Remove early return and change above assertion
     // to CHECK() once this no longer occurs.
@@ -2323,7 +2322,8 @@ bool AXObjectCacheImpl::CanDeferTreeUpdate(Document* tree_update_document) {
     // If we are queuing an update to a document other than the main document,
     // then it must be in an active popup document. The cache would never
     // receive notifications from other documents.
-    DUMP_WILL_BE_CHECK_EQ(tree_update_document, popup_document_)
+    // TODO(crbug.com/500774800): Investigate and convert to CHECK.
+    DCHECK_EQ(tree_update_document, popup_document_)
         << "Update in non-main, non-popup document: "
         << tree_update_document->Url().GetString();
   }
@@ -3164,7 +3164,8 @@ void AXObjectCacheImpl::ChildrenChangedWithCleanLayout(Node* optional_node,
 #endif  // DCHECK_IS_ON()
 
   obj->ChildrenChangedWithCleanLayout();
-  DUMP_WILL_BE_CHECK(!obj->IsDetached());
+  // TODO(crbug.com/500774799): Investigate and convert to CHECK.
+  DCHECK(!obj->IsDetached());
   if (optional_node) {
     CHECK(relation_cache_);
     relation_cache_->UpdateRelatedTree(optional_node, obj);
@@ -3195,7 +3196,8 @@ void AXObjectCacheImpl::FinalizeTree() {
   if (GetAXMode().HasFilterFlags(ui::AXMode::kOnScreenOnly)) {
     LocalFrameView* frame_view = GetDocument().View();
     PhysicalRect viewport_rect(
-        frame_view->GetPage()->GetVisualViewport().VisibleContentRect());
+        frame_view->GetPage()->GetVisualViewport().VisibleContentRect(
+            kExcludeScrollbars));
 
     // We only care about the y-axis content scrolling to determine what will be
     // included. So expand the rectangle to the left and right.
@@ -3594,8 +3596,10 @@ bool AXObjectCacheImpl::CommitAXUpdates(Document& document, bool force) {
       mark_all_dirty_ = false;
 
       // All tree updates have been processed.
-      DUMP_WILL_BE_CHECK(!IsMainDocumentDirty());
-      DUMP_WILL_BE_CHECK(!IsPopupDocumentDirty());
+      // TODO(crbug.com/500793607): Investigate and convert to CHECK.
+      DCHECK(!IsMainDocumentDirty());
+      // TODO(crbug.com/500793607): Investigate and convert to CHECK.
+      DCHECK(!IsPopupDocumentDirty());
 
       // Clean up any remaining unprocessed aria-owns relations, which can
       // result from processing deferred tree updates. For example, if an object
@@ -3644,12 +3648,14 @@ bool AXObjectCacheImpl::CommitAXUpdates(Document& document, bool force) {
                 << "\nUpdate Reason: "
                 << TreeUpdateReasonAsDebugString(entry.value);
           }
-          DUMP_WILL_BE_CHECK(false) << msg.str();
+          // TODO(crbug.com/500793607): Investigate and convert to CHECK.
+          DCHECK(false) << msg.str();
         }
 #endif
 
         // Updating the tree did not add dirty objects.
-        DUMP_WILL_BE_CHECK(!IsDirty())
+        // TODO(crbug.com/500793607): Investigate and convert to CHECK.
+        DCHECK(!IsDirty())
             << "Cache dirtied at bad time:" << "\nAll: " << mark_all_dirty_
             << "\nRoot children: " << Root()->NeedsToUpdateChildren()
             << "\nRoot descendants: " << Root()->HasDirtyDescendants()
@@ -3741,10 +3747,12 @@ void AXObjectCacheImpl::SerializeAXUpdatesIfNeeded(Document& document) {
       std::move(callback).Run();
     }
 
-    DUMP_WILL_BE_CHECK(!IsDirty());
+    // TODO(crbug.com/500793607): Investigate and convert to CHECK.
+    DCHECK(!IsDirty());
     // TODO(accessibility): in the future, we may break up serialization into
     // pieces to reduce jank, in which case this assertion will not hold.
-    DUMP_WILL_BE_CHECK(!HasObjectsPendingSerialization() || !did_serialize)
+    // TODO(crbug.com/500793607): Investigate and convert to CHECK.
+    DCHECK(!HasObjectsPendingSerialization() || !did_serialize)
         << "A serialization occurred but dirty objects remained.";
   }
 }
@@ -4152,7 +4160,8 @@ void AXObjectCacheImpl::FireTreeUpdatedEventForAXID(
 
   // TODO(crbug.com/452392024): Investigate why this fails, fix it, and move to
   // a CHECK.
-  DUMP_WILL_BE_CHECK(!ax_object->IsMissingParent())
+  // TODO(crbug.com/500774799): Investigate and convert to CHECK.
+  DCHECK(!ax_object->IsMissingParent())
       << tree_update->ToString() << " on " << ax_object;
 
   // Update cached attributes for all changed nodes before serialization,
@@ -4227,7 +4236,8 @@ void AXObjectCacheImpl::FireTreeUpdatedEventForNode(
 
   // TODO(crbug.com/452392024): Investigate why this fails, fix it, and move to
   // a CHECK.
-  DUMP_WILL_BE_CHECK(!ax_object->IsMissingParent())
+  // TODO(crbug.com/500774799): Investigate and convert to CHECK.
+  DCHECK(!ax_object->IsMissingParent())
       << tree_update->ToString() << " on " << ax_object;
 
   base::AutoReset<ax::mojom::blink::EventFrom> event_from_resetter(
@@ -5670,7 +5680,8 @@ void AXObjectCacheImpl::MarkAXObjectDirty(AXObject* obj) {
 }
 
 void AXObjectCacheImpl::NotifySubtreeDirty(AXObject* obj) {
-  DUMP_WILL_BE_CHECK(obj->IsIncludedInTree());
+  // TODO(crbug.com/500774800): Investigate and convert to CHECK.
+  DCHECK(obj->IsIncludedInTree());
 
   // Note: if there is no serializer yet, then there is nothing to mark dirty
   // for serialization purposes yet -- effectively everything starts out dirty
@@ -5848,8 +5859,18 @@ void AXObjectCacheImpl::RestoreParentOrPruneWithCleanLayout(Node* child_node) {
     ChildrenChangedOnAncestorOf(child);
   } else {
     // If no parent is currently available, the child may no longer be part of
-    // the tree. Remove the child's subtree and ask the parent (if any) to
-    // rebuild its subtree.
+    // the tree. However, if the node is still connected to the document, it
+    // will get a parent once tree building reaches its natural ancestor. This
+    // can happen during eager subtree construction in CreateAndInit(), where
+    // aria-owns re-evaluation runs before the parent's AXObject exists.
+    // Pruning such a node would corrupt the tree. See crbug.com/501371770.
+    if (child_node && child_node->isConnected()) {
+      // Mark the parent dirty so it picks up this child on next update.
+      if (parent) {
+        ChildrenChangedWithCleanLayout(parent);
+      }
+      return;
+    }
     RemoveSubtree(child_node);
     ChildrenChangedWithCleanLayout(parent);
   }
@@ -6128,30 +6149,6 @@ void AXObjectCacheImpl::AddDirtyObjectToSerializationQueue(
   }
 }
 
-void AXObjectCacheImpl::MaybeSendCanvasHasNonTrivialFallbackUKM(
-    const AXObject* ax_canvas) {
-  if (!ax_canvas->ChildCountIncludingIgnored()) {
-    // Canvas does not have fallback.
-    return;
-  }
-
-  if (ax_canvas->ChildCountIncludingIgnored() == 1 &&
-      ui::IsText(ax_canvas->FirstChildIncludingIgnored()->RoleValue())) {
-    // Ignore a fallback if it's just a single piece of text, as we are
-    // looking for advanced uses of canvas fallbacks.
-    return;
-  }
-
-  has_emitted_canvas_fallback_ukm_ = true;  // Stop checking.
-
-  ukm::UkmRecorder* ukm_recorder = GetDocument().UkmRecorder();
-  DCHECK(ukm_recorder);
-  ukm::builders::Accessibility_CanvasHasNonTrivialFallback(
-      GetDocument().UkmSourceID())
-      .SetSeen(true)
-      .Record(ukm_recorder);
-}
-
 void AXObjectCacheImpl::GetUpdatesAndEventsForSerialization(
     std::vector<ui::AXTreeUpdate>& updates,
     std::vector<ui::AXEvent>& events,
@@ -6163,7 +6160,8 @@ void AXObjectCacheImpl::GetUpdatesAndEventsForSerialization(
             DocumentLifecycle::kLayoutClean);
   DCHECK(!popup_document_ || popup_document_->Lifecycle().GetState() >=
                                  DocumentLifecycle::kLayoutClean);
-  DUMP_WILL_BE_CHECK(HasObjectsPendingSerialization());
+  // TODO(crbug.com/500793607): Investigate and convert to CHECK.
+  DCHECK(HasObjectsPendingSerialization());
 
   DCHECK_GE(pending_objects_to_serialize_.size(),
             pending_events_to_serialize_.size())
@@ -6203,7 +6201,8 @@ void AXObjectCacheImpl::GetUpdatesAndEventsForSerialization(
       continue;
 
     if (GetAXMode().HasFilterFlags(ui::AXMode::kOnScreenOnly)) {
-      DUMP_WILL_BE_CHECK(obj->IsRoot() || obj->ParentObjectIncludedInTree())
+      // TODO(crbug.com/500774800): Investigate and convert to CHECK.
+      DCHECK(obj->IsRoot() || obj->ParentObjectIncludedInTree())
           << "Non-root object has no parent: " << obj->ToString();
       if (!obj->IsRoot() && !obj->WasEverOnScreen() &&
           !obj->ParentObjectIncludedInTree()->WasEverOnScreen()) {
@@ -6239,12 +6238,6 @@ void AXObjectCacheImpl::GetUpdatesAndEventsForSerialization(
       // node from changed_bounds_ids_ to avoid sending it in
       // SerializeLocationChanges() later.
       changed_bounds_ids_.erase(id);
-
-      // Record advanced uses of canvas fallbacks.
-      if (!has_emitted_canvas_fallback_ukm_ &&
-          node_data.role == ax::mojom::blink::Role::kCanvas) {
-        MaybeSendCanvasHasNonTrivialFallbackUKM(ObjectFromAXID(node_data.id));
-      }
     }
 
     DCHECK(already_serialized_ids.Contains(obj->AXObjectID()))

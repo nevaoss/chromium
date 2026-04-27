@@ -5,7 +5,9 @@
 package org.chromium.ui.base;
 
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.doAnswer;
@@ -85,7 +87,7 @@ public class WindowAndroidTest {
                 .addObserver(any(WindowInsetObserver.class));
 
         WindowAndroidJni.setInstanceForTesting(mWindowAndroidNativeInterface);
-        mWindowAndroid = new WindowAndroid(mContext, false, null, mInsetObserver, false);
+        mWindowAndroid = new WindowAndroid(mContext, false, null, mInsetObserver, true);
         mWindowAndroid.setNativePointerForTesting(MOCK_NATIVE_POINTER);
     }
 
@@ -190,6 +192,67 @@ public class WindowAndroidTest {
 
         mWindowAndroid.setOccluded(true);
         ShadowSystemClock.advanceBy(Duration.ofSeconds(5));
+        mWindowAndroid.destroy();
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testOcclusionOptimizationsEnabled() {
+        UiAndroidFeatureList.sAndroidWindowOcclusionOptimizations.setForTesting(true);
+
+        mWindowAndroid.setOccluded(true);
+        assertTrue(mWindowAndroid.getOcclusionSupplier().get());
+
+        mWindowAndroid.setOccluded(false);
+        assertFalse(mWindowAndroid.getOcclusionSupplier().get());
+    }
+
+    @Test
+    public void testOcclusionOptimizationsDisabled() {
+        UiAndroidFeatureList.sAndroidWindowOcclusionOptimizations.setForTesting(false);
+
+        mWindowAndroid.setOccluded(true);
+        assertFalse(mWindowAndroid.getOcclusionSupplier().get());
+
+        mWindowAndroid.setOccluded(false);
+        assertFalse(mWindowAndroid.getOcclusionSupplier().get());
+    }
+
+    @Test
+    public void testOcclusionTimePercentMetric() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.Window.OcclusionExperimental.OccludedTimePercent", 40);
+
+        mWindowAndroid.setIsOcclusionTracked(true);
+
+        ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(1));
+        mWindowAndroid.setOccluded(true);
+        ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(4));
+        mWindowAndroid.setOccluded(false);
+        ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(5));
+
+        mWindowAndroid.destroy();
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testOcclusionTimePercentMetricOcclusionNotTracked() {
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords("Android.Window.OcclusionExperimental.OccludedTimePercent")
+                        .build();
+
+        // Do not call setIsOcclusionTracked().
+
+        ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(1));
+        mWindowAndroid.setOccluded(true);
+        ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(4));
+        mWindowAndroid.setOccluded(false);
+        ShadowSystemClock.advanceBy(java.time.Duration.ofSeconds(5));
+
         mWindowAndroid.destroy();
 
         histogramWatcher.assertExpected();

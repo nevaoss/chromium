@@ -1499,7 +1499,6 @@ Handoff ასევე უნდა იყოს ჩართული პა�
 <translation id="6259928806013786178">წაკითხვის რეჟიმი წარუმატებელია</translation>
 <translation id="6268773951964630964">კოპირებული სურათის ძიება</translation>
 <translation id="6271462272606946663">მობილური საიტის მოთხოვნის დამალვა</translation>
-<translation id="6271556257184622612">ჰკითხეთ Google-ს ჩანართებისა და სხვა ფუნქციების შესახებ</translation>
 <translation id="6271824294945464304">თქვენ აპირებთ, გააზიაროთ პაროლი</translation>
 <translation id="628251768213143684">თქვენ ნებისმიერ დროს შეგიძლიათ მართოთ, რა ინახება თქვენს Google ანგარიშში</translation>
 <translation id="6284652193729350524"><ph name="LANGUAGE" /> ენის თარგმნის შემოთავაზება</translation>
@@ -1536,6 +1535,7 @@ Handoff ასევე უნდა იყოს ჩართული პა�
 <translation id="6368102751067608420">პაროლების მმართველის ყველა მონაცემის წაშლა</translation>
 <translation id="6372558618707314581">გადადით სასურველ გვერდზე</translation>
 <translation id="6374469231428023295">ხელახლა ცდა</translation>
+<translation id="6374514103145916800">შეკითხვა</translation>
 <translation id="6383719166112032471">მდებარეობის გახსნა…</translation>
 <translation id="6387994324662817823">პაროლები ინახება Google პაროლების მმართველში მხოლოდ ამ მოწყობილობაზე.</translation>
 <translation id="6393156038355142111">ძლიერი პაროლის შემოთავაზება</translation>
@@ -1603,6 +1603,7 @@ Handoff ასევე უნდა იყოს ჩართული პა�
 <translation id="6596481460663245319">სურათის ძიება Google-ით</translation>
 <translation id="6598432073497341323">{COUNT,plural, =1{1 პაროლი}other{# პაროლი}}</translation>
 <translation id="6601302169302852717">სურათი შეინახა Google Photos-ში <ph name="USER_EMAIL" />-ისთვის</translation>
+<translation id="6602173570135186741">ავტომატური შევსება და პაროლები</translation>
 <translation id="6603393121510733479">თქვენმა ორგანიზაციამ გამორთო კონფიდენციალური დათვალიერება.
 <ph name="BEGIN_LINK" />შეიტყვეთ მეტი<ph name="END_LINK" /></translation>
 <translation id="6606914854592108404">მიმდინარეობს უსაფრთხოების შემოწმება…</translation>
@@ -1854,6 +1855,7 @@ Handoff ასევე უნდა იყოს ჩართული პა�
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">ინკოგნიტო ჩანართების ჩასაკეტად დაყენეთ Touch ID, Face ID ან საიდუმლო კოდი.</translation>
 <translation id="750886945254958667">შეინარჩუნეთ ეს ჯგუფი, რომ მოგვიანებით მასში დაამატოთ ჩანართები, ან დატოვეთ ის, თუ აღარ გსურთ მასზე წვდომა</translation>
+<translation id="7511099437872594216">ჩანართები</translation>
 <translation id="7511727374778217603">{COUNT,plural, =1{დაამატეთ მაქსიმუმ 1 ჩანართი}other{დაამატეთ მაქსიმუმ {COUNT} ჩანართი}}</translation>
 <translation id="7512909159512473473">შეიყვანეთ საიდუმლო ფრაზა…</translation>
 <translation id="7514365320538308">ჩამოტვირთვა</translation>

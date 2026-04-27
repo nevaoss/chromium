@@ -2443,19 +2443,6 @@ inline constexpr char kSameOriginTabCaptureAllowedByOrigins[] =
 // "xkb:us::eng".
 inline constexpr char kHardwareKeyboardLayout[] = "intl.hardware_keyboard";
 
-// The local state pref that stores device activity times before reporting
-// them to the policy server.
-inline constexpr char kDeviceActivityTimes[] = "device_status.activity_times";
-
-// A pref that stores user app activity times before reporting them to the
-// policy server.
-inline constexpr char kAppActivityTimes[] = "device_status.app_activity_times";
-
-// A pref that stores user activity times before reporting them to the policy
-// server.
-inline constexpr char kUserActivityTimes[] =
-    "consumer_device_status.activity_times";
-
 // An any-api scoped refresh token for enterprise-enrolled devices.  Allows
 // for connection to Google APIs when the user isn't logged in.  Currently used
 // for for getting a cloudprint scoped token to allow printing in Guest mode,
@@ -3462,6 +3449,12 @@ inline constexpr char kReadAloudSyntheticTrials[] =
     "readaloud.synthetic_trials";
 #endif  // BUILDFLAG(IS_ANDROID)
 
+// A boolean pref indicating whether elements detected as ads should be visually
+// highlighted across all web pages. This is a global diagnostic setting managed
+// via chrome://subresource-filter-internals.
+inline constexpr char kSubresourceFilterHighlightAds[] =
+    "subresource_filter.highlight_ads";
+
 // A list of base64 encoded certificates that are to be trusted as root certs.
 // Only specifiable as an enterprise policy.
 inline constexpr char kCACertificates[] = "certificates.ca_certificates";
@@ -3570,6 +3563,10 @@ inline constexpr char kServiceWorkerToControlSrcdocIframeEnabled[] =
 inline constexpr char kSharedWorkerBlobURLFixEnabled[] =
     "worker.shared_worker_blob_url_fix_enabled";
 
+// Boolean that specifies whether data: URL web workers have opaque origins.
+inline constexpr char kDataUrlInWebWorkerOpaqueOriginEnabled[] =
+    "worker.data_url_in_web_worker_opaque_origin_enabled";
+
 // Boolean that specifies whether the shared worker has extended lifetime.
 inline constexpr char kSharedWorkerExtendedLifetimeEnabled[] =
     "worker.shared_worker_extended_lifetime_enabled";
@@ -3645,6 +3642,14 @@ inline constexpr char kAuxiliarySearchLastDonatedHistoryEntryVisitTime[] =
 // Boolean pref indicating whether the app rating prompt has been shown.
 inline constexpr char kAppRatingPromptShown[] = "app_rating_prompt_shown";
 #endif  // BUILDFLAG(IS_ANDROID)
+
+// Integer value for overriding the CPU performance tier.
+// Controlled by enterprise policy.
+inline constexpr char kCpuPerformanceTierPolicyOverride[] =
+    "cpu_performance_tier_policy_override";
+
+// Value indicating that the CPU performance tier has not been overridden.
+inline constexpr int kCpuPerformanceTierOverrideNone = -1;
 
 }  // namespace prefs
 

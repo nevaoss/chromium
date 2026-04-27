@@ -1438,6 +1438,12 @@
   return nullptr;
 }
 
+- (id<FullscreenCommands>)fullscreenHandlerForOverscrollActionsController:
+    (OverscrollActionsController*)controller {
+  // Fullscreen isn't supported here.
+  return nil;
+}
+
 #pragma mark - ProfileStateObserver
 
 - (void)profileState:(ProfileState*)profileState
@@ -1532,6 +1538,19 @@
 }
 
 #pragma mark - Private
+
+// Opens the AIM web page.
+- (void)openAIMWeb {
+  GURL URL = GetUrlForAim(self.templateURLService,
+                          /*query_start_time=*/base::Time::Now());
+  OpenNewTabCommand* command = [OpenNewTabCommand commandWithURLFromChrome:URL];
+  command.extraHeaders =
+      web_navigation_util::VariationHeadersForURL(URL, /*is_incognito=*/false);
+
+  id<SceneCommands> sceneHandler =
+      HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
+  [sceneHandler openURLInNewTab:command];
+}
 
 - (void)stopSharingCoordinator {
   [_sharingCoordinator stop];
@@ -1904,23 +1923,15 @@
   [lensHandler openLensInputSelection:command];
 }
 
-- (void)openMIA {
-  [self.NTPMetricsRecorder recordMIATapped];
+- (void)openAIM {
+  [self.NTPMetricsRecorder recordAIMButtonTapped];
   if (!IsDisableComposeboxFromAIMNTPEnabled() && !IsComposeboxAIMDisabled() &&
       _aimEligibilityService->IsFuseboxEligible() &&
       MaybeShowComposebox(self.browser, ComposeboxEntrypoint::kNTPAIMButton)) {
     return;
   }
 
-  GURL URL = GetUrlForAim(self.templateURLService,
-                          /*query_start_time=*/base::Time::Now());
-  OpenNewTabCommand* command = [OpenNewTabCommand commandWithURLFromChrome:URL];
-  command.extraHeaders =
-      web_navigation_util::VariationHeadersForURL(URL, /*is_incognito=*/false);
-
-  id<SceneCommands> sceneHandler =
-      HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
-  [sceneHandler openURLInNewTab:command];
+  [self openAIMWeb];
 }
 
 - (void)preloadVoiceSearch {
@@ -1952,6 +1963,20 @@
   id<SceneCommands> sceneHandler =
       HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
   [sceneHandler openURLInNewTab:command];
+}
+
+- (void)openMultimodalActionsMenu {
+  [self.NTPMetricsRecorder recordPlusButtonTapped];
+  [self dismissCustomizationMenu];
+  if (!IsComposeboxAIMDisabled() &&
+      _aimEligibilityService->IsFuseboxEligible() &&
+      MaybeShowComposebox(self.browser, ComposeboxEntrypoint::kNTPPlusButton)) {
+    return;
+  }
+
+  // Fallback to opening AIM if eligibility changed in the meantime and the NTP
+  // was not reloaded since.
+  [self openAIMWeb];
 }
 
 #pragma mark - TabGridStateObserver

@@ -10,7 +10,6 @@
 #include "base/functional/callback_helpers.h"
 #include "base/notimplemented.h"
 #include "base/strings/utf_string_conversions.h"
-#include "chrome/browser/actor/actor_features.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/tools/click_tool_request.h"
 #include "chrome/browser/actor/tools/observation_delay_controller.h"
@@ -23,6 +22,7 @@
 #include "chrome/common/actor.mojom-shared.h"
 #include "chrome/common/actor/action_result.h"
 #include "chrome/common/actor_webui.mojom.h"
+#include "components/actor/core/actor_features.h"
 #include "components/favicon/core/favicon_service.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_types.h"
 #include "components/password_manager/core/browser/features/password_features.h"
@@ -140,14 +140,11 @@ AttemptLoginTool::~AttemptLoginTool() {
   OptimizationGuideKeyedService* opt_guide_service =
       OptimizationGuideKeyedServiceFactory::GetForProfile(profile);
 
-  // Disable MQLS upload if FedCM support or Password Checkup is enabled
-  // while prototyping to avoid uploading incorrect logs.
-  // TODO(crbug.com/480920277): Remove this check once the prototyping is
-  // complete for FedCM.
+  // Disable MQLS upload if Password Checkup is enabled while prototyping to
+  // avoid uploading incorrect logs.
   // TODO(crbug.com/485620841): Remove this check once the prototyping is
   // complete for Automated Password Change.
   bool prototype_features_enabled =
-      base::FeatureList::IsEnabled(features::kFedCmEmbedderInitiatedLogin) ||
       base::FeatureList::IsEnabled(
           password_manager::features::kPasswordCheckupPrototype);
 

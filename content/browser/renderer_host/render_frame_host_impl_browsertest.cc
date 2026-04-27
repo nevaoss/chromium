@@ -175,12 +175,14 @@ class FirstPartySchemeContentBrowserClient
 
   ~FirstPartySchemeContentBrowserClient() override = default;
 
-  bool ShouldTreatURLSchemeAsFirstPartyWhenTopLevel(
-      std::string_view scheme,
+  bool ShouldTreatAsFirstPartyWhenTopLevel(
+      const url::Origin& top_frame_origin,
       bool is_embedded_origin_secure) override {
-    if (is_embedded_origin_secure && scheme == "trustmeifembeddingsecure")
+    if (is_embedded_origin_secure &&
+        top_frame_origin.scheme() == "trustmeifembeddingsecure") {
       return true;
-    return scheme == "trustme";
+    }
+    return top_frame_origin.scheme() == "trustme";
   }
 
   mojo::PendingRemote<network::mojom::URLLoaderFactory>
@@ -10218,9 +10220,9 @@ IN_PROC_BROWSER_TEST_F(RenderFrameHostImplConnectionAllowlistBrowserTest,
   EXPECT_TRUE(iframe->IsRenderFrameLive());
   std::optional<base::UnguessableToken> iframe_network_restrictions_id =
       iframe->GetNetworkRestrictionsID();
-  // We never navigated this frame, so it does not have a network restrictions
-  // ID set.
-  EXPECT_FALSE(iframe_network_restrictions_id.has_value());
+  // We never navigated this frame, so it inherits the network restrictions
+  // ID from its creator.
+  EXPECT_TRUE(iframe_network_restrictions_id.has_value());
 
   // Inject JavaScript into the iframe to fetch a cross-origin resource.
   GURL d_url = https_server()->GetURL("d.com", "/cors-ok.txt");

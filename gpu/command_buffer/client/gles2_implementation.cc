@@ -189,7 +189,7 @@ bool IsReadbackUsage(GLenum usage) {
 void UpdateProgramInfo(base::span<const uint8_t>& data,
                        ProgramInfoManager* manager,
                        ProgramInfoManager::ProgramInfoType type) {
-  DCHECK(data.size() > sizeof(cmds::GLES2ReturnProgramInfo));
+  CHECK(data.size() >= sizeof(cmds::GLES2ReturnProgramInfo));
   const cmds::GLES2ReturnProgramInfo* return_program_info =
       reinterpret_cast<const cmds::GLES2ReturnProgramInfo*>(data.data());
   uint32_t program = return_program_info->program_client_id;
@@ -622,7 +622,7 @@ void GLES2Implementation::CallDeferredErrorCallbacks() {
 
 void GLES2Implementation::OnGpuControlReturnData(
     base::span<const uint8_t> data) {
-  DCHECK(data.size() > sizeof(cmds::GLES2ReturnDataHeader));
+  CHECK(data.size() >= sizeof(cmds::GLES2ReturnDataHeader));
   const cmds::GLES2ReturnDataHeader& gles2ReturnDataHeader =
       *reinterpret_cast<const cmds::GLES2ReturnDataHeader*>(data.data());
 
@@ -5560,28 +5560,6 @@ GLenum GLES2Implementation::GetGraphicsResetStatusKHR() {
   if (share_group_->IsLost())
     return GL_UNKNOWN_CONTEXT_RESET_KHR;
   return GL_NO_ERROR;
-}
-
-GLboolean GLES2Implementation::EnableFeatureCHROMIUM(const char* feature) {
-  GPU_CLIENT_SINGLE_THREAD_CHECK();
-  GPU_CLIENT_LOG("[" << GetLogPrefix() << "] glEnableFeatureCHROMIUM("
-                     << feature << ")");
-  TRACE_EVENT0("gpu", "GLES2::EnableFeatureCHROMIUM");
-  typedef cmds::EnableFeatureCHROMIUM::Result Result;
-  SetBucketAsCString(kResultBucketId, feature);
-  auto result = GetResultAs<Result>();
-  if (!result) {
-    return false;
-  }
-  *result = 0;
-  helper_->EnableFeatureCHROMIUM(kResultBucketId, GetResultShmId(),
-                                 result.offset());
-  if (!WaitForCmd()) {
-    return false;
-  }
-  helper_->SetBucketSize(kResultBucketId, 0);
-  GPU_CLIENT_LOG("   returned " << GLES2Util::GetStringBool(*result));
-  return *result != 0;
 }
 
 void* GLES2Implementation::MapBufferSubDataCHROMIUM(GLuint target,

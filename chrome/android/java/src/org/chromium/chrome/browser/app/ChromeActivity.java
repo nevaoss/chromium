@@ -66,6 +66,7 @@ import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
+import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.ActivityUtils;
@@ -79,6 +80,7 @@ import org.chromium.chrome.browser.PlayServicesVersionInfo;
 import org.chromium.chrome.browser.TabStateThemeResourceProvider;
 import org.chromium.chrome.browser.WarmupManager;
 import org.chromium.chrome.browser.actor.ActorPictureInPictureController;
+import org.chromium.chrome.browser.actor.ActorTaskHelper;
 import org.chromium.chrome.browser.ai.AiAssistantService;
 import org.chromium.chrome.browser.app.download.DownloadMessageUiDelegate;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
@@ -135,6 +137,7 @@ import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponentSupp
 import org.chromium.chrome.browser.layouts.LayoutManagerAppUtils;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.media.FullscreenVideoPictureInPictureController;
+import org.chromium.chrome.browser.merchant_viewer.PageInfoStoreInfoController.StoreInfoActionHandler;
 import org.chromium.chrome.browser.metrics.LaunchMetrics;
 import org.chromium.chrome.browser.metrics.SimpleStartupForegroundSessionDetector;
 import org.chromium.chrome.browser.metrics.StartupMetricsTracker;
@@ -178,7 +181,6 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabHidingType;
 import org.chromium.chrome.browser.tab.TabImportanceManager;
 import org.chromium.chrome.browser.tab.TabLaunchType;
-import org.chromium.chrome.browser.tab.TabLoadIfNeededCaller;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab.TabState;
@@ -391,6 +393,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     private FullscreenVideoPictureInPictureController mFullscreenVideoPictureInPictureController;
 
     private ActorPictureInPictureController mActorPipController;
+
+    private ActorTaskHelper mActorTaskHelper;
 
     private final SettableMonotonicObservableSupplier<SnackbarManager> mSnackbarManagerSupplier =
             ObservableSuppliers.createMonotonic();
@@ -661,7 +665,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                     new ChromeActivitySnackbarHelper(
                             this,
                             getEdgeToEdgeSupplier(),
-                            assertNonNull(mRootUiCoordinator.getBottomSheetController()));
+                            assertNonNull(mRootUiCoordinator.getBottomSheetController()),
+                            mRootUiCoordinator::getBottomSheetControlsLayer);
             SnackbarManager snackbarManager =
                     new SnackbarManager(
                             this,
@@ -1168,13 +1173,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         Tab tab = getActivityTab();
         if (tab != null) {
             if (tab.isHidden() && shouldShowTabOnActivityShown()) {
-                tab.show(
-                        TabSelectionType.FROM_USER,
-                        TabLoadIfNeededCaller.ON_ACTIVITY_SHOWN_THEN_SHOW);
+                tab.show(TabSelectionType.FROM_USER);
             } else {
                 // The visible Tab's renderer process may have died after the activity was
                 // paused. Ensure that it's restored appropriately.
-                tab.loadIfNeeded(TabLoadIfNeededCaller.ON_ACTIVITY_SHOWN);
+                tab.loadIfNeeded(/* forceBackingSize= */ false);
             }
         }
         MultiWindowUtils.getInstance().recordMultiWindowStateUkm(this, tab);
@@ -1395,6 +1398,18 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
     }
 
+    /**
+     * Toggles the Glic UI.
+     *
+     * @param preventClose whether to prevent closing the Glic UI if it's already open.
+     */
+    public void toggleGlic(boolean preventClose) {
+        if (!ChromeFeatureList.sGlic.isEnabled()) return;
+        if (mRootUiCoordinator != null) {
+            mRootUiCoordinator.toggleGlic(preventClose);
+        }
+    }
+
     @VisibleForTesting
     public @Nullable ActorPictureInPictureController maybeCreateActorPipController() {
         if (mActorPipController == null && ChromeFeatureList.sGlic.isEnabled()) {
@@ -1404,7 +1419,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                             () -> mTabModelProfileSupplier.get(),
                             () -> findViewById(android.R.id.content),
                             getTabModelSelectorSupplier(),
-                            this::exitOverviewModeOnActorPiPExpand);
+                            this::exitOverviewModeOnActorPiPExpand,
+                            this::toggleGlic);
         }
         return mActorPipController;
     }
@@ -1625,9 +1641,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 .addDeferredTask(
                         () -> {
                             if (isActivityFinishingOrDestroyed()) return;
-                            ForcedSigninProcessor.checkCanSignIn(
-                                    ChromeActivity.this,
-                                    getProfileProviderSupplier().get().getOriginalProfile());
+                            ForcedSigninProcessor.checkCanSignIn(ChromeActivity.this);
                         });
 
         DeferredStartupHandler.getInstance()
@@ -1694,6 +1708,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
         CompositorViewHolder compositorViewHolder = mCompositorViewHolderSupplier.get();
         if (compositorViewHolder != null) compositorViewHolder.onStart();
+
+        if (mActorTaskHelper == null && ChromeFeatureList.sGlic.isEnabled()) {
+            mActorTaskHelper = new ActorTaskHelper(this, mTabModelProfileSupplier);
+        }
 
         mStarted = true;
     }
@@ -1890,6 +1908,11 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (mActorPipController != null) {
             mActorPipController.destroy();
             mActorPipController = null;
+        }
+
+        if (mActorTaskHelper != null) {
+            mActorTaskHelper.destroy();
+            mActorTaskHelper = null;
         }
 
         onDestroyInternal();
@@ -2846,7 +2869,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                             getModalDialogManagerSupplier(),
                             null,
                             OpenedFromSource.MENU,
-                            mRootUiCoordinator.getMerchantTrustSignalsCoordinatorSupplier()::get,
+                            SupplierUtils.upcast(
+                                    mRootUiCoordinator.getMerchantTrustSignalsCoordinatorSupplier(),
+                                    StoreInfoActionHandler.class),
                             getEphemeralTabCoordinatorSupplier(),
                             getTabCreator(currentTab.isIncognito()));
             pageInfo.show(currentTab, ChromePageInfoHighlight.noHighlight());

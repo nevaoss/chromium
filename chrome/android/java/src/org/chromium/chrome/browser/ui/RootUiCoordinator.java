@@ -49,6 +49,8 @@ import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.build.annotations.EnsuresNonNull;
+import org.chromium.build.annotations.MonotonicNonNull;
+import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.build.annotations.RequiresNonNull;
 import org.chromium.chrome.R;
@@ -66,6 +68,7 @@ import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.bookmarks.BookmarkAllTabsHandler;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.bookmarks.TabBookmarker;
+import org.chromium.chrome.browser.browser_controls.BottomControlsLayer;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsUtils;
@@ -149,12 +152,13 @@ import org.chromium.chrome.browser.share.ShareDelegate.ShareOrigin;
 import org.chromium.chrome.browser.share.qrcode.QrCodeDialog;
 import org.chromium.chrome.browser.share.scroll_capture.ScrollCaptureManager;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
+import org.chromium.chrome.browser.signin.WebSigninRedirectCoordinator;
+import org.chromium.chrome.browser.signin.WebSigninRedirectCoordinatorSupplier;
 import org.chromium.chrome.browser.signin.services.WebSigninBridge;
 import org.chromium.chrome.browser.tab.AccessibilityVisibilityHandler;
 import org.chromium.chrome.browser.tab.AutofillSessionLifetimeController;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
-import org.chromium.chrome.browser.tab.TabLoadIfNeededCaller;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabObscuringHandlerSupplier;
 import org.chromium.chrome.browser.tab.TabSelectionType;
@@ -269,6 +273,7 @@ import java.util.function.Supplier;
  * <p>The specific things this component will manage and how it will hook into Chrome*Activity are
  * still being discussed See https://crbug.com/931496.
  */
+@NullMarked
 public class RootUiCoordinator
         implements DestroyObserver,
                 InflationObserver,
@@ -290,11 +295,14 @@ public class RootUiCoordinator
     private final SettableMonotonicObservableSupplier<BottomSheetSigninAndHistorySyncCoordinator>
             mWebSigninAndHistorySyncCoordinatorSupplier = ObservableSuppliers.createMonotonic();
 
+    private final SettableMonotonicObservableSupplier<WebSigninRedirectCoordinator>
+            mWebSigninRedirectCoordinatorSupplier = ObservableSuppliers.createMonotonic();
+
     protected final SettableMonotonicObservableSupplier<ReadAloudController>
             mReadAloudControllerSupplier = ObservableSuppliers.createMonotonic();
 
     protected AppCompatActivity mActivity;
-    protected @Nullable AppMenuCoordinator mAppMenuCoordinator;
+    protected @MonotonicNonNull AppMenuCoordinator mAppMenuCoordinator;
     private final MenuOrKeyboardActionController mMenuOrKeyboardActionController;
     protected final ActivityWindowAndroid mWindowAndroid;
     protected final ActivityResultTracker mActivityResultTracker;
@@ -718,6 +726,7 @@ public class RootUiCoordinator
                                                 /* showNavigationBar= */ false,
                                                 /* showStatusBar= */ false,
                                                 /* displayId= */ display.getDisplayId()));
+                                assumeNonNull(mAppMenuCoordinator);
                                 mAppMenuCoordinator.getAppMenuHandler().hideAppMenu();
                             }
 
@@ -819,6 +828,16 @@ public class RootUiCoordinator
             QrCodeDialog qrCodeDialog = (QrCodeDialog) fragment;
             qrCodeDialog.setWindowAndroid(mWindowAndroid);
         }
+    }
+
+    /**
+     * Toggles the Glic UI.
+     *
+     * @param preventClose whether to prevent closing the Glic UI if it's already open.
+     * @return whether the UI was successfully toggled.
+     */
+    public boolean toggleGlic(boolean preventClose) {
+        return false;
     }
 
     @Override
@@ -983,6 +1002,13 @@ public class RootUiCoordinator
             signinAndHistorySyncCoordinator.destroy();
         }
 
+        WebSigninRedirectCoordinator webSigninRedirectCoordinator =
+                mWebSigninRedirectCoordinatorSupplier.get();
+        mWebSigninRedirectCoordinatorSupplier.destroy();
+        if (webSigninRedirectCoordinator != null) {
+            webSigninRedirectCoordinator.destroy();
+        }
+
         if (mEdgeToEdgeController != null) {
             mEdgeToEdgeController.destroy();
             mEdgeToEdgeController = null;
@@ -1047,6 +1073,8 @@ public class RootUiCoordinator
         ReadAloudControllerSupplier.attach(userDataHost, mReadAloudControllerSupplier);
         WebSigninAndHistorySyncCoordinatorSupplier.attach(
                 userDataHost, mWebSigninAndHistorySyncCoordinatorSupplier);
+        WebSigninRedirectCoordinatorSupplier.attach(
+                userDataHost, mWebSigninRedirectCoordinatorSupplier);
     }
 
     private void destroyUnownedUserDataSuppliers() {
@@ -1057,6 +1085,7 @@ public class RootUiCoordinator
         ReadAloudControllerSupplier.destroy(mReadAloudControllerSupplier);
         WebSigninAndHistorySyncCoordinatorSupplier.destroy(
                 mWebSigninAndHistorySyncCoordinatorSupplier);
+        WebSigninRedirectCoordinatorSupplier.destroy(mWebSigninRedirectCoordinatorSupplier);
     }
 
     @Override
@@ -1334,12 +1363,10 @@ public class RootUiCoordinator
         manager.initialize(
                 mActivity.findViewById(android.R.id.content),
                 mLayoutManager,
-                assertNonNull(getBottomSheetController()),
                 mCompositorViewHolderSupplier.get(),
                 toolbarHeightDp,
                 assertNonNull(mToolbarManager),
                 canContextualSearchPromoteToNewTab(),
-                mIntentRequestTracker,
                 getDesktopWindowStateManager(),
                 mBottomControlsStacker);
     }
@@ -1359,9 +1386,7 @@ public class RootUiCoordinator
     public void hideContextualSearch() {
         var manager = mContextualSearchManagerSupplier.get();
         if (manager != null) {
-            mContextualSearchManagerSupplier
-                    .get()
-                    .hideContextualSearch(OverlayPanel.StateChangeReason.UNKNOWN);
+            manager.hideContextualSearch(OverlayPanel.StateChangeReason.UNKNOWN);
         }
     }
 
@@ -1410,9 +1435,7 @@ public class RootUiCoordinator
                         getPrimaryDisplaySizeInInches(), originalProfile, mActivity)) {
             // TODO(crbug.com/40856393): Remove this explicit load when this bug is addressed.
             if (mActivityTabProvider != null && mActivityTabProvider.get() != null) {
-                mActivityTabProvider
-                        .get()
-                        .loadIfNeeded(TabLoadIfNeededCaller.ON_FINISH_NATIVE_INITIALIZATION);
+                mActivityTabProvider.get().loadIfNeeded(/* forceBackingSize= */ false);
             }
         }
 
@@ -1596,7 +1619,8 @@ public class RootUiCoordinator
     }
 
     /** Returns the supplier of {@link MerchantTrustSignalsCoordinator}. */
-    public Supplier<MerchantTrustSignalsCoordinator> getMerchantTrustSignalsCoordinatorSupplier() {
+    public MonotonicObservableSupplier<MerchantTrustSignalsCoordinator>
+            getMerchantTrustSignalsCoordinatorSupplier() {
         return mMerchantTrustSignalsCoordinatorSupplier;
     }
 
@@ -2284,7 +2308,8 @@ public class RootUiCoordinator
                         mExpandedBottomSheetHelper,
                         mOmniboxFocusStateSupplier,
                         panelManagerSupplier,
-                        mLayoutStateProviderOneShotSupplier);
+                        mLayoutStateProviderOneShotSupplier,
+                        mBottomControlsStacker);
 
         // TODO(crbug.com/40208738): Consider moving handler registration to feature code.
         assert mBackPressManager != null
@@ -2396,12 +2421,15 @@ public class RootUiCoordinator
     }
 
     /** Returns the {@link BottomSheetController} Supplier for this activity. */
-    @SuppressWarnings("unchecked")
     public MonotonicObservableSupplier<BottomSheetController> getBottomSheetControllerSupplier() {
-        // This cast is ok since we're removing "Settable", and the Supplier's value actual type
-        // will remain ManagedBottomSheetController.
-        return (MonotonicObservableSupplier<BottomSheetController>)
-                (MonotonicObservableSupplier<?>) mBottomSheetControllerSupplier;
+        return SupplierUtils.upcast(mBottomSheetControllerSupplier, BottomSheetController.class);
+    }
+
+    /** Returns the {@link BottomControlsLayer} for the bottom sheet, or null if not available. */
+    public @Nullable BottomControlsLayer getBottomSheetControlsLayer() {
+        return mBottomSheetManager != null
+                ? mBottomSheetManager.getBottomSheetControlsLayer()
+                : null;
     }
 
     /**

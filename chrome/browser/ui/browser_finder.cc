@@ -333,34 +333,6 @@ Browser* FindBrowserWithProfile(const Profile* profile) {
   return browser ? browser->GetBrowserForMigrationOnly() : nullptr;
 }
 
-std::vector<Browser*> FindAllTabbedBrowsersWithProfile(const Profile* profile) {
-  std::vector<Browser*> browsers;
-  ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
-      [&](BrowserWindowInterface* browser) {
-        if (BrowserMatches(browser, profile,
-                           Browser::WindowFeature::kFeatureNone, kMatchNormal,
-                           display::kInvalidDisplayId)) {
-          browsers.emplace_back(browser->GetBrowserForMigrationOnly());
-        }
-        return true;
-      });
-  return browsers;
-}
-
-std::vector<Browser*> FindAllBrowsersWithProfile(const Profile* profile) {
-  std::vector<Browser*> browsers;
-  ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
-      [&](BrowserWindowInterface* browser) {
-        if (BrowserMatches(browser, profile,
-                           Browser::WindowFeature::kFeatureNone, kMatchAny,
-                           display::kInvalidDisplayId)) {
-          browsers.emplace_back(browser->GetBrowserForMigrationOnly());
-        }
-        return true;
-      });
-  return browsers;
-}
-
 Browser* FindBrowserWithID(SessionID desired_id) {
   Browser* found = nullptr;
   ForEachCurrentBrowserWindowInterfaceOrderedByActivation(
@@ -444,10 +416,8 @@ Browser* FindLastActiveWithProfile(Profile* profile) {
   return browser ? browser->GetBrowserForMigrationOnly() : nullptr;
 }
 
-Browser* FindLastActive() {
-  BrowserWindowInterface* last_active =
-      GetLastActiveBrowserWindowInterfaceWithAnyProfile();
-  return last_active ? last_active->GetBrowserForMigrationOnly() : nullptr;
+BrowserWindowInterface* FindLastActive() {
+  return GetLastActiveBrowserWindowInterfaceWithAnyProfile();
 }
 
 size_t GetTotalBrowserCount() {

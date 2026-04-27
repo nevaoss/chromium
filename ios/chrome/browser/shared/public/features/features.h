@@ -742,6 +742,10 @@ BASE_DECLARE_FEATURE(kComposeboxIOS);
 // Returns true if the Composebox feature is enabled.
 bool IsComposeboxIOSEnabled();
 
+// Feature flag to enable downsampling images in context menu preview to reduce
+// memory. When disabled, images are decoded at full resolution.
+BASE_DECLARE_FEATURE(kContextMenuPreviewDownsampleImage);
+
 // The feature to enable or disable the group color on the tab group and tab
 // grid surfaces.
 BASE_DECLARE_FEATURE(kTabGroupColorOnSurface);
@@ -807,8 +811,18 @@ bool IsComposeboxIpadEnabled();
 // Enables the ChromeNextIa feature.
 BASE_DECLARE_FEATURE(kChromeNextIa);
 
+// Parameters for kChromeNextIa.
+extern const base::FeatureParam<bool> kChromeNextIaLensIconVisible;
+extern const base::FeatureParam<bool> kChromeNextIaShareIconVisible;
+
 // Returns true if the ChromeNextIa feature is enabled.
 bool IsChromeNextIaEnabled();
+
+// Returns true if Lens icon should be visible in ChromeNextIa.
+bool IsChromeNextIaLensIconVisible();
+
+// Returns true if Share icon should be visible in ChromeNextIa.
+bool IsChromeNextIaShareIconVisible();
 
 // Enables the ComposeboxAIMDisabled feature.
 BASE_DECLARE_FEATURE(kComposeboxAIMDisabled);
@@ -850,6 +864,14 @@ BASE_DECLARE_FEATURE(kAIMCobrowseDebugEntrypoint);
 
 // Returns true if the AIMCobrowseDebugEntrypoint feature is enabled.
 bool IsAIMCobrowseDebugEntrypointEnabled();
+
+extern const char kAIMCobrowseHeaderParam[];
+extern const char kAIMCobrowseHeaderParamOptionA[];
+extern const char kAIMCobrowseHeaderParamOptionB[];
+extern const char kAIMCobrowseHeaderParamOptionC[];
+
+// Variation for the Cobrowse header.
+BASE_DECLARE_FEATURE(kAIMCobrowseHeader);
 
 // Enables recording the number of recent days with active sessions.
 BASE_DECLARE_FEATURE(kRecordRecentActiveDays);
@@ -943,5 +965,17 @@ BASE_DECLARE_FEATURE(kSyncedGroupColor);
 
 // Returns true if the SyncedGroupColor feature is enabled.
 bool IsSyncedGroupColorEnabled();
+
+// Enables the plus button in NTP fakebox.
+BASE_DECLARE_FEATURE(kPlusButtonInFakebox);
+
+// Returns true if the plus button in NTP fakebox is enabled
+bool IsPlusButtonInFakeboxEnabled();
+
+// Enables the CobrowseAimHistory feature.
+BASE_DECLARE_FEATURE(kCobrowseAimHistory);
+
+// Returns true if the CobrowseAimHistory feature is enabled.
+bool IsCobrowseAimHistoryEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

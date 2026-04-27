@@ -755,13 +755,13 @@ BASE_FEATURE_PARAM(size_t,
                    "cache_size",
                    64);
 
-BASE_FEATURE(kTryQuicByDefault, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kTryQuicByDefault, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE_PARAM(std::string,
                    kQuicOptions,
                    &kTryQuicByDefault,
                    "quic_options",
-                   "");
+                   "ORIG");
 
 BASE_FEATURE(kIgnoreIpMatching, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(std::string,
@@ -842,7 +842,13 @@ BASE_FEATURE_PARAM(int,
 BASE_FEATURE(kIgnoreQuicCryptoConfigMemoryPressureForDoh,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kIgnoreMemoryPressureForSslClientSessionCache,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kCookieParseRejectEmptyNameAmbiguous,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kEnablePrivateVerificationTokens,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace net::features

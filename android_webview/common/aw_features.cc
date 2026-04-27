@@ -194,15 +194,11 @@ BASE_FEATURE(kWebViewConnectToComponentProviderInBackground,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables phase 2 of using startup tasks logic for webview chromium
-// initialization which starts browser process asynchronously, when starting
-// webview asynchronously.
+// initialization which also starts browser process asynchronously, when
+// starting webview asynchronously.
 // Note: This also enables the same behaviour as WebViewUseStartupTasksLogic and
 // WebViewStartupTasksYieldToNative with minor differences.
 BASE_FEATURE(kWebViewUseStartupTasksLogicP2, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Stop browser startup in isMultiProcessEnabled.
-BASE_FEATURE(kWebViewStopBrowserStartupInIsMultiProcessEnabled,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables running native startup tasks asynchronously if WebView startup is
 // asynchronous.
@@ -216,7 +212,7 @@ BASE_FEATURE(kWebViewStartupTasksYieldToNative,
 // When this is disabled, logging is initiated on the main thread and a success
 // status is reported to the chromium metrics service immediately.
 BASE_FEATURE(kAndroidMetricsAsyncMetricLogging,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Reduce when the app's copy of the finch seed expires. This makes WebView more
 // aggressive in requesting a new copy of its finch seed.

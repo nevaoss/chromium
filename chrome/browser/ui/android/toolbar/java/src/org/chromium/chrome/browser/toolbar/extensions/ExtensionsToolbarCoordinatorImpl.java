@@ -6,7 +6,9 @@ package org.chromium.chrome.browser.toolbar.extensions;
 
 import android.animation.Animator;
 import android.app.Activity;
+import android.content.ComponentCallbacks;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Looper;
@@ -28,6 +30,7 @@ import org.chromium.chrome.browser.preferences.PrefServiceUtil;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabCreator;
+import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
 import org.chromium.chrome.browser.ui.extensions.ExtensionActionsBridge;
@@ -41,7 +44,6 @@ import org.chromium.components.prefs.PrefChangeRegistrar;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.content_public.browser.selection.SelectionDropdownMenuDelegate;
-import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.listmenu.ListMenuButton;
@@ -54,7 +56,9 @@ import java.util.Collection;
 /** The implementation of {@link extensionsToolbarCoordinator}. */
 @NullMarked
 @ServiceImpl(ExtensionsToolbarCoordinator.class)
-public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordinator {
+public class ExtensionsToolbarCoordinatorImpl
+        implements ExtensionsToolbarCoordinator, ComponentCallbacks {
+    private static final int COMPACT_WINDOW_THRESHOLD_DP = 600;
     private final @Nullable LifetimeAssert mLifetimeAssert = LifetimeAssert.create(this);
 
     // TODO(crbug.com/473396591): Remove once {link ExtensionActionsBridge} is deprecated.
@@ -87,7 +91,8 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
     private final MenuButtonPinningDelegate mMenuButtonPinningDelegate =
             new MenuButtonPinningDelegate();
     private View.@Nullable OnLayoutChangeListener mLayoutChangeListener;
-    private ChromeAndroidTask mTask;
+    private boolean mWasWindowCompact;
+    private WindowAndroid mWindowAndroid;
     private Profile mProfile;
     private PrefService mPrefService;
     private PrefChangeRegistrar mPrefChangeRegistrar;
@@ -104,9 +109,10 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
             ThemeColorProvider themeColorProvider,
             ViewGroup rootView,
             @Nullable ContextMenuPopulatorFactory contextMenuPopulatorFactory,
-            @Nullable SelectionDropdownMenuDelegate selectionDropdownMenuDelegate) {
+            @Nullable SelectionDropdownMenuDelegate selectionDropdownMenuDelegate,
+            TabModelSelector tabModelSelector) {
         mBridge = new ExtensionActionsBridge(task, profile);
-        mTask = task;
+        mWindowAndroid = windowAndroid;
         mProfile = profile;
 
         extensionsToolbarStub.setLayoutResource(R.layout.extensions_toolbar_container);
@@ -128,7 +134,8 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
                         mExtensionsToolbarBridge,
                         rootView,
                         contextMenuPopulatorFactory,
-                        selectionDropdownMenuDelegate);
+                        selectionDropdownMenuDelegate,
+                        tabModelSelector);
         mToolbarModel = new PropertyModel.Builder(ExtensionsToolbarProperties.ALL_KEYS).build();
         mMenuButtonChangeProcessor =
                 PropertyModelChangeProcessor.create(
@@ -142,6 +149,7 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
                         mContainer.findViewById(R.id.extensions_menu_button),
                         themeColorProvider,
                         task,
+                        windowAndroid,
                         profile,
                         currentTabSupplier,
                         tabCreator,
@@ -154,10 +162,17 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
                         currentTabSupplier,
                         mExtensionsToolbarBridge,
                         (TextView) mContainer.findViewById(R.id.extensions_request_access_button),
-                        (v) -> {});
+                        (v) -> {},
+                        () ->
+                                mContainer.getResources().getConfiguration().screenWidthDp
+                                        < COMPACT_WINDOW_THRESHOLD_DP);
         mPrefChangeRegistrar = PrefServiceUtil.createFor(profile);
         mPrefChangeRegistrar.addObserver(
                 Pref.PIN_EXTENSIONS_MENU_BUTTON, this::updateMenuButtonPinState);
+        context.registerComponentCallbacks(this);
+        mWasWindowCompact =
+                context.getResources().getConfiguration().screenWidthDp
+                        < COMPACT_WINDOW_THRESHOLD_DP;
     }
 
     @Override
@@ -176,6 +191,9 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
             mPrefChangeRegistrar.removeObserver(Pref.PIN_EXTENSIONS_MENU_BUTTON);
             mPrefChangeRegistrar.destroy();
         }
+        if (mContainer != null && mContainer.getContext() != null) {
+            mContainer.getContext().unregisterComponentCallbacks(this);
+        }
 
         mExtensionsToolbarBridge.removeObserver(mExtensionsToolbarBridgeObserver);
         mExtensionAccessControlButtonCoordinator.destroy();
@@ -186,6 +204,18 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
 
         LifetimeAssert.setSafeToGc(mLifetimeAssert, true);
     }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        boolean isWindowCompact = newConfig.screenWidthDp < COMPACT_WINDOW_THRESHOLD_DP;
+        if (isWindowCompact != mWasWindowCompact) {
+            mWasWindowCompact = isWindowCompact;
+            mExtensionAccessControlButtonCoordinator.requestVisibilityUpdate();
+        }
+    }
+
+    @Override
+    public void onLowMemory() {}
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
@@ -223,9 +253,7 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
     private void showIphInternal() {
         if (mProfile.shutdownStarted()) return;
 
-        ActivityWindowAndroid activityWindowAndroid = mTask.getTopActivityWindowAndroid();
-        if (activityWindowAndroid == null) return;
-        Activity activity = activityWindowAndroid.getActivity().get();
+        Activity activity = mWindowAndroid.getActivity().get();
         if (activity == null) return;
 
         View anchorView = mContainer.findViewById(R.id.extensions_menu_button);
@@ -270,9 +298,9 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
         userEducationHelper.requestShowIph(
                 new IphCommandBuilder(
                                 anchorView.getContext().getResources(),
-                                FeatureConstants.IPH_EXTENSIONS_MANAGE_FEATURE,
-                                R.string.extensions_menu_manage_iph,
-                                R.string.extensions_menu_manage_iph)
+                                FeatureConstants.IPH_EXTENSIONS_MANAGE_TOOLBAR_FEATURE,
+                                R.string.extensions_menu_manage_toolbar_iph,
+                                R.string.extensions_menu_manage_toolbar_iph)
                         .setAnchorView(anchorView)
                         .setPreferredHorizontalOrientation(
                                 HorizontalOrientation.MAX_AVAILABLE_SPACE)
@@ -390,6 +418,10 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
 
         @Override
         public int updateVisibility(int availableWidth) {
+            boolean isWindowCompact =
+                    mContainer.getResources().getConfiguration().screenWidthDp
+                            < COMPACT_WINDOW_THRESHOLD_DP;
+
             if (!isVisible()) {
                 setHasSpaceToShow(false);
                 return 0;
@@ -417,13 +449,9 @@ public class ExtensionsToolbarCoordinatorImpl implements ExtensionsToolbarCoordi
                     View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED), heightSpec);
             int buttonWidth = requestAccessButton.getMeasuredWidth();
 
-            boolean hasSpaceToShow = buttonWidth <= availableWidth;
+            boolean hasSpaceToShow = !isWindowCompact && buttonWidth <= availableWidth;
             setHasSpaceToShow(hasSpaceToShow);
 
-            // TODO(crbug.com/473396591): Add styling and width adjustments for Clank message which
-            // appears where the access button should appear, but the menu puzzle icon is unpinned
-            // as well as when the window size is compact and there isn't enough space to show the
-            // button.
             return Math.min(availableWidth, buttonWidth);
         }
 

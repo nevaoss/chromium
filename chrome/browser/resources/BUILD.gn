@@ -21,8 +21,6 @@ group("resources") {
   public_deps = [
     "contextual_tasks:resources",
     "glic:resources",
-    "glic/fre:resources",
-    "glic/shared:resources",
     "saved_tab_groups_unsupported:resources",
     "segmentation_internals:resources",
     "//components/enterprise/connectors/resources",
@@ -296,7 +294,7 @@ if (!is_android) {
 group("dev_ui_resources") {
   public_deps = [
     "accessibility:resources",
-    "accessibility_annotator_info:resources",
+    "accessibility_annotator_internals:resources",
     "actor_internals:resources",
     "bluetooth_internals:resources",
     "browsing_topics:resources",
@@ -312,6 +310,7 @@ group("dev_ui_resources") {
     "omnibox:resources",
     "predictors:resources",
     "privacy_sandbox/internals:resources",
+    "subresource_filter:resources",
     "usb_internals:resources",
     "//components/commerce/core/internals/resources",
     "//components/data_sharing/data_sharing_internals/resources",
@@ -345,6 +344,7 @@ group("dev_ui_resources") {
     ]
   } else {
     public_deps += [
+      "accessibility_annotator_info:resources",
       "color_pipeline_internals:resources",
       "infobar_internals:resources",
       "media_router/internals:resources",
@@ -372,7 +372,7 @@ repack("dev_ui_paks") {
   output = "$root_gen_dir/chrome/dev_ui_resources.pak"
 
   sources = [
-    "$root_gen_dir/chrome/accessibility_annotator_info_resources.pak",
+    "$root_gen_dir/chrome/accessibility_annotator_internals_resources.pak",
     "$root_gen_dir/chrome/accessibility_resources.pak",
     "$root_gen_dir/chrome/actor_internals_resources.pak",
     "$root_gen_dir/chrome/bluetooth_internals_resources.pak",
@@ -389,6 +389,7 @@ repack("dev_ui_paks") {
     "$root_gen_dir/chrome/omnibox_resources.pak",
     "$root_gen_dir/chrome/predictors_resources.pak",
     "$root_gen_dir/chrome/privacy_sandbox_internals_resources.pak",
+    "$root_gen_dir/chrome/subresource_filter_internals_resources.pak",
     "$root_gen_dir/chrome/usb_internals_resources.pak",
     "$root_gen_dir/components/commerce_internals_resources.pak",
     "$root_gen_dir/components/data_sharing_internals_resources.pak",
@@ -422,6 +423,7 @@ repack("dev_ui_paks") {
     ]
   } else {
     sources += [
+      "$root_gen_dir/chrome/accessibility_annotator_info_resources.pak",
       "$root_gen_dir/chrome/color_pipeline_internals_resources.pak",
       "$root_gen_dir/chrome/infobar_internals_resources.pak",
       "$root_gen_dir/chrome/media_router_internals_resources.pak",

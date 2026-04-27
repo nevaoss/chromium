@@ -118,11 +118,26 @@ export function getHtml(this: GlicInternalsAppElement) {
           <input id="invokePromptInput" .value="${this.invokePrompt_}"
               @input="${this.onInvokePromptInput_}">
           </input>
-          <label>
-            <input type="checkbox" .checked="${this.invokeAutoSubmit_}"
-                @change="${this.onInvokeAutoSubmitChange_}">
-            Auto Submit
-          </label>
+          <div style="display: flex; gap: 16px; align-items: center;">
+            <label>
+              <input type="checkbox" .checked="${this.invokeAutoSubmit_}"
+                  @change="${this.onInvokeAutoSubmitChange_}">
+              Auto Submit
+            </label>
+            <label>
+              <input type="checkbox" .checked="${this.invokeWaitForPanelOpen_}"
+                  @change="${this.onInvokeWaitForPanelOpenChange_}">
+              Wait for Panel Open
+            </label>
+          </div>
+          <label for="invokeInvocationSourceSelect">Invocation Source</label>
+          <select id="invokeInvocationSourceSelect"
+              .value="${this.invokeInvocationSource_.toString()}"
+              @change="${this.onInvokeInvocationSourceChange_}">
+            ${this.getInvocationSourceOptions_().map(option => html`
+              <option value="${option.value}">${option.name}</option>
+            `)}
+          </select>
           <label for="invokeFreOverrideSelect">FRE Override</label>
           <select id="invokeFreOverrideSelect"
               .value="${this.invokeFreOverride_.toString()}"
@@ -131,6 +146,14 @@ export function getHtml(this: GlicInternalsAppElement) {
             <option value="1">TrustFirstText</option>
             <option value="2">TrustFirstClick</option>
             <option value="3">TrustFirstInline</option>
+          </select>
+          <label for="invokeFeatureModeSelect">Feature Mode</label>
+          <select id="invokeFeatureModeSelect"
+              .value="${this.invokeFeatureMode_.toString()}"
+              @change="${this.onInvokeFeatureModeChange_}">
+            ${this.featureModeEnumValues_.map(item => html`
+              <option value="${item.value}">${item.name}</option>
+            `)}
           </select>
           <cr-button @click="${this.onTriggerInvokeClick_}">
             Trigger Invoke

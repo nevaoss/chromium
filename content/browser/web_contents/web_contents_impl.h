@@ -78,7 +78,6 @@
 #include "third_party/blink/public/mojom/choosers/popup_menu.mojom-forward.h"
 #include "third_party/blink/public/mojom/frame/blocked_navigation_types.mojom-shared.h"
 #include "third_party/blink/public/mojom/frame/frame.mojom-forward.h"
-#include "third_party/blink/public/mojom/frame/text_autosizer_page_info.mojom.h"
 #include "third_party/blink/public/mojom/input/input_handler.mojom-shared.h"
 #include "third_party/blink/public/mojom/loader/resource_load_info.mojom-forward.h"
 #include "third_party/blink/public/mojom/media/capture_handle_config.mojom.h"
@@ -162,6 +161,7 @@ class ScopedAccessibilityMode;
 class ScreenChangeMonitor;
 class ScreenOrientationProvider;
 class SiteInstanceGroup;
+class SurfaceEmbedConnectorImpl;
 // For web_contents_impl_browsertest.cc
 class TestWCDelegateForDialogsAndFullscreen;
 class TestWebContents;
@@ -182,10 +182,6 @@ class CreateNewWindowParams;
 class WebContentsAndroid;
 class SelectionPopupDelegate;
 #endif
-
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
-class SurfaceEmbedConnectorImpl;
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
 // CreatedWindow holds the WebContentsImpl and target url between IPC calls to
 // CreateNewWindow and ShowCreatedWindow.
@@ -402,9 +398,7 @@ class CONTENT_EXPORT WebContentsImpl
   // WebContents ------------------------------------------------------
   WebContentsDelegate* GetDelegate() final;
   void SetDelegate(WebContentsDelegate* delegate) override;
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
   SurfaceEmbedConnector* GetSurfaceEmbedConnector() const override;
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
   NavigationControllerImpl& GetController() override;
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -702,8 +696,8 @@ class CONTENT_EXPORT WebContentsImpl
   void SetSupportsDraggableRegions(bool supports_draggable_regions) override;
   void SetV8CompileHints(base::ReadOnlySharedMemoryRegion data) override;
   void SetTabSwitchStartTime(base::TimeTicks start_time,
-                             bool destination_is_loaded) override;
-
+                             bool destination_is_loaded,
+                             bool had_saved_frame_at_start) override;
   WindowOpenDisposition GetOriginalWindowOpenDisposition() const override;
 
   // Implementation of PageNavigator.
@@ -1273,6 +1267,9 @@ class CONTENT_EXPORT WebContentsImpl
       RenderFrameHostImpl* new_frame) override;
   bool FocusLocationBarByDefault() override;
   void OnFrameTreeNodeDestroyed(FrameTreeNode* node) override;
+  void NotifySwappedRWHVChildFrameFromRenderManager(
+      RenderWidgetHostViewChildFrame* new_view,
+      bool allow_paint_holding) override;
 
   // PageDelegate -------------------------------------------------------------
 
@@ -1660,7 +1657,6 @@ class CONTENT_EXPORT WebContentsImpl
 
   WebContents* GetDocumentPictureInPictureOpener();
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
   // SetSurfaceEmbedConnector and ClearSurfaceEmbedConnector are used in WebUI
   // browser to embed a WebContents into a SurfaceEmbed plugin. The
   // SurfaceEmbedConnector is used to connect the WebContents to the plugin and
@@ -1673,7 +1669,6 @@ class CONTENT_EXPORT WebContentsImpl
   // Clears the SurfaceEmbedConnector for this WebContents. Called when the
   // WebContents is being detached from a SurfaceEmbed plugin.
   void ClearSurfaceEmbedConnector();
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
  private:
   using FrameTreeIterationCallback = base::FunctionRef<void(FrameTree&)>;
@@ -1738,7 +1733,6 @@ class CONTENT_EXPORT WebContentsImpl
   FRIEND_TEST_ALL_PREFIXES(SitePerProcessBrowserTest, CrossSiteIframe);
   FRIEND_TEST_ALL_PREFIXES(SitePerProcessBrowserTest,
                            TwoSubframesCreatePopupsSimultaneously);
-  FRIEND_TEST_ALL_PREFIXES(SitePerProcessBrowserTest, TextAutosizerPageInfo);
   FRIEND_TEST_ALL_PREFIXES(SitePerProcessBrowserTest,
                            TwoSubframesCreatePopupMenuWidgetsSimultaneously);
   FRIEND_TEST_ALL_PREFIXES(SitePerProcessAccessibilityBrowserTest,
@@ -2357,11 +2351,9 @@ class CONTENT_EXPORT WebContentsImpl
   // NULL otherwise.
   std::unique_ptr<BrowserPluginGuest> browser_plugin_guest_;
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
   // Helps connect to embedder when embedded in a SurfaceEmbed plugin.
   // nullptr if not embedded.
   std::unique_ptr<SurfaceEmbedConnectorImpl> surface_embed_connector_;
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
   // Helper classes ------------------------------------------------------------
 

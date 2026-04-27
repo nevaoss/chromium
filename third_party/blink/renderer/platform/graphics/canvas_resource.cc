@@ -32,7 +32,6 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
 #include "third_party/blink/renderer/platform/graphics/static_bitmap_image.h"
 #include "third_party/blink/renderer/platform/graphics/unaccelerated_static_bitmap_image.h"
@@ -202,14 +201,14 @@ CanvasResourceSharedImage::CanvasResourceSharedImage(
     : CanvasResource(shared_image), alpha_type_(shared_image->alpha_type()) {}
 
 void CanvasResourceSharedImage::InitializeSoftware(
-    base::WeakPtr<CanvasResourceProviderSharedImage> provider,
+    base::WeakPtr<Client> client,
     base::WeakPtr<WebGraphicsSharedImageInterfaceProvider>
         shared_image_interface_provider) {
   DCHECK(GetSharedImage());
   DCHECK(!is_initialized_);
   DCHECK(shared_image_interface_provider);
 
-  provider_ = std::move(provider);
+  client_ = std::move(client);
   is_accelerated_ = false;
 
   // This class doesn't currently have a way of verifying the sync token for
@@ -226,7 +225,7 @@ void CanvasResourceSharedImage::InitializeSoftware(
 }
 
 void CanvasResourceSharedImage::Initialize(
-    base::WeakPtr<CanvasResourceProviderSharedImage> provider,
+    base::WeakPtr<Client> client,
     base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
     bool is_accelerated) {
   DCHECK(GetSharedImage());
@@ -234,7 +233,7 @@ void CanvasResourceSharedImage::Initialize(
   DCHECK(context_provider_wrapper);
   DCHECK(context_provider_wrapper->ContextProvider().RasterInterface());
 
-  provider_ = std::move(provider);
+  client_ = std::move(client);
   context_provider_wrapper_ = std::move(context_provider_wrapper);
   is_accelerated_ = is_accelerated;
 
@@ -253,7 +252,7 @@ CanvasResourceSharedImage::CreateForTesting(
     gpu::SharedImageUsageSet shared_image_usage_flags,
     bool is_software,
     bool is_accelerated,
-    base::WeakPtr<CanvasResourceProviderSharedImage> provider,
+    base::WeakPtr<Client> client,
     base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper,
     base::WeakPtr<WebGraphicsSharedImageInterfaceProvider>
         shared_image_interface_provider) {
@@ -271,9 +270,9 @@ CanvasResourceSharedImage::CreateForTesting(
   if (is_software) {
     DCHECK(!is_accelerated);
     canvas_resource->InitializeSoftware(
-        provider, std::move(shared_image_interface_provider));
+        client, std::move(shared_image_interface_provider));
   } else {
-    canvas_resource->Initialize(provider, context_provider_wrapper,
+    canvas_resource->Initialize(client, context_provider_wrapper,
                                 is_accelerated);
   }
   return canvas_resource;
@@ -291,8 +290,8 @@ void CanvasResourceSharedImage::OnRefReturned(
   // refs (necessary for the provider to actually recycle the resource in the
   // case where there this is the last outstanding ref).
   resource.reset();
-  if (provider_) {
-    provider_->OnResourceRefReturned(std::move(downcast_ref));
+  if (client_) {
+    client_->OnResourceRefReturned(std::move(downcast_ref));
   }
 }
 
@@ -318,8 +317,8 @@ CanvasResourceSharedImage::~CanvasResourceSharedImage() {
     return;
   }
 
-  if (provider_) {
-    provider_->OnDestroyResource();
+  if (client_) {
+    client_->OnDestroyResource();
   }
 }
 

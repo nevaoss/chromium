@@ -10,14 +10,15 @@
 #include "chrome/browser/glic/common/glic_navigation.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/passwords/ui_utils.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
+#include "content/public/common/content_features.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/window_open_disposition.h"
 
@@ -34,7 +35,8 @@ namespace {
 void OpenGlicSettingsPageWithPromo(Profile* profile,
                                    const base::Feature& feature,
                                    ShowPromoInPage::Params promo_params) {
-  BrowserWindowInterface* browser = chrome::FindTabbedBrowser(profile, false);
+  BrowserWindowInterface* browser =
+      ProfileBrowserCollection::GetForProfile(profile)->FindTabbedBrowser();
   if (!browser) {
     // At this point we don't have a browser window open for profile.
     // User Education resources are initialized when browser view is created,
@@ -99,11 +101,18 @@ void OpenGlicKeyboardShortcutSetting(Profile* profile) {
 }
 
 void OpenPasswordManagerSettingsPage(Profile* profile) {
+#if !BUILDFLAG(IS_ANDROID)  /// NEEDS_ANDROID_IMPL: implement settings
+  const GURL settings_url =
+      base::FeatureList::IsEnabled(features::kFedCmEmbedderInitiatedLogin)
+          ? chrome::GetSettingsUrl(chrome::kGlicLoginSettingsSubpage)
+          : GURL(GetGooglePasswordManagerSubPageURLStr());
   auto params = std::make_unique<NavigateParams>(
-      profile, GURL(GetGooglePasswordManagerSubPageURLStr()),
-      ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
+      profile, settings_url, ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
   params->disposition = WindowOpenDisposition::SINGLETON_TAB;
   glic::Navigate(std::move(params));
+#else
+  NOTIMPLEMENTED();
+#endif
 }
 
 }  // namespace glic

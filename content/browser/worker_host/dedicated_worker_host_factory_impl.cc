@@ -17,7 +17,9 @@
 #include "content/browser/worker_host/dedicated_worker_host.h"
 #include "content/browser/worker_host/dedicated_worker_service_impl.h"
 #include "content/browser/worker_host/worker_util.h"
+#include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/render_process_host.h"
+#include "content/public/common/content_client.h"
 #include "mojo/public/cpp/bindings/message.h"
 #include "net/storage_access_api/status.h"
 #include "services/network/public/mojom/client_security_state.mojom.h"
@@ -118,18 +120,53 @@ void DedicatedWorkerHostFactoryImpl::CreateWorkerHostAndStartScriptLoad(
 
   // TODO(crbug.com/40051700): Compare `creator_storage_key_.origin()` to
   // `script_url`, and report as bad message if that fails.
+  if (base::FeatureList::IsEnabled(
+          features::kEnforceDedicatedWorkerSameOriginCheck) &&
+      !script_url.SchemeIs(url::kDataScheme)) {
+    url::Origin script_origin = url::Origin::Create(script_url);
+    if (creator_storage_key_.origin() != script_origin) {
+      // If the creator is opaque, it might be a sandboxed iframe or a data:
+      // URL. In such cases, we should allow the load if the precursor origin
+      // matches the script origin.
+      if (creator_storage_key_.origin().opaque() &&
+          creator_storage_key_.origin().GetTupleOrPrecursorTupleIfOpaque() ==
+              script_origin.GetTupleOrPrecursorTupleIfOpaque()) {
+        // Match found via precursor.
+      } else {
+        // Only enforce the same-origin check for IWA and Extensions,
+        // to avoid breaking existing web content that relies on opaque origins
+        // or other complex origin relationships.
+        //
+        // We use hardcoded scheme names here to avoid dependencies on chrome/
+        // or components/ from the content/ layer.
+        constexpr char kIsolatedAppScheme[] = "isolated-app";
+        constexpr char kExtensionScheme[] = "chrome-extension";
+        if (creator_storage_key_.origin().scheme() == kIsolatedAppScheme ||
+            creator_storage_key_.origin().scheme() == kExtensionScheme ||
+            script_origin.scheme() == kIsolatedAppScheme ||
+            script_origin.scheme() == kExtensionScheme) {
+          mojo::ReportBadMessage("DWH_INVALID_SCRIPT_URL_ORIGIN");
+          return;
+        }
+      }
+    }
+  }
 
   mojo::PendingRemote<blink::mojom::DedicatedWorkerHost> pending_remote_host;
 
-  blink::StorageKey worker_storage_key =
-      CalculateWorkerStorageKey(script_url, creator_storage_key_);
+  bool is_opaque_origin_enabled =
+      GetContentClient()->browser()->IsDataUrlInWebWorkerOpaqueOriginEnabled(
+          worker_process_host->GetBrowserContext());
+
+  blink::StorageKey worker_storage_key = CalculateWorkerStorageKey(
+      script_url, creator_storage_key_, is_opaque_origin_enabled);
 
   // The origin used by this dedicated worker on the renderer side. This will
   // be the same as the storage key's origin, except in the case of data: URL
   // workers, as described in the linked bug.
   // TODO(crbug.com/40051700): Make the storage key's origin always match this.
-  url::Origin renderer_origin =
-      CalculateWorkerRendererOrigin(script_url, worker_storage_key);
+  url::Origin renderer_origin = CalculateWorkerRendererOrigin(
+      script_url, worker_storage_key, is_opaque_origin_enabled);
 
   auto* host = new DedicatedWorkerHost(
       service, token, worker_process_host, creator_,

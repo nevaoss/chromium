@@ -7,19 +7,21 @@ package org.chromium.chrome.browser.tab_bottom_sheet;
 import static org.chromium.build.NullUtil.assumeNonNull;
 
 import org.jni_zero.CalledByNative;
+import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetManager.NativeInterfaceDelegate;
+import org.chromium.content_public.browser.WebContents;
 
 /** Interface for native methods to interact with the tab bottom sheet. */
 @NullMarked
 public class TabBottomSheetNativeInterface implements NativeInterfaceDelegate {
 
-    private final long mNativeTabBottomSheetBridge;
     private final Tab mTab;
+    private long mNativeTabBottomSheetBridge;
 
     /** Constructor. */
     @CalledByNative
@@ -30,6 +32,7 @@ public class TabBottomSheetNativeInterface implements NativeInterfaceDelegate {
 
     @CalledByNative
     private void destroy() {
+        mNativeTabBottomSheetBridge = 0;
         TabBottomSheetManager tabBottomSheetManager = getTabBottomSheetManager(mTab);
         if (tabBottomSheetManager != null) {
             tabBottomSheetManager.detachNativeInterfaceDelegate(this);
@@ -55,6 +58,14 @@ public class TabBottomSheetNativeInterface implements NativeInterfaceDelegate {
         }
     }
 
+    @CalledByNative
+    public void resetTouchOffset(
+            @Nullable @JniType("content::WebContents*") WebContents webContents) {
+        if (webContents == null) return;
+        webContents.getEventForwarder().setCurrentTouchOffsetX(0.0f);
+        webContents.getEventForwarder().setCurrentTouchOffsetY(0.0f);
+    }
+
     private @Nullable TabBottomSheetManager getTabBottomSheetManager(Tab tab) {
         return TabBottomSheetUtils.getManagerFromWindow(assumeNonNull(tab.getWindowAndroid()));
     }
@@ -62,11 +73,28 @@ public class TabBottomSheetNativeInterface implements NativeInterfaceDelegate {
     // Delegate methods.
     @Override
     public void onBottomSheetClosed() {
-        TabBottomSheetNativeInterfaceJni.get().onClose(mNativeTabBottomSheetBridge);
+        if (mNativeTabBottomSheetBridge == 0) return;
+        TabBottomSheetNativeInterfaceJni.get().onClosed(mNativeTabBottomSheetBridge);
+    }
+
+    @Override
+    public void onBottomSheetSuppressed() {
+        if (mNativeTabBottomSheetBridge == 0) return;
+        TabBottomSheetNativeInterfaceJni.get().onSuppressed(mNativeTabBottomSheetBridge);
+    }
+
+    @Override
+    public void onBottomSheetOpened(boolean isExpanded) {
+        if (mNativeTabBottomSheetBridge == 0) return;
+        TabBottomSheetNativeInterfaceJni.get().onOpened(mNativeTabBottomSheetBridge, isExpanded);
     }
 
     @NativeMethods
     interface Natives {
-        void onClose(long nativeTabBottomSheetBridge);
+        void onClosed(long nativeTabBottomSheetBridge);
+
+        void onSuppressed(long nativeTabBottomSheetBridge);
+
+        void onOpened(long nativeTabBottomSheetBridge, boolean isExpanded);
     }
 }

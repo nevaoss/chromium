@@ -245,6 +245,7 @@ TEST_F(PasswordReceiverServiceImplTest,
           Field(&PasswordForm::sender_name, kSenderName),
           Field(&PasswordForm::sender_profile_image_url,
                 GURL(kSenderProfileImagerUrl)),
+          Field(&PasswordForm::skip_zero_click, true),
           Field(&PasswordForm::sharing_notification_displayed, false))));
 
   EXPECT_TRUE(
@@ -668,6 +669,29 @@ TEST_F(PasswordReceiverServiceImplTest, ShouldIgnoreGroupedCredentials) {
       "PasswordManager.ProcessIncomingPasswordSharingInvitationResult",
       metrics_util::ProcessIncomingPasswordSharingInvitationResult::
           kInvitationAutoApproved,
+      1);
+}
+
+TEST_F(PasswordReceiverServiceImplTest,
+       ShouldIgnoreInvitationWithMismatchedOriginAndSignonRealm) {
+  base::HistogramTester histogram_tester;
+  sync_pb::IncomingPasswordSharingInvitationSpecifics invitation =
+      CreateIncomingSharingInvitation();
+
+  invitation.mutable_client_only_unencrypted_data()
+      ->mutable_password_group_data()
+      ->mutable_element_data(0)
+      ->set_signon_realm("https://malicious.com/");
+
+  password_receiver_service()->ProcessIncomingSharingInvitation(invitation);
+
+  EXPECT_THAT(expected_password_store_for_syncing().stored_passwords(),
+              IsEmpty());
+
+  histogram_tester.ExpectUniqueSample(
+      "PasswordManager.ProcessIncomingPasswordSharingInvitationResult",
+      metrics_util::ProcessIncomingPasswordSharingInvitationResult::
+          kInvalidInvitation,
       1);
 }
 

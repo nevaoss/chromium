@@ -9,20 +9,23 @@ import android.graphics.Bitmap;
 
 import androidx.annotation.VisibleForTesting;
 
-import org.chromium.base.Callback;
 import org.chromium.base.lifetime.Destroyable;
 import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.extensions.ContextMenuSource;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabLaunchType;
+import org.chromium.chrome.browser.tabmodel.TabCreator;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
 import org.chromium.chrome.browser.ui.extensions.ExtensionActionContextMenuBridge;
 import org.chromium.chrome.browser.ui.extensions.ExtensionsMenuBridge;
 import org.chromium.chrome.browser.ui.extensions.ExtensionsMenuTypes;
 import org.chromium.chrome.browser.ui.extensions.R;
 import org.chromium.components.embedder_support.util.UrlConstants;
+import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.listmenu.ListMenuButton;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
@@ -44,17 +47,21 @@ class ExtensionsMenuMediator implements Destroyable, ExtensionsMenuBridge.Observ
     private final PropertyModel mMainPageModel;
     private final PropertyModel mSitePermissionsPageModel;
     private final Runnable mOnReady;
+    private final Runnable mOnDismissMenu;
     private final ChromeAndroidTask mTask;
     private final Profile mProfile;
+    private final TabCreator mTabCreator;
 
     /**
      * @param context The context to use.
      * @param task The task object.
      * @param profile The current profile.
      * @param currentTabSupplier The supplier for the current tab.
+     * @param tabCreator The tab creator to use.
      * @param actionModels The model list to populate with extension actions.
      * @param mainPageModel The property model for the menu.
      * @param sitePermissionsPropertyModel The property model for the site permissions page.
+     * @param dismissRunnable A runnable to dismiss the menu.
      * @param onReady A runnable to run when the menu is ready to be shown.
      */
     public ExtensionsMenuMediator(
@@ -62,14 +69,18 @@ class ExtensionsMenuMediator implements Destroyable, ExtensionsMenuBridge.Observ
             ChromeAndroidTask task,
             Profile profile,
             NullableObservableSupplier<Tab> currentTabSupplier,
+            TabCreator tabCreator,
             ModelList actionModels,
             PropertyModel mainPageModel,
             PropertyModel sitePermissionsPropertyModel,
+            Runnable onDismissMenu,
             Runnable onReady) {
         mActionModels = actionModels;
         mContext = context;
         mCurrentTabSupplier = currentTabSupplier;
+        mOnDismissMenu = onDismissMenu;
         mOnReady = onReady;
+        mTabCreator = tabCreator;
         mTask = task;
         mProfile = profile;
         mMenuBridge = new ExtensionsMenuBridge(mTask, mProfile, /* observer= */ this);
@@ -133,12 +144,22 @@ class ExtensionsMenuMediator implements Destroyable, ExtensionsMenuBridge.Observ
         mMenuBridge.onDismissExtensionClicked(extensionId);
     }
 
+    /** Called when the discover extensions button is clicked. */
+    public void onDiscoverExtensionsClicked() {
+        openUrlFromMenu(UrlConstants.CHROME_WEBSTORE_URL);
+    }
+
+    /** Called when the manage extensions button is clicked. */
+    public void onManageExtensionsClicked() {
+        openUrlFromMenu(UrlConstants.CHROME_EXTENSIONS_URL);
+    }
+
     /** Called when the manage extension button is clicked. */
-    public void onManageThisExtensionClicked(Callback<String> openUrlCallback) {
+    public void onManageThisExtensionClicked() {
         assert getCurrentPage() == ExtensionsMenuProperties.Page.SITE_PERMISSIONS;
         String extensionId =
                 mSitePermissionsPageModel.get(SitePermissionsPageProperties.EXTENSION_ID);
-        openUrlCallback.onResult(UrlConstants.CHROME_EXTENSIONS_ID_URL + extensionId);
+        openUrlFromMenu(UrlConstants.CHROME_EXTENSIONS_ID_URL + extensionId);
     }
 
     /** Called when the reload page button is clicked. */
@@ -391,23 +412,34 @@ class ExtensionsMenuMediator implements Destroyable, ExtensionsMenuBridge.Observ
     private void onSitePermissionsButtonClicked(String extensionId) {
         mSitePermissionsPageModel.set(SitePermissionsPageProperties.EXTENSION_ID, extensionId);
 
-        // Find extension name and icon.
-        for (int i = 0; i < mActionModels.size(); i++) {
-            PropertyModel model = mActionModels.get(i).model;
-            if (extensionId.equals(model.get(ExtensionsMenuItemProperties.EXTENSION_ID))) {
-                mSitePermissionsPageModel.set(
-                        SitePermissionsPageProperties.EXTENSION_NAME,
-                        model.get(ExtensionsMenuItemProperties.TITLE));
-                mSitePermissionsPageModel.set(
-                        SitePermissionsPageProperties.EXTENSION_ICON,
-                        model.get(ExtensionsMenuItemProperties.ICON));
-                break;
-            }
-        }
+        // Update the site permissions page content.
+        ExtensionsMenuTypes.ExtensionSitePermissionsState sitePermissionsState =
+                mMenuBridge.getExtensionSitePermissionsState(extensionId);
 
+        mSitePermissionsPageModel.set(
+                SitePermissionsPageProperties.EXTENSION_NAME, sitePermissionsState.extensionName);
+        mSitePermissionsPageModel.set(
+                SitePermissionsPageProperties.EXTENSION_ICON, sitePermissionsState.extensionIcon);
+
+        mSitePermissionsPageModel.set(
+                SitePermissionsPageProperties.SHOW_REQUESTS_TOGGLE_CHECKED,
+                sitePermissionsState.showRequestsToggle.isOn);
+        mSitePermissionsPageModel.set(
+                SitePermissionsPageProperties.SHOW_REQUESTS_TOGGLE_CLICK_LISTENER,
+                (buttonView, isChecked) ->
+                        mMenuBridge.onShowRequestsTogglePressed(extensionId, isChecked));
+
+        // Set current page to site permissions page.
         mMainPageModel.set(
                 ExtensionsMenuProperties.CURRENT_PAGE,
                 ExtensionsMenuProperties.Page.SITE_PERMISSIONS);
+    }
+
+    private void openUrlFromMenu(String url) {
+        mOnDismissMenu.run();
+
+        LoadUrlParams params = new LoadUrlParams(url, PageTransition.AUTO_TOPLEVEL);
+        mTabCreator.createNewTab(params, TabLaunchType.FROM_CHROME_UI, null);
     }
 
     /**

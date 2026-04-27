@@ -759,6 +759,9 @@ are declared in tools/grit/grit_args.gni.
             Rotate c&amp;ounterclockwise
           </message>
 
+          <message name="IDS_CONTENT_CONTEXT_VIDEO_FRAME" desc="The name of the Video Frame submenu in the content area context menu">
+            &amp;Video frame
+          </message>
           <message name="IDS_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS" desc="The name of the Save Video Frame As command in the content area context menu">
             Save video &amp;frame as...
           </message>
@@ -1060,6 +1063,9 @@ are declared in tools/grit/grit_args.gni.
             Rotate C&amp;ounterclockwise
           </message>
 
+          <message name="IDS_CONTENT_CONTEXT_VIDEO_FRAME" desc="In Title Case: The name of the Video Frame submenu in the content area context menu">
+            &amp;Video Frame
+          </message>
           <message name="IDS_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS" desc="In Title Case: The name of the Save Video Frame As command in the content area context menu">
            Save Video &amp;Frame As...
           </message>
@@ -8651,6 +8657,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_COMPOSE_ADD_FILE" desc="Text for a button label that opens a menu so users can add a file to their search.">
         Add file
       </message>
+      <message name="IDS_NTP_COMPOSE_ADD_DRIVE" desc="Placeholder text for a button label that opens a menu so users can add a Google Drive file to their search." translateable="false">
+         Add from Drive
+      </message>
       <message name="IDS_NTP_COMPOSE_ADD_CONTEXT" desc="The text to display to ask user to add context to their search e.g. pdf or image.">
         Add a tab and more
       </message>
@@ -9646,6 +9655,16 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_IMMERSIVE_READING_MODE_OPENED_ANNOUNCEMENT" desc="Accessibility announcement read by screen readers when reading mode is opened." is_accessibility_with_no_ui="true">
         Reading mode opened, full page view
       </message>
+      <if expr="is_macosx">
+        <message name="IDS_READING_MODE_TOOLTIP" desc="Tooltip for the reading mode feature, which gives users an accessible reading experience.">
+          Reading mode (<ph name="READING_MODE_SHORTCUT">$1<ex>⌥⌘R</ex></ph>)
+        </message>
+      </if>
+      <if expr="not is_macosx">
+        <message name="IDS_READING_MODE_TOOLTIP" desc="Tooltip for the reading mode feature, which gives users an accessible reading experience.">
+          Reading mode (<ph name="READING_MODE_SHORTCUT">$1<ex>Alt+Shift+R</ex></ph>)
+        </message>
+      </if>
       <message name="IDS_READING_MODE_NOT_SELECTABLE_HEADER" desc="Header for reading mode when the current webpage cannot be opened in reading mode, even when selecting text.">
         Reading mode isn’t available on this page
       </message>
@@ -9877,9 +9896,16 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_LANGUAGE_MENU_CLOSE" desc="Label for a button to close a dialog with options for managing language preferences for Read Aloud.">
         Close
       </message>
-      <message name="IDS_READING_MODE_CLOSE" desc="Tooltip and screen reader label for a button to close reading mode.">
-        Close reading mode
-      </message>
+      <if expr="is_macosx">
+        <message name="IDS_READING_MODE_CLOSE" desc="Tooltip and screen reader label for a button to close reading mode.">
+          Close reading mode (<ph name="SHORTCUT">$1<ex>⌥⌘R</ex></ph>)
+        </message>
+      </if>
+      <if expr="not is_macosx">
+        <message name="IDS_READING_MODE_CLOSE" desc="Tooltip and screen reader label for a button to close reading mode.">
+          Close reading mode (<ph name="SHORTCUT">$1<ex>Alt+Shift+R</ex></ph>)
+        </message>
+      </if>
       <message name="IDS_READING_MODE_LANGUAGE_MENU_NO_RESULTS" desc="Text shown in the Read Aloud language menu after a search yields no matching languages.">
         No results found
       </message>
@@ -10322,6 +10348,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_VERTICAL_TABS_IPH_BODY" desc="The body for the vertical tabs IPH tutorial.">
         See entire tab titles, easily manage tab groups, and free up vertical space by moving your tabs to the side.
+      </message>
+      <message name="IDS_VERTICAL_TABS_EXPAND_ON_HOVER_DEFAULT_ENABLED_IPH_BODY" desc="The body for the vertical tabs expand on hover IPH, when expand on hover is default enabled.">
+        You can now expand your tabs by hovering over them. To turn this off, right-click here.
+      </message>
+      <message name="IDS_VERTICAL_TABS_EXPAND_ON_HOVER_DEFAULT_DISABLED_IPH_BODY" desc="The body for the vertical tabs expand on hover IPH, when expand on hover is default disabled.">
+        You can now expand your tabs by hovering over them. To turn this on, right-click here.
       </message>
       <message name="IDS_VERTICAL_RESIZE_AREA" is_accessibility_with_no_ui="true" desc="The accessibility label for the resize area in the vertical tab strip.">
             Vertical Tab Strip Resize Handle (Draggable)

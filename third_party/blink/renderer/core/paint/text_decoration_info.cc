@@ -140,8 +140,8 @@ TextDecorationInfo::TextDecorationInfo(
     const Color selection_decoration_color,
     const AppliedTextDecoration* decoration_override,
     const Font* font_override,
-    MinimumThickness1 minimum_thickness1,
-    float scaling_factor)
+    IsSvgText is_svg_text,
+    float svg_resource_scaling_factor)
     : target_style_(target_style),
       inline_context_(inline_context),
       selection_decoration_line_(selection_decoration_line),
@@ -153,14 +153,14 @@ TextDecorationInfo::TextDecorationInfo(
       local_origin_(local_origin),
       width_(width),
       target_ascent_(GetAscent(target_style, font_override)),
-      scaling_factor_(scaling_factor),
+      svg_resource_scaling_factor_(svg_resource_scaling_factor),
       // NOTE: The use of font_override_ here is probably problematic.
       // See LayoutSVGInlineText::ComputeNewScaledFontForStyle() for
       // a workaround that is needed due to that.
       use_decorating_box_(inline_context && !decoration_override_ &&
                           !font_override_ &&
                           ShouldUseDecoratingBox(target_style)),
-      minimum_thickness_is_one_(minimum_thickness1) {
+      is_svg_text_(is_svg_text) {
   for (wtf_size_t i = 0; i < AppliedDecorationCount(); i++)
     union_all_lines_ |= AppliedDecoration(i).Lines();
   for (wtf_size_t i = 0; i < AppliedDecorationCount(); i++) {
@@ -187,21 +187,23 @@ const AppliedTextDecoration& TextDecorationInfo::AppliedDecoration(
   return target_style_.AppliedTextDecorations()[index];
 }
 
-void TextDecorationInfo::SetDecorationIndex(int decoration_index) {
-  DCHECK_LT(decoration_index, static_cast<int>(AppliedDecorationCount()));
-  if (decoration_index_ == decoration_index)
-    return;
+const ResolvedDecoration TextDecorationInfo::ResolveDecorationAt(
+    wtf_size_t decoration_index) {
+  DCHECK_LT(decoration_index, AppliedDecorationCount());
   decoration_index_ = decoration_index;
-  UpdateForDecorationIndex();
+  return UpdateForDecorationIndex();
 }
 
 // Update cached properties of |this| for the |decoration_index_|.
-void TextDecorationInfo::UpdateForDecorationIndex() {
-  DCHECK_LT(decoration_index_, static_cast<int>(AppliedDecorationCount()));
+const ResolvedDecoration TextDecorationInfo::UpdateForDecorationIndex() {
+  DCHECK_LT(decoration_index_, AppliedDecorationCount());
+  ResolvedDecoration decoration;
   applied_text_decoration_ = &AppliedDecoration(decoration_index_);
-  lines_ = applied_text_decoration_->Lines();
-  has_underline_ = EnumHasFlags(lines_, TextDecorationLine::kUnderline);
-  has_overline_ = EnumHasFlags(lines_, TextDecorationLine::kOverline);
+  decoration.lines = applied_text_decoration_->Lines();
+  decoration.has_underline =
+      EnumHasFlags(decoration.lines, TextDecorationLine::kUnderline);
+  decoration.has_overline =
+      EnumHasFlags(decoration.lines, TextDecorationLine::kOverline);
 
   // Compute the |ComputedStyle| of the decorating box.
   const ComputedStyle* decorating_box_style;
@@ -248,33 +250,30 @@ void TextDecorationInfo::UpdateForDecorationIndex() {
 
   if (flip_underline_and_overline_) [[unlikely]] {
     flipped_underline_position_ = ResolvedUnderlinePosition::kUnder;
-    std::swap(has_underline_, has_overline_);
+    std::swap(decoration.has_underline, decoration.has_overline);
   } else {
     flipped_underline_position_ = original_underline_position_;
   }
 
   // Compute the |Font| and its properties.
-  const Font* font =
-      font_override_ ? font_override_ : decorating_box_style_->GetFont();
-  DCHECK(font);
-  if (font != font_) {
-    font_ = font;
-    computed_font_size_ = font->GetFontDescription().ComputedSize();
+  font_ = font_override_ ? font_override_ : decorating_box_style_->GetFont();
+  DCHECK(font_);
+  const SimpleFontData* font_data = font_->PrimaryFont();
+  decoration.font_data = font_data;
+  decoration.computed_font_size = font_->GetFontDescription().ComputedSize();
+  decoration.ascent =
+      font_data ? font_data->GetFontMetrics().FloatAscent() : 0.f;
 
-    const SimpleFontData* font_data = font->PrimaryFont();
-    if (font_data != font_data_) {
-      font_data_ = font_data;
-      ascent_ = font_data ? font_data->GetFontMetrics().FloatAscent() : 0;
-    }
-  }
-
-  resolved_thickness_ = ComputeThickness();
+  decoration.resolved_thickness = ComputeThickness(decoration);
+  return decoration;
 }
 
 DecorationGeometry TextDecorationInfo::ComputeLineData(
+    const ResolvedDecoration& decoration,
     TextDecorationLine line,
     float line_offset) const {
-  const float double_offset_from_thickness = ResolvedThickness() + 1.0f;
+  const float double_offset_from_thickness =
+      decoration.resolved_thickness + 1.0f;
   float double_offset;
   float wavy_offset;
   switch (line) {
@@ -332,7 +331,9 @@ DecorationGeometry TextDecorationInfo::ComputeLineData(
   const gfx::PointF start_point =
       gfx::PointF(local_origin_) + gfx::Vector2dF(0, line_offset);
   DecorationGeometry geometry = DecorationGeometry::Make(
-      style, gfx::RectF(start_point, gfx::SizeF(width_, ResolvedThickness())),
+      style,
+      gfx::RectF(start_point,
+                 gfx::SizeF(width_, decoration.resolved_thickness)),
       double_offset, wavy_offset, base::OptionalToPtr(spelling_wave));
   geometry.antialias = antialias;
   return geometry;
@@ -353,8 +354,9 @@ LayoutUnit TextDecorationInfo::OffsetFromDecoratingBox() const {
 }
 
 DecorationGeometry TextDecorationInfo::ComputeUnderlineLineData(
+    const ResolvedDecoration& decoration,
     const TextDecorationOffset& decoration_offset) const {
-  DCHECK(HasUnderline());
+  DCHECK(decoration.HasUnderline());
   // Don't apply text-underline-offset to overlines. |line_offset| is zero.
   Length line_offset;
   if (flip_underline_and_overline_) [[unlikely]] {
@@ -363,19 +365,20 @@ DecorationGeometry TextDecorationInfo::ComputeUnderlineLineData(
     line_offset = applied_text_decoration_->UnderlineOffset();
   }
   float paint_underline_offset = decoration_offset.ComputeUnderlineOffset(
-      FlippedUnderlinePosition(), ComputedFontSize(), FontData(), line_offset,
-      ResolvedThickness());
+      FlippedUnderlinePosition(), decoration.computed_font_size,
+      decoration.font_data, line_offset, decoration.resolved_thickness);
   if (use_decorating_box_) {
     // The offset is for the decorating box. Convert it for the target text/box.
     paint_underline_offset += OffsetFromDecoratingBox();
   }
-  return ComputeLineData(TextDecorationLine::kUnderline,
+  return ComputeLineData(decoration, TextDecorationLine::kUnderline,
                          paint_underline_offset);
 }
 
 DecorationGeometry TextDecorationInfo::ComputeOverlineLineData(
+    const ResolvedDecoration& decoration,
     const TextDecorationOffset& decoration_offset) const {
-  DCHECK(HasOverline());
+  DCHECK(decoration.HasOverline());
   // Don't apply text-underline-offset to overline.
   Length line_offset;
   FontVerticalPositionType position;
@@ -388,40 +391,48 @@ DecorationGeometry TextDecorationInfo::ComputeOverlineLineData(
   }
   const int paint_overline_offset =
       decoration_offset.ComputeUnderlineOffsetForUnder(
-          line_offset, TargetStyle().ComputedFontSize(), FontData(),
-          ResolvedThickness(), position);
-  return ComputeLineData(TextDecorationLine::kOverline, paint_overline_offset);
+          line_offset, TargetStyle().ComputedFontSize(), decoration.font_data,
+          decoration.resolved_thickness, position);
+  return ComputeLineData(decoration, TextDecorationLine::kOverline,
+                         paint_overline_offset);
 }
 
-DecorationGeometry TextDecorationInfo::ComputeLineThroughLineData() const {
-  DCHECK(HasLineThrough());
+DecorationGeometry TextDecorationInfo::ComputeLineThroughLineData(
+    const ResolvedDecoration& decoration) const {
+  DCHECK(decoration.HasLineThrough());
   // For increased line thickness, the line-through decoration needs to grow
   // in both directions from its origin, subtract half the thickness to keep
   // it centered at the same origin.
-  const float line_through_offset = 2 * Ascent() / 3 - ResolvedThickness() / 2;
-  return ComputeLineData(TextDecorationLine::kLineThrough, line_through_offset);
+  const float line_through_offset =
+      2 * decoration.ascent / 3 - decoration.resolved_thickness / 2;
+  return ComputeLineData(decoration, TextDecorationLine::kLineThrough,
+                         line_through_offset);
 }
 
 DecorationGeometry TextDecorationInfo::ComputeSpellingOrGrammarErrorLineData(
+    const ResolvedDecoration& decoration,
     const TextDecorationOffset& decoration_offset) const {
-  DCHECK(HasSpellingOrGrammarError());
-  DCHECK(!HasUnderline());
-  DCHECK(!HasOverline());
-  DCHECK(!HasLineThrough());
+  DCHECK(decoration.HasSpellingOrGrammarError());
+  DCHECK(!decoration.HasUnderline());
+  DCHECK(!decoration.HasOverline());
+  DCHECK(!decoration.HasLineThrough());
   DCHECK(applied_text_decoration_);
   const int paint_underline_offset = decoration_offset.ComputeUnderlineOffset(
-      FlippedUnderlinePosition(), TargetStyle().ComputedFontSize(), FontData(),
-      Length(), ResolvedThickness());
-  return ComputeLineData(HasSpellingError() ? TextDecorationLine::kSpellingError
-                                            : TextDecorationLine::kGrammarError,
+      FlippedUnderlinePosition(), decoration.computed_font_size,
+      decoration.font_data, Length(), decoration.resolved_thickness);
+  return ComputeLineData(decoration,
+                         decoration.HasSpellingError()
+                             ? TextDecorationLine::kSpellingError
+                             : TextDecorationLine::kGrammarError,
                          paint_underline_offset);
 }
 
-Color TextDecorationInfo::LineColor() const {
-  if (HasSpellingError()) {
+Color TextDecorationInfo::LineColor(
+    const ResolvedDecoration& decoration) const {
+  if (decoration.HasSpellingError()) {
     return LayoutTheme::GetTheme().PlatformSpellingMarkerUnderlineColor();
   }
-  if (HasGrammarError()) {
+  if (decoration.HasGrammarError()) {
     return LayoutTheme::GetTheme().PlatformGrammarMarkerUnderlineColor();
   }
 
@@ -431,17 +442,17 @@ Color TextDecorationInfo::LineColor() const {
   // Find the matched normal and selection |AppliedTextDecoration|
   // and use the text-decoration-color from selection when it is.
   DCHECK(applied_text_decoration_);
-  if (applied_text_decoration_->Lines() == selection_decoration_line_) {
+  if (decoration.lines == selection_decoration_line_) {
     return selection_decoration_color_;
   }
 
   return applied_text_decoration_->GetColor();
 }
 
-float TextDecorationInfo::ComputeThickness() const {
+float TextDecorationInfo::ComputeThickness(
+    const ResolvedDecoration& decoration) const {
   DCHECK(applied_text_decoration_);
-  const AppliedTextDecoration& decoration = *applied_text_decoration_;
-  if (HasSpellingOrGrammarError()) {
+  if (decoration.HasSpellingOrGrammarError()) {
     // Spelling and grammar error thickness doesn't depend on the font size.
 #if BUILDFLAG(IS_ANDROID)
     // TODO(crbug.com/434081396): Verify with UX that this is accurate.
@@ -460,9 +471,9 @@ float TextDecorationInfo::ComputeThickness() const {
 #endif
   }
   const float thickness = ComputeDecorationThickness(
-      decoration.Thickness(), computed_font_size_, font_data_);
-  const float minimum_thickness = minimum_thickness_is_one_ ? 1.0f : 0.0f;
-  return std::max(minimum_thickness, thickness);
+      applied_text_decoration_->Thickness(), decoration.computed_font_size,
+      decoration.font_data);
+  return std::max(is_svg_text_ ? 0.0f : 1.0f, thickness);
 }
 
 void TextDecorationInfo::SetHighlightOverrideColor(

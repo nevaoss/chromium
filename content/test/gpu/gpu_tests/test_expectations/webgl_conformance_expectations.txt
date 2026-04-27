@@ -468,8 +468,6 @@ crbug.com/402989074 [ win amd-0x7480 angle-d3d9 passthrough ] conformance/unifor
 # crbug.com/402989074 [ win amd-0x1900 angle-d3d9 passthrough ] conformance/uniforms/uniform-values-per-program.html [ Failure ]
 # crbug.com/402989074 [ win amd-0x150e angle-d3d9 passthrough ] conformance/uniforms/uniform-values-per-program.html [ Failure ]
 
-crbug.com/496618638 [ win angle-swiftshader arch-x86_64 passthrough ] conformance/extensions/oes-texture-float-linear.html [ RetryOnFailure ]
-
 ## win10 / angle-d3d11 / Passthrough command decoder failures ##
 crbug.com/40167934 [ angle-d3d11 arch-x86_64 debug-x64 no-clang-coverage nvidia passthrough target-cpu-64 win10 ] conformance/extensions/khr-parallel-shader-compile.html [ RetryOnFailure ]
 
@@ -549,7 +547,6 @@ crbug.com/angleproject/5038 [ android no-passthrough qualcomm renderer-skia-gl ]
 ## Pixel 2 ##
 
 crbug.com/40236526 [ android android-pixel-2 no-passthrough ] conformance/rendering/blending.html [ Failure ]
-crbug.com/361604321 [ android android-pixel-2 angle-opengles passthrough ] conformance/canvas/render-after-resize-test.html [ Failure ]
 crbug.com/40167870 [ android android-pixel-2 angle-opengles passthrough ] conformance/extensions/angle-instanced-arrays-out-of-bounds.html [ Failure ]
 
 ## Pixel 4 ##
@@ -594,7 +591,6 @@ crbug.com/446122639 [ android android-pixel-10 ] conformance/textures/webgl_canv
 ## Misc failures ##
 
 ## DrDc being re-enabled ##
-crbug.com/380250262 [ android android-pixel-4 angle-opengles passthrough ] conformance/canvas/render-after-resize-test.html [ Failure ]
 
 
 ## Samsung failures ##

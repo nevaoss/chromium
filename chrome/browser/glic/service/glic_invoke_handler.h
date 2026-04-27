@@ -16,6 +16,11 @@
 #include "chrome/browser/glic/public/glic_instance.h"
 #include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/glic/public/glic_passkeys.h"
+#include "content/public/browser/web_contents_observer.h"
+
+namespace content {
+class NavigationHandle;
+}
 
 namespace tabs {
 class TabInterface;
@@ -27,14 +32,24 @@ class GlicInstanceImpl;
 
 // Handles an invocation of Glic, parsing options and communicating with the
 // instance's host.
-class GlicInvokeHandler : public Host::Observer {
+class GlicInvokeHandler : public Host::Observer,
+                          public content::WebContentsObserver {
  public:
   using CompletionCallback =
       base::OnceCallback<void(GlicInstance*, GlicInvokeHandler*)>;
 
+  struct ResolvedTarget {
+    raw_ptr<tabs::TabInterface> tab = nullptr;
+    bool is_new = false;
+  };
+
+  // Resolves the target surface to a specific tab.
+  static ResolvedTarget ResolveTargetSurface(Profile* profile,
+                                             const Target& target);
+
   GlicInvokeHandler(
       GlicInstanceImpl& instance,
-      tabs::TabInterface* tab,
+      ResolvedTarget resolved_target,
       GlicInvokeOptions options,
       std::optional<InvokeWithAutoSubmitPasskey> auto_submit_passkey,
       CompletionCallback completion_callback);
@@ -53,8 +68,21 @@ class GlicInvokeHandler : public Host::Observer {
   // glic::Host::Observer
   void WebClientConnected() override;
 
+  // content::WebContentsObserver:
+  void PrimaryMainFrameWasResized(bool width_changed) override;
+
  private:
+  void MaybeWaitForWebClientReady();
+  void OnWebClientReady();
+  void MaybeWaitForPanelOpen();
+  void MaybeWaitForStableWidth();
+  void OnStabilized();
+
   void SendToClient();
+  bool ShouldWaitForFreCompletion() const;
+  void MaybeWaitForFreCompletion();
+  void OnProfileReadyStateChanged();
+  void ContinueInvoke();
   mojom::InvokeOptionsPtr CreateMojoOptions();
   bool RequiresAutoSubmitIncompatibleFre() const;
   bool RequiresOverrideIncompatibleFre() const;
@@ -62,6 +90,10 @@ class GlicInvokeHandler : public Host::Observer {
   // May delete this.
   void OnSuccess();
   void OnTabClosed(tabs::TabInterface* tab);
+
+  // content::WebContentsObserver
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override;
 
   const base::raw_ref<GlicInstanceImpl> instance_;
   raw_ptr<tabs::TabInterface> tab_;
@@ -72,6 +104,10 @@ class GlicInvokeHandler : public Host::Observer {
   base::CallbackListSubscription tab_destruction_subscription_;
   base::ScopedObservation<Host, Host::Observer> host_observation_{this};
   base::OneShotTimer timeout_timer_;
+  bool waiting_for_load_ = false;
+
+  base::OneShotTimer stabilization_timer_;
+  base::CallbackListSubscription profile_ready_state_subscription_;
 
   base::WeakPtrFactory<GlicInvokeHandler> weak_ptr_factory_{this};
 };

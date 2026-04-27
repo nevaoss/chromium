@@ -112,7 +112,19 @@ enum class ResponseSegmentation {
   kWebContentsContextMenuAttachedAudio = 94,
   kWebContentsContextMenuDetachedText = 95,
   kWebContentsContextMenuDetachedAudio = 96,
-  kMaxValue = kWebContentsContextMenuDetachedAudio,
+  kTextSelectionNudgeAttachedText = 97,
+  kTextSelectionNudgeAttachedAudio = 98,
+  kTextSelectionNudgeDetachedText = 99,
+  kTextSelectionNudgeDetachedAudio = 100,
+  kTextSelectionWidgetAttachedText = 101,
+  kTextSelectionWidgetAttachedAudio = 102,
+  kTextSelectionWidgetDetachedText = 103,
+  kTextSelectionWidgetDetachedAudio = 104,
+  kZeroStateAutoSummarizeAttachedText = 105,
+  kZeroStateAutoSummarizeAttachedAudio = 106,
+  kZeroStateAutoSummarizeDetachedText = 107,
+  kZeroStateAutoSummarizeDetachedAudio = 108,
+  kMaxValue = kZeroStateAutoSummarizeDetachedAudio,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicResponseSegmentation)
 
@@ -132,7 +144,8 @@ enum class DaisyChainSource {
   kNewTab = 4,
   kWebHandoff = 5,
   kAutoOpenPdf = 6,
-  kMaxValue = kAutoOpenPdf,
+  kLastActiveInstance = 7,
+  kMaxValue = kLastActiveInstance,
 };
 
 std::string GetDaisyChainSourceString(DaisyChainSource source);
@@ -165,7 +178,10 @@ enum class GlicEntrypoint {
   kIph = 13,
   kOther = 14,
   kWebContentsContextMenu = 15,
-  kMaxValue = kWebContentsContextMenu,
+  kTextSelectionNudge = 16,
+  kTextSelectionWidget = 17,
+  kZeroStateAutoSummarize = 18,
+  kMaxValue = kZeroStateAutoSummarize,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicEntrypoint)
 

@@ -4,6 +4,7 @@
 
 #include "chrome/common/chrome_switches.h"
 
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
 #include "extensions/buildflags/buildflags.h"
@@ -726,6 +727,11 @@ const char kWinHttpProxyResolver[] = "winhttp-proxy-resolver";
 const char kWinJumplistAction[] = "win-jumplist-action";
 
 #if BUILDFLAG(IS_ANDROID)
+// If enabled Entra SSO will accept authentication headers from a specific list
+// of non-production Microsoft Authentication broker apps.
+const char kAndroidEntraSsoAllowDebugBrokers[] =
+    "android-entra-sso-allow-debug-brokers";
+
 // Android authentication account type for SPNEGO authentication
 const char kAuthAndroidNegotiateAccountType[] = "auth-spnego-account-type";
 
@@ -989,6 +995,15 @@ const char kUseSystemDefaultPrinter[] = "use-system-default-printer";
 // Indicates that this process is the product of a relaunch following migration
 // of User Data.
 const char kUserDataMigrated[] = "user-data-migrated";
+#endif
+
+#if BUILDFLAG(CHROME_FOR_TESTING)
+// Overrides the behavior of the sign-in dialog when creating a new profile for
+// an enterprise account.
+// Valid values are "accept-new-profile", "accept-current-profile", and
+// "cancel".
+const char kEnterpriseSigninDialogBehaviorForTesting[] =
+    "enterprise-signin-dialog-behavior-for-testing";
 #endif
 
 // -----------------------------------------------------------------------------

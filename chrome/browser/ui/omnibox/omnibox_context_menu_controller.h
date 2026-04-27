@@ -62,6 +62,9 @@ enum class OmniboxPopupState;
 class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
  public:
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kDeepResearchIdForTesting);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kFirstTabMenuItemIdForTesting);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kImageUploadMenuItemIdForTesting);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kFileUploadMenuItemIdForTesting);
   explicit OmniboxContextMenuController(OmniboxPopupFileSelector* file_selector,
                                         content::WebContents* web_contents);
   struct TabInfo {
@@ -105,6 +108,8 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
                            IsCommandIdEnabledHelper_MaxFiles);
   FRIEND_TEST_ALL_PREFIXES(OmniboxContextMenuControllerTest,
                            GetMaxTabSuggestions_UsesServerLimit);
+  FRIEND_TEST_ALL_PREFIXES(OmniboxContextMenuControllerTest,
+                           GetIconForInputType_Drive);
 
   // Keeps track of various bits of info that are necessary to dynamically
   // render the contents of the context menu, based on the InputState received

@@ -3313,8 +3313,12 @@ std::optional<SubmitInfo> LayerTreeHostImpl::DrawLayers(FrameData* frame) {
     devtools_instrumentation::DidDrawFrame(
         id_, frame->begin_frame_ack.frame_id.sequence_number);
   }
-  benchmark_instrumentation::IssueImplThreadRenderingStatsEvent(
-      rendering_stats_instrumentation_->TakeImplThreadRenderingStats());
+  if (!GetSettings().TreesInVizInClientProcess()) {
+    // In TreesInViz mode, content area data only get recorded in viz side.
+    // Therefore, only issue trace event in viz.
+    benchmark_instrumentation::IssueImplThreadRenderingStatsEvent(
+        rendering_stats_instrumentation_->TakeImplThreadRenderingStats());
+  }
 
   if (settings_.enable_compositing_based_throttling &&
       throttle_decider_.HasThrottlingChanged()) {
@@ -3694,14 +3698,59 @@ void LayerTreeHostImpl::DidDrawAllLayers(const FrameData& frame) {
 
 base::TimeTicks LayerTreeHostImpl::UpdateDisplayTree(
     FrameData& frame,
-    std::vector<ui::LatencyInfo> latency_info) {
+    std::vector<ui::LatencyInfo> latency_info,
+    bool is_flush) {
   DCHECK(settings_.TreesInVizInClientProcess());
   DCHECK(layer_context_);
 
+  // Propagate the is_flush flag to VizLayerContext to indicate whether this
+  // is a synchronization-only update.
   return layer_context_->UpdateDisplayTreeFrom(
       *active_tree(), *resource_provider(),
       layer_tree_frame_sink_->shared_image_interface().get(),
-      viewport_damage_rect_, !frame.has_no_damage, std::move(latency_info));
+      frame.origin_begin_main_frame_args, viewport_damage_rect_,
+      !frame.has_no_damage, is_flush, std::move(latency_info));
+}
+
+void LayerTreeHostImpl::FlushDisplayTree() {
+  CHECK(settings_.TreesInVizInClientProcess());
+  CHECK(layer_context_);
+
+  // When the renderer becomes invisible (e.g., backgrounded), it immediately
+  // evicts its tiles. In the TreesInViz architecture, we must explicitly sync
+  // this 'evicted' state to the Viz process. This ensures that Viz drops its
+  // references to the now-stale tiles and returns the underlying resources to
+  // the client. Without this immediate sync, resources would be held until the
+  // renderer next becomes visible and draws, which defeats the purpose of
+  // background memory reclamation.
+  //
+  // We use the 'is_flush' flag to signal to Viz that this is a
+  // synchronization-only update. This ensures Viz skips the full draw cycle and
+  // post-sync recomputations, preventing an unexpected FrameACK from being sent
+  // back to the Renderer's Scheduler while it is backgrounded.
+  FrameData frame;
+
+  // Empty args as 'flush' update won't trigger a draw in Viz.
+  frame.origin_begin_main_frame_args = viz::BeginFrameArgs();
+
+  // We increment the frame token to ensure this synchronization update is
+  // uniquely identified. This allows VizLayerContext to correctly track the
+  // activation of this specific update and ensures that subsequent metadata
+  // (like frame tokens in ACKs) remains consistent.
+  ++next_frame_token_;
+  UpdateDisplayTree(frame, {}, /*is_flush=*/true);
+
+  // A flush update synchronizes state (e.g. tile evictions) to Viz but does not
+  // result in a frame draw. We reset internal damage tracking and tree change
+  // tracking here so that when the renderer becomes visible again, the
+  // subsequent actual draw starts from a clean state. This prevents stale
+  // damage from being carried over and incorrectly impacting the next real
+  // frame.
+  if (active_tree_->RootRenderSurface()) {
+    viewport_damage_rect_ = gfx::Rect();
+    root_layer_damage_rect_ = gfx::Rect();
+  }
+  active_tree_->ResetAllChangeTracking();
 }
 
 int LayerTreeHostImpl::RequestedMSAASampleCount() const {
@@ -4429,10 +4478,6 @@ void LayerTreeHostImpl::SetVisible(bool visible) {
   }
   visible_ = visible;
 
-  if (layer_context_) {
-    layer_context_->SetVisible(visible);
-  }
-
   if (!visible_) {
     frame_sorter_.Reset(/*reset_fcp=*/false);
 
@@ -4484,6 +4529,13 @@ void LayerTreeHostImpl::SetVisible(bool visible) {
     // Call PrepareTiles to evict tiles when we become invisible.
     PrepareTiles();
     tile_manager_.decoded_image_tracker().UnlockAllImages();
+  }
+
+  if (layer_context_) {
+    if (settings_.TreesInVizInClientProcess() && !visible) {
+      FlushDisplayTree();
+    }
+    layer_context_->SetVisible(visible);
   }
 
   active_tree_->SetVisible(visible);
@@ -5835,6 +5887,14 @@ void LayerTreeHostImpl::SetDebugState(
   }
 
   debug_state_ = new_debug_state;
+  // For renderer process, we don't need to set it in LayerTreeHostImpl
+  // because LayyerTreeHost sets it directly.
+  // In TreesInViz mode, we also don't need to set it in renderer process
+  // because all its recordings happen in viz.
+  if (GetSettings().trees_in_viz_in_viz_process) {
+    rendering_stats_instrumentation_->set_record_rendering_stats(
+        debug_state_.RecordRenderingStats());
+  }
   UpdateTileManagerMemoryPolicy(ActualManagedMemoryPolicy());
   SetFullViewportDamage();
 }

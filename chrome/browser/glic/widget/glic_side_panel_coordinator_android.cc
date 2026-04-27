@@ -25,7 +25,8 @@ GlicSidePanelCoordinatorAndroid::GlicSidePanelCoordinatorAndroid(
       base::BindRepeating(&GlicSidePanelCoordinatorAndroid::OnTabWillDeactivate,
                           base::Unretained(this)));
 
-  bridge_ = std::make_unique<context_sharing::TabBottomSheetBridge>(this, tab);
+  bridge_ = std::make_unique<context_sharing::TabBottomSheetBridge>(
+      this, tab, /*show_fusebox=*/false);
 }
 
 GlicSidePanelCoordinatorAndroid::~GlicSidePanelCoordinatorAndroid() = default;
@@ -140,11 +141,15 @@ void GlicSidePanelCoordinatorAndroid::OnTabWillDeactivate(
   bridge_->Close();
 }
 
-void GlicSidePanelCoordinatorAndroid::OnClose() {
+void GlicSidePanelCoordinatorAndroid::OnClosed() {
   if (state_ == State::kBackgrounded) {
     return;
   }
   SetState(State::kClosed);
 }
+
+void GlicSidePanelCoordinatorAndroid::OnSuppressed() {}
+
+void GlicSidePanelCoordinatorAndroid::OnOpened(bool is_expanded) {}
 
 }  // namespace glic

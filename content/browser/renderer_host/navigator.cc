@@ -991,7 +991,7 @@ void Navigator::Navigate(std::unique_ptr<NavigationRequest> request,
       DVLOG(0) << "Ignoring duplicate navigation to "
                << request->common_params().url
                << " due to the short interval since the previous one.";
-
+      ongoing_navigation_request->DidIgnoreDuplicateNavigation();
       return;
     } else {
       ongoing_navigation_request->set_navigation_discard_reason(
@@ -1186,7 +1186,6 @@ void Navigator::NavigateFromFrameProxy(
     bool force_new_browsing_instance,
     bool is_container_initiated,
     bool has_rel_opener,
-    net::StorageAccessApiStatus storage_access_api_status,
     std::optional<std::u16string> embedder_shared_storage_context) {
   // |method != "POST"| should imply absence of |post_body|.
   if (method != "POST" && post_body) {
@@ -1236,8 +1235,7 @@ void Navigator::NavigateFromFrameProxy(
       has_user_gesture, started_by_ad, actual_navigation_start_time,
       navigation_start_time, is_embedder_initiated_fenced_frame_navigation,
       is_unfenced_top_navigation, force_new_browsing_instance,
-      is_container_initiated, has_rel_opener, storage_access_api_status,
-      embedder_shared_storage_context);
+      is_container_initiated, has_rel_opener, embedder_shared_storage_context);
 }
 
 void Navigator::SetWillNavigateFromFrameProxyCallbackForTesting(
@@ -1307,6 +1305,9 @@ void Navigator::OnBeginNavigation(
     int initiator_process_id,
     mojo::PendingReceiver<mojom::NavigationRendererCancellationListener>
         renderer_cancellation_listener,
+    mojo::PendingReceiver<
+        mojom::NavigationRendererIgnoreDuplicateNavigationListener>
+        renderer_ignore_duplicate_navigation_listener,
     mojo::PendingReceiver<blink::mojom::NavigationResumeDeferredCommitListener>
         deferred_commit_resume_listener) {
   TRACE_EVENT0("navigation", "Navigator::OnBeginNavigation");
@@ -1370,6 +1371,7 @@ void Navigator::OnBeginNavigation(
           std::move(blob_url_loader_factory), std::move(navigation_client),
           std::move(prefetched_signed_exchange_cache),
           std::move(renderer_cancellation_listener),
+          std::move(renderer_ignore_duplicate_navigation_listener),
           std::move(deferred_commit_resume_listener)));
   NavigationRequest* navigation_request = frame_tree_node->navigation_request();
 

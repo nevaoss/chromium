@@ -6,8 +6,8 @@
 
 #import "base/check.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent.h"
+#import "ios/chrome/browser/fullscreen/public/fullscreen_metrics.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
-#import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_metrics.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/scoped_fullscreen_disabler.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/util/layout_guide_names.h"
@@ -175,6 +175,14 @@
 - (void)constraintToKeyboard:(BOOL)shouldConstraintToKeyboard
             withNotification:(NSNotification*)notification {
   if (!self.hasOmnibox) {
+    // When switching to landscape, the bottom omnibox is not available. If
+    // the location indicator was previously active (e.g. Find in Page was open
+    // in portrait), clean up the state so that ExitForceFullscreenMode is
+    // called to balance the earlier EnterForceFullscreenMode.
+    // See crbug.com/498378084 for more context.
+    if (self.locationIndicatorActive) {
+      self.locationIndicatorActive = NO;
+    }
     return;
   }
 

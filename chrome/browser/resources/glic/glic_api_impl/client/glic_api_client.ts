@@ -743,13 +743,6 @@ class GlicBrowserHostImpl implements GlicBrowserHost {
       this.actorTaskListRowClicked = undefined;
     }
 
-    if (state.alwaysDetachedMode) {
-      this.attachPanel = undefined;
-      this.detachPanel = undefined;
-      this.canAttachPanel = undefined;
-      this.getPanelState = undefined;
-    }
-
     if (!state.enableZeroStateSuggestions) {
       this.getZeroStateSuggestionsForFocusedTab = undefined;
       // MOJO_RUNTIME_FEATURE_GATED GetZeroStateSuggestionsAndSubscribe
@@ -794,12 +787,6 @@ class GlicBrowserHostImpl implements GlicBrowserHost {
 
     if (!state.enableOpenPasswordManagerSettingsPage) {
       this.openPasswordManagerSettingsPage = undefined;
-    }
-
-    if (!state.enableLoadAndExtractContent) {
-      // TODO(crbug.com/458761731): Mark this as MOJO_RUNTIME_FEATURE_GATED once
-      // `loadAndExtractContent` is defined in the handler interface.
-      this.loadAndExtractContent = undefined;
     }
 
     if (!state.enableGetTabFaviconById) {
@@ -1482,14 +1469,6 @@ class GlicBrowserHostImpl implements GlicBrowserHost {
   selectAutofillSuggestionsDialogRequestHandler?
       (): Observable<SelectAutofillSuggestionsDialogRequest> {
     return this.selectAutofillSuggestionsDialogRequestSubject;
-  }
-
-  async loadAndExtractContent?(urls: string[], options: TabContextOptions[]):
-      Promise<TabContextResult[]> {
-    const response = await this.sender.requestWithResponse(
-        'glicBrowserLoadAndExtractContent', {urls, options});
-
-    return response.results.map(convertTabContextResultFromPrivate);
   }
 
   setOnboardingCompleted?(): void {

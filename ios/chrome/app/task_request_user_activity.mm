@@ -26,6 +26,7 @@
 #import "ios/chrome/browser/intents/model/intent_type.h"
 #import "ios/chrome/browser/intents/model/intents_constants.h"
 #import "ios/chrome/browser/intents/model/user_activity_compatibility_util.h"
+#import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/reading_list/model/reading_list_browser_agent.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_controller.h"
@@ -38,6 +39,10 @@
 #import "ios/chrome/browser/shared/public/commands/bookmarks_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/lens_commands.h"
+#import "ios/chrome/browser/shared/public/commands/open_lens_input_selection_command.h"
+#import "ios/chrome/browser/shared/public/commands/scene_commands.h"
+#import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
 #import "ios/chrome/common/intents/AddBookmarkToChromeIntent.h"
 #import "ios/chrome/common/intents/AddReadingListItemToChromeIntent.h"
@@ -267,6 +272,66 @@ void OpenBookmarksWithBrowser(base::WeakPtr<Browser> weak_browser) {
   }
 }
 
+// Navigates to the password search UI.
+void OpenPasswordSearchWithBrowser(base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    id<SettingsCommands> handler =
+        HandlerForProtocol(browser->GetCommandDispatcher(), SettingsCommands);
+    [handler showPasswordSearchPage];
+  }
+}
+
+// Navigates to the settings UI.
+void OpenSettingsWithBrowser(base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    id<SceneCommands> handler =
+        HandlerForProtocol(browser->GetCommandDispatcher(), SceneCommands);
+    [handler maybeShowSettingsFromViewController];
+  }
+}
+
+// Navigates to the history UI.
+void OpenHistoryWithBrowser(base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    id<SceneCommands> handler =
+        HandlerForProtocol(browser->GetCommandDispatcher(), SceneCommands);
+    [handler showHistory];
+  }
+}
+
+// Navigates to the payment methods settings.
+void OpenPaymentMethodsWithBrowser(base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    id<SettingsCommands> handler =
+        HandlerForProtocol(browser->GetCommandDispatcher(), SettingsCommands);
+    [handler showCreditCardSettings];
+  }
+}
+
+// Opens Lens from intents.
+void OpenLensFromIntentsWithBrowser(base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    id<LensCommands> lensHandler =
+        HandlerForProtocol(browser->GetCommandDispatcher(), LensCommands);
+    OpenLensInputSelectionCommand* command =
+        [[OpenLensInputSelectionCommand alloc]
+                initWithEntryPoint:LensEntrypoint::Intents
+                 presentationStyle:LensInputSelectionPresentationStyle::
+                                       SlideFromRight
+            presentationCompletion:nil];
+    [lensHandler openLensInputSelection:command];
+  }
+}
+
+// Navigates to the tab grid.
+void OpenTabGridWithBrowser(base::WeakPtr<Browser> weak_browser) {
+  if (Browser* browser = weak_browser.get()) {
+    id<SceneCommands> handler =
+        HandlerForProtocol(browser->GetCommandDispatcher(), SceneCommands);
+    [handler displayTabGridInMode:TabGridOpeningMode::kDefault];
+  }
+}
+
 // Adds bookmarks to Chrome.
 void AddBookmarkToChromeWithIntent(INIntent* intent,
                                    base::WeakPtr<Browser> weak_browser) {
@@ -424,40 +489,52 @@ std::vector<GURL> GetURLsFromOpenInChromeIntent(INIntent* intent) {
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kOpenTabGrid:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(
+          base::BindRepeating(&OpenTabGridWithBrowser, browser->AsWeakPtr()));
       break;
     case UserActivityType::kVoiceSearch:
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kOpenNewTab:
-      // TODO(crbug.com/492115056): Add implementation.
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kPlayDinoGame:
-      // TODO(crbug.com/492115056): Add implementation.
+      webpageGURLs.push_back(GURL(kChromeDinoGameURL));
       break;
     case UserActivityType::kSetChromeDefaultBrowser:
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kViewHistory:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(
+          base::BindRepeating(&OpenHistoryWithBrowser, browser->AsWeakPtr()));
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kOpenNewIncognitoTab:
-      // TODO(crbug.com/492115056): Add implementation.
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
+      _targetMode = ApplicationModeForTabOpening::INCOGNITO;
       break;
     case UserActivityType::kManagePaymentMethods:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(base::BindRepeating(
+          &OpenPaymentMethodsWithBrowser, browser->AsWeakPtr()));
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kRunSafetyCheck:
       // TODO(crbug.com/492115056): Add implementation.
       break;
     case UserActivityType::kManagePasswords:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(base::BindRepeating(
+          &OpenPasswordSearchWithBrowser, browser->AsWeakPtr()));
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kManageSettings:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(
+          base::BindRepeating(&OpenSettingsWithBrowser, browser->AsWeakPtr()));
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kOpenLensFromIntents:
-      // TODO(crbug.com/492115056): Add implementation.
+      completion = base::CallbackToBlock(base::BindRepeating(
+          &OpenLensFromIntentsWithBrowser, browser->AsWeakPtr()));
+      webpageGURLs.push_back(GURL(kChromeUINewTabURL));
       break;
     case UserActivityType::kClearBrowsingData:
       // TODO(crbug.com/492115056): Add implementation.
@@ -467,6 +544,17 @@ std::vector<GURL> GetURLsFromOpenInChromeIntent(INIntent* intent) {
       break;
     case UserActivityType::kInvalid:
       NOTREACHED();
+  }
+
+  // Handle the case where no URLs need to be opened but we have a completion
+  // block.
+  if (webpageGURLs.empty()) {
+    if (completion) {
+      id<SceneCommands> handler =
+          HandlerForProtocol(browser->GetCommandDispatcher(), SceneCommands);
+      [handler dismissModalDialogsWithCompletion:completion];
+    }
+    return;
   }
 
   // Handle the case where multiple URLS need to be opened.

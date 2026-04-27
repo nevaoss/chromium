@@ -161,7 +161,9 @@ BASE_FEATURE(kAutofillAiAlwaysTriggerServerModel,
 // If enabled Autofill AI becomes available by default and the previous enable
 // toggle controls whether online model runs and MQLS logging are allowed.
 // TODO(crbug.com/440488776): Remove once clean up happens.
-BASE_FEATURE(kAutofillAiAvailableByDefault, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillAiAvailableByDefault,
+             IS_AUTOFILL_AI_PLATFORM ? base::FEATURE_ENABLED_BY_DEFAULT
+                                     : base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Kill switch. If enabled, the EntityDataManager is created irrespective of
 // whether other features are enabled. This is necessary so that cleaning up the
@@ -217,7 +219,9 @@ BASE_FEATURE(kAutofillAiOrder, base::FEATURE_DISABLED_BY_DEFAULT);
 // fields. As part of this feature sensitive fields are also obfuscated during
 // suggestion generation time.
 // TODO(crbug.com/468236932): Remove once feature is launched.
-BASE_FEATURE(kAutofillAiReauthRequired, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillAiReauthRequired,
+             IS_AUTOFILL_AI_PLATFORM ? base::FEATURE_ENABLED_BY_DEFAULT
+                                     : base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, a HaTS survey is shown after the save prompt for a walletable
 // entity was interacted with.
@@ -436,11 +440,6 @@ BASE_FEATURE(kAutofillDisallowMoreHyphenLikeLabels,
 BASE_FEATURE(kAutofillDisambiguateContradictingFieldTypes,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// When enabled, AndroidAutofillProvider::OnTextFieldDidScroll() will not fire
-// FormFieldData::OnFormFieldDidChange().
-BASE_FEATURE(kAutofillDoNotFireFormFieldChangedOnWebviewScrollEvents,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Controls an ablation study in which autofill for addresses and payment data
 // can be suppressed.
 BASE_FEATURE(kAutofillEnableAblationStudy, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -534,14 +533,6 @@ BASE_FEATURE_PARAM(int,
 BASE_FEATURE(kAutofillEnableExpirationDateImprovements,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Improves the selection of phone country codes by also considering address
-// country codes / names.
-// See GetStreetAddressForInput() in field_filling_address_util.cc for a details
-// description.
-// TODO(crbug.com/40249065). Clean up when launched.
-BASE_FEATURE(kAutofillEnableFillingPhoneCountryCodesByAddressCountryCodes,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Control if Autofill supports German transliteration.
 // TODO(crbug.com/328968064): Remove when/if launched.
 BASE_FEATURE(kAutofillEnableGermanTransliteration,
@@ -627,11 +618,6 @@ BASE_FEATURE_PARAM(std::string,
                    &kAutofillEnableSupportForNameAndEmail,
                    "nickname_regex",
                    R"(\s+\([^)]*\)|\s+\"[^\"]*\")");
-
-// Controls if the heuristic field parsing utilizes shared labels.
-// TODO(crbug.com/40741721): Remove once shared labels are launched.
-BASE_FEATURE(kAutofillEnableSupportForParsingWithSharedLabels,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables extended zip code validation.
 // TODO(crbug.com/434140055): Clean up when launched.
@@ -900,7 +886,7 @@ BASE_FEATURE(kAutofillReplaceFormElementObserver,
 // TODO(crbug.com/435646513) - Clean-up after feature lands at 100% Stable.
 // Enables the new experimental server-side signatures for evaluation purposes.
 BASE_FEATURE(kAutofillServerExperimentalSignatures,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // TODO(crbug.com/470949499) - Clean-up after feature lands at 100% Stable.
 // Enables querying the server for predictions before the form has been parsed
@@ -946,9 +932,6 @@ BASE_FEATURE(kAutofillStructuredFieldsDisableAddressLines,
 // TODO(crbug.com/465119085): Clean up when launched.
 BASE_FEATURE(kAutofillSupportCombinedZipAndCityFR,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables using custom name model with last name prefixes support.
-BASE_FEATURE(kAutofillSupportLastNamePrefix, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables using a custom address model for Japan, overriding the legacy one.
 // TODO(crbug.com/359768803): Remove in M151.

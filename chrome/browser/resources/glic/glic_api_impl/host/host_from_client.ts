@@ -83,9 +83,7 @@ export class HostMessageHandler implements HostMessageHandlerInterface {
     this.host.detailedWebClientState =
         DetailedWebClientState.WEB_CLIENT_NOT_INITIALIZED;
 
-    if (loadTimeData.getBoolean('glicWebContentsWarming')) {
-      this.embedder.webClientWarmed();
-    }
+    this.embedder.webClientWarmed();
 
     const webClientImpl = new WebClientImpl(this.host, this.embedder);
     this.receiver = new WebClientReceiver(webClientImpl);
@@ -486,7 +484,6 @@ export class HostMessageHandler implements HostMessageHandlerInterface {
     size: {width: number, height: number},
     options?: {durationMs?: number},
   }) {
-    this.embedder.onGuestResizeRequest(request.size);
     return await this.handler.resizeWidget(
         request.size, timeDeltaFromClient(request.options?.durationMs));
   }
@@ -920,22 +917,6 @@ export class HostMessageHandler implements HostMessageHandlerInterface {
 
   glicBrowserSetOnboardingCompleted(): void {
     this.handler.setOnboardingCompleted();
-  }
-
-  // TODO(crbug.com/458761731): Function parameters is prefixed with "_" to
-  // bypass compiler error on variables declared but never used. Remove once
-  // function body is implemented.
-  async glicBrowserLoadAndExtractContent(
-      _request: {
-        urls: string[],
-        options: TabContextOptions[],
-      },
-      _extras: ResponseExtras): Promise<{results: TabContextResultPrivate[]}> {
-    // TODO(crbug.com/458761731): Once `loadAndExtractContent` is defined in
-    // the handler interface, call `this.handler.loadAndExtractContent` to get
-    // the response, then return the tab context to client.
-
-    return Promise.reject(new Error('Not implemented'));
   }
 
   glicBrowserSubscribeToTabData(

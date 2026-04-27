@@ -24,16 +24,21 @@ static_library("safe_browsing") {
     "//chrome/browser/notifications",
   ]
 
-  allow_circular_includes_from = []
+  allow_circular_includes_from = [
+    # enterprise headers include deep_scanning_utils.h.
+    "//chrome/browser/enterprise",
+  ]
 
   deps = [
     "//build:branding_buildflags",
     "//chrome/app:generated_resources",
     "//chrome/browser:browser_features",
     "//chrome/browser:browser_process",
+    "//chrome/browser/enterprise",
     "//chrome/browser/enterprise/connectors/reporting",
     "//chrome/browser/google",
     "//chrome/browser/history",
+    "//chrome/browser/net",
     "//chrome/browser/optimization_guide",
     "//chrome/browser/password_manager/factories",
     "//chrome/browser/preloading/prefetch/no_state_prefetch",
@@ -41,6 +46,7 @@ static_library("safe_browsing") {
     "//chrome/browser/profiles:profile",
     "//chrome/browser/profiles:profile_io_data",
     "//chrome/browser/profiles:profile_manager",
+    "//chrome/browser/push_messaging",
     "//chrome/browser/signin",
     "//chrome/browser/site_protection:utils",
     "//chrome/browser/sync",

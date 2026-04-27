@@ -33,6 +33,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
+#include "components/signin/public/identity_manager/identity_manager.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_observer.h"
@@ -50,9 +51,6 @@ class Point;
 namespace glic {
 
 class ContextualCueingService;
-
-BASE_DECLARE_FEATURE(kGlicHibernateAllOnMemoryPressure);
-
 BASE_DECLARE_FEATURE(kGlicHibernateOnMemoryUsage);
 
 BASE_DECLARE_FEATURE(kGlicMaxAwakeInstances);
@@ -61,7 +59,8 @@ class GlicInstanceCoordinatorImpl
     : public GlicInstanceCoordinator,
       public GlicInstanceImpl::InstanceCoordinatorDelegate,
       public base::MemoryPressureListener,
-      public GlicInstanceCoordinatorMetrics::DataProvider {
+      public GlicInstanceCoordinatorMetrics::DataProvider,
+      public signin::IdentityManager::Observer {
  public:
   GlicInstanceCoordinatorImpl(const GlicInstanceCoordinatorImpl&) = delete;
   GlicInstanceCoordinatorImpl& operator=(const GlicInstanceCoordinatorImpl&) =
@@ -97,6 +96,10 @@ class GlicInstanceCoordinatorImpl
       size_t limit) override;
   void ContextAccessIndicatorChanged(GlicInstanceImpl& instance,
                                      bool enabled) override;
+
+  // signin::IdentityManager::Observer implementation
+  void OnPrimaryAccountChanged(
+      const signin::PrimaryAccountChangeEvent& event_details) override;
 
   // GlicInstanceCoordinator and GlicInstanceCoordinatorMetrics::DataProvider
   // implementation
@@ -134,9 +137,8 @@ class GlicInstanceCoordinatorImpl
   // coordinator.
   void Shutdown() override;
   void Close(const CloseOptions& options) override;
-  void Invoke(tabs::TabInterface* tab, GlicInvokeOptions options);
+  void Invoke(GlicInvokeOptions options);
   void InvokeWithAutoSubmit(InvokeWithAutoSubmitPasskey auto_submit_passkey,
-                            tabs::TabInterface* tab,
                             GlicInvokeOptions options);
   void CloseInstanceWithFrame(
       content::RenderFrameHost* render_frame_host) override;
@@ -151,7 +153,6 @@ class GlicInstanceCoordinatorImpl
 
   base::CallbackListSubscription AddGlobalShowHideCallback(
       base::RepeatingClosure callback) override;
-  void Preload() override;
   void Reload(content::RenderFrameHost* render_frame_host) override;
   base::WeakPtr<GlicInstanceCoordinatorImpl> GetWeakPtr();
 
@@ -174,12 +175,6 @@ class GlicInstanceCoordinatorImpl
 
   // Testing support.
   void SetWarmingEnabledForTesting(bool warming_enabled);
-  bool HasWarmedInstanceForTesting() const {
-    return warmed_instance_ != nullptr;
-  }
-  GlicInstanceImpl* GetWarmedInstanceForTesting() {
-    return warmed_instance_.get();
-  }
   std::string DescribeForTesting();
 
   // Testing support. These methods should not be added to the public interface.
@@ -187,9 +182,9 @@ class GlicInstanceCoordinatorImpl
   GlicInstanceImpl* GetInstanceImplForTab(const tabs::TabInterface* tab) const;
 
  private:
+  void RemoveAllInstances();
   void InvokeInternal(
       std::optional<InvokeWithAutoSubmitPasskey> auto_submit_passkey,
-      tabs::TabInterface* tab,
       GlicInvokeOptions options);
 
   void OnTabEvent(const GlicTabEvent& event);
@@ -265,8 +260,6 @@ class GlicInstanceCoordinatorImpl
   base::flat_map<GlicInstance*, std::unique_ptr<GlicInvokeHandler>>
       invoke_handlers_;
 
-  std::unique_ptr<GlicInstanceImpl> warmed_instance_;
-
   std::unique_ptr<HostManager> host_manager_;
 
   raw_ptr<GlicInstanceImpl> active_instance_ = nullptr;
@@ -284,6 +277,10 @@ class GlicInstanceCoordinatorImpl
   GlicInstanceCoordinatorMetrics metrics_;
 
   std::unique_ptr<GlicTabObserver> tab_observer_;
+
+  base::ScopedObservation<signin::IdentityManager,
+                          signin::IdentityManager::Observer>
+      identity_manager_observation_{this};
 
   base::WeakPtrFactory<GlicInstanceCoordinatorImpl> weak_ptr_factory_{this};
 };

@@ -130,7 +130,6 @@
 #include "third_party/blink/renderer/core/style/style_initial_data.h"
 #include "third_party/blink/renderer/core/style_property_shorthand.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
-#include "third_party/blink/renderer/core/svg/svg_svg_element.h"
 #include "third_party/blink/renderer/core/view_transition/view_transition_transition_element.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
@@ -394,15 +393,6 @@ void MaybeResetCascade(StyleCascade& cascade) {
 #if DCHECK_IS_ON()
   cascade.Reset();
 #endif  // DCHECK_IS_ON()
-}
-
-bool TextAutosizingMultiplierChanged(const StyleResolverState& state,
-                                     const ComputedStyle& base_computed_style) {
-  // Note that |old_style| can be a style replaced by
-  // TextAutosizer::ApplyMultiplier.
-  const ComputedStyle* old_style = state.GetElement().GetComputedStyle();
-  return old_style && (old_style->TextAutosizingMultiplier() !=
-                       base_computed_style.TextAutosizingMultiplier());
 }
 
 PseudoId GetPseudoId(const Element& element, ElementRuleCollector* collector) {
@@ -1089,20 +1079,16 @@ void StyleResolver::ForEachUARulesForElement(const Element& element,
                                              Functor& func) const {
   CSSDefaultStyleSheets& default_style_sheets =
       CSSDefaultStyleSheets::Instance();
-  if (!print_media_type_) {
-    if (element.IsHTMLElement() || element.IsPseudoElement() ||
-        element.IsVTTElement()) [[likely]] {
-      func(default_style_sheets.DefaultHtmlStyle(), kHTMLUASheet);
-    } else if (element.IsSVGElement()) {
-      func(default_style_sheets.DefaultSVGStyle(), kSVGUASheet);
-    } else if (element.namespaceURI() == mathml_names::kNamespaceURI) {
-      func(default_style_sheets.DefaultMathMLStyle(), kMathMLUASheet);
-    }
-    if (Fullscreen::HasFullscreenElements()) {
-      func(default_style_sheets.DefaultFullscreenStyle(), kFullscreenUASheet);
-    }
-  } else {
-    func(default_style_sheets.DefaultPrintStyle(), kPrintUASheet);
+  if (element.IsHTMLElement() || element.IsPseudoElement() ||
+      element.IsVTTElement()) [[likely]] {
+    func(default_style_sheets.DefaultHtmlStyle(), kHTMLUASheet);
+  } else if (element.IsSVGElement()) {
+    func(default_style_sheets.DefaultSVGStyle(), kSVGUASheet);
+  } else if (element.namespaceURI() == mathml_names::kNamespaceURI) {
+    func(default_style_sheets.DefaultMathMLStyle(), kMathMLUASheet);
+  }
+  if (Fullscreen::HasFullscreenElements()) {
+    func(default_style_sheets.DefaultFullscreenStyle(), kFullscreenUASheet);
   }
 
   // In quirks mode, we match rules from the quirks user agent sheet.
@@ -1243,21 +1229,6 @@ void StyleResolver::MatchPresentationalHints(StyleResolverState& state,
     collector.AddElementStyleProperties(
         element.PresentationAttributeStyle(),
         CascadeOrigin::kAuthorPresentationalHint);
-
-    if (RuntimeEnabledFeatures::
-            CollectWidthAndHeightAsStylesForNestedSvgEnabled() &&
-        state.GetStyledElement() != &element) {
-      auto* svg_svg_element =
-          DynamicTo<SVGSVGElement>(state.GetStyledElement());
-
-      if (svg_svg_element) {
-        collector.AddElementStyleProperties(
-            svg_svg_element
-                ->CreateWidthAndHeightPresentationAttributeStyleIfNeeded(
-                    element),
-            CascadeOrigin::kAuthorPresentationalHint);
-      }
-    }
 
     // Now we check additional mapped declarations.
     // Tables and table cells share an additional mapped rule that must be
@@ -1554,17 +1525,6 @@ void StyleResolver::InitStyle(Element& element,
 
   if (!style_request.IsPseudoStyleRequest() && element.IsLink()) {
     state.StyleBuilder().SetIsLink();
-  }
-
-  if (!IsForPseudoElement(element, style_request)) {
-    // Preserve the text autosizing multiplier on style recalc. Autosizer will
-    // update it during layout if needed.
-    // NOTE: This must occur before CascadeAndApplyMatchedProperties for correct
-    // computation of font-relative lengths.
-    // NOTE: This can never be overwritten by a MPC hit, since we don't use the
-    // MPC if TextAutosizingMultiplier() is different from 1.
-    state.StyleBuilder().SetTextAutosizingMultiplier(
-        state.TextAutosizingMultiplier());
   }
 }
 
@@ -2196,10 +2156,9 @@ const ComputedStyle* StyleResolver::StyleForPage(uint32_t page_index,
                               page_index, page_name,
                               cascade.MutableMatchResult());
 
-  collector.MatchPageRules(
-      CSSDefaultStyleSheets::Instance().DefaultPrintStyle(),
-      CascadeOrigin::kUserAgent, nullptr /* tree_scope */,
-      nullptr /* layer_map */);
+  collector.MatchPageRules(CSSDefaultStyleSheets::Instance().DefaultHtmlStyle(),
+                           CascadeOrigin::kUserAgent, nullptr /* tree_scope */,
+                           nullptr /* layer_map */);
 
   // Calling this function without being in print mode is unusual and special,
   // but it happens from unit tests, if nothing else.
@@ -2301,7 +2260,7 @@ void StyleResolver::StyleForPageMargins(const ComputedStyle& page_style,
         &page_style, entry.at_rule_id, page_index, page_name,
         margin_cascade.MutableMatchResult());
     margin_rule_collector.MatchPageRules(
-        CSSDefaultStyleSheets::Instance().DefaultPrintStyle(),
+        CSSDefaultStyleSheets::Instance().DefaultHtmlStyle(),
         CascadeOrigin::kUserAgent, /*tree_scope=*/nullptr,
         /*layer_map=*/nullptr);
 
@@ -2911,10 +2870,6 @@ bool StyleResolver::CanReuseBaseComputedStyle(const StyleResolverState& state) {
   if (CSSAnimations::IsAnimatingStandardProperties(
           element_animations, base_data->GetBaseImportantSet(),
           KeyframeEffect::kDefaultPriority)) {
-    return false;
-  }
-
-  if (TextAutosizingMultiplierChanged(state, *base_style)) {
     return false;
   }
 

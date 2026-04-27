@@ -3437,16 +3437,14 @@ void SkiaRenderer::FinishDrawingRenderPass() {
 
   if (BufferQueue* queue =
           GetRenderPassBufferQueue(current_frame()->current_render_pass->id)) {
-    queue->UpdateBufferDamage(current_render_pass_update_rect_);
+    gfx::Rect buffer_damage_rect =
+        is_root_render_pass ? current_frame()->root_damage_rect
+                            : current_frame()->current_render_pass->damage_rect;
+    queue->UpdateBufferDamage(buffer_damage_rect);
   }
 
   current_canvas_ = nullptr;
-  // Non-root render passes that are scheduled as overlays will be painted in
-  // PrepareRenderPassOverlay().
-  bool is_overlay =
-      skia_output_surface_->capabilities().renderer_allocates_images &&
-      is_root_render_pass;
-  EndPaint(current_render_pass_update_rect_, /*failed=*/false, is_overlay);
+  EndPaint(current_render_pass_update_rect_, /*failed=*/false);
 
   // Defer flushing drawing task for root render pass, to avoid extra
   // MakeCurrent() call. It is expensive on GL.
@@ -4054,8 +4052,7 @@ void SkiaRenderer::PrepareRenderPassOverlay(
       if (!content_image) {
         DLOG(ERROR) << "MakePromiseSkImageFromRenderPass() in "
                        "PrepareRenderPassOverlay() failed.";
-        EndPaint(gfx::Rect(dst_overlay_backing.size), /*failed=*/true,
-                 /*is_overlay=*/true);
+        EndPaint(gfx::Rect(dst_overlay_backing.size), /*failed=*/true);
         return;
       }
 
@@ -4077,8 +4074,7 @@ void SkiaRenderer::PrepareRenderPassOverlay(
     }
 
     current_canvas_ = nullptr;
-    EndPaint(gfx::Rect(dst_overlay_backing.size), /*failed=*/false,
-             /*is_overlay=*/true);
+    EndPaint(gfx::Rect(dst_overlay_backing.size), /*failed=*/false);
   }
 
 #if BUILDFLAG(IS_APPLE)
@@ -4117,9 +4113,7 @@ void SkiaRenderer::PrepareRenderPassOverlay(
 }
 #endif  // BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_OZONE) || BUILDFLAG(IS_WIN)
 
-void SkiaRenderer::EndPaint(const gfx::Rect& update_rect,
-                            bool failed,
-                            bool is_overlay) {
+void SkiaRenderer::EndPaint(const gfx::Rect& update_rect, bool failed) {
   base::OnceClosure on_finished_callback;
   base::OnceCallback<void(gfx::GpuFenceHandle)> on_return_release_fence_cb;
   // If SkiaRenderer has not failed, prepare callbacks and pass them to
@@ -4153,7 +4147,7 @@ void SkiaRenderer::EndPaint(const gfx::Rect& update_rect,
   }
   skia_output_surface_->EndPaint(std::move(on_finished_callback),
                                  std::move(on_return_release_fence_cb),
-                                 update_rect, is_overlay);
+                                 update_rect);
 }
 
 bool SkiaRenderer::IsRenderPassResourceAllocated(

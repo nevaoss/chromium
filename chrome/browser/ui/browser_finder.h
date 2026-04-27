@@ -7,8 +7,6 @@
 
 #include <stddef.h>
 
-#include <vector>
-
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "ui/display/types/display_constants.h"
@@ -19,6 +17,7 @@ class FilePath;
 }
 
 class Browser;
+class BrowserWindowInterface;
 class Profile;
 class SessionID;
 
@@ -111,13 +110,7 @@ Browser* FindTabbedBrowser(const Profile* profile,
 // WARNING: Do not use this method. See comment at top of file.
 Browser* FindBrowserWithProfile(const Profile* profile);
 
-// Returns all tabbed browsers with the provided profile. Returns an empty
-// vector if no such browsers currently exist.
-std::vector<Browser*> FindAllTabbedBrowsersWithProfile(const Profile* profile);
 
-// Returns all browsers of any type with the provided profile. Returns an empty
-// vector if no such browsers currently exist.
-std::vector<Browser*> FindAllBrowsersWithProfile(const Profile* profile);
 
 // Returns an existing browser with the provided ID. Returns nullptr if no such
 // browser currently exists.
@@ -180,7 +173,7 @@ Browser* FindLastActiveWithProfile(Profile* profile);
 // returns nullptr.
 //
 // WARNING #2: This will always return nullptr in unit tests run on the bots.
-Browser* FindLastActive();
+BrowserWindowInterface* FindLastActive();
 
 // Returns the number of browsers across all profiles. This does not include
 // pending delete browsers.

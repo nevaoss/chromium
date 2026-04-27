@@ -23,6 +23,7 @@
 #include "base/types/expected.h"
 #include "base/types/optional_ref.h"
 #include "base/types/pass_key.h"
+#include "chrome/browser/ai/ai_classifier.h"
 #include "chrome/browser/ai/ai_context_bound_object.h"
 #include "chrome/browser/ai/ai_context_bound_object_set.h"
 #include "chrome/browser/ai/ai_language_model.h"
@@ -31,6 +32,7 @@
 #include "chrome/browser/ai/ai_summarizer.h"
 #include "chrome/browser/ai/ai_writer.h"
 #include "chrome/browser/ai/features.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/component_updater/optimization_guide_on_device_model_installer.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
@@ -39,6 +41,7 @@
 #include "components/on_device_ai/ai_utils.h"
 #include "components/optimization_guide/core/delivery/model_util.h"
 #include "components/optimization_guide/core/model_execution/feature_keys.h"
+#include "components/optimization_guide/core/model_execution/model_execution_util.h"
 #include "components/optimization_guide/core/model_execution/on_device_capability.h"
 #include "components/optimization_guide/core/optimization_guide_enums.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
@@ -57,6 +60,7 @@
 #include "services/on_device_model/public/mojom/download_observer.mojom.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 #include "third_party/blink/public/common/features_generated.h"
+#include "third_party/blink/public/mojom/ai/ai_classifier.mojom.h"
 #include "third_party/blink/public/mojom/ai/ai_common.mojom.h"
 #include "third_party/blink/public/mojom/ai/ai_language_model.mojom.h"
 #include "third_party/blink/public/mojom/ai/ai_manager.mojom.h"
@@ -383,12 +387,6 @@ AIManager::AIManager(content::BrowserContext* browser_context,
 
 AIManager::~AIManager() = default;
 
-bool AIManager::IsBuiltInAIAPIsEnabledByPolicy() {
-  PrefService* prefs =
-      Profile::FromBrowserContext(browser_context_)->GetPrefs();
-  return !prefs->HasPrefPath(policy::policy_prefs::kBuiltInAIAPIsEnabled) ||
-         prefs->GetBoolean(policy::policy_prefs::kBuiltInAIAPIsEnabled);
-}
 
 void AIManager::AddReceiver(
     mojo::PendingReceiver<blink::mojom::AIManager> receiver) {
@@ -398,15 +396,13 @@ void AIManager::AddReceiver(
 void AIManager::CanCreateLanguageModel(
     blink::mojom::AILanguageModelCreateOptionsPtr options,
     CanCreateLanguageModelCallback callback) {
-  auto* rfh = rfh_.AsRenderFrameHostIfValid();
-  if (rfh && !rfh->IsFeatureEnabled(
-                 network::mojom::PermissionsPolicyFeature::kLanguageModel)) {
+  if (IsPermissionsPolicyBlocked(
+          network::mojom::PermissionsPolicyFeature::kLanguageModel)) {
     receivers_.ReportBadMessage("Permissions policy disabled");
     return;
   }
-  if (!IsBuiltInAIAPIsEnabledByPolicy()) {
-    std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
-                                kUnavailableEnterprisePolicyDisabled);
+  if (auto pref_blocked_result = GetPrefBlockedResult()) {
+    std::move(callback).Run(*pref_blocked_result);
     return;
   }
 
@@ -454,10 +450,8 @@ void AIManager::CreateLanguageModel(
         client,
     blink::mojom::AILanguageModelCreateOptionsPtr options) {
   CHECK(options);
-  auto* rfh = rfh_.AsRenderFrameHostIfValid();
-  if (rfh && !rfh->IsFeatureEnabled(
-                 network::mojom::PermissionsPolicyFeature::kLanguageModel)) {
-    receivers_.ReportBadMessage("Permissions policy disabled");
+  if (IsBlocked(network::mojom::PermissionsPolicyFeature::kLanguageModel)) {
+    receivers_.ReportBadMessage("Policy or user setting disabled");
     return;
   }
   if (!CheckAndFixLanguages(
@@ -581,15 +575,13 @@ void AIManager::CreateLanguageModelInternal(
 void AIManager::CanCreateSummarizer(
     blink::mojom::AISummarizerCreateOptionsPtr options,
     CanCreateSummarizerCallback callback) {
-  auto* rfh = rfh_.AsRenderFrameHostIfValid();
-  if (rfh && !rfh->IsFeatureEnabled(
-                 network::mojom::PermissionsPolicyFeature::kSummarizer)) {
+  if (IsPermissionsPolicyBlocked(
+          network::mojom::PermissionsPolicyFeature::kSummarizer)) {
     receivers_.ReportBadMessage("Permissions policy disabled");
     return;
   }
-  if (!IsBuiltInAIAPIsEnabledByPolicy()) {
-    std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
-                                kUnavailableEnterprisePolicyDisabled);
+  if (auto pref_blocked_result = GetPrefBlockedResult()) {
+    std::move(callback).Run(*pref_blocked_result);
     return;
   }
   if (!CheckAndFixLanguages(
@@ -616,10 +608,8 @@ void AIManager::CanCreateSummarizer(
 void AIManager::CreateSummarizer(
     mojo::PendingRemote<blink::mojom::AIManagerCreateSummarizerClient> client,
     blink::mojom::AISummarizerCreateOptionsPtr options) {
-  auto* rfh = rfh_.AsRenderFrameHostIfValid();
-  if (rfh && !rfh->IsFeatureEnabled(
-                 network::mojom::PermissionsPolicyFeature::kSummarizer)) {
-    receivers_.ReportBadMessage("Permissions policy disabled");
+  if (IsBlocked(network::mojom::PermissionsPolicyFeature::kSummarizer)) {
+    receivers_.ReportBadMessage("Policy or user setting disabled");
     return;
   }
   if (!CheckAndFixLanguages(
@@ -686,6 +676,10 @@ void AIManager::CanCreateProofreader(
   // TODO(crbug.com/424673180): Add a warning message when options
   // `includeCorrectionTypes` and `includeCorrectionExplanations` are set to
   // true as those features are not yet supported by the API.
+  if (auto pref_blocked_result = GetPrefBlockedResult()) {
+    std::move(callback).Run(*pref_blocked_result);
+    return;
+  }
   if (!CheckAndFixLanguages(
           options, "Proofreader", AIProofreader::GetEnabledLanguageBaseCodes(),
           AIProofreader::GetDefaultSupportedLanguageBaseCodes())) {
@@ -701,6 +695,10 @@ void AIManager::CreateProofreader(
     mojo::PendingRemote<blink::mojom::AIManagerCreateProofreaderClient> client,
     blink::mojom::AIProofreaderCreateOptionsPtr options) {
   // TODO(crbug.com/466425250): Enforce permissions policy.
+  if (IsBlocked()) {
+    receivers_.ReportBadMessage("Policy or user setting disabled");
+    return;
+  }
   if (!CheckAndFixLanguages(
           options, "Proofreader", AIProofreader::GetEnabledLanguageBaseCodes(),
           AIProofreader::GetDefaultSupportedLanguageBaseCodes())) {
@@ -793,15 +791,13 @@ void AIManager::GetLanguageModelParams(
 
 void AIManager::CanCreateWriter(blink::mojom::AIWriterCreateOptionsPtr options,
                                 CanCreateWriterCallback callback) {
-  auto* rfh = rfh_.AsRenderFrameHostIfValid();
-  if (rfh && !rfh->IsFeatureEnabled(
-                 network::mojom::PermissionsPolicyFeature::kWriter)) {
+  if (IsPermissionsPolicyBlocked(
+          network::mojom::PermissionsPolicyFeature::kWriter)) {
     receivers_.ReportBadMessage("Permissions policy disabled");
     return;
   }
-  if (!IsBuiltInAIAPIsEnabledByPolicy()) {
-    std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
-                                kUnavailableEnterprisePolicyDisabled);
+  if (auto pref_blocked_result = GetPrefBlockedResult()) {
+    std::move(callback).Run(*pref_blocked_result);
     return;
   }
   if (!CheckAndFixLanguages(options, "Writer",
@@ -819,10 +815,8 @@ void AIManager::CanCreateWriter(blink::mojom::AIWriterCreateOptionsPtr options,
 void AIManager::CreateWriter(
     mojo::PendingRemote<blink::mojom::AIManagerCreateWriterClient> client,
     blink::mojom::AIWriterCreateOptionsPtr options) {
-  auto* rfh = rfh_.AsRenderFrameHostIfValid();
-  if (rfh && !rfh->IsFeatureEnabled(
-                 network::mojom::PermissionsPolicyFeature::kWriter)) {
-    receivers_.ReportBadMessage("Permissions policy disabled");
+  if (IsBlocked(network::mojom::PermissionsPolicyFeature::kWriter)) {
+    receivers_.ReportBadMessage("Policy or user setting disabled");
     return;
   }
   if (!CheckAndFixLanguages(options, "Writer",
@@ -868,15 +862,13 @@ void AIManager::CreateWriter(
 void AIManager::CanCreateRewriter(
     blink::mojom::AIRewriterCreateOptionsPtr options,
     CanCreateRewriterCallback callback) {
-  auto* rfh = rfh_.AsRenderFrameHostIfValid();
-  if (rfh && !rfh->IsFeatureEnabled(
-                 network::mojom::PermissionsPolicyFeature::kRewriter)) {
+  if (IsPermissionsPolicyBlocked(
+          network::mojom::PermissionsPolicyFeature::kRewriter)) {
     receivers_.ReportBadMessage("Permissions policy disabled");
     return;
   }
-  if (!IsBuiltInAIAPIsEnabledByPolicy()) {
-    std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
-                                kUnavailableEnterprisePolicyDisabled);
+  if (auto pref_blocked_result = GetPrefBlockedResult()) {
+    std::move(callback).Run(*pref_blocked_result);
     return;
   }
   if (!CheckAndFixLanguages(
@@ -894,10 +886,8 @@ void AIManager::CanCreateRewriter(
 void AIManager::CreateRewriter(
     mojo::PendingRemote<blink::mojom::AIManagerCreateRewriterClient> client,
     blink::mojom::AIRewriterCreateOptionsPtr options) {
-  auto* rfh = rfh_.AsRenderFrameHostIfValid();
-  if (rfh && !rfh->IsFeatureEnabled(
-                 network::mojom::PermissionsPolicyFeature::kRewriter)) {
-    receivers_.ReportBadMessage("Permissions policy disabled");
+  if (IsBlocked(network::mojom::PermissionsPolicyFeature::kRewriter)) {
+    receivers_.ReportBadMessage("Policy or user setting disabled");
     return;
   }
   if (!CheckAndFixLanguages(
@@ -937,6 +927,50 @@ void AIManager::CreateRewriter(
       optimization_guide::mojom::OnDeviceFeature::kWritingAssistanceApi);
   model_broker_client_->CreateSession(
       optimization_guide::mojom::OnDeviceFeature::kWritingAssistanceApi,
+      ::optimization_guide::SessionConfigParams{}, std::move(callback));
+}
+
+void AIManager::CanCreateClassifier(
+    blink::mojom::AIClassifierCreateOptionsPtr options,
+    CanCreateClassifierCallback callback) {
+  // TODO(crbug.com/499365168): Enforce permissions policy and
+  // CheckAndFixLanguages.
+  if (auto pref_blocked_result = GetPrefBlockedResult()) {
+    std::move(callback).Run(*pref_blocked_result);
+    return;
+  }
+  CanCreateSession(optimization_guide::mojom::OnDeviceFeature::kClassifier,
+                   on_device_model::Capabilities(), std::move(callback));
+}
+
+void AIManager::CreateClassifier(
+    mojo::PendingRemote<blink::mojom::AIManagerCreateClassifierClient> client,
+    blink::mojom::AIClassifierCreateOptionsPtr options) {
+  // TODO(crbug.com/499365168): Enforce permissions policy and
+  // CheckAndFixLanguages.
+  if (IsBlocked()) {
+    receivers_.ReportBadMessage("Policy or user setting disabled");
+    return;
+  }
+  if (!model_broker_client_) {
+    mojo::Remote<blink::mojom::AIManagerCreateClassifierClient> client_remote(
+        std::move(client));
+    on_device_ai::SendClientRemoteError(
+        client_remote,
+        blink::mojom::AIManagerCreateClientError::kUnableToCreateSession);
+    return;
+  }
+
+  auto callback =
+      base::BindOnce(&AIManager::OnSessionCreated<
+                         AIClassifier, blink::mojom::AIClassifier,
+                         blink::mojom::AIManagerCreateClassifierClient,
+                         blink::mojom::AIClassifierCreateOptionsPtr>,
+                     weak_factory_.GetWeakPtr(), std::move(options),
+                     /*initial_request=*/std::nullopt, std::move(client));
+  tried_init_.insert(optimization_guide::mojom::OnDeviceFeature::kClassifier);
+  model_broker_client_->CreateSession(
+      optimization_guide::mojom::OnDeviceFeature::kClassifier,
       ::optimization_guide::SessionConfigParams{}, std::move(callback));
 }
 
@@ -1090,6 +1124,51 @@ bool AIManager::CheckAndFixLanguages(
     MaybeLogMissingOutputLanguageWarning(api_name, enabled);
   }
   return true;
+}
+
+std::optional<blink::mojom::ModelAvailabilityCheckResult>
+AIManager::GetPrefBlockedResult() {
+  PrefService* local_state = g_browser_process->local_state();
+  // chromeenterprise.google/policies/#GenAILocalFoundationalModelSettings
+  if (optimization_guide::
+          GetGenAILocalFoundationalModelEnterprisePolicySettings(local_state) ==
+      optimization_guide::model_execution::prefs::
+          GenAILocalFoundationalModelEnterprisePolicySettings::kDisallowed) {
+    return blink::mojom::ModelAvailabilityCheckResult::
+        kUnavailableEnterprisePolicyDisabled;
+  }
+
+  PrefService* profile_prefs =
+      Profile::FromBrowserContext(browser_context_)->GetPrefs();
+  // chromeenterprise.google/policies/#BuiltInAIAPIsEnabled
+  if (!profile_prefs->GetBoolean(policy::policy_prefs::kBuiltInAIAPIsEnabled)) {
+    return blink::mojom::ModelAvailabilityCheckResult::
+        kUnavailableEnterprisePolicyDisabled;
+  }
+
+  // chrome://settings/system "On-device AI" user toggle.
+  if (!local_state->GetBoolean(
+          optimization_guide::model_execution::prefs::localstate::
+              kOnDeviceAiUserSettingsEnabled)) {
+    return blink::mojom::ModelAvailabilityCheckResult::
+        kUnavailableFeatureNotEnabled;
+  }
+
+  return std::nullopt;
+}
+
+bool AIManager::IsPermissionsPolicyBlocked(
+    network::mojom::PermissionsPolicyFeature feature) {
+  auto* rfh = rfh_.AsRenderFrameHostIfValid();
+  return rfh && !rfh->IsFeatureEnabled(feature);
+}
+
+bool AIManager::IsBlocked(
+    std::optional<network::mojom::PermissionsPolicyFeature> feature) {
+  if (feature.has_value() && IsPermissionsPolicyBlocked(feature.value())) {
+    return true;
+  }
+  return GetPrefBlockedResult().has_value();
 }
 
 void AIManager::OnModelPathValidationComplete(const base::FilePath& model_path,

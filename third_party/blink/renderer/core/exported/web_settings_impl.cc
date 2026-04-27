@@ -157,10 +157,6 @@ void WebSettingsImpl::SetAutoZoomFocusedEditableToLegibleScale(
       auto_zoom_focused_editable_to_legible_scale;
 }
 
-void WebSettingsImpl::SetTextAutosizingEnabled(bool enabled) {
-  dev_tools_emulator_->SetTextAutosizingEnabled(enabled);
-}
-
 // TODO(pdr): Rename this OSTextScaleFactor.
 void WebSettingsImpl::SetAccessibilityFontScaleFactor(float font_scale_factor) {
   dev_tools_emulator_->SetAccessibilityFontScaleFactor(font_scale_factor);
@@ -181,10 +177,6 @@ void WebSettingsImpl::SetAccessibilityPasswordValuesEnabled(bool enabled) {
 
 void WebSettingsImpl::SetAccessibilityFontWeightAdjustment(int size) {
   settings_->SetAccessibilityFontWeightAdjustment(size);
-}
-
-void WebSettingsImpl::SetDeviceScaleAdjustment(float device_scale_adjustment) {
-  dev_tools_emulator_->SetDeviceScaleAdjustment(device_scale_adjustment);
 }
 
 void WebSettingsImpl::SetDefaultTextEncodingName(const WebString& encoding) {
@@ -527,6 +519,10 @@ void WebSettingsImpl::SetPresentationReceiver(bool enabled) {
 
 void WebSettingsImpl::SetHighlightAds(bool enabled) {
   settings_->SetHighlightAds(enabled);
+}
+
+void WebSettingsImpl::SetInspectorHighlightAds(bool enabled) {
+  settings_->SetInspectorHighlightAds(enabled);
 }
 
 void WebSettingsImpl::SetHyperlinkAuditingEnabled(bool enabled) {

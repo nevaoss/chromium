@@ -151,6 +151,7 @@
 #include "components/autofill/core/common/unique_ids.h"
 #include "components/compose/buildflags.h"
 #include "components/compose/core/browser/compose_features.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/custom_handlers/protocol_handler.h"
 #include "components/download/public/common/download_url_parameters.h"
 #include "components/google/core/common/google_util.h"
@@ -254,6 +255,7 @@
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/point_conversions.h"
 #include "ui/gfx/image/image.h"
+#include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/image/image_skia_operations.h"
 #include "ui/gfx/text_elider.h"
 #include "ui/strings/grit/ui_strings.h"
@@ -401,6 +403,23 @@ std::string GetGlicWebContentsContextToken(
     return "TextSelectionWithLink";
   }
   return "TextSelection";
+}
+
+ui::ImageModel GetLensContextMenuIcon() {
+#if BUILDFLAG(IS_MAC)
+  if (!base::FeatureList::IsEnabled(
+          lens::features::kShowContextualTasksMenuIcon)) {
+    return ui::ImageModel();
+  }
+#endif
+
+  return ui::ImageModel::FromVectorIcon(
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+      vector_icons::kGoogleLensMonochromeLogoIcon
+#else
+      vector_icons::kSearchChromeRefreshIcon
+#endif
+  );
 }
 
 enum class UmaEnumIdLookupType {
@@ -573,13 +592,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_INSPECTELEMENT_WITH_DEVTOOLS, 160},
        {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY, 161},
        {IDC_CONTENT_CONTEXT_GLIC, 162},
+       {IDC_CONTENT_CONTEXT_VIDEO_FRAME, 163},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the RenderViewContextMenuItem enum in
        //     tools/metrics/histograms/metadata/ui/enums.xml.
-       {0, 163}});
+       {0, 164}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
 
   // LINT.IfChange(ContextMenuOptionDesktop)
@@ -941,6 +961,7 @@ RenderViewContextMenu::RenderViewContextMenu(
       protocol_handler_registry_(
           ProtocolHandlerRegistryFactory::GetForBrowserContext(GetProfile())),
       inspect_submenu_model_(this),
+      video_frame_submenu_model_(this),
       accessibility_labels_submenu_model_(this),
       embedder_web_contents_(GetWebContentsToUse(&render_frame_host)),
       autofill_context_menu_manager_(this, &menu_model_),
@@ -1137,8 +1158,7 @@ void RenderViewContextMenu::InitMenu() {
     // Add "Copy Link Address" menu option for Glic Multi instance. Link
     // options are not supported by default (since Glic uses WebView's context
     // menu).
-    if (glic::GlicEnabling::IsMultiInstanceEnabled() &&
-        IsGlicWindow(this, browser_context_) && !params_.link_url.is_empty()) {
+    if (IsGlicWindow(this, browser_context_) && !params_.link_url.is_empty()) {
       AppendCopyLinkLocationItem();
       menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
     }
@@ -1233,8 +1253,7 @@ void RenderViewContextMenu::InitMenu() {
     AppendPrintItem();
   } else {
     if (IsGlicWindow(this, browser_context_) &&
-        base::FeatureList::IsEnabled(features::kGlicPrintMenuItem) &&
-        glic::GlicEnabling::IsMultiInstanceEnabled()) {
+        base::FeatureList::IsEnabled(features::kGlicPrintMenuItem)) {
       AppendPrintItem();
     }
   }
@@ -2073,28 +2092,24 @@ void RenderViewContextMenu::AppendSearchWebForImageItems() {
   auto* entry_point_controller =
       GetBrowser() ? lens::LensOverlayEntryPointController::From(GetBrowser())
                    : nullptr;
+  ui::ImageModel icon = GetLensContextMenuIcon();
   if (entry_point_controller && entry_point_controller->IsEnabled() &&
       lens::features::UseLensOverlayForImageSearch()) {
     // If the entrypoint is ephermally hidden, don't add the item.
     if (!entry_point_controller->AreVisible()) {
       return;
     }
-    const gfx::VectorIcon& icon =
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-        vector_icons::kGoogleLensMonochromeLogoIcon;
-#else
-        vector_icons::kSearchChromeRefreshIcon;
-#endif
     menu_model_.AddItemWithStringIdAndIcon(
         search_for_image_idc,
         lens::GetLensOverlayImageEntrypointLabelAltIds(
             IDS_CONTENT_CONTEXT_LENS_OVERLAY),
-        ui::ImageModel::FromVectorIcon(icon));
+        icon);
   } else {
-    menu_model_.AddItem(
+    menu_model_.AddItemWithIcon(
         search_for_image_idc,
         l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_SEARCHLENSFORIMAGE,
-                                   provider->short_name()));
+                                   provider->short_name()),
+        icon);
   }
   const int command_index =
       menu_model_.GetIndexOfCommandId(search_for_image_idc).value();
@@ -2147,26 +2162,59 @@ void RenderViewContextMenu::AppendCanvasItems() {
 }
 
 void RenderViewContextMenu::AppendVideoItems() {
+  const bool use_submenu =
+      base::FeatureList::IsEnabled(media::kContextMenu2026);
+
+  if (use_submenu) {
+    menu_model_.AddCheckItemWithStringId(IDC_CONTENT_CONTEXT_PICTUREINPICTURE,
+                                         IDS_CONTENT_CONTEXT_PICTUREINPICTURE);
+
+    if (media_router::MediaRouterEnabled(browser_context_)) {
+      menu_model_.AddItemWithStringId(IDC_ROUTE_MEDIA,
+                                      IDS_MEDIA_ROUTER_MENU_ITEM_TITLE);
+    }
+
+    menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
+  }
+
   AppendMediaItems();
   menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
   menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPENAVNEWTAB,
                                   IDS_CONTENT_CONTEXT_OPENVIDEONEWTAB);
-  if (base::FeatureList::IsEnabled(media::kContextMenuSaveVideoFrameAs)) {
-    menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS,
-                                    IDS_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS);
+
+  ui::SimpleMenuModel* target_model = &menu_model_;
+  if (use_submenu) {
+    target_model = &video_frame_submenu_model_;
   }
-  menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_SAVEAVAS,
-                                  IDS_CONTENT_CONTEXT_SAVEVIDEOAS);
+
+  if (base::FeatureList::IsEnabled(media::kContextMenuSaveVideoFrameAs)) {
+    target_model->AddItemWithStringId(IDC_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS,
+                                      IDS_CONTENT_CONTEXT_SAVEVIDEOFRAMEAS);
+  }
+
+  if (!use_submenu) {
+    menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_SAVEAVAS,
+                                    IDS_CONTENT_CONTEXT_SAVEVIDEOAS);
+  }
+
   if (base::FeatureList::IsEnabled(media::kContextMenuCopyVideoFrame)) {
-    menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_COPYVIDEOFRAME,
-                                    IDS_CONTENT_CONTEXT_COPYVIDEOFRAME);
+    target_model->AddItemWithStringId(IDC_CONTENT_CONTEXT_COPYVIDEOFRAME,
+                                      IDS_CONTENT_CONTEXT_COPYVIDEOFRAME);
+  }
+
+  if (use_submenu) {
+    menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_SAVEAVAS,
+                                    IDS_CONTENT_CONTEXT_SAVEVIDEOAS);
   }
 
   menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_COPYAVLOCATION,
                                   IDS_CONTENT_CONTEXT_COPYVIDEOLOCATION);
-  menu_model_.AddCheckItemWithStringId(IDC_CONTENT_CONTEXT_PICTUREINPICTURE,
-                                       IDS_CONTENT_CONTEXT_PICTUREINPICTURE);
-  AppendMediaRouterItem();
+
+  if (!use_submenu) {
+    menu_model_.AddCheckItemWithStringId(IDC_CONTENT_CONTEXT_PICTUREINPICTURE,
+                                         IDS_CONTENT_CONTEXT_PICTUREINPICTURE);
+    AppendMediaRouterItem();
+  }
 
   // Search for video frame menu item.
   if (base::FeatureList::IsEnabled(media::kContextMenuSearchForVideoFrame)) {
@@ -2174,42 +2222,46 @@ void RenderViewContextMenu::AppendVideoItems() {
     auto* entry_point_controller =
         GetBrowser() ? lens::LensOverlayEntryPointController::From(GetBrowser())
                      : nullptr;
+    bool item_added = false;
+    ui::ImageModel icon = GetLensContextMenuIcon();
+
     if (entry_point_controller && entry_point_controller->IsEnabled() &&
         lens::features::UseLensOverlayForVideoFrameSearch()) {
-      // If the entrypoint is ephermally hidden, exit early so the item is not
-      // added.
-      if (!entry_point_controller->AreVisible()) {
-        return;
+      // Add the item only if the entrypoint is visible.
+      if (entry_point_controller->AreVisible()) {
+        target_model->AddItemWithStringIdAndIcon(
+            search_for_video_frame_idc,
+            lens::GetLensOverlayVideoEntrypointLabelAltIds(
+                IDS_CONTENT_CONTEXT_LENS_OVERLAY),
+            icon);
+        item_added = true;
       }
-      const gfx::VectorIcon& icon =
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-          vector_icons::kGoogleLensMonochromeLogoIcon;
-#else
-          vector_icons::kSearchChromeRefreshIcon;
-#endif
-      menu_model_.AddItemWithStringIdAndIcon(
-          search_for_video_frame_idc,
-          lens::GetLensOverlayVideoEntrypointLabelAltIds(
-              IDS_CONTENT_CONTEXT_LENS_OVERLAY),
-          ui::ImageModel::FromVectorIcon(icon));
     } else {
       const auto* provider = GetImageSearchProvider();
-      if (!provider) {
-        return;
+      if (provider) {
+        target_model->AddItemWithIcon(
+            search_for_video_frame_idc,
+            l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_SEARCHFORVIDEOFRAME,
+                                       GetImageSearchProviderName(provider)),
+            icon);
+        item_added = true;
       }
-
-      menu_model_.AddItem(
-          search_for_video_frame_idc,
-          l10n_util::GetStringFUTF16(IDS_CONTENT_CONTEXT_SEARCHFORVIDEOFRAME,
-                                     GetImageSearchProviderName(provider)));
     }
 
-    // Used for interactive tests. See LensOverlayControllerCUJTest.
-    const int command_index =
-        menu_model_.GetIndexOfCommandId(search_for_video_frame_idc).value();
-    menu_model_.SetElementIdentifierAt(command_index, kSearchForVideoFrameItem);
+    if (item_added) {
+      // Used for interactive tests. See LensOverlayControllerCUJTest.
+      target_model->SetElementIdentifierAt(target_model->GetItemCount() - 1,
+                                           kSearchForVideoFrameItem);
 
-    MaybePrepareForLensQuery();
+      MaybePrepareForLensQuery();
+    }
+  }
+
+  if (use_submenu && video_frame_submenu_model_.GetItemCount() > 0) {
+    menu_model_.AddSubMenu(
+        IDC_CONTENT_CONTEXT_VIDEO_FRAME,
+        l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_VIDEO_FRAME),
+        &video_frame_submenu_model_);
   }
 }
 
@@ -2432,16 +2484,7 @@ void RenderViewContextMenu::AppendGlicItems() {
         menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_RELOAD_GLIC)
             .value(),
         kGlicReloadMenuItem);
-    if (!glic::GlicEnabling::IsMultiInstanceEnabled()) {
-      menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_CLOSE_GLIC,
-                                      IDS_CONTENT_CONTEXT_CLOSE_GLIC);
-      menu_model_.SetElementIdentifierAt(
-          menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_CLOSE_GLIC)
-              .value(),
-          kGlicCloseMenuItem);
-    }
-    if (glic::GlicEnabling::IsMultiInstanceEnabled() &&
-        base::FeatureList::IsEnabled(features::kGlicArchiveConversation)) {
+    if (base::FeatureList::IsEnabled(features::kGlicArchiveConversation)) {
       // Archive  Glic conversation.
       menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_ARCHIVE_GLIC,
                                       IDS_CONTENT_CONTEXT_ARCHIVE_GLIC);
@@ -2763,23 +2806,19 @@ void RenderViewContextMenu::AppendRegionSearchItem() {
   auto* entry_point_controller =
       GetBrowser() ? lens::LensOverlayEntryPointController::From(GetBrowser())
                    : nullptr;
+  ui::ImageModel icon = GetLensContextMenuIcon();
+
   if (entry_point_controller && entry_point_controller->IsEnabled()) {
     // If the entrypoint is ephermally hidden, exit early so the item is not
     // added.
     if (!entry_point_controller->AreVisible()) {
       return;
     }
-    const gfx::VectorIcon& icon =
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-        vector_icons::kGoogleLensMonochromeLogoIcon;
-#else
-        vector_icons::kSearchChromeRefreshIcon;
-#endif
     menu_model_.AddItemWithStringIdAndIcon(
         IDC_CONTENT_CONTEXT_LENS_REGION_SEARCH,
         lens::GetLensOverlayEntrypointLabelAltIds(
             IDS_CONTENT_CONTEXT_LENS_OVERLAY),
-        ui::ImageModel::FromVectorIcon(icon));
+        icon);
     const int command_index =
         menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_LENS_REGION_SEARCH)
             .value();
@@ -2794,9 +2833,18 @@ void RenderViewContextMenu::AppendRegionSearchItem() {
   if (provider) {
     const int region_search_idc = GetRegionSearchIdc();
     const int resource_id = IDS_CONTENT_CONTEXT_LENS_REGION_SEARCH;
-    menu_model_.AddItem(region_search_idc,
-                        l10n_util::GetStringFUTF16(
-                            resource_id, GetImageSearchProviderName(provider)));
+
+    ui::ImageModel fallback_icon = icon;
+    if (!search::DefaultSearchProviderIsGoogle(GetProfile())) {
+      fallback_icon = ui::ImageModel();
+    }
+
+    menu_model_.AddItemWithIcon(
+        region_search_idc,
+        l10n_util::GetStringFUTF16(resource_id,
+                                   GetImageSearchProviderName(provider)),
+        fallback_icon);
+
     menu_model_.SetElementIdentifierAt(
         menu_model_.GetIndexOfCommandId(region_search_idc).value(),
         kRegionSearchItem);
@@ -3099,6 +3147,7 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
       return true;
 #endif
 
+    case IDC_CONTENT_CONTEXT_VIDEO_FRAME:
     case IDC_SPELLCHECK_MENU:
     case IDC_CONTENT_CONTEXT_OPENLINKWITH:
     case IDC_CONTENT_CONTEXT_PROTOCOL_HANDLER_SETTINGS:
@@ -3385,23 +3434,12 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       break;
 
     case IDC_CONTENT_CONTEXT_CLOSE_GLIC:
-      if (glic::GlicEnabling::IsEnabledByFlags() &&
-          !glic::GlicEnabling::IsMultiInstanceEnabled()) {
-        auto* glic_service = glic::GlicKeyedService::Get(browser_context_);
-        if (glic_service) {
-          // TODO(crbug.com/454112198): Clean up after multi-instance launches.
-          if (glic::GlicEnabling::IsMultiInstanceEnabled()) {
-            if (auto* rfh = GetRenderFrameHost()) {
-              glic_service->Close(rfh->GetOutermostMainFrame());
-            }
-          }
-        }
-      }
+      // This command is only available when multi-instance is disabled.
+      // Since multi-instance is always enabled, this is dead code.
       break;
 
     case IDC_CONTENT_CONTEXT_ARCHIVE_GLIC:  // Added for archive conversation
-      if (glic::GlicEnabling::IsMultiInstanceEnabled() &&
-          base::FeatureList::IsEnabled(features::kGlicArchiveConversation)) {
+      if (base::FeatureList::IsEnabled(features::kGlicArchiveConversation)) {
         auto* glic_service = glic::GlicKeyedService::Get(browser_context_);
         if (glic_service) {
           // Call the Archive method on the Glic service.
@@ -3989,8 +4027,7 @@ bool RenderViewContextMenu::IsPasteAndMatchStyleEnabled() const {
 
 bool RenderViewContextMenu::IsPrintPreviewEnabled() const {
   if (IsGlicWindow(this, browser_context_) &&
-      base::FeatureList::IsEnabled(features::kGlicPrintMenuItem) &&
-      glic::GlicEnabling::IsMultiInstanceEnabled()) {
+      base::FeatureList::IsEnabled(features::kGlicPrintMenuItem)) {
     return GetPrefs(browser_context_)->GetBoolean(prefs::kPrintingEnabled) &&
            (source_web_contents_ && !source_web_contents_->IsCrashed());
   }
@@ -4421,6 +4458,7 @@ void RenderViewContextMenu::ExecGlic() {
       if (tab) {
         glic_item_executed_ = true;
         glic::GlicInvokeOptions options(
+            glic::Target(tab),
             glic::mojom::InvocationSource::kWebContentsContextMenu);
         options.fre_override = glic::mojom::FreOverride::kTrustFirstInline;
         std::string arm = features::kGlicContextMenuArm.Get();
@@ -4428,10 +4466,10 @@ void RenderViewContextMenu::ExecGlic() {
           options.prompts.push_back(
               l10n_util::GetStringUTF8(IDS_GLIC_SUMMARIZE_PAGE_PROMPT));
           glic_service->InvokeWithAutoSubmit(
-              glic::InvokeWithAutoSubmitPasskeyProvider::GetPassKey(), tab,
+              glic::InvokeWithAutoSubmitPasskeyProvider::GetPassKey(),
               std::move(options));
         } else {
-          glic_service->Invoke(tab, std::move(options));
+          glic_service->Invoke(std::move(options));
         }
       }
     }

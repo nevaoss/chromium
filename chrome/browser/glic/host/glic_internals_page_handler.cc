@@ -51,9 +51,9 @@ mojom::ProfileEnablementPtr BuildProfileEnablement(
   result->disallowed_by_locale_filter = enablement.disallowed_by_locale_filter;
   result->live_disallowed = enablement.live_disallowed;
   result->share_image_disallowed = enablement.share_image_disallowed;
+  auto* service = GlicKeyedService::Get(profile);
   result->actuation_not_consented =
-      profile->GetPrefs()->GetBoolean(prefs::kGlicUserEnabledActuationOnWeb) ==
-      false;
+      !(service && service->enabling().GetUserEnabledActuationOnWeb());
 
   using CannotActReason = ::glic::CannotActReason;
   if (actor_policy_checker) {
@@ -176,12 +176,12 @@ void GlicInternalsPageHandler::TriggerInvokeFromInternalsAction(
   }
 
   if (mojo_options->conversation->is_new_conversation()) {
-    options.conversation = NewConversation();
+    options.target.conversation = NewConversation();
   } else if (mojo_options->conversation->is_conversation_id()) {
-    options.conversation = ConversationId{
+    options.target.conversation = ConversationId{
         mojo_options->conversation->get_conversation_id(), std::nullopt};
   } else {
-    options.conversation = DefaultConversation();
+    options.target.conversation = DefaultConversation();
   }
 
   options.feature_mode = mojo_options->feature_mode;
@@ -190,6 +190,7 @@ void GlicInternalsPageHandler::TriggerInvokeFromInternalsAction(
   options.error_message = std::move(mojo_options->error_message);
   options.timeout = mojo_options->timeout;
   options.fre_override = mojo_options->fre_override;
+  options.wait_for_panel_open = mojo_options->wait_for_panel_open;
 
   switch (mojo_options->allowed_inflight_navigation) {
     case mojom::AllowedInflightNavigation::kSameDomain:
@@ -243,13 +244,13 @@ void GlicInternalsPageHandler::TriggerInvokeFromInternalsAction(
       },
       std::move(split_callback.second));
 
+  options.target.surface = tab;
   if (mojo_options->auto_submit) {
     service->InvokeWithAutoSubmit(
-        InvokeWithAutoSubmitPasskeyProvider::GetPassKey(), tab,
-        std::move(options));
+        InvokeWithAutoSubmitPasskeyProvider::GetPassKey(), std::move(options));
   } else {
     static_cast<GlicInstanceCoordinatorImpl&>(service->instance_coordinator())
-        .Invoke(tab, std::move(options));
+        .Invoke(std::move(options));
   }
 }
 

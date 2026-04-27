@@ -17,6 +17,7 @@
 #include "content/browser/preloading/prefetch/pre_prefetch_container.h"
 #include "content/browser/preloading/prefetch/pre_prefetch_handle_impl.h"
 #include "content/browser/preloading/prefetch/prefetch_request.h"
+#include "content/browser/preloading/prefetch/prefetch_resource_request_utils.h"
 #include "content/browser/preloading/prefetch/prefetch_type.h"
 #include "content/browser/preloading/prefetch/prefetch_url_loader_factory_utils.h"
 #include "content/public/browser/browser_context.h"
@@ -44,10 +45,12 @@ static network::SharedURLLoaderFactory* g_url_loader_factory_for_testing =
 class PrePrefetchServiceCore {
  public:
   PrePrefetchServiceCore(
-      base::WeakPtr<BrowserContext> browser_context,
-      mojo::PendingRemote<network::mojom::URLLoaderFactory> pending_factory)
-      : browser_context_weak_on_ui_thread_(browser_context),
-        factory_(std::move(pending_factory)) {
+      mojo::PendingRemote<network::mojom::URLLoaderFactory> pending_factory,
+      std::map<PrePrefetchPreCalculatedHeadersKey, PrefetchUpdateHeadersParams>
+          ui_thread_pre_calculated_headers_map)
+      : factory_(std::move(pending_factory)),
+        ui_thread_pre_calculated_headers_map_(
+            std::move(ui_thread_pre_calculated_headers_map)) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     CHECK(base::FeatureList::IsEnabled(features::kPrefetchOffTheMainThread));
   }
@@ -57,43 +60,39 @@ class PrePrefetchServiceCore {
 
   void StartPrePrefetchRequest(
       base::PassKey<PrePrefetchServiceImpl> pass_key,
-      const GURL& url,
-      const std::string& embedder_histogram_suffix,
-      bool javascript_enabled,
-      std::optional<net::HttpNoVarySearchData> no_vary_search_hint,
-      std::optional<PrefetchPriority> priority,
-      const net::HttpRequestHeaders& additional_headers,
-      std::unique_ptr<PrefetchRequestStatusListener> request_status_listener,
-      base::TimeDelta ttl,
-      bool should_append_variations_header,
-      bool should_disable_block_until_head_timeout,
-      bool should_bypass_http_cache,
+      std::unique_ptr<const PrefetchRequest> prefetch_request,
       std::unique_ptr<PrePrefetchHandle>* out_handle,
       base::ScopedClosureRunner on_done_runner) {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    CHECK(prefetch_request);
 
     TRACE_EVENT("loading", "PrePrefetchServiceCore::StartPrePrefetchRequest",
-                "url", url);
-
-    std::unique_ptr<const PrefetchRequest> prefetch_request = PrefetchRequest::
-        CreateBrowserInitiatedWithoutWebContentsOffTheMainThread(
-            browser_context_weak_on_ui_thread_, url,
-            PrefetchType(PreloadingTriggerType::kEmbedder,
-                         /*use_prefetch_proxy=*/true),
-            embedder_histogram_suffix, blink::mojom::Referrer(),
-            javascript_enabled,
-            /*referring_origin=*/std::nullopt, std::move(no_vary_search_hint),
-            priority,
-            /*attempt=*/nullptr, additional_headers,
-            std::move(request_status_listener), ttl,
-            should_append_variations_header,
-            should_disable_block_until_head_timeout, should_bypass_http_cache);
+                "url", prefetch_request->key().url());
 
     // Handle cases where `factory_` is unexpectedly disconnected, including
     // associated `NetworkContext` crash/restart.
     if (!factory_.is_connected()) {
       // TODO(crbug.com/452389538): Handle this by getting a new factory to the
       // UI thread.
+      *out_handle = nullptr;
+      return;
+    }
+
+    const PrefetchUpdateHeadersParams* ui_thread_pre_calculated_headers =
+        nullptr;
+    PrePrefetchPreCalculatedHeadersKey key;
+    key.origin = url::Origin::Create(prefetch_request->key().url());
+    key.javascript_enabled = prefetch_request->is_javascript_enabled();
+    key.should_append_variations_header =
+        prefetch_request->should_append_variations_header();
+    if (auto it = ui_thread_pre_calculated_headers_map_.find(key);
+        it != ui_thread_pre_calculated_headers_map_.end()) {
+      ui_thread_pre_calculated_headers = &it->second;
+    } else {
+      // If we can't find the proper pre-calculated headers with the current
+      // request, just make this request fail right now.
+      // TODO(crbug.com/452389538): `postTask` to the UI thread to calculate and
+      // cache the header for this request.
       *out_handle = nullptr;
       return;
     }
@@ -107,7 +106,8 @@ class PrePrefetchServiceCore {
     factory_->Clone(new_factory.InitWithNewPipeAndPassReceiver());
 
     auto pre_prefetch_container = PrePrefetchContainer::CreateAndStart(
-        pass_key, std::move(prefetch_request), std::move(new_factory));
+        pass_key, std::move(prefetch_request), std::move(new_factory),
+        *ui_thread_pre_calculated_headers);
 
     // ----------------------------------------------------------------------
     // Epilogue
@@ -123,23 +123,36 @@ class PrePrefetchServiceCore {
  private:
   SEQUENCE_CHECKER(sequence_checker_);
 
-  // This is UI-thread bound, and must not be dereferenced during this
-  // `PrePrefetchServiceCore` sequence.
-  base::WeakPtr<BrowserContext> browser_context_weak_on_ui_thread_;
-
   mojo::Remote<network::mojom::URLLoaderFactory> factory_;
+
+  // Pre-calculated UI-thread headers per
+  // `PrePrefetchPreCalculatedHeadersKey`,
+  // which is utilized for saving a thread hop to the UI thread if the upcoming
+  // PrePrefetch hits this.
+  // TODO(crbug.com/452389538): Consider how to refresh these.
+  std::map<PrePrefetchPreCalculatedHeadersKey, PrefetchUpdateHeadersParams>
+      ui_thread_pre_calculated_headers_map_;
 };
 
 // static
 std::unique_ptr<PrePrefetchService> PrePrefetchService::Create(
-    BrowserContext* browser_context) {
+    BrowserContext* browser_context,
+    std::optional<url::Origin> initial_origin_hint,
+    bool initial_javascript_enabled_hint,
+    bool initial_should_append_variations_header_hint) {
   CHECK(base::FeatureList::IsEnabled(features::kPrefetchOffTheMainThread));
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
-  return std::make_unique<PrePrefetchServiceImpl>(browser_context);
+  return std::make_unique<PrePrefetchServiceImpl>(
+      browser_context, initial_origin_hint, initial_javascript_enabled_hint,
+      initial_should_append_variations_header_hint);
 }
 
 PrePrefetchServiceImpl::PrePrefetchServiceImpl(
-    BrowserContext* browser_context) {
+    BrowserContext* browser_context,
+    std::optional<url::Origin> initial_origin_hint,
+    bool initial_javascript_enabled_hint,
+    bool initial_should_append_variations_header_hint)
+    : browser_context_weak_on_ui_thread_(browser_context->GetWeakPtr()) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   TRACE_EVENT("loading", "PrePrefetchServiceImpl::PrePrefetchServiceImpl");
 
@@ -167,17 +180,73 @@ PrePrefetchServiceImpl::PrePrefetchServiceImpl(
         /*content_client_params=*/std::nullopt);
   }
 
-  // TODO(crbug.com/452389538): If we have UI-thread dependent variables that
-  // will be needed when PrePrefetch, we should have a mechanism here to
-  // interact with those. Also, If we need to handle some specific procedure
-  // that is tied to the embedder upon PrePrefetch, that should be considered
-  // here as well.
+  // Pre-calculate headers based on the hints. If we can utilize this upon
+  // PrePrefetch happening on the UI thread, we can save a thread hop to the UI
+  // thread.
+  std::map<PrePrefetchPreCalculatedHeadersKey, PrefetchUpdateHeadersParams>
+      ui_thread_pre_calculated_headers_map;
+  if (initial_origin_hint.has_value()) {
+    PrePrefetchPreCalculatedHeadersKey key;
+    key.origin = initial_origin_hint.value();
+    key.javascript_enabled = initial_javascript_enabled_hint;
+    key.should_append_variations_header =
+        initial_should_append_variations_header_hint;
+    ui_thread_pre_calculated_headers_map[key] =
+        PreCalculatePrePrefetchHeadersOnUI(browser_context, key);
+  }
 
   core_task_runner_ = base::ThreadPool::CreateSequencedTaskRunner(
       {base::MayBlock(), base::TaskPriority::USER_BLOCKING});
   core_ = base::SequenceBound<PrePrefetchServiceCore>(
-      core_task_runner_, browser_context->GetWeakPtr(),
-      std::move(pending_factory));
+      core_task_runner_, std::move(pending_factory),
+      std::move(ui_thread_pre_calculated_headers_map));
+}
+
+PrefetchUpdateHeadersParams
+PrePrefetchServiceImpl::PreCalculatePrePrefetchHeadersOnUI(
+    BrowserContext* browser_context,
+    const PrePrefetchPreCalculatedHeadersKey& key) const {
+  // Create a tentative `PrefetchRequest` to pre-calculate headers based on
+  // `PrePrefetchPreCalculatedHeadersKey`.
+  // TODO(crbug.com/470242977): Creating a full `PrefetchRequest` just to
+  // calculate the header is redundant and ambiguous since some members are not
+  // affected to the header construction. Once we sort out the general
+  // `PrefetchRequest` subset that are required for header construction, we can
+  // create and pass it to the utility function instead.
+  std::unique_ptr<const PrefetchRequest> tentative_prefetch_request =
+      PrefetchRequest::CreateBrowserInitiatedWithoutWebContents(
+          browser_context, key.origin.GetURL(),
+          PrefetchType(PreloadingTriggerType::kEmbedder,
+                       /*use_prefetch_proxy=*/true),
+          /*embedder_histogram_suffix=*/"Tentative", blink::mojom::Referrer(),
+          key.javascript_enabled,
+          /*referring_origin=*/std::nullopt,
+          /*no_vary_search_hint=*/std::nullopt,
+          /*priority=*/std::nullopt,
+          /*preload_pipeline_info=*/
+          PreloadPipelineInfo::Create(
+              /*planned_max_preloading_type=*/PreloadingType::kPrefetch),
+          /*attempt=*/nullptr, /*additional_headers=*/{},
+          /*request_status_listener=*/nullptr,
+          /*ttl=*/PrefetchContainerDefaultTtlInPrefetchService(),
+          /*should_append_variations_header=*/
+          key.should_append_variations_header,
+          /*should_disable_block_until_head_timeout=*/false);
+
+  // We can safely assume `is_first_party_context_for_variations_header` to be
+  // true here because currently PrePrefetches always have no initiator origin.
+  // See `variations::IsFirstPartyContext()` for the details.
+  // Note: if `should_append_variations_header` is false, variations header
+  // will not be created anyway, so this value won't matter.
+  // TODO(crbug.com/470242977): Revisit once we set `request_initiator`.
+  const bool is_first_party_context_for_variations_header = true;
+
+  return PrepareInitialHeadersForPrefetchPhase2(
+      key.origin.GetURL(), *tentative_prefetch_request,
+      is_first_party_context_for_variations_header);
+
+  // If we will have additional UI thread dependent headers other than
+  // prefetch standard ones above, that should also be considered here.
 }
 
 PrePrefetchServiceImpl::~PrePrefetchServiceImpl() {
@@ -201,6 +270,34 @@ PrePrefetchServiceImpl::StartPrePrefetchRequest(
   TRACE_EVENT("loading", "PrePrefetchServiceImpl::StartPrePrefetchRequest",
               "url", url);
 
+  std::unique_ptr<const PrefetchRequest> prefetch_request =
+      PrefetchRequest::CreateBrowserInitiatedWithoutWebContentsOffTheMainThread(
+          browser_context_weak_on_ui_thread_, url,
+          PrefetchType(PreloadingTriggerType::kEmbedder,
+                       /*use_prefetch_proxy=*/true),
+          embedder_histogram_suffix, blink::mojom::Referrer(),
+          javascript_enabled,
+          /*referring_origin=*/std::nullopt, std::move(no_vary_search_hint),
+          priority,
+          /*attempt=*/nullptr, additional_headers,
+          std::move(request_status_listener), ttl,
+          should_append_variations_header,
+          should_disable_block_until_head_timeout, should_bypass_http_cache);
+
+  return StartPrePrefetchRequestInternal(std::move(prefetch_request));
+}
+
+std::unique_ptr<PrePrefetchHandle>
+PrePrefetchServiceImpl::StartPrePrefetchRequestForTesting(  // IN-TEST
+    std::unique_ptr<const PrefetchRequest> prefetch_request) {
+  return StartPrePrefetchRequestInternal(std::move(prefetch_request));
+}
+
+std::unique_ptr<PrePrefetchHandle>
+PrePrefetchServiceImpl::StartPrePrefetchRequestInternal(
+    std::unique_ptr<const PrefetchRequest> prefetch_request) {
+  DCHECK(!BrowserThread::CurrentlyOn(content::BrowserThread::UI));
+  CHECK(prefetch_request);
   std::unique_ptr<PrePrefetchHandle> handle;
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::MANUAL,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
@@ -209,13 +306,9 @@ PrePrefetchServiceImpl::StartPrePrefetchRequest(
       base::BindOnce(&base::WaitableEvent::Signal, base::Unretained(&event)));
 
   core_.AsyncCall(&PrePrefetchServiceCore::StartPrePrefetchRequest)
-      .WithArgs(base::PassKey<PrePrefetchServiceImpl>(), url,
-                embedder_histogram_suffix, javascript_enabled,
-                std::move(no_vary_search_hint), priority, additional_headers,
-                std::move(request_status_listener), ttl,
-                should_append_variations_header,
-                should_disable_block_until_head_timeout,
-                should_bypass_http_cache, &handle, std::move(on_done_runner));
+      .WithArgs(base::PassKey<PrePrefetchServiceImpl>(),
+                std::move(prefetch_request), &handle,
+                std::move(on_done_runner));
 
   event.Wait();
   return handle;

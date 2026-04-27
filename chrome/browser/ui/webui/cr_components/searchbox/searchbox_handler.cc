@@ -349,6 +349,7 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
       {"addContext", IDS_NTP_COMPOSE_ADD_CONTEXTS},
       {"addContextTitle", IDS_NTP_COMPOSE_ADD_CONTEXT_TITLE},
       {"addImage", IDS_NTP_COMPOSE_ADD_IMAGE},
+      {"addDriveFile", IDS_NTP_COMPOSE_ADD_DRIVE},
       {"addTab", IDS_NTP_COMPOSEBOX_TAB_PICKER_ADD_TABS_TITLE},
       {"dismissButton", IDS_NTP_DISMISS},
       {"lensSearchLabel", IDS_WEBUI_OMNIBOX_COMPOSE_LENS_OVERLAY},
@@ -857,14 +858,19 @@ SearchboxHandler::CreateAutocompleteMatch(
 
 SearchboxHandler::SearchboxHandler(
     mojo::PendingReceiver<searchbox::mojom::PageHandler> pending_page_handler,
+    mojo::PendingRemote<searchbox::mojom::Page> pending_page,
     Profile* profile,
     content::WebContents* web_contents,
     std::unique_ptr<OmniboxController> controller)
     : profile_(profile),
       web_contents_(web_contents),
       owned_controller_(std::move(controller)),
-      page_handler_(this, std::move(pending_page_handler)) {
+      page_handler_(this, std::move(pending_page_handler)),
+      page_(std::move(pending_page)) {
   controller_ = owned_controller_.get();
+  if (page_is_bound_callback_for_testing_) {
+    std::move(page_is_bound_callback_for_testing_).Run();
+  }
 }
 
 SearchboxHandler::~SearchboxHandler() {
@@ -872,6 +878,9 @@ SearchboxHandler::~SearchboxHandler() {
   controller_ = nullptr;
 }
 
+// TODO(crbug.com/500739761): Remove this check since searchbox.mojom uses
+// factory pattern for instantiation making the remote and receiver bound
+// at the same time.
 bool SearchboxHandler::IsRemoteBound() const {
   return page_.is_bound();
 }
@@ -890,14 +899,6 @@ void SearchboxHandler::OnContextualInputStatusChanged(
     std::optional<contextual_search::ContextUploadErrorType> error_type) {
   if (page_ && IsRemoteBound()) {
     page_->OnContextualInputStatusChanged(token, status, error_type);
-  }
-}
-
-void SearchboxHandler::SetPage(
-    mojo::PendingRemote<searchbox::mojom::Page> pending_page) {
-  page_.Bind(std::move(pending_page));
-  if (page_is_bound_callback_for_testing_) {
-    std::move(page_is_bound_callback_for_testing_).Run();
   }
 }
 
@@ -1264,6 +1265,13 @@ omnibox::InputState SearchboxHandler::GetInputState() const {
   return omnibox::InputState();
 }
 
+void SearchboxHandler::ShouldShowDriveDisclaimer(
+    ShouldShowDriveDisclaimerCallback callback) {
+  std::move(callback).Run(false);
+}
+
+void SearchboxHandler::OnDriveDisclaimerAccepted() {}
+
 OmniboxController* SearchboxHandler::omnibox_controller() const {
   return controller_;
 }
@@ -1283,4 +1291,13 @@ void SearchboxHandler::set_page_is_bound_callback_for_testing(
 
 OmniboxEditModel* SearchboxHandler::edit_model() const {
   return omnibox_controller()->edit_model();
+}
+
+void SearchboxHandler::GetPageClassification(
+    GetPageClassificationCallback callback) {
+  metrics::OmniboxEventProto::PageClassification classification_enum =
+      omnibox_controller()->client()->GetPageClassification(
+          /*is_prefetch=*/false);
+  std::move(callback).Run(::metrics::OmniboxEventProto::PageClassification_Name(
+      classification_enum));
 }

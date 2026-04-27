@@ -43,6 +43,7 @@
 #include "chrome/browser/app_mode/app_mode_utils.h"
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/browsing_data/browsing_data_important_sites_util.h"
 #include "chrome/browser/desktop_to_mobile_promos/promos_utils.h"
 #include "chrome/browser/devtools/devtools_ui_controller.h"
 #include "chrome/browser/devtools/devtools_window.h"
@@ -210,6 +211,8 @@
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_top_container.h"
 #include "chrome/browser/ui/views/theme_copying_widget.h"
+#include "chrome/browser/ui/views/toolbar/app_menu_control.h"
+#include "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h"
 #include "chrome/browser/ui/views/toolbar/browser_app_menu_button.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions_container.h"
@@ -352,6 +355,7 @@
 #include "ash/wm/window_properties.h"
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view_chromeos.h"
+#include "chrome/browser/ui/views/frame/immersive_mode_controller_chromeos.h"
 #include "chrome/browser/ui/views/frame/top_controls_slide_controller_chromeos.h"
 #include "chrome/grit/chrome_unscaled_resources.h"
 #include "chromeos/components/mgs/managed_guest_session_utils.h"
@@ -1555,6 +1559,12 @@ void BrowserView::OnVerticalTabStripModeChanged(
 
   GetFrameView()->OnTabStripStateChanged();
 
+  auto* const immersive_mode_controller =
+      ImmersiveModeController::From(browser());
+  if (immersive_mode_controller) {
+    immersive_mode_controller->OnTabStripLayoutChanged();
+  }
+
   UpdateTabSearchBubbleHost();
   InvalidateLayout();
 }
@@ -1703,7 +1713,8 @@ void BrowserView::SetZOrderLevel(ui::ZOrderLevel level) {
 
 gfx::NativeWindow BrowserView::GetNativeWindow() const {
   // While the browser destruction is going on, the widget can already be gone,
-  // but utility functions like FindBrowserWithWindow will still call this.
+  // but utility functions like BrowserCollection::FindBrowserWithWindow will
+  // still call this.
   return GetWidget() ? GetWidget()->GetNativeWindow() : gfx::NativeWindow();
 }
 
@@ -2140,9 +2151,8 @@ void BrowserView::OnTabDetached(content::WebContents* contents,
 }
 
 void BrowserView::ZoomChangedForActiveTab(bool can_show_bubble) {
-  const AppMenuButton* app_menu_button =
-      toolbar_button_provider()->GetAppMenuButton();
-  bool app_menu_showing = app_menu_button && app_menu_button->IsMenuShowing();
+  auto* app_menu_control = toolbar_button_provider()->GetAppMenuControl();
+  bool app_menu_showing = app_menu_control && app_menu_control->IsMenuShowing();
   toolbar_button_provider()->ZoomChangedForActiveTab(can_show_bubble &&
                                                      !app_menu_showing);
 }
@@ -2297,10 +2307,6 @@ void BrowserView::FullscreenStateChanged() {
 #endif  // BUILDFLAG(IS_MAC)
 
   browser_->WindowFullscreenStateChanged();
-
-  exclusive_access_context_->GetExclusiveAccessManager()
-      ->fullscreen_controller()
-      ->FullscreenTransitionCompleted();
 
   if (base::FeatureList::IsEnabled(features::kAsyncFullscreenWindowState)) {
     ToolbarSizeChanged(false);
@@ -2866,19 +2872,27 @@ bool BrowserView::ActivateFirstInactiveBubbleForAccessibility() {
   // anchored in the views hierarchy.
   if (toolbar_) {
     views::DialogDelegate* bubble = nullptr;
-    for (auto* view : std::initializer_list<views::View*>{
-             toolbar_->app_menu_button(), GetLocationBarView(),
-             toolbar_button_provider_->GetAvatarToolbarButton(),
-             toolbar_button_provider_->GetDownloadButton(), top_container_}) {
-      if (view) {
-        if (auto* dialog = view->GetProperty(views::kAnchoredDialogKey);
-            dialog && !user_education::HelpBubbleView::IsHelpBubble(dialog)) {
-          bubble = dialog;
-          break;
-        }
+    if (auto* control = toolbar_button_provider_->GetAppMenuControl()) {
+      auto* dialog = control->GetDialogDelegate();
+      if (dialog && !user_education::HelpBubbleView::IsHelpBubble(dialog)) {
+        bubble = dialog;
       }
     }
 
+    if (!bubble) {
+      for (auto* view : std::initializer_list<views::View*>{
+               GetLocationBarView(),
+               toolbar_button_provider_->GetAvatarToolbarButton(),
+               toolbar_button_provider_->GetDownloadButton(), top_container_}) {
+        if (view) {
+          if (auto* dialog = view->GetProperty(views::kAnchoredDialogKey);
+              dialog && !user_education::HelpBubbleView::IsHelpBubble(dialog)) {
+            bubble = dialog;
+            break;
+          }
+        }
+      }
+    }
     if (bubble) {
       CHECK(!user_education::HelpBubbleView::IsHelpBubble(bubble));
       View* focusable = bubble->GetInitiallyFocusedView();
@@ -3355,7 +3369,8 @@ void BrowserView::UserChangedTheme(BrowserThemeChangeType theme_change_type) {
 }
 
 void BrowserView::ShowAppMenu() {
-  if (!toolbar_button_provider_->GetAppMenuButton()) {
+  auto* control = toolbar_button_provider_->GetAppMenuControl();
+  if (!control) {
     return;
   }
 
@@ -3364,9 +3379,7 @@ void BrowserView::ShowAppMenu() {
       ImmersiveModeController::From(browser())->GetRevealedLock(
           ImmersiveModeController::ANIMATE_REVEAL_NO);
 
-  toolbar_button_provider_->GetAppMenuButton()
-      ->menu_button_controller()
-      ->Activate(nullptr);
+  control->ShowMenu();
 }
 
 content::KeyboardEventProcessingResult BrowserView::PreHandleKeyboardEvent(
@@ -4678,7 +4691,13 @@ void BrowserView::GetAccessiblePanes(std::vector<views::View*>* panes) {
              toolbar_->location_bar()
                  ->GetChipController()
                  ->IsPermissionPromptChipVisible()) {
-    panes->push_back(toolbar_->location_bar()->GetChipController()->chip());
+    // TODO(crbug.com/495419742): For WebUI, chip_view() will return nullptr
+    // and individual chips won't be added here. Instead, the WebUI container
+    // itself will act as the pane, and DOM focus management will handle
+    // traversing the internal chips.
+    if (views::View* view = GetLocationBarView()->chip_view()) {
+      panes->push_back(view);
+    }
   }
 
   panes->push_back(toolbar_button_provider_->GetAsAccessiblePaneView());
@@ -5239,13 +5258,12 @@ void BrowserView::AddedToWidget() {
   // view, so it needs to be made aware of any changes.
   if (toolbar_ && toolbar_->location_bar() &&
       toolbar_->location_bar()->GetChipController()) {
-    chip_visibility_subscription_ =
-        toolbar_->location_bar()
-            ->GetChipController()
-            ->chip()
-            ->AddVisibleChangedCallback(base::BindRepeating(
-                &BrowserView::UpdateAccessibleNameForAllTabs,
-                weak_ptr_factory_.GetWeakPtr()));
+    if (PermissionChipInterface* chip =
+            toolbar_->location_bar()->GetChipController()->chip()) {
+      chip_visibility_subscription_ = chip->AddVisibilityCallback(
+          base::BindRepeating(&BrowserView::UpdateAccessibleNameForAllTabs,
+                              weak_ptr_factory_.GetWeakPtr()));
+    }
   }
 
   if (auto* const vertical_tab_strip_state_controller =
@@ -5360,6 +5378,14 @@ bool BrowserView::AcceleratorPressed(const ui::Accelerator& accelerator) {
   }
 
   UpdateAcceleratorMetrics(accelerator, command_id);
+
+  if (command_id == IDC_CLEAR_BROWSING_DATA) {
+    views::ElementTrackerViews::GetInstance()->NotifyCustomEvent(
+        browsing_data_important_sites_util::
+            kOpenClearBrowsingDataDialogViaAcceleratorEventId,
+        this);
+  }
+
   return chrome::ExecuteCommand(browser_.get(), command_id,
                                 accelerator.time_stamp());
 }
@@ -6016,7 +6042,8 @@ void BrowserView::ShowIncognitoClearBrowsingDataDialog() {
       ->GetFeatures()
       .incognito_clear_browsing_data_dialog_coordinator()
       ->Show(IncognitoClearBrowsingDataDialogInterface::Type::kDefaultBubble,
-             toolbar_button_provider_->GetAvatarToolbarButton());
+             toolbar_button_provider_->GetAvatarToolbarButtonInterface()
+                 ->GetBubbleAnchor(*browser()));
 }
 
 void BrowserView::ShowIncognitoHistoryDisclaimerDialog() {
@@ -6026,7 +6053,8 @@ void BrowserView::ShowIncognitoHistoryDisclaimerDialog() {
       .incognito_clear_browsing_data_dialog_coordinator()
       ->Show(IncognitoClearBrowsingDataDialogInterface::Type::
                  kHistoryDisclaimerBubble,
-             toolbar_button_provider_->GetAvatarToolbarButton());
+             toolbar_button_provider_->GetAvatarToolbarButtonInterface()
+                 ->GetBubbleAnchor(*browser()));
 }
 
 bool BrowserView::IsTabModalPopupDeprecated() const {
@@ -6125,10 +6153,8 @@ void BrowserView::OnImmersiveFullscreenEntered() {
     vertical_tabs_enable_state_lock_ = controller->GetEnableStateLock();
   }
 
-  AppMenuButton* app_menu_button =
-      toolbar_button_provider()->GetAppMenuButton();
-  if (app_menu_button) {
-    app_menu_button->CloseMenu();
+  if (auto* control = toolbar_button_provider()->GetAppMenuControl()) {
+    control->CloseMenu();
   }
 
   ReparentTopContainerForStartOfImmersive();

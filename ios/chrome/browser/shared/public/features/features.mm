@@ -10,14 +10,17 @@
 
 #import "base/metrics/field_trial_params.h"
 #import "base/strings/string_split.h"
+#import "base/strings/string_util.h"
 #import "components/country_codes/country_codes.h"
 #import "components/segmentation_platform/public/features.h"
 #import "components/sync/base/features.h"
 #import "components/sync_preferences/features.h"
+#import "components/variations/service/variations_service.h"
 #import "components/version_info/channel.h"
 #import "crypto/features.h"
 #import "ios/chrome/app/background_mode_buildflags.h"
 #import "ios/chrome/browser/ntp/shared/metrics/feed_metrics_constants.h"
+#import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/common/channel_info.h"
 #import "ui/base/device_form_factor.h"
 
@@ -810,7 +813,7 @@ const char kEnableFuseboxKeyboardAccessoryBoth[] =
     "kEnableFuseboxKeyboardAccessoryBoth";
 
 bool ShouldShowKeyboardAccessory() {
-  if (!base::FeatureList::IsEnabled(kComposeboxIOS)) {
+  if (!IsComposeboxIOSEnabled()) {
     // Keyboard accessory is enabled by default.
     if (!base::FeatureList::IsEnabled(kDisableKeyboardAccessory)) {
       return true;
@@ -826,7 +829,7 @@ bool ShouldShowKeyboardAccessory() {
 }
 
 bool ShouldShowKeyboardAccessorySymbols() {
-  if (base::FeatureList::IsEnabled(kComposeboxIOS)) {
+  if (IsComposeboxIOSEnabled()) {
     if (base::FeatureList::IsEnabled(kEnableFuseboxKeyboardAccessory)) {
       std::string feature_param = base::GetFieldTrialParamValueByFeature(
           kEnableFuseboxKeyboardAccessory,
@@ -845,7 +848,7 @@ bool ShouldShowKeyboardAccessorySymbols() {
 }
 
 bool ShouldShowKeyboardAccessoryFeatures() {
-  if (base::FeatureList::IsEnabled(kComposeboxIOS)) {
+  if (IsComposeboxIOSEnabled()) {
     if (base::FeatureList::IsEnabled(kEnableFuseboxKeyboardAccessory)) {
       std::string feature_param = base::GetFieldTrialParamValueByFeature(
           kEnableFuseboxKeyboardAccessory,
@@ -869,7 +872,7 @@ bool IsLocationBarBadgeMigrationEnabled() {
   return base::FeatureList::IsEnabled(kLocationBarBadgeMigration);
 }
 
-BASE_FEATURE(kComposeboxIOS, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kComposeboxIOS, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsComposeboxIOSEnabled() {
   if (!base::FeatureList::IsEnabled(kComposeboxIOS)) {
@@ -880,6 +883,9 @@ bool IsComposeboxIOSEnabled() {
   }
   return true;
 }
+
+BASE_FEATURE(kContextMenuPreviewDownsampleImage,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTabGroupColorOnSurface, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -961,14 +967,50 @@ bool IsComposeboxIpadEnabled() {
 
 BASE_FEATURE(kChromeNextIa, base::FEATURE_DISABLED_BY_DEFAULT);
 
+constexpr base::FeatureParam<bool> kChromeNextIaLensIconVisible{
+    &kChromeNextIa, "chrome_next_ia_lens_icon_visible", false};
+
+constexpr base::FeatureParam<bool> kChromeNextIaShareIconVisible{
+    &kChromeNextIa, "chrome_next_ia_share_icon_visible", false};
+
 bool IsChromeNextIaEnabled() {
+  if (!IsComposeboxIOSEnabled()) {
+    return false;
+  }
   return base::FeatureList::IsEnabled(kChromeNextIa);
 }
 
-BASE_FEATURE(kComposeboxAIMDisabled, base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsChromeNextIaLensIconVisible() {
+  return IsChromeNextIaEnabled() && kChromeNextIaLensIconVisible.Get();
+}
+
+bool IsChromeNextIaShareIconVisible() {
+  return IsChromeNextIaEnabled() && kChromeNextIaShareIconVisible.Get();
+}
+
+BASE_FEATURE(kComposeboxAIMDisabled, base::FEATURE_ENABLED_BY_DEFAULT);
+
+bool IsAIOmniboxLaunchedCountry() {
+  variations::VariationsService* variations_service =
+      GetApplicationContext()->GetVariationsService();
+  bool is_launched_country =
+      variations_service &&
+      base::ToLowerASCII(variations_service->GetStoredPermanentCountry()) ==
+          "us";
+  return is_launched_country;
+}
 
 bool IsComposeboxAIMDisabled() {
-  return base::FeatureList::IsEnabled(kComposeboxAIMDisabled);
+  auto* feature_list = base::FeatureList::GetInstance();
+  if (feature_list &&
+      feature_list->IsFeatureOverridden(kComposeboxAIMDisabled.name)) {
+    // Important: If a server-side config applies to this client (i.e. after
+    // accounting for its filters), but the client gets assigned to the default
+    // group, they will still take this code path and receive the state
+    // specified via BASE_FEATURE() above.
+    return base::FeatureList::IsEnabled(kComposeboxAIMDisabled);
+  }
+  return !IsAIOmniboxLaunchedCountry();
 }
 
 NSString* const kNewStartupFlowKey = @"IsEnableNewStartupFlowEnabled";
@@ -1024,7 +1066,7 @@ bool IsUseSceneViewControllerEnabled() {
   return base::FeatureList::IsEnabled(kUseSceneViewController);
 }
 
-BASE_FEATURE(kDisableComposeboxFromAIMNTP, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDisableComposeboxFromAIMNTP, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsDisableComposeboxFromAIMNTPEnabled() {
   return base::FeatureList::IsEnabled(kDisableComposeboxFromAIMNTP);
@@ -1035,6 +1077,14 @@ BASE_FEATURE(kAIMCobrowseDebugEntrypoint, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsAIMCobrowseDebugEntrypointEnabled() {
   return base::FeatureList::IsEnabled(kAIMCobrowseDebugEntrypoint);
 }
+
+const char kAIMCobrowseHeaderParam[] = "kNTPMIAEntrypointParam";
+const char kAIMCobrowseHeaderParamOptionA[] = "kAIMCobrowseHeaderParamOptionA";
+const char kAIMCobrowseHeaderParamOptionB[] = "kAIMCobrowseHeaderParamOptionB";
+const char kAIMCobrowseHeaderParamOptionC[] = "kAIMCobrowseHeaderParamOptionC";
+
+// Feature flag to change the cobrowse header design.
+BASE_FEATURE(kAIMCobrowseHeader, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kRecordRecentActiveDays, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1142,4 +1192,22 @@ BASE_FEATURE(kSyncedGroupColor, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsSyncedGroupColorEnabled() {
   return base::FeatureList::IsEnabled(kSyncedGroupColor);
+}
+
+// Enables the plus button in NTP fakebox.
+BASE_FEATURE(kPlusButtonInFakebox, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Returns true if the plus button in NTP fakebox is enabled.
+bool IsPlusButtonInFakeboxEnabled() {
+  if (IsComposeboxAIMDisabled() || !IsComposeboxIOSEnabled()) {
+    return false;
+  }
+
+  return base::FeatureList::IsEnabled(kPlusButtonInFakebox);
+}
+
+BASE_FEATURE(kCobrowseAimHistory, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsCobrowseAimHistoryEnabled() {
+  return base::FeatureList::IsEnabled(kCobrowseAimHistory);
 }

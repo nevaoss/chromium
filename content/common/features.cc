@@ -170,6 +170,21 @@ BASE_FEATURE(kCriticalClientHint, base::FEATURE_ENABLED_BY_DEFAULT);
 // Sessions.
 BASE_FEATURE(kDeviceBoundSessionsDevTools, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// This feature enables the fix for double releases of
+// WorkerOrWorkletDevToolsAgentHost to prevent UAF.
+BASE_FEATURE(kWorkerOrWorkletAgentDoubleReleaseFix,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// This feature gates the entry to ServiceWorkerDevToolsAgentHost to ensure
+// it is only accessible when DevTools is actually attached.
+BASE_FEATURE(kServiceWorkerDevToolsWorkerReadyCheck,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// This feature gates the entry to SharedWorkerDevToolsAgentHost to ensure
+// it is only accessible when DevTools is actually attached.
+BASE_FEATURE(kSharedWorkerDevToolsWorkerReadyCheck,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 #if BUILDFLAG(IS_ANDROID)
 // Disables the auto_resize_output_surface feature in the Viz process.
 // This prevents visual artifacts (blue gutters) during window resizing on
@@ -352,11 +367,6 @@ bool IsFontDataServiceEnabled() {
 }
 #endif
 
-// Enables fixes for matching src: local() for web fonts correctly against full
-// font name or postscript name. Rolling out behind a flag, as enabling this
-// enables a font indexer on Android which we need to test in the field first.
-BASE_FEATURE(kFontSrcLocalMatching, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Whether to use the Frame Routing Cache to avoid synchronous IPCs from the
 // renderer side for iframe creation.
 BASE_FEATURE(kFrameRoutingCache, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -533,11 +543,6 @@ BASE_FEATURE_PARAM(size_t,
                    "count",
                    1u);
 
-// When enabled, NavigationThrottleRegistry will cache attribute query results
-// for the next same query. See https://crbug.com/424460302.
-BASE_FEATURE(kNavigationThrottleRegistryAttributeCache,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // When enabled, NavigationThrottleRunner2 is used instead of the original
 // NavigationThrottleRunner. See https://crbug.com/422003056.
 BASE_FEATURE(kNavigationThrottleRunner2, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -691,11 +696,20 @@ BASE_FEATURE(kServiceWorkerSrcdocSupport, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kServiceWorkerStaticRouterRaceRequestFix2,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Enforce CORP check for Service Worker Static Router's cache source.
+BASE_FEATURE(kServiceWorkerStaticRouterCORPCheck,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // crbug.com/495999481: When this is enabled, the navigation request should be
 // blocked when it receives an opaque response from the service worker static
 // router.
 BASE_FEATURE(kServiceWorkerStaticRouterOpaqueCheck,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// (crbug.com/497302265): When enabled, the main script response fetching is
+// consolidated into ServiceWorkerVersion.
+BASE_FEATURE(kServiceWorkerStaticRouterConsolidateMainScriptResponse,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // (crbug.com/1371756): When enabled, the static routing API starts
 // ServiceWorker when the routing result of a main resource request was network
@@ -716,8 +730,18 @@ BASE_FEATURE(kServiceWorkerSuppressTimeoutWhenPaymentWindowOpen,
 BASE_FEATURE(kServiceWorkerClientUrlIsCreationUrl,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Kill switch for crbug.com/499449324.
+BASE_FEATURE(kServiceWorkerOptionalTimeoutIterator,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kServiceWorkerWindowClientInitiator,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// If enabled, the browser process verifies that the URL of a main script
+// request matches the service worker's script URL.
+// See https://crbug.com/497983180.
+BASE_FEATURE(kServiceWorkerVerifyMainScriptUrl,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // (crbug.com/486495094): When enabled, triggers a soft update check after
 // functional events complete (spec step 8) and on worker start failure

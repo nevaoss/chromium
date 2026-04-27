@@ -191,7 +191,8 @@ class MODULES_EXPORT AXObjectCacheImpl : public AXObjectCacheBase {
     IncrementGenerationalCacheId();
 
     CHECK(FocusedObject());
-    DUMP_WILL_BE_CHECK(!IsDirty());
+    // TODO(crbug.com/500793607): Investigate and convert to CHECK.
+    DCHECK(!IsDirty());
   }
   void Thaw() override {
     CHECK_GE(frozen_count_, 1);
@@ -1206,7 +1207,6 @@ class MODULES_EXPORT AXObjectCacheImpl : public AXObjectCacheBase {
   // `processing_deferred_events_` for more details.
   void NotifyParentChildrenChanged(AXObject* parent);
 
-  void MaybeSendCanvasHasNonTrivialFallbackUKM(const AXObject* canvas);
 
   void IncrementGenerationalCacheId() { ++generational_cache_id_; }
 
@@ -1426,8 +1426,6 @@ class MODULES_EXPORT AXObjectCacheImpl : public AXObjectCacheBase {
 
   // Whether or not the load event was sent in a previous serialization.
   bool load_sent_ = false;
-
-  bool has_emitted_canvas_fallback_ukm_ = false;
 
   // Used to determine if a previously computed attribute is from the same
   // serialization update.

@@ -74,12 +74,14 @@ source_set("impl") {
     "//chrome/browser/glic/suggestions",
     "//chrome/browser/gpu",
     "//chrome/browser/login_detection",
+    "//chrome/browser/media",
     "//chrome/browser/media/prefs",
     "//chrome/browser/media/router:media_router_feature",
     "//chrome/browser/media/router/discovery/access_code:access_code_cast_feature",
     "//chrome/browser/media/webrtc",
     "//chrome/browser/memory",
     "//chrome/browser/metrics",
+    "//chrome/browser/net",
     "//chrome/browser/permissions",
     "//chrome/browser/platform_experience:prefs",
     "//chrome/browser/preloading:prefs",
@@ -89,6 +91,8 @@ source_set("impl") {
     "//chrome/browser/profiles",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/profiles:profile_util",
+    "//chrome/browser/push_messaging",
+    "//chrome/browser/push_messaging:service_impl_public",
     "//chrome/browser/search",
     "//chrome/browser/search/background",
     "//chrome/browser/serial",
@@ -397,7 +401,10 @@ source_set("impl") {
   }
 
   if (is_mac) {
-    deps += [ "//chrome/browser/web_applications" ]
+    deps += [
+      "//chrome/browser/ui/cocoa",
+      "//chrome/browser/web_applications",
+    ]
   }
 
   if (!is_android) {
@@ -406,6 +413,10 @@ source_set("impl") {
 
   if (!is_android && !is_chromeos) {
     deps += [ "//chrome/browser/ui/startup/default_browser_prompt" ]
+  }
+
+  if (is_chrome_for_testing) {
+    deps += [ "//chrome/browser/chrome_for_testing:prefs" ]
   }
 }
 

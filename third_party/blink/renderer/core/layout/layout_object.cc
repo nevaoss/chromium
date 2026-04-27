@@ -1829,11 +1829,14 @@ const LayoutBox* LayoutObject::ContainingScrollContainer(
   return nullptr;
 }
 
-LayoutObject* LayoutObject::NonAnonymousContainingBlock() const {
+LayoutObject* LayoutObject::ContainingBlockForTextOverflow() const {
   NOT_DESTROYED();
   LayoutObject* block = ContainingBlock();
   if (block && block->IsAnonymous()) {
     block = block->Parent();
+  }
+  if (block && !block->BehavesLikeBlockContainer()) {
+    return nullptr;
   }
   return block;
 }
@@ -1996,7 +1999,8 @@ PhysicalRect LayoutObject::AbsoluteBoundingBoxRectForScrollIntoView() const {
       return originating_object->AbsoluteBoundingBoxRectForScrollIntoView();
     }
     // This is a ::column::scroll-marker
-    if (const auto* scroller = originating_element.GetLayoutBoxForScrolling()) {
+    if (const auto* scroller = originating_element.GetLayoutBoxForScrolling();
+        scroller && scroller->GetScrollableArea()->ScrollableAxes()) {
       // The originating element (the multicol container) is also the scrollable
       // container.
       PhysicalRect bounds = column_pseudo->ColumnRect();
@@ -2433,7 +2437,10 @@ bool LayoutObject::MapToVisualRectInAncestorSpaceInternalFastPath(
     return false;
   }
 
-  if (ancestor == this) {
+  // Ensure that transforms are applied to the roots of frames and iframes.
+  if (ancestor == this &&
+      (!map_to_viewport || !RuntimeEnabledFeatures::
+                               FixVisualRectRemoteViewportTransformEnabled())) {
     return true;
   }
 
@@ -2767,30 +2774,6 @@ const ComputedStyle& LayoutObject::SlowEffectiveStyle(
       return FirstLineStyleRef();
   }
   NOTREACHED();
-}
-
-// Called when an object that was floating or positioned becomes a normal flow
-// object again. We have to make sure the layout tree updates as needed to
-// accommodate the new normal flow object.
-static inline void HandleDynamicFloatPositionChange(LayoutObject* object) {
-  DCHECK(!RuntimeEnabledFeatures::LayoutReinsertOnInFlowStateChangeEnabled());
-  // We have gone from not affecting the inline status of the parent flow to
-  // suddenly having an impact.  See if there is a mismatch between the parent
-  // flow's childrenInline() state and our state.
-  object->SetInline(object->StyleRef().IsDisplayInlineType());
-  if (object->IsInline() != object->Parent()->ChildrenInline()) {
-    if (!object->IsInline()) {
-      To<LayoutBoxModelObject>(object->Parent())->ChildBecameNonInline(object);
-    } else {
-      // An anonymous block must be made to wrap this inline.
-      LayoutBlock* block =
-          To<LayoutBlock>(object->Parent())->CreateAnonymousBlock();
-      LayoutObjectChildList* childlist = object->Parent()->VirtualChildren();
-      childlist->InsertChildNode(object->Parent(), block, object);
-      block->Children()->AppendChildNode(
-          block, childlist->RemoveChildNode(object->Parent(), object));
-    }
-  }
 }
 
 StyleDifference LayoutObject::AdjustStyleDifference(
@@ -3173,6 +3156,8 @@ void LayoutObject::StyleWillChange(StyleDifference diff,
                                    const ComputedStyle& new_style,
                                    StyleChangeContext& style_change_context) {
   NOT_DESTROYED();
+  DCHECK(!IsText());
+
   if (style_) {
     bool visibility_changed = style_->Visibility() != new_style.Visibility();
     // If our z-index changes value or our visibility changes,
@@ -3206,12 +3191,6 @@ void LayoutObject::StyleWillChange(StyleDifference diff,
       }
     }
 
-    if (visibility_changed || style_->IsInert() != new_style.IsInert()) {
-      if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
-        cache->StyleChanged(this, /*visibility_or_inertness_changed*/ true);
-      }
-    }
-
     // Keep layer hierarchy visibility bits up to date if visibility changes.
     if (visibility_changed) {
       // We might not have an enclosing layer yet because we might not be in the
@@ -3220,21 +3199,6 @@ void LayoutObject::StyleWillChange(StyleDifference diff,
         layer->DirtyVisibleContentStatus();
       GetDocument().GetFrame()->GetInputMethodController().DidChangeVisibility(
           *this);
-    }
-
-    style_change_context.became_normal_flow =
-        IsFloatingOrOutOfFlowPositioned() &&
-        ((!new_style.IsFloating() ||
-          new_style.IsInsideDisplayIgnoringFloatingChildren()) &&
-         !new_style.HasOutOfFlowPosition()) &&
-        Parent() &&
-        (Parent()->IsLayoutBlockFlow() || Parent()->IsLayoutInline());
-
-    // Clearing these bits is required to avoid leaving stale layoutObjects.
-    // FIXME: We shouldn't need that hack if our logic was totally correct.
-    if (diff.NeedsFullLayout()) {
-      SetFloating(false);
-      ClearPositionedState();
     }
   }
 
@@ -3252,8 +3216,7 @@ void LayoutObject::StyleWillChange(StyleDifference diff,
       style_ ? (style_->EffectiveTouchAction() == TouchAction::kAuto) : true;
   const bool is_new_touch_action_auto =
       new_style.EffectiveTouchAction() == TouchAction::kAuto;
-  if (GetNode() && !IsText() &&
-      is_old_touch_action_auto != is_new_touch_action_auto) {
+  if (GetNode() && is_old_touch_action_auto != is_new_touch_action_auto) {
     EventHandlerRegistry& registry =
         GetDocument().GetFrame()->GetEventHandlerRegistry();
     if (is_new_touch_action_auto) {
@@ -3308,7 +3271,6 @@ static void ClearAncestorScrollAnchors(LayoutObject* layout_object) {
 
 void LayoutObject::UpdateAfterReinsert(const ComputedStyle& old_style) {
   NOT_DESTROYED();
-  DCHECK(RuntimeEnabledFeatures::LayoutReinsertOnInFlowStateChangeEnabled());
 
   // Now that we are in the layout-tree, disable scroll-anchoring on our scroll
   // container as per:
@@ -3361,36 +3323,7 @@ void LayoutObject::StyleDidChange(
   // it's not affected.
   SetOutlineMayBeAffectedByDescendants(style_->HasOutline());
 
-  if (!RuntimeEnabledFeatures::LayoutReinsertOnInFlowStateChangeEnabled() &&
-      style_change_context.became_normal_flow) {
-    HandleDynamicFloatPositionChange(this);
-  }
-
   if (diff.NeedsFullLayout()) {
-    // If the in-flow state of an element is changed, disable scroll
-    // anchoring on the containing scroller.
-    //
-    // TODO(layout-dev): Move this code down to LayoutBox. Only those can become
-    // out-of-flow or spanners.
-    if (!RuntimeEnabledFeatures::LayoutReinsertOnInFlowStateChangeEnabled()) {
-      if (old_style->HasOutOfFlowPosition() != style_->HasOutOfFlowPosition()) {
-        SetScrollAnchorDisablingStyleChangedOnAncestor();
-        MarkParentForSpannerOrOutOfFlowPositionedChange();
-        if (old_style->HasOutOfFlowPosition()) {
-          if (auto* box = DynamicTo<LayoutBox>(this)) {
-            box->NotifyContainingDisplayLocksForAnchorPositioning(
-                box->DisplayLocksAffectedByAnchors(), nullptr);
-          }
-        }
-      }
-    }
-
-    if (IsBox() &&
-        To<LayoutBox>(this)->IsValidColumnSpannerInTree(*old_style) !=
-            To<LayoutBox>(this)->IsValidColumnSpannerInTree(*style_)) {
-      MarkParentForSpannerOrOutOfFlowPositionedChange();
-    }
-
     // If the object already needs layout, then setNeedsLayout won't do
     // any work. But if the containing block has changed, then we may need
     // to mark the new containing blocks for layout. The change that can
@@ -3409,6 +3342,12 @@ void LayoutObject::StyleDidChange(
       } else {
         containing_block->SetChildNeedsLayout();
       }
+    }
+  }
+
+  if (diff.ax_visibility_or_inert_changed) {
+    if (AXObjectCache* cache = GetDocument().ExistingAXObjectCache()) {
+      cache->StyleChanged(this, /*visibility_or_inertness_changed*/ true);
     }
   }
 
@@ -4008,8 +3947,6 @@ void LayoutObject::WillBeDestroyed() {
       frame->GetPage()->GetAutoscrollController().StopAutoscrollIfNeeded(this);
   }
 
-  Remove();
-
   // Remove the handler if node had touch-action set. Handlers are not added
   // for text nodes so don't try removing for one too. Need to check if
   // m_style is null in cases of partial construction. Any handler we added
@@ -4260,6 +4197,8 @@ void LayoutObject::Destroy() {
   NOT_DESTROYED();
   DCHECK(g_allow_destroying_layout_object_in_finalizer ||
          !ThreadState::Current()->IsSweepingOnOwningThread());
+
+  Remove();
 
   // Mark as being destroyed to avoid trouble with merges in |RemoveChild()| and
   // other house keepings.

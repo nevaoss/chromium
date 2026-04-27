@@ -83,23 +83,23 @@ class FlushForImageListener {
   // unnecessary.
  public:
   static FlushForImageListener* GetFlushForImageListener();
-  void AddObserver(CanvasResourceProviderSharedImage* observer) {
+  void AddObserver(FlushForImageObserver* observer) {
     observers_.AddObserver(observer);
   }
 
-  void RemoveObserver(CanvasResourceProviderSharedImage* observer) {
+  void RemoveObserver(FlushForImageObserver* observer) {
     observers_.RemoveObserver(observer);
   }
 
   void NotifyFlushForImage(cc::PaintImage::ContentId content_id) {
-    for (CanvasResourceProviderSharedImage& obs : observers_) {
+    for (FlushForImageObserver& obs : observers_) {
       obs.OnFlushForImage(content_id);
     }
   }
 
  private:
   friend class ThreadSpecific<FlushForImageListener>;
-  base::ObserverList<CanvasResourceProviderSharedImage> observers_;
+  base::ReentrantObserverList<FlushForImageObserver> observers_;
 };
 
 static FlushForImageListener* GetFlushForImageListener() {
@@ -308,13 +308,6 @@ CanvasResourceProviderSharedImage::CanvasResourceProviderSharedImage(
   if (raster_context_provider_) {
     raster_context_provider_->AddObserver(this);
   }
-
-  resource_ = NewOrRecycledResource();
-  GetFlushForImageListener()->AddObserver(this);
-
-  if (resource_) {
-    EnsureWriteAccess();
-  }
 }
 
 CanvasResourceProviderSharedImage::CanvasResourceProviderSharedImage(
@@ -375,13 +368,6 @@ CanvasResourceProviderSharedImage::~CanvasResourceProviderSharedImage() {
   if (RasterInterface()) {
     CheckGpuTimers(RasterInterface());
   }
-}
-
-ScopedRasterTimer
-CanvasResourceProviderSharedImage::CreateScopedRasterTimerForCanvas2D() {
-  CHECK(IsCanvas2D());
-  return ScopedRasterTimer(IsAccelerated() ? RasterInterface() : nullptr, *this,
-                           always_enable_raster_timers_for_testing_);
 }
 
 base::WeakPtr<CanvasResourceProviderSharedImage>
@@ -546,46 +532,6 @@ bool CanvasResourceProviderSharedImage::ShouldReplaceTargetBuffer(
   return !resource_->HasOneRef();
 }
 
-void CanvasResourceProviderSharedImage::EnsureWriteAccess() {
-  DCHECK(resource_);
-  // In software mode, we don't need write access to the resource during
-  // drawing since it is executed on CPU memory managed by Skia.
-  DCHECK(resource_->HasOneRef() || IsSingleBuffered() || !is_accelerated_)
-      << "Write access requires exclusive access to the resource";
-  DCHECK(!resource()->is_cross_thread())
-      << "Write access is only allowed on the owning thread";
-
-  if (current_resource_has_write_access_ || IsGpuContextLost()) {
-    return;
-  }
-  current_resource_has_write_access_ = true;
-}
-
-void CanvasResourceProviderSharedImage::EndWriteAccess() {
-  DCHECK(!resource()->is_cross_thread());
-
-  if (!current_resource_has_write_access_ || IsGpuContextLost()) {
-    return;
-  }
-
-  if (is_accelerated_) {
-    // As a write operation has just completed on the current resource, it is
-    // now necessary to preserve that resource's contents on a subsequent
-    // CopyOnWrite.
-    must_preserve_content_on_copy_on_write_ = true;
-  } else {
-    if (ShouldReplaceTargetBuffer()) {
-      resource_ = NewOrRecycledResource();
-    }
-    if (!resource() || !GetSkSurface()) {
-      return;
-    }
-    resource()->UploadSoftwareRenderingResults(GetSkSurface());
-  }
-
-  current_resource_has_write_access_ = false;
-}
-
 std::unique_ptr<gpu::RasterScopedAccess>
 Canvas2DResourceProviderSharedImage::WillDrawInternal() {
   DCHECK(resource_);
@@ -628,7 +574,7 @@ Canvas2DResourceProviderSharedImage::WillDrawInternal() {
     resource_ = NewOrRecycledResource();
     DCHECK(IsResourceUsable(resource_.get()));
     dst_access = resource_->BeginAccess(/*readonly=*/false);
-    if (must_preserve_content_on_copy_on_write_) {
+    if (must_preserve_content_on_copy_on_write_for_canvas_2d_) {
       auto old_mailbox = old_resource_shared_image->GetSharedImage()->mailbox();
       auto mailbox = resource()->GetSharedImage()->mailbox();
       auto src_access = old_resource->BeginAccess(/*readonly=*/true);
@@ -641,11 +587,12 @@ Canvas2DResourceProviderSharedImage::WillDrawInternal() {
       is_cleared_ = false;
     }
 
-    UMA_HISTOGRAM_BOOLEAN("Blink.Canvas.ContentChangeMode",
-                          must_preserve_content_on_copy_on_write_);
+    UMA_HISTOGRAM_BOOLEAN(
+        "Blink.Canvas.ContentChangeMode",
+        must_preserve_content_on_copy_on_write_for_canvas_2d_);
     // By default, the contents of the new resource must be preserved on a
     // subsequent CopyOnWrite.
-    must_preserve_content_on_copy_on_write_ = true;
+    must_preserve_content_on_copy_on_write_for_canvas_2d_ = true;
   } else {
     dst_access = resource_->BeginAccess(/*readonly=*/false);
   }
@@ -653,20 +600,18 @@ Canvas2DResourceProviderSharedImage::WillDrawInternal() {
 }
 
 std::unique_ptr<gpu::RasterScopedAccess>
-CanvasNon2DResourceProviderSharedImage::WillDrawInternal(bool is_overwrite) {
+CanvasNon2DResourceProviderSharedImage::WillDrawInternal() {
   DCHECK(resource_);
 
-  // Since the resource will be updated, the cached snapshot is no longer
-  // valid. Note that it is important to release this reference here to not
-  // trigger copy-on-write below from the resource ref in the snapshot.
+  // Since the resource will be updated, the cached snapshot is no longer valid.
   // Note that this is valid for single buffered mode also, since while the
-  // resource/mailbox remains the same, the snapshot needs an updated sync
-  // token for these writes.
+  // resource/mailbox remains the same, the snapshot needs an updated sync token
+  // for these writes.
   cached_snapshot_.reset();
 
-  // Determine if a copy is needed for accelerated resources. Note that for
-  // unaccelerated resources, writes to the SharedImage are deferred to
-  // ProduceCanvasResource and hence copy-on-write is never needed here.
+  // Determine if a new resource is needed for accelerated resources. Note that
+  // for unaccelerated resources, writes to the SharedImage are deferred to
+  // ProduceCanvasResource.
   if (!is_accelerated_ || !ShouldReplaceTargetBuffer(cached_content_id_)) {
     return resource_->BeginAccess(/*readonly=*/false);
   }
@@ -676,30 +621,15 @@ CanvasNon2DResourceProviderSharedImage::WillDrawInternal(bool is_overwrite) {
   DCHECK(!current_resource_has_write_access_)
       << "Write access must be released before sharing the resource";
 
-  auto old_resource = std::move(resource_);
-  auto* old_resource_shared_image =
-      static_cast<CanvasResourceSharedImage*>(old_resource.get());
-
   resource_ = NewOrRecycledResource();
   dst_access = resource_->BeginAccess(/*readonly=*/false);
-  if (must_preserve_content_on_copy_on_write_ && !is_overwrite) {
-    auto old_mailbox = old_resource_shared_image->GetSharedImage()->mailbox();
-    auto mailbox = resource()->GetSharedImage()->mailbox();
-    auto src_access = old_resource->BeginAccess(/*readonly=*/true);
-    RasterInterface()->CopySharedImage(old_mailbox, mailbox, 0, 0, 0, 0,
-                                       Size().width(), Size().height());
-    old_resource_shared_image->EndAccess(std::move(src_access));
-  } else {
-    // If we're not overwriting the image completely, we need to ensure that
-    // the image is cleared on the next BeginRasterCHROMIUM.
-    is_cleared_ = is_overwrite;
-  }
 
-  UMA_HISTOGRAM_BOOLEAN("Blink.Canvas.ContentChangeMode",
-                        must_preserve_content_on_copy_on_write_);
-  // By default, the contents of the new resource must be preserved on a
-  // subsequent CopyOnWrite.
-  must_preserve_content_on_copy_on_write_ = true;
+  // As the image might have just been created, we need to ensure that it is
+  // cleared on the next BeginRasterCHROMIUM to satisfy service-side security
+  // requirements (note: as an optimization we could avoid doing this if the
+  // resource was recycled as in that case there are no security implications).
+  is_cleared_ = false;
+
   return dst_access;
 }
 
@@ -711,6 +641,23 @@ void Canvas2DResourceProviderSharedImage::WillDrawUnaccelerated() {
   }
   cached_snapshot_.reset();
   EnsureWriteAccess();
+}
+
+ScopedRasterTimer
+Canvas2DResourceProviderSharedImage::CreateScopedRasterTimerForCanvas2D() {
+  return ScopedRasterTimer(IsAccelerated() ? RasterInterface() : nullptr, *this,
+                           always_enable_raster_timers_for_testing_);
+}
+
+void Canvas2DResourceProviderSharedImage::
+    DisableLineDrawingAsPathsIfNecessaryForCanvas2D() {
+  if (context_provider_wrapper_ &&
+      context_provider_wrapper_->ContextProvider()
+              .GetGpuFeatureInfo()
+              .status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
+          gpu::kGpuFeatureStatusEnabled) {
+    RecorderForCanvas2D().DisableLineDrawingAsPaths();
+  }
 }
 
 void CanvasNon2DResourceProviderSharedImage::PrepareForWebGPUDummyMailbox() {
@@ -744,7 +691,7 @@ bool Canvas2DResourceProviderSharedImage::WritePixelsForCanvas2D(
   // (see discussion here:
   // https://chromium-review.googlesource.com/c/chromium/src/+/7557841/comment/bb38e497_ef1efdbc/).
   // Verify that this is the case and update the code here.
-  must_preserve_content_on_copy_on_write_ = true;
+  must_preserve_content_on_copy_on_write_for_canvas_2d_ = true;
 
   auto client_si = resource()->GetSharedImage();
   RasterInterface()->WritePixels(client_si->mailbox(), x, y,
@@ -787,15 +734,7 @@ bool CanvasNon2DResourceProviderSharedImage::UploadToBackingSharedImage(
     return false;
   }
 
-  auto access = WillDrawInternal(/*is_overwrite=*/true);
-
-  // The below  write to the resource's SharedImage will need to be preserved in
-  // the case of a subsequent CopyOnWrite.
-  // TODO(crbug.com/352263194): Logically this bool must already be true
-  // (see discussion here:
-  // https://chromium-review.googlesource.com/c/chromium/src/+/7557841/comment/bb38e497_ef1efdbc/).
-  // Verify that this is the case and update the code here.
-  must_preserve_content_on_copy_on_write_ = true;
+  auto access = WillDrawInternal();
 
   auto client_si = resource()->GetSharedImage();
   RasterInterface()->WritePixels(client_si->mailbox(), /*dst_x_offset=*/0,
@@ -826,7 +765,7 @@ bool CanvasNon2DResourceProviderSharedImage::CopyToBackingSharedImage(
   gfx::Rect copy_rect(src_x, src_y, Size().width(), Size().height());
 
   EndWriteAccess();
-  auto dst_access = WillDrawInternal(/*is_overwrite=*/true);
+  auto dst_access = WillDrawInternal();
 
   auto dst_client_si = resource()->GetSharedImage();
   if (!dst_client_si) {
@@ -849,9 +788,8 @@ bool CanvasNon2DResourceProviderSharedImage::CopyToBackingSharedImage(
 }
 
 scoped_refptr<gpu::ClientSharedImage>
-CanvasNon2DResourceProviderSharedImage::BeginExternalWrite(
-    gpu::SyncToken& internal_access_sync_token,
-    bool is_overwrite) {
+CanvasNon2DResourceProviderSharedImage::BeginExternalOverwrite(
+    gpu::SyncToken& internal_access_sync_token) {
   DCHECK(is_accelerated_);
 
   if (IsGpuContextLost()) {
@@ -865,7 +803,7 @@ CanvasNon2DResourceProviderSharedImage::BeginExternalWrite(
 
   // NOTE: Invoking WillDrawInternal() ensures that this invocation of
   // EndAccess() will generate a new sync token.
-  auto access = WillDrawInternal(is_overwrite);
+  auto access = WillDrawInternal();
   resource_->EndAccess(std::move(access));
   internal_access_sync_token = resource_->sync_token();
   return resource_->GetSharedImage();
@@ -945,8 +883,6 @@ CanvasNon2DResourceProviderSharedImage::ProduceCanvasResource() {
       return nullptr;
     }
 
-    FlushCanvas(/*is_overwrite=*/false);
-
     // Note that the resource *must* be a CanvasResourceSharedImage as this
     // class creates CanvasResourceSharedImage instances exclusively.
     static_cast<CanvasResourceSharedImage*>(output_resource.get())
@@ -960,10 +896,7 @@ CanvasNon2DResourceProviderSharedImage::ProduceCanvasResource() {
   }
 
   // We are about to give the caller read access to this resource (and its
-  // backing SharedImage). Hence, we must make sure that the SI is updated to
-  // reflect the ops made in the current write access (if any) and give up any
-  // such write access.
-  FlushCanvas(/*is_overwrite=*/false);
+  // backing SharedImage). Hence, we must give up any write access.
   EndWriteAccess();
 
   return resource_;
@@ -1028,26 +961,99 @@ CanvasResourceProviderSharedImage::GetSharedImageUsageFlags() const {
 }
 
 scoped_refptr<CanvasResource>
-CanvasNon2DResourceProviderSharedImage::DoExternalDrawAndProduceResource(
+CanvasNon2DResourceProviderSharedImage::DoExternalOverdrawAndProduceResource(
     base::FunctionRef<void(cc::PaintCanvas&)> draw_callback) {
   cached_snapshot_.reset();
-  draw_callback(recorder_->getRecordingCanvas());
-  return ProduceCanvasResource();
+
+  if (!is_software_ && IsGpuContextLost()) {
+    return nullptr;
+  }
+
+  scoped_refptr<CanvasResource> software_resource;
+  if (is_software_) {
+    software_resource = NewOrRecycledResource();
+    if (!software_resource) {
+      return nullptr;
+    }
+  }
+
+  draw_callback(recorder_for_external_draws_->getRecordingCanvas());
+  if (recorder_for_external_draws_->HasReleasableDrawOps()) {
+    FlushRecording(recorder_for_external_draws_->ReleaseMainRecording());
+  }
+
+  if (is_software_) {
+    // Note that the resource *must* be a CanvasResourceSharedImage as this
+    // class creates CanvasResourceSharedImage instances exclusively.
+    static_cast<CanvasResourceSharedImage*>(software_resource.get())
+        ->UploadSoftwareRenderingResults(GetSkSurface());
+
+    return software_resource;
+  }
+
+  // We are about to give the caller read access to this resource (and its
+  // backing SharedImage). Hence, we must give up the current write access
+  // (if any).
+  EndWriteAccess();
+
+  return resource_;
 }
 
 scoped_refptr<StaticBitmapImage>
-CanvasNon2DResourceProviderSharedImage::DoExternalDrawAndSnapshot(
+CanvasNon2DResourceProviderSharedImage::DoExternalOverdrawAndSnapshot(
     base::FunctionRef<void(cc::PaintCanvas&)> draw_callback,
     ImageOrientation orientation) {
   cached_snapshot_.reset();
-  draw_callback(recorder_->getRecordingCanvas());
 
   if (!IsValid()) {
     return nullptr;
   }
 
-  FlushCanvas(/*is_overwrite=*/false);
+  draw_callback(recorder_for_external_draws_->getRecordingCanvas());
+  if (recorder_for_external_draws_->HasReleasableDrawOps()) {
+    FlushRecording(recorder_for_external_draws_->ReleaseMainRecording());
+  }
   return Snapshot(orientation);
+}
+
+void Canvas2DResourceProviderSharedImage::EnsureWriteAccess() {
+  DCHECK(resource_);
+  // In software mode, we don't need write access to the resource during
+  // drawing since it is executed on CPU memory managed by Skia.
+  DCHECK(resource_->HasOneRef() || IsSingleBuffered() || !is_accelerated_)
+      << "Write access requires exclusive access to the resource";
+  DCHECK(!resource()->is_cross_thread())
+      << "Write access is only allowed on the owning thread";
+
+  if (current_resource_has_write_access_ || IsGpuContextLost()) {
+    return;
+  }
+  current_resource_has_write_access_ = true;
+}
+
+void Canvas2DResourceProviderSharedImage::EndWriteAccess() {
+  DCHECK(!resource()->is_cross_thread());
+
+  if (!current_resource_has_write_access_ || IsGpuContextLost()) {
+    return;
+  }
+
+  if (is_accelerated_) {
+    // As a write operation has just completed on the current resource, it is
+    // now necessary to preserve that resource's contents on a subsequent
+    // CopyOnWrite.
+    must_preserve_content_on_copy_on_write_for_canvas_2d_ = true;
+  } else {
+    if (ShouldReplaceTargetBuffer()) {
+      resource_ = NewOrRecycledResource();
+    }
+    if (!resource() || !GetSkSurface()) {
+      return;
+    }
+    resource()->UploadSoftwareRenderingResults(GetSkSurface());
+  }
+
+  current_resource_has_write_access_ = false;
 }
 
 scoped_refptr<StaticBitmapImage>
@@ -1095,6 +1101,41 @@ CanvasNon2DResourceProviderSharedImage::SnapshotForCanvas2D(ImageOrientation) {
   NOTREACHED();
 }
 
+void CanvasNon2DResourceProviderSharedImage::EnsureWriteAccess() {
+  DCHECK(resource_);
+  // In software mode, we don't need write access to the resource during
+  // drawing since it is executed on CPU memory managed by Skia.
+  DCHECK(resource_->HasOneRef() || IsSingleBuffered() || !is_accelerated_)
+      << "Write access requires exclusive access to the resource";
+  DCHECK(!resource()->is_cross_thread())
+      << "Write access is only allowed on the owning thread";
+
+  if (current_resource_has_write_access_ || IsGpuContextLost()) {
+    return;
+  }
+  current_resource_has_write_access_ = true;
+}
+
+void CanvasNon2DResourceProviderSharedImage::EndWriteAccess() {
+  DCHECK(!resource()->is_cross_thread());
+
+  if (!current_resource_has_write_access_ || IsGpuContextLost()) {
+    return;
+  }
+
+  if (!is_accelerated_) {
+    if (ShouldReplaceTargetBuffer()) {
+      resource_ = NewOrRecycledResource();
+    }
+    if (!resource() || !GetSkSurface()) {
+      return;
+    }
+    resource()->UploadSoftwareRenderingResults(GetSkSurface());
+  }
+
+  current_resource_has_write_access_ = false;
+}
+
 scoped_refptr<StaticBitmapImage>
 CanvasNon2DResourceProviderSharedImage::Snapshot(ImageOrientation orientation) {
   TRACE_EVENT0("blink", "CanvasNon2DResourceProviderSharedImage::Snapshot");
@@ -1107,8 +1148,6 @@ CanvasNon2DResourceProviderSharedImage::Snapshot(ImageOrientation orientation) {
   // while in this case we are simply returning the rendered CPU-side results to
   // the client.
   if (!is_accelerated_) {
-    FlushCanvas(/*is_overwrite=*/false);
-
     cc::PaintImage paint_image;
 
     auto sk_image = GetSkSurface()->makeImageSnapshot();
@@ -1137,7 +1176,6 @@ CanvasNon2DResourceProviderSharedImage::Snapshot(ImageOrientation orientation) {
   }
 
   if (!cached_snapshot_) {
-    FlushCanvas(/*is_overwrite=*/false);
     EndWriteAccess();
     cached_snapshot_ = resource_->Bitmap();
 
@@ -1305,9 +1343,6 @@ void Canvas2DResourceProviderSharedImage::OnFlushForImage(
 
 void CanvasNon2DResourceProviderSharedImage::OnFlushForImage(
     cc::PaintImage::ContentId content_id) {
-  if (recorder_->getRecordingCanvas().IsCachingImage(content_id)) {
-    FlushCanvas(/*is_overwrite=*/false);
-  }
   if (cached_snapshot_ &&
       cached_snapshot_->PaintImageForCurrentFrame().GetContentIdForFrame(0) ==
           content_id) {
@@ -1853,13 +1888,13 @@ void CanvasResourceProvider::InitializeForRecording(
 }
 
 void CanvasResourceProvider::RecordingCleared() {
+  CHECK(IsCanvas2D());
+
   // Since the recording has been cleared, it contains no draw commands and it
   // is now safe to discard the old copy of canvas content on a subsequent
   // CopyOnWrite.
-  must_preserve_content_on_copy_on_write_ = false;
-  if (IsCanvas2D()) {
-    clear_frame_for_canvas2d_ = true;
-  }
+  must_preserve_content_on_copy_on_write_for_canvas_2d_ = false;
+  clear_frame_for_canvas2d_ = true;
 }
 
 MemoryManagedPaintCanvas&
@@ -1922,12 +1957,8 @@ ScopedRasterTimer CanvasResourceProvider::CreateScopedRasterTimerForCanvas2D() {
                            always_enable_raster_timers_for_testing_);
 }
 
-void CanvasNon2DResourceProviderSharedImage::FlushCanvas(bool is_overwrite) {
-  if (!recorder_->HasReleasableDrawOps()) {
-    return;
-  }
-
-  cc::PaintRecord last_recording = recorder_->ReleaseMainRecording();
+void CanvasNon2DResourceProviderSharedImage::FlushRecording(
+    cc::PaintRecord last_recording) {
   if (!is_accelerated_) {
     if (!skia_canvas_) {
       if (!canvas_image_provider_) {
@@ -1950,7 +1981,7 @@ void CanvasNon2DResourceProviderSharedImage::FlushCanvas(bool is_overwrite) {
     }
     skia_canvas_->drawPicture(std::move(last_recording));
   } else if (!IsGpuContextLost()) {
-    auto access = WillDrawInternal(is_overwrite);
+    auto access = WillDrawInternal();
     EnsureWriteAccess();
 
     const bool needs_clear = !is_cleared_;
@@ -2111,6 +2142,13 @@ Canvas2DResourceProviderSharedImage::Canvas2DResourceProviderSharedImage(
       recorder_for_canvas_2d_->DisableLineDrawingAsPaths();
     }
   }
+
+  resource_ = NewOrRecycledResource();
+  GetFlushForImageListener()->AddObserver(this);
+
+  if (resource_) {
+    EnsureWriteAccess();
+  }
 }
 
 Canvas2DResourceProviderSharedImage::Canvas2DResourceProviderSharedImage(
@@ -2147,15 +2185,24 @@ CanvasNon2DResourceProviderSharedImage::CanvasNon2DResourceProviderSharedImage(
                                         is_accelerated,
                                         shared_image_usage_flags,
                                         delegate),
-      recorder_(std::make_unique<MemoryManagedPaintRecorder>(Size(), this)) {
+      recorder_for_external_draws_(
+          std::make_unique<MemoryManagedPaintRecorder>(Size(),
+                                                       /*client=*/nullptr)) {
   if (context_provider_wrapper_) {
     // Graphite can handle a large buffer size.
     if (context_provider_wrapper_->ContextProvider()
             .GetGpuFeatureInfo()
             .status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
         gpu::kGpuFeatureStatusEnabled) {
-      recorder_->DisableLineDrawingAsPaths();
+      recorder_for_external_draws_->DisableLineDrawingAsPaths();
     }
+  }
+
+  resource_ = NewOrRecycledResource();
+  GetFlushForImageListener()->AddObserver(this);
+
+  if (resource_) {
+    EnsureWriteAccess();
   }
 }
 
@@ -2172,7 +2219,9 @@ CanvasNon2DResourceProviderSharedImage::CanvasNon2DResourceProviderSharedImage(
                                         color_space,
                                         shared_image_interface_provider,
                                         delegate),
-      recorder_(std::make_unique<MemoryManagedPaintRecorder>(Size(), this)) {}
+      recorder_for_external_draws_(
+          std::make_unique<MemoryManagedPaintRecorder>(Size(),
+                                                       /*client=*/nullptr)) {}
 
 CanvasNon2DResourceProviderSharedImage::
     ~CanvasNon2DResourceProviderSharedImage() = default;
@@ -2279,18 +2328,6 @@ void CanvasResourceProvider::OnMemoryDump(
 
 size_t CanvasResourceProvider::GetSize() const {
   return ComputeSurfaceSize();
-}
-
-void CanvasResourceProviderSharedImage::
-    DisableLineDrawingAsPathsIfNecessaryForCanvas2D() {
-  CHECK(IsCanvas2D());
-  if (context_provider_wrapper_ &&
-      context_provider_wrapper_->ContextProvider()
-              .GetGpuFeatureInfo()
-              .status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
-          gpu::kGpuFeatureStatusEnabled) {
-    RecorderForCanvas2D().DisableLineDrawingAsPaths();
-  }
 }
 
 std::unique_ptr<CanvasResourceProvider>

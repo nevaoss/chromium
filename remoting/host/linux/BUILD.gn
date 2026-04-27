@@ -3,7 +3,11 @@
 # found in the LICENSE file.
 
 import("//build/config/c++/c++.gni")
+import("//build/config/linux/pkg_config.gni")
 import("//remoting/build/config/remoting_build.gni")
+import("//third_party/webrtc/webrtc.gni")
+import("//tools/generate_library_loader/generate_library_loader.gni")
+import("//tools/generate_stubs/rules.gni")
 
 group("all_tests") {
   testonly = true
@@ -89,6 +93,49 @@ source_set("gvariant") {
     "//remoting/host/base",
   ]
 }
+pkg_config("pipewire_config") {
+  packages = [ "libpipewire-0.3" ]
+
+  # Don't link against libpipewire since it's loaded at runtime.
+  ignore_libs = true
+}
+
+generate_library_loader("pipewire_loader") {
+  # The generated class will not be in any namespace, so we need to prefix the
+  # name to avoid name conflicts with other generated library loaders.
+  name = "RemotingPipewireLoader"
+
+  # The output files will be in gen/library_loaders, so we need to add the
+  # `remoting_` prefix to avoid name conflicts with other generated library
+  # loaders.
+  output_h = "remoting_libpipewire.h"
+  output_cc = "remoting_libpipewire.cc"
+  header = "<pipewire/pipewire.h>"
+  config = ":pipewire_config"
+  functions = [
+    "pw_init",
+    "pw_deinit",
+    "pw_thread_loop_new",
+    "pw_thread_loop_destroy",
+    "pw_thread_loop_stop",
+    "pw_thread_loop_start",
+    "pw_thread_loop_lock",
+    "pw_thread_loop_unlock",
+    "pw_thread_loop_get_loop",
+    "pw_context_new",
+    "pw_context_destroy",
+    "pw_context_connect",
+    "pw_core_disconnect",
+    "pw_properties_new",
+    "pw_stream_new",
+    "pw_stream_destroy",
+    "pw_stream_add_listener",
+    "pw_stream_connect",
+    "pw_stream_state_as_string",
+    "pw_stream_dequeue_buffer",
+    "pw_stream_queue_buffer",
+  ]
+}
 
 source_set("utils") {
   sources = [
@@ -120,7 +167,6 @@ source_set("platform_impls") {
     "active_display_monitor_x11.cc",
     "active_display_monitor_x11.h",
     "audio_capturer_linux.cc",
-    "audio_capturer_linux.h",
     "audio_pipe_reader.cc",
     "audio_pipe_reader.h",
     "capture_stream.h",
@@ -184,6 +230,8 @@ source_set("platform_impls") {
     "login_session_manager.h",
     "login_session_server.cc",
     "login_session_server.h",
+    "pipewire_audio_capturer.cc",
+    "pipewire_audio_capturer.h",
     "pipewire_capture_stream.cc",
     "pipewire_capture_stream.h",
     "pipewire_desktop_capturer.cc",
@@ -208,6 +256,8 @@ source_set("platform_impls") {
     "portal_remote_desktop_session.h",
     "portal_utils.cc",
     "portal_utils.h",
+    "pulse_audio_capturer.cc",
+    "pulse_audio_capturer.h",
     "remote_display_session_manager.cc",
     "remote_display_session_manager.h",
     "remote_session_info_main.cc",
@@ -222,6 +272,7 @@ source_set("platform_impls") {
   ]
   deps = [
     ":gvariant",
+    ":pipewire_loader",
     ":remote_session_info_main_headers",
     ":utils",
     ":x11",
@@ -239,6 +290,7 @@ source_set("platform_impls") {
     "//remoting/host:ipc_constants",
     "//remoting/host:mojo_caller_security_checker",
     "//remoting/host:platform_interfaces",
+    "//remoting/host:signal_handler",
     "//remoting/host/base",
     "//remoting/host/input_monitor",
     "//remoting/host/linux/dbus_interfaces:interface_headers",
@@ -333,6 +385,7 @@ source_set("unit_tests") {
     "gnome_display_config_unittest.cc",
     "gvariant_ref_unittest.cc",
     "gvariant_type_unittest.cc",
+    "pipewire_audio_capturer_unittest.cc",
     "pipewire_mouse_cursor_capturer_unittest.cc",
     "test_util.cc",
     "test_util.h",

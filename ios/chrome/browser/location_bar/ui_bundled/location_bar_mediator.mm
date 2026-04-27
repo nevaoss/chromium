@@ -4,6 +4,7 @@
 
 #import "ios/chrome/browser/location_bar/ui_bundled/location_bar_mediator.h"
 
+#import "base/check.h"
 #import "base/memory/ptr_util.h"
 #import "components/feature_engagement/public/event_constants.h"
 #import "components/feature_engagement/public/tracker.h"
@@ -11,15 +12,17 @@
 #import "components/lens/lens_url_utils.h"
 #import "components/omnibox/common/omnibox_features.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
+#import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent_observer_bridge.h"
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/lens_overlay/coordinator/lens_overlay_availability.h"
 #import "ios/chrome/browser/location_bar/ui_bundled/location_bar_consumer.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_util.h"
+#import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent.h"
 #import "ios/chrome/browser/omnibox/model/placeholder_service/placeholder_service.h"
 #import "ios/chrome/browser/omnibox/model/placeholder_service/placeholder_service_observer_bridge.h"
 #import "ios/chrome/browser/omnibox/public/omnibox_util.h"
@@ -65,6 +68,7 @@ const CGFloat kIconPointSize = 16.0;
   std::unique_ptr<PlaceholderServiceObserverBridge> _placeholderServiceObserver;
   BOOL _isIncognito;
   raw_ptr<UrlLoadingBrowserAgent> _URLLoadingBrowserAgent;
+  NSHashTable<id<FullscreenUIElement>>* _fullscreenUIElements;
 }
 
 - (instancetype)initWithURLLoadingBrowsingAgent:
@@ -77,6 +81,7 @@ const CGFloat kIconPointSize = 16.0;
     _URLLoadingBrowserAgent = URLLoadingBrowserAgent;
     _isIncognito = isIncognito;
     _webStateListObserver = std::make_unique<WebStateListObserverBridge>(self);
+    _fullscreenUIElements = [NSHashTable weakObjectsHashTable];
   }
   return self;
 }
@@ -91,6 +96,35 @@ const CGFloat kIconPointSize = 16.0;
   if (base::FeatureList::IsEnabled(omnibox::kOmniboxMobileParityUpdate) ||
       base::FeatureList::IsEnabled(omnibox::kOmniboxMobileParityUpdateV2)) {
     self.placeholderService = nullptr;
+  }
+  _fullscreenUIElements = nil;
+}
+
+- (void)addFullscreenUIElement:(id<FullscreenUIElement>)element {
+  [_fullscreenUIElements addObject:element];
+}
+
+#pragma mark - FullscreenBrowserAgentObserving
+
+- (void)fullscreenWillUpdateState:(FullscreenBrowserAgent*)agent {
+  CGFloat progress = 0;
+  if (IsChromeNextIaEnabled()) {
+    if (!self.active) {
+      return;
+    }
+
+    progress =
+        self.topPosition ? agent->top_progress() : agent->bottom_progress();
+  } else {
+    CHECK(self.omniboxPositionBrowserAgent);
+    BOOL isBottomOmnibox =
+        self.omniboxPositionBrowserAgent->IsCurrentLayoutBottomOmnibox();
+    progress =
+        isBottomOmnibox ? agent->bottom_progress() : agent->top_progress();
+  }
+
+  for (id<FullscreenUIElement> element in _fullscreenUIElements) {
+    [element updateForFullscreenProgress:progress];
   }
 }
 
@@ -232,6 +266,10 @@ const CGFloat kIconPointSize = 16.0;
 
 /// Returns whether the Lens overlay is currently available for the web state.
 - (BOOL)isLensOverlayAvailable {
+  if (IsChromeNextIaEnabled() && !IsChromeNextIaLensIconVisible()) {
+    return NO;
+  }
+
   if (IsPageActionMenuEnabled() && IsDirectBWGEntryPoint()) {
     return NO;
   }
@@ -272,7 +310,7 @@ const CGFloat kIconPointSize = 16.0;
 
   ProfileIOS* profile =
       ProfileIOS::FromBrowserState(webState->GetBrowserState());
-  BwgService* geminiService = GeminiServiceFactory::GetForProfile(profile);
+  GeminiService* geminiService = GeminiServiceFactory::GetForProfile(profile);
   if (!geminiService) {
     return NO;
   }
@@ -294,7 +332,7 @@ const CGFloat kIconPointSize = 16.0;
   }
   ProfileIOS* profile =
       ProfileIOS::FromBrowserState(webState->GetBrowserState());
-  BwgService* geminiService = GeminiServiceFactory::GetForProfile(profile);
+  GeminiService* geminiService = GeminiServiceFactory::GetForProfile(profile);
   if (!geminiService) {
     return NO;
   }
@@ -316,7 +354,7 @@ const CGFloat kIconPointSize = 16.0;
     // necessary.
   }
 
-  if ([self isAIHubAvailable]) {
+  if ([self isAIHubAvailable] && !IsChromeNextIaEnabled()) {
     // Gemini-specific metrics should only fire when Gemini is actually
     // eligible, not just when the PAM badge is visible.
     if ([self isGeminiEligibleForActiveWebState]) {

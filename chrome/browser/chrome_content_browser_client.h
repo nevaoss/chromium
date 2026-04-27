@@ -218,11 +218,11 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       const GURL& precursor,
       const GURL& url) override;
   bool DoesWebUIUrlRequireProcessLock(const GURL& url) override;
-  bool ShouldTreatURLSchemeAsFirstPartyWhenTopLevel(
-      std::string_view scheme,
+  bool ShouldTreatAsFirstPartyWhenTopLevel(
+      const url::Origin& top_frame_origin,
       bool is_embedded_origin_secure) override;
   bool ShouldIgnoreSameSiteCookieRestrictionsWhenTopLevel(
-      std::string_view scheme,
+      const url::Origin& top_frame_origin,
       bool is_embedded_origin_secure) override;
   std::string GetSiteDisplayNameForCdmProcess(
       content::BrowserContext* browser_context,
@@ -352,6 +352,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   bool AllowCompressionDictionaryTransport(
       content::BrowserContext* context) override;
   bool AllowSharedWorkerBlobURLFix(content::BrowserContext* context) override;
+  bool IsDataUrlInWebWorkerOpaqueOriginEnabled(
+      content::BrowserContext* context) override;
   bool AllowSharedWorkerExtendedLifetime(
       content::BrowserContext* context) override;
   void RequestFilesAccess(
@@ -682,6 +684,7 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       content::FrameTreeNodeId frame_tree_node_id) override;
   void RegisterNonNetworkWorkerMainResourceURLLoaderFactories(
       content::BrowserContext* browser_context,
+      const std::optional<url::Origin>& request_initiator,
       NonNetworkURLLoaderFactoryMap* factories) override;
   void RegisterNonNetworkServiceWorkerUpdateURLLoaderFactories(
       content::BrowserContext* browser_context,
@@ -1199,6 +1202,9 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       net::HttpRequestHeaders& modified_cors_exempt_headers) override;
   void UpdateCorsExemptHeaderForPrefetch(
       network::mojom::NetworkContextParams* params) override;
+
+  std::optional<int> GetCpuPerformanceTierOverride(
+      content::BrowserContext* browser_context) override;
 
   void RecordAssistedLogin(
       content::ContentBrowserClient::AssistedLoginType login_type) override;

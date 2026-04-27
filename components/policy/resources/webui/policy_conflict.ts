@@ -16,6 +16,19 @@ export interface Conflict {
   value: any;
 }
 
+// Copies the text content of an element to the clipboard.
+export function copyValue(element: CustomElement) {
+  const selection = window.getSelection();
+  const range = window.document.createRange();
+  range.selectNodeContents(element);
+  selection!.removeAllRanges();
+  selection!.addRange(range);
+
+  navigator.clipboard.writeText(element.innerText).catch(error => {
+    console.error('Unable to copy value to clipboard:', error);
+  });
+}
+
 export class PolicyConflictElement extends CustomElement {
   static override get template() {
     return getTemplate();
@@ -24,22 +37,60 @@ export class PolicyConflictElement extends CustomElement {
   connectedCallback() {
     this.toggleAttribute('hidden', true);
     this.setAttribute('role', 'rowgroup');
+
+    const copyLink = this.shadowRoot!.querySelector('.value.row .copy-value');
+    if (copyLink) {
+      copyLink.addEventListener('click', () => this.copyValue_());
+    }
   }
 
-  initialize(conflict: Conflict, rowLabel: string) {
-    this.shadowRoot!.querySelector('.scope')!.textContent =
-        loadTimeData.getString(
-            conflict.scope === 'user' ? 'scopeUser' : 'scopeDevice');
-    this.shadowRoot!.querySelector('.level')!.textContent =
-        loadTimeData.getString(
-            conflict.level === 'recommended' ? 'levelRecommended' :
-                                               'levelMandatory');
-    this.shadowRoot!.querySelector('.source')!.textContent =
-        loadTimeData.getString(conflict.source);
-    this.shadowRoot!.querySelector('.value')!.textContent =
-        JSON.stringify(conflict.value);
-    this.shadowRoot!.querySelector('.name')!.textContent =
-        loadTimeData.getString(rowLabel);
+  initialize(conflict: Conflict, rowLabel: string, _policyName: string) {
+    const scopeText = loadTimeData.getString(
+        conflict.scope === 'user' ? 'scopeUser' : 'scopeDevice');
+    const levelText = loadTimeData.getString(
+        conflict.level === 'recommended' ? 'levelRecommended' :
+                                           'levelMandatory');
+    const sourceText = loadTimeData.getString(conflict.source);
+    const valueText = JSON.stringify(conflict.value);
+    const nameText = loadTimeData.getString(rowLabel);
+
+    const setText = (selector: string, text: string) => {
+      this.shadowRoot!.querySelector(selector)!.textContent = text;
+    };
+
+    setText('.scope', scopeText);
+    setText('.level', levelText);
+    setText('.source', sourceText);
+    setText('.value', valueText);
+    setText('.name', nameText);
+
+    // Populate the mobile-specific layout elements.
+    // On space-constrained devices, conflicts are displayed as a
+    // vertical stack of rows instead of a single horizontal row with
+    // columns.
+    // <if expr="is_android or is_ios">
+    setText('.value.row .name', nameText);
+    setText('.value.row .value', valueText);
+    setText('.source.row .value', sourceText);
+    setText('.scope.row .value', scopeText);
+    setText('.level.row .value', levelText);
+
+    // Set the label for the copy link.
+    const copyLink = this.shadowRoot!.querySelector('.value.row .copy-value');
+    if (copyLink) {
+      const copyLabel = loadTimeData.getStringF('policyCopyValue', _policyName);
+      copyLink.setAttribute('title', copyLabel);
+      copyLink.setAttribute('aria-label', copyLabel);
+    }
+    // </if>
+  }
+
+  // Copies the policy's conflicting/superseded value to the clipboard.
+  private copyValue_() {
+    const valueDisplay = this.shadowRoot!.querySelector('.value.row .value');
+    if (valueDisplay) {
+      copyValue(valueDisplay as CustomElement);
+    }
   }
 }
 

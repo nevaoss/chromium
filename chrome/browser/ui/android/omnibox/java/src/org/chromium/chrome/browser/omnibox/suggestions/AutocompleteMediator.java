@@ -158,10 +158,8 @@ class AutocompleteMediator
     private final Callback<@Nullable SiteSearchData> mOnSiteSearchDataChanged =
             this::onSiteSearchDataChanged;
     private final Callback<Integer> mOnFuseboxStateChanged = this::onFuseboxStateChanged;
-    private final Callback<String> mOnUserTextChanged =
-            text -> onInputChanged(/* isOnFocusContext= */ false);
-    private final Callback<Boolean> mOnShouldAutocompleteChanged =
-            state -> onInputChanged(/* isOnFocusContext= */ false);
+    private final Callback<String> mOnUserTextChanged = text -> onInputChanged();
+    private final Callback<Boolean> mOnShouldAutocompleteChanged = state -> onInputChanged();
 
     private @Nullable AutocompleteController mAutocomplete;
     private @Nullable AutocompleteResult mAutocompleteResult;
@@ -529,7 +527,7 @@ class AutocompleteMediator
             // suggestion would take the user to the DSE home page.
             // This is tracked by MobileStartup.LaunchCause / EXTERNAL_SEARCH_ACTION_INTENT
             // metric.
-            onInputChanged(/* isOnFocusContext= */ OmniboxFeatures.shouldRetainOmniboxOnFocus());
+            onInputChanged();
         }
     }
 
@@ -828,7 +826,7 @@ class AutocompleteMediator
             mAutocompleteInput.setUserText(refineText);
         }
         mDelegate.setOmniboxEditingText(refineText);
-        onInputChanged(/* isOnFocusContext= */ false);
+        onInputChanged();
 
         if (isSearchSuggestion) {
             // Note: the logic below toggles assumes individual values to be represented by
@@ -1001,19 +999,19 @@ class AutocompleteMediator
      */
     @Override
     public void setOmniboxEditingText(String text) {
+        if (!isInInputSession()) return;
         if (mIgnoreOmniboxItemSelection) return;
         mIgnoreOmniboxItemSelection = true;
 
-        if (mAutocompleteInput != null) {
-            // Sync the source of truth (AutocompleteInput) with the focused match.
-            // This includes stripping the keyword if we were previously in keyword mode.
-            mAutocompleteInput.setUserText(stripKeywordIfNecessary(text));
-            // When moving focus between suggestions via keyboard, we should always clear
-            // the site search preview unless we explicitly target a site search chip.
-            mAutocompleteInput.setSiteSearchData(null);
-
-            mDelegate.setOmniboxEditingText(mAutocompleteInput.getUserText());
-        }
+        // In most cases the AutocompleteInput needs to be the source of truth.
+        // This method is used to communicate user selection back to the UrlBar without
+        // committing UserText -- the most recently committed UserText is what the user typed,
+        // and the DPAD selection triggered here represents text that is uncommitted until
+        // - the user amends the input (by typing), or
+        // - the user accepts the input (by pressing Enter).
+        // for that reason this logic should not apply UserText.
+        mDelegate.setOmniboxEditingText(stripKeywordIfNecessary(text));
+        mAutocompleteInput.setSiteSearchData(null);
     }
 
     /**
@@ -1054,7 +1052,7 @@ class AutocompleteMediator
      *
      * @param isOnFocusContext whether Omnibox is currently gaining focus
      */
-    public void onInputChanged(boolean isOnFocusContext) {
+    public void onInputChanged() {
         if (!isInInputSession()) return;
         if (mShouldPreventOmniboxAutocomplete) return;
 
@@ -1092,7 +1090,7 @@ class AutocompleteMediator
 
         stopAutocomplete(false);
 
-        if (isInZeroPrefixContext || isOnFocusContext) {
+        if (isInZeroPrefixContext) {
             clearSuggestions();
             startZeroSuggest();
         } else {
@@ -1246,7 +1244,7 @@ class AutocompleteMediator
 
     private void onAutocompleteRequestTypeChanged(@AutocompleteRequestType int type) {
         if (!isInInputSession()) return;
-        onInputChanged(/* isOnFocusContext= */ false);
+        onInputChanged();
     }
 
     private void onKeywordModeEntered(@Nullable SiteSearchData siteSearchData) {
@@ -1296,7 +1294,7 @@ class AutocompleteMediator
                 siteSearchData != null ? siteSearchData.fullName : null);
 
         if (isInInputSession()) {
-            onInputChanged(/* isOnFocusContext= */ false);
+            onInputChanged();
         }
     }
 
@@ -1828,7 +1826,7 @@ class AutocompleteMediator
             // triggering recalculation of refine arrow icon. TODO(http://crbug.com/446058347):
             // refactor to enable updates to the icon property of the model once the list is already
             // built.
-            onInputChanged(/* isOnFocusContext= */ false);
+            onInputChanged();
         }
     }
 
@@ -1854,7 +1852,7 @@ class AutocompleteMediator
     public void onAttachmentListChanged() {
         if (!isInInputSession()) return;
         // Re-request ZPS in the event of attachments being removed/replaced.
-        onInputChanged(/* isOnFocusContext= */ false);
+        onInputChanged();
     }
 
     /**
@@ -1865,7 +1863,7 @@ class AutocompleteMediator
         if (!isInInputSession()) return;
 
         // Re-request ZPS in the event of new attachments being uploaded.
-        onInputChanged(/* isOnFocusContext= */ false);
+        onInputChanged();
     }
 
     @Override
@@ -1874,7 +1872,7 @@ class AutocompleteMediator
 
         if (isTopResumedActivity) {
             installAutocompleteObservers();
-            onInputChanged(/* isOnFocusContext= */ false);
+            onInputChanged();
         } else {
             stopAutocomplete(/* clear= */ true);
             removeAutocompleteObservers();

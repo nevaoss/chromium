@@ -27,6 +27,8 @@ import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
 import org.chromium.chrome.browser.settings.search.ChromeBaseSearchIndexProvider;
+import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarButtonVariant;
+import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarPrefs;
 import org.chromium.components.browser_ui.settings.ChromeExpandableSwitchPreference;
 import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
 import org.chromium.components.browser_ui.settings.SettingsCustomTabLauncher;
@@ -66,21 +68,21 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
             ObservableSuppliers.createMonotonic();
 
     private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
+    private GlicKeyedService.@Nullable UserEnabledActuationOnWebObserver
+            mUserEnabledActuationOnWebObserver;
 
     @Override
     public void onCreatePreferences(@Nullable Bundle savedInstanceState, @Nullable String rootKey) {
         SettingsUtils.addPreferencesFromResource(this, R.xml.glic_settings);
-        mPageTitle.set(getString(R.string.settings_glic_button_toggle));
+        mPageTitle.set(getString(R.string.glic_setting_label));
         SettingsCustomTabLauncher customTabLauncher = getCustomTabLauncher();
 
         PrefService prefService = UserPrefs.get(getProfile());
         mPrefChangeRegistrar = new PrefChangeRegistrar(prefService);
+        GlicKeyedService glicService = GlicKeyedServiceFactory.getForProfile(getProfile());
 
-        setupSwitchPreference(
-                PREFERENCE_BUTTON,
-                ChromePreferenceKeys.GLIC_BUTTON_PINNED,
-                GlicPrefNames.GLIC_PINNED_TO_TABSTRIP,
-                /* extraListener= */ null);
+        Preference buttonPref = assertNonNull(findPreference(PREFERENCE_BUTTON));
+        updateButtonPreference(buttonPref);
 
         ChromeSwitchPreference locationPref =
                 setupSwitchPreference(
@@ -103,7 +105,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                 setupSwitchPreference(
                         PERMISSION_DEFAULT_TAB_ACCESS,
                         ChromePreferenceKeys.GLIC_SHARE_CURRENT_TAB_DEFAULT_ACCESS_ENABLED,
-                        GlicPrefNames.GLIC_TAB_CONTEXT_ENABLED,
+                        GlicPrefNames.GLIC_DEFAULT_TAB_CONTEXT_ENABLED,
                         /* extraListener= */ null);
 
         String summary =
@@ -114,11 +116,30 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                 SpanApplier.applySpans(summary, getLearnMoreSpanInfo(LEARN_MORE_AI_URL)));
 
         ChromeExpandableSwitchPreference autoBrowsePref =
-                setupSwitchPreference(
-                        PERMISSION_AUTO_BROWSE,
-                        ChromePreferenceKeys.GLIC_AUTO_BROWSE_SETTING_ENABLED,
-                        GlicPrefNames.GLIC_USER_ENABLED_ACTUATION_ON_WEB,
-                        /* extraListener= */ null);
+                assertNonNull(findPreference(PERMISSION_AUTO_BROWSE));
+        if (glicService != null) {
+            boolean value = glicService.getUserEnabledActuationOnWeb();
+            mSharedPreferencesManager.writeBoolean(
+                    ChromePreferenceKeys.GLIC_AUTO_BROWSE_SETTING_ENABLED, value);
+            autoBrowsePref.setChecked(value);
+            autoBrowsePref.setOnPreferenceChangeListener(
+                    (pref, newValue) -> {
+                        boolean boolValue = (boolean) newValue;
+                        mSharedPreferencesManager.writeBoolean(
+                                ChromePreferenceKeys.GLIC_AUTO_BROWSE_SETTING_ENABLED, boolValue);
+                        glicService.setUserEnabledActuationOnWeb(boolValue);
+                        return true;
+                    });
+            mUserEnabledActuationOnWebObserver =
+                    enabled -> {
+                        if (autoBrowsePref.isChecked() != enabled) {
+                            autoBrowsePref.setChecked(enabled);
+                            mSharedPreferencesManager.writeBoolean(
+                                    ChromePreferenceKeys.GLIC_AUTO_BROWSE_SETTING_ENABLED, enabled);
+                        }
+                    };
+            glicService.addUserEnabledActuationOnWebObserver(mUserEnabledActuationOnWebObserver);
+        }
 
         String autoBrowseSummary =
                 getString(R.string.settings_glic_permissions_chrome_web_actuation_toggle_sublabel);
@@ -156,10 +177,39 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        Preference buttonPref = findPreference(PREFERENCE_BUTTON);
+        if (buttonPref != null) {
+            updateButtonPreference(buttonPref);
+        }
+    }
+
+    // TODO(crbug.com/501502862): Add dynamic indexing for pin glic button setting.
+    private void updateButtonPreference(Preference preference) {
+        int currentSetting = AdaptiveToolbarPrefs.getCustomizationSetting();
+        if (currentSetting == AdaptiveToolbarButtonVariant.GLIC) {
+            preference.setTitle(R.string.glic_button_entrypoint_pinned_label);
+            preference.setSummary(R.string.glic_button_entrypoint_label);
+        } else {
+            preference.setTitle(R.string.glic_button_entrypoint_unpinned_label);
+            preference.setSummary(R.string.settings_glic_button_toggle_sublabel);
+        }
+    }
+
+    @Override
     public void onDestroy() {
         if (mPrefChangeRegistrar != null) {
             mPrefChangeRegistrar.destroy();
             mPrefChangeRegistrar = null;
+        }
+        if (mUserEnabledActuationOnWebObserver != null) {
+            GlicKeyedService glicService = GlicKeyedServiceFactory.getForProfile(getProfile());
+            if (glicService != null) {
+                glicService.removeUserEnabledActuationOnWebObserver(
+                        mUserEnabledActuationOnWebObserver);
+            }
+            mUserEnabledActuationOnWebObserver = null;
         }
         super.onDestroy();
     }

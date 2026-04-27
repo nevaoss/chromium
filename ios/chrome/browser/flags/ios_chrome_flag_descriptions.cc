@@ -33,6 +33,10 @@ const char kAIMNTPEntrypointTabletName[] = "AIMNTPEntrypointTablet";
 const char kAIMNTPEntrypointTabletDescription[] =
     "Enables the AIMNTPEntrypointTablet feature.";
 
+const char kAimCobrowseHeaderName[] = "AimCobrowseHeader";
+const char kAimCobrowseHeaderDescription[] =
+    "Changes the design of the AIM cobrowse header.";
+
 const char kAimCobrowseName[] = "AimCobrowse";
 const char kAimCobrowseDescription[] = "Enables the AimCobrowse feature.";
 
@@ -251,6 +255,13 @@ const char kAutofillThrottleFilteredDocumentFormScanDescription[] =
     "Enables the throttling of the on the spot filtered form scans done by "
     "Autofill (e.g. get the latest state of a form that had an activity).";
 
+const char kAutofillUpstreamEnforceStrikeDelayName[] =
+    "Require a week between offers to save credit cards";
+const char kAutofillUpstreamEnforceStrikeDelayDescription[] =
+    "When enabled, users should not see offers to save the same credit card "
+    "twice in a week, as the strike database enforces a 7-day delay between "
+    "strikes.";
+
 const char kAutofillUseRendererIDsName[] =
     "Autofill logic uses unqiue renderer IDs";
 const char kAutofillUseRendererIDsDescription[] =
@@ -307,6 +318,11 @@ const char kCacheIdentityListInChromeDescription[] =
 
 const char kChromeNextIaName[] = "ChromeNextIa";
 const char kChromeNextIaDescription[] = "Enables the chrome_next_ia feature.";
+
+const char kCobrowseAimHistoryName[] = "CobrowseAimHistory";
+const char kCobrowseAimHistoryDescription[] =
+    "When enabled, the history button in cobrowse is shown and can display the "
+    "list of all previous AIM conversations.";
 
 const char kCollaborationMessagingName[] = "Collaboration Messaging";
 const char kCollaborationMessagingDescription[] =
@@ -632,6 +648,11 @@ const char kEnableTraitCollectionRegistrationDescription[] =
     "When enabled, UI elements will only observe and respond to the UITraits "
     "to which they have been registered.";
 
+const char kEnforceCanSignInToChromeCapabilityName[] =
+    "Fetch can_sign_in_to_chrome capability";
+const char kEnforceCanSignInToChromeCapabilityDescription[] =
+    "When enabled, can_sign_in_to_chrome is fetched.";
+
 const char kEnhancedCalendarName[] = "Enable Enhanced Calendar integration";
 const char kEnhancedCalendarDescription[] =
     "When enabled, the enhanced calendar flow will be available to eligible "
@@ -884,11 +905,6 @@ const char kIOSProvidesAppNotificationSettingsName[] =
     "IOS Provides App Notification Settings";
 const char kIOSProvidesAppNotificationSettingsDescription[] =
     "Enabled integration with iOS's ProvidesAppNotificationSettings feature.";
-
-const char kIOSReactivationNotificationsName[] = "Reactivation Notifications";
-const char kIOSReactivationNotificationsDescription[] =
-    "Enables a feature to send provisional notifications of interest to new"
-    "users and encourage them to return to the app.";
 
 const char kIOSSaveToDriveClientFolderName[] = "Save to Drive client folder";
 const char kIOSSaveToDriveClientFolderDescription[] =
@@ -1407,6 +1423,11 @@ const char kPhoneNumberDescription[] =
     "When enabled, one tapping or long pressing on a phone number will trigger "
     "the phone number experience.";
 
+const char kPlusButtonInFakeboxName[] = "Enable plus button in fakebox NTP";
+const char kPlusButtonInFakeboxDescription[] =
+    "When enabled, the fakebox NTP can contain a plus button for multimodal "
+    "actions";
+
 const char kPriceTrackingPromoName[] =
     "Enables price tracking notification promo card";
 const char kPriceTrackingPromoDescription[] =
@@ -1649,6 +1670,10 @@ const char kSyncAutofillValuableMetadataDescription[] =
 const char kSyncAutofillValuableName[] = "Sync autofill valuable";
 const char kSyncAutofillValuableDescription[] =
     "Enables syncing valuable for autofill to the server.";
+
+const char kSyncContextualTaskName[] = "Sync Contextual Task";
+const char kSyncContextualTaskDescription[] =
+    "Enables syncing of contextual tasks.";
 
 const char kSyncSandboxName[] = "Use Chrome Sync sandbox";
 const char kSyncSandboxDescription[] =

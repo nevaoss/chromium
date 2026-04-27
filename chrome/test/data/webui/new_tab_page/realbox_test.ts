@@ -7,6 +7,7 @@ import 'chrome://new-tab-page/new_tab_page.js';
 import type {NtpSearchboxElement} from 'chrome://new-tab-page/new_tab_page.js';
 import {BrowserProxyImpl, MetricsReporterImpl, SearchboxBrowserProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import {ContextType} from 'chrome://resources/cr_components/composebox/common.js';
+import type {ComposeboxState, FileUpload, TabUpload} from 'chrome://resources/cr_components/composebox/common.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PageMetricsCallbackRouter} from 'chrome://resources/js/metrics_reporter.mojom-webui.js';
@@ -198,7 +199,8 @@ suite('NewTabPageRealboxNextTest', () => {
     assertTrue(!!contextElement);
 
     // Act & Assert.
-    const whenOpenComposeBox = eventToPromise('open-composebox', realbox);
+    const whenOpenComposeBox = eventToPromise<CustomEvent<ComposeboxState>>(
+        'open-composebox', realbox);
     contextElement.dispatchEvent(new CustomEvent('add-tab-context', {
       detail: {id: 1, title: 'title'},
       bubbles: true,
@@ -206,8 +208,9 @@ suite('NewTabPageRealboxNextTest', () => {
     }));
     const event = await whenOpenComposeBox;
     assertEquals(event.detail.files.length, 1);
-    assertEquals(event.detail.files[0].tabId, 1);
-    assertEquals(event.detail.files[0].title, 'title');
+    const tabUpload = event.detail.files[0] as TabUpload;
+    assertEquals(tabUpload.tabId, 1);
+    assertEquals(tabUpload.title, 'title');
   });
 
   test('clicking deep search button opens composebox', async () => {
@@ -219,7 +222,8 @@ suite('NewTabPageRealboxNextTest', () => {
     assertTrue(!!contextMenuEntrypoint, 'contextual entrypoint button');
 
     // Act.
-    const whenOpenComposeBox = eventToPromise('open-composebox', realbox);
+    const whenOpenComposeBox = eventToPromise<CustomEvent<ComposeboxState>>(
+        'open-composebox', realbox);
 
     const entrypointButton =
         contextMenuEntrypoint.shadowRoot.querySelector<HTMLElement>(
@@ -256,7 +260,8 @@ suite('NewTabPageRealboxNextTest', () => {
     assertTrue(!!contextMenuEntrypoint, 'contextual-entrypoint-button');
 
     // Act.
-    const whenOpenComposeBox = eventToPromise('open-composebox', realbox);
+    const whenOpenComposeBox = eventToPromise<CustomEvent<ComposeboxState>>(
+        'open-composebox', realbox);
 
     const entrypointButton =
         contextMenuEntrypoint.shadowRoot.querySelector<HTMLElement>(
@@ -296,17 +301,18 @@ suite('NewTabPageRealboxNextTest', () => {
       composed: true,
     });
 
-    const whenOpenComposeBox = eventToPromise('open-composebox', realbox);
+    const whenOpenComposeBox = eventToPromise<CustomEvent<ComposeboxState>>(
+        'open-composebox', realbox);
     realbox.$.input.inputElement.dispatchEvent(pasteEvent);
     await microtasksFinished();
     const event = await whenOpenComposeBox;
 
     assertTrue(!!event);
     assertEquals(event.detail.files.length, 2);
-    const file1 = event.detail.files[0];
+    const file1 = event.detail.files[0] as FileUpload;
     assertEquals('pasted.png', file1.file.name);
     assertEquals('image/png', file1.file.type);
-    const file2 = event.detail.files[1];
+    const file2 = event.detail.files[1] as FileUpload;
     assertEquals('pasted.pdf', file2.file.name);
     assertEquals('application/pdf', file2.file.type);
     assertFalse((realbox.$.input as any).pastedInInput_);
@@ -367,7 +373,8 @@ suite('NewTabPageRealboxNextTest', () => {
   });
 
   test('clicking composebox button emits an event.', async () => {
-    const whenOpenComposeBox = eventToPromise('open-composebox', realbox);
+    const whenOpenComposeBox = eventToPromise<CustomEvent<ComposeboxState>>(
+        'open-composebox', realbox);
 
     const composeButton =
         realbox.shadowRoot.querySelector<HTMLElement>('#composeButton');
@@ -708,5 +715,66 @@ suite('NewTabPageRealboxNextTest', () => {
       },
     }));
     assertEquals(1, metrics.count(metricName, ContextType.TAB));
+  });
+
+  test('metrics are recorded for shown context menu items', async () => {
+    loadTimeData.overrideValues({
+      composeboxSource: 'TestSource',
+    });
+    realbox = createAndAppendRealbox({
+      composeButtonEnabled: true,
+      composeboxEnabled: true,
+      ntpRealboxNextEnabled: true,
+    });
+    await microtasksFinished();
+
+    const metricName =
+        'TestSource.AimEntrypoint.ClassicPopup.ContextualElement.Shown';
+
+    // Verify no metrics are recorded initially.
+    assertEquals(0, metrics.count(metricName));
+
+    // Setup tab suggestions.
+    const sampleTabs = [
+      {
+        tabId: 1,
+        title: 'Sample Tab 1',
+        url: 'https://example.com/1',
+        lastActive: {internalValue: BigInt(1)},
+      },
+      {
+        tabId: 2,
+        title: 'Sample Tab 2',
+        url: 'https://example.com/2',
+        lastActive: {internalValue: BigInt(2)},
+      },
+    ];
+    testProxy.handler.setResultFor(
+        'getRecentTabs', Promise.resolve({tabs: sampleTabs}));
+
+    // Open context menu to trigger shown metrics.
+    const entrypointAndMenu = realbox.shadowRoot.querySelector(
+        'cr-composebox-contextual-entrypoint-and-menu');
+    assertTrue(!!entrypointAndMenu);
+    entrypointAndMenu.dispatchEvent(new CustomEvent('context-menu-opened'));
+    await microtasksFinished();
+
+    assertEquals(testProxy.handler.getCallCount('getRecentTabs'), 1);
+    assertDeepEquals((realbox as any).tabSuggestions_, sampleTabs);
+
+    // Verify shown metrics for input types based on SAMPLE_INPUT_STATE
+    assertEquals(1, metrics.count(metricName, ContextType.IMAGE));
+    assertEquals(1, metrics.count(metricName, ContextType.FILE));
+    assertEquals(1, metrics.count(metricName, ContextType.TAB));
+
+    // Verify shown metrics for tools based on SAMPLE_INPUT_STATE
+    assertEquals(1, metrics.count(metricName, ContextType.DEEP_RESEARCH));
+    assertEquals(1, metrics.count(metricName, ContextType.IMAGE_GEN));
+    assertEquals(0, metrics.count(metricName, ContextType.CANVAS));
+
+    // Verify shown metrics for models based on SAMPLE_INPUT_STATE
+    assertEquals(1, metrics.count(metricName, ContextType.REGULAR_MODEL));
+    assertEquals(1, metrics.count(metricName, ContextType.THINKING_MODEL));
+    assertEquals(0, metrics.count(metricName, ContextType.AUTO_MODEL));
   });
 });

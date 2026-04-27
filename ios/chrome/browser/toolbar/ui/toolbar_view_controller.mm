@@ -16,6 +16,9 @@
 #import "ios/chrome/browser/shared/ui/util/layout_guide_names.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/shared/ui/util/util_swift.h"
+#import "ios/chrome/browser/toolbar/legacy/ui_bundled/public/toolbar_constants.h"
+#import "ios/chrome/browser/toolbar/tab_group/ui/tab_group_indicator_constants.h"
+#import "ios/chrome/browser/toolbar/tab_group/ui/tab_group_indicator_view.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button_constants.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button_factory.h"
@@ -28,6 +31,7 @@
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/common/ui/util/ui_util.h"
+#import "ui/base/device_form_factor.h"
 
 namespace {
 
@@ -36,6 +40,8 @@ constexpr CGFloat kStackViewSpacing = 9;
 constexpr CGFloat kButtonMinScale = 0.2;
 
 constexpr CGFloat kAnimationDuration = 0.2f;
+
+constexpr CGFloat kLocationBarToTabGroupMargin = 6;
 
 // The margin for the leading/trailing edges of the stack view.
 constexpr CGFloat kStackViewMarginRegularRegular = 16;
@@ -51,6 +57,9 @@ constexpr CGFloat kLocationBarStackViewMarginLandscape = 18;
 constexpr CGFloat kLocationBarMaxWidth = 600;
 
 }  // namespace
+
+@interface ToolbarViewController () <TabGroupIndicatorViewDelegate>
+@end
 
 @implementation ToolbarViewController {
   ToolbarButton* _backButton;
@@ -75,13 +84,23 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   UIView* _locationBarContainer;
   // The background for the location bar, which is a pill-shaped view.
   UIView* _locationBarBackground;
+  // The target for the fake omnibox, which replaces the location bar when the
+  // location bar is not visible.
+  UIView* _fakeOmniboxTarget;
   // The stack views that hold the buttons on the trailing side.
   UIStackView* _trailingStackView;
+
+  // The tab group indicator view.
+  TabGroupIndicatorView* _tabGroupIndicatorView;
 
   // The location bar height constraint.
   NSLayoutConstraint* _locationBarHeightConstraint;
   // The constraint for the bottom padding of the toolbar.
   NSLayoutConstraint* _locationBarBottomPaddingConstraint;
+
+  // Constraints for the tabGroupIndicator.
+  NSLayoutConstraint* _tabGroupIndicatorActiveToolbarConstraint;
+  NSLayoutConstraint* _tabGroupIndicatorInactiveToolbarConstraint;
 
   // Constraints for different modes.
   NSArray<NSLayoutConstraint*>* _portraitOrientationConstraints;
@@ -117,8 +136,80 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
 
 #pragma mark - Public
 
+- (void)setTabGroupIndicatorView:(TabGroupIndicatorView*)view {
+  if (_tabGroupIndicatorView == view) {
+    return;
+  }
+  _tabGroupIndicatorView = view;
+  if (!_tabGroupIndicatorView) {
+    return;
+  }
+  _tabGroupIndicatorView.hidden = YES;
+  _tabGroupIndicatorView.delegate = self;
+  _tabGroupIndicatorView.translatesAutoresizingMaskIntoConstraints = NO;
+  [self.view addSubview:_tabGroupIndicatorView];
+
+  _tabGroupIndicatorActiveToolbarConstraint =
+      [_tabGroupIndicatorView.bottomAnchor
+          constraintEqualToAnchor:_locationBarContainer.topAnchor
+                         constant:-kLocationBarToTabGroupMargin];
+
+  _tabGroupIndicatorInactiveToolbarConstraint =
+      [_tabGroupIndicatorView.bottomAnchor
+          constraintEqualToAnchor:self.view.bottomAnchor];
+
+  [self updateTabGroupIndicatorAvailability];
+
+  id<LayoutGuideProvider> safeArea = self.view.safeAreaLayoutGuide;
+  [NSLayoutConstraint activateConstraints:@[
+    [_tabGroupIndicatorView.leadingAnchor
+        constraintEqualToAnchor:safeArea.leadingAnchor],
+    [_tabGroupIndicatorView.trailingAnchor
+        constraintEqualToAnchor:safeArea.trailingAnchor],
+    [_tabGroupIndicatorView.heightAnchor
+        constraintEqualToConstant:kTabGroupIndicatorHeight],
+  ]];
+}
+
 - (void)setLocationBarHidden:(BOOL)hidden {
-  _locationBarContainer.hidden = hidden;
+  _locationBarContainer.hidden = hidden || !_visible;
+}
+
+- (void)setScrollProgressForTabletOmnibox:(CGFloat)progress {
+  CHECK_EQ(ui::GetDeviceFormFactor(), ui::DEVICE_FORM_FACTOR_TABLET);
+
+  if (!_NTPVisible) {
+    // While browsing (not on the NTP), the location bar will always be visible
+    // in the expanded toolbar.
+    progress = 1.0;
+  }
+
+  CGAffineTransform targetTransform;
+
+  if (progress == 1) {
+    targetTransform = CGAffineTransformIdentity;
+  } else {
+    targetTransform =
+        CGAffineTransformMakeTranslation(0, kToolbarPadding * (1 - progress));
+  }
+
+  if (_locationBarContainer.alpha == progress &&
+      CGAffineTransformEqualToTransform(_locationBarContainer.transform,
+                                        targetTransform)) {
+    // No changes.
+    return;
+  }
+
+  _locationBarContainer.transform = targetTransform;
+  _locationBarContainer.alpha = progress;
+
+  // When the location bar is fully hidden, activate the fake omnibox
+  // target in its place.
+  if (_locationBarContainer.alpha == 0.0 && _fakeOmniboxTarget.hidden) {
+    _fakeOmniboxTarget.hidden = NO;
+  } else if (_locationBarContainer.alpha > 0.0 && !_fakeOmniboxTarget.hidden) {
+    _fakeOmniboxTarget.hidden = YES;
+  }
 }
 
 - (UIView*)locationBarContainerCopy {
@@ -172,6 +263,7 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
 
   [self updateToolbarElementsVisibility];
   [self updateToolbarVisibility];
+  [self updateTabGroupIndicatorAvailability];
 
   [self
       registerForTraitChanges:
@@ -246,6 +338,7 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   _visible = visible;
   [self loadViewIfNeeded];
   [self updateToolbarElementsVisibility];
+  [self updateTabGroupIndicatorAvailability];
 }
 
 - (void)setNTPVisible:(BOOL)NTPVisible {
@@ -353,9 +446,53 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
       forFullscreenProgress:progress];
   [self updateButtons:_trailingStackView.arrangedSubviews
       forFullscreenProgress:progress];
+
+  CGFloat alphaValue = fmax(progress * 2 - 1, 0);
+  _tabGroupIndicatorView.alpha = alphaValue;
+
+  CGFloat offset = 0;
+  if (!IsRegularXRegularSizeClass(self.traitCollection) &&
+      !IsIPhoneLandscape(self.traitCollection)) {
+    // The location bar is not centered in iPhone landscape when forward is
+    // visible. Add a translation in those cases to have the location bar
+    // centered in fullscreen.
+    offset = (_leadingStackView.bounds.size.width -
+              _trailingStackView.bounds.size.width) /
+             2.0;
+  }
+  CGFloat translation = (progress - 1) * offset;
+
+  CGAffineTransform translationTransform =
+      CGAffineTransformMakeTranslation(translation, 0);
+  _locationBarContainer.transform = translationTransform;
+  _leadingStackView.transform = translationTransform;
+  _trailingStackView.transform = translationTransform;
+}
+
+#pragma mark - TabGroupIndicatorViewDelegate
+
+- (void)tabGroupIndicatorViewVisibilityUpdated:(BOOL)visible {
+  _tabGroupIndicatorView.hidden = !visible;
+  [self.toolbarHeightDelegate toolbarsHeightChanged];
 }
 
 #pragma mark - Private
+
+// Updates the availability of the tab group indicator and its constraints.
+- (void)updateTabGroupIndicatorAvailability {
+  if (_visible) {
+    _tabGroupIndicatorInactiveToolbarConstraint.active = NO;
+    _tabGroupIndicatorActiveToolbarConstraint.active = YES;
+  } else {
+    _tabGroupIndicatorActiveToolbarConstraint.active = NO;
+    _tabGroupIndicatorInactiveToolbarConstraint.active = YES;
+  }
+  _tabGroupIndicatorView.showSeparator = !_visible;
+
+  BOOL canShowTabStrip = CanShowTabStrip(self);
+  BOOL isAvailable = !IsCompactHeight(self) && !canShowTabStrip;
+  _tabGroupIndicatorView.available = isAvailable;
+}
 
 // Updates all the `buttons` according to the fullscreen `progress`.
 - (void)updateButtons:(NSArray<UIView*>*)buttons
@@ -444,6 +581,11 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   _locationBarBackground = [self createLocationBarBackground];
   _locationBarContainer =
       [self createLocationBarContainerWithBackground:_locationBarBackground];
+
+  if (CanShowTabStrip(self)) {
+    _fakeOmniboxTarget = [self createFakeOmniboxTarget];
+  }
+
   _backButton = [self.buttonFactory makeBackButton];
   _backButton.menu = _backButtonMenu;
   [_backButton addTarget:self
@@ -510,6 +652,12 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
 
   [self.view addSubview:_leadingStackView];
   [self.view addSubview:_locationBarContainer];
+
+  if (CanShowTabStrip(self)) {
+    [self.view addSubview:_fakeOmniboxTarget];
+    AddSameConstraints(_locationBarContainer, _fakeOmniboxTarget);
+  }
+
   [self.view addSubview:_trailingStackView];
 
   _locationBarHeightConstraint = [_locationBarContainer.heightAnchor
@@ -620,6 +768,23 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   }
 }
 
+// Creates a fake omnibox target to activate when the location bar is not
+// visible (iPad only).
+- (UIView*)createFakeOmniboxTarget {
+  CHECK_EQ(ui::GetDeviceFormFactor(), ui::DEVICE_FORM_FACTOR_TABLET);
+
+  UIView* fakeOmniboxTarget = [[UIView alloc] init];
+
+  fakeOmniboxTarget.translatesAutoresizingMaskIntoConstraints = NO;
+  fakeOmniboxTarget.hidden = YES;
+
+  UITapGestureRecognizer* tapRecognizer = [[UITapGestureRecognizer alloc]
+      initWithTarget:self.browserCoordinatorHandler
+              action:@selector(showComposebox)];
+  [fakeOmniboxTarget addGestureRecognizer:tapRecognizer];
+  return fakeOmniboxTarget;
+}
+
 // Handles back button tap.
 - (void)backButtonTapped {
   [self.mutator goBack];
@@ -671,7 +836,26 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
 - (void)updateToolbarVisibility {
   BOOL hideToolbar = _NTPVisible && !_incognito && !CanShowTabStrip(self) &&
                      IsSplitToolbarMode(self);
+  BOOL visibilityChanged = hideToolbar != self.view.hidden;
+  BOOL needsLocationBarReset =
+      !_NTPVisible &&
+      (!CGAffineTransformIsIdentity(_locationBarContainer.transform) ||
+       _locationBarContainer.alpha != 1.0);
+
+  if (!visibilityChanged && !needsLocationBarReset) {
+    // No change.
+    return;
+  }
+
   self.view.hidden = hideToolbar;
+
+  // Resets the position and alpha of the location bar. Away from the NTP,
+  // the location bar will become fully visible.
+  if (needsLocationBarReset) {
+    _locationBarContainer.transform = CGAffineTransformIdentity;
+    _locationBarContainer.alpha = 1.0;
+  }
+
   [self.toolbarHeightDelegate toolbarsHeightChanged];
 }
 
@@ -688,6 +872,7 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   [self updateForFullscreenProgress:_fullscreenProgress];
   [self updateLayoutConstraints];
   [self updateToolbarVisibility];
+  [self updateTabGroupIndicatorAvailability];
 }
 
 @end

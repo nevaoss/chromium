@@ -11,8 +11,9 @@
 #include "ui/actions/action_id.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 
-class AppMenuButton;
+class AppMenuControl;
 class AvatarToolbarButton;
+class AvatarToolbarButtonInterface;
 class PinnedToolbarActions;
 class ExtensionsToolbarDesktop;
 class IconLabelBubbleView;
@@ -30,7 +31,6 @@ class Size;
 
 namespace views {
 class AccessiblePaneView;
-class View;
 }  // namespace views
 
 // An interface implemented by a view contains and provides access to toolbar
@@ -46,9 +46,9 @@ class ToolbarButtonProvider {
   // Get the default size for toolbar buttons.
   virtual gfx::Size GetToolbarButtonSize() const = 0;
 
-  // Gets the default view to use as an anchor for extension dialogs if the
+  // Gets the default anchor for extension dialogs if the
   // ToolbarActionView is not visible or available.
-  virtual views::View* GetDefaultExtensionDialogAnchorView() = 0;
+  virtual views::BubbleAnchor GetDefaultExtensionDialogAnchor() = 0;
 
   // Gets the specified page action icon. This function should only be used
   // if you need functionality for the legacy page action icon view. This
@@ -61,8 +61,8 @@ class ToolbarButtonProvider {
   virtual IconLabelBubbleView* GetPageActionView(
       actions::ActionId action_id) = 0;
 
-  // Gets the app menu button.
-  virtual AppMenuButton* GetAppMenuButton() = 0;
+  // Gets the app menu control.
+  virtual AppMenuControl* GetAppMenuControl() = 0;
 
   // Returns a bounding box for the find bar in widget coordinates given the
   // bottom of the contents container.
@@ -82,7 +82,11 @@ class ToolbarButtonProvider {
   virtual void ZoomChangedForActiveTab(bool can_show_bubble) = 0;
 
   // Returns the avatar button.
+  // Deprecated. Use GetAvatarToolbarButtonInterface() instead.
   virtual AvatarToolbarButton* GetAvatarToolbarButton() = 0;
+
+  // Returns the avatar button interface.
+  virtual AvatarToolbarButtonInterface* GetAvatarToolbarButtonInterface() = 0;
 
   // Returns the back button.
   virtual ToolbarButton* GetBackButton() = 0;

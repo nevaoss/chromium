@@ -24,6 +24,7 @@
 #include "chrome/browser/ui/views/location_bar/custom_tab_bar_view.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/profiles/avatar_toolbar_button.h"
+#include "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h"
 #include "chrome/browser/ui/views/toolbar/overflow_button.h"
 #include "chrome/browser/ui/views/toolbar/pinned_action_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
@@ -45,8 +46,8 @@
 #include "chromeos/ash/experiences/arc/mojom/intent_helper.mojom-forward.h"  // nogncheck https://crbug.com/784179
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-class AppMenuButton;
 class AvatarToolbarButton;
+class AvatarToolbarButtonInterface;
 class BatterySaverButton;
 class BrowserAppMenuButton;
 class Browser;
@@ -281,10 +282,10 @@ class ToolbarView : public views::AccessiblePaneView,
   ExtensionsToolbarDesktop* GetExtensionsToolbarDesktop() override;
   PinnedToolbarActions* GetPinnedToolbarActions() override;
   gfx::Size GetToolbarButtonSize() const override;
-  views::View* GetDefaultExtensionDialogAnchorView() override;
+  views::BubbleAnchor GetDefaultExtensionDialogAnchor() override;
   PageActionIconView* GetPageActionIconView(PageActionIconType type) override;
   IconLabelBubbleView* GetPageActionView(actions::ActionId action_id) override;
-  AppMenuButton* GetAppMenuButton() override;
+  AppMenuControl* GetAppMenuControl() override;
   gfx::Rect GetFindBarBoundingBox(int contents_bottom) override;
   void FocusToolbar() override;
   views::AccessiblePaneView* GetAsAccessiblePaneView() override;
@@ -293,6 +294,7 @@ class ToolbarView : public views::AccessiblePaneView,
       std::optional<actions::ActionId> action_id) override;
   void ZoomChangedForActiveTab(bool can_show_bubble) override;
   AvatarToolbarButton* GetAvatarToolbarButton() override;
+  AvatarToolbarButtonInterface* GetAvatarToolbarButtonInterface() override;
   ToolbarButton* GetBackButton() override;
   ReloadControl* GetReloadButton() override;
   IntentChipButton* GetIntentChipButton() override;
@@ -307,6 +309,7 @@ class ToolbarView : public views::AccessiblePaneView,
   views::View* GetViewForDrop() override;
 
   // GlicButtonControllerDelegate:
+  void SetButtonController(glic::GlicButtonController* controller) override;
   void SetGlicShowState(bool show) override;
   void SetGlicPanelIsOpen(bool open) override;
 
@@ -400,6 +403,7 @@ class ToolbarView : public views::AccessiblePaneView,
   raw_ptr<glic::ToolbarGlicButton> glic_button_ = nullptr;
   raw_ptr<glic::ToolbarGlicActorTaskIcon> glic_actor_task_icon_ = nullptr;
   raw_ptr<ToolbarDivider> glic_button_divider_ = nullptr;
+  raw_ptr<glic::GlicButtonController> button_controller_ = nullptr;
 
   // When locked, the container is unable to change its expanded state.
   // Changes will be staged until after this is unlocked.

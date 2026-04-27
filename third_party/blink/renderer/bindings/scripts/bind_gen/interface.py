@@ -2488,7 +2488,9 @@ def make_no_alloc_direct_call_callback_def(cg_context, function_name,
     body.register_code_symbol(
         S(
             "kPerformDetachCheckFlag",
-            "constexpr auto kPerformDetachCheckFlag = PassAsSpanMarkerBase::Flags::kNone;"
+            # TODO(caseq): figure out if it makes sense to skip it when we can.
+            # See https://crbug.com/499365904 for details.
+            "constexpr auto kPerformDetachCheckFlag = PassAsSpanMarkerBase::Flags::kPerformDetachCheck;"
         ))
 
     bind_callback_local_vars(body, cg_context)
@@ -6441,6 +6443,10 @@ const WrapperTypeInfo ${class_name}::wrapper_type_info_{{
     if class_like.is_interface and class_like.inherited:
         wrapper_type_info_of_inherited = "{}::GetWrapperTypeInfo()".format(
             v8_bridge_class_name(class_like.inherited))
+        wrapper_type_info_def.append(
+            F("static_assert(std::derived_from<{blink_class}, {blink_base_class}>);",
+              blink_class=blink_class_name(class_like),
+              blink_base_class=blink_class_name(class_like.inherited)))
     else:
         wrapper_type_info_of_inherited = "nullptr"
     if (class_like.is_interface or class_like.is_async_iterator

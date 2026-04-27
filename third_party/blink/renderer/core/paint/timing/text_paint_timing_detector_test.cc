@@ -77,7 +77,7 @@ class TextPaintTimingDetectorTest : public testing::Test {
   gfx::Rect GetViewportRect(LocalFrameView& view) {
     ScrollableArea* scrollable_area = view.GetScrollableArea();
     DCHECK(scrollable_area);
-    return scrollable_area->VisibleContentRect();
+    return scrollable_area->VisibleContentRect(kExcludeScrollbars);
   }
 
   Document* GetChildDocument() {
@@ -121,13 +121,15 @@ class TextPaintTimingDetectorTest : public testing::Test {
 
   base::TimeTicks LargestPaintTime() {
     return GetPaintTimingDetector()
-        .LatestLcpDetailsForTest()
+        .GetLargestContentfulPaintCalculator()
+        ->LatestLcpDetails()
         .largest_text_paint_time;
   }
 
   uint64_t LargestPaintSize() {
     return GetPaintTimingDetector()
-        .LatestLcpDetailsForTest()
+        .GetLargestContentfulPaintCalculator()
+        ->LatestLcpDetails()
         .largest_text_paint_size;
   }
 

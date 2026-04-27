@@ -293,6 +293,7 @@
 <translation id="2251809247798634662">打开新的无痕式窗口</translation>
 <translation id="2253927598983295051">选择要与“<ph name="APP_NAME" />”分享的内容</translation>
 <translation id="2261570557291037252">更多应用信息</translation>
+<translation id="2270544918551255912">从边缘滑动即可返回</translation>
 <translation id="2276696007612801991">您需要先登录 Google 账号才能检查您的密码</translation>
 <translation id="2281243904606300427"><ph name="TAB_TITLE" />，所选的无痕式标签页</translation>
 <translation id="2286841657746966508">账单邮寄地址</translation>
@@ -480,6 +481,7 @@
 <translation id="2989523299700148168">最近用过的搜索引擎</translation>
 <translation id="2992473221983447149">图片说明</translation>
 <translation id="2996291259634659425">创建密码</translation>
+<translation id="2996682533106928201">点按即可忽略</translation>
 <translation id="2996809686854298943">必须提供网址</translation>
 <translation id="3024215143424744261">已关闭阅读模式偏好设置</translation>
 <translation id="3026955690410463085">包括链接</translation>
@@ -831,6 +833,7 @@
 <translation id="4521489764227272523">所选数据已从 Chrome 和同步的设备中移除。
 
 不过，您的 Google 账号在 <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> 上可能还有其他形式的浏览记录（例如，在其他 Google 服务中的搜索记录和活动记录）。</translation>
+<translation id="4521637321901000942">在工具栏中管理扩展程序</translation>
 <translation id="4523326818319942067">过去 1 小时</translation>
 <translation id="452750746583162491">查看您已同步的数据</translation>
 <translation id="4532845899244822526">选择文件夹</translation>

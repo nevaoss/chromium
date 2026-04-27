@@ -275,8 +275,7 @@ void Host::Reload() {
     return;
   }
 
-  if (GlicEnabling::IsMultiInstanceEnabled() &&
-      base::FeatureList::IsEnabled(kGlicReloadUsesFreshWebContents)) {
+  if (base::FeatureList::IsEnabled(kGlicReloadUsesFreshWebContents)) {
     if (handler_info_ && handler_info_->web_client) {
       UnsetWebClient(handler_info_->web_client);
     }
@@ -303,12 +302,7 @@ void Host::CreateContents(bool initially_hidden) {
   VLOG(1) << "Glic [Host] CreateContents";
 
   glic_service().fre_controller().RecordFrameworkStartTime();
-  if (base::FeatureList::IsEnabled(features::kGlicWebContentsWarming)) {
-    contents_ = glic_service().web_contents_warming_pool().TakeContainer();
-  } else {
-    contents_ = std::make_unique<WebUIContentsContainerImpl>(profile_,
-                                                             initially_hidden);
-  }
+  contents_ = glic_service().web_contents_warming_pool().TakeContainer();
   contents_->AttachToHost(this);
 
   metrics_.StartRecording();

@@ -46,7 +46,6 @@ import org.chromium.components.browser_ui.settings.SettingsNavigation;
 import org.chromium.components.feature_engagement.EventConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.signin.SigninFeatureMap;
-import org.chromium.components.signin.SigninFeatures;
 import org.chromium.components.signin.base.CoreAccountInfo;
 import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
@@ -54,6 +53,7 @@ import org.chromium.components.signin.identitymanager.PrimaryAccountChangeEvent;
 import org.chromium.components.signin.metrics.SigninAccessPoint;
 import org.chromium.components.sync.SyncService;
 import org.chromium.components.sync.UserActionableError;
+import org.chromium.google_apis.gaia.CoreAccountId;
 import org.chromium.ui.base.ActivityResultTracker;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManager;
@@ -231,11 +231,9 @@ final class SigninButtonMediator
                                             .build(mContext));
         }
 
-        @Nullable String email = CoreAccountInfo.getEmailFrom(coreAccountInfo);
+        @Nullable CoreAccountId id = CoreAccountInfo.getIdFrom(coreAccountInfo);
         DisplayableProfileData profileData =
-                email == null
-                        ? null
-                        : assumeNonNull(mProfileDataCache).getProfileDataOrDefault(email);
+                id == null ? null : assumeNonNull(mProfileDataCache).getById(id);
         setButton(profileData);
     }
 
@@ -304,7 +302,7 @@ final class SigninButtonMediator
         if (mSyncService != null) {
             mSyncService.addSyncStateChangedListener(this);
         }
-        if (SigninFeatureMap.isEnabled(SigninFeatures.ENABLE_SEAMLESS_SIGNIN)) {
+        if (SigninFeatureMap.getInstance().isActivitylessSigninAllEntryPointEnabled()) {
             initializeSigninCoordinator();
         }
         updateButtonState();
@@ -338,7 +336,7 @@ final class SigninButtonMediator
                             .signinSurveyType(
                                     SigninSurveyController.SigninSurveyType.NTP_SIGNIN_BUTTON)
                             .build();
-            if (SigninFeatureMap.isEnabled(SigninFeatures.ENABLE_SEAMLESS_SIGNIN)) {
+            if (SigninFeatureMap.getInstance().isActivitylessSigninAllEntryPointEnabled()) {
                 assumeNonNull(mSigninCoordinator).startSigninFlow(config);
             } else {
                 @Nullable Intent intent =

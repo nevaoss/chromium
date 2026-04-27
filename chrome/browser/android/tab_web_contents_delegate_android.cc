@@ -21,6 +21,7 @@
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/rand_util.h"
+#include "base/task/single_thread_task_runner.h"
 #include "chrome/browser/android/customtabs/client_data_header_web_contents_observer.h"
 #include "chrome/browser/android/framebust_intervention/framebust_blocked_delegate_android.h"
 #include "chrome/browser/android/tab_android.h"
@@ -53,7 +54,6 @@
 #include "components/autofill/content/browser/content_autofill_driver_factory.h"
 #include "components/blocked_content/popup_blocker.h"
 #include "components/blocked_content/popup_tracker.h"
-#include "components/browser_ui/sms/android/sms_infobar.h"
 #include "components/browser_ui/util/android/url_constants.h"
 #include "components/external_intents/android/external_intents_features.h"
 #include "components/find_in_page/find_notification_details.h"
@@ -182,22 +182,6 @@ void TabWebContentsDelegateAndroid::RunFileChooser(
                                    params);
 }
 
-void TabWebContentsDelegateAndroid::CreateSmsPrompt(
-    content::RenderFrameHost* host,
-    const std::vector<url::Origin>& origin_list,
-    const std::string& one_time_code,
-    base::OnceClosure on_confirm,
-    base::OnceClosure on_cancel) {
-  DCHECK_EQ(host->GetLifecycleState(),
-            content::RenderFrameHost::LifecycleState::kActive);
-
-  auto* web_contents = content::WebContents::FromRenderFrameHost(host);
-  sms::SmsInfoBar::Create(
-      web_contents,
-      infobars::ContentInfoBarManager::FromWebContents(web_contents),
-      origin_list, one_time_code, std::move(on_confirm), std::move(on_cancel));
-}
-
 bool TabWebContentsDelegateAndroid::ShouldFocusLocationBarByDefault(
     WebContents* source) {
   content::NavigationEntry* entry = source->GetController().GetActiveEntry();
@@ -212,6 +196,27 @@ bool TabWebContentsDelegateAndroid::ShouldFocusLocationBarByDefault(
     }
   }
   return false;
+}
+
+void TabWebContentsDelegateAndroid::NavigationStateChanged(
+    WebContents* source,
+    content::InvalidateTypes changed_flags) {
+  if (base::FeatureList::IsEnabled(
+          chrome::android::kDeferNavigationStateChanged)) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            &TabWebContentsDelegateAndroid::NavigationStateChangedDeferred,
+            weak_ptr_factory_.GetWeakPtr(), source, changed_flags));
+    return;
+  }
+  NavigationStateChangedDeferred(source, changed_flags);
+}
+
+void TabWebContentsDelegateAndroid::NavigationStateChangedDeferred(
+    WebContents* source,
+    content::InvalidateTypes changed_flags) {
+  WebContentsDelegateAndroid::NavigationStateChanged(source, changed_flags);
 }
 
 void TabWebContentsDelegateAndroid::FindReply(
@@ -582,23 +587,6 @@ bool TabWebContentsDelegateAndroid::IsPictureInPictureEnabled() const {
     return false;
   return Java_TabWebContentsDelegateAndroidImpl_isPictureInPictureEnabled(env,
                                                                           obj);
-}
-
-bool TabWebContentsDelegateAndroid::IsNightModeEnabled() const {
-  JNIEnv* env = base::android::AttachCurrentThread();
-  ScopedJavaLocalRef<jobject> obj = GetJavaDelegate(env);
-  if (obj.is_null())
-    return false;
-  return Java_TabWebContentsDelegateAndroidImpl_isNightModeEnabled(env, obj);
-}
-
-bool TabWebContentsDelegateAndroid::IsForceDarkWebContentEnabled() const {
-  JNIEnv* env = base::android::AttachCurrentThread();
-  ScopedJavaLocalRef<jobject> obj = GetJavaDelegate(env);
-  if (obj.is_null())
-    return false;
-  return Java_TabWebContentsDelegateAndroidImpl_isForceDarkWebContentEnabled(
-      env, obj);
 }
 
 bool TabWebContentsDelegateAndroid::CanShowAppBanners() const {

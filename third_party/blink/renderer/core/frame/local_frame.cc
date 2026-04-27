@@ -193,7 +193,6 @@
 #include "third_party/blink/renderer/core/layout/hit_test_result.h"
 #include "third_party/blink/renderer/core/layout/layout_object_inlines.h"
 #include "third_party/blink/renderer/core/layout/layout_view.h"
-#include "third_party/blink/renderer/core/layout/text_autosizer.h"
 #include "third_party/blink/renderer/core/lcp_critical_path_predictor/lcp_critical_path_predictor.h"
 #include "third_party/blink/renderer/core/loader/document_loader.h"
 #include "third_party/blink/renderer/core/loader/frame_load_request.h"
@@ -1542,10 +1541,6 @@ void LocalFrame::SetPrinting(bool printing, float maximum_shrink_ratio) {
   GetDocument()->SetPrinting(printing ? Document::kPrinting
                                       : Document::kFinishingPrinting);
   View()->AdjustMediaTypeForPrinting(printing);
-
-  if (TextAutosizer* text_autosizer = GetDocument()->GetTextAutosizer())
-    text_autosizer->UpdatePageInfo();
-
   if (ShouldUsePaginatedLayout()) {
     View()->ForceLayoutForPagination(maximum_shrink_ratio);
   } else {
@@ -2589,7 +2584,10 @@ void LocalFrame::SetViewportIntersectionFromParent(
 gfx::Size LocalFrame::GetOutermostMainFrameSize() const {
   LocalFrame& local_root = LocalFrameRoot();
   return local_root.IsOutermostMainFrame()
-             ? local_root.View()->LayoutViewport()->VisibleContentRect().size()
+             ? local_root.View()
+                   ->LayoutViewport()
+                   ->VisibleContentRect(kExcludeScrollbars)
+                   .size()
              : local_root.intersection_state_.outermost_main_frame_size;
 }
 
@@ -2793,7 +2791,8 @@ void LocalFrame::UpdateAdHighlight() {
 
   // TODO(bokan): Fenced frames may need some work to propagate the ad
   // highlighting setting to the inner tree.
-  if (IsAdRoot() && GetPage()->GetSettings().GetHighlightAds()) {
+  if (IsAdRoot() && (GetPage()->GetSettings().GetHighlightAds() ||
+                     GetPage()->GetSettings().GetInspectorHighlightAds())) {
     SetFrameColorOverlay(SkColorSetARGB(128, 255, 0, 0));
   } else {
     SetFrameColorOverlay(SK_ColorTRANSPARENT);

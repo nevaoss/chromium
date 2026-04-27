@@ -479,9 +479,6 @@ bool StructTraits<autofill::mojom::FormFieldDataPredictionsDataView,
   if (!data.ReadParseableName(&out->parseable_name)) {
     return false;
   }
-  if (!data.ReadParseableLabel(&out->parseable_label)) {
-    return false;
-  }
   if (!data.ReadSection(&out->section)) {
     return false;
   }
@@ -604,10 +601,9 @@ bool StructTraits<autofill::mojom::PasswordSuggestionRequestDataView,
                   autofill::PasswordSuggestionRequest>::
     Read(autofill::mojom::PasswordSuggestionRequestDataView data,
          autofill::PasswordSuggestionRequest* out) {
-  out->username_field_index = data.username_field_index();
-  out->password_field_index = data.password_field_index();
-
-  return data.ReadField(&out->field) && data.ReadFormData(&out->form_data);
+  return data.ReadField(&out->field) && data.ReadFormData(&out->form_data) &&
+         data.ReadUsernameFieldId(&out->username_field_id) &&
+         data.ReadPasswordFieldId(&out->password_field_id);
 }
 
 bool StructTraits<

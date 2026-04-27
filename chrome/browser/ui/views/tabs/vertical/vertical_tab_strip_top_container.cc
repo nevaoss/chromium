@@ -12,12 +12,15 @@
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_everything_menu.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h"
 #include "chrome/browser/ui/views/tabs/vertical/top_container_button.h"
 #include "chrome/grit/generated_resources.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/saved_tab_groups/public/features.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -117,6 +120,13 @@ views::ProposedLayout VerticalTabStripTopContainer::CalculateProposedLayout(
     if (first_button_height > 0) {
       const int baseline_height = GetBaselineMinHeight();
       current_y = std::max(0, (baseline_height - first_button_height) / 2);
+    }
+
+    // Because the collapsed state is set at the end of the transition, we need
+    // to ensure that the top container's button do not appear behind the
+    // caption buttons when they are leading.
+    if (caption_button_width_ > 0) {
+      current_y = std::max(current_y, toolbar_height_);
     }
 
     if (unfocus_button_ && unfocus_button_->GetVisible()) {
@@ -317,6 +327,11 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
     ui::mojom::MenuSourceType source_type) {
   if (tabs::IsVerticalTabsExpandOnHoverFeatureEnabled() &&
       source == collapse_button_) {
+    BrowserUserEducationInterface::From(browser_)
+        ->NotifyFeaturePromoFeatureUsed(
+            feature_engagement::kIPHVerticalTabsExpandOnHoverFeature,
+            FeaturePromoFeatureUsedAction::kClosePromoIfPresent);
+
     // Reset the menu runner to avoid issues when the collapse button is
     // clicked multiple times.
     context_menu_runner_.reset();
@@ -333,8 +348,22 @@ void VerticalTabStripTopContainer::ShowContextMenuForViewImpl(
     int32_t menu_runner_flags =
         views::MenuRunner::HAS_MNEMONICS | views::MenuRunner::CONTEXT_MENU;
 
+    BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser_);
+    CHECK(browser_view);
+    CHECK(browser_view->tab_strip_view());
+    expand_on_hover_lock_ =
+        browser_view->tab_strip_view()->GetExpandOnHoverLock(
+            ExpandOnHoverLockType::kKeepExpanded);
+
+    // `base::Unretained(this)` is safe because `context_menu_runner_` is owned
+    // by `this`, ensuring the callback cannot outlive `this`.
+    auto on_menu_closed = base::BindRepeating(
+        &VerticalTabStripTopContainer::OnCollapseButtonContextMenuClosed,
+        base::Unretained(this));
+
     context_menu_runner_ = std::make_unique<views::MenuRunner>(
-        context_menu_model_.get(), menu_runner_flags);
+        context_menu_model_.get(), menu_runner_flags,
+        std::move(on_menu_closed));
 
     context_menu_runner_->RunMenuAt(
         source->GetWidget(), nullptr, gfx::Rect(point, gfx::Size()),
@@ -379,6 +408,10 @@ void VerticalTabStripTopContainer::SetCaptionButtonWidthForLayout(
   }
   caption_button_width_ = caption_button_width;
   InvalidateLayout();
+}
+
+void VerticalTabStripTopContainer::OnCollapseButtonContextMenuClosed() {
+  expand_on_hover_lock_.reset();
 }
 
 int VerticalTabStripTopContainer::GetPreferredWidth() const {

@@ -32,6 +32,8 @@
 #include "chrome/browser/ui/webui/access_code_cast/access_code_cast_ui.h"
 #include "chrome/browser/ui/webui/accessibility_annotator/accessibility_annotator_info.mojom.h"
 #include "chrome/browser/ui/webui/accessibility_annotator/accessibility_annotator_info_ui.h"
+#include "chrome/browser/ui/webui/accessibility_annotator_internals/accessibility_annotator_internals.mojom.h"
+#include "chrome/browser/ui/webui/accessibility_annotator_internals/accessibility_annotator_internals_ui.h"
 #include "chrome/browser/ui/webui/ai_overlay_dialog/ai_overlay_dialog.mojom.h"
 #include "chrome/browser/ui/webui/ai_overlay_dialog/ai_overlay_dialog_untrusted_ui.h"
 #include "chrome/browser/ui/webui/app_service_internals/app_service_internals.mojom.h"
@@ -115,7 +117,9 @@
 #include "components/privacy_sandbox/privacy_sandbox_features.h"
 #include "components/private_ai/features.h"
 #include "components/search/ntp_features.h"
-#include "components/surface_embed/buildflags/buildflags.h"
+#include "components/surface_embed/browser/surface_embed_host.h"
+#include "components/surface_embed/common/features.h"
+#include "components/surface_embed/common/surface_embed.mojom.h"
 #include "components/sync/base/features.h"
 #include "components/user_education/common/user_education_features.h"
 #include "content/public/browser/render_frame_host.h"
@@ -209,12 +213,6 @@
 #include "chrome/browser/ui/webui/default_browser/default_browser_modal_ui.h"
 #endif
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
-#include "components/surface_embed/browser/surface_embed_host.h"
-#include "components/surface_embed/common/features.h"
-#include "components/surface_embed/common/surface_embed.mojom.h"
-#endif
-
 namespace chrome::internal {
 
 using content::RegisterWebUIControllerInterfaceBinder;
@@ -281,6 +279,10 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
 
   RegisterWebUIControllerInterfaceBinder<
       new_tab_page::mojom::PageHandlerFactory, NewTabPageUI>(map);
+
+  RegisterWebUIControllerInterfaceBinder<
+      browser::accessibility_annotator_internals::mojom::PageHandlerFactory,
+      AccessibilityAnnotatorInternalsUI>(map);
 
   if (user_education::features::GetNtpBrowserPromoType() !=
       user_education::features::NtpBrowserPromoType::kNone) {
@@ -383,7 +385,7 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
       NewTabPageUI>(map);
 
-  RegisterWebUIControllerInterfaceBinder<searchbox::mojom::PageHandler,
+  RegisterWebUIControllerInterfaceBinder<searchbox::mojom::PageHandlerFactory,
                                          NewTabPageUI, OmniboxPopupUI>(map);
 
   RegisterWebUIControllerInterfaceBinder<suggest_internals::mojom::PageHandler,
@@ -532,7 +534,6 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
 
   map->Add<color_change_listener::mojom::PageHandler>(&BindColorChangeListener);
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
   if (base::FeatureList::IsEnabled(surface_embed::features::kSurfaceEmbed)) {
     map->Add<surface_embed::mojom::SurfaceEmbedHost>(base::BindRepeating(
         [](content::RenderFrameHost* render_frame_host,
@@ -546,7 +547,6 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
                                                   std::move(receiver));
         }));
   }
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
   RegisterWebUIControllerInterfaceBinder<::mojom::WebAppInternalsHandler,
                                          WebAppInternalsUI>(map);
@@ -691,7 +691,7 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
         .Add<webui_browser::mojom::PageHandlerFactory>()
         .Add<bookmark_bar::mojom::PageHandlerFactory>()
         .Add<extensions_bar::mojom::PageHandlerFactory>()
-        .Add<searchbox::mojom::PageHandler>()
+        .Add<searchbox::mojom::PageHandlerFactory>()
         .Add<tabs_api::mojom::TabStripService>()
         .Add<tracked_element::mojom::TrackedElementHandler>();
   }
@@ -717,7 +717,7 @@ void PopulateChromeWebUIFrameInterfaceBrokersUntrustedPartsDesktop(
     registry.ForWebUI<lens::LensSidePanelUntrustedUI>()
         .Add<lens::mojom::LensSidePanelPageHandlerFactory>()
         .Add<lens::mojom::LensGhostLoaderPageHandlerFactory>()
-        .Add<searchbox::mojom::PageHandler>()
+        .Add<searchbox::mojom::PageHandlerFactory>()
         .Add<help_bubble::mojom::HelpBubbleHandlerFactory>()
         .Add<composebox::mojom::PageHandlerFactory>();
   }
@@ -726,7 +726,7 @@ void PopulateChromeWebUIFrameInterfaceBrokersUntrustedPartsDesktop(
         .Add<lens::mojom::LensPageHandlerFactory>()
         .Add<lens::mojom::LensGhostLoaderPageHandlerFactory>()
         .Add<help_bubble::mojom::HelpBubbleHandlerFactory>()
-        .Add<searchbox::mojom::PageHandler>();
+        .Add<searchbox::mojom::PageHandlerFactory>();
   }
   registry.ForWebUI<ReadAnythingUntrustedUI>();
 

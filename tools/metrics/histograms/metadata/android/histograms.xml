@@ -150,6 +150,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".DesktopSiteWindowSetting"/>
   <variant name=".DownloadIncognitoWarning"/>
   <variant name=".DownloadProgress"/>
+  <variant name=".ExtensionsRequestAccess"/>
   <variant name=".ExternalNavigation"/>
   <variant name=".FramebustBlocked"/>
   <variant name=".GeneratedPasswordSaved"/>
@@ -435,7 +436,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.AdaptiveToolbarButton.Clicked"
-    enum="AdaptiveToolbarButtonVariant" expires_after="2026-08-09">
+    enum="AdaptiveToolbarButtonVariant" expires_after="2026-10-11">
   <owner>bttk@chromium.org</owner>
   <owner>chrome-segmentation-platform@google.com</owner>
   <summary>
@@ -444,7 +445,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.AdaptiveToolbarButton.SessionVariant"
-    enum="AdaptiveToolbarButtonVariant" expires_after="2026-08-09">
+    enum="AdaptiveToolbarButtonVariant" expires_after="2026-10-11">
   <owner>bttk@chromium.org</owner>
   <owner>chrome-segmentation-platform@google.com</owner>
   <summary>
@@ -465,7 +466,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.AdaptiveToolbarButton.Settings.Startup"
-    enum="AdaptiveToolbarRadioButtonState" expires_after="2026-07-05">
+    enum="AdaptiveToolbarRadioButtonState" expires_after="2026-10-11">
   <owner>shaktisahu@chromium.org</owner>
   <owner>chrome-segmentation-platform@google.com</owner>
   <summary>
@@ -1339,7 +1340,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.ChildProcess.JavalessStarted" enum="Boolean"
-    expires_after="2026-08-12">
+    expires_after="2026-10-11">
   <owner>smaier@chromium.org</owner>
   <summary>
     Records when a child process (specifically a renderer) is started via the
@@ -1803,6 +1804,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.DefaultBrowserPromo.Outcome.FRE"
+    enum="AndroidDefaultBrowserPromoOutcomeType" expires_after="2027-04-09">
+  <owner>eleanorlee@google.com</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    The final default browser state (outcome) after the user has been prompted
+    to set Chrome as the default via the First Run Experience. Recorded when the
+    Role Manager Dialog is dismissed.
+  </summary>
+</histogram>
+
 <histogram name="Android.DefaultBrowserPromo.Outcome.{CurrentState}"
     enum="AndroidDefaultBrowserPromoOutcomeType" expires_after="2026-08-30">
   <owner>lazzzis@google.com</owner>
@@ -2226,7 +2238,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.EdgeToEdge.BackupNavbarInsets.EdgeToEdgeController"
-    enum="BackupNavbarInsetsSource" expires_after="2026-08-09">
+    enum="BackupNavbarInsetsSource" expires_after="2026-10-11">
   <owner>clhager@google.com</owner>
   <owner>wenyufu@chromium.org</owner>
   <owner>edge-to-edge@chromium.org</owner>
@@ -2332,7 +2344,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.EdgeToEdge.NavigationBarMandatoryGesturesMismatch"
-    enum="HasSeenNonZeroNavBarState" expires_after="2026-08-09">
+    enum="HasSeenNonZeroNavBarState" expires_after="2026-10-11">
   <owner>clhager@google.com</owner>
   <owner>wenyufu@chromium.org</owner>
   <owner>edge-to-edge@chromium.org</owner>
@@ -2634,7 +2646,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.IncognitoReauth.PrefToggledFromSettingPage"
-    enum="IncognitoReauthToggleValueType" expires_after="2026-07-26">
+    enum="IncognitoReauthToggleValueType" expires_after="2026-10-11">
   <owner>roagarwal@chromium.org</owner>
   <owner>chrome-incognito@google.com</owner>
   <summary>
@@ -2859,7 +2871,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.InputOnViz.Viz.DroppedKeyEvent.Type"
-    enum="AInputEventType" expires_after="2026-08-09">
+    enum="AInputEventType" expires_after="2026-10-11">
   <owner>kartarsingh@google.com</owner>
   <owner>woa-performance-team@google.com</owner>
   <summary>
@@ -2988,6 +3000,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.Intent.BringTabToFront.Result"
+    enum="BringTabToFrontResult" expires_after="2026-12-31">
+  <owner>philyan@chromium.org</owner>
+  <owner>skavuluru@google.com</owner>
+  <summary>
+    Records the outcome of attempting to bring a tabbed activity to the front
+    using a multi-window intent. This helps track the success rate and failure
+    reasons of the MoveToFrontInLaunchIntentDispatcher feature.
+  </summary>
+</histogram>
+
 <histogram name="Android.Intent.HasNonSpoofablePackageName" enum="Boolean"
     expires_after="2024-12-01">
   <owner>katzz@google.com</owner>
@@ -3042,6 +3065,31 @@ chromium-metrics-reviews@google.com.
     on Android, and should only happen when background/early navigations
     redirect.
   </summary>
+</histogram>
+
+<histogram name="Android.Intent.LaunchInInstance.EarlyFailureReason"
+    enum="LaunchInInstanceEarlyFailureReason" expires_after="2026-12-31">
+  <owner>philyan@chromium.org</owner>
+  <owner>skavuluru@google.com</owner>
+  <summary>
+    Records the reason for early failure when launching an intent into an
+    existing multi-window instance. Recorded only when an early failure occurs.
+  </summary>
+</histogram>
+
+<histogram name="Android.Intent.LaunchInInstance.{Api}.Result"
+    enum="BooleanSuccess" expires_after="2026-12-31">
+  <owner>philyan@chromium.org</owner>
+  <owner>skavuluru@google.com</owner>
+  <summary>
+    Records the success or failure of attempting to bring a task to the front
+    using the {Api} API path.
+  </summary>
+  <token key="Api">
+    <variant name="AppTaskStartActivity" summary="AppTask.startActivity()"/>
+    <variant name="SafeStartActivity"
+        summary="IntentUtils.safeStartActivity()"/>
+  </token>
 </histogram>
 
 <histogram name="Android.Intent.MainFrameIntentLaunch"
@@ -3722,6 +3770,38 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.MultiWindow.Occlusion.CalculateResult"
+    enum="WindowOcclusionCalculateResult" expires_after="2027-04-02">
+  <owner>kalutes@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records the result of WindowOcclusionTracker calculateOcclusion operation.
+    Emitted when window position changes or windows are redrawn.
+  </summary>
+</histogram>
+
+<histogram name="Android.MultiWindow.Occlusion.TrackResult" enum="Boolean"
+    expires_after="2027-04-02">
+  <owner>kalutes@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records the result of WindowOcclusionTracker track operation. Emitted when a
+    new window is created. False if the root view could not be found, true on
+    success.
+  </summary>
+</histogram>
+
+<histogram name="Android.MultiWindow.Occlusion.UntrackResult" enum="Boolean"
+    expires_after="2027-04-02">
+  <owner>kalutes@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records the result of WindowOcclusionTracker untrack operation. Emitted when
+    a window is destroyed. False if the root view could not be found, true on
+    success.
+  </summary>
+</histogram>
+
 <histogram name="Android.MultiWindow.WindowZOrder.DisplaysCount" units="count"
     expires_after="2027-04-02">
   <owner>kalutes@google.com</owner>
@@ -3799,7 +3879,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MultiWindowMode.Configuration" enum="WindowingMode"
-    expires_after="2026-08-09">
+    expires_after="2026-10-11">
   <owner>aishwaryarj@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -4907,7 +4987,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.AssistContent.IsEnterpriseInfoCached"
-    enum="Boolean" expires_after="2026-08-09">
+    enum="Boolean" expires_after="2026-10-11">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -4940,7 +5020,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.DocumentLoadInterval" units="ms"
-    expires_after="2026-08-09">
+    expires_after="2026-10-11">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5029,6 +5109,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.Pdf.UriIsNull" enum="Boolean"
+    expires_after="2026-09-20">
+  <owner>shuyng@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records whether the PDF file URI is null when attempting to load the file.
+    Recorded in PdfCoordinator#loadPdfFile.
+  </summary>
+</histogram>
+
 <histogram name="Android.PhotoPicker.BitmapScalerTask" units="ms"
     expires_after="2024-06-01">
   <owner>finnur@chromium.org</owner>
@@ -5110,21 +5200,6 @@ chromium-metrics-reviews@google.com.
   <owner>twellington@chromium.org</owner>
   <summary>
     The percentage of runtime error decoding failures, per batch of videos (not
-    photos) decoded. Intended to help identify if there are devices where
-    decoding fails 100% of the time. Be wary at looking at other numbers in the
-    histogram, as a value emitted at, say, 50% may represent one failure in a
-    two-item decoding or 50 failures in a hundred-item decoding. These are
-    qualitatively different experiences for a user. Note: This metric was not
-    logged in June 2023.
-  </summary>
-</histogram>
-
-<histogram name="Android.PhotoPicker.DecoderHostVideoUnknownError" units="%"
-    expires_after="2024-06-01">
-  <owner>finnur@chromium.org</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    The percentage of unknown decoding error failures, per batch of videos (not
     photos) decoded. Intended to help identify if there are devices where
     decoding fails 100% of the time. Be wary at looking at other numbers in the
     histogram, as a value emitted at, say, 50% may represent one failure in a
@@ -5520,7 +5595,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.RestoreResult" enum="AndroidRestoreResult"
-    expires_after="2026-08-09">
+    expires_after="2026-10-11">
   <owner>triploblastic@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -5836,16 +5911,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Measures the amount of time due to a StrictMode violation from calling out
     to Android activity manager.
-  </summary>
-</histogram>
-
-<histogram name="Android.StrictMode.ThumbnailCacheDir" units="ms"
-    expires_after="M85">
-  <owner>wnwen@chromium.org</owner>
-  <owner>yfriedman@chromium.org</owner>
-  <summary>
-    Measures the amount of time due to a StrictMode violation from fetching for
-    the thumbnail cache directory.
   </summary>
 </histogram>
 
@@ -6281,19 +6346,6 @@ chromium-metrics-reviews@google.com.
     will roughly measure the amount of time that we could have been seeing the
     flicker/scroll jank without this feature. This is captured when all tabs are
     finished restoring.
-  </summary>
-</histogram>
-
-<histogram name="Android.TabStrip.ReopenClosedEntry.Result" enum="Boolean"
-    expires_after="2027-01-26">
-  <owner>mklw@google.com</owner>
-  <owner>clank-large-form-factors@google.com</owner>
-  <summary>
-    Records the result of the 'Reopen closed entry' action from the empty space
-    tab strip context menu. Recorded when the user selects the menu item. True
-    if the tab model is non-null, thus succeeding to call the tab model's
-    openMostRecentlyClosedEntry method. False if the tab model is null, thus
-    failing to call the method.
   </summary>
 </histogram>
 
@@ -7883,7 +7935,6 @@ chromium-metrics-reviews@google.com.
 <histogram name="Android.WebView.LoadUrl.UrlScheme" enum="WebViewUrlScheme"
     expires_after="2024-06-13">
   <owner>ntfschr@chromium.org</owner>
-  <owner>oksamyt@chromium.org</owner>
   <owner>torne@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -8959,7 +9010,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.WebView.Startup.CreationTime.FirstInstanceAfterGlobalStartup"
-    units="ms" expires_after="2026-08-09">
+    units="ms" expires_after="2026-10-11">
   <owner>torne@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -9068,7 +9119,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.Startup.CreationTime.NotFirstInstance"
-    units="ms" expires_after="2026-08-09">
+    units="ms" expires_after="2026-10-11">
   <owner>torne@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -9590,7 +9641,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.WarmUpSpareRenderer.Duration" units="ms"
-    expires_after="2026-05-26">
+    expires_after="2027-04-12">
   <owner>ziadyoussef@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -9600,7 +9651,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.WarmUpSpareRenderer.StartsNewRenderer"
-    enum="Boolean" expires_after="2026-05-26">
+    enum="Boolean" expires_after="2027-04-12">
   <owner>ziadyoussef@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -9616,6 +9667,16 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the duration a window was occluded. Recorded when a window is
     unoccluded or destroyed.
+  </summary>
+</histogram>
+
+<histogram name="Android.Window.OcclusionExperimental.OccludedTimePercent"
+    units="%" expires_after="2027-04-02">
+  <owner>kalutes@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records the percentage of the window's lifetime that it spent occluded.
+    Recorded when the window is destroyed.
   </summary>
 </histogram>
 
@@ -9784,7 +9845,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="GestureNavigation.Activated2"
-    enum="GestureNavigationDirection" expires_after="2026-08-09">
+    enum="GestureNavigationDirection" expires_after="2026-10-11">
   <owner>twellington@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
   <summary>

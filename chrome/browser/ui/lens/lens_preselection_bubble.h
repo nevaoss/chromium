@@ -8,6 +8,8 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "components/tabs/public/tab_interface.h"
+#include "ui/base/interaction/element_identifier.h"
+#include "ui/color/color_id.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/menu/menu_runner.h"
@@ -30,10 +32,15 @@ class LensPreselectionBubble : public views::BubbleDialogDelegateView,
   METADATA_HEADER(LensPreselectionBubble, views::BubbleDialogDelegateView)
 
  public:
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kExitButtonElementId);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kCancelButtonElementId);
+
   using ExitClickedCallback = views::Button::PressedCallback;
   explicit LensPreselectionBubble(tabs::TabHandle tab_handle,
                                   views::View* anchor_view,
                                   bool offline,
+                                  bool show_cancel_button,
+                                  ui::ColorId bubble_background_color,
                                   ExitClickedCallback exit_clicked_callback,
                                   base::OnceClosure on_cancel_callback);
   ~LensPreselectionBubble() override;
@@ -74,8 +81,14 @@ class LensPreselectionBubble : public views::BubbleDialogDelegateView,
   raw_ptr<views::ImageButton> more_info_button_ = nullptr;
   // Button shown in bubble to close lens overlay. Only shown in offline state.
   raw_ptr<views::MdTextButton> exit_button_ = nullptr;
+  // Whether to show cancel button.
+  const bool show_cancel_button_;
+  // Button shown in bubble to cancel selection.
+  raw_ptr<views::MdTextButton> cancel_button_ = nullptr;
   // Whether user is offline.
   bool offline_ = false;
+  // Background color of the bubble.
+  const ui::ColorId bubble_background_color_;
   // Callback for exit button which closes the lens overlay.
   ExitClickedCallback exit_clicked_callback_;
   // Model for the more info menu.

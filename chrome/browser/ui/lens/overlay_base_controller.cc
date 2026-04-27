@@ -830,11 +830,13 @@ void OverlayBaseController::ShowPreselectionBubble() {
 
   if (!preselection_widget_) {
     CHECK(preselection_widget_anchor_);
+    PreselectionUIConfig config = GetPreselectionBubbleConfig();
     // Setup the preselection widget.
     preselection_widget_ = views::BubbleDialogDelegateView::CreateBubble(
         std::make_unique<lens::LensPreselectionBubble>(
             tab_->GetHandle(), preselection_widget_anchor_,
-            net::NetworkChangeNotifier::IsOffline(),
+            net::NetworkChangeNotifier::IsOffline(), config.show_cancel_button,
+            config.bubble_background_color,
             /*exit_clicked_callback=*/
             base::BindRepeating(&OverlayBaseController::RequestSyncClose,
                                 weak_factory_.GetWeakPtr(),
@@ -845,10 +847,9 @@ void OverlayBaseController::ShowPreselectionBubble() {
                            DismissalSource::kPreselectionToastEscapeKeyPress)));
     preselection_widget_observer_.Observe(preselection_widget_);
 
-    PreselectionBubbleResources resources = GetPreselectionBubbleResources();
     static_cast<lens::LensPreselectionBubble*>(
         preselection_widget_->widget_delegate())
-        ->SetLabelText(resources.message_string_id);
+        ->SetLabelText(config.message_string_id);
 
     // Setting the parent allows focus traversal out of the preselection widget.
     preselection_widget_->SetFocusTraversableParent(

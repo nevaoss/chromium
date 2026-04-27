@@ -9,6 +9,7 @@
 
 #include "base/callback_list.h"
 #include "base/containers/flat_map.h"
+#include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
@@ -258,8 +259,6 @@ class GlicInstanceImpl : public GlicInstance,
   void WebUiStateChanged(mojom::WebUiState state) override;
   void ContextAccessIndicatorChanged(bool enabled) override;
 
-  glic::GlicInstanceMetrics* metrics() { return &instance_metrics_; }
-
   // Test support.
 #if !BUILDFLAG(IS_ANDROID)
   views::View* GetActiveEmbedderGlicViewForTesting();
@@ -327,6 +326,7 @@ class GlicInstanceImpl : public GlicInstance,
   void CloseInternal(EmbedderKey key,
                      EmbedderEntry& entry,
                      const CloseOptions& options = {});
+  bool ShouldUnbindOnClose(EmbedderKey key, const EmbedderEntry& entry);
   void MaybeShowHostUi(
       GlicUiEmbedder* embedder,
       mojom::InvocationSource source,

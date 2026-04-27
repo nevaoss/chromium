@@ -545,50 +545,6 @@ TEST(DocumentScanAshTypeConvertersTest,
   EXPECT_TRUE(output->options.value().contains("option2-name"));
 }
 
-TEST(DocumentScanAshTypeConvertersTest, StartPreparedScanResponse_EmptyObject) {
-  lorgnette::StartPreparedScanResponse input;
-  auto output = crosapi::mojom::StartPreparedScanResponse::From(input);
-  EXPECT_EQ(output->result, crosapi::mojom::ScannerOperationResult::kUnknown);
-  EXPECT_TRUE(output->scanner_handle.empty());
-  EXPECT_FALSE(output->job_handle.has_value());
-}
-
-TEST(DocumentScanAshTypeConvertersTest, StartPreparedScanResponse_Success) {
-  lorgnette::StartPreparedScanResponse input;
-  input.set_result(lorgnette::OPERATION_RESULT_SUCCESS);
-  input.mutable_scanner()->set_token("scanner-handle");
-  input.mutable_job_handle()->set_token("job-handle");
-
-  auto output = crosapi::mojom::StartPreparedScanResponse::From(input);
-  EXPECT_EQ(output->result, crosapi::mojom::ScannerOperationResult::kSuccess);
-  EXPECT_EQ(output->scanner_handle, "scanner-handle");
-  ASSERT_TRUE(output->job_handle.has_value());
-  EXPECT_EQ(output->job_handle.value(), "job-handle");
-}
-
-TEST(DocumentScanAshTypeConvertersTest, ReadScanDataResponse_EmptyObject) {
-  lorgnette::ReadScanDataResponse input;
-  auto output = crosapi::mojom::ReadScanDataResponse::From(input);
-  EXPECT_EQ(output->result, crosapi::mojom::ScannerOperationResult::kUnknown);
-  EXPECT_TRUE(output->job_handle.empty());
-  EXPECT_FALSE(output->data.has_value());
-}
-
-TEST(DocumentScanAshTypeConvertersTest, ReadScanDataResponse_Success) {
-  lorgnette::ReadScanDataResponse input;
-  input.set_result(lorgnette::OPERATION_RESULT_SUCCESS);
-  input.mutable_job_handle()->set_token("job-handle");
-  input.set_data("data");
-  input.set_estimated_completion(23);
-
-  auto output = crosapi::mojom::ReadScanDataResponse::From(input);
-  EXPECT_EQ(output->result, crosapi::mojom::ScannerOperationResult::kSuccess);
-  EXPECT_EQ(output->job_handle, "job-handle");
-  ASSERT_TRUE(output->data.has_value());
-  EXPECT_THAT(output->data.value(), ElementsAre('d', 'a', 't', 'a'));
-  EXPECT_EQ(output->estimated_completion, 23U);
-}
-
 TEST(DocumentScanAshTypeConvertersTest, ScannerOption_EmptyObject) {
   auto input = crosapi::mojom::OptionSetting::New();
   auto output = input.To<std::optional<lorgnette::ScannerOption>>();

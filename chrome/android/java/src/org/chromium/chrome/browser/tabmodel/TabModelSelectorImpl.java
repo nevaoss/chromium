@@ -25,13 +25,13 @@ import org.chromium.chrome.browser.flags.CustomTabProfileType;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
 import org.chromium.chrome.browser.ntp.RecentlyClosedBridge;
 import org.chromium.chrome.browser.ntp.RecentlyClosedEntry;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.tab.SadTab;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabCreationState;
 import org.chromium.chrome.browser.tab.TabHidingType;
 import org.chromium.chrome.browser.tab.TabLaunchType;
-import org.chromium.chrome.browser.tab.TabLoadIfNeededCaller;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
@@ -432,7 +432,7 @@ public class TabModelSelectorImpl extends TabModelSelectorBase implements TabMod
         // without actual tab switch.
         if (mVisibleTab == tab && !mVisibleTab.isHidden()) {
             // The current tab might have been killed by the os while in tab switcher.
-            tab.loadIfNeeded(TabLoadIfNeededCaller.REQUEST_TO_SHOW_TAB);
+            tab.loadIfNeeded(/* forceBackingSize= */ false);
             // |tabToDropImportance| must be null, so no need to drop importance.
             return;
         }
@@ -442,7 +442,7 @@ public class TabModelSelectorImpl extends TabModelSelectorBase implements TabMod
         // avoids unnecessary work (tab restore) and prevents pollution of tab display metrics - see
         // http://crbug.com/316166.
         if (type != TabSelectionType.FROM_EXIT) {
-            tab.show(type, TabLoadIfNeededCaller.REQUEST_TO_SHOW_TAB_THEN_SHOW);
+            tab.show(type);
         }
     }
 
@@ -456,5 +456,14 @@ public class TabModelSelectorImpl extends TabModelSelectorBase implements TabMod
     @Override
     public boolean isTabModelRestored() {
         return isTabStateInitialized();
+    }
+
+    @Override
+    public @Nullable Profile getProfile(boolean offTheRecord) {
+        ProfileProvider profileProvider = mProfileProviderSupplier.get();
+        if (profileProvider == null) return null;
+        return offTheRecord
+                ? profileProvider.getOffTheRecordProfile()
+                : profileProvider.getOriginalProfile();
     }
 }

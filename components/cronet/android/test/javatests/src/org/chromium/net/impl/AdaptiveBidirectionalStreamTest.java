@@ -37,6 +37,7 @@ import org.chromium.net.ConnectivityManagerWrapper;
 import org.chromium.net.CronetLoggerTestRule;
 import org.chromium.net.CronetTestFramework.CronetImplementation;
 import org.chromium.net.CronetTestRule;
+import org.chromium.net.CronetTestRule.BoolFlag;
 import org.chromium.net.CronetTestRule.Flags;
 import org.chromium.net.CronetTestRule.IgnoreFor;
 import org.chromium.net.CronetTestRule.StringFlag;
@@ -48,6 +49,7 @@ import org.chromium.net.QuicTestServer;
 import org.chromium.net.TestBidirectionalStreamCallback;
 
 import java.net.SocketAddress;
+import java.net.URI;
 
 /** Test functionality of BidirectionalStream interface. */
 @DoNotBatch(reason = "crbug.com/1459563")
@@ -159,8 +161,16 @@ public class AdaptiveBidirectionalStreamTest {
                         value = "https://localhost"),
                 @StringFlag(
                         name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_PATHS_FLAG_NAME,
-                        value = "/echostream")
+                        value = "/echostream"),
+            },
+            boolFlags = {
+                @BoolFlag(
+                        name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_NAME,
+                        value = true)
             })
+    @IgnoreFor(
+            implementations = {CronetImplementation.FALLBACK, CronetImplementation.AOSP_PLATFORM},
+            reason = "Logging is not supported for these implementations.")
     public void postViaBidirectionalStreamWithFallbackSet_successOnPrimaryNetwork()
             throws Exception {
         // We need java.util.stream.Stream to be available for these tests.
@@ -181,6 +191,13 @@ public class AdaptiveBidirectionalStreamTest {
 
         assertThat(callback.getResponseInfoWithChecks()).hasHttpStatusCodeThat().isEqualTo(200);
         assertThat(callback.mResponseAsString).isEqualTo("Test String");
+
+        mTestLogger.waitForLogCronetAdaptiveTrafficTerminated();
+        assertThat(mTestLogger.getCronetAdaptiveTrafficTerminatedInfo()).isNotNull();
+        assertThat(mTestLogger.getCronetAdaptiveTrafficTerminatedInfo().getWinner())
+                .isEqualTo(
+                        CronetLogger.CronetAdaptiveTrafficWinner
+                                .CRONET_ADAPTIVE_TRAFFIC_WINNER_MAIN);
     }
 
     @Flags(
@@ -191,6 +208,11 @@ public class AdaptiveBidirectionalStreamTest {
                 @StringFlag(
                         name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_PATHS_FLAG_NAME,
                         value = "/echostream")
+            },
+            boolFlags = {
+                @BoolFlag(
+                        name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_NAME,
+                        value = true)
             })
     @Test
     @SmallTest
@@ -236,15 +258,14 @@ public class AdaptiveBidirectionalStreamTest {
     public void adaptiveNetworkPaths() throws Exception {
         // We need java.util.stream.Stream to be available for these tests.
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N);
-        assertThat(isAdaptiveNetworkUrl("https://localhost/echostream")).isTrue();
-        assertThat(isAdaptiveNetworkUrl("https://localhost2/echostream2")).isTrue();
-        assertThat(isAdaptiveNetworkUrl("https://localhost2:8080/echostream2")).isTrue();
-        assertThat(isAdaptiveNetworkUrl("https://localhost/otherstream")).isFalse();
-        assertThat(isAdaptiveNetworkUrl("https://localhost2/otherstream")).isFalse();
-        assertThat(isAdaptiveNetworkUrl("https://otherhost/echostream")).isFalse();
-        assertThat(isAdaptiveNetworkUrl("a QA engineer walks into a bar and orders -1 beer"))
-                .isFalse();
-        assertThat(isAdaptiveNetworkUrl("")).isFalse();
+        assertThat(getUriIfAdaptive("https://localhost/echostream")).isNotNull();
+        assertThat(getUriIfAdaptive("https://localhost2/echostream2")).isNotNull();
+        assertThat(getUriIfAdaptive("https://localhost2:8080/echostream2")).isNotNull();
+        assertThat(getUriIfAdaptive("https://localhost/otherstream")).isNull();
+        assertThat(getUriIfAdaptive("https://localhost2/otherstream")).isNull();
+        assertThat(getUriIfAdaptive("https://otherhost/echostream")).isNull();
+        assertThat(getUriIfAdaptive("a QA engineer walks into a bar and orders -1 beer")).isNull();
+        assertThat(getUriIfAdaptive("")).isNull();
     }
 
     // TODO(b/474048542): Move this to CronetAdaptiveRequestContextTest.
@@ -265,10 +286,10 @@ public class AdaptiveBidirectionalStreamTest {
     public void adaptiveNetworkPaths_empty() throws Exception {
         // We need java.util.stream.Stream to be available for these tests.
         assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N);
-        assertThat(isAdaptiveNetworkUrl("https://localhost/echostream")).isFalse();
-        assertThat(isAdaptiveNetworkUrl("")).isFalse();
-        assertThat(isAdaptiveNetworkUrl("https://localhost/otherstream")).isFalse();
-        assertThat(isAdaptiveNetworkUrl("https://otherhost/echostream")).isFalse();
+        assertThat(getUriIfAdaptive("https://localhost/echostream")).isNull();
+        assertThat(getUriIfAdaptive("")).isNull();
+        assertThat(getUriIfAdaptive("https://localhost/otherstream")).isNull();
+        assertThat(getUriIfAdaptive("https://otherhost/echostream")).isNull();
     }
 
     @Flags(
@@ -279,7 +300,15 @@ public class AdaptiveBidirectionalStreamTest {
                 @StringFlag(
                         name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_PATHS_FLAG_NAME,
                         value = "/echostream")
+            },
+            boolFlags = {
+                @BoolFlag(
+                        name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_NAME,
+                        value = true)
             })
+    @IgnoreFor(
+            implementations = {CronetImplementation.FALLBACK, CronetImplementation.AOSP_PLATFORM},
+            reason = "Logging is not supported for these implementations.")
     @Test
     @SmallTest
     public void postViaBidirectionalStreamWithFallbackSet_successOnFallbackNetwork()
@@ -307,6 +336,13 @@ public class AdaptiveBidirectionalStreamTest {
         assertThat(callback.mResponseAsString).isEqualTo("Test String");
         // Memorize the fallback network.
         assertThat(getFallbackNetworkHandle(url)).isEqualTo(mDefaultNetworkHandle);
+
+        mTestLogger.waitForLogCronetAdaptiveTrafficTerminated();
+        assertThat(mTestLogger.getCronetAdaptiveTrafficTerminatedInfo()).isNotNull();
+        assertThat(mTestLogger.getCronetAdaptiveTrafficTerminatedInfo().getWinner())
+                .isEqualTo(
+                        CronetLogger.CronetAdaptiveTrafficWinner
+                                .CRONET_ADAPTIVE_TRAFFIC_WINNER_FALLBACK);
     }
 
     @Flags(
@@ -316,7 +352,12 @@ public class AdaptiveBidirectionalStreamTest {
                         value = "https://localhost"),
                 @StringFlag(
                         name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_PATHS_FLAG_NAME,
-                        value = "/echostream")
+                        value = "/echostream"),
+            },
+            boolFlags = {
+                @BoolFlag(
+                        name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_NAME,
+                        value = true)
             })
     @Test
     @SmallTest
@@ -363,7 +404,12 @@ public class AdaptiveBidirectionalStreamTest {
                         value = "https://example.com"),
                 @StringFlag(
                         name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_PATHS_FLAG_NAME,
-                        value = "/path")
+                        value = "/path"),
+            },
+            boolFlags = {
+                @BoolFlag(
+                        name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_NAME,
+                        value = true)
             })
     @Test
     @SmallTest
@@ -390,16 +436,14 @@ public class AdaptiveBidirectionalStreamTest {
         assertThat(getFallbackNetworkHandle(url)).isNull();
     }
 
-    private boolean isAdaptiveNetworkUrl(String url) {
-        return mAdaptiveRequestContext.computeStreamNetworkHandles(
-                        url, CronetEngineBase.DEFAULT_NETWORK_HANDLE)
-                != null;
+    private URI getUriIfAdaptive(String url) {
+        return mAdaptiveRequestContext.getUriIfAdaptive(url);
     }
 
     private Long getFallbackNetworkHandle(String url) {
         CronetAdaptiveRequestContext.AdaptiveStreamNetworkHandles handles =
                 mAdaptiveRequestContext.computeStreamNetworkHandles(
-                        url, CronetEngineBase.DEFAULT_NETWORK_HANDLE);
+                        URI.create(url), CronetEngineBase.DEFAULT_NETWORK_HANDLE);
         if (handles == null) {
             return null;
         }

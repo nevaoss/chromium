@@ -199,12 +199,28 @@
 
 #pragma mark - FullscreenBrowserAgentObserving
 
+- (void)fullscreenWillUpdateState:(FullscreenBrowserAgent*)agent {
+  CHECK(IsFullscreenRefactoringEnabled());
+  if (CanShowTabStrip(self)) {
+    CGFloat progress = agent->top_progress();
+    CGFloat height = TabStripCollectionViewConstants.height * progress;
+    agent->AddObscuredInset(UIRectEdgeTop, height);
+    [self updateForFullscreenProgress:progress];
+  }
+}
+
 - (void)fullscreenWillUpdateObscuredInsetRange:(FullscreenBrowserAgent*)agent {
   CHECK(IsFullscreenRefactoringEnabled());
   if (CanShowTabStrip(self)) {
     agent->AddObscuredInsetRange(UIRectEdgeTop, 0,
                                  TabStripCollectionViewConstants.height);
   }
+}
+
+- (void)fullscreenDidUpdateObscuredInsetRange:(FullscreenBrowserAgent*)agent {
+  CHECK(IsFullscreenRefactoringEnabled());
+  _fullscreenViewportInsetRange =
+      agent->max_insets().top - agent->min_insets().top;
 }
 
 #pragma mark - Private
@@ -218,21 +234,18 @@
   }
 }
 
-// Updates the status bar background views properties and visibility.
-- (void)updateStatusBarBackgroundViews {
+// Ensures the status bar background views are created and installed in the
+// view hierarchy with proper constraints.
+- (void)ensureStatusBarViewsInstalled {
   DCHECK(self.isViewLoaded);
-
-  // Remove views to reset constraints.
-  [_fadingStatusBarView removeFromSuperview];
-  [_staticStatusBarView removeFromSuperview];
-
-  // Only install status bar background when the tab strip is visible.
-  if (!CanShowTabStrip(self) || !_tabStripViewController) {
+  if ([self.fadingStatusBarView isDescendantOfView:self.view]) {
     return;
   }
 
-  // Ensure the tab strip is on top.
-  [self.view bringSubviewToFront:_tabStripViewController.view];
+  // Only install status bar background when the tab strip exists.
+  if (!_tabStripViewController) {
+    return;
+  }
 
   // Insert status bars below the tab strip.
   [self.view insertSubview:self.staticStatusBarView
@@ -251,6 +264,29 @@
         constraintEqualToAnchor:self.view.trailingAnchor],
   ]];
   AddSameConstraints(self.staticStatusBarView, self.fadingStatusBarView);
+}
+
+// Updates the status bar background views properties and visibility.
+- (void)updateStatusBarBackgroundViews {
+  DCHECK(self.isViewLoaded);
+
+  bool shouldShow = CanShowTabStrip(self) && _tabStripViewController;
+
+  if (!shouldShow) {
+    _fadingStatusBarView.hidden = YES;
+    _staticStatusBarView.hidden = YES;
+    return;
+  }
+
+  // Ensure views are created and added once.
+  [self ensureStatusBarViewsInstalled];
+
+  _fadingStatusBarView.hidden = NO;
+  _staticStatusBarView.hidden = NO;
+
+  // Ensure the tab strip is on top.
+  [self.view bringSubviewToFront:_tabStripViewController.view];
+
   [self updateOverlayContainerOrder];
 }
 
@@ -343,6 +379,10 @@
   if (_tabStripViewController == tabStripViewController) {
     return;
   }
+
+  // Remove status bar views because constraints depend on the tab strip view.
+  [_fadingStatusBarView removeFromSuperview];
+  [_staticStatusBarView removeFromSuperview];
 
   [self removeTabStripViewController];
 

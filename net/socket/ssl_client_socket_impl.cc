@@ -31,6 +31,7 @@
 #include "base/strings/string_view_util.h"
 #include "base/synchronization/lock.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/timer/elapsed_timer.h"
 #include "base/trace_event/trace_event.h"
 #include "base/values.h"
 #include "build/build_config.h"
@@ -506,7 +507,6 @@ bool SSLClientSocketImpl::GetSSLInfo(SSLInfo* ssl_info) {
   ssl_info->public_key_hashes = server_cert_verify_result_.public_key_hashes;
   ssl_info->client_cert_sent = send_client_cert_ && client_cert_.get();
   ssl_info->encrypted_client_hello = SSL_ech_accepted(ssl_.get());
-  ssl_info->ocsp_result = server_cert_verify_result_.ocsp_result;
   ssl_info->is_fatal_cert_error = is_fatal_cert_error_;
   ssl_info->signed_certificate_timestamps = server_cert_verify_result_.scts;
   ssl_info->ct_policy_compliance = server_cert_verify_result_.policy_compliance;
@@ -1239,6 +1239,10 @@ void SSLClientSocketImpl::DoConnectCallback(int rv) {
 }
 
 void SSLClientSocketImpl::OnHandshakeIOComplete(int result) {
+  std::optional<base::ElapsedTimer> timer;
+  if (base::ShouldRecordSubsampledMetric(0.001)) {
+    timer.emplace();
+  }
   int rv = DoHandshakeLoop(result);
   if (rv != ERR_IO_PENDING) {
     if (in_confirm_handshake_) {
@@ -1248,6 +1252,11 @@ void SSLClientSocketImpl::OnHandshakeIOComplete(int result) {
       LogConnectEndEvent(rv);
     }
     DoConnectCallback(rv);
+  }
+  if (timer) {
+    base::UmaHistogramTimes(
+        "Net.SSLClientSocketImpl.OnHandshakeIOCompleteDuration",
+        timer->Elapsed());
   }
 }
 

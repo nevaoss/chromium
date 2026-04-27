@@ -48,6 +48,7 @@
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/keyboard_accessory/android/manual_filling_controller.h"
+#include "chrome/browser/metrics/profile_metrics_service_factory.h"
 #include "chrome/browser/metrics/variations/google_groups_manager_factory.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
@@ -659,6 +660,13 @@ const signin::IdentityManager* ChromeAutofillClient::GetIdentityManager()
   return IdentityManagerFactory::GetForProfile(profile->GetOriginalProfile());
 }
 
+metrics::ProfileMetricsService*
+ChromeAutofillClient::GetProfileMetricsService() {
+  Profile* profile = GetProfile();
+  CHECK(profile);
+  return ProfileMetricsServiceFactory::GetForProfile(profile);
+}
+
 const GoogleGroupsManager* ChromeAutofillClient::GetGoogleGroupsManager()
     const {
   // Always return the GoogleGroupsManager of the original profile to allow us
@@ -762,11 +770,7 @@ GeoIpCountryCode ChromeAutofillClient::GetVariationConfigCountryCode() const {
 
 profile_metrics::BrowserProfileType ChromeAutofillClient::GetProfileType()
     const {
-  Profile* profile = GetProfile();
-  // Profile can only be null in tests, therefore it is safe to always return
-  // |kRegular| when it does not exist.
-  return profile ? profile_metrics::GetBrowserProfileType(profile)
-                 : profile_metrics::BrowserProfileType::kRegular;
+  return profile_metrics::GetBrowserProfileType(GetProfile());
 }
 
 void ChromeAutofillClient::ShowAutofillSettings(
@@ -1292,10 +1296,11 @@ ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
 }
 
 Profile* ChromeAutofillClient::GetProfile() const {
-  if (!web_contents()) {
-    return nullptr;
-  }
-  return Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  CHECK(web_contents());
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  CHECK(profile);
+  return profile;
 }
 
 tabs::TabInterface* ChromeAutofillClient::GetTabInterface() {
@@ -1326,10 +1331,11 @@ void ChromeAutofillClient::ShowAutofillSuggestionsImpl(
   // Deletes or reuses the old `suggestion_controller_`.
   suggestion_controller_ = AutofillSuggestionController::GetOrCreate(
       suggestion_controller_, delegate, web_contents(),
-      PopupControllerCommon(element_bounds_in_screen_space,
-                            open_args.text_direction,
-                            web_contents()->GetNativeView(),
-                            open_args.anchor_type, open_args.show_tabbed_popup),
+      PopupControllerCommon(
+          element_bounds_in_screen_space, open_args.text_direction,
+          web_contents()->GetNativeView(), open_args.anchor_type,
+          open_args.show_tabbed_popup,
+          open_args.prefer_prev_arrow_side_on_suggestions_update),
       open_args.form_control_ax_id, open_args.trigger_source);
 
   suggestion_controller_->Show(

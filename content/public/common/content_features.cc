@@ -35,7 +35,7 @@ BASE_FEATURE(kAndroidCaptureKeyEvents, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the caret browsing a11y feature - can use arrow keys to navigate
 // through web pages.
-BASE_FEATURE(kAndroidCaretBrowsing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidCaretBrowsing, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // DevTools frontend for Android.
 BASE_FEATURE(kAndroidDevToolsFrontend, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -69,6 +69,10 @@ BASE_FEATURE(kAndroidPkAutocorrectUnderline, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Blocks the misspelling suggestion span in composition mode.
 BASE_FEATURE(kAndroidBlockMisspellingSuggestionSpanInCompositionMode,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Blocks the grammar suggestion span in composition mode.
+BASE_FEATURE(kAndroidBlockGrammarSuggestionSpanInCompositionMode,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Warm up a spare renderer after each navigation on Android.
@@ -402,6 +406,11 @@ BASE_FEATURE(kFedCmDelegation, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the FedCM email verification protocol.
 BASE_FEATURE(kEmailVerificationProtocol, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enforce same-origin check for dedicated worker script URLs.
+// See https://crbug.com/496253755.
+BASE_FEATURE(kEnforceDedicatedWorkerSameOriginCheck,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the spec-compliant 'error' attribute in IdentityCredentialError while
 // deprecating the legacy 'code' attribute.

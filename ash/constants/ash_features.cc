@@ -1064,11 +1064,6 @@ BASE_FEATURE(kImeDownloaderExperiment, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enable or disable proto-based communication for IME Service.
 BASE_FEATURE(kImeServiceProto, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enable or disable system emoji picker GIF support
-BASE_FEATURE(kImeSystemEmojiPickerGIFSupport,
-             "SystemEmojiPickerGIFSupport",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enable or disable system emoji picker jelly support
 BASE_FEATURE(kImeSystemEmojiPickerJellySupport,
              "SystemEmojiPickerJellySupport",
@@ -2028,10 +2023,6 @@ BASE_FEATURE(kWifiSyncUploadProxyConfigs, base::FEATURE_DISABLED_BY_DEFAULT);
 // Controls whether to enable syncing of proxy configurations on
 // Wi-Fi networks that are received from Chrome Sync.
 BASE_FEATURE(kWifiSyncApplyProxyConfigs, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Controls whether to apply incoming Wi-Fi configuration delete events from
-// the Chrome Sync server.
-BASE_FEATURE(kWifiSyncApplyDeletes, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables an experimental feature that splits windows by dragging one window
 // over another window.

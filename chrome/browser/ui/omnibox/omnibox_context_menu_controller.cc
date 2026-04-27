@@ -57,6 +57,7 @@
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/omnibox/composebox/composebox_query.mojom.h"
 #include "components/strings/grit/components_strings.h"
+#include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/url_constants.h"
 #include "third_party/omnibox_proto/input_type.pb.h"
@@ -103,6 +104,12 @@ bool IsThinkingModel(omnibox::ModelMode model) {
 
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
                                       kDeepResearchIdForTesting);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
+                                      kFirstTabMenuItemIdForTesting);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
+                                      kImageUploadMenuItemIdForTesting);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
+                                      kFileUploadMenuItemIdForTesting);
 
 OmniboxContextMenuController::OmniboxContextMenuController(
     OmniboxPopupFileSelector* file_selector,
@@ -215,6 +222,7 @@ void OmniboxContextMenuController::AddRecentTabItems() {
   }
   std::vector<OmniboxContextMenuController::TabInfo> tabs = GetRecentTabs();
 
+  const size_t first_tab_index = menu_model_->GetItemCount();
   for (const auto& tab : tabs) {
     AddItemWithIcon(next_command_id_, tab.title,
                     favicon::GetDefaultFaviconModel());
@@ -222,6 +230,10 @@ void OmniboxContextMenuController::AddRecentTabItems() {
     input_type_for_command_id_[next_command_id_] =
         omnibox::InputType::INPUT_TYPE_BROWSER_TAB;
     next_command_id_ += 1;
+  }
+  if (!tabs.empty()) {
+    menu_model_->SetElementIdentifierAt(first_tab_index,
+                                        kFirstTabMenuItemIdForTesting);
   }
   // Remove header if no tabs to show.
   if (tabs.empty()) {
@@ -247,6 +259,13 @@ void OmniboxContextMenuController::AddContextualInputItems() {
       auto& menu_item_info = input_type_info_[input_type];
       AddItemWithIcon(next_command_id_, menu_item_info.menu_label,
                       menu_item_info.menu_icon);
+      if (input_type == omnibox::InputType::INPUT_TYPE_LENS_IMAGE) {
+        menu_model_->SetElementIdentifierAt(menu_model_->GetItemCount() - 1,
+                                            kImageUploadMenuItemIdForTesting);
+      } else if (input_type == omnibox::InputType::INPUT_TYPE_LENS_FILE) {
+        menu_model_->SetElementIdentifierAt(menu_model_->GetItemCount() - 1,
+                                            kFileUploadMenuItemIdForTesting);
+      }
       input_type_for_command_id_[next_command_id_] = input_type;
       next_command_id_++;
     }
@@ -556,6 +575,8 @@ omnibox::ContextType OmniboxContextMenuController::CommandIdToEnum(
           return omnibox::ContextType::kImage;
         case omnibox::InputType::INPUT_TYPE_LENS_FILE:
           return omnibox::ContextType::kFile;
+        case omnibox::InputType::INPUT_TYPE_DRIVE:
+          return omnibox::ContextType::kDrive;
         default:
           return omnibox::ContextType::kUnknown;
       }
@@ -646,6 +667,8 @@ std::u16string OmniboxContextMenuController::GetMenuLabelForInputType(
       return l10n_util::GetStringUTF16(IDS_NTP_COMPOSE_ADD_IMAGE);
     case omnibox::InputType::INPUT_TYPE_LENS_FILE:
       return l10n_util::GetStringUTF16(IDS_NTP_COMPOSE_ADD_FILE);
+    case omnibox::InputType::INPUT_TYPE_DRIVE:
+      return l10n_util::GetStringUTF16(IDS_NTP_COMPOSE_ADD_DRIVE);
     default:
       return u"";
   }
@@ -662,6 +685,16 @@ ui::ImageModel OmniboxContextMenuController::GetIconForInputType(
       return ui::ImageModel::FromVectorIcon(
           kAttachFileIcon, ui::kColorMenuIcon,
           ui::SimpleMenuModel::kDefaultIconSize);
+    // The Google Drive icon is only available in Google Chrome branded builds.
+    // This guard is necessary to prevent compilation errors in Chromium.
+    case omnibox::InputType::INPUT_TYPE_DRIVE:
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+      return ui::ImageModel::FromVectorIcon(
+          vector_icons::kGoogleDriveMonochromeIcon, ui::kColorMenuIcon,
+          ui::SimpleMenuModel::kDefaultIconSize);
+#else
+      return ui::ImageModel();
+#endif
     default:
       return ui::ImageModel();
   }

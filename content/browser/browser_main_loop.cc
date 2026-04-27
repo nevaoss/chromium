@@ -752,9 +752,7 @@ void BrowserMainLoop::PostCreateMainMessageLoop() {
     InitializeSkia();
   } else {
     // Just enable memory-infra dump providers
-    InitSkiaEventTracer();
-    base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
-        skia::SkiaMemoryDumpProvider::GetInstance(), "Skia", nullptr);
+    InitializeSkiaLite();
   }
 
   base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
@@ -1473,9 +1471,7 @@ void BrowserMainLoop::PostCreateThreadsImpl() {
   // all CDMs are part of the OS, so no file checks are involved.
   CdmRegistry::GetInstance()->Init();
 
-  if (base::FeatureList::IsEnabled(features::kFontSrcLocalMatching)) {
-    FontUniqueNameLookup::GetInstance();
-  }
+  FontUniqueNameLookup::GetInstance();
 #endif
 
 #if defined(ENABLE_IPC_FUZZER)

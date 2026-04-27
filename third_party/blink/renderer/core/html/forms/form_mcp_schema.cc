@@ -162,6 +162,9 @@ void FormMCPSchema::ReportParameterIssueIfNeeded(
   CHECK(!controls.empty());
   DOMNodeId violating_node_id =
       DOMNodeIds::IdForNode(&controls.front()->ToHTMLElement());
+  if (!form_->GetDocument().GetFrame()) {
+    return;
+  }
   AuditsIssue::ReportGenericIssue(
       form_->GetDocument().GetFrame(),
       mojom::blink::GenericIssueErrorType::
@@ -1218,6 +1221,7 @@ void FormMCPSchema::ProcessForm(HTMLFormElement& form) {
       }
     }
   }
+  DCHECK_EQ(submit_button_, form.FindDefaultButton());
 }
 
 FormMCPSchema::ControlVector& FormMCPSchema::EnsureControlVector(

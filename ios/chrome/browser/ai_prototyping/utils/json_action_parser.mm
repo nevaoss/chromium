@@ -7,6 +7,7 @@
 #import <string>
 
 #import "base/logging.h"
+#import "base/strings/string_number_conversions.h"
 
 namespace ai_prototyping {
 
@@ -21,6 +22,9 @@ enum class ActionType {
   kHistoryBack,
   kHistoryForward,
   kType,
+  kWait,
+  kScroll,
+  kScrollTo,
 };
 
 // Based on the field names in
@@ -40,6 +44,15 @@ ActionType GetActionType(const std::string& key) {
   }
   if (key == "type") {
     return ActionType::kType;
+  }
+  if (key == "wait") {
+    return ActionType::kWait;
+  }
+  if (key == "scroll") {
+    return ActionType::kScroll;
+  }
+  if (key == "scroll_to") {
+    return ActionType::kScrollTo;
   }
   return ActionType::kUnknown;
 }
@@ -155,6 +168,55 @@ bool MapTypeAction(const base::DictValue& dict,
   return type->ByteSizeLong() > 0;
 }
 
+bool MapWaitAction(const base::DictValue& dict,
+                   optimization_guide::proto::Action* action) {
+  auto* wait = action->mutable_wait();
+  if (std::optional<int> wait_time_ms = dict.FindInt("wait_time_ms")) {
+    wait->set_wait_time_ms(*wait_time_ms);
+  }
+  if (std::optional<int> observe_tab_id = dict.FindInt("observe_tab_id")) {
+    wait->set_observe_tab_id(*observe_tab_id);
+  }
+  return wait->ByteSizeLong() > 0;
+}
+
+bool MapScrollAction(const base::DictValue& dict,
+                     optimization_guide::proto::Action* action) {
+  auto* scroll = action->mutable_scroll();
+  if (std::optional<int> tab_id = dict.FindInt("tab_id")) {
+    scroll->set_tab_id(*tab_id);
+  }
+  if (const base::DictValue* target = dict.FindDict("target")) {
+    MapActionTarget(*target, scroll->mutable_target());
+  }
+  if (std::optional<int> direction = dict.FindInt("direction")) {
+    if (optimization_guide::proto::ScrollAction_ScrollDirection_IsValid(
+            *direction)) {
+      scroll->set_direction(
+          static_cast<optimization_guide::proto::ScrollAction_ScrollDirection>(
+              *direction));
+    }
+  }
+  if (const std::string* distance = dict.FindString("distance")) {
+    double distance_value;
+    base::StringToDouble(*distance, &distance_value);
+    scroll->set_distance(distance_value);
+  }
+  return scroll->ByteSizeLong() > 0;
+}
+
+bool MapScrollToAction(const base::DictValue& dict,
+                       optimization_guide::proto::Action* action) {
+  auto* scroll = action->mutable_scroll_to();
+  if (std::optional<int> tab_id = dict.FindInt("tab_id")) {
+    scroll->set_tab_id(*tab_id);
+  }
+  if (const base::DictValue* target = dict.FindDict("target")) {
+    MapActionTarget(*target, scroll->mutable_target());
+  }
+  return scroll->ByteSizeLong() > 0;
+}
+
 }  // namespace
 
 bool ParseActionFromDict(const base::DictValue& dict,
@@ -183,6 +245,12 @@ bool ParseActionFromDict(const base::DictValue& dict,
       return MapHistoryForwardAction(value.GetDict(), action);
     case ActionType::kType:
       return MapTypeAction(value.GetDict(), action);
+    case ActionType::kWait:
+      return MapWaitAction(value.GetDict(), action);
+    case ActionType::kScroll:
+      return MapScrollAction(value.GetDict(), action);
+    case ActionType::kScrollTo:
+      return MapScrollToAction(value.GetDict(), action);
     case ActionType::kUnknown:
       return false;
   }

@@ -320,6 +320,9 @@ export class AppElement extends AppElementBase implements SpeechListener,
           // TODO (crbug.com/450950100): The Read Anything app should determine
           // which content to display based on the presentation state.
           this.presentationState_ = presentationState;
+          this.logger_.setHidden(
+              presentationState ===
+              chrome.readingMode.inHiddenPresentationState);
         };
 
     chrome.readingMode.onPinStateReceived = (pinState: boolean) => {
@@ -589,8 +592,7 @@ export class AppElement extends AppElementBase implements SpeechListener,
   }
 
   protected onReadabilityAnchorsReady_() {
-    if (chrome.readingMode.isReadabilityEnabled &&
-        chrome.readingMode.isReadabilityWithLinksEnabled) {
+    if (chrome.readingMode.isReadabilityEnabled) {
       this.contentController_.updateAnchorsForReadability(this.shadowRoot);
     }
   }

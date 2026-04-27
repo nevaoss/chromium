@@ -26,7 +26,11 @@ class EntraProviderAndroid : public enterprise_auth::PlatformAuthProvider {
     kNoBrokerRegistered,
     kSignatureVerificationFailed,
     kInvalidBundleFormat,
-    kMax = kInvalidBundleFormat
+    kNoBundleResult,
+    kBundleResultContainsEntraError,
+    kBundleResultContainsOsError,
+    kUnexpectedPackageProvider,
+    kMax = kUnexpectedPackageProvider
   };
 
   using OnJavaReadTokensCallback = base::OnceCallback<void(
@@ -52,6 +56,9 @@ class EntraProviderAndroid : public enterprise_auth::PlatformAuthProvider {
   void OnJavaHeadersRead(PlatformAuthProviderManager::GetDataCallback callback,
                          TokenReadResult result_code,
                          std::string result);
+
+  void ParseJsonHeaders(PlatformAuthProviderManager::GetDataCallback callback,
+                        std::string_view headers_raw_json);
 
   SEQUENCE_CHECKER(sequence_checker);
   bool sso_disabled_ = false;

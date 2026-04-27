@@ -10,6 +10,7 @@
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/page_content_annotations/multi_source_page_context_fetcher.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
@@ -350,10 +351,12 @@ void SelectionOverlayController::NotifyTabForegrounded() {}
 
 void SelectionOverlayController::NotifyTabWillEnterBackground() {}
 
-OverlayBaseController::PreselectionBubbleResources
-SelectionOverlayController::GetPreselectionBubbleResources() {
-  return {.message_string_id =
-              IDS_GLIC_SELECTION_OVERLAY_PRESELECTION_BUBBLE_TEXT};
+OverlayBaseController::PreselectionUIConfig
+SelectionOverlayController::GetPreselectionBubbleConfig() {
+  return {
+      .message_string_id = IDS_GLIC_SELECTION_OVERLAY_PRESELECTION_BUBBLE_TEXT,
+      .show_cancel_button = true,
+      .bubble_background_color = kColorGlicSelectionOverlayToast};
 }
 
 bool SelectionOverlayController::IsOverlayViewShared() const {
@@ -382,6 +385,10 @@ void SelectionOverlayController::AdjustRegion(
 void SelectionOverlayController::DeleteRegion(
     const base::UnguessableToken& id) {
   if (selected_regions_.erase(id)) {
+    if (selected_regions_.empty()) {
+      CloseUI();
+      return;
+    }
     RenderRegions();
   }
 }

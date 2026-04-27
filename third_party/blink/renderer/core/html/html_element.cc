@@ -668,6 +668,8 @@ const AttributeTriggers* HTMLElement::TriggersForAttributeName(
        event_type_names::kScrollsnapchanging, nullptr},
       {html_names::kOnstalledAttr, kNoWebFeature, event_type_names::kStalled,
        nullptr},
+      {html_names::kOnstreamAttr, kNoWebFeature, event_type_names::kStream,
+       nullptr},
       {html_names::kOnsubmitAttr, kNoWebFeature, event_type_names::kSubmit,
        nullptr},
       {html_names::kOnsuspendAttr, kNoWebFeature, event_type_names::kSuspend,
@@ -3505,7 +3507,8 @@ void HTMLElement::AddHTMLBackgroundImageToStyle(
           url.ToAtomicString(), GetDocument().CompleteURL(url),
           Referrer(GetExecutionContext()->OutgoingReferrer(),
                    GetExecutionContext()->GetReferrerPolicy()),
-          /*origin_clean=*/true, /*is_ad_related=*/false));
+          /*origin_clean=*/true, /*is_ad_related=*/false,
+          /*modifiers=*/CSSUrlRequestModifiers()));
   if (initiator_name) {
     image_value->SetInitiator(initiator_name);
   }
@@ -3957,8 +3960,27 @@ bool HTMLElement::MatchesEnabledPseudoClass() const {
                                                  .IsActuallyDisabled();
 }
 
+bool HTMLElement::MatchesDisabledPseudoClass() const {
+  return IsDisabledFormControl();
+}
+
 bool HTMLElement::MatchesValidityPseudoClasses() const {
   return IsFormAssociatedCustomElement();
+}
+
+bool HTMLElement::MatchesDefaultPseudoClass() const {
+  // Check if this is a form-associated custom element with
+  // `HTMLSubmitButtonBehavior`.
+  if (!SubmitBehavior() || !IsFormAssociatedCustomElement()) {
+    return false;
+  }
+  // Check if this element is the default button for its form.
+  const ElementInternals* internals = GetElementInternals();
+  // `SubmitBehavior()` is non-null only when  behaviors were set via
+  // `attachInternals()`, which creates the `ElementInternals` object.
+  CHECK(internals);
+  HTMLFormElement* form = internals->Form();
+  return form && form->FindDefaultButton() == this;
 }
 
 bool HTMLElement::willValidate() const {

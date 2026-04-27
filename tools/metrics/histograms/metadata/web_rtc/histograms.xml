@@ -924,7 +924,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.Call.EstimatedSendBitrateInKbps" units="kbps"
-    expires_after="2026-08-09">
+    expires_after="2026-10-11">
   <owner>holmer@chromium.org</owner>
   <summary>
     Average estimated send bitrate during a call, counted from first packet sent
@@ -1107,8 +1107,8 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.DesktopCapture.Win.DirectXCapturerResult"
-    enum="WebRtcDirectXCapturerResult" expires_after="2026-05-24">
-  <owner>henrika@chromium.org</owner>
+    enum="WebRtcDirectXCapturerResult" expires_after="2027-05-24">
+  <owner>ilnik@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
     This records high level errors, or success, encountered across the entire
@@ -1285,7 +1285,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.BundlePolicy"
-    enum="PeerConnectionBundlePolicy" expires_after="2024-09-15">
+    enum="PeerConnectionBundlePolicy" expires_after="2026-10-09">
   <owner>hta@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
@@ -1293,13 +1293,13 @@ chromium-metrics-reviews@google.com.
     connection establishment. Values are specified in
     https://w3c.github.io/webrtc-pc/#dom-rtcbundlepolicy
 
-    Warning: This histogram was expired from 2022-08-28 to 2022-10-10. Data may
-    be missing.
+    Warning: This histogram was expired from 2022-08-28 to 2022-10-10 and from
+    2024-09-15 to 2026-04-09. Data may be missing.
   </summary>
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.BundleUsage"
-    enum="PeerConnectionBundleUsage" expires_after="2024-09-15">
+    enum="PeerConnectionBundleUsage" expires_after="2026-10-09">
   <owner>hta@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
@@ -1307,8 +1307,8 @@ chromium-metrics-reviews@google.com.
     during setRemoteDescription calls. Distinguishes between simple, complex,
     datachannel-only and legacy plan-b usage.
 
-    Warning: This histogram was expired from 2022-08-28 to 2022-10-10. Data may
-    be missing.
+    Warning: This histogram was expired from 2022-08-28 to 2022-10-10 and from
+    2024-09-15 to 2026-04-09. Data may be missing.
   </summary>
 </histogram>
 
@@ -1369,11 +1369,15 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.DtlsHandshakeError"
-    enum="DtlsHandshakeError" expires_after="M81">
-  <owner>zhihuang@chromium.org</owner>
+    enum="DtlsHandshakeError" expires_after="2026-10-10">
+  <owner>hta@chromium.org</owner>
+  <owner>webrtc-dev@chromium.org</owner>
   <summary>
     Records the error whenever the Dtls handshake fails. There are only two
     types of errors, incompatitable cipher suite and unknown error, for now.
+
+    Warning: This histogram was expired from M81 (2020-04-07) to 2026-04-10.
+    Data may be missing.
   </summary>
 </histogram>
 
@@ -1440,7 +1444,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.Duration.Worker" units="microseconds"
-    expires_after="2026-08-09">
+    expires_after="2026-10-11">
   <owner>handellm@google.com</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
@@ -1574,7 +1578,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.NegotiatedFeedbackType"
-    enum="PeerConnectionRtcpFeedbackType" expires_after="2026-08-09">
+    enum="PeerConnectionRtcpFeedbackType" expires_after="2026-10-11">
   <owner>hta@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
@@ -1631,7 +1635,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.RtcpMux" enum="PeerConnectionRtcpMux"
-    expires_after="2024-11-03">
+    expires_after="2027-03-01">
   <owner>hta@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
   <summary>
@@ -1639,19 +1643,21 @@ chromium-metrics-reviews@google.com.
     description enable RTCP-mux). Recorded after SetLocalDescription and
     SetRemoteDescription are called, once per PeerConnection.
 
-    Warning: This histogram was expired from 2020-02-23 to 2022-10-10. Data may
-    be missing.
+    Warning: This histogram was expired from 2020-02-23 to 2022-10-10 and from
+    2024-11-03 to 2026-03-06. Data may be missing.
   </summary>
 </histogram>
 
 <histogram name="WebRTC.PeerConnection.RtcpMuxPolicy"
-    enum="PeerConnectionRtcpMux" expires_after="2024-12-01">
+    enum="PeerConnectionRtcpMux" expires_after="2027-03-01">
   <owner>hta@chromium.org</owner>
   <owner>webrtc-dev@chromium.org</owner>
-  <owner>phancke@microsoft.com</owner>
   <summary>
     Which RTCPMuxPolicy was requested for the PeerConnection. Recorded during
     the first DTLS connection establishment.
+
+    Warning: This histogram was expired from 2024-12-01 to 2026-03-06. Data may
+    be missing.
   </summary>
 </histogram>
 

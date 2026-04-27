@@ -26,38 +26,29 @@ export function getHtml(this: ContentAnnotatorInternalsAppElement) {
       <table>
         <thead>
           <tr>
+            <th>Visit ID</th>
+            <th>Nav Time</th>
             <th>URL</th>
             <th>Title</th>
             <th>Tab ID</th>
             <th>Classifier Results</th>
-            ${this.showAnnotations_ ? html`<th>Annotations</th>` : ''}
-            ${this.showContentAnnotation_ ? html`<th>Content Annotation</th>` : ''}
+            <th>Content Annotation</th>
           </tr>
         </thead>
         <tbody>
           ${this.logContent_.map((entry: AnnotationEntry) => html`
             <tr>
+              <td>${entry.visit_id}</td>
+              <td>${entry.navigation_timestamp}</td>
               <td>${entry.url}</td>
               <td>${entry.title}</td>
               <td>${entry.tab_id || 'N/A'}</td>
               <td>
                 <pre>${this.formatJson_(entry.classifier_results)}</pre>
               </td>
-              ${this.showAnnotations_ ? html`
-                <td>
-                  ${entry.annotations ? html`
-                    <details><pre>${this.formatJson_(entry.annotations)}</pre></details>
-                  ` : html`—`}
-                </td>
-              ` : ''}
-
-              ${this.showContentAnnotation_ ? html`
-                <td>
-                  ${entry.content_annotation ? html`
-                    <details><pre>${this.formatJson_(entry.content_annotation)}</pre></details>
-                  ` : html`—`}
-                </td>
-              ` : ''}
+              <td>
+                <details><pre>${this.formatJson_(entry.content_annotation)}</pre></details>
+              </td>
             </tr>
           `)}
         </tbody>

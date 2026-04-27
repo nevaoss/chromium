@@ -40,6 +40,7 @@ BASE_FEATURE(kImportExportFlags, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlassToolbar, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kToolbarGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kMenuSimplification, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kTabGroupColorRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kDseIntegrity, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -56,16 +57,7 @@ BASE_FEATURE(kExtensionsCollapseMainMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kInfobarRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
-#if BUILDFLAG(IS_WIN)
-BASE_FEATURE(kOfferPinToTaskbarInFirstRunExperience,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kOfferPinToTaskbarInSettings, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_WIN)
-
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
-// Shows an infobar at startup offering to pin Chrome to the taskbar (on
-// Windows) or the Dock (on MacOS).
-BASE_FEATURE(kOfferPinToTaskbarInfoBar, base::FEATURE_ENABLED_BY_DEFAULT);
 // Shows an infobar on PDFs offering to become the default PDF viewer if Chrome
 // isn't the default already.
 BASE_FEATURE(kPdfInfoBar, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -298,12 +290,6 @@ BASE_FEATURE_PARAM(bool,
                    kPageActionsMigrationFileSystemAccess,
                    &kPageActionsMigration,
                    "file_system_access",
-                   true);
-
-BASE_FEATURE_PARAM(bool,
-                   kPageActionsMigrationManagePasswords,
-                   &kPageActionsMigration,
-                   "manage_passwords",
                    true);
 
 BASE_FEATURE_PARAM(bool,

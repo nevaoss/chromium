@@ -11,7 +11,6 @@
 #include "base/types/pass_key.h"
 #include "chrome/browser/extensions/chrome_extension_system_factory.h"
 #include "chrome/browser/extensions/extension_management.h"
-#include "chrome/browser/extensions/mv2_experiment_stage.h"
 #include "chrome/browser/extensions/profile_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_keyed_service_factory.h"
@@ -24,6 +23,7 @@
 #include "extensions/browser/extension_registry_factory.h"
 #include "extensions/browser/extension_system.h"
 #include "extensions/browser/extensions_browser_client.h"
+#include "extensions/browser/mv2_experiment_stage.h"
 #include "extensions/browser/pref_names.h"
 #include "extensions/browser/pref_types.h"
 #include "extensions/buildflags/buildflags.h"
@@ -263,8 +263,7 @@ ManifestV2ExperimentManager::ManifestV2ExperimentManager(
       // Note: passing `ExtensionManagement` is safe and guaranteed to outlive
       // the `impact_checker_` because this class is a KeyedService that depends
       // on `ExtensionManagement`.
-      impact_checker_(
-          ExtensionManagementFactory::GetForBrowserContext(browser_context)),
+      impact_checker_(browser_context),
       browser_context_(browser_context) {
   registry_observation_.Observe(ExtensionRegistry::Get(browser_context));
 

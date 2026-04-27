@@ -395,6 +395,12 @@ chromium-metrics-reviews@google.com.
                  in with it."/>
     <variant name="SignInFailed"
         summary="AuthenticationFlow on iOS is cancelled or failed to sign-in."/>
+    <variant name="SigninStartedWithManagedAccount"
+        summary="User started sign-in with a managed account in the
+                 consistency promo."/>
+    <variant name="SigninStartedWithNonManagedAccount"
+        summary="User started sign-in with a non-managed account in the
+                 consistency promo."/>
     <variant name="SuppressedAlreadySignedIn"
         summary="The web sign-in is not shown because the user is already
                  signed in."/>
@@ -739,7 +745,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.AndroidGetAccountsTime{AndroidGetAccountsTypes}"
-    units="ms" expires_after="2026-08-12">
+    units="ms" expires_after="2026-10-11">
   <owner>bsazonov@chromium.org</owner>
   <owner>chrome-signin-mobile-team@google.com</owner>
   <summary>
@@ -962,7 +968,7 @@ prefs when the profile is loaded.  -->
 <histogram
     name="Signin.BoundSessionCredentials.CookieRotationResult{SessionOrigin}{Trigger}"
     enum="BoundSessionCredentialsCookieRotationResult"
-    expires_after="2026-08-09">
+    expires_after="2026-10-11">
   <owner>alexilin@chromium.org</owner>
   <owner>msalama@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -1131,7 +1137,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.BoundSessionCredentials.ResumeThrottledRequestsTrigger"
-    enum="ResumeBlockedRequestsTrigger" expires_after="2026-06-28">
+    enum="ResumeBlockedRequestsTrigger" expires_after="2026-10-11">
   <owner>alexilin@chromium.org</owner>
   <owner>msalama@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -1496,6 +1502,18 @@ prefs when the profile is loaded.  -->
     &quot;ENABLE_SYNC&quot; header. Missing AccountInfo can happen during OAuth
     outages where the previous signin header didn't contain an authorization
     code.
+  </summary>
+</histogram>
+
+<histogram name="Signin.DiceLinkedAccountsMetaHeaderStatus"
+    enum="DiceLinkedAccountsMetaHeaderStatus" expires_after="2027-04-01">
+  <owner>msalama@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records the parsing status of the
+    X-Chrome-ID-Consistency-Linked-Accounts-Meta header during a DICE web
+    sign-in request. Emitted once per sign-in if the header is present, or if
+    the response contains multiple accounts (even if the header is missing).
   </summary>
 </histogram>
 
@@ -2347,7 +2365,7 @@ the browser and content area. -->
 </histogram>
 
 <histogram name="Signin.ListFamilyMembersRequest.OverallLatency" units="ms"
-    expires_after="2026-08-09">
+    expires_after="2026-10-11">
   <owner>tju@google.com</owner>
   <owner>chrome-kids-eng@google.com</owner>
   <summary>
@@ -2671,7 +2689,7 @@ should be kept to monitor/debug signin Multilogin issues-->
 </histogram>
 
 <histogram name="Signin.OpenTabsCount.{ConsentLevel}" units="count"
-    expires_after="2026-06-28">
+    expires_after="2026-10-11">
   <owner>treib@chromium.org</owner>
   <owner>rsult@google.com</owner>
   <owner>droger@chromium.org</owner>
@@ -3026,7 +3044,7 @@ OAuth Multilogin call. -->
 
 <histogram
     name="Signin.ShowSigninCoordinatorWhenAlreadyPresent.{View}AccessPoint"
-    enum="SigninAccessPoint" expires_after="2026-07-26">
+    enum="SigninAccessPoint" expires_after="2026-10-11">
   <owner>arthurmilchior@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <owner>msarda@chromium.org</owner>
@@ -3194,7 +3212,7 @@ OAuth Multilogin call. -->
 </histogram>
 
 <histogram name="Signin.SigninManager.SetPrimaryAccountSigninInStage"
-    enum="GaiaIntegrationState" expires_after="2026-08-09">
+    enum="GaiaIntegrationState" expires_after="2026-10-11">
   <owner>droger@chromium.org</owner>
   <owner>anthie@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -3817,7 +3835,7 @@ should be kept for as long as we store refresh tokens in an SQLite DB. -->
 </histogram>
 
 <histogram name="Signin.WebSignin.SourceToChromeSignin"
-    enum="SigninAccessPoint" expires_after="2026-04-16">
+    enum="SigninAccessPoint" expires_after="2026-10-16">
   <owner>rsult@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>

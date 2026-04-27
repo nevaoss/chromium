@@ -50,12 +50,9 @@ class TabWebContentsDelegateAndroid
   void RunFileChooser(content::RenderFrameHost* render_frame_host,
                       scoped_refptr<content::FileSelectListener> listener,
                       const blink::mojom::FileChooserParams& params) override;
-  void CreateSmsPrompt(content::RenderFrameHost*,
-                       const std::vector<url::Origin>&,
-                       const std::string& one_time_code,
-                       base::OnceClosure on_confirm,
-                       base::OnceClosure on_cancel) override;
   bool ShouldFocusLocationBarByDefault(content::WebContents* source) override;
+  void NavigationStateChanged(content::WebContents* source,
+                              content::InvalidateTypes changed_flags) override;
   void FindReply(content::WebContents* web_contents,
                  int request_id,
                  int number_of_matches,
@@ -139,8 +136,6 @@ class TabWebContentsDelegateAndroid
 
   bool ShouldEnableEmbeddedMediaExperience() const;
   bool IsPictureInPictureEnabled() const;
-  virtual bool IsNightModeEnabled() const;
-  bool IsForceDarkWebContentEnabled() const;
   bool CanShowAppBanners() const;
 
   // Returns true if this tab is currently presented in the context of custom
@@ -167,6 +162,11 @@ class TabWebContentsDelegateAndroid
 
   // Timestamp when the user last successfully escaped from a lock request.
   base::TimeTicks pointer_lock_last_user_escape_time_;
+
+  void NavigationStateChangedDeferred(content::WebContents* source,
+                                      content::InvalidateTypes changed_flags);
+
+  base::WeakPtrFactory<TabWebContentsDelegateAndroid> weak_ptr_factory_{this};
 };
 
 }  // namespace android

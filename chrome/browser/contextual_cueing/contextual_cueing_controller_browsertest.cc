@@ -4,27 +4,37 @@
 
 #include "chrome/browser/contextual_cueing/contextual_cueing_controller.h"
 
+#include "base/functional/bind.h"
+#include "base/run_loop.h"
 #include "base/strings/strcat.h"
+#include "base/strings/stringprintf.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
 #include "chrome/browser/contextual_cueing/features.h"
 #include "chrome/browser/contextual_cueing/test_cue_target.h"
+#include "chrome/browser/optimization_guide/browser_test_util.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "chrome/test/user_education/mock_browser_user_education_interface.h"
 #include "components/optimization_guide/proto/features/contextual_cueing.pb.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/test/browser_test.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "ui/actions/actions.h"
 #include "ui/base/window_open_disposition.h"
 
 namespace contextual_cueing {
 namespace {
+
+using ::testing::Return;
 
 class ContextualCueingControllerBrowserTest : public InProcessBrowserTest {
  public:
@@ -42,10 +52,31 @@ class ContextualCueingControllerBrowserTest : public InProcessBrowserTest {
         ->RegisterCueTarget(CueTargetType::kGlic, std::move(test_cue_target));
   }
 
-  void TearDownOnMainThread() override { cue_target_ = nullptr; }
+  void SetUpInProcessBrowserTestFixture() override {
+    // Override the creation of BrowserUserEducationInterface to
+    // use the mock.
+    user_ed_override_ =
+        BrowserWindowFeatures::GetUserDataFactoryForTesting()
+            .AddOverrideForTesting(
+                base::BindRepeating([](BrowserWindowInterface& window) {
+                  return std::make_unique<
+                      testing::NiceMock<MockBrowserUserEducationInterface>>(
+                      &window);
+                }));
+  }
+
+  void TearDownOnMainThread() override {
+    cue_target_ = nullptr;
+    InProcessBrowserTest::TearDownOnMainThread();
+  }
 
   ContextualCueingController* contextual_cueing_controller() {
     return browser()->GetFeatures().contextual_cueing_controller();
+  }
+
+  MockBrowserUserEducationInterface* mock_user_education_interface() {
+    return static_cast<MockBrowserUserEducationInterface*>(
+        BrowserUserEducationInterface::From(browser()));
   }
 
   void SeedExecutionResult(
@@ -92,6 +123,7 @@ class ContextualCueingControllerBrowserTest : public InProcessBrowserTest {
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
+  ui::UserDataFactory::ScopedOverride user_ed_override_;
 };
 
 optimization_guide::proto::ContextualCueingResponse MakeCompleteResponse() {
@@ -188,6 +220,8 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
               page_content_annotations::Category(
                   page_content_annotations::CategoryType::kShopping, 0.2),
           }));
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
 
   histogram_tester.ExpectUniqueSample(
       "ContextualCueing.V2.Decision",
@@ -201,8 +235,12 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   ASSERT_TRUE(
       ui_test_utils::NavigateToURL(browser(), GURL("https://www.someurl.com")));
 
-  // Create a new tab (will be in the background in final state).
-  chrome::NewTab(browser());
+  // Create a new tab that is specifically a URL that would normally be skipped
+  // (will be in the background in final state).
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("chrome://settings"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   // Navigate to a new eligible tab to be in the foreground (current active
   // tab).
@@ -232,6 +270,8 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                   page_content_annotations::CategoryType::kShopping, 0.2),
           }));
 
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
   histogram_tester.ExpectUniqueSample("ContextualCueing.V2.Decision",
                                       ContextualCueingDecision::kSuccess, 1);
 
@@ -251,6 +291,8 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   SeedExecutionResult(std::move(response));
 
   SimulateFilterPassed();
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
 
   histogram_tester.ExpectUniqueSample(
       "ContextualCueing.V2.Decision",
@@ -266,6 +308,8 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   SeedExecutionResult(std::move(response));
 
   SimulateFilterPassed();
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
 
   histogram_tester.ExpectUniqueSample(
       "ContextualCueing.V2.Decision",
@@ -278,6 +322,8 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, Ineligible) {
   cue_target_->eligible = false;
   SeedExecutionResult(MakeCompleteResponse());
   SimulateFilterPassed();
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
 
   histogram_tester.ExpectUniqueSample(
       "ContextualCueing.V2.Decision",
@@ -295,6 +341,8 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, ShowCueAndClick) {
 
   SeedExecutionResult(MakeCompleteResponse());
   SimulateFilterPassed();
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
 
   histogram_tester.ExpectUniqueSample("ContextualCueing.V2.Decision",
                                       ContextualCueingDecision::kSuccess, 1);
@@ -307,6 +355,67 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, ShowCueAndClick) {
   ASSERT_TRUE(cue_target_->HasClickData());
   EXPECT_EQ("Prompt",
             std::get<GlicCueActionData>(cue_target_->click_data).prompt);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       NoLongerActiveTabAfterResponse) {
+  base::HistogramTester histogram_tester;
+  SeedExecutionResult(MakeCompleteResponse());
+  SimulateFilterPassed();
+
+  // Open new tab in foreground right away.
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.example.com"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+  histogram_tester.ExpectUniqueSample(
+      "ContextualCueing.V2.Decision",
+      ContextualCueingDecision::kNoLongerActiveTabAfterModelExecution, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       FeaturePromoActive) {
+  base::HistogramTester histogram_tester;
+  SeedExecutionResult(MakeCompleteResponse());
+  SimulateFilterPassed();
+
+  // Simulate feature promo showing.
+  EXPECT_CALL(*mock_user_education_interface(), IsAnyFeaturePromoActive())
+      .WillOnce(Return(true));
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+  histogram_tester.ExpectUniqueSample(
+      "ContextualCueing.V2.Decision",
+      ContextualCueingDecision::kFeaturePromoActive, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       OnlySendsTopMaxBackgroundTabs) {
+  // Create 15 tabs.
+  for (int i = 0; i < kMaxNumBackgroundTabs.Get() + 1; ++i) {
+    ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+        browser(), GURL(base::StringPrintf("https://www.google.com/%d", i)),
+        WindowOpenDisposition::NEW_FOREGROUND_TAB,
+        ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+  }
+
+  base::HistogramTester histogram_tester;
+  SeedExecutionResult(MakeCompleteResponse());
+
+  SimulateFilterPassed();
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+
+  // 15 background tabs + 1 active tab.
+  // We expect only the max allowed background tabs to be requested.
+  histogram_tester.ExpectUniqueSample(
+      "ContextualCueing.V2.NumRequestedBackgroundTabs",
+      kMaxNumBackgroundTabs.Get(), 1);
 }
 
 }  // namespace

@@ -128,6 +128,7 @@
 #include "content/browser/screen_orientation/screen_orientation_provider.h"
 #include "content/browser/shared_storage/shared_storage_budget_charger.h"
 #include "content/browser/site_instance_impl.h"
+#include "content/browser/surface_embed/surface_embed_connector_impl.h"
 #include "content/browser/wake_lock/wake_lock_context_host.h"
 #include "content/browser/web_contents/file_chooser_impl.h"
 #include "content/browser/web_contents/java_script_dialog_commit_deferring_condition.h"
@@ -277,10 +278,6 @@
 #if BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_IOS_TVOS)
 #include "content/browser/ios/nfc_host.h"
 #endif
-
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
-#include "content/browser/surface_embed/surface_embed_connector_impl.h"
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
 namespace content {
 
@@ -467,27 +464,6 @@ base::flat_set<raw_ptr<WebContentsImpl>> GetAllOpeningWebContents(
 
   return result;
 }
-
-#if BUILDFLAG(IS_ANDROID)
-float GetDeviceScaleAdjustment(int min_width) {
-  static const float kMinFSM = 1.05f;
-  static const int kWidthForMinFSM = 320;
-  static const float kMaxFSM = 1.3f;
-  static const int kWidthForMaxFSM = 800;
-
-  if (min_width <= kWidthForMinFSM) {
-    return kMinFSM;
-  }
-  if (min_width >= kWidthForMaxFSM) {
-    return kMaxFSM;
-  }
-
-  // The font scale multiplier varies linearly between kMinFSM and kMaxFSM.
-  float ratio = static_cast<float>(min_width - kWidthForMinFSM) /
-                (kWidthForMaxFSM - kWidthForMinFSM);
-  return ratio * (kMaxFSM - kMinFSM) + kMinFSM;
-}
-#endif
 
 // Store a set of fullscreen WebContents and metadata for the browser context.
 // Storing this information on the browser context is done for two reasons. One,
@@ -1142,6 +1118,14 @@ void WebContentsImpl::WebContentsTreeNode::OnFrameTreeNodeDestroyed(
   }
 }
 
+void WebContentsImpl::NotifySwappedRWHVChildFrameFromRenderManager(
+    RenderWidgetHostViewChildFrame* new_view,
+    bool allow_paint_holding) {
+  if (surface_embed_connector_) {
+    surface_embed_connector_->SetView(new_view, allow_paint_holding);
+  }
+}
+
 FrameTree* WebContentsImpl::WebContentsTreeNode::focused_frame_tree() {
   CHECK(focused_frame_tree_);
   return focused_frame_tree_;
@@ -1422,11 +1406,9 @@ WebContentsImpl::~WebContentsImpl() {
     GetOuterWebContents()->DetachUnownedInnerWebContents(this);
   }
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
   if (surface_embed_connector_) {
     ClearSurfaceEmbedConnector();
   }
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
   if (pointer_lock_widget_) {
     pointer_lock_widget_->RejectPointerLockOrUnlockIfNecessary(
@@ -3462,7 +3444,6 @@ void WebContentsImpl::DetachUnownedInnerWebContents(
   inner_main_frame->UpdateAXTreeData();
 }
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
 SurfaceEmbedConnector* WebContentsImpl::GetSurfaceEmbedConnector() const {
   return surface_embed_connector_.get();
 }
@@ -3568,7 +3549,6 @@ void WebContentsImpl::ClearSurfaceEmbedConnector() {
     RecursivelyRegisterRenderWidgetHostViews();
   }
 }
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
 void WebContentsImpl::AttachGuestPage(
     std::unique_ptr<GuestPageHolder> guest_page,
@@ -3932,10 +3912,6 @@ const blink::web_pref::WebPreferences WebContentsImpl::ComputeWebPreferences(
     prefs.media_controls_enabled = false;
   }
 
-#if BUILDFLAG(IS_ANDROID)
-  prefs.device_scale_adjustment = GetDeviceScaleAdjustment(min_width_in_dp);
-#endif  // BUILDFLAG(IS_ANDROID)
-
   // GuestViews in the same StoragePartition need to find each other's frames.
   prefs.renderer_wide_named_frame_lookup =
       IsGuest() || main_frame->frame_tree()->is_guest();
@@ -3998,8 +3974,6 @@ const blink::web_pref::WebPreferences WebContentsImpl::ComputeWebPreferences(
 
       // Ensure no further viewport scaling
       prefs.shrinks_viewport_contents_to_fit = false;
-      // Not needed for larger form factors
-      prefs.text_autosizing_enabled = false;
     }
   }
 
@@ -4720,11 +4694,9 @@ WebContentsImpl::GetInputEventRouter() {
       return GetOuterWebContents()->GetInputEventRouter();
     }
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
     if (surface_embed_connector_) {
       return surface_embed_connector_->GetInputEventRouter();
     }
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
     if (!rwh_input_event_router_.get()) {
       rwh_input_event_router_ =
@@ -6347,11 +6319,9 @@ TextInputManager* WebContentsImpl::GetTextInputManager() {
     return GetOuterWebContents()->GetTextInputManager();
   }
 
-#if BUILDFLAG(ENABLE_SURFACE_EMBED)
   if (surface_embed_connector_) {
     return surface_embed_connector_->GetTextInputManager();
   }
-#endif  // BUILDFLAG(ENABLE_SURFACE_EMBED)
 
   if (!text_input_manager_ && !browser_plugin_guest_) {
     text_input_manager_ = std::make_unique<TextInputManager>();
@@ -7432,10 +7402,20 @@ base::ScopedClosureRunner WebContentsImpl::ForSecurityDropFullscreen(
   // upstream contents. Drop that WebContents out of fullscreen if it does. This
   // is theoretically quadratic-ish (fullscreen contentses x each one's opener
   // length) but neither of those is expected to ever be a large number.
-  auto fullscreen_set_copy = *FullscreenContentsSet(GetBrowserContext());
-  for (WebContentsImpl* fullscreen_contents : fullscreen_set_copy) {
-    if (is_fullscreen(fullscreen_contents, display_id)) {
-      auto opener_contentses = GetAllOpeningWebContents(fullscreen_contents);
+  std::vector<base::WeakPtr<WebContentsImpl>> fullscreen_contents_list;
+  for (WebContentsImpl* fullscreen_contents :
+       *FullscreenContentsSet(GetBrowserContext())) {
+    fullscreen_contents_list.push_back(
+        fullscreen_contents->weak_factory_.GetWeakPtr());
+  }
+
+  for (auto& fullscreen_contents : fullscreen_contents_list) {
+    if (!fullscreen_contents) {
+      continue;
+    }
+    if (is_fullscreen(fullscreen_contents.get(), display_id)) {
+      auto opener_contentses =
+          GetAllOpeningWebContents(fullscreen_contents.get());
       if (opener_contentses.count(this)) {
         fullscreen_contents->ExitFullscreen(true);
       }
@@ -7449,29 +7429,41 @@ base::ScopedClosureRunner WebContentsImpl::ForSecurityDropFullscreen(
   // any request to enter fullscreen will have the upstream of the WebContents
   // checked. (See CanEnterFullscreenMode().)
 
-  std::vector<base::WeakPtr<WebContentsImpl>> blocked_contentses;
+  std::vector<base::WeakPtr<WebContentsImpl>> blocked_contents_list;
+  std::vector<base::WeakPtr<WebContentsImpl>> openers;
+  for (WebContentsImpl* opener : GetAllOpeningWebContents(this)) {
+    openers.push_back(opener->weak_factory_.GetWeakPtr());
+  }
 
-  for (auto opener : GetAllOpeningWebContents(this)) {
-    if (is_fullscreen(opener, display_id)) {
+  for (auto& opener : openers) {
+    if (!opener) {
+      continue;
+    }
+
+    if (is_fullscreen(opener.get(), display_id)) {
       opener->ExitFullscreen(true);
+    }
+
+    if (!opener) {
+      continue;
     }
 
     // ...block the WebContents from entering fullscreen until further notice.
     ++opener->fullscreen_blocker_count_;
-    blocked_contentses.push_back(opener->weak_factory_.GetWeakPtr());
+    blocked_contents_list.push_back(opener);
   }
 
   return base::ScopedClosureRunner(base::BindOnce(
-      [](std::vector<base::WeakPtr<WebContentsImpl>> blocked_contentses) {
+      [](std::vector<base::WeakPtr<WebContentsImpl>> blocked_contents_list) {
         for (base::WeakPtr<WebContentsImpl>& web_contents :
-             blocked_contentses) {
+             blocked_contents_list) {
           if (web_contents) {
             DCHECK_GT(web_contents->fullscreen_blocker_count_, 0);
             --web_contents->fullscreen_blocker_count_;
           }
         }
       },
-      std::move(blocked_contentses)));
+      std::move(blocked_contents_list)));
 }
 
 void WebContentsImpl::ResumeLoadingCreatedWebContents() {
@@ -10836,19 +10828,6 @@ bool WebContentsImpl::CreateRenderViewForRenderManager(
     return false;
   }
 
-  // Set the TextAutosizer state from the main frame's renderer on the new view,
-  // but only if it's not for the main frame. Main frame renderers should create
-  // this state themselves from up-to-date values, so we shouldn't override it
-  // with the cached values.
-  if (!rvh_impl->GetMainRenderFrameHost() && proxy_host) {
-    proxy_host->GetAssociatedRemoteMainFrame()->UpdateTextAutosizerPageInfo(
-        proxy_host->frame_tree_node()
-            ->current_frame_host()
-            ->GetPage()
-            .text_autosizer_page_info()
-            .Clone());
-  }
-
   // If `render_view_host` is for an inner WebContents, ensure that its
   // RenderWidgetHostView is properly reattached to the outer WebContents. Note
   // that this should only be done when `render_view_host` is already the
@@ -12357,14 +12336,14 @@ void WebContentsImpl::SetV8CompileHints(base::ReadOnlySharedMemoryRegion data) {
 }
 
 void WebContentsImpl::SetTabSwitchStartTime(base::TimeTicks start_time,
-                                            bool destination_is_loaded) {
+                                            bool destination_is_loaded,
+                                            bool had_saved_frame_at_start) {
   GetVisibleTimeRequestTrigger().UpdateRequest(blink::VisibleTimeEvent{
       .event_start_time = start_time,
-      .reason =
-          blink::VisibleTimeEvent::TabSwitchReason(destination_is_loaded)});
+      .reason = blink::VisibleTimeEvent::TabSwitchReason{
+          .destination_is_loaded = destination_is_loaded,
+          .had_saved_frame_at_start = had_saved_frame_at_start}});
 }
-
-
 
 VisibleTimeRequestTrigger& WebContentsImpl::GetVisibleTimeRequestTrigger() {
   return visible_time_request_trigger_;

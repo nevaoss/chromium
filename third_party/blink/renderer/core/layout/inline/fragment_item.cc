@@ -830,8 +830,15 @@ std::pair<float, bool> FragmentItem::GetFitTextScale() const {
       DCHECK(!data->is_svg);
       return {data->length_adjust_scale, data->is_fit_text_inline};
     }
+  } else if (Type() == kLine) {
+    return {line_.text_fit_scale, false};
   }
   return {1.0f, false};
+}
+
+void FragmentItem::SetLineTextFitScale(float scale) {
+  DCHECK_EQ(Type(), kLine);
+  line_.text_fit_scale = scale;
 }
 
 FontHeight FragmentItem::AnnotationMetrics() const {
@@ -1082,7 +1089,8 @@ LayoutUnit FragmentItem::CaretInlinePositionForOffset(StringView text,
     // Allows for better code separation and avoids the extra copy below.
     return LayoutUnit::FromFloatRound(
         TextShapeResult()->CreateShapeResult()->CaretPositionForOffset(
-            offset, text, AdjustMidCluster::kToEnd));
+            offset, text, AdjustMidCluster::kToEnd) *
+        GetFitTextScale().first);
   }
 
   // This fragment is a flow control because otherwise ShapeResult exists.
@@ -1117,14 +1125,19 @@ std::pair<LayoutUnit, LayoutUnit> FragmentItem::LineLeftAndRightForOffsets(
   LayoutUnit start_position;
   LayoutUnit end_position;
   if (TextShapeResult()) {
+    float scaling_factor = GetFitTextScale().first;
     // TODO(layout-dev): Move caret position out of ShapeResult and into a
     // separate support class that can take a ShapeResult or ShapeResultView.
     // Allows for better code separation and avoids the extra copy below.
     const ShapeResult* shape_result = TextShapeResult()->CreateShapeResult();
-    float unrounded_start_position = shape_result->CaretPositionForOffset(
-        start_offset, text, AdjustMidCluster::kToStart);
-    float unrounded_end_position = shape_result->CaretPositionForOffset(
-        end_offset, text, AdjustMidCluster::kToEnd);
+    float unrounded_start_position =
+        shape_result->CaretPositionForOffset(start_offset, text,
+                                             AdjustMidCluster::kToStart) *
+        scaling_factor;
+    float unrounded_end_position =
+        shape_result->CaretPositionForOffset(end_offset, text,
+                                             AdjustMidCluster::kToEnd) *
+        scaling_factor;
     const auto rounded_positions = LayoutUnit::FromFloatEncompassRound(
         unrounded_start_position, unrounded_end_position);
     start_position = rounded_positions.first;

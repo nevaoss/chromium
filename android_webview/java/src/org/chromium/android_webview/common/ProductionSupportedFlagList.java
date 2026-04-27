@@ -200,9 +200,6 @@ public final class ProductionSupportedFlagList {
                 "Enables using the new ALPS codepoint to negotiate application settings for"
                         + " HTTP2."),
         Flag.baseFeature(
-                BlinkFeatures.FORCE_OFF_TEXT_AUTOSIZING,
-                "Disable text inflation with setLayoutAlgorithm(TEXT_AUTOSIZING)"),
-        Flag.baseFeature(
                 NetFeatures.SIMDUTF_BASE64_SUPPORT,
                 "Use the simdutf library to base64 decode data: URLs."),
         Flag.baseFeature(
@@ -231,9 +228,6 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.HIT_TEST_BORDER_RADIUS_FOR_STACKING_CONTEXT,
                 "Hit testing should respect border-radius clips when creating a stacking context."),
         Flag.baseFeature(
-                BlinkFeatures.WIDTH_AND_HEIGHT_AS_PRESENTATION_ATTRIBUTES_ON_NESTED_SVG,
-                "Enables width and height as presentation attributes on nested svg."),
-        Flag.baseFeature(
                 BlinkFeatures.PAINT_OFFSET_TRANSLATION_FOR_COMPOSITED,
                 "Creates a paint offset translation for composited objects."),
         Flag.baseFeature(
@@ -246,6 +240,9 @@ public final class ProductionSupportedFlagList {
                 AndroidAutofillFeatures.ANDROID_AUTOFILL_IMPROVED_VISIBILITY_DETECTION_NAME,
                 "Enable improved visibility detection form fields sent to the Android "
                         + "Autofill framework."),
+        Flag.baseFeature(
+                AndroidAutofillFeatures.ANDROID_AUTOFILL_FIELDS_UPDATED_ON_SELECT_NAME,
+                "Enable updating autofill field origin on select control change."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_ACCEPT_DOM_MUTATION_AFTER_AUTOFILL_SUBMISSION,
                 "Accepts DOM_MUTATION_AFTER_AUTOFILL submissions detected on password forms."),
@@ -266,10 +263,6 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.SHOW_SUGESSTIONS_ON_ALREADY_AUTOFILLED_UNRECOGNIZED,
                 "Allows autofill to offer filling again on fields that were autofilled and now hold"
                         + " autocomplete=unrecognized value."),
-        Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_ENABLE_SUPPORT_FOR_PARSING_WITH_SHARED_LABELS,
-                "Splits Autofill labels among consecutive fields for better heuristic"
-                        + " predictions."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_FIX_FORM_EQUALITY,
                 "Fixes the semantics of Form[Field]Data::DeepEqual()"),
@@ -296,10 +289,6 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_DISALLOW_MORE_HYPHEN_LIKE_LABELS,
                 "Disallows labels that only contain em dashes, minuses, fullwidth hyphens and other"
                         + " special characters."),
-        Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_DO_NOT_FIRE_FORM_FIELD_CHANGED_ON_WEBVIEW_SCROLL_EVENTS,
-                "When enabled, AndroidAutofillProvider::OnTextFieldDidScroll() will not fire"
-                        + " FormFieldData::OnFormFieldDidChange()."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_MOVE_SMALL_FORM_LOGIC_TO_CLIENT,
                 "Moves the small form handling from Autofill server to client."),
@@ -341,9 +330,6 @@ public final class ProductionSupportedFlagList {
                 AutofillFeatures.AUTOFILL_SERVER_QUERY_PREDICTIONS_EARLY,
                 "When enabled, Autofill enables querying the server for predictions before the form"
                         + " has been parsed locally."),
-        Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_SUPPORT_LAST_NAME_PREFIX,
-                "When enabled, Autofill uses a custom name hierarchy for parsing last names."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_SUPPORT_SPLIT_ZIP_CODE,
                 "When enabled, two-part zip codes are splitted into two fields while filling and"
@@ -647,6 +633,11 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "MemoryCoordinatorLastResortGC",
                 "Clears strong references in the MemoryCache in last resort GC."),
+        Flag.baseFeature(
+                "StatefulMemoryPressure",
+                "When enabled, some caches will change their max size for the duration of memory"
+                    + " pressure. When disabled, those caches will periodically evict all entries"
+                    + " instead."),
         Flag.baseFeature(
                 BlinkFeatures.DISCARD_INPUT_EVENTS_TO_RECENTLY_MOVED_FRAMES,
                 "Enables a browser intervention which silently ignores input events "
@@ -1070,17 +1061,15 @@ public final class ProductionSupportedFlagList {
                     + " developer preferences via the AndroidX API or manifest metadata supersedes"
                     + " this flag."),
         Flag.commandLine(
-                AwSwitches.WEBVIEW_STARTUP_TASKS_PLUS_MULTI_PROCESS,
-                "Enables running native startup tasks asynchronously if WebView startup is"
-                        + " asynchronous, in addition to stopping multiprocess enabled checks from"
-                        + " starting chromium."),
-        Flag.commandLine(
-                AwSwitches.WEBVIEW_STOP_BROWSER_STARTUP_IN_IS_MULTI_PROCESS_ENABLED,
-                "Stop browser startup in isMultiProcessEnabled."),
-        Flag.commandLine(
                 AwSwitches.STARTUP_NON_BLOCKING_WEBVIEW_CONSTRUCTOR,
                 "When enabled, WebView constructor will not block on WebView process global"
                         + " startup"),
+        Flag.commandLine(
+                AwSwitches.POST_CHROMIUM_STARTUP_IN_WEBVIEW_CONSTRUCTOR,
+                "When enabled, post Chromium startup in the WebView constructor. Only has any"
+                        + " effect when "
+                        + AwSwitches.STARTUP_NON_BLOCKING_WEBVIEW_CONSTRUCTOR
+                        + " is enabled."),
         Flag.baseFeature(
                 AccessibilityFeatures.ACCESSIBILITY_MAGNIFICATION_FOLLOWS_FOCUS,
                 "Enables Magnification and other views to keep the text cursor onscreen."),
@@ -1247,10 +1236,6 @@ public final class ProductionSupportedFlagList {
                 "Report external memory held by IndexedDB connections, so it's taken into account"
                         + " in GC heuristics."),
         Flag.baseFeature(
-                "MemoryDumpProviderGroupBySequence",
-                "Group MemoryDumpProvider by sequence affinity to reduce PostTask hops when"
-                        + " collecting dumps"),
-        Flag.baseFeature(
                 "VariationsStickyNoopTest", "No-op flag for testing sticky study activation."),
         Flag.baseFeature(
                 BlinkFeatures.TEXT_SCALE_META_TAG,
@@ -1380,7 +1365,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "IdbInhibitCompactRange",
                 "Inhibits CompactRange() calls within IndexedDB cleanup tasks."),
-
+        Flag.baseFeature(
+                BaseFeatures.SHUTDOWN_PRE_NATIVE_THREAD_POOL_AFTER_STARTUP,
+                "When enabled, after start up the thread pool in PostTask.java"
+                        + " will be shutdown so it doesn't consume resources when not needed."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

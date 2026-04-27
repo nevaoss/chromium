@@ -27,7 +27,6 @@
 #include "chrome/browser/enterprise/data_protection/data_protection_ui_controller.h"
 #include "chrome/browser/extensions/browser_extension_window_controller.h"
 #include "chrome/browser/extensions/manifest_v2_experiment_manager.h"
-#include "chrome/browser/extensions/mv2_experiment_stage.h"
 #include "chrome/browser/glic/browser_ui/glic_button_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
@@ -120,6 +119,7 @@
 #include "chrome/browser/ui/views/location_bar/cookie_controls/cookie_controls_bubble_coordinator.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/location_bar/zoom_bubble_coordinator.h"
+#include "chrome/browser/ui/views/location_bar/zoom_bubble_manager_views.h"
 #include "chrome/browser/ui/views/media_router/cast_browser_controller.h"
 #include "chrome/browser/ui/views/new_tab_footer/footer_controller.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_closer.h"
@@ -153,6 +153,7 @@
 #include "chrome/browser/ui/webui_browser/webui_browser_exclusive_access_context.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
+#include "chrome/browser/ui/webui_browser/zoom_bubble_manager_webui_browser.h"
 #include "chrome/browser/ui/zoom/browser_window_zoom_observer.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
@@ -175,6 +176,7 @@
 #include "components/search/ntp_features.h"
 #include "components/search/search.h"
 #include "content/public/common/content_constants.h"
+#include "extensions/browser/mv2_experiment_stage.h"
 #include "extensions/common/extension_features.h"
 #include "ui/views/interaction/element_highlighter_views.h"
 
@@ -300,6 +302,8 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   // instantiated in this block.
   Profile* const profile = browser->GetProfile();
   if (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) {
+    initial_web_ui_manager_ = std::make_unique<InitialWebUIManager>(browser);
+
     if (search::IsInstantExtendedAPIEnabled()) {
       instant_controller_ = std::make_unique<BrowserInstantController>(
           profile, browser->GetTabStripModel());
@@ -445,12 +449,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
         GetUserDataFactory().CreateInstance<pdf::infobar::PdfInfoBarController>(
             *browser, browser);
   }
-  if (base::FeatureList::IsEnabled(features::kOfferPinToTaskbarInfoBar)) {
-    pin_infobar_controller_ =
-        GetUserDataFactory()
-            .CreateInstance<default_browser::PinInfoBarController>(*browser,
-                                                                   browser);
-  }
+  pin_infobar_controller_ =
+      GetUserDataFactory()
+          .CreateInstance<default_browser::PinInfoBarController>(*browser,
+                                                                 browser);
 #endif
 
   data_sharing_bubble_controller_ =
@@ -580,8 +582,11 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
                                                                   browser);
     }
 
-    send_tab_to_self_toolbar_bubble_controller_ = std::make_unique<
-        send_tab_to_self::SendTabToSelfToolbarBubbleController>(browser);
+    send_tab_to_self_toolbar_bubble_controller_ =
+        GetUserDataFactory()
+            .CreateInstance<
+                send_tab_to_self::SendTabToSelfToolbarBubbleController>(
+                *browser, browser);
 
     if (browser_view) {
       // Get the PinnedToolbarActions for the browser; it might not exist for
@@ -727,6 +732,12 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
     find_bar_owner_ =
         std::make_unique<FindBarOwnerWebUIBrowser>(webui_browser_window);
 
+    zoom_bubble_manager_ =
+        std::make_unique<ZoomBubbleManagerWebUIBrowser>(webui_browser_window);
+    zoom_bubble_coordinator_ =
+        GetUserDataFactory().CreateInstance<ZoomBubbleCoordinator>(
+            *browser_, *browser_, zoom_bubble_manager_.get());
+
     // Provide a stub immersive mode controller so things that use it don't
     // crash. This will need to be changed to use a proper one on platforms
     // that support it.
@@ -744,9 +755,6 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
                 *browser->GetTabStripModel()));
   }
 
-  if (browser->is_type_normal()) {
-    initial_web_ui_manager_ = std::make_unique<InitialWebUIManager>(browser);
-  }
 
   // Initialize post-window dependent embedder features last.
   embedder_browser_window_features_->InitPostWindowConstruction(browser);
@@ -955,9 +963,10 @@ void BrowserWindowFeatures::InitPostBrowserViewConstruction(
   }
 #endif
 
+  zoom_bubble_manager_ = std::make_unique<ZoomBubbleManagerViews>(browser_view);
   zoom_bubble_coordinator_ =
-      GetUserDataFactory().CreateInstance<ZoomBubbleCoordinator>(*browser_,
-                                                                 *browser_view);
+      GetUserDataFactory().CreateInstance<ZoomBubbleCoordinator>(
+          *browser_, *browser_, zoom_bubble_manager_.get());
 
   user_education_->Init(browser_view);
 
@@ -1011,6 +1020,7 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
 #endif
 
   zoom_bubble_coordinator_.reset();
+  zoom_bubble_manager_.reset();
 
   comments_side_panel_coordinator_.reset();
 

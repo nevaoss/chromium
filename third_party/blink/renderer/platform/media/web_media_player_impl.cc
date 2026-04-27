@@ -1729,15 +1729,27 @@ void WebMediaPlayerImpl::SetTrackState(const media::MediaTrack& track,
 
 #if BUILDFLAG(ENABLE_HLS_DEMUXER)
 
+UrlData::CacheMode TranslateCacheMode(bool always_disable,
+                                      media::DataSource::CacheMode mode) {
+  if (always_disable) {
+    return UrlData::kCacheDisabled;
+  }
+  switch (mode) {
+    case media::DataSource::CacheMode::kBypassCache:
+      return UrlData::kCacheDisabled;
+    case media::DataSource::CacheMode::kHitCache:
+      return UrlData::kNormal;
+  }
+}
+
 void WebMediaPlayerImpl::GetUrlData(
     const GURL& gurl,
-    bool ignore_cache,
+    media::DataSource::CacheMode cache_mode,
     base::OnceCallback<void(scoped_refptr<UrlData>)> cb) {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
   auto url_data = url_index_->GetByUrl(
       KURL(gurl), static_cast<UrlData::CorsMode>(cors_mode_),
-      (is_cache_disabled_ || ignore_cache) ? UrlData::kCacheDisabled
-                                           : UrlData::kNormal);
+      TranslateCacheMode(is_cache_disabled_, cache_mode));
   std::move(cb).Run(std::move(url_data));
 }
 
@@ -1750,14 +1762,16 @@ WebMediaPlayerImpl::GetHlsDataSourceProvider() {
   // these things when they change, for example when CORS mode changes from
   // untainted to tainted. Using a NullMediaLog here prevents the unnecessary
   // spamming.
-  auto media_log = std::make_unique<media::NullMediaLog>();
   return base::SequenceBound<media::HlsDataSourceProviderImpl>(
       main_task_runner_,
       std::make_unique<MultiBufferDataSource::Factory>(
-          media_log.get(),
+          std::make_unique<media::NullMediaLog>(),
           blink::BindRepeating(&WebMediaPlayerImpl::GetUrlData,
                                weak_factory_.GetWeakPtr()),
-          main_task_runner_, tick_clock_));
+          client_->IsAudioElement(), preload_,
+          blink::BindRepeating(&WebMediaPlayerImpl::OnDataSourceTainted,
+                               weak_this_),
+          tick_clock_, main_task_runner_));
 }
 #endif
 

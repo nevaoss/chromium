@@ -35,7 +35,8 @@ export interface ContextualActionMenuElement {
 
 const ContextualActionMenuElementBase = I18nMixinLit(CrLitElement);
 
-export class ContextualActionMenuElement extends ContextualActionMenuElementBase {
+export class ContextualActionMenuElement extends
+    ContextualActionMenuElementBase {
   static get is() {
     return 'cr-composebox-contextual-action-menu';
   }
@@ -153,9 +154,10 @@ export class ContextualActionMenuElement extends ContextualActionMenuElementBase
 
   showAt(anchor: HTMLElement) {
     this.$.menu.showAt(anchor, {
-      top: anchor.getBoundingClientRect().bottom,
       width: MENU_WIDTH_PX,
-      anchorAlignmentX: AnchorAlignment['AFTER_START'],
+      anchorAlignmentX: AnchorAlignment.AFTER_START,
+      anchorAlignmentY: AnchorAlignment.AFTER_END,
+      noOffset: true,
     });
     window.addEventListener('blur', this.onWindowBlur_);
   }
@@ -263,9 +265,27 @@ export class ContextualActionMenuElement extends ContextualActionMenuElementBase
         return this.i18n('addImage');
       case InputType.kLensFile:
         return this.i18n('uploadFile');
+      case InputType.kDrive:
+        return this.i18n('addDriveFile');
       default:
         return '';
     }
+  }
+
+  // Checks if the drive upload item in the context menu should be visible.
+  protected isDriveUploadAllowed_(): boolean {
+    if (this.inputState) {
+      return this.inputState.allowedInputTypes.includes(InputType.kDrive);
+    }
+    return false;
+  }
+
+  // Checks if the drive upload item in the context menu should be disabled.
+  protected isDriveUploadDisabled_(): boolean {
+    if (this.inputState) {
+      return this.inputState.disabledInputTypes.includes(InputType.kDrive);
+    }
+    return this.fileNum >= this.maxFileCount_;
   }
 
   // Checks if the image upload item in the context menu should be visible.
@@ -387,6 +407,11 @@ export class ContextualActionMenuElement extends ContextualActionMenuElementBase
 
   protected onImageUploadClick_() {
     this.fire('open-image-upload');
+    this.$.menu.close();
+  }
+
+  protected onDriveUploadClick_() {
+    this.fire('open-drive-upload');
     this.$.menu.close();
   }
 

@@ -8,7 +8,6 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.content.res.Resources;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
 import android.graphics.drawable.Drawable;
@@ -37,8 +36,11 @@ import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarFeatures;
 import org.chromium.chrome.browser.toolbar.optional_button.BaseButtonDataProvider;
 import org.chromium.chrome.browser.toolbar.optional_button.ButtonData;
 import org.chromium.chrome.browser.toolbar.optional_button.ButtonData.ButtonSpec;
+import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
+import org.chromium.chrome.browser.user_education.IphCommandBuilder;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.EventConstants;
+import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.components.feature_engagement.Tracker;
 
 import java.lang.annotation.Retention;
@@ -48,7 +50,9 @@ import java.util.function.Supplier;
 /** Defines a toolbar button to open the Glic bottom sheet. */
 @NullMarked
 public class GlicToolbarButtonController extends BaseButtonDataProvider
-        implements ActorKeyedService.Observer {
+        implements ActorKeyedService.Observer, GlicKeyedService.GlobalShowHideObserver {
+    public static final int ACTION_CHIP_COLLAPSE_DELAY_MS = 30000;
+
     @IntDef({ButtonState.DEFAULT, ButtonState.WORKING, ButtonState.NEEDS_REVIEW, ButtonState.DONE})
     @Retention(RetentionPolicy.SOURCE)
     private @interface ButtonState {
@@ -58,42 +62,61 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
         int DONE = 3;
     }
 
-    private final Runnable mToggleGlicCallback;
+    /** Delegate interface for handling clicks on the Glic toolbar button. */
+    @FunctionalInterface
+    public interface GlicButtonDelegate {
+        /**
+         * Called when the Glic button is clicked.
+         *
+         * @param preventClose whether to prevent closing the Glic UI if it's already open.
+         */
+        void onClick(boolean preventClose);
+    }
+
+    private final Context mContext;
+    private final GlicButtonDelegate mToggleGlicCallback;
     private final Supplier<@Nullable Tracker> mTrackerSupplier;
+    private final Supplier<ChromeAndroidTask> mTaskSupplier;
     private @Nullable Profile mCurrentProfile;
     private @Nullable ActorKeyedService mCurrentActorService;
+    private @Nullable GlicKeyedService mCurrentGlicService;
     private final ButtonSpec mDefaultSpec;
     private final ButtonSpec mWorkingSpec;
     private final ButtonSpec mReviewSpec;
     private final ButtonSpec mDoneSpec;
 
     private @ButtonState int mButtonState = ButtonState.DEFAULT;
+    private boolean mPersistDoneState;
+    private boolean mIsPanelOpen;
 
     /**
      * @param context The Android context.
      * @param activeTabSupplier The currently active tab.
      * @param toggleGlicCallback Callback to run when the button is clicked to open Glic.
      * @param trackerSupplier Supplier for the current profile tracker.
+     * @param taskSupplier Supplier for the ChromeAndroidTask.
      */
     public GlicToolbarButtonController(
             Context context,
             Supplier<@Nullable Tab> activeTabSupplier,
-            Runnable toggleGlicCallback,
-            Supplier<@Nullable Tracker> trackerSupplier) {
+            GlicButtonDelegate toggleGlicCallback,
+            Supplier<@Nullable Tracker> trackerSupplier,
+            Supplier<ChromeAndroidTask> taskSupplier) {
         // TODO(crbug.com/482372270): Add correct styling to button including Nudge state text,
         // active state shape change, and appropriate colors.
         super(
                 activeTabSupplier,
                 /* modalDialogManager= */ null,
-                AppCompatResources.getDrawable(context, R.drawable.ic_spark_24dp),
-                context.getString(R.string.glic_button_entrypoint_ask_gemini_label),
-                /* actionChipLabelResId= */ Resources.ID_NULL,
-                /* supportsTinting= */ true,
-                /* iphCommandBuilder= */ null,
-                AdaptiveToolbarButtonVariant.GLIC,
-                /* tooltipTextResId= */ Resources.ID_NULL);
+                new ButtonSpec.Builder(
+                                AppCompatResources.getDrawable(context, R.drawable.ic_spark_24dp),
+                                context.getString(R.string.glic_button_entrypoint_ask_gemini_label),
+                                /* supportsTinting= */ true)
+                        .setButtonVariant(AdaptiveToolbarButtonVariant.GLIC)
+                        .build());
+        mContext = context;
         mToggleGlicCallback = toggleGlicCallback;
         mTrackerSupplier = trackerSupplier;
+        mTaskSupplier = taskSupplier;
         mDefaultSpec = mButtonData.getButtonSpec();
         mWorkingSpec = createWorkingSpec(context);
         mReviewSpec = createReviewSpec();
@@ -104,6 +127,7 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
         return new ButtonSpec.Builder(mDefaultSpec)
                 .setActionChipLabelResId(R.string.glic_button_status_review)
                 .setShouldSuppressCpa(true)
+                .setActionChipCollapseDelayMs(ACTION_CHIP_COLLAPSE_DELAY_MS)
                 .build();
     }
 
@@ -111,6 +135,7 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
         return new ButtonSpec.Builder(mDefaultSpec)
                 .setActionChipLabelResId(R.string.glic_button_status_done)
                 .setShouldSuppressCpa(true)
+                .setActionChipCollapseDelayMs(ACTION_CHIP_COLLAPSE_DELAY_MS)
                 .build();
     }
 
@@ -199,7 +224,7 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
 
         // This can be assumed because shouldShowButton hides the entrypoint if there's no tab.
         assumeNonNull(tab);
-        updateActorServiceObservation(tab.getProfile());
+        updateObservations(tab.getProfile());
         updateButtonState();
 
         ButtonSpec desiredSpec = mDefaultSpec;
@@ -217,60 +242,86 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
             default:
                 desiredSpec = mDefaultSpec;
         }
-        mButtonData.setButtonSpec(desiredSpec);
+        mButtonData.setButtonSpec(
+                new ButtonSpec.Builder(desiredSpec).setIsChecked(mIsPanelOpen).build());
 
         mButtonData.setEnabled(true);
         return buttonData;
     }
 
     private void updateButtonState() {
-        mButtonState = ButtonState.DEFAULT;
+        if (mCurrentActorService == null) {
+            mButtonState = ButtonState.DEFAULT;
+            return;
+        }
 
-        if (mCurrentActorService != null) {
-            ActorTask task = mCurrentActorService.getCurrentActiveTask();
-            if (task != null) {
-                @ActorTaskState int state = task.getState();
-                switch (state) {
-                    case ActorTaskState.WAITING_ON_USER:
-                    case ActorTaskState.FAILED:
-                        mButtonState = ButtonState.NEEDS_REVIEW;
-                        break;
-                    case ActorTaskState.FINISHED:
-                        mButtonState = ButtonState.DONE;
-                        break;
-                    case ActorTaskState.ACTING:
-                    case ActorTaskState.REFLECTING:
-                        mButtonState = ButtonState.WORKING;
-                        // TODO(haileywang): Start the animation of the working button.
-                        break;
-                    case ActorTaskState.PAUSED_BY_USER:
-                    case ActorTaskState.PAUSED_BY_ACTOR:
-                        mButtonState = ButtonState.WORKING;
-                        break;
-                    case ActorTaskState.CANCELLED:
-                    case ActorTaskState.CREATED:
-                        // Show the default button for these states.
-                        break;
-                    default:
-                        throw new AssertionError("Unexpected task state: " + state);
-                }
-            }
+        ActorTask task = mCurrentActorService.getCurrentActiveTask();
+        if (task == null) {
+            // Fallback to DONE state if it was persisted, otherwise DEFAULT.
+            mButtonState = mPersistDoneState ? ButtonState.DONE : ButtonState.DEFAULT;
+            return;
+        }
+
+        mPersistDoneState = false;
+        @ActorTaskState int state = task.getState();
+        switch (state) {
+            case ActorTaskState.WAITING_ON_USER:
+            case ActorTaskState.FAILED:
+                mButtonState = ButtonState.NEEDS_REVIEW;
+                break;
+            case ActorTaskState.FINISHED:
+                mButtonState = ButtonState.DONE;
+                mPersistDoneState = true;
+                break;
+            case ActorTaskState.ACTING:
+            case ActorTaskState.REFLECTING:
+            case ActorTaskState.PAUSED_BY_USER:
+            case ActorTaskState.PAUSED_BY_ACTOR:
+                mButtonState = ButtonState.WORKING;
+                break;
+            case ActorTaskState.CANCELLED:
+            case ActorTaskState.CREATED:
+                mButtonState = ButtonState.DEFAULT;
+                break;
+            default:
+                throw new AssertionError("Unexpected task state: " + state);
         }
     }
 
-    private void updateActorServiceObservation(Profile profile) {
+    private void updateIsPanelOpen() {
+        if (mCurrentGlicService == null || mCurrentProfile == null) return;
+        ChromeAndroidTask task = mTaskSupplier.get();
+        if (task == null) return;
+
+        long browserWindowPtr = task.getOrCreateNativeBrowserWindowPtr(mCurrentProfile);
+        boolean isOpen = mCurrentGlicService.isPanelShowingForBrowser(browserWindowPtr);
+        if (mIsPanelOpen != isOpen) {
+            mIsPanelOpen = isOpen;
+            notifyObservers(true);
+        }
+    }
+
+    private void updateObservations(Profile profile) {
         assert !profile.isOffTheRecord();
         if (profile.equals(mCurrentProfile)) return;
 
         if (mCurrentActorService != null) {
             mCurrentActorService.removeObserver(this);
         }
+        if (mCurrentGlicService != null) {
+            mCurrentGlicService.removeGlobalShowHideObserver(this);
+        }
 
         mCurrentProfile = profile;
         mCurrentActorService = ActorKeyedServiceFactory.getForProfile(profile);
+        mCurrentGlicService = GlicKeyedServiceFactory.getForProfile(profile);
 
         if (mCurrentActorService != null) {
             mCurrentActorService.addObserver(this);
+        }
+        if (mCurrentGlicService != null) {
+            mCurrentGlicService.addGlobalShowHideObserver(this);
+            updateIsPanelOpen();
         }
     }
 
@@ -280,17 +331,33 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
             mCurrentActorService.removeObserver(this);
             mCurrentActorService = null;
         }
+        if (mCurrentGlicService != null) {
+            mCurrentGlicService.removeGlobalShowHideObserver(this);
+            mCurrentGlicService = null;
+        }
         mCurrentProfile = null;
         super.destroy();
     }
 
     @Override
+    protected @Nullable IphCommandBuilder getIphCommandBuilder(Tab tab) {
+        return new IphCommandBuilder(
+                mContext.getResources(),
+                FeatureConstants.GLIC_PROMO_ANDROID_FEATURE,
+                R.string.iph_glic_promo_text,
+                R.string.iph_glic_promo_accessibility_text);
+    }
+
+    @Override
     public void onClick(View view) {
-        mToggleGlicCallback.run();
+        mPersistDoneState = false;
+        mToggleGlicCallback.onClick(false);
         Tracker tracker = mTrackerSupplier.get();
         if (tracker != null) {
             tracker.notifyEvent(EventConstants.ADAPTIVE_TOOLBAR_CUSTOMIZATION_GLIC_CLICKED);
         }
+        updateButtonState();
+        notifyObservers(true);
     }
 
     @Override
@@ -300,5 +367,17 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
         if (mButtonState != oldButtonState) {
             notifyObservers(true);
         }
+    }
+
+    @Override
+    public void onGlobalShowHide(boolean isOpened) {
+        if (!isOpened) {
+            if (mIsPanelOpen) {
+                mIsPanelOpen = false;
+                notifyObservers(true);
+            }
+            return;
+        }
+        updateIsPanelOpen();
     }
 }

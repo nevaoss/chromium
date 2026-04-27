@@ -144,6 +144,7 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
 import org.chromium.chrome.browser.gesturenav.NavigationSheet;
+import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
 import org.chromium.chrome.browser.history.HistoryManager;
 import org.chromium.chrome.browser.history.HistoryManagerUtils;
 import org.chromium.chrome.browser.history.HistoryPane;
@@ -1105,7 +1106,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             getSnackbarManager(),
                             /* glicClickHandler= */ () ->
                                     ((TabbedRootUiCoordinator) mRootUiCoordinator)
-                                            .toggleGlic(false));
+                                            .toggleGlic(false),
+                            GlicKeyedServiceFactory.getForProfile(mTabModelProfileSupplier.get()));
             mLayoutStateProviderSupplier.set(mLayoutManager);
         }
     }
@@ -3240,7 +3242,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 mCallbackController.makeCancelable(
                         (tabModelSelectorReturn) -> {
                             TabGroupColorUtils.assignTabGroupColorsIfApplicable(
-                                    tabModelSelectorReturn.getCurrentTabGroupModelFilter());
+                                    tabModelSelectorReturn.getCurrentModel());
                         }));
 
         mInactivityTrackerSupplier.set(
@@ -4066,11 +4068,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             }
 
             Profile profile = mTabModelProfileSupplier.get();
-            TabGroupModelFilter filter = mTabModelSelector.getCurrentTabGroupModelFilter();
+            TabModel tabModel = mTabModelSelector.getCurrentModel();
             if (id == R.id.add_to_group_menu_id) {
                 TrackerFactory.getTrackerForProfile(profile)
                         .notifyEvent("menu_add_to_group_clicked");
-                if (filter.getTabGroupCount() == 0) {
+                if (tabModel.getTabGroupCount() == 0) {
                     RecordUserAction.record("MobileMenuAddToNewGroup");
                 } else {
                     RecordUserAction.record("MobileMenuAddToGroup");
@@ -4079,7 +4081,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             new TabGroupMenuActionHandler(
                             this,
-                            filter,
+                            tabModel,
                             assertNonNull(mRootUiCoordinator.getBottomSheetController()),
                             getModalDialogManager(),
                             profile)
@@ -4141,6 +4143,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 currentTab.loadUrl(params);
             }
             RecordUserAction.record("MobileMenuManageExtensions");
+            Profile profile = mTabModelProfileSupplier.get();
+            if (profile != null) {
+                TrackerFactory.getTrackerForProfile(profile)
+                        .notifyEvent(EventConstants.EXTENSIONS_ROW_IN_APP_MENU_CLICKED);
+            }
         } else if (id == R.id.extensions_webstore_menu_id) {
             LoadUrlParams params =
                     new LoadUrlParams(

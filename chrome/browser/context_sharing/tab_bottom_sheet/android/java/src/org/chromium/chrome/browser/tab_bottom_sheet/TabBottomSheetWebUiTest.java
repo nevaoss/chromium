@@ -4,13 +4,16 @@
 
 package org.chromium.chrome.browser.tab_bottom_sheet;
 
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.content.Context;
+import android.view.View;
 
 import androidx.test.core.app.ApplicationProvider;
 
@@ -28,6 +31,7 @@ import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulator
 import org.chromium.components.thinwebview.ThinWebView;
 import org.chromium.components.thinwebview.ThinWebViewFactory;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
 
 /** Unit tests for {@link TabBottomSheetWebUi}. */
@@ -39,6 +43,7 @@ public class TabBottomSheetWebUiTest {
     @Mock private WindowAndroid mWindowAndroid;
     @Mock private WebContents mWebContents;
     @Mock private ThinWebView mThinWebView;
+    @Mock private View mView;
     @Mock private ContextMenuPopulatorFactory mContextMenuPopulatorFactory;
 
     private TabBottomSheetWebUi mWebUi;
@@ -46,8 +51,10 @@ public class TabBottomSheetWebUiTest {
     @Before
     public void setUp() {
         ThinWebViewFactory.setInstanceForTesting(mThinWebView);
+        when(mThinWebView.getView()).thenReturn(mView);
         Context context = ApplicationProvider.getApplicationContext();
         mWebUi = new TabBottomSheetWebUi(context, mWindowAndroid, mContextMenuPopulatorFactory);
+        TabBottomSheetWebUi.setInTestModeForTesting();
     }
 
     @Test
@@ -69,5 +76,17 @@ public class TabBottomSheetWebUiTest {
         mWebUi.setWebContents(secondWebContents);
         verify(secondWebContents, times(1))
                 .setDelegates(any(), any(), any(), eq(mWindowAndroid), any());
+    }
+
+    @Test
+    public void testSetWebContents_UpdatesDelegatesWhenAlreadySet() {
+        ViewAndroidDelegate viewDelegate = ViewAndroidDelegate.createBasicDelegate(null);
+        when(mWebContents.getViewAndroidDelegate()).thenReturn(viewDelegate);
+
+        mWebUi.setWebContents(mWebContents);
+
+        verify(mWebContents, times(0)).setDelegates(any(), any(), any(), any(), any());
+        verify(mWebContents, times(1)).setTopLevelNativeWindow(eq(mWindowAndroid));
+        assertNotNull(viewDelegate.getContainerView());
     }
 }

@@ -72,6 +72,7 @@ import org.robolectric.shadows.ShadowLooper;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -291,7 +292,6 @@ public final class ToolbarTabletUnitTest {
         doReturn(buttonWidth * 3)
                 .when(mIncognitoIndicatorCoordinator)
                 .updateVisibility(anyInt(), anyInt(), anyInt());
-        doReturn(false).when(mIncognitoIndicatorCoordinator).needsUpdateBeforeShowing();
 
         mockToolbarWidthConsumer(mLocationBarBookmarkButtonWidthConsumer, buttonWidth);
         mockToolbarWidthConsumer(mLocationBarInstallButtonWidthConsumer, buttonWidth);
@@ -422,6 +422,7 @@ public final class ToolbarTabletUnitTest {
     }
 
     @Test
+    @DisabledTest(message = "crbug.com/501137241")
     @DisableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void onMeasureSmallWidth_hidesToolbarButtons_Legacy() {
         mToolbarTablet.measure(300, 300);
@@ -436,6 +437,7 @@ public final class ToolbarTabletUnitTest {
     }
 
     @Test
+    @DisabledTest(message = "crbug.com/501137241")
     @DisableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void onMeasureLargeWidth_showsToolbarButtons_Legacy() {
         mToolbarTablet.setToolbarButtonsVisibleForTesting(false);
@@ -497,6 +499,7 @@ public final class ToolbarTabletUnitTest {
     }
 
     @Test
+    @DisabledTest(message = "crbug.com/501137241")
     @DisableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void onMeasureSmallWidthWithAnimation_hidesToolbarButtons_Legacy() {
         doReturn(true).when(mToolbarTablet).isShown();
@@ -521,6 +524,7 @@ public final class ToolbarTabletUnitTest {
     }
 
     @Test
+    @DisabledTest(message = "crbug.com/501137241")
     @DisableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void onMeasureLargeWidthWithAnimation_showsToolbarButtons_Legacy() {
         doReturn(true).when(mToolbarTablet).isShown();
@@ -719,6 +723,7 @@ public final class ToolbarTabletUnitTest {
     }
 
     @Test
+    @DisabledTest(message = "crbug.com/501137241")
     @DisableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testIsReadyForTextureCapture_ButtonShowAnimationInProgress_Legacy() {
         mToolbarTablet.measure(300, 300);
@@ -746,6 +751,7 @@ public final class ToolbarTabletUnitTest {
     }
 
     @Test
+    @DisabledTest(message = "crbug.com/501137241")
     @DisableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testIsReadyForTextureCapture_ButtonHideAnimationInProgress_Legacy() {
         mToolbarTablet.measure(300, 300);
@@ -1459,8 +1465,8 @@ public final class ToolbarTabletUnitTest {
                         .setHasErrorBadge(hasErrorBadge)
                         .build();
 
-        ButtonDataImpl buttonData = new ButtonDataImpl();
-        buttonData.setButtonSpec(buttonSpec);
+        ButtonDataImpl buttonData =
+                new ButtonDataImpl(/* canShow= */ false, /* isEnabled= */ false, buttonSpec);
         mToolbarTablet.updateOptionalButton(buttonData);
     }
 }

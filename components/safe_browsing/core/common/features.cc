@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <utility>
 
+#include "base/feature.h"
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/user_metrics_action.h"
@@ -117,6 +118,12 @@ const base::FeatureParam<bool> kCsdCreditCardFormEnableHeuristicFilter{
 const base::FeatureParam<bool> kCsdCreditCardFormEnableReferringAppFilter{
     &kClientSideDetectionCreditCardForm, "EnableReferringAppFilter",
     /*default_value=*/false};
+const base::FeatureParam<bool> kCsdCreditCardFormEnableInteractionTrigger{
+    &kClientSideDetectionCreditCardForm, "EnableInteractionTrigger",
+    /*default_value=*/false};
+const base::FeatureParam<bool> kCsdCreditCardFormEnableDetectionTrigger{
+    &kClientSideDetectionCreditCardForm, "EnableDetectionTrigger",
+    /*default_value=*/false};
 
 BASE_FEATURE(kClientSideDetectionDeprecateDOMModel,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -216,7 +223,7 @@ BASE_FEATURE(kEnterprisePasswordReuseUiRefresh,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEnterpriseRealTimeUrlCheckNewUrl,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEsbAsASyncedSetting, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -327,10 +334,8 @@ BASE_FEATURE(kMigrateEnhancedSbUserToEnhancedBundle,
 BASE_FEATURE(kMigrateToBlockV8OptimizerOnUnfamiliarSites,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kModifiedESBFetchErrorHandling, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kMovePasswordLeakDetectionToggleIos,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNoticeQueueForEsb, base::FEATURE_ENABLED_BY_DEFAULT);
 

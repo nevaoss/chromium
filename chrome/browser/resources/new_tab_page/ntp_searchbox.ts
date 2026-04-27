@@ -8,10 +8,10 @@ import '//resources/cr_components/searchbox/searchbox_compose_button.js';
 import '//resources/cr_components/search/animated_glow.js';
 import '//resources/cr_components/searchbox/searchbox_input.js';
 
-import type {ContextualUpload, TabUpload, TabUploadOrigin} from '//resources/cr_components/composebox/common.js';
-import {ContextType, recordContextualElementClickedMetric} from '//resources/cr_components/composebox/common.js';
+import type {ComposeboxState, ContextualUpload, TabUpload, TabUploadOrigin} from '//resources/cr_components/composebox/common.js';
+import {ContextType, GlifAnimationState, recordContextAdditionMethod, recordContextualElementClickedMetric, recordInputTypeShown, recordModelModeSelection, recordModelModeShown, recordToolModeSelection, recordToolModeShown} from '//resources/cr_components/composebox/common.js';
 import type {ContextualEntrypointAndMenuElement} from '//resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
-import {ComposeboxContextAddedMethod} from '//resources/cr_components/search/constants.js';
+import {ComposeboxContextAddedMethod, GlowAnimationState} from '//resources/cr_components/search/constants.js';
 import {DragAndDropHandler} from '//resources/cr_components/search/drag_drop_handler.js';
 import type {DragAndDropHost} from '//resources/cr_components/search/drag_drop_host.js';
 import {PlaceholderTextCycler} from '//resources/cr_components/searchbox/placeholder_text_cycler.js';
@@ -23,7 +23,7 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
 import type {TabInfo} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {InputState} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
-import {ModelMode, ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
+import {InputType, ModelMode, ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {Url} from '//resources/mojo/url/mojom/url.mojom-webui.js';
 
 import {getCss} from './ntp_searchbox.css.js';
@@ -77,6 +77,32 @@ export class NtpSearchboxElement extends SearchboxElement implements
         type: Boolean,
       },
 
+      contextMenuGlifAnimationState: {
+        type: String,
+        reflect: true,
+      },
+
+      animationState: {
+        reflect: true,
+        type: String,
+      },
+
+      colorSourceIsBaseline: {
+        type: Boolean,
+        reflect: true,
+      },
+
+      /** Whether the theme is dark. */
+      isDark: {
+        type: Boolean,
+        reflect: true,
+      },
+
+      searchboxLayoutMode: {
+        type: String,
+        reflect: true,
+      },
+
       //========================================================================
       // Protected properties
       //========================================================================
@@ -90,6 +116,12 @@ export class NtpSearchboxElement extends SearchboxElement implements
   accessor composeButtonEnabled: boolean = false;
   accessor cyclingPlaceholders: boolean = false;
   accessor isDraggingFile: boolean = false;
+  accessor contextMenuGlifAnimationState: GlifAnimationState =
+      GlifAnimationState.INELIGIBLE;
+  accessor animationState: GlowAnimationState = GlowAnimationState.NONE;
+  accessor colorSourceIsBaseline: boolean = false;
+  accessor isDark: boolean = false;
+  accessor searchboxLayoutMode: string = '';
   protected accessor tabSuggestions_: TabInfo[] = [];
   protected accessor inputState_: InputState|null = null;
   protected dragAndDropHandler: DragAndDropHandler|null = null;
@@ -238,6 +270,16 @@ export class NtpSearchboxElement extends SearchboxElement implements
     }
     const {tabs} = await this.pageHandler().getRecentTabs();
     this.tabSuggestions_ = [...tabs];
+
+    if (this.contextMenuOpened_ && this.inputState_) {
+      const {allowedInputTypes, disabledInputTypes} = this.inputState_;
+      if (allowedInputTypes.includes(InputType.kBrowserTab) &&
+          !disabledInputTypes.includes(InputType.kBrowserTab) &&
+          this.tabSuggestions_.length > 0) {
+        recordInputTypeShown(
+            InputType.kBrowserTab, this.composeboxSource, 'ClassicPopup');
+      }
+    }
   }
 
   protected async onGetTabPreview_(e: CustomEvent<{
@@ -257,6 +299,33 @@ export class NtpSearchboxElement extends SearchboxElement implements
   protected onContextMenuOpened_() {
     this.contextMenuOpened_ = true;
     this.refreshTabSuggestions_(/*forceRefresh=*/ true);
+
+    if (this.inputState_) {
+      const {allowedInputTypes, disabledInputTypes} = this.inputState_;
+      allowedInputTypes.forEach((inputType: InputType) => {
+        // The `kBrowserTab` InputType requires special metrics handling as part
+        // of `refreshTabSuggestions_()`.
+        if (inputType !== InputType.kBrowserTab &&
+            !disabledInputTypes.includes(inputType)) {
+          recordInputTypeShown(
+              inputType, this.composeboxSource, 'ClassicPopup');
+        }
+      });
+
+      const {allowedTools, disabledTools} = this.inputState_;
+      allowedTools.forEach((tool: ToolMode) => {
+        if (!disabledTools.includes(tool)) {
+          recordToolModeShown(tool, this.composeboxSource, 'ClassicPopup');
+        }
+      });
+
+      const {allowedModels, disabledModels} = this.inputState_;
+      allowedModels.forEach((model: ModelMode) => {
+        if (!disabledModels.includes(model)) {
+          recordModelModeShown(model, this.composeboxSource, 'ClassicPopup');
+        }
+      });
+    }
   }
 
   protected onContextMenuEntrypointClick_() {
@@ -334,7 +403,11 @@ export class NtpSearchboxElement extends SearchboxElement implements
         !this.isInputEmpty());
   }
 
-  protected override openComposebox_(
+  protected useCompactLayout_(): boolean {
+    return this.searchboxLayoutMode === 'Compact';
+  }
+
+  protected openComposebox_(
       uploads: ContextualUpload[] = [], mode: ToolMode = ToolMode.kUnspecified,
       model: ModelMode = ModelMode.kUnspecified) {
     if (this.ntpRealboxNextEnabled) {
@@ -344,7 +417,48 @@ export class NtpSearchboxElement extends SearchboxElement implements
       assert(context);
       context.closeMenu();
     }
-    super.openComposebox_(uploads, mode, model);
+
+    if (mode !== ToolMode.kUnspecified) {
+      recordToolModeSelection(mode, this.composeboxSource, 'ClassicPopup');
+    }
+    if (model !== ModelMode.kUnspecified) {
+      recordModelModeSelection(model, this.composeboxSource, 'ClassicPopup');
+    }
+
+    this.fire<ComposeboxState>('open-composebox', {
+      text: this.$.input.inputElement.value,
+      files: uploads,
+      mode: mode,
+      model: model,
+    });
+    this.setInputText('');
+  }
+
+  protected onSearchboxInputFilesPasted_(
+      e: CustomEvent<{files: FileList}>) {
+    this.processFiles_(e.detail.files, ComposeboxContextAddedMethod.COPY_PASTE);
+  }
+
+  protected processFiles_(
+      files: FileList|null,
+      contextAdditionMethod: ComposeboxContextAddedMethod) {
+    if (!files || files.length === 0) {
+      return;
+    }
+    recordContextAdditionMethod(contextAdditionMethod, this.composeboxSource);
+
+    if (contextAdditionMethod === ComposeboxContextAddedMethod.CONTEXT_MENU) {
+      // In practice, the `files` list will only contain a single file when
+      // using the CONTEXT_MENU context addition method in the searchbox.
+      for (const file of files) {
+        const contextType =
+            file.type.includes('image') ? ContextType.IMAGE : ContextType.FILE;
+        recordContextualElementClickedMetric(
+            this.composeboxSource, 'ClassicPopup', contextType);
+      }
+    }
+
+    this.openComposebox_(Array.from(files, (file) => ({file})));
   }
 }
 

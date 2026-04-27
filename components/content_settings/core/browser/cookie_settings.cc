@@ -51,8 +51,6 @@ CookieSettings::CookieSettings(
       extension_scheme_(extension_scheme),
       block_third_party_cookies_(
           net::cookie_util::IsForceThirdPartyCookieBlockingEnabled()),
-      mitigations_enabled_for_3pcd_(
-          net::cookie_util::IsForceThirdPartyCookieBlockingEnabled()),
       compute_fedcm_sharing_permissions_(compute_fedcm_sharing_permissions) {
   content_settings_observation_.Observe(host_content_settings_map_.get());
   pref_change_registrar_ = std::make_unique<PrefChangeRegistrar>();
@@ -273,9 +271,7 @@ bool CookieSettings::ShouldBlockThirdPartyCookiesInternal() const {
   DCHECK(thread_checker_.CalledOnValidThread());
   DCHECK(pref_change_registrar_);
 
-  if (net::cookie_util::IsForceThirdPartyCookieBlockingEnabled() ||
-      base::FeatureList::IsEnabled(
-          content_settings::features::kTrackingProtection3pcd)) {
+  if (net::cookie_util::IsForceThirdPartyCookieBlockingEnabled()) {
     return true;
   }
 
@@ -290,13 +286,6 @@ bool CookieSettings::ShouldBlockThirdPartyCookiesInternal() const {
       return is_incognito_;
   }
 #endif
-}
-
-bool CookieSettings::MitigationsEnabledFor3pcdInternal() const {
-  return (base::FeatureList::IsEnabled(
-              content_settings::features::kTrackingProtection3pcd) &&
-          !is_incognito_) ||
-         net::cookie_util::IsForceThirdPartyCookieBlockingEnabled();
 }
 
 void CookieSettings::OnContentSettingChanged(
@@ -315,28 +304,8 @@ void CookieSettings::OnContentSettingChanged(
   }
 }
 
-void CookieSettings::OnMitigationsEnabledChanged() {
-  bool new_mitigations_enabled_for_3pcd = MitigationsEnabledFor3pcdInternal();
-  {
-    base::AutoLock auto_lock(lock_);
-    if (mitigations_enabled_for_3pcd_ == new_mitigations_enabled_for_3pcd) {
-      return;
-    }
-    mitigations_enabled_for_3pcd_ = new_mitigations_enabled_for_3pcd;
-  }
-
-  for (Observer& obs : observers_) {
-    obs.OnMitigationsEnabledFor3pcdChanged(new_mitigations_enabled_for_3pcd);
-  }
-}
-
 void CookieSettings::OnCookiePreferencesChanged() {
   DCHECK(thread_checker_.CalledOnValidThread());
-
-  if (base::FeatureList::IsEnabled(
-          content_settings::features::kTrackingProtection3pcd)) {
-    OnMitigationsEnabledChanged();
-  }
 
   bool new_block_third_party_cookies = ShouldBlockThirdPartyCookiesInternal();
   {
@@ -367,11 +336,6 @@ bool CookieSettings::ShouldBlockThirdPartyCookies(
 
   base::AutoLock auto_lock(lock_);
   return block_third_party_cookies_;
-}
-
-bool CookieSettings::MitigationsEnabledFor3pcd() const {
-  base::AutoLock auto_lock(lock_);
-  return mitigations_enabled_for_3pcd_;
 }
 
 void CookieSettings::UpdateFedCmSharingPermissions() {

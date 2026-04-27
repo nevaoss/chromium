@@ -1056,14 +1056,6 @@ export declare interface GlicBrowserHost {
   getActOnWebCapability?(): ObservableValue<boolean>;
 
   /**
-   * @todo Not yet implemented: https://crbug.com/458761731.
-   *
-   * Load and extract content from given urls.
-   */
-  loadAndExtractContent?(urls: string[], options: TabContextOptions[]):
-      Promise<TabContextResult[]>;
-
-  /**
    * Called when the user has completed the onboarding flow.
    */
   setOnboardingCompleted?(): void;
@@ -2871,6 +2863,12 @@ export enum InvocationSource {
   ANCHORED_CONTEXTUAL_CUE = 22,
   // From the context menu.
   WEB_CONTENTS_CONTEXT_MENU = 23,
+  // User clicked on text selection nudge.
+  TEXT_SELECTION_NUDGE = 24,
+  // User clicked on text selection widget.
+  TEXT_SELECTION_WIDGET = 25,
+  // Automatic summarization upon opening.
+  ZERO_STATE_AUTO_SUMMARIZE = 26,
 }
 
 ///////////////////////////////////////////////
@@ -2879,6 +2877,7 @@ export enum InvocationSource {
 export enum FeatureMode {
   UNSPECIFIED = 0,
   IMAGE_GENERATION = 1,
+  ACTUATION = 2,
   BLUEDOG = 2,
 }
 

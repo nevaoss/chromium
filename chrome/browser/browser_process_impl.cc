@@ -112,6 +112,7 @@
 #include "components/crash/core/common/crash_key.h"
 #include "components/embedder_support/origin_trials/origin_trials_settings_storage.h"
 #include "components/gcm_driver/gcm_driver.h"
+#include "components/javascript_dialogs/app_modal_dialog_queue.h"
 #include "components/keep_alive_registry/keep_alive_types.h"
 #include "components/language/core/browser/pref_names.h"
 #include "components/metrics/metrics_pref_names.h"
@@ -229,7 +230,7 @@ void OnLocalStatePrefsLoaded();
 #include "chrome/browser/apps/platform_apps/chrome_apps_browser_api_provider.h"
 #include "chrome/browser/ui/apps/chrome_app_window_client.h"
 #include "chrome/common/extensions/chrome_extensions_client.h"
-#include "components/storage_monitor/storage_monitor.h"
+#include "components/storage_monitor/storage_monitor.h"  // nogncheck crbug.com/40147906
 #include "extensions/common/context_data.h"
 #include "extensions/common/extension_l10n_util.h"
 #endif
@@ -1858,6 +1859,8 @@ void BrowserProcessImpl::Unpin() {
 
   DCHECK(!shutting_down_);
   shutting_down_ = true;
+
+  javascript_dialogs::AppModalDialogQueue::GetInstance()->CancelAllDialogs();
 
 #if !BUILDFLAG(IS_ANDROID)
   KeepAliveRegistry::GetInstance()->SetIsShuttingDown();

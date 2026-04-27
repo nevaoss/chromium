@@ -82,7 +82,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="OSCrypt.AppBoundProvider.Encrypt.ResultLastError"
-    enum="WinGetLastError" expires_after="2026-08-09">
+    enum="WinGetLastError" expires_after="2026-10-11">
   <owner>wfh@chromium.org</owner>
   <owner>nparker@chromium.org</owner>
   <summary>
@@ -236,7 +236,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="OSCrypt.Mac.FindGenericPasswordError"
-    enum="MacSecurityFrameworkOSStatus" expires_after="2026-08-09">
+    enum="MacSecurityFrameworkOSStatus" expires_after="2026-10-11">
   <owner>avi@chromium.org</owner>
   <owner>lgrey@chromium.org</owner>
   <owner>markrowe@chromium.org</owner>
@@ -254,7 +254,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="OSCrypt.Mac.FindGenericPasswordResult"
-    enum="FindGenericPasswordResult" expires_after="2026-08-09">
+    enum="FindGenericPasswordResult" expires_after="2026-10-11">
   <owner>avi@chromium.org</owner>
   <owner>lgrey@chromium.org</owner>
   <owner>markrowe@chromium.org</owner>
@@ -679,7 +679,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Security.PageInfo.MerchantTrustEngagement.{Event}"
-    units="EngagementScore" expires_after="2026-08-09">
+    units="EngagementScore" expires_after="2026-10-11">
   <owner>tommasin@chromium.org</owner>
   <owner>privacy-on-the-web@google.com</owner>
   <summary>
@@ -694,7 +694,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Security.PageInfo.MerchantTrustInteraction.{SiteFamiliarity}"
-    enum="MerchantTrustInteraction" expires_after="2026-08-09">
+    enum="MerchantTrustInteraction" expires_after="2026-10-11">
   <owner>tommasin@chromium.org</owner>
   <owner>privacy-on-the-web@google.com</owner>
   <summary>
@@ -810,17 +810,6 @@ chromium-metrics-reviews@google.com.
     private IP address. Recorded at most once per call to
     `network::URLLoader::OnConnected()`, which may be more than once per URL
     request.
-  </summary>
-</histogram>
-
-<histogram name="Security.SafetyTips.GetReputationStatusWithEngagedSitesTime"
-    units="ms" expires_after="2024-08-11">
-  <owner>jdeblasio@chromium.org</owner>
-  <owner>estark@chromium.org</owner>
-  <owner>blundell@chromium.org</owner>
-  <summary>
-    Records the time duration of a check for the reputation status of a site on
-    the main thread. Recorded on every check.
   </summary>
 </histogram>
 
@@ -1140,7 +1129,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SiteIsolation.IsolatableSandboxedIframes" units="processes"
-    expires_after="2026-08-09">
+    expires_after="2026-10-11">
   <owner>wjmaclean@chromium.org</owner>
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
@@ -1159,7 +1148,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SiteIsolation.IsolatableSandboxedIframes.UniqueOrigins"
-    units="processes" expires_after="2026-08-09">
+    units="processes" expires_after="2026-10-11">
   <owner>wjmaclean@chromium.org</owner>
   <owner>alexmos@chromium.org</owner>
   <owner>creis@chromium.org</owner>
@@ -1221,15 +1210,15 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="SiteIsolation.MainFrameProcessReuse.BlockReason"
-    enum="MainFrameProcessReuseBlockReason" expires_after="2025-12-31">
+<histogram name="SiteIsolation.MainFrameProcessReuse.BlockReason2"
+    enum="MainFrameProcessReuseBlockReason" expires_after="2026-12-31">
   <owner>bashi@chromium.org</owner>
   <owner>gjc@google.com</owner>
   <owner>blink-network-stack@google.com</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
-    The reason why process sharing is disallowed for main frame navigation. The
-    UMA is only reported when the feature flag
+    The reason why process sharing is allowed or disallowed for main frame
+    navigation. The UMA is only reported when the feature flag
     ProcessPerSiteWithMainFrameThreshold or
     ReusePrerenderingProcessForMainFrames is enabled. The UMA is recorded when
     initializing a frame tree or getting a site instance for navigation.

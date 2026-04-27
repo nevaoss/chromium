@@ -338,7 +338,9 @@ void OpenXrTestHelper::CopyTextureDataIntoFrameData(XrSwapchain swapchain,
   constexpr uint32_t buffer_size_pixels = buffer_size / sizeof(device::Color);
   DCHECK_NE(opengl_es_textures_arrays_.size(), 0u);
   DCHECK_NE(xr_gl_, nullptr);
-  DCHECK_NE(swapchain, XR_NULL_HANDLE);
+  // In some build environment, XR_NULL_HANDLE is a signed integer
+  // while XrSwapchain is unsigned.
+  DCHECK_NE(swapchain, static_cast<XrSwapchain>(XR_NULL_HANDLE));
   auto texture_index = acquired_swapchain_textures_[swapchain];
   DCHECK_LT(texture_index, opengl_es_textures_arrays_[swapchain].size());
   base::span<char> out_buffer(data.raw_buffer);

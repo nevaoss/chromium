@@ -43,6 +43,7 @@
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
+#include "components/contextual_search/pref_names.h"
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/prefs.h"
@@ -52,6 +53,7 @@
 #include "components/omnibox/browser/autocomplete_input.h"
 #include "components/omnibox/browser/page_classification_functions.h"
 #include "components/omnibox/browser/vector_icons.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "components/omnibox/composebox/contextual_search_mojom_traits.h"
 #include "components/prefs/pref_service.h"
 #include "components/sessions/content/session_tab_helper.h"
@@ -262,11 +264,13 @@ ContextualSearchboxHandler::CreateTabPreviewEncodingOptions(
 ContextualSearchboxHandler::ContextualSearchboxHandler(
     mojo::PendingReceiver<searchbox::mojom::PageHandler>
         pending_searchbox_handler,
+    mojo::PendingRemote<searchbox::mojom::Page> pending_page,
     Profile* profile,
     content::WebContents* web_contents,
     std::unique_ptr<OmniboxController> controller,
     GetSessionHandleCallback get_session_callback)
     : SearchboxHandler(std::move(pending_searchbox_handler),
+                       std::move(pending_page),
                        profile,
                        web_contents,
                        std::move(controller)),
@@ -308,8 +312,6 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
             contextual_tasks_service_, desktop_delegate_.get());
   }
 }
-
-
 
 void ContextualSearchboxHandler::OnTabAdded(TabListInterface& tab_list,
                                             tabs::TabInterface* tab,
@@ -411,11 +413,26 @@ omnibox::InputState ContextualSearchboxHandler::GetInputState() const {
 }
 
 bool ContextualSearchboxHandler::IsSmartTabSharingActive() const {
+  if (smart_tab_sharing_active_for_thread_.has_value()) {
+    return *smart_tab_sharing_active_for_thread_;
+  }
   if (profile_) {
     return profile_->GetPrefs()->GetBoolean(
         contextual_tasks::kContextualTasksShareOpenTabsEveryThread);
   }
   return false;
+}
+
+void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
+  if (!contextual_tasks::GetIsSmartTabSharingEnabled()) {
+    return;
+  }
+  smart_tab_sharing_active_for_thread_ = active;
+}
+
+void ContextualSearchboxHandler::GetSmartTabSharingActive(
+    composebox::mojom::PageHandler::GetSmartTabSharingActiveCallback callback) {
+  std::move(callback).Run(IsSmartTabSharingActive());
 }
 
 void ContextualSearchboxHandler::NotifySessionStarted() {
@@ -772,6 +789,33 @@ void ContextualSearchboxHandler::OpenAutocompleteMatch(uint8_t line,
                                           meta_key, shift_key);
 }
 
+void ContextualSearchboxHandler::ShouldShowDriveDisclaimer(
+    ShouldShowDriveDisclaimerCallback callback) {
+  if (!base::FeatureList::IsEnabled(
+          omnibox::kComposeboxDriveContextMenuOption)) {
+    std::move(callback).Run(false);
+    return;
+  }
+  bool accepted = profile_->GetPrefs()->GetBoolean(
+      contextual_search::kDriveDisclaimerAccepted);
+  std::move(callback).Run(!accepted);
+}
+
+void ContextualSearchboxHandler::OnDriveDisclaimerAccepted() {
+  profile_->GetPrefs()->SetBoolean(contextual_search::kDriveDisclaimerAccepted,
+                                   true);
+}
+
+void ContextualSearchboxHandler::QueryAutocomplete(
+    const std::u16string& input,
+    bool prevent_inline_autocomplete) {
+  if (contextual_tasks_context_service_) {
+    contextual_tasks_context_service_->OnTypedQuery();
+  }
+
+  SearchboxHandler::QueryAutocomplete(input, prevent_inline_autocomplete);
+}
+
 void ContextualSearchboxHandler::OnContextUploadStatusChanged(
     const base::UnguessableToken& context_token,
     lens::MimeType mime_type,
@@ -824,8 +868,7 @@ void ContextualSearchboxHandler::ContextualizeQueryAndOpenUrl(
         }
       }
     }
-    if (contextual_tasks::GetIsSmartTabSharingEnabled() &&
-        IsSmartTabSharingActive()) {
+    if (contextual_tasks::GetIsSmartTabSharingEnabled()) {
       contextual_tasks::TabSelectionOptions tab_selection_options;
       tab_selection_options.tab_selection_timeout =
           contextual_tasks::GetSmartTabSharingTabSelectionTimeout();
@@ -834,14 +877,30 @@ void ContextualSearchboxHandler::ContextualizeQueryAndOpenUrl(
         tab_selection_options.browser_window_interface =
             browser_window_interface->GetWeakPtr();
       }
+      if (IsSmartTabSharingActive()) {
+        // Explicitly do not set threshold - it should just use the default
+        // if smart tab sharing is active.
+
+        contextual_tasks_context_service_->GetRelevantTabsForQuery(
+            tab_selection_options, query_text, explicit_urls,
+            base::BindOnce(&ContextualSearchboxHandler::
+                               ContextualizeQueryWithRelevantTabsAndOpenUrl,
+                           weak_ptr_factory_.GetWeakPtr(), query_text,
+                           disposition, aim_entry_point,
+                           std::move(additional_params)));
+
+        return;
+      }
+
+      // Run tab relevancy logic to determine if smart tab sharing promo should
+      // be shown, but do not block the query.
+      tab_selection_options.min_model_score = static_cast<float>(
+          contextual_tasks::GetSmartTabSharingPromoScoreThreshold());
       contextual_tasks_context_service_->GetRelevantTabsForQuery(
           tab_selection_options, query_text, explicit_urls,
           base::BindOnce(&ContextualSearchboxHandler::
-                             ContextualizeQueryWithRelevantTabsAndOpenUrl,
-                         weak_ptr_factory_.GetWeakPtr(), query_text,
-                         disposition, aim_entry_point,
-                         std::move(additional_params)));
-      return;
+                             OnRelevantTabsReceivedToMaybeShowPromo,
+                         weak_ptr_factory_.GetWeakPtr()));
     } else {
       // Run dark experiment if smart tab sharing is not enabled and do not
       // block.
@@ -907,6 +966,11 @@ void ContextualSearchboxHandler::ContextualizeQueryWithRelevantTabsAndOpenUrl(
 
   ComputeAndOpenQueryUrl(query_text, disposition, aim_entry_point,
                          std::move(additional_params));
+}
+
+void ContextualSearchboxHandler::OnRelevantTabsReceivedToMaybeShowPromo(
+    std::vector<base::WeakPtr<content::WebContents>> relevant_tabs) {
+  // TODO: b/502330712 - If non-empty, propagate to UI to show the promo.
 }
 
 void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(

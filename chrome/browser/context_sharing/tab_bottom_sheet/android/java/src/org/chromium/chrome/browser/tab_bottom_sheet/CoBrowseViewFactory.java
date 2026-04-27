@@ -6,6 +6,8 @@ package org.chromium.chrome.browser.tab_bottom_sheet;
 
 import android.app.Activity;
 
+import androidx.annotation.VisibleForTesting;
+
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JniType;
 
@@ -13,9 +15,10 @@ import org.chromium.base.CallbackUtils;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.contextual_tasks.fusebox.ContextualTasksFusebox;
+import org.chromium.chrome.browser.contextual_tasks.fusebox.ContextualTasksFusebox.ContextualTasksFuseboxConfig;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.profiles.Profile;
-import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetFusebox.TabBottomSheetFuseboxConfig;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
 import org.chromium.content_public.browser.WebContents;
@@ -26,7 +29,7 @@ import org.chromium.ui.base.WindowAndroid;
 public class CoBrowseViewFactory {
 
     private final Activity mActivity;
-    private final TabBottomSheetFuseboxConfig mFuseboxConfig;
+    private final ContextualTasksFuseboxConfig mFuseboxConfig;
     private final WindowAndroid mWindowAndroid;
     private final NonNullObservableSupplier<Profile> mProfileSupplier;
     private final ActivityLifecycleDispatcher mLifecycleDispatcher;
@@ -48,7 +51,7 @@ public class CoBrowseViewFactory {
      */
     public CoBrowseViewFactory(
             Activity activity,
-            TabBottomSheetFuseboxConfig fuseboxConfig,
+            ContextualTasksFuseboxConfig fuseboxConfig,
             NonNullObservableSupplier<Profile> profileSupplier,
             WindowAndroid windowAndroid,
             ActivityLifecycleDispatcher lifecycleDispatcher,
@@ -83,15 +86,16 @@ public class CoBrowseViewFactory {
                 showToolbar ? new TabBottomSheetSimpleToolbar(mActivity) : null;
         TabBottomSheetWebUi webUi =
                 new TabBottomSheetWebUi(mActivity, mWindowAndroid, mContextMenuPopulatorFactory);
-        TabBottomSheetFusebox fusebox =
-                showFusebox || TabBottomSheetUtils.shouldShowFusebox()
-                        ? new TabBottomSheetFusebox(
+        ContextualTasksFusebox fusebox =
+                showFusebox
+                        ? new ContextualTasksFusebox(
                                 mActivity,
+                                mFuseboxConfig.contentView,
                                 mFuseboxConfig,
                                 mProfileSupplier,
                                 mWindowAndroid,
                                 mLifecycleDispatcher,
-                                CallbackUtils.emptyCallback(),
+                                /* loadUrlCallback= */ CallbackUtils.emptyCallback(),
                                 mSnackbarManager)
                         : null;
 
@@ -101,14 +105,16 @@ public class CoBrowseViewFactory {
     }
 
     @CalledByNative
-    public static @Nullable CoBrowseViews getCoBrowseViews(
+    @VisibleForTesting
+    public static @Nullable CoBrowseViews buildCoBrowseViews(
             @JniType("ui::WindowAndroid*") WindowAndroid windowAndroid,
-            @Nullable @JniType("content::WebContents*") WebContents webContents) {
+            @Nullable @JniType("content::WebContents*") WebContents webContents,
+            boolean showToolbar,
+            boolean showFusebox) {
         CoBrowseViewFactory factory = TabBottomSheetUtils.getFactoryFromWindow(windowAndroid);
         if (factory == null) {
             return null;
         }
-        return factory.buildCoBrowseViews(
-                webContents, /* showToolbar= */ false, /* showFusebox= */ false);
+        return factory.buildCoBrowseViews(webContents, showToolbar, showFusebox);
     }
 }

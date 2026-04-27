@@ -13,7 +13,7 @@ import type {AutocompleteMatch, AutocompleteResult, PageHandlerRemote as Searchb
 import type {BigBuffer} from '//resources/mojo/mojo/public/mojom/base/big_buffer.mojom-webui.js';
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 
-import {ComposeboxFile, ComposeboxFileValidationError, ContextualSearchInputStateDeletionType, FILE_VALIDATION_ERRORS_MAP, getLoadTimeBoolean, isContextUploadStatusTerminal, ProcessFilesError, recordEnumerationValue, recordUserAction} from './common.js';
+import {ComposeboxFile, ComposeboxFileValidationError, ContextType, ContextualSearchInputStateDeletionType, FILE_VALIDATION_ERRORS_MAP, getLoadTimeBoolean, isContextUploadStatusTerminal, ProcessFilesError, recordContextualElementClickedMetric, recordEnumerationValue, recordInputTypeShown, recordModelModeSelection, recordToolModeSelection, recordUserAction} from './common.js';
 import type {ComposeboxState} from './common.js';
 import type {PageHandlerRemote} from './composebox.mojom-webui.js';
 import type {ComposeboxDropdownElement} from './composebox_dropdown.js';
@@ -439,7 +439,6 @@ export const ComposeboxEmbedderMixin =
               this.submitQuery(e);
             }
           }
-          this.finalizeMatchSelection(e);
         }
 
         protected handleEscape_(e: KeyboardEvent) {
@@ -493,12 +492,20 @@ export const ComposeboxEmbedderMixin =
           assertNotReached();
         }
 
+        isTogglingOff(tool: ToolMode): boolean {
+          return this.inputState?.activeTool === tool;
+        }
+
         onToolClick(e: CustomEvent<{toolMode: ToolMode}>) {
+          if (!this.isTogglingOff(e.detail.toolMode)) {
+            recordToolModeSelection(
+                e.detail.toolMode, this.composeboxSource, 'AimPopup');
+          }
           this.handleToolClick(e.detail.toolMode);
         }
 
         handleToolClick(tool: ToolMode) {
-          const isTogglingOff = this.inputState?.activeTool === tool;
+          const isTogglingOff = this.isTogglingOff(tool);
 
           const newToolMode = isTogglingOff ? ToolMode.kUnspecified : tool;
 
@@ -527,9 +534,21 @@ export const ComposeboxEmbedderMixin =
         }
 
         onModelClick(e: CustomEvent<{model: ModelMode}>) {
+          recordModelModeSelection(
+              e.detail.model, this.composeboxSource, 'AimPopup');
           this.getSearchboxHandler().recordModelSelectionAction(e.detail.model);
           this.getSearchboxHandler().setActiveModelMode(e.detail.model);
           this.updateInputPlaceholder();
+        }
+
+        onOpenImageUpload() {
+          recordContextualElementClickedMetric(
+              this.composeboxSource, 'AimPopup', ContextType.IMAGE);
+        }
+
+        onOpenFileUpload() {
+          recordContextualElementClickedMetric(
+              this.composeboxSource, 'AimPopup', ContextType.FILE);
         }
 
         // =====================================================================
@@ -1053,6 +1072,24 @@ export const ComposeboxEmbedderMixin =
           }
           const {tabs} = await this.getSearchboxHandler().getRecentTabs();
           this.tabSuggestions = [...tabs];
+
+          if (this.inputState) {
+            const {allowedInputTypes, disabledInputTypes} = this.inputState;
+            if (allowedInputTypes.includes(InputType.kBrowserTab) &&
+                !disabledInputTypes.includes(InputType.kBrowserTab)) {
+              // Get the set of IDs of tabs currently added as context.
+              const addedTabIdsSet = new Set(this.addedTabsIds.keys());
+
+              // Filter out suggestions that are already added as context.
+              const filteredSuggestions = this.tabSuggestions.filter(
+                  tab => !addedTabIdsSet.has(tab.tabId));
+
+              if (filteredSuggestions.length > 0) {
+                recordInputTypeShown(
+                    InputType.kBrowserTab, this.composeboxSource, 'AimPopup');
+              }
+            }
+          }
         }
 
         async onGetTabPreview(e: CustomEvent<{
@@ -1152,10 +1189,13 @@ export interface ComposeboxEmbedderMixinInterface extends
   onInputFocusin(): void;
   onKeydown(e: KeyboardEvent): void;
   handleEscapeKeyLogic(): void;
+  isTogglingOff(tool: ToolMode): boolean;
   onToolClick(e: CustomEvent<{toolMode: ToolMode}>): void;
   handleToolClick(tool: ToolMode): void;
   handleToolModeUpdate(newTool: ToolMode): void;
   onModelClick(e: CustomEvent<{model: ModelMode}>): void;
+  onOpenImageUpload(): void;
+  onOpenFileUpload(): void;
 
   // Common helper methods
   addToPendingUploads(token: UnguessableToken): void;

@@ -23,6 +23,7 @@
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/color/color_id.h"
 #include "ui/views/view.h"
 #include "ui/views/view_observer.h"
 #include "ui/views/widget/widget.h"
@@ -234,12 +235,14 @@ class OverlayBaseController : public content::WebContentsDelegate,
   // Notification that the tab was foregrounded.
   virtual void NotifyTabWillEnterBackground() = 0;
 
-  struct PreselectionBubbleResources {
-    int message_string_id;
+  struct PreselectionUIConfig {
+    int message_string_id = -1;
+    bool show_cancel_button = false;
+    ui::ColorId bubble_background_color = ui::kUiColorsLast;
   };
 
   // Returns the resources for the preselection bubble.
-  virtual PreselectionBubbleResources GetPreselectionBubbleResources() = 0;
+  virtual PreselectionUIConfig GetPreselectionBubbleConfig() = 0;
 
   // Returns if the overlay view can be shared between multiple tabs.
   virtual bool IsOverlayViewShared() const = 0;

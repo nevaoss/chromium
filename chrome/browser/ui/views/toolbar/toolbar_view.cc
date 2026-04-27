@@ -25,6 +25,7 @@
 #include "chrome/browser/actor/ui/actor_ui_metrics.h"
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
 #include "chrome/browser/command_updater.h"
+#include "chrome/browser/glic/browser_ui/glic_button_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
@@ -91,6 +92,7 @@
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/browser/ui/views/tabs/tab_strip_controller.h"
 #include "chrome/browser/ui/views/toolbar/app_menu.h"
+#include "chrome/browser/ui/views/toolbar/app_menu_control.h"
 #include "chrome/browser/ui/views/toolbar/back_forward_button.h"
 #include "chrome/browser/ui/views/toolbar/browser_app_menu_button.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
@@ -762,14 +764,20 @@ void ToolbarView::OnGlicButtonClicked() {
     glic_nudge_controller->ClearPromptSuggestion();
   }
 
+  glic::mojom::InvocationSource source;
+  if (button_controller_) {
+    source = button_controller_->GetInvocationSource(
+        glic_button_->GetIsShowingNudge());
+  } else {
+    source = glic_button_->GetIsShowingNudge()
+                 ? glic::mojom::InvocationSource::kNudge
+                 : glic::mojom::InvocationSource::kTopChromeButton;
+  }
+
   glic::GlicKeyedServiceFactory::GetGlicKeyedService(
       browser_view_->GetProfile())
       ->ToggleUI(browser_view_->browser(),
-                 /*prevent_close=*/false,
-                 glic_button_->GetIsShowingNudge()
-                     ? glic::mojom::InvocationSource::kNudge
-                     : glic::mojom::InvocationSource::kTopChromeButton,
-                 prompt_suggestion);
+                 /*prevent_close=*/false, source, prompt_suggestion);
 
   if (glic_button_->GetIsShowingNudge()) {
     glic_nudge_controller->OnNudgeActivity(
@@ -1079,6 +1087,10 @@ void ToolbarView::UpdateGlicButtonVisibility() {
 void ToolbarView::SetGlicActorShowState(bool show) {
   should_show_glic_actor_ = show;
   UpdateGlicActorVisibility();
+}
+
+void ToolbarView::SetButtonController(glic::GlicButtonController* controller) {
+  button_controller_ = controller;
 }
 
 void ToolbarView::SetGlicShowState(bool show) {
@@ -1644,11 +1656,12 @@ gfx::Size ToolbarView::GetToolbarButtonSize() const {
   return gfx::Size(size, size);
 }
 
-views::View* ToolbarView::GetDefaultExtensionDialogAnchorView() {
+views::BubbleAnchor ToolbarView::GetDefaultExtensionDialogAnchor() {
   if (extensions_container_ && extensions_container_->GetVisible()) {
-    return extensions_container_->GetExtensionsButton();
+    return views::BubbleAnchor(extensions_container_->GetExtensionsButton());
   }
-  return GetAppMenuButton();
+  auto* control = GetAppMenuControl();
+  return control ? control->GetAnchor() : views::BubbleAnchor();
 }
 
 PageActionIconView* ToolbarView::GetPageActionIconView(
@@ -1674,7 +1687,7 @@ IconLabelBubbleView* ToolbarView::GetPageActionView(
   return GetPageActionIconView(properties.type);
 }
 
-AppMenuButton* ToolbarView::GetAppMenuButton() {
+AppMenuControl* ToolbarView::GetAppMenuControl() {
   return app_menu_button_;
 }
 
@@ -1751,6 +1764,10 @@ void ToolbarView::ZoomChangedForActiveTab(bool can_show_bubble) {
 }
 
 AvatarToolbarButton* ToolbarView::GetAvatarToolbarButton() {
+  return avatar_;
+}
+
+AvatarToolbarButtonInterface* ToolbarView::GetAvatarToolbarButtonInterface() {
   return avatar_;
 }
 

@@ -19,6 +19,7 @@
 #include "base/sequence_checker.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
+#include "google_apis/gaia/google_service_auth_error.h"
 #include "ios/chrome/browser/signin/model/capabilities_types.h"
 #include "ios/chrome/browser/signin/model/system_identity_manager_observer.h"
 
@@ -89,8 +90,14 @@ class SystemIdentityManager {
   using ForgetIdentityCallback = base::OnceCallback<void(NSError*)>;
 
   // Callback invoked when the `GetAccessToken()` operation completes.
+  // TODO(crbug.com/502126003): Delete this callback when
+  // AccessTokenRequestCallback is used instead.
   using AccessTokenCallback =
       base::OnceCallback<void(std::optional<AccessTokenInfo>, NSError*)>;
+
+  // Callback invoked when the `GetAccessToken()` operation completes.
+  using AccessTokenRequestCallback = base::OnceCallback<void(
+      base::expected<AccessTokenInfo, GoogleServiceAuthError>)>;
 
   // Callback invoked when the `GetHostedDomain()` operation completes.
   using HostedDomainCallback = base::OnceCallback<void(NSString*, NSError*)>;
@@ -188,6 +195,7 @@ class SystemIdentityManager {
   // is invoked on the calling sequence when the operation completes.
   virtual void ForgetIdentity(id<SystemIdentity> identity,
                               ForgetIdentityCallback callback) = 0;
+
   // Returns true if the identity was removed by calling `ForgetIdentity()`.
   // Returns false If the identity was not removed or disappeared without
   // calling `ForgetIdentity()`.
@@ -202,10 +210,21 @@ class SystemIdentityManager {
 
   // Asynchronously retrieves access tokens for `identity` with `scopes`. The
   // callback is invoked on the calling sequence when the operation completes.
+  // TODO(crbug.com/502126003): remove this method when the one with
+  // AccessTokenRequestCallback is used instead.
   virtual void GetAccessToken(id<SystemIdentity> identity,
                               const std::string& client_id,
                               const std::set<std::string>& scopes,
                               AccessTokenCallback callback) = 0;
+
+  // Asynchronously retrieves access tokens for `identity` with `scopes`. The
+  // callback is invoked on the calling sequence when the operation completes.
+  // TODO(crbug.com/502440730): make this method pure virtual after updating the
+  // internal implementation.
+  virtual void GetAccessToken(id<SystemIdentity> identity,
+                              const std::string& client_id,
+                              const std::set<std::string>& scopes,
+                              AccessTokenRequestCallback callback) {}
 
   // Asynchronously fetches the avatar for `identity` from the network and
   // store it in the cache. The image can be large to avoid pixelation on
@@ -288,15 +307,17 @@ class SystemIdentityManager {
       const std::set<std::string>& scopes);
 
   // Presents a new Account Details view and returns a callback that can be
-  // used to dismiss the view (can be ignore if not needed).
+  // used to dismiss the view (can be ignored if not needed).
   virtual DismissViewCallback PresentAccountDetailsController(
       PresentDialogConfiguration configuration) = 0;
+
   // Presents a new Web and App Setting Details view and returns a callback
-  // that can be used to dismiss the view (can be ignore if not needed).
+  // that can be used to dismiss the view (can be ignored if not needed).
   virtual DismissViewCallback PresentWebAndAppSettingDetailsController(
       PresentDialogConfiguration configuration) = 0;
+
   // Presents a new Linked Services Settings Details view and returns a callback
-  // that can be used to dismiss the view (can be ignore if not needed).
+  // that can be used to dismiss the view (can be ignored if not needed).
   virtual DismissViewCallback PresentLinkedServicesSettingsDetailsController(
       PresentDialogConfiguration configuration) = 0;
 

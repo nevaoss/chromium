@@ -166,7 +166,7 @@ BASE_FEATURE(kBackForwardCacheDWCOnJavaScriptExecution,
 // This is a kill switch for pausing microtask while the page is in the BFCache.
 // Remove by m148 if things go well.
 BASE_FEATURE(kBackForwardCachePauseMicrotasks,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enable background resource fetch in Blink. See https://crbug.com/1379780 for
 // more details.
@@ -953,11 +953,7 @@ BASE_FEATURE(kFledgeTruncateSelectableBuyerAndSellerReportingIdsToKAnonLimit,
 BASE_FEATURE(kForceHighPerformanceGPUForWebGL,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Text autosizing uses heuristics to inflate text sizes on devices with
-// small screens. This feature is for disabling these heuristics.
-BASE_FEATURE(kForceOffTextAutosizing, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kForceSkcmsICCParsing, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kForceSkcmsICCParsing, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kForceSkExifCppParsing, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1703,6 +1699,28 @@ BASE_FEATURE(kMixedContentAutoupgrade,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kMemoryCacheIntelligentPruning, base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<MemoryCacheCostScoringModel>::Option
+    memory_cache_cost_scoring_model_options[] = {
+        {MemoryCacheCostScoringModel::kOriginal, "original"},
+        {MemoryCacheCostScoringModel::kValueDensity, "value_density"},
+        {MemoryCacheCostScoringModel::kLogPenalty, "log_penalty"},
+};
+
+BASE_FEATURE_ENUM_PARAM(MemoryCacheCostScoringModel,
+                        kMemoryCacheCostScoringModel,
+                        &kMemoryCacheIntelligentPruning,
+                        "cost_scoring_model",
+                        MemoryCacheCostScoringModel::kOriginal,
+                        &memory_cache_cost_scoring_model_options);
+
+// Decay rate for time-decayed frequency scoring.
+// Default 0.001 halves score in ~11.5 minutes.
+BASE_FEATURE_PARAM(double,
+                   kMemoryCacheDecayRate,
+                   &kMemoryCacheIntelligentPruning,
+                   "decay_rate",
+                   0.001);
 
 // Weight for the resource's type priority in the value calculation.
 // A high default makes type a primary factor in determining importance.

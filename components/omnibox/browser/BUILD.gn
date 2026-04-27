@@ -66,12 +66,8 @@ aggregate_vector_icons("omnibox_vector_icons") {
     "offline_pin.icon",
     "page_chrome_refresh.icon",
     "price_tracking_disabled.icon",
-    "price_tracking_disabled_refresh.icon",
-    "price_tracking_enabled_refresh.icon",
     "product.icon",
     "product_chrome_refresh.icon",
-    "product_specifications_add.icon",
-    "product_specifications_added.icon",
     "search_spark.icon",
     "secure_page_info_chrome_refresh.icon",
     "share_chrome_refresh.icon",
@@ -681,6 +677,7 @@ if (is_android) {
 
   java_cpp_enum("browser_java_enums_srcjar") {
     sources = [
+      "actions/omnibox_action.h",
       "actions/omnibox_action_concepts.h",
       "actions/omnibox_action_in_suggest.cc",
       "actions/omnibox_pedal_concepts.h",

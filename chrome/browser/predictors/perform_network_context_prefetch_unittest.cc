@@ -100,10 +100,11 @@ class PerformNetworkContextPrefetchRecorderTest
     test_server_handle_ = test_server_.StartAndReturnHandle();
     ASSERT_TRUE(test_server_handle_);
     // Treat 127.0.0.1 as "public" to avoid being blocked by local network
-    // access.
+    // access. Port number 0 is a wildcard. Each test case will use a different
+    // port number, but the command-line is only parsed once, so we need to make
+    // it work for all ports.
     command_line_.GetProcessCommandLine()->AppendSwitchASCII(
-        network::switches::kIpAddressSpaceOverrides,
-        base::StringPrintf("127.0.0.1:%d=public", test_server_.port()));
+        network::switches::kIpAddressSpaceOverrides, "127.0.0.1:0=public");
   }
 
   GURL PageURL(std::string_view hostname = kHostname) const {
@@ -182,13 +183,7 @@ auto HasHeader(std::string_view name, ValueMatcher value_matcher) {
   return Contains(Pair(StrCaseEq(name), value_matcher));
 }
 
-// TODO(crbug.com/500215556): Re-enable this test on Android.
-#if BUILDFLAG(IS_ANDROID)
-#define MAYBE_Script DISABLED_Script
-#else
-#define MAYBE_Script Script
-#endif
-TEST_P(PerformNetworkContextPrefetchRecorderTest, MAYBE_Script) {
+TEST_P(PerformNetworkContextPrefetchRecorderTest, Script) {
   DoPrefetch(RequestDestination::kScript);
   const auto request = GetRequest();
   EXPECT_EQ(request.relative_url, "/nocontent");
@@ -232,13 +227,7 @@ TEST_P(PerformNetworkContextPrefetchRecorderTest, MAYBE_Script) {
   EXPECT_TRUE(request.content.empty());
 }
 
-// TODO(crbug.com/500215556): Re-enable this test on Android.
-#if BUILDFLAG(IS_ANDROID)
-#define MAYBE_Style DISABLED_Style
-#else
-#define MAYBE_Style Style
-#endif
-TEST_P(PerformNetworkContextPrefetchRecorderTest, MAYBE_Style) {
+TEST_P(PerformNetworkContextPrefetchRecorderTest, Style) {
   DoPrefetch(RequestDestination::kStyle);
   const auto request = GetRequest();
 
@@ -281,13 +270,7 @@ TEST_P(PerformNetworkContextPrefetchRecorderTest, NonSSLPage) {
   ExpectNoRequest();
 }
 
-// TODO(crbug.com/500217595): Re-enable this test on Android.
-#if BUILDFLAG(IS_ANDROID)
-#define MAYBE_NonSSLResource DISABLED_NonSSLResource
-#else
-#define MAYBE_NonSSLResource NonSSLResource
-#endif
-TEST_P(PerformNetworkContextPrefetchRecorderTest, MAYBE_NonSSLResource) {
+TEST_P(PerformNetworkContextPrefetchRecorderTest, NonSSLResource) {
   InsecureTestServer insecure(GetFutureCallback());
   {
     StrictMock<base::test::MockLog> log;

@@ -127,6 +127,10 @@ const char
     kHistogramGWSConnectTimingFirstRequestResolutionDetailsTaskCompletionDelay
         [] = HISTOGRAM_PREFIX
     "ConnectTiming.FirstRequestResolutionDetails.TaskCompletionDelay";
+const char kHistogramGWSConnectTimingFirstRequestDohDetailsSessionSource[] =
+    HISTOGRAM_PREFIX "ConnectTiming.FirstRequestDohDetails.SessionSource";
+const char kHistogramGWSConnectTimingFirstRequestDohDetailsConnectionInfo[] =
+    HISTOGRAM_PREFIX "ConnectTiming.FirstRequestDohDetails.ConnectionInfo";
 const char kHistogramGWSConnectTimingFirstRequestConnectDelay[] =
     HISTOGRAM_PREFIX "ConnectTiming.FirstRequestConnectDelay";
 const char kHistogramGWSConnectTimingFirstRequestSslDelay[] =
@@ -190,6 +194,7 @@ const char kHistogramGWSConnectionReuseStatus[] =
     HISTOGRAM_PREFIX "ConnectionReuseStatus";
 const char kHistogramIncognitoSuffix[] = ".Incognito";
 const char kHistogramSyntheticResponseSuffix[] = ".SyntheticResponse";
+const char kHistogramDuplicateIgnoredSuffix[] = ".IgnoredDuplicateNavigation";
 
 const char kHistogramGWSSessionSource[] = HISTOGRAM_PREFIX "SessionSource";
 const char kHistogramGWSAdvertisedAltSvcState[] =
@@ -564,6 +569,8 @@ GWSPageLoadMetricsObserver::OnCommit(
   }
 
   was_cached_ = navigation_handle->WasResponseCached();
+  did_ignore_duplicate_navigation_ =
+      navigation_handle->GetIgnoredDuplicateNavigationCount() > 0;
   network_accessed_ = navigation_handle->NetworkAccessed();
   http_connection_info_ =
       net::HttpConnectionInfoToCoarse(navigation_handle->GetConnectionInfo());
@@ -737,6 +744,12 @@ void GWSPageLoadMetricsObserver::OnFirstContentfulPaintInPage(
     PAGE_LOAD_HISTOGRAM(
         base::StrCat({internal::kHistogramGWSFirstContentfulPaint,
                       internal::kHistogramSyntheticResponseSuffix}),
+        timing.paint_timing->first_contentful_paint.value());
+  }
+  if (did_ignore_duplicate_navigation_) {
+    PAGE_LOAD_HISTOGRAM(
+        base::StrCat({internal::kHistogramGWSFirstContentfulPaint,
+                      internal::kHistogramDuplicateIgnoredSuffix}),
         timing.paint_timing->first_contentful_paint.value());
   }
 }
@@ -1210,6 +1223,17 @@ void GWSPageLoadMetricsObserver::RecordNavigationTimingHistograms() {
                  *suffix}),
             *details.task_completion_delay);
       }
+    }
+
+    if (details.doh_details.has_value()) {
+      base::UmaHistogramEnumeration(
+          internal::
+              kHistogramGWSConnectTimingFirstRequestDohDetailsSessionSource,
+          details.doh_details->session_source);
+      base::UmaHistogramEnumeration(
+          internal::
+              kHistogramGWSConnectTimingFirstRequestDohDetailsConnectionInfo,
+          details.doh_details->connection_info);
     }
   }
 

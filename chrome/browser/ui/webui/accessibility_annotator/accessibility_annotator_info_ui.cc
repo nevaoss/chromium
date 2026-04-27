@@ -43,16 +43,22 @@ AccessibilityAnnotatorInfoUI::AccessibilityAnnotatorInfoUI(
   webui::SetupWebUIDataSource(
       source, kAccessibilityAnnotatorInfoResources,
       IDR_ACCESSIBILITY_ANNOTATOR_INFO_ACCESSIBILITY_ANNOTATOR_INFO_HTML);
+  // TODO(crbug.com/500663691): Update strings.
+  source->AddLocalizedString("privacyPageTitle", IDS_SETTINGS_PRIVACY);
 }
 
-AccessibilityAnnotatorInfoUI::~AccessibilityAnnotatorInfoUI() = default;
+AccessibilityAnnotatorInfoUI::~AccessibilityAnnotatorInfoUI() {
+  if (dialog_callback_) {
+    std::move(dialog_callback_).Run(InfoDialogResult::kDismissed);
+  }
+}
 
 void AccessibilityAnnotatorInfoUI::BindInterface(
     mojo::PendingReceiver<accessibility_annotator::info::mojom::PageHandler>
         receiver) {
   page_handler_ = std::make_unique<AccessibilityAnnotatorInfoPageHandler>(
       std::move(receiver), std::move(dialog_callback_),
-      web_ui()->GetWebContents()->GetBrowserContext());
+      web_ui()->GetWebContents());
 }
 
 void AccessibilityAnnotatorInfoUI::SetDialogCallback(

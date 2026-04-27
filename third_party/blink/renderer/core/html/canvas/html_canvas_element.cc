@@ -728,8 +728,8 @@ void HTMLCanvasElement::SetContextCreationWasBlocked() {
   SetNeedsCompositingUpdate();
 }
 
-void HTMLCanvasElement::DidDraw(const SkIRect& rect) {
-  if (rect.isEmpty()) {
+void HTMLCanvasElement::DidDraw(const gfx::Rect& rect) {
+  if (rect.IsEmpty()) {
     return;
   }
 
@@ -748,7 +748,7 @@ void HTMLCanvasElement::DidDraw(const SkIRect& rect) {
   }
 
   canvas_is_clear_ = false;
-  dirty_rect_.Union(gfx::Rect(gfx::SkIRectToRect(rect)));
+  dirty_rect_.Union(rect);
 }
 
 void HTMLCanvasElement::InitializeLayerWithCSSProperties(cc::Layer* layer) {
@@ -773,10 +773,7 @@ void HTMLCanvasElement::PostFinalizeFrame(FlushReason reason) {
             context_->PaintRenderingResultsToResource(kBackBuffer, reason)) {
       const gfx::Rect src_rect(Size());
       dirty_rect_.Intersect(src_rect);
-      const gfx::Rect int_dirty = dirty_rect_;
-      const SkIRect damage_rect = SkIRect::MakeXYWH(
-          int_dirty.x(), int_dirty.y(), int_dirty.width(), int_dirty.height());
-      frame_dispatcher_->DispatchFrame(std::move(canvas_resource), damage_rect,
+      frame_dispatcher_->DispatchFrame(std::move(canvas_resource), dirty_rect_,
                                        IsOpaque());
       dirty_rect_ = gfx::Rect();
     }

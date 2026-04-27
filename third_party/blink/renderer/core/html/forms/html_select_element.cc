@@ -1314,22 +1314,18 @@ void HTMLSelectElement::ChildrenChanged(const ChildrenChange& change) {
       button_changed = true;
     } else if (auto* option =
                    DynamicTo<HTMLOptionElement>(change.sibling_changed)) {
-      if (RuntimeEnabledFeatures::SelectChildrenRemovedFixEnabled()) {
-        // OptionRemoved is normally called in HTMLOptionElement::RemovedFrom,
-        // but as a direct child we call OptionRemoved here in order to avoid
-        // https://issues.chromium.org/issues/444330901
-        OptionRemoved(*option);
-      }
+      // OptionRemoved is normally called in HTMLOptionElement::RemovedFrom,
+      // but as a direct child we call OptionRemoved here in order to avoid
+      // https://issues.chromium.org/issues/444330901
+      OptionRemoved(*option);
     }
   } else if (change.type == ChildrenChangeType::kAllChildrenRemoved) {
     for (Node* node : change.removed_nodes) {
       if (IsA<HTMLButtonElement>(node)) {
         button_changed = true;
       } else if (auto* option = DynamicTo<HTMLOptionElement>(node)) {
-        if (RuntimeEnabledFeatures::SelectChildrenRemovedFixEnabled()) {
-          // See comment in kElementRemoved case.
-          OptionRemoved(*option);
-        }
+        // See comment in kElementRemoved case.
+        OptionRemoved(*option);
       }
     }
   }
@@ -1961,10 +1957,15 @@ void HTMLSelectElement::UpdateAllSelectedcontents(
   DCHECK_EQ(selected_option, SelectedOption());
 
   if (RuntimeEnabledFeatures::SelectedcontentSpecEnabled()) {
-    VectorOf<HTMLSelectedContentElement> descendant_selectedcontents_copy(
-        descendant_selectedcontents_);
+    VectorOf<HTMLSelectedContentElement> enabled_selectedcontents;
     for (HTMLSelectedContentElement* selectedcontent :
-         descendant_selectedcontents_copy) {
+         descendant_selectedcontents_) {
+      if (!selectedcontent->IsDisabled()) {
+        enabled_selectedcontents.push_back(selectedcontent);
+      }
+    }
+    for (HTMLSelectedContentElement* selectedcontent :
+         enabled_selectedcontents) {
       selectedcontent->CloneContentsFromOptionElement(selected_option);
     }
   } else {

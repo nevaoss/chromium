@@ -28,7 +28,6 @@
 #include "components/language_detection/content/common/language_detection.mojom.h"
 #include "components/language_detection/core/browser/language_detection_model_provider.h"
 #include "content/browser/ai/echo_ai_manager_impl.h"
-#include "content/browser/cpu_performance/cpu_performance.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/webauth/default_authenticator_request_client_delegate.h"
 #include "content/public/browser/anchor_element_preconnect_delegate.h"
@@ -238,14 +237,14 @@ bool ContentBrowserClient::DoesWebUIUrlRequireProcessLock(const GURL& url) {
   return true;
 }
 
-bool ContentBrowserClient::ShouldTreatURLSchemeAsFirstPartyWhenTopLevel(
-    std::string_view scheme,
+bool ContentBrowserClient::ShouldTreatAsFirstPartyWhenTopLevel(
+    const url::Origin& top_frame_origin,
     bool is_embedded_origin_secure) {
   return false;
 }
 
 bool ContentBrowserClient::ShouldIgnoreSameSiteCookieRestrictionsWhenTopLevel(
-    std::string_view scheme,
+    const url::Origin& top_frame_origin,
     bool is_embedded_origin_secure) {
   return false;
 }
@@ -549,6 +548,12 @@ bool ContentBrowserClient::IsServiceWorkerAutoPreloadAllowed(
 bool ContentBrowserClient::AllowSharedWorkerBlobURLFix(
     BrowserContext* context) {
   return true;
+}
+
+bool ContentBrowserClient::IsDataUrlInWebWorkerOpaqueOriginEnabled(
+    BrowserContext* context) {
+  return base::FeatureList::IsEnabled(
+      blink::features::kDataUrlWorkerOpaqueOrigin);
 }
 
 bool ContentBrowserClient::AllowSharedWorkerExtendedLifetime(
@@ -1116,6 +1121,7 @@ ContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
 void ContentBrowserClient::
     RegisterNonNetworkWorkerMainResourceURLLoaderFactories(
         BrowserContext* browser_context,
+        const std::optional<url::Origin>& request_initiator,
         NonNetworkURLLoaderFactoryMap* factories) {}
 
 void ContentBrowserClient::
@@ -2012,8 +2018,9 @@ bool ContentBrowserClient::ShouldAnimateBackForwardTransitions() {
 #endif
 }
 
-blink::mojom::PerformanceTier ContentBrowserClient::GetCpuPerformanceTier() {
-  return content::cpu_performance::GetTier();
+std::optional<int> ContentBrowserClient::GetCpuPerformanceTierOverride(
+    BrowserContext* browser_context) {
+  return std::nullopt;
 }
 
 void ContentBrowserClient::RecordAssistedLogin(AssistedLoginType login_type) {}

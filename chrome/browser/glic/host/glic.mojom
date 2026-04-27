@@ -276,6 +276,7 @@ struct TriggerInvokeFromInternalsOptions {
   AllowedInflightNavigation allowed_inflight_navigation;
   bool auto_submit;
   FreOverride fre_override = kUnspecified;
+  bool wait_for_panel_open;
 };
 
 // Page handler for the glic WebUI.
@@ -532,8 +533,6 @@ struct WebClientInitialState {
   bool panel_is_active;
   bool browser_is_open;
   bool instance_is_active;
-  // Reflects the enabling state of always-detached mode.
-  bool always_detached_mode;
   bool enable_zero_state_suggestions;
   bool enable_cached_get_user_profile_info;
   // Whether features::kGlicActor is enabled.
@@ -573,8 +572,6 @@ struct WebClientInitialState {
   bool enable_get_tab_by_id;
   // Whether kGlicOpenPasswordManagerSettingsPageApi is enabled.
   bool enable_open_password_manager_settings_page;
-  // Whether kGlicLoadAndExtractContent is enabled.
-  bool enable_load_and_extract_content;
   // Whether kGlicTrustFirstOnboarding is enabled.
   bool enable_trust_first_onboarding;
   // Whether the user has completed the onboarding flow.
@@ -1601,6 +1598,12 @@ enum InvocationSource {
   [MinVersion=14] kAnchoredContextualCue = 22,
   // From the context menu.
   [MinVersion=15] kWebContentsContextMenu = 23,
+  // User clicked on text selection nudge.
+  [MinVersion=16] kTextSelectionNudge = 24,
+  // User clicked on text selection widget.
+  [MinVersion=16] kTextSelectionWidget = 25,
+  // Automatic summarization upon opening.
+  [MinVersion=17] kZeroStateAutoSummarize = 26,
 };
 
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInvocationSource, //chrome/browser/glic/service/metrics/metrics_types.h:ResponseSegmentation, //chrome/browser/glic/service/metrics/metrics_types.h:GlicEntrypoint)
@@ -1611,6 +1614,7 @@ enum InvocationSource {
 enum FeatureMode {
   [Default] kUnspecified = 0,
   kImageGeneration = 1,
+  kActuation = 2,
   kBluedog = 2,
 };
 

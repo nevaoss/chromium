@@ -279,7 +279,6 @@ component("base") {
     "containers/unique_ptr_adapters.h",
     "containers/vector_buffer.h",
     "critical_closure.h",
-    "dcheck_is_on.h",
     "debug/alias.cc",
     "debug/alias.h",
     "debug/asan_invalid_access.cc",
@@ -367,7 +366,6 @@ component("base") {
     "location.h",
     "logging.cc",
     "logging.h",
-    "logging/log_severity.h",
     "logging/logging_settings.h",
     "macros/concat.h",
     "macros/if.h",
@@ -448,6 +446,7 @@ component("base") {
     "memory_coordinator/memory_consumer_registry_destruction_observer.h",
     "memory_coordinator/memory_coordinator_features.cc",
     "memory_coordinator/memory_coordinator_features.h",
+    "memory_coordinator/traits.cc",
     "memory_coordinator/traits.h",
     "memory_coordinator/utils.h",
     "message_loop/io_watcher.cc",
@@ -767,8 +766,6 @@ component("base") {
     "task/sequence_manager/tasks.h",
     "task/sequence_manager/thread_controller.cc",
     "task/sequence_manager/thread_controller.h",
-    "task/sequence_manager/thread_controller_impl.cc",
-    "task/sequence_manager/thread_controller_impl.h",
     "task/sequence_manager/thread_controller_power_monitor.cc",
     "task/sequence_manager/thread_controller_power_monitor.h",
     "task/sequence_manager/thread_controller_with_message_pump_impl.cc",
@@ -1136,6 +1133,7 @@ component("base") {
     ":base_static",
     ":cfi_buildflags",
     ":clang_profiling_buildflags",
+    ":dcheck_is_on",
     ":debugging_buildflags",
     ":feature_buildflags",
     ":ios_cronet_buildflags",
@@ -1148,6 +1146,7 @@ component("base") {
     ":tracing_buildflags",
     "//base/allocator/partition_allocator:buildflags",
     "//base/allocator/partition_allocator:raw_ptr",
+    "//base/logging:log_severity",
     "//base/numerics:base_numerics",
     "//base/third_party/icu",
     "//build:chromecast_buildflags",
@@ -2613,6 +2612,12 @@ source_set("compiler_specific") {
   public = [ "compiler_specific.h" ]
 }
 
+# A separate source_set for this header to avoid circular dependencies.
+source_set("dcheck_is_on") {
+  public = [ "dcheck_is_on.h" ]
+  deps = [ ":debugging_buildflags" ]
+}
+
 # Separate simdutf from ":base", so simdutf cannot accidentally affect the
 # build config for ":base".
 source_set("simdutf_shim") {
@@ -4003,6 +4008,11 @@ test("base_unittests") {
     "//base/test:test_shared_library",
     "//testing/buildbot/filters:base_unittests_filters",
   ]
+
+  if (is_win || is_linux) {
+    data_deps += [ "//base/allocator:system_allocator_test_helper" ]
+    sources += [ "allocator/system_allocator_unittest.cc" ]
+  }
 
   if (is_asan) {
     sources += [ "memory/raw_ptr_asan_unittest.cc" ]
@@ -5940,6 +5950,7 @@ if (is_android) {
 
   robolectric_library("base_junit_test_support") {
     sources = [
+      "test/android/junit/src/org/chromium/base/test/BaseJvmTestRunner.java",
       "test/android/junit/src/org/chromium/base/test/BaseRobolectricAndroidConfigurer.java",
       "test/android/junit/src/org/chromium/base/test/BaseRobolectricTestListener.java",
       "test/android/junit/src/org/chromium/base/test/BaseRobolectricTestRule.java",

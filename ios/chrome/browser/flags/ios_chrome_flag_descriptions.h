@@ -35,6 +35,9 @@ extern const char kAIMEligibilityServiceStartWithProfileDescription[];
 extern const char kAIMNTPEntrypointTabletName[];
 extern const char kAIMNTPEntrypointTabletDescription[];
 
+extern const char kAimCobrowseHeaderName[];
+extern const char kAimCobrowseHeaderDescription[];
+
 extern const char kAimCobrowseName[];
 extern const char kAimCobrowseDescription[];
 
@@ -161,6 +164,9 @@ extern const char kAutofillThrottleDocumentFormScanDescription[];
 extern const char kAutofillThrottleFilteredDocumentFormScanName[];
 extern const char kAutofillThrottleFilteredDocumentFormScanDescription[];
 
+extern const char kAutofillUpstreamEnforceStrikeDelayName[];
+extern const char kAutofillUpstreamEnforceStrikeDelayDescription[];
+
 extern const char kAutofillUseRendererIDsName[];
 extern const char kAutofillUseRendererIDsDescription[];
 
@@ -193,6 +199,9 @@ extern const char kCacheIdentityListInChromeDescription[];
 
 extern const char kChromeNextIaName[];
 extern const char kChromeNextIaDescription[];
+
+extern const char kCobrowseAimHistoryName[];
+extern const char kCobrowseAimHistoryDescription[];
 
 extern const char kCollaborationMessagingName[];
 extern const char kCollaborationMessagingDescription[];
@@ -385,6 +394,9 @@ extern const char kEnableTraitCollectionRegistrationDescription[];
 extern const char kEnableVariationsGoogleGroupFilteringName[];
 extern const char kEnableVariationsGoogleGroupFilteringDescription[];
 
+extern const char kEnforceCanSignInToChromeCapabilityName[];
+extern const char kEnforceCanSignInToChromeCapabilityDescription[];
+
 extern const char kEnhancedCalendarName[];
 extern const char kEnhancedCalendarDescription[];
 
@@ -549,9 +561,6 @@ extern const char kIOSProactivePasswordGenerationBottomSheetDescription[];
 
 extern const char kIOSProvidesAppNotificationSettingsName[];
 extern const char kIOSProvidesAppNotificationSettingsDescription[];
-
-extern const char kIOSReactivationNotificationsName[];
-extern const char kIOSReactivationNotificationsDescription[];
 
 extern const char kIOSSaveToDriveClientFolderName[];
 extern const char kIOSSaveToDriveClientFolderDescription[];
@@ -862,6 +871,9 @@ extern const char kPersistentDefaultBrowserPromoDescription[];
 extern const char kPhoneNumberName[];
 extern const char kPhoneNumberDescription[];
 
+extern const char kPlusButtonInFakeboxName[];
+extern const char kPlusButtonInFakeboxDescription[];
+
 extern const char kPriceTrackingPromoName[];
 extern const char kPriceTrackingPromoDescription[];
 
@@ -1005,6 +1017,9 @@ extern const char kSyncAutofillValuableMetadataDescription[];
 
 extern const char kSyncAutofillValuableName[];
 extern const char kSyncAutofillValuableDescription[];
+
+extern const char kSyncContextualTaskName[];
+extern const char kSyncContextualTaskDescription[];
 
 extern const char kSyncSandboxName[];
 extern const char kSyncSandboxDescription[];

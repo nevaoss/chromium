@@ -180,8 +180,13 @@ std::unique_ptr<Shape> Shape::CreateShape(const BasicShape* basic_shape,
           ellipse->RadiusY(), center.y(), box_height);
       gfx::PointF logical_center = converter.ToLogical(center);
 
-      shape = std::make_unique<EllipseShape>(logical_center, radius_x, radius_y,
-                                             writing_mode);
+      float inline_radius = radius_x;
+      float block_radius = radius_y;
+      if (!IsHorizontalWritingMode(writing_mode)) {
+        std::swap(inline_radius, block_radius);
+      }
+      shape = std::make_unique<EllipseShape>(logical_center, inline_radius,
+                                             block_radius);
       break;
     }
 
@@ -199,11 +204,11 @@ std::unique_ptr<Shape> Shape::CreateShape(const BasicShape* basic_shape,
         const gfx::Size raster_size(std::max(path_rect.right(), 0),
                                     std::max(path_rect.bottom(), 0));
         if (!IsValidRasterShapeSize(raster_size)) {
-          return CreateEmptyRasterShape(writing_mode, margin);
+          return CreateEmptyRasterShape(margin);
         }
         ArrayBufferContents contents;
         if (!ExtractPathData(physical_path, raster_size, contents)) {
-          return CreateEmptyRasterShape(writing_mode, margin);
+          return CreateEmptyRasterShape(margin);
         }
         std::unique_ptr<RasterShapeIntervals> intervals =
             ExtractIntervalsFromImageData(contents.ByteSpan(), /*threshold=*/0,
@@ -223,8 +228,7 @@ std::unique_ptr<Shape> Shape::CreateShape(const BasicShape* basic_shape,
                            FloatValueForLength(values.at(i + 1), box_height));
         vertices[i / 2] = converter.ToLogical(vertex);
       }
-      shape = std::make_unique<PolygonShape>(std::move(vertices),
-                                             polygon->GetWindRule());
+      shape = std::make_unique<PolygonShape>(std::move(vertices));
       break;
     }
 
@@ -260,21 +264,17 @@ std::unique_ptr<Shape> Shape::CreateShape(const BasicShape* basic_shape,
       NOTREACHED();
   }
 
-  shape->writing_mode_ = writing_mode;
   shape->margin_ = margin;
-
   return shape;
 }
 
-std::unique_ptr<Shape> Shape::CreateEmptyRasterShape(WritingMode writing_mode,
-                                                     float margin) {
+std::unique_ptr<Shape> Shape::CreateEmptyRasterShape(float margin) {
   std::unique_ptr<RasterShapeIntervals> intervals =
       std::make_unique<RasterShapeIntervals>(0, 0);
   std::unique_ptr<RasterShape> raster_shape =
       std::make_unique<RasterShape>(std::move(intervals), gfx::Size());
-  raster_shape->writing_mode_ = writing_mode;
   raster_shape->margin_ = margin;
-  return std::move(raster_shape);
+  return raster_shape;
 }
 
 namespace {
@@ -442,7 +442,7 @@ std::unique_ptr<Shape> Shape::CreateRasterShape(
   gfx::Size margin_box_size = margin_logical_rect.size();
   if (!IsValidRasterShapeSize(margin_box_size) ||
       !IsValidRasterShapeSize(image_logical_rect.size())) {
-    return CreateEmptyRasterShape(writing_mode, margin);
+    return CreateEmptyRasterShape(margin);
   }
 
   gfx::Size image_physical_size = image_logical_rect.size();
@@ -452,7 +452,7 @@ std::unique_ptr<Shape> Shape::CreateRasterShape(
   ArrayBufferContents contents;
   if (!ExtractImageData(image, image_physical_size, contents,
                         respect_orientation)) {
-    return CreateEmptyRasterShape(writing_mode, margin);
+    return CreateEmptyRasterShape(margin);
   }
 
   std::unique_ptr<RasterShapeIntervals> intervals =
@@ -462,9 +462,8 @@ std::unique_ptr<Shape> Shape::CreateRasterShape(
                                     writing_mode);
   std::unique_ptr<RasterShape> raster_shape =
       std::make_unique<RasterShape>(std::move(intervals), margin_box_size);
-  raster_shape->writing_mode_ = writing_mode;
   raster_shape->margin_ = margin;
-  return std::move(raster_shape);
+  return raster_shape;
 }
 
 std::unique_ptr<Shape> Shape::CreateLayoutBoxShape(
@@ -477,9 +476,7 @@ std::unique_ptr<Shape> Shape::CreateLayoutBoxShape(
       PhysicalSize::FromSizeFFloor(contoured_rect.Rect().size()));
   std::unique_ptr<Shape> shape =
       CreateInsetShape(BoxShape::ToLogical(contoured_rect, converter));
-  shape->writing_mode_ = writing_mode;
   shape->margin_ = margin;
-
   return shape;
 }
 

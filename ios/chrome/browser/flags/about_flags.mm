@@ -139,11 +139,17 @@ namespace {
 const FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
     {flags_ui::kGenericExperimentChoiceDefault, "", ""},
     {flags_ui::kGenericExperimentChoiceEnabled, switches::kEnableFeatures,
+     "SendTabToSelfAutoOpen,"
+     "SendTabToSelfImprovedLastActiveLabels,"
      "SendTabToSelfPropagateFormFields,"
-     "SendTabToSelfPropagateScrollPosition"},
+     "SendTabToSelfPropagateNavigationHistory,"
+     "SendTabToSelfPropagateScrollPosition,"},
     {flags_ui::kGenericExperimentChoiceDisabled, switches::kDisableFeatures,
+     "SendTabToSelfAutoOpen,"
+     "SendTabToSelfImprovedLastActiveLabels,"
      "SendTabToSelfPropagateFormFields,"
-     "SendTabToSelfPropagateScrollPosition"},
+     "SendTabToSelfPropagateNavigationHistory,"
+     "SendTabToSelfPropagateScrollPosition,"},
 };
 
 const FeatureEntry::Choice
@@ -152,6 +158,20 @@ const FeatureEntry::Choice
         {"200", signin::kWaitThresholdMillisecondsForCapabilitiesApi, "200"},
         {"500", signin::kWaitThresholdMillisecondsForCapabilitiesApi, "500"},
         {"5000", signin::kWaitThresholdMillisecondsForCapabilitiesApi, "5000"},
+};
+
+const FeatureEntry::FeatureParam kAIMCobrowseHeaderOptionA[] = {
+    {kAIMCobrowseHeaderParam, kAIMCobrowseHeaderParamOptionA}};
+const FeatureEntry::FeatureParam kAIMCobrowseHeaderOptionB[] = {
+    {kAIMCobrowseHeaderParam, kAIMCobrowseHeaderParamOptionB}};
+const FeatureEntry::FeatureParam kAIMCobrowseHeaderOptionC[] = {
+    {kAIMCobrowseHeaderParam, kAIMCobrowseHeaderParamOptionC}};
+
+const FeatureEntry::FeatureVariation kAIMCobrowseHeaderVariations[] = {
+    {"A: Center logo, overflow menu leading", kAIMCobrowseHeaderOptionA,
+     nullptr},
+    {"B: Left logo with histroy button", kAIMCobrowseHeaderOptionB, nullptr},
+    {"C: Left logo with overflow button", kAIMCobrowseHeaderOptionC, nullptr},
 };
 
 const FeatureEntry::FeatureParam kDisableKeyboardAccessoryOnlySymbolsParam[] = {
@@ -269,22 +289,6 @@ const FeatureEntry::FeatureVariation
         {"Enabled With Default Model Parameter (Must Set this!)",
          kEnableDefaultModel, nullptr},
     };
-
-const FeatureEntry::FeatureParam
-    kIOSReactivationNotifications10SecondTrigger[] = {
-        {kIOSReactivationNotificationsTriggerTimeParam, "10s"},
-};
-const FeatureEntry::FeatureParam
-    kIOSReactivationNotifications30SecondTrigger[] = {
-        {kIOSReactivationNotificationsTriggerTimeParam, "30s"},
-};
-const FeatureEntry::FeatureVariation kIOSReactivationNotificationsVariations[] =
-    {
-        {"(10s trigger)", kIOSReactivationNotifications10SecondTrigger,
-         nullptr},
-        {"(30s trigger)", kIOSReactivationNotifications30SecondTrigger,
-         nullptr},
-};
 
 #if BUILDFLAG(IOS_BACKGROUND_MODE_ENABLED)
 // Feed Background Refresh Feature Params.
@@ -998,6 +1002,32 @@ const FeatureEntry::FeatureVariation kBestOfAppFREVariations[] = {
      kBestOfAppFREArm4Upload, nullptr},
 };
 
+const FeatureEntry::FeatureParam kChromeNextIaLensHiddenShareHidden[] = {
+    {"chrome_next_ia_lens_icon_visible", "false"},
+    {"chrome_next_ia_share_icon_visible", "false"}};
+
+const FeatureEntry::FeatureParam kChromeNextIaLensVisibleShareHidden[] = {
+    {"chrome_next_ia_lens_icon_visible", "true"},
+    {"chrome_next_ia_share_icon_visible", "false"}};
+
+const FeatureEntry::FeatureParam kChromeNextIaLensHiddenShareVisible[] = {
+    {"chrome_next_ia_lens_icon_visible", "false"},
+    {"chrome_next_ia_share_icon_visible", "true"}};
+
+const FeatureEntry::FeatureParam kChromeNextIaLensVisibleShareVisible[] = {
+    {"chrome_next_ia_lens_icon_visible", "true"},
+    {"chrome_next_ia_share_icon_visible", "true"}};
+
+const FeatureEntry::FeatureVariation kChromeNextIaVariations[] = {
+    {"Lens Hidden, Share Hidden", kChromeNextIaLensHiddenShareHidden, nullptr},
+    {"Lens Visible, Share Hidden", kChromeNextIaLensVisibleShareHidden,
+     nullptr},
+    {"Lens Hidden, Share Visible", kChromeNextIaLensHiddenShareVisible,
+     nullptr},
+    {"Lens Visible, Share Visible", kChromeNextIaLensVisibleShareVisible,
+     nullptr},
+};
+
 const FeatureEntry::FeatureParam
     kInvalidateChoiceOnRestoreIsRetroactiveOption[] = {
         {"is_retroactive", "true"}};
@@ -1383,6 +1413,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kBuildExternalPrivacyContextDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(switches::kBuildExternalPrivacyContext)},
+    {"enforce-can-sign-in-to-chrome-capability",
+     flag_descriptions::kEnforceCanSignInToChromeCapabilityName,
+     flag_descriptions::kEnforceCanSignInToChromeCapabilityDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(switches::kEnforceCanSignInToChromeCapability)},
     {"in-product-help-demo-mode-choice",
      flag_descriptions::kInProductHelpDemoModeName,
      flag_descriptions::kInProductHelpDemoModeDescription, flags_ui::kOsIos,
@@ -1434,6 +1469,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kConfirmationButtonSwapOrderName,
      flag_descriptions::kConfirmationButtonSwapOrderDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kConfirmationButtonSwapOrder)},
+    {"plus-button-in-fakebox", flag_descriptions::kPlusButtonInFakeboxName,
+     flag_descriptions::kPlusButtonInFakeboxDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kPlusButtonInFakebox)},
     {"fullscreen-viewport-adjustment-experiment",
      flag_descriptions::kFullscreenSmoothScrollingName,
      flag_descriptions::kFullscreenSmoothScrollingDescription, flags_ui::kOsIos,
@@ -1483,20 +1521,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"snapshot-compressed-jpeg-quality",
      flag_descriptions::kSnapshotCompressedJPEGQualityName,
      flag_descriptions::kSnapshotCompressedJPEGQualityDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kSnapshotCompressedJPEGQuality)},
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kSnapshotCompressedJPEGQuality)},
     {"snapshot-downsample-image",
      flag_descriptions::kSnapshotDownsampleImageName,
-     flag_descriptions::kSnapshotDownsampleImageDescription,
-     flags_ui::kOsIos,
+     flag_descriptions::kSnapshotDownsampleImageDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kSnapshotDownsampleImage)},
-    {"ios-reactivation-notifications",
-     flag_descriptions::kIOSReactivationNotificationsName,
-     flag_descriptions::kIOSReactivationNotificationsDescription,
-     flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kIOSReactivationNotifications,
-                                    kIOSReactivationNotificationsVariations,
-                                    "IOSReactivationNotifications")},
     {"ios-expanded-setup-list", flag_descriptions::kIOSExpandedSetupListName,
      flag_descriptions::kIOSExpandedSetupListDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kIOSExpandedSetupList,
@@ -2047,12 +2076,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kNotificationCollisionManagementName,
      flag_descriptions::kNotificationCollisionManagementDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kNotificationCollisionManagement)},
-    {"autofill-enable-support-for-home-and-work",
-     flag_descriptions::kAutofillEnableSupportForHomeAndWorkName,
-     flag_descriptions::kAutofillEnableSupportForHomeAndWorkDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(
-         autofill::features::kAutofillEnableSupportForHomeAndWork)},
     {"lens-overlay-navigation-history",
      flag_descriptions::kLensOverlayNavigationHistoryName,
      flag_descriptions::kLensOverlayNavigationHistoryDescription,
@@ -2551,7 +2574,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_VALUE_TYPE(kComposeboxIpad)},
     {"chrome-next-ia", flag_descriptions::kChromeNextIaName,
      flag_descriptions::kChromeNextIaDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kChromeNextIa)},
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kChromeNextIa,
+                                    kChromeNextIaVariations,
+                                    "ChromeNextIa")},
     {"gemini-image-remix-tool", flag_descriptions::kGeminiImageRemixToolName,
      flag_descriptions::kGeminiImageRemixToolDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kGeminiImageRemixTool,
@@ -2623,6 +2648,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kAIMCobrowseDebugEntrypointName,
      flag_descriptions::kAIMCobrowseDebugEntrypointDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kAIMCobrowseDebugEntrypoint)},
+    {"aim-cobrowse-header", flag_descriptions::kAimCobrowseHeaderName,
+     flag_descriptions::kAimCobrowseHeaderDescription, flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kAIMCobrowseHeader,
+                                    kAIMCobrowseHeaderVariations,
+                                    "kAIMCobrowseHeader")},
     {"ios-date-to-calendar-signed-out",
      flag_descriptions::kIOSDateToCalendarSignedOutName,
      flag_descriptions::kIOSDateToCalendarSignedOutDescription,
@@ -2652,6 +2682,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"sync-ai-threads", flag_descriptions::kSyncAIThreadsName,
      flag_descriptions::kSyncAIThreadsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(syncer::kSyncAIThread)},
+    {"sync-contextual-task", flag_descriptions::kSyncContextualTaskName,
+     flag_descriptions::kSyncContextualTaskDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(syncer::kSyncContextualTask)},
     {"sync-autofill-valuable", flag_descriptions::kSyncAutofillValuableName,
      flag_descriptions::kSyncAutofillValuableDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(syncer::kSyncAutofillValuable)},
@@ -2802,6 +2835,15 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"synced-group-color", flag_descriptions::kSyncedGroupColorName,
      flag_descriptions::kSyncedGroupColorDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kSyncedGroupColor)},
+    {"cobrowse-aim-history", flag_descriptions::kCobrowseAimHistoryName,
+     flag_descriptions::kCobrowseAimHistoryDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kCobrowseAimHistory)},
+    {"autofill-upstream-enforce-strike-delay",
+     flag_descriptions::kAutofillUpstreamEnforceStrikeDelayName,
+     flag_descriptions::kAutofillUpstreamEnforceStrikeDelayDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         autofill::features::kAutofillUpstreamEnforceStrikeDelay)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

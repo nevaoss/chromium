@@ -981,6 +981,9 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
             # std::span rewrite for non chromium projects.
             r'^tools/clang/.*',
 
+            # Needed to interface with library that can't use base or absl.
+            r'components/optimization_guide/content/browser/page_context_eligibility(\.cc|_api\.h|_api\.cc)',
+
             # Not an error in third_party folders.
             _THIRD_PARTY_EXCEPT_BLINK,
         ],
@@ -1813,7 +1816,7 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
             'Please use TRACE_EVENT_BEGIN/END/INSTANT macros instead of ',
             'TRACE_EVENT_ASYNC_.. and TRACE_EVENT_NESTABLE_ASYNC_... (crbug.com/432427382).',
         ),
-        False,
+        True,
         (
             r'^base/trace_event/.*',
             r'^base/tracing/.*',
@@ -1825,7 +1828,7 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
             'Please use perfetto::Flow instead of TRACE_EVENT_WITH_FLOW.. ',
             '(crbug.com/432427382).',
         ),
-        False,
+        True,
         (
             r'^base/trace_event/.*',
             r'^base/tracing/.*',
@@ -1835,6 +1838,19 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
         r'/\bTRACE_EVENT_SCOPE_',
         ('Please use perfetto Track API instead of '
          'TRACE_EVENT_SCOPE_GLOBAL/PROCESS/THREAD (crbug.com/432427382).', ),
+        False,
+        (
+            r'^base/trace_event/.*',
+            r'^base/tracing/.*',
+        ),
+    ),
+    BanRule(
+        r'/\bperfetto::Track::Global',
+        ('Creating new global tracks is discouraged and should be reserved ',
+        'for high level, user visible state. Consider using scoped tracks ',
+        'instead, see ',
+        'https://chromium.googlesource.com/chromium/src.git/+/main/docs/trace_events.md#named-tracks',
+        ),
         False,
         (
             r'^base/trace_event/.*',

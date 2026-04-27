@@ -29,6 +29,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
+#include "chrome/browser/contextual_tasks/site_exclusion_detail.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
@@ -91,6 +92,9 @@
 #include "components/zoom/zoom_controller.h"  // nogncheck
 #endif
 
+#if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "chrome/grit/guest_view_shared_resources_map.h"  // nogncheck
+#endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 namespace {
 
 // A method to add eligibility booleans for context menu items that are shown
@@ -267,7 +271,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
                               weak_ptr_factory_.GetWeakPtr()),
           base::BindRepeating(&ContextualTasksUI::ResetEmbeddedPage,
                               weak_ptr_factory_.GetWeakPtr()));
-  // Add a means of loading images fromexternal sources.
+  // Add a means of loading images from external sources.
 #if !BUILDFLAG(IS_ANDROID)
   // TODO(crbug.com/483442073): SanitizedImageSource is not available on
   // Android. Need to find an alternative.
@@ -279,6 +283,9 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       chrome::kChromeUIContextualTasksHost);
   webui::SetupWebUIDataSource(source, kContextualTasksResources,
                               IDR_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_HTML);
+
+  AddInitialTaskStateToDataSource(source,
+                                  web_ui->GetWebContents()->GetVisibleURL());
 
   // TODO(447633840): This is a placeholder URL until the real page is ready.
   source->OverrideContentSecurityPolicy(
@@ -297,6 +304,14 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
       profile, /*enable_voice_search=*/true,
       /*enable_lens_search=*/false, session_allows_drag_and_drop));
 #endif
+
+#if !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  auto bindings = web_ui->GetBindings();
+  bindings.Put(content::BindingsPolicyValue::kSlimWebView);
+  web_ui->SetBindings(bindings);
+  source->AddResourcePaths(kGuestViewSharedResources);
+#endif  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+
   // Add strings.js
   source->UseStringsJs();
 
@@ -731,7 +746,7 @@ void ContextualTasksUI::CreatePageHandler(
   auto handler = std::make_unique<ContextualTasksComposeboxHandler>(
       this, Profile::FromWebUI(web_ui()), web_ui()->GetWebContents(),
       std::move(pending_page_handler), std::move(pending_page),
-      std::move(pending_searchbox_handler),
+      std::move(pending_searchbox_handler), std::move(pending_searchbox_page),
       base::BindRepeating(
           &ContextualTasksUI::GetOrCreateContextualSessionHandle,
           base::Unretained(this)),
@@ -739,7 +754,6 @@ void ContextualTasksUI::CreatePageHandler(
                           base::Unretained(this)),
       base::BindRepeating(&ContextualTasksUI::TakeInputStateModel,
                           base::Unretained(this)));
-  handler->SetPage(std::move(pending_searchbox_page));
   composebox_handler_ = std::move(handler);
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -872,6 +886,7 @@ void ContextualTasksUI::OnInnerWebContentsCreated(
 }
 
 void ContextualTasksUI::OnContextRetrievedForActiveTab(
+    base::WeakPtr<BrowserWindowInterface> browser,
     int32_t tab_id,
     const GURL& last_committed_url,
     std::unique_ptr<contextual_tasks::ContextualTaskContext> context) {
@@ -880,10 +895,17 @@ void ContextualTasksUI::OnContextRetrievedForActiveTab(
     return;
   }
 
+  if (!browser) {
+    return;
+  }
+  TabListInterface* tab_list = TabListInterface::From(browser.get());
+  if (!tab_list) {
+    return;
+  }
+  tabs::TabInterface* tab = tab_list->GetActiveTab();
+
   // If active tab or tab URL changed since the GetContextForTask() call, do
   // nothing.
-  tabs::TabInterface* tab =
-      TabListInterface::From(GetBrowser())->GetActiveTab();
   if (!tab || tab->GetHandle().raw_value() != tab_id ||
       tab->GetContents()->GetLastCommittedURL() != last_committed_url) {
     return;
@@ -903,6 +925,26 @@ void ContextualTasksUI::OnContextRetrievedForActiveTab(
   }
 
   UpdateSuggestedTabContext(tab);
+}
+
+void ContextualTasksUI::AddInitialTaskStateToDataSource(
+    content::WebUIDataSource* source,
+    const GURL& url) {
+  // Set initial state based on task state to avoid UI flickers.
+  std::string task_id_str;
+  base::Uuid task_id;
+  if (net::GetValueForKeyInQuery(url, contextual_tasks::kTaskQueryParam,
+                                 &task_id_str)) {
+    task_id = base::Uuid::ParseLowercase(task_id_str);
+  }
+
+  std::optional<GURL> task_creation_url =
+      ui_service_ ? ui_service_->GetCreationUrlForTask(task_id) : std::nullopt;
+  bool show_ghost_loader = task_creation_url && task_creation_url->is_empty();
+  source->AddBoolean("isGhostLoaderVisible", show_ghost_loader);
+  source->AddBoolean("isAiPage",
+                     ui_service_ && task_creation_url &&
+                         ui_service_->IsAiUrl(task_creation_url.value()));
 }
 
 void ContextualTasksUI::UpdateSuggestedTabContext(tabs::TabInterface* tab) {
@@ -985,9 +1027,9 @@ bool ContextualTasksUI::CanUpdateSuggestedTabContext(
     return false;
   }
 
-  if (!last_committed_url.is_valid() ||
-      !(last_committed_url.SchemeIsHTTPOrHTTPS() ||
-        last_committed_url.SchemeIsFile())) {
+  contextual_tasks::SiteExclusionDetail site_exclusion_detail;
+  if (!contextual_tasks::IsValidUrlForSuggestedTab(
+          last_committed_url, GetProfile(), site_exclusion_detail)) {
     return false;
   }
 
@@ -1003,9 +1045,10 @@ void ContextualTasksUI::OnActiveTabContextStatusChanged() {
     page_->HideErrorPage();
   }
 
-  tabs::TabInterface* tab =
-      GetBrowser() ? TabListInterface::From(GetBrowser())->GetActiveTab()
-                   : nullptr;
+  BrowserWindowInterface* browser = GetBrowser();
+  TabListInterface* tab_list =
+      browser ? TabListInterface::From(browser) : nullptr;
+  tabs::TabInterface* tab = tab_list ? tab_list->GetActiveTab() : nullptr;
   GURL last_committed_url =
       tab ? tab->GetContents()->GetLastCommittedURL() : GURL::EmptyGURL();
 
@@ -1029,7 +1072,7 @@ void ContextualTasksUI::OnActiveTabContextStatusChanged() {
            kSubmittedContextDecorator},
       std::move(context_decoration_params),
       base::BindOnce(&ContextualTasksUI::OnContextRetrievedForActiveTab,
-                     weak_ptr_factory_.GetWeakPtr(),
+                     weak_ptr_factory_.GetWeakPtr(), browser->GetWeakPtr(),
                      tab->GetHandle().raw_value(), last_committed_url));
 }
 

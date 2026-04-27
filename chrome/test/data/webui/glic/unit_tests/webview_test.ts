@@ -4,6 +4,7 @@
 
 import {ZoomAction} from 'chrome://glic/glic.mojom-webui.js';
 import {matcherForOrigin, urlMatchesAllowedOrigin, WebviewController, WebviewPersistentState} from 'chrome://glic/webview.js';
+import type {CrA11yAnnouncerMessagesSentEvent} from 'chrome://resources/cr_elements/cr_a11y_announcer/cr_a11y_announcer.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
@@ -121,7 +122,7 @@ suite('WebviewZoomTest', () => {
 
   test('ZoomInReturnsNextZoomFactor', () => {
     let lastSetZoom = 1.0;
-    const webview = controller.webview as chrome.webviewTag.WebView;
+    const webview = controller.webview;
     webview.getZoom = (cb: (z: number) => void) => cb(lastSetZoom);
     webview.setZoom = (z: number) => {
       lastSetZoom = z;
@@ -136,7 +137,7 @@ suite('WebviewZoomTest', () => {
 
   test('ZoomOutReturnsPreviousZoomFactor', () => {
     let lastSetZoom = 1.25;
-    const webview = controller.webview as chrome.webviewTag.WebView;
+    const webview = controller.webview;
     webview.getZoom = (cb: (z: number) => void) => cb(lastSetZoom);
     webview.setZoom = (currentZoom: number) => {
       lastSetZoom = currentZoom;
@@ -151,7 +152,7 @@ suite('WebviewZoomTest', () => {
 
   test('ZoomResetReturnsOne', () => {
     let lastSetZoom = 1.5;
-    const webview = controller.webview as chrome.webviewTag.WebView;
+    const webview = controller.webview;
     webview.setZoom = (currentZoom: number) => {
       lastSetZoom = currentZoom;
     };
@@ -163,7 +164,7 @@ suite('WebviewZoomTest', () => {
   test('ZoomBoundaryConditions', () => {
     let lastSetZoom = 2.0;
     let setZoomCalled = false;
-    const webview = controller.webview as chrome.webviewTag.WebView;
+    const webview = controller.webview;
     webview.getZoom = (cb: (z: number) => void) => cb(lastSetZoom);
     webview.setZoom = (currentZoom: number) => {
       lastSetZoom = currentZoom;
@@ -183,7 +184,8 @@ suite('WebviewZoomTest', () => {
 
   test('ZoomAnnouncementMade', async () => {
     const announcementPromise =
-        eventToPromise('cr-a11y-announcer-messages-sent', document.body);
+        eventToPromise<CrA11yAnnouncerMessagesSentEvent>(
+            'cr-a11y-announcer-messages-sent', document.body);
 
     // Simulate a zoom change to 125%
     const zoomEvent = new Event('zoomchange') as WebViewZoomChangeEvent;

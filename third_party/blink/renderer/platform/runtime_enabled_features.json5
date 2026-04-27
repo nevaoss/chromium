@@ -655,6 +655,9 @@
       base_feature: "none",
     },
     {
+      name: "ApproximateGeolocationPermissionAPI",
+    },
+    {
       name: "ApproximateGeolocationWebVisibleAPI",
       depends_on: ["ApproximateGeolocationPermission"],
     },
@@ -1165,10 +1168,6 @@
     },
     {
       name: "CollapseZeroWidthSpaceWhenReuseItem",
-      status: "stable",
-    },
-    {
-      name: "CollectWidthAndHeightAsStylesForNestedSvg",
       status: "stable",
     },
     {
@@ -1994,6 +1993,14 @@
       name: "CSSTypedArithmetic",
       status: "stable",
     },
+    {
+      // CSS URL request modifiers: cross-origin(), integrity(),
+      // referrer-policy() inside url() functions.
+      //
+      // https://drafts.csswg.org/css-values-5/#request-url-modifiers
+      name: "CSSURLRequestModifiers",
+      status: "experimental",
+    },
     // Support for `user-select:contain`.
     {
       name: "CSSUserSelectContain",
@@ -2053,11 +2060,13 @@
     {
       name: "DeclarativeCSSModules",
       status: "experimental",
+      origin_trial_feature_name: "DeclarativeCSSModules",
     },
     // https://crbug.com/448174611
     {
       name: "DeclarativeCSSModulesStyleTag",
       implied_by: ["DeclarativeCSSModules"],
+      origin_trial_feature_name: "DeclarativeCSSModules",
     },
     {
       // https://chromestatus.com/feature/5133099851317248
@@ -2825,6 +2834,12 @@
       name: "FixStrikethroughToggleInEmptyContentEditable",
       status: "stable",
     },
+    // Fix LayoutView viewport mapping in the GeometryMapper fast path for
+    // OOPIFs.
+    {
+      name: "FixVisualRectRemoteViewportTransform",
+      status: "stable",
+    },
     {
       name: "Fledge",
       status: "stable",
@@ -2965,12 +2980,6 @@
     {
       name: "FontMatchAliasesAsLastResort",
       status: "stable",
-    },
-    {
-      name: "FontSrcLocalMatching",
-      base_feature: "none",
-      // No status, as the web platform runtime enabled feature is controlled by
-      // a Chromium level feature.
     },
     {
       // crbug.com/393391746
@@ -3229,6 +3238,14 @@
       name: "HTMLImageElementActualNaturalSize",
       status: "test",
     },
+    // Remove support for `::-webkit-clear-button`.
+    // This shipped in M149 and the flag can be removed in M151.,
+    // NOTE: when this flag is removed, be sure to also remove "clear"
+    // from third_party/blink/renderer/core/html/shadow/shadow_element_names.json5.
+    {
+      name: "HTMLInputElementDropWebkitClearButton",
+      status: "stable"
+    },
     // Adds support for the `interestfor` attribute. See crbug.com/326681249.
     // https://open-ui.org/components/interest-invokers.explainer/
     // This shipped in M142 and the flag can be removed in M144.
@@ -3331,6 +3348,11 @@
     },
     {
       name: "InheritUserModifyWithoutContenteditable",
+      status: "stable",
+    },
+    {
+      // See crbug.com/40695399
+      name: "InlineBlockLineNavigation",
       status: "stable",
     },
     {
@@ -3492,10 +3514,6 @@
     },
     {
       name: "LayoutImageEmptyNaturalSizeBeforeSizeAvailable",
-      status: "stable",
-    },
-    {
-      name: "LayoutReinsertOnInFlowStateChange",
       status: "stable",
     },
     {
@@ -4040,12 +4058,6 @@
       // This will be shipped in M142, and it can be removed in M144.
       // See https://issues.chromium.org/issues/443031270.
       name: "OpenPopoverInvokerRestrictToSameTreeScope",
-      status: "stable",
-    },
-    {
-      // Improves the performance of the option element's MutationObserver.
-      // Enabled in M145, can be removed in M147.
-      name: "OptionMutationObserverImprovement",
       status: "stable",
     },
     {
@@ -5031,16 +5043,6 @@
       status: "stable",
     },
     {
-      name: "SecurePaymentConfirmationBrowserBoundKeys",
-      status: {
-        "Android": "stable",
-        "Mac": "stable",
-        "Win": "stable",
-        "iOS": "",
-        "default": "test",
-      },
-    },
-    {
       name: "SecurePaymentConfirmationCapabilities",
       status: "stable",
     },
@@ -5064,14 +5066,6 @@
         "Android": "",
         "default": "test",
       },
-    },
-    {
-      // Replicates old behavior which removes selectedness from option
-      // elements when they are all removed from a select at the same time.
-      // https://issues.chromium.org/issues/444330901
-      // Enabled in M142, can be removed in M145.
-      name: "SelectChildrenRemovedFix",
-      status: "stable",
     },
     {
       // The selectedcontentelement attribute is for connecting select elements
@@ -5245,6 +5239,7 @@
     {
       name: "ShadowRootAdoptedStyleSheet",
       implied_by: ["DeclarativeCSSModules"],
+      origin_trial_feature_name: "DeclarativeCSSModules",
     },
     {
       // Reference Target allows IDREF attributes to refer inside Shadow DOM.
@@ -5365,6 +5360,11 @@
     // Fix for crbug.com/41393366
     {
       name: "SkipUnselectableContentInSerialization",
+      status: "stable",
+    },
+    {
+      // See crbug.com/446113738.
+      name: "SkipUnselectableElementsInParagraphBoundary",
       status: "stable",
     },
     {
@@ -5604,6 +5604,10 @@
       status: "experimental",
     },
     {
+      name: "SvgSmilClockValueValidation",
+      status: "stable",
+    },
+    {
       name: "SvgTextPathPathAttribute",
       status: "stable",
     },
@@ -5781,7 +5785,7 @@
       // selection focus is inside the element, revealing the full text content.
       // See https://crbug.com/40731275
       name: "TextOverflowClipWithSelection",
-      status: "test",
+      status: "stable",
     },
     {
       // https://crbug.com/41492459
@@ -6236,9 +6240,9 @@
     },
     {
       // If enabled, form controls will only render the OS accent color in a
-      // web app context.
+      // web app context for the initial browser profile.
       name: "WebAppScopeSystemAccentColor",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "WebAppTabStrip",
@@ -6328,12 +6332,6 @@
       origin_trial_feature_name: "WebAuthnAttestationFormats",
       origin_trial_os: ["android"],
       origin_trial_allows_third_party: true,
-    },
-    // Enables providing a URL to retrieve a WebAuthn challenge.
-    // https://chromestatus.com/feature/5109012922892288
-    {
-      name: "WebAuthenticationChallengeUrl",
-      status: "experimental",
     },
     // Enables `uiMode` enumeration field in CredentialRequestOptions struct.
     // and `get()` requests with `uiMode: 'immediate'`.
@@ -6724,11 +6722,6 @@
       name: "WebXRVisibilityMask",
       depends_on: ["WebXR"],
       status: "stable",
-    },
-    {
-      name: "WidthAndHeightAsPresentationAttributesOnNestedSvg",
-      // Disabled due to web compat issues, see https://crbug.com/449170647.
-      status: "experimental",
     },
     {
       name: "WindowControlsOverlay",

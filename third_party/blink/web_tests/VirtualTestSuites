@@ -2321,23 +2321,6 @@
     ],
     "expires": "Dec 1, 2026"
   },
-  {
-    "prefix": "option-mutation-observer-improvement-disabled",
-    "platforms": [
-      "Linux"
-    ],
-    "bases": [
-      "fast/forms/select",
-      "external/wpt/html/semantics/forms/the-select-element"
-    ],
-    "args": [
-      "--disable-features=OptionMutationObserverImprovement"
-    ],
-    "owners": [
-      "jarhar@chromium.org"
-    ],
-    "expires": "Dec 1, 2026"
-  },
   "The origin trials suite tests that OT-controlled features are exposed to",
   "the web as expected, so should not expire.",
   {
@@ -3046,7 +3029,7 @@
     ],
     "bases": [
       "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-in-option-crash.html",
-      "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-restore.html",
+      "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-restore.optional.html",
       "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-color.html",
       "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-nested.html",
       "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontentelement-attr.tentative.html"
@@ -4579,26 +4562,6 @@
     "expires": "never"
   },
   {
-    "prefix": "text-autosizing",
-    "owners": [
-      "dgrogan@chromium.org"
-    ],
-    "platforms": [
-      "Linux"
-    ],
-    "bases": [
-      "fast/text-autosizing",
-      "http/tests/devtools/text-autosizing-override.js",
-      "http/tests/text-autosizing/narrow-iframe.html",
-      "http/tests/text-autosizing/wide-iframe.html"
-    ],
-    "args": [
-      "--disable-features=ForceOffTextAutosizing"
-    ],
-    "exclusive_tests": "ALL",
-    "expires": "June 1, 2026"
-  },
-  {
     "prefix": "text-contrast-gamma",
     "owners": [
       "kschmi@microsoft.com"
@@ -4640,7 +4603,7 @@
     "args": [
       "--enable-threaded-compositing",
       "--enable-viewport",
-      "--blink-settings=textAutosizingEnabled=true,viewportMetaEnabled=true"
+      "--blink-settings=textAutosizingEnabled=true,textSizeAdjustEnabled=true,viewportMetaEnabled=true"
     ],
     "expires": "never"
   },
@@ -4660,7 +4623,7 @@
     "args": [
       "--enable-threaded-compositing",
       "--enable-viewport",
-      "--blink-settings=textAutosizingEnabled=true,accessibilityFontScaleFactor=2,deviceScaleAdjustment=3,viewportMetaEnabled=true"
+      "--blink-settings=textSizeAdjustEnabled=true,accessibilityFontScaleFactor=2,viewportMetaEnabled=true"
     ],
     "expires": "never"
   },
@@ -5219,6 +5182,26 @@
       "web-bluetooth@google.com"
     ],
     "expires": "Jan 1, 2027"
+  },
+  {
+    "prefix": "web-install",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/web-install"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--enable-features=WebAppInstallation"
+    ],
+    "owners": [
+      "pwa-team@google.com",
+      "liahiscock@microsoft.com"
+    ],
+    "expires": "Jan 1, 2028"
   },
   "--webauthn-remote-desktop-support can be toggled with enterprise policies, ",
   "so we need to support this long term.",

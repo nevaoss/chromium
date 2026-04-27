@@ -6,9 +6,6 @@ package org.chromium.chrome.browser.multiwindow;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.robolectric.Shadows.shadowOf;
 
@@ -29,9 +26,9 @@ import org.robolectric.shadows.ShadowView;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
-import org.chromium.base.test.util.DisabledTest;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.ui.base.ActivityWindowAndroid;
+import org.chromium.ui.base.UiAndroidFeatureList;
 import org.chromium.ui.display.DisplayAndroid;
 
 import java.util.Arrays;
@@ -40,7 +37,6 @@ import java.util.List;
 import java.util.Map;
 
 /** Unit tests for {@link WindowOcclusionTracker}. */
-@DisabledTest(message = "https://crbug.com/500449836")
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(manifest = Config.NONE)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -56,9 +52,7 @@ public class WindowOcclusionTrackerUnitTest {
 
     @Before
     public void setUp() {
-        ChromeFeatureList.sAndroidSelfOcclusionTrackingMinimumVisibilitySizeThreshold.setForTesting(
-                0);
-        ChromeFeatureList.sAndroidSelfOcclusionTrackingForwarding.setForTesting(false);
+        UiAndroidFeatureList.sAndroidWindowOcclusionMinimumVisibilitySizeThreshold.setForTesting(0);
         mOcclusionTracker = new WindowOcclusionTracker(mZOrderTracker);
     }
 
@@ -245,47 +239,9 @@ public class WindowOcclusionTrackerUnitTest {
     }
 
     @Test
-    public void testForwardOcclusionState() {
-        ChromeFeatureList.sAndroidSelfOcclusionTrackingForwarding.setForTesting(true);
-
-        View bottomView = createView(0, 0, 100, 100);
-        ActivityWindowAndroid bottomWindow = createWindowAndroid(bottomView);
-        View topView = createView(0, 0, 100, 100); // Covers bottomView completely
-        ActivityWindowAndroid topWindow = createWindowAndroid(topView);
-
-        SparseArray<List<ActivityWindowAndroid>> zOrder = new SparseArray<>();
-        zOrder.put(DISPLAY_ID, Arrays.asList(bottomWindow, topWindow));
-        when(mZOrderTracker.getWindowZOrder()).thenReturn(zOrder);
-        when(mZOrderTracker.getAllWindowAndroids())
-                .thenReturn(Arrays.asList(bottomWindow, topWindow));
-
-        mOcclusionTracker.onGlobalLayout();
-
-        verify(bottomWindow).setOccluded(true);
-        verify(topWindow).setOccluded(false);
-    }
-
-    @Test
-    public void testForwardOcclusionState_FeatureDisabled() {
-        ChromeFeatureList.sAndroidSelfOcclusionTrackingForwarding.setForTesting(false);
-
-        View view = createView(0, 0, 100, 100);
-        ActivityWindowAndroid window = createWindowAndroid(view);
-
-        SparseArray<List<ActivityWindowAndroid>> zOrder = new SparseArray<>();
-        zOrder.put(DISPLAY_ID, Collections.singletonList(window));
-        when(mZOrderTracker.getWindowZOrder()).thenReturn(zOrder);
-        when(mZOrderTracker.getAllWindowAndroids()).thenReturn(Collections.singletonList(window));
-
-        mOcclusionTracker.onGlobalLayout();
-
-        verify(window, never()).setOccluded(anyBoolean());
-    }
-
-    @Test
     public void testVisibleDimensionThreshold() {
         // Threshold of 10 pixels
-        ChromeFeatureList.sAndroidSelfOcclusionTrackingMinimumVisibilitySizeThreshold.setForTesting(
+        UiAndroidFeatureList.sAndroidWindowOcclusionMinimumVisibilitySizeThreshold.setForTesting(
                 10);
 
         // Recreate the test instance to grab the overridden threshold.
@@ -326,5 +282,62 @@ public class WindowOcclusionTrackerUnitTest {
         assertFalse(
                 "Window with visible height 10 should NOT be occluded",
                 occlusionState.get(bottomWindow));
+    }
+
+    @Test
+    public void testTrack_ViewNotFound() {
+        ActivityWindowAndroid window = org.mockito.Mockito.mock(ActivityWindowAndroid.class);
+        when(mZOrderTracker.track(window)).thenReturn(true);
+        // window.getWindow() returns null by default.
+
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectBooleanRecord("Android.MultiWindow.Occlusion.TrackResult", false)
+                        .build();
+
+        mOcclusionTracker.track(window);
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testUntrack_ViewNotFound() {
+        ActivityWindowAndroid window = org.mockito.Mockito.mock(ActivityWindowAndroid.class);
+        when(mZOrderTracker.untrack(window)).thenReturn(true);
+
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectBooleanRecord("Android.MultiWindow.Occlusion.UntrackResult", false)
+                        .build();
+
+        mOcclusionTracker.untrack(window);
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testCalculateOcclusion_ViewNotFound() {
+        // 2 windows are required for calculateOcclusion() to do any work.
+        ActivityWindowAndroid window1 = createWindowAndroid(createView(0, 0, 100, 100));
+        ActivityWindowAndroid window2 = org.mockito.Mockito.mock(ActivityWindowAndroid.class);
+        DisplayAndroid displayAndroid = window1.getDisplay();
+        when(window2.getDisplay()).thenReturn(displayAndroid);
+
+        SparseArray<List<ActivityWindowAndroid>> zOrder = new SparseArray<>();
+        zOrder.put(DISPLAY_ID, Arrays.asList(window1, window2));
+        when(mZOrderTracker.getWindowZOrder()).thenReturn(zOrder);
+        when(mZOrderTracker.getAllWindowAndroids()).thenReturn(Arrays.asList(window1, window2));
+
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectIntRecords(
+                                "Android.MultiWindow.Occlusion.CalculateResult",
+                                WindowOcclusionMetrics.CalculateResult.SUCCESS,
+                                WindowOcclusionMetrics.CalculateResult.VIEW_NOT_FOUND)
+                        .build();
+
+        mOcclusionTracker.calculateOcclusion();
+
+        histogramWatcher.assertExpected();
     }
 }

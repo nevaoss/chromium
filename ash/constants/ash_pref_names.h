@@ -1752,6 +1752,11 @@ inline constexpr char kLocalAuthFactorsComplexity[] =
 inline constexpr char kAllowedLocalAuthFactors[] =
     "ash.local_auth_factors.enabled_factors";
 
+// Tracks the complexity level the user last satisfied to determine if they need
+// to be prompted by the LocalAuthFactorsComplexity policy.
+inline constexpr char kLocalAuthFactorsVerifiedComplexity[] =
+    "ash.local_auth_factors.verified_complexity";
+
 // Dictionary prefs in local state that keeps information about detachable
 // bases - for example the last used base per user.
 inline constexpr char kDetachableBaseDevices[] = "ash.detachable_base.devices";
@@ -3566,6 +3571,23 @@ inline constexpr char kEnrollmentRecoveryRequired[] =
 // Example: 122.0.6252.0
 inline constexpr char kEnrollmentVersionOS[] = "EnrollmentVersionOS";
 inline constexpr char kEnrollmentVersionBrowser[] = "EnrollmentVersionBrowser";
+
+//-----------------------------------------------------------------------------
+// Device status related Prefs
+//-----------------------------------------------------------------------------
+
+// The local state pref that stores device activity times before reporting
+// them to the policy server.
+inline constexpr char kDeviceActivityTimes[] = "device_status.activity_times";
+
+// A pref that stores user app activity times before reporting them to the
+// policy server.
+inline constexpr char kAppActivityTimes[] = "device_status.app_activity_times";
+
+// A pref that stores user activity times before reporting them to the policy
+// server.
+inline constexpr char kUserActivityTimes[] =
+    "consumer_device_status.activity_times";
 
 //-----------------------------------------------------------------------------
 // Child account related Prefs

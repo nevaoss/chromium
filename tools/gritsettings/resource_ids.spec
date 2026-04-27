@@ -210,6 +210,10 @@
     "META": {"sizes": {"includes": [10],}},
     "includes": [2745],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/accessibility_annotator_internals/resources.grd": {
+    "META": {"sizes": {"includes": [10],}},
+    "includes": [2747],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/actor_internals/resources.grd": {
     "META": {"sizes": {"includes": [10],}},
     "includes": [2750],
@@ -486,14 +490,6 @@
     "META": {"sizes": {"includes": [60]}},
     "includes": [4010],
   },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/glic/fre/resources.grd": {
-    "META": {"sizes": {"includes": [10]}},
-    "includes": [4020],
-  },
-    "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/glic/shared/resources.grd": {
-    "META": {"sizes": {"includes": [10]}},
-    "includes": [4030],
-  },
     "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/glic/selection_overlay/resources.grd": {
     "META": {"sizes": {"includes": [10]}},
     "includes": [4033],
@@ -753,6 +749,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/skills/resources.grd": {
     "META": {"sizes": {"includes": [50],}},
     "includes": [4991],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/subresource_filter/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4995],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/suggest_internals/resources.grd": {
     "META": {"sizes": {"includes": [10]}},

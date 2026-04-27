@@ -98,6 +98,10 @@ class ManifestBuilder {
   ManifestBuilder& Add(const DeviceUseCase& use_case,
                        proto::SolutionRecipe recipe);
 
+  ManifestBuilder& SetFeatureConfig(DeviceCategory device,
+                                    const std::string& name,
+                                    proto::Any config);
+
   proto::Manifest Build();
 
  private:
@@ -110,6 +114,9 @@ class ManifestComponentDirectory {
   explicit ManifestComponentDirectory(const proto::Manifest& manifest);
   ~ManifestComponentDirectory();
 
+  // Replaces the manifest in the directory.
+  ManifestComponentDirectory& Add(const proto::Manifest& manifest);
+  // Adds a new solution config to the directory, overwriting existing ones.
   ManifestComponentDirectory& Add(const std::string& filename,
                                   const proto::SolutionConfig& config);
 

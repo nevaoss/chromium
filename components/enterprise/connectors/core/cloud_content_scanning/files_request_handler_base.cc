@@ -29,6 +29,7 @@ AnalysisConnector AccessPointToEnterpriseConnector(
       // dragNdrop event or using copy+paste.
       return enterprise_connectors::FILE_ATTACHED;
     case DeepScanAccessPoint::DOWNLOAD:
+      return enterprise_connectors::FILE_DOWNLOADED;
     case DeepScanAccessPoint::PRINT:
   }
   NOTREACHED();
@@ -41,6 +42,8 @@ std::string AccessPointToUmaHistogramPrefix(DeepScanAccessPoint access_point) {
       return "Enterprise.OnFileTransfer";
     case enterprise_connectors::FILE_ATTACHED:
       return "Enterprise.OnFileAttach";
+    case enterprise_connectors::FILE_DOWNLOADED:
+      return "Enterprise.OnFileDownload";
     default:
   }
   NOTREACHED();
@@ -53,6 +56,8 @@ std::string AccessPointToTriggerString(DeepScanAccessPoint access_point) {
       return kFileTransferDataTransferEventTrigger;
     case enterprise_connectors::FILE_ATTACHED:
       return kFileUploadDataTransferEventTrigger;
+    case enterprise_connectors::FILE_DOWNLOADED:
+      return kFileDownloadDataTransferEventTrigger;
     default:
   }
   NOTREACHED();
@@ -76,17 +81,55 @@ FilesRequestHandlerBase::FilesRequestHandlerBase(
                          url,
                          access_point),
       content_transfer_method_(content_transfer_method),
-      delegate_(std::move(delegate)) {}
+      delegate_(std::move(delegate)) {
+  if (delegate_) {
+    delegate_->SetHandler(this);
+  }
+}
 
 FilesRequestHandlerBase::~FilesRequestHandlerBase() = default;
 
 void FilesRequestHandlerBase::ReportWarningBypass(
     std::optional<std::u16string> user_justification) {
-  delegate_->ReportWarningBypass(user_justification);
+  delegate_->ReportWarningBypass(user_justification, *content_analysis_info_,
+                                 AccessPointToTriggerString(access_point_),
+                                 content_transfer_method_);
+}
+
+base::WeakPtr<FilesRequestHandlerBase> FilesRequestHandlerBase::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
 }
 
 bool FilesRequestHandlerBase::UploadDataImpl() {
+  size_t file_count = delegate_->GetFileCount();
+  IncrementCrashKey(ScanningCrashKey::PENDING_FILE_UPLOADS, file_count);
+  if (file_count != 0) {
+    IncrementCrashKey(ScanningCrashKey::TOTAL_FILE_UPLOADS, file_count);
+  }
   return delegate_->UploadDataImpl();
+}
+
+FileAnalysisRequestBase* FilesRequestHandlerBase::PrepareFileRequest(
+    size_t index) {
+  auto request = delegate_->CreateFileRequest(
+      index, content_analysis_info_->settings(),
+      base::BindOnce(&FilesRequestHandlerBase::FileRequestCallback,
+                     GetWeakPtr(), index),
+      base::BindOnce(&FilesRequestHandlerBase::FileRequestStartCallback,
+                     GetWeakPtr(), index));
+
+  FileAnalysisRequestBase* request_raw = request.get();
+  content_analysis_info_->InitializeRequest(
+      request_raw, /*include_enterprise_only_fields=*/true);
+  request_raw->set_analysis_connector(
+      AccessPointToEnterpriseConnector(access_point_));
+  request_raw->set_source(delegate_->GetSource());
+  request_raw->set_destination(delegate_->GetDestination());
+  request_raw->GetRequestData(
+      base::BindOnce(&FilesRequestHandlerBase::OnGotFileInfo, GetWeakPtr(),
+                     std::move(request), index));
+
+  return request_raw;
 }
 
 void FilesRequestHandlerBase::OnGotFileInfo(
@@ -183,7 +226,6 @@ void FilesRequestHandlerBase::FileRequestCallback(
     throttled_ = true;
   }
 
-  // TODO(crbug.com/498649243): Add UMA recording once the refactoring is done.
   const auto& analysis_settings = content_analysis_info_->settings();
   RequestHandlerResult request_handler_result =
       CalculateRequestHandlerResult(analysis_settings, upload_result, response);
@@ -194,6 +236,17 @@ void FilesRequestHandlerBase::FileRequestCallback(
   bool result_is_warning = request_handler_result.final_result ==
                            FinalContentAnalysisResult::WARNING;
   const FileInfo& file_info = delegate_->GetFileInfo(index);
+  base::TimeTicks start_timestamp = delegate_->GetFileScanStartTime(index);
+
+  if (start_timestamp == base::TimeTicks::Min()) {
+    start_timestamp = upload_start_time_;
+  }
+
+  RecordDeepScanMetrics(
+      analysis_settings.cloud_or_local_settings.is_cloud_analysis(),
+      access_point_, base::TimeTicks::Now() - start_timestamp, file_info.size,
+      upload_result, response);
+
   MaybeReportDeepScanningVerdict(
       delegate_->GetReportingEventRouter(), content_analysis_info_.get(),
       delegate_->GetSource(), delegate_->GetDestination(),
@@ -205,9 +258,15 @@ void FilesRequestHandlerBase::FileRequestCallback(
       CalculateEventResult(analysis_settings, request_handler_result.complies,
                            result_is_warning));
 
-  // TODO(crbug.com/498649243): Decrement the crash key once related free
-  // functions are moved from //chrome to //components.
+  DecrementCrashKey(ScanningCrashKey::PENDING_FILE_UPLOADS);
+
   delegate_->MaybeCompleteScanRequest();
+}
+
+void FilesRequestHandlerBase::FileRequestStartCallback(
+    size_t index,
+    const BinaryUploadRequest& request) {
+  delegate_->SetFileScanStartTime(index);
 }
 
 }  // namespace enterprise_connectors

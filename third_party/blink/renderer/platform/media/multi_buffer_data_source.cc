@@ -785,11 +785,17 @@ void MultiBufferDataSource::UpdateBufferSizes() {
 MultiBufferDataSource::Factory::~Factory() = default;
 
 MultiBufferDataSource::Factory::Factory(
-    media::MediaLog* media_log,
+    std::unique_ptr<media::MediaLog> media_log,
     UrlDataCb get_url_data,
-    scoped_refptr<base::SingleThreadTaskRunner> main_task_runner,
-    const base::TickClock* tick_clock)
-    : media_log_(media_log->Clone()),
+    bool is_audio_element,
+    Preload preload,
+    EventCb data_source_tainted_cb,
+    const base::TickClock* tick_clock,
+    scoped_refptr<base::SingleThreadTaskRunner> main_task_runner)
+    : is_audio_element_(is_audio_element),
+      preload_(preload),
+      media_log_(std::move(media_log)),
+      tainted_source_cb_(std::move(data_source_tainted_cb)),
       get_url_data_(get_url_data),
       main_task_runner_(std::move(main_task_runner)) {
   buffered_data_source_host_ = std::make_unique<BufferedDataSourceHostImpl>(
@@ -797,7 +803,7 @@ MultiBufferDataSource::Factory::Factory(
 }
 
 void MultiBufferDataSource::Factory::Create(const GURL& uri,
-                                            bool ignore_cache,
+                                            DataSource::CacheMode cache_mode,
                                             DataSourceCb cb) {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
   auto download_cb =
@@ -812,7 +818,7 @@ void MultiBufferDataSource::Factory::Create(const GURL& uri,
 #endif
 
   get_url_data_.Run(
-      uri, ignore_cache,
+      uri, cache_mode,
       blink::BindOnce(&Factory::OnUrlData, weak_factory_.GetWeakPtr(),
                       std::move(cb), std::move(download_cb)));
 }
@@ -822,9 +828,15 @@ void MultiBufferDataSource::Factory::OnUrlData(
     base::RepeatingCallback<void(bool)> download_cb,
     scoped_refptr<UrlData> data) {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
-  std::move(cb).Run(std::make_unique<MultiBufferDataSource>(
+  CHECK(media_log_);
+  auto data_source = std::make_unique<MultiBufferDataSource>(
       main_task_runner_, std::move(data), media_log_.get(),
-      buffered_data_source_host_.get(), std::move(download_cb)));
+      buffered_data_source_host_.get(), std::move(download_cb));
+  data_source->SetIsClientAudioElement(is_audio_element_);
+  data_source->SetPreload(preload_);
+  data_source->SetTaintedCallback(tainted_source_cb_);
+
+  std::move(cb).Run(std::move(data_source));
 }
 
 }  // namespace blink

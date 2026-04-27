@@ -24,7 +24,6 @@ import "third_party/blink/public/mojom/frame/fullscreen.mojom";
 import "third_party/blink/public/mojom/frame/intrinsic_sizing_info.mojom";
 import "third_party/blink/public/mojom/frame/lifecycle.mojom";
 import "third_party/blink/public/mojom/frame/policy_container.mojom";
-import "third_party/blink/public/mojom/frame/text_autosizer_page_info.mojom";
 import "third_party/blink/public/mojom/frame/tree_scope_type.mojom";
 import "third_party/blink/public/mojom/frame/triggering_event_info.mojom";
 import "third_party/blink/public/mojom/frame/user_activation_notification_type.mojom";
@@ -168,13 +167,6 @@ struct OpenURLParams {
   // True if the initiator explicitly asked for opener relationships to be
   // preserved, via rel="opener".
   bool has_rel_opener = false;
-
-  // The renderer's Storage Access API status (e.g. whether it has opted into
-  // accessing cross-site cookies). Note that this is not trusted; cookies will
-  // not actually be attached unless there is also a matching permission grant
-  // created by the browser process. (Also note that the Storage Access API is
-  // only relevant when third-party cookies are blocked.)
-  network.mojom.StorageAccessApiStatus storage_access_api_status = kNone;
 };
 
 // Implemented in Browser, this interface defines frame-specific methods that
@@ -517,9 +509,6 @@ interface RemoteFrame {
 //
 // This interface will only be provided when the RemoteFrame is a main frame.
 interface RemoteMainFrame {
-  // Makes the TextAutosizerPageInfo received from a local main frame available
-  // to remote main frame renderers.
-  UpdateTextAutosizerPageInfo(blink.mojom.TextAutosizerPageInfo page_info);
 };
 
 // Implemented in Browser, this interface defines remote-main-frame-specific

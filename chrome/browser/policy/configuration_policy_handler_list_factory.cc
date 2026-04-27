@@ -30,9 +30,6 @@
 #include "chrome/browser/performance_manager/public/user_tuning/memory_saver_policy_handler.h"
 #include "chrome/browser/policy/annotations/blocklist_handler.h"
 #include "chrome/browser/policy/browsing_history_policy_handler.h"
-#if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/policy/developer_tools_availability_list_policy_handler.h"
-#endif  // !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/policy/developer_tools_policy_handler.h"
 #include "chrome/browser/policy/drive_file_sync_available_policy_handler.h"
 #include "chrome/browser/policy/file_selection_dialogs_policy_handler.h"
@@ -128,7 +125,6 @@
 #include "components/search_engines/search_engines_pref_names.h"
 #include "components/security_interstitials/core/https_only_mode_policy_handler.h"
 #include "components/security_interstitials/core/pref_names.h"
-#include "components/sharing_message/buildflags.h"
 #include "components/sharing_message/pref_names.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/base/signin_pref_names.h"
@@ -159,6 +155,7 @@
 #include "chrome/browser/enterprise/reporting/extension_request/extension_request_policy_handler.h"
 #include "chrome/browser/media/router/discovery/access_code/access_code_cast_feature.h"
 #include "chrome/browser/policy/battery_saver_policy_handler.h"
+#include "chrome/browser/policy/developer_tools_availability_list_policy_handler.h"
 #include "chrome/browser/policy/local_sync_policy_handler.h"
 #include "chrome/browser/policy/managed_account_policy_handler.h"
 #include "chrome/browser/web_applications/policy/web_app_settings_policy_handler.h"
@@ -304,6 +301,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kComponentUpdatesEnabled,
     prefs::kComponentUpdatesEnabled,
     base::Value::Type::BOOLEAN },
+  { key::kCpuPerformanceTierOverride,
+    prefs::kCpuPerformanceTierPolicyOverride,
+    base::Value::Type::INTEGER },
   { key::kDataURLWhitespacePreservationEnabled,
     prefs::kDataURLWhitespacePreservationEnabled,
     base::Value::Type::BOOLEAN },
@@ -447,6 +447,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kSharedWorkerBlobURLFixEnabled,
     prefs::kSharedWorkerBlobURLFixEnabled,
     base::Value::Type::BOOLEAN },
+  { key::kDataUrlInWebWorkerOpaqueOriginEnabled,
+    prefs::kDataUrlInWebWorkerOpaqueOriginEnabled,
+    base::Value::Type::BOOLEAN },
   { key::kSharedWorkerExtendedLifetimeEnabled,
     prefs::kSharedWorkerExtendedLifetimeEnabled,
     base::Value::Type::BOOLEAN },
@@ -572,11 +575,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     side_search_prefs::kSideSearchEnabled,
     base::Value::Type::BOOLEAN },
 #endif // defined(TOOLKIT_VIEWS)
-#if BUILDFLAG(ENABLE_CLICK_TO_CALL)
   { key::kClickToCallEnabled,
     prefs::kClickToCallEnabled,
     base::Value::Type::BOOLEAN },
-#endif  // BUILDFLAG(ENABLE_CLICK_TO_CALL)
   { key::kCompressionDictionaryTransportEnabled,
     prefs::kCompressionDictionaryTransportEnabled,
     base::Value::Type::BOOLEAN },
@@ -1118,6 +1119,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kMetricsReportingEnabled,
     metrics::prefs::kMetricsReportingEnabled,
     base::Value::Type::BOOLEAN },
+  { key::kMetricsReportingLevel,
+    metrics::prefs::kMetricsReportingLevel,
+    base::Value::Type::INTEGER },
   { key::kVariationsRestrictParameter,
     variations::prefs::kVariationsRestrictParameter,
     base::Value::Type::STRING },
@@ -1618,6 +1622,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kDeviceMetricsReportingEnabled,
     metrics::prefs::kMetricsReportingEnabled,
     base::Value::Type::BOOLEAN },
+  { key::kDeviceMetricsReportingLevel,
+    metrics::prefs::kMetricsReportingLevel,
+    base::Value::Type::INTEGER },
   { key::kSystemTimezoneAutomaticDetection,
     ash::prefs::kSystemTimezoneAutomaticDetectionPolicy,
     base::Value::Type::INTEGER },
@@ -2626,8 +2633,7 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
 
   handlers->AddHandler(std::make_unique<DeveloperToolsPolicyHandler>());
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
-    BUILDFLAG(IS_CHROMEOS)
+#if !BUILDFLAG(IS_ANDROID)
   handlers->AddHandler(
       std::make_unique<DeveloperToolsAvailabilityListPolicyHandler>(
           key::kDeveloperToolsAvailabilityAllowlist,
@@ -2637,8 +2643,7 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       std::make_unique<DeveloperToolsAvailabilityListPolicyHandler>(
           key::kDeveloperToolsAvailabilityBlocklist,
           prefs::kDeveloperToolsAvailabilityBlocklist));
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) \
-        // || BUILDFLAG(IS_CHROMEOS)
+#endif  // !BUILDFLAG(IS_ANDROID)
 
   handlers->AddHandler(std::make_unique<IntRangePolicyHandler>(
       key::kGenAILocalFoundationalModelSettings,
@@ -2668,6 +2673,10 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       false));
   handlers->AddHandler(
       std::make_unique<performance_manager::MemorySaverPolicyHandler>());
+  handlers->AddHandler(std::make_unique<URLSchemeListPolicyHandler>(
+      key::kForceForegroundPriorityForOrigins,
+      performance_manager::user_tuning::prefs::
+          kForceForegroundPriorityForOrigins));
   // Note: This needs to be created after `DefaultSearchPolicyHandler`.
 
   handlers->AddHandler(
@@ -3486,10 +3495,6 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       key::kTabCompareSettings,
       optimization_guide::prefs::kProductSpecificationsEnterprisePolicyAllowed);
   gen_ai_default_policies.emplace_back(
-      key::kGeminiSettings, prefs::kGeminiSettings,
-      GenAiDefaultSettingsPolicyHandler::PolicyValueToPrefMap(
-          {{0, 0}, {1, 0}, {2, 1}}));
-  gen_ai_default_policies.emplace_back(
       key::kAutomatedPasswordChangeSettings,
       optimization_guide::prefs::
           kAutomatedPasswordChangeEnterprisePolicyAllowed);
@@ -3563,6 +3568,10 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
 #endif  // !BUILDFLAG(IS_ANDROID)
   gen_ai_default_policies.emplace_back(
       key::kAIModeSettings, omnibox::kAIModeSettings,
+      GenAiDefaultSettingsPolicyHandler::PolicyValueToPrefMap(
+          {{0, 0}, {1, 0}, {2, 1}}));
+  gen_ai_default_policies.emplace_back(
+      key::kGeminiSettings, prefs::kGeminiSettings,
       GenAiDefaultSettingsPolicyHandler::PolicyValueToPrefMap(
           {{0, 0}, {1, 0}, {2, 1}}));
   // Default value for SearchContentSharingSettings is 0 if

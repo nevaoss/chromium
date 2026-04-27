@@ -328,6 +328,7 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
   void CloseIdleConnections(CloseIdleConnectionsCallback callback) override;
   void SetNetworkConditions(
       const base::UnguessableToken& throttling_profile_id,
+      const base::UnguessableToken& throttling_client_id,
       std::vector<mojom::MatchedNetworkConditionsPtr> conditions) override;
   void SetAcceptLanguage(const std::string& new_accept_language) override;
   void SetEnableReferrers(bool enable_referrers) override;
@@ -429,13 +430,13 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
       mojo::PendingReceiver<mojom::HostResolver> receiver) override;
   void VerifyCert(const scoped_refptr<net::X509Certificate>& certificate,
                   const net::HostPortPair& host_port,
-                  const std::string& ocsp_result,
+                  const std::string& ocsp_response,
                   const std::string& sct_list,
                   VerifyCertCallback callback) override;
   void VerifyCertForSignedExchange(
       const scoped_refptr<net::X509Certificate>& certificate,
       const net::HostPortPair& host_port,
-      const std::string& ocsp_result,
+      const std::string& ocsp_response,
       const std::string& sct_list,
       VerifyCertCallback callback) override;
   void Verify2QwacCertBinding(
@@ -838,7 +839,7 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
   void VerifyCertInternal(
       const scoped_refptr<net::X509Certificate>& certificate,
       const net::HostPortPair& host_port,
-      const std::string& ocsp_result,
+      const std::string& ocsp_response,
       const std::string& sct_list,
       CTVerificationMode ct_verification_mode,
       VerifyCertCallback callback);

@@ -15,6 +15,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/trace_event/typed_macros.h"
+#include "base/tracing/protos/chrome_track_event.pbzero.h"
 #include "base/win/scoped_bstr.h"
 #include "base/win/scoped_variant.h"
 #include "base/win/windows_version.h"
@@ -297,9 +298,13 @@ void BrowserAccessibilityManagerWin::FireSourceEvent(
       FireUiaPropertyChangedEvent(UIA_ControllerForPropertyId, node);
       break;
     case ax::mojom::Event::kEndOfTest:
-      // Event tests use kEndOfTest as a sentinel to mark the end of the test.
-      FireUiaAccessibilityEvent(
-          UiaRegistrarWin::GetInstance().GetTestCompleteEventId(), node);
+      // Defer the TestComplete UIA event to FinalizeAccessibilityEvents so it
+      // fires after all other finalized UIA events (e.g. Text_TextChanged).
+      // Source events fire before FinalizeAccessibilityEvents, so firing
+      // TestComplete here would cause the UIA event recorder to shut down
+      // before receiving events that are enqueued during generated-event
+      // processing and only raised during finalization.
+      end_of_test_node_ = node;
       break;
     case ax::mojom::Event::kLoadComplete:
       FireWinAccessibilityEvent(IA2_EVENT_DOCUMENT_LOAD_COMPLETE, node);
@@ -709,9 +714,14 @@ void BrowserAccessibilityManagerWin::FireWinAccessibilityEvent(
   // on the HWND's accessibility object and pass it that same id, which
   // we can use to retrieve the IAccessible for this node.
   auto* const com = ToBrowserAccessibilityWin(node)->GetCOM();
-  TRACE_EVENT("accessibility", "NotifyWinEvent",
-              perfetto::Flow::FromPointer(com), "win_event_type",
-              base::StringPrintf("0x%04lX", win_event_type));
+  TRACE_EVENT(
+      "accessibility", "NotifyWinEvent", perfetto::Flow::FromPointer(com),
+      [&](perfetto::EventContext ctx) {
+        auto* event = ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>();
+        auto* accessibility_event =
+            event->set_chrome_accessibility_win_notify_win_event();
+        accessibility_event->set_native_event(win_event_type);
+      });
   ::NotifyWinEvent(win_event_type, hwnd, OBJID_CLIENT, -(com->GetUniqueId()));
 }
 
@@ -1263,6 +1273,16 @@ void BrowserAccessibilityManagerWin::FinalizeAccessibilityEvents() {
           base::Unretained(this)));
 
   ignored_changed_nodes_.clear();
+
+  // Fire the TestComplete sentinel last, after all other finalized events.
+  // This ensures the UIA event recorder receives every platform event before
+  // shutting down.
+  if (end_of_test_node_) {
+    FireUiaAccessibilityEvent(
+        UiaRegistrarWin::GetInstance().GetTestCompleteEventId(),
+        end_of_test_node_);
+    end_of_test_node_ = nullptr;
+  }
 }
 
 BrowserAccessibilityManagerWin::SelectionEvents::SelectionEvents() = default;

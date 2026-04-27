@@ -478,6 +478,12 @@ void RecalcFragmentScrollableOverflow(RecalcScrollableOverflowResult& result,
   }
 }
 
+bool IsAppearanceAutoMenuList(const LayoutBox& obj) {
+  return obj.IsMenuList() &&
+         obj.StyleRef().EffectiveAppearance() != AppearanceValue::kBase &&
+         obj.StyleRef().EffectiveAppearance() != AppearanceValue::kBaseSelect;
+}
+
 }  // namespace
 
 LayoutBoxRareData::LayoutBoxRareData()
@@ -545,15 +551,6 @@ void LayoutBox::WillBeDestroyed() {
 
   DisassociatePhysicalFragments();
 
-  if (!RuntimeEnabledFeatures::LayoutReinsertOnInFlowStateChangeEnabled()) {
-    if (Style() && StyleRef().HasOutOfFlowPosition()) {
-      if (auto* display_locks = DisplayLocksAffectedByAnchors()) {
-        NotifyContainingDisplayLocksForAnchorPositioning(display_locks,
-                                                         nullptr);
-      }
-    }
-  }
-
   LayoutBoxModelObject::WillBeDestroyed();
 }
 
@@ -581,12 +578,10 @@ void LayoutBox::WillBeRemovedFromTree() {
   NOT_DESTROYED();
   ClearCustomLayoutChild();
 
-  if (RuntimeEnabledFeatures::LayoutReinsertOnInFlowStateChangeEnabled()) {
-    // Notify the display-locks that anchors within a sub-tree may disappear.
-    if (Style() && StyleRef().HasOutOfFlowPosition()) {
-      NotifyContainingDisplayLocksForAnchorPositioning(
-          DisplayLocksAffectedByAnchors(), nullptr);
-    }
+  // Notify the display-locks that anchors within a sub-tree may disappear.
+  if (Style() && StyleRef().HasOutOfFlowPosition()) {
+    NotifyContainingDisplayLocksForAnchorPositioning(
+        DisplayLocksAffectedByAnchors(), nullptr);
   }
 
   LayoutBoxModelObject::WillBeRemovedFromTree();
@@ -598,82 +593,16 @@ void LayoutBox::StyleWillChange(StyleDifference diff,
   NOT_DESTROYED();
   const ComputedStyle* old_style = Style();
   if (old_style) {
-    if (IsDocumentElement() || IsBody()) {
-      // The background of the root element or the body element could propagate
-      // up to the canvas. Just dirty the entire canvas when our style changes
-      // substantially.
-      if (diff.NeedsNormalPaintInvalidation()) {
-        View()->SetShouldDoFullPaintInvalidation();
-      }
-    }
-
     // When a layout hint happens and an object's position style changes, we
     // have to do a layout to dirty the layout tree using the old position
     // value now.
     if (diff.NeedsFullLayout() && Parent()) {
-      bool will_move_out_of_ifc = false;
       if (old_style->GetPosition() != new_style.GetPosition()) {
-        if (!RuntimeEnabledFeatures::
-                LayoutReinsertOnInFlowStateChangeEnabled() &&
-            !old_style->HasOutOfFlowPosition() &&
-            new_style.HasOutOfFlowPosition()) {
-          // We're about to go out of flow. Before that takes place, we need to
-          // mark the current containing block chain for preferred widths
-          // recalculation.
-          SetNeedsLayoutAndIntrinsicWidthsRecalc(
-              layout_invalidation_reason::kStyleChange);
-
-          // Grid/Grid-Lanes placement is different for out-of-flow elements, so
-          // if the containing block is a grid or grid-lanes, dirty the
-          // container's placement. The converse (going from out of flow to in
-          // flow) is handled in LayoutBox::UpdateGridPositionAfterStyleChange.
-          LayoutBlock* containing_block = ContainingBlock();
-          if (containing_block && containing_block->IsLayoutGridOrGridLanes()) {
-            containing_block->SetGridPlacementDirty(true);
-          }
-
-          // Out of flow are not part of |FragmentItems|, and that further
-          // changes including destruction cannot be tracked. We need to mark it
-          // is moved out from this IFC.
-          will_move_out_of_ifc = true;
-        } else {
-          MarkContainerChainForLayout();
-        }
-
-        if (old_style->GetPosition() == EPosition::kStatic) {
-          SetShouldDoFullPaintInvalidation();
-        } else if (new_style.HasOutOfFlowPosition()) {
-          Parent()->SetChildNeedsLayout();
-        }
+        MarkContainerChainForLayout();
       }
-
-      bool will_become_inflow = false;
-      if (!RuntimeEnabledFeatures::LayoutReinsertOnInFlowStateChangeEnabled()) {
-        if ((old_style->IsFloating() || old_style->HasOutOfFlowPosition()) &&
-            !new_style.IsFloating() && !new_style.HasOutOfFlowPosition()) {
-          // As a float or OOF, this object may have been part of an inline
-          // formatting context, but that's definitely no longer the case.
-          will_become_inflow = true;
-          will_move_out_of_ifc = true;
-        }
-      }
-
-      if (will_move_out_of_ifc && FirstInlineFragmentItemIndex()) {
-        FragmentItems::LayoutObjectWillBeMoved(*this);
-        ClearFirstInlineFragmentItemIndex();
-      }
-      if (will_become_inflow)
-        SetIsInLayoutNGInlineFormattingContext(false);
-
-      style_change_context.did_prevent_spanner_descendants =
-          IsInsideMulticol() && !IsSelfValidColumnSpanner() &&
-          ShouldPreventColumnSpannerDescendants();
     }
-    // FIXME: This branch runs when !oldStyle, which means that layout was never
-    // called so what's the point in invalidating the whole view that we never
-    // painted?
-  } else if (IsBody()) {
-    View()->SetShouldDoFullPaintInvalidation();
+    style_change_context.did_prevent_spanner_descendants =
+        IsInsideMulticol() && ShouldPreventColumnSpannerDescendants();
   }
 
   LayoutBoxModelObject::StyleWillChange(diff, new_style, style_change_context);
@@ -689,17 +618,6 @@ void LayoutBox::StyleDidChange(StyleDifference diff,
   // don't create layers and ignore reflections.
   if (HasReflection() && !HasLayer())
     SetHasReflection(false);
-
-  if (!RuntimeEnabledFeatures::LayoutReinsertOnInFlowStateChangeEnabled()) {
-    if (auto* parent_flow_block = DynamicTo<LayoutBlockFlow>(Parent())) {
-      if (IsFloatingOrOutOfFlowPositioned() && old_style &&
-          !old_style->IsFloating() && !old_style->HasOutOfFlowPosition()) {
-        // Note that |parent_flow_block| may have been destroyed after this
-        // call.
-        parent_flow_block->ChildBecameFloatingOrOutOfFlow(this);
-      }
-    }
-  }
 
   SetOverflowClipAxes(ComputeOverflowClipAxes());
 
@@ -769,11 +687,17 @@ void LayoutBox::StyleDidChange(StyleDifference diff,
       SetNeedsPaintPropertyUpdate();
     }
 
-    if (style_change_context.did_prevent_spanner_descendants &&
-        !ShouldPreventColumnSpannerDescendants()) {
-      // This object used to prevent column spanner descendants, but that is no
-      // longer the case. Look for new spanners inside.
-      MarkNewColumnSpannersForLayoutIfNeeded();
+    bool should_prevent_now =
+        IsInsideMulticol() && ShouldPreventColumnSpannerDescendants();
+    if (style_change_context.did_prevent_spanner_descendants !=
+        should_prevent_now) {
+      // Certain styles (transforms, formatting context roots, etc.) prevent
+      // column spanners inside. If such styles have now been set, we need to
+      // turn now-invalid spanners into regular block-level elements that
+      // participate in the fragmentation context. If such styles have now been
+      // removed, we need to turn regular block-level elements into now-valid
+      // spanners. See https://drafts.csswg.org/css-multicol-1/#spanning-columns
+      MarkColumnSpannerCandidatesForLayoutIfNeeded();
     }
   }
 
@@ -784,6 +708,21 @@ void LayoutBox::StyleDidChange(StyleDifference diff,
 
   if (diff.needs_box_paint_property_update) {
     SetNeedsPaintPropertyUpdate();
+  }
+
+  // The background of the root or body element could propagate up to the
+  // canvas. Just dirty the entire canvas when our style changes substantially.
+  if (diff.NeedsNormalPaintInvalidation()) {
+    if (IsDocumentElement() || IsBody()) {
+      View()->SetShouldDoFullPaintInvalidation();
+    }
+  }
+
+  if (diff.NeedsFullLayout()) {
+    if (IsValidColumnSpannerInTree(*old_style) !=
+        IsValidColumnSpannerInTree(StyleRef())) {
+      MarkParentForSpannerOrOutOfFlowPositionedChange();
+    }
   }
 
   // Update the script style map, from the new computed style.
@@ -1192,8 +1131,10 @@ LayoutBlock* LayoutBox::ScrollerFromScrollMarkerGroup() const {
   DCHECK(IsScrollMarkerGroup());
   auto* pseudo_element = DynamicTo<PseudoElement>(GetNode());
   if (const Element* originating_element = pseudo_element->parentElement()) {
-    return DynamicTo<LayoutBlock>(
-        originating_element->GetLayoutBoxForScrolling());
+    auto* box = originating_element->GetLayoutBoxForScrolling();
+    return box && box->GetScrollableArea()->ScrollableAxes()
+               ? DynamicTo<LayoutBlock>(box)
+               : nullptr;
   }
   return nullptr;
 }
@@ -2308,7 +2249,8 @@ bool LayoutBox::IntersectsVisibleViewport() const {
   PhysicalRect rect = VisualOverflowRect();
   MapToVisualRectInAncestorSpace(layout_view, rect);
   return rect.Intersects(PhysicalRect(
-      layout_view->GetFrameView()->GetScrollableArea()->VisibleContentRect()));
+      layout_view->GetFrameView()->GetScrollableArea()->VisibleContentRect(
+          kExcludeScrollbars)));
 }
 
 void LayoutBox::EnsureIsReadyForPaintInvalidation() {
@@ -2416,7 +2358,7 @@ PhysicalRect LayoutBox::OverflowClipRect(
       control_clip.Move(location);
       clip_rect.Intersect(control_clip);
     }
-  } else if (IsMenuList()) [[unlikely]] {
+  } else if (IsAppearanceAutoMenuList(*this)) [[unlikely]] {
     DCHECK(HasControlClip());
     PhysicalRect control_clip = PhysicalContentBoxRect();
     control_clip.Move(location);
@@ -2435,7 +2377,8 @@ PhysicalRect LayoutBox::OverflowClipRectForScrollNode(
 
 bool LayoutBox::HasControlClip() const {
   NOT_DESTROYED();
-  if (IsTextField() || IsMenuList() || IsInputButton()) [[unlikely]] {
+  if (IsTextField() || IsAppearanceAutoMenuList(*this) || IsInputButton())
+      [[unlikely]] {
     return true;
   }
   return false;
@@ -2967,6 +2910,12 @@ bool LayoutBox::DoesAncestryAllowColumnSpanner(
 
 bool LayoutBox::ShouldPreventColumnSpannerDescendants() const {
   NOT_DESTROYED();
+
+  if (IsSelfValidColumnSpanner()) {
+    // No spanners inside spanners in the same multicol context.
+    return true;
+  }
+
   const auto* block_flow = DynamicTo<LayoutBlockFlow>(this);
   if (!block_flow) {
     // Needs to be in a block-flow container, and not e.g. a table.
@@ -2988,17 +2937,15 @@ bool LayoutBox::ShouldPreventColumnSpannerDescendants() const {
   return false;
 }
 
-void LayoutBox::MarkNewColumnSpannersForLayoutIfNeeded() {
+void LayoutBox::MarkColumnSpannerCandidatesForLayoutIfNeeded() {
   NOT_DESTROYED();
 
   // This function examines relevant descendants, and its ancestry, but not
-  // itself. It assumes that it itself doesn't prevent descendants from becoming
-  // column spanners.
-  DCHECK(!ShouldPreventColumnSpannerDescendants());
-  DCHECK(!IsSelfValidColumnSpanner());
+  // itself. It assumes that it has just changed whether it allows spanners
+  // inside or not.
   DCHECK(IsInsideMulticol());
 
-  if (IsMulticolContainer()) {
+  if (IsMulticolContainer() || IsSelfValidColumnSpanner()) {
     return;
   }
 
@@ -4339,7 +4286,7 @@ const LayoutObject* LayoutBox::AcceptableImplicitAnchor() const {
   return is_acceptable_anchor ? anchor_layout_object : nullptr;
 }
 
-const HeapVector<NonOverflowingScrollRange>*
+const GCedHeapVector<NonOverflowingScrollRange>*
 LayoutBox::NonOverflowingScrollRanges() const {
   NOT_DESTROYED();
   const auto& layout_results = GetLayoutResults();

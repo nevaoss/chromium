@@ -7,7 +7,7 @@ import {loadTimeData} from '//resources/js/load_time_data.js';
 import {NodeStore} from '../content/node_store.js';
 import {SelectionController} from '../content/selection_controller.js';
 import {getWordCount, playFromSelectionTimeout} from '../shared/common.js';
-import {ReadAnythingLogger} from '../shared/read_anything_logger.js';
+import {ReadAnythingLogger, SpeechControls} from '../shared/read_anything_logger.js';
 
 import {ReadAloudHighlighter} from './highlighter.js';
 import {getReadAloudModel} from './read_aloud_model_browser_proxy.js';
@@ -207,6 +207,7 @@ export class SpeechController {
 
   onVoiceSelected(selectedVoice: SpeechSynthesisVoice) {
     const currentVoice = this.voiceLanguageController_.getCurrentVoice();
+    this.logger_.logVoiceLanguageChange(currentVoice, selectedVoice);
     this.voiceLanguageController_.setUserPreferredVoice(selectedVoice);
 
     // If the locales are identical, the voices are likely from the same
@@ -422,7 +423,9 @@ export class SpeechController {
       }
       this.movePlaybackToNode_(readAloudNode, selectionStart.offset);
       // Play the next granularity, which includes the selection.
-      if (!this.highlightAndPlayMessage_()) {
+      if (this.highlightAndPlayMessage_()) {
+        this.logger_.logSpeechControlClick(SpeechControls.PLAY_FROM_SELECTION);
+      } else {
         this.onSpeechFinished_();
       }
     }, playFromSelectionTimeout);

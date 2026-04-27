@@ -13,6 +13,7 @@
 #import "ios/chrome/browser/cobrowse/coordinator/assistant_aim_mediator.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_browser_agent.h"
 #import "ios/chrome/browser/cobrowse/model/cobrowse_context.h"
+#import "ios/chrome/browser/cobrowse/model/ios_contextual_tasks_service_factory.h"
 #import "ios/chrome/browser/cobrowse/ui/assistant_aim_view_controller.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_entrypoint.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_input_plate_coordinator.h"
@@ -30,34 +31,13 @@
                                        AssistantContainerDelegate,
                                        AssistantAIMMediatorDelegate,
                                        TabGridStateObserver>
-
-// Returns whether the tab grid is currently visible.
-- (BOOL)isTabGridVisible;
-
 @end
-
-namespace {
-
-class AssistantAIMUIStateProvider
-    : public CobrowseBrowserAgent::UIStateProvider {
- public:
-  explicit AssistantAIMUIStateProvider(AssistantAIMCoordinator* coordinator)
-      : coordinator_(coordinator) {}
-
-  bool IsTabGridVisible() override { return [coordinator_ isTabGridVisible]; }
-
- private:
-  __weak AssistantAIMCoordinator* coordinator_;
-};
-
-}  // namespace
 
 @implementation AssistantAIMCoordinator {
   AssistantAIMViewController* _viewController;
   AssistantAIMMediator* _mediator;
   ComposeboxInputPlateCoordinator* _inputPlateCoordinator;
   ComposeboxModeHolder* _modeHolder;
-  std::unique_ptr<AssistantAIMUIStateProvider> _uiStateProvider;
   AssistantContainerDetent _currentDetent;
 
   // Handler for container related interactions.
@@ -74,12 +54,6 @@ class AssistantAIMUIStateProvider
 
   [self.browser->GetSceneState().tabGridState addObserver:self];
 
-  CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
-  if (agent) {
-    _uiStateProvider = std::make_unique<AssistantAIMUIStateProvider>(self);
-    agent->SetUIStateProvider(_uiStateProvider.get());
-  }
-
   _viewController = [[AssistantAIMViewController alloc] init];
   _viewController.delegate = self;
 
@@ -90,16 +64,25 @@ class AssistantAIMUIStateProvider
                                               delegate:self];
 
   web::WebState::CreateParams params(self.browser->GetProfile());
+  CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
   CobrowseContext* context = agent ? agent->GetCobrowseContext() : nil;
   if (!context) {
     context = [CobrowseContext defaultContext];
   }
+  contextual_tasks::ContextualTasksService* contextualTasksService = nullptr;
+  if (IsCobrowseAimHistoryEnabled()) {
+    contextualTasksService = IOSContextualTasksServiceFactory::GetForProfile(
+        self.browser->GetProfile());
+  }
+
   _mediator = [[AssistantAIMMediator alloc]
-      initWithWebState:web::WebState::Create(params)
-               context:context
-      containerHandler:_containerHandler];
+            initWithWebState:web::WebState::Create(params)
+                     context:context
+            containerHandler:_containerHandler
+      contextualTasksService:contextualTasksService];
   _mediator.delegate = self;
   _mediator.consumer = _viewController;
+  _viewController.mutator = _mediator;
 
   _modeHolder = [[ComposeboxModeHolder alloc] init];
   ComposeboxTheme* theme = [[ComposeboxTheme alloc]
@@ -123,12 +106,6 @@ class AssistantAIMUIStateProvider
 - (void)stop {
   [self.browser->GetSceneState().tabGridState removeObserver:self];
 
-  CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
-  if (agent) {
-    agent->SetUIStateProvider(nullptr);
-  }
-  _uiStateProvider.reset();
-
   [_mediator disconnect];
   _mediator = nil;
 
@@ -140,12 +117,6 @@ class AssistantAIMUIStateProvider
     _viewController = nil;
     [self dismissAssistantContainerAnimated:NO];
   }
-}
-
-#pragma mark - CobrowseBrowserAgent::UIStateProvider
-
-- (BOOL)isTabGridVisible {
-  return self.browser->GetSceneState().tabGridState.tabGridVisible;
 }
 
 #pragma mark - TabGridStateObserver

@@ -24,7 +24,10 @@ source_set("actor_tool_factory") {
     ":click_tool",
     ":history_tool",
     ":navigate_tool",
+    ":scroll_to_tool",
+    ":scroll_tool",
     ":type_tool",
+    ":wait_tool",
     "//base",
     "//components/optimization_guide/proto:optimization_guide_proto",
     "//ios/chrome/browser/intelligence/features",
@@ -63,6 +66,10 @@ source_set("web_actor_interface") {
   ]
 }
 
+source_set("actor_tool_constants") {
+  sources = [ "actor_tool_constants.h" ]
+}
+
 source_set("navigate_tool") {
   sources = [
     "navigate_tool.h",
@@ -80,6 +87,21 @@ source_set("navigate_tool") {
     "//ios/chrome/browser/url_loading/model",
     "//ios/web/public",
     "//url",
+  ]
+}
+
+source_set("wait_tool") {
+  sources = [
+    "wait_tool.h",
+    "wait_tool.mm",
+  ]
+
+  deps = [
+    ":actor_interface",
+    ":actor_tool_error",
+    "//base",
+    "//components/optimization_guide/proto:optimization_guide_proto",
+    "//ios/web/public",
   ]
 }
 
@@ -119,6 +141,18 @@ optimize_ts("click_tool_ts") {
 
   deps = [
     ":actor_tool_utils_ts",
+    "//ios/chrome/browser/intelligence/proto_wrappers:dom_node_ids_ts",
+    "//ios/web/public/js_messaging:gcrweb",
+  ]
+}
+
+optimize_ts("select_tool_ts") {
+  sources = [ "resources/select_tool.ts" ]
+  output_name = "select_tool"
+
+  deps = [
+    ":actor_tool_utils_ts",
+    "//components/autofill/ios/form_util:fill_js_dependencies",
     "//ios/chrome/browser/intelligence/proto_wrappers:dom_node_ids_ts",
     "//ios/web/public/js_messaging:gcrweb",
   ]
@@ -172,6 +206,45 @@ source_set("type_tool") {
   sources = [
     "type_tool.h",
     "type_tool.mm",
+  ]
+
+  deps = [
+    ":actor_interface",
+    ":actor_tool_error",
+    ":java_script_features",
+    ":web_actor_interface",
+    "//base",
+    "//components/optimization_guide/proto:optimization_guide_proto",
+    "//ios/chrome/browser/shared/model/profile",
+    "//ios/web/public",
+    "//ios/web/public/js_messaging",
+  ]
+}
+
+source_set("scroll_tool") {
+  sources = [
+    "scroll_tool.h",
+    "scroll_tool.mm",
+  ]
+
+  deps = [
+    ":actor_interface",
+    ":actor_tool_constants",
+    ":actor_tool_error",
+    ":java_script_features",
+    ":web_actor_interface",
+    "//base",
+    "//components/optimization_guide/proto:optimization_guide_proto",
+    "//ios/chrome/browser/shared/model/profile",
+    "//ios/web/public",
+    "//ios/web/public/js_messaging",
+  ]
+}
+
+source_set("scroll_to_tool") {
+  sources = [
+    "scroll_to_tool.h",
+    "scroll_to_tool.mm",
   ]
 
   deps = [
@@ -245,15 +318,20 @@ source_set("unit_tests") {
     "click_tool_unittest.mm",
     "history_tool_unittest.mm",
     "navigate_tool_unittest.mm",
+    "scroll_to_tool_unittest.mm",
     "scroll_tool_java_script_feature_unittest.mm",
     "scroll_tool_js_unittest.mm",
+    "scroll_tool_unittest.mm",
+    "select_tool_js_unittest.mm",
     "type_tool_java_script_feature_unittest.mm",
     "type_tool_js_unittest.mm",
     "type_tool_unittest.mm",
+    "wait_tool_unittest.mm",
   ]
   deps = [
     ":action_target_ts",
     ":actor_interface",
+    ":actor_tool_constants",
     ":actor_tool_error",
     ":actor_tool_factory",
     ":actor_tool_java_script_feature_test_base",
@@ -262,9 +340,13 @@ source_set("unit_tests") {
     ":history_tool",
     ":java_script_features",
     ":navigate_tool",
+    ":scroll_to_tool",
+    ":scroll_tool",
     ":scroll_tool_ts",
+    ":select_tool_ts",
     ":type_tool",
     ":type_tool_ts",
+    ":wait_tool",
     "//base/test:test_support",
     "//components/autofill/ios/browser:util",
     "//components/autofill/ios/common",

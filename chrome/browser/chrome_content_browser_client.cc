@@ -507,6 +507,7 @@
 #include "chrome/browser/android/service_tab_launcher.h"
 #include "chrome/browser/android/tab_android.h"
 #include "chrome/browser/android/tab_web_contents_delegate_android.h"
+#include "chrome/browser/android/web_contents_theme_client.h"
 #include "chrome/browser/chrome_content_browser_client_android.h"
 #include "chrome/browser/digital_credentials/digital_identity_provider_android.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
@@ -527,7 +528,6 @@
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/actor/actor_features.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_keyed_service_factory.h"
 #include "chrome/browser/devtools/chrome_devtools_manager_delegate.h"
@@ -572,6 +572,7 @@
 #include "chrome/browser/webauthn/chrome_authenticator_request_delegate.h"
 #include "chrome/browser/webauthn/chrome_web_authentication_delegate.h"
 #include "chrome/grit/chrome_unscaled_resources.h"  // nogncheck crbug.com/40147906
+#include "components/actor/core/actor_features.h"
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/keep_alive_registry/keep_alive_registry.h"
 #include "components/password_manager/content/common/web_ui_constants.h"
@@ -1613,6 +1614,8 @@ void ChromeContentBrowserClient::RegisterProfilePrefs(
 
   registry->RegisterBooleanPref(prefs::kWebAudioOutputBufferingEnabled, false);
   registry->RegisterBooleanPref(prefs::kSharedWorkerBlobURLFixEnabled, true);
+  registry->RegisterBooleanPref(prefs::kDataUrlInWebWorkerOpaqueOriginEnabled,
+                                true);
   registry->RegisterBooleanPref(prefs::kSharedWorkerExtendedLifetimeEnabled,
                                 true);
   registry->RegisterBooleanPref(
@@ -1624,6 +1627,9 @@ void ChromeContentBrowserClient::RegisterProfilePrefs(
       prefs::kClearWindowNameForNewBrowsingContextGroup, true);
   registry->RegisterBooleanPref(prefs::kPrefetchWithServiceWorkerEnabled, true);
   registry->RegisterBooleanPref(prefs::kServiceWorkerAutoPreloadEnabled, true);
+
+  registry->RegisterIntegerPref(prefs::kCpuPerformanceTierPolicyOverride,
+                                prefs::kCpuPerformanceTierOverrideNone);
 }
 
 // static
@@ -2102,19 +2108,31 @@ bool ChromeContentBrowserClient::DoesWebUIUrlRequireProcessLock(
   return true;
 }
 
-bool ChromeContentBrowserClient::ShouldTreatURLSchemeAsFirstPartyWhenTopLevel(
-    std::string_view scheme,
+bool ChromeContentBrowserClient::ShouldTreatAsFirstPartyWhenTopLevel(
+    const url::Origin& top_frame_origin,
     bool is_embedded_origin_secure) {
   // This is needed to bypass the normal SameSite rules for any chrome:// page
   // embedding a secure origin, regardless of the registrable domains of any
   // intervening frames. For example, this is needed for browser UI to interact
   // with SameSite cookies on accounts.google.com, which is used for displaying
   // a list of available accounts on the NTP (chrome://new-tab-page), etc.
-  if (is_embedded_origin_secure && scheme == content::kChromeUIScheme) {
+  if (is_embedded_origin_secure &&
+      top_frame_origin.scheme() == content::kChromeUIScheme) {
     return true;
   }
+  // TODO(crbug.com/483614998): Granting Lens side panel is a temporary
+  // exception to use SameSite cookies while it migrates to a <webview>
+  // approach. This should not be done for other untrusted WebUI.
+#if !BUILDFLAG(IS_ANDROID)
+  if (is_embedded_origin_secure &&
+      top_frame_origin == url::Origin::Create(GURL(
+                              chrome::kChromeUILensUntrustedSidePanelURL))) {
+    return true;
+  }
+#endif
+
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-  return scheme == extensions::kExtensionScheme;
+  return top_frame_origin.scheme() == extensions::kExtensionScheme;
 #else
   return false;
 #endif
@@ -2122,9 +2140,19 @@ bool ChromeContentBrowserClient::ShouldTreatURLSchemeAsFirstPartyWhenTopLevel(
 
 bool ChromeContentBrowserClient::
     ShouldIgnoreSameSiteCookieRestrictionsWhenTopLevel(
-        std::string_view scheme,
+        const url::Origin& top_frame_origin,
         bool is_embedded_origin_secure) {
-  return is_embedded_origin_secure && scheme == content::kChromeUIScheme;
+  // TODO(crbug.com/483614998): Granting Lens side panel is a temporary
+  // exception to use SameSite cookies while it migrates to a <webview>
+  // approach. This should not be done for other untrusted WebUI.
+  return is_embedded_origin_secure &&
+         (top_frame_origin.scheme() == content::kChromeUIScheme
+#if !BUILDFLAG(IS_ANDROID)
+          ||
+          (top_frame_origin == url::Origin::Create(GURL(
+                                   chrome::kChromeUILensUntrustedSidePanelURL)))
+#endif
+         );
 }
 
 // TODO(crbug.com/40694933): This is based on SubframeTask::GetTitle()
@@ -3302,6 +3330,14 @@ bool ChromeContentBrowserClient::AllowSharedWorkerBlobURLFix(
   return profile->GetPrefs()->GetBoolean(prefs::kSharedWorkerBlobURLFixEnabled);
 }
 
+bool ChromeContentBrowserClient::IsDataUrlInWebWorkerOpaqueOriginEnabled(
+    content::BrowserContext* browser_context) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  Profile* profile = Profile::FromBrowserContext(browser_context);
+  return profile->GetPrefs()->GetBoolean(
+      prefs::kDataUrlInWebWorkerOpaqueOriginEnabled);
+}
+
 bool ChromeContentBrowserClient::AllowSharedWorkerExtendedLifetime(
     content::BrowserContext* browser_context) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -4051,14 +4087,11 @@ GetPreferredColorScheme(const WebPreferences& web_prefs,
   preferred_root_scrollbar_color_scheme =
       web_prefs.preferred_root_scrollbar_color_scheme;
 
-  if (TabAndroid::FromWebContents(web_contents)) {
-    if (auto* delegate = static_cast<android::TabWebContentsDelegateAndroid*>(
-            web_contents->GetDelegate())) {
-      preferred_color_scheme = delegate->IsNightModeEnabled()
-                                   ? blink::mojom::PreferredColorScheme::kDark
-                                   : blink::mojom::PreferredColorScheme::kLight;
-      preferred_root_scrollbar_color_scheme = preferred_color_scheme;
-    }
+  if (auto* theme_client = night_mode::WebContentsThemeClient::FromWebContents(web_contents)) {
+    preferred_color_scheme = theme_client->IsNightModeEnabled()
+            ? blink::mojom::PreferredColorScheme::kDark
+            : blink::mojom::PreferredColorScheme::kLight;
+    preferred_root_scrollbar_color_scheme = preferred_color_scheme;
   }
 #else  // !BUILDFLAG(IS_ANDROID)
   if (Profile::FromBrowserContext(web_contents->GetBrowserContext())
@@ -4632,6 +4665,8 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
 
   web_prefs->allow_running_insecure_content =
       prefs->GetBoolean(prefs::kWebKitAllowRunningInsecureContent);
+  web_prefs->highlight_ads =
+      prefs->GetBoolean(prefs::kSubresourceFilterHighlightAds);
 #if BUILDFLAG(IS_ANDROID)
   web_prefs->font_scale_factor = static_cast<float>(
       prefs->GetDouble(browser_ui::prefs::kWebKitFontScaleFactor));
@@ -4715,13 +4750,13 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
       web_prefs->picture_in_picture_enabled =
           delegate->IsPictureInPictureEnabled();
 
-      web_prefs->force_dark_mode_enabled =
-          delegate->IsForceDarkWebContentEnabled();
-
       web_prefs->modal_context_menu = delegate->IsModalContextMenu();
 
       web_prefs->dynamic_safe_area_insets_enabled =
           delegate->IsDynamicSafeAreaInsetsEnabled();
+    }
+    if (auto* theme_client = night_mode::WebContentsThemeClient::FromWebContents(web_contents)) {
+      web_prefs->force_dark_mode_enabled = theme_client->IsForceDarkWebContentEnabled();
     }
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -4956,12 +4991,8 @@ bool ChromeContentBrowserClient::OverrideWebPreferencesAfterNavigation(
           old_preferred_root_scrollbar_color_scheme;
 
 #if BUILDFLAG(IS_ANDROID)
-  auto* delegate = TabAndroid::FromWebContents(web_contents)
-                       ? static_cast<android::TabWebContentsDelegateAndroid*>(
-                             web_contents->GetDelegate())
-                       : nullptr;
-  if (delegate) {
-    bool force_dark_mode_new_state = delegate->IsForceDarkWebContentEnabled();
+  if (auto* theme_client = night_mode::WebContentsThemeClient::FromWebContents(web_contents)) {
+    bool force_dark_mode_new_state = theme_client->IsForceDarkWebContentEnabled();
     prefs_changed |=
         (web_prefs->force_dark_mode_enabled != force_dark_mode_new_state);
     web_prefs->force_dark_mode_enabled = force_dark_mode_new_state;
@@ -6059,7 +6090,8 @@ ChromeContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
     if (content::AreIsolatedWebAppsEnabled(browser_context) &&
         !browser_context->ShutdownStarted()) {
       return web_app::IsolatedWebAppURLLoaderFactory::CreateForFrame(
-          browser_context, /*app_origin=*/std::nullopt, frame_tree_node_id);
+          browser_context, /*app_origin=*/std::nullopt, frame_tree_node_id,
+          /*enforce_same_origin=*/true);
     }
 
     return {};
@@ -6075,6 +6107,7 @@ ChromeContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
 void ChromeContentBrowserClient::
     RegisterNonNetworkWorkerMainResourceURLLoaderFactories(
         content::BrowserContext* browser_context,
+        const std::optional<url::Origin>& request_initiator,
         NonNetworkURLLoaderFactoryMap* factories) {
   DCHECK(browser_context);
   DCHECK(factories);
@@ -6083,9 +6116,21 @@ void ChromeContentBrowserClient::
     BUILDFLAG(IS_CHROMEOS)
   if (content::AreIsolatedWebAppsEnabled(browser_context) &&
       !browser_context->ShutdownStarted()) {
-    factories->emplace(webapps::kIsolatedAppScheme,
-                       web_app::IsolatedWebAppURLLoaderFactory::Create(
-                           browser_context, /*app_origin=*/std::nullopt));
+    std::optional<url::Origin> app_origin;
+    // The IsolatedWebAppURLLoaderFactory CHECKs that app_origin is an IWA
+    // origin if it is set. We only care about enforcing same-origin checks
+    // for IWA-to-IWA cross-origin requests (to prevent asset exfiltration),
+    // so we only set app_origin if the initiator is an IWA.
+    if (request_initiator &&
+        request_initiator->scheme() == webapps::kIsolatedAppScheme) {
+      app_origin = request_initiator;
+    }
+    factories->emplace(
+        webapps::kIsolatedAppScheme,
+        web_app::IsolatedWebAppURLLoaderFactory::Create(
+            browser_context, app_origin,
+            base::FeatureList::IsEnabled(
+                features::kEnforceDedicatedWorkerSameOriginCheck)));
   }
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
@@ -6097,7 +6142,7 @@ void ChromeContentBrowserClient::
   factories->emplace(
       extensions::kExtensionScheme,
       extensions::CreateExtensionWorkerMainResourceURLLoaderFactory(
-          browser_context));
+          browser_context, request_initiator));
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 }
 
@@ -6114,7 +6159,8 @@ void ChromeContentBrowserClient::
       !browser_context->ShutdownStarted()) {
     factories->emplace(webapps::kIsolatedAppScheme,
                        web_app::IsolatedWebAppURLLoaderFactory::Create(
-                           browser_context, /*app_origin=*/std::nullopt));
+                           browser_context, /*app_origin=*/std::nullopt,
+                           /*enforce_same_origin=*/true));
   }
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
@@ -6397,11 +6443,13 @@ void ChromeContentBrowserClient::
             webapps::kIsolatedAppScheme,
             web_app::IsolatedWebAppURLLoaderFactory::CreateForFrame(
                 browser_context, request_initiator_origin,
-                frame_host->GetFrameTreeNodeId()));
+                frame_host->GetFrameTreeNodeId(),
+                /*enforce_same_origin=*/true));
       } else {
         factories->emplace(webapps::kIsolatedAppScheme,
                            web_app::IsolatedWebAppURLLoaderFactory::Create(
-                               browser_context, request_initiator_origin));
+                               browser_context, request_initiator_origin,
+                               /*enforce_same_origin=*/true));
       }
     }
   }
@@ -8996,6 +9044,19 @@ bool ChromeContentBrowserClient::ShouldSkipBeforeUnloadDialog(
 #else
   return false;
 #endif
+}
+
+std::optional<int> ChromeContentBrowserClient::GetCpuPerformanceTierOverride(
+    content::BrowserContext* browser_context) {
+  if (browser_context) {
+    const PrefService* prefs =
+        Profile::FromBrowserContext(browser_context)->GetPrefs();
+    if (int value = prefs->GetInteger(prefs::kCpuPerformanceTierPolicyOverride);
+        value != prefs::kCpuPerformanceTierOverrideNone) {
+      return value;
+    }
+  }
+  return ContentBrowserClient::GetCpuPerformanceTierOverride(browser_context);
 }
 
 void ChromeContentBrowserClient::RecordAssistedLogin(

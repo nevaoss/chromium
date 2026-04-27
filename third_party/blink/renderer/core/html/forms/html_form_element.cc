@@ -165,9 +165,19 @@ bool HTMLFormElement::MatchesToolFormActivePseudoClass() const {
   return IsValidWebMCPForm() && active_webmcp_tool_->CurrentlyRunning();
 }
 
+std::optional<base::UnguessableToken>
+HTMLFormElement::GetActiveWebMCPToolInvocationId() const {
+  return (IsValidWebMCPForm() && active_webmcp_tool_ &&
+          active_webmcp_tool_->CurrentlyRunning())
+             ? active_webmcp_tool_->InvocationId()
+             : std::nullopt;
+}
+
 void HTMLFormElement::HTMLFormMcpTool::ExecuteTool(
+    const base::UnguessableToken& invocation_id,
     String input_arguments,
     base::OnceCallback<void(McpToolCallbackResult)> done_callback) {
+  invocation_id_ = invocation_id;
   UseCounter::Count(form_->GetDocument(),
                     WebFeature::kModelContextExecuteDeclarativeTool);
   bool require_submit_button =
@@ -257,6 +267,7 @@ void HTMLFormElement::HTMLFormMcpTool::CallDoneCallback(
   is_currently_running_ = false;
   auto old_submit_button = active_submit_button_;
   active_submit_button_ = nullptr;
+  invocation_id_ = std::nullopt;
   form_->PseudoStateChanged(CSSSelector::kPseudoToolFormActive);
   if (old_submit_button) {
     old_submit_button->PseudoStateChanged(CSSSelector::kPseudoToolSubmitActive);
@@ -343,9 +354,11 @@ void HTMLFormElement::UpdateMcpDefinitionsIfNeeded() {
   if (IsValidWebMCPForm()) {
     CHECK(!is_valid_mcp_form || name_or_description_changed);
     // Unregister the tool to ensure any in-flight tool executions are aborted.
-    active_webmcp_tool_->CallDoneCallback(base::unexpected(ScriptToolError(
-        ScriptToolErrorCode::kToolCancelled,
-        "Tool execution cancelled, since tool definition was updated")));
+    if (!active_webmcp_tool_->IsHandlingSubmit()) {
+      active_webmcp_tool_->CallDoneCallback(base::unexpected(ScriptToolError(
+          ScriptToolErrorCode::kToolCancelled,
+          "Tool execution cancelled, since tool definition was updated")));
+    }
     model_context->UnregisterTool(active_webmcp_tool_->ToolName());
     active_webmcp_tool_ = nullptr;
   }
@@ -448,28 +461,41 @@ HTMLElement* HTMLFormElement::item(unsigned index) {
 void HTMLFormElement::SubmitImplicitly(const Event& event,
                                        bool from_implicit_submission_trigger) {
   int submission_trigger_count = 0;
-  bool seen_default_button = false;
   for (ListedElement* element : ListedElements()) {
-    auto* control = DynamicTo<HTMLFormControlElement>(element);
-    if (!control)
+    // Check native form controls.
+    if (auto* control = DynamicTo<HTMLFormControlElement>(element)) {
+      if (control->CanBeSuccessfulSubmitButton()) {
+        if (control->IsSuccessfulSubmitButton()) {
+          control->DispatchSimulatedClick(&event);
+          return;
+        }
+        if (from_implicit_submission_trigger) {
+          // Default (submit) button is not activated; no implicit submission.
+          return;
+        }
+      } else if (control->CanTriggerImplicitSubmission()) {
+        ++submission_trigger_count;
+      }
       continue;
-    if (!seen_default_button && control->CanBeSuccessfulSubmitButton()) {
-      if (from_implicit_submission_trigger)
-        seen_default_button = true;
-      if (control->IsSuccessfulSubmitButton()) {
-        control->DispatchSimulatedClick(&event);
+    }
+
+    // Check custom elements with HTMLSubmitButtonBehavior.
+    HTMLElement& html_element = element->ToHTMLElement();
+    if (auto* behavior = html_element.SubmitBehavior()) {
+      if (!behavior->IsEffectivelyDisabled()) {
+        html_element.DispatchSimulatedClick(&event);
         return;
       }
       if (from_implicit_submission_trigger) {
-        // Default (submit) button is not activated; no implicit submission.
+        // Custom element is disabled; no implicit submission.
         return;
       }
-    } else if (control->CanTriggerImplicitSubmission()) {
-      ++submission_trigger_count;
     }
   }
-  if (from_implicit_submission_trigger && submission_trigger_count == 1)
+
+  if (from_implicit_submission_trigger && submission_trigger_count == 1) {
     PrepareForSubmission(&event, nullptr);
+  }
 }
 
 bool HTMLFormElement::ValidateInteractively() {
@@ -577,6 +603,8 @@ void HTMLFormElement::PrepareForSubmission(const Event* event,
   }
 
   bool should_submit;
+  Member<HTMLFormMcpTool> executing_tool;
+  bool declarative_webmcp_call = false;
   {
     base::AutoReset<bool> submit_event_handler_scope(&in_user_js_submit_event_,
                                                      true);
@@ -598,14 +626,21 @@ void HTMLFormElement::PrepareForSubmission(const Event* event,
     UseCounter::Count(GetDocument(), WebFeature::kFormSubmissionStarted);
     // Interactive validation must be done before dispatching the submit event.
     // We also re-perform this validation *after* dispatching the submit event.
-    bool declarative_webmcp_call =
+    executing_tool = active_webmcp_tool_;
+    declarative_webmcp_call =
         IsValidWebMCPForm() && active_webmcp_tool_->CurrentlyRunning();
+    std::optional<base::AutoReset<bool>> mcp_tool_submit_scope;
+    if (declarative_webmcp_call) {
+      mcp_tool_submit_scope.emplace(&active_webmcp_tool_->is_handling_submit_,
+                                    true);
+    }
+
     if (!skip_validation && !ValidateInteractively()) {
       should_submit = false;
       if (declarative_webmcp_call) {
         // TODO(crbug.com/493951236) This error message should describe more
         // of the details of what failed validation.
-        active_webmcp_tool_->CallDoneCallback(base::unexpected(
+        executing_tool->CallDoneCallback(base::unexpected(
             ScriptToolError(ScriptToolErrorCode::kToolInvocationFailed,
                             "Form validation failed")));
       }
@@ -635,7 +670,7 @@ void HTMLFormElement::PrepareForSubmission(const Event* event,
       //
       // To handle all of this, update the boolean.
       declarative_webmcp_call =
-          IsValidWebMCPForm() && active_webmcp_tool_->CurrentlyRunning();
+          executing_tool && executing_tool->CurrentlyRunning();
       if (declarative_webmcp_call) {
         if (auto promise = submit_event->TakeRespondWithPromise()) {
           // Since we have a promise, respondWith() was called. That should only
@@ -644,24 +679,23 @@ void HTMLFormElement::PrepareForSubmission(const Event* event,
           CHECK(!should_submit);
           // Wait for the provided promise to resolve or reject, and then call
           // the active_webmcp_tool_'s callback with the result.
-          CHECK(active_webmcp_tool_.Get());
+
           std::move(*promise).Then(
               BindOnce(&HTMLFormElement::HandleWebMcpToolResponse,
-                       WrapWeakPersistent(this),
-                       WrapPersistent(active_webmcp_tool_.Get()),
+                       WrapPersistent(this),
+                       WrapPersistent(executing_tool.Get()),
                        /*resolved=*/true),
               BindOnce(&HTMLFormElement::HandleWebMcpToolResponse,
-                       WrapWeakPersistent(this),
-                       WrapPersistent(active_webmcp_tool_.Get()),
+                       WrapPersistent(this),
+                       WrapPersistent(executing_tool.Get()),
                        /*resolved=*/false));
         } else if (!should_submit) {
-          active_webmcp_tool_->CallDoneCallback(
-              base::unexpected(ScriptToolError(
-                  ScriptToolErrorCode::kToolInvocationFailed,
-                  "The site has a programming error: it called "
-                  "preventDefault() "
-                  "on the 'submit' event, without also calling respondWith() "
-                  "with the tool result")));
+          executing_tool->CallDoneCallback(base::unexpected(ScriptToolError(
+              ScriptToolErrorCode::kToolInvocationFailed,
+              "The site has a programming error: it called "
+              "preventDefault() "
+              "on the 'submit' event, without also calling respondWith() "
+              "with the tool result")));
         }
       }
     }
@@ -673,11 +707,11 @@ void HTMLFormElement::PrepareForSubmission(const Event* event,
       std::move(cancel_last_submission_).Run();
     }
     ScheduleFormSubmission(event, submitter);
-    if (IsValidWebMCPForm() && active_webmcp_tool_->CurrentlyRunning()) {
+    if (executing_tool && executing_tool->CurrentlyRunning()) {
       CHECK(RuntimeEnabledFeatures::WebMCPEnabled(GetExecutionContext()));
       // Return a null string to indicate that a navigation has been
       // triggered.
-      active_webmcp_tool_->CallDoneCallback(base::ok(String()));
+      executing_tool->CallDoneCallback(base::ok(String()));
     }
   }
 }
@@ -1029,6 +1063,7 @@ void HTMLFormElement::Associate(ListedElement& e) {
   listed_elements_for_autofill_.clear();
   if (e.ToHTMLElement().FastHasAttribute(html_names::kFormAttr))
     has_elements_associated_by_form_attribute_ = true;
+  ScheduleWebMCPSchemaUpdate();
 }
 
 void HTMLFormElement::Disassociate(ListedElement& e) {
@@ -1037,6 +1072,7 @@ void HTMLFormElement::Disassociate(ListedElement& e) {
   listed_elements_for_autofill_are_dirty_ = true;
   listed_elements_for_autofill_.clear();
   RemoveFromPastNamesMap(e.ToHTMLElement());
+  ScheduleWebMCPSchemaUpdate();
 }
 
 bool HTMLFormElement::IsURLAttribute(const Attribute& attribute) const {
@@ -1305,13 +1341,14 @@ void HTMLFormElement::setMethod(const AtomicString& value) {
   setAttribute(html_names::kMethodAttr, value);
 }
 
-HTMLFormControlElement* HTMLFormElement::FindDefaultButton() const {
+Element* HTMLFormElement::FindDefaultButton() const {
   for (ListedElement* element : ListedElements()) {
-    auto* control = DynamicTo<HTMLFormControlElement>(element);
-    if (!control)
-      continue;
-    if (control->CanBeSuccessfulSubmitButton())
+    if (auto* control = DynamicTo<HTMLFormControlElement>(element);
+        control && control->CanBeSuccessfulSubmitButton()) {
       return control;
+    } else if (element->ToHTMLElement().SubmitBehavior()) {
+      return &element->ToHTMLElement();
+    }
   }
   return nullptr;
 }
@@ -1524,6 +1561,23 @@ void HTMLFormElement::UseCountPropertyAccess(
       hasPropertyInPrototypeChain
           ? WebFeature::kDOMClobberedShadowedFormPropertyAccessed
           : WebFeature::kDOMClobberedNotShadowedFormPropertyAccessed);
+}
+
+void HTMLFormElement::ScheduleWebMCPSchemaUpdate() {
+  if (!RuntimeEnabledFeatures::WebMCPEnabled(GetExecutionContext())) {
+    return;
+  }
+  if (!IsValidWebMCPForm()) {
+    return;
+  }
+  auto* window = GetDocument().domWindow();
+  if (!window || !window->navigator()) {
+    return;
+  }
+  if (auto* context =
+          ModelContextSupplement::modelContext(*window->navigator())) {
+    context->MaybeNotifyToolChanged();
+  }
 }
 
 }  // namespace blink

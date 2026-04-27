@@ -246,6 +246,7 @@ public class NewTabPageTest {
         int[] toolbarContentIds =
                 new int[] {
                     R.id.home_button,
+                    R.id.back_button,
                     R.id.location_bar_background_view,
                     R.id.location_bar,
                     R.id.toolbar_buttons
@@ -969,8 +970,8 @@ public class NewTabPageTest {
                 expectedMvtLateralMargin * 2L,
                 ntpLayout.getWidth() - mvTilesContainer.getWidth());
 
-        int expectedMvtTopMargin = res.getDimensionPixelSize(R.dimen.mvt_container_top_margin);
-        int expectedMvtBottomMargin = 0;
+        int expectedMvtTopMargin = res.getDimensionPixelSize(R.dimen.ntp_section_top_margin);
+        int expectedMvtBottomMargin = res.getDimensionPixelSize(R.dimen.ntp_section_bottom_margin);
         Assert.assertEquals(
                 "The top margin of the most visited tiles container is wrong.",
                 expectedMvtTopMargin,

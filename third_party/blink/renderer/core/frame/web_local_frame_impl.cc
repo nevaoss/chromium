@@ -930,7 +930,7 @@ bool WebLocalFrameImpl::HasVisibleContent() const {
 
 gfx::Rect WebLocalFrameImpl::VisibleContentRect() const {
   if (LocalFrameView* view = GetFrameView())
-    return view->LayoutViewport()->VisibleContentRect();
+    return view->LayoutViewport()->VisibleContentRect(kExcludeScrollbars);
   return gfx::Rect();
 }
 
@@ -1485,7 +1485,7 @@ WebString WebLocalFrameImpl::SelectionAsText() const {
   String text;
   if (EditContext* edit_context =
           GetFrame()->GetInputMethodController().GetActiveEditContext()) {
-    text = edit_context->text().Substring(
+    text = edit_context->text().DeprecatedSubstring(
         edit_context->selectionStart(),
         edit_context->selectionEnd() - edit_context->selectionStart());
   } else {
@@ -1605,8 +1605,8 @@ void WebLocalFrameImpl::SelectRange(
 WebString WebLocalFrameImpl::RangeAsText(const WebRange& web_range) {
   if (EditContext* edit_context =
           GetFrame()->GetInputMethodController().GetActiveEditContext()) {
-    return edit_context->text().Substring(web_range.StartOffset(),
-                                          web_range.length());
+    return edit_context->text().DeprecatedSubstring(web_range.StartOffset(),
+                                                    web_range.length());
   } else {
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  see http://crbug.com/590369 for more details.

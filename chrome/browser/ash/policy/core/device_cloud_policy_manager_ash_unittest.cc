@@ -24,6 +24,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/scoped_command_line.h"
 #include "base/time/time.h"
+#include "chrome/browser/ash/login/session/user_session_manager.h"
 #include "chrome/browser/ash/ownership/owner_settings_service_ash.h"
 #include "chrome/browser/ash/ownership/owner_settings_service_ash_factory.h"
 #include "chrome/browser/ash/policy/core/device_cloud_policy_client_factory_ash.h"
@@ -35,7 +36,6 @@
 #include "chrome/browser/ash/policy/enrollment/enrollment_requisition_manager.h"
 #include "chrome/browser/ash/policy/enrollment/enrollment_status.h"
 #include "chrome/browser/ash/policy/remote_commands/crd/fake_start_crd_session_job_delegate.h"
-#include "chrome/browser/ash/policy/uploading/heartbeat_scheduler.h"
 #include "chrome/browser/ash/settings/device_settings_test_helper.h"
 #include "chrome/browser/device_identity/device_oauth2_token_service.h"
 #include "chrome/browser/device_identity/device_oauth2_token_service_factory.h"
@@ -231,6 +231,7 @@ class DeviceCloudPolicyManagerAshTest
     user_manager_ = std::make_unique<user_manager::FakeUserManager>(
         TestingBrowserProcess::GetGlobal()->local_state());
     manager_->OnUserManagerCreated(user_manager_.get());
+    user_session_manager_ = std::make_unique<ash::UserSessionManager>();
 
     // SharedURLLoaderFactory and LocalState singletons have to be set since
     // they are accessed by EnrollmentHandler and StartupUtils.
@@ -266,6 +267,8 @@ class DeviceCloudPolicyManagerAshTest
     }
     ShutdownManager();
 
+    user_session_manager_->Shutdown();
+    user_session_manager_.reset();
     manager_->OnUserManagerWillBeDestroyed();
     user_manager_.reset();
 
@@ -379,6 +382,7 @@ class DeviceCloudPolicyManagerAshTest
   net::HttpStatusCode url_fetcher_response_code_;
   std::string url_fetcher_response_string_;
   std::unique_ptr<user_manager::FakeUserManager> user_manager_;
+  std::unique_ptr<ash::UserSessionManager> user_session_manager_;
   StrictMock<MockJobCreationHandler> job_creation_handler_;
   FakeDeviceManagementService device_management_service_{
       &job_creation_handler_};
@@ -999,23 +1003,6 @@ class DeviceCloudPolicyManagerAshEnrollmentTest
 TEST_P(DeviceCloudPolicyManagerAshEnrollmentTest, Success) {
   RunTest();
   ExpectSuccessfulEnrollment();
-}
-
-TEST_P(DeviceCloudPolicyManagerAshEnrollmentTest,
-       EnabledKioskHeartbeatsViaERP) {
-  RunTest();
-  EXPECT_FALSE(manager_->GetHeartbeatSchedulerForTesting());
-}
-
-TEST_P(DeviceCloudPolicyManagerAshEnrollmentTest,
-       DisabledKioskHeartbeatsViaERP) {
-    base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(
-      chromeos::features::kKioskHeartbeatsViaERP);
-
-  RunTest();
-  EXPECT_EQ(manager_->GetHeartbeatSchedulerForTesting()->last_heartbeat(),
-            base::Time());
 }
 
 TEST_P(DeviceCloudPolicyManagerAshEnrollmentTest, Reenrollment) {

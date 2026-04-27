@@ -874,6 +874,7 @@ chromium-metrics-reviews@google.com.
   <int value="23" label="(20) NATIVE_PAGE"/>
   <int value="24" label="(12) CANCEL_TAB_STRIP_DRAG"/>
   <int value="25" label="(04) CANCEL_TAB_SWITCHER_DRAG"/>
+  <int value="26" label="(05) ACTOR_OVERLAY"/>
 </enum>
 
 <!-- LINT.IfChange(BackPressTabCloseType) -->
@@ -893,6 +894,25 @@ chromium-metrics-reviews@google.com.
   <int value="3" label="Filtered explicitly disabled"/>
   <int value="4" label="Filtered weaker signals"/>
 </enum>
+
+<!-- LINT.IfChange(BringTabToFrontResult) -->
+
+<enum name="BringTabToFrontResult">
+  <int value="0" label="Success">
+    The intent was successfully dispatched to the target instance via
+    MultiWindowUtils.launchIntentInInstance.
+  </int>
+  <int value="1" label="Failed: Window Info Not Found">
+    The feature was enabled, but TabWindowInfo could not be found for the given
+    tabId.
+  </int>
+  <int value="2" label="Failed: Launch In Instance Failed">
+    The feature was enabled, windowInfo was found, but
+    MultiWindowUtils.launchIntentInInstance failed (returned false).
+  </int>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/document/ChromeLauncherActivity.java:BringTabToFrontResult) -->
 
 <enum name="BrowserControlsLockReason">
   <summary>The reason why browser controls were locked.</summary>
@@ -1037,6 +1057,7 @@ chromium-metrics-reviews@google.com.
   <int value="0" label="Messages Promo"/>
   <int value="1" label="Setting Card Promo"/>
   <int value="2" label="Educational Tip Promo"/>
+  <int value="3" label="FRE Promo"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/android/default_browser_promo/java/src/org/chromium/chrome/browser/ui/default_browser_promo/DefaultBrowserPromoMetrics.java:DefaultBrowserPromoSourceType) -->
@@ -1280,6 +1301,19 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/LauncherShortcutActivity.java:UpdateFailure) -->
 
+<!-- LINT.IfChange(LaunchInInstanceEarlyFailureReason) -->
+
+<enum name="LaunchInInstanceEarlyFailureReason">
+  <int value="0" label="Activity Not Found Or Wrong Type">
+    Activity from instanceId is not found or not a ChromeTabbedActivity.
+  </int>
+  <int value="1" label="Invalid Task ID">
+    The activity has an invalid task ID.
+  </int>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/android/java/src/org/chromium/chrome/browser/multiwindow/MultiWindowUtils.java:LaunchInInstanceEarlyFailureReason) -->
+
 <enum name="LightTheme">
   <int value="0" label="undefined"/>
   <int value="1" label="no"/>
@@ -1397,6 +1431,7 @@ chromium-metrics-reviews@google.com.
   <int value="66" label="PermissionPromptLoud"/>
   <int value="67" label="SaveUpdateEntity"/>
   <int value="68" label="SigninSurvey"/>
+  <int value="69" label="ExtensionsRequestAccess"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/messages/android/message_enums.h:MessageIdentifier) -->
@@ -2858,6 +2893,7 @@ chromium-metrics-reviews@google.com.
   <int value="106" label="staticGetRendererLibraryPrefetchMode"/>
   <int value="107" label="getDefaultCookieManager"/>
   <int value="108" label="getProfileStore"/>
+  <int value="109" label="webViewInstanceGetSettings"/>
 </enum>
 
 <!-- LINT.ThenChange(//base/tracing/protos/chrome_track_event.proto:WebViewStartup) -->
@@ -2898,6 +2934,12 @@ chromium-metrics-reviews@google.com.
   <int value="4"
       label="The app is running in a multi-windowing mode not equivalent to
              any of the other modes."/>
+</enum>
+
+<enum name="WindowOcclusionCalculateResult">
+  <int value="0" label="Success"/>
+  <int value="1" label="Root view unavailable"/>
+  <int value="2" label="Visible rect empty"/>
 </enum>
 
 </enums>

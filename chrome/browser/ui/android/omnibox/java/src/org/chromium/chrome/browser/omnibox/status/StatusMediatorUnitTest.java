@@ -52,6 +52,7 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.omnibox.LocationBarDataProvider;
 import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
 import org.chromium.chrome.browser.omnibox.SearchEngineUtils;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.status.StatusCoordinator.PageInfoAction;
 import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
 import org.chromium.chrome.browser.omnibox.status.StatusView.IconTransitionType;
@@ -126,7 +127,7 @@ public final class StatusMediatorUnitTest {
         mContext =
                 new ContextThemeWrapper(
                         ContextUtils.getApplicationContext(), R.style.Theme_BrowserUI_DayNight);
-        mWindowAndroid = new WindowAndroid(mContext, /* trackOcclusion= */ false);
+        mWindowAndroid = new WindowAndroid(mContext, /* occlusionTrackingAllowed= */ false);
         mModel = new PropertyModel(StatusProperties.ALL_KEYS);
         mMediator =
                 new StatusMediator(
@@ -611,6 +612,7 @@ public final class StatusMediatorUnitTest {
         mMediator.setShowStatusIconForSecureOrigins(false);
         assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
 
+        mMediator.updateSecurityIcon(R.drawable.ic_logo_googleg_20dp, 0, 0);
         mMediator.updateVerboseStatus(ConnectionSecurityLevel.WARNING, false, false);
         assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
 
@@ -630,9 +632,10 @@ public final class StatusMediatorUnitTest {
         assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
 
         mMediator.setUrlHasFocus(false);
-        assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+        assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
 
         // Non-secure pages should show the status view.
+        mMediator.updateSecurityIcon(R.drawable.ic_logo_googleg_20dp, 0, 0);
         mMediator.updateVerboseStatus(ConnectionSecurityLevel.DANGEROUS, false, false);
         assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
 
@@ -640,6 +643,45 @@ public final class StatusMediatorUnitTest {
         mMediator.setShowStatusIconForSecureOrigins(false);
         mMediator.updateVerboseStatus(ConnectionSecurityLevel.SECURE, false, false);
         assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateStatusViewVisibility_withPermissionIcon() {
+        mMediator.setShowStatusIconForSecureOrigins(false);
+        mMediator.updateVerboseStatus(ConnectionSecurityLevel.SECURE, false, false);
+        assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+
+        StatusProperties.PermissionIconResource icon =
+                new StatusProperties.PermissionIconResource(null, false, "test_icon");
+        mMediator.showPermissionIcon(icon);
+
+        assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateStatusViewVisibility_withVerboseStatusText() {
+        mMediator.setShowStatusIconForSecureOrigins(false);
+        mMediator.updateVerboseStatus(ConnectionSecurityLevel.SECURE, false, false);
+        assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+
+        mMediator.updateVerboseStatus(ConnectionSecurityLevel.SECURE, true, false);
+
+        assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+    }
+
+    @Test
+    @SmallTest
+    public void testUpdateStatusViewVisibility_withPaintPreview() {
+        mMediator.setShowStatusIconForSecureOrigins(false);
+        mMediator.updateVerboseStatus(ConnectionSecurityLevel.SECURE, false, false);
+        assertFalse(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
+
+        // Simulate Paint Preview active (third argument is true)
+        mMediator.updateVerboseStatus(ConnectionSecurityLevel.SECURE, false, true);
+
+        assertTrue(mModel.get(StatusProperties.SHOW_STATUS_VIEW));
     }
 
     @Test
@@ -688,6 +730,16 @@ public final class StatusMediatorUnitTest {
     public void testStatusClickListener_whenUrlHasFocus() {
         mMediator.setUrlHasFocus(true);
         assertNull(mModel.get(StatusProperties.STATUS_CLICK_LISTENER));
+    }
+
+    @Test
+    @SmallTest
+    public void testFuseboxState() {
+        mMediator.onFuseboxStateChanged(FuseboxState.COMPACT);
+        assertFalse(mModel.get(StatusProperties.IMPORTANT_FOR_A11Y));
+
+        mMediator.onFuseboxStateChanged(FuseboxState.EXPANDED);
+        assertTrue(mModel.get(StatusProperties.IMPORTANT_FOR_A11Y));
     }
 
     private String getIconIdentifierForTesting() {

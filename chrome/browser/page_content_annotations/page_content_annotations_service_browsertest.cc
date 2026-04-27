@@ -1691,16 +1691,8 @@ IN_PROC_BROWSER_TEST_F(
 
   observer.Reset();
 
-  base::test::TestFuture<std::optional<ExtractedPageContentResult>>
-      content_future;
-  service->GetExtractedPageContentAndEligibilityForPageAsync(
-      web_contents->GetPrimaryPage(), content_future.GetCallback());
-  ASSERT_TRUE(content_future.Get().has_value());
-
-  base::test::TestFuture<std::optional<bool>> eligibility_future;
-  service->GetServerUploadEligibilityForPageAsync(
-      web_contents->GetPrimaryPage(), eligibility_future.GetCallback());
-  ASSERT_TRUE(eligibility_future.Get().has_value());
+  // TODO(b/490161242): Add checks here to verify that cached results persist
+  // even after removing the observer, once non-observer usage is supported.
 
   // Confirm that removing the observer prevents future navigations from
   // triggering an extraction, but does not prevent the cache from being reset.

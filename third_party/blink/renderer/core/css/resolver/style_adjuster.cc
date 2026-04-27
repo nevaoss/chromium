@@ -77,6 +77,7 @@
 #include "third_party/blink/renderer/core/html/media/html_media_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
+#include "third_party/blink/renderer/core/html/shadow/shadow_element_utils.h"
 #include "third_party/blink/renderer/core/html_names.h"
 #include "third_party/blink/renderer/core/input_type_names.h"
 #include "third_party/blink/renderer/core/inspector/console_message.h"
@@ -509,6 +510,27 @@ static void AdjustStyleForMarker(ComputedStyleBuilder& builder,
   }
 }
 
+void StyleAdjuster::AdjustSliderContainerStyle(const Element& element,
+                                               ComputedStyleBuilder& builder) {
+  if (!IsHorizontalWritingMode(builder.GetWritingMode())) {
+    builder.SetTouchAction(TouchAction::kPanX);
+  } else if (RuntimeEnabledFeatures::
+                 NonStandardAppearanceValueSliderVerticalEnabled() &&
+             builder.Appearance() == AppearanceValue::kSliderVertical) {
+    builder.SetTouchAction(TouchAction::kPanX);
+    builder.SetWritingMode(WritingMode::kVerticalRl);
+    // It's always in RTL because the slider value increases up even in LTR.
+    builder.SetDirection(TextDirection::kRtl);
+  } else {
+    builder.SetTouchAction(TouchAction::kPanY);
+    builder.SetWritingMode(WritingMode::kHorizontalTb);
+    if (To<HTMLInputElement>(element.OwnerShadowHost())->DataList()) {
+      builder.SetAlignSelf(StyleSelfAlignmentData(ItemPosition::kCenter,
+                                                  OverflowAlignment::kUnsafe));
+    }
+  }
+}
+
 // static
 void StyleAdjuster::AdjustStyleForHTMLElement(ComputedStyleBuilder& builder,
                                               HTMLElement& element) {
@@ -716,22 +738,21 @@ void StyleAdjuster::AdjustOverflow(ComputedStyleBuilder& builder,
 // to have a stacking context and become a containing block for all descendants.
 static bool ForceStackingAndContainingBlockForCanvasLayoutSubtree(
     const Element* element) {
-  if (element &&
+  if (element && element->IsCanvasOrInCanvasSubtree() &&
       RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-          element->GetExecutionContext()) &&
-      element->IsCanvasOrInCanvasSubtree()) {
+          element->GetExecutionContext())) {
     if (const auto* canvas =
             DynamicTo<HTMLCanvasElement>(element->parentElement())) {
       return canvas->layoutSubtree();
     }
   }
-
   return false;
 }
 
 static bool IsCanvasWithDrawElements(const Element* element) {
-  if (!element || !RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-                      element->GetExecutionContext())) {
+  if (!element || !element->IsCanvasOrInCanvasSubtree() ||
+      !RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+          element->GetExecutionContext())) {
     return false;
   }
 
@@ -1116,29 +1137,21 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
     AdjustStyleForHTMLElement(builder, *html_element);
   }
 
-  bool is_transition_scope = false;
-  if (element) {
-    if (const ViewTransition* view_transition =
-            ViewTransitionUtils::GetTransition(*element)) {
-      is_transition_scope = (view_transition->Scope() == element);
-    }
-  }
-
   bool is_document_element =
       element && element->GetDocument().documentElement() == element;
   bool is_in_top_layer = false;
-  if (RuntimeEnabledFeatures::OverlayPropertyEnabled()) {
-    if (RuntimeEnabledFeatures::OverlayGlobalRuleRemovalEnabled()) {
-      is_in_top_layer = !is_document_element &&
-                        builder.Overlay() == EOverlay::kAuto && element &&
-                        element->IsInTopLayer();
+  if (!is_document_element && element) {
+    if (RuntimeEnabledFeatures::OverlayPropertyEnabled()) {
+      if (builder.Overlay() == EOverlay::kAuto) {
+        if (RuntimeEnabledFeatures::OverlayGlobalRuleRemovalEnabled()) {
+          is_in_top_layer = element->IsInTopLayer();
+        } else {
+          is_in_top_layer = true;
+        }
+      }
     } else {
-      is_in_top_layer =
-          !is_document_element && builder.Overlay() == EOverlay::kAuto;
+      is_in_top_layer = element->IsRenderedInTopLayer();
     }
-  } else {
-    is_in_top_layer =
-        !is_document_element && (element && element->IsRenderedInTopLayer());
   }
 
   if (builder.Display() != EDisplay::kNone) {
@@ -1207,19 +1220,13 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
           layout_parent_style.DisplayLayoutCustomName());
     }
 
-    bool is_in_main_frame = element && element->GetDocument().IsInMainFrame();
     // The root element of the main frame has no backdrop, so don't allow
     // it to have a backdrop filter either.
-    if (is_document_element && is_in_main_frame &&
-        builder.HasBackdropFilter()) {
+    if (is_document_element && builder.HasBackdropFilter() &&
+        element->GetDocument().IsInMainFrame()) {
       builder.SetBackdropFilter(FilterOperations());
     }
-
-    if (is_transition_scope && !is_document_element) {
-      builder.SetContain(builder.Contain() | kContainsLayout);
-      builder.SetViewTransitionScope(EViewTransitionScope::kAll);
-    } else if (builder.InternalOverscrollArea() !=
-               EInternalOverscrollArea::kNone) {
+    if (builder.InternalOverscrollArea() != EInternalOverscrollArea::kNone) {
       // TODO(crbug.com/467112943): Layout containment is currently forced to
       // ensure that the container of the overscroll areas actually contains
       // the overscroll areas. However, requiring layout containment is
@@ -1258,7 +1265,7 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
       (element && IsA<SVGForeignObjectElement>(*element)) || is_in_top_layer ||
       builder.StyleType() == kPseudoIdBackdrop ||
       builder.StyleType() == kPseudoIdViewTransition ||
-      IsCanvasWithDrawElements(element) || is_transition_scope) {
+      IsCanvasWithDrawElements(element)) {
     builder.SetForcesStackingContext(true);
   }
 
@@ -1300,6 +1307,11 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
   // https://drafts.csswg.org/css-color-adjust-1/#forced-colors-properties.
   AdjustForForcedColorsMode(builder, state.GetDocument());
 
+  if (element && IsSliderContainer(*element)) {
+    // NOTE: This needs to come before AdjustEffectiveTouchAction().
+    AdjustSliderContainerStyle(*element, builder);
+  }
+
   // The layout theme has its own style adjustment, mostly related to
   // the appearance property (although it can also modify display,
   // seemingly for historical reasons).
@@ -1310,7 +1322,6 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
     LayoutTheme::GetTheme().AdjustStyle(
         element ? *element : *state.GetPseudoElement(), builder);
   }
-
   AdjustStyleForEditing(builder, element);
 
   if (auto* svg_element = DynamicTo<SVGElement>(element); svg_element) {
@@ -1345,29 +1356,44 @@ void StyleAdjuster::AdjustComputedStyle(StyleResolverState& state,
   AdjustEffectiveTouchAction(builder, parent_style, element,
                              IsOutermostSVGElement(element));
 
-  bool is_media_control = element && element->ShadowPseudoId().starts_with(
-                                         "-webkit-media-controls");
-  if (is_media_control && !builder.HasEffectiveAppearance()) {
-    // For compatibility reasons if the element is a media control and the
-    // -webkit-appearance is none then we should clear the background image.
-    builder.MutableBackgroundInternal().ClearImage();
+  if (element && element->IsInShadowTree()) {
+    const AtomicString& pseudo_id = element->ShadowPseudoId();
+    if (!pseudo_id.IsNull()) {
+      if (!builder.HasEffectiveAppearance() &&
+          pseudo_id.starts_with("-webkit-media-controls")) {
+        // For compatibility reasons if the element is a media control and the
+        // -webkit-appearance is none then we should clear the background
+        // image.
+        builder.MutableBackgroundInternal().ClearImage();
+      }
+      if (!builder.TextOverflow().IsClip() &&
+          (pseudo_id == shadow_element_names::kPseudoInputPlaceholder ||
+           pseudo_id == shadow_element_names::kPseudoInternalInputSuggested)) {
+        TextControlElement* text_control =
+            ToTextControl(element->OwnerShadowHost());
+        DCHECK(text_control);
+        // TODO(futhark@chromium.org): We force clipping text overflow for
+        // focused input elements since we don't want to render ellipsis
+        // during editing. We should do this as a general solution which also
+        // includes contenteditable elements being edited. The computed style
+        // should not change, but
+        // LayoutBlockFlow::ShouldTruncateOverflowingText() should instead
+        // return false when text is being edited inside that block.
+        // https://crbug.com/814954
+        builder.SetTextOverflow(text_control->ValueForTextOverflow());
+      }
+    }
   }
 
-  if (element && !builder.TextOverflow().IsClip()) {
-    const AtomicString& pseudo_id = element->ShadowPseudoId();
-    if (pseudo_id == shadow_element_names::kPseudoInputPlaceholder ||
-        pseudo_id == shadow_element_names::kPseudoInternalInputSuggested) {
-      TextControlElement* text_control =
-          ToTextControl(element->OwnerShadowHost());
-      DCHECK(text_control);
-      // TODO(futhark@chromium.org): We force clipping text overflow for focused
-      // input elements since we don't want to render ellipsis during editing.
-      // We should do this as a general solution which also includes
-      // contenteditable elements being edited. The computed style should not
-      // change, but LayoutBlockFlow::ShouldTruncateOverflowingText() should
-      // instead return false when text is being edited inside that block.
-      // https://crbug.com/814954
-      builder.SetTextOverflow(text_control->ValueForTextOverflow());
+  if (element) {
+    if (const ViewTransition* view_transition =
+            ViewTransitionUtils::GetTransition(*element);
+        view_transition && view_transition->Scope() == element) {
+      if (!is_document_element) {
+        builder.SetContain(builder.Contain() | kContainsLayout);
+        builder.SetViewTransitionScope(EViewTransitionScope::kAll);
+      }
+      builder.SetForcesStackingContext(true);
     }
   }
 

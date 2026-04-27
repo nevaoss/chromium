@@ -4,7 +4,10 @@
 
 #include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view.h"
 
+#include <memory>
+
 #include "base/feature_list.h"
+#include "base/files/file_path.h"
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/metrics/histogram_functions.h"
@@ -12,14 +15,15 @@
 #include "base/notimplemented.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/state_transitions.h"
+#include "base/strings/stringprintf.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/default_tick_clock.h"
 #include "base/time/time.h"
 #include "base/trace_event/named_trigger.h"
+#include "base/types/expected.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/external_protocol/external_protocol_handler.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
-#include "chrome/browser/page_load_metrics/page_load_metrics_initialize.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -31,6 +35,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/view_ids.h"
+#include "chrome/browser/ui/views/location_bar/webui_content_setting_image_control.h"
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
 #include "chrome/browser/ui/views/toolbar/webui_split_tabs_control.h"
 #include "chrome/browser/ui/waap/initial_web_ui_manager.h"
@@ -51,7 +56,10 @@
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/drop_data.h"
 #include "content/public/common/result_codes.h"
+#include "mojo/public/mojom/base/error.mojom.h"
+#include "net/base/filename_util.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
 #include "ui/accessibility/ax_enums.mojom-shared.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -71,10 +79,15 @@
 
 namespace {
 
+using Code = mojo_base::mojom::Code;
+using Error = mojo_base::mojom::Error;
+
 constexpr char kHistogramToolbarRenderProcessGone[] =
     "InitialWebUI.Toolbar.RenderProcessGone";
 constexpr char kHistogramToolbarRenderProcessGoneExceedingRecoveryLimit[] =
     "InitialWebUI.Toolbar.RenderProcessGoneExceedingRecoveryLimit";
+
+}  // namespace
 
 class WebUIToolbarInternalWebView : public views::WebView {
   METADATA_HEADER(WebUIToolbarInternalWebView, views::WebView)
@@ -85,6 +98,14 @@ class WebUIToolbarInternalWebView : public views::WebView {
   ~WebUIToolbarInternalWebView() override = default;
 
   // views::WebView:
+  void PreHandleDragUpdate(const content::DropData& drop_data,
+                           const gfx::PointF& client_pt) override {
+    if (!drop_data.filenames.empty()) {
+      cached_dragged_file_path_ = drop_data.filenames.front().path;
+      cached_dragged_file_position_ = client_pt;
+    }
+  }
+
   void RendererUnresponsive(
       content::WebContents* source,
       content::RenderWidgetHost* render_widget_host,
@@ -130,16 +151,28 @@ class WebUIToolbarInternalWebView : public views::WebView {
         event, GetFocusManager());
   }
 
+  std::optional<GURL> ConsumeDroppedUrl(const gfx::PointF& point) {
+    std::optional<GURL> url = std::nullopt;
+    if (cached_dragged_file_position_.has_value() &&
+        point == *cached_dragged_file_position_ &&
+        cached_dragged_file_path_.has_value()) {
+      url = net::FilePathToFileURL(*cached_dragged_file_path_);
+    }
+    cached_dragged_file_path_.reset();
+    cached_dragged_file_position_.reset();
+    return url;
+  }
+
  private:
   // A handler to handle unhandled keyboard messages coming back from the
   // renderer process.
   views::UnhandledKeyboardEventHandler unhandled_keyboard_event_handler_;
+  std::optional<base::FilePath> cached_dragged_file_path_;
+  std::optional<gfx::PointF> cached_dragged_file_position_;
 };
 
 BEGIN_METADATA(WebUIToolbarInternalWebView)
 END_METADATA
-
-}  // namespace
 
 WebUIToolbarWebView::WebUIToolbarWebView(
     BrowserWindowInterface* browser,
@@ -189,20 +222,35 @@ WebUIToolbarWebView::WebUIToolbarWebView(
 
   auto web_view =
       std::make_unique<WebUIToolbarInternalWebView>(browser->GetProfile());
-  auto* web_contents =
-      web_view->GetWebContents(GURL(chrome::kChromeUIWebUIToolbarURL));
-  // PLM has to be initialized before loading the URL.
-  InitializePageLoadMetricsForWebContents(web_contents);
-  // Needed for UKM PageLoad metrics.
-  ukm::InitializeSourceUrlRecorderForWebContents(web_contents);
+  std::unique_ptr<content::WebContents> pre_created_contents;
 
-  web_contents->SetPageBaseBackgroundColor(SK_ColorTRANSPARENT);
-  web_contents->SetIgnoreZoomGestures(true);
+  if (auto* manager = InitialWebUIManager::From(browser)) {
+    pre_created_contents = manager->TakeToolbarContents();
+  }
+  if (pre_created_contents) {
+    is_preloaded_ = true;
+    // When preload is not enabled, the `WebUIToolbarUI` init is done in
+    // `WebUIToolbarWebView::DidFinishNavigation()`. Here since the
+    // `WebContents` is pre-created, it might finish navigation before we
+    // install the observer, so we have to manually init the `WebUIToolbarUI`.
+    if (!pre_created_contents->IsLoading() &&
+        pre_created_contents->GetController().GetLastCommittedEntry()) {
+      if (auto* ui = GetWebUIToolbarUI()) {
+        ui->Init(this);
+      }
+    }
+    Observe(pre_created_contents.get());
+    web_view->SetOwnedWebContents(std::move(pre_created_contents));
+  } else {
+    content::WebContents* web_contents =
+        web_view->GetWebContents(GURL(chrome::kChromeUIWebUIToolbarURL));
+    Observe(web_contents);
+    InitialWebUIManager::ConfigureToolbarWebContents(web_contents, browser);
+  }
 
   // We must save the pointer to the WebView so we can load the URL after the
   // view is added to a widget.
   web_view_ = AddChildView(std::move(web_view));
-  Observe(web_contents);
 
   // The accessibility and tooltip attributes are handled by the WebUI.
   SetProperty(views::kElementIdentifierKey, kWebUIToolbarElementIdentifier);
@@ -220,11 +268,9 @@ void WebUIToolbarWebView::AddedToWidget() {
 
   SetInitializationState(InitializationState::kPending);
 
-  // Ensure the browser window interface is associated with the WebContents
-  // before the WebUI acts on it.
-  webui::SetBrowserWindowInterface(web_view_->GetWebContents(), browser_);
-
-  web_view_->LoadInitialURL(GURL(chrome::kChromeUIWebUIToolbarURL));
+  if (!is_preloaded_) {
+    web_view_->LoadInitialURL(GURL(chrome::kChromeUIWebUIToolbarURL));
+  }
 
   // Initialize the split tabs control early to determine its initial visibility
   // state (based on prefs/tab state) before the first layout. This prevents
@@ -316,6 +362,22 @@ void WebUIToolbarWebView::HandleContextMenu(
       break;
     case toolbar_ui_api::mojom::ContextMenuType::kUnspecified:
       NOTREACHED() << "Unexpected ClickDispositionFlag::kUnspecified.";
+  }
+}
+
+void WebUIToolbarWebView::ShowContentSettingsBubble(
+    ::toolbar_ui_api::mojom::ContentSettingImageType type,
+    toolbar_ui_api::ToolbarUIService::ShowContentSettingsBubbleCallback
+        callback) {
+  if (location_bar_) {
+    location_bar_->content_setting_image_control().ShowContentSettingsBubble(
+        type, std::move(callback));
+  } else {
+    std::move(callback).Run(base::unexpected(Error::New(
+        Code::kFailedPrecondition,
+        base::StringPrintf("WebUIToolbarWebView: cannot create bubble without "
+                           "location_bar_ for type: %d",
+                           static_cast<int32_t>(type)))));
   }
 }
 
@@ -517,6 +579,10 @@ void WebUIToolbarWebView::SetTickClockForTesting(const base::TickClock* clock) {
   clock_ = clock;
 }
 
+views::WebView* WebUIToolbarWebView::GetWebViewForTesting() {
+  return web_view_;
+}
+
 WebUIToolbarUI* WebUIToolbarWebView::GetWebUIToolbarUI() {
   content::WebUI* web_ui = web_view_->web_contents()->GetWebUI();
   if (!web_ui) {
@@ -528,6 +594,17 @@ WebUIToolbarUI* WebUIToolbarWebView::GetWebUIToolbarUI() {
 
 void WebUIToolbarWebView::PermitLaunchUrl() {
   ExternalProtocolHandler::PermitLaunchUrl();
+}
+
+void WebUIToolbarWebView::OnHomeButtonDropUrl(const GURL& url) {
+  home_control_.OnHomeButtonDropUrl(url);
+}
+
+void WebUIToolbarWebView::OnHomeButtonDropFile(
+    const gfx::PointF& drop_position) {
+  if (std::optional<GURL> url = web_view_->ConsumeDroppedUrl(drop_position)) {
+    home_control_.OnHomeButtonDropUrl(*url);
+  }
 }
 
 void WebUIToolbarWebView::OnReloadControlStateChanged(
@@ -625,6 +702,16 @@ void WebUIToolbarWebView::OnPinnedToolbarActionsStateChanged(
   }
 }
 
+void WebUIToolbarWebView::OnContentSettingChanged(
+    std::vector<toolbar_ui_api::mojom::ContentSettingImageStatePtr> state) {
+  if (!mojo::Equals(state, last_queued_state_.location_bar_state
+                               ->content_setting_image_states)) {
+    last_queued_state_.location_bar_state->content_setting_image_states =
+        std::move(state);
+    PostPushNavigationState();
+  }
+}
+
 void WebUIToolbarWebView::OnTouchUiChanged() {
   ++last_queued_state_.layout_constants_version;
   PostPushNavigationState();
@@ -656,7 +743,7 @@ void WebUIToolbarWebView::PushNavigationState(uint64_t state_generation) {
   // PushNavigationState() tasks have been run before performing any update.
   if (state_generation == current_state_generation_) {
     if (WebUIToolbarUI* web_ui = GetWebUIToolbarUI()) {
-      web_ui->OnNavigationControlsStateChanged(last_queued_state_.Clone());
+      web_ui->OnNavigationControlsStateChanged(last_queued_state_);
     }
   }
 }

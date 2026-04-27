@@ -293,6 +293,7 @@
 <translation id="2251809247798634662">નવી છુપી વિંડો</translation>
 <translation id="2253927598983295051"><ph name="APP_NAME" /> વડે શું શેર કરવું તે પસંદ કરો</translation>
 <translation id="2261570557291037252">ઍપની વધુ માહિતી</translation>
+<translation id="2270544918551255912">પાછળ જવા માટે ખૂણેથી સ્વાઇપ કરો</translation>
 <translation id="2276696007612801991">તમારા પાસવર્ડ ચેક કરવા માટે તમારા Google એકાઉન્ટમાં સાઇન ઇન કરો</translation>
 <translation id="2281243904606300427"><ph name="TAB_TITLE" />, પસંદ કરેલું છૂપું ટૅબ</translation>
 <translation id="2286841657746966508">બિલિંગ સરનામું</translation>
@@ -480,6 +481,7 @@
 <translation id="2989523299700148168">તાજેતરમાં મુલાકાત લીધેલ</translation>
 <translation id="2992473221983447149">છબીના વર્ણનો</translation>
 <translation id="2996291259634659425">પાસફ્રેઝ બનાવો</translation>
+<translation id="2996682533106928201">છોડી દેવા માટે ટૅપ કરો</translation>
 <translation id="2996809686854298943">URL આવશ્યક છે</translation>
 <translation id="3024215143424744261">વાંચન મોડની પસંદગીઓ બંધ કરી</translation>
 <translation id="3026955690410463085">લિંકનો સમાવેશ કરો</translation>
@@ -831,6 +833,7 @@
 <translation id="4521489764227272523">પસંદ કરેલો ડેટા Chrome અને તમારા સિંક કરેલ ડિવાઇસમાંથી ડિલીટ કરવામાં આવ્યો છે.
 
 તમારા Google એકાઉન્ટમાં બ્રાઉઝિંગ ઇતિહાસના બીજા સ્વરૂપો જેમ કે શોધ અને બીજા Google સેવાઓ પરની પ્રવૃત્તિઓ <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> પર હોય શકે છે.</translation>
+<translation id="4521637321901000942">ટૂલબારમાં તમારા એક્સ્ટેન્શન મેનેજ કરો</translation>
 <translation id="4523326818319942067">છેલ્લો એક કલાક</translation>
 <translation id="452750746583162491">તમારા સિંક કરેલા ડેટાનો રિવ્યૂ કરો</translation>
 <translation id="4532845899244822526">ફોલ્ડર પસંદ કરો</translation>
@@ -1296,6 +1299,7 @@
 <translation id="6380100320871303656">તમે મુલાકાત લઈ શકો છો એવી સંભાવના ધરાવતા પેજને Chrome વારંવાર પહેલેથી લોડ કરે છે. આ સેટિંગના પરિણામે ડેટાનો વપરાશ વધી શકે છે.</translation>
 <translation id="6382848304055775421">નિકાસ કરી રહ્યાં છીએ</translation>
 <translation id="6388152137132427505">હંમેશાં સમજદારીપૂર્વક શેર કરો. લિંકની સમયસીમા 48 કલાકમાં સમાપ્ત થાય છે.</translation>
+<translation id="6389513857577090038">એક્સ્ટેન્શન "<ph name="EXTENSION_NAME" />"ને મંજૂરી આપીએ?</translation>
 <translation id="6394791151443660613">આ શોધો: <ph name="SEARCH_QUERY" /></translation>
 <translation id="6397616442223433927">પાછા ઑનલાઇન થયા</translation>
 <translation id="6399363707848566877">હવે તમે સરળતાથી અહીં ગ્રૂપમાં ટૅબ ઉમેરી શકો છો</translation>

@@ -8,6 +8,16 @@
 
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
+#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/webui/signin/signin_utils.h"
+#include "chrome/browser/ui/webui/webui_embedding_context.h"
+#include "components/accessibility_annotator/core/url_constants.h"
+#include "components/signin/public/identity_manager/identity_manager.h"
+#include "content/public/browser/page_navigator.h"
+#include "content/public/browser/web_contents.h"
+#include "ui/base/window_open_disposition.h"
 
 namespace accessibility_annotator::info {
 
@@ -15,10 +25,10 @@ AccessibilityAnnotatorInfoPageHandler::AccessibilityAnnotatorInfoPageHandler(
     mojo::PendingReceiver<accessibility_annotator::info::mojom::PageHandler>
         receiver,
     base::OnceCallback<void(InfoDialogResult)> callback,
-    content::BrowserContext* browser_context)
+    content::WebContents* web_contents)
     : receiver_(this, std::move(receiver)),
       callback_(std::move(callback)),
-      browser_context_(browser_context) {}
+      web_contents_(web_contents) {}
 
 AccessibilityAnnotatorInfoPageHandler::
     ~AccessibilityAnnotatorInfoPageHandler() {
@@ -29,13 +39,31 @@ AccessibilityAnnotatorInfoPageHandler::
 
 void AccessibilityAnnotatorInfoPageHandler::GetAccountInfo(
     GetAccountInfoCallback callback) {
-  // TODO(b/488266696): Retrieve account info from the profile.
+  auto account_info_mojom =
+      accessibility_annotator::info::mojom::AccountInfo::New();
 
-  auto account_info = accessibility_annotator::info::mojom::AccountInfo::New();
-  account_info->email = "user@example.com";
-  account_info->avatar_url = "https://example.com/avatar.png";
+  if (web_contents_) {
+    Profile* profile =
+        Profile::FromBrowserContext(web_contents_->GetBrowserContext());
+    auto* identity_manager = IdentityManagerFactory::GetForProfile(profile);
 
-  std::move(callback).Run(std::move(account_info));
+    if (identity_manager) {
+      CoreAccountInfo core_account_info =
+          identity_manager->GetPrimaryAccountInfo(
+              signin::ConsentLevel::kSignin);
+
+      if (!core_account_info.IsEmpty()) {
+        AccountInfo account_info =
+            identity_manager->FindExtendedAccountInfoByAccountId(
+                core_account_info.account_id);
+        account_info_mojom->email = std::string(account_info.GetEmail());
+        account_info_mojom->avatar_url =
+            signin::GetAccountPictureUrl(account_info);
+      }
+    }
+  }
+
+  std::move(callback).Run(std::move(account_info_mojom));
 }
 
 void AccessibilityAnnotatorInfoPageHandler::OnInfoAcknowledged() {
@@ -51,11 +79,35 @@ void AccessibilityAnnotatorInfoPageHandler::OnInfoDismissed() {
 }
 
 void AccessibilityAnnotatorInfoPageHandler::OnManageSettingsClicked() {
-  // TODO(b/488320942): Open settings page and record metric.
+  base::RecordAction(base::UserMetricsAction(
+      "AccessibilityAnnotator.RemoteAnnotatorInfo.SettingsLinkClick"));
+
+  if (auto* browser_window_interface =
+          webui::GetBrowserWindowInterface(web_contents_)) {
+    browser_window_interface->OpenURL(
+        content::OpenURLParams(
+            GURL(accessibility_annotator::kAccessibilityAnnotatorSettingsURL),
+            content::Referrer(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+            ui::PAGE_TRANSITION_LINK,
+            /*is_renderer_initiated=*/false),
+        /*navigation_handle_callback=*/base::DoNothing());
+  }
 }
 
 void AccessibilityAnnotatorInfoPageHandler::OnLearnMoreClicked() {
-  // TODO(b/488320942): Open learn more page and record metric.
+  base::RecordAction(base::UserMetricsAction(
+      "AccessibilityAnnotator.RemoteAnnotatorInfo.LearnMoreLinkClick"));
+
+  if (auto* browser_window_interface =
+          webui::GetBrowserWindowInterface(web_contents_)) {
+    browser_window_interface->OpenURL(
+        content::OpenURLParams(
+            GURL(accessibility_annotator::kAccessibilityAnnotatorLearnMoreURL),
+            content::Referrer(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+            ui::PAGE_TRANSITION_LINK,
+            /*is_renderer_initiated=*/false),
+        /*navigation_handle_callback=*/base::DoNothing());
+  }
 }
 
 }  // namespace accessibility_annotator::info

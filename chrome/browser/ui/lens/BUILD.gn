@@ -14,6 +14,7 @@ source_set("lens") {
     "lens_composebox_controller.h",
     "lens_keyed_service.h",
     "lens_keyed_service_factory.h",
+    "lens_media_link_handler.h",
     "lens_overlay_colors.h",
     "lens_overlay_controller.h",
     "lens_overlay_entry_point_controller.h",
@@ -29,7 +30,10 @@ source_set("lens") {
     "lens_string_utils.h",
     "overlay_base_controller.h",
   ]
-  friend = [ ":*" ]
+  friend = [
+    ":*",
+    "//chrome/browser/glic/selection:interactive_ui_tests",
+  ]
   sources = [
     "lens_composebox_handler.h",
     "lens_help_menu_utils.h",
@@ -353,6 +357,7 @@ source_set("interactive_ui_tests") {
     "//chrome/browser",
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/contextual_tasks",
+    "//chrome/browser/contextual_tasks:test_support",
     "//chrome/browser/contextual_tasks:ui",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/search_engines",

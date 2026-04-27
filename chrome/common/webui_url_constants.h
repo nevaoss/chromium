@@ -37,6 +37,10 @@ inline constexpr char kChromeUIAboutURL[] = "chrome://about/";
 inline constexpr char kChromeUIAccessCodeCastHost[] = "access-code-cast";
 inline constexpr char kChromeUIAccessCodeCastURL[] =
     "chrome://access-code-cast/";
+inline constexpr char kChromeUIAccessibilityAnnotatorInternalsHost[] =
+    "accessibility-annotator-internals";
+inline constexpr char kChromeUIAccessibilityAnnotatorInternalsURL[] =
+    "chrome://accessibility-annotator-internals/";
 inline constexpr char kChromeUIAccessibilityHost[] = "accessibility";
 inline constexpr char kChromeUIAccountSettingsURL[] =
     "chrome://settings/account";
@@ -246,6 +250,7 @@ inline constexpr char kChromeUIPasswordManagerURL[] =
 inline constexpr char kChromeUiPasswordChangeUrl[] =
     "chrome://password-manager/settings/password-change";
 inline constexpr char kChromeUIPolicyHost[] = "policy";
+inline constexpr char kChromeUIPolicyLogsURL[] = "chrome://policy/logs";
 inline constexpr char kChromeUIPolicyTestURL[] = "chrome://policy/test";
 inline constexpr char kChromeUIPolicyURL[] = "chrome://policy/";
 inline constexpr char kChromeUIPredictorsHost[] = "predictors";
@@ -297,6 +302,8 @@ inline constexpr char kChromeUISkillsYourSkillsPath[] = "yourSkills";
 inline constexpr char kChromeUISkillsBrowsePath[] = "browse";
 inline constexpr char kChromeUISplitViewNewTabPageURL[] =
     "chrome://tab-search.top-chrome/split_new_tab_page.html";
+inline constexpr char kChromeUISubresourceFilterInternalsHost[] =
+    "subresource-filter-internals";
 inline constexpr char kChromeUISuggestInternalsHost[] = "suggest-internals";
 inline constexpr char kChromeUISuggestInternalsURL[] =
     "chrome://suggest-internals/";
@@ -476,6 +483,8 @@ inline constexpr char kChromeUIBrowserSwitchURL[] = "chrome://browser-switch/";
 inline constexpr char kChromeUIIntroDefaultBrowserSubPage[] = "default-browser";
 inline constexpr char kChromeUIIntroDefaultBrowserURL[] =
     "chrome://intro/default-browser";
+inline constexpr char kChromeUIIntroSignInCelebrationSubPage[] =
+    "sign-in-celebration";
 inline constexpr char kChromeUIIntroHost[] = "intro";
 inline constexpr char kChromeUIIntroURL[] = "chrome://intro";
 inline constexpr char kChromeUIManagedUserProfileNoticeHost[] =
@@ -558,6 +567,7 @@ inline constexpr char kFileSystemSettingsSubpage[] =
     "content/filesystem/siteDetails";
 inline constexpr char kFileSystemSubpage[] = "content/filesystem";
 inline constexpr char kGlicSettingsSubpage[] = "ai/gemini";
+inline constexpr char kGlicLoginSettingsSubpage[] = "ai/gemini/login";
 inline constexpr char kGoogleServicesSubpage[] = "googleServices";
 inline constexpr char kHandlerSettingsSubPage[] = "handlers";
 inline constexpr char kHistorySearchSubpage[] = "ai/historySearch";

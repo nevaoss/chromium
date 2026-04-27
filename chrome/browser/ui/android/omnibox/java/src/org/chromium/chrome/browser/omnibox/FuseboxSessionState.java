@@ -7,7 +7,6 @@ package org.chromium.chrome.browser.omnibox;
 import org.chromium.base.Callback;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.UserData;
-import org.chromium.base.UserDataHost;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.OneShotCallback;
 import org.chromium.build.annotations.NullMarked;
@@ -84,10 +83,9 @@ public class FuseboxSessionState implements UserData {
     public static @Nullable FuseboxSessionState from(LocationBarDataProvider dataProvider) {
         if (sInstanceForTesting != null) return sInstanceForTesting.orElse(null);
 
-        var userDataHost = dataProvider.getUserDataHost();
-        if (userDataHost == null) return null;
+        var state = dataProvider.getFuseboxSessionState();
+        if (state == null) return null;
 
-        var state = getSessionForTab(userDataHost);
         // Re-apply page metadata in case of ephemeral session, background reload etc.
         state.mAutocompleteInput.setPageClassification(dataProvider.getPageClassification(false));
         state.mAutocompleteInput.setPageUrl(dataProvider.getCurrentGurl());
@@ -95,23 +93,8 @@ public class FuseboxSessionState implements UserData {
         return state;
     }
 
-    /**
-     * Returns session state for the supplied tab.
-     *
-     * @param userDataHost The tab to retrieve the session state for.
-     * @return FuseboxSessionState for the supplied UserDataHost.
-     */
-    private static FuseboxSessionState getSessionForTab(UserDataHost userDataHost) {
-        FuseboxSessionState state = userDataHost.getUserData(FuseboxSessionState.class);
-        if (state == null) {
-            state = new FuseboxSessionState();
-            userDataHost.setUserData(FuseboxSessionState.class, state);
-        }
-        return state;
-    }
-
     /** Constructs a new, empty FuseboxSessionState. */
-    private FuseboxSessionState() {
+    public FuseboxSessionState() {
         if (OmniboxFeatures.sShowModelPicker.getValue()) {
             mAutocompleteInput.getRequestTypeSupplier().addSyncObserver(mOnRequestTypeChanged);
         }
@@ -145,18 +128,26 @@ public class FuseboxSessionState implements UserData {
 
         mIsActive = true;
         mAutocompleteInput.setUrlFocusTime(System.currentTimeMillis());
-        // Use current URL if the Retention is active, the input is not already set, and the URL
-        // should be user-visible.
+
+        // Use current URL if the Retention is active as the starting input.
+        // On eligible LFF devices the Omnibox should, by default, present the
+        // current page URL (if the URL is eligible for display).
         if (OmniboxFeatures.shouldRetainOmniboxOnFocus()
-                && mAutocompleteInput.getUserText().isEmpty()
                 && UrlBarData.shouldShowUrl(mAutocompleteInput.getPageUrl(), false)) {
             var editUrl = UrlUtilities.stripScheme(mAutocompleteInput.getPageUrl().getSpec());
-            mAutocompleteInput.setUserText(editUrl).setSelection(0, Integer.MAX_VALUE);
+            mAutocompleteInput.setInitialUserText(editUrl);
+        } else {
+            mAutocompleteInput.setInitialUserText("");
         }
 
-        // The session is activated for the first time. Preserve the initial value of the User Text
-        // now. If the session is re-activated later, the user text will be preserved.
-        mAutocompleteInput.setInitialUserText(mAutocompleteInput.getUserText());
+        // Apply the initial default value unless user text is already set.
+        if (mAutocompleteInput.getUserText().isEmpty()) {
+            mAutocompleteInput
+                    .setUserText(mAutocompleteInput.getInitialUserText())
+                    .setSelection(
+                            OmniboxFeatures.shouldRetainOmniboxOnFocus() ? 0 : Integer.MAX_VALUE,
+                            Integer.MAX_VALUE);
+        }
 
         // Stop here if we're already waiting for profile.
         // This makes sense in scenarios where session object goes through a full cycle

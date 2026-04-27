@@ -600,7 +600,12 @@ void ComposeboxQueryController::CreateSearchUrl(
               *file_info->viewport_request_id_);
           has_image_upload = true;
         }
-        last_active_lens_file = file_info;
+        // Find the last file, preferring non-unresolved url uploads so that
+        // the correct request id is used for the interaction request.
+        if (!last_active_lens_file || !IsUnresolvedUrlUpload(*file_info) ||
+            IsUnresolvedUrlUpload(*last_active_lens_file)) {
+          last_active_lens_file = file_info;
+        }
       }
     }
 
@@ -1004,8 +1009,11 @@ void ComposeboxQueryController::StartFileUploadFlow(
     current_file_info.request_id->set_is_implicit_upload(
         current_file_info.is_implicit_upload);
   } else if (IsUnresolvedUrlUpload(current_file_info)) {
+    request_id_generator_.SetContextId(RandInt64());
+    request_id_generator_.SetHasChromeTabData(false);
+    request_id_generator_.SetIsImplicitUpload(true);
     current_file_info.request_id = *request_id_generator_.GetNextRequestId(
-        base_update_mode,
+        lens::RequestIdUpdateMode::kMultiContextUploadRequest,
         lens::LensOverlayRequestId::MEDIA_TYPE_UNRESOLVED_URL);
   } else {
     // Unlike image uploads, PDF / page content uploads need to increment the
@@ -1278,8 +1286,6 @@ ComposeboxQueryController::CreateOAuthHeadersAndContinue(
       identity_manager_->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
     signin::AccessTokenFetcher::TokenCallback token_callback =
         base::BindOnce(&lens::CreateOAuthHeader).Then(std::move(callback));
-    signin::ScopeSet oauth_scopes;
-    oauth_scopes.insert(GaiaConstants::kLensOAuth2Scope);
     return std::make_unique<signin::PrimaryAccountAccessTokenFetcher>(
         signin::OAuthConsumerId::kComposeboxQueryController, identity_manager_,
         std::move(token_callback),

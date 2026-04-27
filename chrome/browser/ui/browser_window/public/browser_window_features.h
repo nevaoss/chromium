@@ -99,6 +99,7 @@ class VerticalTabIphController;
 class WebUIBrowserExclusiveAccessContext;
 class WebUIBrowserSidePanelUI;
 class ZoomBubbleCoordinator;
+class ZoomBubbleManager;
 
 #if BUILDFLAG(IS_WIN)
 class WindowsTaskbarIconUpdater;
@@ -319,11 +320,6 @@ class BrowserWindowFeatures {
   // supported for those cases.
   ToastService* toast_service() { return toast_service_.get(); }
 
-  send_tab_to_self::SendTabToSelfToolbarBubbleController*
-  send_tab_to_self_toolbar_bubble_controller() {
-    return send_tab_to_self_toolbar_bubble_controller_.get();
-  }
-
   extensions::ExtensionSidePanelManager* extension_side_panel_manager() {
     return extension_side_panel_manager_.get();
   }
@@ -519,10 +515,8 @@ class BrowserWindowFeatures {
   std::unique_ptr<TabListBridge> tab_list_bridge_;
 
   std::unique_ptr<BrowserInstantController> instant_controller_;
-
   std::unique_ptr<send_tab_to_self::SendTabToSelfToolbarBubbleController>
       send_tab_to_self_toolbar_bubble_controller_;
-
   std::unique_ptr<ChromeLabsCoordinator> chrome_labs_coordinator_;
 
   std::unique_ptr<ImmersiveModeController> immersive_mode_controller_;
@@ -607,6 +601,8 @@ class BrowserWindowFeatures {
 #if !BUILDFLAG(IS_CHROMEOS)
   std::unique_ptr<DownloadToolbarUIController> download_toolbar_ui_controller_;
 #endif
+
+  std::unique_ptr<ZoomBubbleManager> zoom_bubble_manager_;
 
   std::unique_ptr<ZoomBubbleCoordinator> zoom_bubble_coordinator_;
 

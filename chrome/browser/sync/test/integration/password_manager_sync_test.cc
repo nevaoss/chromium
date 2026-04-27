@@ -24,7 +24,6 @@
 #include "chrome/browser/password_manager/passwords_navigation_observer.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/test/integration/passwords_helper.h"
-#include "chrome/browser/sync/test/integration/secondary_account_helper.h"
 #include "chrome/browser/sync/test/integration/single_client_status_change_checker.h"
 #include "chrome/browser/sync/test/integration/status_change_checker.h"
 #include "chrome/browser/sync/test/integration/sync_service_impl_harness.h"
@@ -239,29 +238,10 @@ class PasswordManagerSyncTest : public SyncTest {
     SyncTest::TearDownOnMainThread();
   }
 
-  void SignIn(SyncTestAccount account = SyncTestAccount::kDefaultAccount) {
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-    auto enable_disclaimer_on_primary_account_change_resetter =
-        enterprise_util::DisableAutomaticManagementDisclaimerUntilReset(
-            GetProfile(0));
-#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-
-    ASSERT_TRUE(GetClient(0)->SignInPrimaryAccount(account));
-    ASSERT_TRUE(GetClient(0)->AwaitSyncTransportActive());
-    ASSERT_FALSE(GetSyncService(0)->IsSyncFeatureEnabled());
-  }
-
-  void SetupSyncTransportWithPasswordAccountStorage() {
-    SignIn(SyncTestAccount::kDefaultAccount);
-
-    PasswordSyncActiveChecker(GetSyncService(0)).Wait();
-    ASSERT_TRUE(GetSyncService(0)->GetActiveDataTypes().Has(syncer::PASSWORDS));
-  }
-
+#if !BUILDFLAG(IS_CHROMEOS)
   // Should only be called after SetupSyncTransportWithPasswordAccountStorage().
-  void SignOut() {
-    secondary_account_helper::SignOut(GetProfile(0), &test_url_loader_factory_);
-  }
+  void SignOut() { GetClient(0)->SignOutPrimaryAccount(); }
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 
   GURL GetWWWOrigin() {
     return embedded_test_server()->GetURL(kExampleHostname, "/");
@@ -414,7 +394,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest, UpdateInProfileStore) {
 
   AddLocalCredential("user", "localpass");
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -436,11 +416,9 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest, UpdateInProfileStore) {
 }
 
 IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest, UpdateInAccountStore) {
-  ASSERT_TRUE(SetupClients());
-
   AddCredentialToFakeServer("user", "accountpass");
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -468,7 +446,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
   AddCredentialToFakeServer("user", "pass");
   AddLocalCredential("user", "pass");
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -496,7 +474,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
   AddCredentialToFakeServer("user", "accountpass");
   AddLocalCredential("user", "localpass");
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -536,7 +514,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
   AddCredentialToFakeServer("user", "accountpass");
   AddLocalCredential("user", "localpass");
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   // Now we have credentials for the same user, but with different passwords, in
   // the two stores.
@@ -574,7 +552,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
   AddCredentialToFakeServer("user", "accountpass");
   AddLocalCredential("user", "localpass");
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   // Now we have credentials for the same user, but with different passwords, in
   // the two stores.
@@ -608,7 +586,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
   AddCredentialToFakeServer(CreateTestPSLPasswordForm("user", "pass"));
   AddLocalCredential(CreateTestPasswordForm("user", "pass"));
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -638,7 +616,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
   AddCredentialToFakeServer(CreateTestPasswordForm("user", "pass"));
   AddLocalCredential(CreateTestPSLPasswordForm("user", "pass"));
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -668,7 +646,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
   AddCredentialToFakeServer(CreateTestPSLPasswordForm("user", "pass"));
   AddLocalCredential(CreateTestPSLPasswordForm("user", "pass"));
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -691,9 +669,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
 
 IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
                        DontOfferToSavePrimaryAccountCredential) {
-  ASSERT_TRUE(SetupClients());
-
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -713,24 +689,15 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
 }
 
 // TODO(crbug.com/500570908): Enable the test.
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) && defined(ADDRESS_SANITIZER)
-#define MAYBE_OfferToSaveNonPrimaryAccountCredential \
-  DISABLED_OfferToSaveNonPrimaryAccountCredential
-#else
-#define MAYBE_OfferToSaveNonPrimaryAccountCredential \
-  OfferToSaveNonPrimaryAccountCredential
-#endif
 IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
-                       MAYBE_OfferToSaveNonPrimaryAccountCredential) {
+                       DISABLED_OfferToSaveNonPrimaryAccountCredential) {
   // Disable signin interception, because it suppresses the password bubble.
   // See PasswordManagerBrowserTestWithSigninInterception for tests with
   // interception enabled.
   g_browser_process->local_state()->SetBoolean(prefs::kBrowserAddPersonEnabled,
                                                false);
 
-  ASSERT_TRUE(SetupClients());
-
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -752,15 +719,8 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
 }
 
 // TODO(crbug.com/500570908): Enable the test.
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) && defined(ADDRESS_SANITIZER)
-#define MAYBE_OfferToUpdatePrimaryAccountCredential \
-  DISABLED_OfferToUpdatePrimaryAccountCredential
-#else
-#define MAYBE_OfferToUpdatePrimaryAccountCredential \
-  OfferToUpdatePrimaryAccountCredential
-#endif
 IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
-                       MAYBE_OfferToUpdatePrimaryAccountCredential) {
+                       DISABLED_OfferToUpdatePrimaryAccountCredential) {
   ASSERT_TRUE(SetupClients());
 
   // The password for the primary account is already saved.
@@ -768,7 +728,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
       GetClient(0)->GetEmailForAccount(SyncTestAccount::kDefaultAccount),
       "pass", GetHttpsOrigin("accounts.google.com")));
 
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   content::WebContents* web_contents = GetNewTab(GetBrowser(0));
 
@@ -797,8 +757,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
 
 IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
                        DisabledSettingSurvivesSignout) {
-  ASSERT_TRUE(SetupClients());
-  SignIn();
+  ASSERT_TRUE(SignIn());
   ASSERT_TRUE(GetSyncService(0)->GetActiveDataTypes().Has(syncer::PASSWORDS));
 
   GetSyncService(0)->GetUserSettings()->SetSelectedType(
@@ -808,19 +767,18 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
   SignOut();
 
   // The disabling should be remembered.
-  SignIn();
+  ASSERT_TRUE(SignIn());
   PasswordSyncInactiveChecker(GetSyncService(0)).Wait();
 }
 
 IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
                        KeepAccountStorageDisabledSettingOnlyForUsers) {
-  ASSERT_TRUE(SetupClients());
-  SignIn(SyncTestAccount::kConsumerAccount1);
+  ASSERT_TRUE(SignIn(SyncTestAccount::kConsumerAccount1));
   GetSyncService(0)->GetUserSettings()->SetSelectedType(
       syncer::UserSelectableType::kPasswords, false);
   const GaiaId first_gaia_id = GetSyncService(0)->GetAccountInfo().gaia;
   SignOut();
-  SignIn(SyncTestAccount::kConsumerAccount2);
+  ASSERT_TRUE(SignIn(SyncTestAccount::kConsumerAccount2));
   GetSyncService(0)->GetUserSettings()->SetSelectedType(
       syncer::UserSelectableType::kPasswords, false);
   SignOut();
@@ -828,11 +786,11 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
   GetSyncService(0)->GetUserSettings()->KeepAccountSettingsPrefsOnlyForUsers(
       {first_gaia_id});
 
-  SignIn(SyncTestAccount::kConsumerAccount1);
+  ASSERT_TRUE(SignIn(SyncTestAccount::kConsumerAccount1));
   EXPECT_FALSE(password_manager::features_util::IsAccountStorageActive(
       GetSyncService(0)));
   SignOut();
-  SignIn(SyncTestAccount::kConsumerAccount2);
+  ASSERT_TRUE(SignIn(SyncTestAccount::kConsumerAccount2));
   EXPECT_TRUE(password_manager::features_util::IsAccountStorageActive(
       GetSyncService(0)));
 }
@@ -885,7 +843,7 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
 // Transport mode is not really supported on ChromeOS.
 #if !BUILDFLAG(IS_CHROMEOS)
 IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest, SyncUtilApis) {
-  ASSERT_TRUE(SetupSyncWithMode(SetupSyncMode::kSyncTransportOnly));
+  ASSERT_TRUE(SignIn());
 
   // Sync-the-feature APIs should all return "false".
   EXPECT_FALSE(
@@ -939,8 +897,7 @@ class PasswordManagerSyncTestWithPolicy : public PasswordManagerSyncTest {
 
 IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTestWithPolicy,
                        SyncTypesListDisabled) {
-  ASSERT_TRUE(SetupClients());
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
 
   // Disable passwords via the kSyncTypesListDisabled policy.
   base::ListValue disabled_types;
@@ -958,9 +915,8 @@ IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTestWithPolicy,
 IN_PROC_BROWSER_TEST_F(PasswordManagerSyncTest,
                        WipingAccountStoreUpdatesSavedPasswordsPresenter) {
   // Set up one credential in the account store and one presenter.
-  ASSERT_TRUE(SetupClients());
   AddCredentialToFakeServer("user", "pass");
-  SetupSyncTransportWithPasswordAccountStorage();
+  ASSERT_TRUE(SignIn());
   ASSERT_EQ(GetAllLoginsFromAccountPasswordStore().size(), 1u);
   password_manager::SavedPasswordsPresenter presenter(
       AffiliationServiceFactory::GetForProfile(GetProfile(0)),

@@ -261,8 +261,8 @@ CHAR_LIMIT guidelines:
         Browser
       </message>
       <!-- TODO(crbug.com/489124317): Update translation. -->
-      <message name="IDS_NOTIFICATION_CATEGORY_ACTOR" desc="Label for actor-related notifications, within a list of notification categories. [CHAR_LIMIT=32]" translateable="false">
-        Actor
+      <message name="IDS_NOTIFICATION_CATEGORY_ACTOR" desc="Label for actor-related notifications, within a list of notification categories. [CHAR_LIMIT=32]">
+        Gemini in Chrome
       </message>
       <message name="IDS_NOTIFICATION_CATEGORY_SCREEN_CAPTURE" desc="Label for notifications shown when screen is sharing or recording, within a list of notification categories. [CHAR_LIMIT=32]">
         Screen Capture
@@ -556,6 +556,9 @@ For more settings that use data to improve your Chrome experience, go to <ph nam
         Some extensions can add search engines to Chrome
       </message>
       <if expr="enable_extensions_core">
+        <message name="IDS_EXTENSIONS_REQUEST_ACCESS_MESSAGE_TITLE_SINGLE_EXTENSION" desc="The title of the request access message banner that appears on the toolbar when an extension requests access to the site" formatter_data="android_java">
+          Allow extension "<ph name="EXTENSION_NAME">%1$s</ph>"?
+        </message>
         <message name="IDS_SITE_SEARCH_EXTENSIONS_MENU_MANAGE" desc="Menu item to manage extensions">
           Manage
         </message>
@@ -5395,8 +5398,11 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_ACCESSIBILITY_OMNIBOX_REMOVE_SUGGESTION" desc="Accessibility announcement when the close button for the suggestion is clicked.">
         Remove suggestion
       </message>
-      <message name="IDS_ACCESSIBILITY_OMNIBOX_OPEN_OR_CLOSE_CONTEXT_POPUP" desc="Accessibility announcement when the 'Add context' button in the omnibox is highlighted.">
-        Open or Close the context popup
+      <message name="IDS_ACCESSIBILITY_OMNIBOX_OPEN_CONTEXT_POPUP" desc="Accessibility announcement when the 'Add context' button in the omnibox is highlighted.">
+        Open the context popup
+      </message>
+      <message name="IDS_ACCESSIBILITY_OMNIBOX_CONTEXT_POPUP_TITLE" desc="Accessibility description for the 'Add context' popup.">
+        Context popup window
       </message>
       <message name="IDS_ACCESSIBILITY_OMNIBOX_ENABLE_AI_MODE" desc="Accessibility announcement when the 'AI Mode' option in the Omnibox 'Add context' popup is highlighted.">
         Enable AI Mode
@@ -5919,6 +5925,12 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_KEYBOARD_SHORTCUT_SEARCH" desc="A text label that appears next to the keyboard that will focusa and clear the address bar on the screen. The shortcut description is shown in a system dialog along with all other supported shortcuts. [CHAR_LIMIT=55]">
         Start new search
       </message>
+      <message name="IDS_KEYBOARD_SHORTCUT_SCROLL_TO_TOP" desc="A text label that appears next to the keyboard shortcut that will scroll to the top of the page. The shortcut description is shown in a system dialog along with all other supported shortcuts. [CHAR_LIMIT=55]">
+        Scroll to top of page
+      </message>
+      <message name="IDS_KEYBOARD_SHORTCUT_SCROLL_TO_BOTTOM" desc="A text label that appears next to the keyboard shortcut that will scroll to the bottom of the page. The shortcut description is shown in a system dialog along with all other supported shortcuts. [CHAR_LIMIT=55]">
+        Scroll to bottom of page
+      </message>
       <message name="IDS_KEYBOARD_SHORTCUT_BOOKMARK_MANAGER" desc="A text label that appears next to the keyboard shortcut that will open the bookmarks manager in Chrome. On a tablet this is a new tab, on the phone this is a new activity. The shortcut description is shown in a system dialog along with all other supported shortcuts. [CHAR_LIMIT=55]">
         Open Bookmarks Manager
       </message>
@@ -6129,10 +6141,10 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
 
       <!-- In-Product Help strings -->
       <message name="IDS_IPH_GLIC_PROMO_TEXT" desc="The in-product-help promotion message to try Glic.">
-        Try Gemini in Chrome to get answers, key takeaways and more.
+        Gemini is now on your toolbar. To change your pinned tool anytime, long-press the icon.
       </message>
       <message name="IDS_IPH_GLIC_PROMO_ACCESSIBILITY_TEXT" desc="The in-product-help accessibility text to try Glic.">
-        Try Gemini in Chrome to get answers, key takeaways and more from the More Options button.
+        Gemini is now on your toolbar. To change your pinned tool anytime, long-press the icon.
       </message>
       <message name="IDS_IPH_DOWNLOAD_PAGE_FOR_OFFLINE_USAGE_TEXT" desc="The in-product-help message after a successful navigation prompting user to download the pages to view offline.">
         Download pages to use them offline
@@ -6208,6 +6220,12 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_IPH_GESTURE_USER_EDUCATION_TAP_TO_DISMISS" desc="The in-product-help message to notify users how to dismiss.">
         Tap to dismiss
+      </message>
+      <message name="IDS_EXTENSIONS_MENU_MANAGE_APP_MENU_IPH" desc="IPH message pointing to the Chrome app menu three-dot button shown after a user unpins the extensions menu puzzle piece explaining they can manage their extensions in the Chrome app menu.">
+        Manage your extensions in Chrome main menu
+      </message>
+      <message name="IDS_EXTENSIONS_MENU_MANAGE_TOOLBAR_IPH" desc="IPH message pointing to the extension puzzle piece shown after a user installs their first extension explaining they can manage their extensions in the toolbar.">
+        Manage your extensions in the toolbar
       </message>
 
       <!-- Search Widget strings -->
@@ -7779,9 +7797,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
     <!-- Glic strings -->
       <message name="IDS_GLIC_ACTOR_TASK_IN_PROGRESS" desc="Snackbar message shown when a Glic actor task is still in progress.">
         Your task is still in progress
-      </message>
-      <message name="IDS_EXTENSIONS_MENU_MANAGE_IPH" desc="IPH message pointing to the extension puzzle piece shown after a user installs their first extension explaining they can manage their extensions in the toolbar.">
-        Manage your extensions in the toolbar
       </message>
 </messages>
   </release>

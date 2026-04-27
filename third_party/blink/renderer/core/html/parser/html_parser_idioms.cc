@@ -37,39 +37,6 @@
 
 namespace blink {
 
-String StripLeadingAndTrailingHTMLSpaces(const String& string) {
-  unsigned length = string.length();
-
-  if (!length)
-    return string.IsNull() ? string : g_empty_atom.GetString();
-
-  return VisitCharacters(string, [&](auto chars) {
-    unsigned num_leading_spaces = 0;
-    unsigned num_trailing_spaces = 0;
-
-    for (; num_leading_spaces < length; ++num_leading_spaces) {
-      if (IsNotHTMLSpace(chars[num_leading_spaces]))
-        break;
-    }
-
-    if (num_leading_spaces == length)
-      return string.IsNull() ? string : g_empty_atom.GetString();
-
-    for (; num_trailing_spaces < length; ++num_trailing_spaces) {
-      if (IsNotHTMLSpace(chars[length - num_trailing_spaces - 1]))
-        break;
-    }
-
-    DCHECK_LT(num_leading_spaces + num_trailing_spaces, length);
-
-    if (!(num_leading_spaces | num_trailing_spaces))
-      return string;
-
-    return string.substr(num_leading_spaces,
-                         length - (num_leading_spaces + num_trailing_spaces));
-  });
-}
-
 StringView StripLeadingAndTrailingHtmlSpaces(const StringView& string) {
   if (string.empty()) {
     return string.IsNull() ? string : g_empty_atom;
@@ -111,7 +78,7 @@ String SerializeForNumberType(const Decimal& number) {
 String SerializeForNumberType(double number) {
   // According to HTML5, "the best representation of the number n as a floating
   // point number" is a string produced by applying ToString() to n.
-  return String::NumberToStringECMAScript(number);
+  return String::NumberToStringEcmaScript(number);
 }
 
 Decimal ParseToDecimalForNumberType(const String& string,

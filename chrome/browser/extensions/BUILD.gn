@@ -104,6 +104,8 @@ source_set("extensions") {
     "api/downloads/downloads_api.h",
     "api/identity/extension_token_key.cc",
     "api/identity/extension_token_key.h",
+    "api/identity/gaia_remote_consent_flow.cc",
+    "api/identity/gaia_remote_consent_flow.h",
     "api/identity/identity_api.cc",
     "api/identity/identity_api.h",
     "api/identity/identity_constants.cc",
@@ -112,6 +114,8 @@ source_set("extensions") {
     "api/identity/identity_get_accounts_function.h",
     "api/identity/identity_get_auth_token_error.cc",
     "api/identity/identity_get_auth_token_error.h",
+    "api/identity/identity_get_auth_token_function.cc",
+    "api/identity/identity_get_auth_token_function.h",
     "api/identity/identity_get_profile_user_info_function.cc",
     "api/identity/identity_get_profile_user_info_function.h",
     "api/identity/identity_launch_web_auth_flow_function.cc",
@@ -273,8 +277,6 @@ source_set("extensions") {
     "extension_action_runner.h",
     "extension_action_storage_manager.cc",
     "extension_action_storage_manager.h",
-    "extension_allowlist.cc",
-    "extension_allowlist.h",
     "extension_allowlist_factory.cc",
     "extension_allowlist_factory.h",
     "extension_browser_window_helper.cc",
@@ -371,7 +373,6 @@ source_set("extensions") {
     "installed_loader.h",
     "launch_util.cc",
     "launch_util.h",
-    "managed_installation_mode.h",
     "managed_toolbar_pin_mode.h",
     "management/management_util.cc",
     "management/management_util.h",
@@ -382,9 +383,6 @@ source_set("extensions") {
     "menu_manager.h",
     "menu_manager_factory.cc",
     "menu_manager_factory.h",
-    "mv2_deprecation_impact_checker.cc",
-    "mv2_deprecation_impact_checker.h",
-    "mv2_experiment_stage.h",
     "navigation_extension_enabler.cc",
     "navigation_extension_enabler.h",
     "omaha_attributes_handler.cc",
@@ -468,6 +466,9 @@ source_set("extensions") {
     "//build/config/compiler:wexit_time_destructors",
   ]
   allow_circular_includes_from = [
+    # enterprise headers include extension_management.h.
+    "//chrome/browser/enterprise",
+
     # TODO(crbug.com/40161499): Remove this circular dependency.
     "//chrome/browser/devtools",
 
@@ -495,9 +496,9 @@ source_set("extensions") {
     "//chrome/browser/bookmarks",
     "//chrome/browser/component_updater",
     "//chrome/browser/content_settings:content_settings_factory",
-    "//chrome/browser/device_reauth",
     "//chrome/browser/devtools",
     "//chrome/browser/download",
+    "//chrome/browser/enterprise",
     "//chrome/browser/enterprise/connectors/reporting",
     "//chrome/browser/extensions:external_loader",
     "//chrome/browser/extensions/api:api_registration",
@@ -507,6 +508,7 @@ source_set("extensions") {
     "//chrome/browser/history",
     "//chrome/browser/infobars",
     "//chrome/browser/lifetime:termination_notification",
+    "//chrome/browser/net",
     "//chrome/browser/password_manager/factories",
     "//chrome/browser/prefetch",
     "//chrome/browser/prefs",
@@ -524,6 +526,7 @@ source_set("extensions") {
     "//chrome/browser/search",
     "//chrome/browser/sessions",
     "//chrome/browser/signin",
+    "//chrome/browser/signin:google_accounts_private_api",
     "//chrome/browser/tab_group_sync:factories",
     "//chrome/browser/tab_list",
     "//chrome/browser/ui:browser_element_identifiers",
@@ -629,6 +632,10 @@ source_set("extensions") {
   if (is_mac || is_win || is_linux || is_chromeos) {
     deps += [ "//components/webapps/isolated_web_apps:scheme" ]
   }
+
+  if (is_mac) {
+    deps += [ "//chrome/browser/mac" ]
+  }
   if (enable_spellcheck) {
     deps += [ "//chrome/browser/spellchecker" ]
   }
@@ -702,12 +709,8 @@ source_set("extensions") {
       "api/file_system/chrome_file_system_delegate.h",
       "api/file_system/file_entry_picker.cc",
       "api/file_system/file_entry_picker.h",
-      "api/identity/gaia_remote_consent_flow.cc",
-      "api/identity/gaia_remote_consent_flow.h",
       "api/identity/identity_clear_all_cached_auth_tokens_function.cc",
       "api/identity/identity_clear_all_cached_auth_tokens_function.h",
-      "api/identity/identity_get_auth_token_function.cc",
-      "api/identity/identity_get_auth_token_function.h",
       "api/identity/identity_remove_cached_auth_token_function.cc",
       "api/identity/identity_remove_cached_auth_token_function.h",
       "api/image_writer_private/destroy_partitions_operation.cc",
@@ -897,6 +900,7 @@ source_set("extensions") {
       "//chrome/browser/feedback",
       "//chrome/browser/glic",
       "//chrome/browser/importer",
+      "//chrome/browser/language",
       "//chrome/browser/lifetime:termination_notification",
       "//chrome/browser/picture_in_picture",
       "//chrome/browser/prefs",
@@ -907,7 +911,6 @@ source_set("extensions") {
       "//chrome/browser/search/background",
       "//chrome/browser/search_engine_choice",
       "//chrome/browser/search_engines",
-      "//chrome/browser/signin:google_accounts_private_api",
       "//chrome/browser/sync",
       "//chrome/browser/sync_file_system",
       "//chrome/browser/themes",
@@ -1016,7 +1019,6 @@ source_set("extensions") {
       "//components/services/unzip/public/cpp",
       "//components/sessions",
       "//components/signin/public/identity_manager",
-      "//components/storage_monitor",
       "//components/strings",
       "//components/sync",
       "//components/sync_preferences",
@@ -1146,7 +1148,9 @@ source_set("extensions") {
         ]
 
         deps += [
+          "//chrome/browser/ash/base",
           "//chrome/browser/ash/printing",
+          "//chrome/browser/ash/printing/print_management",
           "//chrome/browser/chromeos/extensions/printing_metrics",
           "//chrome/browser/chromeos/printing",
           "//chrome/browser/pdf:pdf_pref_names",

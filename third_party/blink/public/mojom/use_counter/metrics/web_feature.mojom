@@ -4268,7 +4268,7 @@ enum WebFeature {
   kMaximumHTMLParserDOMTreeDepthHit = 4972,
   // The items above roughly this point are available in the M126 branch.
   kV8ModelGenericSession_Destroy_Method = 4973,
-  kUsedDeviceScaleAdjustment = 4974,
+  kOBSOLETE_UsedDeviceScaleAdjustment = 4974,
   kOBSOLETE_DisableThirdPartyStoragePartitioning2 = 4975,
   kLinkRelFacilitatedPayment = 4976,
   kOBSOLETE_V8GPUAdapter_RequestAdapterInfo_Method = 4977,
@@ -4990,7 +4990,7 @@ enum WebFeature {
   kSmartCardConnect = 5674,
   kNavigatorCPUPerformance = 5675,
   kOBSOLETE_SelectionRemoveRangeNotFoundWouldThrow = 5676,
-  kNestedSvgCssSizingProperties = 5677,
+  kOBSOLETE_NestedSvgCssSizingProperties = 5677,
   kCryptoAlgorithmChaCha20Poly1305 = 5678,
   kCryptoAlgorithmMlDsa44 = 5679,
   kCryptoAlgorithmMlDsa65 = 5680,
@@ -5181,6 +5181,9 @@ enum WebFeature {
   kLanguageModel_Create_Temperature = 5864,
   kLanguageModel_Create_TopK = 5865,
   kHTMLInCanvas = 5866,
+  kConnectionAllowlist = 5867,
+  kStyleTypeModule = 5868,
+  kShadowRootAdoptedStyleSheets = 5869,
 
   // Add new features immediately above this line. Don't change the existing
   // numbers of any item, and don't reuse removed slots. Also don't add extra

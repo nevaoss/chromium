@@ -460,7 +460,8 @@ BASE_FEATURE(kGlicDetached, base::FEATURE_ENABLED_BY_DEFAULT);
 // Controls whether the Glic feature uses multiple instances or not.
 BASE_FEATURE(kGlicMultiInstance, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Controls whether Glic warms up WebContents instead of a full instance.
+// Glic WebContentsWarming is now always enabled. This feature is kept around
+// for now to allow configuring params.
 BASE_FEATURE(kGlicWebContentsWarming, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls the delay before the WebContents is warmed. A large delay will
@@ -512,7 +513,7 @@ const base::FeatureParam<int> kGlicMinLoadingTimeMs{
     &kGlic, "glic-min-loading-time-ms", 1000};
 
 const base::FeatureParam<int> kGlicMaxLoadingTimeMs{
-    &kGlic, "glic-max-loading-time-ms", 15000};
+    &kGlic, "glic-max-loading-time-ms", 30000};
 
 const base::FeatureParam<int> kGlicReloadMaxLoadingTimeMs{
     &kGlic, "glic-reload-max-loading-time-ms", 30000};
@@ -724,7 +725,6 @@ BASE_FEATURE(kGlicDebugWebview, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicScrollTo, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicCaptureRegion, base::FEATURE_DISABLED_BY_DEFAULT);
-
 
 // Controls whether we enforce that documentId (an optional parameter) is set
 // when trying to scroll all documents except PDFs (and fail the request if
@@ -976,6 +976,11 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    &kGlicActorAutofill,
                    "glic-actor-autofill-maximum-timeout",
                    base::Minutes(1));
+
+// Whether to enable OneTimePassword filling in Glic.
+// TODO(b/500683394): Clean up after launch.
+BASE_FEATURE(kGlicActorAutofillOneTimePassword,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicDisableUnderlineAnimations,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1268,10 +1273,6 @@ BASE_FEATURE(kPluginVm, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPrerenderFallbackToPreconnect, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_CHROMEOS)
-// Enable the ChromeOS print preview to be opened instead of the browser print
-// preview.
-BASE_FEATURE(kPrintPreviewCrosPrimary, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, use managed per-printer print job options set via
 // DevicePrinters/PrinterBulkConfiguration policy in print preview.
 BASE_FEATURE(kUseManagedPrintJobOptionsInPrintPreview,
@@ -1751,6 +1752,10 @@ const base::FeatureParam<bool> kWebUIReloadButtonRestartUnresponsive{
 // has finished loading.
 const base::FeatureParam<bool> kWebUIReloadButtonDeferBrowserViewShow{
     &kWebUIReloadButton, "WebUIReloadButtonDeferBrowserViewShow", true};
+// When this is enabled, the WebUI toolbar will be pre-warmed during browser
+// initialization.
+const base::FeatureParam<bool> kWebUIReloadButtonPrewarmWebUI{
+    &kWebUIReloadButton, "WebUIReloadButtonPrewarmWebUI", false};
 // When this is enabled, the reload button will be marked as visible until its
 // first non-empty paint.
 const base::FeatureParam<bool> kWebUIReloadButtonKeepVisibleUntilPaint{

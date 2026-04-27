@@ -843,7 +843,7 @@ FragmentPaintPropertyTreeBuilder::CompositorStickyScrollAncestorForAxis(
     const LayoutBoxModelObject& box_model,
     PhysicalAxis axis) const {
   const auto layout_constraint = box_model.StickyConstraints();
-  DCHECK(layout_constraint);
+  DCHECK(layout_constraint.HasAnyConstraint());
   const auto* axis_layout_data = layout_constraint.AxisData(axis);
   if (!axis_layout_data) {
     return CompositorElementId();
@@ -900,7 +900,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateStickyTranslation(
 
       if (state.direct_compositing_reasons) {
         const auto layout_constraint = box_model.StickyConstraints();
-        DCHECK(layout_constraint);
+        DCHECK(layout_constraint.HasAnyConstraint());
         const CompositorElementId x_compositor_scroll_ancestor_id =
             CompositorStickyScrollAncestorForAxis(box_model,
                                                   PhysicalAxis::kHorizontal);
@@ -1018,9 +1018,15 @@ void FragmentPaintPropertyTreeBuilder::UpdateAnchorPositionScrollTranslation() {
       // snapshot's scrollers do not match the current scrollers.
 
       DCHECK(object_.GetDocument().Printing() ||
+             (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+                  object_.GetDocument().GetExecutionContext()) &&
+              IsA<Element>(object_.GetNode()) &&
+              To<Element>(object_.GetNode())->IsInCanvasSubtree()) ||
              (full_context_.direct_compositing_reasons &
               CompositingReason::kAnchorPosition));
-      state.direct_compositing_reasons = CompositingReason::kAnchorPosition;
+      state.direct_compositing_reasons =
+          full_context_.direct_compositing_reasons &
+          CompositingReason::kAnchorPosition;
 
       // TODO(crbug.com/1309178): Not using GetCompositorElementId() here
       // because anchor-positioned elements don't work properly under multicol

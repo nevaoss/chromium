@@ -93,6 +93,10 @@ namespace accessibility_annotator {
 class AccessibilityQueryService;
 }
 
+namespace metrics {
+class ProfileMetricsService;
+}
+
 namespace autofill {
 
 class ActorKeyMetricsRecorder;
@@ -225,7 +229,8 @@ class AutofillClient {
                   AutofillSuggestionTriggerSource trigger_source,
                   int32_t form_control_ax_id,
                   PopupAnchorType anchor_type,
-                  bool show_tabbed_popup = false);
+                  bool show_tabbed_popup = false,
+                  bool prefer_prev_arrow_side_on_suggestions_update = false);
     PopupOpenArgs(const PopupOpenArgs&);
     PopupOpenArgs(PopupOpenArgs&&);
     PopupOpenArgs& operator=(const PopupOpenArgs&);
@@ -243,6 +248,10 @@ class AutofillClient {
     int32_t form_control_ax_id = 0;
     PopupAnchorType anchor_type = PopupAnchorType::kField;
     bool show_tabbed_popup = false;
+    // True if the popup should prefer the previous arrow side when suggestions
+    // are updated. This avoids unnecessary jumping when the popup is updated,
+    // unless the popup would otherwise go out of bounds.
+    bool prefer_prev_arrow_side_on_suggestions_update = false;
   };
 
   // Details about the UI that was shown to the user in an entity import bubble.
@@ -443,6 +452,9 @@ class AutofillClient {
   virtual signin::IdentityManager* GetIdentityManager() = 0;
   virtual const signin::IdentityManager* GetIdentityManager() const = 0;
 
+  // Gets the ProfileMetricsService associated with the client.
+  virtual metrics::ProfileMetricsService* GetProfileMetricsService() = 0;
+
   // Gets the `GoogleGroupsManager` associated with the client.
   virtual const GoogleGroupsManager* GetGoogleGroupsManager() const;
 
@@ -546,7 +558,7 @@ class AutofillClient {
       base::span<const SelectOption> datalist) = 0;
 
   // Returns the identifier of the suggestion UI that is currently showing or
-  // `std::nullopt` is there is none.
+  // `std::nullopt` if there is none.
   virtual std::optional<SuggestionUiSessionId>
   GetSessionIdForCurrentAutofillSuggestions() const;
 

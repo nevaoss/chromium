@@ -674,36 +674,38 @@ LogicalRect InkOverflow::ComputeAppliedDecorationOverflow(
   DCHECK(style.HasAppliedTextDecorations() || decoration_override);
   // SVGText is currently the only reason we use decoration_override,
   // so use it as a proxy for determining minimum thickness.
-  const MinimumThickness1 kMinimumThicknessIsOne(!decoration_override);
+  const IsSvgText is_svg_text(decoration_override);
   TextDecorationInfo decoration_info(
       LineRelativeOffset::CreateFromBoxOrigin(offset_in_container),
       ink_overflow.size.inline_size, style, inline_context,
       TextDecorationLine::kNone, Color(), decoration_override, &scaled_font,
-      kMinimumThicknessIsOne);
+      is_svg_text);
   TextDecorationOffset decoration_offset(style);
   gfx::RectF accumulated_bound;
   for (wtf_size_t i = 0; i < decoration_info.AppliedDecorationCount(); i++) {
-    decoration_info.SetDecorationIndex(i);
-    if (!decoration_info.FontData()) {
+    const ResolvedDecoration decoration =
+        decoration_info.ResolveDecorationAt(i);
+    if (!decoration.font_data) {
       continue;
     }
-    if (decoration_info.HasUnderline()) {
+    if (decoration.HasUnderline()) {
       accumulated_bound.Union(DecorationLinePainter::Bounds(
-          decoration_info.ComputeUnderlineLineData(decoration_offset)));
+          decoration_info.ComputeUnderlineLineData(decoration,
+                                                   decoration_offset)));
     }
-    if (decoration_info.HasOverline()) {
+    if (decoration.HasOverline()) {
+      accumulated_bound.Union(
+          DecorationLinePainter::Bounds(decoration_info.ComputeOverlineLineData(
+              decoration, decoration_offset)));
+    }
+    if (decoration.HasLineThrough()) {
       accumulated_bound.Union(DecorationLinePainter::Bounds(
-          decoration_info.ComputeOverlineLineData(decoration_offset)));
+          decoration_info.ComputeLineThroughLineData(decoration)));
     }
-    if (decoration_info.HasLineThrough()) {
-      accumulated_bound.Union(DecorationLinePainter::Bounds(
-          decoration_info.ComputeLineThroughLineData()));
-    }
-    if (decoration_info.HasSpellingError() ||
-        decoration_info.HasGrammarError()) {
+    if (decoration.HasSpellingOrGrammarError()) {
       accumulated_bound.Union(DecorationLinePainter::Bounds(
           decoration_info.ComputeSpellingOrGrammarErrorLineData(
-              decoration_offset)));
+              decoration, decoration_offset)));
     }
   }
   // Adjust the container coordinate system to the local coordinate system.
