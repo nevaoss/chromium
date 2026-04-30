@@ -36,6 +36,7 @@
 #include "extensions/browser/updater/null_extension_cache.h"
 #include "extensions/browser/url_request_util.h"
 #include "extensions/common/features/feature_channel.h"
+#include "net/http/http_response_headers.h"
 #include "neva/extensions/browser/neva_extension_api_client.h"
 #include "neva/extensions/browser/neva_extension_host_delegate.h"
 #include "neva/extensions/browser/neva_extension_system_factory.h"
