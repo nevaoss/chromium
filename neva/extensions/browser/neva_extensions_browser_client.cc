@@ -181,16 +181,6 @@ bool NevaExtensionsBrowserClient::AllowCrossRendererResourceLoad(
   return false;
 }
 
-PrefService* NevaExtensionsBrowserClient::GetPrefServiceForContext(
-    BrowserContext* context) {
-  auto context_prefs_it = context_prefs_map_.find(context);
-  if (context_prefs_it != context_prefs_map_.end()) {
-    return context_prefs_it->second;
-  } else {
-    return nullptr;
-  }
-}
-
 void NevaExtensionsBrowserClient::GetEarlyExtensionPrefsObservers(
     content::BrowserContext* context,
     std::vector<extensions::EarlyExtensionPrefsObserver*>* observers) const {}
