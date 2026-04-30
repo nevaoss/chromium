@@ -692,6 +692,7 @@ AppRuntimeContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
 void AppRuntimeContentBrowserClient::
     RegisterNonNetworkWorkerMainResourceURLLoaderFactories(
         content::BrowserContext* browser_context,
+        const std::optional<url::Origin>& request_initiator,
         NonNetworkURLLoaderFactoryMap* factories) {
   DCHECK(browser_context);
   DCHECK(factories);
@@ -699,7 +700,7 @@ void AppRuntimeContentBrowserClient::
   factories->emplace(
       extensions::kExtensionScheme,
       extensions::CreateExtensionWorkerMainResourceURLLoaderFactory(
-          browser_context));
+          browser_context, request_initiator));
 }
 
 void AppRuntimeContentBrowserClient::
