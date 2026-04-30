@@ -140,7 +140,7 @@ void AppRuntimeRenderFrameObserver::GrantLoadLocalResources() {
 
 void AppRuntimeRenderFrameObserver::InsertStyleSheet(const std::string& css) {
   render_frame()->GetWebFrame()->GetDocument().InsertStyleSheet(
-      blink::WebString::FromUTF8(css));
+      blink::WebString::FromUtf8(css));
 }
 
 void AppRuntimeRenderFrameObserver::ReplaceBaseURL(const std::string& new_url) {
