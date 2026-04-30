@@ -134,6 +134,7 @@ class AppRuntimeContentBrowserClient : public content::ContentBrowserClient {
 
   void RegisterNonNetworkWorkerMainResourceURLLoaderFactories(
       content::BrowserContext* browser_context,
+      const std::optional<url::Origin>& request_initiator,
       NonNetworkURLLoaderFactoryMap* factories) override;
 
   void RegisterNonNetworkServiceWorkerUpdateURLLoaderFactories(
