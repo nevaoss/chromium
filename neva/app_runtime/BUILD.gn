@@ -248,7 +248,6 @@ static_library("app_runtime") {
     "//components/heap_profiling/multi_process",
     "//components/media_capture_util:devices_dispatcher",
     "//components/memory_pressure",
-    "//components/os_crypt/sync",
     "//components/permissions",
     "//components/services/heap_profiling/public/cpp",
     "//components/sessions",

@@ -85,7 +85,6 @@ class AppRuntimeBrowserMainParts : public content::BrowserMainParts {
 
  private:
   bool dev_tools_enabled_ = false;
-  void CreateOSCryptConfig();
 
 #if defined(ENABLE_PLUGINS)
   std::unique_ptr<AppRuntimePluginServiceFilter> plugin_service_filter_;
