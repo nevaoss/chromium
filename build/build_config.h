@@ -273,7 +273,6 @@
 #define BUILDFLAG_INTERNAL_IS_OZONE() (0)
 #endif
 
-<<<<<<< HEAD
 #if defined(OS_WEBOS)
 #define BUILDFLAG_INTERNAL_IS_WEBOS() (1)
 #else
@@ -284,12 +283,12 @@
 #define BUILDFLAG_INTERNAL_IS_NEVA_APPRUNTIME() (1)
 #else
 #define BUILDFLAG_INTERNAL_IS_NEVA_APPRUNTIME() (0)
-=======
+#endif
+
 #if __PTRAUTH__
 #define BUILDFLAG_INTERNAL_ARCH_CPU_PTRAUTH() (1)
 #else
 #define BUILDFLAG_INTERNAL_ARCH_CPU_PTRAUTH() (0)
->>>>>>> 149.0.7799.0~1
 #endif
 
 // Compiler detection. Note: clang masquerades as GCC on POSIX and as MSVC on
