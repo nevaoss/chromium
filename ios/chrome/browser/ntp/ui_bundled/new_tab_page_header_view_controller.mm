@@ -134,6 +134,8 @@ const CGFloat kIdentityDiscMaxFontSize = 24;
   NSLayoutConstraint* _identityDiscCapsuleWidthConstraint;
   // Whether AIM is allowed.
   BOOL _isAIMAllowed;
+  // Whether the session is fusebox eligible.
+  BOOL _fuseboxEligible;
   // The logo for the default search engine. This is owned by the caching system
   // backing this logo.
   __weak UIImage* _dseLogo;
@@ -329,6 +331,7 @@ const CGFloat kIdentityDiscMaxFontSize = 24;
     self.headerView = [[NewTabPageHeaderView alloc]
         initWithUseNewBadgeForLensButton:_useNewBadgeForLensButton];
     [self.headerView setAIMAllowed:_isAIMAllowed];
+    [self.headerView setFuseboxEligible:_fuseboxEligible];
     self.headerView.NTPShortcutsHandler = self.NTPShortcutsHandler;
     self.headerView.isGoogleDefaultSearchEngine =
         self.isGoogleDefaultSearchEngine;
@@ -582,14 +585,10 @@ const CGFloat kIdentityDiscMaxFontSize = 24;
     return;
   }
   _defaultSearchEngineName = defaultSearchEngineName;
-  self.headerView.placeholderText = self.placeholderText;
-  self.accessibilityButton.accessibilityLabel = self.placeholderText;
+  [self updatePlaceholderText];
 }
 
 - (void)setDefaultSearchEngineImage:(UIImage*)image {
-  if (!base::FeatureList::IsEnabled(omnibox::kOmniboxMobileParityUpdateV2)) {
-    return;
-  }
   // The header view might not be created yet. Store the logo image until it is
   // consumed.
   if (!self.headerView) {
@@ -619,6 +618,12 @@ const CGFloat kIdentityDiscMaxFontSize = 24;
 - (void)setAIMAllowed:(BOOL)allowed {
   [_headerView setAIMAllowed:allowed];
   _isAIMAllowed = allowed;
+}
+
+- (void)setFuseboxEligible:(BOOL)eligible {
+  [_headerView setFuseboxEligible:eligible];
+  _fuseboxEligible = eligible;
+  [self updatePlaceholderText];
 }
 
 #pragma mark - UserAccountImageUpdateDelegate
@@ -1244,13 +1249,21 @@ const CGFloat kIdentityDiscMaxFontSize = 24;
   }
 }
 
+// Updates the placeholder text.
+- (void)updatePlaceholderText {
+  NSString* placeholderText = [self placeholderText];
+  self.headerView.placeholderText = placeholderText;
+  self.accessibilityButton.accessibilityLabel = placeholderText;
+}
+
 // Returns the omnibox placeholder text.
 - (NSString*)placeholderText {
-  if (base::FeatureList::IsEnabled(omnibox::kOmniboxMobileParityUpdate)) {
-    return l10n_util::GetNSStringF(IDS_OMNIBOX_EMPTY_HINT_WITH_DSE_NAME,
+  if ([self.headerView shouldShowPlusButton]) {
+    return l10n_util::GetNSStringF(IDS_OMNIBOX_EMPTY_ASK_HINT_WITH_DSE_NAME,
                                    self.defaultSearchEngineName.cr_UTF16String);
   } else {
-    return l10n_util::GetNSString(IDS_OMNIBOX_EMPTY_HINT);
+    return l10n_util::GetNSStringF(IDS_OMNIBOX_EMPTY_HINT_WITH_DSE_NAME,
+                                   self.defaultSearchEngineName.cr_UTF16String);
   }
 }
 

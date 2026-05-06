@@ -57,12 +57,14 @@
 #include "chrome/browser/extensions/install_tracker_factory.h"
 #include "chrome/browser/extensions/install_verifier_factory.h"
 #include "chrome/browser/extensions/pref_mapping.h"
+#include "chrome/browser/extensions/profile_util.h"
 #include "chrome/browser/extensions/shared_module_service_factory.h"
 #include "chrome/browser/extensions/tab_helper.h"
 #include "chrome/browser/extensions/updater/chrome_update_client_config.h"
 #include "chrome/browser/extensions/updater/extension_updater.h"
 #include "chrome/browser/extensions/user_script_listener.h"
 #include "chrome/browser/external_protocol/external_protocol_handler.h"
+#include "chrome/browser/image_fetcher/image_decoder_impl.h"
 #include "chrome/browser/media/webrtc/media_device_salt_service_factory.h"
 #include "chrome/browser/net/system_network_context_manager.h"
 #include "chrome/browser/prefetch/pref_names.h"
@@ -317,6 +319,16 @@ ChromeExtensionsBrowserClient::GetContextRedirectedToOriginal(
       // TODO(crbug.com/41488885): Check if this service is needed for Ash
       // Internals.
       .WithAshInternals(ProfileSelection::kRedirectedToOriginal)
+      .Build()
+      .ApplyProfileSelection(Profile::FromBrowserContext(context));
+}
+
+content::BrowserContext* ChromeExtensionsBrowserClient::
+    GetContextRedirectedToOriginalWithoutAshInternals(
+        content::BrowserContext* context) {
+  return ProfileSelections::Builder()
+      .WithRegular(ProfileSelection::kRedirectedToOriginal)
+      .WithGuest(ProfileSelection::kRedirectedToOriginal)
       .Build()
       .ApplyProfileSelection(Profile::FromBrowserContext(context));
 }
@@ -1171,6 +1183,17 @@ ChromeExtensionsBrowserClient::CreateCrxInstallerFromDownloadItem(
     const download::DownloadItem& download) {
   return download_crx_util::CreateCrxInstaller(
       Profile::FromBrowserContext(context), download);
+}
+
+std::unique_ptr<image_fetcher::ImageDecoder>
+ChromeExtensionsBrowserClient::CreateImageDecoder() {
+  return std::make_unique<ImageDecoderImpl>();
+}
+
+bool ChromeExtensionsBrowserClient::CanUseNonComponentExtensions(
+    content::BrowserContext* context) {
+  return profile_util::ProfileCanUseNonComponentExtensions(
+      Profile::FromBrowserContext(context));
 }
 
 }  // namespace extensions

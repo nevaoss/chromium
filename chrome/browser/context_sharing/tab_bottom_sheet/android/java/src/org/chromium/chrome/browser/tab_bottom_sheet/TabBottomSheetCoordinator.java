@@ -194,8 +194,13 @@ public class TabBottomSheetCoordinator {
         if (mIsShowingTabBottomSheet || mSheetEventsCallback == null) {
             return false;
         }
+        if (mCoBrowseViews.hasPeekView()) {
+            mMediator.onSheetStateChanged(startsExpanded ? SheetState.FULL : SheetState.PEEK, true);
+        }
         mContentView = mCoBrowseViews.getView();
-        mSheetContent = new TabBottomSheetContent(mContentView, getDefaultHeightRatio());
+        mSheetContent =
+                new TabBottomSheetContent(
+                        mContentView, getDefaultHeightRatio(), mCoBrowseViews.getBackgroundColor());
         mViewBinder =
                 PropertyModelChangeProcessor.create(
                         mModel, mContentView, TabBottomSheetViewBinder::bind);
@@ -256,6 +261,15 @@ public class TabBottomSheetCoordinator {
     }
 
     /**
+     * Removes the peek view from the bottom sheet.
+     *
+     * @param peekView The peek view to remove.
+     */
+    void removePeekView(View peekView) {
+        mCoBrowseViews.removePeekView(peekView);
+    }
+
+    /**
      * Shows the peek view and hides the expanded content.
      *
      * @return Whether the peek view was successfully shown.
@@ -283,11 +297,11 @@ public class TabBottomSheetCoordinator {
         return true;
     }
 
-    void closeBottomSheet() {
+    void closeBottomSheet(boolean animate) {
         if (!mIsShowingTabBottomSheet) {
             return;
         }
-        mBottomSheetController.hideContent(mSheetContent, false, StateChangeReason.NONE);
+        mBottomSheetController.hideContent(mSheetContent, animate, StateChangeReason.NONE);
     }
 
     boolean isSheetShowing() {

@@ -376,8 +376,6 @@ source_set("extensions") {
     "managed_toolbar_pin_mode.h",
     "management/management_util.cc",
     "management/management_util.h",
-    "manifest_v2_experiment_manager.cc",
-    "manifest_v2_experiment_manager.h",
     "menu_icon_loader.h",
     "menu_manager.cc",
     "menu_manager.h",
@@ -449,8 +447,6 @@ source_set("extensions") {
     "updater/extension_updater_switches.h",
     "user_script_listener.cc",
     "user_script_listener.h",
-    "webstore_install_helper.cc",
-    "webstore_install_helper.h",
     "webstore_reinstaller.cc",
     "webstore_reinstaller.h",
     "webstore_standalone_installer.cc",
@@ -468,6 +464,9 @@ source_set("extensions") {
   allow_circular_includes_from = [
     # enterprise headers include extension_management.h.
     "//chrome/browser/enterprise",
+
+    # password_manager:impl includes extensions/api/settings_private/generated_pref.h
+    "//chrome/browser/password_manager:impl",
 
     # TODO(crbug.com/40161499): Remove this circular dependency.
     "//chrome/browser/devtools",
@@ -506,9 +505,12 @@ source_set("extensions") {
     "//chrome/browser/gcm",
     "//chrome/browser/google",
     "//chrome/browser/history",
+    "//chrome/browser/image_fetcher",
     "//chrome/browser/infobars",
     "//chrome/browser/lifetime:termination_notification",
     "//chrome/browser/net",
+    "//chrome/browser/password_manager",
+    "//chrome/browser/password_manager:impl",
     "//chrome/browser/password_manager/factories",
     "//chrome/browser/prefetch",
     "//chrome/browser/prefs",
@@ -520,6 +522,7 @@ source_set("extensions") {
     "//chrome/browser/profiles:profile_manager",
     "//chrome/browser/profiles/keep_alive",
     "//chrome/browser/renderer_host",
+    "//chrome/browser/resource_coordinator:utils",
     "//chrome/browser/resources:component_extension_resources",
     "//chrome/browser/safe_browsing",
     "//chrome/browser/safe_browsing:metrics_collector",
@@ -670,6 +673,7 @@ source_set("extensions") {
       "//components/app_icon_loader",
     ]
     deps += [
+      "//chrome/browser/indigo",
       "//chrome/browser/ui/interaction",
       "//chrome/browser/ui/user_education",
       "//chrome/browser/ui/web_applications:launch_utils",
@@ -1675,6 +1679,7 @@ source_set("chrome_extensions_browser_client") {
     "//chrome/browser/download",
     "//chrome/browser/extensions",
     "//chrome/browser/external_protocol",
+    "//chrome/browser/image_fetcher",
     "//chrome/browser/media/webrtc",
     "//chrome/browser/prefetch",
     "//chrome/browser/profiles:profile_manager",

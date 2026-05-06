@@ -680,14 +680,16 @@ TEST_F(SendTabToSelfBridgeTest, AddInvalidEntries) {
   EXPECT_CALL(*processor(), Put(_, _, _)).Times(0);
   base::MockCallback<base::OnceCallback<void(SendTabToSelfResult)>>
       mock_callback_fail_1;
-  EXPECT_CALL(mock_callback_fail_1, Run(SendTabToSelfResult::kFailure));
+  EXPECT_CALL(mock_callback_fail_1,
+              Run(SendTabToSelfResult::kFailureInvalidUrl));
   EXPECT_EQ(nullptr, bridge()->AddEntry(GURL(), "d", kLocalDeviceCacheGuid,
                                         PageContext(), NavigationHistory(),
                                         mock_callback_fail_1.Get()));
 
   base::MockCallback<base::OnceCallback<void(SendTabToSelfResult)>>
       mock_callback_fail_2;
-  EXPECT_CALL(mock_callback_fail_2, Run(SendTabToSelfResult::kFailure));
+  EXPECT_CALL(mock_callback_fail_2,
+              Run(SendTabToSelfResult::kFailureInvalidUrl));
   EXPECT_EQ(nullptr,
             bridge()->AddEntry(GURL("http://?k=v"), "d", kLocalDeviceCacheGuid,
                                PageContext(), NavigationHistory(),
@@ -695,7 +697,8 @@ TEST_F(SendTabToSelfBridgeTest, AddInvalidEntries) {
 
   base::MockCallback<base::OnceCallback<void(SendTabToSelfResult)>>
       mock_callback_fail_3;
-  EXPECT_CALL(mock_callback_fail_3, Run(SendTabToSelfResult::kFailure));
+  EXPECT_CALL(mock_callback_fail_3,
+              Run(SendTabToSelfResult::kFailureInvalidUrl));
   EXPECT_EQ(nullptr, bridge()->AddEntry(GURL("http//google.com"), "d",
                                         kLocalDeviceCacheGuid, PageContext(),
                                         NavigationHistory(),
@@ -1645,7 +1648,8 @@ TEST_F(SendTabToSelfBridgeTest,
 
   base::MockCallback<base::OnceCallback<void(SendTabToSelfResult)>>
       mock_callback;
-  EXPECT_CALL(mock_callback, Run(SendTabToSelfResult::kFailure));
+  EXPECT_CALL(mock_callback,
+              Run(SendTabToSelfResult::kFailureNotTrackingMetadata));
 
   bridge()->AddEntry(GURL("https://www.example.com"), "dummy title",
                      kLocalDeviceCacheGuid, PageContext(), NavigationHistory(),
@@ -1669,10 +1673,24 @@ TEST_F(SendTabToSelfBridgeTest, InvokesCallbackWithSuccessForThrottledEntry) {
   EXPECT_CALL(*processor(), Put(_, _, _)).Times(0);
   base::MockCallback<base::OnceCallback<void(SendTabToSelfResult)>>
       mock_callback;
-  EXPECT_CALL(mock_callback, Run(SendTabToSelfResult::kSuccess));
+  EXPECT_CALL(mock_callback, Run(SendTabToSelfResult::kSuccessThrottled));
 
   bridge()->AddEntry(kUrl, kTitle, kLocalDeviceCacheGuid, PageContext(),
                      NavigationHistory(), mock_callback.Get());
+}
+
+TEST_F(SendTabToSelfBridgeTest, DeleteAllEntriesPersists) {
+  InitializeBridge();
+  AddSampleEntries();
+  ASSERT_EQ(4ul, bridge()->GetAllGuids().size());
+  ASSERT_TRUE(bridge()->IsReady());
+
+  bridge()->OnHistoryDeletions(nullptr, history::DeletionInfo::ForAllHistory());
+  ASSERT_EQ(0ul, bridge()->GetAllGuids().size());
+
+  ShutdownBridge();
+  InitializeBridge();
+  EXPECT_EQ(0ul, bridge()->GetAllGuids().size());
 }
 
 }  // namespace

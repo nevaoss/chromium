@@ -30,13 +30,32 @@ dictionary ProfileState {
   required boolean actuationAllowed;
 };
 
+enum InvocationSource {
+  "Unknown",
+  "UniversalCart"
+};
+
+dictionary InvokeDetails {
+  // The prompt ID to lookup from Chrome.
+  required DOMString promptId;
+
+  // The source of the invocation.
+  required InvocationSource invocationSource;
+
+  // Whether should invoke the task in a new tab. Default to false.
+  boolean inNewTab;
+};
+
 // Private API for Gemini (Glic) synchronization.
 [implemented_in="chrome/browser/extensions/api/glic_private/glic_private_api.h"]
 interface GlicPrivate {
   // Retrieves the current Glic state for the profile.
   // |Returns|: Promise that resolves to the current Glic state.
   // |PromiseValue|: state: The current Glic state.
-  [requiredCallback] static Promise<ProfileState> getState();
+  static Promise<ProfileState> getState();
+
+  // Invokes glic with details.
+  static Promise<undefined> invoke(InvokeDetails details);
 };
 
 partial interface Browser {

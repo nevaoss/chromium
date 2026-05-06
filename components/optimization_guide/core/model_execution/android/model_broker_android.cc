@@ -11,6 +11,7 @@
 #include "base/containers/flat_set.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
+#include "build/branding_buildflags.h"
 #include "components/optimization_guide/core/model_execution/model_execution_util.h"
 #include "components/optimization_guide/core/model_execution/on_device_features.h"
 #include "components/optimization_guide/core/model_execution/on_device_model_adaptation_loader.h"
@@ -48,17 +49,17 @@ std::optional<AICoreFeature> GetAICoreFeatureFor(
     case mojom::OnDeviceFeature::kSummarize:
     case mojom::OnDeviceFeature::kPromptApi:
       if (base::FeatureList::IsEnabled(features::kAICorePrompt)) {
-        return ToModelExecutionFeatureProto(mojom::OnDeviceFeature::kPromptApi);
+        return proto::MODEL_EXECUTION_FEATURE_PROMPT_API;
       }
       break;
     case mojom::OnDeviceFeature::kScamDetection:
       if (base::FeatureList::IsEnabled(features::kAICoreScamDetection)) {
-        return ToModelExecutionFeatureProto(feature);
+        return proto::MODEL_EXECUTION_FEATURE_SCAM_DETECTION;
       }
       break;
     case mojom::OnDeviceFeature::kTest:
       if (base::FeatureList::IsEnabled(features::kAICoreTest)) {
-        return ToModelExecutionFeatureProto(feature);
+        return proto::MODEL_EXECUTION_FEATURE_TEST;
       }
       break;
     default:
@@ -227,8 +228,17 @@ void SolutionImpl::ReportHealthyCompletion() {
 }  // namespace
 
 namespace features {
-BASE_FEATURE(kAICorePrompt, base::FEATURE_ENABLED_BY_DEFAULT);
+// kAICorePrompt is not yet implemented in Chrome-branded builds, so disable it
+// there to avoid assertion failures, while kAICoreScamDetection is only
+// available in Chrome-branded builds, so disable it in non-Chrome-branded
+// builds.
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+BASE_FEATURE(kAICorePrompt, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAICoreScamDetection, base::FEATURE_ENABLED_BY_DEFAULT);
+#else
+BASE_FEATURE(kAICorePrompt, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kAICoreScamDetection, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 BASE_FEATURE(kAICoreTest, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kRequirePersistentModeForScamDetection,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -576,6 +586,34 @@ void ModelBrokerAndroid::BindModelBroker(
   if (features::IsOnDeviceExecutionEnabled()) {
     impl_.BindBroker(std::move(receiver));
   }
+}
+
+void ModelBrokerAndroid::BindModelBrokerDebug(
+    base::PassKey<on_device_internals::PageHandler> key,
+    mojo::PendingReceiver<mojom::ModelBrokerDebug> receiver) {
+  receivers_.Add(this, std::move(receiver));
+}
+
+void ModelBrokerAndroid::GetStateInfo(
+    mojom::ModelBrokerDebug::GetStateInfoCallback callback) {
+  auto result = mojom::BrokerStateInfo::New();
+  // TODO: crbug.com/489511500 - Expose relevant info.
+  // result->properties = performance_classifier_.GetBrokerProperties();
+  // base::Extend(result->properties,
+  //              component_state_manager_.GetBrokerProperties());
+  // result->assets = component_state_manager_.GetBrokerAssets();
+  result->use_cases = impl_.GetBrokerUseCaseInfo();
+  // result->models = base_model_controller_.GetBrokerModels();
+  std::move(callback).Run(std::move(result));
+}
+
+void ModelBrokerAndroid::SetUseCaseRequested(const std::string& use_case,
+                                             bool requested) {
+  usage_tracker_.SetUseCaseRequested(use_case, requested);
+}
+
+void ModelBrokerAndroid::UninstallModels() {
+  // Not supported for android, since we don't own the models.
 }
 
 mojo::Remote<on_device_model::mojom::OnDeviceModel>&

@@ -524,7 +524,6 @@ crbug.com/366559 external/wpt/svg/text/reftests/textpath-side-001.svg [ Failure 
 crbug.com/366559 external/wpt/svg/text/reftests/textpath-shape-001.svg [ Failure ]
 crbug.com/803360 external/wpt/svg/path/closepath/segment-completing.svg [ Failure ]
 crbug.com/863355 [ Mac ] external/wpt/svg/shapes/reftests/pathlength-002.svg [ Failure ]
-crbug.com/1222395 external/wpt/svg/path/property/mpath.svg [ Failure ]
 crbug.com/674797 external/wpt/svg/painting/reftests/marker-path-022.svg [ Failure ]
 crbug.com/674797 external/wpt/svg/painting/reftests/marker-path-023.svg [ Failure ]
 crbug.com/1368167 external/wpt/svg/struct/reftests/currentScale-change-repaint.html [ Failure ]
@@ -1037,6 +1036,10 @@ crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-subgridded-t
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/track-sizing/grid-lanes-subgrid-flex.html [ Failure ]
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/track-sizing/grid-lanes-subgrid.html [ Failure ]
 crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/subgrid/grid-lanes-subgridded-to-grid-lanes/track-sizing/grid-lanes-subgrid-intrinsic-sizing.html [ Failure ]
+# Baseline failures
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/tentative/intrinsic-sizing/grid-lanes-baseline-alignment-affects-intrinsic-size-004.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/tentative/intrinsic-sizing/grid-lanes-baseline-alignment-affects-intrinsic-size-005.html [ Failure ]
+crbug.com/1076027 external/wpt/css/css-grid/grid-lanes/tentative/intrinsic-sizing/grid-lanes-baseline-alignment-affects-intrinsic-size-006.html [ Failure ]
 
 
 # external/wpt/css/css-fonts/... tests triaged away from the default WPT bug ID
@@ -1620,9 +1623,6 @@ crbug.com/483653 accessibility/scroll-containers.html [ Crash Failure Pass Timeo
 # Temporarily disabled until document marker serialization is enabled for AXInlineTextBox
 crbug.com/1227485 accessibility/spelling-markers.html [ Failure ]
 
-# Temporarily disabled until we have time to investigate and fix.
-crbug.com/450439920 accessibility/selection-change-notification-on-selection-removed.html [ Failure Pass ]
-
 # Temporarily disabled after chromium change
 crbug.com/492511 [ Mac ] virtual/text-antialias/atsui-negative-spacing-features.html [ Failure ]
 crbug.com/492511 [ Mac ] virtual/text-antialias/international/arabic-justify.html [ Failure ]
@@ -1784,12 +1784,10 @@ crbug.com/1040611 [ Debug ] external/wpt/uievents/order-of-events/mouse-events/w
 crbug.com/1040611 [ Release ] external/wpt/uievents/order-of-events/mouse-events/wheel-basic.html [ Failure Timeout ]
 
 # crbug.com/1298321: "element click intercepted error" when <body style="zoom:2">.
-crbug.com/1298321 virtual/scalefactor200/fast/hidpi/static/calendar-picker-appearance.html [ Failure Pass Timeout ]
-crbug.com/1298321 virtual/scalefactor200/fast/hidpi/static/data-suggestion-picker-appearance.html [ Failure Pass Timeout ]
-crbug.com/1298321 virtual/scalefactor200/fast/hidpi/static/popup-menu-appearance.html [ Failure Pass Timeout ]
-crbug.com/1298321 virtual/scalefactor150/fast/hidpi/static/calendar-picker-appearance.html [ Failure Pass Timeout ]
-crbug.com/1298321 virtual/scalefactor150/fast/hidpi/static/data-suggestion-picker-appearance.html [ Failure Pass Timeout ]
-crbug.com/1298321 virtual/scalefactor150/fast/hidpi/static/popup-menu-appearance.html [ Failure Pass Timeout ]
+crbug.com/1298321 [ Win11 ] virtual/scalefactor150/fast/hidpi/static/data-suggestion-picker-appearance.html [ Failure ]
+crbug.com/1298321 [ Win11 ] virtual/scalefactor200/fast/hidpi/static/data-suggestion-picker-appearance.html [ Failure ]
+crbug.com/1298321 [ Win11-arm64 ] virtual/scalefactor150/fast/hidpi/static/data-suggestion-picker-appearance.html [ Failure ]
+crbug.com/1298321 [ Win11-arm64 ] virtual/scalefactor200/fast/hidpi/static/data-suggestion-picker-appearance.html [ Failure ]
 
 # crbug.com/40215845: These need more work after the revamp of picker-common.js
 crbug.com/40215845 fast/forms/select-popup/popup-menu-appearance-coarse.html [ Failure Pass Timeout ]
@@ -2737,7 +2735,24 @@ crbug.com/501209160 external/wpt/webrtc/RTCDtlsTransport-state.html [ Failure Ti
 crbug.com/501209160 external/wpt/webrtc/RTCDTMFSender-ontonechange.https.html [ Failure Timeout ]
 crbug.com/501209160 external/wpt/webrtc/rtp-stats-lifetime.https.html [ Failure ]
 
+crbug.com/503010262 external/wpt/webgl/compressed-tex-sub-image-2d-without-base-image.html [ Failure Pass ]
+
+# Rounding issues (possibly unstable numbers in `*-expected.txt`)
+crbug.com/503882535 virtual/webnn-service-on-cpu/external/wpt/webnn/conformance_tests/reduce_log_sum_exp.https.any.html?cpu [ Failure ]
+crbug.com/503882535 virtual/webnn-service-on-npu/external/wpt/webnn/conformance_tests/reduce_log_sum_exp.https.any.html?npu [ Failure ]
+crbug.com/503882535 virtual/webnn-service-with-gpu/external/wpt/webnn/conformance_tests/reduce_log_sum_exp.https.any.html?gpu [ Failure ]
+
 # ====== New tests from wpt-importer added here ======
+crbug.com/503879985 [ Win ] external/wpt/css/css-flexbox/getcomputedstyle/first-line-computed-style.html [ Pass Timeout ]
+crbug.com/503526631 external/wpt/webdriver/tests/bidi/network/before_request_sent/before_request_sent.py [ Failure ]
+crbug.com/503526631 external/wpt/webdriver/tests/bidi/network/get_data/request.py [ Failure ]
+crbug.com/503526631 external/wpt/webdriver/tests/bidi/script/get_realms/type.py [ Failure ]
+crbug.com/503528461 [ Win ] external/wpt/webtransport/datagram-bad-chunk.https.any.html [ Pass Timeout ]
+crbug.com/503018958 external/wpt/css/css-backgrounds/background-clip/clip-text-background-table-cell.html [ Failure ]
+crbug.com/503018957 [ Win ] external/wpt/fetch/api/response/response-form-data.html [ Pass Timeout ]
+crbug.com/503016332 external/wpt/webdriver/tests/classic/get_element_tag_name/user_prompts.py [ Failure ]
+crbug.com/503023133 virtual/scalefactor200/external/wpt/css/filter-effects/svg-filter-gradient-interpolation.html [ Failure ]
+crbug.com/503018958 virtual/threaded/external/wpt/css/css-backgrounds/background-clip/clip-text-background-table-cell.html [ Failure ]
 crbug.com/501224236 external/wpt/css/css-masking/clip-path/clip-path-inset-round-rendering.html [ Failure ]
 crbug.com/501216032 external/wpt/css/css-overflow/overflow-clip-margin-016.html [ Failure ]
 crbug.com/501216032 external/wpt/css/css-overflow/overflow-clip-margin-017.html [ Failure ]
@@ -3046,6 +3061,7 @@ crbug.com/473562220 virtual/scalefactor200/external/wpt/css/filter-effects/svg-f
 crbug.com/473562220 virtual/scalefactor200/external/wpt/css/filter-effects/svg-filter-primitive-units-user-space.html [ Failure ]
 crbug.com/471016766 [ Mac ] external/wpt/webaudio/the-audio-api/the-mediastreamaudiosourcenode-interface/mediastreamaudiosourcenode-from-context-with-different-rate.https.html [ Pass Timeout ]
 crbug.com/471016766 [ Win ] external/wpt/webaudio/the-audio-api/the-mediastreamaudiosourcenode-interface/mediastreamaudiosourcenode-from-context-with-different-rate.https.html [ Pass Timeout ]
+crbug.com/471016766 [ Linux ] external/wpt/webaudio/the-audio-api/the-mediastreamaudiosourcenode-interface/mediastreamaudiosourcenode-from-context-with-different-rate.https.html [ Failure Pass Timeout ]
 [ Mac ] external/wpt/html/browsers/history/the-location-interface/location-ancestor-origins.sub.html [ Pass Timeout ]
 crbug.com/469618144 external/wpt/webdriver/tests/bidi/emulation/set_touch_override/contexts.py [ Crash Failure Timeout ]
 crbug.com/469618144 external/wpt/webdriver/tests/bidi/emulation/set_touch_override/global.py [ Failure ]
@@ -4861,6 +4877,7 @@ crbug.com/40267498 virtual/fragmented-oof-in-cb/external/wpt/css/css-break/out-o
 crbug.com/40267498 virtual/fragmented-oof-in-cb/external/wpt/css/css-break/out-of-flow-in-multicolumn-124.html [ Failure ]
 crbug.com/40267498 virtual/fragmented-oof-in-cb/external/wpt/css/css-break/out-of-flow-in-multicolumn-125.html [ Failure ]
 crbug.com/40267498 virtual/fragmented-oof-in-cb/external/wpt/css/css-break/out-of-flow-in-multicolumn-126.html [ Failure ]
+crbug.com/40267498 virtual/fragmented-oof-in-cb/external/wpt/css/css-break/out-of-flow-in-multicolumn-127.html [ Failure ]
 crbug.com/40267498 virtual/fragmented-oof-in-cb/external/wpt/css/css-break/out-of-flow-in-multicolumn-paint-order-001.html [ Failure ]
 crbug.com/40267498 virtual/fragmented-oof-in-cb/external/wpt/css/css-break/out-of-flow-in-multicolumn-paint-order-002.html [ Crash Timeout ]
 crbug.com/40267498 virtual/fragmented-oof-in-cb/external/wpt/css/css-break/out-of-flow-in-multicolumn-paint-order-003.html [ Crash Failure ]
@@ -6535,9 +6552,8 @@ crbug.com/1159463 crbug.com/1278570 [ Mac12 Release ] virtual/gpu-rasterization/
 # Sheriff 2021-12-21
 crbug.com/1281792 external/wpt/event-timing/min-duration-threshold.html [ Failure Pass ]
 
-# These virtual suites enable text autosizing and should pass.
+# These virtual suites enable text-size-adjust on desktop and should pass.
 crbug.com/340389272 virtual/text-size-adjust/wpt_internal/css/css-size-adjust/* [ Pass ]
-crbug.com/340389272 virtual/text-size-adjust-with-os-font-scale/wpt_internal/css/css-size-adjust/* [ Pass ]
 
 # Blocked on https://github.com/w3c/csswg-drafts/issues/4456 resolution.
 crbug.com/373478544 wpt_internal/css/css-overflow/column-scroll-marker-009.html [ Failure ]
@@ -6645,10 +6661,6 @@ crbug.com/341935362 virtual/dialog-close-when-open-removed-disabled/external/wpt
 
 # unicode-bidi invalidation bug
 crbug.com/391865300 fast/forms/select/menulist-appearance-rtl.html [ Failure ]
-
-# To-be-fixed tests from the IndexedDB SQLite virtual suite.
-crbug.com/40253999 virtual/indexeddb_sqlite/external/wpt/clear-site-data/storage.https.html [ Failure ]
-crbug.com/40253999 virtual/indexeddb_sqlite/external/wpt/storage/partitioned-estimate-usage-details-indexeddb.tentative.https.sub.html [ Timeout ]
 
 # Flaky on headless_shell_wpt_tests
 crbug.com/40146374 external/wpt/html/semantics/forms/the-select-element/customizable-select/select-option-images.html [ Failure Pass ]
@@ -8854,9 +8866,6 @@ crbug.com/354061998 [ Release Win11-arm64 ] http/tests/cookies/partitioned-cooki
 # Disable to land crrev.com/c/5563488
 crbug.com/325441197 http/tests/devtools/elements/elements-tab-stops.js [ Failure Pass ]
 
-# Flaky 2024-07-19
-crbug.com/353746882 external/wpt/fs/FileSystemFileHandle-cross-primitive-locking.https.tentative.worker.html [ Failure Pass ]
-
 # Gardener 2024-07-24
 crbug.com/40186254 fast/events/touch/gesture/gesture-tap-reset-selection-range.html [ Failure Pass Timeout ]
 crbug.com/40186254 fast/events/touch/gesture/long-press-drag-drop-touch-editing-combined-in-iframe.html [ Failure Pass Timeout ]
@@ -9715,3 +9724,17 @@ crbug.com/502564763 [ Win11-arm64 ] virtual/dark-mode-default/dark-mode/images/n
 
 # Gardener 2026-04-15
 crbug.com/502777858 [ Linux ] external/wpt/largest-contentful-paint/multiple-image-same-src.html [ Failure Pass ]
+
+# Gardener 2026-04-16
+# Skipped on Mac because native overlay scrollbars can hide before the second
+# drag, causing scrollPromise to time out. Coverage retained on other platforms
+# where classic scrollbars are used. see crbug.com/501810437.
+crbug.com/501810437 [ Mac ] external/wpt/inert/inert-scrollbar-hittest.html [ Skip Timeout ]
+
+# Looks like imperceptible antialiasing differences.
+crbug.com/503254576 [ Win11-arm64 ] virtual/text-antialias/color-emoji.html [ Failure Pass ]
+crbug.com/503254576 [ Win11-arm64 ] virtual/text-antialias/emphasis-complex.html [ Failure Pass ]
+
+# Gardener 2026-04-17
+crbug.com/501845333 [ Linux ] external/wpt/css/filter-effects/crashtests/fecomponenttransfer-tablevalues-crash.html [ Failure Pass ]
+crbug.com/501845333 [ Linux ] virtual/scalefactor200/external/wpt/css/filter-effects/crashtests/fecomponenttransfer-tablevalues-crash.html [ Failure Pass ]

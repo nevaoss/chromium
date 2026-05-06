@@ -9,6 +9,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyBoolean;
+import static org.mockito.Mockito.anyFloat;
+import static org.mockito.Mockito.anyInt;
 import static org.mockito.Mockito.anyLong;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
@@ -16,8 +19,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import android.content.ComponentCallbacks;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.os.Build;
 import android.view.WindowManager;
@@ -27,9 +33,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowLooper;
 import org.robolectric.shadows.ShadowSystemClock;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -185,6 +193,22 @@ public class WindowAndroidTest {
     }
 
     @Test
+    public void testOccludedCountMetric() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.Window.OcclusionExperimental.OccludedCount", 1);
+
+        WindowAndroid.postPeriodicMetricRunner();
+
+        mWindowAndroid.setIsOcclusionTracked(true);
+        mWindowAndroid.setOccluded(true);
+
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
     public void testOcclusionDurationMetricOnDestroy() {
         var histogramWatcher =
                 HistogramWatcher.newSingleRecordWatcher(
@@ -195,6 +219,36 @@ public class WindowAndroidTest {
         mWindowAndroid.destroy();
 
         histogramWatcher.assertExpected();
+    }
+
+    @Test
+    @EnableFeatures({UiAndroidFeatures.ANDROID_UPDATE_DISPLAY_FOR_CONTEXT})
+    public void testOnConfigurationChangedOnDifferentDisplay_updatesDisplay() {
+        ArgumentCaptor<ComponentCallbacks> captor =
+                ArgumentCaptor.forClass(ComponentCallbacks.class);
+        verify(mContext).registerComponentCallbacks(captor.capture());
+
+        DisplayAndroid newDisplay = mock(DisplayAndroid.class);
+        when(newDisplay.getAdaptiveRefreshRateInfo())
+                .thenReturn(new DisplayAndroid.AdaptiveRefreshRateInfo(false, 0, null));
+        DisplayAndroid.setNonMultiDisplayForTesting(newDisplay);
+
+        captor.getValue().onConfigurationChanged(new Configuration());
+
+        verifyDisplayUpdate(newDisplay);
+    }
+
+    @Test
+    @EnableFeatures({UiAndroidFeatures.ANDROID_UPDATE_DISPLAY_FOR_CONTEXT})
+    public void testOnActivityResumedOnDifferentDisplay_updatesDisplay() {
+        DisplayAndroid newDisplay = mock(DisplayAndroid.class);
+        when(newDisplay.getAdaptiveRefreshRateInfo())
+                .thenReturn(new DisplayAndroid.AdaptiveRefreshRateInfo(false, 0, null));
+        DisplayAndroid.setNonMultiDisplayForTesting(newDisplay);
+
+        mWindowAndroid.onActivityResumed();
+
+        verifyDisplayUpdate(newDisplay);
     }
 
     @Test
@@ -256,5 +310,15 @@ public class WindowAndroidTest {
         mWindowAndroid.destroy();
 
         histogramWatcher.assertExpected();
+    }
+
+    private void verifyDisplayUpdate(DisplayAndroid newDisplay) {
+        verify(mDisplay).removeObserver(mWindowAndroid);
+        verify(newDisplay).addObserver(mWindowAndroid);
+        verify(mWindowAndroidNativeInterface).onUpdateDisplayId(anyLong(), anyInt());
+        verify(mWindowAndroidNativeInterface)
+                .onAdaptiveRefreshRateInfoChanged(
+                        anyLong(), anyBoolean(), anyFloat(), any(), any());
+        verify(mWindowAndroidNativeInterface).onUpdateRefreshRate(anyLong(), anyFloat());
     }
 }

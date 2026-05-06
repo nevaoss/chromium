@@ -95,11 +95,12 @@ bool TabBottomSheetBridge::Show(bool animate, bool starts_expanded) {
                                                  animate, starts_expanded);
 }
 
-void TabBottomSheetBridge::Close() {
+void TabBottomSheetBridge::Close(bool animate) {
   if (co_browse_views_) {
     SetWebContents(nullptr);
   }
-  Java_TabBottomSheetNativeInterface_close(AttachCurrentThread(), java_bridge_);
+  Java_TabBottomSheetNativeInterface_close(AttachCurrentThread(), java_bridge_,
+                                           animate);
 }
 
 void TabBottomSheetBridge::OnClosed(JNIEnv* env) {
@@ -139,8 +140,7 @@ void TabBottomSheetBridge::CreateCoBrowseViews(
   JNIEnv* env = base::android::AttachCurrentThread();
   // Call Factory to get CoBrowseViews and save it
   co_browse_views_.Reset(Java_CoBrowseViewFactory_buildCoBrowseViews(
-      env, window_android, web_contents, /*show_toolbar=*/false,
-      show_fusebox_));
+      env, window_android, web_contents, show_fusebox_));
 }
 
 void TabBottomSheetBridge::DestroyCoBrowseViews() {

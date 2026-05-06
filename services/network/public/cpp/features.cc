@@ -615,6 +615,11 @@ BASE_FEATURE(kUseUnexportableKeyServiceInBrowserProcess,
 BASE_FEATURE(kBypassRequestForbiddenHeadersCheck,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, the network service will prohibit modifications to the Origin
+// header in FollowRedirect.
+BASE_FEATURE(kBlockOriginHeaderModificationOnRedirect,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kServiceWorkerSyntheticResponseHeaderCheck,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -640,6 +645,9 @@ BASE_FEATURE_PARAM(int,
                    &kDurableMessages,
                    /*name=*/"max_global_buffer_size",
                    /*default_value=*/base::MiB(350).InBytes());
+
+BASE_FEATURE(kReportingApiEnableVariationsHeaders,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNetworkContextDirectReceiver, base::FEATURE_DISABLED_BY_DEFAULT);
 

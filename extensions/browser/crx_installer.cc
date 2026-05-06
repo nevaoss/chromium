@@ -49,6 +49,7 @@
 #include "extensions/browser/extensions_browser_client.h"
 #include "extensions/browser/forced_extensions/install_stage_tracker.h"
 #include "extensions/browser/install/crx_install_error.h"
+#include "extensions/browser/install/sandboxed_unpacker_failure_reason.h"
 #include "extensions/browser/install_approval.h"
 #include "extensions/browser/install_flag.h"
 #include "extensions/browser/install_stage.h"
@@ -321,6 +322,7 @@ void CrxInstaller::UpdateExtensionFromUnpackedCrx(
     return;
   }
 
+  is_update_ = true;
   expected_id_ = extension_id;
   const Extension* extension = ExtensionRegistry::Get(browser_context_)
                                    ->GetInstalledExtension(extension_id);
@@ -1185,6 +1187,17 @@ void CrxInstaller::NotifyCrxInstallComplete(
                                                extension()->GetType());
   }
 
+  if (is_update_) {
+    if (success) {
+      base::UmaHistogramBoolean("Extensions.SandboxUnpackSuccessForUpdates",
+                                true);
+    } else if (error->type() ==
+               CrxInstallErrorType::SANDBOXED_UNPACKER_FAILURE) {
+      base::UmaHistogramBoolean("Extensions.SandboxUnpackSuccessForUpdates",
+                                false);
+    }
+  }
+
   if (!success && (!expected_id_.empty() || extension())) {
     switch (error->type()) {
       case CrxInstallErrorType::DECLINED:
@@ -1193,10 +1206,17 @@ void CrxInstaller::NotifyCrxInstallComplete(
             InstallStageTracker::FailureReason::CRX_INSTALL_ERROR_DECLINED,
             error->detail());
         break;
-      case CrxInstallErrorType::SANDBOXED_UNPACKER_FAILURE:
+      case CrxInstallErrorType::SANDBOXED_UNPACKER_FAILURE: {
         install_stage_tracker->ReportSandboxedUnpackerFailureReason(
             extension_id, error.value());
+        if (is_update_) {
+          base::UmaHistogramEnumeration(
+              "Extensions.SandboxUnpackFailureReasonForUpdates",
+              error->sandbox_failure_detail(),
+              SandboxedUnpackerFailureReason::NUM_FAILURE_REASONS);
+        }
         break;
+      }
       case CrxInstallErrorType::OTHER:
         install_stage_tracker->ReportCrxInstallError(
             extension_id,

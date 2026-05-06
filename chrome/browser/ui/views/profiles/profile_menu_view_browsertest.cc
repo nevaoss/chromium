@@ -60,9 +60,8 @@
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/hats/hats_service_factory.h"
 #include "chrome/browser/ui/hats/mock_hats_service.h"
 #include "chrome/browser/ui/hats/survey_config.h"
@@ -73,7 +72,9 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/profiles/profile_menu_coordinator.h"
 #include "chrome/browser/ui/views/profiles/profile_menu_view_base.h"
+#include "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+#include "chrome/browser/ui/views/toolbar/webui_test_utils.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_test_helper.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_view.h"
 #include "chrome/browser/ui/web_applications/web_app_browsertest_base.h"
@@ -279,18 +280,15 @@ class ProfileMenuViewTestBase {
                     &ProfileMenuViewTestBase::SetTestingFactories,
                     base::Unretained(this)))) {}
 
-  void OpenProfileMenu() {
-    BrowserView* browser_view =
-        BrowserView::GetBrowserViewForBrowser(target_browser_);
-    OpenProfileMenuFromToolbar(browser_view->toolbar_button_provider());
-  }
-
-  void OpenProfileMenuFromToolbar(ToolbarButtonProvider* toolbar) {
+  void OpenProfileMenu(Browser* target_browser = nullptr) {
+    if (target_browser == nullptr) {
+      target_browser = target_browser_;
+    }
     // Click the avatar button to open the menu.
-    views::View* avatar_button = toolbar->GetAvatarToolbarButton();
-    views::test::WidgetVisibleWaiter(avatar_button->GetWidget()).Wait();
-    ASSERT_TRUE(avatar_button);
-    Click(avatar_button);
+    AvatarToolbarButtonTestAccessor avatar_accessor(target_browser);
+    views::test::WidgetVisibleWaiter(avatar_accessor.GetWidget()).Wait();
+    ASSERT_TRUE(avatar_accessor.GetEnabled());
+    avatar_accessor.Click();
     ASSERT_NO_FATAL_FAILURE(WaitForMenuToBeActive(profile_menu_view()));
 
     // A HoverButton may have focused itself if the mouse happened to be over it
@@ -2869,7 +2867,8 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewWebAppTest,
   Profile* second_profile = CreateAdditionalProfile();
   web_app::test::WaitUntilWebAppProviderAndSubsystemsReady(
       web_app::WebAppProvider::GetForTest(second_profile));
-  ASSERT_FALSE(chrome::FindBrowserWithProfile(second_profile));
+  ASSERT_FALSE(ProfileBrowserCollection::GetForProfile(second_profile)
+                   ->GetLastActiveBrowser());
 
   // Install and launch an application for the first profile.
   webapps::AppId app_id = toolbar_helper().InstallAndLaunchCustomWebApp(
@@ -2878,10 +2877,7 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewWebAppTest,
   SetTargetBrowser(toolbar_helper().app_browser());
 
   // Open profile menu.
-  auto* toolbar =
-      toolbar_helper().browser_view()->web_app_frame_toolbar_for_testing();
-  ASSERT_TRUE(toolbar);
-  OpenProfileMenuFromToolbar(toolbar);
+  OpenProfileMenu(toolbar_helper().browser_view()->browser());
 
   // Select other profile by advancing the focus one step forward
   profile_menu_view()->GetFocusManager()->AdvanceFocus(/*reverse=*/false);
@@ -2894,7 +2890,8 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewWebAppTest,
   content::WebContents* new_web_contents = waiter.Wait();
   ASSERT_TRUE(new_web_contents);
   BrowserWindowInterface* new_browser =
-      chrome::FindBrowserWithProfile(second_profile);
+      ProfileBrowserCollection::GetForProfile(second_profile)
+          ->GetLastActiveBrowser();
   ASSERT_TRUE(new_browser);
   EXPECT_TRUE(new_browser->GetType() == BrowserWindowInterface::TYPE_APP);
   EXPECT_EQ(new_browser->GetTabStripModel()->GetActiveWebContents(),
@@ -2917,13 +2914,11 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewWebAppTest, SelectingOtherProfile) {
   EXPECT_EQ(app_id,
             toolbar_helper().InstallWebApp(profile3, GURL("https://test.org")));
   SetTargetBrowser(toolbar_helper().app_browser());
-  EXPECT_FALSE(chrome::FindBrowserWithProfile(profile3));
+  EXPECT_FALSE(ProfileBrowserCollection::GetForProfile(profile3)
+                   ->GetLastActiveBrowser());
 
   // Open profile menu in first profile.
-  auto* toolbar =
-      toolbar_helper().browser_view()->web_app_frame_toolbar_for_testing();
-  ASSERT_TRUE(toolbar);
-  OpenProfileMenuFromToolbar(toolbar);
+  OpenProfileMenu(toolbar_helper().browser_view()->browser());
 
   // Select third profile by advancing the focus one step forward.
   profile_menu_view()->GetFocusManager()->AdvanceFocus(/*reverse=*/false);
@@ -2935,9 +2930,10 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewWebAppTest, SelectingOtherProfile) {
   Click(focused_item);
   content::WebContents* new_web_contents = waiter.Wait();
   ASSERT_TRUE(new_web_contents);
-  EXPECT_FALSE(chrome::FindBrowserWithProfile(profile2));
+  EXPECT_FALSE(ProfileBrowserCollection::GetForProfile(profile2)
+                   ->GetLastActiveBrowser());
   BrowserWindowInterface* new_browser =
-      chrome::FindBrowserWithProfile(profile3);
+      ProfileBrowserCollection::GetForProfile(profile3)->GetLastActiveBrowser();
   ASSERT_TRUE(new_browser);
   EXPECT_TRUE(new_browser->GetType() == BrowserWindowInterface::TYPE_APP);
   EXPECT_EQ(new_browser->GetTabStripModel()->GetActiveWebContents(),
@@ -2955,23 +2951,21 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewWebAppTest, ProfileMenuVisibility) {
       profile1, GURL("https://test.org"));
 
   // Verify that avatar button is not visible.
-  auto* toolbar_profile1 =
-      toolbar_helper().browser_view()->web_app_frame_toolbar_for_testing();
-  ASSERT_TRUE(toolbar_profile1);
-  ASSERT_TRUE(toolbar_profile1->GetAvatarToolbarButton());
-  EXPECT_FALSE(toolbar_profile1->GetAvatarToolbarButton()->GetVisible());
+  AvatarToolbarButtonTestAccessor avatar_accessor1(
+      toolbar_helper().browser_view()->browser());
+  ASSERT_TRUE(avatar_accessor1.GetEnabled());
+  EXPECT_FALSE(avatar_accessor1.GetVisible());
 
   // Now install and launch application in second profile.
   EXPECT_EQ(app_id, toolbar_helper().InstallAndLaunchWebApp(
                         profile2, GURL("https://test.org")));
 
   // Avatar button should be visible in both profiles.
-  EXPECT_TRUE(toolbar_profile1->GetAvatarToolbarButton()->GetVisible());
-  auto* toolbar_profile2 =
-      toolbar_helper().browser_view()->web_app_frame_toolbar_for_testing();
-  ASSERT_TRUE(toolbar_profile2);
-  ASSERT_TRUE(toolbar_profile2->GetAvatarToolbarButton());
-  EXPECT_TRUE(toolbar_profile2->GetAvatarToolbarButton()->GetVisible());
+  EXPECT_TRUE(avatar_accessor1.GetVisible());
+  AvatarToolbarButtonTestAccessor avatar_accessor2(
+      toolbar_helper().browser_view()->browser());
+  ASSERT_TRUE(avatar_accessor1.GetEnabled());
+  EXPECT_TRUE(avatar_accessor1.GetVisible());
 }
 #endif  // BUILDFLAG(IS_MAC)
 

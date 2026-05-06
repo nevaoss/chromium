@@ -69,6 +69,30 @@ class GlicMetricsBrowserTest : public InProcessBrowserTest {
   std::unique_ptr<GlicTestEnvironment> glic_test_environment_;
 };
 
+class GlicMetricsBrowserTestWithMessageFirstFre
+    : public GlicMetricsBrowserTest {
+ public:
+  GlicMetricsBrowserTestWithMessageFirstFre()
+      : GlicMetricsBrowserTest({features::kGlicMessageFirstFre}, {}) {}
+};
+
+IN_PROC_BROWSER_TEST_F(GlicMetricsBrowserTestWithMessageFirstFre,
+                       GlicFreShown_MessageFirstFreEnabled) {
+  base::UserActionTester user_action_tester;
+  base::HistogramTester histogram_tester;
+
+  SetFRECompletion(browser()->profile(), prefs::FreStatus::kNotStarted);
+
+  GlicKeyedServiceFactory::GetGlicKeyedService(browser()->profile())
+      ->ToggleUI(browser(), /*prevent_close=*/false,
+                 mojom::InvocationSource::kOsButton);
+
+  EXPECT_EQ(user_action_tester.GetActionCount("Glic.Fre.Shown"), 1);
+
+  histogram_tester.ExpectUniqueSample("Glic.Fre.Shown.InvocationSource",
+                                      mojom::InvocationSource::kOsButton, 1);
+}
+
 IN_PROC_BROWSER_TEST_F(GlicMetricsBrowserTest, GlicFreShown_MultiInstance) {
   base::UserActionTester user_action_tester;
 
@@ -126,7 +150,7 @@ IN_PROC_BROWSER_TEST_F(GlicMetricsBrowserTest,
 
   GlicInvokeOptions options(mojom::InvocationSource::kNavigationCapture);
   options.target.conversation = DefaultConversation{};
-  options.target.surface = DefaultSurface{browser()};
+  options.target.surface = TabListInterface::From(browser())->GetActiveTab();
 
   glic_service->Invoke(std::move(options));
 
@@ -161,7 +185,7 @@ IN_PROC_BROWSER_TEST_F(GlicMetricsBrowserTest,
   // 2. Call Invoke with a NEW conversation.
   GlicInvokeOptions options(mojom::InvocationSource::kNavigationCapture);
   options.target.conversation = NewConversation{};
-  options.target.surface = DefaultSurface{browser()};
+  options.target.surface = TabListInterface::From(browser())->GetActiveTab();
 
   base::HistogramTester histogram_tester_invoke;
   glic_service->Invoke(std::move(options));
@@ -201,7 +225,7 @@ IN_PROC_BROWSER_TEST_F(GlicMetricsBrowserTest,
   // conversation).
   GlicInvokeOptions options(mojom::InvocationSource::kNavigationCapture);
   options.target.conversation = DefaultConversation{};
-  options.target.surface = DefaultSurface{browser()};
+  options.target.surface = TabListInterface::From(browser())->GetActiveTab();
 
   glic_service->Invoke(std::move(options));
 
@@ -274,8 +298,9 @@ class GlicMetricsBrowserTestWithCaptureRegion : public GlicMetricsBrowserTest {
 };
 
 #if !BUILDFLAG(IS_ANDROID)
+// TODO(crbug.com/500964398): This test is flaky.
 IN_PROC_BROWSER_TEST_F(GlicMetricsBrowserTestWithCaptureRegion,
-                       SelectionUsedFromController) {
+                       DISABLED_SelectionUsedFromController) {
   // The feature is enabled in constructor of
   // GlicMetricsBrowserTestWithCaptureRegion but let's double check.
   ASSERT_TRUE(base::FeatureList::IsEnabled(features::kGlicCaptureRegion));

@@ -70,6 +70,8 @@ import org.chromium.chrome.browser.lens.LensQueryParams;
 import org.chromium.chrome.browser.lifecycle.PauseResumeWithNativeObserver;
 import org.chromium.chrome.browser.locale.LocaleManager;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
+import org.chromium.chrome.browser.omnibox.LocationBarDataProvider.Observer;
+import org.chromium.chrome.browser.omnibox.SearchEngineUtils.SearchBoxHintTextObserver;
 import org.chromium.chrome.browser.omnibox.UrlBar.UrlBarDelegate;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList.FuseboxAttachmentChangeListener;
@@ -80,6 +82,7 @@ import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxLoadUrlParams;
+import org.chromium.chrome.browser.omnibox.suggestions.OmniboxSuggestionsDropdownScrollListener;
 import org.chromium.chrome.browser.omnibox.suggestions.SiteSearchActivationSource;
 import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionHandler;
 import org.chromium.chrome.browser.prefetch.settings.PreloadPagesSettingsBridge;
@@ -95,7 +98,6 @@ import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoU
 import org.chromium.chrome.browser.ui.extensions.ExtensionUi;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.chrome.browser.util.ChromeAccessibilityUtil;
-import org.chromium.components.browser_ui.accessibility.AccessibilityFeatureMap;
 import org.chromium.components.browser_ui.accessibility.PageZoomIndicatorCoordinator;
 import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.browser_ui.widget.animation.CancelAwareAnimatorListener;
@@ -107,6 +109,7 @@ import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.search_engines.TemplateUrlService;
+import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
 import org.chromium.components.webapps.AddToHomescreenCoordinator;
 import org.chromium.components.webapps.AppBannerManager;
 import org.chromium.content_public.browser.LoadUrlParams;
@@ -132,18 +135,19 @@ import java.util.function.Supplier;
  */
 @NullMarked
 class LocationBarMediator
-        implements LocationBarDataProvider.Observer,
+        implements Observer,
                 OmniboxStub,
                 VoiceRecognitionHandler.Observer,
                 UrlBarDelegate,
                 OnKeyListener,
                 FuseboxAttachmentChangeListener,
                 ComponentCallbacks,
-                TemplateUrlService.TemplateUrlServiceObserver,
+                TemplateUrlServiceObserver,
                 BackPressHandler,
                 PauseResumeWithNativeObserver,
-                SearchEngineUtils.SearchBoxHintTextObserver,
-                AppBannerManager.Observer {
+                SearchBoxHintTextObserver,
+                AppBannerManager.Observer,
+                OmniboxSuggestionsDropdownScrollListener {
 
     private static final int ICON_FADE_ANIMATION_DURATION_MS = 150;
     private static final int ICON_FADE_ANIMATION_DELAY_MS = 75;
@@ -386,6 +390,8 @@ class LocationBarMediator
             mVoiceRecognitionHandler.addObserver(this);
         }
 
+        mAutocompleteCoordinator.addOmniboxSuggestionsDropdownScrollListener(this);
+
         updateShouldAnimateIconChanges();
         updateButtonVisibility();
         updateSearchEngineStatusIconShownState();
@@ -402,6 +408,7 @@ class LocationBarMediator
             mSearchEngineUtils.removeSearchBoxHintTextObserver(this);
         }
         mStatusCoordinator = null;
+        mAutocompleteCoordinator.removeOmniboxSuggestionsDropdownScrollListener(this);
         mAutocompleteCoordinator = null;
         mUrlCoordinator = null;
         mVoiceRecognitionHandler.removeObserver(this);
@@ -424,7 +431,6 @@ class LocationBarMediator
         // Intercept back press if it has focus.
         mBackPressStateSupplier.set(mUrlHasFocus);
         updateButtonVisibility();
-        onSearchBoxHintTextChanged();
         updateShouldAnimateIconChanges();
         onPrimaryColorChanged();
 
@@ -709,6 +715,17 @@ class LocationBarMediator
         }
 
         return true;
+    }
+
+    @Override
+    public void onSuggestionDropdownScroll() {}
+
+    @Override
+    public void onSuggestionDropdownOverscrolledToTop() {}
+
+    @Override
+    public void onSuggestionDropdownScrollOffsetChanged(int scrollOffset) {
+        mLocationBarLayout.onSuggestionsListScrollOffsetChanged(scrollOffset);
     }
 
     /* package */ void onSuggestionsChanged(
@@ -1006,7 +1023,6 @@ class LocationBarMediator
     /* package */ void zoomButtonClicked(View view) {
         WebContents webContents = getWebContentsForCurrentTab();
         if (mPageZoomIndicatorCoordinator == null || webContents == null) return;
-        assert AccessibilityFeatureMap.sAndroidZoomIndicator.isEnabled();
         mPageZoomIndicatorCoordinator.show(webContents);
     }
 
@@ -1176,7 +1192,11 @@ class LocationBarMediator
         mStatusCoordinator.setSiteSearchDataSupplier(null);
         FuseboxSessionState state = FuseboxSessionState.from(mLocationBarDataProvider);
         if (state != null) state.deactivate();
+
         mCurrentInput = null;
+        // The hint text depends on mCurrentInput, nulling it may change the outcome.
+        onSearchBoxHintTextChanged();
+
         setAttachmentModelList(null);
     }
 
@@ -1660,7 +1680,6 @@ class LocationBarMediator
     private void onFuseboxStateChanged(@FuseboxState int state) {
         updateNavigateButtonVisibility();
         mLocationBarLayout.onFuseboxStateChanged(state);
-        mStatusCoordinator.onFuseboxStateChanged(state);
     }
 
     private void updateNavigateButtonVisibility() {
@@ -1682,8 +1701,7 @@ class LocationBarMediator
     @VisibleForTesting
     boolean shouldShowZoomButton() {
         if (mUrlHasFocus || mIsUrlFocusChangeInProgress) return false;
-        if (!AccessibilityFeatureMap.sAndroidZoomIndicator.isEnabled()
-                || !mIsTablet
+        if (!mIsTablet
                 || mPageZoomIndicatorCoordinator == null
                 || getWebContentsForCurrentTab() == null
                 || mPageZoomIndicatorCoordinator.isZoomLevelDefault()) {

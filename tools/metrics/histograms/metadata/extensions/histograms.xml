@@ -942,20 +942,6 @@ This is emitted for two scenarios when a worker may be unregistered:
   </summary>
 </histogram>
 
-<histogram name="Extensions.CreateWindowHeight" units="pixels"
-    expires_after="2023-03-31">
-  <owner>emiliapaz@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>Height of the window created via chrome.windows.create.</summary>
-</histogram>
-
-<histogram name="Extensions.CreateWindowWidth" units="pixels"
-    expires_after="2023-03-31">
-  <owner>emiliapaz@chromium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <summary>Width of the window created via chrome.windows.create.</summary>
-</histogram>
-
 <histogram name="Extensions.CWSInfoService.FetchSuccess" enum="BooleanSuccess"
     expires_after="never">
 <!-- expires-never: used to monitor the health of CWS metadata fetch service -->
@@ -3037,7 +3023,7 @@ This is emitted for two scenarios when a worker may be unregistered:
     enum="HostPermissionsAccess" expires_after="never">
 <!-- expires-never: Monitors core extension usage. -->
 
-  <owner>emiliapaz@chromium.org</owner>
+  <owner>evasu@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
     Records the host permissions access for a enabled extension as a result of
@@ -3052,7 +3038,7 @@ This is emitted for two scenarios when a worker may be unregistered:
     enum="HostPermissionsAccess" expires_after="never">
 <!-- expires-never: Monitors core extension usage. -->
 
-  <owner>emiliapaz@chromium.org</owner>
+  <owner>evasu@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
     Records the host permissions access for each enabled extension that
@@ -3067,7 +3053,7 @@ This is emitted for two scenarios when a worker may be unregistered:
     enum="HostPermissionsAccess" expires_after="never">
 <!-- expires-never: Monitors core extension usage. -->
 
-  <owner>emiliapaz@chromium.org</owner>
+  <owner>evasu@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
     Records the host permissions access for each enabled extension that
@@ -4047,6 +4033,16 @@ This is emitted for two scenarios when a worker may be unregistered:
   </summary>
 </histogram>
 
+<histogram name="Extensions.SandboxUnpackFailureReasonForUpdates"
+    enum="ExtensionUnpackFailureReason" expires_after="2026-10-14">
+  <owner>jlulejian@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>
+    Records the reason an extension failed to unpack during an update. Emits
+    when a failure occurs.
+  </summary>
+</histogram>
+
 <histogram name="Extensions.SandboxUnpackSuccess" units="units"
     expires_after="never">
 <!-- expires-never: Monitors core extension installation flows. -->
@@ -4054,6 +4050,17 @@ This is emitted for two scenarios when a worker may be unregistered:
   <owner>rdevlin.cronin@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>Count the number of times a sandboxed CRX unpack succeeds.</summary>
+</histogram>
+
+<histogram name="Extensions.SandboxUnpackSuccessForUpdates"
+    enum="BooleanSuccess" expires_after="2026-10-14">
+  <owner>jlulejian@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>
+    Records whether a sandboxed CRX unpack succeeds or fails during an update.
+    Emits when the installation completes (either successfully or with a
+    sandboxed unpacker failure).
+  </summary>
 </histogram>
 
 <histogram name="Extensions.SearchEngineOverrides2" units="units"
@@ -4590,6 +4597,17 @@ This is emitted for two scenarios when a worker may be unregistered:
   </summary>
 </histogram>
 
+<histogram name="Extensions.SettingsOverridden.MissingParams"
+    enum="MissingParams" expires_after="2026-11-15">
+  <owner>rdevlin.cronin@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    Records whether any search parameters are missing when populating the values
+    for the Explicit Choice dialog.
+  </summary>
+</histogram>
+
 <histogram name="Extensions.StartupPagesOverrides2" units="units"
     expires_after="2026-05-24">
   <owner>rdevlin.cronin@chromium.org</owner>
@@ -4618,7 +4636,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 
 <histogram name="Extensions.Toolbar.ExtensionsActivatedFromRequestAccessButton"
     units="Extension Count" expires_after="2026-05-03">
-  <owner>emiliapaz@chromium.org</owner>
+  <owner>evasu@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
     The number of extensions in the request access button that were granted site

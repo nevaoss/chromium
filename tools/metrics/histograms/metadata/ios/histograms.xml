@@ -2327,6 +2327,37 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="IOS.Fullscreen.TimeInFullscreen" units="ms"
+    expires_after="2027-04-02">
+  <owner>alionadangla@google.com</owner>
+  <owner>scottyoder@google.com</owner>
+  <summary>
+    The time spent in fullscreen mode (toolbars fully collapsed). Recorded when
+    the toolbars start appearing due to scrolling (exiting fullscreen). This
+    duration is NOT recorded if the fullscreen state is reset due to navigation
+    or tab change before the user manually exits fullscreen. This ensures that
+    forced exits don't pollute the duration metrics for user-initiated
+    fullscreen sessions.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Fullscreen.TimeNotInFullscreen" units="ms"
+    expires_after="2027-04-02">
+  <owner>alionadangla@google.com</owner>
+  <owner>scottyoder@google.com</owner>
+  <summary>
+    The time spent not in fullscreen mode (toolbars fully visible) before
+    entering fullscreen. Recorded when the toolbars start collapsing due to
+    scrolling (entering fullscreen). This represents the time spent on the
+    current page/tab since it was last shown or navigated to. If a navigation or
+    tab change occurs while not in fullscreen, the accumulated time is discarded
+    and the timer resets for the new page/tab. In other words, this only logs
+    the time spent on the current page session before it first enters
+    fullscreen, or the time between a manual exit and the next entry on the same
+    page.
+  </summary>
+</histogram>
+
 <histogram name="IOS.Fullscreen.TimeSpentScrollingToTheBottom" units="ms"
     expires_after="2026-09-13">
   <owner>alionadangla@chromium.org</owner>
@@ -3707,15 +3738,6 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
-<histogram name="IOS.MagicStack.NTP.SegmentationRankingFetchTime" units="ms"
-    expires_after="2026-04-26">
-  <owner>thegreenfrog@chromium.org</owner>
-  <owner>bling-pandamonium@google.com</owner>
-  <summary>
-    Records the fetch time for the Segmentation ranking for Magic Stack on NTP.
-  </summary>
-</histogram>
-
 <histogram name="IOS.MagicStack.ScrollActionToIndex" units="index"
     expires_after="2026-09-07">
   <owner>thegreenfrog@chromium.org</owner>
@@ -3763,16 +3785,6 @@ chromium-metrics-reviews@google.com.
     <variant name="TabResumptionWithPriceTracking"
         summary="tab resumption where the URL is price trackable"/>
   </token>
-</histogram>
-
-<histogram name="IOS.MagicStack.Start.SegmentationRankingFetchTime" units="ms"
-    expires_after="2026-06-28">
-  <owner>thegreenfrog@chromium.org</owner>
-  <owner>bling-pandamonium@google.com</owner>
-  <summary>
-    Records the fetch time for the Segmentation ranking for Magic Stack on
-    Start.
-  </summary>
 </histogram>
 
 <histogram name="IOS.MagicStack.TabResumption.{Type}.Impression" units="index"
@@ -5051,43 +5063,12 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="IOS.PaymentsBottomSheet.AcceptAttempts.{Action}" units="count"
-    expires_after="2025-03-17">
-  <owner>vincb@google.com</owner>
-  <owner>tmartino@chromium.org</owner>
-  <owner>sugoi@chromium.org</owner>
-  <owner>bling-transactions@google.com</owner>
-  <summary>
-    Counts the number of attempts done for accepting a payment suggestion before
-    an {Action} on the payments sheet was really handled. Recorded when the user
-    does an effective action on the sheet such as accepting a selected
-    suggestion or dismissing the sheet. Won't be recorded if the action couldn't
-    be handled yet.
-  </summary>
-  <token key="Action">
-    <variant name="Accept" summary="accept suggestion"/>
-    <variant name="Dismiss" summary="dismiss without accepting suggestion"/>
-  </token>
-</histogram>
-
 <histogram name="IOS.PaymentsBottomSheet.ExitReason"
     enum="PaymentsSuggestionBottomSheetExitReason" expires_after="2026-09-06">
   <owner>sugoi@chromium.org</owner>
   <owner>tmartino@chromium.org</owner>
   <summary>
     Tracks the bottom sheet dismissal or use of a payments suggestion.
-  </summary>
-</histogram>
-
-<histogram name="IOS.PaymentsBottomSheet.TimeToSelection" units="ms"
-    expires_after="2026-02-22">
-  <owner>vincb@google.com</owner>
-  <owner>noemies@google.com</owner>
-  <owner>bling-transactions@google.com</owner>
-  <summary>
-    Records the elasped time between displaying the sheet and selecting a credit
-    card. Recorded when the credit is selected by the user (when they did tap on
-    it).
   </summary>
 </histogram>
 
@@ -6019,18 +6000,6 @@ chromium-metrics-reviews@google.com.
     on startup when it is detected that EULA pref is not set but First run
     sentinel is set. There is no base event (false) as this should be an
     exceptional case and should tend to 0 occurence.
-  </summary>
-</histogram>
-
-<histogram name="IOS.ResetDismissCount.Password.BottomSheet" units="dismisses"
-    expires_after="2025-10-08">
-  <owner>sugoi@chromium.org</owner>
-  <owner>tmartino@chromium.org</owner>
-  <summary>
-    Tracks the number of times in a row the Credential Bottom Sheet had been
-    dismissed at the moment the dismiss count was reset to 0 (between 1 and 3).
-
-    Note: this metric was expired from 2024-05 to 2025-05; data may be missing.
   </summary>
 </histogram>
 

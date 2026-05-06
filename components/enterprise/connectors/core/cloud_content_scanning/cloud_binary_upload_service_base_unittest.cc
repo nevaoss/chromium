@@ -38,9 +38,23 @@ class TestCloudBinaryUploadServiceBase : public CloudBinaryUploadServiceBase {
   using CloudBinaryUploadServiceBase::RecordRequestMetrics;
   using CloudBinaryUploadServiceBase::start_times_;
 
+  TestCloudBinaryUploadServiceBase()
+      : CloudBinaryUploadServiceBase(/*url_loader_factory=*/nullptr) {}
+
   // CloudBinaryUploadServiceBase:
-  void UploadForDeepScanning(
-      std::unique_ptr<BinaryUploadRequest> request) override {}
+  void MaybeGetAccessToken(BinaryUploadRequest* request,
+                           base::OnceCallback<void(const std::string&)>
+                               access_token_callback) override {}
+  enterprise_connectors::BinaryUploadRequest::BrowserPolicyConnectorGetter
+  BrowserPolicyConnectorGetter() override {
+    return base::BindRepeating(
+        []() -> policy::BrowserPolicyConnector* { return nullptr; });
+  }
+  bool IsAdvancedProtection() override { return false; }
+  bool IsEnhancedProtection() override { return false; }
+#if BUILDFLAG(IS_CHROMEOS)
+  bool IsManagedGuestSession() override { return false; }
+#endif
 };
 
 }  // namespace

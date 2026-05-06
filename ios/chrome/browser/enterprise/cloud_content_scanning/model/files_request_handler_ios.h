@@ -44,7 +44,10 @@ class FilesRequestHandlerIOS : public FilesRequestHandlerBase::Delegate {
                            const std::string& trigger,
                            const std::string& content_transfer_method) override;
   bool UploadDataImpl() override;
-  void UpdateFileInfo(size_t index, BinaryUploadRequest::Data data) override;
+  void UpdateFileInfo(size_t index,
+                      BinaryUploadRequest::Data data,
+                      BinaryUploadRequest* request) override;
+  void OnGotHash(size_t index, std::string hash) override;
   void UpdateRequestHandlerResult(size_t index,
                                   RequestHandlerResult result,
                                   ContentAnalysisResponse response) override;
@@ -58,6 +61,8 @@ class FilesRequestHandlerIOS : public FilesRequestHandlerBase::Delegate {
   std::string GetSource() override;
   std::string GetDestination() override;
   void SetHandler(FilesRequestHandlerBase* handler) override;
+  void MaybeCancelAndReport() override;
+  void MarkFileAsReported(size_t index) override;
 
  private:
   raw_ptr<FilesRequestHandlerBase> handler_;
@@ -70,6 +75,9 @@ class FilesRequestHandlerIOS : public FilesRequestHandlerBase::Delegate {
 
   RequestHandlerResult result_;
   ContentAnalysisResponse response_;
+  bool was_reported_ = false;
+
+  base::WeakPtrFactory<FilesRequestHandlerIOS> weak_ptr_factory_{this};
 };
 
 }  // namespace enterprise_connectors

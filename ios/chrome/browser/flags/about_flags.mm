@@ -1056,12 +1056,6 @@ const FeatureEntry::FeatureVariation kBWGPromoConsentVariations[] = {
     {"Force FRE", kForceBWGFirstTimeRun, nullptr},
     {"Skip new user delay", kSkipNewUserDelay, nullptr}};
 
-const FeatureEntry::FeatureParam kOmniboxMobileParityEnableFeedForGoogleOnly[] =
-    {{OmniboxFieldTrial::kMobileParityEnableFeedForGoogleOnly.name, "true"}};
-const FeatureEntry::FeatureVariation kOmniboxMobileParityVariations[] = {
-    {"- feed only when searching with Google",
-     kOmniboxMobileParityEnableFeedForGoogleOnly, nullptr}};
-
 const FeatureEntry::FeatureParam kPageActionMenuDirectEntryPoint[] = {
     {kPageActionMenuDirectEntryPointParam, "true"},
 };
@@ -1456,6 +1450,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kNTPBackgroundColorSliderName,
      flag_descriptions::kNTPBackgroundColorSliderDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kNTPBackgroundColorSlider)},
+    {"ntp-background-downsample-image",
+     flag_descriptions::kNTPBackgroundDownsampleImageName,
+     flag_descriptions::kNTPBackgroundDownsampleImageDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kNTPBackgroundDownsampleImage)},
     {"ntp-background-image-cache",
      flag_descriptions::kEnableNTPBackgroundImageCacheName,
      flag_descriptions::kEnableNTPBackgroundImageCacheDescription,
@@ -1500,17 +1498,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kOmniboxLocalHistoryZeroSuggestBeyondNTPDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(omnibox::kLocalHistoryZeroSuggestBeyondNTP)},
-    {"omnibox-mobile-parity-update",
-     flag_descriptions::kOmniboxMobileParityUpdateName,
-     flag_descriptions::kOmniboxMobileParityUpdateDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(omnibox::kOmniboxMobileParityUpdate,
-                                    kOmniboxMobileParityVariations,
-                                    "OmniboxMobileParityUpdate")},
-    {"omnibox-mobile-parity-update-v2",
-     flag_descriptions::kOmniboxMobileParityUpdateV2Name,
-     flag_descriptions::kOmniboxMobileParityUpdateV2Description,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(omnibox::kOmniboxMobileParityUpdateV2)},
     {"force-startup-signin-promo",
      flag_descriptions::kForceStartupSigninPromoName,
      flag_descriptions::kForceStartupSigninPromoDescription, flags_ui::kOsIos,
@@ -2667,6 +2654,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kGeminiRichAPCExtractionName,
      flag_descriptions::kGeminiRichAPCExtractionDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiRichAPCExtraction)},
+    {"gemini-multi-tab-context", flag_descriptions::kGeminiMultiTabContextName,
+     flag_descriptions::kGeminiMultiTabContextDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiMultiTabContext)},
     {"in-flow-trusted-vault-key-retrieval-ios",
      flag_descriptions::kInFlowTrustedVaultKeyRetrievalIosName,
      flag_descriptions::kInFlowTrustedVaultKeyRetrievalIosDescription,
@@ -2740,6 +2730,12 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kAutofillAiReauthRequiredName,
      flag_descriptions::kAutofillAiReauthRequiredDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(autofill::features::kAutofillAiReauthRequired)},
+    {"autofill-ai-no-filling-icons-experiment",
+     flag_descriptions::kAutofillAiNoFillingIconsExperimentName,
+     flag_descriptions::kAutofillAiNoFillingIconsExperimentDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         autofill::features::kAutofillAiNoFillingIconsExperiment)},
     {"autofill-ai-valuables-iph",
      flag_descriptions::kAutofillAiValuablesIPHName,
      flag_descriptions::kAutofillAiValuablesIPHDescription, flags_ui::kOsIos,

@@ -37,7 +37,8 @@ BASE_DECLARE_FEATURE(kRequirePersistentModeForScamDetection);
 class ModelBrokerAndroid;
 
 // A implementation of OnDeviceCapability for Android.
-class ModelBrokerAndroid final : public OnDeviceCapability {
+class ModelBrokerAndroid final : public OnDeviceCapability,
+                                 mojom::ModelBrokerDebug {
  public:
   class SolutionFactory;
 
@@ -48,6 +49,16 @@ class ModelBrokerAndroid final : public OnDeviceCapability {
   // OnDeviceCapability:
   void BindModelBroker(
       mojo::PendingReceiver<mojom::ModelBroker> receiver) override;
+  void BindModelBrokerDebug(
+      base::PassKey<on_device_internals::PageHandler> key,
+      mojo::PendingReceiver<mojom::ModelBrokerDebug> receiver) override;
+
+  // mojom::ModelBrokerDebug
+  void GetStateInfo(
+      mojom::ModelBrokerDebug::GetStateInfoCallback callback) override;
+  void SetUseCaseRequested(const std::string& use_case,
+                           bool requested) override;
+  void UninstallModels() override;
 
   mojo::Remote<on_device_model::mojom::OnDeviceModel>& GetOrCreateModelRemote(
       proto::ModelExecutionFeature feature);
@@ -94,6 +105,8 @@ class ModelBrokerAndroid final : public OnDeviceCapability {
   // The on-device model services, keyed by feature.
   absl::flat_hash_map<proto::ModelExecutionFeature, ModelService>
       model_services_;
+
+  mojo::ReceiverSet<ModelBrokerDebug> receivers_;
 
   // Callbacks queued while initialization is in flight.
   std::vector<ModelBrokerImpl::InitCallback> pending_init_callbacks_;

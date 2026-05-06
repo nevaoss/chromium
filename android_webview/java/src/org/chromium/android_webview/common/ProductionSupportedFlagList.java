@@ -541,6 +541,7 @@ public final class ProductionSupportedFlagList {
                 NetFeatures.SPDY_HEADERS_TO_HTTP_RESPONSE_USE_BUILDER,
                 "Enables new optimized implementation of SpdyHeadersToHttpResponse. No behavior"
                         + " change."),
+        Flag.baseFeature(NetFeatures.HAPPY_EYEBALLS_V2, "Enables Happy Eyeballs V2"),
         Flag.baseFeature(NetFeatures.HAPPY_EYEBALLS_V3, "Enables Happy Eyeballs V3"),
         Flag.baseFeature(NetFeatures.ENABLE_TLS13_EARLY_DATA, "Enables TLS 1.3 Early Data"),
         Flag.baseFeature(
@@ -675,7 +676,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("V8Flag_managed_zone_memory"),
         Flag.baseFeature("V8Flag_minor_gc_task_with_lower_priority"),
         Flag.baseFeature("V8Flag_scavenger_updates_allocation_limit"),
-        Flag.baseFeature("V8Flag_new_old_generation_heap_size"),
         Flag.baseFeature("V8Flag_trim_descriptor_arrays_in_gc"),
         Flag.baseFeature("V8Flag_trim_descriptor_arrays_in_gc_with_stack"),
         Flag.baseFeature("V8Flag_memory_reducer"),
@@ -832,6 +832,7 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(NetFeatures.ASYNC_RETRY_ON_TOO_MANY_CONNECTION_ERRORS),
         Flag.baseFeature(
                 NetFeatures.DRAIN_SPDY_SESSION_SYNCHRONOUSLY_ON_REMOTE_ENDPOINT_DISCONNECT),
+        Flag.baseFeature(NetFeatures.NETWORK_QUALITY_ESTIMATOR_IS_PRIVATE_HOST_CACHE),
         Flag.baseFeature(NetFeatures.NET_TASK_SCHEDULER),
         Flag.baseFeature(NetFeatures.NET_TASK_SCHEDULER2),
         Flag.baseFeature("BrowserThreadPoolAdjustment"),

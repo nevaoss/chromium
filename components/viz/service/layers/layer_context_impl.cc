@@ -532,10 +532,12 @@ DeserializeStickyPositionData(
   std::vector<cc::StickyPositionNodeData> sticky_position_node_data;
   sticky_position_node_data.reserve(wire_data.size());
   for (auto& wire : wire_data) {
-    if (!IsPropertyTreeIndexValid(trees.scroll_tree(),
-                                  wire->x_scroll_ancestor) &&
-        !IsPropertyTreeIndexValid(trees.scroll_tree(),
-                                  wire->y_scroll_ancestor)) {
+    if (!IsOptionalPropertyTreeIndexValid(trees.scroll_tree(),
+                                          wire->x_scroll_ancestor) ||
+        !IsOptionalPropertyTreeIndexValid(trees.scroll_tree(),
+                                          wire->y_scroll_ancestor) ||
+        (wire->x_scroll_ancestor == cc::kInvalidPropertyNodeId &&
+         wire->y_scroll_ancestor == cc::kInvalidPropertyNodeId)) {
       return base::unexpected("Invalid scroll ancestor ID");
     }
 
@@ -1461,7 +1463,8 @@ base::expected<void, std::string> DeserializeAnimationCurve(
   model->set_playback_rate(wire.playback_rate);
   model->set_iterations(wire.iterations);
   model->set_iteration_start(wire.iteration_start);
-  model->set_time_offset(wire.time_offset);
+  model->set_start_delay(wire.start_delay);
+  model->set_hold_time(wire.hold_time);
   model->set_element_id(wire.element_id);
   animation.keyframe_effect()->AddKeyframeModel(std::move(model));
   return base::ok();

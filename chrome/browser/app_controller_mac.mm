@@ -185,10 +185,12 @@ void BeginHandlingWebAuthenticationSessionRequestWithProfile(
 // not possible. If the last active browser is minimized (in particular, if
 // there are only minimized windows), it will unminimize it.
 Browser* ActivateBrowser(Profile* profile) {
-  Browser* browser = chrome::FindLastActiveWithProfile(
+  BrowserWindowInterface* current_browser = chrome::FindLastActiveWithProfile(
       profile->IsGuestSession()
           ? profile->GetPrimaryOTRProfile(/*create_if_needed=*/true)
           : profile);
+  Browser* browser =
+      current_browser ? current_browser->GetBrowserForMigrationOnly() : nullptr;
 
   if (browser) {
     browser = browser->GetBrowserForOpeningWebUi();
@@ -1382,7 +1384,8 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
         // Create a new browser window (if necessary) and navigate to the
         // downloads page if the user chooses to wait.
         BrowserWindowInterface* browser =
-            chrome::FindBrowserWithProfile(profile);
+            ProfileBrowserCollection::GetForProfile(profile)
+                ->GetLastActiveBrowser();
         if (!browser) {
           browser = Browser::Create(Browser::CreateParams(profile, true));
           browser->GetWindow()->Show();
@@ -2440,7 +2443,10 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 
 - (void)setLastProfileForTesting:(Profile*)profile {
   _lastProfile = profile;
-  Browser* browser = chrome::FindLastActiveWithProfile(profile);
+  BrowserWindowInterface* current_browser =
+      chrome::FindLastActiveWithProfile(profile);
+  Browser* browser =
+      current_browser ? current_browser->GetBrowserForMigrationOnly() : nullptr;
   _lastActiveBrowser = browser->GetWeakPtr();
 }
 

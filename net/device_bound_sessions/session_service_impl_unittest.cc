@@ -590,8 +590,8 @@ TEST_F(SessionServiceImplTest, EventObserverOnAddSession) {
   base::CallbackListSubscription subscription =
       service().AddEventObserver(event_callback.Get());
 
-  base::test::TestFuture<
-      unexportable_keys::ServiceErrorOr<unexportable_keys::UnexportableKeyId>>
+  base::test::TestFuture<unexportable_keys::ServiceErrorOr<
+      unexportable_keys::UnexportableSigningKeyId>>
       key_future;
   key_service()->GenerateSigningKeySlowlyAsync(
       {crypto::SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256},
@@ -1979,8 +1979,8 @@ TEST_F(SessionServiceImplTestWithFederatedSessions,
   ASSERT_NE(provider_session, nullptr);
 
   // Create the provider key and the correct thumbprint
-  base::test::TestFuture<
-      unexportable_keys::ServiceErrorOr<unexportable_keys::UnexportableKeyId>>
+  base::test::TestFuture<unexportable_keys::ServiceErrorOr<
+      unexportable_keys::UnexportableSigningKeyId>>
       key_future;
   key_service()->GenerateSigningKeySlowlyAsync(
       {crypto::SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256},
@@ -2020,8 +2020,8 @@ TEST_F(SessionServiceImplTestWithFederatedSessions,
   ASSERT_NE(provider_session, nullptr);
 
   // Create the provider key and the correct thumbprint
-  base::test::TestFuture<
-      unexportable_keys::ServiceErrorOr<unexportable_keys::UnexportableKeyId>>
+  base::test::TestFuture<unexportable_keys::ServiceErrorOr<
+      unexportable_keys::UnexportableSigningKeyId>>
       key_future;
   key_service()->GenerateSigningKeySlowlyAsync(
       {crypto::SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256},
@@ -2058,8 +2058,8 @@ TEST_F(SessionServiceImplTestWithFederatedSessions,
   ASSERT_NE(provider_session, nullptr);
 
   // Create the provider key and the correct thumbprint
-  base::test::TestFuture<
-      unexportable_keys::ServiceErrorOr<unexportable_keys::UnexportableKeyId>>
+  base::test::TestFuture<unexportable_keys::ServiceErrorOr<
+      unexportable_keys::UnexportableSigningKeyId>>
       key_future;
   key_service()->GenerateSigningKeySlowlyAsync(
       {crypto::SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256},
@@ -2099,8 +2099,8 @@ TEST_F(SessionServiceImplTestWithFederatedSessions,
   ASSERT_NE(provider_session, nullptr);
 
   // Create the provider key and the correct thumbprint
-  base::test::TestFuture<
-      unexportable_keys::ServiceErrorOr<unexportable_keys::UnexportableKeyId>>
+  base::test::TestFuture<unexportable_keys::ServiceErrorOr<
+      unexportable_keys::UnexportableSigningKeyId>>
       key_future;
   key_service()->GenerateSigningKeySlowlyAsync(
       {crypto::SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256},
@@ -2195,8 +2195,8 @@ TEST_F(SessionServiceImplTestWithFederatedSessions,
   provider_session->set_unexportable_key_id(
       base::unexpected(unexportable_keys::ServiceError::kKeyNotReady));
 
-  base::test::TestFuture<
-      unexportable_keys::ServiceErrorOr<unexportable_keys::UnexportableKeyId>>
+  base::test::TestFuture<unexportable_keys::ServiceErrorOr<
+      unexportable_keys::UnexportableSigningKeyId>>
       key_future;
   key_service()->GenerateSigningKeySlowlyAsync(
       {crypto::SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256},
@@ -2245,8 +2245,8 @@ TEST_F(SessionServiceImplTestWithoutFederatedSessions,
   ASSERT_NE(provider_session, nullptr);
 
   // Create the provider key and the correct thumbprint
-  base::test::TestFuture<
-      unexportable_keys::ServiceErrorOr<unexportable_keys::UnexportableKeyId>>
+  base::test::TestFuture<unexportable_keys::ServiceErrorOr<
+      unexportable_keys::UnexportableSigningKeyId>>
       key_future;
   key_service()->GenerateSigningKeySlowlyAsync(
       {crypto::SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256},
@@ -2688,7 +2688,8 @@ TEST_F(SessionServiceImplWithStoreTest, RequestDestroyedDuringAsyncKeyRestore) {
   ASSERT_TRUE(restore_key_callback);
   // Call the callback, and the test should not crash even though the request
   // was cleaned up.
-  std::move(restore_key_callback).Run(unexportable_keys::UnexportableKeyId());
+  std::move(restore_key_callback)
+      .Run(unexportable_keys::UnexportableSigningKeyId());
 }
 
 TEST_F(SessionServiceImplWithStoreTest, SessionKeyRestoredOnUse) {
@@ -2769,8 +2770,8 @@ TEST_F(SessionServiceImplWithStoreTest,
        std::move(provider_session)});
   FinishLoadingSessions(std::move(session_map));
 
-  base::test::TestFuture<
-      unexportable_keys::ServiceErrorOr<unexportable_keys::UnexportableKeyId>>
+  base::test::TestFuture<unexportable_keys::ServiceErrorOr<
+      unexportable_keys::UnexportableSigningKeyId>>
       key_future;
   key_service()->GenerateSigningKeySlowlyAsync(
       {crypto::SignatureVerifier::SignatureAlgorithm::ECDSA_SHA256},

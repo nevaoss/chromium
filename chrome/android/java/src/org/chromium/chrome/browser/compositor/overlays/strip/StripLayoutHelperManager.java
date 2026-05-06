@@ -13,8 +13,6 @@ import static org.chromium.chrome.browser.compositor.overlays.strip.StripLayoutU
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
-import android.content.SharedPreferences;
-import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -31,13 +29,11 @@ import android.view.ViewStub;
 import android.view.animation.Interpolator;
 
 import androidx.annotation.ColorInt;
-import androidx.annotation.DrawableRes;
 import androidx.annotation.Px;
 import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.content.res.AppCompatResources;
 
 import org.chromium.base.Callback;
-import org.chromium.base.ContextUtils;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
@@ -73,6 +69,8 @@ import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicKeyedService;
 import org.chromium.chrome.browser.glic.GlicKeyedService.GlobalShowHideObserver;
+import org.chromium.chrome.browser.glic.GlicPrefNames;
+import org.chromium.chrome.browser.glic.GlicUtils;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.layouts.EventFilter;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider.LayoutStateObserver;
@@ -86,8 +84,8 @@ import org.chromium.chrome.browser.lifecycle.PauseResumeWithNativeObserver;
 import org.chromium.chrome.browser.lifecycle.TopResumedActivityChangedObserver;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
-import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
-import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
+import org.chromium.chrome.browser.preferences.PrefServiceUtil;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.MediaState;
 import org.chromium.chrome.browser.tab.Tab;
@@ -121,6 +119,7 @@ import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateMa
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager.AppHeaderObserver;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
+import org.chromium.components.prefs.PrefChangeRegistrar;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.base.LocalizationUtils;
 import org.chromium.ui.base.PageTransition;
@@ -146,8 +145,7 @@ public class StripLayoutHelperManager
                 PauseResumeWithNativeObserver,
                 TabStripSceneLayerHolder,
                 TopResumedActivityChangedObserver,
-                AppHeaderObserver,
-                OnSharedPreferenceChangeListener {
+                AppHeaderObserver {
     /**
      * POD type that contains the necessary tab model info on startup. Used in the startup flicker
      * fix experiment where we create a placeholder tab strip on startup to mitigate jank as tabs
@@ -228,11 +226,6 @@ public class StripLayoutHelperManager
     static final Interpolator TAB_STRIP_TRANSITION_INTERPOLATOR =
             Interpolators.STANDARD_DEFAULT_EFFECTS;
 
-    // Fade constants.
-    static final float FADE_SHORT_WIDTH_DP = 60;
-    static final float FADE_MEDIUM_WIDTH_DP = 72;
-    static final float FADE_LONG_WIDTH_DP = 136;
-
     // Caching Variables
     private final RectF mStripFilterArea = new RectF();
     private final boolean mIsHeaderCustomizationSupported;
@@ -265,6 +258,7 @@ public class StripLayoutHelperManager
     private int mOrientation;
     private final Runnable mGlicClickHandler;
     private @Nullable TintedCompositorTextButton mGlicButton;
+    private boolean mIsGlicUIVisible;
     private @Nullable TintedCompositorButton mModelSelectorButton;
     private final Context mContext;
     private float mStripTransitionScrimOpacity;
@@ -303,6 +297,7 @@ public class StripLayoutHelperManager
             (tabModel) -> {
                 tabModelSwitched(tabModel.isIncognito());
             };
+    private @Nullable PrefChangeRegistrar mPrefChangeRegistrar;
     private final ActorUiTabController.Observer mActorObserver;
 
     private @MonotonicNonNull TabModelObserver mTabModelObserver; // Set on native initialization.
@@ -564,6 +559,7 @@ public class StripLayoutHelperManager
         if (mGlicKeyedService != null) {
             mGlicUIObserver =
                     isOpened -> {
+                        mIsGlicUIVisible = isOpened;
                         if (mGlicButton != null && mRenderHost != null) {
                             mGlicButton.setPressed(isOpened);
                             mRenderHost.requestRender();
@@ -640,7 +636,6 @@ public class StripLayoutHelperManager
                         getActiveStripLayoutHelper().onKeyboardFocus(isFocused, view);
                     };
             createGlicButton(context, glicClickHandlerOnButton, glicKeyboardFocusHandler);
-            ContextUtils.getAppSharedPreferences().registerOnSharedPreferenceChangeListener(this);
         }
         if (!IncognitoUtils.shouldOpenIncognitoAsWindow()) {
             StripLayoutViewOnClickHandler selectorClickHandler =
@@ -839,8 +834,14 @@ public class StripLayoutHelperManager
 
         updateGlicButtonOpacity();
 
+        mGlicButton.setTint(SemanticColorUtils.getDefaultIconColor(context));
+
         mGlicButton.setAccessibilityDescription(
                 context.getString(R.string.glic_tab_strip_button_tooltip));
+    }
+
+    public boolean isGlicUIVisible() {
+        return mIsGlicUIVisible;
     }
 
     private void createModelSelectorButton(
@@ -886,7 +887,11 @@ public class StripLayoutHelperManager
         // Delete the EventFilter to avoid any updates on destroyed StripLayoutHelpers.
         mEventFilter = null;
         mTabStripEventHandler = null;
-        ContextUtils.getAppSharedPreferences().unregisterOnSharedPreferenceChangeListener(this);
+        if (mPrefChangeRegistrar != null) {
+            mPrefChangeRegistrar.removeObserver(GlicPrefNames.GLIC_PINNED_TO_TABSTRIP);
+            mPrefChangeRegistrar.destroy();
+            mPrefChangeRegistrar = null;
+        }
         mIncognitoHelper.destroy();
         mNormalHelper.destroy();
         if (mTabModelSelector != null) {
@@ -1589,56 +1594,25 @@ public class StripLayoutHelperManager
         return getActiveStripLayoutHelper().getRightFadeOpacity();
     }
 
-    public int getLeftFadeDrawable() {
-        int leftFadeDrawable;
-        if (LocalizationUtils.isLayoutRtl()) {
-            if (mModelSelectorButton != null && mModelSelectorButton.isVisible()) {
-                leftFadeDrawable = R.drawable.tab_strip_fade_long;
-                mNormalHelper.setLeftFadeWidth(FADE_LONG_WIDTH_DP);
-                mIncognitoHelper.setLeftFadeWidth(FADE_LONG_WIDTH_DP);
-            } else {
-                // Use fade_medium for left fade when RTL and model selector button not
-                // visible.
-                leftFadeDrawable = R.drawable.tab_strip_fade_medium;
-                mNormalHelper.setLeftFadeWidth(FADE_MEDIUM_WIDTH_DP);
-                mIncognitoHelper.setLeftFadeWidth(FADE_MEDIUM_WIDTH_DP);
-            }
-        } else {
-            leftFadeDrawable = R.drawable.tab_strip_fade_short;
-            mNormalHelper.setLeftFadeWidth(FADE_SHORT_WIDTH_DP);
-            mIncognitoHelper.setLeftFadeWidth(FADE_SHORT_WIDTH_DP);
-        }
-        return leftFadeDrawable;
+    public float getLeftFadeGradientWidth() {
+        return getActiveStripLayoutHelper().getLeftFadeGradientWidth();
     }
 
-    public @DrawableRes int getRightFadeDrawable() {
-        @DrawableRes int rightFadeDrawable;
-        if (!LocalizationUtils.isLayoutRtl()) {
-            if (mModelSelectorButton != null && mModelSelectorButton.isVisible()) {
-                rightFadeDrawable = R.drawable.tab_strip_fade_long;
-                mNormalHelper.setRightFadeWidth(FADE_LONG_WIDTH_DP);
-                mIncognitoHelper.setRightFadeWidth(FADE_LONG_WIDTH_DP);
-            } else {
-                // Use fade_medium for right fade when model selector button not visible.
-                rightFadeDrawable = R.drawable.tab_strip_fade_medium;
-                mNormalHelper.setRightFadeWidth(FADE_MEDIUM_WIDTH_DP);
-                mIncognitoHelper.setRightFadeWidth(FADE_MEDIUM_WIDTH_DP);
-            }
-        } else {
-            rightFadeDrawable = R.drawable.tab_strip_fade_short;
-            mNormalHelper.setRightFadeWidth(FADE_SHORT_WIDTH_DP);
-            mIncognitoHelper.setRightFadeWidth(FADE_SHORT_WIDTH_DP);
-        }
-        return rightFadeDrawable;
+    public float getRightFadeGradientWidth() {
+        return getActiveStripLayoutHelper().getRightFadeGradientWidth();
+    }
+
+    public float getLeftFadeOpaqueWidth() {
+        return getActiveStripLayoutHelper().getLeftFadeOpaqueWidth();
+    }
+
+    public float getRightFadeOpaqueWidth() {
+        return getActiveStripLayoutHelper().getRightFadeOpaqueWidth();
     }
 
     /** Returns drag listener for tab strip. */
     public @Nullable OnDragListener getDragListener() {
         return mTabStripDragHandler;
-    }
-
-    void setGlicButtonVisibleForTesting(boolean isVisible) {
-        assumeNonNull(mGlicButton).setVisible(isVisible);
     }
 
     void setModelSelectorButtonVisibleForTesting(boolean isVisible) {
@@ -1885,13 +1859,25 @@ public class StripLayoutHelperManager
             mTabStripDragHandler.setTabModelSelector(mTabModelSelector);
         }
 
-        // Register observer for existing standard tabs.
+        // Register Glic actor observer for existing standard tabs.
         TabModel standardModel = mTabModelSelector.getModel(false);
         for (int i = 0; i < standardModel.getCount(); i++) {
             Tab tab = standardModel.getTabAt(i);
             if (tab != null) {
                 registerActorObserver(tab);
             }
+        }
+
+        // Register Glic pref change observer for Glic button pin state.
+        Profile profile = standardModel.getProfile();
+        if (profile != null) {
+            if (mPrefChangeRegistrar != null) {
+                mPrefChangeRegistrar.removeObserver(GlicPrefNames.GLIC_PINNED_TO_TABSTRIP);
+                mPrefChangeRegistrar.destroy();
+            }
+            mPrefChangeRegistrar = PrefServiceUtil.createFor(profile);
+            mPrefChangeRegistrar.addObserver(
+                    GlicPrefNames.GLIC_PINNED_TO_TABSTRIP, () -> updateStripButtons());
         }
     }
 
@@ -2000,14 +1986,6 @@ public class StripLayoutHelperManager
         return ChromeFeatureList.sGlic.isEnabled() && AndroidSidePanelEnabledFn.isEnabled();
     }
 
-    @Override
-    public void onSharedPreferenceChanged(
-            SharedPreferences sharedPreferences, @Nullable String key) {
-        if (ChromePreferenceKeys.GLIC_BUTTON_PINNED.equals(key)) {
-            updateStripButtons();
-        }
-    }
-
     private void updateStripButtons() {
         // Use helper methods to calculate new visibility of strip buttons.
         boolean newGlicVisibility = shouldGlicBeVisible();
@@ -2059,9 +2037,14 @@ public class StripLayoutHelperManager
     }
 
     private boolean shouldGlicBeVisible() {
-        if (mGlicButton == null || mIsIncognito) return false;
-        return ChromeSharedPreferences.getInstance()
-                .readBoolean(ChromePreferenceKeys.GLIC_BUTTON_PINNED, true);
+        if (mGlicButton == null
+                || mIsIncognito
+                || mTabModelSelector == null
+                || mTabModelSelector.getCurrentModel() == null) {
+            return false;
+        }
+        Profile profile = mTabModelSelector.getCurrentModel().getProfile();
+        return profile != null && GlicUtils.isButtonPinnedToTabStrip(profile);
     }
 
     public float getGlicButtonStartPadding() {

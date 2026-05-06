@@ -31,13 +31,34 @@
                                        AssistantContainerDelegate,
                                        AssistantAIMMediatorDelegate,
                                        TabGridStateObserver>
+
+// Returns whether the tab grid is currently visible.
+- (BOOL)isTabGridVisible;
+
 @end
+
+namespace {
+
+class AssistantAIMUIStateProvider
+    : public CobrowseBrowserAgent::UIStateProvider {
+ public:
+  explicit AssistantAIMUIStateProvider(AssistantAIMCoordinator* coordinator)
+      : coordinator_(coordinator) {}
+
+  bool IsTabGridVisible() override { return [coordinator_ isTabGridVisible]; }
+
+ private:
+  __weak AssistantAIMCoordinator* coordinator_;
+};
+
+}  // namespace
 
 @implementation AssistantAIMCoordinator {
   AssistantAIMViewController* _viewController;
   AssistantAIMMediator* _mediator;
   ComposeboxInputPlateCoordinator* _inputPlateCoordinator;
   ComposeboxModeHolder* _modeHolder;
+  std::unique_ptr<AssistantAIMUIStateProvider> _uiStateProvider;
   AssistantContainerDetent _currentDetent;
 
   // Handler for container related interactions.
@@ -54,6 +75,12 @@
 
   [self.browser->GetSceneState().tabGridState addObserver:self];
 
+  CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
+  if (agent) {
+    _uiStateProvider = std::make_unique<AssistantAIMUIStateProvider>(self);
+    agent->SetUIStateProvider(_uiStateProvider.get());
+  }
+
   _viewController = [[AssistantAIMViewController alloc] init];
   _viewController.delegate = self;
 
@@ -64,7 +91,6 @@
                                               delegate:self];
 
   web::WebState::CreateParams params(self.browser->GetProfile());
-  CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
   CobrowseContext* context = agent ? agent->GetCobrowseContext() : nil;
   if (!context) {
     context = [CobrowseContext defaultContext];
@@ -106,6 +132,12 @@
 - (void)stop {
   [self.browser->GetSceneState().tabGridState removeObserver:self];
 
+  CobrowseBrowserAgent* agent = CobrowseBrowserAgent::FromBrowser(self.browser);
+  if (agent) {
+    agent->SetUIStateProvider(nullptr);
+  }
+  _uiStateProvider.reset();
+
   [_mediator disconnect];
   _mediator = nil;
 
@@ -117,6 +149,12 @@
     _viewController = nil;
     [self dismissAssistantContainerAnimated:NO];
   }
+}
+
+#pragma mark - CobrowseBrowserAgent::UIStateProvider
+
+- (BOOL)isTabGridVisible {
+  return self.browser->GetSceneState().tabGridState.tabGridVisible;
 }
 
 #pragma mark - TabGridStateObserver
@@ -139,11 +177,6 @@
 - (void)assistantAIMViewController:(AssistantAIMViewController*)viewController
        didShowKeyboardWithDuration:(NSTimeInterval)duration
                              curve:(UIViewAnimationCurve)curve {
-  // When the keyboard is shown, prevent collapsing before latching to the
-  // medium detent first.
-  [_containerHandler
-      setAssistantContainerDetents:{AssistantContainerDetent::kMedium,
-                                    AssistantContainerDetent::kLarge}];
   [_containerHandler
       animateAssistantContainerToDetent:AssistantContainerDetent::kLarge
                                duration:duration
@@ -152,19 +185,18 @@
 
 - (void)assistantAIMViewControllerDidHideKeyboard:
     (AssistantAIMViewController*)viewController {
-  // When the keyboard is dismissed, all detents are available.
-  [_containerHandler
-      setAssistantContainerDetents:{AssistantContainerDetent::kMinimized,
-                                    AssistantContainerDetent::kMedium,
-                                    AssistantContainerDetent::kLarge}];
 }
 
 - (void)assistantAIMViewControllerDidRequestEndEditing:
     (AssistantAIMViewController*)viewController {
-  [_inputPlateCoordinator endEditing];
+  [self dismissKeyboard];
 }
 
 #pragma mark - Private
+
+- (void)dismissKeyboard {
+  [_inputPlateCoordinator endEditing];
+}
 
 // Dismisses the assistant container safely.
 - (void)dismissAssistantContainerAnimated:(BOOL)animated {
@@ -204,14 +236,14 @@
   _currentDetent = newDetent;
   // Attempt to dismiss the keyboard when the sheet is collapsing.
   if (newDetent == AssistantContainerDetent::kMedium) {
-    [_inputPlateCoordinator endEditing];
+    [self dismissKeyboard];
   }
 }
 
 #pragma mark - AssistantAIMMediatorDelegate
 
 - (void)assistantAIMMediatorDidLoadQuery:(AssistantAIMMediator*)mediator {
-  [_inputPlateCoordinator endEditing];
+  [self dismissKeyboard];
 }
 
 - (BOOL)assistantContainer:(AssistantContainerViewController*)container

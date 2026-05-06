@@ -989,28 +989,6 @@ LayoutUnit LayoutBox::ClientHeight() const {
   }
 }
 
-LayoutUnit LayoutBox::ClientWidthFrom(LayoutUnit width) const {
-  NOT_DESTROYED();
-  if (CanSkipComputeScrollbars()) {
-    return (width - BorderLeft() - BorderRight()).ClampNegativeToZero();
-  } else {
-    return (width - BorderLeft() - BorderRight() -
-            ComputeScrollbarsInternal(kClampToContentBox).HorizontalSum())
-        .ClampNegativeToZero();
-  }
-}
-
-LayoutUnit LayoutBox::ClientHeightFrom(LayoutUnit height) const {
-  NOT_DESTROYED();
-  if (CanSkipComputeScrollbars()) {
-    return (height - BorderTop() - BorderBottom()).ClampNegativeToZero();
-  } else {
-    return (height - BorderTop() - BorderBottom() -
-            ComputeScrollbarsInternal(kClampToContentBox).VerticalSum())
-        .ClampNegativeToZero();
-  }
-}
-
 LayoutUnit LayoutBox::ClientWidthWithTableSpecialBehavior() const {
   NOT_DESTROYED();
   // clientWidth/Height is the visual portion of the box content, not including
@@ -2087,6 +2065,14 @@ bool LayoutBox::ComputeBackgroundIsKnownToBeObscured() const {
   NOT_DESTROYED();
   if (ScrollsOverflow())
     return false;
+  // If the element has overflow clipping, children are clipped to the padding
+  // box. If the background extends beyond the padding box (e.g., visible
+  // through transparent or non-solid borders), children cannot fully obscure
+  // the background in the border area.
+  if (HasNonVisibleOverflow() &&
+      !BackgroundClipBorderBoxIsEquivalentToPaddingBox()) {
+    return false;
+  }
   // Test to see if the children trivially obscure the background.
   if (!StyleRef().HasBackground())
     return false;

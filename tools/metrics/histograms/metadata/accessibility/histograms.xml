@@ -258,7 +258,7 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.IfChange(KeyboardShortcutsSemanticMeaning) -->
 
-<histogram name="Accessibility.Android.KeyboardShortcut.{ScreenReaderState}5"
+<histogram name="Accessibility.Android.KeyboardShortcut.{ScreenReaderState}6"
     enum="KeyboardShortcutsSemanticMeaning" expires_after="2026-09-27">
   <owner>mschillaci@google.com</owner>
   <owner>katie@chromium.org</owner>
@@ -4448,25 +4448,6 @@ even if they fit the naming pattern. -->
     for every page load.
 
     Note: Incorrect before M140.
-  </summary>
-</histogram>
-
-<histogram name="DomDistiller.ReaderMode.EntryPoint"
-    enum="ReaderModeEntryPoint" expires_after="2023-11-30">
-  <owner>katie@chromium.org</owner>
-  <owner>gilmanmh@google.com</owner>
-  <owner>chrome-a11y-core@google.com</owner>
-  <summary>The method a user used to enter reader mode on an article.</summary>
-</histogram>
-
-<histogram name="DomDistiller.ReaderMode.ExitPoint" enum="ReaderModeEntryPoint"
-    expires_after="2023-11-30">
-  <owner>katie@chromium.org</owner>
-  <owner>gilmanmh@google.com</owner>
-  <owner>chrome-a11y-core@google.com</owner>
-  <summary>
-    The method a user used to exit reader mode and return to the original
-    article.
   </summary>
 </histogram>
 

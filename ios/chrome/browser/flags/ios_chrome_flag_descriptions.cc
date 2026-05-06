@@ -93,6 +93,11 @@ const char kAutofillAiDedupeEntitiesName[] = "Autofill AI dedupe entities";
 const char kAutofillAiDedupeEntitiesDescription[] =
     "Enables periodic deduplication of Autofill AI entities.";
 
+const char kAutofillAiNoFillingIconsExperimentName[] =
+    "Autofill AI no filling icons experiment";
+const char kAutofillAiNoFillingIconsExperimentDescription[] =
+    "If enabled, Autofill AI filling suggestions do not have an icon.";
+
 const char kAutofillAiReauthRequiredName[] = "Autofill AI Reauth Required";
 const char kAutofillAiReauthRequiredDescription[] =
     "Enables Autofill AI Reauth Required.";
@@ -746,6 +751,10 @@ const char kGeminiMapsRichUIName[] = "Gemini Maps Rich UI";
 const char kGeminiMapsRichUIDescription[] =
     "Enables the rich Maps UI in Gemini.";
 
+const char kGeminiMultiTabContextName[] = "Gemini Multi Tab Context";
+const char kGeminiMultiTabContextDescription[] =
+    "Enables attaching multiple tabs in Gemini.";
+
 const char kGeminiNavigationPromoName[] = "GeminiNavigationPromo";
 const char kGeminiNavigationPromoDescription[] =
     "Enables the automatic promo for Gemini on navigation.";
@@ -1177,6 +1186,12 @@ const char kNTPBackgroundCustomizationName[] =
 const char kNTPBackgroundCustomizationDescription[] =
     "When enabled, the background customization menu is available on the NTP.";
 
+const char kNTPBackgroundDownsampleImageName[] =
+    "NTP Background Downsample Image";
+const char kNTPBackgroundDownsampleImageDescription[] =
+    "Downsamples user-uploaded NTP background images to screen size, "
+    "reducing memory usage.";
+
 const char kNativeFindInPageName[] = "Native Find in Page";
 const char kNativeFindInPageDescription[] =
     "When enabled, the JavaScript implementation of the Find in Page feature "
@@ -1281,17 +1296,6 @@ const char kOmniboxMlUrlScoringDescription[] =
 const char kOmniboxMlUrlSearchBlendingName[] = "Omnibox ML URL Search Blending";
 const char kOmniboxMlUrlSearchBlendingDescription[] =
     "Specifies how to blend URL ML scores and search traditional scores.";
-
-const char kOmniboxMobileParityUpdateName[] = "Omnibox Mobile parity update";
-const char kOmniboxMobileParityUpdateDescription[] =
-    "When set, applies certain assets to match Desktop visuals and "
-    "descriptions";
-
-const char kOmniboxMobileParityUpdateV2Name[] =
-    "Omnibox Mobile parity update V2";
-const char kOmniboxMobileParityUpdateV2Description[] =
-    "When set, applies certain assets to match Desktop visuals and "
-    "descriptions";
 
 const char kOmniboxOnClobberFocusTypeOnIOSName[] =
     "Omnibox On Clobber Focus Type On IOS";

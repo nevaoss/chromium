@@ -10,6 +10,8 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Fragment;
+import android.app.HandoffActivityData;
+import android.app.HandoffActivityDataRequestInfo;
 import android.app.KeyguardManager;
 import android.app.PictureInPictureUiState;
 import android.app.assist.AssistContent;
@@ -84,7 +86,7 @@ import org.chromium.chrome.browser.actor.ActorTaskHelper;
 import org.chromium.chrome.browser.ai.AiAssistantService;
 import org.chromium.chrome.browser.app.download.DownloadMessageUiDelegate;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
-import org.chromium.chrome.browser.app.tab_activity_glue.PopupCreator;
+import org.chromium.chrome.browser.app.tab_activity_glue.PopupCreatorImpl;
 import org.chromium.chrome.browser.app.tab_activity_glue.ReparentingDelegateFactory;
 import org.chromium.chrome.browser.app.tab_activity_glue.TabReparentingController;
 import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
@@ -105,6 +107,7 @@ import org.chromium.chrome.browser.compositor.layouts.LayoutManagerImpl;
 import org.chromium.chrome.browser.compositor.layouts.SceneChangeObserver;
 import org.chromium.chrome.browser.compositor.layouts.content.TabContentManagerHandler;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchManager;
+import org.chromium.chrome.browser.customtabs.PopupCreatorFactory;
 import org.chromium.chrome.browser.desktop_site.DesktopSiteUtils;
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.devtools.DevToolsWindowAndroid;
@@ -303,6 +306,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     private static final String TAG = "ChromeActivity";
     private static final int CONTENT_VIS_DELAY_MS = 5;
 
+    // TODO(crbug.com/503422619): Replace this with the official SDK version constant once it is
+    //  integrated into the Chrome build.
+    public static final int HANDOFF_SDK_VERSION = 37;
+
     /** Used to generate a unique ID for each ChromeActivity. */
     private static long sNextActivityId;
 
@@ -369,6 +376,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     protected RootUiCoordinator mRootUiCoordinator;
 
     protected BackPressManager mBackPressManager = new BackPressManager();
+    protected boolean mIsRecreating;
 
     private TabModelOrchestrator mTabModelOrchestrator;
     private TabModelSelectorTabObserver mTabModelSelectorTabObserver;
@@ -441,7 +449,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     private boolean mBlockingDrawForAppRestart;
     private Runnable mShowContentRunnable;
     private boolean mIsRecreatingForTabletModeChange;
-    private boolean mIsRecreating;
     // This is only used on automotive.
     private @Nullable MissingDeviceLockLauncher mMissingDeviceLockLauncher;
     // Handling the dismissal of tab modal dialog.
@@ -1071,8 +1078,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             @Nullable MultiInstanceManager multiInstanceManager) {
         try (TraceEvent e = TraceEvent.scoped("ChromeActivity.initializeChromeAndroidTask")) {
             // 1. Initialize PopupCreator early so that ChromeAndroidTaskTracker can use it to
-            // create intents for popup windows.
-            PopupCreator.initializePopupIntentCreator();
+            // create intents for popup windows. This overwrites the instance each time.
+            PopupCreatorFactory.setInstance(new PopupCreatorImpl());
 
             var chromeAndroidTaskTracker = ChromeAndroidTaskTrackerFactory.getInstance();
             if (chromeAndroidTaskTracker == null) {
@@ -1814,6 +1821,16 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         } else {
             PageContentProviderMetrics.recordUrlAttachedToAssistContent(false);
         }
+    }
+
+    @Override
+    public @Nullable HandoffActivityData onHandoffActivityDataRequested(
+            HandoffActivityDataRequestInfo requestInfo) {
+        if (Build.VERSION.SDK_INT < HANDOFF_SDK_VERSION) return null;
+
+        var controller = mRootUiCoordinator.getHandoffController();
+        assumeNonNull(controller);
+        return controller.onHandoffActivityDataRequested(requestInfo);
     }
 
     @Override

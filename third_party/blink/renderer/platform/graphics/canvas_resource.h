@@ -61,14 +61,13 @@ class PLATFORM_EXPORT CanvasResource : public gpu::ClientImage {
   using LastUnrefCallback = base::OnceCallback<void(
       scoped_refptr<blink::CanvasResource> canvas_resource)>;
 
-  static void OnPlaceholderReleasedResource(
-      scoped_refptr<CanvasResource> resource);
-
   // Returns true if this instance creates TransferableResources for usage with
   // GPU compositing.
   virtual bool CreatesAcceleratedTransferableResources() const = 0;
 
   virtual void OnRefReturned(scoped_refptr<CanvasResource>&& resource) {}
+
+  static void DropRefOnOwningThread(scoped_refptr<CanvasResource> resource);
 
   // Returns true if the resource is still usable. It maybe not be valid in the
   // case of a context loss or if we fail to initialize the memory backing for
@@ -91,7 +90,6 @@ class PLATFORM_EXPORT CanvasResource : public gpu::ClientImage {
   // Provides a TransferableResource representation of this resource to share it
   // with the compositor.
   bool PrepareTransferableResource(viz::TransferableResource*,
-                                   ReleaseCallback*,
                                    bool needs_verified_synctoken);
 
   // Issues a wait for this sync token on the context used by this resource for
@@ -123,6 +121,10 @@ class PLATFORM_EXPORT CanvasResource : public gpu::ClientImage {
  protected:
   explicit CanvasResource(scoped_refptr<gpu::ClientSharedImage> shared_image);
 
+  static void ReleaseFrameResources(scoped_refptr<CanvasResource>&& resource,
+                                    const gpu::SyncToken& sync_token,
+                                    bool lost_resource);
+
   virtual gfx::HDRMetadata GetHDRMetadata() const { return gfx::HDRMetadata(); }
   virtual viz::TransferableResource::ResourceSource
   GetTransferableResourceSource() const {
@@ -142,9 +144,7 @@ class PLATFORM_EXPORT CanvasResource : public gpu::ClientImage {
  private:
   friend class CanvasResourceProviderTest;
   friend class WebGPUMailboxTexture;
-
-  static void OnPlaceholderReleasedResourceOnOwningThread(
-      scoped_refptr<CanvasResource> resource);
+  friend class ExportedCanvasResource;
 
   // Returns true if the resource is rastered via the GPU.
   virtual bool UsesAcceleratedRaster() const = 0;

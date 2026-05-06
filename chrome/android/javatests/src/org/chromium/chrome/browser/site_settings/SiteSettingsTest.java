@@ -1754,6 +1754,13 @@ public class SiteSettingsTest {
         SettingsActivity settingsActivity =
                 SiteSettingsTestUtils.startSiteSettingsCategory(
                         SiteSettingsCategory.Type.THIRD_PARTY_COOKIES);
+        CriteriaHelper.pollUiThread(
+                () -> {
+                    CookieSettingsPreference pref = getCookieToggle(settingsActivity);
+                    return pref != null
+                            && pref.getButton(CookieControlsMode.BLOCK_THIRD_PARTY) != null;
+                },
+                "Cookie toggle button was never bound to the view.");
         // Select the block all 3PC option.
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -2308,12 +2315,8 @@ public class SiteSettingsTest {
     GeolocationSetting getGeolocationSetting(String url) {
         return ThreadUtils.runOnUiThreadBlocking(
                 () ->
-                        WebsitePreferenceBridgeJni.get()
-                                .getGeolocationSettingForOrigin(
-                                        getBrowserContextHandle(),
-                                        ContentSettingsType.GEOLOCATION_WITH_OPTIONS,
-                                        url,
-                                        "https://example.com"));
+                        WebsitePreferenceBridge.getGeolocationSettingForOrigin(
+                                getBrowserContextHandle(), url, "https://example.com"));
     }
 
     @Test

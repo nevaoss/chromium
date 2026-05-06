@@ -10,6 +10,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/notimplemented.h"
 #include "base/notreached.h"
 #include "base/trace_event/trace_event.h"
 #include "base/uuid.h"
@@ -100,6 +101,15 @@ void SharingFCMSender::DoSendUnencryptedMessageToDevice(
   NOTREACHED();
 }
 
+void SharingFCMSender::DoSendMessageToServerTarget(
+    const components_sharing_message::ServerChannelConfiguration&
+        server_channel_config,
+    SharingMessage message,
+    SendMessageCallback callback) {
+  SendMessageToServerTarget(server_channel_config, std::move(message),
+                            std::move(callback));
+}
+
 void SharingFCMSender::SendMessageToFcmTarget(
     const components_sharing_message::FCMChannelConfiguration&
         fcm_configuration,
@@ -112,28 +122,12 @@ void SharingFCMSender::SendMessageToFcmTarget(
                            !fcm_configuration.sender_id_p256dh().empty() &&
                            !fcm_configuration.sender_id_auth_secret().empty();
 
-  if (can_send_via_sync &&
-      !sync_service_->GetActiveDataTypes().Has(syncer::SHARING_MESSAGE) &&
-      base::FeatureList::IsEnabled(kSharingPostponeFcmMessageSending)) {
-    // If the message can be sent via sync, wait until SHARING_MESSAGE is
-    // syncing. This should be rare and mostly for the ACK messages.
-    // TODO(crbug.com/40253551): delete pending messages by TTL.
-    pending_messages_.emplace_back(fcm_configuration, time_to_live,
-                                   std::move(message), std::move(callback));
-    if (start_sync_flare_) {
-      start_sync_flare_.Run(syncer::SHARING_MESSAGE);
-      start_sync_flare_.Reset();
-    }
-    return;
-  }
-
   base::UmaHistogramBoolean(
       "Sharing.SendMessageUsingSync",
       can_send_via_sync &&
           sync_service_->GetActiveDataTypes().Has(syncer::SHARING_MESSAGE));
 
-  if (can_send_via_sync &&
-      sync_service_->GetActiveDataTypes().Has(syncer::SHARING_MESSAGE)) {
+  if (can_send_via_sync) {
     message.set_message_id(base::Uuid::GenerateRandomV4().AsLowercaseString());
 
     sync_pb::SharingMessageSpecifics::ChannelConfiguration
@@ -166,13 +160,6 @@ void SharingFCMSender::SendMessageToServerTarget(
     SendMessageCallback callback) {
   TRACE_EVENT0("sharing", "SharingFCMSender::SendMessageToServerTarget");
 
-  if (!sync_service_->GetActiveDataTypes().Has(syncer::SHARING_MESSAGE)) {
-    std::move(callback).Run(SharingSendMessageResult::kInternalError,
-                            /*message_id=*/std::nullopt,
-                            SharingChannelType::kServer);
-    return;
-  }
-
   message.set_message_id(base::Uuid::GenerateRandomV4().AsLowercaseString());
 
   sync_pb::SharingMessageSpecifics::ChannelConfiguration channel_configuration;
@@ -202,10 +189,11 @@ void SharingFCMSender::OnStateChanged(syncer::SyncService* sync_service) {
   pending_messages_.clear();
 
   for (PendingMessage& pending_message : pending_messages) {
-    SendMessageToFcmTarget(pending_message.fcm_configuration,
-                           pending_message.time_to_live,
-                           std::move(pending_message.message),
-                           std::move(pending_message.callback));
+    SendMessageViaSync(std::move(pending_message.channel_configuration),
+                       pending_message.channel_type,
+                       std::move(pending_message.message_id),
+                       std::move(pending_message.payload),
+                       std::move(pending_message.callback));
   }
 }
 
@@ -248,11 +236,22 @@ void SharingFCMSender::SendMessageViaSync(
     sync_pb::SharingMessageSpecifics::ChannelConfiguration
         channel_configuration,
     SharingChannelType channel_type,
-    const std::string& message_id,
-    std::string message,
+    std::string message_id,
+    std::string payload,
     SendMessageCallback callback) {
   // Double check that SHARING_MESSAGE is syncing.
   if (!sync_service_->GetActiveDataTypes().Has(syncer::SHARING_MESSAGE)) {
+    if (base::FeatureList::IsEnabled(kSharingPostponeFcmMessageSending)) {
+      pending_messages_.emplace_back(std::move(channel_configuration),
+                                     channel_type, std::move(message_id),
+                                     std::move(payload), std::move(callback));
+      if (start_sync_flare_) {
+        start_sync_flare_.Run(syncer::SHARING_MESSAGE);
+        start_sync_flare_.Reset();
+      }
+      return;
+    }
+
     std::move(callback).Run(SharingSendMessageResult::kInternalError,
                             /*message_id=*/std::nullopt, channel_type);
     return;
@@ -261,13 +260,13 @@ void SharingFCMSender::SendMessageViaSync(
   auto specifics = std::make_unique<sync_pb::SharingMessageSpecifics>();
   *specifics->mutable_channel_configuration() =
       std::move(channel_configuration);
-  specifics->set_payload(std::move(message));
+  specifics->set_payload(std::move(payload));
 
   sharing_message_bridge_->SendSharingMessage(
       std::move(specifics),
       base::BindOnce(&SharingFCMSender::OnMessageSentViaSync,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     message_id, channel_type));
+                     std::move(message_id), channel_type));
 }
 
 void SharingFCMSender::OnMessageSentViaSync(
@@ -335,13 +334,16 @@ void SharingFCMSender::SetSharingMessageBridgeForTesting(
 }
 
 SharingFCMSender::PendingMessage::PendingMessage(
-    components_sharing_message::FCMChannelConfiguration fcm_configuration,
-    base::TimeDelta time_to_live,
-    SharingMessage message,
+    sync_pb::SharingMessageSpecifics::ChannelConfiguration
+        channel_configuration,
+    SharingChannelType channel_type,
+    std::string message_id,
+    std::string payload,
     SendMessageCallback callback)
-    : fcm_configuration(std::move(fcm_configuration)),
-      time_to_live(time_to_live),
-      message(std::move(message)),
+    : channel_configuration(std::move(channel_configuration)),
+      channel_type(channel_type),
+      message_id(std::move(message_id)),
+      payload(std::move(payload)),
       callback(std::move(callback)) {}
 
 SharingFCMSender::PendingMessage::~PendingMessage() = default;

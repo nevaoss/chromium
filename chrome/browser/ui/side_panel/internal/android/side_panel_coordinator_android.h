@@ -18,6 +18,7 @@
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 
 class BrowserWindowInterface;
+class SidePanelEntryWaiter;
 
 // Android implementation of `SidePanelUIBase`.
 //
@@ -50,8 +51,8 @@ class SidePanelCoordinatorAndroid : public SidePanelUIBase {
   // Implements Java `SidePanelCoordinatorAndroid.Natives`. These methods are
   // called from Java via JNI, see `SidePanelCoordinatorAndroidImpl.java`.
   void Destroy(JNIEnv* env);
-  void NotifyCloseAnimationFinished(JNIEnv* env, int32_t panel_type_int);
-  void NotifyOpenAnimationFinished(JNIEnv* env, int32_t panel_type_int);
+  void NotifyCloseAnimationFinished(JNIEnv* env, SidePanelType panel_type);
+  void NotifyOpenAnimationFinished(JNIEnv* env, SidePanelType panel_type);
 
   // Implements `SidePanelUI`:
   void ShowFrom(SidePanelEntryKey entry_key,
@@ -65,6 +66,15 @@ class SidePanelCoordinatorAndroid : public SidePanelUIBase {
   void DisableAnimationsForTesting() override;
   void SetNoDelaysForTesting(bool no_delays_for_testing) override;
 
+  SidePanelEntryWaiter* GetWaiterForTesting(SidePanelType type) {
+    return waiter(type);
+  }
+
+  bool IsClosing() const { return state_ == SidePanelState::kClosing; }
+  bool ShouldClose() const {
+    return state_ == SidePanelState::kShown ||
+           state_ == SidePanelState::kOpening;
+  }
 
  protected:
   // Implements `SidePanelUIBase`:
@@ -82,6 +92,11 @@ class SidePanelCoordinatorAndroid : public SidePanelUIBase {
       SidePanelRegistry* new_contextual_registry) override;
 
  private:
+  // Delegates to `SidePanelRegistry::ClearCachedEntryViews` in all
+  // `SidePanelRegistry` instances accessible from this class, including
+  // the window-scoped registry and all contextual (tab-scoped) registries.
+  void ClearCachedEntryViews(SidePanelType type);
+
   base::android::ScopedJavaLocalRef<jobject> java_coordinator() const;
 
   // The current state of the Side Panel

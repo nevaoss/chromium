@@ -318,8 +318,6 @@
 // Sets up the Auto Layout constraints for the App Bar.
 - (void)setupAppBarConstraints {
   UIView* view = self.view;
-  UIView* appBarRealView =
-      [self.layoutGuideCenter referencedViewUnderName:kAppBarGuide];
 
   _portraitConstraints = @[
     [_appContentContainerView.topAnchor constraintEqualToAnchor:view.topAnchor],
@@ -328,7 +326,7 @@
     [_appContentContainerView.trailingAnchor
         constraintEqualToAnchor:view.trailingAnchor],
     [_appContentContainerView.bottomAnchor
-        constraintEqualToAnchor:appBarRealView.topAnchor],
+        constraintEqualToAnchor:view.bottomAnchor],
   ];
   _landscapeLeftConstraints = @[
     [_appContentContainerView.topAnchor constraintEqualToAnchor:view.topAnchor],
@@ -487,7 +485,6 @@
   }
 
   CGRect contentFrame = UIEdgeInsetsInsetRect(frame, insets);
-  _appContentView.frame = contentFrame;
   _appContentContainerView.frame = contentFrame;
 }
 
@@ -550,7 +547,7 @@
   }
 
   CGFloat width = panelWidth + _assistantLeadingConstraint.constant;
-  return MAX(0, width + (_assistantVisible ? kAssistantContainerMargin : 0.0));
+  return MAX(0, width + kAssistantContainerMargin);
 }
 
 // Helper method for dismissal block when attempting to show the Gemini floaty

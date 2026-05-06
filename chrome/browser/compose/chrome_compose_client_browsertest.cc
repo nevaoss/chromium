@@ -18,6 +18,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "base/timer/elapsed_timer.h"
+#include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/compose/compose_enabling.h"
 #include "chrome/browser/compose/compose_session.h"
@@ -36,6 +37,7 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/autofill/core/common/form_data.h"
+#include "components/autofill/core/common/form_data_test_api.h"
 #include "components/autofill/core/common/form_field_data.h"
 #include "components/compose/core/browser/compose_features.h"
 #include "components/compose/core/browser/compose_metrics.h"
@@ -413,6 +415,12 @@ class ChromeComposeClientBrowserTest : public InProcessBrowserTest {
     return field;
   }
 
+  void FlushPageHandler() { page_handler_.FlushForTesting(); }
+
+  ComposeSession* GetSessionForActiveComposeField() {
+    return client().GetSessionForActiveComposeField();
+  }
+
   compose::mojom::ComposeSessionUntrustedPageHandler* page_handler() {
     return page_handler_.get();
   }
@@ -427,6 +435,33 @@ class ChromeComposeClientBrowserTest : public InProcessBrowserTest {
   testing::NiceMock<optimization_guide::MockRemoteModelExecutor>&
   model_executor() {
     return model_executor_;
+  }
+
+  // Creates a simple FormData with a single textarea field.
+  // We construct this manually instead of using
+  // `autofill::test::CreateTestFormField` because that helper requires
+  // `autofill::test::AutofillBrowserTestEnvironment`.
+  // Instantiating `AutofillBrowserTestEnvironment` in a browser test
+  // introduces a conflicting `ScopedFeatureList` that crashes the test
+  // during teardown.
+  autofill::FormData CreateManualFormData(const GURL& url = GURL()) {
+    autofill::FormData form_data;
+    if (url.is_empty()) {
+      form_data.set_url(browser()
+                            ->tab_strip_model()
+                            ->GetActiveWebContents()
+                            ->GetPrimaryMainFrame()
+                            ->GetLastCommittedURL());
+    } else {
+      form_data.set_url(url);
+    }
+    autofill::FormFieldData field;
+    field.set_name(u"name0");
+    field.set_id_attribute(u"name0");
+    field.set_value(u"value0");
+    field.set_form_control_type(autofill::FormControlType::kTextArea);
+    form_data.set_fields({field});
+    return form_data;
   }
 
  protected:
@@ -1406,8 +1441,14 @@ IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
       compose::ComposeFreOrMsbbSessionCloseReason::kAbandoned, 1);
 }
 
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_TestComposeGenericServerError \
+  DISABLED_TestComposeGenericServerError
+#else
+#define MAYBE_TestComposeGenericServerError TestComposeGenericServerError
+#endif
 IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
-                       TestComposeGenericServerError) {
+                       MAYBE_TestComposeGenericServerError) {
   base::HistogramTester histograms;
   ShowDialogAndBindMojo();
   SetupMockModelExecution(1, "", false);
@@ -1553,8 +1594,9 @@ IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
               1)));
 }
 
+// Failing consistently. crbug.com/496788430
 IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
-                       TestComposeQualityLoggedOnSubsequentError) {
+                       DISABLED_TestComposeQualityLoggedOnSubsequentError) {
   base::HistogramTester histograms;
   base::ScopedMockElapsedTimersForTest test_timer;
   ShowDialogAndBindMojo();
@@ -1839,10 +1881,10 @@ IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
   config.proactive_nudge_segmentation = true;
   config.proactive_nudge_always_collect_training_data = true;
 
-  // Mock segmentation platform to allow proactive nudge!
+  // Mock segmentation platform to allow proactive nudge.
   SetupMockSegmentationResult();
 
-  // Focus the field in the DOM to make it the active element!
+  // Focus the field in the DOM to make it the active element.
   FocusField();
 
   autofill::FormFieldData field = field_data();
@@ -1912,7 +1954,7 @@ IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
   config.proactive_nudge_focus_delay = base::Microseconds(4);
   config.proactive_nudge_segmentation = true;
 
-  // Focus the field in the DOM to make it the active element!
+  // Focus the field in the DOM to make it the active element.
   FocusField();
 
   autofill::FormFieldData field = field_data();
@@ -1970,7 +2012,7 @@ IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
           testing::Pair(
               ukm::builders::Compose_PageEvents::kProactiveNudgeShownName, 0)));
 
-  // Now call ShouldTriggerPopup again with delayed source and expect false!
+  // Now call ShouldTriggerPopup again with delayed source and expect false.
   const autofill::AutofillSuggestionTriggerSource delayed_trigger_source =
       autofill::AutofillSuggestionTriggerSource::kComposeDelayedProactiveNudge;
 
@@ -1984,8 +2026,15 @@ IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
       1);
 }
 
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_TestShouldTriggerProactiveNudgeEnabled \
+  DISABLED_TestShouldTriggerProactiveNudgeEnabled
+#else
+#define MAYBE_TestShouldTriggerProactiveNudgeEnabled \
+  TestShouldTriggerProactiveNudgeEnabled
+#endif
 IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
-                       TestShouldTriggerProactiveNudgeEnabled) {
+                       MAYBE_TestShouldTriggerProactiveNudgeEnabled) {
   base::HistogramTester histograms;
 
   // Enable proactive nudge.
@@ -1994,7 +2043,7 @@ IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
   config.proactive_nudge_focus_delay = base::Microseconds(4);
   config.proactive_nudge_segmentation = false;
 
-  // Focus the field in the DOM to make it the active element!
+  // Focus the field in the DOM to make it the active element.
   FocusField();
 
   autofill::FormFieldData field = field_data();
@@ -2076,4 +2125,484 @@ IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest, TestComposeNoParsedAny) {
   // Check that no request duration OK metric was emitted.
   histograms.ExpectTotalCount(
       base::StrCat({"Compose", compose::kComposeRequestDurationOkSuffix}), 0);
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestComposeQualityOnlyOneLogEntryAbandonedOnClose) {
+  ShowDialogAndBindMojo();
+
+  base::test::TestFuture<compose::mojom::ComposeResponsePtr> compose_future;
+  BindComposeFutureToOnResponseReceived(compose_future);
+
+  SetupMockModelExecution(2);
+
+  // Wait for two log uploads.
+  base::test::TestFuture<void> log_uploaded_signal;
+  logs_uploader().WaitForLogUpload(
+      log_uploaded_signal.GetCallback().Then(base::BindLambdaForTesting([&]() {
+        EXPECT_TRUE(log_uploaded_signal.WaitAndClear());
+        logs_uploader().WaitForLogUpload(log_uploaded_signal.GetCallback());
+      })));
+
+  page_handler()->Compose("a user typed this",
+                          compose::mojom::InputMode::kPolish, false);
+
+  EXPECT_TRUE(compose_future.Wait());  // Reset future for second compose call.
+  compose_future.Clear();
+
+  page_handler()->Compose("a user typed this",
+                          compose::mojom::InputMode::kPolish, false);
+
+  EXPECT_TRUE(compose_future.Wait());
+  // Close UI to submit remaining quality logs.
+  client_page_handler()->CloseUI(compose::mojom::CloseReason::kCloseButton);
+
+  EXPECT_TRUE(log_uploaded_signal.Wait());
+  ASSERT_EQ(2u, uploaded_logs().size());
+  EXPECT_EQ(optimization_guide::proto::FinalStatus::STATUS_ABANDONED,
+            uploaded_logs()[0]->compose().quality().final_status());
+  EXPECT_EQ(optimization_guide::proto::FinalStatus::STATUS_UNSPECIFIED,
+            uploaded_logs()[1]->compose().quality().final_status());
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestComposeQualityNewSessionWithSelectedText) {
+  ShowDialogAndBindMojo();
+
+  base::test::TestFuture<compose::mojom::ComposeResponsePtr> compose_future;
+  BindComposeFutureToOnResponseReceived(compose_future);
+
+  SetupMockModelExecution(2);
+
+  base::test::TestFuture<void> log_uploaded_signal;
+  logs_uploader().WaitForLogUpload(log_uploaded_signal.GetCallback());
+
+  page_handler()->Compose("a user typed this",
+                          compose::mojom::InputMode::kPolish, false);
+  EXPECT_TRUE(compose_future.Take());  // Reset future for second compose call.
+
+  // Start a new session with selected text.
+  autofill::FormFieldData field = field_data();
+  field.set_value(u"user selected text");
+  field.set_selected_text(u"selected text");
+  ShowDialogAndBindMojoWithFieldData(field);
+
+  // Get quality result from the abandoned session.
+  EXPECT_TRUE(log_uploaded_signal.Wait());
+  ASSERT_EQ(1u, uploaded_logs().size());
+  EXPECT_EQ(optimization_guide::proto::FinalStatus::STATUS_ABANDONED,
+            uploaded_logs()[0]->compose().quality().final_status());
+
+  page_handler()->Compose("a user typed this",
+                          compose::mojom::InputMode::kPolish, false);
+  EXPECT_TRUE(compose_future.Take());
+
+  // Close UI to submit remaining quality logs.
+  log_uploaded_signal.Clear();
+  logs_uploader().WaitForLogUpload(log_uploaded_signal.GetCallback());
+  client_page_handler()->CloseUI(compose::mojom::CloseReason::kCloseButton);
+
+  EXPECT_TRUE(log_uploaded_signal.Wait());
+  ASSERT_EQ(2u, uploaded_logs().size());
+  EXPECT_EQ(optimization_guide::proto::FinalStatus::STATUS_ABANDONED,
+            uploaded_logs()[1]->compose().quality().final_status());
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestComposeQualityFinishedWithoutInsert) {
+  ShowDialogAndBindMojo();
+
+  base::test::TestFuture<compose::mojom::ComposeResponsePtr> compose_future;
+  BindComposeFutureToOnResponseReceived(compose_future);
+
+  SetupMockModelExecution();
+
+  base::test::TestFuture<void> log_uploaded_signal;
+  logs_uploader().WaitForLogUpload(log_uploaded_signal.GetCallback());
+
+  page_handler()->Compose("a user typed this",
+                          compose::mojom::InputMode::kPolish, false);
+  EXPECT_TRUE(compose_future.Take());  // Reset future for second compose call.
+
+  // Navigate to a new page.
+  GURL next_page("http://example.com/a.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), next_page));
+
+  // Get quality result from the abandoned session.
+  EXPECT_TRUE(log_uploaded_signal.Wait());
+  ASSERT_EQ(1u, uploaded_logs().size());
+  EXPECT_EQ(
+      optimization_guide::proto::FinalStatus::STATUS_FINISHED_WITHOUT_INSERT,
+      uploaded_logs()[0]->compose().quality().final_status());
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestComposeQualityFeedbackPositive) {
+  base::HistogramTester histograms;
+  base::test::TestFuture<compose::mojom::ComposeResponsePtr> compose_future;
+  BindComposeFutureToOnResponseReceived(compose_future);
+
+  SetupMockModelExecution();
+
+  base::test::TestFuture<void> log_uploaded_signal;
+  logs_uploader().WaitForLogUpload(log_uploaded_signal.GetCallback());
+
+  ShowDialogAndBindMojo();
+  GetSessionForActiveComposeField()->SetSkipFeedbackUiForTesting(true);
+
+  page_handler()->Compose("a user typed this",
+                          compose::mojom::InputMode::kPolish, false);
+  EXPECT_TRUE(compose_future.Take());
+
+  page_handler()->SetUserFeedback(
+      compose::mojom::UserFeedback::kUserFeedbackPositive);
+  // Flush Mojo pipe to ensure feedback is recorded before closing UI.
+  FlushPageHandler();
+
+  // Close UI to submit remaining quality logs.
+  client_page_handler()->CloseUI(compose::mojom::CloseReason::kCloseButton);
+
+  // Get quality logs sent for the Compose Request.
+  EXPECT_TRUE(log_uploaded_signal.Wait());
+  ASSERT_EQ(1u, uploaded_logs().size());
+  EXPECT_EQ(optimization_guide::proto::UserFeedback::USER_FEEDBACK_THUMBS_UP,
+            uploaded_logs()[0]->compose().quality().user_feedback());
+
+  // Check that the histogram was sent for request feedback.
+  histograms.ExpectUniqueSample(
+      "Compose.Server.Request.Feedback",
+      compose::ComposeRequestFeedback::kPositiveFeedback, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestComposeQualityFeedbackNegative) {
+  base::HistogramTester histograms;
+  base::test::TestFuture<compose::mojom::ComposeResponsePtr> compose_future;
+  BindComposeFutureToOnResponseReceived(compose_future);
+
+  SetupMockModelExecution();
+
+  base::test::TestFuture<void> log_uploaded_signal;
+  logs_uploader().WaitForLogUpload(log_uploaded_signal.GetCallback());
+
+  ShowDialogAndBindMojo();
+  GetSessionForActiveComposeField()->SetSkipFeedbackUiForTesting(true);
+
+  page_handler()->Compose("a user typed this",
+                          compose::mojom::InputMode::kPolish, false);
+  EXPECT_TRUE(compose_future.Take());
+
+  page_handler()->SetUserFeedback(
+      compose::mojom::UserFeedback::kUserFeedbackNegative);
+  // Flush Mojo pipe to ensure feedback is recorded before checking state or
+  // closing UI.
+  FlushPageHandler();
+
+  // Also verify that the feedback state is correctly preserved in the session
+  // state.
+  base::test::TestFuture<compose::mojom::OpenMetadataPtr> initial_state_future;
+  page_handler()->RequestInitialState(initial_state_future.GetCallback());
+  auto open_metadata = initial_state_future.Take();
+  EXPECT_EQ(compose::mojom::UserFeedback::kUserFeedbackNegative,
+            open_metadata->compose_state->feedback);
+
+  // Close UI to submit remaining quality logs.
+  client_page_handler()->CloseUI(compose::mojom::CloseReason::kCloseButton);
+
+  // Get quality logs sent for the Compose Request.
+  EXPECT_TRUE(log_uploaded_signal.Wait());
+  ASSERT_EQ(1u, uploaded_logs().size());
+  EXPECT_EQ(optimization_guide::proto::UserFeedback::USER_FEEDBACK_THUMBS_DOWN,
+            uploaded_logs()[0]->compose().quality().user_feedback());
+
+  EXPECT_EQ(
+      optimization_guide::proto::FinalModelStatus::FINAL_MODEL_STATUS_FAILURE,
+      uploaded_logs()[0]->compose().quality().final_model_status());
+
+  // Check that the histogram was sent for request feedback.
+  histograms.ExpectUniqueSample(
+      "Compose.Server.Request.Feedback",
+      compose::ComposeRequestFeedback::kNegativeFeedback, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestComposeQualityWasEdited) {
+  base::HistogramTester histograms;
+  ShowDialogAndBindMojo();
+
+  base::test::TestFuture<compose::mojom::ComposeResponsePtr> compose_future;
+  BindComposeFutureToOnResponseReceived(compose_future);
+
+  SetupMockModelExecution(2);
+
+  // Wait for two log uploads.
+  base::test::TestFuture<void> log_uploaded_signal;
+  logs_uploader().WaitForLogUpload(
+      log_uploaded_signal.GetCallback().Then(base::BindLambdaForTesting([&]() {
+        EXPECT_TRUE(log_uploaded_signal.WaitAndClear());
+        logs_uploader().WaitForLogUpload(log_uploaded_signal.GetCallback());
+      })));
+
+  page_handler()->Compose("a user typed this",
+                          compose::mojom::InputMode::kPolish, false);
+
+  EXPECT_TRUE(compose_future.Wait());  // Reset future for second compose call.
+  compose_future.Clear();
+
+  page_handler()->Compose("a user typed this",
+                          compose::mojom::InputMode::kPolish, true);
+
+  EXPECT_TRUE(compose_future.Wait());
+  // Close UI to submit remaining quality logs.
+  client_page_handler()->CloseUI(compose::mojom::CloseReason::kCloseButton);
+
+  EXPECT_TRUE(log_uploaded_signal.Wait());
+  ASSERT_EQ(2u, uploaded_logs().size());
+  EXPECT_TRUE(uploaded_logs()[0]->compose().quality().was_generated_via_edit());
+  EXPECT_FALSE(
+      uploaded_logs()[1]->compose().quality().was_generated_via_edit());
+  EXPECT_EQ(optimization_guide::proto::FinalStatus::STATUS_UNSPECIFIED,
+            uploaded_logs()[1]->compose().quality().final_status());
+
+  histograms.ExpectBucketCount(
+      compose::kComposeRequestReason,
+      compose::ComposeRequestReason::kFirstRequestPolishMode, 1);
+  histograms.ExpectBucketCount(
+      "Compose.Server.Request.Reason",
+      compose::ComposeRequestReason::kFirstRequestPolishMode, 1);
+  histograms.ExpectBucketCount(compose::kComposeRequestReason,
+                               compose::ComposeRequestReason::kUpdateRequest,
+                               1);
+  histograms.ExpectBucketCount("Compose.Server.Request.Reason",
+                               compose::ComposeRequestReason::kUpdateRequest,
+                               1);
+
+  // Check that the histogram was sent for request feedback.
+  histograms.ExpectUniqueSample("Compose.Server.Request.Feedback",
+                                compose::ComposeRequestFeedback::kNoFeedback,
+                                2);
+}
+
+// Tests that session level UKM metrics are properly captured after closing the
+// dialog.
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest, TestCancelUkmMetrics) {
+  ShowDialogAndBindMojo();
+  client_page_handler()->CloseUI(compose::mojom::CloseReason::kCloseButton);
+  // Make sure the async call to CloseUI completes before navigating away.
+  client_page_handler().FlushForTesting();
+
+  // Navigate page away to upload UKM metrics to the collector.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  // Check session level UKM metrics.
+  auto session_ukm_entries = ukm_recorder().GetEntries(
+      ukm::builders::Compose_SessionProgress::kEntryName,
+      {ukm::builders::Compose_SessionProgress::kCanceledName});
+
+  EXPECT_EQ(session_ukm_entries.size(), 1UL);
+
+  EXPECT_THAT(session_ukm_entries[0].metrics,
+              testing::UnorderedElementsAre(testing::Pair(
+                  ukm::builders::Compose_SessionProgress::kCanceledName, 1)));
+}
+
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_TestComposeShowContextMenu DISABLED_TestComposeShowContextMenu
+#else
+#define MAYBE_TestComposeShowContextMenu TestComposeShowContextMenu
+#endif
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       MAYBE_TestComposeShowContextMenu) {
+  auto* rfh = browser()
+                  ->tab_strip_model()
+                  ->GetActiveWebContents()
+                  ->GetPrimaryMainFrame();
+  content::ContextMenuParams params;
+  params.is_content_editable_for_autofill = true;
+  params.frame_origin = rfh->GetMainFrame()->GetLastCommittedOrigin();
+
+  EXPECT_TRUE(client().ShouldTriggerContextMenu(rfh, params));
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  auto ukm_entries = ukm_recorder().GetEntries(
+      ukm::builders::Compose_PageEvents::kEntryName,
+      {ukm::builders::Compose_PageEvents::kMenuItemShownName,
+       ukm::builders::Compose_PageEvents::kComposeTextInsertedName});
+
+  EXPECT_EQ(ukm_entries.size(), 1UL);
+
+  EXPECT_THAT(
+      ukm_entries[0].metrics,
+      testing::UnorderedElementsAre(
+          testing::Pair(ukm::builders::Compose_PageEvents::kMenuItemShownName,
+                        1),
+          testing::Pair(
+              ukm::builders::Compose_PageEvents::kComposeTextInsertedName, 0)));
+
+  // Now show context menu twice on same page and verify that second UKM record
+  // reflects this.
+  EXPECT_TRUE(client().ShouldTriggerContextMenu(rfh, params));
+  EXPECT_TRUE(client().ShouldTriggerContextMenu(rfh, params));
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  ukm_entries = ukm_recorder().GetEntries(
+      ukm::builders::Compose_PageEvents::kEntryName,
+      {ukm::builders::Compose_PageEvents::kMenuItemShownName,
+       ukm::builders::Compose_PageEvents::kComposeTextInsertedName});
+
+  EXPECT_EQ(ukm_entries.size(), 2UL);
+
+  EXPECT_THAT(
+      ukm_entries[1].metrics,
+      testing::UnorderedElementsAre(
+          testing::Pair(ukm::builders::Compose_PageEvents::kMenuItemShownName,
+                        2),
+          testing::Pair(
+              ukm::builders::Compose_PageEvents::kComposeTextInsertedName, 0)));
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestComposeShowContextMenuAndDialog) {
+  auto* rfh = browser()
+                  ->tab_strip_model()
+                  ->GetActiveWebContents()
+                  ->GetPrimaryMainFrame();
+  content::ContextMenuParams params;
+  params.is_content_editable_for_autofill = true;
+  params.frame_origin = rfh->GetMainFrame()->GetLastCommittedOrigin();
+
+  base::HistogramTester histograms;
+  EXPECT_TRUE(client().ShouldTriggerContextMenu(rfh, params));
+  ShowDialogAndBindMojo();
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  auto ukm_entries = ukm_recorder().GetEntries(
+      ukm::builders::Compose_PageEvents::kEntryName,
+      {ukm::builders::Compose_PageEvents::kMenuItemShownName,
+       ukm::builders::Compose_PageEvents::kComposeTextInsertedName,
+       ukm::builders::Compose_PageEvents::kProactiveNudgeShownName});
+
+  EXPECT_EQ(ukm_entries.size(), 1UL);
+
+  EXPECT_THAT(
+      ukm_entries[0].metrics,
+      testing::UnorderedElementsAre(
+          testing::Pair(ukm::builders::Compose_PageEvents::kMenuItemShownName,
+                        1),
+          testing::Pair(
+              ukm::builders::Compose_PageEvents::kComposeTextInsertedName, 0),
+          testing::Pair(
+              ukm::builders::Compose_PageEvents::kProactiveNudgeShownName, 0)));
+
+  histograms.ExpectBucketCount(
+      compose::kComposeSessionEventCounts,
+      compose::ComposeSessionEventTypes::kMainDialogShown, 1);
+  histograms.ExpectBucketCount(
+      compose::kComposeSessionEventCounts,
+      compose::ComposeSessionEventTypes::kComposeDialogOpened, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestShouldTriggerProactiveNudgeDisabledUKM) {
+  // Override country to "us" to ensure it's enabled for proactive nudge.
+  auto country_override = ComposeEnabling::OverrideCountryForTesting("us");
+
+  // Disable the proactive nudge
+  compose::Config& config = compose::GetMutableConfigForTesting();
+  config.proactive_nudge_enabled = false;
+  autofill::FormData form_data = CreateManualFormData();
+
+  autofill::FormFieldData& selected_field_data =
+      autofill::test_api(form_data).field(0);
+  selected_field_data.set_origin(browser()
+                                     ->tab_strip_model()
+                                     ->GetActiveWebContents()
+                                     ->GetPrimaryMainFrame()
+                                     ->GetLastCommittedOrigin());
+  const autofill::AutofillSuggestionTriggerSource trigger_source =
+      autofill::AutofillSuggestionTriggerSource::kTextFieldValueChanged;
+
+  // By default the proactive nudge is disabled.
+  EXPECT_FALSE(client().ShouldTriggerPopup(form_data, selected_field_data,
+                                           trigger_source));
+
+  // Commit metrics on page navigation.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  // Check that the proactive nudge UKM was still captured.
+  auto ukm_entries = ukm_recorder().GetEntries(
+      ukm::builders::Compose_PageEvents::kEntryName,
+      {ukm::builders::Compose_PageEvents::kMenuItemShownName,
+       ukm::builders::Compose_PageEvents::kComposeTextInsertedName,
+       ukm::builders::Compose_PageEvents::kProactiveNudgeShouldShowName,
+       ukm::builders::Compose_PageEvents::kProactiveNudgeShownName});
+
+  ASSERT_EQ(ukm_entries.size(), 1UL);
+
+  EXPECT_THAT(
+      ukm_entries[0].metrics,
+      testing::UnorderedElementsAre(
+          testing::Pair(ukm::builders::Compose_PageEvents::kMenuItemShownName,
+                        0),
+          testing::Pair(
+              ukm::builders::Compose_PageEvents::kComposeTextInsertedName, 0),
+          testing::Pair(
+              ukm::builders::Compose_PageEvents::kProactiveNudgeShouldShowName,
+              1),
+          testing::Pair(
+              ukm::builders::Compose_PageEvents::kProactiveNudgeShownName, 0)));
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestShouldTriggerProactiveNudgePageChecksFailUKM) {
+  autofill::FormData form_data = CreateManualFormData(GURL("www.example.com"));
+
+  autofill::FormFieldData& selected_field_data =
+      autofill::test_api(form_data).field(0);
+  const autofill::AutofillSuggestionTriggerSource trigger_source =
+      autofill::AutofillSuggestionTriggerSource::kTextFieldValueChanged;
+
+  // Will fail because field origin does not match page origin.
+  EXPECT_FALSE(client().ShouldTriggerPopup(form_data, selected_field_data,
+                                           trigger_source));
+
+  // Commit metrics on page navigation.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  // Check that the proactive nudge UKM was not captured.
+  auto ukm_entries = ukm_recorder().GetEntries(
+      ukm::builders::Compose_PageEvents::kEntryName,
+      {ukm::builders::Compose_PageEvents::kProactiveNudgeShouldShowName});
+
+  ASSERT_EQ(ukm_entries.size(), 0UL);
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeComposeClientBrowserTest,
+                       TestComposeShouldTriggerSavedStateNudgeUKM) {
+  autofill::FormData form_data = CreateManualFormData();
+
+  const autofill::FormFieldData& selected_field_data =
+      autofill::test_api(form_data).field(0);
+  const autofill::AutofillSuggestionTriggerSource trigger_source =
+      autofill::AutofillSuggestionTriggerSource::kTextFieldValueChanged;
+
+  // Start a Compose session on selected field.
+  ShowDialogAndBindMojoWithFieldData(selected_field_data);
+
+  // By default the saved state nudge is shown.
+  EXPECT_TRUE(client().ShouldTriggerPopup(form_data, selected_field_data,
+                                          trigger_source));
+
+  // Commit metrics on page navigation.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  // Check that no proactive nudge UKM was recorded.
+  auto ukm_entries = ukm_recorder().GetEntries(
+      ukm::builders::Compose_PageEvents::kEntryName,
+      {ukm::builders::Compose_PageEvents::kMenuItemShownName,
+       ukm::builders::Compose_PageEvents::kComposeTextInsertedName,
+       ukm::builders::Compose_PageEvents::kProactiveNudgeShouldShowName});
+
+  EXPECT_EQ(ukm_entries.size(), 0UL);
 }

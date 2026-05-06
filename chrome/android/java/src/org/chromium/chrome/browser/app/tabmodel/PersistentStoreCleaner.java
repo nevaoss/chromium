@@ -8,6 +8,7 @@ import static org.chromium.base.ThreadUtils.assertOnUiThread;
 import static org.chromium.build.NullUtil.assumeNonNull;
 import static org.chromium.chrome.browser.tabwindow.TabWindowManager.ARCHIVED_WINDOW_TAG;
 
+import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.task.PostTask;
 import org.chromium.base.task.SequencedTaskRunner;
 import org.chromium.base.task.TaskTraits;
@@ -80,7 +81,8 @@ public class PersistentStoreCleaner {
                 new TabbedModeTabPersistencePolicy(
                         /* selectorIndex= */ TabWindowManager.INVALID_WINDOW_ID,
                         /* mergeTabsOnStartup= */ false,
-                        /* tabMergingEnabled= */ false);
+                        /* tabMergingEnabled= */ false,
+                        ObservableSuppliers.createNonNull(false));
         mPersistencePolicy.performInitialization(mSequencedTaskRunner);
     }
 
@@ -230,7 +232,10 @@ public class PersistentStoreCleaner {
         for (TabModelSelector selector : selectors) {
             if (!selector.isTabStateInitialized()) {
                 TabModelUtils.runOnTabStateInitialized(
-                        () -> maybeCleanUnusedWindows(),
+                        () -> {
+                            deps.mCleanupRunnable = null;
+                            maybeCleanUnusedWindows();
+                        },
                         selectors.toArray(new TabModelSelector[0]));
                 return;
             }
@@ -268,7 +273,8 @@ public class PersistentStoreCleaner {
                 new TabbedModeTabPersistencePolicy(
                         /* selectorIndex= */ TabWindowManager.INVALID_WINDOW_ID,
                         /* mergeTabsOnStartup= */ false,
-                        /* tabMergingEnabled= */ false);
+                        /* tabMergingEnabled= */ false,
+                        ObservableSuppliers.createNonNull(false));
         policy.performInitialization(sequencedTaskRunner);
         policy.clearAllWindowsExceptFor(windowTags);
 
@@ -276,5 +282,9 @@ public class PersistentStoreCleaner {
             TabStateStorageService service = TabStateStorageServiceFactory.getForProfile(mProfile);
             if (service != null) service.clearAllWindowsExcept(windowTags);
         }
+    }
+
+    public boolean hasUnusedDataDepsForTesting() {
+        return mUnusedDataDeps != null;
     }
 }

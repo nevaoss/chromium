@@ -254,7 +254,8 @@ public class HomeOfTransactionsFragmentTest {
 
         onView(withText(R.string.autofill_identity_docs_title)).perform(click());
 
-        // TODO(crbug.com/482994257): Verify the content is displayed once implemented.
+        onView(withText(R.string.autofill_identity_docs_opt_in_toggle_label))
+               .check(matches(isDisplayed()));
     }
 
     @Test
@@ -265,6 +266,7 @@ public class HomeOfTransactionsFragmentTest {
 
         onView(withText(R.string.autofill_travel_title)).perform(click());
 
-        // TODO(crbug.com/482994258): Verify the content is displayed once implemented.
+        onView(withText(R.string.autofill_travel_opt_in_toggle_label))
+                .check(matches(isDisplayed()));
     }
 }

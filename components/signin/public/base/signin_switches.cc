@@ -40,16 +40,6 @@ BASE_FEATURE(kAccountRetrievalWaitsForRestoration,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
-#if BUILDFLAG(IS_WIN)
-// Enables expanding the Avatar Pill to show a sync promo. Expected to be used
-// by Windows users only.
-BASE_FEATURE(kAvatarButtonSyncPromo, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kAvatarButtonSyncPromoMinimumCookieAgeParam,
-                   &kAvatarButtonSyncPromo,
-                   "minimum-cookie-age",
-                   base::Days(14));
-#endif
 // Convenient testing flag for `kAvatarButtonSyncPromo` on all platforms.
 // Also reduces the minimum cookie age to 30 seconds.
 BASE_FEATURE(kAvatarButtonSyncPromoForTesting,
@@ -61,8 +51,7 @@ bool IsAvatarSyncPromoFeatureEnabled() {
   }
 #if BUILDFLAG(IS_WIN)
   return (base::win::GetVersion() >= base::win::Version::WIN7 &&
-          base::win::GetVersion() <= base::win::Version::WIN10_22H2) &&
-         base::FeatureList::IsEnabled(switches::kAvatarButtonSyncPromo);
+          base::win::GetVersion() <= base::win::Version::WIN10_22H2);
 #else
   return false;
 #endif
@@ -74,7 +63,7 @@ base::TimeDelta GetAvatarSyncPromoFeatureMinimumCookeAgeParam() {
     return base::Seconds(30);
   }
 #if BUILDFLAG(IS_WIN)
-  return kAvatarButtonSyncPromoMinimumCookieAgeParam.Get();
+  return base::Days(14);
 #else
   NOTREACHED();
 #endif
@@ -385,7 +374,15 @@ BASE_FEATURE(kEnableSearchAIModeSigninPromo, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<base::TimeDelta> kSearchAIModePromoPageLoadDelay{
     &kEnableSearchAIModeSigninPromo, "SearchAIModePromoPageLoadDelay",
     base::Seconds(4)};
+// The gap between impressions of the Signin AI Search Mode promo.
+const base::FeatureParam<base::TimeDelta> kSearchAIModePromoFrequency{
+    &kEnableSearchAIModeSigninPromo, "SearchAIModePromoFrequency",
+    base::Days(14)};
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kEnableWebSigninLoadingDialog, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_IOS)
 BASE_FEATURE(kEnforceCanSignInToChromeCapability,
@@ -488,6 +485,10 @@ BASE_FEATURE(kMakeIdentityManagerSourceOfAccounts,
 // AccountManagerAccountManagerDelegate
 BASE_FEATURE(kMigrateAccountManagerDelegate, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(IS_IOS)
+BASE_FEATURE(kNoAccountWebSignin, base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_IOS)
 
 BASE_FEATURE(kNonDefaultGaiaOriginCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 

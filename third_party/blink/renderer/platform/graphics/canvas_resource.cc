@@ -98,57 +98,37 @@ gpu::webgpu::WebGPUInterface* CanvasResource::WebGPUInterface() const {
   return ContextProviderWrapper()->ContextProvider().WebGPUInterface();
 }
 
-static void ReleaseFrameResources(
+// static
+void CanvasResource::ReleaseFrameResources(
     scoped_refptr<CanvasResource>&& resource,
     const gpu::SyncToken& sync_token,
     bool lost_resource) {
   CHECK(resource);
 
   resource->WaitSyncToken(sync_token);
-
-  // TODO(khushalsagar): If multiple readers had access to this resource, losing
-  // it once should make sure subsequent releases don't try to recycle this
-  // resource.
   if (lost_resource) {
     resource->NotifyResourceLost();
-  } else {
-    // Allow the resource to determine whether it wants to preserve itself for
-    // reuse.
-    auto* raw_resource = resource.get();
-    raw_resource->OnRefReturned(std::move(resource));
   }
+
+  CanvasResource::DropRefOnOwningThread(std::move(resource));
 }
 
 // static
-void CanvasResource::OnPlaceholderReleasedResource(
+void CanvasResource::DropRefOnOwningThread(
     scoped_refptr<CanvasResource> resource) {
-  if (!resource) {
-    return;
-  }
-
-  auto& owning_thread_task_runner = resource->owning_thread_task_runner_;
-  owning_thread_task_runner->PostTask(
-      FROM_HERE, base::BindOnce(&OnPlaceholderReleasedResourceOnOwningThread,
-                                std::move(resource)));
-}
-
-// static
-void CanvasResource::OnPlaceholderReleasedResourceOnOwningThread(
-    scoped_refptr<CanvasResource> resource) {
+  CHECK(resource);
   DCHECK(!resource->is_cross_thread());
 
-  ReleaseFrameResources(std::move(resource), gpu::SyncToken(),
-                        /*is_lost=*/false);
+  // Allow the resource to determine whether it wants to preserve itself for
+  // reuse.
+  auto* raw_resource = resource.get();
+  raw_resource->OnRefReturned(std::move(resource));
 }
 
 bool CanvasResource::PrepareTransferableResource(
     viz::TransferableResource* out_resource,
-    CanvasResource::ReleaseCallback* out_callback,
     bool needs_verified_synctoken) {
   DCHECK(IsValid());
-
-  DCHECK(out_callback);
-  *out_callback = blink::BindOnce(&ReleaseFrameResources);
 
   if (!out_resource)
     return true;

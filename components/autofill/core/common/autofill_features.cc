@@ -212,6 +212,10 @@ BASE_FEATURE_PARAM(std::string,
 // both the previous and the new value of an updated entity attribute.
 BASE_FEATURE(kAutofillAiNewUpdatePrompt, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, Autofill AI filling suggestion do not have an icon.
+BASE_FEATURE(kAutofillAiNoFillingIconsExperiment,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, AutofillAi supports order entities.
 BASE_FEATURE(kAutofillAiOrder, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -399,7 +403,7 @@ BASE_FEATURE(kAutofillBetterLocalHeuristicPlaceholderSupport,
 // If enabled, our `FormEventLogger` will start emitting events for fields
 // annotated with an unrecognized HTML "autocomplete" attribute.
 BASE_FEATURE(kAutofillConsiderAutocompleteUnrecognizedFieldsInMetrics,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Same as `kAutofillAddressUserPerceptionSurvey` but for credit card forms.
 BASE_FEATURE(kAutofillCreditCardUserPerceptionSurvey,
@@ -902,7 +906,7 @@ BASE_FEATURE(kAutofillServerUploadMoreData, base::FEATURE_ENABLED_BY_DEFAULT);
 // the priorities of the bubbles.
 // TODO(crbug.com/432429605): Remove when launched.
 BASE_FEATURE(kAutofillShowBubblesBasedOnPriorities,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, a pre-filled field will not be filled.
 BASE_FEATURE(kAutofillSkipPreFilledFields, base::FEATURE_ENABLED_BY_DEFAULT);

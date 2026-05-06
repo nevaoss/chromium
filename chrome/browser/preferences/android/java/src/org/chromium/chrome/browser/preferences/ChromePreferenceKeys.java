@@ -391,9 +391,6 @@ public final class ChromePreferenceKeys {
     public static final String FLAGS_LAST_CACHED_MINIMAL_BROWSER_FLAGS_TIME_MILLIS =
             "Chrome.Flags.LastCachedMinimalBrowserFlagsTimeMillis";
 
-    /** Whether the Glic button is pinned in the tab strip. */
-    public static final String GLIC_BUTTON_PINNED = "Chrome.Glic.ButtonPinned";
-
     /** Whether the precise location setting is enabled for Glic */
     public static final String GLIC_PRECISE_LOCATION_SETTING_ENABLED =
             "Chrome.Glic.PreciseLocationSettingEnabled";
@@ -646,6 +643,10 @@ public final class ChromePreferenceKeys {
     /** Represents a persistent store that has fully written all tab state for a given window. */
     public static final KeyPrefix TAB_PERSISTENCE_SHADOW_WRITTEN_STORE =
             new KeyPrefix("Chrome.TabPersistence.ShadowWrittenStore.*");
+
+    /** The version of the PersistentStoreManager. */
+    public static final String TAB_PERSISTENCE_STORE_MANAGER_VERSION =
+            "Chrome.TabPersistence.StoreManagerVersion";
 
     /**
      * Indicates whether or not there is any persistent (i.e. non-transient) content in chrome that
@@ -1188,7 +1189,6 @@ public final class ChromePreferenceKeys {
                 FIRST_RUN_SKIPPED_BY_POLICY,
                 FIRST_CTA_START_TIMESTAMP,
                 FLAGS_LAST_CACHED_MINIMAL_BROWSER_FLAGS_TIME_MILLIS,
-                GLIC_BUTTON_PINNED,
                 GLIC_PRECISE_LOCATION_SETTING_ENABLED,
                 GLIC_SHARE_CURRENT_TAB_DEFAULT_ACCESS_ENABLED,
                 GLIC_AUTO_BROWSE_SETTING_ENABLED,
@@ -1291,6 +1291,7 @@ public final class ChromePreferenceKeys {
                 TAB_OR_GROUP_TEARING_MAX_INSTANCES_FAILURE_COUNT,
                 TAB_PERSISTENCE_CURRENT_AUTHORITATIVE_STORE.pattern(),
                 TAB_PERSISTENCE_SHADOW_WRITTEN_STORE.pattern(),
+                TAB_PERSISTENCE_STORE_MANAGER_VERSION,
                 TIPS_NOTIFICATIONS_CHANNEL_ENABLED,
                 TIPS_NOTIFICATIONS_OPT_IN_PROMO_SHOWN,
                 TOOLBAR_TOP_ANCHORED,

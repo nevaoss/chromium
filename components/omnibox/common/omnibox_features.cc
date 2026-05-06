@@ -89,6 +89,9 @@ BASE_FEATURE(kLocalHistoryZeroSuggestBeyondNTP, DISABLED);
 // performance impact of ZPS prefetching on the remote Suggest service).
 BASE_FEATURE(kZeroSuggestPrefetchDebouncing, DISABLED);
 
+// Enables prefetching of the zero prefix suggestions for composebox contexts.
+BASE_FEATURE(kZeroSuggestPrefetchingForComposebox, DISABLED);
+
 // Enables prefetching of the zero prefix suggestions for eligible users on SRP.
 BASE_FEATURE(kZeroSuggestPrefetchingOnSRP, enable_if(!IS_ANDROID));
 
@@ -175,6 +178,10 @@ BASE_FEATURE(kHideAimEntrypointOnUserInput,
 // When enabled, AI mode will remove verbatim suggestions from the suggestions
 // list.
 BASE_FEATURE(kAIMSuppressVerbatimMatch, ENABLED);
+// When enabled, the AIM WebUI popup will defer showing until the WebUI has
+// painted a clean frame, avoiding the issue of the popup being shown with a
+// stale frame.
+BASE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReady, ENABLED);
 
 // Feature used to default typed navigations to use HTTPS instead of HTTP.
 // This only applies to navigations that don't have a scheme such as
@@ -255,6 +262,9 @@ BASE_FEATURE(kAblateSearchProviderWarmup, DISABLED);
 // If enabled, hl= is reported in search requests (applicable to iOS only).
 BASE_FEATURE(kReportApplicationLanguageInSearchRequest, ENABLED);
 
+// When enabled, appends the invocation source parameter to search URLs.
+BASE_FEATURE(kOmniboxAppendInvocationSource, ENABLED);
+
 // Enable asynchronous Omnibox/Suggest view inflation.
 BASE_FEATURE(kOmniboxAsyncViewInflation, DISABLED);
 
@@ -274,6 +284,9 @@ BASE_FEATURE(kOmniboxXGeoPermissionGranularity, ENABLED);
 
 // If enabled, omnibox group separators and headers will use item decorations.
 BASE_FEATURE(kOmniboxItemDecoration, DISABLED);
+
+// When the first suggestion is a url, the favicon is shown in the status view.
+BASE_FEATURE(kExactMatchFavicons, DISABLED);
 
 // The features below allow tuning number of suggestions offered to users in
 // specific contexts. These features are default enabled and are used to control
@@ -402,7 +415,8 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kServeJavaCachedZeroSuggest,
       &kAIMSuppressVerbatimMatch,
       &kResetSuggestionsScroll,
-      &kOmniboxItemDecoration};
+      &kOmniboxItemDecoration,
+      &kExactMatchFavicons};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
   return reinterpret_cast<int64_t>(kFeatureMap.get());

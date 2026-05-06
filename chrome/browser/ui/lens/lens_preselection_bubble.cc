@@ -63,6 +63,8 @@ LensPreselectionBubble::LensPreselectionBubble(
     bool offline,
     bool show_cancel_button,
     ui::ColorId bubble_background_color,
+    const gfx::VectorIcon* icon,
+    std::optional<ui::ColorId> cancel_button_color,
     ExitClickedCallback exit_clicked_callback,
     base::OnceClosure on_cancel_callback)
     : BubbleDialogDelegateView(anchor_view,
@@ -70,9 +72,12 @@ LensPreselectionBubble::LensPreselectionBubble(
                                views::BubbleBorder::NO_SHADOW),
       tab_handle_(tab_handle),
       show_cancel_button_(show_cancel_button),
+      cancel_button_color_(cancel_button_color),
       offline_(offline),
       bubble_background_color_(bubble_background_color),
+      icon_(icon),
       exit_clicked_callback_(std::move(exit_clicked_callback)) {
+  CHECK(icon_);
   SetShowCloseButton(false);
   set_close_on_deactivate(false);
   DialogDelegate::SetButtons(static_cast<int>(ui::mojom::DialogButton::kNone));
@@ -105,11 +110,7 @@ void LensPreselectionBubble::Init() {
   if (offline_) {
     icon = &vector_icons::kErrorOutlineIcon;
   } else {
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-    icon = &vector_icons::kGoogleLensMonochromeLogoIcon;
-#else
-    icon = &vector_icons::kSearchChromeRefreshIcon;
-#endif
+    icon = icon_;
   }
   icon_view_->SetImage(ui::ImageModel::FromVectorIcon(
       *icon, kColorLensOverlayToastForeground, 24));
@@ -232,10 +233,14 @@ void LensPreselectionBubble::OnThemeChanged() {
 
   if (show_cancel_button_) {
     CHECK(cancel_button_);
+    ui::ColorId text_color_id =
+        cancel_button_color_.value_or(kColorLensOverlayToastForeground);
+    ui::ColorId border_color_id =
+        cancel_button_color_.value_or(kColorLensOverlayToastButtonBorder);
     cancel_button_->SetEnabledTextColors(
-        color_provider->GetColor(kColorLensOverlayToastForeground));
+        color_provider->GetColor(text_color_id));
     cancel_button_->SetBorder(views::CreateRoundedRectBorder(
-        1, 48, color_provider->GetColor(kColorLensOverlayToastButtonBorder)));
+        1, 48, color_provider->GetColor(border_color_id)));
     cancel_button_->SetBgColorIdOverride(bubble_background_color_);
   }
 }

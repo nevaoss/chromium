@@ -92,6 +92,7 @@ import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogType;
 import org.chromium.ui.modaldialog.ModalDialogProperties;
 import org.chromium.ui.modaldialog.ModalDialogProperties.ButtonType;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.ui.test.util.MockitoHelper;
 import org.chromium.ui.text.ChromeClickableSpan;
 import org.chromium.ui.text.SpanApplier;
 
@@ -740,7 +741,7 @@ public class AutofillOptionsTest {
                 .onPreferenceChange(mFragment.getAutofillAiAuthenticationSwitch(), true);
 
         // Verify reauth is triggered.
-        ArgumentCaptor<Callback<Boolean>> callbackCaptor = ArgumentCaptor.forClass(Callback.class);
+        ArgumentCaptor<Callback<Boolean>> callbackCaptor = MockitoHelper.callbackCaptor();
         verify(mMockReauthenticatorBridge).reauthenticate(callbackCaptor.capture());
 
         // Simulate successful reauth.
@@ -950,9 +951,11 @@ public class AutofillOptionsTest {
     @SmallTest
     @EnableFeatures(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA)
     public void testAccessibilityAnnotatorSettingsLinkRowClick() {
+        final String testUrl = "https://test.com";
         doReturn(true)
                 .when(mMockEntityDataManagerJni)
                 .isAccessibilityAnnotatorSettingVisible(any());
+        doReturn(testUrl).when(mMockEntityDataManagerJni).getAccessibilityAnnotatorSettingsUrl();
 
         new AutofillOptionsCoordinator(mFragment, this::assertModalNotUsed, Assert::fail)
                 .initializeNow();
@@ -967,9 +970,7 @@ public class AutofillOptionsTest {
                 Shadows.shadowOf(RuntimeEnvironment.getApplication()).getNextStartedActivity();
         assertNotNull(intent);
         assertEquals(Intent.ACTION_VIEW, intent.getAction());
-        assertEquals(
-                Uri.parse(AutofillOptionsMediator.ACCESSIBILITY_ANNOTATOR_SETTINGS_URL),
-                intent.getData());
+        assertEquals(Uri.parse(testUrl), intent.getData());
 
         assertTrue(
                 userActionTester

@@ -52,19 +52,6 @@ class CloudBinaryUploadService
       override;
   base::WeakPtr<BinaryUploadService> AsWeakPtr() override;
 
-  // Indicates whether the DM token/Connector combination is allowed to upload
-  // data.
-  using AuthorizationCallback =
-      base::OnceCallback<void(enterprise_connectors::ScanRequestUploadResult)>;
-  void IsAuthorized(const GURL& url,
-                    bool per_profile_request,
-                    AuthorizationCallback callback,
-                    const std::string& dm_token,
-                    enterprise_connectors::AnalysisConnector connector);
-
-  // Resets `can_upload_data_`. Called every 24 hour by `timer_`.
-  void ResetAuthorizationData(const GURL& url);
-
   // Sets `can_upload_data_` for tests.
   void SetAuthForTesting(
       const std::string& dm_token,
@@ -74,97 +61,22 @@ class CloudBinaryUploadService
   void SetTokenFetcherForTesting(
       std::unique_ptr<SafeBrowsingTokenFetcher> token_fetcher);
 
- protected:
-  // This may destroy `request`.
-  // Virtual for testing.
-  virtual void OnGetRequestData(
-      enterprise_connectors::BinaryUploadRequest::Id request_id,
-      enterprise_connectors::ScanRequestUploadResult result,
-      enterprise_connectors::BinaryUploadRequest::Data data);
-
  private:
-  using TokenAndConnector =
-      std::pair<std::string, enterprise_connectors::AnalysisConnector>;
   friend class CloudBinaryUploadServiceTest;
 
-  // Queue the file for deep scanning. This method should be the only caller of
-  // UploadForDeepScanning to avoid consuming too many user resources.
-  void QueueForDeepScanning(
-      std::unique_ptr<enterprise_connectors::BinaryUploadRequest> request);
-
   // CloudBinaryUploadServiceBase:
-  void UploadForDeepScanning(
-      std::unique_ptr<enterprise_connectors::BinaryUploadRequest> request)
-      override;
-
-  // Get the access token only if the user matches the management and
-  // affiliation requirements.
-  void MaybeGetAccessToken(
-      enterprise_connectors::BinaryUploadRequest::Id request_id);
-  void OnGetAccessToken(
-      enterprise_connectors::BinaryUploadRequest::Id request_id,
-      const std::string& access_token);
-
-  // Set the local IP addresses in the request. This is performed in a separate
-  // callback to avoid blocking the UI thread and is only used for enterprise
-  // requests.
-  void OnIpAddressesFetched(
-      enterprise_connectors::BinaryUploadRequest::Id request_id,
-      std::vector<std::string> ip_addresses);
-
-  // Convenience wrapper around the
-  // FileAnalysisRequestBase::RegisterOnGotHashCallback to ensure the request is
-  // posted as a task to the current thread.
-  void RegisterOnGotHashCallback(
-      enterprise_connectors::BinaryUploadRequest::Id request_id,
-      enterprise_connectors::OnGotHashCallback on_got_hash_callback);
-
-  void FinishRequestWithIncompleteResponse(
-      enterprise_connectors::BinaryUploadRequest::Id request_id);
-
-  void FinishIfActive(enterprise_connectors::BinaryUploadRequest::Id request_id,
-                      enterprise_connectors::ScanRequestUploadResult result,
-                      enterprise_connectors::ContentAnalysisResponse response);
-
-  void MaybeUploadForDeepScanningCallback(
-      std::unique_ptr<enterprise_connectors::BinaryUploadRequest> request,
-      enterprise_connectors::ScanRequestUploadResult auth_check_result);
-
-  enterprise_connectors::ScanRequestUploadResult GetConsumerAuthResult(
-      const enterprise_connectors::BinaryUploadRequest& request);
-
-  std::optional<enterprise_connectors::ScanRequestUploadResult>
-  MaybeGetEnterpriseAuthResult(
-      const enterprise_connectors::BinaryUploadRequest& request);
-
-  // Callback once the response from the backend is received.
-  void ValidateDataUploadRequestConnectorCallback(
-      const std::string& dm_token,
-      enterprise_connectors::AnalysisConnector connector,
-      enterprise_connectors::ScanRequestUploadResult result,
-      enterprise_connectors::ContentAnalysisResponse response);
-
-  // Prepares auth and non-auth requests for uploading to the server.
-  void PrepareRequestForUpload(
-      enterprise_connectors::BinaryUploadRequest::Id request_id);
-
-  bool ShouldTerminateRequestEarly(
-      enterprise_connectors::BinaryUploadRequest* request,
-      enterprise_connectors::ScanRequestUploadResult get_data_result,
-      size_t data_size);
+  void MaybeGetAccessToken(enterprise_connectors::BinaryUploadRequest* request,
+                           base::OnceCallback<void(const std::string&)>
+                               access_token_callback) override;
+  enterprise_connectors::BinaryUploadRequest::BrowserPolicyConnectorGetter
+  BrowserPolicyConnectorGetter() override;
+  bool IsAdvancedProtection() override;
+  bool IsEnhancedProtection() override;
+#if BUILDFLAG(IS_CHROMEOS)
+  bool IsManagedGuestSession() override;
+#endif
 
   const raw_ptr<Profile> profile_;
-
-  enterprise_connectors::BinaryUploadRequest::Id::Generator
-      request_id_generator_;
-
-  // Indicates if this service is waiting on the backend to validate event
-  // reporting. Used to avoid spamming the backend.
-  base::flat_set<TokenAndConnector> pending_validate_data_upload_request_;
-
-  // Ensures we validate the browser is registered with the backend every 24
-  // hours.
-  base::RepeatingTimer timer_;
 
   // Used to obtain an access token to attach to requests.
   std::unique_ptr<SafeBrowsingTokenFetcher> token_fetcher_;

@@ -70,6 +70,8 @@ export class TopToolbarElement extends CrLitElement {
       hideMenuButton_: {type: Boolean},
       showReopenTabs_: {type: Boolean},
       isExpandButtonEnabled: {type: Boolean},
+      isPinButtonEnabled: {type: Boolean},
+      isPinned: {type: Boolean},
     };
   }
 
@@ -83,22 +85,29 @@ export class TopToolbarElement extends CrLitElement {
   private listenerIds_: number[] = [];
   protected accessor isExpandButtonEnabled: boolean =
       loadTimeData.getBoolean('expandButtonEnabled');
+  protected accessor isPinButtonEnabled: boolean =
+      loadTimeData.getBoolean('enablePinButton');
   private hideMenuOnAiPageEnabled_: boolean =
       loadTimeData.getBoolean('hideMenuOnAiPageEnabled');
   accessor hideMenuButton_: boolean =
       this.hideMenuOnAiPageEnabled_ && this.isAiPage;
+  protected accessor isPinned: boolean =
+      loadTimeData.getBoolean('isSidePanelPinned');
 
   override connectedCallback() {
     super.connectedCallback();
     const callbackRouter = this.browserProxy_.callbackRouter;
     this.listenerIds_ = [
-      callbackRouter.onContextUpdated.addListener(
-          (contextInfos: ContextInfo[]) => {
-            this.contextInfos = contextInfos;
-          }),
-      callbackRouter.setShowReopenTabs.addListener((show: boolean) => {
+      callbackRouter.onContextUpdated.addListener(contextInfos => {
+        this.contextInfos = contextInfos;
+      }),
+      callbackRouter.setShowReopenTabs.addListener(show => {
         this.showReopenTabs_ = show;
       }),
+      callbackRouter.onSidePanelPinStateChanged.addListener(
+          (isPinned: boolean) => {
+            this.isPinned = isPinned;
+          }),
     ];
   }
 
@@ -117,8 +126,26 @@ export class TopToolbarElement extends CrLitElement {
     }
   }
 
+  protected shouldShowPinButton_(): boolean {
+    return this.isPinButtonEnabled && this.isAiPage;
+  }
+
+  protected getPinButtonTooltip_(): string {
+    return this.isPinned ? loadTimeData.getString('unpinTooltip') :
+                           loadTimeData.getString('pinTooltip');
+  }
+
   protected shouldShowSourcesMenuButton_(): boolean {
     return this.contextInfos.length > 0;
+  }
+
+  protected onPinClick_() {
+    this.isPinned = !this.isPinned;
+    if (this.isPinned) {
+      this.browserProxy_.handler.pinSidePanel();
+    } else {
+      this.browserProxy_.handler.unpinSidePanel();
+    }
   }
 
   protected onCloseButtonClick_() {

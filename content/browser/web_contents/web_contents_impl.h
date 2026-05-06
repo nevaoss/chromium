@@ -57,6 +57,7 @@
 #include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/media_stream_request.h"
 #include "content/public/browser/preloading.h"
+#include "content/public/browser/tracing_support.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_capability_type.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -182,6 +183,10 @@ class CreateNewWindowParams;
 class WebContentsAndroid;
 class SelectionPopupDelegate;
 #endif
+
+namespace webid {
+enum class FederatedLoginResult;
+}
 
 // CreatedWindow holds the WebContentsImpl and target url between IPC calls to
 // CreateNewWindow and ShowCreatedWindow.
@@ -425,6 +430,8 @@ class CONTENT_EXPORT WebContentsImpl
   const NavigationControllerImpl& GetController() const override;
   BrowserContext* GetBrowserContext() override;
   base::WeakPtr<WebContents> GetWeakPtr() override;
+  const UniqueToken& GetUniqueToken() const override;
+  const perfetto::NamedTrack& GetTracingTrack() const override;
   const GURL& GetURL() override;
   const GURL& GetVisibleURL() override;
   const GURL& GetLastCommittedURL() const override;
@@ -750,6 +757,7 @@ class CONTENT_EXPORT WebContentsImpl
       RenderFrameHostImpl* render_frame_host) override;
   void WebAuthnAssertionRequestSucceeded(
       RenderFrameHostImpl* render_frame_host) override;
+  void OnFedCmFederatedLogin(webid::FederatedLoginResult result) override;
   void BindDisplayCutoutHost(
       RenderFrameHostImpl* render_frame_host,
       mojo::PendingAssociatedReceiver<blink::mojom::DisplayCutoutHost> receiver)
@@ -1218,9 +1226,11 @@ class CONTENT_EXPORT WebContentsImpl
   // bool IsFullscreen() const override;
   blink::mojom::DisplayMode GetDisplayMode() const override;
   ui::mojom::WindowShowState GetWindowShowState() override;
-  blink::mojom::DevicePostureProvider* GetDevicePostureProvider() override;
+  DevicePostureProviderImpl* GetDevicePostureProvider() override;
   bool GetResizable() override;
   void LostPointerLock(RenderWidgetHostImpl* render_widget_host) override;
+  bool IsPointerLockSandboxedForWidget(
+      RenderWidgetHostImpl* render_widget_host) override;
   bool HasPointerLock(RenderWidgetHostImpl* render_widget_host) override;
   RenderWidgetHostImpl* GetPointerLockWidget() override;
   bool OnRenderFrameProxyVisibilityChanged(
@@ -2845,6 +2855,10 @@ class CONTENT_EXPORT WebContentsImpl
 #if BUILDFLAG(IS_ANDROID)
   bool supports_forward_transition_animation_ = true;
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+  const UniqueToken web_contents_token_;
+  const base::trace_event::TrackRegistration<perfetto::NamedTrack>
+      tracing_track_;
 
   base::WeakPtrFactory<WebContentsImpl> loading_weak_factory_{this};
   base::WeakPtrFactory<WebContentsImpl> weak_factory_{this};

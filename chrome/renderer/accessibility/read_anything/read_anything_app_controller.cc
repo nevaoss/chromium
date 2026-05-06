@@ -1333,6 +1333,8 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
       .SetProperty("isGoogleDocs", &ReadAnythingAppController::IsGoogleDocs)
       .SetProperty("isImmersiveEnabled",
                    &ReadAnythingAppController::IsImmersiveEnabled)
+      .SetProperty("isImprovedReadAloudEnabled",
+                   &ReadAnythingAppController::IsImprovedReadAloudEnabled)
       .SetProperty("isReadabilityEnabled",
                    &ReadAnythingAppController::IsReadabilityEnabled)
       .SetProperty("activeDistillationMethod",
@@ -1496,8 +1498,12 @@ ui::AXNodeID ReadAnythingAppController::RootId() const {
   ui::AXSerializableTree* tree = model_.GetActiveTree();
   // Fail gracefully if RootId() is ever called with an invalid active tree.
   DUMP_WILL_BE_CHECK(tree);
+  if (!tree) {
+    return ui::kInvalidAXNodeID;
+  }
+
   DUMP_WILL_BE_CHECK(tree->root());
-  if (!tree || !tree->root()) {
+  if (!tree->root()) {
     return ui::kInvalidAXNodeID;
   }
   return tree->root()->id();
@@ -1965,6 +1971,10 @@ bool ReadAnythingAppController::IsImmersiveEnabled() const {
   return features::IsImmersiveReadAnythingEnabled();
 }
 
+bool ReadAnythingAppController::IsImprovedReadAloudEnabled() const {
+  return features::IsImprovedReadAloudEnabled();
+}
+
 // Returns true if the experimental flag allowing testing with alternative
 // distillation methods such as Readability.js is enabled.
 bool ReadAnythingAppController::IsReadabilityEnabled() const {
@@ -2370,7 +2380,6 @@ void ReadAnythingAppController::OnSelectionChange(ui::AXNodeID anchor_node_id,
   // clears the selection, so we should tell the main page to clear too.
   if ((anchor_offset == focus_offset) && (anchor_node_id == focus_node_id)) {
     if (model_.has_selection()) {
-      model_.increment_selections_from_reading_mode();
       OnCollapseSelection();
     }
     return;
@@ -2411,7 +2420,8 @@ void ReadAnythingAppController::OnSelectionChange(ui::AXNodeID anchor_node_id,
                                    anchor_offset, focus_node_id, focus_offset);
 }
 
-void ReadAnythingAppController::OnCollapseSelection() const {
+void ReadAnythingAppController::OnCollapseSelection() {
+  model_.increment_selections_from_reading_mode();
   if (model_.is_pdf()) {
     // CollapseSelection does nothing in pdfs, so just set an empty selection
     // instead.

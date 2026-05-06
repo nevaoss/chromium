@@ -64,6 +64,7 @@ import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.page_info.PageInfoController;
 import org.chromium.components.page_info.PageInfoController.OpenedFromSource;
 import org.chromium.components.thinwebview.ThinWebView;
+import org.chromium.components.thinwebview.ThinWebViewAttachParams;
 import org.chromium.components.thinwebview.ThinWebViewConstraints;
 import org.chromium.components.thinwebview.ThinWebViewFactory;
 import org.chromium.content_public.browser.Visibility;
@@ -289,7 +290,11 @@ public class DocumentPictureInPictureActivity extends AsyncInitializationActivit
                 windowAndroid,
                 WebContents.createDefaultInternalsHolder());
         mThinWebView.attachWebContents(
-                mWebContents, contentView, new DocumentPictureInPictureWebContentsDelegate());
+                mWebContents,
+                contentView,
+                new ThinWebViewAttachParams.Builder()
+                        .setWebContentsDelegate(new DocumentPictureInPictureWebContentsDelegate())
+                        .build());
 
         Context context =
                 NightModeUtils.wrapContextWithNightModeConfig(

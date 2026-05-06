@@ -22,6 +22,7 @@
 #include "components/ukm/test_ukm_recorder.h"
 #include "content/public/browser/preconnect_manager.h"
 #include "content/public/browser/preloading.h"
+#include "content/public/browser/render_widget_host_view.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -459,8 +460,9 @@ IN_PROC_BROWSER_TEST_F(AnchorElementPreloaderBrowserTest,
                 .network_anonymization_key());
 }
 
+// TODO(crbug.com/503036437): Re-enable this test once flakiness has been resolved.
 IN_PROC_BROWSER_TEST_F(AnchorElementPreloaderBrowserTest,
-                       PreconnectNetworkAnonymizationKeyCrossOrigin) {
+                       DISABLED_PreconnectNetworkAnonymizationKeyCrossOrigin) {
   const GURL& url = GetTestURL("/iframe_anchor.html");
   EXPECT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
 
@@ -481,8 +483,10 @@ IN_PROC_BROWSER_TEST_F(AnchorElementPreloaderBrowserTest,
   // Trigger mousedown in the iframe.
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
-  gfx::Point point = gfx::ToFlooredPoint(
-      content::GetCenterCoordinatesOfElementWithId(iframe, "iframe_anchor"));
+  gfx::Point point =
+      gfx::ToFlooredPoint(iframe->GetView()->TransformPointToRootCoordSpaceF(
+          content::GetCenterCoordinatesOfElementWithId(iframe,
+                                                       "iframe_anchor")));
 
   content::SimulateMouseEvent(web_contents,
                               blink::WebMouseEvent::Type::kMouseDown,

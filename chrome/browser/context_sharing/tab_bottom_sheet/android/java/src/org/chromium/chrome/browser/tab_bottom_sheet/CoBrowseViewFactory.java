@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.tab_bottom_sheet;
 
 import android.app.Activity;
 
+import androidx.annotation.ColorInt;
 import androidx.annotation.VisibleForTesting;
 
 import org.jni_zero.CalledByNative;
@@ -15,8 +16,10 @@ import org.chromium.base.CallbackUtils;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.context_sharing.R;
 import org.chromium.chrome.browser.contextual_tasks.fusebox.ContextualTasksFusebox;
 import org.chromium.chrome.browser.contextual_tasks.fusebox.ContextualTasksFusebox.ContextualTasksFuseboxConfig;
+import org.chromium.chrome.browser.contextual_tasks.fusebox.ContextualTasksFuseboxManager;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -73,22 +76,31 @@ public class CoBrowseViewFactory {
     }
 
     /**
-     * Builds the co-browse views.
+     * Called to build the co-browse view. This method is common for glic and contextual tasks.
+     * Contextual tasks uses a fusebox overlayed on top of content area while glic only needs the
+     * WebContents showing in a ThinWebView.
      *
      * @param webContents The {@link WebContents} to be displayed in the thin web view.
-     * @param showToolbar Whether to show the toolbar.
-     * @param showFusebox Whether to show the fusebox.
+     * @param showFusebox Whether to show the fusebox. Currently only used by contextual tasks.
+     * @param backgroundColor The background color for the content.
      * @return The {@link CoBrowseViews} instance.
      */
     CoBrowseViews buildCoBrowseViews(
-            @Nullable WebContents webContents, boolean showToolbar, boolean showFusebox) {
-        TabBottomSheetToolbar toolbar =
-                showToolbar ? new TabBottomSheetSimpleToolbar(mActivity) : null;
+            @Nullable WebContents webContents, boolean showFusebox, @ColorInt int backgroundColor) {
         TabBottomSheetWebUi webUi =
-                new TabBottomSheetWebUi(mActivity, mWindowAndroid, mContextMenuPopulatorFactory);
-        ContextualTasksFusebox fusebox =
-                showFusebox
-                        ? new ContextualTasksFusebox(
+                new TabBottomSheetWebUi(
+                        mActivity, mWindowAndroid, mContextMenuPopulatorFactory, backgroundColor);
+        ContextualTasksFusebox fusebox = null;
+        if (showFusebox) {
+            // TaskState retrieval from Manager.
+            ContextualTasksFuseboxManager manager =
+                    ContextualTasksFuseboxManager.from(mWindowAndroid);
+            if (manager != null) {
+                // TODO(crbug.com/491504815): Get task ID from native and ensure the session is
+                // initialized for this task and WebContents.
+
+                fusebox =
+                        new ContextualTasksFusebox(
                                 mActivity,
                                 mFuseboxConfig.contentView,
                                 mFuseboxConfig,
@@ -96,12 +108,14 @@ public class CoBrowseViewFactory {
                                 mWindowAndroid,
                                 mLifecycleDispatcher,
                                 /* loadUrlCallback= */ CallbackUtils.emptyCallback(),
-                                mSnackbarManager)
-                        : null;
+                                mSnackbarManager,
+                                manager.getFuseboxDataProvider());
+            }
+        }
 
         webUi.setWebContents(webContents);
 
-        return new CoBrowseViews(mActivity, toolbar, webUi, fusebox);
+        return new CoBrowseViews(mActivity, webUi, fusebox, backgroundColor);
     }
 
     @CalledByNative
@@ -109,12 +123,14 @@ public class CoBrowseViewFactory {
     public static @Nullable CoBrowseViews buildCoBrowseViews(
             @JniType("ui::WindowAndroid*") WindowAndroid windowAndroid,
             @Nullable @JniType("content::WebContents*") WebContents webContents,
-            boolean showToolbar,
             boolean showFusebox) {
         CoBrowseViewFactory factory = TabBottomSheetUtils.getFactoryFromWindow(windowAndroid);
         if (factory == null) {
             return null;
         }
-        return factory.buildCoBrowseViews(webContents, showToolbar, showFusebox);
+
+        // TODO(crbug.com/502611927): This may need to be different for AIM.
+        @ColorInt int backgroundColor = factory.mActivity.getColor(R.color.tab_bottom_sheet_bg);
+        return factory.buildCoBrowseViews(webContents, showFusebox, backgroundColor);
     }
 }

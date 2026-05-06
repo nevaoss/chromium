@@ -790,12 +790,10 @@
   NTPMediator.NTPContentDelegate = self;
   NTPMediator.headerConsumer = self.headerViewController;
   NTPMediator.consumer = self.NTPViewController;
-  if (base::FeatureList::IsEnabled(omnibox::kOmniboxMobileParityUpdate) ||
-      base::FeatureList::IsEnabled(omnibox::kOmniboxMobileParityUpdateV2)) {
-    PlaceholderService* placeholderService =
-        ios::PlaceholderServiceFactory::GetForProfile(self.profile);
-    NTPMediator.placeholderService = placeholderService;
-  }
+  PlaceholderService* placeholderService =
+      ios::PlaceholderServiceFactory::GetForProfile(self.profile);
+  NTPMediator.placeholderService = placeholderService;
+
   [NTPMediator setUp];
 }
 
@@ -816,6 +814,8 @@
                          feedViewController:self.feedViewController];
   self.NTPMediator.contentCollectionView =
       self.feedWrapperViewController.contentCollectionView;
+  self.NTPMediator.screenSize =
+      self.browser->GetSceneState().scene.screen.bounds.size;
 
   if ([self isFeedVisible]) {
     self.NTPViewController.feedTopSectionViewController =

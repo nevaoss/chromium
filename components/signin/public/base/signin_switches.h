@@ -48,13 +48,6 @@ COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kAccountRetrievalWaitsForRestoration);
 #endif
 
-#if BUILDFLAG(IS_WIN)
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kAvatarButtonSyncPromo);
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
-                           kAvatarButtonSyncPromoMinimumCookieAgeParam);
-#endif
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kAvatarButtonSyncPromoForTesting);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
@@ -308,7 +301,14 @@ BASE_DECLARE_FEATURE(kEnableSearchAIModeSigninPromo);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 extern const base::FeatureParam<base::TimeDelta>
     kSearchAIModePromoPageLoadDelay;
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+extern const base::FeatureParam<base::TimeDelta> kSearchAIModePromoFrequency;
 #endif
+
+#if BUILDFLAG(IS_ANDROID)
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnableWebSigninLoadingDialog);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_IOS)
 // Feature flag controlling whether the CanSignInToChrome account capability
@@ -460,6 +460,11 @@ BASE_DECLARE_FEATURE(kMakeIdentityManagerSourceOfAccounts);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kMigrateAccountManagerDelegate);
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(IS_IOS)
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kNoAccountWebSignin);
+#endif
 
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kNonDefaultGaiaOriginCheck);

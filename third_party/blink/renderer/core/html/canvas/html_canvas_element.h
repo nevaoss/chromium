@@ -203,7 +203,7 @@ class CORE_EXPORT HTMLCanvasElement final
 
   UniqueFontSelector* GetFontSelector() override;
 
-  bool ShouldBeDirectComposited() const;
+  bool ShouldSkipPaintInvalidation() const;
 
   const AtomicString ImageSourceURL() const override;
 
@@ -266,8 +266,8 @@ class CORE_EXPORT HTMLCanvasElement final
       ExceptionState&) override;
 
   // OffscreenCanvasPlaceholder implementation.
-  void SetOffscreenCanvasResource(scoped_refptr<CanvasResource>&&,
-                                  viz::ResourceId resource_id) override;
+  void SetOffscreenCanvasResource(
+      scoped_refptr<ExportedCanvasResource>&&) override;
   void Trace(Visitor*) const override;
 
   static void RegisterRenderingContextFactory(

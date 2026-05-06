@@ -50,6 +50,8 @@ source_set("glic") {
     "host/host_metrics.h",
     "public/context/glic_sharing_manager.h",
     "public/glic_close_options.h",
+    "public/glic_context_menu_invocation_helper.cc",
+    "public/glic_context_menu_invocation_helper.h",
     "public/glic_enabling.h",
     "public/glic_instance.cc",
     "public/glic_instance.h",
@@ -212,7 +214,6 @@ source_set("impl") {
     "glic_net_log.cc",
     "glic_pref_names.cc",
     "glic_profile_manager.cc",
-    "glic_settings_util.cc",
     "glic_tab_restore_data.cc",
     "glic_tab_restore_helper.cc",
     "glic_user_status_fetcher.cc",
@@ -281,6 +282,8 @@ source_set("impl") {
     "service/glic_instance_impl.h",
     "service/glic_invoke_handler.cc",
     "service/glic_invoke_handler.h",
+    "service/glic_invoke_task.cc",
+    "service/glic_invoke_task.h",
     "service/glic_state_tracker.cc",
     "service/glic_state_tracker.h",
     "service/glic_ui_embedder.h",
@@ -312,6 +315,7 @@ source_set("impl") {
       "glic_occlusion_notifier.cc",
       "glic_occlusion_notifier.h",
       "glic_selection_observer.cc",
+      "glic_settings_util_desktop.cc",
       "host/context/glic_focused_browser_manager_impl.cc",
       "host/context/glic_focused_browser_manager_impl.h",
       "host/context/glic_focused_tab_manager.cc",
@@ -340,6 +344,7 @@ source_set("impl") {
     ]
   } else {  # is_android
     sources += [
+      "glic_settings_util_android.cc",
       "widget/glic_floating_ui_android.cc",
       "widget/glic_floating_ui_android.h",
       "widget/glic_inactive_floating_ui_android.cc",
@@ -551,7 +556,10 @@ mojom("mojo_bindings") {
 
 source_set("unit_tests") {
   testonly = true
-  sources = [ "host/context/glic_sharing_utils_unittest.cc" ]
+  sources = [
+    "host/context/glic_sharing_utils_unittest.cc",
+    "service/glic_invoke_task_unittest.cc",
+  ]
   if (!is_android) {
     sources += [
       "common/glic_panel_hotkey_delegate_unittest.cc",
@@ -566,12 +574,14 @@ source_set("unit_tests") {
       "host/glic_cookie_synchronizer_unittest.cc",
       "host/glic_web_contents_warming_pool_unittest.cc",
       "host/guest_util_unittest.cc",
+      "public/glic_context_menu_invocation_helper_unittest.cc",
       "public/glic_enabling_metrics_unittest.cc",
       "public/glic_enabling_unittest.cc",
       "service/glic_instance_helper_unittest.cc",
       "service/metrics/glic_instance_coordinator_metrics_unittest.cc",
       "service/metrics/glic_instance_metrics_unittest.cc",
       "service/metrics/glic_metrics_session_manager_unittest.cc",
+      "service/metrics/metrics_types_unittest.cc",
       "suggestions/caching_zero_state_suggestions_manager_unittest.cc",
       "widget/glic_view_unittest.cc",
     ]
@@ -585,6 +595,7 @@ source_set("unit_tests") {
     "//chrome/browser/background/glic",
     "//testing/gmock",
     "//testing/gtest",
+    "//ui/base/clipboard:clipboard_test_support",
   ]
   if (!is_android) {
     deps += [

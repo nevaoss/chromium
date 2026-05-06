@@ -13,18 +13,22 @@
 #include <utility>
 #include <vector>
 
+#include "base/barrier_closure.h"
 #include "base/check.h"
 #include "base/containers/flat_set.h"
 #include "base/containers/span.h"
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/task/thread_pool.h"
 #include "base/time/default_tick_clock.h"
 #include "base/time/time.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_context_model_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_scoring_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_signal_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_tab_visit_tracker.h"
@@ -201,15 +205,18 @@ void PopulateTabContext(
   }
 }
 
-double GetTabScore(const TabSelectionOptions& options,
-                   const TabSignals& signals) {
+double GetTabScoreSync(const TabSelectionOptions& options,
+                       const TabSignals& tab_signals) {
   switch (options.tab_selection_mode) {
     case mojom::TabSelectionMode::kStaticSignalsOnly:
-      return GetScoreWithStaticSignals(signals);
+      return GetScoreWithStaticSignals(tab_signals);
     case mojom::TabSelectionMode::kMultiSignalScoring:
-      return GetScoreWithAllSignals(signals);
+      return GetScoreWithAllSignals(tab_signals);
     case mojom::TabSelectionMode::kEmbeddingsMatch:
-      return signals.embedding_score.value_or(0.0);
+      return tab_signals.embedding_score.value_or(0.0);
+    case mojom::TabSelectionMode::kStaticSignalsMlModel: {
+      return 0.0;
+    }
   }
 }
 
@@ -237,6 +244,14 @@ const passage_embeddings::Embedding* GetTitleEmbedding(
            page_content_annotations::EmbeddingPassageType::kTitle;
   });
   return it != tab_embeddings.end() ? &it->embedding : nullptr;
+}
+
+std::string GetFormattedQueryString(const std::string& query) {
+  std::string task = kQueryEmbeddingTask.Get();
+  if (!task.empty()) {
+    return absl::StrFormat("task: %s | query: %s", task, query);
+  }
+  return query;
 }
 
 }  // namespace
@@ -268,6 +283,13 @@ ContextualTasksContextService::ContextualTasksContextService(
   scoped_embedder_metadata_provider_observation_.Observe(
       embedder_metadata_provider_);
   scoped_page_embeddings_service_observation_.Observe(page_embeddings_service_);
+
+  if (optimization_guide_keyed_service_) {
+    model_handler_ = std::make_unique<ContextualTasksContextModelHandler>(
+        optimization_guide_keyed_service_,
+        base::ThreadPool::CreateSequencedTaskRunner(
+            {base::MayBlock(), base::TaskPriority::BEST_EFFORT}));
+  }
 }
 
 ContextualTasksContextService::~ContextualTasksContextService() = default;
@@ -315,7 +337,8 @@ void ContextualTasksContextService::GetRelevantTabsForQuery(
   // computation.
   passage_embeddings::Embedder::TaskId task_id =
       embedder_->ComputePassagesEmbeddings(
-          passage_embeddings::PassagePriority::kUrgent, {query},
+          passage_embeddings::PassagePriority::kUrgent,
+          {GetFormattedQueryString(query)},
           base::BindOnce(&ContextualTasksContextService::OnQueryEmbeddingReady,
                          weak_ptr_factory_.GetWeakPtr(), query, options, now,
                          explicit_urls, request_id));
@@ -413,12 +436,24 @@ void ContextualTasksContextService::OnQueryEmbeddingReady(
                           ->mutable_quality();
   quality_log->set_embedding_model_version(
       embedder_model_version_.value_or(-1));
-  std::vector<base::WeakPtr<content::WebContents>> relevant_tabs =
-      SelectRelevantTabs(query, options, query_embedding, all_tabs,
-                         explicit_urls, quality_log);
 
-  AUTO_CONTEXT_LOG(base::StringPrintf(
-      "Number of eligible open tabs for query %s: %d", query, all_tabs.size()));
+  SelectRelevantTabs(
+      query, options, query_embedding, all_tabs, explicit_urls,
+      base::BindOnce(&ContextualTasksContextService::OnRelevantTabsSelected,
+                     weak_ptr_factory_.GetWeakPtr(), query, options, start_time,
+                     explicit_urls, std::move(callback), std::move(log_entry)),
+      quality_log);
+}
+
+void ContextualTasksContextService::OnRelevantTabsSelected(
+    const std::string& query,
+    const TabSelectionOptions& options,
+    base::TimeTicks start_time,
+    const std::vector<GURL>& explicit_urls,
+    base::OnceCallback<void(std::vector<base::WeakPtr<content::WebContents>>)>
+        callback,
+    std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry,
+    std::vector<base::WeakPtr<content::WebContents>> relevant_tabs) {
   AUTO_CONTEXT_LOG(base::StringPrintf(
       "Number of relevant tabs for query %s: %d", query, relevant_tabs.size()));
 
@@ -439,8 +474,12 @@ void ContextualTasksContextService::OnQueryEmbeddingReady(
         std::set<GURL>(explicit_urls.begin(), explicit_urls.end()));
   }
 
-  if (!ShouldLogContextualTasksContextQuality() ||
-      quality_log->eligible_tabs().size() == 0) {
+  if (!ShouldLogContextualTasksContextQuality() || !log_entry ||
+      log_entry->log_ai_data_request()
+              ->contextual_tasks_context()
+              .quality()
+              .eligible_tabs()
+              .size() == 0) {
     // Explicitly drop when we don't want to log. Otherwise, the destructor of
     // the log entry will trigger an upload.
     optimization_guide::ModelQualityLogEntry::Drop(std::move(log_entry));
@@ -620,16 +659,25 @@ TabSignals ContextualTasksContextService::ComputeTabSignals(
   return tab_signals;
 }
 
-std::vector<base::WeakPtr<content::WebContents>>
-ContextualTasksContextService::SelectRelevantTabs(
+ContextualTasksContextService::ScoringState::ScoringState(size_t size)
+    : scores(size, 0.0) {
+  signals.reserve(size);
+  for (size_t k = 0; k < size; ++k) {
+    signals.emplace_back();
+  }
+}
+
+ContextualTasksContextService::ScoringState::~ScoringState() = default;
+
+void ContextualTasksContextService::SelectRelevantTabs(
     const std::string& query,
     const TabSelectionOptions& options,
     const passage_embeddings::Embedding& query_embedding,
     const std::vector<base::WeakPtr<content::WebContents>>& all_tabs,
     const std::vector<GURL>& explicit_urls,
+    base::OnceCallback<void(std::vector<base::WeakPtr<content::WebContents>>)>
+        on_tab_selection_complete,
     optimization_guide::proto::ContextualTasksContextQuality* quality_log) {
-  std::vector<base::WeakPtr<content::WebContents>> relevant_tabs;
-
   QueryState query_state = CreateQueryState(query, query_embedding);
   PopulateQueryContext(query_state, quality_log);
 
@@ -640,26 +688,87 @@ ContextualTasksContextService::SelectRelevantTabs(
   query_signals.query_active_tab_passage_similarities =
       query_state.active_tab_passage_similarities;
 
-  for (const auto& web_contents : all_tabs) {
+  AUTO_CONTEXT_LOG(base::StringPrintf(
+      "Number of eligible open tabs for query %s: %d", query, all_tabs.size()));
+
+  auto scoring_state = base::MakeRefCounted<ScoringState>(all_tabs.size());
+
+  for (size_t i = 0; i < all_tabs.size(); ++i) {
+    const auto& web_contents = all_tabs[i];
     if (!web_contents) {
       continue;
     }
-    optimization_guide::proto::ContextualTasksTabContext* tab_context =
-        quality_log->add_eligible_tabs();
+    scoring_state->signals[i] =
+        ComputeTabSignals(web_contents.get(), query_state);
+  }
 
-    TabSignals tab_signals = ComputeTabSignals(web_contents.get(), query_state);
+  if (options.tab_selection_mode ==
+          mojom::TabSelectionMode::kStaticSignalsMlModel &&
+      model_handler_) {
+    model_handler_->BatchExecuteModelWithSignals(
+        query_signals, scoring_state->signals,
+        base::BindOnce(
+            [](base::OnceClosure done_callback,
+               scoped_refptr<ScoringState> scoring_state,
+               const std::vector<std::optional<float>>& scores) {
+              std::ranges::transform(
+                  scores, scoring_state->scores.begin(),
+                  [](const std::optional<float>& score) {
+                    return static_cast<double>(score.value_or(0.0f));
+                  });
+              std::move(done_callback).Run();
+            },
+            base::BindOnce(&ContextualTasksContextService::OnAllTabsScored,
+                           weak_ptr_factory_.GetWeakPtr(), query, options,
+                           all_tabs, explicit_urls,
+                           std::move(on_tab_selection_complete), scoring_state,
+                           quality_log),
+            scoring_state));
+    return;
+  }
 
-    // Score and select qualifying tabs.
-    double score = GetTabScore(options, tab_signals);
+  for (size_t i = 0; i < all_tabs.size(); ++i) {
+    if (!all_tabs[i]) {
+      continue;
+    }
+    scoring_state->scores[i] =
+        GetTabScoreSync(options, scoring_state->signals[i]);
+  }
+
+  OnAllTabsScored(query, options, all_tabs, explicit_urls,
+                  std::move(on_tab_selection_complete), scoring_state,
+                  quality_log);
+}
+
+void ContextualTasksContextService::OnAllTabsScored(
+    const std::string& query,
+    const TabSelectionOptions& options,
+    const std::vector<base::WeakPtr<content::WebContents>>& all_tabs,
+    const std::vector<GURL>& explicit_urls,
+    base::OnceCallback<void(std::vector<base::WeakPtr<content::WebContents>>)>
+        on_tab_selection_complete,
+    scoped_refptr<ScoringState> scoring_state,
+    optimization_guide::proto::ContextualTasksContextQuality* quality_log) {
+  std::vector<base::WeakPtr<content::WebContents>> relevant_tabs;
+
+  for (size_t i = 0; i < all_tabs.size(); ++i) {
+    const auto& web_contents = all_tabs[i];
+    if (!web_contents) {
+      continue;
+    }
+
+    double score = scoring_state->scores[i];
+    const TabSignals& tab_signals = scoring_state->signals[i];
+
     if (score >=
         options.min_model_score.value_or(kTabSelectionScoreThreshold.Get())) {
-      if (tab_signals.web_contents) {
-        relevant_tabs.push_back(tab_signals.web_contents);
-      }
+      relevant_tabs.push_back(web_contents);
     }
 
     // Recording signals and scores for analysis.
     RecordCandidateTabMetrics(tab_signals, score);
+    optimization_guide::proto::ContextualTasksTabContext* tab_context =
+        quality_log->add_eligible_tabs();
     PopulateTabContext(tab_signals, explicit_urls, score, tab_context);
 
     // Print debug logs.
@@ -693,7 +802,8 @@ ContextualTasksContextService::SelectRelevantTabs(
             ? tab_signals.duration_of_last_visit->InSecondsF()
             : -1.0));
   }
-  return relevant_tabs;
+
+  std::move(on_tab_selection_complete).Run(std::move(relevant_tabs));
 }
 
 std::optional<base::TimeDelta>

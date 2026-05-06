@@ -1277,11 +1277,6 @@ ExtensionsToolbarButton* ToolbarView::GetExtensionsButton() const {
   return extensions_container_->GetExtensionsButton();
 }
 
-ToolbarButton* ToolbarView::GetCastButton() const {
-  return pinned_toolbar_actions_ ? pinned_toolbar_actions_->GetCastButton()
-                                 : nullptr;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // ToolbarView, LocationBarView::Delegate implementation:
 
@@ -1761,10 +1756,6 @@ void ToolbarView::ZoomChangedForActiveTab(bool can_show_bubble) {
     location_bar_view_->page_action_icon_controller()->ZoomChangedForActiveTab(
         can_show_bubble);
   }
-}
-
-AvatarToolbarButton* ToolbarView::GetAvatarToolbarButton() {
-  return avatar_;
 }
 
 AvatarToolbarButtonInterface* ToolbarView::GetAvatarToolbarButtonInterface() {

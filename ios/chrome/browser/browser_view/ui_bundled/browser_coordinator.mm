@@ -363,6 +363,7 @@
 #import "ios/chrome/browser/web/model/web_navigation_browser_agent.h"
 #import "ios/chrome/browser/web/model/web_navigation_ntp_delegate.h"
 #import "ios/chrome/browser/web/model/web_state_delegate_browser_agent.h"
+#import "ios/chrome/browser/web/model/web_view_proxy/web_view_proxy_tab_helper.h"
 #import "ios/chrome/browser/web_state_list/model/web_usage_enabler/web_usage_enabler_browser_agent.h"
 #import "ios/chrome/browser/web_state_list/model/web_usage_enabler/web_usage_enabler_browser_agent_observer_bridge.h"
 #import "ios/chrome/browser/webauthn/coordinator/passkey_incognito_interstitial_coordinator.h"
@@ -1217,10 +1218,13 @@ const char kChromeAppStoreUrl[] =
 
   // TODO(crbug.com/40256480): Remove when BVC will no longer handle commands.
   [self.dispatcher stopDispatchingToTarget:_viewController];
-  [_viewController shutdown];
-  _viewController = nil;
+
+  // Stop layout coordinator first to follow the reverse order of start calls.
   [_browserLayoutCoordinator stop];
   _browserLayoutCoordinator = nil;
+
+  [_viewController shutdown];
+  _viewController = nil;
 }
 
 // Ensure BrowserViewController's view is created
@@ -5189,6 +5193,14 @@ const char kChromeAppStoreUrl[] =
   OverscrollActionsTabHelper* activeTabHelper =
       OverscrollActionsTabHelper::FromWebState(activeWebState);
   if (controller == activeTabHelper->GetOverscrollActionsController()) {
+    if (IsFullscreenRefactoringEnabled()) {
+      id<CRWWebViewProxy> webViewProxy =
+          WebViewProxyTabHelper::FromWebState(activeWebState)
+              ->GetWebViewProxy();
+      if (![webViewProxy shouldUseViewContentInset]) {
+        return 0.0;
+      }
+    }
     return self.viewController.headerHeight;
   } else {
     return 0.0;
@@ -5202,9 +5214,12 @@ const char kChromeAppStoreUrl[] =
 
 - (CGFloat)initialContentOffsetForOverscrollActionsController:
     (OverscrollActionsController*)controller {
-  return ios::provider::IsFullscreenSmoothScrollingSupported()
-             ? -[self headerInsetForOverscrollActionsController:controller]
-             : 0.0;
+  if (IsFullscreenRefactoringEnabled() ||
+      ios::provider::IsFullscreenSmoothScrollingSupported()) {
+    return -[self headerInsetForOverscrollActionsController:controller];
+  } else {
+    return 0.0;
+  }
 }
 
 - (FullscreenController*)fullscreenControllerForOverscrollActionsController:

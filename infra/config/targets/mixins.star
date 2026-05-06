@@ -251,20 +251,6 @@ targets.mixin(
 )
 
 targets.mixin(
-    name = "tfc-exclude-public",
-    skylab = targets.skylab(
-        cros_test_names_exclude_from_file = ["chromeos/tast_control_disabled_tests.txt", "chromeos/tast_control_disabled_tests_public_builders.txt"],
-    ),
-)
-
-targets.mixin(
-    name = "tfc-run-public",
-    skylab = targets.skylab(
-        cros_test_names_from_file = ["chromeos/tast_control_disabled_tests.txt", "chromeos/tast_control_disabled_tests_public_builders.txt"],
-    ),
-)
-
-targets.mixin(
     name = "tfc-cq-tast",
     skylab = targets.skylab(
         cros_test_names_from_file = ["chromeos/tast_control_cq_tests.txt"],
@@ -331,19 +317,6 @@ targets.mixin(
             ),
         ],
     ),
-)
-
-targets.mixin(
-    name = "chromeos-tast-public-builder",
-    args = [
-        # FieldTrial is disabled on ChromeOS builders but not in this builder.
-        # Notify Tast to handle the different UI by that.
-        "setup.FieldTrialConfig=enable",
-
-        # Tests using the default gaia pool cannot be run by public builders.
-        # These variables are fed by private bundles, thus not for public builders.
-        "-maybemissingvars=ui\\.(gaiaPoolDefault|signinProfileTestExtensionManifestKey)|uidetection\\.(key|key_type|server)",
-    ],
 )
 
 targets.mixin(
@@ -833,7 +806,7 @@ targets.mixin(
     swarming = targets.swarming(
         dimensions = {
             "display_attached": "1",
-            "gpu": "1002:7340-25.0.7",
+            "gpu": "1002:7340-25.2.8",
             "os": "Ubuntu-24.04",
             "pool": "chromium.tests.gpu",
         },
@@ -2252,12 +2225,12 @@ targets.mixin(
     name = "xcode_26_beta",
     args = [
         "--xcode-build-version",
-        "17f5012f",
+        "17f5022i",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_17f5012f",
+                name = "xcode_ios_17f5022i",
                 path = "Xcode.app",
             ),
         ],

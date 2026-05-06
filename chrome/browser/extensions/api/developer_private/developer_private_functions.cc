@@ -34,7 +34,6 @@
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/extensions/install_verifier_factory.h"
-#include "chrome/browser/extensions/manifest_v2_experiment_manager.h"
 #include "chrome/browser/extensions/sync/account_extension_tracker.h"
 #include "chrome/browser/extensions/sync/extension_sync_util.h"
 #include "chrome/browser/extensions/updater/extension_updater.h"
@@ -60,6 +59,7 @@
 #include "extensions/browser/file_highlighter.h"
 #include "extensions/browser/install_verifier.h"
 #include "extensions/browser/management_policy.h"
+#include "extensions/browser/manifest_v2_experiment_manager.h"
 #include "extensions/browser/path_util.h"
 #include "extensions/browser/permissions/permissions_updater.h"
 #include "extensions/browser/permissions/scripting_permissions_modifier.h"
@@ -97,6 +97,7 @@
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/extensions/application_launch.h"
 #include "chrome/browser/ui/safety_hub/safety_hub_constants.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -2113,7 +2114,8 @@ ExtensionFunction::ResponseAction DeveloperPrivateOpenDevToolsFunction::Run() {
   }
 #if BUILDFLAG(ENABLE_EXTENSIONS)
   // Once we open the inspector, we focus on the appropriate tab...
-  BrowserWindowInterface* browser = chrome::FindBrowserWithTab(web_contents);
+  BrowserWindowInterface* browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(web_contents);
 
   // ... but some pages (popups and apps) don't have tabs, and some (background
   // pages) don't have an associated browser. For these, the inspector opens in

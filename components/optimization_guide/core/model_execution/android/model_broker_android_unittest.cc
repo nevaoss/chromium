@@ -50,6 +50,8 @@ class ModelBrokerAndroidFeatureList {
         {
             {features::kOptimizationGuideModelExecution, {}},
             {features::kOptimizationGuideOnDeviceModel, {}},
+            {features::kAICorePrompt, {}},
+            {features::kAICoreScamDetection, {}},
             {features::kAICoreTest, {}},
         },
         {features::kRequirePersistentModeForScamDetection});
@@ -82,6 +84,8 @@ class RequirePersistentModeForScamDetectionEnabledFeatureList {
         {
             {features::kOptimizationGuideModelExecution, {}},
             {features::kOptimizationGuideOnDeviceModel, {}},
+            {features::kAICorePrompt, {}},
+            {features::kAICoreScamDetection, {}},
             {features::kAICoreTest, {}},
             {features::kRequirePersistentModeForScamDetection, {}},
         },

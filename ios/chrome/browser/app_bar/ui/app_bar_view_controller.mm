@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/app_bar/ui/app_bar_view_controller.h"
 
+#import <optional>
+
 #import "base/metrics/user_metrics.h"
 #import "base/metrics/user_metrics_action.h"
 #import "components/strings/grit/components_strings.h"
@@ -52,6 +54,8 @@ constexpr CGFloat kTabGroupLabelOffset = 3;
 constexpr CGFloat kStackViewSpacing = 4;
 // The horizontal margins of the stack view.
 constexpr CGFloat kStackViewHorizontalMargin = 8;
+// The vertical offset of the stack view in portrait.
+constexpr CGFloat kStackViewLandscapeVerticalOffset = 2;
 
 // The inner padding of the buttons.
 constexpr CGFloat kButtonHorizontalPadding = 4;
@@ -84,9 +88,8 @@ UIImage* CustomAppBarSymbol(NSString* symbol_name) {
 
 // Returns the font size for the assistant button.
 UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
-  return PreferredFontForTextStyleWithMaxCategory(
-      UIFontTextStyleCaption2, traitCollection.preferredContentSizeCategory,
-      UIContentSizeCategoryExtraExtraExtraLarge);
+  return PreferredFontForTextStyle(UIFontTextStyleCaption2, UIFontWeightMedium,
+                                   std::nullopt);
 }
 
 }  // namespace
@@ -130,6 +133,9 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   UIImage* _assistantButtonAvatar;
   // The background view.
   AppBarView* _backgroundView;
+  // The stack view constraints that are updated on rotation.
+  NSLayoutConstraint* _stackViewTopConstraint;
+  NSLayoutConstraint* _stackViewBottomConstraint;
 }
 
 #pragma mark - Accessors & Mutators
@@ -153,6 +159,8 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   _assistantButton.transform = transform;
   _openNewTabButton.transform = transform;
   _tabGridButton.transform = transform;
+
+  [self updateStackViewConstraintsForPortrait:(angle == 0)];
 }
 
 - (void)toggleSpotlightView:(BOOL)shouldShow {
@@ -175,6 +183,7 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   _openNewTabButton = [self createOpenNewTabButton];
   _tabGridButton = [self createTabGridButton];
   [self updateTabGridButtonForTabGridVisibility];
+  [self updateNewTabButtonAccessibilityLabel];
 
   UIStackView* stackView = [[UIStackView alloc] initWithArrangedSubviews:@[
     _assistantButton, _openNewTabButton, _tabGridButton
@@ -187,6 +196,11 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   UIView* view = self.view;
   [view addSubview:stackView];
 
+  _stackViewTopConstraint =
+      [stackView.topAnchor constraintEqualToAnchor:view.topAnchor];
+  _stackViewBottomConstraint =
+      [stackView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor];
+
   [NSLayoutConstraint activateConstraints:@[
     [_backgroundView.leadingAnchor constraintEqualToAnchor:view.leadingAnchor],
     [_backgroundView.trailingAnchor
@@ -197,15 +211,18 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
     [stackView.leadingAnchor
         constraintEqualToAnchor:view.leadingAnchor
                        constant:kStackViewHorizontalMargin],
-    [stackView.topAnchor constraintEqualToAnchor:view.topAnchor],
+    _stackViewTopConstraint,
     [stackView.trailingAnchor
         constraintEqualToAnchor:view.trailingAnchor
                        constant:-kStackViewHorizontalMargin],
-    [stackView.bottomAnchor constraintEqualToAnchor:view.bottomAnchor],
+    _stackViewBottomConstraint,
     [view.heightAnchor constraintEqualToConstant:kAppBarHeight],
   ]];
 
   [self.layoutGuideCenter referenceView:stackView underName:kAppBarGuide];
+
+  // The AppBar is created in "portrait" orientation.
+  [self updateStackViewConstraintsForPortrait:YES];
 }
 
 - (void)viewWillLayoutSubviews {
@@ -245,6 +262,7 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   _isTabGridVisible = tabGridVisible;
   _backgroundView.hideColorBackground = tabGridVisible;
   [self updateTabGridButtonForTabGridVisibility];
+  [self updateNewTabButtonAccessibilityLabel];
 }
 
 - (void)setIncognito:(BOOL)incognito {
@@ -252,6 +270,10 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
     return;
   }
   _backgroundView.incognito = incognito;
+  [self updateNewTabButtonAccessibilityLabel];
+  if (incognito) {
+    _assistantButton.enabled = NO;
+  }
 }
 
 - (void)setInTabGroup:(BOOL)inTabGroup {
@@ -280,10 +302,8 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   NOTREACHED();
 }
 
-- (void)setAssistantButtonState:(AppBarAssistantButtonState)state
-                         avatar:(UIImage*)avatar {
+- (void)setAssistantButtonState:(AppBarAssistantButtonState)state {
   _assistantButtonState = state;
-  _assistantButtonAvatar = avatar;
 
   [self updateAssistantButton];
 }
@@ -294,6 +314,7 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   }
   _isTabGroupsPageVisible = tabGroupsPageVisible;
   [self updateNewTabButtonForTabGroupsVisibility];
+  [self updateNewTabButtonAccessibilityLabel];
 }
 
 - (void)setTabGroupVisible:(BOOL)tabGroupVisible {
@@ -303,10 +324,11 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   _isTabGroupVisible = tabGroupVisible;
   [self updateNewTabButtonForTabGroupsVisibility];
   [self updateTabGridButtonForTabGridVisibility];
+  [self updateNewTabButtonAccessibilityLabel];
 }
 
 - (void)setButtonsEnabled:(BOOL)enabled {
-  _assistantButton.enabled = enabled;
+  _assistantButton.enabled = enabled && !_backgroundView.incognito;
   _openNewTabButton.enabled = enabled;
   _tabGridButton.enabled = enabled;
 }
@@ -332,6 +354,13 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
 }
 
 #pragma mark - Private
+
+// Updates the stack view constraints based on the orientation.
+- (void)updateStackViewConstraintsForPortrait:(BOOL)portrait {
+  CGFloat offset = portrait ? 0 : -kStackViewLandscapeVerticalOffset;
+  _stackViewTopConstraint.constant = offset;
+  _stackViewBottomConstraint.constant = offset;
+}
 
 // Handles updating the UI for a size transition.
 - (void)updateUIForTransitionToSize:(CGSize)size {
@@ -440,14 +469,9 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   NSString* title = [self assistantButtonTitleForCurrentState];
   UIImage* image;
   switch (_assistantButtonState) {
-    case AppBarAssistantButtonState::kSignedOut:
-      title =
-          l10n_util::GetNSString(IDS_IOS_NON_MODAL_SIGNIN_PROMO_SIGNIN_BUTTON);
-      image = DefaultAppBarSymbol(kPersonCropCircleSymbol);
-      break;
-    case AppBarAssistantButtonState::kAccount:
-      title = l10n_util::GetNSString(IDS_IOS_GOOGLE_ACCOUNT_SETTINGS_TITLE);
-      image = _assistantButtonAvatar;
+    case AppBarAssistantButtonState::kLens:
+      title = @"TODO(crbug.com/484000888): Use actual text";
+      image = CustomAppBarSymbol(kCameraLensSymbol);
       break;
     case AppBarAssistantButtonState::kAsk:
 #if BUILDFLAG(IOS_USE_BRANDED_ASSETS)
@@ -463,8 +487,7 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
 
   UIButtonConfiguration* configuration = _assistantButton.configuration;
   configuration.title = title;
-  configuration.image =
-      image ? image : DefaultAppBarSymbol(kPersonCropCircleSymbol);
+  configuration.image = image ? image : CustomAppBarSymbol(kCameraLensSymbol);
   _assistantButton.configuration = configuration;
 }
 
@@ -490,6 +513,7 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   UIImage* image = DefaultAppBarSymbol(kPlusInCircleSymbol);
   UIButton* button = [self buttonWithTitle:title image:image];
   button.menu = _openNewTabButtonMenu;
+  button.accessibilityIdentifier = kAppBarNewTabButtonIdentifier;
 
   [button addTarget:self
                 action:@selector(didTapOpenNewTabButton:)
@@ -511,6 +535,7 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   UIImage* image = DefaultAppBarSymbol(kAppSymbol);
   UIButton* button = [self buttonWithTitle:title image:image];
   button.menu = _tabGridButtonMenu;
+  button.accessibilityIdentifier = kAppBarTabGridButtonIdentifier;
 
   UIButtonConfiguration* configuration = button.configuration;
   // Make the base image clear so we can overlay our own with the label while
@@ -592,15 +617,20 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   configuration.titleLineBreakMode = NSLineBreakByTruncatingTail;
 
   __weak __typeof(self) weakSelf = self;
+  __weak UIButton* weakButton = button;
   configuration.titleTextAttributesTransformer =
       ^NSDictionary<NSAttributedStringKey, id>*(
           NSDictionary<NSAttributedStringKey, id>* textAttributes) {
     NSMutableDictionary* mutableAttributes = [textAttributes mutableCopy];
     mutableAttributes[NSFontAttributeName] =
         AssistantButtonFontSize(weakSelf.traitCollection);
-    mutableAttributes[NSForegroundColorAttributeName] =
-        [ButtonsForegroundColor()
-            colorWithAlphaComponent:weakSelf.buttonsTitleAlpha];
+
+    BOOL useEnabledColor = !weakButton || weakButton.enabled;
+    UIColor* textColor = useEnabledColor ? ButtonsForegroundColor()
+                                         : [ButtonsForegroundColor()
+                                               colorWithAlphaComponent:0.5];
+
+    mutableAttributes[NSForegroundColorAttributeName] = textColor;
     return mutableAttributes;
   };
 
@@ -631,6 +661,26 @@ UIFont* AssistantButtonFontSize(UITraitCollection* traitCollection) {
   // The context menu for the New Tab button should appear on a long press when
   // the tab groups page is not visible.
   _openNewTabButton.showsMenuAsPrimaryAction = NO;
+}
+
+// Updates the accessibility label for the new tab button based on the current
+// state.
+- (void)updateNewTabButtonAccessibilityLabel {
+  if (_isTabGridVisible) {
+    if (_isTabGroupsPageVisible) {
+      _openNewTabButton.accessibilityLabel =
+          l10n_util::GetNSString(IDS_IOS_TAB_GRID_CREATE_NEW_TAB_GROUP);
+    } else if (_backgroundView.incognito) {
+      _openNewTabButton.accessibilityLabel =
+          l10n_util::GetNSString(IDS_IOS_TAB_GRID_CREATE_NEW_INCOGNITO_TAB);
+    } else {
+      _openNewTabButton.accessibilityLabel =
+          l10n_util::GetNSString(IDS_IOS_TAB_GRID_CREATE_NEW_TAB);
+    }
+  } else {
+    _openNewTabButton.accessibilityLabel =
+        l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_NEW_TAB);
+  }
 }
 
 // Updates the Tab Grid button for the given Tab Grid showing state.

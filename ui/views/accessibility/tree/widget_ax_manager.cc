@@ -75,6 +75,7 @@ bool ShouldSerializeEvent(Event event_type) {
     case Event::kRowCountChanged:
     case Event::kRowExpanded:
     case Event::kScrollPositionChanged:
+    case Event::kStateChanged:
     case Event::kTreeChanged:
       return false;
     default:
@@ -86,13 +87,13 @@ bool ShouldSerializeEvent(Event event_type) {
   switch (event_type) {
     case Event::kFocusAfterMenuClose:
     case Event::kFocusContext:
+    case Event::kEnabledChanged:
     case Event::kMenuEnd:
     case Event::kMenuPopupEnd:
     case Event::kMenuPopupStart:
     case Event::kMenuStart:
     case Event::kSelection:
     case Event::kSelectedChildrenChanged:
-    case Event::kStateChanged:
     case Event::kTextSelectionChanged:
       return false;
     default:

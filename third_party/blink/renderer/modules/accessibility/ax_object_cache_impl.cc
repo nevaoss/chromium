@@ -3551,7 +3551,12 @@ bool AXObjectCacheImpl::CommitAXUpdates(Document& document, bool force) {
 
       // Update (create or remove) validation child of root, if it is needed, so
       // that the tree can be frozen in the correct state.
-      ValidationMessageObjectIfInvalid();
+      if (ValidationMessageObjectIfInvalid()) {
+        // A validation message exists and must be a child of root. Ensure root
+        // rebuilds its children to include it, since Init(Root()) only sets the
+        // has_dirty_descendants_ flag but not children_dirty_.
+        InvalidateChildren(Root());
+      }
 
       // If MarkDocumentDirty() was called, do it now, so that the entire tree
       // is invalidated before updating it.
@@ -5371,6 +5376,7 @@ bool AXObjectCacheImpl::IsImmediateProcessingRequiredForEvent(
     case ax::mojom::blink::Event::kAutocorrectionOccured:
     case ax::mojom::blink::Event::kChildrenChanged:
     case ax::mojom::blink::Event::kControlsChanged:
+    case ax::mojom::blink::Event::kEnabledChanged:
     case ax::mojom::blink::Event::kEndOfTest:
     case ax::mojom::blink::Event::kFocusAfterMenuClose:
     case ax::mojom::blink::Event::kFocusContext:
@@ -5649,6 +5655,9 @@ void AXObjectCacheImpl::MarkAXObjectDirtyWithCleanLayoutHelper(
   }
 
   std::vector<ui::AXEventIntent> event_intents;
+  for (const auto& intent : ActiveEventIntents()) {
+    event_intents.push_back(intent.key.intent());
+  }
   AddDirtyObjectToSerializationQueue(obj, event_from, event_from_action,
                                      event_intents);
 

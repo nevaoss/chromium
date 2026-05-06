@@ -18,7 +18,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
-#include "chrome/browser/contextual_tasks/test_contextual_tasks_ui_service_delegate.h"
+#include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -158,7 +158,7 @@ class TestingContextualTasksUiService
       : ContextualTasksUiService(
             profile,
             std::make_unique<
-                contextual_tasks::TestContextualTasksUiServiceDelegate>(),
+                contextual_tasks::MockContextualTasksUiServiceDelegate>(),
             contextual_tasks_service,
             identity_manager,
             aim_eligibility_service) {}
@@ -345,12 +345,8 @@ class LensOverlayControllerCUJTest : public InteractiveFeaturePromoTest {
       auto* router = controller->query_router();
       auto file_token = router->overlay_tab_context_file_token();
 
-      auto* session_handle = lens::LensQueryFlowRouterTestApi(router)
-                                 .GetContextualSearchSessionHandle();
-      auto* context_controller = static_cast<ComposeboxQueryController*>(
-          session_handle->GetController());
-      context_controller->update_context_upload_status_for_testing(
-          *file_token,
+      router->OnContextUploadStatusChangedForTesting(
+          *file_token, lens::MimeType::kImage,
           contextual_search::ContextUploadStatus::kUploadSuccessful,
           std::nullopt);
     }));

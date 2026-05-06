@@ -18,18 +18,16 @@
 #include "components/crash/core/common/crash_key.h"
 #include "components/pdf/browser/pdf_frame_util.h"
 #include "components/pdf/common/pdf_util.h"
-#include "components/zoom/zoom_controller.h"
 #include "content/public/browser/global_routing_id.h"
-#include "content/public/browser/host_zoom_map.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "extensions/browser/guest_view/mime_handler_view/mime_handler_view_guest.h"
+#include "extensions/browser/mime_handler/mime_handler_stream_delegate.h"
 #include "extensions/browser/mime_handler/stream_container.h"
 #include "extensions/browser/mime_handler/stream_info.h"
-#include "extensions/common/api/mime_handler.mojom.h"
 #include "extensions/common/constants.h"
 #include "extensions/common/mojom/guest_view.mojom.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
@@ -192,8 +190,10 @@ void MimeHandlerStreamManager::SetFactoryForTesting(Factory* factory) {
 void MimeHandlerStreamManager::AddStreamContainer(
     content::FrameTreeNodeId frame_tree_node_id,
     const std::string& internal_id,
-    std::unique_ptr<extensions::StreamContainer> stream_container) {
+    std::unique_ptr<extensions::StreamContainer> stream_container,
+    std::unique_ptr<extensions::MimeHandlerStreamDelegate> delegate) {
   CHECK(stream_container);
+  CHECK(delegate);
 
   // If an entry with the same frame tree node ID already exists in
   // `stream_infos_`, then a new PDF navigation has occurred. If the
@@ -204,7 +204,7 @@ void MimeHandlerStreamManager::AddStreamContainer(
   // viewer refreshes or navigates to another PDF URL.
   auto embedder_host_info = GetUnclaimedEmbedderHostInfo(frame_tree_node_id);
   stream_infos_[embedder_host_info] = std::make_unique<extensions::StreamInfo>(
-      internal_id, std::move(stream_container));
+      internal_id, std::move(stream_container), std::move(delegate));
 }
 
 base::WeakPtr<extensions::StreamContainer>
@@ -290,8 +290,8 @@ bool MimeHandlerStreamManager::DidPdfContentNavigate(
 
 bool MimeHandlerStreamManager::PluginCanSave(
     const content::RenderFrameHost* embedder_host) const {
-  auto* stream_info = GetClaimedStreamInfo(embedder_host);
-  return stream_info && stream_info->plugin_can_save();
+  const auto* stream_info = GetClaimedStreamInfo(embedder_host);
+  return stream_info && stream_info->delegate()->PluginCanSave();
 }
 
 void MimeHandlerStreamManager::SetPluginCanSave(
@@ -302,7 +302,7 @@ void MimeHandlerStreamManager::SetPluginCanSave(
     return;
   }
 
-  stream_info->set_plugin_can_save(plugin_can_save);
+  stream_info->delegate()->SetPluginCanSave(plugin_can_save);
 }
 
 bool MimeHandlerStreamManager::ContainsUnclaimedStreamInfo(
@@ -462,11 +462,8 @@ void MimeHandlerStreamManager::ReadyToCommitNavigation(
   }
 
   extensions::StreamInfo* claimed_stream_info = ClaimStreamInfo(embedder_host);
-
-  // Set the internal ID to set up postMessage later, when the PDF content host
-  // finishes navigating.
-  auto container_manager = GetMimeHandlerViewContainerManager(embedder_host);
-  container_manager->SetInternalId(claimed_stream_info->internal_id());
+  claimed_stream_info->delegate()->OnStreamClaimed(embedder_host,
+                                                   claimed_stream_info);
 }
 
 void MimeHandlerStreamManager::DidFinishNavigation(
@@ -514,19 +511,8 @@ void MimeHandlerStreamManager::DidFinishNavigation(
           scoped_crash_key_did_finish_navigation_url(
               &crash_key_did_finish_navigation_url, url.spec());
       stream_info->SetDidExtensionFinishNavigation();
-
-      // Setup zoom level for the PDF extension. Zoom level 0 corresponds
-      // to zoom factor of 1, or 100%. This is done so the PDF viewer UI
-      // does not change if the page zoom does. This is analogous to page
-      // zoom not affecting the browser UI.
-      content::HostZoomMap::Get(
-          navigation_handle->GetRenderFrameHost()->GetSiteInstance())
-          ->SetZoomLevelForHostAndScheme(pdf_extension_url.GetScheme(),
-                                         pdf_extension_url.GetHost(), 0);
-      // Set ZoomController on the extension host.
-      zoom::ZoomController::CreateForWebContentsAndRenderFrameHost(
-          web_contents(),
-          navigation_handle->GetRenderFrameHost()->GetGlobalId());
+      stream_info->delegate()->OnExtensionFrameFinished(navigation_handle,
+                                                        stream_info);
     }
     return;
   }
@@ -561,6 +547,12 @@ void MimeHandlerStreamManager::DidFinishNavigation(
 void MimeHandlerStreamManager::ClaimStreamInfoForTesting(
     content::RenderFrameHost* embedder_host) {
   ClaimStreamInfo(embedder_host);
+}
+
+extensions::StreamInfo*
+MimeHandlerStreamManager::GetClaimedStreamInfoForTesting(
+    content::RenderFrameHost* embedder_host) {
+  return GetClaimedStreamInfo(embedder_host);
 }
 
 void MimeHandlerStreamManager::SetExtensionFrameTreeNodeIdForTesting(
@@ -765,14 +757,6 @@ bool MimeHandlerStreamManager::MaybeSetUpPostMessage(
 
   auto container_manager = GetMimeHandlerViewContainerManager(container_host);
 
-  // Set up beforeunload support for full page PDF viewer, which will also help
-  // set up postMessage support.
-  if (is_full_page) {
-    container_manager->CreateBeforeUnloadControl(
-        base::BindOnce(&MimeHandlerStreamManager::SetUpBeforeUnloadControl,
-                       weak_factory_.GetWeakPtr()));
-  }
-
   // Enable postMessage support.
   // The first parameter for DidLoad() is
   // mime_handler_view_guest_element_instance_id, which is used to identify and
@@ -802,12 +786,6 @@ void MimeHandlerStreamManager::SetStreamContentHostFrameTreeNodeId(
   CHECK(claimed_stream_info);
   claimed_stream_info->set_content_host_frame_tree_node_id(
       navigation_handle->GetFrameTreeNodeId());
-}
-
-void MimeHandlerStreamManager::SetUpBeforeUnloadControl(
-    mojo::PendingRemote<extensions::mime_handler::BeforeUnloadControl>
-        before_unload_control_remote) {
-  // TODO(crbug.com/40268279): Currently a no-op. Support the beforeunload API.
 }
 
 WEB_CONTENTS_USER_DATA_KEY_IMPL(MimeHandlerStreamManager);

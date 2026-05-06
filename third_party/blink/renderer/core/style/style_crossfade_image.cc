@@ -89,9 +89,9 @@ bool StyleCrossfadeImage::ErrorOccurred() const {
   });
 }
 
-bool StyleCrossfadeImage::IsAccessAllowed(String& failing_url) const {
+bool StyleCrossfadeImage::IsCorsSameOrigin(String& failing_url) const {
   return std::all_of(images_.begin(), images_.end(), [&](StyleImage* image) {
-    return !image || image->IsAccessAllowed(failing_url);
+    return !image || image->IsCorsSameOrigin(failing_url);
   });
 }
 
@@ -285,20 +285,6 @@ bool StyleCrossfadeImage::KnownToBeOpaque(const Document& document,
   return std::all_of(images_.begin(), images_.end(), [&](StyleImage* image) {
     return image && image->KnownToBeOpaque(document, style);
   });
-}
-
-RespectImageOrientationEnum StyleCrossfadeImage::ForceOrientationIfNecessary(
-    RespectImageOrientationEnum default_orientation) const {
-  if (default_orientation == kRespectImageOrientation) {
-    return kRespectImageOrientation;
-  }
-  for (const auto& image : images_) {
-    if (image && image->ForceOrientationIfNecessary(default_orientation) ==
-                     kRespectImageOrientation) {
-      return kRespectImageOrientation;
-    }
-  }
-  return default_orientation;
 }
 
 // Calculates the actual value of the percentage for each image,

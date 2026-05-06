@@ -2228,19 +2228,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Tabs.NewNavigationWithSameOriginTab" enum="Boolean"
-    expires_after="2024-02-11">
-  <owner>gjc@google.com</owner>
-  <owner>net-dev@chromium.org</owner>
-  <summary>
-    Whether another tab under the same origin can be found when a tab has
-    finished a navigation to a new security origin. This can happen when a new
-    tab is added with a website or the user navigates to another security
-    origin. The browser will iterate over all the tabs to find if there is a tab
-    with content under the same origin as the new link.
-  </summary>
-</histogram>
-
 <histogram name="Tabs.NTPCountAtResume" units="tabs" expires_after="2026-08-24">
   <owner>thegreenfrog@chromium.org</owner>
   <owner>sugoi@chromium.org</owner>
@@ -3476,6 +3463,28 @@ chromium-metrics-reviews@google.com.
     disk via the TabStateStorageService and creating Java representations of
     them. This does not include creating full tabs. Recorded when all tab states
     have been loaded from the service.
+  </summary>
+</histogram>
+
+<histogram name="Tabs.TabStateStore.LoadWarning" enum="StorageLoadWarningCode"
+    expires_after="2026-10-28">
+  <owner>mfiaz@google.com</owner>
+  <owner>clank-tab-dev@google.com</owner>
+  <summary>
+    [Android] Records warnings that occur during TabStateStore tab state data
+    loads. This is logged when there is an error during data loading, and
+    contains context about the error. Recorded when loading the tab state data
+    from the service.
+  </summary>
+</histogram>
+
+<histogram name="Tabs.TabStateStore.LoadWarningCount" units="count"
+    expires_after="2026-10-28">
+  <owner>mfiaz@google.com</owner>
+  <owner>clank-tab-dev@google.com</owner>
+  <summary>
+    [Android] Records the number of warnings that occur when loading
+    TabStateStore tab state data. Recorded after tab state data has been loaded.
   </summary>
 </histogram>
 

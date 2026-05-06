@@ -37,7 +37,7 @@ class StyleCrossfadeImage final : public StyleImage {
   bool IsLoading() const override;
   bool IsLoaded() const override;
   bool ErrorOccurred() const override;
-  bool IsAccessAllowed(String&) const override;
+  bool IsCorsSameOrigin(String&) const override;
 
   NaturalSizingInfo GetNaturalSizingInfo(
       float multiplier,
@@ -58,8 +58,6 @@ class StyleCrossfadeImage final : public StyleImage {
 
   WrappedImagePtr Data() const override;
   bool KnownToBeOpaque(const Document&, const ComputedStyle&) const override;
-  RespectImageOrientationEnum ForceOrientationIfNecessary(
-      RespectImageOrientationEnum) const override;
 
   void Trace(Visitor*) const override;
 

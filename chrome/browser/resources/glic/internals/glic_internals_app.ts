@@ -37,6 +37,7 @@ export class GlicInternalsAppElement extends CrLitElement {
       invokeInvocationSource_: {type: Number},
       invokeWaitForPanelOpen_: {type: Boolean},
       invokeLogs_: {type: Array},
+      invokeSurfaceType_: {type: String},
       selectedTabIndex_: {type: Number},
       tabNames_: {type: Array},
       featureModeEnumValues_: {type: Array},
@@ -52,6 +53,7 @@ export class GlicInternalsAppElement extends CrLitElement {
       InvocationSource.kOsButton;
   protected accessor invokeWaitForPanelOpen_: boolean = false;
   protected accessor invokeLogs_: string[] = [];
+  protected accessor invokeSurfaceType_: string = 'default';
   protected accessor selectedTabIndex_: number = 0;
   protected accessor tabNames_: string[] = ['General', 'Debug Controls'];
   protected accessor featureModeEnumValues_:
@@ -69,9 +71,16 @@ export class GlicInternalsAppElement extends CrLitElement {
     InternalsPageHandlerFactory.getRemote().createInternalsPageHandler(
         this.pageHandler_.$.bindNewPipeAndPassReceiver());
 
-    this.pageHandler_.getInternalsDataPayload().then(({internalsData}) => {
-      this.data_ = internalsData;
-    });
+    this.pageHandler_.getInternalsDataPayload().then(
+        ({internalsData}: {internalsData: InternalsDataPayload}) => {
+          this.data_ = internalsData;
+        });
+  }
+
+  protected onShowErrorAllowedChange(e: Event) {
+    const allowed = (e.target as HTMLInputElement).checked;
+    this.data_!.showErrorAllowed = allowed;
+    this.pageHandler_.setShowErrorAllowed(allowed);
   }
 
   protected onAutopushInputChange(e: Event) {
@@ -240,10 +249,20 @@ export class GlicInternalsAppElement extends CrLitElement {
   protected onInvokeWaitForPanelOpenChange_(e: Event) {
     this.invokeWaitForPanelOpen_ = (e.target as HTMLInputElement).checked;
   }
+
+  protected onInvokeSurfaceTypeChange_(e: Event) {
+    this.invokeSurfaceType_ = (e.target as HTMLSelectElement).value;
+  }
+
   protected onTriggerInvokeClick_() {
     this.invokeLogs_ =
         [`[${new Date().toLocaleTimeString()}] TRIGGERING INVOKE...`];
     console.info(this.invokeLogs_[0]);
+
+    let surface: any = {defaultSurface: {}};
+    if (this.invokeSurfaceType_ === 'newTab') {
+      surface = {newTab: {}};
+    }
 
     const options = {
       invocationSource: this.invokeInvocationSource_,
@@ -259,10 +278,11 @@ export class GlicInternalsAppElement extends CrLitElement {
       autoSubmit: this.invokeAutoSubmit_,
       freOverride: this.invokeFreOverride_,
       waitForPanelOpen: this.invokeWaitForPanelOpen_,
+      surface: surface,
     };
 
     this.pageHandler_.triggerInvokeFromInternalsAction(options).then(
-        ({success, errorMessage}) => {
+        ({success, errorMessage}: {success: boolean, errorMessage: string}) => {
           const timestamp = new Date().toLocaleTimeString();
           const logEntry = `[${timestamp}] ${
               success ? 'SUCCESS' : 'ERROR: ' + errorMessage}`;

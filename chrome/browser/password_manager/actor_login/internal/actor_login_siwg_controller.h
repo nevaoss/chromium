@@ -11,10 +11,8 @@
 
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/password_manager/actor_login/internal/actor_login_metrics_helper.h"
-#include "chrome/browser/password_manager/actor_login/internal/siwg_button_finder.h"
 #include "chrome/common/actor.mojom-forward.h"
 #include "chrome/common/chrome_render_frame.mojom.h"
-#include "components/autofill/core/common/mojom/autofill_types.mojom-forward.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_permission_service.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_quality_logger_interface.h"
@@ -25,7 +23,6 @@
 #include "mojo/public/cpp/bindings/associated_remote.h"
 
 namespace content {
-class RenderFrameHost;
 class WebContents;
 
 namespace webid {
@@ -35,18 +32,9 @@ enum class FederatedLoginResult;
 
 namespace actor_login {
 
-// Controller for Sign-in with Google (SiwG) detection and interaction.
-// The flow is as follows:
-// 1. The controller is created and `StartFederatedLogin` is called.
-// 2. The controller starts capturing the annotated page content.
-// 3. Once captured, the controller goes through all frames and calls the
-//    renderers to extract potential SiwG buttons.
-// 4. The potential buttons are narrowed down using the page content and
-//    heuristics on the attributes from DOM.
-// 5. The controller clicks the first button that satisfies all requirements.
-// When `kActorLoginFederatedClickFromActor` is enabled, most of this logic is
-// skipped in favour of having the actor framework trigger the button click
-// based on server identification of the correct button.
+// Controller for Sign-in with Google interaction.
+// This class manages the federated login flow when user selects a federated
+// credential.
 class ActorLoginSiwgController : public content::WebContentsObserver {
  public:
   using GetPageContentProvider =
@@ -96,26 +84,7 @@ class ActorLoginSiwgController : public content::WebContentsObserver {
   void OnButtonClickCompleted(bool success);
 
  private:
-  void OnPageContentReceived(
-      optimization_guide::AIPageContentResultOrError content);
 
-  using FrameSiwgButtonCandidates =
-      std::pair<content::GlobalRenderFrameHostId,
-                std::vector<autofill::mojom::SiwgButtonDataPtr>>;
-
-  void OnPotentialSiwgButtonsFound(
-      content::GlobalRenderFrameHostId rfh_id,
-      base::OnceCallback<void(FrameSiwgButtonCandidates)>
-          all_frames_scanned_barrier,
-      std::vector<autofill::mojom::SiwgButtonDataPtr> buttons);
-
-  void OnAllFramesScanned(std::vector<FrameSiwgButtonCandidates> results);
-
-  void ClickButton(content::RenderFrameHost* rfh,
-                   int dom_node_id,
-                   actor::mojom::ObservedToolTargetPtr observed_target);
-
-  void OnClickFinished(actor::mojom::ActionResultPtr result);
 
   void OnFederatedLoginResultReceived(
       std::unique_ptr<ActorLoginMetricsHelper> metrics_helper,
@@ -124,7 +93,7 @@ class ActorLoginSiwgController : public content::WebContentsObserver {
   void LogFederatedLoginResult(content::webid::FederatedLoginResult result);
 
   GetPageContentProvider get_page_content_provider_;
-  std::unique_ptr<SiwgButtonFinder> siwg_finder_;
+
   // Invoked once the actions taken by this class to advance the login are
   // complete. The login itself may still be in progress.
   LoginStatusResultOrErrorReply on_finished_callback_;

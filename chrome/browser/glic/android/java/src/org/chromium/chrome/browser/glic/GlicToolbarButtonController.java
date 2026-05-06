@@ -76,7 +76,7 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
     private final Context mContext;
     private final GlicButtonDelegate mToggleGlicCallback;
     private final Supplier<@Nullable Tracker> mTrackerSupplier;
-    private final Supplier<ChromeAndroidTask> mTaskSupplier;
+    private final Supplier<@Nullable ChromeAndroidTask> mTaskSupplier;
     private @Nullable Profile mCurrentProfile;
     private @Nullable ActorKeyedService mCurrentActorService;
     private @Nullable GlicKeyedService mCurrentGlicService;
@@ -101,7 +101,7 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
             Supplier<@Nullable Tab> activeTabSupplier,
             GlicButtonDelegate toggleGlicCallback,
             Supplier<@Nullable Tracker> trackerSupplier,
-            Supplier<ChromeAndroidTask> taskSupplier) {
+            Supplier<@Nullable ChromeAndroidTask> taskSupplier) {
         // TODO(crbug.com/482372270): Add correct styling to button including Nudge state text,
         // active state shape change, and appropriate colors.
         super(
@@ -118,9 +118,17 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
         mTrackerSupplier = trackerSupplier;
         mTaskSupplier = taskSupplier;
         mDefaultSpec = mButtonData.getButtonSpec();
+        Drawable collapsedDrawable =
+                AppCompatResources.getDrawable(context, R.drawable.glic_dirty_dot_spark);
         mWorkingSpec = createWorkingSpec(context);
-        mReviewSpec = createReviewSpec();
-        mDoneSpec = createDoneSpec();
+        mReviewSpec =
+                new ButtonSpec.Builder(createReviewSpec())
+                        .setCollapsedDrawable(collapsedDrawable)
+                        .build();
+        mDoneSpec =
+                new ButtonSpec.Builder(createDoneSpec())
+                        .setCollapsedDrawable(collapsedDrawable)
+                        .build();
     }
 
     private ButtonSpec createReviewSpec() {
@@ -140,7 +148,6 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
     }
 
     private ButtonSpec createWorkingSpec(Context context) {
-        // TODO(haileywang): Handle other button states.
         LottieDrawable lottieDrawable = new LottieDrawable();
         LottieCompositionFactory.fromRawRes(context, R.raw.glic_spinner)
                 .addListener(
@@ -256,35 +263,14 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
         }
 
         ActorTask task = mCurrentActorService.getCurrentActiveTask();
-        if (task == null) {
-            // Fallback to DONE state if it was persisted, otherwise DEFAULT.
-            mButtonState = mPersistDoneState ? ButtonState.DONE : ButtonState.DEFAULT;
-            return;
-        }
-
-        mPersistDoneState = false;
-        @ActorTaskState int state = task.getState();
-        switch (state) {
-            case ActorTaskState.WAITING_ON_USER:
-            case ActorTaskState.FAILED:
-                mButtonState = ButtonState.NEEDS_REVIEW;
-                break;
-            case ActorTaskState.FINISHED:
-                mButtonState = ButtonState.DONE;
-                mPersistDoneState = true;
-                break;
-            case ActorTaskState.ACTING:
-            case ActorTaskState.REFLECTING:
-            case ActorTaskState.PAUSED_BY_USER:
-            case ActorTaskState.PAUSED_BY_ACTOR:
-                mButtonState = ButtonState.WORKING;
-                break;
-            case ActorTaskState.CANCELLED:
-            case ActorTaskState.CREATED:
-                mButtonState = ButtonState.DEFAULT;
-                break;
-            default:
-                throw new AssertionError("Unexpected task state: " + state);
+        if (task != null) {
+            @ActorTaskState int state = task.getState();
+            mButtonState = mapTaskStateToButtonState(state);
+            mPersistDoneState = (mButtonState == ButtonState.DONE);
+        } else if (mPersistDoneState) {
+            mButtonState = ButtonState.DONE;
+        } else {
+            mButtonState = ButtonState.DEFAULT;
         }
     }
 
@@ -298,6 +284,26 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
         if (mIsPanelOpen != isOpen) {
             mIsPanelOpen = isOpen;
             notifyObservers(true);
+        }
+    }
+
+    private @ButtonState int mapTaskStateToButtonState(@ActorTaskState int taskState) {
+        switch (taskState) {
+            case ActorTaskState.WAITING_ON_USER:
+            case ActorTaskState.FAILED:
+                return ButtonState.NEEDS_REVIEW;
+            case ActorTaskState.FINISHED:
+                return ButtonState.DONE;
+            case ActorTaskState.ACTING:
+            case ActorTaskState.REFLECTING:
+                return ButtonState.WORKING;
+            case ActorTaskState.CANCELLED:
+            case ActorTaskState.CREATED:
+            case ActorTaskState.PAUSED_BY_USER:
+            case ActorTaskState.PAUSED_BY_ACTOR:
+                return ButtonState.DEFAULT;
+            default:
+                throw new AssertionError("Unexpected task state: " + taskState);
         }
     }
 
@@ -362,8 +368,14 @@ public class GlicToolbarButtonController extends BaseButtonDataProvider
 
     @Override
     public void onTaskStateChanged(int taskId, @ActorTaskState int newState) {
+        if (newState == ActorTaskState.FINISHED) {
+            mPersistDoneState = true;
+        }
         int oldButtonState = mButtonState;
-        updateButtonState();
+
+        mButtonState = mapTaskStateToButtonState(newState);
+        mPersistDoneState = (mButtonState == ButtonState.DONE);
+
         if (mButtonState != oldButtonState) {
             notifyObservers(true);
         }

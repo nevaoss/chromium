@@ -717,6 +717,11 @@ BASE_FEATURE(kForceSoftwareForRtcLowResolutions,
 // Auto-dismiss global media controls.
 BASE_FEATURE(kGlobalMediaControlsAutoDismiss, base::FEATURE_ENABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_ANDROID)
+// Kill switch for removing idiosyncratic use of MediaCodec color APIs.
+BASE_FEATURE(kMediaCodecColorSpaceCleanup, base::FEATURE_ENABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
+
 #if !BUILDFLAG(IS_ANDROID)
 // If enabled, users can request Media Remoting without fullscreen-in-tab.
 BASE_FEATURE(kMediaRemotingWithoutFullscreen,
@@ -1347,7 +1352,7 @@ BASE_FEATURE(kUseOutOfProcessVideoDecoding,
 // Use shared image interface to transport video frame resources.
 // TODO(crbug.com/457296322): Enable after fixing issue where SharedImages are
 // missing from the SharedImageManager.
-BASE_FEATURE(kUseSharedImageInOOPVDProcess, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kUseSharedImageInOOPVDProcess, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
@@ -1565,6 +1570,11 @@ BASE_FEATURE(kCastStreamingWinHardwareH264, base::FEATURE_DISABLED_BY_DEFAULT);
 #if BUILDFLAG(IS_FUCHSIA)
 // Enables use of Fuchsia's Mediacodec service for encoding.
 BASE_FEATURE(kFuchsiaMediacodecVideoEncoder, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// TODO(b:502631767): Remove this flag once the migration is done.
+// Enables migration of CDM storage path to use SHA256.
+BASE_FEATURE(kFuchsiaCdmStoragePathMigration,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_FUCHSIA)
 
 // Controls whether to pre-dispatch more decode tasks when pending decodes is
@@ -1669,7 +1679,6 @@ BASE_FEATURE(kPauseMutedBackgroundAudio, base::FEATURE_ENABLED_BY_DEFAULT);
 #else
 BASE_FEATURE(kPauseMutedBackgroundAudio, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
-
 
 // Controls headless Live Caption experiment, which is likely unstable.
 BASE_FEATURE(kHeadlessLiveCaption, base::FEATURE_DISABLED_BY_DEFAULT);

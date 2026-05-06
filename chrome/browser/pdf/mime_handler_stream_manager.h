@@ -9,11 +9,9 @@
 #include <memory>
 #include <optional>
 
-#include "base/memory/weak_ptr.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_contents_user_data.h"
 #include "extensions/browser/mime_handler/stream_info.h"
-#include "mojo/public/cpp/bindings/pending_remote.h"
 
 namespace content {
 struct GlobalRenderFrameHostId;
@@ -24,9 +22,7 @@ class WebContents;
 }  // namespace content
 
 namespace extensions {
-namespace mime_handler {
-class BeforeUnloadControl;
-}
+class MimeHandlerStreamDelegate;
 class StreamContainer;
 }  // namespace extensions
 
@@ -113,10 +109,12 @@ class MimeHandlerStreamManager
   // Replaces existing unclaimed entries with the same `frame_tree_node_id`.
   // This can occur if an embedder frame navigating to a PDF starts navigating
   // to another PDF URL before the original `StreamContainer` is claimed.
+  // `delegate` must not be null.
   void AddStreamContainer(
       content::FrameTreeNodeId frame_tree_node_id,
       const std::string& internal_id,
-      std::unique_ptr<extensions::StreamContainer> stream_container);
+      std::unique_ptr<extensions::StreamContainer> stream_container,
+      std::unique_ptr<extensions::MimeHandlerStreamDelegate> delegate);
 
   // Returns a pointer to a stream container that `embedder_host` has claimed or
   // nullptr if `embedder_host` hasn't claimed any stream containers.
@@ -196,6 +194,11 @@ class MimeHandlerStreamManager
   // node ID as `embedder_host` as claimed by `embedder_host`. Callers must
   // ensure such a stream info exists before calling this.
   void ClaimStreamInfoForTesting(content::RenderFrameHost* embedder_host);
+
+  // For testing only. Returns a pointer to the StreamInfo claimed by
+  // `embedder_host`, or nullptr if there is no claimed stream.
+  extensions::StreamInfo* GetClaimedStreamInfoForTesting(
+      content::RenderFrameHost* embedder_host);
 
   // For testing only. Set `embedder_host`'s extension frame tree node ID as
   // `frame_tree_node_id`. This is needed to listen for extension host deletion.
@@ -285,18 +288,9 @@ class MimeHandlerStreamManager
   void SetStreamContentHostFrameTreeNodeId(
       content::NavigationHandle* navigation_handle);
 
-  // Sets up beforeunload API support for full-page PDF viewers.
-  // TODO(crbug.com/40268279): Currently a no-op. Support the beforeunload API.
-  void SetUpBeforeUnloadControl(
-      mojo::PendingRemote<extensions::mime_handler::BeforeUnloadControl>
-          before_unload_control_remote);
-
   // Stores stream info by embedder host info.
   std::map<EmbedderHostInfo, std::unique_ptr<extensions::StreamInfo>>
       stream_infos_;
-
-  // Needed to avoid use-after-free when setting up beforeunload API support.
-  base::WeakPtrFactory<MimeHandlerStreamManager> weak_factory_{this};
 };
 
 }  // namespace pdf

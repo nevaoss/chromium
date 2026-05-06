@@ -2238,37 +2238,6 @@ String LayoutObject::DebugName() const {
   return name.ToString();
 }
 
-void LayoutObject::DumpForBug478682594() const {
-  // Dump only once per instance. Might become noisy otherwise.
-  static bool has_dumped;
-
-  if (has_dumped) {
-    return;
-  }
-  has_dumped = true;
-
-  StringBuilder value_builder;
-  for (const LayoutObject* obj = this; obj; obj = obj->Parent()) {
-    unsigned needs_layout_flags =
-        obj->bitfields_.SelfNeedsFullLayout() |
-        (obj->bitfields_.ChildNeedsFullLayout() << 1) |
-        (obj->bitfields_.NeedsSimplifiedLayout() << 2);
-
-    value_builder.AppendNumber(needs_layout_flags);
-    value_builder.Append(" ");
-    value_builder.Append(obj->DecoratedName());
-    if (obj->IsRelayoutBoundary()) {
-      value_builder.Append("(RELAYOUT-BOUNDARY)");
-    }
-    value_builder.Append("; ");
-  }
-
-  auto* key = base::debug::AllocateCrashKeyString(
-      "Bug478682594-layout-tree", base::debug::CrashKeySize::Size1024);
-  base::debug::SetCrashKeyString(key, value_builder.ToString().Ascii().c_str());
-  base::debug::DumpWithoutCrashing();
-}
-
 DOMNodeId LayoutObject::OwnerNodeId(bool is_internal_content) const {
   NOT_DESTROYED();
   if (RuntimeEnabledFeatures::HTMLPrintingArtifactAnnotationsEnabled() &&
@@ -3324,15 +3293,6 @@ void LayoutObject::StyleDidChange(
   SetOutlineMayBeAffectedByDescendants(style_->HasOutline());
 
   if (diff.NeedsFullLayout()) {
-    // If the object already needs layout, then setNeedsLayout won't do
-    // any work. But if the containing block has changed, then we may need
-    // to mark the new containing blocks for layout. The change that can
-    // directly affect the containing block of this object is a change to
-    // the position style.
-    if (NeedsLayout() && old_style->GetPosition() != style_->GetPosition()) {
-      MarkContainerChainForLayout();
-    }
-
     SetNeedsLayoutAndIntrinsicWidthsRecalc(
         layout_invalidation_reason::kStyleChange);
   } else if (diff.NeedsPositionedLayout()) {
@@ -3947,6 +3907,8 @@ void LayoutObject::WillBeDestroyed() {
       frame->GetPage()->GetAutoscrollController().StopAutoscrollIfNeeded(this);
   }
 
+  Remove();
+
   // Remove the handler if node had touch-action set. Handlers are not added
   // for text nodes so don't try removing for one too. Need to check if
   // m_style is null in cases of partial construction. Any handler we added
@@ -4197,8 +4159,6 @@ void LayoutObject::Destroy() {
   NOT_DESTROYED();
   DCHECK(g_allow_destroying_layout_object_in_finalizer ||
          !ThreadState::Current()->IsSweepingOnOwningThread());
-
-  Remove();
 
   // Mark as being destroyed to avoid trouble with merges in |RemoveChild()| and
   // other house keepings.

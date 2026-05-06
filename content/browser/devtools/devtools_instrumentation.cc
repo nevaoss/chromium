@@ -2571,6 +2571,21 @@ protocol::Audits::GenericIssueErrorType GenericIssueErrorTypeToProtocol(
         kFormModelContextParameterMissingTitleAndDescription:
       return protocol::Audits::GenericIssueErrorTypeEnum::
           FormModelContextParameterMissingTitleAndDescription;
+    case blink::mojom::GenericIssueErrorType::kFormModelContextMissingToolName:
+      return protocol::Audits::GenericIssueErrorTypeEnum::
+          FormModelContextMissingToolName;
+    case blink::mojom::GenericIssueErrorType::
+        kFormModelContextMissingToolDescription:
+      return protocol::Audits::GenericIssueErrorTypeEnum::
+          FormModelContextMissingToolDescription;
+    case blink::mojom::GenericIssueErrorType::
+        kFormModelContextRequiredParameterMissingName:
+      return protocol::Audits::GenericIssueErrorTypeEnum::
+          FormModelContextRequiredParameterMissingName;
+    case blink::mojom::GenericIssueErrorType::
+        kFormModelContextParameterMissingName:
+      return protocol::Audits::GenericIssueErrorTypeEnum::
+          FormModelContextParameterMissingName;
   }
 }
 

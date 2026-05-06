@@ -374,17 +374,15 @@ const SendTabToSelfEntry* SendTabToSelfBridge::AddEntry(
     NavigationHistory navigation_history,
     base::OnceCallback<void(SendTabToSelfResult)> commit_confirmation) {
   CHECK(commit_confirmation);
+
   if (!change_processor()->IsTrackingMetadata()) {
-    // TODO(crbug.com/492072882): Add a dedicated enum value for this case and
-    // log it in a histogram.
-    std::move(commit_confirmation).Run(SendTabToSelfResult::kFailure);
+    std::move(commit_confirmation)
+        .Run(SendTabToSelfResult::kFailureNotTrackingMetadata);
     return nullptr;
   }
 
   if (!url.is_valid()) {
-    // TODO(crbug.com/492072882): Add a dedicated enum value for this case and
-    // log it in a histogram.
-    std::move(commit_confirmation).Run(SendTabToSelfResult::kFailure);
+    std::move(commit_confirmation).Run(SendTabToSelfResult::kFailureInvalidUrl);
     return nullptr;
   }
 
@@ -397,9 +395,7 @@ const SendTabToSelfEntry* SendTabToSelfBridge::AddEntry(
       target_device_cache_guid == mru_entry_->GetTargetDeviceSyncCacheGuid() &&
       shared_time - mru_entry_->GetSharedTime() < kDedupeTime) {
     send_tab_to_self::RecordNotificationThrottled();
-    // TODO(crbug.com/492072882): Add a dedicated enum value for this case and
-    // log it in a histogram.
-    std::move(commit_confirmation).Run(SendTabToSelfResult::kSuccess);
+    std::move(commit_confirmation).Run(SendTabToSelfResult::kSuccessThrottled);
     return mru_entry_;
   }
 
@@ -447,19 +443,6 @@ const SendTabToSelfEntry* SendTabToSelfBridge::AddEntry(
   mru_entry_ = result;
 
   return result;
-}
-
-void SendTabToSelfBridge::DeleteEntry(const std::string& guid) {
-  // Assure that an entry with that guid exists.
-  if (GetEntryByGUID(guid) == nullptr) {
-    return;
-  }
-
-  std::unique_ptr<DataTypeStore::WriteBatch> batch = store_->CreateWriteBatch();
-
-  DeleteEntryWithBatch(guid, batch.get());
-
-  Commit(std::move(batch));
 }
 
 void SendTabToSelfBridge::DismissEntry(const std::string& guid) {
@@ -765,21 +748,26 @@ bool SendTabToSelfBridge::ShouldIncludeDevice(
 }
 
 void SendTabToSelfBridge::DoGarbageCollection() {
-  std::vector<std::string> removed;
+  std::vector<std::string> removed_guids;
 
-  auto entry = entries_.begin();
-  while (entry != entries_.end()) {
-    DCHECK_EQ(entry->first, entry->second->GetGUID());
+  for (const auto& it : entries_) {
+    DCHECK_EQ(it.first, it.second->GetGUID());
 
-    std::string guid = entry->first;
-    bool expired = entry->second->IsExpired(clock_->Now());
-    entry++;
-    if (expired) {
-      DeleteEntry(guid);
-      removed.push_back(guid);
+    if (it.second->IsExpired(clock_->Now())) {
+      removed_guids.push_back(it.first);
     }
   }
-  NotifyRemoteSendTabToSelfEntryDeleted(removed);
+
+  if (removed_guids.empty()) {
+    return;
+  }
+
+  std::unique_ptr<DataTypeStore::WriteBatch> batch = store_->CreateWriteBatch();
+  for (const std::string& guid : removed_guids) {
+    DeleteEntryWithBatch(guid, batch.get());
+  }
+  Commit(std::move(batch));
+  NotifyRemoteSendTabToSelfEntryDeleted(removed_guids);
 }
 
 void SendTabToSelfBridge::DeleteEntryWithBatch(
@@ -837,7 +825,10 @@ void SendTabToSelfBridge::DeleteAllEntries() {
     batch->DeleteData(guid);
   }
   entries_.clear();
+  unknown_opened_entries_.clear();
   mru_entry_ = nullptr;
+
+  Commit(std::move(batch));
 
   NotifyRemoteSendTabToSelfEntryDeleted(all_guids);
 }

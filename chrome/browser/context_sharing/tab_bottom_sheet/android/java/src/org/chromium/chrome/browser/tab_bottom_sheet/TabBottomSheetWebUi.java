@@ -10,6 +10,8 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.view.View;
 
+import androidx.annotation.ColorInt;
+
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.version_info.VersionInfo;
 import org.chromium.build.annotations.NullMarked;
@@ -18,6 +20,7 @@ import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulator
 import org.chromium.components.embedder_support.delegate.WebContentsDelegateAndroid;
 import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.thinwebview.ThinWebView;
+import org.chromium.components.thinwebview.ThinWebViewAttachParams;
 import org.chromium.components.thinwebview.ThinWebViewConstraints;
 import org.chromium.components.thinwebview.ThinWebViewFactory;
 import org.chromium.components.thinwebview.internal.ThinWebViewContextMenuItemDelegate;
@@ -35,6 +38,7 @@ public class TabBottomSheetWebUi {
     private final WindowAndroid mWindowAndroid;
     private final ContextMenuPopulatorFactory mContextMenuPopulatorFactory;
     private final WebViewResizingHelper mWebViewResizingHelper;
+    private final @ColorInt int mBackgroundColor;
 
     private ThinWebView mThinWebView;
     private @Nullable WebContents mWebContents;
@@ -42,11 +46,13 @@ public class TabBottomSheetWebUi {
     TabBottomSheetWebUi(
             Context context,
             WindowAndroid windowAndroid,
-            ContextMenuPopulatorFactory contextMenuPopulatorFactory) {
+            ContextMenuPopulatorFactory contextMenuPopulatorFactory,
+            @ColorInt int backgroundColor) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mContextMenuPopulatorFactory = contextMenuPopulatorFactory;
-        mWebViewResizingHelper = new WebViewResizingHelper(context);
+        mBackgroundColor = backgroundColor;
+        mWebViewResizingHelper = new WebViewResizingHelper(context, backgroundColor);
         resetThinWebView();
     }
 
@@ -89,9 +95,11 @@ public class TabBottomSheetWebUi {
             mThinWebView.attachWebContents(
                     mWebContents,
                     contentView,
-                    new WebContentsDelegateAndroid() {},
-                    mContextMenuPopulatorFactory,
-                    /* selectionDropdownMenuDelegate= */ null);
+                    new ThinWebViewAttachParams.Builder()
+                            .setWebContentsDelegate(new WebContentsDelegateAndroid() {})
+                            .setContextMenuPopulatorFactory(mContextMenuPopulatorFactory)
+                            .setSupportTheming(true)
+                            .build());
         } else {
             resetThinWebView();
         }
@@ -120,11 +128,13 @@ public class TabBottomSheetWebUi {
         if (mThinWebView != null) mThinWebView.destroy();
         ThinWebViewConstraints constraints = new ThinWebViewConstraints();
         constraints.supportsOpacity = true;
+        constraints.backgroundColor = mBackgroundColor;
         mThinWebView =
                 ThinWebViewFactory.create(
                         mContext,
                         constraints,
-                        assumeNonNull(mWindowAndroid.getIntentRequestTracker()));
+                        assumeNonNull(mWindowAndroid.getIntentRequestTracker()),
+                        /* enablePermissionRequests= */ true);
         mWebViewResizingHelper.setThinWebView(mThinWebView);
     }
 

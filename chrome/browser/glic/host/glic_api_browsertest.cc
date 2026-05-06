@@ -1549,8 +1549,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestRuntimeFeatureOff,
   ASSERT_EQ("Method called", result.ExtractString());
 
   WaitForWebUiState(mojom::WebUiState::kError);
-  histogram_tester->ExpectUniqueSample("Glic.Host.WebClientState.OnDestroy",
-                                       9 /*MOJO_PIPE_CLOSED_UNEXPECTEDLY*/, 1);
+  histogram_tester->ExpectUniqueSample(
+      "Glic.Host.WebClientState.OnDestroy",
+      11 /*MOJO_PIPE_CLOSED_UNEXPECTEDLY_AFTER_INITIALIZE*/, 1);
 
   // Verify the reload button works.
   RunTestSequence(
@@ -3189,7 +3190,10 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testCaptureRegion) {
   // test to avoid a race condition where CaptureRegion is called before the
   // focused tab is known.
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetService()->sharing_manager().GetFocusedTabData().focus();
+    return GetService()
+        ->active_instance_sharing_manager()
+        .GetFocusedTabData()
+        .focus();
   }));
   base::RunLoop run_loop;
   region_capture_controller().SetOnCaptureRegionForTesting(
@@ -3209,7 +3213,10 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testCaptureRegionMultiple) {
   ASSERT_TRUE(AddTabAtIndex(0, GURL("about:blank"), ui::PAGE_TRANSITION_TYPED));
   RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents));
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetService()->sharing_manager().GetFocusedTabData().focus();
+    return GetService()
+        ->active_instance_sharing_manager()
+        .GetFocusedTabData()
+        .focus();
   }));
   base::RunLoop run_loop;
   region_capture_controller().SetOnCaptureRegionForTesting(
@@ -3238,7 +3245,10 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testCaptureRegionCancelBrowser) {
   ASSERT_TRUE(AddTabAtIndex(0, GURL("about:blank"), ui::PAGE_TRANSITION_TYPED));
   RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents));
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetService()->sharing_manager().GetFocusedTabData().focus();
+    return GetService()
+        ->active_instance_sharing_manager()
+        .GetFocusedTabData()
+        .focus();
   }));
   base::RunLoop run_loop;
   region_capture_controller().SetOnCaptureRegionForTesting(
@@ -3270,7 +3280,10 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testCaptureRegionCalledTwice) {
   ASSERT_TRUE(AddTabAtIndex(0, GURL("about:blank"), ui::PAGE_TRANSITION_TYPED));
   RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents));
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetService()->sharing_manager().GetFocusedTabData().focus();
+    return GetService()
+        ->active_instance_sharing_manager()
+        .GetFocusedTabData()
+        .focus();
   }));
 
   base::RunLoop run_loop;

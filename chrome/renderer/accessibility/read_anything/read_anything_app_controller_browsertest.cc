@@ -860,6 +860,16 @@ TEST_F(ReadAnythingAppControllerTest, OnSpeechRateChange) {
   ASSERT_EQ(read_aloud_model().speech_rate(), expected_rate);
 }
 
+TEST_F(ReadAnythingAppControllerTest, IsImprovedReadAloudEnabled) {
+  scoped_feature_list_.Reset();
+  scoped_feature_list_.InitAndEnableFeature(features::kImprovedReadAloud);
+  EXPECT_TRUE(controller().IsImprovedReadAloudEnabled());
+
+  scoped_feature_list_.Reset();
+  scoped_feature_list_.InitAndDisableFeature(features::kImprovedReadAloud);
+  EXPECT_FALSE(controller().IsImprovedReadAloudEnabled());
+}
+
 TEST_F(ReadAnythingAppControllerTest, OnLanguagePrefChange) {
   std::string enabled_lang = "ja-jp";
   std::string disabled_lang = "en-us";
@@ -2607,6 +2617,16 @@ TEST_F(ReadAnythingAppControllerTest, OnCollapseSelection) {
   EXPECT_CALL(page_handler_, OnCollapseSelection()).Times(1);
   controller().OnCollapseSelection();
   Mock::VerifyAndClearExpectations(distiller_);
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnCollapseSelection_IncrementsModelCounter) {
+  ASSERT_EQ(model().unprocessed_selections_from_reading_mode(), 0);
+
+  EXPECT_CALL(page_handler_, OnCollapseSelection()).Times(1);
+  controller().OnCollapseSelection();
+
+  EXPECT_EQ(model().unprocessed_selections_from_reading_mode(), 1);
 }
 
 TEST_F(ReadAnythingAppControllerTest,

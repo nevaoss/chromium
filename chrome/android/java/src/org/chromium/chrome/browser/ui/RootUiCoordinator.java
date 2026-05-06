@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.ui;
 
 import static org.chromium.build.NullUtil.assertNonNull;
 import static org.chromium.build.NullUtil.assumeNonNull;
+import static org.chromium.chrome.browser.app.ChromeActivity.HANDOFF_SDK_VERSION;
 import static org.chromium.chrome.browser.ui.activity_recreation.ActivityRecreationController.IS_TAB_SWITCHER_SHOWN;
 import static org.chromium.chrome.browser.ui.activity_recreation.ActivityRecreationController.URL_BAR_EDIT_TEXT;
 
@@ -105,6 +106,7 @@ import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenBackPressHandler;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
+import org.chromium.chrome.browser.handoff.HandoffController;
 import org.chromium.chrome.browser.host_zoom.HostZoomListenerFactory;
 import org.chromium.chrome.browser.image_descriptions.ImageDescriptionsController;
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthController;
@@ -283,7 +285,6 @@ public class RootUiCoordinator
                 ContextualSearchTabPromotionDelegate,
                 WindowFocusChangedObserver {
     private static final String TAG = "RootUiCoordinator";
-
     protected final NonNullObservableSupplier<TabObscuringHandler> mTabObscuringHandlerSupplier;
 
     private final SettableMonotonicObservableSupplier<DeviceLockActivityLauncher>
@@ -374,6 +375,7 @@ public class RootUiCoordinator
     private VoiceRecognitionHandler.@Nullable Observer mMicStateObserver;
     private @Nullable MediaCaptureOverlayController mCaptureController;
     private @Nullable ScrollCaptureManager mScrollCaptureManager;
+    private @Nullable HandoffController mHandoffController;
     protected final ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
     protected final MonotonicObservableSupplier<LayoutManagerImpl> mLayoutManagerImplSupplier;
     protected final NullableObservableSupplier<@StripVisibilityState Integer>
@@ -383,9 +385,9 @@ public class RootUiCoordinator
     protected final NonNullObservableSupplier<ModalDialogManager> mModalDialogManagerSupplier;
     private final AppMenuBlocker mAppMenuBlocker;
     private final BooleanSupplier mSupportsAppMenuSupplier;
-    protected final Supplier<TabCreatorManager> mTabCreatorManagerSupplier;
+    protected final MonotonicObservableSupplier<TabCreatorManager> mTabCreatorManagerSupplier;
     protected final FullscreenManager mFullscreenManager;
-    protected final Supplier<CompositorViewHolder> mCompositorViewHolderSupplier;
+    protected final MonotonicObservableSupplier<CompositorViewHolder> mCompositorViewHolderSupplier;
     protected StatusBarColorController mStatusBarColorController;
     protected final MonotonicObservableSupplier<SnackbarManager> mSnackbarManagerSupplier;
     protected final SettableMonotonicObservableSupplier<EdgeToEdgeController>
@@ -513,9 +515,9 @@ public class RootUiCoordinator
             NonNullObservableSupplier<ModalDialogManager> modalDialogManagerSupplier,
             AppMenuBlocker appMenuBlocker,
             BooleanSupplier supportsAppMenuSupplier,
-            Supplier<TabCreatorManager> tabCreatorManagerSupplier,
+            MonotonicObservableSupplier<TabCreatorManager> tabCreatorManagerSupplier,
             FullscreenManager fullscreenManager,
-            Supplier<CompositorViewHolder> compositorViewHolderSupplier,
+            MonotonicObservableSupplier<CompositorViewHolder> compositorViewHolderSupplier,
             Supplier<TabContentManager> tabContentManagerSupplier,
             MonotonicObservableSupplier<SnackbarManager> snackbarManagerSupplier,
             SettableMonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeControllerSupplier,
@@ -1061,6 +1063,11 @@ public class RootUiCoordinator
             mDesktopWindowStateManager = null;
         }
 
+        if (mHandoffController != null) {
+            mHandoffController.destroy();
+            mHandoffController = null;
+        }
+
         mActivity = null;
     }
 
@@ -1222,6 +1229,7 @@ public class RootUiCoordinator
             Supplier<TabCreator> tabCreator =
                     () ->
                             mTabCreatorManagerSupplier
+                                    .asNonNull()
                                     .get()
                                     .getTabCreator(tabModelSelector.isIncognitoSelected());
             ContextMenuPopulatorFactory contextMenuPopulatorFactory =
@@ -1286,7 +1294,7 @@ public class RootUiCoordinator
                             mActivity,
                             mActivity.findViewById(R.id.automotive_base_frame_layout),
                             mFullscreenManager,
-                            mCompositorViewHolderSupplier.get(),
+                            mCompositorViewHolderSupplier.asNonNull().get(),
                             mBackPressManager);
         }
 
@@ -1322,7 +1330,7 @@ public class RootUiCoordinator
         mAnchoredDialogCoordinator =
                 new AnchoredDialogCoordinator(
                         mActivity,
-                        mCompositorViewHolderSupplier.get(),
+                        mCompositorViewHolderSupplier.asNonNull().get(),
                         () -> mBrowserControlsManager.getContentOffset());
         AnchoredDialogCoordinatorProvider.attach(mWindowAndroid, mAnchoredDialogCoordinator);
     }
@@ -1363,7 +1371,7 @@ public class RootUiCoordinator
         manager.initialize(
                 mActivity.findViewById(android.R.id.content),
                 mLayoutManager,
-                mCompositorViewHolderSupplier.get(),
+                mCompositorViewHolderSupplier.asNonNull().get(),
                 toolbarHeightDp,
                 assertNonNull(mToolbarManager),
                 canContextualSearchPromoteToNewTab(),
@@ -1407,7 +1415,10 @@ public class RootUiCoordinator
         if (currentTab == null) return;
 
         TabCreator tabCreator =
-                mTabCreatorManagerSupplier.get().getTabCreator(currentTab.isIncognito());
+                mTabCreatorManagerSupplier
+                        .asNonNull()
+                        .get()
+                        .getTabCreator(currentTab.isIncognito());
         if (tabCreator == null) return;
 
         tabCreator.createNewTab(
@@ -1420,6 +1431,15 @@ public class RootUiCoordinator
     @CallSuper
     protected void initProfileDependentFeatures(Profile currentlySelectedProfile) {
         Profile originalProfile = currentlySelectedProfile.getOriginalProfile();
+
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.CROSS_DEVICE_TASK_HANDOFF)
+                && Build.VERSION.SDK_INT >= HANDOFF_SDK_VERSION) {
+            mHandoffController =
+                    new HandoffController(
+                            mActivity,
+                            mTabModelSelectorSupplier.asNonNull().get(),
+                            mActivityTabProvider);
+        }
 
         if (SigninFeatureMap.getInstance().isActivitylessSigninAllEntryPointEnabled()) {
             initBottomSheetSigninAndHistorySyncController(originalProfile);
@@ -1961,7 +1981,7 @@ public class RootUiCoordinator
                             mFullscreenManager,
                             mEdgeToEdgeControllerSupplier,
                             mToolbarContainer,
-                            mCompositorViewHolderSupplier.get(),
+                            mCompositorViewHolderSupplier.asNonNull().get(),
                             urlFocusChangedCallback,
                             mTopUiThemeColorProvider,
                             mAdjustedTopUiThemeColorProvider,
@@ -1992,7 +2012,7 @@ public class RootUiCoordinator
                             assertNonNull(getBottomSheetController()),
                             getDataSharingTabManager(),
                             mTabContentManagerSupplier.get(),
-                            mTabCreatorManagerSupplier.get(),
+                            mTabCreatorManagerSupplier.asNonNull().get(),
                             getMerchantTrustSignalsCoordinatorSupplier(),
                             omniboxActionDelegate,
                             mEphemeralTabCoordinatorSupplier,
@@ -2656,7 +2676,7 @@ public class RootUiCoordinator
         mRestoreTabsFeatureHelper.maybeShowPromo(
                 mActivity,
                 mProfileSupplier.get(),
-                mTabCreatorManagerSupplier.get(),
+                mTabCreatorManagerSupplier.asNonNull().get(),
                 assertNonNull(getBottomSheetController()),
                 gtsTabListModelSizeSupplier,
                 scrollGTSToRestoredTabsCallback,
@@ -2728,5 +2748,9 @@ public class RootUiCoordinator
 
     public @Nullable OpenInAppMenuItemProvider getOpenInAppMenuItemProvider() {
         return mOpenInAppEntryPoint;
+    }
+
+    public @Nullable HandoffController getHandoffController() {
+        return mHandoffController;
     }
 }

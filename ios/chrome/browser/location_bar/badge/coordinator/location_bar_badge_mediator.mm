@@ -93,9 +93,8 @@ constexpr base::TimeDelta kStartCollapseTransitionTime = base::Seconds(5);
   // Forwarder to always be observing the active ContextualPanelTabHelper.
   std::unique_ptr<ActiveContextualPanelTabHelperObservationForwarder>
       _activeContextualPanelObservationForwarder;
-  // Boolean to track whether the FET tracker successfully triggered and is
-  // awaiting dismissal.
-  BOOL _didPromoShow;
+  // Boolean to track whether the FET promo is being displayed.
+  BOOL _isFETPromoShowing;
 }
 
 - (instancetype)initWithWebStateList:(WebStateList*)webStateList
@@ -205,7 +204,6 @@ constexpr base::TimeDelta kStartCollapseTransitionTime = base::Seconds(5);
     didStartNavigation:(web::NavigationContext*)navigationContext {
   // Do not modify badge state if the navigation is on the same document.
   if (!navigationContext->IsSameDocument()) {
-    [self ensureFETFeatureIsDismissed];
     _promoStartTimer = nil;
     _promoEndTimer = nil;
     [self.consumer hideBadge];
@@ -363,7 +361,9 @@ constexpr base::TimeDelta kStartCollapseTransitionTime = base::Seconds(5);
 - (void)handleBadgeContainerCollapse:(LocationBarBadgeType)badgeType {
   switch (badgeType) {
     case LocationBarBadgeType::kGeminiContextualCueChip:
-      [self ensureFETFeatureIsDismissed];
+      if (!IsAskGeminiChipIgnoreCriteria()) {
+        _tracker->Dismissed(feature_engagement::kIPHiOSGeminiContextualCueChip);
+      }
       break;
     default:
       break;
@@ -376,11 +376,11 @@ constexpr base::TimeDelta kStartCollapseTransitionTime = base::Seconds(5);
 // multiple times as a cleanup function since Dismissed() only clears active
 // in-memory tracking states without side effects.
 - (void)ensureFETFeatureIsDismissed {
-  if (_didPromoShow) {
+  if (_isFETPromoShowing) {
     if (!IsAskGeminiChipIgnoreCriteria()) {
       _tracker->Dismissed(feature_engagement::kIPHiOSGeminiContextualCueChip);
     }
-    _didPromoShow = NO;
+    _isFETPromoShowing = NO;
   }
 }
 
@@ -689,10 +689,8 @@ constexpr base::TimeDelta kStartCollapseTransitionTime = base::Seconds(5);
   BOOL eligibleTimeWindow =
       timeSinceLastShown >= base::Hours(kGeminiContextualCueChipSlidingWindow);
 
-  // If the promo timers have already started, do not allow the chip to show to
-  // avoid calling `ShouldTriggerHelpUI()` when the chip is in the process of
-  // being displayed.
-  if ([self arePromoTimersRunning]) {
+  // If the promo is being displayed, do not allow the chip to show.
+  if (_isFETPromoShowing) {
     return NO;
   }
 
@@ -711,18 +709,16 @@ constexpr base::TimeDelta kStartCollapseTransitionTime = base::Seconds(5);
     return YES;
   }
 
+  if (_isFETPromoShowing) {
+    return NO;
+  }
+
   BOOL shouldTrigger = _tracker->ShouldTriggerHelpUI(
       feature_engagement::kIPHiOSGeminiContextualCueChip);
   if (shouldTrigger) {
-    _didPromoShow = YES;
+    _isFETPromoShowing = YES;
   }
   return shouldTrigger;
-}
-
-// Returns whether the promo timers exist which implies a promo is in the
-// process of being displayed.
-- (BOOL)arePromoTimersRunning {
-  return _promoStartTimer != nullptr || _promoEndTimer != nullptr;
 }
 
 #pragma mark - Private ContextualPanelEntrypoint
@@ -730,7 +726,7 @@ constexpr base::TimeDelta kStartCollapseTransitionTime = base::Seconds(5);
 // Updates the entrypoint state whenever the active tab changes or new data is
 // provided.
 - (void)activeTabHasNewData:(ContextualPanelItemConfiguration*)config {
-  if ([self arePromoTimersRunning]) {
+  if (_isFETPromoShowing) {
     return;
   }
 

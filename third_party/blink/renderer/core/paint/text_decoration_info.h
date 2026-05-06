@@ -49,13 +49,19 @@ struct ResolvedDecoration {
   STACK_ALLOCATED();
 
  public:
+  // ResolveDecorationAt() must fill `applied_text_decoration`, so it never be
+  // nullptr.
+  const AppliedTextDecoration* applied_text_decoration = nullptr;
   const SimpleFontData* font_data = nullptr;
   TextDecorationLine lines = TextDecorationLine::kNone;
   float ascent = 0.f;
   float computed_font_size = 0.f;
   float resolved_thickness = 0.f;
+  ResolvedUnderlinePosition underline_position =
+      ResolvedUnderlinePosition::kNearAlphabeticBaselineAuto;
   bool has_underline = false;
   bool has_overline = false;
+  bool is_flipped_underline_and_overline = false;
 
   // TODO(crbug.com/501752810): Move more fields from TextDecorationInfo.
 
@@ -154,14 +160,6 @@ class CORE_EXPORT TextDecorationInfo {
 
   LayoutUnit Width() const { return width_; }
 
-  // |ResolveDecorationAt| may change the results of these methods.
-  ResolvedUnderlinePosition FlippedUnderlinePosition() const {
-    return flipped_underline_position_;
-  }
-  ResolvedUnderlinePosition OriginalUnderlinePosition() const {
-    return original_underline_position_;
-  }
-
   // The |ComputedStyle| of the target text/box to paint decorations for.
   const ComputedStyle& target_style_;
   // The |ComputedStyle| of the [decorating box]. Decorations are computed from
@@ -172,7 +170,7 @@ class CORE_EXPORT TextDecorationInfo {
   // Decorating box properties for the current |decoration_index_|.
   const InlinePaintContext* const inline_context_ = nullptr;
   const DecoratingBox* decorating_box_ = nullptr;
-  const AppliedTextDecoration* applied_text_decoration_ = nullptr;
+
   const TextDecorationLine selection_decoration_line_ =
       TextDecorationLine::kNone;
   const Color selection_decoration_color_;
@@ -199,8 +197,6 @@ class CORE_EXPORT TextDecorationInfo {
   TextDecorationLine union_all_lines_ = TextDecorationLine::kNone;
 
   ResolvedUnderlinePosition original_underline_position_ =
-      ResolvedUnderlinePosition::kNearAlphabeticBaselineAuto;
-  ResolvedUnderlinePosition flipped_underline_position_ =
       ResolvedUnderlinePosition::kNearAlphabeticBaselineAuto;
 
   bool flip_underline_and_overline_ = false;
