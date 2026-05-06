@@ -1,0 +1,23 @@
+name: issue-tracker
+
+on:
+  pull_request
+
+jobs:
+  build:
+    name: tools/jira-tracker-github
+    runs-on: self-hosted
+    env:
+      CI_TOKEN: ${{ secrets.CI_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: nevaoss/ci
+          ref: main
+      - name: Pass PR number to env
+        run: echo "GITHUB_PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+
+      - name: Automatic tracking of task references in Pull Request messages
+        run: |
+          ./tools/jira-tracker-github.py
