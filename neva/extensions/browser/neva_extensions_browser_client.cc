@@ -111,6 +111,12 @@ NevaExtensionsBrowserClient::GetContextRedirectedToOriginal(
   return context;
 }
 
+content::BrowserContext*
+NevaExtensionsBrowserClient::GetContextRedirectedToOriginalWithoutAshInternals(
+    content::BrowserContext* context) {
+  return context;
+}
+
 content::BrowserContext* NevaExtensionsBrowserClient::GetContextOwnInstance(
     content::BrowserContext* context) {
   return context;
