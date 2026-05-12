@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grit latest_public_release="0" current_release="1">
+  <outputs>
+    <output filename="grit/injection_resources.h" type="rc_header">
+      <emit emit_type='prepend'></emit>
+    </output>
+    <output filename="injection_resources.pak" type="data_package" />
+  </outputs>
+  <translations />
+  <release seq="1">
+    <includes>
+      <include name="IDR_SAMPLE_INJECTION_JS" file="sample_injection.js" type="BINDATA" />
+      <include name="IDR_WEBOSGAVPLUGIN_INJECTION_JS" file="webosgavplugin_injection.js" type="BINDATA" />
+      <include name="IDR_WEBOSGAVPLUGIN_ROLLBACK_JS" file="webosgavplugin_rollback.js" type="BINDATA" />
+      <include name="IDR_WEBOSSERVICEBRIDGE_INJECTION_JS" file="webosservicebridge_injection.js" type="BINDATA" />
+      <include name="IDR_WEBOSSERVICEBRIDGE_ROLLBACK_JS" file="webosservicebridge_rollback.js" type="BINDATA" />
+      <include name="IDR_WEBOSSYSTEM_INJECTION_JS" file="webossystem_injection.js" type="BINDATA" />
+      <include name="IDR_WEBOSSYSTEM_ROLLBACK_JS" file="webossystem_rollback.js" type="BINDATA" />
+    </includes>
+  </release>
+</grit>

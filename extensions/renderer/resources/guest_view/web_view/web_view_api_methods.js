@@ -79,6 +79,15 @@ var WEB_VIEW_API_METHODS = [
   // Reloads the current top-level page.
   'reload',
 
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // Resumes the guest web page's renderer process.
+  'resume',
+
+  // Suspends the guest web page's renderer process.
+  'suspend',
+  ///@}
+
   // Set audio mute.
   'setAudioMuted',
 

@@ -66,6 +66,10 @@
 #include "third_party/blink/renderer/platform/wtf/cross_thread_functional.h"
 #include "third_party/blink/renderer/platform/wtf/ref_counted.h"
 
+#if defined(USE_FILESCHEME_CODECACHE)
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#endif
+
 namespace WTF {
 
 template <>

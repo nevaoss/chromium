@@ -447,6 +447,13 @@ bool InputMethodAuraLinux::IsCandidatePopupOpen() const {
   return false;
 }
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+LinuxInputMethodContext* InputMethodAuraLinux::GetInputMethodContext() {
+  return context_.get();
+}
+///@}
+
 VirtualKeyboardController*
 InputMethodAuraLinux::GetVirtualKeyboardController() {
   // This should only be not null when set via testing.
@@ -623,5 +630,16 @@ void InputMethodAuraLinux::ConfirmCompositionText(bool keep_selection) {
   composition_changed_ = false;
   result_text_.reset();
 }
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+bool InputMethodAuraLinux::SystemKeyboardDisabled() {
+  // returns true if VKB is explicitly disabled by client, false otherwise
+  if (!GetTextInputClient())
+    return false;
+  else
+    return GetTextInputClient()->SystemKeyboardDisabled();
+}
+///@}
 
 }  // namespace ui

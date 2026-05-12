@@ -8,6 +8,12 @@
 
 #include "base/containers/heap_array.h"
 #include "base/debug/alias.h"
+// TODO(neva): Required for the usage of base::StringPrintf. Try to contribute
+// to upstream.
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "base/strings/stringprintf.h"
+///@}
 #include "media/base/subsample_entry.h"
 
 namespace media {

@@ -16,6 +16,9 @@
     (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_ASH))
 #include "media/gpu/v4l2/legacy/v4l2_video_decode_accelerator.h"
 #include "media/gpu/v4l2/v4l2_device.h"
+#elif defined(USE_WEBOS_CODEC)
+#include "media/gpu/webos/webos_video_decode_accelerator.h"
+#include "ui/gl/gl_surface_egl.h"
 #endif
 
 namespace media {
@@ -31,9 +34,17 @@ GpuVideoDecodeAcceleratorFactory::CreateVDA(
 
 #if BUILDFLAG(USE_V4L2_CODEC) && \
     (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_ASH))
-
   std::unique_ptr<VideoDecodeAccelerator> vda;
   vda.reset(new V4L2VideoDecodeAccelerator(new V4L2Device()));
+
+  if (vda->Initialize(config, client)) {
+    return vda;
+  }
+#elif defined(USE_WEBOS_CODEC)
+  std::unique_ptr<VideoDecodeAccelerator> vda;
+  vda.reset(new WebOSVideoDecodeAccelerator(
+      gl::GLSurfaceEGL::GetGLDisplayEGL()->GetDisplay(), GetGLContextCallback(),
+      MakeGLContextCurrentCallback()));
 
   if (vda->Initialize(config, client)) {
     return vda;
@@ -42,4 +53,5 @@ GpuVideoDecodeAcceleratorFactory::CreateVDA(
 
   return nullptr;
 }
+
 }  // namespace media

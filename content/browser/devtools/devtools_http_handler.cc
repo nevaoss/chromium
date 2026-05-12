@@ -764,6 +764,10 @@ void DevToolsHttpHandler::OnWebSocketRequest(
   if (!thread_)
     return;
 
+// TODO(neva): The below check on allowed origins causes DevTools disconnection.
+// Needs to be revised later.
+// See http://clm.lge.com/issue/browse/NEVA-7987 for details.
+#if !defined(USE_NEVA_APPRUNTIME)
   if (request.headers.count("origin") &&
       !remote_allow_origins_.count(request.headers.at("origin")) &&
       !remote_allow_origins_.count("*")) {
@@ -778,6 +782,7 @@ void DevToolsHttpHandler::OnWebSocketRequest(
     LOG(ERROR) << message;
     return;
   }
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 
   if (base::StartsWith(request.path, browser_guid_,
                        base::CompareCase::SENSITIVE)) {

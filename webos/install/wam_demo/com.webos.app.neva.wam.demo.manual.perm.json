@@ -1,0 +1,6 @@
+{
+    "com.webos.app.neva.wam.demo.manual-*": [
+        "private",
+        "public"
+    ]
+}

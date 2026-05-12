@@ -45,12 +45,22 @@ std::vector<std::string> GetFieldTrialParamAsSplitString(
                            base::SPLIT_WANT_NONEMPTY);
 }
 
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+constexpr auto DEFAULT_COMPOSE_ENABLED_COUNTRIES =
+    base::MakeFixedFlatSet<std::string_view>({"bd", "ca", "gh", "in", "ke",
+                                              "my", "ng", "ph", "pk", "sg",
+                                              "tz", "ug", "us", "zm", "zw"});
+constexpr auto DEFAULT_PROACTIVE_NUDGE_ENABLED_COUNTRIES =
+    base::MakeFixedFlatSet<std::string_view>({"us"});
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
 constexpr auto DEFAULT_COMPOSE_ENABLED_COUNTRIES =
     base::MakeFixedFlatSet<std::string>({"bd", "ca", "gh", "in", "ke", "my",
                                          "ng", "ph", "pk", "sg", "tz", "ug",
                                          "us", "zm", "zw"});
 constexpr auto DEFAULT_PROACTIVE_NUDGE_ENABLED_COUNTRIES =
     base::MakeFixedFlatSet<std::string>({"us"});
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
 
 }  // namespace
 

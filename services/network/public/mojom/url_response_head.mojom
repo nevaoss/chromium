@@ -255,6 +255,12 @@ struct URLResponseHead {
   // it wasn't implemented or not allowed from its process.
   ParsedHeaders? parsed_headers;
 
+  ///@name USE_FILESCHEME_CODECACHE
+  ///@{
+  [EnableIf=filescheme_codecache]
+  mojo_base.mojom.Time file_last_modified_time;
+  ///@}
+
   // Set by the browser process on cross-origin prefetch responses. This token
   // is propagated to the renderer and set on recursive prefetch requests
   // (see corresponding documentation in url_loader.mojom).

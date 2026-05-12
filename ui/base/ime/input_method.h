@@ -23,6 +23,11 @@ class KeyEvent;
 class ImeKeyEventDispatcher;
 class TextInputClient;
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+class LinuxInputMethodContext;
+///@}
+
 // An interface implemented by an object that encapsulates a native input method
 // service provided by the underlying operating system, and acts as a "system
 // wide" input method for all Chrome windows. A class that implements this
@@ -151,6 +156,12 @@ class InputMethod {
 
   // Return the keyboard controller.
   virtual VirtualKeyboardController* GetVirtualKeyboardController() = 0;
+
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // Returns input method context.
+  virtual LinuxInputMethodContext* GetInputMethodContext() = 0;
+  ///@}
 
   // Sets a keyboard controller for testing.
   virtual void SetVirtualKeyboardControllerForTesting(

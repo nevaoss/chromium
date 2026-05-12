@@ -69,6 +69,10 @@
 #include "base/win/shortcut.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "neva/app_drm/appdrm_common.h"
+#endif
+
 namespace content {
 namespace {
 
@@ -497,11 +501,20 @@ class FileURLLoader : public network::mojom::URLLoader {
       return;
     }
 
+#if defined(USE_FILESCHEME_CODECACHE)
+    head->request_time = base::Time::Now();
+#endif
+
     base::File::Info info;
     if (!base::GetFileInfo(path, &info)) {
       OnClientComplete(net::ERR_FILE_NOT_FOUND, std::move(observer));
       return;
     }
+
+#if defined(USE_FILESCHEME_CODECACHE)
+    head->response_time = base::Time::Now();
+    head->file_last_modified_time = info.last_modified;
+#endif
 
     if (info.is_directory) {
       if (directory_loading_policy == DirectoryLoadingPolicy::kFail) {
@@ -620,12 +633,22 @@ class FileURLLoader : public network::mojom::URLLoader {
       observer->OnStart();
     }
 
+#if defined(USE_NEVA_APPRUNTIME)
+    auto file_data_source = std::make_unique<app_drm::AppDRMFileDataSource>(
+        base::File(path, base::File::FLAG_OPEN | base::File::FLAG_READ), path);
+
+    mojo::DataPipeProducer::DataSource::ReadResult read_result;
+    read_result.bytes_read = 0;
+
+    std::vector<char> initial_read_buffer(net::kMaxBytesToSniff);
+#else   // defined(USE_NEVA_APPRUNTIME)
     auto file_data_source = std::make_unique<mojo::FileDataSource>(
         base::File(path, base::File::FLAG_OPEN | base::File::FLAG_READ));
 
     std::vector<char> initial_read_buffer(net::kMaxBytesToSniff);
     auto read_result =
         file_data_source->Read(0u, base::span<char>(initial_read_buffer));
+#endif  // !defined(USE_NEVA_APPRUNTIME)
     if (read_result.result != MOJO_RESULT_OK) {
       // This can happen when the file is unreadable (which can happen during
       // corruption). We need to be sure to inform the observer that we've

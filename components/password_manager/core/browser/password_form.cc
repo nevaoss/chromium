@@ -257,6 +257,15 @@ AlternativeElement& AlternativeElement::operator=(AlternativeElement&& rhs) =
 
 AlternativeElement::~AlternativeElement() = default;
 
+// TODO(neva): Please remove this guard after there is no error to support
+// operator<=> in Neva.
+#if defined(COMPILER_GCC)
+bool AlternativeElement::operator<(const AlternativeElement& other) const {
+  return std::tie(value, field_renderer_id, name) <
+         std::tie(other.value, other.field_renderer_id, other.name);
+}
+#endif
+
 std::ostream& operator<<(std::ostream& os, const AlternativeElement& element) {
   base::Value::Dict element_json;
   element_json.Set("value", element.value);

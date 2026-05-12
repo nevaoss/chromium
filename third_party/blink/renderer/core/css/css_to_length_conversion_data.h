@@ -174,7 +174,19 @@ class CORE_EXPORT CSSToLengthConversionData : public CSSLengthResolver {
           dynamic_height_(height) {}
 
     explicit ViewportSize(const LayoutView*);
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+    bool operator==(const ViewportSize& other) const {
+      return large_width_ == other.large_width_ &&
+             large_height_ == other.large_height_ &&
+             small_width_ == other.small_width_ &&
+             small_height_ == other.small_height_ &&
+             dynamic_width_ == other.dynamic_width_ &&
+             dynamic_height_ == other.dynamic_height_;
+    }
+#else   // (__cplusplus < 202002L)
     bool operator==(const ViewportSize&) const = default;
+#endif  // !(__cplusplus < 202002L)
 
     // v*
     double Width() const { return LargeWidth(); }

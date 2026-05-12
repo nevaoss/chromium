@@ -166,6 +166,10 @@ WaylandKeyboard::WaylandKeyboard(
         this, zcr_keyboard_extension_v1_get_extended_keyboard(
                   keyboard_extension_v1, obj_.get()));
   }
+
+#if BUILDFLAG(IS_WEBOS)
+  auto_repeat_handler_.SetAutoRepeatEnabled(false);
+#endif  // BUILDFLAG(IS_WEBOS)
 }
 
 WaylandKeyboard::~WaylandKeyboard() {
@@ -277,6 +281,17 @@ void WaylandKeyboard::OnEnter(void* data,
     auto* self = static_cast<WaylandKeyboard*>(data);
     self->delegate_->OnKeyboardFocusChanged(window, /*focused=*/true);
   }
+
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  if (auto* window = wl::RootWindowFromWlSurface(surface)) {
+    window->HandleKeyboardEnter();
+
+    // Required for webOS and AGL which don't support activation update via
+    // surface configure event
+    window->HandleActivationChanged(true);
+  }
+  ///@}
 }
 
 // static
@@ -291,6 +306,17 @@ void WaylandKeyboard::OnLeave(void* data,
 
   // Upon window focus lose, reset the key repeat timers.
   self->auto_repeat_handler_.StopKeyRepeat();
+
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  if (auto* window = wl::RootWindowFromWlSurface(surface)) {
+    window->HandleKeyboardLeave();
+
+    // Required for webOS and AGL which don't support activation update via
+    // surface configure event
+    window->HandleActivationChanged(false);
+  }
+  ///@}
 }
 
 void WaylandKeyboard::OnKey(void* data,
@@ -327,6 +353,8 @@ void WaylandKeyboard::OnRepeatInfo(void* data,
                                    wl_keyboard* keyboard,
                                    int32_t rate,
                                    int32_t delay) {
+// FIXME(neva): auto-repeat is turned off by default on webOS
+#if !BUILDFLAG(IS_WEBOS)
   // Negative values for either rate or delay are illegal.
   if (rate < 0 || delay < 0) {
     VLOG(1) << "Ignoring wl_keyboard.repeat_info event with illegal "
@@ -345,6 +373,7 @@ void WaylandKeyboard::OnRepeatInfo(void* data,
     handler.SetAutoRepeatRate(base::Milliseconds(delay),
                               base::Seconds(1.0 / rate));
   }
+#endif  // !BUILDFLAG(IS_WEBOS)
 }
 
 // static

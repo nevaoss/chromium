@@ -69,6 +69,10 @@ class InputStream final : public media::mojom::AudioInputStream,
 
   // media::mojom::AudioInputStream implementation.
   void Record() override;
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  void Pause() override;
+  void Resume() override;
+#endif
   void SetVolume(double volume) override;
 
   // InputController::EventHandler implementation.

@@ -8,6 +8,12 @@
 #include "content/public/browser/web_contents_observer.h"
 #include "extensions/browser/app_window/app_delegate.h"
 
+#if defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
+namespace neva_app_runtime {
+class WebViewControllerDelegate;
+}  // namespace neva_app_runtime
+#endif  // defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
+
 namespace extensions {
 
 // AppDelegate implementation for app_shell. Sets focus after the WebContents is
@@ -60,6 +66,12 @@ class ShellAppDelegate : public AppDelegate {
   content::PictureInPictureResult EnterPictureInPicture(
       content::WebContents* web_contents) override;
   void ExitPictureInPicture() override;
+
+#if defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
+ private:
+  std::unique_ptr<neva_app_runtime::WebViewControllerDelegate>
+      shell_app_webview_controller_delegate_;
+#endif  // defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
 };
 
 }  // namespace extensions

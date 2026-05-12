@@ -28,7 +28,12 @@ namespace content {
 
 namespace {
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12
+std::vector<blink::mojom::PermissionsPolicyFeature>
+#else   // defined(__GNUC__) && __GNUC__ < 12
 constexpr std::vector<blink::mojom::PermissionsPolicyFeature>
+#endif  // !defined(__GNUC__) && __GNUC__ < 12
 SensorTypeToPermissionsPolicyFeatures(SensorType type) {
   switch (type) {
     case SensorType::AMBIENT_LIGHT:

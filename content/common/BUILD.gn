@@ -9,6 +9,7 @@ import("//content/public/common/zygote/features.gni")
 import("//ipc/features.gni")
 import("//media/media_options.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
+import("//neva/neva.gni")
 import("//ppapi/buildflags/buildflags.gni")
 import("//sandbox/features.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
@@ -298,6 +299,10 @@ source_set("common") {
     "//content/public/common:interfaces",
   ]
 
+  if (use_lttng) {
+    deps += [ "//content/common/neva/lttng:lttng" ]
+  }
+
   if (is_posix) {
     sources += [
       "shared_file_util.cc",
@@ -477,6 +482,10 @@ mojom("mojo_bindings") {
   # This interface is internal to content.
   visibility = [ "//content/*" ]
 
+  if (use_neva_appruntime) {
+    visibility += [ "//neva/app_runtime" ]
+  }
+
   disable_variants = true
 
   sources = [
@@ -517,6 +526,9 @@ mojom("mojo_bindings") {
   }
   if (is_posix && !is_android) {
     enabled_features += [ "is_non_android_posix" ]
+  }
+  if (use_neva_appruntime) {
+    enabled_features += [ "neva_appruntime" ]
   }
 
   if (enable_plugins) {

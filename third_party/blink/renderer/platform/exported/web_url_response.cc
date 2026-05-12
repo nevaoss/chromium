@@ -194,6 +194,9 @@ WebURLResponse WebURLResponse::Create(
   response.SetAlpnNegotiatedProtocol(
       WebString::FromUTF8(head.alpn_negotiated_protocol));
   response.SetAlternateProtocolUsage(head.alternate_protocol_usage);
+#if defined(USE_FILESCHEME_CODECACHE)
+  response.SetFileLastModifiedTime(head.file_last_modified_time);
+#endif
   response.SetHasAuthorizationCoveredByWildcardOnPreflight(
       head.has_authorization_covered_by_wildcard_on_preflight);
   response.SetWasAlternateProtocolAvailable(
@@ -637,6 +640,12 @@ void WebURLResponse::SetRecursivePrefetchToken(
     const std::optional<base::UnguessableToken>& token) {
   resource_response_->SetRecursivePrefetchToken(token);
 }
+
+#if defined(USE_FILESCHEME_CODECACHE)
+void WebURLResponse::SetFileLastModifiedTime(base::Time last_modified_time) {
+  resource_response_->SetFileLastModifiedTime(last_modified_time);
+}
+#endif
 
 bool WebURLResponse::WasAlpnNegotiated() const {
   return resource_response_->WasAlpnNegotiated();

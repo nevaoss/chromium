@@ -523,6 +523,13 @@ std::vector<viz::mojom::TransformOperationPtr> SerializeTransformOperations(
   return wire_ops;
 }
 
+// TODO(neva): Remove this when Neva GCC supports static_assert(false).
+#if defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
+// Workaround for compile-time assertions involving dependent types
+template<typename>
+constexpr bool dependent_false = false; // Always false
+#endif  // defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
+
 template <typename KeyframeValueType>
 viz::mojom::AnimationKeyframeValuePtr SerializeKeyframeValue(
     KeyframeValueType&& value) {
@@ -539,7 +546,12 @@ viz::mojom::AnimationKeyframeValuePtr SerializeKeyframeValue(
     return viz::mojom::AnimationKeyframeValue::NewTransform(
         SerializeTransformOperations(value));
   } else {
+// TODO(neva): Remove this when Neva GCC supports static_assert(false).
+#if defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
+    static_assert(dependent_false<ValueType>, "Unsupported curve type");
+#else   // defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
     static_assert(false, "Unsupported curve type");
+#endif  // !(defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__))
   }
 }
 

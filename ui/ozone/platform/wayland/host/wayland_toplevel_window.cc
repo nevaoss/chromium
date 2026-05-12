@@ -201,6 +201,14 @@ void WaylandToplevelWindow::Hide() {
 
   shell_toplevel_.reset();
   connection()->Flush();
+
+#if defined(USE_NEVA_APPRUNTIME)
+  // Detach buffer from surface in order to release resources. It's needed to
+  // fix the bug with Weston compositor. See
+  // http://clm.lge.com/issue/browse/NEVA-7010 for details.
+  wl_surface_attach(root_surface()->surface(), nullptr, 0, 0);
+  root_surface()->Commit(false);
+#endif  // defined(USE_NEVA_APPRUNTIME)
 }
 
 bool WaylandToplevelWindow::IsVisible() const {
@@ -428,6 +436,16 @@ bool WaylandToplevelWindow::ShouldUseNativeFrame() const {
   // even if use_native_frame_ is true.
   return use_native_frame_ && connection()->xdg_decoration_manager_v1();
 }
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+void WaylandToplevelWindow::HandleActivationChanged(bool is_activated) {
+  if (is_active_ != is_activated) {
+    is_active_ = is_activated;
+    delegate()->OnActivationChanged(is_active_);
+  }
+}
+///@}
 
 bool WaylandToplevelWindow::ShouldUpdateWindowShape() const {
   return true;
@@ -722,6 +740,35 @@ void WaylandToplevelWindow::OnSequencePoint(int64_t seq) {
 bool WaylandToplevelWindow::OnInitialize(
     PlatformWindowInitProperties properties,
     PlatformWindowDelegate::State* state) {
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // TODO(neva): Both WAM and wam-demo need the shell surface
+  // to exist upon window creation, otherwise it will crash on early calling
+  // to, for instance, 'SetWindowProperty()'.
+  // Direct calling to CreateShellSurface() (instead of the below explicit
+  // shell surface creation) prevents the XDGSurfaceWrapperImpl::ConfigureV6()
+  // callback from being invoked by Weston upon the surface creation due to a
+  // couple of extra calls to the shell surface ('UnSetFullscreen()' and
+  // 'UnSetMaximized()' also wrapped into the dedicated factory method) during
+  // the init stage, which makes Weston unresponsive to the client code.
+  // To be revised later on.
+  ShellObjectFactory factory;
+  shell_toplevel_ = factory.CreateShellToplevelWrapper(connection(), this);
+  if (!shell_toplevel_) {
+    LOG(ERROR) << "Failed to create a ShellToplevel.";
+    return false;
+  }
+
+  // After applying https://crrev.com/c/3344634, root_surface()->Commit()
+  // was moved to WaylandToplevelWindow::CreateShellToplevel from
+  // XDGToplevelWrapperImpl::Initialize.
+  // But WaylandToplevelWindow::CreateShellToplevel cannot be called by
+  // initialized shell_toplevel_ in here.
+  // It causes wam_demo for PC cannot be shown.
+  // So we added Commit in here.
+  root_surface()->Commit(true);
+  ///@}
+
   state->window_state = PlatformWindowState::kNormal;
 
 #if BUILDFLAG(IS_CHROMEOS_LACROS)

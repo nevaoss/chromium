@@ -306,13 +306,23 @@ class Page::CloseTaskHandler : public GarbageCollected<Page::CloseTaskHandler> {
       CHECK(page_->MainFrame());
       page_->GetChromeClient().CloseWindow();
     }
+#if defined(USE_NEVA_APPRUNTIME)
+    complete_ = true;
+#endif
   }
 
   void SetPage(Page* page) { page_ = page; }
 
   void Trace(Visitor* visitor) const { visitor->Trace(page_); }
 
+#if defined(USE_NEVA_APPRUNTIME)
+  bool IsComplete() const { return complete_; }
+#endif
+
  private:
+#if defined(USE_NEVA_APPRUNTIME)
+  bool complete_ = false;
+#endif
   WeakMember<Page> page_;
 };
 
@@ -330,6 +340,20 @@ void Page::CloseSoon() {
     GetChromeClient().CloseWindow();
     return;
   }
+
+#if defined(USE_NEVA_APPRUNTIME)
+  // The problem with webOS is that WAM+SAM does not close some applications,
+  // but pauses them and then resume them when needed. This happens with the
+  // com.webos.app.home application in webOS/OSE. And this causes window.close()
+  // to be called twice for the same application, and the close_task_handler_
+  // is not yet removed by the collector. As a result, it will turn out that
+  // code in browser process will not even be notified about window.close().
+  if (close_task_handler_ && close_task_handler_->IsComplete()) {
+    close_task_handler_->SetPage(nullptr);
+    close_task_handler_ = nullptr;
+  }
+#endif
+
   // If the client is a WebView, post a task to close the window asynchronously.
   // This is because we could be called from deep in Javascript.  If we ask the
   // WebView to close now, the window could be closed before the JS finishes

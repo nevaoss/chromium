@@ -43,6 +43,10 @@
 #include "ui/ozone/platform/wayland/host/zwp_text_input_wrapper_v3.h"
 #include "ui/ozone/public/ozone_switches.h"
 
+#if BUILDFLAG(IS_WEBOS)
+#include "ui/ozone/platform/wayland/extensions/webos/host/webos_text_model_wrapper.h"
+#endif  // BUILDFLAG(IS_WEBOS)
+
 #if BUILDFLAG(USE_XKBCOMMON)
 #include "ui/events/ozone/layout/keyboard_layout_engine_manager.h"
 #include "ui/events/ozone/layout/xkb/xkb_keyboard_layout_engine.h"
@@ -307,6 +311,13 @@ void WaylandInputMethodContext::Init(
   CreateTextInputWrapper();
 }
 
+#if BUILDFLAG(IS_WEBOS)
+void WaylandInputMethodContext::SetTextModelWrapper(
+    WebosTextModelWrapper* webos_text_model_wrapper) {
+  webos_text_model_wrapper_ = webos_text_model_wrapper;
+}
+#endif  // BUILDFLAG(IS_WEBOS)
+
 bool WaylandInputMethodContext::DispatchKeyEvent(const KeyEvent& key_event) {
   if (key_event.type() != EventType::kKeyPressed) {
     return false;
@@ -359,6 +370,11 @@ void WaylandInputMethodContext::Reset() {
   surrounding_text_tracker_.CancelComposition();
   if (text_input_)
     text_input_->Reset();
+
+#if BUILDFLAG(IS_WEBOS)
+  if (webos_text_model_wrapper_)
+    webos_text_model_wrapper_->Reset();
+#endif  // BUILDFLAG(IS_WEBOS)
 }
 
 void WaylandInputMethodContext::WillUpdateFocus(TextInputClient* old_client,
@@ -551,7 +567,17 @@ void WaylandInputMethodContext::OnPreeditString(
     const std::vector<SpanStyle>& spans,
     const gfx::Range& preedit_cursor) {
   CompositionText composition_text;
+
+#if defined(USE_NEVA_APPRUNTIME)
+  if (base::IsStringUTF8(text)) {
+    composition_text.text = base::UTF8ToUTF16(text);
+    composition_text.selection = gfx::Range(0, composition_text.text.length());
+  } else {
+    composition_text.text = base::ASCIIToUTF16(text);
+  }
+#else   // defined(USE_NEVA_APPRUNTIME)
   composition_text.text = base::UTF8ToUTF16(text);
+#endif  // !defined(USE_NEVA_APPRUNTIME)
   for (const auto& span : spans) {
     auto start_offset = OffsetFromUTF8Offset(text, span.index);
     if (!start_offset)
@@ -565,6 +591,15 @@ void WaylandInputMethodContext::OnPreeditString(
     composition_text.ime_text_spans.emplace_back(style->type, *start_offset,
                                                  *end_offset, style->thickness);
   }
+#if defined(USE_NEVA_APPRUNTIME)
+  // NOTE(neva): This section is needed to assign styling to first
+  // (after focusing in text field) inputted symbol from Wayland VKB
+  // because spans are empty and style never applies to composition text
+  // in this case.
+  if (spans.empty()) {
+    composition_text.ime_text_spans.emplace_back();
+  }
+#else   // defined(USE_NEVA_APPRUNTIME)
   if (!preedit_cursor.IsValid()) {
     // This is the case if a preceding preedit_cursor event in text-input-v1 was
     // not received or an explicit negative value was requested to hide the
@@ -610,7 +645,7 @@ void WaylandInputMethodContext::OnPreeditString(
     }
     composition_text.selection = gfx::Range(offsets[0], offsets[1]);
   }
-
+#endif  // !defined(USE_NEVA_APPRUNTIME)
   surrounding_text_tracker_.OnSetCompositionText(composition_text);
   ime_delegate_->OnPreeditChanged(composition_text);
 }
@@ -690,6 +725,9 @@ void WaylandInputMethodContext::OnCursorPosition(int32_t index,
 
 void WaylandInputMethodContext::OnDeleteSurroundingText(int32_t index,
                                                         uint32_t length) {
+#if defined(USE_NEVA_APPRUNTIME)
+  ime_delegate_->OnDeleteRange(index, length);
+#else   // defined(USE_NEVA_APPRUNTIME)
   const auto& [surrounding_text, utf16_offset, selection, unsused_composition] =
       surrounding_text_tracker_.predicted_state();
   DCHECK(selection.IsValid());
@@ -724,6 +762,7 @@ void WaylandInputMethodContext::OnDeleteSurroundingText(int32_t index,
 
   surrounding_text_tracker_.OnExtendSelectionAndDelete(before, after);
   ime_delegate_->OnDeleteSurroundingText(before, after);
+#endif  // defined(USE_NEVA_APPRUNTIME)
 }
 
 void WaylandInputMethodContext::OnKeysym(uint32_t keysym,
@@ -932,6 +971,11 @@ void WaylandInputMethodContext::MaybeUpdateActivated(
     text_input_->SetContentType(
         attributes_.input_type, attributes_.input_mode, attributes_.flags,
         attributes_.should_do_learning, attributes_.can_compose_inline);
+    ///@name USE_NEVA_APPRUNTIME
+    ///@{
+    if (ime_delegate_->SystemKeyboardDisabled())
+      return;
+    ///@}
     if (!skip_virtual_keyboard_update)
       DisplayVirtualKeyboard();
   } else {

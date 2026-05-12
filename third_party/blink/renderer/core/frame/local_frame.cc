@@ -1066,6 +1066,11 @@ const LocalDOMWindow* LocalFrame::DomWindow() const {
 void LocalFrame::SetDOMWindow(LocalDOMWindow* dom_window) {
   DCHECK(dom_window);
   if (DomWindow()) {
+#if defined(USE_NEVA_APPRUNTIME)
+    if (frozen_) {
+      GetDocument()->Fetcher()->SetDefersLoading(LoaderFreezeMode::kNone);
+    }
+#endif
     DomWindow()->Reset();
     // SystemClipboard uses HeapMojo wrappers. HeapMojo
     // wrappers uses LocalDOMWindow (ExecutionContext) to reset the mojo
@@ -3007,8 +3012,18 @@ void LocalFrame::SetContextPaused(bool is_paused) {
 
   GetDocument()->Fetcher()->SetDefersLoading(GetLoaderFreezeMode());
   Loader().SetDefersLoading(GetLoaderFreezeMode());
+#if defined(USE_NEVA_APPRUNTIME)
+  // NOTE(neva): GetFrameScheduler() can be null if the page is being
+  // resumed (or paused) while closing the page, usually by
+  // the ScopedPagePauser
+  FrameScheduler* frame_scheduler = GetFrameScheduler();
+  if (frame_scheduler) {
+    frame_scheduler->SetPaused(is_paused);
+  }
+#else
   // TODO(altimin): Move this to PageScheduler level.
   GetFrameScheduler()->SetPaused(is_paused);
+#endif
 }
 
 LocalFrame* LocalFrame::GetPreviousLocalFrameForLocalSwap() {

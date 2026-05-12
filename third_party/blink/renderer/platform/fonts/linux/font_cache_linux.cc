@@ -32,12 +32,29 @@
 #include "third_party/blink/renderer/platform/fonts/simple_font_data.h"
 #include "ui/gfx/font_fallback_linux.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/renderer/platform/text/unicode_range.h"
+#endif
+
 namespace blink {
 
 static AtomicString& MutableSystemFontFamily() {
   DEFINE_THREAD_SAFE_STATIC_LOCAL(AtomicString, system_font_family, ());
   return system_font_family;
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+static const char* const kUnicodeRangeToLangTable[] = {
+    0,    "el", "tr", "he", "ar", 0, "th", "ko", "ja", "zh-CN", "zh-TW",
+    "hi", "ta", "hy", "bn", 0,    0, "ka", "gu", "pa", "km",    "ml"};
+
+static const char* GuessLangFromChar(UChar32 ch) {
+  unsigned char unicode_range = FindCharUnicodeRange(ch);
+  if (unicode_range < kCRangeSpecificItemNum)
+    return kUnicodeRangeToLangTable[unicode_range];
+  return 0;
+}
+#endif
 
 // static
 const AtomicString& FontCache::SystemFontFamily() {
@@ -90,6 +107,30 @@ const SimpleFontData* FontCache::PlatformFallbackFontForCharacter(
     // sequences like DIGIT ONE + COMBINING keycap etc.
     c = kFamilyCharacter;
   }
+#if defined(USE_NEVA_APPRUNTIME)
+  // Guess language from character script
+  if (!font_description.Locale() ||
+      font_description.Locale()->LocaleString().empty()) {
+    AtomicString locale(GuessLangFromChar(c));
+    if (!locale.empty()) {
+      FontDescription tmp_description(font_description);
+      tmp_description.SetLocale(LayoutLocale::Get(locale));
+      FontFaceCreationParams creation_params(
+          tmp_description.Family().FamilyName());
+      const FontPlatformData* platform_data =
+          GetFontPlatformData(tmp_description, creation_params);
+      if (platform_data && platform_data->FontContainsCharacter(c))
+        return FontDataFromFontPlatformData(platform_data);
+
+      // Set correspondence between locale and character to font cache so it
+      // will retrieve correct font further on by the code.
+      gfx::FallbackFontData tmp_fallback_font;
+      FontCache::GetFontForCharacter(
+          c, tmp_description.LocaleOrDefault().Ascii().data(),
+          &tmp_fallback_font);
+    }
+  }
+#endif
 
   // First try the specified font with standard style & weight.
   if (!IsEmojiPresentationEmoji(fallback_priority) &&
@@ -113,7 +154,14 @@ const SimpleFontData* FontCache::PlatformFallbackFontForCharacter(
 
   FontFaceCreationParams creation_params;
   creation_params = FontFaceCreationParams(
+// NOTE(neva): Change to WTF::String from std::string on
+// FontFaceCreationParams to avoid crash
+#if defined(__GNUC__) && !defined(__clang__)
+      WTF::String(fallback_font.filepath.value()),
+      fallback_font.fontconfig_interface_id,
+#else
       fallback_font.filepath.value(), fallback_font.fontconfig_interface_id,
+#endif
       fallback_font.ttc_index);
 
   // Changes weight and/or italic of given FontDescription depends on

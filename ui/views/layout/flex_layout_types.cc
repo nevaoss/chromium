@@ -59,7 +59,12 @@ class LazySize {
   const gfx::Size& operator*() const { return *get(); }
   const gfx::Size* get() const {
     if (!size_)
+// TODO(neva): Remove this when Neva GCC starts supporting GCC 9.5 or higher
+#if (__cplusplus < 202002L)
+      size_ = (view_.get()->*size_func_)();
+#else
       size_ = (view_->*size_func_)();
+#endif
     return &size_.value();
   }
   LazyDimension width() const {

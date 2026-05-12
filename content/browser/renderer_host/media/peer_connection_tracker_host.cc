@@ -283,6 +283,13 @@ void PeerConnectionTrackerHost::GetCurrentState() {
   tracker_->GetCurrentState();
 }
 
+#if defined(USE_NEVA_APPRUNTIME)
+void PeerConnectionTrackerHost::DropAllConnections(base::OnceClosure& cb) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  tracker_->DropAllConnections(std::move(cb));
+}
+#endif
+
 void PeerConnectionTrackerHost::BindReceiver(
     mojo::PendingReceiver<blink::mojom::PeerConnectionTrackerHost>
         pending_receiver) {

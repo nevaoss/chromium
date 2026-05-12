@@ -1,0 +1,88 @@
+From 70f3a5ac3d110e63cedebcb3ce758c6a48b0c3de Mon Sep 17 00:00:00 2001
+From: Ekaterina Kulikova <kate.kulikova@lge.com>
+Date: Tue, 8 Oct 2024 19:34:48 +0300
+Subject: [PATCH] [build][upstreamable] GCC: Add missing 'std::' to
+ isfinite() in ink/brush/brush_paint.cc
+
+:Release Notes:
+Added missing 'std::' to isfinite() in ink/brush/brush_paint.cc to fix
+GCC compiler error after rolling to 131.0.6730.0~1
+
+:Detailed Notes:
+In the Ink CL https://chromium.googlesource.com/external/github.com/google/ink.git/+/014640a47500c14e7d48af9d966bac66dac6c1bc
+, which rolled into Chromium in https://crrev.com/c/5530802, used
+isfinite() without 'std::'.
+
+It caused the following compile error with GCC:
+../../third_party/ink/src/ink/brush/brush_paint.cc:87:10:
+error: 'isfinite' was not declared in this scope; did you mean 'std::isfinite'?
+
+:Issues Addressed:
+[NEVA-9672] Upgrade neva-main-rolling up to 6730 BUILD
+---
+ ink/brush/brush_paint.cc | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+diff --git a/ink/brush/brush_paint.cc b/ink/brush/brush_paint.cc
+index 8c71a5c..5782e50 100644
+--- a/ink/brush/brush_paint.cc
++++ b/ink/brush/brush_paint.cc
+@@ -84,7 +84,13 @@ absl::Status ValidateBrushPaintTextureKeyframe(
+         keyframe.progress));
+   }
+   if (keyframe.size.has_value()) {
++// TODO(neva): Use isfinite() as std::isfinite() for GCC.
++// Try to contribute this GCC fix to upstream.
++#if defined(__GNUC__) && !defined(__clang__)
++    if (!std::isfinite(keyframe.size->x) || !std::isfinite(keyframe.size->y) ||
++#else   // defined(__GNUC__) && !defined(__clang__)
+     if (!isfinite(keyframe.size->x) || !isfinite(keyframe.size->y) ||
++#endif  // !(defined(__GNUC__) && !defined(__clang__))
+         keyframe.size->x <= 0 || keyframe.size->y <= 0) {
+       return absl::InvalidArgumentError(
+           absl::StrFormat("`BrushPaint::TextureKeyframe::size` components must "
+@@ -102,7 +108,13 @@ absl::Status ValidateBrushPaintTextureKeyframe(
+     }
+   }
+   if (keyframe.rotation.has_value()) {
++// TODO(neva): Use isfinite() as std::isfinite() for GCC.
++// Try to contribute this GCC fix to upstream.
++#if defined(__GNUC__) && !defined(__clang__)
++    if (!std::isfinite(keyframe.rotation->ValueInRadians())) {
++#else   // defined(__GNUC__) && !defined(__clang__)
+     if (!isfinite(keyframe.rotation->ValueInRadians())) {
++#endif  // !(defined(__GNUC__) && !defined(__clang__))
+       return absl::InvalidArgumentError(
+           absl::StrFormat("`BrushPaint::TextureKeyframe::rotation` must be "
+                           "finite. Got %v",
+@@ -159,7 +171,13 @@ absl::Status ValidateBrushPaintTextureLayer(
+                         "interval [0, 1]. Got %v",
+                         layer.offset));
+   }
++// TODO(neva): Use isfinite() as std::isfinite() for GCC.
++// Try to contribute this GCC fix to upstream.
++#if defined(__GNUC__) && !defined(__clang__)
++  if (!std::isfinite(layer.rotation.ValueInRadians())) {
++#else   // defined(__GNUC__) && !defined(__clang__)
+   if (!isfinite(layer.rotation.ValueInRadians())) {
++#endif  // !(defined(__GNUC__) && !defined(__clang__))
+     return absl::InvalidArgumentError(
+         absl::StrFormat("`BrushPaint::TextureLayer::rotation` must be finite. "
+                         "Got %v",
+@@ -179,7 +197,13 @@ absl::Status ValidateBrushPaintTextureLayer(
+         "interval [0, 1]. Got %v",
+         layer.offset_jitter));
+   }
++// TODO(neva): Use isfinite() as std::isfinite() for GCC.
++// Try to contribute this GCC fix to upstream.
++#if defined(__GNUC__) && !defined(__clang__)
++  if (!std::isfinite(layer.rotation_jitter.ValueInRadians())) {
++#else   // defined(__GNUC__) && !defined(__clang__)
+   if (!isfinite(layer.rotation_jitter.ValueInRadians())) {
++#endif  // !(defined(__GNUC__) && !defined(__clang__))
+     return absl::InvalidArgumentError(absl::StrFormat(
+         "`BrushPaint::TextureLayer::rotation_jitter` must be finite. "
+         "Got %v",
+-- 
+2.34.1
+

@@ -631,6 +631,28 @@ void WindowTreeHost::OnHostCloseRequested() {
   observers_.Notify(&WindowTreeHostObserver::OnHostCloseRequested, this);
 }
 
+///@name USE_NEVA_APPRUNTIME {
+void WindowTreeHost::OnWindowHostStateChanged(ui::WidgetState new_state) {
+  for (WindowTreeHostObserver& observer : observers_)
+    observer.OnWindowHostStateChanged(this, new_state);
+}
+///@}
+
+#if BUILDFLAG(IS_WEBOS)
+void WindowTreeHost::OnInputPanelVisibilityChanged(bool visibility) {
+  for (WindowTreeHostObserver& observer : observers_)
+    observer.OnInputPanelVisibilityChanged(this, visibility);
+}
+
+void WindowTreeHost::OnInputPanelRectChanged(int32_t x,
+                                             int32_t y,
+                                             uint32_t width,
+                                             uint32_t height) {
+  for (WindowTreeHostObserver& observer : observers_)
+    observer.OnInputPanelRectChanged(this, x, y, width, height);
+}
+#endif  // BUILDFLAG(IS_WEBOS)
+
 void WindowTreeHost::OnHostLostWindowCapture() {
   // It is possible for this function to be called during destruction, after the
   // root window has already been destroyed (e.g. when the ui::PlatformWindow is

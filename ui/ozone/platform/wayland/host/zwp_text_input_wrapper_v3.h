@@ -64,8 +64,14 @@ class ZWPTextInputWrapperV3 : public ZWPTextInputWrapper {
     uint32_t content_purpose = ZWP_TEXT_INPUT_V3_CONTENT_PURPOSE_NORMAL;
   };
   struct SetSurroundingTextData {
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+    SetSurroundingTextData() = default;
+    SetSurroundingTextData(std::string text,
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
     constexpr SetSurroundingTextData() = default;
     constexpr SetSurroundingTextData(std::string text,
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
                                      int32_t cursor,
                                      int32_t anchor)
         : text(std::move(text)), cursor(cursor), anchor(anchor) {}
@@ -75,8 +81,14 @@ class ZWPTextInputWrapperV3 : public ZWPTextInputWrapper {
     int32_t anchor = 0;
   };
   struct PreeditData {
+// TODO(neva): Remove this when Neva GCC version upgraded to 12.2+
+#if defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__)
+    PreeditData() = default;
+    PreeditData(std::string text,
+#else   // defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__)
     constexpr PreeditData() = default;
     constexpr PreeditData(std::string text,
+#endif  // !(defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__))
                           int32_t cursor_begin,
                           int32_t cursor_end)
         : text(std::move(text)),

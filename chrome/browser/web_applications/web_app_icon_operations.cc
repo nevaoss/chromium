@@ -10,6 +10,9 @@
 #include "base/containers/contains.h"
 #include "base/containers/extend.h"
 #include "base/containers/flat_set.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "base/values.h"
 #include "chrome/browser/web_applications/web_app_icon_generator.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"

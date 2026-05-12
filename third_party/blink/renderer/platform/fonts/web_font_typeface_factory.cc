@@ -55,12 +55,15 @@ bool IsFreeTypeSystemRasterizer() {
 }
 
 sk_sp<SkTypeface> MakeTypefaceDefaultFontMgr(sk_sp<SkData> data) {
+// TODO(neva): Remove this when Neva supports Rust build.
+#if !defined(USE_NEVA_APPRUNTIME)
 #if !(BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE))
   if (RuntimeEnabledFeatures::FontationsFontBackendEnabled()) {
     std::unique_ptr<SkStreamAsset> stream(new SkMemoryStream(data));
     return SkTypeface_Make_Fontations(std::move(stream), SkFontArguments());
   }
 #endif
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 
   sk_sp<SkFontMgr> font_manager;
 #if BUILDFLAG(IS_WIN)
@@ -83,10 +86,13 @@ sk_sp<SkTypeface> MakeTypefaceFallback(sk_sp<SkData> data) {
 }
 #endif
 
+// TODO(neva): Remove this when Neva supports Rust build.
+#if !defined(USE_NEVA_APPRUNTIME)
 sk_sp<SkTypeface> MakeTypefaceFontations(sk_sp<SkData> data) {
   std::unique_ptr<SkStreamAsset> stream(new SkMemoryStream(data));
   return SkTypeface_Make_Fontations(std::move(stream), SkFontArguments());
 }
+#endif
 
 sk_sp<SkTypeface> MakeVariationsTypeface(
     sk_sp<SkData> data,
@@ -188,7 +194,10 @@ bool WebFontTypefaceFactory::CreateTypeface(sk_sp<SkData> data,
   const FontFormatCheck format_check(data);
   const FontInstantiator instantiator = {
       MakeTypefaceDefaultFontMgr,
+// TODO(neva): Remove this when Neva supports Rust build.
+#if !defined(USE_NEVA_APPRUNTIME)
       MakeTypefaceFontations,
+#endif
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE)
       MakeTypefaceFallback,
 #endif

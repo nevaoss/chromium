@@ -280,7 +280,7 @@ std::unique_ptr<ImageProcessor> ImageProcessorFactory::Create(
 #endif
       base::BindRepeating(&LibYUVImageProcessorBackend::Create)};
 
-#if defined(ARCH_CPU_ARM_FAMILY)
+#if defined(ARCH_CPU_ARM_FAMILY) && !defined(USE_WEBOS_CODEC)
   const bool use_gl_scaling =
       (base::FeatureList::IsEnabled(media::kUseGLForScaling) &&
        (input_config.fourcc == Fourcc(Fourcc::NV12) ||
@@ -289,7 +289,7 @@ std::unique_ptr<ImageProcessor> ImageProcessorFactory::Create(
     create_funcs.insert(create_funcs.begin(),
                         base::BindRepeating(&GLImageProcessorBackend::Create));
   }
-#endif  // defined(ARCH_CPU_ARM_FAMILY)
+#endif  // defined(ARCH_CPU_ARM_FAMILY) && !defined(USE_WEBOS_CODEC)
 
     for (auto& create_func : create_funcs) {
       std::unique_ptr<ImageProcessor> image_processor = ImageProcessor::Create(

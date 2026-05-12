@@ -38,6 +38,10 @@
 #include "net/socket/tcp_server_socket.h"
 #include "ui/base/resource/resource_bundle.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "neva/app_runtime/grit/app_runtime_inspector_resources.h"
+#endif
+
 #if BUILDFLAG(IS_ANDROID)
 #include "content/public/browser/android/devtools_auth.h"
 #include "net/socket/unix_domain_server_socket_posix.h"
@@ -231,6 +235,9 @@ scoped_refptr<DevToolsAgentHost> ShellDevToolsManagerDelegate::CreateNewTarget(
 std::string ShellDevToolsManagerDelegate::GetDiscoveryPageHTML() {
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
   return std::string();
+#elif defined(USE_NEVA_APPRUNTIME)
+  return ui::ResourceBundle::GetSharedInstance().LoadDataResourceString(
+      IDR_APP_RUNTIME_INSPECTOR_DISCOVERY_PAGE);
 #else
   return ui::ResourceBundle::GetSharedInstance().LoadDataResourceString(
       IDR_CONTENT_SHELL_DEVTOOLS_DISCOVERY_PAGE);

@@ -147,6 +147,14 @@ class NET_EXPORT HostResolverCache final {
 
  private:
   struct Key {
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+    Key() = default;
+    Key(const std::string& domain_name,
+        const net::NetworkAnonymizationKey& network_anonymization_key)
+        : domain_name(domain_name),
+          network_anonymization_key(network_anonymization_key) {}
+#endif  // !(__cplusplus < 202002L)
     ~Key();
 
     std::string domain_name;

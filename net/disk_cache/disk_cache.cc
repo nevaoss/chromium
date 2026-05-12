@@ -123,7 +123,7 @@ CacheCreator::CacheCreator(
 CacheCreator::~CacheCreator() = default;
 
 void CacheCreator::Run() {
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA)
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA) || BUILDFLAG(IS_WEBOS)
   static const bool kSimpleBackendIsDefault = true;
 #else
   static const bool kSimpleBackendIsDefault = false;

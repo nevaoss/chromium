@@ -42,7 +42,12 @@ class SearchBubbleUI : public TopChromeWebUIController,
       mojo::PendingReceiver<color_change_listener::mojom::PageHandler>
           receiver);
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
+  static std::string GetWebUIName() { return "LensSearchBubble"; }
+#else   // defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
   static constexpr std::string GetWebUIName() { return "LensSearchBubble"; }
+#endif  // defined(__GNUC__) && __GNUC__ < 12 && defined(__clang__)
 
  private:
   // lens::mojom::SearchBubblePageHandlerFactory

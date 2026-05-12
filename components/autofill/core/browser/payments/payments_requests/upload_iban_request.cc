@@ -6,6 +6,9 @@
 
 #include "base/json/json_writer.h"
 #include "base/strings/escape.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 
 namespace autofill::payments {
 

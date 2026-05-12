@@ -42,6 +42,23 @@ namespace {
 constexpr uint64_t k1MB = 1024ull * 1024;
 constexpr base::TimeDelta kDefaultMeasurementInterval = base::Seconds(1);
 
+#if defined(USE_NEVA_APPRUNTIME)
+base::TimeDelta MeasurementInterval() {
+  static const base::FeatureParam<base::TimeDelta> kMeasurementInterval{
+      &content::features::kUserLevelMemoryPressureSignal,
+      "measurement_interval", kDefaultMeasurementInterval};
+  return kMeasurementInterval.Get();
+}
+
+// FIXME(neva): Need to check the default value.
+constexpr size_t kMemoryThresholdMB = 738;
+uint64_t MemoryThresholdParam() {
+  static const base::FeatureParam<int> kMemoryThresholdParam{
+      &content::features::kUserLevelMemoryPressureSignal, "memory_threshold_mb",
+      kMemoryThresholdMB};
+  return base::as_unsigned(kMemoryThresholdParam.Get()) * k1MB;
+}
+#else   // !defined(USE_NEVA_APPRUNTIME)
 // Time interval between measuring total private memory footprint.
 base::TimeDelta MeasurementIntervalFor3GbDevices() {
   static const base::FeatureParam<base::TimeDelta> kMeasurementInterval{
@@ -99,11 +116,20 @@ uint64_t MemoryThresholdParamFor6GbDevices() {
       "memory_threshold_mb", kMemoryThresholdMBOf6GbDevices};
   return base::as_unsigned(kMemoryThresholdParam.Get()) * k1MB;
 }
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 
 }  // namespace
 
 // static
 void UserLevelMemoryPressureSignalGenerator::Initialize() {
+#if defined(USE_NEVA_APPRUNTIME)
+  if (content::features::IsUserLevelMemoryPressureSignalEnabled()) {
+    UserLevelMemoryPressureSignalGenerator::Get().Start(
+        MemoryThresholdParam(), MeasurementInterval(),
+        content::features::MinUserMemoryPressureInterval());
+    return;
+  }
+#else   // !defined(USE_NEVA_APPRUNTIME)
   if (content::features::IsUserLevelMemoryPressureSignalEnabledOn3GbDevices()) {
     UserLevelMemoryPressureSignalGenerator::Get().Start(
         MemoryThresholdParamFor3GbDevices(), MeasurementIntervalFor3GbDevices(),
@@ -126,6 +152,7 @@ void UserLevelMemoryPressureSignalGenerator::Initialize() {
   }
 
   // No group defined for >6 GB devices.
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 }
 
 // static
@@ -156,6 +183,11 @@ void UserLevelMemoryPressureSignalGenerator::OnTimerFired() {
       GetTotalPrivateFootprintVisibleOrHigherPriorityRenderers();
 
   if (total_pmfs.first > memory_threshold_) {
+#if defined(USE_NEVA_APPRUNTIME)
+    VLOG(1) << __func__
+            << " Exceed memory threshold : " << total_pmfs.first / k1MB << "/"
+            << memory_threshold_ / k1MB;
+#endif
     NotifyMemoryPressure();
     interval = minimum_interval_;
 
@@ -244,6 +276,9 @@ std::pair<uint64_t, uint64_t> UserLevelMemoryPressureSignalGenerator::
     if (!process.IsValid())
       continue;
 
+    // TODO(neva) : Need to consider whether to exclude invisible renderer
+    // process.
+#if !defined(USE_NEVA_APPRUNTIME)
     // Ignore renderer processes with invisible or lower priority.
     if (host->GetEffectiveChildBindingState() <
         base::android::ChildBindingState::VISIBLE) {
@@ -251,6 +286,7 @@ std::pair<uint64_t, uint64_t> UserLevelMemoryPressureSignalGenerator::
           GetPrivateFootprint(process).value_or(0);
       continue;
     }
+#endif
 
     // Because of the "hidepid=2" mount option for /proc on Android,
     // the browser process cannot open /proc/{render process pid}/maps and
@@ -397,4 +433,3 @@ UserLevelMemoryPressureSignalGenerator::GetPrivateFootprint(
 }
 
 }  // namespace memory_pressure
-

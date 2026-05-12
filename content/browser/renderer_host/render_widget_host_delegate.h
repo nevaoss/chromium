@@ -331,6 +331,10 @@ class CONTENT_EXPORT RenderWidgetHostDelegate {
   // possible.
   virtual ukm::SourceId GetCurrentPageUkmSourceId();
 
+#if defined(USE_NEVA_APPRUNTIME) && defined(ENABLE_PINCH_TO_ZOOM)
+  virtual bool IsPinchToZoomEnabled() const;
+#endif
+
   // Returns true if there is context menu shown on page.
   virtual bool IsShowingContextMenuOnPage() const;
 

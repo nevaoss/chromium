@@ -85,6 +85,22 @@
 #include "ui/menus/simple_menu_model.h"
 #include "url/url_constants.h"
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "content/common/renderer.mojom.h"
+///@}
+
+#if defined(USE_NEVA_APPRUNTIME)
+#include "extensions/common/switches.h"
+#include "neva/user_agent/common/user_agent.h"
+#if BUILDFLAG(IS_WEBOS)
+#include "neva/app_runtime/browser/app_runtime_webview_controller_impl.h"
+#include "neva/app_runtime/public/mojom/app_runtime_webview.mojom.h"
+#include "neva/app_runtime/public/webview_controller_delegate.h"
+#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+#endif  // BUILDFLAG(IS_WEBOS)
+#endif  // USE_NEVA_APPRUNTIME
+
 using base::UserMetricsAction;
 using content::GlobalRequestID;
 using content::RenderFrameHost;
@@ -95,6 +111,41 @@ using guest_view::GuestViewBase;
 using guest_view::GuestViewEvent;
 using guest_view::GuestViewManager;
 using zoom::ZoomController;
+
+#if defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
+namespace {
+
+class WebViewGuestWebViewControllerDelegate
+    : public neva_app_runtime::WebViewControllerDelegate {
+ public:
+  void RunCommand(const std::string& name,
+                  const std::vector<std::string>& arguments) override {}
+
+  std::string RunFunction(const std::string& name,
+                          const std::vector<std::string>&) override {
+    if (name == std::string("initialize")) {
+      base::CommandLine* cmd = base::CommandLine::ForCurrentProcess();
+      if (cmd->HasSwitch(extensions::switches::kWebOSAppId)) {
+        std::stringstream result_stream;
+        result_stream << "{\"identifier\":\""
+                      << cmd->GetSwitchValueASCII(
+                             extensions::switches::kWebOSAppId)
+                      << "\",\"devicePixelRatio\":2}";
+        return result_stream.str();
+      }
+    } else if (name == std::string("identifier")) {
+      base::CommandLine* cmd = base::CommandLine::ForCurrentProcess();
+      if (cmd->HasSwitch(extensions::switches::kWebOSAppId))
+        return cmd->GetSwitchValueASCII(extensions::switches::kWebOSAppId);
+    } else if (name == std::string("devicePixelRatio")) {
+      return std::string("2");
+    }
+    return std::string();
+  }
+};
+
+}  // namespace
+#endif
 
 namespace extensions {
 
@@ -367,6 +418,19 @@ void WebViewGuest::CreateInnerPageWithStoragePartition(
     return;
   }
 
+#if defined(USE_NEVA_APPRUNTIME)
+  scoped_refptr<content::SiteInstance> guest_site_instance;
+  base::CommandLine* cmd = base::CommandLine::ForCurrentProcess();
+  if (!cmd->HasSwitch(switches::kProcessPerGuestWebView)) {
+    // If we already have a webview tag in the same app using the same storage
+    // partition, we should use the same SiteInstance so the existing tag and
+    // the new tag can script each other.
+    auto* guest_view_manager =
+        GuestViewManager::FromBrowserContext(browser_context());
+    guest_site_instance =
+        guest_view_manager->GetGuestSiteInstance(*partition_config);
+  }
+#else
   // If we already have a webview tag in the same app using the same storage
   // partition, we should use the same SiteInstance so the existing tag and
   // the new tag can script each other.
@@ -374,6 +438,7 @@ void WebViewGuest::CreateInnerPageWithStoragePartition(
       GuestViewManager::FromBrowserContext(browser_context());
   scoped_refptr<content::SiteInstance> guest_site_instance =
       guest_view_manager->GetGuestSiteInstance(*partition_config);
+#endif  // USE_NEVA_APPRUNTIME
   if (!guest_site_instance) {
     // Create the SiteInstance in a new BrowsingInstance, which will ensure
     // that webview tags are also not allowed to send messages across
@@ -419,6 +484,10 @@ void WebViewGuest::CreateInnerPageWithStoragePartition(
 
     grant_commit_origin(new_contents->GetPrimaryMainFrame());
 
+#if defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
+    neva_app_runtime::AppRuntimeWebViewControllerImpl::CreateForWebContents(
+        new_contents.get());
+#endif  // defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
     std::move(callback).Run(std::move(owned_this), std::move(new_contents));
   }
 }
@@ -821,6 +890,14 @@ void WebViewGuest::SetUserAgentOverride(const std::string& ua_string_override) {
 
   if (base::FeatureList::IsEnabled(features::kGuestViewMPArch)) {
     NOTIMPLEMENTED();
+#if defined(USE_NEVA_APPRUNTIME)
+  } else if (neva_user_agent::IsUserAgentClientHintsEnabled()) {
+    blink::UserAgentOverride ua_override;
+    ua_override.ua_string_override = ua_string_override;
+    ua_override.ua_metadata_override =
+        neva_user_agent::GetDefaultUserAgentMetadata();
+    web_contents()->SetUserAgentOverride(ua_override, false);
+#endif  // defined(USE_NEVA_APPRUNTIME)
   } else {
     web_contents()->SetUserAgentOverride(
         default_user_agent_override.value_or(
@@ -832,6 +909,33 @@ void WebViewGuest::SetUserAgentOverride(const std::string& ua_string_override) {
 void WebViewGuest::Stop() {
   web_contents()->Stop();
 }
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+void WebViewGuest::Suspend() {
+  if (is_suspended_)
+    return;
+  is_suspended_ = true;
+  base::RecordAction(UserMetricsAction("WebView.Guest.Suspend"));
+
+  content::RenderProcessHost* host =
+      web_contents()->GetPrimaryMainFrame()->GetProcess();
+  if (host)
+    host->GetRendererInterface()->ProcessSuspend();
+}
+
+void WebViewGuest::Resume() {
+  if (!is_suspended_)
+    return;
+  is_suspended_ = false;
+  base::RecordAction(UserMetricsAction("WebView.Guest.Resume"));
+
+  content::RenderProcessHost* host =
+      web_contents()->GetPrimaryMainFrame()->GetProcess();
+  if (host)
+    host->GetRendererInterface()->ProcessResume();
+}
+///@}
 
 void WebViewGuest::Terminate() {
   base::RecordAction(UserMetricsAction("WebView.Guest.Terminate"));
@@ -888,7 +992,7 @@ WebViewGuest::WebViewGuest(content::RenderFrameHost* owner_rfh)
           ExtensionsAPIClient::Get()->CreateWebViewGuestDelegate(this))),
       is_spatial_navigation_enabled_(
           base::CommandLine::ForCurrentProcess()->HasSwitch(
-              switches::kEnableSpatialNavigation)) {}
+              ::switches::kEnableSpatialNavigation)) {}
 
 WebViewGuest::~WebViewGuest() {
   if (!attached() && GetOpener())
@@ -1136,6 +1240,39 @@ void WebViewGuest::RenderFrameCreated(
         .SetFrameName(name_);
     SetTransparency(render_frame_host);
   }
+
+#if defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
+  content::WebContents* web_contents =
+      content::WebContents::FromRenderFrameHost(render_frame_host);
+
+  if (render_frame_host == web_contents->GetPrimaryMainFrame()) {
+    auto* webview_controller_impl =
+        neva_app_runtime::AppRuntimeWebViewControllerImpl::FromWebContents(
+            web_contents);
+
+    // The method is called to notify of the creation of all RenderFrameHost
+    // objects, including related to subframes with other WebContents, as in
+    // the case of an iframe, for which no webview_controller_impl has been
+    // created as content::WebContentsUserData. So webview_controller_impl
+    // can be nullptr.
+    if (!webview_controller_impl)
+      return;
+
+    webview_controller_delegate_ =
+        std::make_unique<WebViewGuestWebViewControllerDelegate>();
+    webview_controller_impl->SetDelegate(webview_controller_delegate_.get());
+
+    mojo::AssociatedRemote<neva_app_runtime::mojom::AppRuntimeWebViewClient>
+        client;
+    render_frame_host->GetMainFrame()
+        ->GetRemoteAssociatedInterfaces()
+        ->GetInterface(&client);
+    client->AddInjectionToLoad(std::string("v8/webosservicebridge"),
+                               std::string("{}"));
+    client->AddInjectionToLoad(std::string("v8/webossystem"),
+                               std::string("{}"));
+  }
+#endif  // defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
 }
 
 void WebViewGuest::RenderFrameDeleted(

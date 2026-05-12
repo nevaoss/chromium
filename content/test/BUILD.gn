@@ -16,6 +16,7 @@ import("//device/vr/buildflags/buildflags.gni")
 import("//media/media_options.gni")
 import("//mojo/features.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
+import("//neva/neva.gni")
 import("//net/features.gni")
 import("//ppapi/buildflags/buildflags.gni")
 import("//printing/buildflags/buildflags.gni")
@@ -813,6 +814,30 @@ static_library("test_support") {
     sources += [
       "../public/test/xr_test_utils.cc",
       "../public/test/xr_test_utils.h",
+    ]
+  }
+
+  # TODO(neva): This is a workaround added in v.79 to avoid build failures for
+  # unnecessary for webOS tests.
+  if (is_webos) {
+    sources = []
+    sources += [
+      "../public/test/blink_test_environment.cc",
+      "../public/test/blink_test_environment.h",
+      "../public/test/content_test_suite_base.cc",
+      "../public/test/content_test_suite_base.h",
+      "../public/test/test_content_client_initializer.cc",
+      "../public/test/test_content_client_initializer.h",
+      "mock_background_sync_controller.cc",
+      "mock_background_sync_controller.h",
+      "mock_reduce_accept_language_controller_delegate.cc",
+      "mock_reduce_accept_language_controller_delegate.h",
+      "test_blink_web_unit_test_support.cc",
+      "test_blink_web_unit_test_support.h",
+      "test_content_browser_client.cc",
+      "test_content_browser_client.h",
+      "test_content_client.cc",
+      "test_content_client.h",
     ]
   }
 

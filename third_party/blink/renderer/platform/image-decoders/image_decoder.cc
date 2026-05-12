@@ -53,7 +53,10 @@
 
 #if BUILDFLAG(ENABLE_AV1_DECODER)
 #include "third_party/blink/renderer/platform/image-decoders/avif/avif_image_decoder.h"
+// TODO(neva): Remove this when Neva supports rust build.
+#if !defined(USE_NEVA_APPRUNTIME)
 #include "third_party/blink/renderer/platform/image-decoders/avif/crabbyavif_image_decoder.h"
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 #endif
 
 namespace blink {
@@ -198,9 +201,14 @@ String SniffMimeTypeInternal(scoped_refptr<SegmentReader> reader) {
     return "image/bmp";
   }
 #if BUILDFLAG(ENABLE_AV1_DECODER)
+// TODO(neva): Remove this when Neva supports rust build.
+#if defined(USE_NEVA_APPRUNTIME)
+  if (AVIFImageDecoder::MatchesAVIFSignature(fast_reader)) {
+#else   // defined(USE_NEVA_APPRUNTIME)
   if (base::FeatureList::IsEnabled(blink::features::kCrabbyAvif)
           ? CrabbyAVIFImageDecoder::MatchesAVIFSignature(fast_reader)
           : AVIFImageDecoder::MatchesAVIFSignature(fast_reader)) {
+#endif  // !defined(USE_NEVA_APPRUNTIME)
     return "image/avif";
   }
 #endif
@@ -310,15 +318,21 @@ std::unique_ptr<ImageDecoder> ImageDecoder::CreateByMimeType(
                                                 max_decoded_bytes);
 #if BUILDFLAG(ENABLE_AV1_DECODER)
   } else if (mime_type == "image/avif") {
+// TODO(neva): Remove this when Neva supports rust build.
+#if !defined(USE_NEVA_APPRUNTIME)
     if (base::FeatureList::IsEnabled(blink::features::kCrabbyAvif)) {
       decoder = std::make_unique<CrabbyAVIFImageDecoder>(
           alpha_option, high_bit_depth_decoding_option, color_behavior,
           aux_image, max_decoded_bytes, animation_option);
     } else {
+#endif  // !defined(USE_NEVA_APPRUNTIME)
       decoder = std::make_unique<AVIFImageDecoder>(
           alpha_option, high_bit_depth_decoding_option, color_behavior,
           aux_image, max_decoded_bytes, animation_option);
+// TODO(neva): Remove this when Neva supports rust build.
+#if !defined(USE_NEVA_APPRUNTIME)
     }
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 #endif
   }
 

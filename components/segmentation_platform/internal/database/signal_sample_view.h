@@ -61,6 +61,13 @@ class SignalSampleView {
       CHECK_EQ(view_, other.view_);
       return current_ == other.current_;
     }
+// TODO(neva): Remove the following lines wrapped by __cplusplus direcitve
+// when Neva GCC starts supporting C++20
+#if (__cplusplus < 202002L)
+    bool operator!=(const Iterator& other) const {
+      return !operator==(other);
+    }
+#endif
 
     // Current index the iterator points to. Prefer to use * operator instead:
     // `*it`.

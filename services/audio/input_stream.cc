@@ -190,6 +190,26 @@ void InputStream::Record() {
     log_->OnStarted();
 }
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+void InputStream::Pause() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(owning_sequence_);
+  DCHECK(controller_);
+  TRACE_EVENT_NESTABLE_ASYNC_INSTANT0("audio", "Pause", this);
+  controller_->Pause();
+  if (log_)
+    log_->OnPaused();
+}
+
+void InputStream::Resume() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(owning_sequence_);
+  DCHECK(controller_);
+  TRACE_EVENT_NESTABLE_ASYNC_INSTANT0("audio", "Resume", this);
+  controller_->Resume();
+  if (log_)
+    log_->OnResumed();
+}
+#endif
+
 void InputStream::SetVolume(double volume) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(owning_sequence_);
   DCHECK(controller_);

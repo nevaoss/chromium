@@ -1,0 +1,279 @@
+From 40f3fd9c340e814634921b08250df859b154eac2 Mon Sep 17 00:00:00 2001
+From: Ivan Pavlotsky <ivan.pavlotsky@lge.com>
+Date: Fri, 23 Aug 2024 19:27:15 +0300
+Subject: [PATCH] [build][webos] 129.0.6654.0~1: Disable Neon DotProduct and
+ I8MM instructions in libyuv
+
+:Release Notes:
+Disabled Neon DotProduct and I8MM instructions in libyuv to fix
+webOS/OSE build after rolling to 129.0.6654.0~1
+
+:Detailed Notes:
+In the upstream libyuv CLs:
+- https://chromium-review.googlesource.com/c/libyuv/libyuv/+/5383442
+- https://chromium-review.googlesource.com/c/libyuv/libyuv/+/5424737
+- https://chromium-review.googlesource.com/c/libyuv/libyuv/+/5463945
+- https://chromium-review.googlesource.com/c/libyuv/libyuv/+/5490049
+- https://chromium-review.googlesource.com/c/libyuv/libyuv/+/5621577
+- https://chromium-review.googlesource.com/c/libyuv/libyuv/+/5712928
+(which were rolled into Chromium in the upstream CL
+https://crrev.com/c/5778746) added and used Neon DotProduct and I8MM
+instructions.
+It caused errors on building webOS/OSE like the following:
+| FAILED: obj/third_party/libyuv/libyuv_neon/compare_neon64.o
+...
+| {standard input}: Assembler messages:
+| {standard input}:154: Error: selected processor does not support `udot v4.4s,v0.16b,v6.16b'
+| {standard input}:155: Error: selected processor does not support `udot v5.4s,v1.16b,v6.16b'
+| {standard input}:189: Error: selected processor does not support `udot v4.4s,v0.16b,v0.16b'
+| {standard input}:190: Error: selected processor does not support `udot v5.4s,v1.16b,v1.16b'
+
+Disable Neon DotProduct and I8MM instructions in libyuv for webOS/OSE to
+fix this issue.
+
+:Issues Addressed:
+[NEVA-9526] Upgrade neva-main-rolling up to 6654 BUILD
+---
+ BUILD.gn                     |  5 +++++
+ include/libyuv/compare_row.h |  4 ++++
+ include/libyuv/row.h         |  4 ++++
+ source/compare_neon64.cc     |  4 ++++
+ source/row_neon64.cc         | 32 ++++++++++++++++++++++++++++++++
+ 5 files changed, 49 insertions(+)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index bceab17c..34ec2a43 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -7,6 +7,7 @@
+ # be found in the AUTHORS file in the root of the source tree.
+ 
+ import("//build/config/features.gni")
++import("//neva/neva.gni")
+ import("//testing/test.gni")
+ import("libyuv.gni")
+ 
+@@ -237,7 +238,11 @@ if (libyuv_use_neon) {
+     public_configs = [ ":libyuv_config" ]
+ 
+     if (current_cpu == "arm64") {
++      # TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++      # instructions.
++      if (!is_webos) {
+       cflags = [ "-march=armv8-a+dotprod+i8mm" ]
++      }
+     } else {
+       configs -= [ "//build/config/compiler:compiler_arm_fpu" ]
+       cflags = [ "-mfpu=neon" ]
+diff --git a/include/libyuv/compare_row.h b/include/libyuv/compare_row.h
+index 8a8358db..1f0dd6f6 100644
+--- a/include/libyuv/compare_row.h
++++ b/include/libyuv/compare_row.h
+@@ -86,8 +86,12 @@ extern "C" {
+ #if !defined(LIBYUV_DISABLE_NEON) && defined(__aarch64__)
+ #define HAS_HASHDJB2_NEON
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ #define HAS_HAMMINGDISTANCE_NEON_DOTPROD
+ #define HAS_SUMSQUAREERROR_NEON_DOTPROD
++#endif  // !defined(OS_WEBOS)
+ #endif
+ 
+ #if !defined(LIBYUV_DISABLE_MSA) && defined(__mips_msa)
+diff --git a/include/libyuv/row.h b/include/libyuv/row.h
+index 5c110dd2..bcb341bc 100644
+--- a/include/libyuv/row.h
++++ b/include/libyuv/row.h
+@@ -569,6 +569,9 @@ extern "C" {
+ #define HAS_P410TOAR30ROW_NEON
+ #define HAS_P410TOARGBROW_NEON
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ #define HAS_ABGRTOYJROW_NEON_DOTPROD
+ #define HAS_ABGRTOYROW_NEON_DOTPROD
+ #define HAS_ARGBTOYJROW_NEON_DOTPROD
+@@ -579,6 +582,7 @@ extern "C" {
+ 
+ #define HAS_ARGBCOLORMATRIXROW_NEON_I8MM
+ #define HAS_ARGBTOUV444ROW_NEON_I8MM
++#endif  // !defined(OS_WEBOS)
+ #endif
+ 
+ // The following are available on AArch64 SVE platforms:
+diff --git a/source/compare_neon64.cc b/source/compare_neon64.cc
+index 07292def..508bb86c 100644
+--- a/source/compare_neon64.cc
++++ b/source/compare_neon64.cc
+@@ -153,6 +153,9 @@ uint32_t HashDjb2_NEON(const uint8_t* src, int count, uint32_t seed) {
+   return hash;
+ }
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ uint32_t HammingDistance_NEON_DotProd(const uint8_t* src_a,
+                                       const uint8_t* src_b,
+                                       int count) {
+@@ -214,6 +217,7 @@ uint32_t SumSquareError_NEON_DotProd(const uint8_t* src_a,
+       : "memory", "cc", "v0", "v1", "v2", "v3", "v4", "v5");
+   return sse;
+ }
++#endif  // !defined(OS_WEBOS)
+ 
+ #endif  // !defined(LIBYUV_DISABLE_NEON) && defined(__aarch64__)
+ 
+diff --git a/source/row_neon64.cc b/source/row_neon64.cc
+index 7ad54b43..82156caa 100644
+--- a/source/row_neon64.cc
++++ b/source/row_neon64.cc
+@@ -2766,6 +2766,9 @@ static void ARGBToUV444MatrixRow_NEON(
+         "v27", "v28", "v29");
+ }
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ static void ARGBToUV444MatrixRow_NEON_I8MM(
+     const uint8_t* src_argb,
+     uint8_t* dst_u,
+@@ -2801,6 +2804,7 @@ static void ARGBToUV444MatrixRow_NEON_I8MM(
+       : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v16", "v17",
+         "v29");
+ }
++#endif  // !defined(OS_WEBOS)
+ 
+ // RGB to bt601 coefficients
+ // UB   0.875 coefficient = 112
+@@ -2825,6 +2829,9 @@ void ARGBToUV444Row_NEON(const uint8_t* src_argb,
+                             &kRgb24I601UVConstantsU8);
+ }
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ void ARGBToUV444Row_NEON_I8MM(const uint8_t* src_argb,
+                               uint8_t* dst_u,
+                               uint8_t* dst_v,
+@@ -2832,6 +2839,7 @@ void ARGBToUV444Row_NEON_I8MM(const uint8_t* src_argb,
+   ARGBToUV444MatrixRow_NEON_I8MM(src_argb, dst_u, dst_v, width,
+                                  &kRgb24I601UVConstantsI8);
+ }
++#endif  // !defined(OS_WEBOS)
+ 
+ #define RGBTOUV_SETUP_REG                                                  \
+   "movi       v20.8h, #56, lsl #0  \n" /* UB/VR coefficient (0.875) / 2 */ \
+@@ -3546,6 +3554,9 @@ static void ARGBToYMatrixRow_NEON(const uint8_t* src_argb,
+         "v17");
+ }
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ static void ARGBToYMatrixRow_NEON_DotProd(
+     const uint8_t* src_argb,
+     uint8_t* dst_y,
+@@ -3580,6 +3591,7 @@ static void ARGBToYMatrixRow_NEON_DotProd(
+       : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v16",
+         "v17");
+ }
++#endif  // !defined(OS_WEBOS)
+ 
+ // RGB to JPeg coefficients
+ // B * 0.1140 coefficient = 29
+@@ -3623,6 +3635,9 @@ void ABGRToYJRow_NEON(const uint8_t* src_abgr, uint8_t* dst_yj, int width) {
+   ARGBToYMatrixRow_NEON(src_abgr, dst_yj, width, &kRawJPEGConstants);
+ }
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ void ARGBToYRow_NEON_DotProd(const uint8_t* src_argb,
+                              uint8_t* dst_y,
+                              int width) {
+@@ -3646,6 +3661,7 @@ void ABGRToYJRow_NEON_DotProd(const uint8_t* src_abgr,
+                               int width) {
+   ARGBToYMatrixRow_NEON_DotProd(src_abgr, dst_yj, width, &kRawJPEGConstants);
+ }
++#endif  // !defined(OS_WEBOS)
+ 
+ // RGBA expects first value to be A and ignored, then 3 values to contain RGB.
+ // Same code as ARGB, except the LD4
+@@ -3694,6 +3710,9 @@ void BGRAToYRow_NEON(const uint8_t* src_bgra, uint8_t* dst_y, int width) {
+   RGBAToYMatrixRow_NEON(src_bgra, dst_y, width, &kRawI601Constants);
+ }
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ void RGBAToYRow_NEON_DotProd(const uint8_t* src_rgba,
+                              uint8_t* dst_y,
+                              int width) {
+@@ -3720,6 +3739,7 @@ void BGRAToYRow_NEON_DotProd(const uint8_t* src_bgra,
+   ARGBToYMatrixRow_NEON_DotProd(src_bgra, dst_y, width,
+                                 &kRawI601DotProdConstants);
+ }
++#endif  // !defined(OS_WEBOS)
+ 
+ static void RGBToYMatrixRow_NEON(const uint8_t* src_rgb,
+                                  uint8_t* dst_y,
+@@ -4189,6 +4209,9 @@ static const uvec8 kARGBGrayRowCoeffs = {29, 150, 77, 0};
+ static const uvec8 kARGBGrayRowIndices = {0, 0, 0, 19, 2, 2, 2, 23,
+                                           4, 4, 4, 27, 6, 6, 6, 31};
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ void ARGBGrayRow_NEON_DotProd(const uint8_t* src_argb,
+                               uint8_t* dst_argb,
+                               int width) {
+@@ -4216,6 +4239,7 @@ void ARGBGrayRow_NEON_DotProd(const uint8_t* src_argb,
+         [indices] "r"(&kARGBGrayRowIndices)  // %[indices]
+       : "cc", "memory", "v0", "v1", "v2", "v3", "v24", "v25");
+ }
++#endif  // !defined(OS_WEBOS)
+ 
+ // Convert 8 ARGB pixels (32 bytes) to 8 Sepia ARGB pixels.
+ //    b = (r * 35 + g * 68 + b * 17) >> 7
+@@ -4262,6 +4286,9 @@ static const uvec8 kARGBSepiaRowCoeffs = {17, 68, 35, 0,  22, 88,
+                                           45, 0,  24, 98, 50, 0};
+ static const uvec8 kARGBSepiaRowAlphaIndices = {3, 7, 11, 15, 19, 23, 27, 31};
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ void ARGBSepiaRow_NEON_DotProd(uint8_t* dst_argb, int width) {
+   asm volatile(
+       "ld3r        {v20.4s, v21.4s, v22.4s}, [%[coeffs]] \n"
+@@ -4298,6 +4325,7 @@ void ARGBSepiaRow_NEON_DotProd(uint8_t* dst_argb, int width) {
+       : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v20",
+         "v21", "v22", "v24", "v25", "v26", "v28", "v29", "v30");
+ }
++#endif  // !defined(OS_WEBOS)
+ 
+ // Tranform 8 ARGB pixels (32 bytes) with color matrix.
+ // TODO(fbarchard): Was same as Sepia except matrix is provided.  This function
+@@ -4361,6 +4389,9 @@ void ARGBColorMatrixRow_NEON(const uint8_t* src_argb,
+         "v17", "v18", "v19", "v22", "v23", "v24", "v25");
+ }
+ 
++// TODO(neva): Remove this when webOS supports Neon DotProduct and I8MM
++// instructions.
++#if !defined(OS_WEBOS)
+ void ARGBColorMatrixRow_NEON_I8MM(const uint8_t* src_argb,
+                                   uint8_t* dst_argb,
+                                   const int8_t* matrix_argb,
+@@ -4417,6 +4448,7 @@ void ARGBColorMatrixRow_NEON_I8MM(const uint8_t* src_argb,
+       : "cc", "memory", "v0", "v1", "v16", "v17", "v18", "v19", "v20", "v21",
+         "v22", "v23", "v31");
+ }
++#endif  // !defined(OS_WEBOS)
+ 
+ // Multiply 2 rows of ARGB pixels together, 8 pixels at a time.
+ void ARGBMultiplyRow_NEON(const uint8_t* src_argb,
+-- 
+2.34.1
+

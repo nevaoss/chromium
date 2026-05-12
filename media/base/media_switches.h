@@ -47,6 +47,9 @@ MEDIA_EXPORT extern const char kReportVp9AsAnUnsupportedMimeType[];
     BUILDFLAG(IS_SOLARIS)
 MEDIA_EXPORT extern const char kAlsaInputDevice[];
 MEDIA_EXPORT extern const char kAlsaOutputDevice[];
+#if defined(USE_NEVA_APPRUNTIME)
+MEDIA_EXPORT extern const char kAlsaInputDeviceBlockList[];
+#endif  // defined(USE_NEVA_APPRUNTIME)
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -534,6 +537,11 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaFoundationAcceleratedEncodeOnArm64);
 #endif
 
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaSharedBitmapToSharedImage);
+
+#if defined(USE_WEBOS_CODEC)
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebOSVideoDecodeAccelerator);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebOSVideoEncodeAccelerator);
+#endif
 
 #if BUILDFLAG(IS_WIN)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaFoundationD3DVideoProcessing);

@@ -1082,6 +1082,27 @@ ExtensionFunction::ResponseAction WebViewInternalGetAudioStateFunction::Run() {
   return RespondNow(WithArguments(web_contents->IsCurrentlyAudible()));
 }
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+WebViewInternalSuspendFunction::WebViewInternalSuspendFunction() {}
+
+WebViewInternalSuspendFunction::~WebViewInternalSuspendFunction() {}
+
+ExtensionFunction::ResponseAction WebViewInternalSuspendFunction::Run() {
+  GetGuest().Suspend();
+  return RespondNow(NoArguments());
+}
+
+WebViewInternalResumeFunction::WebViewInternalResumeFunction() {}
+
+WebViewInternalResumeFunction::~WebViewInternalResumeFunction() {}
+
+ExtensionFunction::ResponseAction WebViewInternalResumeFunction::Run() {
+  GetGuest().Resume();
+  return RespondNow(NoArguments());
+}
+///@}
+
 WebViewInternalTerminateFunction::WebViewInternalTerminateFunction() {
 }
 

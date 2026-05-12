@@ -60,7 +60,69 @@ NOINLINE void CheckForLoopFailuresBufferQueue() {
 }  // namespace
 
 namespace viz {
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+bool SkiaOutputDeviceBufferQueue::OverlayData::IsInUseByWindowServer() const {
+#if BUILDFLAG(IS_APPLE)
+  if (!scoped_read_access_) {
+    return false;
+  }
+  // The root render pass buffers are managed by SkiaRenderer so we don't care
+  // if they're in use by the window server.
+  if (is_root_render_pass_) {
+    return false;
+  }
+  return scoped_read_access_->IsInUseByWindowServer();
+#else
+  return false;
+#endif
+}
 
+void SkiaOutputDeviceBufferQueue::OverlayData::Ref() const {
+  ++ref_;
+}
+
+void SkiaOutputDeviceBufferQueue::OverlayData::Unref() const {
+  // Unref should only be called when there is more than one reference.
+  DCHECK_GT(ref_, 1);
+  --ref_;
+}
+
+void SkiaOutputDeviceBufferQueue::OverlayData::OnReuse() const {
+  // This is a proxy check for single-buffered overlay.
+  if ((representation_->usage() &
+        gpu::SHARED_IMAGE_USAGE_CONCURRENT_READ_WRITE) &&
+      base::FeatureList::IsEnabled(
+          kRestartReadAccessForConcurrentReadWrite)) {
+    // If this is a single-buffered overlay, want to restart read access to
+    // pick up any new write fences for this frame.
+    scoped_read_access_.reset();
+    scoped_read_access_ = representation_->BeginScopedReadAccess();
+  }
+}
+
+void SkiaOutputDeviceBufferQueue::OverlayData::OnContextLost() const {
+  representation_->OnContextLost();
+}
+
+bool SkiaOutputDeviceBufferQueue::OverlayData::unique() const {
+  return ref_ == 1;
+}
+
+const gpu::Mailbox& SkiaOutputDeviceBufferQueue::OverlayData::mailbox() const {
+  return representation_->mailbox();
+}
+
+gpu::OverlayImageRepresentation::ScopedReadAccess*
+SkiaOutputDeviceBufferQueue::OverlayData::scoped_read_access() const {
+  return scoped_read_access_.get();
+}
+
+bool SkiaOutputDeviceBufferQueue::OverlayData::IsRootRenderPass() const {
+  return is_root_render_pass_;
+}
+
+#else // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
 class SkiaOutputDeviceBufferQueue::OverlayData {
  public:
   OverlayData() = delete;
@@ -136,6 +198,7 @@ class SkiaOutputDeviceBufferQueue::OverlayData {
   mutable int ref_ = 1;
   const bool is_root_render_pass_ = false;
 };
+#endif // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
 
 SkiaOutputDeviceBufferQueue::SkiaOutputDeviceBufferQueue(
     std::unique_ptr<OutputPresenter> presenter,

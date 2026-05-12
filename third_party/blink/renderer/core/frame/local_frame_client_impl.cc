@@ -112,6 +112,11 @@
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "v8/include/v8.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+#include "third_party/blink/public/mojom/neva/app_runtime_blink_delegate.mojom-blink.h"
+#endif
+
 namespace blink {
 
 namespace {
@@ -799,6 +804,17 @@ bool LocalFrameClientImpl::NavigateBackForward(
   DCHECK(web_frame_->Client());
 
   DCHECK(offset);
+#if defined(USE_NEVA_APPRUNTIME)
+  if (offset < 0 && webview->HistoryBackListCount() == 0) {
+    mojo::AssociatedRemote<mojom::blink::AppRuntimeBlinkDelegate>
+        app_runtime_blink_delegate;
+    web_frame_->Client()
+        ->GetRemoteNavigationAssociatedInterfaces()
+        ->GetInterface(&app_runtime_blink_delegate);
+    if (app_runtime_blink_delegate.is_bound())
+      app_runtime_blink_delegate->DidHistoryBackOnTopPage();
+  }
+#endif
   if (offset > webview->HistoryForwardListCount())
     return false;
   if (offset < -webview->HistoryBackListCount())

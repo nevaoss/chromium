@@ -18,6 +18,9 @@ if (is_linux || is_chromeos) {
   import("//build/linux/extract_symbols.gni")
 }
 
+import("//neva/neva.gni")
+import("//extensions/shell/neva/extensions_shell.gni")
+
 assert(enable_extensions)
 
 grit("resources") {
@@ -246,6 +249,45 @@ source_set("app_shell_lib") {
     ]
   }
 
+  if (use_neva_appruntime) {
+    if (!defined(defines)) {
+      defines = []
+    }
+
+    deps += [
+      "//neva/app_runtime",
+      "//neva/app_runtime/public/mojom:mojom_app_runtime_blink",
+      "//neva/injection/public/renderer",
+      "//neva/pal_service/public/mojom",
+      "//neva/user_agent/browser",
+      "//neva/user_agent/common",
+      "//services/network/public/mojom",
+    ]
+
+    if (use_platform_language_listener) {
+      defines += [ "USE_PLATFORM_LANGUAGE_LISTENER=1" ]
+
+      sources += [
+        "neva/platform_language_listener.cc",
+        "neva/platform_language_listener.h",
+      ]
+      deps += [ "//third_party/blink/public/mojom:mojom_platform" ]
+    }
+
+    if (use_platform_application_registration) {
+      defines += [ "USE_PLATFORM_APPLICATION_REGISTRATION=1" ]
+
+      sources += [
+        "neva/platform_register_app.cc",
+        "neva/platform_register_app.h",
+      ]
+    }
+  }
+
+  if (is_webos) {
+    deps += [ "//webos:webos_impl" ]
+  }
+
   if (enable_nacl) {
     sources += [
       "browser/shell_nacl_browser_delegate.cc",
@@ -272,7 +314,7 @@ source_set("app_shell_lib") {
   }
 }
 
-executable("app_shell") {
+app_shell_executable("app_shell") {
   # testonly because :app_shell_lib is testonly. See :app_shell_lib comment.
   testonly = true
   sources = [ "app/shell_main.cc" ]

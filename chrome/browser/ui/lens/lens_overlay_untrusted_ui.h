@@ -75,7 +75,12 @@ class LensOverlayUntrustedUI
       mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandlerFactory>
           pending_receiver);
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__)
+  static std::string GetWebUIName() { return "LensOverlayUntrusted"; }
+#else   // defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__)
   static constexpr std::string GetWebUIName() { return "LensOverlayUntrusted"; }
+#endif  // !(defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__))
 
  private:
   // lens::mojom::LensPageHandlerFactory:

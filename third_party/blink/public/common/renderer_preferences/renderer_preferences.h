@@ -87,6 +87,17 @@ struct BLINK_COMMON_EXPORT RendererPreferences {
   int32_t arrow_bitmap_height_vertical_scroll_bar_in_dips{0};
   int32_t arrow_bitmap_width_horizontal_scroll_bar_in_dips{0};
 #endif
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  std::string application_id;
+  std::string media_codec_capability;
+  std::string media_preferences;
+  std::string board_type;
+  bool allow_fake_bold_text{true};
+  std::string file_security_origin;
+  bool use_unlimited_media_policy{false};
+  bool is_enact_browser{false};
+  ///@}
 #if BUILDFLAG(IS_OZONE)
   bool selection_clipboard_buffer_available{false};
 #endif

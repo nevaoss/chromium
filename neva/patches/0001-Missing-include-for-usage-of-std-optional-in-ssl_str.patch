@@ -1,0 +1,41 @@
+From 3cc19cabda9f2dd85360436583004473ec0fa5d7 Mon Sep 17 00:00:00 2001
+From: DongHwan Yu <donghwan.yu@lge.com>
+Date: Wed, 23 Oct 2024 15:28:27 +0900
+Subject: [PATCH] Missing include for usage of std::optional in
+ ssl_stream_adapter.h
+
+:Release Notes:
+Added missing include for std::optional usage in ssl_stream_adapter.h
+for third_party/webrtc to fix GCC compiler error
+after rolling to 131.0.6755.0~1
+
+:Detailed Notes:
+Caused by the upstream CL
+https://webrtc-review.googlesource.com/c/src/+/363202
+to unify TLS cipher suite name handling.
+
+Without this change the build fails with the following error:
+  ../../third_party/webrtc/rtc_base/ssl_stream_adapter.h:190:16:
+  error: 'optional' in namespace 'std' does not name a template type
+
+:Issues Addressed:
+[NEVA-9675] Upgrade neva-main-rolling up to 6755 BUILD
+---
+ rtc_base/ssl_stream_adapter.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/rtc_base/ssl_stream_adapter.h b/rtc_base/ssl_stream_adapter.h
+index dcaaf3a0d1..1dca52b2a7 100644
+--- a/rtc_base/ssl_stream_adapter.h
++++ b/rtc_base/ssl_stream_adapter.h
+@@ -15,6 +15,7 @@
+ #include <stdint.h>
+ 
+ #include <memory>
++#include <optional>
+ #include <string>
+ #include <vector>
+ 
+-- 
+2.45.2
+

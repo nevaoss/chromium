@@ -156,6 +156,20 @@ class VIEWS_EXPORT DesktopWindowTreeHostPlatform
   gfx::Insets CalculateInsetsInDIP(
       ui::PlatformWindowState window_state) const override;
   void OnClosed() override;
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  void OnKeyboardEnter() override;
+  void OnKeyboardLeave() override;
+  void OnWindowHostClose() override;
+  void OnWindowHostExposed() override;
+  void OnWindowStateAboutToChange(ui::PlatformWindowState state) override;
+  void OnCursorVisibilityChanged(bool visible) override;
+  void OnInputPanelVisibilityChanged(bool visible) override;
+  void OnInputPanelRectChanged(std::int32_t x,
+                               std::int32_t y,
+                               std::uint32_t width,
+                               std::uint32_t height) override;
+  ///@}
   void OnWindowStateChanged(ui::PlatformWindowState old_state,
                             ui::PlatformWindowState new_state) override;
   void OnCloseRequest() override;

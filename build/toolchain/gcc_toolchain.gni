@@ -923,6 +923,17 @@ template("clang_toolchain") {
 
     forward_variables_from(invoker, "*", [ "toolchain_args" ])
 
+#@name USE_NEVA_APPRUNTIME
+#@{
+    forward_variables_from(invoker, 
+                           [
+                             "extra_cflags",
+                             "extra_cxxflags",
+                             "extra_cppflags",
+                             "extra_ldflags",
+                           ])
+#@}
+
     toolchain_args = {
       if (defined(invoker.toolchain_args)) {
         forward_variables_from(invoker.toolchain_args, "*")

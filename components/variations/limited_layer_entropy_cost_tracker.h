@@ -5,6 +5,12 @@
 #ifndef COMPONENTS_VARIATIONS_LIMITED_LAYER_ENTROPY_COST_TRACKER_H_
 #define COMPONENTS_VARIATIONS_LIMITED_LAYER_ENTROPY_COST_TRACKER_H_
 
+// TODO(neva): Required for the usage of uint32_t, uint64_t. Try to contribute
+// to upstream.
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include <cstdint>
+///@}
 #include <map>
 #include <set>
 

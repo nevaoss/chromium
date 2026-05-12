@@ -11,6 +11,9 @@
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/ranges/algorithm.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/unguessable_token.h"
 #include "chrome/browser/chooser_controller/title_util.h"

@@ -65,6 +65,20 @@ source_set("internal") {
     "code/dpf/xor_wrapper.h",
   ]
 
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  # Below code introduced in the upstream CL https://crrev.com/c/4035697
+  # cannot be build with GCC v.11 and higher for AArch64 without GCC fix
+  # https://gcc.gnu.org/g:ca4a4cc0060cb8ae1a326d6dbfcd9459452e1574.
+  # Hence it is excluded for non-clang build.
+  if (!is_clang) {
+    sources -= [
+      "code/dpf/internal/evaluate_prg_hwy.cc",
+      "code/dpf/internal/evaluate_prg_hwy.h",
+    ]
+  }
+  #@}
+
   public_deps = [
     ":proto",
     "$dpf_abseil_cpp_dir:absl",

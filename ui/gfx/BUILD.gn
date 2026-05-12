@@ -7,6 +7,7 @@ import("//build/config/ozone.gni")
 import("//build/config/ui.gni")
 import("//device/vr/buildflags/buildflags.gni")
 import("//gpu/vulkan/features.gni")
+import("//neva/neva.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//testing/test.gni")
 
@@ -288,6 +289,13 @@ component("gfx") {
       "shadow_util.h",
       "skia_paint_util.cc",
       "skia_paint_util.h",
+    ]
+  }
+
+  if (use_neva_appruntime) {
+    sources += [
+      "neva/file_utils.cc",
+      "neva/file_utils.h",
     ]
   }
 

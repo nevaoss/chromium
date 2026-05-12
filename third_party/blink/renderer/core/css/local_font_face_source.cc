@@ -103,7 +103,7 @@ const SimpleFontData* LocalFontFaceSource::CreateFontData(
   // Fonts sends, compare crbug.com/765980. So for now, we continue to
   // pass font_description to avoid breaking Google Fonts.
   FontDescription unstyled_description(font_description);
-#if !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_WEBOS)
   unstyled_description.SetStretch(kNormalWidthValue);
   unstyled_description.SetStyle(kNormalSlopeValue);
   unstyled_description.SetWeight(kNormalWeightValue);

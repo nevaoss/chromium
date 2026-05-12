@@ -7,6 +7,11 @@
 
 #include "build/build_config.h"
 
+///@name IS_WEBOS
+///@{
+#include "build/build_config.h"
+///@}
+
 namespace extensions::switches {
 
 // Allows non-https URL for background_page for hosted apps.
@@ -81,6 +86,17 @@ extern const char kTraceAppSource[];
 // Enable package hash check: the .crx file sha256 hash sum should be equal to
 // the one received from update manifest.
 extern const char kEnableCrxHashCheck[];
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+// Create new process per <webview> regardless of a partition name.
+extern const char kProcessPerGuestWebView[];
+///@}
+
+#if BUILDFLAG(IS_WEBOS)
+// Pass application Id to browser.
+extern const char kWebOSAppId[];
+#endif  // BUILDFLAG(IS_WEBOS)
 
 // Mute extension errors while working with new manifest version.
 extern const char kAllowFutureManifestVersion[];

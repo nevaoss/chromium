@@ -54,6 +54,10 @@ class MEDIA_MOJO_EXPORT MojoAudioInputStream
  private:
   // mojom::AudioInputStream implementation.
   void Record() override;
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  void Pause() override;
+  void Resume() override;
+#endif
   void SetVolume(double volume) override;
 
   // AudioInputDelegate::EventHandler implementation.

@@ -40,7 +40,12 @@ class AutofillParsingProcess {
   AutofillParsingProcess(const AutofillParsingProcess& other) = delete;
   AutofillParsingProcess& operator=(const AutofillParsingProcess& right) =
       delete;
+  // TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  virtual ~AutofillParsingProcess() = default;
+#else   // (__cplusplus < 202002L)
   virtual constexpr ~AutofillParsingProcess() = default;
+#endif  // !(__cplusplus < 202002L)
 
   // Parses `value` and returns the extracted field type matches.
   virtual ValueParsingResults Parse(std::string_view value) const = 0;
@@ -53,7 +58,12 @@ class Decomposition : public AutofillParsingProcess {
  public:
   // Note that `parsing_regex` needs to survive the lifetime of the
   // Decomposition.
+  // TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  Decomposition(std::string_view parsing_regex,
+#else   // (__cplusplus < 202002L)
   constexpr Decomposition(std::string_view parsing_regex,
+#endif  // !(__cplusplus < 202002L)
                           bool anchor_beginning,
                           bool anchor_end)
       : parsing_regex_(parsing_regex),
@@ -61,7 +71,12 @@ class Decomposition : public AutofillParsingProcess {
         anchor_end_(anchor_end) {}
   Decomposition(const Decomposition&) = delete;
   Decomposition& operator=(const Decomposition&) = delete;
+  // TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  ~Decomposition() override = default;
+#else   // (__cplusplus < 202002L)
   constexpr ~Decomposition() override;
+#endif  // !(__cplusplus < 202002L)
 
   ValueParsingResults Parse(std::string_view value) const override;
 
@@ -71,7 +86,10 @@ class Decomposition : public AutofillParsingProcess {
   const bool anchor_end_ = true;
 };
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if !(__cplusplus < 202002L)
 constexpr Decomposition::~Decomposition() = default;
+#endif  // !(__cplusplus < 202002L)
 
 // A DecompositionCascade enables us to try one Decomposition after the next
 // until we have found a match. It can be fitted with a condition to only use it
@@ -81,13 +99,23 @@ class DecompositionCascade : public AutofillParsingProcess {
  public:
   // Note that `condition_regex` and `alternatives` need to survive the lifetime
   // of the DecompositionCascade.
+  // TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  DecompositionCascade(
+#else   // (__cplusplus < 202002L)
   constexpr DecompositionCascade(
+#endif  // !(__cplusplus < 202002L)
       std::string_view condition_regex,
       base::span<const AutofillParsingProcess* const> alternatives)
       : condition_regex_(condition_regex), alternatives_(alternatives) {}
   DecompositionCascade(const DecompositionCascade&) = delete;
   DecompositionCascade& operator=(const DecompositionCascade&) = delete;
+  // TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  ~DecompositionCascade() override = default;
+#else   // (__cplusplus < 202002L)
   constexpr ~DecompositionCascade() override;
+#endif  // !(__cplusplus < 202002L)
 
   ValueParsingResults Parse(std::string_view value) const override;
 
@@ -98,7 +126,10 @@ class DecompositionCascade : public AutofillParsingProcess {
       alternatives_;
 };
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if !(__cplusplus < 202002L)
 constexpr DecompositionCascade::~DecompositionCascade() = default;
+#endif  // !(__cplusplus < 202002L)
 
 // An ExtractPart parsing process attempts to match a string to a
 // parsing expression, and then extracts the captured field type values. It can
@@ -111,13 +142,23 @@ class ExtractPart : public AutofillParsingProcess {
  public:
   // Note that `condition_regex` and `parsing_regex` need to survive the
   // lifetime of the DecompositionCascade.
+  // TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  ExtractPart(std::string_view condition_regex,
+#else   // (__cplusplus < 202002L)
   constexpr ExtractPart(std::string_view condition_regex,
+#endif  // !(__cplusplus < 202002L)
                         std::string_view parsing_regex)
       : condition_regex_(condition_regex), parsing_regex_(parsing_regex) {}
 
   ExtractPart(const ExtractPart&) = delete;
   ExtractPart& operator=(const ExtractPart&) = delete;
+  // TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  ~ExtractPart() override = default;
+#else   // (__cplusplus < 202002L)
   constexpr ~ExtractPart() override;
+#endif  // !(__cplusplus < 202002L)
 
   ValueParsingResults Parse(std::string_view value) const override;
 
@@ -126,7 +167,10 @@ class ExtractPart : public AutofillParsingProcess {
   const std::string_view parsing_regex_;
 };
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if !(__cplusplus < 202002L)
 constexpr ExtractPart::~ExtractPart() = default;
+#endif  // !(__cplusplus < 202002L)
 
 // Unlike for a DecompositionCascade, ExtractParts does not follow the "the
 // first match wins" principle but applies all matching attempts in sequence so
@@ -136,14 +180,23 @@ constexpr ExtractPart::~ExtractPart() = default;
 // The lack of a condition is expressed by an empty string.
 class ExtractParts : public AutofillParsingProcess {
  public:
-  // Note that `condition_regex` and `pieces` need to survive the lifetime of
-  // the ExtractParts.
+  // Note that `pieces` need to survive the lifetime of the ExtractParts.
+  // TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  ExtractParts(std::string_view condition_regex,
+#else   // (__cplusplus < 202002L)
   constexpr ExtractParts(std::string_view condition_regex,
+#endif  // !(__cplusplus < 202002L)
                          base::span<const ExtractPart* const> pieces)
       : condition_regex_(condition_regex), pieces_(pieces) {}
   ExtractParts(const ExtractParts&) = delete;
   ExtractParts& operator=(const ExtractParts&) = delete;
+  // TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  ~ExtractParts() override = default;
+#else   // (__cplusplus < 202002L)
   constexpr ~ExtractParts() override;
+#endif  // !(__cplusplus < 202002L)
 
   ValueParsingResults Parse(std::string_view value) const override;
 
@@ -153,7 +206,10 @@ class ExtractParts : public AutofillParsingProcess {
   RAW_PTR_EXCLUSION const base::span<const ExtractPart* const> pieces_;
 };
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if !(__cplusplus < 202002L)
 constexpr ExtractParts::~ExtractParts() = default;
+#endif  // !(__cplusplus < 202002L)
 
 }  // namespace autofill::i18n_model_definition
 

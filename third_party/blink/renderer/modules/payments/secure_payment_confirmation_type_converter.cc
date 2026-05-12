@@ -16,6 +16,11 @@
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/vector.h"
 
+// TODO(neva): Remove this workaround if there was no GCC build error.
+#if defined(__GNUC__)
+#include <vector>
+#endif  // defined(__GNUC__)
+
 namespace mojo {
 
 payments::mojom::blink::SecurePaymentConfirmationRequestPtr

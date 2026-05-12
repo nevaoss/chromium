@@ -80,7 +80,12 @@ class BASE_EXPORT FieldTrialParamAssociator {
   using FieldTrialRefKey = std::pair<const std::string&, const std::string&>;
 
   Lock lock_;
+  // TODO(neva): Remove this when Neva GCC version upgraded to 14+.
+#if defined(__GNUC__) && defined(__GNUC__) < 14 && !defined(__clang__)
+  std::map<FieldTrialKey, FieldTrialParams> field_trial_params_;
+#else
   std::map<FieldTrialKey, FieldTrialParams, std::less<>> field_trial_params_;
+#endif  // defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
 };
 
 }  // namespace base

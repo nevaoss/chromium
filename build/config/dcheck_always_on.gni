@@ -21,8 +21,12 @@ declare_args() {
   # Other clients typically set this to false. If another client wants to use
   # the same default value as Chromium, we'd need to add a separate gclient
   # variable to replace build_with_chromium here.
+
+  # TODO(neva): Enabling DCHECK on Neva builds causes compile time issues
+  # with GCC and runtime issues on the all platforms (PC, Starfish, OSE).
+  # Let's disable it for all Neva builds until we will be ready for it.
   dcheck_always_on =
-      (build_with_chromium && !is_official_build) || dcheck_is_configurable
+      (!is_linux && build_with_chromium && !is_official_build) || dcheck_is_configurable
 }
 
 declare_args() {

@@ -15,6 +15,9 @@
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
 #include "base/strings/strcat.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"

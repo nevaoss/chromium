@@ -542,6 +542,14 @@ bool GpuInit::InitializeAndStartSandbox(base::CommandLine* command_line,
 
   ResumeGpuWatchdog(watchdog_thread_.get());
 
+#if defined(USE_NEVA_APPRUNTIME)
+  LOG(INFO) << __func__ << "(): "
+            << "GL is "
+            << gl::GetGLImplementationGLName(gl::GetGLImplementationParts())
+            << ", ANGLE is "
+            << gl::GetGLImplementationANGLEName(gl::GetGLImplementationParts());
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
   auto impl = gl::GetGLImplementationParts();
   bool gl_disabled = impl == gl::kGLImplementationDisabled;
 
@@ -1109,6 +1117,12 @@ void GpuInit::InitializeInProcess(base::CommandLine* command_line,
 #endif
 
   DisableInProcessGpuVulkan(&gpu_feature_info_, &gpu_preferences_);
+#if defined(USE_NEVA_APPRUNTIME)
+  LOG(INFO) << __func__ << "(): " << "GL is "
+            << gl::GetGLImplementationGLName(gl::GetGLImplementationParts())
+            << ", ANGLE is "
+            << gl::GetGLImplementationANGLEName(gl::GetGLImplementationParts());
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
   UMA_HISTOGRAM_ENUMERATION("GPU.GLImplementation", gl::GetGLImplementation());
 

@@ -3172,7 +3172,13 @@ void QuicChromiumClientSession::FinishCreateContextForMultiPortPath(
 
 void QuicChromiumClientSession::MigrateToMultiPortPath(
     std::unique_ptr<quic::QuicPathValidationContext> context) {
+  // TODO(neva): Workaround for GCC v.9.3.0/9.4.0
+#if defined(__clang__)
   DCHECK_NE(nullptr, context);
+#else
+  DCHECK_NE(nullptr, context.get());
+#endif
+
   auto* chrome_context =
       static_cast<QuicChromiumPathValidationContext*>(context.get());
   std::unique_ptr<QuicChromiumPacketWriter> owned_writer =

@@ -62,6 +62,12 @@ cros_toolchain("target") {
     sysroot = target_sysroot
   }
 
+  # TODO(neva): current_os changed from "chromeos" to target_os
+  # to support building webOS with CrOS toolchain.
+  if (is_webos) {
+    toolchain_args.current_os = target_os
+  }
+
   if (!lacros_use_chromium_toolchain) {
     ar = cros_target_ar
     cc = cros_target_cc

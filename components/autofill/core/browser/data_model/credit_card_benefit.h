@@ -201,6 +201,28 @@ class CreditCardMerchantBenefit : public CreditCardBenefitBase {
   base::flat_set<url::Origin> merchant_domains_;
 };
 
+// TODO(neva): Remove this when Neva GCC supports default three way
+// comparison operator for CreditCardBenefit class
+#if defined(COMPILER_GCC) && !defined(__clang__)
+inline bool operator==(const absl::variant<CreditCardFlatRateBenefit,
+                                           CreditCardCategoryBenefit,
+                                           CreditCardMerchantBenefit>& v1,
+                       const absl::variant<CreditCardFlatRateBenefit,
+                                           CreditCardCategoryBenefit,
+                                           CreditCardMerchantBenefit>& v2) {
+  return v1.index() == v2.index() && v1 == v2;
+}
+
+inline bool operator<(const absl::variant<CreditCardFlatRateBenefit,
+                                          CreditCardCategoryBenefit,
+                                          CreditCardMerchantBenefit>& v1,
+                      const absl::variant<CreditCardFlatRateBenefit,
+                                          CreditCardCategoryBenefit,
+                                          CreditCardMerchantBenefit>& v2) {
+  return v1.index() == v2.index() && v1 < v2;
+}
+#endif  // defined(COMPILER_GCC) && !defined(__clang__)
+
 }  // namespace autofill
 
 #endif  // COMPONENTS_AUTOFILL_CORE_BROWSER_DATA_MODEL_CREDIT_CARD_BENEFIT_H_

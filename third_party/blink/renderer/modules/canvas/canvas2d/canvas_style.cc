@@ -125,12 +125,22 @@ void CanvasStyle::ApplyToFlags(cc::PaintFlags& flags,
     case kGradient:
       GetCanvasGradient()->GetGradient()->ApplyToFlags(flags, SkMatrix::I(),
                                                        ImageDrawOptions());
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+      flags.setColor(SkColor4f{0.0f, 0.0f, 0.0f, global_alpha});
+      break;
+    case kImagePattern:
+      GetCanvasPattern()->GetPattern()->ApplyToFlags(
+          flags, AffineTransformToSkMatrix(GetCanvasPattern()->GetTransform()));
+      flags.setColor(SkColor4f{0.0f, 0.0f, 0.0f, global_alpha});
+#else   // (__cplusplus < 202002L)
       flags.setColor(SkColor4f(0.0f, 0.0f, 0.0f, global_alpha));
       break;
     case kImagePattern:
       GetCanvasPattern()->GetPattern()->ApplyToFlags(
           flags, AffineTransformToSkMatrix(GetCanvasPattern()->GetTransform()));
       flags.setColor(SkColor4f(0.0f, 0.0f, 0.0f, global_alpha));
+#endif  // !(__cplusplus < 202002L)
       break;
     default:
       NOTREACHED();

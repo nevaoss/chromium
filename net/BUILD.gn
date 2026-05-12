@@ -10,6 +10,7 @@ import("//build/config/cronet/config.gni")
 import("//build/config/features.gni")
 import("//crypto/features.gni")
 import("//net/features.gni")
+import("//neva/neva.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//testing/test.gni")
 import("//third_party/icu/config.gni")
@@ -1126,6 +1127,10 @@ component("net") {
     "//net/dns/public",
     "//net/http:transport_security_state_generated_files",
   ]
+
+  if (use_neva_appruntime && use_nss_certs && current_toolchain == default_toolchain) {
+    deps += [ "//net/ssl/neva" ]
+  }
 
   if (enable_reporting) {
     sources += [

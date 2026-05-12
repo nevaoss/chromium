@@ -23,6 +23,10 @@
 #include "ppapi/shared_impl/ppapi_permissions.h"                // nogncheck
 #endif
 
+#if defined(USE_NEVA_CDM)
+#include "components/cdm/common/neva/cdm_info_util.h"
+#endif
+
 namespace extensions {
 namespace {
 
@@ -104,5 +108,14 @@ gfx::Image& ShellContentClient::GetNativeImageNamed(int resource_id) {
   return ui::ResourceBundle::GetSharedInstance().GetNativeImageNamed(
       resource_id);
 }
+
+#if defined(USE_NEVA_CDM)
+void ShellContentClient::AddContentDecryptionModules(
+    std::vector<content::CdmInfo>* cdms,
+    std::vector<media::CdmHostFilePath>* cdm_host_file_paths) {
+  if (cdms)
+    cdm::AddContentDecryptionModules(*cdms);
+}
+#endif
 
 }  // namespace extensions

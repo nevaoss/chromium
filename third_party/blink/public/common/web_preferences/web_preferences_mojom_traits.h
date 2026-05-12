@@ -689,6 +689,13 @@ struct BLINK_COMMON_EXPORT StructTraits<blink::mojom::WebPreferencesDataView,
     return r.do_not_update_selection_on_mutating_selection_range;
   }
 
+#if defined(USE_NEVA_APPRUNTIME)
+  static bool x_frame_options_cross_origin_allowed(
+      const blink::web_pref::WebPreferences& r) {
+    return r.x_frame_options_cross_origin_allowed;
+  }
+#endif
+
   static blink::mojom::AutoplayPolicy autoplay_policy(
       const blink::web_pref::WebPreferences& r) {
     return r.autoplay_policy;

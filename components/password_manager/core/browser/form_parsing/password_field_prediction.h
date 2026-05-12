@@ -51,8 +51,19 @@ struct PasswordFieldPrediction {
   bool may_use_prefilled_placeholder;
   bool is_override;
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  friend bool operator==(const PasswordFieldPrediction& lhs,
+                         const PasswordFieldPrediction& rhs) {
+    return lhs.renderer_id == rhs.renderer_id &&
+           lhs.signature == rhs.signature && lhs.type == rhs.type &&
+           lhs.may_use_prefilled_placeholder ==
+               rhs.may_use_prefilled_placeholder;
+  }
+#else   // (__cplusplus < 202002L)
   friend bool operator==(const PasswordFieldPrediction& lhs,
                          const PasswordFieldPrediction& rhs) = default;
+#endif  // !(__cplusplus < 202002L)
 };
 
 // Contains server predictions for a form.
@@ -70,8 +81,17 @@ struct FormPredictions {
   autofill::FormSignature form_signature;
   std::vector<PasswordFieldPrediction> fields;
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  friend bool operator==(const FormPredictions& lhs,
+                         const FormPredictions& rhs) {
+    return lhs.driver_id == rhs.driver_id &&
+           lhs.form_signature == rhs.form_signature && lhs.fields == rhs.fields;
+  }
+#else   // (__cplusplus < 202002L)
   friend bool operator==(const FormPredictions& lhs,
                          const FormPredictions& rhs) = default;
+#endif  // !(__cplusplus < 202002L)
 };
 
 // Extracts password related server predictions from `form` and `predictions`.

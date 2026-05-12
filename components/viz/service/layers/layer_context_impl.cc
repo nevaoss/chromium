@@ -610,6 +610,13 @@ gfx::TransformOperations DeserializeTransformOperations(
 template <typename CurveType>
 using KeyframeType = CurveType::Keyframes::value_type::element_type;
 
+// TODO(neva): Remove this when Neva GCC supports static_assert(false).
+#if defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
+// Workaround for compile-time assertions involving dependent types
+template<typename>
+constexpr bool dependent_false = false; // Always false
+#endif  // defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
+
 template <typename CurveType>
 base::expected<std::unique_ptr<KeyframeType<CurveType>>, std::string>
 DeserializeKeyframe(const mojom::AnimationKeyframeValue& value,
@@ -645,7 +652,12 @@ DeserializeKeyframe(const mojom::AnimationKeyframeValue& value,
           std::move(timing_function));
     }
   } else {
+// TODO(neva): Remove this when Neva GCC supports static_assert(false).
+#if defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
+    static_assert(dependent_false<ValueType>, "Unsupported curve type");
+#else   // defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
     static_assert(false, "Unsupported curve type");
+#endif  // !(defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__))
   }
 
   if (!keyframe) {

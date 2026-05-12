@@ -5,6 +5,12 @@
 #include "components/user_education/common/feature_promo/impl/common_preconditions.h"
 
 #include "base/functional/bind.h"
+// TODO(neva): Required for the usage of base::StringPrintf. Try to contribute
+// to upstream.
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "base/strings/stringprintf.h"
+///@}
 #include "components/feature_engagement/public/tracker.h"
 #include "components/user_education/common/feature_promo/feature_promo_precondition.h"
 #include "components/user_education/common/feature_promo/feature_promo_result.h"

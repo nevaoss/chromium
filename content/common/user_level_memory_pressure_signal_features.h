@@ -10,6 +10,15 @@
 #include "build/build_config.h"
 #include "content/common/content_export.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+namespace content::features {
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kUserLevelMemoryPressureSignal);
+CONTENT_EXPORT bool IsUserLevelMemoryPressureSignalEnabled();
+CONTENT_EXPORT base::TimeDelta InertInterval();
+CONTENT_EXPORT base::TimeDelta MinUserMemoryPressureInterval();
+}  // namespace content::features
+#endif
+
 #if BUILDFLAG(IS_ANDROID)
 
 namespace content::features {

@@ -23,6 +23,9 @@
 #include "base/memory/memory_pressure_listener.h"
 #include "base/no_destructor.h"
 #include "base/observer_list.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "base/synchronization/waitable_event.h"
 #include "base/system/sys_info.h"
 #include "base/task/single_thread_task_runner.h"

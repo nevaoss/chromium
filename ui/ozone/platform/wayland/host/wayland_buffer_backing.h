@@ -8,7 +8,11 @@
 #include "base/containers/flat_map.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
+#if BUILDFLAG(IS_WEBOS)
+#include "drm/drm_fourcc.h"
+#else
 #include "drm_fourcc.h"
+#endif  // BUILDFLAG(IS_WEBOS)
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/native_widget_types.h"
 #include "ui/ozone/platform/wayland/common/wayland_object.h"

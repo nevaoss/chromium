@@ -126,7 +126,8 @@ typedef FILE* FileHandle;
 #include "base/fuchsia/scoped_fx_logger.h"
 #endif
 
-#if !BUILDFLAG(IS_NACL)
+// TODO(neva): Remove this workaround once Neva supports Rust build.
+#if !BUILDFLAG(IS_NACL) && !defined(USE_NEVA_APPRUNTIME)
 #include "base/logging/rust_logger.rs.h"
 #endif
 
@@ -526,7 +527,8 @@ bool BaseInitLoggingImpl(const LoggingSettings& settings) {
   }
 #endif
 
-#if !BUILDFLAG(IS_NACL)
+// TODO(neva): Remove this workaround once Neva supports Rust build.
+#if !BUILDFLAG(IS_NACL) && !defined(USE_NEVA_APPRUNTIME)
   // Connects Rust logging with the //base logging functionality.
   internal::init_rust_log_crate();
 #endif

@@ -572,6 +572,40 @@ class WebViewInternalGetAudioStateFunction
   ResponseAction Run() override;
 };
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+class WebViewInternalSuspendFunction : public WebViewInternalExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("webViewInternal.suspend", WEBVIEWINTERNAL_SUSPEND)
+
+  WebViewInternalSuspendFunction();
+
+  WebViewInternalSuspendFunction(
+      const WebViewInternalSuspendFunction&) = delete;
+  WebViewInternalSuspendFunction& operator=(
+      const WebViewInternalSuspendFunction&) = delete;
+
+ protected:
+  ~WebViewInternalSuspendFunction() override;
+  ResponseAction Run() override;
+};
+
+class WebViewInternalResumeFunction : public WebViewInternalExtensionFunction {
+ public:
+  DECLARE_EXTENSION_FUNCTION("webViewInternal.resume", WEBVIEWINTERNAL_RESUME)
+
+  WebViewInternalResumeFunction();
+
+  WebViewInternalResumeFunction(const WebViewInternalResumeFunction&) = delete;
+  WebViewInternalResumeFunction& operator=(
+      const WebViewInternalResumeFunction&) = delete;
+
+ protected:
+  ~WebViewInternalResumeFunction() override;
+  ResponseAction Run() override;
+};
+///@}
+
 class WebViewInternalTerminateFunction
     : public WebViewInternalExtensionFunction {
  public:

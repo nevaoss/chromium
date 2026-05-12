@@ -13,6 +13,7 @@ import("//build/buildflag_header.gni")
 import("//build/config/c++/c++.gni")
 import("//build/config/compiler/compiler.gni")
 import("//v8/gni/snapshot_toolchain.gni")
+import("//neva/neva.gni")
 
 if (is_android) {
   import("//build/config/android/rules.gni")
@@ -113,7 +114,8 @@ if (use_v8_context_snapshot) {
       ldflags = [ "/OPT:NOICF" ]  # link.exe, but also lld-link.exe.
     } else if (is_apple && !use_lld) {
       ldflags = [ "-Wl,-no_deduplicate" ]  # ld64.
-    } else if (use_lld) {
+    # TODO(neva): Restore to 'use_lld' condition when Neva GCC can remove use_gold logic.
+    } else if (use_lld || (use_neva_appruntime && use_gold)) {
       ldflags = [ "-Wl,--icf=none" ]
     }
   }

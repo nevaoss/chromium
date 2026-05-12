@@ -83,6 +83,10 @@ class LoopbackStream final : public media::mojom::AudioInputStream,
 
   // media::mojom::AudioInputStream implementation.
   void Record() final;
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  void Pause() final {}
+  void Resume() final {}
+#endif
   void SetVolume(double volume) final;
 
   // LoopbackCoordinator::Observer implementation. When a member joins

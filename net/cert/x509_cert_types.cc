@@ -17,7 +17,19 @@ CertPrincipal::CertPrincipal(CertPrincipal&&) = default;
 
 CertPrincipal::~CertPrincipal() = default;
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+bool CertPrincipal::operator==(const CertPrincipal& other) const {
+  return common_name == other.common_name &&
+         locality_name == other.locality_name &&
+         state_or_province_name == other.state_or_province_name &&
+         country_name == other.country_name &&
+         organization_names == other.organization_names &&
+         organization_unit_names == other.organization_unit_names;
+}
+#else
 bool CertPrincipal::operator==(const CertPrincipal& other) const = default;
+#endif
 
 bool CertPrincipal::EqualsForTesting(const CertPrincipal& other) const {
   return *this == other;

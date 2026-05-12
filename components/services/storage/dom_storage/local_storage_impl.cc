@@ -48,6 +48,12 @@
 #include "storage/common/database/database_identifier.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/command_line.h"
+#include "base/neva/base_switches.h"
+#include "url/url_util.h"
+#endif
+
 namespace storage {
 
 // LevelDB database schema
@@ -188,6 +194,24 @@ void DeleteStorageKeys(AsyncDomStorageDatabase* database,
           storage_keys),
       std::move(callback));
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+// Returns substring after the first dot of the input string
+// Ex.: input: abc.xyz.com
+//      output:    xyz.com
+std::string_view GetTLD1DomainFromOrigin(const url::Origin& origin) {
+  const std::string_view host = origin.host();
+  if (url::HostIsIPAddress(host))
+    return std::string_view();
+  const std::string_view tld1_host = host.substr(host.find('.') + 1);
+  if (tld1_host.length() >= host.length())
+    return std::string_view();
+  if (tld1_host.find('.') == std::string_view::npos)
+    return std::string_view();
+  return tld1_host;
+}
+#endif
+
 StorageAreaImpl::Options createOptions() {
   // Delay for a moment after a value is set in anticipation
   // of other values being set, so changes are batched.
@@ -329,6 +353,50 @@ class LocalStorageImpl::StorageAreaHolder final
 
   bool has_bindings() const { return has_bindings_; }
 
+#if defined(USE_NEVA_APPRUNTIME)
+  void OnGotMetaDataForStorageKey(
+      GetUsageCallback callback,
+      std::vector<DomStorageDatabase::KeyValuePair> data) {
+    std::vector<mojom::StorageUsageInfoPtr> result;
+    size_t total_size = 0;
+    for (const auto& row : data) {
+      std::optional<blink::StorageKey> storage_key =
+          ExtractStorageKeyFromWriteMetaDataKey(row.key);
+      if (!storage_key) {
+        continue;
+      }
+      auto origin = storage_key->origin();
+
+      if (!origin.IsSameOriginWith(storage_key_.origin()) &&
+          !origin.DomainIs(GetTLD1DomainFromOrigin(storage_key_.origin()))) {
+        continue;
+      }
+
+      storage::LocalStorageAreaWriteMetaData row_data;
+      if (!row_data.ParseFromArray(row.value.data(), row.value.size())) {
+        continue;
+      }
+
+      result.push_back(mojom::StorageUsageInfo::New(
+          storage_key.value(), row_data.size_bytes(),
+          base::Time::FromInternalValue(row_data.last_modified())));
+
+      total_size += row_data.size_bytes();
+    }
+
+    if (total_size > context_->storage_size_limit_)
+      std::move(callback).Run(std::move(result));
+  }
+
+  void PurgeStorageUsageForStorageKey(
+      std::vector<mojom::StorageUsageInfoPtr> usage) {
+    for (const auto& info : usage) {
+      context_->DeleteStorage(info->storage_key,
+                              base::DoNothing());
+    }
+  }
+#endif
+
  private:
   raw_ptr<LocalStorageImpl> context_;
   blink::StorageKey storage_key_;
@@ -355,6 +423,18 @@ LocalStorageImpl::LocalStorageImpl(
 
   if (receiver)
     control_receiver_.Bind(std::move(receiver));
+
+#if defined(USE_NEVA_APPRUNTIME)
+  base::CommandLine& cmd_line = *base::CommandLine::ForCurrentProcess();
+  if (cmd_line.HasSwitch(switches::kLocalStorageLimitPerSecondLevelDomain)) {
+    size_t storage_size_limit;
+    if (base::StringToSizeT(
+            cmd_line.GetSwitchValueASCII(
+                switches::kLocalStorageLimitPerSecondLevelDomain),
+            &storage_size_limit))
+      storage_size_limit_ = storage_size_limit * 1024 * 1024;
+  }
+#endif
 }
 
 void LocalStorageImpl::BindStorageArea(
@@ -804,6 +884,15 @@ LocalStorageImpl::StorageAreaHolder* LocalStorageImpl::GetOrCreateStorageArea(
   auto holder = std::make_unique<StorageAreaHolder>(this, storage_key);
   StorageAreaHolder* holder_ptr = holder.get();
   areas_[storage_key] = std::move(holder);
+
+#if defined(USE_NEVA_APPRUNTIME)
+  if (storage_size_limit_ > 0) {
+    RetrieveStorageUsageForStorageKey(
+        base::BindOnce(
+            &LocalStorageImpl::StorageAreaHolder::PurgeStorageUsageForStorageKey,
+                base::Unretained(holder_ptr)), storage_key);
+  }
+#endif
   return holder_ptr;
 }
 
@@ -828,6 +917,24 @@ void LocalStorageImpl::RetrieveStorageUsage(GetUsageCallback callback) {
                        weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
   }
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+void LocalStorageImpl::RetrieveStorageUsageForStorageKey(
+    GetUsageCallback callback, const blink::StorageKey& storage_key) {
+  if (!database_)
+    return;
+  database_->RunDatabaseTask(
+      base::BindOnce([](const DomStorageDatabase& db) {
+        std::vector<DomStorageDatabase::KeyValuePair> data;
+        db.GetPrefixed(base::make_span(kWriteMetaPrefix), &data);
+        return data;
+      }),
+      base::BindOnce(
+          &LocalStorageImpl::StorageAreaHolder::OnGotMetaDataForStorageKey,
+              base::Unretained(areas_[storage_key].get()),
+                  std::move(callback)));
+}
+#endif
 
 void LocalStorageImpl::OnGotWriteMetaData(
     GetUsageCallback callback,

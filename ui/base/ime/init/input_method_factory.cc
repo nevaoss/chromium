@@ -22,6 +22,15 @@
 #include "ui/base/ime/input_method_minimal.h"
 #endif
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#if defined(USE_AURA)
+#include "ui/base/ime/linux/input_method_auralinux.h"
+#include "ui/base/ime/linux/neva/input_method_auralinux_neva.h"
+#include "ui/base/ui_base_neva_switches.h"
+#endif  // defined(USE_AURA)
+///@}
+
 namespace {
 
 ui::InputMethod* g_input_method_for_testing = nullptr;

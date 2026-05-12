@@ -185,6 +185,13 @@ interface TrustedURLLoaderHeaderClient {
       URLRequest request,
       pending_receiver<TrustedHeaderClient> header_client);
 };
+///@name USE_NEVA_APPRUNTIME
+///@{
+// Interface for NetworkDelegate to add extra web socket header
+interface ExtraHeaderNetworkDelegate {
+  SetWebSocketHeader(string key, string value);
+};
+///@}
 
 struct HttpAuthStaticNetworkContextParams {
   // Whether authentication APIs that support fallback to the default account
@@ -307,6 +314,13 @@ struct SocketBrokerRemotes {
 
 // Parameters for constructing a network context.
 struct NetworkContextParams {
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // Network delegate for extra web socket header appending.
+  [EnableIf=neva_appruntime]
+  pending_receiver<ExtraHeaderNetworkDelegate>? network_delegate_receiver;
+  ///@}
+
   // The user agent string.
   string user_agent;
 

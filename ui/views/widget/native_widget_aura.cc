@@ -72,7 +72,8 @@
 #include "ui/views/widget/desktop_aura/desktop_window_tree_host.h"
 #endif
 
-#if BUILDFLAG(ENABLE_DESKTOP_AURA) && BUILDFLAG(IS_OZONE)
+#if BUILDFLAG(ENABLE_DESKTOP_AURA) && BUILDFLAG(IS_OZONE) && \
+    !defined(NEVA_OZONE_PLATFORM_WAYLAND)
 #include "ui/views/widget/desktop_aura/desktop_window_tree_host_platform.h"
 #endif
 
@@ -1325,7 +1326,9 @@ void NativeWidgetAura::SetInitialFocus(ui::mojom::WindowShowState show_state) {
 // Widget, public:
 
 namespace {
-#if BUILDFLAG(ENABLE_DESKTOP_AURA) && (BUILDFLAG(IS_WIN) || BUILDFLAG(IS_OZONE))
+#if BUILDFLAG(ENABLE_DESKTOP_AURA) && \
+    (BUILDFLAG(IS_WIN) || BUILDFLAG(IS_OZONE)) && \
+    !defined(NEVA_OZONE_PLATFORM_WAYLAND)
 void CloseWindow(aura::Window* window) {
   if (window) {
     Widget* widget = Widget::GetWidgetForNativeView(window);
@@ -1355,7 +1358,8 @@ void Widget::CloseAllSecondaryWidgets() {
   EnumThreadWindows(GetCurrentThreadId(), WindowCallbackProc, 0);
 #endif
 
-#if BUILDFLAG(ENABLE_DESKTOP_AURA) && BUILDFLAG(IS_OZONE)
+#if BUILDFLAG(ENABLE_DESKTOP_AURA) && BUILDFLAG(IS_OZONE) && \
+    !defined(NEVA_OZONE_PLATFORM_WAYLAND)
   DesktopWindowTreeHostPlatform::CleanUpWindowList(CloseWindow);
 #endif
 }

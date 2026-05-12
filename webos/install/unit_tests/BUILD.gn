@@ -1,0 +1,74 @@
+# Copyright 2021 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//media/cdm/library_cdm/cdm_paths.gni")
+import("//neva/neva.gni")
+import("//ui/ozone/ozone.gni")
+import("//webos/install/paths.gni")
+
+copy("unit_tests") {
+  testonly = true
+
+  sources = [
+    "$root_out_dir/icudtl.dat",
+    "$root_out_dir/media_unittests",
+  ]
+
+  deps = [
+    ":clear_key_cdm",
+    ":h26x_annex_b_fuzz_corpus",
+    ":media_data",
+    "//media:media_unittests",
+    "//third_party/icu:icudata",
+  ]
+
+  if (ozone_platform_wayland && webos_product_type != "tv" &&
+      webos_product_type != "signage") {
+    sources += [
+      "$root_out_dir/ozone_unittests",
+    ]
+
+    deps += [
+      "//third_party/minigbm",
+      "//ui/ozone:ozone_unittests",
+    ]
+  }
+  outputs = [ "$image_path/$unittests_dir/{{source_file_part}}" ]
+}
+
+copy("clear_key_cdm") {
+  testonly = true
+  sources = [ "$root_out_dir/$clearkey_cdm_path/libclearkeycdm.so" ]
+  deps = [ "//media/cdm/library_cdm/clear_key_cdm:clear_key_cdm_bin" ]
+  outputs =
+      [ "$image_path/$unittests_dir/$clearkey_cdm_path/{{source_file_part}}" ]
+}
+
+copy("media_data") {
+  testonly = true
+  sources = [ "//media/test/data" ]
+  outputs = [ "$image_path/$unittests_dir/media/test/data" ]
+}
+
+copy("h26x_annex_b_fuzz_corpus") {
+  testonly = true
+  sources = [
+    "//media/formats/mp4/h264_annex_b_fuzz_corpus",
+    "//media/formats/mp4/h265_annex_b_fuzz_corpus",
+  ]
+  outputs =
+      [ "$image_path/$unittests_dir/media/formats/mp4/{{source_file_part}}" ]
+}

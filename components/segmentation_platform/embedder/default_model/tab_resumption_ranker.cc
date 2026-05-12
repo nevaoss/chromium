@@ -22,6 +22,27 @@ using proto::SegmentId;
 constexpr SegmentId kSegmentId = SegmentId::TAB_RESUMPTION_CLASSIFIER;
 constexpr uint64_t kTabResumptionRankerVersion = 3;
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+#define DECL_SQL_FEATURE_SINGLE_UKM_METRIC(name, query, event_name,        \
+                                           metric_name)                    \
+  constexpr std::array<UkmMetricHash, 1> k##name##_##metric_name##Metrics{ \
+      UkmMetricHash::FromUnsafeValue(                                      \
+          ukm::builders::event_name::k##metric_name##NameHash),            \
+  };                                                                       \
+  const std::array<MetadataWriter::SqlFeature::EventAndMetrics, 1>         \
+      k##name##_k##metric_name##SqlEvent{                                  \
+          MetadataWriter::SqlFeature::EventAndMetrics{                     \
+              .event_hash = UkmEventHash::FromUnsafeValue(                 \
+                  ukm::builders::event_name::kEntryNameHash),              \
+              .metrics = k##name##_##metric_name##Metrics.data(),          \
+              .metrics_size = k##name##_##metric_name##Metrics.size()},    \
+      };                                                                   \
+  const MetadataWriter::SqlFeature name {                              \
+    .sql = query, .events = k##name##_k##metric_name##SqlEvent.data(),     \
+    .events_size = k##name##_k##metric_name##SqlEvent.size()               \
+  }
+#else   // (__cplusplus < 202002L)
 #define DECL_SQL_FEATURE_SINGLE_UKM_METRIC(name, query, event_name,        \
                                            metric_name)                    \
   constexpr std::array<UkmMetricHash, 1> k##name##_##metric_name##Metrics{ \
@@ -40,6 +61,7 @@ constexpr uint64_t kTabResumptionRankerVersion = 3;
     .sql = query, .events = k##name##_k##metric_name##SqlEvent.data(),     \
     .events_size = k##name##_k##metric_name##SqlEvent.size()               \
   }
+#endif  // !(__cplusplus < 202002L)
 
 DECL_SQL_FEATURE_SINGLE_UKM_METRIC(
     kLoadCount,
@@ -129,14 +151,24 @@ DECL_SQL_FEATURE_SINGLE_UKM_METRIC(
     Autofill_FormEvent,
     AutofillFormEvent);
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+const std::array<MetadataWriter::SqlFeature, 11> kSqlFeatures = {
+#else   // (__cplusplus < 202002L)
 constexpr std::array<MetadataWriter::SqlFeature, 11> kSqlFeatures = {
+#endif  // !(__cplusplus < 202002L)
     kLoadCount,        kForegroundCount, kUsageDuration, kIsBookmarked,
     kIsPartOfTabGroup, kUrlCopied,       kOmniboxShared, kMenuShare,
     kTouchScroll,      kTextFieldEdit,   kFormEvent};
 
 constexpr std::array<MetadataWriter::CustomInput::Arg, 1> kBindValueArg{
     std::make_pair("name", "origin")};
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+const MetadataWriter::CustomInput kBindValue{
+#else   // (__cplusplus < 202002L)
 constexpr MetadataWriter::CustomInput kBindValue{
+#endif  // !(__cplusplus < 202002L)
     .tensor_length = 1,
     .fill_policy = proto::CustomInput::FILL_FROM_INPUT_CONTEXT,
     .arg = kBindValueArg.data(),

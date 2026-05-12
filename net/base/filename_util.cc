@@ -112,7 +112,15 @@ bool FileURLToFilePath(const GURL& url, base::FilePath* file_path) {
   // A valid URL may include "%00" (NULL) in its path (see
   // https://crbug.com/1400251), which is considered an illegal filename and
   // results in failure.
+#if BUILDFLAG(IS_WEBOS)
+  // For WebOS the local paths what have '../../' are encoded to '..%2f..%2f..',
+  // thus we need to exclude the '/' symbols from illegal set.
+  // For the browser the local files do not matter. So, this part can be applied
+  // to all applications, web applications and browser.
+  std::set<unsigned char> illegal_encoded_bytes{'\0'};
+#else
   std::set<unsigned char> illegal_encoded_bytes{'/', '\0'};
+#endif  // BUILDFLAG(IS_WEBOS)
 
 #if BUILDFLAG(IS_WIN)
   // "%5C" ('\\') on Windows results in failure, for the same reason as '/'

@@ -1,0 +1,26 @@
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// (This file was partially copied from //chrome/common/extensions/api.)
+
+// This features file defines manifest keys implemented under src/chrome.
+// See chrome/common/extensions/api/_features.md to understand this file, as
+// well as feature.h, simple_feature.h, and feature_provider.h.
+
+{
+  "action": {
+    "channel": "stable",
+    "extension_types": ["extension"],
+    "min_manifest_version": 3
+  },
+  "browser_action": {
+    "channel": "stable",
+    "extension_types": ["extension"],
+    "max_manifest_version": 2
+  },
+  "page_action": {
+    "channel": "stable",
+    "extension_types": ["extension"],
+    "max_manifest_version": 2
+  }
+}

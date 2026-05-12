@@ -66,6 +66,16 @@
 #include "third_party/blink/public/platform/web_connection_type.h"
 #include "ui/gfx/native_widget_types.h"
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "third_party/blink/public/platform/web_scoped_page_pauser.h"
+///@}
+
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+// Mix-in for neva
+#include "content/renderer/neva/render_thread_impl.h"
+#endif
+
 namespace blink {
 class WebVideoCaptureImplManager;
 }
@@ -127,6 +137,9 @@ class CONTENT_EXPORT RenderThreadImpl
     : public RenderThread,
       public ChildThreadImpl,
       public mojom::Renderer,
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+      public neva::RenderThreadImpl<RenderThreadImpl>,
+#endif
       public viz::mojom::CompositingModeWatcher {
  public:
   static RenderThreadImpl* current();
@@ -372,7 +385,7 @@ class CONTENT_EXPORT RenderThreadImpl
     run_loop_start_time_ = run_loop_start_time;
   }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
   // Provide private memory footprint for browser process.
   void SetPrivateMemoryFootprint(uint64_t private_memory_footprint_bytes);
 #endif
@@ -394,7 +407,7 @@ class CONTENT_EXPORT RenderThreadImpl
   void RecordAction(const base::UserMetricsAction& action) override;
   void RecordComputedAction(const std::string& action) override;
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
   // ChildThreadImpl
   void OnMemoryPressureFromBrowserReceived(
       base::MemoryPressureListener::MemoryPressureLevel level) override;
@@ -437,6 +450,13 @@ class CONTENT_EXPORT RenderThreadImpl
   void PurgeResourceCache(PurgeResourceCacheCallback callback) override;
   void SetProcessState(base::Process::Priority priority,
                        mojom::RenderProcessVisibleState visible_state) override;
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  void ProcessResume() override;
+  void ProcessSuspend() override;
+  void OnSystemMemoryPressureLevelChanged(
+      base::MemoryPressureListener::MemoryPressureLevel level) override;
+  ///@}
   void SetIsLockedToSite() override;
 #if BUILDFLAG(CLANG_PROFILING_INSIDE_SANDBOX)
   void WriteClangProfilingProfile(
@@ -593,6 +613,15 @@ class CONTENT_EXPORT RenderThreadImpl
   // this member.
   mojo::Receiver<viz::mojom::CompositingModeWatcher>
       compositing_mode_watcher_receiver_{this};
+
+#if defined(USE_NEVA_APPRUNTIME)
+  unsigned suspension_count_ = 0;
+#endif
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+  std::unique_ptr<blink::WebScopedPagePauser> page_pauser_;
+///@}
 
   // Tracks the time the run loop started for this thread.
   base::TimeTicks run_loop_start_time_;

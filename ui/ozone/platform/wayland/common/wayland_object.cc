@@ -72,11 +72,18 @@ void delete_data_device(wl_data_device* data_device) {
 }
 
 void delete_output(wl_output* output) {
+  // TODO(neva): webOS/Starfish don't support WL_OUTPUT_RELEASE_SINCE_VERSION
+  // and wl_output_release. webOS/OSE supports it. See the
+  // /usr/include/wayland-client-protocol.h on the target sysroot.
+#if defined(WL_OUTPUT_RELEASE_SINCE_VERSION)
   if (wl::get_version_of_object(output) >= WL_OUTPUT_RELEASE_SINCE_VERSION) {
     wl_output_release(output);
   } else {
     wl_output_destroy(output);
   }
+#else
+  wl_output_destroy(output);
+#endif
 }
 
 void delete_keyboard(wl_keyboard* keyboard) {

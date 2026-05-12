@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="bs">
+<translation id="1682620957554922882">Obratite se pružatelju usluga za odnosni sadržaj.</translation>
+<translation id="2626799779920242286">Pokušajte ponovo kasnije.</translation>
+<translation id="27461552975087996">Certifikatu servera se ne može vjerovati.</translation>
+<translation id="288961708105972332">Pokušaj povezivanja je istekao.</translation>
+<translation id="3100161803646972327">Provjerite status mreže i pokušajte ponovo.</translation>
+<translation id="334286403444714742">Mreža nije povezana.</translation>
+<translation id="4799446021133992159">NIJE MOGUĆE UČITATI</translation>
+<translation id="4897228579364425832">PROVJERITE MREŽNU VEZU</translation>
+<translation id="4922056813564935008">Zahtijevanu adresu nije moguće pronaći.</translation>
+<translation id="4964644330950338878">Naziv glavnog računara ne odgovara certifikatu servera.</translation>
+<translation id="5375809313377772901">Provjerite postavke vremena.</translation>
+<translation id="5803768854262525793">REPLACE WITH HOSTNAME</translation>
+<translation id="6061420513894163219">Provjerite status mrežne veze.</translation>
+<translation id="6765203878096346794">Veza sa serverom je nestabilna.</translation>
+<translation id="7402264192054099664">To može biti privremeni problem.</translation>
+<translation id="7570401931535381481">Certifikat servera je istekao ili još nije važeći jer je podešeno vrijeme na TV-u drugačije od trenutnog vremena.</translation>
+<translation id="7619490177640280081">Postavke trenutnog vremena</translation>
+<translation id="8138313893556460774">Vrijeme rada je isteklo</translation>
+<translation id="8322836013946289105">Datoteka ili direktorij ne mogu biti pronađeni.</translation>
+<translation id="8561467915632687957">Mreža je nestabilna.</translation>
+</translationbundle>

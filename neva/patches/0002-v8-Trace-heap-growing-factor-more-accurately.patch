@@ -1,0 +1,57 @@
+From 725809c98a1afa572d408fe6fa6b9d9e6875aee5 Mon Sep 17 00:00:00 2001
+From: "donghwan.yu" <donghwan.yu@lge.com>
+Date: Tue, 18 Oct 2022 13:39:30 +0900
+Subject: [PATCH] [PATCH] [v8] Trace heap growing factor more accurately
+
+:Release Notes:
+More accurate trace of the heap growing factor
+
+:Detailed Notes:
+To trace heap growing factor more accurately,
+set a precision of 3 decimal places.
+
+:Test Scenario:
+Set js_flags=--trace-gc-verbose and check whether the factor
+is printed a precision of 3 decimal places
+
+1. Stop WAM
+  systemctl stop webapp-mgr
+2. Edit WebAppMgr startup script
+/etc/systemd/system/scripts/webapp-mgr.sh and add
+"--trace-gc-verbose" to WAM_JS_FLAGS:
+  export WAM_JS_FLAGS="--trace-gc-verbose"
+3. Launch WebAppMgr manually and monitor for V8 heap growing messages:
+  /etc/systemd/system/scripts/webapp-mgr.sh 2>&1 | grep -iE "factor|old size"
+4. Launch YouTube and play any 4K video
+5. Check that "Heap growing factor" is represented with 3 decimal digits.
+e.g. 1.587 below:
+...
+[31283:0x13c000]     6985 ms: HeapController factor 1.587 based on mu=0.970, speed_ratio=44 (gc=76878, mutator=1757)
+...
+
+Based on https://gpro.lgsvl.com/221478 patch
+
+:QA Notes:
+Test cases: QR-1273
+
+:Issues Addressed:
+[NEVA-3717] [open][upstreamable][v8][profile] Trace heap growing factor more accurately
+---
+ src/heap/heap-controller.cc | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/heap/heap-controller.cc b/src/heap/heap-controller.cc
+index b0a40237682..861fdf7b01a 100644
+--- a/src/heap/heap-controller.cc
++++ b/src/heap/heap-controller.cc
+@@ -33,7 +33,7 @@ double MemoryController<Trait>::GrowingFactor(
+   }
+   if (V8_UNLIKELY(v8_flags.trace_gc_verbose)) {
+     Isolate::FromHeap(heap)->PrintWithTimestamp(
+-        "[%s] factor %.1f based on mu=%.3f, speed_ratio=%.f "
++        "[%s] factor %.3f based on mu=%.3f, speed_ratio=%.f "
+         "(gc=%.f, mutator=%.f)\n",
+         Trait::kName, factor, Trait::kTargetMutatorUtilization,
+         gc_speed / mutator_speed, gc_speed, mutator_speed);
+2.25.1
+

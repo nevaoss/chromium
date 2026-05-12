@@ -751,8 +751,15 @@ struct CORE_EXPORT NativeValueTraits<
 };
 
 template <typename T>
+// TODO(neva): SFINAE (type traits) is needed to fix GCC compile error.
+#if defined(__GNUC__)
+struct NativeValueTraits<
+    T,
+    typename std::enable_if_t<std::is_base_of<DOMArrayBufferView, T>::value>> {
+#else   // defined(__GNUC__)
   requires std::derived_from<T, DOMArrayBufferView>
 struct NativeValueTraits<T> {
+#endif  // !defined(__GNUC__)
   // NotShared<T> or MaybeShared<T> should be used instead.
   static T* NativeValue(v8::Isolate* isolate,
                         v8::Local<v8::Value> value,

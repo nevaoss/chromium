@@ -100,7 +100,12 @@ bool operator==(const OriginWithPossibleWildcards& lhs,
 
 bool operator!=(const OriginWithPossibleWildcards& lhs,
                 const OriginWithPossibleWildcards& rhs) {
+  // TODO(neva): Remove this workaround when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  return !(lhs.csp_source == rhs.csp_source);
+#else
   return lhs.csp_source != rhs.csp_source;
+#endif
 }
 
 bool operator<(const OriginWithPossibleWildcards& lhs,

@@ -8,6 +8,7 @@ import("//build/config/features.gni")
 import("//build/config/ui.gni")
 import("//content/common/features.gni")
 import("//media/media_options.gni")
+import("//neva/neva.gni")
 import("//ppapi/buildflags/buildflags.gni")
 import("//sandbox/features.gni")
 import("//services/screen_ai/buildflags/features.gni")
@@ -335,6 +336,11 @@ target(link_target_type, "renderer") {
     "//url",
     "//v8",
   ]
+
+  if (use_neva_suspend_media_capture) {
+    deps += [ "//content/renderer/media/audio/neva" ]
+  }
+
   allow_circular_includes_from = []
 
   if (is_android) {

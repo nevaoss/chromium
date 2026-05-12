@@ -165,6 +165,12 @@ class PLATFORM_EXPORT FontDescription {
       return common == other.common && discretionary == other.discretionary
         && historical == other.historical && contextual == other.contextual;
     }
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+    bool operator!=(const VariantLigatures& other) const {
+      return !(*this == other);
+    }
+#endif  // (__cplusplus < 202002L)
   };
 
   struct Size {

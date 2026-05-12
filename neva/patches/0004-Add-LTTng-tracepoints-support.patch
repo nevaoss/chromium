@@ -1,0 +1,92 @@
+From 04c133ab98f71c4c3fdbaa9375d6f3d531ed0f75 Mon Sep 17 00:00:00 2001
+From: Jani Hautakangas <jani.hautakangas@lge.com>
+Date: Wed, 5 Feb 2020 22:05:08 +0200
+Subject: [PATCH] Add LTTng tracepoints support
+
+:Release Notes:
+Add LTTng tracepoints support
+
+:Detailed Notes:
+Add LTTng tracepoints support
+
+This patch squashes the following patches
+from chromium68:
+
+commit d7b77ff7d9178acc5f6f84d27f56c0e714d28e7a (tag: submissions/2)
+Author: Andre Rosa <andre.rosa@lge.com>
+Date:   Mon Oct 22 11:01:33 2018 -0700
+
+    [open][neva_upstreamable][lttng] Add LTTng tracepoints support
+
+commit d78b0551446bf7685f7c743c4dd09609b4633940
+Author: Andre Rosa <andre.rosa@lge.com>
+Date:   Tue Jan 29 11:49:04 2019 -0800
+
+    fixup! [open][neva_upstreamable][lttng] Add LTTng tracepoints support
+
+This fixes mksnapshot linking error when building for qemux86:
+| FAILED: mksnapshot
+...
+| obj/v8/v8_base/v8_base_jumbo_4.o:v8_base_jumbo_4.cc:function trace_event_lttng::LttngTraceScope::LttngTraceScope(char const*, char const*): error: undefined reference to '__tracepoint_chromium_tracing___scope_entry'
+| obj/v8/v8_base/v8_base_jumbo_4.o:v8_base_jumbo_4.cc:function trace_event_lttng::LttngTraceScope::LttngTraceScope(char const*, char const*): error: undefined reference to 'tracepoint_dlopen_ptr'
+| obj/v8/v8_base/v8_base_jumbo_4.o:v8_base_jumbo_4.cc:function trace_event_lttng::LttngTraceScope::~LttngTraceScope(): error: undefined reference to '__tracepoint_chromium_tracing___scope_exit'
+| obj/v8/v8_base/v8_base_jumbo_4.o:v8_base_jumbo_4.cc:function trace_event_lttng::LttngTraceScope::~LttngTraceScope(): error: undefined reference to 'tracepoint_dlopen_ptr'
+| obj/v8/v8_base/v8_base_jumbo_4.o:v8_base_jumbo_4.cc:function v8::internal::FunctionCallbackArguments::Call(v8::internal::CallHandlerInfo*): error: undefined reference to '__tracepoint_chromium_tracing___scope_exit'
+| obj/v8/v8_base/v8_base_jumbo_4.o:v8_base_jumbo_4.cc:function v8::internal::FunctionCallbackArguments::Call(v8::internal::CallHandlerInfo*): error: undefined reference to 'tracepoint_dlopen_ptr'
+| obj/v8/v8_base/v8_base_jumbo_5.o:v8_base_jumbo_5.cc:function v8::internal::Builtin_Impl_Stats_DateNow(int, v8::internal::Object**, v8::internal::Isolate*): error: undefined reference to '__tracepoint_chromium_tracing___scope_exit'
+| obj/v8/v8_base/v8_base_jumbo_5.o:v8_base_jumbo_5.cc:function v8::internal::Builtin_Impl_Stats_DateNow(int, v8::internal::Object**, v8::internal::Isolate*): error: undefined reference to 'tracepoint_dlopen_ptr'
+| obj/v8/v8_base/v8_base_jumbo_5.o:v8_base_jumbo_5.cc:function v8::internal::Builtin_Impl_Stats_MapPrototypeClear(int, v8::internal::Object**, v8::internal::Isolate*): error: undefined reference to '__tracepoint_chromium_tracing___scope_exit'
+| collect2: error: ld returned 1 exit status
+
+:Testing Performed:
+Please see http://gpro.lge.com/218744 .
+1. Once the board is up, check whether the WAM app process tree is awaken:
+   root@LGwebOS:~# ps axf | grep WebAppMgr
+2. If awaken, stop the service:
+   root@LGwebOS:~# systemctl stop webapp-mgr
+3. Then restart manually the WAM binary:
+   root@LGwebOS:~# sh -x /lib/systemd/system/scripts/webapp-mgr.sh
+4. Verify that there is no more backtrace (with the zygote source code mentioned
+   at the top) among the generated logging output
+
+:QA Notes:
+Test cases: QR-1235, QR-1245
+
+:Issues Addressed:
+[PLAT-98739] Port patch: [open][neva_upstreamable][lttng] Add LTTng tracepoints support
+
+Change-Id: I7e5e2bd9a6a579beadaefd5cc73587ac3efd9b13
+Originally-Reviewed-on: http://gpro.lge.com/242597
+Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/268596
+Tested-by: Lokesh Kumar Goel <lokeshkumar.goel@lge.com>
+Reviewed-by: Lokesh Kumar Goel <lokeshkumar.goel@lge.com>
+---
+ BUILD.gn | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index cc9e9b7a190..c6983731e91 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -12,6 +12,7 @@ import("//build/config/riscv.gni")
+ import("//build/config/sanitizers/sanitizers.gni")
+ import("//build_overrides/build.gni")
+ import("//third_party/icu/config.gni")
++import("//neva/neva.gni")
+ 
+ import("gni/snapshot_toolchain.gni")
+ import("gni/v8.gni")
+@@ -7338,6 +7339,10 @@ if (current_toolchain == v8_snapshot_toolchain) {
+       ":v8_tracing",
+       "//build/win:default_exe_manifest",
+     ]
++
++    if (use_lttng && current_toolchain == default_toolchain) {
++      deps += [ "//base/trace_event/neva/lttng:chromium_lttng_provider", ]
++    }
+   }
+
+   # This config disables a link time optimization "ICF", which may merge
+-- 
+2.45.2
+

@@ -10,7 +10,7 @@
 
 namespace blink {
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 // Request |blink::UserLevelMemoryPressureSignalGenerator| to generate a memory
 // pressure siganl.
 BLINK_EXPORT void RequestUserLevelMemoryPressureSignal();

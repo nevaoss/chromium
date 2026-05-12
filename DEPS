@@ -4997,6 +4997,149 @@ hooks = [
                 '-s', 'src/build/toolchain/win/rc/linux64/rc.sha1',
     ]
   },
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  # Apply more accurate trace of heap growing factor
+  {
+    'name': 'Apply_more_accurate_trace_of_heap_growing_factor',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+               '../neva/patches/0002-v8-Trace-heap-growing-factor-more-accurately.patch']
+  },
+  # Apply v8 snapshot report exceptions to console
+  {
+    'name': 'Apply_v8_snapshot_report_exceptions_to_console',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+               '../neva/patches/0003-op-upsable-v8-snapshot-Report-exceptions-to-console-.patch']
+  },
+  # Apply Add LTTng tracepoints support
+  {
+    'name': 'Apply_add_lttng_tracepoints_support',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+               '../neva/patches/0004-Add-LTTng-tracepoints-support.patch']
+  },
+  # Apply Make v8 heap constraints configurable
+  {
+    'name': 'Apply_make_v8_heap_constraints_configurable',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+               '../neva/patches/0005-memory-Make-v8-heap-constraints-configurable.patch']
+  },
+  # Apply 'Prevent-crash-with-std-isprint-usage-in-serialization' patch.
+  {
+    'name': 'Prevent-crash-with-std-isprint-usage-in-serialization',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0007-Prevent-crash-with-std-isprint-usage-in-serialization.patch']
+  },
+  # Apply 'Restore-GN-use_gold-logic-in-V8' patch
+  {
+    'name': 'Restore-GN-use_gold-logic-in-V8',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0008-v8-build-Restore-GN-use_gold-logic-in-V8.patch']
+  },
+  # Apply 'Set-using-local-dynamic-for-WebOS' patch
+  {
+    'name': 'Set-using-local-dynamic-for-WebOS',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0010-Set-using-local-dynamic-for-WebOS.patch']
+  },
+  # Apply 'Refactor neva content decryption module' patch
+  {
+    'name': 'Apply_refactor_neva_content_decryption_module',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/media/cdm/api', 'am',
+               '../../../neva/patches/0001-cdm-Refactor-neva-content-decryption-module.patch']
+  },
+  # Apply 'GCC-suppress-invalid-offsetof-warnings' patch
+  {
+    'name': 'Apply_GCC-suppress-invalid-offsetof-warnings',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/net/third_party/quiche/src', 'am',
+               '../../../../neva/patches/0001-GCC-suppress-invalid-offsetof-warnings.patch']
+  },
+  # Apply Disable SVE for WebOS builds
+  {
+    'name': 'Disable_AOM_SVE_for_webOS',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/libaom/source/libaom', 'am',
+               '../../../../neva/patches/0001-build-webos-131.0.6740.0-1-Disable-AOM-SVE-for-webOS.patch']
+  },
+  # Apply 'Disable MANGLE_JPEG_NAMES for libjpeg_turbo' patch
+  {
+    'name': 'Apply_Disable-MANGLE_JPEG_NAMES-for-libjpeg_turbo',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/libjpeg_turbo', 'am',
+              '../../neva/patches/0001-webos-Disable-MANGLE_JPEG_NAMES-for-libjpeg_turbo.patch']
+  },
+  # Apply 'Disable MSAA in Skia to fix SVG rendering' patch
+  {
+    'name': 'Apply_Disable-MSAA-in-Skia-to-fix-SVG-rendering',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/skia', 'am',
+              '../../neva/patches/0001-Disable-MSAA-in-Skia-to-fix-SVG-rendering.patch']
+  },
+  # Apply 'Add work around code for invalidating glBufferData' patch
+  {
+    'name': 'Apply_Add-work-around-code-for-invalidating-glBufferData',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/skia', 'am',
+              '../../neva/patches/0001-Add-work-around-code-for-invalidating-glBufferData.patch']
+  },
+  # Apply 'Disable Skia Rust-based Fontations' patch
+  {
+    'name': 'Disable-Skia-Rust-based-Fontations',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/skia', 'am',
+              '../../neva/patches/0003-Disable-Rust-based-Fontations.patch']
+  },
+  # Apply 'GCC: Add Http2HeaderBlock::ValueProxy::operator!=()'
+  {
+    'name': 'Apply_GCC-Add-HttpHeaderBlock-ValueProxy-operator',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/net/third_party/quiche/src', 'am',
+              '../../../../neva/patches//0001-PATCH-GCC-Add-HttpHeaderBlock-ValueProxy-operator.patch']
+  },
+  # Support doubly linked timezone path used for webOS.
+  {
+    'name': 'Supported_doubly_linked_timezone_path',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/icu', 'am',
+               '../../neva/patches/0001-Support-a-doubly-linked-timezone-file-path-use.patch']
+  },
+  # Apply 'Disable Neon DotProduct and I8MM instructions in libyuv' patch
+  {
+    'name': 'Apply_Disable-Neon-DotProduct-and-I8MM-extensions-in-libyuv',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/libyuv', 'am',
+              '../../neva/patches/0009-build-webos-Disable-Neon-DotProduct-and-I8MM-extensions-in-libyuv.patch']
+  },
+  # Apply 'Disable SME instructions in libyuv' patch
+  {
+    'name': 'Apply_Disable-SME-instructions-in-libyuv',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/libyuv', 'am',
+              '../../neva/patches/0010-build-webos-Disable-SME-instructions-in-libyuv.patch']
+  },
+  # Apply 'Add missing std to isfinite in ink' patch
+  {
+    'name': 'Apply_GCC-Add-missing-std-to-isfinite-in-ink',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/ink/src', 'am',
+              '../../../neva/patches/0001-build-GCC-Add-missing-std-to-isfinite.patch']
+  },
+  # Apply 'Add missing include for usage of std::optional in ssl_stream_adapter.h' patch
+  {
+    'name': 'Apply_GCC-Add-missing-std-optional-in-ssl_stream_adapter.h',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/third_party/webrtc', 'am',
+              '../../neva/patches/0001-Missing-include-for-usage-of-std-optional-in-ssl_str.patch']
+  },
+  #@}
   {
     'name': 'apache_win32',
     'pattern': '\\.sha1',

@@ -26658,6 +26658,7 @@ Called by update_use_counter_css.py.-->
   <int value="9" label="kCastStreaming"/>
   <int value="10" label="kContentEmbedderDefined"/>
   <int value="11" label="kTest"/>
+  <int value="12" label="kNevaMediaPlayer"/>
 </enum>
 
 <enum name="MediaSessionAction">

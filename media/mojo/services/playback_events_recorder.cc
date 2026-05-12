@@ -66,7 +66,12 @@ void PlaybackEventsRecorder::BitrateEstimator::Update(
 }
 
 void PlaybackEventsRecorder::BitrateEstimator::OnPause() {
+// TODO(neva): GCC 8.x.x
+#if defined(__clang__)
   last_stats_ = {};
+#else
+  last_stats_ = absl::optional<PipelineStatistics>();
+#endif
 }
 
 // static

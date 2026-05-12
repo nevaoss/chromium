@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Fake bold text font test</title>
+<style>
+body {
+  background-color: white;
+  color: black;
+}
+
+.normal {
+  font-weight: normal;
+  font-family: MontserratLight;
+}
+
+.bold {
+  font-weight: bold;
+  font-family: MontserratLight;
+}
+
+@font-face {
+  font-family:'MontserratLight';
+  src: url('fonts/Montserrat-Light.otf');
+}
+</style>
+</head>
+
+<body>
+<input type="button" value="Reload" onclick="reload()">
+<br>
+<h3>Fake bold text font test</h3>
+<p class="normal">Normal: This is a normal text</p>
+<p class="bold">Bold: This is a bold text</p>
+</body>
+
+<script>
+function reload() {
+  window.location.reload();
+}
+</script>
+</html>

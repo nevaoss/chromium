@@ -1,0 +1,176 @@
+# Copyright 2016-2020 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//build/buildflag_header.gni")
+import("//build/config/compiler/compiler.gni")
+import("//build/config/features.gni")
+import("//build/config/sanitizers/sanitizers.gni")
+import("//build/config/ui.gni")
+import("//neva/app_runtime/app_runtime_locales.gni")
+import("//tools/grit/repack.gni")
+
+if (use_cbe) {
+  component("weboswebruntime") {
+    deps = [
+      ":webos_impl"
+    ]
+  }
+} else {
+  shared_library("weboswebruntime") {
+    output_name = "cbe"
+
+    deps = [
+      ":webos_impl"
+    ]
+  }
+}
+
+source_set("webos_impl") {
+  configs += [
+    "//build/config:precompiled_headers",
+    "//content:content_implementation",
+    "//v8:external_startup_data",
+    "//neva/app_runtime:app_runtime_cfg",
+  ]
+
+  sources = [
+    "agl/webapp_window_base_agl.h",
+    "agl/webapp_window_base_agl_stub.cc",
+    "application_installation_handler.cc",
+    "application_installation_handler.h",
+    "app/webos_content_main_delegate.cc",
+    "app/webos_content_main_delegate.h",
+    "app/webos_main.cc",
+    "app/webos_main.h",
+    "common/webos_constants.h",
+    "common/webos_content_client.cc",
+    "common/webos_content_client.h",
+    "common/webos_export.h",
+    "common/webos_file_access_controller.cc",
+    "common/webos_file_access_controller.h",
+    "common/webos_locales_mapping.cc",
+    "common/webos_locales_mapping.h",
+    "common/webos_native_event_delegate.h",
+    "common/webos_native_window_state.h",
+    "common/webos_event.h",
+    "public/runtime.cc",
+    "public/runtime.h",
+    "public/runtime_delegates.h",
+    "renderer/webos_content_renderer_client.cc",
+    "renderer/webos_content_renderer_client.h",
+    "renderer/webos_network_error_helper.cc",
+    "renderer/webos_network_error_helper.h",
+    "renderer/webos_network_error_template_builder.cc",
+    "renderer/webos_network_error_template_builder.h",
+    "webapp_window.cc",
+    "webapp_window.h",
+    "webapp_window_base.cc",
+    "webapp_window_base.h",
+    "webapp_window_delegate.cc",
+    "webapp_window_delegate.h",
+    "webview_profile.cc",
+    "webview_profile.h",
+    "webos_platform.cc",
+    "webos_platform.h",
+    "webview_base.cc",
+    "webview_base.h",
+    "window_group_configuration.cc",
+    "window_group_configuration.h",
+  ]
+
+  if (is_agl) {
+    sources -= ["agl/webapp_window_base_agl_stub.cc"]
+    sources += ["agl/webapp_window_base_agl.cc"]
+  }
+
+  deps = [
+    "//neva/app_runtime",
+    "//neva/injection/public/renderer",
+    "//neva/pal_service",
+    "//third_party/leveldatabase",
+    "//third_party/blink/public:blink",
+    "//ui/gl",
+  ]
+
+  data_deps = [
+    ":webos_resources",
+  ]
+
+  include_dirs = [ "." ]
+}
+
+grit("webos_network_error_resources_grit") {
+  visibility = [ ":*" ]
+  source = "//webos/browser/resources/webos_network_error_resources.grd"
+  output_dir = "$root_gen_dir/webos/"
+  outputs = [
+    "grit/webos_network_error_resources.h",
+    "webos_network_error_resources.pak"
+  ]
+}
+
+grit("webos_network_error_strings_grit") {
+  visibility = [ ":*" ]
+  source = "//webos/browser/resources/webos_network_error_strings.grd"
+  output_dir = "$root_gen_dir/webos/"
+  outputs = [
+    "grit/webos_network_error_strings.h",
+  ]
+
+  foreach(locale, app_runtime_locales) {
+    outputs += [ "webos_network_error_strings_$locale.pak" ]
+  }
+}
+
+repack_locales("repack") {
+  visibility = [ ":resources" ]
+  source_patterns = [
+    "${root_gen_dir}/webos/webos_network_error_strings_",
+    "${root_gen_dir}/neva/app_runtime/locales/"
+  ]
+
+  deps = [
+    ":webos_network_error_strings_grit",
+    "//neva/app_runtime:app_runtime_network_error_strings_grit",
+  ]
+
+  input_locales = app_runtime_locales
+  output_locales = app_runtime_locales
+  copy_data_to_bundle = true
+}
+
+group("resources") {
+  public_deps = [
+    ":webos_network_error_resources_grit",
+    ":repack",
+  ]
+}
+
+repack("webos_resources") {
+  sources = [
+    "$root_gen_dir/webos/webos_network_error_resources.pak",
+    "$root_gen_dir/webos/webos_network_error_strings_en-US.pak",
+    "$root_out_dir/app_runtime_content.pak",
+  ]
+
+  deps = [
+    ":resources",
+    ":webos_network_error_strings_grit",
+    "//neva/app_runtime:app_runtime_resources"
+  ]
+
+  output = "$root_out_dir/webos_content.pak"
+}

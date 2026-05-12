@@ -23,6 +23,7 @@ class VIZ_SERVICE_EXPORT OverlayProcessorOzone
       std::unique_ptr<ui::OverlayCandidatesOzone> overlay_candidates,
       std::vector<OverlayStrategy> available_strategies,
       gpu::SharedImageInterface* shared_image_interface);
+
   ~OverlayProcessorOzone() override;
 
   bool IsOverlaySupported() const override;

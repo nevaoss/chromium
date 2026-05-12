@@ -574,6 +574,14 @@ cdm::Status ClearKeyCdm::Decrypt(const cdm::InputBuffer_2& encrypted_buffer,
   return cdm::kSuccess;
 }
 
+#if defined(USE_NEVA_CDM)
+cdm::Status ClearKeyCdm::Decrypt(const cdm::InputBuffer_2& encrypted_buffer,
+                                 cdm::DecryptedBlock* decrypted_block,
+                                 cdm::StreamType decoder_type) {
+  return Decrypt(encrypted_buffer, decrypted_block);
+}
+#endif
+
 cdm::Status ClearKeyCdm::InitializeAudioDecoder(
     const cdm::AudioDecoderConfig_2& audio_decoder_config) {
   if (key_system_ == kExternalClearKeyDecryptOnlyKeySystem) {

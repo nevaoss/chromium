@@ -1,0 +1,71 @@
+From 265a057d25ae295d37f1413343d57d6e720a7c7e Mon Sep 17 00:00:00 2001
+From: Youngsoo Choi <youngsoo.choi@lge.com>
+Date: Tue, 10 Oct 2023 10:55:34 +0900
+Subject: [PATCH] Add work around code for invalidating glBufferData
+
+:Release Notes:
+Added work around code for invalidating glBufferData which causes the
+performance regression without it on webOS OSE
+
+:Detailed Notes:
+This CL restores the work around invalidating logic for the glBufferData
+which was removed on the upstream but needed for RPi4.
+
+After the upstream commit
+https://skia-review.googlesource.com/c/skia/+/549276 landed on Skia,
+performance regression was found on the RPi4 target. (webOS OSE)
+And this was because the work around invalidating logic was
+removed by the above commit which was needed for the GPU on RPi4.
+It seems the GPU on RPi4 should use different values for the
+glBufferData to invalidate the buffer since it has a different
+invalidate buffer type.
+
+:Testing Performed:
+1. Run perfbench on webOS/OSE:
+python3 run.py performance --config_type v2 --target=OSE --config_file
+config_new.ini
+2. No regression should be found on gui_mark, men_in_blue, and
+motion_mark item.
+
+:QA Notes:
+
+:Issues Addressed:
+[NEVA-7487] [Waiting Upstream][OSE] In 22Q3SP5 build, the perfbench
+results of enactbench, gui_mark, men_in_blue, and motion_mark were
+poorly measured
+---
+ src/gpu/ganesh/gl/GrGLBuffer.cpp | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/src/gpu/ganesh/gl/GrGLBuffer.cpp b/src/gpu/ganesh/gl/GrGLBuffer.cpp
+index 39080ea9b8..469f6ec278 100644
+--- a/src/gpu/ganesh/gl/GrGLBuffer.cpp
++++ b/src/gpu/ganesh/gl/GrGLBuffer.cpp
+@@ -265,6 +265,24 @@ bool GrGLBuffer::onUpdateData(const void* src, size_t offset, size_t size, bool
+ 
+     // bindbuffer handles dirty context
+     GrGLenum target = this->glGpu()->bindBuffer(fIntendedType, this);
++
++#if defined(ENABLE_SKIA_FORCE_INVALIDATE)
++    bool noInvalidation =
++            this->glGpu()->glCaps().invalidateBufferType() == GrGLCaps::InvalidateBufferType::kNone;
++    if (noInvalidation) {
++        // No need for a separate invalidation if we're overwriting everything. If we don't
++        // have a way to invalidate then we cheat a bit here. We use glBufferData but with the src
++        // data size. Currently, no methods allow a partial update that preserves contents of
++        // non-updated portions of the buffer (map() does a glBufferData(..size, nullptr..))
++        GrGLenum error =
++                GL_ALLOC_CALL(this->glGpu(), BufferData(target, (GrGLsizeiptr)size, src, fUsage));
++        if (error != GR_GL_NO_ERROR) {
++            return false;
++        }
++        return true;
++    }
++#endif
++
+     if (!preserve) {
+         GrGLenum error = invalidate_buffer(this->glGpu(), target, fUsage, fBufferID, this->size());
+         if (error != GR_GL_NO_ERROR) {
+-- 
+2.42.0
+

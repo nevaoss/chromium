@@ -211,6 +211,8 @@ WaylandSurfaceFactory::GetAllowedGLImplementations() {
 #if BUILDFLAG(IS_CHROMEOS_LACROS)
     impls.emplace_back(gl::kGLImplementationEGLANGLE);
 #endif
+    // Add only supported ANGLE implementations. Otherwise, angle-vulkan might
+    // be requested, which is not supported with this backend yet.
     impls.emplace_back(gl::ANGLEImplementation::kOpenGL);
     impls.emplace_back(gl::ANGLEImplementation::kOpenGLES);
     impls.emplace_back(gl::ANGLEImplementation::kSwiftShader);

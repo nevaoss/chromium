@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width">
+    <title>Media Test Page</title>
+    <style>
+    video::-webkit-media-controls {
+      display: none;
+    }
+    body {
+      background-color : white;
+      cursor: none;
+    }
+    </style>
+    <script src="./js/dash.all.min.js"></script>
+</head>
+<body>
+    <video id="video" preload=auto width=50% height=50%></video>
+    <div id="long_empty_div"></div>
+
+    <script>
+    document._video_loaded = false;
+    document._video_fullscreenMode = false;
+    document._video_fullscreenError = false;
+
+    function Fullscreen(elem) {
+      elem.requestFullscreen();
+    }
+
+    function CloseFullscreen(elem) {
+      document.exitFullscreen();
+    }
+
+    var video = document.querySelector('video');
+
+    video.onloadeddata = function() {
+        document._video_loaded = true;
+    }
+
+    fullscreen_checker = function() {
+      if (document.fullscreenEnabled === true &&
+          document.fullscreenElement === video) {
+        document._video_fullscreenMode = true;
+        console.log("enter fullscreen");
+      } else {
+        document._video_fullscreenMode = false;
+        console.log("exit fullscreen");
+      }
+    }
+
+    video.onfullscreenchange = fullscreen_checker
+
+    fullscreenerror_checker = function() {
+        document._video_fullscreenerror = true;
+        console.log("fullscreen error");
+    }
+
+    video.onfullscreenerror =  fullscreenerror_checker;
+
+    document.addEventListener("keydown", event => {
+      video = document.querySelector('video');
+      switch(event.code) {
+        case "KeyK":
+          video.play();
+          break;
+        case "KeyP":
+          video.pause();
+          break;
+        case "KeyF":
+          Fullscreen(video);
+          break;
+        case "KeyX":
+          CloseFullscreen(video);
+          break;
+        case "KeyL":
+          video.currentTime = video.currentTime + 10;
+          break;
+      }
+    });
+
+    document.getElementById('long_empty_div').style.width = window.innerWidth * 3 + "px";
+    document.getElementById('long_empty_div').style.height = window.innerHeight * 3 + "px";
+    </script>
+</body>
+</html>

@@ -10,6 +10,7 @@
 import("//build/config/cast.gni")
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/v8_target_cpu.gni")
+import("//neva/neva.gni")
 import("//v8/gni/v8.gni")
 
 declare_args() {
@@ -34,6 +35,7 @@ declare_args() {
        (v8_target_cpu == target_cpu || target_os == "android") &&
        !(host_toolchain == default_toolchain && is_msan) &&
        !(is_win && host_os != "win") && !(is_mac && host_os != "mac"))
+      && !is_webos && !is_webos_lite
 
   # We use a different filename for arm64 macOS builds so that the arm64 and
   # x64 snapshots can live side-by-side in a universal macOS app.

@@ -17,6 +17,11 @@
 #include "ui/linux/linux_ui.h"
 #include "ui/ozone/public/ozone_platform.h"
 
+#if defined(USE_SINGLE_WINDOW_MODE)
+#include "ui/aura/env.h"
+#include "ui/aura/window.h"
+#endif
+
 namespace {
 
 bool IsDesktopEnvironmentUnity() {
@@ -76,6 +81,12 @@ NativeWidgetType GetNativeWidgetTypeForInitParams(
 views::NativeWidget* ChromeViewsDelegate::CreateNativeWidget(
     views::Widget::InitParams* params,
     views::internal::NativeWidgetDelegate* delegate) {
+#if defined(USE_SINGLE_WINDOW_MODE)
+  if (!params->parent && !params->context)
+    params->parent = aura::Env::GetRootWindow();
+  return ::CreateNativeWidget(NativeWidgetType::NATIVE_WIDGET_AURA, params,
+                              delegate);
+#endif
   return ::CreateNativeWidget(GetNativeWidgetTypeForInitParams(*params), params,
                               delegate);
 }

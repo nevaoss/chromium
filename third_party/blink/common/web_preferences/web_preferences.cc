@@ -13,6 +13,11 @@
 #include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom.h"
 #include "ui/base/ui_base_switches_util.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/command_line.h"
+#include "third_party/blink/public/common/switches.h"
+#endif
+
 namespace {
 
 bool IsTouchDragDropEnabled() {
@@ -52,6 +57,12 @@ WebPreferences::WebPreferences()
   // may be refined via resource files for the Chrome profile, in order to take
   // into account platform-specific availability of math fonts.
   math_font_family_map[web_pref::kCommonScript] = u"Latin Modern Math";
+
+#if defined(USE_NEVA_APPRUNTIME)
+  allow_scripts_to_close_windows =
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          blink::switches::kAllowScriptsToCloseWindows);
+#endif
 }
 
 WebPreferences::WebPreferences(const WebPreferences& other) = default;

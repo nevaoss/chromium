@@ -136,6 +136,7 @@
   X("net")                                                               \
   X("network.scheduler")                                                 \
   X("netlog")                                                            \
+  X("neva")                                                              \
   X("offline_pages")                                                     \
   X("omnibox")                                                           \
   X("oobe")                                                              \

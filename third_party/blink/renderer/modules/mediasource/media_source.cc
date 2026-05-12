@@ -58,6 +58,12 @@
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 
+#if defined(USE_WEBOS_CODEC)
+#include "base/synchronization/waitable_event.h"
+#include "base/task/thread_pool.h"
+#include "media/video/gpu_video_accelerator_factories.h"
+#endif
+
 using blink::WebMediaSource;
 using blink::WebSourceBuffer;
 
@@ -148,6 +154,60 @@ static bool ThrowExceptionIfClosedOrUpdating(bool is_open,
 MediaSource* MediaSource::Create(ExecutionContext* context) {
   return MakeGarbageCollected<MediaSource>(context);
 }
+
+#if defined(USE_WEBOS_CODEC)
+namespace {
+class RefCountedWaitableEvent
+    : public base::WaitableEvent,
+      public WTF::ThreadSafeRefCounted<RefCountedWaitableEvent> {
+ public:
+  RefCountedWaitableEvent()
+      : base::WaitableEvent(base::WaitableEvent::ResetPolicy::MANUAL,
+                            base::WaitableEvent::InitialState::NOT_SIGNALED) {}
+
+ private:
+  friend class WTF::ThreadSafeRefCounted<RefCountedWaitableEvent>;
+  ~RefCountedWaitableEvent() = default;
+};
+}  // namespace
+
+static void OnCodecSupportKnown(
+    scoped_refptr<RefCountedWaitableEvent> codec_support_known) {
+  codec_support_known->Signal();
+}
+
+static bool IsCodecSupportKnown(
+    media::GpuVideoAcceleratorFactories* gpu_factories) {
+  if (gpu_factories->IsDecoderSupportKnown()) {
+    return true;
+  }
+  // GPU might not be initialized by the time it is queried
+  // for supported codecs. Request support status notification and block
+  // execution with timeout.
+  // TODO(neva): On webOS/OSE, it blocks less than 20ms at first time.
+  // Need to find better way to get the supported codec w/o blocking.
+  // Reference : GpuCodecSupportWaiter::IsCodecSupportKnown.
+  scoped_refptr<RefCountedWaitableEvent> codec_support_known =
+      base::MakeRefCounted<RefCountedWaitableEvent>();
+  scoped_refptr<base::SequencedTaskRunner> task_runner =
+      base::ThreadPool::CreateSequencedTaskRunner({});
+  bool is_support_notification_requested = task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](media::GpuVideoAcceleratorFactories* gpu_factories,
+             scoped_refptr<RefCountedWaitableEvent> codec_support_known) {
+            gpu_factories->NotifyDecoderSupportKnown(
+                base::BindOnce(&OnCodecSupportKnown, codec_support_known));
+          },
+          gpu_factories, codec_support_known));
+  if (!is_support_notification_requested) {
+    DLOG(WARNING) << "Failed to request codec support notification.";
+    return false;
+  }
+  codec_support_known->TimedWait(base::Milliseconds(500));
+  return gpu_factories->IsDecoderSupportKnown();
+}
+#endif
 
 MediaSource::MediaSource(ExecutionContext* context)
     : ActiveScriptWrappable<MediaSource>({}),
@@ -659,10 +719,54 @@ bool MediaSource::IsTypeSupportedInternal(ExecutionContext* context,
   // specificity is and will be retained for isTypeSupported.
   // TODO(crbug.com/535738): Actually relax the codec-specifity for aSB() and
   // cT() (which is when |enforce_codec_specificity| is false).
+
   MIMETypeRegistry::SupportsType supported =
       MIMETypeRegistry::SupportsMediaSourceMIMEType(mime_type, codecs);
 
   bool result = supported == MIMETypeRegistry::kSupported;
+
+#if defined(USE_WEBOS_CODEC)
+  auto* gpu_factories = Platform::Current()->GetGpuFactories();
+  if (result && gpu_factories &&
+      gpu_factories->IsGpuVideoDecodeAcceleratorEnabled()) {
+    if (IsCodecSupportKnown(gpu_factories)) {
+      std::vector<std::string> parsed_codec_ids;
+      media::SplitCodecs(codecs.Ascii(), &parsed_codec_ids);
+      for (const auto& codec_id : parsed_codec_ids) {
+        auto parse_result =
+            media::ParseVideoCodecString(mime_type.Ascii(), codec_id,
+                                         /*allow_ambiguous_matches=*/true);
+        if (parse_result &&
+            parse_result->codec != media::VideoCodec::kUnknown) {
+          int width = content_type.Parameter("width").ToInt();
+          if (width == 0) {
+            width = 128;
+          }
+          int height = content_type.Parameter("height").ToInt();
+          if (height == 0) {
+            height = 128;
+          }
+
+          media::VideoDecoderConfig decoder_config(
+              parse_result->codec, parse_result->profile,
+              media::VideoDecoderConfig::AlphaMode::kIsOpaque,
+              parse_result->color_space, media::VideoTransformation(),
+              gfx::Size(width, height), gfx::Rect(), gfx::Size(),
+              std::vector<uint8_t>(), media::EncryptionScheme::kUnencrypted);
+          result = gpu_factories->IsDecoderConfigSupported(decoder_config) ==
+                   media::GpuVideoAcceleratorFactories::Supported::kTrue;
+          VLOG(1) << __func__ << " codec id " << codec_id << " is "
+                  << (result ? "supported" : "unsupported");
+          if (!result) {
+            break;
+          }
+        }
+      }
+    } else {
+      LOG(WARNING) << __func__ << " GPU Video decoder is not ready";
+    }
+  }
+#endif
 
   DVLOG(2) << __func__ << "(" << type << ", "
            << (enforce_codec_specificity ? "true" : "false") << ") -> "

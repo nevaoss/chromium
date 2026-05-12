@@ -81,6 +81,12 @@ bool CheckSecurityForAccessingCodeCacheData(
     return true;
   }
 
+#if defined(USE_FILESCHEME_CODECACHE)
+  if (content::neva::IsFileSchemeSupportedForCodeCache(resource_url))
+    return true;
+#endif
+
+
   if (operation == CodeCacheHostImpl::Operation::kWrite) {
     mojo::ReportBadMessage("Invalid URL scheme for code cache.");
   }
@@ -433,8 +439,15 @@ std::optional<GURL> CodeCacheHostImpl::GetSecondaryKeyForCodeCache(
       process_lock.matches_scheme(url::kHttpsScheme) ||
       process_lock.matches_scheme(content::kChromeUIScheme) ||
       process_lock.matches_scheme(content::kChromeUIUntrustedScheme) ||
+#if !defined(USE_FILESCHEME_CODECACHE)
       blink::CommonSchemeRegistry::IsExtensionScheme(
           process_lock.lock_url().scheme())) {
+#else
+      blink::CommonSchemeRegistry::IsExtensionScheme(
+          process_lock.lock_url().scheme()) ||
+      content::neva::IsFileSchemeSupportedForCodeCache(
+          process_lock.lock_url())) {
+#endif
     return process_lock.lock_url();
   }
 

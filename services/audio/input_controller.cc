@@ -371,6 +371,31 @@ void InputController::Record() {
   return;
 }
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+void InputController::Pause() {
+  DCHECK_CALLED_ON_VALID_THREAD(owning_thread_);
+  SCOPED_UMA_HISTOGRAM_TIMER("Media.AudioInputController.RecordTime");
+  event_handler_->OnLog("AIC::DoPause");
+
+  stream_->Stop();
+
+  if (user_input_monitor_)
+    user_input_monitor_->DisableKeyPressMonitoring();
+}
+
+void InputController::Resume() {
+  DCHECK_CALLED_ON_VALID_THREAD(owning_thread_);
+  SCOPED_UMA_HISTOGRAM_TIMER("Media.AudioInputController.RecordTime");
+
+  event_handler_->OnLog("AIC::DoResume");
+
+  if (user_input_monitor_)
+    user_input_monitor_->EnableKeyPressMonitoring();
+
+  stream_->Start(audio_callback_.get());
+}
+#endif
+
 void InputController::Close() {
   DCHECK(task_runner_->BelongsToCurrentThread());
   SCOPED_UMA_HISTOGRAM_TIMER("Media.AudioInputController.CloseTime");

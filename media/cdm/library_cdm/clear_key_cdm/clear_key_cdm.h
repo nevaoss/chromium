@@ -19,6 +19,10 @@
 #include "media/cdm/api/content_decryption_module.h"
 #include "media/cdm/library_cdm/clear_key_cdm/clear_key_persistent_session_cdm.h"
 
+#if defined(USE_NEVA_CDM)
+#include "media/cdm/neva/webos/content_decryption_module_webos.h"
+#endif
+
 namespace media {
 
 class CdmHostProxy;
@@ -61,6 +65,12 @@ class ClearKeyCdm : public cdm::ContentDecryptionModule_10,
       const cdm::AudioDecoderConfig_2& audio_decoder_config) override;
   cdm::Status Decrypt(const cdm::InputBuffer_2& encrypted_buffer,
                       cdm::DecryptedBlock* decrypted_block) override;
+#if defined(USE_NEVA_CDM)
+  // This is for media unit test build
+  cdm::Status Decrypt(const cdm::InputBuffer_2& encrypted_buffer,
+                      cdm::DecryptedBlock* decrypted_block,
+                      cdm::StreamType decoder_type) override;
+#endif
   cdm::Status DecryptAndDecodeSamples(
       const cdm::InputBuffer_2& encrypted_buffer,
       cdm::AudioFrames* audio_frames) override;

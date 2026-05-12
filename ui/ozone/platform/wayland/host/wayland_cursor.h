@@ -89,6 +89,10 @@ class WaylandCursor {
                        uint32_t hotspot_x_dip,
                        uint32_t hotspot_y_dip);
 
+#if BUILDFLAG(IS_WEBOS)
+  void SetLSMCursorAndCommit(const gfx::Point& hotspot_in_dips);
+#endif  // BUILDFLAG(IS_WEBOS)
+
   const raw_ptr<WaylandPointer, DanglingUntriaged> pointer_;
   const raw_ptr<WaylandConnection> connection_;
   const wl::Object<wl_surface> pointer_surface_;

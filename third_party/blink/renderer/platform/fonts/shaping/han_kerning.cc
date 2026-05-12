@@ -173,11 +173,24 @@ HanKerning::CharType HanKerning::GetCharType(UChar ch,
   NOTREACHED();
 }
 
+// TODO(neva): Remove this once Neva GCC version upgraded to 13.2+.
+#if defined(__GNUC__) &&                                       \
+    (__GNUC__ < 13 || __GNUC__ == 13 && __GNUC_MINOR__ < 2) && \
+    !defined(__clang__)
+static inline bool isSpecialCharacter(UChar ch) {
+  return !Character::MaybeHanKerningOpenOrCloseFast(ch);
+}
+
+bool HanKerning::MayApply(StringView text) {
+  return !text.Is8Bit() && !text.IsAllSpecialCharacters<isSpecialCharacter>();
+}
+#else
 bool HanKerning::MayApply(StringView text) {
   return !text.Is8Bit() && !text.IsAllSpecialCharacters<[](UChar ch) {
     return !Character::MaybeHanKerningOpenOrCloseFast(ch);
   }>();
 }
+#endif
 
 inline bool HanKerning::ShouldKern(CharType type, CharType last_type) {
   return type == CharType::kOpen &&

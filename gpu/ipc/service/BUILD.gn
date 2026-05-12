@@ -90,6 +90,7 @@ component("service") {
     "//mojo/public/cpp/bindings",
     "//ui/base:ozone_buildflags",
   ]
+
   libs = []
   ldflags = []
   if (is_win) {

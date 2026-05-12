@@ -201,6 +201,9 @@ class CORE_EXPORT WebSettingsImpl final : public WebSettings {
   void SetWideViewportQuirkEnabled(bool) override;
   void SetMediaControlsEnabled(bool) override;
   void SetDoNotUpdateSelectionOnMutatingSelectionRange(bool) override;
+#if defined(USE_NEVA_APPRUNTIME)
+  void SetDisallowScrollbarsInMainFrame(bool) override;
+#endif
   void SetLowPriorityIframesThreshold(WebEffectiveConnectionType) override;
 
   void SetLazyLoadEnabled(bool) override;

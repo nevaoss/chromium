@@ -67,8 +67,14 @@ class COMPONENT_EXPORT(WEBNN_PUBLIC_CPP) OperandDescriptor {
   size_t PackedByteLength() const;
   size_t NumberOfElements() const;
 
+  // TODO(neva): Remove this when Neva GCC version upgraded to 12.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  friend auto operator<=>(const OperandDescriptor& lhs,
+                          const OperandDescriptor& rhs) = default;
+#else
   friend constexpr auto operator<=>(const OperandDescriptor& lhs,
                                     const OperandDescriptor& rhs) = default;
+#endif  // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
 
  private:
   OperandDescriptor(OperandDataType data_type, std::vector<uint32_t> shape);

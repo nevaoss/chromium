@@ -1,0 +1,89 @@
+# Copyright 2018 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//neva/neva.gni")
+
+# During NEVA upgrades, one might need to trace GN-list(s) to resolve some
+# (possible) conflicts (omissions, etc.). That can be easily done as follows:
+#   ...
+#   print("configs:")
+#   foreach(c, configs) {
+#     print("    " + c)
+#   }
+#   ...
+
+declare_args() {
+  # Enable usage of platform dependent language listener/tracker
+  use_platform_language_listener = is_webos
+  # Enable registration application as a native one
+  use_platform_application_registration = is_webos
+}
+
+set_defaults("app_shell_executable") {
+  configs = default_compiler_configs
+
+  if (use_cbe) {
+    configs += [
+      "//build/config/gcc:rpath_for_built_shared_libraries",
+    ]
+  } else {
+    configs += [
+      "//build/config:default_libs",
+      "//build/config:executable_config",
+    ]
+  }
+}
+
+exe_deps_to_add = []
+exe_deps_to_delete = [
+  ":app_shell_lib",
+  "//content/public/app",
+  "//extensions:shell_and_test_pak",
+]
+
+exe_ld_flags_to_add = []
+
+if (use_cbe) {
+  exe_ld_flags_to_add += [
+    "-pie",
+  ]
+
+  if (is_app_shell_cbe) {
+    assert(is_linux)
+    exe_deps_to_add += [
+      "//neva/cbe:chromium_cbe",
+    ]
+  }
+} else {
+  exe_deps_to_add += exe_deps_to_delete
+}
+
+template("app_shell_executable") {
+  executable(target_name) {
+    testonly = true
+
+    forward_variables_from(invoker,
+                           "*",
+                           [
+                           "testonly",
+                           ])
+
+    ldflags = exe_ld_flags_to_add
+
+    deps -= exe_deps_to_delete
+    deps += exe_deps_to_add
+  }
+}

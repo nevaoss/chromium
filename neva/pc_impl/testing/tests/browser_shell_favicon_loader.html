@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Shell Test</title>
+</head>
+<body>
+    <style>
+        h1 {
+            margin-top: 200px;
+        }
+    </style>
+    <h1>BrowserShell FavIcon test</h1>
+    <h2>Favicons</h2>
+    <script>
+        let mainview = shell.shellWindow.pageView;
+        let view1 = new PageView();
+        view1.setBounds(5,5,400,150);
+        mainview.addChildView(view1);
+
+        view1.pageContents.on(
+            "did-update-favicon-url",
+            function (favicons) {
+            favicons.forEach(function(favicon, index)
+            {
+                let info =  document.createElement("div")
+
+                let img = document.createElement("img")
+                img.src = favicon.url
+                info.appendChild(img)
+
+                let favicon_type = document.createTextNode(" type:" + favicon.type + " url:" + favicon.url)
+                info.appendChild(favicon_type)
+
+                let sizes = favicon.sizes[0]
+                let favicon_sizes = document.createTextNode(" sizes:" + sizes.height + "x" + sizes.width)
+                info.appendChild(favicon_sizes)
+
+                document.body.appendChild(info)
+            })
+        })
+        view1.pageContents.loadURL("http://localhost:8888/browser_shell_favicon_test_page.html")
+    </script>
+    <noscript>You need to enable JavaScrit to view the full site.</noscript>
+</body>
+</html>

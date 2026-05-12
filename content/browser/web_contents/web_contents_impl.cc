@@ -3671,7 +3671,13 @@ void WebContentsImpl::SetPageFrozen(bool frozen) {
   TRACE_EVENT1("content", "WebContentsImpl::SetPageFrozen", "frozen", frozen);
 
   // A visible page is never frozen.
+#if defined (USE_NEVA_APPRUNTIME)
+  // NOTE(neva): The original upstream logic checks regardless of the frozen
+  // state. So doesn't match with the comment "A visible page is never frozen".
+  DCHECK(!(frozen && GetVisibility() == Visibility::VISIBLE));
+#else
   DCHECK_NE(Visibility::VISIBLE, GetVisibility());
+#endif
 
   primary_frame_tree_.ForEachRenderViewHost(
       [&frozen](RenderViewHostImpl* rvh) { rvh->SetIsFrozen(frozen); });
@@ -3696,6 +3702,32 @@ std::unique_ptr<WebContents> WebContentsImpl::Clone() {
                              this, tc.get());
   return tc;
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+void WebContentsImpl::OnRenderProcessHostCreated(
+    content::RenderProcessHost* host) {
+  if (host) {
+    RenderProcessCreated(host);
+  }
+  if (!host_observation_.IsObservingSource(host)) {
+    host_observation_.AddObservation(host);
+  }
+}
+
+void WebContentsImpl::RenderProcessExited(
+    content::RenderProcessHost* host,
+    const content::ChildProcessTerminationInfo& info) {
+  host_observation_.RemoveObservation(host);
+}
+
+void WebContentsImpl::RenderProcessHostDestroyed(
+    content::RenderProcessHost* host) {
+  // The observation may have already been removed in RenderProcessExited().
+  if (host_observation_.IsObservingSource(host)) {
+    host_observation_.RemoveObservation(host);
+  }
+}
+#endif
 
 void WebContentsImpl::Init(const WebContents::CreateParams& params,
                            blink::FramePolicy primary_main_frame_policy) {
@@ -9304,6 +9336,12 @@ void WebContentsImpl::SetFocusedFrame(FrameTreeNode* node,
     SetFocusedFrameTree(&node->frame_tree());
   }
 
+#if defined(USE_NEVA_APPRUNTIME)
+  // Added for neva app-runtime frame focused notification
+  if (delegate_)
+    delegate_->DidFrameFocused();
+#endif
+
   CloseListenerManager::DidChangeFocusedFrame(this);
 }
 
@@ -10879,6 +10917,73 @@ void WebContentsImpl::SetVisibilityForChildViews(bool visible) {
                         "visible", visible);
   GetPrimaryMainFrame()->SetVisibilityForChildViews(visible);
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+bool WebContentsImpl::IsInspectablePage() const {
+  return inspectable_page_;
+}
+
+void WebContentsImpl::SetInspectablePage(bool inspectable) {
+  inspectable_page_ = inspectable;
+}
+
+#if defined(ENABLE_PINCH_TO_ZOOM)
+bool WebContentsImpl::IsPinchToZoomEnabled() const {
+  return pinch_to_zoom_enabled_;
+}
+
+void WebContentsImpl::SetPinchToZoomEnabled(bool enabled) {
+  pinch_to_zoom_enabled_ = enabled;
+}
+#endif  // defined(ENABLE_PINCH_TO_ZOOM)
+
+void WebContentsImpl::RenderProcessCreated(
+    RenderProcessHost* render_process_host) {
+  observers_.NotifyObservers(&WebContentsObserver::RenderProcessCreated,
+                             render_process_host->GetProcess().Handle());
+}
+
+bool WebContentsImpl::DecidePolicyForResponse(bool is_main_frame,
+                                              int status_code,
+                                              const std::string& url,
+                                              const std::string& status_text) {
+  if (!delegate_)
+    return false;
+  return delegate_->DecidePolicyForResponse(is_main_frame, status_code, url,
+                                            status_text);
+}
+
+void WebContentsImpl::DropAllPeerConnections(
+    blink::mojom::DropPeerConnectionReason reason) {
+  LOG(INFO) << "WebContentsImpl::DropAllPeerConnections()";
+
+  drop_peer_connection_request_id_++;
+  auto cb = base::BindRepeating(&WebContentsImpl::OnDidDropAllPeerConnections,
+                                weak_factory_.GetWeakPtr(), reason,
+                                drop_peer_connection_request_id_);
+  ForEachRenderFrameHost([cb](RenderFrameHost* render_frame_host) {
+    render_frame_host->DropAllPeerConnections(cb);
+  });
+}
+
+void WebContentsImpl::OnDidDropAllPeerConnections(
+    blink::mojom::DropPeerConnectionReason reason,
+    int request_id) {
+  LOG(INFO) << "WebContentsImpl::OnDidDropAllPeerConnections()";
+
+  // TODO(neva, sync-to-91):
+  // We only notify once per each request. Previously PeerConnectionTracker
+  // resides in RenderProcessHost, which means single instance per renderer
+  // process. But now PeerConnectionTracker reside in each RenderFrameHost.
+  // So this callback may run multiple times. To make backwark compatible,
+  // we notify only for first response from any render frame.
+  if (request_id != last_processed_drop_peer_connection_request_id_) {
+    last_processed_drop_peer_connection_request_id_ = request_id;
+    observers_.NotifyObservers(&WebContentsObserver::DidDropAllPeerConnections,
+                               reason);
+  }
+}
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
 void WebContentsImpl::OnNativeThemeUpdated(ui::NativeTheme* observed_theme) {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::OnNativeThemeUpdated");

@@ -1985,8 +1985,14 @@ void TraceLog::SetTraceBufferForTesting(
 
 void TraceLog::OnSetup(const perfetto::DataSourceBase::SetupArgs& args) {
   AutoLock lock(track_event_lock_);
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  track_event_sessions_.emplace_back(TrackEventSession{
+      args.internal_instance_index, *args.config, args.backend_type});
+#else   // (__cplusplus < 202002L)
   track_event_sessions_.emplace_back(args.internal_instance_index, *args.config,
                                      args.backend_type);
+#endif  // !(__cplusplus < 202002L)
 }
 
 void TraceLog::OnStart(const perfetto::DataSourceBase::StartArgs&) {

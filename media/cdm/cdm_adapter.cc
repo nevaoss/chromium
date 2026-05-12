@@ -47,6 +47,10 @@
 #include "ui/gfx/geometry/rect.h"
 #include "url/origin.h"
 
+#if defined(USE_NEVA_CDM)
+#include "widevine_cdm_version.h"  // In SHARED_INTERMEDIATE_DIR.
+#endif
+
 namespace media {
 
 namespace {
@@ -129,7 +133,11 @@ void* GetCdmHost(int host_interface_version, void* user_data) {
     return nullptr;
 
   static_assert(
+#if defined(USE_NEVA_CDM)
+      CheckSupportedCdmHostVersions(cdm::Host_8::kVersion,
+#else
       CheckSupportedCdmHostVersions(cdm::Host_10::kVersion,
+#endif
                                     cdm::Host_11::kVersion),
       "Mismatch between GetCdmHost() and IsSupportedCdmHostVersion()");
 
@@ -138,6 +146,10 @@ void* GetCdmHost(int host_interface_version, void* user_data) {
   CdmAdapter* cdm_adapter = static_cast<CdmAdapter*>(user_data);
   DVLOG(1) << "Create CDM Host with version " << host_interface_version;
   switch (host_interface_version) {
+#if defined(USE_NEVA_CDM)
+    case cdm::Host_8::kVersion:
+      return static_cast<cdm::Host_8*>(cdm_adapter);
+#endif
     case cdm::Host_10::kVersion:
       return static_cast<cdm::Host_10*>(cdm_adapter);
     case cdm::Host_11::kVersion:
@@ -446,7 +458,12 @@ void CdmAdapter::Decrypt(StreamType stream_type,
   TRACE_EVENT_BEGIN1("media", "CdmAdapter::Decrypt", "stream_type",
                      stream_type);
   ToCdmInputBuffer(*encrypted, &subsamples, &input_buffer);
+#if defined(USE_NEVA_CDM)
+  cdm::Status status = cdm_->Decrypt(input_buffer, decrypted_block.get(),
+                                     ToCdmStreamType(stream_type));
+#else
   cdm::Status status = cdm_->Decrypt(input_buffer, decrypted_block.get());
+#endif
   TRACE_EVENT_END2("media", "CdmAdapter::Decrypt", "key ID",
                    GetHexKeyId(input_buffer), "status",
                    CdmStatusToString(status));
@@ -463,6 +480,12 @@ void CdmAdapter::Decrypt(StreamType stream_type,
                                 decrypted_block->DecryptedBuffer()->Size()))));
   decrypted_buffer->set_timestamp(
       base::Microseconds(decrypted_block->Timestamp()));
+
+#if defined(USE_NEVA_CDM)
+  // TODO(neva): Upstreamable
+  decrypted_buffer->set_duration(encrypted->duration());
+#endif  // defined(USE_NEVA_CDM)
+
   std::move(decrypt_cb).Run(Decryptor::kSuccess, std::move(decrypted_buffer));
 }
 
@@ -1117,5 +1140,42 @@ void CdmAdapter::OnFileRead(int file_size_bytes) {
                               kSizeKBBuckets);
   file_size_uma_reported_ = true;
 }
+
+#if defined(USE_NEVA_CDM)
+void CdmAdapter::OnRejectPromise(uint32_t promise_id,
+                                 cdm::Error error,
+                                 uint32_t system_code,
+                                 const char* error_message,
+                                 uint32_t error_message_size) {
+  // cdm::Host_8 version. Remove when CDM_8 no longer supported.
+  // https://crbug.com/737296.
+  OnRejectPromise(promise_id, ToCdmExceptionType(error), system_code,
+                  error_message, error_message_size);
+}
+
+void CdmAdapter::OnSessionMessage(const char* session_id,
+                                  uint32_t session_id_size,
+                                  cdm::MessageType message_type,
+                                  const char* message,
+                                  uint32_t message_size,
+                                  const char* /* legacy_destination_url */,
+                                  uint32_t /* legacy_destination_url_size */) {
+  // cdm::Host_8 version. Remove when CDM_8 no longer supported.
+  // https://crbug.com/737296.
+  OnSessionMessage(session_id, session_id_size, message_type, message,
+                   message_size);
+}
+
+void CdmAdapter::OnLegacySessionError(const char* session_id,
+                                      uint32_t session_id_size,
+                                      cdm::Error error,
+                                      uint32_t system_code,
+                                      const char* error_message,
+                                      uint32_t error_message_size) {
+  // cdm::Host_8 version. Remove when CDM_8 no longer supported.
+  // https://crbug.com/737296.
+  DCHECK(task_runner_->BelongsToCurrentThread());
+}
+#endif
 
 }  // namespace media

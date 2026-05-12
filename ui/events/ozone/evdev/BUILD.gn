@@ -214,6 +214,18 @@ component("evdev") {
   ]
 }
 
+source_set("events_ozone_evdev_neva") {
+  sources = [
+    "neva/keyboard_evdev_neva.h",
+    "neva/keyboard_evdev_neva_create.cc",
+  ]
+
+  deps = [
+    "//base",
+    ":evdev",
+  ]
+}
+
 source_set("mouse_button_property") {
   sources = [
     "mouse_button_property.cc",

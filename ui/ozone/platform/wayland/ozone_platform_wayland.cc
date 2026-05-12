@@ -17,7 +17,7 @@
 #include "base/memory/ptr_util.h"
 #include "base/message_loop/message_pump_type.h"
 #include "base/no_destructor.h"
-#include "base/task/single_thread_task_runner.h"
+#include "base/task/sequenced_task_runner.h"
 #include "build/build_config.h"
 #include "ui/base/buildflags.h"
 #include "ui/base/cursor/cursor_factory.h"
@@ -85,6 +85,12 @@
 #include "ui/ozone/platform/wayland/common/drm_render_node_path_finder.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/command_line.h"
+#include "ui/base/ime/linux/neva/input_method_auralinux_neva.h"
+#include "ui/base/ui_base_neva_switches.h"
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 namespace ui {
 
 namespace {
@@ -107,8 +113,10 @@ class OzonePlatformWayland : public OzonePlatform,
     // Disable key-repeat flag synthesizing. On Wayland, key repeat events are
     // generated inside Chrome, and the flag is properly set.
     // See also WaylandEventSource.
+#if !BUILDFLAG(IS_WEBOS)
+    // webOS uses synthesized key-repeat flag
     KeyEvent::SetSynthesizeKeyRepeatEnabled(false);
-
+#endif  // !BUILDFLAG(IS_WEBOS)
     OSExchangeDataProviderFactoryOzone::SetInstance(this);
   }
 
@@ -185,6 +193,13 @@ class OzonePlatformWayland : public OzonePlatform,
   std::unique_ptr<InputMethod> CreateInputMethod(
       ImeKeyEventDispatcher* ime_key_event_dispatcher,
       gfx::AcceleratedWidget widget) override {
+#if defined(USE_NEVA_APPRUNTIME)
+    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+            switches::kEnableNevaIme))
+      return std::make_unique<InputMethodAuraLinuxNeva>(
+          ime_key_event_dispatcher);
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
     return std::make_unique<InputMethodAuraLinux>(ime_key_event_dispatcher);
   }
 

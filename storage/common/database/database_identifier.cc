@@ -91,6 +91,12 @@ DatabaseIdentifier DatabaseIdentifier::CreateFromOrigin(const GURL& origin) {
     return DatabaseIdentifier();
   }
 
+#if BUILDFLAG(IS_WEBOS)
+  if (origin.SchemeIsFile())
+    return DatabaseIdentifier(origin.scheme(), origin.host(), 0,
+                              false /* unique */, false /* file */);
+#endif  // BUILDFLAG(IS_WEBOS)
+
   if (origin.SchemeIsFile())
     return UniqueFileIdentifier();
 

@@ -377,6 +377,9 @@ class CORE_EXPORT WebLocalFrameImpl final
   void CommitNavigation(
       std::unique_ptr<WebNavigationParams> navigation_params,
       std::unique_ptr<WebDocumentLoader::ExtraData> extra_data) override;
+#if defined(USE_NEVA_APPRUNTIME)
+  void UpdateForSameDocumentNavigation(const std::string&) override;
+#endif
   blink::mojom::CommitResult CommitSameDocumentNavigation(
       const WebURL&,
       WebFrameLoadType,

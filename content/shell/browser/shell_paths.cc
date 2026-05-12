@@ -17,6 +17,12 @@
 #include "base/nix/xdg_util.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/command_line.h"
+#include "base/logging.h"
+#include "content/shell/common/shell_neva_switches.h"
+#endif
+
 namespace content {
 
 namespace {
@@ -30,6 +36,30 @@ bool GetDefaultUserDataDirectory(base::FilePath* result) {
   base::FilePath config_dir(base::nix::GetXDGDirectory(
       env.get(), base::nix::kXdgConfigHomeEnvVar, base::nix::kDotConfigDir));
   *result = config_dir.Append("content_shell");
+#if defined(USE_NEVA_APPRUNTIME)
+  // Overwrite user data dir value
+  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
+  if (cmd_line->HasSwitch(switches::kUserDataDir)) {
+    base::FilePath new_path =
+        cmd_line->GetSwitchValuePath(switches::kUserDataDir);
+    if (!new_path.empty()) {
+      if (!new_path.IsAbsolute()) {
+        LOG(INFO) << "kUserDataDir is not absolute path";
+        base::FilePath current_dir;
+        base::GetCurrentDirectory(&current_dir);
+        *result = current_dir.Append(new_path);
+      } else {
+        *result = new_path;
+      }
+      LOG(INFO) << "kUserDataDir is set.";
+    } else {
+      LOG(INFO) << "kUserDataDir is empty.";
+    }
+  } else {
+    LOG(INFO) << "kUserDataDir isn't set.";
+  }
+  LOG(INFO) << "Will use user data dir = " << result->value();
+#endif  // defined(USE_NEVA_APPRUNTIME)
 #elif BUILDFLAG(IS_APPLE)
   CHECK(base::PathService::Get(base::DIR_APP_DATA, result));
   *result = result->Append("Chromium Content Shell");

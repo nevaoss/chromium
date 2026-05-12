@@ -122,6 +122,8 @@ OverlayProcessorInterface::CreateOverlayProcessor(
               .disable_video_overlay_if_moving));
 
 #elif BUILDFLAG(IS_OZONE)
+  // Below '#if' block prevents making OverlayProcessorOzone.
+  // So the block is guarded within our directive.
 #if !BUILDFLAG(IS_CASTOS)
   // In tests and Ozone/X11, we do not expect surfaceless surface support.
   // For CastOS, we always need OverlayProcessorOzone.

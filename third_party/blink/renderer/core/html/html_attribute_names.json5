@@ -117,6 +117,10 @@
     "incremental",
     "inert",
     "inputmode",
+///@name USE_NEVA_APPRUNTIME
+///@{
+    "inputpanelcoords",
+///@}
     "integrity",
     "interestaction",
     "interesttarget",
@@ -345,6 +349,12 @@
     "step",
     "style",
     "summary",
+///@name USE_NEVA_APPRUNTIME
+///@{
+    "sensitive",
+    // Neva system keyboard
+    "systemkeyboard",
+///@}
     "tabindex",
     "target",
     "text",

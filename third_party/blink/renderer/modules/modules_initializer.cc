@@ -159,6 +159,8 @@ class SuspendCaptureObserver : public GarbageCollected<SuspendCaptureObserver>,
     // Don't suspend media capture devices if page visibility is
     // PageVisibilityState::kHiddenButPainting (e.g. Picture-in-Picture).
     // TODO(crbug.com/1339252): Add tests.
+    // TODO(neva, media): Migrate functionality from CL
+    // http://repo.lge.com:8080/c/2100/
     bool suspend = (GetPage()->GetVisibilityState() ==
                     mojom::blink::PageVisibilityState::kHidden);
     MediaStreamDevices video_devices =

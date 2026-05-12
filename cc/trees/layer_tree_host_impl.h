@@ -1221,6 +1221,10 @@ class CC_EXPORT LayerTreeHostImpl : public TileManagerClient,
 
   raw_ptr<RenderingStatsInstrumentation> rendering_stats_instrumentation_;
   MicroBenchmarkControllerImpl micro_benchmark_controller_;
+#if defined(USE_NEVA_APPRUNTIME)
+  size_t bytes_limit_reduction_factor_ = 1;
+  ManagedMemoryPolicy low_memory_policy_;
+#endif
   std::unique_ptr<SynchronousTaskGraphRunner>
       single_thread_synchronous_task_graph_runner_;
 

@@ -1,0 +1,122 @@
+# Copyright 2022 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//build/config/linux/pkg_config.gni")
+import("//neva/neva.gni")
+
+assert(use_webos_codec)
+
+pkg_config("media_webos_codec_config") {
+  packages = [
+    "media-codec-interface",
+    "gstreamer-1.0",
+  ]
+}
+
+source_set("webos") {
+  defines = [ "MEDIA_GPU_IMPLEMENTATION" ]
+  sources = [
+    "webos_codec_utils.cc",
+    "webos_codec_utils.h",
+    "webos_vda_utils.cc",
+    "webos_vda_utils.h",
+    "webos_video_decode_accelerator.cc",
+    "webos_video_decode_accelerator.h",
+    "webos_video_encode_accelerator.cc",
+    "webos_video_encode_accelerator.h",
+  ]
+
+  # Imorts sources from /media/gpu/chromeos to use image processor
+  # To remove v4l2 depencies, only v4l2 independant sources are added.
+
+  # sources from //media/gpu/chromeos and //media/gpu/chromeos:common
+  sources += [
+    "../chromeos/image_processor_factory.cc",
+    "../chromeos/image_processor_factory.h",
+    "../chromeos/image_processor.cc",
+    "../chromeos/image_processor.h",
+    "../chromeos/image_processor_backend.cc",
+    "../chromeos/image_processor_backend.h",
+    "../chromeos/libyuv_image_processor_backend.cc",
+    "../chromeos/libyuv_image_processor_backend.h",
+  ]
+
+  # sources from //media/gpu/chromeos:fourcc
+  sources += [
+    "../chromeos/fourcc.cc",
+    "../chromeos/fourcc.h",
+  ]
+
+  # sources from //media/gpu/chromeos:video_frame_mapper
+  sources += [
+    "../chromeos/generic_dmabuf_video_frame_mapper.cc",
+    "../chromeos/generic_dmabuf_video_frame_mapper.h",
+    "../chromeos/gpu_memory_buffer_video_frame_mapper.cc",
+    "../chromeos/gpu_memory_buffer_video_frame_mapper.h",
+  ]
+
+  # sources from //media/gpu/chromeos:video_frame_resource
+  sources += [
+    "../chromeos/frame_resource.cc",
+    "../chromeos/frame_resource.h",
+    "../chromeos/video_frame_resource.cc",
+    "../chromeos/video_frame_resource.h",
+  ]
+
+  # sources from //media/gpu/chromeos:video_frame_utils
+  sources += [
+    "../chromeos/chromeos_compressed_gpu_memory_buffer_video_frame_utils.cc",
+    "../chromeos/chromeos_compressed_gpu_memory_buffer_video_frame_utils.h",
+    "../chromeos/platform_video_frame_utils.cc",
+    "../chromeos/platform_video_frame_utils.h",
+  ]
+
+  libs = [
+    "EGL",
+    "GLESv2",
+  ]
+
+  configs += [
+    ":media_webos_codec_config",
+    "//third_party/libyuv:libyuv_config",
+  ]
+
+  public_deps = [ "//ui/gl" ]
+
+  deps = [
+    "//base",
+    "//gpu/ipc/common",
+    "//gpu/ipc/service",
+    "//media",
+    "//media/gpu:buildflags",
+    "//media/gpu:common",
+    "//media/gpu:video_frame_mapper",
+    "//media/parsers",
+    "//third_party/libyuv",
+    "//ui/gfx/geometry",
+    "//ui/ozone",
+  ]
+
+  # deps from //media/gpu/chromeos:video_frame_utils
+  deps += [
+    "//build/config/linux/libdrm",
+    "//media/gpu:buffer_validation",
+    "//ui/gfx:buffer_types",
+    "//ui/gfx:gfx_switches",
+    "//ui/gfx:memory_buffer",
+    "//ui/gfx/linux:drm",
+  ]
+}

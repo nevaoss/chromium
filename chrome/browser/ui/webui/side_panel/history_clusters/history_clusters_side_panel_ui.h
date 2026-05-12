@@ -97,7 +97,12 @@ class HistoryClustersSidePanelUI : public TopChromeWebUIController,
       content::NavigationHandle* navigation_handle) override;
   void OnVisibilityChanged(content::Visibility visibility) override;
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12
+  static std::string GetWebUIName() {
+#else   // defined(__GNUC__) && __GNUC__ < 12
   static constexpr std::string GetWebUIName() {
+#endif  // !(defined(__GNUC__) && __GNUC__ < 12)
     return "HistoryClustersSidePanel";
   }
 

@@ -203,6 +203,14 @@ class ProfileTokenQuality {
     // For this reason, it is preferred to store the `ObservationType`s as their
     // underlying type in the data model as well.
     // Getters expose unknown values as `kUnknown`.
+    // TODO(neva): Remove this when Neva GCC support the syntax used in
+    // upstream's implementation. (GCC version 10.5.0 can compile the original
+    // implementation.)
+#if (__cplusplus < 202002L)
+    Observation(const std::underlying_type_t<ObservationType>& type,
+                const FormSignatureHash& form_hash)
+        : type(type), form_hash(form_hash) {}
+#endif
     std::underlying_type_t<ObservationType> type;
     FormSignatureHash form_hash = FormSignatureHash(0);
 

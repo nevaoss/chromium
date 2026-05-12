@@ -291,6 +291,24 @@ Section::Section(const Section& section) = default;
 
 Section::~Section() = default;
 
+// TODO(neva): Please remove this guard after there is no error to support
+// operator<=> in Neva.
+#if defined(COMPILER_GCC)
+bool operator<(const Section::Autocomplete& a, const Section::Autocomplete& b) {
+  return std::tie(a.section, a.mode) < std::tie(b.section, b.mode);
+}
+
+bool operator<(const Section::FieldIdentifier& a,
+               const Section::FieldIdentifier& b) {
+  return std::tie(a.field_name, a.local_frame_id, a.field_renderer_id) <
+         std::tie(b.field_name, b.local_frame_id, b.field_renderer_id);
+}
+
+bool operator<(const Section& a, const Section& b) {
+  return a.value_ < b.value_;
+}
+#endif
+
 Section::operator bool() const {
   return !is_default();
 }

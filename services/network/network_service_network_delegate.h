@@ -53,10 +53,16 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkServiceNetworkDelegate
   int OnBeforeURLRequest(net::URLRequest* request,
                          net::CompletionOnceCallback callback,
                          GURL* new_url) override;
+#if defined(USE_NEVA_APPRUNTIME)
+ public:
+#endif
   int OnBeforeStartTransaction(
       net::URLRequest* request,
       const net::HttpRequestHeaders& headers,
       OnBeforeStartTransactionCallback callback) override;
+#if defined(USE_NEVA_APPRUNTIME)
+ private:
+#endif
   int OnHeadersReceived(
       net::URLRequest* request,
       net::CompletionOnceCallback callback,

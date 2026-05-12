@@ -141,9 +141,16 @@ class COMPONENT_EXPORT(URL) GURL {
   }
 
   // Allows GURL to used as a key in STL (for example, a std::set or std::map).
+  // TODO(neva): Remove this when Neva GCC version upgraded to 12.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  const friend auto operator<=>(const GURL& lhs, const GURL& rhs) {
+    return lhs.spec_ <=> rhs.spec_;
+  }
+#else
   constexpr friend auto operator<=>(const GURL& lhs, const GURL& rhs) {
     return lhs.spec_ <=> rhs.spec_;
   }
+#endif
 
   // Resolves a URL that's possibly relative to this object's URL, and returns
   // it. Absolute URLs are also handled according to the rules of URLs on web

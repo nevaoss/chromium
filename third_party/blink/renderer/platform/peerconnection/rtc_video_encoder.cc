@@ -1417,6 +1417,16 @@ void RTCVideoEncoder::Impl::RequireBitstreamBuffers(
   input_frame_coded_size_ = input_coded_size;
   input_buffers_requested_count_ = input_count + kInputBufferExtraCount;
 
+#if defined(USE_WEBOS_CODEC)
+  // Scaling of input buffers to input_visible_size_ is done in Encode function.
+  // input_frame_coded_size_ is set by the driver and it expects that the input
+  // frame buffers size should be the same. So, if we do not scale the frames to
+  // this size than it fails either in MojoVideoEncodeAcceleratorService
+  // ::Encode function or in driver when pushing input buffers for HW encoding.
+  // So change the input_visible_size_ ti new size as well.
+  input_visible_size_ = input_coded_size;
+#endif
+
   // |input_buffers_| is only needed in non import mode.
   if (!use_native_input_) {
     input_buffers_free_.resize(input_buffers_requested_count_);

@@ -21,6 +21,7 @@ import("//device/vr/buildflags/buildflags.gni")
 import("//gpu/vulkan/features.gni")
 import("//media/media_options.gni")
 import("//net/features.gni")
+import("//neva/neva.gni")
 import("//ppapi/buildflags/buildflags.gni")
 import("//printing/buildflags/buildflags.gni")
 import("//services/device/public/cpp/compute_pressure/buildflags.gni")
@@ -2386,7 +2387,11 @@ source_set("browser") {
     "worker_host/worker_script_loader_factory.h",
   ]
 
-  if (is_android) {
+  if (use_neva_appruntime) {
+    deps += [ "//neva/app_drm" ]
+  }
+
+  if (is_android || use_neva_appruntime) {
     sources += [
       "memory_pressure/user_level_memory_pressure_signal_generator.cc",
       "memory_pressure/user_level_memory_pressure_signal_generator.h",
@@ -3476,7 +3481,21 @@ source_set("browser") {
       "renderer_host/delegated_frame_host.cc",
       "renderer_host/delegated_frame_host.h",
     ]
+    if (use_neva_appruntime) {
+      sources += [
+        "renderer_host/delegated_frame_host_neva.cc",
+        "renderer_host/delegated_frame_host_neva.h",
+      ]
+    }
     deps += [ "//ui/compositor" ]
+  }
+
+  if (is_webos) {
+    sources += [
+      "media/session/webos/media_session_webos.cc",
+      "media/session/webos/media_session_webos.h",
+    ]
+    deps += [ "//base/neva/webos" ]
   }
 
   if ((is_linux || is_chromeos) && use_dbus) {

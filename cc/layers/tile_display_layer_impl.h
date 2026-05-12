@@ -90,7 +90,12 @@ class CC_EXPORT TileDisplayLayerImpl : public LayerImpl {
 
   class CC_EXPORT Tiling {
    public:
+// TODO(neva): Try to contribute this GCC fix to upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+    using Tile = cc::TileDisplayLayerImpl::Tile;
+#else   // defined(__GNUC__) && !defined(__clang__)
     using Tile = Tile;
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
     using TileMap = std::map<TileIndex, std::unique_ptr<Tile>>;
     using CoverageIterator = DisplayTilingCoverageIterator;
 

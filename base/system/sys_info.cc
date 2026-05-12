@@ -74,6 +74,12 @@ uint64_t SysInfo::AmountOfAvailablePhysicalMemory() {
 }
 
 bool SysInfo::IsLowEndDevice() {
+#if defined(USE_NEVA_APPRUNTIME)
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kForceLowEndDeviceMode)) {
+    return true;
+  }
+#endif  // defined(USE_NEVA_APPRUNTIME)
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(
           switches::kEnableLowEndDeviceMode)) {
     return true;
@@ -198,6 +204,11 @@ bool SysInfo::IsLowEndDeviceOrPartialLowEndModeEnabled(
 // base/android/java/src/org/chromium/base/SysUtils.java
 bool DetectLowEndDevice() {
   CommandLine* command_line = CommandLine::ForCurrentProcess();
+#if defined(USE_NEVA_APPRUNTIME)
+  if (command_line->HasSwitch(switches::kForceLowEndDeviceMode)) {
+    return true;
+  }
+#endif  // defined(USE_NEVA_APPRUNTIME)
   if (command_line->HasSwitch(switches::kEnableLowEndDeviceMode))
     return true;
   if (command_line->HasSwitch(switches::kDisableLowEndDeviceMode))

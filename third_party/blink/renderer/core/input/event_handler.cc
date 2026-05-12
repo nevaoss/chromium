@@ -121,6 +121,10 @@
 #include "ui/gfx/geometry/size_conversions.h"
 #include "ui/gfx/geometry/size_f.h"
 
+#if BUILDFLAG(IS_WEBOS)
+#include "third_party/blink/renderer/core/css/resolver/style_resolver.h"
+#endif  // BUILDFLAG(IS_WEBOS)
+
 namespace blink {
 
 using mojom::blink::FormControlType;
@@ -739,6 +743,58 @@ std::optional<ui::Cursor> EventHandler::SelectCursor(
 
   const ui::Cursor& i_beam =
       style.IsHorizontalWritingMode() ? IBeamCursor() : VerticalTextCursor();
+
+  // In accordance to the requirements all cursor icons, that chromium sets by
+  // the element type (e.g. I-beam for input element), should be disabled,
+  // except cases when cursor is set explicitly by the css "cursor" field
+  // in "style" attribute of the element or in the corresponding class.
+#if BUILDFLAG(IS_WEBOS)
+  bool check_parent_node = !node->IsElementNode();
+  if (!check_parent_node) {
+    Element* element = To<Element>(node);
+    bool defined_by_css_class = false;
+    element->GetDocument().UpdateStyleAndLayoutTreeForElement(
+        element, DocumentUpdateReason::kComputedStyle);
+    StyleRuleList* default_style =
+        element->GetDocument().GetStyleResolver().StyleRulesForElement(
+            element, StyleResolver::kAuthorCSSRules);
+    if (default_style) {
+      for(auto el : *default_style) {
+        defined_by_css_class =
+            el->Properties().HasProperty(CSSPropertyID::kCursor);
+        if (defined_by_css_class) {
+          break;
+        }
+      }
+    }
+    bool defined_by_css_style =
+        element->style() &&
+        element->style()->GetPropertyCSSValueInternal(CSSPropertyID::kCursor);
+
+    check_parent_node = !defined_by_css_style && !defined_by_css_class;
+  }
+  // If node is ElementNode and cursor is defined in style or css, then the
+  // element's cursor is used, otherwise - the parent's cursor is used
+  if (check_parent_node) {
+    Element* parent = node->parentElement();
+    if (parent) {
+      // Current node does not override cursor,
+      // so parent node has to be checked
+      HitTestResult parent_result(result);
+      parent_result.SetInnerNode(parent);
+      HitTestLocation location;
+      LocalFrameView* view = frame_->View();
+      if (view)
+        location = HitTestLocation(view->ViewportToFrame(
+            mouse_event_manager_->LastKnownMousePositionInViewport()));
+      return SelectCursor(location, parent_result);
+    } else {
+      // Pointer cursor is considered as default system cursor.
+      // On webOS it should looks like pink plectrum.
+      return PointerCursor();
+    }
+  }
+#endif  // BUILDFLAG(IS_WEBOS)
 
   switch (style.Cursor()) {
     case ECursor::kAuto:

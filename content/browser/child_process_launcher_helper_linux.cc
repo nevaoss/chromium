@@ -193,8 +193,15 @@ base::File OpenFileToShare(const base::FilePath& path,
   base::FilePath exe_dir;
   bool result = base::PathService::Get(base::BasePathKey::DIR_EXE, &exe_dir);
   DCHECK(result);
+#if !defined(USE_NEVA_APPRUNTIME)
   base::File file(exe_dir.Append(path),
                   base::File::FLAG_OPEN | base::File::FLAG_READ);
+#else
+  // NOTE(neva): For Neva, use the given path directly if it is an
+  // absolute path
+  base::File file(path.IsAbsolute() ? path : exe_dir.Append(path),
+                  base::File::FLAG_OPEN | base::File::FLAG_READ);
+#endif  // !defined(USE_NEVA_APPRUNTIME)
   *region = base::MemoryMappedFile::Region::kWholeFile;
   return file;
 }

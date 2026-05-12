@@ -27,6 +27,24 @@ namespace network {
 
 namespace {
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+// https://urlpattern.spec.whatwg.org/#default-options
+liburlpattern::Options kDefaultOptions = {.delimiter_list = "",
+                                          .prefix_list = "",
+                                          .sensitive = true,
+                                          .strict = true};
+// https://urlpattern.spec.whatwg.org/#hostname-options
+liburlpattern::Options kHostnameOptions = {.delimiter_list = ".",
+                                           .prefix_list = "",
+                                           .sensitive = true,
+                                           .strict = true};
+// https://urlpattern.spec.whatwg.org/#pathname-options
+liburlpattern::Options kPathnameOptions = {.delimiter_list = "/",
+                                           .prefix_list = "/",
+                                           .sensitive = true,
+                                           .strict = true};
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 // https://urlpattern.spec.whatwg.org/#default-options
 constexpr liburlpattern::Options kDefaultOptions = {.delimiter_list = "",
                                                     .prefix_list = "",
@@ -42,6 +60,7 @@ constexpr liburlpattern::Options kPathnameOptions = {.delimiter_list = "/",
                                                      .prefix_list = "/",
                                                      .sensitive = true,
                                                      .strict = true};
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
 
 std::string EscapePatternString(std::string_view input) {
   std::string result;

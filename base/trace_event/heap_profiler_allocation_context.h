@@ -52,6 +52,12 @@ bool BASE_EXPORT operator != (const StackFrame& lhs, const StackFrame& rhs);
 
 struct BASE_EXPORT Backtrace {
   Backtrace();
+// TODO(neva): Workaround for GCC to fix "use of deleted function" error occured
+// after the CL https://crrev.com/c/4208851. Need to find out root cause and
+// fix later.
+#if defined(USE_NEVA_APPRUNTIME) && !defined(__clang__)
+    Backtrace(const Backtrace&);
+#endif
 
   // If the stack is higher than what can be stored here, the top frames
   // (the ones further from main()) are stored. Depth of 12 is enough for most

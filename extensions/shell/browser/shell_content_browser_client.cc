@@ -70,10 +70,41 @@
 #include "content/public/browser/child_process_data.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/neva/base_switches.h"
+#include "content/public/browser/login_delegate.h"
+#include "content/public/browser/network_service_instance.h"
+#include "content/shell/common/shell_neva_switches.h"
+#include "extensions/browser/extension_util.h"
+#include "neva/app_runtime/browser/app_runtime_webview_controller_impl.h"
+#include "neva/app_runtime/browser/app_runtime_webview_host_impl.h"
+#include "neva/pal_service/public/mojom/constants.mojom.h"
+#include "neva/user_agent/common/user_agent.h"
+#include "services/network/public/mojom/network_service.mojom.h"
+#include "third_party/abseil-cpp/absl/types/optional.h"
+#include "third_party/blink/public/common/switches.h"
+#include "ui/base/ui_base_neva_switches.h"
+#endif
+
 using base::CommandLine;
 using content::BrowserContext;
 namespace extensions {
 namespace {
+#if defined(USE_NEVA_APPRUNTIME)
+const char kCacheStoreFile[] = "Cache";
+const char kCookieStoreFile[] = "Cookies";
+const int kDefaultDiskCacheSize = 16 * 1024 * 1024;  // default size is 16MB
+
+void AuthRequestCallback(
+    LoginAuthRequiredCallback callback,
+    const absl::optional<net::AuthCredentials>& credentials,
+    bool should_cancel) {
+  if (credentials) {
+    std::move(callback).Run(credentials);
+    return;
+  }
+}
+#endif
 
 ShellContentBrowserClient* g_instance = nullptr;
 
@@ -163,6 +194,17 @@ void ShellContentBrowserClient::SiteInstanceGotProcessAndSite(
   if (!extension)
     return;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          ::switches::kV8SnapshotBlobPath)) {
+    v8_snapshot_path_ =
+        std::make_pair(site_instance->GetProcess()->GetID(),
+                       base::CommandLine::ForCurrentProcess()
+                           ->GetSwitchValuePath(::switches::kV8SnapshotBlobPath)
+                           .value());
+  }
+#endif
+
   if (site_instance->IsSandboxed()) {
     return;
   }
@@ -178,6 +220,29 @@ void ShellContentBrowserClient::AppendExtraCommandLineSwitches(
       command_line->GetSwitchValueASCII(::switches::kProcessType);
   if (process_type == ::switches::kRendererProcess)
     AppendRendererSwitches(command_line);
+#if defined(USE_NEVA_APPRUNTIME)
+  // Append v8 snapshot path if given
+  if (v8_snapshot_path_.first == child_process_id) {
+    command_line->AppendSwitchPath(::switches::kV8SnapshotBlobPath,
+                                   base::FilePath(v8_snapshot_path_.second));
+  }
+
+  // Copy java script flags from root command line
+  std::string js_flags = base::CommandLine::ForCurrentProcess()
+      ->GetSwitchValueASCII(blink::switches::kJavaScriptFlags);
+
+  if (!js_flags.empty())
+    command_line->AppendSwitchASCII(blink::switches::kJavaScriptFlags,
+                                    js_flags);
+
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          ::switches::kUseOzoneWaylandVkb))
+    command_line->AppendSwitch(::switches::kUseOzoneWaylandVkb);
+
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(
+          ::switches::kOzoneWaylandUseXDGShell))
+    command_line->AppendSwitch(::switches::kOzoneWaylandUseXDGShell);
+#endif
 }
 
 content::SpeechRecognitionManagerDelegate*
@@ -248,6 +313,37 @@ void ShellContentBrowserClient::
   associated_registry.AddInterface<mojom::GuestView>(
       base::BindRepeating(&ExtensionsGuestView::CreateForExtensions,
                           render_frame_host.GetGlobalId()));
+#if defined(USE_NEVA_APPRUNTIME)
+  associated_registry.AddInterface<blink::mojom::AppRuntimeBlinkDelegate>(
+      base::BindRepeating(
+          [](content::RenderFrameHost* render_frame_host,
+             mojo::PendingAssociatedReceiver<
+                 blink::mojom::AppRuntimeBlinkDelegate> receiver) {
+            neva_app_runtime::AppRuntimeWebViewHostImpl::
+                BindAppRuntimeBlinkDelegate(std::move(receiver),
+                                            render_frame_host);
+          },
+          &render_frame_host));
+  associated_registry.AddInterface<
+      neva_app_runtime::mojom::AppRuntimeWebViewHost>(base::BindRepeating(
+      [](content::RenderFrameHost* render_frame_host,
+         mojo::PendingAssociatedReceiver<
+             neva_app_runtime::mojom::AppRuntimeWebViewHost> receiver) {
+        neva_app_runtime::AppRuntimeWebViewHostImpl::BindAppRuntimeWebViewHost(
+            std::move(receiver), render_frame_host);
+      },
+      &render_frame_host));
+  associated_registry.AddInterface<
+      neva_app_runtime::mojom::AppRuntimeWebViewController>(base::BindRepeating(
+      [](content::RenderFrameHost* render_frame_host,
+         mojo::PendingAssociatedReceiver<
+             neva_app_runtime::mojom::AppRuntimeWebViewController> receiver) {
+        neva_app_runtime::AppRuntimeWebViewControllerImpl::
+            BindAppRuntimeWebViewController(std::move(receiver),
+                                            render_frame_host);
+      },
+      &render_frame_host));
+#endif  // USE_NEVA_APPRUNTIME
 }
 
 std::vector<std::unique_ptr<content::NavigationThrottle>>
@@ -380,10 +476,20 @@ ShellContentBrowserClient::GetSandboxedStorageServiceDataDirectory() {
 }
 
 std::string ShellContentBrowserClient::GetUserAgent() {
+#if defined(USE_NEVA_APPRUNTIME)
+  return neva_user_agent::GetDefaultUserAgent();
+#else
   // Must contain a user agent string for version sniffing. For example,
   // pluginless WebRTC Hangouts checks the Chrome version number.
   return content::BuildUserAgentFromProduct("Chrome/" PRODUCT_VERSION);
+#endif  // defined(USE_NEVA_APPRUNTIME)
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+blink::UserAgentMetadata ShellContentBrowserClient::GetUserAgentMetadata() {
+  return neva_user_agent::GetDefaultUserAgentMetadata();
+}
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
 std::unique_ptr<ShellBrowserMainParts>
 ShellContentBrowserClient::CreateShellBrowserMainParts(
@@ -421,5 +527,133 @@ const Extension* ShellContentBrowserClient::GetExtension(
   return registry->enabled_extensions().GetExtensionOrAppByURL(
       site_instance->GetSiteURL());
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+std::unique_ptr<content::LoginDelegate>
+ShellContentBrowserClient::CreateLoginDelegate(
+    const net::AuthChallengeInfo& auth_info,
+    content::WebContents* web_contents,
+    content::BrowserContext* browser_context,
+    const content::GlobalRequestID& request_id,
+    bool is_request_for_primary_main_frame,
+    bool is_request_for_navigation,
+    const GURL& url,
+    scoped_refptr<net::HttpResponseHeaders> response_headers,
+    bool first_auth_attempt,
+    LoginAuthRequiredCallback auth_required_callback) {
+  extensions::WebRequestAPI* api =
+      extensions::BrowserContextKeyedAPIFactory<extensions::WebRequestAPI>::Get(
+          browser_context);
+  auto continuation =
+      base::BindOnce(&AuthRequestCallback, std::move(auth_required_callback));
+
+  if (api->MaybeProxyAuthRequest(
+          browser_context, auth_info, std::move(response_headers), request_id,
+          is_request_for_navigation, std::move(continuation),
+          extensions::WebViewGuest::FromWebContents(web_contents))) {
+  }
+
+  return std::make_unique<content::LoginDelegate>();
+}
+
+content::StoragePartitionConfig
+ShellContentBrowserClient::GetStoragePartitionConfigForSite(
+    content::BrowserContext* browser_context,
+    const GURL& site) {
+  // Default to the browser-wide storage partition and override based on |site|
+  // below.
+  content::StoragePartitionConfig storage_partition_config =
+      content::StoragePartitionConfig::CreateDefault(browser_context);
+
+#if BUILDFLAG(ENABLE_EXTENSIONS)
+  if (site.SchemeIs(extensions::kExtensionScheme)) {
+    // The host in an extension site URL is the extension_id.
+    CHECK(site.has_host());
+    return extensions::util::GetStoragePartitionConfigForExtensionId(
+        site.host(), browser_context);
+  }
+#endif
+
+  return storage_partition_config;
+}
+
+void ShellContentBrowserClient::ConfigureNetworkContextParams(
+    content::BrowserContext* context,
+    bool in_memory,
+    const base::FilePath& relative_partition_path,
+    network::mojom::NetworkContextParams* network_context_params,
+    cert_verifier::mojom::CertVerifierCreationParams*
+        cert_verifier_creation_params) {
+  network_context_params->user_agent = GetUserAgent();
+  network_context_params->accept_language = "en-us,en";
+  network_context_params->file_paths =
+      ::network::mojom::NetworkContextFilePaths::New();
+  network_context_params->file_paths->data_directory = context->GetPath();
+  network_context_params->file_paths->cookie_database_name =
+      base::FilePath(kCookieStoreFile);
+  network_context_params->enable_encrypted_cookies = false;
+
+  int disk_cache_size = kDefaultDiskCacheSize;
+  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
+  if (cmd_line->HasSwitch(::switches::kShellDiskCacheSize)) {
+    if (!base::StringToInt(
+            cmd_line->GetSwitchValueASCII(::switches::kShellDiskCacheSize),
+            &disk_cache_size) ||
+        disk_cache_size < 0) {
+      LOG(ERROR) << __func__ << " invalid value("
+                 << cmd_line->GetSwitchValueASCII(
+                        ::switches::kShellDiskCacheSize)
+                 << ") for the command-line switch of --"
+                 << ::switches::kShellDiskCacheSize;
+      disk_cache_size = kDefaultDiskCacheSize;
+    }
+  }
+
+  network_context_params->http_cache_max_size = disk_cache_size;
+  network_context_params->file_paths->http_cache_directory =
+      context->GetPath().Append(kCacheStoreFile);
+}
+
+// Implements a stub BadgeService. This implementation does nothing, but is
+// required because inbound Mojo messages which do not have a registered
+// handler are considered an error, and the render process is terminated.
+// See https://crbug.com/1090429
+class ShellContentBrowserClient::StubBadgeService
+    : public blink::mojom::BadgeService {
+ public:
+  StubBadgeService() = default;
+  StubBadgeService(const StubBadgeService&) = delete;
+  StubBadgeService& operator=(const StubBadgeService&) = delete;
+  ~StubBadgeService() override = default;
+
+  void Bind(mojo::PendingReceiver<blink::mojom::BadgeService> receiver) {
+    receivers_.Add(this, std::move(receiver));
+  }
+
+  // blink::mojom::BadgeService:
+  void SetBadge(blink::mojom::BadgeValuePtr value) override {}
+  void ClearBadge() override {}
+
+ private:
+  mojo::ReceiverSet<blink::mojom::BadgeService> receivers_;
+};
+
+void ShellContentBrowserClient::RegisterBrowserInterfaceBindersForFrame(
+    content::RenderFrameHost* render_frame_host,
+    mojo::BinderMapWithContext<content::RenderFrameHost*>* map) {
+  map->Add<blink::mojom::BadgeService>(
+      base::BindRepeating(&ShellContentBrowserClient::BindBadgeServiceForFrame,
+                          base::Unretained(this)));
+}
+
+void ShellContentBrowserClient::BindBadgeServiceForFrame(
+    content::RenderFrameHost* render_frame_host,
+    mojo::PendingReceiver<blink::mojom::BadgeService> receiver) {
+  if (!stub_badge_service_)
+    stub_badge_service_ = std::make_unique<StubBadgeService>();
+
+  stub_badge_service_->Bind(std::move(receiver));
+}
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
 }  // namespace extensions

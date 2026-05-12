@@ -10,6 +10,9 @@
 #include "base/feature_list.h"
 #include "base/json/json_writer.h"
 #include "base/strings/escape.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 

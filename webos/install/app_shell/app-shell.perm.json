@@ -1,0 +1,7 @@
+{
+    "com.webos.app.enactbrowser*": [ "application.operation", "applications" ],
+    "com.webos.chromium.memory.*": [ "signals.all", "system", "memorymanager.query" ],
+    "com.webos.media.client.*": [ "media" ],
+    "com.webos.settingsservice.client*": [ "settings.read", "settings.query" ],
+    "": [ "applications", "media", "settings.read", "system" ]
+}

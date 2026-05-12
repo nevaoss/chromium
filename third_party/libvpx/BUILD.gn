@@ -601,7 +601,8 @@ static_library("libvpx") {
   if (current_cpu == "arm64") {
     deps += [ ":libvpx_intrinsics_neon_dotprod" ]
     deps += [ ":libvpx_intrinsics_neon_i8mm" ]
-    if (!is_win) {
+  # TODO(neva): Remove '&& !is_webos' workaround if webos toolchain supports sve
+    if (!is_win && !is_webos) {
       deps += [
         ":libvpx_intrinsics_sve",
         ":libvpx_intrinsics_sve2",

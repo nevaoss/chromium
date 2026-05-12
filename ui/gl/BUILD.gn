@@ -163,6 +163,7 @@ component("gl") {
     "//ui/base:ozone_buildflags",
     "//ui/gfx/mojom",
   ]
+
   public_deps = [
     ":gl_enums",
     "//base",

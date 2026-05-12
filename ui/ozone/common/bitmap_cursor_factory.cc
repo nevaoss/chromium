@@ -20,6 +20,14 @@ BitmapCursorFactory::~BitmapCursorFactory() = default;
 scoped_refptr<PlatformCursor> BitmapCursorFactory::GetDefaultCursor(
     mojom::CursorType type) {
   if (!default_cursors_.count(type)) {
+#if BUILDFLAG(IS_WEBOS)
+    // NOTE(neva): webOS needs a cursor with a bitmap.
+    // Without returning nullptr, CursorLoader::CursorFromType() won't call
+    // CursorLoader::LoadCursorFromAsset(type) which fills cursor->bitmaps().
+    if (type != mojom::CursorType::kNone) {
+      return nullptr;
+    }
+#endif  // BUILDFLAG(IS_WEBOS)
     // Return a cursor not backed by a bitmap to preserve the type information.
     // It can still be used to request the compositor to draw a server-side
     // cursor for the given type.

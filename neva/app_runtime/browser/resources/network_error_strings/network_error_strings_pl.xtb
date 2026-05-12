@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="pl">
+<translation id="1682620957554922882">Proszę skontaktować się z dostawcą treści.</translation>
+<translation id="2626799779920242286">Proszę spróbować ponownie później.</translation>
+<translation id="27461552975087996">Certyfikat serwera nie jest godny zaufania.</translation>
+<translation id="288961708105972332">Upłynął czas próby połączenia.</translation>
+<translation id="3100161803646972327">Sprawdź stan sieci i spróbuj ponownie.</translation>
+<translation id="334286403444714742">Brak połączenia z siecią.</translation>
+<translation id="4799446021133992159">NIE MOŻNA WCZYTAĆ</translation>
+<translation id="4897228579364425832">SPRAWDŹ POŁĄCZENIE Z SIECIĄ</translation>
+<translation id="4922056813564935008">Nie można odnaleźć żądanego adresu.</translation>
+<translation id="4964644330950338878">Nazwa hosta nie zgadza się z certyfikatem serwera.</translation>
+<translation id="5375809313377772901">Proszę sprawdzić ustawienia czasu.</translation>
+<translation id="5803768854262525793">REPLACE WITH HOSTNAME</translation>
+<translation id="6061420513894163219">Sprawdź stan połączenia z siecią.</translation>
+<translation id="6765203878096346794">Połączenie z serwerem jest niestabilne.</translation>
+<translation id="7402264192054099664">Może to być tymczasowy problem.</translation>
+<translation id="7570401931535381481">Certyfikat serwera wygasł lub nie jest jeszcze ważny, ponieważ ustawiony czas w telewizorze różni się od obecnego czasu.</translation>
+<translation id="7619490177640280081">Nieprawidłowe ustawienia godziny</translation>
+<translation id="8138313893556460774">Upłynął czas operacji.</translation>
+<translation id="8322836013946289105">Nie można odnaleźć pliku lub katalogu.</translation>
+<translation id="8561467915632687957">Sieć jest niestabilna.</translation>
+</translationbundle>

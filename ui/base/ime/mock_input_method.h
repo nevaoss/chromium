@@ -62,6 +62,11 @@ class COMPONENT_EXPORT(UI_BASE_IME) MockInputMethod : public InputMethod {
   void SetVirtualKeyboardControllerForTesting(
       std::unique_ptr<VirtualKeyboardController> controller) override;
 
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  LinuxInputMethodContext* GetInputMethodContext() override;
+  ///@}
+
  private:
   raw_ptr<TextInputClient, DanglingUntriaged> text_input_client_ = nullptr;
   base::ObserverList<InputMethodObserver>::Unchecked observer_list_;

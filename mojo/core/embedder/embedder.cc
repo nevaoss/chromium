@@ -49,7 +49,10 @@ namespace mojo::core {
 namespace {
 
 #if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-#if BUILDFLAG(IS_CHROMEOS) && !defined(ENABLE_IPCZ_ON_CHROMEOS)
+// TODO(neva): Remove BUILDFLAG(IS_WEBOS) if mojoipcz is better when considering
+// memory and performance perspective.
+#if BUILDFLAG(IS_CHROMEOS) && !defined(ENABLE_IPCZ_ON_CHROMEOS) || \
+    BUILDFLAG(IS_WEBOS)
 std::atomic<bool> g_mojo_ipcz_enabled{false};
 #elif !BUILDFLAG(IS_ANDROID)
 // Default to enabled even if InitFeatures() is never called.

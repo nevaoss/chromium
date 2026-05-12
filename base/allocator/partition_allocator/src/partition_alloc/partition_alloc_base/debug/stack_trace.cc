@@ -35,7 +35,10 @@ constexpr size_t kStackFrameAdjustment = 0;
 // Because the signature size can vary based on the system configuration, use
 // the xpaclri instruction to remove the signature.
 static uintptr_t StripPointerAuthenticationBits(uintptr_t ptr) {
-#if PA_BUILDFLAG(PA_ARCH_CPU_ARM64)
+// NOTE(neva): !defined(NO_ARM_CONTROL_FLOW_INTEGRITY) is added to avoid
+// build error caused by 'xpaclri', an assembly instruction, unsupported
+// by Arm-v8-A of RPi4.
+#if PA_BUILDFLAG(PA_ARCH_CPU_ARM64) && !defined(NO_ARM_CONTROL_FLOW_INTEGRITY)
   // A single Chromium binary currently spans all Arm systems (including those
   // with and without pointer authentication). xpaclri is used here because it's
   // in the HINT space and treated as a no-op on older Arm cores (unlike the

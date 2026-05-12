@@ -25,6 +25,10 @@
 #include "ui/display/manager/display_configurator.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "ui/display/display_observer.h"
+#endif
+
 namespace aura {
 class WindowTreeHost;
 }  // namespace aura
@@ -67,6 +71,9 @@ class ShellDesktopControllerAura
       public chromeos::PowerManagerClient::Observer,
       public display::DisplayConfigurator::Observer,
 #endif
+#if defined(USE_NEVA_APPRUNTIME)
+      public display::DisplayObserver,
+#endif
       public ui::ImeKeyEventDispatcher,
       public KeepAliveStateObserver {
  public:
@@ -97,6 +104,12 @@ class ShellDesktopControllerAura
   // display::DisplayConfigurator::Observer:
   void OnDisplayConfigurationChanged(
       const display::DisplayConfigurator::DisplayStateList& displays) override;
+#endif
+
+#if defined(USE_NEVA_APPRUNTIME)
+  // Overridden from display::DisplayObserver:
+  void OnDisplayMetricsChanged(const display::Display& display,
+                               uint32_t metrics) override;
 #endif
 
   // ui::ImeKeyEventDispatcher:
@@ -170,6 +183,9 @@ class ShellDesktopControllerAura
 
 #if BUILDFLAG(IS_CHROMEOS)
   std::unique_ptr<ui::UserActivityPowerManagerNotifier> user_activity_notifier_;
+#endif
+#if defined(USE_NEVA_APPRUNTIME)
+  int current_rotation_ = -1;
 #endif
 
   std::unique_ptr<AppWindowClient> app_window_client_;

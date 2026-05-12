@@ -5,6 +5,7 @@
 import("//build/config/features.gni")
 import("//build/config/ui.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
+import("//neva/neva.gni")
 import("//printing/buildflags/buildflags.gni")
 import("//third_party/blink/public/public_features.gni")
 import("//third_party/blink/renderer/config.gni")
@@ -386,6 +387,14 @@ mojom("mojom_platform") {
   }
   if (is_android || is_ios) {
     enabled_features += [ "is_android_or_ios" ]
+  }
+
+  if (use_neva_appruntime) {
+    sources += [ "neva/app_runtime_blink_delegate.mojom" ]
+  }
+
+  if (use_neva_appruntime) {
+    enabled_features += [ "neva_appruntime" ]
   }
 
   shared_cpp_typemaps = [

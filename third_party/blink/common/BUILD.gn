@@ -10,6 +10,8 @@ import("//testing/test.gni")
 import("//third_party/blink/renderer/build/scripts/scripts.gni")
 import("//third_party/protobuf/proto_library.gni")
 
+import("//neva/neva.gni")
+
 if (is_ios) {
   import("//build/config/ios/bundle_data_from_filelist.gni")
 }
@@ -354,6 +356,11 @@ source_set("common") {
     "//ui/latency/mojom:shared_mojom_traits",
   ]
 
+  # TODO(neva): Remove this workaround once Neva supports Rust build.
+  if (!enable_rust) {
+    deps -= [ "//third_party/blink/common/rust_crash" ]
+  }
+
   # If use_blink is used then it needs to depend on //media
   if (use_blink) {
     deps += [ "//media" ]
@@ -373,8 +380,13 @@ source_set("common") {
     deps += [ "//ui/gfx/" ]
   }
 
-  if (is_chromeos || is_android || is_win || is_castos || is_fuchsia) {
+  if (is_chromeos || is_android || is_win || is_castos || is_fuchsia ||
+      is_webos) {
     defines = [ "ENABLE_PROTECTED_MEDIA_IDENTIFIER_PERMISSION" ]
+  }
+
+  if (use_neva_appruntime) {
+    sources += [ "neva/neva_blink_features.cc" ]
   }
 }
 

@@ -1,0 +1,10 @@
+declare_args() {
+  # The v8 snapshot needs to be built by code that is compiled with a
+  # toolchain that matches the bit-width of the target CPU, but runs on
+  # the host.
+  v8_snapshot_toolchain = ""
+}
+
+buildconfig = "//build/config/BUILDCONFIG.gn"
+root = "//v8"
+script_executable = "python3"

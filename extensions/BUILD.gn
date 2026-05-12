@@ -311,6 +311,13 @@ test("extensions_unittests") {
     deps += [
       "//chrome/browser/chromeos/extensions/telemetry/api:extensions_unittests",
     ]
+
+    if (use_neva_appruntime && enable_memorymanager_webapi) {
+      sources += [
+        "$root_gen_dir/injection/renderer/resources/injection_resources.pak",
+      ]
+      deps += [ "//neva/injection/renderer:resources" ]
+    }
   }
 
   if (is_android) {

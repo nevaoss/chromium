@@ -15,6 +15,11 @@
 #include "third_party/blink/renderer/platform/theme/web_theme_engine_default.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+// TODO(neva, 92.0.4515.0): Read the comment below
+#include "third_party/blink/public/platform/web_security_origin.h"
+#endif
+
 namespace blink {
 
 namespace {
@@ -57,6 +62,14 @@ void WebThemeEngineHelper::DidUpdateRendererPreferences(
       renderer_prefs.arrow_bitmap_height_vertical_scroll_bar_in_dips,
       renderer_prefs.arrow_bitmap_width_horizontal_scroll_bar_in_dips);
 #endif
+
+// TODO(neva, 92.0.4515.0): Need to migrate conceptually unrelated
+// code out of this class.
+#if defined(USE_NEVA_APPRUNTIME)
+  if (!renderer_prefs.file_security_origin.empty())
+    url::Origin::SetFileOriginChanged(true);
+  SetMutableLocalOrigin(renderer_prefs.file_security_origin);
+#endif  // defined(USE_NEVA_APPRUNTIME)
 }
 
 const WebThemeEngine::ScrollbarStyle&

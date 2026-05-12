@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" id="webos-service-bridge" version="1.0.0">
+  <name>WebOSServiceBridge testing app</name>
+  <icon src="icon.svg"/>
+  <content src="index.html" type="text/html"/>
+  <description>WebOSServiceBridge testing app</description>
+  <feature name="urn:AGL:widget:required-permission">
+    <param name="urn:AGL:permission::public:display" value="required" />
+    <param name="urn:AGL:permission::public:audio" value="required" />"
+    <param name="urn:AGL:permission::public:no-htdocs" value="required" />
+  </feature>
+  <feature name="urn:AGL:widget:required-api">
+  </feature>
+</widget>

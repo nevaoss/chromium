@@ -56,6 +56,11 @@ config("xnnpack_config") {
 
   if (current_cpu == "x86" || current_cpu == "x64") {
     defines += [ "XNN_ENABLE_AVXVNNI=1" ]
+    # TODO(neva): Remove this when Neva GCC supports vnni and avx512amx
+    #@name USE_NEVA_APPRUNTIME
+    #{
+    defines -= [ "XNN_ENABLE_AVXVNNI=1" ]
+    #}
   }
 }
 
@@ -535,6 +540,19 @@ if (current_cpu == "x64" || current_cpu == "x86") {
     ":xx-transposev_x64",
   ]
 
+  # TODO(neva): Remove this when Neva GCC supports -avx512fp16 and -mavxvnniint8
+  #@name USE_NEVA_APPRUNTIME
+  #{
+  xnnpack_deps -= [
+    ":f16-gemm_f16c-fma-avx512f-avx512cd-avx512bw-avx512dq-avx512vl-avx512vnni-gfni-avx512fp16",
+    ":f16-igemm_f16c-fma-avx512f-avx512cd-avx512bw-avx512dq-avx512vl-avx512vnni-gfni-avx512fp16",
+    ":f16-rminmax_f16c-fma-avx512f-avx512cd-avx512bw-avx512dq-avx512vl-avx512vnni-gfni-avx512fp16",
+    ":f16-vbinary_f16c-fma-avx512f-avx512cd-avx512bw-avx512dq-avx512vl-avx512vnni-gfni-avx512fp16",
+    ":qs8-qc8w-gemm_avx2-avxvnniint8-f16c-fma",
+    ":qs8-qc8w-igemm_avx2-avxvnniint8-f16c-fma",
+  ]
+  #}
+
   xnnpack_standalone_deps = [
     ":configs_x64_standalone",
     ":enums_x64_standalone",
@@ -1009,6 +1027,7 @@ if (current_cpu == "x64" || current_cpu == "x86") {
     ":xx-pad_x64_standalone",
     ":xx-transposev_x64_standalone",
   ]
+
 } else if (current_cpu == "arm64") {
   xnnpack_deps = [
     ":configs_arm64",

@@ -71,8 +71,11 @@ BASE_FEATURE(kAudioServiceOutOfProcess,
              "AudioServiceOutOfProcess",
 // TODO(crbug.com/40118868): Remove !IS_CHROMEOS_LACROS once lacros starts being
 // built with OS_CHROMEOS instead of OS_LINUX.
+// NOTE(neva): Set AudioServiceOutOfProcess to false by default for
+// webOS to reduce memory usage.
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || \
-    (BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CHROMEOS_LACROS))
+    (BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CHROMEOS_LACROS)) && \
+        !BUILDFLAG(IS_WEBOS)
              base::FEATURE_ENABLED_BY_DEFAULT
 #else
              base::FEATURE_DISABLED_BY_DEFAULT

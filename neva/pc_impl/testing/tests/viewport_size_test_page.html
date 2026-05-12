@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <title>Viewport</title>
+</head>
+<body style='background-color: #888; margin: 0; padding: 0; overflow:hidden;'>
+  <div style='background-color: red; position: relative; height: 720px; width: 1280px'>
+    <div style='background-color: green; position: relative; height: 600px; width: 800px'>
+      <div style='background-color: blue; position: relative; height: 480px; width: 640px'>
+        <div style='color:white; font-size: 20px; position: absolute; bottom: 0px; right: 0px;'>640x480</div>
+      </div>
+      <div style='color:white; font-size: 20px; position: absolute; bottom: 0px; right: 0px;'>800x600</div>
+    </div>
+    <div style='color:white; font-size: 20px; position: absolute; bottom: 0px; right: 0px;'>1280x720</div>
+  </div>
+
+  <div id="viewport" style='color:white; font-size: 28px; position: absolute; top: 0px; left: 0px'> </div>
+<script>
+  function updateWindowSizes() {
+    let element = document.getElementById("viewport");
+    element.innerHTML = "screen: " + window.screen.width + "x" + window.screen.height + "<br>" +
+                        "window: " + window.innerWidth + "x" + window.innerHeight;
+  }
+
+  window.onload = function() {
+    setTimeout(updateWindowSizes, 1000);
+  };
+</script>
+</body>
+</html>

@@ -2782,7 +2782,15 @@ void DocumentLoader::InitializeWindow(Document* owner_document) {
   // TODO(crbug.com/1199077): Some tests (potentially other code?) rely on an
   // opaque origin + nonce. Investigate whether this combination should be
   // disallowed.
+  // TODO(neva): We need |storage_key| to be created based on |security_origin|
+  // even if storage_key's origin is not opaque. Otherwise the
+  // neva_app_runtime::WebView::DeleteWebStorages doesn't work.
+  // Bug: http://clm.lge.com/issue/browse/NEVA-8132
+#if defined(USE_NEVA_APPRUNTIME)
+  if (!storage_key.GetNonce()) {
+#else   // defined(USE_NEVA_APPRUNTIME)
   if (storage_key.GetSecurityOrigin()->IsOpaque() && !storage_key.GetNonce()) {
+#endif  // !defined(USE_NEVA_APPRUNTIME)
     storage_key = BlinkStorageKey::CreateFirstParty(security_origin);
   }
 

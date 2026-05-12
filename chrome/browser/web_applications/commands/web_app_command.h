@@ -184,7 +184,14 @@ class WebAppCommand : public internal::CommandWithLock<LockType> {
 
     base::Value::Dict* metadata =
         internal::CommandBase::GetMutableDebugValue().EnsureDict("!metadata");
+// NOTE(neva): If internal::CommandBase::command_manager() is directly used in
+// CHECK(), a GCC compile error will occur.
+#if defined(COMPILER_GCC)
+    auto* command_manager = internal::CommandBase::command_manager();
+    CHECK(command_manager)
+#else   // defined(COMPILER_GCC)
     CHECK(internal::CommandBase::command_manager())
+#endif  // !defined(COMPILER_GCC)
         << "Command was never given to the command manager: "
         << internal::CommandBase::GetMutableDebugValue().DebugString();
     metadata->Set("command_result",

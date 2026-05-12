@@ -51,6 +51,10 @@
 #include "content/public/common/content_features.h"
 #endif  // BUILDFLAG(IS_WIN)
 
+#if BUILDFLAG(IS_WEBOS)
+#include "content/browser/media/session/webos/media_session_webos.h"
+#endif  // BUILDFLAG(IS_WEBOS)
+
 namespace content {
 
 using blink::mojom::MediaSessionPlaybackState;
@@ -979,6 +983,11 @@ MediaSessionImpl::MediaSessionImpl(WebContents* web_contents)
   session_android_ = std::make_unique<MediaSessionAndroid>(this);
   should_throttle_duration_update_ = true;
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(IS_WEBOS)
+  media_session_webos_ = std::make_unique<MediaSessionWebOS>(this);
+#endif  // BUILDFLAG(IS_WEBOS)
+
   if (web_contents && web_contents->GetPrimaryMainFrame() &&
       web_contents->GetPrimaryMainFrame()->GetView()) {
     focused_ = web_contents->GetPrimaryMainFrame()->GetView()->HasFocus();

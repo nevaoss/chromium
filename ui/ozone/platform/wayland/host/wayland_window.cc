@@ -68,6 +68,16 @@
 #include "ui/platform_window/wm/wm_drag_handler.h"
 #include "ui/platform_window/wm/wm_drop_handler.h"
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "ui/base/cursor/cursor_factory.h"
+#include "ui/ozone/common/bitmap_cursor_factory.h"
+#include "ui/views/widget/desktop_aura/neva/ui_constants.h"
+#if defined(USE_NEVA_APPRUNTIME)
+#include "ui/gfx/neva/file_utils.h"
+#endif
+///@}
+
 namespace ui {
 namespace {
 
@@ -614,9 +624,31 @@ void WaylandWindow::SetCursor(scoped_refptr<PlatformCursor> platform_cursor) {
 #if BUILDFLAG(IS_LINUX)
   auto async_cursor = WaylandAsyncCursor::FromPlatformCursor(platform_cursor);
 
+#if !BUILDFLAG(IS_WEBOS)
+  // Here we want to skip the following upstream check.
+  // The problem is WindowTreeHostPlatform::SetCursorNative on webOS does not
+  // call this method to switch to default cursor, but uses LSM feature via
+  // SetCustomCursor. It makes impossible the switch:
+  // kHelp -> kPointer -> kHelp
   if (async_cursor_ == async_cursor) {
     return;
   }
+#endif  // !BUILDFLAG(IS_WEBOS)
+
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // Once SetCustomCursor() is called with |allowed_cursor_overriding|==true,
+  // operations with platform cursor are prohibited.
+  // Here only deferred cursor setup is performed.
+  if (custom_cursor_mode_ == CustomCursorMode::APPLIED) {
+    return;
+  } else if (allowed_cursor_overriding_) {
+    // This is the case where custom cursor hide/restore operations were
+    // requested before custom cursor bitmap was set. There is no particular
+    // use case, but this sequence is not wrong by itself.
+    return;
+  }
+  ///@}
 
   async_cursor_ = async_cursor;
   async_cursor->AddCursorLoadedCallback(base::BindOnce(
@@ -859,6 +891,106 @@ void WaylandWindow::HandlePopupConfigure(const gfx::Rect& bounds_dip) {
   NOTREACHED() << "Only shell popups must receive HandlePopupConfigure calls.";
 }
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+void WaylandWindow::HandleActivationChanged(bool is_activated) {}
+
+void WaylandWindow::HandleKeyboardEnter() {
+  delegate_->OnKeyboardEnter();
+}
+
+void WaylandWindow::HandleKeyboardLeave() {
+  delegate_->OnKeyboardLeave();
+}
+
+void WaylandWindow::OnSurfaceContentChanged() {
+  connection_->Flush();
+}
+
+void WaylandWindow::SetCustomCursor(neva_app_runtime::CustomCursorType type,
+                                    const std::string& path,
+                                    int hotspot_x,
+                                    int hotspot_y,
+                                    bool allowed_cursor_overriding) {
+#if defined(USE_NEVA_APPRUNTIME)
+  // There are two possible states:
+  // 1. Each html element could use its own cursor.
+  // 2. One cursor is used for whole application.
+  // Switching from state 1 to state 2 is a valid scenario only.
+  if (allowed_cursor_overriding_ && !allowed_cursor_overriding)
+    return;
+
+  // |allowed_cursor_overriding|==true indicates the call comes from external
+  // client, and it may be the only source of CustomCursorType::kPath request.
+  // |allowed_cursor_overriding|==false uses cursor hide/restore options.
+  if (type == neva_app_runtime::CustomCursorType::kPath)
+    CHECK(allowed_cursor_overriding);
+
+  // The origin of the following check in ozone_wayland_window.cc seems unclear.
+  // It might be defined by implementation specifics where IOW stores platform
+  // cursor in WindowManager & invalidates it when custom cursor is set.
+  // Unless the check doesn't respond to some use case scenario, it is not
+  // needed here, but better leave it commented in case it does.
+  // if (type != neva_app_runtime::CustomCursorType::kPath &&
+  //     type == cursor_type_ &&
+  //     window_manager_->GetPlatformCursor() == nullptr)
+  //   return;
+
+  cursor_type_ = type;
+  allowed_cursor_overriding_ = allowed_cursor_overriding;
+
+  if (type == neva_app_runtime::CustomCursorType::kPath) {
+    SkBitmap* bitmap = gfx::DecodeSkBitmapFromPNG(base::FilePath(path));
+    if (!bitmap) {
+      SetCustomCursor(neva_app_runtime::CustomCursorType::kNotUse, "", 0, 0,
+                      allowed_cursor_overriding);
+      return;
+    }
+
+    scoped_refptr<PlatformCursor> cursor =
+        BitmapCursorFactory::GetInstance()->CreateImageCursor(
+            mojom::CursorType::kPointer, *bitmap,
+            gfx::Point(hotspot_x, hotspot_y), applied_state().window_scale);
+    auto async_cursor = WaylandAsyncCursor::FromPlatformCursor(cursor);
+    async_cursor_ = async_cursor;
+
+    if (HasPointerFocus()) {
+      async_cursor->AddCursorLoadedCallback(
+          base::BindOnce(&WaylandWindow::OnCursorLoaded,
+                         AsWeakPtr(), async_cursor));
+      custom_cursor_mode_ = CustomCursorMode::APPLIED;
+    } else {
+      custom_cursor_mode_ = CustomCursorMode::REQUESTED;
+    }
+    delete bitmap;
+
+#if BUILDFLAG(IS_WEBOS)
+  } else if (type == neva_app_runtime::CustomCursorType::kBlank) {
+    // BLANK : Disable cursor(hiding cursor)
+    connection_->SetCursorBitmap(std::vector<SkBitmap>(),
+                                 lsm_cursor_hide_hotspot,
+                                 applied_state().window_scale);
+  } else if (type == neva_app_runtime::CustomCursorType::kNotUse) {
+    // NOT_USE : Restore cursor(wayland cursor or IM's cursor)
+    connection_->SetCursorBitmap(std::vector<SkBitmap>(),
+                                 lsm_cursor_restore_hotspot,
+                                 applied_state().window_scale);
+#endif  // BUILDFLAG(IS_WEBOS)
+  }
+#else   // defined(USE_NEVA_APPRUNTIME)
+  NOTIMPLEMENTED_LOG_ONCE();
+#endif  // !defined(USE_NEVA_APPRUNTIME)
+}
+
+void WaylandWindow::OnInputPanelVisibilityChanged(bool state) {
+#if defined(USE_NEVA_APPRUNTIME)
+  delegate()->OnInputPanelVisibilityChanged(state);
+#else   // defined(USE_NEVA_APPRUNTIME)
+  NOTIMPLEMENTED_LOG_ONCE();
+#endif  // !defined(USE_NEVA_APPRUNTIME)
+}
+///@}
+
 void WaylandWindow::OnCloseRequest() {
   delegate_->OnCloseRequest();
 }
@@ -1014,7 +1146,13 @@ bool WaylandWindow::Initialize(PlatformWindowInitProperties properties) {
   delegate_->OnAcceleratedWidgetAvailable(GetWidget());
 
   std::vector<gfx::Rect> region{gfx::Rect{latched_state().size_px}};
+#if BUILDFLAG(IS_WEBOS)
+  if (IsOpaqueWindow()) {
+    root_surface_->set_opaque_region(region);
+  }
+#else
   root_surface_->set_opaque_region(region);
+#endif
   root_surface_->EnableTrustedDamageIfPossible();
   root_surface_->ApplyPendingState();
 
@@ -1328,6 +1466,13 @@ void WaylandWindow::OnCursorLoaded(scoped_refptr<WaylandAsyncCursor> cursor,
                                    scoped_refptr<BitmapCursor> bitmap_cursor) {
   if (HasPointerFocus() && async_cursor_ == cursor && bitmap_cursor) {
     UpdateCursorShape(bitmap_cursor);
+
+    ///@name USE_NEVA_APPRUNTIME
+    ///@{
+    if (custom_cursor_mode_ == CustomCursorMode::REQUESTED) {
+      custom_cursor_mode_ = CustomCursorMode::APPLIED;
+    }
+    ///@}
   }
 }
 #endif

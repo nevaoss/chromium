@@ -99,6 +99,25 @@ component("aura") {
     "window_tree_host_platform.cc",
   ]
 
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  public += [
+    "neva/window_tree_host.h",
+    "neva/window_tree_host_platform.h",
+  ]
+
+  sources += [ "neva/window_tree_host_platform_neva.cc" ]
+  #@}
+
+  if (is_agl) {
+    public += [
+      "neva/agl/window_tree_host_agl.h",
+      "neva/agl/window_tree_host_platform_agl.h"
+    ]
+
+    sources += [ "neva/agl/window_tree_host_platform_agl.cc" ]
+  }
+
   friend = [ ":*" ]
 
   defines = [ "AURA_IMPLEMENTATION" ]

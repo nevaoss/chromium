@@ -35,6 +35,10 @@ const double kNewVolume = 0.271828;
 class MockStream : public media::mojom::AudioInputStream {
  public:
   MOCK_METHOD0(Record, void());
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  MOCK_METHOD0(Pause, void());
+  MOCK_METHOD0(Resume, void());
+#endif
   MOCK_METHOD1(SetVolume, void(double));
 };
 

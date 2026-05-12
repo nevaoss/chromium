@@ -14,6 +14,7 @@ import("//device/vr/buildflags/buildflags.gni")
 import("//gpu/vulkan/features.gni")
 import("//media/media_options.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
+import("//neva/neva.gni")
 import("//ppapi/buildflags/buildflags.gni")
 import("//third_party/inspector_protocol/inspector_protocol.gni")
 import("//tools/grit/grit_rule.gni")
@@ -482,6 +483,18 @@ static_library("content_shell_lib") {
 
   if (is_linux || is_chromeos) {
     deps += [ "//build/config/freetype" ]
+  }
+
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  sources += [
+    "common/shell_neva_switches.cc",
+    "common/shell_neva_switches.h",
+  ]
+  #@}
+
+  if (use_neva_appruntime) {
+    deps += [ "//neva/app_runtime:app_runtime_inspector_resources_grit" ]
   }
 
   if (use_ozone) {

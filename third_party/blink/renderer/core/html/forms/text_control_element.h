@@ -33,6 +33,10 @@
 #include "third_party/blink/renderer/core/html/forms/html_form_control_element_with_state.h"
 #include "third_party/blink/renderer/core/html/forms/text_control_inner_elements.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/renderer/platform/wtf/vector.h"
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 namespace blink {
 
 class ExceptionState;
@@ -113,6 +117,9 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
   int minLength() const;
   void setMaxLength(int, ExceptionState&);
   void setMinLength(int, ExceptionState&);
+#if defined(USE_NEVA_APPRUNTIME)
+  Vector<double> getInputPanelCoords() const;
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
   // Dispatch 'change' event if the value is updated.
   void DispatchFormControlChangeEvent();
@@ -274,6 +281,9 @@ class CORE_EXPORT TextControlElement : public HTMLFormControlElementWithState {
 
   String suggested_value_;
   String value_before_set_suggested_value_;
+#if defined(USE_NEVA_APPRUNTIME)
+  Vector<double> input_panel_coords_;
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
   // Indicate whether there is one scheduled selectionchange event.
   bool has_scheduled_selectionchange_event_ = false;

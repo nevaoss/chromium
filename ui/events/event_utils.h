@@ -7,6 +7,11 @@
 
 #include <stdint.h>
 
+// TODO(neva): Required for usage of std::memcpy. Try to contribute to upstream.
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include <cstring>
+///@}
 #include <memory>
 #include <string_view>
 #include <vector>

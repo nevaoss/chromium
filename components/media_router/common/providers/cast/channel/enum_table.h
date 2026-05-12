@@ -366,7 +366,12 @@ class EnumTable {
 
  private:
 #ifdef ARCH_CPU_64_BITS
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
+  alignas(64)
+#else   // defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
   alignas(std::hardware_destructive_interference_size)
+#endif  // defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
 #endif
       std::initializer_list<Entry> data_;
   bool is_sorted_;

@@ -122,6 +122,10 @@ class PLATFORM_EXPORT SecurityOrigin : public RefCounted<SecurityOrigin> {
   static bool ShouldUseInnerURL(const KURL&);
   static KURL ExtractInnerURL(const KURL&);
 
+#if defined(USE_NEVA_APPRUNTIME)
+  static std::string& MutableLocalOrigin();
+#endif
+
   // Create a deep copy of this SecurityOrigin. This method is useful
   // when marshalling a SecurityOrigin to another thread.
   scoped_refptr<SecurityOrigin> IsolatedCopy() const;
@@ -461,7 +465,11 @@ class PLATFORM_EXPORT SecurityOrigin : public RefCounted<SecurityOrigin> {
   const base::UnguessableToken* GetNonceForSerialization() const;
 
   const String protocol_ = g_empty_string;
+#if defined(USE_NEVA_APPRUNTIME)
+  String host_ = g_empty_string;
+#else
   const String host_ = g_empty_string;
+#endif
   String domain_ = g_empty_string;
   const uint16_t port_ = 0;
   const std::optional<url::Origin::Nonce> nonce_if_opaque_;

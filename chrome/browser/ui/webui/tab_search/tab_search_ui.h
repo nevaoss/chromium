@@ -62,7 +62,12 @@ class TabSearchUI : public TopChromeWebUIController,
     return page_handler_.get();
   }
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12
+  static std::string GetWebUIName() { return "TabSearch"; }
+#else   // defined(__GNUC__) && __GNUC__ < 12
   static constexpr std::string GetWebUIName() { return "TabSearch"; }
+#endif  // !(defined(__GNUC__) && __GNUC__ < 12)
 
   void set_page_handler_creation_callback_for_testing(
       base::OnceClosure callback) {

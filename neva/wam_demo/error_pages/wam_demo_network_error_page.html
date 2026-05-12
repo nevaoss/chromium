@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title x-mojo-loc="">Application Error</title>
+        <meta name="description" content="">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    </head>
+    <body id="t">
+        <div id="error_header">
+            <h1 id="errortitle"></h1>
+            <h2 id="errordetails"></h2>
+            <h2 id="errorguide"</h2>
+            <h3 id="errorinfo"></h3>
+        </div>
+    </body>
+    <script>
+        const IDS_NET_ERROR_CHECK_NETWORK_CONNECTION = 120;
+        const IDS_NET_ERROR_UNABLE_TO_LOAD = 138;
+
+        const err_code_title_ids = [
+          { code: -6,   title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -7,   title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -15,  title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -21,  title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -100, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -101, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -102, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -104, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -105, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -106, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -109, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -118, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -137, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -200, title_id: IDS_NET_ERROR_UNABLE_TO_LOAD},
+          { code: -201, title_id: IDS_NET_ERROR_UNABLE_TO_LOAD},
+          { code: -202, title_id: IDS_NET_ERROR_UNABLE_TO_LOAD},
+          { code: -324, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+          { code: -501, title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION},
+        ];
+
+        const err_title_id_name_en = [
+          { title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION, title_text: "CHECK NETWORK CONNECTION" },
+          { title_id: IDS_NET_ERROR_UNABLE_TO_LOAD, title_text: 'UNABLE TO LOAD'},
+        ];
+
+        const err_title_id_name_kr = [
+          { title_id: IDS_NET_ERROR_CHECK_NETWORK_CONNECTION, title_text: '네트워크 확인 필요' },
+          { title_id: IDS_NET_ERROR_UNABLE_TO_LOAD, title_text: '로딩할 수 없음'},
+        ];
+
+
+        function getUrlParams(target) {
+            var parameters = location.href.slice(location.href.indexOf("?") + 1, location.href.length);
+            var paramArray = parameters.split("&");
+
+            for (var i = 0; i < paramArray.length; i++) {
+                var targetArray = paramArray[i].split("=");
+                if (targetArray[0] === target) {
+                    if (targetArray.length)
+                        return targetArray[1];
+                }
+            }
+            return "";
+        }
+
+        var language = getUrlParams("language");
+        var errCode = getUrlParams("errcode");
+        var errTitle;
+        var err = err_code_title_ids.find(function(arg) {return arg.code == errCode});
+
+        if (err == undefined)
+            err = err_code_title_ids[0];
+
+        switch (language) {
+        case "ko":
+            errTitle = err_title_id_name_kr.find(function(arg) {return arg.title_id == err.title_id}).title_text;
+            break;
+        case "en":
+        default:
+            errTitle = err_title_id_name_en.find(function(arg) {return arg.title_id == err.title_id}).title_text;
+            break;
+        }
+
+        errTitle += "(" + errCode + ")";
+        document.getElementById("errortitle").innerHTML = errTitle;
+    </script>
+</html>

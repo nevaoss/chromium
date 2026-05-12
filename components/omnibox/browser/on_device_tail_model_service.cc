@@ -26,7 +26,12 @@
 
 namespace {
 // Constants for TFlite model validation.
+// TODO(neva): Remove this when Neva GCC version upgraded to 12.
+#if defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__)
+const std::string kTestPrefix = "google m";
+#else   // defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__)
 constexpr std::string kTestPrefix = "google m";
+#endif  // !(defined(COMPILER_GCC) && __GNUC__ < 12 && !defined(__clang__))
 constexpr std::string_view kModelValidationSwitchName =
     "omnibox-on-device-tail-model-validation";
 

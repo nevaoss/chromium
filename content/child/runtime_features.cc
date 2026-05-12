@@ -198,6 +198,10 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
            raw_ref(features::kBrowserVerifiedUserActivationKeyboard)},
           {wf::EnableBrowserVerifiedUserActivationMouse,
            raw_ref(features::kBrowserVerifiedUserActivationMouse)},
+#if defined(USE_FILESCHEME_CODECACHE)
+          {wf::EnableLocalResourceCodeCache,
+           raw_ref(blink::features::kLocalResourceCodeCache)},
+#endif
           {wf::EnableCompositeBGColorAnimation,
            raw_ref(features::kCompositeBGColorAnimation)},
           {wf::EnableCooperativeScheduling,

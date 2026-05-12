@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cookie test</title>
+</head>
+
+<body>
+  <h2 id="visited"></h2>
+  <input type="button" value="Delete Cookie" onclick="setCookie('count', '', -1);">
+  <input type="button" value="Get Cookie" onclick="setTextField(getCookie('count'));">
+  <input type="text" id="cookieread" value="null" readonly><br><br>
+
+  <script>
+    function setTextField(val) {
+      document.getElementById('cookieread').value = val === 0 ? "null" : val;
+    }
+    function setCookie(cname, cvalue, exdays) {
+      console.log(cname);
+      let expires = "";
+      if (exdays) {
+        let date = new Date();
+        date.setTime(date.getTime() + (exdays * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toGMTString();
+      }
+      document.cookie = cname + "=" + cvalue + expires + "; path=/";
+      console.log("write: " + document.cookie);
+    }
+    function getCookie(cname) {
+      const nameEQ = cname + "=";
+      const ca = document.cookie.split(';');
+      console.log("read: " + document.cookie);
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return parseInt(c.substring(nameEQ.length, c.length));
+      }
+      return 0;
+    }
+    const cookieName = "count";
+    let visitedCount = getCookie(cookieName);
+    console.log(visitedCount);
+    visitedCount += 1;
+    setCookie(cookieName, visitedCount, 1);
+    document.getElementById("visited").innerHTML = "visited count: " + visitedCount;
+  </script>
+
+</body>
+
+</html>

@@ -3424,6 +3424,10 @@ void WebViewImpl::UpdateFontRenderingFromRendererPrefs() {
   }
 #endif  // (BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS_LACROS)) &&
         // !BUILDFLAG(IS_ANDROID)
+#if defined(USE_NEVA_APPRUNTIME)
+  WebFontRenderStyle::SetAllowFakeBoldText(
+      renderer_preferences_.allow_fake_bold_text);
+#endif  // defined(USE_NEVA_APPRUNTIME)
 #endif  // BUILDFLAG(IS_WIN)
 #endif  // !BUILDFLAG(IS_MAC)
 }

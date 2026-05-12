@@ -42,6 +42,12 @@ class RenderFrameHostImpl;
 // `type` is the key for the `ReportingUrlMap`, and `data` is sent with the
 // request as a POST.
 struct DestinationEnumEvent {
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  DestinationEnumEvent() = default;
+  DestinationEnumEvent(const std::string& type, const std::string& data)
+      : type(type), data(data) {}
+#endif  // (__cplusplus < 202002L)
   std::string type;
   std::string data;
   bool cross_origin_exposed;
@@ -55,6 +61,11 @@ struct DestinationEnumEvent {
 // `url` is the custom destination url, and the request is sent as a GET.
 // Macros are substituted using the `ReportingMacros`.
 struct DestinationURLEvent {
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  DestinationURLEvent() = default;
+  DestinationURLEvent(const GURL& url) : url(url) {}
+#endif  // (__cplusplus < 202002L)
   GURL url;
   bool cross_origin_exposed;
 

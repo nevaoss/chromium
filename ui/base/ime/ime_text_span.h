@@ -51,7 +51,11 @@ struct COMPONENT_EXPORT(UI_BASE_IME_TYPES) ImeTextSpan {
       size_t start_offset = 0,
       size_t end_offset = 0,
       Thickness thickness = Thickness::kThin,
+#if defined(USE_NEVA_APPRUNTIME)
+      UnderlineStyle underline_style = UnderlineStyle::kNone,
+#else   // defined(USE_NEVA_APPRUNTIME)
       UnderlineStyle underline_style = UnderlineStyle::kSolid,
+#endif  // !defined(USE_NEVA_APPRUNTIME)
       SkColor background_color = SK_ColorTRANSPARENT,
       SkColor suggestion_highlight_color = SK_ColorTRANSPARENT,
       const std::vector<std::string>& suggestions = std::vector<std::string>(),

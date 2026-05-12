@@ -39,15 +39,18 @@ static_library("test_config") {
   ]
 }
 
-rust_static_library("test_rust_logger_consumer") {
-  allow_unsafe = true  # Unsafe needed for FFI
-  testonly = true
-  deps = [ "//third_party/rust/log/v0_4:lib" ]
-  sources = [ "logging/test_rust_logger_consumer.rs" ]
+# TODO(neva): Remove this workaround once Neva supports Rust build.
+if (enable_rust){
+  rust_static_library("test_rust_logger_consumer") {
+    allow_unsafe = true  # Unsafe needed for FFI
+    testonly = true
+    deps = [ "//third_party/rust/log/v0_4:lib" ]
+    sources = [ "logging/test_rust_logger_consumer.rs" ]
 
-  crate_root = "logging/test_rust_logger_consumer.rs"
+    crate_root = "logging/test_rust_logger_consumer.rs"
 
-  cxx_bindings = [ "logging/test_rust_logger_consumer.rs" ]
+    cxx_bindings = [ "logging/test_rust_logger_consumer.rs" ]
+  }
 }
 
 static_library("test_support") {
@@ -197,6 +200,11 @@ static_library("test_support") {
     "//testing/gmock",
     "//testing/gtest",
   ]
+
+# TODO(neva): Remove this workaround once Neva supports Rust build.
+  if (!enable_rust){
+    public_deps -= [":test_rust_logger_consumer",]
+  }
 
   deps = [
     ":proto_test_support",

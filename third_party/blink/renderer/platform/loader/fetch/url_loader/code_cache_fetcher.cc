@@ -13,6 +13,10 @@
 #include "third_party/blink/renderer/platform/weborigin/scheme_registry.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
+#if defined(USE_FILESCHEME_CODECACHE)
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#endif
+
 namespace blink {
 
 namespace {
@@ -58,7 +62,20 @@ bool ShouldUseIsolatedCodeCache(
       // Do not send cached code if opted-out by the embedder.
       return false;
     }
+#if defined(USE_FILESCHEME_CODECACHE)
+  } else {
+    if (current_url.IsLocalFile() &&
+        RuntimeEnabledFeatures::LocalResourceCodeCacheEnabled() &&
+        !response_head.file_last_modified_time.is_null()) {
+      if (response_head.file_last_modified_time < code_cache_response_time) {
+        return true;
+      }
+    }
+
+    if (!response_head.should_use_source_hash_for_js_code_cache) {
+#else   // defined(USE_FILESCHEME_CODECACHE)
   } else if (!response_head.should_use_source_hash_for_js_code_cache) {
+#endif  // !defined(USE_FILESCHEME_CODECACHE)
     // If the timestamps don't match or are null, the code cache data may be
     // for a different response. See https://crbug.com/1099587.
 
@@ -74,6 +91,9 @@ bool ShouldUseIsolatedCodeCache(
         code_cache_response_time != response_time) {
       return false;
     }
+#if defined(USE_FILESCHEME_CODECACHE)
+    }
+#endif  // defined(USE_FILESCHEME_CODECACHE)
   }
   return true;
 }
@@ -95,7 +115,14 @@ bool ShouldFetchCodeCache(const network::ResourceRequest& request) {
       Platform::Current()->ShouldUseCodeCacheWithHashing(
           WebURL(KURL(request.url)));
   if (!request.url.SchemeIsHTTPOrHTTPS() && !should_use_source_hash) {
+#if defined(USE_FILESCHEME_CODECACHE)
+    if (!request.url.SchemeIsFile() ||
+        !RuntimeEnabledFeatures::LocalResourceCodeCacheEnabled()) {
+      return false;
+    }
+#else
     return false;
+#endif
   }
 
   // Supports script resource requests and shared storage worklet module

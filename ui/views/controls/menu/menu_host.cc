@@ -128,6 +128,9 @@ void MenuHost::InitMenuHost(const InitParams& init_params) {
   TRACE_EVENT0("views", "MenuHost::InitMenuHost");
   Widget::InitParams params(Widget::InitParams::NATIVE_WIDGET_OWNS_WIDGET,
                             Widget::InitParams::TYPE_MENU);
+#if defined(USE_SINGLE_WINDOW_MODE)
+  params.type = Widget::InitParams::TYPE_POPUP;
+#endif
   MenuController* menu_controller =
       submenu_->GetMenuItem()->GetMenuController();
   bool bubble_border = submenu_->GetScrollViewContainer() &&

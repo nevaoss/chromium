@@ -173,6 +173,35 @@ struct RendererPreferences {
   [EnableIf=is_win]
   int32 arrow_bitmap_width_horizontal_scroll_bar_in_dips = 0;
 
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // Web application id
+  string application_id;
+
+  // Media Codec Capability
+  string media_codec_capability;
+
+  // Media preferences
+  string media_preferences;
+
+  // Board type
+  string board_type;
+
+  // Allows fake bold text
+  bool allow_fake_bold_text = true;
+
+  // Security origin for 'file://' protocol
+  string file_security_origin;
+
+  // This is the media player handling policy override for MediaStatePolicy.
+  // If the value is |true|, all media players in this renderer are managed
+  // under unlimited media policy.
+  bool use_unlimited_media_policy = false;
+
+  // Is application Enact-based Browser
+  bool is_enact_browser = false;
+  ///@}
+
   // Whether the selection clipboard buffer is available.  Linux environments
   // may support this.
   [EnableIf=is_selection_clipboard_buffer_possible]

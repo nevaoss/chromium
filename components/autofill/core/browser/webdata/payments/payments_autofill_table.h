@@ -40,7 +40,15 @@ class VirtualCardUsageData;
 // passing last_updated_timestamp, which is needed for sync bridge. Limited
 // scope in autofill table & sync bridge.
 struct ServerCvc {
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  bool operator==(const ServerCvc& other) const {
+    return instrument_id == other.instrument_id && cvc == other.cvc &&
+           last_updated_timestamp == other.last_updated_timestamp;
+  }
+#else   // (__cplusplus < 202002L)
   bool operator==(const ServerCvc&) const = default;
+#endif  // !(__cplusplus < 202002L)
   // A server generated id to identify the corresponding credit card.
   int64_t instrument_id;
   // CVC value of the card.

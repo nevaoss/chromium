@@ -153,9 +153,9 @@ std::vector<GpuFeatureData> GetGpuFeatureData(
       "video_decode",
       SafeGetFeatureStatus(
           gpu_feature_info, gpu::GPU_FEATURE_TYPE_ACCELERATED_VIDEO_DECODE,
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
           !base::FeatureList::IsEnabled(media::kAcceleratedVideoDecodeLinux) ||
-#endif  // BUILDFLAG(IS_LINUX)
+#endif  // BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
               command_line.HasSwitch(switches::kDisableAcceleratedVideoDecode)),
       DisableInfo::Problem(
           "Accelerated video decode has been disabled, either via blocklist, "

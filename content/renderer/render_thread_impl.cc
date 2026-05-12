@@ -230,6 +230,13 @@
 #include "base/test/clang_profiling.h"
 #endif
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
+#endif
+///@}
+
 namespace content {
 
 namespace {
@@ -688,6 +695,10 @@ void RenderThreadImpl::Init() {
   }
 
   blink::WebV8Features::InitializeMojoJSAllowedProtectedMemory();
+
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  neva::RenderThreadImpl<RenderThreadImpl>::Init();
+#endif
 }
 
 RenderThreadImpl::~RenderThreadImpl() {
@@ -1046,20 +1057,26 @@ media::GpuVideoAcceleratorFactories* RenderThreadImpl::GetGpuFactories() {
                              kGpuStreamIdMedia, kGpuStreamPriorityMedia);
 
   const bool enable_video_decode_accelerator =
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
       base::FeatureList::IsEnabled(media::kAcceleratedVideoDecodeLinux) &&
-#endif  // BUILDFLAG(IS_LINUX)
+#endif  // BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
+#if defined(USE_WEBOS_CODEC)
+      base::FeatureList::IsEnabled(media::kWebOSVideoDecodeAccelerator) &&
+#endif  // defined(USE_WEBOS_CODEC)
       !cmd_line->HasSwitch(switches::kDisableAcceleratedVideoDecode) &&
       (gpu_channel_host->gpu_feature_info()
            .status_values[gpu::GPU_FEATURE_TYPE_ACCELERATED_VIDEO_DECODE] ==
        gpu::kGpuFeatureStatusEnabled);
 
   const bool enable_video_encode_accelerator =
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
       base::FeatureList::IsEnabled(media::kAcceleratedVideoEncodeLinux) &&
-#else
+#else   // BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC)
       !cmd_line->HasSwitch(switches::kDisableAcceleratedVideoEncode) &&
-#endif  // BUILDFLAG(IS_LINUX)
+#endif  // !(BUILDFLAG(IS_LINUX) && !defined(USE_WEBOS_CODEC))
+#if defined(USE_WEBOS_CODEC)
+      base::FeatureList::IsEnabled(media::kWebOSVideoEncodeAccelerator) &&
+#endif  // defined(USE_WEBOS_CODEC)
       (gpu_channel_host->gpu_feature_info()
            .status_values[gpu::GPU_FEATURE_TYPE_ACCELERATED_VIDEO_ENCODE] ==
        gpu::kGpuFeatureStatusEnabled);
@@ -1425,6 +1442,37 @@ void RenderThreadImpl::SetProcessState(
   visible_state_ = visible_state;
 }
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+void RenderThreadImpl::ProcessSuspend() {
+#if defined(USE_NEVA_APPRUNTIME)
+  blink::WebLocalFrameImpl* frame = static_cast<blink::WebLocalFrameImpl*>(
+      blink::WebLocalFrameImpl::FrameForCurrentContext());
+  if (frame) {
+    page_pauser_ = std::make_unique<blink::WebScopedPagePauser>(*frame);
+  } else {
+    page_pauser_ = std::make_unique<blink::WebScopedPagePauser>();
+  }
+  ++suspension_count_;
+#endif
+}
+
+void RenderThreadImpl::ProcessResume() {
+#if defined(USE_NEVA_APPRUNTIME)
+  if (suspension_count_ > 0) {
+    page_pauser_.reset();
+    --suspension_count_;
+  }
+#endif
+}
+
+void RenderThreadImpl::OnSystemMemoryPressureLevelChanged(
+    base::MemoryPressureListener::MemoryPressureLevel level) {
+  LOG(INFO) << __func__ << " level: " << level;
+  base::MemoryPressureListener::NotifyMemoryPressure(level);
+}
+///@}
+
 void RenderThreadImpl::SetBatterySaverMode(bool battery_saver_mode_enabled) {
   blink::SetBatterySaverModeForAllIsolates(battery_saver_mode_enabled);
 }
@@ -1555,6 +1603,13 @@ void RenderThreadImpl::OnNetworkConnectionChanged(
       NetConnectionTypeToWebConnectionType(type), max_bandwidth_mbps);
   if (url_loader_throttle_provider_)
     url_loader_throttle_provider_->SetOnline(online_status);
+
+#if defined(USE_NEVA_APPRUNTIME)
+  // Reverted part of CL http://crrev.com/c/2692032
+  // since NEVA-3272 depends on it
+  for (auto& observer : observers_)
+    observer.NetworkStateChanged(online_status);
+#endif
 }
 
 void RenderThreadImpl::OnNetworkQualityChanged(
@@ -1885,7 +1940,7 @@ std::unique_ptr<CodecFactory> RenderThreadImpl::CreateMediaCodecFactory(
 #endif
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 void RenderThreadImpl::SetPrivateMemoryFootprint(
     uint64_t private_memory_footprint_bytes) {
   GetRendererHost()->SetPrivateMemoryFootprint(private_memory_footprint_bytes);

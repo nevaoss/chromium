@@ -931,6 +931,10 @@ class EVENTS_EXPORT KeyEvent : public Event {
 
   // Returns the DOM .code (physical key identifier) for a keystroke event.
   DomCode code() const { return code_; }
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  void set_code(DomCode code) { code_ = code; }
+  ///@}
   std::string GetCodeString() const;
 
   // Returns the DOM .key (layout meaning) for a keystroke event.

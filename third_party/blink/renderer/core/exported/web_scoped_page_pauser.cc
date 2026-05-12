@@ -12,6 +12,12 @@
 
 namespace blink {
 
+#if defined(USE_NEVA_APPRUNTIME)
+WebScopedPagePauser::WebScopedPagePauser() {
+  page_pauser_ = std::make_unique<ScopedPagePauser>();
+}
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 WebScopedPagePauser::WebScopedPagePauser(WebLocalFrameImpl& frame) {
   Page* page = WebFrame::ToCoreFrame(frame)->GetPage();
   CHECK(page);

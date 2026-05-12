@@ -15,6 +15,13 @@
 #include "base/location.h"
 #include "build/build_config.h"
 
+// NOTE(neva): To use ScopedAllowBlocking in Neva AppRuntime Prefs.
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/files/file_path.h"
+#include "components/prefs/json_pref_store.h"
+#include "neva/app_runtime/browser/app_runtime_prefs.h"
+#endif
+
 // -----------------------------------------------------------------------------
 // Usage documentation
 // -----------------------------------------------------------------------------
@@ -659,6 +666,18 @@ class BASE_EXPORT ScopedAllowBlocking {
 #endif
 #if BUILDFLAG(IS_IOS)
   friend class ::BrowserStateDirectoryBuilder;
+#endif
+// NOTE(neva): To use ScopedAllowBlocking in Neva AppRuntime Prefs.
+#if defined(USE_NEVA_APPRUNTIME)
+  friend scoped_refptr<JsonPrefStore>
+  neva_app_runtime::prefs::CreateAndLoadPrefStore(
+      const base::FilePath& filepath);
+  friend std::unique_ptr<PrefService>
+  neva_app_runtime::prefs::CreateLocalState(
+      const base::FilePath& data_dir);
+  friend std::unique_ptr<PrefService>
+  neva_app_runtime::prefs::CreateUserPrefService(
+      content::BrowserContext* browser_context);
 #endif
 
   // Sorted by function name (with namespace), ignoring the return type.

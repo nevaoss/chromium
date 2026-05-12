@@ -107,6 +107,13 @@ VirtualKeyboardController* InputMethodBase::GetVirtualKeyboardController() {
   return keyboard_controller_.get();
 }
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+LinuxInputMethodContext* InputMethodBase::GetInputMethodContext() {
+  return nullptr;
+}
+///@}
+
 void InputMethodBase::SetVirtualKeyboardControllerForTesting(
     std::unique_ptr<VirtualKeyboardController> controller) {
   keyboard_controller_ = std::move(controller);

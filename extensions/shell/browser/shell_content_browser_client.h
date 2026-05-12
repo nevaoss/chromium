@@ -18,6 +18,10 @@
 #include "net/base/isolation_info.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/public/mojom/badging/badging.mojom.h"
+#endif
+
 class GURL;
 
 namespace base {
@@ -30,6 +34,11 @@ class AssociatedInterfaceRegistry;
 
 namespace content {
 class BrowserContext;
+#if defined(USE_NEVA_APPRUNTIME)
+struct GlobalRequestID;
+class LoginDelegate;
+class WebContents;
+#endif
 }
 
 namespace service_manager {
@@ -125,6 +134,33 @@ class ShellContentBrowserClient : public content::ContentBrowserClient {
       network::mojom::URLLoaderFactoryOverridePtr* factory_override,
       scoped_refptr<base::SequencedTaskRunner> navigation_response_task_runner)
       override;
+#if defined(USE_NEVA_APPRUNTIME)
+  void RegisterBrowserInterfaceBindersForFrame(
+      content::RenderFrameHost* render_frame_host,
+      mojo::BinderMapWithContext<content::RenderFrameHost*>* map) override;
+  content::StoragePartitionConfig GetStoragePartitionConfigForSite(
+      content::BrowserContext* browser_context,
+      const GURL& site) override;
+  void ConfigureNetworkContextParams(
+      content::BrowserContext* context,
+      bool in_memory,
+      const base::FilePath& relative_partition_path,
+      network::mojom::NetworkContextParams* network_context_params,
+      cert_verifier::mojom::CertVerifierCreationParams*
+          cert_verifier_creation_params)
+      override;
+  std::unique_ptr<content::LoginDelegate> CreateLoginDelegate(
+      const net::AuthChallengeInfo& auth_info,
+      content::WebContents* web_contents,
+      content::BrowserContext* browser_context,
+      const content::GlobalRequestID& request_id,
+      bool is_request_for_primary_main_frame,
+      bool is_request_for_navigation,
+      const GURL& url,
+      scoped_refptr<net::HttpResponseHeaders> response_headers,
+      bool first_auth_attempt,
+      LoginAuthRequiredCallback auth_required_callback) override;
+#endif
   bool HandleExternalProtocol(
       const GURL& url,
       content::WebContents::Getter web_contents_getter,
@@ -147,6 +183,9 @@ class ShellContentBrowserClient : public content::ContentBrowserClient {
       network::mojom::URLLoaderFactoryParams* factory_params) override;
   base::FilePath GetSandboxedStorageServiceDataDirectory() override;
   std::string GetUserAgent() override;
+#if defined(USE_NEVA_APPRUNTIME)
+  blink::UserAgentMetadata GetUserAgentMetadata() override;
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
  protected:
   // Subclasses may wish to provide their own ShellBrowserMainParts.
@@ -160,6 +199,19 @@ class ShellContentBrowserClient : public content::ContentBrowserClient {
 
   // Returns the extension or app associated with |site_instance| or NULL.
   const Extension* GetExtension(content::SiteInstance* site_instance);
+
+#if defined(USE_NEVA_APPRUNTIME)
+  class StubBadgeService;
+
+  void BindBadgeServiceForFrame(
+      content::RenderFrameHost* render_frame_host,
+      mojo::PendingReceiver<blink::mojom::BadgeService> receiver);
+
+  std::unique_ptr<StubBadgeService> stub_badge_service_;
+
+  // Store the path of V8 snapshot blob for app_shell.
+  std::pair<int, std::string> v8_snapshot_path_;
+#endif
 
   // Owned by content::BrowserMainLoop.
   raw_ptr<ShellBrowserMainParts, AcrossTasksDanglingUntriaged>

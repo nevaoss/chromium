@@ -38,7 +38,12 @@ AutoSigninFirstRunDialogView::AutoSigninFirstRunDialogView(
   auto call_controller = [](AutoSigninFirstRunDialogView* dialog,
                             ControllerCallbackFn func) {
     if (dialog->controller_) {
+// TODO(neva): Remove this when Neva GCC starts supporting GCC 9.5 or higher
+#if (__cplusplus < 202002L)
+      (dialog->controller_.get()->*func)();
+#else
       (dialog->controller_->*func)();
+#endif
     }
   };
   SetAcceptCallback(

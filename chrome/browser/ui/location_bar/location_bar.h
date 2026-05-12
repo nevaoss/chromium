@@ -33,6 +33,23 @@ class LocationBar {
  public:
   // Holds the details necessary to open the omnibox match via browser commands.
   struct NavigationParams {
+// NOTE(neva): Remove the directive and consturctors after c++20 support
+// is secured.
+#if (__cplusplus < 202002L)
+    NavigationParams() = default;
+    NavigationParams(const GURL& destination_url,
+                     const WindowOpenDisposition& disposition,
+                     const ui::PageTransition& transition,
+                     const base::TimeTicks& match_selection_timestamp,
+                     bool url_typed_without_scheme,
+                     bool url_typed_with_http_scheme)
+        : destination_url(destination_url),
+          disposition(disposition),
+          transition(transition),
+          match_selection_timestamp(match_selection_timestamp),
+          url_typed_without_scheme(url_typed_without_scheme),
+          url_typed_with_http_scheme(url_typed_with_http_scheme) {}
+#endif
     GURL destination_url;
     WindowOpenDisposition disposition{WindowOpenDisposition::CURRENT_TAB};
     ui::PageTransition transition{ui::PAGE_TRANSITION_TYPED |

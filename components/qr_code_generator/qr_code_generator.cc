@@ -8,9 +8,13 @@
 #include <vector>
 
 #include "base/check_op.h"
+#if !defined(USE_NEVA_APPRUNTIME)
 #include "base/containers/span_rust.h"
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 #include "base/numerics/safe_conversions.h"
+#if !defined(USE_NEVA_APPRUNTIME)
 #include "components/qr_code_generator/qr_code_generator_ffi_glue.rs.h"
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 
 namespace qr_code_generator {
 
@@ -22,6 +26,11 @@ GeneratedCode& GeneratedCode::operator=(GeneratedCode&&) = default;
 base::expected<GeneratedCode, Error> GenerateCode(
     base::span<const uint8_t> in,
     std::optional<int> min_version) {
+// TODO(neva): Remove this workaround once Neva supports Rust build.
+#if defined(USE_NEVA_APPRUNTIME)
+  GeneratedCode code;
+  return code;
+#else   // defined(USE_NEVA_APPRUNTIME)
   rust::Slice<const uint8_t> rs_in = base::SpanToRustSlice(in);
 
   // `min_version` might come from a fuzzer and therefore we use a lenient
@@ -43,6 +52,7 @@ base::expected<GeneratedCode, Error> GenerateCode(
   code.qr_size = base::checked_cast<int>(result_width);
   CHECK_EQ(code.data.size(), static_cast<size_t>(code.qr_size * code.qr_size));
   return code;
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 }
 
 }  // namespace qr_code_generator

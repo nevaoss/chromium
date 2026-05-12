@@ -93,6 +93,11 @@
 #include "mojo/public/cpp/bindings/lib/test_random_mojo_delays.h"
 #endif
 
+#if defined(USE_LTTNG)
+#include "base/native_library.h"
+#include "content/common/neva/lttng/lttng_init.h"
+#endif
+
 namespace content {
 namespace {
 
@@ -110,6 +115,10 @@ std::unique_ptr<base::MessagePump> CreateMainThreadMessagePump() {
 #if BUILDFLAG(IS_FUCHSIA)
   // Allow FIDL APIs on renderer main thread.
   return base::MessagePump::Create(base::MessagePumpType::IO);
+#elif BUILDFLAG(IS_WEBOS)
+  // The main message loop of the renderer services for webOS should be UI
+  // (luna bus require glib message pump).
+  return base::MessagePump::Create(base::MessagePumpType::UI);
 #else
   return base::MessagePump::Create(base::MessagePumpType::DEFAULT);
 #endif
@@ -145,6 +154,9 @@ int RendererMain(MainFunctionParams parameters) {
   // Don't use the TRACE_EVENT0 macro because the tracing infrastructure doesn't
   // expect synchronous events around the main loop of a thread.
   TRACE_EVENT_INSTANT0("startup", "RendererMain", TRACE_EVENT_SCOPE_THREAD);
+#if defined(USE_LTTNG)
+  base::NativeLibrary lttng_native_library = neva::LttngInit();
+#endif
 
 #if BUILDFLAG(IS_MAC)
   // Declare that this process has CPU security mitigations enabled (see
@@ -368,6 +380,11 @@ int RendererMain(MainFunctionParams parameters) {
 #endif
   }
   platform.PlatformUninitialize();
+#if defined(USE_LTTNG)
+  if (lttng_native_library) {
+    base::UnloadNativeLibrary(lttng_native_library);
+  }
+#endif
   return 0;
 }
 

@@ -290,6 +290,10 @@ class PLATFORM_EXPORT WidgetBase
   void set_handling_select_range(bool value) { handling_select_range_ = value; }
   bool handling_select_range() const { return handling_select_range_; }
 
+#if defined(USE_NEVA_APPRUNTIME)
+  bool HasImeEventGuard() const { return ime_event_guard_ != nullptr; }
+#endif
+
   LCDTextPreference ComputeLCDTextPreference() const;
 
   const viz::LocalSurfaceId& local_surface_id_from_parent() const {

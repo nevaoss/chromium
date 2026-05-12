@@ -20,6 +20,14 @@ class COMPONENTS_DOWNLOAD_EXPORT DownloadSaveItemData
     : public base::SupportsUserData::Data {
  public:
   struct ItemInfo {
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+    ItemInfo() = default;
+    ItemInfo(const base::FilePath& file_path,
+             const GURL& url,
+             const GURL& referrer_url)
+        : file_path(file_path), url(url), referrer_url(referrer_url) {}
+#endif  // (__cplusplus < 202002L)
     // The final path where this file of the package will be saved.
     base::FilePath file_path;
     // The url this file was downloaded from.

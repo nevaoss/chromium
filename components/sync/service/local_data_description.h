@@ -7,6 +7,12 @@
 
 #include <string>
 #include <vector>
+// TODO(neva): Required for the usage of DataId. Try to contribute
+// to upstream.
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include <variant>
+///@}
 
 #include "components/sync/base/data_type.h"
 #include "url/gurl.h"

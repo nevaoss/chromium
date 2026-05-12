@@ -654,6 +654,24 @@ bool RendererBlinkPlatformImpl::AllowsLoopbackInPeerConnection() {
       switches::kAllowLoopbackInPeerConnection);
 }
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+void RendererBlinkPlatformImpl::AddSourceToAudioCapturerSourceManager(
+    media::AudioCapturerSource* source) {
+  RenderThreadImpl* render_thread = RenderThreadImpl::current();
+  if (!render_thread)
+    return;
+  render_thread->audio_capturer_source_manager()->AddSource(source);
+}
+
+void RendererBlinkPlatformImpl::RemoveSourceFromAudioCapturerSourceManager(
+    media::AudioCapturerSource* source) {
+  RenderThreadImpl* render_thread = RenderThreadImpl::current();
+  if (!render_thread)
+    return;
+  render_thread->audio_capturer_source_manager()->RemoveSource(source);
+}
+#endif
+
 blink::WebVideoCaptureImplManager*
 RendererBlinkPlatformImpl::GetVideoCaptureImplManager() {
   RenderThreadImpl* thread = RenderThreadImpl::current();
@@ -1075,7 +1093,7 @@ RendererBlinkPlatformImpl::VideoFrameCompositorTaskRunner() {
   return compositor_task_runner;
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 void RendererBlinkPlatformImpl::SetPrivateMemoryFootprint(
     uint64_t private_memory_footprint_bytes) {
   auto* render_thread = RenderThreadImpl::current();
@@ -1084,13 +1102,23 @@ void RendererBlinkPlatformImpl::SetPrivateMemoryFootprint(
 }
 
 bool RendererBlinkPlatformImpl::IsUserLevelMemoryPressureSignalEnabled() {
+#if defined(USE_NEVA_APPRUNTIME)
+  return features::IsUserLevelMemoryPressureSignalEnabled();
+#else
   return features::IsUserLevelMemoryPressureSignalEnabledOn3GbDevices() ||
          features::IsUserLevelMemoryPressureSignalEnabledOn4GbDevices() ||
          features::IsUserLevelMemoryPressureSignalEnabledOn6GbDevices();
+#endif
 }
 
 std::pair<base::TimeDelta, base::TimeDelta> RendererBlinkPlatformImpl::
     InertAndMinimumIntervalOfUserLevelMemoryPressureSignal() {
+#if defined(USE_NEVA_APPRUNTIME)
+  if (features::IsUserLevelMemoryPressureSignalEnabled()) {
+    return std::make_pair(features::InertInterval(),
+                          features::MinUserMemoryPressureInterval());
+  }
+#else   // !defined(USE_NEVA_APPRUNTIME)
   if (features::IsUserLevelMemoryPressureSignalEnabledOn3GbDevices()) {
     return std::make_pair(
         features::InertIntervalFor3GbDevices(),
@@ -1106,6 +1134,7 @@ std::pair<base::TimeDelta, base::TimeDelta> RendererBlinkPlatformImpl::
         features::InertIntervalFor6GbDevices(),
         features::MinUserMemoryPressureIntervalOn6GbDevices());
   }
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 
   constexpr std::pair<base::TimeDelta, base::TimeDelta>
       kDefaultInertAndMinInterval =
@@ -1113,6 +1142,6 @@ std::pair<base::TimeDelta, base::TimeDelta> RendererBlinkPlatformImpl::
   return kDefaultInertAndMinInterval;
 }
 
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 
 }  // namespace content

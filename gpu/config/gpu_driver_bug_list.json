@@ -2,6 +2,18 @@
   "name": "gpu driver bug list",
   "entries": [
     {
+      "id": 999,
+      "description": "Don't use the OOPR Canvas feature on webOS OSE with Raspberry Pi device",
+      "os": {
+        "type" : "linux"
+      },
+      "gl_vendor": "Broadcom.*",
+      "gl_renderer": "V3D.*",
+      "features": [
+        "disable_canvas_oop_rasterization"
+      ]
+    },
+    {
       "id": 1,
       "description": "Imagination driver doesn't like uploading lots of buffer data constantly",
       "cr_bugs": [178093],
@@ -2623,6 +2635,18 @@
       "gl_vendor": "Intel.*",
       "features": [
         "check_egl_fence_before_wait"
+      ]
+    },
+    {
+      "id": 9998,
+      "description": "Invalid return value when getting GL_TIMESTAMP on O22",
+      "os": {
+        "type": "linux"
+      },
+      "gl_vendor": "ARM",
+      "gl_renderer": "Mali-G52",
+      "disabled_extensions": [
+        "GL_EXT_disjoint_timer_query"
       ]
     },
     {

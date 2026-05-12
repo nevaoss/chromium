@@ -237,6 +237,10 @@ class CORE_EXPORT InputMethodController final
       int selection_end,
       size_t text_length) const;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  gfx::Rect InputPanelRectangle() const;
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
   // Implements |ExecutionContextLifecycleObserver|.
   void ContextDestroyed() final;
 

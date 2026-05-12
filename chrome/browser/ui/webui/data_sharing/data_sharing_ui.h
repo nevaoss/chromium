@@ -49,7 +49,12 @@ class DataSharingUI : public UntrustedTopChromeWebUIController,
 
   DataSharingPageHandler* page_handler() { return page_handler_.get(); }
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
+  static std::string GetWebUIName() { return "DataSharingBubble"; }
+#else   // defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
   static constexpr std::string GetWebUIName() { return "DataSharingBubble"; }
+#endif  // !(defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__))
 
   void SetDelegate(Delegate* delegate) { delegate_ = delegate; }
 

@@ -341,6 +341,20 @@ bool TimeDurationCompactFormatWithSeconds(TimeDelta time,
   icu::MeasureFormat measure_format(icu::Locale::getDefault(), u_width, status);
   icu::UnicodeString formatted;
   icu::FieldPosition ignore(icu::FieldPosition::DONT_CARE);
+  // TODO(neva): Remove this after Neva GCC version is 14.1+.
+#if defined(COMPILER_GCC) && __GNUC__ < 14 && !defined(__clang__)
+  if (hours != 0 || width == DurationFormatWidth::DURATION_WIDTH_NUMERIC) {
+    icu::Measure measures[3] = {hours_measure, minutes_measure,
+                                seconds_measure};
+    measure_format.formatMeasures(measures, 3, formatted, ignore, status);
+  } else if (minutes != 0) {
+    icu::Measure measures[2] = {minutes_measure, seconds_measure};
+    measure_format.formatMeasures(measures, 2, formatted, ignore, status);
+  } else {
+    icu::Measure measures[1] = {seconds_measure};
+    measure_format.formatMeasures(measures, 1, formatted, ignore, status);
+  }
+#else   // defined(COMPILER_GCC) && __GNUC__ < 14 && !defined(__clang__)
   if (hours != 0 || width == DurationFormatWidth::DURATION_WIDTH_NUMERIC) {
     icu::Measure input_measures[3]{hours_measure, minutes_measure,
                                    seconds_measure};
@@ -352,6 +366,7 @@ bool TimeDurationCompactFormatWithSeconds(TimeDelta time,
     icu::Measure input_measures[1]{seconds_measure};
     measure_format.formatMeasures(input_measures, 1, formatted, ignore, status);
   }
+#endif  // !(defined(COMPILER_GCC) && __GNUC__ < 14 && !defined(__clang__))
   *out = i18n::UnicodeStringToString16(formatted);
   return U_SUCCESS(status);
 }

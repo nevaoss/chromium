@@ -40,6 +40,7 @@ import("//tools/ipc_fuzzer/ipc_fuzzer.gni")
 import("//ui/base/ui_features.gni")
 import("//ui/gl/features.gni")
 import("//v8/gni/v8.gni")
+import("//neva/neva.gni")
 
 if (is_android) {
   import("//build/config/android/config.gni")
@@ -788,6 +789,21 @@ group("gn_all") {
       if ((is_linux || is_chromeos) && current_toolchain == host_toolchain) {
         deps += [ "//v8:v8_shell" ]
       }
+
+      if (use_neva_appruntime) {
+        deps += [
+          "//neva/wam_demo",
+          "//neva/neva_unittests",
+        ]
+        if (is_webos || is_webos_lite) {
+          deps += [
+            "//webos:weboswebruntime",
+            "//webos/install",
+          ]
+        } else {
+          deps += [ "//neva/browser_shell" ]
+        }
+      }
     }
 
     if ((is_linux && !is_castos) || is_chromeos ||
@@ -892,6 +908,14 @@ group("all_rust") {
     "//testing/rust_gtest_interop:rust_gtest_interop_unittests",
     "//third_party/cloud_authenticator/processor",
   ]
+
+  # TODO(neva): Remove this when Neva supports rust language.
+  if (use_neva_appruntime) {
+    deps -= [
+      "//testing/rust_gtest_interop:rust_gtest_interop_unittests",
+      "//third_party/cloud_authenticator/processor",
+    ]
+  }
 
   if (enable_rust_mojo) {
     deps += [
@@ -1713,7 +1737,7 @@ if (use_blink && !is_cronet_build) {
 # TODO(cassew): Add more OS's that don't support x86.
 is_valid_x86_target =
     target_os != "ios" && target_os != "mac" &&
-    (target_os != "linux" || use_libfuzzer || !build_with_chromium)
+    (target_os != "linux" || use_libfuzzer || !build_with_chromium || is_webos)
 
 # Note: v8_target_cpu == arm allows using the V8 arm simulator on x86 for fuzzing.
 assert(

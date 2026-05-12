@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="zh-CN">
+<translation id="1682620957554922882">请联系内容提供商。</translation>
+<translation id="2626799779920242286">请稍后重试。</translation>
+<translation id="27461552975087996">服务器证书无法被信任。</translation>
+<translation id="288961708105972332">连接尝试已超时。</translation>
+<translation id="3100161803646972327">请检查网络状态并重试。</translation>
+<translation id="334286403444714742">未连接至网络。</translation>
+<translation id="4799446021133992159">无法加载</translation>
+<translation id="4897228579364425832">检查网络连接</translation>
+<translation id="4922056813564935008">无法找到请求地址。</translation>
+<translation id="4964644330950338878">主机名称与服务器证书不匹配。</translation>
+<translation id="5375809313377772901">请检查时间设置。</translation>
+<translation id="5803768854262525793">REPLACE WITH HOSTNAME</translation>
+<translation id="6061420513894163219">请检查网络连接状态。</translation>
+<translation id="6765203878096346794">服务器连接不稳定。</translation>
+<translation id="7402264192054099664">这可能是个临时问题。</translation>
+<translation id="7570401931535381481">服务器证书已过期或尚未生效，因为电视上设置的时间与当前时间不同。</translation>
+<translation id="7619490177640280081">当前时间设置</translation>
+<translation id="8138313893556460774">操作已超时。</translation>
+<translation id="8322836013946289105">未找到文件或目录。</translation>
+<translation id="8561467915632687957">网络不稳定。</translation>
+</translationbundle>

@@ -73,12 +73,26 @@ int VideoFrameResource::GetDmabufFd(size_t i) const {
 
 scoped_refptr<const gfx::NativePixmapDmaBuf>
 VideoFrameResource::GetNativePixmapDmaBuf() const {
+  // NOTE(neva): webOS doesn't use platform_video_frame_util for ChromeOS
+  // becuase webOS doesn't support GMB.
+  // Since webOS doesn't use this function, return nullptr.
+#if defined(USE_WEBOS_CODEC)
+  return nullptr;
+#else
   return media::CreateNativePixmapDmaBuf(frame_.get());
+#endif
 }
 
 gfx::GpuMemoryBufferHandle VideoFrameResource::CreateGpuMemoryBufferHandle()
     const {
+  // NOTE(neva): webOS doesn't use platform_video_frame_util for ChromeOS
+  // becuase webOS doesn't support GMB.
+  // Since webOS doesn't use this function, return invalid handle.
+#if defined(USE_WEBOS_CODEC)
+  return gfx::GpuMemoryBufferHandle();
+#else
   return media::CreateGpuMemoryBufferHandle(frame_.get());
+#endif
 }
 
 std::unique_ptr<VideoFrame::ScopedMapping>
@@ -87,7 +101,14 @@ VideoFrameResource::MapGMBOrSharedImage() const {
 }
 
 gfx::GenericSharedMemoryId VideoFrameResource::GetSharedMemoryId() const {
+  // NOTE(neva): webOS doesn't use platform_video_frame_util for ChromeOS
+  // becuase webOS doesn't support GMB.
+  // Since webOS doesn't use this function, return invalid id.
+#if defined(USE_WEBOS_CODEC)
+  return gfx::GenericSharedMemoryId();
+#else
   return media::GetSharedMemoryId(*frame_);
+#endif
 }
 
 const VideoFrameLayout& VideoFrameResource::layout() const {

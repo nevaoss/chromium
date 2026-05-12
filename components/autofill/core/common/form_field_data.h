@@ -107,8 +107,14 @@ class Section {
           local_frame_id(local_frame_id),
           field_renderer_id(field_renderer_id) {}
 
+// TODO(neva): Please remove this guard after there is no error to support
+// operator<=> in Neva.
+#if defined(COMPILER_GCC)
+    friend bool operator<(const FieldIdentifier& a, const FieldIdentifier& b);
+#else   // defined(COMPILER_GCC)
     friend auto operator<=>(const FieldIdentifier& lhs,
                             const FieldIdentifier& rhs) = default;
+#endif  // !defined(COMPILER_GCC)
     friend bool operator==(const FieldIdentifier& lhs,
                            const FieldIdentifier& rhs) = default;
 
@@ -129,8 +135,14 @@ class Section {
   // `absl::variant` does not implement `operator<=>` - therefore the ordering
   // needs to be specified manually. Once `absl::variant` is `std::variant`,
   // this return type can become `auto`.
+// TODO(neva): Please remove this guard after there is no error to support
+// operator<=> in Neva.
+#if defined(COMPILER_GCC)
+  friend bool operator<(const Section& a, const Section& b);
+#else   // defined(COMPILER_GCC)
   friend std::strong_ordering operator<=>(const Section& lhs,
                                           const Section& rhs) = default;
+#endif  // !defined(COMPILER_GCC)
   friend bool operator==(const Section& lhs, const Section& rhs) = default;
   explicit operator bool() const;
 

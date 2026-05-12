@@ -56,6 +56,13 @@ const char kFieldTrialHandle[] = "field-trial-handle";
 // FieldTrialList::CreateTrialsFromString() in field_trial.h for details.
 const char kForceFieldTrials[]              = "force-fieldtrials";
 
+#if defined(USE_NEVA_APPRUNTIME)
+// Force low-end device mode, but without faking physical memory as
+// --enable-low-end-device mode, which is used for unit tests and fakes
+// 512 MB physical memory
+const char kForceLowEndDeviceMode[] = "force-low-end-device-mode";
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 // Generates full memory crash dump.
 const char kFullMemoryCrashReport[] = "full-memory-crash-report";
 

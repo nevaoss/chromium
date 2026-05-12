@@ -93,6 +93,14 @@ enum WebTextInputFlags {
   // type we don't want autocomplete or a keyboard to memorize the content.
   kWebTextInputFlagHasBeenPasswordField = 1 << 12,
   kWebTextInputFlagVertical = 1 << 13,
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  kWebTextInputFlagSensitiveOn = 1 << 14,
+  kWebTextInputFlagSensitiveOff = 1 << 15,
+  // Neva system keyboard
+  kWebTextInputFlagSystemKeyboardOn = 1 << 16,
+  kWebTextInputFlagSystemKeyboardOff = 1 << 17
+  ///@}
 };
 
 }  // namespace blink

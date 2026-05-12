@@ -21,6 +21,10 @@
 #include "media/cdm/cdm_host_files.h"
 #endif  // BUILDFLAG(ENABLE_CDM_HOST_VERIFICATION)
 
+#if defined(USE_NEVA_CDM)
+#include "media/cdm/neva/webos/content_decryption_module_webos.h"
+#endif
+
 // INITIALIZE_CDM_MODULE is a macro in api/content_decryption_module.h.
 // However, we need to pass it as a string to GetFunctionPointer(). The follow
 // macro helps expanding it into a string.
@@ -127,6 +131,13 @@ bool CdmModule::Initialize(const base::FilePath& cdm_path) {
   // TODO(xhwang): Define function names in macros to avoid typo errors.
   initialize_cdm_module_func_ = reinterpret_cast<InitializeCdmModuleFunc>(
       library_.GetFunctionPointer(MAKE_STRING(INITIALIZE_CDM_MODULE)));
+#if BUILDFLAG(IS_WEBOS)
+  if (!initialize_cdm_module_func_) {
+    // Some legacy cdm modules in webOS use different function name.
+    initialize_cdm_module_func_ = reinterpret_cast<InitializeCdmModuleFunc>(
+        library_.GetFunctionPointer(MAKE_STRING(INITIALIZE_CDM_MODULE_WEBOS)));
+  }
+#endif  // BUILDFLAG(IS_WEBOS)
   deinitialize_cdm_module_func_ = reinterpret_cast<DeinitializeCdmModuleFunc>(
       library_.GetFunctionPointer("DeinitializeCdmModule"));
   create_cdm_func_ = reinterpret_cast<CreateCdmFunc>(

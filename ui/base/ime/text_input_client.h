@@ -153,6 +153,13 @@ class COMPONENT_EXPORT(UI_BASE_IME) TextInputClient {
   // Returns the current text direction.
   virtual base::i18n::TextDirection GetTextDirection() const = 0;
 
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  virtual bool SystemKeyboardDisabled() const;
+  virtual gfx::Rect GetInputPanelRectangle() const;
+  virtual gfx::Rect GetTextInputBounds() const;
+  ///@}
+
   // Returns the current text input flags, which is a bit map of
   // WebTextInputType defined in blink. This is valid only for web input fileds;
   // it will return TEXT_INPUT_FLAG_NONE for native input fields.
@@ -262,6 +269,11 @@ class COMPONENT_EXPORT(UI_BASE_IME) TextInputClient {
   // between browser and renderer. Returns false if the operation is not
   // supported.
   virtual bool DeleteRange(const gfx::Range& range) = 0;
+///@name USE_NEVA_APPRUNTIME
+///@{
+#else
+  virtual bool DeleteRange(const gfx::Range& range);
+///@}
 #endif
 
   // Retrieves the text content in a given UTF-16 code unit range.

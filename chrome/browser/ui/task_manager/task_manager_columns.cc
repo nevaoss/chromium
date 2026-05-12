@@ -21,7 +21,10 @@ const char kSortIsAscendingKey[] = "sort_is_ascending";
 // "IDS_TASK_MANAGER_TASK_COLUMN").
 
 #if defined(COLUMN_CASE)
-#error Surprising name collision ┐(´∇｀)┌
+// TODO(neva): Make the token of the '#error' directive to be
+// a string constant for GCC.
+// Try to contribute this GCC fix to upstream.
+#error "Surprising name collision ┐(´∇｀)┌"
 #endif
 #define COLUMN_CASE(column_id) \
   case column_id:              \

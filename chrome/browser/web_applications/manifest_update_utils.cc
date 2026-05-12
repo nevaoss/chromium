@@ -245,7 +245,12 @@ ManifestDataChanges GetManifestDataChanges(
       result.app_icon_identity_change ||
       existing_web_app.manifest_icons() != new_install_info.manifest_icons ||
       (existing_app_icon_bitmaps &&
+// TODO(neva) : Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+       !(*existing_app_icon_bitmaps == new_install_info.icon_bitmaps));
+#else
        *existing_app_icon_bitmaps != new_install_info.icon_bitmaps);
+#endif
 
   result.other_fields_changed = [&] {
     if (existing_web_app.manifest_id() != new_install_info.manifest_id()) {

@@ -34,7 +34,12 @@ class ScopedGLuint {
                GenFunc gen_func,
                DeleteFunc delete_func)
       : gl_(gl), id_(0u), delete_func_(delete_func) {
+// TODO(neva): Remove this when Neva GCC starts supporting GCC 9.5 or higher
+#if (__cplusplus < 202002L)
+    (gl_.get()->*gen_func)(1, &id_);
+#else
     (gl_->*gen_func)(1, &id_);
+#endif
   }
 
   operator GLuint() const { return id_; }
@@ -46,7 +51,12 @@ class ScopedGLuint {
 
   ~ScopedGLuint() {
     if (id_ != 0) {
+// TODO(neva): Remove this when Neva GCC starts supporting GCC 9.5 or higher
+#if (__cplusplus < 202002L)
+      (gl_.get()->*delete_func_)(1, &id_);
+#else
       (gl_->*delete_func_)(1, &id_);
+#endif
     }
   }
 
@@ -86,13 +96,23 @@ class ScopedBinder {
   typedef void (gles2::GLES2Interface::*BindFunc)(GLenum target, GLuint id);
   ScopedBinder(gles2::GLES2Interface* gl, GLuint id, BindFunc bind_func)
       : gl_(gl), bind_func_(bind_func) {
+// TODO(neva): Remove this when Neva GCC starts supporting GCC 9.5 or higher
+#if (__cplusplus < 202002L)
+    (gl_.get()->*bind_func_)(Target, id);
+#else
     (gl_->*bind_func_)(Target, id);
+#endif
   }
 
   ScopedBinder(const ScopedBinder&) = delete;
   ScopedBinder& operator=(const ScopedBinder&) = delete;
 
+// TODO(neva): Remove this when Neva GCC starts supporting GCC 9.5 or higher
+#if (__cplusplus < 202002L)
+  virtual ~ScopedBinder() { (gl_.get()->*bind_func_)(Target, 0); }
+#else
   virtual ~ScopedBinder() { (gl_->*bind_func_)(Target, 0); }
+#endif
 
  private:
   raw_ptr<gles2::GLES2Interface> gl_;

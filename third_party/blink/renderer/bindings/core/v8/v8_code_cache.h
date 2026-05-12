@@ -89,6 +89,19 @@ class CORE_EXPORT V8CodeCache final {
   static std::tuple<v8::ScriptCompiler::CompileOptions,
                     ProduceCacheOptions,
                     v8::ScriptCompiler::NoCacheReason>
+#if defined(USE_FILESCHEME_CODECACHE)
+  GetCompileOptions(
+      mojom::blink::V8CacheOptions,
+      const CachedMetadataHandler*,
+      size_t source_text_length,
+      ScriptSourceLocationType,
+      const KURL& url,
+      bool is_local,
+      bool might_generate_crowdsourced_compile_hints = false,
+      bool can_use_crowdsourced_compile_hints = false,
+      v8_compile_hints::MagicCommentMode v8_compile_hints_magic_comment_mode =
+          v8_compile_hints::MagicCommentMode::kNever);
+#else   // defined(USE_FILESCHEME_CODECACHE)
   GetCompileOptions(
       mojom::blink::V8CacheOptions cache_options,
       const CachedMetadataHandler*,
@@ -99,6 +112,7 @@ class CORE_EXPORT V8CodeCache final {
       bool can_use_crowdsourced_compile_hints = false,
       v8_compile_hints::MagicCommentMode v8_compile_hints_magic_comment_mode =
           v8_compile_hints::MagicCommentMode::kNever);
+#endif  // !defined(USE_FILESCHEME_CODECACHE)
 
   static bool IsFull(const CachedMetadata* metadata);
 
@@ -171,6 +185,16 @@ class CORE_EXPORT V8CodeCache final {
   static std::tuple<v8::ScriptCompiler::CompileOptions,
                     ProduceCacheOptions,
                     v8::ScriptCompiler::NoCacheReason>
+#if defined(USE_FILESCHEME_CODECACHE)
+  GetCompileOptionsInternal(mojom::blink::V8CacheOptions cache_options,
+                            const CachedMetadataHandler*,
+                            size_t source_text_length,
+                            ScriptSourceLocationType,
+                            const KURL& url,
+                            bool is_local,
+                            bool might_generate_crowdsourced_compile_hints,
+                            bool can_use_crowdsourced_compile_hints);
+#else   // defined(USE_FILESCHEME_CODECACHE)
   GetCompileOptionsInternal(mojom::blink::V8CacheOptions cache_options,
                             const CachedMetadataHandler*,
                             size_t source_text_length,
@@ -178,6 +202,7 @@ class CORE_EXPORT V8CodeCache final {
                             const KURL& url,
                             bool might_generate_crowdsourced_compile_hints,
                             bool can_use_crowdsourced_compile_hints);
+#endif  // !defined(USE_FILESCHEME_CODECACHE)
 };
 
 }  // namespace blink

@@ -292,7 +292,6 @@ CONTENT_EXPORT extern const char kRemoteDebuggingIoPipes[];
 extern const char kIpcDumpDirectory[];
 extern const char kIpcFuzzerTestcase[];
 #endif
-
 // DON'T ADD RANDOM STUFF HERE. Put it in the main section above in
 // alphabetical order, or in one of the ifdefs (also in order in each section).
 

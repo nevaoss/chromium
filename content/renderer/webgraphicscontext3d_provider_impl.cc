@@ -17,6 +17,12 @@
 #include "services/viz/public/cpp/gpu/context_provider_command_buffer.h"
 #include "third_party/skia/include/gpu/ganesh/GrDirectContext.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/command_line.h"
+#include "base/neva/base_switches.h"
+#include "base/strings/string_number_conversions.h"
+#endif
+
 namespace content {
 
 WebGraphicsContext3DProviderImpl::WebGraphicsContext3DProviderImpl(
@@ -177,7 +183,21 @@ cc::ImageDecodeCache* WebGraphicsContext3DProviderImpl::ImageDecodeCache(
   // This denotes the allocated GPU memory budget for the cache used for
   // book-keeping. The cache indicates when the total memory locked exceeds this
   // budget in cc::DecodedDrawImage.
+#if !defined(USE_NEVA_APPRUNTIME)
   static const size_t kMaxWorkingSetBytes = 64 * 1024 * 1024;
+#else
+  size_t kMaxWorkingSetBytes = 64 * 1024 * 1024;
+  base::CommandLine& cmd_line = *base::CommandLine::ForCurrentProcess();
+  if (cmd_line.HasSwitch(
+          switches::kMemPressureGPUCacheSizeReductionFactor)) {
+    size_t cache_size_reduction_factor;
+    if (base::StringToSizeT(
+            cmd_line.GetSwitchValueASCII(
+                switches::kMemPressureGPUCacheSizeReductionFactor),
+            &cache_size_reduction_factor))
+      kMaxWorkingSetBytes /= cache_size_reduction_factor;
+  }
+#endif
 
   // TransferCache is used only with OOP raster.
   const bool use_transfer_cache = GetCapabilities().gpu_rasterization;

@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <style>
+    .move_cursor {
+      cursor: move;
+    }
+
+    .test_area {
+      width: 200px;
+      height: 60px;
+      text-align: center;
+      line-height: 60px;
+    }
+
+    .section {
+      padding: 5px;
+      float: left;
+      border: 3px solid green;
+    }
+  </style>
+  <script>
+    SetCursor = function(button) {
+      document.getElementById("check_cursor").style.cursor =
+          button.style.cursor;
+    }
+  </script>
+</head>
+<body>
+  <div class="section">
+    <button class="test_area" style="cursor: help;" onclick="SetCursor(this)">
+      help
+    </button>
+    <br/>
+    <button class="test_area" style="cursor: not-allowed;"
+        onclick="SetCursor(this)">
+      not-allowed
+    </button>
+    <br/>
+    <button class="test_area" onclick="SetCursor(this)" style=
+      "cursor:url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/9632/happy.png),
+              auto;">
+      smile (url cursor)
+    </button>
+    <br/>
+    <button class="test_area" onclick="SetCursor(this)">
+      no style
+    </button>
+    <br/>
+    <div class="test_area move_cursor" style="background-color: deepskyblue"
+        onclick="SetCursor(this)">
+      move (css class)
+    </div>
+    <br/>
+    <input class="test_area" value="input"/>
+  </div>
+  <div class="section test_area" id="check_cursor">
+    Cursor set by JavaScript
+  </div>
+</body>
+</html>
+

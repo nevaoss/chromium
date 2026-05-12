@@ -24,6 +24,20 @@
 #include "ui/ozone/platform/wayland/host/wayland_seat.h"
 #include "ui/ozone/platform/wayland/host/wayland_window.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+namespace {
+
+void OnInputPanelVisibilityChanged(ui::WaylandConnection* conn, bool state) {
+  ui::WaylandWindow* window =
+      conn->window_manager()->GetCurrentKeyboardFocusedWindow();
+  if (!window)
+    return;
+  window->OnInputPanelVisibilityChanged(state);
+}
+
+}  // namespace
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 namespace ui {
 namespace {
 
@@ -125,9 +139,19 @@ std::optional<ZWPTextInputWrapperClient::SpanStyle::Style> ConvertStyle(
     case ZWP_TEXT_INPUT_V1_PREEDIT_STYLE_ACTIVE:
     case ZWP_TEXT_INPUT_V1_PREEDIT_STYLE_INACTIVE:
     default:
+#if defined(USE_NEVA_APPRUNTIME)
+      // NOTE(neva): It is needed to apply styling by default cause Wayland
+      // server doesn't send ZWP_TEXT_INPUT_V1_PREEDIT_STYLE_DEFAULT (which is
+      // 0) and first case in this switch can't be reached.
+      VLOG(1) << "Unsupported style. Skipped: " << style
+              << ". Used default instead.";
+      return {{ImeTextSpan::Type::kComposition, ImeTextSpan::Thickness::kNone}};
+  }
+#else   // defined(USE_NEVA_APPRUNTIME)
       VLOG(1) << "Unsupported style. Skipped: " << style;
   }
   return std::nullopt;
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 }
 
 }  // namespace
@@ -392,13 +416,23 @@ bool ZWPTextInputWrapperV1::SupportsFinalizeVirtualKeyboardChanges() {
 void ZWPTextInputWrapperV1::OnEnter(void* data,
                                     struct zwp_text_input_v1* text_input,
                                     struct wl_surface* surface) {
+#if defined(USE_NEVA_APPRUNTIME)
+  ZWPTextInputWrapperV1* wti = static_cast<ZWPTextInputWrapperV1*>(data);
+  OnInputPanelVisibilityChanged(wti->connection_, true);
+#else   // defined(USE_NEVA_APPRUNTIME)
   NOTIMPLEMENTED_LOG_ONCE();
+#endif  // defined(USE_NEVA_APPRUNTIME)
 }
 
 // static
 void ZWPTextInputWrapperV1::OnLeave(void* data,
                                     struct zwp_text_input_v1* text_input) {
+#if defined(USE_NEVA_APPRUNTIME)
+  ZWPTextInputWrapperV1* wti = static_cast<ZWPTextInputWrapperV1*>(data);
+  OnInputPanelVisibilityChanged(wti->connection_, false);
+#else   // defined(USE_NEVA_APPRUNTIME)
   NOTIMPLEMENTED_LOG_ONCE();
+#endif  // defined(USE_NEVA_APPRUNTIME)
 }
 
 // static

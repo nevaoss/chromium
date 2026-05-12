@@ -18,6 +18,11 @@ extern const char kAppShellAllowRoaming[];
 extern const char kAppShellHostWindowSize[];
 extern const char kAppShellPreferredNetwork[];
 #endif
+
+#if defined(USE_NEVA_APPRUNTIME)
+extern const char kLaunchArgs[];
+#endif
+
 }  // namespace switches
 }  // namespace extensions
 

@@ -191,6 +191,19 @@ Resource* PreloadRequest::Start(Document* document) {
   }
   params.SetRenderBlockingBehavior(render_blocking_behavior_);
 
+#if defined(USE_NEVA_APPRUNTIME)
+  auto* frame = document->Loader()->GetFrame();
+  if (frame) {
+    bool can_load_universal_access = false;
+    if (frame->GetSettings()->GetAllowUniversalAccessFromFileURLs() &&
+        document->Url().ProtocolIs("file"))
+      can_load_universal_access = true;
+
+    if (can_load_universal_access)
+      params.MutableResourceRequest().SetMode(
+          network::mojom::RequestMode::kNoCors);
+  }
+#endif
   params.SetIsPotentiallyLCPElement(is_potentially_lcp_element_);
   params.SetIsPotentiallyLCPInfluencer(is_potentially_lcp_influencer_);
 

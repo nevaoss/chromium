@@ -17,7 +17,7 @@
 #include "third_party/blink/renderer/platform/timer.h"
 #include "third_party/blink/renderer/platform/wtf/allocator/allocator.h"
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 
 namespace base {
 class TickClock;
@@ -87,6 +87,6 @@ class CONTROLLER_EXPORT UserLevelMemoryPressureSignalGenerator
 
 }  // namespace blink
 
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 
 #endif  // THIRD_PARTY_BLINK_RENDERER_CONTROLLER_USER_LEVEL_MEMORY_PRESSURE_SIGNAL_GENERATOR_H_

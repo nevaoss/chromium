@@ -31,6 +31,12 @@ bool operator != (const StackFrame& lhs, const StackFrame& rhs) {
 }
 
 Backtrace::Backtrace() = default;
+// TODO(neva): Workaround for GCC to fix "use of deleted function" error occured
+// after the CL https://crrev.com/c/4208851. Need to find out root cause and
+// fix later.
+#if defined(USE_NEVA_APPRUNTIME) && !defined(__clang__)
+Backtrace::Backtrace(const Backtrace&) = default;
+#endif
 
 bool operator==(const Backtrace& lhs, const Backtrace& rhs) {
   if (lhs.frame_count != rhs.frame_count) return false;

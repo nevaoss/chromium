@@ -43,6 +43,11 @@ struct CONTENT_EXPORT ClientMetadata {
 struct CONTENT_EXPORT IdentityCredentialTokenError {
   std::string code;
   GURL url;
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  IdentityCredentialTokenError(std::string code, GURL url)
+      : code(code), url(url){};
+#endif
 };
 
 struct CONTENT_EXPORT IdentityProviderMetadata {

@@ -136,6 +136,11 @@
 #include "third_party/blink/renderer/platform/wtf/text/wtf_string.h"
 #include "url/url_features.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
+#include "third_party/blink/public/mojom/neva/app_runtime_blink_delegate.mojom.h"
+#endif
+
 namespace blink {
 
 namespace {

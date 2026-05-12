@@ -442,7 +442,7 @@ class ChildThreadImpl::IOThreadState
   }
 #endif
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
   void OnMemoryPressure(
       base::MemoryPressureListener::MemoryPressureLevel level) override {
     main_thread_task_runner_->PostTask(
@@ -973,7 +973,7 @@ bool ChildThreadImpl::IsInBrowserProcess() const {
   return static_cast<bool>(browser_process_io_runner_);
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 void ChildThreadImpl::OnMemoryPressureFromBrowserReceived(
     base::MemoryPressureListener::MemoryPressureLevel level) {
   // Generate no memory pressure signals when --single-process is specified.

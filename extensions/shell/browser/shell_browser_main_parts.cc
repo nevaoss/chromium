@@ -78,6 +78,19 @@
 #include "extensions/shell/browser/shell_nacl_browser_delegate.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "components/web_cache/browser/web_cache_manager.h"
+#endif
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "ui/linux/linux_ui.h"
+
+#if defined(USE_OZONE)
+#include "ui/ozone/public/ozone_platform.h"
+#endif  // defined(USE_OZONE)
+///@}
+
 using base::CommandLine;
 using content::BrowserContext;
 
@@ -85,6 +98,21 @@ using content::BrowserContext;
 #endif
 
 namespace extensions {
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+namespace {
+
+bool IsWayland() {
+#if defined(USE_OZONE)
+  return ui::OzonePlatform::IsWayland();
+#else  // defined(USE_OZONE)
+  return false;
+#endif  // !defined(USE_OZONE)
+}
+
+}  // namespace
+///@}
 
 ShellBrowserMainParts::ShellBrowserMainParts(
     ShellBrowserMainDelegate* browser_main_delegate,
@@ -141,7 +169,14 @@ void ShellBrowserMainParts::PostCreateMainMessageLoop() {
   // app_shell doesn't need GTK, so the fake input method context can work.
   // See crbug.com/381852 and revision fb69f142.
   // TODO(michaelpg): Verify this works for target environments.
-  ui::InitializeInputMethodForTesting();
+
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // For Ozone/Wayland platforms do not use a stub to initialize the input
+  // method.
+  if (!IsWayland())
+  ///@}
+    ui::InitializeInputMethodForTesting();
 #else
   ui::InitializeInputMethodForTesting();
 #endif
@@ -239,6 +274,9 @@ int ShellBrowserMainParts::PreMainMessageLoopRun() {
     desktop_controller_->PreMainMessageLoopRun();
   }
 
+#if defined(USE_NEVA_APPRUNTIME)
+  web_cache::WebCacheManager::GetInstance();
+#endif
   return content::RESULT_CODE_NORMAL_EXIT;
 }
 

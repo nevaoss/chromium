@@ -1024,6 +1024,7 @@ scoped_refptr<VideoFrame> VideoFrame::CreateBlackFrame(const gfx::Size& size) {
   const uint8_t kBlackY = 0x00;
   const uint8_t kBlackUV = 0x80;
   const base::TimeDelta kZero;
+
   return CreateColorFrame(size, kBlackY, kBlackUV, kBlackUV, kZero);
 }
 

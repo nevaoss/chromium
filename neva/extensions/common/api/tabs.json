@@ -1,0 +1,704 @@
+// Copyright 2012 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// (This file was partially copied from //chrome/common/extensions/api.)
+
+[
+  {
+    "namespace": "tabs",
+    "description": "Use the <code>chrome.tabs</code> API to interact with the browser's tab system. You can use this API to create, modify, and rearrange tabs in the browser.",
+    "compiler_options": {
+      "implemented_in": "neva/extensions/browser/api/tabs/tabs_api.h"
+    },
+    "types": [
+      {
+        "id": "TabStatus",
+        "type": "string",
+        "enum": ["unloaded", "loading", "complete"],
+        "description": "The tab's loading status."
+      },
+      {
+        "id": "MutedInfoReason",
+        "type": "string",
+        "description": "An event that caused a muted state change.",
+        "enum": [
+          {"name": "user", "description": "A user input action set the muted state."},
+          {"name": "capture", "description": "Tab capture was started, forcing a muted state change."},
+          {"name": "extension", "description": "An extension, identified by the extensionId field, set the muted state."}
+        ]
+      },
+      {
+        "id": "MutedInfo",
+        "type": "object",
+        "description": "The tab's muted state and the reason for the last state change.",
+        "properties": {
+          "muted": {
+            "type": "boolean",
+            "description": "Whether the tab is muted (prevented from playing sound). The tab may be muted even if it has not played or is not currently playing sound. Equivalent to whether the 'muted' audio indicator is showing."
+          },
+          "reason": {
+            "$ref": "MutedInfoReason",
+            "optional": true,
+            "description": "The reason the tab was muted or unmuted. Not set if the tab's mute state has never been changed."
+          },
+          "extensionId": {
+            "type": "string",
+            "optional": true,
+            "description": "The ID of the extension that changed the muted state. Not set if an extension was not the reason the muted state last changed."
+          }
+        }
+      },
+      {
+        "id": "Tab",
+        "type": "object",
+        "properties": {
+          "id": {"type": "integer", "minimum": -1, "optional": true, "description": "The ID of the tab. Tab IDs are unique within a browser session. Under some circumstances a tab may not be assigned an ID; for example, when querying foreign tabs using the $(ref:sessions) API, in which case a session ID may be present. Tab ID can also be set to <code>chrome.tabs.TAB_ID_NONE</code> for apps and devtools windows."},
+          // TODO(kalman): Investigate how this is ending up as -1 (based on window type? a bug?) and whether it should be optional instead.
+          "index": {"type": "integer", "minimum": -1, "description": "The zero-based index of the tab within its window."},
+          "groupId": {"type": "integer", "minimum": -1, "description": "The ID of the group that the tab belongs to."},
+          "windowId": {"type": "integer", "minimum": 0, "description": "The ID of the window that contains the tab."},
+          "openerTabId": {"type": "integer", "minimum": 0, "optional": true, "description": "The ID of the tab that opened this tab, if any. This property is only present if the opener tab still exists."},
+          "selected": {"type": "boolean", "description": "Whether the tab is selected.", "deprecated": "Please use $(ref:tabs.Tab.highlighted)."},
+          "highlighted": {"type": "boolean", "description": "Whether the tab is highlighted."},
+          "active": {"type": "boolean", "description": "Whether the tab is active in its window. Does not necessarily mean the window is focused."},
+          "pinned": {"type": "boolean", "description": "Whether the tab is pinned."},
+          "audible": {"type": "boolean", "optional": true, "description": "Whether the tab has produced sound over the past couple of seconds (but it might not be heard if also muted). Equivalent to whether the 'speaker audio' indicator is showing."},
+          "discarded": {"type": "boolean", "description": "Whether the tab is discarded. A discarded tab is one whose content has been unloaded from memory, but is still visible in the tab strip. Its content is reloaded the next time it is activated."},
+          "autoDiscardable":  {"type": "boolean", "description": "Whether the tab can be discarded automatically by the browser when resources are low."},
+          "mutedInfo": {"$ref": "MutedInfo", "optional": true, "description": "The tab's muted state and the reason for the last state change."},
+          "url": {"type": "string", "optional": true, "description": "The last committed URL of the main frame of the tab. This property is only present if the extension's manifest includes the <code>\"tabs\"</code> permission and may be an empty string if the tab has not yet committed. See also $(ref:Tab.pendingUrl)."},
+          "pendingUrl": {"type": "string", "optional": true, "description": "The URL the tab is navigating to, before it has committed. This property is only present if the extension's manifest includes the <code>\"tabs\"</code> permission and there is a pending navigation."},
+          "title": {"type": "string", "optional": true, "description": "The title of the tab. This property is only present if the extension's manifest includes the <code>\"tabs\"</code> permission."},
+          "favIconUrl": {"type": "string", "optional": true, "description": "The URL of the tab's favicon. This property is only present if the extension's manifest includes the <code>\"tabs\"</code> permission. It may also be an empty string if the tab is loading."},
+          "status": {
+            "$ref": "TabStatus",
+            "optional": true,
+            "description": "The tab's loading status."
+          },
+          "incognito": {"type": "boolean", "description": "Whether the tab is in an incognito window."},
+          "width": {"type": "integer", "optional": true, "description": "The width of the tab in pixels."},
+          "height": {"type": "integer", "optional": true, "description": "The height of the tab in pixels."},
+          "sessionId": {"type": "string", "optional": true, "description": "The session ID used to uniquely identify a tab obtained from the $(ref:sessions) API."}
+        }
+      },
+      {
+        "id": "WindowType",
+        "type": "string",
+        "enum": ["normal", "popup", "panel", "app", "devtools"],
+        "description": "The type of window."
+      }
+    ],
+    "properties": {
+      "MAX_CAPTURE_VISIBLE_TAB_CALLS_PER_SECOND": {
+        "value": 2,
+        "description": "The maximum number of times that $(ref:captureVisibleTab) can be called per second. $(ref:captureVisibleTab) is expensive and should not be called too often."
+      },
+      "TAB_ID_NONE": {
+        "value": -1,
+        "description": "An ID that represents the absence of a browser tab."
+      }
+    },
+    "functions": [
+      {
+        "name": "get",
+        "type": "function",
+        "description": "Retrieves details about the specified tab.",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "tabId",
+            "minimum": 0
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {"name": "tab", "$ref": "Tab"}
+          ]
+        }
+      },
+      {
+        "name": "getCurrent",
+        "type": "function",
+        "description": "Gets the tab that this script call is being made from. Returns <code>undefined</code> if called from a non-tab context (for example, a background page or popup view).",
+        "parameters": [],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "tab",
+              "$ref": "Tab",
+              "optional": true
+            }
+          ]
+        }
+      },
+      {
+        "name": "create",
+        "type": "function",
+        "description": "Creates a new tab.",
+        "parameters": [
+          {
+            "type": "object",
+            "name": "createProperties",
+            "properties": {
+              "windowId": {
+                "type": "integer",
+                "minimum": -2,
+                "optional": true,
+                "description": "The window in which to create the new tab. Defaults to the <a href='windows#current-window'>current window</a>."
+              },
+              "index": {
+                "type": "integer",
+                "minimum": 0,
+                "optional": true,
+                "description": "The position the tab should take in the window. The provided value is clamped to between zero and the number of tabs in the window."
+              },
+              "url": {
+                "type": "string",
+                "optional": true,
+                "description": "The URL to initially navigate the tab to. Fully-qualified URLs must include a scheme (i.e., 'http://www.google.com', not 'www.google.com'). Relative URLs are relative to the current page within the extension. Defaults to the New Tab Page."
+              },
+              "active": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tab should become the active tab in the window. Does not affect whether the window is focused (see $(ref:windows.update)). Defaults to <var>true</var>."
+              },
+              "selected": {
+                "deprecated": "Please use <em>active</em>.",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tab should become the selected tab in the window. Defaults to <var>true</var>"
+              },
+              "pinned": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tab should be pinned. Defaults to <var>false</var>"
+              },
+              "openerTabId": {
+                "type": "integer",
+                "minimum": 0,
+                "optional": true,
+                "description": "The ID of the tab that opened this tab. If specified, the opener tab must be in the same window as the newly created tab."
+              }
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "optional": true,
+          "parameters": [
+            {
+              "name": "tab",
+              "$ref": "Tab",
+              "description": "The created tab."
+            }
+          ]
+        }
+      },
+      {
+        "name": "query",
+        "type": "function",
+        "description": "Gets all tabs that have the specified properties, or all tabs if no properties are specified.",
+        "parameters": [
+          {
+            "type": "object",
+            "name": "queryInfo",
+            "properties": {
+              "active": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tabs are active in their windows."
+              },
+              "pinned": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tabs are pinned."
+              },
+              "audible": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tabs are audible."
+              },
+              "muted": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tabs are muted."
+              },
+              "highlighted": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tabs are highlighted."
+              },
+              "discarded": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tabs are discarded. A discarded tab is one whose content has been unloaded from memory, but is still visible in the tab strip. Its content is reloaded the next time it is activated."
+              },
+              "autoDiscardable": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tabs can be discarded automatically by the browser when resources are low."
+              },
+              "currentWindow": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tabs are in the <a href='windows#current-window'>current window</a>."
+              },
+              "lastFocusedWindow": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tabs are in the last focused window."
+              },
+              "status": {
+                "$ref": "TabStatus",
+                "optional": true,
+                "description": "The tab loading status."
+              },
+              "title": {
+                "type": "string",
+                "optional": true,
+                "description": "Match page titles against a pattern. This property is ignored if the extension does not have the <code>\"tabs\"</code> permission."
+              },
+              "url": {
+                "choices": [
+                  {"type": "string"},
+                  {"type": "array", "items": {"type": "string"}}
+                ],
+                "optional": true,
+                "description": "Match tabs against one or more <a href='match_patterns'>URL patterns</a>. Fragment identifiers are not matched. This property is ignored if the extension does not have the <code>\"tabs\"</code> permission."
+              },
+              "groupId": {
+                "type": "integer",
+                "optional": true,
+                "minimum": -1,
+                "description": "The ID of the group that the tabs are in, or $(ref:tabGroups.TAB_GROUP_ID_NONE) for ungrouped tabs."
+              },
+              "windowId": {
+                "type": "integer",
+                "optional": true,
+                "minimum": -2,
+                "description": "The ID of the parent window, or $(ref:windows.WINDOW_ID_CURRENT) for the <a href='windows#current-window'>current window</a>."
+              },
+              "windowType": {
+                "$ref": "WindowType",
+                "optional": true,
+                "description": "The type of window the tabs are in."
+              },
+              "index": {
+                "type": "integer",
+                "optional": true,
+                "minimum": 0,
+                "description": "The position of the tabs within their windows."
+              }
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "name": "result",
+              "type": "array",
+              "items": {
+                "$ref": "Tab"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "sendMessage",
+        "nocompile": true,
+        "type": "function",
+        "description": "Sends a single message to the content script(s) in the specified tab, with an optional callback to run when a response is sent back.  The $(ref:runtime.onMessage) event is fired in each content script running in the specified tab for the current extension.",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "tabId",
+            "minimum": 0
+          },
+          {
+            "type": "any",
+            "name": "message",
+            "description": "The message to send. This message should be a JSON-ifiable object."
+          },
+          {
+            "type": "object",
+            "name": "options",
+            "properties": {
+              "frameId": {
+                "type": "integer",
+                "optional": true,
+                "minimum": 0,
+                "description": "Send a message to a specific <a href='webNavigation#frame_ids'>frame</a> identified by <code>frameId</code> instead of all frames in the tab."
+              },
+              "documentId": {
+                "type": "string",
+                "optional": true,
+                "description": "Send a message to a specific <a href='webNavigation#document_ids'>document</a> identified by <code>documentId</code> instead of all frames in the tab."
+              }
+            },
+            "optional": true
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "optional": true,
+          "parameters": [
+            {
+              "name": "response",
+              "type": "any",
+              "description": "The JSON response object sent by the handler of the message. If an error occurs while connecting to the specified tab, the callback is called with no arguments and $(ref:runtime.lastError) is set to the error message."
+            }
+          ]
+        }
+      },
+      {
+        "name": "update",
+        "type": "function",
+        "description": "Modifies the properties of a tab. Properties that are not specified in <var>updateProperties</var> are not modified.",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "tabId",
+            "minimum": 0,
+            "optional": true,
+            "description": "Defaults to the selected tab of the <a href='windows#current-window'>current window</a>."
+          },
+          {
+            "type": "object",
+            "name": "updateProperties",
+            "properties": {
+              "url": {
+                "type": "string",
+                "optional": true,
+                "description": "A URL to navigate the tab to. JavaScript URLs are not supported; use $(ref:scripting.executeScript) instead."
+              },
+              "active": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tab should be active. Does not affect whether the window is focused (see $(ref:windows.update))."
+              },
+              "highlighted": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Adds or removes the tab from the current selection."
+              },
+              "selected": {
+                "deprecated": "Please use <em>highlighted</em>.",
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tab should be selected."
+              },
+              "pinned": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tab should be pinned."
+              },
+              "muted": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tab should be muted."
+              },
+              "openerTabId": {
+                "type": "integer",
+                "minimum": 0,
+                "optional": true,
+                "description": "The ID of the tab that opened this tab. If specified, the opener tab must be in the same window as this tab."
+              },
+              "autoDiscardable": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether the tab should be discarded automatically by the browser when resources are low."
+              }
+            }
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "optional": true,
+          "parameters": [
+            {
+              "name": "tab",
+              "$ref": "Tab",
+              "optional": true,
+              "description": "Details about the updated tab. The $(ref:tabs.Tab) object does not contain <code>url</code>, <code>pendingUrl</code>, <code>title</code>, and <code>favIconUrl</code> if the <code>\"tabs\"</code> permission has not been requested."
+            }
+          ]
+        }
+      },
+      {
+        "name": "reload",
+        "type": "function",
+        "description": "Reload a tab.",
+        "parameters": [
+          {"type": "integer", "name": "tabId", "minimum": 0, "optional": true, "description": "The ID of the tab to reload; defaults to the selected tab of the current window."},
+          {
+            "type": "object",
+            "name": "reloadProperties",
+            "optional": true,
+            "properties": {
+              "bypassCache": {
+                "type": "boolean",
+                "optional": true,
+                "description": "Whether to bypass local caching. Defaults to <code>false</code>."
+              }
+            }
+          }
+        ],
+        "returns_async": {"name": "callback", "optional": true, "parameters": []}
+      },
+      {
+        "name": "remove",
+        "type": "function",
+        "description": "Closes one or more tabs.",
+        "parameters": [
+          {
+            "name": "tabIds",
+            "description": "The tab ID or list of tab IDs to close.",
+            "choices": [
+              {"type": "integer", "minimum": 0},
+              {"type": "array", "items": {"type": "integer", "minimum": 0}}
+            ]
+          }
+        ],
+        "returns_async": {"name": "callback", "optional": true, "parameters": []}
+      },
+      {
+        "name": "detectLanguage",
+        "type": "function",
+        "description": "Detects the primary language of the content in a tab.",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "tabId",
+            "minimum": 0,
+            "optional": true,
+            "description": "Defaults to the active tab of the <a href='windows#current-window'>current window</a>."
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "type": "string",
+              "name": "language",
+              "description": "An ISO language code such as <code>en</code> or <code>fr</code>. For a complete list of languages supported by this method, see <a href='http://src.chromium.org/viewvc/chrome/trunk/src/third_party/cld/languages/internal/languages.cc'>kLanguageInfoTable</a>. The second to fourth columns are checked and the first non-NULL value is returned, except for Simplified Chinese for which <code>zh-CN</code> is returned. For an unknown/undefined language, <code>und</code> is returned."
+            }
+          ]
+        }
+      },
+      {
+        "name": "captureVisibleTab",
+        "type": "function",
+        "description": "Captures the visible area of the currently active tab in the specified window. In order to call this method, the extension must have either the <a href='develop/concepts/declare-permissions'>&lt;all_urls&gt;</a> permission or the <a href='develop/concepts/activeTab'>activeTab</a> permission. In addition to sites that extensions can normally access, this method allows extensions to capture sensitive sites that are otherwise restricted, including chrome:-scheme pages, other extensions' pages, and data: URLs. These sensitive sites can only be captured with the activeTab permission. File URLs may be captured only if the extension has been granted file access.",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "windowId",
+            "minimum": -2,
+            "optional": true,
+            "description": "The target window. Defaults to the <a href='windows#current-window'>current window</a>."
+          },
+          {
+            "$ref": "extensionTypes.ImageDetails",
+            "name": "options",
+            "optional": true
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "parameters": [
+            {
+              "type": "string",
+              "name": "dataUrl",
+              "description": "A data URL that encodes an image of the visible area of the captured tab. May be assigned to the 'src' property of an HTML <code>img</code> element for display."
+            }
+          ]
+        }
+      },
+      {
+        "name": "executeScript",
+        "deprecated": "Replaced by $(ref:scripting.executeScript) in Manifest V3.",
+        "type": "function",
+        "description": "Injects JavaScript code into a page. For details, see the <a href='develop/concepts/content-scripts#programmatic'>programmatic injection</a> section of the content scripts doc.",
+        "parameters": [
+          {"type": "integer", "name": "tabId", "minimum": 0, "optional": true, "description": "The ID of the tab in which to run the script; defaults to the active tab of the current window."},
+          {
+            "$ref": "extensionTypes.InjectDetails",
+            "name": "details",
+            "description": "Details of the script to run. Either the code or the file property must be set, but both may not be set at the same time."
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "optional": true,
+          "description": "Called after all the JavaScript has been executed.",
+          "parameters": [
+            {
+              "name": "result",
+              "optional": true,
+              "type": "array",
+              "items": {"type": "any", "minimum": 0},
+              "description": "The result of the script in every injected frame."
+            }
+          ]
+        }
+      },
+      {
+        "name": "insertCSS",
+        "deprecated": "Replaced by $(ref:scripting.insertCSS) in Manifest V3.",
+        "type": "function",
+        "description": "Injects CSS into a page. Styles inserted with this method can be removed with $(ref:scripting.removeCSS). For details, see the <a href='content_scripts#pi'>programmatic injection</a> section of the content scripts doc.",
+        "parameters": [
+          {"type": "integer", "name": "tabId", "minimum": 0, "optional": true, "description": "The ID of the tab in which to insert the CSS; defaults to the active tab of the current window."},
+          {
+            "$ref": "extensionTypes.InjectDetails",
+            "name": "details",
+            "description": "Details of the CSS text to insert. Either the code or the file property must be set, but both may not be set at the same time."
+          }
+        ],
+        "returns_async": {
+          "name": "callback",
+          "optional": true,
+          "description": "Called when all the CSS has been inserted.",
+          "parameters": []
+        }
+      }
+    ],
+    "events": [
+      {
+        "name": "onCreated",
+        "type": "function",
+        "description": "Fired when a tab is created. Note that the tab's URL and tab group membership may not be set at the time this event is fired, but you can listen to onUpdated events so as to be notified when a URL is set or the tab is added to a tab group.",
+        "parameters": [
+          {
+            "$ref": "Tab",
+            "name": "tab",
+            "description": "Details of the tab that was created."
+          }
+        ]
+      },
+      {
+        "name": "onUpdated",
+        "type": "function",
+        "description": "Fired when a tab is updated.",
+        "parameters": [
+          {"type": "integer", "name": "tabId", "minimum": 0},
+          {
+            "type": "object",
+            "name": "changeInfo",
+            "description": "Lists the changes to the state of the tab that was updated.",
+            "properties": {
+              "status": {
+                "$ref": "TabStatus",
+                "optional": true,
+                "description": "The tab's loading status."
+              },
+              "url": {
+                "type": "string",
+                "optional": true,
+                "description": "The tab's URL if it has changed."
+              },
+              "groupId": {
+                "type": "integer",
+                "optional": true,
+                "minimum": -1,
+                "description": "The tab's new group."
+              },
+              "pinned": {
+                "type": "boolean",
+                "optional": true,
+                "description": "The tab's new pinned state."
+              },
+              "audible": {
+                "type": "boolean",
+                "optional": true,
+                "description": "The tab's new audible state."
+              },
+              "discarded": {
+                "type": "boolean",
+                "optional": true,
+                "description": "The tab's new discarded state."
+              },
+              "autoDiscardable": {
+                "type": "boolean",
+                "optional": true,
+                "description": "The tab's new auto-discardable state."
+              },
+              "mutedInfo": {
+                "$ref": "MutedInfo",
+                "optional": true,
+                "description": "The tab's new muted state and the reason for the change."
+              },
+              "favIconUrl": {
+                "type": "string",
+                "optional": true,
+                "description": "The tab's new favicon URL."
+              },
+              "title": {
+                "type": "string",
+                "optional": true,
+                "description": "The tab's new title."
+              }
+            }
+          },
+          {
+            "$ref": "Tab",
+            "name": "tab",
+            "description": "Gives the state of the tab that was updated."
+          }
+        ]
+      },
+      {
+        "name": "onActivated",
+        "type": "function",
+        "description": "Fires when the active tab in a window changes. Note that the tab's URL may not be set at the time this event fired, but you can listen to onUpdated events so as to be notified when a URL is set.",
+        "parameters": [
+          {
+            "type": "object",
+            "name": "activeInfo",
+            "properties": {
+              "tabId": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The ID of the tab that has become active."
+              },
+              "windowId": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The ID of the window the active tab changed inside of."
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "onRemoved",
+        "type": "function",
+        "description": "Fired when a tab is closed.",
+        "parameters": [
+          {"type": "integer", "name": "tabId", "minimum": 0},
+          {
+            "type": "object",
+            "name": "removeInfo",
+            "properties": {
+              "windowId": {"type": "integer", "minimum": 0, "description": "The window whose tab is closed." },
+              "isWindowClosing": {"type": "boolean", "description": "True when the tab was closed because its parent window was closed." }
+            }
+          }
+        ]
+      },
+      {
+        "name": "onReplaced",
+        "type": "function",
+        "description": "Fired when a tab is replaced with another tab due to prerendering or instant.",
+        "parameters": [
+          {"type": "integer", "name": "addedTabId", "minimum": 0},
+          {"type": "integer", "name": "removedTabId", "minimum": 0}
+        ]
+      }
+    ]
+  }
+]

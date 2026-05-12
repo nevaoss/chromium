@@ -308,7 +308,12 @@ SkFont FontPlatformData::CreateSkFont(const FontDescription*) const {
 
   const float ts = text_size_ >= 0 ? text_size_ : 12;
   font.setSize(SkFloatToScalar(ts));
+#if defined(USE_NEVA_APPRUNTIME)
+  font.setEmbolden(synthetic_bold_ &&
+                    WebFontRenderStyle::GetAllowFakeBoldText());
+#else
   font.setEmbolden(synthetic_bold_);
+#endif
   font.setSkewX(synthetic_italic_ ? -SK_Scalar1 / 4 : 0);
 
   font.setEmbeddedBitmaps(!avoid_embedded_bitmaps_);

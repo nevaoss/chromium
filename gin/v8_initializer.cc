@@ -54,6 +54,12 @@
 #endif
 #endif  // V8_USE_EXTERNAL_STARTUP_DATA
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/command_line.h"
+#include "base/file_descriptor_store.h"
+#include "base/neva/base_switches.h"
+#endif
+
 namespace gin {
 
 namespace {
@@ -564,11 +570,36 @@ void V8Initializer::Initialize(IsolateHolder::ScriptMode mode,
   v8::V8::SetEntropySource(&GenerateEntropy);
 
 #if defined(V8_USE_EXTERNAL_STARTUP_DATA)
+#if defined(USE_NEVA_APPRUNTIME)
+  base::MemoryMappedFile* mapped_snapshot = g_mapped_snapshot;
+  base::FileDescriptorStore& file_descriptor_store =
+      base::FileDescriptorStore::GetInstance();
+  base::MemoryMappedFile::Region region =
+      base::MemoryMappedFile::Region::kWholeFile;
+  base::ScopedFD fd =
+      file_descriptor_store.MaybeTakeFD(switches::kV8SnapshotBlobPath, &region);
+  if (fd.is_valid()) {
+    base::File file(std::move(fd));
+    std::unique_ptr<base::MemoryMappedFile> custom_snapshot(
+        new base::MemoryMappedFile());
+    if (custom_snapshot->Initialize(std::move(file), region)) {
+      mapped_snapshot = custom_snapshot.release();
+      LOG(INFO) << __func__ << ": V8 Custom snapshot_blob loaded.";
+    }
+  }
+
+  if (mapped_snapshot != nullptr) {
+    v8::StartupData snapshot;
+    GetMappedFileData(mapped_snapshot, &snapshot);
+    v8::V8::SetSnapshotDataBlob(&snapshot);
+  }
+#else
   if (g_mapped_snapshot) {
     v8::StartupData snapshot;
     GetMappedFileData(g_mapped_snapshot, &snapshot);
     v8::V8::SetSnapshotDataBlob(&snapshot);
   }
+#endif  // USE_NEVA_APPRUNTIME
 #endif  // V8_USE_EXTERNAL_STARTUP_DATA
 
   v8::V8::Initialize();

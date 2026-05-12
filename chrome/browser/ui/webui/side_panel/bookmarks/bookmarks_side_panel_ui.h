@@ -78,7 +78,12 @@ class BookmarksSidePanelUI
   commerce::ShoppingListContextMenuController*
   GetShoppingListContextMenuController();
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12
+  static std::string GetWebUIName() { return "BookmarksSidePanel"; }
+#else   // defined(__GNUC__) && __GNUC__ < 12
   static constexpr std::string GetWebUIName() { return "BookmarksSidePanel"; }
+#endif  // !(defined(__GNUC__) && __GNUC__ < 12)
 
  private:
   // side_panel::mojom::BookmarksPageHandlerFactory:

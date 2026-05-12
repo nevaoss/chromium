@@ -32,10 +32,14 @@ VMAddress StripPACBits(VMAddress address) {
 #if CRASHPAD_HAS_FEATURE(ptrauth_intrinsics)
     address = ptrauth_strip(address, ptrauth_key_function_pointer);
 #elif defined(ARCH_CPU_ARM64)
+// TODO(neva): Switching off compiler branch protection feature for
+// ARMv8.0 to successfully build webOS for RP build #2250
+#if !defined(NO_ARM_CONTROL_FLOW_INTEGRITY)
     // Strip any pointer authentication bits that are assigned to the address.
     register uintptr_t x30 __asm("x30") = address;
     asm("xpaclri" : "+r"(x30));
     address = x30;
+#endif  // !defined(NO_ARM_CONTROL_FLOW_INTEGRITY)
 #endif
     return address;
 }

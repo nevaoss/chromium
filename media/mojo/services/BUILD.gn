@@ -119,6 +119,8 @@ component("services") {
     sources += [ "gpu_mojo_media_client_mac.cc" ]
   } else if (is_win) {
     sources += [ "gpu_mojo_media_client_win.cc" ]
+  } else if (use_webos_codec) {
+    sources += [ "gpu_mojo_media_client_webos.cc" ]
   } else if (use_vaapi || use_v4l2_codec) {
     if (is_linux) {
       sources += [ "gpu_mojo_media_client_linux.cc" ]

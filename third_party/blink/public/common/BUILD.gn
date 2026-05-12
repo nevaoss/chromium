@@ -13,6 +13,8 @@ import("//third_party/blink/renderer/build/scripts/scripts.gni")
 import("//third_party/protobuf/proto_library.gni")
 import("//third_party/webrtc/webrtc.gni")
 
+import("//neva/neva.gni")
+
 if (is_android) {
   import("//build/config/android/rules.gni")
 }
@@ -379,6 +381,11 @@ source_set("headers") {
 
   if (is_mac) {
     sources += [ "sandbox_support/sandbox_support_mac.h" ]
+  }
+
+  # Neva features in blink
+  if (use_neva_appruntime) {
+    sources += [ "neva/neva_blink_features.h"]
   }
 }
 

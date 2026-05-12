@@ -119,6 +119,12 @@ class WaylandOutput : public wl::GlobalObjectRegistrar<WaylandOutput> {
     return color_management_output_.get();
   }
 
+  // TODO(neva): Use get_output() from CL https://crrev.com/c/3499266 instead.
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  wl_output* output() const { return output_.get(); }
+  ///@}
+
   // Returns true if the output has all the state information available
   // necessary to represent its associated display. This information arrives
   // asynchronously via events across potentially multiple wayland objects.

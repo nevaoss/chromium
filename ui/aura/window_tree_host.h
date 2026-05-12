@@ -30,6 +30,11 @@
 #include "ui/gfx/native_widget_types.h"
 #include "ui/gfx/overlay_transform.h"
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "ui/aura/neva/window_tree_host.h"
+///@}
+
 namespace gfx {
 class Point;
 class Rect;
@@ -66,7 +71,11 @@ class WindowTreeHostObserver;
 class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
                                    public ui::EventSource,
                                    public display::DisplayObserver,
-                                   public ui::CompositorObserver {
+                                   public ui::CompositorObserver,
+                                   ///@name USE_NEVA_APPRUNTIME
+                                   ///@{
+                                   public neva::WindowTreeHost {
+                                   ///@}
  public:
   static const char kWindowTreeHostUsesParent[];
 
@@ -349,6 +358,17 @@ class AURA_EXPORT WindowTreeHost : public ui::ImeKeyEventDispatcher,
   void OnHostDisplayChanged();
   void OnHostCloseRequested();
   void OnHostLostWindowCapture();
+  ///@name USE_NEVA_APPRUNTIME {
+  void OnWindowHostStateChanged(ui::WidgetState new_state);
+  ///@}
+
+#if BUILDFLAG(IS_WEBOS)
+  void OnInputPanelVisibilityChanged(bool visibility);
+  void OnInputPanelRectChanged(int32_t x,
+                               int32_t y,
+                               uint32_t width,
+                               uint32_t height);
+#endif  // BUILDFLAG(IS_WEBOS)
 
   // Sets the currently displayed cursor.
   virtual void SetCursorNative(gfx::NativeCursor cursor) = 0;

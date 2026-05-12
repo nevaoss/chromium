@@ -266,7 +266,12 @@ base::WeakPtr<WidgetDelegate> WidgetDelegate::AttachWidgetAndGetHandle(
 void WidgetDelegate::WidgetInitialized() {
   for (auto&& callback : *widget_initialized_callbacks_)
     std::move(callback).Run();
+#if !BUILDFLAG(IS_WEBOS)
+  // FIXME(neva): M91: Don't reset to avoid segfault since logic is incompatible
+  // with neva_app_runtime::WebAppWindow::RecreateIfNeeded ('InitWindow' branch)
+  // scenario. Revise in case of an upstream change.
   widget_initialized_callbacks_.reset();
+#endif  // !BUILDFLAG(IS_WEBOS)
   OnWidgetInitialized();
 }
 

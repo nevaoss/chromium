@@ -1,0 +1,15 @@
+{
+    "type": "regular",
+    "appId": "com.webos.settingsservice.client",
+    "allowedNames": [
+        "com.webos.settingsservice.client-*"
+    ],
+    "permissions": [
+        {
+            "service": "com.webos.settingsservice.client-*",
+            "outbound": [
+                "*"
+            ]
+        }
+    ]
+}

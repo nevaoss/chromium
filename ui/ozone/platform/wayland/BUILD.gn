@@ -7,6 +7,7 @@ visibility = [ "//ui/ozone/*" ]
 import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/linux/pkg_config.gni")
 import("//gpu/vulkan/features.gni")
+import("//neva/neva.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 import("//ui/ozone/platform/wayland/wayland.gni")
 
@@ -390,6 +391,43 @@ source_set("wayland") {
     ]
   }
 
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  sources += [
+    "host/extended_input_wrapper.h",
+    "host/extended_input_device_wrapper.h",
+    "host/extended_seat_wrapper.h",
+    "host/input_manager_wrapper.h",
+    "host/input_panel.h",
+    "host/input_panel_manager.h",
+    "host/surface_group_compositor_wrapper.h",
+    "host/surface_group_wrapper.h",
+    "host/wayland_extensions.h",
+    "host/wayland_extensions_stub.cc",
+  ]
+
+  if (is_webos) {
+    sources -= [
+      "host/wayland_extensions_stub.cc",
+    ]
+
+    deps += [ "extensions/webos" ]
+  }
+
+  if (is_agl) {
+    sources -= [ "host/wayland_extensions_stub.cc" ]
+
+    deps += [ "extensions/agl" ]
+  }
+  #@}
+
+  if (use_neva_appruntime) {
+    sources += [
+      "host/wayland_seat_manager.cc",
+      "host/wayland_seat_manager.h",
+    ]
+  }
+
   if (use_bundled_weston) {
     data_deps = [ "//third_party/weston" ]
   }
@@ -639,6 +677,11 @@ source_set("wayland_unittests") {
     "test/wayland_test.cc",
     "test/wayland_test.h",
   ]
+
+  # TODO(neva): Below unittests uses DRM headers, which absent on webOS.
+  if (is_webos) {
+    sources -= [ "gpu/wayland_overlay_manager_unittest.cc" ]
+  }
 
   deps = [
     ":common",

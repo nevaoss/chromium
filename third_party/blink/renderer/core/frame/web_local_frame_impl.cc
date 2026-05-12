@@ -278,6 +278,11 @@
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #include "ui/gfx/geometry/size_conversions.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/renderer/core/loader/document_loader.h"
+#include "third_party/blink/renderer/core/paint/timing/first_meaningful_paint_detector.h"
+#endif
+
 #if BUILDFLAG(IS_WIN)
 #include "third_party/blink/public/web/win/web_font_family_names.h"
 #include "third_party/blink/renderer/core/layout/layout_font_accessor_win.h"
@@ -2745,6 +2750,22 @@ void WebLocalFrameImpl::CommitNavigation(
   GetFrame()->Loader().CommitNavigation(std::move(navigation_params),
                                         std::move(extra_data));
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+void WebLocalFrameImpl::UpdateForSameDocumentNavigation(
+    const std::string& new_url) {
+  DCHECK(GetFrame());
+  GetFrame()->GetDocument()->Loader()->UpdateForSameDocumentNavigation(
+      blink::KURL(blink::KURL(),
+                  WTF::String::FromUTF8(base::as_byte_span(new_url))),
+      nullptr, mojom::blink::SameDocumentNavigationType::kHistoryApi, nullptr,
+      blink::WebFrameLoadType::kReplaceCurrentItem, blink::FirePopstate::kNo,
+      frame_->DomWindow()->GetSecurityOrigin(),
+      /*is_browser_initiated=*/true,
+      /*is_synchronously_committed=*/true,
+      /*soft_navigation_heuristics_task_id*/std::nullopt);
+}
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
 blink::mojom::CommitResult WebLocalFrameImpl::CommitSameDocumentNavigation(
     const WebURL& url,

@@ -989,6 +989,13 @@
       name: "navigatorPlatformOverride",
       type: "String",
     },
+    ///@name USE_NEVA_APPRUNTIME
+    ///@{
+    {
+      name: "disallowScrollbarsInMainFrame",
+      initial: "false",
+    },
+    ///@}
     {
       name: "lowPriorityIframesThreshold",
       initial: "WebEffectiveConnectionType::kTypeUnknown",

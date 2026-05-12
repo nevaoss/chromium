@@ -26,7 +26,15 @@ using optimization_guide::proto::Passage;
 
 namespace {
 
+// TODO(neva): Remove this when Neva GCC version upgraded to the later
+// version of GCC 12.1.
+#if defined(__GNUC__) && __GNUC__ < 12 || \
+    (__GNUC__ == 12 && __GNUC_MINOR__ <= 1) && !defined(__clang__)
+static const std::string kPassageIdToken = "ID";
+#else
 static constexpr std::string kPassageIdToken = "ID";
+#endif  // defined(__GNUC__) && __GNUC__ < 12 || \
+//(__GNUC__ == 12 && __GNUC_MINOR__ <= 1) && !defined(__clang__)
 // Estimated token count of the preamble text in prompt.
 static constexpr size_t kPreambleTokenBufferSize = 100u;
 // Estimated token count of overhead text per passage.

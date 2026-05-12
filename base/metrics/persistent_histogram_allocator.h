@@ -64,6 +64,14 @@ class BASE_EXPORT PersistentSparseHistogramDataManager {
   friend class PersistentSampleMapRecords;
 
   struct ReferenceAndSample {
+    // TODO(neva): Remove this when Neva GCC support the syntax used in
+    // upstream's implementation. (GCC version 10.5.0 can compile the original
+    // implementation.)
+#if (__cplusplus < 202002L)
+    ReferenceAndSample(PersistentMemoryAllocator::Reference reference,
+                       HistogramBase::Sample value)
+        : reference(reference), value(value) {}
+#endif
     PersistentMemoryAllocator::Reference reference;
     HistogramBase::Sample value;
   };

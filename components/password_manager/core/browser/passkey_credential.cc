@@ -148,7 +148,20 @@ std::u16string PasskeyCredential::GetAuthenticatorLabelBySourceType() const {
   return l10n_util::GetStringUTF16(id);
 }
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+bool operator==(const PasskeyCredential& lhs,
+                const PasskeyCredential& rhs) {
+  return (lhs.source_ == rhs.source_) &&
+         (lhs.rp_id_ == rhs.rp_id_) &&
+         (lhs.credential_id_ == rhs.credential_id_) &&
+         (lhs.user_id_ == rhs.user_id_) &&
+         (lhs.username_ == rhs.username_) &&
+         (lhs.display_name_ == rhs.display_name_);
+}
+#else   // (__cplusplus < 202002L)
 bool operator==(const PasskeyCredential& lhs,
                 const PasskeyCredential& rhs) = default;
+#endif  // !(__cplusplus < 202002L)
 
 }  // namespace password_manager

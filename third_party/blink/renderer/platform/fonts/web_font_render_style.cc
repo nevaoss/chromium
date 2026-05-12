@@ -19,6 +19,9 @@ bool g_use_skia_auto_hint = true;
 bool g_use_skia_bitmaps = true;
 bool g_use_skia_anti_alias = true;
 bool g_use_skia_subpixel_rendering = false;
+#if defined(USE_NEVA_APPRUNTIME)
+bool g_use_fake_bold_text = true;
+#endif
 
 }  // namespace
 
@@ -62,6 +65,18 @@ void WebFontRenderStyle::SetSystemFontFamily(const WebString& name) {
   FontCache::SetSystemFontFamily(name);
 }
 
+#if defined(USE_NEVA_APPRUNTIME)
+// static
+void WebFontRenderStyle::SetAllowFakeBoldText(bool use_fake_bold_text) {
+  g_use_fake_bold_text = use_fake_bold_text;
+}
+
+// static
+bool WebFontRenderStyle::GetAllowFakeBoldText() {
+  return g_use_fake_bold_text;
+}
+#endif
+
 // static
 WebFontRenderStyle WebFontRenderStyle::GetDefault() {
   WebFontRenderStyle result;
@@ -71,6 +86,9 @@ WebFontRenderStyle WebFontRenderStyle::GetDefault() {
   result.use_anti_alias = g_use_skia_anti_alias;
   result.use_subpixel_rendering = g_use_skia_subpixel_rendering;
   result.use_subpixel_positioning = FontDescription::SubpixelPositioning();
+#if defined(USE_NEVA_APPRUNTIME)
+  result.use_fake_bold_text = g_use_fake_bold_text;
+#endif
   return result;
 }
 

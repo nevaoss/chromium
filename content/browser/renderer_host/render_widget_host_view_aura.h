@@ -258,6 +258,10 @@ class CONTENT_EXPORT RenderWidgetHostViewAura
   bool GetCompositionTextRange(gfx::Range* range) const override;
   bool GetEditableSelectionRange(gfx::Range* range) const override;
   bool SetEditableSelectionRange(const gfx::Range& range) override;
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  bool DeleteRange(const gfx::Range& range) override;
+  ///@}
   bool GetTextFromRange(const gfx::Range& range,
                         std::u16string* text) const override;
   void OnInputMethodChanged() override;
@@ -411,6 +415,13 @@ class CONTENT_EXPORT RenderWidgetHostViewAura
   // create a new touch selection controller for the new client.
   void SetSelectionControllerClientForTest(
       std::unique_ptr<TouchSelectionControllerClientAura> client);
+
+#if defined(USE_NEVA_APPRUNTIME)
+  void SetEnableHtmlSystemKeyboardAttr(bool enable);
+  bool SystemKeyboardDisabled() const override;
+  gfx::Rect GetInputPanelRectangle() const override;
+  gfx::Rect GetTextInputBounds() const override;
+#endif
 
   // RenderWidgetHostViewEventHandler::Delegate:
   gfx::Rect ConvertRectToScreen(const gfx::Rect& rect) const override;
@@ -599,6 +610,11 @@ class CONTENT_EXPORT RenderWidgetHostViewAura
 
   void UpdateCursorIfOverSelf();
 
+#if BUILDFLAG(IS_WEBOS)
+  bool SynchronizeVisualPropertiesIgnoringPendingAck(
+      const cc::DeadlinePolicy& deadline_policy,
+      const std::optional<viz::LocalSurfaceId>& child_local_surface_id);
+#endif  // BUILDFLAG(IS_WEBOS)
   bool SynchronizeVisualProperties(
       const cc::DeadlinePolicy& deadline_policy,
       const std::optional<viz::LocalSurfaceId>& child_local_surface_id);
@@ -792,6 +808,10 @@ class CONTENT_EXPORT RenderWidgetHostViewAura
       virtual_keyboard_controller_win_;
 
   gfx::Point last_mouse_move_location_;
+#endif
+
+#if defined(USE_NEVA_APPRUNTIME)
+  bool enable_html_systemkeyboard_attr_ = false;
 #endif
 
   // The last selection bounds reported to the view.

@@ -207,7 +207,12 @@ class WebUIContentsWrapperT : public WebUIContentsWrapper {
                              supports_draggable_regions,
                              T::GetWebUIName()),
         webui_url_(webui_url) {
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12
+    assert(views_metrics::IsValidWebUIName("." + T::GetWebUIName()));
+#else   // defined(__GNUC__) && __GNUC__ < 12
     static_assert(views_metrics::IsValidWebUIName("." + T::GetWebUIName()));
+#endif  // !(defined(__GNUC__) && __GNUC__ < 12)
 
     CHECK(GetWebUIController());
     GetWebUIController()->set_embedder(weak_ptr_factory_.GetWeakPtr());

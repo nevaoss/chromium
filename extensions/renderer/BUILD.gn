@@ -5,6 +5,7 @@
 import("//build/config/features.gni")
 import("//components/guest_view/buildflags/buildflags.gni")
 import("//extensions/buildflags/buildflags.gni")
+import("//neva/neva.gni")
 import("//pdf/features.gni")
 
 assert(enable_extensions_core)

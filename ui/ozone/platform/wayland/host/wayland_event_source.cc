@@ -449,6 +449,16 @@ void WaylandEventSource::OnPointerAxisEvent(const gfx::Vector2dF& offset,
   EnsurePointerScrollData(timestamp);
   pointer_scroll_data_->dx += offset.x();
   pointer_scroll_data_->dy += offset.y();
+
+#if defined(USE_NEVA_APPRUNTIME)
+  // Workaround for LSM & weston 3.0.0 not emitting wl_pointer.axis_source event
+  OnPointerAxisSourceEvent(WL_POINTER_AXIS_SOURCE_WHEEL);
+#if BUILDFLAG(IS_WEBOS)
+  // Workaround for LSM not emitting wl_pointer.frame event
+  // See wayland core protocol wl_pointer v5 additions
+  OnPointerFrameEvent();
+#endif  // BUILDFLAG(IS_WEBOS)
+#endif  // defined(USE_NEVA_APPRUNTIME)
 }
 
 void WaylandEventSource::RoundTripQueue() {
@@ -1135,9 +1145,15 @@ void WaylandEventSource::ProcessPointerScrollData() {
     pointer_frames_.push_back(
         std::make_unique<FrameData>(event, base::NullCallback()));
   } else if (pointer_scroll_data_->axis_source) {
+#if BUILDFLAG(IS_WEBOS)
+    // FIXME(neva): WL_POINTER_AXIS_SOURCE_WHEEL_TILT is unrecognized by
+    // libwayland version supplied by webOS
+    if (*pointer_scroll_data_->axis_source == WL_POINTER_AXIS_SOURCE_WHEEL) {
+#else
     if (*pointer_scroll_data_->axis_source == WL_POINTER_AXIS_SOURCE_WHEEL ||
         *pointer_scroll_data_->axis_source ==
             WL_POINTER_AXIS_SOURCE_WHEEL_TILT) {
+#endif  // BUILDFLAG(IS_WEBOS)
       MouseWheelEvent event(
           gfx::Vector2d(pointer_scroll_data_->dx, pointer_scroll_data_->dy),
           pointer_location_, pointer_location_, timestamp, flags, 0);

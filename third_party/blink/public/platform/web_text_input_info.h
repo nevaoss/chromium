@@ -35,6 +35,10 @@
 #include "ui/base/ime/mojom/virtual_keyboard_types.mojom-shared.h"
 #include "ui/base/ime/text_input_action.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "ui/gfx/geometry/rect.h"
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 namespace blink {
 
 struct BLINK_PLATFORM_EXPORT WebTextInputInfo {
@@ -77,6 +81,15 @@ struct BLINK_PLATFORM_EXPORT WebTextInputInfo {
 
   // The array of ime_text_spans at the current caret position.
   WebVector<ui::ImeTextSpan> ime_text_spans;
+
+#if defined(USE_NEVA_APPRUNTIME)
+  // The input panel (virtual keyboard) rectangle for the currently
+  // focused input field.
+  gfx::Rect input_panel_rectangle;
+
+  // The text input element rectangle.
+  gfx::Rect bounds;
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
   bool Equals(const WebTextInputInfo&) const;
 };

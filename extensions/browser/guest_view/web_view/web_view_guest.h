@@ -29,6 +29,12 @@ namespace content {
 class StoragePartitionConfig;
 }
 
+#if defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
+namespace neva_app_runtime {
+class WebViewControllerDelegate;
+}
+#endif  // defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
+
 namespace extensions {
 
 class WebViewInternalFindFunction;
@@ -132,6 +138,17 @@ class WebViewGuest : public guest_view::GuestView<WebViewGuest> {
 
   // Stop loading the guest.
   void Stop();
+
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // Suspend the guest process.
+  void Suspend();
+
+  // Resume the guest process.
+  void Resume();
+
+  bool IsSuspended() const { return is_suspended_; }
+  ///@}
 
   // Kill the guest process.
   void Terminate();
@@ -413,6 +430,12 @@ class WebViewGuest : public guest_view::GuestView<WebViewGuest> {
   // Whether the GuestView set an explicit zoom level.
   bool did_set_explicit_zoom_ = false;
 
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // Whether the GuestView is suspended.
+  bool is_suspended_ = false;
+  ///@}
+
   // Store spatial navigation status.
   bool is_spatial_navigation_enabled_;
 
@@ -423,6 +446,11 @@ class WebViewGuest : public guest_view::GuestView<WebViewGuest> {
   // This is used to ensure pending tasks will not fire after this object is
   // destroyed.
   base::WeakPtrFactory<WebViewGuest> weak_ptr_factory_{this};
+
+#if defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
+  std::unique_ptr<neva_app_runtime::WebViewControllerDelegate>
+      webview_controller_delegate_;
+#endif  // defined(USE_NEVA_APPRUNTIME) && BUILDFLAG(IS_WEBOS)
 };
 
 }  // namespace extensions

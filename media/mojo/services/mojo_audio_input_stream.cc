@@ -62,6 +62,18 @@ void MojoAudioInputStream::Record() {
   delegate_->OnRecordStream();
 }
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+void MojoAudioInputStream::Pause() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  delegate_->OnPauseStream();
+}
+
+void MojoAudioInputStream::Resume() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  delegate_->OnResumeStream();
+}
+#endif
+
 void MojoAudioInputStream::SetVolume(double volume) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (volume < 0 || volume > 1) {

@@ -1183,6 +1183,12 @@ void WidgetBase::UpdateTextInputStateInternal(bool show_virtual_keyboard,
       params->ime_text_spans_info =
           frame_widget->GetImeTextSpansInfo(new_info.ime_text_spans);
     }
+
+#if defined(USE_NEVA_APPRUNTIME)
+    params->input_panel_rectangle = new_info.input_panel_rectangle;
+    params->bounds = new_info.bounds;
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 #if BUILDFLAG(IS_ANDROID)
     if (next_previous_flags_ == kInvalidNextPreviousFlagsValue) {
       // Due to a focus change, values will be reset by the frame.

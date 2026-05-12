@@ -20,5 +20,9 @@ const char kAppShellHostWindowSize[] = "app-shell-host-window-size";
 const char kAppShellPreferredNetwork[] = "app-shell-preferred-network";
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+const char kLaunchArgs[] = "launch-args";
+#endif
+
 }  // namespace switches
 }  // namespace extensions

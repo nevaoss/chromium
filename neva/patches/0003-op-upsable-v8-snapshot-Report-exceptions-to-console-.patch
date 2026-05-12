@@ -1,0 +1,116 @@
+From b7931807a3909572008f2e8ddcac86088b7484e8 Mon Sep 17 00:00:00 2001
+From: Jose Dapena Paz <jose.dapena@lge.com>
+Date: Fri, 28 Jul 2023 18:59:13 +0900
+Subject: [PATCH] [PATCH] [op][upsable][v8][snapshot] Report exceptions to
+ console running mksnapshot
+
+:Release Notes:
+Report exceptions in mksnapshot.
+
+:Detailed Notes:
+Copy the code available in d8 for reporting to console the exceptions
+that happen compiling or running JS as part of the creation of snapshots
+in mksnapshot.
+
+This has been reported upstream as https://crbug.com/v8/9590 but the
+approach for fixing it will be different (refactoring to avoid copying
+code).
+
+:Testing Performed:
+Run mksnapshot with valid JS -> same output.
+Run mksnapshot with invalid JS -> now it dumps the exception report.
+
+:QA Notes:
+Test-cases: GT-27751
+
+:Issues Addressed:
+[PLAT-80825] [chromium72] Refactor and upstream v8 mksnapshot error logging
+[PLAT-98761] Port patch: [open][upstreamable][v8][snapshot] Report exceptions to console running mksnapshot
+
+Originally-Reviewed-on: http://gpro.lge.com/250780
+Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/268371
+---
+ src/snapshot/snapshot.cc | 58 +++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 57 insertions(+), 1 deletion(-)
+
+diff --git a/src/snapshot/snapshot.cc b/src/snapshot/snapshot.cc
+index 850886c0e55..2e41c87ae42 100644
+--- a/src/snapshot/snapshot.cc
++++ b/src/snapshot/snapshot.cc
+@@ -754,6 +754,58 @@ void SnapshotImpl::CheckVersion(const v8::StartupData* data) {
+ 
+ namespace {
+ 
++void ReportException(v8::Isolate* isolate, v8::Local<v8::Context> context,
++                     v8::TryCatch* try_catch) {
++  if (!try_catch->HasCaught()) return;
++
++  // This implementation comes from d8 error reporting code. Please keep
++  // up to date in further rebases.
++
++  // Converts a V8 value to a C string.
++  auto ToCString = [](const v8::String::Utf8Value& value) {
++    return *value ? *value : "<string conversion failed>";
++  };
++
++  v8::String::Utf8Value exception(isolate, try_catch->Exception());
++  const char* exception_string = ToCString(exception);
++  v8::Local<v8::Message> message = try_catch->Message();
++  if (message.IsEmpty()) {
++    // V8 didn't provide any extra information about this error; just
++    // print the exception.
++    i::PrintF("%s\n", exception_string);
++  } else if (message->GetScriptOrigin().Options().IsWasm()) {
++    // Print wasm-function[(function index)]:(offset): (message).
++    int function_index = message->GetLineNumber(context).FromJust() - 1;
++    int offset = message->GetStartColumn(context).FromJust();
++    i::PrintF("wasm-function[%d]:%d: %s\n", function_index, offset,
++              exception_string);
++  } else {
++    // Print (filename):(line number): (message).
++    v8::String::Utf8Value filename(isolate,
++                                   message->GetScriptOrigin().ResourceName());
++    const char* filename_string = ToCString(filename);
++    int linenum = message->GetLineNumber(context).FromMaybe(-1);
++    i::PrintF("%s:%i: %s\n", filename_string, linenum, exception_string);
++    v8::Local<v8::String> sourceline;
++    if (message->GetSourceLine(context).ToLocal(&sourceline)) {
++      // Print line of source code.
++      v8::String::Utf8Value sourcelinevalue(isolate, sourceline);
++      const char* sourceline_string = ToCString(sourcelinevalue);
++      i::PrintF("%s\n", sourceline_string);
++      // Print wavy underline (GetUnderline is deprecated).
++      int start = message->GetStartColumn(context).FromJust();
++      for (int i = 0; i < start; i++) {
++        i::PrintF(" ");
++      }
++      int end = message->GetEndColumn(context).FromJust();
++      for (int i = start; i < end; i++) {
++        i::PrintF("^");
++      }
++      i::PrintF("\n");
++    }
++  }
++}
++
+ bool RunExtraCode(v8::Isolate* isolate, v8::Local<v8::Context> context,
+                   const char* utf8_source, const char* name) {
+   v8::Context::Scope context_scope(context);
+@@ -768,9 +820,13 @@ bool RunExtraCode(v8::Isolate* isolate, v8::Local<v8::Context> context,
+   v8::ScriptCompiler::Source source(source_string, origin);
+   v8::Local<v8::Script> script;
+   if (!v8::ScriptCompiler::Compile(context, &source).ToLocal(&script)) {
++    ReportException(isolate, context, &try_catch);
++    return false;
++  }
++  if (script->Run(context).IsEmpty()) {
++    ReportException(isolate, context, &try_catch);
+     return false;
+   }
+-  if (script->Run(context).IsEmpty()) return false;
+   CHECK(!try_catch.HasCaught());
+   return true;
+ }
+-- 
+2.41.0
+

@@ -29,6 +29,10 @@
 #include "third_party/blink/renderer/platform/loader/fetch/url_loader/worker_main_script_loader_client.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
+#if defined(USE_FILESCHEME_CODECACHE)
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#endif
+
 namespace blink {
 
 WorkerMainScriptLoader::WorkerMainScriptLoader() = default;
@@ -190,10 +194,34 @@ void WorkerMainScriptLoader::OnComplete(
   NotifyCompletionIfAppropriate();
 }
 
+#if defined(USE_FILESCHEME_CODECACHE)
+bool WorkerMainScriptLoader::CanCreateCachedMetadataHandler() {
+  if (initial_request_url_.ProtocolIsInHTTPFamily() &&
+      resource_response_.CurrentRequestUrl().ProtocolIsInHTTPFamily()) {
+    return true;
+  }
+  // In the case of cache busting, codecache will be created but not used
+  // mostly.
+  // So create only for url which doesn't have query string.
+  if (initial_request_url_.IsLocalFile() &&
+      resource_response_.CurrentRequestUrl().IsLocalFile() &&
+      initial_request_url_.Query().IsNull() &&
+      resource_response_.CurrentRequestUrl().Query().IsNull() &&
+      RuntimeEnabledFeatures::LocalResourceCodeCacheEnabled()) {
+    return true;
+  }
+  return false;
+}
+#endif
+
 CachedMetadataHandler* WorkerMainScriptLoader::CreateCachedMetadataHandler() {
+#if defined(USE_FILESCHEME_CODECACHE)
+  if (!CanCreateCachedMetadataHandler()) {
+#else
   // Currently we support the metadata caching only for HTTP family.
   if (!initial_request_url_.ProtocolIsInHTTPFamily() ||
       !resource_response_.CurrentRequestUrl().ProtocolIsInHTTPFamily()) {
+#endif
     return nullptr;
   }
 

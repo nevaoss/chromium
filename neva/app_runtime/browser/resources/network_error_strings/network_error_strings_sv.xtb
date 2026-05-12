@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sv">
+<translation id="1682620957554922882">Kontakta innehållsleverantören.</translation>
+<translation id="2626799779920242286">Försök igen senare!</translation>
+<translation id="27461552975087996">Servercertifikatet är inte pålitligt.</translation>
+<translation id="288961708105972332">Anslutningsförsöket har tagit för lång tid.</translation>
+<translation id="3100161803646972327">Kontrollera nätverkets status och försök igen.</translation>
+<translation id="334286403444714742">Nätverket är inte anslutet.</translation>
+<translation id="4799446021133992159">KAN INTE LÄSA IN</translation>
+<translation id="4897228579364425832">KONTROLLERA NÄTVERKSANSLUTNINGEN</translation>
+<translation id="4922056813564935008">Kan inte hitta begärd adress.</translation>
+<translation id="4964644330950338878">Värdnamnet stämmer inte med servercertifikatet.</translation>
+<translation id="5375809313377772901">Kontrollera tidsinställningarna.</translation>
+<translation id="5803768854262525793">REPLACE WITH HOSTNAME</translation>
+<translation id="6061420513894163219">Kontrollera nätverkanslutningens status.</translation>
+<translation id="6765203878096346794">Anslutningen till servern är instabil.</translation>
+<translation id="7402264192054099664">Det kan vara ett tillfälligt fel.</translation>
+<translation id="7570401931535381481">Servercertifikatet är utgånget eller ännu inte giltigt eftersom inställd tid på TV:n inte stämmer med aktuell tid.</translation>
+<translation id="7619490177640280081">Aktuell tidsinställning</translation>
+<translation id="8138313893556460774">Åtgärden har tagit för lång tid.</translation>
+<translation id="8322836013946289105">Filen eller katalogen kan inte hittas.</translation>
+<translation id="8561467915632687957">Nätverket är instabilt.</translation>
+</translationbundle>

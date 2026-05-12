@@ -18,6 +18,11 @@ class WaylandKeyboard;
 class WaylandPointer;
 class WaylandTouch;
 
+#if defined(USE_NEVA_APPRUNTIME)
+class WaylandCursor;
+class WaylandCursorPosition;
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 // Wraps the Wayland seat abstraction.
 // See https://wayland-book.com/seat.html
 class WaylandSeat : public wl::GlobalObjectRegistrar<WaylandSeat> {
@@ -51,6 +56,16 @@ class WaylandSeat : public wl::GlobalObjectRegistrar<WaylandSeat> {
   // Returns whether the object was created.
   bool RefreshKeyboard();
 
+#if defined(USE_NEVA_APPRUNTIME)
+  WaylandCursor* cursor() const { return cursor_.get(); }
+  WaylandCursorPosition* cursor_position() const {
+    return cursor_position_.get();
+  }
+
+  // Updates cursor and cursor_position
+  void UpdateCursor();
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
  private:
   // wl_seat_listener callbacks:
   static void OnCapabilities(void* data, wl_seat* seat, uint32_t capabilities);
@@ -67,6 +82,11 @@ class WaylandSeat : public wl::GlobalObjectRegistrar<WaylandSeat> {
   std::unique_ptr<WaylandKeyboard> keyboard_;
   std::unique_ptr<WaylandPointer> pointer_;
   std::unique_ptr<WaylandTouch> touch_;
+
+#if defined(USE_NEVA_APPRUNTIME)
+  std::unique_ptr<WaylandCursor> cursor_;
+  std::unique_ptr<WaylandCursorPosition> cursor_position_;
+#endif  // defined(USE_NEVA_APPRUNTIME)
 };
 
 }  // namespace ui

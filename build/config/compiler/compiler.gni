@@ -13,6 +13,7 @@ import("//build/config/sanitizers/sanitizers.gni")
 import("//build/toolchain/cc_wrapper.gni")
 import("//build/toolchain/toolchain.gni")
 import("//build_overrides/build.gni")
+import("//neva/neva.gni")
 
 if (is_android) {
   import("//build/config/android/abi.gni")
@@ -34,12 +35,21 @@ declare_args() {
   # In late bring-up on macOS (see docs/mac_lld.md).
   # Tentatively used on iOS.
   # The default linker everywhere else.
-  use_lld = is_clang && current_os != "zos"
+  # NOTE(neva): Disable use_lld for webOS built with GCC and ld.gold.
+  use_lld = is_clang && current_os != "zos" && !is_webos
 
   # If true, optimize for size.
   # Default to favoring speed over size for platforms not listed below.
   optimize_for_size =
       !is_high_end_android && (is_android || is_castos || is_fuchsia)
+}
+
+# TODO(neva): Remove this when Neva GCC can remove use_gold logic.
+if (use_neva_appruntime) {
+  declare_args() {
+    # Whether to use the gold linker from binutils instead of lld or bfd.
+    use_gold = !use_lld
+  }
 }
 
 declare_args() {
@@ -75,6 +85,12 @@ declare_args() {
   # http://gcc.gnu.org/wiki/DebugFission
   use_debug_fission = !is_android && !is_fuchsia && !is_apple && !is_win &&
                       use_lld && cc_wrapper == ""
+
+  # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
+  if (use_neva_appruntime) {
+    use_debug_fission = !is_android && !is_fuchsia && !is_apple && !is_win &&
+                        (use_gold || use_lld) && cc_wrapper == ""
+  }
 
   # Enables support for ThinLTO, which links 3x-10x faster than full LTO. See
   # also http://blog.llvm.org/2016/06/thinlto-scalable-and-incremental-lto.html

@@ -72,7 +72,12 @@ class PictureLayerTilingCoverageIterator;
 
 class CC_EXPORT PictureLayerTiling {
  public:
+// TODO(neva): Try to contribute this GCC fix to upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+  using Tile = cc::Tile;
+#else   // defined(__GNUC__) && !defined(__clang__)
   using Tile = Tile;
+#endif  // !(defined(__GNUC__) && !defined(__clang__))
   using CoverageIterator = PictureLayerTilingCoverageIterator;
 
   static const int kBorderTexels = 1;

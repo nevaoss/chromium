@@ -124,4 +124,11 @@ VirtualKeyboardController* MockInputMethod::GetVirtualKeyboardController() {
 void MockInputMethod::SetVirtualKeyboardControllerForTesting(
     std::unique_ptr<VirtualKeyboardController> controller) {}
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+LinuxInputMethodContext* MockInputMethod::GetInputMethodContext() {
+  return nullptr;
+}
+///@}
+
 }  // namespace ui

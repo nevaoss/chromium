@@ -61,6 +61,11 @@ def SetConfigPath(options):
   libdir = sysroot + '/usr/' + options.system_libdir + '/pkgconfig'
   libdir += ':' + sysroot + '/usr/share/pkgconfig'
   os.environ['PKG_CONFIG_LIBDIR'] = libdir
+  # PKG_CONFIG_SYSROOT_DIR can be empty but it added as workaround for webos
+  # wayland-webos-client.pc package which has one from lib paths empty (-L)
+  # that is incorrect for the parsing. The workaround is correct for all
+  # toolchains (target, host and v8-snapshot).
+  os.environ['PKG_CONFIG_SYSROOT_DIR'] = sysroot
   return libdir
 
 

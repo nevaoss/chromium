@@ -1,0 +1,85 @@
+From 347404675e15dbffb81d7ab0a64eb047eca4ad5b Mon Sep 17 00:00:00 2001
+From: Ivan Murashov <ivan.murashov@lge.com>
+Date: Fri, 7 May 2021 13:37:09 +0900
+Subject: [PATCH] GCC: suppress invalid-offsetof warnings
+
+:Release Notes:
+Suppressed invalid-offsetof warnings
+
+:Detailed Notes:
+quic_inlined_frame.h and quic_frame.h have validation
+code. GCC warns the code, but it seems definitely
+unneeded.
+This results in a large amount of warnings for GCC,
+because responsible header is included very often.
+So suppress the warning.
+
+:Testing Performed:
+Build O20 starfish
+
+:QA Notes:
+
+:Issues Addressed:
+[NEVA-5230] Fix or suppress numerous compile warnings
+---
+ quiche/quic/core/frames/quic_frame.h         | 9 +++++++++
+ quiche/quic/core/frames/quic_inlined_frame.h | 9 +++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/quiche/quic/core/frames/quic_frame.h b/quiche/quic/core/frames/quic_frame.h
+index 9ee45689..1dcc9eac 100644
+--- a/quiche/quic/core/frames/quic_frame.h
++++ b/quiche/quic/core/frames/quic_frame.h
+@@ -125,6 +125,11 @@ struct QUIC_EXPORT_PRIVATE QuicFrame {
+   };
+ };
+ 
++#if defined(__GNUC__)
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Winvalid-offsetof"
++#endif
++
+ static_assert(std::is_standard_layout<QuicFrame>::value,
+               "QuicFrame must have a standard layout");
+ static_assert(sizeof(QuicFrame) <= 24,
+@@ -132,6 +137,10 @@ static_assert(sizeof(QuicFrame) <= 24,
+ static_assert(offsetof(QuicStreamFrame, type) == offsetof(QuicFrame, type),
+               "Offset of |type| must match in QuicFrame and QuicStreamFrame");
+ 
++#if defined(__GNUC__)
++#pragma GCC diagnostic pop
++#endif
++
+ // A inline size of 1 is chosen to optimize the typical use case of
+ // 1-stream-frame in QuicTransmissionInfo.retransmittable_frames.
+ using QuicFrames = absl::InlinedVector<QuicFrame, 1>;
+diff --git a/quiche/quic/core/frames/quic_inlined_frame.h b/quiche/quic/core/frames/quic_inlined_frame.h
+index 1ef15321..bca06c45 100644
+--- a/quiche/quic/core/frames/quic_inlined_frame.h
++++ b/quiche/quic/core/frames/quic_inlined_frame.h
+@@ -12,6 +12,11 @@
+ 
+ namespace quic {
+ 
++#if defined(__GNUC__)
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Winvalid-offsetof"
++#endif
++
+ // QuicInlinedFrame is the base class of all frame types that is inlined in the
+ // QuicFrame class. It gurantees all inlined frame types contain a 'type' field
+ // at offset 0, such that QuicFrame.type can get the correct frame type for both
+@@ -29,6 +34,10 @@ struct QUIC_EXPORT_PRIVATE QuicInlinedFrame {
+   }
+ };
+ 
++#if defined(__GNUC__)
++#pragma GCC diagnostic pop
++#endif
++
+ }  // namespace quic
+ 
+ #endif  // QUICHE_QUIC_CORE_FRAMES_QUIC_INLINED_FRAME_H_
+-- 
+2.17.1
+

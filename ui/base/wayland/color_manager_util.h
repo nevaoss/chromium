@@ -20,6 +20,50 @@ constexpr uint32_t kDefaultSinceVersion = 1;
 
 // These structs are used for holding ColorSpace enums, and the version of the
 // color management protocol their support was introduced.
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+struct TransferFnVersion {
+  TransferFnVersion() = default;
+  constexpr TransferFnVersion(skcms_TransferFunction transfer_fn,
+                              uint32_t version)
+      : transfer_fn(transfer_fn), version(version) {}
+  skcms_TransferFunction transfer_fn;
+  uint32_t version;
+};
+
+struct TransferVersion {
+  TransferVersion() = default;
+  constexpr TransferVersion(gfx::ColorSpace::TransferID transfer,
+                            uint32_t version)
+      : transfer(transfer), version(version) {}
+  gfx::ColorSpace::TransferID transfer;
+  uint32_t version;
+};
+
+struct PrimaryVersion {
+  PrimaryVersion() = default;
+  constexpr PrimaryVersion(gfx::ColorSpace::PrimaryID primary, uint32_t version)
+      : primary(primary), version(version) {}
+  gfx::ColorSpace::PrimaryID primary;
+  uint32_t version;
+};
+
+struct MatrixVersion {
+  MatrixVersion() = default;
+  constexpr MatrixVersion(gfx::ColorSpace::MatrixID matrix, uint32_t version)
+      : matrix(matrix), version(version) {}
+  gfx::ColorSpace::MatrixID matrix;
+  uint32_t version;
+};
+
+struct RangeVersion {
+  RangeVersion() = default;
+  constexpr RangeVersion(gfx::ColorSpace::RangeID range, uint32_t version)
+      : range(range), version(version) {}
+  gfx::ColorSpace::RangeID range;
+  uint32_t version;
+};
+#else   // (__cplusplus < 202002L)
 struct TransferFnVersion {
   skcms_TransferFunction transfer_fn;
   uint32_t version;
@@ -44,6 +88,7 @@ struct RangeVersion {
   gfx::ColorSpace::RangeID range;
   uint32_t version;
 };
+#endif  // !(__cplusplus < 202002L)
 
 // A map from the zcr_color_manager_v1 chromaticity_names enum values
 // representing well-known chromaticities, to their equivalent PrimaryIDs.

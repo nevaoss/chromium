@@ -131,6 +131,10 @@ bool LoadDefaultEGLGLES2Bindings(
       return false;
 #endif
 
+    // For webOS, GL libraries are located under /usr/lib/cbe/
+#if BUILDFLAG(IS_WEBOS) && defined(USE_CBE)
+    module_path = module_path.Append("cbe");
+#endif  // BUILDFLAG(IS_WEBOS) && defined(USE_CBE)
     glesv2_path = module_path.Append(kAngleGlesSoname);
     egl_path = module_path.Append(kAngleEglSoname);
   } else {

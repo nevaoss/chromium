@@ -8,6 +8,9 @@
 
 #include "base/numerics/checked_math.h"
 #include "base/numerics/clamped_math.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "base/system/sys_info.h"
 #include "media/base/media_switches.h"
 #include "media/base/video_frame.h"

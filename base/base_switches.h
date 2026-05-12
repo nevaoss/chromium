@@ -22,6 +22,9 @@ extern const char kEnableLowEndDeviceMode[];
 extern const char kEnableBackgroundThreadPool[];
 extern const char kFieldTrialHandle[];
 extern const char kForceFieldTrials[];
+#if defined(USE_NEVA_APPRUNTIME)
+extern const char kForceLowEndDeviceMode[];
+#endif  // defined(USE_NEVA_APPRUNTIME)
 extern const char kFullMemoryCrashReport[];
 extern const char kLogBestEffortTasks[];
 extern const char kMetricsSharedMemoryHandle[];

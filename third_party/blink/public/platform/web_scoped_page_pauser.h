@@ -21,6 +21,15 @@ class WebLocalFrameImpl;
 // exists.
 class WebScopedPagePauser {
  public:
+// TODO(neva): It's needed in order to use WebScopedPagePauser in Neva's
+// content::RenderThreadImpl::ProcessSuspend() and
+// neva_app_runtime::AppRuntimeRenderFrameObserver::SuspendDOM().
+// Need to think how to get rid of this dependency, see
+// http://clm.lge.com/issue/browse/NEVA-8484.
+#if defined(USE_NEVA_APPRUNTIME)
+  BLINK_EXPORT WebScopedPagePauser();
+  BLINK_EXPORT
+#endif  // defined(USE_NEVA_APPRUNTIME)
   explicit WebScopedPagePauser(WebLocalFrameImpl&);
 
   WebScopedPagePauser(const WebScopedPagePauser&) = delete;

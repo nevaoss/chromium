@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="et">
+<translation id="1682620957554922882">Võtke ühendust sisu pakkujaga.</translation>
+<translation id="2626799779920242286">Proovige hiljem uuesti.</translation>
+<translation id="27461552975087996">Serveri sertifikaati ei saa usaldada.</translation>
+<translation id="288961708105972332">Ühendamistaotlus katkenud.</translation>
+<translation id="3100161803646972327">Kontrollige võrgu olekut ja proovige uuesti.</translation>
+<translation id="334286403444714742">Võrguühendust ei ole loodud.</translation>
+<translation id="4799446021133992159">LAADIMINE EI ÕNNESTU</translation>
+<translation id="4897228579364425832">KONTROLLIGE VÕRGUÜHENDUST</translation>
+<translation id="4922056813564935008">Soovitud aadressi ei leita.</translation>
+<translation id="4964644330950338878">Hosti nimi ei ühti serveri sertifikaadiga.</translation>
+<translation id="5375809313377772901">Kontrollige kellaaja seadeid.</translation>
+<translation id="5803768854262525793">REPLACE WITH HOSTNAME</translation>
+<translation id="6061420513894163219">Kontrollige võrguühenduse olekut.</translation>
+<translation id="6765203878096346794">Serveriühendus on ebastabiilne.</translation>
+<translation id="7402264192054099664">Tegemist võib olla ajutise probleemiga.</translation>
+<translation id="7570401931535381481">Serveri sertifikaat on aegunud või ei ole kehtiv, kuna teleris seadistatud kellaaeg on praegusest kellaajast erinev.</translation>
+<translation id="7619490177640280081">Praeguse kellaaja seadistus</translation>
+<translation id="8138313893556460774">Toiming on katkestatud.</translation>
+<translation id="8322836013946289105">Faili või kataloogi ei leita.</translation>
+<translation id="8561467915632687957">Võrguühendus on ebastabiilne.</translation>
+</translationbundle>

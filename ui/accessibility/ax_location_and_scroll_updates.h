@@ -5,6 +5,12 @@
 #ifndef UI_ACCESSIBILITY_AX_LOCATION_AND_SCROLL_UPDATES_H_
 #define UI_ACCESSIBILITY_AX_LOCATION_AND_SCROLL_UPDATES_H_
 
+// TODO(neva): Required for usage of std::vector. Try to contribute to upstream.
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include <vector>
+///@}
+
 #include "ui/accessibility/ax_base_export.h"
 #include "ui/accessibility/ax_relative_bounds.h"
 namespace ui {

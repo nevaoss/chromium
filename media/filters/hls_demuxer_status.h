@@ -28,7 +28,12 @@ struct HlsDemuxerStatusTraits {
 
   static constexpr StatusGroupType Group() { return "HlsDemuxerStatus"; }
 
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  static std::string ReadableCodeName(Codes code) {
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   static constexpr std::string ReadableCodeName(Codes code) {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
     switch (code) {
       case Codes::kPlaylistUrlInvalid:
         return "Playlist URL Invalid";

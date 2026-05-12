@@ -6,6 +6,9 @@
 
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
 #include "chrome/browser/browser_process.h"

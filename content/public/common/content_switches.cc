@@ -1012,7 +1012,6 @@ const char kIpcDumpDirectory[] = "ipc-dump-directory";
 // Specifies the testcase used by the IPC fuzzer.
 const char kIpcFuzzerTestcase[] = "ipc-fuzzer-testcase";
 #endif
-
 // Don't dump stuff here, follow the same order as the header.
 
 }  // namespace switches

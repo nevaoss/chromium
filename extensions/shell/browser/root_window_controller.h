@@ -88,12 +88,46 @@ class RootWindowController : public aura::client::WindowParentingClient,
 
   // aura::WindowTreeHostObserver:
   void OnHostCloseRequested(aura::WindowTreeHost* host) override;
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  void OnWindowHostStateChanged(aura::WindowTreeHost* host,
+                                ui::WidgetState new_state) override;
+  ///@}
+
+#if BUILDFLAG(IS_WEBOS)
+  void OnInputPanelVisibilityChanged(aura::WindowTreeHost* host,
+                                     bool visibility) override;
+  void OnInputPanelRectChanged(aura::WindowTreeHost* host,
+                               int32_t x,
+                               int32_t y,
+                               uint32_t width,
+                               uint32_t height) override;
+#endif  // BUILDFLAG(IS_WEBOS)
 
   // AppWindowRegistry::Observer:
   void OnAppWindowRemoved(AppWindow* app_window) override;
 
  private:
   void DestroyWindowTreeHost();
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  ui::WidgetState window_host_state_ = ui::WidgetState::UNINITIALIZED;
+  ///@}
+#if BUILDFLAG(IS_WEBOS)
+  void ComputeScaleFactor(int window_height);
+  int input_panel_height() {
+    return input_panel_bounds_.height() / scale_factor_;
+  }
+  bool IsTextInputOverlapped(aura::WindowTreeHost* host);
+  void SetInsetY(int height);
+
+  gfx::Rect window_bounds_;
+  gfx::Rect input_panel_bounds_;
+  float scale_factor_ = 1.f;
+  bool input_panel_visible_ = false;
+  int last_inset_height_ = 0;
+  int vkb_overlap_y_value_ = 0;
+#endif  // BUILDFLAG(IS_WEBOS)
 
   const raw_ptr<DesktopDelegate> desktop_delegate_;
 

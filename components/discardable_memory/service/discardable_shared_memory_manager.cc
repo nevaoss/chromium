@@ -39,6 +39,10 @@
 #include "base/metrics/histogram_macros.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/neva/base_switches.h"
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 namespace discardable_memory {
 namespace {
 
@@ -168,7 +172,7 @@ uint64_t GetDefaultMemoryLimit() {
   // not all Chromecast devices.
   uint64_t max_default_memory_limit = 64 * kMegabyte;
 #else
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
   // Limits the number of FDs used to 32, assuming a 4MB allocation size.
   uint64_t max_default_memory_limit = 128 * kMegabyte;
 #else
@@ -179,6 +183,21 @@ uint64_t GetDefaultMemoryLimit() {
   if (base::SysInfo::IsLowEndDevice())
     max_default_memory_limit /= 8;
 #endif
+
+#if defined(USE_NEVA_APPRUNTIME)
+  base::CommandLine& cmd_line = *base::CommandLine::ForCurrentProcess();
+  if (cmd_line.HasSwitch(switches::kDiscardableMemoryLimitMB)) {
+    size_t new_limit;
+    if (base::StringToSizeT(
+            cmd_line.GetSwitchValueASCII(switches::kDiscardableMemoryLimitMB),
+            &new_limit) &&
+        new_limit > 0) {
+      max_default_memory_limit = new_limit * kMegabyte;
+    }
+  }
+  VLOG(1) << "Discardable memory limit before checking environment: "
+          << max_default_memory_limit << " bytes";
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
   base::FilePath shmem_dir;
@@ -238,6 +257,9 @@ DiscardableSharedMemoryManager::DiscardableSharedMemoryManager()
       << "A DiscardableSharedMemoryManager already exists in this process.";
   g_instance = this;
   DCHECK_NE(memory_limit_, 0u);
+#if defined(USE_NEVA_APPRUNTIME)
+  VLOG(1) << "Discardable memory limit: " << default_memory_limit_ << " bytes";
+#endif  // defined(USE_NEVA_APPRUNTIME)
   enforce_memory_policy_callback_ =
       base::BindRepeating(&DiscardableSharedMemoryManager::EnforceMemoryPolicy,
                           weak_ptr_factory_.GetWeakPtr());

@@ -876,6 +876,10 @@ class CONTENT_EXPORT RenderFrameHost : public IPC::Listener,
   // RenderFrameHost.
   virtual void ViewSource() = 0;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  virtual void DropAllPeerConnections(base::OnceClosure cb) = 0;
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
   // Run the given action on the media player location at the given point.
   virtual void ExecuteMediaPlayerActionAtLocation(
       const gfx::Point& location,

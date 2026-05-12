@@ -88,7 +88,12 @@ class EmojiUI : public TopChromeWebUIController,
   void CreatePageHandler(mojo::PendingReceiver<emoji_picker::mojom::PageHandler>
                              receiver) override;
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12
+  static std::string GetWebUIName() { return "Emoji"; }
+#else   // defined(__GNUC__) && __GNUC__ < 12
   static constexpr std::string GetWebUIName() { return "Emoji"; }
+#endif  // !(defined(__GNUC__) && __GNUC__ < 12)
 
  private:
   std::unique_ptr<ui::ColorChangeHandler> color_provider_handler_;

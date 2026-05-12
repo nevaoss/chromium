@@ -301,6 +301,14 @@ class MODULES_EXPORT PeerConnectionTracker
   void AddStandardStats(int lid, base::Value::List value);
   void AddLegacyStats(int lid, base::Value::List value);
 
+#if defined(USE_NEVA_APPRUNTIME)
+  // Called when the browser requests all connections to be dropped.
+  void DropAllConnections(DropAllConnectionsCallback cb) override;
+
+  // Check if there are open connections.
+  bool HasOpenConnections() const;
+#endif
+
   // This map stores the local ID assigned to each RTCPeerConnectionHandler.
   typedef WTF::HashMap<RTCPeerConnectionHandler*, int> PeerConnectionLocalIdMap;
   PeerConnectionLocalIdMap peer_connection_local_id_map_;

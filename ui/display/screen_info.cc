@@ -2,9 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// TODO(neva): Fixed headers order. Try to contribute to upstream.
+#include "ui/display/screen_info.h"
+
 #include <inttypes.h>
 
-#include "ui/display/screen_info.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 
 namespace display {
 

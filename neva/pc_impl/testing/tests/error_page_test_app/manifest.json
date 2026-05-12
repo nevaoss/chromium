@@ -1,0 +1,18 @@
+{
+  "manifest_version": 2,
+  "name": "Sample webapp for Error Page test",
+  "minimum_chrome_version": "35.0.0.0",
+  "version": "0.1",
+  "app": {
+    "background": {
+      "scripts": ["background.js"]
+    }
+  },
+  "permissions": [
+    "webview",
+    "storage",
+    "https://*/*",
+    "http://*/*",
+    "fullscreen"
+  ]
+}

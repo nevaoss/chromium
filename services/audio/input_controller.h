@@ -200,6 +200,15 @@ class InputController final : public StreamMonitor {
   // Starts recording using the created audio input stream.
   void Record();
 
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  // Pauses capturing the audio input stream so it can be
+  // resumed later.
+  void Pause();
+
+  // Resumes the previously paused audio input stream.
+  void Resume();
+#endif
+
   // Closes the audio input stream, freeing the associated resources. Must be
   // called before destruction.
   void Close();

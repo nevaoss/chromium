@@ -793,7 +793,7 @@ int BrowserMainLoop::PreCreateThreads() {
   }
 
   InitializeMemoryManagementComponent();
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
   memory_pressure::UserLevelMemoryPressureSignalGenerator::Initialize();
 #endif
 

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>HTML system keyboard test page</title>
+</head>
+
+<body>
+
+<p>Keyboard attribute test</p>
+ <form>
+  <br>System keyboard attribute is false, so system keyboard in not allowed<br>
+  <input type="text" systemkeyboard="false" name="firstname"><br>
+  <br>System keyboard attribute is true, so system keyaboard is allowed:<br>
+  <input type="text" systemkeyboard="true" name="secondname"><br>
+  <br>System keyboard attribute is empty, so system keyaboard is allowed:<br>
+  <input type="text" systemkeyboard="" name="thirdname">
+  <br>System keyboard attribute is not false (systemkeyboard="like_true_or_empty"), so system keyaboard is allowed:<br>
+  <input type="text" systemkeyboard="like_true_or_empty" name="fourthname">
+  <br><br>No System keyboard attribute, so system keyaboard is allowed by default:<br>
+  <input type="text" name="lastname">
+</form>
+
+</body>
+</html>

@@ -8,6 +8,8 @@ import("//mojo/public/tools/bindings/mojom.gni")
 import("//net/features.gni")
 import("//services/network/public/cpp/features.gni")
 
+import("//neva/neva.gni")
+
 # These interfaces are put in their own target to avoid a circular dependency,
 # which comes from the fact that proxy_resolver service uses these interfaces,
 # and the network service uses the proxy_resolver service.
@@ -540,6 +542,10 @@ mojom("url_loader_base") {
   enabled_features = []
   if (is_android || is_chromeos || is_linux) {
     enabled_features += [ "network_change_notifier_in_browser" ]
+  }
+
+  if (use_filescheme_codecache) {
+    enabled_features += [ "filescheme_codecache" ]
   }
 
   if (is_linux) {
@@ -1548,6 +1554,10 @@ mojom("mojom") {
       "p2p.mojom",
       "p2p_trusted.mojom",
     ]
+  }
+
+  if (use_neva_appruntime) {
+    enabled_features += [ "neva_appruntime" ]
   }
 
   has_dchecks = is_debug || dcheck_always_on

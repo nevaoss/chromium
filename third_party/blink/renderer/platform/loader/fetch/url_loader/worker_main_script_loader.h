@@ -81,6 +81,9 @@ class PLATFORM_EXPORT WorkerMainScriptLoader final
   SharedBuffer* Data() const { return data_.get(); }
   WTF::TextEncoding GetScriptEncoding() { return script_encoding_; }
   CachedMetadataHandler* CreateCachedMetadataHandler();
+#if defined(USE_FILESCHEME_CODECACHE)
+  bool CanCreateCachedMetadataHandler();
+#endif
 
   virtual void Trace(Visitor*) const;
 

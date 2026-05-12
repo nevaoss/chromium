@@ -910,6 +910,19 @@ component("views") {
         ]
         public_deps += [ "//ui/base/dragdrop/mojom:mojom_shared" ]
       }
+
+      #@name USE_NEVA_APPRUNTIME
+      #@{
+      if (use_ozone) {
+        sources += [
+          "widget/desktop_aura/desktop_factory_ozone.cc",
+          "widget/desktop_aura/desktop_factory_ozone.h",
+        ]
+        deps += [ "//ui/ozone:platform" ]
+      }
+      sources += [ "widget/desktop_aura/neva/views_delegate_stub.h" ]
+      #@}
+
       if (is_linux) {
         sources += [
           "widget/desktop_aura/desktop_drag_drop_client_ozone_linux.cc",

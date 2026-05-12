@@ -6,6 +6,10 @@
 #define CHROME_BROWSER_AI_AI_MANAGER_KEYED_SERVICE_H_
 
 #include <optional>
+// TODO(neva): Try to contribute this GCC fix to upstream.
+#if defined(__GNUC__) && !defined(__clang__)
+#include <variant>
+#endif  // defined(__GNUC__) && !defined(__clang__)
 
 #include "base/memory/weak_ptr.h"
 #include "base/supports_user_data.h"

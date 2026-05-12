@@ -12,6 +12,11 @@ namespace switches {
 // involving a command line switch.
 const char kAllowPreCommitInput[] = "allow-pre-commit-input";
 
+#if defined(USE_NEVA_APPRUNTIME)
+// Allow script to close windows that was opened by another scripts
+const char kAllowScriptsToCloseWindows[] = "allow-scripts-to-close-windows";
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 // Set blink settings. Format is <name>[=<value],<name>[=<value>],...
 // The names are declared in Settings.json5. For boolean type, use "true",
 // "false", or omit '=<value>' part to set to true. For enum type, use the int

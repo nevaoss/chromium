@@ -40,7 +40,7 @@ namespace base {
 class DuplicateSwitchHandler;
 class FilePath;
 
-class BASE_EXPORT CommandLine {
+class CBE_BASE_EXPORT BASE_EXPORT CommandLine {
  public:
 #if BUILDFLAG(IS_WIN)
   // The native command line string type.

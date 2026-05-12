@@ -22,7 +22,15 @@ namespace blink {
 // DCHECKs as much as we can; this also checks (compile-time)
 // that everything inherits from CSSUnresolvedProperty.
 union alignas(kCSSPropertyUnionBytes) CSSPropertyUnion {
+// NOTE(neva): Initialize variable_ to avoid the following
+// build error.
+//   'constexpr' constructor for union 'blink::CSSPropertyUnion'
+//   must initialize exactly one non-static data member
+#if (__cplusplus < 202002L)
+  constexpr CSSPropertyUnion() : variable_(Variable()) {}  // For kInvalid.
+#else
   constexpr CSSPropertyUnion() {}  // For kInvalid.
+#endif
   constexpr CSSPropertyUnion(Variable property)
     : variable_(std::move(property)) {
     DCHECK(reinterpret_cast<const CSSUnresolvedProperty *>(this) ==

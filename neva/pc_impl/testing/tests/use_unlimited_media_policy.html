@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+
+<style>
+video {
+  margin-left: 30px;
+}
+</style>
+
+<script>
+  function LoadAudio() {
+    var el = document.getElementById("audio1");
+    el.src = "media/eclipse.mp3";
+  }
+</script>
+
+<body>
+  <video width="320" height="240" controls>
+      <source src="media/big_buck_bunny.mp4">
+  </video>
+
+  <br><br><br>
+  <button onclick="LoadAudio();">Load audio</button>
+
+  <audio id="audio1" controls> </audio>
+</body>

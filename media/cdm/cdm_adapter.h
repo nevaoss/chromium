@@ -32,6 +32,10 @@
 #include "media/cdm/api/content_decryption_module.h"
 #include "ui/gfx/geometry/size.h"
 
+#if defined(USE_NEVA_CDM)
+#include "media/cdm/neva/webos/content_decryption_module_webos.h"
+#endif
+
 namespace media {
 
 class AudioFramesImpl;
@@ -41,6 +45,9 @@ class CdmWrapper;
 class MEDIA_EXPORT CdmAdapter final : public ContentDecryptionModule,
                                       public CdmContext,
                                       public Decryptor,
+#if defined(USE_NEVA_CDM)
+                                      public cdm::Host_8,
+#endif
                                       public cdm::Host_10,
                                       public cdm::Host_11 {
  public:
@@ -114,6 +121,28 @@ class MEDIA_EXPORT CdmAdapter final : public ContentDecryptionModule,
                              VideoDecodeCB video_decode_cb) final;
   void ResetDecoder(StreamType stream_type) final;
   void DeinitializeDecoder(StreamType stream_type) final;
+
+#if defined(USE_NEVA_CDM)
+  // cdm::Host_8 implementation.
+  void OnRejectPromise(uint32_t promise_id,
+                       cdm::Error error,
+                       uint32_t system_code,
+                       const char* error_message,
+                       uint32_t error_message_size) override;
+  void OnSessionMessage(const char* session_id,
+                        uint32_t session_id_size,
+                        cdm::MessageType message_type,
+                        const char* message,
+                        uint32_t message_size,
+                        const char* legacy_destination_url,
+                        uint32_t legacy_destination_url_length) override;
+  void OnLegacySessionError(const char* session_id,
+                            uint32_t session_id_length,
+                            cdm::Error error,
+                            uint32_t system_code,
+                            const char* error_message,
+                            uint32_t error_message_length) override;
+#endif
 
   // Common cdm::Host_10 and cdm::Host_11 implementation.
   cdm::Buffer* Allocate(uint32_t capacity) override;

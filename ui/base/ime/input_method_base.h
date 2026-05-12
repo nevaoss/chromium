@@ -59,6 +59,11 @@ class COMPONENT_EXPORT(UI_BASE_IME) InputMethodBase : public InputMethod {
   void SetVirtualKeyboardControllerForTesting(
       std::unique_ptr<VirtualKeyboardController> controller) override;
 
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  LinuxInputMethodContext* GetInputMethodContext() override;
+  ///@}
+
  protected:
   explicit InputMethodBase(ImeKeyEventDispatcher* ime_key_event_dispatcher);
   InputMethodBase(ImeKeyEventDispatcher* ime_key_event_dispatcher,

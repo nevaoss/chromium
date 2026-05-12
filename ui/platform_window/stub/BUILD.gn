@@ -15,6 +15,12 @@ component("stub") {
     "//ui/platform_window",
   ]
 
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  # TODO(neva): Revise http://text.lge.com/neva/gerrit/#/c/3935/
+  deps += [ "//ipc" ]
+  #@}
+
   defines = [ "STUB_WINDOW_IMPLEMENTATION" ]
 
   sources = [

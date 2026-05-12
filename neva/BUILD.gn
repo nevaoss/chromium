@@ -1,0 +1,145 @@
+# Copyright 2016 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//neva/neva.gni")
+import("//ui/ozone/ozone.gni")
+
+config("config") {
+  configs = []
+  defines = []
+
+  cflags = [
+    "-Wno-unused-variable",
+  ]
+
+  # All defines for Neva must be defined here
+
+  if (enable_browser_control_webapi) {
+    defines += [ "ENABLE_BROWSER_CONTROL_WEBAPI=1" ]
+  }
+
+   if (enable_sample_webapi) {
+    defines += [ "ENABLE_SAMPLE_WEBAPI=1" ]
+  }
+
+  if (enable_memorymanager_webapi) {
+    defines += [ "ENABLE_MEMORYMANAGER_WEBAPI=1" ]
+  }
+
+  if (enable_network_error_page_controller_webapi) {
+    defines += [ "ENABLE_NETWORK_ERROR_PAGE_CONTROLLER_WEBAPI=1" ]
+  }
+
+  if (enable_webos_service_bridge_webapi) {
+    defines += [ "ENABLE_WEBOS_SERVICE_BRIDGE_WEBAPI=1" ]
+  }
+
+  if (enable_webos_system_webapi) {
+    defines += [ "ENABLE_WEBOS_SYSTEM_WEBAPI=1" ]
+  }
+
+  if (enable_browser_shell) {
+    defines += [ "ENABLE_BROWSER_SHELL=1" ]
+  }
+
+  if (neva_dcheck_always_on) {
+    defines += [ "NEVA_DCHECK_ALWAYS_ON=1" ]
+  }
+
+  if (ozone_platform_wayland) {
+    # The prefix is addded to avoid colission with BUILDFLAG upstream use-case
+    defines += [ "NEVA_OZONE_PLATFORM_WAYLAND=1" ]
+  }
+
+  if (is_webos) {
+    defines += [ "OS_WEBOS=1" ]
+  }
+
+  if (is_agl) {
+    defines += [ "IS_AGL=1" ]
+  }
+
+  if (use_neva_appruntime) {
+    defines += [ "USE_NEVA_APPRUNTIME=1" ]
+  }
+
+  if (enable_pinch_to_zoom) {
+    assert(use_neva_appruntime, "enable_pinch_to_zoom is enabled without use_neva_appruntime.")
+    defines += [ "ENABLE_PINCH_TO_ZOOM=1" ]
+  }
+
+  if (use_neva_cdm) {
+    defines += [ "USE_NEVA_CDM=1" ]
+  }
+
+  if(is_linux && is_debug) {
+    cflags += [ "-Wno-deprecated-register" ]
+  }
+
+  if (webos_product_type == "tv") {
+    defines += [
+      "USE_WEBOS_STARFISH=1",
+    ]
+  } else if (webos_product_type == "signage") {
+    defines += [
+      "USE_WEBOS_SIGNAGE=1",
+    ]
+  }
+
+  if (use_cbe) {
+    defines += [
+      "USE_CBE=1",
+    ]
+  }
+
+  if (use_lttng && current_toolchain == default_toolchain) {
+    configs += [
+      "//build/config/linux/lttng:lttngust",
+    ]
+  }
+
+  if (use_neva_suspend_media_capture) {
+    defines += [ "USE_NEVA_SUSPEND_MEDIA_CAPTURE=1" ]
+  }
+
+  if (use_filescheme_codecache) {
+    defines += [ "USE_FILESCHEME_CODECACHE=1" ]
+  }
+
+  if (use_single_window_mode) {
+    defines += [ "USE_SINGLE_WINDOW_MODE=1" ]
+  }
+
+  if (use_neva_chrome_extensions) {
+    defines += [ "USE_NEVA_CHROME_EXTENSIONS=1" ]
+  }
+
+  if (use_webos_codec) {
+    defines += [ "USE_WEBOS_CODEC=1" ]
+  }
+
+  # TODO(neva): Should be revised when Neva upgrades to new RP build version
+  # with updated Mesa (see http://clm.lge.com/issue/browse/NEVA-7333)
+  if (disable_msaa) {
+    defines += [ "DISABLE_MSAA=1" ]
+  }
+
+  # TODO(neva): Should be removed when the regression is fixed on the upstream
+  # (See http://clm.lge.com/issue/browse/NEVA-7487)
+  if (enable_skia_force_invalidate) {
+    defines += [ "ENABLE_SKIA_FORCE_INVALIDATE" ]
+  }
+}

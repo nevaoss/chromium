@@ -31,6 +31,9 @@ static_library("profiling_host") {
     # TODO(darin): We should instead have a way to express that dependency here.
     "//chrome/common:mojo_bindings",
   ]
+
+  # FIXME(neva): To check if we still need it and why.
+  deps += [ "//components/signin/public/base:signin_buildflags" ]
 }
 
 source_set("profiling_browsertests") {

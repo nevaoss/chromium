@@ -253,16 +253,22 @@ static void setup_rtcd_internal(void) {
   (void)flags;
 
   vp9_block_error = vp9_block_error_neon;
+// TODO(neva): Remove this guard after webos toolchain supports sve
+#if !defined(OS_WEBOS)
   if (flags & HAS_SVE) {
     vp9_block_error = vp9_block_error_sve;
   }
+#endif  // !defined(OS_WEBOS)
   vp9_block_error_fp = vp9_block_error_fp_neon;
+
+// TODO(neva): Remove this guard after webos toolchain supports sve
+#if !defined(OS_WEBOS)
   if (flags & HAS_SVE) {
     vp9_block_error_fp = vp9_block_error_fp_sve;
   }
+#endif  // !defined(OS_WEBOS)
 }
 #endif
-
 #ifdef __cplusplus
 }  // extern "C"
 #endif

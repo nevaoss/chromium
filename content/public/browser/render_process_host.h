@@ -745,6 +745,9 @@ class CONTENT_EXPORT RenderProcessHost : public IPC::Sender,
   // to the different components to figure out.
   virtual void SetBatterySaverMode(bool battery_saver_mode_enabled) = 0;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  virtual void SetV8SnapshotPath(const std::string& v8_snapshot_path) = 0;
+#endif
   // Return the memory usage of this process. On Android this value is
   // provided by the renderer periodically. On other platforms this value is
   // read from the OS but is cached for a short duration so we don't incur

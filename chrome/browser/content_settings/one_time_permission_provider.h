@@ -112,6 +112,16 @@ class OneTimePermissionProvider
 
  private:
   struct ContentSettingEntry {
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+    ContentSettingEntry() = default;
+    ContentSettingEntry(const ContentSettingsType& type,
+                        const ContentSettingsPattern& primary_pattern,
+                        const ContentSettingsPattern& secondary_pattern)
+        : type(type),
+          primary_pattern(primary_pattern),
+          secondary_pattern(secondary_pattern) {}
+#endif  // (__cplusplus < 202002L)
     ContentSettingsType type;
     ContentSettingsPattern primary_pattern;
     ContentSettingsPattern secondary_pattern;

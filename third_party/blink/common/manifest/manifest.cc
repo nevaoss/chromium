@@ -153,4 +153,11 @@ bool Manifest::TabStrip::operator==(const TabStrip& other) const {
   return AsTuple(*this) == AsTuple(other);
 }
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+bool Manifest::TabStrip::operator!=(const TabStrip& other) const {
+  return !operator==(other);
+}
+#endif
+
 }  // namespace blink

@@ -82,8 +82,10 @@ class ExtensionSyncEventObserver : public sync_file_system::SyncEventObserver,
 }  // namespace api
 }  // namespace chrome_apps
 
+namespace extensions {
 template <>
 void extensions::BrowserContextKeyedAPIFactory<
     chrome_apps::api::ExtensionSyncEventObserver>::DeclareFactoryDependencies();
+}  // namespace extensions
 
 #endif  // CHROME_BROWSER_APPS_PLATFORM_APPS_API_SYNC_FILE_SYSTEM_EXTENSION_SYNC_EVENT_OBSERVER_H_

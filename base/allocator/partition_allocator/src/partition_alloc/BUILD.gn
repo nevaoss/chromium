@@ -60,7 +60,18 @@ config("public_includes") {
 #
 # This list was initially copied from Dawn, who gathered this list from its own
 # dependants.
+#@name USE_NEVA_APPRUNTIME
+#@{
+# TODO(neva): Workaround to avoid build issues when Clang is used together with
+# ICECC. See http://clm.lge.com/issue/browse/NEVA-8764.
+#@}
 config("dependants_extra_warnings") {
+#@name USE_NEVA_APPRUNTIME
+#@{
+  # Here should be body of dependants_extra_warnings_orig
+}
+config("dependants_extra_warnings_orig") {
+#@}
   # Add them only when building PartitionAlloc as part of Chrome, because we
   # control which clang version we use. Otherwise we risk breaking dependants
   # when they use a different clang version.
@@ -267,7 +278,10 @@ if (is_clang_or_gcc) {
   }
 
   config("memory_tagging") {
-    if (current_cpu == "arm64" &&
+    # TODO(neva): Clang flags should only be used with Clang builds. Looks like
+    # the |is_clang| flag was forgotten to be used here in the upstream. So try
+    # to contribute this change to upstream.
+    if (current_cpu == "arm64" && is_clang &&
         (is_linux || is_chromeos || is_android || is_fuchsia)) {
       # base/ has access to the MTE intrinsics because it needs to use them,
       # but they're not backwards compatible. Use base::CPU::has_mte()

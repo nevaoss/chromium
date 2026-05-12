@@ -1,0 +1,72 @@
+From bcffae0f5f714376939238ee28b84edc568f89da Mon Sep 17 00:00:00 2001
+From: Eugeny Aristov <eugeny.aristov@lge.com>
+Date: Thu, 10 Feb 2022 15:55:25 +0300
+Subject: [PATCH] [webos] Disable MANGLE_JPEG_NAMES for libjpeg_turbo
+
+:Release Notes:
+Disable MANGLE_JPEG_NAMES for libjpeg_turbo to avoid linking
+time failures on webOS after rolling to 96.0.4660.0~2.
+
+:Detailed Notes:
+libjpeg_turbo is not default jpeg decoding option in upstream Linux
+based Chromium target since ~M90 in favor of libjxl.
+
+webOS toolchain wasn't compatible with libjxl deps stack and hence
+webOS was forced to use libjpeg_turbo option (CL
+http://repo.lge.com:8080/c/4470/)
+
+Recent libjpeg_turbo change enforced by webrtc project made it
+incompatible with Chromium target which fails to resolve own
+symbols with the lib's mangled ones:
+https://crrev.com/c/deps/libjpeg_turbo/+/3173385
+
+Hence disable MANGLE_JPEG_NAMES usage for webOS target.
+
+:Issues Addressed:
+[NEVA-6765] Upgrade neva-master-rolling up to 4664 BUILD (M96 branchpoint)
+---
+ BUILD.gn | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index 524890a..9610aee 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -7,6 +7,7 @@
+
+ import("//build/config/features.gni")
+ import("//build/config/sanitizers/sanitizers.gni")
++import("//neva/neva.gni")
+ if (current_cpu == "arm" || current_cpu == "arm64") {
+   import("//build/config/arm.gni")
+ }
+@@ -138,8 +139,11 @@ if (current_cpu == "x86" || current_cpu == "x64") {
+ static_library("simd") {
+   include_dirs = [ "." ]
+   deps = [ ":libjpeg_headers" ]
+-  defines = [ "MANGLE_JPEG_NAMES" ]
+-
++  if (is_webos) {
++    defines = []
++  } else {
++    defines = [ "MANGLE_JPEG_NAMES" ]
++  }
+   if (current_cpu == "x86") {
+     deps += [ ":simd_asm" ]
+     sources = [ "simd/i386/jsimd.c" ]
+@@ -191,7 +195,11 @@ static_library("simd") {
+
+ config("libjpeg_config") {
+   include_dirs = [ "." ]
+-  defines = [ "MANGLE_JPEG_NAMES" ]
++  if (is_webos) {
++    defines = []
++  } else {
++    defines = [ "MANGLE_JPEG_NAMES" ]
++  }
+ }
+
+ static_library("libjpeg") {
+--
+2.25.1
+

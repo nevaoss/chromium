@@ -6699,6 +6699,11 @@ test("unit_tests") {
     "//base:path_service_unittest",
   ]
 
+  # TODO(neva): Remove this workaround once Neva supports Rust build.
+  if (use_neva_appruntime) {
+    deps -= [ "//third_party/rust/fend_core/v1/wrapper:unit_tests" ]
+  }
+
   if (is_chromeos) {
     sources += [ "../browser/device_reauth/chromeos/device_authenticator_chromeos_unittest.cc" ]
 

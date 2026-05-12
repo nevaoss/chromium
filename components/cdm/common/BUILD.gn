@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//neva/neva.gni")
 import("//third_party/widevine/cdm/widevine.gni")
 
 static_library("common") {
@@ -24,6 +25,10 @@ static_library("common") {
     ]
 
     deps += [ "//third_party/widevine/cdm:buildflags" ]
+  }
+
+  if (use_neva_cdm) {
+    deps += [ "//components/cdm/common/neva" ]
   }
 
   if (enable_library_cdms) {

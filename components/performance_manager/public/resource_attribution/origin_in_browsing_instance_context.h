@@ -61,7 +61,12 @@ class OriginInBrowsingInstanceContext {
 
   // Test OriginInBrowsingInstanceContexts for equality by origin and browsing
   // instance.
+  // TODO(neva): Remove this when Neva GCC version upgraded to 12.
+#if defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
+  friend bool operator==(const OriginInBrowsingInstanceContext& a,
+#else   // defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
   constexpr friend bool operator==(const OriginInBrowsingInstanceContext& a,
+#endif  // defined(__GNUC__) && __GNUC__ < 12 && defined(__clang__)
                                    const OriginInBrowsingInstanceContext& b) {
     return a.origin_ == b.origin_ &&
            a.browsing_instance_ == b.browsing_instance_;

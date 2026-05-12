@@ -101,6 +101,13 @@
 #include "content/public/browser/android/child_process_importance.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/scoped_multi_source_observation.h"
+#include "content/public/browser/render_process_host_creation_observer.h"
+#include "content/public/browser/render_process_host_observer.h"
+#include "third_party/blink/public/mojom/peerconnection/peer_connection_tracker.mojom-shared.h"
+#endif
+
 namespace base {
 class FilePath;
 }  // namespace base
@@ -202,6 +209,10 @@ class CONTENT_EXPORT WebContentsImpl
       public RenderFrameHostManager::Delegate,
       public PageDelegate,
       public blink::mojom::ColorChooserFactory,
+#if defined(USE_NEVA_APPRUNTIME)
+      public content::RenderProcessHostCreationObserver,
+      public content::RenderProcessHostObserver,
+#endif
       public NavigationControllerDelegate,
       public NavigatorDelegate,
       public ui::NativeThemeObserver,
@@ -379,6 +390,28 @@ class CONTENT_EXPORT WebContentsImpl
   WebContentsDelegate* GetDelegate() final;
   void SetDelegate(WebContentsDelegate* delegate) override;
   NavigationControllerImpl& GetController() override;
+
+#if defined(USE_NEVA_APPRUNTIME)
+  // Notify the process creation of currently active RenderProcessHost
+  void RenderProcessCreated(RenderProcessHost* render_process_host) override;
+  bool IsInspectablePage() const override;
+  void SetInspectablePage(bool inspectable) override;
+
+#if defined(ENABLE_PINCH_TO_ZOOM)
+  // RenderWidgetHostDelegate --------------------------------------------------
+  bool IsPinchToZoomEnabled() const override;
+  // WebContents ------------------------------------------------------
+  void SetPinchToZoomEnabled(bool enabled) override;
+#endif  // defined(ENABLE_PINCH_TO_ZOOM)
+
+  void DropAllPeerConnections(
+      blink::mojom::DropPeerConnectionReason reason) override;
+  bool DecidePolicyForResponse(bool is_main_frame,
+                               int status_code,
+                               const std::string& url,
+                               const std::string& status_text) override;
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
   BrowserContext* GetBrowserContext() override;
   base::WeakPtr<WebContents> GetWeakPtr() override;
   const GURL& GetURL() override;
@@ -1202,6 +1235,17 @@ class CONTENT_EXPORT WebContentsImpl
   FrameTree* GetOwnedPictureInPictureFrameTree() override;
   FrameTree* GetPictureInPictureOpenerFrameTree() override;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  // content::RenderProcessHostCreationObserver
+  void OnRenderProcessHostCreated(content::RenderProcessHost* host) override;
+
+  // content::RenderProcessHostObserver
+  void RenderProcessExited(
+      content::RenderProcessHost* host,
+      const content::ChildProcessTerminationInfo& info) override;
+  void RenderProcessHostDestroyed(content::RenderProcessHost* host) override;
+#endif
+
   // NavigationControllerDelegate ----------------------------------------------
 
   void NotifyNavigationEntryCommitted(
@@ -1832,6 +1876,11 @@ class CONTENT_EXPORT WebContentsImpl
   void OnUpdateZoomLimits(RenderViewHostImpl* source,
                           int minimum_percent,
                           int maximum_percent);
+#if defined(USE_NEVA_APPRUNTIME)
+  void OnDidDropAllPeerConnections(
+      blink::mojom::DropPeerConnectionReason reason,
+      int request_id);
+#endif
   void OnShowValidationMessage(RenderViewHostImpl* source,
                                const gfx::Rect& anchor_in_root_view,
                                const std::u16string& main_text,
@@ -2330,6 +2379,12 @@ class CONTENT_EXPORT WebContentsImpl
   std::unique_ptr<ColorChooserHolder> color_chooser_holder_;
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+  base::ScopedMultiSourceObservation<content::RenderProcessHost,
+                                     content::RenderProcessHostObserver>
+      host_observation_{this};
+#endif
+
   // All live RenderWidgetHostImpls that are created by this object and may
   // outlive it.
   base::flat_map<viz::FrameSinkId,
@@ -2468,6 +2523,14 @@ class CONTENT_EXPORT WebContentsImpl
 
   bool showing_context_menu_;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  bool inspectable_page_ = true;
+
+#if defined(ENABLE_PINCH_TO_ZOOM)
+  bool pinch_to_zoom_enabled_ = false;
+#endif  // defined(ENABLE_PINCH_TO_ZOOM)
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
   int currently_playing_video_count_ = 0;
   base::flat_map<MediaPlayerId, gfx::Size> cached_video_sizes_;
 
@@ -2561,6 +2624,10 @@ class CONTENT_EXPORT WebContentsImpl
   // renderer dialog.
   int suppress_unresponsive_renderer_count_ = 0;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  int drop_peer_connection_request_id_ = 0;
+  int last_processed_drop_peer_connection_request_id_ = -1;
+#endif
   // Stores all prefetch containers created by `this`.
   std::vector<base::WeakPtr<PrefetchContainer>> prefetch_containers_;
 

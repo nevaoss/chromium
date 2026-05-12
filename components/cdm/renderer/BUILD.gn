@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//neva/neva.gni")
 import("//third_party/widevine/cdm/widevine.gni")
 
 static_library("renderer") {
@@ -40,5 +41,9 @@ static_library("renderer") {
       "//build:chromeos_buildflags",
       "//third_party/widevine/cdm:headers",
     ]
+  }
+
+  if (use_neva_cdm) {
+    deps += [ "//components/cdm/renderer/neva" ]
   }
 }

@@ -1,0 +1,37 @@
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>IME Keycodes</title>
+</head>
+
+<body body style="background-color:grey;" onkeydown="key_down(event);" onkeyup="key_up(event);" onkeypress="key_press(event);">
+<p style="text-align:center;font-size:150%;color:red">IME Media/Color Keycodes Handling Test</p>
+<script>
+function key_press(e)
+{
+    msg = "0x" + e.keyCode.toString(16).toUpperCase();
+    document.getElementById('press').innerHTML = msg;
+}
+
+function key_up(e)
+{
+    msg = "0x" + e.keyCode.toString(16).toUpperCase();
+    document.getElementById('up').innerHTML = msg;
+}
+
+function key_down(e)
+{
+    msg = "0x" + e.keyCode.toString(16).toUpperCase();
+    document.getElementById('down').innerHTML = msg;
+    document.getElementById('up').innerHTML = "";
+    document.getElementById('press').innerHTML = "";
+}
+</script>
+
+
+
+<input type="text" onkeypress="return event.charCode&gt;=48&amp;&amp;event.charCode&lt;=57">
+
+<br>key_up: <span id="up"></span>
+<br>key_down: <span id="down"></span>
+<br>key_press: <span id="press"></span>
+
+</body></html>

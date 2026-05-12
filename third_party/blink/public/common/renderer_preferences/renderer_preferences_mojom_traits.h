@@ -180,6 +180,42 @@ struct BLINK_COMMON_EXPORT
   }
 #endif
 
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  static const std::string& application_id(
+      const ::blink::RendererPreferences& data) {
+    return data.application_id;
+  }
+  static const std::string& media_codec_capability(
+      const ::blink::RendererPreferences& data) {
+    return data.media_codec_capability;
+  }
+  static const std::string& media_preferences(
+      const ::blink::RendererPreferences& data) {
+    return data.media_preferences;
+  }
+  static const std::string& board_type(
+      const ::blink::RendererPreferences& data) {
+    return data.board_type;
+  }
+  static const bool& allow_fake_bold_text(
+      const ::blink::RendererPreferences& data) {
+    return data.allow_fake_bold_text;
+  }
+  static const std::string& file_security_origin(
+      const ::blink::RendererPreferences& data) {
+    return data.file_security_origin;
+  }
+  static const bool& use_unlimited_media_policy(
+      const ::blink::RendererPreferences& data) {
+    return data.use_unlimited_media_policy;
+  }
+  static const bool& is_enact_browser(
+      const ::blink::RendererPreferences& data) {
+    return data.is_enact_browser;
+  }
+  ///@}
+
 #if BUILDFLAG(IS_OZONE)
   static const bool& selection_clipboard_buffer_available(
       const ::blink::RendererPreferences& data) {

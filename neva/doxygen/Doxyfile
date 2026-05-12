@@ -1,0 +1,5 @@
+PROJECT_NAME           = "Neva"
+INPUT                  = ../../neva/app_runtime/public
+GENERATE_LATEX         = NO
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO

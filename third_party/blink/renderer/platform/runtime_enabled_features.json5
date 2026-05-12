@@ -5073,5 +5073,14 @@
       // frames, which should trigger a zero-copy path in the tab capture code.
       name: "ZeroCopyTabCapture",
     },
+    ///@name USE_FILESCHEME_CODECACHE
+    ///@{
+    {
+      name: "LocalResourceCodeCache",
+      public: true,
+      status: "experimental",
+      base_feature: "none",
+    },
+    ///@}
   ],
 }

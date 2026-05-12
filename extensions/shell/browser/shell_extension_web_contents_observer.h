@@ -26,6 +26,12 @@ class ShellExtensionWebContentsObserver
   // |web_contents|, if it doesn't already exist.
   static void CreateForWebContents(content::WebContents* web_contents);
 
+#if defined(USE_NEVA_APPRUNTIME)
+ protected:
+  void DidFinishNavigation(
+      content::NavigationHandle* navigation_handle) override;
+#endif
+
  private:
   friend class content::WebContentsUserData<ShellExtensionWebContentsObserver>;
 

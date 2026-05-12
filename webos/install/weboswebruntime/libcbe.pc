@@ -1,0 +1,11 @@
+prefix=/usr
+exec_prefix=/usr
+libdir=/usr/lib
+includedir=/usr/include
+
+Name: libcbe
+Version: 1.0.0
+Description: webruntime - Library
+Libs: -L${libdir} -lcbe
+Libs.private:
+Cflags: -I${includedir}/webruntime -I${includedir}/webruntime/base/allocator/partition_allocator/src

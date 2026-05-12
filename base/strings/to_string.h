@@ -12,7 +12,6 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
-#include <utility>
 
 #include "base/types/supports_ostream_operator.h"
 

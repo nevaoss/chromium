@@ -4,6 +4,7 @@
 
 import("//build/config/features.gni")
 import("//media/media_options.gni")
+import("//neva/neva.gni")
 import("//ppapi/buildflags/buildflags.gni")
 
 # See //content/BUILD.gn for how this works.
@@ -80,6 +81,13 @@ target(link_target_type, "renderer_sources") {
     # include headers from each other.
     "//content/renderer",
   ]
+
+  if (use_neva_appruntime) {
+    deps += [
+      "//neva/injection/public/renderer",
+      "//neva/injection/renderer:resources"
+    ]
+  }
 
   if (enable_plugins) {
     sources += [ "plugin_ax_tree_action_target_adapter.h" ]

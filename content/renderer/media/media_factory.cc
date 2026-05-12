@@ -431,6 +431,7 @@ std::unique_ptr<blink::WebMediaPlayer> MediaFactory::CreateMediaPlayer(
   EnsureDecoderFactory();
 
   base::WeakPtr<media::MediaObserver> media_observer;
+
   auto factory_selector = CreateRendererFactorySelector(
       player_id, media_log.get(), url,
       render_frame_->GetRenderFrameMediaPlaybackOptions(),
@@ -470,7 +471,6 @@ std::unique_ptr<blink::WebMediaPlayer> MediaFactory::CreateMediaPlayer(
   std::unique_ptr<media::Demuxer> demuxer_override =
       GetContentClient()->renderer()->OverrideDemuxerForUrl(render_frame_, url,
                                                             media_task_runner);
-
 #if BUILDFLAG(ENABLE_CAST_RECEIVER)
   if (!demuxer_override && cast_streaming_resource_provider_) {
     demuxer_override =

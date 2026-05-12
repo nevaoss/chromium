@@ -1,0 +1,188 @@
+html, body, div, span, applet, object, iframe, h1, h2, h3, h4, h5, h6, p,
+    blockquote, pre, a, abbr, acronym, address, big, cite, code, del, dfn, em,
+    img, ins, kbd, q, s, samp, small, strike, strong, sub, sup, tt, var, b, u,
+    i, center, dl, dt, dd, ol, ul, li, fieldset, form, label, legend, table,
+    caption, tbody, tfoot, thead, tr, th, td, article, aside, canvas, details,
+    embed, figure, figcaption, footer, header, hgroup, menu, nav, output, ruby,
+    section, summary, time, mark, audio, video {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font: inherit;
+    font-size: 100%;
+    vertical-align: baseline;
+}
+
+html {
+    line-height: 1;
+}
+
+q:before, q:after, blockquote:before, blockquote:after {
+    content: "";
+    content: none;
+}
+
+a img {
+    border: none;
+}
+
+article, aside, details, figcaption, figure, footer, header, hgroup, main,
+    menu, nav, section, summary {
+    display: block;
+}
+
+html, body {
+    background: #f7d159;
+    color: #fff;
+    display: table;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+    width: 100%;
+}
+
+* {
+    background-size: 100% !important;
+}
+
+.ruler .grad span, #horiz .grad span, #vert .grad span {
+    position: absolute;
+}
+
+#container, #counter, .num, #divider {
+    display: inline-block;
+}
+
+.ruler, #horiz, #vert {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    position: absolute;
+}
+
+.ruler .grad, #horiz .grad, #vert .grad {
+    position: relative;
+}
+
+.ruler .grad:before, #horiz .grad:before, #vert .grad:before {
+    content: "\00a0";
+    background: #fff;
+    display: inline-block;
+}
+
+.ruler .grad:nth-child(odd) span, #horiz .grad:nth-child(odd) span,
+#vert .grad:nth-child(odd) span {
+    display: none;
+}
+
+#horiz {
+    top: 0;
+    left: 50px;
+    overlfow: hidden;
+}
+
+#horiz .grad {
+    float: left;
+}
+
+#horiz .grad:nth-child(even) {
+    margin: 0 46px;
+}
+
+#horiz .grad:nth-child(n+2):nth-child(even):nth-child(-n+18) span {
+    left: -12px;
+}
+
+#horiz .grad:nth-child(n+20) span {
+    left: -14px;
+}
+
+#horiz .grad:before {
+    -moz-border-radius-bottomleft: 4px;
+    -webkit-border-bottom-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    -moz-border-radius-bottomright: 4px;
+    -webkit-border-bottom-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    display: block;
+    margin-bottom: 10px;
+}
+
+#horiz .grad:nth-child(odd):before {
+    height: 16px;
+    width: 4px;
+}
+
+#horiz .grad:nth-child(even):before {
+    height: 32px;
+    width: 4px;
+}
+
+#horiz .grad span {
+    left: 50%;
+}
+
+#vert {
+    top: 50px;
+    left: 0;
+}
+
+#vert .grad {
+    height: 4px;
+}
+
+#vert .grad:nth-child(even) {
+    margin: 46px 0;
+}
+
+#vert .grad:nth-child(n+2) span {
+    top: -6px;
+}
+
+#vert .grad:before {
+    -moz-border-radius-topright: 4px;
+    -webkit-border-top-right-radius: 4px;
+    border-top-right-radius: 4px;
+    -moz-border-radius-bottomright: 4px;
+    -webkit-border-bottom-right-radius: 4px;
+    border-bottom-right-radius: 4px;
+    margin-right: 10px;
+}
+
+#vert .grad:nth-child(odd):before {
+    height: 4px;
+    width: 16px;
+}
+
+#vert .grad:nth-child(even):before {
+    height: 4px;
+    width: 32px;
+}
+
+#container {
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+}
+
+#counter {
+    background: #232323;
+    border: 15px solid #fff;
+    display: inline-block;
+    font-family: "Myriad W01",sans-serif;
+    font-size: 70px;
+    font-weight: bold;
+    padding: 0 50px;
+    position: relative;
+    vertical-align: middle;
+    z-index: 999;
+}
+
+#counter #divider {
+    background-size: 30px 170px;
+    display: inline-block;
+    margin: 0 50px;
+    height: 170px;
+    width: 30px;
+    vertical-align: middle;
+}

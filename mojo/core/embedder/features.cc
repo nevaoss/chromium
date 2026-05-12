@@ -34,7 +34,9 @@ BASE_FEATURE(kMojoInlineMessagePayloads,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(MOJO_SUPPORT_LEGACY_CORE)
-#if BUILDFLAG(IS_CHROMEOS)
+// TODO(neva): Remove BUILDFLAG(IS_WEBOS) if mojoipcz is better when considering
+// memory and performance perspective.
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WEBOS)
 BASE_FEATURE(kMojoIpcz, "MojoIpcz", base::FEATURE_DISABLED_BY_DEFAULT);
 #else
 BASE_FEATURE(kMojoIpcz, "MojoIpcz", base::FEATURE_ENABLED_BY_DEFAULT);

@@ -396,6 +396,15 @@ bool ContentBrowserClient::IsFileAccessAllowed(
   return true;
 }
 
+#if defined(USE_NEVA_APPRUNTIME)
+bool ContentBrowserClient::IsFileSchemeNavigationAllowed(
+    const GURL& url,
+    FrameTreeNodeId render_frame_id,
+    bool browser_initiated) {
+  return true;
+}
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 bool ContentBrowserClient::ForceSniffingFileUrlsForHtml() {
   return false;
 }
@@ -688,6 +697,12 @@ bool ContentBrowserClient::CanSendSCTAuditingReport(
     BrowserContext* browser_context) {
   return false;
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+bool ContentBrowserClient::HasQuotaSettings() const {
+  return false;
+}
+#endif
 
 GeneratedCodeCacheSettings ContentBrowserClient::GetGeneratedCodeCacheSettings(
     BrowserContext* context) {

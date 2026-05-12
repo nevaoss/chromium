@@ -265,6 +265,11 @@
 #include "content/browser/media/key_system_support_impl.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/neva/base_switches.h"
+#include "content/public/common/content_neva_switches.h"
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 #if BUILDFLAG(ENABLE_PLUGINS)
 #include "content/browser/renderer_host/plugin_registry_impl.h"
 #endif
@@ -1764,6 +1769,12 @@ bool RenderProcessHostImpl::Init() {
     auto file_data = std::make_unique<ChildProcessLauncherFileData>();
 #if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_MAC)
     file_data->files_to_preload = GetV8SnapshotFilesToPreload(*cmd_line);
+#if defined(USE_NEVA_APPRUNTIME)
+    if (!v8_snapshot_path_.empty()) {
+      file_data->files_to_preload[switches::kV8SnapshotBlobPath] =
+          base::FilePath(FILE_PATH_LITERAL(v8_snapshot_path_));
+    }
+#endif  // defined(USE_NEVA_APPRUNTIME)
 #endif
 
     // Spawn the child process asynchronously to avoid blocking the UI thread.
@@ -1785,6 +1796,12 @@ bool RenderProcessHostImpl::Init() {
     fast_shutdown_started_ = false;
     shutdown_requested_ = false;
   }
+
+#if defined(USE_NEVA_APPRUNTIME)
+  memory_pressure_listener_ = std::make_unique<base::MemoryPressureListener>(
+      FROM_HERE, base::BindRepeating(&RenderProcessHostImpl::OnMemoryPressure,
+                                     instance_weak_factory_.GetWeakPtr()));
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
   last_init_time_ = base::TimeTicks::Now();
   return true;
@@ -2736,6 +2753,27 @@ mojom::Renderer* RenderProcessHostImpl::GetRendererInterface() {
   return renderer_interface_.get();
 }
 
+#if defined(USE_NEVA_APPRUNTIME)
+void RenderProcessHostImpl::OnMemoryPressure(
+    base::MemoryPressureListener::MemoryPressureLevel level) {
+  base::MemoryPressureListener::MemoryPressureLevel adjusted_level = level;
+
+  // Reclaim memory aggressively in backgrounded process.
+  if (level == base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_MODERATE &&
+      GetPriority() == base::Process::Priority::kBestEffort) {
+    adjusted_level =
+        base::MemoryPressureListener::MEMORY_PRESSURE_LEVEL_CRITICAL;
+  }
+
+  GetRendererInterface()->OnSystemMemoryPressureLevelChanged(adjusted_level);
+}
+
+void RenderProcessHostImpl::SetV8SnapshotPath(
+    const std::string& v8_snapshot_path) {
+  v8_snapshot_path_ = v8_snapshot_path;
+}
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 blink::mojom::CallStackGenerator*
 RenderProcessHostImpl::GetJavaScriptCallStackGeneratorInterface() {
   if (!javascript_call_stack_generator_interface_.is_bound()) {
@@ -3412,7 +3450,9 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
       blink::switches::kShowLayoutShiftRegions,
       blink::switches::kShowPaintRects,
       blink::switches::kTouchTextSelectionStrategy,
+#if !defined(USE_NEVA_APPRUNTIME)
       blink::switches::kJavaScriptFlags,
+#endif
       // Please keep these in alphabetical order. Compositor switches here
       // should also be added to
       // chrome/browser/ash/login/chrome_restart_request.cc.
@@ -3456,6 +3496,21 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
 #endif
 #if BUILDFLAG(IS_OZONE)
       switches::kOzonePlatform,
+#endif
+#if defined(USE_NEVA_APPRUNTIME)
+    switches::kEnableExternalProtocolsHandling,
+    switches::kEnableNotificationForUnsupportedFeatures,
+    switches::kEnableSampleInjection,
+    switches::kForceLowEndDeviceMode,
+    switches::kDecodedImageWorkingSetBudgetMB,
+    switches::kMemPressureGPUCacheSizeReductionFactor,
+    switches::kTileManagerLowMemPolicyBytesLimitReductionFactor,
+    blink::switches::kAllowScriptsToCloseWindows,
+    switches::kEnableAggressiveReleasePolicy,
+#endif
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+    switches::kDisableSuspendAudioCapture,
+    switches::kDisableSuspendVideoCapture,
 #endif
 #if defined(ENABLE_IPC_FUZZER)
       switches::kIpcDumpDirectory,
@@ -4312,10 +4367,26 @@ bool RenderProcessHostImpl::IsSuitableHost(
   if (host->GetBrowserContext() != browser_context)
     return false;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  // TODO(neva): Remove the workaround after proper fix for NEVA-7205.
+  // After https://crrev.com/c/3631517, Enact based browser can't load
+  // a webpage on the 2nd tab. See http://clm.lge.com/issue/browse/NEVA-7205.
+  // As a workaround method to avoid this issue, use the old policy
+  // for Neva Appruntime.
+
+  // Do not allow sharing of guest hosts. This is to prevent bugs where guest
+  // and non-guest storage gets mixed. In the future, we might consider
+  // enabling the sharing of guests, in this case this check should be removed
+  // and InSameStoragePartition should handle the possible sharing. Also
+  // deny any attempt where a guest SiteInfo tries to use a |host| that is not
+  // explicitly created for guests.
+  if (host->IsForGuestsOnly() || site_info.is_guest())
+#else
   // Do not allow sharing of guest and non-guest hosts.  Note that we also
   // enforce that `host` and `site_info` must belong to the same
   // StoragePartition via the InSameStoragePartition() check below.
   if (host->IsForGuestsOnly() != site_info.is_guest())
+#endif
     return false;
 
   // If this process has a different JIT policy to the site then it can't be
@@ -5042,7 +5113,7 @@ void RenderProcessHostImpl::RecordUserMetricsAction(const std::string& action) {
   base::RecordComputedAction(action);
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 void RenderProcessHostImpl::SetPrivateMemoryFootprint(
     uint64_t private_memory_footprint_bytes) {
   private_memory_footprint_bytes_ = private_memory_footprint_bytes;
@@ -5052,14 +5123,14 @@ void RenderProcessHostImpl::SetPrivateMemoryFootprint(
 void RenderProcessHostImpl::SetPrivateMemoryFootprintForTesting(
     uint64_t private_memory_footprint_bytes) {
   private_memory_footprint_bytes_ = private_memory_footprint_bytes;
-#if !BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID) && !defined(USE_NEVA_APPRUNTIME)
   private_memory_footprint_valid_until_ =
       base::TimeTicks::Now() + base::Hours(1);
 #endif
 }
 
 uint64_t RenderProcessHostImpl::GetPrivateMemoryFootprint() {
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
   return private_memory_footprint_bytes_;
 #else
   // If we don't have a process yet or have died, our memory footprint is 0.
@@ -5636,7 +5707,7 @@ void RenderProcessHostImpl::ProvideSwapFileForRenderer() {
           std::move(allocator)));
 }
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 
 void RenderProcessHostImpl::NotifyMemoryPressureToRenderer(
     base::MemoryPressureListener::MemoryPressureLevel level) {

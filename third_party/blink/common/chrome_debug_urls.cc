@@ -11,7 +11,10 @@
 #include "base/threading/platform_thread.h"
 #include "build/build_config.h"
 #include "third_party/blink/common/crash_helpers.h"
+// TODO(neva): Remove this workaround once Neva supports Rust build.
+#if !defined(USE_NEVA_APPRUNTIME)
 #include "third_party/blink/common/rust_crash/src/lib.rs.h"
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -39,16 +42,26 @@ bool IsRendererDebugURL(const GURL& url) {
   if (url == kChromeUICheckCrashURL || url == kChromeUIBadCastCrashURL ||
       url == kChromeUICrashURL || url == kChromeUIDumpURL ||
       url == kChromeUIKillURL || url == kChromeUIHangURL ||
+// TODO(neva): Remove this workaround once Neva supports Rust build.
+#if defined(USE_NEVA_APPRUNTIME)
+      url == kChromeUIShorthangURL || url == kChromeUIMemoryExhaustURL) {
+#else   // defined(USE_NEVA_APPRUNTIME)
       url == kChromeUIShorthangURL || url == kChromeUIMemoryExhaustURL ||
       url == kChromeUICrashRustURL) {
+#endif  // !defined(USE_NEVA_APPRUNTIME)
     return true;
   }
 
 #if defined(ADDRESS_SANITIZER)
   if (url == kChromeUICrashHeapOverflowURL ||
       url == kChromeUICrashHeapUnderflowURL ||
+// TODO(neva): Remove this workaround once Neva supports Rust build.
+#if defined(USE_NEVA_APPRUNTIME)
+      url == kChromeUICrashUseAfterFreeURL) {
+#else   // defined(USE_NEVA_APPRUNTIME)
       url == kChromeUICrashUseAfterFreeURL ||
       url == kChromeUICrashRustOverflowURL) {
+#endif  // !defined(USE_NEVA_APPRUNTIME)
     return true;
   }
 #endif  // defined(ADDRESS_SANITIZER)
@@ -113,11 +126,14 @@ NOINLINE void MaybeTriggerAsanError(const GURL& url) {
                << " because user navigated to " << url.spec();
     base::debug::AsanCorruptHeap();
 #endif  // BUILDFLAG(IS_WIN)
+// TODO(neva): Remove this workaround once Neva supports Rust build.
+#if !defined(USE_NEVA_APPRUNTIME)
   } else if (url == kChromeUICrashRustOverflowURL) {
     // Ensure that ASAN works even in Rust code.
     LOG(ERROR) << "Intentionally causing ASAN heap overflow in Rust"
                << " because user navigated to " << url.spec();
     crash_in_rust_with_overflow();
+#endif  // !defined(USE_NEVA_APPRUNTIME)
   }
 }
 #endif  // ADDRESS_SANITIZER
@@ -134,10 +150,13 @@ void HandleChromeDebugURL(const GURL& url) {
     LOG(ERROR) << "Intentionally crashing (with null pointer dereference)"
                << " because user navigated to " << url.spec();
     internal::CrashIntentionally();
+// TODO(neva): Remove this workaround once Neva supports Rust build.
+#if !defined(USE_NEVA_APPRUNTIME)
   } else if (url == kChromeUICrashRustURL) {
     // Cause a typical crash in Rust code, so we can test that call stack
     // collection and symbol mangling work across the language boundary.
     crash_in_rust();
+#endif  // !defined(USE_NEVA_APPRUNTIME)
   } else if (url == kChromeUIDumpURL) {
     // This URL will only correctly create a crash dump file if content is
     // hosted in a process that has correctly called

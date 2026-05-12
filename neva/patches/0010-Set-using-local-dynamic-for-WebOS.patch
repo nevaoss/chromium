@@ -1,0 +1,40 @@
+From 6ac6f1b0b678e03b0e6ad5046b3f21c35625bbb0 Mon Sep 17 00:00:00 2001
+From: German Cvetkov <german.cvetkov@lge.com>
+Date: Fri, 1 Nov 2024 21:17:56 +0300
+Subject: [PATCH] [webos] 132.0.6785.0~1: Set using "local-dynamic" for WebOS
+
+:Release Notes:
+Set using "local-dynamic" for WebOS after rolling to
+132.0.6785.0~1
+
+:Detailed Notes:
+Set using "local-dynamic" for WebOS after rolling v8
+over http://crrev.com/c/5922879 in http://crrev.com/c/5934396
+
+Error message without this patch:
+| /workspace/build-webos/BUILD/work/raspberrypi4_64-webos-linux/webruntime/130.0.6723.0-r74.0/recipe-sysroot-native/usr/bin/aarch64-webos-linux/../../libexec/aarch64-webos-linux/gcc/aarch64-webos-linux/11.4.0/ld.gold: error: obj/v8/v8_compiler/js-native-context-specialization.o: unsupported reloc 551 in non-static TLSLE mode.
+| obj/v8/v8_compiler/js-native-context-specialization.o:js-native-context-specialization.cc:function v8::internal::compiler::JSNativeContextSpecialization::ReduceJSAdd(v8::internal::compiler::Node*): error: unexpected opcode while processing relocation R_AARCH64_TLSLE_ADD_TPREL_LO12_NC
+
+:Issues Addressed:
+[NEVA-9731] Upgrade neva-main-rolling up to 6785 BUILD
+---
+ src/common/thread-local-storage.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/common/thread-local-storage.h b/src/common/thread-local-storage.h
+index 95b23e29f9c..a444715667c 100644
+--- a/src/common/thread-local-storage.h
++++ b/src/common/thread-local-storage.h
+@@ -38,6 +38,9 @@
+ #elif defined(V8_TARGET_OS_CHROMEOS)
+ // TODO(336738728): Figure out why ChromeOS can't use "local-exec".
+ #define V8_TLS_MODEL "local-dynamic"
++// TODO(Neva): Remove this code after Neva supprot "local-exec"
++#elif defined(OS_WEBOS)
++#define V8_TLS_MODEL "local-dynamic"
+ #else
+ #define V8_TLS_MODEL "local-exec"
+ #endif
+-- 
+2.34.1
+

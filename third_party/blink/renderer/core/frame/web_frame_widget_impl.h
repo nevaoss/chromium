@@ -421,6 +421,9 @@ class CORE_EXPORT WebFrameWidgetImpl
   void SetCursor(const ui::Cursor& cursor) override;
   bool HandlingInputEvent() override;
   void SetHandlingInputEvent(bool handling) override;
+#if defined(USE_NEVA_APPRUNTIME)
+  bool HasImeEventGuard() const override;
+#endif
   void ProcessInputEventSynchronouslyForTesting(
       const WebCoalescedInputEvent&) override;
   void DispatchNonBlockingEventForTesting(

@@ -401,6 +401,17 @@ class AppWindow : public content::WebContentsDelegate,
     native_app_window_ = std::move(native_app_window);
   }
 
+#if BUILDFLAG(IS_WEBOS)
+  void SetApplicationId(const std::string& application_id) {
+    application_id_ = application_id;
+  }
+  std::string GetApplicationId() const { return application_id_; }
+
+  std::string GetMediaCodecCapability() const {
+    return media_codec_capability_;
+  }
+#endif  // BUILDFLAG(IS_WEBOS)
+
   void SetOnDraggableRegionsChangedForTesting(base::OnceClosure callback) {
     on_update_draggable_regions_callback_for_testing_ = std::move(callback);
   }
@@ -473,6 +484,9 @@ class AppWindow : public content::WebContentsDelegate,
 
   // content::WebContentsObserver implementation.
   void RenderFrameCreated(content::RenderFrameHost* frame_host) override;
+#if BUILDFLAG(IS_WEBOS)
+  void ReadMediaCapabilityFromPath(const base::FilePath& path);
+#endif  // BUILDFLAG(IS_WEBOS)
 
   // ExtensionFunctionDispatcher::Delegate implementation.
   WindowController* GetExtensionWindowController() const override;
@@ -609,6 +623,14 @@ class AppWindow : public content::WebContentsDelegate,
   // Whether the app window is loaded and ready. It is used to resolve the
   // race condition of loading custom app icon and app content simultaneously.
   bool window_ready_ = false;
+
+#if BUILDFLAG(IS_WEBOS)
+  // Application Id that is sent to backend
+  std::string application_id_;
+
+  // Platform media codec capability sent to backend.
+  std::string media_codec_capability_;
+#endif  // BUILDFLAG(IS_WEBOS)
 
   // Allows tests to wait for draggable regions to be sent from the renderer.
   base::OnceClosure on_update_draggable_regions_callback_for_testing_;

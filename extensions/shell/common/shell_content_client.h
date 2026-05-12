@@ -28,6 +28,12 @@ class ShellContentClient : public content::ContentClient {
       ui::ResourceScaleFactor scale_factor) override;
   base::RefCountedMemory* GetDataResourceBytes(int resource_id) override;
   gfx::Image& GetNativeImageNamed(int resource_id) override;
+
+#if defined(USE_NEVA_CDM)
+  void AddContentDecryptionModules(
+      std::vector<content::CdmInfo>* cdms,
+      std::vector<media::CdmHostFilePath>* cdm_host_file_paths) override;
+#endif
 };
 
 }  // namespace extensions

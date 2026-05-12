@@ -7,6 +7,7 @@ import("//build/config/ozone.gni")
 import("//build/config/python.gni")
 import("//build/config/ui.gni")
 import("//gpu/vulkan/features.gni")
+import("//neva/neva.gni")
 import("//testing/test.gni")
 
 assert(use_ozone)
@@ -58,6 +59,14 @@ if (ozone_platform_wayland) {
   ozone_platform_test_deps += [ "platform/wayland:wayland_unittests" ]
   ozone_platform_ui_test_support_deps += [ "platform/wayland:ui_test_support" ]
 }
+
+#@name USE_NEVA_APPRUNTIME
+#@{
+if (ozone_platform_wayland && is_webos) {
+  ozone_platform_test_deps +=
+    [ "platform/wayland/extensions/webos:webos_extension_unittests" ]
+}
+#@}
 
 if (ozone_platform_x11) {
   ozone_platforms += [ "x11" ]
@@ -229,6 +238,11 @@ source_set("platform") {
     "//ui/ozone/platform/*",
   ]
 
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  visibility += [ "//ui/views" ]
+  #@}
+
   # This can be used for out of tree platforms tests.
   visibility += ozone_external_platform_visibility
 }
@@ -337,6 +351,11 @@ static_library("test_support") {
     "platform/x11:x11_unittests",
   ]
 
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  visibility += [ "platform/wayland/extensions/webos:webos_extension_unittests" ]
+  #@}
+
   testonly = true
   public_deps = [ ":test_support_internal" ]
 }
@@ -432,6 +451,11 @@ test("ozone_unittests") {
     additional_manifest_fragments =
         [ "//build/config/fuchsia/test/test_ui_stack.shard.test-cml" ]
   }
+
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  visibility += [ "//webos/install/unit_tests" ]
+  #@}
 }
 
 # X11 backend has its own test suite only built when we are using the x11

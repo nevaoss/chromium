@@ -285,6 +285,10 @@ class MockRenderProcessHost : public RenderProcessHost {
   void SetBatterySaverMode(bool battery_saver_mode_enabled) override {}
   uint64_t GetPrivateMemoryFootprint() override;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  void SetV8SnapshotPath(const std::string& v8_snapshot_path) override {}
+#endif
+
   void PauseSocketManagerForRenderFrameHost(
       const GlobalRenderFrameHostId& render_frame_host_id) override {}
   void ResumeSocketManagerForRenderFrameHost(

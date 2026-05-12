@@ -7,7 +7,13 @@
 
 #include <string>
 
-#include "base/strings/stringprintf.h"
+// NOTE(neva): base::StringPrintf depends on abseil-cpp which is hard to support
+// for WAM due to lots of dependencies and the problem with short/full paths to
+// headers.
+///@name USE_NEVA_APPRUNTIME
+///@{
+// #include "base/strings/stringprintf.h"
+///@}
 
 namespace gfx {
 
@@ -120,7 +126,23 @@ class InsetsOutsetsFBase {
 
   // Returns a string representation of the insets/outsets.
   std::string ToString() const {
-    return base::StringPrintf("x:%g,%g y:%g,%g", left_, right_, top_, bottom_);
+// NOTE(neva): base::StringPrintf depends on abseil-cpp which is hard to support
+// for WAM due to lots of dependencies and the problem with short/full paths to
+// headers.
+///@name USE_NEVA_APPRUNTIME
+///@{
+    // return base::StringPrintf("x:%g,%g y:%g,%g", left_, right_, top_, bottom_);
+    std::string rect_string;
+    rect_string.append("x:");
+    rect_string.append(std::to_string(left_));
+    rect_string.append(",");
+    rect_string.append(std::to_string(right_));
+    rect_string.append(" y:");
+    rect_string.append(std::to_string(top_));
+    rect_string.append(",");
+    rect_string.append(std::to_string(bottom_));
+    return rect_string;
+///@}
   }
 
  private:

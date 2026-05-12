@@ -47,8 +47,14 @@ struct AlternativeElement {
   AlternativeElement& operator=(AlternativeElement&& rhs);
   ~AlternativeElement();
 
+// TODO(neva): Please remove this guard after there is no error to support
+// operator<=> in Neva.
+#if defined(COMPILER_GCC)
+  bool operator<(const AlternativeElement&) const;
+#else   // defined(COMPILER_GCC)
   friend auto operator<=>(const AlternativeElement&,
                           const AlternativeElement&) = default;
+#endif  // !defined(COMPILER_GCC)
   friend bool operator==(const AlternativeElement&,
                          const AlternativeElement&) = default;
 

@@ -305,7 +305,9 @@ class HidConnectionProtectedReportTest : public testing::Test,
 
   bool HasNextInputReport() { return input_report_future_.IsReady(); }
 
-  std::pair<scoped_refptr<base::RefCountedBytes>, size_t>
+  // NOTE(neva): libstdc++: conversion tuple to pair is not supported.
+  // std::pair<scoped_refptr<base::RefCountedBytes>, size_t>
+  std::tuple<scoped_refptr<base::RefCountedBytes>, size_t>
   TakeNextInputReport() {
     return input_report_future_.Take();
   }

@@ -10,6 +10,11 @@
 #include "base/check_op.h"
 #include "base/compiler_specific.h"
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "neva/logging.h"
+///@}
+
 // An official build shouldn't generate code to print out messages for
 // the CHECK* macros, nor should it have the strings in the
 // executable. It is also important that the CHECK() function collapse to the
@@ -35,6 +40,11 @@ void DoCheckEq(int x, int y) {
 }
 
 int main(int argc, const char* argv[]) {
+  // TODO(neva): Do we still need it?
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  NEVA_DCHECK(argv == 0);
+  ///@}
   DoCheck(argc > 1);
   DoCheckEq(argc, 1);
   DoBlinkReleaseAssert(argc > 1);

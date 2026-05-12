@@ -1557,7 +1557,13 @@ void SkiaOutputSurfaceImplOnGpu::CopyOutputNV12(
 
       // Issue readbacks from the surfaces:
       for (size_t i = 0; i < CopyOutputResult::kNV12MaxPlanes; ++i) {
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+        SkISize size = SkISize::Make(plane_surfaces[i]->width(),
+                                     plane_surfaces[i]->height());
+#else   // (__cplusplus < 202002L)
         SkISize size(plane_surfaces[i]->width(), plane_surfaces[i]->height());
+#endif  // !(__cplusplus < 202002L)
         SkImageInfo dst_info = SkImageInfo::Make(
             size, (i == 0) ? kAlpha_8_SkColorType : kR8G8_unorm_SkColorType,
             kUnpremul_SkAlphaType);

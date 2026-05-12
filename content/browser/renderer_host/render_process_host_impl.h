@@ -94,6 +94,10 @@
 #include "content/public/browser/android/child_process_importance.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/memory/memory_pressure_listener.h"
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 #if BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
 #include "media/mojo/mojom/stable/stable_video_decoder.mojom.h"
 #endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
@@ -838,7 +842,14 @@ class CONTENT_EXPORT RenderProcessHostImpl
   }
 #endif
 
-#if BUILDFLAG(IS_ANDROID)
+#if defined(USE_NEVA_APPRUNTIME)
+  void OnMemoryPressure(
+      base::MemoryPressureListener::MemoryPressureLevel level);
+
+  void SetV8SnapshotPath(const std::string& v8_snapshot_path) override;
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
   // Notifies the renderer process of memory pressure level.
   void NotifyMemoryPressureToRenderer(
       base::MemoryPressureListener::MemoryPressureLevel level);
@@ -1009,7 +1020,7 @@ class CONTENT_EXPORT RenderProcessHostImpl
                            BrowserHistogramCallback callback) override;
   void SuddenTerminationChanged(bool enabled) override;
   void RecordUserMetricsAction(const std::string& action) override;
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
   void SetPrivateMemoryFootprint(
       uint64_t private_memory_footprint_bytes) override;
 #endif
@@ -1489,6 +1500,11 @@ class CONTENT_EXPORT RenderProcessHostImpl
   // delayed to run unload handlers, or zero if the process shutdown was not
   // delayed due to unload handlers.
   base::TimeDelta time_spent_running_unload_handlers_;
+
+#if defined(USE_NEVA_APPRUNTIME)
+  std::unique_ptr<base::MemoryPressureListener> memory_pressure_listener_;
+  std::string v8_snapshot_path_;
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
   // If the RenderProcessHost is being shutdown via Shutdown(), this records the
   // exit code.

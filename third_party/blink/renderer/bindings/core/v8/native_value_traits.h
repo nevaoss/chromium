@@ -31,7 +31,12 @@ class ExceptionState;
 //     return toInt32(isolate, value, exceptionState, NormalConversion);
 //   }
 // }
+// TODO(neva): SFINAE is needed to fix GCC compile error.
+#if defined(__GNUC__)
+template <typename T, typename SFINAEHelper = void>
+#else   // defined(__GNUC__)
 template <typename T>
+#endif  // !defined(__GNUC__)
 struct NativeValueTraits;
 
 // This declaration serves only as a blueprint for specializations: the

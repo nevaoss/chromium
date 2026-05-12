@@ -83,6 +83,17 @@ component("ime") {
     "virtual_keyboard_controller_stub.h",
   ]
 
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  sources += [
+    "neva/input_content_type.h",
+    "neva/input_method_common.cc",
+    "neva/input_method_common.h",
+    "neva/input_method_neva_observer.cc",
+    "neva/input_method_neva_observer.h",
+  ]
+  #@}
+
   defines = [ "IS_UI_BASE_IME_IMPL" ]
 
   public_deps = [

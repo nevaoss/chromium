@@ -86,8 +86,9 @@ class TestHidConnectionClient : public mojom::HidConnectionClient {
                      const std::vector<uint8_t>& buffer) override {
     future_.SetValue(report_id, buffer);
   }
-
-  std::pair<uint8_t, std::vector<uint8_t>> GetNextInputReport() {
+  // NOTE(neva): libstdc++: conversion tuple to pair is not supported.
+  // std::pair<uint8_t, std::vector<uint8_t>> GetNextInputReport() {
+  std::tuple<uint8_t, std::vector<uint8_t>> GetNextInputReport() {
     return future_.Take();
   }
 

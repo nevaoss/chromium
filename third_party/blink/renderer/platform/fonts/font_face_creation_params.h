@@ -64,7 +64,13 @@ class FontFaceCreationParams {
 #endif
   }
 
+// NOTE(neva): Change to WTF::String from std::string on
+// FontFaceCreationParams to avoid crash
+#if defined(__GNUC__) && !defined(__clang__)
+  FontFaceCreationParams(const WTF::String& filename,
+#else
   FontFaceCreationParams(const std::string& filename,
+#endif
                          int fontconfig_interface_id,
                          int ttc_index = 0)
       : creation_type_(kCreateFontByFciIdAndTtcIndex),
@@ -77,7 +83,13 @@ class FontFaceCreationParams {
     DCHECK_EQ(creation_type_, kCreateFontByFamily);
     return family_;
   }
+// NOTE(neva): Change to WTF::String from std::string on
+// FontFaceCreationParams to avoid crash
+#if defined(__GNUC__) && !defined(__clang__)
+  const WTF::String& Filename() const {
+#else
   const std::string& Filename() const {
+#endif
     DCHECK_EQ(creation_type_, kCreateFontByFciIdAndTtcIndex);
 #if defined(ADDRESS_SANITIZER)
     DCHECK(filename_.has_value());
@@ -105,7 +117,13 @@ class FontFaceCreationParams {
       std::tuple<int, int, unsigned> hash_data = {
           ttc_index_, fontconfig_interface_id_,
           HasFilename()
+// NOTE(neva): Change to WTF::String from std::string on
+// FontFaceCreationParams to avoid crash
+#if defined(__GNUC__) && !defined(__clang__)
+              ? StringHasher::HashMemory(base::as_byte_span(Filename().Span8()))
+#else
               ? StringHasher::HashMemory(base::as_byte_span(Filename()))
+#endif
               : 0};
       return StringHasher::HashMemory(base::byte_span_from_ref(hash_data));
     }
@@ -124,7 +142,13 @@ class FontFaceCreationParams {
   FontFaceCreationType creation_type_;
   AtomicString family_;
 
+// NOTE(neva): Change to WTF::String from std::string on
+// FontFaceCreationParams to avoid crash
+#if defined(__GNUC__) && !defined(__clang__)
+  void SetFilename(WTF::String& filename) {
+#else
   void SetFilename(std::string& filename) {
+#endif
 #if defined(ADDRESS_SANITIZER)
     *filename_ = filename;
 #else
@@ -159,9 +183,21 @@ class FontFaceCreationParams {
   // destroyed.
   //
   // See crbug.com/346174906.
+// NOTE(neva): Change to WTF::String from std::string on
+// FontFaceCreationParams to avoid crash
+#if defined(__GNUC__) && !defined(__clang__)
+  std::optional<WTF::String> filename_;
+#else
   std::optional<std::string> filename_;
+#endif  // defined(__GNUC__) && !defined(__clang__)
+#else
+// NOTE(neva): Change to WTF::String from std::string on
+// FontFaceCreationParams to avoid crash
+#if defined(__GNUC__) && !defined(__clang__)
+  WTF::String filename_;
 #else
   std::string filename_;
+#endif  // defined(__GNUC__) && !defined(__clang__)
 #endif
   int fontconfig_interface_id_ = 0;
   int ttc_index_ = 0;

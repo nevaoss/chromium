@@ -95,7 +95,12 @@ class PLATFORM_EXPORT ProcessTimeOverrideCoordinator {
   base::Time initial_time_;
   base::TimeTicks initial_ticks_;
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if defined(USE_NEVA_APPRUNTIME) && (__cplusplus < 202002L)
+  std::atomic<base::TimeTicks> current_ticks_{base::TimeTicks()};
+#else   // defined(USE_NEVA_APPRUNTIME) && (__cplusplus < 202002L)
   std::atomic<base::TimeTicks> current_ticks_;
+#endif  // !(defined(USE_NEVA_APPRUNTIME) && (__cplusplus < 202002L))
 
   base::Lock lock_;
   std::unique_ptr<base::subtle::ScopedTimeClockOverrides> clock_override_

@@ -23,6 +23,7 @@ import("//build/toolchain/cros/cros_config.gni")
 import("//build/toolchain/rbe.gni")
 import("//build/toolchain/toolchain.gni")
 import("//build_overrides/build.gni")
+import("//neva/neva.gni")
 
 if (current_cpu == "arm" || current_cpu == "arm64") {
   import("//build/config/arm.gni")
@@ -66,6 +67,13 @@ declare_args() {
   # information to analyze.
   # Requires profiling to be set to true.
   enable_full_stack_frames_for_profiling = false
+
+  # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
+  # When we are going to use gold we need to find it.
+  # This is initialized below, after use_gold might have been overridden.
+  if (use_neva_appruntime) {
+    gold_path = ""
+  }
 
   # Enable fatal linker warnings. Building Chromium with certain versions
   # of binutils can cause linker warning.
@@ -204,9 +212,16 @@ declare_args() {
 
 declare_args() {
   # Set to true to use icf, Identical Code Folding.
-  use_icf = (is_posix || is_fuchsia) && !is_debug && !using_sanitizer &&
-            !use_clang_coverage && current_os != "zos" &&
-            !(is_android && use_order_profiling) && use_lld
+  # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
+  if (use_neva_appruntime) {
+    use_icf = (is_posix || is_fuchsia) && !is_debug && !using_sanitizer &&
+              !use_clang_coverage && current_os != "zos" &&
+              !(is_android && use_order_profiling) && (use_lld || use_gold)
+  } else {
+    use_icf = (is_posix || is_fuchsia) && !is_debug && !using_sanitizer &&
+              !use_clang_coverage && current_os != "zos" &&
+              !(is_android && use_order_profiling) && use_lld
+  }
 }
 
 if (is_android) {
@@ -511,6 +526,27 @@ config("compiler") {
 
   # Linux-specific compiler flags setup.
   # ------------------------------------
+  # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
+  if (use_neva_appruntime) {
+    if (use_gold) {
+      ldflags += [ "-fuse-ld=gold" ]
+
+      if (gold_path != "") {
+        ldflags += [ "-B$gold_path" ]
+      }
+
+      ldflags += [
+        # Experimentation found that using four linking threads
+        # saved ~20% of link time.
+        # https://groups.google.com/a/chromium.org/group/chromium-dev/browse_thread/thread/281527606915bb36
+        # Only apply this to the target linker, since the host
+        # linker might not be gold, but isn't used much anyway.
+        "-Wl,--threads",
+        "-Wl,--thread-count=4",
+      ]
+    }
+  }
+
   if (use_icf && (!is_apple || use_lld)) {
     ldflags += [ "-Wl,--icf=all" ]
   }
@@ -622,6 +658,11 @@ config("compiler") {
     if (is_linux && !llvm_android_mainline && current_cpu != "arm" &&
         default_toolchain != "//build/toolchain/cros:target") {
       cflags += [ "-Wa,--crel,--allow-experimental-crel" ]
+      # TODO(neva): Disable ELF CREL, if we are using ICECC.
+      # (clang_use_chrome_plugins is set to false for ICECC builds.)
+      if (!clang_use_chrome_plugins) {
+        cflags -= [ "-Wa,--crel,--allow-experimental-crel" ]
+      }
     }
   }
 
@@ -1918,6 +1959,10 @@ config("default_warnings") {
       # -Wpacked-not-aligned complains all generated mojom-shared-internal.h
       # files.
       cflags += [ "-Wno-packed-not-aligned" ]
+
+      # NEVA: Suppress Wattributes warning because too many warnings are generated
+      # when we build using gcc.
+      cflags += [ "-Wno-attributes" ]
     }
   }
 
@@ -2168,6 +2213,12 @@ config("chromium_code") {
         "-Wno-zero-length-array",
       ]
 
+      # TODO(neva): Disable gnu-line-marker checks, if we are using ICECC.
+      # (clang_use_chrome_plugins is set to false for ICECC builds.)
+      if (!clang_use_chrome_plugins) {
+        cflags += [ "-Wno-gnu-line-marker" ]
+      }
+
       if (is_chromeos) {
         cflags += [ "-Wno-gnu-offsetof-extensions" ]
       }
@@ -2320,6 +2371,11 @@ config("thin_archive") {
       "-T",
       "-S",
     ]
+    # TODO(neva): Exclude -S option, if we are using ICECC.
+    # (clang_use_chrome_plugins is set to false for ICECC builds.)
+    if (!clang_use_chrome_plugins) {
+      arflags -= [ "-S" ]
+    }
   } else if (is_win && use_lld) {
     arflags = [ "/llvmlibthin" ]
   }
@@ -2926,13 +2982,24 @@ config("symbols") {
     # obj/native_client/src/trusted/service_runtime/sel_asm/nacl_switch_32.o:
     # DWARF info may be corrupt; offsets in a range list entry are in different
     # sections" there.  Maybe just a bug in nacl_switch_32.S.
-    _enable_gdb_index =
-        symbol_level == 2 && !is_apple && !is_nacl && current_cpu != "x86" &&
-        current_os != "zos" && use_lld &&
-        # Disable on non-fission 32-bit Android because it pushes
-        # libcomponents_unittests over the 4gb size limit.
-        !(is_android && !use_debug_fission && current_cpu != "x64" &&
-          current_cpu != "arm64")
+    # TODO(neva): Remove this when Neva GCC can remove use_gold logic.
+    if (use_neva_appruntime) {
+      _enable_gdb_index =
+          symbol_level == 2 && !is_apple && !is_nacl && current_cpu != "x86" &&
+          current_os != "zos" && (use_gold || use_lld) &&
+          # Disable on non-fission 32-bit Android because it pushes
+          # libcomponents_unittests over the 4gb size limit.
+          !(is_android && !use_debug_fission && current_cpu != "x64" &&
+            current_cpu != "arm64")
+    } else {
+      _enable_gdb_index =
+          symbol_level == 2 && !is_apple && !is_nacl && current_cpu != "x86" &&
+          current_os != "zos" && use_lld &&
+          # Disable on non-fission 32-bit Android because it pushes
+          # libcomponents_unittests over the 4gb size limit.
+          !(is_android && !use_debug_fission && current_cpu != "x64" &&
+            current_cpu != "arm64")
+    }
     if (_enable_gdb_index) {
       if (is_clang) {
         # This flag enables the GNU-format pubnames and pubtypes sections,

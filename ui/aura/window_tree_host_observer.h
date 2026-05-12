@@ -10,6 +10,11 @@
 #include "ui/aura/aura_export.h"
 #include "ui/aura/window.h"
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "ui/views/widget/desktop_aura/neva/ui_constants.h"
+///@}
+
 class SkRegion;
 
 namespace aura {
@@ -28,6 +33,23 @@ class AURA_EXPORT WindowTreeHostObserver {
 
   // Called when the native window system sends the host request to close.
   virtual void OnHostCloseRequested(WindowTreeHost* host) {}
+
+  ///@name USE_NEVA_APPRUNTIME {
+  ///@{
+  // Called when the host's state has changed.
+  virtual void OnWindowHostStateChanged(WindowTreeHost* host,
+                                        ui::WidgetState new_state) {}
+  ///@}
+
+#if BUILDFLAG(IS_WEBOS)
+  virtual void OnInputPanelVisibilityChanged(aura::WindowTreeHost* host,
+                                             bool visibility) {}
+  virtual void OnInputPanelRectChanged(WindowTreeHost* host,
+                                       int32_t x,
+                                       int32_t y,
+                                       uint32_t width,
+                                       uint32_t height) {}
+#endif  // BUILDFLAG(IS_WEBOS)
 
   // Called when the occlusion status of the native window changes, iff
   // occlusion tracking is enabled for a descendant of the root.

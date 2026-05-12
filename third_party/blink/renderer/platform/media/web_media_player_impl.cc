@@ -3708,9 +3708,11 @@ bool WebMediaPlayerImpl::ShouldPausePlaybackWhenHidden() const {
           ? HasUnmutedAudio() || audio_source_provider_->IsAudioBeingCaptured()
           : HasAudio();
 
+#if !BUILDFLAG(IS_WEBOS)
   // Audio only stream is allowed to play when in background.
   if (!HasVideo() && preserve_audio)
     return false;
+#endif  // !BUILDFLAG(IS_WEBOS)
 
   // MediaPlayer always signals audio and video, so use an empty natural size to
   // determine if there's really video or not.

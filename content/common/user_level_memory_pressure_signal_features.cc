@@ -10,7 +10,7 @@
 #include "base/time/time.h"
 #include "build/build_config.h"
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
 
 namespace content::features {
 
@@ -29,6 +29,30 @@ constexpr base::TimeDelta kDefaultMinimumInterval = base::Minutes(10);
 constexpr base::TimeDelta kDefaultInertInterval = base::Minutes(5);
 
 }  // namespace
+
+#if defined(USE_NEVA_APPRUNTIME)
+BASE_FEATURE(kUserLevelMemoryPressureSignal,
+             "UserLevelMemoryPressureSignal",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsUserLevelMemoryPressureSignalEnabled() {
+  return base::FeatureList::IsEnabled(kUserLevelMemoryPressureSignal);
+}
+
+base::TimeDelta MinUserMemoryPressureInterval() {
+  static const base::FeatureParam<base::TimeDelta> kMinimumInterval{
+      &kUserLevelMemoryPressureSignal, "minimum_interval",
+      kDefaultMinimumInterval};
+  return kMinimumInterval.Get();
+}
+
+base::TimeDelta InertInterval() {
+  static const base::FeatureParam<base::TimeDelta> kInertInterval{
+      &features::kUserLevelMemoryPressureSignal, "inert_interval_after_loading",
+      kDefaultInertInterval};
+  return kInertInterval.Get();
+}
+#else   // !defined(USE_NEVA_APPRUNTIME)
 
 // Monitor total private memory footprint and dispatch memory pressure signal
 // if the value exceeds the pre-defined threshold.
@@ -112,7 +136,8 @@ base::TimeDelta InertIntervalFor6GbDevices() {
       "inert_interval_after_loading", kDefaultInertInterval};
   return kInertInterval.Get();
 }
+#endif  // !defined(USE_NEVA_APPRUNTIME)
 
 }  // namespace content::features
 
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // BUILDFLAG(IS_ANDROID) || || defined(USE_NEVA_APPRUNTIME)

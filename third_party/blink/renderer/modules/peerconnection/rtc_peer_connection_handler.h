@@ -220,6 +220,10 @@ class MODULES_EXPORT RTCPeerConnectionHandler {
   // WebRTC event log fragments sent back from PeerConnection land here.
   void OnWebRtcEventLogWrite(const WTF::Vector<uint8_t>& output);
 
+#if defined(USE_NEVA_APPRUNTIME)
+  bool IsOpened() const;
+#endif
+
   // Virtual for testing purposes.
   virtual scoped_refptr<base::SingleThreadTaskRunner> signaling_thread() const;
 

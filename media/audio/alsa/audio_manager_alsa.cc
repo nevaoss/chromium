@@ -29,6 +29,10 @@
 #include "media/base/limits.h"
 #include "media/base/media_switches.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "base/strings/string_split.h"
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 namespace media {
 
 // Maximum number of output streams that can be open simultaneously.
@@ -132,13 +136,28 @@ void AudioManagerAlsa::GetAlsaDevicesInfo(AudioManagerAlsa::StreamType type,
     if (io != NULL && strcmp(unwanted_device_type, io.get()) == 0)
       continue;
 
-    // Found a device, prepend the default device since we always want
-    // it to be on the top of the list for all platforms. And there is
-    // no duplicate counting here since it is only done if the list is
-    // still empty.  Note, pulse has exclusively opened the default
-    // device, so we must open the device via the "default" moniker.
-    if (device_names->empty())
-      device_names->push_front(AudioDeviceName::CreateDefault());
+#if defined(USE_NEVA_APPRUNTIME)
+    // The "default" device should not be added when the device block
+    // list is given because "default" actually means to select one
+    // amoung all devices
+    // TODO(neva): When the block device is not the "default" device
+    // but the block device was given by the flag then the selected
+    // device can not be the actual default device set by the system
+    // although the user intended the system default device.
+    if (type != kStreamCapture ||
+        !base::CommandLine::ForCurrentProcess()->HasSwitch(
+            switches::kAlsaInputDeviceBlockList)) {
+#endif  // defined(USE_NEVA_APPRUNTIME)
+      // Found a device, prepend the default device since we always want
+      // it to be on the top of the list for all platforms. And there is
+      // no duplicate counting here since it is only done if the list is
+      // still empty.  Note, pulse has exclusively opened the default
+      // device, so we must open the device via the "default" moniker.
+      if (device_names->empty())
+        device_names->push_front(AudioDeviceName::CreateDefault());
+#if defined(USE_NEVA_APPRUNTIME)
+    }
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
     // Get the unique device name for the device.
     std::unique_ptr<char, base::FreeDeleter> unique_device_name(
@@ -177,6 +196,26 @@ bool AudioManagerAlsa::IsAlsaDeviceAvailable(
     const char* device_name) {
   if (!device_name)
     return false;
+
+#if defined(USE_NEVA_APPRUNTIME)
+  // Skip devices that matches with the device names which are given
+  // through the block list
+  if (type == kStreamCapture &&
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kAlsaInputDeviceBlockList)) {
+    std::string block_list =
+        base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+            switches::kAlsaInputDeviceBlockList);
+    for (const std::string& block_device_name :
+         base::SplitString(block_list, ",", base::TRIM_WHITESPACE,
+                           base::SPLIT_WANT_NONEMPTY)) {
+      if (strncmp(block_device_name.c_str(), device_name,
+                  strlen(block_device_name.c_str())) == 0) {
+        return false;
+      }
+    }
+  }
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
   // We do prefix matches on the device name to see whether to include
   // it or not.

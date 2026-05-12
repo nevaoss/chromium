@@ -1,0 +1,124 @@
+# Copyright 2019 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+visibility = [ "//ui/ozone/*" ]
+
+import("//build/config/linux/pkg_config.gni")
+import("//neva/neva.gni")
+
+pkg_config("wayland-webos") {
+  packages = [
+    "wayland-client",
+    "wayland-cursor",
+    "wayland-webos-client",
+  ]
+}
+
+source_set("webos") {
+  sources = [
+    "common/wayland_webos_object.cc",
+    "common/wayland_webos_object.h",
+    "common/wayland_webos_util.h",
+    "host/wayland_shell_surface_wrapper.cc",
+    "host/wayland_shell_surface_wrapper.h",
+    "host/wayland_extensions_webos.h",
+    "host/wayland_extensions_webos_impl.cc",
+    "host/wayland_extensions_webos_impl.h",
+    "host/wayland_window_webos.cc",
+    "host/wayland_window_webos.h",
+    "host/webos_accelerometer_wrapper.cc",
+    "host/webos_accelerometer_wrapper.h",
+    "host/webos_extended_input_wrapper.cc",
+    "host/webos_extended_input_wrapper.h",
+    "host/webos_gyroscope_wrapper.cc",
+    "host/webos_gyroscope_wrapper.h",
+    "host/webos_input_manager_wrapper.cc",
+    "host/webos_input_manager_wrapper.h",
+    "host/webos_input_panel.cc",
+    "host/webos_input_panel.h",
+    "host/webos_input_panel_manager.cc",
+    "host/webos_input_panel_manager.h",
+    "host/webos_seat_wrapper.cc",
+    "host/webos_seat_wrapper.h",
+    "host/webos_shell_surface_wrapper.cc",
+    "host/webos_shell_surface_wrapper.h",
+    "host/webos_surface_group_compositor_wrapper.cc",
+    "host/webos_surface_group_compositor_wrapper.h",
+    "host/webos_surface_group_layer_wrapper.cc",
+    "host/webos_surface_group_layer_wrapper.h",
+    "host/webos_surface_group_wrapper.cc",
+    "host/webos_surface_group_wrapper.h",
+    "host/webos_text_model_factory_wrapper.cc",
+    "host/webos_text_model_factory_wrapper.h",
+    "host/webos_text_model_wrapper.cc",
+    "host/webos_text_model_wrapper.h",
+  ]
+
+  deps = [
+    "//skia",
+    "//ui/ozone/platform/wayland/mojom",
+  ]
+
+  configs += [ ":wayland-webos" ]
+}
+
+source_set("test_support") {
+  testonly = true
+
+  sources = [
+    "test/mock_shell.cc",
+    "test/mock_shell.h",
+    "test/mock_shell_surface.cc",
+    "test/mock_shell_surface.h",
+    "test/mock_webos_extension_surface.cc",
+    "test/mock_webos_extension_surface.h",
+    "test/test_webos_extension_compositor.cc",
+    "test/test_webos_extension_compositor.h",
+    "test/test_webos_extension_server_thread.cc",
+    "test/test_webos_extension_server_thread.h",
+  ]
+
+  deps = [
+    "//base:base",
+    "//ui/ozone:platform",
+  ]
+
+  public_deps = [
+    "//testing/gmock",
+    "//third_party/wayland:wayland_server",
+    "//ui/ozone/platform/wayland:test_support",
+  ]
+}
+
+source_set("webos_extension_unittests") {
+  testonly = true
+
+  defines = [ "WL_HIDE_DEPRECATED" ]
+
+  sources = [
+    "host/wayland_shell_surface_wrapper_unittest.cc",
+    "host/webos_shell_surface_wrapper_unittest.cc",
+    "test/webos_extension_test.cc",
+    "test/webos_extension_test.h",
+  ]
+
+  deps = [
+    ":test_support",
+    ":webos",
+    "//testing/gtest",
+    "//ui/ozone:test_support",
+  ]
+}

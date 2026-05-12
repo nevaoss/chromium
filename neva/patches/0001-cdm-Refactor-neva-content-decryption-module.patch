@@ -1,0 +1,65 @@
+From 539dec2c6ef98f51a927ab7b9b65e004b743b87e Mon Sep 17 00:00:00 2001
+From: JunHo Seo <junho0924.seo@lge.com>
+Date: Tue, 9 Jun 2020 10:42:41 +0900
+Subject: [PATCH] [cdm] Refactor neva content decryption module
+
+:Release Notes:
+Refactor neva content decryption module
+
+:Detailed Notes:
+This is a migration of the RP patch
+http://gpro.lge.com/c/webos-pro/chromium79/+/273026
+
+Motivation
+1. Some of our targets start to use CDM v10 interface. CDM interface
+in webOS slightly different with upstream(for a long term, that is bad,
+but let's don't think about it at the moment.), so we need to adjust
+v10 interface.
+
+2. //media/cdm/api/ directory has its own repository in upstream.
+So it'd be hard to manage if we put many code into the directory.
+Moreover previously, we added v8 interface to //media/cdm/api_old/
+directory, but now it seems not fit into our new requirement.
+
+Changes
+1. //media/cdm/api_old -> //media/cdm/neva/webos
+2. We don't use v10 interface in //media/cdm/api/content_decryption_module.h
+   Instead, v10 interface is redefined at //media/cdm/neva/webos/
+3. Turn on v10 interface as supported version.
+
+:Test Scenario:
+Played well widevine drm contents in shaka player demo.
+Played well widevine drm (paid) contents in youtube.
+
+:QA Notes:
+Test Cases: GT-27193, GT-19858
+
+:Issues Addressed:
+[NEVA-4834] [RP patch migration] Restruct neva content decryption module
+---
+ content_decryption_module.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/content_decryption_module.h b/content_decryption_module.h
+index 7cf9d3d..65ae4fd 100644
+--- a/content_decryption_module.h
++++ b/content_decryption_module.h
+@@ -644,6 +644,7 @@ class CDM_CLASS_API FileIOClient {
+ class CDM_CLASS_API Host_10;
+ class CDM_CLASS_API Host_11;
+ 
++#if !defined(USE_NEVA_CDM)
+ // ContentDecryptionModule interface that all CDMs need to implement.
+ // The interface is versioned for backward compatibility.
+ // Note: ContentDecryptionModule implementations must use the allocator
+@@ -863,6 +864,7 @@ class CDM_CLASS_API ContentDecryptionModule_10 {
+   ContentDecryptionModule_10() {}
+   virtual ~ContentDecryptionModule_10() {}
+ };
++#endif  // !defined(USE_NEVA_CDM)
+ 
+ // ----- Note: CDM interface(s) below still in development and not stable! -----
+ 
+-- 
+2.7.4
+

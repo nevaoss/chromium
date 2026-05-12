@@ -4,6 +4,7 @@
 
 import("//build/config/features.gni")
 import("//build/config/sanitizers/sanitizers.gni")
+import("//neva/neva.gni")
 
 declare_args() {
   mojo_use_apple_channel = is_mac || (is_ios && use_blink)
@@ -18,5 +19,8 @@ declare_args() {
   #
   # We also enable this by default for fuzzer builds, since some active fuzzers
   # require the legacy implementation.
-  mojo_support_legacy_core = target_os == "chromeos" || use_libfuzzer
+
+  # TODO(neva): Remove |is_webos| if mojoipcz is better when considering memory
+  # and performance perspective.
+  mojo_support_legacy_core = target_os == "chromeos" || use_libfuzzer || is_webos
 }

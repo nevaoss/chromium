@@ -16,6 +16,12 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_macros.h"
+// TODO(neva): Required for the usage of base::StringPrintf. Try to contribute
+// to upstream.
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "base/strings/stringprintf.h"
+///@}
 #include "components/fingerprinting_protection_filter/common/fingerprinting_protection_filter_constants.h"
 #include "components/fingerprinting_protection_filter/common/fingerprinting_protection_filter_features.h"
 #include "components/fingerprinting_protection_filter/mojom/fingerprinting_protection_filter.mojom.h"

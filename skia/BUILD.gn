@@ -10,6 +10,7 @@ import("//build/config/rust.gni")
 import("//build/config/sanitizers/sanitizers.gni")
 import("//build/rust/rust_static_library.gni")
 import("//gpu/vulkan/features.gni")
+import("//neva/neva.gni")
 import("//skia/skia.gni")
 import("//testing/test.gni")
 import("//third_party/skia/gn/shared_sources.gni")
@@ -37,6 +38,8 @@ buildflag_header("buildflags") {
 }
 
 component("rusty_png_feature_detection") {
+# TODO(neva): Remove this workaround once Neva supports Rust build.
+if (!use_neva_appruntime) {
   defines = [ "IS_SKIA_RUSTY_PNG_FEATURE_DETECTION_IMPL" ]
   sources = [
     "rusty_png_feature.cc",
@@ -47,7 +50,10 @@ component("rusty_png_feature_detection") {
     "//base",
   ]
 }
+}
 
+# TODO(neva): Remove this workaround once Neva supports Rust build.
+if (!use_neva_appruntime) {
 source_set("path_bridge") {
   sources = skia_fontations_path_bridge_sources
 }
@@ -68,6 +74,7 @@ rust_static_library("bridge_rust_side") {
     ":skia_config",
     "//build/config/compiler:no_chromium_code",
   ]
+}
 }
 
 # External-facing config for dependent code.
@@ -183,6 +190,10 @@ config("skia_library_config") {
       "SK_TYPEFACE_FACTORY_FONTATIONS",
       "SK_FONTMGR_FREETYPE_EMPTY_AVAILABLE",
     ]
+    # TODO(neva): Remove this workaround once Neva supports Rust build.
+    if (use_neva_appruntime) {
+      defines -= [ "SK_TYPEFACE_FACTORY_FONTATIONS" ]
+    }
   }
   if (is_win) {
     defines += [ "SK_TYPEFACE_FACTORY_DIRECTWRITE" ]
@@ -432,6 +443,18 @@ component("skia") {
 
     # Fontations Rust/C++ bridge interfaces.
     deps += [
+      ":bridge_rust_side",
+      ":path_bridge",
+    ]
+  }
+
+  # TODO(neva): Remove this workaround once Neva supports Rust build.
+  if (use_neva_appruntime) {
+    sources -= [
+      "//third_party/skia/src/ports/SkTypeface_fontations.cpp",
+      "//third_party/skia/src/ports/SkTypeface_fontations_priv.h",
+    ]
+    deps -= [
       ":bridge_rust_side",
       ":path_bridge",
     ]
@@ -725,7 +748,8 @@ skia_source_set("skia_core_and_effects") {
     # skia_core_and_effects rather than the other way around.
     public_deps = [ "//third_party/dawn/include/dawn:cpp_headers" ]
   }
-  if (use_blink) {
+  # TODO(neva): Remove this workaround once Neva supports Rust build.
+  if (use_blink && !use_neva_appruntime) {
     # Fontations Rust/C++ bridge interfaces, needed by SkTypeface.
     deps += [
       ":bridge_rust_side",

@@ -13,6 +13,10 @@
 #include "media/cdm/api/content_decryption_module.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
+#if defined(USE_NEVA_CDM)
+#include "media/cdm/neva/webos/content_decryption_module_webos.h"
+#endif
+
 namespace media {
 
 class CdmHostProxy;
@@ -59,6 +63,12 @@ class MockLibraryCdm : public cdm::ContentDecryptionModule_10,
   MOCK_METHOD2(Decrypt,
                cdm::Status(const cdm::InputBuffer_2& encrypted_buffer,
                            cdm::DecryptedBlock* decrypted_block));
+#if defined(USE_NEVA_CDM)
+  MOCK_METHOD3(Decrypt,
+               cdm::Status(const cdm::InputBuffer_2& encrypted_buffer,
+                           cdm::DecryptedBlock* decrypted_block,
+                           cdm::StreamType decoder_type));
+#endif
   MOCK_METHOD2(DecryptAndDecodeSamples,
                cdm::Status(const cdm::InputBuffer_2& encrypted_buffer,
                            cdm::AudioFrames* audio_frames));

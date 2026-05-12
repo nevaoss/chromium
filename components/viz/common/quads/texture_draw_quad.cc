@@ -12,6 +12,9 @@
 #include <stddef.h>
 
 #include "base/check.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "base/trace_event/traced_value.h"
 #include "cc/base/math_util.h"
 #include "components/viz/common/quads/draw_quad.h"

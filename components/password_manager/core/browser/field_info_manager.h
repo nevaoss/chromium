@@ -54,7 +54,17 @@ struct FieldInfo {
   FieldInfo& operator=(const FieldInfo&);
   ~FieldInfo();
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  friend bool operator==(const FieldInfo& lhs, const FieldInfo& rhs) {
+    return lhs.driver_id == rhs.driver_id && lhs.field_id == rhs.field_id &&
+           lhs.signon_realm == rhs.signon_realm && lhs.value == rhs.value &&
+           lhs.type == rhs.type &&
+           lhs.stored_predictions == rhs.stored_predictions;
+  }
+#else   // (__cplusplus < 202002L)
   friend bool operator==(const FieldInfo& lhs, const FieldInfo& rhs) = default;
+#endif  // !(__cplusplus < 202002L)
 };
 
 // Manages information about the last user-interacted fields, keeps

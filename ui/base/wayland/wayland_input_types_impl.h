@@ -47,6 +47,12 @@ static inline uint32_t ConvertFromTextInputFlag(ui::TextInputFlags flag) {
 
     MAP_FLAGS(MAP_ENTRY)
 #undef MAP_ENTRY
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  case ui::TEXT_INPUT_FLAG_SENSITIVE_ON:
+  case ui::TEXT_INPUT_FLAG_SENSITIVE_OFF:
+    return ZCR_EXTENDED_TEXT_INPUT_V1_INPUT_FLAGS_NONE;
+  ///@}
   }
 }
 

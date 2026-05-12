@@ -8,6 +8,10 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+// TODO(neva): Remove that after integrate CL http://crrev.com/c/5836751
+#if defined(__GNUC__) && !defined(__clang__)
+#include <variant>
+#endif
 
 #include "services/on_device_model/ml/chrome_ml_types.h"
 #include "third_party/dawn/include/dawn/dawn_proc_table.h"

@@ -65,6 +65,14 @@
 #include "extensions/browser/pref_names.h"
 #endif
 
+#if BUILDFLAG(IS_WEBOS)
+#include "base/command_line.h"
+#include "base/files/file_util.h"
+#include "base/neva/neva_paths.h"
+#include "base/path_service.h"
+#include "extensions/common/switches.h"
+#endif  // BUILDFLAG(IS_WEBOS)
+
 using blink::mojom::ConsoleMessageLevel;
 using content::BrowserContext;
 using content::WebContents;
@@ -286,6 +294,18 @@ void AppWindow::Init(const GURL& url,
                      std::unique_ptr<AppWindowContents> app_window_contents,
                      content::RenderFrameHost* creator_frame,
                      const CreateParams& params) {
+#if BUILDFLAG(IS_WEBOS)
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  if (command_line->HasSwitch(switches::kWebOSAppId)) {
+    std::string app_id = command_line->GetSwitchValueASCII(switches::kWebOSAppId);
+    SetApplicationId(app_id);
+  }
+
+  base::FilePath path;
+  base::PathService::Get(base::FILE_MEDIA_CODEC_CAPABILITIES, &path);
+  ReadMediaCapabilityFromPath(path);
+#endif  // BUILDFLAG(IS_WEBOS)
+
   // Initialize the render interface and web contents
   app_window_contents_ = std::move(app_window_contents);
   app_window_contents_->Initialize(browser_context(), creator_frame, url);
@@ -491,6 +511,22 @@ bool AppWindow::ShouldShowStaleContentOnEviction(content::WebContents* source) {
 void AppWindow::RenderFrameCreated(content::RenderFrameHost* frame_host) {
   app_delegate_->RenderFrameCreated(frame_host);
 }
+
+#if BUILDFLAG(IS_WEBOS)
+void AppWindow::ReadMediaCapabilityFromPath(const base::FilePath& path) {
+  VLOG(1) << __func__ << " path: " << path.MaybeAsASCII();
+
+  if (!base::PathExists(path)) {
+    LOG(ERROR) << "File does not exist: " << path.MaybeAsASCII();
+    return;
+  }
+
+  if (!base::ReadFileToString(path, &media_codec_capability_)) {
+    LOG(ERROR) << "Error reading file: " << path.MaybeAsASCII();
+    media_codec_capability_.clear();
+  }
+}
+#endif  // BUILDFLAG(IS_WEBOS)
 
 void AppWindow::AddOnDidFinishFirstNavigationCallback(
     DidFinishFirstNavigationCallback callback) {

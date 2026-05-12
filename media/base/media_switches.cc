@@ -65,6 +65,10 @@ const char kReportVp9AsAnUnsupportedMimeType[] =
 const char kAlsaInputDevice[] = "alsa-input-device";
 // The Alsa device to use when opening an audio stream.
 const char kAlsaOutputDevice[] = "alsa-output-device";
+#if defined(USE_NEVA_APPRUNTIME)
+// List of comma-seperated Alsa devices that should not be used.
+const char kAlsaInputDeviceBlockList[] = "alsa-input-device-block-list";
+#endif  // defined(USE_NEVA_APPRUNTIME)
 #endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) ||
         // BUILDFLAG(IS_FREEBSD) || BUILDFLAG(IS_SOLARIS)
 
@@ -1720,6 +1724,18 @@ BASE_FEATURE(kMediaFoundationAcceleratedEncodeOnArm64,
 BASE_FEATURE(kMediaSharedBitmapToSharedImage,
              "MediaSharedBitmapToSharedImage",
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+#if defined(USE_WEBOS_CODEC)
+// Enable VDA based webOS video decoder.
+BASE_FEATURE(kWebOSVideoDecodeAccelerator,
+             "WebOSVideoDecodeAccelerator",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enable VEA based webOS video encoder.
+BASE_FEATURE(kWebOSVideoEncodeAccelerator,
+             "WebOSVideoEncodeAccelerator",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif
 
 #if BUILDFLAG(IS_WIN)
 BASE_FEATURE(kMediaFoundationD3DVideoProcessing,

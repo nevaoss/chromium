@@ -19,8 +19,12 @@ namespace password_manager {
 // Contains information to uniquely identify the field that is considered to be
 // username in Username First Flow.
 struct PossibleUsernameFieldIdentifier {
+// TODO(neva): Please remove this guard after there is no error to support
+// operator<=> in Neva.
+#if !defined(COMPILER_GCC)
   friend auto operator<=>(const PossibleUsernameFieldIdentifier& lhs,
                           const PossibleUsernameFieldIdentifier& rhs) = default;
+#endif  // !defined(COMPILER_GCC)
   friend bool operator==(const PossibleUsernameFieldIdentifier& lhs,
                          const PossibleUsernameFieldIdentifier& rhs) = default;
 
@@ -31,6 +35,16 @@ struct PossibleUsernameFieldIdentifier {
 
   // Id of the field within the frame.
   autofill::FieldRendererId renderer_id;
+
+// TODO(neva): Please remove this guard after there is no error to support
+// operator<=> in Neva.
+#if defined(COMPILER_GCC)
+  friend bool operator<(const PossibleUsernameFieldIdentifier& lhs,
+                        const PossibleUsernameFieldIdentifier& rhs) {
+    return std::make_pair(lhs.driver_id, lhs.renderer_id) <
+           std::make_pair(rhs.driver_id, rhs.renderer_id);
+  }
+#endif
 };
 
 // Contains information that the user typed in a text field. It might be the

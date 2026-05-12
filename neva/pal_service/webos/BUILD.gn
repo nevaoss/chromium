@@ -1,0 +1,55 @@
+# Copyright 2019 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//neva/neva.gni")
+import("//neva/pal_service/pal_service.gni")
+
+source_set("pal_service_webos") {
+  sources = [
+    "application_registrator_delegate_webos.cc",
+    "application_registrator_delegate_webos.h",
+    "external_protocol_handler_delegate_webos.cc",
+    "external_protocol_handler_delegate_webos.h",
+    "language_tracker_delegate_webos.cc",
+    "language_tracker_delegate_webos.h",
+    "memorymanager_delegate_webos.cc",
+    "memorymanager_delegate_webos.h",
+    "network_error_page_controller_delegate_webos.cc",
+    "network_error_page_controller_delegate_webos.h",
+    "notification_manager_delegate_webos.cc",
+    "notification_manager_delegate_webos.h",
+    "pal_platform_factory_webos.cc",
+    "platform_system_delegate_webos.cc",
+    "platform_system_delegate_webos.h",
+    "system_servicebridge_delegate_webos.cc",
+    "system_servicebridge_delegate_webos.h",
+    "switches.cc",
+    "switches.h",
+  ]
+
+  sources += [
+    "memorymanager_delegate_ose.cc",
+    "memorymanager_delegate_ose.h",
+  ]
+
+  deps = [
+    "//base",
+    "//neva/pal_service/luna:luna_client",
+    "//neva/pal_service/public/mojom",
+  ]
+
+  defines = pal_service_defines
+}

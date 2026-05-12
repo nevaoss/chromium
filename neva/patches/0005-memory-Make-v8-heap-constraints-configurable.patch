@@ -1,0 +1,441 @@
+From f1284613feb945a482f86a80af4a62af880c9d2a Mon Sep 17 00:00:00 2001
+From: DongHwan Yu <donghwan.yu@lge.com>
+Date: Fri, 20 Sep 2024 13:03:33 +0900
+Subject: [PATCH] Make v8 heap constraints configurable
+
+:Release Notes:
+To optimize v8 heap memory and to guide the GC heuristic for external
+memory, make some v8 heap constraints configurable
+
+:Detailed Notes:
+-configure_heap_details : True to set detailed constraints below.
+-trace_configure_heap_details : Trace configured heap details.
+-minimum allocation limit growing step size (MB) : when heap is growing,
+ it would be set as allocation limit growing step size.
+-high fragmentation slack (MB) : To determine HasHighFragmentation
+                                 committed > 2*used + slack
+-external allocation soft limit (MB) : Trigger an incremental GCs once the
+                                       external memory reaches this limit.
+-external allocation hard limit (MB) : Trigger CollectAllGarbage once the
+ external memory reaches external memory at last mark compact + hard limit
+-heap_growing_percent : To limit heap growing percent, specify heap
+growing factor as ( 1 + heap_growing_percent/100 )
+JS_FLAGS=" \
+  --configure_heap_details\
+  --heap_growing_percent=1\
+  --minimum_allocation_limit_growing_step_size=2\
+  --high_fragmentation_slack=0\
+  --external_allocation_hard_limit=64\
+  --external_allocation_soft_limit=16\
+"
+
+:Testing Performed:
+Running YouTube video (QS-6468) for 5 days
+Running 4K YouTube video for 2 days
+
+:QA Notes:
+Test Cases: QS-6468, GT-28087
+Depends on: http://gpro.lge.com/c/webos-pro/chromium84/+/284348
+
+:Issues Addressed:
+[PLAT-54356] Verify and figure out the proper configurable values for v8 heap constraints
+[PLAT-53527] Implementation to configure v8 heap constraints
+[PLAT-48952] Analyze current V8 heap memory reclaim policy
+[PLAT-118302] [v8] Port : [op][upsable][v8][memory] Make v8 heap constraints configurable
+
+Originally-Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/243755
+Originally-Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/267196
+Originally-Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/268648
+Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/284058
+---
+ include/v8-isolate.h         | 36 +++++++++++++++++++
+ src/api/api.cc               | 22 ++++++++++++
+ src/flags/flag-definitions.h | 14 ++++++++
+ src/heap/heap-controller.cc  | 17 +++++++++
+ src/heap/heap-controller.h   |  4 +++
+ src/heap/heap.cc             | 69 ++++++++++++++++++++++++++++++++++++
+ src/heap/heap.h              | 50 ++++++++++++++++++++++++++
+ 7 files changed, 212 insertions(+)
+
+diff --git a/include/v8-isolate.h b/include/v8-isolate.h
+index 74bd5b88c90..2a495d36959 100644
+--- a/include/v8-isolate.h
++++ b/include/v8-isolate.h
+@@ -96,6 +96,36 @@ class V8_EXPORT ResourceConstraints {
+   void ConfigureDefaults(uint64_t physical_memory,
+                          uint64_t virtual_memory_limit);
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++  void ConfigureDetails(size_t min_allocation_limit_growing_step_size,
++                        size_t high_fragmentation_slack,
++                        int external_allocation_hard_limit,
++                        int external_allocation_soft_limit);
++
++  void set_min_allocation_limit_growing_step_size(const size_t limit_in_mb) {
++    min_allocation_limit_growing_step_size_ = limit_in_mb;
++  }
++  size_t min_allocation_limit_growing_step_size() const {
++    return min_allocation_limit_growing_step_size_;
++  }
++  void set_high_fragmentation_slack(const size_t limit_in_mb) {
++    high_fragmentation_slack_ = limit_in_mb;
++  }
++  size_t high_fragmentation_slack() const { return high_fragmentation_slack_; }
++  void set_external_allocation_hard_limit(const int limit_in_mb) {
++    external_allocation_hard_limit_ = limit_in_mb;
++  }
++  int external_allocation_hard_limit() const {
++    return external_allocation_hard_limit_;
++  }
++  void set_external_allocation_soft_limit(const int limit_in_mb) {
++    external_allocation_soft_limit_ = limit_in_mb;
++  }
++  int external_allocation_soft_limit() const {
++    return external_allocation_soft_limit_;
++  }
++#endif
++
+   /**
+    * The address beyond which the VM's stack may not grow.
+    */
+@@ -162,6 +192,12 @@ class V8_EXPORT ResourceConstraints {
+   size_t initial_old_generation_size_ = 0;
+   size_t initial_young_generation_size_ = 0;
+   uint32_t* stack_limit_ = nullptr;
++#if defined(USE_NEVA_APPRUNTIME)
++  size_t min_allocation_limit_growing_step_size_ = 0;
++  size_t high_fragmentation_slack_ = 0;
++  int external_allocation_hard_limit_ = 0;
++  int external_allocation_soft_limit_ = 0;
++#endif
+ };
+ 
+ /**
+diff --git a/src/api/api.cc b/src/api/api.cc
+index 3e15759b3d3..7b00a4a9b1f 100644
+--- a/src/api/api.cc
++++ b/src/api/api.cc
+@@ -733,6 +733,19 @@ void ResourceConstraints::ConfigureDefaults(uint64_t physical_memory,
+   }
+ }
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++void ResourceConstraints::ConfigureDetails(
++    size_t min_allocation_limit_growing_step_size,
++    size_t high_fragmentation_slack, int external_allocation_hard_limit,
++    int external_allocation_soft_limit) {
++  set_min_allocation_limit_growing_step_size(
++      min_allocation_limit_growing_step_size);
++  set_high_fragmentation_slack(high_fragmentation_slack);
++  set_external_allocation_hard_limit(external_allocation_hard_limit);
++  set_external_allocation_soft_limit(external_allocation_soft_limit);
++}
++#endif
++
+ namespace api_internal {
+ void StackAllocated<true>::VerifyOnStack() const {
+   if (internal::StackAllocatedCheck::Get()) {
+@@ -9974,6 +9987,15 @@ void Isolate::Initialize(Isolate* v8_isolate,
+   i_isolate->set_allow_atomics_wait(params.allow_atomics_wait);
+ 
+   i_isolate->heap()->ConfigureHeap(params.constraints, params.cpp_heap);
++
++#if defined(USE_NEVA_APPRUNTIME)
++  i_isolate->heap()->ConfigureHeapDetails(
++      params.constraints.min_allocation_limit_growing_step_size(),
++      params.constraints.high_fragmentation_slack(),
++      params.constraints.external_allocation_hard_limit(),
++      params.constraints.external_allocation_soft_limit());
++#endif
++
+   if (params.constraints.stack_limit() != nullptr) {
+     uintptr_t limit =
+         reinterpret_cast<uintptr_t>(params.constraints.stack_limit());
+diff --git a/src/flags/flag-definitions.h b/src/flags/flag-definitions.h
+index 813c38eed2b..f45b9744911 100644
+--- a/src/flags/flag-definitions.h
++++ b/src/flags/flag-definitions.h
+@@ -2165,6 +2165,20 @@ DEFINE_BOOL(
+     reclaim_unmodified_wrappers, true,
+     "reclaim otherwise unreachable unmodified wrapper objects when possible")
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++DEFINE_BOOL(configure_heap_details, false, "heap configurable values in detail")
++DEFINE_BOOL(trace_configure_heap_details, false, "trace configure_heap_details")
++DEFINE_UINT(minimum_allocation_limit_growing_step_size, 0,
++            "minimum allocation limit growing step size for old generation")
++DEFINE_UINT(high_fragmentation_slack, 0,
++            "high fragmentation slack to trigger mark compact")
++DEFINE_UINT(external_allocation_hard_limit, 0,
++            "external allocation hard limit for external memory to trigger GC")
++DEFINE_UINT(external_allocation_soft_limit, 0,
++            "external allocation soft limit to set external memory limit after "
++            "MarkCompact")
++#endif
++
+ // These flags will be removed after experiments. Do not rely on them.
+ DEFINE_BOOL(gc_experiment_less_compaction, false,
+             "less compaction in non-memory reducing mode")
+diff --git a/src/heap/heap-controller.cc b/src/heap/heap-controller.cc
+index c9f2badf686..0dfa1e6f21b 100644
+--- a/src/heap/heap-controller.cc
++++ b/src/heap/heap-controller.cc
+@@ -127,10 +127,23 @@ double MemoryController<Trait>::DynamicGrowingFactor(double gc_speed,
+ 
+ template <typename Trait>
+ size_t MemoryController<Trait>::MinimumAllocationLimitGrowingStep(
++#if defined(USE_NEVA_APPRUNTIME)
++    Heap* heap, Heap::HeapGrowingMode growing_mode) {
++#else
+     Heap::HeapGrowingMode growing_mode) {
++#endif
+   const size_t kRegularAllocationLimitGrowingStep = 8;
+   const size_t kLowMemoryAllocationLimitGrowingStep = 2;
+   size_t limit = (PageMetadata::kPageSize > MB ? PageMetadata::kPageSize : MB);
++#if defined(USE_NEVA_APPRUNTIME)
++  if (v8_flags.configure_heap_details)  {
++    if (v8_flags.trace_configure_heap_details) {
++      Isolate::FromHeap(heap)->PrintWithTimestamp("MinimumAllocationLimitGrowingStep: %6zu \n",
++                               limit * heap->min_allocation_limit_growing_step_size());
++    }
++    return limit * heap->min_allocation_limit_growing_step_size();
++  }
++#endif
+   return limit * (growing_mode == Heap::HeapGrowingMode::kConservative
+                       ? kLowMemoryAllocationLimitGrowingStep
+                       : kRegularAllocationLimitGrowingStep);
+@@ -143,7 +156,11 @@ size_t MemoryController<Trait>::BoundAllocationLimit(
+     Heap::HeapGrowingMode growing_mode) {
+   CHECK_LT(0, current_size);
+   limit = std::max(limit, static_cast<uint64_t>(current_size) +
++#if defined(USE_NEVA_APPRUNTIME)
++                              MinimumAllocationLimitGrowingStep(heap, growing_mode)) +
++#else
+                               MinimumAllocationLimitGrowingStep(growing_mode)) +
++#endif
+           new_space_capacity;
+   const uint64_t halfway_to_the_max =
+       (static_cast<uint64_t>(current_size) + max_size) / 2;
+diff --git a/src/heap/heap-controller.h b/src/heap/heap-controller.h
+index 9578c03adfb..1a03a6abc4d 100644
+--- a/src/heap/heap-controller.h
++++ b/src/heap/heap-controller.h
+@@ -36,7 +36,11 @@ class V8_EXPORT_PRIVATE MemoryController : public AllStatic {
+  public:
+   // Computes the growing step when the limit increases.
+   static size_t MinimumAllocationLimitGrowingStep(
++#if defined(USE_NEVA_APPRUNTIME)
++      Heap* heap, Heap::HeapGrowingMode growing_mode);
++#else
+       Heap::HeapGrowingMode growing_mode);
++#endif
+ 
+   static double GrowingFactor(Heap* heap, size_t max_heap_size, double gc_speed,
+                               double mutator_speed,
+diff --git a/src/heap/heap.cc b/src/heap/heap.cc
+index 6367053dd86..cc38a9c8249 100644
+--- a/src/heap/heap.cc
++++ b/src/heap/heap.cc
+@@ -3227,7 +3227,11 @@ void Heap::ShrinkOldGenerationAllocationLimitIfNotConfigured() {
+       tracer()->SurvivalEventsRecorded()) {
+     const size_t minimum_growing_step =
+         MemoryController<V8HeapTrait>::MinimumAllocationLimitGrowingStep(
++#if defined(USE_NEVA_APPRUNTIME)
++            this, CurrentHeapGrowingMode());
++#else
+             CurrentHeapGrowingMode());
++#endif
+     size_t new_old_generation_allocation_limit =
+         std::max(OldGenerationConsumedBytes() + minimum_growing_step,
+                  static_cast<size_t>(
+@@ -3870,6 +3874,13 @@ bool Heap::HasHighFragmentation() {
+ 
+   // Fragmentation is high if committed > 2 * used + kSlack.
+   // Rewrite the expression to avoid overflow.
++
++#if defined(USE_NEVA_APPRUNTIME)
++  if (v8_flags.configure_heap_details) {
++    return committed - used > used + high_fragmentation_slack_;
++  }
++#endif
++
+   return committed - used > used + kSlack;
+ }
+ 
+@@ -5165,6 +5176,64 @@ void Heap::ConfigureHeap(const v8::ResourceConstraints& constraints,
+   configured_ = true;
+ }
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++void Heap::ConfigureHeapDetails(size_t min_allocation_limit_growing_step_size,
++                                size_t high_fragmentation_slack,
++                                int external_allocation_hard_limit_mb,
++                                int external_allocation_soft_limit_mb) {
++  if (configured_details_) return;
++
++  if (v8_flags.configure_heap_details) {
++    // Configure detailed constraints by flags
++    if (v8_flags.minimum_allocation_limit_growing_step_size) {
++      min_allocation_limit_growing_step_size_ =
++          v8_flags.minimum_allocation_limit_growing_step_size;
++    }
++    if (v8_flags.high_fragmentation_slack) {
++      high_fragmentation_slack_ = v8_flags.high_fragmentation_slack;
++    }
++    if (v8_flags.external_allocation_hard_limit > 0) {
++      external_allocation_hard_limit_ = static_cast<uint64_t>(
++        v8_flags.external_allocation_hard_limit * MB);
++    }
++    if (v8_flags.external_allocation_soft_limit > 0) {
++      external_memory_.set_external_allocation_soft_limit(
++        static_cast<uint64_t>(v8_flags.external_allocation_soft_limit * MB));
++    }
++  }
++
++  // Configure detailed constraints by each app
++  if (min_allocation_limit_growing_step_size)
++    min_allocation_limit_growing_step_size_ =
++        min_allocation_limit_growing_step_size;
++  if (high_fragmentation_slack)
++    high_fragmentation_slack_ = high_fragmentation_slack;
++  if (external_allocation_hard_limit_mb > 0) {
++    external_allocation_hard_limit_ = static_cast<uint64_t>(
++      external_allocation_hard_limit_mb * MB);
++  }
++  if (external_allocation_soft_limit_mb > 0) {
++      external_memory_.set_external_allocation_soft_limit(
++        static_cast<uint64_t>(external_allocation_soft_limit_mb * MB));
++  }
++
++  if (v8_flags.trace_configure_heap_details) {
++    PrintIsolate(isolate_,
++                 "MinAllocationLimitGrowingStepSize: %6zu"
++                 ", high_fragmentation_slack_: %6zu"
++                 ", external_allocation_hard_limit_: %d"
++                 ", external_allocation_soft_limit: %d\n",
++                 min_allocation_limit_growing_step_size_,
++                 high_fragmentation_slack_,
++                 static_cast<int>(external_allocation_hard_limit_ / MB),
++                 static_cast<int>(
++                   external_memory_.external_allocation_soft_limit() / MB));
++  }
++
++  configured_details_ = true;
++}
++#endif
++
+ void Heap::AddToRingBuffer(const char* string) {
+   size_t first_part =
+       std::min(strlen(string), kTraceRingBufferSize - ring_buffer_end_);
+diff --git a/src/heap/heap.h b/src/heap/heap.h
+index 1b6e7cafc4b..7812d3760d5 100644
+--- a/src/heap/heap.h
++++ b/src/heap/heap.h
+@@ -237,12 +237,28 @@ class Heap final {
+       return limit_for_interrupt_.load(std::memory_order_relaxed);
+     }
+     uint64_t soft_limit() const {
++#if defined(USE_NEVA_APPRUNTIME)
++      if (v8_flags.configure_heap_details) {
++        return low_since_mark_compact() +
++              external_allocation_soft_limit_.load(std::memory_order_relaxed);
++      }
++#endif  // defined(USE_NEVA_APPRUNTIME)
+       return low_since_mark_compact() + kExternalAllocationSoftLimit;
+     }
+     uint64_t low_since_mark_compact() const {
+       return low_since_mark_compact_.load(std::memory_order_relaxed);
+     }
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++    uint64_t external_allocation_soft_limit() const {
++      return external_allocation_soft_limit_.load(std::memory_order_relaxed);
++    }
++
++    void set_external_allocation_soft_limit(uint64_t value) {
++      external_allocation_soft_limit_.store(value, std::memory_order_relaxed);
++    }
++#endif  // defined(USE_NEVA_APPRUNTIME)
++
+     uint64_t UpdateAmount(int64_t delta) {
+       const uint64_t amount_before =
+           total_.fetch_add(delta, std::memory_order_relaxed);
+@@ -291,6 +307,11 @@ class Heap final {
+ 
+     // Caches the amount of external memory registered at the last MC.
+     std::atomic<uint64_t> low_since_mark_compact_{0};
++
++#if defined(USE_NEVA_APPRUNTIME)
++    // Trigger an incremental GCs once the external memory reaches this limit.
++    std::atomic<uint64_t>  external_allocation_soft_limit_{0};
++#endif  // defined(USE_NEVA_APPRUNTIME)
+   };
+ 
+   // Taking this mutex prevents the GC from entering a phase that relocates
+@@ -619,6 +640,12 @@ class Heap final {
+   void RememberUnmappedPage(Address page, bool compacted);
+ 
+   uint64_t external_memory_hard_limit() {
++#if defined(USE_NEVA_APPRUNTIME)
++    if (v8_flags.configure_heap_details) {
++      return external_memory_.low_since_mark_compact() +
++             external_allocation_hard_limit_;
++    }
++#endif  // defined(USE_NEVA_APPRUNTIME)
+     return external_memory_.low_since_mark_compact() +
+            max_old_generation_size() / 2;
+   }
+@@ -685,6 +712,13 @@ class Heap final {
+                      v8::CppHeap* cpp_heap);
+   void ConfigureHeapDefault();
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++  void ConfigureHeapDetails(size_t min_allocation_limit_growing_step_size,
++                            size_t high_fragmentation_slack,
++                            int external_allocation_hard_limit,
++                            int external_allocation_soft_limit);
++#endif
++
+   // Prepares the heap, setting up for deserialization.
+   void SetUp(LocalHeap* main_thread_local_heap);
+ 
+@@ -1602,6 +1636,12 @@ class Heap final {
+   V8_EXPORT_PRIVATE void Unmark();
+   V8_EXPORT_PRIVATE void DeactivateMajorGCInProgressFlag();
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++  size_t min_allocation_limit_growing_step_size() const {
++    return min_allocation_limit_growing_step_size_;
++  }
++#endif
++
+   // Free all LABs in the heap.
+   V8_EXPORT_PRIVATE void FreeLinearAllocationAreas();
+ 
+@@ -2111,6 +2151,12 @@ class Heap final {
+   size_t maximum_committed_ = 0;
+   size_t old_generation_capacity_after_bootstrap_ = 0;
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++  size_t min_allocation_limit_growing_step_size_ = 0;
++  size_t high_fragmentation_slack_ = 0;
++  uint64_t external_allocation_hard_limit_ = 0;
++#endif
++
+   // Backing store bytes (array buffers and external strings).
+   // Use uint64_t counter since the counter could overflow the 32-bit range
+   // temporarily on 32-bit.
+@@ -2346,6 +2392,10 @@ class Heap final {
+   // configured through the API until it is set up.
+   bool configured_ = false;
+ 
++#if defined(USE_NEVA_APPRUNTIME)
++  bool configured_details_ = false;
++#endif
++
+   // Currently set GC flags that are respected by all GC components.
+   GCFlags current_gc_flags_ = GCFlag::kNoFlags;
+   // Currently set GC callback flags that are used to pass information between
+-- 
+2.45.2
+

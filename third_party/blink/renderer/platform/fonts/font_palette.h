@@ -60,6 +60,12 @@ class PLATFORM_EXPORT FontPalette : public RefCounted<FontPalette> {
   };
 
   struct NonNormalizedPercentages {
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+    NonNormalizedPercentages() = default;
+    NonNormalizedPercentages(double start, double end)
+        : start(start), end(end) {}
+#endif  // (__cplusplus < 202002L)
     double start;
     double end;
     bool operator==(const NonNormalizedPercentages& other) const {

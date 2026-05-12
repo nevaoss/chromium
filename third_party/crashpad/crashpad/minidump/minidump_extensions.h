@@ -116,7 +116,12 @@ enum MinidumpStreamType : uint32_t {
 //!     file.
 //!
 //! \sa MINIDUMP_STRING
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpUTF8String {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpUTF8String {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   // The field names do not conform to typical style, they match the names used
   // in MINIDUMP_STRING. This makes it easier to operate on MINIDUMP_STRING (for
   // UTF-16 strings) and MinidumpUTF8String using templates.
@@ -135,7 +140,12 @@ struct alignas(4) PACKED MinidumpUTF8String {
 //! \brief A variable-length array of bytes carried within a minidump file.
 //!     The data have no intrinsic type and should be interpreted according
 //!     to their referencing context.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpByteArray {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpByteArray {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   //! \brief The length of the #data field.
   uint32_t length;
 
@@ -273,7 +283,12 @@ enum MinidumpOS : uint32_t {
 };
 
 //! \brief A list of ::RVA pointers.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpRVAList {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpRVAList {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   //! \brief The number of children present in the #children array.
   uint32_t count;
 
@@ -282,7 +297,12 @@ struct alignas(4) PACKED MinidumpRVAList {
 };
 
 //! \brief A key-value pair.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpSimpleStringDictionaryEntry {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpSimpleStringDictionaryEntry {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   //! \brief ::RVA of a MinidumpUTF8String containing the key of a key-value
   //!     pair.
   RVA key;
@@ -293,7 +313,12 @@ struct alignas(4) PACKED MinidumpSimpleStringDictionaryEntry {
 };
 
 //! \brief A list of key-value pairs.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpSimpleStringDictionary {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpSimpleStringDictionary {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   //! \brief The number of key-value pairs present.
   uint32_t count;
 
@@ -302,7 +327,12 @@ struct alignas(4) PACKED MinidumpSimpleStringDictionary {
 };
 
 //! \brief A typed annotation object.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpAnnotation {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpAnnotation {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   //! \brief ::RVA of a MinidumpUTF8String containing the name of the
   //!     annotation.
   RVA name;
@@ -319,7 +349,12 @@ struct alignas(4) PACKED MinidumpAnnotation {
 };
 
 //! \brief A list of annotation objects.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpAnnotationList {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpAnnotationList {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   //! \brief The number of annotation objects present.
   uint32_t count;
 
@@ -342,7 +377,12 @@ struct alignas(4) PACKED MinidumpAnnotationList {
 //! fields are valid or not.
 //!
 //! \sa MinidumpModuleCrashpadInfoList
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpModuleCrashpadInfo {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpModuleCrashpadInfo {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   //! \brief The structure’s currently-defined version number.
   //!
   //! \sa version
@@ -392,7 +432,12 @@ struct alignas(4) PACKED MinidumpModuleCrashpadInfo {
 //! \brief A link between a MINIDUMP_MODULE structure and additional
 //!     Crashpad-specific information about a module carried within a minidump
 //!     file.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpModuleCrashpadInfoLink {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpModuleCrashpadInfoLink {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   //! \brief A link to a MINIDUMP_MODULE structure in the module list stream.
   //!
   //! This field is an index into MINIDUMP_MODULE_LIST::Modules. This field’s
@@ -419,7 +464,12 @@ struct alignas(4) PACKED MinidumpModuleCrashpadInfoLink {
 //! structure carried within the minidump file will necessarily have
 //! Crashpad-specific information provided by a MinidumpModuleCrashpadInfo
 //! structure.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpModuleCrashpadInfoList {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpModuleCrashpadInfoList {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   //! \brief The number of children present in the #modules array.
   uint32_t count;
 
@@ -438,7 +488,12 @@ struct alignas(4) PACKED MinidumpModuleCrashpadInfoList {
 //! structure. Revise #kVersion and document each field’s validity based on
 //! #version, so that newer parsers will be able to determine whether the added
 //! fields are valid or not.
+// TODO(neva): Remove this workaround when Neva GCC version upgraded to 13+.
+#if defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
+struct __attribute__((aligned(4))) PACKED MinidumpCrashpadInfo {
+#else   // defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__)
 struct alignas(4) PACKED MinidumpCrashpadInfo {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 13) && !defined(__clang__))
   // UUID has a constructor, which makes it non-POD, which makes this structure
   // non-POD. In order for the default constructor to zero-initialize other
   // members, an explicit constructor must be provided.

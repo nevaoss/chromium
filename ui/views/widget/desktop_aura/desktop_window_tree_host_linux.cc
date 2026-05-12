@@ -38,6 +38,13 @@
 #include "ui/accessibility/platform/atk_util_auralinux.h"
 #endif
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#if defined(USE_OZONE)
+#include "ui/ozone/public/ozone_platform.h"
+#endif  // defined(USE_OZONE)
+///@}
+
 #include "ui/views/widget/desktop_aura/window_event_filter_linux.h"
 
 namespace views {

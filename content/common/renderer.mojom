@@ -16,6 +16,11 @@ import "third_party/blink/public/mojom/browser_interface_broker.mojom";
 import "third_party/blink/public/mojom/origin_trials/origin_trials_settings.mojom";
 import "third_party/blink/public/mojom/user_agent/user_agent_metadata.mojom";
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+import "mojo/public/mojom/base/memory_pressure_level.mojom";
+///@}
+
 struct UpdateScrollbarThemeParams {
   // TODO(avi): Update these to optional values when optional numeric types are
   // allowed. (https://crbug.com/657632)
@@ -115,6 +120,18 @@ interface Renderer {
   // Tells the renderer process of a change in visibility or priority state.
   SetProcessState(mojo_base.mojom.ProcessPriority process_priority,
                   RenderProcessVisibleState visible_state);
+
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // Tells the renderer process to suspend.
+  ProcessSuspend();
+
+  // Tells the renderer process to resume.
+  ProcessResume();
+
+  // Called when the system is low on memory.
+  OnSystemMemoryPressureLevelChanged(mojo_base.mojom.MemoryPressureLevel level);
+  ///@}
 
   // Tells the renderer process that it has been locked to a site (i.e., a
   // scheme plus eTLD+1, such as https://google.com), or to a more specific

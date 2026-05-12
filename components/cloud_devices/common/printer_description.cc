@@ -1072,7 +1072,15 @@ MediaType::MediaType(const std::string& vendor_id,
                      const std::string& custom_display_name)
     : vendor_id(vendor_id), custom_display_name(custom_display_name) {}
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+bool MediaType::operator==(const MediaType& other) const {
+  return vendor_id == other.vendor_id &&
+         custom_display_name == other.custom_display_name;
+}
+#else   // (__cplusplus < 202002L)
 bool MediaType::operator==(const MediaType& other) const = default;
+#endif  // !(__cplusplus < 202002L)
 
 bool MediaType::IsValid() const {
   return !vendor_id.empty();

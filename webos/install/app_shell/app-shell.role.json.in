@@ -1,0 +1,32 @@
+{
+    "exeName":"@@EXENAME@@",
+    "trustLevel":"oem",
+    "type": "privileged",
+    "allowedNames": [
+        "com.webos.app.enactbrowser*",
+        "com.webos.chromium.memory.*",
+        "com.webos.media.client.*",
+        "com.webos.settingsservice.client*"
+    ],
+    "permissions": [
+        {
+            "service":"com.webos.app.enactbrowser*",
+            "inbound":["*"],
+            "outbound":["*"]
+        },
+        {
+            "service":"com.webos.chromium.memory.*",
+            "inbound":["*"],
+            "outbound":["*"]
+        },
+        {
+            "service":"com.webos.media.client.*",
+            "inbound":["*"],
+            "outbound":["*"]
+        },
+        {
+            "service":"com.webos.settingsservice.client*",
+            "outbound":["com.webos.settingsservice"]
+        }
+    ]
+}

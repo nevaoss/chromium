@@ -1,0 +1,10 @@
+{
+    "id": "wam-demo",
+    "version": "1.0.0",
+    "roleFiles": [
+        "/usr/share/luna-service2/roles.d/com.webos.app.wam-demo.role.json"
+    ],
+    "clientPermissionFiles": [
+        "/usr/share/luna-service2/client-permissions.d/com.webos.app.wam-demo.perm.json"
+    ]
+}

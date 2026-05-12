@@ -16,6 +16,13 @@ config("ruy_shared_config") {
     # Disables a warning about the assembly instructions that are used.
     cflags = [ "-Wno-inline-asm" ]
   }
+
+  # NOTE(neva): Workaround to fix webruntime compilation on Yocto 4.0 base.
+  # We do not use assembly code for Thumb to avoid compilation failure.
+  # See https://github.com/google/ruy/issues/284.
+  if (current_cpu == "arm" && arm_use_thumb) {
+    defines = [ "RUY_OPT_SET=(~RUY_OPT_BIT_ASM)" ]
+  }
 }
 
 # We skip cmake's |ruy_0_Wall_Wcxx14_compat_Wextra_Wundef|, |ruy_1_mfpu_neon|,

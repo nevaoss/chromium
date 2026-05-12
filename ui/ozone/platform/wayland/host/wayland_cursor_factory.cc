@@ -165,6 +165,17 @@ scoped_refptr<PlatformCursor> WaylandCursorFactory::GetDefaultCursor(
     current_theme->AddThemeLoadedCallback(
         base::BindOnce(&WaylandCursorFactory::FinishCursorLoad,
                        weak_factory_.GetWeakPtr(), async_cursor, type, scale));
+#if BUILDFLAG(IS_WEBOS)
+  } else {
+    auto async_cursor = current_theme->cache[type];
+    // If the callback was invoked but didn't give any bitmap for the cursor
+    // then return null to step into the next fallback logic.
+    // TODO(neva): However, there is no compensation logic for the failure of
+    // the first callback invocation. This can cause abnormal cursor display.
+    if (async_cursor->loaded() && !async_cursor->bitmap_cursor()) {
+      return nullptr;
+    }
+#endif  // BUILDFLAG(IS_WEBOS)
   }
   return current_theme->cache[type];
 }

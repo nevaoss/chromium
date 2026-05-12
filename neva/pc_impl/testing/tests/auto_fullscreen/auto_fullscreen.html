@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<body>
+ <head>
+    <title>
+      Page with auto fullscreen media
+    </title>
+ </head>
+
+<div id="videoPlayer">
+<video width="320" height="240" controls autoplay muted>
+  <source src="../media/big_buck_bunny.mp4" type="video/mp4">
+</video>
+<p><button onclick="toggleFullscreen()">Fullscreen</button></p>
+</div>
+
+<script>
+function toggleFullscreen() {
+  let elem = document.querySelector("video");
+
+  if (!document.fullscreenElement) {
+    elem.requestFullscreen()
+  } else {
+    document.exitFullscreen();
+  }
+}
+
+setTimeout(toggleFullscreen, 3000);
+</script>
+
+</body>
+</html>

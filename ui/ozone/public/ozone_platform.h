@@ -281,6 +281,12 @@ class COMPONENT_EXPORT(OZONE) OzonePlatform {
   // Some tests may skip based on the platform name.
   static std::string GetPlatformNameForTest();
 
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // Returns true if currently selected ozone platform is "wayland".
+  static bool IsWayland();
+  ///@}
+
   // Factory getters to override in subclasses. The returned objects will be
   // injected into the appropriate layer at startup. Subclasses should not
   // inject these objects themselves. Ownership is retained by OzonePlatform.

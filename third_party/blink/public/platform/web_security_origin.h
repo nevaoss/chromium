@@ -46,6 +46,10 @@ namespace blink {
 class SecurityOrigin;
 class WebURL;
 
+#if defined(USE_NEVA_APPRUNTIME)
+BLINK_PLATFORM_EXPORT void SetMutableLocalOrigin(const std::string&);
+#endif
+
 class BLINK_PLATFORM_EXPORT WebSecurityOrigin {
  public:
   ~WebSecurityOrigin() { Reset(); }

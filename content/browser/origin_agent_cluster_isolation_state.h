@@ -41,7 +41,16 @@ class CONTENT_EXPORT OriginAgentClusterIsolationState {
     return requires_origin_keyed_process_;
   }
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+  bool operator==(const OriginAgentClusterIsolationState& other) {
+    return is_origin_agent_cluster_ == other.is_origin_agent_cluster_ &&
+           requires_origin_keyed_process_ ==
+               other.requires_origin_keyed_process_;
+  }
+#else   // (__cplusplus < 202002L)
   bool operator==(const OriginAgentClusterIsolationState&) const = default;
+#endif  // !(__cplusplus < 202002L)
 
  private:
   OriginAgentClusterIsolationState(bool is_origin_agent_cluster,

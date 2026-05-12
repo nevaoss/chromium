@@ -313,6 +313,12 @@ LocalFrameView::LocalFrameView(LocalFrame& frame, gfx::Rect frame_rect)
   if (frame_->Owner() && frame_->Owner()->ScrollbarMode() ==
                              mojom::blink::ScrollbarMode::kAlwaysOff)
     SetCanHaveScrollbars(false);
+
+#if defined(USE_NEVA_APPRUNTIME)
+  if (frame_->IsMainFrame() && frame_->GetSettings() &&
+      frame_->GetSettings()->GetDisallowScrollbarsInMainFrame())
+    SetCanHaveScrollbars(false);
+#endif
 }
 
 LocalFrameView::~LocalFrameView() {

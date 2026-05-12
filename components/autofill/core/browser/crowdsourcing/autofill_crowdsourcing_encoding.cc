@@ -15,6 +15,9 @@
 #include "base/feature_list.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/ranges/algorithm.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/types/optional_ref.h"
 #include "components/autofill/core/browser/field_types.h"

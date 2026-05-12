@@ -28,6 +28,10 @@
 #include "third_party/blink/renderer/platform/loader/fetch/code_cache_host.h"
 #include "third_party/blink/renderer/platform/wtf/text/text_encoding.h"
 
+#if defined(USE_FILESCHEME_CODECACHE)
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#endif
+
 namespace blink {
 
 namespace {
@@ -76,6 +80,11 @@ bool TimestampIsRecent(const CachedMetadata* cached_metadata) {
   return (base::TimeTicks::Now() - time_stamp) < kHotHours;
 }
 
+#if defined(USE_FILESCHEME_CODECACHE)
+bool IsProducedCodeCacheForLocalResource(bool is_local) {
+  return is_local && RuntimeEnabledFeatures::LocalResourceCodeCacheEnabled();
+}
+#endif
 // Flags that can be set in the CacheMetadata header, describing how the code
 // cache data was produced so that the consumer can generate better trace
 // messages.
@@ -318,6 +327,17 @@ V8CodeCache::GetCompileOptions(
     bool might_generate_crowdsourced_compile_hints,
     bool can_use_crowdsourced_compile_hints,
     v8_compile_hints::MagicCommentMode magic_comment_mode) {
+#if defined(USE_FILESCHEME_CODECACHE)
+  return MaybeAddCompileHintsMagic(
+      GetCompileOptionsInternal(cache_options, classic_script.CacheHandler(),
+                                classic_script.SourceText().length(),
+                                classic_script.SourceLocationType(),
+                                classic_script.SourceUrl(),
+                                classic_script.SourceUrl().IsLocalFile(),
+                                might_generate_crowdsourced_compile_hints,
+                                can_use_crowdsourced_compile_hints),
+      magic_comment_mode);
+#else   // defined(USE_FILESCHEME_CODECACHE)
   return MaybeAddCompileHintsMagic(
       GetCompileOptionsInternal(cache_options, classic_script.CacheHandler(),
                                 classic_script.SourceText().length(),
@@ -326,11 +346,31 @@ V8CodeCache::GetCompileOptions(
                                 might_generate_crowdsourced_compile_hints,
                                 can_use_crowdsourced_compile_hints),
       magic_comment_mode);
+#endif  // !defined(USE_FILESCHEME_CODECACHE)
 }
 
 std::tuple<v8::ScriptCompiler::CompileOptions,
            V8CodeCache::ProduceCacheOptions,
            v8::ScriptCompiler::NoCacheReason>
+#if defined(USE_FILESCHEME_CODECACHE)
+V8CodeCache::GetCompileOptions(
+    mojom::blink::V8CacheOptions cache_options,
+    const CachedMetadataHandler* cache_handler,
+    size_t source_text_length,
+    ScriptSourceLocationType source_location_type,
+    const KURL& url,
+    bool is_local,
+    bool might_generate_crowdsourced_compile_hints,
+    bool can_use_crowdsourced_compile_hints,
+    v8_compile_hints::MagicCommentMode magic_comment_mode) {
+  return MaybeAddCompileHintsMagic(
+      GetCompileOptionsInternal(cache_options, cache_handler,
+                                source_text_length, source_location_type,
+                                url, is_local,
+                                might_generate_crowdsourced_compile_hints,
+                                can_use_crowdsourced_compile_hints),
+      magic_comment_mode);
+#else   // defined(USE_FILESCHEME_CODECACHE)
 V8CodeCache::GetCompileOptions(
     mojom::blink::V8CacheOptions cache_options,
     const CachedMetadataHandler* cache_handler,
@@ -346,11 +386,23 @@ V8CodeCache::GetCompileOptions(
                                 might_generate_crowdsourced_compile_hints,
                                 can_use_crowdsourced_compile_hints),
       magic_comment_mode);
+#endif  // !defined(USE_FILESCHEME_CODECACHE)
 }
 
 std::tuple<v8::ScriptCompiler::CompileOptions,
            V8CodeCache::ProduceCacheOptions,
            v8::ScriptCompiler::NoCacheReason>
+#if defined(USE_FILESCHEME_CODECACHE)
+V8CodeCache::GetCompileOptionsInternal(
+    mojom::blink::V8CacheOptions cache_options,
+    const CachedMetadataHandler* cache_handler,
+    size_t source_text_length,
+    ScriptSourceLocationType source_location_type,
+    const KURL& url,
+    bool is_local,
+    bool might_generate_crowdsourced_compile_hints,
+    bool can_use_crowdsourced_compile_hints) {
+#else   // defined(USE_FILESCHEME_CODECACHE)
 V8CodeCache::GetCompileOptionsInternal(
     mojom::blink::V8CacheOptions cache_options,
     const CachedMetadataHandler* cache_handler,
@@ -359,6 +411,7 @@ V8CodeCache::GetCompileOptionsInternal(
     const KURL& url,
     bool might_generate_crowdsourced_compile_hints,
     bool can_use_crowdsourced_compile_hints) {
+#endif  // !defined(USE_FILESCHEME_CODECACHE)
   static const int kMinimalCodeLength = 1024;
   v8::ScriptCompiler::NoCacheReason no_cache_reason;
 
@@ -452,7 +505,16 @@ V8CodeCache::GetCompileOptionsInternal(
   switch (cache_options) {
     case mojom::blink::V8CacheOptions::kDefault:
     case mojom::blink::V8CacheOptions::kCode: {
+#if defined(USE_FILESCHEME_CODECACHE)
+      // We don't check timestamp(CacheTagTimeStamp) because it is always good
+      // to produce cache for local resource. But, this policy may be changed
+      // in the future while implementing CacheTagTimeStamp handling for local
+      // resources.
+      if (!IsProducedCodeCacheForLocalResource(is_local) &&
+          !HasHotTimestamp(cache_handler)) {
+#else   // defined(USE_FILESCHEME_CODECACHE)
       if (!HasHotTimestamp(cache_handler)) {
+#endif  //  !defined(USE_FILESCHEME_CODECACHE)
         if (local_compile_hints_enabled) {
           // If the resource is not yet hot for caching, set the timestamp and
           // produce compile hints. Setting the time stamp first is important,
@@ -554,6 +616,11 @@ static void ProduceCacheInternal(
             length);
         base::UmaHistogramMicrosecondsTimes("V8.ProduceCodeCacheMicroseconds",
                                             timer.Elapsed());
+#if defined(USE_FILESCHEME_CODECACHE)
+        LOG(INFO) << "V8CodeCache Produce "
+                  << source_url.GetString().Utf8().data() << "(" << length
+                  << ")";
+#endif
       }
 
       TRACE_EVENT_END1(kTraceEventCategoryGroup, trace_name, "data",

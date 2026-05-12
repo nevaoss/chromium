@@ -13,6 +13,9 @@
 #include "third_party/blink/public/mojom/service_worker/service_worker_event_status.mojom-blink.h"
 #include "third_party/blink/renderer/platform/wtf/functional.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/public/common/neva/neva_blink_features.h"
+#endif
 namespace blink {
 
 // This feature flag enables a new behavior that waits
@@ -68,6 +71,13 @@ ServiceWorkerEventQueue::ServiceWorkerEventQueue(
           kServiceWorkerEventQueueWaitForScriptEvaluation)) {
     is_ready_for_processing_events_ = true;
   }
+
+#if defined(USE_NEVA_APPRUNTIME)
+  if (base::FeatureList::IsEnabled(
+          features::neva::kSetServiceWorkerIdleDelay)) {
+    idle_delay_ = features::neva::kServiceWorkerDefaultIdleDelay.Get();
+  }
+#endif
 }
 
 ServiceWorkerEventQueue::~ServiceWorkerEventQueue() {

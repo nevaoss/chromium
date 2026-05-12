@@ -506,6 +506,7 @@ source_set("browser_sources") {
     "worker_type.h",
     "zoom_level_delegate.h",
   ]
+
   configs += [
     "//build/config:precompiled_headers",
     "//build/config/compiler:wexit_time_destructors",

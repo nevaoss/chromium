@@ -9,6 +9,7 @@ import("//build/config/linux/pkg_config.gni")
 import("//build/config/ozone.gni")
 import("//build/config/ui.gni")
 import("//media/media_options.gni")
+import("//neva/neva.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 
 if (is_android) {
@@ -416,6 +417,10 @@ source_set("base") {
     "//ui/events:keyboard_hook",
     "//url:url",
   ]
+
+  if (use_neva_suspend_media_capture) {
+    visibility += [ "//content/renderer/media/audio/neva" ]
+  }
 
   libs = []
   configs += [

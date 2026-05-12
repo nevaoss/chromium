@@ -40,6 +40,16 @@ const char kShowComponentExtensionOptions[] =
     "show-component-extension-options";
 const char kTraceAppSource[] = "enable-trace-app-source";
 const char kEnableCrxHashCheck[] = "enable-crx-hash-check";
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+const char kProcessPerGuestWebView[] = "process-per-guest-webview";
+///@}
+
+#if BUILDFLAG(IS_WEBOS)
+const char kWebOSAppId[] = "webos-appid";
+#endif  // BUILDFLAG(IS_WEBOS)
+
 const char kAllowFutureManifestVersion[] = "allow-future-manifest-version";
 const char kExtensionTestApiOnWebPages[] = "extension-test-api-on-web-pages";
 

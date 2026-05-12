@@ -6,6 +6,7 @@ import("//build/config/chromeos/ui_mode.gni")
 import("//build/config/features.gni")
 import("//components/guest_view/buildflags/buildflags.gni")
 import("//extensions/buildflags/buildflags.gni")
+import("//neva/neva.gni")
 import("//pdf/features.gni")
 import("//testing/libfuzzer/fuzzer_test.gni")
 
@@ -593,6 +594,15 @@ source_set("browser_sources") {
     "//services/device/public/cpp/usb:usb",
     "//third_party/re2",
   ]
+
+  if (use_neva_appruntime) {
+    deps += [
+      "//neva/app_runtime:app_runtime_webview_controller",
+      "//neva/app_runtime/public/mojom:mojom_app_runtime_blink",
+      "//neva/user_agent/browser",
+      "//neva/user_agent/common",
+    ]
+  }
 
   # TODO(crbug.com/41323543): Ideally web_view should be a separate target on
   # which the extension system depends.

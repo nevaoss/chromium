@@ -58,7 +58,12 @@ class ComposeUntrustedUI
     triggering_web_contents_ = web_contents->GetWeakPtr();
   }
 
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12
+  static std::string GetWebUIName() { return "Compose"; }
+#else   // defined(__GNUC__) && __GNUC__ < 12
   static constexpr std::string GetWebUIName() { return "Compose"; }
+#endif  // !(defined(__GNUC__) && __GNUC__ < 12)
 
  private:
   void CreateComposeSessionUntrustedPageHandler(

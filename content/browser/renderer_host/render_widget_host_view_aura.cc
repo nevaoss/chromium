@@ -133,6 +133,10 @@
 #include "ui/wm/core/ime_util_chromeos.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/public/platform/web_text_input_type.h"
+#endif
+
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ui/base/ime/mojom/virtual_keyboard_types.mojom.h"
 #endif
@@ -380,7 +384,11 @@ void RenderWidgetHostViewAura::InitAsPopup(
     old_child->popup_parent_host_view_ = nullptr;
   }
   popup_parent_host_view_->SetPopupChild(this);
+#if !BUILDFLAG(IS_WEBOS)
   CreateAuraWindow(aura::client::WINDOW_TYPE_MENU);
+#else
+  CreateAuraWindow(aura::client::WINDOW_TYPE_POPUP);
+#endif  // !BUILDFLAG(IS_WEBOS)
   // Use transparent background color for the popup in order to avoid flashing
   // the white background on popup open when dark color-scheme is used.
   SetContentBackgroundColor(SK_ColorTRANSPARENT);
@@ -1259,6 +1267,17 @@ RenderWidgetHostViewAura::CreateSyntheticGestureTarget() {
 
 blink::mojom::InputEventResultState RenderWidgetHostViewAura::FilterInputEvent(
     const blink::WebInputEvent& input_event) {
+#if defined(USE_NEVA_APPRUNTIME) && defined(ENABLE_PINCH_TO_ZOOM)
+  if (blink::WebInputEvent::IsPinchGestureEventType(input_event.GetType())) {
+    if (host()->delegate()) {
+      bool is_pinch_to_zoom_enabled =
+          host()->delegate()->IsPinchToZoomEnabled();
+      if (!is_pinch_to_zoom_enabled) {
+        return blink::mojom::InputEventResultState::kConsumed;
+      }
+    }
+  }
+#endif
   bool consumed = false;
   if (input_event.GetType() == WebInputEvent::Type::kGestureFlingStart) {
     const WebGestureEvent& gesture_event =
@@ -1657,6 +1676,18 @@ bool RenderWidgetHostViewAura::SetEditableSelectionRange(
   input_handler->SetEditableSelectionOffsets(range.start(), range.end());
   return true;
 }
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+bool RenderWidgetHostViewAura::DeleteRange(const gfx::Range& range) {
+  if (!text_input_manager_ || !text_input_manager_->GetActiveWidget())
+    return false;
+
+  text_input_manager_->GetActiveWidget()->ImeSetComposition(
+      std::u16string(), std::vector<ui::ImeTextSpan>(), range, 0, 0);
+  return true;
+}
+///@}
 
 bool RenderWidgetHostViewAura::GetTextFromRange(const gfx::Range& range,
                                                 std::u16string* text) const {
@@ -2600,6 +2631,26 @@ void RenderWidgetHostViewAura::UpdateCursorIfOverSelf() {
   }
 }
 
+#if BUILDFLAG(IS_WEBOS)
+bool RenderWidgetHostViewAura::SynchronizeVisualPropertiesIgnoringPendingAck(
+    const cc::DeadlinePolicy& deadline_policy,
+    const std::optional<viz::LocalSurfaceId>& child_local_surface_id) {
+  DCHECK(window_);
+  DCHECK(delegated_frame_host_) << "Cannot be invoked during destruction.";
+
+  window_->UpdateLocalSurfaceIdFromEmbeddedClient(child_local_surface_id);
+  // If the viz::LocalSurfaceId is invalid, we may have been evicted,
+  // allocate a new one to establish bounds.
+  if (!GetLocalSurfaceId().is_valid())
+    window_->AllocateLocalSurfaceId();
+
+  delegated_frame_host_->EmbedSurface(
+      GetLocalSurfaceId(), window_->bounds().size(), deadline_policy);
+
+  return host()->SynchronizeVisualPropertiesIgnoringPendingAck();
+}
+#endif  // BUILDFLAG(IS_WEBOS)
+
 bool RenderWidgetHostViewAura::SynchronizeVisualProperties(
     const cc::DeadlinePolicy& deadline_policy,
     const std::optional<viz::LocalSurfaceId>& child_local_surface_id) {
@@ -2792,6 +2843,17 @@ void RenderWidgetHostViewAura::InternalSetBounds(const gfx::Rect& rect) {
   // Even if not showing yet, we need to synchronize on size. As the renderer
   // needs to begin layout. Waiting until we show to start layout leads to
   // significant delays in embedding the first shown surface (500+ ms.)
+#if BUILDFLAG(IS_WEBOS)
+  // In webOS some applications need changed bounds early when loading
+  // for the first time before showing in order to determine layout style for
+  // the rest of the application life time. Thus ignore possibly pending
+  // synchronize visual properties ack and force new visual properties to be
+  // pushed to renderer.
+  if (in_bounds_changed_ && !IsShowing())
+    SynchronizeVisualPropertiesIgnoringPendingAck(
+        cc::DeadlinePolicy::UseDefaultDeadline(), window_->GetLocalSurfaceId());
+  else
+#endif  // BUILDFLAG(IS_WEBOS)
   SynchronizeVisualProperties(cc::DeadlinePolicy::UseDefaultDeadline(),
                               window_->GetLocalSurfaceId());
 
@@ -3012,6 +3074,12 @@ void RenderWidgetHostViewAura::OnUpdateTextInputStateCalled(
   const ui::mojom::TextInputState* state =
       text_input_manager_->GetTextInputState();
 
+#if defined(USE_NEVA_APPRUNTIME)
+  if (state && enable_html_systemkeyboard_attr_ &&
+      (state->flags & blink::kWebTextInputFlagSystemKeyboardOff))
+    return;
+#endif
+
 #if BUILDFLAG(IS_CHROMEOS)
   if (state && state->type != ui::TEXT_INPUT_TYPE_NONE) {
     if (state->last_vk_visibility_request ==
@@ -3071,6 +3139,38 @@ void RenderWidgetHostViewAura::OnImeCancelComposition(
     GetInputMethod()->CancelComposition(this);
   has_composition_text_ = false;
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+void RenderWidgetHostViewAura::SetEnableHtmlSystemKeyboardAttr(bool enable) {
+  enable_html_systemkeyboard_attr_ = enable;
+}
+
+bool RenderWidgetHostViewAura::SystemKeyboardDisabled() const {
+  if (text_input_manager_ && text_input_manager_->GetTextInputState() &&
+      enable_html_systemkeyboard_attr_ &&
+      (text_input_manager_->GetTextInputState()->flags &
+       blink::kWebTextInputFlagSystemKeyboardOff))
+    return true;
+
+  return false;
+}
+
+gfx::Rect RenderWidgetHostViewAura::GetInputPanelRectangle() const {
+  if (text_input_manager_ && text_input_manager_->GetTextInputState())
+    return text_input_manager_->GetTextInputState()->input_panel_rectangle;
+  return gfx::Rect();
+}
+
+gfx::Rect RenderWidgetHostViewAura::GetTextInputBounds() const {
+  if (!text_input_manager_ || !text_input_manager_->GetActiveWidget())
+    return gfx::Rect();
+  const ui::mojom::TextInputState* state =
+      text_input_manager_->GetTextInputState();
+  if (!state)
+    return gfx::Rect();
+  return ConvertRectToScreen(state->bounds);
+}
+#endif
 
 void RenderWidgetHostViewAura::OnSelectionBoundsChanged(
     TextInputManager* text_input_manager,

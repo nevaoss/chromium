@@ -744,6 +744,7 @@ bool HTMLPlugInElement::RequestObject(const PluginParameters& plugin_params) {
   // it be handled as a plugin to show the broken plugin icon.
   bool use_fallback =
       object_type == ObjectContentType::kNone && HasFallbackContent();
+
   return LoadPlugin(completed_url, service_type_, plugin_params, use_fallback);
 }
 

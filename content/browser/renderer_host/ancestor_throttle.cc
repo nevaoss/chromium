@@ -33,6 +33,10 @@
 #include "third_party/blink/public/mojom/devtools/console_message.mojom.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "third_party/blink/public/common/web_preferences/web_preferences.h"
+#endif
+
 namespace content {
 
 namespace {
@@ -257,6 +261,20 @@ AncestorThrottle::CheckResult AncestorThrottle::EvaluateXFrameOptions(
       HeadersContainFrameAncestorsCSP(request->response()->parsed_headers)) {
     return CheckResult::PROCEED;
   }
+
+#if defined(USE_NEVA_APPRUNTIME)
+  FrameTreeNode* frame_tree_node = request->frame_tree_node();
+  if (frame_tree_node->current_frame_host()) {
+    RenderFrameHostImpl* rfh = frame_tree_node->current_frame_host();
+    blink::web_pref::WebPreferences prefs = rfh->GetOrCreateWebPreferences();
+    if (prefs.x_frame_options_cross_origin_allowed &&
+        !prefs.web_security_enabled)
+      return CheckResult::PROCEED;
+    if (disposition == network::mojom::XFrameOptionsValue::kSameOrigin &&
+        prefs.x_frame_options_cross_origin_allowed)
+      return CheckResult::PROCEED;
+  }
+#endif
 
   switch (disposition) {
     case network::mojom::XFrameOptionsValue::kConflict:

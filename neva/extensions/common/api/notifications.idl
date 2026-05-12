@@ -1,0 +1,19 @@
+// Copyright 2013 The Chromium Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// (This file was partially copied from //chrome/common/extensions/api.)
+
+// Use the <code>chrome.notifications</code> API to create rich notifications
+// using templates and show these notifications to users in the system tray.
+namespace notifications {
+  interface Events {
+    // The notification closed, either by the system or by user action.
+    static void onClosed(DOMString notificationId, boolean byUser);
+
+    // The user clicked in a non-button area of the notification.
+    static void onClicked(DOMString notificationId);
+
+    // The user pressed a button in the notification.
+    static void onButtonClicked(DOMString notificationId, long buttonIndex);
+  };
+};

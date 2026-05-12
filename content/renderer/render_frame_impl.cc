@@ -309,7 +309,11 @@ namespace content {
 
 namespace {
 
+#if BUILDFLAG(IS_WEBOS)
+const int kExtraCharsBeforeAndAfterSelection = 500;
+#else
 const int kExtraCharsBeforeAndAfterSelection = 100;
+#endif  // BUILDFLAG(IS_WEBOS)
 const size_t kMaxURLLogChars = 1024;
 const char kCommitRenderFrame[] = "Navigation.CommitRenderFrame";
 
@@ -999,7 +1003,7 @@ void FillMiscNavigationParams(
   navigation_params->should_have_sticky_user_activation =
       commit_params.should_have_sticky_user_activation;
 
-#if BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID) || defined(USE_NEVA_APPRUNTIME)
   // Only android webview uses this.
   navigation_params->grant_load_local_resources =
       commit_params.can_load_local_resources;
@@ -4495,6 +4499,25 @@ void RenderFrameImpl::AbortClientNavigation(bool for_new_navigation) {
 
 void RenderFrameImpl::DidChangeSelection(bool is_empty_selection,
                                          blink::SyncCondition force_sync) {
+#if defined(USE_NEVA_APPRUNTIME)
+  if (is_empty_selection &&
+      !GetLocalRootWebFrameWidget()->HandlingInputEvent() &&
+      !GetLocalRootWebFrameWidget()->HasImeEventGuard()) {
+    WebRange selection =
+        frame_->GetInputMethodController()->GetSelectionOffsets();
+    if (selection.IsNull())
+      return;
+
+    gfx::Range range =
+        gfx::Range(selection.StartOffset(), selection.EndOffset());
+    std::u16string text =
+        frame_
+        ->RangeAsText(WebRange(0, kExtraCharsBeforeAndAfterSelection + 1))
+        .Utf16();
+
+    SetSelectedText(text, 0, range);
+  }
+#endif
   if (!GetLocalRootWebFrameWidget()->HandlingInputEvent() &&
       !GetLocalRootWebFrameWidget()->HandlingSelectRange())
     return;
@@ -5145,11 +5168,22 @@ RenderFrameImpl::MakeDidCommitProvisionalLoadParams(
     if (!params->origin.IsSameOriginWith(params->url)) {
       // Exclude file: URLs when settings allow them access any origin.
       if (!file_scheme_with_universal_access) {
+#if defined(USE_NEVA_APPRUNTIME)
+        // TODO(neva, sync-to-93): Revise file_scheme_with_universal_access
+        // usage in Neva and deprecate it if possible in favor of the
+        // whitelisting to avoid clashes with Android use cases.
+        if (!(params->origin.scheme() == url::kFileScheme &&
+              !GetWebView()->GetRendererPreferences().file_security_origin
+                .empty())) {
+#endif
         SCOPED_CRASH_KEY_STRING256("MakeDCPLParams", "mismatched_url",
                                    params->url.possibly_invalid_spec());
         SCOPED_CRASH_KEY_STRING256("MakeDCPLParams", "mismatched_origin",
                                    params->origin.GetDebugString());
         CHECK(false) << " url:" << params->url << " origin:" << params->origin;
+#if defined(USE_NEVA_APPRUNTIME)
+        }
+#endif
       } else {
         requires_universal_access = true;
       }

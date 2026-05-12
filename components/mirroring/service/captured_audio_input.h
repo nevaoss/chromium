@@ -49,6 +49,10 @@ class COMPONENT_EXPORT(MIRRORING_SERVICE) CapturedAudioInput final
                     bool automatic_gain_control,
                     uint32_t total_segments) override;
   void RecordStream() override;
+#if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
+  void PauseStream() override;
+  void ResumeStream() override;
+#endif
   void SetVolume(double volume) override;
   void CloseStream() override;
   void SetOutputDeviceForAec(const std::string& output_device_id) override;

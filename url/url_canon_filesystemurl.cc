@@ -45,11 +45,19 @@ bool DoCanonicalizeFileSystemURL(const CHAR* spec,
   bool success = true;
   SchemeType inner_scheme_type = SCHEME_WITH_HOST_PORT_AND_USER_INFORMATION;
   if (CompareSchemeComponent(spec, inner_parsed->scheme, url::kFileScheme)) {
+#if BUILDFLAG(IS_WEBOS)
+    // WebOS host ID (ex: file://com.webos.app.test/) in file:// scheme must
+    // not be removed to enable the feature and to make separated file systems.
+    success =
+        CanonicalizeStandardURL(spec, *parsed.inner_parsed(), SCHEME_WITH_HOST,
+                                charset_converter, output, &new_inner_parsed);
+#else
     new_inner_parsed.scheme.begin = output->length();
     output->Append("file://");
     new_inner_parsed.scheme.len = 4;
     success &= CanonicalizePath(spec, inner_parsed->path, output,
                                 &new_inner_parsed.path);
+#endif  // BUILDFLAG(IS_WEBOS)
   } else if (GetStandardSchemeType(spec, inner_parsed->scheme,
                                    &inner_scheme_type)) {
     if (inner_scheme_type == SCHEME_WITH_HOST_PORT_AND_USER_INFORMATION) {

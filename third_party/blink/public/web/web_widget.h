@@ -142,6 +142,10 @@ class WebWidget {
   // Set state that the widget is in the process of handling input events.
   virtual void SetHandlingInputEvent(bool handling) = 0;
 
+#if defined(USE_NEVA_APPRUNTIME)
+  virtual bool HasImeEventGuard() const { return false; }
+#endif
+
   // Process the input event, blocking until complete.
   virtual void ProcessInputEventSynchronouslyForTesting(
       const WebCoalescedInputEvent&) = 0;

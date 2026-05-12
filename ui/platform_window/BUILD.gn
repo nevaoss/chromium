@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 import("//build/config/ui.gni")
+import("//mojo/public/tools/bindings/mojom.gni")
+import("//neva/neva.gni")
 
 component("platform_window") {
   sources = [
@@ -26,6 +28,30 @@ component("platform_window") {
     "//ui/base",
     "//ui/gfx",
   ]
+
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  sources += [
+    "neva/platform_window.h",
+    "neva/platform_window_delegate.h",
+    "neva/ui_utils.cc",
+    "neva/ui_utils.h",
+    "neva/window_group_configuration.cc",
+    "neva/window_group_configuration.h",
+    "neva/window_group_configuration_param_traits.cc",
+    "neva/window_group_configuration_param_traits.h",
+    "neva/window_group_configuration_param_traits_macros.h",
+    "neva/window_group_ipc_export.h",
+    "neva/xinput_types.h",
+  ]
+
+  deps += [ "//ipc" ]
+
+  #@}
+
+  if (is_webos) {
+    sources += [ "neva/webos/platform_window_webos.h" ]
+  }
 
   if (is_fuchsia) {
     sources += [

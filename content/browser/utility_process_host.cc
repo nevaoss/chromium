@@ -350,6 +350,9 @@ bool UtilityProcessHost::StartProcess() {
     BUILDFLAG(IS_SOLARIS)
         switches::kAlsaInputDevice,
         switches::kAlsaOutputDevice,
+#if defined(USE_NEVA_APPRUNTIME)
+        switches::kAlsaInputDeviceBlockList,
+#endif  // defined(USE_NEVA_APPRUNTIME)
 #endif
 #if BUILDFLAG(USE_CRAS)
         switches::kUseCras,

@@ -1,0 +1,248 @@
+# Copyright 2019 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//build/config/locales.gni")
+import("//build_overrides/build.gni")
+import("//neva/app_runtime/app_runtime_locales.gni")
+import("//neva/neva.gni")
+import("//webos/install/paths.gni")
+import("//webos/install/sysbus.gni")
+import("//webos/install/weboswebruntime/headers.gni")
+
+copy("weboswebruntime") {
+  testonly = true
+  sources = [
+    "$root_out_dir/app_runtime_content.pak",
+    "$root_out_dir/icudtl.dat",
+    "$root_out_dir/snapshot_blob.bin",
+    "$root_out_dir/webos_content.pak"
+  ]
+
+  outputs = [ "$image_path/$cbe_data_dir/{{source_file_part}}" ]
+
+  deps = [
+    "//neva/app_runtime:app_runtime_resources", # for app_runtime_content.pak
+    "//third_party/icu:icudata",                # for icudtl.dat
+    "//v8:v8",                                  # for snapshot_blob.bin
+    "//webos:webos_resources",                  # for webos_content.pak
+    ":gl",                                      # for libEGL.so and libGLESv2.so
+    ":locales",
+    ":headers",
+    ":pkgconfig",
+    ":debugging_buildflags_header",
+    ":partition_alloc_buildflags_header",
+    ":tracing_buildflags_header",
+    ":fuzzing_buildflags_header"
+  ]
+  if (use_cbe) {
+    deps += [ ":cbe" ]                          # for libcbe.so
+  }
+  if (use_lttng) {
+    deps += [ ":lttng_provider" ]               # for libchromium_lttng_provider.so
+  }
+  if (use_neva_chrome_extensions) {
+    deps += [ ":components_locale_settings" ]
+  }
+  if (enable_base_tracing) {
+    deps += [ ":test_trace_processor" ]
+  }
+}
+
+if (use_lttng) {
+  copy("lttng_provider") {
+    testonly = true
+    sources = [
+      "$root_out_dir/liblttng_provider.so"
+    ]
+    outputs = [ "$image_path/$libdir/{{source_file_part}}" ]
+
+    deps = [
+      "//base/trace_event/neva/lttng:lttng_provider"
+    ]
+  }
+}
+
+if (use_cbe) {
+  copy("cbe") {
+    testonly = true
+    sources = [
+      "$root_out_dir/libcbe.so",
+    ]
+    outputs = [ "$image_path/$libdir/{{source_file_part}}" ]
+
+    deps = [
+      "//neva/cbe:chromium_cbe"
+    ]
+  }
+}
+
+if (enable_base_tracing) {
+  copy("test_trace_processor") {
+    testonly = true
+    sources = [
+      "$root_out_dir/libtest_trace_processor.so"
+    ]
+    outputs = [ "$image_path/$libdir/{{source_file_part}}" ]
+    deps = [
+      "//base/test:test_trace_processor"
+    ]
+  }
+}
+
+copy("locales") {
+  sources = [
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_am.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ar.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_bg.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_bn.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ca.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_cs.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_da.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_de.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_el.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-GB.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-US.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_es-419.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_es.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_et.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_fa.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ar-XB.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_en-XA.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_fi.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_fil.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_fr.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_gu.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_he.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_hi.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_hr.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_hu.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_id.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_it.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ja.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_kn.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ko.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_lt.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_lv.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ml.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_mr.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ms.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_nb.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_nl.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_pl.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_pt-BR.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_pt-PT.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ro.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ru.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_sk.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_sl.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_sr.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_sv.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_sw.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_ta.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_te.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_th.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_tr.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_uk.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_vi.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_zh-CN.pak",
+    "$root_gen_dir/third_party/blink/public/strings/blink_strings_zh-TW.pak",
+  ]
+
+  foreach(locale, app_runtime_locales) {
+    sources += [ "$root_gen_dir/webos/repack/$locale.pak" ]
+  }
+
+
+  outputs = [ "$image_path/$cbe_data_locales_dir/{{source_file_part}}" ]
+  deps = [
+    "//third_party/blink/public/strings",
+    "//webos:resources",
+  ]
+}
+
+copy("components_locale_settings") {
+  sources = []
+  foreach(locale, all_chrome_locales) {
+    sources += [ "${root_gen_dir}/components/strings/components_locale_settings_${locale}.pak" ]
+  }
+
+  outputs = [ "$image_path/$cbe_data_locales_dir/{{source_file_part}}" ]
+  deps = [ "//components/strings:components_locale_settings" ]
+}
+
+copy("gl") {
+  testonly = true
+  sources = [
+    "$root_out_dir/libEGL.so",
+    "$root_out_dir/libGLESv2.so",
+  ]
+
+  outputs = [ "$image_path/$cbe_data_dir/{{source_file_part}}" ]
+  deps = [
+    "//third_party/angle:libEGL",
+    "//third_party/angle:libGLESv2",
+  ]
+}
+
+copy("headers") {
+  sources = headers
+  outputs = [ "$image_path/$webruntime_includedir/{{source_root_relative_dir}}/{{source_file_part}}" ]
+}
+
+copy("pkgconfig") {
+  sources = [ "//webos/install/weboswebruntime/libcbe.pc" ]
+  outputs = [ "$image_path/$webos_pkgconfigdir/{{source_file_part}}" ]
+}
+
+copy("debugging_buildflags_header") {
+  sources = debugging_buildflags_header
+  outputs = []
+
+  foreach(file, rebase_path(sources, root_gen_dir)) {
+    outputs += [ "$image_path/$webruntime_includedir/" + file ]
+  }
+  deps = generated_headers_deps
+}
+
+copy("partition_alloc_buildflags_header") {
+  sources = partition_alloc_buildflags_header
+  outputs = []
+
+  foreach(file, rebase_path(sources, root_gen_dir)) {
+    outputs += [ "$image_path/$webruntime_includedir/" + file ]
+  }
+  deps = generated_headers_deps
+}
+
+copy("tracing_buildflags_header") {
+  sources = tracing_buildflags_header
+  outputs = []
+
+  foreach(file, rebase_path(sources, root_gen_dir)) {
+    outputs += [ "$image_path/$webruntime_includedir/" + file ]
+  }
+  deps = generated_headers_deps
+}
+
+copy("fuzzing_buildflags_header") {
+  sources = fuzzing_buildflags_header
+  outputs = []
+
+  foreach(file, rebase_path(sources, root_gen_dir)) {
+    outputs += [ "$image_path/$webruntime_includedir/" + file ]
+  }
+  deps = generated_headers_deps
+}

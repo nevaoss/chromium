@@ -15,6 +15,9 @@
 #include "base/debug/debugging_buildflags.h"
 #include "base/macros/concat.h"
 #include "base/strings/string_number_conversions.h"
+// TODO(neva): base/strings/stringprintf.h is required for compilation of this
+// file. Try to contribute to upstream.
+#include "base/strings/stringprintf.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/threading/thread_checker.h"
 #include "base/time/time.h"

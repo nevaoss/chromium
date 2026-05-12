@@ -63,6 +63,14 @@ enum LogErrorContext {
   ERRCTX_OS = ERRCTX_OSSTATUS,  // LOG_E(sev, OS, x)
 };
 
+// TODO(neva): Remove this when Neva GCC supports static_assert(false).
+#if defined(__GNUC__) && defined(__GNUC__) < 13 && !defined(__clang__)
+// Workaround for static_assert(false) before CWG2518/P2593R1.
+// Taken from https://en.cppreference.com/w/cpp/language/static_assert
+template<class>
+constexpr bool dependent_false = false;
+#endif  // defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
+
 // Class that writes a log message to the logging delegate ("WebRTC logging
 // stream" in Chrome) and to Chrome's logging stream.
 class RTC_EXPORT DiagnosticLogMessage {
@@ -74,7 +82,13 @@ class RTC_EXPORT DiagnosticLogMessage {
     } else if constexpr (absl::HasAbslStringify<T>::value) {
       print_stream_ << absl::StrCat(v);
     } else {
+// TODO(neva): Remove this when Neva GCC supports static_assert(false).
+#if defined(__GNUC__) && defined(__GNUC__) < 13 && !defined(__clang__)
+      static_assert(dependent_false<absl::HasOstreamOperator<T>::value>,
+                    "Unsupported type to log");
+#else   // defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__)
       static_assert(false, "Unsupported type to log");
+#endif  // !(defined(COMPILER_GCC) && defined(__GNUC__) < 13 && !defined(__clang__))
     }
     return *this;
   }

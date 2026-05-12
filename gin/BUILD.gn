@@ -6,6 +6,7 @@ if (is_android) {
   import("//build/config/android/rules.gni")
 }
 import("//base/allocator/partition_allocator/partition_alloc.gni")
+import("//neva/neva.gni")
 import("//testing/test.gni")
 import("//tools/v8_context_snapshot/v8_context_snapshot.gni")
 import("//v8/gni/v8.gni")
@@ -108,6 +109,10 @@ component("gin") {
     "//third_party/abseil-cpp:absl",
     "//tools/v8_context_snapshot:buildflags",
   ]
+
+  if (use_neva_appruntime) {
+    public_deps += [ "//base/neva" ]
+  }
 
   if (is_mac) {
     frameworks = [ "CoreFoundation.framework" ]

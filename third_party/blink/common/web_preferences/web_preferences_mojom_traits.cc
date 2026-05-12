@@ -210,6 +210,10 @@ bool StructTraits<blink::mojom::WebPreferencesDataView,
   out->media_controls_enabled = data.media_controls_enabled();
   out->do_not_update_selection_on_mutating_selection_range =
       data.do_not_update_selection_on_mutating_selection_range();
+#if defined(USE_NEVA_APPRUNTIME)
+  out->x_frame_options_cross_origin_allowed =
+      data.x_frame_options_cross_origin_allowed();
+#endif
   out->autoplay_policy = data.autoplay_policy();
   out->require_transient_activation_for_get_display_media =
       data.require_transient_activation_for_get_display_media();

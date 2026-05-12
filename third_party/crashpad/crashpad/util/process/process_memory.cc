@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <cstring>
 
 #include "base/check_op.h"
 #include "base/logging.h"

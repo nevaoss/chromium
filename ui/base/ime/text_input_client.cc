@@ -6,10 +6,36 @@
 
 #include <string_view>
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "ui/gfx/geometry/rect.h"
+///@}
+
 namespace ui {
 
 TextInputClient::~TextInputClient() {
 }
+
+///@name USE_NEVA_APPRUNTIME
+///@{
+bool TextInputClient::SystemKeyboardDisabled() const {
+  return false;
+}
+
+gfx::Rect TextInputClient::GetInputPanelRectangle() const {
+  return gfx::Rect();
+}
+
+gfx::Rect TextInputClient::GetTextInputBounds() const {
+  return gfx::Rect();
+}
+
+#if !defined(IS_MAC)
+bool TextInputClient::DeleteRange(const gfx::Range& range) {
+  return false;
+}
+#endif
+///@}
 
 bool TextInputClient::CanInsertImage() {
   return false;

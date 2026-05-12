@@ -2674,6 +2674,22 @@ void NavigationRequest::BeginNavigationImpl() {
   }
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+  const bool navigation_denied =
+      GetURL().SchemeIsFile() &&
+      !GetContentClient()->browser()->IsFileSchemeNavigationAllowed(
+          GetURL(), frame_tree_node_->frame_tree_node_id(),
+          commit_params_->is_browser_initiated);
+  if (navigation_denied) {
+    StartNavigation();
+    OnRequestFailedInternal(
+        network::URLLoaderCompletionStatus(net::ERR_ACCESS_DENIED),
+        false /*skip_throttles*/, std::nullopt /*error_page_content*/,
+        false /*collapse_frame*/);
+    return;
+  }
+#endif
+
   // Check Content Security Policy before the NavigationThrottles run. This
   // gives CSP a chance to modify requests that NavigationThrottles would
   // otherwise block. Similarly, the NavigationHandle is created afterwards, so
@@ -4366,6 +4382,22 @@ void NavigationRequest::OnResponseStarted(
        (response_head_->headers->response_code() != net::HTTP_NO_CONTENT &&
         response_head_->headers->response_code() != net::HTTP_RESET_CONTENT &&
         !ShouldRenderFallbackContentForResponse(*response_head_->headers)));
+
+#if defined(USE_NEVA_APPRUNTIME)
+  if (response_head_->headers.get() &&
+      response_head_->headers->response_code() >= 400) {
+    WebContents* web_contents = WebContents::FromRenderFrameHost(
+        frame_tree_node_->current_frame_host());
+    if (web_contents) {
+      const bool has_policy = web_contents->DecidePolicyForResponse(
+          frame_tree_node_->IsMainFrame(),
+          response_head_->headers->response_code(), common_params_->url.spec(),
+          response_head_->headers->GetStatusText());
+      if (has_policy)
+        response_should_be_rendered_ = false;
+    }
+  }
+#endif
 
   // Response that will not commit should be marked as aborted in the
   // NavigationHandle.
@@ -9889,6 +9921,17 @@ bool NavigationRequest::MaybeCancelFailedNavigation() {
         NavigationDiscardReason::kInternalCancellation);
     return true;
   }
+
+#if defined(USE_NEVA_APPRUNTIME)
+  WebContents* web_contents =
+      WebContents::FromRenderFrameHost(frame_tree_node_->current_frame_host());
+  if (web_contents &&
+      web_contents->DecidePolicyForResponse(
+          IsInMainFrame(), net_error_, common_params_->url.spec(),
+          net::ErrorToShortString(net_error_))) {
+    return true;
+  }
+#endif
 
   return false;
 }

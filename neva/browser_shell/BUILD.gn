@@ -1,0 +1,60 @@
+# Copyright 2021 LG Electronics, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+import("//neva/neva.gni")
+
+source_set("browser_shell_lib") {
+  sources = [
+    "common/browser_shell_export.h",
+    "common/browser_shell_file_access_controller.cc",
+    "common/browser_shell_file_access_controller.h",
+    "common/browser_shell_switches.cc",
+    "common/browser_shell_switches.h",
+    "app/browser_shell_main_delegate.cc",
+    "app/browser_shell_main_delegate.h",
+    "app/platform_language.cc",
+    "app/platform_language.h",
+    "app/platform_registration.cc",
+    "app/platform_registration.h",
+  ]
+
+  public_deps = [ "//neva/app_runtime" ]
+
+  deps = [
+    "//base",
+    "//components/embedder_support",
+    "//neva/browser_shell/service:shell_service",
+    "//neva/browser_shell/service/public:shell_service_binding",
+    "//neva/shell_shutdown"
+  ]
+
+  include_dirs = [ "." ]
+}
+
+executable("browser_shell") {
+  # testonly mode is required for CBE build
+  testonly = true
+
+  output_name = "browser_shell"
+
+  sources = [ "app/browser_shell_main.cc" ]
+
+  if (use_cbe && is_browser_shell_cbe) {
+    deps = [ "//neva/cbe:chromium_cbe" ]
+  } else {
+    deps = [ ":browser_shell_lib" ]
+  }
+}

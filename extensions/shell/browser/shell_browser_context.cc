@@ -11,6 +11,10 @@
 #include "components/guest_view/browser/guest_view_manager.h"
 #include "extensions/shell/browser/shell_special_storage_policy.h"
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "neva/user_agent/browser/client_hints.h"
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 namespace extensions {
 
 // Create a normal recording browser context. If we used an incognito context
@@ -31,5 +35,12 @@ content::BrowserPluginGuestManager* ShellBrowserContext::GetGuestManager() {
 storage::SpecialStoragePolicy* ShellBrowserContext::GetSpecialStoragePolicy() {
   return storage_policy_.get();
 }
+
+#if defined(USE_NEVA_APPRUNTIME)
+content::ClientHintsControllerDelegate*
+ShellBrowserContext::GetClientHintsControllerDelegate() {
+  return new neva_user_agent::ClientHints();
+}
+#endif  // defined(USE_NEVA_APPRUNTIME)
 
 }  // namespace extensions

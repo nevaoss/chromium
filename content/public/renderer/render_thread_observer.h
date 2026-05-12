@@ -44,6 +44,10 @@ class CONTENT_EXPORT RenderThreadObserver {
 
   // Called when the renderer cache of the plugin list has changed.
   virtual void PluginListChanged() {}
+
+#if defined(USE_NEVA_APPRUNTIME)
+  virtual void NetworkStateChanged(bool online) {}
+#endif
 };
 
 }  // namespace content

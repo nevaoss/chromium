@@ -79,7 +79,11 @@ class LensSidePanelUntrustedUI
       mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandlerFactory>
           receiver);
 
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  static std::string GetWebUIName() {
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
   static constexpr std::string GetWebUIName() {
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
     return "LensSidePanelUntrusted";
   }
 

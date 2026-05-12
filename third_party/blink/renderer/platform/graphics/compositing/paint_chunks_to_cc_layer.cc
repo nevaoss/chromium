@@ -144,10 +144,32 @@ class ConversionContext {
   STACK_ALLOCATED();
 
  public:
+// TODO(neva): Remove this legacy constructor when Neva's toolchain
+// can compile it correctly.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+  ConversionContext(const PropertyTreeState& layer_state,
+                    const gfx::Vector2dF& layer_offset,
+                    Result& result)
+      : chunk_to_layer_mapper_(layer_state, layer_offset),
+        current_transform_(&layer_state.Transform()),
+        current_clip_(&layer_state.Clip()),
+        current_effect_(&layer_state.Effect()),
+        current_scroll_translation_(
+            &current_transform_->NearestScrollTranslationNode()),
+        result_(result),
+        outer_state_stack_(nullptr) {}
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
+
   ConversionContext(const PropertyTreeState& layer_state,
                     const gfx::Vector2dF& layer_offset,
                     Result& result,
+// TODO(neva): Remove this legacy constructor when Neva's toolchain
+// can compile it correctly.
+#if defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
+                    const HeapVector<StateEntry>* outer_state_stack)
+#else   // defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__)
                     const HeapVector<StateEntry>* outer_state_stack = nullptr)
+#endif  // !(defined(__GNUC__) && (__GNUC__ < 12) && !defined(__clang__))
       : chunk_to_layer_mapper_(layer_state, layer_offset),
         current_transform_(&layer_state.Transform()),
         current_clip_(&layer_state.Clip()),

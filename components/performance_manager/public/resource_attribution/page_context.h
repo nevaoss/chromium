@@ -72,7 +72,13 @@ class PageContext {
   }
 
   // Test PageContexts for equality by PageNode token.
+// TODO(neva): Please remove this guard after there is no error to support
+// constexpr operator== in Neva.
+#if defined(COMPILER_GCC)
+  friend bool operator==(const PageContext& a, const PageContext& b) {
+#else   // defined(COMPILER_GCC)
   constexpr friend bool operator==(const PageContext& a, const PageContext& b) {
+#endif  // !defined(COMPILER_GCC)
     return a.token_ == b.token_;
   }
 

@@ -20,6 +20,16 @@ component("linux") {
     "text_edit_command_auralinux.h",
   ]
 
+  #@name USE_NEVA_APPRUNTIME
+  #@{
+  sources += [
+    "neva/linux_input_method_context_neva.cc",
+    "neva/linux_input_method_context_neva.h",
+    "neva/input_method_auralinux_neva.cc",
+    "neva/input_method_auralinux_neva.h",
+  ]
+  #@}
+
   defines = [ "IS_UI_BASE_IME_LINUX_IMPL" ]
 
   public_deps = [ "//ui/base/ime" ]

@@ -1,0 +1,82 @@
+From e6cacab5b40205de95c98f283fdc5fd5fab7be4d Mon Sep 17 00:00:00 2001
+From: Ivan Murashov <ivan.murashov@lge.com>
+Date: Tue, 4 Jun 2024 22:46:43 +0300
+Subject: [PATCH] [v8][build] Restore GN use_gold logic in V8
+
+:Release Notes:
+Restored GN use_gold logic in V8 to fix compiler error when use_lld=false
+after rolling to 127.0.6483.0~1
+
+:Detailed Notes:
+In the upstream CL https://crrev.com/c/5538290 was rolled V8, where was
+integrated CL https://chromium-review.googlesource.com/c/v8/v8/+/5528990,
+where removed references to `use_gold` GN variable.
+
+Previously we restored main use_gold logic in the Neva change
+http://mercury.lge.net:8080/c/11222.
+In this change restored use_gold logic for V8 component.
+
+Without this change builds fails with the following error:
+FAILED: v8_context_snapshot.bin
+python3 ../../build/gn_run_binary.py ./v8_context_snapshot_generator --output_file=v8_context_snapshot.bin
+#
+# Fatal error in , line 0
+# Check failed: table->address(index) == table->address(encoded_index).
+#
+#
+#
+#FailureMessage Object: 0x7fff1f5dd030#0 0x55a83a504f12 base::debug::CollectStackTrace()
+#1 0x55a83a4ff67e base::debug::StackTrace::StackTrace()
+#2 0x55a83a4887ad gin::(anonymous namespace)::PrintStackTrace()
+#3 0x55a83a7aee3e V8_Fatal()
+#4 0x55a838bd8499 v8::internal::StartupDeserializer::DeserializeIntoIsolate()
+#5 0x55a83866f14d v8::internal::Isolate::Init()
+#6 0x55a83866f659 v8::internal::Isolate::InitWithSnapshot()
+#7 0x55a838bcbc9f v8::internal::Snapshot::Initialize()
+#8 0x55a838bce72d v8::internal::SnapshotCreatorImpl::SnapshotCreatorImpl()
+#9 0x55a8384d2b40 v8::SnapshotCreator::SnapshotCreator()
+#10 0x55a83d53297f gin::IsolateHolder::IsolateHolder()
+#11 0x55a83d5326f3 gin::IsolateHolder::IsolateHolder()
+#12 0x55a83c291ed2 blink::V8PerIsolateData::V8PerIsolateData()
+#13 0x55a83c292860 blink::V8PerIsolateData::Initialize()
+#14 0x55a83b45ea38 blink::V8Initializer::InitializeMainThread()
+#15 0x55a8384827ac main
+#16 0x7feb6b1ec0b3 __libc_start_main
+#17 0x55a8384825de _start
+./v8_context_snapshot_generator failed with exit code -5
+
+:Issues Addressed:
+[NEVA-9241] Upgrade neva-main-rolling up to 6483 BUILD
+---
+ BUILD.gn | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index a7001e6b0e2..81a743e43fb 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -15,6 +15,10 @@ import("//build_overrides/build.gni")
+ import("gni/snapshot_toolchain.gni")
+ import("gni/v8.gni")
+
++# TODO(neva): Restore to 'use_lld' condition when Neva GCC can remove use_gold
++# logic.
++import("//neva/neva.gni")
++
+ # Specifies if the target build is a simulator build. Comparing target cpu
+ # with v8 target cpu to not affect simulator builds for making cross-compile
+ # snapshots.
+@@ -7195,7 +7199,9 @@ if (current_toolchain == v8_snapshot_toolchain) {
+       ldflags = [ "/OPT:NOICF" ]  # link.exe, but also lld-link.exe.
+     } else if (is_apple && !use_lld) {
+       ldflags = [ "-Wl,-no_deduplicate" ]  # ld64.
+-    } else if (use_lld) {
++    # TODO(neva): Restore to 'use_lld' condition when Neva GCC can remove
++    # use_gold logic.
++    } else if (use_lld || (use_neva_appruntime && use_gold)) {
+       ldflags = [ "-Wl,--icf=none" ]
+     }
+   }
+--
+2.25.1
+

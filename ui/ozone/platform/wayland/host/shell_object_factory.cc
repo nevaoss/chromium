@@ -11,6 +11,11 @@
 #include "ui/ozone/platform/wayland/host/xdg_surface_wrapper_impl.h"
 #include "ui/ozone/platform/wayland/host/xdg_toplevel_wrapper_impl.h"
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "ui/ozone/platform/wayland/host/wayland_extensions.h"
+///@}
+
 namespace ui {
 
 namespace {
@@ -31,6 +36,15 @@ ShellObjectFactory::~ShellObjectFactory() = default;
 std::unique_ptr<ShellToplevelWrapper>
 ShellObjectFactory::CreateShellToplevelWrapper(WaylandConnection* connection,
                                                WaylandWindow* wayland_window) {
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  if (connection->extensions()) {
+    auto surface = connection->extensions()->CreateShellToplevel(wayland_window);
+    if (surface)
+      return surface->Initialize() ? std::move(surface) : nullptr;
+  }
+  ///@}
+
   if (!connection->shell()) {
     LOG(WARNING) << "Shell protocol is not available.";
     return nullptr;
@@ -52,6 +66,27 @@ std::unique_ptr<ShellPopupWrapper> ShellObjectFactory::CreateShellPopupWrapper(
     WaylandConnection* connection,
     WaylandWindow* wayland_window,
     const ShellPopupParams& params) {
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  // FIXME(neva, M93): https://crrev.com/c/2690636 updates the signature,
+  // |bounds| has been dropped
+  // FIXME(neva): below code was intended for webOS which still doesn't provide
+  // popup roles hence need to revise below code along with corresponding
+  // WaylandExtensions API
+  //if (connection->extensions()) {
+  //  auto surface = connection->extensions()->CreateShellSurface(wayland_window);
+  //  if (surface) {
+  //    if (!surface->Initialize(false /* with_top_level */))
+  //      return nullptr;
+  //
+  //    auto popup = connection->extensions()->CreateShellPopup(wayland_window);
+  //    if (popup)
+  //      return popup->Initialize(connection, bounds) ? std::move(popup)
+  //                                                   : nullptr;
+  // }
+  //}
+  ///@}
+
   if (!connection->shell()) {
     LOG(WARNING) << "Shell protocol is not available.";
     return nullptr;

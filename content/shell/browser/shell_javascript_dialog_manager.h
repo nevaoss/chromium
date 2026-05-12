@@ -14,6 +14,9 @@
 namespace content {
 
 class ShellJavaScriptDialog;
+namespace neva {
+class ShellJavaScriptDialog;
+} // namespace neva
 
 class ShellJavaScriptDialogManager : public JavaScriptDialogManager {
  public:

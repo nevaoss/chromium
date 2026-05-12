@@ -108,6 +108,22 @@ bool StructTraits<blink::mojom::RendererPreferencesDataView,
   out->arrow_bitmap_width_horizontal_scroll_bar_in_dips =
       data.arrow_bitmap_width_horizontal_scroll_bar_in_dips();
 #endif
+  ///@name USE_NEVA_APPRUNTIME
+  ///@{
+  if (!data.ReadApplicationId(&out->application_id))
+    return false;
+  if (!data.ReadMediaCodecCapability(&out->media_codec_capability))
+    return false;
+  if (!data.ReadMediaPreferences(&out->media_preferences))
+    return false;
+  if (!data.ReadBoardType(&out->board_type))
+    return false;
+  out->allow_fake_bold_text = data.allow_fake_bold_text();
+  if (!data.ReadFileSecurityOrigin(&out->file_security_origin))
+    return false;
+  out->use_unlimited_media_policy = data.use_unlimited_media_policy();
+  out->is_enact_browser = data.is_enact_browser();
+  ///@}
 #if BUILDFLAG(IS_OZONE)
   out->selection_clipboard_buffer_available =
       data.selection_clipboard_buffer_available();

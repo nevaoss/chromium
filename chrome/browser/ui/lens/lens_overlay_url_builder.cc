@@ -76,7 +76,12 @@ inline constexpr char kXSRFTokenQueryParamKey[] = "sxsrf";
 inline constexpr char kSecActQueryParamKey[] = "sec_act";
 
 // The list of query parameters to ignore when comparing search URLs.
+// TODO(neva): Remove this when Neva GCC version upgraded to 12+.
+#if defined(__GNUC__) && __GNUC__ < 12 && !defined(__clang__)
+inline const std::string kIgnoredSearchUrlQueryParameters[] = {
+#else
 inline constexpr std::string kIgnoredSearchUrlQueryParameters[] = {
+#endif
     kViewportWidthQueryParamKey, kViewportHeightQueryParamKey,
     kXSRFTokenQueryParamKey, kSecActQueryParamKey};
 

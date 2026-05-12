@@ -168,6 +168,12 @@ ukm::SourceId RenderWidgetHostDelegate::GetCurrentPageUkmSourceId() {
   return ukm::kInvalidSourceId;
 }
 
+#if defined(USE_NEVA_APPRUNTIME) && defined(ENABLE_PINCH_TO_ZOOM)
+bool RenderWidgetHostDelegate::IsPinchToZoomEnabled() const {
+  return false;
+}
+#endif
+
 bool RenderWidgetHostDelegate::IsShowingContextMenuOnPage() const {
   return false;
 }

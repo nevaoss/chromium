@@ -46,6 +46,11 @@
 #include "base/base_paths_mac.h"
 #endif
 
+#if defined(USE_NEVA_APPRUNTIME)
+#include "content/shell/browser/shell_paths.h"
+#include "ui/base/ui_base_paths.h"
+#endif  // defined(USE_NEVA_APPRUNTIME)
+
 namespace {
 
 // Returns the same directory that the browser context will later be
@@ -113,9 +118,18 @@ void InitLogging() {
 base::FilePath GetResourcesPakFilePath() {
   base::FilePath extensions_shell_and_test_pak_path;
   base::PathService::Get(base::DIR_ASSETS, &extensions_shell_and_test_pak_path);
+
+#if BUILDFLAG(IS_WEBOS)
+  const char resources_pak_name[] = "webos_content.pak";
+#elif defined(USE_NEVA_APPRUNTIME)
+  const char resources_pak_name[] = "app_runtime_content.pak";
+#else
+  // Original resources pak file name
+  const char resources_pak_name[] = "extensions_shell_and_test.pak";
+#endif
+
   extensions_shell_and_test_pak_path =
-      extensions_shell_and_test_pak_path.AppendASCII(
-          "extensions_shell_and_test.pak");
+      extensions_shell_and_test_pak_path.AppendASCII(resources_pak_name);
   return extensions_shell_and_test_pak_path;
 }
 
@@ -140,6 +154,9 @@ std::optional<int> ShellMainDelegate::BasicStartupComplete() {
   nacl::RegisterPathProvider();
 #endif
   extensions::RegisterPathProvider();
+#if defined(USE_NEVA_APPRUNTIME)
+  content::RegisterShellPathProvider();
+#endif
   return std::nullopt;
 }
 
@@ -150,6 +167,16 @@ void ShellMainDelegate::PreSandboxStartup() {
   if (ProcessNeedsResourceBundle(process_type))
     ui::ResourceBundle::InitSharedInstanceWithPakPath(
         GetResourcesPakFilePath());
+#if defined(USE_NEVA_APPRUNTIME)
+  base::FilePath locales_dir;
+#if defined(USE_CBE)
+  base::PathService::Get(base::DIR_ASSETS, &locales_dir);
+#else
+  base::PathService::Get(base::DIR_MODULE, &locales_dir);
+#endif  // defined(USE_CBE)
+  base::PathService::Override(ui::DIR_LOCALES,
+                              locales_dir.AppendASCII("neva_locales"));
+#endif  // defined(USE_NEVA_APPRUNTIME)
 }
 
 content::ContentClient* ShellMainDelegate::CreateContentClient() {

@@ -9,6 +9,11 @@
 
 #include "build/build_config.h"
 
+///@name USE_NEVA_APPRUNTIME
+///@{
+#include "content/shell/common/shell_neva_switches.h"
+///@}
+
 namespace switches {
 
 extern const char kContentShellUserDataDir[];

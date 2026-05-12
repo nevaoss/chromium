@@ -25,6 +25,10 @@
 #include "media/base/video_types.h"
 #include "media/cdm/api/content_decryption_module.h"
 
+#if defined(USE_NEVA_CDM)
+#include "media/cdm/neva/webos/content_decryption_module_webos.h"
+#endif
+
 namespace media {
 
 // Color Converters
@@ -104,6 +108,9 @@ MEDIA_EXPORT void ToCdmInputBuffer(const DecoderBuffer& encrypted_buffer,
                                    std::vector<cdm::SubsampleEntry>* subsamples,
                                    cdm::InputBuffer_2* input_buffer);
 
+#if defined(USE_NEVA_CDM)
+MEDIA_EXPORT cdm::Exception ToCdmExceptionType(cdm::Error error);
+#endif
 }  // namespace media
 
 #endif  // MEDIA_CDM_CDM_TYPE_CONVERSION_H_

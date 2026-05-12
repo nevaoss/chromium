@@ -1,0 +1,71 @@
+From 660f120cfd01c8b6231bd07dc76b3c2fb6e0bfb7 Mon Sep 17 00:00:00 2001
+From: German Cvetkov <german.cvetkov@lge.com>
+Date: Thu, 12 Oct 2023 15:01:41 +0300
+Subject: [PATCH] [PATCH] GCC: Add HttpHeaderBlock::ValueProxy::operator!=()
+
+:Release Notes:
+Addition of HttpHeaderBlock::ValueProxy::operator!=
+
+:Detailed Notes:
+Cherry pick of original patch to Http2HeaderBlock after movig it to
+HttpHeaderBlock in the upstream CL
+https://github.com/google/quiche/commit/df3c6e7f4dab940a32b889080a6d535ea16f9431
+
+Original commit message:
+  [PATCH] GCC: Add Http2HeaderBlock::ValueProxy::operator!=()
+
+  :Release Notes:
+  Addition of Http2HeaderBlock::ValueProxy::operator!=
+
+  :Detailed Notes:
+  To avoid compilation error caused by undefined
+  Http2HeaderBlock::ValueProxy::operator!=() add
+  Http2HeaderBlock::ValueProxy::operator!=().
+
+  :Testing Performed:
+  Build webruntime for webOS/OSE
+
+  :QA Notes:
+
+  :Issues Addressed:
+  [NEVA-8477] Upgrade neva-main-rolling up to 6030 BUILD
+
+:Issues Addressed:
+[NEVA-8478] Upgrade neva-main-rolling up to 6040 BUILD
+---
+ quiche/common/http/http_header_block.cc | 6 +++++-
+ quiche/common/http/http_header_block.h  | 1 +
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/quiche/common/http/http_header_block.cc b/quiche/common/http/http_header_block.cc
+index eea94ff9..6e6d52dd 100644
+--- a/quiche/common/http/http_header_block.cc
++++ b/quiche/common/http/http_header_block.cc
+@@ -163,7 +163,11 @@ bool HttpHeaderBlock::ValueProxy::operator==(absl::string_view value) const {
+   }
+ }
+ 
+-std::string HttpHeaderBlock::ValueProxy::as_string() const {
++bool HttpHeaderBlock::ValueProxy::operator!=(absl::string_view value) const {
++  return !operator==(value);
++}
++
++std::string HttpHeaderBlock::ValueProxy::as_string()const {
+   if (lookup_result_ == block_->map_.end()) {
+     return "";
+   } else {
+diff --git a/quiche/common/http/http_header_block.h b/quiche/common/http/http_header_block.h
+index bebf4813..7b9849e1 100644
+--- a/quiche/common/http/http_header_block.h
++++ b/quiche/common/http/http_header_block.h
+@@ -222,6 +222,7 @@ class QUICHE_EXPORT HttpHeaderBlock {
+ 
+     // Provides easy comparison against absl::string_view.
+     bool operator==(absl::string_view value) const;
++    bool operator!=(absl::string_view value) const;
+ 
+     std::string as_string() const;
+ 
+-- 
+2.25.1
+

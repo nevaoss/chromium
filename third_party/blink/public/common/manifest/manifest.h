@@ -192,6 +192,11 @@ class BLINK_COMMON_EXPORT Manifest {
 
     bool operator==(const TabStrip& other) const;
 
+// TODO(neva): Remove this when Neva GCC starts supporting C++20.
+#if (__cplusplus < 202002L)
+    bool operator!=(const TabStrip& other) const;
+#endif
+
     using Visibility = blink::mojom::TabStripMemberVisibility;
     using HomeTab = absl::variant<Visibility, blink::Manifest::HomeTabParams>;
     using NewTabButton = blink::Manifest::NewTabButtonParams;
