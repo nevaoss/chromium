@@ -2805,6 +2805,10 @@ inline constexpr char kLastSessionLength[] = "session.last_session_length";
 // on shutdown so that it could be reported on the next run.
 inline constexpr char kLastSessionType[] = "session.last_session_type";
 
+// System uptime, when last logout started.
+// This is saved to file and cleared after chrome process starts.
+inline constexpr char kLogoutStartedLast[] = "chromeos.logout-started";
+
 // Holds the maximum session time in milliseconds. If this pref is set, the
 // user is logged out when the maximum session time is reached. The user is
 // informed about the remaining time by a countdown timer shown in the ash
@@ -2871,6 +2875,10 @@ inline constexpr char kKioskChromeAppsForceAllowed[] =
 // This setting resides in local state.
 inline constexpr char kKioskMetrics[] = "kiosk-metrics";
 
+// A boolean pref that controls whether pinch-to-zoom is allowed in kiosk mode.
+inline constexpr char kKioskPinchToZoomAllowed[] =
+    "policy.kiosk_pinch_to_zoom_allowed";
+
 // A boolean pref which determines whether kiosk troubleshooting tools are
 // enabled.
 inline constexpr char kKioskTroubleshootingToolsEnabled[] =
@@ -2885,6 +2893,53 @@ inline constexpr char kKioskWebAppOfflineEnabled[] =
 // browser window.
 inline constexpr char kNewWindowsInKioskAllowed[] =
     "new_windows_in_kiosk_allowed";
+
+//-----------------------------------------------------------------------------
+// Internationalization/locale related Prefs
+//-----------------------------------------------------------------------------
+
+// List of locales the UI is allowed to be displayed in by policy. The list is
+// empty if no restriction is being enforced.
+inline constexpr char kAllowedLanguages[] = "intl.allowed_languages";
+
+// Locale accepted by user.  Non-syncable.
+// Used to determine whether we need to show Locale Change notification.
+inline constexpr char kApplicationLocaleAccepted[] = "intl.app_locale_accepted";
+
+// Non-syncable item.
+// It is used in two distinct ways.
+// (1) Used for two-step initialization of locale in ChromeOS
+//     because synchronization of kApplicationLocale is not instant.
+// (2) Used to detect locale change.  Locale change is detected by
+//     LocaleChangeGuard in case values of kApplicationLocaleBackup and
+//     kApplicationLocale are both non-empty and differ.
+// Following is a table showing how state of those prefs may change upon
+// common real-life use cases:
+//                                  AppLocale Backup Accepted
+// Initial login                       -        A       -
+// Sync                                B        A       -
+// Accept (B)                          B        B       B
+// -----------------------------------------------------------
+// Initial login                       -        A       -
+// No sync and second login            A        A       -
+// Change options                      B        B       -
+// -----------------------------------------------------------
+// Initial login                       -        A       -
+// Sync                                A        A       -
+// Locale changed on login screen      A        C       -
+// Accept (A)                          A        A       A
+// -----------------------------------------------------------
+// Initial login                       -        A       -
+// Sync                                B        A       -
+// Revert                              A        A       -
+inline constexpr char kApplicationLocaleBackup[] = "intl.app_locale_backup";
+
+// A string pref with initial locale set in VPD or manifest.
+inline constexpr char kInitialLocale[] = "intl.initial_locale";
+
+// Locale preference of device' owner.  ChromeOS device appears in this locale
+// after startup/wakeup/signout.
+inline constexpr char kOwnerLocale[] = "intl.owner_locale";
 
 //-----------------------------------------------------------------------------
 // Language related Prefs
@@ -3075,10 +3130,34 @@ inline constexpr char kLocalUserFilesAllowed[] =
 inline constexpr char kLocalUserFilesMigrationDestination[] =
     "filebrowser.local_user_files_migration_destination";
 
+// URL path string of the most recently used SMB NetworkFileShare path.
+inline constexpr char kMostRecentlyUsedNetworkFileShareURL[] =
+    "network_file_shares.most_recently_used_url";
+
+// Boolean pref indicating whether the NetBios Name Query Request Protocol is
+// used for discovering shares on the user's network by the Network File
+// Shares for Chrome OS feature.
+inline constexpr char kNetBiosShareDiscoveryEnabled[] =
+    "network_file_shares.netbios_discovery.enabled";
+
 // Boolean pref indicating whether a user is allowed to use the Network File
 // Shares for Chrome OS feature.
 inline constexpr char kNetworkFileSharesAllowed[] =
     "network_file_shares.allowed";
+
+// List of preconfigured network file shares.
+inline constexpr char kNetworkFileSharesPreconfiguredShares[] =
+    "network_file_shares.preconfigured_shares";
+
+// List of network files shares added by the user.
+inline constexpr char kNetworkFileSharesSavedShares[] =
+    "network_file_shares.saved_shares";
+
+// Boolean pref indicating whether the NTLM authentication protocol should be
+// enabled when mounting an SMB share with a user credential by the Network File
+// Shares for Chrome OS feature.
+inline constexpr char kNTLMShareAuthenticationEnabled[] =
+    "network_file_shares.ntlm_share_authentication.enabled";
 
 // Whether we should always move office files to Google Drive without prompting
 // the user first.
@@ -3657,6 +3736,26 @@ inline constexpr char kTimeLimitLocalOverride[] = "screen_time.local_override";
 
 // A dictionary preference holding the usage time limit definitions for a user.
 inline constexpr char kUsageTimeLimit[] = "screen_time.limit";
+
+//-----------------------------------------------------------------------------
+// SkyVault related Prefs
+//-----------------------------------------------------------------------------
+
+// The state of the SkyVault migration of local files to the cloud.
+inline constexpr char kSkyVaultMigrationState[] = "skyvault.migration_state";
+
+// The number of times SkyVault migration was retried after some upload errors.
+inline constexpr char kSkyVaultMigrationRetryCount[] =
+    "skyvault.migration_retry_count";
+
+// The time at which the SkyVault local files upload or deletion is scheduled to
+// start.
+inline constexpr char kSkyVaultMigrationScheduledStartTime[] =
+    "skyvault.migration_scheduled_start_time";
+
+// The time at which the SkyVault local files upload actually started.
+inline constexpr char kSkyVaultMigrationStartTime[] =
+    "skyvault.migration_start_time";
 
 // NOTE: New prefs should start with the "ash." prefix. Existing prefs moved
 // into this file should not be renamed, since they may be synced.

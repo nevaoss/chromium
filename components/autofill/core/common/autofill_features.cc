@@ -383,12 +383,10 @@ BASE_FEATURE(kAutofillAndroidFormDataCompareFieldGlobalId,
 BASE_FEATURE(kAutofillAndroidKeyboardAccessoryDynamicPositioning,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If @memory is enabled, typing "@@" in an input field triggers search popup,
-// allowing to recall and insert the info anywhere using plain language.
+// Feature flag for kAutofillAtMemory.
 BASE_FEATURE(kAutofillAtMemory, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Controls whether the Autosuggest nudging logic is used. If enabled, user are
-// encouraged to use the AtMemory feature.
+// Controls whether the Autosuggest nudging logic is used.
 BASE_FEATURE(kAutofillAutosuggestNudge, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, the placeholder is not considered a label fallback on the
@@ -572,6 +570,10 @@ BASE_FEATURE(kAutofillEnableKeyboardAccessoryChipWidthAdjustment,
 // When enabled, Autofill will help users fill in non-affiliated loyalty cards
 // on loyalty card only fields.
 BASE_FEATURE(kAutofillEnableNonAffiliatedLoyaltyCardsFilling,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, Autofill will use heuristics to identify OTP fields.
+BASE_FEATURE(kAutofillEnableOneTimeCodeHeuristics,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Kill switch for saving entities to wallet from settings.

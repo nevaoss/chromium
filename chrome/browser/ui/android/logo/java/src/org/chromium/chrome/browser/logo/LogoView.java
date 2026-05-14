@@ -70,7 +70,7 @@ public class LogoView extends FrameLayout implements OnClickListener {
      */
     private float mTransitionAmount;
 
-    private @Nullable ClickHandler mClickHandler;
+    private LogoProperties.@Nullable ClickHandler mClickHandler;
     private @Nullable Callback<LogoBridge.Logo> mOnLogoAvailableCallback;
     private int mDoodleSize;
 
@@ -91,16 +91,6 @@ public class LogoView extends FrameLayout implements OnClickListener {
                     }
                 }
             };
-
-    /** Handles tasks for the {@link LogoView} shown on an NTP.*/
-    @FunctionalInterface
-    interface ClickHandler {
-        /**
-         * Called when the user clicks on the logo.
-         * @param isAnimatedLogoShowing Whether the animated GIF logo is playing.
-         */
-        void onLogoClicked(boolean isAnimatedLogoShowing);
-    }
 
     /** Constructor used to inflate a LogoView from XML. */
     public LogoView(Context context, AttributeSet attrs) {
@@ -134,8 +124,8 @@ public class LogoView extends FrameLayout implements OnClickListener {
         mLoadingView.destroy();
     }
 
-    /** Sets the {@link ClickHandler} to notify when the logo is pressed.*/
-    void setClickHandler(ClickHandler clickHandler) {
+    /** Sets the {@link LogoProperties.ClickHandler} to notify when the logo is pressed. */
+    void setClickHandler(LogoProperties.ClickHandler clickHandler) {
         mClickHandler = clickHandler;
     }
 
@@ -160,17 +150,6 @@ public class LogoView extends FrameLayout implements OnClickListener {
     void setLogoTopMargin(int topMargin) {
         MarginLayoutParams marginLayoutParams = (MarginLayoutParams) getLayoutParams();
         marginLayoutParams.topMargin = topMargin;
-        setLayoutParams(marginLayoutParams);
-    }
-
-    /**
-     * Sets the logo bottom margin.
-     *
-     * @param bottomMargin The bottom margin in pixels.
-     */
-    void setLogoBottomMargin(int bottomMargin) {
-        MarginLayoutParams marginLayoutParams = (MarginLayoutParams) getLayoutParams();
-        marginLayoutParams.bottomMargin = bottomMargin;
         setLayoutParams(marginLayoutParams);
     }
 
@@ -545,7 +524,7 @@ public class LogoView extends FrameLayout implements OnClickListener {
         }
     }
 
-    public void endAnimationsForTesting() {
+    void endAnimationsForTesting() {
         if (mFadeAnimation != null) mFadeAnimation.end();
     }
 
@@ -568,7 +547,7 @@ public class LogoView extends FrameLayout implements OnClickListener {
         return mAnimationEnabled;
     }
 
-    @Nullable ClickHandler getClickHandlerForTesting() {
+    LogoProperties.@Nullable ClickHandler getClickHandlerForTesting() {
         return mClickHandler;
     }
 

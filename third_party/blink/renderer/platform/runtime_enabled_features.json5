@@ -331,6 +331,12 @@
         "default": "",
       },
     },
+    // Strip actionability from popup-like content that is positioned offscreen
+    // and cannot be reached by scrolling.
+    {
+      name: "AIPageContentAnchoredOffscreenNonActionability",
+      status: "stable",
+    },
     // Whether to automatically build an APC content_extraction tree on load.
     {
       name: "AIPageContentBuildOnLoadForTesting",
@@ -360,6 +366,7 @@
     // math consistent with visual bounding boxes.
     {
       name: "AIPageContentOuterBoxMapToAncestorSpace",
+      status: "stable",
     },
     {
       name: "AIPageContentPaidContentAnnotation",
@@ -1123,14 +1130,6 @@
       name: "ClickFocusDoesntPersistStatusBubble",
       status: "stable",
     },
-    {
-      // Enables clipboardchange event API for listening for changes to the
-      // system clipboard
-      // https://chromestatus.com/feature/5085102657503232
-      name: "ClipboardChangeEvent",
-      origin_trial_feature_name: "ClipboardChangeEvent",
-      status: "stable",
-    },
     // This ensures that clipboard event fires on a target node which is
     // focused in case no visible selection is present.
     // crbug.com/40735783
@@ -1777,7 +1776,7 @@
     },
     {
       name: "CSSPseudoElementInterface",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "CSSPseudoElementViewTransitions",
@@ -1826,6 +1825,12 @@
       // unintentionally exposed to author sheets. UA rule is now using
       // -internal-textarea-auto instead.
       name: "CSSResizeAuto",
+      status: "stable",
+    },
+    {
+      // Kill switch for integrity() enforcement on CSS image and SVG
+      // document resources. See also: CSSURLRequestModifiers
+      name: "CSSResourceIntegrityEnforcement",
       status: "stable",
     },
     {
@@ -1963,6 +1968,10 @@
       // https://issues.chromium.org/40675832: CSS `text-decoration-skip-ink: all` value
       name: "CSSTextDecorationSkipInkAll",
       status: "stable",
+    },
+    {
+      name: "CSSTextDecorationSkipSpaces",
+      status: "test",
     },
     {
       // crbug.com/434361099
@@ -2481,7 +2490,7 @@
     {
       // `event.pseudoTarget` property to represent pseudo-elements in events. Returns `CSSPseudoElement` or null.
       name: "EventPseudoTargetProperty",
-      status: "experimental",
+      status: "stable",
       depends_on: ["CSSPseudoElementInterface"],
     },
     {
@@ -3374,6 +3383,10 @@
       status: "stable",
     },
     {
+      name: "InlineScriptCacheHint",
+      status: "experimental",
+    },
+    {
       // If enabled, and the inner html parser is unable to successfully
       // parse, it will log histograms of why it failed. The logging is
       // non-trivial.
@@ -3526,6 +3539,15 @@
     {
       name: "LanguageDetectionAPIForWorkers",
       public: true,
+    },
+    {
+      // The following LayoutBox functions are implemented using information
+      // from physical fragments, rather than computed style, and containing
+      // block walking (was needed for percentage padding):
+      //   ClientLeft(), ClientTop(), ClientWidth(), ClientHeight(),
+      //   ContentLeft(), ContentTop(), ContentWidth(), ContentHeight().
+      name: "LayoutBoxRectGettersUseFragments",
+      status: "stable",
     },
     {
       name: "LayoutIgnoreMarginsForSticky",
@@ -3856,12 +3878,14 @@
       status: "experimental",
     },
     {
+      // Killswitch M149.
       name: "MergeFixedLayers",
-      status: "experimental",
+      status: "stable",
     },
     {
+      // Killswitch M149.
       name: "MergeStickyLayers",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "MessagePortCloseEvent",
@@ -4588,7 +4612,7 @@
       // Support hit-testing for ::after, ::before, ::marker
       // (e.g. for CSSPseudoElement).
       name: "PseudoElementsHitTestable",
-      status: "experimental",
+      status: "stable",
     },
     {
       // Support :hover on ::after, ::before, ::marker.
@@ -5109,6 +5133,15 @@
       depends_on: ["SelectedcontentSpec"],
     },
     {
+      // Makes the <selectedcontent> element work in <select multiple> by
+      // cloning the contents for each option which is selected into the
+      // <selectedcontent> element.
+      // https://issues.chromium.org/issues/483769482
+      name: "SelectedcontentMultiple",
+      status: "experimental",
+      depends_on: ["SelectedcontentSpec", "CustomizableSelectMultiplePopup"],
+    },
+    {
       // Aligns the implementation of the <selectedcontent> element with the
       // HTML spec. https://issues.chromium.org/issues/458113204
       name: "SelectedcontentSpec",
@@ -5603,6 +5636,10 @@
     },
     {
       name: "SvgFilterPaintsForHiddenContent",
+      status: "stable",
+    },
+    {
+      name: "SvgFilterUserSpaceViewportForSvg",
       status: "stable",
     },
     {
@@ -6317,6 +6354,13 @@
       // https://chromestatus.com/feature/6024844719947776
       name: "WebAssemblyCustomDescriptors",
       origin_trial_feature_name: "WebAssemblyCustomDescriptors",
+      status: "experimental",
+      base_feature: "none",
+    },
+    {
+      // https://chromestatus.com/feature/6024844719947776, take 2
+      name: "WebAssemblyCustomDescriptorsV2",
+      origin_trial_feature_name: "WebAssemblyCustomDescriptorsV2",
       status: "experimental",
       base_feature: "none",
     },

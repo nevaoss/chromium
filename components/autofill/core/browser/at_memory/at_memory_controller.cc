@@ -21,6 +21,8 @@
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics.h"
+#include "components/autofill/core/browser/payments/credit_card_access_manager.h"
+#include "components/autofill/core/browser/payments/iban_access_manager.h"
 #include "components/autofill/core/common/autofill_util.h"
 #include "components/autofill/core/common/mojom/autofill_types.mojom.h"
 #include "components/strings/grit/components_strings.h"
@@ -68,6 +70,26 @@ std::u16string GetSourceDescriptionText(
       l10n_util::GetStringUTF16(source_string_id));
 }
 
+Suggestion::AtMemoryPayload::Identifier GetPayloadIdentifier(
+    accessibility_annotator::EntryType type,
+    const std::variant<std::monostate, std::string, int64_t>& identifier) {
+  if (type == accessibility_annotator::EntryType::kIban) {
+    if (const std::string* guid_str = std::get_if<std::string>(&identifier)) {
+      return Iban::Guid(*guid_str);
+    }
+    CHECK(std::holds_alternative<int64_t>(identifier));
+    return Iban::InstrumentId(*std::get_if<int64_t>(&identifier));
+  }
+  if (type == accessibility_annotator::EntryType::kCreditCardNumber ||
+      type == accessibility_annotator::EntryType::kCreditCardSecurityCode) {
+    CHECK(std::holds_alternative<std::string>(identifier));
+    return *std::get_if<std::string>(&identifier);
+  }
+  // TODO(crbug.com/497794390): Implement identifier support for other entry
+  // types.
+  return std::monostate();
+}
+
 Suggestion TransformResultIntoSuggestion(
     const accessibility_annotator::MemorySearchResult& entry) {
   Suggestion suggestion(entry.value, SuggestionType::kAtMemorySearchResult);
@@ -87,9 +109,10 @@ Suggestion TransformResultIntoSuggestion(
     label_row.emplace_back(metadata.value);
   }
   suggestion.labels.emplace_back(std::move(label_row));
-  suggestion.payload = Suggestion::AtMemoryPayload(
-      entry.value,
-      entry.is_obfuscated ? entry.reveal_callback : base::NullCallback());
+  Suggestion::AtMemoryPayload at_memory_payload(entry.value, entry.type);
+  at_memory_payload.identifier =
+      GetPayloadIdentifier(entry.type, entry.identifier);
+  suggestion.payload = std::move(at_memory_payload);
   suggestion.filtration_policy = Suggestion::FiltrationPolicy::kStatic;
 
   // Metadata are displayed as nested results in the flyout menu.
@@ -103,8 +126,10 @@ Suggestion TransformResultIntoSuggestion(
     if (!child_type_name.empty()) {
       child.labels = {{Suggestion::Text(child_type_name)}};
     }
-    child.payload =
-        Suggestion::AtMemoryPayload(metadata.value, base::NullCallback());
+    Suggestion::AtMemoryPayload child_at_memory_payload(metadata.value,
+                                                        metadata.type);
+    child_at_memory_payload.entry_type = metadata.type;
+    child.payload = std::move(child_at_memory_payload);
     suggestion.children.push_back(std::move(child));
   }
 
@@ -204,12 +229,42 @@ void AtMemoryController::FillOrPreviewSearchResult(
     const FormData& form,
     const FormFieldData& field,
     const Suggestion& suggestion) {
-  const std::u16string& replacement =
-      suggestion.GetPayload<Suggestion::AtMemoryPayload>().value;
+  const Suggestion::AtMemoryPayload& payload =
+      suggestion.GetPayload<Suggestion::AtMemoryPayload>();
 
-  manager_->FillOrPreviewField(
-      action_persistence, mojom::FieldActionType::kReplaceAtMemoryTrigger, form,
-      field, replacement, suggestion.type, /*field_type_used=*/std::nullopt);
+  switch (action_persistence) {
+    case mojom::ActionPersistence::kPreview:
+      manager_->FillOrPreviewField(
+          action_persistence, mojom::FieldActionType::kReplaceAtMemoryTrigger,
+          form, field, payload.value, suggestion.type,
+          /*field_type_used=*/std::nullopt);
+      break;
+    case mojom::ActionPersistence::kFill:
+      switch (payload.entry_type) {
+        case accessibility_annotator::EntryType::kIban: {
+          CHECK(!std::holds_alternative<std::monostate>(payload.identifier));
+          FillIban(payload.identifier, form, field, suggestion);
+          break;
+        }
+        case accessibility_annotator::EntryType::kCreditCardNumber:
+        case accessibility_annotator::EntryType::kCreditCardSecurityCode: {
+          CHECK(std::holds_alternative<std::string>(payload.identifier));
+          FillCreditCard(payload.identifier, form, field, suggestion);
+          break;
+        }
+
+        default:
+          if (at_memory_funnel_metrics_) {
+            at_memory_funnel_metrics_->OnSuggestionAccepted();
+          }
+          manager_->FillOrPreviewField(
+              action_persistence,
+              mojom::FieldActionType::kReplaceAtMemoryTrigger, form, field,
+              payload.value, suggestion.type, /*field_type_used=*/std::nullopt);
+          break;
+      }
+      break;
+  }
 }
 
 void AtMemoryController::ExecuteQuery(const std::u16string& filter,
@@ -241,6 +296,105 @@ void AtMemoryController::OnSearchResultsReceived(
   update_callback_.Run(
       base::ToVector(result.entries, TransformResultIntoSuggestion),
       trigger_source_);
+}
+
+void AtMemoryController::FillIban(
+    const Suggestion::AtMemoryPayload::Identifier& identifier,
+    const FormData& form,
+    const FormFieldData& field,
+    const Suggestion& suggestion) {
+  Suggestion::Payload iban_payload;
+  if (const Iban::Guid* guid = std::get_if<Iban::Guid>(&identifier)) {
+    iban_payload = Suggestion::Guid(guid->value());
+  } else {
+    CHECK(std::holds_alternative<Iban::InstrumentId>(identifier));
+    iban_payload = Suggestion::InstrumentId(
+        std::get<Iban::InstrumentId>(identifier).value());
+  }
+
+  IbanAccessManager* iban_access_manager =
+      manager_->client().GetPaymentsAutofillClient()->GetIbanAccessManager();
+  if (!iban_access_manager) {
+    return;
+  }
+
+  iban_access_manager->FetchValue(
+      iban_payload,
+      base::BindOnce(
+          [](base::WeakPtr<AtMemoryController> controller, const FormData& form,
+             const FormFieldData& field, const Suggestion& suggestion,
+             const std::u16string& unmasked_value) {
+            if (controller) {
+              if (controller->at_memory_funnel_metrics_) {
+                controller->at_memory_funnel_metrics_->OnSuggestionAccepted();
+              }
+              controller->manager_->FillOrPreviewField(
+                  mojom::ActionPersistence::kFill,
+                  mojom::FieldActionType::kReplaceAtMemoryTrigger, form, field,
+                  unmasked_value, suggestion.type,
+                  /*field_type_used=*/std::nullopt);
+            }
+          },
+          weak_ptr_factory_.GetWeakPtr(), form, field, suggestion));
+}
+
+void AtMemoryController::FillCreditCard(
+    const Suggestion::AtMemoryPayload::Identifier& identifier,
+    const FormData& form,
+    const FormFieldData& field,
+    const Suggestion& suggestion) {
+  CHECK(std::holds_alternative<std::string>(identifier));
+  const std::string& guid = std::get<std::string>(identifier);
+
+  CreditCardAccessManager* credit_card_access_manager =
+      manager_->GetCreditCardAccessManager();
+  if (!credit_card_access_manager) {
+    return;
+  }
+
+  const PersonalDataManager& pdm = manager_->client().GetPersonalDataManager();
+  const CreditCard* credit_card =
+      pdm.payments_data_manager().GetCreditCardByGUID(guid);
+  if (!credit_card) {
+    return;
+  }
+
+  // TODO(crbug.com/497795513): Consider caching fetched cards.
+  credit_card_access_manager->FetchCreditCard(
+      credit_card,
+      base::BindOnce(
+          [](base::WeakPtr<AtMemoryController> controller, const FormData& form,
+             const FormFieldData& field, const Suggestion& suggestion,
+             const CreditCard& fetched_card) {
+            if (!controller) {
+              return;
+            }
+            if (controller->at_memory_funnel_metrics_) {
+              controller->at_memory_funnel_metrics_->OnSuggestionAccepted();
+            }
+            const Suggestion::AtMemoryPayload& payload =
+                suggestion.GetPayload<Suggestion::AtMemoryPayload>();
+            std::u16string fill_value;
+            switch (payload.entry_type) {
+              case accessibility_annotator::EntryType::kCreditCardNumber:
+                // TODO(crbug.com/497795513): Fill number for
+                // `EntryType::kCreditCardFull` suggestions.
+                fill_value = fetched_card.number();
+                break;
+              case accessibility_annotator::EntryType::kCreditCardSecurityCode:
+                fill_value = fetched_card.cvc();
+                break;
+              default:
+                NOTREACHED();
+            }
+
+            controller->manager_->FillOrPreviewField(
+                mojom::ActionPersistence::kFill,
+                mojom::FieldActionType::kReplaceAtMemoryTrigger, form, field,
+                fill_value, suggestion.type,
+                /*field_type_used=*/std::nullopt);
+          },
+          weak_ptr_factory_.GetWeakPtr(), form, field, suggestion));
 }
 
 }  // namespace autofill

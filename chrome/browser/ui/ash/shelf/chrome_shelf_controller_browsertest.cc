@@ -1273,8 +1273,10 @@ IN_PROC_BROWSER_TEST_F(ShelfWebAppBrowserTest, AppIDForPWA) {
       web_app::SetAutoAcceptPWAInstallConfirmationForTesting();
   web_app::WebAppTestInstallWithOsHooksObserver install_observer(profile());
   install_observer.BeginListening();
+  ui_test_utils::BrowserCreatedObserver browser_observer;
   chrome::ExecuteCommand(browser(), IDC_INSTALL_PWA);
   const webapps::AppId app_id = install_observer.Wait();
+  browser_observer.Wait();
 
   // Find the native window for the app.
   gfx::NativeWindow native_window = gfx::NativeWindow();
@@ -1377,7 +1379,7 @@ class FilesManagerExtensionTest : public ShelfPlatformAppBrowserTest {
 };
 
 // Verifies that FilesManager's first shelf context menu item is "New window"
-// (see https://crbug.com/1102781).
+// (see https://crbug.com/40138942).
 IN_PROC_BROWSER_TEST_F(FilesManagerExtensionTest, VerifyFirstItem) {
   const std::string top_level_item_label("New window");
 
@@ -1562,7 +1564,7 @@ IN_PROC_BROWSER_TEST_F(ShelfAppBrowserTest, AsyncActivationStateCheck) {
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
   EXPECT_EQ(ash::STATUS_RUNNING, shelf_model()->ItemByID(shortcut_id)->status);
-  // To address the issue of crbug.com/174050, the tab we are about to close
+  // To address the issue of crbug.com/40962166, the tab we are about to close
   // has to be active.
   tab_strip->ActivateTabAt(1);
   EXPECT_EQ(1, tab_strip->active_index());
@@ -2075,11 +2077,12 @@ IN_PROC_BROWSER_TEST_F(ShelfAppBrowserTest, ActivateAfterSessionRestore) {
   EXPECT_TRUE(browser2->window()->IsActive());
 }
 
-// TODO(crbug.com/759779, crbug.com/819386): add back |DISABLED_DragAndDrop|.
-// TODO(crbug.com/759779, crbug.com/819386): add back
+// TODO(crbug.com/40537353, crbug.com/40565961): add back
+// |DISABLED_DragAndDrop|.
+// TODO(crbug.com/40537353, crbug.com/40565961): add back
 // |MultiDisplayBasicDragAndDrop|.
 
-// TODO(crbug.com/759779, crbug.com/819386): add back |ClickItem|.
+// TODO(crbug.com/40537353, crbug.com/40565961): add back |ClickItem|.
 
 // Check browser shortcut item functionality.
 IN_PROC_BROWSER_TEST_F(ShelfAppBrowserTestNoDefaultBrowser,
@@ -2287,7 +2290,7 @@ IN_PROC_BROWSER_TEST_F(ShelfAppBrowserTest, MatchingShelfIDAndActiveTab) {
 
 // Check that a windowed V1 application can navigate away from its domain, but
 // still gets detected properly.
-// Disabled due to https://crbug.com/838743.
+// Disabled due to https://crbug.com/41386533.
 IN_PROC_BROWSER_TEST_F(ShelfAppBrowserTest, DISABLED_V1AppNavigation) {
   // We assume that the web store is always there (which it apparently is).
   PinAppWithIDToShelf(extensions::kWebStoreAppId);
@@ -2375,7 +2378,7 @@ IN_PROC_BROWSER_TEST_F(ShelfWebAppBrowserTest, SettingsAndTaskManagerWindows) {
   }
 
   // TODO(stevenjb): Test multiprofile on Chrome OS when test support is addded.
-  // crbug.com/230464.
+  // crbug.com/41006401.
 }
 
 // Check that tabbed hosted and web apps have correct shelf presence.
@@ -2499,8 +2502,10 @@ IN_PROC_BROWSER_TEST_F(ShelfWebAppBrowserTest,
       web_app::SetAutoAcceptPWAInstallConfirmationForTesting();
   web_app::WebAppTestInstallWithOsHooksObserver install_observer(profile());
   install_observer.BeginListening();
+  ui_test_utils::BrowserCreatedObserver browser_observer;
   chrome::ExecuteCommand(browser(), IDC_INSTALL_PWA);
   const webapps::AppId app_id = install_observer.Wait();
+  browser_observer.Wait();
 
   ash::ShelfID shelf_id(app_id);
   EXPECT_FALSE(ChromeShelfController::instance()->IsPinned(shelf_id));
@@ -2523,8 +2528,10 @@ IN_PROC_BROWSER_TEST_F(ShelfWebAppBrowserTest,
   web_app::SetAutoAcceptWebAppDialogForTesting(true, true);
   web_app::WebAppTestInstallWithOsHooksObserver install_observer(profile());
   install_observer.BeginListening();
+  ui_test_utils::BrowserCreatedObserver browser_observer;
   chrome::ExecuteCommand(browser(), IDC_CREATE_SHORTCUT);
   const webapps::AppId app_id = install_observer.Wait();
+  browser_observer.Wait();
   web_app::SetAutoAcceptWebAppDialogForTesting(false, false);
 
   ash::ShelfID shelf_id(app_id);
@@ -2711,7 +2718,7 @@ class HotseatShelfAppBrowserTest : public ShelfAppBrowserTest {
 };
 
 // Verifies that hotseat should be hidden after launching the browser from
-// a context menu (https://crbug.com/1072043).
+// a context menu (https://crbug.com/40127038).
 IN_PROC_BROWSER_TEST_F(HotseatShelfAppBrowserTest, LaunchAppFromContextMenu) {
   ash::TabletModeControllerTestApi().EnterTabletMode();
 

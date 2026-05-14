@@ -493,12 +493,6 @@ BASE_FEATURE(kLocalNetworkAccessForFencedFrameNavigations,
 BASE_FEATURE(kLocalNetworkAccessForFencedFrameNavigationsWarningOnly,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables enhanced security checks for direct sockets.
-// This includes checking local/loopback network policies and prompting
-// in unmanaged Isolated Web Apps (IWAs).
-BASE_FEATURE(kLocalNetworkAccessPromptDirectSockets,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, allows the ReusePrerenderingProcessForMainFrames feature
 // and the ProcessPerSiteUpToMainFrameThreshold feature to reuse processes
 // even when DevTools was ever attached.
@@ -753,6 +747,12 @@ BASE_FEATURE(kServiceWorkerSoftUpdateOnFunctionalEvent,
 // SharedWorker connection from its own authoritative ground truth
 // (PolicyContainerHost) instead of trusting the renderer-supplied parameter.
 BASE_FEATURE(kSharedWorkerSecureContextDerivationFromBrowser,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, SharedWorkers in a third-party context (e.g. created via the
+// Storage Access API) will correctly restrict SameSite cookies on WebSocket
+// connections.
+BASE_FEATURE(kRestrictSharedWorkerWebSocketCrossSiteCookies,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables skipping the early call to CommitPending when navigating away from a

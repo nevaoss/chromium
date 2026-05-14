@@ -649,6 +649,11 @@ class CONTENT_EXPORT ContentBrowserClient {
                                       const std::string& scheme);
 
   // Returns whether a browser context involves WebRequest API.
+  // Note: In ChromeContentBrowserClient, the behavior changes based on the
+  // kOptimizeWebRequestProxyForServiceWorkerAutoPreload feature. When disabled,
+  // it returns true if any extension with 'webview' permission is installed.
+  // When enabled, it returns false for such extensions (returning true only
+  // for actual 'webRequest' or 'declarativeNetRequest' extensions).
   virtual bool HasWebRequestAPIProxy(BrowserContext* browser_context);
 
   // Returns whether the given process is allowed to commit |url|.  This is a
@@ -981,6 +986,10 @@ class CONTENT_EXPORT ContentBrowserClient {
   virtual bool AllowSharedWorkerExtendedLifetime(BrowserContext* context);
 
   virtual bool IsDataSaverEnabled(BrowserContext* context);
+
+  // Returns whether pinch-to-zoom is allowed for the given BrowserContext.
+  // Defaults to true.
+  virtual bool IsPinchToZoomAllowed(BrowserContext* context);
 
   // Updates the given prefs for Service Worker and Shared Worker. The prefs
   // are to be sent to the renderer process when a worker is created. Note that

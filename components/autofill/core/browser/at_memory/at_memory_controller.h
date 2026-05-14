@@ -72,6 +72,18 @@ class AtMemoryController {
   void OnSearchResultsReceived(
       accessibility_annotator::MemorySearchResults result);
 
+  // Fills the unmasked IBAN value after fetching it.
+  void FillIban(const Suggestion::AtMemoryPayload::Identifier& identifier,
+                const FormData& form,
+                const FormFieldData& field,
+                const Suggestion& suggestion);
+
+  // Fills the unmasked credit card value after fetching it.
+  void FillCreditCard(const Suggestion::AtMemoryPayload::Identifier& identifier,
+                      const FormData& form,
+                      const FormFieldData& field,
+                      const Suggestion& suggestion);
+
   const raw_ref<BrowserAutofillManager> manager_;
 
   AutofillSuggestionTriggerSource trigger_source_ =

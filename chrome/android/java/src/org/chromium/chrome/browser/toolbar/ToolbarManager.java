@@ -959,7 +959,7 @@ public class ToolbarManager
                                 ? mActivityLifecycleDispatcher
                                 : null,
                         mDesktopWindowStateManager);
-        // Observe tint changes to update sub-components that rely on the tint (crbug.com/1077684).
+        // Observe tint changes to update sub-components that rely on the tint (crbug.com/40688818).
         mAppThemeColorProvider.addTintObserver(this);
         mCustomTabThemeColorProvider = new SettableThemeColorProvider(/* context= */ mActivity);
 
@@ -1243,6 +1243,19 @@ public class ToolbarManager
 
         tabObscuringHandler.addObserver(this);
 
+        Runnable clickDelegate = () -> setUrlBarFocus(false, OmniboxFocusReason.UNFOCUS);
+        View scrimTarget = mCompositorViewHolder;
+        mLocationBarFocusHandler =
+                new LocationBarFocusScrimHandler(
+                        scrimManager,
+                        new TabObscuringCallback(tabObscuringHandler),
+                        /* context= */ activity,
+                        mLocationBarModel,
+                        clickDelegate,
+                        scrimTarget,
+                        mTabStripTopControlLayer.getSupplier(),
+                        mBottomControlsStacker);
+
         if (mIsCustomTab) {
             CustomTabToolbar customTabToolbar = ((CustomTabToolbar) mToolbarLayout);
             mLocationBar =
@@ -1327,32 +1340,19 @@ public class ToolbarManager
                             TabFavicon::getBitmap,
                             snackbarManager,
                             bottomContainerView,
-                            omniboxChipManager);
+                            omniboxChipManager,
+                            mLocationBarFocusHandler);
             mToolbarLayout.setLocationBarCoordinator(locationBarCoordinator);
             mToolbarLayout.setBrowserControlsVisibilityDelegate(mControlsVisibilityDelegate);
             mToolbarLayout.setBrowserControlsStateProvider(mBrowserControlsSizer);
             mLocationBar = locationBarCoordinator;
         }
 
-        Runnable clickDelegate = () -> setUrlBarFocus(false, OmniboxFocusReason.UNFOCUS);
-        View scrimTarget = mCompositorViewHolder;
-        mLocationBarFocusHandler =
-                new LocationBarFocusScrimHandler(
-                        scrimManager,
-                        new TabObscuringCallback(tabObscuringHandler),
-                        /* context= */ activity,
-                        mLocationBarModel,
-                        clickDelegate,
-                        scrimTarget,
-                        mTabStripTopControlLayer.getSupplier(),
-                        mBottomControlsStacker);
-
         var omnibox = mLocationBar.getOmniboxStub();
         if (omnibox != null) {
             mOmniboxStubSupplier.set(omnibox);
             omnibox.addUrlFocusChangeListener(this);
             omnibox.addUrlFocusChangeListener(mStatusBarColorController);
-            omnibox.addUrlFocusChangeListener(mLocationBarFocusHandler);
         }
         mLocationBar.addOmniboxSuggestionsDropdownScrollListener(mStatusBarColorController);
 
@@ -1640,7 +1640,7 @@ public class ToolbarManager
                         // Controls need to be offset to match the composited layer, which is
                         // anchored below the minimum height. In other words, the top of the toolbar
                         // composited layer is anchored at the bottom of the minimum height.
-                        // https://crbug.com/1157859 wait until the background is cleared so that
+                        // https://crbug.com/40736668 wait until the background is cleared so that
                         // the height won't be measured by the background image.
                         if (mControlContainer.getBackground() == null) {
                             setControlContainerTopMargin(getToolbarExtraYOffset());
@@ -2402,11 +2402,14 @@ public class ToolbarManager
 
         var bottomBarContainerOneshotSupplier =
                 new OneshotSupplierImpl<BottomControlsContentDelegate>();
+
+        // TODO(crbug.com/504612877): Pass the action registry once we register actions.
         BottomBarContainerCoordinator bottomBarContainerCoordinator =
                 new BottomBarContainerCoordinator(
                         bottomAppBarContainer.findViewById(R.id.bottom_container_slot),
                         mBottomControlsStacker::requestLayerUpdate,
-                        mCurrentTabSupplier);
+                        mCurrentTabSupplier,
+                        mAppThemeColorProvider);
         bottomBarContainerOneshotSupplier.set(bottomBarContainerCoordinator);
 
         if (mBottomBarHostManager != null) {
@@ -2717,7 +2720,6 @@ public class ToolbarManager
         if (omnibox != null) {
             omnibox.removeUrlFocusChangeListener(this);
             omnibox.removeUrlFocusChangeListener(mStatusBarColorController);
-            omnibox.removeUrlFocusChangeListener(mLocationBarFocusHandler);
         }
         mLocationBar.removeOmniboxSuggestionsDropdownScrollListener(mStatusBarColorController);
 
@@ -3027,7 +3029,7 @@ public class ToolbarManager
         mCurrentThemeColor = color;
         mLocationBarModel.setPrimaryColor(color);
         mToolbar.onPrimaryColorChanged(shouldAnimate);
-        // TODO(https://crbug.com/865801, pnoland): Rationalize theme color logic
+        // TODO(https://crbug.com/40585866, pnoland): Rationalize theme color logic
         // into a set of documented, self-contained providers that we can inject to the appropriate
         // sub-components. That will let us have every component handle its own coloring, and remove
         // onThemeColorChanged from ToolbarManager.

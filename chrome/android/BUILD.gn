@@ -299,7 +299,6 @@ if (_is_default_toolchain) {
       ":chrome_public_apk_template_resources",
       ":google_api_keys_java",
       ":java_overlay_resources",
-      ":system_ai_service_proto_java",
       ":usage_stats_proto_java",
       ":xr_java",
       "$google_play_services_package:google_play_services_auth_base_java",
@@ -396,6 +395,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/android/customtabs/branding:branding_common_java",
       "//chrome/browser/autofill/android:third_party_provider_java",
       "//chrome/browser/collaboration:utils_java",
+      "//chrome/browser/context_sharing/tab_bottom_sheet/android:manager_public_java",
       "//chrome/browser/data_sharing:data_sharing_public_java",
       "//chrome/browser/data_sharing:internal_library_java",
       "//chrome/browser/data_sharing:java",
@@ -557,6 +557,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/ui/android/tabstrip:java",
       "//chrome/browser/ui/android/theme:java",
       "//chrome/browser/ui/android/toolbar:java",
+      "//chrome/browser/ui/android/toolbar:optional_button_java",
       "//chrome/browser/ui/android/web_app_header:java",
       "//chrome/browser/ui/android/whats_new:java",
       "//chrome/browser/ui/browser_window/public/android:factory_java",
@@ -582,6 +583,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/xsurface:java",
       "//chrome/browser/xsurface_provider:dependency_provider_impl_java",
       "//chrome/browser/xsurface_provider:java",
+      "//components/android_autofill/browser:features_java",
       "//components/android_autofill/browser:java",
       "//components/autofill/android:autofill_features_java",
       "//components/autofill/android:autofill_java",
@@ -1021,11 +1023,6 @@ if (_is_default_toolchain) {
     sources = [ "$proto_path/website_event.proto" ]
   }
 
-  proto_java_library("system_ai_service_proto_java") {
-    proto_path = "java/src/org/chromium/chrome/browser/ai/proto"
-    sources = [ "$proto_path/system_ai_provider_service.proto" ]
-  }
-
   java_cpp_template("resource_id_javagen") {
     sources = [ "java/ResourceId.template" ]
     inputs = [
@@ -1462,6 +1459,7 @@ if (_is_default_toolchain) {
       "javatests:chrome_test_java_org.chromium.chrome.browser.toolbar",
       "javatests:chrome_test_java_org.chromium.chrome.browser.webapps",
       "javatests:chrome_test_java_various",
+      "//chrome/browser/actor/android:javatests",
       "//chrome/browser/android/browserservices/verification:javatests",
       "//chrome/browser/android/httpclient:javatests",
       "//chrome/browser/android/metrics:ukm_javatests",
@@ -2500,7 +2498,7 @@ if (_is_default_toolchain) {
     # the bundle under test.)
     "--enable-breakpad-dump",
 
-    # FRE is too flakey on some old devices https://crbug.com/1289733
+    # FRE is too flakey on some old devices https://crbug.com/40817673
     "--disable-fre",
   ]
 
@@ -2922,7 +2920,7 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/WarmupManager.java",
       "java/src/org/chromium/chrome/browser/about_settings/AboutSettingsBridge.java",
       "java/src/org/chromium/chrome/browser/accessibility/settings/AccessibilitySettingsBridge.java",
-      "java/src/org/chromium/chrome/browser/accessibility_annotator/AccessibilityAnnotatorBottomSheetBridge.java",
+      "java/src/org/chromium/chrome/browser/accessibility_annotator/first_run/AccessibilityAnnotatorFirstRunBottomSheetBridge.java",
       "java/src/org/chromium/chrome/browser/announcement/AnnouncementNotificationManager.java",
       "java/src/org/chromium/chrome/browser/app/feed/NavigationRecorder.java",
       "java/src/org/chromium/chrome/browser/app/flags/ChromeCachedFlags.java",
@@ -3018,6 +3016,7 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/media/DocumentPictureInPictureActivity.java",
       "java/src/org/chromium/chrome/browser/media/MediaCaptureDevicesDispatcherAndroid.java",
       "java/src/org/chromium/chrome/browser/media/PictureInPictureActivity.java",
+      "java/src/org/chromium/chrome/browser/media/PictureInPictureBoundsCacheBridge.java",
       "java/src/org/chromium/chrome/browser/media/router/ChromeMediaRouterClient.java",
       "java/src/org/chromium/chrome/browser/metrics/LaunchMetrics.java",
       "java/src/org/chromium/chrome/browser/metrics/UmaSessionStats.java",
@@ -3193,6 +3192,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/ui/android/logo:jni_headers",
       "//chrome/browser/ui/android/omnibox:jni_headers",
       "//chrome/browser/ui/android/preloading:jni_headers",
+      "//chrome/browser/ui/android/toolbar:adaptive_jni_headers",
       "//chrome/browser/ui/android/toolbar:jni_headers",
       "//chrome/browser/ui/android/webid:jni_headers",
       "//chrome/browser/ui/messages/android:jni_headers",
@@ -3239,7 +3239,7 @@ if (_is_default_toolchain) {
     # (otherwise, the library will warn at build time that it contains multiple
     # symbol tables). However, do not create the partitions, as they are not
     # required or packaged into the APK. This can be removed if LLD starts
-    # supporting a "no partitions" argument (https://crbug.com/1021108).
+    # supporting a "no partitions" argument (https://crbug.com/40656873).
     module_descs = []
 
     java_targets = [

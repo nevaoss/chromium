@@ -160,9 +160,7 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
             mProgressBar.setVisibility(View.VISIBLE);
         }
         mToolbarCoordinator =
-                PdfUtils.isInlinePdfV2Enabled()
-                        ? new PdfToolbarCoordinator(activity, mView, this)
-                        : null;
+                PdfUtils.isInlinePdfV2Enabled() ? new PdfToolbarCoordinator(mView, this) : null;
         // TODO(crbug.com/496635305): Remove this log after mToolbarCoordinator is used elsewhere.
         Log.d(TAG, "Toolbar coordinator is null: " + (mToolbarCoordinator == null));
         loadPdfFile(filepath);
@@ -215,7 +213,7 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
                 mPdfView.addOnViewportChangedListener(
                         (firstVisiblePage, visiblePagesCount, pageLocations, zoomLevel) -> {
                             if (mDelegate != null) {
-                                mDelegate.onPageChanged(firstVisiblePage);
+                                mDelegate.onViewportChanged(firstVisiblePage, zoomLevel);
                             }
                         });
             }
@@ -291,6 +289,12 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
                 mPdfView.scrollToPosition(new PdfPoint(pageIndex, 0f, yOffsetPoints));
             }
         }
+
+        void zoomTo(float zoomLevel) {
+            if (mPdfView != null) {
+                mPdfView.setZoom(zoomLevel);
+            }
+        }
     }
 
     /** Returns the intended view for PdfPage tab. */
@@ -320,6 +324,9 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
     void destroy() {
         mPdfSandboxHandle.close();
         mPdfSandboxHandle = null;
+        if (mToolbarCoordinator != null) {
+            mToolbarCoordinator.destroy();
+        }
         if (mChromePdfViewerFragment == null) {
             Log.w(TAG, "Fragment is null when pdf page is destroyed.");
             return;
@@ -370,6 +377,28 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
         }
         mUri = PdfUtils.getUriFromFilePath(mPdfFilePath);
         PdfUtils.recordIsUriNull(mUri == null);
+        loadPdfInternal();
+    }
+
+    void reload() {
+        if (mUri == null) {
+            return;
+        }
+        // Remove current fragment.
+        mFragmentManager
+                .beginTransaction()
+                .remove(mChromePdfViewerFragment)
+                .commitAllowingStateLoss();
+        mFragmentManager.executePendingTransactions();
+
+        // Create new fragment.
+        mChromePdfViewerFragment = new ChromePdfViewerFragment(this);
+
+        // Add new fragment and load document again.
+        loadPdfInternal();
+    }
+
+    private void loadPdfInternal() {
         if (mUri != null) {
             if (sSkipLoadPdfForTesting) {
                 mIsPdfLoaded = true;
@@ -483,6 +512,16 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
         mChromePdfViewerFragment.scrollToPage(pageIndex);
     }
 
+    /**
+     * Sets the zoom level to a specified amount.
+     *
+     * @param zoomLevel The new value of the zoom.
+     */
+    @Override
+    public void changeZoomLevel(float zoomLevel) {
+        mChromePdfViewerFragment.zoomTo(zoomLevel);
+    }
+
     // Implementation of PdfActionsDelegate
 
     @Override
@@ -505,8 +544,8 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
     }
 
     @Override
-    public void onPageChanged(int pageIndex) {
+    public void onViewportChanged(int pageIndex, float zoomLevel) {
         assert mToolbarCoordinator != null;
-        mToolbarCoordinator.onViewportChanged(pageIndex);
+        mToolbarCoordinator.onViewportChanged(pageIndex, zoomLevel);
     }
 }

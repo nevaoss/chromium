@@ -19,6 +19,7 @@
 #include "chrome/browser/ui/side_panel/side_panel_entry.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_waiter.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
+#include "chrome/browser/ui/side_panel/side_panel_enums_utils.h"
 
 #define LOG_TAG "SidePanelCoordinatorAndroid"
 #define SPLOG(message)                                     \
@@ -26,6 +27,14 @@
           chrome::android::kEnableAndroidSidePanelLogs)) { \
     LOG(ERROR) << LOG_TAG << ": " << message;              \
   }
+
+namespace {
+constexpr int kInvalidCoordinate = -1;
+const gfx::Rect kNoBounds(kInvalidCoordinate,
+                          kInvalidCoordinate,
+                          kInvalidCoordinate,
+                          kInvalidCoordinate);
+}  // namespace
 
 using base::android::AttachCurrentThread;
 using base::android::JavaRef;
@@ -64,8 +73,7 @@ void SidePanelCoordinatorAndroid::Destroy(JNIEnv* env) {
 void SidePanelCoordinatorAndroid::NotifyOpenAnimationFinished(
     JNIEnv* env,
     SidePanelType panel_type) {
-  SPLOG("NotifyOpenAnimationFinished - panel_type: "
-        << static_cast<int>(panel_type));
+  SPLOG("NotifyOpenAnimationFinished - panel_type: " << ToString(panel_type));
 
   CHECK(state_ == SidePanelState::kOpening)
       << "Should only receive open animation finished callback when side "
@@ -77,8 +85,7 @@ void SidePanelCoordinatorAndroid::NotifyOpenAnimationFinished(
 void SidePanelCoordinatorAndroid::NotifyCloseAnimationFinished(
     JNIEnv* env,
     SidePanelType panel_type) {
-  SPLOG("NotifyCloseAnimationFinished - panel_type: "
-        << static_cast<int>(panel_type));
+  SPLOG("NotifyCloseAnimationFinished - panel_type: " << ToString(panel_type));
 
   CHECK(IsClosing())
       << "Should only receive close animation finished callback when side "
@@ -138,15 +145,18 @@ void SidePanelCoordinatorAndroid::ShowFrom(
   SPLOG("ShowFrom - entry_key: "
         << entry_key.ToString() << ", starting_bounds: "
         << starting_bounds_in_browser_coordinates.ToString());
-  // TODO(crbug.com/494001629): Implement this.
+  std::optional<UniqueKey> unique_key = GetUniqueKeyForKey(entry_key);
+  CHECK(unique_key.has_value())
+      << "Entry should exist for the given key: " << entry_key.ToString();
+  last_starting_bounds_ = starting_bounds_in_browser_coordinates;
+  SidePanelUI::Show(entry_key);
 }
 
 void SidePanelCoordinatorAndroid::Close(SidePanelType panel_type,
                                         SidePanelEntryHideReason hide_reason,
                                         bool suppress_animations) {
   SPLOG("Close - panel_type: "
-        << static_cast<int>(panel_type)
-        << ", hide_reason: " << static_cast<int>(hide_reason)
+        << ToString(panel_type) << ", hide_reason: " << ToString(hide_reason)
         << ", suppress_animations: " << suppress_animations);
   CHECK(state_ == SidePanelState::kOpening || state_ == SidePanelState::kShown)
       << "Close calls should only occur for opening or shown side panels. "
@@ -155,6 +165,9 @@ void SidePanelCoordinatorAndroid::Close(SidePanelType panel_type,
 
   // Stop any pending load.
   waiter(panel_type)->ResetLoadingEntryIfNecessary();
+
+  // If a ShowFrom() was pending, clear the starting bounds.
+  last_starting_bounds_.reset();
 
   if (!IsSidePanelShowing(panel_type)) {
     return;
@@ -181,8 +194,8 @@ void SidePanelCoordinatorAndroid::Close(SidePanelType panel_type,
 
 void SidePanelCoordinatorAndroid::Toggle(SidePanelEntryKey key,
                                          SidePanelOpenTrigger open_trigger) {
-  SPLOG("Toggle - key: " << key.ToString() << ", open_trigger: "
-                         << static_cast<int>(open_trigger));
+  SPLOG("Toggle - key: " << key.ToString()
+                         << ", open_trigger: " << ToString(open_trigger));
 
   // If an entry is already showing in the sidepanel, or is currently loading,
   // the sidepanel should be closed.
@@ -227,7 +240,7 @@ void SidePanelCoordinatorAndroid::Show(
     std::optional<SidePanelOpenTrigger> open_trigger,
     bool suppress_animations) {
   SPLOG("Show - key: " << key << ", open_trigger: "
-                       << (open_trigger ? static_cast<int>(*open_trigger) : -1)
+                       << (open_trigger ? ToString(*open_trigger) : "nullopt")
                        << ", suppress_animations: " << suppress_animations);
   SidePanelEntry* entry = GetEntryForUniqueKey(key);
   if (!entry) {
@@ -250,6 +263,9 @@ void SidePanelCoordinatorAndroid::Show(
     if (*current_entry_key == key) {
       SPLOG("Show - entry is already visible.");
       waiter(entry_type)->ResetLoadingEntryIfNecessary();
+
+      // If a ShowFrom() was pending or attempted on a visible entry, clear it.
+      last_starting_bounds_.reset();
 
       // TODO(crbug.com/493931047): Handle the case where the current entry is
       // being closed, i.e., when `state_` is `SidePanelState::kClosing`.
@@ -286,8 +302,7 @@ void SidePanelCoordinatorAndroid::PopulateSidePanel(
 
   // Case 1: If the side panel isn't shown, just show it.
   if (!IsSidePanelShowing(entry->type())) {
-    Java_SidePanelCoordinatorAndroidImpl_populateSidePanel(
-        AttachCurrentThread(), java_coordinator(), native_view->view());
+    PopulateJavaSidePanel(native_view->view());
     SetCurrentKey(entry->type(), unique_key);
     entry->OnEntryShown();
 
@@ -336,8 +351,8 @@ void SidePanelCoordinatorAndroid::PopulateSidePanel(
   }
 
   previous_entry->OnEntryWillHide(previous_entry_hide_reason);
-  Java_SidePanelCoordinatorAndroidImpl_populateSidePanel(
-      AttachCurrentThread(), java_coordinator(), native_view->view());
+
+  PopulateJavaSidePanel(native_view->view());
   SetCurrentKey(entry->type(), unique_key);
   entry->OnEntryShown();
   previous_entry->OnEntryHidden();
@@ -416,7 +431,6 @@ void SidePanelCoordinatorAndroid::ClearCachedEntryViews(SidePanelType type) {
 
 ScopedJavaLocalRef<jobject> SidePanelCoordinatorAndroid::java_coordinator()
     const {
-  SPLOG("java_coordinator()");
   ScopedJavaLocalRef<jobject> local_ref =
       java_coordinator_.get(AttachCurrentThread());
 
@@ -424,6 +438,18 @@ ScopedJavaLocalRef<jobject> SidePanelCoordinatorAndroid::java_coordinator()
                       "C++ SidePanelCoordinatorAndroid, so the Java object "
                       "shouldn't be destroyed before the C++ object";
   return local_ref;
+}
+
+void SidePanelCoordinatorAndroid::PopulateJavaSidePanel(
+    const JavaRef<jobject>& view) {
+  // Pass the starting bounds to Java. If no bounds were provided (e.g. not a
+  // ShowFrom call), we use kNoBounds as a sentinel for JNI.
+  gfx::Rect start_bounds = last_starting_bounds_.value_or(kNoBounds);
+  last_starting_bounds_.reset();
+
+  Java_SidePanelCoordinatorAndroidImpl_populateSidePanel(
+      AttachCurrentThread(), java_coordinator(), view, start_bounds.x(),
+      start_bounds.y(), start_bounds.width(), start_bounds.height());
 }
 
 // ----------------------------------------------------------------------------

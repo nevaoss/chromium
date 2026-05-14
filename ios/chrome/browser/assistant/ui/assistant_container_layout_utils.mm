@@ -23,7 +23,7 @@ constexpr CGFloat kAssistantSidePanelBorderAlpha = 0.46;
 
 // Constants used for the floating card shadow.
 const CGSize kAssistantSidePanelShadowOffset = {0, 13};
-constexpr CGFloat kAssistantSidePanelShadowRadius = 125.0;
+constexpr CGFloat kAssistantSidePanelShadowRadius = 8.0;
 constexpr CGFloat kAssistantSidePanelShadowOpacity = 0.16;
 
 }  // namespace
@@ -36,11 +36,11 @@ const CGFloat kMaxBackgroundDimmingAlpha = 0.11;
 
 const CGFloat kAssistantSidePanelMaxWidth = 400.0;
 const CGFloat kAssistantSidePanelWidthMultiplier = 1.0 / 3.0;
-const CGFloat kAssistantContainerMargin = 8.0;
+const CGFloat kAssistantContainerMargin = 10.0;
 const CGFloat kAssistantSidePanelCornerRadius = 22.0;
 
 const NSTimeInterval kAssistantSheetSpringDuration = 0.3;
-const NSTimeInterval kAssistantSidePanelAnimationDuration = 0.5;
+
 const NSTimeInterval kAssistantSidePanelInsetAnimationDuration = 0.2;
 const CGFloat kAssistantSheetSpringDamping = 0.85;
 
@@ -62,7 +62,6 @@ void ApplyAssistantSidePanelAesthetics(UIView* content_view,
   if (!active) {
     content_view.layer.cornerRadius = 0.0;
     content_view.layer.borderWidth = 0.0;
-    content_view.layer.borderColor = nil;
     shadow_view.layer.shadowOpacity = 0.0;
     shadow_view.backgroundColor = [UIColor clearColor];
     return;

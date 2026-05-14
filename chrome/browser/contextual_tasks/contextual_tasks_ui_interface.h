@@ -28,9 +28,12 @@ class ClientToAimMessage;
 }  // namespace lens
 
 namespace contextual_tasks {
+class ContextualTasksComposeboxHandlerInterface;
 namespace mojom {
 class Page;
 }  // namespace mojom
+
+class ContextualTasksAutoSuggestionManager;
 
 // An interface to interact with the Contextual Tasks WebUI (ContextualTasksUI)
 // from the rest of the browser process.
@@ -42,6 +45,9 @@ class ContextualTasksUIInterface : public TaskInfoDelegate {
   };
 
   ~ContextualTasksUIInterface() override = default;
+
+  // Returns the auto-suggestion manager.
+  virtual ContextualTasksAutoSuggestionManager* GetAutoSuggestionManager() = 0;
 
   // Returns the Profile associated with this WebUI.
   virtual Profile* GetProfile() = 0;
@@ -110,6 +116,10 @@ class ContextualTasksUIInterface : public TaskInfoDelegate {
   // for the same task will return nullptr.
   virtual std::unique_ptr<contextual_search::InputStateModel>
   TakeInputStateModel() = 0;
+
+  // Registers the composebox handler with this UI.
+  virtual void SetComposeboxHandler(
+      ContextualTasksComposeboxHandlerInterface* handler) = 0;
 
   // Helpers.
 

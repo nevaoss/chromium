@@ -6,6 +6,12 @@ package org.chromium.chrome.browser.tab_bottom_sheet;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import android.graphics.Color;
 
@@ -20,6 +26,7 @@ import org.junit.runner.RunWith;
 
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.Criteria;
@@ -29,6 +36,7 @@ import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.content.WebContentsFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.permissions.PermissionTestRule;
 import org.chromium.chrome.browser.tab.Tab;
@@ -42,6 +50,7 @@ import org.chromium.chrome.test.transit.page.WebPageStation;
 import org.chromium.chrome.test.util.browser.LocationSettingsTestUtil;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.modaldialog.ModalDialogView;
+import org.chromium.components.browser_ui.widget.TouchEventProvider;
 import org.chromium.content.browser.input.ImeAdapterImpl;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
@@ -77,7 +86,7 @@ public class TabBottomSheetManagerTest {
     private ChromeTabbedActivity mActivity;
     private WindowAndroid mWindowAndroid;
     private BottomSheetController mBottomSheetController;
-    private TabBottomSheetManager mManager;
+    private TabBottomSheetManagerImpl mManager;
 
     @Before
     public void setUp() throws InterruptedException {
@@ -96,8 +105,16 @@ public class TabBottomSheetManagerTest {
                             (TabbedRootUiCoordinator) mActivity.getRootUiCoordinatorForTesting();
                     mBottomSheetController = tabbedRootUiCoordinator.getBottomSheetController();
                     var compositorViewHolder = mActivity.getCompositorViewHolderSupplier().get();
-                    mCoBrowseViews = new CoBrowseViews(mActivity, null, null, Color.WHITE);
-                    mManager = tabbedRootUiCoordinator.getTabBottomSheetManagerForTesting();
+                    mCoBrowseViews =
+                            new CoBrowseViews(
+                                    mActivity,
+                                    TabBottomSheetClientType.UNKNOWN,
+                                    null,
+                                    null,
+                                    Color.WHITE);
+                    mManager =
+                            (TabBottomSheetManagerImpl)
+                                    tabbedRootUiCoordinator.getTabBottomSheetManagerForTesting();
                 });
     }
 
@@ -125,6 +142,42 @@ public class TabBottomSheetManagerTest {
 
     @Test
     @SmallTest
+    public void testTryToShowBottomSheet_Failed_HideContentCalled() {
+        BottomSheetController mockBottomSheetController = mock(BottomSheetController.class);
+        OneshotSupplier<LayoutStateProvider> mockLayoutStateProviderSupplier =
+                mock(OneshotSupplier.class);
+        TouchEventProvider mockTouchEventProvider = mock(TouchEventProvider.class);
+
+        when(mockBottomSheetController.requestShowContent(any(), anyBoolean())).thenReturn(false);
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    TabBottomSheetManager oldManager =
+                            TabBottomSheetUtils.getManagerFromWindow(mWindowAndroid);
+                    TabBottomSheetManagerImpl manager =
+                            new TabBottomSheetManagerImpl(
+                                    mActivity,
+                                    mWindowAndroid,
+                                    mockBottomSheetController,
+                                    mockLayoutStateProviderSupplier,
+                                    mockTouchEventProvider);
+
+                    manager.tryToShowBottomSheet(
+                            mDelegate,
+                            mCoBrowseViews,
+                            /* animate= */ false,
+                            /* startsExpanded= */ true);
+
+                    manager.destroy();
+
+                    TabBottomSheetUtils.attachManagerToWindow(mWindowAndroid, oldManager);
+                });
+
+        verify(mockBottomSheetController).hideContent(any(), anyBoolean(), anyInt());
+    }
+
+    @Test
+    @SmallTest
     public void testOpenWebPageAndEnsureKeyboardEventsWork() {
         final String data = "<html><body><input type='text' id='input_text'></body></html>";
         final String url = "data:text/html," + data;
@@ -138,7 +191,9 @@ public class TabBottomSheetManagerTest {
                 ThreadUtils.runOnUiThreadBlocking(
                         () ->
                                 CoBrowseViewFactory.buildCoBrowseViews(
-                                        mWindowAndroid, webContents, /* showFusebox= */ false));
+                                        mWindowAndroid,
+                                        webContents,
+                                        TabBottomSheetClientType.UNKNOWN));
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -182,7 +237,9 @@ public class TabBottomSheetManagerTest {
                 ThreadUtils.runOnUiThreadBlocking(
                         () ->
                                 CoBrowseViewFactory.buildCoBrowseViews(
-                                        mWindowAndroid, webContents, /* showFusebox= */ false));
+                                        mWindowAndroid,
+                                        webContents,
+                                        TabBottomSheetClientType.UNKNOWN));
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {

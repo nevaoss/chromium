@@ -134,7 +134,7 @@ bool HasSingleNewTabPage(Browser* browser) {
   }
   content::WebContents* active_tab =
       browser->tab_strip_model()->GetWebContentsAt(0);
-  return active_tab->GetURL() == chrome::kChromeUINewTabURL ||
+  return active_tab->GetURL() == chrome::ChromeUINewTabURLAsGURL() ||
          search::IsInstantNTP(active_tab);
 }
 
@@ -475,7 +475,7 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
         // No tab browsers were created and no URLs were supplied on the command
         // line, or only the What's New page is specified at startup and may or
         // may not add a tab. Open the new tab page.
-        startup_tabs_.emplace_back(GURL(chrome::kChromeUINewTabURL));
+        startup_tabs_.emplace_back(chrome::ChromeUINewTabURLAsGURL());
       }
       AppendURLsToBrowser(browser, startup_tabs_);
       browser->window()->Show();
@@ -1004,7 +1004,7 @@ class SessionRestoreImpl : public BrowserCollectionObserver {
               ->RecreateSessionStorage(tab.session_storage_persistent_id);
     }
 
-    // Relabel group IDs to prevent duplicating groups. See crbug.com/1202102.
+    // Relabel group IDs to prevent duplicating groups. See crbug.com/40055647.
     std::optional<tab_groups::TabGroupId> new_group;
     if (tab.group) {
       auto it = new_group_ids->find(*tab.group);

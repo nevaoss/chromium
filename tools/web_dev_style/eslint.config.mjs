@@ -108,23 +108,36 @@ export default [
       // No point checking minify_js expected output tests.
       'ui/webui/resources/tools/tests/minify_js/*_expected.js',
 
-      // ESLint is disabled for camera_app_ui and recorder_app_ui as they used
-      // a custom eslint plugin that does not work with the latest eslint, and
-      // they had complex eslint rc files that have not been updated to the
-      // latest eslint. See https://crbug.com/368085620.
-      'ash/webui/camera_app_ui/resources/**/*',
-      'ash/webui/recorder_app_ui/resources/**/*',
-
       // ESLint is disabled for directories that use custom linting rules,
       // which is no longer supported. TODO(https://crbug.com/369766161):
       // Bring directories into conformance to re-enable linting.
-      'ash/webui/**/*',
+      'ash/webui/*',
       'chrome/browser/resources/chromeos/**/*',
       'chrome/test/data/webui/chromeos/**/*.js',
 
-      // TODO(https://crbug.com/41446521): Bring extension test files into
+      // camera_app_ui and recorder_app_ui conforms to global ESLint.
+      '!ash/webui/camera_app_ui',
+      '!ash/webui/recorder_app_ui',
+
+      // TODO(https://crbug.com/41446521): Bring these extension test files into
       // conformance.
-      'chrome/test/data/extensions/**/*',
+      // Temporarily omitted until files are updated.
+      'chrome/test/data/extensions/api_test/*',
+      // Temporarily omitted. These files contain scripts that are wrapped on
+      // the C++ side in functions, and so they currently have "floating"
+      // return statements. This causes eslint to fail in parsing and can't be
+      // manually disabled with an `eslint-disable` comment (because it's a
+      // parsing error, rather than an actual linting issue).
+      'chrome/test/data/extensions/webui/*',
+      'chrome/test/data/extensions/webui_untrusted/*',
+
+      // Omitted: These are "raw" dumps from user data dirs. We shouldn't bother
+      // formatting / linting them.
+      'chrome/test/data/extensions/profiles/*',
+      'chrome/test/data/extensions/good/*',
+
+      // Omitted: Platform apps are deprecated on all platforms.
+      'chrome/test/data/extensions/platform_apps/*',
     ],
   },
   {

@@ -104,8 +104,17 @@ BASE_FEATURE(kContextualTasksUpdateModelOnNavigation,
 
 BASE_FEATURE(kContextualTasksVideoCitations, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kContextualTasksPdfCitations, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables custom UI for NLM.
+BASE_FEATURE(kContextualTasksCustomNlmUi, base::FEATURE_ENABLED_BY_DEFAULT);
+
 bool GetIsContextualTasksUpdateModeOnNavigationEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksUpdateModelOnNavigation);
+}
+
+bool GetIsContextualTasksPdfCitationsEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksPdfCitations);
 }
 
 const base::FeatureParam<bool> kContextualTasksLockAndUnlockInputCapability(
@@ -128,6 +137,11 @@ const base::FeatureParam<bool> kContextualTasksEnableCookieSync(
     "ContextualTasksEnableCookieSync",
     true);
 
+const base::FeatureParam<bool> kContextualTasksEnableCookiePrefetch(
+    &kContextualTasks,
+    "ContextualTasksEnableCookiePrefetch",
+    false);
+
 const base::FeatureParam<bool> kOnlyUseTitlesForSimilarity(
     &kContextualTasksContext,
     "ContextualTasksContextOnlyUseTitles",
@@ -135,7 +149,7 @@ const base::FeatureParam<bool> kOnlyUseTitlesForSimilarity(
 
 const base::FeatureParam<double> kTabSelectionScoreThreshold{
     &kContextualTasksContext,
-    "ContextualTasksContextTabSelectionScoreThreshold", 0.8};
+    "ContextualTasksContextTabSelectionScoreThreshold", 0.4};
 
 const base::FeatureParam<double> kContentVisibilityThreshold{
     &kContextualTasksContext,
@@ -157,7 +171,7 @@ const base::FeatureParam<base::TimeDelta> kSmartTabSharingTabSelectionTimeout(
 const base::FeatureParam<double> kSmartTabSharingPromoScoreThreshold(
     &kContextualTasksContext,
     "ContextualTasksContextSmartTabSharingPromoScoreThreshold",
-    0.9);
+    0.6);
 
 const base::FeatureParam<double> kContextualTasksContextLoggingSampleRate{
     &kContextualTasksContextLogging, "ContextualTasksContextLoggingSampleRate",
@@ -280,6 +294,10 @@ const base::FeatureParam<bool> kContextualTasksEnableNativeZeroStateSuggestions(
     &kContextualTasks,
     "ContextualTasksEnableNativeZeroStateSuggestions",
     true);
+
+// The URL parameter name to check for NLM mode.
+const base::FeatureParam<std::string> kContextualTasksNlmUrlParam{
+    &kContextualTasksCustomNlmUi, "ContextualTasksNlmUrlParam", "ajid"};
 
 const base::FeatureParam<std::string> kContextualTasksDisplayUrlScheme(
     &kContextualTasks,
@@ -485,6 +503,14 @@ bool GetEnableNativeZeroStateSuggestions() {
   return kContextualTasksEnableNativeZeroStateSuggestions.Get();
 }
 
+std::string GetContextualTasksNlmUrlParam() {
+  return kContextualTasksNlmUrlParam.Get();
+}
+
+bool IsCustomNlmUiEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksCustomNlmUi);
+}
+
 bool ShouldUseSearchResultsScope() {
   return base::FeatureList::IsEnabled(kContextualTasksScopeChange);
 }
@@ -499,6 +525,10 @@ bool ShouldEnableBasicModeZOrder() {
 
 bool ShouldEnableCookieSync() {
   return kContextualTasksEnableCookieSync.Get();
+}
+
+bool ShouldEnableCookiePrefetch() {
+  return kContextualTasksEnableCookiePrefetch.Get();
 }
 
 bool ShouldEnableLockAndUnlockInputCapability() {

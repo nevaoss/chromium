@@ -310,7 +310,7 @@ class TabHoverCardBubbleView::ThumbnailView
     // destructed and has no theme provider, skip trying to fade out since a
     // ColorProvider is needed for fading out placeholder images. (Note that
     // GetColorProvider() returns nullptr if there is no widget.)
-    // See: crbug.com/1246914
+    // See: crbug.com/40789563
     if (!GetVisible() || !GetColorProvider()) {
       return;
     }
@@ -655,7 +655,7 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(TabHoverCardBubbleView,
 TabHoverCardBubbleView::TabHoverCardBubbleView(
     HoverCardAnchorTarget* anchor_target,
     const InitParams& params)
-    : BubbleDialogDelegateView(anchor_target->GetAnchorView(),
+    : BubbleDialogDelegateView(anchor_target->GetAnchor(),
                                anchor_target->GetAnchorPosition(),
                                views::BubbleBorder::STANDARD_SHADOW),
       tab_style_(TabStyle::Get()),

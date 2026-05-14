@@ -45,10 +45,6 @@
 #include "content/public/browser/web_contents.h"
 #include "third_party/abseil-cpp/absl/functional/overload.h"
 
-#if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/ui/browser_list.h"
-#endif
-
 namespace glic {
 
 namespace {
@@ -316,6 +312,17 @@ void GlicInstanceCoordinatorImpl::InvokeWithAutoSubmit(
     InvokeWithAutoSubmitPasskey auto_submit_passkey,
     GlicInvokeOptions options) {
   InvokeInternal(auto_submit_passkey, std::move(options));
+}
+
+void GlicInstanceCoordinatorImpl::GetExperimentalTriggeringUpdates(
+    mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
+    base::OnceCallback<void(bool)> success_status_callback) {
+  if (active_instance_) {
+    active_instance_->host().getExperimentalTriggeringUpdates(
+        std::move(handler), std::move(success_status_callback));
+  } else {
+    std::move(success_status_callback).Run(false);
+  }
 }
 
 void GlicInstanceCoordinatorImpl::InvokeInternal(

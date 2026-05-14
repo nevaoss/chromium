@@ -5,9 +5,11 @@
 #import "ios/chrome/browser/toolbar/ui/toolbar_view_controller.h"
 
 #import "base/apple/foundation_util.h"
+#import "base/cancelable_callback.h"
 #import "base/notimplemented.h"
 #import "base/notreached.h"
-#import "ios/chrome/browser/composebox/coordinator/composebox_entrypoint.h"
+#import "base/task/sequenced_task_runner.h"
+#import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
@@ -17,6 +19,7 @@
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/shared/ui/util/util_swift.h"
 #import "ios/chrome/browser/toolbar/legacy/ui_bundled/public/toolbar_constants.h"
+#import "ios/chrome/browser/toolbar/legacy/ui_bundled/toolbar_progress_bar.h"
 #import "ios/chrome/browser/toolbar/tab_group/ui/tab_group_indicator_constants.h"
 #import "ios/chrome/browser/toolbar/tab_group/ui/tab_group_indicator_view.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button.h"
@@ -32,6 +35,7 @@
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
 #import "ios/chrome/common/ui/util/ui_util.h"
 #import "ui/base/device_form_factor.h"
+#import "ui/gfx/ios/uikit_util.h"
 
 namespace {
 
@@ -56,6 +60,10 @@ constexpr CGFloat kLocationBarStackViewMarginLandscape = 18;
 // Max width of the location bar.
 constexpr CGFloat kLocationBarMaxWidth = 600;
 
+// Timing to finish the animation of the progress bar before hiding it.
+const base::TimeDelta kProgressBarEndAnimationDuration =
+    base::Milliseconds(250);
+
 }  // namespace
 
 @interface ToolbarViewController () <TabGroupIndicatorViewDelegate>
@@ -74,6 +82,16 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   ToolbarButton* _tabGridButton;
   UIMenu* _tabGridButtonMenu;
   ToolbarButton* _toolsMenuButton;
+
+  // Page load progress bar on the edge of the toolbar.
+  ToolbarProgressBar* _progressBar;
+
+  // Separator line for the toolbar. Visible when the toolbar has the omnibox
+  // or when the tab group indicator is visible.
+  UIView* _separator;
+
+  // Closure to cancel hiding the progress bar when a new page load starts.
+  base::CancelableOnceClosure _hideProgressBarClosure;
 
   // Dynamic container for the `_backButton` and `_forwardButton` Toolbar
   // navigation buttons in the `_leadingStackView`.
@@ -97,6 +115,9 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   NSLayoutConstraint* _locationBarHeightConstraint;
   // The constraint for the bottom padding of the toolbar.
   NSLayoutConstraint* _locationBarBottomPaddingConstraint;
+  // The constraint for the top padding of the toolbar when collapsed above the
+  // keyboard.
+  NSLayoutConstraint* _locationBarTopConstraint;
 
   // Constraints for the tabGroupIndicator.
   NSLayoutConstraint* _tabGroupIndicatorActiveToolbarConstraint;
@@ -111,6 +132,9 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   NSLayoutConstraint* _leadingStackLeadingConstraint;
   NSLayoutConstraint* _trailingStackTrailingConstraint;
 
+  // Whether this toolbar is in the top position.
+  BOOL _topPosition;
+
   // Whether this toolbar is currently visible.
   /// TODO(crbug.com/493268305): Clean up the animation dismissing the toolbar
   /// when navigating to a page where it is not visible (e.g. the New Tab Page).
@@ -122,14 +146,18 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   // Whether the visible page is the NTP.
   BOOL _NTPVisible;
 
+  // Whether the visible page is loading.
+  BOOL _isLoading;
+
   // Used to record the latest fullscreen progress.
   CGFloat _fullscreenProgress;
 }
 
-- (instancetype)initInIncognito:(BOOL)incognito {
+- (instancetype)initInIncognito:(BOOL)incognito topPosition:(BOOL)topPosition {
   self = [super initWithNibName:nil bundle:nil];
   if (self) {
     _incognito = incognito;
+    _topPosition = topPosition;
   }
   return self;
 }
@@ -146,6 +174,8 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   }
   _tabGroupIndicatorView.hidden = YES;
   _tabGroupIndicatorView.delegate = self;
+  // ToolbarViewController will show its own _separator, when needed.
+  _tabGroupIndicatorView.showSeparator = NO;
   _tabGroupIndicatorView.translatesAutoresizingMaskIntoConstraints = NO;
   [self.view addSubview:_tabGroupIndicatorView];
 
@@ -323,8 +353,32 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
 }
 
 - (void)setIsLoading:(BOOL)isLoading {
+  if (_isLoading == isLoading) {
+    return;
+  }
+
+  _isLoading = isLoading;
   _reloadButton.forceHidden = isLoading;
   _stopButton.forceHidden = !isLoading;
+
+  if (!_progressBar) {
+    return;
+  }
+
+  if (_isLoading) {
+    [_progressBar setProgress:0 animated:NO];
+  }
+  [self updateProgressBarVisibility];
+}
+
+- (void)setLoadingProgress:(double)progress {
+  if (!_progressBar || progress == _progressBar.progress) {
+    return;
+  }
+
+  BOOL isGoingBackward = progress < _progressBar.progress;
+  [_progressBar setProgress:progress
+                   animated:!_progressBar.hidden && !isGoingBackward];
 }
 
 - (void)setShareEnabled:(BOOL)enabled {
@@ -386,8 +440,12 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
 - (void)setLocationIndicatorVisible:(BOOL)locationIndicatorVisible
                     forNotification:(NSNotification*)notification {
   if (locationIndicatorVisible) {
+    _locationBarBottomPaddingConstraint.active = NO;
+    _locationBarTopConstraint.active = YES;
     [self.toolbarHeightDelegate secondaryToolbarMovedAboveKeyboard];
   } else {
+    _locationBarTopConstraint.active = NO;
+    _locationBarBottomPaddingConstraint.active = YES;
     [self.toolbarHeightDelegate secondaryToolbarRemovedFromKeyboard];
     [GetFirstResponder() resignFirstResponder];
   }
@@ -473,6 +531,7 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
 
 - (void)tabGroupIndicatorViewVisibilityUpdated:(BOOL)visible {
   _tabGroupIndicatorView.hidden = !visible;
+  _separator.hidden = !(visible || [self hasOmnibox]);
   [self.toolbarHeightDelegate toolbarsHeightChanged];
 }
 
@@ -487,7 +546,6 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
     _tabGroupIndicatorActiveToolbarConstraint.active = NO;
     _tabGroupIndicatorInactiveToolbarConstraint.active = YES;
   }
-  _tabGroupIndicatorView.showSeparator = !_visible;
 
   BOOL canShowTabStrip = CanShowTabStrip(self);
   BOOL isAvailable = !IsCompactHeight(self) && !canShowTabStrip;
@@ -575,6 +633,14 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   return locationBarContainer;
 }
 
+// Creates a loading progress bar.
+- (ToolbarProgressBar*)createProgressBar {
+  ToolbarProgressBar* progressBar = [[ToolbarProgressBar alloc] init];
+  progressBar.translatesAutoresizingMaskIntoConstraints = NO;
+  progressBar.hidden = YES;
+  return progressBar;
+}
+
 // Creates the views.
 - (void)createView {
   CHECK(self.buttonFactory);
@@ -585,6 +651,12 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   if (CanShowTabStrip(self)) {
     _fakeOmniboxTarget = [self createFakeOmniboxTarget];
   }
+  _progressBar = [self createProgressBar];
+
+  _separator = [[UIView alloc] init];
+  _separator.backgroundColor = [UIColor colorNamed:kToolbarShadowColor];
+  _separator.translatesAutoresizingMaskIntoConstraints = NO;
+  _separator.hidden = YES;
 
   _backButton = [self.buttonFactory makeBackButton];
   _backButton.menu = _backButtonMenu;
@@ -653,12 +725,45 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   [self.view addSubview:_leadingStackView];
   [self.view addSubview:_locationBarContainer];
 
-  if (CanShowTabStrip(self)) {
+  if (_fakeOmniboxTarget) {
     [self.view addSubview:_fakeOmniboxTarget];
     AddSameConstraints(_locationBarContainer, _fakeOmniboxTarget);
   }
 
   [self.view addSubview:_trailingStackView];
+  [self.view addSubview:_progressBar];
+  [self.view addSubview:_separator];
+
+  NSLayoutConstraint* progressBarEdgeConstraint =
+      _topPosition ? [_progressBar.bottomAnchor
+                         constraintEqualToAnchor:self.view.bottomAnchor]
+                   : [_progressBar.topAnchor
+                         constraintEqualToAnchor:self.view.topAnchor];
+
+  [NSLayoutConstraint activateConstraints:@[
+    [_progressBar.leadingAnchor
+        constraintEqualToAnchor:self.view.leadingAnchor],
+    [_progressBar.trailingAnchor
+        constraintEqualToAnchor:self.view.trailingAnchor],
+    [_progressBar.heightAnchor constraintEqualToConstant:kProgressBarHeight],
+    progressBarEdgeConstraint
+  ]];
+
+  NSLayoutConstraint* separatorEdgeConstraint =
+      _topPosition
+          ? [_separator.bottomAnchor
+                constraintEqualToAnchor:self.view.bottomAnchor]
+          : [_separator.topAnchor constraintEqualToAnchor:self.view.topAnchor];
+
+  [NSLayoutConstraint activateConstraints:@[
+    [_separator.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+    [_separator.trailingAnchor
+        constraintEqualToAnchor:self.view.trailingAnchor],
+    [_separator.heightAnchor
+        constraintEqualToConstant:ui::AlignValueToUpperPixel(
+                                      kToolbarSeparatorHeight)],
+    separatorEdgeConstraint
+  ]];
 
   _locationBarHeightConstraint = [_locationBarContainer.heightAnchor
       constraintEqualToConstant:kLocationBarHeight];
@@ -668,6 +773,9 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
       constraintEqualToAnchor:self.view.bottomAnchor
                      constant:-kToolbarPadding];
   _locationBarBottomPaddingConstraint.active = YES;
+
+  _locationBarTopConstraint = [_locationBarContainer.topAnchor
+      constraintEqualToAnchor:self.view.topAnchor];
 
   [NSLayoutConstraint activateConstraints:@[
     [_leadingStackView.centerYAnchor
@@ -859,12 +967,62 @@ constexpr CGFloat kLocationBarMaxWidth = 600;
   [self.toolbarHeightDelegate toolbarsHeightChanged];
 }
 
+// Returns whether the toolbar has the omnibox.
+- (BOOL)hasOmnibox {
+  return !_locationBarContainer.isHidden && _locationBarContainer.alpha != 0.0;
+}
+
 // Updates the visibility of the toolbar elements.
 - (void)updateToolbarElementsVisibility {
   _leadingStackView.hidden = !_visible;
   _locationBarContainer.hidden = !_visible;
   _trailingStackView.hidden = !_visible;
+  _separator.hidden = !(!_tabGroupIndicatorView.hidden || [self hasOmnibox]);
   [self.toolbarHeightDelegate toolbarsHeightChanged];
+}
+
+// Starts or stops the loading progress bar.
+- (void)updateProgressBarVisibility {
+  CHECK(_progressBar);
+
+  if (![self hasOmnibox]) {
+    _progressBar.hidden = YES;
+    return;
+  }
+
+  [self.view layoutIfNeeded];
+
+  // Cancel any pending task to hide the progress bar.
+  _hideProgressBarClosure.Cancel();
+
+  __weak __typeof(self) weakSelf = self;
+
+  // Start and unhide the progress bar.
+  if (_isLoading && !_NTPVisible && !CanShowTabStrip(self) &&
+      (_progressBar.isHidden || _progressBar.alpha < 1.0)) {
+    [_progressBar setProgress:0 animated:NO];
+    [_progressBar setHidden:NO
+                   animated:YES
+                 completion:^(BOOL) {
+                   [weakSelf updateProgressBarVisibility];
+                 }];
+  } else if (!_isLoading && !_progressBar.hidden) {
+    // Stop and hide the progress bar.
+    __weak ToolbarProgressBar* progressBar = _progressBar;
+    [_progressBar setProgress:1 animated:YES];
+
+    _hideProgressBarClosure.Reset(base::BindOnce(^{
+      [progressBar setHidden:YES
+                    animated:YES
+                  completion:^(BOOL) {
+                    [weakSelf updateProgressBarVisibility];
+                  }];
+    }));
+
+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE, _hideProgressBarClosure.callback(),
+        kProgressBarEndAnimationDuration);
+  }
 }
 
 // Called when the size class is updated.

@@ -42,6 +42,7 @@ CONTENT_EXPORT extern const base::FeatureParam<int>
 CONTENT_EXPORT extern const base::FeatureParam<double>
     kAndroidNavigationAnimationBlurSigma;
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAndroidPkAutocorrectUnderline);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kAndroidPkAutocorrectUnderlineV2);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kAndroidBlockMisspellingSuggestionSpanInCompositionMode);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
@@ -179,6 +180,7 @@ CONTENT_EXPORT extern const char kIsolateOriginsFieldTrialParamName[];
 #if BUILDFLAG(IS_ANDROID)
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kJavalessRendererExperimentOn);
 #endif
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kKeepAliveReportBlockedByClient);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kLazyBrowserInterfaceBroker);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kLoadingPredictorLimitPreconnectSocketCount);
@@ -283,6 +285,8 @@ CONTENT_EXPORT extern const base::FeatureParam<base::TimeDelta>
     kSiteIsolationForCrossOriginOpenerPolicyExpirationTimeoutParam;
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kDisableProcessReuse);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerAutoPreload);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(
+    kOptimizeWebRequestProxyForServiceWorkerAutoPreload);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kServiceWorkerStaticRouterRaceNetworkRequestPerformanceImprovement);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kUserMediaCaptureOnFocus);

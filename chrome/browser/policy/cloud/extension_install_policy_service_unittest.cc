@@ -4,8 +4,11 @@
 
 #include "chrome/browser/policy/cloud/extension_install_policy_service.h"
 
+#include "base/command_line.h"
 #include "chrome/browser/extensions/extension_management.h"
 #include "chrome/browser/extensions/extension_management_test_util.h"
+#include "chrome/browser/extensions/test_extension_system.h"
+#include "chrome/browser/policy/cloud/extension_install_policy_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
@@ -21,7 +24,10 @@
 #include "components/prefs/pref_service.h"
 #include "components/sync_preferences/testing_pref_service_syncable.h"
 #include "content/public/test/browser_task_environment.h"
+#include "extensions/browser/disable_reason.h"
+#include "extensions/browser/extension_prefs.h"
 #include "extensions/browser/pref_names.h"
+#include "extensions/common/extension_builder.h"
 #include "extensions/common/extension_urls.h"
 #include "services/network/test/test_network_connection_tracker.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -78,12 +84,13 @@ class ExtensionInstallPolicyServiceTest : public testing::Test {
     manager->Init(&schema_registry_);
     manager->Connect(g_browser_process->local_state(), std::move(client_));
 #endif  // !BUILDFLAG(IS_CHROMEOS)
-    service_ = std::make_unique<ExtensionInstallPolicyServiceImpl>(profile());
+    service_ = static_cast<ExtensionInstallPolicyServiceImpl*>(
+        ExtensionInstallPolicyServiceFactory::GetForBrowserContext(profile()));
   }
 
   void TearDown() override {
     service_->Shutdown();
-    service_.reset();
+    service_ = nullptr;
     profile_.reset();
   }
 
@@ -96,7 +103,7 @@ class ExtensionInstallPolicyServiceTest : public testing::Test {
             dm_protocol::GetChromeUserPolicyType());
     std::unique_ptr<MockUserCloudPolicyStore>
         mock_user_cloud_policy_extension_install_store;
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
     mock_user_cloud_policy_extension_install_store =
         std::make_unique<MockUserCloudPolicyStore>(
             dm_protocol::kChromeExtensionInstallUserCloudPolicyType);
@@ -116,7 +123,7 @@ class ExtensionInstallPolicyServiceTest : public testing::Test {
   std::unique_ptr<MockConfigurationPolicyProvider> policy_provider_;
   std::unique_ptr<MockCloudPolicyClient> client_;
   std::unique_ptr<TestingProfile> profile_;
-  std::unique_ptr<ExtensionInstallPolicyServiceImpl> service_;
+  raw_ptr<ExtensionInstallPolicyServiceImpl> service_;
   base::test::ScopedFeatureList scoped_feature_list_{
       features::kEnableExtensionInstallPolicyFetching};
   SchemaRegistry schema_registry_;
@@ -146,6 +153,62 @@ TEST_F(ExtensionInstallPolicyServiceTest, IsExtensionAllowedUnknown) {
                    .IsExtensionAllowed(
                        ExtensionIdAndVersion(kExtensionId, kExtensionVersion))
                    .has_value());
+  service.Shutdown();
+}
+
+TEST_F(ExtensionInstallPolicyServiceTest, MustRemainDisabledWhileUnknown) {
+  // Mock PolicyService to return unknown for extension install policies.
+  auto policy_service = std::make_unique<MockPolicyService>();
+  bool extension_install_policy_initialized = false;
+  PolicyMap empty_policy_map;
+
+  EXPECT_CALL(*policy_service, IsInitializationComplete(testing::_))
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*policy_service,
+              IsInitializationComplete(POLICY_DOMAIN_EXTENSION_INSTALL))
+      .WillRepeatedly(
+          testing::ReturnPointee(&extension_install_policy_initialized));
+  EXPECT_CALL(*policy_service, GetPolicies(testing::_))
+      .WillRepeatedly(testing::ReturnRef(empty_policy_map));
+
+  EXPECT_CALL(*policy_service, AddObserver(testing::_, testing::_))
+      .Times(testing::AnyNumber());
+  EXPECT_CALL(*policy_service, RemoveObserver(testing::_, testing::_))
+      .Times(testing::AnyNumber());
+
+  // We need a profile with this mocked policy service.
+  TestingProfile::Builder builder;
+  builder.SetPolicyService(std::move(policy_service));
+  auto test_profile = builder.Build();
+  test_profile->GetPrefs()->SetBoolean(
+      extensions::pref_names::kExtensionInstallCloudPolicyChecksEnabled, true);
+
+  ExtensionInstallPolicyServiceImpl service(test_profile.get());
+
+  // Create an extension.
+  scoped_refptr<const extensions::Extension> extension =
+      extensions::ExtensionBuilder("test").SetID(kExtensionId).Build();
+
+  // 1. If the extension was NOT disabled by policy, it should NOT remain
+  // disabled.
+  EXPECT_FALSE(service.MustRemainDisabled(extension.get(), nullptr));
+
+  // 2. Set the disable reason.
+  extensions::ExtensionPrefs::Get(test_profile.get())
+      ->AddDisableReason(kExtensionId,
+                         extensions::disable_reason::DISABLE_BLOCKED_BY_POLICY);
+
+  // The extension should now remain disabled because the policy value is not
+  // known.
+  EXPECT_TRUE(service.MustRemainDisabled(extension.get(), nullptr));
+
+  // 3. Initialize the policies.
+  extension_install_policy_initialized = true;
+
+  // The extension should NO LONGER remain disabled because the policy value
+  // is now known (and it's allowed by default).
+  EXPECT_FALSE(service.MustRemainDisabled(extension.get(), nullptr));
+
   service.Shutdown();
 }
 

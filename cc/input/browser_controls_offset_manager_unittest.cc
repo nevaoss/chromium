@@ -131,8 +131,9 @@ class MockBrowserControlsOffsetManagerClient
     viewport_scroll_offset_ = gfx::PointF(x, y);
   }
 
-  void ScrollVerticallyBy(float dy) {
-    gfx::Vector2dF viewport_scroll_delta = manager()->ScrollBy({0.0f, dy});
+  void ScrollVerticallyBy(float dy, bool is_inertial = false) {
+    gfx::Vector2dF viewport_scroll_delta =
+        manager()->ScrollBy({0.0f, dy}, is_inertial);
     viewport_scroll_offset_ += viewport_scroll_delta;
   }
 
@@ -1825,20 +1826,37 @@ class BrowserControlsOffsetManagerSnapAnimationTest : public testing::Test {
     AnimationDirection scroll_end_animation_direction_;
   };
 
-  // Returns true if scrolling the client by the given scroll delta triggered a
-  // snap animation. Also checks if the triggered animation is configured
-  // correctly.
+  void ScrollBy(float scroll_y,
+                base::TimeDelta time_delta_from_previous_scroll_update =
+                    base::Milliseconds(1),
+                bool is_inertial = false) {
+    constexpr base::TimeDelta kEpsilonTimeDelta = base::Microseconds(1);
+
+    // Advance the mock clock to ensure that the second scroll update is not
+    // coalesced with the first and is treated as a new sample. Also, split the
+    // scroll delta into two parts since BrowserControlsOffsetManager requires
+    // at least two samples in the scroll velocity tracker to trigger the
+    // animation.
+    mock_clock_.Advance(time_delta_from_previous_scroll_update -
+                        kEpsilonTimeDelta);
+    client_.ScrollVerticallyBy(scroll_y / 2, is_inertial);
+
+    mock_clock_.Advance(kEpsilonTimeDelta);
+    client_.ScrollVerticallyBy(scroll_y / 2, is_inertial);
+  }
+
+  // Returns assertion success if scrolling the client by the given scroll delta
+  // triggered a snap animation, and failure otherwise. Also checks if the
+  // triggered animation is configured correctly.
   testing::AssertionResult ScrollDidAnimate(
       float scroll_y,
       AnimationDirection animation_direction,
       base::TimeDelta time_delta_from_previous_scroll_update =
-          base::Milliseconds(1)) {
+          base::Milliseconds(1),
+      bool is_inertial = false) {
     BrowserControlsOffsetManager* manager = client_.manager();
+    ScrollBy(scroll_y, time_delta_from_previous_scroll_update, is_inertial);
 
-    // Advance the mock clock by 1ms to ensure that the second scroll update is
-    // not coalesced with the first and is treated as a new sample.
-    mock_clock_.Advance(time_delta_from_previous_scroll_update);
-    client_.ScrollVerticallyBy(scroll_y);
     if (!manager->HasAnimation()) {
       if (animation_direction == AnimationDirection::kNone) {
         return testing::AssertionSuccess();
@@ -1928,8 +1946,8 @@ TEST_F(BrowserControlsOffsetManagerSnapAnimationTest,
     //   controls.
     //   2. Scrolling up so that net scroll is equal to controls height should
     //   show controls.
-    //   3. The controls cannot be hidden more than once per scroll, so
-    //   scrolling down should have no effect.
+    //   3. The controls cannot be hidden more than once per scroll, unless the
+    //   scroll is inertial, so scrolling down normally should have no effect.
     EXPECT_TRUE(
         ScrollDidAnimate(kControlsHeight, AnimationDirection::kHidingControls));
     EXPECT_TRUE(ScrollDidAnimate(-2 * kControlsHeight,
@@ -1964,12 +1982,56 @@ TEST_F(BrowserControlsOffsetManagerSnapAnimationTest,
     //   hide controls.
     //   3. The controls can be shown more than once per scroll, so scrolling
     //   up should show the controls again.
+    //   4. The controls cannot be hidden more than once per scroll if the
+    //   scroll is inertial, so an inertial scroll down should hide the
+    //   controls.
     EXPECT_TRUE(ScrollDidAnimate(-kControlsHeight,
                                  AnimationDirection::kShowingControls));
     EXPECT_TRUE(ScrollDidAnimate(2 * kControlsHeight,
                                  AnimationDirection::kHidingControls));
     EXPECT_TRUE(ScrollDidAnimate(-2 * kControlsHeight,
                                  AnimationDirection::kShowingControls));
+  }
+}
+
+TEST_F(BrowserControlsOffsetManagerSnapAnimationTest,
+       HideAnimationTriggeredMoreThanOncePerScrollIfInertial) {
+  BrowserControlsOffsetManager* manager = client_.manager();
+
+  // Start in the can-hide region.
+  client_.SetViewportScrollOffset(
+      0.0f,
+      manager->SnapAnimationCanHideRegionHeight(1.0f) + 2 * kControlsHeight);
+
+  {
+    ScrollSequence scroll_sequence(this);
+    // Hide the browser controls.
+    EXPECT_TRUE(
+        ScrollDidAnimate(kControlsHeight, AnimationDirection::kHidingControls));
+  }
+
+  {
+    ScrollSequence scroll_sequence(this);
+    // Simulate the user scrolling up and down in succession. The expected
+    // behavior is:
+    //   1. Scrolling up in the can-hide region should show the browser
+    //   controls.
+    //   2. Scrolling down so that net scroll is equal to controls height should
+    //   hide controls.
+    //   3. The controls can be shown more than once per scroll, so scrolling
+    //   up should show the controls again.
+    //   4. The controls can be hidden more than once per scroll if the scroll
+    //   is inertial.
+    EXPECT_TRUE(ScrollDidAnimate(-kControlsHeight,
+                                 AnimationDirection::kShowingControls));
+    EXPECT_TRUE(ScrollDidAnimate(2 * kControlsHeight,
+                                 AnimationDirection::kHidingControls));
+    EXPECT_TRUE(ScrollDidAnimate(-2 * kControlsHeight,
+                                 AnimationDirection::kShowingControls));
+    EXPECT_TRUE(ScrollDidAnimate(2 * kControlsHeight,
+                                 AnimationDirection::kHidingControls,
+                                 base::Milliseconds(1),
+                                 /*is_inertial=*/true));
   }
 }
 
@@ -2132,6 +2194,60 @@ TEST_F(BrowserControlsOffsetManagerSnapAnimationTest,
     EXPECT_TRUE(ScrollDidNotAnimate(-kControlsHeight));
   }
 }
+
+TEST_F(BrowserControlsOffsetManagerSnapAnimationTest,
+       ShowAnimationTriggeredWhenHideCompletesInAlwaysShownRegion) {
+  BrowserControlsOffsetManager* manager = client_.manager();
+
+  // Start well inside the can-hide region.
+  client_.SetViewportScrollOffset(
+      0.0f,
+      manager->SnapAnimationCanHideRegionHeight(1.0f) + 2 * kControlsHeight);
+
+  // Trigger a hide animation by scrolling down. `ScrollDidAnimate` is not used
+  // here because we want to simulate the user scrolling up and down in
+  // succession, and we need to be able to inspect the state of the controls
+  // after the first scroll but before the second scroll is triggered.
+  manager->ScrollBegin();
+  ScrollBy(kControlsHeight, base::Milliseconds(1), /*is_inertial=*/false);
+  manager->ScrollEnd();
+
+  // A hide animation should be running.
+  ASSERT_TRUE(manager->HasAnimation());
+  ASSERT_EQ(manager->IsAnimatingToShowControls(), false);
+  ASSERT_EQ(manager->TopControlsShownRatio(), 1.0f);
+
+  // Scroll up to the top of the page.
+  manager->ScrollBegin();
+  ScrollBy(-client_.ViewportScrollOffset().y(), base::Microseconds(10),
+           /*is_inertial=*/false);
+  manager->ScrollEnd();
+
+  // A show animation should have been triggered immediately after the hide
+  // animation completes since the top of the page is in the always-shown
+  // region. Verify this by ensuring that the controls shown ratio decreases at
+  // first and then increases to fully shown.
+  bool hide_animation_completed = false;
+  float prev_shown_ratio = manager->TopControlsShownRatio();
+  while (manager->HasAnimation()) {
+    // Slowly advance the animation to capture the inflection point where the
+    // controls shown ratio starts increasing after the hide animation
+    // completes.
+    mock_clock_.Advance(base::Milliseconds(1));
+    manager->Animate(base::TimeTicks::Now());
+
+    float current_shown_ratio = manager->TopControlsShownRatio();
+    if (hide_animation_completed) {
+      EXPECT_GT(current_shown_ratio, prev_shown_ratio);
+    } else {
+      hide_animation_completed = (current_shown_ratio > prev_shown_ratio);
+    }
+    prev_shown_ratio = current_shown_ratio;
+  }
+  EXPECT_TRUE(hide_animation_completed);
+  EXPECT_EQ(manager->TopControlsShownRatio(), 1.0f);
+}
+
 #endif  // !(BUILDFLAG(IS_LINUX) && defined(THREAD_SANITIZER))
 
 }  // namespace

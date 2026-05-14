@@ -164,47 +164,6 @@ inline constexpr char kUserFeedbackAllowed[] = "feedback_allowed";
 inline constexpr char kRlzPingDelaySeconds[] = "rlz_ping_delay";
 #endif  // BUILDFLAG(ENABLE_RLZ)
 
-#if BUILDFLAG(IS_CHROMEOS)
-
-// Locale preference of device' owner.  ChromeOS device appears in this locale
-// after startup/wakeup/signout.
-inline constexpr char kOwnerLocale[] = "intl.owner_locale";
-// Locale accepted by user.  Non-syncable.
-// Used to determine whether we need to show Locale Change notification.
-inline constexpr char kApplicationLocaleAccepted[] = "intl.app_locale_accepted";
-// Non-syncable item.
-// It is used in two distinct ways.
-// (1) Used for two-step initialization of locale in ChromeOS
-//     because synchronization of kApplicationLocale is not instant.
-// (2) Used to detect locale change.  Locale change is detected by
-//     LocaleChangeGuard in case values of kApplicationLocaleBackup and
-//     kApplicationLocale are both non-empty and differ.
-// Following is a table showing how state of those prefs may change upon
-// common real-life use cases:
-//                                  AppLocale Backup Accepted
-// Initial login                       -        A       -
-// Sync                                B        A       -
-// Accept (B)                          B        B       B
-// -----------------------------------------------------------
-// Initial login                       -        A       -
-// No sync and second login            A        A       -
-// Change options                      B        B       -
-// -----------------------------------------------------------
-// Initial login                       -        A       -
-// Sync                                A        A       -
-// Locale changed on login screen      A        C       -
-// Accept (A)                          A        A       A
-// -----------------------------------------------------------
-// Initial login                       -        A       -
-// Sync                                B        A       -
-// Revert                              A        A       -
-inline constexpr char kApplicationLocaleBackup[] = "intl.app_locale_backup";
-
-// List of locales the UI is allowed to be displayed in by policy. The list is
-// empty if no restriction is being enforced.
-inline constexpr char kAllowedLanguages[] = "intl.allowed_languages";
-#endif
-
 // The default character encoding to assume for a web page in the
 // absence of MIME charset specification
 inline constexpr char kDefaultCharset[] = "intl.charset_default";
@@ -643,11 +602,6 @@ inline constexpr char kTextToSpeechVolume[] = "settings.tts.speech_volume";
 inline constexpr char kManagedSessionUseFullLoginWarning[] =
     "managed_session.use_full_warning";
 
-// Boolean pref indicating whether the NetBios Name Query Request Protocol is
-// used for discovering shares on the user's network by the Network File
-// Shares for Chrome OS feature.
-inline constexpr char kNetBiosShareDiscoveryEnabled[] =
-    "network_file_shares.netbios_discovery.enabled";
 
 // Last time the kChildScreenTimeMilliseconds was saved.
 inline constexpr char kLastChildScreenTimeSaved[] =
@@ -657,32 +611,14 @@ inline constexpr char kLastChildScreenTimeSaved[] =
 inline constexpr char kLastChildScreenTimeReset[] =
     "last_child_screen_time_reset";
 
-// Last milestone on which a Help App notification was shown.
-inline constexpr char kHelpAppNotificationLastShownMilestone[] =
-    "help_app_notification_last_shown_milestone";
-
 // Amount of times the release notes suggestion chip should be
 // shown before it disappears.
 inline constexpr char kReleaseNotesSuggestionChipTimesLeftToShow[] =
     "times_left_to_show_release_notes_suggestion_chip";
 
-// Boolean pref indicating whether the NTLM authentication protocol should be
-// enabled when mounting an SMB share with a user credential by the Network File
-// Shares for Chrome OS feature.
-inline constexpr char kNTLMShareAuthenticationEnabled[] =
-    "network_file_shares.ntlm_share_authentication.enabled";
 
-// List of preconfigured network file shares.
-inline constexpr char kNetworkFileSharesPreconfiguredShares[] =
-    "network_file_shares.preconfigured_shares";
 
-// URL path string of the most recently used SMB NetworkFileShare path.
-inline constexpr char kMostRecentlyUsedNetworkFileShareURL[] =
-    "network_file_shares.most_recently_used_url";
 
-// List of network files shares added by the user.
-inline constexpr char kNetworkFileSharesSavedShares[] =
-    "network_file_shares.saved_shares";
 
 // A string pref storing the path of device wallpaper image file.
 inline constexpr char kDeviceWallpaperImageFilePath[] =
@@ -1488,24 +1424,6 @@ inline constexpr char kNetworkAnnotationBlocklist[] =
 // be prepopulated.
 inline constexpr char kViewSourceLineWrappingEnabled[] =
     "view_source.line_wrapping_enabled";
-
-#if BUILDFLAG(IS_CHROMEOS)
-// The state of the SkyVault migration of local files to the cloud.
-inline constexpr char kSkyVaultMigrationState[] = "skyvault.migration_state";
-
-// The number of times SkyVault migration was retried after some upload errors.
-inline constexpr char kSkyVaultMigrationRetryCount[] =
-    "skyvault.migration_retry_count";
-
-// The time at which the SkyVault local files upload or deletion is scheduled to
-// start.
-inline constexpr char kSkyVaultMigrationScheduledStartTime[] =
-    "skyvault.migration_scheduled_start_time";
-
-// The time at which the SkyVault local files upload actually started.
-inline constexpr char kSkyVaultMigrationStartTime[] =
-    "skyvault.migration_start_time";
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Boolean that when set overrides the kStaticStorageQuota feature flag.
 inline constexpr char kStaticStorageQuotaEnabled[] =
@@ -2455,24 +2373,6 @@ inline constexpr char kDeviceRobotAnyApiRefreshTokenV2[] =
 inline constexpr char kDeviceRefreshTokenAnyApiIsV3Used[] =
     "device_refresh_token_is_v3_used.any-api";
 
-// A string pref with initial locale set in VPD or manifest.
-inline constexpr char kInitialLocale[] = "intl.initial_locale";
-
-// Pref name for whether we should show the Getting Started module in the Help
-// app.
-inline constexpr char kHelpAppShouldShowGetStarted[] =
-    "help_app.should_show_get_started";
-
-// Pref name for whether we should show the Parental Control module in the Help
-// app.
-inline constexpr char kHelpAppShouldShowParentalControl[] =
-    "help_app.should_show_parental_control";
-
-// Pref name for whether the device was in tablet mode when going through
-// the OOBE.
-inline constexpr char kHelpAppTabletModeDuringOobe[] =
-    "help_app.tablet_mode_during_oobe";
-
 // A dictionary containing server-provided device state pulled form the cloud
 // after recovery.
 inline constexpr char kServerBackedDeviceState[] = "server_backed_device_state";
@@ -2483,10 +2383,6 @@ inline constexpr char kServerBackedDeviceState[] = "server_backed_device_state";
 // since wallpaper was cached.
 inline constexpr char kCustomizationDefaultWallpaperURL[] =
     "customization.default_wallpaper_url";
-
-// System uptime, when last logout started.
-// This is saved to file and cleared after chrome process starts.
-inline constexpr char kLogoutStartedLast[] = "chromeos.logout-started";
 
 // A boolean preference controlling Android status reporting.
 inline constexpr char kReportArcStatusEnabled[] =
@@ -2846,17 +2742,6 @@ inline constexpr char kCryptAuthInstanceIdToken[] =
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 // Policy that indicates how to handle animated images.
 inline constexpr char kAnimationPolicy[] = "settings.a11y.animation_policy";
-
-// Boolean that indicates whether Chrome enterprise extension request is enabled
-// or not.
-inline constexpr char kCloudExtensionRequestEnabled[] =
-    "enterprise_reporting.extension_request.enabled";
-
-// A list of extension ids represents pending extension request. The ids are
-// stored once user sent the request until the request is canceled, approved or
-// denied.
-inline constexpr char kCloudExtensionRequestIds[] =
-    "enterprise_reporting.extension_request.ids";
 
 // Boolean pref indicating whether extension DOM activity logging is enabled
 // for enterprise telemetry.

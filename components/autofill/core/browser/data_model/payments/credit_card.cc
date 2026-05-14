@@ -354,7 +354,6 @@ int CreditCard::IconResourceId(Suggestion::Icon icon) {
     case Suggestion::Icon::kPassport:
     case Suggestion::Icon::kPenSpark:
     case Suggestion::Icon::kPersonCheck:
-    case Suggestion::Icon::kPlusAddress:
     case Suggestion::Icon::kQuestionMark:
     case Suggestion::Icon::kRecoveryPassword:
     case Suggestion::Icon::kScanCreditCard:
@@ -369,6 +368,7 @@ int CreditCard::IconResourceId(Suggestion::Icon icon) {
     case Suggestion::Icon::kGoogleWalletMonochrome:
     case Suggestion::Icon::kAndroidMessages:
     case Suggestion::Icon::kFlight:
+    case Suggestion::Icon::kSpark:
       NOTREACHED();
   }
   NOTREACHED();

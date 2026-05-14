@@ -1117,10 +1117,43 @@ IN_PROC_BROWSER_TEST_F(VerticalTabStripRegionViewTest,
       prefs::kVerticalTabsExpandOnHoverEnabled, true);
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return region_view()->is_expanded_on_hover(); }));
+  ASSERT_TRUE(base::test::RunUntil([&]() { return !IsAnimatingSize(); }));
 
   browser()->profile()->GetPrefs()->SetBoolean(
       prefs::kVerticalTabsExpandOnHoverEnabled, false);
   EXPECT_FALSE(region_view()->is_expanded_on_hover());
+  EXPECT_TRUE(IsAnimatingSize());
+  EXPECT_EQ(TabStripAnimations::kCollapseOnHover,
+            BrowserAnimationController::From(browser())->GetCurrentMotion(
+                TabStripAnimations::kVerticalTabStrip));
+}
+
+IN_PROC_BROWSER_TEST_F(VerticalTabStripRegionViewTest, ModeChanged) {
+  // Fully collapse the tabstrip.
+  state_controller()->RequestCollapse(true);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return state_controller()->IsCollapsed(); }));
+
+  ASSERT_TRUE(browser()->profile()->GetPrefs()->GetBoolean(
+      prefs::kVerticalTabsEnabled));
+  ASSERT_FALSE(browser()->profile()->GetPrefs()->GetBoolean(
+      prefs::kVerticalTabsExpandOnHoverEnabled));
+  ASSERT_FALSE(region_view()->is_expanded_on_hover());
+
+  browser()->profile()->GetPrefs()->SetBoolean(
+      prefs::kVerticalTabsExpandOnHoverEnabled, true);
+  region_view()->GetFocusManager()->SetFocusedView(region_view());
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return region_view()->is_expanded_on_hover(); }));
+  ASSERT_TRUE(base::test::RunUntil([&]() { return !IsAnimatingSize(); }));
+
+  browser()->profile()->GetPrefs()->SetBoolean(prefs::kVerticalTabsEnabled,
+                                               false);
+
+  browser()->profile()->GetPrefs()->SetBoolean(prefs::kVerticalTabsEnabled,
+                                               true);
+  EXPECT_FALSE(region_view()->is_expanded_on_hover());
+  EXPECT_FALSE(IsAnimatingSize());
 }
 
 IN_PROC_BROWSER_TEST_F(VerticalTabStripRegionViewTest,
@@ -1158,4 +1191,31 @@ IN_PROC_BROWSER_TEST_F(VerticalTabStripRegionViewTest,
 
   ASSERT_TRUE(
       base::test::RunUntil([&]() { return !view->is_expanded_on_hover(); }));
+}
+
+IN_PROC_BROWSER_TEST_F(VerticalTabStripRegionViewTest,
+                       LogExpandOnHoverShowDurationMetrics) {
+  base::HistogramTester histogram_tester;
+
+  // Set up collapsed vertical tab strip with expand on hover enabled.
+  VerticalTabStripRegionView* view = region_view();
+  state_controller()->SetExpandOnHoverEnabled(true);
+  state_controller()->RequestCollapse(true);
+
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return state_controller()->IsCollapsed(); }));
+
+  // Request focus so that the tab strip initiates expand on hover.
+  view->RequestFocus();
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return view->is_expanded_on_hover(); }));
+
+  // Force collapse of the the tab strip.
+  auto force_collapse_lock =
+      view->GetExpandOnHoverLock(ExpandOnHoverLockType::kForceCollapse);
+  ASSERT_TRUE(
+      base::test::RunUntil([&]() { return !view->is_expanded_on_hover(); }));
+
+  histogram_tester.ExpectTotalCount(
+      "Tabs.VerticalTabs.ExpandOnHover.ShowDuration", 1);
 }

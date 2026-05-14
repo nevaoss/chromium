@@ -1494,7 +1494,7 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     ash::prefs::kDeviceExternalPrintServersAllowlist,
     base::Value::Type::LIST },
   { key::kAllowedLanguages,
-    prefs::kAllowedLanguages,
+    ash::prefs::kAllowedLanguages,
     base::Value::Type::LIST },
   { key::kAllowedInputMethods,
     ash::prefs::kLanguageAllowedInputMethods,
@@ -1512,7 +1512,7 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     ash::prefs::kPowerSmartDimEnabled,
     base::Value::Type::BOOLEAN },
   { key::kNetBiosShareDiscoveryEnabled,
-    prefs::kNetBiosShareDiscoveryEnabled,
+    ash::prefs::kNetBiosShareDiscoveryEnabled,
     base::Value::Type::BOOLEAN },
   { key::kCrostiniAllowed,
     crostini::prefs::kUserCrostiniAllowedByPolicy,
@@ -1536,7 +1536,7 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     crostini::prefs::kCrostiniPortForwardingAllowedByPolicy,
     base::Value::Type::BOOLEAN },
   { key::kNTLMShareAuthenticationEnabled,
-    prefs::kNTLMShareAuthenticationEnabled,
+    ash::prefs::kNTLMShareAuthenticationEnabled,
     base::Value::Type::BOOLEAN },
   { key::kPrintingSendUsernameAndFilenameEnabled,
     ash::prefs::kPrintingSendUsernameAndFilenameEnabled,
@@ -2159,6 +2159,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     base::Value::Type::LIST },
   { key::kKioskWebAppOfflineEnabled,
     ash::prefs::kKioskWebAppOfflineEnabled,
+    base::Value::Type::BOOLEAN},
+  { key::kKioskPinchToZoomAllowed,
+    ash::prefs::kKioskPinchToZoomAllowed,
     base::Value::Type::BOOLEAN},
   { key::kDevicePolicyRefreshRate,
     prefs::kDevicePolicyRefreshRate,
@@ -2839,7 +2842,7 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       prefs::kManagedWebHidAllowDevicesWithHidUsagesForUrls, chrome_schema));
 
   // WindowPlacement policies to be deprecated and replaced by WindowManagement.
-  // crbug.com/1328581
+  // crbug.com/40842072
   handlers->AddHandler(std::make_unique<SimpleDeprecatingPolicyHandler>(
       std::make_unique<SimplePolicyHandler>(
           key::kDefaultWindowPlacementSetting,
@@ -3272,7 +3275,7 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       ash::prefs::kPrintJobHistoryExpirationPeriod, -1, INT_MAX, true));
   handlers->AddHandler(std::make_unique<SimpleSchemaValidatingPolicyHandler>(
       key::kNetworkFileSharesPreconfiguredShares,
-      prefs::kNetworkFileSharesPreconfiguredShares, chrome_schema,
+      ash::prefs::kNetworkFileSharesPreconfiguredShares, chrome_schema,
       SCHEMA_ALLOW_UNKNOWN,
       SimpleSchemaValidatingPolicyHandler::RECOMMENDED_PROHIBITED,
       SimpleSchemaValidatingPolicyHandler::MANDATORY_ALLOWED));

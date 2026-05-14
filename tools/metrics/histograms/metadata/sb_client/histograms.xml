@@ -460,7 +460,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SBClientPhishing.AddPhishingReportSuccessful"
-    enum="BooleanSuccess" expires_after="2026-05-17">
+    enum="BooleanSuccess" expires_after="2027-04-15">
   <owner>andysjlim@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -478,6 +478,19 @@ useful for Chirp alerts (go/crca-alerts). -->
     in applying the TfLite model for phishing detection. This model is applied
     roughly once per navigation.
   </summary>
+</histogram>
+
+<histogram name="SBClientPhishing.BlockingRequestType{RequestType}"
+    enum="ClientSideDetectionType" expires_after="2026-09-01">
+  <owner>andysjlim@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records the ongoing request type that blocked a new request of type
+    {RequestType} due to the new request having a lower or same priority tier.
+    Logged in ClientSideDetectionHost::MaybeStartPreClassification when a new
+    trigger occurs while another classification is already in progress.
+  </summary>
+  <token key="RequestType" variants="ClientSideDetectionRequestType"/>
 </histogram>
 
 <histogram name="SBClientPhishing.BrowserReadyOnClassifierNotReady"
@@ -527,7 +540,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SBClientPhishing.Classifier.ReadyAfterRetryTimeout"
-    units="bool" expires_after="2026-05-25">
+    units="bool" expires_after="2027-04-15">
   <owner>andysjlim@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -737,7 +750,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SBClientPhishing.FlatBufferScorer.CreationStatus"
-    enum="SBClientPhishingScorerCreationStatus" expires_after="2026-04-25">
+    enum="SBClientPhishingScorerCreationStatus" expires_after="2027-04-15">
   <owner>andysjlim@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -759,7 +772,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SBClientPhishing.HighConfidenceAllowlistCheckDuration"
-    units="ms" expires_after="2026-04-26">
+    units="ms" expires_after="2027-04-20">
   <owner>andysjlim@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -1159,7 +1172,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SBClientPhishing.OnDeviceModelSessionCreationSuccess"
-    enum="BooleanSuccess" expires_after="2026-08-16">
+    enum="BooleanSuccess" expires_after="2026-10-18">
   <owner>andysjlim@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -1390,6 +1403,16 @@ useful for Chirp alerts (go/crca-alerts). -->
   </summary>
 </histogram>
 
+<histogram name="SBClientPhishing.SameURLAtPrimaryPageChanged" enum="Boolean"
+    expires_after="2027-04-21">
+  <owner>andysjlim@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Records whether the URL at the primary main frame remained the same when
+    PrimaryPageChanged occurred on a non-refresh navigation.
+  </summary>
+</histogram>
+
 <histogram name="SBClientPhishing.ServerModelDetectsPhishing{RequestType}"
     enum="BooleanIsPhishing" expires_after="2026-09-13">
 <!-- Note to owner: This histogram can be renewed 1 full year if it is still
@@ -1462,7 +1485,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SBClientPhishing.ServerSideModelQuotaCountOnScamWarningShown"
-    units="queries" expires_after="2026-08-06">
+    units="queries" expires_after="2026-10-18">
   <owner>xinghuilu@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>

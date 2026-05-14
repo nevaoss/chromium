@@ -278,10 +278,6 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHVideoTutorialNTPSearchFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHVideoTutorialNTPSummaryFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHVideoTutorialNTPVoiceSearchFeature);
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHVideoTutorialTryNowFeature);
-FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHWebFeedAwarenessFeature);
-FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHWebFeedFollowFeature);
-FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHWebFeedPostFollowDialogFeature);
-FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHWebFeedPostFollowDialogFeatureWithUIUpdate);
 // FEATURE_CONSTANTS_DECLARE_FEATURE_ANDROID_END
 // keep-sorted end
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -450,6 +446,16 @@ FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHiOSPriceTrackingDesktopFeature);
 #if !BUILDFLAG(IS_IOS)
 FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHResumptionRailFeature);
 #endif  // !BUILDFLAG(IS_IOS)
+
+#if BUILDFLAG(IS_WIN)
+FEATURE_CONSTANTS_DECLARE_FEATURE(kIPHSearchExtensionSideloadFeature);
+COMPONENT_EXPORT(FEATURE_ENGAGEMENT_FEATURE_CONSTANTS)
+extern const base::FeatureParam<std::string> kSideloadExtensionArm;
+COMPONENT_EXPORT(FEATURE_ENGAGEMENT_FEATURE_CONSTANTS)
+extern const base::FeatureParam<std::string> kSideloadExtensionEdgeStoreUrl;
+COMPONENT_EXPORT(FEATURE_ENGAGEMENT_FEATURE_CONSTANTS)
+extern const base::FeatureParam<std::string> kSideloadExtensionInstructionsUrl;
+#endif  // BUILDFLAG(IS_WIN)
 
 }  // namespace feature_engagement
 

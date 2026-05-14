@@ -8,7 +8,10 @@ import static java.util.Objects.requireNonNull;
 
 import android.content.Context;
 import android.net.Network;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
@@ -29,7 +32,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Context and state management for {@link CronetAdaptiveNetworkBidirectionalStream}. */
 class CronetAdaptiveRequestContext {
-
     // Name of the flag that controls which hosts are eligible for adaptive network selection.
     @VisibleForTesting
     public static final String ENABLE_ADAPTIVE_NETWORK_HOSTS_FLAG_NAME =
@@ -47,6 +49,25 @@ class CronetAdaptiveRequestContext {
 
     // Name of the flag that controls whether Cronet adaptive network selection is enabled.
     public static final String ENABLE_ADAPTIVE_NETWORK_NAME = "Cronet_enable_adaptive_network";
+
+    // Name of the flag that controls whether adaptive network is enabled for all hosts and paths.
+    // FAST_IDEMPOTENT_PATHS_FLAG_NAME still needs to be configured for that behavior to trigger.
+    @VisibleForTesting
+    public static final String ENABLE_ADAPTIVE_NETWORK_FOR_ALL_NAME =
+            "Cronet_enable_adaptive_network_for_all";
+
+    // Name of the flag that controls which network paths are eligible for fast idempotent
+    // selection. These paths must also be specified in the ENABLE_ADAPTIVE_NETWORK_PATHS_FLAG_NAME
+    // flag, otherwise this will have no effect.
+    @VisibleForTesting
+    public static final String FAST_IDEMPOTENT_PATHS_FLAG_NAME = "Cronet_fast_idempotent_paths";
+
+    // Name of the flag that controls whether a toast messages can appear when adaptive network
+    // selection is used.
+    // Only android developers should enable this flag, it is not intended to be used in production.
+    @VisibleForTesting
+    public static final String ADAPTIVE_NETWORK_DEV_TOAST_FLAG_NAME =
+            "Cronet_adaptive_network_dev_toast";
 
     /**
      * The time we wait until we start the backup stream. This value is 3x the initial retransmit
@@ -70,12 +91,16 @@ class CronetAdaptiveRequestContext {
         }
     }
 
+    private final Context mContext;
     private final Clock mClock;
     private final CronetLogger mLogger;
     private final String[] mAdaptiveNetworkHosts;
     private final Set<String> mAdaptiveNetworkPaths;
+    private final Set<String> mFastIdempotentPaths;
     private final long mReadyFailoverMs;
     private final boolean mEnableAdaptiveNetwork;
+    private final boolean mEnableAdaptiveNetworkForAll;
+    @Nullable private final Handler mToastHandler;
 
     /** Information about a fallback network for a given host. */
     private static class FallbackInfo {
@@ -115,6 +140,7 @@ class CronetAdaptiveRequestContext {
 
     @VisibleForTesting
     CronetAdaptiveRequestContext(Context context, CronetLogger logger, Clock clock) {
+        mContext = context.getApplicationContext();
         mLogger = logger;
         mClock = clock;
         mConnectivityManagerWrapper = new ConnectivityManagerWrapper(context);
@@ -156,6 +182,30 @@ class CronetAdaptiveRequestContext {
             mEnableAdaptiveNetwork = flags.get(ENABLE_ADAPTIVE_NETWORK_NAME).getBoolValue();
         } else {
             mEnableAdaptiveNetwork = false;
+        }
+
+        if (flags.containsKey(ENABLE_ADAPTIVE_NETWORK_FOR_ALL_NAME)) {
+            mEnableAdaptiveNetworkForAll =
+                    flags.get(ENABLE_ADAPTIVE_NETWORK_FOR_ALL_NAME).getBoolValue();
+        } else {
+            mEnableAdaptiveNetworkForAll = false;
+        }
+
+        if (flags.containsKey(ADAPTIVE_NETWORK_DEV_TOAST_FLAG_NAME)
+                && flags.get(ADAPTIVE_NETWORK_DEV_TOAST_FLAG_NAME).getBoolValue()) {
+            mToastHandler = new Handler(Looper.getMainLooper());
+        } else {
+            mToastHandler = null;
+        }
+
+        mFastIdempotentPaths = new HashSet<>();
+        if (flags.containsKey(FAST_IDEMPOTENT_PATHS_FLAG_NAME)) {
+            for (String path :
+                    flags.get(FAST_IDEMPOTENT_PATHS_FLAG_NAME).getStringValue().trim().split(",")) {
+                if (!path.isEmpty()) {
+                    mFastIdempotentPaths.add(path);
+                }
+            }
         }
     }
 
@@ -211,24 +261,51 @@ class CronetAdaptiveRequestContext {
         }
     }
 
+    /** Returns true if the given URI is configured as a fast idempotent request. */
+    public boolean isFastIdempotentRequest(URI uri) {
+        return mFastIdempotentPaths.contains(uri.getPath());
+    }
+
     long getReadyFailoverMs() {
         return mReadyFailoverMs;
     }
 
     /** Reports that the fallback network was used for the given URL. */
-    // TODO(b/474048542): When the default network is reported here, clear the memory
-    // as we're back to normal.
     void reportFallbackUsed(String url, Long networkHandle) {
-        if (networkHandle == CronetEngineBase.DEFAULT_NETWORK_HANDLE) {
-            throw new IllegalArgumentException("Network handle must be non-default.");
-        }
         URI parsedUri = URI.create(url);
         String host = parsedUri.getHost();
+
+        maybeShowDevToast(
+                host,
+                parsedUri.getPath(),
+                /* isDefault= */ networkHandle == CronetEngineBase.DEFAULT_NETWORK_HANDLE);
+        // If we started succeeding on the default network, we can reset the state for this host.
+        if (networkHandle == CronetEngineBase.DEFAULT_NETWORK_HANDLE) {
+            mFallbackNetworks.remove(host);
+            return;
+        }
         mFallbackNetworks.put(
                 host,
                 new FallbackInfo(
                         networkHandle,
                         mClock.elapsedRealtime() + DEFAULT_FALLBACK_CACHE_DURATION_MS));
+    }
+
+    @VisibleForTesting
+    void maybeShowDevToast(String host, String path, boolean isDefault) {
+        if (mToastHandler != null) {
+            mToastHandler.post(
+                    () ->
+                            Toast.makeText(
+                                            mContext,
+                                            "CRONET DEV: Fallback network used "
+                                                    + host
+                                                    + path
+                                                    + " is default: "
+                                                    + isDefault,
+                                            Toast.LENGTH_LONG)
+                                    .show());
+        }
     }
 
     /**
@@ -260,6 +337,9 @@ class CronetAdaptiveRequestContext {
     URI getUriIfAdaptive(String url) {
         try (var traceEvent =
                 ScopedSysTraceEvent.scoped("CronetAdaptiveRequestContext#getUriIfAdaptive")) {
+            if (mEnableAdaptiveNetworkForAll) {
+                return URI.create(url);
+            }
             for (String host : mAdaptiveNetworkHosts) {
                 if (!host.isEmpty() && url.startsWith(host)) {
                     URI parsedUri = URI.create(url);

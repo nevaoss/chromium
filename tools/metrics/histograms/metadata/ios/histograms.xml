@@ -381,7 +381,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.BackgroundRefresh.BGTaskSchedulerError"
-    enum="BGTaskSchedulerErrorType" expires_after="2026-06-21">
+    enum="BGTaskSchedulerErrorType" expires_after="2026-10-18">
   <owner>fedegermi@google.com</owner>
   <owner>marq@chromium.org</owner>
   <summary>
@@ -401,7 +401,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.BackgroundRefresh.ExecutionDuration.Timeout" units="ms"
-    expires_after="2026-06-28">
+    expires_after="2026-10-18">
   <owner>fedegermi@google.com</owner>
   <owner>marq@chromium.org</owner>
   <summary>
@@ -411,7 +411,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.BackgroundRefresh.InitStage"
-    enum="InitStageDuringBackgroundRefreshType" expires_after="2026-08-02">
+    enum="InitStageDuringBackgroundRefreshType" expires_after="2026-10-18">
   <owner>fedegermi@google.com</owner>
   <owner>marq@chromium.org</owner>
   <summary>
@@ -444,7 +444,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.BackgroundRefresh.StartupWait.Completed" units="ms"
-    expires_after="2026-06-28">
+    expires_after="2026-10-18">
   <owner>fedegermi@google.com</owner>
   <owner>marq@chromium.org</owner>
   <summary>
@@ -1440,7 +1440,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.DefaultBrowserVideoPromo.Fullscreen"
-    enum="IOSDefaultBrowserVideoPromoAction" expires_after="2026-08-16">
+    enum="IOSDefaultBrowserVideoPromoAction" expires_after="2026-10-18">
   <owner>cheickcisse@google.com</owner>
   <owner>sebsg@chromium.org</owner>
   <owner>bling-mony-pod@google.com</owner>
@@ -1819,7 +1819,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.ExperienceKitCalendar.Present"
-    enum="ExperienceKitCalendarTypes" expires_after="2026-08-16">
+    enum="ExperienceKitCalendarTypes" expires_after="2026-10-18">
   <owner>olivierrobin@chromium.org</owner>
   <owner>erahmaoui@google.com</owner>
   <summary>
@@ -1828,7 +1828,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.ExperienceKitCalendar.Success"
-    enum="ExperienceKitCalendarTypes" expires_after="2026-06-07">
+    enum="ExperienceKitCalendarTypes" expires_after="2026-10-18">
   <owner>olivierrobin@chromium.org</owner>
   <owner>erahmaoui@google.com</owner>
   <summary>
@@ -4505,7 +4505,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.NumberOfContextsToOpen" enum="ContextsToOpen"
-    expires_after="2026-08-16">
+    expires_after="2026-10-18">
   <owner>fedegermi@google.com</owner>
   <owner>bling-fundamentals@google.com</owner>
   <summary>
@@ -5072,8 +5072,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="IOS.PaymentsBottomSheet.TimeToTrigger.{Outcome}" units="ms"
-    expires_after="2026-08-30">
+<histogram name="IOS.PaymentsBottomSheetV3.TimeToTrigger.{Outcome}" units="ms"
+    expires_after="2027-04-01">
   <owner>vincb@google.com</owner>
   <owner>noemies@google.com</owner>
   <owner>bling-transactions@google.com</owner>
@@ -5971,16 +5971,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="IOS.Reauth.Password.BottomSheet" enum="ReauthenticationEvent"
-    expires_after="2025-07-13">
-  <owner>sugoi@chromium.org</owner>
-  <owner>tmartino@chromium.org</owner>
-  <summary>
-    Tracks the results and attempts of reauthentication when using suggestions
-    from the credential bottom sheet.
-  </summary>
-</histogram>
-
 <histogram name="IOS.Reauth.Password.ManualFallback"
     enum="ReauthenticationEvent" expires_after="2022-07-03">
   <owner>sarraf@google.com</owner>
@@ -6618,6 +6608,35 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="IOS.ScanCardBottomSheet.TimeToTrigger.{Outcome}" units="ms"
+    expires_after="2027-04-01">
+  <owner>yiwenqian@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Records the elapsed time between receiving the signal to trigger the Scan
+    Card and Autofill bottom sheet and actually making a decision on triggering
+    the sheet, split by {Outcome}. Recorded when making the decision to trigger
+    the sheet.
+  </summary>
+  <token key="Outcome">
+    <variant name="NotTriggered" summary="The sheet was not triggered."/>
+    <variant name="Triggered" summary="The sheet was actually triggered."/>
+  </token>
+</histogram>
+
+<histogram name="IOS.ScanCardBottomSheet.Triggered" enum="Boolean"
+    expires_after="2027-04-01">
+  <owner>yiwenqian@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Records the outcome of attempting to trigger the Scan Card and Autofill
+    bottom sheet as a boolean, true if it triggered or false if it didn't.
+    Recorded when the decision is made on triggering the sheet which corresponds
+    to when the activation signal is received from the sheet's form activity
+    listeners.
+  </summary>
+</histogram>
+
 <histogram name="IOS.SearchWith.CharSelected" units="characters"
     expires_after="2025-08-31">
   <owner>olivierrobin@chromium.org</owner>
@@ -6917,7 +6936,9 @@ chromium-metrics-reviews@google.com.
   <owner>ameurhosni@chromium.org</owner>
   <owner>olivierrobin@chromium.org</owner>
   <summary>
-    Recorded each time the app is opened via a Spotlight intent.
+    Recorded each time the app is opened via a siri shortcut, which can be
+    triggered from Spotlight, the Shortcuts app, or Siri. Note that this list
+    does not contain all intent types but only the ones that can be donated.
   </summary>
 </histogram>
 
@@ -7426,6 +7447,23 @@ chromium-metrics-reviews@google.com.
     Logged when the user taps on the Tips (Magic Stack) module. The enumeration
     indicates which tip was interacted with.
   </summary>
+</histogram>
+
+<histogram name="IOS.TipsNotification.{PromoType}.PromoAction"
+    enum="IOSTipsNotificationPromoAction" expires_after="2026-09-17">
+  <owner>bmcclure@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <summary>
+    Logs when a user taps the primary or secondary action button in the
+    {PromoType} promo view triggered by a Tips Notification.
+  </summary>
+  <token key="PromoType">
+    <variant name="EnhancedSafeBrowsing" summary="Enhanced Safe Browsing"/>
+    <variant name="Lens" summary="Lens"/>
+    <variant name="PriceTracking" summary="Price Tracking"/>
+    <variant name="SearchWhatYouSee" summary="Search What You See"/>
+    <variant name="TabGroups" summary="Tab Groups"/>
+  </token>
 </histogram>
 
 <histogram name="IOS.Translate.PageLoad.LanguageDetectionMethod"

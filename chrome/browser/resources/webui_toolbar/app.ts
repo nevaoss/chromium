@@ -32,6 +32,7 @@ import {LocationBarElement} from './location_bar.js';
 import {LocationIconElement} from './location_icon.js';
 
 export {
+  BrowserProxyImpl,
   LocationBarElement,
   OmniboxTextColor,
   ReadonlyOmniboxElement,
@@ -100,7 +101,7 @@ export class ToolbarAppElement extends CrLitElement {
       canShowMenu: false,
       isNavigationLoading: false,
       isContextMenuVisible: false,
-      resetStateCount: 0,
+      stateToken: 0,
     },
     splitTabsControlState: {
       isCurrentTabSplit: false,

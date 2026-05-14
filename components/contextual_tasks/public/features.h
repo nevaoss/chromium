@@ -75,7 +75,13 @@ BASE_DECLARE_FEATURE(kContextualTasksUpdateModelOnNavigation);
 // navigating.
 BASE_DECLARE_FEATURE(kContextualTasksVideoCitations);
 
+// Enables intercepting PDF links with page numbers to scroll to page instead of
+// navigating.
+BASE_DECLARE_FEATURE(kContextualTasksPdfCitations);
+
 bool GetIsContextualTasksUpdateModeOnNavigationEnabled();
+
+bool GetIsContextualTasksPdfCitationsEnabled();
 
 // Enum denoting which entry point can show when enabled.
 enum class EntryPointOption {
@@ -230,6 +236,10 @@ extern bool ShouldForceCountryCodeUS();
 // Returns the user agent suffix to use for requests.
 extern std::string GetContextualTasksUserAgentSuffix();
 
+// Returns the URL parameter name to check for NLM mode.
+extern std::string GetContextualTasksNlmUrlParam();
+extern bool IsCustomNlmUiEnabled();
+
 // Whether the contextual tasks context quality should be logged.
 extern bool ShouldLogContextualTasksContextQuality();
 
@@ -259,6 +269,9 @@ extern bool ShouldEnableBasicModeZOrder();
 
 // Returns whether the cookie sync should be enabled.
 extern bool ShouldEnableCookieSync();
+
+// Returns whether the cookie prefetch should be enabled.
+extern bool ShouldEnableCookiePrefetch();
 
 // Returns whether the input plate can be locked and unlocked by a message
 // from AIM.

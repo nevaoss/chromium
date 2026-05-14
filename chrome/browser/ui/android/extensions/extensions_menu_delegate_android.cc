@@ -23,9 +23,7 @@ namespace {
 
 using base::android::ScopedJavaLocalRef;
 
-// TODO(crbug.com/471016915): Placeholder size. Replace with size provided from
-// Java.
-constexpr gfx::Size kActionIconSize = gfx::Size(40, 40);
+constexpr gfx::Size kActionIconSize = gfx::Size(24, 24);
 
 ScopedJavaLocalRef<jobject> ConvertToJavaBitmap(
     const ui::ImageModel& image_model) {
@@ -79,6 +77,12 @@ ExtensionsMenuDelegateAndroid::~ExtensionsMenuDelegateAndroid() = default;
 
 void ExtensionsMenuDelegateAndroid::Destroy(JNIEnv* env) {
   delete this;
+}
+
+void ExtensionsMenuDelegateAndroid::ExecuteAction(
+    JNIEnv* env,
+    const extensions::ExtensionId& extension_id) {
+  menu_model_->ExecuteAction(extension_id);
 }
 
 ScopedJavaLocalRef<jobject> ExtensionsMenuDelegateAndroid::GetActionIcon(

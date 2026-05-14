@@ -4,14 +4,12 @@
 
 package org.chromium.chrome.browser.tabbed_mode;
 
-import static org.chromium.build.NullUtil.assertNonNull;
 import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.util.SparseArray;
-import android.view.LayoutInflater;
 import android.view.View;
 
 import androidx.annotation.IdRes;
@@ -31,16 +29,12 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
-import org.chromium.chrome.browser.ai.AiAssistantService;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.device.DeviceConditions;
 import org.chromium.chrome.browser.devtools.DevToolsWindowAndroid;
 import org.chromium.chrome.browser.enterprise.util.ManagedBrowserUtils;
 import org.chromium.chrome.browser.feed.FeedFeatures;
-import org.chromium.chrome.browser.feed.webfeed.WebFeedFaviconFetcher;
-import org.chromium.chrome.browser.feed.webfeed.WebFeedMainMenuItem;
-import org.chromium.chrome.browser.feed.webfeed.WebFeedSnackbarController;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.hub.HubManager;
 import org.chromium.chrome.browser.hub.Pane;
@@ -52,10 +46,8 @@ import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
 import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
-import org.chromium.chrome.browser.offlinepages.OfflinePageUtils;
 import org.chromium.chrome.browser.omaha.UpdateMenuItemHelper;
 import org.chromium.chrome.browser.open_in_app.OpenInAppMenuItemProvider;
-import org.chromium.chrome.browser.pdf.PdfPage;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.readaloud.ReadAloudController;
@@ -125,7 +117,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     }
 
     AppMenuDelegate mAppMenuDelegate;
-    WebFeedSnackbarController.FeedLauncher mFeedLauncher;
     ModalDialogManager mModalDialogManager;
     SnackbarManager mSnackbarManager;
 
@@ -155,7 +146,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             AppMenuDelegate appMenuDelegate,
             OneshotSupplier<LayoutStateProvider> layoutStateProvider,
             NullableObservableSupplier<BookmarkModel> bookmarkModelSupplier,
-            WebFeedSnackbarController.FeedLauncher feedLauncher,
             ModalDialogManager modalDialogManager,
             SnackbarManager snackbarManager,
             OneshotSupplier<IncognitoReauthController> incognitoReauthControllerOneshotSupplier,
@@ -175,7 +165,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                 readAloudControllerSupplier,
                 openInAppMenuItemProvider);
         mAppMenuDelegate = appMenuDelegate;
-        mFeedLauncher = feedLauncher;
         mModalDialogManager = modalDialogManager;
         mSnackbarManager = snackbarManager;
         mPageZoomMenuItemCoordinator = new PageZoomMenuItemCoordinator(pageZoomManager);
@@ -385,10 +374,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         MVCListAdapter.ListItem priceTrackingItem =
                 maybeBuildPriceTrackingListItem(currentTab, shouldShowIconBeforeItem());
         if (priceTrackingItem != null) modelList.add(priceTrackingItem);
-
-        // AI / AI PDF
-        MVCListAdapter.ListItem aiItem = maybeBuildAiMenuItem(currentTab);
-        if (aiItem != null) modelList.add(aiItem);
 
         // Glic
         MVCListAdapter.ListItem openGlicItem = maybeBuildOpenGlicItem(currentTab);
@@ -1326,33 +1311,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         shouldShowIconBeforeItem() ? R.drawable.ic_find_in_page : 0));
     }
 
-    private MVCListAdapter.@Nullable ListItem maybeBuildAiMenuItem(@Nullable Tab currentTab) {
-        if (currentTab == null
-                || currentTab.getWebContents() == null
-                || !ChromeFeatureList.isEnabled(
-                        ChromeFeatureList.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_PAGE_SUMMARY)
-                || !AiAssistantService.getInstance().canShowAiForTab(mContext, currentTab)) {
-            return null;
-        }
-
-        if (currentTab.isNativePage() && currentTab.getNativePage() instanceof PdfPage) {
-            return new MVCListAdapter.ListItem(
-                    AppMenuHandler.AppMenuItemType.STANDARD,
-                    buildModelForStandardMenuItem(
-                            R.id.ai_pdf_menu_id,
-                            R.string.menu_review_pdf_with_ai,
-                            shouldShowIconBeforeItem() ? R.drawable.summarize_auto : 0));
-        } else if (currentTab.getUrl() != null && UrlUtilities.isHttpOrHttps(currentTab.getUrl())) {
-            return new MVCListAdapter.ListItem(
-                    AppMenuHandler.AppMenuItemType.STANDARD,
-                    buildModelForStandardMenuItem(
-                            R.id.ai_web_menu_id,
-                            R.string.menu_summarize_with_ai,
-                            shouldShowIconBeforeItem() ? R.drawable.summarize_auto : 0));
-        }
-        return null;
-    }
-
     private boolean shouldShowDefaultBrowserPromo() {
         return DefaultBrowserPromoUtils.getInstance().shouldShowAppMenuItemEntryPoint()
                 && ChromeFeatureList.sDefaultBrowserPromoEntryPointShowAppMenu.getValue();
@@ -1465,39 +1423,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     protected boolean shouldShowMoveToOtherWindow() {
         if (!isMultiInstanceEnabled() && shouldShowNewWindow()) return false;
         return mMultiWindowModeStateDispatcher.isMoveToOtherWindowSupported(mTabModelSelector);
-    }
-
-    private boolean shouldShowWebFeedMenuItem() {
-        Tab tab = mActivityTabProvider.get();
-        if (tab == null || tab.isIncognito() || OfflinePageUtils.isOfflinePage(tab)) {
-            return false;
-        }
-        if (!FeedFeatures.isWebFeedUIEnabled(tab.getProfile())) {
-            return false;
-        }
-        String url = tab.getOriginalUrl().getSpec();
-        return url.startsWith(UrlConstants.HTTP_URL_PREFIX)
-                || url.startsWith(UrlConstants.HTTPS_URL_PREFIX);
-    }
-
-    @Override
-    public @Nullable View buildFooterView(AppMenuHandler appMenuHandler) {
-        if (!shouldShowWebFeedMenuItem()) {
-            return null;
-        }
-
-        WebFeedMainMenuItem footer =
-                (WebFeedMainMenuItem)
-                        LayoutInflater.from(mContext)
-                                .inflate(R.layout.web_feed_main_menu_item, null);
-        footer.initialize(
-                assertNonNull(mActivityTabProvider.get()),
-                appMenuHandler,
-                WebFeedFaviconFetcher.createDefault(),
-                mFeedLauncher,
-                mModalDialogManager,
-                mSnackbarManager);
-        return footer;
     }
 
     @VisibleForTesting

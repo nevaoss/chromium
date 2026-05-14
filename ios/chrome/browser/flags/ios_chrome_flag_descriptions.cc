@@ -71,9 +71,15 @@ const char kAskAboutThisPageDescription[] =
 const char kAskGeminiChipName[] = "Ask Gemini Chip";
 const char kAskGeminiChipDescription[] = "Enables the Ask Gemini Chip feature.";
 
+const char kAssistantAimMinimizedStateName[] = "AssistantAimMinimizedState";
+const char kAssistantAimMinimizedStateDescription[] =
+    "When enabled, the Assistant AIM (Co-browse) interface initially appears "
+    "in a minimized state instead of the default medium state.";
+
 const char kAssistantContainerName[] = "Assistant Container";
 const char kAssistantContainerDescription[] =
-    "Enables the Assistant Container feature.";
+    "Enables the Assistant Container feature. The debug parameter enables "
+    "debug elements and forces AIM eligibility.";
 
 const char kAssistantSidePanelName[] = "AssistantSidePanel";
 const char kAssistantSidePanelDescription[] =
@@ -403,6 +409,11 @@ const char kComposeboxImmersiveSRPDescription[] =
 
 const char kComposeboxIpadName[] = "ComposeboxIpad";
 const char kComposeboxIpadDescription[] = "Enables the composeboxIpad feature.";
+
+const char kComposeboxPlusButtonBottomSheetName[] =
+    "Enable the bottom sheet for plus button in Composebox";
+const char kComposeboxPlusButtonBottomSheetDescription[] =
+    "Uses the updated bottom sheet for the plus button multimodal menu.";
 
 const char kComposeboxServerSideStateName[] =
     "Enable server side state in Composebox";
@@ -1024,6 +1035,10 @@ const char kLensExactMatchesEnabledDescription[] =
 const char kLensFetchSrpApiEnabledName[] = "Lens fetch SRP API enabled";
 const char kLensFetchSrpApiEnabledDescription[] = "Enables the fetch SRP API.";
 
+const char kLensFilterToggleEnabledName[] = "Lens filter toggle enabled";
+const char kLensFilterToggleEnabledDescription[] =
+    "Enables the filter toggle in Lens camera.";
+
 const char kLensFiltersAblationModeEnabledName[] =
     "Lens filters ablation mode enabled";
 const char kLensFiltersAblationModeEnabledDescription[] =
@@ -1192,6 +1207,12 @@ const char kNTPBackgroundDownsampleImageDescription[] =
     "Downsamples user-uploaded NTP background images to screen size, "
     "reducing memory usage.";
 
+const char kNTPHeaderUseTransformsForAnimationsName[] =
+    "NTP Header Transform Animations";
+const char kNTPHeaderUseTransformsForAnimationsDescription[] =
+    "Use high-performance transforms for NTP header animations instead of "
+    "updating constraints on scroll.";
+
 const char kNativeFindInPageName[] = "Native Find in Page";
 const char kNativeFindInPageDescription[] =
     "When enabled, the JavaScript implementation of the Find in Page feature "
@@ -1203,6 +1224,12 @@ const char kNewTabPageFieldTrialName[] =
 const char kNewTabPageFieldTrialDescription[] =
     "Enables new tab page features that are available on first run for new "
     "Chrome iOS users.";
+
+const char kNoAccountWebSigninName[] =
+    "Enable no account web sigin bottom sheet";
+const char kNoAccountWebSigninDescription[] =
+    "Surfaces the web sign in bottom sheet when the user attempts to sign in "
+    "to the web.";
 
 const char kNonModalSignInPromoName[] = "Non-modal sign-in promo";
 const char kNonModalSignInPromoDescription[] =
@@ -1579,11 +1606,6 @@ const char kSharedHighlightingIOSName[] = "Enable Shared Highlighting features";
 const char kSharedHighlightingIOSDescription[] =
     "Adds a Link to Text option in the Edit Menu which generates URLs with a "
     "text fragment.";
-
-const char kShopCardImpressionLimitsName[] =
-    "Enables ShopCard Impression limits";
-const char kShopCardImpressionLimitsDescription[] =
-    "Limits the number of times ShopCards can be shown in the Magic Stack";
 
 const char kShopCardName[] = "Enables Tab Resumption ShopCard";
 const char kShopCardDescription[] =

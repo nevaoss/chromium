@@ -3552,6 +3552,12 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_INSTALL_PWA_DIALOG_TITLE" meaning="Shown only on PWA install dialogs" desc="Title for dialog that shows up when a web app needs to be installed to the operating system.">
         Install app
       </message>
+      <message name="IDS_WEB_APP_INSTALL_SUCCESS_TITLE" desc="Title for PWA install dialog that appears when a web app is installed successfully.">
+        Successfully installed
+      </message>
+      <message name="IDS_WEB_APP_INSTALL_SUCCESS_OPEN_APP" desc="Text for button that opens the current tab in the newly installed app.">
+        Open tab in app
+      </message>
       <message name="IDS_WEB_APP_DETAILED_INSTALL_DIALOG_DESCRIPTION_TITLE" desc="Title above app description to explain the content below is from this app">
         From the app
       </message>
@@ -3560,6 +3566,9 @@ are declared in tools/grit/grit_args.gni.
       </message>
       <message name="IDS_DIY_APP_INSTALL_DIALOG_SUBTITLE" desc="Subtitle of the DIY app install dialog containing information about how the app opens">
         Apps open in a window
+      </message>
+      <message name="IDS_WEB_APP_INSTALL_PIN_TO_SHELF" desc="Checkbox label to pin the web app to the shelf during installation.">
+        Pin to shelf
       </message>
       <message name="IDS_DIY_APP_AX_BUBBLE_NAME_LABEL" desc="Text preceding the name of a DIY app, read by spoken feedback.">
         App name
@@ -4177,22 +4186,22 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_JS_OPTIMIZATIONS_DISABLED_ICON_TOOLTIP" desc="Tooltip for the JS Optimizations chip in the toolbar when it's disabled.">
         JavaScript optimizations are disabled.
       </message>
-      <message name="IDS_JS_OPTIMIZATION_BUBBLE_TITLE" desc="Title for the V8 optimization bubble.">
-        V8 optimization is off
+      <message name="IDS_JS_OPTIMIZATION_BUBBLE_TITLE" desc="Title for the JavaScript optimization disabled bubble.">
+        JavaScript optimization is off
       </message>
-      <message name="IDS_JS_OPTIMIZATION_BUBBLE_POLICY_BODY" desc="Body text for the V8 optimization bubble when disabled by enterprise policy.">
+      <message name="IDS_JS_OPTIMIZATION_BUBBLE_POLICY_BODY" desc="Body text for the JavaScript optimization bubble when disabled by enterprise policy.">
         JavaScript optimization is off for this site.
       </message>
-      <message name="IDS_JS_OPTIMIZATION_BUBBLE_BODY_NON_POLICY_BODY" desc="Body text for the V8 optimization bubble when disabled for other reasons.">
+      <message name="IDS_JS_OPTIMIZATION_BUBBLE_BODY_NON_POLICY_BODY" desc="Body text for the JavaScript optimization bubble when disabled for other reasons.">
         JavaScript optimization is off for this site. Enable for better performance.
       </message>
      <if expr="not use_titlecase">
-      <message name="IDS_JS_OPTIMIZATION_BUBBLE_ENABLE_BUTTON" desc="Button text to enable V8 optimization for the current site.">
+      <message name="IDS_JS_OPTIMIZATION_BUBBLE_ENABLE_BUTTON" desc="Button text to enable JavaScript optimization for the current site.">
         Allow for this site
       </message>
     </if>
     <if expr="use_titlecase">
-      <message name="IDS_JS_OPTIMIZATION_BUBBLE_ENABLE_BUTTON" desc="In Title Case: Button text to enable V8 optimization for the current site.">
+      <message name="IDS_JS_OPTIMIZATION_BUBBLE_ENABLE_BUTTON" desc="In Title Case: Button text to enable JavaScript optimization for the current site.">
         Allow for This Site
       </message>
     </if>
@@ -6787,6 +6796,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
         No thanks
       </message>
 
+      <message name="IDS_WEB_APP_UNINSTALL_BUTTON_FRAME_TOOLTIP" desc="The tooltip text for the uninstall button in the web app frame toolbar.">
+        Uninstall App
+      </message>
+      <message name="IDS_WEB_APP_UNINSTALL_BUTTON_FRAME" desc="The text for the uninstall button in the web app frame toolbar.">
+        Uninstall
+      </message>
       <message name="IDS_WEB_APP_MENU_BUTTON_TOOLTIP" desc="The tooltip to show for the three-dot menu in a web app window">
         Customize and control <ph name="APP_NAME">$1<ex>GMail</ex></ph>
       </message>
@@ -7010,7 +7025,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Verify
       </message>
       <if expr="is_android">
-        <message name="IDS_PASSWORD_ERROR_SIGN_IN_BUTTON_TITLE" desc="The title of the sign in button in the password manager error message." formatter_data="android_java">
+        <message name="IDS_PASSWORD_ERROR_SIGN_IN_BUTTON_TITLE" desc="The title of the sign in button in the password manager error message.">
           Sign in
         </message>
       </if>
@@ -7572,7 +7587,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <!-- NTP -->
       <!-- Google Drive integration disclaimer for New Tab Page -->
       <message name="IDS_NTP_DRIVE_CONNECT_TITLE" desc="Title of the dialog asking to connect Google Drive to AIM.">
-        Allow Search to Access Drive Content?
+        Allow Search to access Drive content?
       </message>
       <message name="IDS_NTP_DRIVE_DISCLAIMER_BODY" desc="Body text explaining how Drive data is handled in AIM.">
         Your Google Drive content is accessed only to provide this file search feature. It is not used to improve Google Search. Google will not access your Google Drive content unless you explicitly upload a file.
@@ -10050,19 +10065,19 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Hidden toolbar buttons
       </message>
       <if expr="enable_extensions_core">
-      <message name="IDS_TOOLTIP_EXTENSIONS_BUTTON_ALL_EXTENSIONS_BLOCKED" desc="The tooltip for the extensions button when all the extensions are blocked on the current site." formatter_data="android_java">
+      <message name="IDS_TOOLTIP_EXTENSIONS_BUTTON_ALL_EXTENSIONS_BLOCKED" desc="The tooltip for the extensions button when all the extensions are blocked on the current site.">
         Extensions not allowed on this site
       </message>
-      <message name="IDS_TOOLTIP_EXTENSIONS_BUTTON_ANY_EXTENSION_HAS_ACCESS" desc="The tooltip for the extensions button when any extension has access to the current site." formatter_data="android_java">
+      <message name="IDS_TOOLTIP_EXTENSIONS_BUTTON_ANY_EXTENSION_HAS_ACCESS" desc="The tooltip for the extensions button when any extension has access to the current site.">
         Extensions allowed on this site
       </message>
-      <message name="IDS_ACC_NAME_EXTENSIONS_BUTTON" desc="The accessible text for the extensions button.">
+      <message name="IDS_ACC_NAME_EXTENSIONS_BUTTON" desc="The accessible text for the extensions button." formatter_data="android_java">
         Extensions menu
       </message>
-          <message name="IDS_ACC_NAME_EXTENSIONS_BUTTON_ALL_EXTENSIONS_BLOCKED" desc="The accessible text for the extensions button when all the extensions are blocked on the current site." formatter_data="android_java">
+      <message name="IDS_ACC_NAME_EXTENSIONS_BUTTON_ALL_EXTENSIONS_BLOCKED" desc="The accessible text for the extensions button when all the extensions are blocked on the current site."  formatter_data="android_java">
         Extensions not allowed on this site. Select to open menu
       </message>
-      <message name="IDS_ACC_NAME_EXTENSIONS_BUTTON_ANY_EXTENSION_HAS_ACCESS" desc="The accessible text for the extensions button when all the extensions are blocked on the current site." formatter_data="android_java">
+      <message name="IDS_ACC_NAME_EXTENSIONS_BUTTON_ANY_EXTENSION_HAS_ACCESS" desc="The accessible text for the extensions button when any extension has access."  formatter_data="android_java">
         Extensions allowed on this site. Select to open menu
       </message>
       </if>

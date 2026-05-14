@@ -368,6 +368,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".dlp-internals"/>
   <variant name=".downloads"/>
   <variant name=".drive-internals"/>
+  <variant name=".drive-picker-host"/>
   <variant name=".eche-app"/>
   <variant name=".emoji-picker"/>
   <variant name=".enterprise-reporting"/>
@@ -542,6 +543,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".ContextualTasks"/>
   <variant name=".CustomizeChrome"/>
   <variant name=".DataSharingBubble"/>
+  <variant name=".DefaultBrowserModal"/>
   <variant name=".Emoji"/>
   <variant name=".ExtensionsWebStoreZeroStatePromo"/>
   <variant name=".Feed"/>
@@ -4213,7 +4215,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Experimental.TotalForegroundDuration" units="ms"
-    expires_after="2026-08-16">
+    expires_after="2026-10-18">
   <owner>npm@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <owner>chrome-prerendering@google.com</owner>
@@ -4469,7 +4471,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Internal.ErrorCode" enum="InternalErrorLoadEvent"
-    expires_after="2026-08-16">
+    expires_after="2026-10-18">
   <owner>csharrison@chromium.org</owner>
   <owner>bmcquade@chromium.org</owner>
   <summary>
@@ -4642,85 +4644,6 @@ chromium-metrics-reviews@google.com.
     have completed, we wait until all TaskAttributionInfo objects created within
     the SoftNavigationHeuristics::EventScope are garbage-collected, and then
     record which of the conditions was not satisfied.
-  </summary>
-</histogram>
-
-<histogram name="PageLoad.Internal.SuppressedEventsBeforeMissingFirstPaint"
-    enum="Boolean" expires_after="2026-09-06">
-  <owner>mustaq@chromium.org</owner>
-  <owner>blink-interactions-team@google.com</owner>
-  <summary>
-    Records if the first paint signal is not received within 15sec of first
-    event dispatch. A &quot;true&quot; value here is expected to be rare.
-  </summary>
-</histogram>
-
-<histogram name="PageLoad.Internal.SuppressedEventsCountBeforePaint3"
-    units="count" expires_after="2026-10-04">
-  <owner>mustaq@chromium.org</owner>
-  <owner>blink-interactions-team@google.com</owner>
-  <summary>
-    Records the number of events observed before the first paint.
-
-    This metric is emitted for every committed page load, either at the first
-    meaningful paint or 15sec after first event dispatch, whichever comes first
-    (before M127, the second condition here was &quot;15sec after
-    navigation&quot;). When the DropInputEventsBeforeFirstPaint feature is
-    enabled, these events will be dropped as the user may not have seen the
-    content they are interacting with yet. Since there is a delay from the first
-    paint presentation to when the notification about it is received, the user
-    may have actually seen the first paint for some of these events. If many
-    events are being dropped, we may need to revisit this experiment or improve
-    the measurement to only those after the first paint.
-  </summary>
-</histogram>
-
-<histogram name="PageLoad.Internal.SuppressedEventsTimingBeforePaint3"
-    units="ms" expires_after="2026-04-30">
-  <owner>mustaq@chromium.org</owner>
-  <owner>blink-interactions-team@google.com</owner>
-  <summary>
-    Records time difference between first paint and last event to be dropped by
-    DropInputEventsBeforeFirstPaint feature in a page that has received the
-    first paint signal. If the signal is not received within 15sec of
-    navigation, it records the constant &quot;15sec&quot; instead.
-
-    This metric is emitted for every committed page load, either at the first
-    meaningful paint or 15sec after first event dispatch, whichever comes first
-    (before M127, the second condition here was &quot;15sec after
-    navigation&quot;). When the DropInputEventsBeforeFirstPaint feature is
-    enabled, these events will be dropped as the user may not have seen the
-    content they are interacting with yet. Since there is a delay from the first
-    paint presentation to when the notification about it is received, the user
-    may have actually seen the first paint for some of these events. If this
-    time difference is long enough to affect user experience, we may need to
-    revisit this experiment. We are logging 0 timestamp if there is no
-    suppressed event or the most recent suppressed event is before the first
-    paint time so that we have a count of the number of times the behavior was
-    good to compare the size of the bad cases to.
-  </summary>
-</histogram>
-
-<histogram name="PageLoad.Internal.SuppressedInteractionsCountBeforePaint3"
-    units="count" expires_after="2026-04-30">
-  <owner>mustaq@chromium.org</owner>
-  <owner>blink-interactions-team@google.com</owner>
-  <summary>
-    Records the number of user-interactions observed before the first paint. The
-    following low-level events are counted for this purpose because they mark
-    the start of a user-interaction: MouseDown, RawKeyDown, KeyDown, TouchStart
-    and PointerDown.
-
-    This metric is emitted for every committed page load, either at the first
-    meaningful paint or 15sec after first event dispatch, whichever comes first
-    (before M127, the second condition here was &quot;15sec after
-    navigation&quot;). When the DropInputEventsBeforeFirstPaint feature is
-    enabled, these interactions will be dropped as the user may not have seen
-    the content they are interacting with yet. Since there is a delay from the
-    first paint presentation to when the notification about it is received, the
-    user may have actually seen the first paint for some of these interactions.
-    If it turns out that many interactions would be dropped, we will need to
-    revisit our plan.
   </summary>
 </histogram>
 

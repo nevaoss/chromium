@@ -45,8 +45,8 @@
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/profiles/profile_colors_util.h"
 #include "chrome/browser/ui/signin/dice_migration_service.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -57,6 +57,7 @@
 #include "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/toolbar/webui_test_utils.h"
+#include "chrome/browser/ui/waap/initial_web_ui_manager.h"
 #include "chrome/browser/webauthn/passkey_unlock_manager.h"
 #include "chrome/browser/webauthn/passkey_unlock_manager_factory.h"
 #include "chrome/common/pref_names.h"
@@ -1509,7 +1510,7 @@ IN_PROC_BROWSER_TEST_F(AvatarToolbarButtonBrowserTest,
 // Regression test for https://crbug.com/348587566
 IN_PROC_BROWSER_TEST_F(AvatarToolbarButtonBrowserTest,
                        SigninPendingDelayEndedNoBrowser) {
-  ASSERT_EQ(1u, chrome::GetTotalBrowserCount());
+  ASSERT_EQ(1u, GlobalBrowserCollection::GetInstance()->GetSize());
   Profile* profile = browser()->profile();
   {
     AvatarToolbarButtonInterface* avatar =
@@ -3806,11 +3807,22 @@ class AvatarToolbarButtonPasskeyUnlockErrorBrowserTest
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
+// TODO(crbug.com/505530418): The test is flaky on Mac builders.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_PasskeyUnlockError DISABLED_PasskeyUnlockError
+#else
+#define MAYBE_PasskeyUnlockError PasskeyUnlockError
+#endif  // BUILDFLAG(IS_MAC)
+
 IN_PROC_BROWSER_TEST_F(AvatarToolbarButtonPasskeyUnlockErrorBrowserTest,
-                       PasskeyUnlockError) {
+                       MAYBE_PasskeyUnlockError) {
   AvatarToolbarButtonInterface* avatar =
       GetAvatarToolbarButtonInterface(browser());
   AvatarToolbarButtonTestAccessor avatar_accessor(browser());
+  ASSERT_TRUE(base::test::RunUntil([browser = browser()]() {
+    InitialWebUIManager* manager = InitialWebUIManager::From(browser);
+    return !manager || !manager->IsShowPending();
+  }));
   SigninWithImageAndClearGreetingAndSyncPromo(browser(), avatar,
                                               u"test@gmail.com");
 

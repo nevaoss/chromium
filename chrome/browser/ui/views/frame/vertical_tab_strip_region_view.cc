@@ -61,6 +61,8 @@
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
+#include "ui/compositor/compositor.h"
+#include "ui/compositor/compositor_observer.h"
 #include "ui/compositor/layer.h"
 #include "ui/display/screen.h"
 #include "ui/events/event.h"
@@ -97,6 +99,82 @@ constexpr ShadowFrameView::ShadowAlpha kExpandOnHoverShadowAlpha(
 
 DEFINE_CLASS_CUSTOM_ELEMENT_EVENT_TYPE(VerticalTabStripRegionView,
                                        kAnimationCompletedEvent);
+
+class VerticalTabStripRegionView::AnimationPerfReporter
+    : public ui::CompositorObserver {
+ public:
+  AnimationPerfReporter(BrowserAnimationMotion animation_type,
+                        base::TimeDelta total_animation_time,
+                        views::Widget* widget)
+      : animation_type_(animation_type),
+        total_animation_time_(total_animation_time) {
+    compositor_observation_.Observe(widget->GetCompositor());
+  }
+
+  ~AnimationPerfReporter() override {
+    if (animation_status_ == BrowserAnimationUpdate::kEnded &&
+        total_animation_time_.is_positive()) {
+      int animation_fps =
+          static_cast<int>(std::round(animation_presented_times_.size() /
+                                      total_animation_time_.InSecondsF()));
+      if (animation_fps > 0) {
+        base::UmaHistogramCounts100(
+            base::StrCat(
+                {"TabStrip.Vertical.", GetAnimationNameFor(), ".AnimationFPS"}),
+            animation_fps);
+      }
+    }
+  }
+
+  AnimationPerfReporter(const AnimationPerfReporter&) = delete;
+  AnimationPerfReporter& operator=(const AnimationPerfReporter&) = delete;
+
+  void SetCompletionStatus(BrowserAnimationUpdate completion_status) {
+    DCHECK(completion_status == BrowserAnimationUpdate::kEnded ||
+           completion_status == BrowserAnimationUpdate::kCanceled);
+    animation_status_ = completion_status;
+  }
+
+ private:
+  // ui::CompositorObserver:
+  void OnDidPresentCompositorFrame(
+      ui::Compositor* compositor,
+      uint32_t frame_token,
+      const gfx::PresentationFeedback& feedback) override {
+    if (animation_status_ == BrowserAnimationUpdate::kStarted &&
+        !feedback.failed()) {
+      animation_presented_times_.push_back(feedback.timestamp);
+    }
+  }
+
+  void OnCompositingShuttingDown(ui::Compositor* compositor) override {
+    compositor_observation_.Reset();
+  }
+
+  std::string_view GetAnimationNameFor() const {
+    if (animation_type_ == TabStripAnimations::kCollapse) {
+      return "Collapse";
+    } else if (animation_type_ == TabStripAnimations::kExpand) {
+      return "Expand";
+    } else if (animation_type_ == TabStripAnimations::kCollapseOnHover) {
+      return "CollapseOnHover";
+    } else if (animation_type_ == TabStripAnimations::kExpandOnHover) {
+      return "ExpandOnHover";
+    }
+    NOTREACHED() << "Unsupported Animation Type";
+  }
+
+  const BrowserAnimationMotion animation_type_;
+  BrowserAnimationUpdate animation_status_ = BrowserAnimationUpdate::kStarted;
+  const base::TimeDelta total_animation_time_;
+
+  // Tracks all the successfully presented compositor frame during the
+  // course of the animation. This is used to compute the animation FPS.
+  std::vector<base::TimeTicks> animation_presented_times_;
+
+  base::ScopedObservation<ui::Compositor, ui::CompositorObserver>
+      compositor_observation_{this};
+};
 
 VerticalTabStripRegionView::VerticalTabStripRegionView(
     tabs::VerticalTabStripStateController* state_controller,
@@ -251,9 +329,14 @@ void VerticalTabStripRegionView::OnAnimationProgressed(
     const BrowserAnimationController* controller,
     BrowserAnimationUpdate status) {
   switch (status) {
-    case BrowserAnimationUpdate::kStarted:
-      if (controller->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip) ==
-          TabStripAnimations::kExpand) {
+    case BrowserAnimationUpdate::kStarted: {
+      const auto motion =
+          controller->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip);
+      const auto duration =
+          controller->GetMotionDuration(TabStripAnimations::kVerticalTabStrip);
+      animation_perf_reporter_ = std::make_unique<AnimationPerfReporter>(
+          motion, duration, GetWidget());
+      if (motion == TabStripAnimations::kExpand) {
         update_state_controller_collapsed_callback_.Run(false);
       }
       hover_card_animation_lock_ =
@@ -262,10 +345,13 @@ void VerticalTabStripRegionView::OnAnimationProgressed(
         tab_strip_view_->SetIsAnimatingSize(true);
       }
       break;
+    }
     case BrowserAnimationUpdate::kProgressed:
       InvalidateLayout();
       break;
     case BrowserAnimationUpdate::kEnded: {
+      animation_perf_reporter_->SetCompletionStatus(status);
+      animation_perf_reporter_.reset();
       hover_card_animation_lock_.reset();
       if (tab_strip_view_) {
         tab_strip_view_->SetIsAnimatingSize(false);
@@ -284,6 +370,8 @@ void VerticalTabStripRegionView::OnAnimationProgressed(
       break;
     }
     case BrowserAnimationUpdate::kCanceled:
+      animation_perf_reporter_->SetCompletionStatus(status);
+      animation_perf_reporter_.reset();
       hover_card_animation_lock_.reset();
       if (tab_strip_view_) {
         tab_strip_view_->SetIsAnimatingSize(false);
@@ -401,6 +489,12 @@ void VerticalTabStripRegionView::Layout(PassKey) {
                                         0, resize_area_width_,
                                         bounds().height()));
   shadow_frame_->SetBoundsRect(GetLocalBounds());
+
+  // Ensure that we update the drop arrow position so that it does not render in
+  // the collapsed state when expand on hover is active.
+  if (drop_arrow_) {
+    drop_arrow_->SetIndex(drop_arrow_->index());
+  }
 }
 
 views::View* VerticalTabStripRegionView::GetDefaultFocusableChild() {
@@ -808,10 +902,17 @@ VerticalTabStripRegionView::GetExpandOnHoverLock(
 void VerticalTabStripRegionView::HandleDragUpdate(
     const std::optional<BrowserRootView::DropIndex>& index) {
   SetLinkDropArrow(index);
+  UpdateExpandOnHoverState(true);
+  if (is_expanded_on_hover_ && !link_drag_lock_) {
+    link_drag_lock_ =
+        GetExpandOnHoverLock(ExpandOnHoverLockType::kKeepExpanded);
+  }
 }
 
 void VerticalTabStripRegionView::HandleDragExited() {
   SetLinkDropArrow(std::nullopt);
+  link_drag_lock_.reset();
+  UpdateExpandOnHoverState(false);
 }
 
 void VerticalTabStripRegionView::OnResize(int resize_amount,
@@ -974,6 +1075,10 @@ void VerticalTabStripRegionView::ClearTabStripView(views::View* view) {
   on_active_tab_changed_subscription_.reset();
   expand_on_hover_enabled_changed_subscription_.reset();
   omnibox_tab_helper_observation_.Reset();
+
+  ResetExpandOnHoverTimers();
+  is_expanded_on_hover_ = false;
+
   CHECK(tab_strip_view_);
   CHECK(tab_strip_view_ == view);
   RemoveChildViewT(std::exchange(tab_strip_view_, nullptr));
@@ -1058,19 +1163,17 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
     std::optional<bool> hovered) {
   // If not collapsed, then we shouldn't be in or entering the expand on hover
   // state.
-  if (!state_controller_->IsCollapsed() ||
-      !state_controller_->IsExpandOnHoverEnabled()) {
+  if (!state_controller_->ShouldDisplayVerticalTabs() ||
+      !state_controller_->IsCollapsed()) {
     ResetExpandOnHoverTimers();
     is_expanded_on_hover_ = false;
     return;
   }
-  // If expand on hover is locked (e.g. omnibox popup is open) or the window
-  // becomes inactive, then we should not enter the expand on hover state or
-  // exit it if already expanded.
-  if (force_collapse_lock_count_ > 0 || !IsFrameActive()) {
+  // If expand on hover is locked (e.g. omnibox popup is open), then we
+  // should not enter the expand on hover state or exit it if already expanded.
+  if (force_collapse_lock_count_ > 0) {
     if (is_expanded_on_hover_) {
       AnimateExpandOnHover(/*expand=*/false);
-      is_expanded_on_hover_ = false;
     }
     return;
   }
@@ -1082,14 +1185,25 @@ void VerticalTabStripRegionView::UpdateExpandOnHoverState(
     return;
   }
 
+  // If the window becomes inactive, then we should not enter the expand on
+  // hover state or exit it if already expanded. We evaluate this after the
+  // locks because IsFrameActive can also return false when a WebUI bubble is
+  // open.
+  if (!IsFrameActive()) {
+    if (is_expanded_on_hover_) {
+      AnimateExpandOnHover(/*expand=*/false);
+    }
+    return;
+  }
+
   const bool should_expand =
+      state_controller_->IsExpandOnHoverEnabled() &&
       (hovered.value_or(IsMouseHovered()) ||
        (GetFocusManager() && Contains(GetFocusManager()->GetFocusedView())));
 
   if (!should_expand) {
     if (is_expanded_on_hover_ && keep_expanded_lock_count_ == 0) {
       AnimateExpandOnHover(/*expand=*/false);
-      is_expanded_on_hover_ = false;
     } else {
       ResetExpandOnHoverTimers();
     }
@@ -1213,9 +1327,16 @@ void VerticalTabStripRegionView::AnimateExpandOnHover(bool expand) {
   ResetExpandOnHoverTimers();
 
   if (expand) {
+    expand_on_hover_start_time_ = base::TimeTicks::Now();
     base::RecordAction(
         base::UserMetricsAction("VerticalTabs_ExpandOnHover_Show"));
   } else {
+    if (expand_on_hover_start_time_.has_value()) {
+      base::UmaHistogramLongTimes(
+          "Tabs.VerticalTabs.ExpandOnHover.ShowDuration",
+          base::TimeTicks::Now() - expand_on_hover_start_time_.value());
+      expand_on_hover_start_time_.reset();
+    }
     base::RecordAction(
         base::UserMetricsAction("VerticalTabs_ExpandOnHover_Hide"));
   }

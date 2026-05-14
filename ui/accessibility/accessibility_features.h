@@ -132,9 +132,6 @@ AX_BASE_EXPORT BASE_DECLARE_FEATURE(kExtensionManifestV3NetworkSpeechSynthesis);
 AX_BASE_EXPORT bool IsExtensionManifestV3NetworkSpeechSynthesisEnabled();
 
 
-// Turn on browser vocalization of 'descriptions' tracks.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kTextBasedAudioDescription);
-AX_BASE_EXPORT bool IsTextBasedAudioDescriptionEnabled();
 
 // Expose document markers on inline text boxes in addition to
 // static nodes. (Note: This will make it possible for AXPosition in the browser
@@ -241,6 +238,10 @@ AX_BASE_EXPORT bool IsAccessibilityDisableTouchpadEnabled();
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityFlashScreenFeature);
 AX_BASE_EXPORT bool IsAccessibilityFlashScreenFeatureEnabled();
 
+// Controls whether the inverted mouse cursor feature is available.
+AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityInvertedMouseCursor);
+AX_BASE_EXPORT bool IsAccessibilityInvertedMouseCursorEnabled();
+
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityManifestV3ChromeVox);
 AX_BASE_EXPORT bool IsAccessibilityManifestV3EnabledForChromeVox();
 
@@ -338,6 +339,10 @@ AX_BASE_EXPORT bool IsReadAnythingOmniboxChipEnabled();
 // Enable the line focus feature for Read Anything.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingLineFocus);
 AX_BASE_EXPORT bool IsReadAnythingLineFocusEnabled();
+
+// Enable HaTS survey for Reading Mode.
+AX_BASE_EXPORT BASE_DECLARE_FEATURE(kHatsReadingModeSurvey);
+AX_BASE_EXPORT bool IsHatsReadingModeSurveyEnabled();
 
 // Enable images to be distilled via algorithm. Should be disabled by
 // default.

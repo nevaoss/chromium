@@ -1029,8 +1029,7 @@ class GlicMetricsTrustFirstOnboardingTest : public GlicMetricsTest {
   void SetUp() override {
     scoped_feature_list_.Reset();
     scoped_feature_list_.InitWithFeatures(
-        {features::kGlicTrustFirstOnboarding},
-        {features::kGlicFixTimeToFirstQueryKillSwitch});
+        {}, {features::kGlicFixTimeToFirstQueryKillSwitch});
     GlicMetricsTestBase::SetUp();
 
     enabling_ = std::make_unique<GlicEnabling>(
@@ -1091,8 +1090,7 @@ TEST_F(GlicMetricsTrustFirstOnboardingTest, ShownAndAccepted) {
 
 TEST_F(GlicMetricsTrustFirstOnboardingTest, NotShownIfConsented) {
   enabling()->SetCompletedFre(prefs::FreStatus::kCompleted);
-
-  EXPECT_FALSE(enabling()->IsTrustFirstOnboardingEnabled());
+  EXPECT_TRUE(enabling()->HasConsented());
 
   metrics()->OnGlicWindowStartedOpening(/*attached=*/false,
                                         mojom::InvocationSource::kOsButton);

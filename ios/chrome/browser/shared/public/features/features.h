@@ -798,9 +798,8 @@ extern const char kAssistantContainerMediumDetentPercentParam[];
 // Returns true if the Assistant Container is enabled.
 bool IsAssistantContainerEnabled();
 
-// Returns true if debug elements (like detents) should be added to the
-// Assistant Container.
-bool ShouldShowAssistantContainerDebugElements();
+// Returns true if the Assistant Container debug mode is enabled.
+bool IsAssistantContainerDebugEnabled();
 
 // Returns the experimental percentage for the Assistant medium detent height.
 // Returns 0 if no experimental percentage is selected.
@@ -811,6 +810,12 @@ BASE_DECLARE_FEATURE(kComposeboxIpad);
 
 // Returns true if the ComposeboxIpad feature is enabled.
 bool IsComposeboxIpadEnabled();
+
+// Enables the ComposeboxPlusButtonBottomSheet feature.
+BASE_DECLARE_FEATURE(kComposeboxPlusButtonBottomSheet);
+
+// Returns true if the ComposeboxIpad feature is enabled.
+bool IsComposeboxPlusButtonBottomSheet();
 
 // Enables the ChromeNextIa feature.
 BASE_DECLARE_FEATURE(kChromeNextIa);
@@ -981,5 +986,11 @@ BASE_DECLARE_FEATURE(kCobrowseAimHistory);
 
 // Returns true if the CobrowseAimHistory feature is enabled.
 bool IsCobrowseAimHistoryEnabled();
+
+// Enables the `AssistantAimMinimizedState` feature.
+BASE_DECLARE_FEATURE(kAssistantAimMinimizedState);
+
+// Returns true if the `AssistantAimMinimizedState` feature is enabled.
+bool IsAssistantAimMinimizedStateEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

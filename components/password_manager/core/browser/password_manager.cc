@@ -458,7 +458,6 @@ void SignalFormSubmissionIfEligibleForSaving(PasswordFormManager* manager,
     return;
   }
 
-  manager->GetMetricsRecorder()->set_form_submission_reached(true);
 
   client->PotentialSaveFormSubmitted();
 }
@@ -1273,6 +1272,13 @@ void PasswordManager::LogFirstFillingResult(
 void PasswordManager::NotifyStorePasswordCalled() {
   store_password_called_ = true;
   DropFormManagers();
+}
+
+void PasswordManager::OnNonPasswordLoginDetected() {
+  if (base::FeatureList::IsEnabled(
+          features::kPreventPasswordManagerOnFederatedLogin)) {
+    ResetSubmittedManager();
+  }
 }
 
 #if BUILDFLAG(IS_IOS)

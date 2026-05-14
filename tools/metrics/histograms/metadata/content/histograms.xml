@@ -113,6 +113,20 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram
+    name="Content.SharedWorker.WebSocket.DoesRequireCrossSiteRequestForCookies"
+    enum="Boolean" expires_after="2027-04-10">
+  <owner>yyanagisawa@chromium.org</owner>
+  <owner>wanderview@chromium.org</owner>
+  <summary>
+    Records whether a WebSocket connection was initiated from a SharedWorker in
+    a context that requires cross-site cookie restrictions (e.g. created via the
+    Storage Access API (SAA) or in a third-party context). This helps measure
+    the prevalence of workers that should have SameSite cookie restrictions.
+    Recorded in SharedWorkerHost::CreateWebSocketConnector.
+  </summary>
+</histogram>
+
 <histogram name="Content.SslError.CallbackDuration" units="ms"
     expires_after="2027-03-30">
   <owner>peconn@google.com</owner>
@@ -405,7 +419,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="ContentSettings.Popups.StrongBlockerActions"
-    enum="StrongPopupBlockerAction" expires_after="2026-08-16">
+    enum="StrongPopupBlockerAction" expires_after="2026-10-18">
   <owner>csharrison@chromium.org</owner>
   <summary>
     Counts of various events related to the strong popup blocker (aka abusive
@@ -1089,17 +1103,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="ContentSuggestions.Feed.DocumentViewSendCount100"
-    units="documents" expires_after="2023-10-15">
-  <owner>harringtond@chromium.org</owner>
-  <owner>feed@chromium.org</owner>
-  <summary>
-    Number of docids sent when loading the Feed from the network. Reported when
-    the Feed is loaded from the network, when docview sending is allowed. This
-    histogram has a maximum count of 100.
-  </summary>
-</histogram>
-
 <histogram name="ContentSuggestions.Feed.DocumentViewSendCount1000"
     units="documents" expires_after="2023-10-15">
   <owner>harringtond@chromium.org</owner>
@@ -1107,9 +1110,7 @@ chromium-metrics-reviews@google.com.
   <summary>
     Number of docids sent when loading the Feed from the network. Reported when
     the Feed is loaded from the network, when docview sending is allowed. This
-    histogram has a maximum count of 1000, see
-    ContentSuggestions.Feed.DocumentViewSendCount100 for a more accurate
-    representation of lower counts.
+    histogram has a maximum count of 1000.
   </summary>
 </histogram>
 
@@ -1678,28 +1679,6 @@ chromium-metrics-reviews@google.com.
     Reported upon successfully following a web feed. Reported as 'true' if the
     web feed was recommended, even if the user did not see or interact with
     recommendation UI.
-  </summary>
-</histogram>
-
-<histogram name="ContentSuggestions.Feed.WebFeed.PageInformationRequested"
-    enum="WebFeedPageInformationRequestReason" expires_after="2023-03-01">
-  <owner>carlosk@chromium.org</owner>
-  <owner>harringtond@chromium.org</owner>
-  <owner>feed@chromium.org</owner>
-  <summary>
-    Records the reason why the web feeds system is requesting information from
-    the renderer process about a loaded web page.
-  </summary>
-</histogram>
-
-<histogram name="ContentSuggestions.Feed.WebFeed.PostFollowDialog.Show"
-    enum="WebFeedPostFollowDialogPresentation" expires_after="2024-04-28">
-  <owner>harringtond@chromium.org</owner>
-  <owner>feed@chromium.org</owner>
-  <summary>
-    Android: Reports which presentation of the post-follow dialog is shown.
-    Reported when the post-follow dialog is displayed, after the user follows a
-    Web Feed.
   </summary>
 </histogram>
 

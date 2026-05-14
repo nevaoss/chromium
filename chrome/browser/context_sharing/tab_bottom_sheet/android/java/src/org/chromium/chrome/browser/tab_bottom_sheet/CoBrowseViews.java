@@ -35,21 +35,25 @@ public class CoBrowseViews {
     private final @Nullable ContextualTasksFusebox mFusebox;
     private final @ColorInt int mBackgroundColor;
     private final View mView;
+    private final @TabBottomSheetClientType int mClientType;
     private @Nullable View mPeekView;
 
     /**
      * Constructor for CoBrowseViews.
      *
      * @param context The context for the view.
+     * @param clientType The client using the bottom sheet.
      * @param webUi The web UI for the view.
      * @param fusebox The fusebox for the view.
      * @param backgroundColor The background color for the view.
      */
     public CoBrowseViews(
             Context context,
+            @TabBottomSheetClientType int clientType,
             @Nullable TabBottomSheetWebUi webUi,
             @Nullable ContextualTasksFusebox fusebox,
             @ColorInt int backgroundColor) {
+        mClientType = clientType;
         mWebUi = webUi;
         mFusebox = fusebox;
         mBackgroundColor = backgroundColor;
@@ -106,8 +110,8 @@ public class CoBrowseViews {
      */
     public void attachPeekView(View peekView) {
         ViewGroup peekContainer = mView.findViewById(R.id.actor_control_container);
-        assert peekContainer.getChildCount() == 0;
         detachFromParent(peekView);
+        assert peekContainer.getChildCount() == 0;
         mPeekView = peekView;
         peekContainer.addView(mPeekView);
     }
@@ -158,7 +162,12 @@ public class CoBrowseViews {
         @Px int height = resizingState.webUiContainerHeight;
         ViewGroup sheetContent = mView.findViewById(R.id.expanded_content_group);
         ViewGroup.LayoutParams sheetContentParams = sheetContent.getLayoutParams();
-        if (sheetContentParams.height != height) {
+
+        if (!resizingState.atFixedHeight
+                && sheetContentParams.height != ViewGroup.LayoutParams.MATCH_PARENT) {
+            sheetContentParams.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            sheetContent.setLayoutParams(sheetContentParams);
+        } else if (sheetContentParams.height != height) {
             sheetContentParams.height = height;
             sheetContent.setLayoutParams(sheetContentParams);
         }
@@ -180,6 +189,11 @@ public class CoBrowseViews {
             return mFusebox.getFuseboxView().getHeight();
         }
         return 0;
+    }
+
+    @TabBottomSheetClientType
+    int getClientType() {
+        return mClientType;
     }
 
     private View buildView(Context context) {

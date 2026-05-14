@@ -111,20 +111,23 @@ IN_PROC_BROWSER_TEST_P(ForwardButtonAccessibilityTest, ContextMenu) {
   ASSERT_TRUE(embedded_test_server()->Start());
   GURL url1 = embedded_test_server()->GetURL("/title1.html");
   GURL url2 = embedded_test_server()->GetURL("/title2.html");
-  RunTestSequence(InstrumentTab(kWebContentsElementId),
-                  WaitForElementNonzeroSize(kToolbarForwardButtonElementId),
-                  NavigateWebContents(kWebContentsElementId, url1),
-                  NavigateWebContents(kWebContentsElementId, url2),
-                  // Go back
-                  MoveMouseToElement(kToolbarBackButtonElementId), ClickMouse(),
-                  WaitForWebContentsNavigation(kWebContentsElementId, url1),
-                  // Right-click to open history menu
-                  MoveMouseToElement(kToolbarForwardButtonElementId),
-                  MayInvolveNativeContextMenu(
-                      ClickMouse(ui_controls::RIGHT),
-                      // Wait for history menu and close it.
-                      DismissContextMenu(kToolbarForwardButtonElementId,
-                                         kToolbarForwardButtonMenuElementId)));
+  RunTestSequence(
+      InstrumentTab(kWebContentsElementId),
+      WaitForElementNonzeroSize(kToolbarForwardButtonElementId),
+      NavigateWebContents(kWebContentsElementId, url1),
+      NavigateWebContents(kWebContentsElementId, url2),
+      // Go back
+      MoveMouseToElement(kToolbarBackButtonElementId), ClickMouse(),
+      WaitForWebContentsNavigation(kWebContentsElementId, url1),
+      // Right-click to open history menu
+      Log("Opening context menu..."),
+      MoveMouseToElement(kToolbarForwardButtonElementId),
+      MayInvolveNativeContextMenu(
+          ClickMouse(ui_controls::RIGHT),
+          // Wait for history menu and close it.
+          Steps(Log("Waiting for context menu to show..."),
+                DismissContextMenu(kToolbarForwardButtonElementId,
+                                   kToolbarForwardButtonMenuElementId))));
 }
 
 IN_PROC_BROWSER_TEST_P(ForwardButtonAccessibilityTest, AccessibilityNode) {
@@ -169,12 +172,6 @@ IN_PROC_BROWSER_TEST_P(ForwardButtonAccessibilityTest, AccessibilityNode) {
 
 IN_PROC_BROWSER_TEST_P(ForwardButtonAccessibilityTest,
                        ToggleForwardButtonVisibilityWithPref) {
-#if BUILDFLAG(IS_LINUX)
-  // TODO(https://crbug.com/500966638): Disabled on linux due to flakiness.
-  if (GetParam()) {
-    GTEST_SKIP() << "Skipping /1 version on Linux due to flakiness.";
-  }
-#endif
   RunTestSequence(
       // Start visible
       Do([this]() {

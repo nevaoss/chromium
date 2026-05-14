@@ -53,8 +53,20 @@ declare_args() {
   # Apple platforms provide the intrinsics from a different library, and the
   # implementations in compiler-rt are outdated, so avoid building them in this
   # case.
+<<<<<<< HEAD
   # NOTE(neva): Please remove this after libatomic can support GCC compiler.
   use_llvm_libatomic = !is_apple && is_clang
+=======
+  use_llvm_libatomic = !is_apple
+
+  # Unified modules controls whether we unify sysroot, libc++, and builtins
+  # into a single module.
+  use_unified_system_module = false
+}
+
+if (enable_strict_deps) {
+  assert(use_unified_system_module, "strict deps requires unified modules")
+>>>>>>> 149.0.7809.0~1
 }
 
 use_custom_libcxx =
@@ -129,7 +141,7 @@ if (is_android && export_libcxxabi_from_executables) {
   libcxx_is_shared = true
 }
 
-if (use_clang_modules) {
+if (use_clang_modules && !use_unified_system_module) {
   libcxx_prefix = "${root_build_dir}/gen/third_party/libc++/src"
   libcxx_modulemap =
       read_file("//third_party/libc++/src/include/module.modulemap.in",

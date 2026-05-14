@@ -115,10 +115,6 @@ bool TextTrack::IsVisualKind() const {
          kind() == V8TextTrackKind::Enum::kCaptions;
 }
 
-bool TextTrack::IsSpokenKind() const {
-  return kind() == V8TextTrackKind::Enum::kDescriptions;
-}
-
 void TextTrack::setMode(const V8TextTrackMode& mode) {
   // On setting, if the new value isn't equal to what the attribute would
   // currently return, the new value must be processed as follows ...
@@ -323,20 +319,26 @@ void TextTrack::InvalidateTrackIndex() {
 }
 
 bool TextTrack::IsRendered() const {
+<<<<<<< HEAD
   if (::features::IsTextBasedAudioDescriptionEnabled()) {
     return mode_ == TextTrackMode::kShowing &&
            (IsVisualKind() || IsSpokenKind());
   }
+=======
+>>>>>>> 149.0.7809.0~1
   return mode_ == TextTrackMode::kShowing && IsVisualKind();
 }
 
 bool TextTrack::CanBeRendered() const {
   // A track can be displayed when it's of kind captions, subtitles, or
   // descriptions and hasn't failed to load.
+<<<<<<< HEAD
   if (::features::IsTextBasedAudioDescriptionEnabled()) {
     return GetReadinessState() != kFailedToLoad &&
            (IsVisualKind() || IsSpokenKind());
   }
+=======
+>>>>>>> 149.0.7809.0~1
   return GetReadinessState() != kFailedToLoad && IsVisualKind();
 }
 
@@ -351,9 +353,10 @@ TextTrackCueList* TextTrack::EnsureTextTrackCueList() {
 int TextTrack::TrackIndexRelativeToRenderedTracks() {
   DCHECK(track_list_);
 
-  if (rendered_track_index_ == kInvalidTrackIndex)
+  if (rendered_track_index_ == kInvalidTrackIndex) {
     rendered_track_index_ =
         track_list_->GetTrackIndexRelativeToRenderedTracks(this);
+  }
 
   return rendered_track_index_;
 }

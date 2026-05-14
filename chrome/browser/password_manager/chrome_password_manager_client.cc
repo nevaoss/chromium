@@ -1379,8 +1379,8 @@ bool ChromePasswordManagerClient::IsIsolationForPasswordSitesEnabled() const {
 bool ChromePasswordManagerClient::IsNewTabPage() const {
   auto origin = GetLastCommittedURL().DeprecatedGetOriginAsURL();
   return origin ==
-             GURL(chrome::kChromeUINewTabPageURL).DeprecatedGetOriginAsURL() ||
-         origin == GURL(chrome::kChromeUINewTabURL).DeprecatedGetOriginAsURL();
+             chrome::ChromeUINewTabPageURLAsGURL().DeprecatedGetOriginAsURL() ||
+         origin == chrome::ChromeUINewTabURLAsGURL().DeprecatedGetOriginAsURL();
 }
 
 password_manager::WebAuthnCredentialsDelegate*
@@ -1563,7 +1563,7 @@ void ChromePasswordManagerClient::AutomaticGenerationAvailable(
               element_bounds_in_top_frame_space, ui_data.text_direction,
               /*show_password_suggestions=*/
               ui_data.is_generation_element_password_type)) {
-    // (see crbug.com/1338105)
+    // (see crbug.com/40229464)
     if (popup_controller_) {
       popup_controller_->GeneratedPasswordRejected();
     }
@@ -1893,7 +1893,7 @@ void ChromePasswordManagerClient::PrimaryPageChanged(content::Page& page) {
 }
 
 void ChromePasswordManagerClient::WebContentsDestroyed() {
-  // crbug/1090011
+  // crbug.com/40133549
   // Drop the connection before the WebContentsObserver destructors are invoked.
   // Other classes may contain callbacks to the Mojo methods. Those callbacks
   // don't like to be destroyed earlier than the pipe itself.
@@ -1924,7 +1924,15 @@ void ChromePasswordManagerClient::ResourceLoadComplete(
 }
 
 void ChromePasswordManagerClient::OnFedCmFederatedLogin(bool success) {
-  // If the federated login flow happens in the popup window, the owner of the
+  OnNonPasswordLoginDetected();
+}
+
+void ChromePasswordManagerClient::OnNonFedCmFederatedLogin() {
+  OnNonPasswordLoginDetected();
+}
+
+void ChromePasswordManagerClient::OnNonPasswordLoginDetected() {
+  // If the login flow happens in the popup window, the owner of the
   // window needs to handle the notification because the window usually gets
   // destroyed right after the login.
   content::RenderFrameHost* opener_rfh = web_contents()->GetOpener();
@@ -1936,13 +1944,11 @@ void ChromePasswordManagerClient::OnFedCmFederatedLogin(bool success) {
           ? ChromePasswordManagerClient::FromWebContents(opener_web_contents)
           : nullptr;
   if (opener_client) {
-    opener_client->OnFedCmFederatedLogin(success);
+    opener_client->OnNonPasswordLoginDetected();
     return;
   }
 
-  // TODO(crbug.com/498593355): Propagate the call to the password manager. Only
-  // the password manager click from the last opener will handle the federated
-  // login.
+  password_manager_.OnNonPasswordLoginDetected();
 }
 
 void ChromePasswordManagerClient::OnFieldTypesDetermined(

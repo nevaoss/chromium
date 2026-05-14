@@ -62,6 +62,9 @@ extern const char kAskAboutThisPageDescription[];
 extern const char kAskGeminiChipName[];
 extern const char kAskGeminiChipDescription[];
 
+extern const char kAssistantAimMinimizedStateName[];
+extern const char kAssistantAimMinimizedStateDescription[];
+
 extern const char kAssistantContainerName[];
 extern const char kAssistantContainerDescription[];
 
@@ -252,6 +255,9 @@ extern const char kComposeboxImmersiveSRPDescription[];
 
 extern const char kComposeboxIpadName[];
 extern const char kComposeboxIpadDescription[];
+
+extern const char kComposeboxPlusButtonBottomSheetName[];
+extern const char kComposeboxPlusButtonBottomSheetDescription[];
 
 extern const char kComposeboxServerSideStateName[];
 extern const char kComposeboxServerSideStateDescription[];
@@ -637,6 +643,9 @@ extern const char kLensExactMatchesEnabledDescription[];
 extern const char kLensFetchSrpApiEnabledName[];
 extern const char kLensFetchSrpApiEnabledDescription[];
 
+extern const char kLensFilterToggleEnabledName[];
+extern const char kLensFilterToggleEnabledDescription[];
+
 extern const char kLensFiltersAblationModeEnabledName[];
 extern const char kLensFiltersAblationModeEnabledDescription[];
 
@@ -736,11 +745,17 @@ extern const char kNTPBackgroundCustomizationDescription[];
 extern const char kNTPBackgroundDownsampleImageName[];
 extern const char kNTPBackgroundDownsampleImageDescription[];
 
+extern const char kNTPHeaderUseTransformsForAnimationsName[];
+extern const char kNTPHeaderUseTransformsForAnimationsDescription[];
+
 extern const char kNativeFindInPageName[];
 extern const char kNativeFindInPageDescription[];
 
 extern const char kNewTabPageFieldTrialName[];
 extern const char kNewTabPageFieldTrialDescription[];
+
+extern const char kNoAccountWebSigninName[];
+extern const char kNoAccountWebSigninDescription[];
 
 extern const char kNonModalSignInPromoName[];
 extern const char kNonModalSignInPromoDescription[];
@@ -964,9 +979,6 @@ extern const char kShareInVerbatimMatchDescription[];
 
 extern const char kSharedHighlightingIOSName[];
 extern const char kSharedHighlightingIOSDescription[];
-
-extern const char kShopCardImpressionLimitsName[];
-extern const char kShopCardImpressionLimitsDescription[];
 
 extern const char kShopCardName[];
 extern const char kShopCardDescription[];

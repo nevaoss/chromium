@@ -359,12 +359,12 @@ void CueTimeline::TimeMarchesOn() {
       media_element.ScheduleEvent(
           CreateEventWithTarget(event_type_names::kExit, task.second.Get()));
     } else {
-      TextTrackCue* cue = task.second.Get();
       bool is_enter_event = task.first == task.second->startTime();
       AtomicString event_name =
           is_enter_event ? event_type_names::kEnter : event_type_names::kExit;
       media_element.ScheduleEvent(
           CreateEventWithTarget(event_name, task.second.Get()));
+<<<<<<< HEAD
       if (::features::IsTextBasedAudioDescriptionEnabled()) {
         if (is_enter_event) {
           cue->OnEnter(MediaElement());
@@ -372,6 +372,8 @@ void CueTimeline::TimeMarchesOn() {
           cue->OnExit(MediaElement());
         }
       }
+=======
+>>>>>>> 149.0.7809.0~1
     }
   }
 

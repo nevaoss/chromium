@@ -6,6 +6,7 @@ package org.chromium.components.omnibox;
 
 import android.content.SharedPreferences;
 import android.text.format.DateUtils;
+import android.util.DisplayMetrics;
 
 import androidx.annotation.IntDef;
 
@@ -14,7 +15,6 @@ import com.google.android.gms.location.Priority;
 import org.chromium.base.BaseSwitches;
 import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
-import org.chromium.base.Log;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.SysUtils;
 import org.chromium.base.TimeUtils;
@@ -171,6 +171,9 @@ public class OmniboxFeatures {
     public static final BooleanCachedFeatureParam sShowBottomSheetPopup =
             newBooleanParam(sOmniboxMultimodalInput, "show_bottom_sheet_popup", false);
 
+    public static final BooleanCachedFeatureParam sUseAskHintForNtp =
+            newBooleanParam(sOmniboxMultimodalInput, "use_ask_hint_for_ntp", false);
+
     public static final CachedFlag sMultilineEditField =
             newFlag(OmniboxFeatureList.MULTILINE_EDIT_FIELD, FeatureState.ENABLED_IN_PROD);
 
@@ -187,7 +190,7 @@ public class OmniboxFeatures {
             newFlag(OmniboxFeatureList.AIM_SUPPRESS_VERBATIM_MATCH, FeatureState.ENABLED_IN_PROD);
 
     public static final CachedFlag sOmniboxItemDecoration =
-            newFlag(OmniboxFeatureList.OMNIBOX_ITEM_DECORATION, FeatureState.DISABLED);
+            newFlag(OmniboxFeatureList.OMNIBOX_ITEM_DECORATION, FeatureState.ENABLED_IN_TEST);
 
     public static final CachedFlag sExactMatchFavicons =
             newFlag(OmniboxFeatureList.EXACT_MATCH_FAVICONS, FeatureState.DISABLED);
@@ -276,8 +279,8 @@ public class OmniboxFeatures {
     public static final BooleanCachedFeatureParam sDiagInputConnection =
             newBooleanParam(sDiagnostics, "omnibox_diag_input_connection", false);
 
-    /** See {@link #setShouldRetainOmniboxOnFocusForTesting(boolean)}. */
-    private static @Nullable Boolean sShouldRetainOmniboxOnFocusForTesting;
+    /** See {@link #setIsDesktopModeForTesting(boolean)}. */
+    private static @Nullable Boolean sIsDesktopModeForTesting;
 
     /** When enabled, Jump Start Omnibox is activated and can engage if the feature is enabled. */
     private static @Nullable Boolean sActivateJumpStartOmnibox;
@@ -403,10 +406,10 @@ public class OmniboxFeatures {
         return inputCount >= DEFAULT_RICH_INLINE_MIN_CHAR;
     }
 
-    /** Modifies the output of {@link #shouldRetainOmniboxOnFocus()} for testing. */
-    public static void setShouldRetainOmniboxOnFocusForTesting(Boolean shouldRetainOmniboxOnFocus) {
-        sShouldRetainOmniboxOnFocusForTesting = shouldRetainOmniboxOnFocus;
-        ResettersForTesting.register(() -> sShouldRetainOmniboxOnFocusForTesting = null);
+    /** Modifies the output of {@link #isDesktopMode()} for testing. */
+    public static void setIsDesktopModeForTesting(Boolean isDesktopMode) {
+        sIsDesktopModeForTesting = isDesktopMode;
+        ResettersForTesting.register(() -> sIsDesktopModeForTesting = null);
     }
 
     /**
@@ -417,32 +420,18 @@ public class OmniboxFeatures {
      * eligible for Desktop treatment, too.
      */
     public static boolean isDesktopMode() {
-        if (sDiagInputConnection.getValue()) {
-            // TODO(crbug.com/492224343): Remove diagnostics once we understand the edge case.
-            Log.i(
-                    TAG,
-                    "Desktop mode check: A:%b K:%b M:%b S:%b",
-                    DeviceInput.supportsAlphabeticKeyboard(),
-                    DeviceInput.supportsKeyboard(ContextUtils.getApplicationContext()),
-                    DeviceInput.supportsPrecisionPointer(),
-                    DeviceFormFactor.isTablet());
+        if (sIsDesktopModeForTesting != null) {
+            return sIsDesktopModeForTesting;
         }
 
-        return DeviceInput.supportsAlphabeticKeyboard() && DeviceInput.supportsPrecisionPointer();
-    }
+        // Migrate this to appropriate DisplayMetrics-based DeviceFormFactor logic once one is
+        // available.
+        DisplayMetrics dm = ContextUtils.getApplicationContext().getResources().getDisplayMetrics();
+        float widthDp = dm.widthPixels / dm.density;
 
-    /**
-     * @return Whether the contents of the omnibox should be retained on focus as opposed to being
-     *     cleared. When {@code true} and the omnibox contents are retained, focus events will also
-     *     result in the omnibox contents being fully selected so as to allow for easy replacement
-     *     by the user. Note that only large screen devices with an attached keyboard and precision
-     *     pointer will exhibit a change in behavior when the feature flag is enabled.
-     */
-    public static boolean shouldRetainOmniboxOnFocus() {
-        if (sShouldRetainOmniboxOnFocusForTesting != null) {
-            return sShouldRetainOmniboxOnFocusForTesting;
-        }
-        return isDesktopMode();
+        return widthDp >= DeviceFormFactor.MINIMUM_TABLET_WIDTH_DP
+                && DeviceInput.supportsAlphabeticKeyboard()
+                && DeviceInput.supportsPrecisionPointer();
     }
 
     /**

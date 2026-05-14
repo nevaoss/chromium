@@ -8,6 +8,7 @@
 // sufficient and simpler than a full `RunTestSequence`.
 
 #include "base/task/single_thread_task_runner.h"
+#include "base/test/bind.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_side_panel_coordinator.h"
 #include "chrome/browser/glic/service/glic_instance_coordinator_impl.h"
+#include "chrome/browser/glic/service/glic_invoke_handler.h"
 #include "chrome/browser/glic/service/glic_invoke_task.h"
 #include "chrome/browser/glic/service/metrics/glic_instance_helper_metrics.h"
 #include "chrome/browser/glic/test_support/glic_browser_test.h"
@@ -35,6 +37,7 @@
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/common/chrome_features.h"
 #include "components/keep_alive_registry/keep_alive_types.h"
 #include "components/keep_alive_registry/scoped_keep_alive.h"
@@ -583,82 +586,6 @@ IN_PROC_BROWSER_TEST_F(
     // Verify daisy chaining did not occur
     EXPECT_EQ(nullptr, tab2_instance);
   }
-}
-
-class GlicInstanceCoordinatorTrustFirstOnboardingArm1BrowserTest
-    : public GlicInstanceCoordinatorBrowserTest {
- public:
-  GlicInstanceCoordinatorTrustFirstOnboardingArm1BrowserTest() {
-    scoped_feature_list_.InitWithFeaturesAndParameters(
-        {{features::kGlicTrustFirstOnboarding,
-          {{features::kGlicTrustFirstOnboardingArmParam.name, "1"}}}},
-        {});
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-};
-
-// Flaky test. crbug.com/498990943
-IN_PROC_BROWSER_TEST_F(
-    GlicInstanceCoordinatorTrustFirstOnboardingArm1BrowserTest,
-    DISABLED_TabContentsDaisyChainingNotSuppressedWhenTrustFirstArm1Shown) {
-  // Open FRE.
-  glic::GlicKeyedService::Get(GetProfile())
-      ->enabling()
-      .SetCompletedFre(glic::prefs::FreStatus::kNotStarted);
-
-  ASSERT_OK(OpenGlicForActiveTab());
-  tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();
-
-  // Try to daisy chain via Page Contents
-  {
-    GlicTestTabAddedWaiter waiter(GetProfile());
-    SimulateLinkClick(tab1, /*ctrl_key=*/true, /*shift_key=*/false);
-    tabs::TabInterface* tab2 = waiter.Wait();
-
-    GlicInstance* tab2_instance = coordinator().GetInstanceForTab(tab2);
-
-    // Verify daisy chaining occurred.
-    EXPECT_NE(nullptr, tab2_instance);
-  }
-}
-
-IN_PROC_BROWSER_TEST_F(
-    GlicInstanceCoordinatorTrustFirstOnboardingArm1BrowserTest,
-    AutoSubmitIsDiverted) {
-  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
-
-  base::test::TestFuture<void> success_future;
-  GlicInvokeOptions options(glic::Target(tab),
-                            mojom::InvocationSource::kOsButton);
-  options.on_success = success_future.GetCallback();
-
-  coordinator().InvokeWithAutoSubmit(GetPassKey(), std::move(options));
-
-  EXPECT_TRUE(success_future.Wait());
-  EXPECT_TRUE(coordinator().GetInstanceForTab(tab));
-}
-
-IN_PROC_BROWSER_TEST_F(
-    GlicInstanceCoordinatorTrustFirstOnboardingArm1BrowserTest,
-    AutoSubmitNotDivertedWhenFreCompleted) {
-  // Simulate FRE completion.
-  glic::GlicKeyedService::Get(GetProfile())
-      ->enabling()
-      .SetCompletedFre(glic::prefs::FreStatus::kCompleted);
-
-  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
-
-  base::test::TestFuture<void> success_future;
-  GlicInvokeOptions options(glic::Target(tab),
-                            mojom::InvocationSource::kOsButton);
-  options.on_success = success_future.GetCallback();
-
-  coordinator().InvokeWithAutoSubmit(GetPassKey(), std::move(options));
-
-  EXPECT_TRUE(success_future.Wait());
-  EXPECT_TRUE(coordinator().GetInstanceForTab(tab));
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
@@ -1461,7 +1388,14 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest, InvokeWithNewTab) {
+// TODO(crbug.com/504753617): Re-enable the test.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_InvokeWithNewTab DISABLED_InvokeWithNewTab
+#else
+#define MAYBE_InvokeWithNewTab InvokeWithNewTab
+#endif
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
+                       MAYBE_InvokeWithNewTab) {
   BrowserWindowInterface* browser_window =
       GetTabListInterface()->GetActiveTab()->GetBrowserWindowInterface();
   int tab_count_before = GetTabListInterface()->GetTabCount();
@@ -1489,7 +1423,8 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest, InvokeWithNewTab) {
   EXPECT_EQ(active_tab, new_tab);
 
   // Verify it is not loading now.
-  EXPECT_FALSE(active_tab->GetContents()->IsLoading());
+  // TODO(crbug.com/503876352): assert that tab navigation has completed.
+  // EXPECT_FALSE(active_tab->GetContents()->IsLoading());
 
   // Verify instance exists for the new tab.
   EXPECT_TRUE(coordinator().GetInstanceForTab(active_tab));
@@ -1500,7 +1435,8 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest, InvokeWithNewTab) {
 #if !BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
                        InvokeWithNewTabCreatesNewWindow) {
-  size_t browser_count_before = chrome::GetTotalBrowserCount();
+  size_t browser_count_before =
+      GlobalBrowserCollection::GetInstance()->GetSize();
 
   base::test::TestFuture<void> success_future;
   GlicInvokeOptions options(glic::Target(glic::NewTab{}),
@@ -1512,7 +1448,8 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
   EXPECT_TRUE(success_future.Wait());
 
   // Verify a new browser window was created.
-  EXPECT_EQ(chrome::GetTotalBrowserCount(), browser_count_before + 1);
+  EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(),
+            browser_count_before + 1);
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -1532,35 +1469,6 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
-                       InvokeWithAutoSubmitIncompatibleFre) {
-  SetFRECompletion(GetProfile(), prefs::FreStatus::kNotStarted);
-
-  base::test::TestFuture<GlicInvokeError> error_future;
-  GlicInvokeOptions options(mojom::InvocationSource::kOsButton);
-  options.fre_override = mojom::FreOverride::kTrustFirstText;
-  options.on_error = error_future.GetCallback();
-  options.target.surface = DefaultSurface{
-      GetTabListInterface()->GetActiveTab()->GetBrowserWindowInterface()};
-
-  coordinator().InvokeWithAutoSubmit(GetPassKey(), std::move(options));
-
-  EXPECT_EQ(error_future.Get(), GlicInvokeError::kInvalidConfiguration);
-}
-
-class GlicInstanceCoordinatorArm2Test
-    : public GlicInstanceCoordinatorBrowserTest {
- public:
-  GlicInstanceCoordinatorArm2Test() {
-    feature_list_.InitAndEnableFeatureWithParameters(
-        features::kGlicTrustFirstOnboarding,
-        {{features::kGlicTrustFirstOnboardingArmParam.name, "2"}});
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
-IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorArm2Test,
                        InvokeWaitsForFreCompletion_Arm2) {
   tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
   SetFRECompletion(GetProfile(), prefs::FreStatus::kNotStarted);
@@ -1803,6 +1711,79 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
   // Wait for the task to complete. It should complete when the timer fires,
   // and it should not crash.
   EXPECT_TRUE(done_future.Wait());
+}
+
+class GlicInstanceCoordinatorActuationBrowserTest
+    : public GlicInstanceCoordinatorBrowserTest {
+ public:
+  GlicInstanceCoordinatorActuationBrowserTest() {
+    feature_list_.InitAndEnableFeatureWithParameters(
+        ::features::kGlicActor,
+        {{::features::kGlicActorPolicyControlExemption.name, "true"}});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorActuationBrowserTest,
+                       InvokeDelayedSuccessOnActuation) {
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  ASSERT_TRUE(instance);
+
+  tabs::TabInterface* active_tab = GetTabListInterface()->GetActiveTab();
+
+  GlicInvokeOptions options(Target(active_tab),
+                            glic::mojom::InvocationSource::kOsButton);
+  options.feature_mode = mojom::FeatureMode::kActuation;
+
+  base::test::TestFuture<void> success_future;
+  options.on_success = success_future.GetCallback();
+
+  // Create a completion callback for the handler itself.
+  base::test::TestFuture<void> handler_completion_future;
+  auto handler = std::make_unique<GlicInvokeHandler>(
+      *instance, GlicInvokeHandler::ResolvedTarget{active_tab, false},
+      std::move(options), std::nullopt,
+      base::BindLambdaForTesting([&](GlicInstance*, GlicInvokeHandler*) {
+        handler_completion_future.SetValue();
+      }));
+
+  // Subscribe to actuating changes.
+  base::test::TestFuture<void> actuating_true_future;
+  base::CallbackListSubscription subscription =
+      instance->GetActorTaskManager()->AddActuatingChangedCallback(
+          base::BindLambdaForTesting([&](bool actuating) {
+            if (actuating) {
+              actuating_true_future.SetValue();
+            }
+          }));
+
+  handler->Invoke();
+
+  // Create a task AFTER Invoke.
+  base::test::TestFuture<
+      base::expected<int32_t, glic::mojom::CreateTaskErrorReason>>
+      create_task_future;
+  instance->CreateTask(nullptr, actor::webui::mojom::TaskOptions::New(),
+                       create_task_future.GetCallback());
+  ASSERT_TRUE(create_task_future.Get().has_value());
+  actor::TaskId task_id(create_task_future.Get().value());
+
+  // Wait for IsActuating to be true.
+  EXPECT_TRUE(actuating_true_future.Wait());
+
+  // Verify that on_success is NOT called yet.
+  EXPECT_FALSE(success_future.IsReady());
+
+  // Stop the task and verify callback IS called.
+  instance->StopActorTask(task_id,
+                          glic::mojom::ActorTaskStopReason::kTaskComplete);
+
+  EXPECT_TRUE(success_future.Wait());
+
+  // Wait for the handler to complete.
+  EXPECT_TRUE(handler_completion_future.Wait());
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 

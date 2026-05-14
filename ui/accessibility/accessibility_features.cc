@@ -158,10 +158,6 @@ bool IsExtensionManifestV3NetworkSpeechSynthesisEnabled() {
 }
 
 
-BASE_FEATURE(kTextBasedAudioDescription, base::FEATURE_DISABLED_BY_DEFAULT);
-bool IsTextBasedAudioDescriptionEnabled() {
-  return base::FeatureList::IsEnabled(::features::kTextBasedAudioDescription);
-}
 
 BASE_FEATURE(kUseAXPositionForDocumentMarkers,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -278,6 +274,13 @@ BASE_FEATURE(kAccessibilityFlashScreenFeature,
 bool IsAccessibilityFlashScreenFeatureEnabled() {
   return base::FeatureList::IsEnabled(
       ::features::kAccessibilityFlashScreenFeature);
+}
+
+BASE_FEATURE(kAccessibilityInvertedMouseCursor,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsAccessibilityInvertedMouseCursorEnabled() {
+  return base::FeatureList::IsEnabled(
+      ::features::kAccessibilityInvertedMouseCursor);
 }
 
 BASE_FEATURE(kAccessibilityShakeToLocate, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -418,6 +421,11 @@ bool IsReadAnythingOmniboxChipEnabled() {
 BASE_FEATURE(kReadAnythingLineFocus, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsReadAnythingLineFocusEnabled() {
   return base::FeatureList::IsEnabled(::features::kReadAnythingLineFocus);
+}
+
+BASE_FEATURE(kHatsReadingModeSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsHatsReadingModeSurveyEnabled() {
+  return base::FeatureList::IsEnabled(::features::kHatsReadingModeSurvey);
 }
 
 BASE_FEATURE(kReadAnythingImagesViaAlgorithm,

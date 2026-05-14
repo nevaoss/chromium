@@ -11,6 +11,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doAnswer;
@@ -27,6 +28,7 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.os.IBinder;
+import android.util.Size;
 import android.view.ContextThemeWrapper;
 import android.view.InputDevice;
 import android.view.MotionEvent;
@@ -1233,13 +1235,13 @@ public class CompositorViewHolderUnitTest {
         when(virtualView.getAccessibilityDescription()).thenReturn("test-node");
         doAnswer(
                         invocation -> {
-                            ((List<org.chromium.chrome.browser.layouts.components.VirtualView>)
-                                            invocation.getArgument(0))
-                                    .add(virtualView);
+                            List<org.chromium.chrome.browser.layouts.components.VirtualView> list =
+                                    invocation.getArgument(0);
+                            list.add(virtualView);
                             return null;
                         })
                 .when(mLayoutManager)
-                .getVirtualViews(any(List.class));
+                .getVirtualViews(anyList());
 
         mCompositorViewHolder.onAccessibilityModeChanged(true);
         assertNotNull(mCompositorViewHolder.mAccessibilityView);
@@ -1371,5 +1373,27 @@ public class CompositorViewHolderUnitTest {
         assertEquals(
                 "Unexpected start margin.", expectedStartMargin, layoutParams.getMarginStart());
         assertEquals("Unexpected end margin.", expectedEndMargin, layoutParams.getMarginEnd());
+    }
+
+    @Test
+    public void testGetLastNormalSize() {
+        when(mWindowAndroid.getActivity()).thenReturn(new WeakReference<>(mActivity));
+        mCompositorViewHolder.onNativeLibraryReady(mWindowAndroid, null, mPrefService);
+
+        assertEquals(new Size(0, 0), mCompositorViewHolder.getLastNormalSize());
+
+        mCompositorViewHolder.layout(0, 0, 100, 200);
+        mCompositorViewHolder.updateWebContentsSize(mTab);
+        assertEquals(new Size(100, 200), mCompositorViewHolder.getLastNormalSize());
+
+        when(mActivity.isInPictureInPictureMode()).thenReturn(true);
+        mCompositorViewHolder.layout(0, 0, 50, 50);
+        mCompositorViewHolder.updateWebContentsSize(mTab);
+        assertEquals(new Size(100, 200), mCompositorViewHolder.getLastNormalSize());
+
+        when(mActivity.isInPictureInPictureMode()).thenReturn(false);
+        mCompositorViewHolder.layout(0, 0, 300, 400);
+        mCompositorViewHolder.updateWebContentsSize(mTab);
+        assertEquals(new Size(300, 400), mCompositorViewHolder.getLastNormalSize());
     }
 }

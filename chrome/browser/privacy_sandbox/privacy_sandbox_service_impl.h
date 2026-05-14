@@ -21,11 +21,9 @@
 #include "components/privacy_sandbox/canonical_topic.h"
 #include "components/privacy_sandbox/privacy_sandbox_settings.h"
 #include "components/profile_metrics/browser_profile_type.h"
-#include "components/user_education/common/product_messaging_controller.h"
 #include "content/public/browser/interest_group_manager.h"
 #include "net/base/schemeful_site.h"
 
-class BrowserWindowInterface;
 class PrefService;
 
 namespace content {
@@ -38,10 +36,6 @@ class CookieSettings;
 
 namespace browsing_topics {
 class BrowsingTopicsService;
-}
-
-namespace views {
-class Widget;
 }
 
 class PrivacySandboxServiceImpl : public PrivacySandboxService {
@@ -163,36 +157,11 @@ class PrivacySandboxServiceImpl : public PrivacySandboxService {
                            RelatedWebsiteSetsEnabledMetric);
   FRIEND_TEST_ALL_PREFIXES(PrivacySandboxServiceTest,
                            RelatedWebsiteSetsDisabledMetric);
-  FRIEND_TEST_ALL_PREFIXES(
-      PrivacySandboxServiceTest,
-      RecordPrivacySandbox4StartupMetrics_PromptSuppressed_Explicitly);
-  FRIEND_TEST_ALL_PREFIXES(
-      PrivacySandboxServiceTest,
-      RecordPrivacySandbox4StartupMetrics_PromptSuppressed_Implicitly);
-  FRIEND_TEST_ALL_PREFIXES(
-      PrivacySandboxServiceTest,
-      RecordPrivacySandbox4StartupMetrics_PromptNotSuppressed_EEA);
-  FRIEND_TEST_ALL_PREFIXES(
-      PrivacySandboxServiceTest,
-      RecordPrivacySandbox4StartupMetrics_PromptNotSuppressed_ROW);
-  FRIEND_TEST_ALL_PREFIXES(PrivacySandbox4StartupMetricsNonRegularProfilesTest,
-                           APIs);
+  FRIEND_TEST_ALL_PREFIXES(LogPrivacySandboxStateNonRegularProfilesTest, APIs);
   FRIEND_TEST_ALL_PREFIXES(PrivacySandboxServiceTest,
-                           RecordPrivacySandbox4StartupMetrics_APIs);
+                           LogPrivacySandboxState_APIs);
   FRIEND_TEST_ALL_PREFIXES(PrivacySandboxPrivacyGuideShouldShowAdTopicsTest,
                            ReturnsCorrectStatus);
-  FRIEND_TEST_ALL_PREFIXES(
-      PrivacySandboxServiceM1RestrictedNoticePromptTest,
-      RecordPrivacySandbox4StartupMetrics_PromptNotSuppressed);
-  FRIEND_TEST_ALL_PREFIXES(
-      PrivacySandboxServiceM1RestrictedNoticeUserCurrentlyUnrestricted,
-      RecordPrivacySandbox4StartupMetrics_GraduationFlow);
-  FRIEND_TEST_ALL_PREFIXES(
-      PrivacySandboxServiceM1RestrictedNoticeUserCurrentlyRestricted,
-      RecordPrivacySandbox4StartupMetrics_GraduationFlow);
-  FRIEND_TEST_ALL_PREFIXES(
-      PrivacySandboxServiceM1RestrictedNoticeUserCurrentlyUnrestricted,
-      RecordPrivacySandbox4StartupMetrics_GraduationFlowWhenNoticeShownToGuardian);
   FRIEND_TEST_ALL_PREFIXES(PrivacySandboxQueueTestNoticeWithSearchEngine,
                            PromptSuppressed);
 
@@ -268,13 +237,10 @@ class PrivacySandboxServiceImpl : public PrivacySandboxService {
   // Helper function to log tracking protection state.
   void RecordTrackingProtectionStateHistogram();
 
-  // Logs the state of the privacy sandbox and cookie settings. Called once per
-  // profile startup.
+  // Logs the state of the Privacy Sandbox APIs (Topics, Protected Audience,
+  // Ad Measurement) and cookie-related settings (FPS, Tracking Protection).
+  // Called once per profile startup.
   void LogPrivacySandboxState();
-
-  // Logs the state of privacy sandbox 4 in regards to prompts. Called once per
-  // profile startup.
-  void RecordPrivacySandbox4StartupMetrics();
 
   // Converts the provided list of |top_frames| into eTLD+1s for display, and
   // provides those to |callback|.
@@ -311,31 +277,15 @@ class PrivacySandboxServiceImpl : public PrivacySandboxService {
   raw_ptr<browsing_topics::BrowsingTopicsService> browsing_topics_service_;
   raw_ptr<first_party_sets::FirstPartySetsPolicyService>
       first_party_sets_policy_service_;
-  raw_ptr<user_education::ProductMessagingController>
-      product_messaging_controller_;
   raw_ptr<PrivacySandboxCountries> privacy_sandbox_countries_;
 
   PrefChangeRegistrar user_prefs_registrar_;
-
-  user_education::RequiredNoticePriorityHandle notice_handle_;
-
-#if !BUILDFLAG(IS_ANDROID)
-  // A map of Browser windows which have an open Privacy Sandbox prompt,
-  // to the Widget for that prompt.
-  std::map<BrowserWindowInterface*, raw_ptr<views::Widget, CtnExperimental>>
-      browsers_to_open_prompts_;
-#endif
 
   // Fake implementation for current and blocked topics.
   // TODO(crbug.com/409048902): Moved initialization to constructor to prevent
   // potential initialization order issues.
   std::set<privacy_sandbox::CanonicalTopic> fake_current_topics_;
   std::set<privacy_sandbox::CanonicalTopic> fake_blocked_topics_;
-
-  // Record user startup state metrics based on the |state| on both client and
-  // profile level.
-  void RecordPromptStartupStateHistograms(
-      PrivacySandboxService::PromptStartupState state);
 
   // Called when the Topics preference is changed.
   void OnTopicsPrefChanged();
@@ -348,10 +298,6 @@ class PrivacySandboxServiceImpl : public PrivacySandboxService {
 
   // Returns a PrivacySandboxCountries reference.
   PrivacySandboxCountries* GetPrivacySandboxCountries();
-
-  // Returns true if _any_ of the k-API prefs are disabled via policy or
-  // the prompt was suppressed via policy.
-  static bool IsM1PrivacySandboxEffectivelyManaged(PrefService* pref_service);
 
   bool force_chrome_build_for_tests_ = false;
 

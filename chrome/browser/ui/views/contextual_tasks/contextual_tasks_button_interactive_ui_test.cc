@@ -6,6 +6,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/autocomplete/chrome_aim_eligibility_service.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_interface.h"
@@ -77,6 +78,10 @@ class TestingAimEligibilityService : public ChromeAimEligibilityService {
     return callbacks_.Add(std::move(callback));
   }
 
+  variations::VariationsService* GetVariationsService() const override {
+    return nullptr;
+  }
+
  private:
   bool is_cobrowse_eligible_ = true;
   base::RepeatingClosureList callbacks_;
@@ -96,7 +101,8 @@ class TestingContextualTasksUiService
                 contextual_tasks::MockContextualTasksUiServiceDelegate>(),
             contextual_tasks_service,
             identity_manager,
-            aim_eligibility_service) {}
+            aim_eligibility_service,
+            /*cookie_synchronizer=*/nullptr) {}
   ~TestingContextualTasksUiService() override = default;
 
   bool CookieJarContainsPrimaryAccount() override {
@@ -524,7 +530,10 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralButtonInteractiveTest,
 }
 
 IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralButtonInteractiveTest,
-                       DISABLED_BackgroundUpdatesOnImmersiveModeChange) {
+                       BackgroundUpdatesOnImmersiveModeChange) {
+#if !BUILDFLAG(IS_CHROMEOS) || !BUILDFLAG(IS_MAC)
+  GTEST_SKIP() << "Immersive mode not supported on this platform.";
+#else
   if (GetParam() != "toolbar-ephemeral-branded") {
     GTEST_SKIP() << "Branded variant button background behavior.";
   }
@@ -555,7 +564,8 @@ IN_PROC_BROWSER_TEST_P(ContextualTasksEphemeralButtonInteractiveTest,
         auto* controller = ImmersiveModeController::From(browser());
         controller->SetEnabled(false);
       }),
-      EnsurePresent(ContextualTasksButton::kContextualTasksToolbarButton));
+      WaitForShow(ContextualTasksButton::kContextualTasksToolbarButton));
+#endif
 }
 
 INSTANTIATE_TEST_SUITE_P(All,
