@@ -193,11 +193,11 @@ uint64_t GetDefaultMaxBytes() {
             cmd_line.GetSwitchValueASCII(switches::kDiscardableMemoryLimitMB),
             &new_limit) &&
         new_limit > 0) {
-      max_default_memory_limit = new_limit * kMegabyte;
+      default_max_bytes = new_limit * kMegabyte;
     }
   }
   VLOG(1) << "Discardable memory limit before checking environment: "
-          << max_default_memory_limit << " bytes";
+          << default_max_bytes << " bytes";
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
@@ -262,14 +262,10 @@ DiscardableSharedMemoryManager::DiscardableSharedMemoryManager()
   DCHECK(!g_instance)
       << "A DiscardableSharedMemoryManager already exists in this process.";
   g_instance = this;
-<<<<<<< HEAD
-  DCHECK_NE(memory_limit_, 0u);
-#if BUILDFLAG(IS_NEVA_APPRUNTIME)
-  VLOG(1) << "Discardable memory limit: " << default_memory_limit_ << " bytes";
-#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
   DCHECK_NE(max_bytes_, 0u);
->>>>>>> 149.0.7815.0~1
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  VLOG(1) << "Discardable memory limit: " << default_max_bytes_ << " bytes";
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   enforce_memory_policy_callback_ =
       base::BindRepeating(&DiscardableSharedMemoryManager::EnforceMemoryPolicy,
                           weak_ptr_factory_.GetWeakPtr());
