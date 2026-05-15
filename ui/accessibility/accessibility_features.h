@@ -278,18 +278,6 @@ AX_BASE_EXPORT bool IsAccessibilityMagnificationFollowsFocusEnabled();
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAXTreeFixing);
 AX_BASE_EXPORT bool IsAXTreeFixingEnabled();
 
-// Open Read Anything side panel when the browser is opened, and
-// call distill after the navigation's load-complete event. (Note: The browser
-// is only being opened to render one webpage, for the sake of generating
-// training data for Screen2x data collection. The browser is intended to be
-// closed by the user who launches Chrome once the first distill call finishes
-// executing.)
-//
-// Note: This feature should be used along with 'ScreenAIDebugModeEnabled=true'
-// and --no-sandbox.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kDataCollectionModeForScreen2x);
-AX_BASE_EXPORT bool IsDataCollectionModeForScreen2xEnabled();
-
 // Enable Immersive Mode for Read Anything.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kImmersiveReadAnything);
 AX_BASE_EXPORT bool IsImmersiveReadAnythingEnabled();
@@ -326,7 +314,7 @@ AX_BASE_EXPORT bool IsReadAnythingMenuShuffleExperimentEnabled();
 
 // Enable the select text feature for Read Anything Readability.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingReadabilitySelectText);
-AX_BASE_EXPORT bool IsReadaAnythingReadabilitySelectTextEnabled();
+AX_BASE_EXPORT bool IsReadAnythingReadabilitySelectTextEnabled();
 
 // Enable phrase highlighting in Read Anything Read Aloud.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingReadAloudPhraseHighlighting);
@@ -361,10 +349,6 @@ AX_BASE_EXPORT bool IsReadAnythingDocsLoadMoreButtonEnabled();
 // Enable ReadabilityJS as the distillation source for Reading Mode.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAnythingWithReadability);
 AX_BASE_EXPORT bool IsReadAnythingWithReadabilityEnabled();
-
-// Write some ScreenAI library debug data in /tmp.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kScreenAIDebugMode);
-AX_BASE_EXPORT bool IsScreenAIDebugModeEnabled();
 
 // ScreenAI library's Main Content Extraction service is enabled.
 AX_BASE_EXPORT bool IsScreenAIMainContentExtractionEnabled();

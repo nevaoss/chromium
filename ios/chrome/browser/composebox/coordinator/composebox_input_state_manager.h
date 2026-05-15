@@ -10,12 +10,16 @@
 #import <map>
 #import <memory>
 #import <optional>
+#import <set>
 #import <string>
+#import <unordered_set>
 #import <vector>
 
 #import "components/contextual_search/input_state_model.h"
 #import "components/lens/lens_overlay_mime_type.h"
+#import "ios/chrome/browser/composebox/public/composebox_attachment_option.h"
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
+#import "ios/chrome/browser/composebox/public/composebox_mode.h"
 #import "ios/chrome/browser/composebox/public/composebox_model_option.h"
 #import "third_party/omnibox_proto/searchbox_config.pb.h"
 #import "third_party/omnibox_proto/tool_mode.pb.h"
@@ -23,6 +27,7 @@
 class AimEligibilityService;
 class PrefService;
 class WebStateList;
+class TemplateURLService;
 
 namespace contextual_search {
 class ContextualSearchSessionHandle;
@@ -32,7 +37,16 @@ namespace signin {
 class IdentityManager;
 }  // namespace signin
 
+namespace web {
+class WebStateID;
+}  // namespace web
+
 @class ComposeboxInputStateManager;
+@class ComposeboxInputItem;
+@class ComposeboxUIInputState;
+@class UIImage;
+@class ComposeboxModeHolder;
+@class ComposeboxInputItemCollection;
 
 // Delegate protocol for ComposeboxInputStateManager.
 @protocol ComposeboxInputStateManagerDelegate <NSObject>
@@ -59,12 +73,17 @@ class IdentityManager;
 // The current input state.
 @property(nonatomic, readonly) const contextual_search::InputState& inputState;
 
+// The collection of items attached to the composebox.
+@property(nonatomic, weak) ComposeboxInputItemCollection* items;
+
 // Initializes the manager.
 - (instancetype)
      initWithWebStateList:(WebStateList*)webStateList
+               modeHolder:(ComposeboxModeHolder*)modeHolder
               prefService:(PrefService*)prefService
     aimEligibilityService:(AimEligibilityService*)aimEligibilityService
           identityManager:(signin::IdentityManager*)identityManager
+       templateURLService:(TemplateURLService*)templateURLService
             sessionHandle:
                 (contextual_search::ContextualSearchSessionHandle*)sessionHandle
                entrypoint:(ComposeboxEntrypoint)entrypoint
@@ -97,6 +116,59 @@ class IdentityManager;
                                      mimeTypes:
                                          (const std::vector<lens::MimeType>&)
                                              mimeTypes;
+
+// Checks if the user is eligible for AIM.
+- (BOOL)isEligibleToAIM;
+
+// Checks if the Default Search Engine is Google.
+- (BOOL)isDSEGoogle;
+
+// Whether the given attachment option is allowed.
+- (BOOL)isAttachmentAllowed:(ComposeboxAttachmentOption)attachmentOption;
+
+// Whether the given attachment option is disabled.
+- (BOOL)isAttachmentDisabled:(ComposeboxAttachmentOption)attachmentOption;
+
+// Whether the given tool mode is allowed.
+- (BOOL)isToolAllowed:(ComposeboxMode)mode;
+
+// Whether the given tool mode is disabled.
+- (BOOL)isToolDisabled:(ComposeboxMode)mode;
+
+// Whether the given model option is allowed.
+- (BOOL)isModelAllowed:(ComposeboxModelOption)modelOption;
+
+// Whether the given model option is disabled.
+- (BOOL)isModelDisabled:(ComposeboxModelOption)modelOption;
+
+// Whether the given tool mode can be selected.
+- (BOOL)canSelectTool:(ComposeboxMode)mode;
+
+// Whether the given model option can be selected.
+- (BOOL)canSelectModel:(ComposeboxModelOption)modelOption;
+
+// Whether more attachments can be added.
+- (BOOL)canAddMoreAttachments;
+
+// The remaining attachment capacity.
+- (NSUInteger)remainingAttachmentCapacity;
+
+// Whether the user can ask about the current Tab.
+- (BOOL)canAttachActiveTabWithAttachedWebStateIDs:
+    (const std::set<web::WebStateID>&)attachedWebStateIDs;
+
+// Returns the maximum number of tabs allowed to be attached.
+- (NSUInteger)maxTabAttachmentCount;
+
+// Returns the remaining number of images allowed.
+- (NSUInteger)remainingNumberOfImagesAllowed;
+
+// Computes the full UI input state based on favicon, and attached web state
+// IDs.
+- (ComposeboxUIInputState*)
+    computeUIInputStateWithFavicon:(UIImage*)currentTabFavicon
+               attachedWebStateIDs:
+                   (const std::set<web::WebStateID>&)attachedWebStateIDs;
 
 @end
 

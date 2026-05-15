@@ -233,7 +233,7 @@ public class ToolbarTest {
         ToolbarManager toolbarManager = mActivity.getToolbarManager();
         ScrimManager scrimManager = mActivity.getRootUiCoordinatorForTesting().getScrimManager();
         scrimManager.disableAnimationForTesting(true);
-        OmniboxFeatures.setIsDesktopModeForTesting(false);
+        OmniboxFeatures.setHasDesktopExperienceForTesting(false);
 
         assertNull("The scrim should be null.", scrimManager.getViewForTesting());
         assertFalse(
@@ -262,7 +262,7 @@ public class ToolbarTest {
 
     @Test
     @MediumTest
-    @DisabledTest(message = "https://crbug.com/1230091")
+    @DisabledTest(message = "https://crbug.com/40190191")
     public void testNtpNavigatesToErrorPageOnDisconnectedNetwork() {
         EmbeddedTestServer testServer =
                 EmbeddedTestServer.createAndStartServer(
@@ -300,6 +300,7 @@ public class ToolbarTest {
     @Test
     @MediumTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
+    @DisabledTest(message = "crbug.com/507245181")
     public void testNtpOmniboxFocusAndUnfocusWithHardwareKeyboardConnected() {
         // Simulate availability of a hardware keyboard.
         mActivity.getResources().getConfiguration().keyboard = Configuration.KEYBOARD_QWERTY;

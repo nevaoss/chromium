@@ -421,7 +421,7 @@ void DownloadManagerTabHelper::ProcessCompleteDownloadTask() {
           settings.has_value() ? std::move(settings.value())
                                : enterprise_connectors::AnalysisSettings(),
           enterprise_connectors::ContentAnalysisRequest::NORMAL_DOWNLOAD,
-          web_state_->GetWeakPtr());
+          *web_state_);
   auto files_request_handler_delegate = std::make_unique<
       enterprise_connectors::FilesRequestHandlerIOS>(
       profile, task_->GetResponsePath(),
@@ -433,8 +433,6 @@ void DownloadManagerTabHelper::ProcessCompleteDownloadTask() {
               weak_ptr_factory_.GetWeakPtr())));
 
   // Send the download file for enterprise DLP download content scanning.
-  // TODO(crbug.com/501456247): Update the cloudBinaryUploadsService with
-  // cloudBinaryUploadsServiceBase once the desktop refactor is done.
   files_request_handler_ = std::make_unique<
       enterprise_connectors::FilesRequestHandlerBase>(
       content_analysis_info_.get(),

@@ -584,12 +584,6 @@ BASE_FEATURE_PARAM(bool,
                    "persistence_enabled",
                    true);
 
-BASE_FEATURE_PARAM(bool,
-                   kHttpCacheNoVarySearchKeepNotSuitable,
-                   &kHttpCacheNoVarySearch,
-                   "keep_not_suitable",
-                   true);
-
 BASE_FEATURE(kHttpNoVarySearchDataUseNewAreEquivalent,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -627,12 +621,6 @@ BASE_FEATURE_PARAM(double,
                    &kTcpSocketPoolLimitRandomization,
                    "TcpSocketPoolLimitRandomizationBase",
                    0.000001);
-
-BASE_FEATURE_PARAM(int,
-                   kTcpSocketPoolLimitRandomizationCapacity,
-                   &kTcpSocketPoolLimitRandomization,
-                   "TcpSocketPoolLimitRandomizationCapacity",
-                   256);
 
 BASE_FEATURE_PARAM(double,
                    kTcpSocketPoolLimitRandomizationMinimum,
@@ -830,19 +818,19 @@ BASE_FEATURE(kPermitTcpSocketPoolConnectBackupJobs,
 
 BASE_FEATURE(kLocalNetworkPermissionCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kTcpSocketPoolProxyLimit, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kTcpSocketPoolProxyLimit, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE_PARAM(int,
                    kTcpSocketPoolProxyLimitNormal,
                    &kTcpSocketPoolProxyLimit,
                    "TcpSocketPoolProxyLimitNormal",
-                   32);
+                   128);
 
 BASE_FEATURE_PARAM(int,
                    kTcpSocketPoolProxyLimitWebSocket,
                    &kTcpSocketPoolProxyLimit,
                    "TcpSocketPoolProxyLimitWebSocket",
-                   32);
+                   128);
 
 BASE_FEATURE(kIgnoreQuicCryptoConfigMemoryPressure,
              base::FEATURE_DISABLED_BY_DEFAULT);

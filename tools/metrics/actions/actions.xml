@@ -520,6 +520,7 @@ should be able to be added at any place in this file.
       summary="For iOSLensOverlayEscapeHatchTip IPH feature"/>
   <variant name="_iOSLensPromoDesktop"
       summary="For iOSLensPromoDesktop feature"/>
+  <variant name="_iOSNewIAPromoFeature" summary="For New IA promo on startup."/>
   <variant name="_iOSOneTimeDefaultBrowserNotification"
       summary="For iOSOneTimeDefaultBrowserNotification feature"/>
   <variant name="_iOSOverflowMenuCustomization"
@@ -675,9 +676,10 @@ should be able to be added at any place in this file.
   <variant name="_PerformanceNewBadge"
       summary="For new badge next to Performance feature."/>
   <variant name="_PlusAddressCreateSuggestion"
-      summary="For creating plus addresses."/>
+      summary="For creating plus addresses. (obsolete)"/>
   <variant name="_PlusAddressFirstSaveFeature"
-      summary="For accessing settings after saving the first plus address."/>
+      summary="For accessing settings after saving the first plus address.
+               (obsolete)"/>
   <variant name="_PowerBookmarksSidePanel"
       summary="For power bookmarks side panel feature."/>
   <variant name="_PreviewsOmniboxUI"
@@ -713,6 +715,8 @@ should be able to be added at any place in this file.
       summary="For ReadingListInSidePanel feature."/>
   <variant name="_ReadingListMessages"
       summary="For ReadingListMessages feature."/>
+  <variant name="_ReadingModeKeyboardShortcut"
+      summary="For reading mode keyboard shortcut feature."/>
   <variant name="_ReadingModePageActionLabel"
       summary="For reading mode omnibox entrypoint."/>
   <variant name="_ReadingModeSidePanel"
@@ -885,6 +889,7 @@ should be able to be added at any place in this file.
   <variant name="ReadAnything" summary="read anything"/>
   <variant name="ReadingList" summary="reading list"/>
   <variant name="ShoppingInsights" summary="shopping insights"/>
+  <variant name="SidePanelDev" summary="side panel dev feature"/>
   <variant name="SideSearch" summary="side search"/>
   <variant name="TabsFromOtherDevices" summary="tabs from other devices"/>
   <variant name="WebView" summary="web view"/>
@@ -15046,6 +15051,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.DisabledByAdminPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>dewittj@google.com</owner>
   <owner>glic@google.com</owner>
   <description>
@@ -15064,6 +15070,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.ErrorPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>
@@ -15097,6 +15104,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.LoadingPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>
@@ -15126,6 +15134,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.OfflinePanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>
@@ -15149,6 +15158,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.ReadyPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>User closed the FRE while it was fully loaded.</description>
@@ -15173,6 +15183,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.UninitializedPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>
@@ -27171,6 +27182,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileExternalActionURLOpenedWithAppStoreGeminiPromo">
+  <owner>joemerramos@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Reported when the application was launched via an External Action URL with
+    the AppStoreGeminiPromo action. iOS only.
+  </description>
+</action>
+
 <action name="MobileExternalActionURLOpenedWithDefaultBrowserSettings">
   <owner>nicolasmacbeth@google.com</owner>
   <owner>bling-mony-pod@google.com</owner>
@@ -28513,6 +28533,15 @@ should be able to be added at any place in this file.
 <action name="MobileMenuDefaultBrowserPromo">
   <owner>eleanorlee@google.com</owner>
   <description>MobileMenuDefaultBrowserPromo</description>
+</action>
+
+<action name="MobileMenuDefaultBrowserPromoShown">
+  <owner>eleanorlee@google.com</owner>
+  <description>
+    This metric is recorded every time the app menu is opened when Chrome is not
+    set to default and the app menu therefore has a default browser promo menu
+    item.
+  </description>
 </action>
 
 <action name="MobileMenuDeleteFromReadingList">
@@ -32883,12 +32912,25 @@ should be able to be added at any place in this file.
     <variant name=".CloseAllTabs"
         summary="User closed all tabs via the tab context menu on tab strip
                  on Android."/>
+    <variant name=".CloseOtherTabs"
+        summary="User closed other tabs via the tab context menu on tab strip
+                 on Android."/>
+    <variant name=".CloseOtherTabs.MultiTab"
+        summary="User closed other tabs via the tab context menu on tab strip
+                 on Android while having selected more than one tab."/>
     <variant name=".CloseTab"
         summary="User closed a tab via the tab context menu on tab strip on
                  Android."/>
     <variant name=".CloseTab.MultiTab"
         summary="User closed multiple tabs via the tab context menu on tab
                  strip on Android."/>
+    <variant name=".CloseTabsToTheRight"
+        summary="User closed tabs to the right via the tab context menu on
+                 tab strip on Android."/>
+    <variant name=".CloseTabsToTheRight.MultiTab"
+        summary="User closed tabs to the right via the tab context menu on
+                 tab strip on Android while having more than one tab
+                 selected."/>
     <variant name=".DuplicateTab"
         summary="User duplicated a tab via the tab context menu on tab strip
                  on Android."/>
@@ -45520,6 +45562,16 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_Impression_FromSettingsAutofillAndPasswords"
+    not_user_triggered="true">
+  <owner>josefraska@google.com</owner>
+  <owner>chrome-autofill-team@google.com</owner>
+  <description>
+    Recorded when showing sign in entry in the Autofill and passwords settings
+    page.
+  </description>
+</action>
+
 <action name="Signin_Impression_FromSetUpList">
   <owner>scottyoder@google.com</owner>
   <owner>bling-pandamonium@google.com</owner>
@@ -46571,6 +46623,16 @@ should be able to be added at any place in this file.
   <description>
     Recorded on sign in start from access point
     signin_metrics::AccessPoint::kSettings.
+  </description>
+</action>
+
+<action name="Signin_Signin_FromSettingsAutofillAndPasswords">
+  <owner>josefraska@google.com</owner>
+  <owner>chrome-autofill-team@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kSettingsAutofillAndPasswords, emitted from
+    Autofill and passwords settings page.
   </description>
 </action>
 

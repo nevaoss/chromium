@@ -37,10 +37,12 @@
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
+#import "ios/chrome/browser/shared/model/url/chrome_url_constants.h"
 #import "ios/chrome/browser/shared/model/utils/first_run_test_util.h"
 #import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/location_bar_badge_commands.h"
+#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
 #import "ios/chrome/browser/signin/model/fake_authentication_service_delegate.h"
 #import "ios/chrome/browser/signin/model/identity_manager_factory.h"
@@ -108,6 +110,7 @@ class BwgTabHelperTest : public PlatformTest {
 
     web_state_ = std::make_unique<web::FakeWebState>();
     web_state_->SetBrowserState(profile_.get());
+    web_state_->WasShown();
     BwgTabHelper::CreateForWebState(web_state_.get());
     tab_helper_ = BwgTabHelper::FromWebState(web_state_.get());
 
@@ -233,6 +236,24 @@ TEST_F(BwgTabHelperTest, TestContextualChipCommandSent) {
   EXPECT_OCMOCK_VERIFY(mock_location_bar_badge_handler_);
 }
 
+TEST_F(BwgTabHelperTest, TestContextualChipCommandNotSentWhenHidden) {
+  feature_list_.InitWithFeatures(
+      /*enabled_features=*/{kPageActionMenu, kAskGeminiChip},
+      /*disabled_features=*/{});
+  GURL url("https://www.chromium.org");
+  AddOptimizationGuideHint(url);
+
+  web_state_->WasHidden();
+
+  OCMReject([mock_location_bar_badge_handler_ updateBadgeConfig:[OCMArg any]]);
+
+  std::unique_ptr<web::FakeNavigationContext> context =
+      std::make_unique<web::FakeNavigationContext>();
+  context->SetHasCommitted(true);
+  context->SetUrl(url);
+  tab_helper_->DidFinishNavigation(web_state_.get(), context.get());
+  EXPECT_OCMOCK_VERIFY(mock_location_bar_badge_handler_);
+}
 
 TEST_F(BwgTabHelperTest, TestIsLastInteractionUrlDifferent_SameURL) {
   feature_list_.InitWithFeatures(
@@ -852,4 +873,47 @@ TEST_F(BwgTabHelperTest, IsUrlEligibleForGemini_SRPCheck_Disabled) {
 
   GURL srp_url("https://www.google.com/search?q=test");
   EXPECT_TRUE(tab_helper_->IsUrlEligibleForGemini(srp_url));
+}
+
+// Tests that Gemini is available for the NTP when the ChromeNextIa feature
+// is enabled.
+TEST_F(BwgTabHelperTest,
+       IsGeminiAvailableForWebState_WhenUrlIsNtp_ChromeNextIaEnabled) {
+  feature_list_.InitWithFeatures(
+      /*enabled_features=*/{kChromeNextIa, kPageActionMenu, kComposeboxIOS,
+                            kComposeboxIpad},
+      /*disabled_features=*/{});
+
+  web_state_->SetBrowserState(profile_.get());
+  web_state_->SetCurrentURL(GURL(kChromeUINewTabURL));
+  BwgTabHelper::CreateForWebState(web_state_.get());
+  tab_helper_ = BwgTabHelper::FromWebState(web_state_.get());
+  EXPECT_TRUE(tab_helper_->IsGeminiAvailableForWebState());
+}
+
+// Tests that Gemini is not available for the NTP when the ChromeNextIa feature
+// is disabled.
+TEST_F(BwgTabHelperTest,
+       IsGeminiAvailableForWebState_WhenUrlIsNtp_ChromeNextIaDisabled) {
+  feature_list_.InitWithFeatures(
+      /*enabled_features=*/{kPageActionMenu},
+      /*disabled_features=*/{kChromeNextIa});
+
+  web_state_->SetBrowserState(profile_.get());
+  web_state_->SetCurrentURL(GURL(kChromeUINewTabURL));
+  BwgTabHelper::CreateForWebState(web_state_.get());
+  tab_helper_ = BwgTabHelper::FromWebState(web_state_.get());
+  EXPECT_FALSE(tab_helper_->IsGeminiAvailableForWebState());
+}
+
+// Tests that `IsUrlEligibleForGemini` correctly identifies NTP URL as eligible
+// when ChromeNextIa feature is enabled.
+TEST_F(BwgTabHelperTest, IsUrlEligibleForGemini_Ntp_Enabled) {
+  feature_list_.InitWithFeatures(
+      /*enabled_features=*/{kChromeNextIa, kPageActionMenu, kComposeboxIOS,
+                            kComposeboxIpad},
+      /*disabled_features=*/{});
+
+  GURL ntp_url(kChromeUINewTabURL);
+  EXPECT_TRUE(tab_helper_->IsUrlEligibleForGemini(ntp_url));
 }

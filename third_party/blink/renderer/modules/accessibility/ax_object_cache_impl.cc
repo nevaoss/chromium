@@ -1271,11 +1271,6 @@ AXObject* AXObjectCacheImpl::Get(AbstractInlineTextBox* inline_text_box) const {
   return result;
 }
 
-AXObject* AXObjectCacheImpl::GetPositionedObjectForAnchor(const AXObject* obj) {
-  CHECK(!RuntimeEnabledFeatures::NoAriaDetailsForAnchorPosEnabled());
-  return relation_cache_->GetPositionedObjectForAnchor(obj);
-}
-
 AXObject* AXObjectCacheImpl::GetAnchorForPositionedObject(const AXObject* obj) {
   return relation_cache_->GetAnchorForPositionedObject(obj);
 }
@@ -1378,6 +1373,11 @@ bool AXObjectCacheImpl::IsRelevantPseudoElement(const Node& node) {
     // ::expand-icon should not generate anything in the a11y tree for the same
     // reason as ::picker-icon.
     if (node.GetPseudoId() == kPseudoIdExpandIcon) {
+      return false;
+    }
+    // ::interest-button is decorative and redundant with the interest invoker
+    // element.
+    if (node.GetPseudoId() == kPseudoIdInterestButton) {
       return false;
     }
     // Scroll control pseudo-elements are always relevant when they have a

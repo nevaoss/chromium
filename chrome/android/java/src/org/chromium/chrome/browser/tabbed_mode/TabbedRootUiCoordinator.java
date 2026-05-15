@@ -46,6 +46,7 @@ import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.version_info.VersionInfo;
 import org.chromium.build.BuildConfig;
+import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -206,6 +207,8 @@ import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarBehavior;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarButtonVariant;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarPrefs;
 import org.chromium.chrome.browser.ui.RootUiCoordinator;
+import org.chromium.chrome.browser.ui.actions.ActionRegistry;
+import org.chromium.chrome.browser.ui.actions.ActionUtils;
 import org.chromium.chrome.browser.ui.app_rating.AppRatingPromoController;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuBlocker;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
@@ -255,7 +258,6 @@ import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.signin.AccountManagerFacadeProvider;
 import org.chromium.components.signin.base.CoreAccountInfo;
-import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.tab_group_sync.SavedTabGroup;
 import org.chromium.components.tab_group_sync.TabGroupSyncController;
@@ -272,6 +274,7 @@ import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.IntentRequestTracker;
 import org.chromium.ui.base.UiAndroidFeatureList;
+import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayUtil;
 import org.chromium.ui.dragdrop.DragDropGlobalState;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeManager;
@@ -581,6 +584,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         activityLifecycleDispatcher,
                         multiInstanceManager),
                 bottomBarHostManager);
+
+        if (BottomBarConfigUtils.isBottomBarEnabled(activity)) {
+            mActionRegistry = new ActionRegistry();
+            ActionUtils.registerBottomBarActions(mActionRegistry);
+        }
+
         mInsetObserver = insetObserver;
         mBackButtonShouldCloseTabFn = backButtonShouldCloseTabFn;
         mSendToBackground = sendToBackground;
@@ -630,8 +639,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     IdentityManager identityManager =
                             IdentityServicesProvider.get().getIdentityManager(profile);
                     assumeNonNull(identityManager);
-                    CoreAccountInfo primaryAccountInfo =
-                            identityManager.getPrimaryAccountInfo(ConsentLevel.SIGNIN);
+                    CoreAccountInfo primaryAccountInfo = identityManager.getPrimaryAccountInfo();
                     assert primaryAccountInfo != null;
                     AccountManagerFacadeProvider.getInstance()
                             .updateCredentials(primaryAccountInfo, mActivity, successCallback);
@@ -886,7 +894,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         }
 
         if (mContextualTasksBridge != null) {
-            mContextualTasksBridge.destroy();
             mContextualTasksBridge = null;
         }
 
@@ -901,7 +908,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         }
 
         if (mGestureUserEducationIphController != null) {
-            mGestureUserEducationIphController.unregisterTabObserver();
+            mGestureUserEducationIphController.destroy();
             mGestureUserEducationIphController = null;
         }
 
@@ -940,6 +947,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     }
 
     @Override
+    @EnsuresNonNull("mToolbarManager")
     protected void initializeToolbar() {
         if (OpenInAppUtils.isOpenInAppAvailable()) {
             View controlContainer = mActivity.findViewById(R.id.control_container);
@@ -1206,11 +1214,16 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mBookmarkBarVisibilityProvider.addObserver(mBookmarkBarVisibilityObserver);
         }
 
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.CONTEXTUAL_TASKS)) {
-            mContextualTasksBridge =
-                    new ContextualTasksBridge(
-                            mProfileSupplier.asNonNull().get().getOriginalProfile(),
-                            mChromeAndroidTaskSupplier.get());
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.CONTEXTUAL_TASKS)
+                && mChromeAndroidTaskSupplier.get() != null) {
+            Profile profile = mProfileSupplier.asNonNull().get().getOriginalProfile();
+            mContextualTasksBridge = new ContextualTasksBridge(profile, mWindowAndroid);
+            mChromeAndroidTaskSupplier
+                    .get()
+                    .addFeature(
+                            new ChromeAndroidTaskFeatureKey(
+                                    ContextualTasksBridge.class, profile, mWindowAndroid),
+                            () -> mContextualTasksBridge);
         }
 
         initiateTabBottomSheetManagers();
@@ -2130,8 +2143,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 SidePanelContainerCoordinatorFactory.create(
                         mActivity, mSideUiCoordinator, SidePanelType.TOOLBAR);
         if (mSidePanelContainerCoordinator != null) {
-            mSidePanelContainerCoordinator.init();
-
             // Initialize SidePanelCoordinatorAndroid and a window-scoped SidePanelRegistry, and
             // associate them with a ChromeAndroidTask.
             // This will allow SidePanelCoordinatorAndroid and SidePanelRegistry to access the
@@ -2150,14 +2161,20 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             var chromeAndroidTask = mChromeAndroidTaskSupplier.get();
             assert chromeAndroidTask != null
                     : "ChromeAndroidTask shouldn't be null when side panel is enabled";
-            chromeAndroidTask.addFeature(
-                    new ChromeAndroidTaskFeatureKey(
-                            SidePanelCoordinatorAndroid.class,
-                            mProfileSupplier.get(),
-                            mWindowAndroid),
-                    () ->
-                            SidePanelCoordinatorAndroidFactory.create(
-                                    mSidePanelContainerCoordinator));
+
+            var sidePanelCoordinatorAndroid =
+                    (SidePanelCoordinatorAndroid)
+                            chromeAndroidTask.addFeature(
+                                    new ChromeAndroidTaskFeatureKey(
+                                            SidePanelCoordinatorAndroid.class,
+                                            mProfileSupplier.get(),
+                                            mWindowAndroid),
+                                    () ->
+                                            SidePanelCoordinatorAndroidFactory.create(
+                                                    mSidePanelContainerCoordinator));
+            assert sidePanelCoordinatorAndroid != null
+                    : "SidePanelCoordinatorAndroid shouldn't be null when side panel is enabled";
+
             chromeAndroidTask.addFeature(
                     new ChromeAndroidTaskFeatureKey(
                             WindowScopedSidePanelRegistryBridge.class,
@@ -2165,10 +2182,15 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mWindowAndroid),
                     SidePanelRegistryBridgeFactory::createWindowScopedBridge);
 
+            mSidePanelContainerCoordinator.init(sidePanelCoordinatorAndroid);
+
             // TODO(crbug.com/489548570): Remove SidePanelDevFeature when it's not needed.
             mSidePanelDevFeature =
                     SidePanelDevFeatureFactory.create(
-                            mProfileSupplier, mSidePanelContainerCoordinator, mWindowAndroid);
+                            mProfileSupplier,
+                            mSidePanelContainerCoordinator,
+                            mWindowAndroid,
+                            mActivityTabProvider);
         }
 
         mSideUiStateProviderSupplier.set(mSideUiCoordinator);
@@ -2549,6 +2571,11 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         // TODO(crbug.com/489548570): Remove this entry point into SidePanelDevFeature.
         if (mSidePanelDevFeature != null) {
             mSidePanelDevFeature.toggle();
+            return true;
+        }
+
+        if (mTabBottomSheetManager != null && mTabBottomSheetManager.isInPeekMode()) {
+            mTabBottomSheetManager.setSheetExpanded(true);
             return true;
         }
 

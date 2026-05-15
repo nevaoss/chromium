@@ -83,10 +83,6 @@ base::TimeTicks CommonStartupMetricRecorder::MainEntryPointTicks() const {
   return chrome_main_entry_ticks_;
 }
 
-bool CommonStartupMetricRecorder::DidRecordPreRead() const {
-  return !preread_begin_ticks_.is_null();
-}
-
 base::TimeTicks CommonStartupMetricRecorder::StartupTimeToTimeTicks(
     base::Time time) {
   // First get a base which represents the same point in time in both units.
@@ -123,8 +119,8 @@ void CommonStartupMetricRecorder::AddStartupEventsForTelemetry() {
     return;
   }
 
-  TRACE_EVENT_INSTANT_WITH_TIMESTAMP0(
-      "startup", "Startup.BrowserMainEntryPoint", 0, chrome_main_entry_ticks_);
+  TRACE_EVENT_INSTANT("startup", "Startup.BrowserMainEntryPoint",
+                      chrome_main_entry_ticks_);
 }
 
 #if DCHECK_IS_ON()

@@ -15,6 +15,7 @@ import android.view.Window;
 
 import androidx.annotation.Px;
 
+import org.chromium.base.Log;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -42,6 +43,7 @@ public class TabBottomSheetCoordinator {
     // Can be modified later to be set dynamically based on device
     private static final float FULL_HEIGHT_RATIO = 0.7f;
     private static final float SMALL_SCREEN_HEIGHT_RATIO = 0.9f;
+    private static final String TAG = "TabBottomSheet";
 
     // Interface used by the manager to monitor events related to the state of the
     // bottom sheet.
@@ -57,6 +59,7 @@ public class TabBottomSheetCoordinator {
             new ComponentCallbacks() {
                 @Override
                 public void onConfigurationChanged(Configuration configuration) {
+                    Log.i(TAG, "onConfigurationChanged: isShowing = " + mIsShowingTabBottomSheet);
                     if (mIsShowingTabBottomSheet) {
                         mExpectingLayoutChange = true;
                     }
@@ -215,7 +218,9 @@ public class TabBottomSheetCoordinator {
 
         if (mBottomSheetController.requestShowContent(mSheetContent, animate)) {
             // Set peek height for touch arbitration.
-            mMediator.setPeekHeight(mSheetContent.getPeekHeight());
+            if (mSheetContent != null) {
+                mMediator.setPeekHeight(mSheetContent.getPeekHeight());
+            }
             // Notify that the sheet is opened synchronously. The precise expansion state will be
             // refined once the posted task completes and layout is available.
             mSheetEventsCallback.onBottomSheetOpened(startsExpanded);
@@ -227,7 +232,7 @@ public class TabBottomSheetCoordinator {
                         if (mSheetEventsCallback == null) {
                             return;
                         }
-                        setToFixedHeight();
+                        setToFixedHeightOrFallback();
 
                         boolean isSheetHeightSufficient =
                                 mMediator.isSheetHeightSufficient(
@@ -298,6 +303,10 @@ public class TabBottomSheetCoordinator {
         return mIsShowingTabBottomSheet;
     }
 
+    boolean isInPeekMode() {
+        return mBottomSheetController.getSheetState() == BottomSheetController.SheetState.PEEK;
+    }
+
     // Cleanup methods.
     void destroy() {
         if (mIsShowingTabBottomSheet && mSheetContent != null) {
@@ -355,6 +364,14 @@ public class TabBottomSheetCoordinator {
 
             @Override
             public void onContainerSizeChanged(int containerWidth, int containerHeight) {
+                Log.i(
+                        TAG,
+                        "onContainerSizeChanged: width = "
+                                + containerWidth
+                                + ", height = "
+                                + containerHeight
+                                + ", expectingLayoutChange = "
+                                + mExpectingLayoutChange);
                 if (mSheetContent == null || !mIsShowingTabBottomSheet) {
                     return;
                 }
@@ -363,10 +380,14 @@ public class TabBottomSheetCoordinator {
                     mExpectingLayoutChange = false;
                 }
                 if (ChromeFeatureList.sTabBottomSheetResizeWebview.getValue()) {
-                    if (mInitialContainerSizeChanged) setToFlexibleHeight();
+                    if (mInitialContainerSizeChanged) {
+                        setToFlexibleHeight();
+                    } else {
+                        setToFixedHeightOrFallback();
+                    }
                     mInitialContainerSizeChanged = true;
                 } else {
-                    setToFixedHeight();
+                    setToFixedHeightOrFallback();
                 }
             }
 
@@ -421,9 +442,26 @@ public class TabBottomSheetCoordinator {
         mMediator.setToFlexibleHeight();
     }
 
-    private void setToFixedHeight() {
+    private void setToFixedHeightOrFallback() {
         if (mWindowAndroid.getWindow() == null) return;
-        mMediator.setToFixedHeight((int) (getVisibleViewportHeight() * getDefaultHeightRatio()));
+        @Px int fixedHeight = (int) (getVisibleViewportHeight() * getDefaultHeightRatio());
+
+        // The bottom sheet controller max offset calculations may not be correct without the
+        // sheet content being set to a fixed height first.
+        mMediator.setToFixedHeight(fixedHeight);
+
+        int newFixedHeight = Math.min(fixedHeight, mBottomSheetController.getMaxOffset());
+        if (newFixedHeight != fixedHeight) {
+            fixedHeight = newFixedHeight;
+            mMediator.setToFixedHeight(fixedHeight);
+        }
+
+        // In the case the bottom sheet is unable to set to our desired fixed height, fallback to
+        // use of flexible heights.
+        if (ChromeFeatureList.sTabBottomSheetResizeWebview.getValue()
+                && mBottomSheetController.getContainerHeight() != fixedHeight) {
+            setToFlexibleHeight();
+        }
     }
 
     private int getVisibleViewportHeight() {
@@ -436,6 +474,14 @@ public class TabBottomSheetCoordinator {
 
         @Px int decorHeight = window.getDecorView().getHeight();
         @Px int visibleHeight = Math.min(decorHeight, visibleViewportRect.height());
+        Log.i(
+                TAG,
+                "getVisibleViewportHeight: decorHeight = "
+                        + decorHeight
+                        + ", visibleViewportRect.height() = "
+                        + visibleViewportRect.height()
+                        + ", resolved = "
+                        + visibleHeight);
         return visibleHeight;
     }
 

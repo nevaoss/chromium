@@ -54,6 +54,7 @@
 <translation id="1179890706672152411">ನಿಮ್ಮ ಸಂಗ್ರಹಣೆ ಭರ್ತಿಯಾಗಿದೆ</translation>
 <translation id="1181037720776840403">ತೆಗೆದುಹಾಕು</translation>
 <translation id="1190609913194133056">ಅಧಿಸೂಚನೆಯ ಕೇಂದ್ರ</translation>
+<translation id="1199631150313925648">ಹಸ್ತಚಾಲಿತವಾಗಿ ನಮೂದಿಸಿ</translation>
 <translation id="1199963004393929848">ಹಸಿರು ಥೀಮ್</translation>
 <translation id="1201402288615127009">ಮುಂದೆ</translation>
 <translation id="1204075260022434100">{count,plural, =1{ಬುಕ್‌ಮಾರ್ಕ್ ಅನ್ನು ನಿಮ್ಮ ಖಾತೆ {email} ನಲ್ಲಿ "{title}" ಎಂಬಲ್ಲಿ ಸೇವ್‌ ಮಾಡಲಾಗಿದೆ}one{{count} ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ನಿಮ್ಮ ಖಾತೆ {email} ನಲ್ಲಿ "{title}" ಗೆ ಸೇವ್ ಮಾಡಲಾಗಿದೆ}other{{count} ಬುಕ್‌ಮಾರ್ಕ್‌ಗಳನ್ನು ನಿಮ್ಮ ಖಾತೆ {email} ನಲ್ಲಿ "{title}" ಗೆ ಸೇವ್ ಮಾಡಲಾಗಿದೆ}}</translation>
@@ -958,6 +959,7 @@
 <translation id="441868831736628555">ಗೌಪ್ಯತೆಯ ಸೂಚನೆ</translation>
 <translation id="4420409367264901497">ಬುಕ್‌ಮಾರ್ಕ್ ಎಡಿಟ್ ಮಾಡಿ</translation>
 <translation id="4425365312778464779">ಈ ಖಾತೆಯನ್ನು ನಿರ್ವಹಿಸಲಾಗಿದೆ</translation>
+<translation id="443008484043213881">ಸಾಧನಗಳು</translation>
 <translation id="4430277756566635951"><ph name="EMAIL" /> ಅನ್ನು ಪ್ರಸ್ತುತ ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ. ಖಾತೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.</translation>
 <translation id="4430505936695785931">ಇತರ ಆ್ಯಪ್‌ಗಳಲ್ಲಿ ಸೇವ್ ಮಾಡಲಾದ ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ಪಡೆಯಿರಿ</translation>
 <translation id="4431224949908513835">ಭರ್ತಿ ಮಾಡಲು ಪಾವತಿ ವಿಧಾನವನ್ನು ಆಯ್ಕೆಮಾಡಿ.</translation>
@@ -1084,7 +1086,6 @@
 <translation id="484462545196658690">ಆಟೋ</translation>
 <translation id="4850886885716139402">ವೀಕ್ಷಣೆ</translation>
 <translation id="4854068532375923088">ನಿಮ್ಮ ಕ್ಯಾಮರಾವನ್ನು ಬಳಸಲು "Gemini" ಗೆ ಅನುಮತಿಸಿ</translation>
-<translation id="4860114370595561279">ನಿಮ್ಮ ಸೇವ್‌ ಮಾಡಲಾದ ಮಾಹಿತಿಯನ್ನು ನಿಮ್ಮ ಸಾಧನದಲ್ಲಿ ಸಂಗ್ರಹಿಸಲಾಗಿದೆ</translation>
 <translation id="4860895144060829044">ಕರೆ</translation>
 <translation id="4861953997778766866">ನಿಮ್ಮ ಹಂಚಿಕೊಳ್ಳಲಾದ ಟ್ಯಾಬ್‌ ಗುಂಪುಗಳಿಗೆ ಪ್ರತಿಯೊಬ್ಬರೂ ಬದಲಾವಣೆಗಳನ್ನು ಮಾಡಬಹುದು</translation>
 <translation id="4865063548323785458">ಸೈಟ್‌ಗಳು ಮತ್ತು ಆ್ಯಪ್‌ಗಳಿಗೆ ಸುಲಭವಾಗಿ ಸೈನ್ ಇನ್ ಮಾಡಲು ನಿಮ್ಮ ಪಾಸ್‌ವರ್ಡ್‌ಗಳನ್ನು ಸೇವ್ ಮಾಡಿ ಮತ್ತು ಆಟೋಫಿಲ್ ಮಾಡಿ</translation>
@@ -1173,7 +1174,7 @@
 <translation id="5141363746588976328">ನಿಮ್ಮ ಟ್ಯಾಬ್‌ಗಳ ಕಾರ್ಡ್‌ನಲ್ಲಿ ದರ ಇಳಿಕೆಯನ್ನು ಮರೆಮಾಡಿ</translation>
 <translation id="514154868070499296">ಫಾಂಟ್: <ph name="FONT" /></translation>
 <translation id="5145331760738811130">ಟ್ಯಾಬ್‌ ಸ್ವಿಚರ್‌ ಅನ್ನು ತ್ಯಜಿಸಿ</translation>
-<translation id="5148717509369231739">Safari ಆಮದು</translation>
+<translation id="5148717509369231739">Safari ಇಂಪೋರ್ಟ್</translation>
 <translation id="5152483358138813104">ನಿಮ್ಮ ಸಾಧನಗಳಾದ್ಯಂತ ವೇಗವಾಗಿ ಸೈನ್‌ ಇನ್‌ ಮಾಡಿ</translation>
 <translation id="515315847398512535">ನಿಮ್ಮ ಖಾತೆಗಾಗಿ ಹುಡುಕಾಟದ ಸ್ಕ್ರೀನ್ ಅನ್ನು ಆಫ್ ಮಾಡಲಾಗಿದೆ. ಹೆಚ್ಚಿನ ಮಾಹಿತಿಗಾಗಿ ನಿಮ್ಮ ನಿರ್ವಾಹಕರನ್ನು ಸಂಪರ್ಕಿಸಿ.</translation>
 <translation id="5155502059906700593">ನಿಮ್ಮ ವಿಳಾಸ ಪಟ್ಟಿಯ ಸ್ಥಾನವನ್ನು ಮೇಲಕ್ಕೆ ಅಥವಾ ಕೆಳಕ್ಕೆ ಬದಲಾಯಿಸಿ.</translation>
@@ -1295,6 +1296,7 @@
 <translation id="5581786858144165447">AI ಮೋಡ್ ಅನ್ನು ಕೇಳಿ</translation>
 <translation id="5585019845078534178">ಕಾರ್ಡ್‌ಗಳು</translation>
 <translation id="5591526871732898147">ಲಗತ್ತಿಸಲಾದ ಚಿತ್ರ {index}</translation>
+<translation id="5594597292424622277">ವೀಡಿಯೊ ವಿರಾಮಗೊಳಿಸಿ</translation>
 <translation id="5595485650161345191">ವಿಳಾಸ ಎಡಿಟ್ ಮಾಡಿ</translation>
 <translation id="559567008082979829">ನಿಮ್ಮ ಡೌನ್‌ಲೋಡ್‌ಗಳನ್ನು ಒಂದು ತಿಂಗಳ ನಂತರ ಅಳಿಸಲು ಸೆಟ್‌ ಮಾಡಿ.</translation>
 <translation id="5596627076506792578">ಇನ್ನಷ್ಟು ಆಯ್ಕೆಗಳು</translation>
@@ -2164,6 +2166,7 @@
 <translation id="8528009254289981965">ಅಜ್ಞಾತ ಮೋಡ್‌ನಲ್ಲಿ ಇತರ ಆ್ಯಪ್‌ಗಳಿಂದ ಲಿಂಕ್‌ಗಳನ್ನು ತೆರೆಯಿರಿ</translation>
 <translation id="8529767659511976195">ಹೊಸತು</translation>
 <translation id="8531572740963685410">PDF ಗಳು</translation>
+<translation id="8532059953132740592">ವೀಡಿಯೊ ಪ್ಲೇ ಮಾಡಿ</translation>
 <translation id="8533411848724153701">Gemini</translation>
 <translation id="8533670235862049797">ಸುರಕ್ಷಿತ ಬ್ರೌಸಿಂಗ್ ಆನ್ ಆಗಿದೆ</translation>
 <translation id="8534481786647257214">Google+ ಪೋಸ್ಟ್ ಪೂರ್ಣಗೊಂಡಿದೆ.</translation>

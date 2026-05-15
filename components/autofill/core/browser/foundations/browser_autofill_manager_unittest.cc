@@ -1553,6 +1553,23 @@ TEST_F(BrowserAutofillManagerTest, AtMemoryTriggersEmptySuggestions) {
   external_delegate()->CheckNoSuggestions(form.fields()[0].global_id());
 }
 
+// Tests that when `RemoteAnnotatorEnablementState` is `kDisabledNotEligible`
+// for a given profile, the AtMemory popup doesn't trigger.
+TEST_F(BrowserAutofillManagerTest, AtMemoryTriggerDroppedWhenNotEligible) {
+  FormData form = CreateTestAddressFormData();
+  FormsSeen({form});
+
+  autofill_client().set_accessibility_annotator_enablement_state(
+      accessibility_annotator::RemoteAnnotatorEnablementState::
+          kDisabledNotEligible);
+
+  OnAskForValuesToFill(form, form.fields()[0],
+                       AutofillSuggestionTriggerSource::kAtMemory);
+
+  // No suggestions should be returned, not even empty ones.
+  EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
+}
+
 // Test that the correct logger is returned for an address field.
 TEST_F(BrowserAutofillManagerTest, GetEventFormLogger_Address) {
   AutofillField field;
@@ -5107,7 +5124,7 @@ TEST_F(BrowserAutofillManagerWithLogEventsTest, LogIBANField) {
   autofill_manager().FillOrPreviewField(
       mojom::ActionPersistence::kFill, mojom::FieldActionType::kReplaceAll,
       form, form.fields().front(), u"CH93 0076 2011 6238 5295 7",
-      SuggestionType::kIbanEntry, IBAN_VALUE);
+      FillingProduct::kIban, IBAN_VALUE);
   FormSubmitted(form);
 
   const std::vector<AutofillField::FieldLogEventType>& fill_field_log_events =
@@ -6097,8 +6114,8 @@ TEST_F(BrowserAutofillManagerTest, NullAutofillFieldDoesNotCrash) {
 
   autofill_manager().FillOrPreviewField(
       mojom::ActionPersistence::kFill, mojom::FieldActionType::kReplaceAll,
-      form, form.fields().front(), u"12345678",
-      SuggestionType::kLoyaltyCardEntry, LOYALTY_MEMBERSHIP_ID);
+      form, form.fields().front(), u"12345678", FillingProduct::kLoyaltyCard,
+      LOYALTY_MEMBERSHIP_ID);
 }
 
 TEST_F(BrowserAutofillManagerTest, DontOfferToSavePaymentsCard) {
@@ -6565,7 +6582,7 @@ TEST_F(BrowserAutofillManagerTest,
   autofill_manager().FillOrPreviewField(
       mojom::ActionPersistence::kFill, mojom::FieldActionType::kReplaceAll,
       form, form.fields().front(), u"CH93 0076 2011 6238 5295 7",
-      SuggestionType::kIbanEntry, IBAN_VALUE);
+      FillingProduct::kIban, IBAN_VALUE);
 
   FormSubmitted(form);
 
@@ -9169,7 +9186,9 @@ TEST_F(BrowserAutofillManagerTest,
 
 struct SuggestionMergingTestParams {
   std::string test_name;
-  std::vector<std::pair<FillingProduct, std::vector<SuggestionType>>> input;
+  std::vector<std::pair<SuggestionGenerator::SuggestionDataSource,
+                        std::vector<SuggestionType>>>
+      input;
   std::vector<SuggestionType> expected_output;
 };
 
@@ -9182,8 +9201,6 @@ TEST_P(BrowserAutofillManagerSuggestionMergingTest, MergingLogic) {
   FormData form = test::GetFormData(
       {.fields = {{.label = u"Field",
                    .form_control_type = FormControlType::kInputText}}});
-  const FormGlobalId form_id = form.global_id();
-  const FieldGlobalId field_id = form.fields()[0].global_id();
 
   std::vector<SuggestionGenerator::ReturnedSuggestions> returned_suggestions =
       base::ToVector(params.input, [&](const auto& pair) {
@@ -9195,7 +9212,7 @@ TEST_P(BrowserAutofillManagerSuggestionMergingTest, MergingLogic) {
 
   test_api(autofill_manager())
       .OnIndividualSuggestionsGenerated(
-          form_id, field_id,
+          form.global_id(), form.fields()[0].global_id(),
           AutofillSuggestionTriggerSource::kFormControlElementClicked, {},
           base::TimeTicks::Now(), std::move(returned_suggestions));
 
@@ -9210,17 +9227,21 @@ INSTANTIATE_TEST_SUITE_P(
     BrowserAutofillManagerSuggestionMergingTest,
     testing::ValuesIn(std::vector<SuggestionMergingTestParams>{
         {.test_name = "AddressOnly",
-         .input = {{FillingProduct::kAddress, {SuggestionType::kAddressEntry}}},
+         .input = {{SuggestionGenerator::SuggestionDataSource::kAddress,
+                    {SuggestionType::kAddressEntry}}},
          .expected_output = {SuggestionType::kAddressEntry}},
         {.test_name = "AddressAndIdentity",
-         .input = {{FillingProduct::kAddress, {SuggestionType::kAddressEntry}},
-                   {FillingProduct::kIdentityCredential,
-                    {SuggestionType::kWebauthnCredential}}},
+         .input =
+             {{SuggestionGenerator::SuggestionDataSource::kAddress,
+               {SuggestionType::kAddressEntry}},
+              {SuggestionGenerator::SuggestionDataSource::kIdentityCredential,
+               {SuggestionType::kWebauthnCredential}}},
          .expected_output = {SuggestionType::kWebauthnCredential,
                              SuggestionType::kAddressEntry}},
         {.test_name = "AddressAndPasskey",
-         .input = {{FillingProduct::kAddress, {SuggestionType::kAddressEntry}},
-                   {FillingProduct::kPasskey,
+         .input = {{SuggestionGenerator::SuggestionDataSource::kAddress,
+                    {SuggestionType::kAddressEntry}},
+                   {SuggestionGenerator::SuggestionDataSource::kPasskey,
                     {SuggestionType::kWebauthnCredential}}},
          .expected_output = {SuggestionType::kAddressEntry,
                              SuggestionType::kWebauthnCredential}},
@@ -9240,9 +9261,9 @@ TEST_F(BrowserAutofillManagerTest, GeneratedFillingProductMetric) {
           form.global_id(), form.fields()[0].global_id(),
           AutofillSuggestionTriggerSource::kFormControlElementClicked, {},
           base::TimeTicks::Now(),
-          {{FillingProduct::kAddress,
+          {{SuggestionGenerator::SuggestionDataSource::kAddress,
             {Suggestion(SuggestionType::kAddressEntry)}},
-           {FillingProduct::kPasskey,
+           {SuggestionGenerator::SuggestionDataSource::kPasskey,
             {Suggestion(SuggestionType::kWebauthnCredential)}}});
 
   histogram_tester.ExpectBucketCount(

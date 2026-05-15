@@ -2710,11 +2710,41 @@ inline constexpr char kExtendedUpdatesNotificationDismissed[] =
 inline constexpr char kGlanceablesTimeManagementLastExpandedBubble[] =
     "ash.glanceables_time_management.last_expanded";
 
+// String containing a space-separated list of effective DNS over HTTPS URI
+// templates. If `kDnsOverHttpsTemplatesWithIdentifiers` is set, this string is
+// the result of evaluating `kDnsOverHttpsTemplatesWithIdentifiers` against real
+// user and device data; the identity placeholders are replaced with the
+// hex-encoded hashed value of the user and device identifier. When
+// `kDnsOverHttpsTemplatesWithIdentifiers` is empty or not set,
+// `kDnsOverHttpsEffectiveTemplates` is equal to `kDnsOverHttpsTemplates`.
+// This pref is set at runtime by ash::SecureDnsManager.
+inline constexpr char kDnsOverHttpsEffectiveTemplatesChromeOS[] =
+    "dns_over_https.effective_templates_with_identifiers";
+
 // Lists of strings containing excluded and included domains for DNS-over-HTTPs.
 inline constexpr char kDnsOverHttpsExcludedDomains[] =
     "dns_over_https.excluded_domains";
 inline constexpr char kDnsOverHttpsIncludedDomains[] =
     "dns_over_https.included_domains";
+
+// String containing a space-separated list of DNS over HTTPS URI templates,
+// with placeholders for user and device identifiers, to use in secure mode or
+// automatic mode. If no templates are specified in automatic mode, we will
+// attempt discovery of DoH servers associated with the configured insecure
+// resolvers. This is very similar to kDnsOverHttpsTemplates except that on
+// ChromeOS it supports additional placeholder variables which are used to
+// transport identity information to the DNS provider. This is ignored on all
+// other platforms than ChromeOS. On ChromeOS if it exists it will override
+// kDnsOverHttpsTemplates, otherwise kDnsOverHttpsTemplates will be used. This
+// pref is controlled by an enterprise policy.
+inline constexpr char kDnsOverHttpsTemplatesWithIdentifiers[] =
+    "dns_over_https.templates_with_identifiers";
+
+// String containing a salt value. This is used together with
+// kDnsOverHttpsTemplatesWithIdentifiers, only. The value will be used as a salt
+// to a hash applied to the various identity variables to prevent dictionary
+// attacks. This pref is controlled by an enterprise policy.
+inline constexpr char kDnsOverHttpsSalt[] = "dns_over_https.salt";
 
 // Dictionary pref representing information related to whether the Graduation
 // app should be enabled for a user. This corresponds to the policy defined in
@@ -2993,6 +3023,14 @@ inline constexpr char kLanguageShouldMergeInputMethods[] =
     "settings.language.merge_input_methods";
 
 //-----------------------------------------------------------------------------
+// Input related Prefs
+//-----------------------------------------------------------------------------
+
+// The hardware keyboard layout of the device. This should look like
+// "xkb:us::eng".
+inline constexpr char kHardwareKeyboardLayout[] = "intl.hardware_keyboard";
+
+//-----------------------------------------------------------------------------
 // Clock/Timezone related Prefs
 //-----------------------------------------------------------------------------
 
@@ -3076,6 +3114,19 @@ inline constexpr char kKerberosUseCustomPrefilledConfig[] =
     "kerberos.use_custom_prefilled_config";
 
 //-----------------------------------------------------------------------------
+// Certificate related Prefs
+//-----------------------------------------------------------------------------
+
+inline constexpr char kRequiredClientCertificateForUser[] =
+    "required_client_certificate_for_user";
+inline constexpr char kRequiredClientCertificateForDevice[] =
+    "required_client_certificate_for_device";
+inline constexpr char kCertificateProvisioningStateForUser[] =
+    "cert_provisioning_user_state";
+inline constexpr char kCertificateProvisioningStateForDevice[] =
+    "cert_provisioning_device_state";
+
+//-----------------------------------------------------------------------------
 // TPM related Prefs
 //-----------------------------------------------------------------------------
 
@@ -3101,6 +3152,9 @@ inline constexpr char kTPMUpdatePlannedNotificationShownTime[] =
 // File manager/file system related Prefs
 //-----------------------------------------------------------------------------
 
+// Whether the user can remove OneDrive.
+inline constexpr char kAllowUserToRemoveODFS[] = "allow_user_to_remove_odfs";
+
 // Map of default tasks, associated by MIME type.
 inline constexpr char kDefaultTasksByMimeType[] =
     "filebrowser.tasks.default_by_mime_type";
@@ -3121,6 +3175,10 @@ inline constexpr char kDefaultHandlersForFileExtensions[] =
 inline constexpr char kFilesAppDefaultLocation[] =
     "filebrowser.default_location";
 
+// Pref that contains the value of the GoogleWorkspaceCloudUpload policy.
+inline constexpr char kGoogleWorkspaceCloudUpload[] =
+    "filebrowser.office.google_workspace_cloud_upload";
+
 // Pref that contains the value of the LocalUserFilesAllowed policy.
 inline constexpr char kLocalUserFilesAllowed[] =
     "filebrowser.local_user_files_allowed";
@@ -3129,6 +3187,23 @@ inline constexpr char kLocalUserFilesAllowed[] =
 // policy.
 inline constexpr char kLocalUserFilesMigrationDestination[] =
     "filebrowser.local_user_files_migration_destination";
+
+// Whether M365 has been already been set as default to open supported links.
+inline constexpr char kM365SupportedLinkDefaultSet[] =
+    "filebrowser.m365_supported_link_default_set";
+
+// Pref that contains the value of the MicrosoftOfficeCloudUpload policy.
+inline constexpr char kMicrosoftOfficeCloudUpload[] =
+    "filebrowser.office.microsoft_office_cloud_upload";
+
+// Pref that contains the value of the MicrosoftOneDriveAccountRestrictions
+// policy.
+inline constexpr char kMicrosoftOneDriveAccountRestrictions[] =
+    "filebrowser.office.microsoft_one_drive_account_restrictions";
+
+// Pref that contains the value of the MicrosoftOneDriveMount policy.
+inline constexpr char kMicrosoftOneDriveMount[] =
+    "filebrowser.office.microsoft_one_drive_mount";
 
 // URL path string of the most recently used SMB NetworkFileShare path.
 inline constexpr char kMostRecentlyUsedNetworkFileShareURL[] =
@@ -3228,6 +3303,39 @@ inline constexpr char kOfficeMoveConfirmationShownForOneDrive[] =
 
 inline constexpr char kOfficeMoveConfirmationShownForOneDriveSyncable[] =
     "filebrowser.office.move_confirmation_shown_for_onedrive_syncable";
+
+//-----------------------------------------------------------------------------
+// Shelf related Prefs
+//-----------------------------------------------------------------------------
+
+inline constexpr char kPolicyPinnedLauncherApps[] =
+    "policy_pinned_launcher_apps";
+
+// Keeps names of rolled default pin layouts for shelf in order not to apply
+// this twice. Names are separated by comma.
+inline constexpr char kShelfDefaultPinLayoutRolls[] =
+    "shelf_default_pin_layout_rolls";
+
+// Same as kShelfDefaultPinLayoutRolls, but for tablet form factor devices.
+inline constexpr char kShelfDefaultPinLayoutRollsForTabletFormFactor[] =
+    "shelf_default_pin_layout_rolls_for_tablet_form_factor";
+
+// Keeps track of whether the Gemini app was pinned to shelf as a default app,
+// to prevent applying the default pin twice (after the user unpins the app).
+// NOTE: The Gemini app was previously referred to as the container app.
+inline constexpr char kShelfGeminiAppPinRolls[] =
+    "shelf_container_app_pin_layout_rolls";
+
+// Keeps track of whether the Mall app was pinned to shelf as a default app,
+// to prevent applying the default pin twice (after the user unpins the app).
+inline constexpr char kShelfMallAppPinRolls[] =
+    "shelf_mall_app_pin_layout_rolls";
+
+// Keeps track of whether the NotebookLM app was pinned to shelf as a default
+// app, to prevent applying the default pin twice (after the user unpins the
+// app).
+inline constexpr char kShelfNotebookLmAppPinRolls[] =
+    "shelf_notebook_lm_app_pin_layout_rolls";
 
 //-----------------------------------------------------------------------------
 // End of Life related Prefs

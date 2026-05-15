@@ -66,6 +66,7 @@ import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.LocationBarDataProvider;
 import org.chromium.chrome.browser.omnibox.NewTabPageDelegate;
 import org.chromium.chrome.browser.omnibox.OmniboxMetrics;
+import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.UrlBarEditingTextStateProvider;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
@@ -73,7 +74,6 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxSta
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.omnibox.suggestions.header.HeaderProcessor;
-import org.chromium.chrome.browser.omnibox.test.R;
 import org.chromium.chrome.browser.preloading.PreloadingFeatureMap;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
@@ -373,7 +373,7 @@ public class AutocompleteMediatorUnitTest {
         var mockTemplateUrl = mock(TemplateUrl.class);
         doReturn("bing").when(mockTemplateUrl).getKeyword();
         doReturn("Bing").when(mockTemplateUrl).getShortName();
-        doReturn(mockTemplateUrl).when(mTemplateUrlService).getTemplateUrlForKeyword("bing");
+        doReturn(mockTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("bing");
 
         assertTrue(mMediator.triggerSiteSearch(SiteSearchActivationSource.SPACE));
         verify(mAutocompleteDelegate).setOmniboxEditingText("");
@@ -397,7 +397,7 @@ public class AutocompleteMediatorUnitTest {
         var mockTemplateUrl = mock(TemplateUrl.class);
         doReturn("bing").when(mockTemplateUrl).getKeyword();
         doReturn("Bing").when(mockTemplateUrl).getShortName();
-        doReturn(mockTemplateUrl).when(mTemplateUrlService).getTemplateUrlForKeyword("bing");
+        doReturn(mockTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("bing");
 
         assertTrue(mMediator.triggerSiteSearch(SiteSearchActivationSource.TAB));
         verify(mAutocompleteDelegate).setOmniboxEditingText("");
@@ -528,7 +528,7 @@ public class AutocompleteMediatorUnitTest {
     public void setSessionState_mobileMode_emptyOmnibox() {
         // In Mobile mode, if LocationBar clears the Page URL on focus, Autocomplete requests
         // Zero-Prefix suggestions.
-        OmniboxFeatures.setIsDesktopModeForTesting(false);
+        OmniboxFeatures.setHasDesktopExperienceForTesting(false);
 
         GURL url = new GURL("https://www.google.com");
         String title = "title";
@@ -543,7 +543,7 @@ public class AutocompleteMediatorUnitTest {
     public void setSessionState_mobileMode_populatedOmnibox() {
         // In Mobile mode, if LocationBar does not clear the Page URL on focus, Autocomplete
         // requests Prefixed suggestions.
-        OmniboxFeatures.setIsDesktopModeForTesting(false);
+        OmniboxFeatures.setHasDesktopExperienceForTesting(false);
 
         GURL url = new GURL("https://www.google.com");
         String title = "title";
@@ -554,6 +554,19 @@ public class AutocompleteMediatorUnitTest {
         mMediator.beginInput(session);
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
         verifyAutocompleteStart(url, pageClassification, "test", 0, true);
+    }
+
+    @Test
+    public void testIsDesktopPlatform() {
+        OmniboxFeatures.setIsDesktopPlatformForTesting(true);
+        assertTrue(OmniboxFeatures.isDesktopPlatform());
+
+        OmniboxFeatures.setIsDesktopPlatformForTesting(false);
+        assertFalse(OmniboxFeatures.isDesktopPlatform());
+
+        OmniboxFeatures.setIsDesktopPlatformForTesting(null);
+        // Verify it doesn't crash and returns the default value.
+        OmniboxFeatures.isDesktopPlatform();
     }
 
     public void verifyAutocompleteStart(
@@ -590,7 +603,7 @@ public class AutocompleteMediatorUnitTest {
     public void setSessionState_desktopMode() {
         // In Desktop mode, Omnibox always retains the Page URL on focus.
         // Autocomplete should continue to request the Zero-Prefix suggestions.
-        OmniboxFeatures.setIsDesktopModeForTesting(true);
+        OmniboxFeatures.setHasDesktopExperienceForTesting(true);
 
         GURL url = new GURL("https://www.google.com");
         String title = "title";
@@ -913,7 +926,7 @@ public class AutocompleteMediatorUnitTest {
         // Here we don't clear the URL in the omnibox, but still require the
         // Autocomplete to issue the zero prefix suggest request.
 
-        OmniboxFeatures.setIsDesktopModeForTesting(true);
+        OmniboxFeatures.setHasDesktopExperienceForTesting(true);
 
         GURL url = JUnitTestGURLs.BLUE_1;
         String title = "Title";
@@ -1735,7 +1748,7 @@ public class AutocompleteMediatorUnitTest {
 
         mMediator.allowPendingItemSelection();
         mKeywordModeEnteredCaptor.getValue().accept(null);
-        org.robolectric.shadows.ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
         verify(mTextStateProvider).setSiteSearchChip(null);
         assertEquals("b", session.getAutocompleteInput().getUserText());
     }
@@ -1878,7 +1891,7 @@ public class AutocompleteMediatorUnitTest {
         doReturn(true).when(mTemplateUrlService).isLoaded();
         doReturn("cr").when(mTemplateUrl).getKeyword();
         doReturn("Cr").when(mTemplateUrl).getShortName();
-        doReturn(mTemplateUrl).when(mTemplateUrlService).getTemplateUrlForKeyword("cr");
+        doReturn(mTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("cr abc");
 
         assertTrue(mMediator.triggerSiteSearch(SiteSearchActivationSource.SPACE));
 

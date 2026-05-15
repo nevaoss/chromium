@@ -143,6 +143,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Glic.Api.Client.ErrorDialogShown"
+    enum="GlicClientErrorDialogType" expires_after="2027-04-24">
+  <owner>carlosk@chromium.org</owner>
+  <owner>harringtond@chromium.org</owner>
+  <summary>
+    Records when a client error dialog is shown, indicating the type of error.
+    This may be recorded while the glic web client is in the background, and
+    therefore, may or may not be seen by the user.
+  </summary>
+</histogram>
+
 <histogram name="Glic.Api.FetchZeroStateSuggestionsLatency" units="ms"
     expires_after="2026-03-22">
   <owner>sophiechang@chromium.org</owner>
@@ -160,36 +171,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Recorded whenever the glic web client returns from being notified that the
     panel will open. Records the active web client mode.
-  </summary>
-</histogram>
-
-<histogram name="Glic.Api.RequestCounts.Error" enum="GlicHostApiRequestType"
-    expires_after="2026-09-20">
-  <owner>carlosk@chromium.org</owner>
-  <owner>harringtond@chromium.org</owner>
-  <owner>birnie@google.com</owner>
-  <summary>Recorded when a glic API fails with an exception.</summary>
-</histogram>
-
-<histogram name="Glic.Api.RequestCounts.Hidden" enum="GlicHostApiRequestType"
-    expires_after="2026-09-20">
-  <owner>carlosk@chromium.org</owner>
-  <owner>harringtond@chromium.org</owner>
-  <owner>birnie@google.com</owner>
-  <summary>
-    Recorded when a glic API is called while the client is not being shown.
-    Reported regardless of whether the call was successful.
-  </summary>
-</histogram>
-
-<histogram name="Glic.Api.RequestCounts.Received" enum="GlicHostApiRequestType"
-    expires_after="2026-09-20">
-  <owner>carlosk@chromium.org</owner>
-  <owner>harringtond@chromium.org</owner>
-  <owner>birnie@google.com</owner>
-  <summary>
-    Recorded when a glic API is called. Reported regardless of whether the call
-    was successful.
   </summary>
 </histogram>
 
@@ -248,7 +229,6 @@ chromium-metrics-reviews@google.com.
     <variant name="OnMicrophoneStatusChange"/>
     <variant name="OnModeChange"/>
     <variant name="OnReaction"/>
-    <variant name="OnRecordUseCounter"/>
     <variant name="OnResponseRated"/>
     <variant name="OnResponseStarted"/>
     <variant name="OnResponseStopped"/>
@@ -300,6 +280,36 @@ chromium-metrics-reviews@google.com.
   </token>
 <!-- LINT.ThenChange(//chrome/browser/resources/glic/glic_api_impl/request_types.ts:ApiRequestType) -->
 
+</histogram>
+
+<histogram name="Glic.Api.StatusCounts.Error" enum="GlicHostApiRequestType"
+    expires_after="2026-09-20">
+  <owner>carlosk@chromium.org</owner>
+  <owner>harringtond@chromium.org</owner>
+  <owner>birnie@google.com</owner>
+  <summary>Recorded when a glic API fails with an exception.</summary>
+</histogram>
+
+<histogram name="Glic.Api.StatusCounts.Inactive" enum="GlicHostApiRequestType"
+    expires_after="2026-09-20">
+  <owner>carlosk@chromium.org</owner>
+  <owner>harringtond@chromium.org</owner>
+  <owner>birnie@google.com</owner>
+  <summary>
+    Recorded when a glic API is called while the client is not being shown.
+    Reported regardless of whether the call was successful.
+  </summary>
+</histogram>
+
+<histogram name="Glic.Api.StatusCounts.Received" enum="GlicHostApiRequestType"
+    expires_after="2026-09-20">
+  <owner>carlosk@chromium.org</owner>
+  <owner>harringtond@chromium.org</owner>
+  <owner>birnie@google.com</owner>
+  <summary>
+    Recorded when a glic API is called. Reported regardless of whether the call
+    was successful.
+  </summary>
 </histogram>
 
 <histogram name="Glic.Api.TabData.UpdatesPerNavigation" units="count"
@@ -410,6 +420,28 @@ chromium-metrics-reviews@google.com.
   <summary>
     Measures the time it takes from the Glic contents creation until the
     navigation commits.
+  </summary>
+</histogram>
+
+<histogram name="Glic.CookieSynchronization.Latency.Error" units="ms"
+    expires_after="2027-04-23">
+  <owner>harringtond@chromium.org</owner>
+  <owner>carlosk@chromium.org</owner>
+  <summary>
+    Records the latency of the cookie synchronization operation for Glic when it
+    fails or times out. Recorded when the multilogin operation completes with
+    failure in OnAuthFinished or when it times out in OnTimeout.
+  </summary>
+</histogram>
+
+<histogram name="Glic.CookieSynchronization.Latency.Success" units="ms"
+    expires_after="2027-04-23">
+  <owner>harringtond@chromium.org</owner>
+  <owner>carlosk@chromium.org</owner>
+  <summary>
+    Records the latency of the cookie synchronization operation for Glic when it
+    completes successfully. Recorded when the multilogin operation completes
+    with success in OnAuthFinished.
   </summary>
 </histogram>
 
@@ -651,13 +683,6 @@ chromium-metrics-reviews@google.com.
     Records the reason the error panel was shown. This is recorded either before
     the FRE is shown if its an issue during auth, or after loading times out.
   </summary>
-</histogram>
-
-<histogram name="Glic.FreModalWebUiState.FinishState2" enum="FreWebUiState"
-    expires_after="2026-07-26">
-  <owner>cuianthony@google.com</owner>
-  <owner>iwells@google.com</owner>
-  <summary>Record the current state of the FRE modal when it closes.</summary>
 </histogram>
 
 <histogram name="Glic.FrePresentationTime" units="ms"
@@ -1476,6 +1501,17 @@ chromium-metrics-reviews@google.com.
     variant.
   </summary>
   <token key="Visibility" variants="Visibility"/>
+</histogram>
+
+<histogram name="Glic.Instance.ZoomChangeCount" units="count"
+    expires_after="2026-09-20">
+  <owner>cuianthony@chromium.org</owner>
+  <owner>glic-dev@google.com</owner>
+  <summary>
+    Records the number of times the zoom level of the Glic panel was changed
+    throughout the lifetime of a single Glic instance. Recorded when the
+    instance is destroyed.
+  </summary>
 </histogram>
 
 <histogram name="Glic.Interaction.SwitchConversationTarget"

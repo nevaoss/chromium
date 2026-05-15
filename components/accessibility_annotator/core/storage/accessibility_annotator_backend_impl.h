@@ -79,7 +79,24 @@ class AccessibilityAnnotatorBackendImpl
   void RemoveContentAnnotationsCacheData(
       base::span<const history::VisitID> visit_ids) override;
   void ClearContentAnnotationsCache() override;
-  base::Value GetDebugUICacheData() const override;
+  void GetAnnotationsForDebugUI(
+      base::OnceCallback<void(base::Value)> callback) override;
+  void AddContentAnnotation(history::VisitID visit_id,
+                            ContentAnnotationsData data,
+                            base::OnceCallback<void(bool)> callback) override;
+  void GetContentAnnotation(
+      history::VisitID visit_id,
+      base::OnceCallback<void(std::optional<ContentAnnotationsData>)> callback)
+      override;
+  void GetAllContentAnnotations(
+      base::OnceCallback<void(
+          std::vector<std::pair<history::VisitID, ContentAnnotationsData>>)>
+          callback) override;
+  void DeleteContentAnnotations(
+      std::vector<history::VisitID> visit_ids,
+      base::OnceCallback<void(bool)> callback) override;
+  void ClearAllContentAnnotations(
+      base::OnceCallback<void(bool)> callback) override;
 
   const base::circular_deque<optimization_guide::proto::ContentAnnotation>&
   GetMergedMultipageAnnotationsForTesting() const {
@@ -126,15 +143,47 @@ class AccessibilityAnnotatorBackendImpl
   // Deep merges `source_structured_data` into `target_structured_data`. For any
   // field that is set in both, the existing value in `target_structured_data`
   // takes precedence.
+  // TODO(crbug.com/489690454): Consider moving merge logic to a separate file
+  // if more structured data types are added.
   void MergeContentAnnotationStructuredData(
-      optimization_guide::proto::StructuredData* target_structured_data,
-      const optimization_guide::proto::StructuredData& source_structured_data);
+      const optimization_guide::proto::StructuredData& source_structured_data,
+      optimization_guide::proto::StructuredData* target_structured_data);
+
+  // Called when a content annotation is added to the database to notify
+  // observers.
+  void OnContentAnnotationAdded(history::VisitID visit_id,
+                                ContentAnnotationsData data,
+                                base::OnceCallback<void(bool)> callback,
+                                bool success);
+
+  // Called when content annotations are deleted from the database to notify
+  // observers.
+  void OnContentAnnotationsDeleted(base::OnceCallback<void(bool)> callback,
+                                   std::vector<history::VisitID> visit_ids);
+
+  // Called when content annotations are cleared from the database to notify
+  // observers.
+  void OnContentAnnotationsCleared(base::OnceCallback<void(bool)> callback,
+                                   bool success);
+
+  // Formats a single `ContentAnnotationsData` entry into a `base::Value`.
+  base::Value FormatContentAnnotationsDataForDebugUI(
+      history::VisitID visit_id,
+      const ContentAnnotationsData& data) const;
+
+  // Callback for `GetAllContentAnnotations` when used by the debug UI.
+  void OnGetAllContentAnnotationsForDebugUI(
+      base::OnceCallback<void(base::Value)> callback,
+      std::vector<std::pair<history::VisitID, ContentAnnotationsData>>
+          all_annotations);
 
   const base::FilePath db_path_;
   base::SequenceBound<AccessibilityAnnotatorDatabase> db_;
   std::unique_ptr<AccessibilityAnnotationSyncBridge>
       accessibility_annotation_sync_bridge_;
 
+  // TODO(crbug.com/496384941): Once the DebugUI reads from the persistent
+  // database, the cache and its related functions should be cleaned up.
   // Stores annotations keyed by the visit ID they are associated with. The
   // cache size is `kContentAnnotatorMaxCacheAnnotations`. When the cache is
   // full, the least recently used entry is evicted.

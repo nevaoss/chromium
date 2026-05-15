@@ -54,6 +54,7 @@
 <translation id="1179890706672152411">Lo spazio di archiviazione è esaurito</translation>
 <translation id="1181037720776840403">Rimuovi</translation>
 <translation id="1190609913194133056">Centro notifiche</translation>
+<translation id="1199631150313925648">Inserisci manualmente</translation>
 <translation id="1199963004393929848">Tema verde</translation>
 <translation id="1201402288615127009">Avanti</translation>
 <translation id="1204075260022434100">{count,plural, =1{Preferito salvato in "{title}" nel tuo account, {email}}other{{count} preferiti salvati in "{title}" nel tuo account, {email}}}</translation>
@@ -958,6 +959,7 @@
 <translation id="441868831736628555">Informativa sulla privacy</translation>
 <translation id="4420409367264901497">Modifica il preferito</translation>
 <translation id="4425365312778464779">Questo account è gestito</translation>
+<translation id="443008484043213881">Strumenti</translation>
 <translation id="4430277756566635951">Selezione attuale: <ph name="EMAIL" />. Scegli un account.</translation>
 <translation id="4430505936695785931">Recupera le password salvate in altre app</translation>
 <translation id="4431224949908513835">Seleziona un metodo di pagamento da inserire.</translation>
@@ -1006,7 +1008,7 @@
 <translation id="4607887340472970274">Monitoraggio del prezzo</translation>
 <translation id="4619564267100705184">Verifica la tua identità</translation>
 <translation id="4621768135601674446">Apri le opzioni della modalità Lettura</translation>
-<translation id="4627107755957573804">Consenti a siti e app di eseguire l'upgrade degli account esistenti per utilizzare le passkey</translation>
+<translation id="4627107755957573804">Consenti a siti e app di fare l'upgrade degli account esistenti per utilizzare le passkey</translation>
 <translation id="4629065796475200039">La tua password non è stata importata</translation>
 <translation id="4630212057753624203">Fumetto di esempio</translation>
 <translation id="4631335160486397366"><ph name="COUNT" /> password riutilizzate</translation>
@@ -1076,6 +1078,7 @@
 <translation id="4824497107140370669">{count,plural, =0{{domain}}=1{{domain} e 1 altra}other{{domain} e altre {count}}}</translation>
 <translation id="4826588772550366629">fotocamera e microfono</translation>
 <translation id="4828431027673677473">Prodotti basati sui tuoi interessi</translation>
+<translation id="4829420936835028285">Modifica gruppo di schede</translation>
 <translation id="4833786495304741580">Invia automaticamente a Google statistiche sull'utilizzo e report sugli arresti anomali.</translation>
 <translation id="483689884442613745">Salva…</translation>
 <translation id="4840495572919996524">I preferiti, la cronologia, le password e altre impostazioni non verranno più sincronizzati con il tuo Account Google.</translation>
@@ -1083,7 +1086,6 @@
 <translation id="484462545196658690">Automatico</translation>
 <translation id="4850886885716139402">Visualizza</translation>
 <translation id="4854068532375923088">Consenti a "Gemini" di usare la fotocamera</translation>
-<translation id="4860114370595561279">Le informazioni salvate vengono archiviate sul tuo dispositivo</translation>
 <translation id="4860895144060829044">Chiama</translation>
 <translation id="4861953997778766866">Tutti possono apportare modifiche ai tuoi gruppi di schede condivisi</translation>
 <translation id="4865063548323785458">Salva e compila automaticamente le password per accedere facilmente a siti e app</translation>
@@ -1294,6 +1296,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="5581786858144165447">Chiedi a AI Mode</translation>
 <translation id="5585019845078534178">Schede</translation>
 <translation id="5591526871732898147">Immagine allegata {index}</translation>
+<translation id="5594597292424622277">Metti in pausa il video</translation>
 <translation id="5595485650161345191">Modifica indirizzo</translation>
 <translation id="559567008082979829">Imposta l'eliminazione dei download dopo un mese.</translation>
 <translation id="5596627076506792578">Altre opzioni</translation>
@@ -2163,6 +2166,7 @@ La funzione Handoff deve anche essere attivata nella sezione Generali di Imposta
 <translation id="8528009254289981965">Apri link da altre app in incognito</translation>
 <translation id="8529767659511976195">Novità</translation>
 <translation id="8531572740963685410">PDF</translation>
+<translation id="8532059953132740592">Riproduci il video</translation>
 <translation id="8533411848724153701">Gemini</translation>
 <translation id="8533670235862049797">Navigazione sicura attiva</translation>
 <translation id="8534481786647257214">Pubblicazione su Google+ completata.</translation>

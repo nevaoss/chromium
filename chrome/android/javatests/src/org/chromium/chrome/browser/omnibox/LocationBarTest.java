@@ -42,6 +42,7 @@ import org.mockito.junit.MockitoRule;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
+import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Restriction;
@@ -243,7 +244,11 @@ public class LocationBarTest {
 
     @Test
     @MediumTest
+    @DisabledTest(message = "crbug.com/507245181")
     public void testOnConfigurationChanged() {
+        // Start activity in Desktop mode. Expect UrlBar to focus.
+        // The DesktopMode check verifies connected peripherals, not just the Configuration change.
+        OmniboxFeatures.setHasDesktopExperienceForTesting(true);
         startActivityNormally();
         // We expect the UrlBar to be focused iff a Hardware keyboard handler does not automatically
         // call up Software keyboard (IME).
@@ -258,8 +263,7 @@ public class LocationBarTest {
                 });
 
         Configuration configuration = mActivity.getSavedConfigurationForTesting();
-        configuration.keyboard = Configuration.KEYBOARD_12KEY;
-
+        OmniboxFeatures.setHasDesktopExperienceForTesting(false);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     mLocationBarMediator.onConfigurationChanged(configuration);
@@ -289,22 +293,21 @@ public class LocationBarTest {
     @Test
     @MediumTest
     public void testEditingText() {
-        testEditingText(
-                /* expectDesktopMode= */ ThreadUtils.runOnUiThreadBlocking(
-                        OmniboxFeatures::isDesktopMode));
+        OmniboxFeatures.setHasDesktopExperienceForTesting(true);
+        testEditingText(/* expectDesktopMode= */ true);
     }
 
     @Test
     @MediumTest
     public void testEditingText_withDesktopModeDisabled() {
-        OmniboxFeatures.setIsDesktopModeForTesting(false);
+        OmniboxFeatures.setHasDesktopExperienceForTesting(false);
         testEditingText(/* expectDesktopMode= */ false);
     }
 
     @Test
     @MediumTest
     public void testEditingText_withDesktopModeEnabled() {
-        OmniboxFeatures.setIsDesktopModeForTesting(true);
+        OmniboxFeatures.setHasDesktopExperienceForTesting(true);
         testEditingText(/* expectDesktopMode= */ true);
     }
 
@@ -596,9 +599,7 @@ public class LocationBarTest {
     })
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
     public void testFocusLogic_buttonVisibilityTablet() {
-        testFocusLogic_buttonVisibilityTablet(
-                /* expectDesktopMode= */ ThreadUtils.runOnUiThreadBlocking(
-                        OmniboxFeatures::isDesktopMode));
+        testFocusLogic_buttonVisibilityTablet(/* expectDesktopMode= */ true);
     }
 
     @Test
@@ -608,7 +609,7 @@ public class LocationBarTest {
     })
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
     public void testFocusLogic_buttonVisibilityTabletWithDesktopModeDisabled() {
-        OmniboxFeatures.setIsDesktopModeForTesting(false);
+        OmniboxFeatures.setHasDesktopExperienceForTesting(false);
         DeviceInput.setSupportsAlphabeticKeyboardForTesting(false);
         DeviceInput.setSupportsPrecisionPointerForTesting(false);
         testFocusLogic_buttonVisibilityTablet(/* expectDesktopMode= */ false);
@@ -621,13 +622,14 @@ public class LocationBarTest {
     })
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
     public void testFocusLogic_buttonVisibilityTabletWithDesktopModeEnabled() {
-        OmniboxFeatures.setIsDesktopModeForTesting(true);
+        OmniboxFeatures.setHasDesktopExperienceForTesting(true);
         DeviceInput.setSupportsAlphabeticKeyboardForTesting(true);
         DeviceInput.setSupportsPrecisionPointerForTesting(true);
         testFocusLogic_buttonVisibilityTablet(/* expectDesktopMode= */ true);
     }
 
     private void testFocusLogic_buttonVisibilityTablet(boolean expectDesktopMode) {
+        OmniboxFeatures.setHasDesktopExperienceForTesting(expectDesktopMode);
         startActivityNormally();
 
         doReturn(true).when(mVoiceRecognitionHandler).isVoiceSearchEnabled();

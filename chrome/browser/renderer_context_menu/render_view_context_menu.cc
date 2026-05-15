@@ -51,6 +51,7 @@
 #include "chrome/browser/download/download_stats.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_clipboard_utils.h"
 #include "chrome/browser/glic/browser_ui/glic_vector_icon_manager.h"
+#include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_invoke_options.h"
@@ -102,6 +103,8 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/exclusive_access/keyboard_lock_controller.h"
@@ -597,13 +600,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_AUTOFILL_FALLBACK_AT_MEMORY, 161},
        {IDC_CONTENT_CONTEXT_GLIC, 162},
        {IDC_CONTENT_CONTEXT_VIDEO_FRAME, 163},
+       {IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE, 164},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the RenderViewContextMenuItem enum in
        //     tools/metrics/histograms/metadata/ui/enums.xml.
-       {0, 164}});
+       {0, 165}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
 
   // LINT.IfChange(ContextMenuOptionDesktop)
@@ -889,10 +893,8 @@ bool IsLensOptionEnteredThroughKeyboard(int event_flags) {
 bool IsGlicWindow(const RenderViewContextMenu* menu,
                   content::BrowserContext* browser_context) {
   if (glic::GlicEnabling::IsEnabledByFlags()) {
-    auto* glic_service =
-        glic::GlicKeyedServiceFactory::GetGlicKeyedService(browser_context);
-    return glic_service && glic_service->IsActiveWebContents(
-                               menu->GetWebContents()->GetOuterWebContents());
+    return glic::GetGlicGuestWebContents(
+               menu->GetWebContents()->GetOuterWebContents()) != nullptr;
   }
   return false;
 }
@@ -1044,12 +1046,6 @@ void RenderViewContextMenu::AppendCurrentExtensionItems() {
                                         /*is_action_menu=*/false, title);
 }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS)
-
-// static
-bool RenderViewContextMenu::IsCommandGatedByFencedFrameUntrustedNetworkStatus(
-    int id) {
-  return kFencedFrameUntrustedNetworkStatusGatedCommands.contains(id);
-}
 
 std::u16string RenderViewContextMenu::FormatURLForClipboard(const GURL& url) {
   DCHECK(url.is_valid());
@@ -1870,7 +1866,8 @@ void RenderViewContextMenu::AppendLinkItems() {
         if (profile_for_path != GetProfile() && !entry->IsOmitted() &&
             !entry->IsSigninRequired()) {
           target_profiles_entries.push_back(entry);
-          if (chrome::FindLastActiveWithProfile(profile_for_path)) {
+          if (ProfileBrowserCollection::GetForProfile(profile_for_path)
+                  ->GetLastActiveBrowser()) {
             multiple_profiles_open_ = true;
           }
           if (ProfileMetrics::IsProfileActive(entry)) {
@@ -2477,6 +2474,10 @@ void RenderViewContextMenu::AppendReadAnythingItem() {
       !IsReadAnythingEntryShowing(GetBrowser())) {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE,
                                     IDS_CONTENT_CONTEXT_READING_MODE);
+    if (features::IsImprovedReadAloudEnabled()) {
+      menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE,
+                                      IDS_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE);
+    }
   }
 }
 
@@ -2908,18 +2909,9 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
     return false;
   }
 
-  // If the command makes network requests and the frame does not have untrusted
-  // network access, the command is disabled.
-  if (IsCommandGatedByFencedFrameUntrustedNetworkStatus(id) &&
-      IsUntrustedNetworkDisabled()) {
-    return false;
-  }
-
-  {
-    bool enabled = false;
-    if (RenderViewContextMenuBase::IsCommandIdKnown(id, &enabled)) {
-      return enabled;
-    }
+  bool enabled = false;
+  if (RenderViewContextMenuBase::IsCommandIdKnown(id, &enabled)) {
+    return enabled;
   }
 
   CoreTabHelper* core_tab_helper =
@@ -3168,6 +3160,7 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
       return IsRouteMediaEnabled();
 
     case IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE:
+    case IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE:
       return navigation_allowed;
 
     case IDC_CONTENT_CONTEXT_RELOAD_GLIC:
@@ -3259,31 +3252,6 @@ void RenderViewContextMenu::OpenURLWithExtraHeaders(
 }
 
 void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
-  if (IsCommandGatedByFencedFrameUntrustedNetworkStatus(id) &&
-      IsUntrustedNetworkDisabled()) {
-    // Fenced frame untrusted network status can change between the time the
-    // command is shown and the time it is executed.
-    //
-    // This can be done by a `contextmenu` listener that disables the fenced
-    // frame untrusted network, granting fenced frame access to unpartitioned
-    // cross-site data. When context menu is shown, commands that are gated on
-    // fenced frame untrusted network status will still be enabled. But by the
-    // time the command executes, the listener has been invoked. The URL that
-    // the context menu operates upon may have been tampered to include
-    // cross-site information.
-    //
-    // The execution must be blocked if the untrusted network is disabled.
-    for (auto& observer : observers_) {
-      observer.CommandBlocked(id);
-    }
-
-    GetRenderFrameHost()->AddMessageToConsole(
-        blink::mojom::ConsoleMessageLevel::kWarning,
-        "Context menu command is not executed because the fenced frame has "
-        "untrusted network disabled.");
-    return;
-  }
-
   RenderViewContextMenuBase::ExecuteCommand(id, event_flags);
   if (command_executed_) {
     return;
@@ -3430,6 +3398,10 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
 
     case IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE:
       ExecOpenInReadAnything();
+      break;
+
+    case IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE:
+      ExecListenToThisPage();
       break;
 
     case IDC_CONTENT_CONTEXT_RELOAD_GLIC:
@@ -3857,11 +3829,6 @@ bool RenderViewContextMenu::IsSaveAsItemAllowedByPolicy(
   }
 
   return true;
-}
-
-bool RenderViewContextMenu::IsUntrustedNetworkDisabled() const {
-  return GetRenderFrameHost() &&
-         GetRenderFrameHost()->IsUntrustedNetworkDisabled();
 }
 
 bool RenderViewContextMenu::ShouldOpenTextQueryInLens() const {
@@ -4321,6 +4288,13 @@ void RenderViewContextMenu::ExecOpenCompose() {
 #endif
 
 void RenderViewContextMenu::ExecOpenInReadAnything() {
+  read_anything::ReadAnythingEntryPointController::ShowUI(
+      GetBrowser(), ReadAnythingOpenTrigger::kReadAnythingContextMenu);
+}
+
+void RenderViewContextMenu::ExecListenToThisPage() {
+  // TODO(https://b/494307454): This is a placeholder. Full implementation will
+  // be done in a future request.
   read_anything::ReadAnythingEntryPointController::ShowUI(
       GetBrowser(), ReadAnythingOpenTrigger::kReadAnythingContextMenu);
 }
@@ -5035,7 +5009,9 @@ void RenderViewContextMenu::OpenTextQueryInLens() {
 }
 
 Browser* RenderViewContextMenu::GetBrowser() const {
-  return chrome::FindBrowserWithTab(embedder_web_contents_);
+  auto* browser = GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
+      embedder_web_contents_);
+  return browser ? browser->GetBrowserForMigrationOnly() : nullptr;
 }
 
 ToastController* RenderViewContextMenu::GetToastController() const {

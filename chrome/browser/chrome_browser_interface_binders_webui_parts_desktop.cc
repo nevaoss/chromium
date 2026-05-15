@@ -47,6 +47,8 @@
 #include "chrome/browser/ui/webui/downloads/downloads_ui.h"
 #include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host.mojom.h"
 #include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_ui.h"
+#include "chrome/browser/ui/webui/drive_picker_host/untrusted/drive_picker_host_untrusted.mojom.h"
+#include "chrome/browser/ui/webui/drive_picker_host/untrusted/drive_picker_host_untrusted_ui.h"
 #include "chrome/browser/ui/webui/feedback/feedback_ui.h"
 #include "chrome/browser/ui/webui/feedback/report_unsafe_site/report_unsafe_site.mojom.h"
 #include "chrome/browser/ui/webui/history/history_ui.h"
@@ -407,7 +409,8 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
   RegisterWebUIControllerInterfaceBinder<
       help_bubble::mojom::HelpBubbleHandlerFactory, UserEducationInternalsUI,
       ReadingListUI, NewTabPageUI, CustomizeChromeUI, PasswordManagerUI,
-      HistoryUI, lens::LensOverlayUntrustedUI, lens::LensSidePanelUntrustedUI
+      HistoryUI, lens::LensOverlayUntrustedUI, lens::LensSidePanelUntrustedUI,
+      ReadAnythingUntrustedUI
 #if !BUILDFLAG(IS_CHROMEOS)
       ,
       ProfilePickerUI
@@ -602,6 +605,9 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
     RegisterWebUIControllerInterfaceBinder<
         drive_picker_host::mojom::DrivePickerHostHandler, DrivePickerHostUI>(
         map);
+    RegisterWebUIControllerInterfaceBinder<
+        drive_picker_host_untrusted::mojom::DrivePickerUntrustedHostHandler,
+        DrivePickerUntrustedHostUI>(map);
   }
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
@@ -739,7 +745,8 @@ void PopulateChromeWebUIFrameInterfaceBrokersUntrustedPartsDesktop(
         .Add<help_bubble::mojom::HelpBubbleHandlerFactory>()
         .Add<searchbox::mojom::PageHandlerFactory>();
   }
-  registry.ForWebUI<ReadAnythingUntrustedUI>();
+  registry.ForWebUI<ReadAnythingUntrustedUI>()
+      .Add<help_bubble::mojom::HelpBubbleHandlerFactory>();
 
   if (data_sharing::features::IsDataSharingFunctionalityEnabled()) {
     registry.ForWebUI<DataSharingUI>()
@@ -758,6 +765,13 @@ void PopulateChromeWebUIFrameInterfaceBrokersUntrustedPartsDesktop(
   if (base::FeatureList::IsEnabled(features::kAiOverlayDialog)) {
     registry.ForWebUI<ttc::AiOverlayDialogUntrustedUI>()
         .Add<ai_overlay_dialog::mojom::PageHandlerFactory>();
+  }
+
+  if (base::FeatureList::IsEnabled(
+          omnibox::kComposeboxDriveContextMenuOption)) {
+    registry.ForWebUI<DrivePickerUntrustedHostUI>()
+        .Add<drive_picker_host_untrusted::mojom::
+                 DrivePickerUntrustedHostHandler>();
   }
 }
 

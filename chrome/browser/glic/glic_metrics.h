@@ -85,7 +85,7 @@ enum class PercentOverlap {
 
 // LINT.IfChange(ShareImageResult)
 enum class ShareImageResult {
-  kSuccess = 0,
+  kSentImageToClient = 0,
   kFailedNoTab = 1,
   kFailedNoFrame = 2,
   kFailedNoBrowser = 3,
@@ -100,7 +100,12 @@ enum class ShareImageResult {
   kFailedClipboardPastePolicy = 12,
   kFailedNoInstance = 13,
   kFailedClientUnreadied = 14,
-  kMaxValue = kFailedClientUnreadied,
+  kFailedTimedOutNoInstance = 15,
+  kFailedTimedOutNoWebClient = 16,
+  kFailedTimedOutDidNotCompleteOnboarding = 17,
+  kFailedLostInstance = 18,
+  kFailedSawNavigationDidNotCompleteOnboarding = 19,
+  kMaxValue = kFailedSawNavigationDidNotCompleteOnboarding,
 };
 
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:ShareImageResult)
@@ -160,8 +165,9 @@ enum class GlicRequestEvent {
   kRequestReceived = 0,
   kRequestSent = 1,
   kRequestHandlerException = 2,
-  kRequestReceivedWhileHidden = 3,
-  kMaxValue = kRequestReceivedWhileHidden,
+  // Deprecated: kRequestReceivedWhileHidden = 3,
+  kRequestReceivedWhileInactive = 4,
+  kMaxValue = kRequestReceivedWhileInactive,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicRequestEvent)
 

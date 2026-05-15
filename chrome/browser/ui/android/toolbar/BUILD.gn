@@ -15,6 +15,7 @@ android_library("variation_utils_java") {
   deps = [
     "//chrome/browser/flags:java",
     "//third_party/androidx:androidx_annotation_annotation_java",
+    "//ui/android:ui_no_recycler_view_java",
   ]
 }
 
@@ -59,6 +60,7 @@ android_library("optional_button_java") {
     "//chrome/browser/android/lifecycle:java",
     "//chrome/browser/feature_engagement:java",
     "//chrome/browser/flags:java",
+    "//chrome/browser/glic:public_java",
     "//chrome/browser/language/android:java",
     "//chrome/browser/preferences:java",
     "//chrome/browser/profiles/android:java",
@@ -224,6 +226,7 @@ android_library("core_java") {
     "//chrome/browser/feature_engagement:java",
     "//chrome/browser/flags:java",
     "//chrome/browser/fullscreen/android:java",
+    "//chrome/browser/glic:public_java",
     "//chrome/browser/hub:java",
     "//chrome/browser/incognito:java",
     "//chrome/browser/keyboard_accessory/android/java",
@@ -244,6 +247,7 @@ android_library("core_java") {
     "//chrome/browser/tab:java",
     "//chrome/browser/tab_ui/android:java",
     "//chrome/browser/tabmodel:java",
+    "//chrome/browser/ui/android/actions:java",
     "//chrome/browser/ui/android/appmenu:java",
     "//chrome/browser/ui/android/desktop_windowing:java",
     "//chrome/browser/ui/android/edge_to_edge:java",
@@ -377,7 +381,6 @@ android_resources("java_resources") {
     "java/res/drawable/ic_widgets.xml",
     "java/res/drawable/menu_bg_bottom_tinted.xml",
     "java/res/drawable/modern_toolbar_text_box_background_with_primary_color_square.xml",
-    "java/res/drawable/new_tab_icon.xml",
     "java/res/drawable/optional_button_background.xml",
     "java/res/drawable/optional_button_background_baseline.xml",
     "java/res/drawable/optional_button_background_selector.xml",
@@ -417,6 +420,7 @@ android_resources("java_resources") {
 
   deps = [
     "//chrome/app:java_strings_grd",
+    "//chrome/browser/ui/android/actions:java_resources",
     "//chrome/browser/ui/android/strings:ui_strings_grd",
     "//chrome/browser/ui/android/theme:java_resources",
     "//components/browser_ui/styles/android:java_resources",
@@ -487,6 +491,8 @@ robolectric_library("junit") {
     "//chrome/browser/feature_engagement:java",
     "//chrome/browser/flags:java",
     "//chrome/browser/fullscreen/android:java",
+    "//chrome/browser/glic:public_java",
+    "//chrome/browser/glic/android:jni_headers_java",
     "//chrome/browser/incognito:java",
     "//chrome/browser/language/android:java",
     "//chrome/browser/preferences:java",
@@ -499,6 +505,7 @@ robolectric_library("junit") {
     "//chrome/browser/tab:java",
     "//chrome/browser/tab_ui/android:java",
     "//chrome/browser/tabmodel:java",
+    "//chrome/browser/ui/android/actions:java",
     "//chrome/browser/ui/android/appmenu:java",
     "//chrome/browser/ui/android/desktop_windowing:java",
     "//chrome/browser/ui/android/edge_to_edge:java",

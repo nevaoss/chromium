@@ -75,11 +75,14 @@
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "content/public/common/content_features.h"
 #include "google_apis/gaia/gaia_constants.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "net/base/backoff_entry.h"
 #include "net/base/url_util.h"
 #include "net/http/http_response_headers.h"
+#include "third_party/blink/public/common/web_preferences/web_preferences.h"
+#include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom.h"
 #include "third_party/lens_server_proto/aim_communication.pb.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/webui/webui_util.h"
@@ -105,15 +108,6 @@ void AddContextMenuItemEligibilityLoadTimeData(content::WebUIDataSource* source,
                                                Profile* profile) {
   AimEligibilityService* aim_eligibility_service =
       AimEligibilityServiceFactory::GetForProfile(profile);
-  source->AddBoolean("composeboxShowDeepSearchButton",
-                     aim_eligibility_service &&
-                         aim_eligibility_service->IsDeepSearchEligible());
-  source->AddBoolean("composeboxShowCreateImageButton",
-                     aim_eligibility_service &&
-                         aim_eligibility_service->IsCreateImagesEligible());
-  source->AddBoolean("composeboxShowPdfUpload",
-                     aim_eligibility_service &&
-                         aim_eligibility_service->IsPdfUploadEligible());
   if (aim_eligibility_service &&
       aim_eligibility_service->GetSearchboxConfig()->has_hint_text()) {
     source->AddString(
@@ -153,6 +147,26 @@ std::string GetEncodedHandshakeMessage() {
   std::vector<uint8_t> serialized_message(size);
   message.SerializeToArray(&serialized_message[0], size);
   return base::Base64Encode(serialized_message);
+}
+
+void UpdateDarkModePreferenceFromUrl(content::WebContents* wc,
+                                     const GURL& url) {
+  std::optional<bool> is_dark_mode = contextual_tasks::GetDarkModeFromUrl(url);
+  if (is_dark_mode.has_value()) {
+    blink::web_pref::WebPreferences prefs = wc->GetOrCreateWebPreferences();
+    prefs.preferred_color_scheme =
+        is_dark_mode.value() ? blink::mojom::PreferredColorScheme::kDark
+                             : blink::mojom::PreferredColorScheme::kLight;
+    wc->SetWebPreferences(prefs);
+  } else {
+    blink::web_pref::WebPreferences prefs = wc->GetOrCreateWebPreferences();
+    ui::ColorProviderKey::ColorMode browser_color_scheme = wc->GetColorMode();
+    prefs.preferred_color_scheme =
+        browser_color_scheme == ui::ColorProviderKey::ColorMode::kLight
+            ? blink::mojom::PreferredColorScheme::kLight
+            : blink::mojom::PreferredColorScheme::kDark;
+    wc->SetWebPreferences(prefs);
+  }
 }
 }  // namespace
 
@@ -262,19 +276,36 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
               Profile::FromBrowserContext(
                   web_ui->GetWebContents()->GetBrowserContext()))) {
   Profile* profile = Profile::FromWebUI(web_ui);
-  inner_web_contents_creation_observer_ =
-      std::make_unique<InnerFrameCreationObvserver>(
-          web_ui->GetWebContents(),
-          base::BindRepeating(&ContextualTasksUI::OnInnerWebContentsCreated,
-                              weak_ptr_factory_.GetWeakPtr()),
-          base::BindRepeating(&ContextualTasksUI::ResetEmbeddedPage,
-                              weak_ptr_factory_.GetWeakPtr()));
+
+  // In MPArch, a single webcontents is used to host multiple frame trees rather
+  // than having a separate webcontents for each. In that case there's no need
+  // to wait for a webcontents to be created as they all live in the same one
+  // that is hosting the webui. Attach the nav observer to this contents
+  // directly.
+  if (base::FeatureList::IsEnabled(features::kGuestViewMPArch)) {
+    nav_observer_ = std::make_unique<FrameNavObserver>(
+        web_ui->GetWebContents(), ui_service_, contextual_tasks_service_, this);
+  } else {
+    inner_web_contents_creation_observer_ =
+        std::make_unique<InnerFrameCreationObvserver>(
+            web_ui->GetWebContents(),
+            base::BindRepeating(&ContextualTasksUI::OnInnerWebContentsCreated,
+                                weak_ptr_factory_.GetWeakPtr()),
+            base::BindRepeating(&ContextualTasksUI::ResetEmbeddedPage,
+                                weak_ptr_factory_.GetWeakPtr()));
+  }
+
   // Add a means of loading images from external sources.
 #if !BUILDFLAG(IS_ANDROID)
   // TODO(crbug.com/483442073): SanitizedImageSource is not available on
   // Android. Need to find an alternative.
   content::URLDataSource::Add(profile,
                               std::make_unique<SanitizedImageSource>(profile));
+
+  host_zoom_map_subscription_ =
+      content::HostZoomMap::GetDefaultForBrowserContext(profile)
+          ->AddZoomLevelChangedCallback(base::BindRepeating(
+              &ContextualTasksUI::OnZoomLevelChanged, base::Unretained(this)));
 #endif
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       web_ui->GetWebContents()->GetBrowserContext(),
@@ -476,9 +507,12 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
           ContextualSearchSourceToString(
               contextual_search::ContextualSearchSource::kContextualTasks));
 #if !BUILDFLAG(IS_ANDROID)
-  source->AddBoolean(
-      "darkMode",
-      ThemeServiceFactory::GetForProfile(profile)->BrowserUsesDarkColors());
+  GURL url = web_ui->GetWebContents()->GetVisibleURL();
+  bool is_dark_mode =
+      ThemeServiceFactory::GetForProfile(profile)->BrowserUsesDarkColors();
+  is_dark_mode =
+      contextual_tasks::GetDarkModeFromUrl(url).value_or(is_dark_mode);
+  source->AddBoolean("darkMode", is_dark_mode);
   source->AddLocalizedString(
       "protectedErrorPageTopLine",
       IDS_SIDE_PANEL_LENS_OVERLAY_PROTECTED_PAGE_ERROR_FIRST_LINE);
@@ -516,6 +550,10 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   source->AddBoolean("caretAnimationEnabled",
                      base::FeatureList::IsEnabled(
                          contextual_tasks::kContextualTasksAnimatedCaret));
+
+  source->AddBoolean(
+      "energyEffectEnabled",
+      base::FeatureList::IsEnabled(contextual_tasks::kEnergyEffectInNextbox));
 
   // Set up chrome://contextual-tasks/internals debug UI.
   source->AddResourcePath(
@@ -555,7 +593,8 @@ void ContextualTasksUI::CreatePageHandler(
 
   page_.Bind(std::move(page));
   page_handler_ = std::make_unique<ContextualTasksPageHandler>(
-      std::move(page_handler), this, ui_service_, contextual_tasks_service_);
+      std::move(page_handler), this, ui_service_, contextual_tasks_service_,
+      GetPanelController());
 
 #if !BUILDFLAG(IS_ANDROID)
   // Determine if the Lens overlay is showing when the page is created.
@@ -630,6 +669,10 @@ void ContextualTasksUI::SetAimUrl(const GURL& url) {
   if (page_) {
     page_->SetAimUrl(url);
   }
+#if !BUILDFLAG(IS_ANDROID)
+  tracked_zoom_host_ = url.host();
+  UpdateZoom();
+#endif
 }
 
 void ContextualTasksUI::UpdateModelModeFromUrl(const GURL& url) {
@@ -671,6 +714,11 @@ void ContextualTasksUI::SetIsAiPage(bool is_ai_page) {
 }
 
 const GURL& ContextualTasksUI::GetInnerFrameUrl() const {
+  if (base::FeatureList::IsEnabled(features::kGuestViewMPArch)) {
+    return nav_observer_ ? nav_observer_->last_committed_url()
+                         : GURL::EmptyGURL();
+  }
+
   if (!nav_observer_ || !nav_observer_->web_contents()) {
     return GURL::EmptyGURL();
   }
@@ -999,6 +1047,14 @@ void ContextualTasksUI::AddInitialTaskStateToDataSource(
     task_id = base::Uuid::ParseLowercase(task_id_str);
   }
 
+  std::string host_value;
+  if (net::GetValueForKeyInQuery(url, contextual_tasks::kChromeHostParam,
+                                 &host_value)) {
+    if (contextual_tasks::ContextualTasksUiService::IsTrustedHost(host_value)) {
+      source->AddString(contextual_tasks::kChromeHostParam, host_value);
+    }
+  }
+
   std::optional<GURL> task_creation_url =
       ui_service_ ? ui_service_->GetCreationUrlForTask(task_id) : std::nullopt;
   bool show_ghost_loader = task_creation_url && task_creation_url->is_empty();
@@ -1211,12 +1267,33 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     return;
   }
 
-  // Ignore sub-frame and uncommitted navigations.
-  if (!navigation_handle->IsInMainFrame() ||
-      !navigation_handle->HasCommitted()) {
-    OMNIBOX_LOG("nav_trace") << "ContextualTasks navigation trace: "
-               "FrameNavObserver::DidFinishNavigation returning early, not "
-               "main frame or not committed";
+  // Ignore uncommitted navigations.
+  if (!navigation_handle->HasCommitted()) {
+    OMNIBOX_LOG("nav_trace")
+        << "ContextualTasks navigation trace: "
+           "FrameNavObserver::DidFinishNavigation returning early, not "
+           "committed";
+    return;
+  }
+
+  // With MPArch, the webview lives in the same WebContents as the webui page.
+  // Make sure any navigations in this case are actually from the guest view.
+  if (base::FeatureList::IsEnabled(features::kGuestViewMPArch) &&
+      !navigation_handle->IsGuestViewMainFrame()) {
+    OMNIBOX_LOG("nav_trace")
+        << "ContextualTasks navigation trace: "
+           "FrameNavObserver::DidFinishNavigation returning early, not "
+           "guest frame in MPArch";
+    return;
+  }
+
+  // Ignore sub-frame navigations. Even with MPArch enabled, navigations
+  // from the webview are still considered "main frame".
+  if (!navigation_handle->IsInMainFrame()) {
+    OMNIBOX_LOG("nav_trace")
+        << "ContextualTasks navigation trace: "
+           "FrameNavObserver::DidFinishNavigation returning early, not "
+           "main frame";
     return;
   }
 
@@ -1267,6 +1344,13 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     task_info_delegate_->OnZeroStateChange(is_zero_state);
   }
 
+  // Adjust the preference for dark mode to respect the CS param. This prevents
+  // a UI flicker that would happen if the CS param mismatches the browser
+  // settings.
+  if (navigation_handle->IsInPrimaryMainFrame() &&
+      navigation_handle->IsSameDocument()) {
+    UpdateDarkModePreferenceFromUrl(web_contents(), url);
+  }
   bool is_url_changed = false;
   if (!ContextualTasksUI::AreUrlsEqual(
           url, last_committed_url_)) {
@@ -1417,20 +1501,24 @@ bool ContextualTasksUI::IsZeroState(
     contextual_tasks::ContextualTasksUiService* ui_service) {
   std::string query_value;
   std::string mstk_value;
+  std::string smstk_value;
   std::string vsrid_value;
   std::string cinpts_value;
   net::GetValueForKeyInQuery(url, "q", &query_value);
   net::GetValueForKeyInQuery(url, "mstk", &mstk_value);
+  net::GetValueForKeyInQuery(url, "smstk", &smstk_value);
   net::GetValueForKeyInQuery(url, "vsrid", &vsrid_value);
   net::GetValueForKeyInQuery(url, "cinpts", &cinpts_value);
 
-  // If the URL is an AI URL and there's no query or mstk, it's zero state. If
-  // there is either a query or mstk, assume it's not zero state. If there is a
-  // vsrid/cinpts, assume it's not zero state since there will soon be an mstk.
+  // If the URL is an AI URL and there's no query or (s)mstk, it's zero state.
+  // If there is either a query or (s)mstk, assume it's not zero state. If there
+  // is a vsrid/cinpts, assume it's not zero state since there will soon be an
+  // mstk.
   // TODO(crbug.com/472336339): Find a more robust way to determine if the page
   // is zero state instead of query params.
   return ui_service->IsAiUrl(url) && query_value.empty() &&
-         mstk_value.empty() && vsrid_value.empty() && cinpts_value.empty();
+         mstk_value.empty() && smstk_value.empty() && vsrid_value.empty() &&
+         cinpts_value.empty();
 }
 
 ContextualTasksUI::InnerFrameCreationObvserver::InnerFrameCreationObvserver(
@@ -1511,6 +1599,14 @@ void ContextualTasksUI::OnTaskChanged() {
   }
 }
 
+void ContextualTasksUI::UpdateExpandButtonEnabled(bool enabled) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (page_) {
+    page_->SetExpandButtonEnabled(enabled);
+  }
+#endif
+}
+
 #if !BUILDFLAG(IS_ANDROID)
 // static
 // Favicons for WebUI pages are only used on desktop builds.
@@ -1529,6 +1625,36 @@ base::RefCountedMemory* ContextualTasksUI::GetFaviconResourceBytes(
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 }
 
+void ContextualTasksUI::SyncZoom(bool site_to_webui) {
+  if (tracked_zoom_host_.empty()) {
+    return;
+  }
+
+  content::WebContents* web_contents = web_ui()->GetWebContents();
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
+  content::HostZoomMap* zoom_map =
+      content::HostZoomMap::GetDefaultForBrowserContext(profile);
+
+  std::string webui_host(web_contents->GetLastCommittedURL().host());
+  double webui_zoom =
+      zoom_map->GetZoomLevelForHostAndScheme("https", webui_host);
+  double site_zoom =
+      zoom_map->GetZoomLevelForHostAndScheme("https", tracked_zoom_host_);
+
+  // Prevent infinite loops and handle floating-point precision issues by only
+  // updating if the difference is significant.
+  if (std::abs(webui_zoom - site_zoom) <= 0.01) {
+    return;
+  }
+
+  if (site_to_webui) {
+    zoom_map->SetZoomLevelForHost(webui_host, site_zoom);
+  } else {
+    zoom_map->SetZoomLevelForHost(tracked_zoom_host_, webui_zoom);
+  }
+}
+
 void ContextualTasksUI::UpdateZoom() {
   content::WebContents* web_contents = web_ui()->GetWebContents();
   auto* zoom_controller = zoom::ZoomController::FromWebContents(web_contents);
@@ -1539,6 +1665,7 @@ void ContextualTasksUI::UpdateZoom() {
 
   if (IsShownInTab()) {
     zoom_controller->SetZoomMode(zoom::ZoomController::ZOOM_MODE_DEFAULT);
+    SyncZoom(/*site_to_webui=*/true);
   } else {
     zoom_controller->SetZoomMode(zoom::ZoomController::ZOOM_MODE_DISABLED);
   }
@@ -1549,6 +1676,24 @@ void ContextualTasksUI::WebUIPrimaryPageChanged(content::Page& page) {
   // Update zoom when WebUI is loaded.
   UpdateZoom();
 }
+
+void ContextualTasksUI::OnZoomLevelChanged(
+    const content::HostZoomMap::ZoomLevelChange& change) {
+  if (change.mode != content::HostZoomMap::ZOOM_CHANGED_FOR_HOST) {
+    return;
+  }
+
+  content::WebContents* web_contents = web_ui()->GetWebContents();
+  std::string_view current_host = web_contents->GetLastCommittedURL().host();
+
+  if (change.host == tracked_zoom_host_) {
+    UpdateZoom();
+  } else if (!tracked_zoom_host_.empty() && !current_host.empty() &&
+             change.host == current_host) {
+    SyncZoom(/*site_to_webui=*/false);
+  }
+}
+
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 WEB_UI_CONTROLLER_TYPE_IMPL(ContextualTasksUI)

@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <!DOCTYPE translationbundle>
 <translationbundle lang="de">
-<translation id="1007349221964075684">Displaysperre verwenden, um geöffnete Inkognitofenster zu sehen</translation>
+<translation id="1007349221964075684">Zum Anzeigen geöffneter Inkognitofenster Displaysperre zum Entsperren verwenden</translation>
 <translation id="1010283278930414892">Keine gespeicherten Passwörter auf diesem Gerät</translation>
 <translation id="1011749477052068769">Hierhin verschieben</translation>
 <translation id="1014083013111769343">Einstellungen für den Lesemodus sind vollständig geöffnet</translation>
@@ -187,8 +187,6 @@ Nur Personen, die deine Passphrase kennen, können deine verschlüsselten Daten 
 <translation id="1820408774134375111">Ansicht zum Anmelden am unteren Rand</translation>
 <translation id="1823492026305965829">Als <ph name="USER_FULL_NAME" /> anmelden</translation>
 <translation id="1824902652744048041">Tippe auf „Browserdaten löschen“</translation>
-<translation id="1825772852827001597">Zahlungsmethoden und Adressen bei Google Pay werden nicht verschlüsselt. Der Chrome-Browserverlauf wird nicht synchronisiert.
-Nur Personen, die deine Passphrase kennen, können deine verschlüsselten Daten lesen. Die Passphrase wird nicht an Google gesendet oder von Google gespeichert. Falls du deine Passphrase vergessen hast oder diese Einstellung ändern möchtest, <ph name="BEGIN_LINK" />lösche die Chrome-Daten in deinem Konto<ph name="END_LINK" />.</translation>
 <translation id="1829244130665387512">Auf Seite suchen</translation>
 <translation id="1832459821645506983">Ok</translation>
 <translation id="1845958458910716240">Erlaube Chrome zum Schutz deiner Daten, Berechtigungen von Websites zu entfernen, die du in letzter Zeit nicht besucht hast</translation>
@@ -373,6 +371,7 @@ Nur Personen, die deine Passphrase kennen, können deine verschlüsselten Daten 
 <translation id="2616989802003447151">{COUNT,plural, =1{1 Element}other{# Elemente}}</translation>
 <translation id="2620314865574742210"><ph name="NAME" /> hat dich eingeladen, auf ein freigegebenes Element zuzugreifen.</translation>
 <translation id="2634393460268044753">Sendet die URLs der von dir besuchten Websites sowie eine kleine Auswahl an Seiteninhalten, Downloads, Erweiterungsaktivitäten und Systeminformationen an Google Safe Browsing, um zu prüfen, ob die Websites schädlich sind.</translation>
+<translation id="263442110807675126">Das kann einige Sekunden dauern</translation>
 <translation id="2643064289437760082">Du kannst jederzeit Daten zur Erfolgsmessung bei Anzeigen löschen, indem du deine Browserdaten löschst</translation>
 <translation id="2647434099613338025">Sprache hinzufügen</translation>
 <translation id="2650077116157640844">Mehr auf synchronisierten Geräten</translation>
@@ -556,7 +555,6 @@ Nur Personen, die deine Passphrase kennen, können deine verschlüsselten Daten 
 <translation id="3439276997620616816">Hier werden deine kürzlich geschlossenen Tabs angezeigt</translation>
 <translation id="3443221991560634068">Aktuelle Seite neu laden</translation>
 <translation id="3444179773590444986">Feedback zu dunklem Design für Websites teilen?</translation>
-<translation id="3448874648066942074">Seite mit KI zusammenfassen</translation>
 <translation id="3452832259067974318">Um deine Daten zu schützen, füllt Chrome dieses Feld nicht automatisch mit deinem Passwort aus.</translation>
 <translation id="3474624961160222204">Als <ph name="NAME" /> fortfahren</translation>
 <translation id="3478363558367712427">Du kannst deine Suchmaschine auswählen</translation>
@@ -856,7 +854,6 @@ Eventuell findest du unter <ph name="BEGIN_LINK" />history.google.com<ph name="E
 <translation id="4698757800236023795">Aktiv (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">Bilder und Dateien im Cache</translation>
 <translation id="4710167854527459075">Nach neuestem sortieren</translation>
-<translation id="4718044610319080485">Ruft KI-Assistenten auf</translation>
 <translation id="4719927025381752090">Übersetzung anbieten</translation>
 <translation id="4720556299488643018">Ausschalten</translation>
 <translation id="4732120983431207637">Stack Unwinder</translation>
@@ -1235,14 +1232,13 @@ Einige Websites schalten möglicherweise Werbeanzeigen, deren Auswahl nicht dara
 <translation id="629730747756840877">Konto</translation>
 <translation id="6301526076346731664">Entwicklertools öffnen</translation>
 <translation id="630308129961693966">Position der Adressleiste auswählen</translation>
-<translation id="6303969859164067831">Abmelden und die Synchronisierung ausschalten</translation>
 <translation id="6305257382500066042">Jetzt ausprobieren</translation>
 <translation id="6307241780749477694">Bestätige deine Identität, damit du auf alle deine Passwörter auf diesem Gerät zugreifen kannst</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, mehrfach ausgewählter, angepinnter Tab mit Audio</translation>
 <translation id="6312687380483398334">Web-Apps (stumm)</translation>
 <translation id="6315386555979018699">Löschen und fortfahren</translation>
 <translation id="6316139424528454185">Android-Version nicht unterstützt</translation>
-<translation id="631839948975905034">Inkognitofenster beim Verlassen von Chrome sperren</translation>
+<translation id="631839948975905034">Beim Verlassen von Chrome Inkognitofenster sperren</translation>
 <translation id="6324916366299863871">Verknüpfung bearbeiten</translation>
 <translation id="6324977638108296054">Link zum markierten Text kann nicht erstellt werden</translation>
 <translation id="6333140779060797560">Über <ph name="APPLICATION" /> teilen</translation>
@@ -1313,7 +1309,6 @@ Einige Websites schalten möglicherweise Werbeanzeigen, deren Auswahl nicht dara
 <translation id="6565959834589222080">WLAN wird verwendet, wenn es verfügbar ist</translation>
 <translation id="657177046675873214">Um auf all deinen Geräten auf deine Lesezeichen zugreifen zu können, musst du in den Einstellungen die Option „Lesezeichen“ aktivieren</translation>
 <translation id="6573096386450695060">Immer zulassen</translation>
-<translation id="6573431926118603307">Hier werden Tabs angezeigt, die du auf deinen anderen Geräten in Chrome geöffnet hast.</translation>
 <translation id="6583199322650523874">Aktuelle Seite als Lesezeichen speichern</translation>
 <translation id="6588043302623806746">Sicheres DNS verwenden</translation>
 <translation id="6590471736817333463">Bis zu 60 % Daten sparen</translation>
@@ -1372,7 +1367,7 @@ Einige Websites schalten möglicherweise Werbeanzeigen, deren Auswahl nicht dara
 <translation id="679956319013005046">Wenn du einen bevorzugten Dienst für das automatische Ausfüllen festlegen möchtest, füge den Dienst zuerst in den <ph name="BEGIN_LINK" />Android-Einstellungen<ph name="END_LINK" /> hinzu.</translation>
 <translation id="6802555630140434547">Das Fenster wird geschlossen</translation>
 <translation id="6803791793483522764">Benachrichtigungen ansehen</translation>
-<translation id="6809470175540814047">In &amp;Inkognitofenster öffnen</translation>
+<translation id="6809470175540814047">In Inkognitofenster öffnen</translation>
 <translation id="6811034713472274749">Seitenansicht bereit</translation>
 <translation id="6813359536773993594">{FILE_COUNT,plural, =1{Bilder, 1 Bild in der Liste}other{Bilder, # Bilder in der Liste}}</translation>
 <translation id="6813446258015311409">In Chrome anmelden, geöffnet.</translation>
@@ -1664,7 +1659,6 @@ Wenn du diese Einstellung ändern möchtest, <ph name="BEGIN_LINK" />lösche die
 <translation id="7914399737746719723">App wurde installiert</translation>
 <translation id="7917574899775263813">Zum letzten Tab wechseln</translation>
 <translation id="7919123827536834358">Diese Sprachen automatisch übersetzen</translation>
-<translation id="7921782882718083488">Diese Seite zusammenfassen</translation>
 <translation id="7926975587469166629">Kartenalias</translation>
 <translation id="7927073875790626822">XR</translation>
 <translation id="7929587383660661825">Chrome entfernt automatisch Berechtigungen von Websites, die Benachrichtigungen missbrauchen oder die du in letzter Zeit nicht besucht hast</translation>
@@ -1828,7 +1822,6 @@ Wenn du diese Einstellung ändern möchtest, <ph name="BEGIN_LINK" />lösche die
 <translation id="8538291624121505885"><ph name="TAB_TITLE" />, mehrfach ausgewählter angepinnter Tab im Bild-im-Bild-Modus</translation>
 <translation id="8540136935098276800">Bitte gib eine korrekt formatierte URL ein</translation>
 <translation id="854522910157234410">Diese Seite öffnen</translation>
-<translation id="8547466829003330976">PDF mit KI prüfen</translation>
 <translation id="8551513938758868521">Inkognitotabs beim Verlassen von Chrome sperren</translation>
 <translation id="8559961053328923750">Chrome beschränkt die Gesamtmenge an Daten, die Websites über den Browser zur Analyse der Werbeleistung teilen können</translation>
 <translation id="8559990750235505898">Übersetzung von fremdsprachigen Seiten anbieten</translation>

@@ -19,6 +19,7 @@
 #import "ios/chrome/browser/fullscreen/public/fullscreen_metrics.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_ui_element.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_ui_updater.h"
+#import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
@@ -446,8 +447,7 @@
       break;
     }
     case AppBarAssistantButtonState::kAsk: {
-      if (!_authenticationService->HasPrimaryIdentity(
-              signin::ConsentLevel::kSignin)) {
+      if (!_authenticationService->HasPrimaryIdentity()) {
         ShowSigninCommand* command = [[ShowSigninCommand alloc]
             initWithOperation:AuthenticationOperation::kSigninOnly
                   accessPoint:signin_metrics::AccessPoint::kIosAppBar];
@@ -455,7 +455,10 @@
                    baseViewController:self.baseViewController];
         return;
       }
-      if (!_geminiService || !_geminiService->IsProfileEligibleForGemini()) {
+      if (!_geminiService || (!_geminiService->IsProfileEligibleForGemini() &&
+                              _geminiService->GeminiIneligibilityForProfile()
+                                  .value()
+                                  .account_capability)) {
         // TODO(crbug.com/484000888): If user is not eligible, then show prompt
         // notifying ineligibility.
         return;
@@ -479,48 +482,11 @@
     return;
   }
 
-  GURL URL(kChromeUINewTabURL);
-  UrlLoadParams params = UrlLoadParams::InNewTab(URL);
-  params.in_incognito = _incognitoState.incognitoContentVisible;
-  params.load_in_group = true;
-  params.tab_group = self.currentTabGroup->GetWeakPtr();
-  _URLLoader->Load(params);
-  [self updateConsumer];
-}
-
-- (void)moveCurrentTabToGroup:(const TabGroup*)destinationGroup {
-  CHECK(base::FeatureList::IsEnabled(kTabGroupInTabIconContextMenu));
-  CHECK(GetGroupForActiveWebState(self.currentWebStateList));
-  int tabIndex = self.currentWebStateList->active_index();
-  self.currentWebStateList->MoveToGroup({tabIndex}, destinationGroup);
-  [self updateConsumer];
-}
-
-- (void)removeCurrentTabFromGroup {
-  CHECK(base::FeatureList::IsEnabled(kTabGroupInTabIconContextMenu));
-  CHECK(GetGroupForActiveWebState(self.currentWebStateList));
-  int tabIndex = self.currentWebStateList->active_index();
-  self.currentWebStateList->RemoveFromGroups({tabIndex});
-  [self updateConsumer];
-}
-
-- (void)addCurrentTabToGroup:(const TabGroup*)destinationGroup {
-  CHECK(base::FeatureList::IsEnabled(kTabGroupInTabIconContextMenu));
-  CHECK(!GetGroupForActiveWebState(self.currentWebStateList));
-  int tabIndex = self.currentWebStateList->active_index();
-  if (destinationGroup) {
-    self.currentWebStateList->MoveToGroup({tabIndex}, destinationGroup);
-  } else {
-    web::WebState* currentWebState =
-        self.currentWebStateList->GetActiveWebState();
-    if (!currentWebState) {
-      return;
-    }
-    std::set<web::WebStateID> identifiers = {
-        currentWebState->GetUniqueIdentifier()};
-    [self createNewTabGroupWithTabs:identifiers];
+  [self.tabGridHandler prepareToExitTabGrid];
+  if ([self addNewTabInGroup:self.currentTabGroup
+                   incognito:_incognitoState.incognitoContentVisible]) {
+    [self.tabGridHandler exitTabGrid];
   }
-  [self updateConsumer];
 }
 
 - (void)navigateToPageForItem:(web::NavigationItem*)item {
@@ -572,14 +538,6 @@
     tabCount = static_cast<NSUInteger>(self.currentWebStateList->count());
   }
 
-  [self.consumer updateTabCount:tabCount];
-  [self.consumer setTabGridVisible:_tabGridState.tabGridVisible];
-  [self.consumer setTabGroupsPageVisible:_tabGridState.currentPage ==
-                                         TabGridPageTabGroups];
-  [self.consumer setTabGroupVisible:_tabGridState.visibleTabGroup];
-  [self.consumer
-      setInTabGroup:GetGroupForActiveWebState(self.currentWebStateList)];
-
   BOOL incognito = self.currentWebStateList == _incognitoWebStateList;
   ToolbarButtonMenuFactory* buttonMenuFactory =
       incognito ? _incognitoButtonMenuFactory : _regularButtonMenuFactory;
@@ -590,6 +548,15 @@
            forButtonType:AppBarButtonTypeNewTab];
   [self.consumer setMenu:[buttonMenuFactory menuForTabGridButton]
            forButtonType:AppBarButtonTypeTabGrid];
+
+  [self.consumer updateTabCount:tabCount];
+  [self.consumer setTabGridVisible:_tabGridState.tabGridVisible];
+  [self.consumer setTabGroupsPageVisible:_tabGridState.currentPage ==
+                                         TabGridPageTabGroups];
+  [self.consumer setTabGroupVisible:self.currentTabGroup != nullptr];
+  [self.consumer
+      setInTabGroup:GetGroupForActiveWebState(self.currentWebStateList)];
+
   [self updateAssistantButton];
   [self updateButtonsForCurrentTabGridPage];
 }
@@ -666,6 +633,13 @@
   // example).
   if (!IsAddNewTabAllowedByPolicy(_prefService, incognito)) {
     return;
+  }
+
+  if (_tabGridState.visibleTabGroup) {
+    id<TabGroupsCommands> tabGroupsHandler =
+        incognito ? self.incognitoTabGroupsCommands
+                  : self.regularTabGroupsCommands;
+    [tabGroupsHandler hideTabGroup];
   }
 
   [self.tabGridHandler prepareToExitTabGrid];
@@ -748,6 +722,24 @@
     // Create a Tab Group with 'identifiers'.
     [tabGroupsHandler showTabGroupCreationForTabs:identifiers];
   }
+}
+
+// Adds a new tab in `group` and returns its success.
+- (BOOL)addNewTabInGroup:(const TabGroup*)group incognito:(BOOL)incognito {
+  CHECK(group);
+  WebStateList* webStateList =
+      incognito ? _incognitoWebStateList : _regularWebStateList;
+  int webStateListCount = webStateList->count();
+
+  GURL URL(kChromeUINewTabURL);
+  UrlLoadParams params = UrlLoadParams::InNewTab(URL);
+  params.in_incognito = incognito;
+  params.load_in_group = true;
+  params.tab_group = group->GetWeakPtr();
+  _URLLoader->Load(params);
+
+  [self updateConsumer];
+  return webStateListCount != webStateList->count();
 }
 
 @end

@@ -29,6 +29,7 @@
 #include "pdf/draw_utils/page_boundary_intersect.h"
 #include "pdf/input_utils.h"
 #include "pdf/message_util.h"
+#include "pdf/mojom/pdf.mojom.h"
 #include "pdf/page_orientation.h"
 #include "pdf/pdf_caret.h"
 #include "pdf/pdf_features.h"
@@ -37,6 +38,7 @@
 #include "pdf/pdf_ink_cursor.h"
 #include "pdf/pdf_ink_metrics_handler.h"
 #include "pdf/pdf_ink_module_client.h"
+#include "pdf/pdf_ink_text.h"
 #include "pdf/pdf_ink_transform.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/common/input/web_keyboard_event.h"
@@ -127,6 +129,36 @@ PdfInkBrush CreateDefaultPenBrush() {
 void CheckColorIsWithinRange(int color) {
   CHECK_GE(color, 0);
   CHECK_LE(color, 255);
+}
+
+SkColor GetColorFromDict(const base::DictValue& dict) {
+  const base::DictValue& color = *dict.FindDict("color");
+  int color_r = color.FindInt("r").value();
+  int color_g = color.FindInt("g").value();
+  int color_b = color.FindInt("b").value();
+
+  CheckColorIsWithinRange(color_r);
+  CheckColorIsWithinRange(color_g);
+  CheckColorIsWithinRange(color_b);
+  return SkColorSetRGB(color_r, color_g, color_b);
+}
+
+InkTextBoxAttributes GetTextBoxAttributesFromDict(const base::DictValue& data) {
+  const base::DictValue& text_box_rect = *data.FindDict("textBoxRect");
+  gfx::RectF textbox(text_box_rect.FindDouble("locationX").value(),
+                     text_box_rect.FindDouble("locationY").value(),
+                     text_box_rect.FindDouble("width").value(),
+                     text_box_rect.FindDouble("height").value());
+
+  const base::DictValue& text_attributes = *data.FindDict("textAttributes");
+  const float css_font_size = text_attributes.FindDouble("size").value();
+
+  // TODO(crbug.com/409021827): Add more attributes.
+  return InkTextBoxAttributes{
+      .rect = textbox,
+      .color = GetColorFromDict(text_attributes),
+      .css_font_size = css_font_size,
+  };
 }
 
 ink::Rect GetEraserRect(const gfx::PointF& center) {
@@ -1472,22 +1504,13 @@ void PdfInkModule::HandleSetAnnotationBrushMessage(
   }
 
   // All brush types except the eraser should have a color and size.
-  const base::DictValue* color = data->FindDict("color");
-  CHECK(color);
-
-  int color_r = color->FindInt("r").value();
-  int color_g = color->FindInt("g").value();
-  int color_b = color->FindInt("b").value();
-
-  CheckColorIsWithinRange(color_r);
-  CheckColorIsWithinRange(color_g);
-  CheckColorIsWithinRange(color_b);
+  SkColor color = GetColorFromDict(*data);
 
   std::optional<PdfInkBrush::Type> brush_type =
       PdfInkBrush::StringToType(brush_type_string);
   CHECK(brush_type.has_value());
-  pending_drawing_brush_state_ = PendingDrawingBrushState{
-      SkColorSetRGB(color_r, color_g, color_b), size, brush_type.value()};
+  pending_drawing_brush_state_ =
+      PendingDrawingBrushState{color, size, brush_type.value()};
 
   // Do not adjust current tool state if a drawing stroke is already
   // in-progress.  Changes to the tool state will only apply to subsequent
@@ -1539,7 +1562,33 @@ void PdfInkModule::HandleEditTextAnnotationMessage(
 
 void PdfInkModule::HandleFinishTextAnnotationMessage(
     const base::DictValue& message) {
-  // TODO(crbug.com/408976049): Implement.
+  const base::DictValue& data = *message.FindDict("data");
+  const base::ListValue& typefaces_value = *data.FindList("newTypefaces");
+  for (const base::Value& item : typefaces_value) {
+    const base::DictValue& item_as_dict = item.GetDict();
+    FontId unique_id(item_as_dict.FindInt("uniqueId").value());
+    const std::vector<uint8_t>& serialized_typeface =
+        *item_as_dict.FindBlob("serializedTypeface");
+    client_->AddFont(unique_id, serialized_typeface);
+  }
+
+  const std::vector<uint8_t>& text_info_blob = *data.FindBlob("mojoTextInfo");
+  pdf::mojom::InkTextInfoPtr text_info_mojo;
+  CHECK(pdf::mojom::InkTextInfo::Deserialize(text_info_blob, &text_info_mojo));
+
+  std::vector<InkTextInfo> ink_info = InkTextInfo::SplitTypefaceRuns(
+      text_info_mojo->text_runs, text_info_mojo->effective_zoom);
+
+  int page_index = data.FindInt("pageIndex").value();
+
+  // Note: `pdf_zoom` is similar to GetZoom() but GetZoom() is multiplied by
+  // device scale factor while this value isn't. Additionally `pdf_zoom` comes
+  // from the frontend at the exact same time as the annotation commit happens
+  // to avoid any potential sync race issues between the frontend and backend.
+  double pdf_zoom = data.FindDouble("pdfZoom").value();
+
+  client_->DrawText(page_index, ink_info, pdf_zoom,
+                    GetTextBoxAttributesFromDict(data));
 }
 
 bool PdfInkModule::IsHighlightingTextAtPosition(

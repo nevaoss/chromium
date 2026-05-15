@@ -2159,6 +2159,7 @@
 <translation id="4318312030194671742">សេវាកម្ម​រៀបចំ​មើលសាកល្បង​ការផ្គុំរូបរាង​គេហទំព័រ​</translation>
 <translation id="4318566738941496689">អាសយដ្ឋានបណ្ដាញ និងឈ្មោះ​ឧបករណ៍របស់អ្នក</translation>
 <translation id="4320119221194966055">កម្ចី​ផ្ទាល់​ខ្លួន</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{បានទទួល​តំណពី <ph name="DEVICE_NAME" />}other{បានទទួល​តំណ # ពី <ph name="DEVICE_NAME" />}}</translation>
 <translation id="4325600325087822253">ទម្រទី 17</translation>
 <translation id="4325863107915753736">បានបរាជ័យក្នុងការស្វែងរកអត្ថបទ</translation>
 <translation id="4326324639298822553">ពិនិត្យមើល​កាលបរិច្ឆេទ​ផុត​កំណត់​របស់អ្នក​ រួច​ព្យាយាម​ម្តង​ទៀត​</translation>
@@ -3191,6 +3192,7 @@
 <translation id="5968400720580217226">មុខងារ AI</translation>
 <translation id="5969199813874624822">រក្សាទុក និង​តាមដាន​តម្លៃ</translation>
 <translation id="5969933937005244170">ផ្ទាំងដែលបើកដែលពាក់ព័ន្ធនឹងត្រូវបានប្រើ ប្រសិនបើអ្នកចែករំលែកផ្ទាំងទាំងនោះនៅក្នុងកម្រងសារ</translation>
+<translation id="5972020793760134803">ប្តូរ​ទៅ​ផ្ទាំង</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">ដុំទី​ប្រាំមួយ</translation>
 <translation id="5975083100439434680">បង្រួម</translation>
@@ -4987,6 +4989,7 @@
 <translation id="8758529215314160755">អ្នកអាច​កែឈ្មោះ​របស់អ្នកនៅក្នុង​<ph name="BEGIN_LINK" />គណនី Google<ph name="END_LINK" /> របស់អ្នក ពោលគឺ <ph name="ACCOUNT" /></translation>
 <translation id="8759274551635299824">បណ្ណនេះផុតកំណត់ហើយ</translation>
 <translation id="87601671197631245">គេហទំព័រ​នេះ​ប្រើ​ការកំណត់​រចនាសម្ព័ន្ធ​សុវត្ថិភាព​​ហួសសម័យ ដែលអាចធ្វើឱ្យ​បែកធ្លាយ​ព័ត៌មាន​របស់អ្នក (ឧទាហរណ៍ ពាក្យសម្ងាត់ សារ ឬ​បណ្ណ​ឥណទាន) នៅពេល​ផ្ញើ​ទៅ​គេហទំព័រ​នេះ។</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{បានផ្ញើ​តំណពី <ph name="DEVICE_NAME" />}other{បានផ្ញើ​តំណ # ពី <ph name="DEVICE_NAME" />}}</translation>
 <translation id="8763927697961133303">ឧបករណ៍ USB</translation>
 <translation id="8763986294015493060">បិទ​ផ្ទាំងឯកជន​ទាំងអស់​ដែលកំពុងបើក</translation>
 <translation id="8766943070169463815">បញ្ជីផ្ទៀងផ្ទាត់ព័ត៌មានបង់ប្រាក់ដែលមានសុវត្ថិភាពត្រូវបានបើក</translation>

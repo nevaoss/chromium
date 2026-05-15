@@ -93,6 +93,7 @@ NewTabPageTest.*
 NtpPromoVisualUiTest.*
 NtpRealboxUiScreenshotTest.*
 OfferNotificationBubbleViewPixelBrowserTest.*
+OmniboxAimWebUiInteractiveTest.QueryWithTabContext*
 OutdatedUpgradeBubbleTest.*
 PageActionPixelIconsHiddenTest.*
 PageActionPixelShowIconTest.*
@@ -168,6 +169,7 @@ TabSearchBubbleUIBrowserTest.*
 *TailoredSecurityDesktopDialogManagerTest.InvokeUi_*
 TranslateBubbleVisualTest.InvokeUi_*
 UpdateRecommendedDialogTest.*
+VerticalTabStripTopContainerInteractiveUiTest.PixelTest*
 *WatermarkBrowserTest.*
 *WatermarkTestPageBrowserTest.*
 *WatermarkTestPageDynamicBrowserTest.*

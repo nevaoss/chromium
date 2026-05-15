@@ -187,8 +187,6 @@ Twoje zaszyfrowane dane może odczytać tylko osoba znająca hasło wielowyrazow
 <translation id="1820408774134375111">Plansza dolna logowania</translation>
 <translation id="1823492026305965829">Zaloguj się jako <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">Kliknij Usuń dane przeglądania</translation>
-<translation id="1825772852827001597">Formy płatności ani adresy z Google Pay nie będą szyfrowane. Historia przeglądania z Chrome nie będzie synchronizowana.
-Twoje zaszyfrowane dane może odczytać tylko osoba znająca hasło. Nie jest ono wysyłane do Google ani tam przechowywane. Jeśli zapomnisz hasło lub zechcesz zmienić to ustawienie, <ph name="BEGIN_LINK" />usuń dane Chrome na swoim koncie<ph name="END_LINK" />.</translation>
 <translation id="1829244130665387512">Znajdź na stronie</translation>
 <translation id="1832459821645506983">Tak, zgadzam się</translation>
 <translation id="1845958458910716240">Aby chronić swoje dane, zezwól Chrome na usunięcie uprawnień witryn, których ostatnio nie odwiedzasz</translation>
@@ -373,6 +371,7 @@ Twoje zaszyfrowane dane może odczytać tylko osoba znająca hasło. Nie jest on
 <translation id="2616989802003447151">{COUNT,plural, =1{1 element}few{# elementy}many{# elementów}other{# elementu}}</translation>
 <translation id="2620314865574742210"><ph name="NAME" /> zaproposił(a) Cię do skorzystania z udostępnionego elementu.</translation>
 <translation id="2634393460268044753">Wysyła adresy URL witryn, które odwiedzasz, oraz niewielką próbkę zawartości, pobieranych plików, aktywności rozszerzeń i informacji o systemie do Bezpiecznego przeglądania Google w celu sprawdzenia, czy nie są szkodliwe.</translation>
+<translation id="263442110807675126">Może to zająć kilka sekund</translation>
 <translation id="2643064289437760082">Zawsze możesz usunąć dane pomiarowe reklam, usuwając dane przeglądania</translation>
 <translation id="2647434099613338025">Dodaj język</translation>
 <translation id="2650077116157640844">Więcej na zsynchronizowanych urządzeniach</translation>
@@ -556,7 +555,6 @@ Twoje zaszyfrowane dane może odczytać tylko osoba znająca hasło. Nie jest on
 <translation id="3439276997620616816">Tu znajdziesz swoje ostatnie karty</translation>
 <translation id="3443221991560634068">Ponownie załaduj bieżącą stronę</translation>
 <translation id="3444179773590444986">Co sądzisz o ciemnym motywie witryn?</translation>
-<translation id="3448874648066942074">Podsumuj stronę za pomocą AI</translation>
 <translation id="3452832259067974318">Aby chronić Twoją prywatność, Chrome nie będzie autouzupełniać hasła w tym polu.</translation>
 <translation id="3474624961160222204">Kontynuuj jako <ph name="NAME" /></translation>
 <translation id="3478363558367712427">Możesz wybrać wyszukiwarkę</translation>
@@ -856,7 +854,6 @@ Na stronie <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> n
 <translation id="4698757800236023795">Aktywne (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">Obrazy i pliki zapisane w pamięci podręcznej</translation>
 <translation id="4710167854527459075">Sortuj od najnowszego</translation>
-<translation id="4718044610319080485">Wywołuje asystenta AI</translation>
 <translation id="4719927025381752090">Proponuj tłumaczenie</translation>
 <translation id="4720556299488643018">Zrezygnuj</translation>
 <translation id="4732120983431207637">Moduł rozwijania stosu</translation>
@@ -1235,7 +1232,6 @@ Na przykład niektóre strony mogą na nie zareagować, wyświetlając reklamy b
 <translation id="629730747756840877">Konto</translation>
 <translation id="6301526076346731664">Otwarcie narzędzi dla programistów</translation>
 <translation id="630308129961693966">Wybierz położenie paska adresu</translation>
-<translation id="6303969859164067831">Wyloguj się i wyłącz synchronizację</translation>
 <translation id="6305257382500066042">Wypróbuj</translation>
 <translation id="6307241780749477694">Aby pobrać wszystkie swoje hasła na to urządzenie, potwierdź swoją tożsamość</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, jedna z kilku wybranych przypiętych kart z dźwiękiem</translation>
@@ -1313,7 +1309,6 @@ Na przykład niektóre strony mogą na nie zareagować, wyświetlając reklamy b
 <translation id="6565959834589222080">Sieć Wi-Fi jest używana, gdy jest dostępna</translation>
 <translation id="657177046675873214">Aby korzystać ze swoich zakładek na wszystkich urządzeniach, w ustawieniach włącz „Zakładki”</translation>
 <translation id="6573096386450695060">Zawsze zezwalaj</translation>
-<translation id="6573431926118603307">Tutaj wyświetlą się karty otwarte w Chrome na innych urządzeniach.</translation>
 <translation id="6583199322650523874">Dodaj bieżącą stronę do zakładek</translation>
 <translation id="6588043302623806746">Użyj bezpiecznego serwera DNS</translation>
 <translation id="6590471736817333463">Oszczędź nawet 60% danych</translation>
@@ -1664,7 +1659,6 @@ Aby zmienić to ustawienie, <ph name="BEGIN_LINK" />wyczyść dane Chrome na swo
 <translation id="7914399737746719723">Aplikacja została zainstalowana</translation>
 <translation id="7917574899775263813">Przełączenie na ostatnią kartę</translation>
 <translation id="7919123827536834358">Automatycznie tłumacz te języki</translation>
-<translation id="7921782882718083488">Podsumuj tę stronę</translation>
 <translation id="7926975587469166629">Nazwa karty</translation>
 <translation id="7927073875790626822">XR</translation>
 <translation id="7929587383660661825">Chrome automatycznie usuwa uprawnienia z witryn, które nadużywają powiadomień lub które nie były przez Ciebie ostatnio odwiedzane</translation>
@@ -1828,7 +1822,6 @@ Aby zmienić to ustawienie, <ph name="BEGIN_LINK" />wyczyść dane Chrome na swo
 <translation id="8538291624121505885"><ph name="TAB_TITLE" />, jedna z kilku wybranych przypiętych kart w trybie obrazu w obrazie</translation>
 <translation id="8540136935098276800">Wpisz poprawnie sformatowany URL</translation>
 <translation id="854522910157234410">Otwórz tę stronę</translation>
-<translation id="8547466829003330976">Sprawdź PDF-a z pomocą AI</translation>
 <translation id="8551513938758868521">Po zamknięciu Chrome blokuj karty incognito</translation>
 <translation id="8559961053328923750">Chrome ogranicza łączną ilość danych, które witryny mogą udostępniać za pomocą przeglądarki, aby mierzyć skuteczność reklam</translation>
 <translation id="8559990750235505898">Proponuj tłumaczenie stron w innych językach</translation>

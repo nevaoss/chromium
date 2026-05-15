@@ -187,8 +187,6 @@ Samo neko ko ima pristupnu frazu može da čita šifrovane podatke. Pristupna fr
 <translation id="1820408774134375111">Donja tabela za prijavljivanje</translation>
 <translation id="1823492026305965829">Prijavi me kao <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">Dodirnite Izbriši podatke pregledanja</translation>
-<translation id="1825772852827001597">Načini plaćanja i adrese iz Google Pay-a se neće šifrovati. Istorija pregledanja iz Chrome-a se neće sinhronizovati.
-Samo neko ko ima pristupnu frazu može da čita šifrovane podatke. Pristupna fraza se ne šalje Google-u niti se čuva na Google-u. Ako zaboravite pristupnu frazu ili želite da promenite ovo podešavanje, <ph name="BEGIN_LINK" />izbrišite Chrome podatke na nalogu<ph name="END_LINK" />.</translation>
 <translation id="1829244130665387512">Pronađi na stranici</translation>
 <translation id="1832459821645506983">Da, omogući</translation>
 <translation id="1845958458910716240">Da biste zaštitili podatke, dozvolite da Chrome uklanja dozvole sa sajtova koje duže niste posećivali</translation>
@@ -557,7 +555,6 @@ Samo neko ko ima pristupnu frazu može da čita šifrovane podatke. Pristupna fr
 <translation id="3439276997620616816">Ovde ćete pronaći nedavne kartice</translation>
 <translation id="3443221991560634068">Ponovno učitavanje aktuelne stranice</translation>
 <translation id="3444179773590444986">Želite da delite povratne informacije o tamnoj temi za sajtove?</translation>
-<translation id="3448874648066942074">Rezimiraj stranicu pomoću AI-ja</translation>
 <translation id="3452832259067974318">Radi zaštite privatnosti Chrome neće automatski unositi vašu lozinku u ovo polje.</translation>
 <translation id="3474624961160222204">Nastavi kao <ph name="NAME" /></translation>
 <translation id="3478363558367712427">Možete da odaberete pretraživač</translation>
@@ -857,7 +854,6 @@ Google nalog možda ima druge oblike istorije pregledanja, poput pretraga i akti
 <translation id="4698757800236023795">Aktivne (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">Keširane slike i fajlovi</translation>
 <translation id="4710167854527459075">Sortiraj po najnovijem</translation>
-<translation id="4718044610319080485">Poziva AI pomoćnik</translation>
 <translation id="4719927025381752090">Ponudi prevod</translation>
 <translation id="4720556299488643018">Otkaži prijavu</translation>
 <translation id="4732120983431207637">Stack Unwinder</translation>
@@ -1236,7 +1232,6 @@ Na primer, neki veb-sajtovi mogu da odgovore na ovaj zahtev prikazivanjem oglasa
 <translation id="629730747756840877">nalog</translation>
 <translation id="6301526076346731664">Otvaranje Alatki za programere</translation>
 <translation id="630308129961693966">Birajte položaj trake za adresu</translation>
-<translation id="6303969859164067831">Odjavi me i isključi sinhronizaciju</translation>
 <translation id="6305257382500066042">Isprobajte</translation>
 <translation id="6307241780749477694">Potvrdite identitet da biste dobili sve lozinke na ovom uređaju</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, višestruko izabrana zakačena kartica sa zvukom</translation>
@@ -1314,7 +1309,6 @@ Na primer, neki veb-sajtovi mogu da odgovore na ovaj zahtev prikazivanjem oglasa
 <translation id="6565959834589222080">WiFi se koristi kada je dostupan</translation>
 <translation id="657177046675873214">Da bi vam obeleživači bili dostupni na svim uređajima, uključite Obeleživače u podešavanjima</translation>
 <translation id="6573096386450695060">Uvek dozvoli</translation>
-<translation id="6573431926118603307">Ovde će se prikazati kartice koje otvorite u Chrome-u na drugim uređajima.</translation>
 <translation id="6583199322650523874">Obeležavanje trenutne stranice</translation>
 <translation id="6588043302623806746">Koristi bezbedni DNS</translation>
 <translation id="6590471736817333463">Uštedite i do 60% podataka</translation>
@@ -1665,7 +1659,6 @@ Da biste promenili ovo podešavanje, <ph name="BEGIN_LINK" />izbrišite Chrome p
 <translation id="7914399737746719723">Aplikacija je instalirana</translation>
 <translation id="7917574899775263813">Prelazak na poslednju karticu</translation>
 <translation id="7919123827536834358">Automatski prevodi ove jezike</translation>
-<translation id="7921782882718083488">Rezimiraj ovu stranicu</translation>
 <translation id="7926975587469166629">Nadimak kartice</translation>
 <translation id="7927073875790626822">Proširena stvarnost</translation>
 <translation id="7929587383660661825">Chrome automatski uklanja dozvole sa sajtova koji zloupotrebljavaju obaveštenja ili koje niste nedavno posećivali</translation>
@@ -1829,7 +1822,6 @@ Da biste promenili ovo podešavanje, <ph name="BEGIN_LINK" />izbrišite Chrome p
 <translation id="8538291624121505885"><ph name="TAB_TITLE" />, višestruko izabrana zakačena kartica u režimu slike u slici</translation>
 <translation id="8540136935098276800">Unesite ispravno formatiran URL</translation>
 <translation id="854522910157234410">Otvori ovu stranicu</translation>
-<translation id="8547466829003330976">Pregledajte PDF pomoću AI-ja</translation>
 <translation id="8551513938758868521">Zaključaj kartice bez arhiviranja posle zatvaranja Chrome-a</translation>
 <translation id="8559961053328923750">Chrome ograničava ukupnu količinu podataka koju sajtovi mogu da dele preko pregledača da bi merili učinak oglasa</translation>
 <translation id="8559990750235505898">Ponudi prevod stranica na druge jezike</translation>
@@ -1950,7 +1942,7 @@ Da biste promenili ovo podešavanje, <ph name="BEGIN_LINK" />izbrišite Chrome p
 <translation id="9068568736932147490"><ph name="TAB_TITLE" />, višestruko izabrana zakačena kartica bez arhiviranja sa zvukom</translation>
 <translation id="9069999660519089861">Nema nijedne nepročitane stranice</translation>
 <translation id="9070377983101773829">Započni glasovnu pretragu</translation>
-<translation id="9070475340274551028">Otvorite iskačući prozor sa kontekstom</translation>
+<translation id="9070475340274551028">Otvori iskačući prozor sa kontekstom</translation>
 <translation id="9073805459138993880"><ph name="TAB_TITLE" />, višestruko izabrana kartica za deljenje</translation>
 <translation id="9074739597929991885">Bluetooth</translation>
 <translation id="9081543426177426948">Sajtovi koje posećujete se ne čuvaju u režimu bez arhiviranja</translation>

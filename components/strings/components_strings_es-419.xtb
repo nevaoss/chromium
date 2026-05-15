@@ -91,6 +91,7 @@
 <translation id="1149617035358809955">verificar tu identidad para poder completar tu información de pagos</translation>
 <translation id="1150565364351027703">Gafas de sol</translation>
 <translation id="1150979032973867961">Este servidor no pudo probar que su dominio es <ph name="DOMAIN" />; el sistema operativo de la computadora no confía en el certificado de seguridad. Es posible que esto se deba a una configuración incorrecta o a que un atacante interceptó la conexión.</translation>
+<translation id="1151858212483238980">Puedes autocompletar las tarjetas que se guardan en la Billetera de Google</translation>
 <translation id="1151972924205500581">Contraseña obligatoria</translation>
 <translation id="1156303062776767266">Estás viendo un archivo local o compartido</translation>
 <translation id="1158211211994409885"><ph name="HOST_NAME" /> cerró la conexión de forma inesperada.</translation>
@@ -131,6 +132,7 @@ De lo contrario, la configuración de privacidad bloqueará esta acción. Esto p
 <translation id="1202892408424955784">Productos con seguimiento</translation>
 <translation id="1204184165594298176">{0,plural, =1{No se permite copiar el archivo}other{No se permite copiar <ph name="FILE_COUNT" /> archivos}}</translation>
 <translation id="120509973613679868">Viajes de negocios</translation>
+<translation id="1205344127823614428">Puedes autocompletar las tarjetas que se guardan en la Billetera de Google.</translation>
 <translation id="120587177308723209">Deportes de fantasía</translation>
 <translation id="1206967143813997005">La firma inicial no es válida</translation>
 <translation id="1209206284964581585">Ocultar por el momento</translation>
@@ -2155,6 +2157,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="4318312030194671742">Servicio para crear vista previa de sitios web</translation>
 <translation id="4318566738941496689">Tu nombre de dispositivo y la dirección de red</translation>
 <translation id="4320119221194966055">Préstamos personales</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{Se recibió un vínculo de <ph name="DEVICE_NAME" />}other{Se recibieron # vínculos de <ph name="DEVICE_NAME" />}}</translation>
 <translation id="4325600325087822253">Bandeja 17</translation>
 <translation id="4325863107915753736">No se pudo encontrar el artículo</translation>
 <translation id="4326324639298822553">Comprueba la fecha de vencimiento y vuelve a intentarlo</translation>
@@ -3186,6 +3189,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="5968400720580217226">Modo IA</translation>
 <translation id="5969199813874624822">Guardar y seguir el precio</translation>
 <translation id="5969933937005244170">Las pestañas abiertas pertinentes solo se usarán si las compartes en un hilo</translation>
+<translation id="5972020793760134803">Cambiar a la pestaña</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">Sexto rollo</translation>
 <translation id="5975083100439434680">Alejar</translation>
@@ -3596,6 +3600,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="6579858392010591435">Festividades y eventos de temporada</translation>
 <translation id="6581831440014388355">Depilación corporal y facial</translation>
 <translation id="658230438113661756">Los atacantes del sitio que intentaste visitar podrían instalar software dañino que roba o borra elementos como tus contraseñas, fotos, mensajes o números de tarjeta de crédito. Chrome recomienda que regreses a un sitio seguro. <ph name="BEGIN_LEARN_MORE_LINK" />Más información sobre esta advertencia<ph name="END_LEARN_MORE_LINK" /></translation>
+<translation id="6583309742916093092">Almacenadas en la Billetera de Google</translation>
 <translation id="6587893660316489419">Sobre B5</translation>
 <translation id="6587923378399804057">Vínculo que copiaste</translation>
 <translation id="6591833882275308647">Tu <ph name="DEVICE_TYPE" /> no está administrado.</translation>
@@ -3751,6 +3756,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="6834757537110528125">Este sitio no admite una conexión segura</translation>
 <translation id="6841864657731852591">Cilindro de huecograbado</translation>
 <translation id="6842196666980060516">184 × 260 mm</translation>
+<translation id="6844746916504777213">Nunca compartir estos sitios</translation>
 <translation id="6844998850832008753">Se permitió el seguimiento de manos esta vez</translation>
 <translation id="6849023911358004088">Botón Administrar la configuración de seguridad: actívalo para administrar tu Navegación segura y más en la configuración de Chrome</translation>
 <translation id="6850286078059909152">Color del texto</translation>
@@ -4420,6 +4426,7 @@ Detalles adicionales:
 <translation id="7840103971441592723">Comenzó la captura de pantalla</translation>
 <translation id="784137052867620416">Shopping Insights</translation>
 <translation id="7841633276323004751">Formas de pago disponibles para seleccionar y continuar con el pago. Teclado oculto.</translation>
+<translation id="784189052219692670">Gemini ahora puede obtener tu información personal de todas tus apps de Google y autocompletarla en la página que estás viendo.</translation>
 <translation id="7844689747373518809">{COUNT,plural, =0{Ninguna}=1{1 app (<ph name="EXAMPLE_APP_1" />)}=2{2 apps (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />)}other{# apps (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />, <ph name="AND_MORE" />)}}</translation>
 <translation id="7846161022626028328">Se produjo un error. Vuelve a intentarlo.</translation>
 <translation id="784623644169604270">No hay actividad reciente</translation>
@@ -4823,6 +4830,7 @@ Detalles adicionales:
 <translation id="8488350697529856933">Se aplica a</translation>
 <translation id="8490137692873530638">Apilador 10</translation>
 <translation id="8493948351860045254">Liberar espacio</translation>
+<translation id="8495170825732897952">Escribe @@ en cualquier formulario para obtener y completar información sin cambiar de pestaña</translation>
 <translation id="8498870489552322848">completar tu información sensible en <ph name="APP_NAME" /></translation>
 <translation id="8498891568109133222"><ph name="HOST_NAME" /> tardó demasiado en responder.</translation>
 <translation id="8502023382441452707">Cumpleaños y onomásticos</translation>
@@ -4978,6 +4986,7 @@ Detalles adicionales:
 <translation id="8758529215314160755">Puedes editar tu nombre en tu <ph name="BEGIN_LINK" />Cuenta de Google<ph name="END_LINK" /> <ph name="ACCOUNT" /></translation>
 <translation id="8759274551635299824">La tarjeta está vencida</translation>
 <translation id="87601671197631245">Este sitio usa una configuración de seguridad obsoleta. Si envías información (p. ej., contraseñas, mensajes o tarjetas de crédito) a este sitio, es posible que quede expuesta.</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{Se envió un vínculo desde <ph name="DEVICE_NAME" />}other{Se enviaron # vínculos desde <ph name="DEVICE_NAME" />}}</translation>
 <translation id="8763927697961133303">Dispositivo USB</translation>
 <translation id="8763986294015493060">Cierra todas las ventanas de incógnito que estén abiertas</translation>
 <translation id="8766943070169463815">Está abierta la hoja de autenticación de credenciales de pago seguro</translation>

@@ -977,6 +977,10 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
             r'third_party/blink/renderer/platform/webrtc/webrtc_video_frame_adapter\.cc',
             r'third_party/blink/renderer/platform/webrtc/webrtc_video_frame_adapter\.h',
 
+            # Needed to implement Dawn wire interfaces.
+            r'gpu/command_buffer/client/dawn_client_memory_transfer_service\.cc',
+            r'gpu/command_buffer/service/dawn_service_memory_transfer_service\.cc',
+
             # Clang tools do not depend on //base. Some are even emitting
             # std::span rewrite for non chromium projects.
             r'^tools/clang/.*',
@@ -2426,30 +2430,6 @@ _DEPRECATED_SYNC_CONSENT_CPP_FUNCTIONS: Sequence[BanRule] = (
     ),
 )
 
-# Java functions related to signin::ConsentLevel::kSync which are deprecated.
-_DEPRECATED_SYNC_CONSENT_JAVA_FUNCTIONS: Sequence[BanRule] = (
-    BanRule(
-        'hasSyncConsent',
-        _DEPRECATED_SYNC_CONSENT_FUNCTION_WARNING,
-        False,
-    ),
-    BanRule(
-        'canSyncFeatureStart',
-        _DEPRECATED_SYNC_CONSENT_FUNCTION_WARNING,
-        False,
-    ),
-    BanRule(
-        'isSyncFeatureEnabled',
-        _DEPRECATED_SYNC_CONSENT_FUNCTION_WARNING,
-        False,
-    ),
-    BanRule(
-        'isSyncFeatureActive',
-        _DEPRECATED_SYNC_CONSENT_FUNCTION_WARNING,
-        False,
-    ),
-)
-
 _BANNED_MOJOM_PATTERNS: Sequence[BanRule] = (
     BanRule(
         'handle<shared_buffer>',
@@ -2569,7 +2549,6 @@ _GENERIC_PYDEPS_FILES = [
     'build/android/gyp/tracereferences.pydeps',
     'build/android/gyp/turbine.pydeps',
     'build/android/gyp/unused_resources.pydeps',
-    'build/android/gyp/validate_static_library_dex_references.pydeps',
     'build/android/gyp/write_build_config.pydeps',
     'build/android/gyp/write_native_libraries_java.pydeps',
     'build/android/gyp/zip.pydeps',
@@ -3236,12 +3215,6 @@ def CheckNoBannedPatterns(input_api, output_api):
     for f in input_api.AffectedFiles(file_filter=file_filter):
         for line_num, line in f.ChangedContents():
             for ban_rule in _DEPRECATED_SYNC_CONSENT_CPP_FUNCTIONS:
-                CheckForMatch(f, line_num, line, ban_rule)
-
-    file_filter = lambda f: f.LocalPath().endswith(('.java'))
-    for f in input_api.AffectedFiles(file_filter=file_filter):
-        for line_num, line in f.ChangedContents():
-            for ban_rule in _DEPRECATED_SYNC_CONSENT_JAVA_FUNCTIONS:
                 CheckForMatch(f, line_num, line, ban_rule)
 
     file_filter = lambda f: f.LocalPath().endswith(('.mojom'))

@@ -34,14 +34,15 @@ void WebUIHomeControl::Init() {
       webui_toolbar_web_view_->browser_->GetProfile()->GetPrefs();
 
   pin_state_.Init(prefs::kShowHomeButton, prefs,
-                  base::BindRepeating(&WebUIHomeControl::UpdateState,
+                  base::BindRepeating(&WebUIHomeControl::OnIsPinnedChanged,
                                       base::Unretained(this)));
 
+  OnIsPinnedChanged();
   UpdateState();
 }
 
-bool WebUIHomeControl::IsVisible() const {
-  return is_visible_;
+bool WebUIHomeControl::IsPinned() const {
+  return is_pinned_;
 }
 
 void WebUIHomeControl::HandleContextMenu(
@@ -88,33 +89,21 @@ void WebUIHomeControl::OnHomeButtonDropUrl(const GURL& url) {
   ShowSetHomePageBubble(old_url, old_is_ntp);
 }
 
-void WebUIHomeControl::UpdateVisibility(
-    const toolbar_ui_api::mojom::HomeControlState* state) {
-  bool should_be_visible = state->is_pinned;
-
-  if (should_be_visible != is_visible_) {
-    is_visible_ = should_be_visible;
-    webui_toolbar_web_view_->PreferredSizeChanged();
+void WebUIHomeControl::OnIsPinnedChanged() {
+  bool old_is_pinned = is_pinned_;
+  is_pinned_ = pin_state_.GetValue();
+  if (is_pinned_ == old_is_pinned) {
+    return;
   }
+  webui_toolbar_web_view_->PreferredSizeChanged();
+  UpdateState();
 }
 
 void WebUIHomeControl::UpdateState() {
   auto state = toolbar_ui_api::mojom::HomeControlState::New();
-  state->is_pinned = webui_toolbar::IsButtonPinned(
-      webui_toolbar_web_view_->browser_,
-      toolbar_ui_api::mojom::ToolbarButtonType::kHome);
+  state->should_be_shown = is_pinned_;
   state->is_context_menu_visible = menu_runner_ && menu_runner_->IsRunning();
-
-  bool state_changed = false;
-  if (state->is_pinned != is_visible_ ||
-      state->is_context_menu_visible != is_context_menu_visible_) {
-    state_changed = true;
-  }
-
   is_context_menu_visible_ = state->is_context_menu_visible;
-  UpdateVisibility(state.get());
 
-  if (state_changed) {
-    webui_toolbar_web_view_->OnHomeControlStateChanged(std::move(state));
-  }
+  webui_toolbar_web_view_->OnHomeControlStateChanged(std::move(state));
 }

@@ -837,6 +837,7 @@
 <translation id="1567579616025300478">Цьому сайту заборонено зберігати дані на вашому пристрої.</translation>
 <translation id="156793199942386351">Клавіші "<ph name="CURRENTKEY" />" уже призначено дію "<ph name="ACTION" />". Щоб <ph name="RESPONSE" />, натисніть будь-яку клавішу.</translation>
 <translation id="1567993339577891801">Консоль JavaScript</translation>
+<translation id="157005186601751931">Відкрити вкладку в додатку</translation>
 <translation id="1570604804919108255">Увімкнути звук сповіщень</translation>
 <translation id="1570990174567554976">Створено папку закладок "<ph name="BOOKMARK_TITLE" />".</translation>
 <translation id="1571041387761170095">Немає ненадійних або повторно використаних паролів</translation>
@@ -1050,7 +1051,6 @@
 <translation id="1703666494654169921">Заборонити сайтам використовувати пристрої або дані віртуальної реальності</translation>
 <translation id="1704097193565924901">Почати з великої літери</translation>
 <translation id="1704230497453185209">Заборонити сайтам відтворювати звук</translation>
-<translation id="1706015824809136764">Закріпити швидку команду для Gemini на панелі інструментів</translation>
 <translation id="1706586824377653884">Додано адміністратором</translation>
 <translation id="170658918174941828">Крім даних, вибраних вище, компанії Google буде надіслано Вашу версію
     Chrome і операційної системи, налаштування Cast, статистику
@@ -1562,7 +1562,6 @@
 <translation id="204914487372604757">Створити ярлик</translation>
 <translation id="2049573977943974163">Увімкнути розширення <ph name="EXTENSION_NAME" />?</translation>
 <translation id="2050339315714019657">Вертикальна</translation>
-<translation id="2050394140692183739">Поточна швидка команда на панелі інструментів</translation>
 <translation id="2051555741181591333">Автоматично вимикати точку доступу</translation>
 <translation id="2051669996101374349">За можливості використовуйте HTTPS і отримуйте попередження перед завантаженням сайтів, які не підтримують цей протокол. Ви не можете змінити це налаштування, оскільки ввімкнули Додатковий захист.</translation>
 <translation id="2052572566310583903">Установлено на інших ваших пристроях</translation>
@@ -2332,7 +2331,6 @@
 <translation id="2565214867520763227">Увімкніть програму зчитування з екрана</translation>
 <translation id="2566146433999774844">Приєднатися до групи вкладок, з якою працюють <ph name="OWNER_FIRST_NAME" /> і ще стільки користувачів: <ph name="NUM_OTHER_MEMBERS" /></translation>
 <translation id="256726287944589768">Показувати нижній колонтитул на сторінці нової вкладки</translation>
-<translation id="2567313753132089780">Пароль має містити щонайменше 12 символів, зокрема великі й малі літери, цифри та символи</translation>
 <translation id="2568774940984945469">Контейнер інформаційної панелі</translation>
 <translation id="2569972178052279830">Ім’я або назва продавця</translation>
 <translation id="257088987046510401">Теми</translation>
@@ -3182,7 +3180,6 @@
 <translation id="3157931365184549694">Відновити</translation>
 <translation id="3158033540161634471">Налаштуйте відбиток</translation>
 <translation id="3158203338449343164">Відкріпити пошук на вкладках</translation>
-<translation id="3158732900546890991">Пароль має містити щонайменше 8 символів і включати щонайменше два з таких елементів: великі літери, малі літери, цифри або символи</translation>
 <translation id="3158770568048368350">Можливо, пристрій ненадовго від’єднається від мобільної мережі</translation>
 <translation id="3159335509547415276">Докладніше про заблоковані облікові записи</translation>
 <translation id="3159493096109238499">Бежевий</translation>
@@ -3765,6 +3762,7 @@
 <translation id="3572031449439748861">Вимкнено стільки розширень: <ph name="NUM_EXTENSIONS" /></translation>
 <translation id="3575121482199441727">Дозволити для цього сайту</translation>
 <translation id="3575224072358507281">збирати ІР-адреси й результати вимірювань мережі для Measurement Lab відповідно до політики конфіденційності (measurementlab.net/privacy)</translation>
+<translation id="3576324189521867626">Установлено</translation>
 <translation id="3577036603268648505">Залишайся в безпеці</translation>
 <translation id="3577473026931028326">Сталася помилка. Повторіть спробу.</translation>
 <translation id="3577487026101678864">Синхронізацію файлів увімкнено</translation>
@@ -4250,6 +4248,7 @@
 <translation id="3874532133373654352">Ваша організація керує тим, як використовуються дані, зібрані цими функціями. <ph name="BEGIN_LINK" />Докладніше<ph name="END_LINK" /></translation>
 <translation id="3874845889165401548">Це експериментальна функція на основі ШІ</translation>
 <translation id="3875511946736639169">Увімкнути зображення</translation>
+<translation id="3875777964669698078">Перетворення мовлення на текст…</translation>
 <translation id="3875815154304214043">Відповідно до налаштувань, додаток <ph name="APP_NAME" /> має відкриватися в новій вкладці веб-переглядача. Підтримувані посилання також відкриватимуться у веб-переглядачі. <ph name="BEGIN_LINK_LEARN_MORE" />Докладніше<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="3876219572815410515">Розмір вікон змінено розтягуванням угору</translation>
 <translation id="3877075909000773256">Налаштування функції "Передавання поблизу" для пристрою користувача <ph name="USER_NAME" /> (<ph name="USER_EMAIL" />).</translation>
@@ -4721,6 +4720,7 @@
 <translation id="4223404254440398437">Користуватися мікрофоном заборонено</translation>
 <translation id="4224541845943007092">Читати й зберігати текст, введений в адресному рядку за допомогою клавіатури</translation>
 <translation id="4225397296022057997">На всіх сайтах</translation>
+<translation id="4225895483398857530">Кнопка на панелі інструментів</translation>
 <translation id="4226303886821889519">Версія засобу оновлення: <ph name="VERSION" /></translation>
 <translation id="4228071595943929139">Використовувати електронну адресу організації</translation>
 <translation id="4228209296591583948">{NUM_EXTENSIONS,plural, =1{Це розширення заборонено}one{Деякі розширення заборонено}few{Деякі розширення заборонено}many{Деякі розширення заборонено}other{Деякі розширення заборонено}}</translation>
@@ -6122,6 +6122,7 @@
 <translation id="5204967432542742771">Введіть пароль</translation>
 <translation id="5205484256512407285">Ніколи не використовувати мобільний трафік для передавання</translation>
 <translation id="520568280985468584">Мобільну мережу додано. Для її активації може знадобитися кілька хвилин.</translation>
+<translation id="5207395053540207113">Надати Пошуку доступ до контенту на Диску?</translation>
 <translation id="5207949376430453814">Підсвічувати місце введення тексту</translation>
 <translation id="520840839826327499"><ph name="SERVICE_NAME" /> хоче перевірити, чи користуєтеся ви придатним пристроєм з ОС Chrome.</translation>
 <translation id="5208926629108082192">Інформація про мобільну мережу пристрою</translation>
@@ -6612,6 +6613,7 @@
 <translation id="5555639311269196631">Вимкнути точку доступу</translation>
 <translation id="5555760010546505198">Інверсія і корекція кольорів, лупа й налаштування дисплея</translation>
 <translation id="555604722231274592">Увімкнути функцію <ph name="FEATURE_NAME" /></translation>
+<translation id="5556191579768914260">Показати помилку</translation>
 <translation id="5556459405103347317">Перезавантажити</translation>
 <translation id="555671485580955310">Синхронізувати історію і вкладки</translation>
 <translation id="5558129378926964177">Збільшити &amp;масштаб</translation>
@@ -9031,6 +9033,7 @@
 <translation id="727595954130325265">Купити зараз</translation>
 <translation id="7277275452721470458">Дії в режимі ШІ</translation>
 <translation id="727952162645687754">Помилка завантаження</translation>
+<translation id="7280265656690268844">Оптимізацію JavaScript вимкнено</translation>
 <translation id="7280649757394340890">Налаштування голосу для синтезу мовлення</translation>
 <translation id="7280683802406059877">Налаштувати комбінацію клавіш</translation>
 <translation id="7280877790564589615">Потрібен дозвіл</translation>
@@ -10147,7 +10150,6 @@
 <translation id="8032569120109842252">У підписках</translation>
 <translation id="8033827949643255796">виділено</translation>
 <translation id="8033958968890501070">Час очікування минув</translation>
-<translation id="8034399942062051455">Оптимізацію V8 вимкнено</translation>
 <translation id="8034697324150621782">Перемістити на верхній екран</translation>
 <translation id="8035059678007243127">Сторінка зворотного кешу в анонімному режимі: <ph name="BACK_FORWARD_CACHE_INCOGNITO_PAGE_URL" /></translation>
 <translation id="8036143516314698610">Показувати кнопку "Збережені групи вкладок"</translation>
@@ -11370,6 +11372,7 @@
 <translation id="8866424952450451412">Керуйте своїми робочими процесами за допомогою</translation>
 <translation id="8867102760244540173">Шукати вкладки…</translation>
 <translation id="8867228703146808825">Копіювати дані складання в буфер обміну</translation>
+<translation id="8867568208303837180">Надсилання...</translation>
 <translation id="8868333925931032127">Запускається демоверсія</translation>
 <translation id="8868626022555786497">Використовується</translation>
 <translation id="8868838761037459823">Дані про мобільну мережу</translation>
@@ -11622,7 +11625,7 @@
 <translation id="9024127637873500333">&amp;Відкрити в новій вкладці</translation>
 <translation id="9024158959543687197">Помилка підключення спільного доступу. Перевірте URL-адресу файлу та повторіть спробу.</translation>
 <translation id="9024692527554990034">Щоб швидко знайти щось на певному сайті або перейти в іншу пошукову систему, ви можете вводити в адресному рядку відповідні команди</translation>
-<translation id="9024975946059881308">Показувати Gemini на панелі меню Mac і ввімкнути комбінацію клавіш</translation>
+<translation id="9024975946059881308">Показувати Gemini на смузі меню Mac і ввімкнути клавіатурне скорочення</translation>
 <translation id="9025222334598338152">Порівняльні таблиці допомагають відстежувати й звужувати пошук товарів</translation>
 <translation id="902638246363752736">Налаштування клавіатури</translation>
 <translation id="9026393603776578602">диктування</translation>
@@ -11799,7 +11802,6 @@
 <translation id="914031120300235526">Не вдалося розблокувати профіль</translation>
 <translation id="9143298529634201539">Видалити пропозицію?</translation>
 <translation id="9143922477019434797">Захистіть паролі</translation>
-<translation id="914621365454686586">Надати Пошуку доступ до контенту на Диску?</translation>
 <translation id="9147392381910171771">&amp;Параметри</translation>
 <translation id="9148058034647219655">Вийти</translation>
 <translation id="9148126808321036104">Увійти знову</translation>

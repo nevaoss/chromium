@@ -65,7 +65,7 @@ bool CanBeHitTestTargetPseudoNodeStyle(const ComputedStyle& style) {
     case kPseudoIdAfter:
     case kPseudoIdExpandIcon:
     case kPseudoIdPickerIcon:
-    case kPseudoIdInterestHint:
+    case kPseudoIdInterestButton:
     case kPseudoIdFirstLetter:
       return true;
     default:
@@ -259,7 +259,7 @@ PhysicalRect LayoutInline::LocalCaretRect(int, CaretShape caret_shape) const {
   }
 
   LogicalRect logical_caret_rect = LocalCaretRectForEmptyElement(
-      BorderAndPaddingInlineSize(), LayoutUnit(), caret_shape);
+      BorderPaddingInlineSize(), LayoutUnit(), caret_shape);
 
   if (IsInLayoutNGInlineFormattingContext()) {
     InlineCursor cursor;

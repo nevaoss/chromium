@@ -54,6 +54,7 @@
 <translation id="1179890706672152411">Хранилище заполнено</translation>
 <translation id="1181037720776840403">Удалить</translation>
 <translation id="1190609913194133056">Центр уведомлений</translation>
+<translation id="1199631150313925648">Ввести вручную</translation>
 <translation id="1199963004393929848">Зеленая тема</translation>
 <translation id="1201402288615127009">Далее</translation>
 <translation id="1204075260022434100">{count,plural, =1{Закладка сохранена в папке "{title}" в вашем аккаунте {email}.}one{{count} закладка сохранена в папке "{title}" в вашем аккаунте {email}.}few{{count} закладки сохранено в папке "{title}" в вашем аккаунте {email}.}many{{count} закладок сохранено в папке "{title}" в вашем аккаунте {email}.}other{{count} закладки сохранено в папке "{title}" в вашем аккаунте {email}.}}</translation>
@@ -958,6 +959,7 @@
 <translation id="441868831736628555">Примечание о конфиденциальности</translation>
 <translation id="4420409367264901497">Изменить закладку</translation>
 <translation id="4425365312778464779">Это управляемый аккаунт.</translation>
+<translation id="443008484043213881">Инструменты</translation>
 <translation id="4430277756566635951">Выбор аккаунта. Сейчас выбран <ph name="EMAIL" />.</translation>
 <translation id="4430505936695785931">Вводите сохраненные пароли в других приложениях.</translation>
 <translation id="4431224949908513835">Выберите, какой способ оплаты использовать.</translation>
@@ -1084,7 +1086,6 @@
 <translation id="484462545196658690">Авто</translation>
 <translation id="4850886885716139402">Смотреть</translation>
 <translation id="4854068532375923088">Разрешите Gemini использовать камеру</translation>
-<translation id="4860114370595561279">Данные сохраняются на вашем устройстве.</translation>
 <translation id="4860895144060829044">Позвонить</translation>
 <translation id="4861953997778766866">Любой может изменять ваши группы вкладок с общим доступом</translation>
 <translation id="4865063548323785458">Сохраняйте пароли, чтобы они автоматически вводились при входе в аккаунты на сайтах и в приложениях.</translation>
@@ -1295,6 +1296,7 @@
 <translation id="5581786858144165447">Спросите в режиме ИИ</translation>
 <translation id="5585019845078534178">Карточки</translation>
 <translation id="5591526871732898147">Прикрепленное изображение {index}</translation>
+<translation id="5594597292424622277">Приостановить видео</translation>
 <translation id="5595485650161345191">Изменить адрес</translation>
 <translation id="559567008082979829">Удалять файлы, скачанные более одного месяца назад</translation>
 <translation id="5596627076506792578">Ещё</translation>
@@ -2164,6 +2166,7 @@
 <translation id="8528009254289981965">Как открывать ссылки из других приложений в режиме инкогнито</translation>
 <translation id="8529767659511976195">Новинка</translation>
 <translation id="8531572740963685410">PDF-файлы</translation>
+<translation id="8532059953132740592">Воспроизвести видео</translation>
 <translation id="8533411848724153701">Gemini</translation>
 <translation id="8533670235862049797">Безопасный просмотр включен</translation>
 <translation id="8534481786647257214">Опубликовано в Google+.</translation>

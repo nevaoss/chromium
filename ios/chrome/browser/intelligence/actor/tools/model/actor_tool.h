@@ -23,7 +23,6 @@ namespace actor {
 // Abstract base class for all actor tools.
 class ActorTool {
  public:
-
   // Result of resolving a tab ID to its associated objects.
   struct TabResolutionResult {
     TabResolutionResult();
@@ -44,11 +43,14 @@ class ActorTool {
   // Executes the tool.
   virtual void Execute(ToolExecutionCallback callback) = 0;
 
+  // Returns the target WebState for this tool, if any.
+  virtual base::WeakPtr<web::WebState> GetTargetWebState() const = 0;
+
  protected:
   // Resolves the given `tab_id` to its associated objects in regular Browsers.
-  // Returns an ActorToolError if the tab or its associated objects are not
+  // Returns an ToolExecutionResult if the tab or its associated objects are not
   // found.
-  static base::expected<TabResolutionResult, ActorToolError> ResolveTab(
+  static base::expected<TabResolutionResult, ToolExecutionResult> ResolveTab(
       int32_t tab_id,
       ProfileIOS* profile);
 };

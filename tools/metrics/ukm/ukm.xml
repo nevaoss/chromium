@@ -3309,6 +3309,71 @@ be describing additional metrics about the same event.
   </metric>
 </event>
 
+<event name="Autofill.PayLaterTabSelected" singular="true">
+  <owner>yishuil@google.com</owner>
+  <owner>wilsonlow@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Recorded when a user selects the Pay Later tab from the payments autofill
+    dropdown.
+  </summary>
+  <metric name="Selected" enum="Boolean">
+    <summary>
+      Only ever set to true, thus serving as a counter.
+    </summary>
+    <aggregation>
+      <history>
+        <statistics>
+          <enumeration/>
+        </statistics>
+      </history>
+    </aggregation>
+  </metric>
+</event>
+
+<event name="Autofill.PayLaterTabShown" singular="true">
+  <owner>yishuil@google.com</owner>
+  <owner>wilsonlow@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Recorded when the Pay Later tab was shown in the payments autofill dropdown.
+  </summary>
+  <metric name="Shown" enum="Boolean">
+    <summary>
+      Only ever set to true, thus serving as a counter.
+    </summary>
+    <aggregation>
+      <history>
+        <statistics>
+          <enumeration/>
+        </statistics>
+      </history>
+    </aggregation>
+  </metric>
+</event>
+
+<event name="Autofill.PayLaterTabSuggestionAccepted" singular="true">
+  <owner>yishuil@google.com</owner>
+  <owner>wilsonlow@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Recorded when a BNPL suggestion from the Pay Later tab was accepted by
+    users.
+  </summary>
+  <metric name="Accepted" enum="Boolean">
+    <summary>
+      Only ever set to true, thus serving as a counter.
+    </summary>
+    <aggregation>
+      <history>
+        <statistics>
+          <enumeration/>
+        </statistics>
+      </history>
+    </aggregation>
+  </metric>
+</event>
+
 <event name="Autofill.SuggestionFilled">
   <owner>osaul@google.com</owner>
   <summary>
@@ -3577,6 +3642,12 @@ be describing additional metrics about the same event.
       Autofill2.FormSummary.
     </summary>
   </metric>
+  <metric name="FormSignature">
+    <summary>
+      The signature of the form, which is a 10-bit hash of the form's domain,
+      name and all the supported form fields (including empty names).
+    </summary>
+  </metric>
   <metric name="HeuristicType" enum="AutofillFieldType">
     <summary>
       The type of the field predicted the regular expressions. The types are
@@ -3686,6 +3757,12 @@ be describing additional metrics about the same event.
       Autofill2.FieldInfo.
     </summary>
   </metric>
+  <metric name="FieldSignature">
+    <summary>
+      The signature of the field, a 10 bit hash value (0-1021) of the field name
+      and field type used to denote this field for query and voting purposes.
+    </summary>
+  </metric>
   <metric name="FormSessionIdentifier">
     <summary>
       A random variable assigned to a specific instance of a HTML form in a
@@ -3696,10 +3773,23 @@ be describing additional metrics about the same event.
       together are used to link to the field in Autofill2.FieldInfo.
     </summary>
   </metric>
+  <metric name="FormSignature">
+    <summary>
+      The signature of the form, which is a 10-bit hash of the form's domain,
+      name and all the supported form fields (including empty names).
+    </summary>
+  </metric>
   <metric name="MillisecondsFromFormParsedUntilSubmission">
     <summary>
       The time interval from form parse to form submission in ms in exponential
       buckets from |GetSemanticBucketMinForDurationTiming()|.
+    </summary>
+  </metric>
+  <metric name="RankInFieldSignatureGroup">
+    <summary>
+      If multiple fields have the same signature, this indicates the position
+      within this set of fields. This allows us to understand problems related
+      to duplicated field signatures.
     </summary>
   </metric>
   <metric name="SubmissionSource" enum="AutofillSubmissionSource">
@@ -3949,6 +4039,64 @@ be describing additional metrics about the same event.
   <metric name="WasSubmitted" enum="Boolean">
     <summary>
       Whether the form was submitted.
+    </summary>
+  </metric>
+</event>
+
+<event name="Autofill2.SuggestionAccepted">
+  <owner>jihadghanna@google.com</owner>
+  <summary>
+    Recorded when the user accepts a suggestion on some trigger field. This
+    includes only suggestions going through the Autofill codebase, meaning that
+    password suggestions are excluded.
+  </summary>
+  <metric name="AcceptedIndex">
+    <summary>
+      The index of the accepted suggestion in the list of shown suggestions.
+    </summary>
+  </metric>
+  <metric name="FieldSessionIdentifier">
+    <summary>
+      A random variable assigned to a specific instance of a form control (e.g.
+      a HTML input element). This should be globally unique and suitable for
+      distinguishing fields. Two different users would have different values.
+      For the same user, the same field in the same form in two different tabs
+      would have two different values.
+    </summary>
+  </metric>
+  <metric name="FieldSignature">
+    <summary>
+      The signature of the field.
+    </summary>
+  </metric>
+  <metric name="FormSessionIdentifier">
+    <summary>
+      A random variable assigned to a specific instance of a HTML form in a
+      specific renderer. This should be globally unique and suitable for
+      counting distinct forms. Two different users would have different values.
+      A single user loading the same form in two different tabs would have two
+      different values.
+    </summary>
+  </metric>
+  <metric name="FormSignature">
+    <summary>
+      The signature of the form.
+    </summary>
+  </metric>
+  <metric name="OverallType" enum="AutofillFieldType">
+    <summary>
+      FieldType of the trigger field where the suggestions where accepted. For
+      fields that have multiple field types, one of them is chosen arbitrarily.
+    </summary>
+  </metric>
+  <metric name="PriorValueLength">
+    <summary>
+      Length of the value in the field before accepting the suggestion.
+    </summary>
+  </metric>
+  <metric name="SuggestionType" enum="SuggestionType">
+    <summary>
+      The type of the accepted suggestion.
     </summary>
   </metric>
 </event>

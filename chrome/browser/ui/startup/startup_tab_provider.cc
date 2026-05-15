@@ -34,6 +34,7 @@
 #include "chrome/browser/ui/startup/google_chrome_scheme_util.h"
 #include "chrome/browser/ui/startup/startup_browser_creator.h"
 #include "chrome/browser/ui/startup/startup_types.h"
+#include "chrome/browser/ui/startup/url_util.h"
 #include "chrome/browser/ui/tabs/pinned_tab_codec.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/webui/settings/reset_settings_handler.h"
@@ -209,7 +210,7 @@ StartupTabs StartupTabProviderImpl::GetInitialPrefsTabsForState(
     tabs.reserve(first_run_tabs.size());
     for (GURL url : first_run_tabs) {
       if (url.host() == kNewTabUrlHost) {
-        url = GURL(chrome::kChromeUINewTabURL);
+        url = chrome::ChromeUINewTabURLAsGURL();
       }
       if (IsWelcomePageUrl(url)) {
         // These URLs are still referenced from some of the installers. As
@@ -269,7 +270,7 @@ StartupTabs StartupTabProviderImpl::GetNewTabPageTabsForState(
     const SessionStartupPref& pref) {
   StartupTabs tabs;
   if (!pref.ShouldRestoreLastSession()) {
-    tabs.emplace_back(GURL(chrome::kChromeUINewTabURL));
+    tabs.emplace_back(chrome::ChromeUINewTabURLAsGURL());
   }
   return tabs;
 }

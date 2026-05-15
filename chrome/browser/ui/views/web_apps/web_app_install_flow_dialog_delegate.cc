@@ -19,11 +19,13 @@
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/controls/site_icon_text_and_origin_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_icon_view.h"
+#include "chrome/browser/ui/views/web_apps/progress_delay.h"
 #include "chrome/browser/ui/views/web_apps/web_app_icon_name_and_origin_view.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_dialog_delegate.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_dialog_flow_view.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_intro_view.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_options_view.h"
+#include "chrome/browser/ui/views/web_apps/web_app_install_progress_view.h"
 #include "chrome/browser/ui/web_applications/web_app_dialogs.h"
 #include "chrome/browser/ui/web_applications/web_app_info_image_source.h"
 #include "chrome/browser/web_applications/model/dialog_image_info.h"
@@ -52,11 +54,14 @@
 #include "ui/views/controls/textfield/textfield.h"
 #include "ui/views/layout/box_layout_view.h"
 #include "ui/views/view.h"
+#include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
 namespace web_app {
+
+DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kPwaInstallDialogCancelButtonId);
 
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(WebAppInstallFlowDialogDelegate,
                                       kInstallDialogFlowViewId);
@@ -87,7 +92,9 @@ WebAppInstallFlowDialogDelegate::WebAppInstallFlowDialogDelegate(
     PwaInProductHelpState iph_state,
     PrefService* prefs,
     feature_engagement::Tracker* tracker,
-    InstallDialogType dialog_type)
+    InstallDialogType dialog_type,
+    InstallOsType os_type,
+    std::unique_ptr<ProgressDelay> progress_delay)
     : WebAppInstallDialogDelegate(web_contents,
                                   std::move(install_info),
                                   std::move(install_tracker),
@@ -95,11 +102,20 @@ WebAppInstallFlowDialogDelegate::WebAppInstallFlowDialogDelegate(
                                   iph_state,
                                   prefs,
                                   tracker,
-                                  dialog_type) {}
+                                  dialog_type),
+      os_type_(os_type),
+      progress_delay_(std::move(progress_delay)) {
+  CHECK(progress_delay_);
+}
 
 WebAppInstallFlowDialogDelegate::~WebAppInstallFlowDialogDelegate() = default;
 
 bool WebAppInstallFlowDialogDelegate::OnOkButtonClicked() {
+  if (!dialog_model()) {
+    return false;
+  }
+
+  // TODO(crbug.com/380497638): Trigger the installation earlier in the flow.
   if (current_step_ == InstallDialogStep::kSuccessful) {
     // TODO(b/492657179): Implement the logic to open the newly installed
     // app in a tab/window.
@@ -108,12 +124,41 @@ bool WebAppInstallFlowDialogDelegate::OnOkButtonClicked() {
   }
 
   // Update install dialog step.
-  if (current_step_ == InstallDialogStep::kInstallDialog) {
-    current_step_ = InstallDialogStep::kInstallerOptions;
-  } else if (current_step_ == InstallDialogStep::kInstallerOptions) {
-    current_step_ = InstallDialogStep::kProgress;
-  } else if (current_step_ == InstallDialogStep::kProgress) {
-    current_step_ = InstallDialogStep::kSuccessful;
+  switch (current_step_) {
+    case InstallDialogStep::kInstallDialog:
+      if (os_type_ == InstallOsType::kOther) {
+        current_step_ = InstallDialogStep::kProgress;
+      } else {
+        current_step_ = InstallDialogStep::kInstallerOptions;
+      }
+      break;
+
+    case InstallDialogStep::kInstallerOptions:
+      current_step_ = InstallDialogStep::kProgress;
+      break;
+
+    case InstallDialogStep::kProgress:
+      current_step_ = InstallDialogStep::kSuccessful;
+      break;
+
+    case InstallDialogStep::kSuccessful:
+      NOTREACHED();
+  }
+
+  // Actions based on the new current_step_
+  if (current_step_ == InstallDialogStep::kProgress) {
+    // Start progress delay.
+    progress_delay_->Start(
+        base::BindRepeating(&WebAppInstallFlowDialogDelegate::OnProgress,
+                            weak_ptr_factory_.GetWeakPtr()));
+
+    // Hide buttons on progress step.
+    dialog_model()->SetVisible(kLearnMoreButtonId, false);
+    dialog_model()->SetVisible(kPwaInstallDialogInstallButton, false);
+    dialog_model()->SetVisible(kPwaInstallDialogCancelButtonId, false);
+  } else if (current_step_ == InstallDialogStep::kSuccessful) {
+    dialog_model()->SetVisible(kPwaInstallDialogInstallButton, true);
+    dialog_model()->SetVisible(kPwaInstallDialogCancelButtonId, true);
   }
 
   if (flow_view_) {
@@ -124,8 +169,7 @@ bool WebAppInstallFlowDialogDelegate::OnOkButtonClicked() {
 
   // Last dialog to show the install button.
   // TODO(crbug.com/380497638): Trigger the installation earlier in the flow.
-  if (current_step_ == InstallDialogStep::kSuccessful && dialog_model()) {
-    dialog_model()->SetVisible(kLearnMoreButtonId, false);
+  if (current_step_ == InstallDialogStep::kSuccessful) {
     ui::DialogModel::Button* ok_button =
         dialog_model()->GetButtonByUniqueId(kPwaInstallDialogInstallButton);
     if (ok_button) {
@@ -134,15 +178,11 @@ bool WebAppInstallFlowDialogDelegate::OnOkButtonClicked() {
           l10n_util::GetStringUTF16(IDS_WEB_APP_INSTALL_SUCCESS_OPEN_APP));
     }
     ui::DialogModel::Button* cancel_button =
-        dialog_model()->GetButtonByUniqueId(kCancelButtonId);
+        dialog_model()->GetButtonByUniqueId(kPwaInstallDialogCancelButtonId);
     if (cancel_button) {
       dialog_model()->SetButtonLabel(cancel_button,
                                      l10n_util::GetStringUTF16(IDS_CLOSE));
     }
-  }
-
-  if (current_step_ == InstallDialogStep::kProgress && dialog_model()) {
-    dialog_model()->SetVisible(kLearnMoreButtonId, false);
   }
 
   return false;
@@ -157,6 +197,14 @@ void WebAppInstallFlowDialogDelegate::OnLearnMoreButtonClicked() {
       base::DoNothing());
 }
 
+void WebAppInstallFlowDialogDelegate::OnAccept() {
+  if (options_view_) {
+    install_info_->add_to_quick_launch_bar =
+        options_view_->IsPinToShelfChecked();
+  }
+  WebAppInstallDialogDelegate::OnAccept();
+}
+
 // Updates dialog title based on current step.
 void WebAppInstallFlowDialogDelegate::UpdateDialogTitle(
     InstallDialogStep step) {
@@ -169,9 +217,8 @@ void WebAppInstallFlowDialogDelegate::UpdateDialogTitle(
                                             ? IDS_DIY_APP_INSTALL_DIALOG_TITLE
                                             : IDS_INSTALL_PWA_DIALOG_TITLE);
       break;
-      // TODO(crbug.com/503767931): Localize string.
     case InstallDialogStep::kProgress:
-      title = u"Installing app...";
+      title = l10n_util::GetStringUTF16(IDS_INSTALL_PWA_DIALOG_INSTALLING);
       break;
     case InstallDialogStep::kSuccessful:
       title = l10n_util::GetStringUTF16(IDS_WEB_APP_INSTALL_SUCCESS_TITLE);
@@ -188,6 +235,22 @@ void WebAppInstallFlowDialogDelegate::UpdateDialogTitle(
   }
 }
 
+void WebAppInstallFlowDialogDelegate::OnProgress(
+    std::optional<double> percent) {
+  if (percent.has_value()) {
+    if (progress_view_) {
+      progress_view_->SetProgressValue(percent.value());
+    }
+  } else {
+    if (dialog_model()) {
+      dialog_model()->SetVisible(kPwaInstallDialogInstallButton, true);
+      dialog_model()->SetButtonLabel(
+          dialog_model()->GetButtonByUniqueId(kPwaInstallDialogInstallButton),
+          u"Next");
+    }
+  }
+}
+
 // Builds and shows an install dialog flow according to the install_type.
 void WebAppInstallFlowDialogDelegate::Show(
     content::WebContents* web_contents,
@@ -198,7 +261,8 @@ void WebAppInstallFlowDialogDelegate::Show(
     base::WeakPtr<WebAppScreenshotFetcher> screenshot_fetcher,
     bool show_initiating_origin,
     InstallDialogType install_type,
-    InstallOsType os_type) {
+    InstallOsType os_type,
+    std::unique_ptr<ProgressDelay> progress_delay) {
   auto* browser_context = web_contents->GetBrowserContext();
   Profile* profile = Profile::FromBrowserContext(browser_context);
   PrefService* prefs = profile->GetPrefs();
@@ -214,9 +278,11 @@ void WebAppInstallFlowDialogDelegate::Show(
 
   std::u16string title = install_info->title.value();
   GURL start_url = install_info->start_url();
+  std::u16string description = install_info->description.value();
   auto delegate = std::make_unique<WebAppInstallFlowDialogDelegate>(
       web_contents, std::move(install_info), std::move(install_tracker),
-      std::move(callback), std::move(iph_state), prefs, tracker, install_type);
+      std::move(callback), std::move(iph_state), prefs, tracker, install_type,
+      os_type, std::move(progress_delay));
   auto delegate_weak_ptr = delegate->AsWeakPtr();
 
   absl::flat_hash_map<InstallDialogStep, std::unique_ptr<views::View>>
@@ -226,19 +292,22 @@ void WebAppInstallFlowDialogDelegate::Show(
   install_step_to_view[InstallDialogStep::kInstallDialog] =
       WebAppInstallIntroView::Create(
           install_type, icon_image, title, start_url,
-          dialog_image_info.is_maskable,
+          dialog_image_info.is_maskable, description, screenshot_fetcher,
           base::BindRepeating(
               &WebAppInstallDialogDelegate::OnTextFieldChangedMaybeUpdateButton,
               delegate_weak_ptr));
 
   // kInstallerOptions
+  auto options_view =
+      std::make_unique<WebAppInstallOptionsView>(os_type, title, icon_image);
+  delegate->options_view_ = options_view->GetWeakPtr();
   install_step_to_view[InstallDialogStep::kInstallerOptions] =
-      std::make_unique<WebAppInstallOptionsView>(os_type);
+      std::move(options_view);
 
   // kProgress
-  // TODO(crbug.com/503767931): Localize this text.
-  install_step_to_view[InstallDialogStep::kProgress] =
-      views::Builder<views::Label>().SetText(u"Progress View").Build();
+  auto progress_view = std::make_unique<WebAppInstallProgressView>();
+  auto progress_view_weak_ptr = progress_view->GetWeakPtr();
+  install_step_to_view[InstallDialogStep::kProgress] = std::move(progress_view);
 
   // kSuccessful
   auto successful_view =
@@ -253,8 +322,11 @@ void WebAppInstallFlowDialogDelegate::Show(
 
   auto flow_view =
       std::make_unique<WebAppInstallFlowView>(std::move(install_step_to_view));
+  flow_view->SetProperty(views::kElementIdentifierKey,
+                         kInstallDialogFlowViewId);
   auto flow_view_weak_ptr = flow_view->GetWeakPtr();
   delegate->SetFlowView(flow_view_weak_ptr);
+  delegate->SetProgressView(progress_view_weak_ptr);
 
   views::View* focusable_view =
       flow_view->GetViewForStep(InstallDialogStep::kInstallDialog);
@@ -296,7 +368,8 @@ void WebAppInstallFlowDialogDelegate::Show(
               WebAppInstallDialogDelegate::kPwaInstallDialogInstallButton))
       .AddCancelButton(base::BindOnce(&WebAppInstallDialogDelegate::OnCancel,
                                       delegate_weak_ptr),
-                       ui::DialogModel::Button::Params().SetId(kCancelButtonId))
+                       ui::DialogModel::Button::Params().SetId(
+                           kPwaInstallDialogCancelButtonId))
       .SetCloseActionCallback(base::BindOnce(
           &WebAppInstallDialogDelegate::OnClose, delegate_weak_ptr))
       .SetDialogDestroyingCallback(base::BindOnce(

@@ -152,6 +152,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="1228893227497259893">Obyekt identifikatori noto‘g‘ri</translation>
 <translation id="1230244617745022071"><ph name="SOURCE" /> (avtomatik aniqlandi)</translation>
 <translation id="1232569758102978740">Nomlanmagan</translation>
+<translation id="1234539281285007945"><ph name="FIELD_1" /> kiritilishi shart</translation>
 <translation id="1236081509407217141">VR ishlatishga ruxsat berilsinmi?</translation>
 <translation id="1236689197410206751">AfterPay</translation>
 <translation id="1240347957665416060">Qurilma nomi</translation>
@@ -471,6 +472,7 @@ Aks holda bu maxfiylik sozlamalaringiz tomonidan bloklanadi. Bunda siz ochgan sa
 <translation id="1721424275792716183">* Bu maydoncha kiritilishi shart</translation>
 <translation id="1723636263173393300">Bu siyosat uchun ruxsat etilgan yorliqlar soni: <ph name="MAX_ITEMS_LIMIT" />.</translation>
 <translation id="1725591448053514783">Envelope You 6</translation>
+<translation id="172754119609519423"><ph name="FIELD_1" />, <ph name="FIELD_2" /> yoki <ph name="FIELD_3" /> kiritilishi shart</translation>
 <translation id="1727613060316725209">Sertifikat yaroqli</translation>
 <translation id="1728677426644403582">Siz veb-sahifa kodini ko‘rmoqdasiz.</translation>
 <translation id="173080396488393970">Bunday karta hozirda ishlamaydi</translation>
@@ -1429,6 +1431,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="3220264767789936523">Rasmiy kiyimlar</translation>
 <translation id="3223287115535306850">Ilova yuklanishi belgisi</translation>
 <translation id="3223425961342298674">Joylashuv axborotiga kirishga ruxsat berilmagan</translation>
+<translation id="3225277284238802910"><ph name="FIELD_1" /> yoki <ph name="FIELD_2" /> kiritilishi shart</translation>
 <translation id="3225319735946384299">Kodni imzolash</translation>
 <translation id="3225919329040284222">Serverdagi sertifikat ba’zi saytlardagi yuqori darajali havfsizlik ichki parametrlariga mos kelmaydi.</translation>
 <translation id="3226128629678568754">Ba’zi ma’lumotlarni qayta kiritish uchun sahifa yuklanishi kerak, “yangilash” tugmasini bosing.</translation>
@@ -2151,6 +2154,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="4318312030194671742">Paint Preview bastalash xizmati</translation>
 <translation id="4318566738941496689">Qurilma nomi va tarmoq manzili</translation>
 <translation id="4320119221194966055">Isteʼmol krediti</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> qurilmasidan havola qabul qilindi}other{<ph name="DEVICE_NAME" /> qurilmasidan # ta havola qabul qilindi}}</translation>
 <translation id="4325600325087822253">Tarnov 17</translation>
 <translation id="4325863107915753736">Maqola topilmadi</translation>
 <translation id="4326324639298822553">Kartangiz muddatini tekshiring va qaytadan urinib ko‘ring.</translation>
@@ -3182,6 +3186,7 @@ Keyinroq toʻlash usullarini berkitish uchun <ph name="BEGIN_LINK" />toʻlov soz
 <translation id="5968400720580217226">AI rejimi</translation>
 <translation id="5969199813874624822">Saqlash va narxni kuzatish</translation>
 <translation id="5969933937005244170">Tegishli ochiq varaqlar faqat ularni yozishmada ulashsangiz ishlatiladi</translation>
+<translation id="5972020793760134803">Varaqqa o‘tish</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">Oltinchi oʻram</translation>
 <translation id="5975083100439434680">Kichiklashtirish</translation>
@@ -4503,7 +4508,7 @@ Batafsil axborot:
 <translation id="7976053965094442846">Muddatli toʻlov taklif qiladigan hozir olib, keyin toʻlash emitentlari. Klaviatura yashirildi.</translation>
 <translation id="7976214039405368314">Limitdan oshib ketdi</translation>
 <translation id="7977538094055660992">Chiqarish qurilmasi</translation>
-<translation id="7979463492896063081">{TIME_DIMENSION,plural, =0{<ph name="TIME_COUNT" /> daq oldin}=1{<ph name="TIME_COUNT" /> st oldin}other{<ph name="TIME_COUNT" /> kun oldin}}</translation>
+<translation id="7979463492896063081">{TIME_DIMENSION,plural, =0{<ph name="TIME_COUNT" /> dq oldin}=1{<ph name="TIME_COUNT" /> st oldin}other{<ph name="TIME_COUNT" /> kun oldin}}</translation>
 <translation id="7979595116210197019">Taom xizmati</translation>
 <translation id="798134797138789862">Virtual reallik qurilmalari va axborotlardan foydalanish uchun ruxsat soʻrashi mumkin</translation>
 <translation id="7983008347525536475">Yoʻl tanlamas avtomobillar</translation>
@@ -4975,6 +4980,7 @@ Batafsil axborot:
 <translation id="8758529215314160755">Ismingizni <ph name="BEGIN_LINK" />Google hisobingiz<ph name="END_LINK" /> (<ph name="ACCOUNT" />) orqali tahrirlashingiz mumkin</translation>
 <translation id="8759274551635299824">Kredit kartaning amal qilish muddati tugagan</translation>
 <translation id="87601671197631245">Bu sayt eskirgan xavfsizlik sozlamasidan foydalanadi. maʼlumotlaringiz (masalan, parollar, xabarlar va kredit kartalari) shu saytga yuborilganda ular xavf ostida qolishi mumkin.</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{Havola <ph name="DEVICE_NAME" /> qurilmasidan yuborildi}other{<ph name="DEVICE_NAME" /> qurilmasidan # ta havola yuborildi}}</translation>
 <translation id="8763927697961133303">USB qurilma</translation>
 <translation id="8763986294015493060">Hozir ochilgan barcha Inkognito varaqlarni yopish</translation>
 <translation id="8766943070169463815">Xavfsiz toʻlovlar uchun hisob maʼlumotlarini tekshirish ekrani ochiq</translation>

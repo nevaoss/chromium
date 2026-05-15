@@ -84,7 +84,6 @@
 #include "chrome/common/search/instant_types.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/grit/branded_strings.h"
-#include "chrome/grit/browser_resources.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/new_tab_page_resources.h"
 #include "chrome/grit/new_tab_page_resources_map.h"
@@ -247,6 +246,11 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddInteger("maxEnterpriseShortcuts",
                      ntp_features::GetMaxEnterpriseShortcuts());
 
+  source->AddBoolean("energyEffectEnabled",
+                     base::FeatureList::IsEnabled(ntp_features::kEnergyEffect));
+  source->AddBoolean(
+      "energyEffectAnimationEnabled",
+      base::FeatureList::IsEnabled(ntp_features::kEnergyEffectAnimation));
   source->AddBoolean(
       "ntpNextFeaturesEnabled",
       ntp_realbox::IsNtpRealboxNextEnabled(profile) &&
@@ -306,7 +310,8 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
                      ntp_realbox::IsNtpRealboxNextEnabled(profile));
   source->AddBoolean("searchboxCyclingPlaceholders",
                      ntp_realbox::IsNtpRealboxNextEnabled(profile) &&
-                         ntp_realbox::kCyclingPlaceholders.Get());
+                         base::FeatureList::IsEnabled(
+                             ntp_realbox::kNtpRealboxCyclingPlaceholders));
   source->AddBoolean("multiLineEnabled",
                      ntp_realbox::IsNtpRealboxNextEnabled(profile) &&
                          ntp_realbox::kMultiLineEnabled.Get());
@@ -644,7 +649,8 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
       (aim_eligible || ntp_composebox::IsNtpComposeboxEnabled(profile)));
 
   if (ntp_realbox::IsNtpRealboxNextEnabled(profile)) {
-    if (ntp_realbox::kCyclingPlaceholders.Get()) {
+    if (base::FeatureList::IsEnabled(
+            ntp_realbox::kNtpRealboxCyclingPlaceholders)) {
       source->AddLocalizedString(
           "searchBoxPlaceholder",
           IDS_NTP_SEARCH_BOX_DYNAMIC_PLACEHOLDER_ASK_GOOGLE);
@@ -686,7 +692,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
 
   source->AddBoolean("composeboxShowContextMenuDescription", false);
 
-  source->AddBoolean("composeboxCloseByEscape", false);
   source->AddBoolean("composeboxSmartComposeEnabled",
                      ntp_composebox::kShowSmartCompose.Get());
   const auto* aim_eligibility_service =
@@ -918,7 +923,7 @@ NewTabPageUI::~NewTabPageUI() {
 // static
 bool NewTabPageUI::IsNewTabPageOrigin(const GURL& url) {
   return url.DeprecatedGetOriginAsURL() ==
-         GURL(chrome::kChromeUINewTabPageURL).DeprecatedGetOriginAsURL();
+         chrome::ChromeUINewTabPageURLAsGURL().DeprecatedGetOriginAsURL();
 }
 
 // static
@@ -1238,7 +1243,7 @@ void NewTabPageUI::CreatePageHandler(
   DCHECK(pending_page.is_valid());
   most_visited_page_handler_ = std::make_unique<MostVisitedHandler>(
       std::move(pending_page_handler), std::move(pending_page), profile_,
-      web_contents(), GURL(chrome::kChromeUINewTabPageURL),
+      web_contents(), chrome::ChromeUINewTabPageURLAsGURL(),
       navigation_start_time_);
   UpdateMostVisitedTileTypes();
   most_visited_page_handler_->SetShortcutsVisible(IsShortcutsVisible());
@@ -1358,7 +1363,7 @@ void NewTabPageUI::ClearContextualSessionHandle() {
 void NewTabPageUI::DidStartNavigation(
     content::NavigationHandle* navigation_handle) {
   if (navigation_handle->IsInPrimaryMainFrame() &&
-      navigation_handle->GetURL() == GURL(chrome::kChromeUINewTabPageURL)) {
+      navigation_handle->GetURL() == chrome::ChromeUINewTabPageURLAsGURL()) {
     navigation_start_time_ = base::Time::Now();
 
     OnLoad();

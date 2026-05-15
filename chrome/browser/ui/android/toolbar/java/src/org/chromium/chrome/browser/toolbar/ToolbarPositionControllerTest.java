@@ -20,12 +20,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import static org.chromium.chrome.browser.toolbar.ToolbarPositionController.BOTTOM_OMNIBOX_EVER_USED_PREF;
-import static org.chromium.chrome.browser.url_constants.UrlConstantResolver.getOriginalNativeNtpUrl;
-
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Insets;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Gravity;
@@ -66,6 +64,8 @@ import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerV
 import org.chromium.chrome.browser.browser_controls.BrowserControlsSizer;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
 import org.chromium.chrome.browser.browser_controls.BrowserStateBrowserControlsVisibilityDelegate;
+import org.chromium.chrome.browser.browser_controls.TopControlsStacker;
+import org.chromium.chrome.browser.browser_controls.TopControlsStacker.TopControlType;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.preferences.Pref;
@@ -79,6 +79,7 @@ import org.chromium.chrome.browser.toolbar.ToolbarPositionController.ToolbarPosi
 import org.chromium.chrome.browser.toolbar.settings.AddressBarPreference;
 import org.chromium.chrome.browser.toolbar.top.ToolbarLayout;
 import org.chromium.chrome.browser.ui.edge_to_edge.TopInsetProvider;
+import org.chromium.chrome.browser.url_constants.UrlConstantResolver;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
@@ -290,6 +291,7 @@ public class ToolbarPositionControllerTest {
     @Mock private PrefService mPrefs;
     @Mock private LocalStatePrefs.Natives mLocalStatePrefsNatives;
     @Mock private PrefService mLocalPrefService;
+    @Mock private TopControlsStacker mTopControlsStacker;
     @Mock private WindowAndroid mWindowAndroid;
     @Mock private DisplayAndroid mDisplayAndroid;
     @Mock private InsetObserver mInsetObserver;
@@ -390,6 +392,7 @@ public class ToolbarPositionControllerTest {
                         mKeyboardVisibilityDelegate,
                         mControlContainer,
                         mToolbarLayout,
+                        mTopControlsStacker,
                         mBottomControlsStacker,
                         mBottomSheetController,
                         mBottomToolbarOffsetSupplier,
@@ -459,7 +462,7 @@ public class ToolbarPositionControllerTest {
     }
 
     @Test
-    @Config(qualifiers = "sw400dp", sdk = android.os.Build.VERSION_CODES.R)
+    @Config(qualifiers = "sw400dp", sdk = Build.VERSION_CODES.R)
     public void testIsToolbarPositionCustomizationEnabled_foldable() {
         ShadowPackageManager shadowPackageManager = Shadows.shadowOf(mContext.getPackageManager());
         shadowPackageManager.setSystemFeature(PackageManager.FEATURE_SENSOR_HINGE_ANGLE, true);
@@ -490,11 +493,13 @@ public class ToolbarPositionControllerTest {
         assertControlsAtTop();
         setUserToolbarAnchorPreference(/* showToolbarOnTop= */ false);
         assertControlsAtBottom();
-        verify(mPrefs, times(1)).setBoolean(eq(BOTTOM_OMNIBOX_EVER_USED_PREF), eq(true));
+        verify(mPrefs, times(1))
+                .setBoolean(eq(ToolbarPositionController.BOTTOM_OMNIBOX_EVER_USED_PREF), eq(true));
 
         setUserToolbarAnchorPreference(/* showToolbarOnTop= */ true);
         assertControlsAtTop();
-        verify(mPrefs, times(1)).setBoolean(eq(BOTTOM_OMNIBOX_EVER_USED_PREF), eq(true));
+        verify(mPrefs, times(1))
+                .setBoolean(eq(ToolbarPositionController.BOTTOM_OMNIBOX_EVER_USED_PREF), eq(true));
     }
 
     @Test
@@ -855,7 +860,7 @@ public class ToolbarPositionControllerTest {
     @Test
     public void shouldShowToolbarOnTop_withNtpUrl() {
         Tab tab = mock(Tab.class);
-        doReturn(new GURL(getOriginalNativeNtpUrl())).when(tab).getUrl();
+        doReturn(new GURL(UrlConstantResolver.getOriginalNativeNtpUrl())).when(tab).getUrl();
 
         // By default, Toolbar should be anchored on top.
         setUserToolbarAnchorPreference(/* showToolbarOnTop= */ null);
@@ -874,7 +879,7 @@ public class ToolbarPositionControllerTest {
     @Test
     public void shouldShowToolbarOnTop_withIncognitoNtpUrl() {
         Tab tab = mock(Tab.class);
-        doReturn(new GURL(getOriginalNativeNtpUrl())).when(tab).getUrl();
+        doReturn(new GURL(UrlConstantResolver.getOriginalNativeNtpUrl())).when(tab).getUrl();
         doReturn(true).when(tab).isIncognitoBranded();
 
         // By default, Toolbar should be anchored on top.
@@ -1295,6 +1300,24 @@ public class ToolbarPositionControllerTest {
         BottomControlsLayer toolbarLayer =
                 mBottomControlsStacker.getLayerForTesting(LayerType.BOTTOM_TOOLBAR);
         assertEquals(LayerVisibility.HIDDEN, toolbarLayer.getLayerVisibility());
+    }
+
+    @Test
+    @Config(qualifiers = "sw400dp")
+    public void testTopMarginFromTopControlsStacker() {
+        int heightAboveToolbar = 24;
+        when(mTopControlsStacker.getHeightFromLayerToTop(TopControlType.TOOLBAR))
+                .thenReturn(heightAboveToolbar);
+
+        // When controls are at bottom, topMargin should be 0.
+        setUserToolbarAnchorPreference(/* showToolbarOnTop= */ false);
+        assertControlsAtBottom();
+        assertEquals(0, mControlContainerLayoutParams.topMargin);
+
+        // When controls are at top, topMargin should match heightAboveToolbar.
+        setUserToolbarAnchorPreference(/* showToolbarOnTop= */ true);
+        assertControlsAtTop();
+        assertEquals(heightAboveToolbar, mControlContainerLayoutParams.topMargin);
     }
 
     private void assertControlsAtBottom() {

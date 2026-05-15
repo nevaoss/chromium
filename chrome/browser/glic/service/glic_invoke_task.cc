@@ -6,6 +6,7 @@
 
 #include "base/barrier_closure.h"
 #include "base/functional/bind.h"
+#include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/service/glic_instance_impl.h"
@@ -25,6 +26,12 @@ void SequentialTaskGroup::Start(base::OnceClosure done_callback) {
   CHECK_EQ(current_task_index_, 0u);
   done_callback_ = std::move(done_callback);
   RunNextTask();
+}
+
+void SequentialTaskGroup::NotifySequenceCompleted(bool success) {
+  for (auto& task : tasks_) {
+    task->OnSequenceCompleted(success);
+  }
 }
 
 void SequentialTaskGroup::RunNextTask() {
@@ -114,6 +121,29 @@ void WaitForClientConnectedTask::WebClientConnected() {
   if (done_callback_) {
     std::move(done_callback_).Run();
   }
+}
+
+NotifyIsInvokingTask::NotifyIsInvokingTask(Host* host, bool is_invoking)
+    : host_(host), is_invoking_(is_invoking) {}
+
+NotifyIsInvokingTask::~NotifyIsInvokingTask() = default;
+
+void NotifyIsInvokingTask::Start(base::OnceClosure done_callback) {
+  host_->NotifyIsInvoking(is_invoking_);
+  std::move(done_callback).Run();
+}
+
+PostCallbackTask::PostCallbackTask(base::OnceClosure callback)
+    : callback_(std::move(callback)) {}
+
+PostCallbackTask::~PostCallbackTask() = default;
+
+void PostCallbackTask::Start(base::OnceClosure done_callback) {
+  if (callback_) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(callback_));
+  }
+  std::move(done_callback).Run();
 }
 
 StabilizationTask::StabilizationTask(content::WebContents* web_contents) {
@@ -208,12 +238,10 @@ void SendToClientTask::OnAck() {
 WaitForActuationTask::WaitForActuationTask(
     GlicInstanceImpl* instance,
     base::TimeDelta start_timeout,
-    base::TimeDelta complete_timeout,
     base::OnceCallback<void(GlicInvokeError)> error_callback,
     base::OnceClosure on_actuation_started)
     : instance_(instance),
       start_timeout_(start_timeout),
-      complete_timeout_(complete_timeout),
       error_callback_(std::move(error_callback)),
       on_actuation_started_(std::move(on_actuation_started)) {
   GlicActorTaskManager* task_manager = instance_->GetActorTaskManager();
@@ -264,19 +292,16 @@ void WaitForActuationTask::Update() {
     return;
   }
 
-  // Not done yet, set a timeout.
-  if (!timer_.IsRunning() || (did_start_ && !complete_timeout_started_)) {
-    timer_.Stop();
-    if (!did_start_) {
+  // Not done yet.
+  if (!did_start_) {
+    if (!timer_.IsRunning()) {
       timer_.Start(FROM_HERE, start_timeout_,
                    base::BindOnce(&WaitForActuationTask::OnTimeout,
                                   base::Unretained(this)));
-    } else {
-      timer_.Start(FROM_HERE, complete_timeout_,
-                   base::BindOnce(&WaitForActuationTask::OnTimeout,
-                                  base::Unretained(this)));
-      complete_timeout_started_ = true;
     }
+  } else {
+    // Actuation started, stop the initial timeout timer if it was running.
+    timer_.Stop();
   }
 }
 

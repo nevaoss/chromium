@@ -835,6 +835,7 @@
 <translation id="1567579616025300478">আপনার ডিভাইসে এই সাইটকে ডেটা সেভ করার অনুমতি দেওয়া হয়নি।</translation>
 <translation id="156793199942386351">'<ph name="CURRENTKEY" />'-কে আগে থেকেই '<ph name="ACTION" />' অ্যাকশনের জন্য অ্যাসাইন করা হয়েছে। <ph name="RESPONSE" />-এর জন্য যেকোনও কী প্রেস করুন।</translation>
 <translation id="1567993339577891801">JavaScript কনসোল</translation>
+<translation id="157005186601751931">অ্যাপে ট্যাব খুলুন</translation>
 <translation id="1570604804919108255">বিজ্ঞপ্তি আনমিউট করুন</translation>
 <translation id="1570990174567554976">'<ph name="BOOKMARK_TITLE" />' নামে বুকমার্ক ফোল্ডার তৈরি করা হয়েছে।</translation>
 <translation id="1571041387761170095">দুর্বল বা একই পাসওয়ার্ড আবার ব্যবহার করা যাবে না</translation>
@@ -1048,7 +1049,6 @@
 <translation id="1703666494654169921">সাইটগুলিকে ভার্চুয়াল রিয়েলিটি ডিভাইস বা ডেটা ব্যবহার করার অনুমতি দেয় না</translation>
 <translation id="1704097193565924901">বড় হাতের করুন</translation>
 <translation id="1704230497453185209">সাইটগুলিকে সাউন্ড চালানোর অনুমতি দেয় না</translation>
-<translation id="1706015824809136764">টুলবার শর্টকাটে Gemini পিন করুন</translation>
 <translation id="1706586824377653884">আপনার প্রশাসক দ্বারা যোগ করা হয়েছে</translation>
 <translation id="170658918174941828">উপরের উল্লেখ করা তথ্যগুলির মধ্যে থেকে আপনি যা অন্তর্ভুক্ত করতে চান সেগুলি বাদ দিয়ে
     আপনার Chrome-এর ভার্সন, অপারেটিং সিস্টেম ভার্সন,
@@ -1560,7 +1560,6 @@
 <translation id="204914487372604757">শর্টকাট তৈরি করুন</translation>
 <translation id="2049573977943974163">"<ph name="EXTENSION_NAME" />" চালু করবেন?</translation>
 <translation id="2050339315714019657">পোর্ট্রেট</translation>
-<translation id="2050394140692183739">বর্তমান টুলবার শর্টকাট</translation>
 <translation id="2051555741181591333">অটোমেটিক হটস্পট বন্ধ করুন</translation>
 <translation id="2051669996101374349">যখনই সম্ভব, তখনই HTTPS ব্যবহার করুন এবং এখানে কাজ করে না এমন সাইট লোড করার আগে সতর্কতা পান। 'উন্নত সুরক্ষা' চালু করা আছে বলে আপনি এই সেটিং পরিবর্তন করতে পারবেন না।</translation>
 <translation id="2052572566310583903">আপনার অন্য ডিভাইসে ইনস্টল করা হয়েছে</translation>
@@ -2330,7 +2329,6 @@
 <translation id="2565214867520763227">স্ক্রিন রিডার চালু করুন</translation>
 <translation id="2566146433999774844"><ph name="OWNER_FIRST_NAME" /> এবং অন্য <ph name="NUM_OTHER_MEMBERS" /> জনের সাথে ট্যাব গ্রুপে যোগ দিন</translation>
 <translation id="256726287944589768">নতুন ট্যাব পৃষ্ঠাতে ফুটার দেখুন</translation>
-<translation id="2567313753132089780">পাসওয়ার্ডে অবশ্যই কমপক্ষে ১২টি অক্ষর থাকতে হবে এবং এর মধ্যে বড় ও ছোট হাতের অক্ষর, সংখ্যা ও চিহ্ন থাকতে হবে</translation>
 <translation id="2568774940984945469">তথ্যবার ধারক</translation>
 <translation id="2569972178052279830">রিটেলারের নাম</translation>
 <translation id="257088987046510401">থিমসমূহ</translation>
@@ -3180,7 +3178,6 @@
 <translation id="3157931365184549694">পুনরুদ্ধার করুন</translation>
 <translation id="3158033540161634471">আপনার আঙ্গুলের ছাপ সেট-আপ করুন</translation>
 <translation id="3158203338449343164">ট্যাব সার্চ করার বিকল্প আনপিন করুন</translation>
-<translation id="3158732900546890991">পাসওয়ার্ডে অবশ্যই কমপক্ষে ৮টি অক্ষর থাকতে হবে এবং নিম্নলিখিতগুলির মধ্যে অন্তত দুটি থাকতে হবে: বড় হাতের অক্ষর, ছোট হাতের অক্ষর, সংখ্যা বা চিহ্ন</translation>
 <translation id="3158770568048368350">এজন্য সাময়িকভাবে আপনার মোবাইল নেটওয়ার্ক ডিসকানেক্ট হয়ে যেতে পারে</translation>
 <translation id="3159335509547415276">ব্লক করা অ্যাকাউন্ট সম্পর্কে জানুন</translation>
 <translation id="3159493096109238499">বেজ</translation>
@@ -3763,6 +3760,7 @@
 <translation id="3572031449439748861"><ph name="NUM_EXTENSIONS" />টি এক্সটেনশন বন্ধ আছে</translation>
 <translation id="3575121482199441727">এই সাইটের জন্য অনুমতি দিন</translation>
 <translation id="3575224072358507281">গোপনীয়তা নীতি (measurementlab.net/privacy) অনুযায়ী Measurement Lab-এর জন্য IP অ্যাড্রেস ও নেটওয়ার্ক পরিমাপ করার ফলাফল সংগ্রহ করে</translation>
+<translation id="3576324189521867626">সফলভাবে ইনস্টল হয়েছে</translation>
 <translation id="3577036603268648505">অনলাইনে আরও নিরাপদে থাকুন</translation>
 <translation id="3577473026931028326">কোনও সমস্যা হয়েছে। আবার চেষ্টা করুন।</translation>
 <translation id="3577487026101678864">ফাইল সিঙ্ক করা চালু আছে</translation>
@@ -4720,6 +4718,7 @@
 <translation id="4223404254440398437">মাইক্রোফোন ব্যবহারের অনুমতি নেই</translation>
 <translation id="4224541845943007092">অ্যাড্রেস বার থেকে কীবোর্ড পড়ুন এবং সেভ করুন</translation>
 <translation id="4225397296022057997">সমস্ত সাইটে</translation>
+<translation id="4225895483398857530">টুলবারের শর্টকার্ট</translation>
 <translation id="4226303886821889519">আপডেটার ভার্সন: <ph name="VERSION" /></translation>
 <translation id="4228071595943929139">আপনার সংস্থার ইমেল আইডি ব্যবহার করুন</translation>
 <translation id="4228209296591583948">{NUM_EXTENSIONS,plural, =1{এই এক্সটেনশনের অনুমতি নেই}one{কিছু এক্সটেনশনের অনুমতি নেই}other{কিছু এক্সটেনশনের অনুমতি নেই}}</translation>
@@ -5665,6 +5664,7 @@
 <translation id="4881685975363383806">পরের বার আমাকে মনে করানোর দরকার নেই</translation>
 <translation id="4881695831933465202">খুলুন</translation>
 <translation id="4882312758060467256">এই সাইটে অ্যাক্সেস আছে</translation>
+<translation id="4882805770036405108">শর্টকাট ব্যবহার করে আরও দ্রুত 'রিডিং মোড' খুলুন। রিডিং মোড টগল করতে ⌥ + ⌘ + R প্রেস করুন।</translation>
 <translation id="4882848900607400156">আপনি নিজের সুনির্দিষ্ট লোকেশন শেয়ার করলে, Gemini আপনার প্রশ্নের আরও সঠিক উত্তর দিতে পারবে। জেনারেটিভ AI মডেলের পারফর্ম্যান্স উন্নত করার জন্য আপনার ডেটা ব্যবহার করা হয়নি।</translation>
 <translation id="4882919381756638075">ভিডিও চ্যাটের মতো যোগাযোগ করার ফিচারের জন্য সাইট সাধারণত আপনার মাইক্রোফোন ব্যবহার করে</translation>
 <translation id="4883436287898674711">সব <ph name="WEBSITE_1" /> সাইট</translation>
@@ -6122,6 +6122,7 @@
 <translation id="5204967432542742771">পাসওয়ার্ড প্রবেশ করান</translation>
 <translation id="5205484256512407285">ফাইল ট্রান্সফার করতে, কখনও মোবাইল ডেটা ব্যবহার করা হয় না</translation>
 <translation id="520568280985468584">নেটওয়ার্ক যোগ করা হয়েছে। আপনার সেলুলার নেটওয়ার্ক অ্যাক্টিভ হতে কয়েক মিনিট সময় লাগতে পারে।</translation>
+<translation id="5207395053540207113">Search-কে Drive কন্টেন্ট অ্যাক্সেস করতে দেবেন?</translation>
 <translation id="5207949376430453814">পাঠ্যের কার্সার হাইলাইট করুন</translation>
 <translation id="520840839826327499">আপনি একটি উপযুক্ত ChromeOS ডিভাইস ব্যবহার করছেন কিনা তা <ph name="SERVICE_NAME" /> দেখতে চায়।</translation>
 <translation id="5208926629108082192">ডিভাইস মোবাইল নেটওয়ার্ক তথ্য</translation>
@@ -8908,6 +8909,7 @@
 <translation id="7186903260115204164">নতুন ড্রয়িং টুল ব্যবহার করে ফ্রিহ্যান্ড ড্রয়িং, স্বাক্ষর ও হাইলাইট যোগ করুন</translation>
 <translation id="7186935534137027449">অ্যাপ কমান্ড</translation>
 <translation id="7188508872042490670">অন-ডিভাইস সাইট ডেটা</translation>
+<translation id="7188755083797868960">শর্টকাট ব্যবহার করে আরও দ্রুত 'রিডিং মোড' খুলুন। রিডিং মোড টগল করতে Alt + Shift + R প্রেস করুন।</translation>
 <translation id="7189234443051076392">আপনার ডিভাইসে পর্যাপ্ত জায়গা আছে কিনা দেখে নিন</translation>
 <translation id="7189451821249468368">এই ডিভাইসটি এনরোল করার জন্য প্রয়োজনীয় আপগ্রেড আপনার কাছে নেই। আরও কেনাকাটা করার জন্য, সেলস টিমের সাথে যোগাযোগ করুন। আপনার যদি মনে হয়, কোনও সমস্যার কারণে আপনি এই মেসেজটি দেখতে পাচ্ছেন, তাহলে সহায়তা টিমের সাথে যোগাযোগ করুন।</translation>
 <translation id="7189558282078169397">অন্যান্য ডিভাইস থেকে পাওয়া ট্যাব</translation>
@@ -9033,6 +9035,7 @@
 <translation id="727595954130325265">এখনই কিনুন</translation>
 <translation id="7277275452721470458">AI মোড অ্যাক্টিভিটি</translation>
 <translation id="727952162645687754">ডাউনলোড ক্রটি</translation>
+<translation id="7280265656690268844">জাভাস্ক্রিপ্ট অপ্টিমাইজেশন বন্ধ করা আছে</translation>
 <translation id="7280649757394340890">পাঠ্য থেকে ভাষ্যের ভয়েস সেটিংস</translation>
 <translation id="7280683802406059877">কীবোর্ড শর্টকাট কাস্টমাইজ করুন</translation>
 <translation id="7280877790564589615">অনুমতির জন্য অনুরোধ করা হয়েছে</translation>
@@ -10150,7 +10153,6 @@
 <translation id="8032569120109842252">ফলো করছেন</translation>
 <translation id="8033827949643255796">নির্বাচিত</translation>
 <translation id="8033958968890501070">সময় শেষ হয়ে গেছে</translation>
-<translation id="8034399942062051455">ভি৮ অপ্টিমাইজেশনের সুবিধা বন্ধ করা আছে</translation>
 <translation id="8034697324150621782">উপরের ভিউয়ের সাথে অদল বদল করুন</translation>
 <translation id="8035059678007243127">ব্যাক-ফরোয়ার্ড ক্যাশেতে স্টোর করা ছদ্মবেশী পেজ: <ph name="BACK_FORWARD_CACHE_INCOGNITO_PAGE_URL" /></translation>
 <translation id="8036143516314698610">সেভ করা ট্যাব গ্রুপ বোতাম দেখুন</translation>
@@ -11371,6 +11373,7 @@
 <translation id="8866424952450451412">এর দ্বারা পরিচালিত আপনার কাস্টম ওয়ার্কফ্লো ম্যানেজ করুন,</translation>
 <translation id="8867102760244540173">ট্যাব সার্চ করুন...</translation>
 <translation id="8867228703146808825">বিল্ডের বিবরণ ক্লিপবোর্ডে কপি করুন</translation>
+<translation id="8867568208303837180">পাঠানো হচ্ছে…</translation>
 <translation id="8868333925931032127">ডেমো মোড শুরু করা হচ্ছে</translation>
 <translation id="8868626022555786497">ব্যবহৃত হচ্ছে</translation>
 <translation id="8868838761037459823">মোবাইল নেটওয়ার্কের বিবরণ</translation>
@@ -11800,7 +11803,6 @@
 <translation id="914031120300235526">প্রোফাইল আনলক করা যায়নি</translation>
 <translation id="9143298529634201539">সাজেশন সরিয়ে দিতে চান?</translation>
 <translation id="9143922477019434797">আপনার পাসওয়ার্ড সুরক্ষিত রাখুন</translation>
-<translation id="914621365454686586">Search-কে Drive কন্টেন্ট অ্যাক্সেস করার অনুমতি দিতে চান?</translation>
 <translation id="9147392381910171771">&amp;বিকল্প</translation>
 <translation id="9148058034647219655">প্রস্থান করুন</translation>
 <translation id="9148126808321036104">আবার সাইন-ইন করুন</translation>

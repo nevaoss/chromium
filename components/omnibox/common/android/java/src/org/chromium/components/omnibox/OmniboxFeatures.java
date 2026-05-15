@@ -4,9 +4,9 @@
 
 package org.chromium.components.omnibox;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.text.format.DateUtils;
-import android.util.DisplayMetrics;
 
 import androidx.annotation.IntDef;
 
@@ -15,6 +15,7 @@ import com.google.android.gms.location.Priority;
 import org.chromium.base.BaseSwitches;
 import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.SysUtils;
 import org.chromium.base.TimeUtils;
@@ -123,6 +124,9 @@ public class OmniboxFeatures {
     public static final CachedFlag sPlatformAgnosticXGeo =
             newFlag(OmniboxFeatureList.PLATFORM_AGNOSTIC_X_GEO, FeatureState.DISABLED);
 
+    public static final CachedFlag sInlineLocationSignaling =
+            newFlag(OmniboxFeatureList.INLINE_LOCATION_SIGNALING, FeatureState.DISABLED);
+
     public static final CachedFlag sAsyncViewInflation =
             newFlag(OmniboxFeatureList.OMNIBOX_ASYNC_VIEW_INFLATION, FeatureState.ENABLED_IN_TEST);
 
@@ -135,7 +139,7 @@ public class OmniboxFeatures {
     public static final CachedFlag sOmniboxSiteSearch =
             newFlag(OmniboxFeatureList.OMNIBOX_SITE_SEARCH, FeatureState.ENABLED_IN_TEST);
 
-    public static final CachedFlag sOmniboxMultimodalInput =
+    private static final CachedFlag sOmniboxMultimodalInput =
             newFlag(OmniboxFeatureList.OMNIBOX_MULTIMODAL_INPUT, FeatureState.ENABLED_IN_TEST);
 
     public static final BooleanCachedFeatureParam sShowDedicatedModeButton =
@@ -173,6 +177,9 @@ public class OmniboxFeatures {
 
     public static final BooleanCachedFeatureParam sUseAskHintForNtp =
             newBooleanParam(sOmniboxMultimodalInput, "use_ask_hint_for_ntp", false);
+
+    public static final CachedFlag sAndroidDesktopAimGate =
+            newFlag(OmniboxFeatureList.ANDROID_DESKTOP_AIM_GATE, FeatureState.ENABLED_IN_TEST);
 
     public static final CachedFlag sMultilineEditField =
             newFlag(OmniboxFeatureList.MULTILINE_EDIT_FIELD, FeatureState.ENABLED_IN_PROD);
@@ -279,8 +286,11 @@ public class OmniboxFeatures {
     public static final BooleanCachedFeatureParam sDiagInputConnection =
             newBooleanParam(sDiagnostics, "omnibox_diag_input_connection", false);
 
-    /** See {@link #setIsDesktopModeForTesting(boolean)}. */
-    private static @Nullable Boolean sIsDesktopModeForTesting;
+    /** See {@link #setHasDesktopExperienceForTesting(boolean)}. */
+    private static @Nullable Boolean sHasDesktopExperienceForTesting;
+
+    /** See {@link #setIsDesktopPlatformForTesting(boolean)}. */
+    private static @Nullable Boolean sIsDesktopPlatformForTesting;
 
     /** When enabled, Jump Start Omnibox is activated and can engage if the feature is enabled. */
     private static @Nullable Boolean sActivateJumpStartOmnibox;
@@ -406,10 +416,10 @@ public class OmniboxFeatures {
         return inputCount >= DEFAULT_RICH_INLINE_MIN_CHAR;
     }
 
-    /** Modifies the output of {@link #isDesktopMode()} for testing. */
-    public static void setIsDesktopModeForTesting(Boolean isDesktopMode) {
-        sIsDesktopModeForTesting = isDesktopMode;
-        ResettersForTesting.register(() -> sIsDesktopModeForTesting = null);
+    /** Modifies the output of {@link #hasDesktopExperience()} for testing. */
+    public static void setHasDesktopExperienceForTesting(Boolean hasDesktopExperience) {
+        sHasDesktopExperienceForTesting = hasDesktopExperience;
+        ResettersForTesting.register(() -> sHasDesktopExperienceForTesting = null);
     }
 
     /**
@@ -418,20 +428,51 @@ public class OmniboxFeatures {
      *
      * <p>We're not limiting to tablet modes here, because narrow windows on LFF devices are
      * eligible for Desktop treatment, too.
+     *
+     * @param context the context to use to determine device form factor
      */
-    public static boolean isDesktopMode() {
-        if (sIsDesktopModeForTesting != null) {
-            return sIsDesktopModeForTesting;
+    public static boolean hasDesktopExperience(Context context) {
+        if (sHasDesktopExperienceForTesting != null) {
+            return sHasDesktopExperienceForTesting;
         }
 
-        // Migrate this to appropriate DisplayMetrics-based DeviceFormFactor logic once one is
-        // available.
-        DisplayMetrics dm = ContextUtils.getApplicationContext().getResources().getDisplayMetrics();
-        float widthDp = dm.widthPixels / dm.density;
-
-        return widthDp >= DeviceFormFactor.MINIMUM_TABLET_WIDTH_DP
+        return DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)
                 && DeviceInput.supportsAlphabeticKeyboard()
                 && DeviceInput.supportsPrecisionPointer();
+    }
+
+    /** Modifies the output of {@link #isDesktopPlatform()} for testing. */
+    public static void setIsDesktopPlatformForTesting(Boolean isDesktopPlatform) {
+        sIsDesktopPlatformForTesting = isDesktopPlatform;
+        ResettersForTesting.register(() -> sIsDesktopPlatformForTesting = null);
+    }
+
+    /**
+     * Return whether the current platform is specifically a desktop platform.
+     *
+     * <p>This call should be used sparingly - only to gate features that are strictly Desktop
+     * specific. All other calls should defer to {@link #hasDesktopExperience()}.
+     */
+    public static boolean isDesktopPlatform() {
+        if (sIsDesktopPlatformForTesting != null) {
+            return sIsDesktopPlatformForTesting;
+        }
+        return DeviceInfo.isDesktop();
+    }
+
+    /**
+     * Explicitly disable fusebox for desktop for release users, but not for tests or for local
+     * development. Fusebox feature checks should go through this instead of the feature directly.
+     * This should be removed in a milestone or two, before fusebox launch for desktop.
+     *
+     * <p>Checks whether the fusebox is enabled for the current combination of context, device and
+     * flag state, disabling the fusebox on unsupported device and experience configurations.
+     */
+    public static boolean isMultimodalInputEnabled(Context context) {
+        if (isDesktopPlatform() || hasDesktopExperience(context)) {
+            return sAndroidDesktopAimGate.isEnabled() && sOmniboxMultimodalInput.isEnabled();
+        }
+        return sOmniboxMultimodalInput.isEnabled();
     }
 
     /**

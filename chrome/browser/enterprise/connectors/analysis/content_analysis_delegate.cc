@@ -317,6 +317,7 @@ std::u16string ContentAnalysisDelegate::GetBypassJustificationLabel() const {
       id = IDS_DEEP_SCANNING_DIALOG_DOWNLOAD_BYPASS_JUSTIFICATION_LABEL;
       break;
     case DeepScanAccessPoint::PASTE:
+    case DeepScanAccessPoint::ACTOR:
       id = IDS_DEEP_SCANNING_DIALOG_PASTE_BYPASS_JUSTIFICATION_LABEL;
       break;
     case DeepScanAccessPoint::PRINT:
@@ -597,7 +598,7 @@ void ContentAnalysisDelegate::FilesRequestCallback(
   MaybeCompleteScanRequest();
 }
 
-FilesRequestHandler*
+FilesRequestHandlerBase*
 ContentAnalysisDelegate::GetFilesRequestHandlerForTesting() {
   return files_request_handler_.get();
 }

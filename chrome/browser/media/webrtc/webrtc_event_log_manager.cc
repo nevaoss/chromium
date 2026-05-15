@@ -6,15 +6,18 @@
 
 #include <limits>
 
+#include "base/barrier_closure.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
+#include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
 #include "build/android_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/media/webrtc/rtc_diagnostic_logging_utils.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/pref_names.h"
 #include "components/prefs/pref_service.h"
@@ -285,8 +288,23 @@ void WebRtcEventLogManager::OnPeerConnectionUpdated(
 void WebRtcEventLogManager::OnPeerConnectionSessionIdSet(
     content::GlobalRenderFrameHostId frame_id,
     int lid,
-    const std::string& session_id) {
-  OnPeerConnectionSessionIdSet(frame_id, lid, session_id, base::NullCallback());
+    const std::string& session_id,
+    base::OnceClosure reply) {
+  auto custom_callback = base::BindOnce(
+      [](content::GlobalRenderFrameHostId frame_id, std::string session_id,
+         base::OnceClosure original_reply, bool success) {
+        if (auto* rfh = content::RenderFrameHost::FromID(frame_id);
+            success && rfh) {
+          rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
+              *rfh, session_id, std::move(original_reply));
+        } else {
+          std::move(original_reply).Run();
+        }
+      },
+      frame_id, session_id, std::move(reply));
+
+  OnSessionIdSetForPeerConnection(frame_id, lid, session_id,
+                                  std::move(custom_callback));
 }
 
 void WebRtcEventLogManager::OnWebRtcEventLogWrite(
@@ -311,6 +329,7 @@ void WebRtcEventLogManager::StartRemoteLogging(
     size_t max_file_size_bytes,
     int output_period_ms,
     size_t web_app_id,
+    std::optional<std::string> diagnostic_uuid,
     base::OnceCallback<void(bool, const std::string&, const std::string&)>
         reply) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
@@ -353,7 +372,31 @@ void WebRtcEventLogManager::StartRemoteLogging(
                      base::Unretained(this), render_process_id,
                      browser_context_id, session_id, browser_context->GetPath(),
                      max_file_size_bytes, output_period_ms, web_app_id,
-                     std::move(reply)));
+                     std::move(diagnostic_uuid), std::move(reply)));
+}
+
+void WebRtcEventLogManager::FinishLogging(int render_process_id,
+                                          base::OnceClosure callback) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&WebRtcEventLogManager::StopLoggingInternal,
+                     base::Unretained(this), render_process_id,
+                     StopLoggingAction::kStore,
+                     base::BindPostTask(content::GetUIThreadTaskRunner({}),
+                                        std::move(callback))));
+}
+
+void WebRtcEventLogManager::CancelLogging(int render_process_id,
+                                          base::OnceClosure callback) {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  task_runner_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&WebRtcEventLogManager::StopLoggingInternal,
+                     base::Unretained(this), render_process_id,
+                     StopLoggingAction::kDelete,
+                     base::BindPostTask(content::GetUIThreadTaskRunner({}),
+                                        std::move(callback))));
 }
 
 void WebRtcEventLogManager::EnableDataChannelLogging(
@@ -591,7 +634,7 @@ void WebRtcEventLogManager::OnPeerConnectionStopped(
   OnPeerConnectionRemoved(frame_id, lid, std::move(reply));
 }
 
-void WebRtcEventLogManager::OnPeerConnectionSessionIdSet(
+void WebRtcEventLogManager::OnSessionIdSetForPeerConnection(
     content::GlobalRenderFrameHostId frame_id,
     int lid,
     const std::string& session_id,
@@ -612,7 +655,7 @@ void WebRtcEventLogManager::OnPeerConnectionSessionIdSet(
   task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(
-          &WebRtcEventLogManager::OnPeerConnectionSessionIdSetInternal,
+          &WebRtcEventLogManager::OnSessionIdSetForPeerConnectionInternal,
           base::Unretained(this),
           PeerConnectionKey(frame_id.child_id.GetUnsafeValue(), lid,
                             browser_context_id, frame_id.frame_routing_id),
@@ -1014,13 +1057,13 @@ void WebRtcEventLogManager::OnPeerConnectionRemovedInternal(
   MaybeReply(FROM_HERE, std::move(reply), local_result);
 }
 
-void WebRtcEventLogManager::OnPeerConnectionSessionIdSetInternal(
+void WebRtcEventLogManager::OnSessionIdSetForPeerConnectionInternal(
     PeerConnectionKey key,
     const std::string& session_id,
     base::OnceCallback<void(bool)> reply) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
   const bool result =
-      remote_logs_manager_.OnPeerConnectionSessionIdSet(key, session_id);
+      remote_logs_manager_.OnSessionIdSetForPeerConnection(key, session_id);
   MaybeReply(FROM_HERE, std::move(reply), result);
 }
 
@@ -1098,6 +1141,7 @@ void WebRtcEventLogManager::StartRemoteLoggingInternal(
     size_t max_file_size_bytes,
     int output_period_ms,
     size_t web_app_id,
+    std::optional<std::string> diagnostic_uuid,
     base::OnceCallback<void(bool, const std::string&, const std::string&)>
         reply) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
@@ -1106,8 +1150,8 @@ void WebRtcEventLogManager::StartRemoteLoggingInternal(
   std::string error_message;
   const bool result = remote_logs_manager_.StartRemoteLogging(
       render_process_id, browser_context_id, session_id, browser_context_dir,
-      max_file_size_bytes, output_period_ms, web_app_id, &log_id,
-      &error_message);
+      max_file_size_bytes, output_period_ms, web_app_id,
+      std::move(diagnostic_uuid), &log_id, &error_message);
 
   // |log_id| set only if successful; |error_message| set only if unsuccessful.
   DCHECK_EQ(result, !log_id.empty());
@@ -1116,6 +1160,15 @@ void WebRtcEventLogManager::StartRemoteLoggingInternal(
   content::GetUIThreadTaskRunner({})->PostTask(
       FROM_HERE,
       base::BindOnce(std::move(reply), result, log_id, error_message));
+}
+
+void WebRtcEventLogManager::StopLoggingInternal(int render_process_id,
+                                                StopLoggingAction action,
+                                                base::OnceClosure callback) {
+  DCHECK(task_runner_->RunsTasksInCurrentSequence());
+  base::RepeatingClosure barrier = base::BarrierClosure(2, std::move(callback));
+  local_logs_manager_.StopLogging(render_process_id, action, barrier);
+  remote_logs_manager_.StopLogging(render_process_id, action, barrier);
 }
 
 void WebRtcEventLogManager::ClearCacheForBrowserContextInternal(

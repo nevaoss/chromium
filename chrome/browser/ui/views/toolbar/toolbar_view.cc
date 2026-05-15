@@ -97,7 +97,6 @@
 #include "chrome/browser/ui/views/toolbar/browser_app_menu_button.h"
 #include "chrome/browser/ui/views/toolbar/chrome_labs/chrome_labs_coordinator.h"
 #include "chrome/browser/ui/views/toolbar/home_button.h"
-#include "chrome/browser/ui/views/toolbar/live_toolbar_background.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions_container.h"
 #include "chrome/browser/ui/views/toolbar/reload_button.h"
 #include "chrome/browser/ui/views/toolbar/split_tabs_button.h"
@@ -164,10 +163,6 @@
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/tooltip_manager.h"
 #include "ui/views/widget/widget.h"
-
-#if BUILDFLAG(ENABLE_WEBUI_TAB_STRIP)
-#include "chrome/browser/ui/views/frame/webui_tab_strip_container_view.h"
-#endif  // BUILDFLAG(ENABLE_WEBUI_TAB_STRIP)
 
 #if defined(USE_AURA)
 #include <array>
@@ -271,12 +266,6 @@ ToolbarView::ToolbarView(Browser* browser, BrowserView* browser_view)
   GetViewAccessibility().SetRole(ax::mojom::Role::kToolbar);
 
   if (display_mode_ == DisplayMode::kNormal) {
-    if (base::FeatureList::IsEnabled(features::kGlassToolbar)) {
-      auto background =
-          std::make_unique<LiveToolbarBackground>(browser_view_, this);
-      SetBackground(std::move(background));
-    }
-
     for (const auto& view_and_command : GetViewCommandMap()) {
       chrome::AddCommandObserver(browser_, view_and_command.second, this);
     }
@@ -349,12 +338,10 @@ void ToolbarView::Init() {
   }
 
   if (display_mode_ == DisplayMode::kNormal) {
-    if (!base::FeatureList::IsEnabled(features::kGlassToolbar)) {
-      SetBackground(std::make_unique<CustomCornersBackground>(
-          *this, *browser_view_,
-          /*primary_color=*/CustomCornersBackground::ToolbarTheme(),
-          /*corner_color=*/CustomCornersBackground::FrameTheme()));
-    }
+    SetBackground(std::make_unique<CustomCornersBackground>(
+        *this, *browser_view_,
+        /*primary_color=*/CustomCornersBackground::ToolbarTheme(),
+        /*corner_color=*/CustomCornersBackground::FrameTheme()));
   } else if (display_mode_ == DisplayMode::kCustomTab) {
     custom_tab_bar_ =
         AddChildView(std::make_unique<CustomTabBarView>(browser_view_, this));
@@ -366,9 +353,8 @@ void ToolbarView::Init() {
     // in popups.
     pinned_toolbar_actions_container_ = AddChildView(
         std::make_unique<PinnedToolbarActionsContainer>(browser_view_, this));
-    if (!base::FeatureList::IsEnabled(features::kGlassToolbar)) {
-      SetBackground(views::CreateSolidBackground(kColorLocationBarBackground));
-    }
+    pinned_toolbar_actions_ = pinned_toolbar_actions_container_;
+    SetBackground(views::CreateSolidBackground(kColorLocationBarBackground));
     SetLayoutManager(std::make_unique<views::FlexLayout>())
         ->SetOrientation(views::LayoutOrientation::kHorizontal)
         .SetCrossAxisAlignment(views::LayoutAlignment::kCenter)
@@ -471,17 +457,13 @@ void ToolbarView::Init() {
     location_bar_ = toolbar_webview_->GetLocationBar();
   }
 
-  if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
-    auto* vertical_tab_strip_state_controller =
-        tabs::VerticalTabStripStateController::From(browser_view_->browser());
-    if (base::FeatureList::IsEnabled(features::kGlicActorUi) &&
-        features::kGlicActorUiTaskIcon.Get()) {
-      glic_actor_button_container_ =
-          AddChildView(CreateGlicActorButtonContainer());
-      glic_actor_task_icon_ =
-          glic_actor_button_container_->AddChildView(CreateGlicActorTaskIcon());
-      glic_actor_button_container_->SetVisible(false);
-    }
+  bool is_glic_left_of_profile =
+      base::FeatureList::IsEnabled(features::kGlicToolbarButtonLocation) &&
+      features::kGlicToolbarButtonLocationParam.Get() ==
+          features::GlicToolbarButtonLocation::kLeftOfProfileChip;
+  if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile()) &&
+      !is_glic_left_of_profile) {
+    InitGlicContainer();
 
     glic_button_ = AddChildView(CreateGlicButton());
     std::unique_ptr<ToolbarDivider> glic_button_divider =
@@ -491,15 +473,6 @@ void ToolbarView::Init() {
         views::kMarginsKey,
         gfx::Insets::VH(
             0, GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing)));
-    if (vertical_tab_strip_state_controller) {
-      vertical_tab_subscription_ =
-          vertical_tab_strip_state_controller->RegisterOnModeChanged(
-              base::BindRepeating(&ToolbarView::OnVerticalTabStripModeChanged,
-                                  base::Unretained(this)));
-      should_display_vertical_tabs_ =
-          vertical_tab_strip_state_controller->ShouldDisplayVerticalTabs();
-    }
-    UpdateGlicButtonVisibility();
   }
 
   if (extensions_container) {
@@ -586,6 +559,14 @@ void ToolbarView::Init() {
     }
   }
 
+  if (is_glic_left_of_profile &&
+      glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
+    InitGlicContainer();
+
+    glic_button_ = AddChildView(CreateGlicButton());
+    UpdateGlicButtonVisibility();
+  }
+
   if (!features::IsWebUIAvatarButtonEnabled()) {
     avatar_ =
         AddChildView(std::make_unique<AvatarToolbarButton>(browser_view_));
@@ -667,6 +648,20 @@ void ToolbarView::Init() {
     home_->SetVisible(show_home_button_.GetValue());
   }
 
+  if (glic::GlicEnabling::IsProfileEligible(browser_view_->GetProfile())) {
+    auto* vertical_tab_strip_state_controller =
+        tabs::VerticalTabStripStateController::From(browser_view_->browser());
+    if (vertical_tab_strip_state_controller) {
+      vertical_tab_subscription_ =
+          vertical_tab_strip_state_controller->RegisterOnModeChanged(
+              base::BindRepeating(&ToolbarView::OnVerticalTabStripModeChanged,
+                                  base::Unretained(this)));
+      should_display_vertical_tabs_ =
+          vertical_tab_strip_state_controller->ShouldDisplayVerticalTabs();
+    }
+    UpdateGlicButtonVisibility();
+  }
+
   InitLayout();
 
   for (auto* button : std::array<views::Button*, 5>{back_, forward_, reload_,
@@ -677,6 +672,18 @@ void ToolbarView::Init() {
   }
 
   initialized_ = true;
+}
+
+void ToolbarView::InitGlicContainer() {
+  if (base::FeatureList::IsEnabled(features::kGlicActorUi) &&
+      features::kGlicActorUiTaskIcon.Get()) {
+    glic_actor_button_container_ =
+        AddChildView(CreateGlicActorButtonContainer());
+    glic_actor_task_icon_ =
+        glic_actor_button_container_->AddChildView(CreateGlicActorTaskIcon());
+    glic_actor_button_container_->SetVisible(false);
+    glic_actor_task_icon_->SetVisible(false);
+  }
 }
 
 void ToolbarView::OnVerticalTabStripModeChanged(
@@ -988,7 +995,11 @@ void ToolbarView::FinalizeHideGlicActorTaskIcon() {
   }
   glic_actor_task_icon_->SetVisible(false);
   glic_actor_task_icon_->SetTaskIconToDefault();
-  const size_t insertion_index = GetIndexOf(glic_button_divider_).value();
+
+  size_t insertion_index = GetIndexOf(avatar_.get()).value();
+  if (glic_button_divider_) {
+    insertion_index = GetIndexOf(glic_button_divider_).value();
+  }
   glic_button_ = AddChildViewAt(std::move(glic_button_.get()), insertion_index);
   glic_actor_button_container_->SetVisible(false);
   glic_button_->Expand();
@@ -1078,6 +1089,14 @@ void ToolbarView::UpdateGlicActorVisibility() {
        base::FeatureList::IsEnabled(features::kGlicHorizontalTabToolbarButton));
 
   glic_actor_task_icon_->SetVisible(is_glic_actor_visible);
+  if (glic_button_) {
+    bool is_glic_left_of_profile =
+        base::FeatureList::IsEnabled(features::kGlicToolbarButtonLocation) &&
+        features::kGlicToolbarButtonLocationParam.Get() ==
+            features::GlicToolbarButtonLocation::kLeftOfProfileChip;
+    glic_button_->UpdateStyle(
+        !(is_glic_left_of_profile && is_glic_actor_visible));
+  }
 }
 
 void ToolbarView::UpdateGlicButtonVisibility() {
@@ -1091,13 +1110,22 @@ void ToolbarView::UpdateGlicButtonVisibility() {
        base::FeatureList::IsEnabled(features::kGlicHorizontalTabToolbarButton));
 
   glic_button_->SetVisible(is_glic_visible);
-  glic_button_divider_->SetVisible(is_glic_visible);
+  if (glic_button_divider_) {
+    glic_button_divider_->SetVisible(is_glic_visible);
+  }
 
   if (glic_actor_button_container_) {
     // glic_actor_button_container_ should only be visible at the same time as
     // glic_button_.
     glic_actor_button_container_->SetVisible(is_glic_visible);
   }
+  bool is_glic_left_of_profile =
+      base::FeatureList::IsEnabled(features::kGlicToolbarButtonLocation) &&
+      features::kGlicToolbarButtonLocationParam.Get() ==
+          features::GlicToolbarButtonLocation::kLeftOfProfileChip;
+  bool is_task_icon_visible =
+      glic_actor_task_icon_ && glic_actor_task_icon_->GetVisible();
+  glic_button_->UpdateStyle(!(is_glic_left_of_profile && is_task_icon_visible));
 }
 
 void ToolbarView::SetGlicActorShowState(bool show) {
@@ -1206,26 +1234,6 @@ void ToolbarView::UpdateCustomTabBarVisibility(bool visible, bool animate) {
   } else {
     size_animation_.Hide();
   }
-}
-
-void ToolbarView::UpdateForWebUITabStrip() {
-#if BUILDFLAG(ENABLE_WEBUI_TAB_STRIP)
-  if (!new_tab_button_) {
-    return;
-  }
-  if (browser_view_->webui_tab_strip()) {
-    const int button_height =
-        GetLayoutConstant(LayoutConstant::kToolbarButtonHeight);
-    new_tab_button_->SetPreferredSize(gfx::Size(button_height, button_height));
-    new_tab_button_->SetVisible(true);
-    const size_t insertion_index = GetIndexOf(new_tab_button_).value();
-    AddChildViewAt(browser_view_->webui_tab_strip()->CreateTabCounter(),
-                   insertion_index);
-    LoadImages();
-  } else {
-    new_tab_button_->SetVisible(false);
-  }
-#endif  // BUILDFLAG(ENABLE_WEBUI_TAB_STRIP)
 }
 
 void ToolbarView::ResetTabState(WebContents* tab) {
@@ -1576,36 +1584,32 @@ void ToolbarView::LayoutCommon() {
   DCHECK(display_mode_ == DisplayMode::kNormal);
 
   gfx::Insets interior_margin =
-      GetLayoutInsets(browser_view_->webui_tab_strip()
-                          ? LayoutInset::WEBUI_TAB_STRIP_TOOLBAR_INTERIOR_MARGIN
-                          : LayoutInset::TOOLBAR_INTERIOR_MARGIN);
+      GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
 
-  if (!browser_view_->webui_tab_strip()) {
-    if (app_menu_button_->IsLabelPresentAndVisible()) {
-      // The interior margin in an expanded state should be more than in a
-      // collapsed state.
-      interior_margin.set_right(interior_margin.right() + 1);
-      app_menu_button_->SetProperty(
+  if (app_menu_button_->IsLabelPresentAndVisible()) {
+    // The interior margin in an expanded state should be more than in a
+    // collapsed state.
+    interior_margin.set_right(interior_margin.right() + 1);
+    app_menu_button_->SetProperty(
+        views::kMarginsKey,
+        gfx::Insets::VH(0, kBrowserAppMenuRefreshExpandedMargin));
+  } else {
+    app_menu_button_->SetProperty(
+        views::kMarginsKey,
+        gfx::Insets::VH(0, kBrowserAppMenuRefreshCollapsedMargin));
+  }
+
+  // The margins of the `avatar_` uses the same constants as the
+  // `app_menu_button_`.
+  if (avatar_) {
+    if (avatar_->IsLabelPresentAndVisible()) {
+      avatar_->SetProperty(
           views::kMarginsKey,
           gfx::Insets::VH(0, kBrowserAppMenuRefreshExpandedMargin));
     } else {
-      app_menu_button_->SetProperty(
+      avatar_->SetProperty(
           views::kMarginsKey,
           gfx::Insets::VH(0, kBrowserAppMenuRefreshCollapsedMargin));
-    }
-
-    // The margins of the `avatar_` uses the same constants as the
-    // `app_menu_button_`.
-    if (avatar_) {
-      if (avatar_->IsLabelPresentAndVisible()) {
-        avatar_->SetProperty(
-            views::kMarginsKey,
-            gfx::Insets::VH(0, kBrowserAppMenuRefreshExpandedMargin));
-      } else {
-        avatar_->SetProperty(
-            views::kMarginsKey,
-            gfx::Insets::VH(0, kBrowserAppMenuRefreshCollapsedMargin));
-      }
     }
   }
 
@@ -1640,13 +1644,8 @@ void ToolbarView::UpdateTypeAndSeverity(
     return;
   }
 
-  std::u16string accname_app = l10n_util::GetStringUTF16(IDS_ACCNAME_APP);
-  if (type_and_severity.type ==
-      AppMenuIconController::IconType::kUpgradeNotification) {
-    accname_app = l10n_util::GetStringFUTF16(
-        IDS_ACCNAME_APP_UPGRADE_RECOMMENDED, accname_app);
-  }
-  app_menu_button_->GetViewAccessibility().SetName(accname_app);
+  app_menu_button_->GetViewAccessibility().SetName(
+      AppMenuIconController::GetIconAccessibleName(type_and_severity.type));
   app_menu_button_->SetTypeAndSeverity(type_and_severity);
 }
 

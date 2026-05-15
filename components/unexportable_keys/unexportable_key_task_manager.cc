@@ -22,7 +22,7 @@
 #include "components/unexportable_keys/background_task_priority.h"
 #include "components/unexportable_keys/background_task_type.h"
 #include "components/unexportable_keys/features.h"
-#include "components/unexportable_keys/ref_counted_unexportable_signing_key.h"
+#include "components/unexportable_keys/ref_counted_unexportable_key.h"
 #include "components/unexportable_keys/service_error.h"
 #include "components/unexportable_keys/unexportable_key_id.h"
 #include "components/unexportable_keys/unexportable_key_tasks.h"
@@ -232,10 +232,10 @@ void UnexportableKeyTaskManager::SignSlowlyAsync(
   task_scheduler_.PostTask(std::move(task));
 }
 
-void UnexportableKeyTaskManager::DeleteSigningKeysSlowlyAsync(
+void UnexportableKeyTaskManager::DeleteKeysSlowlyAsync(
     BackgroundTaskOrigin origin,
     crypto::UnexportableKeyProvider::Config config,
-    std::vector<scoped_refptr<RefCountedUnexportableSigningKey>> signing_keys,
+    std::vector<scoped_refptr<RefCountedUnexportableKey>> keys,
     BackgroundTaskPriority priority,
     base::OnceCallback<void(ServiceErrorOr<size_t>)> callback) {
   auto callback_wrapper = WrapCallbackWithMetrics(
@@ -257,13 +257,13 @@ void UnexportableKeyTaskManager::DeleteSigningKeysSlowlyAsync(
     return;
   }
 
-  auto task = std::make_unique<DeleteKeysTask>(
-      std::move(key_provider), std::move(signing_keys), priority,
-      std::move(callback_wrapper));
+  auto task =
+      std::make_unique<DeleteKeysTask>(std::move(key_provider), std::move(keys),
+                                       priority, std::move(callback_wrapper));
   task_scheduler_.PostTask(std::move(task));
 }
 
-void UnexportableKeyTaskManager::DeleteAllSigningKeysSlowlyAsync(
+void UnexportableKeyTaskManager::DeleteAllKeysSlowlyAsync(
     BackgroundTaskOrigin origin,
     crypto::UnexportableKeyProvider::Config config,
     BackgroundTaskPriority priority,

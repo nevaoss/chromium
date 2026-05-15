@@ -356,26 +356,25 @@ void ApplyCommandLineToSettings(WebSettings* settings) {
         WebSettings::SelectionStrategyType::kDirection);
   }
 
-  WebString network_quiet_timeout = WebString::FromUtf8(
+  String network_quiet_timeout(
       command_line.GetSwitchValueASCII(switches::kNetworkQuietTimeout));
-  if (!network_quiet_timeout.IsEmpty()) {
-    auto network_quiet_timeout_seconds =
-        StringToDouble(String(network_quiet_timeout));
+  if (!network_quiet_timeout.empty()) {
+    auto network_quiet_timeout_seconds = StringToDouble(network_quiet_timeout);
     if (network_quiet_timeout_seconds) {
       settings->SetNetworkQuietTimeout(*network_quiet_timeout_seconds);
     }
   }
 
   if (command_line.HasSwitch(switches::kBlinkSettings)) {
-    String command_line_settings =
-        command_line.GetSwitchValueASCII(switches::kBlinkSettings).c_str();
+    String command_line_settings(
+        command_line.GetSwitchValueASCII(switches::kBlinkSettings));
     Vector<StringView> blink_settings =
         StringView(command_line_settings).SplitSkippingEmpty(',');
     for (const StringView& setting : blink_settings) {
       wtf_size_t pos = setting.find('=');
       settings->SetFromStrings(
           WebString(setting.substr(0, pos).ToString()),
-          WebString(pos == kNotFound ? ""
+          WebString(pos == kNotFound ? g_empty_string
                                      : setting.substr(pos + 1).ToString()));
     }
   }
@@ -3553,6 +3552,12 @@ void WebViewImpl::ActivatePrerenderedPage(
   std::move(callback).Run();
 }
 
+void WebViewImpl::UpgradePrerenderUntilScriptToFullPrerender() {
+  TRACE_EVENT0("navigation",
+               "WebViewImpl::UpgradePrerenderUntilScriptToFullPrerender");
+  GetPage()->UpgradePrerenderUntilScriptToFullPrerender();
+}
+
 void WebViewImpl::RegisterRendererPreferenceWatcher(
     CrossVariantMojoRemote<mojom::RendererPreferenceWatcherInterfaceBase>
         watcher) {
@@ -3580,7 +3585,6 @@ void WebViewImpl::UpdateRendererPreferences(
     observer.OnRendererPreferencesUpdated(preferences);
   }
 
-  WebThemeEngineHelper::DidUpdateRendererPreferences(preferences);
   UpdateFontRenderingFromRendererPrefs();
 
   blink::SetCaretBlinkInterval(

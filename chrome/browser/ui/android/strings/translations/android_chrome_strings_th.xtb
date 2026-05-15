@@ -187,8 +187,6 @@
 <translation id="1820408774134375111">Bottom Sheet การลงชื่อเข้าใช้</translation>
 <translation id="1823492026305965829">ลงชื่อเข้าใช้ด้วย <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">แตะลบข้อมูลการท่องเว็บ</translation>
-<translation id="1825772852827001597">ที่อยู่และวิธีการชำระเงินจาก Google Pay จะไม่มีการเข้ารหัส ประวัติการท่องเว็บจาก Chrome จะไม่ซิงค์
-เฉพาะผู้ที่มีพาสเฟรสของคุณเท่านั้นที่จะอ่านข้อมูลที่เข้ารหัสได้ Google จะไม่ได้รับหรือจัดเก็บพาสเฟรสดังกล่าว หากลืมพาสเฟรสหรือต้องการเปลี่ยนการตั้งค่านี้ ให้<ph name="BEGIN_LINK" />ลบข้อมูล Chrome ในบัญชี<ph name="END_LINK" /></translation>
 <translation id="1829244130665387512">ค้นหาในหน้าเว็บ</translation>
 <translation id="1832459821645506983">ได้สิ ตกลง</translation>
 <translation id="1845958458910716240">ให้ Chrome นำสิทธิ์ออกจากเว็บไซต์ที่คุณไม่ได้เข้าชมเมื่อเร็วๆ นี้เพื่อปกป้องข้อมูลของคุณ</translation>
@@ -557,7 +555,6 @@
 <translation id="3439276997620616816">คุณจะเห็นแท็บล่าสุดที่นี่</translation>
 <translation id="3443221991560634068">โหลดหน้าปัจจุบันอีกครั้ง</translation>
 <translation id="3444179773590444986">ต้องการแชร์ความคิดเห็นเกี่ยวกับธีมมืดสำหรับเว็บไซต์ไหม</translation>
-<translation id="3448874648066942074">สรุปหน้าเว็บด้วย AI</translation>
 <translation id="3452832259067974318">Chrome จะไม่ป้อนรหัสผ่านลงในช่องนี้โดยอัตโนมัติเพื่อปกป้องความเป็นส่วนตัวของคุณ</translation>
 <translation id="3474624961160222204">ดำเนินการต่อในชื่อ <ph name="NAME" /></translation>
 <translation id="3478363558367712427">คุณเลือกเครื่องมือค้นหาได้</translation>
@@ -857,7 +854,6 @@
 <translation id="4698757800236023795">ใช้งานอยู่ (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">รูปภาพและไฟล์ที่แคชไว้</translation>
 <translation id="4710167854527459075">จัดเรียงจากใหม่ที่สุด</translation>
-<translation id="4718044610319080485">เรียกใช้ผู้ช่วย AI</translation>
 <translation id="4719927025381752090">เสนอการแปล</translation>
 <translation id="4720556299488643018">ยกเลิกการสมัครรับข้อมูล</translation>
 <translation id="4732120983431207637">ตัวคลายสแต็ก</translation>
@@ -1236,7 +1232,6 @@
 <translation id="629730747756840877">บัญชี</translation>
 <translation id="6301526076346731664">เปิดเครื่องมือสำหรับนักพัฒนาซอฟต์แวร์</translation>
 <translation id="630308129961693966">เลือกตำแหน่งของแถบที่อยู่</translation>
-<translation id="6303969859164067831">ออกจากระบบและปิดการซิงค์</translation>
 <translation id="6305257382500066042">ลองใช้เลย</translation>
 <translation id="6307241780749477694">โปรดยืนยันว่าเป็นคุณเพื่อรับรหัสผ่านทั้งหมดในอุปกรณ์นี้</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, แท็บที่ปักหมุดซึ่งเลือกไว้หลายแท็บและมีเสียง</translation>
@@ -1314,7 +1309,6 @@
 <translation id="6565959834589222080">ระบบจะใช้ Wi-Fi เมื่อพร้อมใช้งาน</translation>
 <translation id="657177046675873214">หากต้องการรับบุ๊กมาร์กในอุปกรณ์ทุกเครื่อง ให้เปิด "บุ๊กมาร์ก" ในการตั้งค่า</translation>
 <translation id="6573096386450695060">อนุญาตเสมอ</translation>
-<translation id="6573431926118603307">แท็บที่คุณเปิดไว้ใน Chrome ในอุปกรณ์เครื่องอื่นๆ จะปรากฏที่นี่</translation>
 <translation id="6583199322650523874">บุ๊กมาร์กหน้าปัจจุบัน</translation>
 <translation id="6588043302623806746">ใช้ DNS ที่ปลอดภัย</translation>
 <translation id="6590471736817333463">ประหยัดอินเทอร์เน็ตได้ถึง 60%</translation>
@@ -1325,7 +1319,7 @@
 <translation id="661266467055912436">ปรับปรุงความปลอดภัยให้คุณและทุกคนที่ใช้อินเทอร์เน็ต</translation>
 <translation id="6621391692573306628">หากต้องการส่งแท็บนี้ไปยังอุปกรณ์อื่น ให้ลงชื่อเข้าใช้ Chrome ในอุปกรณ์ทั้ง 2 เครื่อง</translation>
 <translation id="6627583120233659107">แก้ไขโฟลเดอร์</translation>
-<translation id="6633067410344541938">ปลดล็อกเซสชันที่ไม่ระบุตัวตน</translation>
+<translation id="6633067410344541938">ปลดล็อกแท็บที่ไม่ระบุตัวตน</translation>
 <translation id="6636623428211296678">สำรวจดูการตั้งค่าเพิ่มเติมด้านล่างหรือสิ้นสุดการตรวจสอบเลย</translation>
 <translation id="6637100877383020115">Chrome จะส่งข้อมูลการใช้งานและข้อขัดข้องไปยัง Google เพื่อช่วยปรับปรุงแอป <ph name="BEGIN_UMA_LINK" />จัดการ<ph name="END_UMA_LINK" /></translation>
 <translation id="6641780377503683465">นำ<ph name="INTEREST" />ออก</translation>
@@ -1665,7 +1659,6 @@
 <translation id="7914399737746719723">ติดตั้งแอปแล้ว</translation>
 <translation id="7917574899775263813">ข้ามไปยังแท็บสุดท้าย</translation>
 <translation id="7919123827536834358">แปลภาษาเหล่านี้โดยอัตโนมัติ</translation>
-<translation id="7921782882718083488">สรุปหน้านี้</translation>
 <translation id="7926975587469166629">ชื่อเล่นของบัตร</translation>
 <translation id="7927073875790626822">XR</translation>
 <translation id="7929587383660661825">Chrome จะนำสิทธิ์ออกจากเว็บไซต์ที่ส่งการแจ้งเตือนมากเกินไปหรือที่คุณไม่ได้เข้าชมเมื่อเร็วๆ นี้โดยอัตโนมัติ</translation>
@@ -1829,7 +1822,6 @@
 <translation id="8538291624121505885"><ph name="TAB_TITLE" /> แท็บในโหมดการแสดงภาพซ้อนภาพที่ปักหมุดและเลือกไว้หลายแท็บ</translation>
 <translation id="8540136935098276800">ป้อน URL ที่มีรูปแบบที่ถูกต้อง</translation>
 <translation id="854522910157234410">เปิดหน้านี้</translation>
-<translation id="8547466829003330976">ตรวจสอบ PDF ด้วย AI</translation>
 <translation id="8551513938758868521">ล็อกแท็บที่ไม่ระบุตัวตนเมื่อออกจาก Chrome</translation>
 <translation id="8559961053328923750">Chrome จำกัดปริมาณข้อมูลทั้งหมดที่เว็บไซต์สามารถแชร์ผ่านเบราว์เซอร์เพื่อวัดประสิทธิภาพโฆษณา</translation>
 <translation id="8559990750235505898">เสนอที่จะแปลหน้าในภาษาอื่นๆ</translation>

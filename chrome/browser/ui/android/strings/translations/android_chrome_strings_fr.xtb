@@ -187,8 +187,6 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="1820408774134375111">Bottom sheet de connexion</translation>
 <translation id="1823492026305965829">Se connecter en tant que <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">Appuyez sur "Supprimer les données de navigation"</translation>
-<translation id="1825772852827001597">Les adresses et les modes de paiement Google Pay ne seront pas chiffrés. L'historique de navigation de Chrome ne sera pas synchronisé.
-Seule une personne connaissant votre phrase secrète peut lire vos données chiffrées. Google ne reçoit pas ni n'enregistre votre phrase secrète. Si vous l'avez oubliée ou si vous souhaitez modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chrome de votre compte<ph name="END_LINK" />.</translation>
 <translation id="1829244130665387512">Rechercher sur la page</translation>
 <translation id="1832459821645506983">Oui, j'accepte</translation>
 <translation id="1845958458910716240">Pour protéger vos données, autorisez Chrome à supprimer les autorisations des sites que vous n'avez pas consultés récemment</translation>
@@ -373,6 +371,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="2616989802003447151">{COUNT,plural, =1{1 élément}one{# élément}other{# éléments}}</translation>
 <translation id="2620314865574742210"><ph name="NAME" /> vous a invité à accéder à un élément partagé.</translation>
 <translation id="2634393460268044753">Envoie les URL des sites que vous consultez et un petit échantillon du contenu des pages, des téléchargements, de l'activité des extensions et des informations système à la navigation sécurisée Google afin de détecter un éventuel danger.</translation>
+<translation id="263442110807675126">Cela peut prendre quelques secondes</translation>
 <translation id="2643064289437760082">Vous pouvez toujours supprimer les données de mesure des annonces en supprimant vos données de navigation</translation>
 <translation id="2647434099613338025">Ajouter une langue</translation>
 <translation id="2650077116157640844">Plus sur les appareils synchronisés</translation>
@@ -556,7 +555,6 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="3439276997620616816">Vos onglets récents s'afficheront ici</translation>
 <translation id="3443221991560634068">Actualiser la page active</translation>
 <translation id="3444179773590444986">Envoyer des commentaires sur le thème sombre pour les sites ?</translation>
-<translation id="3448874648066942074">Résumer la page avec l'IA</translation>
 <translation id="3452832259067974318">Pour protéger votre confidentialité, Chrome ne saisit pas automatiquement votre mot de passe dans ce champ.</translation>
 <translation id="3474624961160222204">Continuer en tant que <ph name="NAME" /></translation>
 <translation id="3478363558367712427">Vous pouvez choisir votre moteur de recherche</translation>
@@ -856,7 +854,6 @@ Votre compte Google conserve peut-être d'autres contenus d'historique de naviga
 <translation id="4698757800236023795">Actives (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">Images et fichiers en cache</translation>
 <translation id="4710167854527459075">Trier par le plus récent</translation>
-<translation id="4718044610319080485">Appelle l'assistant IA</translation>
 <translation id="4719927025381752090">Proposer de traduire</translation>
 <translation id="4720556299488643018">Désabonner</translation>
 <translation id="4732120983431207637">Dérouleur de pile</translation>
@@ -1235,7 +1232,6 @@ Par exemple, certains sites Web peuvent répondre à cette demande en diffusant 
 <translation id="629730747756840877">Compte</translation>
 <translation id="6301526076346731664">Ouvrir les outils pour les développeurs</translation>
 <translation id="630308129961693966">Position de la barre d'adresse</translation>
-<translation id="6303969859164067831">Se déconnecter et désactiver la synchronisation</translation>
 <translation id="6305257382500066042">Essayer</translation>
 <translation id="6307241780749477694">Confirmez votre identité pour obtenir tous vos mots de passe sur cet appareil</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, onglet épinglé multisélectionné avec audio</translation>
@@ -1313,7 +1309,6 @@ Par exemple, certains sites Web peuvent répondre à cette demande en diffusant 
 <translation id="6565959834589222080">Le réseau Wi-Fi est utilisé s'il est disponible</translation>
 <translation id="657177046675873214">Pour accéder à vos favoris sur tous vos appareils, activez "Favoris" dans les paramètres</translation>
 <translation id="6573096386450695060">Toujours autoriser</translation>
-<translation id="6573431926118603307">Les onglets que vous avez ouverts dans Chrome sur vos autres appareils s'affichent ici.</translation>
 <translation id="6583199322650523874">Marquer la page actuelle en tant que favori</translation>
 <translation id="6588043302623806746">Utiliser un DNS sécurisé</translation>
 <translation id="6590471736817333463">Économisez jusqu'à 60 % de données mobiles</translation>
@@ -1664,7 +1659,6 @@ Pour modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chro
 <translation id="7914399737746719723">Appli installée</translation>
 <translation id="7917574899775263813">Accéder au dernier onglet</translation>
 <translation id="7919123827536834358">Traduire automatiquement ces langues</translation>
-<translation id="7921782882718083488">Résumer cette page</translation>
 <translation id="7926975587469166629">Nom donné à la carte</translation>
 <translation id="7927073875790626822">XR</translation>
 <translation id="7929587383660661825">Chrome supprime automatiquement les autorisations des sites qui abusent des notifications ou que vous n'avez pas consultés récemment</translation>
@@ -1828,7 +1822,6 @@ Pour modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chro
 <translation id="8538291624121505885"><ph name="TAB_TITLE" />, onglet épinglé multisélectionné en Picture-in-picture</translation>
 <translation id="8540136935098276800">Saisissez une URL dont le format est correct</translation>
 <translation id="854522910157234410">Ouvrir cette page</translation>
-<translation id="8547466829003330976">Examiner un PDF avec l'IA</translation>
 <translation id="8551513938758868521">Verrouiller les onglets de navigation privée quand vous fermez Chrome</translation>
 <translation id="8559961053328923750">Chrome limite la quantité totale de données que les sites peuvent partager via le navigateur pour mesurer les performances des annonces</translation>
 <translation id="8559990750235505898">Proposer de traduire les pages dans d'autres langues</translation>

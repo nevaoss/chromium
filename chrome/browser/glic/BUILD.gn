@@ -87,6 +87,7 @@ source_set("glic") {
     sources += [
       "public/widget/glic_side_panel_coordinator_android.h",
       "public/widget/glic_side_panel_coordinator_desktop_android.h",
+      "service/glic_instance_helper_android.cc",
     ]
   }
   public_deps = [
@@ -148,6 +149,7 @@ source_set("glic") {
   } else {  # is_android
     deps += [
       ":actor_types_for_migration",
+      "//chrome/browser/android:tabs_public",
       "//chrome/browser/context_sharing/tab_bottom_sheet/android",
     ]
   }
@@ -508,6 +510,7 @@ mojom("mojo_bindings") {
   sources = [
     "host/glic.mojom",
     "host/glic_features.mojom",
+    "host/glic_internals.mojom",
   ]
   webui_module_path = "/"
 
@@ -571,6 +574,7 @@ source_set("unit_tests") {
       "host/context/glic_page_features_manager_unittest.cc",
       "host/context/glic_pin_candidate_comparator_unittest.cc",
       "host/context/glic_screenshot_capturer_unittest.cc",
+      "host/context/glic_share_image_handler_unittest.cc",
       "host/context/glic_tab_data_unittest.cc",
       "host/glic_cookie_synchronizer_unittest.cc",
       "host/glic_web_contents_warming_pool_unittest.cc",
@@ -822,6 +826,7 @@ if (!is_android) {
       "//chrome/browser/glic:mojo_bindings",
       "//chrome/browser/glic/browser_ui:interactive_ui_tests",
       "//chrome/browser/glic/fre",
+      "//chrome/browser/glic/public:features",
       "//chrome/browser/glic/selection:interactive_ui_tests",
       "//chrome/browser/glic/suggestions",
       "//chrome/browser/glic/suggestions:test_support",

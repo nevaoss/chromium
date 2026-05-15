@@ -1255,7 +1255,6 @@ if (use_blink && !is_cronet_build) {
       "//third_party/catapult/third_party/typ",
       "//third_party/hyphenation-patterns:test_data",
       "//tools/imagediff",
-      "//ui/base:goldctl",
     ]
 
     if (is_android) {
@@ -1307,7 +1306,6 @@ if (use_blink && !is_cronet_build) {
     }
 
     data = [
-      "//build/skia_gold_common/",
       "//testing/scripts/common.py",
       "//testing/scripts/run_isolated_script_test.py",
       "//testing/xvfb.py",
@@ -1374,10 +1372,6 @@ if (use_blink && !is_cronet_build) {
       # In a pure release build with a debug V8, tests run slower.
       _common_web_test_args += [ "--timeout-ms=30000" ]
     }
-  }
-
-  if (is_chrome_branded) {
-    _common_web_test_args += [ "--chrome-branded" ]
   }
 
   if (is_android) {
@@ -1499,7 +1493,6 @@ if (use_blink && !is_cronet_build) {
       "//build/android/",
       "//build/gn_helpers.py",
       "//build/config/gclient_args.gni",
-      "//build/skia_gold_common/",
       "//components/crash/content/tools/generate_breakpad_symbols.py",
       "//testing/unexpected_passes_common/",
       "//testing/flake_suppressor_common/",
@@ -1534,8 +1527,6 @@ if (use_blink && !is_cronet_build) {
     if (is_ios) {
       data += [ "//third_party/blink/web_tests/IOSTestExpectations" ]
     }
-
-    data_deps = [ "//ui/base:goldctl" ]
   }
 }
 

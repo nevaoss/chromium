@@ -98,6 +98,7 @@
 #include "chrome/browser/ui/startup/startup_browser_creator_impl.h"
 #include "chrome/browser/ui/startup/startup_tab.h"
 #include "chrome/browser/ui/startup/startup_types.h"
+#include "chrome/browser/ui/startup/url_util.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -105,6 +106,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/color_provider_browser_helper.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_paths_internal.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/extensions/extension_constants.h"
@@ -184,10 +186,12 @@ void BeginHandlingWebAuthenticationSessionRequestWithProfile(
 // not possible. If the last active browser is minimized (in particular, if
 // there are only minimized windows), it will unminimize it.
 Browser* ActivateBrowser(Profile* profile) {
-  BrowserWindowInterface* current_browser = chrome::FindLastActiveWithProfile(
-      profile->IsGuestSession()
-          ? profile->GetPrimaryOTRProfile(/*create_if_needed=*/true)
-          : profile);
+  BrowserWindowInterface* current_browser =
+      ProfileBrowserCollection::GetForProfile(
+          profile->IsGuestSession()
+              ? profile->GetPrimaryOTRProfile(/*create_if_needed=*/true)
+              : profile)
+          ->GetLastActiveBrowser();
   Browser* browser =
       current_browser ? current_browser->GetBrowserForMigrationOnly() : nullptr;
 
@@ -214,10 +218,21 @@ void LaunchBrowserStartup(Profile* profile) {
 
   base::AutoReset<bool> auto_reset_in_run(&g_is_opening_new_window, true);
   StartupBrowserCreator browser_creator;
-  browser_creator.LaunchBrowser(
-      *base::CommandLine::ForCurrentProcess(), profile, base::FilePath(),
-      chrome::startup::IsProcessStartup::kNo, chrome::startup::IsFirstRun::kYes,
-      /*restore_tabbed_browser=*/true);
+
+  // For user-initiated launches (e.g. Dock icon click), we use a fresh command
+  // line if SmartRestart is enabled. This prevents the new window from being
+  // suppressed by any --no-startup-window flag that might have been used during
+  // the initial background restart.
+  base::CommandLine command_line =
+      base::FeatureList::IsEnabled(features::kSmartRestart)
+          ? base::CommandLine(
+                base::CommandLine::ForCurrentProcess()->GetProgram())
+          : *base::CommandLine::ForCurrentProcess();
+
+  browser_creator.LaunchBrowser(command_line, profile, base::FilePath(),
+                                chrome::startup::IsProcessStartup::kNo,
+                                chrome::startup::IsFirstRun::kYes,
+                                /*restore_tabbed_browser=*/true);
 }
 
 // Creates an empty browser window with the given profile and returns a pointer
@@ -234,7 +249,8 @@ BrowserWindowInterface* CreateBrowser(Profile* profile) {
     chrome::NewEmptyWindow(profile);
   }
 
-  BrowserWindowInterface* browser = chrome::FindLastActive();
+  BrowserWindowInterface* browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   CHECK(browser);
   return browser;
 }
@@ -338,7 +354,7 @@ void FocusWindowSetOnCurrentSpace(NSSet<NSWindow*>* windows) {
   // haphazardly.
   //
   // Also consider both visible and hidden windows; this call races
-  // with the system unhiding the application. http://crbug.com/368238
+  // with the system unhiding the application. http://crbug.com/41104339
   //
   // NOTE: If this is called in the
   // -applicationShouldHandleReopen:hasVisibleWindows: hook when
@@ -930,7 +946,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 
   // TODO(viettrungluu): Remove Apple Event handlers here? (It's safe to leave
   // them in, but I'm not sure about UX; we'd also want to disable other things
-  // though.) http://crbug.com/40861
+  // though.) http://crbug.com/40381772
 
   // Check for active apps. If quitting is prevented, only close browsers and
   // sessions.
@@ -971,7 +987,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
     browser_shutdown::SetTryingToQuit(false);
     [[ConfirmQuitPanelController sharedController] cancel];
     // TODO(viettrungluu): Were we to remove Apple Event handlers above, we
-    // would have to reinstall them here. http://crbug.com/40861
+    // would have to reinstall them here. http://crbug.com/40381772
   }
 }
 
@@ -995,11 +1011,14 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
     return YES;
   }
 
+  NSEvent* event = [NSApp currentEvent];
   // Run only for keyboard-initiated quits.
-  if ([[NSApp currentEvent] type] != NSEventTypeKeyDown)
-    return NSTerminateNow;
+  if (event.type != NSEventTypeKeyDown) {
+    return YES;
+  }
 
-  return [[ConfirmQuitPanelController sharedController] runModalLoop];
+  return [[ConfirmQuitPanelController sharedController]
+      runConfirmQuitLoopWithEvent:event];
 }
 
 // Called when the app is shutting down. Clean-up as appropriate.
@@ -1271,7 +1290,8 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(switches::kKioskMode))
     ConfigureNSAppForKioskMode();
 
-  BrowserWindowInterface* browser = chrome::FindLastActive();
+  BrowserWindowInterface* browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   content::WebContents* activeWebContents = nullptr;
   if (browser) {
     activeWebContents = browser->GetTabStripModel()->GetActiveWebContents();
@@ -1460,7 +1480,8 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
   if ([NSApp modalWindow])
     return YES;
 
-  BrowserWindowInterface* browser = chrome::FindLastActive();
+  BrowserWindowInterface* browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   return browser &&
          [[browser->GetWindow()->GetNativeWindow().GetNativeNSWindow()
              attachedSheet] isKindOfClass:[NSWindow class]];
@@ -2103,7 +2124,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
     // visible, and restore its original hidden state after resetting the
     // submenu. This works around an apparent AppKit bug where setting a
     // *different* NSMenu submenu on a *hidden* menu item forces the item to
-    // become visible. See https://crbug.com/497813 for more details.
+    // become visible. See https://crbug.com/40421657 for more details.
     bookmarkItem.hidden = NO;
     _bookmarkMenuBridge = nullptr;
   } else if (_bookmarkMenuBridge && !_isShuttingDown) {
@@ -2413,7 +2434,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
       // started.
       [GetPendingWebAuthRequests() removeObjectForKey:key];
 
-      // Take care of the undocumented requirement (https://crbug.com/1400714)
+      // Take care of the undocumented requirement (https://crbug.com/40250389)
       // that -[ASWebAuthenticationSessionRequest cancelWithError:] be called
       // for authentication sessions canceled by the OS.
       NSError* error = [NSError
@@ -2443,7 +2464,7 @@ class AppControllerProfileObserver : public ProfileAttributesStorage::Observer,
 - (void)setLastProfileForTesting:(Profile*)profile {
   _lastProfile = profile;
   BrowserWindowInterface* current_browser =
-      chrome::FindLastActiveWithProfile(profile);
+      ProfileBrowserCollection::GetForProfile(profile)->GetLastActiveBrowser();
   Browser* browser =
       current_browser ? current_browser->GetBrowserForMigrationOnly() : nullptr;
   _lastActiveBrowser = browser->GetWeakPtr();
@@ -2501,7 +2522,7 @@ void OpenUrlsInBrowserWithProfile(const std::vector<GURL>& urls,
   launch.OpenURLsInBrowser(browser->GetBrowserForMigrationOnly(),
                            chrome::startup::IsProcessStartup::kNo, urls);
 
-  // This NTP check should be replaced once https://crbug.com/624410 is fixed.
+  // This NTP check should be replaced once https://crbug.com/41261582 is fixed.
   if (startupIndex != TabStripModel::kNoTab &&
       (startupContent->GetVisibleURL() == chrome::kChromeUINewTabURL ||
        startupContent->GetVisibleURL() == chrome::kChromeUINewTabPageURL)) {

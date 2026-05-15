@@ -193,9 +193,6 @@ BASE_FEATURE(kIPHPdfSearchifyFeature,
 BASE_FEATURE(kIPHPerformanceInterventionDialogFeature,
              "IPH_PerformanceInterventionDialogFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHPlusAddressFirstSaveFeature,
-             "IPH_PlusAddressFirstSaveFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHPowerBookmarksSidePanelFeature,
              "IPH_PowerBookmarksSidePanel",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -217,11 +214,14 @@ BASE_FEATURE(kIPHReadingListEntryPointFeature,
 BASE_FEATURE(kIPHReadingListInSidePanelFeature,
              "IPH_ReadingListInSidePanel",
              base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHReadingModeSidePanelFeature,
-             "IPH_ReadingModeSidePanel",
+BASE_FEATURE(kIPHReadingModeKeyboardShortcutFeature,
+             "IPH_ReadingModeKeyboardShortcut",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHReadingModePageActionLabelFeature,
              "IPH_ReadingModePageActionLabel",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHReadingModeSidePanelFeature,
+             "IPH_ReadingModeSidePanel",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHShoppingCollectionFeature,
              "IPH_ShoppingCollectionFeature",
@@ -231,7 +231,7 @@ BASE_FEATURE(kIPHSideBySidePinnableFeature,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHSideBySideTabSwitchFeature,
              "IPH_SideBySideTabSwitchFeature",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHVerticalTabsExpandOnHoverFeature,
              "IPH_VerticalTabsExpandOnHoverFeature",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -881,6 +881,10 @@ BASE_FEATURE(kIPHiOSGeminiImageRemixFeature,
              "IPH_iOSGeminiImageRemixFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kIPHiOSNewIAPromoFeature,
+             "IPH_iOSNewIAPromoFeature",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kIPHiOSPinMostVisitedSiteFeature,
              "IPH_iOSPinMostVisitedSiteFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -943,9 +947,6 @@ BASE_FEATURE(kIPHAutofillVirtualCardSuggestionFeature,
 BASE_FEATURE(kIPHCookieControlsFeature,
              "IPH_CookieControls",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHPlusAddressCreateSuggestionFeature,
-             "IPH_PlusAddressCreateSuggestion",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAutofillEnableLoyaltyCardsFeature,
              "IPH_AutofillEnableLoyaltyCards",
              base::FEATURE_ENABLED_BY_DEFAULT);

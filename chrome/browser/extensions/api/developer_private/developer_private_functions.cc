@@ -48,6 +48,7 @@
 #include "chrome/common/pref_names.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/signin/public/base/signin_switches.h"
+#include "components/sync/base/features.h"
 #include "content/public/common/drop_data.h"
 #include "extensions/browser/crx_installer.h"
 #include "extensions/browser/disable_reason.h"
@@ -94,10 +95,10 @@
 #include "base/uuid.h"
 #include "chrome/browser/platform_util.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/extensions/application_launch.h"
 #include "chrome/browser/ui/safety_hub/safety_hub_constants.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -125,7 +126,7 @@
 #include "extensions/common/feature_switch.h"
 #include "extensions/common/install_warning.h"
 #include "extensions/common/manifest.h"
-#include "extensions/common/manifest_url_handlers.h"
+#include "extensions/common/manifest_handlers/manifest_url_handlers.h"
 #include "extensions/common/mojom/context_type.mojom.h"
 #include "extensions/common/url_pattern.h"
 #include "extensions/common/url_pattern_set.h"
@@ -2213,9 +2214,13 @@ DeveloperPrivateUploadExtensionToAccountFunction::Run() {
   //   disabled.
   // - the extension is already associated with the signed in user's account.
   // - the extension is not syncable (for example, if it's unpacked).
-  if (!switches::IsExtensionsExplicitBrowserSigninEnabled() ||
-      !AccountExtensionTracker::Get(profile_)->CanUploadAsAccountExtension(
-          *extension)) {
+  if (!AccountExtensionTracker::Get(profile_)->CanUploadAsAccountExtension(
+          *extension)
+#if BUILDFLAG(IS_CHROMEOS)
+      ||
+      !base::FeatureList::IsEnabled(syncer::kReplaceSyncPromosWithSignInPromos)
+#endif
+  ) {
     return RespondNow(Error(ErrorUtils::FormatErrorMessage(
         kCannotUploadExtensionToAccount, extension_id_)));
   }
@@ -2594,8 +2599,10 @@ DeveloperPrivateDismissMv2DeprecationNoticeForExtensionFunction::Run() {
         return AlreadyResponded();
       }
 
-      BrowserWindowInterface* const browser = chrome::FindLastActiveWithProfile(
-          Profile::FromBrowserContext(browser_context()));
+      BrowserWindowInterface* const browser =
+          ProfileBrowserCollection::GetForProfile(
+              Profile::FromBrowserContext(browser_context()))
+              ->GetLastActiveBrowser();
       if (!browser) {
         return RespondNow(Error(kCouldNotFindWebContentsError));
       }

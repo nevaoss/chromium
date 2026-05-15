@@ -655,7 +655,6 @@ class CORE_EXPORT LocalFrameView final
   void Hide() override;
 
   bool IsLocalFrameView() const override { return true; }
-  bool ShouldReportMainFrameIntersection() const override { return true; }
 
   void Trace(Visitor*) const override;
 
@@ -1146,8 +1145,6 @@ class CORE_EXPORT LocalFrameView final
   DarkModeFilter& EnsureDarkModeFilter();
 
   void UpdateCanCompositeBackgroundAttachmentFixed();
-
-  void EnqueueScrollSnapChangingFromImplIfNecessary();
 
   void RunCanvasOnpaintSteps();
 

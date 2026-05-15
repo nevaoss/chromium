@@ -293,6 +293,7 @@ IN_PROC_BROWSER_TEST_F(WebAppLaunchUseCounterBrowserTest,
   Browser* app_browser = browser_observer.Wait();
   test::WaitForLoadCompleteAndMaybeManifestSeen(
       *app_browser->tab_strip_model()->GetActiveWebContents());
+  content::FetchHistogramsFromChildProcesses();
 
   EXPECT_EQ(1, web_feature_histogram_tester.GetCount(
                    blink::mojom::WebFeature::kInstalledManifestApplied));
@@ -309,6 +310,7 @@ IN_PROC_BROWSER_TEST_F(WebAppLaunchUseCounterBrowserTest,
   Browser* const app_browser = LaunchWebAppBrowserAndWait(app_id);
   content::WaitForLoadStop(
       app_browser->tab_strip_model()->GetActiveWebContents());
+  content::FetchHistogramsFromChildProcesses();
 
   // Measured twice, since launching creates a new app browser.
   EXPECT_EQ(2, web_feature_histogram_tester.GetCount(
@@ -323,6 +325,7 @@ IN_PROC_BROWSER_TEST_F(WebAppLaunchUseCounterBrowserTest,
   NavigateViaLinkClickToURLAndWait(browser(), test_url);
 
   const webapps::AppId app_id = test::InstallPwaForCurrentUrl(browser());
+  content::FetchHistogramsFromChildProcesses();
 
   EXPECT_EQ(0, web_feature_histogram_tester.GetCount(
                    blink::mojom::WebFeature::kInstalledManifestApplied));
@@ -339,6 +342,7 @@ IN_PROC_BROWSER_TEST_F(WebAppLaunchUseCounterBrowserTest,
   Browser* const app_browser = LaunchWebAppBrowserAndWait(app_id);
   content::WaitForLoadStop(
       app_browser->tab_strip_model()->GetActiveWebContents());
+  content::FetchHistogramsFromChildProcesses();
 
   EXPECT_EQ(2, web_feature_histogram_tester.GetCount(
                    blink::mojom::WebFeature::kInstalledManifestApplied));
@@ -348,6 +352,7 @@ IN_PROC_BROWSER_TEST_F(WebAppLaunchUseCounterBrowserTest,
       app_browser, test_url, /*number_of_navigations=*/1);
   content::WaitForLoadStop(
       app_browser->tab_strip_model()->GetActiveWebContents());
+  content::FetchHistogramsFromChildProcesses();
 
   // Use counter count changes as per navigations.
   EXPECT_EQ(3, web_feature_histogram_tester.GetCount(
@@ -365,6 +370,7 @@ IN_PROC_BROWSER_TEST_F(WebAppLaunchUseCounterBrowserTest,
   Browser* const app_browser = LaunchWebAppBrowserAndWait(app_id);
   content::WaitForLoadStop(
       app_browser->tab_strip_model()->GetActiveWebContents());
+  content::FetchHistogramsFromChildProcesses();
 
   EXPECT_EQ(2, web_feature_histogram_tester.GetCount(
                    blink::mojom::WebFeature::kInstalledManifestApplied));
@@ -377,6 +383,7 @@ IN_PROC_BROWSER_TEST_F(WebAppLaunchUseCounterBrowserTest,
       app_browser, out_of_scope_url, /*number_of_navigations=*/1);
   content::WaitForLoadStop(
       app_browser->tab_strip_model()->GetActiveWebContents());
+  content::FetchHistogramsFromChildProcesses();
 
   // Use counter does not change for out of scope navigations.
   EXPECT_EQ(2, web_feature_histogram_tester.GetCount(
@@ -388,6 +395,7 @@ IN_PROC_BROWSER_TEST_F(WebAppLaunchUseCounterBrowserTest,
       app_browser, test_url, /*number_of_navigations=*/1);
   content::WaitForLoadStop(
       app_browser->tab_strip_model()->GetActiveWebContents());
+  content::FetchHistogramsFromChildProcesses();
 
   // Use counter will increment for an in-scope navigations.
   EXPECT_EQ(3, web_feature_histogram_tester.GetCount(
@@ -536,8 +544,6 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, ManifestWithColor) {
             SK_ColorGREEN);
 }
 
-// Also see BackgroundColorChangeSystemWebAppBrowserTest.BackgroundColorChange
-// below.
 IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, BackgroundColorChange) {
   const GURL app_url = GetSecureAppURL();
   auto web_app_info = WebAppInstallInfo::CreateWithStartUrlForTesting(app_url);
@@ -553,9 +559,13 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, BackgroundColorChange) {
   content::WebContents* const web_contents =
       app_browser->tab_strip_model()->GetActiveWebContents();
 
-  // Wait for original background color to load.
+  // Wait for original background color to load. LaunchWebAppBrowser() calls
+  // WaitForLoadStop() internally, which may process the initial
+  // OnBackgroundColorChanged notification before we can create a waiter. Using
+  // the expected-color overload handles this: if the color already matches, the
+  // waiter returns immediately.
   {
-    content::BackgroundColorChangeWaiter waiter(web_contents);
+    content::BackgroundColorChangeWaiter waiter(web_contents, SK_ColorWHITE);
     waiter.Wait();
     EXPECT_EQ(app_browser->app_controller()->GetBackgroundColor().value(),
               SK_ColorWHITE);
@@ -564,7 +574,7 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, BackgroundColorChange) {
 
   // Changing background color should update the active tab color.
   {
-    content::BackgroundColorChangeWaiter waiter(web_contents);
+    content::BackgroundColorChangeWaiter waiter(web_contents, SK_ColorCYAN);
     EXPECT_TRUE(content::ExecJs(
         web_contents, "document.body.style.backgroundColor = 'cyan';"));
     waiter.Wait();
@@ -2574,6 +2584,7 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, ManifestWithDisplayBrowser) {
   NavigateViaLinkClickToURLAndWait(browser(), test_url);
 
   const webapps::AppId app_id = test::InstallPwaForCurrentUrl(browser());
+  content::FetchHistogramsFromChildProcesses();
 
   EXPECT_EQ(1, web_feature_histogram_tester.GetCount(
                    blink::mojom::WebFeature::kWebAppManifestDisplay));
@@ -2590,6 +2601,7 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, ManifestWithDisplayMinimalUI) {
   NavigateViaLinkClickToURLAndWait(browser(), test_url);
 
   const webapps::AppId app_id = test::InstallPwaForCurrentUrl(browser());
+  content::FetchHistogramsFromChildProcesses();
 
   EXPECT_EQ(1, web_feature_histogram_tester.GetCount(
                    blink::mojom::WebFeature::kWebAppManifestDisplay));
@@ -2606,6 +2618,7 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, ManifestWithDisplayFullscreen) {
   NavigateViaLinkClickToURLAndWait(browser(), test_url);
 
   const webapps::AppId app_id = test::InstallPwaForCurrentUrl(browser());
+  content::FetchHistogramsFromChildProcesses();
 
   EXPECT_EQ(1, web_feature_histogram_tester.GetCount(
                    blink::mojom::WebFeature::kWebAppManifestDisplay));
@@ -2621,6 +2634,7 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, ManifestWithDisplayStandalone) {
   NavigateViaLinkClickToURLAndWait(browser(), test_url);
 
   const webapps::AppId app_id = test::InstallPwaForCurrentUrl(browser());
+  content::FetchHistogramsFromChildProcesses();
 
   EXPECT_EQ(1, web_feature_histogram_tester.GetCount(
                    blink::mojom::WebFeature::kWebAppManifestDisplay));

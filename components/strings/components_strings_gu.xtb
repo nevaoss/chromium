@@ -152,6 +152,7 @@
 <translation id="1228893227497259893">ખોટો અસ્તિત્વ ઓળખકર્તા</translation>
 <translation id="1230244617745022071"><ph name="SOURCE" /> (ઑટોમૅટિક રીતે ભાળ મેળવેલી)</translation>
 <translation id="1232569758102978740">શીર્ષક વિનાનું</translation>
+<translation id="1234539281285007945"><ph name="FIELD_1" /> જરૂરી છે</translation>
 <translation id="1236081509407217141">VRને મંજૂરી આપીએ?</translation>
 <translation id="1236689197410206751">AfterPay</translation>
 <translation id="1240347957665416060">તમારા ડિવાઇસનું નામ</translation>
@@ -472,6 +473,7 @@
 <translation id="1721424275792716183">* ફીલ્ડ આવશ્યક છે</translation>
 <translation id="1723636263173393300">આ પૉલિસીમાં <ph name="MAX_ITEMS_LIMIT" /> કરતાં વધારે શૉર્ટકટ હોવા જોઈએ નહીં.</translation>
 <translation id="1725591448053514783">એન્વલપ યુ 6</translation>
+<translation id="172754119609519423"><ph name="FIELD_1" />, <ph name="FIELD_2" /> અથવા <ph name="FIELD_3" /> જરૂરી છે</translation>
 <translation id="1727613060316725209">પ્રમાણપત્ર માન્ય છે</translation>
 <translation id="1728677426644403582">તમે વેબ પેજનો સ્રોત જોઈ રહ્યાં છો</translation>
 <translation id="173080396488393970">આ પ્રકારનું કાર્ડ સમર્થિત નથી</translation>
@@ -1432,6 +1434,7 @@
 <translation id="3220264767789936523">સામાન્ય રીતે પહેરાતો પોશાક</translation>
 <translation id="3223287115535306850">ઍપ લૉન્ચ કરનારું થ્રોબર</translation>
 <translation id="3223425961342298674">લોકેશનની મંજૂરી નથી</translation>
+<translation id="3225277284238802910"><ph name="FIELD_1" /> અથવા <ph name="FIELD_2" /> જરૂરી છે</translation>
 <translation id="3225319735946384299">કોડ સાઇનિંગ </translation>
 <translation id="3225919329040284222">સર્વર એક પ્રમાણપત્ર પ્રસ્તુત કરે છે જે બિલ્ટ-ઇન અપેક્ષાઓ સાથે મેળ ખાતું નથી. આ અપેક્ષાઓમાં તમને સુરક્ષિત રાખવા માટે અમુક ચોક્કસ, ઉચ્ચ-સુરક્ષા વેબસાઇટ્સનો સમાવેશ થાય છે.</translation>
 <translation id="3226128629678568754">પેજને લોડ કરવા માટે જરૂરી ડેટા ફરીથી સબમિટ કરવા માટે ફરીથી લોડ કરો બટન દબાવો.</translation>
@@ -2156,6 +2159,7 @@
 <translation id="4318312030194671742">પેઇન્ટ પ્રીવ્યૂ કમ્પોઝિટર સેવા</translation>
 <translation id="4318566738941496689">તમારા ડિવાઇસનું નામ અને નેટવર્ક ઍડ્રેસ</translation>
 <translation id="4320119221194966055">વ્યક્તિગત લોન</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> તરફથી લિંક પ્રાપ્ત થઈ}one{<ph name="DEVICE_NAME" /> તરફથી # લિંક પ્રાપ્ત થઈ}other{<ph name="DEVICE_NAME" /> તરફથી # લિંક પ્રાપ્ત થઈ}}</translation>
 <translation id="4325600325087822253">ટ્રે 17</translation>
 <translation id="4325863107915753736">લેખ શોધવામાં નિષ્ફળ થયાં</translation>
 <translation id="4326324639298822553">તમારી સમાપ્તિ તારીખ તપાસો અને ફરી પ્રયાસ કરો</translation>
@@ -3187,6 +3191,7 @@
 <translation id="5968400720580217226">AI મોડ</translation>
 <translation id="5969199813874624822">સાચવો અને કિંમત ટ્રૅક કરો</translation>
 <translation id="5969933937005244170">જો તમે સંબંધિત ખુલ્લા ટૅબને થ્રેડમાં શેર કરો, તો જ તેનો ઉપયોગ કરવામાં આવશે</translation>
+<translation id="5972020793760134803">ટૅબ પર સ્વિચ કરો</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">છઠ્ઠો રોલ</translation>
 <translation id="5975083100439434680">ઝૂમ ઘટાડો</translation>
@@ -4982,6 +4987,7 @@
 <translation id="8758529215314160755">તમે તમારા <ph name="BEGIN_LINK" />Google એકાઉન્ટ<ph name="END_LINK" /> <ph name="ACCOUNT" />માં જઈને તમારા નામમાં ફેરફાર કરી શકો છો</translation>
 <translation id="8759274551635299824">આ કાર્ડની સમયસીમા સમાપ્ત થઈ ગઈ છે</translation>
 <translation id="87601671197631245">આ સાઇટ હજી પણ જૂના સુરક્ષા કન્ફિગ્યુરેશનનો ઉપયોગ કરે છે, જેને લીધે તમારી માહિતી (ઉદાહરણ તરીકે, પાસવર્ડ, મેસેજ અથવા ક્રેડિટ કાર્ડ) જ્યારે આ સાઇટને મોકલવામાં આવે, ત્યારે તે જોખમમાં આવી શકે છે.</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> તરફથી લિંક મોકલવામાં આવી}one{<ph name="DEVICE_NAME" /> તરફથી # લિંક મોકલવામાં આવી}other{<ph name="DEVICE_NAME" /> તરફથી # લિંક મોકલવામાં આવી}}</translation>
 <translation id="8763927697961133303">USB ઉપકરણ</translation>
 <translation id="8763986294015493060">હાલમાં ખુલ્લી બધી છૂપી વિન્ડો બંધ કરો</translation>
 <translation id="8766943070169463815">સુરક્ષિત ચુકવણી માટે લૉગ ઇન વિગતના પ્રમાણીકરણની શીટ ખુલ્લી છે</translation>

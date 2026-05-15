@@ -9,6 +9,8 @@
 #import "components/omnibox/browser/omnibox_pref_names.h"
 #import "components/omnibox/common/omnibox_features.h"
 #import "components/prefs/pref_service.h"
+#import "ios/chrome/app/profile/profile_state.h"
+#import "ios/chrome/browser/banner_promo/model/default_browser_banner_promo_app_agent.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent_observer_bridge.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
@@ -33,6 +35,7 @@
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/contextual_panel_entrypoint_commands.h"
 #import "ios/chrome/browser/shared/public/commands/find_in_page_commands.h"
+#import "ios/chrome/browser/shared/public/commands/fullscreen_commands.h"
 #import "ios/chrome/browser/shared/public/commands/guided_tour_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/location_bar_badge_commands.h"
@@ -40,6 +43,7 @@
 #import "ios/chrome/browser/shared/public/commands/popup_menu_commands.h"
 #import "ios/chrome/browser/shared/public/commands/reader_mode_chip_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
+#import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/public/commands/text_zoom_commands.h"
 #import "ios/chrome/browser/shared/public/commands/toolbar_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
@@ -69,6 +73,11 @@
 #import "ios/chrome/common/ui/util/ui_util.h"
 #import "ios/components/webui/web_ui_url_constants.h"
 #import "ios/web/public/web_state.h"
+
+namespace {
+// Extra vertical spacing when the banner promo is active on split mode.
+constexpr CGFloat kBannerPromoVerticalSpacing = 8;
+}  // namespace
 
 @interface MainToolbarCoordinator () <ContextualPanelEntrypointCommands,
                                       GuidedTourCommands,
@@ -219,6 +228,8 @@
     _tabGroupIndicatorCoordinator.toolbarHeightDelegate =
         self.toolbarHeightDelegate;
     [_tabGroupIndicatorCoordinator start];
+    [_topToolbarMediator
+        setUICurrentlySupportsPromo:!_tabGroupIndicatorCoordinator.viewVisible];
     [_topToolbarViewController
         setTabGroupIndicatorView:_tabGroupIndicatorCoordinator.view];
 
@@ -536,6 +547,13 @@
       height += kTabGroupIndicatorHeight;
       if (isOmniboxInBottomPosition) {
         height -= kTopToolbarUnsplitMargin;
+      }
+    }
+    if (_topToolbarViewController.bannerPromoVisible) {
+      height += kToolbarPromoBannerHeight;
+      if (IsSplitToolbarMode(_topToolbarViewController) &&
+          !isOmniboxInBottomPosition) {
+        height += kBannerPromoVerticalSpacing;
       }
     }
     if (isOmniboxInBottomPosition) {
@@ -1004,12 +1022,20 @@
 
 - (void)mainToolbarMediatorDidChangeOmniboxPosition:
     (MainToolbarMediator*)mediator {
+  if (!IsChromeNextIaEnabled()) {
+    return;
+  }
+
   if (mediator.isOmniboxInBottomPosition) {
     [_topLocationBarCoordinator setLocationBarActive:NO];
     [_bottomLocationBarCoordinator setLocationBarActive:YES];
+    OmniboxPositionBrowserAgent::FromBrowser(self.browser)
+        ->SetIsCurrentLayoutBottomOmnibox(YES);
   } else {
     [_topLocationBarCoordinator setLocationBarActive:YES];
     [_bottomLocationBarCoordinator setLocationBarActive:NO];
+    OmniboxPositionBrowserAgent::FromBrowser(self.browser)
+        ->SetIsCurrentLayoutBottomOmnibox(NO);
   }
 }
 
@@ -1189,7 +1215,8 @@
   ToolbarViewController* toolbarViewController =
       [[ToolbarViewController alloc] initInIncognito:incognito
                                          topPosition:topPosition];
-  toolbarViewController.buttonFactory = [[ToolbarButtonFactory alloc] init];
+  toolbarViewController.buttonFactory =
+      [[ToolbarButtonFactory alloc] initWithIncognito:incognito];
   toolbarViewController.mutator = mediator;
   toolbarViewController.browserCoordinatorHandler =
       HandlerForProtocol(dispatcher, BrowserCoordinatorCommands);
@@ -1201,6 +1228,7 @@
       HandlerForProtocol(dispatcher, SceneCommands);
   toolbarViewController.toolbarHeightDelegate = self.toolbarHeightDelegate;
   toolbarViewController.locationBarViewController = locationBar;
+  toolbarViewController.bannerPromoDelegate = mediator;
 
   if (incognito) {
     toolbarViewController.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
@@ -1233,14 +1261,28 @@
       initWithBrowser:browser
              scenario:kMenuScenarioHistogramToolbarMenu];
 
+  BOOL isIncognito = self.profile->IsOffTheRecord();
+  DefaultBrowserBannerPromoAppAgent* agent = nil;
+  if (topPosition && !isIncognito) {
+    agent = [DefaultBrowserBannerPromoAppAgent
+        agentFromApp:browser->GetSceneState().profileState.appState];
+  }
+
   ToolbarMediator* toolbarMediator = [[ToolbarMediator alloc]
-      initWithWebStateList:browser->GetWebStateList()
-             actionFactory:actionFactory
-      fullscreenController:FullscreenController::FromBrowser(browser)
-               topPosition:topPosition];
-  toolbarMediator.incognito = self.profile->IsOffTheRecord();
+              initWithWebStateList:browser->GetWebStateList()
+                     actionFactory:actionFactory
+              fullscreenController:FullscreenController::FromBrowser(browser)
+                       topPosition:topPosition
+      defaultBrowserBannerAppAgent:agent];
+  toolbarMediator.incognito = isIncognito;
   toolbarMediator.navigationBrowserAgent =
       WebNavigationBrowserAgent::FromBrowser(browser);
+  if (IsFullscreenRefactoringEnabled()) {
+    toolbarMediator.fullscreenCommands =
+        HandlerForProtocol(browser->GetCommandDispatcher(), FullscreenCommands);
+  }
+  toolbarMediator.settingsHandler =
+      HandlerForProtocol(browser->GetCommandDispatcher(), SettingsCommands);
 
   return toolbarMediator;
 }

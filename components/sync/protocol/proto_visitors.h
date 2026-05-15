@@ -668,6 +668,7 @@ VISIT_PROTO_FIELDS(const sync_pb::FeatureSpecificFields& proto) {
   VISIT(auto_sign_out_last_signin_timestamp_windows_epoch_micros);
   VISIT(desktop_to_ios_promo_receiving_enabled);
   VISIT_REP(desktop_to_ios_promo_receiving_types);
+  VISIT(glic_experimental_triggering_opted_in);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::SharingSpecificFields& proto) {
@@ -735,7 +736,7 @@ VISIT_PROTO_FIELDS(
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::EntitySpecifics& proto) {
-  static_assert(63 == GetNumDataTypes(),
+  static_assert(64 == GetNumDataTypes(),
                 "When adding a new protocol type, you will likely need to add "
                 "it here as well.");
   VISIT(encrypted);
@@ -1443,6 +1444,8 @@ VISIT_PROTO_FIELDS(const sync_pb::SessionTab& proto) {
 
 VISIT_PROTO_FIELDS(const sync_pb::SessionTabScreenshot& proto) {
   VISIT_BYTES(screenshot_data);
+  VISIT(url);
+  VISIT(timestamp_unix_epoch_millis);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::SessionWindow& proto) {

@@ -46,6 +46,7 @@
 #include "components/history/core/browser/features.h"
 #include "components/history_clusters/core/features.h"
 #include "components/language/core/common/language_experiments.h"
+#include "components/lens/lens_features.h"
 #include "components/ntp_tiles/features.h"
 #include "components/offline_pages/core/offline_page_feature.h"
 #include "components/omnibox/common/omnibox_features.h"
@@ -59,7 +60,6 @@
 #include "components/policy/core/common/features.h"
 #include "components/privacy_sandbox/privacy_sandbox_features.h"
 #include "components/push_messaging/push_messaging_features.h"
-#include "components/regional_capabilities/regional_capabilities_switches.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "components/safety_check/features.h"
 #include "components/saved_tab_groups/public/features.h"
@@ -76,6 +76,7 @@
 #include "components/sync/base/features.h"
 #include "components/sync_preferences/features.h"
 #include "components/sync_sessions/features.h"
+#include "components/tab_groups/android/features.h"
 #include "components/touch_to_search/core/browser/contextual_search_field_trial.h"
 #include "components/variations/net/omnibox_autofocus_http_headers.h"
 #include "components/visited_url_ranking/public/features.h"
@@ -162,6 +163,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &content_settings::kDarkenWebsitesCheckboxInThemesSetting,
     &contextual_tasks::kContextualTasks,
     &credential_management::features::kCredentialManagementThirdPartyWebApiRequestForwarding,
+    &data_controls::kDataControlsSearchWith,
     &data_controls::kEnableClipboardDataControlsAndroid,
     &data_sharing::features::kDataSharingEnableUpdateChromeUI,
     &data_sharing::features::kDataSharingFeature,
@@ -170,6 +172,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &data_sharing::features::kSharedDataTypesKillSwitch,
     &download::features::kDownloadNotificationServiceUnifiedAPI,
     &download::features::kEnableSavePackageForOffTheRecord,
+    &download::features::kOpenDownloadInFilesAppIfNoHandlerFound,
     &download::features::kShowBlockedSensitiveDownload,
     &download::features::kShowDownloadScanningState,
     &download::features::kSmartSuggestionForLargeDownloads,
@@ -208,7 +211,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &feed::kFeedSignedOutViewDemotion,
     &feed::kInterestFeedV2,
     &feed::kWebFeedOnboarding,
-    &feed::kWebFeedSort,
     &feed::kXsurfaceMetricsReporting,
     &finds::features::kChromeFinds,
     &history::kOrganicRepeatableQueries,
@@ -292,13 +294,11 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kCCTContextualMenuItems,
     &kCCTDestroyTabWhenModelIsEmpty,
     &kCCTExtendTrustedCdnPublisher,
-    &kCCTFixWarmup,
     &kCCTFreInSameTask,
     &kCCTGoogleBottomBar,
     &kCCTGoogleBottomBarVariantLayouts,
     &kCCTIncognitoAvailableToThirdParty,
     &kCCTMinimizedEnabledByDefault,
-    &kCCTMultipleParallelRequests,
     &kCCTNavigationMetrics,
     &kCCTNavigationalPrefetch,
     &kCCTNestedSecurityIcon,
@@ -312,7 +312,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kCCTResetTimeoutAllowed,
     &kCCTResetTimeoutEnabled,
     &kCCTResizableForThirdParties,
-    &kCCTShowTabFix,
     &kCCTTabModalDialog,
     &kCCTToolbarRefactor,
     &kCacheActivityTaskID,
@@ -342,6 +341,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kDeferNavigationStateChanged,
     &kDesktopAndroidLinkCapturing,
     &kDesktopUAOnConnectedDisplay,
+    &kDisablePartnerHomepageAndroid,
     &kDontAutoHideBrowserControls,
     &kDrawChromePagesEdgeToEdge,
     &kEdgeToEdgeBottomChin,
@@ -395,7 +395,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kMultiInstanceSharedPrefsMigration,
     &kMvcUpdateViewWhenModelChanged,
     &kNavBarColorAnimation,
-    &kNewTabPageCustomizationForMvt,
     &kNewTabPageCustomizationV2,
     &kNotificationPermissionVariant,
     &kNotificationTrampoline,
@@ -445,7 +444,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kSmallerTabStripTitleLimit,
     &kStartSurfaceReturnTime,
     &kSubmenusInAppMenu,
-    &kSubmenusTabContextMenuLffTabStrip,
     &kSuppressToolbarCapturesAtGestureEnd,
     &kTabBottomSheet,
     &kTabClosureMethodRefactor,
@@ -482,6 +480,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kYourSavedInfoSettingsPageAndroid,
     &language::kCctAutoTranslate,
     &language::kDetailedLanguageSettings,
+    &lens::features::kLensOverlayAndroid,
     &media::kAutoDocPiPPermissionPromptAndroid,
     &media::kAutoPictureInPictureAndroid,
     &media::kContextMenuPictureInPictureAndroid,
@@ -502,7 +501,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &plus_addresses::features::kPlusAddressesEnabled,
     &privacy_sandbox::kPrivacySandboxAdPrivacyUxDeprecation,
     &privacy_sandbox::kPrivacySandboxAdTopicsContentParity,
-    &privacy_sandbox::kPrivacySandboxAdsApiUxEnhancements,
     &privacy_sandbox::kPrivacySandboxSettings4,
     &privacy_sandbox::kRelatedWebsiteSetsUi,
     &safe_browsing::kAutoRevokeSuspiciousNotification,
@@ -526,7 +524,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &sensitive_content::features::kSensitiveContentWhileSwitchingTabs,
     &site_isolation::features::kSiteIsolationEnableMemoryThresholdAndroid,
     &switches::kClankDefaultSearchApi,
-    &switches::kRestrictLegacySearchEnginePromoOnFormFactors,
     &sync_preferences::features::kCrossDevicePrefTrackerExtraLogs,
     &sync_sessions::kOptimizeAssociateWindowsAndroid,
     &syncer::kNewTabPageCustomizationThemeSync,
@@ -535,6 +532,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &syncer::kSyncTrustedVaultErrorMessageDuration,
     &syncer::kWebApkBackupAndRestoreBackend,
     &tab_groups::kUseAlternateHistorySyncIllustration,
+    &tab_groups_android::kAndroidTabGroupColors,
     &variations::kOmniboxAutofocusOnIncognitoNtp,
     &visited_url_ranking::features::kGroupSuggestionService,
     &visited_url_ranking::features::kVisitedURLRankingService,
@@ -641,13 +639,11 @@ BASE_FEATURE(kCCTClientDataHeader, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTContextualMenuItems, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTDestroyTabWhenModelIsEmpty, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTExtendTrustedCdnPublisher, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kCCTFixWarmup, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTFreInSameTask, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTGoogleBottomBar, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTGoogleBottomBarVariantLayouts, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTIncognitoAvailableToThirdParty, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTMinimizedEnabledByDefault, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kCCTMultipleParallelRequests, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTNavigationMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTNavigationalPrefetch, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTNestedSecurityIcon, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -661,7 +657,6 @@ BASE_FEATURE(kCCTReportPrerenderEvents, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTResetTimeoutAllowed, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTResetTimeoutEnabled, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTResizableForThirdParties, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kCCTShowTabFix, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTTabModalDialog, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTToolbarRefactor, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCacheActivityTaskID, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -678,7 +673,7 @@ BASE_FEATURE(kClankStartupLatencyInjection, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kClankWhatsNew, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kClearIntentWhenRecreated, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCommandLineOnNonRooted, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kCompositorViewHolderObscuring, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kCompositorViewHolderObscuring, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCompositorViewRemeasureFix, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kContextMenuTranslateWithGoogleLens, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kContextualSearchDisableOnlineDetection, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -692,6 +687,7 @@ BASE_FEATURE(kDefaultBrowserPromoFre, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDeferNavigationStateChanged, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidLinkCapturing, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopUAOnConnectedDisplay, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDisablePartnerHomepageAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDiscardPageWithCrashedSubframePolicy, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDiscardPageWithCrashedSubframeRelaxedEligibility, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDontAutoHideBrowserControls, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -750,7 +746,6 @@ BASE_FEATURE(kMoveToFrontInLaunchIntentDispatcher, base::FEATURE_DISABLED_BY_DEF
 BASE_FEATURE(kMultiInstanceSharedPrefsMigration, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kMvcUpdateViewWhenModelChanged, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kNavBarColorAnimation, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kNewTabPageCustomizationForMvt, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kNewTabPageCustomizationV2, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNotificationPermissionVariant, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kNotificationTrampoline, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -804,7 +799,6 @@ BASE_FEATURE(kShowTabListAnimations, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSmallerTabStripTitleLimit, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kStartSurfaceReturnTime, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSubmenusInAppMenu, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kSubmenusTabContextMenuLffTabStrip, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSuppressToolbarCapturesAtGestureEnd, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTabBottomSheet, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabClosureMethodRefactor, base::FEATURE_DISABLED_BY_DEFAULT);

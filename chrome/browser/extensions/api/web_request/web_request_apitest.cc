@@ -658,7 +658,8 @@ IN_PROC_BROWSER_TEST_F(ExtensionWebRequestApiTest,
         const text = await res.text();
         const expected = 'p {\n  color: __MSG_text_color__;\n}\n';
         // "__MSG_text_color__" must not be replaced with "red".
-        if (text == expected) {
+        // We use `includes` because there's also a license in the file.
+        if (text.includes(expected)) {
           chrome.test.notifyPass();
         } else {
           chrome.test.notifyFail('Unexpected content :' + text);
@@ -6288,8 +6289,7 @@ class ExtensionWebRequestApiFencedFrameTest
         {{blink::features::kFencedFrames, {}},
          {blink::features::kFencedFramesAPIChanges, {}},
          {blink::features::kFencedFramesDefaultMode, {}},
-         {features::kPrivacySandboxAdsAPIsOverride, {}},
-         {blink::features::kFencedFramesLocalUnpartitionedDataAccess, {}}},
+         {features::kPrivacySandboxAdsAPIsOverride, {}}},
         {/* disabled_features */});
     // Fenced frames are only allowed in secure contexts.
     UseHttpsTestServer();
@@ -6312,15 +6312,6 @@ IN_PROC_BROWSER_TEST_F(ExtensionWebRequestApiFencedFrameTest,
   ASSERT_TRUE(StartEmbeddedTestServer());
   ASSERT_TRUE(RunExtensionTest(
       "webrequest", {.extension_url = "test_fenced_frames_send_message.html"}))
-      << message_;
-}
-
-IN_PROC_BROWSER_TEST_F(ExtensionWebRequestApiFencedFrameTest,
-                       NetworkRevocation) {
-  ASSERT_TRUE(StartEmbeddedTestServer());
-  ASSERT_TRUE(RunExtensionTest(
-      "webrequest",
-      {.extension_url = "test_fenced_frames_network_revocation.html"}))
       << message_;
 }
 

@@ -63,12 +63,14 @@ class UnexportableKeyMacTest : public testing::Test {
       GetUnexportableKeyProvider(config_)};
 };
 
+#if !BUILDFLAG(IS_IOS)
 TEST_F(UnexportableKeyMacTest, SecureEnclaveAvailability) {
   for (bool available : {true, false}) {
     scoped_fake_keychain_.keychain()->set_secure_enclave_available(available);
     EXPECT_EQ(GetUnexportableKeyProvider(config_) != nullptr, available);
   }
 }
+#endif  // !BUILDFLAG(IS_IOS)
 
 TEST_F(UnexportableKeyMacTest, GetAllKeys) {
   // Initially, there should be no keys.
@@ -234,8 +236,7 @@ TEST_F(UnexportableKeyMacTest, GetKeyTag) {
   ASSERT_TRUE(provider_);
   auto key = provider_->GenerateSigningKeySlowly(kAcceptableAlgos);
   ASSERT_TRUE(key);
-  EXPECT_EQ(key->AsStatefulUnexportableSigningKey()->GetKeyTag(),
-            kTestApplicationTag);
+  EXPECT_EQ(key->AsStatefulKey()->GetKeyTag(), kTestApplicationTag);
 }
 
 TEST_F(UnexportableKeyMacTest, GetCreationTime) {
@@ -244,8 +245,7 @@ TEST_F(UnexportableKeyMacTest, GetCreationTime) {
   ASSERT_TRUE(key);
 
   // Check that the time returned is the one set in the fake keychain.
-  EXPECT_EQ(key->AsStatefulUnexportableSigningKey()->GetCreationTime(),
-            base::Time::UnixEpoch());
+  EXPECT_EQ(key->AsStatefulKey()->GetCreationTime(), base::Time::UnixEpoch());
 }
 
 TEST_F(UnexportableKeyMacTest, GetSecKeyRef) {
@@ -422,20 +422,17 @@ TEST_F(UnexportableKeyMacTest,
   EXPECT_FALSE(provider_->FromWrappedSigningKeySlowly(key->GetWrappedKey()));
 }
 
-TEST_F(UnexportableKeyMacTest, DeleteSigningKeysSlowly_KeyObjects) {
+TEST_F(UnexportableKeyMacTest, DeleteKeysSlowly_KeyObjects) {
   // Generate two keys.
   auto key1 = provider_->GenerateSigningKeySlowly(kAcceptableAlgos);
   ASSERT_TRUE(key1);
   auto key2 = provider_->GenerateSigningKeySlowly(kAcceptableAlgos);
   ASSERT_TRUE(key2);
 
-  auto* stateful_key1 = key1->AsStatefulUnexportableSigningKey();
-  ASSERT_TRUE(stateful_key1);
-
   // Delete key1 using the new overload.
   std::optional<size_t> count =
-      provider_->AsStatefulUnexportableKeyProvider()->DeleteSigningKeysSlowly(
-          {stateful_key1});
+      provider_->AsStatefulUnexportableKeyProvider()->DeleteKeysSlowly(
+          {key1.get()});
   ASSERT_TRUE(count.has_value());
   EXPECT_EQ(count.value(), 1u);
 
@@ -444,7 +441,7 @@ TEST_F(UnexportableKeyMacTest, DeleteSigningKeysSlowly_KeyObjects) {
   EXPECT_TRUE(provider_->FromWrappedSigningKeySlowly(key2->GetWrappedKey()));
 }
 
-TEST_F(UnexportableKeyMacTest, DeleteSigningKeysSlowly_PrecisionCollision) {
+TEST_F(UnexportableKeyMacTest, DeleteKeysSlowly_PrecisionCollision) {
   // Generate a key with the default provider (Tag A).
   auto key_a = provider_->GenerateSigningKeySlowly(kAcceptableAlgos);
   ASSERT_TRUE(key_a);
@@ -468,8 +465,8 @@ TEST_F(UnexportableKeyMacTest, DeleteSigningKeysSlowly_PrecisionCollision) {
 
   // Delete using the Tag A key object.
   std::optional<size_t> count =
-      provider_->AsStatefulUnexportableKeyProvider()->DeleteSigningKeysSlowly(
-          {key_a->AsStatefulUnexportableSigningKey()});
+      provider_->AsStatefulUnexportableKeyProvider()->DeleteKeysSlowly(
+          {key_a.get()});
   ASSERT_TRUE(count.has_value());
   EXPECT_EQ(count.value(), 1u);
 
@@ -489,7 +486,7 @@ TEST_F(UnexportableKeyMacTest, DeleteSigningKeysSlowly_PrecisionCollision) {
       Optional(SizeIs(1)));
 }
 
-TEST_F(UnexportableKeyMacTest, DeleteSigningKeysSlowly_TagMismatch) {
+TEST_F(UnexportableKeyMacTest, DeleteKeysSlowly_TagMismatch) {
   auto key = provider_->GenerateSigningKeySlowly(kAcceptableAlgos);
   ASSERT_TRUE(key);
 
@@ -503,8 +500,8 @@ TEST_F(UnexportableKeyMacTest, DeleteSigningKeysSlowly_TagMismatch) {
   // Attempt to delete the key using the wrong provider.
   // It should find 0 matching items because the tags don't match.
   std::optional<size_t> count =
-      provider_other->AsStatefulUnexportableKeyProvider()
-          ->DeleteSigningKeysSlowly({key->AsStatefulUnexportableSigningKey()});
+      provider_other->AsStatefulUnexportableKeyProvider()->DeleteKeysSlowly(
+          {key.get()});
   ASSERT_TRUE(count.has_value());
   EXPECT_EQ(count.value(), 0u);
 
@@ -526,8 +523,8 @@ TEST_F(UnexportableKeyMacTest, DeleteAllSigningKeys) {
   ASSERT_TRUE(provider_->FromWrappedSigningKeySlowly(key2->GetWrappedKey()));
 
   // Delete all.
-  std::optional<size_t> count = provider_->AsStatefulUnexportableKeyProvider()
-                                    ->DeleteAllSigningKeysSlowly();
+  std::optional<size_t> count =
+      provider_->AsStatefulUnexportableKeyProvider()->DeleteAllKeysSlowly();
   ASSERT_TRUE(count.has_value());
   EXPECT_EQ(count.value(), 2u);
 
@@ -574,7 +571,7 @@ TEST_F(UnexportableKeyMacTest, DeleteAllSigningKeysPrefixMatching) {
   // Use prefix provider to delete all starting with "com.example".
   std::optional<size_t> count =
       provider_prefix->AsStatefulUnexportableKeyProvider()
-          ->DeleteAllSigningKeysSlowly();
+          ->DeleteAllKeysSlowly();
   ASSERT_TRUE(count.has_value());
   EXPECT_EQ(count.value(), 2u);
 
@@ -612,8 +609,7 @@ TEST_F(UnexportableKeyMacTest, DeleteAllSigningKeysPrefixMatchingSeparation) {
 
   // Use foo provider to delete. Should only delete foo key.
   std::optional<size_t> count =
-      provider_foo->AsStatefulUnexportableKeyProvider()
-          ->DeleteAllSigningKeysSlowly();
+      provider_foo->AsStatefulUnexportableKeyProvider()->DeleteAllKeysSlowly();
   ASSERT_TRUE(count.has_value());
   EXPECT_EQ(count.value(), 1u);
 
@@ -665,7 +661,7 @@ TEST_F(UnexportableKeyMacTest, DeleteAllSigningKeysEmptyPrefix) {
   // have an empty application_tag.
   std::optional<size_t> count =
       provider_empty->AsStatefulUnexportableKeyProvider()
-          ->DeleteAllSigningKeysSlowly();
+          ->DeleteAllKeysSlowly();
   ASSERT_TRUE(count.has_value());
   EXPECT_EQ(count.value(), 1u);
 

@@ -2086,7 +2086,7 @@ targets.bundle(
         "checkdeps",
         "checkperms",
         "metrics_python_tests",
-        "webkit_lint",
+        "blink_lint",
     ],
 )
 
@@ -2195,7 +2195,7 @@ targets.bundle(
     targets = [
         "check_static_initializers",
         "metrics_python_tests",
-        "webkit_lint",
+        "blink_lint",
     ],
 )
 
@@ -2391,7 +2391,7 @@ targets.bundle(
     targets = [
         "check_network_annotations",
         "metrics_python_tests",
-        "webkit_lint",
+        "blink_lint",
     ],
 )
 
@@ -3045,7 +3045,7 @@ targets.bundle(
 targets.bundle(
     name = "fuchsia_isolated_scripts",
     targets = [
-        "chromium_webkit_isolated_scripts",
+        "chromium_blink_isolated_scripts",
         "component_storage_test",
         # TODO(crbug.com/40821367): Enable content_shell_crash_test
         "gpu_angle_fuchsia_unittests_isolated_scripts",

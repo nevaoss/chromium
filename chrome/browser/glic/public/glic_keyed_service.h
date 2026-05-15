@@ -58,8 +58,6 @@ class GlicShareImageHandler;
 class GlicTabDataObserver;
 class GlicTabFaviconObserver;
 class GlicInstanceCoordinator;
-class HostManager;
-class GlicWebContentsWarmingPool;
 
 enum class GlicPrewarmingChecksResult;
 
@@ -69,8 +67,7 @@ enum class GlicPrewarmingChecksResult;
 // possible via enterprise policy). This is required on disabled profiles
 // since pieces of this service are the ones that monitor this runtime
 // preference for changes and cause the UI to respond to it.
-class GlicKeyedService : public KeyedService,
-                         public base::SupportsUserData {
+class GlicKeyedService : public KeyedService, public base::SupportsUserData {
  public:
   explicit GlicKeyedService(
       Profile* profile,
@@ -148,9 +145,6 @@ class GlicKeyedService : public KeyedService,
   void UnpinTabsFromAllInstances(base::span<const tabs::TabHandle> tab_handles,
                                  GlicUnpinTrigger trigger);
 
-  // Called when a webview guest is created within a chrome://glic WebUI.
-  void GuestAdded(content::WebContents* guest_contents);
-
   // Virtual for testing.
   virtual bool IsWindowShowing() const;
 
@@ -207,9 +201,9 @@ class GlicKeyedService : public KeyedService,
       base::RepeatingClosure callback);
 
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
-  void CaptureRegion(
-      tabs::TabInterface* tab,
-      mojo::PendingRemote<mojom::CaptureRegionObserver> observer);
+  void CaptureRegion(tabs::TabInterface* tab,
+                     mojo::PendingRemote<mojom::CaptureRegionObserver> observer,
+                     mojom::GetTabContextOptionsPtr options = nullptr);
   void DeleteCapturedRegion(tabs::TabInterface* tab,
                             const base::UnguessableToken& id);
 #endif
@@ -226,8 +220,6 @@ class GlicKeyedService : public KeyedService,
 #if !BUILDFLAG(IS_ANDROID)  // Single instance only
   GlicRegionCaptureController& region_capture_controller();
 #endif
-
-  bool IsActiveWebContents(content::WebContents* contents);
 
   void AddPreloadCallback(base::OnceCallback<void()> callback);
 
@@ -247,35 +239,19 @@ class GlicKeyedService : public KeyedService,
 
   base::WeakPtr<GlicKeyedService> GetWeakPtr();
 
-  HostManager& host_manager();
-
-  GlicWebContentsWarmingPool& web_contents_warming_pool() {
-    return *web_contents_warming_pool_;
-  }
-
-  // Returns whether this process host is either the Glic FRE WebUI or the Glic
-  // main WebUI.
-  bool IsProcessHostForGlic(content::RenderProcessHost* process_host);
-  // Returns whether this web contents contains the Chrome glic WebUI,
-  // chrome://glic.
-  bool IsGlicWebUi(content::WebContents* web_contents);
-
   // Get the GlicInstance associated with the given browser's active tab, or
   // null if there is none. `bwi` can be null if preloaded with no browser open.
   GlicInstance* GetInstanceForActiveTab(BrowserWindowInterface* bwi);
 
-  // Returns true if the media request ID belongs to any Glic instance.
-  bool IsMediaRequestFromGlic(const std::string& request_id) const;
-
   // Get the GlicInstance for a provided tab, or null if there is none.
-  GlicInstance* GetInstanceForTab(tabs::TabInterface* tab);
+  virtual GlicInstance* GetInstanceForTab(tabs::TabInterface* tab);
 
   // Sends additional context to the web client associated with the given tab.
   // If no web client exists for the tab, then this method does nothing. It is
   // the responsibility of the caller to ensure that a host exists before
   // calling this method.
-  void SendAdditionalContext(tabs::TabHandle tab_handle,
-                             mojom::AdditionalContextPtr context);
+  virtual void SendAdditionalContext(tabs::TabHandle tab_handle,
+                                     mojom::AdditionalContextPtr context);
 
   GlicTabDataObserver& tab_data_observer() { return *tab_data_observer_; }
   GlicTabFaviconObserver& tab_favicon_observer() {
@@ -286,9 +262,8 @@ class GlicKeyedService : public KeyedService,
   base::CallbackListSubscription AddActOnWebCapabilityChangedCallback(
       ActOnWebCapabilityChangedCallback callback);
 
-  GlicActorPolicyChecker& actor_policy_checker() {
-    return *actor_policy_checker_;
-  }
+  // Virtual for testing.
+  virtual GlicActorPolicyChecker& actor_policy_checker();
 
  private:
   // A helper function to route GetZeroStateSuggestionsForFocusedTabCallback
@@ -347,7 +322,6 @@ class GlicKeyedService : public KeyedService,
 
   std::unique_ptr<GlicTabDataObserver> tab_data_observer_;
   std::unique_ptr<GlicTabFaviconObserver> tab_favicon_observer_;
-  std::unique_ptr<GlicWebContentsWarmingPool> web_contents_warming_pool_;
 
   base::WeakPtrFactory<GlicKeyedService> weak_ptr_factory_{this};
 };

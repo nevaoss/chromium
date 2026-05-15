@@ -29,14 +29,18 @@
 #include "chrome/browser/ash/login/test/user_auth_config.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/ash/policy/core/browser_policy_connector_ash.h"
+#include "chrome/browser/browser_process.h"
+#include "chrome/browser/ui/ash/login/login_display_host.h"
 #include "chrome/browser/ui/webui/ash/login/cryptohome_recovery_setup_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/remove_local_auth_factors_screen_handler.h"
 #include "chromeos/ash/components/dbus/userdataauth/fake_userdataauth_client.h"
 #include "chromeos/ash/components/login/auth/public/user_context.h"
+#include "chromeos/ash/components/osauth/public/auth_session_storage.h"
 #include "chromeos/ash/components/osauth/public/common_types.h"
 #include "components/account_id/account_id.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/policy_constants.h"
+#include "components/user_manager/known_user.h"
 #include "components/user_manager/user_manager.h"
 #include "content/public/test/browser_test.h"
 
@@ -249,6 +253,24 @@ IN_PROC_BROWSER_TEST_F(RemoveLocalAuthFactorsScreenTest,
 }
 
 IN_PROC_BROWSER_TEST_F(RemoveLocalAuthFactorsScreenTest,
+                       PRE_AuthSessionKeptAlive) {
+  LoginOfflineAndSetPolicy(pin_only_user_.account_id);
+}
+
+IN_PROC_BROWSER_TEST_F(RemoveLocalAuthFactorsScreenTest, AuthSessionKeptAlive) {
+  ReauthUserWithPin(pin_only_user_.account_id);
+  WaitForRemoveLocalAuthFactorsSuccessScreen();
+
+  // Verify that the auth session has a keep alive while on this screen.
+  auto* wizard_context = LoginDisplayHost::default_host()->GetWizardContext();
+  ASSERT_TRUE(wizard_context->extra_factors_token.has_value());
+  EXPECT_TRUE(AuthSessionStorage::Get()->CheckHasKeepAliveForTesting(
+      wizard_context->extra_factors_token.value()));
+
+  VerifyLocalAuthFactorsRemovedAndSessionStarted(pin_only_user_.account_id);
+}
+
+IN_PROC_BROWSER_TEST_F(RemoveLocalAuthFactorsScreenTest,
                        PRE_AuthFactorsRemovedForGaiaPasswordPinUser) {
   // Test Setup: Log the user in offline and apply a policy disabling all
   // local auth factors.
@@ -369,5 +391,22 @@ INSTANTIATE_TEST_SUITE_P(
     RemoveLocalAuthFactorsScreenTestWithLocalPassword,
     ::testing::ValuesIn({UserType::kLocalPasswordUser,
                          UserType::kLocalPasswordAndPinUser}));
+
+IN_PROC_BROWSER_TEST_F(RemoveLocalAuthFactorsScreenTest, PRE_SkipForSAMLUser) {
+  LoginOfflineAndSetPolicy(local_password_and_pin_user_.account_id);
+  user_manager::KnownUser(g_browser_process->local_state())
+      .UpdateUsingSAML(local_password_and_pin_user_.account_id, true);
+}
+
+IN_PROC_BROWSER_TEST_F(RemoveLocalAuthFactorsScreenTest, SkipForSAMLUser) {
+  // Test Setup is handled by the PRE_ test above.
+
+  // Test Execution: Re-authenticate the user
+
+  ReauthUserWithLocalPassword(local_password_and_pin_user_.account_id);
+
+  // Test Verification: Should bypass the screen and start session.
+  login_manager_mixin_.WaitForActiveSession();
+}
 
 }  // namespace ash

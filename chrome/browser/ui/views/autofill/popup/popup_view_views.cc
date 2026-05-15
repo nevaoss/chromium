@@ -38,8 +38,8 @@
 #include "chrome/browser/ui/autofill/autofill_popup_controller.h"
 #include "chrome/browser/ui/autofill/autofill_suggestion_controller_utils.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/passwords/ui_utils.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_base_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_bnpl_footnote_view.h"
@@ -191,7 +191,8 @@ std::vector<views::BubbleArrowSide> GetPreferredPopupSides(
 }
 
 void DefaultA11yAnnouncer(const std::u16string& message, bool polite) {
-  BrowserWindowInterface* browser = chrome::FindLastActive();
+  BrowserWindowInterface* browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   if (!browser) {
     return;
   }
@@ -761,6 +762,11 @@ void PopupViewViews::OnSuggestionsChanged(bool prefer_prev_arrow_side) {
   SetRowWithOpenSubPopup(std::nullopt);
 
   CreateSuggestionViews();
+
+  if (search_bar_) {
+    search_bar_->SetLoading(controller_ && controller_->IsSearching());
+  }
+
   // Updating bounds and redrawing popup can cause the popup to hide.
   if (!DoUpdateBoundsAndRedrawPopup(prefer_prev_arrow_side)) {
     return;
@@ -930,7 +936,7 @@ void PopupViewViews::SetSelectedCell(
 }
 
 void PopupViewViews::ShowIPHFeaturePromos() {
-  Browser* browser = GetBrowser();
+  BrowserWindowInterface* browser = GetBrowser();
   if (!browser) {
     return;
   }
@@ -1048,7 +1054,8 @@ void PopupViewViews::InitViews() {
     search_bar_ = AddChildView(std::make_unique<PopupSearchBarView>(
         search_bar_config_->placeholder, *this,
         controller_ &&
-            controller_->GetMainFillingProduct() == FillingProduct::kAtMemory));
+            controller_->GetMainFillingProduct() == FillingProduct::kAtMemory,
+        controller_ && controller_->IsSearching()));
     search_bar_->SetProperty(views::kMarginsKey,
                              gfx::Insets::VH(GetContentsVerticalPadding(), 0));
     AddChildView(std::make_unique<PopupSeparatorView>(/*vertical_padding=*/0));
@@ -1063,8 +1070,8 @@ void PopupViewViews::InitViews() {
                        .SetOrientation(views::BoxLayout::Orientation::kVertical)
                        .Build());
 
-  Browser* browser = GetBrowser();
-  if (Profile* profile = browser ? browser->profile() : nullptr) {
+  BrowserWindowInterface* browser = GetBrowser();
+  if (Profile* profile = browser ? browser->GetProfile() : nullptr) {
     auto* favicon_service =
         LargeIconServiceFactory::GetForBrowserContext(profile);
     auto* image_fetcher =
@@ -1186,10 +1193,6 @@ void PopupViewViews::CreateSuggestionViews() {
                                     kIPHAutofillCreditCardBenefitFeature) {
             row_view->SetProperty(views::kElementIdentifierKey,
                                   kAutofillCreditCardBenefitElementId);
-          } else if (feature == &feature_engagement::
-                                    kIPHPlusAddressCreateSuggestionFeature) {
-            row_view->SetProperty(views::kElementIdentifierKey,
-                                  kPlusAddressCreateSuggestionElementId);
           } else if (feature ==
                      &feature_engagement::
                          kIPHAutofillBnplAffirmOrZipSuggestionFeature) {

@@ -831,6 +831,7 @@ Ilovalarga berilgan ruxsatlar bu hisobga tatbiq etilishi mumkin. Android ilovala
 <translation id="1567579616025300478">Bu sayt maʼlumotlarni qurilmada saqlashiga ruxsat berilmagan</translation>
 <translation id="156793199942386351">“<ph name="CURRENTKEY" />” tugmasi allaqachon “<ph name="ACTION" />” amaliga biriktirilgan. <ph name="RESPONSE" /> uchun istalgan tugmani bosing.</translation>
 <translation id="1567993339577891801">JavaScript konsoli</translation>
+<translation id="157005186601751931">Varaqni ilovada ochish</translation>
 <translation id="1570604804919108255">Bildirishnomalar kelsin</translation>
 <translation id="1570990174567554976">“<ph name="BOOKMARK_TITLE" />” bukmarklar jildi yaratildi.</translation>
 <translation id="1571041387761170095">Kuchsiz yoki qayta ishlatilgan parollar yoʻq.</translation>
@@ -1044,7 +1045,6 @@ Ilovalarga berilgan ruxsatlar bu hisobga tatbiq etilishi mumkin. Android ilovala
 <translation id="1703666494654169921">Saytlarga virtual reallik qurilmalari yoki maʼlumotlardan foydalanishni taqiqlash</translation>
 <translation id="1704097193565924901">Bosh harflar</translation>
 <translation id="1704230497453185209">Saytlarga tovush ijro qilishni taqiqlash</translation>
-<translation id="1706015824809136764">Gemini yorligʻini asboblar paneli yorligʻiga qadash</translation>
 <translation id="1706586824377653884">Administratoringiz tomonidan qo‘shilgan</translation>
 <translation id="170658918174941828">Yuqorida kiritilganlardan tashqari Chrome versiyasi, operatsion tizim versiyasi, Cast sozlamalari, translatsiya samaradorligiga oid statistika, ulanish davomidagi tashxis jurnallari yuborilad. Ushbu maʼlumotlar bizga nosozliklarni aniqlash va funksiyani takomillashtirishga yordam beradi. Oʻzingiz bila turib yoki tasodifan taqdim etgan har qanday maʼlumotdan maxfiylik siyosatimizga muvofiq foydalaniladi. Bu fikr-mulohazani yuborish orqali siz Google undan oʻz mahsuloti yoki xizmatini yaxshilashda ishlatishiga rozilik bildirasiz.</translation>
 <translation id="17081583771848899">launcher + alt + <ph name="TOP_ROW_KEY" /></translation>
@@ -1548,7 +1548,6 @@ Oʻz qurilmangizda Family Link ilovasini oʻrnatib, bu hisob sozlamalarini boshq
 <translation id="204914487372604757">Yorliq yaratish</translation>
 <translation id="2049573977943974163">"<ph name="EXTENSION_NAME" />" yoqilsinmi?</translation>
 <translation id="2050339315714019657">Tik</translation>
-<translation id="2050394140692183739">Joriy asboblar paneli yorligʻi</translation>
 <translation id="2051555741181591333">Hotpost avtomatik oʻchirilsin</translation>
 <translation id="2051669996101374349">Imkon qadar HTTPS ishlating va bu protokolda ishlamaydigan saytlarni yuklashdan oldin ogohlantirish oling. Bu sozlamani oʻzgartira olmaysiz, chunki kuchaytirilgan himoya yoniq.</translation>
 <translation id="2052572566310583903">Boshqa qurilmalaringizda oʻrnatilgan</translation>
@@ -1670,7 +1669,7 @@ Oʻz qurilmangizda Family Link ilovasini oʻrnatib, bu hisob sozlamalarini boshq
 <translation id="2136476978468204130">Kodli ibora xato kiritildi</translation>
 <translation id="2137128126782078222"><ph name="WEBSITE" /> saytida bildirishnomalar chiqmasin</translation>
 <translation id="2139919072249842737">Sozlash tugmasi</translation>
-<translation id="2140788884185208305">Quvvat darajasi</translation>
+<translation id="2140788884185208305">Batareya holati</translation>
 <translation id="2142328300403846845">Havolani quyidagicha ochish</translation>
 <translation id="2142484069755256151">Google Parollar menejeri uchun 6 raqamli zaxiraviy PIN kod yarating, <ph name="NUM_DIGIT" />/6 PIN raqami</translation>
 <translation id="2142582065325732898">Oxirgi Chrome varaqlarini ochish uchun <ph name="LINK1_BEGIN" />Chrome Sync<ph name="LINK1_END" /> funksiyasini yoqing. <ph name="LINK2_BEGIN" />Batafsil<ph name="LINK2_END" /></translation>
@@ -2318,7 +2317,6 @@ Oʻz qurilmangizda Family Link ilovasini oʻrnatib, bu hisob sozlamalarini boshq
 <translation id="2565214867520763227">Skrin-riderni yoqish</translation>
 <translation id="2566146433999774844"><ph name="OWNER_FIRST_NAME" /> va yana <ph name="NUM_OTHER_MEMBERS" /> kishi ulashgan sahifa guruhiga qoʻshilish</translation>
 <translation id="256726287944589768">Yangi varaq sahifasida taglavha chiqarish</translation>
-<translation id="2567313753132089780">Parol kamida 12 ta belgili hamda katta va kichik harflar, raqamlar va belgilardan iborat boʻlsin</translation>
 <translation id="2568774940984945469">Ma’lumotlar paneli konteyneri</translation>
 <translation id="2569972178052279830">Chakana savdo doʻkoni nomi</translation>
 <translation id="257088987046510401">Mavzular</translation>
@@ -3168,7 +3166,6 @@ Oʻz qurilmangizda Family Link ilovasini oʻrnatib, bu hisob sozlamalarini boshq
 <translation id="3157931365184549694">Qayta tiklash</translation>
 <translation id="3158033540161634471">Barmoq izingizni sozlang</translation>
 <translation id="3158203338449343164">Varaq qidiruvini yechish</translation>
-<translation id="3158732900546890991">Parol kamida 8 ta belgili va kamida bu bulardan ikkitasidan iborat boʻlsin: katta harflar, kichik harflar, raqamlar yoki belgilar</translation>
 <translation id="3158770568048368350">Bunda mobil tarmoq vaqtincha uzilishi mumkin</translation>
 <translation id="3159335509547415276">Bloklangan hisoblar haqida batafsil</translation>
 <translation id="3159493096109238499">Oq sargʻish</translation>
@@ -3749,6 +3746,7 @@ Oʻz qurilmangizda Family Link ilovasini oʻrnatib, bu hisob sozlamalarini boshq
 <translation id="3572031449439748861"><ph name="NUM_EXTENSIONS" /> ta kengaytma faolsizlantirildi</translation>
 <translation id="3575121482199441727">Bu saytda chiqaversin</translation>
 <translation id="3575224072358507281">IP manzillar va tarmoqni oʻlchash natijalari Measurement Lab xizmatiga ularning maxfiylik siyosatiga muvofiq jamlanadi (measurementlab.net/privacy).</translation>
+<translation id="3576324189521867626">O‘rnatildi</translation>
 <translation id="3577036603268648505">Internetni xavfsiz kezing</translation>
 <translation id="3577473026931028326">Xatolik yuz berdi. Qayta urining.</translation>
 <translation id="3577487026101678864">Fayllarni sinxronlash yoqilgan</translation>
@@ -4706,6 +4704,7 @@ Oʻz qurilmangizda Family Link ilovasini oʻrnatib, bu hisob sozlamalarini boshq
 <translation id="4223404254440398437">Mikrofondan foydalanishga ruxsat berilmagan</translation>
 <translation id="4224541845943007092">Manzillar qatorida kiritilgan matnni oʻqish va saqlash</translation>
 <translation id="4225397296022057997">Barcha saytlarda</translation>
+<translation id="4225895483398857530">Asboblar paneli yorligʻi</translation>
 <translation id="4226303886821889519">Yangilash vositasining versiyasi: <ph name="VERSION" /></translation>
 <translation id="4228071595943929139">Tashkilotingiz email manzilidan foydalaning</translation>
 <translation id="4228209296591583948">{NUM_EXTENSIONS,plural, =1{Bu kengaytmaga ruxsat berilmagan}other{Ayrim kengaytmalarga ruxsat berilmagan}}</translation>
@@ -5650,6 +5649,7 @@ Kichiklashtirish uchun Ctrl+Alt+Yorqinlikni pasaytirish tugmalarini bosing.</tra
 <translation id="4881685975363383806">Boshqa eslatilmasin</translation>
 <translation id="4881695831933465202">Ochish</translation>
 <translation id="4882312758060467256">Bu saytga ruxsati bor</translation>
+<translation id="4882805770036405108">Tezkor tugmalar orqali oʻqish rejimini tezroq oching. Oʻqish rejimini yoqish yoki faolsizlantirish uchun ⌥ + ⌘ + R tugmalarini bosing.</translation>
 <translation id="4882848900607400156">Aniq joylashuvingizni ulashsangiz, Gemini savollaringizga aniqroq javob berishi mumkin. Maʼlumotlaringiz generativ AI modellarini yaxshilashda ishlatilmaydi.</translation>
 <translation id="4882919381756638075">Saytlar odatda video chat kabi aloqa xizmatlarida mikrofondan foydalanadi</translation>
 <translation id="4883436287898674711">Barcha <ph name="WEBSITE_1" /> saytlari</translation>
@@ -6107,6 +6107,7 @@ Kichiklashtirish uchun Ctrl+Alt+Yorqinlikni pasaytirish tugmalarini bosing.</tra
 <translation id="5204967432542742771">Parolni kiriting</translation>
 <translation id="5205484256512407285">Hech qachon mobil internetdan yuborilmasin</translation>
 <translation id="520568280985468584">Tarmoq kiritildi. Mobil tarmoq faollashtirilishi bir necha daqiqa vaqt oladi.</translation>
+<translation id="5207395053540207113">Qidiruvga Drive kontentiga kirish ruxsati berilsinmi?</translation>
 <translation id="5207949376430453814">Matn kiritish joyi ajratib ko‘rsatilsin</translation>
 <translation id="520840839826327499"><ph name="SERVICE_NAME" /> mos ChromeOS qurilmadan foydalanayotganingizni tekshirmoqchi.</translation>
 <translation id="5208926629108082192">Qurilmadagi mobil tarmoq axboroti</translation>
@@ -8889,6 +8890,7 @@ Yana # ta oshkor qilingan parollaringiz bor. Google Parollar menejeri ularni hoz
 <translation id="7186903260115204164">Yangi Chizish vositasi bilan erkin chizmalar, imzolar va asosiy joylarni belgilang</translation>
 <translation id="7186935534137027449">Ilova buyrugʻi</translation>
 <translation id="7188508872042490670">Qurilmada saqlangan sayt maʼlumotlari</translation>
+<translation id="7188755083797868960">Tezkor tugmalar orqali oʻqish rejimini tezroq oching. Oʻqish rejimini almashtirish uchun Alt+Shift+R tugmalarini bosing.</translation>
 <translation id="7189234443051076392">Qurilmangizda joy kam qolganga o‘xshaydi</translation>
 <translation id="7189451821249468368">Bu qurilmani qayd qilish uchun sizdagi DT litsenziyalari yetarli emas. Xarid qilish uchun savdo boʻlimiga murojaat qiling. Bu xabar xato boʻlsa, yordam xizmatiga murojaat qiling.</translation>
 <translation id="7189558282078169397">Boshqa qurilmalardan sinxronlangan varaqlar</translation>
@@ -9014,6 +9016,7 @@ Yana # ta oshkor qilingan parollaringiz bor. Google Parollar menejeri ularni hoz
 <translation id="727595954130325265">Xarid qilish</translation>
 <translation id="7277275452721470458">AI rejimi faoliyati</translation>
 <translation id="727952162645687754">Yuklab olishda xatolik yuz berdi</translation>
+<translation id="7280265656690268844">JavaScript optimallash oʻchiq</translation>
 <translation id="7280649757394340890">Nutq sintezatori uchun ovoz sozlamalari</translation>
 <translation id="7280683802406059877">Klaviatura tezkor tugmalarini sozlash</translation>
 <translation id="7280877790564589615">Ruxsat so‘ralmoqda</translation>
@@ -10131,7 +10134,6 @@ Kalit faylini ishonchli joyda saqlang. U kengaytmaning yangi versiyalarini yarat
 <translation id="8032569120109842252">Kuzatyapsiz</translation>
 <translation id="8033827949643255796">tanlandi</translation>
 <translation id="8033958968890501070">Vaqt tugadi</translation>
-<translation id="8034399942062051455">V8 optimallash yoqilmagan</translation>
 <translation id="8034697324150621782">Yuqori panel bilan almashtirish</translation>
 <translation id="8035059678007243127">Inkognito rejimida orqaga qaytarilgan kesh sahifasi: <ph name="BACK_FORWARD_CACHE_INCOGNITO_PAGE_URL" /></translation>
 <translation id="8036143516314698610">Saqlangan varaqlar guruhi tugmasini chiqarish</translation>
@@ -11351,6 +11353,7 @@ Bu axborotga oʻrnatilgan dasturlar, fayllar, brauzer, qurilmadagi operatsion ti
 <translation id="8866424952450451412">Maxsus ish jarayonlarini boshqaring</translation>
 <translation id="8867102760244540173">Varaqlardan qidirish...</translation>
 <translation id="8867228703146808825">Nashr tavsilotlarini klipbordga nusxalash</translation>
+<translation id="8867568208303837180">Yuborilmoqda...</translation>
 <translation id="8868333925931032127">Demo rejimi ishga tushirilmoqda</translation>
 <translation id="8868626022555786497">Band</translation>
 <translation id="8868838761037459823">Mobil tarmoq axboroti</translation>
@@ -11780,7 +11783,6 @@ Bu axborotga oʻrnatilgan dasturlar, fayllar, brauzer, qurilmadagi operatsion ti
 <translation id="914031120300235526">Profil qulfdan chiqarilmadi</translation>
 <translation id="9143298529634201539">Taklif olib tashlansinmi?</translation>
 <translation id="9143922477019434797">Parollarni himoyalang</translation>
-<translation id="914621365454686586">Qidiruvga Drive kontentiga kirish ruxsati berilsinmi?</translation>
 <translation id="9147392381910171771">&amp;Parametrlar</translation>
 <translation id="9148058034647219655">To‘liq ekran rejimidan chiqish</translation>
 <translation id="9148126808321036104">Qaytadan kiring</translation>

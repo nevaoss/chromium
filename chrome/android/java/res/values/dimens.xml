@@ -374,7 +374,7 @@ found in the LICENSE file.
     <dimen name="sharing_hub_3p_icon_padding_top">20dp</dimen>
 
     <!-- Long Screenshots dimensions -->
-    <dimen name="long_screenshots_button_size">40dp</dimen>
+    <dimen name="long_screenshots_button_size">@dimen/min_touch_target_size</dimen>
     <dimen name="long_screenshots_button_padding">8dp</dimen>
     <dimen name="long_screenshots_button_margin">17dp</dimen>
     <dimen name="long_screenshots_button_elev">6dp</dimen>
@@ -503,4 +503,9 @@ found in the LICENSE file.
     <dimen name="iph_bubble_triangle_width">8dp</dimen>
     <dimen name="iph_bubble_triangle_height">20dp</dimen>
     <dimen name="tap_to_dismiss_text_margin_bottom">36dp</dimen>
+
+    <!-- Accessibility Annotator dimensions -->
+    <dimen name="accessibility_annotator_sheet_padding_horizontal">24dp</dimen>
+    <dimen name="accessibility_annotator_spacing_large">16dp</dimen>
+    <dimen name="accessibility_annotator_spacing_medium">12dp</dimen>
 </resources>

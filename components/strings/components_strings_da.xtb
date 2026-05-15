@@ -91,6 +91,7 @@
 <translation id="1149617035358809955">verificer din identitet, så dine betalingsoplysninger kan udfyldes</translation>
 <translation id="1150565364351027703">Solbriller</translation>
 <translation id="1150979032973867961">Denne server kunne ikke bevise, at den er <ph name="DOMAIN" />, da operativsystemet på din computer ikke har tillid til sikkerhedscertifikatet. Dette kan skyldes en fejlkonfiguration, eller at en hacker har opfanget din forbindelse.</translation>
+<translation id="1151858212483238980">Du kan udfylde kort, der er gemt i Google Wallet, automatisk</translation>
 <translation id="1151972924205500581">En adgangskode er påkrævet</translation>
 <translation id="1156303062776767266">Du får vist en lokal eller delt fil</translation>
 <translation id="1158211211994409885"><ph name="HOST_NAME" /> lukkede forbindelsen uventet.</translation>
@@ -131,6 +132,7 @@ Ellers vil det blive blokeret af dine privatlivsindstillinger. Det giver det ind
 <translation id="1202892408424955784">Produkter, du følger</translation>
 <translation id="1204184165594298176">{0,plural, =1{FIlen er blokeret, så den ikke kan kopieres}one{<ph name="FILE_COUNT" /> fil er blokeret, så den ikke kan kopieres}other{<ph name="FILE_COUNT" /> filer er blokeret, så de ikke kan kopieres}}</translation>
 <translation id="120509973613679868">Forretningsrejser</translation>
+<translation id="1205344127823614428">Du kan udfylde kort, der er gemt i Google Wallet, automatisk.</translation>
 <translation id="120587177308723209">Fantasy-sport</translation>
 <translation id="1206967143813997005">Ugyldig første signatur</translation>
 <translation id="1209206284964581585">Skjul indtil videre</translation>
@@ -2154,6 +2156,7 @@ Gå til <ph name="BEGIN_LINK" />betalingsindstillingerne<ph name="END_LINK" /> f
 <translation id="4318312030194671742">Tjeneste til forhåndsvisning af visuelt indhold</translation>
 <translation id="4318566738941496689">Din enheds navn og netværksadresse</translation>
 <translation id="4320119221194966055">Privatlån</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{Du har modtaget et link fra <ph name="DEVICE_NAME" />}one{Du har modtaget # link fra <ph name="DEVICE_NAME" />}other{Du har modtaget # links fra <ph name="DEVICE_NAME" />}}</translation>
 <translation id="4325600325087822253">Bakke 17</translation>
 <translation id="4325863107915753736">Artiklen blev ikke fundet.</translation>
 <translation id="4326324639298822553">Kontrollér, om udløbsdatoen er korrekt, og prøv igen.</translation>
@@ -2977,7 +2980,7 @@ Gå til <ph name="BEGIN_LINK" />betalingsindstillingerne<ph name="END_LINK" /> f
 <translation id="5611398002774823980">Gem på konto</translation>
 <translation id="561165882404867731">Oversæt denne side med Google Oversæt</translation>
 <translation id="5612720917913232150"><ph name="URL" /> anmoder om at anvende computerens placering</translation>
-<translation id="5614190747811328134">Brugerbesked</translation>
+<translation id="5614190747811328134">Brugermeddelelse</translation>
 <translation id="5614520971155863709">Kortspil</translation>
 <translation id="5617949217645503996"><ph name="HOST_NAME" /> omdirigerede dig for mange gange.</translation>
 <translation id="5619721953841297650">Forindstilling</translation>
@@ -3185,6 +3188,7 @@ Gå til <ph name="BEGIN_LINK" />betalingsindstillingerne<ph name="END_LINK" /> f
 <translation id="5968400720580217226">AI-tilstand</translation>
 <translation id="5969199813874624822">Gem og overvåg pris</translation>
 <translation id="5969933937005244170">Relevante åbne faner anvendes kun, hvis du deler dem i en tråd</translation>
+<translation id="5972020793760134803">Skift til fanen</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">Sjette papirrulle</translation>
 <translation id="5975083100439434680">Zoom ud</translation>
@@ -3595,6 +3599,7 @@ Gå til <ph name="BEGIN_LINK" />betalingsindstillingerne<ph name="END_LINK" /> f
 <translation id="6579858392010591435">Højtider og årlige begivenheder</translation>
 <translation id="6581831440014388355">Fjernelse af uønsket krops- og ansigtsbehåring</translation>
 <translation id="658230438113661756">Hackere på det website, du har forsøgt at besøge, kan installere skadelig software, der stjæler eller sletter data som f.eks. dine adgangskoder, billeder, beskeder eller kreditkortnumre. Chrome anbefaler på det kraftigste, at du går tilbage til Sikkerhed. <ph name="BEGIN_LEARN_MORE_LINK" />Få flere oplysninger om denne advarsel<ph name="END_LEARN_MORE_LINK" /></translation>
+<translation id="6583309742916093092">Gemt i Google Wallet</translation>
 <translation id="6587893660316489419">Konvolut B5</translation>
 <translation id="6587923378399804057">Link, du har kopieret</translation>
 <translation id="6591833882275308647">Din <ph name="DEVICE_TYPE" /> administreres ikke</translation>
@@ -3750,6 +3755,7 @@ Gå til <ph name="BEGIN_LINK" />betalingsindstillingerne<ph name="END_LINK" /> f
 <translation id="6834757537110528125">Dette website understøtter ikke en sikker forbindelse</translation>
 <translation id="6841864657731852591">Dybtrykscylinder</translation>
 <translation id="6842196666980060516">184 x 260 mm</translation>
+<translation id="6844746916504777213">Del aldrig disse websites</translation>
 <translation id="6844998850832008753">Registrering af håndbevægelser er tilladt denne gang</translation>
 <translation id="6849023911358004088">Knappen Administrer sikkerhedsindstillinger, aktivér for at administrere Beskyttet browsing m.m. i Chrome-indstillingerne</translation>
 <translation id="6850286078059909152">Tekstfarve</translation>
@@ -4419,6 +4425,7 @@ Yderligere oplysninger:
 <translation id="7840103971441592723">Screenshot er startet</translation>
 <translation id="784137052867620416">Shopping Insights</translation>
 <translation id="7841633276323004751">Tilgængelige betalingsmetoder, der kan vælges for at fortsætte med betalingen. Tastaturet er skjult.</translation>
+<translation id="784189052219692670">Gemini kan nu huske dine personlige oplysninger fra alle dine Google-apps og udfylde dem automatisk på den side, du er på.</translation>
 <translation id="7844689747373518809">{COUNT,plural, =0{Ingen}=1{1 app (<ph name="EXAMPLE_APP_1" />)}=2{2 apps (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />)}one{# app (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" /> <ph name="AND_MORE" />)}other{# apps (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" /> <ph name="AND_MORE" />)}}</translation>
 <translation id="7846161022626028328">Der opstod en fejl. Prøv igen.</translation>
 <translation id="784623644169604270">Ingen seneste aktivitet</translation>
@@ -4822,6 +4829,7 @@ Yderligere oplysninger:
 <translation id="8488350697529856933">Gælder for</translation>
 <translation id="8490137692873530638">Stabler 10</translation>
 <translation id="8493948351860045254">Frigør plads</translation>
+<translation id="8495170825732897952">Skriv @@ i en formular for at hente og udfylde oplysninger uden at skifte fane</translation>
 <translation id="8498870489552322848">angive dine følsomme oplysninger på <ph name="APP_NAME" /></translation>
 <translation id="8498891568109133222"><ph name="HOST_NAME" /> var for lang tid om at svare.</translation>
 <translation id="8502023382441452707">Fødselsdage og navnedage</translation>
@@ -4977,6 +4985,7 @@ Yderligere oplysninger:
 <translation id="8758529215314160755">Du kan redigere dit navn på din <ph name="BEGIN_LINK" />Google-konto <ph name="END_LINK" /> <ph name="ACCOUNT" /></translation>
 <translation id="8759274551635299824">Kortet er udløbet</translation>
 <translation id="87601671197631245">Dette website benytter en forældet sikkerhedskonfiguration, der muligvis afslører dine oplysninger (f.eks. adgangskoder, meddelelser eller kreditkort), når de sendes til dette website.</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{Linket er sendt fra <ph name="DEVICE_NAME" />}one{# link er sendt fra <ph name="DEVICE_NAME" />}other{# links er sendt fra <ph name="DEVICE_NAME" />}}</translation>
 <translation id="8763927697961133303">USB-enhed</translation>
 <translation id="8763986294015493060">Luk alle inkognitovinduer, der i øjeblikket er åbne</translation>
 <translation id="8766943070169463815">Arket til godkendelse af loginoplysninger til sikker betaling er åbnet</translation>

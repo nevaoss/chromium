@@ -152,6 +152,7 @@
 <translation id="1228893227497259893">गलत एकाइ परिचयकर्ता</translation>
 <translation id="1230244617745022071"><ph name="SOURCE" /> (स्वतः पत्ता लगाइएको छ)</translation>
 <translation id="1232569758102978740">शीर्षक नभएको</translation>
+<translation id="1234539281285007945"><ph name="FIELD_1" /> अनिवार्य रूपमा भर्नु पर्ने हुन्छ</translation>
 <translation id="1236081509407217141">VR लाई अनुमति दिने हो?</translation>
 <translation id="1236689197410206751">AfterPay</translation>
 <translation id="1240347957665416060">तपाईंको डिभाइसको नाम</translation>
@@ -472,6 +473,7 @@
 <translation id="1721424275792716183">* क्षेत्र आवश्यक छ</translation>
 <translation id="1723636263173393300">यो नीतिमा <ph name="MAX_ITEMS_LIMIT" /> वटाभन्दा बढी सर्टकट समावेश हुनु हुँदैन।</translation>
 <translation id="1725591448053514783">Envelope You 6</translation>
+<translation id="172754119609519423"><ph name="FIELD_1" />, <ph name="FIELD_2" /> वा <ph name="FIELD_3" /> अनिवार्य रूपमा भर्नु पर्ने हुन्छ</translation>
 <translation id="1727613060316725209">प्रमाणपत्र वैध छ</translation>
 <translation id="1728677426644403582">तपाईं एउटा वेब पृष्ठको स्रोत हेर्दै हुनुहुन्छ</translation>
 <translation id="173080396488393970">यस प्रकारको कार्डलाई समर्थन छैन</translation>
@@ -1429,6 +1431,7 @@
 <translation id="3220264767789936523">औपचारिक समारोहमा लगाइने लुगा</translation>
 <translation id="3223287115535306850">एप लोड गरिँदै छ</translation>
 <translation id="3223425961342298674">लोकेसन प्रयोग गर्ने अनुमति दिइएको छैन</translation>
+<translation id="3225277284238802910"><ph name="FIELD_1" /> वा <ph name="FIELD_2" /> अनिवार्य रूपमा भर्नु पर्ने हुन्छ</translation>
 <translation id="3225319735946384299">कोड साइनिङ</translation>
 <translation id="3225919329040284222">सर्भरले अन्तर्निर्मित अपेक्षाहरूसँग नमिल्ने प्रमाणपत्र प्रस्तुत गर्‍यो। यी अपेक्षाहरू विशेष, उच्च-सुरक्षा वेबसाटइहरूको लागि तपाइँलाई सुरक्षा गर्न समावेश गरिएका छन्।</translation>
 <translation id="3226128629678568754">पृष्ठ लोड गर्न आवश्यक लगत पुन: पेश गर्नक लागि पुन: लोड बटन थिच्नुहोस्।</translation>
@@ -2154,6 +2157,7 @@
 <translation id="4318312030194671742">पेन्टसम्बन्धी पूर्वावलोकनको कम्पोजिटर सेवा</translation>
 <translation id="4318566738941496689">तपाईंको डिभाइसको नाम र नेटवर्कको ठेगाना</translation>
 <translation id="4320119221194966055">व्यक्तिगत ऋणहरू</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> बाट लिंक प्राप्त भएको छ}other{<ph name="DEVICE_NAME" /> बाट # वटा लिंक प्राप्त भएका छन्}}</translation>
 <translation id="4325600325087822253">ट्रे १७</translation>
 <translation id="4325863107915753736">लेख खोज्न असफल भयो।</translation>
 <translation id="4326324639298822553">आफ्नो म्याद सकिने मितिको जाँच गरी फेरि प्रयास गर्नुहोस्</translation>
@@ -3185,6 +3189,7 @@
 <translation id="5968400720580217226">AI मोड</translation>
 <translation id="5969199813874624822">मूल्य सेभ गरी ट्र्याक गर्नुहोस्</translation>
 <translation id="5969933937005244170">तपाईंले खुला रहेका सान्दर्भिक ट्याबहरू कुनै थ्रेडमा सेयर गर्नुभयो भने मात्र ती ट्याबहरू प्रयोग गरिने छन्</translation>
+<translation id="5972020793760134803">ट्याबमा बदल्नुहोस्</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">छैठौँ रोल</translation>
 <translation id="5975083100439434680">जुम आउट</translation>
@@ -4979,6 +4984,7 @@
 <translation id="8758529215314160755">तपाईं <ph name="BEGIN_LINK" />आफ्नो Google खाता<ph name="END_LINK" /> <ph name="ACCOUNT" /> मा गई आफ्नो नाम बदल्न सक्नुहुन्छ</translation>
 <translation id="8759274551635299824">यो कार्डको म्याद सकिएको छ</translation>
 <translation id="87601671197631245">यो साइटले एउटा अद्यावधिक नभएको सुरक्षा कन्फिगुरेसनको प्रयोग गर्छ जसले यस साइटमा तपाईंको जानकारी (उदाहरणका लागि, पासवर्ड, सन्देश वा क्रेडिट कार्ड) पठाइँदा देखाउन सक्छ।</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> बाट लिंक पठाइएको छ}other{<ph name="DEVICE_NAME" /> बाट # वटा लिंक पठाइएका छन्}}</translation>
 <translation id="8763927697961133303">USB यन्त्र</translation>
 <translation id="8763986294015493060">हाल खोलिएका सबै इन्कोग्निटो विन्डोहरू बन्द गर्नुहोस्</translation>
 <translation id="8766943070169463815">सुरक्षित तरिकाले भुक्तानी गर्नका निम्ति क्रिडेन्सियल पुष्टि गर्ने पाना खुला छ</translation>

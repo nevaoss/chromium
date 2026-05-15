@@ -132,7 +132,8 @@ ScopedJavaLocalRef<jobject> ExtensionsMenuDelegateAndroid::GetMenuEntry(
       env, id, CreateJavaControlState(env, state.action_button),
       CreateJavaControlState(env, state.context_menu_button),
       CreateJavaControlState(env, state.site_access_toggle),
-      CreateJavaControlState(env, state.site_permissions_button));
+      CreateJavaControlState(env, state.site_permissions_button),
+      state.is_enterprise);
 }
 
 int ExtensionsMenuDelegateAndroid::GetOptionalSection(JNIEnv* env) {
@@ -257,7 +258,6 @@ void ExtensionsMenuDelegateAndroid::OnHostAccessRequestsCleared() {
 void ExtensionsMenuDelegateAndroid::OnHostAccessRequestRemoved(
     const extensions::ExtensionId& extension_id,
     int index) {
-  // TODO(crbug.com/473213114)
   JNIEnv* env = base::android::AttachCurrentThread();
   Java_ExtensionsMenuBridge_onHostAccessRequestRemoved(env, java_object_,
                                                        extension_id);
@@ -270,7 +270,8 @@ void ExtensionsMenuDelegateAndroid::OnShowHostAccessRequestsInToolbarChanged(
 }
 
 void ExtensionsMenuDelegateAndroid::OnToolbarPinnedActionsChanged() {
-  // TODO(crbug.com/473213114)
+  JNIEnv* env = base::android::AttachCurrentThread();
+  Java_ExtensionsMenuBridge_onPinnedActionsChanged(env, java_object_);
 }
 
 void ExtensionsMenuDelegateAndroid::OnUserPermissionsSettingsChanged() {

@@ -56,6 +56,7 @@ WebThemeEngineHelper::SwapNativeThemeEngineForTesting(
   return new_theme;
 }
 
+<<<<<<< HEAD
 void WebThemeEngineHelper::DidUpdateRendererPreferences(
     const blink::RendererPreferences& renderer_prefs) {
 #if BUILDFLAG(IS_WIN)
@@ -76,6 +77,8 @@ void WebThemeEngineHelper::DidUpdateRendererPreferences(
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
+=======
+>>>>>>> 149.0.7815.0~1
 const WebThemeEngine::ScrollbarStyle&
 WebThemeEngineHelper::AndroidScrollbarStyle() {
   if (ScrollbarThemeSettings::DesktopAndroidScrollbarsEnabled()) {

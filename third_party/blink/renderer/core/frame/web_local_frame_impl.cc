@@ -1494,7 +1494,7 @@ WebString WebLocalFrameImpl::SelectionAsText() const {
         TextIteratorBehavior::EmitsObjectReplacementCharacterBehavior());
   }
 #if BUILDFLAG(IS_WIN)
-  text = NormalizeLineEndingsToCRLF(text);
+  text = NormalizeLineEndingsToCrLf(text);
 #endif
   ReplaceNBSPWithSpace(text);
   return text;
@@ -2430,8 +2430,8 @@ void WebLocalFrameImpl::InitializeCoreFrameInternal(
   if (!owner) {
     // This trace event is needed to detect the main frame of the
     // renderer in telemetry metrics. See crbug.com/692112#c11.
-    TRACE_EVENT_INSTANT1("loading", "markAsMainFrame", TRACE_EVENT_SCOPE_THREAD,
-                         "frame", GetFrameIdForTracing(frame_));
+    TRACE_EVENT_INSTANT("loading", "markAsMainFrame", "frame",
+                        GetFrameIdForTracing(frame_));
   }
 }
 
@@ -3379,13 +3379,13 @@ WebLocalFrameImpl::ConvertNotRestoredReasons(
     not_restored_reasons =
         mojom::blink::BackForwardCacheNotRestoredReasons::New();
     if (reasons_to_copy->id) {
-      not_restored_reasons->id = reasons_to_copy->id.value().c_str();
+      not_restored_reasons->id = String(reasons_to_copy->id.value());
     }
     if (reasons_to_copy->name) {
-      not_restored_reasons->name = reasons_to_copy->name.value().c_str();
+      not_restored_reasons->name = String(reasons_to_copy->name.value());
     }
     if (reasons_to_copy->src) {
-      not_restored_reasons->src = reasons_to_copy->src.value().c_str();
+      not_restored_reasons->src = String(reasons_to_copy->src.value());
     }
     for (const auto& reason_to_copy : reasons_to_copy->reasons) {
       mojom::blink::BFCacheBlockingDetailedReasonPtr reason =

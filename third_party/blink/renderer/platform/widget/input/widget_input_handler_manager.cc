@@ -717,15 +717,16 @@ void WidgetInputHandlerManager::DispatchEvent(
       metrics = cc::ScrollUpdateEventMetrics::Create(
           gesture_event.GetTypeAsUiEventType(),
           gesture_event.GetScrollInputType(), is_inertial,
-          has_seen_first_gesture_scroll_update_after_begin_
+          scroll_tracker_.has_seen_scroll_update_after_begin()
               ? cc::ScrollUpdateEventMetrics::ScrollUpdateType::kContinued
               : cc::ScrollUpdateEventMetrics::ScrollUpdateType::kStarted,
           gesture_event.data.scroll_update.delta_y, event->Event().TimeStamp(),
           arrived_in_browser_main_timestamp,
           blocking_touch_dispatched_to_renderer_timestamp,
           base::IdType64<class ui::LatencyInfo>(
-              event->latency_info().trace_id()));
-      has_seen_first_gesture_scroll_update_after_begin_ = true;
+              event->latency_info().trace_id()),
+          scroll_tracker_.scroll_begin_arrival_timestamp());
+      scroll_tracker_.OnScrollUpdate();
     } else {
       metrics = cc::ScrollEventMetrics::Create(
           gesture_event.GetTypeAsUiEventType(),
@@ -733,8 +734,11 @@ void WidgetInputHandlerManager::DispatchEvent(
           event->Event().TimeStamp(), arrived_in_browser_main_timestamp,
           blocking_touch_dispatched_to_renderer_timestamp,
           base::IdType64<class ui::LatencyInfo>(
-              event->latency_info().trace_id()));
-      has_seen_first_gesture_scroll_update_after_begin_ = false;
+              event->latency_info().trace_id()),
+          scroll_tracker_.scroll_begin_arrival_timestamp());
+      if (gesture_event.GetType() == WebInputEvent::Type::kGestureScrollBegin) {
+        scroll_tracker_.OnScrollBegin(metrics.get());
+      }
     }
   } else if (WebInputEvent::IsPinchGestureEventType(event_type)) {
     const auto& gesture_event =
@@ -1051,8 +1055,7 @@ void WidgetInputHandlerManager::DidHandleInputEventSentToCompositor(
   }
 
   if (event_disposition == InputHandlerProxy::REQUIRES_MAIN_THREAD_HIT_TEST) {
-    TRACE_EVENT_INSTANT0("input", "PostingHitTestToMainThread",
-                         TRACE_EVENT_SCOPE_THREAD);
+    TRACE_EVENT_INSTANT("input", "PostingHitTestToMainThread");
     DCHECK_EQ(event->Event().GetType(),
               WebInputEvent::Type::kGestureScrollBegin);
     DCHECK(input_handler_proxy_);
@@ -1171,8 +1174,7 @@ void WidgetInputHandlerManager::DidHandleInputEventSentToMain(
 
   std::optional<cc::TouchAction> touch_action_for_ack = touch_action_from_main;
   if (!touch_action_for_ack.has_value()) {
-    TRACE_EVENT_INSTANT0("input", "Using allowed_touch_action",
-                         TRACE_EVENT_SCOPE_THREAD);
+    TRACE_EVENT_INSTANT("input", "Using allowed_touch_action");
     touch_action_for_ack = touch_action_from_compositor;
   }
 
@@ -1184,8 +1186,7 @@ void WidgetInputHandlerManager::DidHandleInputEventSentToMain(
   // If there is a compositor task runner and the current thread isn't the
   // compositor thread proxy it over to the compositor thread.
   if (compositor_thread_default_task_runner_ && !is_compositor_thread) {
-    TRACE_EVENT_INSTANT0("input", "PostingToCompositor",
-                         TRACE_EVENT_SCOPE_THREAD);
+    TRACE_EVENT_INSTANT("input", "PostingToCompositor");
     compositor_thread_default_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(CallCallback, std::move(callback), ack_state,
                                   latency_info, std::move(overscroll_params),

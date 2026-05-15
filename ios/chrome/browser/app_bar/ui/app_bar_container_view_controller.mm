@@ -10,6 +10,7 @@
 #import "ios/chrome/browser/app_bar/ui/app_bar_utils.h"
 #import "ios/chrome/browser/app_bar/ui/app_bar_view_controller.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent.h"
+#import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_animator.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 
@@ -78,6 +79,15 @@
   [self updateLayout];
 }
 
+- (void)animateFullscreenWithAnimator:(FullscreenAnimator*)animator {
+  __weak __typeof(self) weakSelf = self;
+  CGFloat finalProgress = animator.finalProgress;
+  [animator addAnimations:^{
+    [weakSelf updateForFullscreenProgress:finalProgress];
+    [weakSelf.view layoutIfNeeded];
+  }];
+}
+
 #pragma mark - FullscreenBrowserAgentObserving
 
 - (void)fullscreenWillUpdateObscuredInsetRange:(FullscreenBrowserAgent*)agent {
@@ -101,6 +111,10 @@
         (kAppBarHeight - kAppBarHeightFullscreen) * agent->bottom_progress();
     agent->AddObscuredInset(UIRectEdgeBottom, currentHeight);
     [self updateLayout];
+    // If this is inside an animation, layout immediately.
+    if (!agent->animation_duration().is_zero()) {
+      [self.view layoutIfNeeded];
+    }
   }
 }
 
@@ -118,6 +132,7 @@
   _fullscreenProgress = progress;
 }
 
+// Updates the layout based on the current orientation and fullscreen progress.
 - (void)updateLayout {
   UIWindowScene* windowScene = self.view.window.windowScene;
   if (!windowScene) {
@@ -150,7 +165,6 @@
           : 1.0;
   self.view.transform = CGAffineTransformMakeRotation(angle);
   self.view.fullscreenProgress = fullscreenProgress;
-  [_appBar updateForFullscreenProgress:fullscreenProgress];
   [_appBar updateForAngle:-angle];
 }
 

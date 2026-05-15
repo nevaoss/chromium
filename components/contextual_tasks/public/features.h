@@ -58,6 +58,9 @@ BASE_DECLARE_FEATURE(kContextualTasksUseStratusDarkModeColors);
 // If enabled, animates the caret.
 BASE_DECLARE_FEATURE(kContextualTasksAnimatedCaret);
 
+// Enables energy effect in Nextbox.
+BASE_DECLARE_FEATURE(kEnergyEffectInNextbox);
+
 // Fixes the composebox jump.
 BASE_DECLARE_FEATURE(kContextualTasksComposeboxJumpFix);
 
@@ -67,6 +70,9 @@ BASE_DECLARE_FEATURE(kContextualTasksRoundedClipPath);
 // Hides the the 3-dot (overflow) menu when viewing an ai page in the side
 // panel. The menu is still shown for lens flows.
 BASE_DECLARE_FEATURE(kContextualTasksHideMenuOnAiPage);
+
+// Enables hiding the close button when in vertical tabs or immersive mode.
+BASE_DECLARE_FEATURE(kContextualTasksHideCloseButtonInVerticalTabs);
 
 // Enables updating the model from URL parameters on every inner navigation.
 BASE_DECLARE_FEATURE(kContextualTasksUpdateModelOnNavigation);
@@ -78,6 +84,9 @@ BASE_DECLARE_FEATURE(kContextualTasksVideoCitations);
 // Enables intercepting PDF links with page numbers to scroll to page instead of
 // navigating.
 BASE_DECLARE_FEATURE(kContextualTasksPdfCitations);
+
+// When enabled, the back button can expand the side panel.
+BASE_DECLARE_FEATURE(kContextualTasksBackButtonExpandsSidePanel);
 
 bool GetIsContextualTasksUpdateModeOnNavigationEnabled();
 
@@ -305,6 +314,8 @@ extern const char kContextualTasksContextName[];
 extern const char kContextualTasksContextDescription[];
 extern const char kContextualTasksSuggestionsEnabledName[];
 extern const char kContextualTasksSuggestionsEnabledDescription[];
+extern const char kContextualTasksBackButtonExpandsSidePanelName[];
+extern const char kContextualTasksBackButtonExpandsSidePanelDescription[];
 
 }  // namespace flag_descriptions
 

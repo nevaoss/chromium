@@ -1030,9 +1030,14 @@ void HTMLSelectElement::SelectOptionFromPopoverPickerOrListbox(
         }
       }
     }
+    SetNeedsValidityCheck();
     DispatchInputEvent();
     DispatchChangeEvent();
-    // TODO call UpdateAllSelectedcontents()
+    if (!IsMultiple()) {
+      UpdateAllSelectedcontentsSingle(option->Selected() ? option : nullptr);
+    } else if (RuntimeEnabledFeatures::SelectedcontentMultipleEnabled()) {
+      UpdateAllSelectedcontentsMultiple();
+    }
     select_type_->UpdateTextStyleAndContent();
   } else {
     SelectOptionByPopup(option);
@@ -1549,7 +1554,7 @@ LayoutUnit HTMLSelectElement::ClientPaddingLeft() const {
       style.IsLeftToRightDirection()
           ? theme.PopupInternalPaddingStart(style)
           : theme.PopupInternalPaddingEnd(GetDocument().GetFrame(), style);
-  return this_box->PaddingLeft() + inner_padding;
+  return this_box->PaddingOutsets().left + inner_padding;
 }
 
 LayoutUnit HTMLSelectElement::ClientPaddingRight() const {
@@ -1564,7 +1569,7 @@ LayoutUnit HTMLSelectElement::ClientPaddingRight() const {
       style.IsLeftToRightDirection()
           ? theme.PopupInternalPaddingEnd(GetDocument().GetFrame(), style)
           : theme.PopupInternalPaddingStart(style);
-  return this_box->PaddingRight() + inner_padding;
+  return this_box->PaddingOutsets().right + inner_padding;
 }
 
 void HTMLSelectElement::PopupDidHide() {
@@ -1660,6 +1665,16 @@ void HTMLSelectElement::AttachLayoutTree(AttachContext& context) {
 void HTMLSelectElement::DetachLayoutTree(bool performing_reattach) {
   HTMLFormControlElementWithState::DetachLayoutTree(performing_reattach);
   select_type_->DidDetachLayoutTree();
+}
+
+void HTMLSelectElement::RemovedFrom(ContainerNode& insertion_point) {
+  // Disconnect the descendants observer on the way out of the document.
+  // Otherwise any mutation records it still has queued will be delivered
+  // after the select is detached, and the DCHECK(IsAppearanceBase()) in
+  // IncreaseContentModelViolationCount() will fire -- a detached element
+  // has no computed style, so IsAppearanceBase() returns false.
+  UpdateMutationObserver();
+  HTMLFormControlElementWithState::RemovedFrom(insertion_point);
 }
 
 void HTMLSelectElement::ResetTypeAheadSessionForTesting() {

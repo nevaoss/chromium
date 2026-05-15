@@ -81,6 +81,9 @@ BASE_FEATURE(kContextualTasksUseStratusDarkModeColors,
 // If enabled, animates the caret.
 BASE_FEATURE(kContextualTasksAnimatedCaret, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Enables energy effect in Nextbox. This works as a killswitch for the feature.
+BASE_FEATURE(kEnergyEffectInNextbox, base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kContextualTasksEnableFileHint, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksComposeboxJumpFix,
@@ -99,6 +102,9 @@ BASE_FEATURE(kContextualTasksHideMenuOnAiPage,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
+BASE_FEATURE(kContextualTasksHideCloseButtonInVerticalTabs,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kContextualTasksUpdateModelOnNavigation,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -108,6 +114,10 @@ BASE_FEATURE(kContextualTasksPdfCitations, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables custom UI for NLM.
 BASE_FEATURE(kContextualTasksCustomNlmUi, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, the back button expands the side panel.
+BASE_FEATURE(kContextualTasksBackButtonExpandsSidePanel,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool GetIsContextualTasksUpdateModeOnNavigationEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksUpdateModelOnNavigation);
@@ -241,8 +251,11 @@ const base::FeatureParam<bool> kForceGscInTabMode(
 // Version 1.3: Bug fix for privacy notice on composebox camouflage.
 // Version 2.0: M146 respin launch candidate.
 // Version 2.1: Enables stratus dark mode colors.
+// Version 2.2: Added UI fixes for NLM.
+// Version 2.3: UI fixes for transitions from search results.
+// Version 2.4: Adds ability to hideInput/restoreInput
 const base::FeatureParam<std::string> kContextualTasksUserAgentSuffix{
-    &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/2.1"};
+    &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/2.4"};
 
 const base::FeatureParam<std::string> kContextualTasksHelpUrl(
     &kContextualTasks,
@@ -575,6 +588,11 @@ const char kContextualTasksSuggestionsEnabledName[] =
     "Contextual Tasks Suggestions Enabled";
 const char kContextualTasksSuggestionsEnabledDescription[] =
     "Enables suggestions for contextual tasks.";
+
+const char kContextualTasksBackButtonExpandsSidePanelName[] =
+    "Contextual Tasks Back Button Expands Side Panel";
+const char kContextualTasksBackButtonExpandsSidePanelDescription[] =
+    "Enables expanding the side panel on back navigations.";
 
 }  // namespace flag_descriptions
 

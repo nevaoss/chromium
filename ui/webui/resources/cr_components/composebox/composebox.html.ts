@@ -79,7 +79,8 @@ export function getHtml(this: ComposeboxElement) {
                         exportparts="tool-chip-label"
                         .inputState="${this.inputState}"
                         .isCanvasQuerySubmitted="${this.isCanvasQuerySubmitted}"
-                        @tool-click="${this.onToolClick}">
+                        @tool-click="${this.onToolClick}"
+                        part="tool-chip">
                       </cr-composebox-tool-chip>
                   </div>
                   ` : ''}
@@ -118,7 +119,7 @@ export function getHtml(this: ComposeboxElement) {
             `: ''}
             ${this.shouldShowVoiceSearchAtBottom() ? html`
               <cr-icon-button id="voiceSearchButton" class="voice-icon" part="voice-icon"
-                  iron-icon="cr:mic" @click="${this.onVoiceSearchButtonClick_}"
+                  iron-icon="cr:mic" @click="${this.onVoiceSearchButtonClick}"
                   title="${this.i18n('voiceSearchButtonLabel')}">
               </cr-icon-button>
             ` : ''}

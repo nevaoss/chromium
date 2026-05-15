@@ -164,9 +164,9 @@ BASE_FEATURE(kBFCacheWithSharedWorker, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kBackForwardCacheDWCOnJavaScriptExecution,
              base::FEATURE_DISABLED_BY_DEFAULT);
 // This is a kill switch for pausing microtask while the page is in the BFCache.
-// Remove by m148 if things go well.
+// Remove by m155 if things go well.
 BASE_FEATURE(kBackForwardCachePauseMicrotasks,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enable background resource fetch in Blink. See https://crbug.com/1379780 for
 // more details.
@@ -789,11 +789,6 @@ BASE_FEATURE(kFencedFramesReportEventHeaderChanges,
 BASE_FEATURE(kFencedFramesSrcPermissionsPolicy,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Controls access to an API to exempt certain URLs from fenced frame
-// network revocation to facilitate testing.
-BASE_FEATURE(kExemptUrlFromNetworkRevocationForTesting,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Use "style" and "json" destinations for CSS and JSON modules.
 // https://crbug.com/1491336
 BASE_FEATURE(kFetchDestinationJsonCssModules,
@@ -981,7 +976,7 @@ BASE_FEATURE(kFledgeTruncateSelectableBuyerAndSellerReportingIdsToKAnonLimit,
 BASE_FEATURE(kForceHighPerformanceGPUForWebGL,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kForceSkcmsICCParsing, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kForceSkcmsICCParsing, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kForceSkExifCppParsing, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -2643,7 +2638,7 @@ BASE_FEATURE(kWebRtcUseCaptureBeginTimestamp, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kWebRtcAudioSinkUseTimestampAligner,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kWebRtcPqcForDtls, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebRtcPqcForDtls, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebRtcUseMediaThreadTypes, base::FEATURE_DISABLED_BY_DEFAULT);
 

@@ -29,13 +29,13 @@ import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.CriteriaNotSatisfiedException;
+import org.chromium.chrome.R;
 import org.chromium.chrome.browser.app.ChromeActivity;
 import org.chromium.chrome.browser.omnibox.LocationBarCoordinator;
 import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.test.ChromeTabbedActivityTestRule;
-import org.chromium.chrome.test.R;
 import org.chromium.chrome.test.util.InfoBarTestAnimationListener;
 import org.chromium.chrome.test.util.InfoBarUtil;
 import org.chromium.components.browser_ui.modaldialog.ModalDialogView;
@@ -55,6 +55,7 @@ import org.chromium.ui.test.util.ViewUtils;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.concurrent.TimeoutException;
 
 /**
  * TestRule for permissions UI testing on Android.
@@ -647,7 +648,7 @@ public class PermissionTestRule extends ChromeTabbedActivityTestRule {
     }
 
     public void runJavaScriptCodeInCurrentTabWithGesture(String javascript)
-            throws java.util.concurrent.TimeoutException {
+            throws TimeoutException {
         runJavaScriptCodeInCurrentTab("functionToRun = '" + javascript + "'");
         TouchCommon.singleClickView(getActivityTab().getView());
     }

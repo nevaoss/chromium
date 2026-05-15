@@ -899,7 +899,8 @@ ContentBrowserClient::CreateModelBrokerClient(BrowserContext* browser_context) {
 media::mojom::AvailabilityStatus
 ContentBrowserClient::GetOnDeviceSpeechRecognitionAvailabilityStatus(
     BrowserContext* context,
-    const std::string& language) {
+    const std::string& language,
+    media::mojom::SpeechRecognitionQuality quality) {
   return media::mojom::AvailabilityStatus::kUnavailable;
 }
 
@@ -1127,6 +1128,7 @@ void ContentBrowserClient::
     RegisterNonNetworkWorkerMainResourceURLLoaderFactories(
         BrowserContext* browser_context,
         const std::optional<url::Origin>& request_initiator,
+        network::mojom::RequestDestination request_destination,
         NonNetworkURLLoaderFactoryMap* factories) {}
 
 void ContentBrowserClient::
@@ -1469,13 +1471,14 @@ bool ContentBrowserClient::IsBuiltinComponent(BrowserContext* browser_context,
 void ContentBrowserClient::StartRtcDiagnosticLogging(
     RenderFrameHost& frame_host,
     bool should_upload_on_stop,
-    base::flat_map<std::string, std::string> metadata,
+    const base::flat_map<std::string, std::string>& metadata,
     base::OnceCallback<void(const std::string&)> callback) {
   std::move(callback).Run(base::Uuid::GenerateRandomV4().AsLowercaseString());
 }
 
 void ContentBrowserClient::FinishRtcDiagnosticLogging(
     RenderFrameHost& frame_host,
+    const base::flat_map<std::string, std::string>& metadata,
     base::OnceClosure callback) {
   std::move(callback).Run();
 }

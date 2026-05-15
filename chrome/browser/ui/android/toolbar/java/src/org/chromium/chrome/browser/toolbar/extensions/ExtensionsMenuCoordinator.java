@@ -30,8 +30,9 @@ import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.chrome.browser.toolbar.MenuBuilderHelper;
 import org.chromium.chrome.browser.toolbar.extensions.ExtensionsToolbarCoordinatorImpl.MenuButtonPinningDelegate;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
+import org.chromium.chrome.browser.ui.extensions.ExtensionsMenuButtonState;
+import org.chromium.chrome.browser.ui.extensions.ExtensionsMenuTypes;
 import org.chromium.chrome.browser.ui.extensions.ExtensionsToolbarBridge;
-import org.chromium.chrome.browser.ui.extensions.R;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.chrome.browser.user_education.IphCommandBuilder;
 import org.chromium.chrome.browser.user_education.UserEducationHelper;
@@ -51,6 +52,8 @@ import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 import org.chromium.ui.widget.AnchoredPopupWindow.HorizontalOrientation;
 import org.chromium.ui.widget.RectProvider;
+
+import java.util.ArrayList;
 
 /**
  * Coordinator for the extensions menu, accessed from the puzzle icon in the toolbar. This class is
@@ -153,7 +156,8 @@ public class ExtensionsMenuCoordinator
                         return MenuBuilderHelper.getRectProvider(mExtensionsMenuButton);
                     }
                 },
-                /* overrideOnClickListener= */ false);
+                /* overrideOnClickListener= */ true);
+
         // Menu mediator is created when menu is triggered.
         mExtensionsMenuButton.setOnClickListener(
                 (view) -> {
@@ -171,6 +175,7 @@ public class ExtensionsMenuCoordinator
                     public void onPopupMenuDismissed() {
                         mMenuButtonPinningDelegate.requestLayoutWithViewUtils();
                         destroyMediator();
+                        mExtensionModels.clear();
                     }
                 });
 
@@ -212,9 +217,6 @@ public class ExtensionsMenuCoordinator
         if (mMediator != null) {
             return;
         }
-
-        // Clear old data before repopulating.
-        mExtensionModels.clear();
 
         // Ensure we start on the main page.
         mMainPageModel.set(
@@ -313,10 +315,8 @@ public class ExtensionsMenuCoordinator
         mMainPageModel.set(ExtensionsMenuProperties.SITE_SETTINGS_LABEL, "");
         mMainPageModel.set(
                 ExtensionsMenuProperties.OPTIONAL_SECTION_TYPE,
-                org.chromium.chrome.browser.ui.extensions.ExtensionsMenuTypes.OptionalSectionType
-                        .NONE);
-        mMainPageModel.set(
-                ExtensionsMenuProperties.HOST_ACCESS_REQUESTS, new java.util.ArrayList<>());
+                ExtensionsMenuTypes.OptionalSectionType.NONE);
+        mMainPageModel.set(ExtensionsMenuProperties.HOST_ACCESS_REQUESTS, new ArrayList<>());
         mMainPageModel.set(
                 ExtensionsMenuProperties.ALLOW_EXTENSION_CLICK_LISTENER,
                 (extensionId) -> {
@@ -346,8 +346,7 @@ public class ExtensionsMenuCoordinator
         Activity activity = mWindowAndroid.getActivity().get();
         if (activity == null) return;
 
-        View anchorView =
-                activity.findViewById(org.chromium.chrome.browser.toolbar.R.id.menu_button_wrapper);
+        View anchorView = activity.findViewById(R.id.menu_button_wrapper);
         if (anchorView == null) return;
 
         UserEducationHelper userEducationHelper =
@@ -401,6 +400,8 @@ public class ExtensionsMenuCoordinator
 
         extensionRecyclerView.setAdapter(extensionsAdapter);
         extensionRecyclerView.setLayoutManager(new LinearLayoutManager(context));
+
+        extensionRecyclerView.setItemAnimator(null);
     }
 
     private void updateButtonState() {
@@ -415,7 +416,7 @@ public class ExtensionsMenuCoordinator
                         mContext.getResources().getDimension(R.dimen.extensions_toolbar_icon_size)
                                 / density);
 
-        org.chromium.chrome.browser.ui.extensions.ExtensionsMenuButtonState state =
+        ExtensionsMenuButtonState state =
                 mExtensionsToolbarBridge.getMenuButtonState(
                         currentTab.getWebContents(), iconSizeDp, iconSizeDp, density, color);
 

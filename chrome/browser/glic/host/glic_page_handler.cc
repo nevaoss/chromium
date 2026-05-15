@@ -239,9 +239,13 @@ GlicZoomAction ToGlicZoomAction(mojom::ZoomAction action) {
 }
 
 mojom::SkillPreviewPtr ToMojomSkillPreview(const skills::proto::Skill& skill) {
+  std::optional<std::string> curated_by;
+  if (!skill.curated_by().empty()) {
+    curated_by = skill.curated_by();
+  }
   return mojom::SkillPreview::New(
       skill.id(), skill.name(), skill.icon(), mojom::SkillSource::kFirstParty,
-      skill.description(), /*image_url=*/std::nullopt);
+      skill.description(), curated_by, /*image_url=*/std::nullopt);
 }
 
 // Monitors the panel state and the browser widget state. Emits an event any
@@ -1296,7 +1300,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     // directly in skills::Skill..
     skills::Skill skill(request->id, request->name, request->icon,
                         request->prompt, request->description,
-                        /*image_url=*/GURL(),
+                        /*curated_by=*/"", /*image_url=*/GURL(),
                         skills::GlicMojomToSyncPbSkillSource(request->source));
     host().skills_manager().LaunchSkillsDialog(
         profile_, std::move(skill), skills::mojom::SkillsDialogType::kAdd,
@@ -1356,9 +1360,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void RecordSkillsWebClientEvent(
       glic::mojom::SkillsWebClientEvent action) override {
-    if (auto* instance_metrics = host().instance_metrics()) {
-      instance_metrics->RecordSkillsWebClientEvent(action);
-    }
+    host().instance_metrics().RecordSkillsWebClientEvent(action);
   }
 
   void CreateActorTab(int32_t task_id,
@@ -1394,16 +1396,25 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     host().CaptureScreenshot(std::move(callback));
   }
 
-  void CaptureRegion(
-      mojo::PendingRemote<mojom::CaptureRegionObserver> observer) override {
+  void CaptureRegion(mojo::PendingRemote<mojom::CaptureRegionObserver> observer,
+                     mojom::CaptureRegionParamsPtr params) override {
 #if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL: CaptureRegion (b/494315475)
-    const FocusedTabData& focus = sharing_manager().GetFocusedTabData();
-    // Prioritize the focused tab, but fall back to the unfocused tab if one is
-    // available. This is useful in cases where the active tab is not
-    // "focusable" by Glic (e.g. chrome:// pages).
-    tabs::TabInterface* active_tab =
-        focus.is_focus() ? focus.focus() : focus.unfocused_tab();
-    glic_service_->CaptureRegion(active_tab, std::move(observer));
+    std::optional<int32_t> tab_id =
+        params ? std::optional<int32_t>(params->tab_id) : std::nullopt;
+    mojom::GetTabContextOptionsPtr tab_context_options =
+        params ? std::move(params->options) : nullptr;
+    tabs::TabInterface* tab = nullptr;
+    if (tab_id.has_value()) {
+      tab = tabs::TabHandle(*tab_id).Get();
+    } else {
+      const FocusedTabData& focus = sharing_manager().GetFocusedTabData();
+      // Prioritize the focused tab, but fall back to the unfocused tab if one
+      // is available. This is useful in cases where the active tab is not
+      // "focusable" by Glic (e.g. chrome:// pages).
+      tab = focus.is_focus() ? focus.focus() : focus.unfocused_tab();
+    }
+    glic_service_->CaptureRegion(tab, std::move(observer),
+                                 std::move(tab_context_options));
 #else
     NOTIMPLEMENTED();
 #endif
@@ -1677,17 +1688,15 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   void OnReaction(mojom::MetricUserInputReactionType reaction_type) override {
-    host().instance_metrics()->OnReaction(reaction_type);
+    host().instance_metrics().OnReaction(reaction_type);
   }
 
   // TODO(crbug.com/450026474): Remove call to GlicMetrics once
   // non-profile-scoped metrics are logged entirely from GlicInstanceMetrics.
   void OnResponseStarted() override {
     host().instance_metrics_backwards_compatibility().OnResponseStarted();
-    if (auto* instance_metrics = host().instance_metrics()) {
-      instance_metrics->RecordAttachedContextTabCount(
-          sharing_manager().GetNumPinnedTabs());
-    }
+    host().instance_metrics().RecordAttachedContextTabCount(
+        sharing_manager().GetNumPinnedTabs());
   }
 
   // TODO(crbug.com/450026474): Remove call to GlicMetrics once
@@ -1706,7 +1715,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
 
   void OnTurnCompleted(glic::mojom::WebClientModel model,
                        base::TimeDelta duration) override {
-    host().instance_metrics()->OnTurnCompleted(model, duration);
+    host().instance_metrics().OnTurnCompleted(model, duration);
   }
 
   void OnResponseRated(bool positive) override {
@@ -1718,7 +1727,7 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
   }
 
   void OnActionSubmitted(bool is_retry) override {
-    host().instance_metrics()->OnActionSubmitted(is_retry);
+    host().instance_metrics().OnActionSubmitted(is_retry);
   }
 
   void ScrollTo(mojom::ScrollToParamsPtr params,
@@ -2006,6 +2015,12 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
       base::OnceCallback<void(bool)> success_status_callback) override {
     web_client_->GetExperimentalTriggeringUpdates(
         std::move(handler), std::move(success_status_callback));
+  }
+
+  void NotifyIsInvoking(bool is_invoking) override {
+    if (web_client_) {
+      web_client_->NotifyIsInvoking(is_invoking);
+    }
   }
 
   // SkillsService::Observer implementation.
@@ -2398,10 +2413,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
           skills::SkillToGlicMojomSkillPreview(skill.get()));
     }
 
-    auto& first_party_skills_map = skills_service_->Get1PSkills();
+    const auto& first_party_skills_list = skills_service_->Get1PSkills();
     std::vector<mojom::SkillPreviewPtr> first_party_skills;
-    for (const auto& it : first_party_skills_map) {
-      first_party_skills.push_back(ToMojomSkillPreview(it.second));
+    for (const auto& skill : first_party_skills_list) {
+      first_party_skills.push_back(ToMojomSkillPreview(skill));
     }
 
     std::sort(first_party_skills.begin(), first_party_skills.end(),
@@ -2537,11 +2552,15 @@ void GlicPageHandler::OnZoomLevelChange(double zoom_factor) {
     return;
   }
   int zoom_percent = std::round(zoom_factor * 100);
-  // Note that zoom level is already persisted in the glic webview partition -
-  // this pref is only used for metrics.
-  Profile::FromBrowserContext(browser_context_)
-      ->GetPrefs()
-      ->SetInteger(prefs::kGlicZoomLevel, zoom_percent);
+  auto* pref_service =
+      Profile::FromBrowserContext(browser_context_)->GetPrefs();
+  // The webui sends a zoom level change on initialization. Skip these.
+  if (pref_service->GetInteger(prefs::kGlicZoomLevel) != zoom_percent) {
+    // Note that zoom level is already persisted in the glic webview partition -
+    // this pref is only used for metrics.
+    pref_service->SetInteger(prefs::kGlicZoomLevel, zoom_percent);
+    host().instance_metrics().OnZoomLevelChange();
+  }
 }
 
 void GlicPageHandler::NotifyWindowIntentToShow() {
@@ -2622,11 +2641,7 @@ void GlicPageHandler::OpenDisabledByAdminLinkAndClosePanel() {
 }
 
 void GlicPageHandler::SignInAndClosePanel() {
-  GetGlicService()->GetAuthController().ShowReauthForAccount(base::BindOnce(
-      &GlicInstanceCoordinator::ShowAfterSignIn,
-      // Unretained is safe because the keyed service owns the
-      // auth controller and the window controller.
-      base::Unretained(&GetGlicService()->instance_coordinator()), nullptr));
+  GetGlicService()->GetAuthController().ShowReauthForAccount(base::DoNothing());
   host().ClosePanel(this);
 }
 

@@ -12,6 +12,7 @@
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "components/accessibility_annotator/core/accessibility_annotator_features.h"
+#include "components/accessibility_annotator/core/storage/intent_table.h"
 #include "sql/database.h"
 #include "sql/recovery.h"
 #include "sql/statement.h"
@@ -94,6 +95,10 @@ bool AccessibilityAnnotatorDatabase::Init(const base::FilePath& db_path,
     return false;
   }
 
+  if (!intent_table_.Init(db_.get())) {
+    return false;
+  }
+
   if (detected_user_version == kCurrentVersionNumber) {
     return true;
   }
@@ -106,10 +111,6 @@ bool AccessibilityAnnotatorDatabase::Init(const base::FilePath& db_path,
 
   sql::Transaction transaction(db_.get());
   if (!transaction.Begin()) {
-    return false;
-  }
-
-  if (!CreateTablesIfNecessary()) {
     return false;
   }
 
@@ -158,11 +159,12 @@ AccessibilityAnnotatorDatabase::GetAllContentAnnotations() {
   return content_annotations_table_.GetAllContentAnnotations();
 }
 
-bool AccessibilityAnnotatorDatabase::DeleteContentAnnotations(
+std::vector<history::VisitID>
+AccessibilityAnnotatorDatabase::DeleteContentAnnotations(
     base::span<const history::VisitID> visit_ids) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!db_ || !db_->is_open() || !encryptor_.has_value()) {
-    return false;
+    return {};
   }
 
   return content_annotations_table_.DeleteContentAnnotations(visit_ids);
@@ -177,21 +179,26 @@ bool AccessibilityAnnotatorDatabase::ClearAllContentAnnotations() {
   return content_annotations_table_.ClearAllContentAnnotations();
 }
 
-bool AccessibilityAnnotatorDatabase::CreateTablesIfNecessary() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (!db_ || !db_->is_open() || !encryptor_.has_value()) {
-    return false;
-  }
-
-  return content_annotations_table_.CreateTablesIfNecessary();
-}
-
 bool AccessibilityAnnotatorDatabase::MigrateOldVersionsAsNeeded(
     int detected_user_version) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  if (!db_ || !db_->is_open() || !encryptor_.has_value()) {
+    return false;
+  }
+
   // Perform any necessary migrations from `detected_user_version` to
   // `kCurrentVersionNumber` here.
+
+  if (detected_user_version == 0) {
+    if (!content_annotations_table_.MigrateFromCleanStateToVersion1()) {
+      return false;
+    }
+    if (!intent_table_.MigrateFromCleanStateToVersion1()) {
+      return false;
+    }
+    detected_user_version++;
+  }
 
   // Set the user-version to the current version.
   return db_->Execute(base::StrCat(

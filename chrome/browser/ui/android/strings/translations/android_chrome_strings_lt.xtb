@@ -187,8 +187,6 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="1820408774134375111">Prisijungimo apatinis lapas</translation>
 <translation id="1823492026305965829">Prisijungti kaip <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">Palieskite „Ištrinti naršymo duomenis“</translation>
-<translation id="1825772852827001597">„Google Pay“ mokėjimo metodai ir adresai nebus šifruojami. Naršymo istorija iš „Chrome“ nebus sinchronizuojama.
-Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. Slaptafrazė nesiunčiama ir nesaugoma „Google“. Jei pamiršite slaptafrazę ar norėsite pakeisti šį nustatymą, <ph name="BEGIN_LINK" />ištrinkite „Chrome“ duomenis paskyroje<ph name="END_LINK" />.</translation>
 <translation id="1829244130665387512">Surasti puslapyje</translation>
 <translation id="1832459821645506983">Taip, sutinku</translation>
 <translation id="1845958458910716240">Kad apsaugotumėte duomenis, leiskite „Chrome“ pašalinti svetainių, kuriose pastaruoju metu nesilankėte, leidimus</translation>
@@ -557,7 +555,6 @@ Tik jūsų slaptafrazę turintis asmuo galės perskaityti šifruotus duomenis. S
 <translation id="3439276997620616816">Čia rasite naujausius skirtukus</translation>
 <translation id="3443221991560634068">Iš naujo įkelti dabartinį puslapį</translation>
 <translation id="3444179773590444986">Bendrinti atsiliepimą apie tamsiąją temą, skirtą svetainėms?</translation>
-<translation id="3448874648066942074">Puslapio apibendrinimas naudojant DI</translation>
 <translation id="3452832259067974318">Siekiant apsaugoti jūsų privatumą, „Chrome“ šio lauko automatiškai nepildys jūsų slaptažodžiu.</translation>
 <translation id="3474624961160222204">Tęsti kaip <ph name="NAME" /></translation>
 <translation id="3478363558367712427">Galite pasirinkti paieškos variklį</translation>
@@ -857,7 +854,6 @@ Adresu <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> gali 
 <translation id="4698757800236023795">Aktyvu (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">Talpykloje esantys vaizdai ir failai</translation>
 <translation id="4710167854527459075">Rūšiuoti nuo naujausio</translation>
-<translation id="4718044610319080485">Iškviečia DI padėjėją</translation>
 <translation id="4719927025381752090">Siūlyti versti</translation>
 <translation id="4720556299488643018">Atšaukti prenumeratą</translation>
 <translation id="4732120983431207637">Stack Unwinder</translation>
@@ -1236,7 +1232,6 @@ Pavyzdžiui, kai kurios svetainės gali atsakyti į šią užklausą rodydamos j
 <translation id="629730747756840877">Paskyra</translation>
 <translation id="6301526076346731664">Atidaryti kūrėjo įrankius</translation>
 <translation id="630308129961693966">Adreso juostos pozicijos pasirinkimas</translation>
-<translation id="6303969859164067831">Atsijungti ir išjungti sinchronizavimą</translation>
 <translation id="6305257382500066042">Išbandykite dabar</translation>
 <translation id="6307241780749477694">Patvirtinkite savo tapatybę, kad gautumėte visus slaptažodžius šiame įrenginyje</translation>
 <translation id="6309082029962045994">„<ph name="TAB_TITLE" />“, kelis kartus pasirinktas prisegtas skirtukas su garsu</translation>
@@ -1314,7 +1309,6 @@ Pavyzdžiui, kai kurios svetainės gali atsakyti į šią užklausą rodydamos j
 <translation id="6565959834589222080">„Wi-Fi“ naudojama, kai pasiekiama</translation>
 <translation id="657177046675873214">Jei norite pasiekti žymes visuose įrenginiuose, nustatymuose įjunkite nustatymą „Žymės“</translation>
 <translation id="6573096386450695060">Visada leisti</translation>
-<translation id="6573431926118603307">Čia bus rodomi kituose įrenginiuose atidaryti „Chrome“ skirtukai.</translation>
 <translation id="6583199322650523874">Pažymėti dabartinį puslapį</translation>
 <translation id="6588043302623806746">Naudoti saugią DNS</translation>
 <translation id="6590471736817333463">Sutaupykite iki 60 proc. duomenų</translation>
@@ -1665,7 +1659,6 @@ Jei norite pakeisti šį nustatymą, <ph name="BEGIN_LINK" />ištrinkite „Chro
 <translation id="7914399737746719723">Programa įdiegta</translation>
 <translation id="7917574899775263813">Pereiti į paskutinį skirtuką</translation>
 <translation id="7919123827536834358">Automatiškai versti šias kalbas</translation>
-<translation id="7921782882718083488">Šio puslapio apibendrinimas</translation>
 <translation id="7926975587469166629">Kortelės slapyvardis</translation>
 <translation id="7927073875790626822">XR</translation>
 <translation id="7929587383660661825">„Chrome“ automatiškai pašalina svetainių, kuriose piktnaudžiaujama pranešimais arba kuriose pastaruoju metu nesilankėte, leidimus</translation>
@@ -1829,7 +1822,6 @@ Jei norite pakeisti šį nustatymą, <ph name="BEGIN_LINK" />ištrinkite „Chro
 <translation id="8538291624121505885">„<ph name="TAB_TITLE" />“, kelis kartus pasirinktas prisegtas vaizdo vaizde skirtukas</translation>
 <translation id="8540136935098276800">Įveskite tinkamo formato URL</translation>
 <translation id="854522910157234410">Atidaryti šį puslapį</translation>
-<translation id="8547466829003330976">Peržiūrėkite PDF failą naudodami DI</translation>
 <translation id="8551513938758868521">Inkognito skirtukų užrakinimas uždarius „Chrome“</translation>
 <translation id="8559961053328923750">„Chrome“ riboja bendrą duomenų, kuriuos svetainės gali bendrinti naršyklėje, kad būtų galima įvertinti skelbimų našumą, kiekį</translation>
 <translation id="8559990750235505898">Siūlyti versti puslapius į kitas kalbas</translation>

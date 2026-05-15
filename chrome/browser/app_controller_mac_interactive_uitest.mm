@@ -47,13 +47,13 @@ void SendOpenUrlToAppController(const GURL& url) {
 
 // Note: These tests interact with SharedController which requires the browser's
 // focus. In browser_tests other tests that are running in parallel cause
-// flakiness to test test. See: https://crbug.com/1469960
+// flakiness to test test. See: https://crbug.com/40925562
 
 // -------------------AppControllerInteractiveUITest-------------------
 
 using AppControllerInteractiveUITest = InteractiveBrowserTest;
 
-// Regression test for https://crbug.com/1236073
+// Regression test for https://crbug.com/40192595
 IN_PROC_BROWSER_TEST_F(AppControllerInteractiveUITest, DeleteEphemeralProfile) {
   EXPECT_EQ(1u, GlobalBrowserCollection::GetInstance()->GetSize());
   Profile* profile = browser()->profile();
@@ -119,7 +119,8 @@ IN_PROC_BROWSER_TEST_F(AppControllerMainMenuInteractiveUITest,
 
   // Verify that history bridge service is available for regular profiles.
   EXPECT_TRUE([app_controller historyMenuBridge]->service());
-  BrowserWindowInterface* regular_browser = chrome::FindLastActive();
+  BrowserWindowInterface* regular_browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
 
   // Open a URL in Incognito window.
   ui_test_utils::NavigateToURLWithDisposition(
@@ -129,7 +130,8 @@ IN_PROC_BROWSER_TEST_F(AppControllerMainMenuInteractiveUITest,
   // Check that there are exactly 2 browsers (regular and incognito).
   EXPECT_EQ(2u, GlobalBrowserCollection::GetInstance()->GetSize());
 
-  BrowserWindowInterface* inc_browser = chrome::FindLastActive();
+  BrowserWindowInterface* inc_browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   EXPECT_TRUE(inc_browser->GetProfile()->IsIncognitoProfile());
 
   // Verify that history bridge service is not available in Incognito.
@@ -141,23 +143,22 @@ IN_PROC_BROWSER_TEST_F(AppControllerMainMenuInteractiveUITest,
 }
 
 // Tests opening a new window from dock menu while incognito browser is opened.
-// Regression test for https://crbug.com/1371923
+// Regression test for https://crbug.com/40241549
 IN_PROC_BROWSER_TEST_F(AppControllerMainMenuInteractiveUITest,
                        WhileIncognitoBrowserIsOpened_NewWindow) {
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1u);
 
-  // Close the current browser.
-  Profile* profile = browser()->profile();
-  ui_test_utils::BrowserDestroyedObserver observer(browser());
-  chrome::CloseAllBrowsers();
-  observer.Wait();
-  EXPECT_FALSE(GetLastActiveBrowserWindowInterfaceWithAnyProfile());
-
   // Create an incognito browser.
-  Browser* incognito_browser = CreateIncognitoBrowser(profile);
+  Profile* original_profile = browser()->profile();
+  Browser* incognito_browser = CreateIncognitoBrowser(original_profile);
   EXPECT_TRUE(incognito_browser->profile()->IsIncognitoProfile());
+  EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 2u);
+
+  // Close the original browser.
+  CloseBrowserSynchronously(browser());
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1u);
-  EXPECT_EQ(incognito_browser, chrome::FindLastActive());
+  EXPECT_EQ(incognito_browser,
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
 
   // Simulate click on "New Window".
   ui_test_utils::BrowserCreatedObserver browser_created_observer;
@@ -172,7 +173,7 @@ IN_PROC_BROWSER_TEST_F(AppControllerMainMenuInteractiveUITest,
   Browser* new_browser = browser_created_observer.Wait();
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 2u);
   EXPECT_TRUE(new_browser->profile()->IsRegularProfile());
-  EXPECT_EQ(profile, new_browser->profile());
+  EXPECT_EQ(original_profile, new_browser->profile());
 }
 
 // Test that when the ProfilePicker is shown, a reopen event focuses the
@@ -236,7 +237,7 @@ class AppControllerIncognitoSwitchInteractiveUITest
   }
 };
 
-// Regression test for https://crbug.com/1248661
+// Regression test for https://crbug.com/40057229
 IN_PROC_BROWSER_TEST_F(AppControllerIncognitoSwitchInteractiveUITest,
                        ObserveProfileDestruction) {
   // Chrome is launched in incognito.

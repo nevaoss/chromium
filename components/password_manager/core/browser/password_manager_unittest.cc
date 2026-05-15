@@ -171,7 +171,9 @@ class MockLeakDetectionCheck : public LeakDetectionCheck {
  public:
   MOCK_METHOD(void,
               Start,
-              (LeakDetectionInitiator, const PasswordForm&),
+              (LeakDetectionInitiator,
+               const PasswordForm&,
+               LeakDetectionCallback),
               (override));
 };
 
@@ -189,7 +191,7 @@ class MockPasswordChangeService : public PasswordChangeServiceInterface {
   MOCK_METHOD(bool, IsPasswordChangeAvailable, (), (const override));
   MOCK_METHOD(bool,
               IsPasswordChangeSupported,
-              (const PasswordForm&, const autofill::LanguageCode&),
+              (const PasswordForm&),
               (const override));
   MOCK_METHOD(void,
               RecordLoginAttemptQuality,
@@ -4797,7 +4799,8 @@ TEST_P(PasswordManagerTest, StartLeakDetection) {
                           Field(&PasswordForm::username_value,
                                 Eq(form_data.fields()[0].value())),
                           Field(&PasswordForm::password_value,
-                                Eq(form_data.fields()[1].value())))));
+                                Eq(form_data.fields()[1].value()))),
+                    _));
   EXPECT_CALL(*weak_factory, TryCreateLeakCheck)
       .WillOnce(Return(ByMove(std::move(check_instance))));
 

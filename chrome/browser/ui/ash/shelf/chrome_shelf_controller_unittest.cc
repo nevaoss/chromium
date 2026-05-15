@@ -121,6 +121,7 @@
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/web_applications/test/isolated_web_app_test_utils.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
@@ -1343,7 +1344,7 @@ class ChromeShelfControllerTestBase : public BrowserWithTestWindowTest,
     base::ListValue pinned_launcher_apps;
     (AppendPrefValue(pinned_launcher_apps, std::forward<Args>(args)), ...);
     profile()->GetTestingPrefService()->SetManagedPref(
-        prefs::kPolicyPinnedLauncherApps,
+        ash::prefs::kPolicyPinnedLauncherApps,
         base::Value(std::move(pinned_launcher_apps)));
   }
 
@@ -2027,7 +2028,7 @@ TEST_F(ChromeShelfControllerTest, MergePolicyAndUserPrefPinnedApps) {
   AppendPrefValue(policy_value, extension2_->id());
   AppendPrefValue(policy_value, google_docs_install_url_v2.spec());
   profile()->GetTestingPrefService()->SetManagedPref(
-      prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
+      ash::prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
 
   EXPECT_TRUE(shelf_controller_->IsAppPinned(extension1_->id()));
   // 2 is not pinned as it's not installed
@@ -3502,7 +3503,7 @@ TEST_F(ChromeShelfControllerTest, Policy) {
   AppendPrefValue(policy_value, gmail_install_url.spec());
 
   profile()->GetTestingPrefService()->SetManagedPref(
-      prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
+      ash::prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
 
   InitShelfController();
 
@@ -3524,7 +3525,7 @@ TEST_F(ChromeShelfControllerTest, Policy) {
   // shelf and pin will exist.
   RemovePrefValue(policy_value, extension1_->id());
   profile()->GetTestingPrefService()->SetManagedPref(
-      prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
+      ash::prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
   EXPECT_EQ("Chrome, App1, App2, Camera, Gmail", GetPinnedAppStatus());
   EXPECT_FALSE(IsAppPolicyPinned(extension1_->id()));
 
@@ -3532,14 +3533,14 @@ TEST_F(ChromeShelfControllerTest, Policy) {
   // fixed.
   RemovePrefValue(policy_value, gmail_install_url.spec());
   profile()->GetTestingPrefService()->SetManagedPref(
-      prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
+      ash::prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
   EXPECT_EQ("Chrome, App1, App2, Camera, Gmail", GetPinnedAppStatus());
   EXPECT_FALSE(IsAppPolicyPinned(ash::kGmailAppId));
 
   // Check that Gmail can also be pinned by direct mapping.
   AppendPrefValue(policy_value, std::string(kGmailPolicyId));
   profile()->GetTestingPrefService()->SetManagedPref(
-      prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
+      ash::prefs::kPolicyPinnedLauncherApps, base::Value(policy_value.Clone()));
   EXPECT_EQ("Chrome, App1, App2, Camera, Gmail", GetPinnedAppStatus());
   EXPECT_TRUE(IsAppPolicyPinned(ash::kGmailAppId));
 }
@@ -3670,7 +3671,7 @@ void CheckAppMenu(ChromeShelfController* controller,
 
 // Check that browsers get reflected correctly in the shelf menu.
 TEST_F(ChromeShelfControllerTest, BrowserMenuGeneration) {
-  EXPECT_EQ(1U, chrome::GetTotalBrowserCount());
+  EXPECT_EQ(1U, GlobalBrowserCollection::GetInstance()->GetSize());
   chrome::NewTab(browser());
 
   InitShelfController();
@@ -3753,7 +3754,7 @@ TEST_F(MultiProfileMultiBrowserShelfLayoutChromeShelfControllerTest,
 // Note that the extension matching logic is tested by the extension system
 // and does not need a separate test here.
 TEST_F(ChromeShelfControllerTest, V1AppMenuGeneration) {
-  EXPECT_EQ(1U, chrome::GetTotalBrowserCount());
+  EXPECT_EQ(1U, GlobalBrowserCollection::GetInstance()->GetSize());
   EXPECT_EQ(0, browser()->tab_strip_model()->count());
 
   InitShelfControllerWithBrowser();

@@ -27,6 +27,9 @@ class GlicInvokeTask {
  public:
   virtual ~GlicInvokeTask() = default;
   virtual void Start(base::OnceClosure done_callback) = 0;
+  // Called when the sequence of tasks completes (successfully or not).
+  // This is where tasks should do cleanup.
+  virtual void OnSequenceCompleted(bool success) {}
 };
 
 // Executes tasks sequentially in the order they were added.
@@ -40,6 +43,9 @@ class SequentialTaskGroup : public GlicInvokeTask {
   ~SequentialTaskGroup() override;
 
   void Start(base::OnceClosure done_callback) override;
+
+  // Notifies all tasks in the group that the sequence has completed.
+  void NotifySequenceCompleted(bool success);
 
  private:
   void RunNextTask();
@@ -114,6 +120,29 @@ class WaitForClientConnectedTask : public GlicInvokeTask,
   base::OnceClosure done_callback_;
 };
 
+// Task that notifies the host of invoking state.
+class NotifyIsInvokingTask : public GlicInvokeTask {
+ public:
+  NotifyIsInvokingTask(Host* host, bool is_invoking);
+  ~NotifyIsInvokingTask() override;
+  void Start(base::OnceClosure done_callback) override;
+
+ private:
+  raw_ptr<Host> host_;
+  bool is_invoking_;
+};
+
+// Task that posts a callback asynchronously.
+class PostCallbackTask : public GlicInvokeTask {
+ public:
+  explicit PostCallbackTask(base::OnceClosure callback);
+  ~PostCallbackTask() override;
+  void Start(base::OnceClosure done_callback) override;
+
+ private:
+  base::OnceClosure callback_;
+};
+
 // Task that waits for the layout to stabilize after showing the panel.
 class StabilizationTask : public GlicInvokeTask,
                           public content::WebContentsObserver {
@@ -172,7 +201,6 @@ class WaitForActuationTask : public GlicInvokeTask {
  public:
   WaitForActuationTask(GlicInstanceImpl* instance,
                        base::TimeDelta start_timeout,
-                       base::TimeDelta complete_timeout,
                        base::OnceCallback<void(GlicInvokeError)> error_callback,
                        base::OnceClosure on_actuation_started);
   ~WaitForActuationTask() override;
@@ -186,7 +214,6 @@ class WaitForActuationTask : public GlicInvokeTask {
 
   raw_ptr<GlicInstanceImpl> instance_;
   base::TimeDelta start_timeout_;
-  base::TimeDelta complete_timeout_;
   base::OnceCallback<void(GlicInvokeError)> error_callback_;
   base::OnceClosure done_callback_;
   base::OnceClosure on_actuation_started_;
@@ -196,7 +223,6 @@ class WaitForActuationTask : public GlicInvokeTask {
   bool task_started_ = false;
   bool did_start_ = false;
   bool did_finish_ = false;
-  bool complete_timeout_started_ = false;
   base::CallbackListSubscription subscription_;
 };
 

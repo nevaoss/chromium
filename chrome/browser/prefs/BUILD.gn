@@ -92,6 +92,7 @@ source_set("impl") {
     "//chrome/browser/preloading/prefetch/search_prefetch",
     "//chrome/browser/privacy_sandbox/notice:core",
     "//chrome/browser/profiles",
+    "//chrome/browser/profiles:misc",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/profiles:profile_util",
     "//chrome/browser/push_messaging",
@@ -416,7 +417,10 @@ source_set("impl") {
   }
 
   if (!is_android) {
-    deps += [ "//chrome/browser/ui/read_anything:prefs" ]
+    deps += [
+      "//chrome/browser/hid",
+      "//chrome/browser/ui/read_anything:prefs",
+    ]
   }
 
   if (!is_android && !is_chromeos) {

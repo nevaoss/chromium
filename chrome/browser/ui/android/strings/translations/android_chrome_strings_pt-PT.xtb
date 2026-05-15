@@ -187,8 +187,6 @@ Só alguém com a sua frase de acesso pode ler os dados encriptados. A Google n�
 <translation id="1820408774134375111">Secção inferior de início de sessão</translation>
 <translation id="1823492026305965829">Iniciar sessão como <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">Toque em Eliminar dados de navegação</translation>
-<translation id="1825772852827001597">Os métodos de pagamento e as moradas do Google Pay não são encriptados. O histórico de navegação do Chrome não é sincronizado.
-Só alguém com a sua frase de acesso pode ler os dados encriptados. A Google não recebe nem armazena a frase de acesso. Se se esquecer da frase de acesso ou quiser alterar esta definição, <ph name="BEGIN_LINK" />elimine os dados do Chrome na sua conta<ph name="END_LINK" />.</translation>
 <translation id="1829244130665387512">Localizar na página</translation>
 <translation id="1832459821645506983">Sim, aceito</translation>
 <translation id="1845958458910716240">Para proteger os seus dados, permita que o Chrome remova as autorizações de sites que não visitou recentemente</translation>
@@ -557,7 +555,6 @@ Só alguém com a sua frase de acesso pode ler os dados encriptados. A Google n�
 <translation id="3439276997620616816">Os seus separadores recentes vão ser apresentados aqui</translation>
 <translation id="3443221991560634068">Atualizar a página atual</translation>
 <translation id="3444179773590444986">Quer partilhar feedback sobre o tema escuro para os sites?</translation>
-<translation id="3448874648066942074">Resumir página com IA</translation>
 <translation id="3452832259067974318">Para proteger a sua privacidade, o Chrome não irá preencher automaticamente a palavra-passe neste campo.</translation>
 <translation id="3474624961160222204">Continuar como <ph name="NAME" /></translation>
 <translation id="3478363558367712427">Pode escolher o seu motor de pesquisa.</translation>
@@ -857,7 +854,6 @@ A sua Conta Google pode ter outras formas do histórico de navegação, como pes
 <translation id="4698757800236023795">Ativos (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">Imagens e ficheiros em cache</translation>
 <translation id="4710167854527459075">Ordenar por mais recente</translation>
-<translation id="4718044610319080485">Invoca o assistente de IA</translation>
 <translation id="4719927025381752090">Propor tradução</translation>
 <translation id="4720556299488643018">Anular sub.</translation>
 <translation id="4732120983431207637">Desempilhador de pilhas</translation>
@@ -1236,7 +1232,6 @@ Por exemplo, alguns Sites podem responder a este pedido ao mostrar-lhe anúncios
 <translation id="629730747756840877">Conta</translation>
 <translation id="6301526076346731664">Abrir as Ferramentas para programadores</translation>
 <translation id="630308129961693966">Escol. posição barra de endereço</translation>
-<translation id="6303969859164067831">Terminar sessão e desativar a sincronização</translation>
 <translation id="6305257382500066042">Experimentar agora</translation>
 <translation id="6307241780749477694">Valide a sua identidade para aceder a todas as suas palavras-passe neste dispositivo</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, separador audível fixado multisselecionado</translation>
@@ -1314,7 +1309,6 @@ Por exemplo, alguns Sites podem responder a este pedido ao mostrar-lhe anúncios
 <translation id="6565959834589222080">O Wi-Fi é utilizado quando estiver disponível.</translation>
 <translation id="657177046675873214">Para ver os seus marcadores em todos os dispositivos, ative os "Marcadores" nas definições</translation>
 <translation id="6573096386450695060">Permitir sempre</translation>
-<translation id="6573431926118603307">Os separadores que abriu no Chrome nos seus outros dispositivos são apresentados aqui.</translation>
 <translation id="6583199322650523874">Adicionar a página atual aos marcadores</translation>
 <translation id="6588043302623806746">Usar o DNS seguro</translation>
 <translation id="6590471736817333463">Poupe até 60% de dados</translation>
@@ -1665,7 +1659,6 @@ Para alterar esta definição, <ph name="BEGIN_LINK" />elimine os dados do Chrom
 <translation id="7914399737746719723">App instalada</translation>
 <translation id="7917574899775263813">Ir para o último separador</translation>
 <translation id="7919123827536834358">Traduza automaticamente estes idiomas</translation>
-<translation id="7921782882718083488">Resumir esta página</translation>
 <translation id="7926975587469166629">Alcunha do cartão</translation>
 <translation id="7927073875790626822">XR</translation>
 <translation id="7929587383660661825">O Chrome remove automaticamente as autorizações de sites que abusam das notificações ou que não visitou recentemente</translation>
@@ -1829,7 +1822,6 @@ Para alterar esta definição, <ph name="BEGIN_LINK" />elimine os dados do Chrom
 <translation id="8538291624121505885"><ph name="TAB_TITLE" />, separador no modo ecrã no ecrã fixo numa seleção múltipla</translation>
 <translation id="8540136935098276800">Introduza um URL formatado corretamente.</translation>
 <translation id="854522910157234410">Abrir esta página</translation>
-<translation id="8547466829003330976">Rever PDFs com IA</translation>
 <translation id="8551513938758868521">Bloquear os separadores anónimos quando sai do Chrome</translation>
 <translation id="8559961053328923750">O Chrome limita a quantidade total de dados que os sites podem partilhar através do navegador para medir o desempenho dos anúncios</translation>
 <translation id="8559990750235505898">Propor a tradução de páginas noutros idiomas</translation>

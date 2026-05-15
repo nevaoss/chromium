@@ -55,6 +55,7 @@
 #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
 #include "chrome/browser/defaults.h"
 #include "chrome/browser/devtools/devtools_toggle_action.h"
+#include "chrome/browser/devtools/devtools_ui_controller.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/download/download_core_service.h"
 #include "chrome/browser/download/download_core_service_factory.h"
@@ -760,7 +761,7 @@ GURL Browser::GetNewTabURL() const {
   if (auto* const app_browser_controller = app_controller()) {
     return app_browser_controller->GetAppNewTabUrl();
   }
-  return GURL(chrome::kChromeUINewTabURL);
+  return chrome::ChromeUINewTabURLAsGURL();
 }
 
 gfx::Image Browser::GetCurrentPageIcon() const {
@@ -2015,9 +2016,9 @@ WebContents* Browser::OpenURLFromTab(
         blink::mojom::TriggeringEventInfo::kFromUntrustedEvent);
   }
 
-  TRACE_EVENT_INSTANT1(
-      "navigation", "Browser::OpenURLFromTab_Result", TRACE_EVENT_SCOPE_THREAD,
-      "navigated_or_inserted_contents", navigated_or_inserted_contents);
+  TRACE_EVENT_INSTANT("navigation", "Browser::OpenURLFromTab_Result",
+                      "navigated_or_inserted_contents",
+                      navigated_or_inserted_contents);
 
   return navigated_or_inserted_contents;
 }

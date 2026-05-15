@@ -54,6 +54,7 @@
 <translation id="1179890706672152411">ਤੁਹਾਡੀ ਸਟੋਰੇਜ ਭਰ ਗਈ ਹੈ</translation>
 <translation id="1181037720776840403">ਹਟਾਓ</translation>
 <translation id="1190609913194133056">ਸੂਚਨਾ ਕੇਂਦਰ</translation>
+<translation id="1199631150313925648">ਹੱਥੀਂ ਦਾਖਲ ਕਰੋ</translation>
 <translation id="1199963004393929848">ਹਰਾ ਥੀਮ</translation>
 <translation id="1201402288615127009">ਅੱਗੇ</translation>
 <translation id="1204075260022434100">{count,plural, =1{ਬੁੱਕਮਾਰਕ ਨੂੰ ਤੁਹਾਡੇ ਖਾਤੇ, {email}, ਵਿੱਚ "{title}" ਵਿੱਚ ਰੱਖਿਅਤ ਕੀਤਾ ਗਿਆ}one{{count} ਬੁੱਕਮਾਰਕ ਨੂੰ ਤੁਹਾਡੇ ਖਾਤੇ, {email} ਵਿੱਚ "{title}" ਵਿੱਚ ਰੱਖਿਅਤ ਕੀਤਾ ਗਿਆ,}other{{count} ਬੁੱਕਮਾਰਕ ਨੂੰ ਤੁਹਾਡੇ ਖਾਤੇ, {email} ਵਿੱਚ "{title}" ਵਿੱਚ ਰੱਖਿਅਤ ਕੀਤਾ ਗਿਆ,}}</translation>
@@ -958,6 +959,7 @@
 <translation id="441868831736628555">ਪ੍ਰਾਈਵੇਸੀ ਸੂਚਨਾ</translation>
 <translation id="4420409367264901497">ਬੁੱਕਮਾਰਕ ਦਾ ਸੰਪਾਦਨ ਕਰੋ</translation>
 <translation id="4425365312778464779">ਇਹ ਖਾਤਾ ਪ੍ਰਬੰਧਿਤ ਹੈ</translation>
+<translation id="443008484043213881">ਔਜ਼ਾਰ</translation>
 <translation id="4430277756566635951">ਫ਼ਿਲਹਾਲ <ph name="EMAIL" /> ਨੂੰ ਚੁਣਿਆ ਗਿਆ ਹੈ। ਕੋਈ ਖਾਤਾ ਚੁਣੋ।</translation>
 <translation id="4430505936695785931">ਹੋਰ ਐਪਾਂ ਵਿੱਚ ਰੱਖਿਅਤ ਕੀਤੇ ਪਾਸਵਰਡ ਪ੍ਰਾਪਤ ਕਰੋ</translation>
 <translation id="4431224949908513835">ਭਰਨ ਲਈ ਕੋਈ ਭੁਗਤਾਨ ਵਿਧੀ ਚੁਣੋ।</translation>
@@ -1076,6 +1078,7 @@
 <translation id="4824497107140370669">{count,plural, =0{{domain}}=1{{domain} ਅਤੇ 1 ਹੋਰ}other{{domain} ਅਤੇ {count} ਹੋਰ}}</translation>
 <translation id="4826588772550366629">ਕੈਮਰਾ ਅਤੇ ਮਾਈਕ੍ਰੋਫ਼ੋਨ</translation>
 <translation id="4828431027673677473">ਤੁਹਾਡੀਆਂ ਦਿਲਚਸਪੀਆਂ ਦੇ ਆਧਾਰ 'ਤੇ ਉਤਪਾਦ</translation>
+<translation id="4829420936835028285">ਟੈਬ ਗਰੁੱਪ ਦਾ ਸੰਪਾਦਨ ਕਰੋ</translation>
 <translation id="4833786495304741580">Google ਨੂੰ ਵਰਤੋਂ ਅੰਕੜੇ ਅਤੇ ਕ੍ਰੈਸ਼ ਰਿਪੋਰਟਾਂ ਸਵੈਚਲਿਤ ਤੌਰ 'ਤੇ ਭੇਜੀਆਂ ਜਾਂਦੀਆਂ ਹਨ।</translation>
 <translation id="483689884442613745">ਰੱਖਿਅਤ ਕਰੋ…</translation>
 <translation id="4840495572919996524">ਤੁਹਾਡੇ ਬੁੱਕਮਾਰਕਾਂ, ਇਤਿਹਾਸ, ਪਾਸਵਰਡਾਂ ਅਤੇ ਹੋਰ ਚੀਜ਼ਾਂ ਦਾ ਹੁਣ ਤੁਹਾਡੇ Google ਖਾਤੇ ਨਾਲ ਸਿੰਕ ਨਹੀਂ ਕੀਤਾ ਜਾਵੇਗਾ।</translation>
@@ -1083,7 +1086,6 @@
 <translation id="484462545196658690">ਸਵੈ</translation>
 <translation id="4850886885716139402">ਦੇਖੋ</translation>
 <translation id="4854068532375923088">“Gemini” ਨੂੰ ਤੁਹਾਡੇ ਕੈਮਰੇ ਦੀ ਵਰਤੋਂ ਕਰਨ ਦਿਓ</translation>
-<translation id="4860114370595561279">ਤੁਹਾਡੀ ਰੱਖਿਅਤ ਕੀਤੀ ਗਈ ਜਾਣਕਾਰੀ ਨੂੰ, ਤੁਹਾਡੇ ਡੀਵਾਈਸ 'ਤੇ ਸਟੋਰ ਕੀਤਾ ਜਾਂਦਾ ਹੈ</translation>
 <translation id="4860895144060829044">ਕਾਲ ਕਰੋ</translation>
 <translation id="4861953997778766866">ਹਰ ਕੋਈ ਤੁਹਾਡੇ ਸਾਂਝੇ ਕੀਤੇ ਟੈਬ ਗਰੁੱਪਾਂ ਵਿੱਚ ਤਬਦੀਲੀਆਂ ਕਰ ਸਕਦਾ ਹੈ</translation>
 <translation id="4865063548323785458">ਸਾਈਟਾਂ ਅਤੇ ਐਪਾਂ ਵਿੱਚ ਆਸਾਨੀ ਨਾਲ ਸਾਈਨ-ਇਨ ਕਰਨ ਲਈ ਆਪਣੇ ਪਾਸਵਰਡ ਨੂੰ ਰੱਖਿਅਤ ਕਰੋ ਅਤੇ ਆਟੋਫਿਲ ਕਰੋ</translation>
@@ -1294,6 +1296,7 @@ Handoff ਨੂੰ ਵੀ ਸੈਟਿੰਗਾਂ ਦੇ 'ਆਮ' ਸੈਕਸ਼�
 <translation id="5581786858144165447">AI ਮੋਡ ਤੋਂ ਪੁੱਛੋ</translation>
 <translation id="5585019845078534178">ਕਾਰਡ</translation>
 <translation id="5591526871732898147">ਨੱਥੀ ਕੀਤਾ ਚਿੱਤਰ {index}</translation>
+<translation id="5594597292424622277">ਵੀਡੀਓ ਰੋਕੋ</translation>
 <translation id="5595485650161345191">ਪਤਾ ਸੰਪਾਦਿਤ ਕਰੋ</translation>
 <translation id="559567008082979829">ਆਪਣੇ ਡਾਊਨਲੋਡਾਂ ਨੂੰ ਇੱਕ ਮਹੀਨੇ ਬਾਅਦ ਮਿਟਾਉਣ ਲਈ ਸੈੱਟ ਕਰੋ।</translation>
 <translation id="5596627076506792578">ਹੋਰ ਵਿਕਲਪ</translation>
@@ -2163,6 +2166,7 @@ Handoff ਨੂੰ ਵੀ ਸੈਟਿੰਗਾਂ ਦੇ 'ਆਮ' ਸੈਕਸ਼�
 <translation id="8528009254289981965">ਇਨਕੋਗਨਿਟੋ ਵਿੱਚ ਹੋਰ ਐਪਾਂ ਤੋਂ ਆਉਣ ਵਾਲੇ ਲਿੰਕਾਂ ਨੂੰ ਖੋਲ੍ਹੋ</translation>
 <translation id="8529767659511976195">ਨਵਾਂ</translation>
 <translation id="8531572740963685410">PDF</translation>
+<translation id="8532059953132740592">ਵੀਡੀਓ ਚਲਾਓ</translation>
 <translation id="8533411848724153701">Gemini</translation>
 <translation id="8533670235862049797">ਸੁਰੱਖਿਅਤ ਬ੍ਰਾਊਜ਼ਿੰਗ ਚਾਲੂ ਹੈ</translation>
 <translation id="8534481786647257214">Google+ ਪੋਸਟ ਪੂਰੀ ਕੀਤੀ</translation>

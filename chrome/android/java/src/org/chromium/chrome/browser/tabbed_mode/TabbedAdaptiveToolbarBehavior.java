@@ -36,6 +36,7 @@ import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.ui.base.DeviceFormFactor;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -166,7 +167,20 @@ public class TabbedAdaptiveToolbarBehavior implements AdaptiveToolbarBehavior {
             }
         }
 
-        return AdaptiveToolbarBehavior.defaultResultFilter(mContext, segmentationResults);
+        List<Integer> filteredResults;
+        if (!BottomBarConfigUtils.isBottomBarEnabled(mContext)) {
+            filteredResults = segmentationResults;
+        } else {
+            filteredResults = new ArrayList<>();
+            for (int result : segmentationResults) {
+                if (result != AdaptiveToolbarButtonVariant.GLIC
+                        && result != AdaptiveToolbarButtonVariant.NEW_TAB) {
+                    filteredResults.add(result);
+                }
+            }
+        }
+
+        return AdaptiveToolbarBehavior.defaultResultFilter(mContext, filteredResults);
     }
 
     @Override
@@ -187,7 +201,7 @@ public class TabbedAdaptiveToolbarBehavior implements AdaptiveToolbarBehavior {
     }
 
     @Override
-    public @AdaptiveToolbarButtonVariant int getSegmentationDefault() {
-        return AdaptiveToolbarFeatures.getDefaultButtonVariant(mContext);
+    public @AdaptiveToolbarButtonVariant int getSegmentationDefault(Profile profile) {
+        return AdaptiveToolbarFeatures.getDefaultButtonVariant(mContext, profile);
     }
 }

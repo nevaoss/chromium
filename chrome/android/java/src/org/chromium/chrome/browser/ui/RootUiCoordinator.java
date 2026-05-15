@@ -21,7 +21,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.PersistableBundle;
 import android.provider.Browser;
-import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
@@ -60,6 +59,7 @@ import org.chromium.chrome.browser.ActivityUtils;
 import org.chromium.chrome.browser.ChromeActionModeHandler;
 import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.IntentHandler.TabOpenType;
+import org.chromium.chrome.browser.WebSearchDelegate;
 import org.chromium.chrome.browser.app.tabmodel.ArchivedTabModelOrchestrator;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.autofill.anchored_dialog.AnchoredDialogCoordinator;
@@ -133,7 +133,6 @@ import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.ntp_customization.edge_to_edge.TopInsetCoordinator;
 import org.chromium.chrome.browser.omnibox.OmniboxChipManager;
-import org.chromium.chrome.browser.omnibox.geo.GeolocationHeader;
 import org.chromium.chrome.browser.omnibox.suggestions.action.OmniboxActionDelegateImpl;
 import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionHandler;
 import org.chromium.chrome.browser.open_in_app.OpenInAppEntryPoint;
@@ -148,7 +147,6 @@ import org.chromium.chrome.browser.quick_delete.QuickDeleteDelegateImpl;
 import org.chromium.chrome.browser.readaloud.ReadAloudController;
 import org.chromium.chrome.browser.readaloud.ReadAloudControllerSupplier;
 import org.chromium.chrome.browser.recent_tabs.RestoreTabsFeatureHelper;
-import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.ShareDelegate.ShareOrigin;
 import org.chromium.chrome.browser.share.qrcode.QrCodeDialog;
@@ -183,6 +181,7 @@ import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarBehavior;
 import org.chromium.chrome.browser.toolbar.menu_button.MenuButtonCoordinator;
 import org.chromium.chrome.browser.toolbar.top.ToolbarActionModeCallback;
 import org.chromium.chrome.browser.toolbar.top.ToolbarControlContainer;
+import org.chromium.chrome.browser.ui.actions.ActionRegistry;
 import org.chromium.chrome.browser.ui.activity_recreation.ActivityRecreationController;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuBlocker;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuCoordinator;
@@ -239,11 +238,9 @@ import org.chromium.components.messages.MessageContainer;
 import org.chromium.components.messages.MessageDispatcherProvider;
 import org.chromium.components.messages.MessagesFactory;
 import org.chromium.components.omnibox.OmniboxFocusReason;
-import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.signin.SigninFeatureMap;
 import org.chromium.components.signin.metrics.SigninAccessPoint;
 import org.chromium.components.ukm.UkmRecorder;
-import org.chromium.content_public.browser.ActionModeCallbackHelper;
 import org.chromium.content_public.browser.BrowserContextHandle;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
@@ -440,6 +437,7 @@ public class RootUiCoordinator
             mReaderModeIphControllerSupplier = ObservableSuppliers.createMonotonic();
     protected @Nullable OpenInAppEntryPoint mOpenInAppEntryPoint;
     protected @Nullable OmniboxChipManager mOmniboxChipManager;
+    protected @Nullable ActionRegistry mActionRegistry;
     protected @Nullable BottomBarHostManager mBottomBarHostManager;
     private @Nullable AnchoredDialogCoordinator mAnchoredDialogCoordinator;
 
@@ -1126,27 +1124,8 @@ public class RootUiCoordinator
         }
         new ChromeActionModeHandler(
                 mActivityTabProvider,
-                (searchText) -> {
-                    if (mTabModelSelectorSupplier.get() == null) return;
-
-                    String query =
-                            ActionModeCallbackHelper.sanitizeQuery(
-                                    searchText, ActionModeCallbackHelper.MAX_SEARCH_QUERY_LENGTH);
-                    if (TextUtils.isEmpty(query)) return;
-
-                    Tab tab = mActivityTabProvider.get();
-                    assumeNonNull(tab);
-                    TrackerFactory.getTrackerForProfile(tab.getProfile())
-                            .notifyEvent(EventConstants.WEB_SEARCH_PERFORMED);
-
-                    mTabModelSelectorSupplier
-                            .get()
-                            .openNewTab(
-                                    generateUrlParamsForSearch(tab, query),
-                                    TabLaunchType.FROM_LONGPRESS_FOREGROUND,
-                                    tab,
-                                    tab.isIncognito());
-                },
+                new WebSearchDelegate(mActivityTabProvider, mTabModelSelectorSupplier)
+                        ::performSearch,
                 showWebSearchInActionMode(),
                 mShareDelegateSupplier,
                 mBrowserControlsManager,
@@ -1644,19 +1623,6 @@ public class RootUiCoordinator
         return mMerchantTrustSignalsCoordinatorSupplier;
     }
 
-    /** Generate the LoadUrlParams necessary to load the specified search query. */
-    private static LoadUrlParams generateUrlParamsForSearch(Tab tab, String query) {
-        Profile profile = tab.getProfile();
-        TemplateUrlService service = TemplateUrlServiceFactory.getForProfile(profile);
-        String url = service.getUrlForSearchQuery(query);
-        String headers = GeolocationHeader.getGeoHeader(url, profile, service);
-
-        LoadUrlParams loadUrlParams = new LoadUrlParams(url);
-        loadUrlParams.setVerbatimHeaders(headers);
-        loadUrlParams.setTransitionType(PageTransition.GENERATED);
-        return loadUrlParams;
-    }
-
     /**
      * Triggered when the share menu item is selected. This creates and shows a share intent picker
      * dialog or starts a share intent directly.
@@ -1867,6 +1833,7 @@ public class RootUiCoordinator
      * {@link Toolbar}.
      */
     @RequiresNonNull("mFindToolbarManager")
+    @EnsuresNonNull("mToolbarManager")
     protected void initializeToolbar() {
         try (TraceEvent te = TraceEvent.scoped("RootUiCoordinator.initializeToolbar")) {
             final View controlContainer = mActivity.findViewById(R.id.control_container);
@@ -1918,7 +1885,8 @@ public class RootUiCoordinator
                     assertNonNull(mDeviceLockActivityLauncherSupplier.get()),
                     trackerSupplier,
                     mScrimManagerSupplier.asNonNull(),
-                    mReaderModeIphControllerSupplier);
+                    mReaderModeIphControllerSupplier,
+                    mToolbarContainer);
 
             var omniboxActionDelegate =
                     new OmniboxActionDelegateImpl(
@@ -2031,7 +1999,8 @@ public class RootUiCoordinator
                             mPageZoomManager,
                             assertNonNull(mSnackbarManagerSupplier.get()),
                             mOmniboxChipManager,
-                            mBottomBarHostManager);
+                            mBottomBarHostManager,
+                            mActionRegistry);
             if (!mSupportsAppMenuSupplier.getAsBoolean()) {
                 mToolbarManager.getToolbar().disableMenuButton();
             }
@@ -2314,7 +2283,8 @@ public class RootUiCoordinator
                                     ? 0
                                     : edgeToEdgeController.getBottomInset();
                         },
-                        getDesktopWindowStateManager());
+                        getDesktopWindowStateManager(),
+                        mWindowAndroid.getInsetObserver());
         mBottomSheetControllerSupplier.set(bottomSheetController);
         BottomSheetControllerFactory.setExceptionReporter(
                 ChromePureJavaExceptionReporter::reportJavaException);

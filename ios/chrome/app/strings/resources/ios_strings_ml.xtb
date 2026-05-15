@@ -54,6 +54,7 @@
 <translation id="1179890706672152411">നിങ്ങളുടെ സ്റ്റോറേജ് നിറഞ്ഞു</translation>
 <translation id="1181037720776840403">നീക്കംചെയ്യൂ</translation>
 <translation id="1190609913194133056">അറിയിപ്പ് കേന്ദ്രം</translation>
+<translation id="1199631150313925648">നേരിട്ട് നൽകുക</translation>
 <translation id="1199963004393929848">പച്ച തീം</translation>
 <translation id="1201402288615127009">അടുത്തത്</translation>
 <translation id="1204075260022434100">{count,plural, =1{{email} എന്ന നിങ്ങളുടെ അക്കൗണ്ടിലെ "{title}" എന്നതിലേക്ക് ബുക്ക്‌മാർക്ക് സംരക്ഷിച്ചു}other{{email} എന്ന നിങ്ങളുടെ അക്കൗണ്ടിലെ {title} എന്നതിലേക്ക് "{count}" ബുക്ക്‌മാർക്കുകൾ സംരക്ഷിച്ചു}}</translation>
@@ -958,6 +959,7 @@
 <translation id="441868831736628555">സ്വകാര്യത അറിയിപ്പ്</translation>
 <translation id="4420409367264901497">ബുക്ക്‌മാർക്ക് എഡിറ്റ് ചെയ്യുക</translation>
 <translation id="4425365312778464779">ഈ അക്കൗണ്ട് മാനേജ് ചെയ്യപ്പെടുന്നു</translation>
+<translation id="443008484043213881">ടൂളുകള്‍</translation>
 <translation id="4430277756566635951">നിലവിൽ <ph name="EMAIL" /> തിരഞ്ഞെടുത്തിരിക്കുന്നു. അക്കൗണ്ട് തിരഞ്ഞെടുക്കുക.</translation>
 <translation id="4430505936695785931">സംരക്ഷിച്ച പാസ്‌വേഡുകൾ മറ്റ് ആപ്പുകളിൽ നേടുക</translation>
 <translation id="4431224949908513835">പൂരിപ്പിക്കാൻ ഒരു പേയ്‌മെന്റ് രീതി തിരഞ്ഞെടുക്കുക.</translation>
@@ -1084,7 +1086,6 @@
 <translation id="484462545196658690">സ്വയമേവ</translation>
 <translation id="4850886885716139402">കാണുക</translation>
 <translation id="4854068532375923088">നിങ്ങളുടെ ക്യാമറ ഉപയോഗിക്കാൻ “Gemini-യെ” അനുവദിക്കുക</translation>
-<translation id="4860114370595561279">നിങ്ങളുടെ സംരക്ഷിച്ച വിവരങ്ങൾ നിങ്ങളുടെ ഉപകരണത്തിൽ സംഭരിച്ചിരിക്കുന്നു</translation>
 <translation id="4860895144060829044">വിളിക്കുക</translation>
 <translation id="4861953997778766866">നിങ്ങളുടെ പങ്കിട്ട ടാബ് ഗ്രൂപ്പുകളിൽ എല്ലാവർക്കും മാറ്റങ്ങൾ വരുത്താനാകും</translation>
 <translation id="4865063548323785458">സൈറ്റുകളിലേക്കും ആപ്പുകളിലേക്കും എളുപ്പത്തിൽ സൈൻ ഇൻ ചെയ്യുന്നതിന് നിങ്ങളുടെ പാസ്‌വേഡുകൾ സംരക്ഷിച്ച് സ്വയമേവ പൂരിപ്പിക്കുക</translation>
@@ -1295,6 +1296,7 @@
 <translation id="5581786858144165447">AI-യോട് ചോദിക്കൂ മോഡ്</translation>
 <translation id="5585019845078534178">കാർഡുകൾ</translation>
 <translation id="5591526871732898147">അറ്റാച്ച് ചെയ്ത ചിത്രം {index}</translation>
+<translation id="5594597292424622277">വീഡിയോ താൽക്കാലികമായി നിർത്തുക</translation>
 <translation id="5595485650161345191">വിലാസം എഡിറ്റ് ചെയ്യുക</translation>
 <translation id="559567008082979829">ഒരു മാസത്തിന് ശേഷം ഇല്ലാതാക്കുന്നതിനായി നിങ്ങളുടെ ഡൗൻലോഡുകൾ സജ്ജീകരിക്കുക.</translation>
 <translation id="5596627076506792578">കൂടുതൽ‍ ഓപ്‌ഷനുകൾ</translation>
@@ -2164,6 +2166,7 @@
 <translation id="8528009254289981965">മറ്റൊരു ആപ്പിൽ നിന്നുള്ള ലിങ്കുകൾ അദൃശ്യ മോഡിൽ തുറക്കുക</translation>
 <translation id="8529767659511976195">പുതിയത്</translation>
 <translation id="8531572740963685410">PDF-കൾ</translation>
+<translation id="8532059953132740592">വീഡിയോ പ്ലേ ചെയ്യുക</translation>
 <translation id="8533411848724153701">Gemini</translation>
 <translation id="8533670235862049797">സുരക്ഷിത ബ്രൗസിംഗ് ഓണാണ്</translation>
 <translation id="8534481786647257214">Google+ പങ്കിടൽ പൂർത്തിയായി.</translation>

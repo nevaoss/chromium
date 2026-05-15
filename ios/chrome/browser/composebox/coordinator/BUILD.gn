@@ -66,6 +66,8 @@ source_set("input_plate") {
     "composebox_omnibox_client.h",
     "composebox_omnibox_client.mm",
     "composebox_omnibox_client_delegate.h",
+    "composebox_query_contextualizer_delegate_bridge.h",
+    "composebox_query_contextualizer_delegate_bridge.mm",
     "composebox_url_loader.h",
   ]
   public_deps = [
@@ -100,6 +102,7 @@ source_set("input_plate") {
     "//ios/chrome/browser/composebox/menu/coordinator",
     "//ios/chrome/browser/composebox/model",
     "//ios/chrome/browser/composebox/public",
+    "//ios/chrome/browser/composebox/shared/coordinator",
     "//ios/chrome/browser/composebox/ui",
     "//ios/chrome/browser/composebox/ui/presentation",
     "//ios/chrome/browser/default_browser/model:default_browser_interest_signals",
@@ -290,6 +293,7 @@ source_set("unit_tests") {
     ":mode_holder",
     "//base",
     "//base/test:test_support",
+    "//components/contextual_search:prefs",
     "//components/contextual_search:public",
     "//components/contextual_search:test_support",
     "//components/contextual_search/internal:test_support",

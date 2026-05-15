@@ -835,6 +835,7 @@
 <translation id="1567579616025300478">Сајтов нема дозвола за зачувување податоци на уредот.</translation>
 <translation id="156793199942386351">Копчето „<ph name="CURRENTKEY" />“ е веќе назначено за дејството „<ph name="ACTION" />“. Притиснете на кое било копче за да <ph name="RESPONSE" />.</translation>
 <translation id="1567993339577891801">Конзола за JavaScript</translation>
+<translation id="157005186601751931">Отвори ја картичката во апликацијата</translation>
 <translation id="1570604804919108255">Вклучете го звукот на известувањата</translation>
 <translation id="1570990174567554976">Папката со обележувачи „<ph name="BOOKMARK_TITLE" />“ е создадена.</translation>
 <translation id="1571041387761170095">Нема слаби или повторно употребени лозинки</translation>
@@ -1048,7 +1049,6 @@
 <translation id="1703666494654169921">Не им дозволувај на сајтовите да ги користат уредите за виртуелна реалност или мобилниот интернет</translation>
 <translation id="1704097193565924901">Почетна голема буква</translation>
 <translation id="1704230497453185209">Не им дозволувај на сајтовите да пуштаат звук</translation>
-<translation id="1706015824809136764">Кратенка за закачување на Gemini на алатникот</translation>
 <translation id="1706586824377653884">Додадено од вашиот администратор</translation>
 <translation id="170658918174941828">Вашата верзија на Chrome, верзијата на оперативниот систем, поставките за Cast,
     статистиките за изведбата на отсликувањето и дијагностичката евиденција на комуникациските канали 
@@ -1560,7 +1560,6 @@
 <translation id="204914487372604757">Креирај кратенка</translation>
 <translation id="2049573977943974163">Да се вклучи „<ph name="EXTENSION_NAME" />“?</translation>
 <translation id="2050339315714019657">Вертикално</translation>
-<translation id="2050394140692183739">Тековна кратенка за алатникот</translation>
 <translation id="2051555741181591333">Автоматско оневозможување на точката на пристап</translation>
 <translation id="2051669996101374349">Користете HTTPS секогаш кога е возможно и добивајте известувања пред вчитувањето сајтови што не ја поддржуваат. Не може да ја промените поставкава бидејќи имате овозможено „Напредна заштита“.</translation>
 <translation id="2052572566310583903">Инсталирана на вашите други уреди</translation>
@@ -2330,7 +2329,6 @@
 <translation id="2565214867520763227">Вклучување читач на екран</translation>
 <translation id="2566146433999774844">Придружете се во групата картички со <ph name="OWNER_FIRST_NAME" /> и уште <ph name="NUM_OTHER_MEMBERS" /></translation>
 <translation id="256726287944589768">Прикажи го подножјето на страницата во нова картичка</translation>
-<translation id="2567313753132089780">Лозинката мора да има најмалку 12 знака и да опфаќа големи и мали букви, бројки и симболи</translation>
 <translation id="2568774940984945469">Контејнер на лента со информации</translation>
 <translation id="2569972178052279830">Име на продавачот на мало</translation>
 <translation id="257088987046510401">Теми</translation>
@@ -3180,7 +3178,6 @@
 <translation id="3157931365184549694">Обнови</translation>
 <translation id="3158033540161634471">Поставете го отпечатокот</translation>
 <translation id="3158203338449343164">Откачи го пребарувањето картички</translation>
-<translation id="3158732900546890991">Лозинката мора да има најмалку 8 знака и да опфаќа најмалку две од следниве: големи букви, мали букви, бројки или симболи</translation>
 <translation id="3158770568048368350">Ова може да предизвика краток прекин на врската на вашата мобилна мрежа</translation>
 <translation id="3159335509547415276">Дознајте повеќе за блокираните сметки</translation>
 <translation id="3159493096109238499">Беж</translation>
@@ -3763,6 +3760,7 @@
 <translation id="3572031449439748861"><ph name="NUM_EXTENSIONS" /> екстензии се исклучени</translation>
 <translation id="3575121482199441727">Дозволи за овој сајт</translation>
 <translation id="3575224072358507281">да ги прибира резултатите за IP-адресата и мерењето на мрежата за Measurement Lab, согласно со својата политика за приватност (measurementlab.net/privacy)</translation>
+<translation id="3576324189521867626">Успешно е инсталирана</translation>
 <translation id="3577036603268648505">Заштити се онлајн</translation>
 <translation id="3577473026931028326">Нешто тргна наопаку. Обидете се повторно.</translation>
 <translation id="3577487026101678864">Синхронизацијата на датотеки е вклучена</translation>
@@ -4248,6 +4246,7 @@
 <translation id="3874532133373654352">Вашата организација управува со тоа како може да се користат податоците што ги прибираат функцииве. <ph name="BEGIN_LINK" />Дознајте повеќе<ph name="END_LINK" /></translation>
 <translation id="3874845889165401548">Функцијава користи AI и е во експериментална фаза</translation>
 <translation id="3875511946736639169">Овозможи слики</translation>
+<translation id="3875777964669698078">Се транскрибира…</translation>
 <translation id="3875815154304214043">Апликацијата <ph name="APP_NAME" /> е поставена да се отвора во нова картичка од прелистувачот, а поддржаните линкови исто така ќе се отвораат во прелистувачот. <ph name="BEGIN_LINK_LEARN_MORE" />Дознајте повеќе<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="3876219572815410515">Прозорците со променета големина се најгоре</translation>
 <translation id="3877075909000773256">Поставки за „Споделување во близина“ за уредот на <ph name="USER_NAME" /> што споделува под сметката <ph name="USER_EMAIL" /></translation>
@@ -4719,6 +4718,7 @@
 <translation id="4223404254440398437">Микрофонот не е дозволен</translation>
 <translation id="4224541845943007092">Читајте и зачувувајте го внесувањето со тастатурата во лентата за адреса</translation>
 <translation id="4225397296022057997">На сите сајтови</translation>
+<translation id="4225895483398857530">Кратенка за алатникот</translation>
 <translation id="4226303886821889519">Верзија на компонентата за ажурирање: <ph name="VERSION" /></translation>
 <translation id="4228071595943929139">Користете ја адресата на е-пошта на вашата организација</translation>
 <translation id="4228209296591583948">{NUM_EXTENSIONS,plural, =1{Екстензијава не е дозволена}one{Некои екстензии не се дозволени}other{Некои екстензии не се дозволени}}</translation>
@@ -6121,6 +6121,7 @@
 <translation id="5204967432542742771">Внеси лозинка</translation>
 <translation id="5205484256512407285">Никогаш не користи мобилен интернет за пренос</translation>
 <translation id="520568280985468584">Мрежата е успешно додадена. Може да поминат неколку минути пред мобилната мрежа да стане активна.</translation>
+<translation id="5207395053540207113">Да ѝ се дозволи на „Пребарување“ да пристапува до содржините на Drive?</translation>
 <translation id="5207949376430453814">Нагласи го каретот за текст</translation>
 <translation id="520840839826327499"><ph name="SERVICE_NAME" /> сака да провери дали користите уред со Chrome OS што ги исполнува условите.</translation>
 <translation id="5208926629108082192">Податоци за мобилната мрежа на уредот</translation>
@@ -6612,6 +6613,7 @@
 <translation id="5555639311269196631">Исклучување на точката на пристап</translation>
 <translation id="5555760010546505198">Поставки за инверзија на бои, корекција на боите, лупа и екран</translation>
 <translation id="555604722231274592">Овозможете <ph name="FEATURE_NAME" /></translation>
+<translation id="5556191579768914260">Прикажи ја грешката</translation>
 <translation id="5556459405103347317">Повторно вчитај</translation>
 <translation id="555671485580955310">Синхронизација на картичките и историјата</translation>
 <translation id="5558129378926964177">Зумир&amp;ај</translation>
@@ -9029,6 +9031,7 @@
 <translation id="727595954130325265">Купете сега</translation>
 <translation id="7277275452721470458">Активност на „AI-режим“</translation>
 <translation id="727952162645687754">Грешка при преземање</translation>
+<translation id="7280265656690268844">Оптимизацијата на JavaScript е исклучена</translation>
 <translation id="7280649757394340890">Гласовни поставки за „Од текст во говор“</translation>
 <translation id="7280683802406059877">Приспособете ја кратенката од тастатура</translation>
 <translation id="7280877790564589615">Побарана е дозвола</translation>
@@ -10146,7 +10149,6 @@
 <translation id="8032569120109842252">Се следи</translation>
 <translation id="8033827949643255796">избрано</translation>
 <translation id="8033958968890501070">Истекување</translation>
-<translation id="8034399942062051455">Оптимизацијата на V8 е исклучена</translation>
 <translation id="8034697324150621782">Замени со приказот горе</translation>
 <translation id="8035059678007243127">Инкогнито страница за кеш за движење наназад/нанапред: <ph name="BACK_FORWARD_CACHE_INCOGNITO_PAGE_URL" /></translation>
 <translation id="8036143516314698610">Прикажувај го копчето „Зачувани групи картички“</translation>
@@ -11367,6 +11369,7 @@
 <translation id="8866424952450451412">Управувајте со вашите приспособени работни процеси овозможени од</translation>
 <translation id="8867102760244540173">Пребарајтете ги картичките…</translation>
 <translation id="8867228703146808825">Копирајте ги деталите за верзијата во привремената меморија</translation>
+<translation id="8867568208303837180">Се испраќа…</translation>
 <translation id="8868333925931032127">Се стартува демо-режимот</translation>
 <translation id="8868626022555786497">Во употреба</translation>
 <translation id="8868838761037459823">Детали за мрежата</translation>
@@ -11796,7 +11799,6 @@
 <translation id="914031120300235526">Профилот не може да се отклучи</translation>
 <translation id="9143298529634201539">Дали да се отстрани предлогот?</translation>
 <translation id="9143922477019434797">Заштитете ги лозинките</translation>
-<translation id="914621365454686586">Да ѝ се дозволи на „Пребарување“ да пристапува до содржините на Drive?</translation>
 <translation id="9147392381910171771">&amp;Опции</translation>
 <translation id="9148058034647219655">Излези</translation>
 <translation id="9148126808321036104">Најави се повторно</translation>

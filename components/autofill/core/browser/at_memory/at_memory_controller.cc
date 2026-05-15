@@ -90,9 +90,119 @@ Suggestion::AtMemoryPayload::Identifier GetPayloadIdentifier(
   return std::monostate();
 }
 
+Suggestion::Icon GetIconForEntryType(accessibility_annotator::EntryType type) {
+  switch (type) {
+    case accessibility_annotator::EntryType::kNameFull:
+    case accessibility_annotator::EntryType::kAddressFull:
+    case accessibility_annotator::EntryType::kAddressStreetAddress:
+    case accessibility_annotator::EntryType::kAddressCity:
+    case accessibility_annotator::EntryType::kAddressState:
+    case accessibility_annotator::EntryType::kAddressZip:
+    case accessibility_annotator::EntryType::kAddressCountry:
+    case accessibility_annotator::EntryType::kPhone:
+    case accessibility_annotator::EntryType::kCompanyName:
+      return Suggestion::Icon::kAccount;
+    case accessibility_annotator::EntryType::kEmail:
+      return Suggestion::Icon::kEmail;
+    case accessibility_annotator::EntryType::kIban:
+    case accessibility_annotator::EntryType::kIbanNickname:
+      return Suggestion::Icon::kIban;
+    case accessibility_annotator::EntryType::kVehicle:
+    case accessibility_annotator::EntryType::kVehicleMake:
+    case accessibility_annotator::EntryType::kVehicleModel:
+    case accessibility_annotator::EntryType::kVehicleYear:
+    case accessibility_annotator::EntryType::kVehicleOwner:
+    case accessibility_annotator::EntryType::kVehiclePlateNumber:
+    case accessibility_annotator::EntryType::kVehiclePlateState:
+    case accessibility_annotator::EntryType::kVehicleVin:
+      return Suggestion::Icon::kVehicle;
+    case accessibility_annotator::EntryType::kPassportFull:
+    case accessibility_annotator::EntryType::kPassportName:
+    case accessibility_annotator::EntryType::kPassportCountry:
+    case accessibility_annotator::EntryType::kPassportNumber:
+    case accessibility_annotator::EntryType::kPassportIssueDate:
+    case accessibility_annotator::EntryType::kPassportExpirationDate:
+      return Suggestion::Icon::kPassport;
+    case accessibility_annotator::EntryType::kFlightReservationFull:
+    case accessibility_annotator::EntryType::kFlightReservationFlightNumber:
+    case accessibility_annotator::EntryType::kFlightReservationTicketNumber:
+    case accessibility_annotator::EntryType::kFlightReservationConfirmationCode:
+    case accessibility_annotator::EntryType::kFlightReservationPassengerName:
+    case accessibility_annotator::EntryType::kFlightReservationDepartureAirport:
+    case accessibility_annotator::EntryType::kFlightReservationArrivalAirport:
+    case accessibility_annotator::EntryType::kFlightReservationDepartureDate:
+    case accessibility_annotator::EntryType::kFlightReservationArrivalDate:
+      return Suggestion::Icon::kFlight;
+    case accessibility_annotator::EntryType::kNationalIdCardFull:
+    case accessibility_annotator::EntryType::kNationalIdCardName:
+    case accessibility_annotator::EntryType::kNationalIdCardCountry:
+    case accessibility_annotator::EntryType::kNationalIdCardNumber:
+    case accessibility_annotator::EntryType::kNationalIdCardIssueDate:
+    case accessibility_annotator::EntryType::kNationalIdCardExpirationDate:
+    case accessibility_annotator::EntryType::kDriversLicenseFull:
+    case accessibility_annotator::EntryType::kDriversLicenseName:
+    case accessibility_annotator::EntryType::kDriversLicenseState:
+    case accessibility_annotator::EntryType::kDriversLicenseNumber:
+    case accessibility_annotator::EntryType::kDriversLicenseIssueDate:
+    case accessibility_annotator::EntryType::kDriversLicenseExpirationDate:
+      return Suggestion::Icon::kIdCard;
+    case accessibility_annotator::EntryType::kRedressNumberFull:
+    case accessibility_annotator::EntryType::kRedressNumberName:
+    case accessibility_annotator::EntryType::kRedressNumberNumber:
+    case accessibility_annotator::EntryType::kKnownTravelerNumberFull:
+    case accessibility_annotator::EntryType::kKnownTravelerNumberName:
+    case accessibility_annotator::EntryType::kKnownTravelerNumberNumber:
+    case accessibility_annotator::EntryType::kKnownTravelerNumberExpirationDate:
+      return Suggestion::Icon::kPersonCheck;
+    case accessibility_annotator::EntryType::kCreditCardNumber:
+    case accessibility_annotator::EntryType::kCreditCardExpirationDate:
+    case accessibility_annotator::EntryType::kCreditCardSecurityCode:
+    case accessibility_annotator::EntryType::kCreditCardNameOnCard:
+    case accessibility_annotator::EntryType::kCreditCardNickname:
+      return Suggestion::Icon::kCardGeneric;
+    case accessibility_annotator::EntryType::kOrderFull:
+    case accessibility_annotator::EntryType::kOrderId:
+    case accessibility_annotator::EntryType::kOrderAccount:
+    case accessibility_annotator::EntryType::kOrderDate:
+    case accessibility_annotator::EntryType::kOrderMerchantName:
+    case accessibility_annotator::EntryType::kOrderMerchantDomain:
+    case accessibility_annotator::EntryType::kOrderProductNames:
+    case accessibility_annotator::EntryType::kOrderGrandTotal:
+    case accessibility_annotator::EntryType::kShipmentFull:
+    case accessibility_annotator::EntryType::kShipmentTrackingNumber:
+    case accessibility_annotator::EntryType::kShipmentAssociatedOrderId:
+    case accessibility_annotator::EntryType::kShipmentDeliveryAddress:
+    case accessibility_annotator::EntryType::kShipmentDeliveryZipCode:
+    case accessibility_annotator::EntryType::kShipmentCarrierName:
+    case accessibility_annotator::EntryType::kShipmentCarrierDomain:
+    case accessibility_annotator::EntryType::kShipmentEstimatedDeliveryDate:
+    case accessibility_annotator::EntryType::kUnknown:
+      return Suggestion::Icon::kNoIcon;
+  }
+  return Suggestion::Icon::kNoIcon;
+}
+
 Suggestion TransformResultIntoSuggestion(
     const accessibility_annotator::MemorySearchResult& entry) {
   Suggestion suggestion(entry.value, SuggestionType::kAtMemorySearchResult);
+  suggestion.icon = GetIconForEntryType(entry.type);
+  if (suggestion.icon == Suggestion::Icon::kNoIcon && !entry.sources.empty()) {
+    switch (entry.sources.front().type) {
+      case accessibility_annotator::MemoryEntrySourceType::kGmail:
+        suggestion.icon = Suggestion::Icon::kGmail;
+        break;
+      case accessibility_annotator::MemoryEntrySourceType::kPhotos:
+        suggestion.icon = Suggestion::Icon::kGooglePhotos;
+        break;
+      case accessibility_annotator::MemoryEntrySourceType::kCalendar:
+        suggestion.icon = Suggestion::Icon::kGoogleCalendar;
+        break;
+      case accessibility_annotator::MemoryEntrySourceType::kAmbient:
+      case accessibility_annotator::MemoryEntrySourceType::kLiveTabs:
+      case accessibility_annotator::MemoryEntrySourceType::kAutofill:
+        break;
+    }
+  }
   // Label row: [type_name, metadata[0].value, ...]
   std::vector<Suggestion::Text> label_row;
   std::u16string type_name = entry.type_name.empty()
@@ -129,6 +239,8 @@ Suggestion TransformResultIntoSuggestion(
     Suggestion::AtMemoryPayload child_at_memory_payload(metadata.value,
                                                         metadata.type);
     child_at_memory_payload.entry_type = metadata.type;
+    child_at_memory_payload.identifier =
+        GetPayloadIdentifier(metadata.type, entry.identifier);
     child.payload = std::move(child_at_memory_payload);
     suggestion.children.push_back(std::move(child));
   }
@@ -236,7 +348,7 @@ void AtMemoryController::FillOrPreviewSearchResult(
     case mojom::ActionPersistence::kPreview:
       manager_->FillOrPreviewField(
           action_persistence, mojom::FieldActionType::kReplaceAtMemoryTrigger,
-          form, field, payload.value, suggestion.type,
+          form, field, payload.value, FillingProduct::kAtMemory,
           /*field_type_used=*/std::nullopt);
       break;
     case mojom::ActionPersistence::kFill:
@@ -260,11 +372,16 @@ void AtMemoryController::FillOrPreviewSearchResult(
           manager_->FillOrPreviewField(
               action_persistence,
               mojom::FieldActionType::kReplaceAtMemoryTrigger, form, field,
-              payload.value, suggestion.type, /*field_type_used=*/std::nullopt);
+              payload.value, FillingProduct::kAtMemory,
+              /*field_type_used=*/std::nullopt);
           break;
       }
       break;
   }
+}
+
+bool AtMemoryController::IsSearching() const {
+  return is_searching_;
 }
 
 void AtMemoryController::ExecuteQuery(const std::u16string& filter,
@@ -276,21 +393,39 @@ void AtMemoryController::ExecuteQuery(const std::u16string& filter,
     return;
   }
 
+  // Cancel stale updates from previous queries.
+  query_weak_ptr_factory_.InvalidateWeakPtrs();
+
   if (filter.empty()) {
+    is_searching_ = false;
     update_callback_.Run({}, trigger_source_);
     return;
   }
 
+  is_searching_ = true;
+  // Notify the UI that search has started. We repass the current suggestions
+  // to prevent them from disappearing while the search is in progress.
+  base::span<const Suggestion> current_suggestions =
+      manager_->client().GetAutofillSuggestions();
+  update_callback_.Run(base::ToVector(current_suggestions), trigger_source_);
   query_service->Query(
       filter, full_search,
       base::BindRepeating(&AtMemoryController::OnSearchResultsReceived,
-                          weak_ptr_factory_.GetWeakPtr()));
+                          query_weak_ptr_factory_.GetWeakPtr()));
 }
 
 void AtMemoryController::OnSearchResultsReceived(
     accessibility_annotator::MemorySearchResults result) {
-  if (!IsAtMemoryTriggerSource(trigger_source_) || !update_callback_) {
+  if (!IsAtMemoryTriggerSource(trigger_source_) || !update_callback_ ||
+      !is_searching_) {
     return;
+  }
+
+  bool expecting_more_data =
+      result.status ==
+      accessibility_annotator::MemorySearchStatus::kPartialResponseSuccess;
+  if (!expecting_more_data) {
+    is_searching_ = false;
   }
 
   update_callback_.Run(
@@ -331,11 +466,11 @@ void AtMemoryController::FillIban(
               controller->manager_->FillOrPreviewField(
                   mojom::ActionPersistence::kFill,
                   mojom::FieldActionType::kReplaceAtMemoryTrigger, form, field,
-                  unmasked_value, suggestion.type,
+                  unmasked_value, FillingProduct::kAtMemory,
                   /*field_type_used=*/std::nullopt);
             }
           },
-          weak_ptr_factory_.GetWeakPtr(), form, field, suggestion));
+          fill_weak_ptr_factory_.GetWeakPtr(), form, field, suggestion));
 }
 
 void AtMemoryController::FillCreditCard(
@@ -377,8 +512,6 @@ void AtMemoryController::FillCreditCard(
             std::u16string fill_value;
             switch (payload.entry_type) {
               case accessibility_annotator::EntryType::kCreditCardNumber:
-                // TODO(crbug.com/497795513): Fill number for
-                // `EntryType::kCreditCardFull` suggestions.
                 fill_value = fetched_card.number();
                 break;
               case accessibility_annotator::EntryType::kCreditCardSecurityCode:
@@ -391,10 +524,10 @@ void AtMemoryController::FillCreditCard(
             controller->manager_->FillOrPreviewField(
                 mojom::ActionPersistence::kFill,
                 mojom::FieldActionType::kReplaceAtMemoryTrigger, form, field,
-                fill_value, suggestion.type,
+                fill_value, FillingProduct::kAtMemory,
                 /*field_type_used=*/std::nullopt);
           },
-          weak_ptr_factory_.GetWeakPtr(), form, field, suggestion));
+          fill_weak_ptr_factory_.GetWeakPtr(), form, field, suggestion));
 }
 
 }  // namespace autofill

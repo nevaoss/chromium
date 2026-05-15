@@ -25,7 +25,13 @@
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui_provider.h"
+#include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+#include "chrome/browser/ui/views/page_action/page_action_controller.h"
+#include "chrome/browser/ui/views/page_action/page_action_observer.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/user_education/mock_browser_user_education_interface.h"
@@ -138,6 +144,13 @@ class ContextualCueingControllerBrowserTest : public SigninBrowserTestBase {
                 page_content_annotations::Category(
                     page_content_annotations::CategoryType::kShopping, 0.2),
             }));
+  }
+
+  page_actions::PageActionController* GetPageActionController() {
+    return browser()
+        ->GetActiveTabInterface()
+        ->GetTabFeatures()
+        ->page_action_controller();
   }
 
  protected:
@@ -376,14 +389,13 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, Ineligible) {
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
 
   cue_target_->eligible = false;
-  SeedExecutionResult(MakeCompleteResponse());
   SimulateFilterPassed();
   optimization_guide::RetryForHistogramUntilCountReached(
       &histogram_tester, "ContextualCueing.V2.Decision", 1);
 
   histogram_tester.ExpectUniqueSample(
       "ContextualCueing.V2.Decision",
-      ContextualCueingDecision::kTargetFeatureNotEligible, 1);
+      ContextualCueingDecision::kNoEligibleCueSurfaces, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, ShowCueAndClick) {
@@ -393,6 +405,12 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, ShowCueAndClick) {
 #endif
 
   ASSERT_FALSE(cue_target_->HasClickData());
+
+  page_actions::PageActionController* page_action_controller =
+      GetPageActionController();
+  CHECK(page_action_controller);
+  page_actions::PageActionObserver observer(kActionAnchoredContextualCue);
+  observer.RegisterAsPageActionObserver(*page_action_controller);
 
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
@@ -417,6 +435,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, ShowCueAndClick) {
   ASSERT_TRUE(cue_target_->HasClickData());
   EXPECT_EQ("Prompt",
             std::get<GlicCueActionData>(cue_target_->click_data).prompt);
+  EXPECT_FALSE(observer.GetCurrentPageActionState().showing);
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
@@ -620,6 +639,37 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                                       ContextualCueingDecision::kUrlNotEligible,
                                       1);
 }
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       CueNotShowingBecauseSidePanelOpen) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.activetab.com/abc"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  base::HistogramTester histogram_tester;
+  SeedExecutionResult(MakeCompleteResponse());
+
+  // Open side panel.
+  auto* side_panel_ui = SidePanelUIProvider::From(browser());
+  ASSERT_TRUE(side_panel_ui);
+  side_panel_ui->Show(SidePanelEntryId::kBookmarks);
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return side_panel_ui->IsSidePanelEntryShowing(
+        SidePanelEntryKey(SidePanelEntryId::kBookmarks));
+  }));
+
+  SimulateFilterPassed();
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+
+  histogram_tester.ExpectUniqueSample(
+      "ContextualCueing.V2.Decision",
+      ContextualCueingDecision::kSidePanelShowing, 1);
+}
+
+// TODO(crbug.com/503910711): Add a test for hiding on navigation
 
 }  // namespace
 }  // namespace contextual_cueing

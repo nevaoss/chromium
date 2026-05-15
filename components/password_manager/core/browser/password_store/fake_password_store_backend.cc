@@ -252,17 +252,13 @@ void FakePasswordStoreBackend::RemoveLoginsCreatedBetweenAsync(
     const base::Location& location,
     base::Time delete_begin,
     base::Time delete_end,
-    base::OnceCallback<void(bool)> sync_completion,
     PasswordChangesOrErrorReply callback) {
-  auto cb = sync_completion ? std::move(callback).Then(base::BindOnce(
-                                  std::move(sync_completion), true))
-                            : std::move(callback);
   GetTaskRunner()->PostTaskAndReplyWithResult(
       FROM_HERE,
       base::BindOnce(
           &FakePasswordStoreBackend::RemoveLoginsCreatedBetweenInternal,
           base::Unretained(this), delete_begin, delete_end),
-      std::move(cb));
+      std::move(callback));
 }
 
 void FakePasswordStoreBackend::DisableAutoSignInForOriginsAsync(
@@ -299,7 +295,7 @@ BackendLoginsResult FakePasswordStoreBackend::GetAllLoginsInternal() {
   BackendLoginsResult result;
   for (const auto& elements : stored_passwords_) {
     for (const auto& stored_cred : elements.second) {
-      result.push_back(FromPasswordForm(ToPasswordForm(stored_cred)));
+      result.push_back(CloneStoredCredential(stored_cred));
     }
   }
   return result;
@@ -310,7 +306,7 @@ BackendLoginsResult FakePasswordStoreBackend::GetAutofillableLoginsInternal() {
   for (const auto& elements : stored_passwords_) {
     for (const auto& stored_cred : elements.second) {
       if (!stored_cred.blocked_by_user) {
-        result.push_back(FromPasswordForm(ToPasswordForm(stored_cred)));
+        result.push_back(CloneStoredCredential(stored_cred));
       }
     }
   }
@@ -349,8 +345,7 @@ BackendLoginsResult FakePasswordStoreBackend::FillMatchingLoginsHelper(
                  form.url.DeprecatedGetOriginAsURL() &&
              password_manager::IsFederatedRealm(stored_cred.signon_realm,
                                                 form.url))) {
-          matched_creds.push_back(
-              FromPasswordForm(ToPasswordForm(stored_cred)));
+          matched_creds.push_back(CloneStoredCredential(stored_cred));
         }
       }
     }
@@ -369,16 +364,20 @@ PasswordStoreChangeList FakePasswordStoreBackend::AddLoginInternal(
       });
 
   if (iter != passwords_for_signon_realm.end()) {
-    changes.emplace_back(PasswordStoreChange::REMOVE, ToPasswordForm(*iter));
-    changes.emplace_back(PasswordStoreChange::ADD, ToPasswordForm(cred));
-    *iter = FromPasswordForm(ToPasswordForm(cred));
+    changes.emplace_back(PasswordStoreChange::REMOVE,
+                         CloneStoredCredential(*iter),
+                         /*password_changed=*/false);
+    changes.emplace_back(PasswordStoreChange::ADD, CloneStoredCredential(cred),
+                         /*password_changed=*/false);
+    *iter = CloneStoredCredential(cred);
     iter->in_store = is_account_store() ? PasswordForm::Store::kAccountStore
                                         : PasswordForm::Store::kProfileStore;
     return changes;
   }
 
-  changes.emplace_back(PasswordStoreChange::ADD, ToPasswordForm(cred));
-  passwords_for_signon_realm.push_back(FromPasswordForm(ToPasswordForm(cred)));
+  changes.emplace_back(PasswordStoreChange::ADD, CloneStoredCredential(cred),
+                       /*password_changed=*/false);
+  passwords_for_signon_realm.push_back(CloneStoredCredential(cred));
   passwords_for_signon_realm.back().in_store =
       is_account_store() ? PasswordForm::Store::kAccountStore
                          : PasswordForm::Store::kProfileStore;
@@ -404,12 +403,13 @@ PasswordStoreChangeList FakePasswordStoreBackend::UpdateLoginInternal(
         }
       }
 
-      stored_cred = FromPasswordForm(ToPasswordForm(cred));
+      stored_cred = CloneStoredCredential(cred);
       stored_cred.in_store = is_account_store()
                                  ? PasswordForm::Store::kAccountStore
                                  : PasswordForm::Store::kProfileStore;
       changes.emplace_back(
-          PasswordStoreChange::UPDATE, ToPasswordForm(cred), password_changed,
+          PasswordStoreChange::UPDATE, CloneStoredCredential(cred),
+          password_changed,
           InsecureCredentialsChanged(insecure_credentials_changed));
     }
   }
@@ -439,7 +439,9 @@ PasswordStoreChangeList FakePasswordStoreBackend::RemoveLoginInternal(
     if (ArePasswordFormUniqueKeysEqual(ToPasswordForm(cred),
                                        ToPasswordForm(*it))) {
       it = creds.erase(it);
-      changes.emplace_back(PasswordStoreChange::REMOVE, ToPasswordForm(cred));
+      changes.emplace_back(PasswordStoreChange::REMOVE,
+                           CloneStoredCredential(cred),
+                           /*password_changed=*/false);
     } else {
       ++it;
     }

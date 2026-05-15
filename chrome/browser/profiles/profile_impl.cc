@@ -230,12 +230,12 @@
 #endif
 
 #if BUILDFLAG(ENABLE_BACKGROUND_MODE)
-#include "chrome/browser/background/extensions/background_mode_manager.h"
+#include "chrome/browser/background/extensions/background_mode_manager.h"  // nogncheck crbug.com/40147906
 #endif
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-#include "chrome/browser/extensions/chrome_content_browser_client_extensions_part.h"
-#include "chrome/browser/extensions/extension_special_storage_policy.h"
+#include "chrome/browser/extensions/chrome_content_browser_client_extensions_part.h"  // nogncheck crbug.com/40147906
+#include "chrome/browser/extensions/extension_special_storage_policy.h"  // nogncheck crbug.com/40147906
 #include "extensions/browser/extension_pref_store.h"
 #include "extensions/browser/extension_pref_value_map.h"
 #include "extensions/browser/extension_pref_value_map_factory.h"
@@ -364,9 +364,9 @@ std::unique_ptr<Profile> Profile::CreateProfile(const base::FilePath& path,
       if (base::PathExists(path)) {
         creation_time = GetCreationTimeForPath(path);
       } else {
-        // TODO(rogerta): http://crbug/160553 - Bad things happen if we can't
-        // write to the profile directory.  We should eventually be able to run
-        // in this situation.
+        // TODO(rogerta): http://crbug.com/40293891 - Bad things happen if we
+        // can't write to the profile directory.  We should eventually be able
+        // to run in this situation.
         if (!base::CreateDirectory(path)) {
           return nullptr;
         }

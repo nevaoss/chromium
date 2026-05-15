@@ -21,6 +21,7 @@
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller_observer.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper_observer.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_view_state_change_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/shared/model/browser/browser_observer.h"
 #import "ios/chrome/browser/shared/model/browser/browser_user_data.h"
@@ -28,6 +29,7 @@
 #import "ios/public/provider/chrome/browser/bwg/bwg_api.h"
 
 class Browser;
+class FullscreenController;
 
 enum class PageContextWrapperError;
 
@@ -40,7 +42,7 @@ class PageContext;
 }  // namespace optimization_guide::proto
 
 class ScopedFullscreenDisabler;
-@class BWGLinkOpeningHandler;
+@class GeminiLinkOpeningHandler;
 @class GeminiPageStateChangeHandler;
 @class GeminiSessionHandler;
 @class GeminiCameraHandler;
@@ -61,7 +63,8 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
                            public FullscreenBrowserAgentObserver,
                            public TabsDependencyInstaller,
                            public BrowserObserver,
-                           public signin::IdentityManager::Observer {
+                           public signin::IdentityManager::Observer,
+                           public GeminiViewStateChangeHandlerTarget {
  public:
   GeminiBrowserAgent(const GeminiBrowserAgent&) = delete;
   GeminiBrowserAgent& operator=(const GeminiBrowserAgent&) = delete;
@@ -118,9 +121,6 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
       base::expected<std::unique_ptr<optimization_guide::proto::PageContext>,
                      PageContextWrapperError> expected_page_context);
 
-  // Called when the Gemini view state expands.
-  void OnGeminiViewStateExpanded();
-
   // Dismisses the floaty and resets the Gemini flow.
   void DismissFloaty();
 
@@ -136,11 +136,11 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // floaty to be shown.
   void ShowFloatyIfInvoked(bool animated, gemini::FloatyUpdateSource source);
 
-  // Collapses floaty if invoked.
-  void CollapseFloatyIfInvoked();
-
-  // Setter for `last_shown_view_state_`.
-  void SetLastShownViewState(ios::provider::GeminiViewState view_state);
+  // GeminiViewStateChangeHandlerTarget:
+  void OnGeminiViewStateExpanded() override;
+  void CollapseFloatyIfInvoked() override;
+  void SetLastShownViewState(
+      ios::provider::GeminiViewState view_state) override;
 
   // Called when trait collection is updated.
   void UpdateForTraitCollection(UITraitCollection* traitCollection);
@@ -213,6 +213,7 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // FullscreenBrowserAgentObserver:
   void WillUpdateState(FullscreenBrowserAgent* agent) override;
   void DidUpdateObscuredInsetRange(FullscreenBrowserAgent* agent) override;
+  void WillShutDown(FullscreenBrowserAgent* agent) override;
 
   // Returns true if the user has completed the FRE.
   bool HasCompletedFirstRun();
@@ -291,8 +292,8 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   /// TODO(crbug.com/491093929): Rename the below classes to move away from the
   /// `-Handler` naming scheme used by Chromium Objective-C command protocols.
-  // Handler for opening links from BWG.
-  __strong BWGLinkOpeningHandler* bwg_link_opening_handler_ = nullptr;
+  // Handler for opening links from Gemini.
+  __strong GeminiLinkOpeningHandler* gemini_link_opening_handler_ = nullptr;
 
   // Handler for PageState changes.
   __strong GeminiPageStateChangeHandler* gemini_page_state_change_handler_ =

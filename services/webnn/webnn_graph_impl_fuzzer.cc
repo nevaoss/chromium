@@ -165,22 +165,16 @@ struct Conv2dParams {
   uint32_t input_height;
   uint32_t input_width;
   uint32_t output_channels;
-  uint32_t filter_height;
-  uint32_t filter_width;
-  uint32_t beginning_pad_height;
-  uint32_t beginning_pad_width;
-  uint32_t ending_pad_height;
-  uint32_t ending_pad_width;
-  uint32_t stride_height;
-  uint32_t stride_width;
-  uint32_t dilation_height;
-  uint32_t dilation_width;
-  uint32_t output_padding_height;
-  uint32_t output_padding_width;
+  Padding2d padding;
+  Size2d<uint32_t> filter_dimensions;
+  Size2d<uint32_t> strides;
+  Size2d<uint32_t> dilations;
+  Size2d<uint32_t> output_padding;
   uint32_t groups;
   bool is_input_constant;
   bool is_filter_constant;
-  bool is_bias_constant;
+  OptionalOperandKind bias_kind;
+  bool is_depthwise;
 };
 
 struct GatherNDParams {
@@ -211,47 +205,6 @@ struct GemmParams {
   bool is_c_constant;
 };
 
-struct Pool2dParams {
-  OperandDataType data_type;
-  mojom::Pool2d::Kind pool2d_kind;
-  RoundingType rounding_type;
-  uint32_t batch;
-  uint32_t channels;
-  uint32_t input_height;
-  uint32_t input_width;
-  uint32_t window_height;
-  uint32_t window_width;
-  uint32_t beginning_pad_height;
-  uint32_t beginning_pad_width;
-  uint32_t ending_pad_height;
-  uint32_t ending_pad_width;
-  uint32_t stride_height;
-  uint32_t stride_width;
-  uint32_t dilation_height;
-  uint32_t dilation_width;
-  bool is_input_constant;
-};
-
-struct QuantizationParams {
-  OperandDataType quantized_type;
-  QuantizationKind quantization_kind;
-  uint32_t channel_block_size;
-};
-
-struct ScatterElementsParams {
-  OperandDataType input_data_type;
-  OperandDataType indices_data_type;
-  uint32_t rank;
-  uint32_t axis;
-  std::array<uint32_t, 8> input_dims;
-  // Dimension size of the indices tensor along `axis`.
-  uint32_t indices_axis_dim_size;
-  int64_t indices_fill_value;
-  bool is_input_constant;
-  bool is_indices_constant;
-  bool is_updates_constant;
-};
-
 struct LstmParams {
   OperandDataType data_type;
   uint32_t steps;
@@ -272,6 +225,92 @@ struct LstmParams {
   std::array<mojom::RecurrentNetworkActivation, 3> activations;
 };
 
+struct Pool2dParams {
+  OperandDataType data_type;
+  mojom::Pool2d::Kind pool2d_kind;
+  RoundingType rounding_type;
+  uint32_t batch;
+  uint32_t channels;
+  uint32_t input_height;
+  uint32_t input_width;
+  Padding2d padding;
+  Size2d<uint32_t> window_dimensions;
+  Size2d<uint32_t> strides;
+  Size2d<uint32_t> dilations;
+  bool is_input_constant;
+};
+
+struct QuantizationParams {
+  OperandDataType quantized_type;
+  QuantizationKind quantization_kind;
+  uint32_t channel_block_size;
+};
+
+struct ReduceParams {
+  OperandDataType data_type;
+  mojom::Reduce::Kind reduce_kind;
+  uint32_t rank;
+  std::array<uint32_t, 8> input_dims;
+  // Number of axes to reduce. Must be in [0, rank].
+  uint32_t num_axes;
+  // Which axes to reduce. Only the first `num_axes` entries are used.
+  std::array<uint32_t, 8> axes;
+  bool keep_dimensions;
+  bool is_input_constant;
+};
+
+struct ScatterElementsParams {
+  OperandDataType input_data_type;
+  OperandDataType indices_data_type;
+  uint32_t rank;
+  uint32_t axis;
+  std::array<uint32_t, 8> input_dims;
+  // Dimension size of the indices tensor along `axis`.
+  uint32_t indices_axis_dim_size;
+  int64_t indices_fill_value;
+  bool is_input_constant;
+  bool is_indices_constant;
+  bool is_updates_constant;
+};
+
+SupportedDataTypes GetPool2dDataTypes(mojom::Pool2d::Kind pool2d_kind) {
+  const auto& limits = GetContextPropertiesForTesting().data_type_limits;
+  switch (pool2d_kind) {
+    case mojom::Pool2d::Kind::kAveragePool2d:
+      return limits.average_pool2d_input.data_types;
+    case mojom::Pool2d::Kind::kL2Pool2d:
+      return limits.l2_pool2d_input.data_types;
+    case mojom::Pool2d::Kind::kMaxPool2d:
+      return limits.max_pool2d_input.data_types;
+  }
+}
+
+SupportedDataTypes GetReduceDataTypes(mojom::Reduce::Kind reduce_kind) {
+  const auto& limits = GetContextPropertiesForTesting().data_type_limits;
+  switch (reduce_kind) {
+    case mojom::Reduce::Kind::kL1:
+      return limits.reduce_l1_input.data_types;
+    case mojom::Reduce::Kind::kL2:
+      return limits.reduce_l2_input.data_types;
+    case mojom::Reduce::Kind::kLogSum:
+      return limits.reduce_log_sum_input.data_types;
+    case mojom::Reduce::Kind::kLogSumExp:
+      return limits.reduce_log_sum_exp_input.data_types;
+    case mojom::Reduce::Kind::kMax:
+      return limits.reduce_max_input.data_types;
+    case mojom::Reduce::Kind::kMean:
+      return limits.reduce_mean_input.data_types;
+    case mojom::Reduce::Kind::kMin:
+      return limits.reduce_min_input.data_types;
+    case mojom::Reduce::Kind::kProduct:
+      return limits.reduce_product_input.data_types;
+    case mojom::Reduce::Kind::kSum:
+      return limits.reduce_sum_input.data_types;
+    case mojom::Reduce::Kind::kSumSquare:
+      return limits.reduce_sum_square_input.data_types;
+  }
+}
+
 auto AnyConv2dKind() {
   return fuzztest::ElementOf<mojom::Conv2d::Kind>(
       {mojom::Conv2d::Kind::kDirect, mojom::Conv2d::Kind::kTransposed});
@@ -287,6 +326,15 @@ auto AnyQuantizationKind() {
   return fuzztest::ElementOf<QuantizationKind>({QuantizationKind::kPerTensor,
                                                 QuantizationKind::kPerChannel,
                                                 QuantizationKind::kPerBlock});
+}
+
+auto AnyReduceKind() {
+  return fuzztest::ElementOf<mojom::Reduce::Kind>(
+      {mojom::Reduce::Kind::kL1, mojom::Reduce::Kind::kL2,
+       mojom::Reduce::Kind::kLogSum, mojom::Reduce::Kind::kLogSumExp,
+       mojom::Reduce::Kind::kMax, mojom::Reduce::Kind::kMean,
+       mojom::Reduce::Kind::kMin, mojom::Reduce::Kind::kProduct,
+       mojom::Reduce::Kind::kSum, mojom::Reduce::Kind::kSumSquare});
 }
 
 auto AnyRoundingType() {
@@ -350,6 +398,82 @@ auto AnyDimSizeOrZero() {
                                      std::numeric_limits<int32_t>::max()}));
 }
 
+auto AnySize2d() {
+  return fuzztest::StructOf<Size2d<uint32_t>>(AnyDimSize(), AnyDimSize());
+}
+
+auto AnySizeOrZero2d() {
+  return fuzztest::StructOf<Size2d<uint32_t>>(AnyDimSizeOrZero(),
+                                              AnyDimSizeOrZero());
+}
+
+auto AnyPadding2d() {
+  auto zero_padding = fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(0u),
+                                                           fuzztest::Just(0u));
+  auto one_padding = fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(1u),
+                                                          fuzztest::Just(1u));
+  return fuzztest::OneOf(
+      // No padding.
+      fuzztest::StructOf<Padding2d>(zero_padding, zero_padding),
+      // Symmetric 1x1 padding.
+      fuzztest::StructOf<Padding2d>(one_padding, one_padding),
+      // Symmetric padding.
+      fuzztest::Map([](Size2d<uint32_t> s) -> Padding2d { return {s, s}; },
+                    AnySizeOrZero2d()),
+      // Random padding.
+      fuzztest::StructOf<Padding2d>(AnySizeOrZero2d(), AnySizeOrZero2d()));
+}
+
+auto AnyFilterDimensions2d() {
+  return fuzztest::OneOf(
+      // Common filter sizes: 1x1, 1x3, 2x2, 3x3, 5x5.
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(1u),
+                                           fuzztest::Just(1u)),
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(1u),
+                                           fuzztest::Just(3u)),
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(2u),
+                                           fuzztest::Just(2u)),
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(3u),
+                                           fuzztest::Just(3u)),
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(5u),
+                                           fuzztest::Just(5u)),
+      // Random filter dimensions.
+      AnySize2d());
+}
+
+auto AnyStrides2d() {
+  return fuzztest::OneOf(
+      // No striding.
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(1u),
+                                           fuzztest::Just(1u)),
+      // Common stride=2.
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(2u),
+                                           fuzztest::Just(2u)),
+      // Random strides.
+      AnySize2d());
+}
+
+auto AnyDilations2d() {
+  return fuzztest::OneOf(
+      // No dilation.
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(1u),
+                                           fuzztest::Just(1u)),
+      // Common dilation=2.
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(2u),
+                                           fuzztest::Just(2u)),
+      // Random dilations.
+      AnySize2d());
+}
+
+auto AnyOutputPadding2d() {
+  return fuzztest::OneOf(
+      // No output padding.
+      fuzztest::StructOf<Size2d<uint32_t>>(fuzztest::Just(0u),
+                                           fuzztest::Just(0u)),
+      // Random output padding.
+      AnySizeOrZero2d());
+}
+
 auto AnyQuantizedDataType() {
   return fuzztest::ElementOf<OperandDataType>(
       {OperandDataType::kInt8, OperandDataType::kUint8});
@@ -366,27 +490,22 @@ auto AnyConv2dParams() {
   const auto& limits = GetContextPropertiesForTesting().data_type_limits;
   return fuzztest::StructOf<Conv2dParams>(
       AnyOperandDataTypeFor(limits.conv2d_input.data_types), AnyConv2dKind(),
-      AnyDimSize(),                 // batch
-      AnyDimSize(),                 // input_channels
-      AnyDimSize(),                 // input_height
-      AnyDimSize(),                 // input_width
-      AnyDimSize(),                 // output_channels
-      AnyDimSize(),                 // filter_height
-      AnyDimSize(),                 // filter_width
-      AnyDimSizeOrZero(),           // beginning_pad_height
-      AnyDimSizeOrZero(),           // beginning_pad_width
-      AnyDimSizeOrZero(),           // ending_pad_height
-      AnyDimSizeOrZero(),           // ending_pad_width
-      AnyDimSize(),                 // stride_height
-      AnyDimSize(),                 // stride_width
-      AnyDimSize(),                 // dilation_height
-      AnyDimSize(),                 // dilation_width
-      AnyDimSizeOrZero(),           // output_padding_height
-      AnyDimSizeOrZero(),           // output_padding_width
-      AnyDimSize(),                 // groups
-      fuzztest::Arbitrary<bool>(),  // is_input_constant
-      fuzztest::Arbitrary<bool>(),  // is_filter_constant
-      fuzztest::Arbitrary<bool>()   // is_bias_constant
+      AnyDimSize(),             // batch
+      AnyDimSize(),             // input_channels
+      AnyDimSize(),             // input_height
+      AnyDimSize(),             // input_width
+      AnyDimSize(),             // output_channels
+      AnyPadding2d(),           // padding
+      AnyFilterDimensions2d(),  // filter_dimensions
+      AnyStrides2d(),           // strides
+      AnyDilations2d(),         // dilations
+      AnyOutputPadding2d(),     // output_padding
+      fuzztest::OneOf(fuzztest::Just(1u),
+                      AnyDimSize()),  // groups
+      fuzztest::Arbitrary<bool>(),    // is_input_constant
+      fuzztest::Arbitrary<bool>(),    // is_filter_constant
+      AnyOptionalOperandKind(),       // bias_kind
+      fuzztest::Arbitrary<bool>()     // is_depthwise
   );
 }
 
@@ -433,30 +552,23 @@ auto AnyGemmParams() {
 }
 
 auto AnyPool2dParams() {
-  const auto& limits = GetContextPropertiesForTesting().data_type_limits;
-  SupportedDataTypes pool2d_data_types = limits.average_pool2d_input.data_types;
-  pool2d_data_types.PutAll(limits.l2_pool2d_input.data_types);
-  pool2d_data_types.PutAll(limits.max_pool2d_input.data_types);
-
-  return fuzztest::StructOf<Pool2dParams>(
-      AnyOperandDataTypeFor(pool2d_data_types), AnyPool2dKind(),
-      AnyRoundingType(),
-      AnyDimSize(),                // batch
-      AnyDimSize(),                // channels
-      AnyDimSize(),                // input_height
-      AnyDimSize(),                // input_width
-      AnyDimSize(),                // window_height
-      AnyDimSize(),                // window_width
-      AnyDimSizeOrZero(),          // beginning_pad_height
-      AnyDimSizeOrZero(),          // beginning_pad_width
-      AnyDimSizeOrZero(),          // ending_pad_height
-      AnyDimSizeOrZero(),          // ending_pad_width
-      AnyDimSize(),                // stride_height
-      AnyDimSize(),                // stride_width
-      AnyDimSize(),                // dilation_height
-      AnyDimSize(),                // dilation_width
-      fuzztest::Arbitrary<bool>()  // is_input_constant
-  );
+  return fuzztest::FlatMap(
+      [](mojom::Pool2d::Kind pool2d_kind) {
+        return fuzztest::StructOf<Pool2dParams>(
+            AnyOperandDataTypeFor(GetPool2dDataTypes(pool2d_kind)),
+            fuzztest::Just(pool2d_kind), AnyRoundingType(),
+            AnyDimSize(),                // batch
+            AnyDimSize(),                // channels
+            AnyDimSize(),                // input_height
+            AnyDimSize(),                // input_width
+            AnyPadding2d(),              // padding
+            AnySize2d(),                 // window_dimensions
+            AnyStrides2d(),              // strides
+            AnyDilations2d(),            // dilations
+            fuzztest::Arbitrary<bool>()  // is_input_constant
+        );
+      },
+      AnyPool2dKind());
 }
 
 auto AnyQuantizationParams() {
@@ -464,6 +576,24 @@ auto AnyQuantizationParams() {
       AnyQuantizedDataType(), AnyQuantizationKind(),
       fuzztest::InRange<uint32_t>(  // channel_block_size
           1, std::numeric_limits<int16_t>::max()));
+}
+
+auto AnyReduceParams() {
+  return fuzztest::FlatMap(
+      [](mojom::Reduce::Kind reduce_kind) {
+        return fuzztest::StructOf<ReduceParams>(
+            AnyOperandDataTypeFor(GetReduceDataTypes(reduce_kind)),
+            fuzztest::Just(reduce_kind),
+            fuzztest::InRange<uint32_t>(1, 8),   // rank
+            fuzztest::ArrayOf<8>(AnyDimSize()),  // input_dims
+            fuzztest::InRange<uint32_t>(0, 8),   // num_axes
+            fuzztest::ArrayOf<8>(                // axes
+                fuzztest::InRange<uint32_t>(0, 7)),
+            fuzztest::Arbitrary<bool>(),  // keep_dimensions
+            fuzztest::Arbitrary<bool>()   // is_input_constant
+        );
+      },
+      AnyReduceKind());
 }
 
 auto AnyScatterElementsParams() {
@@ -506,16 +636,14 @@ auto AnyLstmParams() {
   );
 }
 
-void PopulateConv2dAttributesBase(Conv2dAttributesBase& attributes,
-                                  const Conv2dParams& params,
-                                  InputOperandLayout input_layout,
-                                  const OperandDescriptor& bias_desc) {
-  attributes.padding.beginning = {params.beginning_pad_height,
-                                  params.beginning_pad_width};
-  attributes.padding.ending = {params.ending_pad_height,
-                               params.ending_pad_width};
-  attributes.strides = {params.stride_height, params.stride_width};
-  attributes.dilations = {params.dilation_height, params.dilation_width};
+void PopulateConv2dAttributesBase(
+    Conv2dAttributesBase& attributes,
+    const Conv2dParams& params,
+    InputOperandLayout input_layout,
+    const std::optional<OperandDescriptor>& bias_desc) {
+  attributes.padding = params.padding;
+  attributes.strides = params.strides;
+  attributes.dilations = params.dilations;
   attributes.groups = params.groups;
   attributes.bias_operand = bias_desc;
   attributes.input_layout = input_layout;
@@ -530,16 +658,17 @@ std::vector<uint32_t> ComputeQuantizationScaleShape(
     base::span<const uint32_t> input_shape,
     uint32_t channel_axis,
     const QuantizationParams& quantize_params) {
-  CHECK_LT(channel_axis, input_shape.size());
   std::vector<uint32_t> shape(input_shape.size(), 1);
 
   switch (quantize_params.quantization_kind) {
     case QuantizationKind::kPerTensor:
       break;
     case QuantizationKind::kPerChannel:
+      CHECK_LT(channel_axis, input_shape.size());
       shape[channel_axis] = input_shape[channel_axis];
       break;
     case QuantizationKind::kPerBlock: {
+      CHECK_LT(channel_axis, input_shape.size());
       uint32_t channel_size = input_shape[channel_axis];
       uint32_t block_size = quantize_params.channel_block_size;
       if (channel_size % block_size != 0) {
@@ -576,7 +705,7 @@ OperandId BuildFloatConstant(GraphInfoBuilder& builder,
 struct Conv2dDescriptors {
   OperandDescriptor input_desc;
   OperandDescriptor filter_desc;
-  OperandDescriptor bias_desc;
+  std::optional<OperandDescriptor> bias_desc;
   OperandDescriptor output_desc;
 };
 
@@ -586,14 +715,22 @@ std::optional<Conv2dDescriptors> SetUpConv2dDescriptors(
     Conv2dParams& params) {
   InputOperandLayout input_layout = context_properties.input_operand_layout;
 
+  bool is_depthwise =
+      params.conv2d_kind == mojom::Conv2d::Kind::kDirect && params.is_depthwise;
+  if (is_depthwise) {
+    // For depthwise conv2d, output_channels, input_channels, and groups must be
+    // equal.
+    params.output_channels = params.input_channels;
+    params.groups = params.input_channels;
+  }
+
 #if BUILDFLAG(IS_LINUX)
   if (params.conv2d_kind == mojom::Conv2d::Kind::kTransposed) {
     // ConvTranspose2d does not support dilation and groups for TFLite backend:
     // https://source.chromium.org/chromium/chromium/src/+/db6bda50f023057ffa82845f232852dea0f271e1:services/webnn/tflite/graph_builder_tflite.cc;l=4125
     // TODO(crbug.com/498987226): Remove this restriction to increase test
     // coverage.
-    params.dilation_height = 1;
-    params.dilation_width = 1;
+    params.dilations = {1, 1};
     params.groups = 1;
   }
 #endif  // BUILDFLAG(IS_LINUX)
@@ -604,10 +741,6 @@ std::optional<Conv2dDescriptors> SetUpConv2dDescriptors(
     params.groups = std::gcd(params.output_channels, params.input_channels);
   }
 
-  bool is_depthwise = params.conv2d_kind == mojom::Conv2d::Kind::kDirect &&
-                      IsDepthwiseConv2d(params.input_channels,
-                                        params.output_channels, params.groups);
-
   std::vector<uint32_t> input_dims;
   std::vector<uint32_t> filter_dims;
   switch (input_layout) {
@@ -616,17 +749,18 @@ std::optional<Conv2dDescriptors> SetUpConv2dDescriptors(
                     params.input_channels};
       if (params.conv2d_kind == mojom::Conv2d::Kind::kDirect) {
         if (is_depthwise) {
-          filter_dims = {params.input_channels, params.filter_height,
-                         params.filter_width, 1};
+          filter_dims = {params.input_channels, params.filter_dimensions.height,
+                         params.filter_dimensions.width, 1};
         } else {
-          filter_dims = {params.output_channels, params.filter_height,
-                         params.filter_width,
+          filter_dims = {params.output_channels,
+                         params.filter_dimensions.height,
+                         params.filter_dimensions.width,
                          params.input_channels / params.groups};
         }
       } else {
         filter_dims = {params.output_channels / params.groups,
-                       params.filter_height, params.filter_width,
-                       params.input_channels};
+                       params.filter_dimensions.height,
+                       params.filter_dimensions.width, params.input_channels};
       }
       break;
     }
@@ -634,13 +768,13 @@ std::optional<Conv2dDescriptors> SetUpConv2dDescriptors(
       input_dims = {params.batch, params.input_channels, params.input_height,
                     params.input_width};
       if (params.conv2d_kind == mojom::Conv2d::Kind::kDirect) {
-        filter_dims = {params.output_channels,
-                       params.input_channels / params.groups,
-                       params.filter_height, params.filter_width};
+        filter_dims = {
+            params.output_channels, params.input_channels / params.groups,
+            params.filter_dimensions.height, params.filter_dimensions.width};
       } else {
-        filter_dims = {params.input_channels,
-                       params.output_channels / params.groups,
-                       params.filter_height, params.filter_width};
+        filter_dims = {
+            params.input_channels, params.output_channels / params.groups,
+            params.filter_dimensions.height, params.filter_dimensions.width};
       }
       break;
     }
@@ -654,10 +788,14 @@ std::optional<Conv2dDescriptors> SetUpConv2dDescriptors(
       auto filter_desc,
       OperandDescriptor::Create(context_properties, params.data_type,
                                 filter_dims, ""));
-  ASSIGN_OR_RETURN_NULLOPT(
-      auto bias_desc,
-      OperandDescriptor::Create(context_properties, params.data_type,
-                                {params.output_channels}, ""));
+
+  std::optional<OperandDescriptor> bias_desc;
+  if (params.bias_kind != OptionalOperandKind::kNone) {
+    ASSIGN_OR_RETURN_NULLOPT(
+        bias_desc,
+        OperandDescriptor::Create(context_properties, params.data_type,
+                                  {params.output_channels}, ""));
+  }
 
   std::optional<OperandDescriptor> output_desc;
   switch (params.conv2d_kind) {
@@ -688,8 +826,7 @@ std::optional<Conv2dDescriptors> SetUpConv2dDescriptors(
       attr.filter_layout = input_layout == InputOperandLayout::kNhwc
                                ? ConvTranspose2dFilterOperandLayout::kOhwi
                                : ConvTranspose2dFilterOperandLayout::kIohw;
-      attr.output_padding = {params.output_padding_height,
-                             params.output_padding_width};
+      attr.output_padding = params.output_padding;
       ASSIGN_OR_RETURN_NULLOPT(
           output_desc, ValidateConvTranspose2dAndInferOutput(
                            context_properties, input_desc, filter_desc, attr));
@@ -721,8 +858,7 @@ std::optional<Pool2dDescriptors> SetUpPool2dDescriptors(
   // https://source.chromium.org/chromium/chromium/src/+/4c1aaa2f981951e7e6f636df92fb89e48b642aa6:services/webnn/tflite/graph_builder_tflite.cc;l=7203
   // TODO(crbug.com/498987226): Remove this restriction to increase test
   // coverage.
-  params.dilation_height = 1;
-  params.dilation_width = 1;
+  params.dilations = {1, 1};
 #endif  // BUILDFLAG(IS_LINUX)
 
   std::vector<uint32_t> input_dims;
@@ -745,13 +881,10 @@ std::optional<Pool2dDescriptors> SetUpPool2dDescriptors(
                                 input_dims, ""));
 
   Pool2dAttributes attr;
-  attr.window_dimensions = Size2d<uint32_t>{.height = params.window_height,
-                                            .width = params.window_width};
-  attr.padding.beginning = {params.beginning_pad_height,
-                            params.beginning_pad_width};
-  attr.padding.ending = {params.ending_pad_height, params.ending_pad_width};
-  attr.strides = {params.stride_height, params.stride_width};
-  attr.dilations = {params.dilation_height, params.dilation_width};
+  attr.window_dimensions = params.window_dimensions;
+  attr.padding = params.padding;
+  attr.strides = params.strides;
+  attr.dilations = params.dilations;
   attr.layout = input_layout;
   attr.rounding_type = params.rounding_type;
 
@@ -829,6 +962,47 @@ std::optional<GemmDescriptors> SetUpGemmDescriptors(
       .b_desc = std::move(b_desc),
       .c_desc = std::move(c_desc),
       .output_desc = std::move(output_desc),
+  };
+}
+
+struct ReduceDescriptors {
+  OperandDescriptor input_desc;
+  OperandDescriptor output_desc;
+  std::vector<uint32_t> axes;
+};
+
+// Helper to set up ReduceDescriptors. Returns nullopt if any validation fails.
+std::optional<ReduceDescriptors> SetUpReduceDescriptors(
+    const ContextProperties& context_properties,
+    ReduceParams& params) {
+  std::vector<uint32_t> input_dims(params.input_dims.begin(),
+                                   params.input_dims.begin() + params.rank);
+
+  // Limit the rank of `num_axes` and remove duplicate values.
+  params.num_axes = std::min(params.num_axes, params.rank);
+  std::vector<uint32_t> axes;
+  for (uint32_t i = 0; i < params.num_axes; ++i) {
+    uint32_t axis = params.axes[i] % params.rank;
+    if (!std::ranges::contains(axes, axis)) {
+      axes.push_back(axis);
+    }
+  }
+
+  ASSIGN_OR_RETURN_NULLOPT(
+      auto input_desc,
+      OperandDescriptor::Create(context_properties, params.data_type,
+                                input_dims, ""));
+
+  ASSIGN_OR_RETURN_NULLOPT(
+      auto output_desc,
+      ValidateReduceAndInferOutput(
+          context_properties, FromMojoReduceType(params.reduce_kind),
+          input_desc, "", axes, params.keep_dimensions));
+
+  return ReduceDescriptors{
+      .input_desc = std::move(input_desc),
+      .output_desc = std::move(output_desc),
+      .axes = std::move(axes),
   };
 }
 
@@ -1088,6 +1262,7 @@ class WebNNGraphImplFuzzerImpl
   void SingleOpGemm(GemmParams params, uint8_t seed_for_data);
   void SingleOpLstm(LstmParams params, uint8_t seed_for_data);
   void SingleOpPool2d(Pool2dParams params, uint8_t seed_for_data);
+  void SingleOpReduce(ReduceParams params, uint8_t seed_for_data);
   void SingleOpScatterElements(ScatterElementsParams params,
                                uint8_t seed_for_data);
   void SubgraphDQConv2dQ(Conv2dParams conv2d_params,
@@ -1099,6 +1274,12 @@ class WebNNGraphImplFuzzerImpl
   void SubgraphDQPool2dQ(Pool2dParams pool2d_params,
                          QuantizationParams quantization_params,
                          uint8_t seed_for_data);
+  void SubgraphDQReduceQ(ReduceParams reduce_params,
+                         QuantizationParams quantization_params,
+                         uint32_t channel_axis,
+                         uint8_t seed_for_input,
+                         float seed_for_scale,
+                         uint8_t seed_for_zero_point);
 };
 
 template <mojom::Device device_type>
@@ -1133,13 +1314,15 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SingleOpConv2d(
 
   OperandId input_id;
   OperandId filter_id;
-  OperandId bias_id;
+  std::optional<OperandId> bias_id;
   std::vector<uint8_t> input_data(conv2d_descs.input_desc.PackedByteLength(),
                                   seed_for_data);
   std::vector<uint8_t> filter_data(conv2d_descs.filter_desc.PackedByteLength(),
                                    seed_for_data);
-  std::vector<uint8_t> bias_data(conv2d_descs.bias_desc.PackedByteLength(),
-                                 seed_for_data);
+  std::vector<uint8_t> bias_data;
+  if (conv2d_descs.bias_desc.has_value()) {
+    bias_data.resize(conv2d_descs.bias_desc->PackedByteLength(), seed_for_data);
+  }
 
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
   if (params.is_input_constant) {
@@ -1160,14 +1343,22 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SingleOpConv2d(
                                    conv2d_descs.filter_desc.data_type());
     named_inputs.insert({"filter", filter_data});
   }
-  if (params.is_bias_constant) {
-    bias_id =
-        builder.BuildConstant(conv2d_descs.bias_desc.shape(),
-                              conv2d_descs.bias_desc.data_type(), bias_data);
-  } else {
-    bias_id = builder.BuildInput("bias", conv2d_descs.bias_desc.shape(),
-                                 conv2d_descs.bias_desc.data_type());
-    named_inputs.insert({"bias", bias_data});
+
+  switch (params.bias_kind) {
+    case OptionalOperandKind::kNone:
+      break;
+    case OptionalOperandKind::kInput: {
+      bias_id = builder.BuildInput("bias", conv2d_descs.bias_desc->shape(),
+                                   conv2d_descs.bias_desc->data_type());
+      named_inputs.insert({"bias", bias_data});
+      break;
+    }
+    case OptionalOperandKind::kConstant: {
+      bias_id =
+          builder.BuildConstant(conv2d_descs.bias_desc->shape(),
+                                conv2d_descs.bias_desc->data_type(), bias_data);
+      break;
+    }
   }
 
   OperandId output_id =
@@ -1175,10 +1366,11 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SingleOpConv2d(
                           conv2d_descs.output_desc.data_type());
 
   BuildConv2dAttributes conv2d_attr;
-  conv2d_attr.padding = {params.beginning_pad_height, params.ending_pad_height,
-                         params.beginning_pad_width, params.ending_pad_width};
-  conv2d_attr.strides = {params.stride_height, params.stride_width};
-  conv2d_attr.dilations = {params.dilation_height, params.dilation_width};
+  conv2d_attr.padding = {
+      params.padding.beginning.height, params.padding.ending.height,
+      params.padding.beginning.width, params.padding.ending.width};
+  conv2d_attr.strides = {params.strides.height, params.strides.width};
+  conv2d_attr.dilations = {params.dilations.height, params.dilations.width};
   conv2d_attr.groups = params.groups;
   builder.BuildConv2d(params.conv2d_kind, input_id, filter_id, output_id,
                       conv2d_attr, bias_id);
@@ -1608,12 +1800,57 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SingleOpPool2d(
                           pool2d_descs.output_desc.data_type());
 
   BuildPool2dAttributes pool2d_attr;
-  pool2d_attr.window_dimensions = {params.window_height, params.window_width};
-  pool2d_attr.padding = {params.beginning_pad_height, params.ending_pad_height,
-                         params.beginning_pad_width, params.ending_pad_width};
-  pool2d_attr.strides = {params.stride_height, params.stride_width};
-  pool2d_attr.dilations = {params.dilation_height, params.dilation_width};
+  pool2d_attr.window_dimensions = {params.window_dimensions.height,
+                                   params.window_dimensions.width};
+  pool2d_attr.padding = {
+      params.padding.beginning.height, params.padding.ending.height,
+      params.padding.beginning.width, params.padding.ending.width};
+  pool2d_attr.strides = {params.strides.height, params.strides.width};
+  pool2d_attr.dilations = {params.dilations.height, params.dilations.width};
   builder.BuildPool2d(params.pool2d_kind, input_id, output_id, pool2d_attr);
+
+  if (!builder.IsValidGraphForTesting(this->context_properties())) {
+    return;
+  }
+  BuildAndCompute(this->context_, std::move(remote), builder.TakeGraphInfo(),
+                  std::move(named_inputs));
+
+  GetGlobalFuzzEnvironment().GetWebNNTestEnvironment().RunUntilIdle();
+}
+
+template <typename BaseFixture>
+void WebNNGraphImplFuzzerImpl<BaseFixture>::SingleOpReduce(
+    ReduceParams params,
+    uint8_t seed_for_data) {
+  ASSIGN_OR_RETURN_VOID(
+      auto reduce_descs,
+      SetUpReduceDescriptors(this->context_properties(), params));
+
+  mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+      this->BindNewGraphBuilderRemote();
+  GraphInfoBuilder builder(remote);
+
+  OperandId input_id;
+  std::vector<uint8_t> input_data(reduce_descs.input_desc.PackedByteLength(),
+                                  seed_for_data);
+
+  base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+  if (params.is_input_constant) {
+    input_id =
+        builder.BuildConstant(reduce_descs.input_desc.shape(),
+                              reduce_descs.input_desc.data_type(), input_data);
+  } else {
+    input_id = builder.BuildInput("input", reduce_descs.input_desc.shape(),
+                                  reduce_descs.input_desc.data_type());
+    named_inputs.insert({"input", input_data});
+  }
+
+  OperandId output_id =
+      builder.BuildOutput("output", reduce_descs.output_desc.shape(),
+                          reduce_descs.output_desc.data_type());
+
+  builder.BuildReduce(params.reduce_kind, input_id, output_id,
+                      reduce_descs.axes, params.keep_dimensions);
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
     return;
@@ -1737,8 +1974,12 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQConv2dQ(
   auto filter_scale_shape =
       ComputeQuantizationScaleShape(conv2d_descs.filter_desc.shape(),
                                     filter_channel_axis, quantization_params);
-  auto bias_scale_shape = ComputeQuantizationScaleShape(
-      conv2d_descs.bias_desc.shape(), bias_channel_axis, quantization_params);
+  std::vector<uint32_t> bias_scale_shape;
+  if (conv2d_descs.bias_desc.has_value()) {
+    bias_scale_shape =
+        ComputeQuantizationScaleShape(conv2d_descs.bias_desc->shape(),
+                                      bias_channel_axis, quantization_params);
+  }
 
   ASSIGN_OR_RETURN_VOID(
       auto input_dq_desc,
@@ -1768,18 +2009,23 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQConv2dQ(
   // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=1746;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a;
   // TODO(crbug.com/498987226): Remove this restriction to increase test
   // coverage.
-  ASSIGN_OR_RETURN_VOID(auto bias_dq_desc,
-                        OperandDescriptor::Create(
-                            this->context_properties(), OperandDataType::kInt32,
-                            conv2d_descs.bias_desc.shape(), ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto bias_scale_desc,
-      OperandDescriptor::Create(this->context_properties(),
-                                conv2d_params.data_type, bias_scale_shape, ""));
-  ASSIGN_OR_RETURN_VOID(
-      auto bias_zero_desc,
-      OperandDescriptor::Create(this->context_properties(),
-                                OperandDataType::kInt32, bias_scale_shape, ""));
+  std::optional<OperandDescriptor> bias_dq_desc;
+  std::optional<OperandDescriptor> bias_scale_desc;
+  std::optional<OperandDescriptor> bias_zero_desc;
+  if (conv2d_descs.bias_desc.has_value()) {
+    ASSIGN_OR_RETURN_VOID(
+        bias_dq_desc, OperandDescriptor::Create(
+                          this->context_properties(), OperandDataType::kInt32,
+                          conv2d_descs.bias_desc->shape(), ""));
+    ASSIGN_OR_RETURN_VOID(bias_scale_desc,
+                          OperandDescriptor::Create(this->context_properties(),
+                                                    conv2d_params.data_type,
+                                                    bias_scale_shape, ""));
+    ASSIGN_OR_RETURN_VOID(bias_zero_desc,
+                          OperandDescriptor::Create(this->context_properties(),
+                                                    OperandDataType::kInt32,
+                                                    bias_scale_shape, ""));
+  }
 
   ASSIGN_OR_RETURN_VOID(auto input_desc_result,
                         ValidateDequantizeLinearAndInferOutput(
@@ -1789,10 +2035,13 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQConv2dQ(
                         ValidateDequantizeLinearAndInferOutput(
                             this->context_properties(), filter_dq_desc,
                             filter_scale_desc, filter_zero_desc, ""));
-  ASSIGN_OR_RETURN_VOID(auto bias_desc_result,
-                        ValidateDequantizeLinearAndInferOutput(
-                            this->context_properties(), bias_dq_desc,
-                            bias_scale_desc, bias_zero_desc, ""));
+  std::optional<OperandDescriptor> bias_desc_result;
+  if (bias_dq_desc.has_value()) {
+    ASSIGN_OR_RETURN_VOID(bias_desc_result,
+                          ValidateDequantizeLinearAndInferOutput(
+                              this->context_properties(), *bias_dq_desc,
+                              *bias_scale_desc, *bias_zero_desc, ""));
+  }
 
   auto output_scale_shape =
       ComputeQuantizationScaleShape(conv2d_descs.output_desc.shape(),
@@ -1817,8 +2066,10 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQConv2dQ(
                                      seed_for_data);
   std::vector<uint8_t> filter_dq_data(filter_dq_desc.PackedByteLength(),
                                       seed_for_data);
-  std::vector<uint8_t> bias_dq_data(bias_dq_desc.PackedByteLength(),
-                                    seed_for_data);
+  std::vector<uint8_t> bias_dq_data;
+  if (bias_dq_desc.has_value()) {
+    bias_dq_data.assign(bias_dq_desc->PackedByteLength(), seed_for_data);
+  }
   // These values are used to exercise the fusiable path for TFLite backend:
   // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=1809;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
   // https://source.chromium.org/chromium/chromium/src/+/main:services/webnn/tflite/graph_builder_tflite.cc;l=1754;drc=ec4ff4bae24916aaad3186ce4bc1339313b6fb5a
@@ -1828,13 +2079,18 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQConv2dQ(
                                       0.5f);
   std::vector<float> filter_scale_data(filter_scale_desc.NumberOfElements(),
                                        0.25f);
-  std::vector<float> bias_scale_data(bias_scale_desc.NumberOfElements(),
-                                     0.125f);
+  std::vector<float> bias_scale_data;
+  if (bias_scale_desc.has_value()) {
+    bias_scale_data.assign(bias_scale_desc->NumberOfElements(), 0.125f);
+  }
   std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
                                        0.125f);
   std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(), 0);
   std::vector<uint8_t> filter_zero_data(filter_zero_desc.PackedByteLength(), 0);
-  std::vector<uint8_t> bias_zero_data(bias_zero_desc.PackedByteLength(), 0);
+  std::vector<uint8_t> bias_zero_data;
+  if (bias_zero_desc.has_value()) {
+    bias_zero_data.assign(bias_zero_desc->PackedByteLength(), 0);
+  }
   std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(), 0);
 
   mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
@@ -1843,7 +2099,7 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQConv2dQ(
 
   OperandId input_dq_id;
   OperandId filter_dq_id;
-  OperandId bias_dq_id;
+  std::optional<OperandId> bias_dq_id;
   base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
 
   if (conv2d_params.is_input_constant) {
@@ -1862,13 +2118,18 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQConv2dQ(
                                       filter_dq_desc.data_type());
     named_inputs.insert({"filter", filter_dq_data});
   }
-  if (conv2d_params.is_bias_constant) {
-    bias_dq_id = builder.BuildConstant(bias_dq_desc.shape(),
-                                       bias_dq_desc.data_type(), bias_dq_data);
-  } else {
-    bias_dq_id = builder.BuildInput("bias", bias_dq_desc.shape(),
-                                    bias_dq_desc.data_type());
-    named_inputs.insert({"bias", bias_dq_data});
+  switch (conv2d_params.bias_kind) {
+    case OptionalOperandKind::kNone:
+      break;
+    case OptionalOperandKind::kInput:
+      bias_dq_id = builder.BuildInput("bias", bias_dq_desc->shape(),
+                                      bias_dq_desc->data_type());
+      named_inputs.insert({"bias", bias_dq_data});
+      break;
+    case OptionalOperandKind::kConstant:
+      bias_dq_id = builder.BuildConstant(
+          bias_dq_desc->shape(), bias_dq_desc->data_type(), bias_dq_data);
+      break;
   }
 
   OperandId input_scale_id =
@@ -1879,10 +2140,14 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQConv2dQ(
       BuildFloatConstant(builder, filter_scale_desc, filter_scale_data);
   OperandId filter_zero_id = builder.BuildConstant(
       filter_zero_desc.shape(), filter_zero_desc.data_type(), filter_zero_data);
-  OperandId bias_scale_id =
-      BuildFloatConstant(builder, bias_scale_desc, bias_scale_data);
-  OperandId bias_zero_id = builder.BuildConstant(
-      bias_zero_desc.shape(), bias_zero_desc.data_type(), bias_zero_data);
+  std::optional<OperandId> bias_scale_id;
+  std::optional<OperandId> bias_zero_id;
+  if (bias_scale_desc.has_value()) {
+    bias_scale_id =
+        BuildFloatConstant(builder, *bias_scale_desc, bias_scale_data);
+    bias_zero_id = builder.BuildConstant(
+        bias_zero_desc->shape(), bias_zero_desc->data_type(), bias_zero_data);
+  }
   OperandId output_scale_id =
       BuildFloatConstant(builder, output_scale_desc, output_scale_data);
   OperandId output_zero_id = builder.BuildConstant(
@@ -1892,27 +2157,33 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQConv2dQ(
       conv2d_descs.input_desc.shape(), conv2d_descs.input_desc.data_type());
   OperandId conv2d_filter_id = builder.BuildIntermediateOperand(
       conv2d_descs.filter_desc.shape(), conv2d_descs.filter_desc.data_type());
-  OperandId conv2d_bias_id = builder.BuildIntermediateOperand(
-      conv2d_descs.bias_desc.shape(), conv2d_descs.bias_desc.data_type());
+  std::optional<OperandId> conv2d_bias_id;
+  if (bias_dq_id.has_value()) {
+    conv2d_bias_id = builder.BuildIntermediateOperand(
+        conv2d_descs.bias_desc->shape(), conv2d_descs.bias_desc->data_type());
+  }
 
   builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
                                 conv2d_input_id);
   builder.BuildDequantizeLinear(filter_dq_id, filter_scale_id, filter_zero_id,
                                 conv2d_filter_id);
-  builder.BuildDequantizeLinear(bias_dq_id, bias_scale_id, bias_zero_id,
-                                conv2d_bias_id);
+  if (bias_dq_id.has_value()) {
+    builder.BuildDequantizeLinear(*bias_dq_id, *bias_scale_id, *bias_zero_id,
+                                  *conv2d_bias_id);
+  }
 
   OperandId conv_output_id = builder.BuildIntermediateOperand(
       conv2d_descs.output_desc.shape(), conv2d_descs.output_desc.data_type());
 
   BuildConv2dAttributes conv2d_attr;
-  conv2d_attr.padding = {
-      conv2d_params.beginning_pad_height, conv2d_params.ending_pad_height,
-      conv2d_params.beginning_pad_width, conv2d_params.ending_pad_width};
-  conv2d_attr.strides = {conv2d_params.stride_height,
-                         conv2d_params.stride_width};
-  conv2d_attr.dilations = {conv2d_params.dilation_height,
-                           conv2d_params.dilation_width};
+  conv2d_attr.padding = {conv2d_params.padding.beginning.height,
+                         conv2d_params.padding.ending.height,
+                         conv2d_params.padding.beginning.width,
+                         conv2d_params.padding.ending.width};
+  conv2d_attr.strides = {conv2d_params.strides.height,
+                         conv2d_params.strides.width};
+  conv2d_attr.dilations = {conv2d_params.dilations.height,
+                           conv2d_params.dilations.width};
   conv2d_attr.groups = conv2d_params.groups;
   builder.BuildConv2d(conv2d_params.conv2d_kind, conv2d_input_id,
                       conv2d_filter_id, conv_output_id, conv2d_attr,
@@ -2262,15 +2533,16 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQPool2dQ(
       pool2d_descs.output_desc.shape(), pool2d_descs.output_desc.data_type());
 
   BuildPool2dAttributes pool2d_attr;
-  pool2d_attr.window_dimensions = {pool2d_params.window_height,
-                                   pool2d_params.window_width};
-  pool2d_attr.padding = {
-      pool2d_params.beginning_pad_height, pool2d_params.ending_pad_height,
-      pool2d_params.beginning_pad_width, pool2d_params.ending_pad_width};
-  pool2d_attr.strides = {pool2d_params.stride_height,
-                         pool2d_params.stride_width};
-  pool2d_attr.dilations = {pool2d_params.dilation_height,
-                           pool2d_params.dilation_width};
+  pool2d_attr.window_dimensions = {pool2d_params.window_dimensions.height,
+                                   pool2d_params.window_dimensions.width};
+  pool2d_attr.padding = {pool2d_params.padding.beginning.height,
+                         pool2d_params.padding.ending.height,
+                         pool2d_params.padding.beginning.width,
+                         pool2d_params.padding.ending.width};
+  pool2d_attr.strides = {pool2d_params.strides.height,
+                         pool2d_params.strides.width};
+  pool2d_attr.dilations = {pool2d_params.dilations.height,
+                           pool2d_params.dilations.width};
   builder.BuildPool2d(pool2d_params.pool2d_kind, pool2d_input_id,
                       pool_output_id, pool2d_attr);
 
@@ -2278,6 +2550,141 @@ void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQPool2dQ(
       builder.BuildOutput("output", quantized_output_desc_result.shape(),
                           quantized_output_desc_result.data_type());
   builder.BuildQuantizeLinear(pool_output_id, output_scale_id, output_zero_id,
+                              quantize_output_id);
+
+  if (!builder.IsValidGraphForTesting(this->context_properties())) {
+    return;
+  }
+
+  BuildAndCompute(this->context_, std::move(remote), builder.TakeGraphInfo(),
+                  std::move(named_inputs));
+
+  GetGlobalFuzzEnvironment().GetWebNNTestEnvironment().RunUntilIdle();
+}
+
+template <typename BaseFixture>
+void WebNNGraphImplFuzzerImpl<BaseFixture>::SubgraphDQReduceQ(
+    ReduceParams reduce_params,
+    QuantizationParams quantization_params,
+    uint32_t channel_axis,
+    uint8_t seed_for_input,
+    float seed_for_scale,
+    uint8_t seed_for_zero_point) {
+  ASSIGN_OR_RETURN_VOID(
+      auto reduce_descs,
+      SetUpReduceDescriptors(this->context_properties(), reduce_params));
+
+  OperandDataType quantized_type = quantization_params.quantized_type;
+
+  // Clamp channel_axis to be valid for the input shape.
+  const uint32_t input_channel_axis =
+      channel_axis % reduce_descs.input_desc.shape().size();
+  auto input_scale_shape = ComputeQuantizationScaleShape(
+      reduce_descs.input_desc.shape(), input_channel_axis, quantization_params);
+
+  ASSIGN_OR_RETURN_VOID(
+      auto input_dq_desc,
+      OperandDescriptor::Create(this->context_properties(), quantized_type,
+                                reduce_descs.input_desc.shape(), ""));
+  ASSIGN_OR_RETURN_VOID(auto input_scale_desc,
+                        OperandDescriptor::Create(this->context_properties(),
+                                                  reduce_params.data_type,
+                                                  input_scale_shape, ""));
+  ASSIGN_OR_RETURN_VOID(
+      auto input_zero_desc,
+      OperandDescriptor::Create(this->context_properties(), quantized_type,
+                                input_scale_shape, ""));
+
+  ASSIGN_OR_RETURN_VOID(auto input_desc_result,
+                        ValidateDequantizeLinearAndInferOutput(
+                            this->context_properties(), input_dq_desc,
+                            input_scale_desc, input_zero_desc, ""));
+
+  // Use per-tensor quantization for the output when reduce produces a scalar
+  // (keep_dimensions is false and all axes are reduced), since
+  // per-channel/per-block quantization requires a non-empty shape. Otherwise,
+  // clamp `output_channel_axis` to be valid for the output shape.
+  QuantizationParams output_quantization_params = quantization_params;
+  uint32_t output_channel_axis = 0;
+  if (reduce_descs.output_desc.shape().empty()) {
+    output_quantization_params.quantization_kind = QuantizationKind::kPerTensor;
+  } else {
+    output_channel_axis =
+        channel_axis % reduce_descs.output_desc.shape().size();
+  }
+
+  auto output_scale_shape = ComputeQuantizationScaleShape(
+      reduce_descs.output_desc.shape(), output_channel_axis,
+      output_quantization_params);
+
+  ASSIGN_OR_RETURN_VOID(auto output_scale_desc,
+                        OperandDescriptor::Create(this->context_properties(),
+                                                  reduce_params.data_type,
+                                                  output_scale_shape, ""));
+  ASSIGN_OR_RETURN_VOID(
+      auto output_zero_desc,
+      OperandDescriptor::Create(this->context_properties(), quantized_type,
+                                output_scale_shape, ""));
+
+  ASSIGN_OR_RETURN_VOID(
+      auto quantized_output_desc,
+      ValidateQuantizeLinearAndInferOutput(
+          this->context_properties(), reduce_descs.output_desc,
+          output_scale_desc, output_zero_desc, ""));
+
+  std::vector<uint8_t> input_dq_data(input_dq_desc.PackedByteLength(),
+                                     seed_for_input);
+  std::vector<float> input_scale_data(input_scale_desc.NumberOfElements(),
+                                      seed_for_scale);
+  std::vector<float> output_scale_data(output_scale_desc.NumberOfElements(),
+                                       seed_for_scale);
+  std::vector<uint8_t> input_zero_data(input_zero_desc.PackedByteLength(),
+                                       seed_for_zero_point);
+  std::vector<uint8_t> output_zero_data(output_zero_desc.PackedByteLength(),
+                                        seed_for_zero_point);
+
+  mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+      this->BindNewGraphBuilderRemote();
+  GraphInfoBuilder builder(remote);
+
+  OperandId input_dq_id;
+  base::flat_map<std::string, base::span<const uint8_t>> named_inputs;
+
+  if (reduce_params.is_input_constant) {
+    input_dq_id = builder.BuildConstant(
+        input_dq_desc.shape(), input_dq_desc.data_type(), input_dq_data);
+  } else {
+    input_dq_id = builder.BuildInput("input", input_dq_desc.shape(),
+                                     input_dq_desc.data_type());
+    named_inputs.insert({"input", input_dq_data});
+  }
+
+  OperandId input_scale_id =
+      BuildFloatConstant(builder, input_scale_desc, input_scale_data);
+  OperandId input_zero_id = builder.BuildConstant(
+      input_zero_desc.shape(), input_zero_desc.data_type(), input_zero_data);
+  OperandId output_scale_id =
+      BuildFloatConstant(builder, output_scale_desc, output_scale_data);
+  OperandId output_zero_id = builder.BuildConstant(
+      output_zero_desc.shape(), output_zero_desc.data_type(), output_zero_data);
+
+  OperandId reduce_input_id = builder.BuildIntermediateOperand(
+      reduce_descs.input_desc.shape(), reduce_descs.input_desc.data_type());
+
+  builder.BuildDequantizeLinear(input_dq_id, input_scale_id, input_zero_id,
+                                reduce_input_id);
+
+  OperandId reduce_output_id = builder.BuildIntermediateOperand(
+      reduce_descs.output_desc.shape(), reduce_descs.output_desc.data_type());
+
+  builder.BuildReduce(reduce_params.reduce_kind, reduce_input_id,
+                      reduce_output_id, reduce_descs.axes,
+                      reduce_params.keep_dimensions);
+
+  OperandId quantize_output_id =
+      builder.BuildOutput("output", quantized_output_desc.shape(),
+                          quantized_output_desc.data_type());
+  builder.BuildQuantizeLinear(reduce_output_id, output_scale_id, output_zero_id,
                               quantize_output_id);
 
   if (!builder.IsValidGraphForTesting(this->context_properties())) {
@@ -2301,22 +2708,16 @@ WEBNN_FUZZ_TEST_F(SingleOpConv2d,
                                        /*input_height=*/224,
                                        /*input_width=*/224,
                                        /*output_channels=*/64,
-                                       /*filter_height=*/7,
-                                       /*filter_width=*/7,
-                                       /*beginning_pad_height=*/3,
-                                       /*beginning_pad_width=*/3,
-                                       /*ending_pad_height=*/3,
-                                       /*ending_pad_width=*/3,
-                                       /*stride_height=*/1,
-                                       /*stride_width=*/1,
-                                       /*dilation_height=*/1,
-                                       /*dilation_width=*/1,
-                                       /*output_padding_height=*/0,
-                                       /*output_padding_width=*/0,
+                                       /*padding=*/{{3, 3}, {3, 3}},
+                                       /*filter_dimensions=*/{7, 7},
+                                       /*strides=*/{1, 1},
+                                       /*dilations=*/{1, 1},
+                                       /*output_padding=*/{0, 0},
                                        /*groups=*/1,
                                        /*is_input_constant=*/false,
                                        /*is_filter_constant=*/true,
-                                       /*is_bias_constant=*/true,
+                                       /*bias_kind=*/OptionalOperandKind::kNone,
+                                       /*is_depthwise=*/false,
                                    },
                                    /*seed_for_data=*/1}}));
 
@@ -2394,16 +2795,10 @@ WEBNN_FUZZ_TEST_F(SingleOpPool2d,
                                        /*channels=*/3,
                                        /*input_height=*/4,
                                        /*input_width=*/4,
-                                       /*window_height=*/2,
-                                       /*window_width=*/2,
-                                       /*beginning_pad_height=*/0,
-                                       /*beginning_pad_width=*/0,
-                                       /*ending_pad_height=*/0,
-                                       /*ending_pad_width=*/0,
-                                       /*stride_height=*/2,
-                                       /*stride_width=*/2,
-                                       /*dilation_height=*/1,
-                                       /*dilation_width=*/1,
+                                       /*padding=*/{{0, 0}, {0, 0}},
+                                       /*window_dimensions=*/{2, 2},
+                                       /*strides=*/{2, 2},
+                                       /*dilations=*/{1, 1},
                                        /*is_input_constant=*/false,
                                    },
                                    /*seed_for_data=*/2}}));
@@ -2426,6 +2821,21 @@ WEBNN_FUZZ_TEST_F(
                      /*seed_for_data=*/4}}));
 
 WEBNN_FUZZ_TEST_F(
+    SingleOpReduce,
+    .WithDomains(AnyReduceParams(), fuzztest::Arbitrary<uint8_t>())
+        .WithSeeds({{ReduceParams{
+                         /*data_type=*/OperandDataType::kFloat32,
+                         /*reduce_kind=*/mojom::Reduce::Kind::kMax,
+                         /*rank=*/4,
+                         /*input_dims=*/{1, 3, 4, 4, 1, 1, 1, 1},
+                         /*num_axes=*/2,
+                         /*axes=*/{2, 3, 0, 0, 0, 0, 0, 0},
+                         /*keep_dimensions=*/true,
+                         /*is_input_constant=*/false,
+                     },
+                     /*seed_for_data=*/2}}));
+
+WEBNN_FUZZ_TEST_F(
     SubgraphDQConv2dQ,
     .WithDomains(AnyConv2dParams(),
                  AnyQuantizationParams(),
@@ -2437,22 +2847,16 @@ WEBNN_FUZZ_TEST_F(
                                   /*input_height=*/224,
                                   /*input_width=*/224,
                                   /*output_channels=*/64,
-                                  /*filter_height=*/7,
-                                  /*filter_width=*/7,
-                                  /*beginning_pad_height=*/3,
-                                  /*beginning_pad_width=*/3,
-                                  /*ending_pad_height=*/3,
-                                  /*ending_pad_width=*/3,
-                                  /*stride_height=*/1,
-                                  /*stride_width=*/1,
-                                  /*dilation_height=*/1,
-                                  /*dilation_width=*/1,
-                                  /*output_padding_height=*/0,
-                                  /*output_padding_width=*/0,
+                                  /*padding=*/{{3, 3}, {3, 3}},
+                                  /*filter_dimensions=*/{7, 7},
+                                  /*strides=*/{1, 1},
+                                  /*dilations=*/{1, 1},
+                                  /*output_padding=*/{0, 0},
                                   /*groups=*/1,
                                   /*is_input_constant=*/false,
                                   /*is_filter_constant=*/true,
-                                  /*is_bias_constant=*/true},
+                                  /*bias_kind=*/OptionalOperandKind::kNone,
+                                  /*is_depthwise=*/false},
                      QuantizationParams{
                          /*quantized_type=*/OperandDataType::kUint8,
                          QuantizationKind::kPerTensor,
@@ -2498,16 +2902,10 @@ WEBNN_FUZZ_TEST_F(
                          /*channels=*/3,
                          /*input_height=*/4,
                          /*input_width=*/4,
-                         /*window_height=*/2,
-                         /*window_width=*/2,
-                         /*beginning_pad_height=*/0,
-                         /*beginning_pad_width=*/0,
-                         /*ending_pad_height=*/0,
-                         /*ending_pad_width=*/0,
-                         /*stride_height=*/2,
-                         /*stride_width=*/2,
-                         /*dilation_height=*/1,
-                         /*dilation_width=*/1,
+                         /*padding=*/{{0, 0}, {0, 0}},
+                         /*window_dimensions=*/{2, 2},
+                         /*strides=*/{2, 2},
+                         /*dilations=*/{1, 1},
                          /*is_input_constant=*/false,
                      },
                      QuantizationParams{
@@ -2516,5 +2914,34 @@ WEBNN_FUZZ_TEST_F(
                          // This is unused for per tensor quantization.
                          /*channel_block_size=*/1},
                      /*seed_for_data=*/2}}));
+
+WEBNN_FUZZ_TEST_F(
+    SubgraphDQReduceQ,
+    .WithDomains(AnyReduceParams(),
+                 AnyQuantizationParams(),
+                 /*channel_axis=*/fuzztest::InRange<uint32_t>(0, 7),
+                 /*seed_for_input=*/fuzztest::Arbitrary<uint8_t>(),
+                 /*seed_for_scale=*/
+                 fuzztest::ElementOf({0.125f, 0.25f, 0.5f, 1.0f, 2.0f}),
+                 /*seed_for_zero_point=*/fuzztest::Arbitrary<uint8_t>())
+        .WithSeeds({{ReduceParams{
+                         /*data_type=*/OperandDataType::kFloat32,
+                         /*reduce_kind=*/mojom::Reduce::Kind::kMax,
+                         /*rank=*/4,
+                         /*input_dims=*/{1, 3, 4, 4, 1, 1, 1, 1},
+                         /*num_axes=*/2,
+                         /*axes=*/{2, 3, 0, 0, 0, 0, 0, 0},
+                         /*keep_dimensions=*/true,
+                         /*is_input_constant=*/false,
+                     },
+                     QuantizationParams{
+                         /*quantized_type=*/OperandDataType::kUint8,
+                         QuantizationKind::kPerTensor,
+                         // This is unused for per tensor quantization.
+                         /*channel_block_size=*/1},
+                     /*channel_axis=*/1,
+                     /*seed_for_input=*/2,
+                     /*seed_for_scale=*/0.25f,
+                     /*seed_for_zero_point=*/0}}));
 
 }  // namespace webnn::test

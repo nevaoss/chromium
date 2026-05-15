@@ -334,15 +334,13 @@ bool ScrollableArea::SetScrollOffsetInternal(
 
   TRACE_EVENT("blink", "ScrollableArea::SetScrollOffset", "offset",
               offset.ToString());
-  TRACE_EVENT_INSTANT1(TRACE_DISABLED_BY_DEFAULT("blink.debug"),
-                       "SetScrollOffset", TRACE_EVENT_SCOPE_THREAD,
-                       "current_offset", GetScrollOffset().ToString());
-  TRACE_EVENT_INSTANT1(TRACE_DISABLED_BY_DEFAULT("blink.debug"),
-                       "SetScrollOffset", TRACE_EVENT_SCOPE_THREAD, "type",
-                       scroll_type);
-  TRACE_EVENT_INSTANT1(TRACE_DISABLED_BY_DEFAULT("blink.debug"),
-                       "SetScrollOffset", TRACE_EVENT_SCOPE_THREAD, "behavior",
-                       behavior);
+  TRACE_EVENT_INSTANT(TRACE_DISABLED_BY_DEFAULT("blink.debug"),
+                      "SetScrollOffset", "current_offset",
+                      GetScrollOffset().ToString());
+  TRACE_EVENT_INSTANT(TRACE_DISABLED_BY_DEFAULT("blink.debug"),
+                      "SetScrollOffset", "type", scroll_type);
+  TRACE_EVENT_INSTANT(TRACE_DISABLED_BY_DEFAULT("blink.debug"),
+                      "SetScrollOffset", "behavior", behavior);
 
   if (behavior == mojom::blink::ScrollBehavior::kAuto) {
     behavior = ScrollBehaviorStyle();
@@ -526,6 +524,8 @@ bool ScrollableArea::InitiateScrollAnimation(
   }
 
   if (ScrollOffsetIsNoop(offset)) {
+    // TODO(https://crbug.com/40712058): Why is this cancellation only for no-op
+    // scrolls, instead of all scrolls with `scroll_type` programmatic?
     CancelProgrammaticScrollAnimation();
     return false;
   }
@@ -533,15 +533,19 @@ bool ScrollableArea::InitiateScrollAnimation(
   ScrollCallback callback = ScrollCallback(blink::BindOnce(
       [](WeakPersistent<ScrollableArea> area,
          std::unique_ptr<ScrollPromiseResolver::ActiveScrollTracker>
-             scroll_tracker_in_cb,
+             scroll_tracker_in_callback,
          ScrollCompletionMode mode) {
         if (area) {
           area->OnScrollFinished(/*enqueue_scrollend=*/mode ==
                                  ScrollCompletionMode::kFinished);
         }
-        // When this callback is done or destroyed, `scroll_tracker_in_cb` gets
-        // released, signaling `ScrollPromiseResolver` to resolve the promise if
-        // needed.
+        // When this callback is done or destroyed, `scroll_tracker_in_callback`
+        // gets released, signaling `ScrollPromiseResolver` to resolve the
+        // promise if needed.
+        if (scroll_tracker_in_callback &&
+            mode == ScrollCompletionMode::kInterruptedByScroll) {
+          scroll_tracker_in_callback->MarkInterrupted();
+        }
       },
       WrapWeakPersistent(this), std::move(scroll_tracker)));
 
@@ -615,8 +619,7 @@ void ScrollableArea::ScrollOffsetChanged(const ScrollOffset& offset,
                                          cc::ScrollSourceType source_type) {
   TRACE_EVENT2("input", "ScrollableArea::scrollOffsetChanged", "x", offset.x(),
                "y", offset.y());
-  TRACE_EVENT_INSTANT1("input", "Type", TRACE_EVENT_SCOPE_THREAD, "type",
-                       scroll_type);
+  TRACE_EVENT_INSTANT("input", "Type", "type", scroll_type);
 
   ScrollOffset old_offset = GetScrollOffset();
   ScrollOffset truncated_offset =

@@ -11,7 +11,7 @@
 #import "base/values.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_java_script_feature_util.h"
-#import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_error.h"
+#import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
 #import "ios/web/public/js_messaging/web_frame.h"
 
 namespace {
@@ -48,8 +48,8 @@ void ClickToolJavaScriptFeature::Click(
          action.target().has_document_identifier()));
 
   if (!target_frame) {
-    std::move(callback).Run(base::unexpected(
-        ActorToolError{ActorToolErrorCode::kActorTargetWebFrameInvalidated}));
+    std::move(callback).Run(ToolExecutionResult(
+        InternalToolErrorCode::kActorTargetWebFrameInvalidated));
     return;
   }
 
@@ -81,9 +81,9 @@ void ClickToolJavaScriptFeature::Click(
 
   if (!sent) {
     std::move(cb_for_error)
-        .Run(base::unexpected(ActorToolError{
-            ActorToolErrorCode::
-                kJavascriptFeatureFailedToCallJavaScriptFunction}));
+        .Run(ToolExecutionResult(
+            InternalToolErrorCode::
+                kJavascriptFeatureFailedToCallJavaScriptFunction));
   }
 }
 

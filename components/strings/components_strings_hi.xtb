@@ -91,6 +91,7 @@
 <translation id="1149617035358809955">अपनी पहचान की पुष्टि करें, ताकि यह आपके क्रेडिट/डेबिट कार्ड की जानकारी भर सके</translation>
 <translation id="1150565364351027703">धूप के चश्मे</translation>
 <translation id="1150979032973867961">यह सर्वर यह नहीं प्रमाणित कर सका कि यह <ph name="DOMAIN" /> है; इसका सुरक्षा प्रमाणपत्र आपके कंप्यूटर के ऑपरेटिंग सिस्टम द्वारा विश्वसनीय नहीं है. ऐसा गलत कॉन्फ़िगरेशन या किसी आक्रमणकर्ता द्वारा आपके कनेक्शन में अवरोध डालने के कारण हो सकता है.</translation>
+<translation id="1151858212483238980">Google Wallet में सेव किए गए कार्ड की जानकारी ऑटोमैटिक तरीके से भरी जा सकती है</translation>
 <translation id="1151972924205500581">पासवर्ड आवश्यक</translation>
 <translation id="1156303062776767266">आप स्थानीय या शेयर की गई फ़ाइल देख रहे हैं</translation>
 <translation id="1158211211994409885"><ph name="HOST_NAME" /> ने अनपेक्षित रूप से कनेक्शन बंद कर दिया है.</translation>
@@ -131,6 +132,7 @@
 <translation id="1202892408424955784">ट्रैक किए गए प्रॉडक्ट</translation>
 <translation id="1204184165594298176">{0,plural, =1{फ़ाइल को कॉपी करने से रोका गया है}one{<ph name="FILE_COUNT" /> फ़ाइल को कॉपी करने से रोका गया है}other{<ph name="FILE_COUNT" /> फ़ाइलों को कॉपी करने से रोका गया है}}</translation>
 <translation id="120509973613679868">बिज़नेस ट्रैवल</translation>
+<translation id="1205344127823614428">Google Wallet में सेव किए गए कार्ड की जानकारी ऑटोमैटिक तरीके से भरी जा सकती है.</translation>
 <translation id="120587177308723209">फ़ैंटसी स्पोर्ट्स</translation>
 <translation id="1206967143813997005">नाम के पहले अक्षर के गलत हस्ताक्षर</translation>
 <translation id="1209206284964581585">अभी छिपाएं</translation>
@@ -150,6 +152,7 @@
 <translation id="1228893227497259893">गलत इकाई पहचानकर्ता</translation>
 <translation id="1230244617745022071"><ph name="SOURCE" /> (अपने-आप पहचानी गई भाषा)</translation>
 <translation id="1232569758102978740">टाइटल रहित</translation>
+<translation id="1234539281285007945"><ph name="FIELD_1" /> में जानकारी भरना ज़रूरी है</translation>
 <translation id="1236081509407217141">क्या आप वीआर के लिए अनुमति देना चाहते हैं?</translation>
 <translation id="1236689197410206751">AfterPay</translation>
 <translation id="1240347957665416060">आपके डिवाइस का नाम</translation>
@@ -471,6 +474,7 @@
 <translation id="1721424275792716183">* फ़ील्ड ज़रूरी है</translation>
 <translation id="1723636263173393300">इस नीति में <ph name="MAX_ITEMS_LIMIT" /> से ज़्यादा शॉर्टकट नहीं हो सकते.</translation>
 <translation id="1725591448053514783">यू 6 साइज़ का लिफ़ाफ़ा</translation>
+<translation id="172754119609519423"><ph name="FIELD_1" />, <ph name="FIELD_2" /> या <ph name="FIELD_3" /> में से किसी एक में जानकारी भरना ज़रूरी है</translation>
 <translation id="1727613060316725209">प्रमाणपत्र मान्य है</translation>
 <translation id="1728677426644403582">एक वेब पेज का सोर्स देखा जा रहा है</translation>
 <translation id="173080396488393970">इस तरह का कार्ड काम नहीं करता</translation>
@@ -1430,6 +1434,7 @@
 <translation id="3220264767789936523">फ़ॉर्मल कपड़े</translation>
 <translation id="3223287115535306850">ऐप्लिकेशन लॉन्च होने की जानकारी देने वाला लोडिंग आइकॉन</translation>
 <translation id="3223425961342298674">जगह की जानकारी ऐक्सेस करने की अनुमति नहीं है</translation>
+<translation id="3225277284238802910"><ph name="FIELD_1" /> या <ph name="FIELD_2" /> में से किसी एक में जानकारी भरना ज़रूरी है</translation>
 <translation id="3225319735946384299">कोड हस्ताक्षर</translation>
 <translation id="3225919329040284222">सर्वर द्वारा कोई प्रमाणपत्र प्रस्‍तुत किया गया, जो बिल्‍ट-इन अपेक्षाओं से मिलान नहीं करता. इन अपेक्षाओं को आपकी सुरक्षा करने के लिए कुछ, उच्‍च-सुरक्षा वेबसाइटों के लिए शामिल किया गया है.</translation>
 <translation id="3226128629678568754">पेज को लोड करने के लिए ज़रूरी डेटा फिर सबमिट करने के लिए 'फिर लोड करें' बटन दबाएं.</translation>
@@ -2154,6 +2159,7 @@
 <translation id="4318312030194671742">पेंट की झलक दिखाने वाली सेवा</translation>
 <translation id="4318566738941496689">आपके डिवाइस का नाम और नेटवर्क का पता</translation>
 <translation id="4320119221194966055">निजी क़र्ज़</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> से लिंक मिला है}one{<ph name="DEVICE_NAME" /> से # लिंक मिला है}other{<ph name="DEVICE_NAME" /> से # लिंक मिले हैं}}</translation>
 <translation id="4325600325087822253">ट्रे 17</translation>
 <translation id="4325863107915753736">लेख ढूंढ़ने में विफल</translation>
 <translation id="4326324639298822553">अपने क्रेडिट कार्ड की समय सीमा खत्म होने की तारीख जांचें और फिर से कोशिश करें</translation>
@@ -3185,6 +3191,7 @@
 <translation id="5968400720580217226">एआई मोड</translation>
 <translation id="5969199813874624822">कीमत सेव करके उसे ट्रैक करें</translation>
 <translation id="5969933937005244170">काम के खुले हुए टैब का इस्तेमाल सिर्फ़ तब किया जाएगा, जब आपने उन्हें किसी थ्रेड में शेयर किया हो</translation>
+<translation id="5972020793760134803">टैब स्विच करें</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">छठा रोल</translation>
 <translation id="5975083100439434680">ज़ूम आउट</translation>
@@ -3595,6 +3602,7 @@
 <translation id="6579858392010591435">छुट्टियां और सीज़नल इवेंट</translation>
 <translation id="6581831440014388355">शरीर और चेहरे के अनचाहे बालों से छुटकारा दिलाने वाले प्रॉडक्ट</translation>
 <translation id="658230438113661756">आपने जिस साइट पर जाने की कोशिश की है उससे जुड़े हमलावर, धोखे से आपके डिवाइस में नुकसान पहुंचाने वाला सॉफ़्टवेयर इंस्टॉल करवा सकते हैं. ये सॉफ़्टवेयर आपके पासवर्ड, फ़ोटो, मैसेज या क्रेडिट कार्ड नंबर जैसी जानकारी चोरी कर सकते हैं या उन्हें मिटा सकते हैं. Chrome का सुझाव है कि आप इस साइट पर न जाएं. <ph name="BEGIN_LEARN_MORE_LINK" />इस चेतावनी के बारे में ज़्यादा जानें<ph name="END_LEARN_MORE_LINK" /></translation>
+<translation id="6583309742916093092">Google Wallet में सेव किए गए</translation>
 <translation id="6587893660316489419">B5 साइज़ का लिफ़ाफ़ा</translation>
 <translation id="6587923378399804057">आपका कॉपी किया हुआ लिंक</translation>
 <translation id="6591833882275308647">आपका <ph name="DEVICE_TYPE" /> प्रबंधित नहीं किया जाता</translation>
@@ -3750,6 +3758,7 @@
 <translation id="6834757537110528125">इस साइट पर सुरक्षित कनेक्शन की सुविधा काम नहीं करती</translation>
 <translation id="6841864657731852591">ग्रव्यूअर सिलिंडर</translation>
 <translation id="6842196666980060516">184 x 260 मि॰मी॰</translation>
+<translation id="6844746916504777213">इन साइटों को कभी शेयर न करें</translation>
 <translation id="6844998850832008753">इस समय हाथ ट्रैक करने की सुविधा को इस्तेमाल करने की अनुमति है</translation>
 <translation id="6849023911358004088">'सुरक्षा की सेटिंग मैनेज करें' बटन, Chrome की सेटिंग में सुरक्षित ब्राउज़िंग वगैरह को मैनेज करने के लिए इसे चालू करें</translation>
 <translation id="6850286078059909152">टेक्स्ट का रंग</translation>
@@ -4419,6 +4428,7 @@
 <translation id="7840103971441592723">स्क्रीन कैप्चर करने की सुविधा चालू हो गई है</translation>
 <translation id="784137052867620416">खरीदारी के बारे में अहम जानकारी</translation>
 <translation id="7841633276323004751">पेमेंट करने के लिए, पैसे चुकाने के उपलब्ध तरीके चुने जा सकते हैं. कीबोर्ड छिपा हुआ है.</translation>
+<translation id="784189052219692670">अब Gemini, अलग-अलग Google ऐप्लिकेशन में मौजूद आपकी निजी जानकारी को ऐक्सेस करके, आपके मौजूदा वेब पेज पर उसे ऑटोमैटिक तरीके से भर सकता है.</translation>
 <translation id="7844689747373518809">{COUNT,plural, =0{कोई नहीं}=1{एक ऐप्लिकेशन (<ph name="EXAMPLE_APP_1" />)}=2{दो ऐप्लिकेशन (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />)}one{# ऐप्लिकेशन (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />, <ph name="AND_MORE" />)}other{# ऐप्लिकेशन (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />, <ph name="AND_MORE" />)}}</translation>
 <translation id="7846161022626028328">कोई गड़बड़ी हुई. फिर से कोशिश करें.</translation>
 <translation id="784623644169604270">हाल ही में कोई गतिविधि नहीं हुई</translation>
@@ -4822,6 +4832,7 @@
 <translation id="8488350697529856933">इस पर लागू होती है</translation>
 <translation id="8490137692873530638">स्टैकर 10</translation>
 <translation id="8493948351860045254">स्‍थान खाली करें</translation>
+<translation id="8495170825732897952">बिना टैब बदले जानकारी ऐक्सेस करने और उसे भरने के लिए, किसी भी फ़ॉर्म में @@ टाइप करें</translation>
 <translation id="8498870489552322848"><ph name="APP_NAME" /> पर अपनी संवेदनशील जानकारी भरें</translation>
 <translation id="8498891568109133222"><ph name="HOST_NAME" /> को लोड होने में बहुत ज़्यादा समय लगा.</translation>
 <translation id="8502023382441452707">जन्मदिन और नामकरण का दिन</translation>
@@ -4977,6 +4988,7 @@
 <translation id="8758529215314160755"><ph name="BEGIN_LINK" />Google खाते<ph name="END_LINK" /> <ph name="ACCOUNT" /> पर जाकर, अपना नाम बदला जा सकता है</translation>
 <translation id="8759274551635299824">इस कार्ड की अवधि खत्म हो चुकी है</translation>
 <translation id="87601671197631245">यह साइट एक पुराने सुरक्षा कॉन्फ़िगरेशन का इस्तेमाल करती है. इस वजह से, साइट पर भेजी जाने वाली आपकी जानकारी (उदाहरण के लिए, पासवर्ड, मैसेज या क्रेडिट कार्ड) को कोई और देख सकता है.</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{<ph name="DEVICE_NAME" /> से लिंक भेजा गया}one{<ph name="DEVICE_NAME" /> से # लिंक भेजा गया}other{<ph name="DEVICE_NAME" /> से # लिंक भेजे गए}}</translation>
 <translation id="8763927697961133303">USB डिवाइस</translation>
 <translation id="8763986294015493060">सभी खुली हुई गुप्त विंडो बंद करें</translation>
 <translation id="8766943070169463815">सुरक्षित तरीके से पेमेंट करने के लिए, क्रेडेंशियल की पुष्टि करने की शीट खुली है</translation>

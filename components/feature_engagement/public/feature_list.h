@@ -372,6 +372,7 @@ DEFINE_VARIATION_PARAM(kIPHiOSGeminiFullscreenPromoFeature,
                        "IPH_iOSGeminiFullscreenPromoFeature");
 DEFINE_VARIATION_PARAM(kIPHiOSGeminiImageRemixFeature,
                        "IPH_iOSGeminiImageRemixFeature");
+DEFINE_VARIATION_PARAM(kIPHiOSNewIAPromoFeature, "IPH_iOSNewIAPromoFeature");
 DEFINE_VARIATION_PARAM(kIPHiOSPinMostVisitedSiteFeature,
                        "IPH_iOSPinMostVisitedSiteFeature");
 #endif  // BUILDFLAG(IS_IOS)
@@ -442,8 +443,6 @@ DEFINE_VARIATION_PARAM(kIPHPdfInkSignaturesFeature, "IPH_PdfInkSignatures");
 DEFINE_VARIATION_PARAM(kIPHPdfSearchifyFeature, "IPH_PdfSearchifyFeature");
 DEFINE_VARIATION_PARAM(kIPHPerformanceInterventionDialogFeature,
                        "IPH_PerformanceInterventionDialogFeature");
-DEFINE_VARIATION_PARAM(kIPHPlusAddressFirstSaveFeature,
-                       "IPH_PlusAddressFirstSaveFeature");
 DEFINE_VARIATION_PARAM(kIPHPowerBookmarksSidePanelFeature,
                        "IPH_PowerBookmarksSidePanel");
 DEFINE_VARIATION_PARAM(kIPHPriceInsightsPageActionIconLabelFeature,
@@ -460,6 +459,8 @@ DEFINE_VARIATION_PARAM(kIPHReadingListInSidePanelFeature,
                        "IPH_ReadingListInSidePanel");
 DEFINE_VARIATION_PARAM(kIPHReadingModeSidePanelFeature,
                        "IPH_ReadingModeSidePanel");
+DEFINE_VARIATION_PARAM(kIPHReadingModeKeyboardShortcutFeature,
+                       "IPH_ReadingModeKeyboardShortcut");
 DEFINE_VARIATION_PARAM(kIPHReadingModePageActionLabelFeature,
                        "IPH_ReadingModePageActionLabel");
 DEFINE_VARIATION_PARAM(kIPHShoppingCollectionFeature,
@@ -540,8 +541,7 @@ DEFINE_VARIATION_PARAM(kIPHAutofillVirtualCardCVCSuggestionFeature,
 DEFINE_VARIATION_PARAM(kIPHAutofillVirtualCardSuggestionFeature,
                        "IPH_AutofillVirtualCardSuggestion");
 DEFINE_VARIATION_PARAM(kIPHCookieControlsFeature, "IPH_CookieControls");
-DEFINE_VARIATION_PARAM(kIPHPlusAddressCreateSuggestionFeature,
-                       "IPH_PlusAddressCreateSuggestion");
+
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) ||
         // BUILDFLAG(IS_FUCHSIA)
@@ -743,6 +743,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHiOSLensKeyboardFeature),
         VARIATION_ENTRY(kIPHiOSLensOverlayEntrypointTipFeature),
         VARIATION_ENTRY(kIPHiOSLensOverlayEscapeHatchTipFeature),
+        VARIATION_ENTRY(kIPHiOSNewIAPromoFeature),
         VARIATION_ENTRY(kIPHiOSOverflowMenuCustomizationFeature),
         VARIATION_ENTRY(kIPHIOSPageActionMenu),
         VARIATION_ENTRY(kIPHiOSPinMostVisitedSiteFeature),
@@ -818,7 +819,6 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHPdfInkSignaturesFeature),
         VARIATION_ENTRY(kIPHPdfSearchifyFeature),
         VARIATION_ENTRY(kIPHPerformanceInterventionDialogFeature),
-        VARIATION_ENTRY(kIPHPlusAddressFirstSaveFeature),
         VARIATION_ENTRY(kIPHPowerBookmarksSidePanelFeature),
         VARIATION_ENTRY(kIPHPriceInsightsPageActionIconLabelFeature),
         VARIATION_ENTRY(kIPHPriceTrackingEmailConsentFeature),
@@ -829,6 +829,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHReadingListDiscoveryFeature),
         VARIATION_ENTRY(kIPHReadingListEntryPointFeature),
         VARIATION_ENTRY(kIPHReadingListInSidePanelFeature),
+        VARIATION_ENTRY(kIPHReadingModeKeyboardShortcutFeature),
         VARIATION_ENTRY(kIPHReadingModePageActionLabelFeature),
         VARIATION_ENTRY(kIPHReadingModeSidePanelFeature),
         VARIATION_ENTRY(kIPHResumptionRailFeature),
@@ -865,7 +866,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHAutofillVirtualCardCVCSuggestionFeature),
         VARIATION_ENTRY(kIPHAutofillVirtualCardSuggestionFeature),
         VARIATION_ENTRY(kIPHCookieControlsFeature),
-        VARIATION_ENTRY(kIPHPlusAddressCreateSuggestionFeature),
+
 // keep-sorted end
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) ||

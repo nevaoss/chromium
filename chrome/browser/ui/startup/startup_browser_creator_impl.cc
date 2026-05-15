@@ -35,7 +35,6 @@
 #include "chrome/browser/signin/account_consistency_mode_manager.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
@@ -133,7 +132,7 @@ Browser* GetExistingBrowserForOpenBehavior(
     Profile* profile,
     chrome::startup::IsProcessStartup process_startup) {
   BrowserWindowInterface* current_browser =
-      chrome::FindLastActiveWithProfile(profile);
+      ProfileBrowserCollection::GetForProfile(profile)->GetLastActiveBrowser();
   Browser* workspace_browser =
       current_browser ? current_browser->GetBrowserForMigrationOnly() : nullptr;
 
@@ -594,7 +593,7 @@ StartupBrowserCreatorImpl::DetermineStartupTabs(
       return {std::move(tabs), launch_result};
     }
 
-    return {StartupTabs({StartupTab(GURL(chrome::kChromeUINewTabURL))}),
+    return {StartupTabs({StartupTab(chrome::ChromeUINewTabURLAsGURL())}),
             launch_result};
   }
 
@@ -605,6 +604,8 @@ StartupBrowserCreatorImpl::DetermineStartupTabs(
 
   // URLs passed on the command line supersede all others, except pinned tabs.
   PrependTabs(reset_tabs, &tabs);
+
+  StartupTabs pinned_tabs = provider.GetPinnedTabs(*command_line_, profile_);
 
   if (launch_result == LaunchResult::kNormally) {
     // An initial preferences file provided with this distribution may specify
@@ -644,18 +645,29 @@ StartupBrowserCreatorImpl::DetermineStartupTabs(
     // read and add those.
     StartupTabs prefs_tabs =
         provider.GetPreferencesTabs(*command_line_, profile_);
+
+    bool prefs_tabs_originally_empty = prefs_tabs.empty();
+
+    // Filter out tabs from preferences that are already pinned.
+    std::erase_if(prefs_tabs, [&pinned_tabs](const StartupTab& pref_tab) {
+      return std::ranges::any_of(pinned_tabs,
+                                 [&pref_tab](const StartupTab& pinned_tab) {
+                                   return pref_tab.url == pinned_tab.url;
+                                 });
+    });
+
     AppendTabs(prefs_tabs, &tabs);
 
     // Potentially add the New Tab Page.
     // Note that URLs from preferences are explicitly meant to override showing
     // the NTP.
-    if (prefs_tabs.empty()) {
+    if (prefs_tabs_originally_empty) {
       AppendTabs(provider.GetNewTabPageTabs(*command_line_, profile_), &tabs);
     }
   }
 
   // Maybe add any tabs which the user has previously pinned.
-  AppendTabs(provider.GetPinnedTabs(*command_line_, profile_), &tabs);
+  AppendTabs(pinned_tabs, &tabs);
 
   return {std::move(tabs), launch_result};
 }
@@ -721,7 +733,7 @@ Browser* StartupBrowserCreatorImpl::RestoreOrCreateBrowser(
   browser = OpenTabsInBrowser(
       browser, process_startup,
       (tabs.empty()
-           ? StartupTabs({StartupTab(GURL(chrome::kChromeUINewTabURL))})
+           ? StartupTabs({StartupTab(chrome::ChromeUINewTabURLAsGURL())})
            : tabs),
       (behavior == BrowserOpenBehavior::USE_EXISTING_AND_OVERWRITE_ACTIVE_TAB
            ? (TabOverWrite::kYes)

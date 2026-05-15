@@ -182,6 +182,7 @@
 #include "components/signin/public/identity_manager/tribool.h"
 #include "components/startup_metric_utils/browser/startup_metric_utils.h"
 #include "components/supervised_user/core/browser/child_account_service.h"
+#include "components/sync/base/features.h"
 #include "components/trusted_vault/trusted_vault_client.h"
 #include "components/trusted_vault/trusted_vault_service.h"
 #include "components/user_manager/common_types.h"
@@ -467,12 +468,6 @@ bool IsNewProfile(Profile* profile) {
          profile->IsNewProfile();
 }
 
-policy::MinimumVersionPolicyHandler* GetMinimumVersionPolicyHandler() {
-  return g_browser_process->platform_part()
-      ->browser_policy_connector_ash()
-      ->GetMinimumVersionPolicyHandler();
-}
-
 void OnPrepareTpmDeviceFinished() {
   BootTimesRecorder::Get()->AddLoginTimeMarker("TPMOwn-End", false);
 }
@@ -688,10 +683,12 @@ void UserSessionManager::RegisterPrefs(PrefRegistrySimple* registry) {
 UserSessionManager::UserSessionManager(
     PrefService* local_state,
     ApplicationLocaleStorage* application_locale_storage,
-    scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory)
+    scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory,
+    policy::BrowserPolicyConnectorAsh* browser_policy_connector_ash)
     : local_state_(CHECK_DEREF(local_state)),
       application_locale_storage_(CHECK_DEREF(application_locale_storage)),
       shared_url_loader_factory_(std::move(shared_url_loader_factory)),
+      browser_policy_connector_ash_(CHECK_DEREF(browser_policy_connector_ash)),
       delegate_(nullptr),
       network_connection_tracker_(nullptr),
       authenticator_(nullptr),
@@ -1529,7 +1526,7 @@ void UserSessionManager::InitProfilePreferences(
     signin::IdentityManager* identity_manager =
         IdentityManagerFactory::GetForProfile(profile);
     GaiaId gaia_id = user_context.GetGaiaID();
-    // TODO(http://crbug.com/1454286): Remove.
+    // TODO(http://crbug.com/40916881): Remove.
     bool used_extended_account_info = false;
     if (gaia_id.empty()) {
       const AccountInfo account_info =
@@ -1546,7 +1543,7 @@ void UserSessionManager::InitProfilePreferences(
                          user_context.GetAccountId().GetUserEmail());
       }
 
-      // Update http://crbug.com/1454286 if the following line CHECKs.
+      // Update http://crbug.com/40916881 if the following line CHECKs.
       CHECK(!gaia_id.empty());
     }
 
@@ -1602,6 +1599,13 @@ void UserSessionManager::InitProfilePreferences(
         accounts_mutator->SeedAccountInfo(gaia_id, user->GetDisplayEmail());
 
     // 3. Set it as the Primary Account.
+    if (is_new_profile) {
+      base::UmaHistogramBoolean(
+          "Signin.ChromeOS."
+          "IsEstimateNewSignInUsersWithFinchAvailablePopulationEnabled",
+          base::FeatureList::IsEnabled(
+              syncer::kEstimateNewSignInUsersWithFinchAvailablePopulation));
+    }
     const signin::PrimaryAccountMutator::PrimaryAccountError
         set_account_result =
             identity_manager->GetPrimaryAccountMutator()->SetPrimaryAccount(
@@ -1610,7 +1614,7 @@ void UserSessionManager::InitProfilePreferences(
     VLOG(1) << "SetPrimaryAccount result="
             << static_cast<int>(set_account_result);
 
-    // TODO(http://crbug.com/1454286): Remove.
+    // TODO(http://crbug.com/40916881): Remove.
     const CoreAccountInfo& identity_manager_account_info =
         identity_manager->GetPrimaryAccountInfo(ConsentLevel::kSync);
     if (identity_manager_account_info.gaia != gaia_id) {
@@ -1862,8 +1866,8 @@ void UserSessionManager::FinalizePrepareProfile(Profile* profile) {
         service->SetAlwaysOnVpnManager(always_on_vpn_manager_->GetWeakPtr());
       }
 
-      xdr_manager_ =
-          std::make_unique<XdrManager>(g_browser_process->policy_service());
+      xdr_manager_ = std::make_unique<XdrManager>(
+          browser_policy_connector_ash_->GetPolicyService());
     }
 
     // Save sync password hash and salt to profile prefs if they are available.
@@ -2215,20 +2219,17 @@ void UserSessionManager::ShowNotificationsIfNeeded(Profile* profile) {
 
   MaybeShowHelpAppReleaseNotesNotification(profile);
 
-  g_browser_process->platform_part()
-      ->browser_policy_connector_ash()
-      ->GetTPMAutoUpdateModePolicyHandler()
+  browser_policy_connector_ash_->GetTPMAutoUpdateModePolicyHandler()
       ->ShowTPMAutoUpdateNotificationIfNeeded();
 
-  GetMinimumVersionPolicyHandler()->MaybeShowNotificationOnLogin();
+  browser_policy_connector_ash_->GetMinimumVersionPolicyHandler()
+      ->MaybeShowNotificationOnLogin();
 
   policy::DeviceCommandQueryGeolocationJob::
       ShowLocationReportedNotificationIfNeeded();
 
   // Show a notification about ADB sideloading policy change if applicable.
-  g_browser_process->platform_part()
-      ->browser_policy_connector_ash()
-      ->GetAdbSideloadingAllowanceModePolicyHandler()
+  browser_policy_connector_ash_->GetAdbSideloadingAllowanceModePolicyHandler()
       ->ShowAdbSideloadingPolicyChangeNotificationIfNeeded();
 }
 

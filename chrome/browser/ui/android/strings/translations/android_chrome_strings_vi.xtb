@@ -187,8 +187,6 @@ Chỉ những người có cụm mật khẩu mới đọc được dữ liệu 
 <translation id="1820408774134375111">Bảng đăng nhập ở dưới cùng</translation>
 <translation id="1823492026305965829">Đăng nhập bằng <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">Nhấn vào Xoá dữ liệu duyệt web</translation>
-<translation id="1825772852827001597">Các địa chỉ và phương thức thanh toán trên Google Pay sẽ không được mã hoá. Nhật ký duyệt web trên Chrome sẽ không đồng bộ hoá.
-Chỉ những người có cụm mật khẩu mới đọc được dữ liệu đã mã hoá của bạn. Cụm mật khẩu không được gửi tới Google hay được Google lưu trữ. Nếu bạn quên cụm mật khẩu hoặc muốn thay đổi chế độ cài đặt này, hãy <ph name="BEGIN_LINK" />xoá dữ liệu trên Chrome khỏi tài khoản của bạn<ph name="END_LINK" />.</translation>
 <translation id="1829244130665387512">Tìm trong trang</translation>
 <translation id="1832459821645506983">Có, tôi đồng ý</translation>
 <translation id="1845958458910716240">Để bảo vệ dữ liệu của bạn, hãy cho phép Chrome loại bỏ quyền của các trang web mà gần đây bạn không truy cập</translation>
@@ -557,7 +555,6 @@ Chỉ những người có cụm mật khẩu mới đọc được dữ liệu 
 <translation id="3439276997620616816">Các thẻ bạn đóng gần đây sẽ xuất hiện ở đây</translation>
 <translation id="3443221991560634068">Tải lại trang hiện tại</translation>
 <translation id="3444179773590444986">Bạn có muốn chia sẻ ý kiến phản hồi về giao diện tối cho các trang web?</translation>
-<translation id="3448874648066942074">Tóm tắt trang bằng AI</translation>
 <translation id="3452832259067974318">Để bảo vệ quyền riêng tư của bạn, Chrome sẽ không tự động điền mật khẩu của bạn vào trường này.</translation>
 <translation id="3474624961160222204">Tiếp tục bằng tài khoản <ph name="NAME" /></translation>
 <translation id="3478363558367712427">Bạn có thể chọn công cụ tìm kiếm theo ý mình</translation>
@@ -857,7 +854,6 @@ Tài khoản Google của bạn có thể có các dạng nhật ký duyệt web
 <translation id="4698757800236023795">Đang hoạt động (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">Tệp và hình ảnh được lưu trong bộ nhớ đệm</translation>
 <translation id="4710167854527459075">Mới nhất xếp trước</translation>
-<translation id="4718044610319080485">Gọi Trợ lý AI</translation>
 <translation id="4719927025381752090">Đề xuất dịch</translation>
 <translation id="4720556299488643018">Huỷ đăng ký</translation>
 <translation id="4732120983431207637">Trình gỡ ngăn xếp</translation>
@@ -1236,7 +1232,6 @@ Ví dụ: một số trang web có thể phản hồi yêu cầu này bằng cá
 <translation id="629730747756840877">Tài khoản</translation>
 <translation id="6301526076346731664">Mở Công cụ cho nhà phát triển</translation>
 <translation id="630308129961693966">Chọn vị trí thanh địa chỉ</translation>
-<translation id="6303969859164067831">Đăng xuất và tắt đồng bộ hóa</translation>
 <translation id="6305257382500066042">Dùng thử ngay bây giờ</translation>
 <translation id="6307241780749477694">Xác minh danh tính của bạn để dùng tất cả mật khẩu trên thiết bị này</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, Thẻ đang phát âm thanh, được ghim và được chọn cùng với nhiều thẻ khác</translation>
@@ -1314,7 +1309,6 @@ Ví dụ: một số trang web có thể phản hồi yêu cầu này bằng cá
 <translation id="6565959834589222080">Dùng mạng Wi-Fi khi có sẵn</translation>
 <translation id="657177046675873214">Để sử dụng dấu trang trên tất cả các thiết bị của bạn, hãy bật "Dấu trang" trong phần cài đặt</translation>
 <translation id="6573096386450695060">Luôn cho phép</translation>
-<translation id="6573431926118603307">Các thẻ bạn đã mở trong Chrome trên thiết bị khác sẽ xuất hiện tại đây.</translation>
 <translation id="6583199322650523874">Đánh dấu trang hiện tại</translation>
 <translation id="6588043302623806746">Sử dụng DNS bảo mật</translation>
 <translation id="6590471736817333463">Tiết kiệm tới 60% dữ liệu</translation>
@@ -1373,7 +1367,7 @@ Ví dụ: một số trang web có thể phản hồi yêu cầu này bằng cá
 <translation id="679956319013005046">Để thiết lập dịch vụ tự động điền mà bạn ưu tiên, trước tiên, hãy thêm dịch vụ đó trong <ph name="BEGIN_LINK" />Cài đặt Android<ph name="END_LINK" /> .</translation>
 <translation id="6802555630140434547">Cửa sổ này sẽ đóng</translation>
 <translation id="6803791793483522764">Xem xét thông báo</translation>
-<translation id="6809470175540814047">Mở trong cửa sổ Ẩn danh</translation>
+<translation id="6809470175540814047">Mở trong cửa sổ ẩn danh</translation>
 <translation id="6811034713472274749">Trang hiện đã sẵn sàng cho bạn xem</translation>
 <translation id="6813359536773993594">{FILE_COUNT,plural, =1{Hình ảnh, 1 hình ảnh trong danh sách}other{Hình ảnh, # hình ảnh trong danh sách}}</translation>
 <translation id="6813446258015311409">Đã mở trang Đăng nhập vào Chrome.</translation>
@@ -1665,7 +1659,6 @@ Ví dụ: một số trang web có thể phản hồi yêu cầu này bằng cá
 <translation id="7914399737746719723">Đã cài đặt ứng dụng</translation>
 <translation id="7917574899775263813">Chuyển đến thẻ đã mở gần đây nhất</translation>
 <translation id="7919123827536834358">Tự động dịch những ngôn ngữ này</translation>
-<translation id="7921782882718083488">Tóm tắt trang này</translation>
 <translation id="7926975587469166629">Biệt hiệu của thẻ</translation>
 <translation id="7927073875790626822">XR</translation>
 <translation id="7929587383660661825">Chrome tự động loại bỏ quyền của các trang web gửi thông báo sai mục đích hoặc các trang web mà gần đây bạn không truy cập</translation>
@@ -1829,7 +1822,6 @@ Ví dụ: một số trang web có thể phản hồi yêu cầu này bằng cá
 <translation id="8538291624121505885"><ph name="TAB_TITLE" />: Thẻ được ghim, được chọn cùng với nhiều thẻ khác và đang ở chế độ hình trong hình</translation>
 <translation id="8540136935098276800">Nhập URL có định dạng chính xác</translation>
 <translation id="854522910157234410">Mở trang này</translation>
-<translation id="8547466829003330976">Xem xét tệp PDF bằng AI</translation>
 <translation id="8551513938758868521">Khóa các thẻ ẩn danh khi bạn đóng Chrome</translation>
 <translation id="8559961053328923750">Chrome giới hạn tổng lượng dữ liệu mà các trang web có thể chia sẻ thông qua trình duyệt để đo lường hiệu suất quảng cáo</translation>
 <translation id="8559990750235505898">Đề xuất dịch trang viết bằng các ngôn ngữ khác</translation>

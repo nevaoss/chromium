@@ -834,6 +834,7 @@
 <translation id="1567579616025300478">이 사이트에서는 기기에 데이터를 저장할 수 없습니다.</translation>
 <translation id="156793199942386351">'<ph name="CURRENTKEY" />' 키는 이미 '<ph name="ACTION" />' 작업에 할당되었습니다. <ph name="RESPONSE" />하려면 아무 키나 누르세요.</translation>
 <translation id="1567993339577891801">자바스크립트 콘솔</translation>
+<translation id="157005186601751931">앱에서 탭 열기</translation>
 <translation id="1570604804919108255">알림 숨기기 취소</translation>
 <translation id="1570990174567554976">'<ph name="BOOKMARK_TITLE" />' 북마크 폴더가 생성되었습니다.</translation>
 <translation id="1571041387761170095">취약하거나 재사용된 비밀번호 없음</translation>
@@ -1047,7 +1048,6 @@
 <translation id="1703666494654169921">사이트에서 가상 현실 기기 또는 데이터를 사용하도록 허용하지 않음</translation>
 <translation id="1704097193565924901">Capitalize(첫 글자 대문자로 표시)</translation>
 <translation id="1704230497453185209">사이트에서 소리를 재생하도록 허용하지 않음</translation>
-<translation id="1706015824809136764">툴바 단축키에 Gemini 고정</translation>
 <translation id="1706586824377653884">관리자가 추가함</translation>
 <translation id="170658918174941828">Chrome 버전, 운영체제 버전, Cast 옵션,
     미러링 성능 통계, 커뮤니케이션 채널 진단 로그와
@@ -1560,7 +1560,6 @@
 <translation id="204914487372604757">바로가기 만들기</translation>
 <translation id="2049573977943974163">"<ph name="EXTENSION_NAME" />"를 사용 설정하시겠습니까?</translation>
 <translation id="2050339315714019657">세로 방향</translation>
-<translation id="2050394140692183739">현재 툴바 단축키</translation>
 <translation id="2051555741181591333">핫스팟 자동 사용 중지</translation>
 <translation id="2051669996101374349">가능하면 항상 HTTPS를 사용하고 이를 지원하지 않는 사이트를 로드하기 전에 경고를 표시합니다. 고급 보호가 사용 설정되어 있으므로 이 설정을 변경할 수 없습니다.</translation>
 <translation id="2052572566310583903">다른 기기에서 설치됨</translation>
@@ -2331,7 +2330,6 @@
 <translation id="2565214867520763227">스크린 리더 사용 설정</translation>
 <translation id="2566146433999774844"><ph name="OWNER_FIRST_NAME" />님 외 <ph name="NUM_OTHER_MEMBERS" />명이 있는 탭 그룹에 참여</translation>
 <translation id="256726287944589768">새 탭 페이지에 바닥글 표시</translation>
-<translation id="2567313753132089780">비밀번호는 12자 이상(영문 기준)이어야 하며 대문자, 소문자, 숫자, 기호를 포함해야 합니다.</translation>
 <translation id="2568774940984945469">정보 표시줄 컨테이너</translation>
 <translation id="2569972178052279830">소매업체 이름</translation>
 <translation id="257088987046510401">테마</translation>
@@ -3181,7 +3179,6 @@
 <translation id="3157931365184549694">복구</translation>
 <translation id="3158033540161634471">지문 설정</translation>
 <translation id="3158203338449343164">탭 검색 고정 해제</translation>
-<translation id="3158732900546890991">비밀번호는 8자 이상(영문 기준)이어야 하며 대문자, 소문자, 숫자 또는 기호 중 2가지 이상을 포함해야 합니다.</translation>
 <translation id="3158770568048368350">이로 인해 모바일 네트워크의 연결이 잠깐 끊어질 수 있습니다.</translation>
 <translation id="3159335509547415276">차단된 계정에 관해 자세히 알아보기</translation>
 <translation id="3159493096109238499">베이지</translation>
@@ -3764,6 +3761,7 @@
 <translation id="3572031449439748861">확장 프로그램 <ph name="NUM_EXTENSIONS" />개가 사용 중지되었습니다</translation>
 <translation id="3575121482199441727">이 사이트에 허용</translation>
 <translation id="3575224072358507281">개인정보처리방침(measurementlab.net/privacy)에 따라 Measurement Lab의 IP 주소 및 네트워크 측정 결과를 수집합니다.</translation>
+<translation id="3576324189521867626">설치되었습니다.</translation>
 <translation id="3577036603268648505">온라인에서 더 안전하게</translation>
 <translation id="3577473026931028326">문제가 발생했습니다. 다시 시도하세요.</translation>
 <translation id="3577487026101678864">파일 동기화 사용</translation>
@@ -4249,6 +4247,7 @@
 <translation id="3874532133373654352">조직에서 이러한 기능으로 수집한 데이터를 사용하는 방식을 관리합니다. <ph name="BEGIN_LINK" />자세히 알아보기<ph name="END_LINK" /></translation>
 <translation id="3874845889165401548">이 기능은 AI를 사용하며 실험 단계입니다.</translation>
 <translation id="3875511946736639169">이미지 표시</translation>
+<translation id="3875777964669698078">스크립트 작성 중...</translation>
 <translation id="3875815154304214043"><ph name="APP_NAME" /> 앱이 새 브라우저 탭에서 열리도록 설정되어 있습니다. 지원되는 링크도 브라우저에서 열립니다. <ph name="BEGIN_LINK_LEARN_MORE" />자세히 알아보기<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="3876219572815410515">창 크기를 위쪽으로 조정함</translation>
 <translation id="3877075909000773256">공유에 <ph name="USER_EMAIL" /> 계정을 사용하는 <ph name="USER_NAME" />님의 기기에 관한 Nearby Share 설정입니다.</translation>
@@ -4718,6 +4717,7 @@
 <translation id="4223404254440398437">마이크가 허용되지 않음</translation>
 <translation id="4224541845943007092">주소 표시줄의 키보드 입력 읽기 및 저장</translation>
 <translation id="4225397296022057997">모든 사이트에서</translation>
+<translation id="4225895483398857530">툴바 바로가기</translation>
 <translation id="4226303886821889519">업데이터 버전: <ph name="VERSION" /></translation>
 <translation id="4228071595943929139">조직의 이메일 주소 사용</translation>
 <translation id="4228209296591583948">{NUM_EXTENSIONS,plural, =1{확장 프로그램이 허용되지 않음}other{일부 확장 프로그램이 허용되지 않음}}</translation>
@@ -6120,6 +6120,7 @@
 <translation id="5204967432542742771">비밀번호 입력</translation>
 <translation id="5205484256512407285">전송에 모바일 데이터를 사용하지 않음</translation>
 <translation id="520568280985468584">네트워크가 추가되었습니다. 셀룰러 네트워크가 활성화되려면 몇 분 정도 걸릴 수 있습니다.</translation>
+<translation id="5207395053540207113">Google 검색이 Drive 콘텐츠에 액세스하도록 허용하시겠습니까?</translation>
 <translation id="5207949376430453814">텍스트 캐럿 강조표시</translation>
 <translation id="520840839826327499"><ph name="SERVICE_NAME" />에서 내가 사용 중인 ChromeOS 기기가 적합한지 확인하려고 합니다.</translation>
 <translation id="5208926629108082192">기기 모바일 네트워크 정보</translation>
@@ -6611,6 +6612,7 @@
 <translation id="5555639311269196631">핫스팟 사용 중지</translation>
 <translation id="5555760010546505198">색상 반전, 색상 보정, 돋보기, 디스플레이 설정</translation>
 <translation id="555604722231274592"><ph name="FEATURE_NAME" /> 사용 설정</translation>
+<translation id="5556191579768914260">오류 표시</translation>
 <translation id="5556459405103347317">새로고침</translation>
 <translation id="555671485580955310">방문 기록 및 탭 동기화</translation>
 <translation id="5558129378926964177">확대(&amp;I)</translation>
@@ -9027,6 +9029,7 @@
 <translation id="727595954130325265">지금 구매</translation>
 <translation id="7277275452721470458">AI 모드 활동</translation>
 <translation id="727952162645687754">다운로드 오류</translation>
+<translation id="7280265656690268844">JavaScript 최적화 사용 중지됨</translation>
 <translation id="7280649757394340890">TTS 음성 설정</translation>
 <translation id="7280683802406059877">키보드 단축키 맞춤설정</translation>
 <translation id="7280877790564589615">권한 요청됨</translation>
@@ -10143,7 +10146,6 @@
 <translation id="8032569120109842252">팔로우 중</translation>
 <translation id="8033827949643255796">선택됨</translation>
 <translation id="8033958968890501070">시간 초과</translation>
-<translation id="8034399942062051455">V8 최적화가 사용 중지됨</translation>
 <translation id="8034697324150621782">상단 뷰와 바꾸기</translation>
 <translation id="8035059678007243127">시크릿 모드 뒤로-앞으로 캐시 페이지: <ph name="BACK_FORWARD_CACHE_INCOGNITO_PAGE_URL" /></translation>
 <translation id="8036143516314698610">저장된 탭 그룹 버튼 표시</translation>
@@ -11363,6 +11365,7 @@
 <translation id="8866424952450451412">다음에서 제공하는 맞춤 워크플로 관리</translation>
 <translation id="8867102760244540173">탭 검색...</translation>
 <translation id="8867228703146808825">빌드 세부정보를 클립보드에 복사</translation>
+<translation id="8867568208303837180">보내는 중...</translation>
 <translation id="8868333925931032127">데모 모드 시작</translation>
 <translation id="8868626022555786497">사용 중</translation>
 <translation id="8868838761037459823">셀룰러 세부정보</translation>
@@ -11792,7 +11795,6 @@
 <translation id="914031120300235526">프로필을 잠금 해제할 수 없음</translation>
 <translation id="9143298529634201539">추천을 삭제하시겠습니까?</translation>
 <translation id="9143922477019434797">비밀번호 보호</translation>
-<translation id="914621365454686586">Google 검색이 Drive 콘텐츠에 액세스하도록 허용하시겠습니까?</translation>
 <translation id="9147392381910171771">옵션(&amp;O)</translation>
 <translation id="9148058034647219655">나가기</translation>
 <translation id="9148126808321036104">다시 로그인</translation>

@@ -312,16 +312,16 @@ gfx::Size WebUIToolbarWebView::CalculatePreferredSize(
                   split_tabs_control_.IsVisible();
   button_count += features::IsWebUIBackForwardButtonEnabled();
   button_count += features::IsWebUIBackForwardButtonEnabled() &&
-                  forward_control_.GetVisible();
+                  forward_control_.IsPinned();
   button_count +=
-      features::IsWebUIHomeButtonEnabled() && home_control_.IsVisible();
+      features::IsWebUIHomeButtonEnabled() && home_control_.IsPinned();
   button_count += features::IsWebUIAvatarButtonEnabled();
 
   const int size = GetLayoutConstant(LayoutConstant::kToolbarButtonHeight);
+  const int gap = GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin);
   int width = button_count * size;
   if (button_count > 0) {
-    width += (button_count - 1) *
-             GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin);
+    width += (button_count - 1) * gap;
   }
 
   if (location_bar_) {
@@ -331,6 +331,13 @@ gfx::Size WebUIToolbarWebView::CalculatePreferredSize(
 
   if (features::IsWebUIBackForwardButtonEnabled()) {
     width += back_button_leading_margin_;
+  }
+
+  if (features::IsWebUIPinnedToolbarActionsEnabled()) {
+    if (int pinned_width = pinned_toolbar_actions_.GetWidth()) {
+      width += !!width * gap;  // Add gap if prior controls.
+      width += pinned_width;
+    }
   }
 
   return gfx::Size(width, size);
@@ -459,6 +466,13 @@ void WebUIToolbarWebView::InvokePinnedToolbarAction(
   pinned_toolbar_actions_.Invoke(action_id);
 }
 
+void WebUIToolbarWebView::OnOmniboxAction(
+    toolbar_ui_api::mojom::OmniboxActionPtr action) {
+  if (location_bar_) {
+    location_bar_->OnOmniboxAction(std::move(action));
+  }
+}
+
 ReloadControl* WebUIToolbarWebView::GetReloadControl() {
   return &reload_control_;
 }
@@ -539,7 +553,7 @@ void WebUIToolbarWebView::SetBackForwardEnabled(int command_id, bool enabled) {
 }
 
 void WebUIToolbarWebView::SetForwardVisible(bool visible) {
-  forward_control_.SetVisible(visible);
+  forward_control_.SetIsPinned(visible);
   PreferredSizeChanged();
 }
 

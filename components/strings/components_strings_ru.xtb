@@ -152,6 +152,7 @@
 <translation id="1228893227497259893">Неверный идентификатор объекта</translation>
 <translation id="1230244617745022071"><ph name="SOURCE" /> (определен автоматически)</translation>
 <translation id="1232569758102978740">Без имени</translation>
+<translation id="1234539281285007945">Поле "<ph name="FIELD_1" />" обязательно для заполнения.</translation>
 <translation id="1236081509407217141">Разрешить VR?</translation>
 <translation id="1236689197410206751">AfterPay</translation>
 <translation id="1240347957665416060">Название вашего устройства</translation>
@@ -472,6 +473,7 @@
 <translation id="1721424275792716183">*Обязательное поле</translation>
 <translation id="1723636263173393300">Максимальное число ярлыков для этого правила: <ph name="MAX_ITEMS_LIMIT" />.</translation>
 <translation id="1725591448053514783">Конверт You 6</translation>
+<translation id="172754119609519423">Необходимо заполнить поле "<ph name="FIELD_1" />", "<ph name="FIELD_2" />" или "<ph name="FIELD_3" />".</translation>
 <translation id="1727613060316725209">Действительный сертификат</translation>
 <translation id="1728677426644403582">Вы просматриваете код страницы</translation>
 <translation id="173080396488393970">Этот тип карты не поддерживается.</translation>
@@ -1431,6 +1433,7 @@
 <translation id="3220264767789936523">Официальная одежда</translation>
 <translation id="3223287115535306850">Троббер запуска приложения</translation>
 <translation id="3223425961342298674">Доступ к данным о местоположении запрещен</translation>
+<translation id="3225277284238802910">Необходимо заполнить поле "<ph name="FIELD_1" />" или "<ph name="FIELD_2" />".</translation>
 <translation id="3225319735946384299">Подписывание кода</translation>
 <translation id="3225919329040284222">Сертификат не соответствует встроенным параметрам определенных сайтов с высоким уровнем безопасности.</translation>
 <translation id="3226128629678568754">Чтобы повторно ввести данные, необходимые для загрузки страницы, нажмите "Обновить".</translation>
@@ -2155,6 +2158,7 @@
 <translation id="4318312030194671742">Сервис для компоновки интерактивных миниатюр</translation>
 <translation id="4318566738941496689">Название вашего устройства и сетевой адрес</translation>
 <translation id="4320119221194966055">Потребительские кредиты</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{С устройства "<ph name="DEVICE_NAME" />" получена ссылка}one{С устройства "<ph name="DEVICE_NAME" />" получена # ссылка}few{С устройства "<ph name="DEVICE_NAME" />" получено # ссылки}many{С устройства "<ph name="DEVICE_NAME" />" получено # ссылок}other{С устройства "<ph name="DEVICE_NAME" />" получено # ссылки}}</translation>
 <translation id="4325600325087822253">Лоток 17</translation>
 <translation id="4325863107915753736">Не удалось найти статью</translation>
 <translation id="4326324639298822553">Проверьте срок действия и повторите попытку</translation>
@@ -3186,6 +3190,7 @@
 <translation id="5968400720580217226">Режим ИИ</translation>
 <translation id="5969199813874624822">Сохранить и включить отслеживание цены</translation>
 <translation id="5969933937005244170">Подходящие открытые вкладки будут использоваться, только если вы поделитесь ими в цепочке</translation>
+<translation id="5972020793760134803">Переключиться на вкладку</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">Шестой рулон</translation>
 <translation id="5975083100439434680">Уменьшить</translation>
@@ -4981,6 +4986,7 @@
 <translation id="8758529215314160755">Вы можете изменить имя <ph name="BEGIN_LINK" />в аккаунте Google<ph name="END_LINK" /> <ph name="ACCOUNT" />.</translation>
 <translation id="8759274551635299824">Срок действия карты истек.</translation>
 <translation id="87601671197631245">Настройки безопасности этого сайта устарели. Злоумышленники могут получить доступ к вашим данным (например, паролям, сообщениям и номерам банковских карт) при их отправке на этот сайт.</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{С устройства "<ph name="DEVICE_NAME" />" отправлена ссылка}one{С устройства "<ph name="DEVICE_NAME" />" отправлена # ссылка}few{С устройства "<ph name="DEVICE_NAME" />" отправлено # ссылки}many{С устройства "<ph name="DEVICE_NAME" />" отправлено # ссылок}other{С устройства "<ph name="DEVICE_NAME" />" отправлено # ссылки}}</translation>
 <translation id="8763927697961133303">USB-устройство</translation>
 <translation id="8763986294015493060">Закрыть все окна, открытые в режиме инкогнито</translation>
 <translation id="8766943070169463815">Открыт экран проверки учетных данных для защищенных платежей</translation>

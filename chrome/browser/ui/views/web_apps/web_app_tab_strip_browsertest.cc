@@ -155,7 +155,8 @@ class WebAppTabStripBrowserTest : public WebAppBrowserTestBase,
       metrics_waiter.AddWebFeatureExpectation(
           blink::mojom::WebFeature::kWebAppTabbed);
     }
-    webapps::AppId app_id = InstallWebAppFromPage(browser(), start_url);
+    webapps::AppId app_id = InstallWebAppFromPage(
+        browser(), start_url, {.launch_or_reparent_page_to_app = true});
     if (await_metric) {
       metrics_waiter.Wait();
     }
@@ -435,8 +436,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, MonochromeAppIconOnHomeTab) {
       .SetFaviconMonochromeReadCallbackForTesting(base::BindLambdaForTesting(
           [&](const webapps::AppId& cached_app_id) { run_loop.Quit(); }));
 
-  webapps::AppId app_id =
-      InstallWebAppFromPageAndCloseAppBrowser(browser(), start_url);
+  webapps::AppId app_id = InstallWebAppInNewTabAndClose(browser(), start_url);
   run_loop.Run();
 
   Browser* app_browser = LaunchWebAppBrowser(app_id);
@@ -1285,7 +1285,8 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest,
 IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, MiddleClickHomeTabLink) {
   GURL start_url =
       embedded_test_server()->GetURL("/web_apps/tab_strip_customizations.html");
-  webapps::AppId app_id = InstallWebAppFromPage(browser(), start_url);
+  webapps::AppId app_id = InstallWebAppFromPage(
+      browser(), start_url, {.launch_or_reparent_page_to_app = true});
   Browser* app_browser = FindWebAppBrowser(browser()->profile(), app_id);
   TabStripModel* tab_strip = app_browser->tab_strip_model();
 
@@ -1328,7 +1329,8 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, MiddleClickHomeTabLink) {
 IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, PageTitle) {
   GURL start_url =
       embedded_test_server()->GetURL("/web_apps/tab_strip_customizations.html");
-  webapps::AppId app_id = InstallWebAppFromPage(browser(), start_url);
+  webapps::AppId app_id = InstallWebAppFromPage(
+      browser(), start_url, {.launch_or_reparent_page_to_app = true});
   Browser* app_browser = FindWebAppBrowser(browser()->profile(), app_id);
   TabStripModel* tab_strip = app_browser->tab_strip_model();
 

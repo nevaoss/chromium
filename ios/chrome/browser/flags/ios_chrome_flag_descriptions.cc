@@ -54,6 +54,12 @@ const char kAppBackgroundRefreshDescription[] =
     "Schedules app background refresh after some minimum period of time has "
     "passed after the last refresh.";
 
+const char kAppStoreInAppEventsName[] = "App Store In-App Events";
+const char kAppStoreInAppEventsDescription[] =
+    "Enables a user to tap the promo within the iOS App Store and invoke the "
+    "Gemini FRE after navigating to a Gemini related web page through an "
+    "external action.";
+
 const char kAppleCalendarExperienceKitName[] = "Experience Kit Apple Calendar";
 const char kAppleCalendarExperienceKitDescription[] =
     "When enabled, long pressing on dates will trigger Experience Kit Apple "
@@ -90,6 +96,11 @@ const char kAutofillAcrossIframesDescription[] =
     "When enabled, Autofill will fill and save information on forms that "
     "spread across multiple iframes.";
 
+const char kAutofillAiAvailableByDefaultName[] =
+    "Autofill AI available by default";
+const char kAutofillAiAvailableByDefaultDescription[] =
+    "Makes Autofill AI available by default.";
+
 const char kAutofillAiCreateEntityDataManagerName[] =
     "Autofill AI Create Entity Data Manager";
 const char kAutofillAiCreateEntityDataManagerDescription[] =
@@ -117,6 +128,12 @@ const char kAutofillAiWalletFlightReservationName[] =
 const char kAutofillAiWalletFlightReservationDescription[] =
     "Enables Autofill AI support for flight reservation entities from Google "
     "Wallet.";
+
+const char kAutofillAiWalletPrivatePassesDeepLinkName[] =
+    "Autofill AI Google Wallet private passes deep link";
+const char kAutofillAiWalletPrivatePassesDeepLinkDescription[] =
+    "Enables Autofill AI support for deep linking to private passes from "
+    "Google Wallet.";
 
 const char kAutofillAiWalletPrivatePassesName[] =
     "Autofill AI Google Wallet private passes";
@@ -464,6 +481,10 @@ const char kCredentialProviderPerformanceImprovementsName[] =
 const char kCredentialProviderPerformanceImprovementsDescription[] =
     "Enables a series of performance improvements for the Credential Provider "
     "Extension.";
+
+const char kCrossDeviceSigninName[] = "Cross-Device Sign-in";
+const char kCrossDeviceSigninDescription[] =
+    "Guards the logic to start sign-in from a given QR Code.";
 
 const char kDataSharingDebugLogsName[] = "Enable data sharing debug logs";
 const char kDataSharingDebugLogsDescription[] =
@@ -889,6 +910,12 @@ const char kIOSKeyboardAccessoryTwoBubbleName[] =
 const char kIOSKeyboardAccessoryTwoBubbleDescription[] =
     "When enabled, the two-bubble design is used for the Keyboard Accessory "
     "view.";
+
+const char kIOSMiniMapUniversalLinkName[] =
+    "Open Maps Universal links in native view.";
+const char kIOSMiniMapUniversalLinkDescription[] =
+    "When enabled, maps universal links on Google Page are opened in "
+    "native views (under conditions).";
 
 const char kIOSOmniboxAimServerEligibilityEnName[] =
     "AIM Server Eligibility EN locales";
@@ -1743,12 +1770,6 @@ const char kTabGroupInOverflowMenuName[] =
 const char kTabGroupInOverflowMenuDescription[] =
     "When enabled, a Tab Group button will appear in the overflow menu.";
 
-const char kTabGroupInTabIconContextMenuName[] =
-    "Enable the Tab Group button in the tab grid icon context menu";
-const char kTabGroupInTabIconContextMenuDescription[] =
-    "When enabled, a Tab Group button will appear in the tab grid icon context "
-    "menu.";
-
 const char kTabGroupIndicatorName[] = "Tab Group Indicator";
 const char kTabGroupIndicatorDescription[] =
     "When enabled, displays a tab group indicator next to the omnibox.";
@@ -1757,12 +1778,6 @@ const char kTabGroupSyncName[] = "Enable Tab Group Sync";
 const char kTabGroupSyncDescription[] =
     "When enabled, tab groups are synced between syncing devices. Requires "
     "#tab-groups-on-ipad to also be enabled on iPad.";
-
-const char kTabRecallNewTabGroupButtonName[] =
-    "Enable the New Tab Group Button on the Tab Group recall surface.";
-const char kTabRecallNewTabGroupButtonDescription[] =
-    "When enabled, a New Tab Group Button will appear on the Tab Group recall "
-    "surface.";
 
 const char kTabResumptionImagesName[] = "Enable Tab Resumption images";
 const char kTabResumptionImagesDescription[] =
@@ -1805,6 +1820,12 @@ const char kUseSceneViewControllerName[] = "Use Scene View Controller";
 const char kUseSceneViewControllerDescription[] =
     "Enables the use of SceneViewController.";
 
+const char kUseUIGraphicsImageRendererForFallbackIconsName[] =
+    "Use UIGraphicsImageRenderer for Fallback Icons";
+const char kUseUIGraphicsImageRendererForFallbackIconsDescription[] =
+    "When enabled, uses UIGraphicsImageRenderer to generate fallback icons "
+    "instead of deprecated UIGraphicsGetImageFromCurrentImageContext.";
+
 const char kVariationsExperimentalCorpusName[] =
     "Variations experimental corpus";
 const char kVariationsExperimentalCorpusDescription[] =
@@ -1824,6 +1845,10 @@ const char kWaitThresholdMillisecondsForCapabilitiesApiName[] =
     "Capabilities API";
 const char kWaitThresholdMillisecondsForCapabilitiesApiDescription[] =
     "Used for testing purposes to test waiting thresholds in dev.";
+
+const char kWalletApiPrivatePassesEnabledName[] = "Wallet API Private Passes";
+const char kWalletApiPrivatePassesEnabledDescription[] =
+    "Enables the Wallet API for private passes.";
 
 const char kWalletServiceUseSandboxName[] = "Use Google Payments sandbox";
 const char kWalletServiceUseSandboxDescription[] =

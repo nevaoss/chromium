@@ -187,8 +187,6 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="1820408774134375111">Panel inferior de inicio de sesión</translation>
 <translation id="1823492026305965829">Iniciar sesión como <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">Toca Eliminar datos de navegación</translation>
-<translation id="1825772852827001597">Non se encriptarán os métodos de pago nin os enderezos de Google Pay. Tampouco se sincronizará o historial de navegación de Chrome.
-Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase de acceso. Google non recibirá nin almacenará a frase de acceso. Se a esqueces ou queres cambiar esta opción de configuración, <ph name="BEGIN_LINK" />elimina os datos de Chrome da túa conta<ph name="END_LINK" />.</translation>
 <translation id="1829244130665387512">Buscar na páxina</translation>
 <translation id="1832459821645506983">Si, acepto</translation>
 <translation id="1845958458910716240">Para protexer os teus datos, permite que Chrome quite os permisos dos sitios que leves tempo sen visitar</translation>
@@ -373,6 +371,7 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="2616989802003447151">{COUNT,plural, =1{1 elemento}other{# elementos}}</translation>
 <translation id="2620314865574742210"><ph name="NAME" /> invitoute a acceder ao elemento compartido.</translation>
 <translation id="2634393460268044753">Envía a Navegación segura de Google os URL dos sitios que visitas e unha pequena mostra do contido das páxinas, das descargas, da actividade das extensións e da información do sistema para comprobar se son daniños.</translation>
+<translation id="263442110807675126">O proceso pode tardar uns segundos</translation>
 <translation id="2643064289437760082">Sempre podes borrar os datos de navegación para eliminar os datos de medición de anuncios</translation>
 <translation id="2647434099613338025">Engadir idioma</translation>
 <translation id="2650077116157640844">Máis en dispositivos sincronizados</translation>
@@ -556,7 +555,6 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="3439276997620616816">Aquí atoparás as pestanas recentes</translation>
 <translation id="3443221991560634068">Volver cargar a páxina actual</translation>
 <translation id="3444179773590444986">Queres compartir comentarios sobre o tema escuro para os sitios?</translation>
-<translation id="3448874648066942074">Resume a páxina coa IA</translation>
 <translation id="3452832259067974318">Para protexer a túa privacidade, Chrome non autocompletará o teu contrasinal neste campo.</translation>
 <translation id="3474624961160222204">Continuar como <ph name="NAME" /></translation>
 <translation id="3478363558367712427">Podes escoller o motor de busca</translation>
@@ -856,7 +854,6 @@ Só poderán ler os teus datos encriptados as persoas que coñezan a túa frase 
 <translation id="4698757800236023795">Activas (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">Imaxes e ficheiros almacenados na memoria caché</translation>
 <translation id="4710167854527459075">Ordenar por máis recente</translation>
-<translation id="4718044610319080485">Invoca o asistente de IA</translation>
 <translation id="4719927025381752090">Ofrecer a tradución</translation>
 <translation id="4720556299488643018">Anular sub.</translation>
 <translation id="4732120983431207637">Recuperador de pillas</translation>
@@ -1235,7 +1232,6 @@ Por exemplo, algúns sitios web poden responder a esta solicitude mostrándoche 
 <translation id="629730747756840877">Conta</translation>
 <translation id="6301526076346731664">Abrir ferramentas de programación</translation>
 <translation id="630308129961693966">Escolle a posición da túa barra de enderezos</translation>
-<translation id="6303969859164067831">Pechar sesión e desactivar a sincronización</translation>
 <translation id="6305257382500066042">Probar agora</translation>
 <translation id="6307241780749477694">Verifica a túa identidade para ter todos os teus contrasinais neste dispositivo</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, pestana con son fixada e multiseleccionada</translation>
@@ -1313,7 +1309,6 @@ Por exemplo, algúns sitios web poden responder a esta solicitude mostrándoche 
 <translation id="6565959834589222080">Úsase a conexión wifi cando está dispoñible</translation>
 <translation id="657177046675873214">Activa na configuración a opción Marcadores para poder acceder a eles en todos os teus dispositivos</translation>
 <translation id="6573096386450695060">Permitir sempre</translation>
-<translation id="6573431926118603307">Aquí aparecerán as pestanas que abrises en Chrome noutros dispositivos.</translation>
 <translation id="6583199322650523874">Engadir aos marcadores a páxina actual</translation>
 <translation id="6588043302623806746">Usar DNS seguro</translation>
 <translation id="6590471736817333463">Aforra ata un 60 % de datos</translation>
@@ -1664,7 +1659,6 @@ Para cambiar esta opción de configuración, <ph name="BEGIN_LINK" />elimina os 
 <translation id="7914399737746719723">Instalouse a aplicación</translation>
 <translation id="7917574899775263813">Ir á última pestana</translation>
 <translation id="7919123827536834358">Traducir automaticamente texto escrito nestes idiomas</translation>
-<translation id="7921782882718083488">Resumir esta páxina</translation>
 <translation id="7926975587469166629">Alcume da tarxeta</translation>
 <translation id="7927073875790626822">Realidade estendida</translation>
 <translation id="7929587383660661825">Chrome quita automaticamente os permisos de sitios que abusan das notificacións ou que non visitaches recentemente</translation>
@@ -1828,7 +1822,6 @@ Para cambiar esta opción de configuración, <ph name="BEGIN_LINK" />elimina os 
 <translation id="8538291624121505885"><ph name="TAB_TITLE" />, pestana do modo de pantalla superposta fixada e multiseleccionada</translation>
 <translation id="8540136935098276800">Pon un URL que teña un formato correcto</translation>
 <translation id="854522910157234410">Abrir esta páxina</translation>
-<translation id="8547466829003330976">Revisar PDF coa IA</translation>
 <translation id="8551513938758868521">Bloquear pestanas do modo de incógnito ao saír de Chrome</translation>
 <translation id="8559961053328923750">Chrome limita a cantidade total de datos que os sitios poden compartir a través do navegador para medir o rendemento dos anuncios</translation>
 <translation id="8559990750235505898">Ofrece a tradución de páxinas noutros idiomas</translation>

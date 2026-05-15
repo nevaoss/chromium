@@ -235,6 +235,8 @@ static_library("ui") {
     "//chrome/browser:primitives",
     "//chrome/browser/feedback",
     "//chrome/browser/headless",
+    "//chrome/browser/history",
+    "//chrome/browser/history:impl",
     "//chrome/browser/loader",
     "//chrome/browser/media",
     "//chrome/browser/media:impl",
@@ -374,8 +376,10 @@ static_library("ui") {
     "//chrome/browser/preloading/prefetch/no_state_prefetch",
     "//chrome/browser/privacy_sandbox:headers",
     "//chrome/browser/profiles",
+    "//chrome/browser/profiles:misc",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/profiles:profile_manager",
+    "//chrome/browser/profiles:profile_manager_impl",
     "//chrome/browser/profiles:profile_util",
     "//chrome/browser/profiles:profile_util_impl",
     "//chrome/browser/profiling_host",
@@ -400,6 +404,7 @@ static_library("ui") {
     "//chrome/browser/status_icons",
     "//chrome/browser/storage_access_api",
     "//chrome/browser/subresource_filter",
+    "//chrome/browser/supervised_user:impl",
     "//chrome/browser/sync",
     "//chrome/browser/task_manager:impl",
     "//chrome/browser/task_manager/common",
@@ -480,6 +485,7 @@ static_library("ui") {
     "//chrome/common/search:mojo_bindings",
     "//chrome/installer/util:with_no_strings",
     "//components/access_code_cast/common:metrics",
+    "//components/accessibility_annotator/core",
     "//components/account_id",
     "//components/affiliations/core/browser:affiliations",
     "//components/autofill/content/browser",
@@ -743,10 +749,18 @@ static_library("ui") {
     "//v8:v8_version",
   ]
 
-  # page_load_metrics's :impl includes headers from //chrome/browser/ui that
-  # can't be split out yet.
   allow_circular_includes_from = [
+    # TODO(crbug.com/507421089): Remove this circular dependency.
+    "//chrome/browser/history:impl",
+
+    # page_load_metrics's :impl includes headers from //chrome/browser/ui that
+    # can't be split out yet.
     "//chrome/browser/page_load_metrics:impl",
+
+    # profiles:misc includes headers from //chrome/browser/ui that can't be
+    # split out yet (e.g. browser.h, browser_finder.h).
+    "//chrome/browser/profiles:misc",
+    "//chrome/browser/profiles:profile_manager_impl",
 
     # sessions includes headers from //chrome/browser/ui that can't be
     # split out yet (e.g. browser.h, browser_finder.h).
@@ -917,6 +931,10 @@ static_library("ui") {
     # vr_tab_helper.cc includes //c/b/ui/browser.h, browser_finder.h,
     # browser_window_interface.h, and tab_strip_model.h.
     "//chrome/browser/vr:impl",
+
+    # TODO(crbug.com/353332589): Remove this circular dependency when
+    # c/b/ui/browser_finder.h gets componentized.
+    "//chrome/browser/supervised_user:impl",
 
     # webauthn:impl includes headers from //chrome/browser/ui that can't be
     # split out yet.
@@ -1501,8 +1519,6 @@ static_library("ui") {
       "webui/side_panel/history_clusters/history_clusters_side_panel_ui.h",
       "webui/side_panel/read_anything/chrome_os_extension_wrapper.cc",
       "webui/side_panel/read_anything/chrome_os_extension_wrapper.h",
-      "webui/side_panel/read_anything/read_anything_screenshotter.cc",
-      "webui/side_panel/read_anything/read_anything_screenshotter.h",
       "webui/side_panel/read_anything/read_anything_untrusted_page_handler.cc",
       "webui/side_panel/read_anything/read_anything_untrusted_page_handler.h",
       "webui/side_panel/read_anything/read_anything_untrusted_ui.cc",
@@ -1684,6 +1700,7 @@ static_library("ui") {
       "//chrome/browser/feedback:feedback_enum",
       "//chrome/browser/headless:command_processor",
       "//chrome/browser/hid",
+      "//chrome/browser/hid:impl",
       "//chrome/browser/image_editor",
       "//chrome/browser/image_editor:image_editor_component_util",
       "//chrome/browser/lens/region_search",
@@ -2070,6 +2087,11 @@ static_library("ui") {
 
       #TODO(crbug.com/486967014): Remove once views dep is removed for side panel.
       "//chrome/browser/ui/side_panel:side_panel_views_dependent",
+
+      # hid's :impl includes //chrome/browser/ui/browser_finder.h,
+      # //chrome/browser/ui/dialogs/browser_dialogs.h, and
+      # //chrome/browser/ui/chrome_pages.h from //chrome/browser/ui.
+      "//chrome/browser/hid:impl",
     ]
 
     if (is_win || is_chromeos) {
@@ -4716,6 +4738,8 @@ static_library("ui") {
       "views/web_apps/isolated_web_apps/isolated_web_app_user_installability_checker.h",
       "views/web_apps/launch_app_user_choice_dialog_view.cc",
       "views/web_apps/launch_app_user_choice_dialog_view.h",
+      "views/web_apps/progress_delay.cc",
+      "views/web_apps/progress_delay.h",
       "views/web_apps/protocol_handler_launch_dialog_view.cc",
       "views/web_apps/protocol_handler_launch_dialog_view.h",
       "views/web_apps/sub_apps_install_dialog.cc",
@@ -4740,6 +4764,8 @@ static_library("ui") {
       "views/web_apps/web_app_install_not_supported_dialog.cc",
       "views/web_apps/web_app_install_options_view.cc",
       "views/web_apps/web_app_install_options_view.h",
+      "views/web_apps/web_app_install_progress_view.cc",
+      "views/web_apps/web_app_install_progress_view.h",
       "views/web_apps/web_app_launch_dialog.cc",
       "views/web_apps/web_app_modal_dialog_delegate.cc",
       "views/web_apps/web_app_modal_dialog_delegate.h",
@@ -5585,10 +5611,6 @@ static_library("ui") {
 
   if (enable_webui_tab_strip) {
     sources += [
-      "views/frame/webui_tab_strip_container_view.cc",
-      "views/frame/webui_tab_strip_container_view.h",
-      "views/frame/webui_tab_strip_field_trial.cc",
-      "views/frame/webui_tab_strip_field_trial.h",
       "webui/tab_strip/tab_before_unload_tracker.cc",
       "webui/tab_strip/tab_before_unload_tracker.h",
       "webui/tab_strip/tab_strip_page_handler.cc",

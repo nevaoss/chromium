@@ -210,6 +210,15 @@ BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
                            kChromeIdentitySurveyLaunchWithDelayDuration);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+// Feature flag to enable cross-device sign-in.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kCrossDeviceSignin);
+// Parameter containing the base URL for cross device sign-in.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+extern const base::FeatureParam<std::string> kCrossDeviceSigninUrl;
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 // If enabled, disables feedback for U18 users on desktop platforms.
 // The iOS version is kDisableU18FeedbackIos flag.
@@ -287,7 +296,7 @@ BASE_DECLARE_FEATURE(kEnableOAuthMultiloginStandardCookiesBinding);
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(
-    kEnableOAuthMultiloginStandardCookiesBindingForGlicPartition);
+    kEnableOAuthMultiloginStandardCookiesBindingForSecondaryPartitions);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 // Enables a separate account-scoped storage for preferences.
@@ -423,6 +432,8 @@ bool IsFirstRunDesktopRevampEnabled(bool is_in_search_engine_choice_region);
 #if BUILDFLAG(IS_ANDROID)
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kForceHistoryOptInScreen);
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kForceShowWebSigninLoadingDialog);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
@@ -435,6 +446,8 @@ BASE_DECLARE_FEATURE(kForceStartupSigninPromo);
 // have the required information in local storage.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kFullscreenSignInPromoUseDate);
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE_PARAM(int, kFullscreenSignInPromoUseDateInterval);
 #endif
 
 // When enabled, AccountInfo is required to have a CoreAccountId which is also
@@ -460,6 +473,10 @@ BASE_DECLARE_FEATURE(kIdentityInAuthErrorFollowUps);
 #endif
 
 #if BUILDFLAG(IS_IOS)
+// Killswitch for ignoring X-Chrome-Manage-Accounts header in subframes.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kIgnoreChromeManageAccountsInSubframes);
+
 // Feature flag to ignore invalid grant errors in AuthenticationService.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kIgnoreInvalidGrantError);
@@ -513,11 +530,6 @@ BASE_DECLARE_FEATURE(kProfileCreationDeclineSigninCTAExperiment);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(
     kProfileCreationFrictionReductionExperimentPrefillNameRequirement);
-
-// Experimenting with removing signin in the profile creation flow.
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(
-    kProfileCreationFrictionReductionExperimentRemoveSigninStep);
 
 // Experimenting with removing the profile customization bubble in the profile
 // creation flow.
@@ -697,14 +709,6 @@ extern const base::FeatureParam<SeamlessSigninStringType>
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // keep-sorted end
-
-// Helper functions that are no longer attached to any features.
-
-// Returns if the current browser supports an explicit sign in (signs the user
-// into transport mode, as defined above) for extension access points (e.g. the
-// `ExtensionPostInstallDialogDelegate`).
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-bool IsExtensionsExplicitBrowserSigninEnabled();
 
 }  // namespace switches
 

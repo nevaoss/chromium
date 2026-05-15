@@ -25,6 +25,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "chrome/browser/accessibility_annotator/accessibility_annotator_enablement_service_factory.h"
 #include "chrome/browser/accessibility_annotator/accessibility_query_service_factory.h"
 #include "chrome/browser/account_settings/account_setting_service_factory.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
@@ -48,7 +49,6 @@
 #include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/history/history_service_factory.h"
-#include "chrome/browser/keyboard_accessory/android/manual_filling_controller.h"
 #include "chrome/browser/metrics/profile_metrics_service_factory.h"
 #include "chrome/browser/metrics/variations/google_groups_manager_factory.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
@@ -88,6 +88,8 @@
 #include "chrome/common/channel_info.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
+#include "components/accessibility_annotator/core/accessibility_annotator_enablement_service.h"
+#include "components/accessibility_annotator/core/accessibility_annotator_types.h"
 #include "components/account_settings/account_setting_service.h"
 #include "components/application_locale_storage/application_locale_storage.h"
 #include "components/autofill/content/browser/content_autofill_driver.h"
@@ -466,6 +468,17 @@ ChromeAutofillClient::GetAccessibilityQueryService() {
   Profile* profile =
       Profile::FromBrowserContext(web_contents()->GetBrowserContext());
   return AccessibilityQueryServiceFactory::GetForProfile(profile);
+}
+
+accessibility_annotator::RemoteAnnotatorEnablementState
+ChromeAutofillClient::GetAccessibilityAnnotatorEnablementState() const {
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  accessibility_annotator::AccessibilityAnnotatorEnablementService* service =
+      AccessibilityAnnotatorEnablementServiceFactory::GetForProfile(profile);
+  return service ? service->GetEnablementState()
+                 : accessibility_annotator::RemoteAnnotatorEnablementState::
+                       kDisabledNotEligible;
 }
 
 PasswordManagerDelegate* ChromeAutofillClient::GetPasswordManagerDelegate(

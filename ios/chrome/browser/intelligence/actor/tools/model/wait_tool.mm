@@ -9,8 +9,9 @@
 #import "base/functional/bind.h"
 #import "base/functional/callback.h"
 #import "base/task/sequenced_task_runner.h"
+#import "components/actor/public/mojom/actor_types.mojom.h"
 #import "components/optimization_guide/proto/features/actions_data.pb.h"
-#import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_error.h"
+#import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
 #import "ios/web/public/web_state.h"
 
 namespace actor {
@@ -25,7 +26,7 @@ constexpr base::TimeDelta kDefaultWaitDuration = base::Seconds(3);
 WaitTool::~WaitTool() = default;
 
 // static
-base::expected<std::unique_ptr<WaitTool>, ActorToolError> WaitTool::Create(
+base::expected<std::unique_ptr<WaitTool>, ToolExecutionResult> WaitTool::Create(
     const optimization_guide::proto::WaitAction& action,
     ProfileIOS* profile) {
   base::TimeDelta wait_duration = kDefaultWaitDuration;
@@ -56,8 +57,12 @@ void WaitTool::Execute(ToolExecutionCallback callback) {
       wait_duration_);
 }
 
+base::WeakPtr<web::WebState> WaitTool::GetTargetWebState() const {
+  return observe_web_state_;
+}
+
 void WaitTool::OnDelayFinished(ToolExecutionCallback callback) {
-  std::move(callback).Run(base::ok());
+  std::move(callback).Run(ToolExecutionResult::Ok());
 }
 
 WaitTool::WaitTool(base::TimeDelta wait_duration,

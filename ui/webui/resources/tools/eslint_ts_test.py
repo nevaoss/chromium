@@ -503,6 +503,17 @@ class EslintTsTest(unittest.TestCase):
       self.assertFalse(
           e in str(context.exception), f'Found unexpected error: {e}')
 
+  def testWebUiEslintPlugin_LitElementStructure_HtmlImport(self):
+    with self.assertRaises(RuntimeError) as context:
+      self._run_test(
+          ["with_webui_plugin_lit_element_structure_html_import_violations.ts"])
+
+    _EXPECTED_STRING = "@webui-eslint/lit-element-structure"
+    self.assertTrue(_EXPECTED_STRING in str(context.exception))
+
+    error = 'Found import of html in file containing a CrLitElement subclass definition. Templates for CrLitElement subclasses belong in the .html.ts template file, not the class definition file'
+    self.assertTrue(error in str(context.exception))
+
   def testWebUiEslintPlugin_LitElementIncorrectFilenameSuffixCheck(self):
     with self.assertRaises(RuntimeError) as context:
       self._run_test(
@@ -745,8 +756,13 @@ class EslintTsTest(unittest.TestCase):
 
     _BINDING_TYPE_MISMATCH_PREFIX_ERROR = "Type mismatch in property binding: Property '%(propertyName)s' on element '%(tagName)s'"
 
+    _LISTENER_NOT_CALLABLE_ERROR = "Event listener for '@%(eventName)s' must be callable"
+
     # The following strings *should* appear in the error output.
     errors = [
+        _LISTENER_NOT_CALLABLE_ERROR % {
+            'eventName': 'click',
+        },
         _BINDING_TYPE_MISMATCH_ERROR % {
             'propertyName': 'fooString',
             'tagName': 'hello-world-child',

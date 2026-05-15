@@ -1368,7 +1368,7 @@ PasswordStoreChangeList LoginDatabase::AddLogin(StoredCredential cred,
       UpdateInsecureCredentials(primary_key, cred.password_issues);
     }
     UpdatePasswordNotes(primary_key, cred.notes);
-    list.emplace_back(PasswordStoreChange::ADD, ToPasswordForm(std::move(cred)),
+    list.emplace_back(PasswordStoreChange::ADD, std::move(cred),
                       /*password_changed=*/false);
     return list;
   }
@@ -1383,21 +1383,21 @@ PasswordStoreChangeList LoginDatabase::AddLogin(StoredCredential cred,
   BindAddStatement(cred, &s, encrypted_password);
   if (s.Run()) {
     cred.in_store = GetPasswordFormStore(is_account_store_);
-    PasswordForm added_form = ToPasswordForm(cred);
-    PasswordForm removed_form = added_form;
-    removed_form.primary_key =
+    StoredCredential removed_cred = CloneStoredCredential(cred);
+    removed_cred.primary_key =
         FormPrimaryKey(old_primary_key_password.primary_key);
-    list.emplace_back(PasswordStoreChange::REMOVE, removed_form);
+    list.emplace_back(PasswordStoreChange::REMOVE, std::move(removed_cred),
+                      /*password_changed=*/false);
 
     FormPrimaryKey primary_key = FormPrimaryKey(db_.GetLastInsertRowId());
-    added_form.primary_key = primary_key;
+    cred.primary_key = primary_key;
     InsecureCredentialsChanged insecure_changed(false);
     if (!cred.password_issues.empty()) {
       insecure_changed =
           UpdateInsecureCredentials(primary_key, cred.password_issues);
     }
     UpdatePasswordNotes(primary_key, cred.notes);
-    list.emplace_back(PasswordStoreChange::ADD, std::move(added_form),
+    list.emplace_back(PasswordStoreChange::ADD, std::move(cred),
                       password_changed, insecure_changed);
   } else if (error) {
     if (db_error_handler.get_error_code() ==
@@ -1505,20 +1505,20 @@ PasswordStoreChangeList LoginDatabase::UpdateLogin(
   const bool password_changed =
       cred.password_value != old_primary_key_password.decrypted_password;
 
-  PasswordForm updated_form = ToPasswordForm(cred);
-  updated_form.keychain_identifier = new_keychain_identifier;
+  StoredCredential updated_cred = CloneStoredCredential(cred);
+  updated_cred.keychain_identifier = new_keychain_identifier;
 
   // TODO(crbug.com/40774419): It should be the responsibility of the caller to
   // set `password_issues` to empty.
   // Remove this once all `UpdateLogin` calls have been checked.
   if (password_changed) {
-    updated_form.password_issues =
+    updated_cred.password_issues =
         base::flat_map<InsecureType, InsecurityMetadata>();
   }
 
   InsecureCredentialsChanged insecure_changed = UpdateInsecureCredentials(
       FormPrimaryKey(old_primary_key_password.primary_key),
-      updated_form.password_issues);
+      updated_cred.password_issues);
   const bool notes_changed = UpdatePasswordNotes(
       FormPrimaryKey(old_primary_key_password.primary_key), cred.notes);
 
@@ -1532,10 +1532,10 @@ PasswordStoreChangeList LoginDatabase::UpdateLogin(
   }
 
   PasswordStoreChangeList list;
-  updated_form.in_store = GetPasswordFormStore(is_account_store_);
-  updated_form.primary_key =
+  updated_cred.in_store = GetPasswordFormStore(is_account_store_);
+  updated_cred.primary_key =
       FormPrimaryKey(old_primary_key_password.primary_key);
-  list.emplace_back(PasswordStoreChange::UPDATE, std::move(updated_form),
+  list.emplace_back(PasswordStoreChange::UPDATE, std::move(updated_cred),
                     password_changed, insecure_changed);
 
   return list;
@@ -1566,11 +1566,11 @@ bool LoginDatabase::RemoveLogin(const StoredCredential& cred,
     return false;
   }
   if (changes) {
-    PasswordForm removed_form = ToPasswordForm(cred);
-    removed_form.in_store = GetPasswordFormStore(is_account_store_);
-    removed_form.primary_key =
+    StoredCredential removed_cred = CloneStoredCredential(cred);
+    removed_cred.in_store = GetPasswordFormStore(is_account_store_);
+    removed_cred.primary_key =
         FormPrimaryKey(old_primary_key_password.primary_key);
-    changes->emplace_back(PasswordStoreChange::REMOVE, std::move(removed_form),
+    changes->emplace_back(PasswordStoreChange::REMOVE, std::move(removed_cred),
                           /*password_changed=*/true);
   }
   return true;
@@ -1589,11 +1589,10 @@ bool LoginDatabase::RemoveLoginByPrimaryKey(FormPrimaryKey primary_key,
     return false;
   }
   StoredCredential cred = GetFormWithoutPasswordFromStatement(s1);
-  PasswordForm form = ToPasswordForm(cred);
-  CHECK_EQ(form.primary_key.value(), primary_key);
+  CHECK_EQ(cred.primary_key.value(), primary_key);
 
 #if BUILDFLAG(IS_IOS)
-  DeleteEncryptedPasswordFromKeychain(form.keychain_identifier);
+  DeleteEncryptedPasswordFromKeychain(cred.keychain_identifier);
 #endif
   DCHECK(!delete_by_id_statement_.empty());
   sql::Statement s2(
@@ -1603,8 +1602,8 @@ bool LoginDatabase::RemoveLoginByPrimaryKey(FormPrimaryKey primary_key,
     return false;
   }
   if (changes) {
-    form.in_store = GetPasswordFormStore(is_account_store_);
-    changes->emplace_back(PasswordStoreChange::REMOVE, std::move(form),
+    cred.in_store = GetPasswordFormStore(is_account_store_);
+    changes->emplace_back(PasswordStoreChange::REMOVE, std::move(cred),
                           /*password_changed=*/true);
   }
   return true;
@@ -1641,8 +1640,7 @@ bool LoginDatabase::RemoveLoginsCreatedBetween(
   }
   if (changes) {
     for (auto& cred : credentials) {
-      changes->emplace_back(PasswordStoreChange::REMOVE,
-                            ToPasswordForm(std::move(cred)),
+      changes->emplace_back(PasswordStoreChange::REMOVE, std::move(cred),
                             /*password_changed=*/true);
     }
   }
@@ -2075,16 +2073,7 @@ void LoginDatabase::SyncMetadataStore::DeleteAllSyncMetadata(
   TRACE_EVENT0("passwords", "SyncMetadataStore::DeleteAllSyncMetadata");
   CHECK_EQ(data_type, syncer::PASSWORDS);
   CHECK_EQ(data_type, syncer::PASSWORDS);
-  bool had_unsynced_password_deletions = HasUnsyncedPasswordDeletions();
   ClearAllSyncMetadata(&login_db_->db_, data_type);
-  if (had_unsynced_password_deletions &&
-      password_deletions_have_synced_callback_) {
-    // Note: At this point we can't be fully sure whether the deletions actually
-    // reached the server yet. We might have sent a commit, but haven't received
-    // the commit confirmation. Let's be conservative and assume they haven't
-    // been successfully deleted.
-    password_deletions_have_synced_callback_.Run(/*success=*/false);
-  }
 }
 
 bool LoginDatabase::SyncMetadataStore::UpdateEntityMetadata(
@@ -2117,31 +2106,7 @@ bool LoginDatabase::SyncMetadataStore::UpdateEntityMetadata(
 
   s.BindInt(0, storage_key_int);
   s.BindString(1, encrypted_metadata);
-  if (data_type != syncer::PASSWORDS) {
-    return s.Run();
-  }
-  CHECK_EQ(data_type, syncer::PASSWORDS);
-
-  // This ongoing operation may influence the value returned by
-  // HasUnsyncedPasswordDeletions() only if the storage key being updated
-  // represents a pending deletion AND the new metadata is not (necessary but
-  // not sufficient condition). Because HasUnsyncedPasswordDeletions() may be
-  // expensive, it is evaluated lazily to avoid performance issues.
-  //
-  // Note: No need for an explicit "is unsynced" check: Once the deletion is
-  // committed, the metadata entry is removed.
-  std::unique_ptr<sync_pb::EntityMetadata> previous_metadata =
-      GetSyncEntityMetadataForStorageKey(data_type, storage_key);
-  bool was_unsynced_deletion =
-      previous_metadata && previous_metadata->is_deleted();
-
-  bool result = s.Run();
-  if (result && was_unsynced_deletion && !metadata.is_deleted() &&
-      !HasUnsyncedPasswordDeletions() &&
-      password_deletions_have_synced_callback_) {
-    password_deletions_have_synced_callback_.Run(/*success=*/true);
-  }
-  return result;
+  return s.Run();
 }
 
 bool LoginDatabase::SyncMetadataStore::ClearEntityMetadata(
@@ -2162,30 +2127,7 @@ bool LoginDatabase::SyncMetadataStore::ClearEntityMetadata(
       base::StringPrintf("DELETE FROM %s WHERE storage_key=?",
                          kPasswordsSyncEntitiesMetadataTableName)));
   s.BindInt(0, storage_key_int);
-  if (data_type != syncer::PASSWORDS) {
-    return s.Run();
-  }
-  CHECK_EQ(data_type, syncer::PASSWORDS);
-
-  // This ongoing operation may influence the value returned by
-  // HasUnsyncedPasswordDeletions() only if the storage key being cleared
-  // represents a pending deletion (necessary but not sufficient condition).
-  // Because HasUnsyncedPasswordDeletions() may be expensive, it is evaluated
-  // lazily to avoid performance issues.
-  //
-  // Note: No need for an explicit "is unsynced" check: Once the deletion is
-  // committed, the metadata entry is removed.
-  std::unique_ptr<sync_pb::EntityMetadata> previous_metadata =
-      GetSyncEntityMetadataForStorageKey(data_type, storage_key);
-  bool was_unsynced_deletion =
-      previous_metadata && previous_metadata->is_deleted();
-
-  bool result = s.Run();
-  if (result && was_unsynced_deletion && !HasUnsyncedPasswordDeletions() &&
-      password_deletions_have_synced_callback_) {
-    password_deletions_have_synced_callback_.Run(/*success=*/true);
-  }
-  return result;
+  return s.Run();
 }
 
 bool LoginDatabase::SyncMetadataStore::UpdateDataTypeState(
@@ -2216,36 +2158,6 @@ bool LoginDatabase::SyncMetadataStore::ClearDataTypeState(
                                         kPasswordsSyncModelMetadataTableName)));
 
   return s.Run();
-}
-
-void LoginDatabase::SyncMetadataStore::SetPasswordDeletionsHaveSyncedCallback(
-    base::RepeatingCallback<void(bool)> callback) {
-  password_deletions_have_synced_callback_ = std::move(callback);
-}
-
-bool LoginDatabase::SyncMetadataStore::HasUnsyncedPasswordDeletions() {
-  TRACE_EVENT0("passwords", "SyncMetadataStore::HasUnsyncedDeletions");
-
-  sql::Statement s(login_db_->db_.GetCachedStatement(
-      SQL_FROM_HERE,
-      base::StringPrintf("SELECT metadata FROM %s",
-                         kPasswordsSyncEntitiesMetadataTableName)));
-
-  while (s.Step()) {
-    std::unique_ptr<sync_pb::EntityMetadata> entity_metadata =
-        DecryptAndParseSyncEntityMetadata(s.ColumnString(0),
-                                          login_db_->encryptor_.get());
-    if (!entity_metadata) {
-      return false;
-    }
-    // Note: No need for an explicit "is unsynced" check: Once the deletion is
-    // committed, the metadata entry is removed.
-    if (entity_metadata->is_deleted()) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 LoginDatabase::PrimaryKeyAndPassword LoginDatabase::GetPrimaryKeyAndPassword(

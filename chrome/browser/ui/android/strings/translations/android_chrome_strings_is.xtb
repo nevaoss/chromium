@@ -187,8 +187,6 @@ Aðeins einstaklingar sem eru með aðgangsorðið þitt geta lesið dulkóðuð
 <translation id="1820408774134375111">Innskráningarblað neðst</translation>
 <translation id="1823492026305965829">Skrá inn sem <ph name="USER_FULL_NAME" /></translation>
 <translation id="1824902652744048041">Ýttu á „Eyða vefskoðunargögnum“</translation>
-<translation id="1825772852827001597">Upplýsingar um greiðslumáta og heimilisföng frá Google Pay verða ekki dulkóðaðar. Vafraferill Chrome samstillist ekki.
-Aðeins einstaklingar sem eru með aðgangsorðið þitt geta lesið dulkóðuðu gögnin þín. Aðgangsorðið er hvorki sent til né vistað hjá Google. Ef þú gleymir aðgangsorðinu eða vilt breyta þessari stillingu skaltu <ph name="BEGIN_LINK" />eyða Chrome-gögnunum á reikningnum þínum<ph name="END_LINK" />.</translation>
 <translation id="1829244130665387512">Finna á síðu</translation>
 <translation id="1832459821645506983">Já, ég vil vera með</translation>
 <translation id="1845958458910716240">Til að vernda gögnin þín skaltu leyfa Chrome að fjarlægja heimildir vefsvæða sem þú hefur ekki heimsótt nýlega</translation>
@@ -557,7 +555,6 @@ Aðeins einstaklingar sem eru með aðgangsorðið þitt geta lesið dulkóðuð
 <translation id="3439276997620616816">Þú finnur nýlega flipa hér</translation>
 <translation id="3443221991560634068">Endurhlaða þessa síðu</translation>
 <translation id="3444179773590444986">Deila ábendingu um dökkt þema fyrir vefsvæði?</translation>
-<translation id="3448874648066942074">Taka saman með gervigreind</translation>
 <translation id="3452832259067974318">Til að gæta persónuverndar þinnar fyllir Chrome ekki sjálfkrafa út aðgangsorðið þitt í þennan reit.</translation>
 <translation id="3474624961160222204">Halda áfram sem <ph name="NAME" /></translation>
 <translation id="3478363558367712427">Þú getur valið leitarvélina þína</translation>
@@ -857,7 +854,6 @@ Google reikningurinn þinn kann að vera með annars konar vefskoðunarferil, sv
 <translation id="4698757800236023795">Virkt (<ph name="ITEM_COUNT" />)</translation>
 <translation id="4699172675775169585">Myndir og skrár í skyndiminni</translation>
 <translation id="4710167854527459075">Raða eftir nýjasta</translation>
-<translation id="4718044610319080485">Ræsir gervigreindarhjálpara</translation>
 <translation id="4719927025381752090">Boð um þýðingu</translation>
 <translation id="4720556299488643018">Hætta áskrift</translation>
 <translation id="4732120983431207637">Afstöflun</translation>
@@ -1236,7 +1232,6 @@ Sum vefsvæði kunna til dæmis að bregðast við beiðninni með því að bir
 <translation id="629730747756840877">Reikningur</translation>
 <translation id="6301526076346731664">Opna forritunarverkfæri</translation>
 <translation id="630308129961693966">Veldu hvar veffangastikan á að vera</translation>
-<translation id="6303969859164067831">Skrá út og slökkva á samstillingu</translation>
 <translation id="6305257382500066042">Prófa núna</translation>
 <translation id="6307241780749477694">Staðfestu að þetta sért þú til að fá aðgang að öllum aðgangsorðunum þínum í þessu tæki</translation>
 <translation id="6309082029962045994"><ph name="TAB_TITLE" />, margvalinn festur flipi með hljóði</translation>
@@ -1314,7 +1309,6 @@ Sum vefsvæði kunna til dæmis að bregðast við beiðninni með því að bir
 <translation id="6565959834589222080">Wi-Fi er notað þegar það er í boði</translation>
 <translation id="657177046675873214">Kveiktu á „Bókamerki“ í stillingunum til að sjá bókamerkin þín í öllum tækjunum þínum</translation>
 <translation id="6573096386450695060">Leyfa alltaf</translation>
-<translation id="6573431926118603307">Flipar sem þú hefur opnað í Chrome í öðrum tækjum birtast hér.</translation>
 <translation id="6583199322650523874">Bókamerkja þessa síðu</translation>
 <translation id="6588043302623806746">Nota öruggt DNS</translation>
 <translation id="6590471736817333463">Sparaðu allt að 60% af gögnum</translation>
@@ -1665,7 +1659,6 @@ Til að breyta þessari stillingu skaltu <ph name="BEGIN_LINK" />eyða Chrome-g�
 <translation id="7914399737746719723">Forrit uppsett</translation>
 <translation id="7917574899775263813">Hoppa í síðasta flipa</translation>
 <translation id="7919123827536834358">Þýða þessi tungumál sjálfkrafa</translation>
-<translation id="7921782882718083488">Taka þessa síðu saman</translation>
 <translation id="7926975587469166629">Gælunafn spjalds</translation>
 <translation id="7927073875790626822">Víðveruleiki (XR)</translation>
 <translation id="7929587383660661825">Chrome fjarlægir sjálfkrafa heimildir vefsvæða sem misnota tilkynningar eða sem þú hefur ekki skoðað nýlega</translation>
@@ -1829,7 +1822,6 @@ Til að breyta þessari stillingu skaltu <ph name="BEGIN_LINK" />eyða Chrome-g�
 <translation id="8538291624121505885"><ph name="TAB_TITLE" />, margvalinn festur mynd-í-mynd-flipi</translation>
 <translation id="8540136935098276800">Sláðu inn vefslóð á réttu sniði</translation>
 <translation id="854522910157234410">Opna þessa síðu</translation>
-<translation id="8547466829003330976">Fara yfir PDF-skrá með gervigreind</translation>
 <translation id="8551513938758868521">Læsa huliðsflipum um leið og þú hættir í Chrome</translation>
 <translation id="8559961053328923750">Chrome takmarkar heildarmagn gagna sem vefsvæði geta deilt í gegnum vafrann til að mæla árangur auglýsinga</translation>
 <translation id="8559990750235505898">Bjóðast til að þýða síður á önnur tungumál</translation>

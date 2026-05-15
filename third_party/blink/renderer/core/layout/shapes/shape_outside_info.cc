@@ -58,28 +58,6 @@ gfx::Rect ToPixelSnappedLogicalRect(const LogicalRect& rect) {
       SnapSizeToPixel(rect.size.block_size, rect.offset.block_offset));
 }
 
-// Unlike LayoutBoxModelObject::PhysicalBorderToLogical(), this function
-// applies container's WritingDirectionMode.
-PhysicalToLogicalGetter<LayoutUnit, LayoutBox> LogicalBorder(
-    const LayoutBox& layout_box,
-    const ComputedStyle& container_style) {
-  return PhysicalToLogicalGetter<LayoutUnit, LayoutBox>(
-      container_style.GetWritingDirection(), layout_box, &LayoutBox::BorderTop,
-      &LayoutBox::BorderRight, &LayoutBox::BorderBottom,
-      &LayoutBox::BorderLeft);
-}
-
-// Unlike LayoutBoxModelObject::PhysicalPaddingToLogical(), this function
-// applies container's WritingDirectionMode.
-PhysicalToLogicalGetter<LayoutUnit, LayoutBox> LogicalPadding(
-    const LayoutBox& layout_box,
-    const ComputedStyle& container_style) {
-  return PhysicalToLogicalGetter<LayoutUnit, LayoutBox>(
-      container_style.GetWritingDirection(), layout_box, &LayoutBox::PaddingTop,
-      &LayoutBox::PaddingRight, &LayoutBox::PaddingBottom,
-      &LayoutBox::PaddingLeft);
-}
-
 }  // namespace
 
 CSSBoxType ReferenceBox(const ShapeValue& shape_value) {
@@ -92,8 +70,8 @@ void ShapeOutsideInfo::SetReferenceBoxLogicalSize(
     LogicalSize new_reference_box_logical_size,
     LogicalSize margin_size) {
   Document& document = layout_box_->GetDocument();
-  bool is_horizontal_writing_mode =
-      layout_box_->ContainingBlock()->StyleRef().IsHorizontalWritingMode();
+  const WritingDirectionMode writing_direction =
+      layout_box_->ContainingBlock()->StyleRef().GetWritingDirection();
 
   LogicalSize margin_box_for_use_counter = new_reference_box_logical_size;
   margin_box_for_use_counter.Expand(margin_size.inline_size,
@@ -111,13 +89,8 @@ void ShapeOutsideInfo::SetReferenceBoxLogicalSize(
       break;
     case CSSBoxType::kPadding:
       UseCounter::Count(document, WebFeature::kShapeOutsidePaddingBox);
-      if (is_horizontal_writing_mode) {
-        new_reference_box_logical_size.Shrink(layout_box_->BorderWidth(),
-                                              layout_box_->BorderHeight());
-      } else {
-        new_reference_box_logical_size.Shrink(layout_box_->BorderHeight(),
-                                              layout_box_->BorderWidth());
-      }
+      new_reference_box_logical_size -=
+          layout_box_->BorderOutsets().ConvertToLogical(writing_direction);
 
       if (new_reference_box_logical_size != margin_box_for_use_counter) {
         UseCounter::Count(
@@ -126,20 +99,14 @@ void ShapeOutsideInfo::SetReferenceBoxLogicalSize(
       }
       break;
     case CSSBoxType::kContent: {
-      bool is_shape_image = shape_value.GetType() == ShapeValue::kImage;
-
-      if (!is_shape_image)
+      const bool is_shape_image = shape_value.GetType() == ShapeValue::kImage;
+      if (!is_shape_image) {
         UseCounter::Count(document, WebFeature::kShapeOutsideContentBox);
-
-      if (is_horizontal_writing_mode) {
-        new_reference_box_logical_size.Shrink(
-            layout_box_->BorderAndPaddingWidth(),
-            layout_box_->BorderAndPaddingHeight());
-      } else {
-        new_reference_box_logical_size.Shrink(
-            layout_box_->BorderAndPaddingHeight(),
-            layout_box_->BorderAndPaddingWidth());
       }
+
+      new_reference_box_logical_size -=
+          (layout_box_->BorderOutsets() + layout_box_->PaddingOutsets())
+              .ConvertToLogical(writing_direction);
 
       if (!is_shape_image &&
           new_reference_box_logical_size != margin_box_for_use_counter) {
@@ -297,32 +264,24 @@ const Shape& ShapeOutsideInfo::ComputedShape() const {
 }
 
 LogicalOffset ShapeOutsideInfo::LogicalStartOffset() const {
+  const PhysicalBoxStrut outsets = ([&] {
+    switch (ReferenceBox(*layout_box_->StyleRef().ShapeOutside())) {
+      case CSSBoxType::kMargin:
+        return -layout_box_->MarginOutsets();
+      case CSSBoxType::kBorder:
+        return PhysicalBoxStrut();
+      case CSSBoxType::kPadding:
+        return layout_box_->BorderOutsets();
+      case CSSBoxType::kContent:
+        return layout_box_->BorderOutsets() + layout_box_->PaddingOutsets();
+      case CSSBoxType::kMissing:
+        NOTREACHED();
+    }
+  })();
   const ComputedStyle& container_style =
       layout_box_->ContainingBlock()->StyleRef();
-  switch (ReferenceBox(*layout_box_->StyleRef().ShapeOutside())) {
-    case CSSBoxType::kMargin: {
-      LogicalOffset margin_start_offset =
-          layout_box_->MarginOutsets()
-              .ConvertToLogical(container_style.GetWritingDirection())
-              .StartOffset();
-      return {-margin_start_offset.inline_offset,
-              -margin_start_offset.block_offset};
-    }
-    case CSSBoxType::kBorder:
-      return {LayoutUnit(), LayoutUnit()};
-    case CSSBoxType::kPadding: {
-      auto border = LogicalBorder(*layout_box_, container_style);
-      return {border.InlineStart(), border.BlockStart()};
-    }
-    case CSSBoxType::kContent: {
-      auto padding = LogicalPadding(*layout_box_, container_style);
-      auto border = LogicalBorder(*layout_box_, container_style);
-      return {border.InlineStart() + padding.InlineStart(),
-              border.BlockStart() + padding.BlockStart()};
-    }
-    case CSSBoxType::kMissing:
-      NOTREACHED();
-  }
+  return outsets.ConvertToLogical(container_style.GetWritingDirection())
+      .StartOffset();
 }
 
 bool ShapeOutsideInfo::IsEnabledFor(const LayoutBox& box) {

@@ -518,6 +518,8 @@ export declare interface GlicBrowserHost {
    * Starts a user-interactive process to select content from a tab. The user
    * can select multiple regions.
    *
+   * Uses the optional `params` to control the capture behavior and target tab.
+   *
    * The returned observable will emit a value for each region captured. The
    * client can cancel this operation by unsubscribing from the observable,
    * which will cause the observable to be completed.
@@ -534,7 +536,8 @@ export declare interface GlicBrowserHost {
    * the same or a different client instance), the existing capture session will
    * be terminated and a new one will begin.
    */
-  captureRegion?(): ObservableValue<CaptureRegionResult>;
+  captureRegion?
+      (params?: CaptureRegionParams): ObservableValue<CaptureRegionResult>;
 
   /**
    * Deletes a captured region.
@@ -1107,6 +1110,16 @@ export declare interface GlicBrowserHost {
    * Called when the microphone status changes in the web client.
    */
   onMicrophoneStatusChange?(status: MicrophoneStatus): void;
+
+  /**
+   * Informs Chrome of whether an error dialog is showing. Used for metrics,
+   * and may cause Chrome to eventually reload the page if the GiC panel is
+   * backgrounded.
+   *
+   * @param shownDialogType The type of error dialog that is showing. If
+   *   `undefined`, no error dialog is showing.
+   */
+  setErrorDialogState?(shownDialogType?: ClientErrorDialogType): void;
 }
 
 /** Information about a conversation. */
@@ -1341,6 +1354,11 @@ export declare interface CaptureRegionResult {
    * polygons in the future.
    */
   region?: CapturedRegion;
+}
+
+export declare interface CaptureRegionParams {
+  tabId: string;
+  options: TabContextOptions;
 }
 
 /** An encoded journal. */
@@ -2154,7 +2172,7 @@ export declare interface Observer<T> {
   /** Called when the Observable emits a value. */
   next?(value: T): void;
   /** Called if the Observable emits an error. */
-  error?(err: any): void;
+  error?(err: unknown): void;
   /** Called when the Observable completes. */
   complete?(): void;
 }
@@ -2262,6 +2280,8 @@ export declare interface SkillPreview {
   description?: string;
   /** The image URL to show when rendering this skill. */
   image_url?: string;
+  /** The name of the curator for this skill. */
+  curated_by?: string;
   /** Whether the skill is contextually relevant to the current tab. */
   isContextual?: boolean;
 }
@@ -2969,6 +2989,10 @@ export enum FeatureMode {
   UNSPECIFIED = 0,
   IMAGE_GENERATION = 1,
   ACTUATION = 2,
+  // Client feature mode to initiate actuation for Experimental Triggering.
+  EXPERIMENTAL_TRIGGERING = 3,
+  // Client feature mode to initiate actuation for Universal Cart.
+  UNIVERSAL_CART = 4,
 }
 
 ///////////////////////////////////////////////
@@ -3009,6 +3033,20 @@ export enum WebUseCounter {
   SUBMIT_PROMPT_WITH_AUTO_MODE = 1,
   TASK_INTERRUPTED_FOR_USER_CONFIRMATION = 2,
   TASK_INTERRUPTED_FOR_USER_CLARIFICATION = 3,
+  SELECTION_TOGGLED_VIA_SHARED_MENU = 4,
+  SELECTION_TOGGLED_VIA_HOT_KEY = 5,
+}
+
+///////////////////////////////////////////////
+// WARNING - GENERATED FROM MOJOM, DO NOT EDIT.
+// Client error dialog types.
+export enum ClientErrorDialogType {
+  UNKNOWN = 0,
+  DISABLED_BY_ORGANIZATION = 1,
+  GENERIC_AVAILABILITY = 2,
+  INELIGIBLE_ACCOUNT = 3,
+  SIGNOUT = 4,
+  UNSUPPORTED_LOCATION = 5,
 }
 
 ///////////////////////////////////////////////
@@ -3096,6 +3134,8 @@ export enum HostCapability {
   // Indicates that the host supports auto browse attempting login using Sign in
   // with Google.
   AUTO_LOGIN_SIGN_IN_WITH_GOOGLE = 10,
+  // Indicates that the host supports sharing images via the invoke mechanism.
+  SHARE_IMAGE_VIA_INVOKE = 11,
 }
 
 ///////////////////////////////////////////////
