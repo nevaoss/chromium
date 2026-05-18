@@ -171,14 +171,6 @@ declare_args() {
       is_debug && current_os != "ios" && current_os != "watchos"
 }
 
-declare_args() {
-  # Added for using cross toolchain (for example WEBOS uses cross toolchain)
-  is_cross_linux_build = false
-
-  # Use clang for host compilation.
-  is_host_clang = true
-}
-
 assert(!(is_debug && is_official_build), "Can't do official debug builds")
 assert(!(current_os == "ios" && is_component_build),
        "Can't use component build on iOS")
@@ -216,12 +208,6 @@ if (host_toolchain == "") {
       host_toolchain = "//build/toolchain/linux:clang_$host_cpu"
     } else if (is_clang) {
       host_toolchain = "//build/toolchain/linux:clang_$host_cpu"
-    } else if (is_cross_linux_build) {
-      if (is_host_clang) {
-        host_toolchain = "//build/toolchain/linux:clang_$host_cpu"
-      } else {
-        host_toolchain = "//build/toolchain/cros:host"
-      }
     } else {
       host_toolchain = "//build/toolchain/linux:$host_cpu"
     }
@@ -261,8 +247,6 @@ if (target_os == "android") {
   # See comments in build/toolchain/cros/BUILD.gn about board compiles.
   if (is_clang) {
     _default_toolchain = "//build/toolchain/linux:clang_$target_cpu"
-  } else if (is_cross_linux_build) {
-    _default_toolchain = "//build/toolchain/cros:target"
   } else {
     _default_toolchain = "//build/toolchain/linux:$target_cpu"
   }
