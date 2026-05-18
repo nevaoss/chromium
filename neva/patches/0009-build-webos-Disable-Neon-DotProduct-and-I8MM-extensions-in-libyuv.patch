@@ -128,10 +128,10 @@ index 756f83cb..f90ba45f 100644
  #endif  // !defined(LIBYUV_DISABLE_NEON) && defined(__aarch64__)
  
 diff --git a/source/row_neon64.cc b/source/row_neon64.cc
-index 09bad8df..0167a19d 100644
+index 19016cc3..75763ba9 100644
 --- a/source/row_neon64.cc
 +++ b/source/row_neon64.cc
-@@ -2778,6 +2778,9 @@ static void ARGBToUV444MatrixRow_NEON(
+@@ -2779,6 +2779,9 @@ static void ARGBToUV444MatrixRow_NEON(
          "v27", "v28", "v29");
  }
  
@@ -141,7 +141,7 @@ index 09bad8df..0167a19d 100644
  static void ARGBToUV444MatrixRow_NEON_I8MM(
      const uint8_t* src_argb,
      uint8_t* dst_u,
-@@ -2814,6 +2817,7 @@ static void ARGBToUV444MatrixRow_NEON_I8MM(
+@@ -2815,6 +2818,7 @@ static void ARGBToUV444MatrixRow_NEON_I8MM(
        : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v16", "v17",
          "v29");
  }
@@ -149,7 +149,7 @@ index 09bad8df..0167a19d 100644
  
  // RGB to BT601 coefficients
  // UB   0.875 coefficient = 112
-@@ -2834,6 +2838,9 @@ void ARGBToUV444Row_NEON(const uint8_t* src_argb,
+@@ -2835,6 +2839,9 @@ void ARGBToUV444Row_NEON(const uint8_t* src_argb,
                              &kARGBI601UVConstants);
  }
  
@@ -159,7 +159,7 @@ index 09bad8df..0167a19d 100644
  void ARGBToUV444Row_NEON_I8MM(const uint8_t* src_argb,
                                uint8_t* dst_u,
                                uint8_t* dst_v,
-@@ -2841,6 +2848,7 @@ void ARGBToUV444Row_NEON_I8MM(const uint8_t* src_argb,
+@@ -2842,6 +2849,7 @@ void ARGBToUV444Row_NEON_I8MM(const uint8_t* src_argb,
    ARGBToUV444MatrixRow_NEON_I8MM(src_argb, dst_u, dst_v, width,
                                   &kARGBI601UVConstants);
  }
@@ -167,7 +167,7 @@ index 09bad8df..0167a19d 100644
  
  // RGB to JPEG coefficients
  // UB  0.500    coefficient = 128
-@@ -2861,6 +2869,9 @@ void ARGBToUVJ444Row_NEON(const uint8_t* src_argb,
+@@ -2862,6 +2870,9 @@ void ARGBToUVJ444Row_NEON(const uint8_t* src_argb,
                              &kARGBJPEGUVConstants);
  }
  
@@ -177,7 +177,7 @@ index 09bad8df..0167a19d 100644
  void ARGBToUVJ444Row_NEON_I8MM(const uint8_t* src_argb,
                                 uint8_t* dst_u,
                                 uint8_t* dst_v,
-@@ -2868,6 +2879,7 @@ void ARGBToUVJ444Row_NEON_I8MM(const uint8_t* src_argb,
+@@ -2869,6 +2880,7 @@ void ARGBToUVJ444Row_NEON_I8MM(const uint8_t* src_argb,
    ARGBToUV444MatrixRow_NEON_I8MM(src_argb, dst_u, dst_v, width,
                                   &kARGBJPEGUVConstants);
  }
@@ -185,7 +185,7 @@ index 09bad8df..0167a19d 100644
  
  #define RGBTOUV_SETUP_REG                                                  \
    "movi       v20.8h, #112          \n" /* UB/VR coefficient  (0.875)   */ \
-@@ -3448,6 +3460,9 @@ void ARGB4444ToUVRow_NEON(const uint8_t* src_argb4444,
+@@ -3483,6 +3495,9 @@ void ARGB4444ToUVRow_NEON(const uint8_t* src_argb4444,
    );
  }
  
@@ -193,17 +193,17 @@ index 09bad8df..0167a19d 100644
 +// instructions.
 +#if !defined(OS_WEBOS)
  // Process any of ARGB, ABGR, BGRA, RGBA, by adjusting the uvconstants layout.
- static void ARGBToUVMatrixRow_NEON_I8MM(const uint8_t* src,
+ static void ARGBToUVMatrixRow_NEON_I8MM_Impl(const uint8_t* src,
                                          int src_stride,
-@@ -3618,6 +3633,7 @@ void ABGRToUVJRow_NEON_I8MM(const uint8_t* src_abgr,
-   ARGBToUVMatrixRow_NEON_I8MM(src_abgr, src_stride_abgr, dst_u, dst_v, width,
+@@ -3666,6 +3681,7 @@ void ABGRToUVJRow_NEON_I8MM(const uint8_t* src_abgr,
+   ARGBToUVMatrixRow_NEON_I8MM_Impl(src_abgr, src_stride_abgr, dst_u, dst_v, width,
                                kABGRToUVJCoefficients);
  }
 +#endif  // !defined(OS_WEBOS)
  
  void RGB565ToYRow_NEON(const uint8_t* src_rgb565, uint8_t* dst_y, int width) {
    asm volatile(
-@@ -3752,6 +3768,9 @@ void ARGBToYMatrixRow_NEON(const uint8_t* src_argb,
+@@ -3800,6 +3816,9 @@ void ARGBToYMatrixRow_NEON(const uint8_t* src_argb,
          "v17");
  }
  
@@ -213,7 +213,7 @@ index 09bad8df..0167a19d 100644
  void ARGBToYMatrixRow_NEON_DotProd(
      const uint8_t* src_argb,
      uint8_t* dst_y,
-@@ -3787,6 +3806,7 @@ void ARGBToYMatrixRow_NEON_DotProd(
+@@ -3835,6 +3854,7 @@ void ARGBToYMatrixRow_NEON_DotProd(
        : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v16",
          "v17");
  }
@@ -221,7 +221,7 @@ index 09bad8df..0167a19d 100644
  
  // RGB to JPeg coefficients
  // B * 0.1140 coefficient = 29
-@@ -3826,6 +3846,9 @@ void ABGRToYJRow_NEON(const uint8_t* src_abgr, uint8_t* dst_yj, int width) {
+@@ -3874,6 +3894,9 @@ void ABGRToYJRow_NEON(const uint8_t* src_abgr, uint8_t* dst_yj, int width) {
    ARGBToYMatrixRow_NEON(src_abgr, dst_yj, width, &kRawJPEGConstants);
  }
  
@@ -231,7 +231,7 @@ index 09bad8df..0167a19d 100644
  void ARGBToYRow_NEON_DotProd(const uint8_t* src_argb,
                               uint8_t* dst_y,
                               int width) {
-@@ -3849,6 +3872,7 @@ void ABGRToYJRow_NEON_DotProd(const uint8_t* src_abgr,
+@@ -3897,6 +3920,7 @@ void ABGRToYJRow_NEON_DotProd(const uint8_t* src_abgr,
                                int width) {
    ARGBToYMatrixRow_NEON_DotProd(src_abgr, dst_yj, width, &kRawJPEGConstants);
  }
@@ -239,7 +239,7 @@ index 09bad8df..0167a19d 100644
  
  // RGBA expects first value to be A and ignored, then 3 values to contain RGB.
  // Same code as ARGB, except the LD4
-@@ -3898,6 +3922,9 @@ void BGRAToYRow_NEON(const uint8_t* src_bgra, uint8_t* dst_y, int width) {
+@@ -3946,6 +3970,9 @@ void BGRAToYRow_NEON(const uint8_t* src_bgra, uint8_t* dst_y, int width) {
    RGBAToYMatrixRow_NEON(src_bgra, dst_y, width, &kRawI601Constants);
  }
  
@@ -249,7 +249,7 @@ index 09bad8df..0167a19d 100644
  void RGBAToYRow_NEON_DotProd(const uint8_t* src_rgba,
                               uint8_t* dst_y,
                               int width) {
-@@ -3924,6 +3951,7 @@ void BGRAToYRow_NEON_DotProd(const uint8_t* src_bgra,
+@@ -3972,6 +3999,7 @@ void BGRAToYRow_NEON_DotProd(const uint8_t* src_bgra,
    ARGBToYMatrixRow_NEON_DotProd(src_bgra, dst_y, width,
                                  &kRawI601DotProdConstants);
  }
@@ -257,7 +257,7 @@ index 09bad8df..0167a19d 100644
  
  void RGBToYMatrixRow_NEON(const uint8_t* src_rgb,
                                   uint8_t* dst_y,
-@@ -4381,6 +4409,9 @@ static const uvec8 kARGBGrayRowCoeffs = {29, 150, 77, 0};
+@@ -4429,6 +4457,9 @@ static const uvec8 kARGBGrayRowCoeffs = {29, 150, 77, 0};
  static const uvec8 kARGBGrayRowIndices = {0, 0, 0, 19, 2, 2, 2, 23,
                                            4, 4, 4, 27, 6, 6, 6, 31};
  
@@ -267,7 +267,7 @@ index 09bad8df..0167a19d 100644
  void ARGBGrayRow_NEON_DotProd(const uint8_t* src_argb,
                                uint8_t* dst_argb,
                                int width) {
-@@ -4408,6 +4439,7 @@ void ARGBGrayRow_NEON_DotProd(const uint8_t* src_argb,
+@@ -4456,6 +4487,7 @@ void ARGBGrayRow_NEON_DotProd(const uint8_t* src_argb,
          [indices] "r"(&kARGBGrayRowIndices)  // %[indices]
        : "cc", "memory", "v0", "v1", "v2", "v3", "v24", "v25");
  }
@@ -275,7 +275,7 @@ index 09bad8df..0167a19d 100644
  
  // Convert 8 ARGB pixels (32 bytes) to 8 Sepia ARGB pixels.
  //    b = (r * 35 + g * 68 + b * 17) >> 7
-@@ -4454,6 +4486,9 @@ static const uvec8 kARGBSepiaRowCoeffs = {17, 68, 35, 0,  22, 88,
+@@ -4502,6 +4534,9 @@ static const uvec8 kARGBSepiaRowCoeffs = {17, 68, 35, 0,  22, 88,
                                            45, 0,  24, 98, 50, 0};
  static const uvec8 kARGBSepiaRowAlphaIndices = {3, 7, 11, 15, 19, 23, 27, 31};
  
@@ -285,7 +285,7 @@ index 09bad8df..0167a19d 100644
  void ARGBSepiaRow_NEON_DotProd(uint8_t* dst_argb, int width) {
    asm volatile(
        "ld3r        {v20.4s, v21.4s, v22.4s}, [%[coeffs]] \n"
-@@ -4490,6 +4525,7 @@ void ARGBSepiaRow_NEON_DotProd(uint8_t* dst_argb, int width) {
+@@ -4538,6 +4573,7 @@ void ARGBSepiaRow_NEON_DotProd(uint8_t* dst_argb, int width) {
        : "cc", "memory", "v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v20",
          "v21", "v22", "v24", "v25", "v26", "v28", "v29", "v30");
  }
@@ -293,7 +293,7 @@ index 09bad8df..0167a19d 100644
  
  // Tranform 8 ARGB pixels (32 bytes) with color matrix.
  // TODO(fbarchard): Was same as Sepia except matrix is provided.  This function
-@@ -4553,6 +4589,9 @@ void ARGBColorMatrixRow_NEON(const uint8_t* src_argb,
+@@ -4601,6 +4637,9 @@ void ARGBColorMatrixRow_NEON(const uint8_t* src_argb,
          "v17", "v18", "v19", "v22", "v23", "v24", "v25");
  }
  
@@ -303,7 +303,7 @@ index 09bad8df..0167a19d 100644
  void ARGBColorMatrixRow_NEON_I8MM(const uint8_t* src_argb,
                                    uint8_t* dst_argb,
                                    const int8_t* matrix_argb,
-@@ -4608,6 +4647,7 @@ void ARGBColorMatrixRow_NEON_I8MM(const uint8_t* src_argb,
+@@ -4656,6 +4695,7 @@ void ARGBColorMatrixRow_NEON_I8MM(const uint8_t* src_argb,
        : "cc", "memory", "v0", "v1", "v16", "v17", "v18", "v19", "v20", "v21",
          "v22", "v23", "v31");
  }
