@@ -58,10 +58,6 @@
     "dependencies": ["manifest:page_action"],
     "contexts": ["privileged_extension"]
   },
-  "scripting": {
-    "dependencies": ["permission:scripting"],
-    "contexts": ["privileged_extension"]
-  },
   "tabs": {
     "channel": "stable",
     "extension_types": ["extension", "legacy_packaged_app"],
