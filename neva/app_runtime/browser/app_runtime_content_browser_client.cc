@@ -105,6 +105,7 @@
 #endif  // defined(ENABLE_BROWSER_SHELL)
 
 #if defined(USE_NEVA_CHROME_EXTENSIONS)
+#include "content/public/common/child_process_id.h"
 #include "content/public/common/content_switches.h"
 #include "extensions/browser/api/web_request/web_request_api.h"
 #include "extensions/browser/browser_context_keyed_api_factory.h"
@@ -650,7 +651,7 @@ void AppRuntimeContentBrowserClient::SiteInstanceGotProcessAndSite(
   }
 
   extensions::ProcessMap::Get(browser_context)
-      ->Insert(extension->id(), site_instance->GetProcess()->GetDeprecatedID());
+      ->Insert(extension->id(), site_instance->GetProcess()->GetID());
 }
 
 void AppRuntimeContentBrowserClient::OnWebContentsCreated(
