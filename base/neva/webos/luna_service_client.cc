@@ -241,7 +241,7 @@ bool LunaServiceClient::RegisterService(const std::string& appid) {
   // Some clients may have connection with empty identifier.
   // So append random number only for non empty identifier.
   if (!name.empty())
-    name += std::to_string(base::RandInt(10000, 99999));
+    name += std::to_string(base::RandIntInclusive(10000, 99999));
 
   AutoLSError error;
   if (!LSRegister(name.c_str(), &handle_, &error)) {

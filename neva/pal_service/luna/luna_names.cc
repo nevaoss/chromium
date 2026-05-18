@@ -71,7 +71,7 @@ std::string GetServiceName(const std::string& name,
 
 std::string GetServiceNameWithRandSuffix(const std::string& name,
                                          const std::string& delimiter) {
-  return GetServiceName(name, base::RandInt(10000, 99999), delimiter);
+  return GetServiceName(name, base::RandIntInclusive(10000, 99999), delimiter);
 }
 
 std::string GetServiceNameWithPID(const std::string& name,
