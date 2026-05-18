@@ -20,7 +20,6 @@ schema_sources_ = [
   "app.json",
   "cookies.json",
   "notifications.idl",
-  "scripting.idl",
   "tabs.json",
   "web_navigation.json",
   "windows.json",
