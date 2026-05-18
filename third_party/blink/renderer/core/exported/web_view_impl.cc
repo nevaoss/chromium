@@ -3484,15 +3484,11 @@ void WebViewImpl::UpdateFontRenderingFromRendererPrefs() {
     WebFontRenderStyle::SetSystemFontFamily(blink::WebString::FromUtf8(
         renderer_preferences_.system_font_family_name));
   }
-<<<<<<< HEAD
-#endif  // BUILDFLAG(IS_LINUX)
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   WebFontRenderStyle::SetAllowFakeBoldText(
       renderer_preferences_.allow_fake_bold_text);
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
-#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
->>>>>>> 149.0.7827.0~1
 #endif  // BUILDFLAG(IS_WIN)
 #endif  // !BUILDFLAG(IS_MAC)
 }
