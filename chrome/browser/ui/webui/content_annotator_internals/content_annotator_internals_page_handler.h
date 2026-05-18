@@ -17,6 +17,10 @@
 
 class Profile;
 
+namespace accessibility_annotator {
+struct ContentAnnotationsData;
+}  // namespace accessibility_annotator
+
 namespace content_annotator_internals {
 
 class ContentAnnotatorInternalsPageHandler
@@ -44,13 +48,16 @@ class ContentAnnotatorInternalsPageHandler
   // accessibility_annotator::AccessibilityAnnotatorBackend::Observer:
   void OnContentAnnotationsAdded(
       history::VisitID visit_id,
-      const accessibility_annotator::AccessibilityAnnotatorBackend::
-          ContentAnnotationsData& annotation_data) override;
+      const accessibility_annotator::ContentAnnotationsData& annotation_data)
+      override;
   void OnContentAnnotationsDeleted(
       base::span<const history::VisitID> visit_ids) override;
   void OnContentAnnotationsCleared() override;
 
  private:
+  // Notifies the UI with the current annotated content.
+  void NotifyPageWithAnnotations();
+
   mojo::Receiver<accessibility_annotator_internals::mojom::PageHandler>
       receiver_;
   mojo::Remote<accessibility_annotator_internals::mojom::Page> page_;

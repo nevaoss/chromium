@@ -7,7 +7,7 @@ chrome.test.getConfig(function(config) {
   const testUrl = `http://a.com:${config.testServer.port}/`;
 
   chrome.tabs.onUpdated.addListener(function listener(tabId, changeInfo, tab) {
-    if (changeInfo.status != 'complete') {
+    if (changeInfo.status !== 'complete') {
       return;
     }
     chrome.tabs.onUpdated.removeListener(listener);
@@ -22,5 +22,5 @@ chrome.test.getConfig(function(config) {
         }]);
   });
 
-  chrome.tabs.create({ url: testUrl });
+  chrome.tabs.create({url: testUrl});
 });

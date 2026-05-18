@@ -6,7 +6,6 @@ package org.chromium.chrome.browser.bottombar;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
@@ -35,6 +34,7 @@ import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.browser_controls.BottomControlsStacker.LayerScrollBehavior;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.chrome.browser.toolbar.bottom.BottomControlsCoordinator.BottomControlsVisibilityController;
@@ -42,6 +42,8 @@ import org.chromium.chrome.browser.ui.actions.ActionId;
 import org.chromium.chrome.browser.ui.actions.ActionRegistry;
 import org.chromium.chrome.browser.ui.bottombar.BottomBar;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarHostManager.Host;
+import org.chromium.chrome.browser.ui.bottombar.BottomBarUtils;
+import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.ui.base.TestActivity;
 import org.chromium.ui.modelutil.PropertyModel;
 
@@ -60,10 +62,13 @@ public class BottomBarContainerCoordinatorUnitTest {
     @Mock private Callback<Object> mOnModelTokenChange;
     @Mock private ThemeColorProvider mThemeColorProvider;
     @Mock private ActionRegistry mActionRegistry;
+    @Mock private Profile mProfile;
 
     private final SettableNullableObservableSupplier<Tab> mTabSupplier =
             ObservableSuppliers.createNullable();
     private final SettableNullableObservableSupplier<PropertyModel> mActionSupplier =
+            ObservableSuppliers.createNullable();
+    private final SettableNullableObservableSupplier<Profile> mProfileSupplier =
             ObservableSuppliers.createNullable();
 
     private Activity mActivity;
@@ -82,6 +87,7 @@ public class BottomBarContainerCoordinatorUnitTest {
                             mActivity = activity;
                             mBottomBarContainer = new FrameLayout(mActivity);
                             mHomepageEnabledSupplier = ObservableSuppliers.createNonNull(true);
+                            mProfileSupplier.set(mProfile);
                             mCoordinator =
                                     new BottomBarContainerCoordinator(
                                             mBottomBarContainer,
@@ -89,7 +95,8 @@ public class BottomBarContainerCoordinatorUnitTest {
                                             mActionRegistry,
                                             mTabSupplier,
                                             mThemeColorProvider,
-                                            mHomepageEnabledSupplier);
+                                            mHomepageEnabledSupplier,
+                                            mProfileSupplier);
                         });
     }
 
@@ -98,7 +105,7 @@ public class BottomBarContainerCoordinatorUnitTest {
         mCoordinator.initializeWithNative(mVisibilityController, mOnModelTokenChange);
         verify(mVisibilityController).setBottomControlsVisible(true);
         verify(mOnModelTokenChange).onResult(any());
-        verify(mActionRegistry).get(ActionId.NEW_TAB);
+        verify(mActionRegistry, times(2)).get(ActionId.NEW_TAB);
     }
 
     @Test
@@ -108,7 +115,13 @@ public class BottomBarContainerCoordinatorUnitTest {
 
     @Test
     public void testGetBackgroundColor() {
-        assertNull(mCoordinator.getBackgroundColor());
+        when(mThemeColorProvider.getBrandedColorScheme())
+                .thenReturn(BrandedColorScheme.APP_DEFAULT);
+        assertEquals(
+                (Integer)
+                        BottomBarUtils.getBottomBarBackgroundColor(
+                                mActivity, BrandedColorScheme.APP_DEFAULT),
+                mCoordinator.getBackgroundColor());
     }
 
     @Test

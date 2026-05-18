@@ -167,6 +167,7 @@ import org.chromium.chrome.browser.share.link_to_text.LinkToTextIphController;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.status_indicator.StatusIndicatorCoordinator;
+import org.chromium.chrome.browser.status_indicator.StatusIndicatorCoordinator.StatusIndicatorObserver;
 import org.chromium.chrome.browser.subscriptions.CommerceSubscriptionsService;
 import org.chromium.chrome.browser.subscriptions.CommerceSubscriptionsServiceFactory;
 import org.chromium.chrome.browser.sync.synced_set_up.CrossDeviceSettingImporter;
@@ -174,6 +175,7 @@ import org.chromium.chrome.browser.tab.RequestDesktopUtils;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabAssociatedApp;
 import org.chromium.chrome.browser.tab.TabFavicon;
+import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_bottom_sheet.CoBrowseViewFactory;
 import org.chromium.chrome.browser.tab_bottom_sheet.CoBrowseViewsZoomControl;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetManager;
@@ -302,7 +304,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     private final OneshotSupplierImpl<TabGroupUiActionHandler> mTabGroupUiActionHandlerSupplier =
             new OneshotSupplierImpl<>();
     private @Nullable StatusIndicatorCoordinator mStatusIndicatorCoordinator;
-    private StatusIndicatorCoordinator.@Nullable StatusIndicatorObserver mStatusIndicatorObserver;
+    private @Nullable StatusIndicatorObserver mStatusIndicatorObserver;
     private @Nullable OfflineIndicatorControllerV2 mOfflineIndicatorController;
     private @Nullable OfflineIndicatorInProductHelpController
             mOfflineIndicatorInProductHelpController;
@@ -721,6 +723,15 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     @Override
     @SuppressWarnings("NullAway")
     public void onDestroy() {
+        if (mOpenInAppEntryPoint != null) {
+            mOpenInAppEntryPoint.destroy();
+            mOpenInAppEntryPoint = null;
+        }
+
+        if (mOmniboxChipManager != null) {
+            mOmniboxChipManager = null;
+        }
+
         if (mSystemUiCoordinator != null) mSystemUiCoordinator.destroy();
 
         if (mOfflineIndicatorController != null) {
@@ -1232,7 +1243,16 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         if (ChromeFeatureList.sGlic.isEnabled() && mTabBottomSheetManager != null) {
             mActorControlCoordinator =
                     new ActorControlCoordinator(
-                            mActivity, mTabBottomSheetManager, mProfileSupplier);
+                            mActivity,
+                            mTabBottomSheetManager,
+                            mProfileSupplier,
+                            mActivityTabProvider.asObservable(),
+                            (tabId) -> {
+                                TabModelUtils.selectTabById(
+                                        mTabModelSelectorSupplier.asNonNull().get(),
+                                        tabId,
+                                        TabSelectionType.FROM_USER);
+                            });
 
             ViewStub stub = mActivity.findViewById(R.id.actor_overlay_stub);
             mActorOverlayCoordinator =
@@ -1786,7 +1806,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         mTopControlsStacker);
         layoutManager.addSceneOverlay(mStatusIndicatorCoordinator.getSceneLayer());
         mStatusIndicatorObserver =
-                new StatusIndicatorCoordinator.StatusIndicatorObserver() {
+                new StatusIndicatorObserver() {
                     @Override
                     public void onStatusIndicatorHeightChanged(int indicatorHeight) {
                         mStatusIndicatorHeight = indicatorHeight;
@@ -2115,6 +2135,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
     }
 
     private void initializeSideUi() {
+        ViewGroup anchorContainerParent = mActivity.findViewById(R.id.constrained_views_container);
         ViewStub sideUiStartAnchorContainerStub =
                 mActivity.findViewById(R.id.side_ui_start_anchor_container_stub);
         ViewStub sideUiEndAnchorContainerStub =
@@ -2130,6 +2151,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
 
         mSideUiCoordinator =
                 SideUiCoordinatorFactory.create(
+                        anchorContainerParent,
                         sideUiStartAnchorContainerStub,
                         sideUiEndAnchorContainerStub,
                         stripBottomPxSupplier);

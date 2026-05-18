@@ -542,6 +542,14 @@ export class HostMessageHandler implements HostMessageHandlerInterface {
     }
   }
 
+  glicBrowserSubscribeToZoomLevel(): void {
+    this.host.subscribeToZoomLevel();
+  }
+
+  glicBrowserUnsubscribeFromZoomLevel(): void {
+    this.host.unsubscribeFromZoomLevel();
+  }
+
   glicBrowserDeleteCapturedRegion(request: {tabId: string, regionId: string}) {
     this.handler.deleteCapturedRegion(
         idFromClient(request.tabId), request.regionId);
@@ -1011,6 +1019,8 @@ export class HostMessageHandler implements HostMessageHandlerInterface {
       chrome.histograms.recordEnumerationValue(
           'Glic.Api.Client.ErrorDialogShown', request.shownDialogType,
           ClientErrorDialogTypeMojo.MAX_VALUE + 1);
+      this.handler.clientErrorDialogStateChanged(
+          enumFromClient(request.shownDialogType));
     }
     // TODO(b/506142920): Avoid showing error panels to the user if it is
     // presented while the panel is backgrounded. Automatically reload the

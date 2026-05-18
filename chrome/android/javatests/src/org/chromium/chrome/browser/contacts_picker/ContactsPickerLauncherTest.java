@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.contacts_picker;
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
+import static androidx.test.espresso.matcher.RootMatchers.isDialog;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
 import static androidx.test.espresso.matcher.ViewMatchers.withId;
 
@@ -31,6 +32,7 @@ import org.chromium.chrome.test.transit.page.WebPageStation;
 import org.chromium.content_public.browser.ContactsFetcher;
 import org.chromium.content_public.browser.ContactsPicker;
 import org.chromium.content_public.browser.ContactsPickerListener;
+import org.chromium.content_public.browser.Visibility;
 import org.chromium.content_public.browser.WebContents;
 
 import java.util.ArrayList;
@@ -117,9 +119,17 @@ public class ContactsPickerLauncherTest {
         WebPageStation firstPage = mActivityTestRule.startOnBlankPage();
         WebContents webContents = firstPage.webContentsElement.value();
 
+        // Wait for WebContents to be visible.
+        CriteriaHelper.pollInstrumentationThread(
+                () -> {
+                    return ThreadUtils.runOnUiThreadBlocking(
+                            () -> webContents.getVisibility() == Visibility.VISIBLE);
+                },
+                "WebContents never became visible");
+
         // Launch the picker.
         Assert.assertTrue(showContactsPicker(webContents));
-        onView(withId(R.id.selectable_list)).check(matches(isDisplayed()));
+        onView(withId(R.id.selectable_list)).inRoot(isDialog()).check(matches(isDisplayed()));
 
         // Switch to a new page/tab.
         firstPage.openFakeLinkToWebPage(mActivityTestRule.getTestServer().getURL(FILE_PATH));

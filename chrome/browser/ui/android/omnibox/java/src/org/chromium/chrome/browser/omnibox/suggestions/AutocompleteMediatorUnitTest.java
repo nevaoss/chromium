@@ -110,7 +110,6 @@ import org.chromium.url.JUnitTestGURLs;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -257,7 +256,7 @@ public class AutocompleteMediatorUnitTest {
                 .readFromCache(anyInt());
         lenient().doReturn(true).when(mAutocompleteDelegate).isKeyboardActive();
         lenient()
-                .when(mAutocompleteController.onSuggestionTouchDown(any(), anyInt(), any()))
+                .when(mAutocompleteController.onSuggestionTouchDown(any(), any(), anyInt()))
                 .thenReturn(true);
         setUpLocationBarDataProvider(
                 JUnitTestGURLs.NTP_URL,
@@ -379,30 +378,6 @@ public class AutocompleteMediatorUnitTest {
         verify(mAutocompleteDelegate).setOmniboxEditingText("");
     }
 
-    @Test
-    @SmallTest
-    public void triggerSiteSearchTabSuccess() {
-        // Setup: Start session and mock suggestions.
-        var session = createEmptySession();
-        mMediator.beginInput(session);
-
-        var mockMatch = mock(AutocompleteMatch.class);
-        doReturn("bing").when(mockMatch).getAssociatedKeyword();
-
-        mMediator.onSuggestionsReceived(
-                AutocompleteResult.fromCache(Collections.singletonList(mockMatch), null),
-                /* isFinal= */ true);
-
-        doReturn(true).when(mTemplateUrlService).isLoaded();
-        var mockTemplateUrl = mock(TemplateUrl.class);
-        doReturn("bing").when(mockTemplateUrl).getKeyword();
-        doReturn("Bing").when(mockTemplateUrl).getShortName();
-        doReturn(mockTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("bing");
-
-        assertTrue(mMediator.triggerSiteSearch(SiteSearchActivationSource.TAB));
-        verify(mAutocompleteDelegate).setOmniboxEditingText("");
-    }
-
     /** Verifies that triggerSiteSearch fails (returns false) if the Omnibox text is empty. */
     @Test
     @SmallTest
@@ -410,7 +385,28 @@ public class AutocompleteMediatorUnitTest {
         mMediator.beginInput(createEmptySession());
         doReturn("").when(mTextStateProvider).getTextWithoutAutocomplete();
 
-        assertFalse(mMediator.triggerSiteSearch(SiteSearchActivationSource.TAB));
+        assertFalse(mMediator.triggerSiteSearch(SiteSearchActivationSource.SPACE));
+    }
+
+    @Test
+    @SmallTest
+    public void triggerSiteSearch_Failure_AlreadyInSiteSearchMode() {
+        var session = createEmptySession();
+        mMediator.beginInput(session);
+        session.getAutocompleteInput()
+                .setSiteSearchData(new SiteSearchData("existing", "Existing site search"));
+
+        doReturn(true)
+                .when(mPrefService)
+                .getBoolean(AutocompleteMediator.KEYWORD_SPACE_TRIGGERING_ENABLED_PREF);
+        doReturn("bing").when(mTextStateProvider).getTextWithoutAutocomplete();
+        doReturn(true).when(mTemplateUrlService).isLoaded();
+        var mockTemplateUrl = mock(TemplateUrl.class);
+        doReturn("bing").when(mockTemplateUrl).getKeyword();
+        doReturn("Bing").when(mockTemplateUrl).getShortName();
+        doReturn(mockTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("bing");
+
+        assertFalse(mMediator.triggerSiteSearch(SiteSearchActivationSource.SPACE));
     }
 
     @Test
@@ -573,8 +569,8 @@ public class AutocompleteMediatorUnitTest {
             GURL url, int pageClass, String userText, int cursorPos, boolean preventAutocomplete) {
         var captor = ArgumentCaptor.forClass(AutocompleteInput.class);
         verify(mAutocompleteController)
-                .start(captor.capture(), eq(cursorPos), eq(preventAutocomplete));
-        verify(mAutocompleteController, times(1)).start(any(), anyInt(), anyBoolean());
+                .start(any(), captor.capture(), eq(cursorPos), eq(preventAutocomplete));
+        verify(mAutocompleteController, times(1)).start(any(), any(), anyInt(), anyBoolean());
 
         AutocompleteInput input = captor.getValue();
         assertEquals(pageClass, input.getPageClassification());
@@ -587,8 +583,8 @@ public class AutocompleteMediatorUnitTest {
     public void verifyAutocompleteStartZeroSuggest(
             String userText, GURL url, int pageClass, String pageTitle) {
         var captor = ArgumentCaptor.forClass(AutocompleteInput.class);
-        verify(mAutocompleteController).startZeroSuggest(captor.capture());
-        verify(mAutocompleteController, times(1)).startZeroSuggest(any());
+        verify(mAutocompleteController).startZeroSuggest(any(), captor.capture());
+        verify(mAutocompleteController, times(1)).startZeroSuggest(any(), any());
 
         AutocompleteInput input = captor.getValue();
         assertEquals(pageClass, input.getPageClassification());
@@ -716,11 +712,11 @@ public class AutocompleteMediatorUnitTest {
         mMediator.beginInput(session);
         mMediator.endInput();
         RobolectricUtil.runAllBackgroundAndUi();
-        verify(mAutocompleteController, never()).startZeroSuggest(any());
+        verify(mAutocompleteController, never()).startZeroSuggest(any(), any());
 
         // Simulate native being inititalized. Make sure no suggest requests are sent.
         RobolectricUtil.runAllBackgroundAndUi();
-        verify(mAutocompleteController, never()).start(any(), anyInt(), anyBoolean());
+        verify(mAutocompleteController, never()).start(any(), any(), anyInt(), anyBoolean());
     }
 
     @Test
@@ -843,7 +839,8 @@ public class AutocompleteMediatorUnitTest {
 
         verify(mAutocompleteDelegate).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
         assertEquals(PAGE_URL.getSpec(), mOmniboxLoadUrlParamsCaptor.getValue().url);
-        verify(mComposeboxQueryControllerBridge, never()).getAimUrlFromInputState(any(), any());
+        verify(mComposeboxQueryControllerBridge, never())
+                .getAimUrlFromInputState(any(), any(), any());
     }
 
     @Test
@@ -1151,7 +1148,7 @@ public class AutocompleteMediatorUnitTest {
 
         // Ensure that no extra signals are sent to native.
         verify(mAutocompleteController, times(1))
-                .onSuggestionTouchDown(mSuggestionsList.get(0), 0, null);
+                .onSuggestionTouchDown(null, mSuggestionsList.get(0), 0);
 
         // Simulate a navigation to the suggestion that was prefetched. This causes metrics about
         // prefetch to be recorded.
@@ -1187,7 +1184,7 @@ public class AutocompleteMediatorUnitTest {
 
         // Ensure that no extra signals are sent to native.
         verify(mAutocompleteController, times(1))
-                .onSuggestionTouchDown(mSuggestionsList.get(0), 0, null);
+                .onSuggestionTouchDown(null, mSuggestionsList.get(0), 0);
 
         // Simulate a navigation to a suggestion that was not prefetched. This causes metrics about
         // prefetch to be recorded.
@@ -1219,7 +1216,7 @@ public class AutocompleteMediatorUnitTest {
         mMediator.onSuggestionsReceived(mAutocompleteResult, /* isFinal= */ true);
 
         // This will simulate the touch down trigger not starting a prefetch.
-        when(mAutocompleteController.onSuggestionTouchDown(any(), anyInt(), any()))
+        when(mAutocompleteController.onSuggestionTouchDown(any(), any(), anyInt()))
                 .thenReturn(false);
 
         // Simulate a suggestion being touched down.
@@ -1227,7 +1224,7 @@ public class AutocompleteMediatorUnitTest {
 
         // Ensure that no extra signals are sent to native.
         verify(mAutocompleteController, times(1))
-                .onSuggestionTouchDown(mSuggestionsList.get(0), 0, null);
+                .onSuggestionTouchDown(null, mSuggestionsList.get(0), 0);
 
         // Simulate a navigation to the suggestion that was not prefetched. This causes metrics
         // about prefetch to be recorded.
@@ -1270,7 +1267,7 @@ public class AutocompleteMediatorUnitTest {
         verify(
                         mAutocompleteController,
                         times(OmniboxFeatures.DEFAULT_MAX_PREFETCHES_PER_OMNIBOX_SESSION))
-                .onSuggestionTouchDown(any(), anyInt(), any());
+                .onSuggestionTouchDown(any(), any(), anyInt());
 
         // Ends the omnibox session to reset state of touch down prefetch, and record metrics.
         mMediator.endInput();
@@ -1282,7 +1279,7 @@ public class AutocompleteMediatorUnitTest {
         verify(
                         mAutocompleteController,
                         times(OmniboxFeatures.DEFAULT_MAX_PREFETCHES_PER_OMNIBOX_SESSION + 1))
-                .onSuggestionTouchDown(any(), anyInt(), any());
+                .onSuggestionTouchDown(any(), any(), anyInt());
         mMediator.endInput();
 
         histogramWatcher.assertExpected();
@@ -1306,7 +1303,7 @@ public class AutocompleteMediatorUnitTest {
 
         mMediator.onTopResumedActivityChanged(false);
         RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
-        verify(mAutocompleteController, never()).start(any(), anyInt(), anyBoolean());
+        verify(mAutocompleteController, never()).start(any(), any(), anyInt(), anyBoolean());
 
         session.getAutocompleteInput().setUserText("test");
 
@@ -1327,7 +1324,7 @@ public class AutocompleteMediatorUnitTest {
         verifyAutocompleteStartZeroSuggest("", url, pageClassification, title);
 
         mMediator.onTopResumedActivityChanged(false);
-        verify(mAutocompleteController, never()).startZeroSuggest(any());
+        verify(mAutocompleteController, never()).startZeroSuggest(any(), any());
 
         mMediator.onTopResumedActivityChanged(true);
         verifyAutocompleteStartZeroSuggest("", url, pageClassification, title);
@@ -1565,12 +1562,12 @@ public class AutocompleteMediatorUnitTest {
         GURL url = JUnitTestGURLs.BLUE_2;
         doAnswer(
                         invocation -> {
-                            Callback<GURL> cb = invocation.getArgument(1);
+                            Callback<GURL> cb = invocation.getArgument(2);
                             cb.onResult(url);
                             return null;
                         })
                 .when(mComposeboxQueryControllerBridge)
-                .getAimUrl(any(), any());
+                .getAimUrl(any(), any(), any());
 
         AutocompleteMatch defaultMatch =
                 AutocompleteMatchBuilder.searchWithType(OmniboxSuggestionType.SEARCH_SUGGEST)
@@ -1608,12 +1605,12 @@ public class AutocompleteMediatorUnitTest {
         GURL url2 = JUnitTestGURLs.BLUE_2;
         doAnswer(
                         invocation -> {
-                            Callback<GURL> cb = invocation.getArgument(1);
+                            Callback<GURL> cb = invocation.getArgument(2);
                             cb.onResult(url2);
                             return null;
                         })
                 .when(mComposeboxQueryControllerBridge)
-                .getImageGenerationUrl(any(), any());
+                .getImageGenerationUrl(any(), any(), any());
 
         AutocompleteMatch defaultMatch =
                 AutocompleteMatchBuilder.searchWithType(OmniboxSuggestionType.SEARCH_SUGGEST)
@@ -1856,7 +1853,7 @@ public class AutocompleteMediatorUnitTest {
         mMediator.onTopResumedActivityChanged(true);
         verify(mAutocompleteController).addOnSuggestionsReceivedListener(mMediator);
         // This will trigger startZeroSuggest because it's a new tab page in setup.
-        verify(mAutocompleteController).startZeroSuggest(any());
+        verify(mAutocompleteController).startZeroSuggest(any(), any());
     }
 
     @Test

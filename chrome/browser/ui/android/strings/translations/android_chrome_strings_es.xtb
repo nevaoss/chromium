@@ -283,7 +283,6 @@ Solo las personas que tengan tu frase de contraseña podrán leer tus datos cifr
 <translation id="2251809247798634662">Nueva ventana de Incógnito</translation>
 <translation id="2253927598983295051">Elige qué quieres compartir con <ph name="APP_NAME" /></translation>
 <translation id="2261570557291037252">Más información de la app</translation>
-<translation id="2270544918551255912">Desliza desde el borde para volver</translation>
 <translation id="2276696007612801991">Inicia sesión en tu cuenta de Google para comprobar tus contraseñas</translation>
 <translation id="2281243904606300427"><ph name="TAB_TITLE" />, pestaña de Incógnito seleccionada</translation>
 <translation id="2286841657746966508">Dirección de facturación</translation>
@@ -371,7 +370,7 @@ Solo las personas que tengan tu frase de contraseña podrán leer tus datos cifr
 <translation id="2616989802003447151">{COUNT,plural, =1{1 elemento}other{# elementos}}</translation>
 <translation id="2620314865574742210"><ph name="NAME" /> te ha invitado a acceder a un elemento compartido.</translation>
 <translation id="2634393460268044753">Envía las URLs de los sitios que visitas y una pequeña muestra del contenido de la página, de las descargas, de la actividad de las extensiones y de la información del sistema a Navegación segura de Google para comprobar si son dañinas.</translation>
-<translation id="263442110807675126">Este proceso puede tardar unos segundos</translation>
+<translation id="263442110807675126">Puede tardar unos segundos</translation>
 <translation id="2643064289437760082">Si quieres eliminar tus datos de medición de anuncios, puedes hacerlo en cualquier momento eliminando tus datos de navegación.</translation>
 <translation id="2647434099613338025">Añadir idioma</translation>
 <translation id="2650077116157640844">Más en dispositivos sincronizados</translation>
@@ -1319,7 +1318,7 @@ Por ejemplo, algunos sitios web pueden responder a la solicitud mostrándote anu
 <translation id="661266467055912436">Mejora tu seguridad y la de todo el mundo en la Web.</translation>
 <translation id="6621391692573306628">Para enviar esta pestaña a otro dispositivo, inicia sesión en Chrome en ambos dispositivos</translation>
 <translation id="6627583120233659107">Editar carpeta</translation>
-<translation id="6633067410344541938">Desbloquear pestañas de incógnito</translation>
+<translation id="6633067410344541938">Desbloquear pestañas de Incógnito</translation>
 <translation id="6636623428211296678">Consulta más ajustes a continuación o termina ahora</translation>
 <translation id="6637100877383020115">Para ayudar a mejorar la aplicación, Chrome envía datos de uso y de fallos a Google. <ph name="BEGIN_UMA_LINK" />Gestionar<ph name="END_UMA_LINK" /></translation>
 <translation id="6641780377503683465">Quitar <ph name="INTEREST" /></translation>

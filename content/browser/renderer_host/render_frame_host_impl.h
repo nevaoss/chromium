@@ -48,13 +48,13 @@
 #include "base/unguessable_token.h"
 #include "base/uuid.h"
 #include "build/build_config.h"
+#include "content/browser/back_forward_cache/back_forward_cache_impl.h"
+#include "content/browser/back_forward_cache/back_forward_cache_metrics.h"
 #include "content/browser/bad_message.h"
 #include "content/browser/browser_interface_broker_impl.h"
 #include "content/browser/buckets/bucket_context.h"
 #include "content/browser/can_commit_status.h"
 #include "content/browser/locks/lock_manager.h"
-#include "content/browser/renderer_host/back_forward_cache_impl.h"
-#include "content/browser/renderer_host/back_forward_cache_metrics.h"
 #include "content/browser/renderer_host/browsing_context_state.h"
 #include "content/browser/renderer_host/code_cache_host_impl.h"
 #include "content/browser/renderer_host/cookie_access_observers.h"
@@ -148,6 +148,7 @@
 #include "third_party/blink/public/mojom/blob/file_backed_blob_factory.mojom-forward.h"
 #include "third_party/blink/public/mojom/broadcastchannel/broadcast_channel.mojom.h"
 #include "third_party/blink/public/mojom/buckets/bucket_manager_host.mojom.h"
+#include "third_party/blink/public/mojom/content_extraction/script_tools.mojom-forward.h"
 #include "third_party/blink/public/mojom/dom_storage/storage_area.mojom.h"
 #include "third_party/blink/public/mojom/feature_observer/feature_observer.mojom-forward.h"
 #include "third_party/blink/public/mojom/file_system_access/file_system_access_manager.mojom-forward.h"
@@ -2113,6 +2114,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
 
   void BindSerialService(
       mojo::PendingReceiver<blink::mojom::SerialService> receiver);
+  void BindModelContextHost(
+      mojo::PendingReceiver<blink::mojom::ModelContextHost> receiver);
 
 #if BUILDFLAG(IS_CHROMEOS)
   void GetSmartCardService(
@@ -2637,8 +2640,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
           remote_frame_interfaces,
       const blink::RemoteFrameToken& frame_token,
       const base::UnguessableToken& devtools_frame_token) override;
-  void ForwardFencedFrameEventAndUserActivationToEmbedder(
-      const std::string& event_type) override;
   void OnViewTransitionOptInChanged(blink::mojom::ViewTransitionSameOriginOptIn
                                         view_transition_opt_in) override;
   void StartDragging(blink::mojom::DragDataPtr drag_data,

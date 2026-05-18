@@ -1221,7 +1221,8 @@ class BrowserAutofillManagerTest
                           size_t field_index = 0,
                           SuggestionType type = SuggestionType::kAddressEntry) {
     autofill_manager().DidShowSuggestions(
-        {Suggestion(type)}, form, form.fields()[field_index].global_id(), {});
+        {Suggestion(type)}, form.global_id(),
+        form.fields()[field_index].global_id(), {});
   }
 
   void TryToShowTouchToFill(const FormData& form,
@@ -1568,6 +1569,23 @@ TEST_F(BrowserAutofillManagerTest, AtMemoryTriggerDroppedWhenNotEligible) {
 
   // No suggestions should be returned, not even empty ones.
   EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
+}
+
+TEST_F(BrowserAutofillManagerTest, IgnoreInactivityQueryIfPopupVisible) {
+  FormData form = CreateTestAddressFormData();
+  FormsSeen({form});
+
+  OnAskForValuesToFill(form, form.fields()[0],
+                       AutofillSuggestionTriggerSource::kTextFieldValueChanged);
+  external_delegate()->CheckSuggestionCount(form.fields()[0].global_id(), 4);
+
+  // Trigger inactivity query. It should be ignored if the popup is visible.
+  OnAskForValuesToFill(
+      form, form.fields()[0],
+      AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge);
+
+  // Verify suggestions are unchanged (not replaced or cleared).
+  external_delegate()->CheckSuggestionCount(form.fields()[0].global_id(), 4);
 }
 
 // Test that the correct logger is returned for an address field.
@@ -6520,7 +6538,7 @@ TEST_F(BrowserAutofillManagerTest,
 
   base::HistogramTester histogram_tester;
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kAutocompleteEntry)}, form,
+      {Suggestion(SuggestionType::kAutocompleteEntry)}, form.global_id(),
       form.fields().back().global_id(), {});
   // No Autofill logs.
   const std::string histograms = histogram_tester.GetAllHistogramsRecorded();
@@ -6601,10 +6619,10 @@ TEST_F(BrowserAutofillManagerTest,
 
   base::HistogramTester histogram_tester;
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kIbanEntry)}, form,
+      {Suggestion(SuggestionType::kIbanEntry)}, form.global_id(),
       form.fields().back().global_id(), {});
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kIbanEntry)}, form,
+      {Suggestion(SuggestionType::kIbanEntry)}, form.global_id(),
       form.fields().back().global_id(), {});
 
   EXPECT_THAT(
@@ -7204,7 +7222,7 @@ TEST_F(BrowserAutofillManagerTest,
   EXPECT_CALL(cc_access_manager(), PrepareToFetchCreditCard)
       .Times(IsCreditCardFidoAuthenticationEnabled() ? 1 : 0);
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kCreditCardEntry)}, form,
+      {Suggestion(SuggestionType::kCreditCardEntry)}, form.global_id(),
       form.fields()[0].global_id(), {});
 }
 
@@ -7215,7 +7233,7 @@ TEST_F(BrowserAutofillManagerTest,
 
   EXPECT_CALL(cc_access_manager(), PrepareToFetchCreditCard).Times(0);
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kAddressEntry)}, form,
+      {Suggestion(SuggestionType::kAddressEntry)}, form.global_id(),
       form.fields()[0].global_id(), {});
 }
 
@@ -9212,7 +9230,7 @@ TEST_P(BrowserAutofillManagerSuggestionMergingTest, MergingLogic) {
 
   test_api(autofill_manager())
       .OnIndividualSuggestionsGenerated(
-          form.global_id(), form.fields()[0].global_id(),
+          form, form.fields()[0],
           AutofillSuggestionTriggerSource::kFormControlElementClicked, {},
           base::TimeTicks::Now(), std::move(returned_suggestions));
 
@@ -9258,7 +9276,7 @@ TEST_F(BrowserAutofillManagerTest, GeneratedFillingProductMetric) {
   FormData form = CreateTestAddressFormData();
   test_api(autofill_manager())
       .OnIndividualSuggestionsGenerated(
-          form.global_id(), form.fields()[0].global_id(),
+          form, form.fields()[0],
           AutofillSuggestionTriggerSource::kFormControlElementClicked, {},
           base::TimeTicks::Now(),
           {{SuggestionGenerator::SuggestionDataSource::kAddress,

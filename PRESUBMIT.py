@@ -599,6 +599,8 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
             r'^base/memory/memory_pressure_listener\.(cc|h)$',
             r'^base/memory/memory_pressure_listener_unittest\.cc$',
             r'^base/memory/mock_memory_pressure_listener\.(cc|h)$',
+            r'^content/browser/back_forward_cache/'
+            r'back_forward_cache_impl\.(cc|h)$',
         ),
     ),
     BanRule(
@@ -1861,6 +1863,15 @@ _BANNED_CPP_FUNCTIONS: Sequence[BanRule] = (
             r'^base/trace_event/.*',
             r'^base/tracing/.*',
         ),
+    ),
+    BanRule(
+        r'/\bperfetto::Track::FromPointer',
+        ('Creating tracks from pointer is discouraged because it risks aliasing when the address ',
+         'is reused. Consider using NamedTrack instead, see ',
+        'https://chromium.googlesource.com/chromium/src.git/+/main/docs/trace_events.md#named-tracks',
+        ),
+        False,
+        (),
     ),
     BanRule(
         'RoInitialize',

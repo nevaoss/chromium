@@ -109,6 +109,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHSharingHubWebnotesStylizeFeature,
     &kIPHShoppingListMenuItemFeature,
     &kIPHShoppingListSaveFlowFeature,
+    &kIPHSiteControlsFeature,
     &kIPHTabGroupCreationDialogSyncTextFeature,
     &kIPHTabGroupsDragAndDropFeature,
     &kIPHTabGroupShareNoticeFeature,
@@ -261,7 +262,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHFocusHelpBubbleScreenReaderPromoFeature,
     &kIPHGlicPromoFeature,
     &kIPHGlicTrustFirstOnboardingShortcutSnoozePromoFeature,
-    &kIPHGlicTrustFirstOnboardingShortcutToastPromoFeature,
     &kIPHGlicTryItFeature,
     &kIPHGMCCastStartStopFeature,
     &kIPHGMCLocalMediaCastingFeature,
@@ -361,7 +361,7 @@ const base::Feature* const kAllFeatures[] = {
 
 #if BUILDFLAG(IS_WIN)
     // keep-sorted start case=no
-    &kIPHSearchExtensionSideloadFeature,
+    &kIPHSearchPromotionFeature,
 // keep-sorted end
 #endif  // BUILDFLAG(IS_WIN)
 

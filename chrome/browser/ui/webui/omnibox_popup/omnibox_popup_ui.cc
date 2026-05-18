@@ -61,7 +61,7 @@ std::string_view AddContextButtonVariantToSearchboxLayoutMode(
 bool OmniboxPopupUIConfig::IsWebUIEnabled(
     content::BrowserContext* browser_context) {
   return omnibox::IsAimPopupFeatureEnabled() ||
-         base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) ||
+         omnibox::IsWebUIOmniboxFullPopupEnabled() ||
          omnibox::IsWebUIOmniboxPopupEnabled() ||
          features::IsWebUILocationBarEnabled();
 }
@@ -147,6 +147,8 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   source->AddBoolean("composeboxShowZps", omnibox::kShowComposeboxZps.Get());
   source->AddBoolean("composeboxSmartComposeEnabled",
                      omnibox::kShowSmartCompose.Get());
+  source->AddBoolean("contextButtonHasBackground",
+                     omnibox::kContextButtonHasBackground.Get());
   source->AddBoolean("hideClassicContextButton",
                      omnibox::kHideClassicContextButton.Get());
   source->AddBoolean("composeboxForkEnabled",
@@ -168,12 +170,13 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   source->AddBoolean(
       "energyEffectEnabled",
       base::FeatureList::IsEnabled(omnibox::kEnergyEffectInOmnibox));
+  source->AddBoolean("contextButtonShapeIsOblong",
+                     omnibox::kContextButtonShapeIsOblong.Get());
 
-  webui::SetupWebUIDataSource(
-      source, kOmniboxPopupResources,
-      base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)
-          ? IDR_OMNIBOX_POPUP_OMNIBOX_POPUP_FULL_HTML
-          : IDR_OMNIBOX_POPUP_OMNIBOX_POPUP_HTML);
+  webui::SetupWebUIDataSource(source, kOmniboxPopupResources,
+                              omnibox::IsWebUIOmniboxFullPopupEnabled()
+                                  ? IDR_OMNIBOX_POPUP_OMNIBOX_POPUP_FULL_HTML
+                                  : IDR_OMNIBOX_POPUP_OMNIBOX_POPUP_HTML);
   webui::EnableTrustedTypesCSP(source);
 
   content::URLDataSource::Add(profile_,

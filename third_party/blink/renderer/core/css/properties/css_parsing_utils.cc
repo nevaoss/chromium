@@ -113,7 +113,9 @@
 #include "third_party/blink/renderer/platform/loader/fetch/cross_origin_attribute_value.h"
 #include "third_party/blink/renderer/platform/loader/fetch/fetch_initiator_type_names.h"
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
+#include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
+#include "third_party/blink/renderer/platform/wtf/text/ignoring_ascii_case_hash.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
 #include "third_party/blink/renderer/platform/wtf/wtf_size_t.h"
 #include "ui/gfx/animation/keyframe/timing_function.h"
@@ -617,34 +619,23 @@ cssvalue::CSSBasicShapeInsetValue* ConsumeBasicShapeInset(
     CSSParserTokenStream& args,
     const CSSParserContext& context,
     CSSParserLocalContext& local_context) {
-  auto* shape = MakeGarbageCollected<cssvalue::CSSBasicShapeInsetValue>();
-  CSSPrimitiveValue* top = ConsumeLengthOrPercent(
-      args, context, local_context, CSSPrimitiveValue::ValueRange::kAll);
-  if (!top) {
+  std::array<CSSValue*, 4> sides{};
+
+  for (size_t index = 0; index < 4; ++index) {
+    CSSPrimitiveValue* value = ConsumeLengthOrPercent(
+        args, context, local_context, CSSPrimitiveValue::ValueRange::kAll);
+    if (!value) {
+      break;
+    }
+    sides[index] = value;
+  }
+  if (!sides[0]) {
     return nullptr;
   }
-  CSSPrimitiveValue* right = ConsumeLengthOrPercent(
-      args, context, local_context, CSSPrimitiveValue::ValueRange::kAll);
-  CSSPrimitiveValue* bottom = nullptr;
-  CSSPrimitiveValue* left = nullptr;
-  if (right) {
-    bottom = ConsumeLengthOrPercent(args, context, local_context,
-                                    CSSPrimitiveValue::ValueRange::kAll);
-    if (bottom) {
-      left = ConsumeLengthOrPercent(args, context, local_context,
-                                    CSSPrimitiveValue::ValueRange::kAll);
-    }
-  }
-  if (left) {
-    shape->UpdateShapeSize4Values(top, right, bottom, left);
-  } else if (bottom) {
-    shape->UpdateShapeSize3Values(top, right, bottom);
-  } else if (right) {
-    shape->UpdateShapeSize2Values(top, right);
-  } else {
-    shape->UpdateShapeSize1Value(top);
-  }
+  Complete4Sides(sides);
 
+  auto* shape = MakeGarbageCollected<cssvalue::CSSBasicShapeInsetValue>(
+      sides[0], sides[1], sides[2], sides[3]);
   if (!ConsumeBorderRadiusCommon(args, context, local_context, shape)) {
     return nullptr;
   }
@@ -1802,6 +1793,13 @@ bool ConsumeUrlRequestModifiers(CSSParserTokenStream& stream,
                                 const CSSParserContext& context,
                                 CSSUrlRequestModifiers& modifiers) {
   CSSUrlRequestModifiers result;
+  // Unknown modifiers are silently ignored, but the grammar still disallows
+  // duplicates, and that logic applies to unknown modifiers as well. Function
+  // and bare-ident forms are tracked separately, since they're syntactically
+  // distinct, e.g. `foobar foobar(42)` is not a duplicate.
+  HashSet<String, IgnoringAsciiCaseHashTraits<String>> unknown_function_names;
+  HashSet<String, IgnoringAsciiCaseHashTraits<String>> unknown_ident_names;
+
   while (!stream.AtEnd()) {
     CSSValueID function_id = stream.Peek().FunctionId();
     if (function_id == CSSValueID::kCrossOrigin) {
@@ -1882,8 +1880,20 @@ bool ConsumeUrlRequestModifiers(CSSParserTokenStream& stream,
       if (!guard.Release()) {
         return false;  // Trailing junk inside referrer-policy().
       }
+    } else if (stream.Peek().GetType() == kFunctionToken) {
+      if (!unknown_function_names.insert(stream.Peek().Value().ToString())
+               .is_new_entry) {
+        return false;  // Duplicate unknown function modifier.
+      }
+      CSSParserTokenStream::BlockGuard guard(stream);
+    } else if (stream.Peek().GetType() == kIdentToken) {
+      if (!unknown_ident_names.insert(stream.Peek().Value().ToString())
+               .is_new_entry) {
+        return false;  // Duplicate unknown ident modifier.
+      }
+      stream.ConsumeIncludingWhitespace();
     } else {
-      return false;  // Unknown modifier.
+      return false;  // Not a valid <url-modifier> shape.
     }
     stream.ConsumeWhitespace();
   }
@@ -3024,8 +3034,8 @@ static CSSPrimitiveValue* ConsumeGradientAngleOrPercent(
   MathFunctionParser math_parser(stream, context, local_context, value_range);
   if (const CSSMathFunctionValue* calculation = math_parser.Value()) {
     CalculationResultCategory category = calculation->Category();
-    // TODO(fs): Add and support kCalcPercentAngle?
-    if (category == kCalcAngle || category == kCalcPercent) {
+    if (category == kCalcAngle || category == kCalcPercent ||
+        category == kCalcPercentAngle) {
       return math_parser.ConsumeValue();
     }
   }

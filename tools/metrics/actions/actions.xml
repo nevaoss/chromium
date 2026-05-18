@@ -746,7 +746,7 @@ should be able to be added at any place in this file.
       summary="For Resumption Rail feature entrypoint."/>
   <variant name="_RtlGestureNavigation"
       summary="For the gesture navigation in RTL mode."/>
-  <variant name="_SearchExtensionSideloadFeature"
+  <variant name="_SearchPromotionFeature"
       summary="IPH for Search extension promo on Windows"/>
   <variant name="_SharedHighlightingBuilder"
       summary="For SharedHighlightingBuilder feature."/>
@@ -781,6 +781,7 @@ should be able to be added at any place in this file.
   <variant name="_SignInBenefits" summary="For sign-in benefits IPH feature."/>
   <variant name="_SignInBenefitsNewSignin"
       summary="For sign-in benefits IPH feature."/>
+  <variant name="_SiteControls" summary="For SiteControls IPH feature."/>
   <variant name="_SupervisedUserProfileSignin"
       summary="For displaying the supervised user sign-in IPH."/>
   <variant name="_TabAudioMuting" summary="For TabAudioMuting feature."/>
@@ -16697,8 +16698,7 @@ should be able to be added at any place in this file.
   <description>The user tapped outside the in-product help bubble.</description>
 </action>
 
-<action
-    name="InProductHelp.ShouldTriggerHelpUI.IPH_SearchExtensionSideloadFeature">
+<action name="InProductHelp.ShouldTriggerHelpUI.IPH_SearchPromotionFeature">
   <owner>qlucyk@chromium.org</owner>
   <owner>iclelland@chromium.org</owner>
   <description>
@@ -18822,6 +18822,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="IOS.MagicStack.ShopCard.PriceTracking.Track">
+  <obsolete>Obsolete as of 05/2026.</obsolete>
   <owner>davidjm@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
   <description>
@@ -18854,6 +18855,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="IOS.MagicStack.TabResumption.PriceTracking.OpenTab">
+  <obsolete>Obsolete as of 05/2026.</obsolete>
   <owner>davidjm@chromium.org</owner>
   <owner>thegreenfrog@google.com</owner>
   <owner>gloriafang@google.com</owner>

@@ -6,10 +6,13 @@
 
 #include "base/logging.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_controller.h"
+#include "chrome/browser/contextual_cueing/contextual_cueing_enums.h"
+#include "chrome/browser/contextual_cueing/contextual_cueing_metrics.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
+#include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
@@ -45,11 +48,10 @@ ContextualCueingMenuModel::ContextualCueingMenuModel(
       kContextualCueingDismissCommand, IDS_CONTEXTUAL_CUEING_MENU_DISMISS,
       ui::ImageModel::FromVectorIcon(vector_icons::kCloseIcon,
                                      ui::kColorMenuIcon, 16));
-  // TODO: b/507138035 - Change icon to correct one.
   AddItemWithStringIdAndIcon(
       kContextualCueingEditPromptCommand,
       IDS_CONTEXTUAL_CUEING_MENU_EDIT_PROMPT,
-      ui::ImageModel::FromVectorIcon(vector_icons::kEditIcon,
+      ui::ImageModel::FromVectorIcon(vector_icons::kEditSquareIcon,
                                      ui::kColorMenuIcon, 16));
   AddSeparator(ui::NORMAL_SEPARATOR);
   AddItemWithStringIdAndIcon(
@@ -65,18 +67,22 @@ void ContextualCueingMenuModel::ExecuteCommand(int command_id,
                                                int event_flags) {
   switch (command_id) {
     case kContextualCueingDismissCommand:
+      RecordContextualCueingInteraction(
+          ContextualCueingInteraction::kCueDismissed);
       contextual_cueing_service_->OnCueDismissed(cue_type_);
       break;
     case kContextualCueingEditPromptCommand:
-      // TODO: b/497228854 - Implement edit prompt behavior based on cue type.
+      RecordContextualCueingInteraction(
+          ContextualCueingInteraction::kCueEditPrompt);
+      if (CueTarget* target = controller_->GetTarget(cue_type_)) {
+        target->OnEditPrompt(std::move(data_));
+      }
       break;
     case kContextualCueingOpenSettingsCommand: {
-#if !BUILDFLAG(IS_ANDROID)
-      chrome::ScopedTabbedBrowserDisplayer browser_displayer(profile_);
-      // TODO: b/502761784 - Navigate this to exact settings page once
-      // implemented.
-      chrome::ShowSettings(browser_displayer.browser());
-#endif
+      RecordContextualCueingInteraction(
+          ContextualCueingInteraction::kCueSuggestionsSettings);
+      chrome::ShowSettingsSubPageForProfile(profile_,
+                                            chrome::kSuggestionsSubPage);
       break;
     }
     default:

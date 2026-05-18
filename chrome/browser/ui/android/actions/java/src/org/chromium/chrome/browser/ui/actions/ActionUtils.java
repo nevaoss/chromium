@@ -11,7 +11,10 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.StringRes;
 
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.ui.actions.button.ButtonState;
+import org.chromium.chrome.browser.ui.actions.glic.GlicActionProperties;
+import org.chromium.chrome.browser.ui.actions.tabswitcher.TabSwitcherActionProperties;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 
@@ -21,6 +24,12 @@ public class ActionUtils {
 
     // Avoid instantiation.
     private ActionUtils() {}
+
+    /** Returns whether the data sharing feature is enabled. */
+    public static boolean isDataSharingEnabled() {
+        return ChromeFeatureList.isEnabled(ChromeFeatureList.DATA_SHARING)
+                || ChromeFeatureList.isEnabled(ChromeFeatureList.DATA_SHARING_JOIN_ONLY);
+    }
 
     /**
      * Applies the given {@link ButtonState} to the view. This is currently unrelated to the view's
@@ -54,14 +63,6 @@ public class ActionUtils {
      * @param registry The {@link ActionRegistry} to register actions to.
      */
     public static void registerBottomBarActions(ActionRegistry registry) {
-        // Register new tab.
-        registerAction(
-                registry,
-                ActionId.NEW_TAB,
-                ActionProperties.BASE_KEYS,
-                R.drawable.new_tab_icon,
-                R.string.button_new_tab,
-                R.string.new_tab_title);
 
         // Register home button.
         registerAction(
@@ -69,17 +70,46 @@ public class ActionUtils {
                 ActionId.HOME_BUTTON,
                 HomeActionProperties.ALL_KEYS,
                 R.drawable.ic_home_24dp,
-                R.string.accessibility_toolbar_btn_home,
-                R.string.accessibility_toolbar_btn_home);
+                org.chromium.chrome.browser.ui.android.bars_common.R.string
+                        .accessibility_toolbar_btn_home,
+                org.chromium.chrome.browser.ui.android.bars_common.R.string
+                        .accessibility_toolbar_btn_home);
+
+        // Register glic button.
+        registerAction(
+                registry,
+                ActionId.GLIC,
+                GlicActionProperties.ALL_KEYS,
+                R.drawable.ic_spark_24dp,
+                R.string.glic_button_entrypoint_ask_gemini_label,
+                R.string.glic_button_entrypoint_ask_gemini_label);
+
+        // Register new tab button.
+        registerAction(
+                registry,
+                ActionId.NEW_TAB,
+                ActionProperties.BASE_KEYS,
+                org.chromium.chrome.browser.ui.android.bars_common.R.drawable.new_tab_icon,
+                org.chromium.chrome.browser.ui.android.bars_common.R.string.button_new_tab,
+                org.chromium.chrome.browser.ui.android.bars_common.R.string.new_tab_title);
 
         // Register app menu.
         registerAction(
                 registry,
                 ActionId.APP_MENU,
-                ActionProperties.BASE_KEYS,
+                AppMenuActionProperties.ALL_KEYS,
                 org.chromium.components.browser_ui.widget.R.drawable.ic_more_vert_24dp,
                 R.string.accessibility_toolbar_btn_menu,
                 R.string.accessibility_toolbar_btn_menu);
+
+        // Register tab switcher button.
+        registerAction(
+                registry,
+                ActionId.TAB_SWITCHER,
+                TabSwitcherActionProperties.ALL_KEYS,
+                /* iconResId= */ Resources.ID_NULL,
+                R.string.tab_switcher_button_label,
+                R.string.tab_switcher_button_label);
     }
 
     /**

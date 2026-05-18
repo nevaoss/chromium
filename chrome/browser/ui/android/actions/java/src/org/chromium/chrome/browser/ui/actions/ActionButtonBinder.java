@@ -10,10 +10,12 @@ import android.view.View.OnLongClickListener;
 import android.widget.ImageView;
 
 import androidx.appcompat.widget.TooltipCompat;
+import androidx.core.widget.ImageViewCompat;
 
 import org.chromium.base.Callback;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.ui.actions.button.ButtonState;
+import org.chromium.chrome.browser.ui.android.bars_common.IphIntent;
 import org.chromium.chrome.browser.user_education.UserEducationHelper;
 import org.chromium.components.browser_ui.util.TextResolver;
 import org.chromium.ui.modelutil.PropertyKey;
@@ -36,6 +38,10 @@ public class ActionButtonBinder {
             } else {
                 int resId = model.get(ActionProperties.ICON_ID);
                 if (targetView instanceof ImageView imageView) imageView.setImageResource(resId);
+            }
+        } else if (ActionProperties.ICON_TINT == propertyKey) {
+            if (targetView instanceof ImageView imageView) {
+                ImageViewCompat.setImageTintList(imageView, model.get(ActionProperties.ICON_TINT));
             }
         } else if (ActionProperties.CONTENT_DESCRIPTION_RESOLVER == propertyKey) {
             TextResolver resolver = model.get(ActionProperties.CONTENT_DESCRIPTION_RESOLVER);

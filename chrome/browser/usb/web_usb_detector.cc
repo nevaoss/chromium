@@ -22,7 +22,7 @@
 #include "chrome/browser/ui/browser_tab_strip_tracker.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
 #include "chrome/browser/ui/tab_contents/tab_contents_iterator.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -78,9 +78,7 @@ void RecordNotificationClosure(WebUsbNotificationClosed disposition) {
 
 GURL GetActiveTabURL() {
   BrowserWindowInterface* const browser =
-      ProfileBrowserCollection::GetForProfile(
-          ProfileManager::GetLastUsedProfileAllowedByPolicy())
-          ->GetLastActiveBrowser();
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   if (!browser)
     return GURL();
 

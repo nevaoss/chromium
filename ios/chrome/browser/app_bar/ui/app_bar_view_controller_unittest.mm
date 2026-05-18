@@ -30,6 +30,11 @@ class AppBarViewControllerTest : public PlatformTest {
   UIButton* openNewTabButton() {
     return [view_controller_ valueForKey:@"openNewTabButton"];
   }
+
+  // Helper to access the private `_tabGridButton` ivar using KVC.
+  UIButton* tabGridButton() {
+    return [view_controller_ valueForKey:@"tabGridButton"];
+  }
 };
 
 // Tests that the new tab button shows the menu as primary action when the
@@ -61,6 +66,75 @@ TEST_F(AppBarViewControllerTest,
   [view_controller_ setTabGridVisible:NO];
   [view_controller_ setTabGroupVisible:YES];
   EXPECT_FALSE(openNewTabButton().showsMenuAsPrimaryAction);
+}
+
+// Tests that rotation toggles stack view distribution, width constraints, and
+// spacers.
+TEST_F(AppBarViewControllerTest,
+       TestRotationTogglesDistributionConstraintsAndSpacers) {
+  [view_controller_ updateForAngle:0];
+
+  UIStackView* stackView = [view_controller_ valueForKey:@"stackView"];
+  NSArray<NSLayoutConstraint*>* buttonWidthConstraints =
+      [view_controller_ valueForKey:@"buttonWidthConstraints"];
+  UIView* spacer1 = [view_controller_ valueForKey:@"_leadingSpacer"];
+  UIView* spacer2 = [view_controller_ valueForKey:@"_trailingSpacer"];
+
+  EXPECT_EQ(stackView.distribution, UIStackViewDistributionFillEqually);
+  for (NSLayoutConstraint* constraint in buttonWidthConstraints) {
+    EXPECT_FALSE(constraint.active);
+  }
+  EXPECT_TRUE(spacer1.hidden);
+  EXPECT_TRUE(spacer2.hidden);
+
+  [view_controller_ updateForAngle:M_PI_2];
+
+  EXPECT_EQ(stackView.distribution, UIStackViewDistributionEqualSpacing);
+  for (NSLayoutConstraint* constraint in buttonWidthConstraints) {
+    EXPECT_TRUE(constraint.active);
+  }
+  EXPECT_FALSE(spacer1.hidden);
+  EXPECT_FALSE(spacer2.hidden);
+}
+
+// Tests that the tab grid button's image color transformer always returns clear
+// color.
+TEST_F(AppBarViewControllerTest, TestTabGridButtonImageIsClear) {
+  UIButton* button = tabGridButton();
+  ASSERT_NE(button, nil);
+
+  // Test normal state.
+  [button setNeedsUpdateConfiguration];
+  [button layoutIfNeeded];
+
+  UIButtonConfiguration* config = button.configuration;
+  ASSERT_NE(config, nil);
+  ASSERT_NE(config.imageColorTransformer, nil);
+  EXPECT_EQ(config.imageColorTransformer(UIColor.whiteColor),
+            UIColor.clearColor);
+
+  // Test highlighted state.
+  button.highlighted = YES;
+  [button setNeedsUpdateConfiguration];
+  [button layoutIfNeeded];
+
+  config = button.configuration;
+  ASSERT_NE(config, nil);
+  ASSERT_NE(config.imageColorTransformer, nil);
+  EXPECT_EQ(config.imageColorTransformer(UIColor.whiteColor),
+            UIColor.clearColor);
+
+  // Test disabled state.
+  button.highlighted = NO;
+  button.enabled = NO;
+  [button setNeedsUpdateConfiguration];
+  [button layoutIfNeeded];
+
+  config = button.configuration;
+  ASSERT_NE(config, nil);
+  ASSERT_NE(config.imageColorTransformer, nil);
+  EXPECT_EQ(config.imageColorTransformer(UIColor.whiteColor),
+            UIColor.clearColor);
 }
 
 }  // namespace

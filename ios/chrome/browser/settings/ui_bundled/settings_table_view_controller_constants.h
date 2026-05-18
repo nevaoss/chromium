@@ -34,6 +34,7 @@ typedef NS_ENUM(NSInteger, SettingsItemType) {
   SettingsItemTypeAutofillCreditCard,
   SettingsItemTypeAutofillProfile,
   SettingsItemTypeIdentityDocs,
+  SettingsItemTypeTravelInfo,
   SettingsItemTypeAutofillAndPasswords,
   SettingsItemTypeVoiceSearch,
   SettingsItemTypeAddressBar,
@@ -108,6 +109,9 @@ extern NSString* const kSettingsAddressesAndMoreCellId;
 // The accessibility identifier of the Identity Docs cell.
 extern NSString* const kSettingsIdentityDocsCellId;
 
+// The accessibility identifier of the Travel Info cell.
+extern NSString* const kSettingsTravelInfoCellId;
+
 // The accessibility identifier of the Autofill and Passwords cell.
 extern NSString* const kSettingsAutofillAndPasswordsCellId;
 
@@ -163,7 +167,7 @@ extern NSString* const kSettingsShowReadingModeAvailableCellId;
 extern NSString* const kSettingsDetectAddressesCellId;
 
 // The accessibility identifier of the Mini map native cell.
-extern NSString* const kSettingsMimiMapNativeCellId;
+extern NSString* const kSettingsMiniMapNativeCellId;
 
 // The accessibility identifier of the Default Apps cell.
 extern NSString* const kSettingsDefaultAppsCellId;

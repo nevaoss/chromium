@@ -4,8 +4,8 @@
 
 if (top === window) {
   testTop();
-} else if (!parent.location.search.includes('end') ||
-    window.didRunAtDocumentEnd) {
+} else if (
+    !parent.location.search.includes('end') || window.didRunAtDocumentEnd) {
   testChild();
 }
 
@@ -86,10 +86,9 @@ function testChild() {
         expected = 0;
         // Print this message to make it clear that the expected condition
         // (mutation event |eventName| triggered XXX times) did not happen.
-        console.log('Mutation condition not triggered: ' + TEST_HOST);
+        console.info('Mutation condition not triggered: ' + TEST_HOST);
         doRemove();
       }
     });
-
   }
 }

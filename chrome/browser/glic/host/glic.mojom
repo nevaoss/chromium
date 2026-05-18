@@ -253,7 +253,9 @@ union InvokeConversationSelection {
 struct DefaultSurfaceMojo {};
 
 // Targets a new tab for the invocation.
-struct NewTabMojo {};
+struct NewTabMojo {
+  bool open_in_foreground;
+};
 
 // Defines the surface an invocation targets.
 union InvokeTargetSurface {
@@ -1292,6 +1294,10 @@ interface WebClientHandler {
   // webview.
   SyncCookies() => (bool success);
 
+  // Notifies the browser that the client error dialog state has changed.
+  // `shown_dialog_type` is null when no dialog is shown (e.g., it was closed).
+  ClientErrorDialogStateChanged(ClientErrorDialogType? shown_dialog_type);
+
   // Log a begin event in the journal.
   LogBeginAsyncEvent(
       uint64 event_async_id, int32 task_id, string event, string details);
@@ -1624,6 +1630,20 @@ enum FeatureMode {
 };
 
 // @generate glic_api
+// Target for actuation.
+[Stable, Extensible]
+enum ActuationTarget {
+  // Will default to the agent if the target is unknown.
+  [Default] kUnknown = 0,
+  // Agent infers the best location based on the prompt.
+  kAgentDecides = 1,
+  // Forces actuation on the initiating tab.
+  kCurrentTab = 2,
+  // Forces actuation in a new tab.
+  kNewTab = 3,
+};
+
+// @generate glic_api
 // Options for the Invoke method.
 struct InvokeOptions {
   // Source that triggered this invocation.
@@ -1642,6 +1662,9 @@ struct InvokeOptions {
 
   // Feature mode to use.
   FeatureMode feature_mode;
+
+  // Target for actuation.
+  ActuationTarget actuation_target;
 
   // Whether to suppress Zero State Suggestions.
   bool disable_zero_state_suggestions;
@@ -2235,6 +2258,8 @@ enum HostCapability {
   kAutoLoginSignInWithGoogle = 10,
   // Indicates that the host supports sharing images via the invoke mechanism.
   kShareImageViaInvoke = 11,
+  // Indicates that the host supports image drag and drop from the web
+  kImgWebDragDrop = 12,
 };
 
 // @generate glic_api

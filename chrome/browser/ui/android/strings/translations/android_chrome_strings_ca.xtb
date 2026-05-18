@@ -283,7 +283,6 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="2251809247798634662">Finestra d'incògnit nova</translation>
 <translation id="2253927598983295051">Tria què vols compartir amb <ph name="APP_NAME" /></translation>
 <translation id="2261570557291037252">Més informació sobre l'aplicació</translation>
-<translation id="2270544918551255912">Llisca des de l'extrem per tornar enrere</translation>
 <translation id="2276696007612801991">Inicia la sessió al teu Compte de Google per comprovar les contrasenyes</translation>
 <translation id="2281243904606300427"><ph name="TAB_TITLE" />, pestanya d'incògnit seleccionada</translation>
 <translation id="2286841657746966508">Adreça de facturació</translation>
@@ -829,7 +828,7 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="4606559747793337066">Quan un lloc web o una aplicació demana precarregar enllaços de la seva pàgina de manera privada, Chrome encripta i precarrega les pàgines mitjançant servidors de Google sense galetes. D'aquesta manera, el lloc web precarregat no pot veure la teva identitat.</translation>
 <translation id="4616150815774728855">Obre <ph name="WEBAPK_NAME" /></translation>
 <translation id="4624065194742029982">Mode d'incògnit a Chrome</translation>
-<translation id="4634124774493850572">Fes servir la contrasenya</translation>
+<translation id="4634124774493850572">Utilitza la contrasenya</translation>
 <translation id="463471994228293091">{PASSWORDS_COUNT,plural, =1{1 contrasenya i altres elements s'han desat només en aquest dispositiu. Per utilitzar-los als altres dispositius que fas servir, desa'ls al teu Compte de Google.}other{# contrasenyes i altres elements s'han desat només en aquest dispositiu. Per utilitzar-los als altres dispositius que fas servir, desa'ls al teu Compte de Google.}}</translation>
 <translation id="4640331037679501949">{NUM_PASSWORDS,plural, =1{1 contrasenya en perill}other{# contrasenyes en perill}}</translation>
 <translation id="4641919525231168205">Ves a la pàgina següent</translation>

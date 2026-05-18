@@ -54,8 +54,7 @@ TEST_F(ScrollToolTest, Create_MissingTabId) {
       ScrollTool::Create(action.scroll(), profile_.get());
 
   EXPECT_FALSE(result.has_value());
-  EXPECT_EQ(InternalToolErrorCode::kCreationMissingRequiredFields,
-            result.error().internal_code().value());
+  EXPECT_EQ(result.error().code(), mojom::ActionResultCode::kArgumentsInvalid);
 }
 
 TEST_F(ScrollToolTest, Create_NoWebStateForTabId) {
@@ -68,8 +67,7 @@ TEST_F(ScrollToolTest, Create_NoWebStateForTabId) {
   base::expected<std::unique_ptr<ScrollTool>, ToolExecutionResult> result =
       ScrollTool::Create(action.scroll(), profile_.get());
   EXPECT_FALSE(result.has_value());
-  EXPECT_EQ(InternalToolErrorCode::kCreationTargetTabNotFound,
-            result.error().internal_code().value());
+  EXPECT_EQ(result.error().code(), mojom::ActionResultCode::kTabWentAway);
 }
 
 TEST_F(ScrollToolTest, Create_MissingDirection) {
@@ -89,8 +87,7 @@ TEST_F(ScrollToolTest, Create_MissingDirection) {
       ScrollTool::Create(action.scroll(), profile_.get());
 
   EXPECT_FALSE(result.has_value());
-  EXPECT_EQ(InternalToolErrorCode::kCreationMissingRequiredFields,
-            result.error().internal_code().value());
+  EXPECT_EQ(result.error().code(), mojom::ActionResultCode::kArgumentsInvalid);
 }
 
 TEST_F(ScrollToolTest, Create_MissingDistance) {
@@ -111,8 +108,32 @@ TEST_F(ScrollToolTest, Create_MissingDistance) {
       ScrollTool::Create(action.scroll(), profile_.get());
 
   EXPECT_FALSE(result.has_value());
-  EXPECT_EQ(InternalToolErrorCode::kCreationMissingRequiredFields,
-            result.error().internal_code().value());
+  EXPECT_EQ(result.error().code(), mojom::ActionResultCode::kArgumentsInvalid);
+}
+
+TEST_F(ScrollToolTest, Create_NodeIdWithoutDocumentIdentifier_Invalid) {
+  optimization_guide::proto::Action action;
+  auto web_state = std::make_unique<web::FakeWebState>();
+  web_state->SetBrowserState(profile_.get());
+  int tab_id = web_state->GetUniqueIdentifier().identifier();
+  browser_->GetWebStateList()->InsertWebState(
+      std::move(web_state),
+      WebStateList::InsertionParams::AtIndex(0).Activate());
+
+  action.mutable_scroll()->set_tab_id(tab_id);
+  action.mutable_scroll()->set_direction(
+      optimization_guide::proto::ScrollAction::DOWN);
+  action.mutable_scroll()->set_distance(100);
+
+  auto* target = action.mutable_scroll()->mutable_target();
+  target->set_content_node_id(123);
+  // Omit document_identifier
+
+  base::expected<std::unique_ptr<ScrollTool>, ToolExecutionResult> result =
+      ScrollTool::Create(action.scroll(), profile_.get());
+
+  EXPECT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().code(), mojom::ActionResultCode::kArgumentsInvalid);
 }
 
 TEST_F(ScrollToolTest, Create_MissingTarget_Supported) {
@@ -133,6 +154,33 @@ TEST_F(ScrollToolTest, Create_MissingTarget_Supported) {
       ScrollTool::Create(action.scroll(), profile_.get());
 
   EXPECT_TRUE(result.has_value());
+}
+
+TEST_F(ScrollToolTest, Create_BothTargetingTypes_Invalid) {
+  optimization_guide::proto::Action action;
+  auto web_state = std::make_unique<web::FakeWebState>();
+  web_state->SetBrowserState(profile_.get());
+  int tab_id = web_state->GetUniqueIdentifier().identifier();
+  browser_->GetWebStateList()->InsertWebState(
+      std::move(web_state),
+      WebStateList::InsertionParams::AtIndex(0).Activate());
+
+  action.mutable_scroll()->set_tab_id(tab_id);
+  action.mutable_scroll()->set_direction(
+      optimization_guide::proto::ScrollAction::DOWN);
+  action.mutable_scroll()->set_distance(100);
+
+  auto* target = action.mutable_scroll()->mutable_target();
+  target->mutable_coordinate()->set_x(50);
+  target->mutable_coordinate()->set_y(50);
+  target->set_content_node_id(123);
+  target->mutable_document_identifier()->set_serialized_token("dummy");
+
+  base::expected<std::unique_ptr<ScrollTool>, ToolExecutionResult> result =
+      ScrollTool::Create(action.scroll(), profile_.get());
+
+  EXPECT_FALSE(result.has_value());
+  EXPECT_EQ(result.error().code(), mojom::ActionResultCode::kArgumentsInvalid);
 }
 
 TEST_F(ScrollToolTest, Execute_WebStateDestroyed_ReturnsError) {
@@ -163,8 +211,7 @@ TEST_F(ScrollToolTest, Execute_WebStateDestroyed_ReturnsError) {
 
   ToolExecutionResult result = future.Get();
   EXPECT_FALSE(result.IsOk());
-  EXPECT_EQ(InternalToolErrorCode::kExecutionMissingDependencies,
-            result.internal_code().value());
+  EXPECT_EQ(result.code(), mojom::ActionResultCode::kTabWentAway);
 }
 
 TEST_F(ScrollToolTest, Execute_NoWebFramesManager_ReturnsError) {
@@ -197,8 +244,7 @@ TEST_F(ScrollToolTest, Execute_NoWebFramesManager_ReturnsError) {
 
   ToolExecutionResult result = future.Get();
   EXPECT_FALSE(result.IsOk());
-  EXPECT_EQ(InternalToolErrorCode::kExecutionMissingDependencies,
-            result.internal_code().value());
+  EXPECT_EQ(result.code(), mojom::ActionResultCode::kFrameWentAway);
 }
 
 TEST_F(ScrollToolTest, Execute_NoMainFrame_ReturnsError) {
@@ -240,8 +286,7 @@ TEST_F(ScrollToolTest, Execute_NoMainFrame_ReturnsError) {
 
   ToolExecutionResult result = future.Get();
   EXPECT_FALSE(result.IsOk());
-  EXPECT_EQ(InternalToolErrorCode::kExecutionMissingDependencies,
-            result.internal_code().value());
+  EXPECT_EQ(result.code(), mojom::ActionResultCode::kFrameWentAway);
 }
 
 }  // namespace actor

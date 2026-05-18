@@ -36,6 +36,7 @@ import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.blink.mojom.DisplayMode;
 import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.MonotonicNonNull;
+import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
@@ -97,7 +98,7 @@ import org.chromium.chrome.browser.tab_ui.TabContentManager;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarBehavior;
-import org.chromium.chrome.browser.toolbar.menu_button.MenuButtonCoordinator;
+import org.chromium.chrome.browser.toolbar.menu_button.MenuButtonCoordinator.VisibilityDelegate;
 import org.chromium.chrome.browser.ui.RootUiCoordinator;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuBlocker;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuCoordinator;
@@ -123,13 +124,14 @@ import org.chromium.ui.base.ActivityWindowAndroid;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.IntentRequestTracker;
 import org.chromium.ui.edge_to_edge.EdgeToEdgeManager;
-import org.chromium.ui.edge_to_edge.EdgeToEdgeSupplier;
+import org.chromium.ui.edge_to_edge.EdgeToEdgeSupplier.ChangeObserver;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 
 /** A {@link RootUiCoordinator} variant that controls UI for {@link BaseCustomTabActivity}. */
+@NullMarked
 public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
     private final CustomTabActivityTabProvider mCustomTabProvider;
     private final Supplier<CustomTabToolbarCoordinator> mToolbarCoordinator;
@@ -148,10 +150,10 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
     private @Nullable ReadAloudIphController mReadAloudIphController;
     private @Nullable GoogleBottomBarCoordinator mGoogleBottomBarCoordinator;
 
-    private EdgeToEdgeSupplier.@Nullable ChangeObserver mEdgeToEdgeChangeObserver;
+    private @Nullable ChangeObserver mEdgeToEdgeChangeObserver;
     private final Runnable mOpenInBrowserRunnable;
     private @Nullable WebAppHeaderLayoutCoordinator mWebAppHeaderLayoutCoordinator;
-    private final Supplier<BrowserServicesThemeColorProvider> mWebAppThemeColorProvider;
+    private final @Nullable Supplier<BrowserServicesThemeColorProvider> mWebAppThemeColorProvider;
     private final @Nullable String mClientPackageName;
     private boolean mHeaderAsOverlay;
     private @Nullable DesktopPopupHeaderLayoutCoordinator mDesktopPopupHeaderLayoutCoordinator;
@@ -343,7 +345,8 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
         }
     }
 
-    @Nullable MismatchNotificationChecker createMismatchNotificationChecker(String appId) {
+    @Nullable MismatchNotificationChecker createMismatchNotificationChecker(
+            @Nullable String appId) {
         CustomTabsConnection connection = CustomTabsConnection.getInstance();
         Intent intent = mIntentDataProvider.get().getIntent();
         if (!connection.isAppForAccountMismatchNotification(intent)) return null;
@@ -368,27 +371,32 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                     MismatchNotificationController.SuppressedReason.CCT_IS_OFF_THE_RECORD);
             return null;
         }
+        var identityManager = IdentityServicesProvider.get().getIdentityManager(profile);
+        assert identityManager != null;
+        var snackbarManager = mSnackbarManagerSupplier.get();
+        assert snackbarManager != null;
         return new MismatchNotificationChecker(
                 mActivity,
                 mWindowAndroid,
                 mActivityResultTracker,
                 DeviceLockActivityLauncherImpl.get(),
                 profile,
-                IdentityServicesProvider.get().getIdentityManager(profile),
+                identityManager,
                 SigninAndHistorySyncActivityLauncherImpl.get(),
-                getBottomSheetControllerSupplier(),
+                getBottomSheetControllerSupplier().asNonNull(),
                 mModalDialogManagerSupplier.get(),
-                mSnackbarManagerSupplier.get(),
+                snackbarManager,
                 (signinDelegate, accountId, lastShownTime, mimData, onClose) -> {
+                    assert mimData != null;
                     boolean show =
                             connection.shouldShowAccountMismatchNotification(
                                     intent, profile, accountId, lastShownTime, mimData);
                     if (show) {
+                        assert intent != null;
+                        var accountName = connection.getAppAccountName(intent);
+                        assert accountName != null;
                         MismatchNotificationController.get(
-                                        mWindowAndroid,
-                                        profile,
-                                        connection.getAppAccountName(intent),
-                                        signinDelegate)
+                                        mWindowAndroid, profile, accountName, signinDelegate)
                                 .showSignedOutMessage(mActivity, onClose);
                     }
                     return show;
@@ -426,7 +434,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                                         mIntentDataProvider.get()))
                         : null;
 
-        Supplier<AppMenuHandler> appMenuHandler =
+        Supplier<@Nullable AppMenuHandler> appMenuHandler =
                 () -> mAppMenuCoordinator != null ? mAppMenuCoordinator.getAppMenuHandler() : null;
 
         if (ChromeFeatureList.sCctToolbarRefactor.isEnabled()) {
@@ -517,7 +525,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
             }
         }
 
-        if (shouldEnableOmnibox) {
+        if (omniboxParams != null) {
             toolbar.setOmniboxParams(omniboxParams);
         }
     }
@@ -787,15 +795,19 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
             assert desktopWindowStateManager != null;
 
             OneshotSupplierImpl<AppMenuCoordinator> appMenuSupplier = new OneshotSupplierImpl<>();
+            assert mAppMenuCoordinator != null;
             appMenuSupplier.set(mAppMenuCoordinator);
 
+            assert mWebAppThemeColorProvider != null;
+            var webAppThemeColorProvider = mWebAppThemeColorProvider.get();
+            assert webAppThemeColorProvider != null;
             mWebAppHeaderLayoutCoordinator =
                     new WebAppHeaderLayoutCoordinator(
                             mActivity,
                             mActivity.findViewById(R.id.web_app_header_layout),
                             desktopWindowStateManager,
                             mActivityTabProvider.asObservable(),
-                            mWebAppThemeColorProvider.get(),
+                            webAppThemeColorProvider,
                             intentDataProvider,
                             getScrimManager(),
                             (tab) -> {
@@ -810,7 +822,11 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                             appMenuSupplier,
                             mBrowserControlsManager.getBrowserVisibilityDelegate(),
                             mWindowAndroid,
-                            () -> mCompositorViewHolderSupplier.get().requestFocus(),
+                            () -> {
+                                var holder = mCompositorViewHolderSupplier.get();
+                                assumeNonNull(holder);
+                                holder.requestFocus();
+                            },
                             mClientPackageName);
             mBrowserControlsManager.addObserver(mWebAppHeaderLayoutCoordinator);
             if (intentDataProvider.getResolvedDisplayMode() == DisplayMode.MINIMAL_UI
@@ -912,12 +928,14 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
         if (mEdgeToEdgeControllerSupplier.get() != null) {
             mEdgeToEdgeChangeObserver =
                     (int bottomInset, boolean isDrawingToEdge, boolean isPageOptInToEdge) -> {
+                        var window = mWindowAndroid.getWindow();
+                        if (window == null) return;
                         var systemBarColorHelper =
                                 mEdgeToEdgeManager != null
                                         ? mEdgeToEdgeManager.getEdgeToEdgeSystemBarColorHelper()
                                         : null;
                         CustomTabNavigationBarController.update(
-                                mWindowAndroid.getWindow(),
+                                window,
                                 mIntentDataProvider.get(),
                                 mActivity,
                                 isDrawingToEdge && isPageOptInToEdge,
@@ -1009,18 +1027,21 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                 mCallbackController.makeCancelable(
                         (profile) -> {
                             Profile regularProfile = profile.getOriginalProfile();
+                            assert mMessageDispatcher != null;
                             boolean didShowPrompt =
                                     RequestDesktopUtils.maybeShowDefaultEnableGlobalSettingMessage(
                                             regularProfile, mMessageDispatcher, mActivity);
 
                             if (!didShowPrompt && mAppMenuCoordinator != null) {
+                                var menuButtonView = getToolbarManager().getMenuButtonView();
+                                assert menuButtonView != null;
                                 mDesktopSiteSettingsIphController =
                                         DesktopSiteSettingsIphController.create(
                                                 mActivity,
                                                 mWindowAndroid,
                                                 mActivityTabProvider,
                                                 regularProfile,
-                                                getToolbarManager().getMenuButtonView(),
+                                                menuButtonView,
                                                 mAppMenuCoordinator.getAppMenuHandler());
                                 mPdfPageIphController =
                                         PdfPageIphController.create(
@@ -1028,7 +1049,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                                                 mWindowAndroid,
                                                 mActivityTabProvider,
                                                 profile,
-                                                getToolbarManager().getMenuButtonView(),
+                                                menuButtonView,
                                                 mAppMenuCoordinator.getAppMenuHandler(),
                                                 /* isBrowserApp= */ false);
                             }
@@ -1050,7 +1071,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
     }
 
     @Override
-    protected MenuButtonCoordinator.@Nullable VisibilityDelegate getMenuButtonVisibilityDelegate() {
+    protected @Nullable VisibilityDelegate getMenuButtonVisibilityDelegate() {
         return mToolbarButtonsCoordinator;
     }
 }

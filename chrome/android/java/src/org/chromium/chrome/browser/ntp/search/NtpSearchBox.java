@@ -8,7 +8,6 @@ import android.graphics.Point;
 import android.graphics.Rect;
 import android.text.TextWatcher;
 import android.view.View;
-import android.view.View.OnClickListener;
 import android.view.View.OnDragListener;
 
 import androidx.annotation.Px;
@@ -33,23 +32,15 @@ public interface NtpSearchBox {
 
     void setSearchText(String text);
 
-    void setSearchBoxClickListener(OnClickListener listener);
-
     void setSearchBoxDragListener(OnDragListener listener);
 
     void setSearchBoxTextWatcher(TextWatcher textWatcher);
 
     void setVoiceSearchButtonVisibility(boolean visible);
 
-    void addVoiceSearchButtonClickListener(OnClickListener listener);
-
     void setLensButtonVisibility(boolean visible);
 
-    void addLensButtonClickListener(OnClickListener listener);
-
     boolean isLensEnabled(@LensEntryPoint int lensEntryPoint);
-
-    void startLens(@LensEntryPoint int lensEntryPoint);
 
     void setHeight(@Px int height);
 
@@ -66,6 +57,9 @@ public interface NtpSearchBox {
     void setSearchEngineIcon(@Nullable StatusIconResource icon);
 
     void applyWhiteBackground(boolean apply);
+
+    /* Sets whether the fusebox is eligible. */
+    void setIsFuseboxEligible(boolean isEligible);
 
     /**
      * Calculates the percentage (between 0 and 1) of the transition from the search box to the

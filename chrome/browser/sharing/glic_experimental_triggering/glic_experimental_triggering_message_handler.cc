@@ -37,7 +37,13 @@ glic::GlicInvokeOptions CreateInvokeOptions(
     tabs::TabInterface* tab) {
   glic::GlicInvokeOptions options{
       glic::mojom::InvocationSource::kExperimentalTriggering};
-  options.target.surface = tab;
+
+  glic::NewTab new_tab;
+  new_tab.window = tab->GetBrowserWindowInterface();
+  new_tab.open_in_foreground = false;
+  options.target.surface = new_tab;
+
+  options.feature_mode = glic::mojom::FeatureMode::kExperimentalTriggering;
 
   if (request.has_request() &&
       request.request().has_trigger_actuation_request() &&
@@ -273,14 +279,14 @@ void GlicExperimentalTriggeringMessageHandler::OnMessage(
 void GlicExperimentalTriggeringMessageHandler::OnClientConnectedForUpdates(
     components_sharing_message::ServerChannelConfiguration server_channel,
     std::optional<int64_t> last_seen_sequence_number,
-    glic::GlicInstance* instance) {
+    base::WeakPtr<glic::GlicInstance> instance) {
   CHECK(instance);
 
   mojo::PendingRemote<glic::mojom::ExperimentalTriggeringUpdatesHandler> remote;
   auto listener_receiver = remote.InitWithNewPipeAndPassReceiver();
 
-  instance->host().getExperimentalTriggeringUpdates(std::move(remote),
-                                                    base::DoNothing());
+  instance->GetExperimentalTriggeringUpdates(std::move(remote),
+                                             base::DoNothing());
 
   listeners_.Add(std::make_unique<UpdatesListener>(message_sender_,
                                                    std::move(server_channel),

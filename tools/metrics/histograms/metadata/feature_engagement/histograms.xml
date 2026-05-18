@@ -611,8 +611,8 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_RtlGestureNavigation"
       summary="the in product help dialog to educate users on how to do
                gesture navigation in RTL mode."/>
-  <variant name="IPH_SearchExtensionSideloadFeature"
-      summary="Showing the Search extension sideload promo on Windows"/>
+  <variant name="IPH_SearchPromotionFeature"
+      summary="Showing the Search extension promo on Windows"/>
   <variant name="IPH_SharedHighlightingBuilder"
       summary="the in product help message to notify the user that the share
                action can preemptively share a link-to-text"/>
@@ -648,6 +648,8 @@ chromium-metrics-reviews@google.com.
   <variant name="IPH_SignInBenefitsNewSignin"
       summary="IPH informing signed-in users of benefits after the
                sync-to-signin migration."/>
+  <variant name="IPH_SiteControls"
+      summary="educating users that site controls have moved to the app menu"/>
   <variant name="IPH_SupervisedUserProfileSignin"
       summary="informing supervised users about parental controls"/>
   <variant name="IPH_TabAudioMuting" summary="muting tab audio"/>

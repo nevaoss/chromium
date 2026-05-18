@@ -7,6 +7,7 @@
 #include <inttypes.h>
 
 #include <map>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -14,6 +15,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/to_string.h"
+#include "build/blink_buildflags.h"
 #include "build/build_config.h"
 #include "services/metrics/public/cpp/ukm_decode.h"
 #include "services/metrics/public/cpp/ukm_source.h"
@@ -21,7 +23,7 @@
 #include "services/metrics/public/mojom/ukm_interface.mojom.h"
 #include "url/gurl.h"
 
-#if !BUILDFLAG(IS_IOS)
+#if BUILDFLAG(USE_BLINK)
 #include "third_party/blink/public/mojom/use_counter/metrics/webdx_feature.mojom-shared.h"
 #include "third_party/blink/public/mojom/use_counter/metrics/webdx_feature.mojom.h"
 #endif
@@ -36,7 +38,7 @@ static const uint64_t BIT_FILTER_LAST32 = 0xffffffffULL;
 struct SourceData {
   raw_ptr<UkmSource> source;
   std::vector<raw_ptr<mojom::UkmEntry, VectorExperimental>> entries;
-#if !BUILDFLAG(IS_IOS)
+#if BUILDFLAG(USE_BLINK)
   raw_ptr<const BitSet> webdx_features;
 #endif
 };
@@ -116,7 +118,7 @@ base::Value UkmDebugDataExtractor::GetStructuredData(
     source_data[v->source_id].entries.push_back(v.get());
   }
 
-#if !BUILDFLAG(IS_IOS)
+#if BUILDFLAG(USE_BLINK)
   for (const auto& kv : ukm_service->recordings_.webdx_features) {
     source_data[kv.first].webdx_features = &kv.second;
   }
@@ -130,8 +132,16 @@ base::Value UkmDebugDataExtractor::GetStructuredData(
     if (src) {
       source_dict.Set("id",
                       UkmDebugDataExtractor::UInt64AsPairOfInt(src->id()));
-      source_dict.Set("url", base::Value(src->url().spec()));
       source_dict.Set("type", GetSourceIdTypeDebugString(src->id()));
+      source_dict.Set("url", base::Value(src->url().spec()));
+      if (src->urls().size() > 1) {
+        auto redirects_list =
+            base::ListValue::with_capacity(src->urls().size());
+        for (const auto& url : src->urls()) {
+          redirects_list.Append(url.spec());
+        }
+        source_dict.Set("redirects", std::move(redirects_list));
+      }
     } else {
       source_dict.Set("id", UkmDebugDataExtractor::UInt64AsPairOfInt(kv.first));
       source_dict.Set("type", GetSourceIdTypeDebugString(kv.first));
@@ -145,7 +155,7 @@ base::Value UkmDebugDataExtractor::GetStructuredData(
 
     source_dict.Set("events", std::move(entries_list));
 
-#if !BUILDFLAG(IS_IOS)
+#if BUILDFLAG(USE_BLINK)
     if (kv.second.webdx_features) {
       base::ListValue webdx_features_list;
       for (size_t i = 0; i < kv.second.webdx_features->set_size(); ++i) {

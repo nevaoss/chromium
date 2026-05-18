@@ -14,6 +14,7 @@ group("resources") {
     ":app_icon_resources",
     ":multidevice_setup_resources",
     "accessibility:build",
+    "account_manager:resources",
     "add_supervision:resources",
     "app_install:resources",
     "bluetooth_pairing_dialog:resources",
@@ -24,6 +25,7 @@ group("resources") {
     "drive_internals:resources",
     "edu_coexistence:resources",
     "emoji_picker:resources",
+    "emulator:resources",
     "enterprise_reporting:resources",
     "floating_workspace:resources",
     "gaia_action_buttons:resources",
@@ -87,9 +89,6 @@ grit("multidevice_setup_resources") {
 
 group("closure_compile") {
   deps = [
-    "account_manager:closure_compile",
-    "account_manager/components:closure_compile",
-    "emulator:closure_compile",
     "multidevice_internals:closure_compile",
     "smb_shares:closure_compile",
   ]

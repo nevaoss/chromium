@@ -283,7 +283,6 @@
 <translation id="2251809247798634662">Новое окно в режиме инкогнито</translation>
 <translation id="2253927598983295051">Выберите, чем поделиться с <ph name="APP_NAME" /></translation>
 <translation id="2261570557291037252">Подробнее о приложении</translation>
-<translation id="2270544918551255912">Чтобы вернуться, проведите по экрану от края экрана</translation>
 <translation id="2276696007612801991">Чтобы проверить пароли, войдите в свой аккаунт Google.</translation>
 <translation id="2281243904606300427">Выбранная вкладка инкогнито "<ph name="TAB_TITLE" />"</translation>
 <translation id="2286841657746966508">Платежный адрес</translation>
@@ -1994,7 +1993,7 @@
 <translation id="94161319503679839">Закрепленная вкладка инкогнито "<ph name="TAB_TITLE" />" в режиме "Картинка в картинке"</translation>
 <translation id="945522503751344254">Отправить отзыв</translation>
 <translation id="95817756606698420">В Китае Chrome может использовать для поиска <ph name="BEGIN_BOLD" />Sogou<ph name="END_BOLD" />. Это можно изменить в <ph name="BEGIN_LINK" />Настройках<ph name="END_LINK" />.</translation>
-<translation id="961856697154696964">Данные  о работе в браузере</translation>
+<translation id="961856697154696964">Удалить данные о работе в браузере</translation>
 <translation id="963246339335003378">Открыть диспетчер задач</translation>
 <translation id="970715775301869095">Осталось <ph name="MINUTES" /> мин.</translation>
 <translation id="981121421437150478">Офлайн</translation>
