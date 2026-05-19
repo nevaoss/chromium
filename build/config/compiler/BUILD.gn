@@ -2285,12 +2285,6 @@ config("default_warnings") {
       "-Wno-unused-but-set-global",
     ]
 
-    # TODO(neva): Disable unused-but-set-global checks, if we are using ICECC
-    # (clang_use_chrome_plugins is set to false for ICECC builds).
-    if (!clang_use_chrome_plugins) {
-      cflags -= [ "-Wno-unused-but-set-global" ]
-    }
-
     cflags_cc += [
       # TODO(crbug.com/328490295): Fix and re-enable for C flags.
       "-Wenum-compare-conditional",
