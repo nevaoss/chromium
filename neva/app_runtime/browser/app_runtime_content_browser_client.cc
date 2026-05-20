@@ -643,7 +643,7 @@ void AppRuntimeContentBrowserClient::SiteInstanceGotProcessAndSite(
       extensions::ExtensionRegistry::Get(browser_context);
   const extensions::Extension* extension =
       registry->enabled_extensions().GetExtensionOrAppByURL(
-          site_instance->GetSiteURL());
+          site_instance->GetSecurityPrincipal().GetDeprecatedSiteURL());
 
   // If this isn't an extension renderer there's nothing to do.
   if (!extension) {
