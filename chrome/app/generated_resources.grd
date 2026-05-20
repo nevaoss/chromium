@@ -3558,6 +3558,12 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_INSTALL_PWA_DIALOG_TITLE" meaning="Shown only on PWA install dialogs" desc="Title for dialog that shows up when a web app needs to be installed to the operating system.">
         Install app
       </message>
+      <message name="IDS_WEB_APP_INSTALL_FLOW_SUBTITLE" desc="Subtitle for the web app install dialog flow.">
+        Access this site in a dedicated window on your computer
+      </message>
+      <message name="IDS_WEB_APP_INSTALL_FLOW_NEXT" desc="Label for the Next button in the web app install dialog flow.">
+        Next
+      </message>
       <message name="IDS_WEB_APP_INSTALL_SUCCESS_TITLE" desc="Title for PWA install dialog that appears when a web app is installed successfully.">
         Successfully installed
       </message>
@@ -8680,6 +8686,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_COMPOSEBOX_TAB_PICKER_ADD_TABS_TITLE" desc="Title for the Composebox tab picker when no tabs are selected.">
         Add recent tabs
       </message>
+      <message name="IDS_NTP_COMPOSEBOX_SHARE_TABS" desc="Label for the row in the Composebox context menu that opens a flyout listing all open tabs to share.">
+        Share tabs
+      </message>
+      <message name="IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX" desc="Suffix label appended after the title of the most recently active tab in the Share tabs flyout. Visual separation from the title is handled by CSS, not by leading white space in this string.">
+        · Recent tab
+      </message>
       <message name="IDS_NTP_COMPOSE_ADD_IMAGE"  desc="Text for a button label that opens a menu so users can add an image to their search.">
         Add image
       </message>
@@ -8752,6 +8764,11 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_COMPOSE_HINT_TEXT_ASK_ABOUT_THIS_DOC"
         desc="Placeholder text for the composebox when there is exactly one document (PDF) in the carousel.">
         Ask about this doc
+      </message>
+      <message name="IDS_COMPOSE_SHARING_TABS" desc="Text for a menu item that indicates how many tabs are currently being shared. [ICU Syntax]">
+        {TAB_COUNT, plural,
+          =1 {Sharing 1 tab}
+          other {Sharing # tabs}}
       </message>
       <message name="IDS_NTP_ACTION_CHIP_TAB_HEADING_1" desc="Heading of the tab action chip on the NTP." >
         Ask about previous tab
@@ -11478,6 +11495,9 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
             Update password
           </message>
         </if>
+        <message name="IDS_PASSWORD_MANAGER_SHORT_UPDATE_BUTTON" desc="Update button text for password manager for short width dialog">
+          Update
+        </message>
         <message name="IDS_PASSWORD_MANAGER_BUBBLE_BLOCKLIST_BUTTON" desc="Button text for the 'Save Password' bubble's 'Never remember for this site' option">
           Never
         </message>
@@ -13859,7 +13879,7 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       </if>
 
       <!-- Self share item in different entry points. -->
-      <message name="IDS_OMNIBOX_ICON_SEND_TAB_TO_SELF" desc="The label of item for share this tab to other devices in different context menus.">
+      <message name="IDS_SEND_TAB_TO_SELF_SEND_BUTTON_LABEL" desc="The label of the Send button in the Send Tab to Self bubble.">
         Send
       </message>
       <message name="IDS_OMNIBOX_TOOLTIP_SEND_TAB_TO_SELF" desc="The label of item for share this tab to other devices in different context menus.">
@@ -13870,6 +13890,12 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       </message>
       <message name="IDS_TOOLBAR_BUTTON_SEND_TAB_TO_SELF_TITLE" desc="The title for the received tab dialog shown from the toolbar button.">
         Page shared from another device
+      </message>
+      <message name="IDS_SEND_TAB_TO_SELF_DEVICE_PICKER_TITLE" desc="Title for the Send Tab To Self device picker bubble.">
+        Choose a device
+      </message>
+      <message name="IDS_SEND_TAB_TO_SELF_DEVICE_PICKER_SUBTITLE" desc="Subtitle for the Send Tab To Self device picker bubble.">
+        Select the device where you want to get this link.
       </message>
       <message name="IDS_TOOLBAR_BUTTON_SEND_TAB_TO_SELF_BUTTON_LABEL" desc="The label for the button in the received tab dialog shown from the toolbar button.">
         Open in New Tab
@@ -19357,9 +19383,6 @@ Please help our engineers fix this problem. Tell us what happened right before y
     <message name="IDS_OVERFLOW_MENU_ITEM_TEXT_MEDIA_CONTROLS" desc="Text of overflow menu item of media controls">
       Media controls
     </message>
-    <message name="IDS_OVERFLOW_MENU_ITEM_TEXT_NEW_TAB" desc="Text of overflow menu item of new tab button in tablet mode">
-      New tab
-    </message>
     <message name="IDS_OVERFLOW_MENU_ITEM_TEXT_SIDE_PANEL" desc="Text of overflow menu item of side panel button">
       Open side panel
     </message>
@@ -19368,6 +19391,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
     </message>
     <message name="IDS_OVERFLOW_MENU_ITEM_TEXT_CONTEXTUAL_TASKS" desc="Text of overflow menu item of contextual tasks button">
       Contextual Tasks
+    </message>
+    <message name="IDS_OVERFLOW_MENU_ITEM_TEXT_ENERGY_SAVER" desc="Text of overflow menu item of energy saver button">
+      Energy Saver
     </message>
 
     <!-- Promise icon status labels. -->

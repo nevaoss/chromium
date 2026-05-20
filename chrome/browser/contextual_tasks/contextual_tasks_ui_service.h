@@ -186,13 +186,17 @@ class ContextualTasksUiService : public KeyedService {
                              bool is_shown_in_tab);
 
   // Called when the WebUI is ready.
-  virtual void OnWebUIReady(const base::Uuid& task_id,
+  virtual void OnWebUIReady(BrowserWindowInterface* browser_window_interface,
+                            const base::Uuid& task_id,
                             content::WebContents* web_contents);
 
   // Called when the WebUI controller is destroyed.
   virtual void OnWebUIDestroyed(
       BrowserWindowInterface* browser_window_interface,
       const std::optional<base::Uuid>& task_id);
+
+  // Turns on smart tab sharing in the specified browser window's active WebUI.
+  virtual void TurnOnSmartTabSharing(BrowserWindowInterface* browser);
 
   // Opens the contextual tasks side panel and creates a new task with the given
   // URL as its initial thread URL.
@@ -314,6 +318,9 @@ class ContextualTasksUiService : public KeyedService {
   virtual void ShowUndoSnackbar(
       BrowserWindowInterface* browser_window_interface);
 
+  // Returns whether the provided URL is for the primary account in Chrome.
+  virtual bool IsUrlForPrimaryAccount(const GURL& url);
+
   base::WeakPtr<ContextualTasksUiService> GetWeakPtr() {
     return weak_ptr_factory_.GetWeakPtr();
   }
@@ -327,9 +334,6 @@ class ContextualTasksUiService : public KeyedService {
                                     tabs::TabInterface* tab,
                                     bool is_from_embedded_page,
                                     bool is_to_new_tab);
-
-  // Returns whether the provided URL is for the primary account in Chrome.
-  virtual bool IsUrlForPrimaryAccount(const GURL& url);
 
   // Used primarily for debugging - loads a URL in the specified WebContents.
   virtual void LoadUrlInWebContents(const GURL& url,

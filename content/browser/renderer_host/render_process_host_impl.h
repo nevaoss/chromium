@@ -1395,8 +1395,6 @@ class CONTENT_EXPORT RenderProcessHostImpl
 #if BUILDFLAG(IS_ANDROID)
   // Highest importance of all clients that contribute priority.
   ChildProcessImportance effective_importance_ = ChildProcessImportance::NORMAL;
-  // This is true if at least one of the priority clients is active.
-  bool has_active_clients_ = true;
 #endif
 
   // Clients that contribute priority to this process.

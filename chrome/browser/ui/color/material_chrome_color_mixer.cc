@@ -72,6 +72,13 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
   mixer[kColorActivityIndicatorSubtitleForeground] = {
       ui::kColorSysOnSurfaceSubtle};
 
+  // Bookmark Manager page colors.
+  mixer[kColorBookmarkManagerItemBackgroundSelected] = {
+      ui::kColorSysBaseContainer};
+  mixer[kColorBookmarkManagerItemOutline] = {ui::kColorSysPrimary};
+  mixer[kColorBookmarkManagerItemText] = {ui::kColorSysOnSurfaceSubtle};
+  mixer[kColorBookmarkManagerItemTitle] = {ui::kColorSysOnSurface};
+
   // Desktop Media picker colors.
   mixer[kColorDesktopMediaPickerDescriptionLabel] = {
       ui::kColorSysOnSurfaceSubtle};
@@ -147,6 +154,8 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
   mixer[kColorBnplIssuerLinkedIneligibleBackground] = {ui::kColorSysSurface2};
   mixer[kColorBnplIssuerLinkedPillBackground] = {ui::kColorBadgeBackground};
   mixer[kColorBnplIssuerLinkedPillForeground] = {ui::kColorBadgeForeground};
+  mixer[kColorAutofillPopupDeactivatedBnplForeground] = ui::SetAlpha(
+      ui::kColorLabelForegroundSecondary, gfx::kDisabledControlAlpha);
 
   // Tab Search colors.
   mixer[kColorTabSearchButtonBackground] = {ui::kColorSysSurface2};
@@ -339,6 +348,12 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
   mixer[kColorMultiContentsViewActiveContentOutline] = {ui::kColorSysOutline};
   mixer[kColorMultiContentsViewInactiveContentOutline] = {
       ui::kColorSysNeutralOutline};
+
+  // Nav menu item colors.
+  mixer[kColorNavMenuItem] = {ui::kColorSysOnSurface};
+  mixer[kColorNavMenuItemSelected] = {ui::kColorSysPrimary};
+  mixer[kColorNavMenuItemBackgroundHover] = {ui::kColorSysStateHover};
+  mixer[kColorNavMenuItemBackgroundSelected] = {ui::kColorSysBaseContainer};
 
   mixer[kColorNewTabButtonFocusRing] = ui::PickGoogleColorTwoBackgrounds(
       ui::kColorSysStateFocusRing,

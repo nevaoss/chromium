@@ -130,6 +130,7 @@
 #include "components/search_engines/template_url_service.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/base/signin_switches.h"
+#include "components/strings/grit/components_variant_strings.h"
 #include "components/subscription_eligibility/subscription_eligibility_service.h"
 #include "components/sync/base/features.h"
 #include "content/public/browser/isolated_web_apps_policy.h"
@@ -556,8 +557,10 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
 #if BUILDFLAG(IS_WIN)
   html_source->AddBoolean(
       "showProcessIsolationSetting",
-      base::FeatureList::IsEnabled(features::kProcessIsolationSettings) &&
-          install_static::IsSystemInstall());
+      install_static::IsSystemInstall() &&
+          (base::FeatureList::IsEnabled(features::kProcessIsolationSettings) ||
+           g_browser_process->local_state()->GetBoolean(
+               prefs::kProcessIsolationEnabled)));
 #endif  // BUILDFLAG(IS_WIN)
 
   html_source->AddBoolean(
@@ -568,17 +571,7 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       "enableLocalNetworkAccessSetting",
       base::FeatureList::IsEnabled(
           network::features::kLocalNetworkAccessChecks) &&
-          !network::features::kLocalNetworkAccessChecksWarn.Get() &&
-          !base::FeatureList::IsEnabled(
-              network::features::kLocalNetworkAccessChecksSplitPermissions));
-
-  html_source->AddBoolean(
-      "enableLocalNetworkAccessSplitPermissions",
-      base::FeatureList::IsEnabled(
-          network::features::kLocalNetworkAccessChecks) &&
-          !network::features::kLocalNetworkAccessChecksWarn.Get() &&
-          base::FeatureList::IsEnabled(
-              network::features::kLocalNetworkAccessChecksSplitPermissions));
+          !network::features::kLocalNetworkAccessChecksWarn.Get());
 
   html_source->AddBoolean(
       "autofillEnableWalletBranding",
@@ -702,6 +695,16 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       enablement_service && enablement_service->GetEnablementState() ==
                                 accessibility_annotator::
                                     RemoteAnnotatorEnablementState::kEnabled);
+  html_source->AddLocalizedString("accessibilityAnnotatorSettingsTitle",
+                                  IDS_ACCESSIBILITY_ANNOTATOR_SETTINGS_TITLE);
+  html_source->AddLocalizedString(
+      "accessibilityAnnotatorSettingsDescription",
+      IDS_ACCESSIBILITY_ANNOTATOR_SETTINGS_DESCRIPTION_DESKTOP);
+
+  html_source->AddString("webuiRefresh2026", base::FeatureList::IsEnabled(
+                                                 features::kWebuiRefresh2026)
+                                                 ? "webui-refresh-2026"
+                                                 : "");
 
   TryShowHatsSurveyWithTimeout();
 }

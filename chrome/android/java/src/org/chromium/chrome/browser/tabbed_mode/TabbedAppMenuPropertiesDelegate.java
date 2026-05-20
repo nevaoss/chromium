@@ -32,6 +32,7 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
+import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils;
 import org.chromium.chrome.browser.device.DeviceConditions;
 import org.chromium.chrome.browser.devtools.DevToolsWindowAndroid;
 import org.chromium.chrome.browser.enterprise.util.ManagedBrowserUtils;
@@ -64,6 +65,7 @@ import org.chromium.chrome.browser.ui.appmenu.AppMenuHandler;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuItemProperties;
 import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
 import org.chromium.chrome.browser.ui.extensions.ExtensionUi;
+import org.chromium.chrome.browser.ui.lens.LensOverlayTabHelper;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
 import org.chromium.components.browser_ui.accessibility.PageZoomManager;
@@ -312,7 +314,11 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         modelList.add(buildDownloadsItem());
 
         // Bookmarks
-        modelList.add(buildBookmarksItem());
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+            modelList.add(buildBookmarksParentItem());
+        } else {
+            modelList.add(buildBookmarksItem());
+        }
 
         // Recent Tabs
         if (!ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)
@@ -617,8 +623,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     }
 
     private boolean shouldShowAddToGroup() {
-        return (!ChromeFeatureList.sTabModelInitFixes.isEnabled()
-                || mTabModelSelector.isTabStateInitialized());
+        return mTabModelSelector.isTabStateInitialized();
     }
 
     private ListItem buildAddToGroupItem(@Nullable Tab currentTab) {
@@ -741,12 +746,56 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         shouldShowIconBeforeItem() ? R.drawable.ic_download_done_24dp : 0));
     }
 
+    private boolean shouldShowBookmarksParentItem() {
+        return ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU);
+    }
+
+    private ListItem buildBookmarksParentItem() {
+        assert shouldShowBookmarksParentItem();
+
+        List<ListItem> submenuItems = new ArrayList<>();
+        submenuItems.add(buildBookmarksItem());
+        submenuItems.add(buildBookmarkThisPageItem());
+        submenuItems.add(buildToggleBookmarksBarItem());
+
+        return new ListItem(
+                AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU,
+                buildModelForMenuItemWithSubmenu(
+                        R.id.bookmarks_parent_menu_id,
+                        R.string.menu_bookmarks,
+                        shouldShowIconBeforeItem()
+                                ? R.drawable.ic_star_filled_24dp
+                                : Resources.ID_NULL,
+                        submenuItems));
+    }
+
+    private ListItem buildToggleBookmarksBarItem() {
+        return new ListItem(
+                AppMenuHandler.AppMenuItemType.STANDARD,
+                buildModelForStandardMenuItem(
+                        R.id.toggle_bookmarks_bar_menu_id,
+                        BookmarkBarUtils.isUserPrefsShowBookmarksBarEnabled(
+                                        mTabModelSelector.getCurrentModel().getProfile())
+                                ? R.string.menu_hide_bookmarks_bar
+                                : R.string.menu_show_bookmarks_bar,
+                        shouldShowIconBeforeItem() ? R.drawable.ic_toolbar_24dp : 0));
+    }
+
     private ListItem buildBookmarksItem() {
         return new ListItem(
                 AppMenuHandler.AppMenuItemType.STANDARD,
                 buildModelForStandardMenuItem(
                         R.id.all_bookmarks_menu_id,
                         R.string.menu_bookmarks,
+                        shouldShowIconBeforeItem() ? R.drawable.ic_star_filled_24dp : 0));
+    }
+
+    private ListItem buildBookmarkThisPageItem() {
+        return new ListItem(
+                AppMenuHandler.AppMenuItemType.STANDARD,
+                buildModelForStandardMenuItem(
+                        R.id.bookmark_this_page_menu_id,
+                        R.string.menu_bookmark_this_page,
                         shouldShowIconBeforeItem() ? R.drawable.ic_star_filled_24dp : 0));
     }
 
@@ -1336,14 +1385,19 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
 
     private MVCListAdapter.ListItem buildLensOverlayItem(@Nullable Tab currentTab) {
         assert shouldShowLensOverlayItem(currentTab);
-        return new MVCListAdapter.ListItem(
-                AppMenuHandler.AppMenuItemType.STANDARD,
+        PropertyModel model =
                 buildModelForStandardMenuItem(
                         R.id.lens_overlay_menu_id,
                         R.string.lens_overlay_app_menu,
                         shouldShowIconBeforeItem()
                                 ? R.drawable.lens_camera_icon
-                                : Resources.ID_NULL));
+                                : Resources.ID_NULL);
+
+        // Disable the item if the overlay is already showing.
+        model.set(
+                AppMenuItemProperties.ENABLED, !LensOverlayTabHelper.isOverlayShowing(currentTab));
+
+        return new MVCListAdapter.ListItem(AppMenuHandler.AppMenuItemType.STANDARD, model);
     }
 
     private boolean shouldShowDefaultBrowserPromo() {

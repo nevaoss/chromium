@@ -281,6 +281,11 @@ class CORE_EXPORT InspectorCSSAgent final
       std::unique_ptr<protocol::CSS::SourceRange>,
       const String& text,
       std::unique_ptr<protocol::CSS::CSSContainerQuery>*) override;
+  protocol::Response setContainerQueryConditionText(
+      const String& style_sheet_id,
+      std::unique_ptr<protocol::CSS::SourceRange>,
+      const String& text,
+      std::unique_ptr<protocol::CSS::CSSContainerQuery>*) override;
   protocol::Response setScopeText(
       const String& style_sheet_id,
       std::unique_ptr<protocol::CSS::SourceRange>,
@@ -423,6 +428,8 @@ class CORE_EXPORT InspectorCSSAgent final
       std::unique_ptr<protocol::Array<protocol::CSS::CSSPropertyRule>>,
       std::unique_ptr<protocol::Array<protocol::CSS::CSSPropertyRegistration>>>
   CustomPropertiesForNode(Element* element);
+  std::unique_ptr<protocol::Array<protocol::CSS::CSSAtRule>>
+  CounterAtRulesForElement(Element* element);
   std::unique_ptr<protocol::Array<protocol::CSS::CSSAtRule>>
   FontAtRulesForNodes(HeapVector<Member<Element>>& elements);
 

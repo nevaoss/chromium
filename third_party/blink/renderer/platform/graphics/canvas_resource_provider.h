@@ -109,7 +109,6 @@ class PLATFORM_EXPORT CanvasResourceProvider
     virtual void NotifyGpuContextLost() = 0;
     virtual void InitializeForRecording(cc::PaintCanvas* canvas) const = 0;
     virtual bool IsPrinting() const { return false; }
-    virtual bool TransferToGPUTextureWasInvoked() { return false; }
   };
 
   // These values are persisted to logs. Entries should not be renumbered and
@@ -382,9 +381,6 @@ class PLATFORM_EXPORT Canvas2DResourceProviderBitmap
 // * Layers may be overlay candidates.
 class PLATFORM_EXPORT CanvasResourceProviderSharedImage
     : public CanvasResourceProvider,
-      public WebGraphicsContext3DProviderWrapper::DestructionObserver,
-      public viz::ContextLostObserver,
-      public BitmapGpuChannelLostObserver,
       public CanvasResourceSharedImage::Client,
       public FlushForImageObserver {
  public:
@@ -393,9 +389,6 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
       viz::SharedImageFormat,
       SkAlphaType,
       const gfx::ColorSpace&,
-      base::WeakPtr<WebGraphicsContext3DProviderWrapper>,
-      bool is_accelerated,
-      gpu::SharedImageUsageSet shared_image_usage_flags,
       Delegate*);
   CanvasResourceProviderSharedImage(gfx::Size,
                                     viz::SharedImageFormat,
@@ -410,10 +403,9 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   constexpr static base::TimeDelta kUnusedResourceExpirationTime =
       base::Seconds(5);
 
-  bool IsAccelerated() const final { return is_accelerated_; }
-  bool IsGpuContextLost() const override;
+  bool IsAccelerated() const override = 0;
+  virtual bool IsSoftware() const = 0;
 
-  sk_sp<SkSurface> CreateSkSurface() const override;
   void OnFlushForImage(cc::PaintImage::ContentId content_id) override = 0;
 
   // Indicates that the compositing path is single buffered, meaning that
@@ -429,30 +421,17 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
   CanvasResourceSharedImage* resource() {
     return static_cast<CanvasResourceSharedImage*>(resource_.get());
   }
-  gpu::raster::RasterInterface* RasterInterface() const;
+  virtual base::WeakPtr<WebGraphicsContext3DProviderWrapper>
+  ContextProviderWrapper() const = 0;
   virtual void EnsureWriteAccess() = 0;
   virtual void EndWriteAccess() = 0;
 
   virtual scoped_refptr<CanvasResourceSharedImage> NewOrRecycledResource() = 0;
 
-  const bool is_accelerated_;
-
   // The resource that is currently being used by this provider.
   scoped_refptr<CanvasResourceSharedImage> resource_;
 
-  base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper_;
   bool current_resource_has_write_access_ = false;
-  bool is_software_ = false;
-  bool is_cleared_ = false;
-
-  // `raster_context_provider_` holds a reference on the shared
-  // `RasterContextProvider`, to keep it alive until it notifies us after the
-  // GPU context is lost. Without this, no `CanvasResourceProvider` would get
-  // notified after the shared `WebGraphicsContext3DProviderWrapper` instance is
-  // recreated.
-  scoped_refptr<viz::RasterContextProvider> raster_context_provider_;
-  base::WeakPtr<WebGraphicsSharedImageInterfaceProvider>
-      shared_image_interface_provider_;
 
   base::WeakPtr<CanvasResourceProviderSharedImage> CreateWeakPtr();
 
@@ -470,13 +449,6 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
     return static_cast<const CanvasResourceSharedImage*>(resource_.get());
   }
 
-  // `viz::ContextLostObserver`:
-  void OnContextLost() final;
-
-  // BitmapGpuChannelLostObserver:
-  void OnGpuChannelLost() final;
-
-  bool notified_context_lost_ = false;
   base::WeakPtrFactory<CanvasResourceProviderSharedImage> weak_ptr_factory_{
       this};
 };
@@ -484,7 +456,10 @@ class PLATFORM_EXPORT CanvasResourceProviderSharedImage
 // * Subclass of CanvasResourceProviderSharedImage that is specialized for usage
 // * by Canvas2D.
 class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
-    : public CanvasResourceProviderSharedImage {
+    : public CanvasResourceProviderSharedImage,
+      public WebGraphicsContext3DProviderWrapper::DestructionObserver,
+      public viz::ContextLostObserver,
+      public BitmapGpuChannelLostObserver {
  public:
   // The returned instance will have been cleared at creation.
   static std::unique_ptr<Canvas2DResourceProviderSharedImage> CreateWithClear(
@@ -536,9 +511,12 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   bool HasUnusedResourcesForTesting() const;
   bool IsSingleBuffered() const override;
 
+  bool IsAccelerated() const override { return is_accelerated_; }
+  bool IsSoftware() const override { return is_software_; }
+  bool IsGpuContextLost() const override;
+
   // WebGraphicsContext3DProviderWrapper::DestructionObserver implementation.
   void OnContextDestroyed() override;
-
   void OnResourceRefReturned(
       scoped_refptr<CanvasResourceSharedImage>&& resource) override;
   void OnDestroyResource() override { --num_inflight_resources_; }
@@ -569,17 +547,6 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
                               int x,
                               int y) override;
 
-  // Returns the ClientSharedImage backing this CanvasResourceProvider, if one
-  // exists, after flushing the resource and signaling that an external write
-  // will occur on it. The caller should wait on `internal_access_sync_token`
-  // before writing the contents via WebGPU. A copy will be performed if either
-  // (a) the display compositor is reading the current resource or (b) the
-  // current resource does not support WebGPU usage. In these cases,
-  // `was_copy_performed` will be set to true.
-  scoped_refptr<gpu::ClientSharedImage>
-  GetBackingClientSharedImageForTransferToWebGPU(
-      gpu::SyncToken& internal_access_sync_token,
-      bool& was_copy_performed);
 
   void SetResourceRecyclingEnabled(bool value);
 
@@ -593,9 +560,19 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   ScopedRasterTimer CreateScopedRasterTimerForCanvas2D() override;
 
  private:
+  base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper()
+      const override {
+    return context_provider_wrapper_;
+  }
+
+  // viz::ContextLostObserver implementation.
+  void OnContextLost() override;
+
+  // BitmapGpuChannelLostObserver implementation.
+  void OnGpuChannelLost() override;
+
   bool ShouldReplaceTargetBuffer(
       PaintImage::ContentId content_id = PaintImage::kInvalidContentId);
-  bool IsResourceUsable(CanvasResourceSharedImage* resource);
 
   CanvasImageProvider* GetOrCreateCanvasImageProvider();
   std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
@@ -605,6 +582,9 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   void WillDrawUnaccelerated();
   void DisableLineDrawingAsPathsIfNecessaryForCanvas2D() override;
 
+  sk_sp<SkSurface> CreateSkSurface() const override;
+  gpu::raster::RasterInterface* RasterInterface() const;
+
   // If this instance is single-buffered or |resource_recycling_enabled_| is
   // false, |image_pool_| will not recycle resources.
   std::unique_ptr<gpu::SharedImagePool<CanvasResourceSharedImage>> image_pool_;
@@ -612,6 +592,22 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
   cc::PaintImage::ContentId cached_content_id_ =
       cc::PaintImage::kInvalidContentId;
   scoped_refptr<StaticBitmapImage> cached_snapshot_;
+
+  const bool is_accelerated_;
+  const bool is_software_;
+  bool is_cleared_ = false;
+  bool notified_context_lost_ = false;
+
+  base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper_;
+  base::WeakPtr<WebGraphicsSharedImageInterfaceProvider>
+      shared_image_interface_provider_;
+
+  // `raster_context_provider_` holds a reference on the shared
+  // `RasterContextProvider`, to keep it alive until it notifies us after the
+  // GPU context is lost. Without this, instances of this class would not get
+  // notified after the shared `WebGraphicsContext3DProviderWrapper` instance is
+  // recreated.
+  scoped_refptr<viz::RasterContextProvider> raster_context_provider_;
 
   bool resource_recycling_enabled_ = true;
   int num_inflight_resources_ = 0;
@@ -621,7 +617,10 @@ class PLATFORM_EXPORT Canvas2DResourceProviderSharedImage
 // * Subclass of CanvasResourceProviderSharedImage that is specialized for usage
 // * by non-Canvas2D clients.
 class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
-    : public CanvasResourceProviderSharedImage {
+    : public CanvasResourceProviderSharedImage,
+      public WebGraphicsContext3DProviderWrapper::DestructionObserver,
+      public viz::ContextLostObserver,
+      public BitmapGpuChannelLostObserver {
  public:
   static std::unique_ptr<CanvasNon2DResourceProviderSharedImage> Create(
       gfx::Size size,
@@ -682,6 +681,10 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
   void ClearUnusedResources() override;
   gpu::SharedImageUsageSet GetSharedImageUsageFlags() const;
   bool IsSingleBuffered() const override;
+
+  bool IsAccelerated() const override { return is_accelerated_; }
+  bool IsSoftware() const override { return is_software_; }
+  bool IsGpuContextLost() const override;
 
   // WebGraphicsContext3DProviderWrapper::DestructionObserver implementation.
   void OnContextDestroyed() override;
@@ -764,7 +767,21 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
   // via raster or the compositor) waits on this token.
   void EndExternalWrite(const gpu::SyncToken& external_write_sync_token);
 
+  sk_sp<SkSurface> CreateSkSurface() const override;
+  gpu::raster::RasterInterface* RasterInterface() const;
+
  private:
+  base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper()
+      const override {
+    return context_provider_wrapper_;
+  }
+
+  // viz::ContextLostObserver implementation.
+  void OnContextLost() override;
+
+  // BitmapGpuChannelLostObserver implementation.
+  void OnGpuChannelLost() override;
+
   bool ShouldReplaceTargetBuffer(
       PaintImage::ContentId content_id = PaintImage::kInvalidContentId);
   void FlushRecording(cc::PaintRecord last_recording);
@@ -782,6 +799,22 @@ class PLATFORM_EXPORT CanvasNon2DResourceProviderSharedImage
   cc::PaintImage::ContentId cached_content_id_ =
       cc::PaintImage::kInvalidContentId;
   scoped_refptr<StaticBitmapImage> cached_snapshot_;
+
+  const bool is_accelerated_;
+  const bool is_software_;
+  bool is_cleared_ = false;
+  bool notified_context_lost_ = false;
+
+  base::WeakPtr<WebGraphicsContext3DProviderWrapper> context_provider_wrapper_;
+  base::WeakPtr<WebGraphicsSharedImageInterfaceProvider>
+      shared_image_interface_provider_;
+
+  // `raster_context_provider_` holds a reference on the shared
+  // `RasterContextProvider`, to keep it alive until it notifies us after the
+  // GPU context is lost. Without this, instances of this class would not get
+  // notified after the shared `WebGraphicsContext3DProviderWrapper` instance is
+  // recreated.
+  scoped_refptr<viz::RasterContextProvider> raster_context_provider_;
 
   int num_inflight_resources_ = 0;
   int max_inflight_resources_ = 0;

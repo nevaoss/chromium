@@ -864,6 +864,17 @@
     ]
   },
   {
+    "prefix": "back-to-ad-intervention",
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": [
+      "http/tests/inspector-protocol/issues/back-to-ad-skip-issue.js"
+    ],
+    "args": ["--enable-features=BackToAdIntervention"],
+    "owners": ["yaoxia@chromium.org"],
+    "expires": "Jan 1, 2027",
+    "exclusive_tests": "ALL"
+  },
+  {
     "prefix": "disable-frequency-capping-for-overlay-popup",
     "owners": [
       "yaoxia@chromium.org",
@@ -2816,25 +2827,6 @@
       "--enable-blink-features=SnapshotScrollTimelinesPostLayout"
     ],
     "expires": "Jun 1, 2026"
-  },
-  {
-    "prefix": "sandbox-allow-same-site-none-cookies-3PC-blocked",
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/cookies/samesite/sandbox-allow-same-site-none-cookies-value.tentative.https.html"
-    ],
-    "args": [
-      "--enable-features=AllowSameSiteNoneCookiesInSandbox,ForceThirdPartyCookieBlockingEnabled"
-    ],
-    "expires": "May 1, 2026",
-    "owners": [
-      "anushamuley@chromium.org",
-      "dylancutler@google.com"
-    ]
   },
   {
     "prefix": "scalefactor150",
@@ -5186,7 +5178,7 @@
     "args": [
       "--enable-features=WebCryptoPQC"
     ],
-    "expires": "May 2, 2026"
+    "expires": "Aug 2, 2026"
   },
   "This individual test must be run separately from others, because it makes a",
   "huge memory allocation that often causes OOM if other tests have run in the",
@@ -6110,6 +6102,36 @@
     "expires": "never"
   },
   {
+    "prefix": "compositor-timeline-trigger",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-alternate.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-disarmed-by-apis.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-late-attached-timeline.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-multiple-animations.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-once.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-once-play-state.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-fill-mode-both.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-fill-mode-none.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-play.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-untriggered-animations-exposed.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/animation-trigger-addAnimation.tentative.html",
+      "external/wpt/scroll-animations/animation-trigger/timeline-trigger-source-starts-in-trigger-range.tentative.html"
+    ],
+    "args": [
+      "--enable-features=CompositorTimelineTrigger",
+      "--enable-threaded-compositing"
+    ],
+    "owners": [
+      "awogbemila@chromium.org"
+    ],
+    "expires": "Feb 17, 2027"
+  },
+  {
     "prefix": "webaudio-playback-stats",
     "platforms": ["Linux", "Mac", "Win"],
     "bases": [
@@ -6349,17 +6371,23 @@
       "Win"
     ],
     "bases": [
-      "external/wpt/svg/styling/svg-filter-render-local-frame.tentative.https.html",
-      "external/wpt/svg/styling/svg-filter-render-remote-frame-in-local-frame.tentative.https.html",
-      "external/wpt/svg/styling/svg-filter-render-remote-frame.tentative.sub.https.html",
+      "external/wpt/svg/styling/svg-filter-render-cross-origin-frame-in-same-origin-frame.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-cross-origin-frame.tentative.sub.https.html",
+      "external/wpt/svg/styling/svg-filter-render-cross-origin-navigation-in-srcdoc-frame.tentative.sub.https.html",
+      "external/wpt/svg/styling/svg-filter-render-same-origin-frame-reload-as-sandbox.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-same-origin-frame.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-sandbox-frame.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-web-plugin.tentative.https.html",
       "http/tests/inspector-protocol/issues/deprecation-prevent-svg-filter-paint.js",
       "wpt_internal/svg"
     ],
     "exclusive_tests": [
-      "external/wpt/svg/styling/svg-filter-render-local-frame.tentative.https.html",
-      "external/wpt/svg/styling/svg-filter-render-remote-frame-in-local-frame.tentative.https.html",
-      "external/wpt/svg/styling/svg-filter-render-remote-frame.tentative.sub.https.html",
+      "external/wpt/svg/styling/svg-filter-render-cross-origin-frame-in-same-origin-frame.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-cross-origin-frame.tentative.sub.https.html",
+      "external/wpt/svg/styling/svg-filter-render-cross-origin-navigation-in-srcdoc-frame.tentative.sub.https.html",
+      "external/wpt/svg/styling/svg-filter-render-same-origin-frame-reload-as-sandbox.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-same-origin-frame.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-sandbox-frame.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-web-plugin.tentative.https.html",
       "http/tests/inspector-protocol/issues/deprecation-prevent-svg-filter-paint.js",
       "wpt_internal/svg/svg-filter-render.sub.https.html"
@@ -6383,6 +6411,18 @@
     "owners": [
       "masonf@chromium.org"
     ]
+  },
+  {
+    "prefix": "disable-drag-drop-js-file-objects",
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": [
+      "external/wpt/html/editing/dnd/js-file-fallback-text-only.html"
+    ],
+    "args": [
+      "--disable-blink-features=DragAndDropJSFileObjects"
+    ],
+    "owners": ["joonehur@microsoft.com"],
+    "expires": "Dec 1, 2026"
   },
   {
     "prefix": "webmcp-kill-switch",

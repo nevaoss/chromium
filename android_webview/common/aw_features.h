@@ -22,9 +22,9 @@ BASE_DECLARE_FEATURE(kWebViewBackgroundTracingInit);
 BASE_DECLARE_FEATURE(kWebViewBypassHttpCacheForPrefetchFromHeader);
 BASE_DECLARE_FEATURE(kWebViewConfigurableLibraryPrefetch);
 BASE_DECLARE_FEATURE(kWebViewContentRestrictionSupport);
-BASE_DECLARE_FEATURE(kWebViewDeferStartupGmsCalls);
 BASE_DECLARE_FEATURE(kWebViewEarlyStartupTracing);
 BASE_DECLARE_FEATURE(kWebViewEarlyTracingInit);
+BASE_DECLARE_FEATURE(kWebViewEnableDnsPlatform);
 BASE_DECLARE_FEATURE(kWebViewFileSystemAccess);
 BASE_DECLARE_FEATURE(kWebViewInvokeZoomPickerOnGSU);
 BASE_DECLARE_FEATURE(kWebViewLazyFetchHandWritingIcon);
@@ -60,7 +60,6 @@ extern const base::FeatureParam<int> kWebViewCacheSizeLimitMinimum;
 extern const base::FeatureParam<int> kWebViewCacheSizeLimitMaximum;
 extern const base::FeatureParam<double> kWebViewCodeCacheSizeLimitMultiplier;
 BASE_DECLARE_FEATURE(kWebViewConnectToComponentProviderInBackground);
-BASE_DECLARE_FEATURE(kAndroidMetricsAsyncMetricLogging);
 BASE_DECLARE_FEATURE(kWebViewReducedSeedExpiration);
 BASE_DECLARE_FEATURE(kWebViewReducedSeedRequestPeriod);
 BASE_DECLARE_FEATURE(kWebViewOptInToGmsBindServiceOptimization);
@@ -80,9 +79,11 @@ BASE_DECLARE_FEATURE(kWebViewFasterGetDefaultUserAgent);
 BASE_DECLARE_FEATURE(kWebViewSaveStateIncludeHeaders);
 BASE_DECLARE_FEATURE(kWebViewSkipFaviconJavaCopyUntilNeeded);
 BASE_DECLARE_FEATURE(kWebViewPassNullFaviconToOnPageStarted);
+BASE_DECLARE_FEATURE(kWebViewStaticMethodsNotTriggerStartup);
 BASE_DECLARE_FEATURE(kStartupNonBlockingWebViewConstructor);
 BASE_DECLARE_FEATURE(kPostChromiumStartupInWebViewConstructor);
 BASE_DECLARE_FEATURE(kWebViewPersistHttpServerProperties);
+BASE_DECLARE_FEATURE(kWebViewNavigate);
 }  // namespace android_webview::features
 
 #endif  // ANDROID_WEBVIEW_COMMON_AW_FEATURES_H_

@@ -160,6 +160,7 @@
 <translation id="1524563461097350801">Не, дзякуй</translation>
 <translation id="1531038290222364269">Паказваць укладкі</translation>
 <translation id="1536390784834419204">Перакласці старонку</translation>
+<translation id="1539535193627863227">Паролі і ключы доступу для гэтага сайта не знойдзены</translation>
 <translation id="1540800554400757039">Радок адраса 1</translation>
 <translation id="154312949627292154">Укладкі, атрыманыя з іншых вашых прылад, будуць адкрывацца з экрана блакіроўкі.</translation>
 <translation id="1545749641540134597">Сканіраваць QR-код</translation>
@@ -441,7 +442,6 @@
 <translation id="2493269659028026145">Адразу блакіраваць з дапамогай гэтага спосабу: <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /></translation>
 <translation id="2496180316473517155">Гісторыя прагляду сайтаў</translation>
 <translation id="2496626742194544812">Перайсці на першую ўкладку</translation>
-<translation id="2497852260688568942">Сінхранізацыя выключана вашым адміністратарам</translation>
 <translation id="2499505845365628575">Знайсці ўсю гісторыю прагляду сайтаў можна ў раздзеле "<ph name="HISTORY_BUTTON_ACCESSIBILITY_LABEL" />".</translation>
 <translation id="2511117522375201202">У вас ёсць раскрытыя паролі (<ph name="NUMBER_OF_PASSWORDS" />), што можа паставіць пад пагрозу бяспеку.</translation>
 <translation id="2513103768503127042">Тут будуць знаходзіцца групы ўкладак</translation>
@@ -598,6 +598,7 @@
 <translation id="3106258548858559536">Выключыць рэжым чытання</translation>
 <translation id="3106690631878101882">Схаваць пункт "Перакласці"</translation>
 <translation id="310900540163454140">Выдаліць пароль для вэб-сайта <ph name="WEBSITE" />?</translation>
+<translation id="3109724472072898302">Згорнута</translation>
 <translation id="3112556859945124369">Пазначыць…</translation>
 <translation id="3116695032231023709">Захавайце пасведчанне асобы</translation>
 <translation id="3119874402040566234">Будзе выкананы выхад з уліковага запісу, а даныя пра работу ў браўзеры будуць выдалены</translation>
@@ -642,6 +643,7 @@
 <translation id="3245744387817103524">Не ўдалося захаваць змяненне.</translation>
 <translation id="3254806613790954367">Апошняя адкрытая ўкладка на ўсіх вашых прыладах</translation>
 <translation id="325717987950204592">Націсніце "Прыватнасць і бяспека".</translation>
+<translation id="3259451381796379533">Гэты ўліковы запіс не будзе працаваць з Gemini. Увайдзіце з дапамогай іншага Уліковага запісу Google.</translation>
 <translation id="3265736395246760288">Выконвайце ўваход хутчэй з любой сінхранізаванай прылады.</translation>
 <translation id="3272527697863656322">Скасаваць</translation>
 <translation id="3273510436356991673">Наладзіць галоўны экран</translation>
@@ -763,6 +765,7 @@
 <translation id="372676576864368480">Аўтаматычна запоўніць нумар карткі, які заканчваецца на <ph name="LAST_DIGITS" /></translation>
 <translation id="3738428049780661523">Створана <ph name="DATE" /></translation>
 <translation id="3742498336182910186">Галерэя камеры</translation>
+<translation id="3746269120925354434">Інфармацыя захавана ў Google Кашальку</translation>
 <translation id="3750225824417196283">Старонка "Новая ўкладка ў рэжыме інкогніта"</translation>
 <translation id="3751873026576444885">Спыніць пошук змесціва на экране з дапамогай Google Аб’ектыва</translation>
 <translation id="3753408171347588045">Адсочванне цэн</translation>
@@ -1076,7 +1079,6 @@
 <translation id="4824480232751123840">Аб’ём</translation>
 <translation id="4824497107140370669">{count,plural, =0{{domain}}=1{{domain} і яшчэ 1}one{{domain} і яшчэ {count}}few{{domain} і яшчэ {count}}many{{domain} і яшчэ {count}}other{{domain} і яшчэ {count}}}</translation>
 <translation id="4826588772550366629">камеру і мікрафон</translation>
-<translation id="4828431027673677473">Тавары на аснове вашых інтарэсаў</translation>
 <translation id="4829420936835028285">Змяніць групу ўкладак</translation>
 <translation id="4833786495304741580">Аўтаматычна адпраўляе ў Google статыстыку выкарыстання і справаздачы аб збоях.</translation>
 <translation id="483689884442613745">Захаваць…</translation>
@@ -1780,6 +1782,7 @@
 <translation id="7186568385131859684">Кантралюйце, як гісторыя прагляду сайтаў і іншыя вашы даныя выкарыстоўваюцца ў сэрвісах Google</translation>
 <translation id="719133302483559673">Кіруйце сваімі інтарэсамі і параметрамі</translation>
 <translation id="7191382490098297347">Відарыс з галерэі камеры</translation>
+<translation id="7203150201908454328">Разгорнута</translation>
 <translation id="7203496777391039568">Забяспечваецца прыватнасць і абарона даных вашай арганізацыі</translation>
 <translation id="720399613139435155">Збой перакладу</translation>
 <translation id="7204922488054642675">Персаналізаваныя навіны</translation>
@@ -1864,6 +1867,7 @@
 <translation id="7498234416455752244">Рэдагаваць далей</translation>
 <translation id="7500244509706269886">Аўтаматычна запоўніць форму</translation>
 <translation id="750493650310597496">Выбрана: 0</translation>
+<translation id="7505402981231763928">Каб карыстацца Gemini, трэба ўвайсці ва ўліковы запіс</translation>
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Каб блакіраваць свае ўкладкі ў рэжыме інкогніта, наладзьце Touch ID, Face ID або код доступу.</translation>
 <translation id="750886945254958667">Вы можаце захаваць гэту групу, каб дадаць укладкі пазней, ці выйсці з яе, калі доступ да гэтай групы вам больш не патрэбны</translation>
@@ -1996,6 +2000,7 @@
 <translation id="7938254975914653459">FaceTime</translation>
 <translation id="7939856641500914040">Выдаліць даныя пра работу ў браўзеры…</translation>
 <translation id="7941578031639087549">{count,plural, =1{Старонка дададзена ў спіс на прагляд у вашым уліковым запісе ({email})}one{{count} старонка дададзена ў спіс на прагляд у вашым уліковым запісе ({email})}few{{count} старонкі дададзены ў спіс на прагляд у вашым уліковым запісе ({email})}many{{count} старонак дададзена ў спіс на прагляд у вашым уліковым запісе ({email})}other{{count} старонкі дададзена ў спіс на прагляд у вашым уліковым запісе ({email})}}</translation>
+<translation id="7948579849190819732">Бягучая ўкладка</translation>
 <translation id="7952353944614086413">Адкрытыя ўкладкі і групы</translation>
 <translation id="7952670906562503188">Вы збіраецеся выдаліць некаторыя ключы доступу ({passkey_count}), а таксама спіс сайтаў і праграм, для якіх, згодна з наладамі, не захоўваюцца даныя для ўваходу. Уліковыя запісы, якія вы стварылі для сайтаў ці праграм, не будуць выдалены.</translation>
 <translation id="7958575506592576831">Інфармацыя пра бяспеку старонкі</translation>
@@ -2105,7 +2110,6 @@
 <translation id="828291969289324795">{count,plural, =1{Дадаць укладку ў новую групу}one{Дадаць укладкі ў новую групу}few{Дадаць укладкі ў новую групу}many{Дадаць укладкі ў новую групу}other{Дадаць укладкі ў новую групу}}</translation>
 <translation id="8283172974887967105">Так…</translation>
 <translation id="8289930144142009940">Апавяшчэнні па тэме "<ph name="FEATURE_NAME" />" выключаны</translation>
-<translation id="8290077367744012649">Адсочваць цэны з вашых укладак</translation>
 <translation id="8292893224181644074">Спампоўванне завершана</translation>
 <translation id="8299417921174340354">Каб выкарыстоўваць паролі, на прыладзе трэба спачатку наладзіць блакіроўку экрана.</translation>
 <translation id="8307481894409578819">Запампаваць гэты файл не ўдалося</translation>
@@ -2172,6 +2176,7 @@
 <translation id="8533670235862049797">"Бяспечны прагляд" уключаны</translation>
 <translation id="8534481786647257214">Публікацыя ў Google+ выканана.</translation>
 <translation id="8535368836838588657">Паказаць пароль</translation>
+<translation id="8540426897269305488">Увайсці праз <ph name="CELL_ACCESSIBILITY_LABEL" /></translation>
 <translation id="8545276357312221485">Праверце налады стандартнага браўзера</translation>
 <translation id="854938212724803178">У вас 1 раскрыты пароль. У мэтах бяспекі выправіце гэта.</translation>
 <translation id="8551311254462607218">У адрасным радку націсніце на значок камеры Google Аб’ектыва</translation>

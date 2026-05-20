@@ -128,14 +128,14 @@ std::unique_ptr<LayerTreeHost> LayerTreeHost::CreateThreaded(
 }
 
 std::unique_ptr<LayerTreeHost> LayerTreeHost::CreateSingleThreaded(
-    LayerTreeHostSingleThreadClient* single_thread_client,
+    LayerTreeHostSingleThreadDelegate* single_thread_delegate,
     InitParams params) {
   DCHECK(params.settings);
   scoped_refptr<base::SingleThreadTaskRunner> main_task_runner =
       params.main_task_runner;
   auto layer_tree_host = base::WrapUnique(
       new LayerTreeHost(std::move(params), CompositorMode::SINGLE_THREADED));
-  layer_tree_host->InitializeSingleThreaded(single_thread_client,
+  layer_tree_host->InitializeSingleThreaded(single_thread_delegate,
                                             std::move(main_task_runner));
   return layer_tree_host;
 }
@@ -146,7 +146,7 @@ LayerTreeHost::LayerTreeHost(InitParams params, CompositorMode mode)
       compositor_mode_(mode),
       ui_resource_manager_(std::make_unique<UIResourceManager>()),
       client_(params.client),
-      scheduling_client_(params.scheduling_client),
+      scheduling_delegate_(params.scheduling_delegate),
       rendering_stats_instrumentation_(RenderingStatsInstrumentation::Create()),
       pending_commit_state_(std::make_unique<CommitState>()),
       thread_unsafe_commit_state_(params.mutator_host),
@@ -223,10 +223,10 @@ void LayerTreeHost::InitializeThreaded(
 }
 
 void LayerTreeHost::InitializeSingleThreaded(
-    LayerTreeHostSingleThreadClient* single_thread_client,
+    LayerTreeHostSingleThreadDelegate* single_thread_delegate,
     scoped_refptr<base::SingleThreadTaskRunner> main_task_runner) {
   task_runner_provider_ = TaskRunnerProvider::Create(main_task_runner, nullptr);
-  InitializeProxy(SingleThreadProxy::Create(this, single_thread_client,
+  InitializeProxy(SingleThreadProxy::Create(this, single_thread_delegate,
                                             task_runner_provider_.get()));
 }
 
@@ -675,7 +675,7 @@ std::unique_ptr<ClientLayerTreeHostImpl> LayerTreeHost::CreateLayerTreeHostImpl(
   return CreateLayerTreeHostImplInternal(
       delegate, thread_unsafe_commit_state_.mutator_host, settings_,
       task_runner_provider_.get(), dark_mode_filter_, id_, task_graph_runner_,
-      image_worker_task_runner_, scheduling_client_,
+      image_worker_task_runner_, scheduling_delegate_,
       rendering_stats_instrumentation_.get(), compositor_delegate_weak_ptr_);
 }
 
@@ -689,7 +689,7 @@ LayerTreeHost::CreateLayerTreeHostImplInternal(
     int id,
     raw_ptr<TaskGraphRunner>& task_graph_runner,
     scoped_refptr<base::SequencedTaskRunner> image_worker_task_runner,
-    LayerTreeHostSchedulingClient* scheduling_client,
+    LayerTreeHostSchedulingDelegate* scheduling_delegate,
     RenderingStatsInstrumentation* rendering_stats_instrumentation,
     base::WeakPtr<CompositorDelegateForInput>& compositor_delegate_weak_ptr) {
   std::unique_ptr<MutatorHost> mutator_host_impl =
@@ -705,7 +705,7 @@ LayerTreeHost::CreateLayerTreeHostImplInternal(
           settings, delegate, task_runner_provider,
           rendering_stats_instrumentation, task_graph_runner,
           std::move(mutator_host_impl), dark_mode_filter, id,
-          std::move(image_worker_task_runner), scheduling_client);
+          std::move(image_worker_task_runner), scheduling_delegate);
 
   task_graph_runner = nullptr;
   dark_mode_filter = nullptr;
@@ -1050,8 +1050,7 @@ void LayerTreeHost::AddViewTransitionRequest(
   if (auto callback = request->TakeFinishedCallback()) {
     view_transition_callbacks_[request->sequence_id()] = std::move(callback);
   }
-  if (request->maybe_cross_frame_sink() &&
-      features::ShouldAckCOREarlyForViewTransition()) {
+  if (request->maybe_cross_frame_sink()) {
     auto request_token = request->token();
     auto request_type = request->type();
     if (request_type == viz::CompositorFrameTransitionDirective::Type::kSave &&

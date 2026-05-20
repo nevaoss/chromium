@@ -281,7 +281,7 @@ public class StripLayoutHelperManagerTest {
                         /* xrSpaceModeObservableSupplier= */ null,
                         mBackPressManager,
                         mSnackbarManager,
-                        () -> {},
+                        CallbackUtils.emptyCallback(),
                         mGlicKeyedService);
         mStripLayoutHelperManager.setTabStripTreeProviderForTesting(mTabStripTreeProvider);
         mStripLayoutHelperManager.setTabModelSelector(mTabModelSelector, mTabCreatorManager);
@@ -1579,7 +1579,6 @@ public class StripLayoutHelperManagerTest {
 
     @Test
     @EnableFeatures({
-        ChromeFeatureList.TOP_CONTROLS_REFACTOR,
         ChromeFeatureList.TOP_CONTROLS_REFACTOR_V2
     })
     public void testPushAndUpdateStrip_RefactorEnabled() {

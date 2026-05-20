@@ -136,7 +136,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Event.DragDrop.Surface" enum="DragAndDropSurface"
-    expires_after="2026-08-01">
+    expires_after="2026-11-01">
   <owner>mustaq@chromium.org</owner>
   <owner>gastonr@microsoft.com</owner>
   <owner>gerchiko@microsoft.com</owner>
@@ -746,6 +746,19 @@ chromium-metrics-reviews@google.com.
   <summary>
     Whether an empty gesture scroll update caused a frame to be produced when it
     is the only input (as a result of resampling).
+  </summary>
+</histogram>
+
+<histogram name="Event.ScrollJank.FrameStageScrollIdBasedCalculationIssues"
+    enum="FrameStageScrollIdBasedCalculationIssues" expires_after="2026-11-06">
+  <owner>petrcermak@chromium.org</owner>
+  <owner>kartarsingh@google.com</owner>
+  <owner>jonross@chromium.org</owner>
+  <owner>woa-performance-team@google.com</owner>
+  <summary>
+    The issues encountered by the scroll-ID-based implementation of
+    `cc::ScrollJankV4FrameStageCalculator` when processing scroll events in a
+    single frame. Only emitted for frames which contain at least one GSU.
   </summary>
 </histogram>
 

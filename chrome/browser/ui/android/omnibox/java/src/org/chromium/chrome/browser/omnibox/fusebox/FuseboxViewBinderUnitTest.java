@@ -48,9 +48,9 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButton
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
-import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.ui.UiUtils;
 import org.chromium.ui.base.TestActivity;
+import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
@@ -65,20 +65,19 @@ import java.util.List;
 public class FuseboxViewBinderUnitTest {
     @IntDef({
         Variant.DEFAULT,
-        Variant.DEDICATED_BUTTON,
         Variant.COMPACT,
     })
     @Retention(RetentionPolicy.SOURCE)
     private @interface Variant {
         int DEFAULT = 0;
-        int DEDICATED_BUTTON = 1;
-        int COMPACT = 2;
+        int COMPACT = 1;
     }
 
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     @Mock private AnchoredPopupWindow mPopupWindow;
     @Mock private DynamicRectProvider mDynamicRectProvider;
+    @Mock private WindowAndroid mWindowAndroid;
 
     private final PropertyModel mModel = new PropertyModel(FuseboxProperties.ALL_KEYS);
 
@@ -101,9 +100,11 @@ public class FuseboxViewBinderUnitTest {
                                 .inflate(R.layout.fusebox_context_popup, /* root= */ null);
         doReturn(popupView).when(mPopupWindow).getContentView();
 
+        doReturn(null).when(mWindowAndroid).getInsetObserver();
         mPopup =
                 new FuseboxPopup(
                         activity,
+                        mWindowAndroid,
                         mPopupWindow,
                         popupView,
                         mDynamicRectProvider,
@@ -114,7 +115,7 @@ public class FuseboxViewBinderUnitTest {
         mModel.set(FuseboxProperties.ADD_BUTTON_VISIBLE, true);
         mModel.set(FuseboxProperties.FUSEBOX_STATE, FuseboxState.EXPANDED);
         mModel.set(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE, AutocompleteRequestType.SEARCH);
-        mModel.set(FuseboxProperties.SHOW_DEDICATED_MODE_BUTTON, false);
+        mModel.set(FuseboxProperties.SHOW_REQUEST_TYPE_BUTTON, false);
         mModel.set(FuseboxProperties.COLOR_SCHEME, BrandedColorScheme.APP_DEFAULT);
 
         PropertyModelChangeProcessor.create(mModel, mViewHolder, FuseboxViewBinder::bind);
@@ -138,17 +139,12 @@ public class FuseboxViewBinderUnitTest {
     }
 
     private void configureFusebox(@Variant int testCase, @AutocompleteRequestType int requestType) {
-        OmniboxFeatures.sShowDedicatedModeButton.setForTesting(
-                testCase == Variant.DEDICATED_BUTTON);
-
         // Reflect the active state of the fusebox toolbar.
         mModel.set(
                 FuseboxProperties.FUSEBOX_STATE,
                 testCase == Variant.COMPACT ? FuseboxState.COMPACT : FuseboxState.EXPANDED);
         mModel.set(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE, requestType);
-        mModel.set(
-                FuseboxProperties.SHOW_DEDICATED_MODE_BUTTON,
-                OmniboxFeatures.sShowDedicatedModeButton.getValue());
+        mModel.set(FuseboxProperties.SHOW_REQUEST_TYPE_BUTTON, false);
     }
 
     @Test
@@ -237,18 +233,13 @@ public class FuseboxViewBinderUnitTest {
     }
 
     @Test
-    public void updateButtonsVisibility_AndStyling_dedicatedButton() {
-        configureFusebox(Variant.DEDICATED_BUTTON, AutocompleteRequestType.SEARCH);
-        assertEquals(View.VISIBLE, mViewHolder.requestType.getVisibility());
-        assertEquals("AI Mode", mViewHolder.requestType.getText());
+    public void updateRequestTypeButton_nonAimRequest_doesNotShowButton() {
+        mModel.set(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE, AutocompleteRequestType.SEARCH);
+        mModel.set(FuseboxProperties.SHOW_REQUEST_TYPE_BUTTON, true);
+        assertEquals(View.GONE, mViewHolder.requestType.getVisibility());
 
-        configureFusebox(Variant.DEDICATED_BUTTON, AutocompleteRequestType.DEEP_SEARCH);
+        mModel.set(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE, AutocompleteRequestType.AI_MODE);
         assertEquals(View.VISIBLE, mViewHolder.requestType.getVisibility());
-        assertEquals("Deep Search", mViewHolder.requestType.getText());
-
-        configureFusebox(Variant.DEDICATED_BUTTON, AutocompleteRequestType.CANVAS);
-        assertEquals(View.VISIBLE, mViewHolder.requestType.getVisibility());
-        assertEquals("Canvas", mViewHolder.requestType.getText());
     }
 
     @Test

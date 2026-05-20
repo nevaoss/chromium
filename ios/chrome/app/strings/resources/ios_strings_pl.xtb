@@ -160,6 +160,7 @@
 <translation id="1524563461097350801">Nie, dziękuję</translation>
 <translation id="1531038290222364269">Pokaż karty</translation>
 <translation id="1536390784834419204">Przetłumacz stronę</translation>
+<translation id="1539535193627863227">Nie znaleziono haseł ani kluczy dostępu do tej witryny</translation>
 <translation id="1540800554400757039">Adres 1</translation>
 <translation id="154312949627292154">Otwieraj karty z innych urządzeń na ekranie blokady.</translation>
 <translation id="1545749641540134597">Zeskanuj kod QR</translation>
@@ -441,7 +442,6 @@
 <translation id="2493269659028026145">Blokuj natychmiast za pomocą: <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /></translation>
 <translation id="2496180316473517155">Historia przeglądania</translation>
 <translation id="2496626742194544812">Przejdź do pierwszej karty</translation>
-<translation id="2497852260688568942">Synchronizację wyłączył administrator</translation>
 <translation id="2499505845365628575">Całą historię przeglądania znajdziesz w <ph name="HISTORY_BUTTON_ACCESSIBILITY_LABEL" />.</translation>
 <translation id="2511117522375201202">Masz hasła, które zostały przejęte (<ph name="NUMBER_OF_PASSWORDS" />), a to może narazić Cię na niebezpieczeństwo.</translation>
 <translation id="2513103768503127042">Tutaj znajdziesz grupy kart</translation>
@@ -598,6 +598,7 @@
 <translation id="3106258548858559536">Wyłącz Tryb czytania</translation>
 <translation id="3106690631878101882">Ukryj opcję Tłumacz</translation>
 <translation id="310900540163454140">Usunąć hasło użytkownika w aplikacji <ph name="WEBSITE" />?</translation>
+<translation id="3109724472072898302">Zwinięty</translation>
 <translation id="3112556859945124369">Oznacz…</translation>
 <translation id="3116695032231023709">Zapisz dowód tożsamości</translation>
 <translation id="3119874402040566234">Nastąpi wylogowanie, a dane przeglądania zostaną usunięte</translation>
@@ -642,6 +643,7 @@
 <translation id="3245744387817103524">Nie udało się zapisać zmiany.</translation>
 <translation id="3254806613790954367">Ostatnia otwarta karta na wszystkich Twoich urządzeniach</translation>
 <translation id="325717987950204592">Kliknij „Prywatność i bezpieczeństwo”</translation>
+<translation id="3259451381796379533">To konto nie będzie działać z Gemini. Zaloguj się na inne konto Google.</translation>
 <translation id="3265736395246760288">Loguj się szybciej na dowolnym z synchronizowanych urządzeń.</translation>
 <translation id="3272527697863656322">Anuluj</translation>
 <translation id="3273510436356991673">Dostosuj ekran główny</translation>
@@ -763,6 +765,7 @@
 <translation id="372676576864368480">Automatycznie uzupełnij numer karty kończący się na <ph name="LAST_DIGITS" /></translation>
 <translation id="3738428049780661523">Utworzono <ph name="DATE" /></translation>
 <translation id="3742498336182910186">Rolka z aparatu</translation>
+<translation id="3746269120925354434">Informacje zapisane w Portfelu Google</translation>
 <translation id="3750225824417196283">Nowa strona karty incognito</translation>
 <translation id="3751873026576444885">Zatrzymaj wyszukiwanie na ekranie za pomocą Obiektywu Google</translation>
 <translation id="3753408171347588045">Monitorowanie cen</translation>
@@ -1076,7 +1079,6 @@
 <translation id="4824480232751123840">Objętość</translation>
 <translation id="4824497107140370669">{count,plural, =0{{domain}}=1{{domain} i jeszcze 1}few{{domain} i jeszcze {count}}many{{domain} i jeszcze {count}}other{{domain} i jeszcze {count}}}</translation>
 <translation id="4826588772550366629">kamery i mikrofonu</translation>
-<translation id="4828431027673677473">Produkty na podstawie Twoich zainteresowań</translation>
 <translation id="4829420936835028285">Edytuj grupę kart</translation>
 <translation id="4833786495304741580">Automatycznie przesyła do Google statystyki użytkowania i raporty o awariach.</translation>
 <translation id="483689884442613745">Zapisz…</translation>
@@ -1780,6 +1782,7 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="7186568385131859684">Określ sposób wykorzystywania historii przeglądania w połączeniu z innymi danymi w usługach Google</translation>
 <translation id="719133302483559673">Zarządzaj zainteresowaniami i preferencjami.</translation>
 <translation id="7191382490098297347">Zdjęcie z rolki z aparatu</translation>
+<translation id="7203150201908454328">Rozwinięty</translation>
 <translation id="7203496777391039568">Dbamy o prywatność i bezpieczeństwo danych Twojej organizacji</translation>
 <translation id="720399613139435155">Nie udało się przetłumaczyć</translation>
 <translation id="7204922488054642675">Spersonalizowane wiadomości</translation>
@@ -1864,6 +1867,7 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="7498234416455752244">Edytuj dalej</translation>
 <translation id="7500244509706269886">Automatycznie uzupełnij formularz</translation>
 <translation id="750493650310597496">Nic nie wybrałeś</translation>
+<translation id="7505402981231763928">Aby korzystać z Gemini, musisz się zalogować</translation>
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Aby zablokować karty incognito, skonfiguruj Touch ID, Face ID lub hasło.</translation>
 <translation id="750886945254958667">Zachowaj tę grupę, aby później dodać karty, lub opuść ją, jeśli nie chcesz już mieć do niej dostępu</translation>
@@ -1996,6 +2000,7 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="7938254975914653459">FaceTime</translation>
 <translation id="7939856641500914040">Usuń dane przeglądania…</translation>
 <translation id="7941578031639087549">{count,plural, =1{Dodano stronę do listy Do przeczytania na koncie {email}}few{Dodano {count} strony do listy Do przeczytania na koncie {email}}many{Dodano {count} stron do listy Do przeczytania na koncie {email}}other{Dodano {count} strony do listy Do przeczytania na koncie {email}}}</translation>
+<translation id="7948579849190819732">Bieżąca karta</translation>
 <translation id="7952353944614086413">Otwarte karty i grupy</translation>
 <translation id="7952670906562503188">Nastąpi usunięcie {passkey_count} kluczy dostępu oraz listy witryn i aplikacji, w przypadku których nie chcesz zapisywać danych logowania. Konta utworzone przez Ciebie w witrynach i aplikacjach nie zostaną usunięte.</translation>
 <translation id="7958575506592576831">Informacje o bezpieczeństwie strony</translation>
@@ -2105,7 +2110,6 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="828291969289324795">{count,plural, =1{Dodaj kartę do nowej grupy}few{Dodaj karty do nowej grupy}many{Dodaj karty do nowej grupy}other{Dodaj karty do nowej grupy}}</translation>
 <translation id="8283172974887967105">Ustaw…</translation>
 <translation id="8289930144142009940">Powiadomienia funkcji <ph name="FEATURE_NAME" /> zostały wyłączone</translation>
-<translation id="8290077367744012649">Śledź ceny na kartach</translation>
 <translation id="8292893224181644074">Pobieranie zakończone</translation>
 <translation id="8299417921174340354">Aby użyć haseł, musisz najpierw ustawić kod dostępu na urządzeniu.</translation>
 <translation id="8307481894409578819">Nie udało się przesłać tego pliku</translation>
@@ -2172,6 +2176,7 @@ Funkcja Handoff musi być też włączona w sekcji Ogólne w Ustawieniach, a urz
 <translation id="8533670235862049797">Bezpieczne przeglądanie jest włączone</translation>
 <translation id="8534481786647257214">Post w Google+ opublikowany.</translation>
 <translation id="8535368836838588657">Pokaż hasło</translation>
+<translation id="8540426897269305488">Zaloguj się przez <ph name="CELL_ACCESSIBILITY_LABEL" /></translation>
 <translation id="8545276357312221485">Sprawdź ustawienia przeglądarki domyślnej</translation>
 <translation id="854938212724803178">Masz 1 przejęte hasło. Dla bezpieczeństwa zmień je jak najszybciej.</translation>
 <translation id="8551311254462607218">Na pasku adresu kliknij ikonę aparatu Obiektywu Google</translation>

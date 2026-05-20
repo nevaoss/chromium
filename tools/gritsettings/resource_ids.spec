@@ -198,6 +198,13 @@
     "messages": [2540],
     "includes": [2600],
   },
+  # chrome/browser/indigo/resources/internal/browser_resources.grd and
+  # chrome/browser/indigo/resources/browser_resources.grd must share the same id
+  # because they define the same resources, but only one of them is built
+  # depending on whether src_internal is available.
+  "chrome/browser/indigo/resources/internal/browser_resources.grd": {
+    "includes": [2640],
+  },
   "chrome/browser/indigo/resources/browser_resources.grd": {
     "includes": [2640],
   },
@@ -317,13 +324,17 @@
     "META": {"sizes": {"includes": [10]}},
     "includes": [3130],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/cryptohome/resources.grd": {
+    "META": {"sizes": {"includes": [5]}},
+    "includes": [3140],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/desk_api/resources.grd": {
     "META": {"sizes": {"includes": [10],}},
-    "includes": [3140],
+    "includes": [3145],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/drive_internals/resources.grd": {
     "META": {"sizes": {"includes": [5]}},
-    "includes": [3150],
+    "includes": [3155],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/edu_coexistence/resources.grd": {
     "META": {"sizes": {"includes": [20],}},
@@ -429,9 +440,13 @@
     "META": {"sizes": {"includes": [5]}},
     "includes": [3650],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/smb_shares/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [3655],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/supervision/resources.grd": {
     "META": {"sizes": {"includes": [10],}},
-    "includes": [3660],
+    "includes": [3665],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/vm/resources.grd": {
     "META": {"sizes": {"includes": [5],}},
@@ -448,6 +463,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/compose/resources.grd": {
     "META": {"sizes": {"includes": [20]}},
     "includes": [3740],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/conflicts/resources.grd": {
+    "META": {"sizes": {"includes": [5]}},
+    "includes": [3750],
   },
   "<(SHARED_INTERMEDIATE_DIR)/components/enterprise/connectors/resources/resources.grd": {
     "META": {"sizes": {"includes": [15]}},
@@ -520,6 +539,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/glic/resources.grd": {
     "META": {"sizes": {"includes": [60]}},
     "includes": [4010],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/glic/experimental_opt_in/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4020],
   },
     "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/glic/selection_overlay/resources.grd": {
     "META": {"sizes": {"includes": [10]}},
@@ -601,6 +624,10 @@
     "META": {"sizes": {"includes": [5]}},
     "includes": [4360],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/multistep_filter_internals/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4370],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/net_internals/resources.grd": {
     "META": {"sizes": {"includes": [20]}},
     "includes": [4380],
@@ -678,7 +705,7 @@
     "includes": [4665],
   },
    "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/webui_toolbar/resources.grd": {
-    "META": {"sizes": {"includes": [100]}},
+    "META": {"sizes": {"includes": [170]}},
     "includes": [4670],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/sandbox_internals/resources.grd": {
@@ -696,6 +723,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/segmentation_internals/resources.grd": {
     "META": {"sizes": {"includes": [10]}},
     "includes": [4720],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/reset_password/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4730],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/settings/resources.grd": {
     "META": {"sizes": {"includes": [600],}},
@@ -903,6 +934,10 @@
   "chrome/credential_provider/gaiacp/gaia_resources.grd": {
     "includes": [5540],
     "messages": [5560],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/renderer/resources/resources.grd": {
+    "META": {"sizes": {"includes": [100]}},
+    "includes": [5570],
   },
   "chrome/renderer/resources/renderer_resources.grd": {
     "includes": [5580],

@@ -35,18 +35,25 @@ BASE_FEATURE(kSafetyCheckModuleHiddenIfNoIssuesKillswitch,
 
 BASE_FEATURE(kTabGridSetupMode, base::FEATURE_DISABLED_BY_DEFAULT);
 
-const char kTabGridSetupModeParamName[] = "mode";
+const char kTabGridSetupModeParamName[] = "tab_grid_setup_mode";
 
-const base::FeatureParam<int> kTabGridSetupModeParam(
+const base::FeatureParam<std::string> kTabGridSetupModeParam(
     &kTabGridSetupMode,
     kTabGridSetupModeParamName,
-    static_cast<int>(TabGridSetupMode::kImmediate));
+    "immediate");
 
 TabGridSetupMode GetTabGridSetupMode() {
   if (!base::FeatureList::IsEnabled(kTabGridSetupMode)) {
     return TabGridSetupMode::kImmediate;
   }
-  return static_cast<TabGridSetupMode>(kTabGridSetupModeParam.Get());
+  std::string value = kTabGridSetupModeParam.Get();
+  if (value == "deferred") {
+    return TabGridSetupMode::kDeferred;
+  }
+  if (value == "lazy_for_testing") {
+    return TabGridSetupMode::kLazy_ForTesting;
+  }
+  return TabGridSetupMode::kImmediate;
 }
 
 BASE_FEATURE(kOmahaServiceRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -73,6 +80,12 @@ BASE_FEATURE(kIOSDockingPromoV2, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsDockingPromoV2Enabled() {
   return base::FeatureList::IsEnabled(kIOSDockingPromoV2);
+}
+
+BASE_FEATURE(kIOSHowToChrome, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsHowToChromeEnabled() {
+  return base::FeatureList::IsEnabled(kIOSHowToChrome);
 }
 
 BASE_FEATURE(kEnableLensInOmniboxCopiedImage,

@@ -397,7 +397,9 @@ if (_is_default_toolchain) {
       "//chrome/browser/data_sharing:factory_java",
       "//chrome/browser/data_sharing:instant_message_delegate_factory_java",
       "//chrome/browser/glic:public_java",
+      "//chrome/browser/glic/android:common_java",
       "//chrome/browser/glic/android:java",
+      "//chrome/browser/glic/android:menu_java",
       "//chrome/browser/page_content_annotations:factory_java",
       "//chrome/browser/prefs/android:java",
       "//chrome/browser/settings:search_java",
@@ -570,9 +572,13 @@ if (_is_default_toolchain) {
       "//chrome/browser/ui/android/native_page:java",
       "//chrome/browser/ui/android/night_mode:java",
       "//chrome/browser/ui/android/omnibox:java",
+      "//chrome/browser/ui/android/overlay_panel:java",
       "//chrome/browser/ui/android/page_info:java",
       "//chrome/browser/ui/android/pdf:java",
+      "//chrome/browser/ui/android/pdf:pdf_info_java",
+      "//chrome/browser/ui/android/pdf:pdf_page_java",
       "//chrome/browser/ui/android/pdf:pdf_provider_java",
+      "//chrome/browser/ui/android/pdf:pdf_utils_java",
       "//chrome/browser/ui/android/preloading:java",
       "//chrome/browser/ui/android/quickactionsearchwidget:java",
       "//chrome/browser/ui/android/searchactivityutils:java",
@@ -1235,7 +1241,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/ui/android/multiwindow:junit",
       "//chrome/browser/ui/android/night_mode:junit",
       "//chrome/browser/ui/android/omnibox:junit",
-      "//chrome/browser/ui/android/pdf:junit",
+      "//chrome/browser/ui/android/pdf/internal:junit",
       "//chrome/browser/ui/android/searchactivityutils:junit",
       "//chrome/browser/ui/android/settings_promo_card:junit",
       "//chrome/browser/ui/android/signin:junit",
@@ -1280,6 +1286,7 @@ if (_is_default_toolchain) {
 
   android_library("xr_java") {
     sources = [
+      "java/src/org/chromium/chrome/browser/xr/scenecore/XrModuleBridge.java",
       "java/src/org/chromium/chrome/browser/xr/scenecore/XrModuleProvider.java",
     ]
 
@@ -1291,6 +1298,7 @@ if (_is_default_toolchain) {
       "//components/module_installer/android:module_interface_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
       "//third_party/androidx:androidx_appcompat_appcompat_java",
+      "//third_party/jni_zero:jni_zero_java",
       "//ui/android:ui_java",
     ]
 
@@ -1526,7 +1534,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/translate/android:javatests",
       "//chrome/browser/ui/android/device_lock:javatests",
       "//chrome/browser/ui/android/multiwindow:javatests",
-      "//chrome/browser/ui/android/pdf:javatests",
+      "//chrome/browser/ui/android/pdf/internal:javatests",
       "//chrome/browser/ui/android/quickactionsearchwidget:javatests",
       "//chrome/browser/ui/android/signin:javatests",
       "//components/browser_ui/share/android:javatests",
@@ -2120,7 +2128,6 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/crash/ChromeMinidumpUploadJobService.java",
       "java/src/org/chromium/chrome/browser/crash/MinidumpUploadService.java",
       "java/src/org/chromium/chrome/browser/customtabs/CustomTabsConnectionService.java",
-      "java/src/org/chromium/chrome/browser/data_import/DataImporterService.java",
       "java/src/org/chromium/chrome/browser/download/DownloadBroadcastManager.java",
       "java/src/org/chromium/chrome/browser/download/DownloadForegroundService.java",
       "java/src/org/chromium/chrome/browser/incognito/IncognitoNotificationService.java",
@@ -2392,7 +2399,7 @@ if (_is_default_toolchain) {
       ":chrome_test_apk_template_resources",
       ":chrome_test_java",
       "//chrome/android/features/keyboard_accessory:test_java",
-      "//chrome/android/modules/on_demand:javatests",
+      "//chrome/android/modules/xr:javatests",
       "//chrome/browser/autofill/android:test_java",
       "//chrome/browser/autofill/test:test_java",
       "//chrome/browser/banners/android:javatests",
@@ -3006,7 +3013,6 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/customtabs/CustomTabsOpenTimeRecorder.java",
       "java/src/org/chromium/chrome/browser/customtabs/content/WebAppLaunchHandler.java",
       "java/src/org/chromium/chrome/browser/customtabs/features/TabInteractionRecorder.java",
-      "java/src/org/chromium/chrome/browser/data_import/DataImporterBridge.java",
       "java/src/org/chromium/chrome/browser/datareduction/DataSaverOSSetting.java",
       "java/src/org/chromium/chrome/browser/device_dialog/ChromeBluetoothChooserAndroidDelegate.java",
       "java/src/org/chromium/chrome/browser/device_dialog/ChromeBluetoothScanningPromptAndroidDelegate.java",
@@ -3045,6 +3051,7 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/media/MediaCaptureDevicesDispatcherAndroid.java",
       "java/src/org/chromium/chrome/browser/media/PictureInPictureActivity.java",
       "java/src/org/chromium/chrome/browser/media/PictureInPictureBoundsCacheBridge.java",
+      "java/src/org/chromium/chrome/browser/media/VideoOverlayActivity.java",
       "java/src/org/chromium/chrome/browser/media/router/ChromeMediaRouterClient.java",
       "java/src/org/chromium/chrome/browser/metrics/LaunchMetrics.java",
       "java/src/org/chromium/chrome/browser/metrics/UmaSessionStats.java",
@@ -3129,6 +3136,7 @@ if (_is_default_toolchain) {
       "java/src/org/chromium/chrome/browser/webapps/WebApkUpdateDataFetcher.java",
       "java/src/org/chromium/chrome/browser/webapps/WebApkUpdateManager.java",
       "java/src/org/chromium/chrome/browser/webapps/WebappRegistry.java",
+      "java/src/org/chromium/chrome/browser/xr/scenecore/XrModuleBridge.java",
     ]
 
     if (enable_screen_capture) {
@@ -3237,6 +3245,10 @@ if (_is_default_toolchain) {
       "//components/ukm/android:jni_headers",
       "//components/webauthn/android:jni_headers",
     ]
+
+    if (enable_extensions_core) {
+      public_deps += [ "//chrome/browser/ui/android/extensions:jni_headers" ]
+    }
   }
 
   chrome_common_shared_library("libchromefortest") {

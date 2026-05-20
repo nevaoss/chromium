@@ -273,12 +273,19 @@ std::vector<wgpu::FeatureName> GetRequiredFeatures(
     features.push_back(wgpu::FeatureName::ShaderF16);
   }
 
+  // TODO(crbug.com/42241389): When FramebufferFetch support landed in
+  // Dawn/Vulkan it caused pixel diffs and failed Dawn rolls. Once it relands
+  // enable the feature and update test baselines.
+  if (backend_type != wgpu::BackendType::Vulkan &&
+      adapter.HasFeature(wgpu::FeatureName::FramebufferFetch)) {
+    features.push_back(wgpu::FeatureName::FramebufferFetch);
+  }
+
   constexpr wgpu::FeatureName kOptionalFeatures[] = {
       wgpu::FeatureName::BGRA8UnormStorage,
       wgpu::FeatureName::BufferMapExtendedUsages,
       wgpu::FeatureName::DawnMultiPlanarFormats,
       wgpu::FeatureName::DualSourceBlending,
-      wgpu::FeatureName::FramebufferFetch,
       wgpu::FeatureName::MultiPlanarFormatExtendedUsages,
       wgpu::FeatureName::MultiPlanarFormatNv16,
       wgpu::FeatureName::MultiPlanarFormatNv24,
@@ -299,6 +306,7 @@ std::vector<wgpu::FeatureName> GetRequiredFeatures(
       wgpu::FeatureName::SharedTextureMemoryAHardwareBuffer,
       wgpu::FeatureName::SharedFenceSyncFD,
       wgpu::FeatureName::RenderPassRenderArea,
+      wgpu::FeatureName::OpaqueYCbCrAndroidForExternalTexture,
 
       // The following features are always supported by the the D3D backends.
       wgpu::FeatureName::SharedTextureMemoryD3D11Texture2D,

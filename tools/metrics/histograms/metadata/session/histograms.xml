@@ -51,7 +51,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Session.Background.TotalDuration" units="ms"
-    expires_after="2026-08-30">
+    expires_after="2026-11-01">
   <owner>asvitkine@chromium.org</owner>
   <owner>src/base/metrics/OWNERS</owner>
   <summary>
@@ -223,7 +223,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Session.LockedDuration.Restartability.{SmartRestartDuration}"
+<histogram
+    name="Session.LockedDuration.RestartabilityV2.{SmartRestartDuration}"
     enum="SmartRestartability" expires_after="2026-10-01">
   <owner>victortan@chromium.org</owner>
   <owner>chrome-analysis-team@google.com</owner>
@@ -234,6 +235,9 @@ chromium-metrics-reviews@google.com.
 
     The value is recorded as a bitmask of SmartRestartBlockReason flags. This
     histogram is sliced by the duration the OS was in the Locked state.
+
+    V2: Uses refined logic for 'Unsaved form data' requiring both user
+    interaction and a beforeunload handler.
   </summary>
   <token key="SmartRestartDuration">
     <variant name="1To5Min"/>
@@ -1085,7 +1089,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="Session.ZeroWindowDuration.Restartability.{SmartRestartDuration}"
+    name="Session.ZeroWindowDuration.RestartabilityV2.{SmartRestartDuration}"
     enum="SmartRestartability" expires_after="2026-10-01">
   <owner>victortan@chromium.org</owner>
   <owner>chrome-analysis-team@google.com</owner>
@@ -1097,6 +1101,9 @@ chromium-metrics-reviews@google.com.
     The value is recorded as a bitmask of SmartRestartBlockReason flags. This
     histogram is sliced by the duration the browser was in the Zero Window
     state.
+
+    V2: Uses refined logic for 'Unsaved form data' requiring both user
+    interaction and a beforeunload handler.
   </summary>
   <token key="SmartRestartDuration">
     <variant name="1To5Min"/>
@@ -1120,7 +1127,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SessionRestore.ForegroundTabFirstPaint4.FinishReason"
-    enum="SessionRestoreFinishReason" expires_after="2026-08-30">
+    enum="SessionRestoreFinishReason" expires_after="2026-11-01">
   <owner>joenotcharles@google.com</owner>
   <owner>catan-team@chromium.org</owner>
   <summary>
@@ -1161,7 +1168,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SessionRestore.InfoBar.TurnOffFromRestart"
-    enum="SessionRestoreInfoBarAction" expires_after="2026-09-01">
+    enum="SessionRestoreInfoBarAction" expires_after="2026-11-01">
   <owner>musalmaan@chromium.org</owner>
   <owner>koretadaniel@chromium.org</owner>
   <summary>
@@ -1171,7 +1178,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SessionRestore.InfoBar.TurnOnSessionRestore"
-    enum="SessionRestoreInfoBarAction" expires_after="2026-09-01">
+    enum="SessionRestoreInfoBarAction" expires_after="2026-11-01">
   <owner>musalmaan@chromium.org</owner>
   <owner>koretadaniel@chromium.org</owner>
   <summary>
@@ -1181,7 +1188,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SessionRestore.PageStateOldVersions" units="version"
-    expires_after="2026-08-30">
+    expires_after="2026-11-01">
   <owner>creis@chromium.org</owner>
   <owner>chrome-security-architecture@google.com</owner>
   <summary>

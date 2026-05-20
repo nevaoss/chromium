@@ -185,11 +185,6 @@ BASE_DECLARE_FEATURE_PARAM(
     int,
     kWebAuthnOpportunisticRetrievalTimeToKeepCachedKeySeconds);
 
-// Enable support for WebAuthn hints through the Windows WebAuthn API.
-// https://w3c.github.io/webauthn/#enum-hints.
-COMPONENT_EXPORT(FIDO_PUBLIC)
-BASE_DECLARE_FEATURE(kWebAuthenticationWindowsHints);
-
 // Enables the logic of refreshing the state of GPM Enclave Controller.
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_DECLARE_FEATURE(kWebAuthnEnableRefreshingStateOfGpmEnclaveController);
@@ -197,10 +192,6 @@ BASE_DECLARE_FEATURE(kWebAuthnEnableRefreshingStateOfGpmEnclaveController);
 // Support CTAP2.2 hmac-secret-mc extension in make credential request.
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_DECLARE_FEATURE(kWebAuthnHmacSecretMcExtension);
-
-// Enables support for FedCM requests through the Authenticator interface.
-COMPONENT_EXPORT(FIDO_PUBLIC)
-BASE_DECLARE_FEATURE(kFedCmInAuthenticator);
 
 // Prompt the user to set a new PIN when user verification is required to
 // fulfill a GPM passkey operation but no system UV or GPM PIN is available.

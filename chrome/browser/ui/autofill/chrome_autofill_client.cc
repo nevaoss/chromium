@@ -47,6 +47,10 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/consent_auditor/consent_auditor_factory.h"
 #include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
+#include "chrome/browser/glic/public/glic_invoke_options.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
+#include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/metrics/profile_metrics_service_factory.h"
@@ -1234,8 +1238,7 @@ void ChromeAutofillClient::ShowAutofillSuggestionsImpl(
       suggestion_controller_, delegate, web_contents(),
       PopupControllerCommon(
           element_bounds_in_screen_space, open_args.text_direction,
-          web_contents()->GetNativeView(), open_args.anchor_type,
-          open_args.show_tabbed_popup,
+          open_args.anchor_type, open_args.show_tabbed_popup,
           open_args.prefer_prev_arrow_side_on_suggestions_update),
       open_args.form_control_ax_id, open_args.trigger_source);
 
@@ -1443,6 +1446,27 @@ void ChromeAutofillClient::OnActorTaskStateChange(actor::ActorTask& task) {
   // TODO(crbug.com/469428128): Evaluate whether
   // `actor::ActorTask::State::kCreated` state should enable the actor mode.
   active_actor_task_ = task_id;
+}
+
+void ChromeAutofillClient::OpenGeminiInSidebar(const std::u16string& prompt) {
+  Profile* profile = GetProfile();
+  if (!profile || !glic::GlicEnabling::IsEnabledForProfile(profile)) {
+    return;
+  }
+  glic::GlicKeyedService* glic_keyed_service =
+      glic::GlicKeyedServiceFactory::GetGlicKeyedService(profile);
+  if (!glic_keyed_service) {
+    return;
+  }
+  tabs::TabInterface* tab = GetTabInterface();
+  if (!tab) {
+    return;
+  }
+  glic::Target target(tab);
+  glic::GlicInvokeOptions options(std::move(target),
+                                  glic::mojom::InvocationSource::kAutofill);
+  options.prompts.push_back(base::UTF16ToUTF8(prompt));
+  glic_keyed_service->Invoke(std::move(options));
 }
 
 }  // namespace autofill

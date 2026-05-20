@@ -206,7 +206,14 @@ BASE_FEATURE(kGlicActor, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicActor, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
+BASE_FEATURE(kGlicActorApcComparison, base::FEATURE_ENABLED_BY_DEFAULT);
+
+const base::FeatureParam<double> kGlicActorApcComparisonSamplingRate{
+    &kGlicActorApcComparison, "sampling-rate", 0.1};
+
 BASE_FEATURE(kGlicExperimentalTriggering, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicExperimentalTriggeringOptInBypass,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<base::TimeDelta> kGlicActorPageToolTimeout{
     &kGlicActor, "glic-actor-page-tool-timeout", base::Seconds(30)};
@@ -797,7 +804,6 @@ extern const base::FeatureParam<std::string>
 BASE_FEATURE(kGlicRecordMemoryFootprintMetrics,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicRegionSelectionNew, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicRegionSelectionLine, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -857,10 +863,6 @@ extern const base::FeatureParam<std::string> kGlicCaaGuestRedirectPatterns{
     &kGlicCaaGuestError, "glic-caa-redirect-patterns",
     "https://access.workspace.google.com https://admin.google.com "
     "https://accounts.google.com/info/servicerestricted"};
-
-BASE_FEATURE(kGlicButtonAltLabel, base::FEATURE_ENABLED_BY_DEFAULT);
-const base::FeatureParam<int> kGlicButtonAltLabelVariant{
-    &kGlicButtonAltLabel, "glic-button-alt-label-variant", 0};
 
 #if BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_DESKTOP_ANDROID)
 BASE_FEATURE(kGlicDaisyChainNewTabs, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -986,7 +988,7 @@ BASE_FEATURE(kPrivacyGuideForceAvailable, base::FEATURE_DISABLED_BY_DEFAULT);
 #if BUILDFLAG(ENABLE_PDF)
 BASE_FEATURE(kPdfGlicSummarize, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kPdfGlicSummarizeArm{&kPdfGlicSummarize, "arm",
-                                                   1};
+                                                   3};
 BASE_FEATURE(kPdfGlicSummarizeFre, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
@@ -1122,6 +1124,10 @@ const base::FeatureParam<std::string>
     kHappinessTrackingSurveysForSecurityPageTriggerId{
         &kHappinessTrackingSurveysForSecurityPage, "security-page-trigger-id",
         ""};
+const base::FeatureParam<bool>
+    kHappinessTrackingSurveysForSecurityPageRequireInteraction{
+        &kHappinessTrackingSurveysForSecurityPage,
+        "security-page-require-interaction", false};
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // Enables HTTPS-First Mode in a balanced configuration that doesn't warn on
@@ -1162,6 +1168,8 @@ const base::FeatureParam<std::string> kIndigoGenerateUrl{
     &kIndigo, "indigo_generate_url", ""};
 const base::FeatureParam<std::string> kIndigoStatusUrl{&kIndigo,
                                                        "indigo_status_url", ""};
+const base::FeatureParam<std::string> kIndigoOnboardingUrl{
+    &kIndigo, "indigo_onboarding_url", ""};
 const base::FeatureParam<std::string> kIndigoScopes{
     &kIndigo, "indigo_scopes",
     "https://www.googleapis.com/auth/userinfo.email"};
@@ -1731,6 +1739,12 @@ const base::FeatureParam<base::TimeDelta>
 // See crbug.com/475397687.
 const base::FeatureParam<bool> kWebUIReloadButtonRestartUnresponsive{
     &kWebUIReloadButton, "WebUIReloadButtonRestartUnresponsive", false};
+const base::FeatureParam<base::TimeDelta>
+    kWebUIReloadButtonRestartUnresponsiveRenderersTimeout{
+        &kWebUIReloadButton,
+        "WebUIReloadButtonRestartUnresponsiveRenderersTimeout",
+        base::Seconds(15)};
+
 // When this is enabled, the `BrowserView` will not show until the reload button
 // has finished loading.
 const base::FeatureParam<bool> kWebUIReloadButtonDeferBrowserViewShow{
@@ -1743,11 +1757,6 @@ const base::FeatureParam<bool> kWebUIReloadButtonPrewarmWebUI{
 // first non-empty paint.
 const base::FeatureParam<bool> kWebUIReloadButtonKeepVisibleUntilPaint{
     &kWebUIReloadButton, "WebUIReloadButtonKeepVisibleUntilPaint", false};
-const base::FeatureParam<base::TimeDelta>
-    kWebUIReloadButtonRestartUnresponsiveRenderersTimeout{
-        &kWebUIReloadButton,
-        "WebUIReloadButtonRestartUnresponsiveRenderersTimeout",
-        base::Seconds(15)};
 // When enabled, the split tabs button will be replaced with WebUI loaded from
 // chrome://webui-toolbar.top-chrome.
 // crbug.com/470039098

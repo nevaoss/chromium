@@ -3,15 +3,11 @@
 // found in the LICENSE file.
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_bubble_controller.h"
 
+#include <string_view>
 #include <vector>
 
 #include "base/strings/utf_string_conversions.h"
-#include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
-#include "base/uuid.h"
-#include "chrome/browser/notifications/notification_display_service.h"
-#include "chrome/browser/notifications/notification_display_service_factory.h"
-#include "chrome/browser/notifications/notification_handler.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/send_tab_to_self/send_tab_to_self_page_handler.h"
 #include "chrome/browser/send_tab_to_self/send_tab_to_self_util.h"
@@ -47,6 +43,7 @@
 #include "components/send_tab_to_self/target_device_info.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/strings/grit/components_strings.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -54,7 +51,6 @@
 #include "ui/base/window_open_disposition.h"
 #include "ui/base/window_open_disposition_utils.h"
 #include "ui/events/event.h"
-#include "ui/message_center/public/cpp/notification.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 
@@ -177,7 +173,8 @@ SendTabToSelfBubbleController::GetEntryPointDisplayReason() {
 }
 
 void SendTabToSelfBubbleController::OnDeviceSelected(
-    const std::string& target_device_guid) {
+    const std::string& target_device_guid,
+    std::string_view device_name) {
   // TODO(crbug.com/40817150): This duplicates the ShouldOfferFeature() check,
   // instead the 2 codepaths should share code.
   SendTabToSelfPageHandler* handler =
@@ -188,7 +185,7 @@ void SendTabToSelfBubbleController::OnDeviceSelected(
       target_device_guid, url, base::UTF16ToUTF8(GetWebContents().GetTitle()),
       base::BindOnce(
           &SendTabToSelfBubbleController::HandleSendTabToDeviceResult,
-          weak_ptr_factory_.GetWeakPtr(), url));
+          weak_ptr_factory_.GetWeakPtr(), url, std::string(device_name)));
 }
 
 void SendTabToSelfBubbleController::OnManageDevicesClicked(
@@ -231,12 +228,13 @@ void SendTabToSelfBubbleController::OnBackButtonPressed() {
 
 void SendTabToSelfBubbleController::HandleSendTabToDeviceResult(
     const GURL& url,
+    std::string_view device_name,
     SendTabToSelfResult result) {
   switch (result) {
     case SendTabToSelfResult::kSuccess:
     case SendTabToSelfResult::kSuccessThrottled:
       if (base::FeatureList::IsEnabled(kSendTabToSelfPostSendToast)) {
-        ShowTabSentSuccessToast(&GetWebContents());
+        ShowTabSentSuccessToast(&GetWebContents(), device_name);
       }
       break;
     case SendTabToSelfResult::kFailureInvalidUrl:
@@ -246,28 +244,9 @@ void SendTabToSelfBubbleController::HandleSendTabToDeviceResult(
     case SendTabToSelfResult::kFailureSyncDisabled:
     case SendTabToSelfResult::kFailureEntryRemoved:
     case SendTabToSelfResult::kFailureCommitTimeout:
-      OnSendFailed(url);
+      ShowTabSentFailure(&GetWebContents(), url);
       break;
   }
-}
-
-void SendTabToSelfBubbleController::OnSendFailed(const GURL& url) {
-  // TODO(crbug.com/40811626): Decide how to handle failures in STTSv2. For now,
-  // keep the STTSv1-style notification.
-  message_center::Notification notification(
-      message_center::NOTIFICATION_TYPE_SIMPLE,
-      "shared" + base::Uuid::GenerateRandomV4().AsLowercaseString(),
-      l10n_util::GetStringUTF16(
-          IDS_MESSAGE_NOTIFICATION_SEND_TAB_TO_SELF_CONFIRMATION_FAILURE_TITLE),
-      l10n_util::GetStringUTF16(
-          IDS_MESSAGE_NOTIFICATION_SEND_TAB_TO_SELF_CONFIRMATION_FAILURE_MESSAGE),
-      ui::ImageModel(), base::UTF8ToUTF16(url.host()), url,
-      message_center::NotifierId(url), message_center::RichNotificationData(),
-      /*delegate=*/nullptr);
-
-  NotificationDisplayServiceFactory::GetForProfile(GetProfile())
-      ->Display(NotificationHandler::Type::SHARING, notification,
-                /*metadata=*/nullptr);
 }
 
 bool SendTabToSelfBubbleController::InitialSendAnimationShown() {

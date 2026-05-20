@@ -602,23 +602,10 @@ inline constexpr char kTextToSpeechVolume[] = "settings.tts.speech_volume";
 inline constexpr char kManagedSessionUseFullLoginWarning[] =
     "managed_session.use_full_warning";
 
-
-// Last time the kChildScreenTimeMilliseconds was saved.
-inline constexpr char kLastChildScreenTimeSaved[] =
-    "last_child_screen_time_saved";
-
-// Last time that the kChildScreenTime pref was reset.
-inline constexpr char kLastChildScreenTimeReset[] =
-    "last_child_screen_time_reset";
-
 // Amount of times the release notes suggestion chip should be
 // shown before it disappears.
 inline constexpr char kReleaseNotesSuggestionChipTimesLeftToShow[] =
     "times_left_to_show_release_notes_suggestion_chip";
-
-
-
-
 
 // A string pref storing the path of device wallpaper image file.
 inline constexpr char kDeviceWallpaperImageFilePath[] =
@@ -1713,8 +1700,10 @@ inline constexpr char kDisableExtensions[] = "extensions.disabled";
 inline constexpr char kNtpCollapsedForeignSessions[] =
     "ntp.collapsed_foreign_sessions";
 
+// LINT.IfChange
 inline constexpr char kNtpCustomBackgroundDict[] =
     "ntp.custom_background_dict2";
+// LINT.ThenChange(//components/segmentation_platform/embedder/home_modules/ntp_theme_promo.cc)
 inline constexpr char kNtpCustomBackgroundLocalToDevice[] =
     "ntp.custom_background_local_to_device";
 inline constexpr char kNtpCustomBackgroundLocalToDeviceId[] =
@@ -2490,6 +2479,8 @@ inline constexpr char kMaxConnectionsPerProxy[] =
     "net.max_connections_per_proxy";
 inline constexpr char kMaxConnectionsPerProxyForWebSocket[] =
     "net.max_connections_per_proxy_for_websocket";
+inline constexpr char kAllowSocketPoolSizeRandomizationForProxies[] =
+    "net.allow_socket_pool_size_randomization_for_proxies";
 
 #if BUILDFLAG(IS_MAC)
 // A boolean that tracks whether to show a notification when trying to quit
@@ -2640,21 +2631,6 @@ inline constexpr char kSigninInterceptionEnabled[] =
 // an offer is checked.
 inline constexpr char kEchoCheckedOffers[] = "EchoCheckedOffers";
 #endif  // BUILDFLAG(IS_CHROMEOS)
-
-// Device identifier used by CryptAuth stored in local state. This ID is
-// combined with a user ID before being registered with the CryptAuth server,
-// so it can't correlate users on the same device.
-// Note: This constant was previously specific to EasyUnlock, so the string
-//       constant contains "easy_unlock".
-inline constexpr char kCryptAuthDeviceId[] = "easy_unlock.device_id";
-
-// The most recently retrieved Instance ID and Instance ID token for the app ID,
-// "com.google.chrome.cryptauth", used by the CryptAuth client. These prefs are
-// used to track how often (if ever) the Instance ID and Instance ID token
-// rotate because CryptAuth assumes the Instance ID is static.
-inline constexpr char kCryptAuthInstanceId[] = "cryptauth.instance_id";
-inline constexpr char kCryptAuthInstanceIdToken[] =
-    "cryptauth.instance_id_token";
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 // Policy that indicates how to handle animated images.

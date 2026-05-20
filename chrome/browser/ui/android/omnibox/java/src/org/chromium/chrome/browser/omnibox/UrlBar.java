@@ -184,6 +184,13 @@ public class UrlBar extends AutocompleteEditText {
 
         /** Called to notify that UrlBar has been touched after focus. */
         void onTouchAfterFocus();
+
+        /**
+         * Called when an editor action is performed on the UrlBar.
+         *
+         * @param actionCode The action code performed.
+         */
+        default void onEditorAction(int actionCode) {}
     }
 
     /** Delegate that provides the additional functionality to the textual context menus. */
@@ -236,10 +243,19 @@ public class UrlBar extends AutocompleteEditText {
                 this,
                 () -> {
                     // We have now avoided the first draw problem (see the comments above) so we
-                    // want to
-                    // make the URL bar focusable so that touches etc. activate it.
+                    // want to make the URL bar focusable so that touches etc. activate it.
                     setFocusable(mAllowFocus);
                     setFocusableInTouchMode(mAllowFocus);
+
+                    // Override Android defaults that are applied by the OS as part of the text
+                    // initialization. If applied directly from the constructor - Android will
+                    // revert these settings to what it assumes is right.
+                    // Android does that because the `inputType` is intentionally not set to
+                    // `multiline`, however the moment we do that - Android applies other
+                    // incompatible defaults (and starts wrapping URLs).
+                    setSingleLine(false);
+                    setMaxLines(MULTILINE_EDIT_MAX_LINES);
+                    setHorizontallyScrolling(true);
                 });
 
         setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -391,15 +407,9 @@ public class UrlBar extends AutocompleteEditText {
     }
 
     private void updateUrlBarForMultilineInput() {
-        if (mFocused && mAllowMultilineInput) {
-            setSingleLine(false);
-            setMaxLines(MULTILINE_EDIT_MAX_LINES);
-            setHorizontallyScrolling(!mCurrentInputCanBeWrapped);
-        } else {
-            setSingleLine(true);
-            setMaxLines(1);
-            setHorizontallyScrolling(true);
-        }
+        boolean wantWrap = mFocused && mAllowMultilineInput && mCurrentInputCanBeWrapped;
+        if (wantWrap == !isHorizontallyScrollable()) return;
+        setHorizontallyScrolling(!wantWrap);
     }
 
     /**
@@ -579,6 +589,14 @@ public class UrlBar extends AutocompleteEditText {
         }
 
         return result;
+    }
+
+    @Override
+    public void onEditorAction(int actionCode) {
+        if (mUrlBarDelegate != null) {
+            mUrlBarDelegate.onEditorAction(actionCode);
+        }
+        super.onEditorAction(actionCode);
     }
 
     /**
@@ -957,8 +975,6 @@ public class UrlBar extends AutocompleteEditText {
         int textLength = text.length();
         if (textLength == 0) return;
 
-        clearBoundsEllipsisSpans(text);
-
         Layout textLayout = getLayout();
         if (textLayout != null) {
             int ellipsisWidth = (int) textLayout.getPaint().measureText(EllipsisSpan.ELLIPSIS);
@@ -969,12 +985,24 @@ public class UrlBar extends AutocompleteEditText {
                             .getOffsetForAdvance(
                                     text, 0, textLength, 0, textLength, false, cutoffWidth);
 
+            BoundsEllipsisSpan[] spans = text.getSpans(0, textLength, BoundsEllipsisSpan.class);
             if (finalVisibleCharIndex < textLength) {
+                if (spans != null
+                        && spans.length == 1
+                        && text.getSpanStart(spans[0]) == finalVisibleCharIndex
+                        && text.getSpanEnd(spans[0]) == textLength) {
+                    return;
+                }
+                clearBoundsEllipsisSpans(text);
                 text.setSpan(
                         BoundsEllipsisSpan.INSTANCE,
                         finalVisibleCharIndex,
                         textLength,
                         Editable.SPAN_INCLUSIVE_EXCLUSIVE);
+            } else {
+                if (spans != null && spans.length > 0) {
+                    clearBoundsEllipsisSpans(text);
+                }
             }
         }
     }
@@ -1218,7 +1246,10 @@ public class UrlBar extends AutocompleteEditText {
             // Confirmation check: be sure we don't re-request layout as a result of something that
             // happens in scrollDisplayText(). However, isLayoutRequested could be true before
             // scrollDisplayText() due to what happened within super.layout(), e.g. clear focus.
-            assert isLayoutRequestedBeforeScrollDisplayText || !isLayoutRequested();
+            // Note: applyBoundsEllipsis() may request layout when adding/removing spans.
+            assert isLayoutRequestedBeforeScrollDisplayText
+                    || !isLayoutRequested()
+                    || shouldApplyBoundsEllipsis();
         }
     }
 

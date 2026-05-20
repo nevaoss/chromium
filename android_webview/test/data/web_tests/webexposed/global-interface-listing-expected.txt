@@ -1278,7 +1278,6 @@ interface CanvasRenderingContext2D
     method getContextAttributes
     method getImageData
     method getLineDash
-    method getTextureFormat
     method getTransform
     method isContextLost
     method isPointInPath
@@ -1302,8 +1301,6 @@ interface CanvasRenderingContext2D
     method strokeRect
     method strokeText
     method strokeTextCluster
-    method transferBackFromGPUTexture
-    method transferToGPUTexture
     method transform
     method translate
     setter direction
@@ -6411,6 +6408,7 @@ interface ModelContext : EventTarget
     attribute @@toStringTag
     getter ontoolchange
     method constructor
+    method executeTool
     method getTools
     method registerTool
     setter ontoolchange
@@ -6950,7 +6948,6 @@ interface OffscreenCanvasRenderingContext2D
     method getContextAttributes
     method getImageData
     method getLineDash
-    method getTextureFormat
     method getTransform
     method isContextLost
     method isPointInPath
@@ -6974,8 +6971,6 @@ interface OffscreenCanvasRenderingContext2D
     method strokeRect
     method strokeText
     method strokeTextCluster
-    method transferBackFromGPUTexture
-    method transferToGPUTexture
     method transform
     method translate
     setter direction
@@ -9577,7 +9572,15 @@ interface SourceBufferList : EventTarget
     setter onremovesourcebuffer
 interface SpeculationData
     attribute @@toStringTag
+    getter navigations
     getter preloads
+    method constructor
+interface SpeculationNavigationData
+    attribute @@toStringTag
+    getter eagerness
+    getter tags
+    getter type
+    getter url
     method constructor
 interface SpeechGrammar
     attribute @@toStringTag

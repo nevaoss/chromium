@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
-#include "base/power_monitor/power_observer.h"
 #include "components/viz/common/display/update_vsync_parameters_callback.h"
 #include "components/viz/common/frame_sinks/begin_frame_source.h"
 #include "components/viz/service/display/output_surface.h"
@@ -25,8 +24,7 @@ class OutputSurface;
 class VIZ_COMMON_EXPORT ExternalBeginFrameSourceMac
     : public ExternalBeginFrameSource,
       public ExternalBeginFrameSourceClient,
-      public DelayBasedTimeSourceClient,
-      public base::PowerSuspendObserver {
+      public DelayBasedTimeSourceClient {
  public:
   using MultipleHWRefreshRatesCallback = base::RepeatingCallback<void(bool)>;
 
@@ -76,9 +74,6 @@ class VIZ_COMMON_EXPORT ExternalBeginFrameSourceMac
   void StartBeginFrame();
   void StopBeginFrame();
 
-  // Implements base::PowerSuspendObserver.
-  void OnResume() override;
-
   BeginFrameArgsGenerator begin_frame_args_generator_;
 
   bool needs_begin_frames_ = false;
@@ -105,6 +100,12 @@ class VIZ_COMMON_EXPORT ExternalBeginFrameSourceMac
   base::TimeDelta last_interval_;
 
   bool just_started_begin_frame_ = false;
+
+  // To prevent the DisplayLink from constantly toggling on and off, allow it
+  // to continue running for this many consecutive VSyncs after it is no longer
+  // needed.
+  constexpr static int kMaxKeepAliveCount = 20;
+  int vsync_callback_keep_alive_counter_ = 0;
 
   const raw_ptr<OutputSurface, DanglingUntriaged> output_surface_;
   UpdateVSyncParametersCallback update_vsync_params_callback_;

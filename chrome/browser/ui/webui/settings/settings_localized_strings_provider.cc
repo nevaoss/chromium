@@ -369,7 +369,6 @@ void AddAboutStrings(content::WebUIDataSource* html_source, Profile* profile) {
 
 void AddAiStrings(content::WebUIDataSource* html_source) {
   static constexpr webui::LocalizedString kLocalizedStrings[] = {
-      {"aiInnovationsPageTitle", IDS_SETTINGS_AI_INNOVATIONS_PAGE_TITLE},
       {"aiPageMainTitle", IDS_SETTINGS_AI_PAGE_MAIN_TITLE},
       {"aiPageMainSublabel1", IDS_SETTINGS_AI_PAGE_MAIN_SUBLABEL_1},
       {"aiPageMainSublabel2", IDS_SETTINGS_AI_PAGE_MAIN_SUBLABEL_2},
@@ -481,6 +480,10 @@ void AddAiStrings(content::WebUIDataSource* html_source) {
       {"aiSuggestionsConsider2Link",
        IDS_CONTEXTUAL_CUEING_SETTINGS_CONSIDER_2_LINK}};
   html_source->AddLocalizedStrings(kLocalizedStrings);
+  html_source->AddLocalizedString(
+      "aiPageTitle", base::FeatureList::IsEnabled(features::kWebuiRefresh2026)
+                         ? IDS_SETTINGS_AI_PAGE_TITLE
+                         : IDS_SETTINGS_AI_INNOVATIONS_PAGE_TITLE);
 
   html_source->AddString("aiPageMainManagedLearnMoreUrl",
                          chrome::kAiSettingsLearnMorePageManagedUrl);
@@ -2648,8 +2651,6 @@ void AddPrivacyGuideStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_PRIVACY_GUIDE_COMPLETION_CARD_LEAVE_BUTTON},
       {"privacyGuideCompletionCardPrivacySandboxLabel",
        IDS_SETTINGS_PRIVACY_GUIDE_COMPLETION_CARD_PRIVACY_SANDBOX_LABEL},
-      {"privacyGuideCompletionCardPrivacySandboxSubLabel",
-       IDS_SETTINGS_PRIVACY_GUIDE_COMPLETION_CARD_PRIVACY_SANDBOX_SUB_LABEL},
       {"privacyGuideCompletionCardPrivacySandboxSubLabelAdTopics",
        IDS_SETTINGS_PRIVACY_GUIDE_COMPLETION_CARD_PRIVACY_SANDBOX_SUB_LABEL_AD_TOPICS},
       {"privacyGuideCompletionCardWaaLabel",
@@ -3865,20 +3866,6 @@ void AddSiteSettingsStrings(content::WebUIDataSource* html_source,
        IDS_SITE_SETTINGS_NO_SMART_CARD_READERS_FOUND},
       {"siteSettingsResetSmartCardConfirmation",
        IDS_SITE_SETTINGS_RESET_SMART_CARD_CONFIRMATION},
-      {"siteSettingsLocalNetworkAccess",
-       IDS_SITE_SETTINGS_TYPE_LOCAL_NETWORK_ACCESS},
-      {"siteSettingsLocalNetworkAccessMidSentence",
-       IDS_SITE_SETTINGS_TYPE_LOCAL_NETWORK_ACCESS_MID_SENTENCE},
-      {"siteSettingsLocalNetworkAccessDescription",
-       IDS_SETTINGS_SITE_SETTINGS_LOCAL_NETWORK_ACCESS_DESCRIPTION},
-      {"siteSettingsLocalNetworkAccessAsk",
-       IDS_SETTINGS_SITE_SETTINGS_LOCAL_NETWORK_ACCESS_ASK},
-      {"siteSettingsLocalNetworkAccessBlock",
-       IDS_SETTINGS_SITE_SETTINGS_LOCAL_NETWORK_ACCESS_BLOCK},
-      {"siteSettingsLocalNetworkAccessAllowedExceptions",
-       IDS_SETTINGS_SITE_SETTINGS_LOCAL_NETWORK_ACCESS_ALLOWED_EXCEPTIONS},
-      {"siteSettingsLocalNetworkAccessBlockedExceptions",
-       IDS_SETTINGS_SITE_SETTINGS_LOCAL_NETWORK_ACCESS_BLOCKED_EXCEPTIONS},
 
       {"siteSettingsLocalNetwork", IDS_SITE_SETTINGS_TYPE_LOCAL_NETWORK},
       {"siteSettingsLocalNetworkMidSentence",

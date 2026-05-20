@@ -417,15 +417,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="IndexedDB.ContextShutdownDuration" units="ms"
+<histogram name="IndexedDB.ContextShutdownDuration2" units="ms"
     expires_after="2026-10-02">
   <owner>leimy@chromium.org</owner>
   <owner>evanstade@microsoft.com</owner>
+  <owner>abhishek.shanthkumar@microsoft.com</owner>
   <owner>chrome-owp-storage@google.com</owner>
   <summary>
     Logs the time it takes to completely shut down `IndexedDBContextImpl`,
-    starting from when it's requested on the UI thread to when destruction is
-    completed on the IDB task runner.
+    starting from when it's requested on the UI thread to when the last bucket's
+    destruction is completed. This is only recorded for regular (not incognito)
+    profiles.
   </summary>
 </histogram>
 
@@ -1064,7 +1066,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="LevelDBWrapper.CommitDelay" units="ms"
-    expires_after="2026-08-30">
+    expires_after="2026-11-01">
   <owner>ayui@chromium.org</owner>
   <owner>chrome-owp-storage@google.com</owner>
   <summary>
@@ -1325,7 +1327,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Storage.Buckets.Parameters.QuotaKb" units="KB"
-    expires_after="2026-08-30">
+    expires_after="2026-11-01">
   <owner>estade@chromium.org</owner>
   <owner>chrome-owp-storage@google.com</owner>
   <summary>
@@ -1388,7 +1390,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Storage.FileSystemAccess.ConfirmSensitiveEntryAccessDuration"
-    units="ms" expires_after="2026-08-31">
+    units="ms" expires_after="2026-11-01">
   <owner>leimy@chromium.org</owner>
   <owner>src/content/browser/file_system_access/OWNERS</owner>
   <summary>
@@ -3046,6 +3048,17 @@ chromium-metrics-reviews@google.com.
     (re-opened successfully), false means we gave up after attempting and
     failing to reopen. {DomStorageRecoveryReason} indicates what initiated the
     recovery.
+  </summary>
+</histogram>
+
+<histogram name="Storage.{DomStorageType}.ShutdownDroppedChanges"
+    enum="Boolean" expires_after="2026-11-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>stevebe@microsoft.com</owner>
+  <owner>chrome-owp-storage@google.com</owner>
+  <summary>
+    Records data loss that occurs when browser shutdown discards pending
+    changes.
   </summary>
 </histogram>
 

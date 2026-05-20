@@ -77,13 +77,14 @@ public class ToolbarUtils {
     private static void showDownloadSettingsInProductHelp(
             Tracker tracker, View anchorView, View rootView) {
         TextBubble textBubble =
-                new TextBubble(
-                        rootView.getContext(),
-                        rootView,
-                        R.string.iph_download_settings_text,
-                        R.string.iph_download_settings_accessibility_text,
-                        new ViewRectProvider(anchorView),
-                        ChromeAccessibilityUtil.get().isAccessibilityEnabled());
+                new TextBubble.Builder(
+                                rootView.getContext(),
+                                rootView,
+                                new ViewRectProvider(anchorView),
+                                R.string.iph_download_settings_text,
+                                R.string.iph_download_settings_accessibility_text,
+                                ChromeAccessibilityUtil.get().isAccessibilityEnabled())
+                        .build();
         textBubble.setDismissOnTouchInteraction(true);
         textBubble.addOnDismissListener(
                 () -> {

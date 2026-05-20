@@ -120,196 +120,26 @@ public class TextBubble implements AnchoredPopupWindow.LayoutObserver {
     protected View mContentView;
 
     /**
-     * Constructs a {@link TextBubble} instance using the default arrow drawable background.
+     * Constructs a {@link TextBubble} instance.
      *
      * @param context Context to draw resources from.
      * @param rootView The {@link View} to use for size calculations and for display.
-     * @param stringId The id of the string resource for the text that should be shown.
-     * @param accessibilityStringId The id of the string resource of the accessibility text.
-     * @param anchorRectProvider The {@link RectProvider} used to anchor the text bubble.
-     */
-    public TextBubble(
-            Context context,
-            View rootView,
-            @StringRes int stringId,
-            @StringRes int accessibilityStringId,
-            RectProvider anchorRectProvider,
-            boolean isAccessibilityEnabled) {
-        this(
-                context,
-                rootView,
-                stringId,
-                accessibilityStringId,
-                true,
-                anchorRectProvider,
-                isAccessibilityEnabled);
-    }
-
-    /**
-     * Constructs a {@link TextBubble} instance.
-     * @param context  Context to draw resources from.
-     * @param rootView The {@link View} to use for size calculations and for display.
-     * @param stringId The id of the string resource for the text that should be shown.
-     * @param accessibilityStringId The id of the string resource of the accessibility text.
-     * @param showArrow Whether the bubble should have an arrow.
-     * @param anchorRectProvider The {@link RectProvider} used to anchor the text bubble.
-     * @param isAccessibilityEnabled Whether accessibility mode is enabled. Used to determine bubble
-     *         text and dismiss UX.
-     */
-    public TextBubble(
-            Context context,
-            View rootView,
-            @StringRes int stringId,
-            @StringRes int accessibilityStringId,
-            boolean showArrow,
-            RectProvider anchorRectProvider,
-            boolean isAccessibilityEnabled) {
-        this(
-                context,
-                rootView,
-                context.getString(stringId),
-                context.getString(accessibilityStringId),
-                showArrow,
-                anchorRectProvider,
-                /* imageDrawable= */ null,
-                /* isRoundBubble= */ false,
-                /* inverseColor= */ false,
-                isAccessibilityEnabled);
-    }
-
-    /**
-     * Constructs a {@link TextBubble} instance with no preceding image.
-     * @param context  Context to draw resources from.
-     * @param rootView The {@link View} to use for size calculations and for display.
-     * @param contentString The string for the text that should be shown.
-     * @param accessibilityString The string shown in the bubble when accessibility is enabled.
-     * @param showArrow Whether the bubble should have an arrow.
-     * @param anchorRectProvider The {@link RectProvider} used to anchor the text bubble.
-     * @param isAccessibilityEnabled Whether accessibility mode is enabled. Used to determine bubble
-     *         text and dismiss UX.
-     */
-    public TextBubble(
-            Context context,
-            View rootView,
-            String contentString,
-            String accessibilityString,
-            boolean showArrow,
-            RectProvider anchorRectProvider,
-            boolean isAccessibilityEnabled) {
-        this(
-                context,
-                rootView,
-                contentString,
-                accessibilityString,
-                showArrow,
-                anchorRectProvider,
-                /* imageDrawable= */ null,
-                /* isRoundBubble= */ false,
-                /* inverseColor= */ false,
-                isAccessibilityEnabled);
-    }
-
-    /**
-     * Constructs a {@link TextBubble} instance with a preceding image.
-     * @param context  Context to draw resources from.
-     * @param rootView The {@link View} to use for size calculations and for display.
-     * @param stringId The id of the string resource for the text that should be shown.
-     * @param accessibilityStringId The id of the string resource of the accessibility text.
-     * @param showArrow Whether the bubble should have an arrow. Should be false if {@code
-     *         isRoundBubble} is true.
-     * @param anchorRectProvider The {@link RectProvider} used to anchor the text bubble.
-     * @param imageDrawableId The resource id of the image to show at the start of the text bubble.
-     * @param isRoundBubble Whether the bubble should be round.
-     * @param inverseColor Whether the background and icon/text colors should be inverted.
-     * @param isAccessibilityEnabled Whether accessibility mode is enabled. Used to determine bubble
-     *         text and dismiss UX.
-     */
-    public TextBubble(
-            Context context,
-            View rootView,
-            @StringRes int stringId,
-            @StringRes int accessibilityStringId,
-            boolean showArrow,
-            RectProvider anchorRectProvider,
-            @DrawableRes int imageDrawableId,
-            boolean isRoundBubble,
-            boolean inverseColor,
-            boolean isAccessibilityEnabled) {
-        this(
-                context,
-                rootView,
-                context.getString(stringId),
-                context.getString(accessibilityStringId),
-                showArrow,
-                anchorRectProvider,
-                AppCompatResources.getDrawable(context, imageDrawableId),
-                isRoundBubble,
-                inverseColor,
-                isAccessibilityEnabled);
-    }
-
-    /**
-     * Constructs a {@link TextBubble} instance.
-     * @param context  Context to draw resources from.
-     * @param rootView The {@link View} to use for size calculations and for display.
      * @param contentString The string for the text that should be shown.
      * @param accessibilityString The string shown in the bubble when accessibility is enabled.
      * @param showArrow Whether the bubble should have an arrow. Should be false if {@code
-     *         isRoundBubble} is true.
+     *     isRoundBubble} is true.
      * @param anchorRectProvider The {@link RectProvider} used to anchor the text bubble.
      * @param imageDrawable The image to show at the start of the text bubble, or null if there
-     *         should be no image.
+     *     should be no image.
      * @param isRoundBubble Whether the bubble should be round.
      * @param inverseColor Whether the background and icon/text colors should be inverted.
      * @param isAccessibilityEnabled Whether accessibility mode is enabled. Used to determine bubble
-     *         text and dismiss UX.
-     */
-    public TextBubble(
-            Context context,
-            View rootView,
-            String contentString,
-            String accessibilityString,
-            boolean showArrow,
-            RectProvider anchorRectProvider,
-            @Nullable Drawable imageDrawable,
-            boolean isRoundBubble,
-            boolean inverseColor,
-            boolean isAccessibilityEnabled) {
-        this(
-                context,
-                rootView,
-                contentString,
-                accessibilityString,
-                showArrow,
-                anchorRectProvider,
-                imageDrawable,
-                isRoundBubble,
-                inverseColor,
-                isAccessibilityEnabled,
-                null,
-                null);
-    }
-
-    /**
-     * Constructs a {@link TextBubble} instance.
-     * @param context  Context to draw resources from.
-     * @param rootView The {@link View} to use for size calculations and for display.
-     * @param contentString The string for the text that should be shown.
-     * @param accessibilityString The string shown in the bubble when accessibility is enabled.
-     * @param showArrow Whether the bubble should have an arrow. Should be false if {@code
-     *         isRoundBubble} is true.
-     * @param anchorRectProvider The {@link RectProvider} used to anchor the text bubble.
-     * @param imageDrawable The image to show at the start of the text bubble, or null if there
-     *         should be no image.
-     * @param isRoundBubble Whether the bubble should be round.
-     * @param inverseColor Whether the background and icon/text colors should be inverted.
-     * @param isAccessibilityEnabled Whether accessibility mode is enabled. Used to determine bubble
-     *         text and dismiss UX.
-     * At most one of the two following arguments will be non-null. Used in Snooze IPH experiment.
+     *     text and dismiss UX. At most one of the two following arguments will be non-null. Used in
+     *     Snooze IPH experiment.
      * @param snoozeRunnable The callback for when snooze button is clicked.
      * @param snoozeDismissRunnable The callback to be invoked when dismiss button is clicked.
      */
-    public TextBubble(
+    private TextBubble(
             Context context,
             View rootView,
             String contentString,
@@ -642,5 +472,107 @@ public class TextBubble implements AnchoredPopupWindow.LayoutObserver {
         boolean previousSkip = sSkipShowCheckForTesting;
         sSkipShowCheckForTesting = skip;
         ResettersForTesting.register(() -> sSkipShowCheckForTesting = previousSkip);
+    }
+
+    /** Builder for {@link TextBubble} instances. */
+    public static class Builder {
+        private final Context mContext;
+        private final View mRootView;
+        private final RectProvider mAnchorRectProvider;
+        private final String mString;
+        private final String mAccessibilityString;
+        private final boolean mIsAccessibilityEnabled;
+
+        private boolean mShowArrow = true;
+        private @Nullable Drawable mImageDrawable;
+        private boolean mIsRoundBubble;
+        private boolean mInverseColor;
+        private @Nullable Runnable mSnoozeRunnable;
+        private @Nullable Runnable mSnoozeDismissRunnable;
+
+        public Builder(
+                Context context,
+                View rootView,
+                RectProvider anchorRectProvider,
+                String string,
+                String accessibilityString,
+                boolean isAccessibilityEnabled) {
+            mContext = context;
+            mRootView = rootView;
+            mAnchorRectProvider = anchorRectProvider;
+            mString = string != null ? string : "";
+            mAccessibilityString =
+                    (accessibilityString != null && !accessibilityString.isEmpty())
+                            ? accessibilityString
+                            : mString;
+            mIsAccessibilityEnabled = isAccessibilityEnabled;
+        }
+
+        public Builder(
+                Context context,
+                View rootView,
+                RectProvider anchorRectProvider,
+                @StringRes int stringId,
+                @StringRes int accessibilityStringId,
+                boolean isAccessibilityEnabled) {
+            mContext = context;
+            mRootView = rootView;
+            mAnchorRectProvider = anchorRectProvider;
+            mString = mContext.getString(stringId);
+            String a11yString = mContext.getString(accessibilityStringId);
+            mAccessibilityString = a11yString.isEmpty() ? mString : a11yString;
+            mIsAccessibilityEnabled = isAccessibilityEnabled;
+        }
+
+        public Builder setShowArrow(boolean showArrow) {
+            mShowArrow = showArrow;
+            return this;
+        }
+
+        public Builder setImageDrawable(@Nullable Drawable imageDrawable) {
+            mImageDrawable = imageDrawable;
+            return this;
+        }
+
+        public Builder setImageDrawable(@DrawableRes int imageDrawableId) {
+            mImageDrawable = AppCompatResources.getDrawable(mContext, imageDrawableId);
+            return this;
+        }
+
+        public Builder setIsRoundBubble(boolean isRoundBubble) {
+            mIsRoundBubble = isRoundBubble;
+            return this;
+        }
+
+        public Builder setInverseColor(boolean inverseColor) {
+            mInverseColor = inverseColor;
+            return this;
+        }
+
+        public Builder setSnoozeRunnable(@Nullable Runnable snoozeRunnable) {
+            mSnoozeRunnable = snoozeRunnable;
+            return this;
+        }
+
+        public Builder setSnoozeDismissRunnable(@Nullable Runnable snoozeDismissRunnable) {
+            mSnoozeDismissRunnable = snoozeDismissRunnable;
+            return this;
+        }
+
+        public TextBubble build() {
+            return new TextBubble(
+                    mContext,
+                    mRootView,
+                    mString,
+                    mAccessibilityString,
+                    mShowArrow,
+                    mAnchorRectProvider,
+                    mImageDrawable,
+                    mIsRoundBubble,
+                    mInverseColor,
+                    mIsAccessibilityEnabled,
+                    mSnoozeRunnable,
+                    mSnoozeDismissRunnable);
+        }
     }
 }

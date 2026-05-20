@@ -328,7 +328,13 @@ bool VerticalTabDragHandlerImpl::ContinueDrag(views::View& event_source_view,
 }
 
 void VerticalTabDragHandlerImpl::EndDrag(EndDragReason reason) {
-  if (TabDragController::IsSystemDnDSessionRunning()) {
+  // Note: we avoid ending the SystemDnD if the `EndDragReason` is "capture
+  // lost" because some window managers on Wayland don't send exit events to tab
+  // strips, which would cause this to incorrectly end the SystemDnD while the
+  // drag is attaching to a new tab strip. See http://crbug.com/505023370 for an
+  // example of this.
+  if (TabDragController::IsSystemDnDSessionRunning() &&
+      reason != EndDragReason::kCaptureLost) {
     TabDragController::OnSystemDnDEnded();
     return;
   }
@@ -680,9 +686,15 @@ void VerticalTabDragHandlerImpl::StartedDragging(
   if (gfx::NativeWindow source_window = GetWidget()->GetNativeWindow()) {
     const BrowserView* browser_view =
         BrowserView::GetBrowserViewForNativeWindow(source_window);
-    expand_on_hover_lock_ =
-        browser_view->tab_strip_view()->GetExpandOnHoverLock(
-            ExpandOnHoverLockType::kKeepExpanded);
+
+    const auto* state_controller =
+        tabs::VerticalTabStripStateController::From(browser_view->browser());
+
+    if (state_controller && state_controller->IsExpandOnHoverEnabled()) {
+      expand_on_hover_lock_ =
+          browser_view->tab_strip_view()->GetExpandOnHoverLock(
+              ExpandOnHoverLockType::kKeepExpanded);
+    }
   }
 
   CHECK(drag_controller_);

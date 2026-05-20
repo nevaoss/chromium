@@ -200,6 +200,10 @@ BrowserViewTabbedLayoutImpl::GetMinimumTabStripSize(
             result.height() +
             base::ClampCeil(
                 params.leading_exclusion.ContentWithPadding().height()));
+        // Reserve enough width to uncollapse the tabstrip even if it's
+        // collapsed, or else uncollapsing the tabstrip will break the browser.
+        result.set_width(std::max(
+            result.width(), VerticalTabStripRegionView::kUncollapsedMinWidth));
       } else {
         result.set_width(std::max(
             result.width(),
@@ -296,8 +300,11 @@ BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
     preferred_side_panel_width =
         std::max(min_side_panel_width, preferred_side_panel_width);
 
+    // Add additional padding except when it's not needed around a split view.
     layout.side_panel_padding =
-        GetLayoutConstant(LayoutConstant::kSidePanelInset);
+        layout.force_top_container_to_top && delegate().IsActiveTabSplit()
+            ? 0
+            : GetLayoutConstant(LayoutConstant::kSidePanelInset);
 
     // See if the toolbar-height side panel can fit next to the toolbar. If not,
     // it is forced into content height.
@@ -305,6 +312,11 @@ BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
       const int remainder = params.visual_client_area.width() -
                             (toolbar_minimum_width + layout.side_panel_padding);
       layout.force_top_container_to_top = remainder < min_side_panel_width;
+
+      // Update the padding if necessary.
+      if (layout.force_top_container_to_top && delegate().IsActiveTabSplit()) {
+        layout.side_panel_padding = 0;
+      }
 
       // If still allowing toolbar height, clamp the side panel based on what
       // the toolbar actually supports.
@@ -361,110 +373,45 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation(
   int leading_exclusion_height =
       GetCollapsedVerticalTabStripRelativeTop(params);
   VerticalTabStripAnimation animation;
-
-  const auto* const controller = BrowserAnimationController::From(browser());
+  auto* const controller = BrowserAnimationController::From(browser());
   animation.current_motion =
       controller->GetCurrentMotion(TabStripAnimations::kVerticalTabStrip);
-
-  double top_corner_collapsed_state = 1.0;
-  double top_corner_expanded_state = 1.0;
-  const auto* const side_panel = views().side_panel.get();
-  if (leading_exclusion_height > 0) {
-    const bool bookmarks_visible = delegate().IsBookmarkBarVisible();
-    const bool has_leading_side_panel =
-        side_panel && side_panel->GetVisible() &&
-        side_panel->IsRightAligned() == base::i18n::IsRTL();
-    top_corner_collapsed_state =
-        has_leading_side_panel || bookmarks_visible ? -1.0 : 0.0;
-  }
+  animation.top_offset = base::ClampRound(
+      leading_exclusion_height *
+      *controller->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
+                                   TabStripAnimations::kTabStripTop));
+  animation.expand_on_hover =
+      *controller->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
+                                   TabStripAnimations::kTabStripHoverWidth);
+  animation.top_corner = *controller->GetCurrentValue(
+      TabStripAnimations::kVerticalTabStrip, TabStripAnimations::kTopCorner);
+  animation.bottom_corner = *controller->GetCurrentValue(
+      TabStripAnimations::kVerticalTabStrip, TabStripAnimations::kBottomCorner);
 
   // If the toolbar is in a separate widget but still visible, the top of the
   // collapsed tab strip needs to be square or it looks wrong.
-  if (window_state == WindowState::kFullscreenWithToolbar) {
+  if (delegate().GetBrowserWindowState() ==
+      WindowState::kFullscreenWithToolbar) {
     // Round the corner in with the opening of the toolbar height side panel.
-    const double open_amount =
-        controller
-            ->GetCurrentValue(SidePanelAnimations::kSidePanel,
-                              SidePanelAnimations::kPanelWidth)
-            .value_or(side_panel && side_panel->GetVisible() ? 1.0 : 0.0);
-    top_corner_collapsed_state = -open_amount;
-    top_corner_expanded_state = -open_amount;
-  }
-
-  // Default is to display the top outside corner.
-  const bool hovering =
-      views().vertical_tab_strip_region_view->is_expanded_on_hover();
-  const bool is_collapsed = delegate().IsVerticalTabStripCollapsed();
-  animation.top_offset = is_collapsed ? leading_exclusion_height : 0;
-  animation.expand_on_hover = hovering ? 1.0 : 0.0;
-  animation.top_corner = hovering ? -1.0
-                                  : (is_collapsed ? top_corner_collapsed_state
-                                                  : top_corner_expanded_state);
-  animation.bottom_corner = hovering ? -1.0 : 1.0;
-
-  if (animation.current_motion) {
-    animation.top_corner = *controller->GetCurrentValue(
-        TabStripAnimations::kVerticalTabStrip, TabStripAnimations::kTopCorner);
-    if (animation.current_motion == TabStripAnimations::kExpand ||
-        animation.current_motion == TabStripAnimations::kCollapse) {
-      // For expand and collapse, the target is an outside corner, so don't dip
-      // below the minimum.
-      animation.top_corner =
-          std::clamp(animation.top_corner, top_corner_collapsed_state,
-                     top_corner_expanded_state);
-    } else {
-      // For hover expand and collapse, the target is an inside corner, so don't
-      // bump above the maximum.
-      animation.top_corner =
-          std::min(animation.top_corner, top_corner_collapsed_state);
-    }
-    animation.bottom_corner =
-        controller
-            ->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
-                              TabStripAnimations::kBottomCorner)
-            .value_or(animation.bottom_corner);
-    if (const auto top =
-            controller->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
-                                        TabStripAnimations::kTabStripTop)) {
-      animation.top_offset =
-          base::ClampRound(leading_exclusion_height * top.value());
-    }
-    animation.expand_on_hover =
-        controller
-            ->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
-                              TabStripAnimations::kTabStripHoverWidth)
-            .value_or(0.0);
-
-    animation.tab_strip_width =
-        controller
-            ->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
-                              TabStripAnimations::kTabStripWidth)
-            .value_or(0.0);
-  }
-
-  if (animation.current_motion == TabStripAnimations::kExpand) {
-    // These values have to be interpreted in terms of the most recent values
-    // before the expand animation was playing.
-    animation.bottom_corner =
-        std::max(last_bottom_corner_value_, animation.bottom_corner);
-    animation.expand_on_hover *= last_expand_on_hover_;
-  } else {
-    // Save these so that if an expand animation is played over them, it
-    // continues from there.
-    last_bottom_corner_value_ = animation.bottom_corner;
-    last_expand_on_hover_ = animation.expand_on_hover;
-  }
-
-  // Once the top pulls away from the top of the browser, we cannot have an
-  // external corner.
-  if (animation.top_offset > 0) {
-    animation.top_corner = std::min(0.0, animation.top_corner);
+    const auto* const side_panel = views().side_panel.get();
+    const double open_amount = side_panel ? side_panel->GetAnimationValue() : 0;
+    animation.top_corner =
+        std::min(animation.top_corner,
+                 gfx::Tween::DoubleValueBetween(open_amount, 0.0, -1.0));
   }
 
   return animation;
 }
 
 int BrowserViewTabbedLayoutImpl::GetMinimumGrabHandlePadding() const {
+  if (base::FeatureList::IsEnabled(features::kVerticalTabsGrabHandleRemoval)) {
+    if (features::kVerticalTabsGrabHandleRemovalAlways.Get() ||
+        GetVerticalTabStripCollapsedState() ==
+            VerticalTabStripCollapsedState::kExpanded) {
+      return 0;
+    }
+  }
+
   return kVerticalTabsGrabHandleSize -
          GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN).right();
 }
@@ -595,7 +542,7 @@ gfx::Size BrowserViewTabbedLayoutImpl::GetMinimumSize(
                             kMainBrowserContentsMinimumWidth});
 
   // Maybe adjust for additional padding when the side panel is visible.
-  if (side_panel_size.width() > 0) {
+  if (side_panel_size.width() > 0 && !delegate().IsActiveTabSplit()) {
     const auto padding = GetLayoutConstant(LayoutConstant::kSidePanelInset);
     min_height += 2 * padding;
     min_width += padding;
@@ -933,7 +880,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
     }
   }
 
-  const bool show_shadow_overlay = ShadowOverlayVisible();
+  // The split view has outlines and padding around the web contents, so there's
+  // no need for an additional shadow box or separator around the split view.
+  // We still draw the shadow box in toolbar-height side panel mode, because it
+  // surrounds other elements like the toolbar.
+  const bool is_split_outline_replacing_shadow_or_separator =
+      delegate().IsActiveTabSplit() &&
+      horizontal_layout.force_top_container_to_top;
+  const bool show_shadow_overlay =
+      ShadowOverlayVisible() && !is_split_outline_replacing_shadow_or_separator;
   gfx::Insets shadow_overlay_insets;
   if (show_shadow_overlay) {
     // As the side panel animates in, the main panel shrinks and moves over to
@@ -1004,8 +959,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   // the required top padding.
   const auto top_separator_type = GetTopSeparatorType();
   views().multi_contents_view->SetShouldShowTopSeparator(
-      !suppress_top_separator &&
-      top_separator_type == TopSeparatorType::kMultiContents);
+      is_split_outline_replacing_shadow_or_separator ||
+      (!suppress_top_separator &&
+       top_separator_type == TopSeparatorType::kMultiContents));
+
+  // Update the multi-contents view about if we will be animating content
+  // bounds. This is to make optimizations during animations e.g. avoid
+  // repositioning status bubble.
+  views().multi_contents_view->SetIsAnimatingContent(
+      side_panel_is_animating || vertical_tab_strip_animation.current_motion);
 
   // Lay out contents container. The contents container contains the multi-
   // contents view when multi-contents are enabled. The checks here are to
@@ -1049,7 +1011,8 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
       // If the top separator is suppressed now, it won't be at the extent of
       // the animation.
       if (top_separator_type == TopSeparatorType::kMultiContents &&
-          suppress_top_separator && side_panel_is_animating) {
+          suppress_top_separator && side_panel_is_animating &&
+          !is_split_outline_replacing_shadow_or_separator) {
         unclipped_contents_region.Inset(
             gfx::Insets::TLBR(views::Separator::kThickness, 0, 0, 0));
       }
@@ -1267,6 +1230,32 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
   background->SetCorners(corners);
 }
 
+void BrowserViewTabbedLayoutImpl::DoPreLayoutVisualAdjustments(
+    const BrowserLayoutParams& params) {
+  // Since the state of the side panel and bookmarks can change outside of
+  // tabstrip animations, maybe update the top corner animation value for a
+  // collapsed tabstrip. This must be done before layout is calculated.
+  if (GetTabStripType() == TabStripType::kVertical) {
+    double top_corner_collapsed_state = 1.0;
+    if (params.leading_exclusion.ContentWithPadding().height() > 0) {
+      const bool bookmarks_visible = delegate().IsBookmarkBarVisible();
+      const auto* const side_panel = views().side_panel.get();
+      const bool has_leading_side_panel =
+          side_panel && side_panel->GetVisible() &&
+          side_panel->IsRightAligned() == base::i18n::IsRTL();
+      top_corner_collapsed_state =
+          has_leading_side_panel || bookmarks_visible ? -1.0 : 0.0;
+    }
+
+    auto* const controller = BrowserAnimationController::From(browser());
+    auto* const animations =
+        controller->GetAnimationProvider<TabStripAnimations>();
+    animations->UpdateDefaultValue(TabStripAnimations::kVerticalTabStrip,
+                                   TabStripAnimations::kTopCorner,
+                                   top_corner_collapsed_state);
+  }
+}
+
 void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
     const BrowserLayoutParams& params) {
   const auto tab_strip_type = GetTabStripType();
@@ -1395,16 +1384,23 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
   CustomCornersBackground::Corners toolbar_corners;
   switch (tab_strip_type) {
     case TabStripType::kHorizontal: {
-      // Trailing curve is always shown for normal horizontal tabstrip.
-      toolbar_corners.upper_trailing.type =
-          CustomCornersBackground::CornerType::kRoundedWithBackground;
-
-      // If there is anything on the leading side or the first tab is not
-      // selected, then the corner radius is shown, otherwise we hide the
-      // corner radius.
-      if (!delegate().IsActiveTabAtLeadingWindowEdge()) {
-        toolbar_corners.upper_leading.type =
+      const gfx::Rect toolbar_bounds = views().toolbar->GetBoundsInScreen();
+      const gfx::Rect tabstrip_bounds =
+          views().horizontal_tab_strip_region_view->GetBoundsInScreen();
+      if (toolbar_bounds.y() <= tabstrip_bounds.bottom()) {
+        // Trailing curve is always shown for normal horizontal tabstrip when
+        // the two are vertically adjacent.
+        toolbar_corners.upper_trailing.type =
             CustomCornersBackground::CornerType::kRoundedWithBackground;
+
+        // If there is anything on the leading side or the first tab is not
+        // selected, then the corner radius is shown, otherwise we hide the
+        // corner radius. (Don't show if the left edges don't line up.)
+        if (!delegate().IsActiveTabAtLeadingWindowEdge() &&
+            toolbar_bounds.x() <= tabstrip_bounds.x()) {
+          toolbar_corners.upper_leading.type =
+              CustomCornersBackground::CornerType::kRoundedWithBackground;
+        }
       }
       break;
     }

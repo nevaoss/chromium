@@ -3126,11 +3126,6 @@ Google Chrome is unable to recover your settings.
         To open Gemini in Chrome, press <ph name="GLOBAL_HOTKEY">$1<ex>⌘+G</ex></ph>
       </message>
 
-      <!-- Variant of the label on the Gemini button in the tabstrip-->
-      <message name="IDS_GLIC_BUTTON_ENTRYPOINT_ASK_BROWSER_LABEL" desc="Label on the button used to open Gemini in Chrome.">
-        Ask Chrome
-      </message>
-
       <!-- UNO Promo strings for extensions -->
       <if expr="enable_extensions">
         <message name="IDS_EXTENSION_INSTALLED_PROMO_EXPLICIT_SIGNIN_MESSAGE" desc="Text of the promo displayed at the bottom of the extension installed bubble asking the user to enable UNO.">
@@ -3291,7 +3286,7 @@ Google Chrome is unable to recover your settings.
 
       <!-- JS optimizations bubble -->
       <message name="IDS_JS_OPTIMIZATION_BUBBLE_BODY_NON_POLICY_BODY" desc="Body text for the JavaScript optimization bubble when disabled for other reasons.">
-        Chrome turns off JavaScript optimization when you visit a site for the first time.&#xA;
+        For security, Chrome turns off JavaScript optimization when you visit a site for the first time.&#xA;
 If this page isn’t working as expected, try allowing optimization.
       </message>
     </messages>

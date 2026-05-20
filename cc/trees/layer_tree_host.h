@@ -77,7 +77,7 @@ class PropertyTreeDelegate;
 class LayerTreeHostImpl;
 class ClientLayerTreeHostImpl;
 class LayerTreeHostImplDelegate;
-class LayerTreeHostSingleThreadClient;
+class LayerTreeHostSingleThreadDelegate;
 class LayerTreeMutator;
 class MutatorEvents;
 class MutatorHost;
@@ -153,7 +153,7 @@ class CC_EXPORT LayerTreeHost : public MutatorHostClient {
     InitParams& operator=(InitParams&&);
 
     raw_ptr<LayerTreeHostDelegate> client = nullptr;
-    raw_ptr<LayerTreeHostSchedulingClient> scheduling_client = nullptr;
+    raw_ptr<LayerTreeHostSchedulingDelegate> scheduling_delegate = nullptr;
     raw_ptr<TaskGraphRunner> task_graph_runner = nullptr;
     raw_ptr<const LayerTreeSettings> settings = nullptr;
     scoped_refptr<base::SingleThreadTaskRunner> main_task_runner;
@@ -182,7 +182,7 @@ class CC_EXPORT LayerTreeHost : public MutatorHostClient {
   // blocked, so moving work to another thread and the overhead it adds are not
   // required.
   static std::unique_ptr<LayerTreeHost> CreateSingleThreaded(
-      LayerTreeHostSingleThreadClient* single_thread_client,
+      LayerTreeHostSingleThreadDelegate* single_thread_delegate,
       InitParams params);
 
   LayerTreeHost(const LayerTreeHost&) = delete;
@@ -846,9 +846,9 @@ class CC_EXPORT LayerTreeHost : public MutatorHostClient {
     DCHECK(IsMainThread());
     return client_;
   }
-  LayerTreeHostSchedulingClient* scheduling_client() {
+  LayerTreeHostSchedulingDelegate* scheduling_delegate() {
     DCHECK(IsMainThread());
-    return scheduling_client_;
+    return scheduling_delegate_;
   }
 
   void CollectRenderingStats(RenderingStats* stats) const;
@@ -993,7 +993,7 @@ class CC_EXPORT LayerTreeHost : public MutatorHostClient {
       scoped_refptr<base::SingleThreadTaskRunner> main_task_runner,
       scoped_refptr<base::SingleThreadTaskRunner> impl_task_runner);
   void InitializeSingleThreaded(
-      LayerTreeHostSingleThreadClient* single_thread_client,
+      LayerTreeHostSingleThreadDelegate* single_thread_delegate,
       scoped_refptr<base::SingleThreadTaskRunner> main_task_runner);
   void InitializeForTesting(
       std::unique_ptr<TaskRunnerProvider> task_runner_provider,
@@ -1049,7 +1049,7 @@ class CC_EXPORT LayerTreeHost : public MutatorHostClient {
       int id,
       raw_ptr<TaskGraphRunner>& task_graph_runner,
       scoped_refptr<base::SequencedTaskRunner> image_worker_task_runner,
-      LayerTreeHostSchedulingClient* scheduling_client,
+      LayerTreeHostSchedulingDelegate* scheduling_delegate,
       RenderingStatsInstrumentation* rendering_stats_instrumentation,
       base::WeakPtr<CompositorDelegateForInput>& compositor_delegate_weak_ptr);
 
@@ -1079,7 +1079,7 @@ class CC_EXPORT LayerTreeHost : public MutatorHostClient {
   std::unique_ptr<UIResourceManager> ui_resource_manager_;
 
   raw_ptr<LayerTreeHostDelegate> client_;
-  raw_ptr<LayerTreeHostSchedulingClient> scheduling_client_;
+  raw_ptr<LayerTreeHostSchedulingDelegate> scheduling_delegate_;
   std::unique_ptr<Proxy> proxy_;
   std::unique_ptr<TaskRunnerProvider> task_runner_provider_;
 

@@ -19,6 +19,7 @@
 #include "ash/test/ash_test_base.h"
 #include "ash/webui/annotator/test/mock_annotator_client.h"
 #include "ash/webui/boca_ui/boca_util.h"
+#include "ash/webui/boca_ui/mojom/boca.mojom-shared.h"
 #include "ash/webui/boca_ui/mojom/boca.mojom.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
@@ -26,6 +27,7 @@
 #include "base/test/bind.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
@@ -75,6 +77,7 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
+#include "mojo/public/cpp/system/functions.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkBitmap.h"
@@ -141,11 +144,11 @@ mojom::OnTaskConfigPtr GetCommonTestLockOnTaskConfig() {
   std::vector<mojom::ControlledTabPtr> tabs;
   tabs.push_back(mojom::ControlledTab::New(
       mojom::TabInfo::New(1, "google", GURL("http://google.com/"),
-                          GURL("http://data/image")),
+                          GURL("http://data/image"), /*url_type=*/std::nullopt),
       /*navigation_type=*/mojom::NavigationType::kOpen));
   tabs.push_back(mojom::ControlledTab::New(
       mojom::TabInfo::New(2, "youtube", GURL("http://youtube.com/"),
-                          GURL("http://data/image")),
+                          GURL("http://data/image"), /*url_type=*/std::nullopt),
       /*navigation_type=*/mojom::NavigationType::kBlock));
   return mojom::OnTaskConfig::New(/*is_locked=*/true, /*is_paused=*/true,
                                   std::move(tabs));
@@ -155,9 +158,25 @@ mojom::OnTaskConfigPtr GetCommonTestUnLockedOnTaskConfig() {
   std::vector<mojom::ControlledTabPtr> tabs;
   tabs.push_back(mojom::ControlledTab::New(
       mojom::TabInfo::New(1, "google", GURL("http://google.com/"),
-                          GURL("http://data/image")),
+                          GURL("http://data/image"), /*url_type=*/std::nullopt),
       /*navigation_type=*/mojom::NavigationType::kOpen));
   return mojom::OnTaskConfig::New(/*is_locked=*/false, /*is_paused=*/false,
+                                  std::move(tabs));
+}
+
+mojom::OnTaskConfigPtr GetCommonOnTaskConfigWithUrlType(
+    mojom::UrlType url_type) {
+  std::vector<mojom::ControlledTabPtr> tabs;
+  tabs.push_back(mojom::ControlledTab::New(
+      mojom::TabInfo::New(1, "google", GURL("http://google.com/"),
+                          /*favicon=*/GURL("http://data/image"),
+                          /*url_type=*/std::nullopt),
+      /*navigation_type=*/mojom::NavigationType::kOpen));
+  tabs.push_back(mojom::ControlledTab::New(
+      mojom::TabInfo::New(2, "Special Url", GURL("http://specialurl.com/"),
+                          /*favicon=*/GURL("http://data/image"), url_type),
+      /*navigation_type=*/mojom::NavigationType::kBlock));
+  return mojom::OnTaskConfig::New(/*is_locked=*/true, /*is_paused=*/true,
                                   std::move(tabs));
 }
 
@@ -496,6 +515,7 @@ class FakePage : public mojom::Page {
 class BocaAppPageHandlerTest : public testing::Test {
  public:
   BocaAppPageHandlerTest() = default;
+  mojo::Remote<mojom::PageHandler>& remote() { return remote_; }
   void SetUp() override {
     scoped_feature_list_.InitWithFeatures(
         {ash::features::kBoca, ash::features::kBocaScreenSharingStudent,
@@ -1206,6 +1226,46 @@ TEST_F(BocaAppPageHandlerConsumerTest, GetSessionWithFullInputTest) {
   EXPECT_EQ(1u, activities.size());
   EXPECT_FALSE(activities[0]->activity->is_active);
   EXPECT_EQ("google", activities[0]->activity->active_tab);
+}
+
+TEST_F(BocaAppPageHandlerConsumerTest, StartSpotlightFailsForConsumer) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      ash::features::kBocaSpotlightRobotRequester);
+
+  std::string bad_message;
+  mojo::SetDefaultProcessErrorHandler(base::BindLambdaForTesting(
+      [&bad_message](const std::string& error) { bad_message = error; }));
+
+  remote().get()->StartSpotlight("123456789012", base::DoNothing());
+
+  ASSERT_TRUE(
+      base::test::RunUntil([&bad_message]() { return !bad_message.empty(); }));
+
+  EXPECT_EQ("StartSpotlight without active producer session", bad_message);
+
+  mojo::SetDefaultProcessErrorHandler(base::NullCallback());
+}
+
+TEST_F(BocaAppPageHandlerProducerTest, StartSpotlightIgnoresRaceCondition) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      ash::features::kBocaSpotlightRobotRequester);
+
+  EXPECT_CALL(*session_manager(), GetCurrentSession())
+      .WillRepeatedly(Return(nullptr));
+
+  std::string bad_message;
+  mojo::SetDefaultProcessErrorHandler(base::BindLambdaForTesting(
+      [&bad_message](const std::string& error) { bad_message = error; }));
+
+  base::test::TestFuture<void> future;
+  remote().get()->StartSpotlight("123456789012", future.GetCallback());
+
+  EXPECT_TRUE(future.Wait());
+  EXPECT_TRUE(bad_message.empty());
+
+  mojo::SetDefaultProcessErrorHandler(base::NullCallback());
 }
 
 TEST_F(BocaAppPageHandlerProducerTest, GetSessionWithPartialInputTest) {
@@ -3735,6 +3795,162 @@ TEST_F(BocaAppPageHandlerProducerMarkerModeTest, EnableAndDisableMarkerMode) {
   ash::boca::util::EnableOrDisableMarkerMode(/*enable=*/false);
   EXPECT_FALSE(annotator_tray()->visible_preferred());
 }
+
+struct UrlTypeTestParam {
+  std::string test_name;
+  mojom::UrlType mojom_type;
+  ::boca::UrlType proto_type;
+};
+
+class BocaAppPageHandlerProducerUrlTypeTest
+    : public BocaAppPageHandlerProducerTest,
+      public testing::WithParamInterface<UrlTypeTestParam> {
+ protected:
+  ::boca::SessionConfig GetSessionConfigWithUrlType(
+      ::boca::UrlType url_type_proto) {
+    ::boca::SessionConfig session_config;
+    auto* active_bundle =
+        session_config.mutable_on_task_config()->mutable_active_bundle();
+    active_bundle->set_locked(true);
+    active_bundle->set_lock_to_app_home(true);
+
+    auto* content = active_bundle->mutable_content_configs()->Add();
+    content->set_url("http://google.com/");
+    content->set_title("google");
+    content->set_favicon_url("http://data/image");
+    content->mutable_locked_navigation_options()->set_navigation_type(
+        ::boca::LockedNavigationOptions_NavigationType_OPEN_NAVIGATION);
+
+    auto* special_content = active_bundle->mutable_content_configs()->Add();
+    special_content->set_url("http://specialurl.com/");
+    special_content->set_title("Special Url");
+    special_content->set_favicon_url("http://data/image");
+    special_content->mutable_locked_navigation_options()->set_navigation_type(
+        ::boca::LockedNavigationOptions_NavigationType_BLOCK_NAVIGATION);
+    special_content->set_url_type(url_type_proto);
+    return session_config;
+  }
+};
+
+TEST_P(BocaAppPageHandlerProducerUrlTypeTest, CreateSession) {
+  std::optional<::boca::OnTaskConfig> actual_on_task_config;
+  base::test::TestFuture<std::optional<mojom::CreateSessionError>> test_future;
+  auto session_duration = base::Minutes(2);
+  const auto config = mojom::Config::New(
+      session_duration, std::nullopt, nullptr,
+      std::vector<mojom::IdentityPtr>{}, std::vector<mojom::IdentityPtr>{},
+      GetCommonOnTaskConfigWithUrlType(GetParam().mojom_type),
+      mojom::CaptionConfigPtr(nullptr), "");
+
+  EXPECT_CALL(*session_client_impl(), CreateSession(_))
+      .WillOnce(WithArg<0>([&](std::unique_ptr<CreateSessionRequest> request) {
+        actual_on_task_config = *request->on_task_config();
+        request->callback().Run(std::make_unique<::boca::Session>());
+      }));
+
+  EXPECT_CALL(*session_manager(),
+              UpdateCurrentSession(_, /*dispatch_event=*/true))
+      .Times(1);
+  EXPECT_CALL(*session_manager(), disabled_on_non_managed_network())
+      .WillOnce(Return(false));
+
+  boca_app_handler()->CreateSession(config.Clone(), test_future.GetCallback());
+  ASSERT_TRUE(test_future.Wait());
+  ASSERT_TRUE(actual_on_task_config.has_value());
+  ASSERT_EQ(actual_on_task_config->active_bundle().content_configs_size(), 2);
+  EXPECT_EQ(
+      actual_on_task_config->active_bundle().content_configs(1).url_type(),
+      GetParam().proto_type);
+}
+
+TEST_P(BocaAppPageHandlerProducerUrlTypeTest, UpdateOnTaskConfig) {
+  std::optional<::boca::OnTaskConfig> actual_on_task_config;
+  auto session = GetCommonActiveSessionProto();
+  EXPECT_CALL(*session_manager(),
+              UpdateCurrentSession(_, /*dispatch_event=*/true))
+      .Times(1);
+  EXPECT_CALL(*session_manager(), GetCurrentSession())
+      .WillRepeatedly(Return(&session));
+  base::test::TestFuture<std::optional<mojom::UpdateSessionError>> test_future;
+
+  EXPECT_CALL(*session_client_impl(), UpdateSession(_))
+      .WillOnce(WithArg<0>([&](std::unique_ptr<UpdateSessionRequest> request) {
+        actual_on_task_config = *request->on_task_config();
+        request->callback().Run(
+            std::make_unique<::boca::Session>(GetCommonActiveSessionProto()));
+      }));
+  boca_app_handler()->UpdateOnTaskConfig(
+      GetCommonOnTaskConfigWithUrlType(GetParam().mojom_type),
+      test_future.GetCallback());
+
+  ASSERT_TRUE(test_future.Wait());
+  ASSERT_TRUE(actual_on_task_config.has_value());
+  ASSERT_EQ(actual_on_task_config->active_bundle().content_configs_size(), 2);
+  EXPECT_EQ(
+      actual_on_task_config->active_bundle().content_configs(1).url_type(),
+      GetParam().proto_type);
+}
+
+TEST_P(BocaAppPageHandlerProducerUrlTypeTest, GetSession) {
+  base::test::TestFuture<mojom::SessionResultPtr> test_future;
+  EXPECT_CALL(*session_client_impl(),
+              GetSession(_, /*can_skip_duplicate_request=*/false))
+      .WillOnce(WithArg<0>([&](auto request) {
+        auto session = std::make_unique<::boca::Session>();
+        session->set_session_state(::boca::Session::ACTIVE);
+        session->mutable_student_group_configs()->insert(
+            {kMainStudentGroupName,
+             GetSessionConfigWithUrlType(GetParam().proto_type)});
+        request->callback().Run(std::move(session));
+      }));
+
+  EXPECT_CALL(*session_manager(),
+              UpdateCurrentSession(NotNull(), /*dispatch_event=*/true))
+      .Times(1);
+  EXPECT_CALL(*session_manager(), disabled_on_non_managed_network())
+      .WillOnce(Return(false));
+
+  boca_app_handler()->GetSession(test_future.GetCallback());
+
+  auto result = std::move(test_future.Take()->get_session()->config);
+  ASSERT_EQ(result->on_task_config->tabs.size(), 2u);
+  EXPECT_EQ(result->on_task_config->tabs[1]->tab->url_type,
+            GetParam().mojom_type);
+}
+
+TEST_P(BocaAppPageHandlerProducerUrlTypeTest, OnSessionConfigUpdated) {
+  ::boca::Session session;
+  session.set_session_state(::boca::Session::ACTIVE);
+  session.mutable_student_group_configs()->insert(
+      {kMainStudentGroupName,
+       GetSessionConfigWithUrlType(GetParam().proto_type)});
+  EXPECT_CALL(*session_manager(), GetCurrentSession())
+      .WillOnce(Return(&session));
+  base::test::TestFuture<mojom::ConfigResultPtr> future;
+  fake_page()->SetSessionConfigInterceptorCallback(future.GetCallback());
+
+  boca_app_handler()->OnSessionStarted(std::string(), ::boca::UserIdentity());
+
+  auto result = future.Take();
+  ASSERT_TRUE(result->is_config());
+  ASSERT_EQ(result->get_config()->on_task_config->tabs.size(), 2u);
+  EXPECT_EQ(result->get_config()->on_task_config->tabs[1]->tab->url_type,
+            GetParam().mojom_type);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    BocaAppPageHandlerProducerUrlTypeTests,
+    BocaAppPageHandlerProducerUrlTypeTest,
+    testing::Values(UrlTypeTestParam{"GeminiRegular",
+                                     mojom::UrlType::kGeminiRegular,
+                                     ::boca::URL_TYPE_GEMINI_REGULAR},
+                    UrlTypeTestParam{"GeminiGuidedLearning",
+                                     mojom::UrlType::kGeminiGuidedLearning,
+                                     ::boca::URL_TYPE_GEMINI_GUIDED_LEARNING}),
+    [](const testing::TestParamInfo<
+        BocaAppPageHandlerProducerUrlTypeTest::ParamType>& info) {
+      return info.param.test_name;
+    });
 
 }  // namespace
 }  // namespace ash::boca

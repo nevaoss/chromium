@@ -46,7 +46,7 @@ enum class TabGridSetupMode {
 
 // Feature flag to control Tab Grid setup mode.
 BASE_DECLARE_FEATURE(kTabGridSetupMode);
-extern const base::FeatureParam<int> kTabGridSetupModeParam;
+extern const base::FeatureParam<std::string> kTabGridSetupModeParam;
 extern const char kTabGridSetupModeParamName[];
 TabGridSetupMode GetTabGridSetupMode();
 
@@ -72,8 +72,14 @@ extern const char kIOSDockingPromoV2VariationHeader3[];
 // Feature flag to enable the Docking Promo V2.
 BASE_DECLARE_FEATURE(kIOSDockingPromoV2);
 
+// Feature flag to enable the "How to Chrome" feature.
+BASE_DECLARE_FEATURE(kIOSHowToChrome);
+
 // Helper function to check if `kIOSDockingPromoV2` is enabled.
 bool IsDockingPromoV2Enabled();
+
+// Helper function to check if `kIOSHowToChrome` is enabled.
+bool IsHowToChromeEnabled();
 
 // Feature flag to use direct upload for Lens searches.
 BASE_DECLARE_FEATURE(kIOSLensUseDirectUpload);

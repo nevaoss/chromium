@@ -117,6 +117,7 @@
 #include "chrome/browser/ui/qrcode_generator/qrcode_generator_bubble_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_entry_point_controller.h"
+#include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller_utils.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_bubble.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_context_menu_delegate.h"
@@ -591,7 +592,7 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
         152},
        {IDC_CONTENT_CONTEXT_USE_PASSKEY_FROM_ANOTHER_DEVICE, 153},
        {IDC_CONTENT_CONTEXT_RELOAD_GLIC, 154},
-       {IDC_CONTENT_CONTEXT_CLOSE_GLIC, 155},
+       // Removed: {IDC_CONTENT_CONTEXT_CLOSE_GLIC, 155},
        {IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, 156},
        {IDC_CONTENT_CONTEXT_GLICSHAREIMAGE, 157},
        {IDC_CONTENT_CONTEXT_ARCHIVE_GLIC, 158},
@@ -930,8 +931,6 @@ void RenderViewContextMenu::AddSpellCheckServiceItem(ui::SimpleMenuModel* menu,
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(RenderViewContextMenu,
                                       kExitFullscreenMenuItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(RenderViewContextMenu, kComposeMenuItem);
-DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(RenderViewContextMenu,
-                                      kGlicCloseMenuItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(RenderViewContextMenu,
                                       kGlicReloadMenuItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(RenderViewContextMenu,
@@ -2054,8 +2053,8 @@ void RenderViewContextMenu::AppendOpenInWebAppLinkItems() {
 
   gfx::Image icon = gfx::Image::CreateFrom1xBitmap(
       provider->icon_manager().GetFavicon(*link_app_id));
-  menu_model_.SetIcon(menu_model_.GetItemCount() - 1,
-                      ui::ImageModel::FromImage(icon));
+  menu_model_.SetIconForCommandId(IDC_CONTENT_CONTEXT_OPENLINKBOOKMARKAPP,
+                                  ui::ImageModel::FromImage(icon));
 }
 
 void RenderViewContextMenu::AppendImageItems() {
@@ -2460,7 +2459,7 @@ void RenderViewContextMenu::AppendTranslateItem() {
       l10n_util::GetStringFUTF16(
           IDS_CONTENT_CONTEXT_TRANSLATE,
           GetTargetLanguageDisplayName(/*is_full_page_translation=*/true)),
-      ui::ImageModel::FromVectorIcon(vector_icons::kTranslateIcon,
+      ui::ImageModel::FromVectorIcon(vector_icons::kGTranslateIcon,
                                      ui::kColorMenuIcon, kTabMenuIconSize));
 }
 
@@ -2517,7 +2516,8 @@ void RenderViewContextMenu::AppendRotationItems() {
 void RenderViewContextMenu::AppendSearchProvider() {
   DCHECK(browser_context_);
 
-  if (!enterprise_data_protection::IsSearchWithAllowed(source_web_contents_)) {
+  if (!enterprise_data_protection::IsSearchWithAllowed(
+          GetWebContentsForDataControls())) {
     return;
   }
 
@@ -3167,7 +3167,6 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
       return navigation_allowed;
 
     case IDC_CONTENT_CONTEXT_RELOAD_GLIC:
-    case IDC_CONTENT_CONTEXT_CLOSE_GLIC:
     case IDC_CONTENT_CONTEXT_ARCHIVE_GLIC:
     case IDC_CONTENT_CONTEXT_GLIC:
       return true;
@@ -3416,11 +3415,6 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       }
       break;
 
-    case IDC_CONTENT_CONTEXT_CLOSE_GLIC:
-      // This command is only available when multi-instance is disabled.
-      // Since multi-instance is always enabled, this is dead code.
-      break;
-
     case IDC_CONTENT_CONTEXT_ARCHIVE_GLIC:  // Added for archive conversation
       if (base::FeatureList::IsEnabled(features::kGlicArchiveConversation)) {
         auto* glic_service = glic::GlicKeyedService::Get(browser_context_);
@@ -3644,7 +3638,7 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
           /*extra_headers=*/std::string(), /*started_from_context_menu=*/true);
 
       enterprise_data_protection::ShouldAllowSearchWith(
-          source_web_contents_, params_.selection_text.size(),
+          GetWebContentsForDataControls(), params_.selection_text.size(),
           base::BindOnce(
               [](base::WeakPtr<content::WebContents> web_contents,
                  content::OpenURLParams params) {
@@ -3699,9 +3693,10 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       // so drop fullscreen when it is shown. https://crbug.com/40054574
       // TODO(avi): Do we need to attach the fullscreen block to the emoji
       // panel?
-      source_web_contents_
-          ->ForSecurityDropFullscreen(/*display_id=*/display::kInvalidDisplayId)
-          .RunAndReset();
+      if (!source_web_contents_->ForSecurityDropFullscreen(
+              /*display_id=*/display::kInvalidDisplayId)) {
+        return;
+      }
 
       Browser* browser = GetBrowser();
       if (browser) {
@@ -4134,7 +4129,7 @@ void RenderViewContextMenu::AppendSendTabToSelfItem(bool add_separator) {
   }
 
   if (base::FeatureList::IsEnabled(
-          send_tab_to_self::kSendTabToSelfShowTargetsInContextMenus)) {
+          send_tab_to_self::kSendTabToSelfEnhancedDesktopUI)) {
     send_tab_to_self_submenu_delegate_ =
         std::make_unique<send_tab_to_self::SendTabToSelfContextMenuDelegate>(
             embedder_web_contents_);
@@ -5011,6 +5006,27 @@ void RenderViewContextMenu::OpenTextQueryInLens() {
           IsLensOverlayTextSelectionContextMenuEntrypointContextualized());
 }
 
+content::WebContents* RenderViewContextMenu::GetWebContentsForDataControls()
+    const {
+  if (auto* glue =
+          ReadAnythingControllerGlue::FromWebContents(source_web_contents_)) {
+    if (glue->controller() && glue->controller()->tab()) {
+      if (auto* contents = glue->controller()->tab()->GetContents()) {
+        return contents;
+      }
+    }
+  }
+  if (auto* glue = ReadAnythingSidePanelControllerGlue::FromWebContents(
+          source_web_contents_)) {
+    if (glue->controller() && glue->controller()->tab()) {
+      if (auto* contents = glue->controller()->tab()->GetContents()) {
+        return contents;
+      }
+    }
+  }
+  return source_web_contents_;
+}
+
 Browser* RenderViewContextMenu::GetBrowser() const {
   auto* browser = GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
       embedder_web_contents_);
@@ -5121,8 +5137,14 @@ void RenderViewContextMenu::OpenLinkInSplitView() {
         /*extra_headers=*/std::string(), /*started_from_context_menu=*/true);
     const WebContents* new_web_contents = source_web_contents_->OpenURL(
         params, /*navigation_handle_callback=*/{});
+    if (!new_web_contents) {
+      return;
+    }
     const int new_tab_index =
         tab_strip_model->GetIndexOfWebContents(new_web_contents);
+    if (new_tab_index == TabStripModel::kNoTab) {
+      return;
+    }
 
     // Create split and activate new tab.
     tab_strip_model->AddToNewSplit(

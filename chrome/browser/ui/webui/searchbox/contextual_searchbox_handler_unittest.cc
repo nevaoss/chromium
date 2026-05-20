@@ -191,10 +191,6 @@ class ContextualSearchboxHandlerTest
 
   void SetUp() override {
     ContextualSearchboxHandlerTestHarness::SetUp();
-    // TODO(crbug.com/503732217): Fix tests to support lazy fetching of cluster
-    // info and enable this feature by default in tests.
-    scoped_feature_list_.InitAndDisableFeature(
-        contextual_tasks::kContextualTasksLazyFetchClusterInfo);
 
     auto query_controller_config_params = std::make_unique<
         contextual_search::ContextualSearchContextController::ConfigParams>();
@@ -296,7 +292,6 @@ class ContextualSearchboxHandlerTest
   raw_ptr<MockQueryController> query_controller_;
   raw_ptr<contextual_search::ContextualSearchService> service_;
   raw_ptr<MockContextualSearchMetricsRecorder> metrics_recorder_;
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 TEST_F(ContextualSearchboxHandlerTest, SessionStarted) {
@@ -575,17 +570,6 @@ TEST_F(ContextualSearchboxHandlerTest, AddFileFromBrowser_PolicyEnabled) {
 }
 
 TEST_F(ContextualSearchboxHandlerTest, SubmitQuery) {
-  // Wait until the state changes to kClusterInfoReceived.
-  base::RunLoop run_loop;
-  query_controller().set_on_query_controller_state_changed_callback(
-      base::BindLambdaForTesting(
-          [&](ComposeboxQueryController::QueryControllerState state) {
-            if (state == ComposeboxQueryController::QueryControllerState::
-                             kClusterInfoReceived) {
-              run_loop.Quit();
-            }
-          }));
-
   std::vector<SessionState> session_states;
   auto* metrics_recorder_ptr = GetMetricsRecorderPtr();
   ASSERT_THAT(metrics_recorder_ptr, testing::NotNull());
@@ -615,7 +599,6 @@ TEST_F(ContextualSearchboxHandlerTest, SubmitQuery) {
       .Times(0);
 
   handler().NotifySessionStarted();
-  run_loop.Run();
 
   SubmitQueryAndWaitForNavigation();
 
@@ -645,16 +628,6 @@ TEST_F(ContextualSearchboxHandlerTest, SubmitQuery) {
 
 TEST_F(ContextualSearchboxHandlerTest, SubmitQuery_DelayUpload) {
   // Arrange
-  // Wait until the state changes to kClusterInfoReceived.
-  base::RunLoop run_loop;
-  query_controller().set_on_query_controller_state_changed_callback(
-      base::BindLambdaForTesting(
-          [&](ComposeboxQueryController::QueryControllerState state) {
-            if (state == ComposeboxQueryController::QueryControllerState::
-                             kClusterInfoReceived) {
-              run_loop.Quit();
-            }
-          }));
 
   std::vector<SessionState> session_states;
   auto* metrics_recorder_ptr = GetMetricsRecorderPtr();
@@ -695,7 +668,6 @@ TEST_F(ContextualSearchboxHandlerTest, SubmitQuery_DelayUpload) {
       .Times(1);
 
   handler().NotifySessionStarted();
-  run_loop.Run();
 
   // Act
   SubmitQueryAndWaitForNavigation();
@@ -1034,6 +1006,103 @@ TEST_F(ContextualSearchboxHandlerTest, DriveDisclaimer_FlagDisabled) {
   base::test::TestFuture<bool> future;
   handler().ShouldShowDriveDisclaimer(future.GetCallback());
   EXPECT_FALSE(future.Get());
+}
+
+TEST_F(ContextualSearchboxHandlerTest, OnDriveUploadClicked) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(omnibox::kComposeboxDriveContextMenuOption);
+
+  omnibox::InputState state;
+  state.max_total_inputs = 10;
+  handler().input_state_model()->set_state_for_testing(state);
+  handler().OnInputStateChangedForTesting(state);
+
+  base::MockCallback<ComposeboxHandler::OnDriveUploadClickedCallback> callback;
+
+  std::vector<base::UnguessableToken> start_file_upload_flow_tokens;
+  EXPECT_CALL(query_controller(), StartFileUploadFlow)
+      .WillRepeatedly(
+          [&](const base::UnguessableToken& file_token,
+              std::unique_ptr<lens::ContextualInputData> contextual_input,
+              std::optional<lens::ImageEncodingOptions> image_options) {
+            start_file_upload_flow_tokens.push_back(file_token);
+          });
+
+  searchbox::mojom::DriveUploadResponsePtr callback_response;
+  EXPECT_CALL(callback, Run)
+      .WillOnce([&](searchbox::mojom::DriveUploadResponsePtr response) {
+        callback_response = std::move(response);
+      });
+
+  handler().OnDriveUploadClicked(callback.Get());
+
+  ASSERT_TRUE(callback_response);
+  EXPECT_EQ(callback_response->files.size(),
+            start_file_upload_flow_tokens.size());
+  for (size_t i = 0; i < callback_response->files.size(); ++i) {
+    EXPECT_EQ(callback_response->files[i]->token,
+              start_file_upload_flow_tokens[i]);
+  }
+}
+
+// TODO(crbug.com/508693783): Update these tests once the Drive file upload flow
+// is implemented.
+TEST_F(ContextualSearchboxHandlerTest, OnDriveUploadClicked_SizeLimitExceeded) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(omnibox::kComposeboxDriveContextMenuOption);
+
+  omnibox::InputState state;
+  state.max_total_inputs = 10;
+  handler().input_state_model()->set_state_for_testing(state);
+  handler().OnInputStateChangedForTesting(state);
+
+  base::MockCallback<ComposeboxHandler::OnDriveUploadClickedCallback> callback;
+
+  EXPECT_CALL(query_controller(), StartFileUploadFlow)
+      .WillRepeatedly(testing::Return());
+
+  searchbox::mojom::DriveUploadResponsePtr callback_response;
+  EXPECT_CALL(callback, Run)
+      .WillOnce([&](searchbox::mojom::DriveUploadResponsePtr response) {
+        callback_response = std::move(response);
+      });
+
+  handler().OnDriveUploadClicked(callback.Get());
+
+  ASSERT_TRUE(callback_response);
+  EXPECT_EQ(callback_response->files.size(), 2u);
+  EXPECT_EQ(callback_response->error,
+            searchbox::mojom::DriveUploadError::kSizeLimitExceeded);
+}
+
+// TODO(crbug.com/508693783): Update these tests once the Drive file upload flow
+// is implemented.
+TEST_F(ContextualSearchboxHandlerTest, OnDriveUploadClicked_MaxFilesExceeded) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(omnibox::kComposeboxDriveContextMenuOption);
+
+  omnibox::InputState state;
+  state.max_total_inputs = 1;
+  handler().input_state_model()->set_state_for_testing(state);
+  handler().OnInputStateChangedForTesting(state);
+
+  base::MockCallback<ComposeboxHandler::OnDriveUploadClickedCallback> callback;
+
+  EXPECT_CALL(query_controller(), StartFileUploadFlow)
+      .WillRepeatedly(testing::Return());
+
+  searchbox::mojom::DriveUploadResponsePtr callback_response;
+  EXPECT_CALL(callback, Run)
+      .WillOnce([&](searchbox::mojom::DriveUploadResponsePtr response) {
+        callback_response = std::move(response);
+      });
+
+  handler().OnDriveUploadClicked(callback.Get());
+
+  ASSERT_TRUE(callback_response);
+  EXPECT_EQ(callback_response->files.size(), 1u);
+  EXPECT_EQ(callback_response->error,
+            searchbox::mojom::DriveUploadError::kMaxFilesExceeded);
 }
 
 TEST_F(ContextualSearchboxHandlerTest, OpenAutocompleteMatch_ZeroSuggestClick) {

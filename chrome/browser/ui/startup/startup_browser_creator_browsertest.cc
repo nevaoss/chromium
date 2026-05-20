@@ -60,7 +60,6 @@
 #include "chrome/browser/signin/signin_promo.h"
 #include "chrome/browser/signin/signin_util.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -629,6 +628,72 @@ IN_PROC_BROWSER_TEST_F(StartupBrowserCreatorTest, ShowNonMilestoneUpdateToast) {
   ASSERT_TRUE(new_browser2);
   ASSERT_FALSE(
       new_browser2->GetFeatures().toast_controller()->GetToastViewForTesting());
+}
+
+IN_PROC_BROWSER_TEST_F(StartupBrowserCreatorTest,
+                       StartupWithValidWindowNameUTF8Works) {
+  // Suffixes are e-acute, and e-acute followed by "100" red emoji.
+  std::vector<std::string> test_names = {"touche", "touch\xC3\xA9",
+                                         "touch\xC3\xA9\xF0\x9F\x92\xAF"};
+
+  for (const auto& expected_name : test_names) {
+    base::CommandLine command_line(base::CommandLine::NO_PROGRAM);
+    command_line.AppendSwitch(switches::kOpenInNewWindow);
+#if BUILDFLAG(IS_WIN)
+    command_line.AppendSwitchNative(switches::kWindowName,
+                                    base::UTF8ToWide(expected_name));
+#else
+    command_line.AppendSwitchNative(switches::kWindowName, expected_name);
+#endif
+
+    ui_test_utils::BrowserCreatedObserver browser_created_observer;
+
+    ASSERT_TRUE(StartupBrowserCreator().Start(
+        command_line, base::FilePath(),
+        {browser()->profile(), StartupProfileMode::kBrowserWindow}, {}));
+
+    Browser* new_browser = browser_created_observer.Wait();
+    ASSERT_TRUE(new_browser);
+    EXPECT_EQ(expected_name, new_browser->user_title());
+
+    CloseBrowserSynchronously(new_browser);
+  }
+}
+
+IN_PROC_BROWSER_TEST_F(StartupBrowserCreatorTest,
+                       StartupWithInvalidWindowNameUTF8LeadsToDefault) {
+  // Test invalid UTF-8 sequence: should not fail startup, and window should act
+  // as if name empty.
+  base::CommandLine command_line(base::CommandLine::NO_PROGRAM);
+  command_line.AppendSwitch(switches::kOpenInNewWindow);
+#if BUILDFLAG(IS_WIN)
+  // On Windows, command line is natively Wide. Pass an invalid UTF-16 string
+  // (unpaired surrogate) directly to test the conversion failure.
+  std::wstring invalid_wide = L"\xD800";
+  command_line.AppendSwitchNative(switches::kWindowName, invalid_wide);
+#else
+  std::string invalid_utf8 = "\xFF\xFF";
+  command_line.AppendSwitchNative(switches::kWindowName, invalid_utf8);
+#endif
+
+  ui_test_utils::BrowserCreatedObserver browser_created_observer;
+
+  ASSERT_TRUE(StartupBrowserCreator().Start(
+      command_line, base::FilePath(),
+      {browser()->profile(), StartupProfileMode::kBrowserWindow}, {}));
+
+  Browser* new_browser = browser_created_observer.Wait();
+  ASSERT_TRUE(new_browser);
+#if BUILDFLAG(IS_WIN)
+  // On Windows, the invalid UTF-16 is converted with "best effort" replacement,
+  // resulting in the Unicode replacement character "\xEF\xBF\xBD".
+  EXPECT_EQ("\xEF\xBF\xBD", new_browser->user_title());
+#else
+  // On POSIX/Linux, the invalid UTF-8 is strictly rejected, falling back to "".
+  EXPECT_EQ("", new_browser->user_title());
+#endif
+
+  CloseBrowserSynchronously(new_browser);
 }
 
 namespace {

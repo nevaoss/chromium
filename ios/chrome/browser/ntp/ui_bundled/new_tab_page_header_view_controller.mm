@@ -397,7 +397,8 @@ const CGFloat kIdentityDiscMaxFontSize = 24;
       [self.headerView setIdentityDiscErrorBadge];
     }
 
-    [self.headerView addSubview:_searchEngineLogoMediator.view];
+    [self.headerView insertSubview:_searchEngineLogoMediator.view
+                      belowSubview:self.headerView.toolBarView];
     _searchEngineLogoMediator.view.translatesAutoresizingMaskIntoConstraints =
         NO;
     _searchEngineLogoMediator.view.accessibilityIdentifier =
@@ -524,11 +525,14 @@ const CGFloat kIdentityDiscMaxFontSize = 24;
                                                self.traitCollection);
   self.fakeOmniboxTopMarginConstraint.constant =
       -content_suggestions::SearchFieldTopMargin(_searchEngineLogoState);
+
   // Trigger relayout so that it immediately returns the updated content height
   // for the NTP to update content inset.
   [self.view setNeedsLayout];
-  [self.view layoutIfNeeded];
-  [self.commandHandler updateForHeaderSizeChange];
+  [UIView performWithoutAnimation:^{
+    [self.view layoutIfNeeded];
+    [self.commandHandler updateForHeaderSizeChange];
+  }];
   [self updateFakeboxDisplay];
 }
 

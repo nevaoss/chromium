@@ -160,6 +160,7 @@
 <translation id="1524563461097350801">Nein, danke</translation>
 <translation id="1531038290222364269">Tabs anzeigen</translation>
 <translation id="1536390784834419204">Seite übersetzen</translation>
+<translation id="1539535193627863227">Keine Passwörter oder Passkeys für diese Website gefunden</translation>
 <translation id="1540800554400757039">Adresse 1</translation>
 <translation id="154312949627292154">Tabs, die du von anderen Geräten erhalten hast, vom Sperrbildschirm aus öffnen.</translation>
 <translation id="1545749641540134597">QR-Code scannen</translation>
@@ -441,7 +442,6 @@
 <translation id="2493269659028026145">Sofort mit <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /> sperren</translation>
 <translation id="2496180316473517155">Browserverlauf</translation>
 <translation id="2496626742194544812">Zum ersten Tab</translation>
-<translation id="2497852260688568942">Die Synchronisierung wurde von deinem Administrator deaktiviert</translation>
 <translation id="2499505845365628575">Über den Button „<ph name="HISTORY_BUTTON_ACCESSIBILITY_LABEL" />“ kannst du deinen gesamten Browserverlauf aufrufen.</translation>
 <translation id="2511117522375201202">Du nutzt <ph name="NUMBER_OF_PASSWORDS" /> kompromittierte Passwörter, die deine Sicherheit gefährden könnten.</translation>
 <translation id="2513103768503127042">Hier werden deine Tabgruppen angezeigt</translation>
@@ -598,6 +598,7 @@
 <translation id="3106258548858559536">Lesemodus deaktivieren</translation>
 <translation id="3106690631878101882">„Übersetzen“ ausblenden</translation>
 <translation id="310900540163454140">Passwort für <ph name="WEBSITE" /> löschen?</translation>
+<translation id="3109724472072898302">Minimiert</translation>
 <translation id="3112556859945124369">Markieren…</translation>
 <translation id="3116695032231023709">Amtlichen Ausweis speichern</translation>
 <translation id="3119874402040566234">Du wirst abgemeldet und Browserdaten werden gelöscht</translation>
@@ -642,6 +643,7 @@
 <translation id="3245744387817103524">Deine Änderung konnte nicht gespeichert werden.</translation>
 <translation id="3254806613790954367">Der zuletzt geöffnete Tab auf allen deinen Geräten</translation>
 <translation id="325717987950204592">Tippe auf „Datenschutz und Sicherheit“</translation>
+<translation id="3259451381796379533">Dieses Konto funktioniert nicht mit Gemini. Melde dich mit einem anderen Google-Konto an.</translation>
 <translation id="3265736395246760288">Du kannst dich auf allen deinen synchronisierten Geräten schneller anmelden.</translation>
 <translation id="3272527697863656322">Abbrechen</translation>
 <translation id="3273510436356991673">Startbildschirm personalisieren</translation>
@@ -763,6 +765,7 @@
 <translation id="372676576864368480"><ph name="LAST_DIGITS" /> als Endziffern der Kartennummer automatisch ausfüllen</translation>
 <translation id="3738428049780661523">Erstellt: <ph name="DATE" /></translation>
 <translation id="3742498336182910186">Aufnahmen</translation>
+<translation id="3746269120925354434">Informationen in Google Wallet gespeichert</translation>
 <translation id="3750225824417196283">Seite „Neuer Inkognitotab“</translation>
 <translation id="3751873026576444885">Suche auf dem Bildschirm mit Google Lens beenden</translation>
 <translation id="3753408171347588045">Preise werden beobachtet</translation>
@@ -1076,7 +1079,6 @@
 <translation id="4824480232751123840">Lautstärke</translation>
 <translation id="4824497107140370669">{count,plural, =0{{domain}}=1{{domain} und ein weiterer}other{{domain} und {count} weitere}}</translation>
 <translation id="4826588772550366629">Kamera und Mikrofon</translation>
-<translation id="4828431027673677473">Produkte, die auf deinen Interessen basieren</translation>
 <translation id="4829420936835028285">Tabgruppe bearbeiten</translation>
 <translation id="4833786495304741580">Nutzungsstatistiken und Absturzberichte werden automatisch an Google gesendet.</translation>
 <translation id="483689884442613745">Speichern…</translation>
@@ -1780,6 +1782,7 @@ Handoff muss auch im Abschnitt „Allgemein“ deiner Einstellungen aktiviert se
 <translation id="7186568385131859684">Festlegen, wie der Browserverlauf mit deinen anderen Daten in Google-Diensten verwendet wird</translation>
 <translation id="719133302483559673">Verwalte deine Interessen und Einstellungen.</translation>
 <translation id="7191382490098297347">Bild aus Aufnahmen</translation>
+<translation id="7203150201908454328">Erweitert</translation>
 <translation id="7203496777391039568">Deine Unternehmensdaten bleiben privat und geschützt</translation>
 <translation id="720399613139435155">Fehler beim Übersetzen</translation>
 <translation id="7204922488054642675">Personalisierte Nachrichten</translation>
@@ -1864,6 +1867,7 @@ Handoff muss auch im Abschnitt „Allgemein“ deiner Einstellungen aktiviert se
 <translation id="7498234416455752244">Weiter bearbeiten</translation>
 <translation id="7500244509706269886">Autofill-Formular</translation>
 <translation id="750493650310597496">0 ausgewählt</translation>
+<translation id="7505402981231763928">Melde dich an, um Gemini zu verwenden</translation>
 <translation id="7506817096924591340"><ph name="FILENAME" /> (<ph name="FILESIZE" />).</translation>
 <translation id="7508728395076009983">Wenn du deine Inkognitotabs sperren möchtest, richte zuerst Touch ID, Face ID oder einen Sicherheitscode ein.</translation>
 <translation id="750886945254958667">Du kannst diese Gruppe beibehalten, um später Tabs hinzuzufügen, oder sie verlassen, wenn du keinen Zugriff mehr darauf haben möchtest</translation>
@@ -1996,6 +2000,7 @@ Handoff muss auch im Abschnitt „Allgemein“ deiner Einstellungen aktiviert se
 <translation id="7938254975914653459">FaceTime</translation>
 <translation id="7939856641500914040">Browserdaten löschen…</translation>
 <translation id="7941578031639087549">{count,plural, =1{Die Seite wurde der Leseliste in deinem Konto {email} hinzugefügt}other{{count} Seiten wurden der Leseliste in deinem Konto {email} hinzugefügt}}</translation>
+<translation id="7948579849190819732">Aktueller Tab</translation>
 <translation id="7952353944614086413">Deine geöffneten Tabs und Gruppen</translation>
 <translation id="7952670906562503188">Du bist im Begriff, {passkey_count} Passkeys und die Liste der Websites und Apps zu löschen, für die du festgelegt hast, dass Anmeldedaten nie gespeichert werden sollen. Konten, die du für Websites und Apps erstellt hast, werden nicht gelöscht.</translation>
 <translation id="7958575506592576831">Sicherheitsinformationen zur Seite</translation>
@@ -2105,7 +2110,6 @@ Handoff muss auch im Abschnitt „Allgemein“ deiner Einstellungen aktiviert se
 <translation id="828291969289324795">{count,plural, =1{Tab zu neuer Gruppe hinzufügen}other{Tabs zu neuer Gruppe hinzufügen}}</translation>
 <translation id="8283172974887967105">Festlegen…</translation>
 <translation id="8289930144142009940">„<ph name="FEATURE_NAME" />“-Benachrichtigungen deaktiviert</translation>
-<translation id="8290077367744012649">Preise von deinen Tabs beobachten</translation>
 <translation id="8292893224181644074">Download abgeschlossen</translation>
 <translation id="8299417921174340354">Du musst zuerst einen Sicherheitscode auf deinem Gerät einrichten, um Passwörter zu verwenden.</translation>
 <translation id="8307481894409578819">Diese Datei konnte nicht hochgeladen werden</translation>
@@ -2172,6 +2176,7 @@ Handoff muss auch im Abschnitt „Allgemein“ deiner Einstellungen aktiviert se
 <translation id="8533670235862049797">Safe Browsing ist aktiviert</translation>
 <translation id="8534481786647257214">Google+ Beitrag gepostet</translation>
 <translation id="8535368836838588657">Passwort einblenden</translation>
+<translation id="8540426897269305488">Mit <ph name="CELL_ACCESSIBILITY_LABEL" /> anmelden</translation>
 <translation id="8545276357312221485">Einstellungen für Standardbrowser prüfen</translation>
 <translation id="854938212724803178">Du hast 1 kompromittiertes Passwort. Ändere es jetzt, um dich bestmöglich zu schützen.</translation>
 <translation id="8551311254462607218">Tippe in der Adressleiste auf das Google Lens-Kamerasymbol</translation>
