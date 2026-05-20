@@ -727,9 +727,11 @@ void AppRuntimeContentBrowserClient::
         NonNetworkURLLoaderFactoryMap* factories) {
   DCHECK(factories);
 
-  factories->emplace(extensions::kExtensionScheme,
-                     extensions::CreateExtensionURLLoaderFactory(
-                         render_process_id, render_frame_id));
+  factories->emplace(
+      extensions::kExtensionScheme,
+      extensions::CreateExtensionURLLoaderFactory(
+          content::ChildProcessId::FromUnsafeValue(render_process_id),
+          render_frame_id));
 }
 
 bool AppRuntimeContentBrowserClient::ShouldSendOutermostOriginToRenderer(
