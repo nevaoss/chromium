@@ -11,6 +11,7 @@
 #include "build/buildflag.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/tabs/tab_group_data.h"
 #include "chrome/browser/ui/tabs/tab_group_theme.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
@@ -312,7 +313,8 @@ void VerticalTabGroupHeaderView::OnMouseMoved(const ui::MouseEvent& event) {
 
 void VerticalTabGroupHeaderView::OnMouseEntered(const ui::MouseEvent& event) {
   if (features::IsTabGroupHoverCardsEnabled()) {
-    SetHoverCardDataFrom(delegate_->GetTabGroup());
+    SetHoverCardDataFrom(
+        tabs::TabGroupData::FromTabGroup(&delegate_->GetTabGroup()));
     delegate_->UpdateHoverCard(TabSlotController::HoverCardUpdateType::kHover);
   } else {
     delegate_->HideHoverCard(TabSlotController::HoverCardUpdateType::kHover);
@@ -333,7 +335,8 @@ void VerticalTabGroupHeaderView::OnMouseExited(const ui::MouseEvent& event) {
 void VerticalTabGroupHeaderView::OnFocus() {
   UpdateEditorBubbleButtonVisibility();
   if (features::IsTabGroupHoverCardsEnabled()) {
-    SetHoverCardDataFrom(delegate_->GetTabGroup());
+    SetHoverCardDataFrom(
+        tabs::TabGroupData::FromTabGroup(&delegate_->GetTabGroup()));
     delegate_->UpdateHoverCard(TabSlotController::HoverCardUpdateType::kFocus);
   }
 }
@@ -419,6 +422,10 @@ void VerticalTabGroupHeaderView::ShowContextMenuForViewImpl(
       true;
 #endif
 
+  if (!expand_on_hover_lock_) {
+    expand_on_hover_lock_ = delegate_->AcquireExpandOnHoverLock();
+  }
+
   editor_bubble_tracker_.Opened(
       delegate_->ShowGroupEditorBubble(kStopContextMenuPropagation));
 }
@@ -429,6 +436,10 @@ bool VerticalTabGroupHeaderView::NeedsToShowThumbnail() const {
 
 bool VerticalTabGroupHeaderView::IsValidHoverCardTarget() const {
   return delegate_->IsValid();
+}
+
+views::BubbleAnchor VerticalTabGroupHeaderView::GetAnchor() {
+  return views::BubbleAnchor(this);
 }
 
 views::BubbleBorder::Arrow VerticalTabGroupHeaderView::GetAnchorPosition()
@@ -487,7 +498,8 @@ void VerticalTabGroupHeaderView::OnDataChanged(
   UpdateAccessibleName();
 
   if (features::IsTabGroupHoverCardsEnabled()) {
-    SetHoverCardDataFrom(delegate_->GetTabGroup());
+    SetHoverCardDataFrom(
+        tabs::TabGroupData::FromTabGroup(&delegate_->GetTabGroup()));
   } else {
     UpdateTooltipText();
   }
@@ -512,7 +524,8 @@ void VerticalTabGroupHeaderView::OnAttentionStateChanged(bool needs_attention) {
 }
 
 void VerticalTabGroupHeaderView::SetHoverCardDataForTesting() {
-  SetHoverCardDataFrom(delegate_->GetTabGroup());
+  SetHoverCardDataFrom(
+      tabs::TabGroupData::FromTabGroup(&delegate_->GetTabGroup()));
 }
 
 void VerticalTabGroupHeaderView::UpdateTooltipText() {
@@ -596,7 +609,10 @@ void VerticalTabGroupHeaderView::UpdateEditorBubbleButtonVisibility() {
 }
 
 void VerticalTabGroupHeaderView::OnBubbleOpened() {
-  expand_on_hover_lock_ = delegate_->AcquireExpandOnHoverLock();
+  if (!expand_on_hover_lock_) {
+    expand_on_hover_lock_ = delegate_->AcquireExpandOnHoverLock();
+  }
+
   UpdateEditorBubbleButtonVisibility();
 }
 
@@ -617,6 +633,10 @@ void VerticalTabGroupHeaderView::ShowEditorBubble() {
   if (editor_bubble_tracker_.is_open()) {
     return;
   }
+  if (!expand_on_hover_lock_) {
+    expand_on_hover_lock_ = delegate_->AcquireExpandOnHoverLock();
+  }
+
   editor_bubble_tracker_.Opened(delegate_->ShowGroupEditorBubble(
       /*stop_context_menu_propagation=*/false));
 }

@@ -58,8 +58,9 @@
 #include "chrome/browser/ui/views/frame/immersive_mode_controller.h"
 #include "chrome/browser/ui/views/location_bar/icon_label_bubble_view.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
+#include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_closer.h"
-#include "chrome/browser/ui/views/omnibox/omnibox_result_view.h"
+#include "chrome/browser/ui/views/omnibox/omnibox_text_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_icon_controller.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
@@ -151,35 +152,6 @@ namespace {
 using ::metrics::OmniboxEventProto;
 using ::ui::mojom::DragOperation;
 
-// OmniboxState ---------------------------------------------------------------
-
-// Stores omnibox state for each tab.
-struct OmniboxState : public base::SupportsUserData::Data {
-  OmniboxState(const OmniboxEditModel::State& model_state,
-               const gfx::Range& selection,
-               const gfx::Range& saved_selection_for_focus_change);
-
-  ~OmniboxState() override;
-
-  const OmniboxEditModel::State model_state;
-
-  // We store both the actual selection and any saved selection (for when the
-  // omnibox is not focused).  This allows us to properly handle cases like
-  // selecting text, tabbing out of the omnibox, switching tabs away and back,
-  // and tabbing back into the omnibox.
-  const gfx::Range selection;
-  const gfx::Range saved_selection_for_focus_change;
-};
-
-OmniboxState::OmniboxState(const OmniboxEditModel::State& model_state,
-                           const gfx::Range& selection,
-                           const gfx::Range& saved_selection_for_focus_change)
-    : model_state(model_state),
-      selection(selection),
-      saved_selection_for_focus_change(saved_selection_for_focus_change) {}
-
-OmniboxState::~OmniboxState() = default;
-
 bool IsClipboardDataMarkedAsConfidential() {
   return ui::Clipboard::GetForCurrentThread()
       ->IsMarkedByOriginatorAsConfidential();
@@ -250,6 +222,16 @@ enum class OpenMatchWithKeyboardModifiers {
 // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:OpenMatchWithKeyboardModifiers)
 
 }  // namespace
+
+// OmniboxState ---------------------------------------------------------------
+OmniboxState::OmniboxState(const OmniboxEditModel::State& model_state,
+                           const gfx::Range& selection,
+                           const gfx::Range& saved_selection_for_focus_change)
+    : model_state(model_state),
+      selection(selection),
+      saved_selection_for_focus_change(saved_selection_for_focus_change) {}
+
+OmniboxState::~OmniboxState() = default;
 
 // OmniboxViewViews -----------------------------------------------------------
 
@@ -400,6 +382,28 @@ void OmniboxViewViews::OnTabChanged(const content::WebContents* web_contents) {
 
 void OmniboxViewViews::ResetTabState(content::WebContents* web_contents) {
   web_contents->SetUserData(OmniboxTabHelper::kOmniboxStateKey, nullptr);
+}
+
+// static
+void OmniboxViewViews::SetUserTextForTab(content::WebContents* web_contents,
+                                         const std::u16string& text) {
+  auto* existing_state = static_cast<OmniboxState*>(
+      web_contents->GetUserData(OmniboxTabHelper::kOmniboxStateKey));
+  if (existing_state) {
+    OmniboxEditModel::State model_state(
+        /*user_input_in_progress=*/true,
+        /*user_text=*/text, existing_state->model_state.keyword,
+        existing_state->model_state.keyword_placeholder,
+        existing_state->model_state.is_keyword_hint,
+        existing_state->model_state.keyword_mode_entry_method,
+        existing_state->model_state.focus_state,
+        existing_state->model_state.autocomplete_input);
+    web_contents->SetUserData(
+        OmniboxTabHelper::kOmniboxStateKey,
+        std::make_unique<OmniboxState>(
+            model_state, existing_state->selection,
+            existing_state->saved_selection_for_focus_change));
+  }
 }
 
 void OmniboxViewViews::InstallPlaceholderText() {
@@ -574,12 +578,13 @@ void OmniboxViewViews::SetFocus(bool is_user_initiated) {
   // For renderer initiated focuses (like NTP or about:blank page load finish):
   //  - If the omnibox was not already focused, select-all. This handles the
   //    about:blank homepage case, where the location bar has initial focus.
-  //    It annoys users if the URL is not pre-selected. https://crbug.com/45260.
+  //    It annoys users if the URL is not pre-selected.
+  //    https://crbug.com/40402896.
   //  - If the omnibox is already focused, DO NOT select-all. This can happen
   //    if the user starts typing before the NTP finishes loading. If the NTP
   //    finishes loading and then does a renderer-initiated focus, performing
   //    a select-all here would surprisingly overwrite the user's first few
-  //    typed characters. https://crbug.com/924935.
+  //    typed characters. https://crbug.com/40610912.
   if (is_user_initiated || !omnibox_already_focused) {
     SelectAll(true);
   }
@@ -617,6 +622,13 @@ IconLabelBubbleView* OmniboxViewViews::GetAiModePageActionIconView() const {
 }
 
 void OmniboxViewViews::ApplyFocusRingToAimButton(bool force_focus) {
+  // Early exit to prevent redundant invalidations (e.g., SchedulePaint).
+  // BrowserView::OnWidgetMove() unconditionally attempts to close the omnibox
+  // popup during window drags, which calls this method repeatedly.
+  if (aim_page_action_icon_has_fake_focus_ == force_focus) {
+    return;
+  }
+
   IconLabelBubbleView* icon_view = GetAiModePageActionIconView();
   if (!icon_view) {
     return;
@@ -1477,7 +1489,7 @@ bool OmniboxViewViews::OnMousePressed(const ui::MouseEvent& event) {
       // the elided URL is selected prior to the double click. Unelision happens
       // between the first and second click, causing the wrong word to be
       // selected because it's based on the click position in the newly unelided
-      // URL. See https://crbug.com/1084406.
+      // URL. See https://crbug.com/40693090.
       if (IsSelectAll()) {
         SelectWordAt(event.location());
         const std::u16string shown_url = GetText();
@@ -1961,6 +1973,19 @@ bool OmniboxViewViews::ShouldShowPlaceholderText() const {
     return true;
   }
 
+  if (base::FeatureList::IsEnabled(
+          omnibox::kOmniboxAimDeferShowUntilVisualStateReady)) {
+    // Suppress the hint text while the AIM popup is displayed or in deferred
+    // transition.
+    bool is_aim_popup = controller()->popup_state_manager()->popup_state() ==
+                        OmniboxPopupState::kAim;
+    bool is_transitioning =
+        location_bar_view_ && location_bar_view_->in_popup_state_transition();
+    if (is_aim_popup || is_transitioning) {
+      return false;
+    }
+  }
+
   // If the omnibox is blurred, only show the DSE placeholder if there is no
   // keyword selected.
   if (!controller()->edit_model()->is_caret_visible()) {
@@ -2244,7 +2269,7 @@ bool OmniboxViewViews::HandleKeyEvent(views::Textfield* textfield,
   }
 
   if (is_mouse_pressed_ && select_all_on_mouse_release_) {
-    // https://crbug.com/1063161 If the user presses the mouse button down and
+    // https://crbug.com/40123188 If the user presses the mouse button down and
     // begins to type without releasing the mouse button, the subsequent release
     // will delete any newly typed characters due to the SelectAll happening on
     // mouse-up. If we detect this state, do the select-all immediately.
@@ -2386,14 +2411,14 @@ void OmniboxViewViews::UpdateContextMenu(ui::SimpleMenuModel* menu_contents) {
   // example. There is an effort to move simple_web_view_dialog away from
   // location_bar_view and from this nullptr situation.
   if (lens::features::IsOmniboxEntryPointEnabled() &&
-      location_bar_view_->browser() &&
-      location_bar_view_->browser()
-          ->GetFeatures()
-          .lens_overlay_entry_point_controller()
-          ->IsEnabled()) {
-    menu_contents->AddCheckItemWithStringId(
-        IDC_SHOW_GOOGLE_LENS_SHORTCUT,
-        IDS_CONTEXT_MENU_SHOW_GOOGLE_LENS_SHORTCUT);
+      location_bar_view_->browser()) {
+    if (auto* controller = lens::LensOverlayEntryPointController::From(
+            location_bar_view_->browser());
+        controller && controller->IsEnabled()) {
+      menu_contents->AddCheckItemWithStringId(
+          IDC_SHOW_GOOGLE_LENS_SHORTCUT,
+          IDS_CONTEXT_MENU_SHOW_GOOGLE_LENS_SHORTCUT);
+    }
   }
 
   if (omnibox::ShouldShowAimContextMenuOption(

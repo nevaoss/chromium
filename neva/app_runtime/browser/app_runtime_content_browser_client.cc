@@ -85,6 +85,7 @@
 #include "sandbox/policy/switches.h"
 #include "services/network/public/cpp/network_switches.h"
 #include "services/network/public/cpp/url_loader_factory_builder.h"
+#include "services/network/public/mojom/fetch_api.mojom.h"
 #include "services/network/public/mojom/network_service.mojom.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_registry.h"
 #include "third_party/blink/public/common/switches.h"
@@ -104,6 +105,7 @@
 #endif  // defined(ENABLE_BROWSER_SHELL)
 
 #if defined(USE_NEVA_CHROME_EXTENSIONS)
+#include "content/public/common/child_process_id.h"
 #include "content/public/common/content_switches.h"
 #include "extensions/browser/api/web_request/web_request_api.h"
 #include "extensions/browser/browser_context_keyed_api_factory.h"
@@ -649,7 +651,7 @@ void AppRuntimeContentBrowserClient::SiteInstanceGotProcessAndSite(
   }
 
   extensions::ProcessMap::Get(browser_context)
-      ->Insert(extension->id(), site_instance->GetProcess()->GetDeprecatedID());
+      ->Insert(extension->id(), site_instance->GetProcess()->GetID());
 }
 
 void AppRuntimeContentBrowserClient::OnWebContentsCreated(
@@ -692,6 +694,8 @@ AppRuntimeContentBrowserClient::CreateNonNetworkNavigationURLLoaderFactory(
 void AppRuntimeContentBrowserClient::
     RegisterNonNetworkWorkerMainResourceURLLoaderFactories(
         content::BrowserContext* browser_context,
+        const std::optional<url::Origin>& request_initiator,
+        network::mojom::RequestDestination request_destination,
         NonNetworkURLLoaderFactoryMap* factories) {
   DCHECK(browser_context);
   DCHECK(factories);
@@ -699,7 +703,7 @@ void AppRuntimeContentBrowserClient::
   factories->emplace(
       extensions::kExtensionScheme,
       extensions::CreateExtensionWorkerMainResourceURLLoaderFactory(
-          browser_context));
+          browser_context, request_initiator));
 }
 
 void AppRuntimeContentBrowserClient::

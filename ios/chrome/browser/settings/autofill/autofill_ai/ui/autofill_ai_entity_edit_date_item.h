@@ -8,20 +8,24 @@
 #import <UIKit/UIKit.h>
 
 #import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_field_item.h"
-#import "ios/chrome/browser/shared/ui/table_view/cells/table_view_detail_icon_item.h"
+#import "ios/chrome/browser/shared/ui/table_view/cells/table_view_text_edit_item.h"
+#import "ios/chrome/browser/shared/ui/table_view/cells/table_view_text_edit_item_delegate.h"
 
 @class AutofillAIEntityEditDateItem;
 
-@protocol AutofillAIEntityEditDateItemDelegate <NSObject>
+@protocol AutofillAIEntityEditDateItemDelegate <TableViewTextEditItemDelegate>
 
 // Notifies the delegate that the date picker value changed.
 - (void)didChangeDate:(NSDate*)date forItem:(AutofillAIEntityEditDateItem*)item;
+
+// Notifies the delegate that the date picker was dismissed.
+- (void)didDismissDateItem:(AutofillAIEntityEditDateItem*)item;
 
 @end
 
 // Table view item for a date field.
 @interface AutofillAIEntityEditDateItem
-    : TableViewDetailIconItem <AutofillAIEntityFieldItem>
+    : TableViewTextEditItem <AutofillAIEntityFieldItem>
 
 @property(nonatomic, strong) NSDate* dateValue;
 

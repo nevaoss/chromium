@@ -781,6 +781,10 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   // Returns the bounds of the Widget's client area in screen coordinates.
   gfx::Rect GetClientAreaBoundsInScreen() const;
 
+  // Returns the non decorated client area bounds, as perceived by the user
+  // (including title bar and excluding shadows), in screen coordinates.
+  gfx::Rect GetNonDecoratedClientAreaBoundsInScreen() const;
+
   // Retrieves the restored bounds for the window.
   gfx::Rect GetRestoredBounds() const;
 
@@ -882,14 +886,14 @@ class VIEWS_EXPORT Widget : public internal::NativeWidgetDelegate,
   //
   //  // Called by the implementation of DialogDelegate when the user clicks the
   //  // close/cancel buttons, or presses `esc`.
-  //  void Client::CloseWidget(Widget::CloseReason reason) {
+  //  void Client::CloseWidget(Widget::ClosedReason reason) {
   //    LogExactlyOnceOnWidgetDestruction(reason);
   //    widget_.reset();
   //  }
   //
   //  // If the client wants to close the widget, it can also do so.
   //  Client::ClientCloseWidget() {
-  //    CloseWidget(CloseReason::kUnspecified);
+  //    CloseWidget(Widget::ClosedReason::kUnspecified);
   //  }
   //
   // It is OK to not reset the Widget in the callback. This blocks the window

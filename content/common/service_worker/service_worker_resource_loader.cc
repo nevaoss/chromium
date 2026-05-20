@@ -10,8 +10,13 @@
 #include "base/metrics/histogram_macros.h"
 #include "base/strings/strcat.h"
 #include "base/trace_event/trace_event.h"
+#include "content/common/features.h"
 #include "content/public/common/content_features.h"
+#include "services/network/public/cpp/cross_origin_embedder_policy.h"
+#include "services/network/public/cpp/cross_origin_resource_policy.h"
+#include "services/network/public/cpp/document_isolation_policy.h"
 #include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/mojom/cross_origin_embedder_policy.mojom.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
 #include "services/network/public/mojom/service_worker_router_info.mojom-shared.h"
 #include "third_party/blink/public/mojom/fetch/fetch_api_response.mojom.h"
@@ -66,9 +71,66 @@ bool ServiceWorkerResourceLoader::IsValidServiceWorkerResponse(
 
 bool ServiceWorkerResourceLoader::IsValidStaticRouterResponse(
     const network::ResourceRequest& resource_request,
-    const blink::mojom::FetchAPIResponsePtr& response) {
+    const blink::mojom::FetchAPIResponsePtr& response,
+    const network::CrossOriginEmbedderPolicy& cross_origin_embedder_policy,
+    network::mojom::CrossOriginEmbedderPolicyReporter*
+        cross_origin_embedder_policy_reporter,
+    const network::DocumentIsolationPolicy& document_isolation_policy,
+    network::mojom::DocumentIsolationPolicyReporter*
+        document_isolation_policy_reporter) {
   bool is_valid = IsValidServiceWorkerResponse(
       resource_request.mode, resource_request.redirect_mode, response);
+
+  if (is_valid && response) {
+    std::optional<std::string> corp_header_value;
+    auto it =
+        response->headers.find(network::CrossOriginResourcePolicy::kHeaderName);
+    if (it != response->headers.end()) {
+      corp_header_value = it->second;
+    }
+
+    // Since the static router's cache source is handled by the browser process
+    // on behalf of the service worker, we should perform the CORP check
+    // here to ensure the security.
+    // The check is performed against the client's COEP and DIP.
+    CORPCheckResult result = CORPCheckResult::kSuccess;
+    bool is_enabled = base::FeatureList::IsEnabled(
+        features::kServiceWorkerStaticRouterCORPCheck);
+    // If the url_list is empty, the response is synthesized in the service
+    // worker (e.g. new Response("...")), so it's considered as same-origin.
+    // Otherwise, the response may contain third-party data. We must use the
+    // response's URL list for the CORP check instead of the request URL to
+    // prevent a same-origin alias URL from bypassing the check.
+    // This matches the behavior in CrossOriginResourcePolicyChecker::IsBlocked.
+    if (response->url_list.empty()) {
+      // Synthesized responses must not be opaque.
+      CHECK_NE(response->response_type,
+               network::mojom::FetchResponseType::kOpaque);
+      CHECK_NE(response->response_type,
+               network::mojom::FetchResponseType::kOpaqueRedirect);
+    } else if (network::CrossOriginResourcePolicy::IsBlockedByHeaderValue(
+                   response->url_list.back(), response->url_list.front(),
+                   resource_request.request_initiator, corp_header_value,
+                   resource_request.mode, resource_request.destination,
+                   response->request_include_credentials,
+                   cross_origin_embedder_policy,
+                   is_enabled ? cross_origin_embedder_policy_reporter : nullptr,
+                   document_isolation_policy,
+                   is_enabled ? document_isolation_policy_reporter : nullptr)) {
+      if (is_enabled) {
+        is_valid = false;
+        result = CORPCheckResult::kBlocked;
+      } else {
+        result = CORPCheckResult::kViolation;
+      }
+    }
+    base::UmaHistogramEnumeration(
+        base::StrCat({"ServiceWorker.StaticRouter.",
+                      IsMainResourceLoader() ? "MainResource" : "Subresource",
+                      ".CORPCheckResult"}),
+        result);
+  }
+
   base::UmaHistogramBoolean(
       base::StrCat({"ServiceWorker.StaticRouter.",
                     IsMainResourceLoader() ? "MainResource" : "Subresource",

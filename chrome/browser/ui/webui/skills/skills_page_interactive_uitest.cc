@@ -19,6 +19,7 @@
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
 #include "chrome/browser/ui/toasts/toast_view.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/webui/skills/skills_dialog_view.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/webui_url_constants.h"
@@ -32,6 +33,7 @@
 #include "components/skills/public/skills_metrics.h"
 #include "components/skills/public/skills_service.h"
 #include "components/sync/model/data_type_store_service.h"
+#include "components/zoom/zoom_controller.h"
 #include "content/public/test/browser_test.h"
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/test/test_url_loader_factory.h"
@@ -234,6 +236,41 @@ IN_PROC_BROWSER_TEST_F(SkillsPageInteractiveUITest, UndoFromDeletionFlow) {
           WebContentsInteractionTestUtil::StateChange::Type::kExists));
 }
 
+IN_PROC_BROWSER_TEST_F(SkillsPageInteractiveUITest, DialogZoomModeDisabled) {
+  SignIn("testskills@gmail.com");
+  glic::GlicEnabling::SetBypassEnablementChecksForTesting(true);
+
+  const InteractiveBrowserWindowTestApi::DeepQuery kAddButtonQuery{
+      "skills-app", "user-skills-page", "cr-button#addSkillButton"};
+
+  RunTestSequence(
+      OpenSkillsPage(GURL(chrome::kChromeUISkillsURL)
+                         .Resolve(chrome::kChromeUISkillsYourSkillsPath)),
+      WaitForElementEvent(
+          kSkillsPageElementId, kAddButtonQuery,
+          WebContentsInteractionTestUtil::StateChange::Type::kExists),
+      ClickElement(kSkillsPageElementId, kAddButtonQuery),
+      InstrumentNonTabWebView(kSkillsDialogElementId,
+                              skills::SkillsDialogView::kSkillsDialogElementId),
+      Do([this]() {
+        views::View* web_view =
+            views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+                skills::SkillsDialogView::kSkillsDialogElementId,
+                BrowserView::GetBrowserViewForBrowser(browser())
+                    ->GetElementContext());
+        EXPECT_TRUE(web_view);
+        content::WebContents* web_contents =
+            static_cast<skills::SkillsDialogView*>(web_view->parent())
+                ->web_contents();
+        EXPECT_TRUE(web_contents);
+        zoom::ZoomController* zoom_controller =
+            zoom::ZoomController::FromWebContents(web_contents);
+        EXPECT_TRUE(zoom_controller);
+        EXPECT_EQ(zoom_controller->zoom_mode(),
+                  zoom::ZoomController::ZOOM_MODE_DISABLED);
+      }));
+}
+
 class SkillsPageScreenshotInteractiveUITest
     : public SkillsPageInteractiveUITest,
       public testing::WithParamInterface<bool> {
@@ -357,7 +394,7 @@ IN_PROC_BROWSER_TEST_P(SkillsPageScreenshotInteractiveUITest,
   skills::proto::Skill* skill2 = skills_list.add_skills();
   skill2->set_id("345");
   skill2->set_name("Find frog photos");
-  skill2->set_category("Top Pick");
+  skill2->set_category("Learning");
   skill2->set_description("Find a cute frog photo");
   skill2->set_icon("🐸");
   skill2->set_prompt("Find a cute frog photo");
@@ -391,4 +428,61 @@ IN_PROC_BROWSER_TEST_P(SkillsPageScreenshotInteractiveUITest,
   histogram_tester_.ExpectBucketCount(
       "Skills.Management.BrowseSkills.Action",
       skills::mojom::SkillsManagementAction::kPageOpened, 1);
+}
+
+IN_PROC_BROWSER_TEST_P(SkillsPageScreenshotInteractiveUITest,
+                       BrowseSkillsPageSubHeaders) {
+  skills::proto::SkillsList skills_list;
+  skills::proto::Skill* skill = skills_list.add_skills();
+  skill->set_id("123");
+  skill->set_name("Look for socks");
+  skill->set_category("Partnerships");
+  skill->set_description("Look for some socks");
+  skill->set_icon("🧦");
+  skill->set_prompt("Look for some socks");
+  skill->set_image_url("https://example.com/image.png");
+
+  skills::proto::Skill* skill2 = skills_list.add_skills();
+  skill2->set_id("345");
+  skill2->set_name("Find frog photos");
+  skill2->set_category("Top Pick");
+  skill2->set_description("Find a cute frog photo");
+  skill2->set_icon("🐸");
+  skill2->set_prompt("Find a cute frog photo");
+
+  // Add topics.
+  skills::proto::TopicInfo* topic1 = skills_list.add_topics_info_list();
+  topic1->set_category_name("Partnerships");
+  topic1->set_display_name("Partner Spotlight");
+
+  skills::proto::TopicInfo* topic2 = skills_list.add_topics_info_list();
+  topic2->set_category_name("Top Pick");
+  topic2->set_display_name("Selected By Chrome");
+
+  std::string response_data;
+  ASSERT_TRUE(skills_list.SerializeToString(&response_data));
+
+  GURL expected_url(skills::kSkillsDownloaderGstaticUrl);
+  test_url_loader_factory_.AddResponse(expected_url.spec(), response_data,
+                                       net::HTTP_OK);
+
+  const InteractiveBrowserWindowTestApi::DeepQuery kSkillCardQuery{
+      "skills-app", "discover-skills-page", "skill-card"};
+
+  std::string screenshot_name =
+      IsDarkMode() ? "browse_skills_dark" : "browse_skills_light";
+  SignIn("testskills@gmail.com");
+  glic::GlicEnabling::SetBypassEnablementChecksForTesting(true);
+  RunTestSequence(
+      SetOnIncompatibleAction(
+          OnIncompatibleAction::kIgnoreAndContinue,
+          "Screenshots not supported in all testing environments."),
+      OpenSkillsPage(GURL(chrome::kChromeUISkillsURL)
+                         .Resolve(chrome::kChromeUISkillsBrowsePath)),
+      WaitForElementEvent(
+          kSkillsPageElementId, kSkillCardQuery,
+          WebContentsInteractionTestUtil::StateChange::Type::kExists),
+      Screenshot(kSkillsPageElementId,
+                 /*screenshot_name=*/screenshot_name,
+                 /*baseline_cl=*/kScreenshotBaselineCL));
 }

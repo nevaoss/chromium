@@ -45,12 +45,17 @@ IdentityUrlLoaderThrottle::IdentityUrlLoaderThrottle(SetIdpStatusCallback cb)
 IdentityUrlLoaderThrottle::~IdentityUrlLoaderThrottle() = default;
 
 void IdentityUrlLoaderThrottle::DetachFromCurrentSequence() {
+  // This gets called when the load is moved to a different thread, so we need
+  // to post a task to the original thread to set the signin status.
+  // See https://crbug.com/40285364 and https://crbug.com/40244488.
   set_idp_status_cb_ = base::BindRepeating(
       [](scoped_refptr<base::SequencedTaskRunner> task_runner,
-         SetIdpStatusCallback original_cb, const url::Origin& origin,
-         blink::mojom::IdpSigninStatus status) {
-        task_runner->PostTask(
-            FROM_HERE, base::BindOnce(std::move(original_cb), origin, status));
+         SetIdpStatusCallback original_cb,
+         const std::optional<url::Origin>& initiator,
+         const url::Origin& idp_origin, blink::mojom::IdpSigninStatus status) {
+        task_runner->PostTask(FROM_HERE,
+                              base::BindOnce(std::move(original_cb), initiator,
+                                             idp_origin, status));
       },
       base::SequencedTaskRunner::GetCurrentDefault(),
       std::move(set_idp_status_cb_));
@@ -60,6 +65,7 @@ void IdentityUrlLoaderThrottle::WillStartRequest(
     network::ResourceRequest* request,
     bool* defer) {
   request_url_ = request->url;
+  request_initiator_ = request->request_initiator;
   has_user_gesture_ = request->has_user_gesture;
 }
 
@@ -87,9 +93,10 @@ void IdentityUrlLoaderThrottle::WillRedirectRequest(
 void IdentityUrlLoaderThrottle::HandleResponseOrRedirect(
     const GURL& response_url,
     const network::mojom::URLResponseHead& response_head) {
-  url::Origin origin = url::Origin::Create(response_url);
-  if (!network::IsOriginPotentiallyTrustworthy(origin))
+  url::Origin idp_origin = url::Origin::Create(response_url);
+  if (!network::IsOriginPotentiallyTrustworthy(idp_origin)) {
     return;
+  }
 
   // TODO(crbug.com/40236764):
   // - Limit to toplevel frames
@@ -106,14 +113,16 @@ void IdentityUrlLoaderThrottle::HandleResponseOrRedirect(
     VLOG(1) << "IDP signed in: " << response_url.spec();
     UMA_HISTOGRAM_BOOLEAN("Blink.FedCm.IdpSigninRequestInitiatedByUser",
                           has_user_gesture_);
-    set_idp_status_cb_.Run(origin, IdpSigninStatus::kSignedIn);
+    set_idp_status_cb_.Run(request_initiator_, idp_origin,
+                           IdpSigninStatus::kSignedIn);
   } else if (HeaderHasToken(*headers, kSetLoginHeader,
                             kSetLoginHeaderValueLoggedOut)) {
     // Mark IDP as logged out
     VLOG(1) << "IDP signed out: " << response_url.spec();
     UMA_HISTOGRAM_BOOLEAN("Blink.FedCm.IdpSignoutRequestInitiatedByUser",
                           has_user_gesture_);
-    set_idp_status_cb_.Run(origin, IdpSigninStatus::kSignedOut);
+    set_idp_status_cb_.Run(request_initiator_, idp_origin,
+                           IdpSigninStatus::kSignedOut);
   }
 }
 

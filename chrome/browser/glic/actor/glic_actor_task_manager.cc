@@ -20,6 +20,7 @@
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/actor_task_metadata.h"
 #include "chrome/browser/actor/execution_engine.h"
+#include "chrome/browser/actor/tab_observation_controller.h"
 #include "chrome/browser/actor/tools/tool_request.h"
 #include "chrome/browser/actor/ui/actor_ui_state_manager_interface.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
@@ -35,12 +36,14 @@
 #include "chrome/common/actor/journal_details_builder.h"
 #include "chrome/common/actor_webui.mojom.h"
 #include "chrome/common/chrome_features.h"
+#include "components/actor/core/actor_features.h"
+#include "components/actor/public/mojom/actor_types.mojom.h"
 #include "components/optimization_guide/proto/features/actions_data.pb.h"
 #include "components/page_content_annotations/content/page_context_fetcher.h"
 #include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
-#include "mojo/public/cpp/base/proto_wrapper.h"
+#include "ui/gfx/geometry/point.h"
 
 namespace glic {
 
@@ -135,6 +138,7 @@ void GlicActorTaskManager::CreateTask(
         GURL(), actor::TaskId(), "GlicActorTaskManager::CreateTask",
         actor::JournalDetailsBuilder()
             .AddError("Actuation capability disabled")
+            .Add("reason", base::ToString(reason_to_log))
             .Build());
     std::move(callback).Run(
         base::unexpected(mojom::CreateTaskErrorReason::kBlockedByPolicy));
@@ -142,11 +146,26 @@ void GlicActorTaskManager::CreateTask(
   }
 
   actor::RecordActorTaskCreated(true);
+
+  if (base::FeatureList::IsEnabled(actor::kGlicActorTransientTasks)) {
+    if (actor::kGlicActorTransientTasksForceTransient.Get()) {
+      if (!options) {
+        options = actor::webui::mojom::TaskOptions::New();
+      }
+      options->duration = actor::webui::mojom::TaskDuration::kTransient;
+    }
+  } else if (options && options->duration ==
+                            actor::webui::mojom::TaskDuration::kTransient) {
+    options->duration = actor::webui::mojom::TaskDuration::kDefault;
+  }
+
   current_task_id_ = actor_keyed_service_->CreateTaskWithOptions(
       actor::TaskSourceInfo(actor::TaskSourceInfo::Client::kGlic,
                             conversation_id),
       &actor_policy_checker_.get(), std::move(options), std::move(delegate));
   CHECK(!current_task_id_.is_null());
+
+  actuating_changed_callbacks_.Notify(true);
 
   actor_task_state_changed_subscription_ =
       actor_keyed_service_->AddTaskStateChangedCallback(base::BindRepeating(
@@ -195,6 +214,42 @@ void GlicActorTaskManager::PerformActionsFinished(
     return;
   }
 
+  if (base::FeatureList::IsEnabled(actor::kGlicActorTabObservationController)) {
+    actor::mojom::ActionResultCode controller_result_code =
+        actor::mojom::ActionResultCode::kOk;
+    std::optional<size_t> controller_index_of_failed_action;
+    actor::ExtractErrorResult(action_results, &controller_result_code,
+                              controller_index_of_failed_action);
+    auto journal_entry =
+        actor_keyed_service_->GetJournal().CreatePendingAsyncEntry(
+            GURL(), task_id, MakeBrowserTrackUUID(task_id),
+            "TabObservationController",
+            actor::JournalDetailsBuilder()
+                .Add("result_code", base::ToString(controller_result_code))
+                .Add("skip_async_observation_information",
+                     skip_async_observation_information)
+                .Build());
+
+    // base::Unretained(this) is safe because `observation_controllers_` is
+    // owned by this class and the controller guarantees that it will not run
+    // the callback after its own destruction.
+    auto done_callback =
+        base::BindOnce(&GlicActorTaskManager::OnPerformActionsComplete,
+                       base::Unretained(this), std::move(callback), start_time,
+                       action_results, std::move(journal_entry));
+
+    auto controller = std::make_unique<actor::TabObservationController>(
+        profile_, task_id, start_time, skip_async_observation_information,
+        action_results, std::move(done_callback));
+
+    controller->set_screenshot_collection_options(
+        std::move(screenshot_collection_options));
+    auto* controller_ptr = controller.get();
+    observation_controllers_.push_back(std::move(controller));
+    controller_ptr->Start();
+    return;
+  }
+
   // TODO(b/471210832): Consider merging tab observation code into the Actor API
   // so that all clients can share logic related to retries, crashed, tabs, and
   // observation fetching mechanics.
@@ -224,6 +279,86 @@ void GlicActorTaskManager::PerformActionsFinished(
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
+void GlicActorTaskManager::OnPerformActionsComplete(
+    mojom::WebClientHandler::PerformActionsCallback callback,
+    base::TimeTicks start_time,
+    std::vector<actor::ActionResultWithLatencyInfo> action_results,
+    std::unique_ptr<actor::AggregatedJournal::PendingAsyncEntry> journal_entry,
+    actor::TabObservationController* controller_ptr,
+    std::unique_ptr<actor::ObservationResult> result) {
+  CHECK(
+      base::FeatureList::IsEnabled(actor::kGlicActorTabObservationController));
+  CHECK(result);
+  std::erase_if(observation_controllers_, [&](const auto& controller) {
+    return controller.get() == controller_ptr;
+  });
+
+  optimization_guide::proto::ActionsResult response;
+
+  actor::mojom::ActionResultCode result_code =
+      actor::mojom::ActionResultCode::kOk;
+  std::optional<size_t> index_of_failed_action;
+  actor::ExtractErrorResult(action_results, &result_code,
+                            index_of_failed_action);
+
+  response.set_action_result(static_cast<int32_t>(result_code));
+  if (index_of_failed_action) {
+    response.set_index_of_failed_action(*index_of_failed_action);
+  }
+
+  actor::CopyScriptToolResults(response, action_results);
+
+  auto* latency_info = response.mutable_latency_information();
+  for (size_t i = 0; i < action_results.size(); ++i) {
+    auto& action_result = action_results.at(i);
+    CHECK(action_result.result->execution_end_time);
+    {
+      auto* latency_step = latency_info->add_latency_steps();
+      latency_step->mutable_action()->set_action_index(i);
+      latency_step->set_latency_start_ms(
+          (action_result.start_time - start_time).InMilliseconds());
+      latency_step->set_latency_stop_ms(
+          (*action_result.result->execution_end_time - start_time)
+              .InMilliseconds());
+    }
+    // Don't report a page stabilization time if the start and end
+    // are the same. Not every tool needs stabilization.
+    if (*action_result.result->execution_end_time != action_result.end_time) {
+      auto* latency_step = latency_info->add_latency_steps();
+      latency_step->mutable_page_stabilization()->set_action_index(i);
+      latency_step->set_latency_start_ms(
+          (*action_result.result->execution_end_time - start_time)
+              .InMilliseconds());
+      latency_step->set_latency_stop_ms(
+          (action_result.end_time - start_time).InMilliseconds());
+    }
+    if (!actor::IsOk(*action_result.result)) {
+      CHECK_EQ(*index_of_failed_action, i);
+      response.set_error_message(action_result.result->message);
+    }
+  }
+
+  for (auto& obs : result->tab_observations) {
+    *response.add_tabs() = std::move(obs);
+  }
+  for (auto& obs : result->window_observations) {
+    *response.add_windows() = std::move(obs);
+  }
+  for (auto& step : result->latency_steps) {
+    *latency_info->add_latency_steps() = std::move(step);
+  }
+
+  actor::RecordTabObservationResultHistogram(response);
+  actor::RecordObservationOutcomeHistogram(response,
+                                           result->attempted_observation_retry);
+
+  if (journal_entry) {
+    journal_entry->EndEntry({});
+  }
+
+  std::move(callback).Run(mojo_base::ProtoWrapper(response));
+}
+
 void GlicActorTaskManager::DidFinishBuildObservation(
     mojom::WebClientHandler::PerformActionsCallback callback,
     base::TimeTicks start_time,
@@ -236,8 +371,9 @@ void GlicActorTaskManager::DidFinishBuildObservation(
     std::unique_ptr<optimization_guide::proto::ActionsResult> result,
     std::unique_ptr<actor::AggregatedJournal::PendingAsyncEntry>
         journal_entry) {
+  CHECK(
+      !base::FeatureList::IsEnabled(actor::kGlicActorTabObservationController));
   CHECK(result);
-
   actor::RecordTabObservationResultHistogram(*result);
 
   if (base::FeatureList::IsEnabled(kGlicRetryFailedObservations) &&
@@ -456,7 +592,7 @@ void GlicActorTaskManager::PauseActorTask(
 
   if (tab_handle != tabs::TabHandle::Null()) {
     // Pausing the task on a tab means we're actuating on it.
-    task->AddTab(tab_handle, base::DoNothing());
+    task->AddTab(tab_handle, /*stop_task_on_detach=*/true, base::DoNothing());
   }
 
   const bool from_actor =
@@ -582,6 +718,12 @@ bool GlicActorTaskManager::IsActuating() const {
   return !!current_task_id_;
 }
 
+base::CallbackListSubscription
+GlicActorTaskManager::AddActuatingChangedCallback(
+    base::RepeatingCallback<void(bool)> callback) {
+  return actuating_changed_callbacks_.Add(std::move(callback));
+}
+
 void GlicActorTaskManager::InterruptActorTask(actor::TaskId task_id) {
   actor::ActorTask* task = actor_keyed_service_->GetTask(task_id);
   if (!task) {
@@ -689,6 +831,8 @@ void GlicActorTaskManager::NotifyActorTaskStateChanged(actor::ActorTask& task) {
     attempted_reload_after_crash_ = false;
     reload_observer_.reset();
     actor_task_state_changed_subscription_.reset();
+
+    actuating_changed_callbacks_.Notify(false);
   }
 }
 

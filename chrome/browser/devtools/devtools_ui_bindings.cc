@@ -54,7 +54,6 @@
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/hats/hats_service.h"
 #include "chrome/browser/ui/hats/hats_service_factory.h"
@@ -131,8 +130,8 @@
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/browser/user_education/user_education_service_factory.h"
@@ -242,7 +241,8 @@ void DefaultBindingsDelegate::OpenInNewTab(const std::string& url) {
 #if BUILDFLAG(IS_ANDROID)
   NOTIMPLEMENTED();
 #else
-  BrowserWindowInterface* browser = chrome::FindBrowserWithTab(web_contents_);
+  BrowserWindowInterface* browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(web_contents_);
   // Check if the browser is still alive, as it might have been closed in the
   // meantime.
   // TODO(https://crbug.com/403946437): We should definitely understand why this
@@ -259,7 +259,8 @@ void DefaultBindingsDelegate::OpenSearchResultsInNewTab(
 #if BUILDFLAG(IS_ANDROID)
   NOTIMPLEMENTED();
 #else
-  BrowserWindowInterface* browser = chrome::FindBrowserWithTab(web_contents_);
+  BrowserWindowInterface* browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(web_contents_);
   TemplateURLService* url_service =
       TemplateURLServiceFactory::GetForProfile(browser->GetProfile());
   DCHECK(url_service);
@@ -805,7 +806,9 @@ bool IsAnyAidaPoweredFeatureEnabled() {
          base::FeatureList::IsEnabled(
              ::features::kDevToolsAiCodeCompletionStyles) ||
          base::FeatureList::IsEnabled(
-             ::features::kDevToolsAiAssistanceAccessibilityAgent);
+             ::features::kDevToolsAiAssistanceAccessibilityAgent) ||
+         base::FeatureList::IsEnabled(
+             ::features::kDevToolsAiAssistanceStorageAgent);
 }
 }  // namespace
 
@@ -1264,8 +1267,32 @@ void DevToolsUIBindings::LoadNetworkResource(DispatchCallback callback,
   resource_request.site_for_cookies = net::SiteForCookies::FromUrl(gurl);
   resource_request.headers.AddHeadersFromString(headers);
 
+  content::WebContents* target_tab = delegate_->GetInspectedWebContents();
+
   NetworkResourceLoader::URLLoaderFactoryHolder url_loader_factory;
   if (gurl.SchemeIsFile()) {
+    GURL frontend_url = web_contents_->GetLastCommittedURL();
+    bool is_remote_frontend =
+        frontend_url.is_valid() && !frontend_url.IsAboutBlank() &&
+        IsValidRemoteFrontendURL(frontend_url);
+    if (is_remote_frontend) {
+      if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
+              switches::kAllowUnsafeDevToolsRemoteFileLoading)) {
+        base::DictValue response_dict;
+        response_dict.Set("statusCode", 403);
+        response_dict.Set("netError", net::ERR_ACCESS_DENIED);
+        response_dict.Set("netErrorName",
+                          net::ErrorToString(net::ERR_ACCESS_DENIED));
+        response_dict.Set(
+            "messageOverride",
+            "Local file loading is restricted for remote DevTools. Use "
+            "--allow-unsafe-devtools-remote-file-loading to enable it.");
+        auto response = base::Value(std::move(response_dict));
+        std::move(callback).Run(&response);
+        return;
+      }
+    }
+
     mojo::PendingRemote<network::mojom::URLLoaderFactory> pending_remote =
         content::CreateFileURLLoaderFactory(
             base::FilePath() /* profile_path */,
@@ -1274,7 +1301,6 @@ void DevToolsUIBindings::LoadNetworkResource(DispatchCallback callback,
         std::make_unique<network::WrapperPendingSharedURLLoaderFactory>(
             std::move(pending_remote)));
   } else if (content::HasWebUIScheme(gurl)) {
-    content::WebContents* target_tab = delegate_->GetInspectedWebContents();
 #if defined(NDEBUG)
     // In release builds, allow files from the chrome://, devtools:// and
     // chrome-untrusted:// schemes if a custom devtools front-end was specified.
@@ -1313,7 +1339,6 @@ void DevToolsUIBindings::LoadNetworkResource(DispatchCallback callback,
       return;
     }
   } else {
-    content::WebContents* target_tab = delegate_->GetInspectedWebContents();
     if (target_tab) {
       auto* partition =
           target_tab->GetPrimaryMainFrame()->GetStoragePartition();
@@ -1333,7 +1358,18 @@ void DevToolsUIBindings::LoadNetworkResource(DispatchCallback callback,
 }
 
 void DevToolsUIBindings::OpenInNewTab(const std::string& url) {
-  delegate_->OpenInNewTab(url);
+  GURL gurl(url);
+  // Hardening: Verify that the frontend renderer is allowed to request this URL.
+  if (!web_contents_ || !web_contents_->GetPrimaryMainFrame() ||
+      !content::ChildProcessSecurityPolicy::GetInstance()->CanRequestURL(
+          web_contents_->GetPrimaryMainFrame()
+              ->GetProcess()
+              ->GetDeprecatedID(),
+          gurl)) {
+    gurl = GURL(url::kAboutBlankURL);
+  }
+
+  delegate_->OpenInNewTab(gurl.spec());
 }
 
 void DevToolsUIBindings::OpenSearchResultsInNewTab(const std::string& query) {
@@ -1865,6 +1901,12 @@ base::DictValue DevToolsUIBindings::GetHostConfigDictionary(Profile* profile) {
     response_dict.Set("devToolsAiAssistanceAccessibilityAgent",
                       std::move(accessibility_agent_dict));
   }
+
+  response_dict.Set(
+      "devToolsAiAssistanceStorageAgent",
+      base::DictValue().Set(
+          "enabled", base::FeatureList::IsEnabled(
+                         ::features::kDevToolsAiAssistanceStorageAgent)));
 
   if (base::FeatureList::IsEnabled(
           ::features::kDevToolsAiAssistancePerformanceAgent)) {
@@ -2672,8 +2714,13 @@ void DevToolsUIBindings::AddDevToolsExtensionsToClient() {
       extensions::ExtensionManagementFactory::GetForBrowserContext(
           web_contents_->GetBrowserContext());
 
-  forbidden_origins.Append(
-      url::Origin::Create(search::GetNewTabPageURL(profile_)).Serialize());
+  // NOTE: on Android, GetNewTabPageURL may return invalid URL. This is short
+  // work around.
+  // TODO(crbug.com/505013947): Fix the root cause.
+  auto origin = url::Origin::Create(search::GetNewTabPageURL(profile_));
+  if (!origin.opaque()) {
+    forbidden_origins.Append(origin.Serialize());
+  }
   for (const scoped_refptr<const extensions::Extension>& extension :
        registry->enabled_extensions()) {
     if (extensions::Manifest::IsComponentLocation(extension->location())) {

@@ -157,10 +157,10 @@ bool IsEmptyNTP(const web::WebState* web_state) {
       self.sceneState.browserProviderInterface.mainBrowserProvider.browser;
 
   ProfileIOS* profile = browser->GetProfile();
+
   if (!base::FeatureList::IsEnabled(switches::kBuildExternalPrivacyContext)) {
-    // Capabilities prefetching must happen after
-    // `SystemIdentityManager::BuildExternalPrivacyContext()`. This is handled
-    // by `SigninAccountCapabilitiesSceneAgent` instead.
+    // Capabilities prefetching is no longer necessary; all capabilities fetches
+    // are deferred until External Privacy Contexts are built.
     RunSystemCapabilitiesPrefetch(signin::GetIdentitiesOnDevice(profile));
   }
 
@@ -393,10 +393,11 @@ bool IsEmptyNTP(const web::WebState* web_state) {
   }
 
   Browser* browser =
-      self.sceneState.browserProviderInterface.currentBrowserProvider.browser;
+      self.sceneState.browserProviderInterface.mainBrowserProvider.browser;
 
-  // Do not show if in IncognitoMode
-  if (browser->type() != Browser::Type::kRegular) {
+  // Do not show if the regular browser is not the current one.
+  if (browser !=
+      self.sceneState.browserProviderInterface.currentBrowserProvider.browser) {
     return;
   }
 

@@ -610,25 +610,6 @@
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
-        "module_name": "//extensions:extensions_browsertests",
-        "module_scheme": "gtest",
-        "name": "extensions_browsertests",
-        "swarming": {
-          "dimensions": {
-            "cpu": "arm64",
-            "gce": "1",
-            "os": "Ubuntu-22.04"
-          },
-          "expiration": 43200,
-          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
-        },
-        "test": "extensions_browsertests",
-        "test_id_prefix": "ninja://extensions:extensions_browsertests/"
-      },
-      {
-        "merge": {
-          "script": "//testing/merge_scripts/standard_gtest_merge.py"
-        },
         "module_name": "//extensions:extensions_unittests",
         "module_scheme": "gtest",
         "name": "extensions_unittests",
@@ -849,7 +830,7 @@
           },
           "expiration": 43200,
           "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com",
-          "shards": 3
+          "shards": 5
         },
         "test": "interactive_ui_tests",
         "test_id_prefix": "ninja://chrome/test:interactive_ui_tests/"
@@ -1202,6 +1183,25 @@
         "merge": {
           "script": "//testing/merge_scripts/standard_gtest_merge.py"
         },
+        "module_name": "//remoting:remoting_unittests",
+        "module_scheme": "gtest",
+        "name": "remoting_unittests",
+        "swarming": {
+          "dimensions": {
+            "cpu": "arm64",
+            "gce": "1",
+            "os": "Ubuntu-22.04"
+          },
+          "expiration": 43200,
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "remoting_unittests",
+        "test_id_prefix": "ninja://remoting:remoting_unittests/"
+      },
+      {
+        "merge": {
+          "script": "//testing/merge_scripts/standard_gtest_merge.py"
+        },
         "module_name": "//sandbox/linux:sandbox_linux_unittests",
         "module_scheme": "gtest",
         "name": "sandbox_linux_unittests",
@@ -1483,6 +1483,25 @@
         },
         "test": "viz_unittests",
         "test_id_prefix": "ninja://components/viz:viz_unittests/"
+      },
+      {
+        "merge": {
+          "script": "//testing/merge_scripts/standard_gtest_merge.py"
+        },
+        "module_name": "//chrome/browser/vr:vr_common_unittests",
+        "module_scheme": "gtest",
+        "name": "vr_common_unittests",
+        "swarming": {
+          "dimensions": {
+            "cpu": "arm64",
+            "gce": "1",
+            "os": "Ubuntu-22.04"
+          },
+          "expiration": 43200,
+          "service_account": "chromium-tester@chops-service-accounts.iam.gserviceaccount.com"
+        },
+        "test": "vr_common_unittests",
+        "test_id_prefix": "ninja://chrome/browser/vr:vr_common_unittests/"
       },
       {
         "merge": {

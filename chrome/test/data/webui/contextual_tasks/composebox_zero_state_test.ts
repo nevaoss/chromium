@@ -109,8 +109,12 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     BrowserProxyImpl.setInstance(testProxy);
 
     mockComposeboxPageHandler = TestMock.fromClass(ComposeboxPageHandlerRemote);
+    mockComposeboxPageHandler.setResultFor(
+        'getSmartTabSharingActive', Promise.resolve({active: false}));
     mockSearchboxPageHandler = TestMock.fromClass(SearchboxPageHandlerRemote);
-
+    mockSearchboxPageHandler.setResultFor(
+        'getPageClassification',
+        Promise.resolve({metricSource: 'CO_BROWSING_COMPOSEBOX'}));
     const searchboxCallbackRouter = new SearchboxPageCallbackRouter();
     searchboxCallbackRouterRemote =
         searchboxCallbackRouter.$.bindNewPipeAndPassRemote();
@@ -290,6 +294,33 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
         );
       });
 
+  test('no suggestions in zero state when inNlm is true', async () => {
+    testProxy.handler.setIsShownInTab(true);
+
+    testProxy.callbackRouterRemote.onZeroStateChange(true);
+    testProxy.callbackRouterRemote.onSidePanelStateChanged();
+
+    await testProxy.callbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
+
+    contextualTasksApp.setEnableNativeZeroStateSuggestionsForTesting(true);
+    await contextualTasksApp.$.composebox.updateComplete;
+    await microtasksFinished();
+
+    checkIfCanFindSuggestionsContainer(contextualTasksApp, /*canFind=*/ true);
+
+    contextualTasksApp.setInNlmForTesting(true);
+    await contextualTasksApp.updateComplete;
+    await contextualTasksApp.$.composebox.updateComplete;
+    await microtasksFinished();
+
+    assertTrue(
+        contextualTasksApp.$.composebox.$.contextualTasksSuggestionsContainer
+            .hidden,
+        'Dropdown should be hidden when in NLM mode',
+    );
+  });
+
   test('zero state animation plays when zero state changes', async () => {
     loadTimeData.overrideValues({
       friendlyZeroStateGaiaName: 'Test Name',
@@ -411,7 +442,6 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
 
   test('SuggestionsHiddenWhenDropdownNotShown', async () => {
     loadTimeData.overrideValues({
-      composeboxShowTypedSuggestWithContext: false,
       enableNativeZeroStateSuggestions: true,
     });
 
@@ -483,7 +513,7 @@ suite('ContextualTasksComposeboxZeroStateTest', () => {
     await composebox.updateComplete;
 
     // show-dropdown should be false because we have a file and
-    // composeboxShowTypedSuggestWithContext is false.
+    // showTypedSuggestWithContext is false.
     assertFalse(
         composebox.hasAttribute('show-dropdown'),
         'Dropdown should hide when typing with' +

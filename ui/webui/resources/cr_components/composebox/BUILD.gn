@@ -4,8 +4,9 @@
 
 import("//mojo/public/tools/bindings/mojom.gni")
 import("//ui/webui/resources/tools/build_webui.gni")
+import("//ui/webui/webui_features.gni")
 
-assert(!is_android && !is_ios)
+assert((!is_android && !is_ios) || enable_webui_ntp)
 
 mojom("mojo_bindings") {
   sources = [ "composebox.mojom" ]
@@ -14,7 +15,7 @@ mojom("mojo_bindings") {
   public_deps = [
     "//components/omnibox/browser:mojo_bindings",
     "//components/omnibox/composebox:mojo_bindings",
-    "//mojo/public//mojom/base",
+    "//mojo/public/mojom/base",
   ]
 }
 
@@ -97,7 +98,10 @@ build_webui("build") {
   ts_out_dir = "$root_gen_dir/ui/webui/resources/tsc/cr_components/composebox"
   ts_tsconfig_base = "tsconfig_base.json"
   ts_composite = true
-  ts_definitions = [ "//tools/typescript/definitions/chrome_histograms.d.ts" ]
+  ts_definitions = [
+    "//tools/typescript/definitions/chrome_histograms.d.ts",
+    "//tools/typescript/definitions/metrics_private.d.ts",
+  ]
   ts_deps = [
     "//third_party/lit/v3_0:build_ts",
     "//ui/webui/resources/cr_components/localized_link:build_ts",

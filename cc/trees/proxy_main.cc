@@ -313,7 +313,7 @@ void ProxyMain::BeginMainFrame(
 
   layer_tree_host_->WillBeginMainFrame();
 
-  // See LayerTreeHostClient::BeginMainFrame for more documentation on
+  // See LayerTreeHostDelegate::BeginMainFrame for more documentation on
   // what this does.
   layer_tree_host_->BeginMainFrame(frame_args);
 
@@ -332,7 +332,7 @@ void ProxyMain::BeginMainFrame(
   if (begin_main_frame_state->evicted_ui_resources)
     layer_tree_host_->GetUIResourceManager()->RecreateUIResources();
 
-  // See LayerTreeHostClient::MainFrameUpdate for more documentation on
+  // See LayerTreeHostDelegate::MainFrameUpdate for more documentation on
   // what this does.
   layer_tree_host_->RequestMainFrameUpdate(true /* report_cc_metrics */);
 
@@ -417,30 +417,31 @@ void ProxyMain::BeginMainFrame(
   }
 
   // If updating the layers resulted in a content update, we need a commit.
-  if (updated)
+  if (updated) {
     final_pipeline_stage_ = COMMIT_PIPELINE_STAGE;
+  }
+  bool has_updates = (final_pipeline_stage_ == COMMIT_PIPELINE_STAGE);
+
+  // At this point, the contents of the commit are locked (minus intentional
+  // carve-outs for canvas). We need to begin handling invalidations for the
+  // *next* main frame -- which may happen during the execution of
+  // LTH::WillCommit() -- and that requires resetting current_pipeline_stage_.
+  current_pipeline_stage_ = NO_PIPELINE_STAGE;
 
   auto completion_event_ptr = std::make_unique<CompletionEvent>(
       base::WaitableEvent::ResetPolicy::MANUAL);
   auto* completion_event = completion_event_ptr.get();
-  bool has_updates = (final_pipeline_stage_ == COMMIT_PIPELINE_STAGE);
   // Must get unsafe_state before calling WillCommit() to avoid deadlock.
   auto& unsafe_state = layer_tree_host_->GetUnsafeStateForCommit();
   std::unique_ptr<CommitState> commit_state = layer_tree_host_->WillCommit(
       std::move(completion_event_ptr), has_updates);
 
-  DCHECK_EQ(has_updates, (bool)commit_state.get());
   if (commit_state.get()) {
     commit_state->trace_id = begin_main_frame_state->trace_id;
-  }
-  current_pipeline_stage_ = COMMIT_PIPELINE_STAGE;
-
-  if (!has_updates) {
+  } else {
     completion_event->Signal();
-    current_pipeline_stage_ = NO_PIPELINE_STAGE;
     layer_tree_host_->DidBeginMainFrame();
-    TRACE_EVENT_INSTANT0("cc,raf_investigation", "EarlyOut_NoUpdates",
-                         TRACE_EVENT_SCOPE_THREAD);
+    TRACE_EVENT_INSTANT("cc,raf_investigation", "EarlyOut_NoUpdates");
     TRACE_EVENT("cc,benchmark", "MainFrameAborted",
                 [&](perfetto::EventContext ctx) {
                   auto* pipeline = EmitMainFramePipelineStep(
@@ -481,6 +482,8 @@ void ProxyMain::BeginMainFrame(
     return;
   }
 
+  current_pipeline_stage_ = COMMIT_PIPELINE_STAGE;
+
   if (synchronous_composite_for_test_callback_) {
     commit_state->pending_presentation_callbacks.push_back(base::BindOnce(
         [](base::OnceClosure callback, const gfx::PresentationFeedback&) {
@@ -488,10 +491,6 @@ void ProxyMain::BeginMainFrame(
         },
         std::move(synchronous_composite_for_test_callback_)));
   }
-
-  current_pipeline_stage_ = NO_PIPELINE_STAGE;
-
-  layer_tree_host_->WillBeginImplCommit();
 
   // Notify the impl thread that the main thread is ready to commit. This will
   // begin the commit process, which is blocking from the main thread's
@@ -521,6 +520,7 @@ void ProxyMain::BeginMainFrame(
                                   scroll_and_viewport_changes_synced,
                                   (blocking ? &commit_timestamps : nullptr),
                                   commit_timeout));
+    current_pipeline_stage_ = NO_PIPELINE_STAGE;
     if (blocking)
       layer_tree_host_->WaitForProtectedSequenceCompletion();
   }
@@ -634,8 +634,7 @@ void ProxyMain::SetNeedsAnimate(bool urgent) {
   DCHECK(IsMainThread());
   needs_begin_main_frame_ = true;
   if (SendCommitRequestToImplThreadIfNeeded(ANIMATE_PIPELINE_STAGE, urgent)) {
-    TRACE_EVENT_INSTANT1("cc", "ProxyMain::SetNeedsAnimate",
-                         TRACE_EVENT_SCOPE_THREAD, "urgent", urgent);
+    TRACE_EVENT_INSTANT("cc", "ProxyMain::SetNeedsAnimate", "urgent", urgent);
   }
 }
 
@@ -650,8 +649,7 @@ void ProxyMain::SetNeedsUpdateLayers() {
   }
   if (SendCommitRequestToImplThreadIfNeeded(UPDATE_LAYERS_PIPELINE_STAGE,
                                             /* urgent = */ false)) {
-    TRACE_EVENT_INSTANT0("cc", "ProxyMain::SetNeedsUpdateLayers",
-                         TRACE_EVENT_SCOPE_THREAD);
+    TRACE_EVENT_INSTANT("cc", "ProxyMain::SetNeedsUpdateLayers");
   }
 }
 
@@ -667,8 +665,7 @@ void ProxyMain::SetNeedsCommit() {
   }
   if (SendCommitRequestToImplThreadIfNeeded(COMMIT_PIPELINE_STAGE,
                                             /* urgent = */ false)) {
-    TRACE_EVENT_INSTANT0("cc", "ProxyMain::SetNeedsCommit",
-                         TRACE_EVENT_SCOPE_THREAD);
+    TRACE_EVENT_INSTANT("cc", "ProxyMain::SetNeedsCommit");
   }
 }
 
@@ -731,7 +728,8 @@ void ProxyMain::SetDeferMainFrameUpdate(bool defer_main_frame_update) {
                                 defer_main_frame_update));
 }
 
-void ProxyMain::SetPauseRendering(bool pause_rendering) {
+void ProxyMain::SetPauseRendering(bool pause_rendering,
+                                  bool delay_until_visibility_change) {
   DCHECK(IsMainThread());
   if (pause_rendering_ == pause_rendering)
     return;
@@ -749,7 +747,8 @@ void ProxyMain::SetPauseRendering(bool pause_rendering) {
   ImplThreadTaskRunner()->PostTask(
       FROM_HERE,
       base::BindOnce(&ProxyImpl::SetPauseRendering,
-                     base::Unretained(proxy_impl_.get()), pause_rendering_));
+                     base::Unretained(proxy_impl_.get()), pause_rendering_,
+                     delay_until_visibility_change));
 }
 
 void ProxyMain::SetInputResponsePending() {

@@ -12,9 +12,11 @@
 #include "chrome/browser/ui/tabs/tab_group_features.h"
 #include "chrome/browser/ui/tabs/tab_group_theme.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/tabs/groups/tab_group_accessibility.h"
 #include "chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.h"
-#include "chrome/browser/ui/views/tabs/tab_strip_types.h"
+#include "chrome/browser/ui/views/tabs/shared/tab_strip_types.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_animating_layout_manager.h"
 #include "chrome/browser/ui/views/tabs/vertical/tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_dragged_tabs_container.h"
@@ -55,7 +57,6 @@ constexpr int kGroupLineCollapsedLeadingPadding = 6;
 constexpr int kGroupLineCornerRadius = 4;
 constexpr int kGroupHeaderHeight = 26;
 constexpr int kGroupHeaderVerticalMargin = 4;
-constexpr int kTabLeadingPadding = 10;
 
 const TabGroup* GetTabGroupFromNode(TabCollectionNode* node) {
   CHECK(node);
@@ -143,7 +144,7 @@ views::ProposedLayout VerticalTabGroupView::CalculateProposedLayout(
     group_line_bounds.set_x(kGroupLineCollapsedLeadingPadding);
     group_line_bounds.set_y(height);
     header_bounds.set_x(
-        GetLayoutConstant(LayoutConstant::kVerticalTabStripCollapsedPadding));
+        GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding));
   }
 
   header_bounds.set_y(height);
@@ -163,7 +164,8 @@ views::ProposedLayout VerticalTabGroupView::CalculateProposedLayout(
   // aligned with the header.
   if (tab_strip_collapse_state ==
       tabs::VerticalTabStripCollapseState::kExpanded) {
-    group_line_bounds.set_x((kTabLeadingPadding - kGroupLineWidth) / 2);
+    group_line_bounds.set_x(
+        (VerticalTabGroupView::kTabLeadingPadding - kGroupLineWidth) / 2);
     group_line_bounds.set_y(height);
   }
 
@@ -184,8 +186,8 @@ views::ProposedLayout VerticalTabGroupView::CalculateProposedLayout(
     bounds.set_x(tab_strip_collapse_state !=
                          tabs::VerticalTabStripCollapseState::kExpanded
                      ? GetLayoutConstant(
-                           LayoutConstant::kVerticalTabStripCollapsedPadding)
-                     : kTabLeadingPadding);
+                           LayoutConstant::kVerticalTabStripHorizontalPadding)
+                     : VerticalTabGroupView::kTabLeadingPadding);
     // If width is bounded, child views should respect the width constraints
     // and take up the available width excluding trailing horizontal padding.
     if (size_bounds.width().is_bounded()) {
@@ -534,10 +536,16 @@ bool VerticalTabGroupView::IsFocusInTabStrip() {
 
 std::unique_ptr<ExpandOnHoverLock>
 VerticalTabGroupView::AcquireExpandOnHoverLock() {
-  if (!collection_node_) {
+  if (!collection_node_ || !collection_node_->GetController()) {
     return nullptr;
   }
-  return collection_node_->GetController()->AcquireExpandOnHoverLock();
+
+  BrowserView* browser_view =
+      collection_node_->GetController()->GetBrowserView();
+  CHECK(browser_view);
+  CHECK(browser_view->tab_strip_view());
+  return browser_view->tab_strip_view()->GetExpandOnHoverLock(
+      ExpandOnHoverLockType::kKeepCurrentState);
 }
 
 void VerticalTabGroupView::ShiftGroupUp() {

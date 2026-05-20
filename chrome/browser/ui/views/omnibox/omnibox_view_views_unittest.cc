@@ -35,6 +35,7 @@
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/omnibox/omnibox_tab_helper.h"
 #include "chrome/browser/ui/views/bubble_anchor_util_views.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/grit/generated_resources.h"
@@ -570,7 +571,7 @@ TEST_F(OmniboxViewViewsTest, UpdatePopupCall) {
 }
 
 // Test that text cursor is shown in the omnibox after entering any single
-// character in NTP 'Search box'. Test for crbug.com/698172.
+// character in NTP 'Search box'. Test for crbug.com/41305472.
 TEST_F(OmniboxViewViewsTest, EditTextfield) {
   omnibox_textfield()->SetCursorEnabled(false);
   ui::KeyEvent char_event(ui::EventType::kKeyPressed, ui::VKEY_A,
@@ -582,7 +583,7 @@ TEST_F(OmniboxViewViewsTest, EditTextfield) {
 
 // Test that the scheduled text edit command is cleared when Textfield receives
 // a key press event. This ensures that the scheduled text edit command property
-// is always in the correct state. Test for http://crbug.com/613948.
+// is always in the correct state. Test for http://crbug.com/41255127.
 TEST_F(OmniboxViewViewsTest, ScheduledTextEditCommand) {
   omnibox_textfield()->SetTextEditCommandForNextKeyEvent(
       ui::TextEditCommand::MOVE_UP);
@@ -596,7 +597,7 @@ TEST_F(OmniboxViewViewsTest, ScheduledTextEditCommand) {
 }
 
 // Test that Shift+Up and Shift+Down are not captured and let selection mode
-// take over. Test for crbug.com/863543 and crbug.com/892216.
+// take over. Test for crbug.com/41401511 and crbug.com/40596677.
 TEST_F(OmniboxViewViewsTest, SelectWithShift_863543) {
   location_bar_model()->set_url(GURL("http://www.example.com/?query=1"));
   const std::u16string text = u"http://www.example.com/?query=1";
@@ -716,7 +717,7 @@ TEST_F(OmniboxViewViewsTest, EmojiPickerInsertion) {
   }
 }
 
-// Verifies that https://crbug.com/45260 doesn't regress.
+// Verifies that https://crbug.com/40402896 doesn't regress.
 TEST_F(OmniboxViewViewsTest,
        RendererInitiatedFocusSelectsAllWhenStartingBlurred) {
   location_bar_model()->set_url(GURL("about:blank"));
@@ -729,7 +730,7 @@ TEST_F(OmniboxViewViewsTest,
   EXPECT_TRUE(omnibox_view()->IsSelectAll());
 }
 
-// Verifies that https://crbug.com/924935 doesn't regress.
+// Verifies that https://crbug.com/40610912 doesn't regress.
 TEST_F(OmniboxViewViewsTest,
        RendererInitiatedFocusPreservesCursorWhenStartingFocused) {
   // Simulate the user focusing the omnibox and typing something. This is just
@@ -944,7 +945,7 @@ TEST_F(OmniboxViewViewsTest, PasteAndGoToUrlOrSearchCommand) {
   EXPECT_TRUE(omnibox_view()->IsCommandIdEnabled(IDC_PASTE_AND_GO));
   EXPECT_EQ(expected_text, returned_text);
 
-  // Test input that's URL-like. (crbug.com/980002).
+  // Test input that's URL-like. (crbug.com/41468594).
   expected_text =
 #if BUILDFLAG(IS_MAC)
       u"Pa&ste and Go to test.com";
@@ -986,7 +987,7 @@ TEST_F(OmniboxViewViewsTest, SelectAllCommand) {
 }
 
 // Verifies |OmniboxEditModel::State::needs_revert_and_select_all|, and verifies
-// a recent regression in this logic (see https://crbug.com/923290).
+// a recent regression in this logic (see https://crbug.com/41436341).
 TEST_F(OmniboxViewViewsTest, SelectAllOnReactivateTabAfterDeleteAll) {
   location_bar()->set_omnibox_view(omnibox_view());
 
@@ -1266,7 +1267,7 @@ TEST_P(OmniboxViewViewsClipboardTest, ClipboardCopyOrCutURL) {
 
   // Windows clipboard only supports text URLs.
   // Mac clipboard not reporting URL format available for some reason.
-  // crbug.com/751031
+  // crbug.com/41337043
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
   EXPECT_TRUE(ui::clipboard_test_util::IsFormatAvailable(
       clipboard, ui::ClipboardFormatType::UrlType(), clipboard_buffer,
@@ -1802,4 +1803,33 @@ TEST_F(OmniboxViewViewsSteadyStateElisionsTest, UnelideFromModel) {
   EXPECT_EQ(24U, selection.start());
   EXPECT_EQ(0U, selection.end());
   ExpectFullUrlDisplayed();
+}
+
+TEST_F(OmniboxViewViewsTest, SetUserTextForTab) {
+  auto web_contents =
+      content::WebContentsTester::CreateTestWebContents(profile(), nullptr);
+
+  // 1. Setup: Create an initial state for the tab.
+  // Set some user text and save it to the tab.
+  const std::u16string initial_text = u"initial text";
+  omnibox_view()->SetUserText(initial_text);
+  omnibox_view()->SaveStateToTab(web_contents.get());
+
+  // Verify initial state is saved.
+  auto* state1 = static_cast<OmniboxState*>(
+      web_contents->GetUserData(OmniboxTabHelper::kOmniboxStateKey));
+  ASSERT_TRUE(state1);
+  EXPECT_EQ(initial_text, state1->model_state.user_text);
+  EXPECT_TRUE(state1->model_state.user_input_in_progress);
+
+  // 2. Act: Call the static helper to inject new text into this tab's state.
+  const std::u16string injected_text = u"typed in background";
+  OmniboxViewViews::SetUserTextForTab(web_contents.get(), injected_text);
+
+  // 3. Verify: Check that the stored state was updated correctly.
+  auto* state2 = static_cast<OmniboxState*>(
+      web_contents->GetUserData(OmniboxTabHelper::kOmniboxStateKey));
+  ASSERT_TRUE(state2);
+  EXPECT_EQ(injected_text, state2->model_state.user_text);
+  EXPECT_TRUE(state2->model_state.user_input_in_progress);
 }

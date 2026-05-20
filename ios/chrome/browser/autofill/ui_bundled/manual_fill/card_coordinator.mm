@@ -89,7 +89,9 @@
     _cardMediator = [[ManualFillCardMediator alloc]
         initWithPersonalDataManager:_personalDataManager
              reauthenticationModule:_reauthenticationModule
-             showAutofillFormButton:showAutofillFormButton];
+             showAutofillFormButton:showAutofillFormButton
+                           webState:self.browser->GetWebStateList()
+                                        ->GetActiveWebState()];
     _cardMediator.navigationDelegate = self;
     _cardMediator.contentInjector = super.injectionHandler;
     _cardMediator.consumer = _cardViewController;
@@ -198,7 +200,8 @@
         ManualFillVirtualCardCache::FromWebState(activeWebState);
     if (cache) {
       const autofill::CreditCard* cachedCard =
-          cache->GetUnmaskedCard(autofillCreditCard->guid());
+          cache->GetUnmaskedCard(autofillCreditCard->guid(),
+                                 [self.injectionHandler activeWebFrameOrigin]);
 
       if (cachedCard) {
         // Cache Hit: Skip network request and fill directly.
@@ -209,6 +212,10 @@
       }
     }
   }
+
+  ManualFillVirtualCardCache::FromWebState(
+      self.browser->GetWebStateList()->GetActiveWebState())
+      ->SetUnmaskingOrigin([self.injectionHandler activeWebFrameOrigin]);
 
   [self.cardRequester requestFullCreditCard:*autofillCreditCard
                      withBaseViewController:self.baseViewController

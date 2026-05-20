@@ -97,6 +97,7 @@ struct SameSizeAsShadowRoot : public DocumentFragment,
                               public TreeScope,
                               public ElementRareDataField {
   Member<void*> member[2];
+  AtomicString string_member;
   unsigned flags[1];
 };
 
@@ -381,7 +382,8 @@ class PendingModuleEntry final : public SingleModuleClient {
 
 HeapVector<Member<CSSStyleSheet>> ShadowRoot::ResolveAdoptedStyleSheets(
     const AtomicString& shadowrootadoptedstylesheets_attribute_value) {
-  CHECK(RuntimeEnabledFeatures::ShadowRootAdoptedStyleSheetEnabled());
+  CHECK(RuntimeEnabledFeatures::ShadowRootAdoptedStyleSheetEnabled(
+      GetDocument().GetExecutionContext()));
 
   // Early exit if `domWindow` isn't available. This won't work in contexts such
   // as `Document.parseHTMLUnsafe`. This is probably fine, as adopted
@@ -469,8 +471,11 @@ HeapVector<Member<CSSStyleSheet>> ShadowRoot::ResolveAdoptedStyleSheets(
 
 void ShadowRoot::ProcessAdoptedStylesheetAttribute(
     AtomicString value) {
-  CHECK(RuntimeEnabledFeatures::ShadowRootAdoptedStyleSheetEnabled());
+  CHECK(RuntimeEnabledFeatures::ShadowRootAdoptedStyleSheetEnabled(
+      GetDocument().GetExecutionContext()));
+  adopted_stylesheets_attr_value_ = value;
   if (!value.empty()) {
+    UseCounter::Count(GetDocument(), WebFeature::kShadowRootAdoptedStyleSheets);
     AppendAdoptedStyleSheets(ResolveAdoptedStyleSheets(value));
   }
 }

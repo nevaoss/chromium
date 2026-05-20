@@ -6,9 +6,13 @@ package org.chromium.chrome.browser.tab_bottom_sheet;
 
 import android.content.Context;
 import android.view.MotionEvent;
-import android.view.View;
+
+import androidx.annotation.Px;
 
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetWebUiContainer.TouchHandler;
+import org.chromium.chrome.browser.tab_bottom_sheet.WebViewResizingHelper.ResizeLock;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
 import org.chromium.components.browser_ui.widget.R;
 import org.chromium.content_public.browser.GestureStateListener;
@@ -29,38 +33,65 @@ public class TabBottomSheetMediator extends GestureStateListener {
 
     private @SheetState int mCurrentSheetState = SheetState.HIDDEN;
     private int mPeekHeight;
+    private @Nullable ResizeLock mResizeLock;
 
     public TabBottomSheetMediator(
-            Context context, PropertyModel model, CoBrowseViews coBrowseViews) {
+            Context context,
+            PropertyModel model,
+            CoBrowseViews coBrowseViews,
+            float fullheightRatio,
+            float keyboardShowingHeightRatio) {
         mContext = context;
         mModel = model;
         mTouchArbitrator = new TouchArbitrator();
-        // Setting statically right now, can be modified later to be set dynamically based on device
-        mFullheightRatio = 0.7f;
-        mKeyboardShowingHeightRatio = 0.9f;
+        mFullheightRatio = fullheightRatio;
+        mKeyboardShowingHeightRatio = keyboardShowingHeightRatio;
     }
 
-    void onSheetStateChanged(@SheetState int state, boolean hasPeekView) {
+    void onSheetStateChanged(@SheetState int state) {
         mCurrentSheetState = state;
-        if (!hasPeekView) return;
         if (state == SheetState.PEEK) {
-            showPeekViewAndHideExpandedContent();
-        } else {
-            hidePeekViewAndShowExpandedContent();
+            mModel.set(TabBottomSheetProperties.PEEK_STATE_ALPHA, 1.0f);
+            mModel.set(TabBottomSheetProperties.EXPANDED_STATE_ALPHA, 0.0f);
+        } else if (state == SheetState.FULL || state == SheetState.HALF) {
+            mModel.set(TabBottomSheetProperties.PEEK_STATE_ALPHA, 0.0f);
+            mModel.set(TabBottomSheetProperties.EXPANDED_STATE_ALPHA, 1.0f);
         }
     }
 
-    private void showPeekViewAndHideExpandedContent() {
-        // TODO(crbug.com/494311176): Implement cross-fade animation for peek view.
-        mModel.set(TabBottomSheetProperties.PEEK_VIEW_AND_EXPANDED_CONTENT_ALPHA, 1.0f);
-        mModel.set(
-                TabBottomSheetProperties.PEEK_VIEW_AND_EXPANDED_CONTENT_VISIBILITY, View.VISIBLE);
-    }
+    /**
+     * Updates the alpha for the cross-fade effect.
+     *
+     * @param offsetPx The current offset height in pixels for the sheet.
+     */
+    void updateCrossFadeAlpha(float offsetPx) {
+        if (mPeekHeight == 0) {
+            mModel.set(TabBottomSheetProperties.PEEK_STATE_ALPHA, 0.0f);
+            mModel.set(TabBottomSheetProperties.EXPANDED_STATE_ALPHA, 1.0f);
+            return;
+        }
 
-    private void hidePeekViewAndShowExpandedContent() {
-        // TODO(crbug.com/494311176): Implement cross-fade animation for peek view.
-        mModel.set(TabBottomSheetProperties.PEEK_VIEW_AND_EXPANDED_CONTENT_ALPHA, 0.0f);
-        mModel.set(TabBottomSheetProperties.PEEK_VIEW_AND_EXPANDED_CONTENT_VISIBILITY, View.GONE);
+        float peekAlpha;
+        float expandedAlpha;
+        int crossFadeMaxHeight = getSheetCrossFadeMaxHeight();
+        float midpoint = mPeekHeight + (crossFadeMaxHeight - mPeekHeight) / 2.0f;
+
+        if (offsetPx <= mPeekHeight) {
+            peekAlpha = 1.0f;
+            expandedAlpha = 0.0f;
+        } else if (offsetPx >= crossFadeMaxHeight) {
+            peekAlpha = 0.0f;
+            expandedAlpha = 1.0f;
+        } else if (offsetPx < midpoint) {
+            peekAlpha = 1.0f - (offsetPx - mPeekHeight) / (midpoint - mPeekHeight);
+            expandedAlpha = 0.0f;
+        } else {
+            peekAlpha = 0.0f;
+            expandedAlpha = (offsetPx - midpoint) / (crossFadeMaxHeight - midpoint);
+        }
+
+        mModel.set(TabBottomSheetProperties.PEEK_STATE_ALPHA, peekAlpha);
+        mModel.set(TabBottomSheetProperties.EXPANDED_STATE_ALPHA, expandedAlpha);
     }
 
     /** Sets the peek state header height for touch arbitration. */
@@ -68,36 +99,14 @@ public class TabBottomSheetMediator extends GestureStateListener {
         mPeekHeight = peekHeight;
     }
 
-    /**
-     * Sets the sheets height to a ratio of the bottom sheet container height. If the bottom sheet
-     * had never been called before, BottomSheetController.getContainerHeight() returns 0. To avoid
-     * this we set the height after the sheet has been initialized. TODO(crbug.com/486916366):
-     * Temporary fix until bottom sheet resizing is implemented.
-     *
-     * @param maxSheetHeight The maximum height of the bottom sheet container.
-     * @param isKeyboardShowing Whether the keyboard is currently showing, which determines the
-     *     height ratio.
-     */
-    void setMaxSheetHeight(int maxSheetHeight, boolean isKeyboardShowing) {
-        float ratio = isKeyboardShowing ? mKeyboardShowingHeightRatio : mFullheightRatio;
-        int sheetHeight = Math.round(maxSheetHeight * ratio);
-        mModel.set(TabBottomSheetProperties.SHEET_HEIGHT, sheetHeight);
-    }
-
-    int getMaxSheetHeight() {
-        return mModel.get(TabBottomSheetProperties.SHEET_HEIGHT);
-    }
-
-    boolean isSheetHeightSufficient() {
-        int webUiHeightDp =
-                DisplayUtil.pxToDp(
-                        DisplayAndroid.getNonMultiDisplay(mContext), getMaxSheetHeight());
-
-        return webUiHeightDp >= MIN_SHEET_HEIGHT_DP;
+    boolean isSheetHeightSufficient(@Px int maxSheetOffset) {
+        int maxSheetOffsetDp =
+                DisplayUtil.pxToDp(DisplayAndroid.getNonMultiDisplay(mContext), maxSheetOffset);
+        return maxSheetOffsetDp >= MIN_SHEET_HEIGHT_DP;
     }
 
     /** Returns the touch handler for the WebUI container. */
-    TabBottomSheetWebUiContainer.TouchHandler getWebUiTouchHandler() {
+    TouchHandler getWebUiTouchHandler() {
         return mTouchArbitrator;
     }
 
@@ -109,8 +118,12 @@ public class TabBottomSheetMediator extends GestureStateListener {
         return mCurrentSheetState != SheetState.HIDDEN;
     }
 
+    private int getSheetCrossFadeMaxHeight() {
+        return mPeekHeight * 2;
+    }
+
     /** Inner class that arbitrates between scrolling the content and dragging the bottom sheet. */
-    private class TouchArbitrator implements TabBottomSheetWebUiContainer.TouchHandler {
+    private class TouchArbitrator implements TouchHandler {
         private boolean mInterceptForSheet;
 
         @Override
@@ -143,6 +156,42 @@ public class TabBottomSheetMediator extends GestureStateListener {
             v.getParent().requestDisallowInterceptTouchEvent(true);
             v.dispatchTouchEvent(e);
             return true;
+        }
+    }
+
+    /** Sets whether the sheet is resizing. */
+    public void onSheetResizingStatusChanged(boolean isResizing) {
+        WebViewResizingHelper helper =
+                mModel.get(TabBottomSheetProperties.WEB_VIEW_RESIZING_HELPER);
+        if (helper != null && isResizing) {
+            if (mResizeLock == null) {
+                mResizeLock = helper.requestResize();
+            }
+        } else if (mResizeLock != null) {
+            mResizeLock.unlock();
+            mResizeLock = null;
+        }
+    }
+
+    /** Updates the state used for resizing the sheet. */
+    public void setToFlexibleHeight() {
+        WebViewResizingHelper helper =
+                mModel.get(TabBottomSheetProperties.WEB_VIEW_RESIZING_HELPER);
+        if (helper != null) {
+            helper.setToFlexibleHeight();
+        }
+    }
+
+    /**
+     * Updates the state used for resizing the sheet.
+     *
+     * @param maxOffset The maximum offset height for the sheet.
+     */
+    public void setToFixedHeight(@Px int maxOffset) {
+        WebViewResizingHelper helper =
+                mModel.get(TabBottomSheetProperties.WEB_VIEW_RESIZING_HELPER);
+        if (helper != null) {
+            helper.setToFixedHeight(maxOffset);
         }
     }
 

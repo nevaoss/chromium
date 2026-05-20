@@ -269,7 +269,7 @@ TEST_F(
       request_id_generator.GetNextRequestId(
           RequestIdUpdateMode::kMultiContextUploadRequest,
           lens::LensOverlayRequestId::MEDIA_TYPE_PDF);
-  ASSERT_EQ(second_id->image_sequence_id(), 1);
+  ASSERT_EQ(second_id->image_sequence_id(), 0);
   ASSERT_EQ(second_id->sequence_id(), 1);
   ASSERT_EQ(second_id->long_context_id(), 1);
   ASSERT_NE(first_id->analytics_id(), second_id->analytics_id());
@@ -395,7 +395,8 @@ TEST_F(LensOverlayRequestIdGeneratorTest,
   lens::LensOverlayRequestIdGenerator request_id_generator;
   std::unique_ptr<lens::LensOverlayRequestId> request_id =
       request_id_generator.GetNextRequestId(
-          RequestIdUpdateMode::kFullImageRequest, "application/pdf");
+          RequestIdUpdateMode::kFullImageRequest, "application/pdf",
+          lens::LensOverlayRequestId::MEDIA_TYPE_RAW_FILE);
   ASSERT_EQ(request_id->media_type(),
             lens::LensOverlayRequestId::MEDIA_TYPE_RAW_FILE);
   ASSERT_EQ(request_id->mime_type(), "application/pdf");
@@ -406,7 +407,8 @@ TEST_F(LensOverlayRequestIdGeneratorTest,
   lens::LensOverlayRequestIdGenerator request_id_generator;
   std::unique_ptr<lens::LensOverlayRequestId> first_id =
       request_id_generator.GetNextRequestId(
-          RequestIdUpdateMode::kFullImageRequest, "application/pdf");
+          RequestIdUpdateMode::kFullImageRequest, "application/pdf",
+          lens::LensOverlayRequestId::MEDIA_TYPE_RAW_FILE);
   ASSERT_EQ(first_id->media_type(),
             lens::LensOverlayRequestId::MEDIA_TYPE_RAW_FILE);
   ASSERT_EQ(first_id->mime_type(), "application/pdf");

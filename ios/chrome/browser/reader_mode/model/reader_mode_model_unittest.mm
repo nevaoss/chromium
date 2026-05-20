@@ -9,6 +9,7 @@
 #import "ios/chrome/browser/contextual_panel/model/contextual_panel_item_configuration.h"
 #import "ios/chrome/browser/contextual_panel/model/contextual_panel_item_type.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_tab_helper.h"
 #import "ios/chrome/browser/reader_mode/model/reader_mode_test.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
@@ -120,6 +121,36 @@ TEST_F(ReaderModeModelTest, FetchConfigurationWithoutReaderModeTabHelper) {
   DetachReaderModeTabHelper();
   ReaderModeModel model(profile());
   __block std::unique_ptr<ContextualPanelItemConfiguration> configuration;
+
+  model.FetchConfigurationForWebState(
+      web_state(),
+      base::BindOnce(
+          ^(base::OnceClosure quit_closure,
+            std::unique_ptr<ContextualPanelItemConfiguration> config) {
+            configuration = std::move(config);
+            std::move(quit_closure).Run();
+          },
+          task_environment()->QuitClosure()));
+  task_environment()->RunUntilQuit();
+  EXPECT_EQ(configuration, nullptr);
+}
+
+// Fetching the configuration while GeminiTabHelper is preventing the Contextual
+// Panel entrypoint should result in a null configuration.
+TEST_F(ReaderModeModelTest, FetchConfigurationPreventedByGemini) {
+  ReaderModeModel model(profile());
+  __block std::unique_ptr<ContextualPanelItemConfiguration> configuration;
+
+  GURL test_url("https://test.org/doc.html");
+  SetReaderModeState(web_state(), test_url,
+                     ReaderModeHeuristicResult::kReaderModeEligible, "");
+  LoadWebpage(web_state(), test_url);
+  task_environment()->FastForwardBy(base::Seconds(1));
+
+  GeminiTabHelper::CreateForWebState(web_state());
+  GeminiTabHelper* gemini_tab_helper =
+      GeminiTabHelper::FromWebState(web_state());
+  gemini_tab_helper->SetPreventContextualPanelEntryPoint(true);
 
   model.FetchConfigurationForWebState(
       web_state(),

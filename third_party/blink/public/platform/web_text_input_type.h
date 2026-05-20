@@ -96,13 +96,17 @@ enum WebTextInputFlags {
   // type we don't want autocomplete or a keyboard to memorize the content.
   kWebTextInputFlagHasBeenPasswordField = 1 << 12,
   kWebTextInputFlagVertical = 1 << 13,
+  // Whether an input field is or has been a custom password field. This is a
+  // best effort heuristic to determine what a "password" is based on the
+  // field's behavior.
+  kWebTextInputFlagHasBeenCustomPassword = 1 << 14,
   ///@name IS_NEVA_APPRUNTIME
   ///@{
-  kWebTextInputFlagSensitiveOn = 1 << 14,
-  kWebTextInputFlagSensitiveOff = 1 << 15,
+  kWebTextInputFlagSensitiveOn = 1 << 15,
+  kWebTextInputFlagSensitiveOff = 1 << 16,
   // Neva system keyboard
-  kWebTextInputFlagSystemKeyboardOn = 1 << 16,
-  kWebTextInputFlagSystemKeyboardOff = 1 << 17
+  kWebTextInputFlagSystemKeyboardOn = 1 << 17,
+  kWebTextInputFlagSystemKeyboardOff = 1 << 18,
   ///@}
 };
 // LINT.ThenChange(//ui/base/ime/text_input_flags.h:TextInputFlags)

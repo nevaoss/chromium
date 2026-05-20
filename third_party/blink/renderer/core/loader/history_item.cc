@@ -147,8 +147,8 @@ HistoryItem* HistoryItem::Create(const PageState& page_state) {
 HistoryItem::HistoryItem()
     : item_sequence_number_(GenerateSequenceNumber()),
       document_sequence_number_(GenerateSequenceNumber()),
-      navigation_api_key_(CreateCanonicalUUIDString()),
-      navigation_api_id_(CreateCanonicalUUIDString()) {}
+      navigation_api_key_(CreateCanonicalUuidString()),
+      navigation_api_id_(CreateCanonicalUuidString()) {}
 
 HistoryItem::~HistoryItem() = default;
 
@@ -276,7 +276,6 @@ ResourceRequest HistoryItem::GenerateResourceRequest(
     request.SetHttpMethod(http_names::kPOST);
     request.SetHttpBody(form_data_);
     request.SetHTTPContentType(form_content_type_);
-    request.SetHTTPOriginToMatchReferrerPolicyIfNeeded(requestor_origin_.get());
   }
   return request;
 }

@@ -11,10 +11,12 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/functional/concurrent_callbacks.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_permission_service.h"
 #include "components/password_manager/core/browser/password_form_digest.h"
 #include "components/password_manager/core/browser/password_manager_util.h"
+#include "components/password_manager/core/browser/password_store/password_form_converters.h"
 #include "content/public/common/content_features.h"
 
 using password_manager::PasswordForm;
@@ -25,7 +27,6 @@ namespace actor_login {
 namespace {
 bool ShouldSkipPasswordCredential(const PasswordForm& match,
                                   const Credential& credential,
-                                  std::optional<std::string> signon_realm,
                                   bool federated_exact_match_exists) {
   if (!match.actor_login_approved) {
     return true;
@@ -33,7 +34,7 @@ bool ShouldSkipPasswordCredential(const PasswordForm& match,
 
   if (credential.type == CredentialType::kPassword &&
       match.username_value == credential.username &&
-      match.signon_realm == signon_realm) {
+      match.signon_realm == credential.signon_realm) {
     return true;
   }
 
@@ -65,12 +66,10 @@ bool ShouldSkipPasswordCredential(const PasswordForm& match,
 
 ActorLoginDuplicatePermissionCleaner::ActorLoginDuplicatePermissionCleaner(
     const Credential& credential,
-    std::optional<std::string> signon_realm,
     scoped_refptr<password_manager::PasswordStoreInterface> profile_store,
     scoped_refptr<password_manager::PasswordStoreInterface> account_store,
     ActorLoginPermissionService* permission_service)
     : credential_(credential),
-      signon_realm_(signon_realm),
       profile_store_(std::move(profile_store)),
       account_store_(std::move(account_store)),
       permission_service_(permission_service) {}
@@ -80,6 +79,9 @@ ActorLoginDuplicatePermissionCleaner::~ActorLoginDuplicatePermissionCleaner() =
 
 void ActorLoginDuplicatePermissionCleaner::Start(
     base::OnceClosure done_callback) {
+  base::UmaHistogramBoolean(
+      "PasswordManager.ActorLogin.DuplicatePermissionCleaner.Invocations",
+      true);
   done_callback_ = std::move(done_callback);
 
   base::RepeatingClosure overall_barrier =
@@ -92,9 +94,6 @@ void ActorLoginDuplicatePermissionCleaner::Start(
       credential_.request_origin.GetURL().spec(),
       credential_.request_origin.GetURL());
 
-  // TODO(crbug.com/483130347): Move password fetching after federated
-  // permission fetching returns to avoid data overwrites in case the passwords
-  // change by the time federated permissions come back.
   pending_password_fetches_ = 0;
   if (profile_store_) {
     profile_store_->GetLogins(digest, weak_ptr_factory_.GetWeakPtr());
@@ -127,7 +126,7 @@ void ActorLoginDuplicatePermissionCleaner::OnGetPasswordStoreResultsOrErrorFrom(
     const auto& results =
         std::get<password_manager::LoginsResult>(results_or_error);
     for (const auto& match : results) {
-      pending_matches_.push_back(match);
+      pending_matches_.push_back(password_manager::ToPasswordForm(match));
     }
   }
 
@@ -150,7 +149,7 @@ void ActorLoginDuplicatePermissionCleaner::ClearPasswordPermissions() {
                                 GetLoginMatchType::kExact;
                    }) != pending_matches_.end();
   for (const PasswordForm& match : pending_matches_) {
-    if (ShouldSkipPasswordCredential(match, credential_, signon_realm_,
+    if (ShouldSkipPasswordCredential(match, credential_,
                                      federated_exact_match_exists)) {
       continue;
     }
@@ -162,6 +161,10 @@ void ActorLoginDuplicatePermissionCleaner::ClearPasswordPermissions() {
       profile_updates.push_back(std::move(updated_form));
     }
   }
+
+  base::UmaHistogramCounts100(
+      "PasswordManager.ActorLogin.DuplicatePermissionCleaner.PasswordsDeleted",
+      account_updates.size() + profile_updates.size());
 
   size_t pending_updates =
       (account_updates.empty() ? 0 : 1) + (profile_updates.empty() ? 0 : 1);
@@ -193,6 +196,7 @@ void ActorLoginDuplicatePermissionCleaner::OnFederatedPermissionsListed(
   CHECK(federated_done_callback_);
 
   base::ConcurrentCallbacks<bool> concurrent;
+  int deleted_count = 0;
   for (const auto& permission : permissions) {
     if (credential_.type == CredentialType::kFederated &&
         permission.MatchesFederatedCredential(credential_)) {
@@ -208,7 +212,12 @@ void ActorLoginDuplicatePermissionCleaner::OnFederatedPermissionsListed(
     permission_service_->DeletePermission(credential_.request_origin,
                                           permission.chosen_account_email,
                                           concurrent.CreateCallback());
+    deleted_count++;
   }
+
+  base::UmaHistogramCounts100(
+      "PasswordManager.ActorLogin.DuplicatePermissionCleaner.FederatedDeleted",
+      deleted_count);
 
   std::move(concurrent)
       .Done(base::IgnoreArgs<std::vector<bool>>(federated_done_callback_));

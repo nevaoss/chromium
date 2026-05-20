@@ -7,6 +7,7 @@
 #include <memory>
 #include <utility>
 
+#include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
 #include "base/types/expected.h"
@@ -14,10 +15,13 @@
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
+#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_finder.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
+#include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
@@ -31,6 +35,7 @@
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_omnibox_client.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
+#include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_web_contents_helper.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/grit/new_tab_page_resources.h"
 #include "components/contextual_search/contextual_search_service.h"
@@ -57,6 +62,7 @@
 #include "components/profile_metrics/browser_profile_type.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/strings/grit/components_strings.h"
+#include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
 #include "net/cookies/cookie_util.h"
@@ -92,11 +98,13 @@ searchbox::mojom::SelectionLineState ConvertLineState(
 
 WebuiOmniboxHandler::WebuiOmniboxHandler(
     mojo::PendingReceiver<searchbox::mojom::PageHandler> pending_page_handler,
+    mojo::PendingRemote<searchbox::mojom::Page> pending_page,
     MetricsReporter* metrics_reporter,
     OmniboxController* omnibox_controller,
     content::WebUI* web_ui,
     GetSessionHandleCallback get_session_callback)
     : ContextualSearchboxHandler(std::move(pending_page_handler),
+                                 std::move(pending_page),
                                  Profile::FromWebUI(web_ui),
                                  web_ui->GetWebContents(),
                                  /*controller=*/nullptr,
@@ -127,6 +135,17 @@ WebuiOmniboxHandler::WebuiOmniboxHandler(
       contextual_search::kSearchContentSharingSettings,
       base::BindRepeating(&WebuiOmniboxHandler::OnContentSharingPolicyChanged,
                           base::Unretained(this)));
+
+  if (tabs::TabInterface* tab =
+          tabs::TabInterface::MaybeGetFromContents(web_ui->GetWebContents())) {
+    tab_will_detach_subscription_ = tab->RegisterWillDetach(base::BindRepeating(
+        &WebuiOmniboxHandler::OnTabWillDetach, base::Unretained(this)));
+    tab_did_insert_subscription_ = tab->RegisterDidInsert(base::BindRepeating(
+        &WebuiOmniboxHandler::OnTabDidInsert, base::Unretained(this)));
+  }
+
+  OnAimPopupEligibilityChanged();
+  OnContentSharingPolicyChanged();
 }
 
 WebuiOmniboxHandler::~WebuiOmniboxHandler() = default;
@@ -201,13 +220,6 @@ void WebuiOmniboxHandler::AddTabContext(int32_t tab_id,
   edit_model()->OpenAiMode(false, /*via_context_menu=*/false);
   std::move(callback).Run(base::ok(base::UnguessableToken::Create()));
 }
-
-void WebuiOmniboxHandler::SetPage(
-    mojo::PendingRemote<searchbox::mojom::Page> pending_page) {
-  ContextualSearchboxHandler::SetPage(std::move(pending_page));
-  OnAimPopupEligibilityChanged();
-  OnContentSharingPolicyChanged();
-}
 void WebuiOmniboxHandler::StepSelection(
     OmniboxPopupSelection::Direction direction,
     OmniboxPopupSelection::Step step) {
@@ -268,6 +280,14 @@ WebuiOmniboxHandler::CreateAutocompleteMatch(
       match, line, edit_model, bookmark_model, suggestion_groups_map,
       turl_service);
 
+  // Override contextual search spark loupe icon for GROUP_CONTEXTUAL_SEARCH.
+  // Results on the omnibox webui will use an arrow icon instead.
+  if (mojom_match &&
+      match.suggestion_group_id == omnibox::GroupId::GROUP_CONTEXTUAL_SEARCH) {
+    mojom_match.value()->icon_path =
+        searchbox_internal::kReplyRotated180IconResourceName;
+  }
+
   mojom_match.value()->has_instant_keyword =
       match.HasInstantKeyword(turl_service);
   if (mojom_match && !match.HasInstantKeyword(turl_service) &&
@@ -281,30 +301,6 @@ WebuiOmniboxHandler::CreateAutocompleteMatch(
   }
 
   return mojom_match;
-}
-
-std::string WebuiOmniboxHandler::AutocompleteIconToResourceName(
-    const gfx::VectorIcon& icon) const {
-  // The default icon for contextual suggestions is the subdirectory arrow right
-  // icon. If there is a header enabled (which is when the lens chip is
-  // showing), use the search spark loupe instead.
-  const auto& input = autocomplete_controller()->input();
-  bool has_toolbelt_lens_action =
-      autocomplete_controller()->contextual_search_provider() &&
-      autocomplete_controller()
-          ->contextual_search_provider()
-          ->HasToolbeltLensAction();
-  const auto* client =
-      autocomplete_controller()->autocomplete_provider_client();
-  bool has_lens_search_chip =
-      client->IsOmniboxNextLensSearchChipEnabled() &&
-      ContextualSearchProvider::LensEntrypointEligible(input, client);
-  if ((has_toolbelt_lens_action || has_lens_search_chip) &&
-      icon.name == omnibox::kSubdirectoryArrowRightIcon.name) {
-    return searchbox_internal::kSearchSparkIconResourceName;
-  }
-
-  return SearchboxHandler::AutocompleteIconToResourceName(icon);
 }
 
 // TODO(crbug.com/469098088): Use something other than
@@ -391,6 +387,36 @@ void WebuiOmniboxHandler::OnActiveTabChanged(TabListInterface& tab_list,
                                              tabs::TabInterface* tab) {
   web_contents_observer_.ScopedObserve(tab->GetContents());
   ContextualSearchboxHandler::OnActiveTabChanged(tab_list, tab);
+}
+
+void WebuiOmniboxHandler::OnTabWillDetach(
+    tabs::TabInterface* tab,
+    tabs::TabInterface::DetachReason reason) {
+  edit_model_observation_.Reset();
+  autocomplete_controller_observation_.Reset();
+  controller_ = nullptr;
+  UpdateTabListObservation(nullptr);
+}
+
+void WebuiOmniboxHandler::OnTabDidInsert(tabs::TabInterface* tab) {
+  if (auto* browser_window_interface = tab->GetBrowserWindowInterface()) {
+    if (auto* location_bar =
+            browser_window_interface->GetFeatures().location_bar()) {
+      if (auto* omnibox_controller = location_bar->GetOmniboxController()) {
+        edit_model_observation_.Reset();
+        autocomplete_controller_observation_.Reset();
+        controller_ = omnibox_controller;
+        autocomplete_controller_observation_.Observe(autocomplete_controller());
+        edit_model_observation_.Observe(omnibox_controller->edit_model());
+        if (auto* helper = OmniboxPopupWebContentsHelper::FromWebContents(
+                web_contents_.get())) {
+          helper->set_omnibox_controller(omnibox_controller);
+        }
+        UpdateTabListObservation(
+            TabListInterface::From(browser_window_interface));
+      }
+    }
+  }
 }
 
 WebuiOmniboxHandler::WebContentsObserver::WebContentsObserver(

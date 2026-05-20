@@ -44,6 +44,7 @@ public class DeprecatedChromePreferenceKeys {
                 "Chrome.Flags.SafeModeEnabled",
                 "Chrome.Flags.SafeString.*",
                 "Chrome.Flags.SafeValuesVersion",
+                "Chrome.Glic.ButtonPinned",
                 "Chrome.IsolatedSplits.VersionCode",
                 "Chrome.MultiInstance.ClosedByUser.*",
                 "Chrome.MultiWindow.RestorationMessageShown",
@@ -55,6 +56,7 @@ public class DeprecatedChromePreferenceKeys {
                 "Chrome.MultiWindowMode.StartTime2.*",
                 "Chrome.NtpCustomization.BackgroundImageLandscapeMatrix",
                 "Chrome.NtpCustomization.BackgroundImagePortraitMatrix",
+                "Chrome.NtpCustomization.MainBottomSheetShown",
                 "Chrome.OfflineMeasurements.HttpProbeResultsList",
                 "Chrome.OfflineMeasurements.IsAirplaneModeEnabledList",
                 "Chrome.OfflineMeasurements.IsRoaming",
@@ -89,6 +91,9 @@ public class DeprecatedChromePreferenceKeys {
                 "Chrome.UMA.OnPreCreateCounter",
                 "Chrome.UMA.OnResumeCounter",
                 "Chrome.VideoTutorials.ShareUrls",
+                "Chrome.WebFeed.IntroLastShownTimeMs",
+                "Chrome.WebFeed.IntroWebFeedIdShownTimeMs.*",
+                "Chrome.WebFeed.IntroWebFeedIdShownCount.*",
                 "LocaleManager_USR_TYPE",
                 "PersistedNotificationId",
                 "PhysicalWeb.ActivityReferral",
@@ -205,6 +210,6 @@ public class DeprecatedChromePreferenceKeys {
     }
 
     static List<KeyPrefix> getPrefixesForTesting() {
-        return Collections.EMPTY_LIST;
+        return Collections.emptyList();
     }
 }

@@ -7,10 +7,9 @@ import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {getFallbackTheme, getShaderLayerColorHexes, GLIF_HEX_COLORS} from './color_utils.js';
+import {getShaderLayerColorHexes, GLIF_HEX_COLORS} from './color_utils.js';
 import {CenterRotatedBox_CoordinateType} from './geometry.mojom-webui.js';
 import type {CenterRotatedBox} from './geometry.mojom-webui.js';
-import type {OverlayTheme} from './lens.mojom-webui.js';
 import type {PostSelectionBoundingBox} from './post_selection_renderer.js';
 import {getTemplate} from './region_selection.html.js';
 import {ScreenshotBitmapBrowserProxyImpl} from './screenshot_bitmap_browser_proxy.js';
@@ -99,14 +98,15 @@ export class RegionSelectionElement extends RegionSelectionElementBase {
         type: Boolean,
         value: false,
       },
+      multiRegionSelectionEnabled: {
+        reflectToAttribute: true,
+        type: Boolean,
+        value: () => loadTimeData.getBoolean('enableMultiRegionSelection'),
+      },
       screenshotDataUri: String,
       shaderLayerColorHexes: {
         type: Array,
-        computed: 'computeShaderLayerColorHexes_(theme)',
-      },
-      theme: {
-        type: Object,
-        value: getFallbackTheme,
+        computed: 'computeShaderLayerColorHexes_()',
       },
       selectionOverlayRect: Object,
       regionStrokeColor1: {
@@ -148,13 +148,13 @@ export class RegionSelectionElement extends RegionSelectionElementBase {
   declare private screenshotDataUri: string;
   // Shader hex colors.
   declare private shaderLayerColorHexes: string[];
-  // The overlay theme.
-  declare private theme: OverlayTheme;
   // The bounds of the parent element. This is updated by the parent to avoid
   // this class needing to call getBoundingClientRect()
   declare private selectionOverlayRect: DOMRect;
   // Whether keyboard selection should be displayed.
   declare private displayKeyboardSelection: boolean;
+  // Whether multi-region selection is enabled.
+  declare private multiRegionSelectionEnabled: boolean;
 
   // The colors used for the gradient stroke of the region selection.
   declare private regionStrokeColor1: string;
@@ -211,7 +211,7 @@ export class RegionSelectionElement extends RegionSelectionElementBase {
   }
 
   private computeShaderLayerColorHexes_() {
-    return getShaderLayerColorHexes(this.theme);
+    return getShaderLayerColorHexes();
   }
 
   handleGestureStart() {
@@ -358,7 +358,7 @@ export class RegionSelectionElement extends RegionSelectionElementBase {
       gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
       gradient.addColorStop(0.92, 'rgba(255, 255, 255, 0.5)');
     } else {
-      // Use dynamic theme color gradient.
+      // Use selection color gradient.
       gradient = this.context.createLinearGradient(
           left,
           bottom,

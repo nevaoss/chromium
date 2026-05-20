@@ -30,7 +30,8 @@ void VideoPainter::PaintReplaced(const PaintInfo& paint_info,
   bool force_video_poster =
       layout_video_.GetDocument().GetPaintPreviewState() ==
           Document::kPaintingPreviewSkipAcceleratedContent ||
-      (RuntimeEnabledFeatures::CanvasDrawElementEnabled() &&
+      (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+           layout_video_.GetDocument().GetExecutionContext()) &&
        (paint_info.GetPaintFlags() & PaintFlag::kPrivacyPreserving));
   bool should_display_poster =
       layout_video_.GetDisplayMode() == LayoutVideo::kPoster ||
@@ -40,7 +41,7 @@ void VideoPainter::PaintReplaced(const PaintInfo& paint_info,
 
   if (paint_info.IsPrivacyPreserving()) {
     if (should_display_poster) {
-      if (!layout_video_.ImageResource()->IsAccessAllowed()) {
+      if (!layout_video_.ImageResource()->IsCorsSameOrigin()) {
         return;
       }
     } else if (media_player->WouldTaintOrigin()) {

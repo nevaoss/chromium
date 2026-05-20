@@ -16,6 +16,8 @@ const char kURLOnLastInteractionDictKey[] = "url_on_last_interaction";
 const char kFirstFootnoteLinkURL[] = "https://policies.google.com/terms";
 const char kSecondFootnoteLinkURL[] =
     "https://support.google.com/gemini/answer/13594961";
+const char kKoreanTermsFootnoteLinkURL[] =
+    "https://www.google.com/intl/ko/policies/terms/location";
 const char kFootnoteLinkURLManagedAccount[] =
     "https://support.google.com/a/answer/15706919";
 const char kSecondBoxLinkURLManagedAccount[] =
@@ -37,10 +39,6 @@ const char kLivePrivacyPolicyLinkURL[] = "https://policies.google.com/privacy";
 // Accessibility identifiers for Gemini consent view.
 NSString* const kGeminiFootNoteTextViewAccessibilityIdentifier =
     @"GeminiFootNoteTextViewAccessibilityIdentifier";
-NSString* const kGeminiPrimaryButtonAccessibilityIdentifier =
-    @"GeminiPrimaryButtonAccessibilityIdentifier";
-NSString* const kGeminiSecondaryButtonAccessibilityIdentifier =
-    @"GeminiSecondaryButtonAccessibilityIdentifier";
 
 // Action identifier on a tap on links in the footnote of the Gemini consent
 // view.
@@ -48,6 +46,7 @@ NSString* const kGeminiFirstFootnoteLinkAction =
     @"GeminiFirstFootnoteLinkAction";
 NSString* const kGeminiSecondFootnoteLinkAction =
     @"GeminiSecondFootnoteLinkAction";
+NSString* const kGeminiKoreanTermsLinkAction = @"GeminiKoreanTermsLinkAction";
 NSString* const kGeminiFootnoteLinkActionManagedAccount =
     @"GeminiFootnoteLinkActionManagedAccount";
 NSString* const kGeminiSecondBoxLinkActionManagedAccount =

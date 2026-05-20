@@ -20,12 +20,10 @@
 #include "base/strings/to_string.h"
 #include "base/trace_event/trace_event.h"
 #include "base/types/expected.h"
-#include "chrome/browser/actor/actor_features.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_metrics.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/aggregated_journal.h"
-#include "chrome/browser/actor/shared_types.h"
 #include "chrome/browser/actor/tools/attempt_form_filling_tool_request.h"
 #include "chrome/browser/actor/tools/attempt_login_tool_request.h"
 #include "chrome/browser/actor/tools/click_tool_request.h"
@@ -52,6 +50,9 @@
 #include "chrome/common/actor/actor_logging.h"
 #include "chrome/common/actor/journal_details_builder.h"
 #include "chrome/common/chrome_features.h"
+#include "components/actor/core/actor_features.h"
+#include "components/actor/core/shared_types.h"
+#include "components/actor/public/mojom/actor_types.mojom.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
 #include "components/optimization_guide/proto/features/actions_data.pb.h"
 #include "components/password_manager/core/browser/features/password_features.h"
@@ -111,17 +112,6 @@ using ::tabs::TabHandle;
 using ::tabs::TabInterface;
 
 namespace {
-
-// Test only callback for mutating and returning the TabObservationResult
-// provided from BuildActionsResultWithObservations.
-base::RepeatingCallback<void(apc::TabObservation*,
-                             const FetchPageContextResult&)>&
-GetTabObservationResultOverrideForTesting() {
-  static base::NoDestructor<base::RepeatingCallback<void(
-      apc::TabObservation*, const FetchPageContextResult&)>>
-      callback;
-  return *callback;
-}
 
 struct PageScopedParams {
   std::string document_identifier;
@@ -968,20 +958,22 @@ void FetchCallback(
   }
 
   FetchPageContextResult& fetch_result = **result;
-
   bool has_apc = fetch_result.annotated_page_content_result.has_value();
   tab_observation->set_annotated_page_content_result(
       has_apc ? apc::TabObservation::ANNOTATED_PAGE_CONTENT_OK
               : apc::TabObservation::ANNOTATED_PAGE_CONTENT_ERROR);
 
   bool has_screenshot = fetch_result.screenshot_result.has_value();
+  bool screenshot_required =
+      !base::FeatureList::IsEnabled(actor::kGlicActorSkipScreenshot);
   tab_observation->set_screenshot_result(
-      has_screenshot ? apc::TabObservation::SCREENSHOT_OK
-                     : apc::TabObservation::SCREENSHOT_ERROR);
+      has_screenshot || !screenshot_required
+          ? apc::TabObservation::SCREENSHOT_OK
+          : apc::TabObservation::SCREENSHOT_ERROR);
 
-  // Context for actor observations should always have an APC and a screenshot,
-  // return failure if either is missing.
-  if (!has_apc || !has_screenshot) {
+  // Context for actor observations should always have an APC. It should also
+  // have a screenshot unless it was skipped.
+  if (!has_apc || (screenshot_required && !has_screenshot)) {
     tab_observation->set_result(
         apc::TabObservation::TAB_OBSERVATION_FETCH_ERROR);
     return;
@@ -1004,7 +996,7 @@ void FetchCallback(
         fetch_context_time);
   }
 
-  {
+  if (has_screenshot) {
     apc::ActionsResult_LatencyInformation_LatencyStep* latency_step =
         latency_info->add_latency_steps();
     latency_step->mutable_screenshot()->set_id(tab_observation->id());
@@ -1027,6 +1019,19 @@ void FetchCallback(
 }
 
 }  // namespace
+
+void SetTabObservationResultOverrideForTesting(  // IN-TEST
+    base::RepeatingCallback<void(
+        optimization_guide::proto::TabObservation*,
+        const page_content_annotations::FetchPageContextResult&)> callback) {
+  GetTabObservationResultOverrideForTesting() = callback;  // IN-TEST
+}
+
+TabObservationResultOverrideCallback&
+GetTabObservationResultOverrideForTesting() {
+  static base::NoDestructor<TabObservationResultOverrideCallback> callback;
+  return *callback;
+}
 
 std::optional<
     page_content_annotations::ScreenshotOptions::ScreenshotCollectionOptions>
@@ -1186,8 +1191,8 @@ void BuildActionsResultWithObservations(
   }
 
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-  ProfileBrowserCollection::GetForProfile(profile)
-      ->ForEach([&response](BrowserWindowInterface* browser) {
+  ProfileBrowserCollection::GetForProfile(profile)->ForEach(
+      [&response](BrowserWindowInterface* browser) {
         apc::WindowObservation* window_observation = response->add_windows();
         window_observation->set_id(browser->GetSessionID().id());
         window_observation->set_active(browser->IsActive());
@@ -1329,13 +1334,6 @@ void BuildActionsResultWithObservations(
                        action_results, actions_start_time,
                        base::TimeTicks::Now(), base::Unretained(latency_info)));
   }
-}
-
-void SetTabObservationResultOverrideForTesting(  // IN-TEST
-    base::RepeatingCallback<void(
-        optimization_guide::proto::TabObservation*,
-        const page_content_annotations::FetchPageContextResult&)> callback) {
-  GetTabObservationResultOverrideForTesting() = callback;  // IN-TEST
 }
 
 apc::ActionsResult BuildErrorActionsResult(

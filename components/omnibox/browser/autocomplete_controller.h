@@ -248,6 +248,10 @@ class AutocompleteController : public AutocompleteProviderListener,
       base::TimeDelta query_formulation_time,
       TemplateURLRef::SearchTermsArgs& search_terms_args) const;
 
+  // Adds an invocation source parameter to the match's destination URL.
+  void UpdateMatchDestinationURLWithInvocationSource(
+      AutocompleteMatch* match) const;
+
   // Constructs and sets the final destination URL on the given match.
   void SetMatchDestinationURL(AutocompleteMatch* match) const;
 
@@ -510,7 +514,7 @@ class AutocompleteController : public AutocompleteProviderListener,
   const omnibox::metrics::ChromeSearchboxStats::ExperimentStatsV2
   GetOmniboxPositionExperimentStatsV2() const;
 
-  base::ObserverList<Observer> observers_;
+  base::ReentrantObserverList<Observer> observers_;
 
   // The client passed to the providers.
   const std::unique_ptr<AutocompleteProviderClient> provider_client_;

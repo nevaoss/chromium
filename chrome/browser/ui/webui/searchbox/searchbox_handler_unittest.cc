@@ -10,9 +10,11 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
+#include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
 #include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/alert/tab_alert_controller.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -25,6 +27,7 @@
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/test/base/testing_profile.h"
+#include "components/bookmarks/browser/bookmark_model.h"
 #include "components/omnibox/browser/autocomplete_controller.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
 #include "components/omnibox/browser/mock_autocomplete_provider_client.h"
@@ -80,6 +83,9 @@ class SearchboxHandlerTest : public ::testing::Test {
     source_ = content::TestWebUIDataSource::Create("test-data-source");
 
     TestingProfile::Builder profile_builder;
+    profile_builder.AddTestingFactory(
+        BookmarkModelFactory::GetInstance(),
+        BookmarkModelFactory::GetDefaultFactory());
     profile_ = profile_builder.Build();
 
     ASSERT_EQ(
@@ -96,17 +102,11 @@ class SearchboxHandlerTest : public ::testing::Test {
 };
 
 TEST_F(SearchboxHandlerTest, GetWebUIDataSourceDictSetsDragAndDrop) {
-  base::DictValue strings =
-      SearchboxHandler::GetWebUIDataSourceDict(profile(),
-                                               /*enable_voice_search=*/false,
-                                               /*enable_lens_search=*/false);
+  base::DictValue strings = SearchboxHandler::GetWebUIDataSourceDict(profile());
   EXPECT_FALSE(*strings.FindBool("composeboxContextDragAndDropEnabled"));
 
   base::DictValue strings_with_drag = SearchboxHandler::GetWebUIDataSourceDict(
-      profile(),
-      /*enable_voice_search=*/false,
-      /*enable_lens_search=*/false,
-      /*session_allows_drag_and_drop=*/true);
+      profile(), {.session_allows_drag_and_drop = true});
   EXPECT_TRUE(
       *strings_with_drag.FindBool("composeboxContextDragAndDropEnabled"));
 }
@@ -130,13 +130,12 @@ class RealboxHandlerTest : public SearchboxHandlerTest {
     web_contents_ =
         content::WebContentsTester::CreateTestWebContents(profile(), nullptr);
     handler_ = std::make_unique<RealboxHandler>(
-        mojo::PendingReceiver<searchbox::mojom::PageHandler>(), profile(),
-        web_contents_.get(),
+        mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+        page_.BindAndGetRemote(), profile(), web_contents_.get(),
         base::BindLambdaForTesting(
             []() -> contextual_search::ContextualSearchSessionHandle* {
               return nullptr;
             }));
-    handler_->SetPage(page_.BindAndGetRemote());
   }
 
   void TearDown() override {
@@ -269,13 +268,12 @@ class SearchboxHandlerPecApiTest : public RealboxHandlerTest {
     web_contents_ =
         content::WebContentsTester::CreateTestWebContents(profile(), nullptr);
     handler_ = std::make_unique<RealboxHandler>(
-        mojo::PendingReceiver<searchbox::mojom::PageHandler>(), profile(),
-        web_contents_.get(),
+        mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+        page_.BindAndGetRemote(), profile(), web_contents_.get(),
         base::BindLambdaForTesting(
             []() -> contextual_search::ContextualSearchSessionHandle* {
               return nullptr;
             }));
-    handler_->SetPage(page_.BindAndGetRemote());
   }
 
   void TearDown() override {
@@ -307,7 +305,7 @@ TEST_F(SearchboxHandlerPecApiTest, GetPlaceholderConfig_WithToolConfigs) {
 }
 
 TEST_F(SearchboxHandlerPecApiTest,
-       GetPlaceholderConfig_EmptySearchboxConfigReturnsAskGoogleOnly) {
+       GetPlaceholderConfig_NoToolConfigsReturnsEmpty) {
   omnibox::SearchboxConfig& config = mock_aim_eligibility_service_->config();
 
   ON_CALL(*mock_aim_eligibility_service_, GetSearchboxConfig())
@@ -317,8 +315,8 @@ TEST_F(SearchboxHandlerPecApiTest,
   handler_->GetPlaceholderConfig(future.GetCallback());
   auto result = future.Take();
 
-  ASSERT_EQ(result->texts.size(), 1u);
-  EXPECT_EQ(result->texts[0], u"Ask Google");
+  // Not eligible tools -> cycling disabled -> empty placeholder list.
+  ASSERT_EQ(result->texts.size(), 0u);
 }
 
 TEST_F(SearchboxHandlerPecApiTest,
@@ -386,10 +384,9 @@ class LensSearchboxHandlerTest : public SearchboxHandlerTest {
         std::make_unique<testing::NiceMock<MockLensSearchboxClient>>();
 
     handler_ = std::make_unique<LensSearchboxHandler>(
-        mojo::PendingReceiver<searchbox::mojom::PageHandler>(), profile(),
+        mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+        page_.BindAndGetRemote(), profile(),
         /*web_contents=*/nullptr, lens_searchbox_client_.get());
-
-    handler_->SetPage(page_.BindAndGetRemote());
   }
 };
 
@@ -528,6 +525,20 @@ TEST_F(LensSearchboxHandlerTest, Lens_AutocompleteController_Start) {
   }
 }
 
+namespace {
+class FakeOmniboxPopupView : public OmniboxPopupView {
+ public:
+  using OmniboxPopupView::OmniboxPopupView;
+  bool IsOpen() const override { return false; }
+  void InvalidateLine(size_t line) override {}
+  void UpdatePopupAppearance() override {}
+  void ProvideButtonFocusHint(size_t line) override {}
+  void OnDragCanceled() override {}
+  void GetPopupAccessibleNodeData(ui::AXNodeData* node_data) const override {}
+  bool IsSelectionPopupControlled() const override { return false; }
+};
+}  // namespace
+
 class WebuiOmniboxHandlerTest : public SearchboxHandlerTest {
  public:
   WebuiOmniboxHandlerTest() = default;
@@ -547,18 +558,24 @@ class WebuiOmniboxHandlerTest : public SearchboxHandlerTest {
         content::WebContentsTester::CreateTestWebContents(profile(), nullptr);
     web_ui_.set_web_contents(web_contents_.get());
 
+    popup_view_ =
+        std::make_unique<FakeOmniboxPopupView>(omnibox_controller_.get());
+    omnibox_controller_->edit_model()->set_popup_view(popup_view_.get());
+
     handler_ = std::make_unique<WebuiOmniboxHandler>(
         mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
+        page_.BindAndGetRemote(),
         /*metrics_reporter=*/nullptr, omnibox_controller_.get(), &web_ui_,
         base::BindLambdaForTesting(
             []() -> contextual_search::ContextualSearchSessionHandle* {
               return nullptr;
             }));
-    handler_->SetPage(page_.BindAndGetRemote());
   }
 
   void TearDown() override {
     handler_.reset();
+    omnibox_controller_->edit_model()->set_popup_view(nullptr);
+    popup_view_.reset();
     SearchboxHandlerTest::TearDown();
   }
 
@@ -567,6 +584,7 @@ class WebuiOmniboxHandlerTest : public SearchboxHandlerTest {
   content::TestWebUI web_ui_;
   std::unique_ptr<OmniboxPopupUI> omnibox_popup_ui_;
   std::unique_ptr<OmniboxController> omnibox_controller_;
+  std::unique_ptr<FakeOmniboxPopupView> popup_view_;
   std::unique_ptr<WebuiOmniboxHandler> handler_;
 };
 
@@ -616,6 +634,26 @@ TEST_F(WebuiOmniboxHandlerTest, WebuiOmniboxUpdatesSelection) {
   EXPECT_EQ(
       searchbox::mojom::SelectionLineState::kFocusedButtonRemoveSuggestion,
       selection->state);
+}
+
+TEST_F(WebuiOmniboxHandlerTest,
+       CreateAutocompleteMatch_ContextualSearchIconOverride) {
+  AutocompleteMatch match;
+  match.suggestion_group_id = omnibox::GroupId::GROUP_CONTEXTUAL_SEARCH;
+  match.destination_url = GURL("https://example.com");
+
+  bookmarks::BookmarkModel* bookmark_model =
+      BookmarkModelFactory::GetForBrowserContext(profile());
+  bookmark_model->LoadEmptyForTest();
+
+  auto mojom_match = handler_->CreateAutocompleteMatch(
+      match, 0, omnibox_controller_->edit_model(), bookmark_model,
+      omnibox::GroupConfigMap(),
+      omnibox_controller_->client()->GetTemplateURLService());
+
+  ASSERT_TRUE(mojom_match.has_value());
+  EXPECT_EQ(mojom_match.value()->icon_path,
+            searchbox_internal::kReplyRotated180IconResourceName);
 }
 
 namespace {

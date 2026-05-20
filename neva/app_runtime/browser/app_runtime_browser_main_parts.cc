@@ -22,8 +22,6 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "components/heap_profiling/multi_process/supervisor.h"
-#include "components/os_crypt/sync/key_storage_config_linux.h"
-#include "components/os_crypt/sync/os_crypt.h"
 #include "components/services/heap_profiling/public/cpp/settings.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/common/result_codes.h"
@@ -193,8 +191,6 @@ int AppRuntimeBrowserMainParts::PreMainMessageLoopRun() {
   aura::Env::GetInstance();
 #endif
 
-  CreateOSCryptConfig();
-
   for (auto* extra_part : app_runtime_extra_parts_)
     extra_part->PreMainMessageLoopRun();
 
@@ -235,18 +231,6 @@ void AppRuntimeBrowserMainParts::PostDestroyThreads() {
 content::BrowserContext*
 AppRuntimeBrowserMainParts::GetDefaultBrowserContext() const {
   return AppRuntimeBrowserContext::From("");
-}
-
-void AppRuntimeBrowserMainParts::CreateOSCryptConfig() {
-  std::unique_ptr<os_crypt::Config> config(new os_crypt::Config());
-  // Forward to os_crypt the flag to use a specific password store.
-  config->store = "";
-  // Forward the product name
-  config->product_name = "";
-  // OSCrypt can be disabled in a special settings file.
-  config->should_use_preference = false;
-  config->user_data_path = base::FilePath();
-  OSCrypt::SetConfig(std::move(config));
 }
 
 }  // namespace neva_app_runtime

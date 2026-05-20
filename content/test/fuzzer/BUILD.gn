@@ -64,6 +64,9 @@ fuzzer_test("origin_trial_token_fuzzer") {
 fuzzer_test("renderer_tree_fuzzer") {
   sources = [ "renderer_tree_fuzzer.cc" ]
   deps = [ ":fuzzer_support" ]
+  if (is_android) {
+    deps += [ "//third_party/icu:icu_assets" ]
+  }
 }
 
 fuzzer_test("renderer_proto_tree_fuzzer") {
@@ -137,8 +140,10 @@ fuzzer_test("merkle_integrity_source_stream_fuzzer") {
     "//net:net_fuzzer_test_support",
     "//net:test_support",
   ]
+  if (is_android) {
+    deps += [ "//third_party/icu:icu_assets" ]
+  }
   dict = "//content/test/data/fuzzer_dictionaries/merkle_integrity_source_stream_fuzzer.dict"
-  environment_variables = [ "AFL_DRIVER_DONT_DEFER=1" ]
 }
 
 if (enable_mojom_fuzzer) {
@@ -389,6 +394,9 @@ fuzzer_test("first_party_set_parser_json_fuzzer") {
     "//testing/libfuzzer/proto:json_proto_converter",
     "//third_party/libprotobuf-mutator",
   ]
+  if (is_android) {
+    deps += [ "//third_party/icu:icu_assets" ]
+  }
 }
 
 if (use_fuzzing_engine_with_lpm) {
@@ -399,6 +407,9 @@ if (use_fuzzing_engine_with_lpm) {
       ":related_website_sets_proto",
       "//third_party/libprotobuf-mutator",
     ]
+    if (is_android) {
+      deps += [ "//third_party/icu:icu_assets" ]
+    }
   }
 
   fuzzable_proto_library("related_website_sets_proto") {
@@ -541,8 +552,9 @@ content_mojolpm_fuzzer_test("ad_auction_service_mojolpm_fuzzer") {
 
 if (enable_mojom_fuzzer) {
   static_library("controller_presentation_service_delegate_for_fuzzing") {
-    # Should only be used in the fuzzer this was made for
-    visibility = [ ":presentation_service_mojolpm_fuzzer" ]
+    # Should only be used in the fuzzer this was made for, and its
+    # generated rules
+    visibility = [ ":*" ]
 
     sources = [
       "controller_presentation_service_delegate_for_fuzzing.cc",

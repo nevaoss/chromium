@@ -23,6 +23,7 @@
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/color/color_id.h"
 #include "ui/views/view.h"
 #include "ui/views/view_observer.h"
 #include "ui/views/widget/widget.h"
@@ -31,6 +32,10 @@
 namespace views {
 class WebView;
 }  // namespace views
+
+namespace gfx {
+struct VectorIcon;
+}  // namespace gfx
 
 class PrefService;
 
@@ -206,7 +211,7 @@ class OverlayBaseController : public content::WebContentsDelegate,
   virtual ui::ElementIdentifier GetViewContainerId() = 0;
 
   // The side panel type.
-  virtual SidePanelEntry::PanelType GetSidePanelType() = 0;
+  virtual SidePanelType GetSidePanelType() = 0;
 
   // Whether the side panel should be closed if it doesn't match
   // the desired type.
@@ -234,12 +239,17 @@ class OverlayBaseController : public content::WebContentsDelegate,
   // Notification that the tab was foregrounded.
   virtual void NotifyTabWillEnterBackground() = 0;
 
-  struct PreselectionBubbleResources {
-    int message_string_id;
+  struct PreselectionUIConfig {
+    int message_string_id = -1;
+    bool show_cancel_button = false;
+    // Only read if show_cancel_button is true.
+    std::optional<ui::ColorId> cancel_button_color = std::nullopt;
+    ui::ColorId bubble_background_color = ui::kUiColorsLast;
+    raw_ptr<const gfx::VectorIcon> icon = nullptr;
   };
 
   // Returns the resources for the preselection bubble.
-  virtual PreselectionBubbleResources GetPreselectionBubbleResources() = 0;
+  virtual PreselectionUIConfig GetPreselectionBubbleConfig() = 0;
 
   // Returns if the overlay view can be shared between multiple tabs.
   virtual bool IsOverlayViewShared() const = 0;

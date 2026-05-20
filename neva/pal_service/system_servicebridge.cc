@@ -16,6 +16,7 @@
 
 #include "neva/pal_service/system_servicebridge.h"
 
+#include "base/logging.h"
 #include "mojo/public/cpp/bindings/associated_receiver.h"
 #include "neva/pal_service/pal_platform_factory.h"
 #include "neva/pal_service/public/system_servicebridge_delegate.h"

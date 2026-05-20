@@ -18,6 +18,11 @@ import {TestExtensionControlBrowserProxy} from './test_extension_control_browser
 import {createSampleOmniboxExtension, createSampleSearchEngine, TestSearchEnginesBrowserProxy} from './test_search_engines_browser_proxy.js';
 // clang-format on
 
+type ViewOrEditSearchEngineEvent = CustomEvent<{
+  engine: SearchEngine,
+  anchorElement: HTMLElement,
+}>;
+
 /**
  * Opens and returns the action menu for a SettingsSearchEngineEntryElement.
  */
@@ -149,7 +154,8 @@ suite('SearchEngineEntryTest', function() {
         entry.shadowRoot!.querySelector<HTMLButtonElement>(`#editIconButton`)!;
     assertTrue(isVisible(editButton));
 
-    const promise = eventToPromise('view-or-edit-search-engine', entry);
+    const promise = eventToPromise<ViewOrEditSearchEngineEvent>(
+        'view-or-edit-search-engine', entry);
     editButton.click();
     const e = await promise;
     assertEquals(engine, e.detail.engine);
@@ -267,82 +273,6 @@ suite('SearchEngineEntryTest', function() {
         entry.i18n(
             'searchEnginesMoreActionsAriaLabel', entry.engine.displayName),
         menuButton.ariaLabel);
-  });
-
-
-  // Test that when a search engine has an iconPath, site-favicon displays the
-  // icon. Downloaded icon should not be visible.
-  test('FaviconWithIconPath', function() {
-    entry.engine = createSampleSearchEngine({
-      iconPath: 'images/foo.png',
-      iconURL: 'http://www.google.com/favicon.ico',
-    });
-
-    assertEquals(
-        'chrome://image/?http://www.google.com/favicon.ico',
-        entry.$.downloadedIcon.src);
-    assertFalse(isVisible(entry.$.downloadedIcon));
-
-    const siteFavicon = entry.shadowRoot!.querySelector('site-favicon');
-    assertTrue(!!siteFavicon);
-    const favicon = siteFavicon.shadowRoot!.querySelector('#favicon');
-    assertTrue(!!favicon);
-    assertTrue(isVisible(favicon));
-  });
-
-  // Test that when a search engine has an iconURL and downloading is
-  // successful, the downloaded icon is displayed. The site-favicon should not
-  // be visible.
-  test('FaviconWithIconURL_Successful', async function() {
-    entry.engine = createSampleSearchEngine({
-      iconPath: '',
-      iconURL: 'chrome://resources/images/chrome_logo_dark.svg',
-    });
-
-    await eventToPromise('load', entry.$.downloadedIcon);
-    assertEquals(
-        'chrome://resources/images/chrome_logo_dark.svg',
-        entry.$.downloadedIcon.src);
-    assertTrue(isVisible(entry.$.downloadedIcon));
-
-    const siteFavicon = entry.shadowRoot!.querySelector('site-favicon');
-    assertTrue(!!siteFavicon);
-    const favicon = siteFavicon.shadowRoot!.querySelector('#favicon');
-    assertTrue(!!favicon);
-    assertFalse(isVisible(favicon));
-  });
-
-  // Test that when a search engine has an iconURL and downloading fails,
-  // site-favicon displays the icon.
-  test('FaviconWithIconURL_Failed', async function() {
-    entry.engine = createSampleSearchEngine(
-        {iconPath: '', iconURL: 'chrome://resources/images/invalid_url'});
-
-    await eventToPromise('error', entry.$.downloadedIcon);
-    assertEquals(
-        'chrome://resources/images/invalid_url', entry.$.downloadedIcon.src);
-    assertFalse(isVisible(entry.$.downloadedIcon));
-
-    const siteFavicon = entry.shadowRoot!.querySelector('site-favicon');
-    assertTrue(!!siteFavicon);
-    const favicon = siteFavicon.shadowRoot!.querySelector('#favicon');
-    assertTrue(!!favicon);
-    assertTrue(isVisible(favicon));
-  });
-
-  // Test that when a search engine has neither an iconPath nor an iconURL,
-  // site-favicon displays the icon based on the search engine's URL.
-  test('FaviconWithURL', function() {
-    entry.engine = createSampleSearchEngine({iconPath: '', iconURL: ''});
-
-    assertEquals('', entry.$.downloadedIcon.src);
-    assertFalse(isVisible(entry.$.downloadedIcon));
-
-    const siteFavicon = entry.shadowRoot!.querySelector('site-favicon');
-    assertTrue(!!siteFavicon);
-    const favicon = siteFavicon.shadowRoot!.querySelector('#favicon')!;
-    assertTrue(!!favicon);
-    assertTrue(isVisible(favicon));
   });
 });
 
@@ -492,7 +422,8 @@ suite('EnterpriseSiteSearchEntryTests', function() {
         entry.shadowRoot!.querySelector<HTMLButtonElement>(`#editIconButton`)!;
     assertTrue(isVisible(editButton));
 
-    const whenFired = eventToPromise('view-or-edit-search-engine', entry);
+    const whenFired = eventToPromise<ViewOrEditSearchEngineEvent>(
+        'view-or-edit-search-engine', entry);
     editButton.click();
     const e = await whenFired;
     assertEquals(engineUnfeatured, e.detail.engine);
@@ -577,7 +508,8 @@ suite('EnterpriseSiteSearchEntryTests', function() {
         'button#delete.dropdown-item')!;
     assertTrue(isVisible(deleteButton));
 
-    const whenFired = eventToPromise('delete-search-engine', entry);
+    const whenFired = eventToPromise<ViewOrEditSearchEngineEvent>(
+        'delete-search-engine', entry);
     deleteButton.click();
     const e = await whenFired;
     assertEquals(entry.engine, e.detail.engine);
@@ -600,7 +532,8 @@ suite('EnterpriseSiteSearchEntryTests', function() {
                 `#viewDetailsButton`)!;
         assertTrue(isVisible(viewDetailsButton));
 
-        const whenFired = eventToPromise('view-or-edit-search-engine', entry);
+        const whenFired = eventToPromise<ViewOrEditSearchEngineEvent>(
+            'view-or-edit-search-engine', entry);
         viewDetailsButton.click();
         const e = await whenFired;
         assertEquals(managedEngine, e.detail.engine);
@@ -669,6 +602,116 @@ suite('SearchEngineEntryTest_SearchSettingsUpdate', function() {
     return flushTasks();
   });
 
+  // Test the edit option availability for different states.
+  test('Edit option visibility', function() {
+    const extension = {
+      id: '1',
+      name: 'ext',
+      canBeDisabled: true,
+      icon: 'chrome://extension-icon/some-extension-icon',
+    };
+
+    // Should be visible (not hidden)
+    assertFalse(isButtonDisabled(
+        entry, '#editOption',
+        createSampleSearchEngine({canBeEdited: true, isStarterPack: false})));
+
+    // Should be hidden for Starter Packs
+    assertButtonHidden(
+        entry, '#editOption', createSampleSearchEngine({isStarterPack: true}));
+
+    // Should be hidden for non-default extensions
+    assertButtonHidden(
+        entry, '#editOption',
+        createSampleSearchEngine({extension, default: false}));
+
+    // Should be visible if the extension is the default (policy override)
+    assertFalse(isButtonDisabled(
+        entry, '#editOption',
+        createSampleSearchEngine({extension, default: true})));
+
+    // Should be hidden if managed and not editable
+    assertButtonHidden(
+        entry, '#editOption',
+        createSampleSearchEngine({isManaged: true, canBeEdited: false}));
+  });
+
+  // Test the make default option availability for different states.
+  test('Make default option visibility', function() {
+    const extension = {
+      id: '1',
+      name: 'ext',
+      canBeDisabled: true,
+      icon: 'chrome://extension-icon/some-extension-icon',
+    };
+
+    // Should be visible and enabled for regular engines.
+    assertFalse(isButtonDisabled(
+        entry, '#makeDefaultOption',
+        createSampleSearchEngine({canBeDefault: true, isStarterPack: false})));
+
+    // Should be hidden for Starter Packs.
+    assertButtonHidden(
+        entry, '#makeDefaultOption',
+        createSampleSearchEngine({isStarterPack: true}));
+
+    // Should be hidden for extensions that aren't the default.
+    assertButtonHidden(
+        entry, '#makeDefaultOption',
+        createSampleSearchEngine({extension, default: false}));
+
+    // Should be visible (but disabled) if the extension is the default.
+    assertTrue(isButtonDisabled(
+        entry, '#makeDefaultOption',
+        createSampleSearchEngine(
+            {extension, default: true, canBeDefault: false})));
+  });
+
+  // Test the delete option availability for different states.
+  test('Delete option visibility', function() {
+    // Should be visible and enabled for custom engines.
+    assertFalse(isButtonDisabled(
+        entry, '#deleteOption',
+        createSampleSearchEngine({canBeRemoved: true, isPrepopulated: false})));
+
+    // Should be visible and enabled for prepopulated engines.
+    assertFalse(isButtonDisabled(
+        entry, '#deleteOption',
+        createSampleSearchEngine({canBeRemoved: true, isPrepopulated: true})));
+
+    // Should be visible but disabled if it's the default.
+    assertTrue(isButtonDisabled(
+        entry, '#deleteOption',
+        createSampleSearchEngine(
+            {default: true, canBeRemoved: false, isPrepopulated: false})));
+
+    // Should be hidden if it cannot be removed and is not the default engine.
+    assertButtonHidden(
+        entry, '#deleteOption',
+        createSampleSearchEngine({default: false, canBeRemoved: false}));
+  });
+
+  // Test the deactivate option availability for different states.
+  test('Deactivate option visibility', function() {
+    // Should be visible and enabled if it can be deactivated.
+    assertFalse(isButtonDisabled(
+        entry, '#deactivateOption',
+        createSampleSearchEngine(
+            {canBeDeactivated: true, isPrepopulated: false})));
+
+    // Should be hidden for prepopulated engines.
+    assertButtonHidden(
+        entry, '#deactivateOption',
+        createSampleSearchEngine({isPrepopulated: true}));
+
+    // Should be visible but disabled if it's the default (and not
+    // prepopulated).
+    assertTrue(isButtonDisabled(
+        entry, '#deactivateOption',
+        createSampleSearchEngine(
+            {default: true, canBeDeactivated: false, isPrepopulated: false})));
+  });
+
   // Test that clicking the "Turn off" button fires a deactivate event.
   test('Deactivate', async function() {
     entry.engine = createSampleSearchEngine({canBeDeactivated: true});
@@ -722,7 +765,8 @@ suite('SearchEngineEntryTest_SearchSettingsUpdate', function() {
     assertTrue(!!editButton);
     assertTrue(isVisible(editButton));
 
-    const whenFired = eventToPromise('view-or-edit-search-engine', entry);
+    const whenFired = eventToPromise<ViewOrEditSearchEngineEvent>(
+        'view-or-edit-search-engine', entry);
     editButton.click();
     const e = await whenFired;
     assertFalse(menu.open);
@@ -778,6 +822,11 @@ suite('SearchEngineEntryTest_SearchSettingsUpdate', function() {
     const extensionId =
         await extensionBrowserProxy.whenCalled('manageExtension');
     assertEquals(entry.engine.extension!.id, extensionId);
+
+    // The context menu was closed.
+    const menu = entry.shadowRoot!.querySelector('cr-action-menu');
+    assertTrue(!!menu);
+    assertFalse(menu.open);
   });
 
   // Tests that the "Delete" option is hidden for extensions.

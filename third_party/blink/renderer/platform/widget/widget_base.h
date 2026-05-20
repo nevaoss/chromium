@@ -117,7 +117,7 @@ class PLATFORM_EXPORT WidgetBase : public mojom::blink::Widget,
   // function won't block on doing the release in the compositor thread.
   void Shutdown(bool delay_release);
 
-  void OnFirstContentfulPaint(const base::TimeTicks& first_paint_time);
+  void OnFirstContentfulPaint();
 
   // Set the compositor as visible. If |visible| is true, then the compositor
   // will request a new layer frame sink, begin producing frames from the
@@ -178,7 +178,6 @@ class PLATFORM_EXPORT WidgetBase : public mojom::blink::Widget,
       cc::PaintHoldingReason reason,
       std::optional<cc::PaintHoldingCommitTrigger> trigger) override;
   void OnCommitRequested() override;
-  void WillBeginImplCommit() override;
   void DidBeginMainFrame() override;
   void RequestNewLayerTreeFrameSink(
       LayerTreeFrameSinkCallback callback) override;

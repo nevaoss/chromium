@@ -56,7 +56,6 @@ Es posible que algunas funciones no estén disponibles y que no se guarden los c
 <translation id="1594928384848033697">Chromium quiere eliminar tus datos del Gestor de contraseñas. Introduce tu contraseña de Windows para permitirlo.</translation>
 <translation id="1607715478322902680">{COUNT,plural, =0{Tu administrador pide que reinicies Chromium para aplicar una actualización}=1{Tu administrador pide que reinicies Chromium para aplicar una actualización. La ventana de Incógnito no se volverá a abrir.}other{Tu administrador pide que reinicies Chromium para aplicar una actualización. Las # ventanas de Incógnito no se volverán a abrir.}}</translation>
 <translation id="1625909126243026060">Revisa los controles principales de privacidad y de seguridad en Chromium</translation>
-<translation id="1639380494700489405">Para hacer preguntas al Modo IA sobre tu pestaña sin salir de la página, inicia sesión en Chromium. También tendrás tus contraseñas y otra información en todos tus dispositivos.</translation>
 <translation id="1640672724030957280">Descargando...</translation>
 <translation id="1680687534629375545">Pregunta a la búsqueda por imágenes sobre esta página</translation>
 <translation id="1708414395296835197">Puedes usar Chromium cada vez que hagas clic en enlaces de mensajes, documentos y otras aplicaciones. También se fijará en tu barra de tareas.</translation>
@@ -219,6 +218,7 @@ Es posible que algunas funciones no estén disponibles y que no se guarden los c
 
 <ph name="EXTENSION_NAME" /></translation>
 <translation id="3185330573522821672">Personaliza tu nuevo perfil de Chromium.</translation>
+<translation id="3189205223539394158">Puedes seguir conversando con el Modo IA sin cambiar de pestaña. Para empezar, inicia sesión en Chromium. También tendrás tus contraseñas y otra información en todos tus dispositivos.</translation>
 <translation id="3224847870593914902">Para eliminar de Chromium tu cuenta de Google, cierra sesión en Chromium desde la página de configuración</translation>
 <translation id="3234316605225071811">Más adelante, Chromium puede preguntarte si quieres usar la información guardada para autocompletar formularios por ti</translation>
 <translation id="3258596308407688501">Chromium no puede leer el directorio de datos ni escribir en él:
@@ -229,7 +229,6 @@ Es posible que algunas funciones no estén disponibles y que no se guarden los c
 <translation id="3296368748942286671">Seguir ejecutando aplicaciones en segundo plano al cerrar Chromium</translation>
 <translation id="3313189106987092621">Chromium te avisará antes de cargar un sitio usando una conexión no segura</translation>
 <translation id="3316771292331273802">Cuando cierres todas las ventanas de Chromium, se cerrará tu sesión en la mayoría de los sitios, salvo la de tu cuenta de Google si has iniciado sesión en Chromium. Para permitir que los sitios te recuerden, <ph name="SETTINGS_LINK" />.</translation>
-<translation id="3322413454779348750">Tu buscador predeterminado se ha cambiado desde fuera de Chromium. Para protegerte, Chromium lo ha restablecido.</translation>
 <translation id="3352986031709923790">esquina superior derecha del área de búsqueda: un <ph name="RIGHT" /> % a la derecha y un <ph name="TOP" /> % arriba</translation>
 <translation id="3366305173356742781">Datos de Chromium en tu cuenta</translation>
 <translation id="3369405342922656244">Busca en esta página con la búsqueda por imágenes</translation>
@@ -352,7 +351,7 @@ Es posible que algunas funciones no estén disponibles y que no se guarden los c
 <translation id="4625064703209785397">Acelera los sitios con el motor V8 de Chromium, pero hace que Chromium sea un poco menos resistente a los ataques</translation>
 <translation id="4665829708273112819">Advertencia: Chromium no puede evitar que las extensiones registren el historial de navegación. Para inhabilitar esta extensión en modo Incógnito, desmarca esta opción.</translation>
 <translation id="4673151026126227699">Si también compartes informes de uso de Chromium, esos informes incluyen las URLs que visitas</translation>
-<translation id="4677944499843243528">Parece que otro proceso de Chromium (<ph name="PROCESS_ID" />) está utilizando el perfil en otro ordenador (<ph name="HOST_NAME" />). Chromium ha bloqueado el perfil para que no se dañe. Si estás seguro de que ningún otro proceso está utilizando este perfil, puedes desbloquearlo y volver a iniciar Chromium.</translation>
+<translation id="4677944499843243528">Parece que otro proceso de Chromium (<ph name="PROCESS_ID" />) está utilizando el perfil en otro ordenador (<ph name="HOST_NAME" />). Chromium ha bloqueado el perfil para que no se dañe. Si tienes la certeza de que ningún otro proceso está utilizando este perfil, puedes desbloquearlo y volver a iniciar Chromium.</translation>
 <translation id="4680828127924988555">Cancelar instalación</translation>
 <translation id="469259825538636168">Algunos de tus datos de Chromium aún no se han guardado en tu cuenta de Google. Prueba a esperar unos minutos antes de cerrar sesión. Si cierras sesión ahora, estos datos se eliminarán.</translation>
 <translation id="4708193446201257833">Mientras tengas la sesión iniciada, puedes usar tus contraseñas y más de tu cuenta de Google en Chromium. <ph name="SHORTCUT" /> puede cambiar la configuración de tus servicios de Google.</translation>
@@ -477,6 +476,7 @@ Es posible que algunas funciones no estén disponibles y que no se guarden los c
 <translation id="6241367896540709610">Chromium necesita el permiso de acceso al almacenamiento para descargar archivos</translation>
 <translation id="6245734527075554892">Comprueba URLs con una lista de sitios no seguros guardada en Chromium.</translation>
 <translation id="6248213926982192922">Establecer Chromium como navegador predeterminado</translation>
+<translation id="6248988683584659830">Buscar ajustes</translation>
 <translation id="6268381023930128611">¿Cerrar sesión en Chromium?</translation>
 <translation id="6270547683008298381">Estas pestañas están usando recursos adicionales. Para mejorar tu rendimiento, permite que Chromium las inactive.</translation>
 <translation id="6281746429495226318">Personaliza tu perfil de Chromium</translation>
@@ -513,6 +513,7 @@ Es posible que algunas funciones no estén disponibles y que no se guarden los c
 <translation id="6542839706527980775">Cada perfil almacena su propia información de Chromium, como los marcadores, el historial, las contraseñas y mucho más.</translation>
 <translation id="6563921047760808519">Más información sobre <ph name="BEGIN_LINK" />cómo protege Chromium la privacidad de tus datos<ph name="END_LINK" /></translation>
 <translation id="6564039629497156115">Los cambios que se hagan en este ajuste se aplicarán cuando se reinicie Chromium.</translation>
+<translation id="6567032987737689854">Para gestionar tus extensiones, haz clic en Extensiones en el menú principal de Chromium.</translation>
 <translation id="656935081669708576">Puedes cambiar de perfil para ver las contraseñas de otro perfil de Chromium</translation>
 <translation id="6570579332384693436">Para corregir errores ortográficos, Chromium envía a Google el texto que escribes en los campos de texto</translation>
 <translation id="6598877126913850652">Ir a los ajustes de notificaciones de Chromium</translation>
@@ -636,6 +637,7 @@ Chromium no puede recuperar tu configuración.</translation>
 <translation id="7810005234485217901">Puedes fijar la búsqueda por imágenes para acceder a ella fácilmente</translation>
 <translation id="7828947555739565424">Ya existe un perfil de Chromium con esa cuenta en este dispositivo.</translation>
 <translation id="7845233973568007926">Gracias por realizar la instalación. Debes reiniciar tu ordenador para poder usar <ph name="BUNDLE_NAME" />.</translation>
+<translation id="7847673590271334840">Tu buscador se ha cambiado desde fuera de Chromium. Para protegerte, Chromium lo ha restablecido a su valor predeterminado original. <ph name="LEARN_MORE_LINK" /></translation>
 <translation id="7853661403199074278">Personaliza Chromium para cambiar su diseño</translation>
 <translation id="7859018312476869945">Al escribir en la barra de direcciones o en el cuadro de búsqueda, Chromium envía lo que escribes al buscador predeterminado para que obtengas mejores sugerencias. Esta función está desactivada en el modo Incógnito.</translation>
 <translation id="7867198900892795913">No se ha podido actualizar Chromium a la versión más reciente, por lo que no disfrutas de las últimas funciones y correcciones de seguridad.</translation>

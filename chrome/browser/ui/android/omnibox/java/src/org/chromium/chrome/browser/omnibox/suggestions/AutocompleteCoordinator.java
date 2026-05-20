@@ -5,7 +5,6 @@
 package org.chromium.chrome.browser.omnibox.suggestions;
 
 import static org.chromium.build.NullUtil.assumeNonNull;
-import static org.chromium.ui.base.KeyNavigationUtil.isTabNavigation;
 
 import android.animation.Animator;
 import android.content.Context;
@@ -154,6 +153,9 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
         listModel.set(
                 SuggestionListProperties.DROPDOWN_SCROLL_TO_TOP_LISTENER,
                 this::dropdownOverscrolledToTop);
+        listModel.set(
+                SuggestionListProperties.DROPDOWN_SCROLL_OFFSET_LISTENER,
+                this::dropdownScrollOffsetChanged);
 
         ViewProvider<SuggestionListViewHolder> viewProvider = createViewProvider();
         viewProvider.whenLoaded(
@@ -180,7 +182,8 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
             mRecycledViewPool = null;
         }
 
-        // https://crbug.com/966227 Set initial layout direction ahead of inflating the suggestions.
+        // https://crbug.com/41460582 Set initial layout direction ahead of inflating the
+        // suggestions.
         updateSuggestionListLayoutDirection();
     }
 
@@ -377,15 +380,6 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
 
         boolean isShowingList = mContainer != null && mContainer.isShown();
 
-        if (event.getKeyCode() == KeyEvent.KEYCODE_ESCAPE) {
-            if (isShowingList) {
-                mMediator.stopAutocomplete(true);
-            } else {
-                mMediator.finishInteraction();
-            }
-            return true;
-        }
-
         // Always handle <ENTER> key, even if the suggestions list is not showing.
         // This allows users to navigate to the typed url or query.
         // Try to dispatch to suggestions list, if one is showing, otherwise invoke navigation.
@@ -409,18 +403,12 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
             return false;
         }
 
-        if (keyCode == KeyEvent.KEYCODE_TAB && event.hasNoModifiers()) {
-            if (triggerSiteSearch(SiteSearchActivationSource.TAB)) {
-                return true;
-            }
-        }
-
         // Do not attempt to interpret non-navigaton keys.
         // There are cases where the SPACE key may gen inappropriately routed to the
         // Suggestion, simulating press/long press of the UI element.
         if ((keyCode == KeyEvent.KEYCODE_DPAD_UP)
                 || (keyCode == KeyEvent.KEYCODE_DPAD_DOWN)
-                || isTabNavigation(event)) {
+                || KeyNavigationUtil.isTabNavigation(event)) {
             mMediator.allowPendingItemSelection();
             assumeNonNull(mContainer).onKeyDown(keyCode, event);
             return true;
@@ -436,7 +424,7 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
 
     /** Notify the Autocomplete about Omnibox text change. */
     public void onInputChanged() {
-        mMediator.onInputChanged(false);
+        mMediator.onInputChanged();
     }
 
     /** Trigger autocomplete for the given query. */
@@ -480,10 +468,23 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
         mMediator.startPrefetch(tab != null ? tab.getWebContents() : null);
     }
 
+    /** Stop current suggestions requests and clear the suggestions list. */
+    public void stopAutocomplete() {
+        mMediator.stopAutocomplete(/* clear= */ true);
+    }
+
+    /** Returns whether Autocomplete is serving suggestions. */
+    public boolean isServingSuggestions() {
+        return mMediator.isInInputSession()
+                && mContainer != null
+                && mContainer.isShown()
+                && mMediator.getSuggestionCount() > 0;
+    }
+
     /**
      * @return Suggestions Dropdown view, showing the list of suggestions.
      */
-    public @Nullable OmniboxSuggestionsDropdown getSuggestionsDropdownForTest() {
+    public @Nullable View getSuggestionsDropdown() {
         return mDropdown;
     }
 
@@ -538,6 +539,12 @@ public class AutocompleteCoordinator implements OmniboxSuggestionsVisualState {
     public void dropdownOverscrolledToTop() {
         for (OmniboxSuggestionsDropdownScrollListener listener : mScrollListenerList) {
             listener.onSuggestionDropdownOverscrolledToTop();
+        }
+    }
+
+    public void dropdownScrollOffsetChanged(int newOffset) {
+        for (OmniboxSuggestionsDropdownScrollListener listener : mScrollListenerList) {
+            listener.onSuggestionDropdownScrollOffsetChanged(newOffset);
         }
     }
 

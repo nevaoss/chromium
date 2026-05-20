@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "base/metrics/histogram_functions.h"
 #include "third_party/omnibox_proto/model_mode.pb.h"
 #include "third_party/omnibox_proto/tool_mode.pb.h"
 
@@ -62,5 +63,42 @@ std::string GetModelModeString(omnibox::ModelMode mode) {
 }
 // LINT.ThenChange(//third_party/omnibox_proto/model_mode.proto:ModelMode,
 // //tools/metrics/histograms/metadata/omnibox/enums.xml:OmniboxModelMode)
+
+// LINT.IfChange(GetContextTypeString)
+std::string GetContextTypeString(ContextType type) {
+  switch (type) {
+    case ContextType::kTab:
+      return "Tab";
+    case ContextType::kFile:
+      return "File";
+    case ContextType::kImage:
+      return "Image";
+    case ContextType::kImageGen:
+      return "ImageGen";
+    case ContextType::kDeepResearch:
+      return "DeepResearch";
+    case ContextType::kDrive:
+      return "Drive";
+    case ContextType::kCanvas:
+      return "Canvas";
+    case ContextType::kAutoModel:
+      return "AutoModel";
+    case ContextType::kThinkingModel:
+      return "ThinkingModel";
+    case ContextType::kRegularModel:
+      return "RegularModel";
+    case ContextType::kProNoGenUiModel:
+      return "ProNoGenUiModel";
+    case ContextType::kUnknown:
+      return "Unknown";
+  }
+}
+// LINT.ThenChange(//ui/webui/resources/cr_components/composebox/common.ts:getContextTypeString)
+
+void LogResultToContentReadyEarlyExitReason(
+    ResultToContentReadyEarlyExitReason reason) {
+  std::string_view name = "Omnibox.Popup.ResultToContentReadyEarlyExitReason";
+  base::UmaHistogramEnumeration(name, reason);
+}
 
 }  // namespace omnibox

@@ -51,15 +51,15 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/tabs/browser_tab_strip_controller.h"
 #include "chrome/browser/ui/views/tabs/dragging/tab_drag_controller.h"
+#include "chrome/browser/ui/views/tabs/shared/tab_strip_types.h"
 #include "chrome/browser/ui/views/tabs/tab/alert_indicator_button.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_accessibility.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_close_button.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_icon.h"
+#include "chrome/browser/ui/views/tabs/tab/tab_title.h"
 #include "chrome/browser/ui/views/tabs/tab_slot_controller.h"
 #include "chrome/browser/ui/views/tabs/tab_slot_view.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
-#include "chrome/browser/ui/views/tabs/tab_strip_layout.h"
-#include "chrome/browser/ui/views/tabs/tab_strip_types.h"
 #include "chrome/browser/ui/views/tabs/tab_style_views.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/grit/generated_resources.h"
@@ -245,7 +245,7 @@ Tab::Tab(tabs::TabHandle handle, TabSlotController* controller)
     : HoverCardAnchorTarget(this),
       tab_handle_(handle),
       controller_(controller),
-      title_(new views::Label()),
+      title_(new TabTitle()),
       title_animation_(this) {
   DCHECK(controller);
 
@@ -256,20 +256,6 @@ Tab::Tab(tabs::TabHandle handle, TabSlotController* controller)
   SetNotifyEnterExitOnChild(true);
 
   SetID(VIEW_ID_TAB);
-
-  title_->SetHorizontalAlignment(gfx::ALIGN_TO_HEAD);
-  title_->SetElideBehavior(gfx::FADE_TAIL);
-  title_->SetHandlesTooltips(false);
-  title_->SetAutoColorReadabilityEnabled(false);
-  title_->SetText(CoreTabHelper::GetDefaultTitle());
-  title_->SetBackgroundColor(SK_ColorTRANSPARENT);
-  // `title_` paints on top of an opaque region (the tab background) of a
-  // non-opaque layer (the tabstrip's layer), which cannot currently be detected
-  // by the subpixel-rendering opacity check.
-  // TODO(crbug.com/40725997): Improve the check so that this case doen't
-  // need a manual suppression by detecting cases where the text is painted onto
-  // onto opaque parts of a not-entirely-opaque layer.
-  title_->SetSkipSubpixelRenderingOpacityCheck(true);
 
   AddChildViewRaw(title_.get());
 
@@ -711,7 +697,7 @@ void Tab::OnMouseMoved(const ui::MouseEvent& event) {
   // subsequently moves the mouse, we need to then hover the tab.
   //
   // Either way, this is effectively a no-op if the tab is already in a hovered
-  // state (crbug.com/1326272).
+  // state (crbug.com/40840442).
   MaybeUpdateHoverStatus(event);
 }
 
@@ -919,6 +905,10 @@ bool Tab::NeedsToShowThumbnail() const {
 
 bool Tab::IsValidHoverCardTarget() const {
   return !closing() && !detached() && !dragging() && GetVisible();
+}
+
+views::BubbleAnchor Tab::GetAnchor() {
+  return views::BubbleAnchor(this);
 }
 
 views::BubbleBorder::Arrow Tab::GetAnchorPosition() const {

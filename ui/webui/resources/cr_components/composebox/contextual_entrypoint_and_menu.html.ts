@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import '//resources/cr_elements/cr_icons.css.js';
-
 import {html} from '//resources/lit/v3_0/lit.rollup.js';
 
 import {hasAllowedInputs} from './common.js';
@@ -27,6 +25,8 @@ export function getHtml(this: ContextualEntrypointAndMenuElement) {
         .disabledTabIds="${this.disabledTabIds}"
         .tabSuggestions="${this.tabSuggestions}"
         .inputState="${this.inputState}"
+        .smartTabSharingActive="${this.smartTabSharingActive}"
+        .disableAutoReposition="${this.disableAutoReposition}"
         @close="${this.onMenuClose_}">
     </cr-composebox-contextual-action-menu>
   <!--_html_template_end_-->`;

@@ -23,7 +23,7 @@
 #include "remoting/base/loggable.h"
 #include "remoting/host/base/pointer_utils.h"
 #include "remoting/proto/event.pb.h"
-#include "third_party/libei/cipd/include/libei-1.0/libei.h"
+#include "third_party/libei/src/src/libei.h"
 
 namespace remoting {
 
@@ -44,6 +44,9 @@ class EiSenderSession {
 
   void SetKeyboardLayoutMonitor(base::WeakPtr<EiKeyboardLayoutMonitor> monitor);
   void SetInputInjector(base::WeakPtr<EiInputInjector> input_injector);
+
+  // Transfer post-initialization state to a replacement session.
+  void TransferStateTo(EiSenderSession& replacement);
 
   // Injects an event for the provided |usb_keycode|. |is_press| should be true
   // for key-down and repeat events, and false for release events.
@@ -79,7 +82,11 @@ class EiSenderSession {
   // Asynchronously attempts to establish a session with an EIS implementation
   // over |fd| and invokes |callback| with the result. Takes ownership of |fd|,
   // closing it if the session cannot be established.
-  static void CreateWithFd(base::ScopedFD fd, CreateCallback callback);
+  // |disconnect_callback| is invoked if the session is unexpectedly
+  // disconnected after being established.
+  static void CreateWithFd(base::ScopedFD fd,
+                           CreateCallback callback,
+                           base::OnceClosure disconnect_callback);
 
  private:
   using InitCallback = base::OnceCallback<void(base::expected<void, Loggable>)>;
@@ -109,7 +116,9 @@ class EiSenderSession {
   EiSenderSession();
 
   // Attempt to initialize this instance, invoking |callback| with the result.
-  void InitWithFd(base::ScopedFD fd, InitCallback callback);
+  void InitWithFd(base::ScopedFD fd,
+                  InitCallback callback,
+                  base::OnceClosure disconnect_callback);
 
   // Invoked whenever the libei-provided event fd becomes readable, signaling
   // that there is work for the library to perform.
@@ -150,6 +159,7 @@ class EiSenderSession {
   void FreeDeviceState(const EiDevicePtr& device);
 
   InitCallback init_callback_;
+  base::OnceClosure disconnect_callback_;
 
   EiPtr ei_;
   // We currently assume that the first-received seat will be the default, and

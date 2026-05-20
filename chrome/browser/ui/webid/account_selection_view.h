@@ -129,7 +129,8 @@ class AccountSelectionView {
                                    blink::mojom::RpMode rp_mode) = 0;
 
   // Shows or hides the account selection view.
-  virtual void SetCanShowWidget(bool can_show_widget) {}
+  // Applies to both active mode (modal) and passive mode (widget/bottom sheet).
+  virtual void SetCanShowUi(bool can_show_ui) {}
 
   virtual std::string GetTitle() const = 0;
   virtual std::optional<std::string> GetSubtitle() const = 0;
@@ -137,7 +138,9 @@ class AccountSelectionView {
   virtual void ShowUrl(LinkType type, const GURL& url) = 0;
   virtual content::WebContents* ShowModalDialog(
       const GURL& url,
-      blink::mojom::RpMode rp_mode) = 0;
+      blink::mojom::RpMode rp_mode,
+      content::IdentityRequestDialogController::ShownModalAsyncCallback
+          on_shown_async) = 0;
   virtual void CloseModalDialog() = 0;
   virtual content::WebContents* GetRpWebContents() = 0;
 

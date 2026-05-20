@@ -112,6 +112,7 @@
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_dispatcher.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/compositing/paint_artifact_compositor.h"
+#include "third_party/blink/renderer/platform/graphics/exported_canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/canvas_utils.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_context_rate_limiter.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/shared_gpu_context.h"
@@ -259,13 +260,17 @@ class TransferToGPUTextureInvokedSupplement final
   bool transfer_to_gpu_texture_was_invoked_ = false;
 };
 
-// Adapter for wrapping a CanvasResourceReleaseCallback into a
-// viz::ReleaseCallback
-void ReleaseCanvasResource(CanvasResource::ReleaseCallback callback,
-                           scoped_refptr<CanvasResource> canvas_resource,
+// viz::ReleaseCallback for CanvasResource
+void ReleaseCanvasResource(scoped_refptr<CanvasResource> canvas_resource,
                            const gpu::SyncToken& sync_token,
                            bool is_lost) {
-  std::move(callback).Run(std::move(canvas_resource), sync_token, is_lost);
+  CHECK(canvas_resource);
+  canvas_resource->WaitSyncToken(sync_token);
+  if (is_lost) {
+    canvas_resource->NotifyResourceLost();
+  }
+
+  CanvasResource::DropRefOnOwningThread(std::move(canvas_resource));
 }
 
 void UmaHistogramCompressionRatio(
@@ -366,21 +371,21 @@ bool HTMLCanvasElement::PrepareTransferableResource(
     reason = FlushReason::kCanvasPushFrameWhilePrinting;
   }
 
+  DoDeferredPaintInvalidation();
+
   scoped_refptr<CanvasResource> frame =
       RenderingContext()->PaintRenderingResultsToResource(kBackBuffer, reason);
   if (!frame || !frame->IsValid()) {
     return false;
   }
 
-  CanvasResource::ReleaseCallback release_callback;
-  if (!frame->PrepareTransferableResource(out_resource, &release_callback,
+  if (!frame->PrepareTransferableResource(out_resource,
                                           /*needs_verified_synctoken=*/false) ||
       *out_resource == cc_layer_->current_transferable_resource()) {
     // If the resource did not change, the release will be handled correctly
-    // when the callback from the previous frame is dispatched. But run the
-    // |release_callback| to release the ref acquired above.
-    std::move(release_callback)
-        .Run(std::move(frame), gpu::SyncToken(), false /* is_lost */);
+    // when the callback from the previous frame is dispatched. But we need to
+    // drop ref to the current resource.
+    CanvasResource::DropRefOnOwningThread(std::move(frame));
     return false;
   }
   // TODO(https://crbug.com/1475955): HDR metadata should be propagated to
@@ -389,8 +394,8 @@ bool HTMLCanvasElement::PrepareTransferableResource(
   // here.
   out_resource->hdr_metadata = hdr_metadata_;
   // Note: frame is kept alive via a reference kept in out_release_callback.
-  *out_release_callback = blink::BindOnce(
-      ReleaseCanvasResource, std::move(release_callback), std::move(frame));
+  *out_release_callback =
+      blink::BindOnce(ReleaseCanvasResource, std::move(frame));
 
   return true;
 }
@@ -444,12 +449,13 @@ void HTMLCanvasElement::ParseAttribute(
 void HTMLCanvasElement::AttributeChanged(
     const AttributeModificationParams& params) {
   HTMLElement::AttributeChanged(params);
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled() &&
+  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(GetExecutionContext()) &&
       params.name == html_names::kLayoutsubtreeAttr) {
     bool had_layoutsubtree = !params.old_value.IsNull();
     bool has_layoutsubtree = !params.new_value.IsNull();
     if (had_layoutsubtree != has_layoutsubtree) {
       setLayoutSubtree(has_layoutsubtree);
+      UseCounter::Count(GetDocument(), WebFeature::kHTMLInCanvas);
     }
   }
 }
@@ -687,7 +693,11 @@ void HTMLCanvasElement::configureHighDynamicRange(
   }
 }
 
-bool HTMLCanvasElement::ShouldBeDirectComposited() const {
+bool HTMLCanvasElement::ShouldSkipPaintInvalidation() const {
+  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(GetExecutionContext()) &&
+      IsInCanvasSubtree()) {
+    return false;
+  }
   return (context_ && context_->IsComposited()) || (!!surface_layer_bridge_);
 }
 
@@ -725,8 +735,8 @@ void HTMLCanvasElement::SetContextCreationWasBlocked() {
   SetNeedsCompositingUpdate();
 }
 
-void HTMLCanvasElement::DidDraw(const SkIRect& rect) {
-  if (rect.isEmpty()) {
+void HTMLCanvasElement::DidDraw(const gfx::Rect& rect) {
+  if (rect.IsEmpty()) {
     return;
   }
 
@@ -745,7 +755,7 @@ void HTMLCanvasElement::DidDraw(const SkIRect& rect) {
   }
 
   canvas_is_clear_ = false;
-  dirty_rect_.Union(gfx::Rect(gfx::SkIRectToRect(rect)));
+  dirty_rect_.Union(rect);
 }
 
 void HTMLCanvasElement::InitializeLayerWithCSSProperties(cc::Layer* layer) {
@@ -770,10 +780,7 @@ void HTMLCanvasElement::PostFinalizeFrame(FlushReason reason) {
             context_->PaintRenderingResultsToResource(kBackBuffer, reason)) {
       const gfx::Rect src_rect(Size());
       dirty_rect_.Intersect(src_rect);
-      const gfx::Rect int_dirty = dirty_rect_;
-      const SkIRect damage_rect = SkIRect::MakeXYWH(
-          int_dirty.x(), int_dirty.y(), int_dirty.width(), int_dirty.height());
-      frame_dispatcher_->DispatchFrame(std::move(canvas_resource), damage_rect,
+      frame_dispatcher_->DispatchFrame(std::move(canvas_resource), dirty_rect_,
                                        IsOpaque());
       dirty_rect_ = gfx::Rect();
     }
@@ -802,20 +809,23 @@ void HTMLCanvasElement::SetNeedsCompositingUpdate() {
   Element::SetNeedsCompositingUpdate();
 }
 
-void HTMLCanvasElement::DoDeferredPaintInvalidation() {
-  DCHECK(!dirty_rect_.IsEmpty());
+bool HTMLCanvasElement::DoDeferredPaintInvalidation() {
+  if (dirty_rect_.IsEmpty()) {
+    return false;
+  }
   if (LowLatencyEnabled()) {
     // Low latency canvas handles dirty propagation in FinalizeFrame();
-    return;
+    return false;
   }
-  LayoutBox* layout_box = GetLayoutBox();
+  const LayoutBox* layout_box = GetLayoutBox();
 
   gfx::RectF content_rect;
   if (layout_box) {
-    if (auto* replaced = DynamicTo<LayoutReplaced>(layout_box))
+    if (const auto* replaced = DynamicTo<LayoutReplaced>(layout_box)) {
       content_rect = gfx::RectF(replaced->ReplacedContentRect());
-    else
+    } else {
       content_rect = gfx::RectF(layout_box->PhysicalContentBoxRect());
+    }
   }
 
   if (IsRenderingContext2D()) {
@@ -837,7 +847,7 @@ void HTMLCanvasElement::DoDeferredPaintInvalidation() {
     }
 
     if (dirty_rect_.IsEmpty())
-      return;
+      return false;
 
     if (cc_layer_ && context_->IsComposited()) {
       cc_layer_->SetNeedsDisplayRect(gfx::ToEnclosingRect(invalidation_rect));
@@ -851,13 +861,8 @@ void HTMLCanvasElement::DoDeferredPaintInvalidation() {
   NotifyListenersCanvasChanged();
   did_notify_listeners_for_current_frame_ = true;
 
-  if (layout_box && !ShouldBeDirectComposited()) {
-    // If the canvas is not composited, propagate the paint invalidation to
-    // |layout_box| as the painted result will change.
-    layout_box->SetShouldDoFullPaintInvalidation();
-  }
-
   dirty_rect_ = gfx::Rect();
+  return true;
 }
 
 void HTMLCanvasElement::OnWidthOrHeightAssigned() {
@@ -918,7 +923,9 @@ void HTMLCanvasElement::OnWidthOrHeightAssigned() {
       layout_object->SetShouldDoFullPaintInvalidation();
     }
 
-    if (RuntimeEnabledFeatures::CanvasDrawElementEnabled() && layoutSubtree()) {
+    if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+            GetExecutionContext()) &&
+        layoutSubtree()) {
       // Invalidate the child's paint properties so that its cached
       // CanvasChildPaintState is updated with the new canvas size.
       for (LayoutObject* child = layout_object->SlowFirstChild(); child;
@@ -973,6 +980,11 @@ bool HTMLCanvasElement::VerifyDrawElementImageEligibility(
     Element* element,
     const String& func_name,
     ExceptionState& exception_state) const {
+  if (IsInCanvasSubtree()) {
+    exception_state.ThrowDOMException(DOMExceptionCode::kNotSupportedError,
+                                      "Nested canvases are not supported.");
+    return false;
+  }
   if (element->parentElement() != this) {
     exception_state.ThrowTypeError(
         "Only immediate children of the <canvas> element can be passed to " +
@@ -1632,7 +1644,11 @@ cc::TextureLayer* HTMLCanvasElement::GetOrCreateCcLayerForCanvas2DIfNeeded() {
   CHECK(context_->IsComposited());
 
   if (!cc_layer_) [[unlikely]] {
-    cc_layer_ = cc::TextureLayer::Create(this);
+    cc_layer_ = cc::TextureLayer::Create(
+        this,
+        RuntimeEnabledFeatures::CanvasDrawElementEnabled(GetExecutionContext())
+            ? cc::TextureLayer::PrepareResourceBehavior::kAfterPaintEvent
+            : cc::TextureLayer::PrepareResourceBehavior::kDuringLayerUpdate);
     InitializeLayerWithCSSProperties(cc_layer_.get());
     cc_layer_->SetIsDrawable(true);
     cc_layer_->SetHitTestable(true);
@@ -1806,7 +1822,8 @@ void HTMLCanvasElement::RemovedFrom(ContainerNode& insertion_point) {
 }
 
 bool HTMLCanvasElement::ChildrenChangedAllChildrenRemovedNeedsList() const {
-  return RuntimeEnabledFeatures::CanvasDrawElementEnabled();
+  return RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+      GetExecutionContext());
 }
 
 void HTMLCanvasElement::ChildrenChanged(const ChildrenChange& change) {
@@ -1819,7 +1836,7 @@ void HTMLCanvasElement::ChildrenChanged(const ChildrenChange& change) {
     }
   }
 
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled()) {
+  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(GetExecutionContext())) {
     if (change.type == ChildrenChangeType::kElementRemoved) {
       if (auto* element = DynamicTo<Element>(change.sibling_changed)) {
         ChildElementRemoved(*element);
@@ -1939,10 +1956,8 @@ ScriptPromise<ImageBitmap> HTMLCanvasElement::CreateImageBitmap(
 }
 
 void HTMLCanvasElement::SetOffscreenCanvasResource(
-    scoped_refptr<CanvasResource>&& image,
-    viz::ResourceId resource_id) {
-  OffscreenCanvasPlaceholder::SetOffscreenCanvasResource(std::move(image),
-                                                         resource_id);
+    scoped_refptr<ExportedCanvasResource>&& image) {
+  OffscreenCanvasPlaceholder::SetOffscreenCanvasResource(std::move(image));
   SetSize(OffscreenCanvasFrame()->Size());
   NotifyListenersCanvasChanged();
 }

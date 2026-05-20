@@ -101,8 +101,6 @@ import java.util.function.Supplier;
 @Features.EnableFeatures({
     ChromeFeatureList.AUTOFILL_ANDROID_DESKTOP_KEYBOARD_ACCESSORY_REVAMP,
     ChromeFeatureList.AUTOFILL_ANDROID_KEYBOARD_ACCESSORY_DYNAMIC_POSITIONING,
-    ChromeFeatureList.AUTOFILL_ENABLE_KEYBOARD_ACCESSORY_CHIP_REDESIGN,
-    ChromeFeatureList.AUTOFILL_ENABLE_KEYBOARD_ACCESSORY_CHIP_WIDTH_ADJUSTMENT,
 })
 public class KeyboardAccessoryControllerTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
@@ -122,6 +120,7 @@ public class KeyboardAccessoryControllerTest {
     @Mock private FillingProductBridgeJni mMockFillingProductBridgeJni;
     @Mock private Supplier<Boolean> mMockIsLargeFormFactorSupplier;
     @Mock private Runnable mMockDismissRunnable;
+    @Mock private Runnable mMockAtMemoryCallback;
 
     private final KeyboardAccessoryData.Tab mTestTab =
             new KeyboardAccessoryData.Tab("Passwords", 0, null, 0, 0, null);
@@ -166,6 +165,12 @@ public class KeyboardAccessoryControllerTest {
                         mMockDismissRunnable);
         mMediator = mCoordinator.getMediatorForTesting();
         mModel = mMediator.getModelForTesting();
+    }
+
+    @Test
+    public void testSetsAtMemoryCallback() {
+        mCoordinator.setAtMemoryCallback(mMockAtMemoryCallback);
+        verify(mMockButtonGroup).setAtMemoryCallback(mMockAtMemoryCallback);
     }
 
     @Test
@@ -437,6 +442,8 @@ public class KeyboardAccessoryControllerTest {
         // Simulate a click on the first suggestion.
         barItems.get(0).getAction().getCallback().onResult(barItems.get(0).getAction());
 
+        verify(mMockAutofillDelegate).suggestionSelected(0, true);
+
         barItems = flattenItemGroups();
         assertThat(barItems.get(0).getViewState(), is(ActionBarItem.ViewState.LOADING));
         assertThat(barItems.get(1).getViewState(), is(ActionBarItem.ViewState.DEACTIVATED));
@@ -472,6 +479,8 @@ public class KeyboardAccessoryControllerTest {
 
         // Simulate a click on the first suggestion, which does not require loading.
         barItems.get(0).getAction().getCallback().onResult(barItems.get(0).getAction());
+
+        verify(mMockAutofillDelegate).suggestionSelected(0, false);
 
         // The ViewState should remain ENABLED because showLoadingUIOnSuggestion is not called.
         barItems = flattenItemGroups();
@@ -773,6 +782,7 @@ public class KeyboardAccessoryControllerTest {
 
     @Test
     @DisableFeatures(ChromeFeatureList.AUTOFILL_ANDROID_KEYBOARD_ACCESSORY_DYNAMIC_POSITIONING)
+    @SuppressWarnings("unchecked") // Hamcrest contains(Matcher...) varargs heap pollution.
     public void testLargeFormFactorHasDismissButton() {
         when(mMockIsLargeFormFactorSupplier.get()).thenReturn(true);
 
@@ -798,6 +808,7 @@ public class KeyboardAccessoryControllerTest {
 
     @Test
     @DisableFeatures(ChromeFeatureList.AUTOFILL_ANDROID_KEYBOARD_ACCESSORY_DYNAMIC_POSITIONING)
+    @SuppressWarnings("unchecked") // Hamcrest contains(Matcher...) varargs heap pollution.
     public void testLargeFormFactorHasFixedItems() {
         when(mMockIsLargeFormFactorSupplier.get()).thenReturn(true);
         Provider<Action[]> generationProvider = new Provider<>(GENERATE_PASSWORD_AUTOMATIC);

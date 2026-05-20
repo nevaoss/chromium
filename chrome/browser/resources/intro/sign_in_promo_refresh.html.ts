@@ -8,18 +8,17 @@ import type {SignInPromoRefreshElement} from './sign_in_promo_refresh.js';
 
 export function getHtml(this: SignInPromoRefreshElement) {
   // clang-format off
+  // TODO(crbug.com/504301457): Enable animations once there is a mechanism to
+  // pause/stop them.
   return html`<!--_html_template_start_-->
 <cr-lottie id="left-animation" class="animation"
-    animation-url="${this.getAnimationUrl_('left')}"
-    ?autoplay="${!this.shouldDisableAnimations_}">
+    animation-url="${this.getAnimationUrl_('left')}">
 </cr-lottie>
 <cr-lottie id="right-animation" class="animation"
-    animation-url="${this.getAnimationUrl_('right')}"
-    ?autoplay="${!this.shouldDisableAnimations_}">
+    animation-url="${this.getAnimationUrl_('right')}">
 </cr-lottie>
 <cr-lottie id="bottom-animation" class="animation"
-    animation-url="${this.getAnimationUrl_('bottom')}"
-    ?autoplay="${!this.shouldDisableAnimations_}">
+    animation-url="${this.getAnimationUrl_('bottom')}">
 </cr-lottie>
 
 ${this.isTopRightCornerVariation_() ? html`
@@ -56,7 +55,7 @@ ${this.isTopRightCornerVariation_() ? html`
       ?hidden="${!this.isDeviceManaged_}"
       class="${this.getDisclaimerVisibilityClass_()}">
     <div id="iconContainer">
-      <cr-icon icon="cr:domain"></cr-icon>
+      <cr-icon icon="cr:domain" aria-hidden="true"></cr-icon>
     </div>
     <p id="disclaimerText">${this.managedDeviceDisclaimer_}</p>
   </div>
@@ -67,20 +66,33 @@ ${this.isTopRightCornerVariation_() ? html`
     <p id="create-account-disclaimer">$i18n{createAccountDisclaimer}</p>
   ` : ''}
   <div id="buttonContainer">
-    ${this.isDefaultVariation_() ? html`
-    <cr-button id="declineSignInButton"
-        class="tangible-button ${this.usePrimaryAndTonalButtonsForPromos_ ?
-            'tonal-button' : ''}"
-        ?disabled="${this.shouldDisableButtons_()}"
-        @click="${this.onDeclineSignInButtonClick_}">
-      $i18n{declineSignInButtonTitle}
-    </cr-button>
-    ` : ''}
+    <if expr="not is_win">
+      ${this.isDefaultVariation_() ? html`
+      <cr-button id="declineSignInButton"
+          class="tangible-button ${this.usePrimaryAndTonalButtonsForPromos_ ?
+              'tonal-button' : ''}"
+          ?disabled="${this.shouldDisableButtons_()}"
+          @click="${this.onDeclineSignInButtonClick_}">
+        $i18n{declineSignInButtonTitle}
+      </cr-button>
+      ` : ''}
+    </if>
     <cr-button id="acceptSignInButton" class="tangible-button action-button"
         ?disabled="${this.shouldDisableButtons_()}"
         @click="${this.onAcceptSignInButtonClick_}">
       $i18n{acceptSignInButtonTitle}
     </cr-button>
+    <if expr="is_win">
+      ${this.isDefaultVariation_() ? html`
+      <cr-button id="declineSignInButton"
+          class="tangible-button ${this.usePrimaryAndTonalButtonsForPromos_ ?
+              'tonal-button' : ''}"
+          ?disabled="${this.shouldDisableButtons_()}"
+          @click="${this.onDeclineSignInButtonClick_}">
+        $i18n{declineSignInButtonTitle}
+      </cr-button>
+      ` : ''}
+    </if>
   </div>
 </div>
 <!--_html_template_end_-->`;

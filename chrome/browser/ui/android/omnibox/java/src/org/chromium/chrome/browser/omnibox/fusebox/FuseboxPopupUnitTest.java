@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.omnibox.fusebox;
 
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 
@@ -25,6 +26,7 @@ import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.omnibox.R;
+import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.ui.base.TestActivity;
 import org.chromium.ui.widget.AnchoredPopupWindow;
 
@@ -36,6 +38,7 @@ public class FuseboxPopupUnitTest {
 
     private @Mock AnchoredPopupWindow mPopupWindow;
     private @Mock View.AccessibilityDelegate mAccessibilityDelegate;
+    private @Mock DynamicRectProvider mDynamicRectProvider;
 
     private Activity mActivity;
     private FuseboxPopup mFuseboxPopup;
@@ -47,7 +50,13 @@ public class FuseboxPopupUnitTest {
         mActivity = Robolectric.setupActivity(TestActivity.class);
         mContentView = LayoutInflater.from(mActivity).inflate(R.layout.fusebox_context_popup, null);
         mViewGroup = mContentView.findViewById(R.id.fusebox_view_group);
-        mFuseboxPopup = new FuseboxPopup(mActivity, mPopupWindow, mContentView);
+        mFuseboxPopup =
+                new FuseboxPopup(
+                        mActivity,
+                        mPopupWindow,
+                        mContentView,
+                        mDynamicRectProvider,
+                        /* isBottomSheet= */ false);
     }
 
     @Test
@@ -100,5 +109,80 @@ public class FuseboxPopupUnitTest {
 
         verify(mAccessibilityDelegate, atLeastOnce())
                 .sendAccessibilityEvent(v2, AccessibilityEvent.TYPE_VIEW_FOCUSED);
+    }
+
+    @Test
+    public void testSetPopupState_Hidden() {
+        mFuseboxPopup.setPopupState(FuseboxProperties.PopupState.HIDDEN);
+        verify(mDynamicRectProvider).setPopupState(FuseboxProperties.PopupState.HIDDEN);
+        verify(mPopupWindow).dismiss();
+    }
+
+    @Test
+    public void testSetPopupState_Floating() {
+        mFuseboxPopup.setPopupState(FuseboxProperties.PopupState.FLOATING);
+        verify(mDynamicRectProvider).setPopupState(FuseboxProperties.PopupState.FLOATING);
+        verify(mPopupWindow).show();
+    }
+
+    @Test
+    public void testSetPopupState_Bottom() {
+        mFuseboxPopup.setPopupState(FuseboxProperties.PopupState.BOTTOM);
+        verify(mDynamicRectProvider).setPopupState(FuseboxProperties.PopupState.BOTTOM);
+        verify(mPopupWindow).show();
+    }
+
+    @Test
+    public void testSetPopupState_Bottom_setsAnimation() {
+        mFuseboxPopup.setPopupState(FuseboxProperties.PopupState.BOTTOM);
+        verify(mPopupWindow).setAnimationStyle(R.style.FuseboxBottomSheetAnimation);
+    }
+
+    @Test
+    public void testSetPopupState_Floating_clearsAnimation() {
+        mFuseboxPopup.setPopupState(FuseboxProperties.PopupState.FLOATING);
+        verify(mPopupWindow).setAnimationStyle(0);
+    }
+
+    @Test
+    public void testDynamicInflation_VerticalLayout() {
+        OmniboxFeatures.sShowBottomSheetPopup.setForTesting(false);
+
+        // Re-create content view and popup to trigger new inflation logic
+        mContentView = LayoutInflater.from(mActivity).inflate(R.layout.fusebox_context_popup, null);
+        mFuseboxPopup =
+                new FuseboxPopup(
+                        mActivity, mPopupWindow, mContentView, mDynamicRectProvider, false);
+
+        // Verify that we can find the elements
+        assertNotNull(mFuseboxPopup.mAddCurrentTab);
+        assertNotNull(mFuseboxPopup.mTabButton);
+        assertNotNull(mFuseboxPopup.mClipboardButton);
+        assertNotNull(mFuseboxPopup.mCameraButton);
+        assertNotNull(mFuseboxPopup.mGalleryButton);
+        assertNotNull(mFuseboxPopup.mFileButton);
+    }
+
+    @Test
+    public void testDynamicInflation_HorizontalLayout() {
+        OmniboxFeatures.sShowBottomSheetPopup.setForTesting(true);
+
+        // Re-create content view and popup to trigger new inflation logic
+        mContentView = LayoutInflater.from(mActivity).inflate(R.layout.fusebox_context_popup, null);
+        mFuseboxPopup =
+                new FuseboxPopup(
+                        mActivity,
+                        mPopupWindow,
+                        mContentView,
+                        mDynamicRectProvider,
+                        /* isBottomSheet= */ true);
+
+        // Verify that we can find the elements
+        assertNotNull(mFuseboxPopup.mAddCurrentTab);
+        assertNotNull(mFuseboxPopup.mTabButton);
+        assertNotNull(mFuseboxPopup.mClipboardButton);
+        assertNotNull(mFuseboxPopup.mCameraButton);
+        assertNotNull(mFuseboxPopup.mGalleryButton);
+        assertNotNull(mFuseboxPopup.mFileButton);
     }
 }

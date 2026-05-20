@@ -474,8 +474,7 @@ LogicalOofInsets ComputeOutOfFlowInsets(
     WritingDirectionMode self_writing_direction) {
   bool force_x_insets_to_zero = false;
   bool force_y_insets_to_zero = false;
-  std::optional<PositionAreaOffsets> offsets = style.PositionAreaOffsets();
-  if (offsets.has_value()) {
+  if (style.PositionAreaOffsets()) {
     force_x_insets_to_zero = force_y_insets_to_zero = true;
   }
   if (alignment.inline_alignment.GetPosition() == ItemPosition::kAnchorCenter) {
@@ -544,6 +543,26 @@ LogicalAlignment ComputeAlignment(
     DCHECK(!position_area.IsNone());
     std::tie(align_normal_behavior, justify_normal_behavior) =
         position_area.AlignJustifySelfFromPhysical(container_writing_direction);
+
+    // If we have a single inset specified, force a start/end unsafe alignment
+    // which mimics just having a single inset set. See:
+    // https://drafts.csswg.org/css-anchor-position-1/#position-area-alignment
+    const PhysicalToLogical<bool> is_auto(
+        container_writing_direction, style.Top().IsAuto(),
+        style.Right().IsAuto(), style.Bottom().IsAuto(), style.Left().IsAuto());
+    if (!is_auto.BlockStart() && is_auto.BlockEnd()) {
+      align_normal_behavior = {ItemPosition::kStart,
+                               OverflowAlignment::kUnsafe};
+    } else if (is_auto.BlockStart() && !is_auto.BlockEnd()) {
+      align_normal_behavior = {ItemPosition::kEnd, OverflowAlignment::kUnsafe};
+    }
+    if (!is_auto.InlineStart() && is_auto.InlineEnd()) {
+      justify_normal_behavior = {ItemPosition::kStart,
+                                 OverflowAlignment::kUnsafe};
+    } else if (is_auto.InlineStart() && !is_auto.InlineEnd()) {
+      justify_normal_behavior = {ItemPosition::kEnd,
+                                 OverflowAlignment::kUnsafe};
+    }
   }
   const bool is_parallel =
       IsParallelWritingMode(container_writing_direction.GetWritingMode(),
@@ -853,11 +872,15 @@ const LayoutResult* ComputeOofBlockDimensions(
     block_size = min_max_block_sizes.ClampSizeToMinAndMax(main_block_size);
   } else {
     DCHECK_NE(dimensions->size.inline_size, kIndefiniteSize);
+    const bool force_orthogonal_writing_mode_root = !IsParallelWritingMode(
+        container_writing_direction.GetWritingMode(), style.GetWritingMode());
 
     // Create a new space, setting the fixed inline-size.
     ConstraintSpaceBuilder builder(style.GetWritingMode(),
                                    style.GetWritingDirection(),
-                                   /* is_new_fc */ true);
+                                   /* is_new_fc */ true,
+                                   /* adjust_inline_size_if_needed */ true,
+                                   force_orthogonal_writing_mode_root);
     builder.SetAvailableSize({dimensions->size.inline_size, imcb.BlockSize()});
     builder.SetIsFixedInlineSize(true);
     builder.SetPercentageResolutionSize(space.PercentageResolutionSize());

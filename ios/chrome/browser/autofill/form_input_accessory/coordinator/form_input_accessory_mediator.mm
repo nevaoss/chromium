@@ -90,8 +90,8 @@ bool IsSuggestionRefreshAllowed() {
   // enabled.
   return base::FeatureList::IsEnabled(
              kThrottleFormInputAccessorySuggestionRefresh)
-             ? UIApplication.sharedApplication.applicationState ==
-                   UIApplicationStateActive
+             ? UIApplication.sharedApplication.applicationState !=
+                   UIApplicationStateBackground
              : true;
 }
 
@@ -388,6 +388,11 @@ bool IsStateless() {
   if (responder && responder.window) {
     [responder reloadInputViews];
   }
+}
+
+- (void)resetSuggestions {
+  [self.consumer showAccessorySuggestions:@[]];
+  [self updateSuggestionsIfNeeded];
 }
 
 #pragma mark - KeyboardNotification
@@ -753,7 +758,7 @@ bool IsStateless() {
         }];
 }
 
-// Post the passed `suggestions` to the consumer.
+// Posts the passed `suggestions` to the consumer.
 - (void)updateWithProvider:(id<FormInputSuggestionsProvider>)provider
                suggestions:(NSArray<FormSuggestion*>*)suggestions {
   FormSuggestion* firstSuggestion = suggestions.firstObject;
@@ -802,34 +807,18 @@ bool IsStateless() {
 // Logs information about what type of suggestion the user selected.
 - (void)logReauthenticationEvent:(ReauthenticationEvent)reauthenticationEvent
                    forSuggestion:(FormSuggestion*)suggestion {
-  SuggestionProviderType providerType =
-      [self getProviderTypeFromSuggestion:suggestion];
-
-  std::string histogramName;
-  if (providerType == SuggestionProviderTypePassword) {
-    histogramName = "IOS.Reauth.Password.Autofill";
-  } else if (providerType == SuggestionProviderTypeAutofill) {
-    switch (suggestion.type) {
-      case autofill::SuggestionType::kCreditCardEntry:
-      case autofill::SuggestionType::kVirtualCreditCardEntry:
-        histogramName = "IOS.Reauth.CreditCard.Autofill";
-        break;
-      case autofill::SuggestionType::kAddressEntry:
-        histogramName = "IOS.Reauth.Address.Autofill";
-        break;
-      default:
-        break;
-    }
-  }
-  if (!histogramName.empty()) {
-    UmaHistogramEnumeration(histogramName, reauthenticationEvent);
+  if ([self getProviderTypeFromSuggestion:suggestion] ==
+      SuggestionProviderTypePassword) {
+    UmaHistogramEnumeration("IOS.Reauth.Password.Autofill",
+                            reauthenticationEvent);
   }
 }
 
 // Handles the selection of a suggestion. `index` indicates the position of the
 // suggestion among the available suggestions.
 - (void)handleSuggestion:(FormSuggestion*)formSuggestion
-                 atIndex:(NSInteger)index {
+                 atIndex:(NSInteger)index
+              completion:(ProceduralBlock)completion {
   if ([self getProviderTypeFromSuggestion:formSuggestion] ==
       SuggestionProviderTypePassword) {
     default_browser::NotifyPasswordAutofillSuggestionUsed(
@@ -840,7 +829,9 @@ bool IsStateless() {
         notifyAutofillSuggestionWithIPHSelectedFor:formSuggestion
                                                        .featureForIPH];
   }
-  [self.currentProvider didSelectSuggestion:formSuggestion atIndex:index];
+  [self.currentProvider didSelectSuggestion:formSuggestion
+                                    atIndex:index
+                                 completion:completion];
 }
 
 // Sets the last focused form activity web frame ID with the given `frame`.
@@ -861,7 +852,8 @@ bool IsStateless() {
 #pragma mark - FormSuggestionClient
 
 - (void)didSelectSuggestion:(FormSuggestion*)formSuggestion
-                    atIndex:(NSInteger)index {
+                    atIndex:(NSInteger)index
+                 completion:(ProceduralBlock)completion {
   if (IsStateless()) {
     // When using the stateless FormSuggestionsController, ensure the params
     // attached to the suggestion are the same as the ones held by this mediator
@@ -882,19 +874,25 @@ bool IsStateless() {
   if (!formSuggestion.requiresReauth) {
     [self logReauthenticationEvent:ReauthenticationEvent::kSuccess
                      forSuggestion:formSuggestion];
-    [self handleSuggestion:formSuggestion atIndex:index];
+    [self handleSuggestion:formSuggestion atIndex:index completion:completion];
     return;
   }
   if ([self.reauthenticationModule canAttemptReauth]) {
     NSString* reason = l10n_util::GetNSString(IDS_IOS_AUTOFILL_REAUTH_REASON);
+    __weak __typeof(self) weakSelf = self;
     auto completionHandler = ^(ReauthenticationResult result) {
       if (result != ReauthenticationResult::kFailure) {
-        [self logReauthenticationEvent:ReauthenticationEvent::kSuccess
-                         forSuggestion:formSuggestion];
-        [self handleSuggestion:formSuggestion atIndex:index];
+        [weakSelf logReauthenticationEvent:ReauthenticationEvent::kSuccess
+                             forSuggestion:formSuggestion];
+        [weakSelf handleSuggestion:formSuggestion
+                           atIndex:index
+                        completion:completion];
       } else {
-        [self logReauthenticationEvent:ReauthenticationEvent::kFailure
-                         forSuggestion:formSuggestion];
+        [weakSelf logReauthenticationEvent:ReauthenticationEvent::kFailure
+                             forSuggestion:formSuggestion];
+        if (completion) {
+          completion();
+        }
       }
     };
 
@@ -905,15 +903,16 @@ bool IsStateless() {
   } else {
     [self logReauthenticationEvent:ReauthenticationEvent::kMissingPasscode
                      forSuggestion:formSuggestion];
-    [self handleSuggestion:formSuggestion atIndex:index];
+    [self handleSuggestion:formSuggestion atIndex:index completion:completion];
   }
 }
 
 - (void)didSelectSuggestion:(FormSuggestion*)formSuggestion
                     atIndex:(NSInteger)index
-                     params:(const autofill::FormActivityParams&)params {
+                     params:(const autofill::FormActivityParams&)params
+                 completion:(ProceduralBlock)completion {
   CHECK_EQ(_lastSeenParams, params);
-  [self didSelectSuggestion:formSuggestion atIndex:index];
+  [self didSelectSuggestion:formSuggestion atIndex:index completion:completion];
 }
 
 #pragma mark - PasswordCounterObserver

@@ -34,7 +34,6 @@
 #include "base/check_op.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_animation_trigger_behavior.h"
 #include "third_party/blink/renderer/core/style/computed_style_base_constants.h"
-#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
 
@@ -72,7 +71,7 @@ enum PseudoId : uint8_t {
   kPseudoIdAfter,
   kPseudoIdExpandIcon,
   kPseudoIdPickerIcon,
-  kPseudoIdInterestHint,
+  kPseudoIdInterestButton,
   kPseudoIdMarker,
   kPseudoIdBackdrop,
   kPseudoIdSelection,
@@ -476,9 +475,11 @@ enum class ContentDistributionType : unsigned {
   kStretch
 };
 
-// Reasonable maximum to prevent insane font sizes from causing crashes on some
+// LINT.IfChange(kMaximumAllowedFontSize)
+// A maximum to prevent unreasonable font sizes from causing crashes on some
 // platforms (such as Windows).
 static const float kMaximumAllowedFontSize = 10000.0f;
+// LINT.ThenChange(//content/app_shim_remote_cocoa/web_menu_runner_mac.mm:fontSize)
 
 enum class CSSBoxType : unsigned {
   kMissing,

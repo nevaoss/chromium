@@ -45,6 +45,7 @@ import org.chromium.chrome.browser.layouts.LayoutManager;
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.omnibox.LocationBar;
+import org.chromium.chrome.browser.omnibox.OmniboxStub;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
@@ -78,7 +79,6 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
 import org.chromium.components.browser_ui.device_lock.DeviceLockActivityLauncher;
 import org.chromium.components.browser_ui.widget.ClipDrawableProgressBar.DrawingInfo;
-import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.signin.SigninFeatureMap;
 import org.chromium.ui.base.ActivityResultTracker;
@@ -117,7 +117,6 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
     private OptionalBrowsingModeButtonController mOptionalButtonController;
 
     private @Nullable SigninButtonCoordinator mSigninButtonCoordinator;
-    private @Nullable NullableObservableSupplier<Tab> mTabSupplier;
 
     private final MenuButtonCoordinator mMenuButtonCoordinator;
     private @Nullable ReloadButtonCoordinator mReloadButtonCoordinator;
@@ -230,6 +229,7 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
             BrowserControlsVisibilityManager browserControlsVisibilityManager,
             Supplier<Integer> incognitoWindowCountSupplier,
             MonotonicObservableSupplier<Profile> profileSupplier,
+            OneshotSupplier<OmniboxStub> omniboxStubSupplier,
             SigninAndHistorySyncActivityLauncher signinAndHistorySyncActivityLauncher,
             WindowAndroid windowAndroid,
             ActivityResultTracker activityResultTracker,
@@ -249,7 +249,6 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
                         () -> toolbarDataProvider.getTab());
 
         if (SigninFeatureMap.sSigninLevelUpButton.isEnabled()) {
-            mTabSupplier = tabSupplier;
             ViewStub signinButtonStub = mToolbarLayout.findViewById(R.id.signin_button_stub);
             if (signinButtonStub != null) {
                 mSigninButtonCoordinator =
@@ -257,13 +256,18 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
                                 toolbarLayout.getContext(),
                                 windowAndroid,
                                 signinButtonStub,
+                                tabSupplier,
+                                omniboxStubSupplier,
+                                mToolbarLayout::beginButtonTransition,
                                 profileSupplier,
                                 signinAndHistorySyncActivityLauncher,
                                 activityResultTracker,
                                 deviceLockActivityLauncher,
                                 bottomSheetController,
                                 modalDialogManager,
-                                snackbarManager);
+                                snackbarManager,
+                                normalThemeColorProvider,
+                                incognitoStateProvider);
             }
         }
         mResourceManagerSupplier = resourceManagerSupplier;
@@ -311,7 +315,8 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
                 browserStateBrowserControlsVisibilityDelegate,
                 layoutStateProviderSupplier,
                 fullscreenManager,
-                toolbarDataProvider);
+                toolbarDataProvider,
+                browserControlsVisibilityManager);
         mToolbarLayout.initialize(
                 toolbarDataProvider,
                 tabController,
@@ -325,6 +330,7 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
                 mBackButtonCoordinator,
                 forwardButtonCoordinator,
                 homeButtonCoordinator,
+                mSigninButtonCoordinator,
                 normalThemeColorProvider,
                 incognitoStateProvider,
                 incognitoWindowCountSupplier);
@@ -641,15 +647,8 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
         if (mOptionalButtonController != null) {
             mOptionalButtonController.updateButtonVisibility();
         }
-        if (mSigninButtonCoordinator != null && mTabSupplier != null) {
-            @Nullable Tab tab = mTabSupplier.get();
-
-            // Should only show the signin button when on the NTP and not incognito.
-            if (tab != null && UrlUtilities.isNtpUrl(tab.getUrl()) && !tab.isOffTheRecord()) {
-                mSigninButtonCoordinator.updateButtonVisibility(true);
-            } else {
-                mSigninButtonCoordinator.updateButtonVisibility(false);
-            }
+        if (mSigninButtonCoordinator != null) {
+            mSigninButtonCoordinator.updateButtonVisibility();
         }
     }
 
@@ -1054,14 +1053,28 @@ public class TopToolbarCoordinator implements Toolbar, TopControlLayer {
         // with toolbar height and hairline height.
         int diff = 0;
         // When switching omnibox from bottom to top, the toolbar capture size may not have been
-        // updated yet (e.g. captureHeight=1 while toolbarHeight=137). Using a stale capture
+        // updated yet (e.g. captureHeight=1 while toolbarLayoutHeight=137). Using a stale capture
         // height produces a large negative diff that pushes the cc layer below the toolbar,
         // creating a "ghost view". Only compute diff when capture height is at least as large
         // as the toolbar, indicating the capture is up-to-date.
-        int toolbarHeight = mControlContainer.getToolbarHeight();
+        int toolbarLayoutHeight = mControlContainer.getToolbarHeight();
         int hairlineHeight = mControlContainer.getToolbarHairlineHeight();
-        if (captureHeight >= toolbarHeight) {
-            diff = captureHeight - toolbarHeight - hairlineHeight;
+        int controlContainerHeightExcludingTabStrip =
+                mControlContainer.getControlContainerHeightExcludingTabStrip();
+        // The control container can be larger than toolbarLayoutHeight + tabstrip height, e.g. when
+        // the fusebox is visible. The capture does not always include this expanded height but when
+        // it does, we need to account for it to avoid over-translating by the extra height.
+        int tabStripHeight = mToolbarLayout.getTabStripHeightFromResource();
+        int maxControlContainerHeightMeasurement =
+                Math.max(controlContainerHeightExcludingTabStrip, toolbarLayoutHeight);
+        int minControlContainerHeightMeasurement =
+                Math.min(controlContainerHeightExcludingTabStrip, toolbarLayoutHeight);
+        if (captureHeight >= maxControlContainerHeightMeasurement + tabStripHeight
+                && mTabStripTransitionCoordinator != null) {
+            // Capture includes extra height; use the full height.
+            diff = captureHeight - maxControlContainerHeightMeasurement - hairlineHeight;
+        } else if (captureHeight >= minControlContainerHeightMeasurement) {
+            diff = captureHeight - minControlContainerHeightMeasurement - hairlineHeight;
         }
 
         // As toolbar hairline is part of the capture, there are times we need to hide the hairline

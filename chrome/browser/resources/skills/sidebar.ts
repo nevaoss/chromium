@@ -38,15 +38,16 @@ export class SkillsSidebarElement extends CrLitElement {
   static override get properties() {
     return {
       selectedPage: {type: String},
+      menuItems: {type: Array},
     };
   }
 
-  readonly menuItems: MenuItem[] = [
-    {
+  accessor menuItems: MenuItem[] = [
+    ...(!loadTimeData.getBoolean('shouldDisableBrowseSkillsPage') ? [{
       icon: 'skills:explore',
       name: loadTimeData.getString('browseSkillsTitle'),
       page: Page.DISCOVER_SKILLS,
-    },
+    }] : []),
     {
       icon: 'skills:bolt',
       name: loadTimeData.getString('userSkillsTitle'),

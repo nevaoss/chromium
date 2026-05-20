@@ -9,15 +9,23 @@
 #include "base/time/time.h"
 #include "components/autofill/core/browser/data_model/payments/bnpl_issuer.h"
 #include "components/autofill/core/browser/metrics/autofill_metrics_test_base.h"
+#include "components/autofill/core/browser/metrics/ukm_metrics_test_utils.h"
+#include "components/autofill/core/browser/payments/bnpl_manager.h"
 #include "components/autofill/core/browser/payments/constants.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/autofill/core/common/autofill_prefs.h"
+#include "services/metrics/public/cpp/ukm_builders.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace autofill::autofill_metrics {
 
+using ::testing::Each;
 using IssuerId = autofill::BnplIssuer::IssuerId;
+using UkmPayLaterTabShownType = ukm::builders::Autofill_PayLaterTabShown;
+using UkmPayLaterTabSelectedType = ukm::builders::Autofill_PayLaterTabSelected;
+using UkmPayLaterTabSuggestionAcceptedType =
+    ukm::builders::Autofill_PayLaterTabSuggestionAccepted;
 
 // Params of the BnplMetricsTest:
 // -- std::string_view issuer_id;
@@ -173,7 +181,7 @@ TEST_F(BnplMetricsTest, LogSuggestionShown_NoPayLaterTabSuggestion) {
   base::HistogramTester histogram_tester;
 
   LogSuggestionShownForPayLaterTab(
-      /*contains_pay_later_tab_suggestions=*/false);
+      /*contains_pay_later_tab_suggestions=*/false, /*ukm_source_id=*/0);
 
   histogram_tester.ExpectBucketCount(
       "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
@@ -187,7 +195,7 @@ TEST_F(BnplMetricsTest, LogSuggestionShown_WithPayLaterTabSuggestion) {
   base::HistogramTester histogram_tester;
 
   LogSuggestionShownForPayLaterTab(
-      /*contains_pay_later_tab_suggestions=*/true);
+      /*contains_pay_later_tab_suggestions=*/true, /*ukm_source_id=*/0);
 
   histogram_tester.ExpectBucketCount(
       "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
@@ -472,6 +480,7 @@ class BnplFormEventsMetricsTest : public AutofillMetricsBaseTest,
  public:
   BnplFormEventsMetricsTest() = default;
   FormData form() { return form_; }
+  payments::BnplManager* bnpl_manager() { return bnpl_manager_.get(); }
 
   void SetUp() override {
     SetUpHelper();
@@ -485,27 +494,50 @@ class BnplFormEventsMetricsTest : public AutofillMetricsBaseTest,
                            .action = ""});
 
     test_paydm().AddBnplIssuer(test::GetTestLinkedBnplIssuer());
+
+    bnpl_manager_ =
+        std::make_unique<payments::BnplManager>(&autofill_manager());
+
+    ON_CALL(
+        *static_cast<MockAutofillOptimizationGuideDecider*>(
+            autofill_manager().client().GetAutofillOptimizationGuideDecider()),
+        IsUrlEligibleForBnplIssuer)
+        .WillByDefault(testing::Return(true));
   }
 
-  void TearDown() override { TearDownHelper(); }
+  void TearDown() override {
+    bnpl_manager_.reset();
+    TearDownHelper();
+  }
+
+  void ShowSuggestonsAndSelectBnplIssuer(BnplIssuer::IssuerId issuer_id) {
+    autofill_manager().OnAskForValuesToFillTest(
+        form(), form().fields().back().global_id());
+    bnpl_manager()->OnCreditCardSuggestionsShown(
+        {Suggestion(SuggestionType::kLoadingThrobber)},
+        /*update_suggestions_callback=*/base::DoNothing());
+    bnpl_manager()->OnUserDecisionToUseBnpl(
+        /*final_checkout_amount=*/std::nullopt,
+        /*on_bnpl_vcn_fetched_callback=*/base::DoNothing());
+    bnpl_manager()->OnIssuerAccepted(test::GetTestLinkedBnplIssuer(issuer_id));
+  }
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_{
       features::kAutofillEnableBuyNowPayLaterSyncing};
   FormData form_;
+  std::unique_ptr<payments::BnplManager> bnpl_manager_;
 };
 
 TEST_F(BnplFormEventsMetricsTest, SuggestionsShownOnBnplEligiblePage) {
   base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableBuyNowPayLaterSyncing},
+      /*disabled_features=*/{features::kAutofillEnablePayNowPayLaterTabs});
 
   autofill_manager().OnAskForValuesToFillTest(
       form(), form().fields().back().global_id());
-
-  ON_CALL(
-      *static_cast<MockAutofillOptimizationGuideDecider*>(
-          autofill_manager().client().GetAutofillOptimizationGuideDecider()),
-      IsUrlEligibleForBnplIssuer)
-      .WillByDefault(testing::Return(true));
 
   DidShowAutofillSuggestions(form(), /*field_index=*/form().fields().size() - 1,
                              SuggestionType::kCreditCardEntry);
@@ -513,13 +545,6 @@ TEST_F(BnplFormEventsMetricsTest, SuggestionsShownOnBnplEligiblePage) {
   histogram_tester.ExpectBucketCount(
       "Autofill.FormEvents.CreditCard.Bnpl",
       BnplFormEvent::kSuggestionsShownOnBnplEligiblePage, 1);
-  histogram_tester.ExpectBucketCount(
-      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
-      autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShown, 1);
-  histogram_tester.ExpectBucketCount(
-      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
-      autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShownWithPayLaterTab,
-      0);
 
   // To ensure the metrics logs only once per page.
   DidShowAutofillSuggestions(form(), /*field_index=*/form().fields().size() - 1,
@@ -528,17 +553,14 @@ TEST_F(BnplFormEventsMetricsTest, SuggestionsShownOnBnplEligiblePage) {
   histogram_tester.ExpectBucketCount(
       "Autofill.FormEvents.CreditCard.Bnpl",
       BnplFormEvent::kSuggestionsShownOnBnplEligiblePage, 1);
-  histogram_tester.ExpectBucketCount(
-      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
-      autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShown, 1);
-  histogram_tester.ExpectBucketCount(
-      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
-      autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShownWithPayLaterTab,
-      0);
 }
 
 TEST_F(BnplFormEventsMetricsTest, BnplSuggestionsNotShownDueToUrl) {
   base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableBuyNowPayLaterSyncing},
+      /*disabled_features=*/{features::kAutofillEnablePayNowPayLaterTabs});
 
   autofill_manager().OnAskForValuesToFillTest(
       form(), form().fields().back().global_id());
@@ -558,6 +580,47 @@ TEST_F(BnplFormEventsMetricsTest, BnplSuggestionsNotShownDueToUrl) {
 }
 
 TEST_F(BnplFormEventsMetricsTest,
+       SuggestionsShownOnBnplEligiblePage_PayLaterTabEnabled_NoBnplSuggestion) {
+  base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableBuyNowPayLaterSyncing,
+                            features::kAutofillEnableAiBasedAmountExtraction,
+                            features::kAutofillEnablePayNowPayLaterTabs},
+      /*disabled_features=*/{});
+
+  autofill_manager().OnAskForValuesToFillTest(
+      form(), form().fields().back().global_id());
+
+  autofill_manager().OnAskForValuesToFillTest(
+      form(), form().fields().back().global_id());
+  DidShowAutofillSuggestions(form(), /*field_index=*/form().fields().size() - 1,
+                             SuggestionType::kCreditCardEntry);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShown, 1);
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShownWithPayLaterTab,
+      0);
+
+  // To ensure the metrics logs only once per page.
+  autofill_manager().OnAskForValuesToFillTest(
+      form(), form().fields().back().global_id());
+  DidShowAutofillSuggestions(form(), /*field_index=*/form().fields().size() - 1,
+                             SuggestionType::kCreditCardEntry);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShown, 1);
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShownWithPayLaterTab,
+      0);
+}
+
+TEST_F(BnplFormEventsMetricsTest,
        SuggestionsShownOnBnplEligiblePage_WithPayLaterSuggestions) {
   base::HistogramTester histogram_tester;
   base::test::ScopedFeatureList scoped_feature_list;
@@ -568,11 +631,6 @@ TEST_F(BnplFormEventsMetricsTest,
       /*disabled_features=*/{});
 
   test_paydm().AddServerCreditCard(test::GetMaskedServerCardVisa());
-  ON_CALL(
-      *static_cast<MockAutofillOptimizationGuideDecider*>(
-          autofill_manager().client().GetAutofillOptimizationGuideDecider()),
-      IsUrlEligibleForBnplIssuer)
-      .WillByDefault(testing::Return(true));
 
   autofill_manager().OnAskForValuesToFillTest(
       form(), form().fields().back().global_id());
@@ -600,6 +658,12 @@ TEST_F(BnplFormEventsMetricsTest,
       "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
       autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShownWithPayLaterTab,
       1);
+  EXPECT_THAT(
+      GetUkmEvents(test_ukm_recorder(), UkmPayLaterTabShownType::kEntryName),
+      UkmEventsAre({{{UkmPayLaterTabShownType::kShownName, true}}}));
+  EXPECT_THAT(
+      GetEventUrls(test_ukm_recorder(), UkmPayLaterTabShownType::kEntryName),
+      Each(form().main_frame_origin().GetURL()));
 }
 
 TEST_F(BnplFormEventsMetricsTest, SuggestionsShownOnNoneBnplEligiblePage) {
@@ -655,6 +719,219 @@ TEST_F(BnplFormEventsMetricsTest, SuggestionAccepted) {
       /*sample=*/BnplFormEvent::kBnplSuggestionAccepted,
       /*expected_count=*/1);
 }
+
+TEST_F(BnplFormEventsMetricsTest, PayLaterTabSelected) {
+  base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableBuyNowPayLaterSyncing,
+                            features::kAutofillEnableAiBasedAmountExtraction,
+                            features::kAutofillEnablePayNowPayLaterTabs},
+      /*disabled_features=*/{});
+
+  test_paydm().AddServerCreditCard(test::GetMaskedServerCardVisa());
+
+  autofill_manager().OnAskForValuesToFillTest(
+      form(), form().fields().back().global_id());
+  bnpl_manager()->OnUserDecisionToUseBnpl(
+      /*final_checkout_amount=*/std::nullopt,
+      /*on_bnpl_vcn_fetched_callback=*/base::DoNothing());
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kSwitchedToPayLaterTab, 1);
+
+  // To ensure the metrics logs only once per page.
+  autofill_manager().OnAskForValuesToFillTest(
+      form(), form().fields().back().global_id());
+  bnpl_manager()->OnUserDecisionToUseBnpl(
+      /*final_checkout_amount=*/std::nullopt,
+      /*on_bnpl_vcn_fetched_callback=*/base::DoNothing());
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kSwitchedToPayLaterTab, 1);
+  EXPECT_THAT(
+      GetUkmEvents(test_ukm_recorder(), UkmPayLaterTabSelectedType::kEntryName),
+      UkmEventsAre({{{UkmPayLaterTabSelectedType::kSelectedName, true}}}));
+  EXPECT_THAT(
+      GetEventUrls(test_ukm_recorder(), UkmPayLaterTabSelectedType::kEntryName),
+      Each(form().main_frame_origin().GetURL()));
+}
+
+TEST_F(BnplFormEventsMetricsTest, PayNowTabSelected) {
+  base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableBuyNowPayLaterSyncing,
+                            features::kAutofillEnableAiBasedAmountExtraction,
+                            features::kAutofillEnablePayNowPayLaterTabs},
+      /*disabled_features=*/{});
+
+  test_paydm().AddServerCreditCard(test::GetMaskedServerCardVisa());
+
+  autofill_manager().OnAskForValuesToFillTest(
+      form(), form().fields().back().global_id());
+  bnpl_manager()->OnCreditCardSuggestionsShown(
+      {Suggestion(SuggestionType::kCreditCardEntry)},
+      /*update_suggestions_callback=*/base::DoNothing());
+  bnpl_manager()->OnUserDecisionToUseBnpl(
+      /*final_checkout_amount=*/std::nullopt,
+      /*on_bnpl_vcn_fetched_callback=*/base::DoNothing());
+  bnpl_manager()->OnUserDecisionToUseSavedCards();
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kSwitchedToPayNowTab, 1);
+
+  // To ensure the metrics logs only once per page.
+  autofill_manager().OnAskForValuesToFillTest(
+      form(), form().fields().back().global_id());
+  bnpl_manager()->OnCreditCardSuggestionsShown(
+      {Suggestion(SuggestionType::kCreditCardEntry)},
+      /*update_suggestions_callback=*/base::DoNothing());
+  bnpl_manager()->OnUserDecisionToUseBnpl(
+      /*final_checkout_amount=*/std::nullopt,
+      /*on_bnpl_vcn_fetched_callback=*/base::DoNothing());
+  bnpl_manager()->OnUserDecisionToUseSavedCards();
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kSwitchedToPayNowTab, 1);
+}
+
+TEST_F(BnplFormEventsMetricsTest, AffirmSelectedFromPayLaterTab) {
+  base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableBuyNowPayLaterSyncing,
+                            features::kAutofillEnableAiBasedAmountExtraction,
+                            features::kAutofillEnablePayNowPayLaterTabs},
+      /*disabled_features=*/{});
+
+  test_paydm().AddServerCreditCard(test::GetMaskedServerCardVisa());
+
+  ShowSuggestonsAndSelectBnplIssuer(BnplIssuer::IssuerId::kBnplAffirm);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kAffirmAccepted, 1);
+
+  // To ensure the metrics logs only once per page.
+  ShowSuggestonsAndSelectBnplIssuer(BnplIssuer::IssuerId::kBnplAffirm);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kAffirmAccepted, 1);
+  EXPECT_THAT(
+      GetUkmEvents(test_ukm_recorder(),
+                   UkmPayLaterTabSuggestionAcceptedType::kEntryName),
+      UkmEventsAre(
+          {{{UkmPayLaterTabSuggestionAcceptedType::kAcceptedName, true}}}));
+  EXPECT_THAT(GetEventUrls(test_ukm_recorder(),
+                           UkmPayLaterTabSuggestionAcceptedType::kEntryName),
+              Each(form().main_frame_origin().GetURL()));
+}
+
+TEST_F(BnplFormEventsMetricsTest, ZipSelectedFromPayLaterTab) {
+  base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableBuyNowPayLaterSyncing,
+                            features::kAutofillEnableAiBasedAmountExtraction,
+                            features::kAutofillEnablePayNowPayLaterTabs},
+      /*disabled_features=*/{});
+
+  test_paydm().AddServerCreditCard(test::GetMaskedServerCardVisa());
+
+  ShowSuggestonsAndSelectBnplIssuer(BnplIssuer::IssuerId::kBnplZip);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kZipAccepted, 1);
+
+  // To ensure the metrics logs only once per page.
+  ShowSuggestonsAndSelectBnplIssuer(BnplIssuer::IssuerId::kBnplZip);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kZipAccepted, 1);
+  EXPECT_THAT(
+      GetUkmEvents(test_ukm_recorder(),
+                   UkmPayLaterTabSuggestionAcceptedType::kEntryName),
+      UkmEventsAre(
+          {{{UkmPayLaterTabSuggestionAcceptedType::kAcceptedName, true}}}));
+  EXPECT_THAT(GetEventUrls(test_ukm_recorder(),
+                           UkmPayLaterTabSuggestionAcceptedType::kEntryName),
+              Each(form().main_frame_origin().GetURL()));
+}
+
+TEST_F(BnplFormEventsMetricsTest, KlarnaSelectedFromPayLaterTab) {
+  base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableBuyNowPayLaterSyncing,
+                            features::kAutofillEnableAiBasedAmountExtraction,
+                            features::kAutofillEnablePayNowPayLaterTabs},
+      /*disabled_features=*/{});
+
+  test_paydm().AddServerCreditCard(test::GetMaskedServerCardVisa());
+
+  ShowSuggestonsAndSelectBnplIssuer(BnplIssuer::IssuerId::kBnplKlarna);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kKlarnaAccepted, 1);
+
+  // To ensure the metrics logs only once per page.
+  ShowSuggestonsAndSelectBnplIssuer(BnplIssuer::IssuerId::kBnplKlarna);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kKlarnaAccepted, 1);
+  EXPECT_THAT(
+      GetUkmEvents(test_ukm_recorder(),
+                   UkmPayLaterTabSuggestionAcceptedType::kEntryName),
+      UkmEventsAre(
+          {{{UkmPayLaterTabSuggestionAcceptedType::kAcceptedName, true}}}));
+  EXPECT_THAT(GetEventUrls(test_ukm_recorder(),
+                           UkmPayLaterTabSuggestionAcceptedType::kEntryName),
+              Each(form().main_frame_origin().GetURL()));
+}
+
+TEST_F(BnplFormEventsMetricsTest, AfterpaySelectedFromPayLaterTab) {
+  base::HistogramTester histogram_tester;
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      /*enabled_features=*/{features::kAutofillEnableBuyNowPayLaterSyncing,
+                            features::kAutofillEnableAiBasedAmountExtraction,
+                            features::kAutofillEnablePayNowPayLaterTabs},
+      /*disabled_features=*/{});
+
+  test_paydm().AddServerCreditCard(test::GetMaskedServerCardVisa());
+
+  ShowSuggestonsAndSelectBnplIssuer(BnplIssuer::IssuerId::kBnplAfterpay);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kAfterpayAccepted, 1);
+
+  // To ensure the metrics logs only once per page.
+  ShowSuggestonsAndSelectBnplIssuer(BnplIssuer::IssuerId::kBnplAfterpay);
+
+  histogram_tester.ExpectBucketCount(
+      "Autofill.FormEvents.CreditCard.Bnpl.PayLaterTab",
+      autofill_metrics::PayLaterTabsFormEvent::kAfterpayAccepted, 1);
+  EXPECT_THAT(
+      GetUkmEvents(test_ukm_recorder(),
+                   UkmPayLaterTabSuggestionAcceptedType::kEntryName),
+      UkmEventsAre(
+          {{{UkmPayLaterTabSuggestionAcceptedType::kAcceptedName, true}}}));
+  EXPECT_THAT(GetEventUrls(test_ukm_recorder(),
+                           UkmPayLaterTabSuggestionAcceptedType::kEntryName),
+              Each(form().main_frame_origin().GetURL()));
+}
+
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
 

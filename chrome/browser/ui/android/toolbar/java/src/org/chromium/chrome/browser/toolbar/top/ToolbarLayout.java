@@ -55,6 +55,7 @@ import org.chromium.chrome.browser.toolbar.home_button.HomeButtonCoordinator;
 import org.chromium.chrome.browser.toolbar.menu_button.MenuButtonCoordinator;
 import org.chromium.chrome.browser.toolbar.optional_button.ButtonData;
 import org.chromium.chrome.browser.toolbar.reload_button.ReloadButtonCoordinator;
+import org.chromium.chrome.browser.toolbar.signin_button.SigninButtonCoordinator;
 import org.chromium.chrome.browser.toolbar.top.NavigationPopup.HistoryDelegate;
 import org.chromium.chrome.browser.toolbar.top.TopToolbarCoordinator.ToolbarColorObserver;
 import org.chromium.chrome.browser.toolbar.top.tab_strip.TabStripTransitionCoordinator;
@@ -100,6 +101,8 @@ public abstract class ToolbarLayout extends FrameLayout
     private @Nullable AppMenuButtonHelper mAppMenuButtonHelper;
 
     private @Nullable ToggleTabStackButtonCoordinator mTabSwitcherButtonCoordinator;
+
+    protected @Nullable SigninButtonCoordinator mSigninButtonCoordinator;
 
     private @Nullable TopToolbarOverlayCoordinator mOverlayCoordinator;
 
@@ -166,6 +169,7 @@ public abstract class ToolbarLayout extends FrameLayout
             @Nullable BackButtonCoordinator backButtonCoordinator,
             @Nullable ForwardButtonCoordinator forwardButtonCoordinator,
             HomeButtonCoordinator homeButtonCoordinator,
+            @Nullable SigninButtonCoordinator signinButtonCoordinator,
             ThemeColorProvider themeColorProvider,
             IncognitoStateProvider incognitoStateProvider,
             @Nullable Supplier<Integer> incognitoWindowCountSupplier) {
@@ -173,6 +177,7 @@ public abstract class ToolbarLayout extends FrameLayout
         mToolbarTabController = tabController;
         mMenuButtonCoordinator = menuButtonCoordinator;
         mTabSwitcherButtonCoordinator = tabSwitcherButtonCoordinator;
+        mSigninButtonCoordinator = signinButtonCoordinator;
         mProgressBar = progressBar;
 
         setThemeColorProvider(themeColorProvider);
@@ -213,7 +218,7 @@ public abstract class ToolbarLayout extends FrameLayout
         mAppMenuButtonHelper = appMenuButtonHelper;
     }
 
-    // TODO(pnoland, https://crbug.com/865801): Move this from ToolbarLayout to forthcoming
+    // TODO(pnoland, https://crbug.com/40585866): Move this from ToolbarLayout to forthcoming
     // BrowsingModeToolbarCoordinator.
     @Initializer
     public void setLocationBarCoordinator(LocationBarCoordinator locationBarCoordinator) {}
@@ -234,6 +239,9 @@ public abstract class ToolbarLayout extends FrameLayout
             mToolbarColorObserver = null;
         }
     }
+
+    /** Begins a transition for the toolbar buttons. */
+    public void beginButtonTransition() {}
 
     /**
      * @param toolbarColorObserver The observer that observes toolbar color change.
@@ -317,6 +325,9 @@ public abstract class ToolbarLayout extends FrameLayout
     /** TODO comment */
     @CallSuper
     protected void onMenuButtonDisabled() {}
+
+    /** Update the visibility of the menu button. */
+    public void updateMenuButtonVisibility() {}
 
     /**
      * Set hover tooltip text for buttons shared between phones and tablets. @TODO: Remove and use
@@ -641,7 +652,7 @@ public abstract class ToolbarLayout extends FrameLayout
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
         // Consumes mouse/trackpad button events on toolbar so they don't get leaked to content
-        // layer. See https://crbug.com/740855 (mouse) and https://crbug.com/384916573 (trackpad).
+        // layer. See https://crbug.com/40529425 (mouse) and https://crbug.com/384916573 (trackpad).
         if (MotionEventUtils.isPointerEvent(event)) {
             int action = event.getActionMasked();
             if (action == MotionEvent.ACTION_BUTTON_PRESS
@@ -910,4 +921,12 @@ public abstract class ToolbarLayout extends FrameLayout
      *     0.
      */
     public void onToEdgeChange(int newTopPadding) {}
+
+    @Nullable SigninButtonCoordinator getSigninButtonCoordinatorForTesting() {
+        return mSigninButtonCoordinator;
+    }
+
+    void setSigninButtonCoordinatorForTesting(SigninButtonCoordinator coordinator) {
+        mSigninButtonCoordinator = coordinator;
+    }
 }

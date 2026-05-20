@@ -19,7 +19,7 @@
 #include "chrome/common/buildflags.h"
 #include "components/performance_manager/public/freezing/freezing.h"
 #include "components/tabs/public/tab_interface.h"
-#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
+#include "third_party/skia/include/core/SkScalar.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/gfx/canvas.h"
 #include "ui/views/context_menu_controller.h"
@@ -32,10 +32,7 @@ class GlowHoverController;
 class TabCloseButton;
 class TabCollectionNode;
 class TabIcon;
-
-namespace views {
-class Label;
-}
+class TabTitle;
 
 namespace glic {
 class TabUnderlineView;
@@ -83,8 +80,8 @@ class VerticalTabView : public views::View,
   // HoverCardAnchorTarget:
   bool NeedsToShowThumbnail() const override;
   bool IsValidHoverCardTarget() const override;
+  views::BubbleAnchor GetAnchor() override;
   views::BubbleBorder::Arrow GetAnchorPosition() const override;
-  const views::View* GetAnchorView() const override;
 
  private:
   // views::View
@@ -105,17 +102,17 @@ class VerticalTabView : public views::View,
   void OnBlur() override;
   void OnBoundsChanged(const gfx::Rect& previous_bounds) override;
   void OnThemeChanged() override;
+  void UpdateParentLayer() override;
 
   // Tab Painting Helpers
-  void PaintTabBackgroundWithImages(
-      gfx::Canvas* canvas,
-      std::optional<int> active_tab_fill_id,
-      std::optional<int> inactive_tab_fill_id) const;
+  void PaintTabBackgroundWithImages(gfx::Canvas* canvas,
+                                    std::optional<int> active_tab_fill_id,
+                                    std::optional<int> inactive_tab_fill_id);
   float GetCurrentActiveOpacity() const;
   void PaintTabBackgroundFill(gfx::Canvas* canvas,
                               TabStyle::TabSelectionState selection_state,
                               bool hovered,
-                              std::optional<int> fill_id) const;
+                              std::optional<int> fill_id);
   bool ShouldPaintTabBackgroundColor(
       TabStyle::TabSelectionState selection_state,
       bool has_custom_background,
@@ -137,9 +134,8 @@ class VerticalTabView : public views::View,
                            const TabChildConfig& config,
                            const bool center) const;
 
-  // Calculates the visibilities of child views based on various states.
-  absl::flat_hash_map<views::View*, bool> CalculateChildVisibilities(
-      const int width) const;
+  // Calculates the visibility of child view based on various states.
+  bool IsChildVisible(const views::View* child, const int width) const;
 
   // views::LayoutDelegate
   views::ProposedLayout CalculateProposedLayout(
@@ -163,6 +159,7 @@ class VerticalTabView : public views::View,
   void ResetCollectionNode();
 
   void UpdateAccessibleName();
+  void OnFrameActiveStateChanged();
   void OnAXNameChanged(ax::mojom::StringAttribute attribute,
                        const std::optional<std::string>& name);
   void OnCollapseStateChanged(tabs::VerticalTabStripCollapseState state);
@@ -189,10 +186,18 @@ class VerticalTabView : public views::View,
   TabStyle::TabSelectionState GetSelectionState() const;
 
   bool IsDragging() const;
-  bool IsCollapsedWidth(int width) const;
+
+  static int UncollapsedMinWidth();
+  static int CollapsedWidth();
+
   bool IsInExpandOnHover(int width) const;
 
   const tabs::TabInterface* GetTabInterface() const;
+
+  SkScalar GetCornerRadius() const;
+
+  // Applies rounded corners to the view's layer.
+  void UpdateLayerRoundedCorners();
 
   raw_ptr<TabCollectionNode> collection_node_ = nullptr;
 
@@ -201,16 +206,16 @@ class VerticalTabView : public views::View,
   const raw_ptr<const TabStyle> tab_style_;
 
   const raw_ptr<TabIcon> icon_;
-  const raw_ptr<views::Label> title_;
+  const raw_ptr<TabTitle> title_;
   const raw_ptr<AlertIndicatorButton> alert_indicator_;
   const raw_ptr<TabCloseButton> close_button_;
-
   raw_ptr<glic::TabUnderlineView> glic_tab_underline_view_ = nullptr;
 
   base::CallbackListSubscription node_destroyed_subscription_;
   base::CallbackListSubscription data_changed_subscription_;
   base::CallbackListSubscription collapsed_state_changed_subscription_;
   base::CallbackListSubscription paint_as_active_subscription_;
+  base::CallbackListSubscription ax_name_changed_subscription_;
 
   tabs::TabData tab_data_;
   bool active_ = false;
@@ -228,8 +233,7 @@ class VerticalTabView : public views::View,
 
   std::optional<int> active_tab_fill_id_;
   std::optional<int> inactive_tab_fill_id_;
-
-  base::CallbackListSubscription ax_name_changed_subscription_;
+  bool should_fill_background_tab_color_ = false;
 
   std::optional<performance_manager::freezing::FreezingVote> freezing_vote_;
 

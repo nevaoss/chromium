@@ -100,7 +100,8 @@ ThrottleCheckResult ContextualTasksNavigationThrottle::ProcessNavigation() {
       ui_service->HandleNavigation(
           std::move(url_params), web_contents->GetResponsibleWebContents(),
           /*is_from_embedded_page=*/web_contents !=
-              web_contents->GetResponsibleWebContents(),
+                  web_contents->GetResponsibleWebContents() ||
+              navigation_handle()->IsGuestViewMainFrame(),
           /*is_to_new_tab=*/false)) {
     return CANCEL;
   }
@@ -110,8 +111,11 @@ ThrottleCheckResult ContextualTasksNavigationThrottle::ProcessNavigation() {
 // static
 void ContextualTasksNavigationThrottle::MaybeCreateAndAdd(
     content::NavigationThrottleRegistry& registry) {
-  // Ignore navigations that aren't in the outermost main frame.
-  if (!registry.GetNavigationHandle().IsInOutermostMainFrame()) {
+  // Ignore navigations that aren't in the outermost main frame and not in a
+  // prerender frame.
+  content::NavigationHandle& nav_handle = registry.GetNavigationHandle();
+  if (!nav_handle.IsInOutermostMainFrame() ||
+      nav_handle.IsInPrerenderedMainFrame()) {
     return;
   }
 

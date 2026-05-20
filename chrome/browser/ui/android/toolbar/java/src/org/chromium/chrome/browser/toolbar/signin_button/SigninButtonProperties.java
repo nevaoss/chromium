@@ -18,7 +18,12 @@ import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
 final class SigninButtonProperties {
 
     // Indicates whether the signin button view should be displayed.
-    public static final WritableBooleanPropertyKey SHOW_BUTTON = new WritableBooleanPropertyKey();
+    public static final WritableBooleanPropertyKey SHOULD_SHOW_ON_PAGE =
+            new WritableBooleanPropertyKey();
+
+    // Indicates whether the signin button view is visible. This should only be true if
+    // SHOULD_SHOW_ON_PAGE is also true and there is space to show the button.
+    public static final WritableBooleanPropertyKey IS_VISIBLE = new WritableBooleanPropertyKey();
 
     // Indicates whether the signin text button should be used. If false, the avatar button
     // is used instead.
@@ -41,13 +46,18 @@ final class SigninButtonProperties {
     public static final WritableObjectPropertyKey<String> AVATAR_CONTENT_DESCRIPTION =
             new WritableObjectPropertyKey<>();
 
+    // Indicates whether the signin button is enabled.
+    public static final WritableBooleanPropertyKey IS_ENABLED = new WritableBooleanPropertyKey();
+
     public static final PropertyKey[] ALL_KEYS =
             new PropertyKey[] {
-                SHOW_BUTTON,
+                SHOULD_SHOW_ON_PAGE,
+                IS_VISIBLE,
                 USE_SIGNIN_TEXT_BUTTON,
                 BUTTON_AVATAR,
                 AVATAR_TINT,
                 ON_CLICK,
-                AVATAR_CONTENT_DESCRIPTION
+                AVATAR_CONTENT_DESCRIPTION,
+                IS_ENABLED
             };
 }

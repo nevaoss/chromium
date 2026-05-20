@@ -35,14 +35,14 @@ class KeywordEditorController {
   // model. Returns the id of the added URL.
   TemplateURLID AddTemplateURL(const std::u16string& title,
                                const std::u16string& keyword,
-                               const std::string& url);
+                               const std::string& fixed_up_url);
 
   // Invoked when the user modifies a TemplateURL. Updates the
   // TemplateURLService and table model appropriately.
   void ModifyTemplateURL(TemplateURL* template_url,
                          const std::u16string& title,
                          const std::u16string& keyword,
-                         const std::string& url);
+                         const std::string& fixed_up_url);
 
   // Return true if the given |url| can be edited.
   bool CanEdit(const TemplateURL* url) const;
@@ -98,7 +98,7 @@ class KeywordEditorController {
 
   TemplateURLTableModel* table_model() { return table_model_.get(); }
 
-  void UpdateIdToTemplateURLMapping();
+  void Refresh();
 
  private:
   raw_ptr<TemplateURLService> url_model_;

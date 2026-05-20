@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/weak_ptr.h"
 #include "base/test/bind.h"
 #include "base/test/mock_callback.h"
@@ -49,14 +50,18 @@ class MockQueryContextualizerDelegate : public QueryContextualizer::Delegate {
               GetTabViewportEncodingOptionsForQueryContextualizer,
               (),
               (override));
-  MOCK_METHOD(void, OnPageContextIneligible, (), (override));
-  MOCK_METHOD(void,
-              OnTabProcessedForQueryContextualization,
-              (QueryContextualizer::TabId id),
-              (override));
+
   MOCK_METHOD(contextual_search::ContextualSearchSessionHandle*,
               GetOrCreateSessionHandleForQueryContextualizer,
               (),
+              (override));
+
+  MOCK_METHOD(void,
+              GetRelevantTabsForQuery,
+              (const std::string& query_text,
+               const std::vector<GURL>& attached_context_urls,
+               base::OnceCallback<void(std::vector<QueryContextualizer::TabId>)>
+                   callback),
               (override));
 };
 
@@ -156,6 +161,41 @@ class QueryContextualizerTest : public testing::Test {
       mock_context_controller_weak_factory_;
 };
 
+TEST_F(QueryContextualizerTest, Contextualize_SmartTabSharingEnabled) {
+  std::string query = "query";
+
+  EXPECT_CALL(*delegate_,
+              GetRelevantTabsForQuery(query, testing::_, testing::_))
+      .WillOnce([](const auto& query, const auto& urls, auto callback) {
+        std::move(callback).Run({1, 2});
+      });
+
+  EXPECT_CALL(*delegate_, IsTabValid(1)).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*delegate_, IsTabValid(2)).WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*delegate_, GetTabUrl(1))
+      .WillRepeatedly(testing::Return(GURL("http://tab1.com")));
+  EXPECT_CALL(*delegate_, GetTabUrl(2))
+      .WillRepeatedly(testing::Return(GURL("http://tab2.com")));
+
+  EXPECT_CALL(*delegate_, GetPageContext(1, testing::_))
+      .WillOnce([](auto id, auto callback) {
+        std::move(callback).Run(std::make_unique<lens::ContextualInputData>());
+      });
+  EXPECT_CALL(*delegate_, GetPageContext(2, testing::_))
+      .WillOnce([](auto id, auto callback) {
+        std::move(callback).Run(std::make_unique<lens::ContextualInputData>());
+      });
+
+  base::MockCallback<QueryContextualizer::ContextualizedCallback> callback;
+  EXPECT_CALL(callback, Run(testing::_)).Times(1);
+
+  contextualizer_->Contextualize(std::nullopt, query, {}, {}, base::DoNothing(),
+                                 base::DoNothing(), callback.Get(),
+                                 /*enable_smart_tab_selection=*/true);
+
+  CompleteAllUploads();
+}
+
 TEST_F(QueryContextualizerTest, Contextualize_WaitsForUploadsToFinish) {
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   int32_t tab_id = 100;
@@ -224,7 +264,12 @@ TEST_F(QueryContextualizerTest, Contextualize_WaitsForUploadsToFinish) {
   EXPECT_CALL(*session_handle_,
               StartTabContextUploadFlow(testing::_, testing::_, testing::_));
 
-  EXPECT_CALL(*delegate_, OnTabProcessedForQueryContextualization(tab_id));
+  base::MockCallback<QueryContextualizer::PageContextIneligibleCallback>
+      ineligible_callback;
+  base::MockCallback<QueryContextualizer::TabProcessedCallback>
+      processed_callback;
+
+  EXPECT_CALL(processed_callback, Run(tab_id));
 
   // Mock GetFileInfo to return non-terminal status initially.
   contextual_search::FileInfo mock_file_info;
@@ -240,7 +285,9 @@ TEST_F(QueryContextualizerTest, Contextualize_WaitsForUploadsToFinish) {
   EXPECT_CALL(done_callback, Run(testing::_)).Times(0);
 
   contextualizer_->Contextualize(task_id, "Check out https://example.com",
-                                 {tab_id}, {}, done_callback.Get());
+                                 {tab_id}, {}, ineligible_callback.Get(),
+                                 processed_callback.Get(), done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
 
   ASSERT_NE(captured_observer_, nullptr);
   ASSERT_EQ(created_tokens_.size(), 2u);
@@ -332,8 +379,55 @@ TEST_F(QueryContextualizerTest, Contextualize_ExtractsUrls) {
                                  "Check out https://example.com! Also "
                                  "http://test.org, and www.google.com. "
                                  "Duplicate: https://example.com",
-                                 {}, {}, done_callback.Get());
+                                 {}, {}, base::DoNothing(), base::DoNothing(),
+                                 done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
+}
+
+TEST_F(QueryContextualizerTest, Contextualize_WithNullService) {
+  auto null_service_contextualizer = std::make_unique<QueryContextualizer>(
+      /*service=*/nullptr, delegate_.get());
+
+  base::MockCallback<QueryContextualizer::ContextualizedCallback> done_callback;
+  EXPECT_CALL(done_callback, Run(testing::_)).Times(1);
+
+  null_service_contextualizer->Contextualize(
+      /*task_id=*/std::nullopt, "test query", {}, {}, base::DoNothing(),
+      base::DoNothing(), done_callback.Get(),
+      /*enable_smart_tab_selection=*/false);
+}
+
+TEST(QueryContextualizerStaticTest, ExtractUrlsFromQuery) {
+  // Test simple extraction.
+  std::vector<GURL> urls = QueryContextualizer::ExtractUrlsFromQuery(
+      "Check out https://example.com");
+  ASSERT_EQ(urls.size(), 1u);
+  EXPECT_EQ(urls[0], GURL("https://example.com"));
+
+  // Test extraction with ampersand.
+  urls = QueryContextualizer::ExtractUrlsFromQuery(
+      "Check out https://example.com?a=1&b=2");
+  ASSERT_EQ(urls.size(), 1u);
+  EXPECT_EQ(urls[0], GURL("https://example.com?a=1&b=2"));
+
+  // Test extraction with multiple URLs.
+  urls = QueryContextualizer::ExtractUrlsFromQuery(
+      "https://example.com and http://test.org");
+  ASSERT_EQ(urls.size(), 2u);
+  EXPECT_EQ(urls[0], GURL("https://example.com"));
+  EXPECT_EQ(urls[1], GURL("http://test.org"));
+
+  // Test extraction with www. prefix.
+  urls = QueryContextualizer::ExtractUrlsFromQuery("www.google.com");
+  ASSERT_EQ(urls.size(), 1u);
+  EXPECT_EQ(urls[0], GURL("http://www.google.com"));
+
+  // Test deduplication.
+  urls = QueryContextualizer::ExtractUrlsFromQuery(
+      "https://example.com and https://example.com");
+  ASSERT_EQ(urls.size(), 1u);
+  EXPECT_EQ(urls[0], GURL("https://example.com"));
 }
 
 TEST_F(QueryContextualizerTest,
@@ -403,7 +497,9 @@ TEST_F(QueryContextualizerTest,
                                  "Check out https://example.com! Also "
                                  "http://test.org, and www.google.com. "
                                  "Duplicate: https://example.com",
-                                 {}, {}, done_callback.Get());
+                                 {}, {}, base::DoNothing(), base::DoNothing(),
+                                 done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
 }
 
@@ -482,13 +578,20 @@ TEST_F(QueryContextualizerTest, Contextualize_RecontextualizeExpiredTab) {
         EXPECT_EQ(data->context_id, 12345);
       });
 
-  EXPECT_CALL(*delegate_, OnTabProcessedForQueryContextualization(tab_id));
+  base::MockCallback<QueryContextualizer::PageContextIneligibleCallback>
+      ineligible_callback;
+  base::MockCallback<QueryContextualizer::TabProcessedCallback>
+      processed_callback;
+
+  EXPECT_CALL(processed_callback, Run(tab_id));
 
   base::MockCallback<QueryContextualizer::ContextualizedCallback> done_callback;
   EXPECT_CALL(done_callback, Run(testing::_));
 
   contextualizer_->Contextualize(task_id, "test query", {tab_id}, {},
-                                 done_callback.Get());
+                                 ineligible_callback.Get(),
+                                 processed_callback.Get(), done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
 }
 
@@ -575,13 +678,20 @@ TEST_F(QueryContextualizerTest, Contextualize_RecontextualizeContentChanged) {
         EXPECT_EQ(data->context_id, 12345);
       });
 
-  EXPECT_CALL(*delegate_, OnTabProcessedForQueryContextualization(tab_id));
+  base::MockCallback<QueryContextualizer::PageContextIneligibleCallback>
+      ineligible_callback;
+  base::MockCallback<QueryContextualizer::TabProcessedCallback>
+      processed_callback;
+
+  EXPECT_CALL(processed_callback, Run(tab_id));
 
   base::MockCallback<QueryContextualizer::ContextualizedCallback> done_callback;
   EXPECT_CALL(done_callback, Run(testing::_));
 
   contextualizer_->Contextualize(task_id, "test query", {tab_id}, {},
-                                 done_callback.Get());
+                                 ineligible_callback.Get(),
+                                 processed_callback.Get(), done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
 }
 
@@ -672,13 +782,20 @@ TEST_F(QueryContextualizerTest,
               StartTabContextUploadFlow(testing::_, testing::_, testing::_))
       .Times(0);
 
-  EXPECT_CALL(*delegate_, OnTabProcessedForQueryContextualization(tab_id));
+  base::MockCallback<QueryContextualizer::PageContextIneligibleCallback>
+      ineligible_callback;
+  base::MockCallback<QueryContextualizer::TabProcessedCallback>
+      processed_callback;
+
+  EXPECT_CALL(processed_callback, Run(tab_id));
 
   base::MockCallback<QueryContextualizer::ContextualizedCallback> done_callback;
   EXPECT_CALL(done_callback, Run(testing::_));
 
   contextualizer_->Contextualize(task_id, "test query", {tab_id}, {},
-                                 done_callback.Get());
+                                 ineligible_callback.Get(),
+                                 processed_callback.Get(), done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
 }
 
@@ -723,7 +840,9 @@ TEST_F(QueryContextualizerTest, Contextualize_ActiveTabNotInContext) {
   EXPECT_CALL(done_callback, Run(testing::_));
 
   contextualizer_->Contextualize(task_id, "test query", {tab_id}, {},
-                                 done_callback.Get());
+                                 base::DoNothing(), base::DoNothing(),
+                                 done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
 }
 
@@ -774,7 +893,9 @@ TEST_F(QueryContextualizerTest, Contextualize_ActiveTabUrlMismatch) {
   EXPECT_CALL(done_callback, Run(testing::_));
 
   contextualizer_->Contextualize(task_id, "test query", {tab_id}, {},
-                                 done_callback.Get());
+                                 base::DoNothing(), base::DoNothing(),
+                                 done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
 }
 
@@ -866,13 +987,20 @@ TEST_F(QueryContextualizerTest,
         EXPECT_EQ(data->context_id, 12345);
       });
 
-  EXPECT_CALL(*delegate_, OnTabProcessedForQueryContextualization(tab_id));
+  base::MockCallback<QueryContextualizer::PageContextIneligibleCallback>
+      ineligible_callback;
+  base::MockCallback<QueryContextualizer::TabProcessedCallback>
+      processed_callback;
+
+  EXPECT_CALL(processed_callback, Run(tab_id));
 
   base::MockCallback<QueryContextualizer::ContextualizedCallback> done_callback;
   EXPECT_CALL(done_callback, Run(testing::_));
 
   contextualizer_->Contextualize(task_id, "test query", {tab_id}, {},
-                                 done_callback.Get());
+                                 ineligible_callback.Get(),
+                                 processed_callback.Get(), done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
 }
 
@@ -979,13 +1107,20 @@ TEST_F(QueryContextualizerTest,
         EXPECT_EQ(data->context_id, 12345);
       });
 
-  EXPECT_CALL(*delegate_, OnTabProcessedForQueryContextualization(tab_id));
+  base::MockCallback<QueryContextualizer::PageContextIneligibleCallback>
+      ineligible_callback;
+  base::MockCallback<QueryContextualizer::TabProcessedCallback>
+      processed_callback;
+
+  EXPECT_CALL(processed_callback, Run(tab_id));
 
   base::MockCallback<QueryContextualizer::ContextualizedCallback> done_callback;
   EXPECT_CALL(done_callback, Run(testing::_));
 
   contextualizer_->Contextualize(task_id, "", {tab_id}, {},
-                                 done_callback.Get());
+                                 ineligible_callback.Get(),
+                                 processed_callback.Get(), done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
 }
 
@@ -1093,13 +1228,20 @@ TEST_F(QueryContextualizerTest,
         EXPECT_EQ(data->context_id, 12345);
       });
 
-  EXPECT_CALL(*delegate_, OnTabProcessedForQueryContextualization(tab_id));
+  base::MockCallback<QueryContextualizer::PageContextIneligibleCallback>
+      ineligible_callback;
+  base::MockCallback<QueryContextualizer::TabProcessedCallback>
+      processed_callback;
+
+  EXPECT_CALL(processed_callback, Run(tab_id));
 
   base::MockCallback<QueryContextualizer::ContextualizedCallback> done_callback;
   EXPECT_CALL(done_callback, Run(testing::_));
 
   contextualizer_->Contextualize(task_id, "", {tab_id}, {},
-                                 done_callback.Get());
+                                 ineligible_callback.Get(),
+                                 processed_callback.Get(), done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
   CompleteAllUploads();
 }
 TEST_F(QueryContextualizerTest,
@@ -1214,13 +1356,84 @@ TEST_F(QueryContextualizerTest,
               StartTabContextUploadFlow(testing::_, testing::_, testing::_))
       .Times(0);
 
-  EXPECT_CALL(*delegate_, OnTabProcessedForQueryContextualization(tab_id));
+  base::MockCallback<QueryContextualizer::PageContextIneligibleCallback>
+      ineligible_callback;
+  base::MockCallback<QueryContextualizer::TabProcessedCallback>
+      processed_callback;
+
+  EXPECT_CALL(processed_callback, Run(tab_id));
 
   base::MockCallback<QueryContextualizer::ContextualizedCallback> done_callback;
   EXPECT_CALL(done_callback, Run(testing::_));
 
   contextualizer_->Contextualize(task_id, "test query", {tab_id}, {},
-                                 done_callback.Get());
+                                 ineligible_callback.Get(),
+                                 processed_callback.Get(), done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
+}
+
+TEST_F(QueryContextualizerTest,
+       Contextualize_AutoSuggestedTabIsImplicitUpload) {
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  int32_t tab_id = 100;
+  SessionID session_id = SessionID::FromSerializedValue(1);
+  GURL kUrl("about:blank");
+
+  ContextualTask task(task_id);
+  auto context = std::make_unique<ContextualTaskContext>(task);
+
+  EXPECT_CALL(*service_,
+              GetContextForTask(
+                  task_id,
+                  testing::Contains(
+                      ContextualTaskContextSource::kSubmittedContextDecorator),
+                  testing::NotNull(), testing::_))
+      .WillOnce(
+          [&context](
+              const base::Uuid& task_id,
+              const std::set<ContextualTaskContextSource>& sources,
+              std::unique_ptr<ContextDecorationParams> params,
+              base::OnceCallback<void(std::unique_ptr<ContextualTaskContext>)>
+                  callback) { std::move(callback).Run(std::move(context)); });
+
+  EXPECT_CALL(*delegate_, GetTabUrl(tab_id))
+      .WillRepeatedly(testing::Return(kUrl));
+  EXPECT_CALL(*delegate_, GetTabSessionId(tab_id))
+      .WillRepeatedly(testing::Return(session_id));
+
+  // Expect GetPageContext call.
+  EXPECT_CALL(*delegate_, GetPageContext(tab_id, testing::_))
+      .WillOnce([session_id](
+                    QueryContextualizer::TabId id,
+                    base::OnceCallback<void(
+                        std::unique_ptr<lens::ContextualInputData>)> callback) {
+        auto data = std::make_unique<lens::ContextualInputData>();
+        data->tab_session_id = session_id;
+        data->page_url = GURL("about:blank");
+        data->is_page_context_eligible = true;
+        std::move(callback).Run(std::move(data));
+      });
+
+  EXPECT_CALL(*delegate_, IsTabValid(tab_id)).WillOnce(testing::Return(true));
+
+  // Expect StartTabContextUploadFlow call and check is_implicit_upload.
+  EXPECT_CALL(*session_handle_,
+              StartTabContextUploadFlow(testing::_, testing::_, testing::_))
+      .WillOnce([](const base::UnguessableToken& file_token,
+                   std::unique_ptr<lens::ContextualInputData> data,
+                   std::optional<lens::ImageEncodingOptions> image_options) {
+        EXPECT_TRUE(data->is_implicit_upload);
+      });
+
+  base::MockCallback<QueryContextualizer::ContextualizedCallback> done_callback;
+  EXPECT_CALL(done_callback, Run(testing::_));
+
+  // Pass tab_id in tabs_to_force_contextualize (the 4th parameter).
+  contextualizer_->Contextualize(task_id, "test query", {}, {tab_id},
+                                 base::DoNothing(), base::DoNothing(),
+                                 done_callback.Get(),
+                                 /*enable_smart_tab_selection=*/false);
+  CompleteAllUploads();
 }
 
 }  // namespace contextual_tasks

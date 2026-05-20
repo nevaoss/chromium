@@ -18,7 +18,6 @@ class MockGlicInstanceCoordinator
   MockGlicInstanceCoordinator();
   ~MockGlicInstanceCoordinator();
 
-  MOCK_METHOD(HostManager&, host_manager, (), (override));
   MOCK_METHOD(std::vector<GlicInstance*>, GetInstances, (), (override));
   MOCK_METHOD(GlicInstance*,
               GetInstanceForTab,
@@ -31,10 +30,9 @@ class MockGlicInstanceCoordinator
                bool,
                mojom::InvocationSource,
                std::optional<std::string>,
-               bool,
                std::optional<std::string>),
               (override));
-  MOCK_METHOD(void, ShowAfterSignIn, (base::WeakPtr<Browser>), (override));
+  MOCK_METHOD(void, EnsurePreload, (), (override));
   MOCK_METHOD(void, Attach, (), ());
   MOCK_METHOD(void, Detach, (), ());
   MOCK_METHOD(void, Shutdown, (), (override));
@@ -64,18 +62,10 @@ class MockGlicInstanceCoordinator
               AddGlobalShowHideCallback,
               (base::RepeatingClosure),
               (override));
-  MOCK_METHOD(void, Preload, (), (override));
   MOCK_METHOD(void,
               Reload,
               (content::RenderFrameHost * render_frame_host),
               (override));
-  MOCK_METHOD(GlicWidget*, GetGlicWidget, (), (const, override));
-  MOCK_METHOD(Browser*, attached_browser, (), (override));
-  MOCK_METHOD(State, state, (), (const, override));
-  MOCK_METHOD(Profile*, profile, (), (override));
-  MOCK_METHOD(gfx::Rect, GetInitialBounds, (Browser*), (override));
-  MOCK_METHOD(void, ShowDetachedForTesting, (), (override));
-  MOCK_METHOD(void, SetPreviousPositionForTesting, (gfx::Point), (override));
   MOCK_METHOD(base::CallbackListSubscription,
               AddActiveInstanceChangedCallbackAndNotifyImmediately,
               (ActiveInstanceChangedCallback callback),
@@ -94,9 +84,23 @@ class MockGlicInstanceCoordinator
               GetRecentlyActiveInstances,
               (size_t),
               (override));
+  MOCK_METHOD(bool,
+              IsTabPinnedToAnyInstance,
+              (const tabs::TabHandle&),
+              (const, override));
+  MOCK_METHOD(void,
+              UnpinTabsFromAllInstances,
+              (base::span<const tabs::TabHandle>, GlicUnpinTrigger),
+              (override));
   MOCK_METHOD(void,
               ArchiveInstanceWithFrame,
               (content::RenderFrameHost*),
+              (override));
+
+  MOCK_METHOD(void,
+              GetExperimentalTriggeringUpdates,
+              (mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler>,
+               base::OnceCallback<void(bool)>),
               (override));
 
  private:

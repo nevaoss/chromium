@@ -9,9 +9,9 @@
 #include <stdint.h>
 
 #include "base/strings/stringprintf.h"
-#include "base/test/test_trace_processor.h"
-#include "base/test/trace_event_analyzer.h"
-#include "base/test/trace_test_utils.h"
+#include "base/test/tracing/test_trace_processor.h"
+#include "base/test/tracing/trace_event_analyzer.h"
+#include "base/test/tracing/trace_test_utils.h"
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "gpu/command_buffer/common/capabilities.h"
@@ -129,7 +129,7 @@ TEST_F(GpuChannelManagerTest, EstablishChannel) {
   ASSERT_TRUE(channel_manager());
   GpuChannel* channel = channel_manager()->EstablishChannel(
       base::UnguessableToken::Create(), kClientId, kClientTracingId, false,
-      false, gfx::GpuExtraInfo());
+      false, gfx::GpuExtraInfo(), gpu::GPUInfo(), gpu::GpuFeatureInfo());
   EXPECT_TRUE(channel);
   EXPECT_EQ(channel_manager()->LookupChannel(kClientId), channel);
 }

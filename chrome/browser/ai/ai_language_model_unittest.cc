@@ -77,11 +77,22 @@ using Role = ::blink::mojom::AILanguageModelPromptRole;
 constexpr uint32_t kTestMaxContextToken = 10u;
 constexpr uint32_t kTestDefaultTopK = 1u;
 constexpr float kTestDefaultTemperature = 0.0f;
-constexpr uint32_t kTestMaxTopK = 5u;
+constexpr uint32_t kTestMaxTopK = 50u;
 constexpr float kTestMaxTemperature = 1.5;
 constexpr uint32_t kTestMaxTokens = 100u;
+constexpr uint32_t kTestConfiguredMaxOutputTokens = 10u;
 static_assert(kTestDefaultTopK <= kTestMaxTopK);
 static_assert(kTestDefaultTemperature <= kTestMaxTemperature);
+
+MATCHER_P2(IsPromptWithParams, expected_top_k, expected_temp, "") {
+  int top_k;
+  double temp;
+  static const base::NoDestructor<re2::RE2> re("TopK: (\\d+), Temp: ([\\d.]+)");
+  if (re2::RE2::FullMatch(arg, *re, &top_k, &temp)) {
+    return top_k == expected_top_k && std::abs(temp - expected_temp) < 0.001;
+  }
+  return false;
+}
 
 struct Result {
   mojo::PendingRemote<blink::mojom::AILanguageModel> language_model;
@@ -238,39 +249,6 @@ std::string GetContextString(AILanguageModel::Context& ctx) {
   return FormatInput(*ctx.GetNonInitialPrompts());
 }
 
-// Formats responses to match what the fake on device model service will return.
-// The fake service keeps track of all previous inputs to a session, and will
-// spit them all back out during a Generate() call. This gets a bit complicated
-// for the language model, which also adds back the output as input to the
-// session. An example language model session using the default behavior of the
-// fake service would look something like this:
-// - s1.Prompt("foo")
-//   - Adds "UfooEM" to the session
-//   - Gets output of ["UfooEM"] from fake service
-//   - Adds "UfooEME" to the session (fake response + end token)
-// - s1.Prompt("bar")
-//   - Adds "UbarEM" to the session
-//   - Gets output of ["UfooEM", "UfooEME", "UbarEM"].
-//   - Adds "UfooEMUfooEMEUbarEM"
-//     (concatenated output from fake service) to the session
-// This behavior verifies the correct inputs and outputs are being returned from
-// the model, and this helper makes it easier to construct these expectations.
-// TODO(crbug.com/415808003): Simplify this in the fake service.
-std::vector<std::string> FormatResponses(
-    const std::vector<std::string>& responses) {
-  std::vector<std::string> formatted;
-  std::string last_output;
-  for (const std::string& response : responses) {
-    if (!last_output.empty()) {
-      formatted.push_back(last_output + "E");
-      last_output += formatted.back();
-    }
-    formatted.push_back(response);
-    last_output += formatted.back();
-  }
-  return formatted;
-}
-
 class AILanguageModelTest : public AITestUtils::AITestBase {
  public:
   AILanguageModelTest() {
@@ -395,25 +373,22 @@ TEST_F(AILanguageModelTest, AIContextBoundObjectSet) {
 
 TEST_F(AILanguageModelTest, Prompt) {
   auto session = CreateSession();
-  EXPECT_THAT(Prompt(*session, MakeInput("foo")),
-              ElementsAreArray(FormatResponses({"UfooEM"})));
+  EXPECT_THAT(Prompt(*session, MakeInput("foo")), ElementsAreArray({"UfooEM"}));
 }
 
 TEST_F(AILanguageModelTest, MultiplePrompts) {
   auto session = CreateSession();
-  EXPECT_THAT(Prompt(*session, MakeInput("foo")),
-              ElementsAreArray(FormatResponses({"UfooEM"})));
+  EXPECT_THAT(Prompt(*session, MakeInput("foo")), ElementsAreArray({"UfooEM"}));
   EXPECT_THAT(Prompt(*session, MakeInput("bar")),
-              ElementsAreArray(FormatResponses({"UfooEM", "UbarEM"})));
-  EXPECT_THAT(
-      Prompt(*session, MakeInput("baz")),
-      ElementsAreArray(FormatResponses({"UfooEM", "UbarEM", "UbazEM"})));
+              ElementsAreArray({"UfooEM", "UbarEM"}));
+  EXPECT_THAT(Prompt(*session, MakeInput("baz")),
+              ElementsAreArray({"UfooEM", "UbarEM", "UbazEM"}));
 }
 
 TEST_F(AILanguageModelTest, PromptMultipleContents) {
   auto session = CreateSession();
   EXPECT_THAT(Prompt(*session, MakeInput({"foo", "bar"})),
-              ElementsAreArray(FormatResponses({"UfoobarEM"})));
+              ElementsAreArray({"UfoobarEM"}));
 }
 
 TEST_F(AILanguageModelTest, Append) {
@@ -492,36 +467,31 @@ TEST_F(AILanguageModelTest, Roles) {
   prompts.push_back(MakePrompt(Role::kSystem, "system"));
   prompts.push_back(MakePrompt(Role::kAssistant, "model"));
   EXPECT_THAT(Prompt(*session, std::move(prompts)),
-              ElementsAreArray(FormatResponses({"UuserESsystemEMmodelEM"})));
+              ElementsAreArray({"UuserESsystemEMmodelEM"}));
 }
 
 TEST_F(AILanguageModelTest, Fork) {
   auto session = CreateSession();
   auto fork1 = Fork(*session);
 
-  EXPECT_THAT(Prompt(*session, MakeInput("foo")),
-              ElementsAreArray(FormatResponses({"UfooEM"})));
+  EXPECT_THAT(Prompt(*session, MakeInput("foo")), ElementsAreArray({"UfooEM"}));
   auto fork2 = Fork(*session);
 
   EXPECT_THAT(Prompt(*session, MakeInput("bar")),
-              ElementsAreArray(FormatResponses({"UfooEM", "UbarEM"})));
+              ElementsAreArray({"UfooEM", "UbarEM"}));
   auto fork3 = Fork(*session);
 
-  EXPECT_THAT(Prompt(*fork1, MakeInput("fork")),
-              ElementsAreArray(FormatResponses({"UforkEM"})));
+  EXPECT_THAT(Prompt(*fork1, MakeInput("fork")), ElementsAreArray({"UforkEM"}));
   EXPECT_THAT(Prompt(*fork2, MakeInput("fork")),
-              ElementsAreArray(FormatResponses({"UfooEM", "UforkEM"})));
+              ElementsAreArray({"UfooEM", "UforkEM"}));
   auto fork4 = Fork(*fork2);
-  EXPECT_THAT(
-      Prompt(*fork3, MakeInput("fork")),
-      ElementsAreArray(FormatResponses({"UfooEM", "UbarEM", "UforkEM"})));
-  EXPECT_THAT(
-      Prompt(*session, MakeInput("baz")),
-      ElementsAreArray(FormatResponses({"UfooEM", "UbarEM", "UbazEM"})));
+  EXPECT_THAT(Prompt(*fork3, MakeInput("fork")),
+              ElementsAreArray({"UfooEM", "UbarEM", "UforkEM"}));
+  EXPECT_THAT(Prompt(*session, MakeInput("baz")),
+              ElementsAreArray({"UfooEM", "UbarEM", "UbazEM"}));
 
-  EXPECT_THAT(
-      Prompt(*fork4, MakeInput("more")),
-      ElementsAreArray(FormatResponses({"UfooEM", "UforkEM", "UmoreEM"})));
+  EXPECT_THAT(Prompt(*fork4, MakeInput("more")),
+              ElementsAreArray({"UfooEM", "UforkEM", "UmoreEM"}));
 }
 
 TEST_F(AILanguageModelTest, SamplingParams) {
@@ -538,6 +508,63 @@ TEST_F(AILanguageModelTest, SamplingParams) {
               ElementsAre("UfooEM", "TopK: 2, Temp: 1"));
   EXPECT_THAT(Prompt(*fork, MakeInput("bar")),
               ElementsAre("UbarEM", "TopK: 2, Temp: 1"));
+}
+
+TEST_F(AILanguageModelTest, SamplingModeMappings) {
+  // Test most-predictable (uses default values). Default values are omitted
+  // from the output by the fake API in
+  // services/on_device_model/fake/fake_chrome_ml_api.cc
+  {
+    auto options = blink::mojom::AILanguageModelCreateOptions::New();
+    options->sampling_mode =
+        blink::mojom::AILanguageModelSamplingMode::kMostPredictable;
+    auto session = CreateSession(std::move(options));
+    EXPECT_THAT(Prompt(*session, MakeInput("foo")), ElementsAre("UfooEM"));
+  }
+  // Test predictable
+  {
+    auto options = blink::mojom::AILanguageModelCreateOptions::New();
+    options->sampling_mode =
+        blink::mojom::AILanguageModelSamplingMode::kPredictable;
+    auto session = CreateSession(std::move(options));
+    EXPECT_THAT(Prompt(*session, MakeInput("foo")),
+                ElementsAre("UfooEM", IsPromptWithParams(2, 0.2)));
+  }
+  // Test balanced
+  {
+    auto options = blink::mojom::AILanguageModelCreateOptions::New();
+    options->sampling_mode =
+        blink::mojom::AILanguageModelSamplingMode::kBalanced;
+    auto session = CreateSession(std::move(options));
+    EXPECT_THAT(Prompt(*session, MakeInput("foo")),
+                ElementsAre("UfooEM", IsPromptWithParams(3, 1.0)));
+  }
+  // Test creative
+  {
+    auto options = blink::mojom::AILanguageModelCreateOptions::New();
+    options->sampling_mode =
+        blink::mojom::AILanguageModelSamplingMode::kCreative;
+    auto session = CreateSession(std::move(options));
+    EXPECT_THAT(Prompt(*session, MakeInput("foo")),
+                ElementsAre("UfooEM", IsPromptWithParams(10, 1.1)));
+  }
+  // Test most-creative
+  {
+    auto options = blink::mojom::AILanguageModelCreateOptions::New();
+    options->sampling_mode =
+        blink::mojom::AILanguageModelSamplingMode::kMostCreative;
+    auto session = CreateSession(std::move(options));
+    EXPECT_THAT(Prompt(*session, MakeInput("foo")),
+                ElementsAre("UfooEM", IsPromptWithParams(25, 1.2)));
+  }
+}
+
+TEST_F(AILanguageModelTest, SamplingModeDefault) {
+  // Fallback to default values. Default values are omitted
+  // from the output by the fake API in
+  // services/on_device_model/fake/fake_chrome_ml_api.cc
+  auto session = CreateSession();
+  EXPECT_THAT(Prompt(*session, MakeInput("foo")), ElementsAre("UfooEM"));
 }
 
 TEST_F(AILanguageModelTest, SamplingParamsTopKOutOfRange) {
@@ -576,7 +603,7 @@ TEST_F(AILanguageModelTest, MaxSamplingParams) {
   auto session = CreateSession(std::move(options));
 
   EXPECT_THAT(Prompt(*session, MakeInput("foo")),
-              ElementsAre("UfooEM", "TopK: 5, Temp: 1.5"));
+              ElementsAre("UfooEM", "TopK: 50, Temp: 1.5"));
 }
 
 TEST_F(AILanguageModelTest, InitialPrompts) {
@@ -744,8 +771,7 @@ TEST_F(AILanguageModelTest, QuotaOverflowOnOutput) {
 TEST_F(AILanguageModelTest, OutputOverflowsModelMaxTokens) {
   auto session = CreateSession();
   // Add a prompt to start, this should be kept after the overflow.
-  EXPECT_THAT(Prompt(*session, MakeInput("foo")),
-              ElementsAreArray(FormatResponses({"UfooEM"})));
+  EXPECT_THAT(Prompt(*session, MakeInput("foo")), ElementsAreArray({"UfooEM"}));
 
   // Set a fake response that will overrun the max model tokens.
   fake_broker_->settings().set_execute_result(
@@ -760,7 +786,7 @@ TEST_F(AILanguageModelTest, OutputOverflowsModelMaxTokens) {
   // Now prompt again, the failed prompt should not be present.
   fake_broker_->settings().set_execute_result({});
   EXPECT_THAT(Prompt(*session, MakeInput("baz")),
-              ElementsAreArray(FormatResponses({"UfooEM", "UbazEM"})));
+              ElementsAreArray({"UfooEM", "UbazEM"}));
 }
 
 TEST_F(AILanguageModelTest, OutputOverflowsAdditionalBuffer) {
@@ -788,8 +814,7 @@ TEST_F(AILanguageModelTest, OutputOverflowsAdditionalBuffer) {
 TEST_F(AILanguageModelTest, OutputOverflowsContextMaxTokens) {
   auto session = CreateSession();
   // Add a prompt to start, this should be kept after the overflow.
-  EXPECT_THAT(Prompt(*session, MakeInput("foo")),
-              ElementsAreArray(FormatResponses({"UfooEM"})));
+  EXPECT_THAT(Prompt(*session, MakeInput("foo")), ElementsAreArray({"UfooEM"}));
 
   // Set a fake response that will overflow the maximum context size.
   fake_broker_->settings().set_execute_result(
@@ -804,7 +829,7 @@ TEST_F(AILanguageModelTest, OutputOverflowsContextMaxTokens) {
   // Now prompt again, the failed prompt should not be present.
   fake_broker_->settings().set_execute_result({});
   EXPECT_THAT(Prompt(*session, MakeInput("baz")),
-              ElementsAreArray(FormatResponses({"UfooEM", "UbazEM"})));
+              ElementsAreArray({"UfooEM", "UbazEM"}));
 }
 
 TEST_F(AILanguageModelTest, DisconnectErrorUnknown) {
@@ -833,8 +858,7 @@ TEST_F(AILanguageModelTest, Destroy) {
   auto session = CreateSession();
   base::RunLoop run_loop;
   session.set_disconnect_handler(run_loop.QuitClosure());
-  EXPECT_THAT(Prompt(*session, MakeInput("foo")),
-              ElementsAreArray(FormatResponses({"UfooEM"})));
+  EXPECT_THAT(Prompt(*session, MakeInput("foo")), ElementsAreArray({"UfooEM"}));
   session->Destroy();
   run_loop.Run();
 }
@@ -914,11 +938,13 @@ INSTANTIATE_TEST_SUITE_P(
                       LanguageParams{"*", {"en"}, false},
                       LanguageParams{"*", {"fr"}, false},
                       LanguageParams{"", {"en"}, false},
-                      LanguageParams{"", {"fr"}, true},
+                      LanguageParams{"", {"de"}, false},
+                      LanguageParams{"", {"tlh"}, true},
                       LanguageParams{"es,ja", {"es"}, false},
                       LanguageParams{"en,es,ja", {"ja"}, false},
                       LanguageParams{"en,es,ja", {"ja", "es"}, false},
-                      LanguageParams{"en,es,ja", {"ja", "fr"}, true}));
+                      LanguageParams{"en,es,ja", {"ja", "tlh"}, true},
+                      LanguageParams{"en,es,ja,de", {"de"}, false}));
 
 TEST_F(AILanguageModelTest, UnsupportedInputCapability) {
   TestCreateLanguageModelClient language_model_client;
@@ -1073,12 +1099,9 @@ TEST_F(AILanguageModelTest, MultimodalInput) {
           CreateTestAudio())),
       /*is_prefix=*/false));
   EXPECT_THAT(Prompt(*session, std::move(input)),
-              ElementsAreArray(FormatResponses({"UfooEU<image>EU<audio>EM"})));
+              ElementsAreArray({"UfooEU<image>EU<audio>EM"}));
 }
 
-// TODO: crbug.com/474999857 Enable on Android when download progress is
-// supported.
-#if !BUILDFLAG(IS_ANDROID)
 TEST_F(AILanguageModelTest, ModelDownload) {
   MockDownloadProgressObserver observer;
   GetAIManagerInterface()->AddModelDownloadProgressObserver(
@@ -1102,7 +1125,6 @@ TEST_F(AILanguageModelTest, ModelDownload) {
   fake_broker_->component_state().UpdateDownloadProgress(total_bytes);
   observer.ExpectReceivedNormalizedUpdate(total_bytes, total_bytes);
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 TEST_F(AILanguageModelTest, MeasureInputUsage) {
   auto session = CreateSession();
@@ -1212,26 +1234,22 @@ TEST_F(AILanguageModelTest, QueuesOperations) {
   session->Prompt(MakeInput("baz"), nullptr, responder3.BindRemote());
 
   EXPECT_TRUE(responder1.WaitForCompletion());
-  EXPECT_THAT(responder1.responses(),
-              ElementsAreArray(FormatResponses({"UfooEM"})));
+  EXPECT_THAT(responder1.responses(), ElementsAreArray({"UfooEM"}));
 
   EXPECT_TRUE(responder2.WaitForCompletion());
-  EXPECT_THAT(responder2.responses(),
-              ElementsAreArray(FormatResponses({"UfooEM", "UbarEM"})));
+  EXPECT_THAT(responder2.responses(), ElementsAreArray({"UfooEM", "UbarEM"}));
 
   EXPECT_TRUE(responder3.WaitForCompletion());
-  EXPECT_THAT(
-      responder3.responses(),
-      ElementsAreArray(FormatResponses({"UfooEM", "UbarEM", "UbazEM"})));
+  EXPECT_THAT(responder3.responses(),
+              ElementsAreArray({"UfooEM", "UbarEM", "UbazEM"}));
 
   auto fork_future = fork_client.result().Take();
   ASSERT_OK(fork_future);
   mojo::Remote<blink::mojom::AILanguageModel> fork_model =
       mojo::Remote<blink::mojom::AILanguageModel>(
           std::move(fork_future.value().language_model));
-  EXPECT_THAT(
-      Prompt(*fork_model, MakeInput("fork")),
-      ElementsAreArray(FormatResponses({"UfooEM", "UbarEM", "UforkEM"})));
+  EXPECT_THAT(Prompt(*fork_model, MakeInput("fork")),
+              ElementsAreArray({"UfooEM", "UbarEM", "UforkEM"}));
 }
 
 TEST_F(AILanguageModelTest, Constraint) {
@@ -1239,7 +1257,8 @@ TEST_F(AILanguageModelTest, Constraint) {
   EXPECT_THAT(
       Prompt(*session, MakeInput("foo"),
              on_device_model::mojom::ResponseConstraint::NewRegex("reg")),
-      ElementsAre("Constraint: regex reg", "UfooEM"));
+      ElementsAre("Hint: constrained_decoding ", "Constraint: regex reg",
+                  "UfooEM"));
 }
 
 TEST_F(AILanguageModelTest, Prefix) {
@@ -1262,8 +1281,7 @@ TEST_F(AILanguageModelTest, ServiceCrash) {
 
   // Recreating the session should be fine.
   session = CreateSession();
-  EXPECT_THAT(Prompt(*session, MakeInput("foo")),
-              ElementsAreArray(FormatResponses({"UfooEM"})));
+  EXPECT_THAT(Prompt(*session, MakeInput("foo")), ElementsAreArray({"UfooEM"}));
 }
 
 TEST_F(AILanguageModelTest, CrashRecovery) {
@@ -1358,31 +1376,31 @@ TEST_F(AILanguageModelTest, CanCreate_SupportedLanguages) {
 }
 
 TEST_F(AILanguageModelTest, CanCreate_UnsupportedInputLanguages) {
-  base::MockCallback<AIManager::CanCreateLanguageModelCallback> callback;
-  EXPECT_CALL(callback, Run(blink::mojom::ModelAvailabilityCheckResult::
-                                kUnavailableUnsupportedLanguage));
+  base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
   auto options = blink::mojom::AILanguageModelCreateOptions::New();
   options->expected_inputs.emplace();
   options->expected_inputs->push_back(
       blink::mojom::AILanguageModelExpected::New(
           blink::mojom::AILanguageModelPromptType::kText,
-          AITestUtils::ToMojoLanguageCodes({"fr"})));
+          AITestUtils::ToMojoLanguageCodes({"tlh"})));
   GetAIManagerInterface()->CanCreateLanguageModel(std::move(options),
-                                                  callback.Get());
+                                                  future.GetCallback());
+  EXPECT_EQ(future.Get(), blink::mojom::ModelAvailabilityCheckResult::
+                              kUnavailableUnsupportedLanguage);
 }
 
 TEST_F(AILanguageModelTest, CanCreate_UnsupportedOutputLanguages) {
-  base::MockCallback<AIManager::CanCreateLanguageModelCallback> callback;
-  EXPECT_CALL(callback, Run(blink::mojom::ModelAvailabilityCheckResult::
-                                kUnavailableUnsupportedLanguage));
+  base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
   auto options = blink::mojom::AILanguageModelCreateOptions::New();
   options->expected_outputs.emplace();
   options->expected_outputs->push_back(
       blink::mojom::AILanguageModelExpected::New(
           blink::mojom::AILanguageModelPromptType::kText,
-          AITestUtils::ToMojoLanguageCodes({"fr"})));
+          AITestUtils::ToMojoLanguageCodes({"tlh"})));
   GetAIManagerInterface()->CanCreateLanguageModel(std::move(options),
-                                                  callback.Get());
+                                                  future.GetCallback());
+  EXPECT_EQ(future.Get(), blink::mojom::ModelAvailabilityCheckResult::
+                              kUnavailableUnsupportedLanguage);
 }
 
 TEST_F(AILanguageModelTest, CanCreate_TextInputCapabilities) {
@@ -2216,7 +2234,85 @@ TEST_F(AILanguageModelTest, CreatePermissionsPolicyDisabled) {
   GetAIManagerRemote()->CreateLanguageModel(
       language_model_client.BindNewPipeAndPassRemote(),
       blink::mojom::AILanguageModelCreateOptions::New());
-  EXPECT_EQ(observer.WaitForBadMessage(), "Permissions policy disabled");
+  EXPECT_EQ(observer.WaitForBadMessage(), "Policy or user setting disabled");
+}
+
+TEST_F(AILanguageModelTest, CreateBuiltInAIAPIsEnterprisePolicyDisabled) {
+  SetBuiltInAIAPIsEnterprisePolicy(false);
+  base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
+  ai_manager_->CanCreateLanguageModel(
+      blink::mojom::AILanguageModelCreateOptions::New(), future.GetCallback());
+  EXPECT_EQ(future.Get(), blink::mojom::ModelAvailabilityCheckResult::
+                              kUnavailableEnterprisePolicyDisabled);
+
+  mojo::test::BadMessageObserver observer;
+  TestCreateLanguageModelClient language_model_client;
+  GetAIManagerRemote()->CreateLanguageModel(
+      language_model_client.BindNewPipeAndPassRemote(),
+      blink::mojom::AILanguageModelCreateOptions::New());
+  EXPECT_EQ(observer.WaitForBadMessage(), "Policy or user setting disabled");
+  SetBuiltInAIAPIsEnterprisePolicy(true);
+}
+
+TEST_F(AILanguageModelTest, CreateGenAILocalEnterprisePolicyDisabled) {
+  SetGenAILocalEnterprisePolicy(false);
+  base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
+  ai_manager_->CanCreateLanguageModel(
+      blink::mojom::AILanguageModelCreateOptions::New(), future.GetCallback());
+  EXPECT_EQ(future.Get(), blink::mojom::ModelAvailabilityCheckResult::
+                              kUnavailableEnterprisePolicyDisabled);
+
+  mojo::test::BadMessageObserver observer;
+  TestCreateLanguageModelClient language_model_client;
+  GetAIManagerRemote()->CreateLanguageModel(
+      language_model_client.BindNewPipeAndPassRemote(),
+      blink::mojom::AILanguageModelCreateOptions::New());
+  EXPECT_EQ(observer.WaitForBadMessage(), "Policy or user setting disabled");
+  SetGenAILocalEnterprisePolicy(true);
+}
+
+TEST_F(AILanguageModelTest, CreateOnDeviceAiUserSettingDisabled) {
+  SetOnDeviceAiUserSetting(false);
+  base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
+  ai_manager_->CanCreateLanguageModel(
+      blink::mojom::AILanguageModelCreateOptions::New(), future.GetCallback());
+  EXPECT_EQ(future.Get(), blink::mojom::ModelAvailabilityCheckResult::
+                              kUnavailableFeatureNotEnabled);
+
+  mojo::test::BadMessageObserver observer;
+  TestCreateLanguageModelClient language_model_client;
+  GetAIManagerRemote()->CreateLanguageModel(
+      language_model_client.BindNewPipeAndPassRemote(),
+      blink::mojom::AILanguageModelCreateOptions::New());
+  EXPECT_EQ(observer.WaitForBadMessage(), "Policy or user setting disabled");
+  SetOnDeviceAiUserSetting(true);
+}
+
+class AILanguageModelConfiguredMaxOutputTokensTest
+    : public AILanguageModelTest {
+ protected:
+  optimization_guide::proto::OnDeviceModelExecutionFeatureConfig CreateConfig()
+      override {
+    auto config = AILanguageModelTest::CreateConfig();
+    config.mutable_output_config()->set_max_output_tokens(
+        kTestConfiguredMaxOutputTokens);
+    return config;
+  }
+};
+
+TEST_F(AILanguageModelConfiguredMaxOutputTokensTest,
+       OutputCappedByConfiguredMaxOutputTokens) {
+  auto session = CreateSession();
+  // Set a fake response that exceeds the configured max_output_tokens (10) but
+  // is well within the context-window capacity. Without the cap, this would
+  // succeed; with the cap it should trigger kErrorResponseExceedsMaxTokens.
+  fake_broker_->settings().set_execute_result({std::string(15, 'a')});
+  AITestUtils::TestStreamingResponder responder;
+  session->Prompt(MakeInput("foo"), nullptr, responder.BindRemote());
+  EXPECT_FALSE(responder.WaitForCompletion());
+  EXPECT_EQ(responder.error_status(),
+            blink::mojom::ModelStreamingResponseStatus::
+                kErrorResponseExceedsMaxTokens);
 }
 
 }  // namespace

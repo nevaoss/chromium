@@ -52,7 +52,6 @@
 #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/global_error/global_error.h"
@@ -186,6 +185,7 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AppMenuModel, kTabGroupsMenuItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AppMenuModel, kDownloadsMenuItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AppMenuModel, kHistoryMenuItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AppMenuModel, kExtensionsMenuItem);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AppMenuModel, kClearBrowsingDataMenuItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AppMenuModel, kMoreToolsMenuItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AppMenuModel, kIncognitoMenuItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AppMenuModel,
@@ -1011,7 +1011,9 @@ void ToolsMenuModel::Build(Browser* browser) {
     // TODO(crbug.com/475222200): When in immersive, swapping between tab
     // strip types create duplicate tab strips. Until that is resolved,
     // disable the ability to swap between tab strips while in immersive.
-    if (!ImmersiveModeController::From(browser)->IsEnabled()) {
+    // Note that in unit tests, `immersive_controller` may not exist.
+    if (auto* immersive_controller = ImmersiveModeController::From(browser);
+        immersive_controller && !immersive_controller->IsEnabled()) {
       if (controller->ShouldDisplayVerticalTabs()) {
         AddItemWithStringIdAndVectorIcon(this, IDC_TOGGLE_VERTICAL_TABS,
                                          IDS_SWITCH_TO_HORIZONTAL_TAB,
@@ -1968,7 +1970,7 @@ void AppMenuModel::Build() {
                                    kNewWindowIcon);
 
   // This menu item is not visible in Guest Mode. If incognito mode is not
-  // available, it will be shown in disabled state. (crbug.com/1100791)
+  // available, it will be shown in disabled state. (crbug.com/40703208)
   if (!browser_->profile()->IsGuestSession()) {
     AddItemWithStringIdAndVectorIcon(this, IDC_NEW_INCOGNITO_WINDOW,
                                      IDS_NEW_INCOGNITO_WINDOW,
@@ -2065,6 +2067,8 @@ void AppMenuModel::Build() {
   AddItemWithStringIdAndVectorIcon(this, IDC_CLEAR_BROWSING_DATA,
                                    IDS_CLEAR_BROWSING_DATA,
                                    kTrashCanRefreshIcon);
+  SetElementIdentifierAt(GetIndexOfCommandId(IDC_CLEAR_BROWSING_DATA).value(),
+                         kClearBrowsingDataMenuItem);
 
   AddSeparator(ui::NORMAL_SEPARATOR);
   CreateZoomMenu();
@@ -2083,10 +2087,8 @@ void AppMenuModel::Build() {
             features::kGlicAppMenuNewBadge));
   }
 
-  if (browser()
-          ->GetFeatures()
-          .lens_overlay_entry_point_controller()
-          ->IsEnabled()) {
+  if (auto* controller = lens::LensOverlayEntryPointController::From(browser());
+      controller && controller->IsEnabled()) {
     const gfx::VectorIcon& icon =
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
         vector_icons::kGoogleLensMonochromeLogoIcon;

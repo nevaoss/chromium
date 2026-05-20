@@ -7,11 +7,14 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <variant>
 #include <vector>
 
 #include "base/base64.h"
+#include "base/check.h"
 #include "base/feature_list.h"
 #include "base/files/file_path.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/time.h"
 #include "components/feature_engagement/public/feature_constants.h"
@@ -19,7 +22,6 @@
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/page_content_annotations/content/annotate_page_content_request.h"
-#include "components/page_content_annotations/content/page_content_annotations_web_contents_observer.h"
 #include "components/page_content_annotations/core/page_content_annotations_features.h"
 #include "components/page_content_annotations/core/page_content_cache.h"
 #include "components/page_content_annotations/core/page_content_cache_handler.h"
@@ -93,6 +95,45 @@ std::unique_ptr<PageContentCacheHandler> CreatePageContentCacheHandler(
 
 }  // namespace
 
+bool IsAnnotatedPageContentPtr(const PageContent& content) {
+  return std::holds_alternative<RefCountedAnnotatedPageContentPtr>(content);
+}
+
+bool IsPDFTextPtr(const PageContent& content) {
+  return std::holds_alternative<RefCountedPDFTextPtr>(content);
+}
+
+RefCountedAnnotatedPageContentPtr GetAnnotatedPageContentPtrFromPageContent(
+    const PageContent& content) {
+  if (const auto* ptr =
+          std::get_if<RefCountedAnnotatedPageContentPtr>(&content)) {
+    return *ptr;
+  }
+  return nullptr;
+}
+
+RefCountedAnnotatedPageContentPtr GetAnnotatedPageContentPtrFromPageContent(
+    PageContent&& content) {
+  if (auto* ptr = std::get_if<RefCountedAnnotatedPageContentPtr>(&content)) {
+    return std::move(*ptr);
+  }
+  return nullptr;
+}
+
+RefCountedPDFTextPtr GetPDFTextPtrFromPageContent(const PageContent& content) {
+  if (const auto* ptr = std::get_if<RefCountedPDFTextPtr>(&content)) {
+    return *ptr;
+  }
+  return nullptr;
+}
+
+RefCountedPDFTextPtr GetPDFTextPtrFromPageContent(PageContent&& content) {
+  if (auto* ptr = std::get_if<RefCountedPDFTextPtr>(&content)) {
+    return std::move(*ptr);
+  }
+  return nullptr;
+}
+
 PageContentExtractionService::PageContentExtractionService(
     os_crypt_async::OSCryptAsync* os_crypt_async,
     const base::FilePath& profile_path,
@@ -125,14 +166,25 @@ bool PageContentExtractionService::ShouldEnablePageContentExtraction() const {
 
 void PageContentExtractionService::OnPageContentExtracted(
     content::Page& page,
-    scoped_refptr<const RefCountedAnnotatedPageContent> annotated_page_content,
+    PageContent page_content,
     const std::vector<uint8_t>& screenshot_data,
     std::optional<int> tab_id) {
   for (auto& observer : observers_) {
-    observer.OnPageContentExtracted(page, annotated_page_content);
+    observer.OnPageContentExtracted(page, page_content);
   }
 
   if (!is_page_content_cache_enabled_) {
+    return;
+  }
+
+  // Note: Unlike APC result, PDF text result is not stored to the cache. The
+  // below cache handling logic does not apply to it.
+  // TODO(b/487632737): Investigate the support for on-demand PDF text
+  // extraction, which may require `page_content_cache_handler_` to interact
+  // with the PDF text result.
+  RefCountedAnnotatedPageContentPtr annotated_page_content_ptr =
+      GetAnnotatedPageContentPtrFromPageContent(page_content);
+  if (!annotated_page_content_ptr) {
     return;
   }
 
@@ -144,7 +196,7 @@ void PageContentExtractionService::OnPageContentExtracted(
 
   page_content_cache_handler_->ProcessPageContentExtraction(
       tab_id, ToWebStateWrapper(web_contents),
-      ToPageContext(annotated_page_content->data, web_contents,
+      ToPageContext(annotated_page_content_ptr->data, web_contents,
                     screenshot_data),
       base::Time::Now());
 }
@@ -153,8 +205,7 @@ std::optional<ExtractedPageContentResult>
 PageContentExtractionService::GetExtractedPageContentAndEligibilityForPage(
     content::Page& page) {
   AnnotatedPageContentRequest* request =
-      GetAnnotatedPageContentRequestFromWebContents(
-          content::WebContents::FromRenderFrameHost(&page.GetMainDocument()));
+      GetAnnotatedPageContentRequestFromPage(page);
   return request ? request->GetCachedContentAndEligibility() : std::nullopt;
 }
 
@@ -163,16 +214,24 @@ void PageContentExtractionService::
         content::Page& page,
         GetExtractedPageContentAndEligibilityCallback callback) {
   AnnotatedPageContentRequest* request =
-      GetAnnotatedPageContentRequestFromWebContents(
-          content::WebContents::FromRenderFrameHost(&page.GetMainDocument()));
+      GetAnnotatedPageContentRequestFromPage(page);
   if (request) {
     request->RefreshExtractedPageContentAndEligibilityForPage(
         std::move(callback));
   } else {
-    // TODO(b/490161242): Improve this behavior: allow for constructing an
-    // AnnotatedPageContentRequest if one doesn't already exist, and, if not
-    // constructible, return the reason why via a base::expected. For now, we
-    // just match the behavior of the other calls.
+    std::move(callback).Run(std::nullopt);
+  }
+}
+
+void PageContentExtractionService::
+    GetExtractedPageContentAndEligibilityForPageAsync(
+        content::Page& page,
+        GetExtractedPageContentAndEligibilityCallback callback) {
+  AnnotatedPageContentRequest* request =
+      GetAnnotatedPageContentRequestFromPage(page);
+  if (request) {
+    request->GetCachedContentAndEligibilityAsync(std::move(callback));
+  } else {
     std::move(callback).Run(std::nullopt);
   }
 }
@@ -181,9 +240,20 @@ std::optional<bool>
 PageContentExtractionService::GetServerUploadEligibilityForPage(
     content::Page& page) {
   AnnotatedPageContentRequest* request =
-      GetAnnotatedPageContentRequestFromWebContents(
-          content::WebContents::FromRenderFrameHost(&page.GetMainDocument()));
+      GetAnnotatedPageContentRequestFromPage(page);
   return request ? request->GetServerUploadEligibility() : std::nullopt;
+}
+
+void PageContentExtractionService::GetServerUploadEligibilityForPageAsync(
+    content::Page& page,
+    GetServerUploadEligibilityCallback callback) {
+  AnnotatedPageContentRequest* request =
+      GetAnnotatedPageContentRequestFromPage(page);
+  if (request) {
+    request->GetServerUploadEligibilityAsync(std::move(callback));
+  } else {
+    std::move(callback).Run(std::nullopt);
+  }
 }
 
 void PageContentExtractionService::OnTabClosed(int64_t tab_id) {
@@ -213,7 +283,7 @@ void PageContentExtractionService::OnVisibilityChanged(
   }
 
   std::optional<ExtractedPageContentResult> extracted_result =
-      request->GetCachedContentAndEligibility();
+      request->GetCachedContentAndEligibility(/*log_metrics=*/false);
   if (extracted_result) {
     page_content_cache_handler_->OnVisibilityChanged(
         tab_id, ToWebStateWrapper(web_contents),
@@ -252,9 +322,14 @@ PageContentExtractionService::GetAnnotatedPageContentRequestFromWebContents(
   if (!web_contents) {
     return nullptr;
   }
-  PageContentAnnotationsWebContentsObserver* observer =
-      PageContentAnnotationsWebContentsObserver::FromWebContents(web_contents);
-  return observer ? observer->GetAnnotatedPageContentRequest() : nullptr;
+  return AnnotatedPageContentRequest::FromWebContents(web_contents);
+}
+
+AnnotatedPageContentRequest*
+PageContentExtractionService::GetAnnotatedPageContentRequestFromPage(
+    content::Page& page) {
+  return GetAnnotatedPageContentRequestFromWebContents(
+      content::WebContents::FromRenderFrameHost(&page.GetMainDocument()));
 }
 
 }  // namespace page_content_annotations

@@ -37,7 +37,7 @@ bool IsContextualCueingEnabled() {
     return base::FeatureList::IsEnabled(kContextualCueing);
   }
 
-  return glic::GlicEnabling::IsEnabledByFlags();
+  return glic::GlicEnabling::IsEnabledByGlobalCriteria();
 }
 
 bool IsZeroStateSuggestionsEnabled() {
@@ -53,7 +53,7 @@ bool IsZeroStateSuggestionsEnabled() {
     return base::FeatureList::IsEnabled(kGlicZeroStateSuggestions);
   }
 
-  return glic::GlicEnabling::IsEnabledByFlags();
+  return glic::GlicEnabling::IsEnabledByGlobalCriteria();
 }
 
 const base::FeatureParam<base::TimeDelta> kBackoffTime(&kContextualCueing,
@@ -99,6 +99,16 @@ const base::FeatureParam<base::TimeDelta> kPdfPageCountCaptureDelay(
     &kContextualCueing,
     "PdfPageCountCaptureDelay",
     base::Seconds(4));
+
+const base::FeatureParam<int> kMinWindowWidthForPdfAutoOpen(
+    &kEnableAutoOpenGlicSidePanel,
+    "MinWindowWidthForPdfAutoOpen",
+    1000);
+
+const base::FeatureParam<int> kMinPageCountForPdfAutoOpen(
+    &kEnableAutoOpenGlicSidePanel,
+    "MinPageCountForPdfAutoOpen",
+    5);
 
 const base::FeatureParam<bool> kEnablePageContentExtraction(
     &kContextualCueing,

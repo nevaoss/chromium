@@ -15,6 +15,7 @@ import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEdi
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.EDITOR_FIELDS;
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.EDITOR_TITLE;
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.OPEN_HELP_CALLBACK;
+import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.TOOLBAR_BRANDING_ICON_ID;
 import static org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorProperties.VALIDATE_ON_SHOW;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.DATE;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.ItemType.DROPDOWN;
@@ -23,16 +24,21 @@ import static org.chromium.chrome.browser.autofill.editors.common.EditorComponen
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.IMPORTANT_FOR_ACCESSIBILITY;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_ALL_KEYS;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_TEXT;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_VISIBLE;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.SHOW_BACKGROUND;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.TEXT_APPEARANCE;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.isEditable;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.validateForm;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsUtil.scrollToFieldWithErrorMessage;
 import static org.chromium.chrome.browser.autofill.editors.common.date_field.DateFieldProperties.DATE_ALL_KEYS;
 import static org.chromium.chrome.browser.autofill.editors.common.dropdown_field.DropdownFieldProperties.DROPDOWN_ALL_KEYS;
 import static org.chromium.chrome.browser.autofill.editors.common.dropdown_field.DropdownFieldProperties.DROPDOWN_KEY_VALUE_LIST;
+import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.ERROR_MESSAGE;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.IS_REQUIRED;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.LABEL;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.VALIDATOR;
 import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.VALUE;
+import static org.chromium.chrome.browser.autofill.editors.common.field.FieldProperties.VALUE_CHANGED_CALLBACK;
 import static org.chromium.chrome.browser.autofill.editors.common.text_field.TextFieldProperties.TEXT_ALL_KEYS;
 import static org.chromium.chrome.browser.autofill.editors.common.text_field.TextFieldProperties.TEXT_FIELD_TYPE;
 
@@ -51,7 +57,6 @@ import org.chromium.chrome.browser.autofill.R;
 import org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorCoordinator.Delegate;
 import org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.EditorItem;
 import org.chromium.chrome.browser.autofill.editors.common.date_field.DateFieldValidator;
-import org.chromium.chrome.browser.autofill.editors.common.field.EditorFieldValidator;
 import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncherFactory;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.autofill.autofill_ai.AttributeInstance;
@@ -60,12 +65,15 @@ import org.chromium.components.autofill.autofill_ai.DataType;
 import org.chromium.components.autofill.autofill_ai.EntityInstance;
 import org.chromium.components.autofill.autofill_ai.RecordType;
 import org.chromium.components.signin.base.CoreAccountInfo;
-import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.ui.modelutil.ListModel;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.ui.text.ChromeClickableSpan;
+import org.chromium.ui.text.SpanApplier;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** Mediator for the Entity Editor. */
@@ -85,6 +93,7 @@ class EntityEditorMediator {
     private final EntityInstance mEntityInstance;
     private final PropertyModel mEditorModel;
     private final Map<AttributeType, PropertyModel> mAttributeFields = new HashMap<>();
+    private @Nullable EditorItem mRequiredSourceNotice;
 
     EntityEditorMediator(
             Context context,
@@ -108,6 +117,8 @@ class EntityEditorMediator {
 
     private PropertyModel buildEditorModel() {
         final boolean isNewEntity = TextUtils.isEmpty(mEntityInstance.getGUID());
+        final boolean isNewWalletEntity =
+                isNewEntity && mEntityInstance.getRecordType() == RecordType.SERVER_WALLET;
         String editorTitle =
                 isNewEntity
                         ? mEntityInstance.getEntityType().getAddEntityTypeString()
@@ -133,6 +144,9 @@ class EntityEditorMediator {
                 .with(VALIDATE_ON_SHOW, false)
                 .with(EDITOR_FIELDS, getEditorFields())
                 .with(OPEN_HELP_CALLBACK, this::onOpenHelpAndFeedback)
+                .with(
+                        TOOLBAR_BRANDING_ICON_ID,
+                        isNewWalletEntity ? R.layout.autofill_editor_toolbar_icon : 0)
                 .build();
     }
 
@@ -154,13 +168,76 @@ class EntityEditorMediator {
     }
 
     private void onDone() {
-        if (!validateForm(mEditorModel.get(EDITOR_FIELDS))) {
+        if (!validateEntityForm()) {
             scrollToFieldWithErrorMessage(mEditorModel.get(EDITOR_FIELDS));
             return;
         }
         assumeNonNull(mEditorModel).set(EntityEditorProperties.VISIBLE, false);
         commitChanges();
-        mDelegate.onDone(mEntityInstance);
+        mDelegate.onDone(
+                mEntityInstance,
+                mEntityInstance.getRecordType() == RecordType.LOCAL
+                        ? R.string.autofill_ai_save_or_update_local_entity_source_notice
+                        : R.string.autofill_ai_save_or_update_entity_in_wallet_source_notice,
+                R.string.done);
+    }
+
+    /**
+     * The entity editor makes sure at least 1 of the required fields are non-empty. All required
+     * fields must be non-empty in other editors.
+     *
+     * @return {@code true} if any of the required fields are non-empty, {@code false} otherwise.
+     */
+    private boolean validateEntityForm() {
+        List<EditorItem> emptyRequiredFields = new ArrayList<>();
+        boolean hasRequiredFields = false;
+        boolean hasNonEmptyRequiredField = false;
+        for (EditorItem editorItem : mEditorModel.get(EDITOR_FIELDS)) {
+            if (!isEditable(editorItem)) {
+                continue;
+            }
+            if (editorItem.model.get(IS_REQUIRED)) {
+                hasRequiredFields = true;
+                if (TextUtils.isEmpty(editorItem.model.get(VALUE))
+                        || TextUtils.getTrimmedLength(editorItem.model.get(VALUE)) == 0) {
+                    // Collect all required fields that are empty.
+                    emptyRequiredFields.add(editorItem);
+                } else {
+                    // Stop the process if at least 1 required field is non-empty.
+                    hasNonEmptyRequiredField = true;
+                    break;
+                }
+            }
+        }
+        // Run other validators in any case so set the corresponding error messages.
+        final boolean isFormValid = validateForm(mEditorModel.get(EDITOR_FIELDS));
+        if (hasRequiredFields && !hasNonEmptyRequiredField) {
+            for (EditorItem editorItem : emptyRequiredFields) {
+                editorItem.model.set(
+                        ERROR_MESSAGE, getRequiredFieldErrorMessage(editorItem.model.get(LABEL)));
+            }
+            if (mRequiredSourceNotice != null) {
+                mRequiredSourceNotice.model.set(NOTICE_VISIBLE, true);
+            }
+            return false;
+        }
+        if (isFormValid) {
+            // Hide the error messages even though the editor is about to be hidden as well.
+            resetErrorMessages();
+        }
+        return isFormValid;
+    }
+
+    private void resetErrorMessages() {
+        if (mRequiredSourceNotice != null) {
+            mRequiredSourceNotice.model.set(NOTICE_VISIBLE, false);
+        }
+        for (EditorItem editorItem : mEditorModel.get(EDITOR_FIELDS)) {
+            if (!isEditable(editorItem)) {
+                continue;
+            }
+            editorItem.model.set(ERROR_MESSAGE, "");
+        }
     }
 
     private void commitChanges() {
@@ -204,15 +281,19 @@ class EntityEditorMediator {
                                     + attributeType.getDataType();
             }
         }
-        maybeAddEntitySourceNoticeItem(editorFields, mEntityInstance.getRecordType());
+
+        maybeAddRequiredFieldsNoticeItem(editorFields);
+        maybeAddEntitySourceNoticeItem(
+                editorFields,
+                mEntityInstance.getRecordType(),
+                mEntityInstance.isMaskedServerEntity());
         return editorFields;
     }
 
     private EditorItem getTextFieldItem(
             EntityInstance entityInstance, AttributeType attributeType) {
         String value = getStringAttribute(entityInstance, attributeType);
-        return new EditorItem(
-                TEXT_INPUT,
+        PropertyModel itemModel =
                 new PropertyModel.Builder(TEXT_ALL_KEYS)
                         .with(LABEL, attributeType.getTypeNameAsString())
                         .with(TEXT_FIELD_TYPE, attributeType.getFieldType())
@@ -220,15 +301,9 @@ class EntityEditorMediator {
                         .with(
                                 IS_REQUIRED,
                                 entityInstance.getEntityType().isRequiredAttribute(attributeType))
-                        .with(
-                                VALIDATOR,
-                                getRequiredFieldValidator(
-                                        attributeType.getTypeNameAsString(),
-                                        entityInstance
-                                                .getEntityType()
-                                                .isRequiredAttribute(attributeType)))
-                        .build(),
-                /* isFullLine= */ true);
+                        .build();
+        itemModel.set(VALUE_CHANGED_CALLBACK, (unused) -> onFieldValueChanged(itemModel));
+        return new EditorItem(TEXT_INPUT, itemModel, /* isFullLine= */ true);
     }
 
     private EditorItem getCountryDropdownItem(
@@ -237,8 +312,7 @@ class EntityEditorMediator {
         if (TextUtils.isEmpty(value)) {
             value = mPersonalDataManager.getDefaultCountryCodeForNewAddress();
         }
-        return new EditorItem(
-                DROPDOWN,
+        PropertyModel itemModel =
                 new PropertyModel.Builder(DROPDOWN_ALL_KEYS)
                         .with(LABEL, attributeType.getTypeNameAsString())
                         .with(
@@ -248,14 +322,9 @@ class EntityEditorMediator {
                                 IS_REQUIRED,
                                 entityInstance.getEntityType().isRequiredAttribute(attributeType))
                         .with(VALUE, value)
-                        .with(
-                                VALIDATOR,
-                                getRequiredFieldValidator(
-                                        attributeType.getTypeNameAsString(),
-                                        entityInstance
-                                                .getEntityType()
-                                                .isRequiredAttribute(attributeType)))
-                        .build());
+                        .build();
+        itemModel.set(VALUE_CHANGED_CALLBACK, (unused) -> onFieldValueChanged(itemModel));
+        return new EditorItem(DROPDOWN, itemModel, /* isFullLine= */ true);
     }
 
     private EditorItem getDateDropdown(EntityInstance entityInstance, AttributeType attributeType) {
@@ -266,35 +335,37 @@ class EntityEditorMediator {
             attributeValue =
                     ((AttributeInstance.DateValue) attribute.getAttributeValue()).toString();
         }
-        EditorFieldValidator validator =
-                new DateFieldValidator(
-                        mContext.getString(
-                                R.string.autofill_ai_entity_editor_invalid_date_error_message));
-        if (entityInstance.getEntityType().isRequiredAttribute(attributeType)) {
-            validator.setRequiredErrorMessage(
-                    getRequiredFieldErrorMessage(attributeType.getTypeNameAsString()));
-        }
-        return new EditorItem(
-                DATE,
+        PropertyModel itemModel =
                 new PropertyModel.Builder(DATE_ALL_KEYS)
                         .with(LABEL, attributeType.getTypeNameAsString())
                         .with(
                                 IS_REQUIRED,
                                 entityInstance.getEntityType().isRequiredAttribute(attributeType))
                         .with(VALUE, attributeValue)
-                        .with(VALIDATOR, validator)
-                        .build(),
-                /* isFullLine= */ true);
+                        .with(
+                                VALIDATOR,
+                                new DateFieldValidator(
+                                        mContext.getString(
+                                                R.string
+                                                        .autofill_ai_entity_editor_invalid_date_error_message)))
+                        .build();
+        itemModel.set(VALUE_CHANGED_CALLBACK, (unused) -> onFieldValueChanged(itemModel));
+        return new EditorItem(DATE, itemModel, /* isFullLine= */ true);
     }
 
-    private @Nullable EditorFieldValidator getRequiredFieldValidator(
-            String label, boolean isRequired) {
-        if (!isRequired) {
-            return null;
+    private void onFieldValueChanged(PropertyModel itemModel) {
+        // Reset error messages on required fields if the required field value changes.
+        if (itemModel.get(IS_REQUIRED)) {
+            for (EditorItem item : mEditorModel.get(EDITOR_FIELDS)) {
+                if (isEditable(item) && item.model.get(IS_REQUIRED)) {
+                    item.model.set(ERROR_MESSAGE, "");
+                }
+            }
+            // Hide the notice as well.
+            if (mRequiredSourceNotice != null) {
+                mRequiredSourceNotice.model.set(NOTICE_VISIBLE, false);
+            }
         }
-        return new EditorFieldValidator.Builder()
-                .withRequiredErrorMessage(getRequiredFieldErrorMessage(label))
-                .build();
     }
 
     private String getRequiredFieldErrorMessage(String label) {
@@ -313,9 +384,73 @@ class EntityEditorMediator {
         return attributeValue;
     }
 
+    private void maybeAddRequiredFieldsNoticeItem(ListModel<EditorItem> editorFields) {
+        List<EditorItem> requiredFields = new ArrayList<>();
+        for (EditorItem editorItem : editorFields) {
+            if (editorItem.model.get(IS_REQUIRED)) {
+                requiredFields.add(editorItem);
+            }
+        }
+        String notice = getRequiredFieldsNotice(requiredFields);
+        if (!TextUtils.isEmpty(notice)) {
+            mRequiredSourceNotice = getRequiredFieldsNoticeItem(notice);
+            editorFields.add(mRequiredSourceNotice);
+        }
+    }
+
+    private String getRequiredFieldsNotice(List<EditorItem> requiredFields) {
+        switch (requiredFields.size()) {
+            case 0:
+                return "";
+            case 1:
+                final String noticeText1 =
+                        mContext.getString(
+                                R.string
+                                        .autofill_ai_entity_editor_single_required_field_error_message);
+                return noticeText1.replace("$1", requiredFields.get(0).model.get(LABEL));
+            case 2:
+                final String noticeText2 =
+                        mContext.getString(
+                                R.string
+                                        .autofill_ai_entity_editor_two_required_fields_error_message);
+                return noticeText2
+                        .replace("$1", requiredFields.get(0).model.get(LABEL))
+                        .replace("$2", requiredFields.get(1).model.get(LABEL));
+            case 3:
+                final String noticeText3 =
+                        mContext.getString(
+                                R.string
+                                        .autofill_ai_entity_editor_three_required_fields_error_message);
+                return noticeText3
+                        .replace("$1", requiredFields.get(0).model.get(LABEL))
+                        .replace("$2", requiredFields.get(1).model.get(LABEL))
+                        .replace("$3", requiredFields.get(2).model.get(LABEL));
+            default:
+                return "";
+        }
+    }
+
+    private EditorItem getRequiredFieldsNoticeItem(String noticeText) {
+        return new EditorItem(
+                NOTICE,
+                new PropertyModel.Builder(NOTICE_ALL_KEYS)
+                        .with(NOTICE_TEXT, noticeText)
+                        .with(SHOW_BACKGROUND, false)
+                        // Required fields are indicated by an asterisk (*) and
+                        // announced separately by screen readers. Don't announce
+                        // the message itself.
+                        .with(IMPORTANT_FOR_ACCESSIBILITY, false)
+                        .with(NOTICE_VISIBLE, false)
+                        .with(TEXT_APPEARANCE, R.style.TextAppearance_ErrorCaption)
+                        .build(),
+                /* isFullLine= */ true);
+    }
+
     private void maybeAddEntitySourceNoticeItem(
-            ListModel<EditorItem> editorFields, @RecordType int recordType) {
-        String sourceNotice = getEntitySourceNotice(recordType);
+            ListModel<EditorItem> editorFields,
+            @RecordType int recordType,
+            boolean isPrivateEntity) {
+        CharSequence sourceNotice = getEntitySourceNotice(recordType, isPrivateEntity);
         if (TextUtils.isEmpty(sourceNotice)) {
             return;
         }
@@ -323,31 +458,48 @@ class EntityEditorMediator {
                 new EditorItem(
                         NOTICE,
                         new PropertyModel.Builder(NOTICE_ALL_KEYS)
-                                .with(NOTICE_TEXT, getEntitySourceNotice(recordType))
+                                .with(NOTICE_TEXT, sourceNotice)
                                 .with(SHOW_BACKGROUND, true)
                                 .with(IMPORTANT_FOR_ACCESSIBILITY, true)
+                                .with(NOTICE_VISIBLE, true)
                                 .build(),
                         /* isFullLine= */ true));
     }
 
-    private String getEntitySourceNotice(@RecordType int recordType) {
+    private CharSequence getEntitySourceNotice(
+            @RecordType int recordType, boolean isPrivateEntity) {
         switch (recordType) {
             case RecordType.LOCAL:
-                return mContext.getString(R.string.autofill_ai_local_entity_editor_source_notice);
+                return mContext.getString(
+                        R.string.autofill_ai_save_or_update_local_entity_source_notice);
             case RecordType.SERVER_WALLET:
                 String email = getUserEmail();
-                return email == null
-                        ? ""
-                        : mContext.getString(
-                                        R.string.autofill_ai_wallet_entity_editor_source_notice)
-                                .replace("$1", email);
+                if (email == null) {
+                    return "";
+                }
+                String walletTitle = mContext.getString(R.string.autofill_google_wallet_title);
+                String sourceNotice =
+                        mContext.getString(
+                                        R.string
+                                                .autofill_ai_save_or_update_entity_in_wallet_source_notice)
+                                .replace("$1", walletTitle)
+                                .replace("$2", walletTitle)
+                                .replace("$3", email);
+                return SpanApplier.applySpans(
+                        sourceNotice,
+                        new SpanApplier.SpanInfo(
+                                "<link>",
+                                "</link>",
+                                new ChromeClickableSpan(
+                                        mContext,
+                                        view -> mDelegate.onOpenGoogleWallet(isPrivateEntity))));
         }
         assert false : "Invalid entity record type: " + recordType;
         return "";
     }
 
     private @Nullable String getUserEmail() {
-        CoreAccountInfo accountInfo = mIdentityManager.getPrimaryAccountInfo(ConsentLevel.SIGNIN);
+        CoreAccountInfo accountInfo = mIdentityManager.getPrimaryAccountInfo();
         return CoreAccountInfo.getEmailFrom(accountInfo);
     }
 

@@ -27,6 +27,10 @@ namespace contextual_tasks {
 // Enables the contextual tasks side panel while browsing.
 BASE_FEATURE(kContextualTasks, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables the pin button in the toolbar for contextual tasks.
+BASE_FEATURE(kEnableContextualTasksPinButtonInToolbar,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables the use of the kSearchResultsOAuth2Scope instead of the
 // kChromeSyncOAuth2Scope.
 BASE_FEATURE(kContextualTasksScopeChange, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -72,10 +76,13 @@ BASE_FEATURE(kContextualTasksUrlRedirectToAimUrl,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksUseStratusDarkModeColors,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, animates the caret.
 BASE_FEATURE(kContextualTasksAnimatedCaret, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables energy effect in Nextbox. This works as a killswitch for the feature.
+BASE_FEATURE(kEnergyEffectInNextbox, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksEnableFileHint, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -95,11 +102,37 @@ BASE_FEATURE(kContextualTasksHideMenuOnAiPage,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
+BASE_FEATURE(kContextualTasksHideCloseButtonInVerticalTabs,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kContextualTasksUpdateModelOnNavigation,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kContextualTasksVideoCitations, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualTasksPdfCitations, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables lazy fetching of cluster info for multimodal queries.
+BASE_FEATURE(kContextualTasksLazyFetchClusterInfo,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables custom UI for NLM.
+BASE_FEATURE(kContextualTasksCustomNlmUi, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, the back button expands the side panel.
+BASE_FEATURE(kContextualTasksBackButtonExpandsSidePanel,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 bool GetIsContextualTasksUpdateModeOnNavigationEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksUpdateModelOnNavigation);
+}
+
+bool GetIsContextualTasksPdfCitationsEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksPdfCitations);
+}
+
+bool GetIsContextualTasksLazyFetchClusterInfoEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksLazyFetchClusterInfo);
 }
 
 const base::FeatureParam<bool> kContextualTasksLockAndUnlockInputCapability(
@@ -122,6 +155,11 @@ const base::FeatureParam<bool> kContextualTasksEnableCookieSync(
     "ContextualTasksEnableCookieSync",
     true);
 
+const base::FeatureParam<bool> kContextualTasksEnableCookiePrefetch(
+    &kContextualTasks,
+    "ContextualTasksEnableCookiePrefetch",
+    false);
+
 const base::FeatureParam<bool> kOnlyUseTitlesForSimilarity(
     &kContextualTasksContext,
     "ContextualTasksContextOnlyUseTitles",
@@ -129,11 +167,14 @@ const base::FeatureParam<bool> kOnlyUseTitlesForSimilarity(
 
 const base::FeatureParam<double> kTabSelectionScoreThreshold{
     &kContextualTasksContext,
-    "ContextualTasksContextTabSelectionScoreThreshold", 0.8};
+    "ContextualTasksContextTabSelectionScoreThreshold", 0.4};
 
 const base::FeatureParam<double> kContentVisibilityThreshold{
     &kContextualTasksContext,
     "ContextualTasksContextContentVisibilityThreshold", 0.7};
+
+const base::FeatureParam<std::string> kQueryEmbeddingTask{
+    &kContextualTasksContext, "ContextualTasksContextQueryEmbeddingTask", ""};
 
 const base::FeatureParam<bool> kContextualTasksContextSmartTabSharing(
     &kContextualTasksContext,
@@ -144,6 +185,11 @@ const base::FeatureParam<base::TimeDelta> kSmartTabSharingTabSelectionTimeout(
     &kContextualTasksContext,
     "ContextualTasksContextSmartTabSharingTabSelectionTimeout",
     base::Milliseconds(300));
+
+const base::FeatureParam<double> kSmartTabSharingPromoScoreThreshold(
+    &kContextualTasksContext,
+    "ContextualTasksContextSmartTabSharingPromoScoreThreshold",
+    0.6);
 
 const base::FeatureParam<double> kContextualTasksContextLoggingSampleRate{
     &kContextualTasksContextLogging, "ContextualTasksContextLoggingSampleRate",
@@ -158,7 +204,7 @@ const base::FeatureParam<bool> kContextualTasksTabAutoSuggestionChipEnabled(
 // The base URL for the AI page.
 const base::FeatureParam<std::string> kContextualTasksAiPageUrl{
     &kContextualTasks, "contextual-tasks-ai-page-url",
-    "https://www.google.com/search?udm=50&sourceid=chrome"};
+    "https://www.google.com/search?udm=50&sourceid=chrome&ccb=1"};
 
 const base::FeatureParam<std::string> kContextualTasksGeminiBaseUrl{
     &kContextualTasks, "contextual-tasks-gemini-base-url",
@@ -196,11 +242,6 @@ const base::FeatureParam<ExpandButtonOption> kExpandButtonOptions(
     ExpandButtonOption::kToolbarCloseButton,
     &kExpandButtonOption);
 
-const base::FeatureParam<bool> kOpenSidePanelOnLinkClicked(
-    &kContextualTasks,
-    "ContextualTasksOpenSidePanelOnLinkClicked",
-    true);
-
 const base::FeatureParam<bool> kEnableLensInContextualTasks(
     &kContextualTasks,
     "ContextualTasksEnableLensInContextualTasks",
@@ -217,8 +258,12 @@ const base::FeatureParam<bool> kForceGscInTabMode(
 // Version 1.2: Client is capable of composebox camouflage.
 // Version 1.3: Bug fix for privacy notice on composebox camouflage.
 // Version 2.0: M146 respin launch candidate.
+// Version 2.1: Enables stratus dark mode colors.
+// Version 2.2: Added UI fixes for NLM.
+// Version 2.3: UI fixes for transitions from search results.
+// Version 2.4: Adds ability to hideInput/restoreInput
 const base::FeatureParam<std::string> kContextualTasksUserAgentSuffix{
-    &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/2.0"};
+    &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/2.4"};
 
 const base::FeatureParam<std::string> kContextualTasksHelpUrl(
     &kContextualTasks,
@@ -271,6 +316,10 @@ const base::FeatureParam<bool> kContextualTasksEnableNativeZeroStateSuggestions(
     "ContextualTasksEnableNativeZeroStateSuggestions",
     true);
 
+// The URL parameter name to check for NLM mode.
+const base::FeatureParam<std::string> kContextualTasksNlmUrlParam{
+    &kContextualTasksCustomNlmUi, "ContextualTasksNlmUrlParam", "ajid"};
+
 const base::FeatureParam<std::string> kContextualTasksDisplayUrlScheme(
     &kContextualTasks,
     "ContextualTasksDisplayUrlScheme",
@@ -322,6 +371,9 @@ int ContextualTasksInactiveSidePanelKeepInCacheMinutes() {
   return kContextualTasksInactiveSidePanelKeepInCacheMinutes.Get();
 }
 
+bool IsContextualTasksPinButtonInToolbarEnabled() {
+  return base::FeatureList::IsEnabled(kEnableContextualTasksPinButtonInToolbar);
+}
 
 bool GetIsProtectedPageErrorEnabled() {
   return kEnableProtectedPageError.Get();
@@ -427,6 +479,14 @@ base::TimeDelta GetSmartTabSharingTabSelectionTimeout() {
   return base::Milliseconds(300);
 }
 
+double GetSmartTabSharingPromoScoreThreshold() {
+  if (kSmartTabSharingPromoScoreThreshold.Get() > 0.0 &&
+      kSmartTabSharingPromoScoreThreshold.Get() <= 1.0) {
+    return kSmartTabSharingPromoScoreThreshold.Get();
+  }
+  return 0.9;
+}
+
 bool GetIsTabAutoSuggestionChipEnabled() {
   return kContextualTasksTabAutoSuggestionChipEnabled.Get();
 }
@@ -464,6 +524,14 @@ bool GetEnableNativeZeroStateSuggestions() {
   return kContextualTasksEnableNativeZeroStateSuggestions.Get();
 }
 
+std::string GetContextualTasksNlmUrlParam() {
+  return kContextualTasksNlmUrlParam.Get();
+}
+
+bool IsCustomNlmUiEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksCustomNlmUi);
+}
+
 bool ShouldUseSearchResultsScope() {
   return base::FeatureList::IsEnabled(kContextualTasksScopeChange);
 }
@@ -478,6 +546,10 @@ bool ShouldEnableBasicModeZOrder() {
 
 bool ShouldEnableCookieSync() {
   return kContextualTasksEnableCookieSync.Get();
+}
+
+bool ShouldEnableCookiePrefetch() {
+  return kContextualTasksEnableCookiePrefetch.Get();
 }
 
 bool ShouldEnableLockAndUnlockInputCapability() {
@@ -524,6 +596,11 @@ const char kContextualTasksSuggestionsEnabledName[] =
     "Contextual Tasks Suggestions Enabled";
 const char kContextualTasksSuggestionsEnabledDescription[] =
     "Enables suggestions for contextual tasks.";
+
+const char kContextualTasksBackButtonExpandsSidePanelName[] =
+    "Contextual Tasks Back Button Expands Side Panel";
+const char kContextualTasksBackButtonExpandsSidePanelDescription[] =
+    "Enables expanding the side panel on back navigations.";
 
 }  // namespace flag_descriptions
 

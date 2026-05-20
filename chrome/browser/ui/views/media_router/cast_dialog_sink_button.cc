@@ -14,12 +14,11 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_list.h"
-#include "chrome/browser/ui/browser_navigator.h"
-#include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/media_router/ui_media_sink.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/chrome_typography.h"
 #include "chrome/browser/ui/views/media_router/cast_dialog_helper.h"
@@ -45,6 +44,7 @@
 #include "ui/views/controls/throbber.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/vector_icons.h"
+#include "ui/views/widget/widget.h"
 
 namespace media_router {
 
@@ -148,8 +148,8 @@ void CastDialogSinkButton::OnMouseReleased(const ui::MouseEvent& event) {
 
 void CastDialogSinkButton::OnEnabledChanged() {
   HoverButton::OnEnabledChanged();
-  // Prevent a DCHECK failure seen at https://crbug.com/912687 by not having an
-  // InkDrop if the button is disabled.
+  // Prevent a DCHECK failure seen at https://crbug.com/40605457 by not having
+  // an InkDrop if the button is disabled.
   views::InkDrop::Get(this)->SetMode(
       GetEnabled() ? views::InkDropHost::InkDropMode::ON
                    : views::InkDropHost::InkDropMode::OFF);
@@ -189,14 +189,13 @@ void CastDialogSinkButton::UpdateTitleTextStyle() {
 
 void CastDialogSinkButton::RequestFocus() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
-  static bool requesting_focus = false;
-  if (requesting_focus) {
-    // TODO(crbug.com/1291739): Figure out why this happens.
-    DLOG(ERROR) << "Recursive call to RequestFocus\n"
-                << base::debug::StackTrace();
+
+  // Prevent recursive calls to RequestFocus() while the widget is being
+  // shown and is not yet active. See crbug.com/155642655.
+  if (GetWidget() && !GetWidget()->IsActive()) {
     return;
   }
-  requesting_focus = true;
+
   if (GetEnabled()) {
     HoverButton::RequestFocus();
   } else {
@@ -204,7 +203,6 @@ void CastDialogSinkButton::RequestFocus() {
     // want focus.
     icon_view()->RequestFocus();
   }
-  requesting_focus = false;
 }
 
 void CastDialogSinkButton::OnFocus() {

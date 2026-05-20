@@ -1169,10 +1169,9 @@ HitTestingTransformState PaintLayer::CreateLocalTransformState(
   transform_state.Translate(gfx::Vector2dF(local_fragment.PaintOffset()));
 
   if (const auto* properties = local_fragment.PaintProperties()) {
-    for (const TransformPaintPropertyNode* transform :
-         properties->AllCSSTransformPropertiesOutsideToInside()) {
-      if (transform)
-        transform_state.ApplyTransform(*transform);
+    for (const auto* transform :
+         properties->CSSTransformPropertiesOutsideToInside()) {
+      transform_state.ApplyTransform(*transform);
     }
   }
 
@@ -1850,7 +1849,8 @@ PaintLayer* PaintLayer::HitTestChildren(
   }
 
   if (GetLayoutObject().IsCanvas()) {
-    if (!RuntimeEnabledFeatures::CanvasDrawElementEnabled()) {
+    if (!RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+            GetLayoutObject().GetDocument().GetExecutionContext())) {
       return nullptr;
     }
     if (!To<HTMLCanvasElement>(GetLayoutObject().GetNode())->layoutSubtree()) {
@@ -2452,6 +2452,24 @@ FilterOperations PaintLayer::FilterOperationsIncludingReflection() const {
   FilterOperations filter_operations = style.Filter();
   if (GetLayoutObject().HasReflection() && GetLayoutObject().IsBox()) {
     BoxReflection reflection = BoxReflectionForPaintLayer(*this, style);
+
+    if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+            GetLayoutObject().GetDocument().GetExecutionContext())) {
+      auto* element = DynamicTo<Element>(GetLayoutObject().GetNode());
+      if (element && element->IsInCanvasSubtree()) {
+        if (const auto* reflect_style = style.BoxReflect()) {
+          if (auto* style_image = reflect_style->Mask().GetImage()) {
+            // Strip the mask image if it is being rendered into a canvas and it
+            // is cross-origin.
+            if (!style_image->IsCorsSameOrigin()) {
+              reflection =
+                  BoxReflection(reflection.Direction(), reflection.Offset());
+            }
+          }
+        }
+      }
+    }
+
     filter_operations.Operations().push_back(
         MakeGarbageCollected<BoxReflectFilterOperation>(reflection));
   }

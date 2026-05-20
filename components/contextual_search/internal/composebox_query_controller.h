@@ -69,6 +69,10 @@ using RequestBodyProtoCreatedCallback = base::OnceCallback<void(
 using InteractionRequestBodyProtoCreatedCallback =
     base::OnceCallback<void(lens::LensOverlayServerRequest)>;
 
+namespace contextual_search {
+class ComposeboxQueryControllerTest;
+}
+
 // TODO(crbug.com/449970296): Rename this class.
 class ComposeboxQueryController
     : public contextual_search::ContextualSearchContextController {
@@ -87,6 +91,7 @@ class ComposeboxQueryController
 
   // ContextualSearchContextController:
   void InitializeIfNeeded() override;
+  void TriggerFetchClusterInfo() override;
   void SetIsBackgrounded(bool backgrounded) override;
   void CreateSearchUrl(
       std::unique_ptr<CreateSearchUrlRequestInfo> search_url_request_info,
@@ -108,8 +113,6 @@ class ComposeboxQueryController
   const contextual_search::FileInfo* GetFileInfo(
       const base::UnguessableToken& file_token) override;
   std::vector<const contextual_search::FileInfo*> GetFileInfoList() override;
-  std::optional<base::UnguessableToken> FindTokenForInjectedInput(
-      const std::string& id) override;
   base::WeakPtr<ContextualSearchContextController> AsWeakPtr() override;
 
   // Returns a request id to use for the viewport image upload request for the
@@ -203,6 +206,7 @@ class ComposeboxQueryController
     }
 
    private:
+    friend class contextual_search::ComposeboxQueryControllerTest;
     friend class ComposeboxQueryController;
     friend class ComposeboxQueryControllerIOS;
 
@@ -244,6 +248,8 @@ class ComposeboxQueryController
       lens::LensOverlayClientContext client_context,
       scoped_refptr<lens::RefCountedLensOverlayClientLogs> client_logs,
       RequestBodyProtoCreatedCallback callback,
+      std::optional<GURL> page_url,
+      std::optional<std::string> page_title,
       std::optional<std::string> file_name,
       lens::ImageData image_data);
 
@@ -253,6 +259,8 @@ class ComposeboxQueryController
       lens::LensOverlayRequestId request_id,
       std::vector<uint8_t> image_data,
       std::optional<lens::ImageEncodingOptions> options,
+      std::optional<GURL> page_url,
+      std::optional<std::string> page_title,
       std::optional<std::string> file_name,
       RequestBodyProtoCreatedCallback callback);
 
@@ -416,6 +424,8 @@ class ComposeboxQueryController
   void ProcessDecodedImageAndContinue(lens::LensOverlayRequestId request_id,
                                       const lens::ImageEncodingOptions& options,
                                       RequestBodyProtoCreatedCallback callback,
+                                      std::optional<GURL> page_url,
+                                      std::optional<std::string> page_title,
                                       std::optional<std::string> file_name,
                                       const SkBitmap& bitmap);
 

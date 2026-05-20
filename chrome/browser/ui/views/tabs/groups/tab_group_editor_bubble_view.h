@@ -20,6 +20,11 @@
 #include "ui/views/controls/textfield/textfield.h"
 #include "ui/views/controls/textfield/textfield_controller.h"
 
+#if BUILDFLAG(IS_CHROMEOS)
+#include "base/callback_list.h"
+#include "base/memory/raw_ref.h"
+#endif
+
 class Browser;
 
 namespace tab_groups {
@@ -54,6 +59,8 @@ class TabGroupEditorBubbleView : public views::BubbleDialogDelegateView,
   static constexpr int TAB_GROUP_HEADER_CXMENU_RECENT_ACTIVITY = 10;
   static constexpr int TAB_GROUP_HEADER_CXMENU_CONVERT_TO_BOOKMARK = 11;
   static constexpr int TAB_GROUP_HEADER_CXMENU_FOCUS_GROUP = 12;
+
+  friend class TabGroupEditorBubbleInteractiveUiTest;
 
   using Colors =
       std::vector<std::pair<tab_groups::TabGroupColorId, std::u16string>>;
@@ -152,6 +159,12 @@ class TabGroupEditorBubbleView : public views::BubbleDialogDelegateView,
 
   void OnBubbleClose();
 
+#if BUILDFLAG(IS_CHROMEOS)
+  void PreventCloseOnDeactivateForEmoji();
+  void ClearCloseOnDeactivatePin();
+  void OnEmojiPickerClosed(ui::TrackedElement* element);
+#endif
+
   // Creates the set of tab group colors to display and returns the color that
   // is initially selected.
   tab_groups::TabGroupColorId InitColorSet();
@@ -180,15 +193,23 @@ class TabGroupEditorBubbleView : public views::BubbleDialogDelegateView,
     METADATA_HEADER(TitleField, views::Textfield)
 
    public:
-    explicit TitleField(bool stop_context_menu_propagation)
-        : stop_context_menu_propagation_(stop_context_menu_propagation) {}
+    explicit TitleField(TabGroupEditorBubbleView& parent,
+                        bool stop_context_menu_propagation)
+        : parent_(parent),
+          stop_context_menu_propagation_(stop_context_menu_propagation) {}
     ~TitleField() override = default;
 
     // views::Textfield:
     void ShowContextMenu(const gfx::Point& p,
                          ui::mojom::MenuSourceType source_type) override;
 
+#if BUILDFLAG(IS_CHROMEOS)
+    void ExecuteCommand(int command_id, int event_flags) override;
+#endif
+
    private:
+    const raw_ref<TabGroupEditorBubbleView> parent_;
+
     // Whether the context menu should be hidden the first time it shows.
     // Needed because there is no easy way to stop the propagation of a
     // ShowContextMenu event, which is sometimes used to open the bubble
@@ -236,6 +257,16 @@ class TabGroupEditorBubbleView : public views::BubbleDialogDelegateView,
 
   // Stored value for constructor param.
   bool stop_context_menu_propagation_;
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // Ensures the bubble dialog remains open when the emoji picker menu steals
+  // focus (crbug.com/485778122). Needed as both are browser-managed UIs in
+  // ChromeOS.
+  std::unique_ptr<views::BubbleDialogDelegate::CloseOnDeactivatePin>
+      close_on_deactivate_pin_;
+
+  base::CallbackListSubscription emoji_picker_hidden_subscription_;
+#endif
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_TABS_GROUPS_TAB_GROUP_EDITOR_BUBBLE_VIEW_H_

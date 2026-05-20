@@ -10,6 +10,7 @@
 #include "chrome/browser/page_content_annotations/page_content_extraction_service_factory.h"
 #include "chrome/browser/password_manager/password_change/annotated_page_content_capturer.h"
 #include "chrome/browser/password_manager/password_change/model_quality_logs_uploader.h"
+#include "chrome/browser/password_manager/password_change/password_change_logging_util.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
 #include "components/optimization_guide/core/model_execution/remote_model_executor.h"
@@ -19,6 +20,7 @@
 #include "components/optimization_guide/proto/model_execution.pb.h"
 #include "components/page_content_annotations/content/page_content_extraction_service.h"
 #include "components/page_content_annotations/core/page_content_annotations_features.h"
+#include "components/password_manager/core/browser/browser_save_password_progress_logger.h"
 #include "components/password_manager/core/browser/features/password_features.h"
 #include "components/password_manager/core/browser/password_manager_metrics_util.h"
 #include "content/public/browser/browser_context.h"
@@ -135,14 +137,16 @@ char PasswordChangeSubmissionVerifier::kSubmissionOutcomeHistogramName[] =
 
 PasswordChangeSubmissionVerifier::PasswordChangeSubmissionVerifier(
     content::WebContents* web_contents,
+    password_manager::PasswordManagerClient* client,
     ModelQualityLogsUploader* logs_uploader,
     FormSubmissionVerificationResultCallback callback)
     : creation_time_(base::Time::Now()),
       web_contents_(web_contents),
+      client_(client),
       logs_uploader_(logs_uploader),
       callback_(std::move(callback)) {
-  capturer_ = std::make_unique<AnnotatedPageContentCapturer>(
-      web_contents_, GetAIPageContentOptions(),
+  capturer_ = AnnotatedPageContentCapturer::Create(
+      web_contents_, client, GetAIPageContentOptions(),
       base::BindOnce(
           &PasswordChangeSubmissionVerifier::CheckSubmissionSuccessful,
           weak_ptr_factory_.GetWeakPtr()));
@@ -157,6 +161,11 @@ void PasswordChangeSubmissionVerifier::CheckSubmissionSuccessful(
     optimization_guide::AIPageContentResultOrError page_content) {
   CHECK(callback_);
   CHECK(web_contents_);
+  password_change::LogBoolean(
+      client_,
+      autofill::SavePasswordProgressLogger::
+          STRING_AUTOMATED_PASSWORD_CHANGE_PAGE_CONTENT_RECEIVED,
+      page_content.has_value());
 
   if (!page_content.has_value()) {
     LogPageContentCaptureFailure(
@@ -207,6 +216,10 @@ void PasswordChangeSubmissionVerifier::OnExecutionResponseCallback(
 
     if (!response) {
       LogSubmissionOutcome(SubmissionOutcome::kCouldNotParse, source_id);
+    } else {
+      password_change::LogResponse(
+          client_, autofill::SavePasswordProgressLogger::STRING_MESSAGE,
+          *response);
     }
   }
 

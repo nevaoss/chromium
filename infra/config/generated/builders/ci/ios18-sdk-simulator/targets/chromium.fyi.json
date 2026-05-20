@@ -6,14 +6,16 @@
     "isolated_scripts": [
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -45,7 +47,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -57,14 +59,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -96,7 +100,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -108,14 +112,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -147,7 +153,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -159,14 +165,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -198,7 +206,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -210,14 +218,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -249,7 +259,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -261,14 +271,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -300,7 +312,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -312,14 +324,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -351,7 +365,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -363,14 +377,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -402,7 +418,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -414,14 +430,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -453,7 +471,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -465,14 +483,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -504,7 +524,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -516,14 +536,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -555,7 +577,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -567,14 +589,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -606,7 +630,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -618,14 +642,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -657,7 +683,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -669,14 +695,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -708,7 +736,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -720,14 +748,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -759,7 +789,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -771,6 +801,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
@@ -778,10 +809,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -813,7 +845,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -826,6 +858,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
@@ -833,10 +866,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -868,7 +902,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -883,6 +917,7 @@
         "args": [
           "--clones",
           "2",
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
@@ -890,10 +925,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -925,7 +961,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -940,6 +976,7 @@
         "args": [
           "--clones",
           "2",
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
@@ -947,10 +984,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -982,7 +1020,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -997,6 +1035,7 @@
         "args": [
           "--clones",
           "2",
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
@@ -1004,10 +1043,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1039,7 +1079,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1054,6 +1094,7 @@
         "args": [
           "--clones",
           "2",
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
@@ -1061,10 +1102,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1096,7 +1138,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1109,6 +1151,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
@@ -1116,10 +1159,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1151,7 +1195,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1164,6 +1208,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
@@ -1171,10 +1216,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1206,7 +1252,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1219,6 +1265,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
@@ -1226,10 +1273,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1261,7 +1309,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1273,6 +1321,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
@@ -1280,10 +1329,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1315,7 +1365,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1329,6 +1379,7 @@
         "args": [
           "--clones",
           "2",
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
@@ -1336,10 +1387,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1371,7 +1423,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1386,6 +1438,7 @@
         "args": [
           "--clones",
           "2",
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
@@ -1393,10 +1446,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1428,7 +1482,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1441,14 +1495,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1480,7 +1536,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1492,14 +1548,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1531,7 +1589,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1543,14 +1601,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1582,7 +1642,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1594,6 +1654,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
@@ -1601,10 +1662,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1636,7 +1698,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1649,6 +1711,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
@@ -1656,10 +1719,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1691,7 +1755,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1704,14 +1768,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1743,7 +1809,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1755,15 +1821,17 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1795,7 +1863,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1807,14 +1875,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1846,7 +1916,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1858,14 +1928,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1897,7 +1969,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1909,14 +1981,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1948,7 +2022,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -1960,14 +2034,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -1999,7 +2075,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2012,15 +2088,17 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2052,7 +2130,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2064,15 +2142,17 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
           "--xcodebuild-sim-runner",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2104,7 +2184,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2116,14 +2196,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2155,7 +2237,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2167,14 +2249,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2206,7 +2290,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2218,14 +2302,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2257,7 +2343,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2269,14 +2355,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2308,7 +2396,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2320,6 +2408,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
@@ -2327,10 +2416,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2362,7 +2452,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2374,6 +2464,7 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
@@ -2381,10 +2472,11 @@
           "--xcodebuild-sim-runner",
           "--record-video",
           "failed_only",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2416,7 +2508,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2428,14 +2520,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2467,7 +2561,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2479,14 +2573,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2518,7 +2614,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2530,14 +2626,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2569,7 +2667,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2581,14 +2679,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2620,7 +2720,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2632,14 +2732,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2671,7 +2773,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2683,14 +2785,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2722,7 +2826,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2734,14 +2838,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2773,7 +2879,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2785,14 +2891,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2824,7 +2932,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2836,14 +2944,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2875,7 +2985,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2887,14 +2997,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2926,7 +3038,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2938,14 +3050,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -2977,7 +3091,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -2989,14 +3103,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -3028,7 +3144,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -3040,14 +3156,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -3079,7 +3197,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -3091,14 +3209,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -3130,7 +3250,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -3142,14 +3262,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -3181,7 +3303,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -3193,14 +3315,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPad Air 11-inch (M2)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -3232,7 +3356,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -3244,14 +3368,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -3283,7 +3409,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -3295,14 +3421,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone SE (3rd generation)",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -3334,7 +3462,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],
@@ -3346,14 +3474,16 @@
       },
       {
         "args": [
+          "--use-simulator-cache",
           "--platform",
           "iPhone 15",
           "--version",
           "18.5",
+          "--use-simulator-cache",
           "--out-dir",
           "${ISOLATED_OUTDIR}",
           "--xcode-build-version",
-          "17e192",
+          "17f5032f",
           "--xctest"
         ],
         "merge": {
@@ -3385,7 +3515,7 @@
               "path": "Runtime-ios-18.5"
             },
             {
-              "name": "xcode_ios_17e192",
+              "name": "xcode_ios_17f5032f",
               "path": "Xcode.app"
             }
           ],

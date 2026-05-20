@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 import {PageCallbackRouter} from 'chrome://contextual-tasks/contextual_tasks.mojom-webui.js';
-import type {ComposeboxPosition, ContextInfo, IconType, PageHandlerInterface, PageInterface, PageRemote} from 'chrome://contextual-tasks/contextual_tasks.mojom-webui.js';
+import type {ComposeboxPosition, ContextInfo, InjectedInput, PageHandlerInterface, PageInterface, PageRemote} from 'chrome://contextual-tasks/contextual_tasks.mojom-webui.js';
 import type {BrowserProxy} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
 import type {PostMessageHandler} from 'chrome://contextual-tasks/post_message_handler.js';
 import type {PageHandler as ComposeboxPageHandler, PageHandlerFactory as ComposeboxPageHandlerFactory} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
@@ -29,6 +29,8 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'onLensOverlayStateChanged',
       'onSidePanelStateChanged',
       'restoreInput',
+      'enterBasicMode',
+      'exitBasicMode',
       'setOAuthToken',
       'setTaskDetails',
       'setThreadTitle',
@@ -39,6 +41,9 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'injectInputWithIcon',
       'removeInjectedInput',
       'setShowReopenTabs',
+      'onSidePanelPinStateChanged',
+      'setInNlm',
+      'setExpandButtonEnabled',
     ]);
   }
 
@@ -85,8 +90,20 @@ class MockPage extends TestBrowserProxy implements PageInterface {
     this.methodCalled('restoreInput');
   }
 
+  enterBasicMode() {
+    this.methodCalled('enterBasicMode');
+  }
+
+  exitBasicMode() {
+    this.methodCalled('exitBasicMode');
+  }
+
   onZeroStateChange() {
     this.methodCalled('onZeroStateChange');
+  }
+
+  setInNlm(inNlm: boolean) {
+    this.methodCalled('setInNlm', inNlm);
   }
 
   onAiPageStatusChanged(isAiPage: boolean) {
@@ -133,22 +150,20 @@ class MockPage extends TestBrowserProxy implements PageInterface {
     this.methodCalled('setShowReopenTabs', show);
   }
 
-  injectInput(
-      title: string, thumbnail: string, fileToken: UnguessableToken,
-      supportsUnimodal: boolean) {
-    this.methodCalled(
-        'injectInput', title, thumbnail, fileToken, supportsUnimodal);
-  }
-
-  injectInputWithIcon(
-      title: string, iconId: IconType, fileToken: UnguessableToken,
-      supportsUnimodal: boolean) {
-    this.methodCalled(
-        'injectInputWithIcon', title, iconId, fileToken, supportsUnimodal);
+  injectInput(input: InjectedInput) {
+    this.methodCalled('injectInput', input);
   }
 
   removeInjectedInput(fileToken: UnguessableToken) {
     this.methodCalled('removeInjectedInput', fileToken);
+  }
+
+  onSidePanelPinStateChanged(isPinned: boolean) {
+    this.methodCalled('onSidePanelPinStateChanged', isPinned);
+  }
+
+  setExpandButtonEnabled(enabled: boolean) {
+    this.methodCalled('setExpandButtonEnabled', enabled);
   }
 }
 
@@ -195,6 +210,9 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
       'setThreadTitle',
       'showThreadHistory',
       'submitQuery',
+      'pinSidePanel',
+      'unpinSidePanel',
+      'isSidePanelPinned',
     ]);
 
     this.url_ = url;
@@ -374,6 +392,19 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
 
   postMessageToWebview(message: number[]) {
     this.methodCalled('postMessageToWebview', message);
+  }
+
+  pinSidePanel() {
+    this.methodCalled('pinSidePanel');
+  }
+
+  unpinSidePanel() {
+    this.methodCalled('unpinSidePanel');
+  }
+
+  isSidePanelPinned() {
+    this.methodCalled('isSidePanelPinned');
+    return Promise.resolve({isPinned: false});
   }
 }
 

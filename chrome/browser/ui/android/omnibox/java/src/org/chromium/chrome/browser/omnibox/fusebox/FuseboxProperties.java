@@ -19,8 +19,11 @@ import org.chromium.ui.modelutil.PropertyModel.WritableBooleanPropertyKey;
 import org.chromium.ui.modelutil.PropertyModel.WritableObjectPropertyKey;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 
+import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+import java.util.List;
 
 /** The properties associated with the Fusebox bar. */
 @NullMarked
@@ -33,6 +36,21 @@ class FuseboxProperties {
         int MODEL = 2;
     }
 
+    /** The possible states of the Fusebox popup. */
+    @IntDef({PopupState.HIDDEN, PopupState.FLOATING, PopupState.BOTTOM})
+    @Retention(RetentionPolicy.SOURCE)
+    @Target({ElementType.TYPE_USE})
+    public @interface PopupState {
+        /** The popup is hidden. */
+        int HIDDEN = 0;
+
+        /** The popup is floating near the anchor. */
+        int FLOATING = 1;
+
+        /** The popup is anchored at the bottom of the screen. */
+        int BOTTOM = 2;
+    }
+
     /** Encapsulates the state for a button in the Fusebox popup. */
     public static class PopupButtonData {
         public final Runnable onClicked;
@@ -42,6 +60,7 @@ class FuseboxProperties {
         public final boolean selected;
         public final @PopupButtonType int type;
         public final int protoId;
+        public final boolean hasColor;
 
         public PopupButtonData(
                 Callback<PopupButtonData> onClicked,
@@ -50,7 +69,8 @@ class FuseboxProperties {
                 boolean enabled,
                 boolean selected,
                 @PopupButtonType int type,
-                int protoId) {
+                int protoId,
+                boolean hasColor) {
             this.onClicked = onClicked.bind(this);
             this.text = text;
             this.iconId = iconId;
@@ -58,6 +78,7 @@ class FuseboxProperties {
             this.selected = selected;
             this.type = type;
             this.protoId = protoId;
+            this.hasColor = hasColor;
         }
     }
 
@@ -176,7 +197,7 @@ class FuseboxProperties {
             new WritableBooleanPropertyKey();
 
     /** Holds button data objects for each model that is to be shown. */
-    public static final WritableObjectPropertyKey<java.util.List<PopupButtonData>>
+    public static final WritableObjectPropertyKey<List<PopupButtonData>>
             POPUP_MODEL_BUTTON_DATA_LIST = new WritableObjectPropertyKey<>();
 
     /** Whether the models divider in the popup is visible. */
@@ -187,53 +208,17 @@ class FuseboxProperties {
     public static final WritableBooleanPropertyKey POPUP_MODEL_HEADER_VISIBLE =
             new WritableBooleanPropertyKey();
 
-    /** Action to perform when the user clicks the AI Mode button in the popup. */
-    public static final WritableObjectPropertyKey<Runnable> POPUP_TOOL_AI_MODE_CLICKED =
+    /** The text for the models header in the popup. */
+    public static final WritableObjectPropertyKey<String> POPUP_MODEL_HEADER_TEXT =
             new WritableObjectPropertyKey<>();
 
-    /** Whether the AI Mode button in the popup is enabled. */
-    public static final WritableBooleanPropertyKey POPUP_TOOL_AI_MODE_ENABLED =
-            new WritableBooleanPropertyKey();
-
-    /** Whether the AI Mode button in the popup is visible. */
-    public static final WritableBooleanPropertyKey POPUP_TOOL_AI_MODE_VISIBLE =
-            new WritableBooleanPropertyKey();
-
-    /** Action to perform when the user clicks the canvas tool button in the popup. */
-    public static final WritableObjectPropertyKey<Runnable> POPUP_TOOL_CANVAS_CLICKED =
+    /** The state of the popup. */
+    public static final WritableObjectPropertyKey<@PopupState Integer> POPUP_STATE =
             new WritableObjectPropertyKey<>();
 
-    /** Whether the canvas tool button in the popup is enabled. */
-    public static final WritableBooleanPropertyKey POPUP_TOOL_CANVAS_ENABLED =
-            new WritableBooleanPropertyKey();
-
-    /** Whether the canvas tool button in the popup is visible. */
-    public static final WritableBooleanPropertyKey POPUP_TOOL_CANVAS_VISIBLE =
-            new WritableBooleanPropertyKey();
-
-    /** Action to perform when the user clicks the 'Create Image' button in the popup. */
-    public static final WritableObjectPropertyKey<Runnable> POPUP_TOOL_CREATE_IMAGE_CLICKED =
-            new WritableObjectPropertyKey<>();
-
-    /** Whether the create image button is enabled or disabled. */
-    public static final WritableBooleanPropertyKey POPUP_TOOL_CREATE_IMAGE_ENABLED =
-            new WritableBooleanPropertyKey();
-
-    /** Whether the create image button in the popup is visible. */
-    public static final WritableBooleanPropertyKey POPUP_TOOL_CREATE_IMAGE_VISIBLE =
-            new WritableBooleanPropertyKey();
-
-    /** Action to perform when the user clicks the Deep Search tool button in the popup */
-    public static final WritableObjectPropertyKey<Runnable> POPUP_TOOL_DEEP_SEARCH_CLICKED =
-            new WritableObjectPropertyKey<>();
-
-    /** Whether the deep search tool button in the popup is enabled. */
-    public static final WritableBooleanPropertyKey POPUP_TOOL_DEEP_SEARCH_ENABLED =
-            new WritableBooleanPropertyKey();
-
-    /** Whether the deep search tool button in the popup is visible. */
-    public static final WritableBooleanPropertyKey POPUP_TOOL_DEEP_SEARCH_VISIBLE =
-            new WritableBooleanPropertyKey();
+    /** Holds button data objects for each tool that is to be shown. */
+    public static final WritableObjectPropertyKey<List<PopupButtonData>>
+            POPUP_TOOL_BUTTON_DATA_LIST = new WritableObjectPropertyKey<>();
 
     /** Whether the tools divider in the popup is visible. */
     public static final WritableBooleanPropertyKey POPUP_TOOL_DIVIDER_VISIBLE =
@@ -242,6 +227,10 @@ class FuseboxProperties {
     /** Whether the tools header in the popup is visible. */
     public static final WritableBooleanPropertyKey POPUP_TOOL_HEADER_VISIBLE =
             new WritableBooleanPropertyKey();
+
+    /** The text for the tools header in the popup. */
+    public static final WritableObjectPropertyKey<String> POPUP_TOOL_HEADER_TEXT =
+            new WritableObjectPropertyKey<>();
 
     /** Whether to show the dedicated AIMode button directly in the Fusebox. */
     public static final WritableBooleanPropertyKey SHOW_DEDICATED_MODE_BUTTON =
@@ -278,20 +267,12 @@ class FuseboxProperties {
         POPUP_ATTACH_TAB_PICKER_VISIBLE,
         POPUP_MODEL_BUTTON_DATA_LIST,
         POPUP_MODEL_DIVIDER_VISIBLE,
+        POPUP_MODEL_HEADER_TEXT,
         POPUP_MODEL_HEADER_VISIBLE,
-        POPUP_TOOL_AI_MODE_CLICKED,
-        POPUP_TOOL_AI_MODE_ENABLED,
-        POPUP_TOOL_AI_MODE_VISIBLE,
-        POPUP_TOOL_CANVAS_CLICKED,
-        POPUP_TOOL_CANVAS_ENABLED,
-        POPUP_TOOL_CANVAS_VISIBLE,
-        POPUP_TOOL_CREATE_IMAGE_CLICKED,
-        POPUP_TOOL_CREATE_IMAGE_ENABLED,
-        POPUP_TOOL_CREATE_IMAGE_VISIBLE,
-        POPUP_TOOL_DEEP_SEARCH_CLICKED,
-        POPUP_TOOL_DEEP_SEARCH_ENABLED,
-        POPUP_TOOL_DEEP_SEARCH_VISIBLE,
+        POPUP_STATE,
+        POPUP_TOOL_BUTTON_DATA_LIST,
         POPUP_TOOL_DIVIDER_VISIBLE,
+        POPUP_TOOL_HEADER_TEXT,
         POPUP_TOOL_HEADER_VISIBLE,
         SHOW_DEDICATED_MODE_BUTTON
         // go/keep-sorted end

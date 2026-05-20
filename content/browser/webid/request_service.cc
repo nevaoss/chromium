@@ -1349,6 +1349,23 @@ void RequestService::NotifyAutofillSuggestionAccepted(
     OnFederatedTokenReceivedCallback callback) {
   token_received_callback_for_autofill_ = std::move(callback);
 
+  auto get_info_it = token_request_get_infos_.find(idp);
+  auto idp_info_it = idp_infos_.find(idp);
+  bool is_account_id_valid =
+      std::ranges::any_of(accounts_, [&](const auto& account) {
+        return account->identity_provider->idp_metadata.config_url == idp &&
+               account->id == account_id;
+      });
+
+  if (get_info_it == token_request_get_infos_.end() ||
+      idp_info_it == idp_infos_.end() || !is_account_id_valid) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(token_received_callback_for_autofill_),
+                       false));
+    return;
+  }
+
   // Currently the verified email flow opens a modal UI upon notification and
   // the autofill dropdown UI gets dismissed immediately. i.e. it doesn't need a
   // valid callback. However, if a user is presented a full federated account,
@@ -1364,14 +1381,6 @@ void RequestService::NotifyAutofillSuggestionAccepted(
   // know whether this is a sign-in or sign-up moment (e.g. wouldn't have a
   // approved_clients array). We should figure out how to reconcile these two
   // modes.
-  auto get_info_it = token_request_get_infos_.find(idp);
-  if (get_info_it == token_request_get_infos_.end()) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(std::move(token_received_callback_for_autofill_),
-                       false));
-    return;
-  }
 
   // TODO(crbug.com/412640661): Currently, in order to skip the account chooser
   // and go straight to the disclosure UI, we have to call ShowLoadingDialog()
@@ -1742,12 +1751,25 @@ void RequestService::ShowModalDialog(DialogType dialog_type,
   config_url_ = idp_config_url;
   UMA_HISTOGRAM_ENUMERATION("Blink.FedCm.Popup.DialogType", dialog_type_);
 
+  auto create_registry_async = [](base::WeakPtr<RequestService> weak_this,
+                                  const GURL& idp_config_url,
+                                  WebContents* web_contents) {
+    if (web_contents && weak_this) {
+      IdentityRegistry::CreateForWebContents(web_contents, weak_this,
+                                             idp_config_url);
+    }
+  };
+
   WebContents* web_contents = request_dialog_controller_->ShowModalDialog(
       url_to_show, rp_mode_,
       base::BindOnce(&RequestService::OnDialogDismissed,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(create_registry_async, weak_ptr_factory_.GetWeakPtr(),
+                     idp_config_url));
   // This may be null on Android, as the method cannot return the WebContents of
   // the CCT that will be created.
+  // If the showing of the model dialog was deferred, this will be null, and
+  // we'll get the future WebContents via `create_registry_async`.
   if (web_contents) {
     IdentityRegistry::CreateForWebContents(
         web_contents, weak_ptr_factory_.GetWeakPtr(), idp_config_url);
@@ -1880,10 +1902,8 @@ void RequestService::RedirectTo(const GURL& idp_config_url,
   }
   web_contents->GetController().LoadURLWithParams(params);
 
-  // TODO(crbug.com/474120843): Introduce a more specific success enum value
-  // rather than kSuccessUsingTokenInHttpResponse.
   CompleteRequest(FederatedAuthRequestResult::kSuccess,
-                  TokenStatus::kSuccessUsingTokenInHttpResponse,
+                  TokenStatus::kSuccessUsingRedirectTo,
                   /*token_error=*/std::nullopt, idp_config_url,
                   /*token_data=*/base::Value(),
                   /*should_delay_callback=*/false);
@@ -2086,8 +2106,12 @@ void RequestService::CompleteRequest(
     // Record metrics and console errors only the first time we complete the
     // request, even if the callback is delayed.
     RecordMetricsAndConsoleError(result, token_status, selected_idp_config_url);
-    request_dialog_controller_->OnFlowCompleted(
-        FederatedAuthRequestResultToFederatedLoginResult(result));
+
+    RenderFrameHostImpl::From(&render_frame_host())
+        ->delegate()
+        ->OnFedCmFederatedLogin(
+            FederatedAuthRequestResultToFederatedLoginResult(result));
+
     if (token_received_callback_for_autofill_) {
       std::move(token_received_callback_for_autofill_)
           .Run(result == FederatedAuthRequestResult::kSuccess);

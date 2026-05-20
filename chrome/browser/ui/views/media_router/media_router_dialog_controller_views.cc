@@ -8,7 +8,11 @@
 
 #include "build/build_config.h"
 #include "chrome/browser/media/router/media_router_feature.h"
-#include "chrome/browser/ui/browser_finder.h"
+#include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+#include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
 #include "chrome/browser/ui/global_media_controls/media_notification_service.h"
 #include "chrome/browser/ui/global_media_controls/media_notification_service_factory.h"
 #include "chrome/browser/ui/global_media_controls/media_toolbar_button_controller.h"
@@ -62,17 +66,40 @@ void MediaRouterDialogControllerViews::CreateMediaRouterDialog(
       Profile::FromBrowserContext(initiator()->GetBrowserContext());
 
   InitializeMediaRouterUI();
-  Browser* browser = chrome::FindBrowserWithTab(initiator());
+  BrowserWindowInterface* browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(initiator());
+
+  // Block tab fullscreen. There is no toolbar to anchor the cast dialog to in
+  // tab fullscreen mode. It is unsafe to show the dialog entirely within the
+  // content area, as this would make it susceptible to spoofing attacks.
+  if (browser) {
+    ExclusiveAccessManager* exclusive_access_manager =
+        browser->GetExclusiveAccessManager();
+    FullscreenController* fullscreen_controller =
+        exclusive_access_manager->fullscreen_controller();
+    if (fullscreen_controller->IsTabFullscreen()) {
+      fullscreen_blocker_ =
+          initiator()->ForSecurityDropFullscreen(display::kInvalidDisplayId);
+    }
+  }
+
   BrowserView* browser_view =
       browser ? BrowserView::GetBrowserViewForBrowser(browser) : nullptr;
+  CastDialogCoordinator::AfterShownCallback callback =
+      base::BindOnce(&MediaRouterDialogControllerViews::OnDialogCreated,
+                     weak_ptr_factory_.GetWeakPtr(), activation_location);
   if (browser_view) {
     // Show the Cast dialog anchored to the Cast toolbar button.
-    if (browser_view->toolbar()->GetCastButton()) {
+    if (browser_view->toolbar_button_provider()
+            ->GetPinnedToolbarActions()
+            ->IsActionPinnedOrPoppedOut(kActionRouteMedia)) {
       cast_dialog_coordinator_.ShowDialogWithToolbarAction(
-          ui_.get(), browser, dialog_creation_time, activation_location);
+          ui_->GetWeakPtr(), browser, dialog_creation_time, activation_location,
+          std::move(callback));
     } else {
       cast_dialog_coordinator_.ShowDialogCenteredForBrowserWindow(
-          ui_.get(), browser, dialog_creation_time, activation_location);
+          ui_.get(), browser, dialog_creation_time, activation_location,
+          std::move(callback));
     }
   } else {
     // Show the Cast dialog anchored to the top of the web contents.
@@ -80,10 +107,19 @@ void MediaRouterDialogControllerViews::CreateMediaRouterDialog(
     // Set the height to 0 so that the dialog gets anchored to the top of the
     // window.
     anchor_bounds.set_height(0);
-    cast_dialog_coordinator_.ShowDialogCentered(anchor_bounds, ui_.get(),
-                                                profile, dialog_creation_time,
-                                                activation_location);
+    cast_dialog_coordinator_.ShowDialogCentered(
+        anchor_bounds, ui_.get(), profile, dialog_creation_time,
+        activation_location, std::move(callback));
   }
+}
+
+void MediaRouterDialogControllerViews::OnDialogCreated(
+    MediaRouterDialogActivationLocation activation_location,
+    ShowCastDialogStatus status) {
+  if (status != ShowCastDialogStatus::kSuccess) {
+    return;
+  }
+
   scoped_widget_observations_.AddObservation(
       cast_dialog_coordinator_.GetCastDialogWidget());
 
@@ -111,6 +147,7 @@ void MediaRouterDialogControllerViews::Reset() {
       GetActionController()->OnDialogHidden();
     }
     ui_.reset();
+    fullscreen_blocker_.RunAndReset();
     MediaRouterDialogController::Reset();
   }
 }
@@ -211,7 +248,8 @@ void MediaRouterDialogControllerViews::ShowGlobalMediaControlsDialog() {
         global_media_controls::GlobalMediaControlsEntryPoint::kPresentation));
     return;
   }
-  Browser* const browser = chrome::FindBrowserWithTab(initiator());
+  BrowserWindowInterface* const browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(initiator());
   BrowserView* const browser_view =
       browser ? BrowserView::GetBrowserViewForBrowser(browser) : nullptr;
   // If there exists a browser_view, anchor the dialog to the top center of the
@@ -239,7 +277,8 @@ MediaToolbarButtonView* MediaRouterDialogControllerViews::GetMediaButton() {
   if (hide_media_button_for_testing_) {
     return nullptr;
   }
-  Browser* const browser = chrome::FindBrowserWithTab(initiator());
+  BrowserWindowInterface* const browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(initiator());
   BrowserView* const browser_view =
       browser ? BrowserView::GetBrowserViewForBrowser(browser) : nullptr;
   ToolbarView* const toolbar_view =

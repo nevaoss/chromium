@@ -94,10 +94,14 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
     BrowserProxyImpl.setInstance(testProxy);
 
     mockComposeboxPageHandler = TestMock.fromClass(ComposeboxPageHandlerRemote);
+    mockComposeboxPageHandler.setResultFor(
+        'getSmartTabSharingActive', Promise.resolve({active: false}));
     mockSearchboxPageHandler = TestMock.fromClass(SearchboxPageHandlerRemote);
     mockSearchboxPageHandler.setResultFor(
         'getInputState', Promise.resolve({state: new MockInputState()}));
-
+    mockSearchboxPageHandler.setResultFor(
+        'getPageClassification',
+        Promise.resolve({metricSource: 'CO_BROWSING_COMPOSEBOX'}));
     const searchboxCallbackRouter = new SearchboxPageCallbackRouter();
     searchboxCallbackRouterRemote =
         searchboxCallbackRouter.$.bindNewPipeAndPassRemote();
@@ -253,6 +257,69 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
         'Input should be cleared, but input = ' + inputElement.value);
   });
 
+  test('InjectInputSubmitAfterInjectionTrue', async () => {
+    const TEST_QUERY = 'injected query';
+
+    // Call `injectInput` with query text and submit_after_injection = true.
+    contextualTasksApp.$.composebox.injectInput({
+      title: null,
+      thumbnail: null,
+      iconId: 0,
+      fileToken: null,
+      supportsUnimodal: false,
+      queryText: TEST_QUERY,
+      submitAfterInjection: true,
+    });
+
+    // Verify `submitQuery` is called with the injected text.
+    const [query] = await mockSearchboxPageHandler.whenCalled('submitQuery');
+    assertEquals(TEST_QUERY, query);
+  });
+
+  test('InjectInputSubmitAfterInjectionTrueWithFile', async () => {
+    const TEST_QUERY = 'injected query';
+
+    contextualTasksApp.$.composebox.injectInput({
+      title: 'title',
+      thumbnail: 'thumbnail',
+      iconId: 0,
+      fileToken: FAKE_TOKEN_STRING,
+      supportsUnimodal: true,
+      queryText: TEST_QUERY,
+      submitAfterInjection: true,
+    });
+
+    await composebox.updateComplete;
+
+    // Since the file is injected as already successful, it should submit
+    // immediately.
+    const [query] = await mockSearchboxPageHandler.whenCalled('submitQuery');
+    assertEquals(TEST_QUERY, query);
+  });
+
+  test('InjectInputSubmitAfterInjectionFalse', async () => {
+    const TEST_QUERY = 'injected query';
+
+    // Call `injectInput` with query text and submit_after_injection = false.
+    contextualTasksApp.$.composebox.injectInput({
+      title: null,
+      thumbnail: null,
+      iconId: 0,
+      fileToken: null,
+      supportsUnimodal: false,
+      queryText: TEST_QUERY,
+      submitAfterInjection: false,
+    });
+    await composebox.updateComplete;
+
+    // Verify input is set.
+    assertEquals(TEST_QUERY, composebox.input);
+    assertEquals(TEST_QUERY, composebox.getInputElement().$.input.value);
+
+    // Verify `submitQuery` was not called.
+    assertEquals(mockSearchboxPageHandler.getCallCount('submitQuery'), 0);
+  });
+
   test('LensButtonTriggersOverlay', async () => {
     testProxy.handler.setIsShownInTab(false);
 
@@ -283,7 +350,7 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
   });
 
   test(
-      'hides composebox and header using z-index when hideInput called',
+      'hides composebox and header using z-index when enterBasicMode called',
       async () => {
         const threadFrame = contextualTasksApp.$.threadFrame;
         const flexCenterContainer = contextualTasksApp.$.flexCenterContainer;
@@ -291,7 +358,7 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
         testProxy.handler.setIsAiPage(false);
         contextualTasksApp.setIsNavigatingFromAiPageForTesting(false);
 
-        testProxy.callbackRouterRemote.hideInput();
+        testProxy.callbackRouterRemote.enterBasicMode();
         await testProxy.callbackRouterRemote.$.flushForTesting();
         await microtasksFinished();
 
@@ -308,7 +375,7 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
             '0', flexCenterStyle.zIndex,
             'Flex center container z-index should be 0');
 
-        testProxy.callbackRouterRemote.restoreInput();
+        testProxy.callbackRouterRemote.exitBasicMode();
         await testProxy.callbackRouterRemote.$.flushForTesting();
         await contextualTasksApp.updateComplete;
 
@@ -326,7 +393,7 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
       });
 
   test(
-      'hides composebox and header when hideInput called' +
+      'hides composebox and header when enterBasicMode called' +
           'and enableBasicModeZOrder is false',
       async () => {
         loadTimeData.overrideValues({enableBasicModeZOrder: false});
@@ -345,23 +412,23 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
         testProxy.handler.setIsAiPage(false);
         contextualTasksApp.setIsNavigatingFromAiPageForTesting(false);
 
-        testProxy.callbackRouterRemote.hideInput();
+        testProxy.callbackRouterRemote.enterBasicMode();
         await testProxy.callbackRouterRemote.$.flushForTesting();
         await contextualTasksApp.updateComplete;
         await microtasksFinished();
         assertTrue(
             !!contextualComposebox,
-            'Contextual composebox should exist after hideInput');
-        assertTrue(!!header, 'Composebox header should exist after hideInput');
+            'Contextual composebox should exist after enterBasicMode');
+        assertTrue(!!header, 'Composebox header should exist after enterBasicMode');
 
         assertTrue(
             header.hidden,
-            'Composebox header should be hidden after hideInput');
+            'Composebox header should be hidden after enterBasicMode');
         assertTrue(
             contextualComposebox.hidden,
-            'Contextual composebox should be hidden after hideInput');
+            'Contextual composebox should be hidden after enterBasicMode');
 
-        testProxy.callbackRouterRemote.restoreInput();
+        testProxy.callbackRouterRemote.exitBasicMode();
         await testProxy.callbackRouterRemote.$.flushForTesting();
         await contextualTasksApp.updateComplete;
         await microtasksFinished();
@@ -369,17 +436,17 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
         assertTrue(
             !!contextualComposebox,
             'Contextual composebox ' +
-                'should exist after restoreInput');
+                'should exist after exitBasicMode');
         assertFalse(
             contextualComposebox.hidden,
-            'Contextual composebox should not be hidden after restoreInput');
+            'Contextual composebox should not be hidden after exitBasicMode');
 
         assertTrue(
             !!header,
-            'Contextual composebox header should exist after restoreInput');
+            'Contextual composebox header should exist after exitBasicMode');
         assertFalse(
             header.hidden,
-            'Composebox header should not be hidden after restoreInput');
+            'Composebox header should not be hidden after exitBasicMode');
       });
 
   test('Composebox submits then clears input', async () => {
@@ -765,6 +832,9 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
   });
 
   test('Composebox submits by pressing enter, then clears input', async () => {
+    testProxy.callbackRouterRemote.onZeroStateChange(true);
+    await microtasksFinished();
+
     await uploadFileAndVerify(
         FAKE_TOKEN_STRING, new File(['foo'], 'foo.jpg', {type: 'image/jpeg'}),
         composebox, mockSearchboxPageHandler);
@@ -812,11 +882,76 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
     await composebox.updateComplete;
     await microtasksFinished();
 
-    assertEquals(
+    assertNotEquals(
         composebox.animationState, GlowAnimationState.SUBMITTING,
-        'Query is submitted via submitQuery_()');
+        'Query is submitted but animation is suppressed on first submit');
 
     assertEquals(0, composebox.files.size);
+  });
+
+  test('Composebox zero state open triggers animation', async () => {
+    testProxy.callbackRouterRemote.onZeroStateChange(true);
+    await microtasksFinished();
+    await composebox.updateComplete;
+
+    assertEquals(
+        composebox.animationState, GlowAnimationState.SUBMITTING,
+        'Opening zero state triggers animation');
+  });
+
+  test('Composebox subsequent submit triggers animation', async () => {
+    testProxy.callbackRouterRemote.onZeroStateChange(true);
+    await microtasksFinished();
+
+    await uploadFileAndVerify(
+        FAKE_TOKEN_STRING, new File(['foo'], 'foo.jpg', {type: 'image/jpeg'}),
+        composebox, mockSearchboxPageHandler);
+
+    searchboxCallbackRouterRemote.onContextualInputStatusChanged(
+        FAKE_TOKEN_STRING,
+        ContextUploadStatus.kUploadSuccessful,
+        /*error_type=*/ null,
+    );
+
+    await searchboxCallbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
+    await composebox.updateComplete;
+
+    const submitContainer: HTMLElement|null = getSubmitContainer(composebox);
+    assertTrue(!!submitContainer, 'Submit container button should exist');
+
+    // First submit (should not trigger animation).
+    pressEnter(submitContainer);
+    await composebox.updateComplete;
+    await microtasksFinished();
+
+    assertNotEquals(
+        composebox.animationState, GlowAnimationState.SUBMITTING,
+        'First submit suppresses animation');
+
+    await uploadFileAndVerify(
+        FAKE_TOKEN_STRING_2,
+        new File(['foo2'], 'foo2.jpg', {type: 'image/jpeg'}), composebox,
+        mockSearchboxPageHandler, /*expectedInitialFilesCount=*/ 0);
+
+    searchboxCallbackRouterRemote.onContextualInputStatusChanged(
+        FAKE_TOKEN_STRING_2,
+        ContextUploadStatus.kUploadSuccessful,
+        /*error_type=*/ null,
+    );
+    testProxy.callbackRouterRemote.onZeroStateChange(false);
+    await microtasksFinished();
+    await composebox.updateComplete;
+
+    // Second submit!
+    pressEnter(submitContainer);
+    await composebox.updateComplete;
+    await microtasksFinished();
+
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    assertEquals(
+        composebox.animationState, GlowAnimationState.SUBMITTING,
+        'Subsequent submit triggers animation');
   });
 
   test('delayed tabs do not delay submission', async () => {
@@ -1069,6 +1204,13 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await composebox.updateComplete;
 
+    assertEquals(
+        0, composebox.pendingUploads.size, 'pendingUploads should be 0');
+    assertTrue(composebox.submitEnabled, 'submitEnabled should be true');
+    assertFalse(
+        composebox.canSubmitFilesAndInput,
+        'canSubmitFilesAndInput should be false');
+
     const submitButton: HTMLButtonElement|null = getSubmitButton(composebox);
     assertTrue(!!submitButton, 'Submit button should exist');
     assertTrue(submitButton?.disabled, 'Button should be disabled');
@@ -1100,6 +1242,13 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
 
     await searchboxCallbackRouterRemote.$.flushForTesting();
     await composebox.updateComplete;
+
+    assertEquals(
+        0, composebox.pendingUploads.size, 'pendingUploads should be 0');
+    assertTrue(composebox.submitEnabled, 'submitEnabled should be true');
+    assertTrue(
+        composebox.canSubmitFilesAndInput,
+        'canSubmitFilesAndInput should be true');
 
     const submitButton: HTMLButtonElement|null = getSubmitButton(composebox);
     assertTrue(!!submitButton, 'Submit button should exist');

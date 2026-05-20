@@ -59,7 +59,7 @@ class AutofillAiSaveUpdateEntityPromptController {
 
   base::android::ScopedJavaLocalRef<jobject> GetJavaObject() const;
   // Called by AutofillAiSaveUpdateEntityPromptController.java
-  void OpenManagePasses(JNIEnv* env);
+  void OnWalletLinkClicked(JNIEnv* env);
   void OnUserAccepted(JNIEnv* env);
   void OnUserDeclined(JNIEnv* env);
   // Called whenever the prompt is dismissed (e.g. because the user already
@@ -75,10 +75,12 @@ class AutofillAiSaveUpdateEntityPromptController {
   const EntityInstance entity_instance_;
   const std::optional<EntityInstance> old_entity_instance_;
   const std::string app_locale_;
+  AutofillClient::EntityImportUIContext ui_context_;
   // If the user explicitly accepted/dismissed/edited the entity.
   bool had_user_interaction_ = false;
   // The callback to run when the user takes action on the prompt.
   AutofillClient::EntityImportPromptResultCallback prompt_result_callback_;
+
   // The corresponding Java SaveUpdateAddressProfilePromptController.
   base::android::ScopedJavaGlobalRef<jobject> java_object_;
 };

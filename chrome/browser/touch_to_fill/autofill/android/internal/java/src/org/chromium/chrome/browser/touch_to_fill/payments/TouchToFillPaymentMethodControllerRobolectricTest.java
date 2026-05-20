@@ -116,14 +116,12 @@ import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaym
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType.FOOTER;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType.HEADER;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType.IBAN;
-import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType.LOYALTY_CARD;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType.TERMS_LABEL;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType.TEXT_BUTTON;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType.TOS_FOOTER;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType.TOS_HEADER;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType.WALLET_SETTINGS_BUTTON;
-import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.LoyaltyCardProperties.LOYALTY_CARD_NUMBER;
-import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.LoyaltyCardProperties.MERCHANT_NAME;
+import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.LoyaltyCardProperties.LOYALTY_CARD;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.LoyaltyCardProperties.ON_LOYALTY_CARD_CLICK_ACTION;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.SHEET_CLOSED_DESCRIPTION_ID;
 import static org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.SHEET_CONTENT_DESCRIPTION_ID;
@@ -174,7 +172,6 @@ import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.UserActionTester;
-import org.chromium.chrome.R;
 import org.chromium.chrome.browser.autofill.AutofillImageFetcher;
 import org.chromium.chrome.browser.autofill.AutofillUiUtils;
 import org.chromium.chrome.browser.autofill.PersonalDataManager;
@@ -191,6 +188,7 @@ import org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMeth
 import org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodMediator.TouchToFillLoyaltyCardOutcome;
 import org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodMediator.TouchToFillLoyaltyCardSource;
 import org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.AllLoyaltyCardsItemProperties;
+import org.chromium.chrome.browser.touch_to_fill.payments.TouchToFillPaymentMethodProperties.ItemType;
 import org.chromium.components.autofill.AutofillFeatures;
 import org.chromium.components.autofill.AutofillSuggestion;
 import org.chromium.components.autofill.LoyaltyCard;
@@ -546,7 +544,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
     private static final String BNPL_AI_TERMS =
             "Content from the checkout page is shared with Google to offer these options."
                     + " Payment plans are subject to eligibility. To hide pay later options, go to"
-                    + " payment settings";
+                    + " payment settings.";
     private static final String BNPL_AI_TERMS_BOLDED_TEXT =
             "Content from the checkout page is shared with Google to offer these options.";
 
@@ -631,8 +629,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 R.string.autofill_payment_method_bottom_sheet_half_height,
                 R.string.autofill_payment_method_bottom_sheet_full_height,
                 R.string.autofill_payment_method_bottom_sheet_closed,
-                org.chromium.chrome.browser.touch_to_fill.payments.R.id
-                        .touch_to_fill_payment_method_home_screen);
+                R.id.touch_to_fill_payment_method_home_screen);
         assertThat(mTouchToFillPaymentMethodModel.get(VISIBLE), is(true));
     }
 
@@ -917,8 +914,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 R.string.autofill_bnpl_progress_sheet_half_height,
                 R.string.autofill_bnpl_progress_sheet_full_height,
                 R.string.autofill_bnpl_progress_sheet_closed,
-                org.chromium.chrome.browser.touch_to_fill.payments.R.id
-                        .touch_to_fill_progress_screen);
+                R.id.touch_to_fill_progress_screen);
 
         ModelList sheetItems = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
         assertThat(sheetItems.size(), is(3));
@@ -1181,8 +1177,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 R.string.autofill_bnpl_issuer_bottom_sheet_half_height,
                 R.string.autofill_bnpl_issuer_bottom_sheet_full_height,
                 R.string.autofill_bnpl_issuer_bottom_sheet_closed,
-                org.chromium.chrome.browser.touch_to_fill.payments.R.id
-                        .touch_to_fill_bnpl_issuer_selection_screen);
+                R.id.touch_to_fill_bnpl_issuer_selection_screen);
 
         ModelList itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
         assertThat(getModelsOfType(itemList, BNPL_ISSUER).size(), is(3));
@@ -1213,8 +1208,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 R.string.autofill_bnpl_issuer_bottom_sheet_half_height,
                 R.string.autofill_bnpl_issuer_bottom_sheet_full_height,
                 R.string.autofill_bnpl_issuer_bottom_sheet_closed,
-                org.chromium.chrome.browser.touch_to_fill.payments.R.id
-                        .touch_to_fill_bnpl_issuer_selection_screen);
+                R.id.touch_to_fill_bnpl_issuer_selection_screen);
 
         ModelList itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
         assertThat(getModelsOfType(itemList, BNPL_ISSUER).size(), is(3));
@@ -1245,8 +1239,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 R.string.autofill_bnpl_issuer_bottom_sheet_half_height,
                 R.string.autofill_bnpl_issuer_bottom_sheet_full_height,
                 R.string.autofill_bnpl_issuer_bottom_sheet_closed,
-                org.chromium.chrome.browser.touch_to_fill.payments.R.id
-                        .touch_to_fill_bnpl_issuer_selection_screen);
+                R.id.touch_to_fill_bnpl_issuer_selection_screen);
 
         ModelList itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
         assertThat(getModelsOfType(itemList, BNPL_ISSUER).size(), is(3));
@@ -2089,8 +2082,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 R.string.autofill_bnpl_issuer_tos_bottom_sheet_half_height,
                 R.string.autofill_bnpl_issuer_tos_bottom_sheet_full_height,
                 R.string.autofill_bnpl_issuer_tos_bottom_sheet_closed,
-                org.chromium.chrome.browser.touch_to_fill.payments.R.id
-                        .touch_to_fill_bnpl_issuer_tos_screen);
+                R.id.touch_to_fill_bnpl_issuer_tos_screen);
 
         List<PropertyModel> headerModel = getModelsOfType(itemList, TOS_HEADER);
         assertThat(headerModel.size(), is(1));
@@ -2290,7 +2282,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 R.string.autofill_bnpl_error_sheet_half_height,
                 R.string.autofill_bnpl_error_sheet_full_height,
                 R.string.autofill_bnpl_error_sheet_closed,
-                org.chromium.chrome.browser.touch_to_fill.payments.R.id.touch_to_fill_error_screen);
+                R.id.touch_to_fill_error_screen);
 
         ModelList sheetItems = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
         assertThat(sheetItems.size(), is(3));
@@ -2923,12 +2915,14 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 headerModel.get(SUBTITLE_ID),
                 is(R.string.autofill_loyalty_card_first_time_usage_bottom_sheet_subtitle));
 
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(1));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(1));
         PropertyModel loyaltyCardModel = itemList.get(1).model;
         assertThat(
-                loyaltyCardModel.get(LOYALTY_CARD_NUMBER),
+                loyaltyCardModel.get(LOYALTY_CARD).getLoyaltyCardNumber(),
                 is(LOYALTY_CARD_1.getLoyaltyCardNumber()));
-        assertThat(loyaltyCardModel.get(MERCHANT_NAME), is(LOYALTY_CARD_1.getMerchantName()));
+        assertThat(
+                loyaltyCardModel.get(LOYALTY_CARD).getMerchantName(),
+                is(LOYALTY_CARD_1.getMerchantName()));
 
         assertThat(getModelsOfType(itemList, ALL_LOYALTY_CARDS).size(), is(0));
 
@@ -2987,12 +2981,14 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
         assertThat(
                 headerModel.get(TITLE_ID), is(R.string.autofill_loyalty_card_bottom_sheet_title));
 
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(1));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(1));
         PropertyModel loyaltyCardModel = itemList.get(1).model;
         assertThat(
-                loyaltyCardModel.get(LOYALTY_CARD_NUMBER),
+                loyaltyCardModel.get(LOYALTY_CARD).getLoyaltyCardNumber(),
                 is(LOYALTY_CARD_1.getLoyaltyCardNumber()));
-        assertThat(loyaltyCardModel.get(MERCHANT_NAME), is(LOYALTY_CARD_1.getMerchantName()));
+        assertThat(
+                loyaltyCardModel.get(LOYALTY_CARD).getMerchantName(),
+                is(LOYALTY_CARD_1.getMerchantName()));
 
         assertThat(getModelsOfType(itemList, ALL_LOYALTY_CARDS).size(), is(1));
         assertThat(getModelsOfType(itemList, FILL_BUTTON).size(), is(1));
@@ -3022,18 +3018,21 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
         assertThat(
                 headerModel.get(TITLE_ID), is(R.string.autofill_loyalty_card_bottom_sheet_title));
 
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(2));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(2));
         PropertyModel loyaltyCardModel1 = itemList.get(1).model;
         assertThat(
-                loyaltyCardModel1.get(LOYALTY_CARD_NUMBER),
+                loyaltyCardModel1.get(LOYALTY_CARD).getLoyaltyCardNumber(),
                 is(LOYALTY_CARD_1.getLoyaltyCardNumber()));
-        assertThat(loyaltyCardModel1.get(MERCHANT_NAME), is(LOYALTY_CARD_1.getMerchantName()));
-
+        assertThat(
+                loyaltyCardModel1.get(LOYALTY_CARD).getMerchantName(),
+                is(LOYALTY_CARD_1.getMerchantName()));
         PropertyModel loyaltyCardModel2 = itemList.get(2).model;
         assertThat(
-                loyaltyCardModel2.get(LOYALTY_CARD_NUMBER),
+                loyaltyCardModel2.get(LOYALTY_CARD).getLoyaltyCardNumber(),
                 is(LOYALTY_CARD_2.getLoyaltyCardNumber()));
-        assertThat(loyaltyCardModel2.get(MERCHANT_NAME), is(LOYALTY_CARD_2.getMerchantName()));
+        assertThat(
+                loyaltyCardModel2.get(LOYALTY_CARD).getMerchantName(),
+                is(LOYALTY_CARD_2.getMerchantName()));
 
         assertThat(getModelsOfType(itemList, ALL_LOYALTY_CARDS).size(), is(1));
         assertThat(getModelsOfType(itemList, FILL_BUTTON).size(), is(0));
@@ -3059,24 +3058,25 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                 mTouchToFillPaymentMethodModel.get(CURRENT_SCREEN), is(ALL_LOYALTY_CARDS_SCREEN));
         assertThat(
                 mTouchToFillPaymentMethodModel.get(FOCUSED_VIEW_ID_FOR_ACCESSIBILITY),
-                is(
-                        org.chromium.chrome.browser.touch_to_fill.payments.R.id
-                                .all_loyalty_cards_back_image_button));
+                is(R.id.all_loyalty_cards_back_image_button));
         itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
         assertThat(itemList.size(), is(2));
 
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(2));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(2));
         PropertyModel loyaltyCardModel1 = itemList.get(0).model;
         assertThat(
-                loyaltyCardModel1.get(LOYALTY_CARD_NUMBER),
+                loyaltyCardModel1.get(LOYALTY_CARD).getLoyaltyCardNumber(),
                 is(LOYALTY_CARD_1.getLoyaltyCardNumber()));
-        assertThat(loyaltyCardModel1.get(MERCHANT_NAME), is(LOYALTY_CARD_1.getMerchantName()));
-
+        assertThat(
+                loyaltyCardModel1.get(LOYALTY_CARD).getMerchantName(),
+                is(LOYALTY_CARD_1.getMerchantName()));
         PropertyModel loyaltyCardModel2 = itemList.get(1).model;
         assertThat(
-                loyaltyCardModel2.get(LOYALTY_CARD_NUMBER),
+                loyaltyCardModel2.get(LOYALTY_CARD).getLoyaltyCardNumber(),
                 is(LOYALTY_CARD_2.getLoyaltyCardNumber()));
-        assertThat(loyaltyCardModel2.get(MERCHANT_NAME), is(LOYALTY_CARD_2.getMerchantName()));
+        assertThat(
+                loyaltyCardModel2.get(LOYALTY_CARD).getMerchantName(),
+                is(LOYALTY_CARD_2.getMerchantName()));
 
         mClock.advanceCurrentTimeMillis(InputProtector.POTENTIALLY_UNINTENDED_INPUT_THRESHOLD);
         loyaltyCardModel1.get(ON_LOYALTY_CARD_CLICK_ACTION).run();
@@ -3101,13 +3101,15 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
 
         // Verify that both loyalty cards are shown.
         ModelList itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(2));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(2));
 
         PropertyModel loyaltyCardModel = itemList.get(0).model;
         assertThat(
-                loyaltyCardModel.get(LOYALTY_CARD_NUMBER),
+                loyaltyCardModel.get(LOYALTY_CARD).getLoyaltyCardNumber(),
                 is(LOYALTY_CARD_1.getLoyaltyCardNumber()));
-        assertThat(loyaltyCardModel.get(MERCHANT_NAME), is(LOYALTY_CARD_1.getMerchantName()));
+        assertThat(
+                loyaltyCardModel.get(LOYALTY_CARD).getMerchantName(),
+                is(LOYALTY_CARD_1.getMerchantName()));
 
         mClock.advanceCurrentTimeMillis(InputProtector.POTENTIALLY_UNINTENDED_INPUT_THRESHOLD);
         loyaltyCardModel.get(ON_LOYALTY_CARD_CLICK_ACTION).run();
@@ -3123,7 +3125,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
 
         // Verify that both loyalty cards are shown.
         ModelList itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(2));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(2));
 
         // Press back closes the bottom sheet.
         mTouchToFillPaymentMethodModel.get(BACK_PRESS_HANDLER).run();
@@ -3159,7 +3161,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
                                 TouchToFillLoyaltyCardOutcome.NON_AFFILIATED_LOYALTY_CARD)
                         .build();
 
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(2));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(2));
         PropertyModel loyaltyCardModel = itemList.get(1).model;
         mClock.advanceCurrentTimeMillis(InputProtector.POTENTIALLY_UNINTENDED_INPUT_THRESHOLD);
         loyaltyCardModel.get(ON_LOYALTY_CARD_CLICK_ACTION).run();
@@ -3176,7 +3178,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
 
         assertThat(mTouchToFillPaymentMethodModel.get(CURRENT_SCREEN), is(HOME_SCREEN));
         ModelList itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(1));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(1));
 
         // Open the screen with all loyalty cards of a user.
         assertThat(getModelsOfType(itemList, ALL_LOYALTY_CARDS).size(), is(1));
@@ -3189,7 +3191,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
         assertThat(
                 mTouchToFillPaymentMethodModel.get(CURRENT_SCREEN), is(ALL_LOYALTY_CARDS_SCREEN));
         itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(2));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(2));
 
         // Open the home screen again.
         mTouchToFillPaymentMethodModel.get(BACK_PRESS_HANDLER).run();
@@ -3197,9 +3199,9 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
         assertThat(mTouchToFillPaymentMethodModel.get(CURRENT_SCREEN), is(HOME_SCREEN));
         assertThat(
                 mTouchToFillPaymentMethodModel.get(FOCUSED_VIEW_ID_FOR_ACCESSIBILITY),
-                is(org.chromium.chrome.browser.touch_to_fill.payments.R.id.all_loyalty_cards_item));
+                is(R.id.all_loyalty_cards_item));
         itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(1));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(1));
     }
 
     @Test
@@ -3211,7 +3213,7 @@ public class TouchToFillPaymentMethodControllerRobolectricTest {
         assertThat(mTouchToFillPaymentMethodModel.get(VISIBLE), is(true));
 
         ModelList itemList = mTouchToFillPaymentMethodModel.get(SHEET_ITEMS);
-        assertThat(getModelsOfType(itemList, LOYALTY_CARD).size(), is(1));
+        assertThat(getModelsOfType(itemList, ItemType.LOYALTY_CARD).size(), is(1));
 
         HistogramWatcher histogramWatcher =
                 HistogramWatcher.newBuilder()

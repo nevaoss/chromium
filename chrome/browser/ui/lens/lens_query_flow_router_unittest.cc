@@ -4,9 +4,12 @@
 
 #include "chrome/browser/ui/lens/lens_query_flow_router.h"
 
+#include "base/logging.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
@@ -22,6 +25,7 @@
 #include "components/contextual_search/mock_contextual_search_context_controller.h"
 #include "components/contextual_search/mock_contextual_search_session_handle.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
 #include "components/lens/contextual_input.h"
 #include "components/lens/lens_features.h"
 #include "components/lens/lens_overlay_permission_utils.h"
@@ -103,7 +107,6 @@ MATCHER_P(CreateSearchUrlRequestInfoMatches,
           "Compares CreateSearchUrlRequestInfo") {
   return arg->search_url_type == expected->search_url_type &&
          arg->query_text == expected->query_text &&
-         arg->query_start_time == expected->query_start_time &&
          arg->lens_overlay_selection_type ==
              expected->lens_overlay_selection_type &&
          arg->additional_params == expected->additional_params &&
@@ -126,6 +129,97 @@ MATCHER_P(ImageEncodingOptionsMatches,
          actual.compression_quality == expected.compression_quality;
 }
 
+class FakeQueryContextualizerDelegate
+    : public contextual_tasks::QueryContextualizer::Delegate {
+ public:
+  GURL GetTabUrl(contextual_tasks::QueryContextualizer::TabId id) override {
+    return GURL();
+  }
+  SessionID GetTabSessionId(
+      contextual_tasks::QueryContextualizer::TabId id) override {
+    return SessionID::InvalidValue();
+  }
+  void GetPageContext(
+      contextual_tasks::QueryContextualizer::TabId id,
+      base::OnceCallback<void(std::unique_ptr<lens::ContextualInputData>)>
+          callback) override {
+    std::move(callback).Run(nullptr);
+  }
+  bool IsTabValid(contextual_tasks::QueryContextualizer::TabId id) override {
+    return false;
+  }
+  std::optional<lens::ImageEncodingOptions>
+  GetTabViewportEncodingOptionsForQueryContextualizer() override {
+    return std::nullopt;
+  }
+
+  contextual_search::ContextualSearchSessionHandle*
+  GetOrCreateSessionHandleForQueryContextualizer() override {
+    return nullptr;
+  }
+  void GetRelevantTabsForQuery(
+      const std::string& query_text,
+      const std::vector<GURL>& attached_context_urls,
+      base::OnceCallback<void(
+          std::vector<contextual_tasks::QueryContextualizer::TabId>)> callback)
+      override {
+    std::move(callback).Run({});
+  }
+};
+
+class MockQueryContextualizer : public contextual_tasks::QueryContextualizer {
+ public:
+  MockQueryContextualizer(
+      contextual_tasks::ContextualTasksService* service,
+      contextual_tasks::QueryContextualizer::Delegate* delegate)
+      : QueryContextualizer(service, delegate) {}
+  ~MockQueryContextualizer() override = default;
+
+  void Contextualize(
+      const std::optional<base::Uuid>& task_id,
+      const std::string& query_text,
+      const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+          tabs_to_recontextualize,
+      const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+          tabs_to_force_contextualize,
+      contextual_tasks::QueryContextualizer::PageContextIneligibleCallback
+          on_ineligible_callback,
+      contextual_tasks::QueryContextualizer::TabProcessedCallback
+          on_processed_callback,
+      contextual_tasks::QueryContextualizer::ContextualizedCallback callback,
+      bool enable_smart_tab_selection) override {
+    MockContextualize(task_id, query_text, tabs_to_recontextualize,
+                      tabs_to_force_contextualize);
+    MockContextualizeWithCallbacks(task_id, query_text, tabs_to_recontextualize,
+                                   tabs_to_force_contextualize,
+                                   on_processed_callback, std::move(callback));
+  }
+
+  MOCK_METHOD(void,
+              MockContextualize,
+              (const std::optional<base::Uuid>& task_id,
+               const std::string& query_text,
+               const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                   tabs_to_recontextualize,
+               const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                   tabs_to_force_contextualize),
+              ());
+
+  MOCK_METHOD(
+      void,
+      MockContextualizeWithCallbacks,
+      (const std::optional<base::Uuid>& task_id,
+       const std::string& query_text,
+       const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+           tabs_to_recontextualize,
+       const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+           tabs_to_force_contextualize,
+       contextual_tasks::QueryContextualizer::TabProcessedCallback&
+           on_processed_callback,
+       contextual_tasks::QueryContextualizer::ContextualizedCallback callback),
+      ());
+};
+
 class TestLensQueryFlowRouter : public LensQueryFlowRouter {
  public:
   explicit TestLensQueryFlowRouter(
@@ -141,11 +235,16 @@ class TestLensQueryFlowRouter : public LensQueryFlowRouter {
     raw_mock_session_handle_ = pending_mock_session_handle_.get();
     ON_CALL(*pending_mock_session_handle_, GetController())
         .WillByDefault(Return(mock_context_controller));
+    ON_CALL(*pending_mock_session_handle_, CreateContextToken())
+        .WillByDefault(Return(base::UnguessableToken::Create()));
     pending_mock_session_handle_->CheckSearchContentSharingSettings(
         profile->GetPrefs());
     viewport_screenshot_.allocN32Pixels(10, 10);
   }
-  ~TestLensQueryFlowRouter() override = default;
+  ~TestLensQueryFlowRouter() override {
+    raw_mock_session_handle_ = nullptr;
+    side_panel_session_handle_ = nullptr;
+  }
 
   std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
   CreateContextualSearchSessionHandle() override {
@@ -168,8 +267,17 @@ class TestLensQueryFlowRouter : public LensQueryFlowRouter {
     side_panel_session_handle_ = handle;
   }
 
+  void SetTransferredSessionHandle(
+      std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+          handle) {
+    transferred_session_handle_ = std::move(handle);
+  }
+
   contextual_search::ContextualSearchSessionHandle*
   GetContextualSearchSessionHandle() const override {
+    if (transferred_session_handle_) {
+      return transferred_session_handle_.get();
+    }
     if (side_panel_session_handle_) {
       return side_panel_session_handle_;
     }
@@ -200,6 +308,8 @@ class TestLensQueryFlowRouter : public LensQueryFlowRouter {
   // test will seg fault.
   raw_ptr<contextual_search::MockContextualSearchSessionHandle>
       raw_mock_session_handle_;
+  std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+      transferred_session_handle_;
   raw_ptr<contextual_search::ContextualSearchSessionHandle>
       side_panel_session_handle_ = nullptr;
   raw_ptr<TabContextualizationController> tab_contextualization_controller_ =
@@ -244,7 +354,8 @@ class MockContextualTasksUiService
                                  /*delegate=*/nullptr,
                                  /*contextual_tasks_service=*/nullptr,
                                  /*identity_manager=*/nullptr,
-                                 /*aim_eligibility_service=*/nullptr) {}
+                                 /*aim_eligibility_service=*/nullptr,
+                                 /*cookie_synchronizer=*/nullptr) {}
   ~MockContextualTasksUiService() override = default;
 
   MOCK_METHOD(void,
@@ -252,6 +363,14 @@ class MockContextualTasksUiService
               (BrowserWindowInterface * browser_window_interface,
                tabs::TabInterface* tab_interface,
                const GURL& url,
+               std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                   session_handle),
+              (override));
+
+  MOCK_METHOD(void,
+              InitSidePanelWithGhostLoader,
+              (BrowserWindowInterface * browser_window_interface,
+               tabs::TabInterface* tab_interface,
                std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
                    session_handle),
               (override));
@@ -777,6 +896,94 @@ class LensQueryFlowRouterContextualTaskEnabledTest
 };
 
 TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
+       SendContextualTextQuery_SetsContextualLensSession) {
+  // Inject the mock contextualizer dependencies.
+  auto mock_service = std::make_unique<
+      testing::NiceMock<contextual_tasks::MockContextualTasksService>>();
+  auto fake_delegate = std::make_unique<FakeQueryContextualizerDelegate>();
+
+  // Arrange: Set up and create the router.
+  TestLensQueryFlowRouter router(mock_lens_search_controller_.get(),
+                                 mock_context_controller_.get(),
+                                 profile_.get());
+
+  auto mock_contextualizer = std::make_unique<MockQueryContextualizer>(
+      mock_service.get(), fake_delegate.get());
+  ON_CALL(*mock_contextualizer,
+          MockContextualizeWithCallbacks(_, _, _, _, _, _))
+      .WillByDefault(
+          [](const std::optional<base::Uuid>& task_id,
+             const std::string& query_text,
+             const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                 tabs_to_recontextualize,
+             const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                 tabs_to_force_contextualize,
+             contextual_tasks::QueryContextualizer::TabProcessedCallback&
+                 on_processed_callback,
+             contextual_tasks::QueryContextualizer::ContextualizedCallback
+                 callback) { std::move(callback).Run(nullptr); });
+  auto* mock_contextualizer_ptr = mock_contextualizer.get();
+  router.SetQueryContextualizerForTesting(std::move(mock_contextualizer));
+
+  // Mock StartQueryFlow on mock_query_controller_ to avoid real network calls.
+  EXPECT_CALL(*mock_lens_search_controller_, lens_overlay_query_controller())
+      .WillRepeatedly(Return(mock_query_controller_.get()));
+
+  // Mock CreateContextToken to return a known token.
+  base::UnguessableToken expected_token = base::UnguessableToken::Create();
+  EXPECT_CALL(*router.mock_session_handle(), CreateContextToken())
+      .WillRepeatedly(Return(expected_token));
+
+  SkBitmap screenshot;
+  screenshot.allocN32Pixels(10, 10);
+  GURL example_url("https://example.com");
+
+  // Call StartQueryFlow to generate the token.
+  router.StartQueryFlow(screenshot, example_url, "Title", {}, {},
+                        lens::MimeType::kAnnotatedPageContent, std::nullopt,
+                        1.0f, base::TimeTicks::Now());
+
+  // Mock GetFileInfo to return a valid FileInfo to avoid early return.
+  contextual_search::FileInfo file_info;
+  file_info.tab_session_id = SessionID::FromSerializedValue(123);
+
+  EXPECT_CALL(*mock_context_controller_, GetFileInfo(expected_token))
+      .WillRepeatedly(testing::Return(&file_info));
+
+  // Call `SendContextualTextQuery`.
+  // MockContextualizeWithCallbacks is expected to be called.
+  EXPECT_CALL(*mock_contextualizer_ptr,
+              MockContextualizeWithCallbacks(_, _, _, _, _, _))
+      .WillOnce(
+          [&](const std::optional<base::Uuid>& task_id,
+              const std::string& query_text,
+              const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                  tabs_to_recontextualize,
+              const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                  tabs_to_force_contextualize,
+              contextual_tasks::QueryContextualizer::TabProcessedCallback&
+                  on_processed,
+              contextual_tasks::QueryContextualizer::ContextualizedCallback
+                  cb) {
+            // Call on_processed to simulate tab context added!
+            on_processed.Run(123);  // Just pass a dummy tab ID!
+            // And then call the final callback with a transient weak pointer!
+            base::WeakPtrFactory<
+                contextual_search::MockContextualSearchSessionHandle>
+                weak_factory(router.mock_session_handle());
+            std::move(cb).Run(weak_factory.GetWeakPtr());
+          });
+
+  router.SendContextualTextQuery(
+      base::Time::Now(), "test query",
+      lens::LensOverlaySelectionType::MULTIMODAL_SUGGEST_TYPEAHEAD, {},
+      lens::LensOverlayInvocationSource::kAppMenu);
+
+  // Assert: Verify that the boolean flag was set on the session handle.
+  EXPECT_TRUE(router.mock_session_handle()->is_contextual_lens_session());
+}
+
+TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
        StartQueryFlow_RoutesToContextualTasks) {
   // Arrange: Set up and create the router.
   EXPECT_CALL(*mock_lens_search_controller_,
@@ -928,8 +1135,13 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTaskUiInSidePanelWithErrorPage(
                   mock_browser_window_interface_.get(), &mock_tab_interface_,
                   testing::Pointer(router.mock_session_handle())))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&router]() { router.ClearMockSessionHandle(); }));
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
 
   // Assert: Expect CreateSearchUrl to NOT be called.
   EXPECT_CALL(*router.mock_session_handle(), CreateSearchUrl(_, _)).Times(0);
@@ -985,8 +1197,13 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTaskUiInSidePanelWithErrorPage(
                   mock_browser_window_interface_.get(), &mock_tab_interface_,
                   testing::Pointer(router.mock_session_handle())))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&router]() { router.ClearMockSessionHandle(); }));
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
 
   // Assert: Expect CreateSearchUrl to NOT be called.
   EXPECT_CALL(*router.mock_session_handle(), CreateSearchUrl(_, _)).Times(0);
@@ -1045,8 +1262,13 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTaskUiInSidePanelWithErrorPage(
                   mock_browser_window_interface_.get(), &mock_tab_interface_,
                   testing::Pointer(router.mock_session_handle())))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&router]() { router.ClearMockSessionHandle(); }));
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
 
   // Assert: Expect CreateSearchUrl to NOT be called.
   EXPECT_CALL(*router.mock_session_handle(), CreateSearchUrl(_, _)).Times(0);
@@ -1094,6 +1316,9 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
       ContextualSearchContextController::SearchUrlType::kStandard;
   expected_request_info->query_start_time = query_start_time;
   expected_request_info->lens_overlay_selection_type = selection_type;
+  lens::AppendLensOverlaySidePanelParams(additional_params, router.gen204_id(),
+                                         /*has_text=*/false,
+                                         /*has_image=*/true);
   expected_request_info->additional_params = additional_params;
   expected_request_info->image_crop = lens::ImageCrop();
   expected_request_info->aim_entry_point =
@@ -1108,6 +1333,13 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   // StartTabContextUploadFlow is called as part of UploadContextualInputData.
   EXPECT_CALL(*router.mock_session_handle(),
               StartTabContextUploadFlow(_, _, _));
+
+  GURL example_url("https://example.com");
+  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+                        {}, {}, lens::MimeType::kAnnotatedPageContent,
+                        std::nullopt, 1.0f, base::TimeTicks::Now());
+  expected_request_info->additional_params["plla"] =
+      base::NumberToString(router.gen204_id());
   EXPECT_CALL(
       *router.mock_session_handle(),
       CreateSearchUrl(
@@ -1120,15 +1352,23 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   // Clear the mock session handle when the side panel is opened to avoid a
   // dangling pointer.
   EXPECT_CALL(*service,
-              StartTaskUiInSidePanel(
+              InitSidePanelWithGhostLoader(
                   mock_browser_window_interface_.get(), &mock_tab_interface_,
-                  GURL("https://www.google.com/search?q=test"),
                   testing::Pointer(router.mock_session_handle())))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&router]() { router.ClearMockSessionHandle(); }));
-  EXPECT_CALL(*mock_tab_contextualization_controller_, GetPageContext(_))
-      .WillOnce([](lens::TabContextualizationController::GetPageContextCallback
-                       callback) { std::move(callback).Run(nullptr); });
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
+
+  EXPECT_CALL(
+      *service,
+      StartTaskUiInSidePanel(
+          mock_browser_window_interface_.get(), &mock_tab_interface_,
+          GURL("https://www.google.com/search?q=test"), testing::IsNull()))
+      .Times(1);
 
   // Act: Call the method.
   router.SendRegionSearch(query_start_time, std::move(region), selection_type,
@@ -1183,8 +1423,13 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTaskUiInSidePanelWithErrorPage(
                   mock_browser_window_interface_.get(), &mock_tab_interface_,
                   testing::Pointer(router.mock_session_handle())))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&router]() { router.ClearMockSessionHandle(); }));
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
 
   // Assert: Expect CreateSearchUrl to NOT be called.
   EXPECT_CALL(*router.mock_session_handle(), CreateSearchUrl(_, _)).Times(0);
@@ -1274,12 +1519,23 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
       contextual_tasks::ContextualTasksUiServiceFactory::GetForBrowserContext(
           profile_.get()));
   EXPECT_CALL(*service,
-              StartTaskUiInSidePanel(
+              InitSidePanelWithGhostLoader(
                   mock_browser_window_interface_.get(), &mock_tab_interface_,
-                  GURL("https://www.google.com/search?q=test"),
                   testing::Pointer(router.mock_session_handle())))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&router]() { router.ClearMockSessionHandle(); }));
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
+
+  EXPECT_CALL(
+      *service,
+      StartTaskUiInSidePanel(
+          mock_browser_window_interface_.get(), &mock_tab_interface_,
+          GURL("https://www.google.com/search?q=test"), testing::IsNull()))
+      .Times(1);
 
   // Act: Call the method.
   router.SendRegionSearch(query_start_time, std::move(region), selection_type,
@@ -1317,6 +1573,9 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   expected_request_info->query_text = query_text;
   expected_request_info->query_start_time = query_start_time;
   expected_request_info->lens_overlay_selection_type = selection_type;
+  lens::AppendLensOverlaySidePanelParams(additional_params, router.gen204_id(),
+                                         /*has_text=*/true,
+                                         /*has_image=*/false);
   expected_request_info->additional_params = additional_params;
   expected_request_info->image_crop = std::nullopt;
   expected_request_info->aim_entry_point =
@@ -1338,6 +1597,13 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   // StartTabContextUploadFlow is called as part of UploadContextualInputData.
   EXPECT_CALL(*router.mock_session_handle(),
               StartTabContextUploadFlow(_, _, _));
+
+  GURL example_url("https://example.com");
+  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+                        {}, {}, lens::MimeType::kAnnotatedPageContent,
+                        std::nullopt, 1.0f, base::TimeTicks::Now());
+  expected_request_info->additional_params["plla"] =
+      base::NumberToString(router.gen204_id());
   EXPECT_CALL(
       *router.mock_session_handle(),
       CreateSearchUrl(
@@ -1350,15 +1616,23 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   // Clear the mock session handle when the side panel is opened to avoid a
   // dangling pointer.
   EXPECT_CALL(*service,
-              StartTaskUiInSidePanel(
+              InitSidePanelWithGhostLoader(
                   mock_browser_window_interface_.get(), &mock_tab_interface_,
-                  GURL("https://www.google.com/search?q=test"),
                   testing::Pointer(router.mock_session_handle())))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&router]() { router.ClearMockSessionHandle(); }));
-  EXPECT_CALL(*mock_tab_contextualization_controller_, GetPageContext(_))
-      .WillOnce([](lens::TabContextualizationController::GetPageContextCallback
-                       callback) { std::move(callback).Run(nullptr); });
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
+
+  EXPECT_CALL(
+      *service,
+      StartTaskUiInSidePanel(
+          mock_browser_window_interface_.get(), &mock_tab_interface_,
+          GURL("https://www.google.com/search?q=test"), testing::IsNull()))
+      .Times(1);
 
   // Act: Call the method.
   router.SendTextOnlyQuery(query_start_time, query_text, selection_type,
@@ -1482,6 +1756,9 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   expected_request_info->query_text = query_text;
   expected_request_info->query_start_time = query_start_time;
   expected_request_info->lens_overlay_selection_type = selection_type;
+  lens::AppendLensOverlaySidePanelParams(additional_params, router.gen204_id(),
+                                         /*has_text=*/true,
+                                         /*has_image=*/false);
   expected_request_info->additional_params = additional_params;
   expected_request_info->image_crop = std::nullopt;
   expected_request_info->aim_entry_point =
@@ -1503,6 +1780,13 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   // StartTabContextUploadFlow is called as part of UploadContextualInputData.
   EXPECT_CALL(*router.mock_session_handle(),
               StartTabContextUploadFlow(_, _, _));
+
+  GURL example_url("https://example.com");
+  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+                        {}, {}, lens::MimeType::kAnnotatedPageContent,
+                        std::nullopt, 1.0f, base::TimeTicks::Now());
+  expected_request_info->additional_params["plla"] =
+      base::NumberToString(router.gen204_id());
   EXPECT_CALL(
       *router.mock_session_handle(),
       CreateSearchUrl(
@@ -1512,18 +1796,20 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   auto* service = static_cast<MockContextualTasksUiService*>(
       contextual_tasks::ContextualTasksUiServiceFactory::GetForBrowserContext(
           profile_.get()));
-  // Clear the mock session handle when the side panel is opened to avoid a
-  // dangling pointer.
+  // Expect StartTaskUiInSidePanel to be called with the real URL and the
+  // session handle.
   EXPECT_CALL(*service,
               StartTaskUiInSidePanel(
                   mock_browser_window_interface_.get(), &mock_tab_interface_,
                   GURL("https://www.google.com/search?q=test"),
                   testing::Pointer(router.mock_session_handle())))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&router]() { router.ClearMockSessionHandle(); }));
-  EXPECT_CALL(*mock_tab_contextualization_controller_, GetPageContext(_))
-      .WillOnce([](lens::TabContextualizationController::GetPageContextCallback
-                       callback) { std::move(callback).Run(nullptr); });
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*, const GURL&,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
 
   // Act: Call the method.
   router.SendContextualTextQuery(query_start_time, query_text, selection_type,
@@ -1561,6 +1847,9 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   expected_request_info->query_text = query_text;
   expected_request_info->query_start_time = query_start_time;
   expected_request_info->lens_overlay_selection_type = selection_type;
+  lens::AppendLensOverlaySidePanelParams(additional_params, router.gen204_id(),
+                                         /*has_text=*/true,
+                                         /*has_image=*/true);
   expected_request_info->additional_params = additional_params;
   expected_request_info->image_crop = lens::ImageCrop();
   expected_request_info->aim_entry_point =
@@ -1583,6 +1872,13 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   // StartTabContextUploadFlow is called as part of UploadContextualInputData.
   EXPECT_CALL(*router.mock_session_handle(),
               StartTabContextUploadFlow(_, _, _));
+
+  GURL example_url("https://example.com");
+  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+                        {}, {}, lens::MimeType::kAnnotatedPageContent,
+                        std::nullopt, 1.0f, base::TimeTicks::Now());
+  expected_request_info->additional_params["plla"] =
+      base::NumberToString(router.gen204_id());
   EXPECT_CALL(
       *router.mock_session_handle(),
       CreateSearchUrl(
@@ -1595,15 +1891,23 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   // Clear the mock session handle when the side panel is opened to avoid a
   // dangling pointer.
   EXPECT_CALL(*service,
-              StartTaskUiInSidePanel(
+              InitSidePanelWithGhostLoader(
                   mock_browser_window_interface_.get(), &mock_tab_interface_,
-                  GURL("https://www.google.com/search?q=test"),
                   testing::Pointer(router.mock_session_handle())))
-      .WillOnce(testing::InvokeWithoutArgs(
-          [&router]() { router.ClearMockSessionHandle(); }));
-  EXPECT_CALL(*mock_tab_contextualization_controller_, GetPageContext(_))
-      .WillOnce([](lens::TabContextualizationController::GetPageContextCallback
-                       callback) { std::move(callback).Run(nullptr); });
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
+
+  EXPECT_CALL(
+      *service,
+      StartTaskUiInSidePanel(
+          mock_browser_window_interface_.get(), &mock_tab_interface_,
+          GURL("https://www.google.com/search?q=test"), testing::IsNull()))
+      .Times(1);
 
   // Act: Call the method.
   router.SendMultimodalRequest(query_start_time, std::move(region), query_text,
@@ -1865,6 +2169,173 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
+}
+
+TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
+       SendContextualTextQuery_WithExistingToken_PassesEmptyForceTabs) {
+  auto mock_service = std::make_unique<
+      testing::NiceMock<contextual_tasks::MockContextualTasksService>>();
+  // FakeQueryContextualizerDelegate must outlive router.
+  auto fake_delegate = std::make_unique<FakeQueryContextualizerDelegate>();
+
+  TestLensQueryFlowRouter router(mock_lens_search_controller_.get(),
+                                 mock_context_controller_.get(),
+                                 profile_.get());
+  router.SetTabContextualizationController(
+      mock_tab_contextualization_controller_.get());
+
+  auto mock_query_contextualizer = std::make_unique<MockQueryContextualizer>(
+      mock_service.get(), fake_delegate.get());
+  auto* mock_contextualizer_ptr = mock_query_contextualizer.get();
+  ON_CALL(*mock_contextualizer_ptr,
+          MockContextualizeWithCallbacks(_, _, _, _, _, _))
+      .WillByDefault(
+          [](const std::optional<base::Uuid>& task_id,
+             const std::string& query_text,
+             const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                 tabs_to_recontextualize,
+             const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                 tabs_to_force_contextualize,
+             contextual_tasks::QueryContextualizer::TabProcessedCallback&
+                 on_processed_callback,
+             contextual_tasks::QueryContextualizer::ContextualizedCallback
+                 callback) { std::move(callback).Run(nullptr); });
+  router.SetQueryContextualizerForTesting(std::move(mock_query_contextualizer));
+
+  // Initialize session handle and token via StartQueryFlow.
+  base::UnguessableToken file_token = base::UnguessableToken::Create();
+  EXPECT_CALL(*router.mock_session_handle(), NotifySessionStarted());
+  EXPECT_CALL(*router.mock_session_handle(), CreateContextToken())
+      .WillOnce(Return(file_token));
+  EXPECT_CALL(*router.mock_session_handle(),
+              StartTabContextUploadFlow(_, _, _));
+
+  GURL example_url("https://example.com");
+  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+                        {}, {}, lens::MimeType::kAnnotatedPageContent,
+                        std::nullopt, 1.0f, base::TimeTicks::Now());
+
+  // Arrange: Set up the parameters.
+  base::Time query_start_time = base::Time::Now();
+  std::string query_text = "test query";
+  lens::LensOverlaySelectionType selection_type =
+      lens::LensOverlaySelectionType::MULTIMODAL_SUGGEST_TYPEAHEAD;
+  std::map<std::string, std::string> additional_params;
+
+  // Mock GetFileInfo to return valid status so IsActiveTabContextEligible
+  // returns true.
+  SetFileInfoWithEligibility(file_token, /*is_eligible=*/true);
+
+  // Assert: Expect MockContextualize to be called with empty force_tabs.
+  EXPECT_CALL(*mock_contextualizer_ptr,
+              MockContextualize(testing::Eq(std::nullopt), query_text,
+                                testing::IsEmpty(), testing::IsEmpty()))
+      .Times(1);
+
+  EXPECT_CALL(*router.mock_session_handle(), CreateSearchUrl(_, _))
+      .WillOnce(base::test::RunOnceCallback<1>(
+          GURL("https://www.google.com/search?q=test")));
+
+  auto* service = static_cast<MockContextualTasksUiService*>(
+      contextual_tasks::ContextualTasksUiServiceFactory::GetForBrowserContext(
+          profile_.get()));
+
+  EXPECT_CALL(*service,
+              StartTaskUiInSidePanel(
+                  mock_browser_window_interface_.get(), &mock_tab_interface_,
+                  GURL("https://www.google.com/search?q=test"),
+                  testing::Pointer(router.mock_session_handle())))
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*, const GURL&,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
+
+  // Act: Call the method.
+  router.SendContextualTextQuery(query_start_time, query_text, selection_type,
+                                 additional_params,
+                                 lens::LensOverlayInvocationSource::kAppMenu);
+}
+
+TEST_F(
+    LensQueryFlowRouterContextualTaskEnabledTest,
+    SendContextualTextQuery_WithoutExistingToken_PassesActiveTabToForceTabs) {
+  auto mock_service = std::make_unique<
+      testing::NiceMock<contextual_tasks::MockContextualTasksService>>();
+  // FakeQueryContextualizerDelegate must outlive router.
+  auto fake_delegate = std::make_unique<FakeQueryContextualizerDelegate>();
+
+  TestLensQueryFlowRouter router(mock_lens_search_controller_.get(),
+                                 mock_context_controller_.get(),
+                                 profile_.get());
+  router.SetTabContextualizationController(
+      mock_tab_contextualization_controller_.get());
+
+  auto mock_query_contextualizer = std::make_unique<MockQueryContextualizer>(
+      mock_service.get(), fake_delegate.get());
+  auto* mock_contextualizer_ptr = mock_query_contextualizer.get();
+  ON_CALL(*mock_contextualizer_ptr,
+          MockContextualizeWithCallbacks(_, _, _, _, _, _))
+      .WillByDefault(
+          [](const std::optional<base::Uuid>& task_id,
+             const std::string& query_text,
+             const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                 tabs_to_recontextualize,
+             const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                 tabs_to_force_contextualize,
+             contextual_tasks::QueryContextualizer::TabProcessedCallback&
+                 on_processed_callback,
+             contextual_tasks::QueryContextualizer::ContextualizedCallback
+                 callback) { std::move(callback).Run(nullptr); });
+  router.SetQueryContextualizerForTesting(std::move(mock_query_contextualizer));
+
+  // Arrange: Set up the parameters.
+  base::Time query_start_time = base::Time::Now();
+  std::string query_text = "test query";
+  lens::LensOverlaySelectionType selection_type =
+      lens::LensOverlaySelectionType::MULTIMODAL_SUGGEST_TYPEAHEAD;
+  std::map<std::string, std::string> additional_params;
+
+  EXPECT_CALL(*mock_contextualizer_ptr,
+              MockContextualize(testing::Eq(std::nullopt), query_text,
+                                testing::IsEmpty(), testing::_))
+      .WillOnce(
+          [](const std::optional<base::Uuid>& task_id,
+             const std::string& query_text,
+             const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                 tabs_to_recontextualize,
+             const std::vector<contextual_tasks::QueryContextualizer::TabId>&
+                 tabs_to_force_contextualize) {
+            EXPECT_THAT(tabs_to_force_contextualize, testing::SizeIs(1));
+          });
+
+  EXPECT_CALL(*router.mock_session_handle(), CreateSearchUrl(_, _))
+      .WillOnce(base::test::RunOnceCallback<1>(
+          GURL("https://www.google.com/search?q=test")));
+
+  auto* service = static_cast<MockContextualTasksUiService*>(
+      contextual_tasks::ContextualTasksUiServiceFactory::GetForBrowserContext(
+          profile_.get()));
+
+  EXPECT_CALL(*service,
+              StartTaskUiInSidePanel(
+                  mock_browser_window_interface_.get(), &mock_tab_interface_,
+                  GURL("https://www.google.com/search?q=test"),
+                  testing::Pointer(router.mock_session_handle())))
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*, const GURL&,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
+
+  // Act: Call the method.
+  router.SendContextualTextQuery(query_start_time, query_text, selection_type,
+                                 additional_params,
+                                 lens::LensOverlayInvocationSource::kAppMenu);
 }
 
 class

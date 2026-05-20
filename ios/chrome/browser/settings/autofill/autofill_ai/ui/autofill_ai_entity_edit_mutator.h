@@ -7,7 +7,9 @@
 
 #import <UIKit/UIKit.h>
 
+#include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #import "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
+#include "components/autofill/core/common/dense_set.h"
 #import "ios/chrome/common/ui/reauthentication/reauthentication_protocol.h"
 
 @class AutofillAIEntityEditDateItem;
@@ -21,13 +23,13 @@
 // Notifies the mutator that the date for `item` has changed to `date`.
 - (void)didChangeDate:(NSDate*)date forItem:(AutofillAIEntityEditDateItem*)item;
 
-// Returns YES if `attributeTypeName` is a required field.
-- (BOOL)isFieldRequired:(autofill::AttributeTypeName)attributeTypeName;
+// Returns the list of fields that are missing based on the present attributes.
+- (autofill::DenseSet<autofill::AttributeType>)getMissingImportConstraintsFor:
+    (const autofill::DenseSet<autofill::AttributeType>&)presentAttributes;
 
 // Requests authentication before entering edit mode.
 // `completion` is called with the result of the authentication attempt.
-- (void)requestEditingWithCompletion:
-    (void (^)(ReauthenticationResult result))completion;
+- (void)requestEditingWithCompletion:(ReauthenticationResultBlock)completion;
 
 @end
 

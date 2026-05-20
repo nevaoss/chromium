@@ -87,6 +87,7 @@ import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.ImportantFormFactors;
 import org.chromium.base.test.util.Restriction;
+import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ChromeTabbedActivity;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
 import org.chromium.chrome.browser.bookmarks.BookmarkDelegate;
@@ -118,7 +119,6 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
 import org.chromium.chrome.browser.ui.signin.signin_promo.SigninPromoCoordinator;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
-import org.chromium.chrome.test.R;
 import org.chromium.chrome.test.transit.ChromeTransitTestRules;
 import org.chromium.chrome.test.transit.FreshCtaTransitTestRule;
 import org.chromium.chrome.test.util.ActivityTestUtils;
@@ -323,6 +323,7 @@ public class BookmarkTest {
 
     @Test
     @SmallTest
+    @Restriction(DeviceFormFactor.PHONE)
     public void testOpenBookmark() throws InterruptedException, ExecutionException {
         addBookmark(TEST_PAGE_TITLE_GOOGLE, mTestPage);
         openBookmarkManager();
@@ -390,7 +391,51 @@ public class BookmarkTest {
 
     @Test
     @SmallTest
+    @Restriction({DeviceFormFactor.ONLY_TABLET})
+    public void testShowBookmarkManager_Tablet() throws Exception {
+        BookmarkTestUtil.loadEmptyPartnerBookmarksForTesting(mBookmarkModel);
+        BookmarkTestUtil.waitForBookmarkModelLoaded();
+
+        int initialTabCount =
+                ThreadUtils.runOnUiThreadBlocking(
+                        mActivityTestRule.getActivity().getTabModelSelector()::getTotalTabCount);
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () ->
+                        mBookmarkManagerOpener.showBookmarkManager(
+                                mActivityTestRule.getActivity(),
+                                mActivityTestRule.getActivityTab(),
+                                mActivityTestRule.getProfile(false),
+                                mBookmarkModel.getMobileFolderId()));
+
+        // Verify that a new tab was opened.
+        CriteriaHelper.pollUiThread(
+                () ->
+                        Criteria.checkThat(
+                                "Tab count should increase by 1",
+                                mActivityTestRule
+                                        .getActivity()
+                                        .getTabModelSelector()
+                                        .getTotalTabCount(),
+                                Matchers.is(initialTabCount + 1)));
+
+        // Verify the URL of the active tab is the bookmark URL.
+        CriteriaHelper.pollUiThread(
+                () ->
+                        Criteria.checkThat(
+                                "URL should be bookmarks URL",
+                                mActivityTestRule
+                                        .getActivityTab()
+                                        .getUrl()
+                                        .getSpec()
+                                        .contains("chrome-native://bookmarks/"),
+                                Matchers.is(true)));
+    }
+
+    @Test
+    @SmallTest
     @DisableIf.Build(sdk_equals = Build.VERSION_CODES.S_V2, message = "https://crbug.com/41484383")
+    @Restriction(DeviceFormFactor.PHONE)
     public void testOpenBookmarkManagerFolder() throws InterruptedException {
         openBookmarkManager();
         BookmarkTestUtil.openMobileBookmarks(mItemsContainer, mDelegate, mBookmarkModel);
@@ -452,6 +497,7 @@ public class BookmarkTest {
     @SmallTest
     @DisableIf.Build(sdk_equals = Build.VERSION_CODES.S_V2, message = "https://crbug.com/41484383")
     @DisabledTest(message = "Proabably never worked. crbug.com/446200399")
+    @Restriction(DeviceFormFactor.PHONE)
     public void testEmptyBookmarkFolder() throws InterruptedException {
         openBookmarkManager();
         BookmarkTestUtil.openMobileBookmarks(mItemsContainer, mDelegate, mBookmarkModel);
@@ -472,7 +518,7 @@ public class BookmarkTest {
 
     @Test
     @SmallTest
-    @Restriction({DeviceRestriction.RESTRICTION_TYPE_NON_AUTO})
+    @Restriction({DeviceFormFactor.PHONE})
     @DisabledTest(message = "Proabably never worked. crbug.com/446200399")
     public void testEmptySearch() throws InterruptedException {
         openBookmarkManager();
@@ -849,7 +895,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
-    @Restriction({DeviceFormFactor.PHONE}) // see crbug.com/1429025
+    @Restriction({DeviceFormFactor.PHONE}) // see crbug.com/40262498
     public void testEditHiddenWhileStillLoading() throws Exception {
         BookmarkManagerCoordinator.preventLoadingForTesting(true);
 
@@ -903,6 +949,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
+    @Restriction(DeviceFormFactor.PHONE)
     public void testEndIconVisibilityInSelectionMode() throws Exception {
         addFolder(TEST_FOLDER_TITLE);
         addBookmark(TEST_TITLE_A, mTestUrlA);
@@ -940,6 +987,7 @@ public class BookmarkTest {
     @Test
     @MediumTest
     @DisabledTest(message = "https://issues.chromium.org/331232180")
+    @Restriction(DeviceFormFactor.PHONE)
     public void testEndIconVisibilityInSearchMode() throws Exception {
         addFolder(TEST_FOLDER_TITLE);
         addFolder(TEST_TITLE_A);
@@ -977,6 +1025,7 @@ public class BookmarkTest {
     @Test
     @MediumTest
     @DisabledTest(message = "https://crbug.com/344981899, this test needs to be fixed post-UNO")
+    @Restriction(DeviceFormFactor.PHONE)
     public void testSmallDrag_Up_BookmarksOnly() throws Exception {
         List<BookmarkId> initial = new ArrayList<>();
         List<BookmarkId> expected = new ArrayList<>();
@@ -1045,7 +1094,7 @@ public class BookmarkTest {
                 });
 
         // After a drag is finished, the toolbar menu items should still reflect the selected state.
-        // Check inspired by https://crbug.com/1434566.
+        // Check inspired by https://crbug.com/40904288.
         assertTrue(mToolbar.getMenu().findItem(R.id.selection_mode_edit_menu_id).isVisible());
         assertTrue(mToolbar.getMenu().findItem(R.id.selection_mode_move_menu_id).isVisible());
         assertTrue(mToolbar.getMenu().findItem(R.id.selection_mode_delete_menu_id).isVisible());
@@ -1057,6 +1106,7 @@ public class BookmarkTest {
     @Test
     @MediumTest
     @DisabledTest(message = "https://crbug.com/344981899, this test needs to be fixed post-UNO")
+    @Restriction(DeviceFormFactor.PHONE)
     public void testSmallDrag_Down_FoldersOnly() throws Exception {
         List<BookmarkId> initial = new ArrayList<>();
         List<BookmarkId> expected = new ArrayList<>();
@@ -1128,6 +1178,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
+    @Restriction(DeviceFormFactor.PHONE)
     public void testSmallDrag_Down_MixedFoldersAndBookmarks() throws Exception {
         List<BookmarkId> initial = new ArrayList<>();
         List<BookmarkId> expected = new ArrayList<>();
@@ -1195,6 +1246,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
+    @Restriction(DeviceFormFactor.PHONE)
     public void testPromoDraggability() throws Exception {
         addFolder(TEST_FOLDER_TITLE);
 
@@ -1217,6 +1269,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
+    @Restriction(DeviceFormFactor.PHONE)
     public void testItemDraggability() throws Exception {
         addBookmark("a", mTestUrlA);
         addFolder(TEST_FOLDER_TITLE);
@@ -1252,6 +1305,7 @@ public class BookmarkTest {
     @Test
     @MediumTest
     @DisableIf.Build(sdk_equals = Build.VERSION_CODES.S_V2, message = "https://crbug.com/41484383")
+    @Restriction(DeviceFormFactor.PHONE)
     public void testMoveUpMenuItem() throws Exception {
         addBookmark(TEST_PAGE_TITLE_GOOGLE, mTestUrlA);
         addFolder(TEST_FOLDER_TITLE);
@@ -1276,6 +1330,7 @@ public class BookmarkTest {
     @Test
     @MediumTest
     @DisableIf.Build(sdk_equals = Build.VERSION_CODES.S_V2, message = "https://crbug.com/41484383")
+    @Restriction(DeviceFormFactor.PHONE)
     public void testMoveDownMenuItem() throws Exception {
         addBookmark(TEST_PAGE_TITLE_GOOGLE, mTestUrlA);
         addFolder(TEST_FOLDER_TITLE);
@@ -1298,6 +1353,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
+    @Restriction(DeviceFormFactor.PHONE)
     public void testMoveDownGoneForBottomElement() throws Exception {
         addBookmarkWithPartner(TEST_PAGE_TITLE_GOOGLE, mTestUrlA);
         addFolderWithPartner(TEST_FOLDER_TITLE);
@@ -1316,6 +1372,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
+    @Restriction(DeviceFormFactor.PHONE)
     public void testMoveUpGoneForTopElement() throws Exception {
         addBookmark(TEST_PAGE_TITLE_GOOGLE, mTestUrlA);
         addFolder(TEST_FOLDER_TITLE);
@@ -1334,7 +1391,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
-    @DisabledTest(message = "crbug.com/1046653")
+    @DisabledTest(message = "crbug.com/40116541")
     public void testMoveButtonsGoneInSearchMode() throws Exception {
         addFolder(TEST_FOLDER_TITLE);
         openBookmarkManager();
@@ -1354,6 +1411,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
+    @Restriction(DeviceFormFactor.PHONE)
     public void testMoveButtonsGoneWithOneBookmark() throws Exception {
         addFolder(TEST_FOLDER_TITLE);
         openBookmarkManager();
@@ -1437,6 +1495,7 @@ public class BookmarkTest {
     @Test
     @MediumTest
     @DisabledTest(message = "Flaky, see crbug.com/335891831")
+    @Restriction(DeviceFormFactor.PHONE)
     public void testShowInFolder_NoScroll() throws Exception {
         addFolder(TEST_FOLDER_TITLE);
         openBookmarkManager();
@@ -1709,6 +1768,7 @@ public class BookmarkTest {
 
     @Test
     @MediumTest
+    @Restriction(DeviceFormFactor.PHONE)
     public void testBookmarksDoesNotRecordLaunchMetrics() throws Throwable {
         assertEquals(
                 1,
@@ -2249,7 +2309,7 @@ public class BookmarkTest {
         assertTrue(
                 "Found " + view.getClass() + " expected " + clazz,
                 clazz.isAssignableFrom(view.getClass()));
-        return (T) view;
+        return clazz.cast(view);
     }
 
     private ViewHolder getViewHolderAtIndex(int index) {

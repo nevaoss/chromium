@@ -15,7 +15,8 @@ export function getHtml(this: SkillCardElement) {
   ${this.skill.imageUrl ? html`
     <div id="illustrationContainer">
       <img is="cr-auto-img" id="illustrationImage"
-          auto-src="${this.skill.imageUrl}">
+          auto-src="${this.skill.imageUrl}"
+          static-encode encode-type="webp">
       </img>
     </div>` : html``
   }
@@ -24,6 +25,10 @@ export function getHtml(this: SkillCardElement) {
       <div id="icon">${this.skill.icon}</div>
       <div id="name">${this.skill.name}</div>
     </div>
+    ${this.isDiscoverCard_() ? html
+    `<div id="curatedLabel">$i18n{curatedByPrefix} ${this.skill.curatedBy}
+    </div>`
+      : html``}
     <!-- Only show the menu button for user-created skills. -->
     ${this.isDiscoverCard_() ? html`` : html`
       <cr-icon-button id="moreButton" iron-icon="cr:more-vert"
@@ -49,7 +54,7 @@ export function getHtml(this: SkillCardElement) {
     `}
   </div>
   <cr-tooltip for="cardHeader" position="bottom" offset="0"
-      fit-to-visible-bounds>
+      fit-to-visible-bounds ?manual-mode="${this.hideTooltip}">
     ${this.skill.name}
   </cr-tooltip>
   <div id="${this.cardType}Body" class="card-body">${this.getCardBodyText_()}

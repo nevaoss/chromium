@@ -7,6 +7,7 @@
 
 #include <optional>
 
+#include "base/memory/weak_ptr.h"
 #include "content/browser/webid/idp_network_request_manager.h"
 #include "content/common/content_export.h"
 #include "url/gurl.h"
@@ -42,10 +43,11 @@ enum class RequesterFrameType;
 bool IsSameSiteWithAncestors(const url::Origin& origin,
                              RenderFrameHost* render_frame_host);
 
-void SetIdpSigninStatus(BrowserContext* context,
+void SetIdpSigninStatus(base::WeakPtr<BrowserContext> context,
                         network::mojom::RequestDestination destination,
                         FrameTreeNodeId frame_tree_node_id,
-                        const url::Origin& origin,
+                        const std::optional<url::Origin>& initiator,
+                        const url::Origin& idp_origin,
                         blink::mojom::IdpSigninStatus status);
 
 // Computes string to display in developer tools console for a FedCM endpoint

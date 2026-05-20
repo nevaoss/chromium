@@ -10,6 +10,7 @@
 #import "components/strings/grit/components_strings.h"
 #import "ios/chrome/browser/autofill/autofill_ai/public/autofill_ai_constants.h"
 #import "ios/chrome/browser/autofill/autofill_ai/public/autofill_ai_ui_util.h"
+#import "ios/chrome/browser/net/model/crurl.h"
 #import "ios/chrome/browser/settings/autofill/autofill_ai/utils/autofill_ai_date_util.h"
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_link_header_footer_item.h"
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_text_edit_item.h"
@@ -20,6 +21,9 @@
 #import "ui/base/l10n/l10n_util.h"
 
 namespace {
+
+constexpr CGFloat kSaveFormTopPadding = 16.0;
+constexpr CGFloat kUpdateFormSectionSpacing = 32.0;
 
 typedef NS_ENUM(NSInteger, SectionIdentifier) {
   SectionIdentifierNewEntity = 0,
@@ -96,6 +100,10 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
 
 }  // namespace
 
+@interface AutofillAISaveEntityTableViewController () <
+    TableViewLinkHeaderFooterItemDelegate>
+@end
+
 @implementation AutofillAISaveEntityTableViewController {
   // New entity to save.
   std::optional<autofill::EntityInstance> _newEntity;
@@ -114,6 +122,7 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
   [super viewDidLoad];
 
   self.tableView.accessibilityIdentifier = kAutofillAISaveEntityTableViewId;
+  self.tableView.allowsSelection = NO;
 
   RegisterCells(self.tableView);
 
@@ -125,7 +134,11 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
     return;
   }
 
-  [self setTitle:base::SysUTF16ToNSString(_newEntity->type().GetNameForI18n())];
+  autofill::EntityTypeName typeName = _newEntity->type().name();
+  NSString* title = [self isUpdateDialog]
+                        ? autofill::GetDialogTitleForUpdateEntity(typeName)
+                        : autofill::GetDialogTitleForSaveEntity(typeName);
+  [self setTitle:title];
 
   _dataSource = [[UITableViewDiffableDataSource alloc]
       initWithTableView:self.tableView
@@ -150,7 +163,7 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
 
   AddEntity(snapshot, *_newEntity, SectionIdentifierNewEntity);
 
-  if (_oldEntity.has_value()) {
+  if ([self isUpdateDialog]) {
     AddEntity(snapshot, *_oldEntity, SectionIdentifierOldEntity);
   }
 
@@ -178,7 +191,7 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
 
 - (UIView*)tableView:(UITableView*)tableView
     viewForHeaderInSection:(NSInteger)section {
-  if (!_oldEntity.has_value()) {
+  if (![self isUpdateDialog]) {
     return nil;
   }
 
@@ -204,6 +217,12 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
   if (sectionIdentifier == SectionIdentifierFooter) {
     TableViewLinkHeaderFooterView* footer =
         DequeueTableViewHeaderFooter<TableViewLinkHeaderFooterView>(tableView);
+    footer.delegate = self;
+    if ([self isSaveToWallet]) {
+      GURL url = [self isUpdateDialog] ? autofill::GetGoogleWalletPassesURL()
+                                       : autofill::GetManageYourInfoURL();
+      footer.urls = @[ [[CrURL alloc] initWithGURL:url] ];
+    }
     [footer setText:[self footerText]
           withColor:[UIColor colorNamed:kTextSecondaryColor]];
     return footer;
@@ -219,8 +238,13 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
 
   if ((sectionIdentifier == SectionIdentifierNewEntity ||
        sectionIdentifier == SectionIdentifierOldEntity) &&
-      _oldEntity.has_value()) {
+      [self isUpdateDialog]) {
     return UITableViewAutomaticDimension;
+  }
+
+  if (![self isUpdateDialog] &&
+      sectionIdentifier == SectionIdentifierNewEntity) {
+    return kSaveFormTopPadding;
   }
 
   return 0;
@@ -235,6 +259,11 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
     return UITableViewAutomaticDimension;
   }
 
+  if (sectionIdentifier == SectionIdentifierNewEntity &&
+      [self isUpdateDialog]) {
+    return kUpdateFormSectionSpacing;
+  }
+
   return 0;
 }
 
@@ -245,6 +274,12 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
       [_dataSource sectionIdentifierForIndex:section].integerValue);
 }
 
+// Returns if the current dialog is the `Update` dialog. If it returns `NO`, the
+// current dialog is the `Save` dialog.
+- (BOOL)isUpdateDialog {
+  return _oldEntity.has_value();
+}
+
 - (BOOL)isSaveToWallet {
   return _newEntity.has_value() &&
          _newEntity->record_type() ==
@@ -253,11 +288,22 @@ TableViewTextHeaderFooterView* GetHeaderView(UITableView* table_view,
 
 - (NSString*)footerText {
   if ([self isSaveToWallet]) {
-    return l10n_util::GetNSStringF(IDS_IOS_AUTOFILL_AI_FOOTER_SAVE_TO_WALLET,
-                                   _userEmail);
+    if ([self isUpdateDialog]) {
+      return autofill::GetUpdateEntitySavedInWalletFooterText(
+          base::SysUTF16ToNSString(_userEmail));
+    } else {
+      return autofill::GetSaveEntityToWalletFooterText(
+          base::SysUTF16ToNSString(_userEmail));
+    }
   } else {
     return l10n_util::GetNSString(IDS_IOS_AUTOFILL_AI_FOOTER_SAVE_TO_DEVICE);
   }
+}
+
+#pragma mark - TableViewLinkHeaderFooterItemDelegate
+
+- (void)view:(TableViewLinkHeaderFooterView*)view didTapLinkURL:(CrURL*)URL {
+  [self.delegate didTapLinkWithURL:URL];
 }
 
 @end

@@ -6,6 +6,7 @@
 
 #import "base/memory/raw_ptr.h"
 #import "base/strings/sys_string_conversions.h"
+#import "base/time/time.h"
 #import "base/timer/timer.h"
 #import "components/feature_engagement/public/event_constants.h"
 #import "components/feature_engagement/public/feature_constants.h"
@@ -19,8 +20,8 @@
 #import "ios/chrome/browser/contextual_panel/model/contextual_panel_tab_helper_observer_bridge.h"
 #import "ios/chrome/browser/infobars/model/infobar_badge_tab_helper.h"
 #import "ios/chrome/browser/infobars/model/infobar_badge_tab_helper_observer_bridge.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_service.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/location_bar/badge/coordinator/location_bar_badge_mediator_delegate.h"
@@ -47,9 +48,9 @@
 namespace {
 
 // Time to start transition in seconds.
-const int kStartExpandTransitionTimeInSeconds = 2;
+constexpr base::TimeDelta kStartExpandTransitionTime = base::Seconds(2);
 // Time to start the collapse transition in seconds.
-const int kStartCollapseTransitionTimeInSeconds = 5;
+constexpr base::TimeDelta kStartCollapseTransitionTime = base::Seconds(5);
 }  // anonymous namespace
 
 @interface LocationBarBadgeMediator () <ContextualPanelTabHelperObserving,
@@ -77,7 +78,7 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
   // Pref service.
   raw_ptr<PrefService> _prefService;
   // Gemini service
-  raw_ptr<BwgService> _geminiService;
+  raw_ptr<GeminiService> _geminiService;
   // Bridge for the InfobarBadgeTabHelper observation.
   std::unique_ptr<InfobarBadgeTabHelperObserverBridge>
       _infobarBadgeObserverBridge;
@@ -92,12 +93,14 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
   // Forwarder to always be observing the active ContextualPanelTabHelper.
   std::unique_ptr<ActiveContextualPanelTabHelperObservationForwarder>
       _activeContextualPanelObservationForwarder;
+  // Boolean to track whether the FET promo is being displayed.
+  BOOL _isFETPromoShowing;
 }
 
 - (instancetype)initWithWebStateList:(WebStateList*)webStateList
                              tracker:(feature_engagement::Tracker*)tracker
                          prefService:(PrefService*)prefService
-                       geminiService:(BwgService*)geminiService {
+                       geminiService:(GeminiService*)geminiService {
   self = [super init];
   if (self) {
     _webStateList = webStateList;
@@ -204,6 +207,8 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
     _promoStartTimer = nil;
     _promoEndTimer = nil;
     [self.consumer hideBadge];
+    [self ensureFETFeatureIsDismissed];
+    [self preventContextualPanelEntryPoint:NO];
   }
 }
 
@@ -357,11 +362,11 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
 
 - (void)handleBadgeContainerCollapse:(LocationBarBadgeType)badgeType {
   switch (badgeType) {
-    case LocationBarBadgeType::kGeminiContextualCueChip:
-      if (!IsAskGeminiChipIgnoreCriteria()) {
-        _tracker->Dismissed(feature_engagement::kIPHiOSGeminiContextualCueChip);
-      }
+    case LocationBarBadgeType::kGeminiContextualCueChip: {
+      [self ensureFETFeatureIsDismissed];
+      [self preventContextualPanelEntryPoint:NO];
       break;
+    }
     default:
       break;
   }
@@ -369,12 +374,34 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
 
 #pragma mark - Private
 
+// Sets the suppression flag for the contextual panel entrypoint.
+- (void)preventContextualPanelEntryPoint:(BOOL)prevent {
+  if (!_activeWebState) {
+    return;
+  }
+  GeminiTabHelper* tabHelper = GeminiTabHelper::FromWebState(_activeWebState);
+  if (tabHelper) {
+    tabHelper->SetPreventContextualPanelEntryPoint(prevent);
+  }
+}
+
+// Dismisses the Feature Engagement Tracker feature. Safe to call
+// multiple times as a cleanup function since Dismissed() only clears active
+// in-memory tracking states without side effects.
+- (void)ensureFETFeatureIsDismissed {
+  if (_isFETPromoShowing) {
+    if (!IsAskGeminiChipIgnoreCriteria()) {
+      _tracker->Dismissed(feature_engagement::kIPHiOSGeminiContextualCueChip);
+    }
+    _isFETPromoShowing = NO;
+  }
+}
+
 // Starts the promo timer.
 - (void)startPromoTimer:(LocationBarBadgeConfiguration*)badgeConfig {
   __weak LocationBarBadgeMediator* weakSelf = self;
   _promoStartTimer = std::make_unique<base::OneShotTimer>();
-  _promoStartTimer->Start(FROM_HERE,
-                          base::Seconds(kStartExpandTransitionTimeInSeconds),
+  _promoStartTimer->Start(FROM_HERE, kStartExpandTransitionTime,
                           base::BindOnce(^{
                             [weakSelf setupAndExpandChip:badgeConfig];
                           }));
@@ -384,8 +411,7 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
 - (void)startEndPromoTimer {
   __weak LocationBarBadgeMediator* weakSelf = self;
   _promoEndTimer = std::make_unique<base::OneShotTimer>();
-  _promoEndTimer->Start(FROM_HERE,
-                        base::Seconds(kStartCollapseTransitionTimeInSeconds),
+  _promoEndTimer->Start(FROM_HERE, kStartCollapseTransitionTime,
                         base::BindOnce(^{
                           [weakSelf cleanupAndTransitionToDefaultBadgeState];
                         }));
@@ -395,8 +421,7 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
 - (void)startIPHTimer:(LocationBarBadgeConfiguration*)badgeConfig {
   __weak LocationBarBadgeMediator* weakSelf = self;
   _promoStartTimer = std::make_unique<base::OneShotTimer>();
-  _promoStartTimer->Start(FROM_HERE,
-                          base::Seconds(kStartExpandTransitionTimeInSeconds),
+  _promoStartTimer->Start(FROM_HERE, kStartExpandTransitionTime,
                           base::BindOnce(^{
                             [weakSelf setupAndShowIPH:badgeConfig];
                           }));
@@ -549,6 +574,7 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
   switch (badgeType) {
     case LocationBarBadgeType::kGeminiContextualCueChip:
       if ([self shouldShowGeminiContextualBadge]) {
+        [self preventContextualPanelEntryPoint:YES];
         return YES;
       }
       return NO;
@@ -579,8 +605,6 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
           contextualPanelTabHelper->GetFirstCachedConfig().get();
       return [self canShowLargeEntrypointWithConfig:config];
     }
-    case LocationBarBadgeType::kGeminiContextualCueChip:
-      return [self shouldShowGeminiContextualChip];
     case LocationBarBadgeType::kNone:
       return NO;
     default:
@@ -660,7 +684,7 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
 // Checks if the page is eligible for Gemini, a user has consented, and checks
 // if two hours has passed since the last chip display.
 - (BOOL)shouldShowGeminiContextualBadge {
-  BwgTabHelper* tabHelper = BwgTabHelper::FromWebState(_activeWebState);
+  GeminiTabHelper* tabHelper = GeminiTabHelper::FromWebState(_activeWebState);
   BOOL isPageEligible = tabHelper &&
                         tabHelper->IsGeminiAvailableForWebState() &&
                         _geminiService->IsProfileEligibleForGemini();
@@ -677,10 +701,8 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
   BOOL eligibleTimeWindow =
       timeSinceLastShown >= base::Hours(kGeminiContextualCueChipSlidingWindow);
 
-  // If the promo timers have already started, do not allow the chip to show to
-  // avoid calling `ShouldTriggerHelpUI()` when the chip is in the process of
-  // being displayed.
-  if ([self arePromoTimersRunning]) {
+  // If the promo is being displayed, do not allow the chip to show.
+  if (_isFETPromoShowing) {
     return NO;
   }
 
@@ -688,25 +710,16 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
     return YES;
   }
 
-  return isPageEligible && isConsentEligible && eligibleTimeWindow &&
-         _tracker->WouldTriggerHelpUI(
-             feature_engagement::kIPHiOSGeminiContextualCueChip);
-}
-
-// Whether to show Gemini contextual chip.
-- (BOOL)shouldShowGeminiContextualChip {
-  if (IsAskGeminiChipIgnoreCriteria()) {
-    return YES;
+  if (!(isPageEligible && isConsentEligible && eligibleTimeWindow)) {
+    return NO;
   }
 
-  return _tracker->ShouldTriggerHelpUI(
+  BOOL shouldTrigger = _tracker->ShouldTriggerHelpUI(
       feature_engagement::kIPHiOSGeminiContextualCueChip);
-}
-
-// Returns whether the promo timers exist which implies a promo is in the
-// process of being displayed.
-- (BOOL)arePromoTimersRunning {
-  return _promoStartTimer != nullptr || _promoEndTimer != nullptr;
+  if (shouldTrigger) {
+    _isFETPromoShowing = YES;
+  }
+  return shouldTrigger;
 }
 
 #pragma mark - Private ContextualPanelEntrypoint
@@ -714,7 +727,7 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
 // Updates the entrypoint state whenever the active tab changes or new data is
 // provided.
 - (void)activeTabHasNewData:(ContextualPanelItemConfiguration*)config {
-  if ([self arePromoTimersRunning]) {
+  if (_isFETPromoShowing) {
     return;
   }
 
@@ -727,10 +740,10 @@ const int kStartCollapseTransitionTimeInSeconds = 5;
 
   // Prevents entrypoint from showing while the Gemini promo is showing.
   if (IsPageActionMenuEnabled()) {
-    BwgTabHelper* BWGTabHelper =
-        BwgTabHelper::FromWebState(_webStateList->GetActiveWebState());
-    if (BWGTabHelper) {
-      if (BWGTabHelper->ShouldPreventContextualPanelEntryPoint()) {
+    GeminiTabHelper* geminiTabHelper =
+        GeminiTabHelper::FromWebState(_webStateList->GetActiveWebState());
+    if (geminiTabHelper) {
+      if (geminiTabHelper->ShouldPreventContextualPanelEntryPoint()) {
         [self.consumer hideBadge];
         return;
       }

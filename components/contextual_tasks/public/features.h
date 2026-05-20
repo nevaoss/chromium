@@ -14,6 +14,7 @@
 namespace contextual_tasks {
 
 BASE_DECLARE_FEATURE(kContextualTasks);
+BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
 // When enabled, it should instead request the kSearchResultsOAuth2Scope instead
 // of the kChromeSyncOAuth2Scope
 BASE_DECLARE_FEATURE(kContextualTasksScopeChange);
@@ -57,6 +58,9 @@ BASE_DECLARE_FEATURE(kContextualTasksUseStratusDarkModeColors);
 // If enabled, animates the caret.
 BASE_DECLARE_FEATURE(kContextualTasksAnimatedCaret);
 
+// Enables energy effect in Nextbox.
+BASE_DECLARE_FEATURE(kEnergyEffectInNextbox);
+
 // Fixes the composebox jump.
 BASE_DECLARE_FEATURE(kContextualTasksComposeboxJumpFix);
 
@@ -67,10 +71,31 @@ BASE_DECLARE_FEATURE(kContextualTasksRoundedClipPath);
 // panel. The menu is still shown for lens flows.
 BASE_DECLARE_FEATURE(kContextualTasksHideMenuOnAiPage);
 
+// Enables hiding the close button when in vertical tabs or immersive mode.
+BASE_DECLARE_FEATURE(kContextualTasksHideCloseButtonInVerticalTabs);
+
 // Enables updating the model from URL parameters on every inner navigation.
 BASE_DECLARE_FEATURE(kContextualTasksUpdateModelOnNavigation);
 
+// Enables intercepting YouTube links with timestamps to seek video instead of
+// navigating.
+BASE_DECLARE_FEATURE(kContextualTasksVideoCitations);
+
+// Enables intercepting PDF links with page numbers to scroll to page instead of
+// navigating.
+BASE_DECLARE_FEATURE(kContextualTasksPdfCitations);
+
+// When enabled, the back button can expand the side panel.
+BASE_DECLARE_FEATURE(kContextualTasksBackButtonExpandsSidePanel);
+
+// Enables lazy fetching of cluster info for multimodal queries.
+BASE_DECLARE_FEATURE(kContextualTasksLazyFetchClusterInfo);
+
 bool GetIsContextualTasksUpdateModeOnNavigationEnabled();
+
+bool GetIsContextualTasksPdfCitationsEnabled();
+
+bool GetIsContextualTasksLazyFetchClusterInfoEnabled();
 
 // Enum denoting which entry point can show when enabled.
 enum class EntryPointOption {
@@ -94,6 +119,9 @@ extern const base::FeatureParam<double> kTabSelectionScoreThreshold;
 // Minimum score required for a tab to be considered visible.
 extern const base::FeatureParam<double> kContentVisibilityThreshold;
 
+// Task string to use for formatting the query embedding.
+extern const base::FeatureParam<std::string> kQueryEmbeddingTask;
+
 // The sample rate for logging contextual tasks context quality.
 extern const base::FeatureParam<double>
     kContextualTasksContextLoggingSampleRate;
@@ -103,10 +131,6 @@ extern const base::FeatureParam<EntryPointOption, true> kShowEntryPoint;
 
 // UI Options to expand the contextual tasks side panel to tab.
 extern const base::FeatureParam<ExpandButtonOption, true> kExpandButtonOptions;
-
-// Whether to open side panel when an external link is clicked on the contextual
-// task page.
-extern const base::FeatureParam<bool> kOpenSidePanelOnLinkClicked;
 
 // Whether the context menu is enabled for Nextbox.
 extern bool GetIsContextualTasksNextboxContextMenuEnabled();
@@ -204,6 +228,9 @@ extern bool GetIsSmartTabSharingEnabled();
 // Returns the timeout for smart tab sharing tab selection.
 extern base::TimeDelta GetSmartTabSharingTabSelectionTimeout();
 
+// Returns the score threshold required to display the smart tab sharing promo.
+extern double GetSmartTabSharingPromoScoreThreshold();
+
 // Enables tab auto-chip for contextual tasks. When disabled, no suggested
 // chips will be shown in the composebox automatically.
 extern bool GetIsTabAutoSuggestionChipEnabled();
@@ -222,6 +249,10 @@ extern bool ShouldForceCountryCodeUS();
 
 // Returns the user agent suffix to use for requests.
 extern std::string GetContextualTasksUserAgentSuffix();
+
+// Returns the URL parameter name to check for NLM mode.
+extern std::string GetContextualTasksNlmUrlParam();
+extern bool IsCustomNlmUiEnabled();
 
 // Whether the contextual tasks context quality should be logged.
 extern bool ShouldLogContextualTasksContextQuality();
@@ -253,6 +284,9 @@ extern bool ShouldEnableBasicModeZOrder();
 // Returns whether the cookie sync should be enabled.
 extern bool ShouldEnableCookieSync();
 
+// Returns whether the cookie prefetch should be enabled.
+extern bool ShouldEnableCookiePrefetch();
+
 // Returns whether the input plate can be locked and unlocked by a message
 // from AIM.
 extern bool ShouldEnableLockAndUnlockInputCapability();
@@ -272,6 +306,9 @@ extern ExpandButtonOption GetExpandButtonOption();
 // Returns whether the rounded clip-path is enabled.
 extern bool IsRoundedClipPathEnabled();
 
+// Returns whether the pin button in toolbar is enabled.
+extern bool IsContextualTasksPinButtonInToolbarEnabled();
+
 namespace flag_descriptions {
 
 extern const char kContextualTasksName[];
@@ -282,6 +319,8 @@ extern const char kContextualTasksContextName[];
 extern const char kContextualTasksContextDescription[];
 extern const char kContextualTasksSuggestionsEnabledName[];
 extern const char kContextualTasksSuggestionsEnabledDescription[];
+extern const char kContextualTasksBackButtonExpandsSidePanelName[];
+extern const char kContextualTasksBackButtonExpandsSidePanelDescription[];
 
 }  // namespace flag_descriptions
 

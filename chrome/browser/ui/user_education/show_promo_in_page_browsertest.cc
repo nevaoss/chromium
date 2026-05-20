@@ -98,7 +98,8 @@ IN_PROC_BROWSER_TEST_F(ShowPromoInPageBrowserTest, ShowPromoInNewPage) {
   ASSERT_TRUE(handle->GetHelpBubbleForTesting()->is_open());
 
   // Closing the help bubble should destroy the object.
-  handle->GetHelpBubbleForTesting()->Close();
+  handle->GetHelpBubbleForTesting()->Close(
+      user_education::HelpBubble::CloseReason::kProgrammaticallyClosed);
   ASSERT_FALSE(handle);
 }
 
@@ -143,7 +144,8 @@ IN_PROC_BROWSER_TEST_F(ShowPromoInPageBrowserTest, ShowPromoInNewWindow) {
   ASSERT_TRUE(handle->GetHelpBubbleForTesting()->is_open());
 
   // Closing the help bubble should destroy the object.
-  handle->GetHelpBubbleForTesting()->Close();
+  handle->GetHelpBubbleForTesting()->Close(
+      user_education::HelpBubble::CloseReason::kProgrammaticallyClosed);
   ASSERT_FALSE(handle);
 }
 
@@ -180,7 +182,8 @@ IN_PROC_BROWSER_TEST_F(ShowPromoInPageBrowserTest, ShowPromoInSameTab) {
   ASSERT_TRUE(handle->GetHelpBubbleForTesting()->is_open());
 
   // Closing the help bubble should destroy the object.
-  handle->GetHelpBubbleForTesting()->Close();
+  handle->GetHelpBubbleForTesting()->Close(
+      user_education::HelpBubble::CloseReason::kProgrammaticallyClosed);
   ASSERT_FALSE(handle);
 }
 
@@ -217,7 +220,8 @@ IN_PROC_BROWSER_TEST_F(ShowPromoInPageBrowserTest, ShowPromoInSamePage) {
   ASSERT_TRUE(handle->GetHelpBubbleForTesting()->is_open());
 
   // Closing the help bubble should destroy the object.
-  handle->GetHelpBubbleForTesting()->Close();
+  handle->GetHelpBubbleForTesting()->Close(
+      user_education::HelpBubble::CloseReason::kProgrammaticallyClosed);
   ASSERT_FALSE(handle);
 }
 
@@ -316,7 +320,14 @@ IN_PROC_BROWSER_TEST_F(ShowPromoInPageBrowserTest,
                                   l10n_util::GetStringUTF8(IDS_CLOSE_PROMO)));
 }
 
-IN_PROC_BROWSER_TEST_F(ShowPromoInPageBrowserTest, ShowPromoInSingletonTab) {
+#if BUILDFLAG(IS_MAC)
+// Flaky: https://crbug.com/507385958
+#define MAYBE_ShowPromoInSingletonTab DISABLED_ShowPromoInSingletonTab
+#else
+#define MAYBE_ShowPromoInSingletonTab ShowPromoInSingletonTab
+#endif
+IN_PROC_BROWSER_TEST_F(ShowPromoInPageBrowserTest,
+                       MAYBE_ShowPromoInSingletonTab) {
   // Open 2 tabs.
   ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL(chrome::kChromeUIUserEducationInternalsURL),
@@ -361,6 +372,7 @@ IN_PROC_BROWSER_TEST_F(ShowPromoInPageBrowserTest, ShowPromoInSingletonTab) {
   ASSERT_TRUE(handle->GetHelpBubbleForTesting()->is_open());
 
   // Closing the help bubble should destroy the object.
-  handle->GetHelpBubbleForTesting()->Close();
+  handle->GetHelpBubbleForTesting()->Close(
+      user_education::HelpBubble::CloseReason::kProgrammaticallyClosed);
   ASSERT_FALSE(handle);
 }

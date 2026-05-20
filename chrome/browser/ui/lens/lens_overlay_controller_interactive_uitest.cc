@@ -14,10 +14,12 @@
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/autocomplete/chrome_aim_eligibility_service.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
+#include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -33,6 +35,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_gen204_controller.h"
+#include "chrome/browser/ui/lens/lens_preselection_bubble.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/lens/test_lens_search_controller.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
@@ -116,6 +119,10 @@ class TestingAimEligibilityService : public ChromeAimEligibilityService {
 
   ~TestingAimEligibilityService() override = default;
 
+  variations::VariationsService* GetVariationsService() const override {
+    return nullptr;
+  }
+
   bool IsAimLocallyEligible() const override { return is_locally_eligible_; }
   bool IsServerEligibilityEnabled() const override {
     return server_eligibility_enabled_;
@@ -152,12 +159,17 @@ class TestingContextualTasksUiService
       Profile* profile,
       contextual_tasks::ContextualTasksService* contextual_tasks_service,
       signin::IdentityManager* identity_manager,
-      AimEligibilityService* aim_eligibility_service)
-      : ContextualTasksUiService(profile,
-                                 /*delegate=*/nullptr,
-                                 contextual_tasks_service,
-                                 identity_manager,
-                                 aim_eligibility_service) {}
+      AimEligibilityService* aim_eligibility_service,
+      std::unique_ptr<contextual_tasks::ContextualTasksCookieSynchronizer>
+          cookie_synchronizer)
+      : ContextualTasksUiService(
+            profile,
+            std::make_unique<
+                contextual_tasks::MockContextualTasksUiServiceDelegate>(),
+            contextual_tasks_service,
+            identity_manager,
+            aim_eligibility_service,
+            std::move(cookie_synchronizer)) {}
   ~TestingContextualTasksUiService() override = default;
 
   bool CookieJarContainsPrimaryAccount() override {
@@ -341,12 +353,8 @@ class LensOverlayControllerCUJTest : public InteractiveFeaturePromoTest {
       auto* router = controller->query_router();
       auto file_token = router->overlay_tab_context_file_token();
 
-      auto* session_handle = lens::LensQueryFlowRouterTestApi(router)
-                                 .GetContextualSearchSessionHandle();
-      auto* context_controller = static_cast<ComposeboxQueryController*>(
-          session_handle->GetController());
-      context_controller->update_context_upload_status_for_testing(
-          *file_token,
+      router->OnContextUploadStatusChangedForTesting(
+          *file_token, lens::MimeType::kImage,
           contextual_search::ContextUploadStatus::kUploadSuccessful,
           std::nullopt);
     }));
@@ -570,16 +578,17 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerCUJTest,
           WaitForShow(kOverlaySidePanelWebViewId),
           FocusWebContents(kOverlaySidePanelWebViewId),
           SendAccelerator(kOverlaySidePanelWebViewId, ctrl_c_accelerator),
-          PollState(
-              kTextCopiedState,
-              [&]() {
-                ui::Clipboard* clipboard = ui::Clipboard::GetForCurrentThread();
-                std::u16string clipboard_text =
-                    ui::clipboard_test_util::ReadText(
-                        clipboard, ui::ClipboardBuffer::kCopyPaste,
-                        /* data_dst = */ nullptr);
-                return base::EqualsASCII(clipboard_text, "This is test text.");
-              }),
+          PollState(kTextCopiedState,
+                    [&]() {
+                      ui::Clipboard* clipboard =
+                          ui::Clipboard::GetForCurrentThread();
+                      std::u16string clipboard_text =
+                          ui::clipboard_test_util::ReadText(
+                              clipboard, ui::ClipboardBuffer::kCopyPaste,
+                              /* data_dst = */ nullptr);
+                      return base::EqualsASCII(clipboard_text,
+                                               "This is test text.");
+                    }),
           WaitForState(kTextCopiedState, true)));
 }
 
@@ -931,7 +940,8 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerCUJTest, NavigationsUpdateCSB) {
               kOverlayId, kPathToOverlaySearchboxInput,
               base::StringPrintf(
                   "(el) => { el.dispatchEvent(new KeyboardEvent('keydown', { "
-                  "key:'%s', bubbles: true, cancelable: true, composed: true }));}",
+                  "key:'%s', bubbles: true, cancelable: true, composed: true "
+                  "}));}",
                   "Enter"),
               ExecuteJsMode::kFireAndForget)),
 
@@ -1132,11 +1142,12 @@ class LensPreselectionBubbleInteractiveUiTest
 //  (3) The overlay should close.
 IN_PROC_BROWSER_TEST_F(LensPreselectionBubbleInteractiveUiTest,
                        PermissionBubbleOffline) {
-  RunTestSequence(EnsureNotPresent(kLensPreselectionBubbleExitButtonElementId),
-                  SetConnectionOffline(), OpenLensOverlay(),
-                  WaitForShow(kLensPreselectionBubbleExitButtonElementId),
-                  PressButton(kLensPreselectionBubbleExitButtonElementId),
-                  WaitForHide(LensOverlayController::kOverlayId));
+  RunTestSequence(
+      EnsureNotPresent(lens::LensPreselectionBubble::kExitButtonElementId),
+      SetConnectionOffline(), OpenLensOverlay(),
+      WaitForShow(lens::LensPreselectionBubble::kExitButtonElementId),
+      PressButton(lens::LensPreselectionBubble::kExitButtonElementId),
+      WaitForHide(LensOverlayController::kOverlayId));
 }
 
 using LensOverlayControllerReturnToPageCUJTest = LensOverlayControllerCUJTest;
@@ -1689,7 +1700,8 @@ class ContextualTasksLensOverlayControllerInteractiveUiTest
                       contextual_tasks::ContextualTasksServiceFactory::
                           GetForProfile(profile),
                       IdentityManagerFactory::GetForProfile(profile),
-                      AimEligibilityServiceFactory::GetForProfile(profile)));
+                      AimEligibilityServiceFactory::GetForProfile(profile),
+                      /*cookie_synchronizer=*/nullptr));
             }));
   }
 
@@ -1895,16 +1907,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
       WaitForShow(kContextualTasksSidePanelWebViewElementId));
 }
 
-// TODO(crbug.com/499019946): Re-enable this test on ChromeOS.
-#if BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_ComposeboxLensButtonClearsThenTogglesOverlay \
-  DISABLED_ComposeboxLensButtonClearsThenTogglesOverlay
-#else
-#define MAYBE_ComposeboxLensButtonClearsThenTogglesOverlay \
-  ComposeboxLensButtonClearsThenTogglesOverlay
-#endif  // BUILDFLAG(IS_CHROMEOS)
+// TODO(crbug.com/499004589): Re-enable this test when it's fixed.
 IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
-                       MAYBE_ComposeboxLensButtonClearsThenTogglesOverlay) {
+                       DISABLED_ComposeboxLensButtonClearsThenTogglesOverlay) {
   WaitForTemplateURLServiceToLoad();
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayId);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kFirstTab);

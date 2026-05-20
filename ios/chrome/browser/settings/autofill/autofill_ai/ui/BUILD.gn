@@ -17,8 +17,10 @@ source_set("ui") {
   deps = [
     ":edit_items",
     "//components/autofill/core/browser",
+    "//components/strings",
     "//ios/chrome/app/strings",
     "//ios/chrome/browser/autofill/autofill_ai/public",
+    "//ios/chrome/browser/net/model:crurl",
     "//ios/chrome/browser/settings/autofill/autofill_ai/public",
     "//ios/chrome/browser/settings/autofill/autofill_ai/utils",
     "//ios/chrome/browser/settings/autofill/ui",
@@ -36,6 +38,8 @@ source_set("ui") {
 
 source_set("edit_items") {
   sources = [
+    "autofill_ai_date_picker_input_view.h",
+    "autofill_ai_date_picker_input_view.mm",
     "autofill_ai_entity_country_item.h",
     "autofill_ai_entity_country_item.mm",
     "autofill_ai_entity_edit_date_item.h",
@@ -45,26 +49,22 @@ source_set("edit_items") {
     "autofill_ai_entity_edit_item_factory.h",
     "autofill_ai_entity_edit_item_factory.mm",
     "autofill_ai_entity_field_item.h",
-    "date_picker_content_configuration.h",
-    "date_picker_content_configuration.mm",
-    "date_picker_content_view.h",
-    "date_picker_content_view.mm",
-    "label_content_configuration.h",
-    "label_content_configuration.mm",
-    "label_content_view.h",
-    "label_content_view.mm",
   ]
   deps = [
     "//base",
     "//components/autofill/core/browser",
+    "//ios/chrome/app/strings",
     "//ios/chrome/browser/autofill/autofill_ai/public",
     "//ios/chrome/browser/settings/autofill/autofill_ai/utils",
     "//ios/chrome/browser/shared/ui/list_model",
     "//ios/chrome/browser/shared/ui/symbols",
     "//ios/chrome/browser/shared/ui/table_view/cells",
+    "//ios/chrome/browser/shared/ui/table_view/cells:generic_cells",
     "//ios/chrome/browser/shared/ui/table_view/content_configuration",
+    "//ios/chrome/browser/shared/ui/util",
     "//ios/chrome/common/ui/colors",
     "//ios/chrome/common/ui/util",
+    "//ui/base",
   ]
 }
 
@@ -81,6 +81,8 @@ source_set("unit_tests") {
     "//components/autofill/core/browser:test_support",
     "//components/sync:test_support",
     "//ios/chrome/app/strings",
+    "//ios/chrome/browser/autofill/autofill_ai/public",
+    "//ios/chrome/browser/net/model:crurl",
     "//ios/chrome/browser/settings/autofill/ui",
     "//ios/chrome/browser/shared/ui/list_model",
     "//ios/chrome/browser/shared/ui/table_view:test_support",

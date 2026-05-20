@@ -145,9 +145,6 @@ class LensOverlayController : public OverlayBaseController,
   }
 
   // Returns the dynamic color palette identifier based on the screenshot.
-  lens::PaletteId color_palette() {
-    return initialization_data_->color_palette_;
-  }
 
   // Returns whether visual searches should be fulfilled by AIM rather than
   // load immediately in the results panel.
@@ -166,7 +163,6 @@ class LensOverlayController : public OverlayBaseController,
   void SendRegionText(lens::mojom::TextPtr text, bool is_injected_image);
 
   // Creates theme with data obtained from `palette_id` to be sent to the WebUI.
-  lens::mojom::OverlayThemePtr CreateTheme(lens::PaletteId palette_id);
 
   // Send overlay object data to the WebUI, or stores it to be sent when the
   // WebUI is ready.
@@ -303,6 +299,10 @@ class LensOverlayController : public OverlayBaseController,
 
   const lens::mojom::CenterRotatedBoxPtr& get_selected_region_for_testing() {
     return initialization_data_->selected_region_;
+  }
+
+  LensSearchController* get_lens_search_controller_for_testing() {
+    return lens_search_controller_;
   }
 
   const std::optional<std::pair<int, int>> get_selected_text_for_region() {
@@ -448,7 +448,6 @@ class LensOverlayController : public OverlayBaseController,
     // ownership of the Bitmap to OverlayInitializationData.
     OverlayInitializationData(const SkBitmap& screenshot,
                               SkBitmap rgb_screenshot,
-                              lens::PaletteId color_palette,
                               GURL page_url,
                               std::optional<std::string> page_title);
     ~OverlayInitializationData();
@@ -472,7 +471,6 @@ class LensOverlayController : public OverlayBaseController,
     SkBitmap updated_screenshot_;
 
     // The dynamic color palette identifier based on the screenshot.
-    lens::PaletteId color_palette_;
 
     // The page url. Empty if it is not allowed to be shared.
     GURL page_url_;
@@ -602,7 +600,7 @@ class LensOverlayController : public OverlayBaseController,
   void NotifyIsOverlayShowing(bool is_showing) override;
   int GetToolResourceId() override;
   ui::ElementIdentifier GetViewContainerId() override;
-  SidePanelEntry::PanelType GetSidePanelType() override;
+  SidePanelType GetSidePanelType() override;
   bool ShouldCloseSidePanel() override;
   void StartScreenshotFlow() override;
   void FinishedWaitingForReflow(base::TimeTicks reflow_start_time) override;
@@ -613,7 +611,7 @@ class LensOverlayController : public OverlayBaseController,
   void NotifyOverlayClosing() override;
   void NotifyTabForegrounded() override;
   void NotifyTabWillEnterBackground() override;
-  PreselectionBubbleResources GetPreselectionBubbleResources() override;
+  PreselectionUIConfig GetPreselectionBubbleConfig() override;
   bool IsOverlayViewShared() const override;
 
   // content::WebContentsDelegate:

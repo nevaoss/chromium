@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/command_line.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
@@ -61,7 +62,7 @@ class MockAimEligibilityService : public AimEligibilityService {
                               nullptr,
                               nullptr,
                               "en-US",
-                              {}) {}
+                              AimEligibilityService::Configuration()) {}
   MOCK_METHOD(bool, IsAimEligible, (), (const, override));
   MOCK_METHOD(bool, IsCobrowseEligible, (), (const, override));
 
@@ -69,8 +70,10 @@ class MockAimEligibilityService : public AimEligibilityService {
   // as they are implemented in ChromeAimEligibilityService which is the one
   // provided by the KeyedService factory. We therefore need to implement them
   // in this unit test.
-  std::string GetCountryCode() const override { return "US"; }
   std::string GetLocaleImpl() const override { return "en-US"; }
+  variations::VariationsService* GetVariationsService() const override {
+    return nullptr;
+  }
 };
 
 class MockAiThreadSyncBridge : public AiThreadSyncBridge {
@@ -144,6 +147,8 @@ class ContextualTasksServiceImplTest : public testing::Test {
   ~ContextualTasksServiceImplTest() override = default;
 
   void SetUp() override {
+    base::CommandLine::ForCurrentProcess()->AppendSwitchASCII(
+        "variations-override-country", "US");
     identity_test_environment_.MakePrimaryAccountAvailable(
         "test@example.com", signin::ConsentLevel::kSignin);
 
@@ -1773,7 +1778,7 @@ TEST_F(ContextualTasksServiceImplTest, OnThreadAddedOrUpdatedRemotely_NoTask) {
       OnTaskAdded(testing::_, ContextualTasksService::TriggerSource::kRemote))
       .WillOnce([&](const ContextualTask& task,
                     ContextualTasksService::TriggerSource source) {
-        EXPECT_EQ(task.GetTaskId(), task.GetTaskId());
+        EXPECT_TRUE(task.GetTaskId().is_valid());
         ASSERT_TRUE(task.GetThread().has_value());
         EXPECT_EQ("Title", task.GetThread()->title);
         EXPECT_EQ("turn_id", task.GetThread()->conversation_turn_id);
@@ -2015,6 +2020,38 @@ TEST_F(ContextualTasksServiceImplTest, GetThreadUrlFromTaskId_Aim) {
             ASSERT_EQ(mtid, server_id);
           },
           server_id, turn_id)
+          .Then(run_loop.QuitClosure()));
+  run_loop.Run();
+}
+
+// It's possible for aim to get into a state where there is a thread ID but no
+// turn ID (mstk). The most common case is shared links where a "share" turn ID
+// (smstk) is used instead.
+TEST_F(ContextualTasksServiceImplTest, GetThreadUrlFromTaskId_Aim_NoTurnId) {
+  ContextualTask task = service_->CreateTask();
+
+  const std::string server_id = "1234";
+  const std::string title = "title";
+  service_->UpdateThreadForTask(task.GetTaskId(), ThreadType::kAiMode,
+                                server_id, std::nullopt, title);
+
+  base::RunLoop run_loop;
+  service_->GetThreadUrlFromTaskId(
+      task.GetTaskId(), "en-us",
+      omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT,
+      base::BindOnce(
+          [](const std::string& server_id, GURL url) {
+            ASSERT_TRUE(base::StartsWith(url.host(), "www.google.com"));
+            ASSERT_EQ("/search", url.path());
+
+            std::string mstk;
+            ASSERT_FALSE(net::GetValueForKeyInQuery(url, "mstk", &mstk));
+
+            std::string mtid;
+            net::GetValueForKeyInQuery(url, "mtid", &mtid);
+            ASSERT_EQ(mtid, server_id);
+          },
+          server_id)
           .Then(run_loop.QuitClosure()));
   run_loop.Run();
 }

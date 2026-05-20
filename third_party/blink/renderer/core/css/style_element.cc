@@ -34,6 +34,7 @@
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
+#include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/html/blocking_attribute.h"
 #include "third_party/blink/renderer/core/html/html_style_element.h"
 #include "third_party/blink/renderer/core/loader/modulescript/module_script_creation_params.h"
@@ -46,6 +47,7 @@
 #include "third_party/blink/renderer/core/url/dom_url.h"
 #include "third_party/blink/renderer/platform/bindings/script_forbidden_scope.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
+#include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
 #include "third_party/blink/renderer/platform/json/json_values.h"
 #include "third_party/blink/renderer/platform/weborigin/kurl.h"
 #include "third_party/blink/renderer/platform/wtf/text/string_builder.h"
@@ -90,7 +92,8 @@ StyleElement::ProcessingResult StyleElement::ProcessStyleSheet(
   // Module type is static based upon when it's first connected.
   // TODO(crbug.com/448174611): Confirm this with the WHATWG and update behavior
   // according to WHATWG resolutions.
-  if (RuntimeEnabledFeatures::DeclarativeCSSModulesStyleTagEnabled()) {
+  if (RuntimeEnabledFeatures::DeclarativeCSSModulesStyleTagEnabled(
+          document.GetExecutionContext())) {
     if ((element_type_ == StyleType::kPending) && element.isConnected()) {
       // TODO(crbug.com/448174611): For consistency with Import Maps, should we
       // mimic passing "Already Started" state when cloneNode is called? This
@@ -103,11 +106,11 @@ StyleElement::ProcessingResult StyleElement::ProcessStyleSheet(
     }
 
     // Sheet should always be empty for modules.
-    DCHECK(!IsModule() || !sheet_);
+    DCHECK(!IsModule(document) || !sheet_);
   }
   // Classic <style> tags may have an associated stylesheet and need to added as
   // a candidate node.
-  if (!IsModule()) {
+  if (!IsModule(document)) {
     DCHECK(!sheet_);
     registered_as_candidate_ = true;
     document.GetStyleEngine().AddStyleSheetCandidateNode(element);
@@ -142,7 +145,7 @@ StyleElement::ProcessingResult StyleElement::ChildrenChanged(Element& element) {
   }
   // CSS module content is static at parse time. Content changes should not
   // re-process on the new content.
-  if (IsModule()) {
+  if (IsModule(element.GetDocument())) {
     return kProcessingSuccessful;
   }
   probe::WillChangeStyleElement(&element);
@@ -197,20 +200,34 @@ StyleElement::ProcessingResult StyleElement::CreateSheetOrModule(
           : nullptr;
 
   // CSP is bypassed for style elements in user agent shadow DOM.
-  const bool passes_content_security_policy_checks =
+  const bool passes_style_csp =
       IsInUserAgentShadowDOM(element) ||
       (csp && csp->AllowInline(ContentSecurityPolicy::InlineType::kStyle,
                                &element, text, element.nonce(), document.Url(),
                                start_position_.line_));
 
-  // TODO(crbug.com/448174611) - should Declarative CSS Modules continue
-  // respecting CSP? Need to confirm with WHATWG.
-  if (passes_content_security_policy_checks && IsModule()) {
-    CHECK(RuntimeEnabledFeatures::DeclarativeCSSModulesStyleTagEnabled());
+  // Declarative CSS Modules impact the module map, so they must also respect
+  // `script-src` CSP. The strictest union applies: the module is blocked if
+  // either `style-src` or `script-src` denies it.
+  const bool passes_script_csp =
+      !IsModule(document) || IsInUserAgentShadowDOM(element) ||
+      (csp && csp->AllowInline(ContentSecurityPolicy::InlineType::kScript,
+                               &element, text, element.nonce(), document.Url(),
+                               start_position_.line_));
+
+  const bool passes_content_security_policy_checks =
+      passes_style_csp && passes_script_csp;
+
+  if (passes_content_security_policy_checks && IsModule(document)) {
+    CHECK(RuntimeEnabledFeatures::DeclarativeCSSModulesStyleTagEnabled(
+        document.GetExecutionContext()));
+    UseCounter::Count(document, WebFeature::kStyleTypeModule);
     AddImportMapEntry(element, text);
 
     // Return early, since we explicitly *don't* want to create a CSSStyleSheet
     // for CSS modules.
+    // TODO(crbug.com/448174611): Should this fire `load` and `error` events to
+    // match the behavior of classic <style> tags?
     return kProcessingSuccessful;
   }
 
@@ -353,24 +370,25 @@ void StyleElement::AddImportMapEntry(Element& element, const String& text) {
   }
 }
 
-bool StyleElement::IsLoading() const {
-  DCHECK(!IsModule());
+bool StyleElement::IsLoading(const Document& document) const {
+  DCHECK(!IsModule(document));
   if (loading_) {
     return true;
   }
   return sheet_ && sheet_->IsLoading();
 }
 
-bool StyleElement::IsModule() const {
+bool StyleElement::IsModule(const Document& document) const {
   // It's only possible to set the type to module when the flag is enabled.
   DCHECK(element_type_ != StyleType::kModule ||
-         RuntimeEnabledFeatures::DeclarativeCSSModulesStyleTagEnabled());
+         RuntimeEnabledFeatures::DeclarativeCSSModulesStyleTagEnabled(
+             document.GetExecutionContext()));
   return element_type_ == StyleType::kModule;
 }
 
 bool StyleElement::SheetLoaded(Document& document) {
-  DCHECK(!IsModule());
-  if (IsLoading()) {
+  DCHECK(!IsModule(document));
+  if (IsLoading(document)) {
     return false;
   }
 
@@ -386,7 +404,7 @@ bool StyleElement::SheetLoaded(Document& document) {
 }
 
 void StyleElement::SetToPendingState(Document& document, Element& element) {
-  DCHECK(!IsModule());
+  DCHECK(!IsModule(document));
   DCHECK(IsSameObject(element));
   DCHECK_LT(pending_sheet_type_, PendingSheetType::kBlocking);
   pending_sheet_type_ = PendingSheetType::kBlocking;

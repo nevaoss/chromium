@@ -51,6 +51,14 @@ public class GoogleWalletLauncher {
     public static final String GOOGLE_WALLET_MANAGE_PASSES_DATA_URL =
             "https://wallet.google.com/wallet/settings/managepassesdata";
 
+    // The help center article URL on using Wallet private passes across Google.
+    // LINT.IfChange(GOOGLE_WALLET_PRIVATE_PASSES_HELP_CENTER)
+    @VisibleForTesting
+    public static final String GOOGLE_WALLET_PRIVATE_PASSES_HELP_CENTER =
+            "https://support.google.com/wallet?p=private_use_across_google";
+
+    // LINT.ThenChange(//chrome/common/url_constants.h:kWalletPrivatePassHelpCenterURL)
+
     private GoogleWalletLauncher() {}
 
     /**
@@ -61,11 +69,24 @@ public class GoogleWalletLauncher {
      * @param packageManager The current application package manager.
      */
     public static void openGoogleWallet(Context context, PackageManager packageManager) {
+        openGoogleWalletWithFallbackUrl(context, packageManager, GOOGLE_WALLET_PASSES_URL);
+    }
+
+    /**
+     * Opens Google Wallet. If Google Wallet App is installed on device, it opens the app and shows
+     * the home page. Otherwise it opens the provided fallback url.
+     *
+     * @param context The current application context.
+     * @param packageManager The current application package manager.
+     * @param fallbackurl Url open if the Google Wallet App is not installed.
+     */
+    public static void openGoogleWalletWithFallbackUrl(
+            Context context, PackageManager packageManager, String fallbackUrl) {
         Intent walletIntent =
                 new Intent().setClassName(GOOGLE_WALLET_PACKAGE_NAME, GOOGLE_WALLET_ACTIVITY_NAME);
         walletIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
-        maybeLaunchIntent(context, packageManager, walletIntent, GOOGLE_WALLET_PASSES_URL);
+        maybeLaunchIntent(context, packageManager, walletIntent, /* fallbackUrl= */ fallbackUrl);
     }
 
     /**
@@ -85,7 +106,10 @@ public class GoogleWalletLauncher {
         walletIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
         maybeLaunchIntent(
-                context, packageManager, walletIntent, GOOGLE_WALLET_MANAGE_PASSES_DATA_URL);
+                context,
+                packageManager,
+                walletIntent,
+                /* fallbackUrl= */ GOOGLE_WALLET_MANAGE_PASSES_DATA_URL);
     }
 
     private static void maybeLaunchIntent(
@@ -93,9 +117,19 @@ public class GoogleWalletLauncher {
         List<ResolveInfo> resolveInfos = packageManager.queryIntentActivities(intent, 0);
 
         if (resolveInfos.isEmpty()) {
-            CustomTabActivity.showInfoPage(context, fallbackUrl);
+            CustomTabActivity.showInfoPage(context, /* url= */ fallbackUrl);
         } else {
             context.startActivity(intent);
         }
+    }
+
+    /**
+     * Opens the help center page for Google wallet private passes.
+     *
+     * @param context The current application context.
+     */
+    public static void openGoogleWalletPrivatePassHelpCenterPage(Context context) {
+        CustomTabActivity.showInfoPage(
+                context, /* url= */ GOOGLE_WALLET_PRIVATE_PASSES_HELP_CENTER);
     }
 }

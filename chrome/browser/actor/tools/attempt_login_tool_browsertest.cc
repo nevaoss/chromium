@@ -7,7 +7,6 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
-#include "chrome/browser/actor/actor_features.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_test_util.h"
 #include "chrome/browser/actor/execution_engine.h"
@@ -23,6 +22,9 @@
 #include "chrome/common/actor/action_result.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/testing_browser_process.h"
+#include "chrome/test/base/ui_test_utils.h"
+#include "components/actor/core/actor_features.h"
+#include "components/actor/public/mojom/actor_types.mojom.h"
 #include "components/affiliations/core/browser/mock_affiliation_service.h"
 #include "components/favicon/core/test/mock_favicon_service.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
@@ -39,7 +41,12 @@
 #include "google_apis/gaia/gaia_urls.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColor.h"
+#include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
+
+#if BUILDFLAG(IS_OZONE)
+#include "ui/ozone/public/ozone_platform.h"
+#endif
 
 using actor::webui::mojom::UserGrantedPermissionDuration;
 using base::test::TestFuture;
@@ -137,8 +144,6 @@ class ActorAttemptLoginToolTest : public ActorToolsTest {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/
         {password_manager::features::kActorLogin,
-         password_manager::features::
-             kActorLoginPermissionsUseStrongAffiliations,
          password_manager::features::kActorLoginQualityLogs,
          features::kGlicActor},
         // TODO(crbug.com/480920277): Remove the FedCM flag once the prototyping
@@ -798,11 +803,8 @@ class ActorAttemptLoginToolTestWithFaviconService
 class ActorAttemptLoginToolFederatedTest : public ActorAttemptLoginToolTest {
  public:
   ActorAttemptLoginToolFederatedTest() {
-    scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/
-        {password_manager::features::kActorLoginFederatedClickFromActor,
-         features::kFedCmEmbedderInitiatedLogin},
-        /*disabled_features=*/{});
+    scoped_feature_list_.InitAndEnableFeature(
+        features::kFedCmEmbedderInitiatedLogin);
   }
 
   ~ActorAttemptLoginToolFederatedTest() override = default;
@@ -1195,6 +1197,15 @@ IN_PROC_BROWSER_TEST_F(ActorAttemptLoginToolFederatedTest,
   std::unique_ptr<ToolRequest> action = MakeAttemptLoginRequestByNodeIds(
       *active_tab(), password_button_id, provider_popup_button_id);
 
+  tabs::TabInterface* original_tab = active_tab();
+
+  // Open a new unrelated tab in the foreground.
+  const GURL other_url =
+      embedded_https_test_server().GetURL("example.com", "/actor/blank.html");
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), other_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+
   content::WebContentsAddedObserver web_contents_added_observer;
 
   ActResultFuture result;
@@ -1210,7 +1221,20 @@ IN_PROC_BROWSER_TEST_F(ActorAttemptLoginToolFederatedTest,
       web_contents_added_observer.GetWebContents();
   ASSERT_TRUE(new_contents);
 
-  content::TestNavigationObserver navigation_observer(web_contents());
+  bool platform_supports_programmatic_window_activation = true;
+#if BUILDFLAG(IS_OZONE)
+  if (::ui::OzonePlatform::RunningOnWaylandForTest()) {
+    platform_supports_programmatic_window_activation = false;
+  }
+#endif
+  if (platform_supports_programmatic_window_activation) {
+    // Since a different tab was in the foreground, the popup should not have
+    // been focused.
+    EXPECT_FALSE(new_contents->GetRenderWidgetHostView()->HasFocus());
+  }
+
+  content::TestNavigationObserver navigation_observer(
+      original_tab->GetContents());
   EXPECT_TRUE(content::ExecJs(new_contents,
                               "window.opener.postMessage('signin-complete');"));
   navigation_observer.Wait();

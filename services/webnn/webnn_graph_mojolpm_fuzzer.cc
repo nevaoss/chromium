@@ -8,8 +8,10 @@
 #include "base/base_switches.h"
 #include "base/byte_count.h"
 #include "base/command_line.h"
+#include "base/debug/asan_service.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/raw_ref.h"
+#include "base/no_destructor.h"
 #include "base/notreached.h"
 #include "base/test/allow_check_is_test_for_testing.h"
 #include "base/test/bind.h"
@@ -37,6 +39,7 @@
 #include "services/webnn/webnn_graph_impl.h"
 #include "services/webnn/webnn_graph_mojolpm_fuzzer.pb.h"
 #include "services/webnn/webnn_test_environment.h"
+#include "testing/libfuzzer/libfuzzer_exports.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/libprotobuf-mutator/src/src/libfuzzer/libfuzzer_macro.h"
 
@@ -44,11 +47,10 @@ namespace {
 
 struct InitGlobals {
   InitGlobals() {
+    CHECK(base::CommandLine::InitializedForCurrentProcess());
     mojo::core::Init();
-    bool success = base::CommandLine::Init(0, nullptr);
-    CHECK(success);
     base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
-    success = base::FeatureList::InitInstance(
+    bool success = base::FeatureList::InitInstance(
         command_line->GetSwitchValueASCII(switches::kEnableFeatures),
         command_line->GetSwitchValueASCII(switches::kDisableFeatures));
     CHECK(success);
@@ -57,13 +59,24 @@ struct InitGlobals {
 
     TestTimeouts::Initialize();
 
+#if defined(ADDRESS_SANITIZER)
+    base::debug::AsanService::GetInstance()->Initialize();
+#endif
+
     base::test::AllowCheckIsTestForTesting();
+
+    // Create the test environment once and persist it across fuzzer iterations.
+    // This avoids destroying and recreating the TaskEnvironment (thread pool)
+    // and GPU backend state between iterations, which causes ASan thread
+    // initialization crashes from the resulting thread churn.
+    webnn_test_environment_.emplace();
   }
 
   base::test::ScopedFeatureList scoped_feature_list_;
+  std::optional<webnn::test::WebNNTestEnvironment> webnn_test_environment_;
 };
 
-InitGlobals* init_globals = new InitGlobals();
+InitGlobals* init_globals = nullptr;
 
 class WebnnGraphLPMFuzzer {
  public:
@@ -72,7 +85,7 @@ class WebnnGraphLPMFuzzer {
       : testcase_(testcase) {
     input_generator_.ReseedForTesting(testcase_->seed_for_input_data());
 
-    webnn_test_environment_.BindWebNNContextProvider(
+    init_globals->webnn_test_environment_->BindWebNNContextProvider(
         provider_remote_.BindNewPipeAndPassReceiver());
 
     base::test::TestFuture<webnn::mojom::CreateContextResultPtr>
@@ -101,8 +114,6 @@ class WebnnGraphLPMFuzzer {
     return action_index_ > 100 || action_index_ >= testcase_->actions_size();
   }
 
-  void RunUntilIdle() { webnn_test_environment_.RunUntilIdle(); }
-
  private:
   mojo_base::BigBuffer GenerateBytes(size_t byte_size) {
     mojo_base::BigBuffer buffer(byte_size);
@@ -129,7 +140,7 @@ class WebnnGraphLPMFuzzer {
         webnn_graph_builder_remote;
     mojo::AssociatedRemote<webnn::mojom::WebNNGraph> webnn_graph_remote;
 
-    webnn_test_environment_.BindWebNNContextProvider(
+    init_globals->webnn_test_environment_->BindWebNNContextProvider(
         webnn_provider_remote.BindNewPipeAndPassReceiver());
 
     // Create the ContextImpl through context provider.
@@ -294,20 +305,28 @@ class WebnnGraphLPMFuzzer {
   int action_index_ = 0;
   base::test::InsecureRandomGenerator input_generator_;
 
-  webnn::test::WebNNTestEnvironment webnn_test_environment_;
   mojo::Remote<webnn::mojom::WebNNContextProvider> provider_remote_;
   mojo::Remote<webnn::mojom::WebNNContext> webnn_context_;
 };
 
 DEFINE_TEXT_PROTO_FUZZER(
     const services::fuzzing::webnn_graph::proto::Testcase& testcase) {
-  WebnnGraphLPMFuzzer webnn_graph_fuzzer_instance(testcase);
-  while (!webnn_graph_fuzzer_instance.IsFinished()) {
-    webnn_graph_fuzzer_instance.NextAction();
+  {
+    WebnnGraphLPMFuzzer webnn_graph_fuzzer_instance(testcase);
+    while (!webnn_graph_fuzzer_instance.IsFinished()) {
+      webnn_graph_fuzzer_instance.NextAction();
+    }
   }
-  // Ensure that any tasks scheduled by `webnn_graph_fuzzer_instance` are
-  // executed before it is freed. See https://crbug.com/441020155.
-  webnn_graph_fuzzer_instance.RunUntilIdle();
+  // Ensure that tasks scheduled by destroying the `webnn_graph_fuzzer_instance`
+  // are executed before running the next case. See https://crbug.com/441020155.
+  init_globals->webnn_test_environment_->RunUntilIdle();
 }
 
 }  // namespace
+
+extern "C" int LLVMFuzzerInitialize(int* argc, char*** argv) {
+  CHECK(base::CommandLine::Init(*argc, *argv));
+  static base::NoDestructor<InitGlobals> globals;
+  init_globals = globals.get();
+  return 0;
+}

@@ -188,6 +188,26 @@ CGFloat CurrentKeyboardHeight(NSValue* keyboardFrameValue) {
   return [keyboardFrameValue CGRectValue].size.height;
 }
 
+CGFloat VisibleKeyboardHeightFromNotification(NSNotification* notification,
+                                              UIWindow* window) {
+  if (!window) {
+    return 0;
+  }
+  NSDictionary* user_info = notification.userInfo;
+  CGRect keyboard_frame =
+      [user_info[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+
+  id<UICoordinateSpace> from_coordinate_space =
+      ((UIScreen*)notification.object).coordinateSpace;
+
+  CGRect keyboard_frame_in_window =
+      [from_coordinate_space convertRect:keyboard_frame
+                       toCoordinateSpace:window.coordinateSpace];
+
+  return CGRectIntersection(keyboard_frame_in_window, window.bounds)
+      .size.height;
+}
+
 UIImage* ImageWithColor(UIColor* color) {
   CGRect rect = CGRectMake(0, 0, 1, 1);
   UIGraphicsImageRenderer* renderer =
@@ -251,6 +271,17 @@ bool IsPortrait(UIWindow* window) {
 
 bool IsLandscape(UIWindow* window) {
   return UIInterfaceOrientationIsLandscape(GetInterfaceOrientation(window));
+}
+
+bool IsWindowedMode(UIWindow* window) {
+  if (!window) {
+    return false;
+  }
+  UIWindowScene* scene = window.windowScene;
+  if (!scene) {
+    return false;
+  }
+  return !CGRectEqualToRect(window.bounds, scene.screen.bounds);
 }
 
 bool CanShowTabStrip(UITraitCollection* traitCollection) {
@@ -341,7 +372,7 @@ UIResponder* GetFirstResponderInWindowScene(UIWindowScene* windowScene) {
   }
 
   for (UIWindow* window in windowScene.windows) {
-    if (window.isKeyWindow) {
+    if (window.keyWindow) {
       continue;
     }
     responder = GetFirstResponderSubview(window);
@@ -534,4 +565,12 @@ NSArray<UITrait>* TraitCollectionSetForTraits(NSArray<UITrait>* traits) {
   });
 
   return everyUIMutableTrait;
+}
+
+size_t MemoryFootprintForImage(UIImage* image) {
+  CGImageRef cgImage = [image CGImage];
+  size_t bytesPerRow = CGImageGetBytesPerRow(cgImage);
+  size_t height = CGImageGetHeight(cgImage);
+  size_t totalBytes = bytesPerRow * height;
+  return totalBytes / 1024;
 }

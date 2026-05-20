@@ -44,6 +44,7 @@ class SkBitmap;
 
 namespace contextual_tasks {
 class ContextualTasksContextService;
+class DesktopQueryContextualizerDelegate;
 }  // namespace contextual_tasks
 
 namespace lens {
@@ -92,14 +93,14 @@ class ContextualSearchboxHandler
     : public contextual_search::ContextualSearchContextController::
           ContextUploadStatusObserver,
       public SearchboxHandler,
-      public TabListInterfaceObserver,
-      public contextual_tasks::QueryContextualizer::Delegate {
+      public TabListInterfaceObserver {
  public:
   using RecontextualizeTabCallback = base::OnceCallback<void(bool)>;
 
   explicit ContextualSearchboxHandler(
       mojo::PendingReceiver<searchbox::mojom::PageHandler>
           pending_searchbox_handler,
+      mojo::PendingRemote<searchbox::mojom::Page> pending_page,
       Profile* profile,
       content::WebContents* web_contents,
       std::unique_ptr<OmniboxController> controller,
@@ -115,6 +116,11 @@ class ContextualSearchboxHandler
   void AddTabContext(int32_t tab_id,
                      bool delay_upload,
                      AddTabContextCallback callback) override;
+  void AddDriveContext(const std::string& drive_id,
+                       const std::string& resource_key,
+                       const std::string& mime_type_string,
+                       AddDriveContextCallback callback) override;
+  void OnDriveUploadClicked() override;
   void DeleteContext(const base::UnguessableToken& file_token,
                      bool from_automatic_chip) override;
   void ClearFiles(bool should_block_auto_suggested_tabs) override;
@@ -135,6 +141,19 @@ class ContextualSearchboxHandler
                              bool ctrl_key,
                              bool meta_key,
                              bool shift_key) override;
+  void ShouldShowDriveDisclaimer(
+      ShouldShowDriveDisclaimerCallback callback) override;
+  void OnDriveDisclaimerAccepted() override;
+  void QueryAutocomplete(const std::u16string& input,
+                         bool prevent_inline_autocomplete) override;
+
+  // Returns true if smart tab sharing is active for the current query.
+  virtual bool IsSmartTabSharingActive() const;
+
+  virtual void SetSmartTabSharingActive(bool active);
+  virtual void GetSmartTabSharingActive(
+      composebox::mojom::PageHandler::GetSmartTabSharingActiveCallback
+          callback);
 
   // Continues the process of adding tab context for a given `tab_id`.
   // This method is used when a `context_token` has already been generated
@@ -237,6 +256,9 @@ class ContextualSearchboxHandler
   std::optional<lens::ImageEncodingOptions> CreateTabPreviewEncodingOptions(
       content::WebContents* web_contents);
 
+  // Creates the image encoding options used for uploading images.
+  static std::optional<lens::ImageEncodingOptions> CreateImageEncodingOptions();
+
   contextual_search::ContextualSearchMetricsRecorder* GetMetricsRecorder();
 
   raw_ptr<contextual_tasks::ContextualTasksService> contextual_tasks_service_;
@@ -264,20 +286,7 @@ class ContextualSearchboxHandler
 
   virtual void InitializeInputStateModel();
 
-  // contextual_tasks::QueryContextualizer::Delegate:
-  GURL GetTabUrl(int32_t id) override;
-  SessionID GetTabSessionId(int32_t id) override;
-  void GetPageContext(
-      int32_t id,
-      base::OnceCallback<void(std::unique_ptr<lens::ContextualInputData>)>
-          callback) override;
-  bool IsTabValid(int32_t id) override;
-  std::optional<lens::ImageEncodingOptions>
-  GetTabViewportEncodingOptionsForQueryContextualizer() override;
-  void OnPageContextIneligible() override;
-  void OnTabProcessedForQueryContextualization(int32_t id) override;
-  contextual_search::ContextualSearchSessionHandle*
-  GetOrCreateSessionHandleForQueryContextualizer() override;
+  void UpdateTabListObservation(TabListInterface* tab_list);
 
   std::unique_ptr<contextual_search::InputStateModel> input_state_model_;
 
@@ -309,7 +318,7 @@ class ContextualSearchboxHandler
       WindowOpenDisposition disposition,
       omnibox::ChromeAimEntryPoint aim_entry_point,
       std::map<std::string, std::string> additional_params,
-      std::vector<content::WebContents*> relevant_tabs);
+      std::vector<base::WeakPtr<content::WebContents>> relevant_tabs);
 
   std::optional<base::Uuid> GetTaskId();
 
@@ -317,7 +326,13 @@ class ContextualSearchboxHandler
                           std::unique_ptr<lens::ContextualInputData>>>
       tab_context_snapshot_;
 
+  // TODO(b/502297163): Implement for Android.
+#if !BUILDFLAG(IS_ANDROID)
+  // Delegate handling desktop-specific operations for QueryContextualizer.
+  std::unique_ptr<contextual_tasks::DesktopQueryContextualizerDelegate>
+      desktop_delegate_;
   std::unique_ptr<contextual_tasks::QueryContextualizer> query_contextualizer_;
+#endif  // !BUILDFLAG(IS_ANDROID)
 
   raw_ptr<contextual_tasks::ContextualTasksContextService>
       contextual_tasks_context_service_;
@@ -336,6 +351,18 @@ class ContextualSearchboxHandler
       tab_list_observation_{this};
 
  protected:
+  std::optional<bool> smart_tab_sharing_active_for_thread_;
+
+  // Checks eligibility and triggers the smart tab sharing IPH promo logic.
+  void MaybeTriggerSmartTabSharingPromo(
+      const std::string& query,
+      content::WebContents* web_contents_for_window);
+
+  // Callback invoked when relevant tabs are determined for the query to inform
+  // if the smart tab sharing promo should be shown to the user.
+  virtual void OnRelevantTabsReceivedToMaybeShowPromo(
+      std::vector<base::WeakPtr<content::WebContents>> relevant_tabs);
+
   base::WeakPtrFactory<ContextualSearchboxHandler> weak_ptr_factory_{this};
 };
 

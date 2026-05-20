@@ -7,6 +7,7 @@
 #include "chrome/test/base/web_ui_mocha_browser_test.h"
 #include "components/history_clusters/core/features.h"
 #include "components/history_embeddings/core/history_embeddings_features.h"
+#include "components/lens/lens_features.h"
 #include "content/public/test/browser_test.h"
 
 typedef WebUIMochaBrowserTest CrComponentsTest;
@@ -92,7 +93,7 @@ IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, RealboxMatchTest) {
 
 IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, RealboxTest) {
   set_test_loader_host(chrome::kChromeUINewTabPageHost);
-  RunTest("cr_components/searchbox/searchbox_test.js",
+  RunTest("cr_components/searchbox/searchbox_ntp_test.js",
           "runMochaSuite('SearchboxTest');");
 }
 
@@ -109,7 +110,8 @@ IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, RealboxPlaceholderTest) {
 
 IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, RealboxLensTest) {
   set_test_loader_host(chrome::kChromeUINewTabPageHost);
-  RunTest("cr_components/searchbox/searchbox_lens_test.js", "mocha.run()");
+  RunTest("cr_components/searchbox/searchbox_lens_button_test.js",
+          "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, SearchboxDropdownTest) {
@@ -180,7 +182,7 @@ IN_PROC_BROWSER_TEST_F(CrComponentsMostVisitedTest, LoggingAndUpdates) {
           "runMochaSuite('LoggingAndUpdates');");
 }
 
-// crbug.com/1226996
+// crbug.com/40776780
 #if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
 #define MAYBE_Modification DISABLED_Modification
 #else
@@ -269,8 +271,13 @@ IN_PROC_BROWSER_TEST_F(CrComponentsPreloadingTest, Preloading) {
 class CrComponentsComposeboxTest : public WebUIMochaBrowserTest {
  protected:
   CrComponentsComposeboxTest() {
+    scoped_feature_list_.InitAndDisableFeature(
+        lens::features::kLensSendRawFileMediaTypes);
     set_test_loader_host(chrome::kChromeUINewTabPageHost);
   }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ContextualEntrypointButton) {
@@ -297,7 +304,9 @@ IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, RecentTabChip) {
   RunTest("cr_components/composebox/recent_tab_chip_test.js", "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest, ComposeboxVoiceSearch) {
+// TODO(crbug.com/508867284): Flaky on Win/Linux/Chrome OS.
+IN_PROC_BROWSER_TEST_F(CrComponentsComposeboxTest,
+                       DISABLED_ComposeboxVoiceSearch) {
   RunTest("cr_components/composebox/composebox_voice_search_test.js",
           "mocha.run()");
 }

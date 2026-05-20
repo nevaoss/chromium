@@ -323,6 +323,7 @@ class DummyFrameOwner final : public GarbageCollected<DummyFrameOwner>,
   void AddResourceTiming(mojom::blink::ResourceTimingInfoPtr) override {}
   void DispatchLoad() override {}
   void NaturalSizingInfoChanged() override {}
+  void ClearLastNaturalSizingInfo() override {}
   void SetNeedsOcclusionTracking(bool) override {}
   AtomicString BrowsingContextContainerName() const override {
     return AtomicString();
@@ -930,7 +931,7 @@ bool WebLocalFrameImpl::HasVisibleContent() const {
 
 gfx::Rect WebLocalFrameImpl::VisibleContentRect() const {
   if (LocalFrameView* view = GetFrameView())
-    return view->LayoutViewport()->VisibleContentRect();
+    return view->LayoutViewport()->VisibleContentRect(kExcludeScrollbars);
   return gfx::Rect();
 }
 
@@ -1485,7 +1486,7 @@ WebString WebLocalFrameImpl::SelectionAsText() const {
   String text;
   if (EditContext* edit_context =
           GetFrame()->GetInputMethodController().GetActiveEditContext()) {
-    text = edit_context->text().Substring(
+    text = edit_context->text().DeprecatedSubstring(
         edit_context->selectionStart(),
         edit_context->selectionEnd() - edit_context->selectionStart());
   } else {
@@ -1493,7 +1494,7 @@ WebString WebLocalFrameImpl::SelectionAsText() const {
         TextIteratorBehavior::EmitsObjectReplacementCharacterBehavior());
   }
 #if BUILDFLAG(IS_WIN)
-  text = NormalizeLineEndingsToCRLF(text);
+  text = NormalizeLineEndingsToCrLf(text);
 #endif
   ReplaceNBSPWithSpace(text);
   return text;
@@ -1605,8 +1606,8 @@ void WebLocalFrameImpl::SelectRange(
 WebString WebLocalFrameImpl::RangeAsText(const WebRange& web_range) {
   if (EditContext* edit_context =
           GetFrame()->GetInputMethodController().GetActiveEditContext()) {
-    return edit_context->text().Substring(web_range.StartOffset(),
-                                          web_range.length());
+    return edit_context->text().DeprecatedSubstring(web_range.StartOffset(),
+                                                    web_range.length());
   } else {
     // TODO(editing-dev): The use of UpdateStyleAndLayout
     // needs to be audited.  see http://crbug.com/590369 for more details.
@@ -2429,8 +2430,8 @@ void WebLocalFrameImpl::InitializeCoreFrameInternal(
   if (!owner) {
     // This trace event is needed to detect the main frame of the
     // renderer in telemetry metrics. See crbug.com/692112#c11.
-    TRACE_EVENT_INSTANT1("loading", "markAsMainFrame", TRACE_EVENT_SCOPE_THREAD,
-                         "frame", GetFrameIdForTracing(frame_));
+    TRACE_EVENT_INSTANT("loading", "markAsMainFrame", "frame",
+                        GetFrameIdForTracing(frame_));
   }
 }
 
@@ -3378,13 +3379,13 @@ WebLocalFrameImpl::ConvertNotRestoredReasons(
     not_restored_reasons =
         mojom::blink::BackForwardCacheNotRestoredReasons::New();
     if (reasons_to_copy->id) {
-      not_restored_reasons->id = reasons_to_copy->id.value().c_str();
+      not_restored_reasons->id = String(reasons_to_copy->id.value());
     }
     if (reasons_to_copy->name) {
-      not_restored_reasons->name = reasons_to_copy->name.value().c_str();
+      not_restored_reasons->name = String(reasons_to_copy->name.value());
     }
     if (reasons_to_copy->src) {
-      not_restored_reasons->src = reasons_to_copy->src.value().c_str();
+      not_restored_reasons->src = String(reasons_to_copy->src.value());
     }
     for (const auto& reason_to_copy : reasons_to_copy->reasons) {
       mojom::blink::BFCacheBlockingDetailedReasonPtr reason =

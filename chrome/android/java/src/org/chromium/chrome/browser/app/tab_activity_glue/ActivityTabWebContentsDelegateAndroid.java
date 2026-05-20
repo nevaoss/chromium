@@ -36,16 +36,15 @@ import org.chromium.chrome.browser.SwipeRefreshHandler;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.compositor.CompositorViewHolder;
+import org.chromium.chrome.browser.customtabs.PopupCreatorFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
 import org.chromium.chrome.browser.init.ChromeActivityNativeDelegate;
 import org.chromium.chrome.browser.media.PictureInPicture;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
-import org.chromium.chrome.browser.night_mode.WebContentsDarkModeController;
 import org.chromium.chrome.browser.policy.PolicyAuditor;
 import org.chromium.chrome.browser.policy.PolicyAuditor.AuditEvent;
-import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.InterceptNavigationDelegateTabHelper;
 import org.chromium.chrome.browser.tab.Tab;
@@ -55,7 +54,6 @@ import org.chromium.chrome.browser.tab.TabUtils;
 import org.chromium.chrome.browser.tab.TabWebContentsDelegateAndroid;
 import org.chromium.chrome.browser.tabmodel.TabCreator;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
-import org.chromium.chrome.browser.tabmodel.TabGroupModelFilter;
 import org.chromium.chrome.browser.tabmodel.TabGroupModelFilter.MergeNotificationType;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -76,7 +74,6 @@ import org.chromium.ui.modaldialog.ModalDialogProperties;
 import org.chromium.ui.modaldialog.SimpleModalDialogController;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.mojom.WindowOpenDisposition;
-import org.chromium.ui.util.ColorUtils;
 import org.chromium.url.GURL;
 
 import java.util.Arrays;
@@ -260,8 +257,9 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
                 return false;
             }
 
-            return PopupCreator.moveWebContentsToNewDocumentPictureInPictureWindow(
-                    mActivity, webContents, pictureInPictureWindowOptions);
+            return PopupCreatorFactory.getInstance()
+                    .moveWebContentsToNewDocumentPictureInPictureWindow(
+                            mActivity, webContents, pictureInPictureWindowOptions);
         }
 
         final CompletableFuture<Boolean> addTabToModel = new CompletableFuture<Boolean>();
@@ -278,7 +276,8 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
         if (disposition == WindowOpenDisposition.NEW_POPUP) {
             final boolean launchedMovablePopup =
                     ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_WINDOW_POPUP_LARGE_SCREEN)
-                            && PopupCreator.moveTabToNewPopup(tab, windowFeatures);
+                            && PopupCreatorFactory.getInstance()
+                                    .moveTabToNewPopup(tab, windowFeatures);
             addTabToModel.complete(!launchedMovablePopup);
             RecordHistogram.recordBooleanHistogram(
                     "Android.MultiWindowMode.PopupOpensInNewWindow", launchedMovablePopup);
@@ -322,23 +321,19 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
         // If the new tab is in a different TabModel from the parent tab, don't group them.
         if (TabWindowManagerSingleton.getInstance().getTabModelForTab(sourceTab)
                 == TabWindowManagerSingleton.getInstance().getTabModelForTab(newTab)) {
-            TabGroupModelFilter tabGroupModelFilter = getTabGroupModelFilter(sourceTab);
+            TabModel tabModel = getTabModel(sourceTab);
             // Set notify to false so snackbar to undo the grouping will not be shown.
-            if (tabGroupModelFilter != null
-                    && tabGroupModelFilter.isTabInTabGroup(sourceTab)
-                    && tabGroupModelFilter.isTabModelRestored()) {
-                tabGroupModelFilter.mergeListOfTabsToGroup(
+            if (tabModel != null
+                    && tabModel.isTabInTabGroup(sourceTab)
+                    && tabModel.isTabModelRestored()) {
+                tabModel.mergeListOfTabsToGroup(
                         Arrays.asList(newTab),
                         sourceTab,
                         /* notify= */ MergeNotificationType.DONT_NOTIFY);
                 if (mChromeActivityNativeDelegate != null) {
                     assert Objects.equals(newTab.getTabGroupId(), sourceTab.getTabGroupId());
-                    assert tabGroupModelFilter
-                            .getTabsInGroup(newTab.getTabGroupId())
-                            .contains(sourceTab);
-                    assert tabGroupModelFilter
-                            .getTabsInGroup(sourceTab.getTabGroupId())
-                            .contains(newTab);
+                    assert tabModel.getTabsInGroup(newTab.getTabGroupId()).contains(sourceTab);
+                    assert tabModel.getTabsInGroup(sourceTab.getTabGroupId()).contains(newTab);
                 }
             }
         }
@@ -638,6 +633,16 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
                 : false;
     }
 
+    @Override
+    protected boolean isDocumentPictureInPictureBlockedBySystem() {
+        // Document PiP requires launching a new movable task with PiP bounds.
+        // This is blocked by the OS (throws InfeasibleActivityOptionsException)
+        // if the current activity is in app fullscreen (i.e. not in multi-window mode).
+        // TODO(b/504784078): Once the fullscreen limitation is resolved, we should update this
+        // check.
+        return mActivity == null || !MultiWindowUtils.getInstance().isInMultiWindowMode(mActivity);
+    }
+
     /**
      * Checks if Document Picture-in-Picture is enabled. This is true if we both have the permission
      * to enter Picture-in-Picture mode and the Android API to go into pinned mode is supported.
@@ -651,30 +656,6 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
         }
 
         return isPictureInPictureEnabled() && delegate.isRequestPinnedWindowingLayerSupported();
-    }
-
-    @Override
-    protected boolean isNightModeEnabled() {
-        return mActivity != null ? ColorUtils.inNightMode(mActivity) : false;
-    }
-
-    @Override
-    protected boolean isForceDarkWebContentEnabled() {
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.FORCE_WEB_CONTENTS_DARK_MODE)) {
-            return true;
-        }
-        if (!ChromeFeatureList.isEnabled(
-                ChromeFeatureList.DARKEN_WEBSITES_CHECKBOX_IN_THEMES_SETTING)) {
-            return false;
-        }
-        WebContents webContents = mTab.getWebContents();
-        if (webContents == null) {
-            return false;
-        }
-        Profile profile = mTab.getProfile();
-        return isNightModeEnabled()
-                && WebContentsDarkModeController.isEnabledForUrl(
-                        profile, webContents.getVisibleUrl());
     }
 
     @Override
@@ -776,8 +757,8 @@ public class ActivityTabWebContentsDelegateAndroid extends TabWebContentsDelegat
         mExclusiveAccessManager.lostPointerLock();
     }
 
-    protected @Nullable TabGroupModelFilter getTabGroupModelFilter(Tab tab) {
-        return TabModelUtils.getTabGroupModelFilterByTab(tab);
+    protected @Nullable TabModel getTabModel(Tab tab) {
+        return TabModelUtils.getTabModelByTab(tab);
     }
 
     protected Tab fromWebContents(WebContents webContents) {

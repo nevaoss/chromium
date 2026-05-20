@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_CONTEXT_SERVICE_H_
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_CONTEXT_SERVICE_H_
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -12,6 +13,7 @@
 
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/time/tick_clock.h"
@@ -20,6 +22,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_types.mojom.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/page_content_annotations/content/page_embeddings_service.h"
+#include "components/page_content_annotations/core/page_embeddings_common.h"
 #include "components/passage_embeddings/core/passage_embeddings_types.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
@@ -27,6 +30,10 @@ class BrowserWindowInterface;
 class GURL;
 class OptimizationGuideKeyedService;
 class Profile;
+
+namespace optimization_guide {
+class ModelQualityLogEntry;
+}  // namespace optimization_guide
 
 namespace content {
 class WebContents;
@@ -49,6 +56,39 @@ class EmbedderMetadataProvider;
 
 namespace contextual_tasks {
 
+struct SiteExclusionDetail;
+class ContextualTasksContextModelHandler;
+
+// Represents a single turn in a thread.
+struct ThreadTurn {
+  ThreadTurn();
+  ThreadTurn(const ThreadTurn&);
+  ThreadTurn& operator=(const ThreadTurn&);
+  ~ThreadTurn();
+
+  // User query for this turn.
+  std::string query;
+};
+
+// Represents a conversation thread, including current and previous turns.
+struct ConversationThread {
+  ConversationThread();
+  ConversationThread(const ConversationThread&);
+  ConversationThread& operator=(const ConversationThread&);
+  ~ConversationThread();
+
+  // The query from the current turn.
+  std::string query;
+
+  // Previous turns in the thread, in chronological order (oldest first).
+  // The first element in this vector is the first turn in the thread.
+  std::vector<ThreadTurn> previous_turns;
+
+  // Titles of shared (attached as context) tabs, coming from context library.
+  // These are union of tabs shared across all previous turns.
+  std::vector<std::string> shared_tab_titles;
+};
+
 enum class ContextDeterminationStatus {
   kSuccess = 0,
   kEmbedderNotAvailable = 1,
@@ -65,7 +105,7 @@ enum class ContextDeterminationStatus {
 // Options to regulate tab selection behavior.
 struct TabSelectionOptions {
   mojom::TabSelectionMode tab_selection_mode =
-      mojom::TabSelectionMode::kMultiSignalScoring;
+      mojom::TabSelectionMode::kStaticSignalsMlModel;
 
   // If set, only tabs with a model score of at least `min_model_score` will be
   // selected.
@@ -102,17 +142,39 @@ class ContextualTasksContextService
   ~ContextualTasksContextService() override;
 
   // Returns the relevant tabs for `query`. Will invoke `callback` when done.
-  void GetRelevantTabsForQuery(
+  virtual void GetRelevantTabsForQuery(
       const TabSelectionOptions& options,
       const std::string& query,
       const std::vector<GURL>& explicit_urls,
-      base::OnceCallback<void(std::vector<content::WebContents*>)> callback);
+      base::OnceCallback<void(std::vector<base::WeakPtr<content::WebContents>>)>
+          callback);
+
+  // Returns the relevant tabs for `conversation_thread`.
+  virtual void GetRelevantTabsForConversationThread(
+      const TabSelectionOptions& options,
+      const ConversationThread& conversation_thread,
+      const std::vector<GURL>& explicit_urls,
+      base::OnceCallback<void(std::vector<base::WeakPtr<content::WebContents>>)>
+          callback);
+
+  // Called when the user starts typing a query.
+  //
+  // This will pre-flight any pending embeddings required.
+  void OnTypedQuery();
 
   void SetClockForTesting(const base::TickClock* tick_clock);
 
+ protected:
+  // Constructor for testing that avoids initializing other dependencies.
+  explicit ContextualTasksContextService(Profile* profile);
+
  private:
+  friend class ContextualTasksContextServiceTest;
+
   struct QueryState {
-    QueryState();
+    QueryState(std::string query,
+               passage_embeddings::Embedding query_embedding,
+               int query_word_count);
     ~QueryState();
     QueryState(const QueryState&);
     QueryState& operator=(const QueryState&);
@@ -122,21 +184,12 @@ class ContextualTasksContextService
     int query_word_count = 0;
 
     base::WeakPtr<content::WebContents> active_tab;
-    std::vector<page_content_annotations::PassageEmbedding> active_tab_embeddings;
+    std::vector<page_content_annotations::PassageEmbedding>
+        active_tab_embeddings;
 
     std::optional<passage_embeddings::Embedding> active_tab_title_embedding;
     std::optional<float> active_tab_title_similarity;
     std::vector<ScoredPassage> active_tab_passage_similarities;
-  };
-
-  struct SiteExclusionDetail {
-    int tabs_checked = 0;
-    int tabs_filtered = 0;
-    int exclusions_checked = 0;
-    base::TimeDelta duration;
-
-    void RecordActiveTabMetrics();
-    void RecordAllTabsMetrics();
   };
 
   // EmbedderMetadataObserver:
@@ -162,11 +215,45 @@ class ContextualTasksContextService
   // Callback invoked when the request has timed out.
   void OnRequestTimedOut(int64_t request_id);
 
+  // Callback invoked when relevant tabs are selected.
+  void OnRelevantTabsSelected(
+      const std::string& query,
+      const TabSelectionOptions& options,
+      base::TimeTicks start_time,
+      const std::vector<GURL>& explicit_urls,
+      base::OnceCallback<void(std::vector<base::WeakPtr<content::WebContents>>)>
+          callback,
+      std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry,
+      std::vector<base::WeakPtr<content::WebContents>> relevant_tabs);
+
+  // Intermediate state for asynchronous scoring.
+  struct ScoringState : public base::RefCounted<ScoringState> {
+    explicit ScoringState(size_t size);
+
+    std::vector<double> scores;
+    std::vector<TabSignals> signals;
+
+   private:
+    friend class base::RefCounted<ScoringState>;
+    ~ScoringState();
+  };
+
+  // Callback invoked when all open tabs have been scored.
+  void OnAllTabsScored(
+      const std::string& query,
+      const TabSelectionOptions& options,
+      const std::vector<base::WeakPtr<content::WebContents>>& all_tabs,
+      const std::vector<GURL>& explicit_urls,
+      base::OnceCallback<void(std::vector<base::WeakPtr<content::WebContents>>)>
+          on_selection_complete,
+      scoped_refptr<ScoringState> scoring_state,
+      optimization_guide::proto::ContextualTasksContextQuality* quality_log);
+
   // Returns all tabs for the profile that are eligible for selection.
   //
   // This function will scope the eligible tabs to what's in
   // `browser_window_interface` if it is not null.
-  std::vector<content::WebContents*> GetAllEligibleTabs(
+  std::vector<base::WeakPtr<content::WebContents>> GetAllEligibleTabs(
       base::WeakPtr<BrowserWindowInterface> browser_window_interface);
 
   // Creates the QueryState including active tab context.
@@ -175,18 +262,19 @@ class ContextualTasksContextService
       const passage_embeddings::Embedding& query_embedding);
 
   // Computes TabSignals for a candidate tab.
-  TabSignals ComputeTabSignals(
-      content::WebContents* web_contents,
-      const QueryState& query_state);
+  TabSignals ComputeTabSignals(content::WebContents* web_contents,
+                               const QueryState& query_state);
 
   // Returns the relevant tabs for `query`. Collects and logs all the signals
   // irrespective of chosen `tab_selection_mode`.
-  std::vector<content::WebContents*> SelectRelevantTabs(
+  void SelectRelevantTabs(
       const std::string& query,
       const TabSelectionOptions& options,
       const passage_embeddings::Embedding& query_embedding,
-      const std::vector<content::WebContents*>& all_tabs,
+      const std::vector<base::WeakPtr<content::WebContents>>& all_tabs,
       const std::vector<GURL>& explicit_urls,
+      base::OnceCallback<void(std::vector<base::WeakPtr<content::WebContents>>)>
+          on_selection_complete,
       optimization_guide::proto::ContextualTasksContextQuality* quality_log);
 
   // Helper method to populate query state context. These are common for all
@@ -216,6 +304,8 @@ class ContextualTasksContextService
   // Returns whether the tab should be added to the selection.
   bool ShouldAddTabToSelection(content::WebContents* web_contents);
 
+  std::unique_ptr<ContextualTasksContextModelHandler> model_handler_;
+
   // The version of the embedder model.
   std::optional<int64_t> embedder_model_version_;
 
@@ -234,11 +324,13 @@ class ContextualTasksContextService
   struct PendingRequest {
     PendingRequest(
         passage_embeddings::Embedder::TaskId task_id,
-        base::OnceCallback<void(std::vector<content::WebContents*>)> callback);
+        base::OnceCallback<
+            void(std::vector<base::WeakPtr<content::WebContents>>)> callback);
     ~PendingRequest();
 
     passage_embeddings::Embedder::TaskId task_id;
-    base::OnceCallback<void(std::vector<content::WebContents*>)> callback;
+    base::OnceCallback<void(std::vector<base::WeakPtr<content::WebContents>>)>
+        callback;
   };
   absl::flat_hash_map<int64_t, std::unique_ptr<PendingRequest>>
       pending_requests_;

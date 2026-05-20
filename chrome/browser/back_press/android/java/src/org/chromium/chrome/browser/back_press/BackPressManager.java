@@ -4,8 +4,6 @@
 
 package org.chromium.chrome.browser.back_press;
 
-import static androidx.activity.BackEventCompat.EDGE_LEFT;
-
 import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.annotation.SuppressLint;
@@ -56,8 +54,8 @@ public class BackPressManager implements Destroyable, BackPressHandlerRegistry {
     private static final int sMetricsMaxValue;
 
     static {
-        // Max value is 26 - 1 obsolete value +1 for 0 indexing = 26 elements.
-        SparseIntArray map = new SparseIntArray(26);
+        // Max value is 27 - 1 obsolete value +1 for 0 indexing = 27 elements.
+        SparseIntArray map = new SparseIntArray(27);
         map.put(Type.TEXT_BUBBLE, 0);
         // map.put(Type.VR_DELEGATE, 1);
         // map.put(Type.AR_DELEGATE, 2);
@@ -83,9 +81,10 @@ public class BackPressManager implements Destroyable, BackPressHandlerRegistry {
         map.put(Type.NATIVE_PAGE, 23);
         map.put(Type.CANCEL_TAB_STRIP_DRAG, 24);
         map.put(Type.CANCEL_TAB_SWITCHER_DRAG, 25);
+        map.put(Type.ACTOR_OVERLAY, 26);
 
         // Add new one here and update array size.
-        sMetricsMaxValue = 26;
+        sMetricsMaxValue = 27;
         sMetricsMap = map;
     }
 
@@ -167,8 +166,8 @@ public class BackPressManager implements Destroyable, BackPressHandlerRegistry {
                     BackPressMetrics.recordTabNavigationSwipedFromEdge(
                             mLastBackEvent.getSwipeEdge());
 
-                    // Tracks back swipe from left edge
-                    if (mLastBackEvent.getSwipeEdge() == EDGE_LEFT && mProfileSupplier != null) {
+                    // Tracks back swipes
+                    if (mProfileSupplier != null) {
                         Profile profile = mProfileSupplier.get();
                         if (profile != null) {
                             TrackerFactory.getTrackerForProfile(profile)
@@ -219,7 +218,10 @@ public class BackPressManager implements Destroyable, BackPressHandlerRegistry {
     private final boolean mUseSystemBack;
     private boolean mHasSystemBackArm;
 
+    // Generic array creation is not supported in Java.
+    @SuppressWarnings("unchecked")
     private final @Nullable Callback<Boolean>[] mObserverCallbacks = new Callback[Type.NUM_TYPES];
+
     private @Nullable OnBackInvokedCallback mOnSystemNavigationCallback;
     private Runnable mFallbackOnBackPressed;
     private int mLastCalledHandlerType = -1;
@@ -337,6 +339,14 @@ public class BackPressManager implements Destroyable, BackPressHandlerRegistry {
      * @return True if a handler of this type is the enabled handler that consumes the back event.
      */
     public boolean isBackPressHandlerConsumingBackEvent(@Type int type) {
+        boolean isEnabled =
+                mHandlers[type] != null
+                        ? mHandlers[type].getHandleBackPressChangedSupplier().get()
+                        : false;
+        if (!isEnabled) {
+            return false;
+        }
+        // Check if type is the highest priority enabled handler.
         return getEnabledBackPressHandler() == mHandlers[type];
     }
 

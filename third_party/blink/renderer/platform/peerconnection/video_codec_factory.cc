@@ -26,6 +26,7 @@
 #include "third_party/webrtc/media/engine/internal_encoder_factory.h"
 #include "third_party/webrtc/media/engine/simulcast_encoder_adapter.h"
 #include "third_party/webrtc/modules/video_coding/codecs/h264/include/h264.h"
+#include "third_party/webrtc/video/null_video_decoder.h"
 
 #if BUILDFLAG(IS_ANDROID)
 #include "media/base/android/media_codec_util.h"
@@ -57,8 +58,9 @@ std::unique_ptr<webrtc::VideoDecoder> CreateDecoder(
     webrtc::VideoDecoderFactory* factory,
     const webrtc::Environment& env,
     const webrtc::SdpVideoFormat& format) {
-  if (!IsFormatSupported(factory, format))
+  if (!factory || !factory->QueryCodecSupport(format, false).is_supported) {
     return nullptr;
+  }
   return factory->Create(env, format);
 }
 
@@ -66,12 +68,16 @@ std::unique_ptr<webrtc::VideoDecoder> Wrap(
     const webrtc::Environment& env,
     std::unique_ptr<webrtc::VideoDecoder> software_decoder,
     std::unique_ptr<webrtc::VideoDecoder> hardware_decoder) {
-  if (software_decoder && hardware_decoder) {
+  if (hardware_decoder) {
+    if (!software_decoder) {
+      // If the HW becomes unusable after creation, the NullVideoDecoder serves
+      // to ensure the decoderImplementation string in getStats() reflects this.
+      software_decoder = std::make_unique<webrtc::NullVideoDecoder>();
+    }
     return webrtc::CreateVideoDecoderSoftwareFallbackWrapper(
         env, std::move(software_decoder), std::move(hardware_decoder));
   }
-  return hardware_decoder ? std::move(hardware_decoder)
-                          : std::move(software_decoder);
+  return software_decoder;
 }
 
 // This class combines a hardware factory with the internal factory and adds
@@ -104,8 +110,7 @@ class EncoderAdapter : public webrtc::VideoEncoderFactory {
     // trust supported formats reported by |software_encoder_factory_| and do
     // not allow profile mismatch when only software encoder factory is used for
     // creating the simulcast encoder adapter.
-    if (base::EqualsCaseInsensitiveASCII(format.name.c_str(),
-                                         webrtc::kH264CodecName) &&
+    if (base::EqualsCaseInsensitiveASCII(format.name, webrtc::kH264CodecName) &&
         supported_in_hardware) {
       allow_h264_profile_fallback = IsFormatSupported(
           &software_encoder_factory_,

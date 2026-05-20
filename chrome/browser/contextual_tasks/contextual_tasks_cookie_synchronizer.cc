@@ -22,6 +22,11 @@
 #include "google_apis/gaia/gaia_auth_fetcher.h"
 #include "services/network/public/mojom/cookie_manager.mojom.h"
 
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "base/feature_list.h"
+#include "components/signin/public/base/signin_switches.h"
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
 namespace contextual_tasks {
 
 namespace {
@@ -44,7 +49,10 @@ ContextualTasksCookieSynchronizer::ContextualTasksCookieSynchronizer(
     signin::IdentityManager* identity_manager)
     : context_(context), identity_manager_(identity_manager) {
   CHECK(context_);
-  observation_.Observe(identity_manager);
+  // `identity_manager` can be nullptr in tests.
+  if (identity_manager_) {
+    observation_.Observe(identity_manager_);
+  }
 }
 
 ContextualTasksCookieSynchronizer::~ContextualTasksCookieSynchronizer() =
@@ -64,10 +72,20 @@ ContextualTasksCookieSynchronizer::GetCookieManagerForPartition() {
   return GetStoragePartition()->GetCookieManagerForBrowserProcess();
 }
 
+signin::PartitionSuffix ContextualTasksCookieSynchronizer::GetPartitionSuffix()
+    const {
+  return signin::PartitionSuffix::kContextualTasks;
+}
+
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 network::mojom::DeviceBoundSessionManager*
 ContextualTasksCookieSynchronizer::GetDeviceBoundSessionManagerForPartition() {
-  return GetStoragePartition()->GetDeviceBoundSessionManager();;
+  if (!base::FeatureList::IsEnabled(
+          switches::
+              kEnableOAuthMultiloginStandardCookiesBindingForSecondaryPartitions)) {
+    return nullptr;
+  }
+  return GetStoragePartition()->GetDeviceBoundSessionManager();
 }
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 

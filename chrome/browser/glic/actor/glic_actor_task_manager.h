@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "base/callback_list.h"
+#include "base/feature_list.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
@@ -29,6 +30,8 @@ namespace actor {
 struct ActionResultWithLatencyInfo;
 class ActorKeyedService;
 class ActorTaskDelegate;
+struct ObservationResult;
+class TabObservationController;
 }  // namespace actor
 
 namespace glic {
@@ -74,6 +77,10 @@ class GlicActorTaskManager {
   void CanActOnWebChanged(bool can_act_on_web);
   bool IsActuating() const;
 
+  // Adds a callback that is run when the actuating state changes.
+  base::CallbackListSubscription AddActuatingChangedCallback(
+      base::RepeatingCallback<void(bool)> callback);
+
   base::WeakPtr<GlicActorTaskManager> GetWeakPtr();
 
  private:
@@ -98,6 +105,14 @@ class GlicActorTaskManager {
       std::unique_ptr<optimization_guide::proto::ActionsResult> result,
       std::unique_ptr<actor::AggregatedJournal::PendingAsyncEntry>
           journal_entry);
+  void OnPerformActionsComplete(
+      mojom::WebClientHandler::PerformActionsCallback callback,
+      base::TimeTicks start_time,
+      std::vector<actor::ActionResultWithLatencyInfo> action_results,
+      std::unique_ptr<actor::AggregatedJournal::PendingAsyncEntry>
+          journal_entry,
+      actor::TabObservationController* controller_ptr,
+      std::unique_ptr<actor::ObservationResult> result);
   void ReloadCrashedTab(tabs::TabInterface& crashed_tab,
                         actor::TaskId task_id,
                         base::OnceClosure callback);
@@ -124,12 +139,17 @@ class GlicActorTaskManager {
   bool attempted_observation_retry_ = false;
   std::unique_ptr<actor::ObservationDelayController> reload_observer_;
 
+  std::vector<std::unique_ptr<actor::TabObservationController>>
+      observation_controllers_;
+
   const raw_ref<GlicActorPolicyChecker> actor_policy_checker_;
 
   std::optional<base::CallbackListSubscription>
       actor_task_state_changed_subscription_;
 
   base::CallbackListSubscription can_act_on_web_changed_subscription_;
+
+  base::RepeatingCallbackList<void(bool)> actuating_changed_callbacks_;
 
   base::WeakPtrFactory<GlicActorTaskManager> weak_ptr_factory_{this};
 };

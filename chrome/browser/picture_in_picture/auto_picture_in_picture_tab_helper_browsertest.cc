@@ -18,13 +18,19 @@
 #include "chrome/browser/media/media_engagement_service_factory.h"
 #include "chrome/browser/media/mock_media_engagement_service.h"
 #include "chrome/browser/media/webrtc/webrtc_browsertest_base.h"
+#include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_observer_helper_base.h"
 #include "chrome/browser/picture_in_picture/auto_pip_setting_helper.h"
 #include "chrome/browser/picture_in_picture/auto_pip_setting_view.h"
+#include "chrome/browser/picture_in_picture/hats/auto_picture_in_picture_hats_service.h"
+#include "chrome/browser/picture_in_picture/hats/auto_picture_in_picture_hats_service_factory.h"
 #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/safe_browsing/test_safe_browsing_service.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/hats/hats_service_factory.h"
+#include "chrome/browser/ui/hats/mock_hats_service.h"
+#include "chrome/browser/ui/hats/survey_config.h"
 #include "chrome/browser/ui/recently_audible_helper.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -186,6 +192,39 @@ class MockContentBrowserClient : public ChromeContentBrowserClient {
               (const content::WebContents& web_contents),
               (const, override));
 };
+
+class MockAutoPictureInPictureWindowOcclusionHelper
+    : public AutoPictureInPictureWindowOcclusionHelperBase {
+ public:
+  MockAutoPictureInPictureWindowOcclusionHelper(
+      content::WebContents* web_contents,
+      OcclusionStateChangedCallback callback)
+      : AutoPictureInPictureWindowOcclusionHelperBase(web_contents,
+                                                      std::move(callback)) {}
+
+  void SimulateOcclusionStateChange(OcclusionState state) {
+    state_ = state;
+    RunCallback(state);
+  }
+
+  // AutoPictureInPictureWindowOcclusionHelperBase:
+  MOCK_METHOD(void, StartObserving, (), (override));
+  MOCK_METHOD(void, StopObserving, (), (override));
+
+  OcclusionState GetOcclusionState() const override { return state_; }
+
+ private:
+  OcclusionState state_ = OcclusionState::kVisible;
+};
+
+std::unique_ptr<AutoPictureInPictureWindowOcclusionHelperBase>
+MockAutoPictureInPictureWindowOcclusionHelperFactory(
+    content::WebContents* web_contents,
+    AutoPictureInPictureWindowOcclusionHelperBase::OcclusionStateChangedCallback
+        callback) {
+  return std::make_unique<MockAutoPictureInPictureWindowOcclusionHelper>(
+      web_contents, std::move(callback));
+}
 
 // Helper class to wait for "recently audible" callbacks.
 class WasRecentlyAudibleWaiter {
@@ -409,9 +448,18 @@ class AutoPictureInPictureTabHelperBrowserTest : public WebRtcTestBase {
   }
 
   void SetUp() override {
-    scoped_feature_list_.InitWithFeatures(GetEnabledFeatures(),
-                                          GetDisabledFeatures());
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        GetEnabledFeaturesWithParameters(), GetDisabledFeatures());
     InProcessBrowserTest::SetUp();
+  }
+
+  virtual std::vector<base::test::FeatureRefAndParams>
+  GetEnabledFeaturesWithParameters() {
+    std::vector<base::test::FeatureRefAndParams> features;
+    for (const auto& feature : GetEnabledFeatures()) {
+      features.emplace_back(*feature, base::FieldTrialParams());
+    }
+    return features;
   }
 
   void LoadAutoVideoPipPage(Browser* browser) {
@@ -1009,6 +1057,70 @@ class AutoPictureInPictureWithVideoPlaybackBrowserTest
   std::unique_ptr<safe_browsing::TestSafeBrowsingServiceFactory>
       safe_browsing_factory_;
   base::CallbackListSubscription dependency_manager_subscription_;
+};
+
+struct HatsTestParams {
+  std::string result;
+  std::string trigger;
+  AutoPipSettingHelper::PromptResult prompt_result;
+};
+
+class AutoPictureInPictureTabHelperHatsBrowserTest
+    : public AutoPictureInPictureWithVideoPlaybackBrowserTest,
+      public testing::WithParamInterface<HatsTestParams> {
+ public:
+  AutoPictureInPictureTabHelperHatsBrowserTest() {
+    hats_dependency_manager_subscription_ =
+        BrowserContextDependencyManager::GetInstance()
+            ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
+                &AutoPictureInPictureTabHelperHatsBrowserTest::
+                    SetHatsTestingFactory,
+                base::Unretained(this)));
+  }
+
+  void SetHatsTestingFactory(content::BrowserContext* context) {
+    HatsServiceFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating(&BuildMockHatsService));
+  }
+
+  MockHatsService* GetMockHatsService() {
+    return static_cast<MockHatsService*>(
+        HatsServiceFactory::GetForProfile(browser()->profile(),
+                                          /*create_if_necessary=*/true));
+  }
+
+ private:
+  base::CallbackListSubscription hats_dependency_manager_subscription_;
+};
+
+class AutoPictureInPictureTabHelperHatsDocumentPipBrowserTest
+    : public AutoPictureInPictureTabHelperHatsBrowserTest {
+ public:
+  std::vector<base::test::FeatureRefAndParams>
+  GetEnabledFeaturesWithParameters() override {
+    auto features = AutoPictureInPictureTabHelperHatsBrowserTest::
+        GetEnabledFeaturesWithParameters();
+    features.emplace_back(
+        media::kAutoPictureInPictureSurveys,
+        base::FieldTrialParams({{"autopip_reason", "VideoConferencing"},
+                                {"prompt_result", GetParam().result}}));
+    return features;
+  }
+};
+
+class AutoPictureInPictureTabHelperHatsVideoPipBrowserTest
+    : public AutoPictureInPictureTabHelperHatsBrowserTest {
+ public:
+  std::vector<base::test::FeatureRefAndParams>
+  GetEnabledFeaturesWithParameters() override {
+    auto features = AutoPictureInPictureTabHelperHatsBrowserTest::
+        GetEnabledFeaturesWithParameters();
+    features.emplace_back(
+        media::kAutoPictureInPictureSurveys,
+        base::FieldTrialParams({{"autopip_reason", "MediaPlayback"},
+                                {"prompt_result", GetParam().result}}));
+    return features;
+  }
 };
 
 class BrowserInitiatedAutoPictureInPictureBrowserTest
@@ -3361,6 +3473,104 @@ IN_PROC_BROWSER_TEST_F(BrowserInitiatedAutoPictureInPictureBrowserTest,
                                PromptResult::kAllowOnce);
 }
 
+class AutoPictureInPictureTabHelperWindowOcclusionDisabledBrowserTest
+    : public AutoPictureInPictureTabHelperBrowserTest {
+  std::vector<base::test::FeatureRef> GetDisabledFeatures() override {
+    auto features =
+        AutoPictureInPictureTabHelperBrowserTest::GetDisabledFeatures();
+    features.push_back(media::kAutoPictureInPictureOnWindowOccluded);
+    return features;
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(
+    AutoPictureInPictureTabHelperWindowOcclusionDisabledBrowserTest,
+    TabHelperDoesNotCreateWindowOcclusionHelperWhenFeatureDisabled) {
+  // Load a page that registers for autopip and starts using camera/microphone.
+  LoadCameraMicrophonePage(browser());
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  GetUserMediaAndAccept(web_contents);
+
+  // The tab helper should not have a window occlusion helper since the feature
+  // is disabled.
+  auto* tab_helper =
+      AutoPictureInPictureTabHelper::FromWebContents(web_contents);
+  EXPECT_EQ(nullptr, tab_helper->window_occlusion_helper_for_testing());
+}
+
+class AutoPictureInPictureTabHelperWindowOcclusionBrowserTest
+    : public AutoPictureInPictureTabHelperBrowserTest {
+ public:
+  void SetUp() override {
+    AutoPictureInPictureWindowOcclusionHelperBase::SetFactoryForTesting(
+        base::BindRepeating(
+            &MockAutoPictureInPictureWindowOcclusionHelperFactory));
+
+    AutoPictureInPictureTabHelperBrowserTest::SetUp();
+  }
+
+  void TearDown() override {
+    AutoPictureInPictureWindowOcclusionHelperBase::SetFactoryForTesting(
+        AutoPictureInPictureWindowOcclusionHelperBase::FactoryCallback());
+
+    AutoPictureInPictureTabHelperBrowserTest::TearDown();
+  }
+
+  std::vector<base::test::FeatureRef> GetEnabledFeatures() override {
+    auto features =
+        AutoPictureInPictureTabHelperBrowserTest::GetEnabledFeatures();
+    features.push_back(media::kAutoPictureInPictureOnWindowOccluded);
+    return features;
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(AutoPictureInPictureTabHelperWindowOcclusionBrowserTest,
+                       WindowOcclusionTriggersAutoPip) {
+  // Load a page that registers for autopip and starts using camera/microphone.
+  LoadCameraMicrophonePage(browser());
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  GetUserMediaAndAccept(web_contents);
+
+  auto* tab_helper =
+      AutoPictureInPictureTabHelper::FromWebContents(web_contents);
+  auto* mock_occlusion_helper =
+      static_cast<MockAutoPictureInPictureWindowOcclusionHelper*>(
+          tab_helper->window_occlusion_helper_for_testing());
+  ASSERT_NE(nullptr, mock_occlusion_helper);
+
+  // Simulate the window becoming occluded.
+  content::MediaStartStopObserver enter_pip_observer(
+      web_contents,
+      content::MediaStartStopObserver::Type::kEnterPictureInPicture);
+  mock_occlusion_helper->SimulateOcclusionStateChange(
+      AutoPictureInPictureWindowOcclusionHelperBase::OcclusionState::kOccluded);
+  enter_pip_observer.Wait();
+
+  // The tab helper should indicate that we're now in pip.
+  EXPECT_TRUE(web_contents->HasPictureInPictureDocument());
+
+  // Simulate the window becoming hidden. This should not close the pip window.
+  mock_occlusion_helper->SimulateOcclusionStateChange(
+      AutoPictureInPictureWindowOcclusionHelperBase::OcclusionState::kHidden);
+  EXPECT_TRUE(web_contents->HasPictureInPictureDocument());
+
+  // Simulate the window becoming visible again.
+  content::MediaStartStopObserver exit_pip_observer(
+      web_contents,
+      content::MediaStartStopObserver::Type::kExitPictureInPicture);
+  mock_occlusion_helper->SimulateOcclusionStateChange(
+      AutoPictureInPictureWindowOcclusionHelperBase::OcclusionState::kVisible);
+  exit_pip_observer.Wait();
+
+  // There should no longer be a picture-in-picture window.
+  EXPECT_FALSE(web_contents->HasPictureInPictureDocument());
+
+  // Simulate the window becoming hidden. This should not open a pip window.
+  mock_occlusion_helper->SimulateOcclusionStateChange(
+      AutoPictureInPictureWindowOcclusionHelperBase::OcclusionState::kHidden);
+  EXPECT_FALSE(web_contents->HasPictureInPictureDocument());
+}
+
 class AutoPictureInPictureTabHelperBrowserAutoPipDryRunTest
     : public AutoPictureInPictureWithVideoPlaybackBrowserTest,
       public ::testing::WithParamInterface<std::tuple<bool, bool, bool>> {
@@ -3445,3 +3655,151 @@ INSTANTIATE_TEST_SUITE_P(All,
                          ::testing::Combine(::testing::Bool(),
                                             ::testing::Bool(),
                                             ::testing::Bool()));
+
+IN_PROC_BROWSER_TEST_P(AutoPictureInPictureTabHelperHatsDocumentPipBrowserTest,
+                       TriggersSurveyOnTabActivation) {
+  auto* hats_service = GetMockHatsService();
+  ON_CALL(*hats_service, CanShowAnySurvey(false))
+      .WillByDefault(testing::Return(true));
+
+  // Load a page that supports Auto-PiP (Document PiP).
+  LoadCameraMicrophonePage(browser(), "a.com");
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  GetUserMediaAndAccept(web_contents);
+
+  // Trigger Auto-PiP by switching to a new tab.
+  {
+    content::MediaStartStopObserver enter_pip_observer(
+        web_contents,
+        content::MediaStartStopObserver::Type::kEnterPictureInPicture);
+    OpenNewTab(browser());
+    enter_pip_observer.Wait();
+  }
+  ASSERT_TRUE(web_contents->HasPictureInPictureDocument());
+
+  // Interact with the Auto-PiP window.
+  switch (GetParam().prompt_result) {
+    case AutoPipSettingHelper::PromptResult::kAllowOnce:
+    case AutoPipSettingHelper::PromptResult::kBlock: {
+      auto* overlay_view = GetOverlayViewFromDocumentPipWindow();
+      ASSERT_TRUE(overlay_view);
+      overlay_view->get_view_for_testing()->simulate_button_press_for_testing(
+          GetParam().prompt_result == AutoPipSettingHelper::PromptResult::kBlock
+              ? AutoPipSettingView::UiResult::kBlock
+              : AutoPipSettingView::UiResult::kAllowOnce);
+      break;
+    }
+    case AutoPipSettingHelper::PromptResult::kIgnored:
+      // Simulate manual closure without making a choice.
+      PictureInPictureWindowManager::GetInstance()
+          ->ExitPictureInPictureViaWindowUi(
+              PictureInPictureWindowManager::UiBehavior::kCloseWindowOnly);
+      break;
+    default:
+      NOTREACHED();
+  }
+
+  // Switch back to the original tab and verify survey launch.
+  base::test::TestFuture<void> survey_launched;
+  EXPECT_CALL(*hats_service,
+              LaunchSurveyForWebContents(GetParam().trigger, web_contents, _, _,
+                                         _, _, _, _))
+      .WillOnce(
+          testing::InvokeWithoutArgs([&]() { survey_launched.SetValue(); }));
+
+  SwitchToExistingTab(web_contents);
+  EXPECT_TRUE(survey_launched.Wait());
+}
+
+IN_PROC_BROWSER_TEST_P(AutoPictureInPictureTabHelperHatsVideoPipBrowserTest,
+                       TriggersSurveyOnTabActivation) {
+  auto* hats_service = GetMockHatsService();
+  ON_CALL(*hats_service, CanShowAnySurvey(false))
+      .WillByDefault(testing::Return(true));
+
+  // Load a page that supports Auto-PiP (Video PiP).
+  LoadAutoVideoPipPage(browser());
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  PlayVideo(web_contents);
+  WaitForAudioFocusGained();
+  WaitForMediaSessionPlaying(web_contents);
+  WaitForWasRecentlyAudible(web_contents);
+  SetExpectedHasHighEngagement(true);
+
+  // Trigger Auto-PiP by switching to a new tab.
+  {
+    content::MediaStartStopObserver enter_pip_observer(
+        web_contents,
+        content::MediaStartStopObserver::Type::kEnterPictureInPicture);
+    OpenNewTab(browser());
+    enter_pip_observer.Wait();
+  }
+  ASSERT_TRUE(web_contents->HasPictureInPictureVideo());
+
+  // Interact with the Auto-PiP window.
+  switch (GetParam().prompt_result) {
+    case AutoPipSettingHelper::PromptResult::kAllowOnce:
+    case AutoPipSettingHelper::PromptResult::kBlock: {
+      auto* overlay_view = GetOverlayViewFromVideoPipWindow();
+      ASSERT_TRUE(overlay_view);
+      overlay_view->get_view_for_testing()->simulate_button_press_for_testing(
+          GetParam().prompt_result == AutoPipSettingHelper::PromptResult::kBlock
+              ? AutoPipSettingView::UiResult::kBlock
+              : AutoPipSettingView::UiResult::kAllowOnce);
+      break;
+    }
+    case AutoPipSettingHelper::PromptResult::kIgnored:
+      // Simulate manual closure without making a choice.
+      PictureInPictureWindowManager::GetInstance()
+          ->ExitPictureInPictureViaWindowUi(
+              PictureInPictureWindowManager::UiBehavior::kCloseWindowOnly);
+      break;
+    default:
+      NOTREACHED();
+  }
+
+  // Switch back to the original tab and verify survey launch.
+  base::test::TestFuture<void> survey_launched;
+  EXPECT_CALL(*hats_service,
+              LaunchSurveyForWebContents(GetParam().trigger, web_contents, _, _,
+                                         _, _, _, _))
+      .WillOnce(
+          testing::InvokeWithoutArgs([&]() { survey_launched.SetValue(); }));
+
+  SwitchToExistingTab(web_contents);
+  EXPECT_TRUE(survey_launched.Wait());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    AutoPictureInPictureTabHelperHatsDocumentPipBrowserTest,
+    testing::Values(
+        HatsTestParams{
+            .result = "AllowOnce",
+            .trigger = kHatsSurveyTriggerAutoPipAllowed,
+            .prompt_result = AutoPipSettingHelper::PromptResult::kAllowOnce},
+        HatsTestParams{
+            .result = "Block",
+            .trigger = kHatsSurveyTriggerAutoPipBlocked,
+            .prompt_result = AutoPipSettingHelper::PromptResult::kBlock},
+        HatsTestParams{
+            .result = "Ignored",
+            .trigger = kHatsSurveyTriggerAutoPipPermissionPromptIgnored,
+            .prompt_result = AutoPipSettingHelper::PromptResult::kIgnored}));
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    AutoPictureInPictureTabHelperHatsVideoPipBrowserTest,
+    testing::Values(
+        HatsTestParams{
+            .result = "AllowOnce",
+            .trigger = kHatsSurveyTriggerAutoPipAllowed,
+            .prompt_result = AutoPipSettingHelper::PromptResult::kAllowOnce},
+        HatsTestParams{
+            .result = "Block",
+            .trigger = kHatsSurveyTriggerAutoPipBlocked,
+            .prompt_result = AutoPipSettingHelper::PromptResult::kBlock},
+        HatsTestParams{
+            .result = "Ignored",
+            .trigger = kHatsSurveyTriggerAutoPipPermissionPromptIgnored,
+            .prompt_result = AutoPipSettingHelper::PromptResult::kIgnored}));

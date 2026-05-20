@@ -810,7 +810,9 @@ TEST_P(FormSuggestionControllerTest, SelectingSuggestionShouldNotifyDelegate) {
                                                         params);
 
   // Selecting a suggestion should notify the delegate.
-  [suggestion_controller_ didSelectSuggestion:suggestions[0] atIndex:0];
+  [suggestion_controller_ didSelectSuggestion:suggestions[0]
+                                      atIndex:0
+                                   completion:nil];
   EXPECT_TRUE([provider selected]);
   EXPECT_NSEQ(@"form", [provider formName]);
   EXPECT_NSEQ(@"field_id", [provider fieldIdentifier]);
@@ -867,30 +869,6 @@ TEST_P(FormSuggestionControllerTest, CopyAndAdjustSuggestions) {
   NSArray<FormSuggestion*>* adjusted_suggestions =
       [suggestion_controller_ copyAndAdjustSuggestions:suggestions];
   EXPECT_TRUE(adjusted_suggestions.count);
-  EXPECT_TRUE(adjusted_suggestions[0].icon);
-}
-
-// Tests that plus address suggestions always have an icon when the features are
-// enabled.
-TEST_P(FormSuggestionControllerTest, CopyAndAdjustPlusAddressSuggestions) {
-  base::test::ScopedFeatureList feature_list{
-      plus_addresses::features::kPlusAddressesEnabled};
-
-  SetUpController(@[ [TestSuggestionProvider providerWithSuggestions] ]);
-
-  NSMutableArray<FormSuggestion*>* suggestions = [NSMutableArray array];
-  FormSuggestion* suggestion = [FormSuggestion
-      suggestionWithValue:@""
-       displayDescription:nil
-                     icon:nil
-                     type:autofill::SuggestionType::kFillExistingPlusAddress
-                  payload:autofill::Suggestion::Payload()
-           requiresReauth:NO];
-  [suggestions addObject:suggestion];
-
-  NSArray<FormSuggestion*>* adjusted_suggestions =
-      [suggestion_controller_ copyAndAdjustSuggestions:suggestions];
-  EXPECT_EQ(adjusted_suggestions.count, suggestions.count);
   EXPECT_TRUE(adjusted_suggestions[0].icon);
 }
 

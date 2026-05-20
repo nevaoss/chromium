@@ -4,6 +4,10 @@
 
 package org.chromium.chrome.browser.webapps;
 
+import static androidx.test.espresso.Espresso.onView;
+import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.matcher.ViewMatchers.withId;
+
 import static org.junit.Assert.assertEquals;
 
 import android.content.ComponentName;
@@ -33,9 +37,11 @@ import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.MinAndroidSdkLevel;
+import org.chromium.chrome.R;
 import org.chromium.chrome.browser.document.ChromeLauncherActivity;
 import org.chromium.chrome.browser.flags.ActivityType;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
+import org.chromium.chrome.browser.open_in_app.OpenInAppUtils;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.test.MockCertVerifierRuleAndroid;
 import org.chromium.chrome.test.ChromeActivityTestRule;
@@ -98,7 +104,7 @@ public class WebApkIntegrationTest {
 
     /**
      * Tests that Chrome will trampoline out to WebAPKs if they exist but are not verified. See
-     * https://crbug.com/1232514
+     * https://crbug.com/40191153
      */
     @Test
     @LargeTest
@@ -123,6 +129,10 @@ public class WebApkIntegrationTest {
 
         targetContext.startActivity(intent);
 
+        if (OpenInAppUtils.isOpenInAppAvailable()) {
+            onView(withId(R.id.open_in_app_chip)).perform(click());
+        }
+
         // Check we end up in the WebAPK.
         ChromeActivityTestRule.waitFor(WebappActivity.class, STARTUP_TIMEOUT);
     }
@@ -131,7 +141,7 @@ public class WebApkIntegrationTest {
     @Test
     @LargeTest
     @Feature({"Webapps"})
-    @DisabledTest(message = "https://crbug.com/1112352")
+    @DisabledTest(message = "https://crbug.com/40709668")
     public void testShare() throws TimeoutException {
         final String sharedSubject = "Fun tea parties";
         final String sharedText = "Boston";

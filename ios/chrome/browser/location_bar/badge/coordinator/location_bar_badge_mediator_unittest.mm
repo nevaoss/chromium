@@ -17,6 +17,7 @@
 #import "components/feature_engagement/test/scoped_iph_feature_list.h"
 #import "components/feature_engagement/test/test_tracker.h"
 #import "components/prefs/pref_service.h"
+#import "components/signin/public/base/consent_level.h"
 #import "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
 #import "components/signin/public/identity_manager/identity_test_environment.h"
 #import "components/signin/public/identity_manager/identity_test_utils.h"
@@ -29,8 +30,8 @@
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
 #import "ios/chrome/browser/infobars/model/infobar_badge_tab_helper.h"
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/location_bar/badge/coordinator/location_bar_badge_mediator_delegate.h"
@@ -197,7 +198,7 @@ class LocationBarBadgeMediatorTest : public PlatformTest {
     FakeContextualPanelTabHelper::CreateForWebState(web_state.get(), models);
     InfoBarManagerImpl::CreateForWebState(web_state.get());
     InfobarBadgeTabHelper::CreateForWebState(web_state.get());
-    BwgTabHelper::CreateForWebState(web_state.get());
+    GeminiTabHelper::CreateForWebState(web_state.get());
 
     web_state_list_->InsertWebState(
         std::move(web_state),

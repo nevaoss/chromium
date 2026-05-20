@@ -13,9 +13,9 @@
 #import "components/signin/public/identity_manager/identity_manager.h"
 #import "ios/chrome/browser/browser_content/ui_bundled/browser_edit_menu_utils.h"
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_service.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
@@ -58,9 +58,9 @@ typedef void (^ProceduralBlockWithBlockWithItemArray)(
 - (BOOL)canPerformExplainWithGeminiInWebState:(web::WebState*)webState {
   ProfileIOS* profile =
       ProfileIOS::FromBrowserState(webState->GetBrowserState());
-  raw_ptr<BwgService> geminiService =
+  raw_ptr<GeminiService> geminiService =
       GeminiServiceFactory::GetForProfile(profile);
-  BwgTabHelper* geminiTabHelper = BwgTabHelper::FromWebState(webState);
+  GeminiTabHelper* geminiTabHelper = GeminiTabHelper::FromWebState(webState);
   const BOOL geminiAvailable =
       geminiService && geminiService->IsProfileEligibleForGemini() &&
       geminiTabHelper && geminiTabHelper->IsGeminiAvailableForWebState();
@@ -104,9 +104,11 @@ typedef void (^ProceduralBlockWithBlockWithItemArray)(
       WebSelectionTabHelper::FromWebState(webState);
   __weak __typeof(self) weakSelf = self;
   tabHelper->GetSelectedText(base::BindOnce(^(WebSelectionResponse* response) {
-    if (weakSelf && response.valid && response.selectedText.length) {
+    web::WebState* capturedWebState = weakWebState.get();
+    if (weakSelf && capturedWebState && response.valid &&
+        response.selectedText.length) {
       [weakSelf triggerExplainWithGeminiForText:response.selectedText
-                                       webState:webState];
+                                       webState:capturedWebState];
     }
   }));
 }
@@ -128,10 +130,11 @@ typedef void (^ProceduralBlockWithBlockWithItemArray)(
 
   __weak __typeof(self) weakSelf = self;
   tabHelper->GetSelectedText(base::BindOnce(^(WebSelectionResponse* response) {
-    if (weakSelf) {
+    web::WebState* capturedWebState = weakWebState.get();
+    if (weakSelf && capturedWebState) {
       [weakSelf addItemWithResponse:response
                          completion:completion
-                           webState:webState];
+                           webState:capturedWebState];
       return;
     }
     completion(@[]);
@@ -157,8 +160,12 @@ typedef void (^ProceduralBlockWithBlockWithItemArray)(
   }
 
   __weak __typeof(self) weakSelf = self;
+  base::WeakPtr<web::WebState> weakWebState = webState->GetWeakPtr();
   UIAction* action = [self actionWithHandler:^(UIAction* a) {
-    [weakSelf triggerExplainWithGeminiForText:text webState:webState];
+    web::WebState* capturedWebState = weakWebState.get();
+    if (weakSelf && capturedWebState) {
+      [weakSelf triggerExplainWithGeminiForText:text webState:capturedWebState];
+    }
   }];
   RecordGeminiEntryPointAvailable(gemini::EntryPoint::EditMenu);
   completion(@[ action ]);

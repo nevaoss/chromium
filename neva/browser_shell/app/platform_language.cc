@@ -19,6 +19,7 @@
 #include <string>
 
 #include "base/functional/bind.h"
+#include "base/logging.h"
 #include "neva/app_runtime/app/app_runtime_page_contents.h"
 #include "neva/app_runtime/app/app_runtime_shell_environment.h"
 #include "neva/pal_service/pal_platform_factory.h"

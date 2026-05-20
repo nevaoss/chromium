@@ -604,7 +604,8 @@ static bool NeedsPaintOffsetTranslation(
     return true;
   }
 
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled()) {
+  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+          object.GetDocument().GetExecutionContext())) {
     if (const auto* canvas = DynamicTo<HTMLCanvasElement>(object.GetNode())) {
       if (canvas->layoutSubtree()) {
         return true;
@@ -636,8 +637,9 @@ static bool NeedsPaintOffsetTranslation(
   // zero paint offset.
   if (box_model.HasLayer() &&
       (object.StyleRef().Filter().HasReferenceFilter() ||
-       object.HasReflection()))
+       object.HasReflection() || object.StyleRef().HasBackdropFilter())) {
     return true;
+  }
 
   if (auto* box = DynamicTo<LayoutBox>(box_model)) {
     if (box->IsFixedToView(container_for_fixed_position))
@@ -842,7 +844,7 @@ FragmentPaintPropertyTreeBuilder::CompositorStickyScrollAncestorForAxis(
     const LayoutBoxModelObject& box_model,
     PhysicalAxis axis) const {
   const auto layout_constraint = box_model.StickyConstraints();
-  DCHECK(layout_constraint);
+  DCHECK(layout_constraint.HasAnyConstraint());
   const auto* axis_layout_data = layout_constraint.AxisData(axis);
   if (!axis_layout_data) {
     return CompositorElementId();
@@ -899,7 +901,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateStickyTranslation(
 
       if (state.direct_compositing_reasons) {
         const auto layout_constraint = box_model.StickyConstraints();
-        DCHECK(layout_constraint);
+        DCHECK(layout_constraint.HasAnyConstraint());
         const CompositorElementId x_compositor_scroll_ancestor_id =
             CompositorStickyScrollAncestorForAxis(box_model,
                                                   PhysicalAxis::kHorizontal);
@@ -1017,9 +1019,15 @@ void FragmentPaintPropertyTreeBuilder::UpdateAnchorPositionScrollTranslation() {
       // snapshot's scrollers do not match the current scrollers.
 
       DCHECK(object_.GetDocument().Printing() ||
+             (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+                  object_.GetDocument().GetExecutionContext()) &&
+              IsA<Element>(object_.GetNode()) &&
+              To<Element>(object_.GetNode())->IsInCanvasSubtree()) ||
              (full_context_.direct_compositing_reasons &
               CompositingReason::kAnchorPosition));
-      state.direct_compositing_reasons = CompositingReason::kAnchorPosition;
+      state.direct_compositing_reasons =
+          full_context_.direct_compositing_reasons &
+          CompositingReason::kAnchorPosition;
 
       // TODO(crbug.com/1309178): Not using GetCompositorElementId() here
       // because anchor-positioned elements don't work properly under multicol
@@ -2406,7 +2414,8 @@ void FragmentPaintPropertyTreeBuilder::UpdateFilter() {
       EffectPaintPropertyNode::FilterInfo filter_info;
       UpdateFilterEffect(object_, properties_->Filter(), filter_info);
       bool is_filter_disallowed =
-          RuntimeEnabledFeatures::CanvasDrawElementEnabled() &&
+          RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+              object_.GetDocument().GetExecutionContext()) &&
           IsA<Element>(object_.GetNode()) &&
           To<Element>(object_.GetNode())->IsInCanvasSubtree() &&
           filter_info.operations.OriginTainted();
@@ -3016,14 +3025,11 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowClip() {
               LayoutReplaced::PreSnappedRectForPersistentSizing(content_rect);
         }
         // LayoutReplaced clips the foreground by rounded content box.
+        const PhysicalBoxStrut border_padding =
+            replaced.BorderOutsets() + replaced.PaddingOutsets();
         auto clip_rect =
             ContouredBorderGeometry::PixelSnappedContouredBorderWithOutsets(
-                replaced.StyleRef(), content_rect,
-                PhysicalBoxStrut(
-                    -(replaced.PaddingTop() + replaced.BorderTop()),
-                    -(replaced.PaddingRight() + replaced.BorderRight()),
-                    -(replaced.PaddingBottom() + replaced.BorderBottom()),
-                    -(replaced.PaddingLeft() + replaced.BorderLeft())))
+                replaced.StyleRef(), content_rect, -border_padding)
                 .AsRoundedRect();
         if (replaced.IsLayoutEmbeddedContent()) {
           // Embedded objects are always sized to fit the content rect, but they
@@ -3812,7 +3818,8 @@ void FragmentPaintPropertyTreeBuilder::SetNeedsPaintPropertyUpdateIfNeeded() {
     box.GetMutableForPainting().SetOnlyThisNeedsPaintPropertyUpdate();
   }
 
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled()) {
+  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+          object_.GetDocument().GetExecutionContext())) {
     const auto* canvas = DynamicTo<HTMLCanvasElement>(object_.GetNode());
     if (canvas && canvas->layoutSubtree()) {
       // Invalidate the child's paint properties so that its cached
@@ -3877,10 +3884,11 @@ static bool IsLayoutShiftRoot(const LayoutObject& object,
   if (object.IsOverscrollContainer()) {
     return true;
   }
-  for (const TransformPaintPropertyNode* transform :
-       properties->AllCSSTransformPropertiesOutsideToInside()) {
-    if (transform && IsLayoutShiftRootTransform(*transform))
+  for (const auto* transform :
+       properties->CSSTransformPropertiesOutsideToInside()) {
+    if (IsLayoutShiftRootTransform(*transform)) {
       return true;
+    }
   }
   if (properties->ReplacedContentTransform())
     return true;
@@ -4088,9 +4096,17 @@ void FragmentPaintPropertyTreeBuilder::PopulateBackdropFilterIfNeeded(
     }
   }
   if (!operations.IsEmpty()) {
-    state.backdrop_filter_info =
-        base::WrapUnique(new EffectPaintPropertyNode::BackdropFilterInfo{
-            std::move(operations), bounds, mask_compositor_element_id});
+    bool is_filter_disallowed =
+        RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+            object_.GetDocument().GetExecutionContext()) &&
+        IsA<Element>(object_.GetNode()) &&
+        To<Element>(object_.GetNode())->IsInCanvasSubtree() &&
+        operations.OriginTainted();
+    if (!is_filter_disallowed) {
+      state.backdrop_filter_info =
+          base::WrapUnique(new EffectPaintPropertyNode::BackdropFilterInfo{
+              std::move(operations), bounds, mask_compositor_element_id});
+    }
   }
 }
 
@@ -4139,15 +4155,13 @@ void PaintPropertyTreeBuilder::InitPaintProperties() {
           -PhysicalOffset::FromVector2dFRound(translation->Get2dTranslation());
     }
     gfx::Vector2dF translation2d;
-    for (const TransformPaintPropertyNode* transform :
-         properties->AllCSSTransformPropertiesOutsideToInside()) {
-      if (transform) {
-        if (IsLayoutShiftRootTransform(*transform)) {
-          translation2d = gfx::Vector2dF();
-          break;
-        }
-        translation2d += transform->Get2dTranslation();
+    for (const auto* transform :
+         properties->CSSTransformPropertiesOutsideToInside()) {
+      if (IsLayoutShiftRootTransform(*transform)) {
+        translation2d = gfx::Vector2dF();
+        break;
       }
+      translation2d += transform->Get2dTranslation();
     }
     context_.fragment_context.translation_2d_to_layout_shift_root_delta -=
         translation2d;
@@ -4578,7 +4592,8 @@ void PaintPropertyTreeBuilder::IssueInvalidationsAfterUpdate() {
     // Elements under canvas can only be rendered with `drawElementImage` and
     // need to use regular paint invalidation to ensure js is notified of
     // invalidations.
-    if (RuntimeEnabledFeatures::CanvasDrawElementEnabled() &&
+    if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+            object_.GetDocument().GetExecutionContext()) &&
         IsA<Element>(object_.GetNode()) &&
         To<Element>(object_.GetNode())->IsInCanvasSubtree()) {
       context_.painting_layer->SetNeedsRepaint();
@@ -4632,7 +4647,8 @@ bool PaintPropertyTreeBuilder::CanDoDeferredTransformNodeUpdate(
   // Elements under canvas can only be rendered with `drawElementImage` and need
   // to use regular paint invalidation to ensure js is notified of
   // invalidations.
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled() &&
+  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+          object.GetDocument().GetExecutionContext()) &&
       IsA<Element>(object.GetNode()) &&
       To<Element>(object.GetNode())->IsInCanvasSubtree()) {
     return false;
@@ -4684,7 +4700,8 @@ bool PaintPropertyTreeBuilder::CanDoDeferredOpacityNodeUpdate(
   // Elements under canvas can only be rendered with `drawElementImage` and need
   // to use regular paint invalidation to ensure js is notified of
   // invalidations.
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled() &&
+  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+          object.GetDocument().GetExecutionContext()) &&
       IsA<Element>(object.GetNode()) &&
       To<Element>(object.GetNode())->IsInCanvasSubtree()) {
     return false;

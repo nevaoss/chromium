@@ -89,7 +89,9 @@ void OmniboxPopupViewWebUI::UpdatePopupAppearance() {
   const bool should_be_visible =
       controller()->popup_state_manager()->popup_state() !=
           OmniboxPopupState::kAim &&
-      has_results_or_chips && !omnibox_view_->IsImeShowingPopup();
+      (has_results_or_chips || (omnibox::IsWebUIOmniboxFullPopupEnabled() &&
+                                controller()->edit_model()->has_focus())) &&
+      !omnibox_view_->IsImeShowingPopup();
 
   if (!should_be_visible) {
     presenter_->Hide();

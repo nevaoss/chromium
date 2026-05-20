@@ -107,7 +107,6 @@ const std::vector<SuggestionType> kClickableSuggestionTypes{
     SuggestionType::kManageAddress,
     SuggestionType::kManageCreditCard,
     SuggestionType::kManageIban,
-    SuggestionType::kManagePlusAddress,
     SuggestionType::kDatalistEntry,
     SuggestionType::kScanCreditCard,
     SuggestionType::kAllSavedPasswordsEntry,
@@ -841,7 +840,7 @@ TEST_F(PopupViewViewsTest, ShowsWidePopup_ElementAtRightEdge) {
   EXPECT_TRUE(dropdown_shown);
 }
 
-// This is a regression test for crbug.com/1113255.
+// This is a regression test for crbug.com/40710172.
 TEST_F(PopupViewViewsTest, ShowViewWithOnlyFooterItemsShouldNotCrash) {
   // Set suggestions to have only a footer item.
   std::vector<SuggestionType> suggestion_ids = {SuggestionType::kUndoOrClear};
@@ -870,10 +869,10 @@ TEST_F(PopupViewViewsTest, AccessibilitySelectedEvent) {
   GetPopupRowViewAt(0).SetSelectedCell(PopupRowView::CellType::kContent);
   EXPECT_EQ(1, ax_counter.GetCount(ax::mojom::Event::kSelection));
 
-  // Checks that a new selection event is not sent when a selected view becomes
+  // Checks that a selection event is sent when a selected view becomes
   // unselected.
   GetPopupRowViewAt(0).SetSelectedCell(std::nullopt);
-  EXPECT_EQ(1, ax_counter.GetCount(ax::mojom::Event::kSelection));
+  EXPECT_EQ(2, ax_counter.GetCount(ax::mojom::Event::kSelection));
 }
 
 TEST_F(PopupViewViewsTest, AccessibilityTest) {
@@ -1285,27 +1284,46 @@ TEST_F(PopupViewViewsTest, Show_A11yAnnouncesCurrentTab) {
       announcement;
   test_api(view()).SetA11yAnnouncer(announcement.Get());
 
-  EXPECT_CALL(announcement, Run(std::u16string(u"Pay Now Test"), true));
+  EXPECT_CALL(
+      announcement,
+      Run(l10n_util::GetStringFUTF16(
+              IDS_AUTOFILL_PAY_NOW_PAY_LATER_TAB_ACCESSIBILITY_ANNOUNCEMENT,
+              u"Pay Now Test", u"1", u"2"),
+          true));
 
   ShowView(&view(), widget());
 }
 
-TEST_F(PopupViewViewsTest, OnSuggestionsChanged_A11yAnnouncesCurrentTab) {
+TEST_F(PopupViewViewsTest, TabbedPane_A11yAnnouncesCurrentTabOnSwitch) {
   AutofillPopupView::TabbedPaneConfig tabbed_pane_config(
       {{TabbedPaneTabType::kPayNow, u"Pay Now Test"},
        {TabbedPaneTabType::kPayLater, u"Pay Later Test"}});
 
-  CreateAndShowView({SuggestionType::kCreditCardEntry},
-                    /*widget_params=*/std::nullopt,
-                    /*search_bar_config=*/std::nullopt,
-                    std::move(tabbed_pane_config));
+  controller().set_suggestions({SuggestionType::kCreditCardEntry});
+  CreateView(/*widget_params=*/std::nullopt, /*search_bar_config=*/std::nullopt,
+             std::move(tabbed_pane_config));
 
   base::MockCallback<base::RepeatingCallback<void(const std::u16string&, bool)>>
       announcement;
   test_api(view()).SetA11yAnnouncer(announcement.Get());
 
-  EXPECT_CALL(announcement, Run(std::u16string(u"Pay Now Test"), true));
-  static_cast<AutofillPopupView&>(view()).OnSuggestionsChanged(false);
+  EXPECT_CALL(
+      announcement,
+      Run(l10n_util::GetStringFUTF16(
+              IDS_AUTOFILL_PAY_NOW_PAY_LATER_TAB_ACCESSIBILITY_ANNOUNCEMENT,
+              u"Pay Now Test", u"1", u"2"),
+          true));
+
+  ShowView(&view(), widget());
+
+  EXPECT_CALL(controller(), OnTabSelected(1, TabbedPaneTabType::kPayLater));
+  EXPECT_CALL(
+      announcement,
+      Run(l10n_util::GetStringFUTF16(
+              IDS_AUTOFILL_PAY_NOW_PAY_LATER_TAB_ACCESSIBILITY_ANNOUNCEMENT,
+              u"Pay Later Test", u"2", u"2"),
+          true));
+  SimulateKeyPress(ui::VKEY_RIGHT);
 }
 
 TEST_F(PopupViewViewsTest, TabbedPane_HorizontalKeyEventsSwitchTabs) {
@@ -1481,8 +1499,8 @@ TEST_F(PopupViewViewsTest, NoAutofillOptionsTriggeredOnTabPressed) {
   SimulateKeyPress(ui::VKEY_TAB);
 }
 
-// This is a regression test for crbug.com/1309431 to ensure that we don't crash
-// when we press tab before a line is selected.
+// This is a regression test for crbug.com/40829763 to ensure that we don't
+// crash when we press tab before a line is selected.
 TEST_F(PopupViewViewsTest, TabBeforeSelectingALine) {
   CreateAndShowView({SuggestionType::kAddressEntry, SuggestionType::kSeparator,
                      SuggestionType::kManageAddress});
@@ -2730,44 +2748,45 @@ TEST_F(PopupViewViewsTest, OnSuggestionsChanged_A11yAnnouncesLoadingState) {
   static_cast<AutofillPopupView&>(view()).OnSuggestionsChanged(false);
 }
 
-TEST_F(PopupViewViewsTest, Show_A11yAnnouncesBnplFootnote) {
+TEST_F(PopupViewViewsTest, TabSelected_A11yAnnouncesBnplFootnote) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitAndEnableFeature(
       features::kAutofillEnablePayNowPayLaterTabs);
 
-  controller().set_suggestions({SuggestionType::kBnplFootnote});
-  CreateView();
-  base::MockCallback<base::RepeatingCallback<void(const std::u16string&, bool)>>
-      announcement;
-  test_api(view()).SetA11yAnnouncer(announcement.Get());
+  AutofillPopupView::TabbedPaneConfig tabbed_pane_config(
+      {{TabbedPaneTabType::kPayNow, u"Pay Now Test"},
+       {TabbedPaneTabType::kPayLater, u"Pay Later Test"}});
 
-  std::u16string expected_announcement_text = l10n_util::GetStringFUTF16(
-      IDS_AUTOFILL_CARD_BNPL_PAY_LATER_OPTIONS_AI_FOOTNOTE,
-      l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT));
-  EXPECT_CALL(announcement, Run(expected_announcement_text, true));
-  ShowView(&view(), widget());
-}
-
-TEST_F(PopupViewViewsTest, OnSuggestionsChanged_A11yAnnouncesBnplFootnote) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(
-      features::kAutofillEnablePayNowPayLaterTabs);
-
-  controller().set_suggestions({SuggestionType::kCreditCardEntry});
-  CreateAndShowView();
-  base::MockCallback<base::RepeatingCallback<void(const std::u16string&, bool)>>
-      announcement;
-  test_api(view()).SetA11yAnnouncer(announcement.Get());
-
-  std::u16string expected_announcement_text = l10n_util::GetStringFUTF16(
-      IDS_AUTOFILL_CARD_BNPL_PAY_LATER_OPTIONS_AI_FOOTNOTE,
-      l10n_util::GetStringUTF16(
-          IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT));
-  EXPECT_CALL(announcement, Run(expected_announcement_text, true));
+  Suggestion bnpl_footnote(SuggestionType::kBnplFootnote);
+  bnpl_footnote.tab_index = SuggestionTabIndex(1);
   controller().set_suggestions(
-      {SuggestionType::kCreditCardEntry, SuggestionType::kBnplFootnote});
-  static_cast<AutofillPopupView&>(view()).OnSuggestionsChanged(false);
+      {Suggestion(SuggestionType::kCreditCardEntry), std::move(bnpl_footnote)});
+
+  CreateAndShowView(/*widget_params=*/std::nullopt,
+                    /*search_bar_config=*/std::nullopt,
+                    std::move(tabbed_pane_config));
+
+  base::MockCallback<base::RepeatingCallback<void(const std::u16string&, bool)>>
+      announcement;
+  test_api(view()).SetA11yAnnouncer(announcement.Get());
+
+  EXPECT_CALL(controller(), OnTabSelected(1, TabbedPaneTabType::kPayLater));
+
+  std::u16string tab_announcement = l10n_util::GetStringFUTF16(
+      IDS_AUTOFILL_PAY_NOW_PAY_LATER_TAB_ACCESSIBILITY_ANNOUNCEMENT,
+      u"Pay Later Test", u"2", u"2");
+
+  std::u16string footnote_announcement = l10n_util::GetStringFUTF16(
+      IDS_AUTOFILL_CARD_BNPL_PAY_LATER_OPTIONS_AI_FOOTNOTE,
+      l10n_util::GetStringUTF16(
+          IDS_AUTOFILL_CARD_BNPL_SELECT_PROVIDER_FOOTNOTE_HIDE_OPTION_PAYMENT_SETTINGS_LINK_TEXT));
+
+  EXPECT_CALL(announcement,
+              Run(l10n_util::GetStringFUTF16(
+                      IDS_AUTOFILL_A11Y_ANNOUNCEMENT_CONCATENATE_TWO_STRINGS,
+                      tab_announcement, footnote_announcement),
+                  true));
+  SimulateKeyPress(ui::VKEY_RIGHT);
 }
 
 TEST_F(PopupViewViewsTest, SearchBar_RemainVisibleEvenWithNoSuggestions) {
@@ -2802,9 +2821,9 @@ TEST_F(PopupViewViewsTest, AtMemory_KeyboardNavigation) {
                         .placeholder = u"Recall from memory",
                         .no_results_message = u"No results found"});
 
-  // The width should be at least kAutofillPopupMaxWidth.
-  EXPECT_GE(view().GetPreferredSize().width(),
-            PopupViewViews::kAutofillPopupMaxWidth);
+  // The width should be kAtMemoryPopupWidth.
+  EXPECT_EQ(view().GetPreferredSize().width(),
+            PopupViewViews::kAtMemoryPopupWidth);
 
   // Allow Hide(kSearchBarFocusLost) which happens during teardown.
   testing::Mock::VerifyAndClearExpectations(&controller());
@@ -2837,6 +2856,50 @@ TEST_F(PopupViewViewsTest, AtMemory_KeyboardNavigation) {
   EXPECT_CALL(controller(), Hide(SuggestionHidingReason::kUserAborted));
   event.windows_key_code = ui::VKEY_ESCAPE;
   EXPECT_TRUE(test_api(view()).HandleKeyPressEvent(event));
+}
+
+// Tests that arrow keys can be used to navigate between parent and sub-popup
+// back and forth.
+TEST_F(PopupViewViewsTest, AtMemory_KeyboardArrowsNavigationBetweenPopups) {
+  ON_CALL(controller(), GetAutofillSuggestionTriggerSource)
+      .WillByDefault(Return(AutofillSuggestionTriggerSource::kAtMemory));
+
+  controller().set_suggestions({
+      CreateSuggestionWithChildren(
+          SuggestionType::kAtMemorySearchResult,
+          {Suggestion(u"Child #1", SuggestionType::kAtMemorySearchResult)}),
+  });
+  CreateAndShowView();
+
+  // Select first row content.
+  view().SetSelectedCell(CellIndex{0, CellType::kContent},
+                         PopupCellSelectionSource::kNonUserInput);
+
+  // Press Right arrow to open the flyout menu.
+  EXPECT_CALL(controller(), OpenSubPopup(_, _, _));
+  SimulateKeyPress(ui::VKEY_RIGHT);
+  task_environment()->FastForwardBy(PopupViewViews::kNonMouseOpenSubPopupDelay);
+
+  auto [sub_controller, sub_view] = OpenSubView(
+      view(), {Suggestion(u"Child #1", SuggestionType::kAtMemorySearchResult)});
+
+  ON_CALL(*sub_controller, GetMainFillingProduct())
+      .WillByDefault(Return(FillingProduct::kAtMemory));
+
+  // Select a cell in the sub-view to give it focus.
+  sub_view->SetSelectedCell(CellIndex{0, CellType::kContent},
+                            PopupCellSelectionSource::kNonUserInput);
+
+  // Verify that left arrow in the sub-view closes it.
+  input::NativeWebKeyboardEvent event(
+      blink::WebKeyboardEvent::Type::kRawKeyDown,
+      blink::WebInputEvent::kNoModifiers, ui::EventTimeForNow());
+  event.windows_key_code = ui::VKEY_LEFT;
+
+  EXPECT_FALSE(test_api(*sub_view).HandleKeyPressEvent(event));
+  EXPECT_TRUE(test_api(view()).HandleKeyPressEvent(event));
+
+  EXPECT_EQ(test_api(view()).GetOpenSubPopupRow(), std::nullopt);
 }
 
 }  // namespace

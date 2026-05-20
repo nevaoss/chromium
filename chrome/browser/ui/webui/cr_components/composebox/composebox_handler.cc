@@ -15,10 +15,10 @@
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_utils.h"
-#include "chrome/browser/ui/webui/top_chrome/top_chrome_web_ui_controller.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_search/input_state_model.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/lens/lens_url_utils.h"
 #include "components/metrics/metrics_provider.h"
 #include "components/omnibox/browser/autocomplete_match_type.h"
@@ -115,6 +115,7 @@ ComposeboxHandler::ComposeboxHandler(
     mojo::PendingRemote<composebox::mojom::Page> pending_page,
     mojo::PendingReceiver<searchbox::mojom::PageHandler>
         pending_searchbox_handler,
+    mojo::PendingRemote<searchbox::mojom::Page> pending_searchbox_page,
     Profile* profile,
     content::WebContents* web_contents,
     GetSessionHandleCallback get_session_callback,
@@ -123,6 +124,7 @@ ComposeboxHandler::ComposeboxHandler(
           std::move(pending_handler),
           std::move(pending_page),
           std::move(pending_searchbox_handler),
+          std::move(pending_searchbox_page),
           profile,
           web_contents,
           std::make_unique<OmniboxController>(
@@ -137,12 +139,14 @@ ComposeboxHandler::ComposeboxHandler(
     mojo::PendingRemote<composebox::mojom::Page> pending_page,
     mojo::PendingReceiver<searchbox::mojom::PageHandler>
         pending_searchbox_handler,
+    mojo::PendingRemote<searchbox::mojom::Page> pending_searchbox_page,
     Profile* profile,
     content::WebContents* web_contents,
     std::unique_ptr<OmniboxController> controller,
     GetSessionHandleCallback get_session_callback,
     ClearSessionHandleCallback clear_session_callback)
     : ContextualSearchboxHandler(std::move(pending_searchbox_handler),
+                                 std::move(pending_searchbox_page),
                                  profile,
                                  web_contents,
                                  std::move(controller),
@@ -181,6 +185,15 @@ void ComposeboxHandler::HandleFileUpload(bool is_image) {
   // Ignore, intentionally unimplemented for NTP.
 }
 
+void ComposeboxHandler::OnContextMenuOpened() {
+  if (contextual_tasks::GetIsContextualTasksLazyFetchClusterInfoEnabled()) {
+    auto* session_handle = GetContextualSessionHandle();
+    if (session_handle && session_handle->GetController()) {
+      session_handle->GetController()->TriggerFetchClusterInfo();
+    }
+  }
+}
+
 void ComposeboxHandler::NavigateUrl(const GURL& url) {
   if (!url.is_valid()) {
     return;
@@ -204,6 +217,19 @@ void ComposeboxHandler::NavigateUrl(const GURL& url) {
 void ComposeboxHandler::CloseLensOverlayFromWebUI(
     composebox::mojom::LensOverlayDismissalSource dismissal_source) {
   // Ignore, intentionally unimplemented for NTP.
+}
+
+// Required by composebox::mojom::PageHandler. Delegates to the base class
+// ContextualSearchboxHandler which does not implement that interface.
+void ComposeboxHandler::SetSmartTabSharingActive(bool active) {
+  ContextualSearchboxHandler::SetSmartTabSharingActive(active);
+}
+
+// Required by composebox::mojom::PageHandler. Delegates to the base class
+// ContextualSearchboxHandler which does not implement that interface.
+void ComposeboxHandler::GetSmartTabSharingActive(
+    GetSmartTabSharingActiveCallback callback) {
+  ContextualSearchboxHandler::GetSmartTabSharingActive(std::move(callback));
 }
 
 void ComposeboxHandler::ExecuteAction(uint8_t line,

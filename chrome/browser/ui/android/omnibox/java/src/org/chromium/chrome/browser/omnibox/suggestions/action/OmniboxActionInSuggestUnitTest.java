@@ -34,6 +34,7 @@ import org.chromium.chrome.browser.omnibox.OmniboxMetrics;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.omnibox.SuggestTemplateInfoProto.SuggestTemplateInfo;
+import org.chromium.components.omnibox.action.ActionPresentationMode;
 import org.chromium.components.omnibox.action.OmniboxAction;
 import org.chromium.components.omnibox.action.OmniboxActionDelegate;
 import org.chromium.components.omnibox.action.OmniboxActionId;
@@ -71,7 +72,7 @@ public class OmniboxActionInSuggestUnitTest {
                             kesemActionType,
                             "",
                             /* tabId= */ 0,
-                            /* showAsActionButton= */ false);
+                            ActionPresentationMode.CHIP);
             assertNotEquals(OmniboxAction.DEFAULT_ICON, action.icon);
         }
     }
@@ -88,7 +89,7 @@ public class OmniboxActionInSuggestUnitTest {
                             kesemActionType.getNumber(),
                             "",
                             /* tabId= */ 0,
-                            /* showAsActionButton= */ false);
+                            ActionPresentationMode.CHIP);
             assertEquals(OmniboxAction.DEFAULT_ICON, action.icon);
         }
     }
@@ -105,7 +106,7 @@ public class OmniboxActionInSuggestUnitTest {
                                 SuggestTemplateInfo.TemplateAction.ActionType.CALL_VALUE,
                                 "",
                                 /* tabId= */ 0,
-                                /* showAsActionButton= */ false));
+                                ActionPresentationMode.CHIP));
     }
 
     @Test
@@ -120,7 +121,7 @@ public class OmniboxActionInSuggestUnitTest {
                                 SuggestTemplateInfo.TemplateAction.ActionType.CALL_VALUE,
                                 "",
                                 /* tabId= */ 0,
-                                /* showAsActionButton= */ false));
+                                ActionPresentationMode.CHIP));
     }
 
     @Test
@@ -130,24 +131,22 @@ public class OmniboxActionInSuggestUnitTest {
 
     @Test
     public void safeCasting_assertsWithWrongClassType() {
-        assertThrows(
-                AssertionError.class,
-                () ->
-                        OmniboxActionInSuggest.from(
-                                new OmniboxAction(
-                                        OmniboxActionId.ACTION_IN_SUGGEST,
-                                        0,
-                                        "hint",
-                                        "accessibility",
-                                        null,
-                                        R.style.TextAppearance_ChipText,
-                                        /* showAsActionButton= */ false,
-                                        WindowOpenDisposition.CURRENT_TAB) {
-                                    @Override
-                                    public boolean execute(OmniboxActionDelegate d) {
-                                        return true;
-                                    }
-                                }));
+        OmniboxAction action =
+                new OmniboxAction(
+                        OmniboxActionId.ACTION_IN_SUGGEST,
+                        0,
+                        "hint",
+                        "accessibility",
+                        null,
+                        R.style.TextAppearance_ChipText,
+                        ActionPresentationMode.CHIP,
+                        WindowOpenDisposition.CURRENT_TAB) {
+                    @Override
+                    public boolean execute(OmniboxActionDelegate d) {
+                        return true;
+                    }
+                };
+        assertThrows(AssertionError.class, () -> OmniboxActionInSuggest.from(action));
     }
 
     @Test
@@ -161,7 +160,7 @@ public class OmniboxActionInSuggestUnitTest {
                                 SuggestTemplateInfo.TemplateAction.ActionType.REVIEWS_VALUE,
                                 "",
                                 /* tabId= */ 0,
-                                /* showAsActionButton= */ false));
+                                ActionPresentationMode.CHIP));
     }
 
     /** Create Action in Suggest with a supplied definition. */
@@ -175,7 +174,7 @@ public class OmniboxActionInSuggestUnitTest {
                 type.getNumber(),
                 uri,
                 /* tabId= */ 0,
-                /* showAsActionButton= */ false);
+                ActionPresentationMode.CHIP);
     }
 
     @Test
@@ -366,7 +365,7 @@ public class OmniboxActionInSuggestUnitTest {
                             actionType,
                             "",
                             /* tabId= */ 0,
-                            /* showAsActionButton= */ false);
+                            ActionPresentationMode.CHIP);
             assertEquals(
                     actionType
                                     == SuggestTemplateInfo.TemplateAction.ActionType

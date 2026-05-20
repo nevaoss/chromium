@@ -20,9 +20,9 @@ final class SigninButtonViewBinder {
         if (SigninButtonProperties.BUTTON_AVATAR.equals(propertyKey)) {
             ChromeImageButton avatarButton = view.getAvatarButton();
             avatarButton.setImageDrawable(model.get(SigninButtonProperties.BUTTON_AVATAR));
-        } else if (SigninButtonProperties.SHOW_BUTTON.equals(propertyKey)) {
+        } else if (SigninButtonProperties.IS_VISIBLE.equals(propertyKey)) {
             view.setVisibility(
-                    model.get(SigninButtonProperties.SHOW_BUTTON) ? View.VISIBLE : View.GONE);
+                    model.get(SigninButtonProperties.IS_VISIBLE) ? View.VISIBLE : View.GONE);
         } else if (SigninButtonProperties.USE_SIGNIN_TEXT_BUTTON.equals(propertyKey)) {
             boolean useSigninText = model.get(SigninButtonProperties.USE_SIGNIN_TEXT_BUTTON);
             view.getSigninTextButton().setVisibility(useSigninText ? View.VISIBLE : View.GONE);
@@ -38,6 +38,10 @@ final class SigninButtonViewBinder {
             view.getAvatarButton()
                     .setContentDescription(
                             model.get(SigninButtonProperties.AVATAR_CONTENT_DESCRIPTION));
+        } else if (SigninButtonProperties.IS_ENABLED.equals(propertyKey)) {
+            boolean isEnabled = model.get(SigninButtonProperties.IS_ENABLED);
+            view.getAvatarButton().setEnabled(isEnabled);
+            view.getSigninTextButton().setEnabled(isEnabled);
         }
     }
 }

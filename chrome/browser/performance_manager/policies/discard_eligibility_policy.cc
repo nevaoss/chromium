@@ -8,6 +8,7 @@
 #include "base/strings/strcat.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
+#include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/common/buildflags.h"
 #include "components/performance_manager/graph/page_node_impl.h"
 #include "components/performance_manager/public/decorators/page_live_state_decorator.h"
@@ -267,7 +268,7 @@ CanDiscardResult DiscardEligibilityPolicy::CanDiscard(
 
   // Do not discard PDFs as they might contain entry that is not saved and they
   // don't remember their scrolling positions. See crbug.com/40441737 and
-  // crbug.com/65244.
+  // crbug.com/40487491.
   if (page_node->GetContentsMimeType() == "application/pdf") {
     add_reason_and_update_result(CannotDiscardReason::kPdf,
                                  CanDiscardResult::kProtected);
@@ -303,8 +304,9 @@ CanDiscardResult DiscardEligibilityPolicy::CanDiscard(
       if (tab_interface) {
         auto* glic_service = glic::GlicKeyedServiceFactory::GetGlicKeyedService(
             web_contents->GetBrowserContext());
-        if (glic_service && glic_service->sharing_manager().IsTabPinned(
-                                tab_interface->GetHandle())) {
+        if (glic_service &&
+            glic_service->instance_coordinator().IsTabPinnedToAnyInstance(
+                tab_interface->GetHandle())) {
           add_reason_and_update_result(CannotDiscardReason::kGlicShared,
                                        CanDiscardResult::kProtected);
         }

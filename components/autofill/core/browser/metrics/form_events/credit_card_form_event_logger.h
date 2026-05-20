@@ -65,6 +65,10 @@ class CreditCardFormEventLogger : public FormEventLoggerBase {
   // suggestions contains card info retrieval enrolled card.
   // `with_pay_later_tab_suggestion` indicates that whether at least one of the
   // suggestions is for the Pay Later tab.
+  // `with_externally_saved_card` indicates whether at least one of the
+  // suggestions was added through other Google services outside of Chrome.
+  // `with_never_used_card` indicates whether at least one of the suggestions
+  // contains a card that has not been used before.
   // `is_virtual_card_standalone_cvc_field` indicates whether the `suggestions`
   // are fetched for a virtual card standalone CVC field.
   // `metadata_logging_context` contains information about whether any card has
@@ -74,6 +78,8 @@ class CreditCardFormEventLogger : public FormEventLoggerBase {
       bool with_cvc,
       bool with_card_info_retrieval_enrolled,
       bool with_pay_later_tab_suggestion,
+      bool with_externally_saved_card,
+      bool with_never_used_card,
       bool is_virtual_card_standalone_cvc_field,
       CardMetadataLoggingContext metadata_logging_context);
 
@@ -143,6 +149,10 @@ class CreditCardFormEventLogger : public FormEventLoggerBase {
   // suggestion chip if present).
   void OnUserDecisionToUseBnpl();
 
+  // Logging when the user decided to switch from the Pay Later tab to the Pay
+  // Now tab.
+  void OnUserDecisionToUsePayNowTab();
+
   // Called by BrowserAutofillManager after the Save and Fill suggestion is
   // shown.
   void OnSaveAndFillSuggestionShown();
@@ -180,7 +190,6 @@ class CreditCardFormEventLogger : public FormEventLoggerBase {
   FormEvent GetCardNumberStatusFormEvent(const CreditCard& credit_card);
   void RecordCardUnmaskFlowEvent(UnmaskAuthFlowType flow,
                                  UnmaskAuthFlowEvent event);
-  bool DoesCardHaveOffer(const CreditCard& credit_card);
   // Returns whether the shown suggestions included a virtual credit card.
   bool DoSuggestionsIncludeVirtualCard();
 
@@ -236,9 +245,12 @@ class CreditCardFormEventLogger : public FormEventLoggerBase {
   // If true, the BNPL suggestion being shown was already logged and should not
   // be logged again.
   bool has_logged_bnpl_suggestion_shown_ = false;
-  // If true, the metrics for a BNPL suggestion being accepted were already
-  // logged and should not log again.
-  bool has_logged_bnpl_suggestion_accepted_ = false;
+  // If true, the metrics for users decided to use BNPL was already logged and
+  // should not be logged again.
+  bool has_logged_user_decision_to_use_bnpl_ = false;
+  // If true, the metrics for users switch from the Pay Later tab to the Pay
+  // Now tab was already logged and should not be logged again.
+  bool has_logged_user_decision_to_use_pay_now_tab_ = false;
   // If true, the metrics for a form filled with a BNPL issuer VCN were already
   // logged and should not log again.
   bool has_logged_form_filled_with_bnpl_vcn_ = false;
@@ -251,6 +263,22 @@ class CreditCardFormEventLogger : public FormEventLoggerBase {
   // If true, the Save and Fill suggestion has already been logged as accepted
   // and should not be logged again.
   bool has_logged_save_and_fill_suggestion_accepted_ = false;
+  // If true, one of the cards in the suggestions fetched is externally-saved.
+  bool suggestion_contains_externally_saved_card_ = false;
+  // If true, an externally-saved card suggestion shown is logged and should not
+  // be logged again.
+  bool has_logged_suggestion_for_externally_saved_card_shown_ = false;
+  // If true, an externally-saved card suggestion selected is logged and should
+  // not be logged again.
+  bool has_logged_suggestion_for_externally_saved_card_selected_ = false;
+  // If true, one of the cards in the suggestions fetched has never been used.
+  bool suggestion_contains_never_used_card_ = false;
+  // If true, a never used card suggestion shown is logged and should not be
+  // logged again.
+  bool has_logged_suggestion_for_never_used_card_shown_ = false;
+  // If true, a never used card suggestion selected is logged and should not be
+  // logged again.
+  bool has_logged_suggestion_for_never_used_card_selected_ = false;
 
   CardMetadataLoggingContext metadata_logging_context_;
   // Captures the `metadata_logging_context_` at the time of form filling. Used

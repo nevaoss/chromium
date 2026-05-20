@@ -724,6 +724,34 @@ def fetch_binary_path(dependency_name, os_name='linux', arch='x86_64'):
   return binary_manager.FetchPath(dependency_name, os_name=os_name, arch=arch)
 
 
+def get_shard_map_settings(bot, benchmark_type, benchmark_name):
+  """Get information for a benchmark in shard map.
+
+  If the benchmark runs on multiple shards, returns the data from the
+  first shard found.
+
+  bot: Name of the bot config, e.g., 'mac-m3-pro-perf'.
+  benchmark_type: Type of the benchmark, as specified in the shard map.
+      Possible values are 'crossbench', 'executables' (gtest),
+      or 'benchmarks' (meaning Telemetry benchmarks for historical reasons).
+  benchmark_name: Name of the benchmark, e.g., 'speedometer3.crossbench'.
+  """
+  if not bot:
+    return None
+  shard_map_file_name = SHARD_MAPS_DIR / (bot + '_map.json')
+  try:
+    with open(shard_map_file_name) as f:
+      shard_map = json.load(f)
+  except FileNotFoundError:
+    logging.warning('Unable to open shard map %s', shard_map_file_name)
+    return None
+  for d in shard_map.values():
+    result = d.get(benchmark_type, {}).get(benchmark_name)
+    if result:
+      return result
+  return None
+
+
 class CrossbenchTest(object):
   """This class is for running Crossbench tests.
 
@@ -747,7 +775,7 @@ class CrossbenchTest(object):
   EXECUTABLE = 'cb.py'
   OUTDIR = '--out-dir=%s/output'
   CHROME_BROWSER = '--browser=%s'
-  ANDROID_HJSON = ('{browser:"%s", driver:{type:"Android", '
+  ANDROID_HJSON = ('{browser:"%s", %s driver:{type:"Android", '
                    f'adb_bin:"{ADB_TOOL}", '
                    f'bundletool:"{BUNDLETOOL}'
                    '"}}')
@@ -768,6 +796,7 @@ class CrossbenchTest(object):
 
   def __init__(self, options, isolated_out_dir):
     self.options = options
+    self._update_arguments()
     self._parse_arguments()
     self.isolated_out_dir = isolated_out_dir
     self.is_chrome = (not self.cb_options.official_browser
@@ -789,12 +818,22 @@ class CrossbenchTest(object):
     self.env = self._create_env_arg()
     self.network = self._get_network_arg(options.passthrough_args)
 
+  def _update_arguments(self):
+    settings = get_shard_map_settings(self.options.bot, 'crossbench',
+                                      self.options.benchmark_display_name)
+    if settings:
+      self.options.passthrough_args += settings.get('arguments', [])
+
   def _parse_arguments(self):
     parser = argparse.ArgumentParser()
     parser.add_argument('--official-browser',
                         type=str,
                         required=False,
                         help='Use official build of the browser')
+    parser.add_argument('--reinstall',
+                        action='store_true',
+                        default=False,
+                        help='Reinstall Android APK even if already installed')
     parser.add_argument(
         '--connect-to-device-over-network',
         action='store_true',
@@ -817,6 +856,17 @@ class CrossbenchTest(object):
                         action='store_true',
                         default=False,
                         help=f'Use {ALUM_RUNNER} to run web tests')
+    parser.add_argument('--wpr', help='The WPR archive file name')
+    parser.add_argument('--skip-wpr-script-injection',
+                        action='store_true',
+                        default=False,
+                        help='Whether to skip WPR script injection')
+    parser.add_argument('--wpr-http-port',
+                        type=int,
+                        help='The HTTP port for WPR')
+    parser.add_argument('--wpr-https-port',
+                        type=int,
+                        help='The HTTPS port for WPR')
     self.cb_options, self.options.passthrough_args = parser.parse_known_args(
         self.options.passthrough_args)
 
@@ -825,8 +875,8 @@ class CrossbenchTest(object):
       return [_arg]
     if _arg := _get_arg(args, '--fileserver'):
       return self._create_fileserver_network(_arg)
-    if _get_arg(args, '--wpr'):
-      return self._create_wpr_network(args)
+    if self.cb_options.wpr:
+      return self._create_wpr_network()
     if self.options.benchmarks.startswith('motionmark') and not self.is_android:
       # TODO(crbug.com/413452730): Enable local file server in all platforms.
       return []
@@ -874,27 +924,19 @@ class CrossbenchTest(object):
                              url='http://localhost:0')
     ]
 
-  def _create_wpr_network(self, args):
-    wpr_arg = _get_arg(args, '--wpr')
-    if wpr_arg and '=' in wpr_arg:
-      wpr_name = wpr_arg.split('=', 1)[1]
-    else:
-      raise ValueError('The archive file path is missing!')
-    archive = str(PAGE_SETS_DATA / wpr_name)
+  def _create_wpr_network(self):
+    archive = str(PAGE_SETS_DATA / self.cb_options.wpr)
     if (wpr_go := fetch_binary_path('wpr_go')) is None:
       raise ValueError(f'wpr_go not found: {wpr_go}')
-    if wpr_arg:
-      # Replacing --wpr with --network.
-      self.options.passthrough_args.remove(wpr_arg)
-    skip_injection_arg = '--skip-wpr-script-injection'
-    skip_injection = _get_arg(args, skip_injection_arg)
-    if skip_injection:
-      self.options.passthrough_args.remove(skip_injection_arg)
+
     return [
-        _create_network_json('wpr',
-                             path=archive,
-                             wpr_go_bin=wpr_go,
-                             skip_injection=bool(skip_injection))
+        _create_network_json(
+            'wpr',
+            path=archive,
+            wpr_go_bin=wpr_go,
+            skip_injection=self.cb_options.skip_wpr_script_injection,
+            http_port=self.cb_options.wpr_http_port,
+            https_port=self.cb_options.wpr_https_port)
     ]
 
   def _check_for_embedder_arg(self):
@@ -914,7 +956,9 @@ class CrossbenchTest(object):
     ]
     if self.cb_options.official_browser:
       if self.is_android:
-        android_json = self.ANDROID_HJSON % self.cb_options.official_browser
+        extra_config = '"reinstall":true,' if self.cb_options.reinstall else ''
+        android_json = self.ANDROID_HJSON % (self.cb_options.official_browser,
+                                             extra_config)
         self.browser = self.CHROME_BROWSER % android_json
       else:
         self.browser = self.CHROME_BROWSER % self.cb_options.official_browser
@@ -942,7 +986,7 @@ class CrossbenchTest(object):
       # Check for an arg with embedder package name to override browser (WV)
       browser_app = (self._check_for_embedder_arg()
                      or possible_browser.settings.package)
-      android_json = self.ANDROID_HJSON % browser_app
+      android_json = self.ANDROID_HJSON % (browser_app, '')
       self.browser = self.CHROME_BROWSER % android_json
     else:
       assert hasattr(possible_browser, 'local_executable')
@@ -971,7 +1015,9 @@ class CrossbenchTest(object):
 
   def _generate_command_list(self, benchmark, benchmark_args, working_dir):
     if self._is_alum():
-      return ['vpython3', '-Xutf8'] + [ALUM_RUNNER]
+      return (['vpython3', '-Xutf8'] + [ALUM_RUNNER] +
+              [self.OUTDIR % working_dir] + [f'--adb-bin={ADB_TOOL}'] +
+              self._get_default_args())
     extra_browser_args = []
     if self.cb_options.extra_browser_args:
       extra_browser_args = ['--']
@@ -986,10 +1032,8 @@ class CrossbenchTest(object):
           f'--variations-test-seed-path={resolved_path}',
           '--accept-empty-variations-seed-signature',
       ]
-    if (self.is_chrome and self.cb_options.official_browser
-        and sys.platform == 'darwin'):
-      # CBB running Chrome on MacOS, add a flag to disable updater process
-      # (see crbug.com/492924102).
+    if self.is_chrome and sys.platform == 'darwin':
+      # On MacOS, disable chrome updater process (see crbug.com/492924102).
       if not extra_browser_args:
         extra_browser_args = ['--']
       extra_browser_args += ['--disable-updater-scheduler']
@@ -1100,7 +1144,9 @@ def _create_network_json(config_type,
                          path,
                          url=None,
                          wpr_go_bin=None,
-                         skip_injection=False):
+                         skip_injection=False,
+                         http_port=None,
+                         https_port=None):
   network_dict = {'type': config_type}
   network_dict['path'] = path
   if url:
@@ -1109,6 +1155,10 @@ def _create_network_json(config_type,
     network_dict['wpr_go_bin'] = wpr_go_bin
   if skip_injection:
     network_dict['skip_deterministic_script_injection'] = True
+  if http_port:
+    network_dict['http_port'] = http_port
+  if https_port:
+    network_dict['https_port'] = https_port
   network_json = json.dumps(network_dict)
   return f'--network={network_json}'
 
@@ -1234,6 +1284,11 @@ def parse_arguments(args):
                       action='store_true',
                       required=False,
                       default=False)
+  parser.add_argument('--bot',
+                      help='Name of bot config, e.g., mac-m3-pro-perf.',
+                      type=str,
+                      required=False,
+                      default=None)
   options, leftover_args = parser.parse_known_args(args)
   options.passthrough_args.extend(leftover_args)
   return options

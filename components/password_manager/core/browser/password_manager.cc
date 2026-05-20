@@ -458,7 +458,6 @@ void SignalFormSubmissionIfEligibleForSaving(PasswordFormManager* manager,
     return;
   }
 
-  manager->GetMetricsRecorder()->set_form_submission_reached(true);
 
   client->PotentialSaveFormSubmitted();
 }
@@ -722,7 +721,9 @@ void PasswordManager::OnPresaveGeneratedPassword(
     PasswordManagerDriver* driver,
     const FormData& form_data,
     const std::u16string& generated_password) {
-  DCHECK(client_->IsSavingAndFillingEnabled(form_data.url()));
+  if (!client_->IsSavingAndFillingEnabled(form_data.url())) {
+    return;
+  }
   PasswordFormManager* form_manager =
       GetMatchedManagerForForm(driver, form_data.renderer_id());
   UMA_HISTOGRAM_BOOLEAN("PasswordManager.GeneratedFormHasNoFormManager",
@@ -1042,8 +1043,7 @@ bool PasswordManager::HaveFormManagersReceivedData(
   }
   for (const auto& form_manager : password_form_cache_.GetFormManagers()) {
     if (form_manager->GetDriver().get() == driver &&
-        form_manager->GetFormFetcher()->GetState() ==
-            FormFetcher::State::WAITING) {
+        !form_manager->IsFetchCompleted()) {
       return false;
     }
   }
@@ -1095,6 +1095,10 @@ void PasswordManager::OnPasswordFormsParsed(
     client_->RefreshPasswordManagerSettingsIfNeeded();
   }
   CreatePendingLoginManagers(driver, form_data);
+
+  for (Observer& observer : observers_) {
+    observer.OnPasswordFormsParsed(driver, form_data);
+  }
 
   PasswordGenerationFrameHelper* password_generation_manager =
       driver ? driver->GetPasswordGenerationHelper() : nullptr;
@@ -1214,8 +1218,7 @@ PasswordFormManager* PasswordManager::ProvisionallySaveForm(
     }
   }
 
-  if (is_manual_fallback && matched_manager->GetFormFetcher()->GetState() ==
-                                FormFetcher::State::WAITING) {
+  if (is_manual_fallback && !matched_manager->IsFetchCompleted()) {
     // In case of manual fallback, the form manager has to be ready for saving.
     return nullptr;
   }
@@ -1273,6 +1276,24 @@ void PasswordManager::LogFirstFillingResult(
 void PasswordManager::NotifyStorePasswordCalled() {
   store_password_called_ = true;
   DropFormManagers();
+}
+
+void PasswordManager::OnNonPasswordLoginDetected() {
+  if (base::FeatureList::IsEnabled(
+          features::kPreventPasswordManagerOnFederatedLogin)) {
+    base::UmaHistogramBoolean(
+        "PasswordManager.FederatedLogin.SavePromptPrevented",
+        GetSubmittedManager() != nullptr);
+    ResetSubmittedManager();
+    return;
+  }
+
+  if (base::FeatureList::IsEnabled(features::kPreventAPCOnFederatedLogin)) {
+    PasswordFormManager* manager = GetSubmittedManager();
+    if (manager) {
+      manager->SetNonPasswordLoginDetected(true);
+    }
+  }
 }
 
 #if BUILDFLAG(IS_IOS)
@@ -1462,8 +1483,7 @@ bool PasswordManager::IsAutomaticSavePromptAvailable(
     return false;
   }
 
-  if (submitted_manager->GetFormFetcher()->GetState() ==
-      FormFetcher::State::WAITING) {
+  if (!submitted_manager->IsFetchCompleted()) {
     // We have a provisional save manager, but it didn't finish matching yet.
     // We just give up.
     RecordProvisionalSaveFailure(
@@ -1577,6 +1597,10 @@ void PasswordManager::OnPasswordFormsRendered(
 }
 
 void PasswordManager::OnLoginSuccessful() {
+  // This method may be triggered even if `OnNonPasswordLoginDetected` was
+  // triggered for the same submission. Currently there is an experiment
+  // PreventPasswordManagerOnFederatedLogin running, which prevents
+  // `OnLoginSuccessful` from triggering if a non-password login was detected.
   std::unique_ptr<BrowserSavePasswordProgressLogger> logger =
       GetLoggerIfAvailable(client_);
   if (logger) {
@@ -1646,7 +1670,8 @@ void PasswordManager::OnLoginSuccessful() {
         client_->GetLeakDetectionInitiator(),
         CreateFormForLeakCheck(submitted_manager->GetPendingCredentials(),
                                *submitted_manager->GetSubmittedForm()),
-        submitted_manager->GetURL());
+        submitted_manager->GetURL(),
+        submitted_manager->IsNonPasswordLoginDetected());
   }
 
   // TODO(crbug.com/40570965): Implement checking whether to save with
@@ -1690,7 +1715,10 @@ void PasswordManager::OnLoginSuccessful() {
     if (logger) {
       logger->LogMessage(Logger::STRING_DECISION_SAVE);
     }
-    submitted_manager->Save();
+    std::unique_ptr<PasswordFormManagerForUI> owned_submitted_manager =
+        MoveOwnedSubmittedManager();
+    CHECK_EQ(owned_submitted_manager.get(), submitted_manager);
+    owned_submitted_manager->Save();
 
     if (!submitted_manager->IsNewLogin()) {
       client_->NotifySuccessfulLoginWithExistingPassword(
@@ -1698,7 +1726,7 @@ void PasswordManager::OnLoginSuccessful() {
     }
 
     if (submitted_manager->HasGeneratedPassword()) {
-      client_->AutomaticPasswordSave(MoveOwnedSubmittedManager(),
+      client_->AutomaticPasswordSave(std::move(owned_submitted_manager),
                                      /*is_update_confirmation=*/false);
     }
   }
@@ -1942,6 +1970,10 @@ void PasswordManager::ShowManualFallbackForSaving(
   // `form_manager` will become nullptr.
   if (!form_manager) {
     HideManualFallbackForSaving();
+    return;
+  }
+
+  if (!form_manager->IsFetchCompleted()) {
     return;
   }
 

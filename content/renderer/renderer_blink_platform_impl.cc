@@ -118,12 +118,12 @@
 
 #if BUILDFLAG(IS_WIN)
 #include "content/child/child_process_sandbox_support_impl_win.h"
+#include "third_party/blink/public/web/win/web_font_rendering.h"
 #endif
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 #include "content/child/font_data/font_data_manager.h"
 #include "skia/ext/font_utils.h"
-#include "third_party/blink/public/web/win/web_font_rendering.h"
 #endif
 
 #if BUILDFLAG(IS_MAC)
@@ -743,9 +743,9 @@ void RendererBlinkPlatformImpl::CollectWebGLContextInfo(
   const gpu::GPUInfo::GPUDevice& active_gpu = gpu_info.active_gpu();
   gl_info->vendor_id = active_gpu.vendor_id;
   gl_info->device_id = active_gpu.device_id;
-  gl_info->renderer_info = WebString::FromUTF8(gpu_info.gl_renderer);
-  gl_info->vendor_info = WebString::FromUTF8(gpu_info.gl_vendor);
-  gl_info->driver_version = WebString::FromUTF8(active_gpu.driver_version);
+  gl_info->renderer_info = WebString::FromUtf8(gpu_info.gl_renderer);
+  gl_info->vendor_info = WebString::FromUtf8(gpu_info.gl_vendor);
+  gl_info->driver_version = WebString::FromUtf8(active_gpu.driver_version);
   gl_info->reset_notification_strategy =
       gpu_info.gl_reset_notification_strategy;
   gl_info->sandboxed = gpu_info.sandboxed;
@@ -766,7 +766,7 @@ RendererBlinkPlatformImpl::CreateWebGLGraphicsContextProvider(
   DCHECK(gl_info);
   if (!RenderThreadImpl::current()) {
     std::string error_message("Failed to run in Current RenderThreadImpl");
-    gl_info->error_message = WebString::FromUTF8(error_message);
+    gl_info->error_message = WebString::FromUtf8(error_message);
     return nullptr;
   }
 
@@ -775,7 +775,7 @@ RendererBlinkPlatformImpl::CreateWebGLGraphicsContextProvider(
   if (!gpu_channel_host) {
     std::string error_message(
         "OffscreenContext Creation failed, GpuChannelHost creation failed");
-    gl_info->error_message = WebString::FromUTF8(error_message);
+    gl_info->error_message = WebString::FromUtf8(error_message);
     return nullptr;
   }
 
@@ -808,7 +808,6 @@ RendererBlinkPlatformImpl::CreateRasterGraphicsContextProvider(
 
   constexpr bool automatic_flushes = true;
   constexpr bool support_locking = false;
-  constexpr bool lose_context_when_out_of_memory = false;
 
   gpu::SchedulingPriority stream_priority =
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -827,8 +826,7 @@ RendererBlinkPlatformImpl::CreateRasterGraphicsContextProvider(
       viz::ContextProviderCommandBuffer::CreateForRaster(
           std::move(gpu_channel_host), kGpuStreamIdDefault, stream_priority,
           GURL(document_url), automatic_flushes, support_locking,
-          gpu::SharedMemoryLimits(), ToVizContextType(context_type),
-          lose_context_when_out_of_memory));
+          gpu::SharedMemoryLimits(), ToVizContextType(context_type)));
 }
 
 //------------------------------------------------------------------------------
@@ -1031,7 +1029,11 @@ void RendererBlinkPlatformImpl::CreateServiceWorkerSubresourceLoaderFactory(
           /*remote_controller=*/mojo::NullRemote(),
           /*remote_cache_storage=*/mojo::NullRemote(), client_id.Utf8(),
           blink::mojom::ServiceWorkerFetchHandlerBypassOption::kDefault,
-          /*router_rules=*/std::nullopt, blink::EmbeddedWorkerStatus::kStopped,
+          /*router_rules=*/std::nullopt, network::CrossOriginEmbedderPolicy(),
+          mojo::NullRemote() /*coep_reporter*/,
+          network::DocumentIsolationPolicy(),
+          mojo::NullRemote() /*dip_reporter*/,
+          blink::EmbeddedWorkerStatus::kStopped,
           /*running_status_receiver=*/mojo::NullReceiver()),
       network::SharedURLLoaderFactory::Create(std::move(fallback_factory)),
       std::move(receiver), std::move(task_runner));

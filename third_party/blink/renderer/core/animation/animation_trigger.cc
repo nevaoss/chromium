@@ -10,6 +10,7 @@
 #include "third_party/blink/renderer/core/animation/animation_timeline.h"
 #include "third_party/blink/renderer/core/animation/css/css_animation.h"
 #include "third_party/blink/renderer/platform/animation/compositor_animation.h"
+#include "ui/gfx/animation/keyframe/keyframe_model.h"
 
 namespace blink {
 
@@ -79,9 +80,14 @@ void PerformReplay(Animation& animation,
 }  // namespace
 
 // static
-void AnimationTrigger::PerformBehavior(Animation& animation,
-                                       Behavior behavior,
-                                       ExceptionState& exception_state) {
+void AnimationTrigger::PerformBehavior(
+    Animation& animation,
+    Behavior behavior,
+    std::optional<base::TimeDelta> async_event_time,
+    ExceptionState& exception_state) {
+  ScriptForbiddenScope forbid_script;
+  // TODO(crbug.com/451238244): Plumb the impl thread animation's start time,
+  // |async_event_time| through to the individual behaviors.
   V8AnimationPlayState::Enum play_state =
       animation.CalculateAnimationPlayState();
   switch (behavior) {
@@ -175,6 +181,8 @@ void AnimationTrigger::addAnimation(
     V8AnimationTriggerBehavior activate_behavior,
     V8AnimationTriggerBehavior deactivate_behavior,
     ExceptionState& exception_state) {
+  CHECK(!is_activating_or_deactivating_);
+
   if (!animation) {
     return;
   }
@@ -204,6 +212,8 @@ void AnimationTrigger::addAnimation(
 }
 
 void AnimationTrigger::removeAnimation(Animation* animation) {
+  CHECK(!is_activating_or_deactivating_);
+
   if (!animation) {
     return;
   }
@@ -248,25 +258,31 @@ void AnimationTrigger::UpdateBehaviorMap(Animation& animation,
       &animation, std::make_pair<>(activate_behavior, deactivate_behavior));
 }
 
-void AnimationTrigger::PerformActivate() {
-  auto map_copy = animation_behavior_map_;
-  for (auto [animation, behaviors] : map_copy) {
+void AnimationTrigger::PerformActivate(
+    std::optional<base::TimeDelta> async_activate_time) {
+  base::AutoReset<bool> is_activating(&is_activating_or_deactivating_, true);
+
+  for (auto [animation, behaviors] : animation_behavior_map_) {
     if (HasPausedCSSPlayState(animation) ||
         (compositor_trigger_ && IsTriggeredOnCompositor(animation))) {
       continue;
     }
-    PerformBehavior(*animation, behaviors.first, ASSERT_NO_EXCEPTION);
+    PerformBehavior(*animation, behaviors.first, async_activate_time,
+                    ASSERT_NO_EXCEPTION);
   }
 }
 
-void AnimationTrigger::PerformDeactivate() {
-  auto map_copy = animation_behavior_map_;
-  for (auto [animation, behaviors] : map_copy) {
+void AnimationTrigger::PerformDeactivate(
+    std::optional<base::TimeDelta> async_deactivate_time) {
+  base::AutoReset<bool> is_deactivating(&is_activating_or_deactivating_, true);
+
+  for (auto [animation, behaviors] : animation_behavior_map_) {
     if (HasPausedCSSPlayState(animation) ||
         (compositor_trigger_ && IsTriggeredOnCompositor(animation))) {
       continue;
     }
-    PerformBehavior(*animation, behaviors.second, ASSERT_NO_EXCEPTION);
+    PerformBehavior(*animation, behaviors.second, async_deactivate_time,
+                    ASSERT_NO_EXCEPTION);
   }
 }
 
@@ -310,7 +326,9 @@ void AnimationTrigger::UpdateCompositorTriggerAnimations(
     // animation so as not to interfere with an animation that was already
     // playing.
     if (pause_keyframe_models) {
-      cc_animation->PauseKeyframeModels(base::TimeDelta());
+      cc_animation->Pause(
+          base::Seconds(animation->CurrentTimeInternal()->InSecondsF()),
+          cc::KeyframeModel::RunState::PAUSED_EXCLUSIVE);
     }
   }
 

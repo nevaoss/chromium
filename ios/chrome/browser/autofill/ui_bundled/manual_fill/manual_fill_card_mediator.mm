@@ -9,6 +9,7 @@
 #import "base/containers/to_vector.h"
 #import "base/functional/callback_helpers.h"
 #import "base/i18n/message_formatter.h"
+#import "base/memory/weak_ptr.h"
 #import "base/metrics/user_metrics.h"
 #import "base/strings/sys_string_conversions.h"
 #import "base/strings/utf_string_conversions.h"
@@ -17,9 +18,8 @@
 #import "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 #import "components/autofill/core/browser/suggestions/payments/payments_suggestion_generator_util.h"
 #import "components/autofill/core/common/autofill_payments_features.h"
+#import "components/autofill/ios/browser/autofill_client_ios.h"
 #import "components/autofill/ios/browser/personal_data_manager_observer_bridge.h"
-#import "ios/chrome/browser/autofill/ui_bundled/chrome_autofill_client_ios.h"
-#import "ios/chrome/browser/autofill/ui_bundled/ios_chrome_payments_autofill_client.h"
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/card_consumer.h"
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/card_list_delegate.h"
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/full_card_request_result_delegate_bridge.h"
@@ -28,6 +28,7 @@
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/manual_fill_content_injector.h"
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/manual_fill_credit_card+CreditCard.h"
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/manual_fill_credit_card.h"
+#import "ios/chrome/browser/autofill/ui_bundled/manual_fill/manual_fill_injection_handler.h"
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/manual_fill_virtual_card_cache.h"
 #import "ios/chrome/browser/menu/ui_bundled/browser_action_factory.h"
 #import "ios/chrome/browser/shared/ui/list_model/list_model.h"
@@ -91,6 +92,9 @@ std::vector<CreditCard> FetchCards(
   // Personal data manager to be observed.
   raw_ptr<autofill::PersonalDataManager> _personalDataManager;
 
+  // The WebState associated with this mediator.
+  base::WeakPtr<web::WebState> _webState;
+
   // C++ to ObjC bridge for PersonalDataManagerObserver.
   std::unique_ptr<autofill::PersonalDataManagerObserverBridge>
       _personalDataManagerObserver;
@@ -106,10 +110,12 @@ std::vector<CreditCard> FetchCards(
                     (autofill::PersonalDataManager*)personalDataManager
                      reauthenticationModule:
                          (ReauthenticationModule*)reauthenticationModule
-                     showAutofillFormButton:(BOOL)showAutofillFormButton {
+                     showAutofillFormButton:(BOOL)showAutofillFormButton
+                                   webState:(web::WebState*)webState {
   self = [super init];
   if (self) {
     _personalDataManager = personalDataManager;
+    _webState = webState ? webState->GetWeakPtr() : nullptr;
     _personalDataManagerObserver =
         std::make_unique<autofill::PersonalDataManagerObserverBridge>(
             _personalDataManager, self);
@@ -142,6 +148,7 @@ std::vector<CreditCard> FetchCards(
 - (void)disconnect {
   _personalDataManagerObserver = nullptr;
   _personalDataManager = nullptr;
+  _webState = nullptr;
 }
 
 #pragma mark - PersonalDataManagerObserver
@@ -174,6 +181,20 @@ std::vector<CreditCard> FetchCards(
     if (card.virtual_card_enrollment_state() ==
         CreditCard::VirtualCardEnrollmentState::kEnrolled) {
       CreditCard virtualCard = CreditCard::CreateVirtualCard(card);
+      if (_webState) {
+        ManualFillVirtualCardCache* cache =
+            ManualFillVirtualCardCache::FromWebState(_webState.get());
+        if (cache) {
+          if (const CreditCard* cachedCard = cache->GetUnmaskedCard(
+                  virtualCard.server_id(),
+                  [self.contentInjector
+                      respondsToSelector:@selector(activeWebFrameOrigin)]
+                      ? [(id)self.contentInjector activeWebFrameOrigin]
+                      : url::Origin())) {
+            virtualCard = *cachedCard;
+          }
+        }
+      }
       cardsToPresent.push_back(virtualCard);
     }
     cardsToPresent.push_back(card);
@@ -325,7 +346,10 @@ std::vector<CreditCard> FetchCards(
   if (webState && card.record_type() == CreditCard::RecordType::kVirtualCard) {
     // CreateForWebState ensures the cache exists (lazy initialization).
     ManualFillVirtualCardCache::CreateForWebState(webState);
-    ManualFillVirtualCardCache::FromWebState(webState)->CacheUnmaskedCard(card);
+    url::Origin origin = ManualFillVirtualCardCache::FromWebState(webState)
+                             ->GetUnmaskingOrigin();
+    ManualFillVirtualCardCache::FromWebState(webState)->CacheUnmaskedCard(
+        card, origin);
   }
   // Credit card are not shown as 'Secure'.
   ManualFillCreditCard* manualFillCreditCard = [[ManualFillCreditCard alloc]

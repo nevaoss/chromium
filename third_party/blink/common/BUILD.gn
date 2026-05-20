@@ -242,10 +242,10 @@ source_set("common") {
     "page/color_provider_color_maps_mojom_traits.cc",
     "page/content_to_visible_time_reporter.cc",
     "page/content_to_visible_time_request.cc",
-    "page/content_to_visible_time_request_mojom_traits.cc",
     "page/drag_mojom_traits.cc",
     "page/drag_operation.cc",
     "page/page_zoom.cc",
+    "page/record_content_to_visible_time_request_mojom_traits.cc",
     "page/source_effect_allowed_mojom_util.cc",
     "page_state/page_state.cc",
     "page_state/page_state_serialization.cc",
@@ -285,6 +285,7 @@ source_set("common") {
     "web_preferences/web_preferences_mojom_traits.cc",
     "webid/login_status_account.cc",
     "webid/login_status_options.cc",
+    "webrtc/rtc_logging_mojom_traits.cc",
     "widget/constants.cc",
     "widget/device_emulation_params_mojom_traits.cc",
     "widget/visual_properties.cc",
@@ -551,6 +552,9 @@ if (use_fuzzing_engine_with_lpm) {
       "//third_party/blink/public/common:storage_key_proto_converter",
       "//third_party/libprotobuf-mutator",
     ]
+    if (is_android) {
+      deps += [ "//third_party/icu:icu_assets" ]
+    }
   }
 
   fuzzer_test("storage_key_string_fuzzer") {
@@ -560,6 +564,9 @@ if (use_fuzzing_engine_with_lpm) {
       "//base/test:test_support",
       "//third_party/blink/public/common",
     ]
+    if (is_android) {
+      deps += [ "//third_party/icu:icu_assets" ]
+    }
     seed_corpus = "//third_party/blink/common/storage_key/storage_key_corpus"
   }
 

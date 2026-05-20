@@ -16,6 +16,8 @@
 
 #include "neva/browser_shell/service/browser_shell_main_page_contents_impl.h"
 
+#include "base/logging.h"
+
 namespace browser_shell {
 
 MainPageContentsImpl::MainPageContentsImpl(

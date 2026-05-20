@@ -26,6 +26,7 @@
 #import "base/task/bind_post_task.h"
 #import "base/task/sequenced_task_runner.h"
 #import "base/task/task_traits.h"
+#import "base/task/thread_pool.h"
 #import "base/time/time.h"
 #import "base/timer/timer.h"
 #import "base/token.h"
@@ -388,7 +389,10 @@ result.links = linksArray;
 
 // Returns the registrar.
 - (autofill::ChildFrameRegistrar*)frameRegistrar {
-  CHECK(_webState);
+  // Returns nullptr if the WebState has been destroyed during async operations.
+  if (!_webState) {
+    return nullptr;
+  }
   return autofill::ChildFrameRegistrar::GetOrCreateForWebState(_webState.get());
 }
 
@@ -556,6 +560,15 @@ result.links = linksArray;
                              securityOrigin:securityOrigin
                             localFrameToken:frameId];
       barrier.Run();
+
+      // Defer destruction of the base::DictValue to a background thread to
+      // prevent blocking the main thread. The object is self-contained and
+      // thread-safe.
+      if (value) {
+        base::ThreadPool::PostTask(
+            FROM_HERE, {base::TaskPriority::BEST_EFFORT},
+            base::BindOnce([](base::Value v) {}, std::move(*value)));
+      }
     };
 
     extractorFeature->ExtractPageContextJSON(
@@ -818,6 +831,11 @@ result.links = linksArray;
       auto mapping_lookup = base::BindRepeating(
           [](autofill::ChildFrameRegistrar* registrar,
              autofill::RemoteFrameToken remote) {
+            // If the registrar is null, return std::nullopt to trigger the
+            // fallback behavior of placing the node as a direct child.
+            if (!registrar) {
+              return std::optional<autofill::LocalFrameToken>();
+            }
             return registrar->LookupChildFrame(remote);
           },
           [self frameRegistrar]);
@@ -1433,6 +1451,10 @@ result.links = linksArray;
 
 // Stop the highlighting of text.
 - (void)stopTextHighlighting {
+  if (!_textToHighlight) {
+    return;
+  }
+
   web::WebState* webState = _webState.get();
   if (!webState) {
     return;

@@ -906,6 +906,11 @@ class PolicyBlockBrowserClient : public TestContentBrowserClient {
       const ui::ClipboardMetadata& metadata,
       ClipboardPasteData data,
       IsClipboardPasteAllowedCallback callback) override {
+    if (metadata.format_type == ui::ClipboardFormatType::WebCustomFormatMap()) {
+      // Custom formats cannot be string-replaced.
+      std::move(callback).Run(std::nullopt);
+      return;
+    }
     // Simulate a policy block returning a replacement string.
     std::optional<ClipboardPasteData> replacement_data(data);
     replacement_data->text = u"Paste Policy Blocked";

@@ -4,6 +4,7 @@
 
 package org.chromium.chrome.browser.sync.synced_set_up;
 
+import static org.chromium.chrome.browser.flags.ChromeFeatureList.CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS;
 import static org.chromium.chrome.browser.flags.ChromeFeatureList.XPLAT_SYNCED_SETUP;
 import static org.chromium.chrome.browser.ntp_customization.ntp_cards.NtpCardsMediator.MODULE_TYPE_TO_USER_PREFS_KEY;
 import static org.chromium.chrome.browser.sync.synced_set_up.SyncedSetUpUtilsBridge.getCrossDevicePrefsFromRemoteDevice;
@@ -98,8 +99,8 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
     private final ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
     private final NullableObservableSupplier<Tab> mActivityTabSupplier;
     private final Context mContext;
-    private final Supplier<ModalDialogManager> mModalDialogManagerSupplier;
-    private final Supplier<SnackbarManager> mSnackbarManagerSupplier;
+    private final Supplier<@Nullable ModalDialogManager> mModalDialogManagerSupplier;
+    private final Supplier<@Nullable SnackbarManager> mSnackbarManagerSupplier;
     private final TabObserver mTabObserver =
             new EmptyTabObserver() {
                 @Override
@@ -116,6 +117,8 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
     private @Nullable Tab mObservedTab;
     private @Nullable CrossDevicePrefTracker mTrackerBeingObserved;
     private @Nullable CrossDevicePrefTrackerObserver mTrackerObserver;
+    private @Nullable Runnable mLocalStateObserver;
+
     private final Callback<@Nullable Tab> mTabChangeCallback =
             new Callback<@Nullable Tab>() {
                 @Override
@@ -143,8 +146,8 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
             ActivityLifecycleDispatcher activityLifecycleDispatcher,
             NullableObservableSupplier<Tab> activityTabSupplier,
             Context context,
-            Supplier<ModalDialogManager> modalDialogManager,
-            Supplier<SnackbarManager> snackbarManagerSupplier) {
+            Supplier<@Nullable ModalDialogManager> modalDialogManager,
+            Supplier<@Nullable SnackbarManager> snackbarManagerSupplier) {
         mActivityLifecycleDispatcher = activityLifecycleDispatcher;
         mActivityTabSupplier = activityTabSupplier;
         mContext = context;
@@ -168,6 +171,13 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         mTrackerBeingObserved = null;
     }
 
+    private void stopObservingLocalState() {
+        if (mLocalStateObserver != null) {
+            LocalStatePrefs.removeObserver(mLocalStateObserver);
+        }
+        mLocalStateObserver = null;
+    }
+
     /**
      * Called when the current tab changes or gains focus.
      *
@@ -175,6 +185,10 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
      */
     @VisibleForTesting
     void onTabChangeOrGainFocus(@Nullable Tab currentTab) {
+        onTabChangeOrGainFocus(currentTab, /* availableImmediately= */ true);
+    }
+
+    private void onTabChangeOrGainFocus(@Nullable Tab currentTab, boolean availableImmediately) {
         if (!FeatureList.isNativeInitialized()
                 || !ChromeFeatureList.isEnabled(XPLAT_SYNCED_SETUP)) {
             return;
@@ -190,75 +204,117 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         if (crossDevicePrefTracker == null) return;
 
         @ServiceStatus int status = crossDevicePrefTracker.getServiceStatus();
-        if (NOT_READY_YET_STATES.contains(status)) {
-            if (mTrackerBeingObserved != null && mTrackerBeingObserved != crossDevicePrefTracker) {
-                stopObservingTracker();
-            }
-            if (mTrackerObserver == null) {
-                mTrackerObserver =
-                        new CrossDevicePrefTrackerObserver() {
-                            @Override
-                            public void onRemotePrefChanged(
-                                    String prefName,
-                                    TimestampedPrefValue timestampedPrefValue,
-                                    int osType,
-                                    int formFactor) {}
+        boolean trackerReady = !NOT_READY_YET_STATES.contains(status);
+        boolean localStateReady = LocalStatePrefs.areNativePrefsLoaded();
+        if (ChromeFeatureList.isEnabled(CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS)) {
+            Log.i(
+                    TAG,
+                    "onTabChangeOrGainFocus - trackerReady = "
+                            + trackerReady
+                            + ", localStateReady = "
+                            + localStateReady);
+        }
 
-                            @Override
-                            public void onServiceStatusChanged(int status) {
-                                // If the cross-device pref tracker is still not ready, keep
-                                // listening for a future status change.
-                                if (NOT_READY_YET_STATES.contains(status)) return;
+        // If both dependencies are ready, stop any active observation and proceed to import.
+        if (trackerReady && localStateReady) {
+            stopObservingTracker();
+            stopObservingLocalState();
+            onCrossDevicePrefTrackerAndLocalStateReady(
+                    crossDevicePrefTracker, status, profile, currentTab, availableImmediately);
+            return;
+        }
 
-                                stopObservingTracker();
-
-                                // Ensure the tab and profile are up-to-date, and still non-null.
-                                @Nullable Tab tabAfterStatusChange = mActivityTabSupplier.get();
-                                if (tabAfterStatusChange == null) return;
-
-                                @Nullable Profile profileAfterStatusChange =
-                                        tabAfterStatusChange.getProfile();
-                                if (!profile.equals(profileAfterStatusChange)) return;
-
-                                onCrossDevicePrefTrackerReady(
-                                        crossDevicePrefTracker,
-                                        status,
-                                        profileAfterStatusChange,
-                                        tabAfterStatusChange,
-                                        /* availableImmediately= */ false);
-                            }
-                        };
-                mTrackerBeingObserved = crossDevicePrefTracker;
-                crossDevicePrefTracker.addObserver(mTrackerObserver);
-            }
+        // Otherwise, defer the logic by observing whichever dependency is not yet ready.
+        if (!trackerReady) {
+            ensureObservingTracker(crossDevicePrefTracker, profile);
         } else {
             stopObservingTracker();
-            onCrossDevicePrefTrackerReady(
-                    crossDevicePrefTracker,
-                    status,
-                    profile,
-                    currentTab,
-                    /* availableImmediately= */ true);
+        }
+
+        if (!localStateReady) {
+            ensureObservingLocalState();
+        } else {
+            stopObservingLocalState();
         }
     }
 
+    private void ensureObservingTracker(CrossDevicePrefTracker tracker, Profile profile) {
+        if (mTrackerBeingObserved != null && mTrackerBeingObserved != tracker) {
+            stopObservingTracker();
+        }
+        if (mTrackerObserver != null) return;
+
+        mTrackerObserver =
+                new CrossDevicePrefTrackerObserver() {
+                    @Override
+                    public void onRemotePrefChanged(
+                            String prefName,
+                            TimestampedPrefValue timestampedPrefValue,
+                            int osType,
+                            int formFactor) {}
+
+                    @Override
+                    public void onServiceStatusChanged(int status) {
+                        // If the tracker is still not ready, keep listening for status changes.
+                        if (NOT_READY_YET_STATES.contains(status)) return;
+
+                        // Ensure the tab and profile are still valid before retrying.
+                        @Nullable Tab currentTab = mActivityTabSupplier.get();
+                        if (currentTab == null) return;
+
+                        @Nullable Profile currentProfile = currentTab.getProfile();
+                        if (!profile.equals(currentProfile)) return;
+
+                        onTabChangeOrGainFocus(currentTab, /* availableImmediately= */ false);
+                    }
+                };
+        mTrackerBeingObserved = tracker;
+        tracker.addObserver(mTrackerObserver);
+    }
+
+    private void ensureObservingLocalState() {
+        if (mLocalStateObserver != null) return;
+
+        if (ChromeFeatureList.isEnabled(CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS)) {
+            Log.i(TAG, "Started observing local state");
+        }
+        mLocalStateObserver =
+                () -> {
+                    if (ChromeFeatureList.isEnabled(CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS)) {
+                        Log.i(TAG, "Local state readiness observer was triggered");
+                    }
+                    onTabChangeOrGainFocus(
+                            mActivityTabSupplier.get(), /* availableImmediately= */ false);
+                };
+        LocalStatePrefs.addObserver(mLocalStateObserver);
+    }
+
     /**
-     * Handles the {@link CrossDevicePrefTracker} reaching a "ready" state.
+     * Handles the {@link CrossDevicePrefTracker} and {@link LocalStatePrefs} reaching a "ready"
+     * state.
      *
      * @param tracker The {@link CrossDevicePrefTracker}.
      * @param status The {@link ServiceStatus} of the tracker.
      * @param profile The {@link Profile}.
      * @param tab The {@link Tab} that is currently focused.
-     * @param availableImmediately Whether the CrossDevicePrefTracker was available immediately
-     *     (when we first checked).
+     * @param availableImmediately Whether the CrossDevicePrefTracker and LocalStatePrefs were
+     *     available immediately (when we first checked).
      */
     @VisibleForTesting
-    void onCrossDevicePrefTrackerReady(
+    void onCrossDevicePrefTrackerAndLocalStateReady(
             CrossDevicePrefTracker tracker,
             @ServiceStatus int status,
             Profile profile,
             Tab tab,
             boolean availableImmediately) {
+        if (ChromeFeatureList.isEnabled(CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS)) {
+            Log.i(
+                    TAG,
+                    "running onCrossDevicePrefTrackerAndLocalStateReady with status "
+                            + status
+                            + ", available immediately ? "
+                            + availableImmediately);
+        }
         boolean onlyOmniboxPosition = !UrlUtilities.isNtpUrl(tab.getUrl());
         SharedPreferencesManager sharedPrefManager = ChromeSharedPreferences.getInstance();
         if (onlyOmniboxPosition) {
@@ -698,5 +754,6 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
             mObservedTab = null;
         }
         stopObservingTracker();
+        stopObservingLocalState();
     }
 }

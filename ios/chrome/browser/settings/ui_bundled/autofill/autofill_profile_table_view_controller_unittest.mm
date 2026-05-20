@@ -7,23 +7,31 @@
 #import "base/apple/foundation_util.h"
 #import "base/strings/utf_string_conversions.h"
 #import "base/test/ios/wait_util.h"
+#import "base/test/metrics/histogram_tester.h"
 #import "base/test/scoped_feature_list.h"
+#import "base/test/with_feature_override.h"
 #import "base/uuid.h"
 #import "components/autofill/core/browser/data_manager/addresses/address_data_manager.h"
+#import "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
 #import "components/autofill/core/browser/data_manager/personal_data_manager.h"
 #import "components/autofill/core/browser/data_manager/personal_data_manager_test_utils.h"
 #import "components/autofill/core/browser/data_model/addresses/autofill_profile.h"
 #import "components/autofill/core/browser/geo/alternative_state_name_map_updater.h"
+#import "components/autofill/core/browser/test_utils/entity_data_test_utils.h"
 #import "components/autofill/core/common/autofill_features.h"
 #import "components/plus_addresses/core/browser/grit/plus_addresses_strings.h"
 #import "components/plus_addresses/core/common/features.h"
 #import "components/strings/grit/components_strings.h"
+#import "ios/chrome/browser/autofill/model/ios_autofill_entity_data_manager_factory.h"
 #import "ios/chrome/browser/autofill/model/personal_data_manager_factory.h"
+#import "ios/chrome/browser/settings/autofill/autofill_ai/ui/autofill_ai_entity_item.h"
+#import "ios/chrome/browser/settings/ui_bundled/autofill/autofill_profile_table_view_controller+testing.h"
 #import "ios/chrome/browser/settings/ui_bundled/autofill/cells/autofill_profile_item.h"
 #import "ios/chrome/browser/settings/ui_bundled/settings_root_table_view_controller.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/test/test_browser.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
+#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_detail_icon_item.h"
 #import "ios/chrome/browser/shared/ui/table_view/legacy_chrome_table_view_controller_test.h"
 #import "ios/chrome/browser/signin/model/authentication_service.h"
@@ -262,6 +270,71 @@ TEST_F(AutofillProfileTableViewControllerTest,
 
   NSString* text = l10n_util::GetNSString(IDS_SETTINGS_AUTOFILL_AI_PAGE_TITLE);
   EXPECT_NSEQ(text, item.text);
+}
+
+// TODO(crbug.com/496456595): Alter this test once YourSavedInfoSettingsPageIos
+// is fully rolled out.
+class AutofillProfileTableViewControllerTitleTest
+    : public base::test::WithFeatureOverride,
+      public AutofillProfileTableViewControllerTest {
+ public:
+  AutofillProfileTableViewControllerTitleTest()
+      : base::test::WithFeatureOverride(kYourSavedInfoSettingsPageIos) {}
+};
+
+// Tests the title of the view controller when the feature is enabled/disabled.
+TEST_P(AutofillProfileTableViewControllerTitleTest, Title) {
+  CreateController();
+  CheckController();
+
+  CheckTitleWithId(IsParamFeatureEnabled() ? IDS_AUTOFILL_CONTACT_INFO_TITLE
+                                           : IDS_AUTOFILL_ADDRESSES_SETTINGS_TITLE);
+}
+
+INSTANTIATE_FEATURE_OVERRIDE_TEST_SUITE(
+    AutofillProfileTableViewControllerTitleTest);
+
+// Tests that deleting an Autofill AI entity logs the Deleted metric.
+TEST_F(AutofillProfileTableViewControllerTest, DeleteAIEntity) {
+  autofill::EntityDataManager* entity_data_manager =
+      IOSAutofillEntityDataManagerFactory::GetForProfile(profile_.get());
+  autofill::EntityInstance instance =
+      autofill::test::GetVehicleEntityInstance();
+  entity_data_manager->AddOrUpdateEntityInstance(instance);
+
+  // Wait for it to be added.
+  EXPECT_TRUE(base::test::ios::WaitUntilConditionOrTimeout(
+      base::test::ios::kWaitForActionTimeout, true, ^{
+        return entity_data_manager->GetEntityInstance(instance.guid())
+            .has_value();
+      }));
+
+  CreateController();
+  CheckController();
+
+  NSIndexPath* target_path = nil;
+  for (NSInteger section = 0; section < NumberOfSections(); ++section) {
+    for (NSInteger row = 0; row < NumberOfItemsInSection(section); ++row) {
+      TableViewItem* item = GetTableViewItem(section, row);
+      if ([item isKindOfClass:[AutofillAIEntityItem class]]) {
+        target_path = [NSIndexPath indexPathForRow:row inSection:section];
+        break;
+      }
+    }
+    if (target_path) {
+      break;
+    }
+  }
+
+  ASSERT_TRUE(target_path != nil);
+
+  base::HistogramTester histogram_tester;
+
+  [base::apple::ObjCCastStrict<AutofillProfileTableViewController>(controller())
+      willDeleteItemsAtIndexPaths:@[ target_path ]];
+
+  histogram_tester.ExpectUniqueSample("Autofill.Ai.EntityDeletedFromSettings",
+                                      autofill::EntityTypeName::kVehicle, 1);
 }
 
 }  // namespace

@@ -25,6 +25,7 @@
 #include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/thread_pool.h"
+#include "build/branding_buildflags.h"
 #include "chrome/browser/lens/core/mojom/geometry.mojom.h"
 #include "chrome/browser/lens/core/mojom/lens_side_panel.mojom.h"
 #include "chrome/browser/lens/core/mojom/overlay_object.mojom.h"
@@ -36,6 +37,7 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/desktop_to_mobile_promos/ios_promo_trigger_service.h"
 #include "chrome/browser/ui/desktop_to_mobile_promos/ios_promo_trigger_service_factory.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
@@ -88,6 +90,7 @@
 #include "components/permissions/permission_request_manager.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/tabs/public/tab_interface.h"
+#include "components/vector_icons/vector_icons.h"
 #include "components/viz/common/frame_timing_details.h"
 #include "components/zoom/zoom_controller.h"
 #include "content/public/browser/download_manager.h"
@@ -336,25 +339,6 @@ void LensOverlayController::SendRegionText(lens::mojom::TextPtr text,
   page_->RegionTextReceived(std::move(text), is_injected_image);
 }
 
-lens::mojom::OverlayThemePtr LensOverlayController::CreateTheme(
-    lens::PaletteId palette_id) {
-  CHECK(lens::kPaletteColors.contains(palette_id));
-  const auto& palette = lens::kPaletteColors.at(palette_id);
-  auto theme = lens::mojom::OverlayTheme::New();
-  theme->primary = palette.at(lens::ColorId::kPrimary);
-  theme->shader_layer_1 = palette.at(lens::ColorId::kShaderLayer1);
-  theme->shader_layer_2 = palette.at(lens::ColorId::kShaderLayer2);
-  theme->shader_layer_3 = palette.at(lens::ColorId::kShaderLayer3);
-  theme->shader_layer_4 = palette.at(lens::ColorId::kShaderLayer4);
-  theme->shader_layer_5 = palette.at(lens::ColorId::kShaderLayer5);
-  theme->scrim = palette.at(lens::ColorId::kScrim);
-  theme->surface_container_highest_light =
-      palette.at(lens::ColorId::kSurfaceContainerHighestLight);
-  theme->surface_container_highest_dark =
-      palette.at(lens::ColorId::kSurfaceContainerHighestDark);
-  theme->selection_element = palette.at(lens::ColorId::kSelectionElement);
-  return theme;
-}
 
 void LensOverlayController::SendObjects(
     std::vector<lens::mojom::OverlayObjectPtr> objects) {
@@ -704,6 +688,8 @@ bool LensOverlayController::IsUrlEligibleForTutorialIPHForTesting(
 
 void LensOverlayController::ShowUI(
     lens::LensOverlayInvocationSource invocation_source) {
+  invocation_source_ = invocation_source;
+
   if (!CanShowModalUI()) {
     return;
   }
@@ -725,9 +711,6 @@ void LensOverlayController::ShowUI(
       pref_service_->GetInteger(prefs::kLensOverlayStartCount);
   pref_service_->SetInteger(prefs::kLensOverlayStartCount,
                             lens_overlay_start_count + 1);
-
-  // Store reference for later use.
-  invocation_source_ = invocation_source;
 
   // Create the languages controller.
   languages_controller_ =
@@ -1072,13 +1055,11 @@ void LensOverlayController::AddOverlayStateToSearchQuery(
 LensOverlayController::OverlayInitializationData::OverlayInitializationData(
     const SkBitmap& screenshot,
     SkBitmap rgb_screenshot,
-    lens::PaletteId color_palette,
     GURL page_url,
     std::optional<std::string> page_title)
     : initial_screenshot_(screenshot),
       initial_rgb_screenshot_(std::move(rgb_screenshot)),
       updated_screenshot_(screenshot),
-      color_palette_(color_palette),
       page_url_(page_url),
       page_title_(page_title) {}
 LensOverlayController::OverlayInitializationData::~OverlayInitializationData() =
@@ -1110,24 +1091,8 @@ void LensOverlayController::ContinueCreateInitializationData(
     return;
   }
 
-  // Resolve the color palette based on the vibrant screenshot color.
-  lens::PaletteId color_palette = lens::PaletteId::kFallback;
-  if (lens::features::IsDynamicThemeDetectionEnabled()) {
-    std::vector<SkColor> colors;
-    for (const auto& pair : lens::kPalettes) {
-      colors.emplace_back(pair.first);
-    }
-    SkColor screenshot_color = lens::ExtractVibrantOrDominantColorFromImage(
-        screenshot, lens::features::DynamicThemeMinPopulationPct());
-    SkColor theme_color = lens::FindBestMatchedColorOrTransparent(
-        colors, screenshot_color, lens::features::DynamicThemeMinChroma());
-    if (theme_color != SK_ColorTRANSPARENT) {
-      color_palette = lens::kPalettes.at(theme_color);
-    }
-  }
-
   auto initialization_data = std::make_unique<OverlayInitializationData>(
-      screenshot, std::move(rgb_screenshot), color_palette,
+      screenshot, std::move(rgb_screenshot),
       lens_search_controller_->GetPageURL(),
       lens_search_controller_->GetPageTitle());
   initialization_data->significant_region_boxes_ =
@@ -1302,7 +1267,6 @@ void LensOverlayController::InitializeOverlayUI(
   CHECK(page_);
   // TODO(b/371593619), it would be more efficent to send all initialization
   // data to the overlay web UI in a single message.
-  page_->ThemeReceived(CreateTheme(init_data.color_palette_));
 
   auto* lens_session_metrics_logger = GetLensSessionMetricsLogger();
 
@@ -1359,7 +1323,7 @@ ui::ElementIdentifier LensOverlayController::GetViewContainerId() {
   return kLensOverlayViewElementId;
 }
 
-SidePanelEntry::PanelType LensOverlayController::GetSidePanelType() {
+SidePanelType LensOverlayController::GetSidePanelType() {
   return GetLensOverlaySidePanelCoordinator()->GetPanelType();
 }
 
@@ -1509,10 +1473,17 @@ void LensOverlayController::NotifyTabWillEnterBackground() {
   }
 }
 
-OverlayBaseController::PreselectionBubbleResources
-LensOverlayController::GetPreselectionBubbleResources() {
-  return {.message_string_id =
-              IDS_LENS_OVERLAY_INITIAL_TOAST_MESSAGE_SIMPLIFIED};
+OverlayBaseController::PreselectionUIConfig
+LensOverlayController::GetPreselectionBubbleConfig() {
+  return {
+      .message_string_id = IDS_LENS_OVERLAY_INITIAL_TOAST_MESSAGE_SIMPLIFIED,
+      .bubble_background_color = kColorLensOverlayToastBackground,
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+      .icon = &vector_icons::kGoogleLensMonochromeLogoIcon
+#else
+      .icon = &vector_icons::kSearchChromeRefreshIcon
+#endif
+  };
 }
 
 bool LensOverlayController::IsOverlayViewShared() const {
@@ -1969,9 +1940,8 @@ void LensOverlayController::InitializeTutorialIPHUrlMatcher() {
 }
 
 void LensOverlayController::MaybeShowDelayedTutorialIPH(const GURL& url) {
-  auto* entry_point_controller = tab_->GetBrowserWindowInterface()
-                                     ->GetFeatures()
-                                     .lens_overlay_entry_point_controller();
+  auto* entry_point_controller = lens::LensOverlayEntryPointController::From(
+      tab_->GetBrowserWindowInterface());
   if (!entry_point_controller || !entry_point_controller->IsEnabled()) {
     return;
   }
@@ -2097,9 +2067,7 @@ void LensOverlayController::NotifyPageContentUpdated() {
 }
 
 void LensOverlayController::UpdateEntryPointsState() {
-  tab_->GetBrowserWindowInterface()
-      ->GetFeatures()
-      .lens_overlay_entry_point_controller()
+  lens::LensOverlayEntryPointController::From(tab_->GetBrowserWindowInterface())
       ->UpdateEntryPointsState(
           /*hide_toolbar_entrypoint=*/false);
 }
@@ -2173,8 +2141,7 @@ void LensOverlayController::OnPageContextUpdatedForSuggestion(
   // what type of query to send (contextual or text only).
   if (state_ == State::kOff) {
     initialization_data_ = std::make_unique<OverlayInitializationData>(
-        SkBitmap(), SkBitmap(), lens::PaletteId::kFallback,
-        lens_search_controller_->GetPageURL(),
+        SkBitmap(), SkBitmap(), lens_search_controller_->GetPageURL(),
         lens_search_controller_->GetPageTitle());
   }
 

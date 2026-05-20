@@ -10,6 +10,7 @@
 #include "base/callback_list.h"
 #include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
+#include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "chrome/browser/ui/animation/browser_animation_types.h"
 #include "chrome/browser/ui/omnibox/omnibox_tab_helper.h"
@@ -21,8 +22,10 @@
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_controller.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_expand_on_hover_lock.h"
 #include "chrome/browser/ui/views/tabs/vertical/vertical_tab_strip_view.h"
+#include "components/tabs/public/tab_interface.h"
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/base/metadata/metadata_header_macros.h"
+#include "ui/events/event_handler.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/views/accessible_pane_view.h"
 #include "ui/views/controls/resize_area_delegate.h"
@@ -105,6 +108,8 @@ class VerticalTabStripRegionView final
   // aligned to the leading, top corner.
   void SetToolbarHeightForLayout(int toolbar_height);
   void SetCaptionButtonWidthForLayout(int caption_button_width);
+  void SetIsExitingExpandOnHoverForLayout(bool is_exiting_expand_on_hover);
+  bool WillWrapDueToOverflow(int available_width) const;
 
   TabDragTarget* GetTabDragTarget(const gfx::Point& point_in_screen);
 
@@ -128,7 +133,7 @@ class VerticalTabStripRegionView final
   bool IsTabStripCloseable() const override;
   void UpdateLoadingAnimations(const base::TimeDelta& elapsed_time) override;
   std::optional<int> GetFocusedTabIndex() const override;
-  const tabs::TabData& GetTabData(int tab_index) override;
+  const tabs::TabData& GetTabData(const tabs::TabHandle& tab) override;
   views::View* GetTabAnchorViewAt(int tab_index) override;
   views::View* GetTabGroupAnchorView(
       const tab_groups::TabGroupId& group) override;
@@ -173,6 +178,9 @@ class VerticalTabStripRegionView final
 
   bool is_expanded_on_hover() const { return is_expanded_on_hover_; }
   ShadowFrameView* shadow_frame() { return shadow_frame_; }
+  int uncollapsed_width() const {
+    return target_collapse_state_.uncollapsed_width;
+  }
 
   views::ResizeArea* resize_area_for_testing() { return resize_area_; }
   RootTabCollectionNode* root_node_for_testing() { return root_node_.get(); }
@@ -203,10 +211,35 @@ class VerticalTabStripRegionView final
    private:
     raw_ptr<VerticalTabStripRegionView> region_view_;
   };
-  friend class RegionViewFocusListener;
+
+  // To avoid extra motion during expand on hover when the user doesn't need the
+  // expanded state, we reset the expand on hover timer when the user clicks on
+  // a tab to give them time to exit the tab strip before triggering the expand
+  // on hover state. This class listens for those click events to restart the
+  // timer.
+  class ClickEventHandler : public ui::EventHandler {
+   public:
+    explicit ClickEventHandler(VerticalTabStripRegionView* region_view);
+    ClickEventHandler(const ClickEventHandler&) = delete;
+    ClickEventHandler& operator=(const ClickEventHandler&) = delete;
+    ~ClickEventHandler() override = default;
+
+    // ui::EventHandler:
+    void OnMouseEvent(ui::MouseEvent* event) override;
+
+   private:
+    raw_ptr<VerticalTabStripRegionView> region_view_;
+  };
+
+  // Handles reporting performance metrics for each side panel animation. This
+  // needs to be created per animation and the metrics are emitted during
+  // destruction of the the object.
+  class AnimationPerfReporter;
 
   // Used to create and destroy locks for the expand on hover state.
   friend class VerticalTabStripExpandOnHoverLock;
+
+  void HandleMouseExited();
 
   views::View* SetTabStripView(std::unique_ptr<views::View> view);
   void ClearTabStripView(views::View* view);
@@ -233,7 +266,12 @@ class VerticalTabStripRegionView final
   void OnChildrenRemoved();
   void OnChildMoved();
 
-  void UpdateExpandOnHoverState();
+  void OnExpandOnHoverEnabledChanged(bool enabled);
+  void UpdateExpandOnHoverState(std::optional<bool> hovered = std::nullopt);
+  void RestartExpandOnHoverTimer(const base::TimeDelta& delay);
+  void OnMouseVelocityHeuristicInterval();
+  void CalculateMouseVelocityForExpandOnHover();
+  void ResetExpandOnHoverTimers();
   void AnimateExpandOnHover(bool expand);
 
   void RegisterExpandOnHoverLock(VerticalTabStripExpandOnHoverLock* lock);
@@ -291,9 +329,11 @@ class VerticalTabStripRegionView final
   raw_ptr<actions::ActionItem> root_action_item_ = nullptr;
   std::unique_ptr<TabHoverCardController> hover_card_controller_;
   std::unique_ptr<HoverTabSelector> hover_tab_selector_;
+  std::unique_ptr<AnimationPerfReporter> animation_perf_reporter_;
 
-  base::CallbackListSubscription collapsed_state_will_change_subscription_;
   base::CallbackListSubscription collapsed_state_changed_subscription_;
+  std::optional<base::CallbackListSubscription>
+      expand_on_hover_enabled_changed_subscription_;
   base::CallbackListSubscription paint_as_active_subscription_;
   std::optional<base::CallbackListSubscription> on_children_added_subscription_;
   std::optional<base::CallbackListSubscription>
@@ -324,12 +364,19 @@ class VerticalTabStripRegionView final
 
   base::OneShotTimer expand_on_hover_timer_;
   bool is_expanded_on_hover_ = false;
+  std::optional<base::TimeTicks> expand_on_hover_start_time_;
+  base::RetainingOneShotTimer expand_on_hover_heuristic_timer_;
+  std::optional<gfx::Point> point_at_expand_on_hover_timer_start_;
+  std::optional<base::TimeTicks> time_at_expand_on_hover_timer_start_;
+  int expand_on_hover_heuristic_samples_ = 0;
 
   // Given that both lock counters are non-zero, force_collapse_lock_count_ will
   // always take precedence.
   int force_collapse_lock_count_ = 0;
+  int keep_current_state_lock_count_ = 0;
   int keep_expanded_lock_count_ = 0;
   std::unique_ptr<ExpandOnHoverLock> omnibox_open_lock_;
+  std::unique_ptr<ExpandOnHoverLock> link_drag_lock_;
   base::flat_set<raw_ptr<VerticalTabStripExpandOnHoverLock>> hover_locks_;
 
   std::unique_ptr<TabHoverCardController::ScopedHideHoverCardLock>
@@ -339,6 +386,10 @@ class VerticalTabStripRegionView final
   std::optional<base::TimeTicks> new_tab_button_pressed_start_time_;
 
   RegionViewFocusListener focus_listener_{this};
+  ClickEventHandler click_handler_{this};
+
+  // The mouse exit event debounce timer.
+  base::OneShotTimer mouse_exit_timer_;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_VERTICAL_TAB_STRIP_REGION_VIEW_H_

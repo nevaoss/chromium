@@ -270,6 +270,31 @@ TEST_F(ViewAccessibilityTest, ViewUsesChildViewSelected) {
             data_2.GetBoolAttribute(ax::mojom::BoolAttribute::kSelected));
 }
 
+TEST_F(ViewAccessibilityTest, SetIsSelectedFiresSelectionEvents) {
+  auto widget = CreateTestWidget(Widget::InitParams::CLIENT_OWNS_WIDGET);
+  auto* listbox = widget->SetContentsView(std::make_unique<TestView>());
+  auto* option = listbox->AddChildView(std::make_unique<TestView>());
+  listbox->GetViewAccessibility().SetRole(ax::mojom::Role::kListBox);
+  option->GetViewAccessibility().SetRole(ax::mojom::Role::kListBoxOption);
+
+  std::vector<ax::mojom::Event> listbox_events;
+  CollectEvents(listbox, &listbox_events);
+  std::vector<ax::mojom::Event> option_events;
+  CollectEvents(option, &option_events);
+
+  option->GetViewAccessibility().SetIsSelected(true);
+  EXPECT_TRUE(HasEvent(option_events, ax::mojom::Event::kSelection));
+  EXPECT_TRUE(
+      HasEvent(listbox_events, ax::mojom::Event::kSelectedChildrenChanged));
+
+  listbox_events.clear();
+  option_events.clear();
+  option->GetViewAccessibility().SetIsSelected(false);
+  EXPECT_TRUE(HasEvent(option_events, ax::mojom::Event::kSelection));
+  EXPECT_TRUE(
+      HasEvent(listbox_events, ax::mojom::Event::kSelectedChildrenChanged));
+}
+
 TEST_F(ViewAccessibilityTest, ViewUsesChildViewEditable) {
   base::CallbackListSubscription editable_changed_subscription_ =
       child_view()->GetViewAccessibility().AddStateChangedCallback(
@@ -781,28 +806,55 @@ TEST_F(ViewAccessibilityTest,
             child_events.end());
 }
 
-TEST_F(ViewAccessibilityTest, GetFocusedDescendantReturnsActiveDescendantView) {
+// GetFocusedDescendant should NOT redirect to real view active descendants.
+// Redirecting accFocus to a real view causes get_accState to report focused=0
+// on the container, breaking screen readers like JAWS. Real view active
+// descendants are communicated via kActiveDescendantChanged events instead.
+TEST_F(ViewAccessibilityTest,
+       GetFocusedDescendantDoesNotRedirectForRealViewActiveDescendant) {
   auto widget = CreateTestWidget(Widget::InitParams::CLIENT_OWNS_WIDGET);
   auto* contents = widget->SetContentsView(std::make_unique<TestView>());
   auto* child = contents->AddChildView(std::make_unique<TestView>());
 
   contents->GetViewAccessibility().SetActiveDescendant(*child);
 
-  EXPECT_EQ(child->GetViewAccessibility().GetNativeObject(),
+  EXPECT_EQ(contents->GetViewAccessibility().GetNativeObject(),
+            contents->GetViewAccessibility().GetFocusedDescendant());
+}
+
+// GetFocusedDescendant SHOULD redirect to virtual view active descendants.
+// Virtual views have no independent platform focus and rely on the parent's
+// GetFocusedDescendant to indicate which virtual child has a11y focus.
+TEST_F(ViewAccessibilityTest,
+       GetFocusedDescendantRedirectsForVirtualViewActiveDescendant) {
+  auto widget = CreateTestWidget(Widget::InitParams::CLIENT_OWNS_WIDGET);
+  auto* contents = widget->SetContentsView(std::make_unique<TestView>());
+  auto virtual_child = std::make_unique<AXVirtualView>();
+  AXVirtualView* virtual_child_ptr = virtual_child.get();
+  contents->GetViewAccessibility().AddVirtualChildView(
+      std::move(virtual_child));
+
+  contents->GetViewAccessibility().SetActiveDescendant(*virtual_child_ptr);
+
+  EXPECT_EQ(virtual_child_ptr->GetNativeObject(),
+            contents->GetViewAccessibility().GetFocusedDescendant());
+
+  contents->GetViewAccessibility().ClearActiveDescendant();
+  EXPECT_EQ(contents->GetViewAccessibility().GetNativeObject(),
             contents->GetViewAccessibility().GetFocusedDescendant());
 }
 
 TEST_F(ViewAccessibilityTest,
-       GetFocusedDescendantFallsBackWhenActiveDescendantDestroyed) {
+       GetFocusedDescendantAfterRealViewActiveDescendantDestroyed) {
   auto widget = CreateTestWidget(Widget::InitParams::CLIENT_OWNS_WIDGET);
   auto* contents = widget->SetContentsView(std::make_unique<TestView>());
   auto* child = contents->AddChildView(std::make_unique<TestView>());
 
   contents->GetViewAccessibility().SetActiveDescendant(*child);
-  EXPECT_EQ(child->GetViewAccessibility().GetNativeObject(),
+  EXPECT_EQ(contents->GetViewAccessibility().GetNativeObject(),
             contents->GetViewAccessibility().GetFocusedDescendant());
 
-  // Destroy the active descendant and ensure focus falls back to the owner.
+  // Destroying the active descendant should not crash or change behavior.
   contents->RemoveChildViewT(child);
   EXPECT_EQ(contents->GetViewAccessibility().GetNativeObject(),
             contents->GetViewAccessibility().GetFocusedDescendant());
@@ -1250,6 +1302,26 @@ TEST_F(ViewAccessibilityTest, LiveRegionOffDoesNotFireEvents) {
   fired_events.clear();
   contents->GetViewAccessibility().SetName("Updated");
   EXPECT_FALSE(HasEvent(fired_events, ax::mojom::Event::kLiveRegionChanged));
+}
+
+TEST_F(ViewAccessibilityTest, SetIsEnabled_FiresEnabledChangedEvent) {
+  auto widget = CreateTestWidget(Widget::InitParams::CLIENT_OWNS_WIDGET);
+  auto* contents = widget->SetContentsView(std::make_unique<TestView>());
+
+  std::vector<ax::mojom::Event> fired_events;
+  CollectEvents(contents, &fired_events);
+
+  contents->GetViewAccessibility().SetIsEnabled(false);
+  EXPECT_TRUE(HasEvent(fired_events, ax::mojom::Event::kEnabledChanged));
+
+  fired_events.clear();
+  contents->GetViewAccessibility().SetIsEnabled(true);
+  EXPECT_TRUE(HasEvent(fired_events, ax::mojom::Event::kEnabledChanged));
+
+  // Setting the same value should not fire again.
+  fired_events.clear();
+  contents->GetViewAccessibility().SetIsEnabled(true);
+  EXPECT_FALSE(HasEvent(fired_events, ax::mojom::Event::kEnabledChanged));
 }
 
 }  // namespace views::test

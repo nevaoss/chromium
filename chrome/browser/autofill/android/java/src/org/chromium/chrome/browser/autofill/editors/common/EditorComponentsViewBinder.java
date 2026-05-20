@@ -9,8 +9,11 @@ import static org.chromium.chrome.browser.autofill.editors.common.EditorComponen
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NonEditableTextProperties.ICON;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.IMPORTANT_FOR_ACCESSIBILITY;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_TEXT;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.NOTICE_VISIBLE;
 import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.SHOW_BACKGROUND;
+import static org.chromium.chrome.browser.autofill.editors.common.EditorComponentsProperties.NoticeProperties.TEXT_APPEARANCE;
 
+import android.text.method.LinkMovementMethod;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -57,6 +60,7 @@ public class EditorComponentsViewBinder {
     public static void bindNoticeTextView(PropertyModel model, TextView view, PropertyKey key) {
         if (key == NOTICE_TEXT) {
             view.setText(model.get(NOTICE_TEXT));
+            view.setMovementMethod(LinkMovementMethod.getInstance());
         } else if (key == SHOW_BACKGROUND) {
             view.setBackgroundResource(
                     model.get(SHOW_BACKGROUND) ? R.drawable.autofill_editor_notice_background : 0);
@@ -65,6 +69,10 @@ public class EditorComponentsViewBinder {
                     model.get(IMPORTANT_FOR_ACCESSIBILITY)
                             ? View.IMPORTANT_FOR_ACCESSIBILITY_YES
                             : View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        } else if (key == NOTICE_VISIBLE) {
+            view.setVisibility(model.get(NOTICE_VISIBLE) ? View.VISIBLE : View.GONE);
+        } else if (key == TEXT_APPEARANCE && model.get(TEXT_APPEARANCE) > 0) {
+            view.setTextAppearance(model.get(TEXT_APPEARANCE));
         } else {
             assert false : "Unhandled update to property:" + key;
         }

@@ -36,12 +36,11 @@ import org.chromium.chrome.browser.privacy_sandbox.PrivacySandboxBridge;
 import org.chromium.chrome.browser.privacy_sandbox.PrivacySandboxBridgeJni;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
-import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 
 /** Tests for {@link DoneFragment} */
 @RunWith(BaseRobolectricTestRunner.class)
-@EnableFeatures({ChromeFeatureList.PRIVACY_SANDBOX_AD_TOPICS_CONTENT_PARITY})
+@DisableFeatures({ChromeFeatureList.PRIVACY_SANDBOX_AD_PRIVACY_UX_DEPRECATION})
 public class DoneFragmentTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -50,7 +49,7 @@ public class DoneFragmentTest {
     @Mock private IdentityManager mIdentityManager;
     @Mock private PrivacySandboxBridge.Natives mPrivacySandboxBridge;
 
-    private FragmentScenario mScenario;
+    private FragmentScenario<DoneFragment> mScenario;
     private DoneFragment mFragment;
     private View mPsButton;
     private View mWaaButton;
@@ -87,7 +86,7 @@ public class DoneFragmentTest {
     }
 
     private void setSignedInState(boolean isSignedIn) {
-        when(mIdentityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(isSignedIn);
+        when(mIdentityManager.hasPrimaryAccount()).thenReturn(isSignedIn);
     }
 
     private void setPrivacySandboxState(boolean isRestricted, boolean isRestrictedNoticeEnabled) {
@@ -143,6 +142,19 @@ public class DoneFragmentTest {
     }
 
     @Test
+    @EnableFeatures({ChromeFeatureList.PRIVACY_SANDBOX_AD_PRIVACY_UX_DEPRECATION})
+    public void testPSSectionNotVisibleWhenDeprecationFeatureEnabled() {
+        setPrivacySandboxState(false, false);
+        initFragment();
+
+        View psHeading = mFragment.getView().findViewById(R.id.ps_heading);
+        View psExplanation = mFragment.getView().findViewById(R.id.ps_explanation);
+        assertFalse(mPsButton.isShown());
+        assertFalse(psHeading.isShown());
+        assertFalse(psExplanation.isShown());
+    }
+
+    @Test
     public void testWaaButtonVisibleWhenSignedIn() {
         setSignedInState(true);
         initFragment();
@@ -167,17 +179,5 @@ public class DoneFragmentTest {
                 ApplicationProvider.getApplicationContext()
                         .getString(R.string.privacy_guide_privacy_sandbox_description_ad_topics);
         assertEquals(mPrivacySandboxDescriptionText, privacySandboxDescriptionAdTopicsString);
-    }
-
-    @Test
-    @DisableFeatures({ChromeFeatureList.PRIVACY_SANDBOX_AD_TOPICS_CONTENT_PARITY})
-    public void testPrivacySandboxDescriptionIsDisplayedWhenAdTopicsIsDisabled() {
-        setPrivacySandboxState(false, false);
-        initFragment();
-
-        String privacySandboxDescriptionString =
-                ApplicationProvider.getApplicationContext()
-                        .getString(R.string.privacy_guide_privacy_sandbox_description);
-        assertEquals(mPrivacySandboxDescriptionText, privacySandboxDescriptionString);
     }
 }

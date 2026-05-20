@@ -32,6 +32,7 @@
 #import "ios/chrome/browser/autofill/model/form_suggestion_client.h"
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/form_observer_helper.h"
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/manual_fill_credential.h"
+#import "ios/chrome/browser/autofill/ui_bundled/manual_fill/manual_fill_virtual_card_cache.h"
 #import "ios/chrome/browser/passwords/model/password_tab_helper.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/public/commands/security_alert_commands.h"
@@ -77,9 +78,6 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
 // hardware for authentication is available.
 @property(nonatomic, strong) ReauthenticationModule* reauthenticationModule;
 
-// The WebStateList with the relevant active web state for the injection.
-@property(nonatomic, assign) WebStateList* webStateList;
-
 // YES if the last focused element is secure within its web frame. To be secure
 // means the web is HTTPS and the URL is trusted.
 @property(nonatomic, assign, getter=isLastFocusedElementSecure)
@@ -109,6 +107,9 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
   // given `webState`. This is there to solve a dependency cycle between model/
   // and ui_bundled/.
   AutofillProviderGetter _autofillProviderGetter;
+
+  // The WebStateList with the relevant active web state for the injection.
+  base::WeakPtr<WebStateList> _webStateList;
 }
 
 - (instancetype)
@@ -119,7 +120,7 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
     autofillProviderGetter:(AutofillProviderGetter)autofillProviderGetter {
   self = [super init];
   if (self) {
-    _webStateList = webStateList;
+    _webStateList = webStateList->AsWeakPtr();
     _securityAlertHandler = securityAlertHandler;
     _formHelper =
         [[FormObserverHelper alloc] initWithWebStateList:webStateList];
@@ -195,9 +196,10 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
                       shouldReauth:(BOOL)shouldReauth {
   if (shouldReauth && [self.reauthenticationModule canAttemptReauth]) {
     NSString* reason = l10n_util::GetNSString(IDS_IOS_AUTOFILL_REAUTH_REASON);
+    __weak __typeof(self) weakSelf = self;
     auto completionHandler = ^(ReauthenticationResult result) {
       if (result != ReauthenticationResult::kFailure) {
-        [self fillFormWithCredential:credential];
+        [weakSelf fillFormWithCredential:credential];
       }
     };
 
@@ -226,15 +228,20 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
                 andSetParams:std::nullopt
                     provider:[self providerForSuggestion:formSuggestion]];
     [self.formSuggestionClient didSelectSuggestion:decoratedSuggestion
-                                           atIndex:index];
+                                           atIndex:index
+                                        completion:nil];
   } else {
     [self.formSuggestionClient didSelectSuggestion:formSuggestion
-                                           atIndex:index];
+                                           atIndex:index
+                                        completion:nil];
   }
 }
 
 - (BOOL)isActiveFormAPasswordForm {
-  web::WebState* activeWebState = self.webStateList->GetActiveWebState();
+  if (!_webStateList) {
+    return NO;
+  }
+  web::WebState* activeWebState = _webStateList->GetActiveWebState();
   if (!activeWebState) {
     return NO;
   }
@@ -251,12 +258,25 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
   return observedForm != nullptr;
 }
 
+- (url::Origin)activeWebFrameOrigin {
+  if (!_webStateList) {
+    return url::Origin();
+  }
+  web::WebState* activeWebState = _webStateList->GetActiveWebState();
+  web::WebFrame* frame = activeWebState
+                             ? [self activeWebFrameFromWebState:activeWebState]
+                             : nullptr;
+  return frame ? frame->GetSecurityOrigin() : url::Origin();
+}
+
 #pragma mark - FormActivityObserver
 
 - (void)webState:(web::WebState*)webState
     didRegisterFormActivity:(const autofill::FormActivityParams&)params
                     inFrame:(web::WebFrame*)frame {
-  if (params.type != "focus") {
+  // Ignore non-user triggered events so page JS can't control which fields
+  // receive data.
+  if (params.type != "focus" || !params.has_user_gesture) {
     return;
   }
   _lastFocusedElementParams = params;
@@ -283,7 +303,10 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
 
 // Injects the passed string to the active field and jumps to the next field.
 - (void)fillLastSelectedFieldWithString:(NSString*)string {
-  web::WebState* activeWebState = self.webStateList->GetActiveWebState();
+  if (!_webStateList) {
+    return;
+  }
+  web::WebState* activeWebState = _webStateList->GetActiveWebState();
   if (!activeWebState) {
     return;
   }
@@ -298,9 +321,10 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
   data.Set("renderer_id",
            static_cast<int>([self lastFocusedElementUniqueID].value()));
   data.Set("value", base::SysNSStringToUTF16(string));
+  __weak __typeof(self) weakSelf = self;
   autofill::AutofillJavaScriptFeature::GetInstance()->FillActiveFormField(
       activeWebFrame, std::move(data), base::BindOnce(^(BOOL success) {
-        [self jumpToNextField];
+        [weakSelf jumpToNextField];
       }));
 }
 
@@ -308,7 +332,10 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
 - (void)jumpToNextField {
   FormInputAccessoryViewHandler* handler =
       [[FormInputAccessoryViewHandler alloc] init];
-  handler.webState = self.webStateList->GetActiveWebState();
+  if (!_webStateList) {
+    return;
+  }
+  handler.webState = _webStateList->GetActiveWebState();
   [handler setLastFocusFormActivityWebFrameID:
                base::SysUTF8ToNSString(self.lastFocusedElementFrameIdentifier)];
   [handler selectNextElementWithoutButtonPress];
@@ -317,7 +344,10 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
 // Fills the current form with the given `credential`. Only works if the current
 // form is a password form, otherwise it's a no-op.
 - (void)fillFormWithCredential:(ManualFillCredential*)credential {
-  web::WebState* activeWebState = self.webStateList->GetActiveWebState();
+  if (!_webStateList) {
+    return;
+  }
+  web::WebState* activeWebState = _webStateList->GetActiveWebState();
   if (!activeWebState) {
     return;
   }
@@ -394,6 +424,7 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
   [formHelper fillPasswordFormWithFillData:fillData
                                    inFrame:activeWebFrame
                           triggeredOnField:[self lastFocusedElementUniqueID]
+                         triggerSubmission:NO
                          completionHandler:^(BOOL success) {
                            if (success) {
                              [weakSelf announceFormWasFilled];
@@ -449,7 +480,10 @@ bool IsSupportedSuggestion(FormSuggestion* suggestion) {
 - (id<FormSuggestionProvider>)providerForSuggestion:
     (FormSuggestion*)suggestion {
   if (IsSupportedSuggestion(suggestion)) {
-    return _autofillProviderGetter.Run(self.webStateList->GetActiveWebState());
+    if (!_webStateList) {
+      return nil;
+    }
+    return _autofillProviderGetter.Run(_webStateList->GetActiveWebState());
   }
 
   // The manual fill injector should not use Suggestion objects for any other

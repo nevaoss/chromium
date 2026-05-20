@@ -55,8 +55,8 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_features.h"
 #include "extensions/common/extension_usage.h"
+#include "extensions/common/manifest_handlers/manifest_url_handlers.h"
 #include "extensions/common/manifest_handlers/options_page_info.h"
-#include "extensions/common/manifest_url_handlers.h"
 #include "extensions/common/permissions/api_permission.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
@@ -70,13 +70,17 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/extensions/api/side_panel/side_panel_service.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/extensions/extension_side_panel_utils.h"
 #include "chrome/browser/ui/extensions/extensions_container.h"
+#include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"   // nogncheck
 #include "chrome/browser/ui/side_panel/side_panel_entry_key.h"  // nogncheck
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"         // nogncheck
 #include "chrome/common/extensions/api/side_panel.h"
+#include "ui/base/interaction/element_identifier.h"
+#include "ui/base/interaction/element_tracker.h"
 #endif
 
 static_assert(BUILDFLAG(ENABLE_EXTENSIONS_CORE));
@@ -529,6 +533,19 @@ void ExtensionContextMenuModel::ExecuteCommand(int command_id,
       RecordUkmForExtension(extension->url(),
                             visible ? ExtensionUsageAction::kPinned
                                     : ExtensionUsageAction::kUnpinned);
+#if !BUILDFLAG(IS_ANDROID)
+      if (visible) {
+        ui::ElementContext context =
+            BrowserElements::From(browser_)->GetContext();
+        ui::TrackedElement* const browser_element =
+            ui::ElementTracker::GetElementTracker()->GetUniqueElement(
+                kBrowserViewElementId, context);
+        if (browser_element) {
+          ui::ElementTracker::GetFrameworkDelegate()->NotifyCustomEvent(
+              browser_element, kExtensionsMenuPinExtensionsEventId);
+        }
+      }
+#endif
       break;
     }
     case UNINSTALL: {
@@ -608,7 +625,7 @@ void ExtensionContextMenuModel::ExecuteCommand(int command_id,
       // Do nothing if the extension cannot have its site permissions updated.
       // Page access option should only be enabled when the extension site
       // permissions can be changed. However, sometimes the command still gets
-      // invoked (crbug.com/1468151). Thus, we exit early to prevent any
+      // invoked (crbug.com/40068180). Thus, we exit early to prevent any
       // crashes.
       if (!PermissionsManager::Get(profile_)->CanAffectExtension(*extension)) {
         return;

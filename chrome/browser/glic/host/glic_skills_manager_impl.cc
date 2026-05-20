@@ -11,11 +11,11 @@
 #include "chrome/browser/skills/skills_service_factory.h"
 #include "chrome/browser/skills/skills_update_observer.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
-#include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
 #include "chrome/common/webui_url_constants.h"
 #include "components/skills/features.h"
@@ -37,7 +37,7 @@ GlicSkillsManagerImpl::~GlicSkillsManagerImpl() = default;
 
 void GlicSkillsManagerImpl::UpdateSkillPreviews(
     std::optional<tabs::TabInterface*> updated_tab) {
-  if (!host_->IsReady()) {
+  if (!host_->IsWebClientConnected()) {
     return;
   }
   auto* focused_tab = host_->sharing_manager().GetFocusedTabData().focus();
@@ -119,8 +119,16 @@ void GlicSkillsManagerImpl::LaunchSkillsDialog(
 }
 
 void GlicSkillsManagerImpl::ShowManageSkillsUi() {
-  const GURL skills_url = GURL(chrome::kChromeUISkillsURL)
-                              .Resolve(chrome::kChromeUISkillsYourSkillsPath);
+  ShowSkillsUiAtRelativePath(chrome::kChromeUISkillsYourSkillsPath);
+}
+
+void GlicSkillsManagerImpl::ShowBrowseSkillsUi() {
+  ShowSkillsUiAtRelativePath(chrome::kChromeUISkillsBrowsePath);
+}
+
+void GlicSkillsManagerImpl::ShowSkillsUiAtRelativePath(
+    const std::string& path) {
+  const GURL skills_url = GURL(chrome::kChromeUISkillsURL).Resolve(path);
   bool existing_skills_tab_found = false;
 
   Profile* host_profile = host_->profile();

@@ -1205,6 +1205,10 @@ void WebContentsViewAura::StartDragging(
   aura::Window* root_window = GetNativeView()->GetRootWindow();
   RenderWidgetHostImpl* const source_rwh =
       static_cast<RenderWidgetHostImpl*>(source_rfh.GetRenderWidgetHost());
+  // Disallow reentrant drag which could be an attempt to exploit drag state.
+  if (drag_security_info_.did_initiate()) {
+    return;
+  }
   if (!aura::client::GetDragDropClient(root_window)) {
     web_contents_->SystemDragEnded(source_rwh);
     return;
@@ -1221,24 +1225,7 @@ void WebContentsViewAura::StartDragging(
 
   drag_security_info_.OnDragInitiated(source_rwh, drop_data);
 
-  GURL source_url = web_contents_->GetPrimaryMainFrame()->GetLastCommittedURL();
-  ui::DataTransferEndpoint data_endpoint(
-      source_url,
-      {.notify_if_restricted = true,
-       .off_the_record = web_contents_->GetBrowserContext()->IsOffTheRecord()});
-
-  ClipboardEndpoint source_endpoint(
-      base::optional_ref<const ui::DataTransferEndpoint>(data_endpoint),
-      base::BindRepeating(
-          [](GlobalRenderFrameHostId rfh_id) -> BrowserContext* {
-            auto* rfh = RenderFrameHost::FromID(rfh_id);
-            if (!rfh) {
-              return nullptr;
-            }
-            return rfh->GetBrowserContext();
-          },
-          web_contents_->GetPrimaryMainFrame()->GetGlobalId()),
-      *web_contents_->GetPrimaryMainFrame());
+  ClipboardEndpoint source_endpoint = CreateClipboardEndpoint(source_rfh);
 
   // Synchronous policy check.
   // If drag is not allowed, it means the policy blocked the action.

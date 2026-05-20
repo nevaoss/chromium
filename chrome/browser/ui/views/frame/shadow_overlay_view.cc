@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "base/functional/bind.h"
+#include "base/i18n/rtl.h"
 #include "chrome/browser/ui/animation/browser_animation_controller.h"
 #include "chrome/browser/ui/animation/browser_animation_types.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
@@ -31,11 +32,13 @@
 class ShadowOverlayView::CornerView : public views::View {
   METADATA_HEADER(CornerView, views::View)
  public:
+  // Which corner this is. Numeric values are assigned to make RTL conversion
+  // simpler (do not reorder).
   enum class Corner {
-    kTopLeading,
-    kTopTrailing,
-    kBottomLeading,
-    kBottomTrailing
+    kTopLeading = 0,
+    kTopTrailing = 1,
+    kBottomLeading = 2,
+    kBottomTrailing = 3
   };
 
   // Because of subpixel rounding issues between the overlay and the content
@@ -65,6 +68,13 @@ class ShadowOverlayView::CornerView : public views::View {
   }
 
  private:
+  static Corner MaybeMirrorForRtl(Corner corner) {
+    if (base::i18n::IsRTL()) {
+      return static_cast<Corner>(static_cast<int>(corner) ^ 1);
+    }
+    return corner;
+  }
+
   // Returns the clip path for the corner.
   //
   // The contents need to be drawn by `ThemedBackground` to ensure that
@@ -91,7 +101,7 @@ class ShadowOverlayView::CornerView : public views::View {
     clip_area.Outset(kCornerSubpixelOverpaint);
 
     SkPathBuilder path;
-    switch (corner_) {
+    switch (MaybeMirrorForRtl(corner_)) {
       case Corner::kTopLeading:
         path.moveTo(clip_area.x(), clip_area.y());
         path.lineTo(visible_area.right(), clip_area.y());
@@ -186,7 +196,7 @@ ShadowOverlayView::ShadowOverlayView(BrowserView& browser_view)
   animation_subscription_ =
       BrowserAnimationController::From(browser_view_->browser())
           ->Subscribe(
-              SidePanelAnimations::kToolbarHeightSidePanel,
+              SidePanelAnimations::kSidePanel,
               base::BindRepeating(&ShadowOverlayView::OnAnimationProgressed,
                                   base::Unretained(this)));
 }
@@ -263,12 +273,12 @@ double ShadowOverlayView::GetShadowValue() const {
   // Get the current animation value (if any).
   const auto animation_value =
       BrowserAnimationController::From(browser_view_->browser())
-          ->GetCurrentValue(SidePanelAnimations::kToolbarHeightSidePanel,
+          ->GetCurrentValue(SidePanelAnimations::kSidePanel,
                             SidePanelAnimations::kMainAreaShadow);
   if (animation_value) {
     return *animation_value;
   }
-  if (const auto* panel = browser_view_->toolbar_height_side_panel()) {
+  if (const auto* panel = browser_view_->side_panel()) {
     return panel->state() == SidePanel::State::kOpen ? 1.0 : 0.0;
   }
   return 0.0;

@@ -5,11 +5,16 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_TOOLBAR_WEBUI_TOOLBAR_WEB_VIEW_H_
 #define CHROME_BROWSER_UI_VIEWS_TOOLBAR_WEBUI_TOOLBAR_WEB_VIEW_H_
 
+#include <optional>
+#include <string>
+#include <vector>
+
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
+#include "chrome/browser/ui/views/toolbar/webui_avatar_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/webui_back_forward_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_home_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_pinned_toolbar_actions.h"
@@ -31,10 +36,50 @@
 class BrowserWindowInterface;
 class WebUILocationBar;
 class WebUIToolbarUI;
+class WebUIToolbarInternalWebView;
 
 namespace views {
 class WebView;
 }  // namespace views
+
+// An interface to allow toolbar controls to communicate with the parent
+// WebUIToolbarWebView.
+class WebUIToolbarControlDelegate {
+ public:
+  virtual ~WebUIToolbarControlDelegate() = default;
+
+  virtual BrowserWindowInterface* GetBrowser() = 0;
+  virtual chrome::BrowserCommandController* GetCommandController() = 0;
+  virtual views::View* GetView() = 0;
+
+  // Indicate preferred size of a toolbar control has changed.
+  virtual void OnPreferredSizeChanged() = 0;
+
+  // Indicates a toolbar control's state has changed.
+  virtual void OnReloadControlStateChanged(
+      toolbar_ui_api::mojom::ReloadControlStatePtr state) = 0;
+  virtual void OnSplitTabsControlStateChanged(
+      toolbar_ui_api::mojom::SplitTabsControlStatePtr state) = 0;
+  virtual void OnBackForwardStateChanged() = 0;
+  virtual void OnHomeControlStateChanged(
+      toolbar_ui_api::mojom::HomeControlStatePtr state) = 0;
+  virtual void OnOmniboxViewStateChanged(
+      toolbar_ui_api::mojom::OmniboxViewStatePtr state) = 0;
+  virtual void OnLocationBarFlagsChanged(
+      toolbar_ui_api::mojom::LocationBarFlagsPtr state) = 0;
+  virtual void OnLhsChipsStateChanged(
+      toolbar_ui_api::mojom::LhsChipsStatePtr state) = 0;
+  virtual void OnPinnedToolbarActionsStateChanged(
+      std::vector<toolbar_ui_api::mojom::PinnedToolbarActionStatePtr>
+          state) = 0;
+  virtual void OnContentSettingChanged(
+      std::vector<toolbar_ui_api::mojom::ContentSettingImageStatePtr>
+          state) = 0;
+
+  // Read the latest pinned toolbar actions state.
+  virtual const std::vector<toolbar_ui_api::mojom::PinnedToolbarActionStatePtr>&
+  GetPinnedToolbarActionsState() const = 0;
+};
 
 // A view that displays one or more adjacent controls on the toolbar as a single
 // WebView. Which controls are displayed is controlled by the IsWebUI*Enabled()
@@ -47,7 +92,8 @@ class WebUIToolbarWebView
       public toolbar_ui_api::ToolbarUIService::ToolbarUIServiceDelegate,
       public browser_controls_api::BrowserControlsService::
           BrowserControlsServiceDelegate,
-      public WebUIToolbarUI::DependencyProvider {
+      public WebUIToolbarUI::DependencyProvider,
+      public WebUIToolbarControlDelegate {
   METADATA_HEADER(WebUIToolbarWebView, views::View)
 
  public:
@@ -60,9 +106,10 @@ class WebUIToolbarWebView
   ~WebUIToolbarWebView() override;
 
   ReloadControl* GetReloadControl();
-  PinnedToolbarActions* GetPinnedToolbarActions() {
+  WebUIPinnedToolbarActions* GetPinnedToolbarActions() {
     return &pinned_toolbar_actions_;
   }
+  AvatarToolbarButtonInterface* GetAvatarToolbarButtonInterface();
 
   void SetBackButtonLeadingMargin(int margin);
   void SetBackForwardEnabled(int command_id, bool enabled);
@@ -84,15 +131,35 @@ class WebUIToolbarWebView
   void HandleContextMenu(toolbar_ui_api::mojom::ContextMenuType menu_type,
                          const gfx::RectF& bounds_in_css_pixels,
                          ui::mojom::MenuSourceType source) override;
+  void ShowContentSettingsBubble(
+      ::toolbar_ui_api::mojom::ContentSettingImageType type,
+      toolbar_ui_api::mojom::ToolbarUIService::ShowContentSettingsBubbleCallback
+          callback) override;
   void OnPageInitialized() override;
   void InvokePinnedToolbarAction(
       toolbar_ui_api::mojom::PinnedToolbarAction action_id) override;
+  void OnLhsChipMousePressed(
+      toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
+  void OnLhsChipClicked(toolbar_ui_api::mojom::LhsChipIdentifier identifier,
+                        bool is_mouse_interaction) override;
+  void OnLhsChipPointerEntered(
+      toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
+  void OnLhsChipPointerExited(
+      toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
+  void OnLhsChipExpandAnimationEnded(
+      toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
+  void OnLhsChipCollapseAnimationEnded(
+      toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
+  void OnHomeButtonDropUrl(const GURL& url) override;
+  void OnHomeButtonDropFile(const gfx::PointF& drop_position) override;
+  void OnOmniboxAction(toolbar_ui_api::mojom::OmniboxActionPtr action) override;
 
   // BrowserControlsService::BrowserControlsServiceDelegate:
   void PermitLaunchUrl() override;
 
   // views::View:
   void AddedToWidget() override;
+  void OnThemeChanged() override;
   gfx::Size CalculatePreferredSize(
       const views::SizeBounds& available_size) const override;
 
@@ -107,7 +174,8 @@ class WebUIToolbarWebView
 
   void SetDidFirstNonEmptyPaintCallbackForTesting(base::OnceClosure callback);
   void SetTickClockForTesting(const base::TickClock* clock);
-  views::WebView* GetWebViewForTesting() { return web_view_; }
+  views::WebView* GetWebViewForTesting();
+  WebUIHomeControl* GetHomeControlForTesting() { return &home_control_; }
   bool IsPendingForTesting() const {
     return initialization_state_ == InitializationState::kPending;
   }
@@ -131,14 +199,41 @@ class WebUIToolbarWebView
                            RightClickHomeButton);
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewHomeButtonBrowserTest,
                            LongPressHomeButton);
+  FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewHomeButtonBrowserTest,
+                           PressAndDragDownHomeButton);
+  FRIEND_TEST_ALL_PREFIXES(WebUIToolbarButtonPressAndDragTest,
+                           PressAndDragDown);
+  FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewHomeButtonBrowserTest,
+                           DropFileOnHomeButtonAndUndo);
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewPixelBrowserTest,
                            BackForwardButtonsModifierClick);
-  friend WebUIReloadControl;
-  friend WebUISplitTabsControl;
-  friend WebUIBackForwardControl;
-  friend WebUIHomeControl;
-  friend WebUIPinnedToolbarActions;
-  friend WebUILocationBar;
+
+  // WebUIToolbarControlDelegate:
+  BrowserWindowInterface* GetBrowser() override;
+  chrome::BrowserCommandController* GetCommandController() override;
+  views::View* GetView() override;
+  void OnPreferredSizeChanged() override;
+  void OnReloadControlStateChanged(
+      toolbar_ui_api::mojom::ReloadControlStatePtr state) override;
+  void OnSplitTabsControlStateChanged(
+      toolbar_ui_api::mojom::SplitTabsControlStatePtr state) override;
+  void OnBackForwardStateChanged() override;
+  void OnHomeControlStateChanged(
+      toolbar_ui_api::mojom::HomeControlStatePtr state) override;
+  void OnOmniboxViewStateChanged(
+      toolbar_ui_api::mojom::OmniboxViewStatePtr state) override;
+  void OnLocationBarFlagsChanged(
+      toolbar_ui_api::mojom::LocationBarFlagsPtr state) override;
+  void OnLhsChipsStateChanged(
+      toolbar_ui_api::mojom::LhsChipsStatePtr state) override;
+  void OnPinnedToolbarActionsStateChanged(
+      std::vector<toolbar_ui_api::mojom::PinnedToolbarActionStatePtr> state)
+      override;
+  void OnContentSettingChanged(
+      std::vector<toolbar_ui_api::mojom::ContentSettingImageStatePtr> state)
+      override;
+  const std::vector<toolbar_ui_api::mojom::PinnedToolbarActionStatePtr>&
+  GetPinnedToolbarActionsState() const override;
 
   toolbar_ui_api::mojom::NavigationControlsStatePtr
   GetNavigationControlsState();
@@ -160,47 +255,25 @@ class WebUIToolbarWebView
 
   void SetInitializationState(InitializationState new_state);
 
-  chrome::BrowserCommandController* controller() { return controller_; }
   WebUIToolbarUI* GetWebUIToolbarUI();
-
-  // Called by friended controls to push state.
-  void OnReloadControlStateChanged(
-      toolbar_ui_api::mojom::ReloadControlStatePtr state);
-  void OnSplitTabsControlStateChanged(
-      toolbar_ui_api::mojom::SplitTabsControlStatePtr state);
-  void OnBackForwardStateChanged();
-  void OnHomeControlStateChanged(
-      toolbar_ui_api::mojom::HomeControlStatePtr state);
-  void OnOmniboxViewStateChanged(
-      toolbar_ui_api::mojom::OmniboxViewStatePtr state);
-  void OnLocationBarFlagsChanged(
-      toolbar_ui_api::mojom::LocationBarFlagsPtr state);
-  void OnPinnedToolbarActionsStateChanged(
-      std::vector<toolbar_ui_api::mojom::PinnedToolbarActionStatePtr> state);
 
   void OnTouchUiChanged();
   void PostPushNavigationState();
-  void PushNavigationState(uint64_t state_generation);
+  void PushNavigationState();
   toolbar_ui_api::mojom::BackForwardControlStatePtr GetBackForwardState() const;
 
   // The most recent NavigationControlsState, consisting of the state of all
   // controls managed by the toolbar. This may or may not have been sent to
   // `web_ui`. If this state has not yet been sent, then there must be a pending
-  // PushNavigationState() call, with a value of `current_state_generation_`.
+  // PushNavigationState() call.
   toolbar_ui_api::mojom::NavigationControlsState last_queued_state_;
-
-  // This is incremented each time `last_queued_state_` is updated. If it does
-  // not match the value passed to PushNavigationState(), then that method does
-  // nothing, and there should be another pending task to run
-  // PushNavigationState() with the current value.
-  uint64_t current_state_generation_ = 0;
 
   InitializationState initialization_state_ =
       InitializationState::kUninitialized;
 
   // The WebView displaying the toolbar. Initialized during construction, and
   // not modified afterwards. Cannot be null.
-  raw_ptr<views::WebView> web_view_;
+  raw_ptr<WebUIToolbarInternalWebView> web_view_;
 
   const raw_ptr<BrowserWindowInterface> browser_;
   const raw_ptr<chrome::BrowserCommandController> controller_;
@@ -212,6 +285,7 @@ class WebUIToolbarWebView
   WebUIReloadControl reload_control_;
   WebUISplitTabsControl split_tabs_control_;
   WebUIHomeControl home_control_;
+  WebUIAvatarToolbarButton avatar_control_;
   std::unique_ptr<WebUILocationBar> location_bar_;
   WebUIBackForwardControl back_control_;
   WebUIBackForwardControl forward_control_;
@@ -231,6 +305,14 @@ class WebUIToolbarWebView
 
   // Extra space to put before the back button, which is the first button.
   int back_button_leading_margin_ = 0;
+
+  // True if the WebContents was pre-warmed and injected.
+  bool is_preloaded_ = false;
+
+  // This WeakPtrFactory is used to keep tabs on pending state pushes, and then
+  // used to cancel them if the state is later updated again before we post a
+  // later PushNavigationState().
+  base::WeakPtrFactory<WebUIToolbarWebView> state_push_weak_ptr_factory_{this};
 
   base::WeakPtrFactory<WebUIToolbarWebView> weak_ptr_factory_{this};
 };

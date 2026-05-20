@@ -62,7 +62,8 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHDownloadSettingsFeature,
     &kIPHEphemeralTabFeature,
     &kIPHExploreSitesTileFeature,
-    &kIPHExtensionsManageFeature,
+    &kIPHExtensionsManageAppMenuFeature,
+    &kIPHExtensionsManageToolbarFeature,
     &kIPHFeedCardMenuFeature,
     &kIPHFeedHeaderMenuFeature,
     &kIPHFeedSwipeRefresh,
@@ -108,6 +109,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHSharingHubWebnotesStylizeFeature,
     &kIPHShoppingListMenuItemFeature,
     &kIPHShoppingListSaveFlowFeature,
+    &kIPHSiteControlsFeature,
     &kIPHTabGroupCreationDialogSyncTextFeature,
     &kIPHTabGroupsDragAndDropFeature,
     &kIPHTabGroupShareNoticeFeature,
@@ -132,10 +134,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHVideoTutorialNTPSummaryFeature,
     &kIPHVideoTutorialNTPVoiceSearchFeature,
     &kIPHVideoTutorialTryNowFeature,
-    &kIPHWebFeedAwarenessFeature,
-    &kIPHWebFeedFollowFeature,
-    &kIPHWebFeedPostFollowDialogFeature,
-    &kIPHWebFeedPostFollowDialogFeatureWithUIUpdate,
 // ALL_FEATURES_ANDROID_END
 // keep-sorted end
 #else
@@ -186,6 +184,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHiOSLensKeyboardFeature,
     &kIPHiOSLensOverlayEntrypointTipFeature,
     &kIPHiOSLensOverlayEscapeHatchTipFeature,
+    &kIPHiOSNewIAPromoFeature,
     &kIPHiOSOneTimeDefaultBrowserNotificationFeature,
     &kIPHiOSOverflowMenuCustomizationFeature,
     &kIPHIOSPageActionMenu,
@@ -263,7 +262,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHFocusHelpBubbleScreenReaderPromoFeature,
     &kIPHGlicPromoFeature,
     &kIPHGlicTrustFirstOnboardingShortcutSnoozePromoFeature,
-    &kIPHGlicTrustFirstOnboardingShortcutToastPromoFeature,
     &kIPHGlicTryItFeature,
     &kIPHGMCCastStartStopFeature,
     &kIPHGMCLocalMediaCastingFeature,
@@ -283,7 +281,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHPdfInkSignaturesFeature,
     &kIPHPdfSearchifyFeature,
     &kIPHPerformanceInterventionDialogFeature,
-    &kIPHPlusAddressFirstSaveFeature,
     &kIPHPowerBookmarksSidePanelFeature,
     &kIPHPriceInsightsPageActionIconLabelFeature,
     &kIPHPriceTrackingEmailConsentFeature,
@@ -294,6 +291,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHReadingListDiscoveryFeature,
     &kIPHReadingListEntryPointFeature,
     &kIPHReadingListInSidePanelFeature,
+    &kIPHReadingModeKeyboardShortcutFeature,
     &kIPHReadingModePageActionLabelFeature,
     &kIPHReadingModeSidePanelFeature,
     &kIPHShoppingCollectionFeature,
@@ -311,6 +309,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHTabGroupsSharedTabFeedbackFeature,
     &kIPHTabSearchComboButtonFeature,
     &kIPHTabSearchToolbarButtonFeature,
+    &kIPHVerticalTabsExpandOnHoverFeature,
     &kIPHVerticalTabstripTutorialFeature,
     &kIPHWebUiHelpBubbleTestFeature,
 // keep-sorted end
@@ -323,18 +322,19 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHAutofillAccountNameEmailSuggestionFeature,
     &kIPHAutofillAiOptInFeature,
     &kIPHAutofillAiValuablesFeature,
+    &kIPHAutofillAtMemoryFeature,
     &kIPHAutofillBnplAffirmOrZipSuggestionFeature,
     &kIPHAutofillBnplAffirmZipOrKlarnaSuggestionFeature,
     &kIPHAutofillCardInfoRetrievalSuggestionFeature,
     &kIPHAutofillCreditCardBenefitFeature,
     &kIPHAutofillDisabledVirtualCardSuggestionFeature,
+    &kIPHAutofillDownstreamCardAwarenessFeature,
     &kIPHAutofillEnableLoyaltyCardsFeature,
     &kIPHAutofillExternalAccountProfileSuggestionFeature,
     &kIPHAutofillHomeWorkProfileSuggestionFeature,
     &kIPHAutofillVirtualCardCVCSuggestionFeature,
     &kIPHAutofillVirtualCardSuggestionFeature,
     &kIPHCookieControlsFeature,
-    &kIPHPlusAddressCreateSuggestionFeature,
 // keep-sorted end
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) ||
@@ -358,6 +358,12 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHSupervisedUserProfileSigninFeature,
 // keep-sorted end
 #endif  // BUILDFLAG(IS_WIN) ||  BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+#if BUILDFLAG(IS_WIN)
+    // keep-sorted start case=no
+    &kIPHSearchPromotionFeature,
+// keep-sorted end
+#endif  // BUILDFLAG(IS_WIN)
 
 };
 }  // namespace

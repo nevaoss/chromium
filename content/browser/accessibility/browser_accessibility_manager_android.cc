@@ -306,15 +306,7 @@ void BrowserAccessibilityManagerAndroid::FireDocumentSelectionChangedEvent(
           static_cast<BrowserAccessibilityAndroid*>(
               GetFromAXNode(ax_tree()->root()));
       ClearNodeInfoCacheForGivenId(android_root_object->GetUniqueId());
-      if (selection.has_value()) {
-        wcax->HandleExtendedSelectionChanged(
-            android_root_object->GetUniqueId(),
-            selection->focus_object->GetUniqueId(), selection->focus_offset);
-      } else {
-        wcax->HandleExtendedSelectionChanged(
-            android_root_object->GetUniqueId(), ui::kAXAndroidInvalidViewId,
-            ui::kAXAndroidUndefinedSelectionIndex);
-      }
+      wcax->HandleTextSelectionChanged(android_root_object->GetUniqueId());
       return;
     }
   } else if (!selection.has_value()) {
@@ -325,6 +317,7 @@ void BrowserAccessibilityManagerAndroid::FireDocumentSelectionChangedEvent(
   }
 
   // Send event to the focus node.
+  CHECK(selection->focus_object);
   wcax->HandleTextSelectionChanged(selection->focus_object->GetUniqueId());
 }
 
@@ -421,6 +414,15 @@ void BrowserAccessibilityManagerAndroid::FireGeneratedEvent(
           ANDROID_ACCESSIBILITY_EVENT_CONTENT_CHANGE_TYPE_TEXT);
       break;
     }
+    case ui::AXEventGenerator::Event::INVALID_STATUS_CHANGED: {
+      if (base::FeatureList::IsEnabled(
+              features::kAccessibilityAriaInvalidAndErrorMessage)) {
+        wcax->HandleWindowContentChange(
+            android_node->GetUniqueId(),
+            ANDROID_ACCESSIBILITY_EVENT_CONTENT_CHANGE_TYPE_CONTENT_INVALID);
+      }
+      break;
+    }
     case ui::AXEventGenerator::Event::LIVE_REGION_CHANGED: {
       // When a change is made within a live region, this event is fired on the
       // root node of that live region. For atomic live regions, we should begin
@@ -448,10 +450,9 @@ void BrowserAccessibilityManagerAndroid::FireGeneratedEvent(
           wcax->HandleLiveRegionNodeChanged(android_node->GetUniqueId());
         }
       }
-      // TODO(crbug.com/470048610): When the Finch experiment for
-      // kAccessibilityAtomicLiveRegions is complete, we should convert these
-      // two if-statements into an if-else statement. However, for the
-      // experiment, we need both code paths to be preserved.
+      // TODO(crbug.com/507858294): Remove TYPE_ANNOUNCE and new live region
+      // behavior flags once stability has been reached in several stable
+      // releases.
       if (!base::FeatureList::IsEnabled(
               features::kAccessibilityDeprecateTypeAnnounce)) {
         // If we don't support WINDOW_CONTENT_CHANGED events BUT have not yet
@@ -523,6 +524,8 @@ void BrowserAccessibilityManagerAndroid::FireGeneratedEvent(
       break;
     }
     case ui::AXEventGenerator::Event::VALUE_IN_TEXT_FIELD_CHANGED:
+    case ui::AXEventGenerator::Event::VALUE_IN_SPIN_BUTTON_DECREMENTED:
+    case ui::AXEventGenerator::Event::VALUE_IN_SPIN_BUTTON_INCREMENTED:
       // Sometimes `RetargetForEvents` will walk up to the lowest platform leaf
       // and fire the same event on that node. However, in some rare cases the
       // leaf node might not be a text field. For example, in the unusual case
@@ -580,7 +583,6 @@ void BrowserAccessibilityManagerAndroid::FireGeneratedEvent(
     case ui::AXEventGenerator::Event::HIERARCHICAL_LEVEL_CHANGED:
     case ui::AXEventGenerator::Event::HIGHLIGHT_MARKER_CHANGED:
     case ui::AXEventGenerator::Event::IGNORED_CHANGED:
-    case ui::AXEventGenerator::Event::INVALID_STATUS_CHANGED:
     case ui::AXEventGenerator::Event::KEY_SHORTCUTS_CHANGED:
     case ui::AXEventGenerator::Event::LABELED_BY_CHANGED:
     case ui::AXEventGenerator::Event::LANGUAGE_CHANGED:
@@ -1038,9 +1040,16 @@ BrowserAccessibilityManagerAndroid::ConvertChromeSelectionPositionToAndroid(
   if (at_end_of_anchor) {
     offset++;
   }
-  return std::make_pair(static_cast<BrowserAccessibilityAndroid*>(
-                            GetFromAXNode(target_node->GetUnignoredParent())),
-                        offset);
+
+  BrowserAccessibilityAndroid* parent_node =
+      static_cast<BrowserAccessibilityAndroid*>(
+          GetFromAXNode(target_node->GetUnignoredParent()));
+  // TODO(crbug.com/498376490): Find a test case that triggers this behavior.
+  if (!parent_node) {
+    return std::nullopt;
+  }
+
+  return std::make_pair(parent_node, offset);
 }
 
 ui::BrowserAccessibility::AXPosition

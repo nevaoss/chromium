@@ -7,17 +7,12 @@ import './searchbox_input.js';
 import {html} from '//resources/lit/v3_0/lit.rollup.js';
 
 import type {SearchboxElement} from './searchbox.js';
-import {getHtml as getDropdownHtml} from './searchbox_searchbox_dropdown.html.js';
 
 export function getHtml(this: SearchboxElement) {
   // clang-format off
   return html`<!--_html_template_start_-->
 <div id="inputWrapper" @focusout="${this.onInputWrapperFocusout}"
-    @keydown="${this.onInputWrapperKeydown}"
-    @dragenter="${this.dragAndDropHandler?.handleDragEnter}"
-    @dragover="${this.dragAndDropHandler?.handleDragOver}"
-    @dragleave="${this.dragAndDropHandler?.handleDragLeave}"
-    @drop="${this.dragAndDropHandler?.handleDrop}">
+    @keydown="${this.onInputWrapperKeydown}">
   <cr-searchbox-input id="input"
       exportparts="searchbox-input"
       ?dropdown-is-visible="${this.dropdownIsVisible}"
@@ -28,21 +23,9 @@ export function getHtml(this: SearchboxElement) {
       searchbox-icon="${this.searchboxIcon_}"
       .selectedMatch="${this.selectedMatch}"
       ?input-has-matches="${this.hasMatches()}"
-      @focusin="${this.onInputFocus_}"
-      @searchbox-input-files-pasted="${this.onSearchboxInputFilesPasted_}"
+      @focusin="${this.onInputFocusin_}"
       @searchbox-input-text-updated="${this.onSearchboxInputTextUpdated_}"
       @input-focus-changed="${this.onInputFocusChanged}">
-    ${this.showThumbnail ? html`
-      <div id="thumbnailContainer" slot="thumbnail">
-        <cr-searchbox-thumbnail id="thumbnail"
-            thumbnail-url="${this.thumbnailUrl_}"
-            ?is-deletable="${this.isThumbnailDeletable_}"
-            @remove-thumbnail-click="${this.onRemoveThumbnailClick_}"
-            role="button" aria-label="${this.i18n('searchboxThumbnailLabel')}"
-            tabindex="${this.getThumbnailTabindex_()}">
-        </cr-searchbox-thumbnail>
-      </div>
-    ` : ''}
     ${this.shouldShowVoiceLens_(this.searchboxVoiceSearchEnabled_) ? html`
       <div slot="action-buttons" class="searchbox-icon-button-container voice">
         <button id="voiceSearchButton" class="searchbox-icon-button"
@@ -61,7 +44,15 @@ export function getHtml(this: SearchboxElement) {
     ` : ''}
   </cr-searchbox-input>
   <div class="dropdownContainer">
-    ${getDropdownHtml.bind(this)()}
+    <cr-searchbox-dropdown id="matches" part="searchbox-dropdown"
+        exportparts="dropdown-content"
+        role="listbox" .result="${this.result}"
+        selected-match-index="${this.selectedMatchIndex}"
+        @selected-match-index-changed="${this.onSelectedMatchIndexChanged}"
+        @match-focusin="${this.onMatchFocusin}"
+        @match-click="${this.onMatchClick}"
+        ?hidden="${!this.dropdownIsVisible}">
+    </cr-searchbox-dropdown>
   </div>
 </div>
 <!--_html_template_end_-->`;

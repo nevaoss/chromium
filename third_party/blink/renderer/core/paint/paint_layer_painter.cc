@@ -270,10 +270,6 @@ PaintResult PaintLayerPainter::Paint(GraphicsContext& context,
       [[unlikely]] {
     // Skip if we need layout. This should never happen. See crbug.com/1423308
     // and crbug.com/330051489.
-
-    // TODO(crbug.com/478682594): Remove when done investigating.
-    object.DumpForBug478682594();
-
     return kFullyPainted;
   }
 
@@ -442,6 +438,8 @@ PaintResult PaintLayerPainter::Paint(GraphicsContext& context,
     auto* properties = object.FirstFragment().PaintProperties();
     ensure_chunk |= properties && properties->Filter() &&
                     properties->Filter()->HasReferenceFilter();
+    ensure_chunk |= properties && properties->Effect() &&
+                    properties->Effect()->HasReferenceFilter();
 
     if (ensure_chunk) {
       controller.EnsureChunk();
@@ -603,7 +601,8 @@ PaintResult PaintLayerPainter::PaintChildren(
   bool painting_canvas_child = false;
   auto* canvas = DynamicTo<HTMLCanvasElement>(layout_object.GetNode());
   if (canvas) {
-    if (RuntimeEnabledFeatures::CanvasDrawElementEnabled() &&
+    if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+            canvas->GetExecutionContext()) &&
         canvas->layoutSubtree()) {
       // We need to paint the children for later use by drawElementImage, but
       // make sure we enforce privacy-preserving paint behavior.

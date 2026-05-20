@@ -8,22 +8,11 @@
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
 #include "base/test/bind.h"
-#include "chrome/browser/actor/actor_features.h"
 #include "chrome/browser/actor/actor_proto_conversion.h"
+#include "components/actor/core/actor_features.h"
+#include "components/actor/public/mojom/actor_types.mojom.h"
 
 namespace glic::actor {
-
-ScopedMockTabObservationResult::ScopedMockTabObservationResult(
-    base::RepeatingCallback<void(TabObservation*,
-                                 const FetchPageContextResult&)> callback) {
-  ::actor::SetTabObservationResultOverrideForTesting(callback);
-}
-
-ScopedMockTabObservationResult::~ScopedMockTabObservationResult() {
-  ::actor::SetTabObservationResultOverrideForTesting(
-      base::RepeatingCallback<void(TabObservation*,
-                                   const FetchPageContextResult&)>());
-}
 
 AsyncActionWaiter::AsyncActionWaiter(content::RenderFrameHost* rfh,
                                      std::string request_id)
@@ -233,9 +222,9 @@ void GlicActorFunctionalBrowserTestBase::InterruptActorTask(
     TaskId task_id,
     std::optional<glic::mojom::ActorTaskInterruptReason> reason) {
   if (reason.has_value()) {
-    EXPECT_OK(EvalJsInGlic(content::JsReplace(
-        "window.client.browser.interruptActorTask($1, $2);", task_id.value(),
-        static_cast<int>(*reason))));
+    EXPECT_OK(EvalJsInGlic(
+        content::JsReplace("window.client.browser.interruptActorTask($1, $2);",
+                           task_id.value(), static_cast<int>(*reason))));
   } else {
     EXPECT_OK(EvalJsInGlic(content::JsReplace(
         "window.client.browser.interruptActorTask($1);", task_id.value())));

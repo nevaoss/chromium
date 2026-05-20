@@ -163,7 +163,7 @@ class CORE_EXPORT HTMLCanvasElement final
   bool HasCanvasCapture() const final { return !listeners_.empty(); }
 
   // Used for rendering
-  void DidDraw(const SkIRect&) override;
+  void DidDraw(const gfx::Rect&) override;
   using CanvasRenderingContextHost::DidDraw;
 
   void Paint(GraphicsContext&,
@@ -203,7 +203,7 @@ class CORE_EXPORT HTMLCanvasElement final
 
   UniqueFontSelector* GetFontSelector() override;
 
-  bool ShouldBeDirectComposited() const;
+  bool ShouldSkipPaintInvalidation() const;
 
   const AtomicString ImageSourceURL() const override;
 
@@ -211,7 +211,10 @@ class CORE_EXPORT HTMLCanvasElement final
 
   bool IsDirty() { return !dirty_rect_.IsEmpty(); }
 
-  void DoDeferredPaintInvalidation();
+  // Pushes dirty rects onto the backing cc::TextureLayer for a composited
+  // canvas. Returns `true` if any invalidations were actually applied,
+  // indicating that layer state must be pushed during commit.
+  bool DoDeferredPaintInvalidation();
 
   void InitializeLayerWithCSSProperties(cc::Layer* layer) override;
   void PostFinalizeFrame(FlushReason) override;
@@ -263,8 +266,8 @@ class CORE_EXPORT HTMLCanvasElement final
       ExceptionState&) override;
 
   // OffscreenCanvasPlaceholder implementation.
-  void SetOffscreenCanvasResource(scoped_refptr<CanvasResource>&&,
-                                  viz::ResourceId resource_id) override;
+  void SetOffscreenCanvasResource(
+      scoped_refptr<ExportedCanvasResource>&&) override;
   void Trace(Visitor*) const override;
 
   static void RegisterRenderingContextFactory(

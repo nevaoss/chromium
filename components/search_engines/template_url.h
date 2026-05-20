@@ -337,7 +337,7 @@ class TemplateURLRef {
   std::string ReplaceSearchTerms(const SearchTermsArgs& search_terms_args,
                                  const SearchTermsData& search_terms_data,
                                  PostContent* post_content,
-                                 std::string url_override = "") const;
+                                 std::string_view url_override = "") const;
 
   // TODO(jnd): remove the following ReplaceSearchTerms definition which does
   // not have `post_content` parameter once all reference callers pass
@@ -347,7 +347,7 @@ class TemplateURLRef {
   //  `StarterPackExpansion` feature launches/gets cleaned up.
   std::string ReplaceSearchTerms(const SearchTermsArgs& search_terms_args,
                                  const SearchTermsData& search_terms_data,
-                                 std::string url_override = "") const {
+                                 std::string_view url_override = "") const {
     return ReplaceSearchTerms(search_terms_args, search_terms_data, nullptr,
                               url_override);
   }
@@ -472,6 +472,7 @@ class TemplateURLRef {
     GOOGLE_SEARCH_VERSION,
     GOOGLE_SESSION_TOKEN,
     GOOGLE_SUGGEST_CLIENT,
+    GOOGLE_SUGGEST_PATH,
     GOOGLE_SUGGEST_REQUEST_ID,
     GOOGLE_UNESCAPED_SEARCH_TERMS,
     LANGUAGE,
@@ -547,7 +548,7 @@ class TemplateURLRef {
   // TODO(crbug.com/41494524): Remove the `url_override` when the
   //  `StarterPackExpansion` feature launches/gets cleaned up.
   void ParseIfNecessary(const SearchTermsData& search_terms_data,
-                        std::string url_override = "") const;
+                        std::string_view url_override = "") const;
 
   // Parses a wildcard out of |path|, putting the parsed path in |path_prefix_|
   // and |path_suffix_| and setting |path_wildcard_present_| to true.
@@ -902,8 +903,12 @@ class TemplateURL {
   // OMNIBOX_API_EXTENSION.
   std::string GetExtensionId() const;
 
+  // Returns the resource ID base associated with this template URL, if it is
+  // provided from built-in data.
+  std::optional<std::string_view> GetBaseBuiltinResourceId() const;
+
   // Returns the resource ID for the logo (small / favicon style) associated
-  // with this template URL, or an empty string if none is associated with it.
+  // with this template URL, or a default image if none is associated with it.
   std::string GetBuiltinImageResourceId() const;
 
   // Returns the resource ID for the search engine description string associated
@@ -1067,10 +1072,6 @@ class TemplateURL {
                             std::u16string* search_terms,
                             url::Parsed::ComponentType* search_terms_component,
                             url::Component* search_terms_position) const;
-
-  // Returns the resource ID base associated with this template URL, if it is
-  // provided from built-in data.
-  std::optional<std::string_view> GetBaseBuiltinResourceId() const;
 
   // Returns the built-in marketing snippet string for the search engine, or
   // `std::nullopt` if a marketing snippets are not included in this build of

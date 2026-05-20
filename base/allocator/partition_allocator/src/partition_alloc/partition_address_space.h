@@ -206,6 +206,14 @@ class CBE_BASE_EXPORT PA_COMPONENT_EXPORT(PARTITION_ALLOC) PartitionAddressSpace
     return false;
   }
 
+  PA_ALWAYS_INLINE static size_t GetZeroSegmentSize() {
+#if PA_CONFIG(ENABLE_USER_SPACE_ZERO_SEGMENT)
+    return zero_segment_size_;
+#else
+    return 0;
+#endif
+  }
+
   PA_ALWAYS_INLINE static bool IsConfigurablePoolInitialized() {
     return setup_.configurable_pool_base_address_ !=
            kUninitializedPoolBaseAddress;
@@ -394,6 +402,10 @@ class CBE_BASE_EXPORT PA_COMPONENT_EXPORT(PARTITION_ALLOC) PartitionAddressSpace
 #endif
 
  private:
+#if PA_CONFIG(ENABLE_USER_SPACE_ZERO_SEGMENT)
+  static void InitZeroSegment();
+#endif
+
   // On 64-bit systems, PA allocates from several contiguous, mutually disjoint
   // pools. The BRP pool is where all allocations have a BRP ref-count, thus
   // pointers pointing there can use a BRP protection against UaF. Allocations
@@ -495,6 +507,10 @@ class CBE_BASE_EXPORT PA_COMPONENT_EXPORT(PARTITION_ALLOC) PartitionAddressSpace
   // don't share a cacheline with other, potentially writeable data, through
   // alignment and padding.
   PA_CONSTINIT static PoolSetup setup_;
+
+#if PA_CONFIG(ENABLE_USER_SPACE_ZERO_SEGMENT)
+  static size_t zero_segment_size_;
+#endif
 
 #if PA_CONFIG(MOVE_METADATA_OUT_OF_GIGACAGE)
   static std::array<std::ptrdiff_t, kMaxPoolHandle> offsets_to_metadata_;

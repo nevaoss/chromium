@@ -20,6 +20,7 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+#include "chrome/browser/ui/views/web_apps/progress_delay.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_flow_dialog_delegate.h"
 #include "chrome/browser/ui/web_applications/pwa_install_page_action.h"
 #include "chrome/browser/ui/web_applications/web_app_dialogs.h"
@@ -58,6 +59,9 @@ namespace web_app {
 
 namespace {
 
+constexpr base::TimeDelta kProgressDelay = base::Seconds(2);
+constexpr int kProgressDelaySteps = 100;
+
 #if BUILDFLAG(IS_CHROMEOS)
 namespace cros_events = metrics::structured::events::v2::cr_os_events;
 #endif
@@ -84,8 +88,9 @@ void OnWebAppInstallShowInstallDialog(
   os_type = InstallOsType::kWin;
 #endif
 
+
   switch (flow) {
-    case WebAppInstallFlow::kInstallSite:
+    case WebAppInstallFlow::kInstallSite: {
       web_app_info->user_display_mode = mojom::UserDisplayMode::kStandalone;
 #if BUILDFLAG(IS_CHROMEOS)
       if (install_source == webapps::WebappInstallSource::MENU_BROWSER_TAB) {
@@ -103,45 +108,59 @@ void OnWebAppInstallShowInstallDialog(
         } else if (web_app_info->is_diy_app) {
           install_type = kDiy;
         }
+        auto progress_delay = std::make_unique<ProgressDelay>(
+            kProgressDelay, kProgressDelaySteps);
         WebAppInstallFlowDialogDelegate::Show(
             initiator_web_contents, std::move(web_app_info),
             std::move(install_tracker), std::move(web_app_acceptance_callback),
             iph_state, std::move(screenshot_fetcher), show_initiating_origin,
-            install_type, os_type);
+            install_type, os_type, std::move(progress_delay));
         return;
       }
+
+      // The UI methods below expect a callback that takes only 2 arguments, but
+      // WebAppInstallationAcceptanceCallback now takes 3 arguments. We use this
+      // adapter to pass a dummy result callback.
+      auto launch_app_on_install_success =
+          AdaptToLaunchOnInstallSuccess(std::move(web_app_acceptance_callback));
 
       if (screenshot_fetcher) {
         ShowWebAppDetailedInstallDialog(
             initiator_web_contents, std::move(web_app_info),
-            std::move(install_tracker), std::move(web_app_acceptance_callback),
-            screenshot_fetcher, iph_state);
+            std::move(install_tracker),
+            std::move(launch_app_on_install_success), screenshot_fetcher,
+            iph_state);
         return;
       } else if (web_app_info->is_diy_app) {
         ShowDiyAppInstallDialog(initiator_web_contents, std::move(web_app_info),
                                 std::move(install_tracker),
-                                std::move(web_app_acceptance_callback),
+                                std::move(launch_app_on_install_success),
                                 iph_state);
         return;
       } else {
         ShowSimpleInstallDialogForWebApps(
             initiator_web_contents, std::move(web_app_info),
-            std::move(install_tracker), std::move(web_app_acceptance_callback),
-            iph_state, show_initiating_origin);
+            std::move(install_tracker),
+            std::move(launch_app_on_install_success), iph_state,
+            show_initiating_origin);
         return;
       }
+    }
 #if BUILDFLAG(IS_CHROMEOS)
     case WebAppInstallFlow::kCreateShortcut: {
       webapps::AppId app_id =
           web_app::GenerateAppIdFromManifestId(web_app_info->manifest_id());
       metrics::structured::StructuredMetricsClient::Record(
           cros_events::AppDiscovery_Browser_CreateShortcut().SetAppId(app_id));
-    }
+
+      auto launch_app_on_install_success =
+          AdaptToLaunchOnInstallSuccess(std::move(web_app_acceptance_callback));
 
       ShowCreateShortcutDialog(initiator_web_contents, std::move(web_app_info),
                                std::move(install_tracker),
-                               std::move(web_app_acceptance_callback));
+                               std::move(launch_app_on_install_success));
       return;
+    }
 #endif
     case WebAppInstallFlow::kUnknown:
       NOTREACHED();

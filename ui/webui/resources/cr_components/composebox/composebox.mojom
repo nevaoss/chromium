@@ -38,6 +38,15 @@ interface PageHandler {
 
   // Called to close the Lens overlay.
   CloseLensOverlayFromWebUI(LensOverlayDismissalSource dismissal_source);
+
+  // Called to enable or disable Smart Tab Sharing for subsequent queries.
+  SetSmartTabSharingActive(bool active);
+
+  // Called to retrieve the current Smart Tab Sharing state.
+  GetSmartTabSharingActive() => (bool active);
+
+  // Called when the context menu is opened in the composebox.
+  OnContextMenuOpened();
 };
 
 // NewTabPage WebUI-side handler for requests from the browser.

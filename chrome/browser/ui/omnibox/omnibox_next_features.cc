@@ -29,9 +29,16 @@ namespace omnibox {
 
 namespace internal {
 
+// If enabled, shows the omnibox suggestions in the popup in WebUI.
+BASE_FEATURE(kWebUIOmniboxPopup, DISABLED);
+
 // If enabled, Omnibox popup will transition to AI-Mode with the compose-box
 // panel taking up the whole of the popup, covering the location bar completely.
 BASE_FEATURE(kWebUIOmniboxAimPopup, DISABLED);
+
+// If enabled, the Omnibox Popup will enable a different UI state when on a
+// webpage.
+BASE_FEATURE(kWebUIOmniboxSimplification, DISABLED);
 
 }  // namespace internal
 
@@ -44,7 +51,8 @@ constexpr base::FeatureParam<AddContextButtonVariant>::Option
 const base::FeatureParam<AddContextButtonVariant>
     kWebUIOmniboxAimPopupAddContextButtonVariantParam{
         &internal::kWebUIOmniboxAimPopup, "Omnibox_AddContextButtonVariant",
-        AddContextButtonVariant::kBelowResults, &kAddContextButtonVariantOptions};
+        AddContextButtonVariant::kBelowResults,
+        &kAddContextButtonVariantOptions};
 // If true, hides the "Add Context" button in the "classic" popup.
 const base::FeatureParam<bool> kHideClassicContextButton{
     &internal::kWebUIOmniboxAimPopup, "Omnibox_HideClassicContextButton",
@@ -62,8 +70,13 @@ BASE_FEATURE(kWebUIOmniboxAimPopupDisableAnimation, DISABLED);
 // If enabled, removes the cutout for the location bar and fills the entire
 // popup content with the WebUI WebView.
 BASE_FEATURE(kWebUIOmniboxFullPopup, DISABLED);
-// If enabled, shows the omnibox suggestions in the popup in WebUI.
-BASE_FEATURE(kWebUIOmniboxPopup, DISABLED);
+// If enabled, then both the input row and suggestions dropdown (in the Omnibox)
+// will be rendered using the WebUI stack (i.e. the cutout for the location bar
+// will be removed).
+//
+// NOTE: This flag is intended to control the next-gen Omnibox experience and
+// will eventually supersede the `kWebUIOmniboxFullPopup` feature flag.
+BASE_FEATURE(kWebUIOmniboxFullPopupV2, DISABLED);
 // Enables the WebUI for omnibox suggestions without modifying the popup UI.
 BASE_FEATURE(kWebUIOmniboxPopupDebug, DISABLED);
 // Enables side-by-side comparison omnibox suggestions in WebUI and Views.
@@ -72,6 +85,12 @@ const base::FeatureParam<bool> kWebUIOmniboxPopupDebugSxSParam{
 // If enabled, the WebUIOmniboxPopup controls its own selection state instead of
 // following that of the OmniboxEditModel.
 BASE_FEATURE(kWebUIOmniboxPopupSelectionControl, DISABLED);
+
+// If enabled, animates the caret in the omnibox.
+BASE_FEATURE(kOmniboxAnimatedCaret, ENABLED);
+
+// If enabled, enables energy effect in the omnibox.
+BASE_FEATURE(kEnergyEffectInOmnibox, ENABLED);
 
 // Decodes a proto object from its serialized Base64 string representation.
 // Returns true if decoding and parsing succeed, false otherwise.
@@ -191,6 +210,15 @@ bool ShouldShowAimContextMenuOption(Profile* profile) {
   return is_aim_context_entrypoint_enabled;
 }
 
+bool IsWebUIOmniboxPopupEnabled() {
+  return base::FeatureList::IsEnabled(internal::kWebUIOmniboxPopup);
+}
+
+bool IsWebUIOmniboxFullPopupEnabled() {
+  return base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) ||
+         base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopupV2);
+}
+
 bool IsAimPopupFeatureEnabled() {
   return base::FeatureList::IsEnabled(internal::kWebUIOmniboxAimPopup);
 }
@@ -308,7 +336,7 @@ const base::FeatureParam<bool> kShowRecentTabChip(
 const base::FeatureParam<bool> kShowSmartCompose(
     &internal::kWebUIOmniboxAimPopup,
     "Omnibox_ShowSmartCompose",
-    false);
+    true);
 const base::FeatureParam<bool> kShowToolsAndModels(
     &internal::kWebUIOmniboxAimPopup,
     "Omnibox_ShowToolsAndModels",
@@ -317,6 +345,22 @@ const base::FeatureParam<bool> kShowContextMenuHeaders(
     &internal::kWebUIOmniboxAimPopup,
     "Omnibox_ShowContextMenuHeaders",
     true);
+const base::FeatureParam<bool> kUseComposeboxFork(
+    &internal::kWebUIOmniboxAimPopup,
+    "Omnibox_UseComposeboxFork",
+    false);
+const base::FeatureParam<bool> kContextButtonHasBackground{
+    &internal::kWebUIOmniboxSimplification,
+    "Omnibox_ContextButtonHasBackground", false};
+const base::FeatureParam<bool> kContextButtonShapeIsOblong{
+    &internal::kWebUIOmniboxSimplification,
+    "Omnibox_ContextButtonShapeIsOblong", false};
+const base::FeatureParam<bool> kContextButtonShowAskAboutTabsLabel{
+    &internal::kWebUIOmniboxSimplification,
+    "Omnibox_ContextButtonShowAskAboutTabsLabel", false};
+const base::FeatureParam<bool> kContextMenuShowAskAboutTabsAction{
+    &internal::kWebUIOmniboxSimplification,
+    "Omnibox_ContextMenuShowAskAboutTabsAction", false};
 
 FeatureConfig::FeatureConfig() : config(GetNTPComposeboxConfig()) {}
 

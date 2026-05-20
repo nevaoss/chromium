@@ -30,8 +30,8 @@ import org.jni_zero.JNINamespace;
 import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
-import org.chromium.base.ScreenOffBroadcastReceiver;
-import org.chromium.base.ScreenOffBroadcastReceiver.ScreenOffListener;
+import org.chromium.base.ScreenStateReceiver;
+import org.chromium.base.ScreenStateReceiver.ScreenStateObserver;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.task.PostTask;
@@ -124,17 +124,17 @@ public class CompositorView extends FrameLayout
 
     // On P and above, toggling the screen off gets us in a state where the Surface is destroyed but
     // it is never recreated when it is turned on again. This is the only workaround that seems to
-    // be working, see crbug.com/931195.
-    class ScreenStateReceiverWorkaround implements ScreenOffListener {
+    // be working, see crbug.com/40613559.
+    class ScreenStateReceiverWorkaround implements ScreenStateObserver {
         // True indicates we should destroy and recreate the surface manager.
         private boolean mNeedsReset;
 
         ScreenStateReceiverWorkaround() {
-            ScreenOffBroadcastReceiver.addListener(this);
+            ScreenStateReceiver.addObserver(this);
         }
 
         void shutDown() {
-            ScreenOffBroadcastReceiver.removeListener(this);
+            ScreenStateReceiver.removeObserver(this);
         }
 
         @Override
@@ -159,14 +159,13 @@ public class CompositorView extends FrameLayout
         }
     }
 
-    private @Nullable ScreenStateReceiverWorkaround mScreenStateReceiver;
+    private ScreenStateReceiverWorkaround mScreenStateReceiver;
 
     /**
      * Creates a {@link CompositorView}. This can be called only after the native library is
      * properly loaded.
-     *
-     * @param c The Context to create this {@link CompositorView} in.
-     * @param host The renderer host owning this view.
+     * @param c        The Context to create this {@link CompositorView} in.
+     * @param host     The renderer host owning this view.
      */
     public CompositorView(Context c, LayoutRenderHost host) {
         super(c);
@@ -344,8 +343,8 @@ public class CompositorView extends FrameLayout
     @Initializer
     public void initNativeCompositor(
             WindowAndroid windowAndroid, TabContentManager tabContentManager) {
-        // https://crbug.com/802160. We can't call setWindowAndroid here because updating the window
-        // visibility here breaks exiting Reader Mode somehow.
+        // https://crbug.com/41364848. We can't call setWindowAndroid here because updating the
+        // window visibility here breaks exiting Reader Mode somehow.
         mWindowAndroid = windowAndroid;
         mWindowAndroid.addSelectionHandlesObserver(this);
 
@@ -415,7 +414,7 @@ public class CompositorView extends FrameLayout
      */
     public void setOverlayImmersiveArMode(boolean enabled, boolean domSurfaceNeedsConfiguring) {
         // Disable SurfaceControl for the duration of the session. This works around a black
-        // screen after activating the screen keyboard (IME), see https://crbug.com/1166248.
+        // screen after activating the screen keyboard (IME), see https://crbug.com/40741986.
         mIsInXr = enabled;
 
         updateXrStateForCurrentSurfaceInputTransferHandler();
@@ -426,8 +425,8 @@ public class CompositorView extends FrameLayout
 
         CompositorViewJni.get().setOverlayImmersiveArMode(mNativeCompositorView, enabled);
         // Entering or exiting AR mode can leave SurfaceControl in a confused state, especially if
-        // the screen keyboard (IME) was activated, see https://crbug.com/1166248 and
-        // https://crbug.com/1169822. Reset the surface manager at session start and exit to work
+        // the screen keyboard (IME) was activated, see https://crbug.com/40741986 and
+        // https://crbug.com/40744115. Reset the surface manager at session start and exit to work
         // around this.
         mCompositorSurfaceManager.shutDown();
         createCompositorSurfaceManager();
@@ -507,7 +506,7 @@ public class CompositorView extends FrameLayout
     @Override
     public void surfaceRedrawNeededAsync(Runnable drawingFinished) {
         // Do not hold onto more than one draw callback, to prevent deadlock.
-        // See https://crbug.com/1174273 and https://crbug.com/1223299 for more details.
+        // See https://crbug.com/40746676 and https://crbug.com/40187558 for more details.
         //
         // `drawingFinished` can, and often will, be run before this returns, since we cannot hold
         // onto more than one (android) callback without risking a deadlock in the framework.
@@ -624,47 +623,28 @@ public class CompositorView extends FrameLayout
         CompositorViewJni.get().surfaceCreated(mNativeCompositorView);
     }
 
-    private boolean mInSurfaceDestroyed;
-
-    @Override
     @SuppressWarnings("NewApi")
+    @Override
     public void surfaceDestroyed(Surface surface, boolean androidSurfaceDestroyed) {
-        if (mNativeCompositorView == 0 || mInSurfaceDestroyed) return;
-        mInSurfaceDestroyed = true;
+        if (mNativeCompositorView == 0) return;
 
-        try {
-            // When we switch from Chrome to other app we can't detach child surface controls
-            // because it
-            // leads to a visible hole: b/157439199. To avoid this we don't detach surfaces if the
-            // surface is going to be destroyed, they will be detached and freed by OS.
-            if (androidSurfaceDestroyed) {
-                CompositorViewJni.get().preserveChildSurfaceControls(mNativeCompositorView);
-            }
+        // When we switch from Chrome to other app we can't detach child surface controls because it
+        // leads to a visible hole: b/157439199. To avoid this we don't detach surfaces if the
+        // surface is going to be destroyed, they will be detached and freed by OS.
+        if (androidSurfaceDestroyed) {
+            CompositorViewJni.get().preserveChildSurfaceControls(mNativeCompositorView);
+        }
 
-            CompositorViewJni.get().surfaceDestroyed(mNativeCompositorView);
+        CompositorViewJni.get().surfaceDestroyed(mNativeCompositorView);
 
-            if (ChromeFeatureList.isEnabled(
-                    ChromeFeatureList.SURFACE_DESTROYED_RECREATES_MANAGER)) {
-                // TODO(yfriedman): Delete the mScreenStateReceiver when rollout completes.
-                if (mScreenStateReceiver != null) {
-                    mScreenStateReceiver.shutDown();
-                    mScreenStateReceiver = null;
-                }
-                if (mCompositorSurfaceManager != null) {
-                    mCompositorSurfaceManager.shutDown();
-                    createCompositorSurfaceManager();
-                }
-            } else {
-                if (mScreenStateReceiver != null) {
-                    mScreenStateReceiver.maybeResetCompositorSurfaceManager();
-                }
-            }
-            if (InputUtils.isTransferInputToVizSupported() && mSurfaceId != null) {
-                SurfaceInputTransferHandlerMap.remove(mSurfaceId);
-                mSurfaceId = null;
-            }
-        } finally {
-            mInSurfaceDestroyed = false;
+        if (mScreenStateReceiver != null) {
+            PostTask.postTask(
+                    TaskTraits.USER_BLOCKING,
+                    () -> mScreenStateReceiver.maybeResetCompositorSurfaceManager());
+        }
+        if (InputUtils.isTransferInputToVizSupported() && mSurfaceId != null) {
+            SurfaceInputTransferHandlerMap.remove(mSurfaceId);
+            mSurfaceId = null;
         }
     }
 
@@ -809,7 +789,7 @@ public class CompositorView extends FrameLayout
         //  - If we are holding a draw callback when our surface is destroyed, then call it back.
         //  - Otherwise, defer the callback until we swap the right size buffer.
         //
-        // See https://crbug.com/1174273 and https://crbug.com/1223299 for more details.
+        // See https://crbug.com/40746676 and https://crbug.com/40187558 for more details.
         if (swappedCurrentSize) {
             runDrawFinishedCallbackMaybeNotOnUiThread();
         }

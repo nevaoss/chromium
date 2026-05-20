@@ -247,8 +247,6 @@ void LogManualFallbackEntryThroughExpandIcon(ManualFillDataType data_type,
 
 - (void)passwordManualFillButtonPressed:(UIButton*)button {
   base::RecordAction(base::UserMetricsAction("ManualFallback_OpenPassword"));
-  UMA_HISTOGRAM_COUNTS_100("ManualFallback.VisibleSuggestions.OpenPasswords",
-                           self.formSuggestionView.suggestions.count);
   [self manualFillButtonPressed:button
                     forDataType:ManualFillDataType::kPassword];
 }
@@ -263,8 +261,6 @@ void LogManualFallbackEntryThroughExpandIcon(ManualFillDataType data_type,
 
 - (void)addressManualFillButtonPressed:(UIButton*)button {
   base::RecordAction(base::UserMetricsAction("ManualFallback_OpenProfile"));
-  UMA_HISTOGRAM_COUNTS_100("ManualFallback.VisibleSuggestions.OpenProfiles",
-                           self.formSuggestionView.suggestions.count);
   [self manualFillButtonPressed:button
                     forDataType:ManualFillDataType::kAddress];
 }
@@ -364,7 +360,6 @@ void LogManualFallbackEntryThroughExpandIcon(ManualFillDataType data_type,
 
 // Resets this view to its original state. Can be animated.
 - (void)resetAnimated:(BOOL)animated {
-  [self resetLoadingStates];
   self.formInputAccessoryView.hidden = NO;
 
   [self.formSuggestionView resetContentInsetAndDelegateAnimated:animated];
@@ -453,6 +448,9 @@ UIImage* GetManualFillSymbol() {
   [formInputAccessoryView
       addGestureRecognizer:self.formInputAccessoryTapRecognizer];
 
+  formInputAccessoryView.passThroughTouchesEnabled =
+      base::FeatureList::IsEnabled(kFormInputAccessoryPassThroughTouches);
+
   self.formInputAccessoryView = formInputAccessoryView;
 }
 
@@ -531,7 +529,6 @@ UIImage* GetManualFillSymbol() {
     std::u16string mainFillingProductString;
     switch (_mainFillingProduct) {
       case FillingProduct::kAddress:
-      case FillingProduct::kPlusAddresses:
         mainFillingProductString = l10n_util::GetPluralStringFUTF16(
             IDS_IOS_AUTOFILL_ADDRESS_OPTIONS_AVAILABLE_ACCESSIBILITY_ANNOUNCEMENT,
             suggestionCount);
@@ -664,7 +661,13 @@ UIImage* GetManualFillSymbol() {
   if ([self isSuggestionAutofillAsync:suggestion]) {
     [formSuggestionView setActivityIndicatorEnabled:YES];
   }
-  [self.formSuggestionClient didSelectSuggestion:suggestion atIndex:index];
+  __weak FormSuggestionView* weakFormSuggestionView = formSuggestionView;
+  [self.formSuggestionClient
+      didSelectSuggestion:suggestion
+                  atIndex:index
+               completion:^{
+                 [weakFormSuggestionView setActivityIndicatorEnabled:NO];
+               }];
 }
 
 @end

@@ -66,6 +66,8 @@ should be able to be added at any place in this file.
       summary="Show read anything side panel action"/>
   <variant name=".kActionSidePanelShowReadingList"
       summary="Show reading list side panel action"/>
+  <variant name=".kActionSidePanelShowTabsFromOtherDevices"
+      summary="Show tabs from other devices side panel action"/>
   <variant name=".kActionSplitTab" summary="Split view action"/>
   <variant name=".kActionTabSearch" summary="Tab search action"/>
   <variant name=".kActionTaskManager" summary="Task manager action"/>
@@ -107,6 +109,21 @@ should be able to be added at any place in this file.
   <variant name=".RemoveItem" summary="Remove a suggested item."/>
   <variant name=".Shown" summary="Context menu is opened."/>
   <variant name=".UnpinItem" summary="Remove a custom item."/>
+</variants>
+
+<variants name="ContextType">
+  <variant name="AutoModel" summary="AutoModel"/>
+  <variant name="Canvas" summary="Canvas"/>
+  <variant name="DeepResearch" summary="DeepResearch"/>
+  <variant name="Drive" summary="Drive"/>
+  <variant name="File" summary="File"/>
+  <variant name="Image" summary="Image"/>
+  <variant name="ImageGen" summary="ImageGen"/>
+  <variant name="ProNoGenUiModel" summary="ProNoGenUiModel"/>
+  <variant name="RegularModel" summary="RegularModel"/>
+  <variant name="Tab" summary="Tab"/>
+  <variant name="ThinkingModel" summary="ThinkingModel"/>
+  <variant name="Unknown" summary="Unknown"/>
 </variants>
 
 <variants name="ContextualSearchAiModeButtonSurface">
@@ -226,6 +243,8 @@ should be able to be added at any place in this file.
   <variant name="_AutofillAiOptIn" summary="For AutofillAiOptIn feature."/>
   <variant name="_AutofillAiValuables"
       summary="For AutofillAiValuables feature."/>
+  <variant name="_AutofillAtMemory"
+      summary="For AutofillAtMemory IPH feature."/>
   <variant name="_AutofillBnplAffirmOrZipSuggestion"
       summary="For AutofillBnplAffirmOrZipSuggestion IPH feature."/>
   <variant name="_AutofillBnplAffirmZipOrKlarnaSuggestion"
@@ -236,6 +255,8 @@ should be able to be added at any place in this file.
       summary="For Autofill credit card benefit message."/>
   <variant name="_AutofillDisabledVirtualCardSuggestion"
       summary="For AutofillDisabledVirtualCardSuggestion feature."/>
+  <variant name="_AutofillDownstreamCardAwareness"
+      summary="For AutofillDownstreamCardAwareness IPH feature."/>
   <variant name="_AutofillEnableLoyaltyCards"
       summary="For AutofillEnableLoyaltyCards feature."/>
   <variant name="_AutofillExternalAccountProfileSuggestion"
@@ -358,8 +379,10 @@ should be able to be added at any place in this file.
   <variant name="_ExplicitBrowserSigninPreferenceRemembered"
       summary="For Explicit Browser Signin Preference Remembered feature."/>
   <variant name="_ExploreSitesTile" summary="For Explore Sites feature."/>
-  <variant name="_ExtensionsManageFeature"
-      summary="For managaging your extension feature."/>
+  <variant name="_ExtensionsManageAppMenuFeature"
+      summary="For managing your extensions from the app menu feature."/>
+  <variant name="_ExtensionsManageToolbarFeature"
+      summary="For managing your extension feature in the toolbar."/>
   <variant name="_ExtensionsMenu" summary="For Extensions menu opening."/>
   <variant name="_ExtensionsRequestAccessButton"
       summary="For Extensions request access button feature."/>
@@ -497,6 +520,7 @@ should be able to be added at any place in this file.
       summary="For iOSLensOverlayEscapeHatchTip IPH feature"/>
   <variant name="_iOSLensPromoDesktop"
       summary="For iOSLensPromoDesktop feature"/>
+  <variant name="_iOSNewIAPromoFeature" summary="For New IA promo on startup."/>
   <variant name="_iOSOneTimeDefaultBrowserNotification"
       summary="For iOSOneTimeDefaultBrowserNotification feature"/>
   <variant name="_iOSOverflowMenuCustomization"
@@ -652,9 +676,10 @@ should be able to be added at any place in this file.
   <variant name="_PerformanceNewBadge"
       summary="For new badge next to Performance feature."/>
   <variant name="_PlusAddressCreateSuggestion"
-      summary="For creating plus addresses."/>
+      summary="For creating plus addresses. (obsolete)"/>
   <variant name="_PlusAddressFirstSaveFeature"
-      summary="For accessing settings after saving the first plus address."/>
+      summary="For accessing settings after saving the first plus address.
+               (obsolete)"/>
   <variant name="_PowerBookmarksSidePanel"
       summary="For power bookmarks side panel feature."/>
   <variant name="_PreviewsOmniboxUI"
@@ -690,6 +715,8 @@ should be able to be added at any place in this file.
       summary="For ReadingListInSidePanel feature."/>
   <variant name="_ReadingListMessages"
       summary="For ReadingListMessages feature."/>
+  <variant name="_ReadingModeKeyboardShortcut"
+      summary="For reading mode keyboard shortcut feature."/>
   <variant name="_ReadingModePageActionLabel"
       summary="For reading mode omnibox entrypoint."/>
   <variant name="_ReadingModeSidePanel"
@@ -719,6 +746,8 @@ should be able to be added at any place in this file.
       summary="For Resumption Rail feature entrypoint."/>
   <variant name="_RtlGestureNavigation"
       summary="For the gesture navigation in RTL mode."/>
+  <variant name="_SearchPromotionFeature"
+      summary="IPH for Search extension promo on Windows"/>
   <variant name="_SharedHighlightingBuilder"
       summary="For SharedHighlightingBuilder feature."/>
   <variant name="_SharedHighlightingReceiver"
@@ -752,6 +781,7 @@ should be able to be added at any place in this file.
   <variant name="_SignInBenefits" summary="For sign-in benefits IPH feature."/>
   <variant name="_SignInBenefitsNewSignin"
       summary="For sign-in benefits IPH feature."/>
+  <variant name="_SiteControls" summary="For SiteControls IPH feature."/>
   <variant name="_SupervisedUserProfileSignin"
       summary="For displaying the supervised user sign-in IPH."/>
   <variant name="_TabAudioMuting" summary="For TabAudioMuting feature."/>
@@ -805,6 +835,9 @@ should be able to be added at any place in this file.
   <variant name="_TranslateMenuButton" summary="For translate menu button."/>
   <variant name="_UpdatedConnectionSecurityIndicators"
       summary="For updated omnibox connection security indicators."/>
+  <variant name="_VerticalTabsExpandOnHoverFeature"
+      summary="For showing the vertical tabs expand on hover feature when in
+               vertical tabs mode."/>
   <variant name="_VerticalTabstripTutorialFeature"
       summary="For showing the vertical tabs feature when the horizontal
                tabstrip is crowded."/>
@@ -820,13 +853,6 @@ should be able to be added at any place in this file.
       summary="For voice search video tutorial."/>
   <variant name="_VideoTutorial_TryNow"
       summary="For video tutorial Try Now feature."/>
-  <variant name="_WebFeedAwareness" summary="For WebFeedAwareness feature."/>
-  <variant name="_WebFeedFollow"
-      summary="For Web Feed follow recommendations."/>
-  <variant name="_WebFeedPostFollowDialog"
-      summary="For Web Feed successful follow operations."/>
-  <variant name="_WebFeedPostFollowDialogWithUIUpdate"
-      summary="For Web Feed successful follow operations after the UI update."/>
   <variant name="_WebUiHelpBubbleTest"
       summary="For WebUiHelpBubbleTest feature."/>
   <variant name="_WhatsNewUpdated" summary="For what's new updated content."/>
@@ -836,6 +862,12 @@ should be able to be added at any place in this file.
   <variant name="" summary="aggregated"/>
   <variant name=".FamiliarSite" summary="Recorded on a familiar site."/>
   <variant name=".UnfamiliarSite" summary="Recorded on an unfamiliar site."/>
+</variants>
+
+<variants name="PopupType">
+  <variant name="AimPopup" summary="Context menu opened from aim popup"/>
+  <variant name="ClassicPopup"
+      summary="Context menu opened from classic popup"/>
 </variants>
 
 <variants name="SidePanelEntry">
@@ -858,6 +890,7 @@ should be able to be added at any place in this file.
   <variant name="ReadAnything" summary="read anything"/>
   <variant name="ReadingList" summary="reading list"/>
   <variant name="ShoppingInsights" summary="shopping insights"/>
+  <variant name="SidePanelDev" summary="side panel dev feature"/>
   <variant name="SideSearch" summary="side search"/>
   <variant name="TabsFromOtherDevices" summary="tabs from other devices"/>
   <variant name="WebView" summary="web view"/>
@@ -904,8 +937,6 @@ should be able to be added at any place in this file.
       summary="Gemini Site Search Shortcut"/>
   <variant name=".GenerativeThemes" summary="Generative Themes"/>
   <variant name=".GenerativeTheming" summary="Generative Theming"/>
-  <variant name=".GlicIntro" summary="Glic Intro"/>
-  <variant name=".GlicLearnMore" summary="Glic Learn More"/>
   <variant name=".GoogleLens" summary="Google Lens"/>
   <variant name=".Googlepayreauth" summary="Google Pay Re-auth"/>
   <variant name=".HelpMeWrite" summary="Help Me Write"/>
@@ -936,6 +967,27 @@ should be able to be added at any place in this file.
   <variant name=".TranslationSettings" summary="Translation Settings"/>
   <variant name=".VerticalTabsLaunch" summary="Vertical Tabs"/>
   <variant name=".WebUIOmniboxAimPopup" summary="WebUI Omnibox Aim Popup"/>
+</variants>
+
+<variants name="YourSavedInfoActionName">
+  <variant name="Add" summary="Add"/>
+  <variant name="Delete" summary="Delete"/>
+  <variant name="Edit" summary="Edit"/>
+</variants>
+
+<variants name="YourSavedInfoEntityType">
+  <variant name="DriversLicense" summary="Driver's license"/>
+  <variant name="FlightReservation" summary="Flight reservation"/>
+  <variant name="KnownTravelerNumber" summary="Known traveler number"/>
+  <variant name="NationalIdCard" summary="National ID card"/>
+  <variant name="Passport" summary="Passport"/>
+  <variant name="RedressNumber" summary="Redress number"/>
+  <variant name="Vehicle" summary="Vehicle"/>
+</variants>
+
+<variants name="YourSavedInfoPageName">
+  <variant name="IdentityDocs" summary="Identity docs"/>
+  <variant name="Travel" summary="Travel"/>
 </variants>
 
 <action name="AboutChrome">
@@ -3347,6 +3399,24 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="AccessibilityAnnotator.RemoteAnnotatorInfo.LearnMoreLinkClick">
+  <owner>tommasin@chromium.org</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <description>
+    Recorded when the user clicks the Learn More link in the Accessibility
+    Annotator info dialog.
+  </description>
+</action>
+
+<action name="AccessibilityAnnotator.RemoteAnnotatorInfo.SettingsLinkClick">
+  <owner>tommasin@chromium.org</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <description>
+    Recorded when the user clicks the Manage Settings link in the Accessibility
+    Annotator info dialog.
+  </description>
+</action>
+
 <action name="ActionBox.ClickButton">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
@@ -4876,48 +4946,6 @@ should be able to be added at any place in this file.
   <owner>mpearson@chromium.org</owner>
   <description>
     A user clicked on a telephone number link in Chrome content.
-  </description>
-</action>
-
-<action name="Android.Settings.Opened">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>User opened Settings activity.</description>
-</action>
-
-<action name="Android.Settings.Search.NoMatchFound">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>
-    Settings search found no match to the entered query.
-  </description>
-</action>
-
-<action name="Android.Settings.Search.Performed">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>User entered a new query for search.</description>
-</action>
-
-<action name="Android.Settings.Search.ResultClicked">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>
-    User clicked the search result to open the corresponding entry.
-  </description>
-</action>
-
-<action name="Android.Settings.Search.UiOpened">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>User tapped search bar UI.</description>
-</action>
-
-<action name="Android.Settings.Search.UiOpenedPerSession">
-  <owner>adelm@google.com</owner>
-  <owner>jinsukkim@chromium.org</owner>
-  <description>
-    Same as above, but recorded only once since user opens Settings.
   </description>
 </action>
 
@@ -11110,12 +11138,13 @@ should be able to be added at any place in this file.
 </action>
 
 <action
-    name="ContextualSearch.ZeroSuggestClick.{Type}.{ContextualSearchSource}">
+    name="ContextualSearch.ZeroSuggestClickV2.{Type}.{ContextualSearchSource}">
   <owner>niharm@google.com</owner>
   <owner>chrome-desktop-search@google.com</owner>
   <description>
     Recorded when a user clicks on a {Type} suggestion in the zero-suggest mode
-    from {ContextualSearchSource}.
+    from {ContextualSearchSource}. A query that is submitted with a file
+    uploaded and no text is considered a non-contextual zero suggest click.
   </description>
   <token key="Type">
     <variant name="Contextual" summary=""/>
@@ -12923,7 +12952,7 @@ should be able to be added at any place in this file.
 
 <action name="DownloadNotification.Button_Review">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User pushes &quot;Review&quot; button on download notification to trigger
     the enterprise download review dialog.
@@ -14970,6 +14999,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.CheckAuthBeforeShowSync" not_user_triggered="true">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@chromium.org</owner>
   <owner>carlosk@chromium.org</owner>
   <description>
@@ -15022,6 +15052,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.DisabledByAdminPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>dewittj@google.com</owner>
   <owner>glic@google.com</owner>
   <description>
@@ -15040,6 +15071,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.ErrorPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>
@@ -15063,7 +15095,17 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Glic.Fre.InputSubmitted">
+  <owner>birnie@google.com</owner>
+  <owner>erikchen@chromium.org</owner>
+  <description>
+    Logged when input is submitted after accepting the FRE. Is logged for both
+    automatic and user initiated input.
+  </description>
+</action>
+
 <action name="Glic.Fre.LoadingPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>
@@ -15093,6 +15135,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.OfflinePanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>
@@ -15116,6 +15159,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.ReadyPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>User closed the FRE while it was fully loaded.</description>
@@ -15140,6 +15184,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Glic.Fre.UninitializedPanelClosed">
+  <obsolete>Feature removed April 2026.</obsolete>
   <owner>birnie@google.com</owner>
   <owner>erikchen@chromium.org</owner>
   <description>
@@ -16651,6 +16696,14 @@ should be able to be added at any place in this file.
   <owner>haileywang@chromium.org</owner>
   <owner>shaktisahu@chromium.org</owner>
   <description>The user tapped outside the in-product help bubble.</description>
+</action>
+
+<action name="InProductHelp.ShouldTriggerHelpUI.IPH_SearchPromotionFeature">
+  <owner>qlucyk@chromium.org</owner>
+  <owner>iclelland@chromium.org</owner>
+  <description>
+    Whether the IPH for Search Extension on Windows was triggered.
+  </description>
 </action>
 
 <action name="InProductHelp.ShouldTriggerHelpUI.IPH{InProductHelp_Type}"
@@ -18769,6 +18822,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="IOS.MagicStack.ShopCard.PriceTracking.Track">
+  <obsolete>Obsolete as of 05/2026.</obsolete>
   <owner>davidjm@chromium.org</owner>
   <owner>chrome-shopping@google.com</owner>
   <description>
@@ -18801,6 +18855,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="IOS.MagicStack.TabResumption.PriceTracking.OpenTab">
+  <obsolete>Obsolete as of 05/2026.</obsolete>
   <owner>davidjm@chromium.org</owner>
   <owner>thegreenfrog@google.com</owner>
   <owner>gloriafang@google.com</owner>
@@ -27129,6 +27184,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileExternalActionURLOpenedWithAppStoreGeminiPromo">
+  <owner>joemerramos@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Reported when the application was launched via an External Action URL with
+    the AppStoreGeminiPromo action. iOS only.
+  </description>
+</action>
+
 <action name="MobileExternalActionURLOpenedWithDefaultBrowserSettings">
   <owner>nicolasmacbeth@google.com</owner>
   <owner>bling-mony-pod@google.com</owner>
@@ -27647,6 +27711,15 @@ should be able to be added at any place in this file.
   <description>
     Reported when the user sends a prompt in a Gemini session. This includes
     both the first prompt and subsequent prompts in a conversation. iOS only.
+  </description>
+</action>
+
+<action name="MobileGeminiRegenerateButtonTapped">
+  <owner>fbeauchamp@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user selects a regenerate option in the Gemini floaty for
+    their query. iOS only.
   </description>
 </action>
 
@@ -28462,6 +28535,15 @@ should be able to be added at any place in this file.
 <action name="MobileMenuDefaultBrowserPromo">
   <owner>eleanorlee@google.com</owner>
   <description>MobileMenuDefaultBrowserPromo</description>
+</action>
+
+<action name="MobileMenuDefaultBrowserPromoShown">
+  <owner>eleanorlee@google.com</owner>
+  <description>
+    This metric is recorded every time the app menu is opened when Chrome is not
+    set to default and the app menu therefore has a default browser promo menu
+    item.
+  </description>
 </action>
 
 <action name="MobileMenuDeleteFromReadingList">
@@ -29313,6 +29395,15 @@ should be able to be added at any place in this file.
   <description>
     Android: User navigated back to the NTP after reading an opened (clicked)
     snippet card.
+  </description>
+</action>
+
+<action name="MobileNTPAIMPlusButtonTapped">
+  <owner>radunitescu@google.com</owner>
+  <owner>bling-search@google.com</owner>
+  <description>
+    Recorded when the user taps on the AIM plus button in the fakebox on NTP.
+    iOS only.
   </description>
 </action>
 
@@ -32823,12 +32914,25 @@ should be able to be added at any place in this file.
     <variant name=".CloseAllTabs"
         summary="User closed all tabs via the tab context menu on tab strip
                  on Android."/>
+    <variant name=".CloseOtherTabs"
+        summary="User closed other tabs via the tab context menu on tab strip
+                 on Android."/>
+    <variant name=".CloseOtherTabs.MultiTab"
+        summary="User closed other tabs via the tab context menu on tab strip
+                 on Android while having selected more than one tab."/>
     <variant name=".CloseTab"
         summary="User closed a tab via the tab context menu on tab strip on
                  Android."/>
     <variant name=".CloseTab.MultiTab"
         summary="User closed multiple tabs via the tab context menu on tab
                  strip on Android."/>
+    <variant name=".CloseTabsToTheRight"
+        summary="User closed tabs to the right via the tab context menu on
+                 tab strip on Android."/>
+    <variant name=".CloseTabsToTheRight.MultiTab"
+        summary="User closed tabs to the right via the tab context menu on
+                 tab strip on Android while having more than one tab
+                 selected."/>
     <variant name=".DuplicateTab"
         summary="User duplicated a tab via the tab context menu on tab strip
                  on Android."/>
@@ -34069,7 +34173,7 @@ should be able to be added at any place in this file.
 <action name="NewTabPage.Promo.EnhancedProtectionPromo.Accepted">
   <obsolete>Removed from code in 2021-12.</obsolete>
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     The Safe Browsing Enhanced Protection promo is accepted.
   </description>
@@ -34078,7 +34182,7 @@ should be able to be added at any place in this file.
 <action name="NewTabPage.Promo.EnhancedProtectionPromo.Dismissed">
   <obsolete>Removed from code in 2021-12.</obsolete>
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     The Safe Browsing Enhanced Protection promo is dismissed.
   </description>
@@ -34130,7 +34234,7 @@ should be able to be added at any place in this file.
 
 <action name="NewTabPage_Promos_EnhancedProtection">
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-core@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     Recorded when the user clicks a Enhanced Protection promotion on the New Tab
     Page on desktop.
@@ -36626,7 +36730,7 @@ should be able to be added at any place in this file.
 
 <action name="Options_ShowSafeBrowsingEnhancedProtection">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>Settings: Safe Browsing enhanced protection</description>
 </action>
 
@@ -37890,7 +37994,7 @@ should be able to be added at any place in this file.
 
 <action name="PasswordProtection.Interstitial.ResetPassword">
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     Reported when the user clicks on the reset password button on the
     interstitial.
@@ -37899,7 +38003,7 @@ should be able to be added at any place in this file.
 
 <action name="PasswordProtection.ModalWarning.ChangePasswordButtonClicked">
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     Reported when the user clicked on the change password button on the password
     protection modal warning.
@@ -37908,7 +38012,7 @@ should be able to be added at any place in this file.
 
 <action name="PasswordProtection.ModalWarning.CloseWarning">
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     Reported when the user closed the password protection modal warning.
   </description>
@@ -37916,7 +38020,7 @@ should be able to be added at any place in this file.
 
 <action name="PasswordProtection.ModalWarning.IgnoreButtonClicked">
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     Reported when the user clicked on the ignore button on the password
     protection modal warning.
@@ -37942,7 +38046,7 @@ should be able to be added at any place in this file.
 
 <action name="PasswordProtection.PageInfo.ChangePasswordButtonClicked">
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     Reported when the user clicks on the change password button on the page info
     bubble.
@@ -37951,7 +38055,7 @@ should be able to be added at any place in this file.
 
 <action name="PasswordProtection.PageInfo.MarkSiteAsLegitimate">
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     Reported when the user clicks on the mark site as legitimate button on the
     page info bubble.
@@ -39704,6 +39808,8 @@ should be able to be added at any place in this file.
         summary="Pinned show search companion side panel button"/>
     <variant name=".PinnedShowTranslateButton"
         summary="Pinned show translate button"/>
+    <variant name=".PinnedTabsFromOtherDevicesButton"
+        summary="Pinned tabs from other devices button"/>
     <variant name=".PinnedTaskManagerButton"
         summary="Pinned task manager button"/>
     <variant name=".SharedTabGroupFeedbackButton"
@@ -39816,13 +39922,13 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.AccountIntegration.DisabledDialog.Dismissed">
   <owner>jacastro@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>The ESB disabled dialog was dismissed.</description>
 </action>
 
 <action name="SafeBrowsing.AccountIntegration.DisabledDialog.OkButtonClicked">
   <owner>jacastro@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the OK button on the ESB disabled dialog.
   </description>
@@ -39831,7 +39937,7 @@ should be able to be added at any place in this file.
 <action
     name="SafeBrowsing.AccountIntegration.DisabledDialog.SettingsButtonClicked">
   <owner>awado@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the settings button on the ESB disabled dialog.
   </description>
@@ -39840,19 +39946,19 @@ should be able to be added at any place in this file.
 <action name="SafeBrowsing.AccountIntegration.DisabledDialog.Shown"
     not_user_triggered="true">
   <owner>awado@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>The ESB disabled dialog was shown to the user.</description>
 </action>
 
 <action name="SafeBrowsing.AccountIntegration.EnabledDialog.Dismissed">
   <owner>jacastro@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>The ESB enabled dialog was dismissed.</description>
 </action>
 
 <action name="SafeBrowsing.AccountIntegration.EnabledDialog.OkButtonClicked">
   <owner>jacastro@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the OK button on the ESB enabled dialog.
   </description>
@@ -39861,7 +39967,7 @@ should be able to be added at any place in this file.
 <action
     name="SafeBrowsing.AccountIntegration.EnabledDialog.SettingsButtonClicked">
   <owner>awado@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the settings button on the ESB enabled dialog.
   </description>
@@ -39870,25 +39976,25 @@ should be able to be added at any place in this file.
 <action name="SafeBrowsing.AccountIntegration.EnabledDialog.Shown"
     not_user_triggered="true">
   <owner>jacastro@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>The ESB enabled dialog was shown to the user.</description>
 </action>
 
 <action name="SafeBrowsing.Download.WarningBypassed">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>User bypasses a download warning.</description>
 </action>
 
 <action name="SafeBrowsing.Download.WarningShown" not_user_triggered="true">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>A download warning is shown.</description>
 </action>
 
 <action name="SafeBrowsing.EsbDownloadRowPromo.Click">
   <owner>awado@google.com</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks on the Enhanced Safe Browsing (ESB) download row promotion on
     chrome://downloads.
@@ -39897,7 +40003,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.DisableSafeBrowsingClicked">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the disable Safe Browsing button in the Safe Browsing setting
     page.
@@ -39906,7 +40012,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.DisableSafeBrowsingDialogConfirmed">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the confirmed button on the disable Safe Browsing dialog in the
     Safe Browsing setting page.
@@ -39915,7 +40021,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.DisableSafeBrowsingDialogDenied">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the denied button on the disable Safe Browsing dialog in the
     Safe Browsing setting page.
@@ -39924,7 +40030,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.EnhancedProtectionClicked">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the exhanced protection button in the Safe Browsing setting
     page.
@@ -39943,7 +40049,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.EnhancedProtectionExpandArrowClicked">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the enhanced protection expand arrow in the Safe Browsing
     setting page.
@@ -39953,7 +40059,7 @@ should be able to be added at any place in this file.
 <action name="SafeBrowsing.Settings.SafeBrowsingRowClicked">
   <obsolete>Renamed to Settings.SafeBrowsingRowExpanded.</obsolete>
   <owner>yawfrempong@google.com</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the safe browsing row expand arrow in the
     chrome://settings/security page.
@@ -39962,7 +40068,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.SafeBrowsingRowExpanded">
   <owner>yawfrempong@google.com</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the safe browsing row expand arrow in the
     chrome://settings/security page. This user action is the same as
@@ -39972,7 +40078,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.ShowedFromDefault">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     The Safe Browsing setting page is shown to the user. The user reaches the
     page from the default route.
@@ -39981,7 +40087,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.ShowedFromParentSettings">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     The Safe Browsing setting page is shown to the user. The user reaches the
     page from the parent settings.
@@ -39990,7 +40096,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.ShowedFromSafetyCheck">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     The Safe Browsing setting page is shown to the user. The user reaches the
     page from SafetyCheck.
@@ -39999,7 +40105,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.ShowedFromSecurityInterstitial">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     The Safe Browsing setting page is shown to the user. The user reaches the
     page from the security interstitial.
@@ -40008,7 +40114,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.ShowedFromSurfaceExplorerPromoSlinger">
   <owner>drubery@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     The Safe Browsing setting page is shown to the user. The user reaches the
     page from Surface Explorer on NTP on Android.
@@ -40027,7 +40133,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.StandardProtectionClicked">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the standard protection button in the Safe Browsing setting
     page.
@@ -40036,7 +40142,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.Settings.StandardProtectionExpandArrowClicked">
   <owner>xinghuilu@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicks the standard protection expand arrow in the Safe Browsing
     setting page.
@@ -40045,7 +40151,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.SyncedEsbDialog.OkButtonClicked">
   <owner>zackhan@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicked the ok button on the ESB synced to enabled dialog.
   </description>
@@ -40053,7 +40159,7 @@ should be able to be added at any place in this file.
 
 <action name="SafeBrowsing.SyncedEsbDialog.TurnOnButtonClicked">
   <owner>zackhan@chromium.org</owner>
-  <owner>chrome-safebrowsing-alerts@google.com</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
   <description>
     User clicked the turn on button to turn on ESB on the ESB synced to disabled
     dialog.
@@ -43111,6 +43217,19 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action
+    name="Settings.YourSavedInfo.{YourSavedInfoPageName}.{YourSavedInfoActionName}.{YourSavedInfoEntityType}">
+  <owner>jsobiech@google.com</owner>
+  <owner>chrome-autofill-team@google.com</owner>
+  <description>
+    User clicks on the {YourSavedInfoActionName} button in the Your saved info
+    &gt; {YourSavedInfoPageName} page for {YourSavedInfoEntityType}.
+  </description>
+  <token key="YourSavedInfoPageName" variants="YourSavedInfoPageName"/>
+  <token key="YourSavedInfoActionName" variants="YourSavedInfoActionName"/>
+  <token key="YourSavedInfoEntityType" variants="YourSavedInfoEntityType"/>
+</action>
+
 <action name="Settings_A11y_ShelfNavigationButtonsLearnMoreClicked">
   <owner>gzadina@chromium.org</owner>
   <owner>tbarzic@chromium.org</owner>
@@ -45445,6 +45564,16 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_Impression_FromSettingsAutofillAndPasswords"
+    not_user_triggered="true">
+  <owner>josefraska@google.com</owner>
+  <owner>chrome-autofill-team@google.com</owner>
+  <description>
+    Recorded when showing sign in entry in the Autofill and passwords settings
+    page.
+  </description>
+</action>
+
 <action name="Signin_Impression_FromSetUpList">
   <owner>scottyoder@google.com</owner>
   <owner>bling-pandamonium@google.com</owner>
@@ -46496,6 +46625,16 @@ should be able to be added at any place in this file.
   <description>
     Recorded on sign in start from access point
     signin_metrics::AccessPoint::kSettings.
+  </description>
+</action>
+
+<action name="Signin_Signin_FromSettingsAutofillAndPasswords">
+  <owner>josefraska@google.com</owner>
+  <owner>chrome-autofill-team@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kSettingsAutofillAndPasswords, emitted from
+    Autofill and passwords settings page.
   </description>
 </action>
 
@@ -49923,6 +50062,7 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="SystemBack">
+  <obsolete>Unused as of Oct 29, 2024</obsolete>
   <owner>lazzzis@google.com</owner>
   <description>
     The user triggered system back **after** Native is initialized. This action
@@ -51925,6 +52065,12 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="TabStripComboButton.TabSearch.BubbleShown">
+  <owner>kunaldaftari@google.com</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>Recorded when the tab search bubble is shown.</description>
+</action>
+
 <action name="TabStripComboButton.TabSearch.Pinned">
   <owner>emshack@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -52423,6 +52569,14 @@ should be able to be added at any place in this file.
 <action name="ToggleUnderline">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
+</action>
+
+<action name="Toolbar_BackButton_Clicked">
+  <owner>kunaldaftari@google.com</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    Recorded when the user clicks the back button in the toolbar.
+  </description>
 </action>
 
 <action name="Toolbar_DragStar">
@@ -55800,6 +55954,20 @@ should be able to be added at any place in this file.
   <token key="ClosingSidePanelType" variants="SidePanelType"/>
   <token key="SidePanelEntry" variants="SidePanelEntry"/>
   <token key="OpeningSidePanelType" variants="SidePanelType"/>
+</action>
+
+<action
+    name="{ContextualSearchSource}.AimEntrypoint.{PopupType}.ContextualElement.Clicked.{ContextType}">
+  <owner>niharm@google.com</owner>
+  <owner>chrome-contextual-tasks-eng@google.com</owner>
+  <description>
+    Recorded when the user opens the context menu in a WebUI searchbox (omnibox,
+    realbox, etc.) or composebox and selects a menu item. This action is
+    recorded on {ContextualSearchSource} for {PopupType} and {ContextType}.
+  </description>
+  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
+  <token key="PopupType" variants="PopupType"/>
+  <token key="ContextType" variants="ContextType"/>
 </action>
 
 <action name="{SidePanelType}.Hide">

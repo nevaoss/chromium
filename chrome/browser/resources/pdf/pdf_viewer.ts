@@ -316,6 +316,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
 
       viewportZoom_: {type: Number},
       zoomBounds_: {type: Object},
+      toolbarEnabled_: {type: Boolean},
     };
   }
 
@@ -397,7 +398,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
   protected accessor textboxState_: TextBoxState = TextBoxState.INACTIVE;
   // </if>
   protected accessor title_: string = '';
-  protected toolbarEnabled_: boolean = false;
+  protected accessor toolbarEnabled_: boolean = false;
   protected accessor twoUpViewEnabled_: boolean = false;
   // <if expr="enable_pdf_ink2">
   private accessor useSidePanelForInk_: boolean = false;
@@ -411,7 +412,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
 
     super();
 
-    // TODO(dpapad): Add tests after crbug.com/1111459 is fixed.
+    // TODO(dpapad): Add tests after crbug.com/40142584 is fixed.
     this.sidenavCollapsed_ = Boolean(Number.parseInt(
         LocalStorageProxyImpl.getInstance().getItem(
             LOCAL_STORAGE_SIDENAV_COLLAPSED_KEY)!,
@@ -940,7 +941,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
     // </if>
   }
 
-  override handleScriptingMessage(message: MessageEvent<any>) {
+  override handleScriptingMessage(message: MessageEvent<unknown>) {
     if (super.handleScriptingMessage(message)) {
       return true;
     }
@@ -950,7 +951,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
     }
 
     let messageType;
-    switch (message.data.type.toString()) {
+    switch ((message.data as {type: string}).type) {
       case 'getSelectedText':
         messageType = PostMessageDataType.GET_SELECTED_TEXT;
         this.pluginController_.getSelectedText().then(
@@ -1297,8 +1298,8 @@ export class PdfViewerElement extends PdfViewerBaseElement {
         const writable = await fileHandle.createWritable();
         await writable.write(blob);
         await writable.close();
-      } catch (error: any) {
-        if (error.name !== 'AbortError') {
+      } catch (error: unknown) {
+        if (error instanceof Error && error.name !== 'AbortError') {
           console.error('window.showSaveFilePicker failed: ' + error);
         }
       }
@@ -1516,7 +1517,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
   protected onSidenavToggleClick_() {
     this.sidenavCollapsed_ = !this.sidenavCollapsed_;
 
-    // Workaround for crbug.com/1119944, so that the PDF plugin resizes only
+    // Workaround for crbug.com/40145705, so that the PDF plugin resizes only
     // once when the sidenav is opened/closed.
     const container = this.shadowRoot.querySelector('#sidenav-container')!;
     if (!this.sidenavCollapsed_) {
@@ -1641,7 +1642,7 @@ export class PdfViewerElement extends PdfViewerBaseElement {
     if (this.textboxState_ !== TextBoxState.INACTIVE) {
       const textbox = this.shadowRoot.querySelector('ink-text-box');
       assert(textbox);
-      textbox.commitTextAnnotation();
+      await textbox.commitTextAnnotation();
     }
 
     // `this.hasUnsavedEdits_` will be set back to true if save is disrupted for
@@ -1702,8 +1703,8 @@ export class PdfViewerElement extends PdfViewerBaseElement {
       // <if expr="enable_pdf_ink2">
       this.onSaveSuccessful_(requestType);
       // </if>
-    } catch (error: any) {
-      if (error.name !== 'AbortError') {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.name !== 'AbortError') {
         console.error('window.showSaveFilePicker failed: ' + error);
       }
       // <if expr="enable_pdf_ink2">
@@ -1803,9 +1804,9 @@ export class PdfViewerElement extends PdfViewerBaseElement {
       // <if expr="enable_pdf_ink2">
       this.onSaveSuccessful_(requestType);
       // </if>
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.pluginController_.releaseSaveInBlockBuffers();
-      if (error.name !== 'AbortError') {
+      if (error instanceof Error && error.name !== 'AbortError') {
         console.error('window.showSaveFilePicker failed: ' + error);
       }
       // <if expr="enable_pdf_ink2">

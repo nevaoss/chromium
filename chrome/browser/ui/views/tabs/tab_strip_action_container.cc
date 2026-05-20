@@ -14,6 +14,7 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/actor/ui/actor_ui_metrics.h"
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
+#include "chrome/browser/glic/browser_ui/glic_button_controller.h"
 #include "chrome/browser/glic/glic_profile_manager.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/host.h"
@@ -38,6 +39,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/glic/glic_actor_task_icon.h"
 #include "chrome/browser/ui/views/tabs/glic/glic_and_actor_buttons_container.h"
 #include "chrome/browser/ui/views/tabs/glic/tab_strip_glic_actor_task_icon.h"
 #include "chrome/browser/ui/views/tabs/glic/tab_strip_glic_button.h"
@@ -50,7 +52,10 @@
 #include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/base/models/image_model.h"
+#include "ui/base/resource/resource_bundle.h"
 #include "ui/gfx/animation/tween.h"
+#include "ui/gfx/image/image_skia.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/background.h"
 #include "ui/views/controls/button/button.h"
@@ -68,11 +73,11 @@
 #include "chrome/browser/private_ai/private_ai_service.h"
 #include "chrome/browser/private_ai/private_ai_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/page_actions/page_action_controller.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
-#include "chrome/browser/ui/views/page_action/page_action_controller.h"
 #include "components/private_ai/client.h"
-#include "components/private_ai/error_code.h"
 #include "components/private_ai/features.h"
+#include "components/private_ai/status_code.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 namespace {
@@ -110,7 +115,7 @@ void EstablishPrivateAiConnection(Profile* profile) {
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-using TaskIconAnimationMode = glic::TabStripGlicActorTaskIcon::AnimationMode;
+using TaskIconAnimationMode = glic::AnimationMode;
 }  // namespace
 
 TabStripActionContainer::TabStripNudgeAnimationSession::
@@ -390,6 +395,9 @@ void TabStripActionContainer::OnTriggerAnchoredMessage(
 
   // Set the chip text to the cue label.
   action->SetText(base::UTF8ToUTF16(label));
+  action->SetImage(ui::ImageModel::FromVectorIcon(
+      glic::GlicVectorIconManager::GetVectorIcon(IDR_GLIC_BUTTON_VECTOR_ICON),
+      ui::kColorSysOnSurface, 18));
   action->SetEnabled(true);
   action->SetVisible(true);
   action->SetInvokeActionCallback(base::BindRepeating(
@@ -403,12 +411,13 @@ void TabStripActionContainer::OnTriggerAnchoredMessage(
                 glic::GlicKeyedService::Get(bwi->GetProfile())) {
           if (tabs::TabInterface* tab = bwi->GetActiveTabInterface()) {
             glic::GlicInvokeOptions options(
+                glic::Target(tab),
                 glic::mojom::InvocationSource::kAnchoredContextualCue);
             if (prompt.has_value()) {
               options.prompts.push_back(prompt.value());
             }
             glic_service->InvokeWithAutoSubmit(
-                glic::InvokeWithAutoSubmitPasskeyProvider::GetPassKey(), tab,
+                glic::InvokeWithAutoSubmitPasskeyProvider::GetPassKey(),
                 std::move(options));
           }
         }
@@ -421,10 +430,18 @@ void TabStripActionContainer::OnTriggerAnchoredMessage(
   // The secondary label becomes the anchored message bubble text.
   controller->SetAnchoredMessageText(kActionGlicContextualCueing,
                                      base::UTF8ToUTF16(anchored_message_text));
+  gfx::ImageSkia* icon =
+      ui::ResourceBundle::GetSharedInstance().GetImageSkiaNamed(
+          IDR_GLIC_BUTTON_ALT_ICON);
+  controller->SetAnchoredMessageIcon(
+      kActionGlicContextualCueing,
+      icon ? ui::ImageModel::FromImageSkia(*icon) : ui::ImageModel());
   controller->SetAnchoredMessageAction(
       kActionGlicContextualCueing,
       page_actions::AnchoredMessageActionIconType::kClose, /*model=*/nullptr);
-  controller->ShowAnchoredMessage(kActionGlicContextualCueing);
+  controller->ShowAnchoredMessage(
+      kActionGlicContextualCueing,
+      {.priority = page_actions::PageActionPriorityCategory::kContextualCue});
 }
 
 void TabStripActionContainer::OnHideGlicNudgeUI() {
@@ -444,7 +461,13 @@ void TabStripActionContainer::OnHideGlicNudgeUI() {
 }
 
 bool TabStripActionContainer::GetIsShowingGlicNudge() {
-  return glic_button_ && glic_button_->GetIsShowingNudge();
+  return (glic_button_ && glic_button_->GetIsShowingNudge()) ||
+         !!anchored_message_subscription_;
+}
+
+void TabStripActionContainer::SetButtonController(
+    glic::GlicButtonController* controller) {
+  button_controller_ = controller;
 }
 
 void TabStripActionContainer::SetGlicShowState(bool show) {
@@ -635,10 +658,6 @@ TabStripActionContainer::CreateGlicButton() {
   std::unique_ptr<glic::TabStripGlicButton> glic_button =
       std::make_unique<glic::TabStripGlicButton>(
           browser_window_interface_,
-          base::BindRepeating(&TabStripActionContainer::OnGlicButtonClicked,
-                              base::Unretained(this)),
-          base::BindRepeating(&TabStripActionContainer::OnGlicButtonDismissed,
-                              base::Unretained(this)),
           base::BindRepeating(&TabStripActionContainer::OnGlicButtonHovered,
                               base::Unretained(this)),
           base::BindRepeating(&TabStripActionContainer::OnGlicButtonMouseDown,
@@ -646,7 +665,11 @@ TabStripActionContainer::CreateGlicButton() {
           base::BindRepeating(
               &TabStripActionContainer::OnGlicButtonAnimationEnded,
               base::Unretained(this)),
-          tooltip_text);
+          tooltip_text,
+          base::BindRepeating(&TabStripActionContainer::OnGlicButtonClicked,
+                              base::Unretained(this)),
+          base::BindRepeating(&TabStripActionContainer::OnGlicButtonDismissed,
+                              base::Unretained(this)));
 
   glic_button->SetProperty(views::kCrossAxisAlignmentKey,
                            views::LayoutAlignment::kCenter);
@@ -668,14 +691,21 @@ void TabStripActionContainer::OnGlicButtonClicked() {
     prompt_suggestion = glic_nudge_controller_->GetPromptSuggestion();
     glic_nudge_controller_->ClearPromptSuggestion();
   }
+
+  glic::mojom::InvocationSource source;
+  if (button_controller_) {
+    source = button_controller_->GetInvocationSource(
+        glic_button_->GetIsShowingNudge());
+  } else {
+    source = glic_button_->GetIsShowingNudge()
+                 ? glic::mojom::InvocationSource::kNudge
+                 : glic::mojom::InvocationSource::kTopChromeButton;
+  }
+
   glic::GlicKeyedServiceFactory::GetGlicKeyedService(
       browser_window_interface_->GetProfile())
       ->ToggleUI(browser_window_interface_,
-                 /*prevent_close=*/false,
-                 glic_button_->GetIsShowingNudge()
-                     ? glic::mojom::InvocationSource::kNudge
-                     : glic::mojom::InvocationSource::kTopChromeButton,
-                 prompt_suggestion);
+                 /*prevent_close=*/false, source, prompt_suggestion);
 
   if (glic_button_->GetIsShowingNudge()) {
     glic_nudge_controller_->OnNudgeActivity(
@@ -910,7 +940,7 @@ void TabStripActionContainer::ExecuteShowTabStripNudge(
         button, this,
         TabStripNudgeAnimationSession::AnimationSessionType::kShow,
         base::BindOnce(&TabStripActionContainer::OnAnimationSessionEnded,
-                       base::Unretained(this)),
+                       weak_factory_.GetWeakPtr()),
         (button != glic_button_ && button != glic_actor_task_icon_));
     animation_session_->Start();
   }
@@ -965,7 +995,7 @@ void TabStripActionContainer::ExecuteHideTabStripNudge(
         button, this,
         TabStripNudgeAnimationSession::AnimationSessionType::kHide,
         base::BindOnce(&TabStripActionContainer::OnAnimationSessionEnded,
-                       base::Unretained(this)),
+                       weak_factory_.GetWeakPtr()),
         (button != glic_button_ && button != glic_actor_task_icon_));
     animation_session_->Start();
   }
@@ -1018,8 +1048,7 @@ void TabStripActionContainer::OnAnimationSessionEnded() {
 
 bool TabStripActionContainer::ButtonOwnsAnimation(
     const TabStripNudgeButton* button) const {
-  return button == glic_button_ &&
-         base::FeatureList::IsEnabled(features::kGlicEntrypointVariations);
+  return button == glic_button_;
 }
 
 void TabStripActionContainer::FinalizeHideGlicActorTaskIcon() {

@@ -13,7 +13,6 @@
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
-#include "chrome/browser/ui/views/toolbar/browser_app_menu_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/browser/user_education/user_education_service_factory.h"
@@ -55,11 +54,11 @@ class HelpBubbleFactoryViewsBrowsertest : public DialogBrowserTest {
                 ->help_bubble_factory_registry();
   }
 
-  views::TrackedElementViews* GetAnchorElement() {
+  ui::TrackedElement* GetAnchorElement() {
+    auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
     return views::ElementTrackerViews::GetInstance()->GetElementForView(
-        BrowserView::GetBrowserViewForBrowser(browser())
-            ->toolbar()
-            ->app_menu_button());
+        views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+            kToolbarAppMenuButtonElementId, browser_view->GetElementContext()));
   }
 
   std::unique_ptr<user_education::HelpBubble> help_bubble_;
@@ -77,7 +76,8 @@ IN_PROC_BROWSER_TEST_F(HelpBubbleFactoryViewsBrowsertest, ShowAndClose) {
   ASSERT_TRUE(help_bubble_);
   ASSERT_TRUE(help_bubble_->IsA<user_education::HelpBubbleViews>());
   EXPECT_TRUE(help_bubble_->is_open());
-  EXPECT_TRUE(help_bubble_->Close());
+  EXPECT_TRUE(help_bubble_->Close(
+      user_education::HelpBubble::CloseReason::kProgrammaticallyClosed));
   EXPECT_FALSE(help_bubble_->is_open());
 }
 

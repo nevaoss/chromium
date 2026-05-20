@@ -17,17 +17,19 @@
 #include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
+#include "chrome/browser/actor/actor_proto_conversion.h"
 #include "chrome/browser/actor/actor_tab_data.h"
 #include "chrome/browser/actor/actor_task.h"
-#include "chrome/browser/actor/enterprise_policy_url_checker.h"
+#include "chrome/browser/actor/enterprise_policy_checker.h"
 #include "chrome/browser/actor/execution_engine.h"
-#include "chrome/browser/actor/shared_types.h"
 #include "chrome/browser/actor/tools/media_control_tool_request.h"
 #include "chrome/browser/actor/tools/tool_request.h"
 #include "chrome/browser/actor/ui/event_dispatcher.h"
 #include "chrome/common/actor.mojom-forward.h"
 #include "chrome/common/actor/action_result.h"
 #include "chrome/common/actor/task_id.h"
+#include "components/actor/core/shared_types.h"
+#include "components/actor/public/mojom/actor_types.mojom.h"
 #include "components/optimization_guide/proto/features/actions_data.pb.h"
 #include "components/sessions/core/session_id.h"
 #include "components/tabs/public/mock_tab_interface.h"
@@ -332,22 +334,40 @@ class ScopedExecutionEngineFactory {
   ~ScopedExecutionEngineFactory();
 };
 
-class MockPolicyChecker : public EnterprisePolicyUrlChecker {
+class MockPolicyChecker : public EnterprisePolicyChecker {
  public:
-  explicit MockPolicyChecker(EnterprisePolicyBlockReason reason);
-  ~MockPolicyChecker();
+  explicit MockPolicyChecker(UrlBlockReason reason,
+                             ContentValidationReason content_reason =
+                                 ContentValidationReason::kAllowed);
+  ~MockPolicyChecker() override;
 
-  EnterprisePolicyBlockReason Evaluate(const GURL& url) const override;
+  UrlBlockReason Evaluate(const GURL& url) const override;
+  void ValidateContentSentToRenderer(
+      content::RenderFrameHost* frame,
+      const std::string& content,
+      ContentValidationCallback callback) const override;
+
  private:
-  EnterprisePolicyBlockReason reason_;
+  UrlBlockReason reason_;
+  ContentValidationReason content_reason_;
 };
 
-// Returns a passthrough EnterprisePolicyUrlChecker tests can use to avoid
+// Returns a passthrough EnterprisePolicyChecker tests can use to avoid
 // policy checks.
-const EnterprisePolicyUrlChecker* NoEnterprisePolicyChecker();
+const EnterprisePolicyChecker* NoEnterprisePolicyChecker();
 
 // Returns a common mock TaskSourceInfo used by actor tests.
 const TaskSourceInfo& TestTaskSourceInfo();
+
+// Helper to mock the result returned on a TabObservation built using
+// actor::BuildActionsResultWithObservations. While live, use the provided
+// function to set TabObservationResults. Unset on destruction.
+class ScopedMockTabObservationResult {
+ public:
+  explicit ScopedMockTabObservationResult(
+      TabObservationResultOverrideCallback callback);
+  ~ScopedMockTabObservationResult();
+};
 
 // Helper struct for unit tests that require a mock TabInterface and its
 // associated ActorTabData.

@@ -3303,24 +3303,6 @@
       }
     },
     {
-      "id": 438,
-      "cr_bugs": [ 377047083 ],
-      "description": "Disable DirectML execution of metacommands on Intel GPUs with driver version between 31.0.101.5518 and 32.0.101.6083 due to stability bugs",
-      "os": {
-        "type": "win"
-      },
-      "vendor_id": "0x8086",
-      "driver_version": {
-        "schema": "intel_driver",
-        "op": "between",
-        "value": "31.0.101.5518",
-        "value2": "32.0.101.6083"
-      },
-      "features": [
-        "disable_dml_meta_commands_for_gpu"
-      ]
-    },
-    {
       "id": 440,
       "cr_bugs": [376094900, 369737075],
       "description": "Disable mssa because OOP-C dmsaa (implicit) resolve produces rendering artifacts",
@@ -3772,6 +3754,18 @@
       "device_id": ["0x1506"],
       "features": [
         "disable_vaapi"
+      ]
+    },
+    {
+      "id": 474,
+      "description": "Disable RGB to YUV hardware conversion on NVIDIA Linux",
+      "cr_bugs": [447709687],
+      "os": {
+        "type": "linux"
+      },
+      "gl_vendor": "NVIDIA.*",
+      "features": [
+        "disable_rgb_to_yuv_conversion"
       ]
     }
   ]

@@ -31,6 +31,7 @@ class LensSearchController;
 namespace contextual_tasks {
 class ContextualTasksService;
 class ContextualTasksUIInterface;
+class DesktopQueryContextualizerDelegate;
 }  // namespace contextual_tasks
 
 // Struct to store file data and mime type.
@@ -58,6 +59,7 @@ class ContextualTasksComposeboxHandler
       mojo::PendingRemote<composebox::mojom::Page> pending_page,
       mojo::PendingReceiver<searchbox::mojom::PageHandler>
           pending_searchbox_handler,
+      mojo::PendingRemote<searchbox::mojom::Page> pending_searchbox_page,
       GetSessionHandleCallback get_session_callback,
       ClearSessionHandleCallback clear_session_callback,
       TakeInputStateModelCallback take_input_model_callback);
@@ -79,6 +81,10 @@ class ContextualTasksComposeboxHandler
   void AddTabContext(int32_t tab_id,
                      bool delay_upload,
                      AddTabContextCallback callback) override;
+  void AddDriveContext(const std::string& drive_id,
+                       const std::string& resource_key,
+                       const std::string& mime_type_string,
+                       AddDriveContextCallback callback) override;
 
   // We override this method to inject an existing `InputStateModel` if one is
   // provided by the ContextualTasksUI via the `take_input_model_callback_`.
@@ -102,10 +108,7 @@ class ContextualTasksComposeboxHandler
   void ResetInputStateModel() override;
   void UpdateModelFromUrl(const GURL& url) override;
   void UpdateSuggestedTabContext(
-      std::unique_ptr<contextual_tasks::SuggestedTabInfo> suggested_tab)
-      override;
-  bool has_suggested_tab_context() const override;
-  void ResetBlocklistedSuggestions() override;
+      const contextual_tasks::SuggestedTabInfo* suggested_tab) override;
   void OnTaskChanged() override;
 
   void ClearFiles(bool should_block_auto_suggested_tabs) override;
@@ -116,19 +119,15 @@ class ContextualTasksComposeboxHandler
   void CloseLensOverlayFromWebUI(
       composebox::mojom::LensOverlayDismissalSource dismissal_source) override;
 
-  // QueryContextualizer::Delegate:
-  GURL GetTabUrl(contextual_tasks::QueryContextualizer::TabId id) override;
-  SessionID GetTabSessionId(
-      contextual_tasks::QueryContextualizer::TabId id) override;
-  void GetPageContext(
-      contextual_tasks::QueryContextualizer::TabId id,
-      base::OnceCallback<void(std::unique_ptr<lens::ContextualInputData>)>
-          callback) override;
-  void OnPageContextIneligible() override;
+  // Callbacks for QueryContextualizer:
+
+  // Called when the page context is determined to be ineligible for
+  // contextualization (e.g., non-HTTP(S) URL).
+  void OnPageContextIneligible();
+
+  // Called when a tab has been processed for query contextualization.
   void OnTabProcessedForQueryContextualization(
-      contextual_tasks::QueryContextualizer::TabId id) override;
-  contextual_search::ContextualSearchSessionHandle*
-  GetOrCreateSessionHandleForQueryContextualizer() override;
+      contextual_tasks::QueryContextualizer::TabId id);
 
   OmniboxController* GetOmniboxControllerForTesting() const {
     return omnibox_controller();
@@ -155,6 +154,11 @@ class ContextualTasksComposeboxHandler
   // Returns the context ID for the active tab, if any.
   std::optional<int64_t> GetActiveTabContextId();
 
+  // Whether to override the feature flag and force allow tab suggestions.
+  // This is done when the initial active tab was already uploaded to initiate
+  // the session as in Lens contextual queries.
+  bool ShouldForceAllowTabSuggestion(int32_t tab_id);
+
   // Called when all tabs have been re-uploaded, to continue query
   // submission. `overlay_token` is the token of the initial objects request for
   // the Lens overlay / CSB, used in the ClientToAimRequest. It needs to be
@@ -170,7 +174,7 @@ class ContextualTasksComposeboxHandler
       base::expected<base::UnguessableToken,
                      contextual_search::ContextUploadErrorType> token);
 
-  LensSearchController* GetLensSearchController() const;
+  virtual LensSearchController* GetLensSearchController() const;
 
   // Called when a non-delayed context upload (file or tab) has finished.
   // Potentially submits query if no other context is uploading.
@@ -183,9 +187,6 @@ class ContextualTasksComposeboxHandler
   // Helper to send the pending query if all uploads are complete.
   void MaybeSendPendingQuery();
 
-  // Sends an update to AIM that an injected input has been deleted.
-  void SendDeleteInjectedInputUpdate(const std::string& id);
-
   TakeInputStateModelCallback take_input_model_callback_;
   raw_ptr<contextual_tasks::ContextualTasksUIInterface> web_ui_interface_;
 
@@ -193,6 +194,13 @@ class ContextualTasksComposeboxHandler
   // this class.
   raw_ptr<contextual_tasks::ContextualTasksService> contextual_tasks_service_;
 
+ protected:
+  // Delegate handling desktop-specific operations for QueryContextualizer,
+  // such as tab validation and retrieving viewport encoding options.
+  std::unique_ptr<contextual_tasks::DesktopQueryContextualizerDelegate>
+      desktop_delegate_;
+
+ private:
   std::unique_ptr<contextual_tasks::QueryContextualizer> recontextualizer_;
   scoped_refptr<ui::SelectFileDialog> file_dialog_;
   // Map of context tokens to tab IDs for tabs that are delayed for upload.
@@ -200,17 +208,10 @@ class ContextualTasksComposeboxHandler
   // submits the query in the composebox.
   std::map<base::UnguessableToken, int32_t> delayed_tabs_;
 
-  // List of auto-suggested tab URLs that have been explicitly dismissed by the
-  // user. Those URLs will not be auto-suggested again for the same task in the
-  // same session, unless the user explicitly adds the tab via "+" button or
-  // switches to a new thread in which case the whole list will be cleared.
-  std::set<GURL> blocklisted_suggestions_;
-
-  // The URL of the current suggested tab context.
-  std::optional<GURL> current_suggestion_;
-
-  // The message to be sent to the webview once uploads are complete.
-  std::optional<lens::ClientToAimMessage> pending_message_;
+  // The pending query request info to be sent once uploads are complete.
+  std::unique_ptr<contextual_search::ContextualSearchContextController::
+                      CreateClientToAimRequestInfo>
+      pending_query_request_info_;
 
   // Set of tabs still delayed. Is set of tab id's, while `delayed_tabs_`
   // is map of token to tab id. We do not always have access to file token

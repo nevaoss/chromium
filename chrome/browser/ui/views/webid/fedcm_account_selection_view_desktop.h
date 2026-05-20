@@ -12,9 +12,9 @@
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/picture_in_picture/picture_in_picture_occlusion_observer.h"
 #include "chrome/browser/picture_in_picture/scoped_picture_in_picture_occlusion_observation.h"
+#include "chrome/browser/ui/page_actions/page_action_observer.h"
 #include "chrome/browser/ui/tabs/public/tab_dialog_manager.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
-#include "chrome/browser/ui/views/page_action/page_action_observer.h"
 #include "chrome/browser/ui/views/webid/account_selection_bubble_view.h"
 #include "chrome/browser/ui/views/webid/fedcm_modal_dialog_view.h"
 #include "chrome/browser/ui/webid/account_selection_view.h"
@@ -125,7 +125,7 @@ class FedCmAccountSelectionView : public AccountSelectionView,
                            Account::SignInMode sign_in_mode,
                            blink::mojom::RpMode rp_mode) override;
 
-  void SetCanShowWidget(bool can_show_widget) override;
+  void SetCanShowUi(bool can_show_ui) override;
 
   void ShowUrl(LinkType link_type, const GURL& url) override;
   std::string GetTitle() const override;
@@ -153,8 +153,11 @@ class FedCmAccountSelectionView : public AccountSelectionView,
       std::unique_ptr<views::InputEventActivationProtector>);
 
   // AccountSelectionBubbleView::Observer:
-  content::WebContents* ShowModalDialog(const GURL& url,
-                                        blink::mojom::RpMode rp_mode) override;
+  content::WebContents* ShowModalDialog(
+      const GURL& url,
+      blink::mojom::RpMode rp_mode,
+      content::IdentityRequestDialogController::ShownModalAsyncCallback
+          on_shown_async) override;
   void CloseModalDialog() override;
   void PrimaryMainFrameWasResized(bool width_changed) override;
 
@@ -399,6 +402,10 @@ class FedCmAccountSelectionView : public AccountSelectionView,
   // Called when the tab's modalUI is shown or hidden.
   void ModalUIChanged(tabs::TabInterface* tab);
 
+  // Called when the tab associated with an actor task, that was originally in
+  // the background, becomes foregrounded.
+  void BackgroundTaskTabForegrounded(tabs::TabInterface* tab);
+
   // Returns false if `this` got deleted. In that case, the caller must early
   // return.
   bool NotifyDelegateOfAccountSelection(
@@ -483,6 +490,10 @@ class FedCmAccountSelectionView : public AccountSelectionView,
   // initial value to false.
   void ShouldShowDialog(bool& should_show);
 
+  // Actually show the popup window, which may have been deferred in
+  // ShowModalDialog.
+  content::WebContents* ShowPopupWindow(const GURL& url);
+
   // PageActionObserver
   void RecordPageActionImpression(
       const page_actions::PageActionState& page_action,
@@ -538,6 +549,21 @@ class FedCmAccountSelectionView : public AccountSelectionView,
   // handled by the fedcm control-flow. For now we keep hiding the dialog.
   bool hide_dialog_widget_after_idp_login_popup_{false};
 
+  // If an actor task is in the background when it would trigger a popup window,
+  // we prevent the popup from showing until the user returns to the tab
+  // associated with the task.
+  struct WithheldPopupState {
+    WithheldPopupState();
+    WithheldPopupState(
+        const GURL& url,
+        base::OnceCallback<void(content::WebContents*)> on_shown);
+    ~WithheldPopupState();
+
+    GURL url;
+    base::OnceCallback<void(content::WebContents*)> on_shown;
+  };
+  std::optional<WithheldPopupState> withheld_popup_state_;
+
   // If Show() is called, the intention is to show the accounts dialog. This
   // callback is invoked when the widget is actually shown for the first time.
   base::OnceClosure accounts_widget_shown_callback_;
@@ -574,8 +600,8 @@ class FedCmAccountSelectionView : public AccountSelectionView,
   // inputs).
   bool is_occluded_by_pip_{false};
 
-  // Whether the widget can be shown.
-  bool can_show_widget_{true};
+  // Whether the UI can be shown.
+  bool can_show_ui_{true};
 
   // Observer for widget occlusion.
   std::unique_ptr<ScopedPictureInPictureOcclusionObservation>

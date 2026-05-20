@@ -12,6 +12,7 @@
 #include "base/barrier_closure.h"
 #include "base/functional/callback_forward.h"
 #include "base/memory/raw_ptr.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/cancelable_task_tracker.h"
@@ -25,6 +26,8 @@
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/extensions/controlled_home_dialog_controller.h"
 #include "chrome/browser/ui/extensions/settings_api_bubble_helpers.h"
+#include "chrome/browser/ui/hats/survey_config.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/extensions/manifest_handlers/settings_overrides_handler.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
@@ -372,13 +375,29 @@ void FetchIconsThenRun(std::vector<IconFetchParams>& lookups,
         fetch_params);
   }
 }
+
+// The explicit choice dialog requires names for the options. One prior bug
+// yielded a case where no name was returned for an option. Instrument this
+// to detect whether we ever show users a dialog with missing information.
+void LogMissingParams(const ExtensionSettingsOverriddenDialog::Params& params) {
+  MissingParams param = MissingParams::kNone;
+  if (!params.content.new_setting || params.content.new_setting->text.empty()) {
+    param = MissingParams::kMissingNewSearchName;
+  } else if (!params.content.previous_setting ||
+             params.content.previous_setting->text.empty()) {
+    param = MissingParams::kMissingPreviousSearchName;
+  }
+  base::UmaHistogramEnumeration("Extensions.SettingsOverridden.MissingParams",
+                                param);
+}
+
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
 }  // namespace
 
 std::optional<ExtensionSettingsOverriddenDialog::Params> GetNtpOverriddenParams(
     Profile* profile) {
-  const GURL ntp_url(chrome::kChromeUINewTabURL);
+  const GURL& ntp_url = chrome::ChromeUINewTabURLAsGURL();
   const extensions::Extension* extension =
       ExtensionUrlOverrides::GetExtensionControllingURL(ntp_url, profile);
   if (!extension) {
@@ -404,7 +423,7 @@ std::optional<ExtensionSettingsOverriddenDialog::Params> GetNtpOverriddenParams(
   if (possible_rewrites.size() > 1) {
     default_ntp_is_secondary =
         possible_rewrites[1] == ntp_url ||
-        possible_rewrites[1] == GURL(chrome::kChromeUINewTabPageURL) ||
+        possible_rewrites[1] == chrome::ChromeUINewTabPageURLAsGURL() ||
         possible_rewrites[1] == GURL(chrome::kChromeUINewTabPageThirdPartyURL);
   }
   // Check if there's another extension that would take over (this isn't
@@ -450,7 +469,8 @@ std::optional<ExtensionSettingsOverriddenDialog::Params> GetNtpOverriddenParams(
   SettingsOverriddenDialogController::ShowParams show_params(
       std::move(dialog_title), std::move(dialog_message), icon);
   return ExtensionSettingsOverriddenDialog::Params(
-      extension->id(), preference_name, histogram_name, std::move(show_params));
+      extension->id(), extension->name(), preference_name, histogram_name,
+      std::move(show_params));
 }
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
@@ -548,14 +568,18 @@ void GetSearchOverriddenParamsThenRun(
             extension->name());
     std::u16string dialog_message = l10n_util::GetStringFUTF16(
         IDS_EXTENSION_SEARCH_OVERRIDDEN_DIALOG_BODY_EXPLICIT_CHOICE,
-        extension_name_for_ui, search_name);
+        extension_name_for_ui);
 
     // On the 'explicit choice' dialog, there is no icon at the title level.
     SettingsOverriddenDialogController::ShowParams show_params(
         std::move(dialog_title), std::move(dialog_message), /*icon=*/nullptr);
     auto params = std::make_unique<ExtensionSettingsOverriddenDialog::Params>(
-        extension->id(), preference_name, histogram_name,
+        extension->id(), extension->name(), preference_name, histogram_name,
         std::move(show_params));
+    if (base::FeatureList::IsEnabled(
+            features::kHappinessTrackingSurveysForDesktopSEHijacking)) {
+      params->hats_survey_trigger = kHatsSurveyTriggerSEHijacking;
+    }
     // The explicit choice dialog needs to be shown until a choice is made,
     // so suppress the mechanism that limits the number of times the dialog is
     // shown.
@@ -583,9 +607,8 @@ void GetSearchOverriddenParamsThenRun(
     SettingsOverriddenDialogController::SettingOption& new_setting =
         params->content.new_setting.emplace();
     new_setting.text = search_name;
-    new_setting.description = l10n_util::GetStringFUTF16(
-        IDS_EXTENSION_SEARCH_OVERRIDDEN_DIALOG_RECENT_CHANGE,
-        extension_name_for_ui);
+    new_setting.description = l10n_util::GetStringUTF16(
+        IDS_EXTENSION_SEARCH_OVERRIDDEN_DIALOG_RECENT_CHANGE);
 
     if (is_prepopulated) {
       icon_lookups.emplace_back(default_search->favicon_url(),
@@ -594,6 +617,8 @@ void GetSearchOverriddenParamsThenRun(
       new_setting.image =
           CreateFallbackSearchIcon(/*extension_name=*/std::string());
     }
+
+    LogMissingParams(*params);
 
     // Asynchronously look up icons (if needed) then continue.
     FetchIconsThenRun(
@@ -633,7 +658,12 @@ void GetSearchOverriddenParamsThenRun(
   SettingsOverriddenDialogController::ShowParams show_params(
       std::move(dialog_title), std::move(dialog_message), icon);
   auto params = std::make_unique<ExtensionSettingsOverriddenDialog::Params>(
-      extension->id(), preference_name, histogram_name, std::move(show_params));
+      extension->id(), extension->name(), preference_name, histogram_name,
+      std::move(show_params));
+  if (base::FeatureList::IsEnabled(
+          features::kHappinessTrackingSurveysForDesktopSEHijacking)) {
+    params->hats_survey_trigger = kHatsSurveyTriggerSEHijacking;
+  }
 
   // There are no async operations needed for the non-explicit-choice dialog,
   // so trigger the callback immediately.

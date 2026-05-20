@@ -32,7 +32,7 @@
 #include "cc/layers/texture_layer_impl.h"
 #include "cc/test/fake_impl_task_runner_provider.h"
 #include "cc/test/fake_layer_tree_frame_sink.h"
-#include "cc/test/fake_layer_tree_host_client.h"
+#include "cc/test/fake_layer_tree_host_delegate.h"
 #include "cc/test/fake_layer_tree_host_impl.h"
 #include "cc/test/layer_test_common.h"
 #include "cc/test/layer_tree_test.h"
@@ -113,7 +113,7 @@ viz::TransferableResource MakeFakeSoftwareResource() {
 class MockLayerTreeHost : public LayerTreeHost {
  public:
   static std::unique_ptr<MockLayerTreeHost> Create(
-      FakeLayerTreeHostClient* client,
+      FakeLayerTreeHostDelegate* client,
       TaskGraphRunner* task_graph_runner,
       MutatorHost* mutator_host) {
     LayerTreeHost::InitParams params;
@@ -220,7 +220,7 @@ class TextureLayerTest : public testing::Test {
   std::unique_ptr<MockLayerTreeHost> layer_tree_host_;
   std::unique_ptr<AnimationHost> animation_host_;
   FakeImplTaskRunnerProvider task_runner_provider_;
-  FakeLayerTreeHostClient fake_client_;
+  FakeLayerTreeHostDelegate fake_client_;
   TestTaskGraphRunner task_graph_runner_;
   std::unique_ptr<LayerTreeFrameSink> layer_tree_frame_sink_;
   FakeLayerTreeHostImpl host_impl_;
@@ -248,7 +248,7 @@ TEST_F(TextureLayerTest, CheckPropertyChangeCausesCorrectBehavior) {
   EXPECT_SET_NEEDS_COMMIT(1, test_layer->SetBlendBackgroundColor(true));
 }
 
-class RunOnCommitLayerTreeHostClient : public FakeLayerTreeHostClient {
+class RunOnCommitLayerTreeHostDelegate : public FakeLayerTreeHostDelegate {
  public:
   void set_run_on_commit_and_draw(base::OnceClosure c) {
     run_on_commit_and_draw_ = std::move(c);
@@ -271,7 +271,7 @@ TEST_F(TextureLayerTest, ShutdownWithResource) {
     SCOPED_TRACE(gpu);
     // Make our own LayerTreeHost for this test so we can control the lifetime.
     StubLayerTreeHostSingleThreadClient single_thread_client;
-    RunOnCommitLayerTreeHostClient client;
+    RunOnCommitLayerTreeHostDelegate client;
     LayerTreeHost::InitParams params;
     params.client = &client;
     params.task_graph_runner = &task_graph_runner_;
@@ -315,9 +315,9 @@ TEST_F(TextureLayerTest, ShutdownWithResource) {
     host = nullptr;
 
     // We have to wait for the posted ReleaseCallback to run.
-    // Our LayerTreeHostClient makes a FakeLayerTreeFrameSink which returns all
-    // resources when its detached, so the resources will not be in use in the
-    // display compositor, and will be returned as not lost.
+    // Our LayerTreeHostDelegate makes a FakeLayerTreeFrameSink which returns
+    // all resources when its detached, so the resources will not be in use in
+    // the display compositor, and will be returned as not lost.
     test_resource.ExpectRelease();
     {
       base::RunLoop loop;
@@ -815,7 +815,7 @@ class TextureLayerImplWithResourceTest : public TextureLayerTest {
     return will_draw;
   }
 
-  FakeLayerTreeHostClient fake_client_;
+  FakeLayerTreeHostDelegate fake_client_;
 };
 
 // Test conditions for results of TextureLayerImpl::WillDraw under
@@ -1426,15 +1426,15 @@ class StubTextureLayerClient : public TextureLayerClient {
   }
 };
 
-class SoftwareLayerTreeHostClient : public StubLayerTreeHostClient {
+class SoftwareLayerTreeHostDelegate : public StubLayerTreeHostDelegate {
  public:
-  SoftwareLayerTreeHostClient() = default;
-  ~SoftwareLayerTreeHostClient() override = default;
+  SoftwareLayerTreeHostDelegate() = default;
+  ~SoftwareLayerTreeHostDelegate() override = default;
 
   // Caller responsible for unsetting this and maintaining the host's lifetime.
   void SetLayerTreeHost(LayerTreeHost* host) { host_ = host; }
 
-  // StubLayerTreeHostClient overrides.
+  // StubLayerTreeHostDelegate overrides.
   void RequestNewLayerTreeFrameSink() override {
     auto sink = FakeLayerTreeFrameSink::CreateSoftware();
     frame_sink_ = sink.get();
@@ -1838,5 +1838,87 @@ class TextureLayerNoResourceTest : public LayerTreeTest, TextureLayerClient {
 
 SINGLE_AND_MULTI_THREAD_TEST_F(TextureLayerNoResourceTest);
 
+class TextureLayerUpdateAfterPaintEventTest : public LayerTreeTest,
+                                              TextureLayerClient {
+ public:
+  bool PrepareTransferableResource(
+      viz::TransferableResource* resource,
+      viz::ReleaseCallback* release_callback) override {
+    ++num_transferred_resources_;
+    *resource = viz::TransferableResource();
+    return true;
+  }
+
+  void SetupTree() override {
+    SetInitialRootBounds(gfx::Size(100, 100));
+    LayerTreeTest::SetupTree();
+    texture_layer_ = TextureLayer::Create(
+        this, TextureLayer::PrepareResourceBehavior::kAfterPaintEvent);
+    texture_layer_->SetIsDrawable(true);
+    texture_layer_->SetContentsOpaque(true);
+    texture_layer_->SetBounds(gfx::Size(100, 100));
+    texture_layer_->SetBackgroundColor(SkColors::kRed);
+    layer_tree_host()->root_layer()->AddChild(texture_layer_);
+    texture_layer_id_ = static_cast<uint32_t>(texture_layer_->id());
+    if (layer_tree_host()->IsUsingLayerLists()) {
+      CopyProperties(layer_tree_host()->root_layer(), texture_layer_.get());
+    }
+  }
+
+  void BeginTest() override { PostSetNeedsCommitToMainThread(); }
+
+  void WillBeginMainFrame() override {
+    texture_layer_->SetNeedsDisplayRect({0, 0, 7, 11});
+  }
+
+  void WillCommit(const CommitState& cs) override {
+    // Raster invalidation should have been applied, but the resource should
+    // not be created until after paint event dispatch.
+    EXPECT_TRUE(
+        cs.layer_ids_that_should_push_properties.contains(texture_layer_id_));
+    EXPECT_TRUE(cs.layer_update_rects.contains(texture_layer_id_));
+    EXPECT_EQ(cs.layer_update_rects.find(texture_layer_id_)->second,
+              gfx::Rect(0, 0, 7, 11));
+    EXPECT_EQ(texture_layer_->update_rect(), gfx::Rect(0, 0, 0, 0));
+    EXPECT_EQ(num_transferred_resources_.load(), 0u);
+    // Simulate an invalidation happening during paint event callback
+    texture_layer_->SetNeedsDisplayRect({0, 0, 13, 5});
+  }
+
+  void DidCommit() override {
+    // Invalidation from paint event callback should have been cleared and
+    // resource should have been generated.
+    EXPECT_EQ(texture_layer_->update_rect(), gfx::Rect(0, 0, 0, 0));
+    EXPECT_FALSE(layer_tree_host()
+                     ->pending_commit_state()
+                     ->layer_ids_that_should_push_properties.contains(
+                         texture_layer_id_));
+    EXPECT_FALSE(
+        layer_tree_host()->pending_commit_state()->layer_update_rects.contains(
+            texture_layer_id_));
+    EXPECT_EQ(num_transferred_resources_.load(), 1u);
+    texture_layer_.reset();
+  }
+
+  void CommitCompleteOnThread(LayerTreeHostImpl* host_impl) override {
+    EXPECT_TRUE(std::ranges::contains(
+        host_impl->sync_tree()->LayersThatShouldPushProperties(),
+        host_impl->sync_tree()->LayerById(texture_layer_id_)));
+    EXPECT_TRUE(static_cast<TextureLayerImpl*>(
+                    host_impl->sync_tree()->LayerById(texture_layer_id_))
+                    ->needs_set_resource_push());
+    EXPECT_EQ(
+        host_impl->sync_tree()->LayerById(texture_layer_id_)->update_rect(),
+        gfx::Rect(0, 0, 13, 11));
+    EndTest();
+  }
+
+ private:
+  uint32_t texture_layer_id_;
+  scoped_refptr<TextureLayer> texture_layer_;
+  std::atomic<uint32_t> num_transferred_resources_ = 0u;
+};
+
+SINGLE_AND_MULTI_THREAD_TEST_F(TextureLayerUpdateAfterPaintEventTest);
 }  // namespace
 }  // namespace cc

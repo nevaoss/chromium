@@ -65,6 +65,8 @@ struct AutocompleteMatch {
   // The image url for entity suggestions. |image_url| is an external url or
   // a data URI.
   string image_url;
+  // Used to determine if the match is a contextual suggestion.
+  bool is_contextual_suggestion;
   // Used to determine if the match is a non-canned AI suggestion.
   bool is_noncanned_aim_suggestion;
   // Used to determine if the match has an image, calculator answer,
@@ -239,13 +241,17 @@ struct PlaceholderConfig {
   mojo_base.mojom.TimeDelta fade_text_animation_duration;
 };
 
+// Used by the WebUI page to bootstrap bidirectional communication.
+interface PageHandlerFactory {
+  // The SearchboxBrowserProxy singleton calls this when it's first initialized.
+  CreatePageHandler(pending_remote<Page> page,
+                    pending_receiver<PageHandler> handler);
+};
+
 // Browser-side handler for requests from WebUI page. The web pages that embed
 // searchboxes which communicate with this interface are chrome://new-tab-page
 // and two chrome-untrusted://lens pages.
 interface PageHandler {
-  // The SearchboxBrowserProxy singleton calls this when it's first initialized.
-  SetPage(pending_remote<Page> page);
-
   // Informs the handler and model about focus state changes.
   OnFocusChanged(bool focused);
 
@@ -359,6 +365,13 @@ interface PageHandler {
       => result<mojo_base.mojom.UnguessableToken,
                 composebox_query.mojom.ContextUploadErrorType>;
 
+  // Attach a Drive file to the query context. If the file cannot be attached,
+  // the result will contain an error, otherwise it will contain the token
+  // identifying the file context.
+  AddDriveContext(string drive_id, string resource_key, string mime_type)
+      => result<mojo_base.mojom.UnguessableToken,
+                composebox_query.mojom.ContextUploadErrorType>;
+
   // Notify handler of context deletion. This removes the context data (e.g.
   // File, or tab page content) from the browser-side cache.
   // `from_automatic_chip` indicates whether the deleted context is auto
@@ -396,6 +409,19 @@ interface PageHandler {
 
   // Called when a user interacts with a model selection button explicitly.
   RecordModelSelectionAction(composebox_query.mojom.ModelMode model);
+
+  // Queries whether the AIM x Drive disclaimer should be shown.
+  ShouldShowDriveDisclaimer() => (bool should_show);
+
+  // Informs the browser that the user accepted the AIM x Drive disclaimer.
+  OnDriveDisclaimerAccepted();
+
+  // Called when the user clicks the drive upload button.
+  // TODO(crbug.com/504758597): Add a callback to return the drive files selected.
+  OnDriveUploadClicked();
+
+  // Gets the page classification for the current context.
+  GetPageClassification() => (string metricSource);
 };
 
 // WebUI-side handler for requests from the browser.

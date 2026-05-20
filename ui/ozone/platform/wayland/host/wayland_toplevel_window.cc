@@ -204,8 +204,7 @@ void WaylandToplevelWindow::Hide() {
 bool WaylandToplevelWindow::IsVisible() const {
   // X and Windows return true if the window is minimized. For consistency, do
   // the same.
-  return !!xdg_toplevel_ ||
-         GetPlatformWindowState() == PlatformWindowState::kMinimized;
+  return !!xdg_toplevel_;
 }
 
 void WaylandToplevelWindow::SetTitle(const std::u16string& title) {
@@ -515,7 +514,7 @@ void WaylandToplevelWindow::HandleToplevelConfigureWithOrigin(
   if ((GetLatestRequestedState().window_state ==
            PlatformWindowState::kMinimized &&
        !window_states.is_activated) ||
-      window_states.is_suspended) {
+      window_states.is_minimized) {
     window_state = PlatformWindowState::kMinimized;
   } else if (window_states.is_fullscreen) {
     window_state = PlatformWindowState::kFullScreen;
@@ -530,7 +529,13 @@ void WaylandToplevelWindow::HandleToplevelConfigureWithOrigin(
   fullscreen_display_id_ = display::kInvalidDisplayId;
 
   // Update state before notifying delegate.
+  bool prev_xdg_active = is_xdg_active_;
   is_xdg_active_ = window_states.is_activated;
+  // xdg_toplevel::activated is a paint-only hint, separate from input
+  // activation which is driven by keyboard focus in UpdateActivationState.
+  if (prev_xdg_active != is_xdg_active_) {
+    delegate()->OnPaintAsActiveChanged(is_xdg_active_);
+  }
   bool prev_suspended = is_suspended_;
   is_suspended_ = window_states.is_suspended;
 
@@ -882,7 +887,7 @@ void WaylandToplevelWindow::TriggerStateChanges(
     // UnSetMaximized may result in wrong restored window position that clients
     // are not allowed to know about.
     if (window_state == PlatformWindowState::kMinimized) {
-      LOG(FATAL) << "Should not be called with kMinimized state";
+      xdg_toplevel_->SetMinimized();
     } else if (window_state == PlatformWindowState::kFullScreen) {
       xdg_toplevel_->SetFullscreen(
           GetWaylandOutputForDisplayId(fullscreen_display_id_));

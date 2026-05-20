@@ -9,12 +9,15 @@
 #import "base/memory/raw_ptr.h"
 #import "base/types/pass_key.h"
 #import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent.h"
+#import "ios/chrome/browser/fullscreen/model/fullscreen_browser_agent_observer_bridge.h"
+#import "ios/chrome/browser/fullscreen/public/fullscreen_metrics.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/scoped_fullscreen_disabler.h"
 #import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent.h"
 #import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent_observer_bridge.h"
 #import "ios/chrome/browser/omnibox/model/omnibox_position/omnibox_position_browser_agent_observing.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list.h"
 #import "ios/chrome/browser/shared/model/web_state_list/web_state_list_observer_bridge.h"
+#import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/web/model/web_view_proxy/web_view_proxy_tab_helper.h"
 #import "ios/chrome/browser/web/model/web_view_proxy/web_view_proxy_tab_helper_observer_bridge.h"
 #import "ios/web/public/navigation/navigation_context.h"
@@ -44,6 +47,7 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
 
 @interface FullscreenMediator () <CRWWebStateObserver,
                                   CRWWebViewScrollViewProxyObserver,
+                                  FullscreenBrowserAgentObserving,
                                   OmniboxPositionBrowserAgentObserving,
                                   WebStateListObserving,
                                   WebViewProxyTabHelperObserving>
@@ -62,11 +66,14 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
   std::unique_ptr<WebStateListObserverBridge> _webStateListObserver;
   std::unique_ptr<web::WebStateObserverBridge> _webStateObserver;
   std::unique_ptr<WebViewProxyTabHelperObserverBridge> _webViewProxyObserver;
+  std::unique_ptr<FullscreenBrowserAgentObserverBridge> _browserAgentObserver;
   std::unique_ptr<OmniboxPositionBrowserAgentObserverBridge>
       _omniboxPositionObserver;
   std::unique_ptr<ScopedFullscreenDisabler> _voiceOverDisabler;
   CGFloat _lastContentOffset;
   BOOL _isBottomOmnibox;
+  BOOL _updatingInsets;
+  BOOL _handlingScroll;
   // Indicates whether the inset ranges have been initialized on startup.
   BOOL _hasInitializedInsets;
   // Scroll distance since the start of the drag, or since the scroll direction
@@ -91,6 +98,9 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
     _webStateObserver = std::make_unique<web::WebStateObserverBridge>(self);
     _webViewProxyObserver =
         std::make_unique<WebViewProxyTabHelperObserverBridge>(self);
+    _browserAgentObserver =
+        std::make_unique<FullscreenBrowserAgentObserverBridge>(self,
+                                                               browserAgent);
     _omniboxPositionObserver =
         std::make_unique<OmniboxPositionBrowserAgentObserverBridge>(
             self, omniboxPositionBrowserAgent);
@@ -105,16 +115,24 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
                name:UIAccessibilityVoiceOverStatusDidChangeNotification
              object:nil];
     [defaultCenter addObserver:self
-                      selector:@selector(orientationDidChange)
-                          name:UIDeviceOrientationDidChangeNotification
-                        object:nil];
-    [defaultCenter addObserver:self
                       selector:@selector(applicationDidEnterBackground)
                           name:UIApplicationDidEnterBackgroundNotification
                         object:nil];
     [defaultCenter addObserver:self
                       selector:@selector(applicationWillEnterForeground)
                           name:UIApplicationWillEnterForegroundNotification
+                        object:nil];
+    [defaultCenter addObserver:self
+                      selector:@selector(keyboardWillShow:)
+                          name:UIKeyboardWillShowNotification
+                        object:nil];
+    [defaultCenter addObserver:self
+                      selector:@selector(keyboardWillChangeFrame:)
+                          name:UIKeyboardWillChangeFrameNotification
+                        object:nil];
+    [defaultCenter addObserver:self
+                      selector:@selector(keyboardWillHide:)
+                          name:UIKeyboardWillHideNotification
                         object:nil];
   }
   return self;
@@ -129,6 +147,7 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
   }
   self.webState = nullptr;
   _webStateObserver = nullptr;
+  _browserAgentObserver = nullptr;
   _webViewProxyObserver = nullptr;
   _omniboxPositionObserver = nullptr;
   [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -152,6 +171,9 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
         WebViewProxyTabHelper::FromWebState(_webState);
     tabHelper->AddObserver(_webViewProxyObserver.get());
     self.scrollViewProxy = tabHelper->GetWebViewProxy().scrollViewProxy;
+    _browserAgent->ExitFullscreen(
+        PassKey(), FullscreenModeTransitionTrigger::kForcedByCode,
+        /*animated=*/false);
   } else {
     self.scrollViewProxy = nil;
   }
@@ -184,24 +206,36 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
     return;
   }
   _isBottomOmnibox = isCurrentLayoutBottomOmnibox;
-  _browserAgent->InvalidateInsetRange(PassKey());
+  _browserAgent->InvalidateInsetRange();
 }
 
 #pragma mark - CRWWebStateObserver
 
 - (void)webStateWasShown:(web::WebState*)webState {
+  id<CRWWebViewProxy> webView =
+      WebViewProxyTabHelper::FromWebState(webState)->GetWebViewProxy();
+  if (@available(iOS 26, *)) {
+    webView.shouldUseViewContentInset = YES;
+  } else {
+    webView.shouldUseViewContentInset = NO;
+  }
   // TODO(crbug.com/496229929): Call InvalidateInsetRange() from the correct
   // event(s).
   if (!_hasInitializedInsets) {
-    _browserAgent->InvalidateInsetRange(PassKey());
+    _browserAgent->InvalidateInsetRange();
     _hasInitializedInsets = YES;
+  } else {
+    [self setViewportInsetRange];
   }
+  [self updateViewportInsets:_browserAgent->insets()];
 }
 
 - (void)webState:(web::WebState*)webState
     didFinishNavigation:(web::NavigationContext*)navigationContext {
   if (!navigationContext->IsSameDocument()) {
-    _browserAgent->ExitFullscreen(PassKey(), /*animated=*/true);
+    _browserAgent->ExitFullscreen(
+        PassKey(), FullscreenModeTransitionTrigger::kForcedByCode,
+        /*animated=*/true);
   }
 }
 
@@ -222,18 +256,34 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
 
 #pragma mark - CRWWebViewScrollViewProxyObserver
 
-- (void)webViewScrollViewDidScroll:
-    (CRWWebViewScrollViewProxy*)webViewScrollViewProxy {
+- (void)webViewScrollViewDidScroll:(CRWWebViewScrollViewProxy*)scrollView {
   // Ignore programmatic scrolls (e.g. from inset updates). Only process scroll
   // events that are actively driven by the user's touch or residual momentum.
-  if (!webViewScrollViewProxy.isDragging &&
-      !webViewScrollViewProxy.isDecelerating) {
+  if (!scrollView.isDragging && !scrollView.isDecelerating) {
     return;
   }
 
-  CGFloat currentContentOffset = webViewScrollViewProxy.contentOffset.y;
-  CGFloat delta = currentContentOffset - _lastContentOffset;
-  _lastContentOffset = currentContentOffset;
+  CGFloat contentOffset = scrollView.contentOffset.y;
+  CGFloat delta = contentOffset - _lastContentOffset;
+  _lastContentOffset = contentOffset;
+
+  // Check if content is scrolled past the top.
+  CGFloat topInsetRemaining =
+      _browserAgent->max_insets().top - _browserAgent->insets().top;
+  if (contentOffset + topInsetRemaining <= -scrollView.contentInset.top) {
+    return;
+  }
+  // Check if content is scrolled past the bottom.
+  CGFloat scrollViewHeight = CGRectGetHeight(scrollView.frame);
+  CGFloat contentHeight = scrollView.contentSize.height;
+  if (contentOffset + scrollViewHeight > contentHeight) {
+    return;
+  }
+
+  if (_handlingScroll || _updatingInsets) {
+    return;
+  }
+  _handlingScroll = YES;
 
   if (delta != 0) {
     // If the direction changed, reset the _scrollTotal.
@@ -246,6 +296,8 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
 
   _browserAgent->IncrementalScroll(
       delta, FullscreenMediatorPassKeyProvider::passkey());
+
+  _handlingScroll = NO;
 }
 
 - (void)webViewScrollViewWillBeginDragging:
@@ -280,12 +332,14 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
 
 #pragma mark - FullscreenCommands
 
-- (void)enterFullscreenWithAnimation:(BOOL)animated {
-  _browserAgent->EnterFullscreen(PassKey(), animated);
+- (void)enterFullscreenWithTrigger:(FullscreenModeTransitionTrigger)trigger
+                          animated:(BOOL)animated {
+  _browserAgent->EnterFullscreen(PassKey(), trigger, animated);
 }
 
-- (void)exitFullscreenWithAnimation:(BOOL)animated {
-  _browserAgent->ExitFullscreen(PassKey(), animated);
+- (void)exitFullscreenWithTrigger:(FullscreenModeTransitionTrigger)trigger
+                         animated:(BOOL)animated {
+  _browserAgent->ExitFullscreen(PassKey(), trigger, animated);
 }
 
 - (void)disableFullscreenAnimated:(BOOL)animated {
@@ -304,19 +358,99 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
                            : nullptr;
 }
 
-- (void)orientationDidChange {
-  _browserAgent->InvalidateInsetRange(PassKey());
-}
-
 - (void)applicationDidEnterBackground {
-  [self exitFullscreenWithAnimation:NO];
+  [self exitFullscreenWithTrigger:FullscreenModeTransitionTrigger::kForcedByCode
+                         animated:NO];
 }
 
 - (void)applicationWillEnterForeground {
-  [self exitFullscreenWithAnimation:NO];
+  [self exitFullscreenWithTrigger:FullscreenModeTransitionTrigger::kForcedByCode
+                         animated:NO];
+}
+
+- (void)keyboardWillShow:(NSNotification*)notification {
+  [self updateKeyboardHeightFromNotification:notification];
+}
+
+- (void)keyboardWillChangeFrame:(NSNotification*)notification {
+  [self updateKeyboardHeightFromNotification:notification];
+}
+
+- (void)keyboardWillHide:(NSNotification*)notification {
+  if (_browserAgent) {
+    _browserAgent->SetKeyboardObscuredInset(0);
+  }
+}
+
+- (void)updateKeyboardHeightFromNotification:(NSNotification*)notification {
+  if (!_browserAgent || !self.webState) {
+    return;
+  }
+
+  UIView* view = self.webState->GetView();
+  if (!view.window) {
+    return;
+  }
+
+  _browserAgent->SetKeyboardObscuredInset(
+      VisibleKeyboardHeightFromNotification(notification, view.window));
+}
+
+#pragma mark - FullscreenBrowserAgentObserving
+
+- (void)fullscreenDidUpdateState:(FullscreenBrowserAgent*)agent {
+  [self updateViewportInsets:agent->insets()];
+}
+
+- (void)fullscreenDidUpdateObscuredInsetRange:(FullscreenBrowserAgent*)agent {
+  [self setViewportInsetRange];
 }
 
 #pragma mark - Private
+
+// Sets the min/max viewport insets for the current WebView.
+- (void)setViewportInsetRange {
+  if (!self.webState) {
+    return;
+  }
+
+  id<CRWWebViewProxy> webView =
+      WebViewProxyTabHelper::FromWebState(self.webState)->GetWebViewProxy();
+  [webView setMinimumViewportInset:_browserAgent->min_insets()
+              maximumViewportInset:_browserAgent->max_insets()];
+}
+
+// Updates the WebView's obscuredContentInset and the scroll view's
+// contentInset to adjust for the current position and size of
+// the toolbars.
+- (void)updateViewportInsets:(UIEdgeInsets)insets {
+  if (!self.webState) {
+    return;
+  }
+
+  id<CRWWebViewProxy> webView =
+      WebViewProxyTabHelper::FromWebState(self.webState)->GetWebViewProxy();
+  CRWWebViewScrollViewProxy* scrollView = webView.scrollViewProxy;
+
+  if (UIEdgeInsetsEqualToEdgeInsets(insets, scrollView.contentInset) &&
+      UIEdgeInsetsEqualToEdgeInsets(insets, webView.obscuredInsets)) {
+    return;
+  }
+
+  _updatingInsets = YES;
+  if (_browserAgent->invalidating_inset_range()) {
+    // Do not allow the perceived scroll position to change when the obscured
+    // inset is updated due to a device rotation or omnibox position change.
+    CGPoint offset = _scrollViewProxy.contentOffset;
+    offset.y += _scrollViewProxy.contentInset.top;
+    webView.obscuredInsets = insets;
+    offset.y -= _scrollViewProxy.contentInset.top;
+    _scrollViewProxy.contentOffset = offset;
+  } else {
+    webView.obscuredInsets = insets;
+  }
+  _updatingInsets = NO;
+}
 
 // Snaps the fullscreen progress to 0.0 or 1.0.
 - (void)snap {
@@ -344,9 +478,15 @@ const CGFloat kFullscreenSnapThreshold = 10.0;
   }
 
   if (snapType == SnapType::kExit) {
-    _browserAgent->ExitFullscreen(PassKey(), /*animated=*/true);
+    _browserAgent->ExitFullscreen(
+        PassKey(),
+        FullscreenModeTransitionTrigger::kUserInitiatedFinishedByCode,
+        /*animated=*/true);
   } else {
-    _browserAgent->EnterFullscreen(PassKey(), /*animated=*/true);
+    _browserAgent->EnterFullscreen(
+        PassKey(),
+        FullscreenModeTransitionTrigger::kUserInitiatedFinishedByCode,
+        /*animated=*/true);
   }
 }
 

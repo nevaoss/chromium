@@ -5,21 +5,21 @@
 #include "chrome/browser/glic/selection/selection_overlay_controller.h"
 
 #include "base/strings/to_string.h"
-#include "base/task/thread_pool.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/page_content_annotations/multi_source_page_context_fetcher.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/input/native_web_keyboard_event.h"
+#include "components/vector_icons/vector_icons.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/public/browser/render_view_host.h"
 #include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom.h"
-#include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkPaint.h"
-#include "third_party/skia/include/effects/SkDashPathEffect.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/geometry/rect_conversions.h"
@@ -191,7 +191,8 @@ void SelectionOverlayController::BindCaptureRegionObserver(
       &SelectionOverlayController::CloseUI, weak_factory_.GetWeakPtr()));
 }
 
-void SelectionOverlayController::Show() {
+void SelectionOverlayController::Show(mojom::GetTabContextOptionsPtr options) {
+  options_ = std::move(options);
   ShowModalUI();
 }
 
@@ -245,9 +246,11 @@ bool SelectionOverlayController::HandleKeyboardEvent(
 }
 
 void SelectionOverlayController::StartScreenshotFlow() {
-  auto options = mojom::GetTabContextOptions::New();
-  options->include_viewport_screenshot = true;
-  options->include_annotated_page_content = true;
+  auto fallback_options = mojom::GetTabContextOptions::New();
+  fallback_options->include_viewport_screenshot = true;
+  fallback_options->include_annotated_page_content = true;
+
+  const auto& options = options_ ? *options_ : *fallback_options;
 
   auto progress_listener =
       std::make_unique<SelectionOverlayFetchPageProgressListener>(
@@ -255,7 +258,7 @@ void SelectionOverlayController::StartScreenshotFlow() {
                          weak_factory_.GetWeakPtr()),
           base::BindOnce(&SelectionOverlayController::OnScreenshotRedacted,
                          weak_factory_.GetWeakPtr()));
-  FetchPageContext(tab_, *options,
+  FetchPageContext(tab_, options,
                    base::BindOnce(&SelectionOverlayController::PageContextReady,
                                   weak_factory_.GetWeakPtr()),
                    std::move(progress_listener),
@@ -306,7 +309,17 @@ GURL SelectionOverlayController::GetInitialURL() {
   return GURL(chrome::kChromeUIGlicSelectionOverlayURL);
 }
 
-void SelectionOverlayController::NotifyIsOverlayShowing(bool is_showing) {}
+void SelectionOverlayController::NotifyIsOverlayShowing(bool is_showing) {
+  if (!is_showing) {
+    GlicKeyedService* service = GlicKeyedService::Get(tab_->GetProfile());
+    if (service) {
+      if (GlicInstance* instance = service->GetInstanceForTab(tab_)) {
+        instance->OnSelectionAreasChanged(0);
+        instance->OnPolylinePointsChanged({});
+      }
+    }
+  }
+}
 
 int SelectionOverlayController::GetToolResourceId() {
   return IDS_GLIC_SELECTION_OVERLAY_RENDERER_LABEL;
@@ -316,8 +329,8 @@ ui::ElementIdentifier SelectionOverlayController::GetViewContainerId() {
   return kGlicSelectionOverlayViewElementId;
 }
 
-SidePanelEntry::PanelType SelectionOverlayController::GetSidePanelType() {
-  return SidePanelEntry::PanelType::kContent;
+SidePanelType SelectionOverlayController::GetSidePanelType() {
+  return SidePanelType::kContent;
 }
 
 bool SelectionOverlayController::ShouldCloseSidePanel() {
@@ -340,10 +353,14 @@ void SelectionOverlayController::NotifyTabForegrounded() {}
 
 void SelectionOverlayController::NotifyTabWillEnterBackground() {}
 
-OverlayBaseController::PreselectionBubbleResources
-SelectionOverlayController::GetPreselectionBubbleResources() {
-  return {.message_string_id =
-              IDS_GLIC_SELECTION_OVERLAY_PRESELECTION_BUBBLE_TEXT};
+OverlayBaseController::PreselectionUIConfig
+SelectionOverlayController::GetPreselectionBubbleConfig() {
+  return {
+      .message_string_id = IDS_GLIC_SELECTION_OVERLAY_PRESELECTION_BUBBLE_TEXT,
+      .show_cancel_button = true,
+      .cancel_button_color = kColorGlicSelectionOverlayToastCancelButton,
+      .bubble_background_color = kColorGlicSelectionOverlayToast,
+      .icon = &vector_icons::kCropFreeIcon};
 }
 
 bool SelectionOverlayController::IsOverlayViewShared() const {
@@ -372,6 +389,10 @@ void SelectionOverlayController::AdjustRegion(
 void SelectionOverlayController::DeleteRegion(
     const base::UnguessableToken& id) {
   if (selected_regions_.erase(id)) {
+    if (selected_regions_.empty()) {
+      CloseUI();
+      return;
+    }
     RenderRegions();
   }
 }
@@ -394,10 +415,10 @@ void SelectionOverlayController::Reset() {
   initial_rgb_screenshot_.reset();
   redacted_screenshot_.reset();
   screenshot_available_ = false;
-  encoded_.reset();
   selected_regions_.clear();
   tab_context_.reset();
   capture_region_observer_.reset();
+  options_.reset();
 }
 
 void SelectionOverlayController::RenderRegions() {
@@ -405,108 +426,105 @@ void SelectionOverlayController::RenderRegions() {
     return;
   }
 
-  std::vector<SkRect> regions;
-  std::vector<std::pair<base::UnguessableToken, gfx::Rect>> gfx_regions;
+  std::vector<std::pair<base::UnguessableToken, glic::mojom::CapturedRegionPtr>>
+      captured_regions;
   std::vector<selection::SelectedRegionPtr> regions_mojo;
+  std::vector<int> polyline_counts;
   // TODO(http://b/452032491): Reconsider what happens if the regions overlap.
   // TODO(http://b/452032491): Currently this class is only used once per
   // selection and only one region is supported, so it is fine to always loop
   // through all the regions. Revisit once we expand the selections.
   for (const auto& [id, region] : selected_regions_) {
-    gfx::RectF gfx_rect_on_canvas =
-        GetRectForRegion(redacted_screenshot_, region->region);
-    SkRect rect_on_canvas = gfx::RectFToSkRect(gfx_rect_on_canvas);
-    if (!rect_on_canvas.isEmpty() &&
-        redacted_screenshot_.bounds().contains(rect_on_canvas)) {
-      regions.push_back(rect_on_canvas);
-      gfx_regions.emplace_back(id, gfx::ToEnclosingRect(gfx_rect_on_canvas));
-      regions_mojo.push_back(region.Clone());
-    } else {
-      // TODO(http://b/485358530): Record proper histograms for the error case.
-      LOG(ERROR) << "Invalid region selected " << region->region.ToString();
+    if (region->shape->is_rect()) {
+      gfx::RectF gfx_rect_on_canvas =
+          GetRectForRegion(redacted_screenshot_, region->shape->get_rect());
+      SkRect rect_on_canvas = gfx::RectFToSkRect(gfx_rect_on_canvas);
+      if (!rect_on_canvas.isEmpty() &&
+          redacted_screenshot_.bounds().contains(rect_on_canvas)) {
+        regions_mojo.push_back(region.Clone());
+        captured_regions.emplace_back(
+            id, glic::mojom::CapturedRegion::NewRect(
+                    gfx::ToEnclosingRect(gfx_rect_on_canvas)));
+      } else {
+        // TODO(b/485358530): Record proper histograms for the error case.
+        LOG(ERROR) << "Invalid region selected "
+                   << region->shape->get_rect().ToString();
+      }
+    } else if (region->shape->is_polyline()) {
+      if (base::FeatureList::IsEnabled(features::kGlicRegionSelectionLine)) {
+        std::vector<gfx::Point> line_points;
+        bool all_points_valid = true;
+        for (const auto& point : region->shape->get_polyline()) {
+          int x = std::round(point.x() * redacted_screenshot_.width());
+          int y = std::round(point.y() * redacted_screenshot_.height());
+
+          if (x >= 0 && x <= redacted_screenshot_.width() && y >= 0 &&
+              y <= redacted_screenshot_.height()) {
+            // Map width/height to width-1/height-1 to be valid pixel indices.
+            int pixel_x = (x == redacted_screenshot_.width()) ? x - 1 : x;
+            int pixel_y = (y == redacted_screenshot_.height()) ? y - 1 : y;
+            line_points.emplace_back(pixel_x, pixel_y);
+          } else {
+            all_points_valid = false;
+            break;
+          }
+        }
+        if (all_points_valid && !line_points.empty()) {
+          regions_mojo.push_back(region.Clone());
+          polyline_counts.push_back(line_points.size());
+          captured_regions.emplace_back(
+              id,
+              glic::mojom::CapturedRegion::NewPolyline(std::move(line_points)));
+        } else {
+          LOG(ERROR) << "Invalid polyline selected";
+        }
+      } else {
+        LOG(ERROR) << "Received polyline but kGlicRegionSelectionLine feature "
+                      "is disabled.";
+      }
     }
   }
 
   page_->SetPostRegionSelections(std::move(regions_mojo));
 
-  mojom::AdditionalContextPtr additional_context =
-      CreateAdditionalContext(gfx_regions);
-  GlicKeyedService* service =
-      GlicKeyedService::Get(tab_->GetBrowserWindowInterface()->GetProfile());
-  service->SendAdditionalContext(tab_->GetHandle(),
-                                 std::move(additional_context));
-  if (GlicInstance* instance = service->GetInstanceForTab(tab_);
-      instance && instance->IsActive()) {
-    if (content::WebContents* web_contents =
-            instance->host().webui_contents()) {
-      web_contents->Focus();
+  GlicKeyedService* service = GlicKeyedService::Get(tab_->GetProfile());
+  if (GlicInstance* instance = service->GetInstanceForTab(tab_)) {
+    mojom::AdditionalContextPtr additional_context =
+        CreateAdditionalContext(std::move(captured_regions));
+    service->SendAdditionalContext(tab_->GetHandle(),
+                                   std::move(additional_context));
+    instance->OnSelectionAreasChanged(selected_regions_.size());
+    instance->OnPolylinePointsChanged(polyline_counts);
+    if (instance->IsActive()) {
+      if (content::WebContents* web_contents =
+              instance->host().webui_contents()) {
+        web_contents->Focus();
+      }
     }
   }
 
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
-      base::BindOnce(
-          [](const SkBitmap& bitmap, std::vector<SkRect> regions) {
-            SkBitmap deep_copy_bitmap;
-            std::optional<std::vector<uint8_t>> result;
-            // TODO(http://b/485358530): Record proper histograms for the error
-            // case. Allocate memory for the deep copy.
-            if (!deep_copy_bitmap.tryAllocPixels(bitmap.info())) {
-              LOG(ERROR) << "Alloc failure";
-              return result;
-            }
-
-            SkCanvas canvas(deep_copy_bitmap);
-            canvas.drawImage(bitmap.asImage(), 0, 0);
-            SkPaint paint;
-            const SkScalar intervals[] = {5.0f, 5.0f};
-            paint.setStyle(SkPaint::kStroke_Style);
-            paint.setStrokeWidth(2.0f);
-
-            for (const auto& region : regions) {
-              paint.setColor(SK_ColorMAGENTA);
-              paint.setPathEffect(SkDashPathEffect::Make(intervals, 0.0f));
-              canvas.drawRect(region, paint);
-              paint.setPathEffect(SkDashPathEffect::Make(intervals, -5.0f));
-              paint.setColor(SK_ColorCYAN);
-              canvas.drawRect(region, paint);
-            }
-            // TODO(https://b/485548840): Pass in the screenshot collection
-            // options.
-            result = page_content_annotations::EncodeScreenshot(
-                deep_copy_bitmap, std::nullopt);
-            return result;
-          },
-          redacted_screenshot_, std::move(regions)),
-      base::BindOnce(&SelectionOverlayController::RegionsRendererd,
-                     weak_factory_.GetWeakPtr()));
 }
 
 glic::mojom::AdditionalContextPtr
 SelectionOverlayController::CreateAdditionalContext(
-    const std::vector<std::pair<base::UnguessableToken, gfx::Rect>>& regions) {
+    std::vector<std::pair<base::UnguessableToken,
+                          glic::mojom::CapturedRegionPtr>> regions) {
   auto context = glic::mojom::AdditionalContext::New();
   std::vector<glic::mojom::AdditionalContextPartPtr> parts;
   mojom::TabContextPtr tab_context = tab_context_.Clone();
   parts.push_back(glic::mojom::AdditionalContextPart::NewTabContext(
       std::move(tab_context)));
-  for (const auto& region : regions) {
+  for (auto& region : regions) {
     parts.push_back(glic::mojom::AdditionalContextPart::NewPendingRegion(
-        glic::mojom::PendingCapturedRegion::New(
-            region.first,
-            glic::mojom::CapturedRegion::NewRect(region.second))));
+        glic::mojom::PendingCapturedRegion::New(region.first,
+                                                region.second.Clone())));
     parts.push_back(glic::mojom::AdditionalContextPart::NewRegion(
-        glic::mojom::CapturedRegion::NewRect(region.second)));
+        std::move(region.second)));
   }
   context->source = glic::mojom::AdditionalContextSource::kRegionSelection;
   context->tab_id = tab_->GetHandle().raw_value();
   context->parts = std::move(parts);
   return context;
-}
-
-void SelectionOverlayController::RegionsRendererd(
-    std::optional<std::vector<uint8_t>> encoded) {
-  encoded_ = encoded;
 }
 
 }  // namespace glic

@@ -46,6 +46,12 @@ BASE_FEATURE(kCustomizeChromeWallpaperSearchButton,
 BASE_FEATURE(kCustomizeChromeWallpaperSearchInspirationCard,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// If enabled, the EnergyEffect for Realbox will be shown.
+BASE_FEATURE(kEnergyEffect, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, the EnergyEffect animation for Realbox will be shown.
+BASE_FEATURE(kEnergyEffectAnimation, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, NTP "realbox" will be themed for CR23. Includes realbox
 // matching omnibox theme and increased realbox shadow.
 BASE_FEATURE(kRealboxCr23Theming,
@@ -193,6 +199,9 @@ BASE_FEATURE(kNtpMicrosoftAuthenticationModule,
 // If enabled, the features of NTP Next (AI action chips etc.) will be shown.
 BASE_FEATURE(kNtpNextFeatures, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, the Canvas action chip will be shown.
+BASE_FEATURE(kNtpNextCanvasChip, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, the OGB loader will request for the async bar parts payload type.
 BASE_FEATURE(kNtpOneGoogleBarAsyncBarParts, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -216,7 +225,7 @@ BASE_FEATURE(kNtpFeatureOptimizationModuleRemoval,
 
 // If enabled, stale shortcuts will be auto-removed from the NTP.
 BASE_FEATURE(kNtpFeatureOptimizationShortcutsRemoval,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, the dismiss module buttons will be removed from the NTP modules.
 BASE_FEATURE(kNtpFeatureOptimizationDismissModulesRemoval,
@@ -233,6 +242,13 @@ BASE_FEATURE(kNtpAnimatedCaret, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, adds a Whats New Page Edition for Next Features.
 BASE_FEATURE(kLightningTakeoverEdition, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, the shortcuts will be redesigned.
+BASE_FEATURE(kNtpShortcutsRedesign, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, the bookmark bar may be auto-removed on the NTP and new
+// visibility settings are added.
+BASE_FEATURE(kNtpSimplificationBookmarkBar, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const char kNtpModuleIgnoredCriteriaThreshold[] =
     "NtpModuleIgnoredCriteriaThreshold";
@@ -303,10 +319,6 @@ const base::FeatureParam<bool> kNtpNextShowStaticRecentTabChipParam(
     &ntp_features::kNtpNextFeatures,
     "NtpNextShowStaticRecentTabChipParam",
     true);
-const base::FeatureParam<bool> kNtpNextEnableCanvasChipParam(
-    &ntp_features::kNtpNextFeatures,
-    "NtpNextEnableCanvasChipParam",
-    false);
 const base::FeatureParam<bool> kNtpNextShowDismissalUIParam(
     &ntp_features::kNtpNextFeatures,
     "NtpNextShowDismissalUIParam",
@@ -315,8 +327,10 @@ const base::FeatureParam<bool> kNtpNextDisablementContextMenuParam(
     &ntp_features::kNtpNextFeatures,
     "NtpNextDisablementContextMenuParam",
     false);
-const base::FeatureParam<int> kMaxTilesBeforeShowMore{
-    &ntp_features::kNtpNextFeatures, "max_tiles_before_show_more", 5};
+const base::FeatureParam<bool> kNtpNextDisablementParam(
+    &ntp_features::kNtpNextFeatures,
+    "NtpNextDisablementParam",
+    false);
 const base::FeatureParam<bool> kAddTabUploadDelayOnActionChipClick(
     &ntp_features::kNtpNextFeatures,
     "AddTabUploadDelayOnActionChipClick",
@@ -443,6 +457,17 @@ const base::FeatureParam<int> kStaleModulesCountThreshold(
     "StaleModulesCountThreshold",
     14);
 
+const base::FeatureParam<int> kMaxTilesInCollapsedState{
+    &ntp_features::kNtpShortcutsRedesign, "max_tiles_in_collapsed_state", 4};
+const base::FeatureParam<int> kMaxShortcutsInExpandedState{
+    &ntp_features::kNtpShortcutsRedesign, "max_shortcuts_in_expanded_state",
+    20};
+const base::FeatureParam<int> kMaxMostVisitedTilesInExpandedState{
+    &ntp_features::kNtpShortcutsRedesign,
+    "max_most_visited_tiles_in_expanded_state", 10};
+const base::FeatureParam<int> kMaxEnterpriseShortcuts{
+    &ntp_features::kNtpShortcutsRedesign, "max_enterprise_shortcuts", 10};
+
 base::TimeDelta GetModulesLoadTimeout() {
   std::string param_value = base::GetFieldTrialParamValueByFeature(
       kNtpModulesLoadTimeoutMilliseconds,
@@ -486,8 +511,29 @@ int GetWallpaperSearchButtonHideCondition() {
       kNtpWallpaperSearchButtonHideConditionParam, 2);
 }
 
-int GetMaxTilesBeforeShowMore() {
-  return kMaxTilesBeforeShowMore.Get();
+int GetMaxTilesInCollapsedState() {
+  if (!base::FeatureList::IsEnabled(kNtpShortcutsRedesign)) {
+    return 6;
+  }
+  return kMaxTilesInCollapsedState.Get();
+}
+
+int GetMaxShortcutsInExpandedState() {
+  if (!base::FeatureList::IsEnabled(kNtpShortcutsRedesign)) {
+    return 10;
+  }
+  return kMaxShortcutsInExpandedState.Get();
+}
+
+int GetMaxMostVisitedTilesInExpandedState() {
+  if (!base::FeatureList::IsEnabled(kNtpShortcutsRedesign)) {
+    return 8;
+  }
+  return kMaxMostVisitedTilesInExpandedState.Get();
+}
+
+int GetMaxEnterpriseShortcuts() {
+  return kMaxEnterpriseShortcuts.Get();
 }
 
 }  // namespace ntp_features

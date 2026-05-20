@@ -37,13 +37,13 @@ class TabCloseButton;
 class TabSlotController;
 class TabIcon;
 struct TabSizeInfo;
+class TabTitle;
 
 namespace gfx {
 class Animation;
 class LinearAnimation;
 }  // namespace gfx
 namespace views {
-class Label;
 class View;
 }  // namespace views
 
@@ -126,6 +126,7 @@ class Tab : public gfx::AnimationDelegate,
                        const std::optional<std::string>& name);
 
   TabSlotController* controller() const { return controller_; }
+  const tabs::TabHandle& tab_handle() const { return tab_handle_; }
 
   // Used to set/check whether this Tab is being animated closed.
   void SetClosing(bool closing);
@@ -139,6 +140,7 @@ class Tab : public gfx::AnimationDelegate,
   // HoverCardAnchorTarget:
   bool NeedsToShowThumbnail() const override;
   bool IsValidHoverCardTarget() const override;
+  views::BubbleAnchor GetAnchor() override;
   views::BubbleBorder::Arrow GetAnchorPosition() const override;
 
   // Notifies the AlertIndicatorButton that the active state of this tab has
@@ -288,7 +290,7 @@ class Tab : public gfx::AnimationDelegate,
   raw_ptr<AlertIndicatorButton> alert_indicator_button_ = nullptr;
   raw_ptr<TabCloseButton> close_button_ = nullptr;
 
-  raw_ptr<views::Label> title_;
+  raw_ptr<TabTitle> title_;
   // The title's bounds are animated when switching between showing and hiding
   // the tab's favicon/throbber.
   gfx::Rect start_title_bounds_;

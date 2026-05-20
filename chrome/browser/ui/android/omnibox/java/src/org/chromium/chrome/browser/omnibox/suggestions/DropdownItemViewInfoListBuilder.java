@@ -39,6 +39,7 @@ import org.chromium.components.omnibox.AutocompleteResult;
 import org.chromium.components.omnibox.GroupsProto.GroupConfig;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxSuggestionType;
+import org.chromium.components.omnibox.ToolModeUtils;
 import org.chromium.components.omnibox.action.OmniboxActionDelegate;
 import org.chromium.ui.modelutil.PropertyModel;
 
@@ -245,14 +246,20 @@ class DropdownItemViewInfoListBuilder {
         // Note that despite GroupsDetails map not holding <null> values,
         // a group definition for specific ID may be unavailable, or the group
         // header text may be empty.
-        // TODO(http://crbug/1518967): move this to the calling function and instantiate the
+        // TODO(http://crbug.com/41491951): move this to the calling function and instantiate the
         // HeaderView undonditionally when passing from one suggestion group to another.
-        // TODO(http://crbug/1518967): collapse Header and DivierLine to a single component.
+        // TODO(http://crbug.com/41491951): collapse Header and DivierLine to a single component.
+        String headerText = null;
         boolean showGroupSeparatorDecoration = false;
+
         if (!TextUtils.isEmpty(groupDetails.getHeaderText())) {
-            final PropertyModel model = mHeaderProcessor.createModel();
-            mHeaderProcessor.populateModel(model, groupDetails.getHeaderText());
-            result.add(new DropdownItemViewInfo(mHeaderProcessor, model, groupDetails));
+            if (OmniboxFeatures.sOmniboxItemDecoration.isEnabled()) {
+                headerText = groupDetails.getHeaderText();
+            } else {
+                final PropertyModel model = mHeaderProcessor.createModel();
+                mHeaderProcessor.populateModel(model, groupDetails.getHeaderText());
+                result.add(new DropdownItemViewInfo(mHeaderProcessor, model, groupDetails));
+            }
         } else if (previousDetails != null
                 && previousDetails.getRenderType() == GroupConfig.RenderType.DEFAULT_VERTICAL) {
             if (OmniboxFeatures.sOmniboxItemDecoration.isEnabled()) {
@@ -281,13 +288,17 @@ class DropdownItemViewInfoListBuilder {
             var processor = getProcessorForSuggestion(match, indexOnList);
             var model = processor.createModel();
 
-            model.set(roundingStartEdge, indexInList == 0);
+            boolean isFirstItem = indexInList == 0;
+            model.set(roundingStartEdge, isFirstItem);
             model.set(roundingEndEdge, indexInList == numGroupMatches - 1);
             model.set(SuggestionCommonProperties.SHOW_DIVIDER, indexInList < numGroupMatches - 1);
             model.set(
                     SuggestionCommonProperties.SHOW_GROUP_SEPARATOR,
-                    showGroupSeparatorDecoration && indexInList == 0);
+                    showGroupSeparatorDecoration && isFirstItem);
+            model.set(SuggestionCommonProperties.HEADER_TITLE, isFirstItem ? headerText : null);
 
+            model.set(SuggestionCommonProperties.INDEX_IN_GROUP, indexInList);
+            model.set(SuggestionCommonProperties.TOTAL_IN_GROUP, numGroupMatches);
             processor.populateModel(input, match, model, indexOnList);
             result.add(new DropdownItemViewInfo(processor, model, groupDetails));
         }
@@ -326,15 +337,22 @@ class DropdownItemViewInfoListBuilder {
         // Note that despite GroupsDetails map not holding <null> values,
         // a group definition for specific ID may be unavailable, or the group
         // header text may be empty.
+        String headerText = null;
         if (!TextUtils.isEmpty(groupDetails.getHeaderText())) {
-            final PropertyModel model = mHeaderProcessor.createModel();
-            mHeaderProcessor.populateModel(model, groupDetails.getHeaderText());
-            result.add(new DropdownItemViewInfo(mHeaderProcessor, model, groupDetails));
+            if (OmniboxFeatures.sOmniboxItemDecoration.isEnabled()) {
+                headerText = groupDetails.getHeaderText();
+            } else {
+                final PropertyModel model = mHeaderProcessor.createModel();
+                mHeaderProcessor.populateModel(model, groupDetails.getHeaderText());
+                result.add(new DropdownItemViewInfo(mHeaderProcessor, model, groupDetails));
+            }
         }
 
         int numGroupMatches = groupMatches.size();
         var processor = getProcessorForSuggestion(groupMatches.get(0), position);
         var model = processor.createModel();
+
+        model.set(SuggestionCommonProperties.HEADER_TITLE, headerText);
 
         for (int index = 0; index < numGroupMatches; index++) {
             AutocompleteMatch match = groupMatches.get(index);
@@ -370,6 +388,7 @@ class DropdownItemViewInfoListBuilder {
         var currentGroupMatches = new ArrayList<AutocompleteMatch>();
         var nextSuggestionLogicalIndex = 0;
         var groupsInfo = autocompleteResult.getGroupsInfo();
+        boolean isAimRequest = ToolModeUtils.isAimRequest(input.getRequestType());
 
         GroupConfig previousGroupConfig = null;
 
@@ -385,7 +404,7 @@ class DropdownItemViewInfoListBuilder {
             // Inner loop to populate AutocompleteMatch objects belonging to this group.
             while (index < newMatchesCount) {
                 var match = newMatches.get(index);
-                if (OmniboxFeatures.sRemoveSroIncludingVerbatimMatch.getValue()) {
+                if (isAimRequest && OmniboxFeatures.sAIMSuppressVerbatimMatch.isEnabled()) {
                     if (match.getType() == OmniboxSuggestionType.SEARCH_WHAT_YOU_TYPED
                             || match.getType() == OmniboxSuggestionType.URL_WHAT_YOU_TYPED) {
                         index++;

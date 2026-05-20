@@ -33,6 +33,8 @@ DEVICE_FEATURES_EXPORT BASE_DECLARE_FEATURE(kWinSystemLocationPermission);
 DEVICE_FEATURES_EXPORT BASE_DECLARE_FEATURE(
     kWinSystemLocationPermissionEventBased);
 DEVICE_FEATURES_EXPORT BASE_DECLARE_FEATURE(kHidGetFeatureReportFix);
+DEVICE_FEATURES_EXPORT BASE_DECLARE_FEATURE(kSafeUsbDeviceHandleWinClose);
+DEVICE_FEATURES_EXPORT BASE_DECLARE_FEATURE(kSafeHidConnectionWinClose);
 
 extern const DEVICE_FEATURES_EXPORT base::FeatureParam<int>
     kWinSystemLocationPermissionPollingParam;

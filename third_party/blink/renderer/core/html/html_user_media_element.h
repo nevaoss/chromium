@@ -5,6 +5,7 @@
 #ifndef THIRD_PARTY_BLINK_RENDERER_CORE_HTML_HTML_USER_MEDIA_ELEMENT_H_
 #define THIRD_PARTY_BLINK_RENDERER_CORE_HTML_HTML_USER_MEDIA_ELEMENT_H_
 
+#include "base/time/time.h"
 #include "third_party/blink/renderer/core/core_export.h"
 #include "third_party/blink/renderer/core/html/html_capability_element_base.h"
 #include "third_party/blink/renderer/platform/supplementable.h"
@@ -51,6 +52,11 @@ class CORE_EXPORT HTMLUserMediaElement
 
   void OnConstraintsSet(bool has_video, bool has_audio);
 
+  void ResetMediaStreamRequestTime();
+
+  void UpdateAppearance() override;
+  void UpdateIcon(mojom::blink::PermissionName permission) override;
+
   const Vector<mojom::blink::PermissionDescriptorPtr>&
   GetPermissionDescriptors() const {
     return permission_descriptors_;
@@ -59,6 +65,7 @@ class CORE_EXPORT HTMLUserMediaElement
  private:
   void StartMediaStreamRequest();
   bool has_constraints_ = false;
+  base::TimeTicks media_stream_request_start_time_;
 };
 
 // The custom type casting is required for the UserMediaElement OT because the
@@ -66,7 +73,8 @@ class CORE_EXPORT HTMLUserMediaElement
 // HTMLUserMediaElement appearing in a document that does not have the
 // UserMediaElement origin trial enabled (this would result in the creation of
 // an HTMLUnknownElement with the "usermedia" tag name).
-// See third_party/blink/renderer/core/html/Custom_element_type_helpers.md
+// See
+// https://chromium.googlesource.com/chromium/src.git/+/main/docs/custom_type_helpers_for_origin_trial_elements.md
 // for more details.
 template <>
 struct DowncastTraits<HTMLUserMediaElement> {

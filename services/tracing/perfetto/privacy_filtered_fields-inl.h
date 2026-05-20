@@ -353,7 +353,7 @@ constexpr int kRealIndices[] = {1, 2, 3, -1};
 constexpr MessageInfo kReal = {kRealIndices, nullptr};
 
 // Proto Message: Synthetic
-constexpr int kSyntheticIndices[] = {1, -1};
+constexpr int kSyntheticIndices[] = {1, 2, -1};
 constexpr MessageInfo kSynthetic = {kSyntheticIndices, nullptr};
 
 // Proto Message: ScrollUpdates
@@ -378,11 +378,12 @@ constexpr MessageInfo kScrollJankV4Result = {
     kScrollJankV4ResultIndices, kScrollJankV4ResultComplexMessages};
 
 // Proto Message: EventLatency
-constexpr int kEventLatencyIndices[] = {1, 2, 4, 5, 6, 7, 8, 9, 10, -1};
+constexpr int kEventLatencyIndices[] = {1, 2, 4, 5, 6, 7, 8, 9, 10, 11, -1};
 constexpr MessageInfo const* kEventLatencyComplexMessages[] = {
     nullptr, nullptr, nullptr,
     nullptr, nullptr, nullptr,
-    nullptr, nullptr, &kScrollJankV4Result};
+    nullptr, nullptr, &kScrollJankV4Result,
+    nullptr};
 constexpr MessageInfo kEventLatency = {kEventLatencyIndices,
                                        kEventLatencyComplexMessages};
 
@@ -556,6 +557,20 @@ constexpr MessageInfo kChromeLatencyInfo2 = {
 constexpr int kEventTimingIndices[] = {1, 3, 4, 5, 6, 7, 8, 9, -1};
 constexpr MessageInfo kEventTiming = {kEventTimingIndices, nullptr};
 
+// Proto Message: FrameTimeline
+constexpr int kFrameTimelineIndices[] = {1, 2, 3, -1};
+constexpr MessageInfo kFrameTimeline = {kFrameTimelineIndices, nullptr};
+
+// Proto Message: AndroidChoreographerFrameCallbackData
+constexpr int kAndroidChoreographerFrameCallbackDataIndices[] = {1, 2, 3, 4,
+                                                                 -1};
+constexpr MessageInfo const*
+    kAndroidChoreographerFrameCallbackDataComplexMessages[] = {
+        nullptr, &kFrameTimeline, nullptr, &kFrameTimeline};
+constexpr MessageInfo kAndroidChoreographerFrameCallbackData = {
+    kAndroidChoreographerFrameCallbackDataIndices,
+    kAndroidChoreographerFrameCallbackDataComplexMessages};
+
 // Proto Message: CurrentTask
 constexpr int kCurrentTaskIndices[] = {1, 2, -1};
 constexpr MessageInfo kCurrentTask = {kCurrentTaskIndices, nullptr};
@@ -621,8 +636,8 @@ constexpr int kTrackEventIndices[] = {
     1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022, 1023, 1024, 1025, 1028,
     1031, 1032, 1033, 1034, 1036, 1038, 1039, 1040, 1041, 1042, 1046, 1047,
     1048, 1049, 1050, 1051, 1052, 1053, 1054, 1055, 1056, 1057, 1058, 1059,
-    1060, 1061, 1064, 1065, 1066, 1067, 1068, 1069, 1071, 1075, 1076, 1077,
-    1078, 1079, 1080, 1081, 1082, -1};
+    1060, 1061, 1064, 1065, 1066, 1067, 1068, 1069, 1070, 1071, 1075, 1076,
+    1077, 1078, 1079, 1080, 1081, 1082, -1};
 constexpr MessageInfo const* kTrackEventComplexMessages[] = {
     nullptr,
     nullptr,
@@ -716,6 +731,7 @@ constexpr MessageInfo const* kTrackEventComplexMessages[] = {
     &kMainFramePipeline,
     &kChromeLatencyInfo2,
     &kEventTiming,
+    &kAndroidChoreographerFrameCallbackData,
     &kCurrentTask,
     &kChromeFrameReporter2,
     &kInputTransferHandler,
@@ -826,9 +842,15 @@ constexpr int kFinchHashIndices[] = {1, 2, -1};
 constexpr MessageInfo kFinchHash = {kFinchHashIndices, nullptr};
 
 // Proto Message: ChromeMetadataPacket
-constexpr int kChromeMetadataPacketIndices[] = {1, 2, 3, 4, -1};
+constexpr int kChromeMetadataPacketIndices[] = {1, 2, 3, 4, 6, 7, 8, -1};
 constexpr MessageInfo const* kChromeMetadataPacketComplexMessages[] = {
-    &kBackgroundTracingMetadata, nullptr, nullptr, &kFinchHash};
+    &kBackgroundTracingMetadata,
+    nullptr,
+    nullptr,
+    &kFinchHash,
+    nullptr,
+    nullptr,
+    nullptr};
 constexpr MessageInfo kChromeMetadataPacket = {
     kChromeMetadataPacketIndices, kChromeMetadataPacketComplexMessages};
 

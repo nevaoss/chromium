@@ -317,9 +317,8 @@ AdsPageLoadMetricsObserver::OnFencedFramesStart(
     content::NavigationHandle* navigation_handle,
     const GURL& currently_committed_url) {
   // Need the observer-level forwarding for FrameReceivedUserActivation,
-  // FrameDisplayStateChanged, FrameSizeChanged, MediaStartedPlaying,
-  // OnMainFrameIntersectionRectChanged, OnMainFrameViewportRectChanged,
-  // and OnV8MemoryChanged.
+  // FrameDisplayStateChanged, FrameSizeChanged, MediaStartedPlaying, and
+  // OnV8MemoryChanged.
   return FORWARD_OBSERVING;
 }
 
@@ -707,12 +706,9 @@ void AdsPageLoadMetricsObserver::MediaStartedPlaying(
   }
 }
 
-void AdsPageLoadMetricsObserver::OnMainFrameIntersectionRectChanged(
-    content::RenderFrameHost* render_frame_host,
-    const gfx::Rect& main_frame_intersection_rect) {
-  if (render_frame_host->IsInPrimaryMainFrame()) {
-    page_ad_density_tracker_.UpdateMainFrameRect(main_frame_intersection_rect);
-  }
+void AdsPageLoadMetricsObserver::OnMainFrameRectChanged(
+    const gfx::Rect& main_frame_rect) {
+  page_ad_density_tracker_.UpdateMainFrameRect(main_frame_rect);
 }
 
 void AdsPageLoadMetricsObserver::OnMainFrameViewportRectChanged(
@@ -939,11 +935,13 @@ void AdsPageLoadMetricsObserver::RecordPageResourceTotalHistograms(
   }
 
   if (auto moments = page_ad_density_tracker_.GetViewportAdCountStats()) {
-    custom_sampling_builder.SetAverageViewportAdCount(
-        ukm::GetExponentialBucketMinForCounts1000(std::llround(moments->mean)));
+    custom_sampling_builder.SetAverageViewportAdCountX100(
+        ukm::GetExponentialBucketMinForCounts1000(
+            std::llround(moments->mean * 100)));
 
-    ADS_HISTOGRAM("AverageViewportAdCount", base::UmaHistogramCounts100,
-                  FrameVisibility::kAnyVisibility, std::llround(moments->mean));
+    ADS_HISTOGRAM("AverageViewportAdCountX100", base::UmaHistogramCounts1000,
+                  FrameVisibility::kAnyVisibility,
+                  std::llround(moments->mean * 100));
   }
 
   auto* ukm_recorder = ukm::UkmRecorder::Get();

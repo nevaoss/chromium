@@ -105,14 +105,52 @@ void LogBnplPopupWindowLatency(base::TimeDelta duration,
   base::UmaHistogramLongTimes(histogram_name, duration);
 }
 
-void LogSuggestionShownForPayLaterTab(bool contains_pay_later_tab_suggestions) {
+void LogSuggestionShownForPayLaterTab(bool contains_pay_later_tab_suggestions,
+                                      ukm::SourceId ukm_source_id) {
   autofill_metrics::LogPayLaterTabsFormEvent(
       autofill_metrics::PayLaterTabsFormEvent::kSuggestionsShown);
   if (contains_pay_later_tab_suggestions) {
     autofill_metrics::LogPayLaterTabsFormEvent(
         autofill_metrics::PayLaterTabsFormEvent::
             kSuggestionsShownWithPayLaterTab);
+    ukm::builders::Autofill_PayLaterTabShown(ukm_source_id)
+        .SetShown(true)
+        .Record(ukm::UkmRecorder::Get());
   }
+}
+
+void LogPayLaterTabSelected(ukm::SourceId ukm_source_id) {
+  autofill_metrics::LogPayLaterTabsFormEvent(
+      autofill_metrics::PayLaterTabsFormEvent::kSwitchedToPayLaterTab);
+  ukm::builders::Autofill_PayLaterTabSelected(ukm_source_id)
+      .SetSelected(true)
+      .Record(ukm::UkmRecorder::Get());
+}
+
+void LogPayLaterTabSuggestionAccepted(autofill::BnplIssuer::IssuerId issuer_id,
+                                      ukm::SourceId ukm_source_id) {
+  ukm::builders::Autofill_PayLaterTabSuggestionAccepted(ukm_source_id)
+      .SetAccepted(true)
+      .Record(ukm::UkmRecorder::Get());
+  switch (issuer_id) {
+    case IssuerId::kBnplAffirm:
+      autofill_metrics::LogPayLaterTabsFormEvent(
+          autofill_metrics::PayLaterTabsFormEvent::kAffirmAccepted);
+      return;
+    case IssuerId::kBnplZip:
+      autofill_metrics::LogPayLaterTabsFormEvent(
+          autofill_metrics::PayLaterTabsFormEvent::kZipAccepted);
+      return;
+    case IssuerId::kBnplAfterpay:
+      autofill_metrics::LogPayLaterTabsFormEvent(
+          autofill_metrics::PayLaterTabsFormEvent::kAfterpayAccepted);
+      return;
+    case IssuerId::kBnplKlarna:
+      autofill_metrics::LogPayLaterTabsFormEvent(
+          autofill_metrics::PayLaterTabsFormEvent::kKlarnaAccepted);
+      return;
+  }
+  NOTREACHED();
 }
 
 void LogPayLaterTabsFormEvent(PayLaterTabsFormEvent event) {

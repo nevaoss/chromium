@@ -7,6 +7,7 @@
 
 #include <memory>
 
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_multi_source_observation.h"
@@ -97,6 +98,10 @@ class MediaRouterDialogControllerViews
   // toolbar action. It's owned by MediaRouterUIService and it may be nullptr.
   CastToolbarButtonController* GetActionController();
 
+  // Called after the dialog is created to complete post-creation steps.
+  void OnDialogCreated(MediaRouterDialogActivationLocation activation_location,
+                       ShowCastDialogStatus status);
+
   MediaRouterUI* ui() { return ui_.get(); }
 
   // Responsible for notifying the dialog view of dialog model updates and
@@ -115,6 +120,8 @@ class MediaRouterDialogControllerViews
   const raw_ptr<MediaRouterUIService> media_router_ui_service_;
 
   bool hide_media_button_for_testing_ = false;
+
+  base::ScopedClosureRunner fullscreen_blocker_;
 
   base::WeakPtrFactory<MediaRouterDialogControllerViews> weak_ptr_factory_{
       this};

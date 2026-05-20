@@ -12,10 +12,12 @@
 #include <vector>
 
 #include "base/check.h"
+#include "base/logging.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_search/pref_names.h"
 #include "components/lens/contextual_input.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
 #include "net/base/url_util.h"
 #include "third_party/omnibox_proto/input_type.pb.h"
@@ -142,9 +144,11 @@ InputStateModel::InputStateModel(
     contextual_search::ContextualSearchSessionHandle& session_handle,
     const SearchboxConfig& config,
     const GURL& active_url,
-    bool is_off_the_record)
+    bool is_off_the_record,
+    bool is_signed_in)
     : session_handle_(session_handle.AsWeakPtr()),
-      is_off_the_record_(is_off_the_record) {
+      is_off_the_record_(is_off_the_record),
+      is_signed_in_(is_signed_in) {
   SearchboxConfig mutable_config = config;
   MaybePopulateBrowserTabInputTypeRule(&mutable_config);
 
@@ -171,6 +175,10 @@ InputStateModel::InputStateModel(
         mutable_config.input_type_configs().size());
     for (const auto& input_type_config : mutable_config.input_type_configs()) {
       if (input_type_config.has_input_type()) {
+        if (input_type_config.input_type() == omnibox::INPUT_TYPE_DRIVE &&
+            !IsDriveSupported()) {
+          continue;
+        }
         state_.allowed_input_types.push_back(input_type_config.input_type());
       }
     }
@@ -184,6 +192,10 @@ InputStateModel::InputStateModel(
     }
     state_.input_type_configs.reserve(mutable_config.input_type_configs_size());
     for (const auto& input_type_config : mutable_config.input_type_configs()) {
+      if (input_type_config.input_type() == omnibox::INPUT_TYPE_DRIVE &&
+          !IsDriveSupported()) {
+        continue;
+      }
       state_.input_type_configs.push_back(input_type_config);
     }
     if (mutable_config.has_tools_section_config()) {
@@ -241,7 +253,8 @@ InputStateModel::InputStateModel(
     const InputStateModel& new_input_state_model,
     contextual_search::ContextualSearchSessionHandle& new_session_handle)
     : session_handle_(new_session_handle.AsWeakPtr()),
-      is_off_the_record_(new_input_state_model.is_off_the_record_) {
+      is_off_the_record_(new_input_state_model.is_off_the_record_),
+      is_signed_in_(new_input_state_model.is_signed_in_) {
   state_ = new_input_state_model.state_;
   rule_set_ = new_input_state_model.rule_set_;
   pref_service_ = new_input_state_model.pref_service_;
@@ -368,6 +381,14 @@ void InputStateModel::updateSelectedState(ToolMode tool, ModelMode model) {
   notifySubscribers();
 }
 
+bool InputStateModel::IsDriveSupported() const {
+  // Drive is only supported when the user is signed in, not in an
+  // off-the-record (incognito) session, and the feature flag is enabled.
+  return is_signed_in_ && !is_off_the_record_ &&
+         base::FeatureList::IsEnabled(
+             omnibox::kComposeboxDriveContextMenuOption);
+}
+
 // Helper to check if search content sharing is enabled based on the
 // user preference.
 bool InputStateModel::IsSearchContentSharingEnabled() const {
@@ -490,7 +511,8 @@ void InputStateModel::UpdateDisabledInputTypes() {
     std::erase_if(state_.allowed_input_types, [](auto input_type) {
       return input_type == omnibox::InputType::INPUT_TYPE_LENS_IMAGE ||
              input_type == omnibox::InputType::INPUT_TYPE_LENS_FILE ||
-             input_type == omnibox::InputType::INPUT_TYPE_BROWSER_TAB;
+             input_type == omnibox::InputType::INPUT_TYPE_BROWSER_TAB ||
+             input_type == omnibox::InputType::INPUT_TYPE_DRIVE;
     });
   }
 

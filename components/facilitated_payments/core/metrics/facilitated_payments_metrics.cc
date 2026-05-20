@@ -114,17 +114,28 @@ std::string SchemeToString(PaymentLinkValidator::Scheme scheme) {
   }
 }
 
-void LogPixCodeCopied(ukm::SourceId ukm_source_id) {
+void LogPixCodeCopied(ukm::SourceId ukm_source_id, bool has_iframe) {
   base::UmaHistogramBoolean("FacilitatedPayments.Pix.PixCodeCopied",
                             /*sample=*/true);
   ukm::builders::FacilitatedPayments_PixCodeCopied(ukm_source_id)
       .SetPixCodeCopied(true)
+      .SetHasIframe(has_iframe)
       .Record(ukm::UkmRecorder::Get());
 }
 
 void LogPixCodeCopiedInIframe() {
   base::UmaHistogramBoolean("FacilitatedPayments.Pix.PixCodeCopied.Iframe",
                             /*sample=*/true);
+}
+
+void LogPixIframeUrlType(PixIframeUrlType url_type) {
+  base::UmaHistogramEnumeration("FacilitatedPayments.Pix.Iframe.UrlType",
+                                url_type);
+}
+
+void LogPixIframeIsSameOriginAsMainFrame(bool is_same_origin) {
+  base::UmaHistogramBoolean("FacilitatedPayments.Pix.Iframe.IsSameOrigin",
+                            is_same_origin);
 }
 
 void LogPaymentLinkDetected(ukm::SourceId ukm_source_id) {

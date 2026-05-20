@@ -61,6 +61,8 @@ These builders must pass before a CL may land that affects files outside of
 
 * [linux_chromium_tsan_rel_ng](https://ci.chromium.org/p/chromium/builders/try/linux_chromium_tsan_rel_ng) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""linux_chromium_tsan_rel_ng""))
 
+* [mac-gpu-rel](https://ci.chromium.org/p/chromium/builders/try/mac-gpu-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""mac-gpu-rel""))
+
 * [mac-rel](https://ci.chromium.org/p/chromium/builders/try/mac-rel) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""mac-rel""))
 
 * [mac_chromium_compile_dbg_ng](https://ci.chromium.org/p/chromium/builders/try/mac_chromium_compile_dbg_ng) ([definition](https://cs.chromium.org/search?q=+file:/try/.*\.star$+""mac_chromium_compile_dbg_ng""))
@@ -950,6 +952,18 @@ as required builders.
 
 ### chrome
 * [android-internal-desktop-x64-rel](https://ci.chromium.org/p/chrome/builders/try/android-internal-desktop-x64-rel) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""android-internal-desktop-x64-rel""))
+  * Experiment percentage: 5.0
+
+* [chromeos-betty-chrome-gtest](https://ci.chromium.org/p/chrome/builders/try/chromeos-betty-chrome-gtest) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""chromeos-betty-chrome-gtest""))
+  * Experiment percentage: 5.0
+
+* [chromeos-betty-chrome-gtest-and-cqtast](https://ci.chromium.org/p/chrome/builders/try/chromeos-betty-chrome-gtest-and-cqtast) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""chromeos-betty-chrome-gtest-and-cqtast""))
+  * Experiment percentage: 100.0
+
+  This builder is only run when the CL owner is in the group:
+  * [`google/chromeos-pa@google.com`](https://chrome-infra-auth.appspot.com/auth/lookup?p=google/chromeos-pa@google.com)
+
+* [chromeos-betty-compile-chrome](https://ci.chromium.org/p/chrome/builders/try/chromeos-betty-compile-chrome) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""chromeos-betty-compile-chrome""))
   * Experiment percentage: 5.0
 
 * [linux-perf-trigger](https://ci.chromium.org/p/chrome/builders/try/linux-perf-trigger) ([definition](https://source.corp.google.com/search?q=+file:/try/.*\.star$+""linux-perf-trigger""))

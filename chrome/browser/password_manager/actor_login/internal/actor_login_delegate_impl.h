@@ -15,6 +15,7 @@
 #include "components/password_manager/core/browser/password_form.h"
 #include "components/password_manager/core/browser/password_manager_driver.h"
 #include "components/password_manager/core/browser/password_manager_interface.h"
+#include "content/public/browser/page.h"
 #include "content/public/browser/web_contents_user_data.h"
 
 namespace password_manager {
@@ -71,6 +72,15 @@ class ActorLoginDelegateImpl
   void OnLoginSuccessful(
       const password_manager::PasswordForm& pending_form) override;
 
+  // content::WebContentsObserver implementation:
+  void WebContentsDestroyed() override;
+  void PrimaryPageChanged(content::Page& page) override;
+
+#if defined(UNIT_TEST)
+  // TODO(crbug.com/508169237): Utilize `WebContentsTester` instead.
+  ActorLoginSiwgController* siwg_controller() { return siwg_controller_.get(); }
+#endif
+
  private:
   friend class content::WebContentsUserData<ActorLoginDelegateImpl>;
 
@@ -82,9 +92,6 @@ class ActorLoginDelegateImpl
       password_manager::PasswordManagerClient* client,
       PasswordDriverSupplierForPrimaryMainFrame driver_supplier);
 
-  // content::WebContentsObserver:
-  void WebContentsDestroyed() override;
-
   // Checks whether the currently ongoing task is in focus, either in
   // the tab or in its corresponding Glic UI instance.
   bool IsTaskInFocus();
@@ -92,13 +99,40 @@ class ActorLoginDelegateImpl
   // Private helper methods for handling task completion. They should be
   // invoked asynchronously.
   void OnGetCredentialsCompleted(CredentialsOrErrorReply callback,
-                                 CredentialsOrError result);
+                                 CredentialsOrError result,
+                                 bool conflicting_permissions);
   void OnAttemptLoginCompleted(
+      base::expected<LoginStatusResult, ActorLoginError> result);
+
+  void OnFederatedLoginCompletedPostButtonClick(bool success);
+
+  // Called when `OnAttemptLoginCompleted` is invoked with a result for
+  // a federated credential login.
+  void ProcessFederatedResult(
+      base::expected<LoginStatusResult, ActorLoginError> result);
+
+  // Called when `OnAttemptLoginCompleted` is invoked with a filling
+  // result for a password credential login.
+  void ProcessPasswordResult(
       base::expected<LoginStatusResult, ActorLoginError> result);
 
   void OnActorTaskStateChanged(actor::ActorTask& task);
 
-  void OnActionSequenceEnded(bool success);
+  bool ShouldCleanUpConflictingPermissions(
+      const password_manager::PasswordForm& form) const;
+
+  // Calls the permissions cleaning service to clean up conflicting permissions.
+  // If the login attempt was performed with a password credential,
+  // `signon_realm`, is used to identify it, so that we don't clean the
+  // permission granted after disambiguation.
+  void ClearConflictingPermissions();
+
+  // Reset any pending state from a previous invocation. Most fields are reset
+  // when the corresponding request finishes, or the login succeeds or failed.
+  // However, the password manager cannot be fully relied upon to call the
+  // delegate back with the login result, so just in case, reset the fields
+  // which depend on it when a new `GetCredentials` request comes in.
+  void ResetState();
 
   // Helper methods for recording metrics.
   void RecordGetCredentialsMetricsAndResetHelper(
@@ -110,7 +144,6 @@ class ActorLoginDelegateImpl
   LoginStatusResultOrErrorReply pending_attempt_login_done_callback_;
 
   base::WeakPtr<ActionSequenceDelegate> action_sequence_delegate_;
-  base::CallbackListSubscription action_sequence_subscription_;
 
   // Helper for `GetCredentials`. Scoped to one `GetCredentials` request.
   std::unique_ptr<ActorLoginGetCredentialsHelper> get_credentials_helper_;
@@ -135,7 +168,6 @@ class ActorLoginDelegateImpl
   // and click the SiwG button. After the prototype, the click will be done
   // through `ExecutionEngine`.
   // Scoped to one `AttemptLogin` request.
-  // TODO(crbug.com/479505793): Implement the click without heuristics.
   std::unique_ptr<ActorLoginSiwgController> siwg_controller_;
 
   // Track the currently acting task to know when we can remove the
@@ -149,10 +181,16 @@ class ActorLoginDelegateImpl
   // made. This is used to clean up the permission after the login attempt.
   std::unique_ptr<Credential> last_attempted_credential_;
 
+  // Set to true whenever we find conflicting permissions in the
+  // `GetCredentials` step. Reset when the login process completes. If the login
+  // is successful the conflicting permissions will be cleaned up.
+  // TODO(crbug.com/486089293): Reset on federated login completion as well.
+  bool found_conflicting_permissions_ = false;
+
   // Used to listen to whether the password login was successful.
   base::ScopedObservation<password_manager::PasswordManagerInterface,
                           password_manager::PasswordManagerInterface::Observer>
-      observation_{this};
+      password_manager_observation_{this};
 
   base::WeakPtrFactory<ActorLoginDelegateImpl> weak_ptr_factory_{this};
 

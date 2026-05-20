@@ -9,23 +9,18 @@
 #include <windows.h>
 
 #include <assert.h>
-#include <shellapi.h>
-
 #include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "base/command_line.h"
 #include "base/debug/leak_annotations.h"
 #include "base/files/file_path.h"
-#include "base/format_macros.h"
 #include "base/notreached.h"
 #include "base/rand_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/current_module.h"
 #include "chrome/chrome_elf/chrome_elf_constants.h"
-#include "chrome/common/chrome_result_codes.h"
 #include "chrome/install_static/install_util.h"
 #include "chrome/install_static/user_data_dir.h"
 #include "components/crash/core/app/crashpad.h"
@@ -59,7 +54,7 @@ void ChromeCrashReporterClient::InitializeCrashReportingForProcess() {
       install_static::GetUserDataDirectory(&user_data_dir, nullptr);
     }
 
-    // TODO(wfh): Add a DCHECK for success. See https://crbug.com/1329269.
+    // TODO(wfh): Add a DCHECK for success. See https://crbug.com/40226723.
     std::ignore = crash_reporter::InitializeCrashpadWithEmbeddedHandler(
         /*initial_client=*/process_type.empty(),
         install_static::WideToUTF8(process_type),

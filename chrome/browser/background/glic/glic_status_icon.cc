@@ -20,7 +20,6 @@
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
-#include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/browser/glic/resources/glic_resources.h"
 #include "chrome/browser/glic/resources/grit/glic_browser_resources.h"
 #include "chrome/browser/lifetime/application_lifetime_desktop.h"
@@ -245,6 +244,12 @@ gfx::ImageSkia GlicStatusIcon::GetIcon() const {
   // GlicStatusIconWin and GlicStatusIconChromeOS)
 #if BUILDFLAG(IS_MAC)
   if (base::FeatureList::IsEnabled(features::kGlicChromeStatusIcon)) {
+    if (features::kGlicChromeStatusIconUseAltIcon.Get()) {
+      return gfx::CreateVectorIcon(glic::GlicVectorIconManager::GetVectorIcon(
+                                       IDR_GLIC_MAC_ALT_STATUS_ICON),
+                                   features::kGlicChromeStatusIconSizePx.Get(),
+                                   SK_ColorWHITE);
+    }
     return gfx::CreateVectorIcon(omnibox::kProductChromeRefreshIcon,
                                  features::kGlicChromeStatusIconSizePx.Get(),
                                  SK_ColorWHITE);

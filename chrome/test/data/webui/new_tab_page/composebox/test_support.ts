@@ -75,6 +75,7 @@ export function setupComposeboxTest(): ComposeboxTestElement {
       'composeboxAttachmentFileTypes': '.pdf,application/pdf',
       'contextualMenuUsePecApi': false,
       'searchboxComposePlaceholder': 'Placeholder',
+      'lensSendRawFileMediaTypesEnabled': false,
     });
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
 
@@ -94,6 +95,9 @@ export function setupComposeboxTest(): ComposeboxTestElement {
         modelSectionConfig: {header: ''},
       }),
     });
+    searchboxHandler.setResultFor(
+        'getPageClassification',
+        Promise.resolve({metricSource: 'NTP_COMPOSEBOX'}));
     const searchboxCallbackRouterRemote =
         ComposeboxProxyImpl.getInstance()
             .searchboxCallbackRouter.$.bindNewPipeAndPassRemote();

@@ -5,6 +5,9 @@
 #ifndef CHROME_BROWSER_UI_SIDE_PANEL_SIDE_PANEL_ENUMS_H_
 #define CHROME_BROWSER_UI_SIDE_PANEL_SIDE_PANEL_ENUMS_H_
 
+#include "base/containers/enum_set.h"
+#include "build/build_config.h"
+
 // These values are persisted to logs. Entries should not be renumbered and
 // numeric values should never be reused. SidePanelOpenTrigger in
 // tools/metrics/histograms/enums.xml should also be updated when changed
@@ -65,6 +68,11 @@ enum class SidePanelEntryHideReason {
   // Side panel entry was hidden because it is tab-scoped and the user switched
   // tabs.
   kBackgrounded = 2,
+#if BUILDFLAG(IS_ANDROID)
+  // SidePanel entry was hidden because the window resize resulted in too small
+  // of a range to have it visible.
+  kWindowResized = 3,
+#endif
 };
 
 // LINT.IfChange(SidePanelAnimationType)
@@ -74,5 +82,26 @@ enum class SidePanelAnimationType {
   kClose = 2,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/browser/enums.xml:SidePanelAnimationType)
+
+// GENERATED_JAVA_ENUM_PACKAGE: org.chromium.chrome.browser.ui.side_panel
+// GENERATED_JAVA_PREFIX_TO_STRIP: k
+enum class SidePanelType {
+  kMinValue,
+  // Panel aligned with the web contents.
+  kContent = kMinValue,
+  // Panel aligned with the toolbar.
+  kToolbar,
+  kMaxValue = kToolbar,
+};
+
+using SidePanelTypes = base::
+    EnumSet<SidePanelType, SidePanelType::kMinValue, SidePanelType::kMaxValue>;
+
+enum class SidePanelState {
+  kClosed = 0,
+  kOpening = 1,
+  kShown = 2,
+  kClosing = 3,
+};
 
 #endif  // CHROME_BROWSER_UI_SIDE_PANEL_SIDE_PANEL_ENUMS_H_

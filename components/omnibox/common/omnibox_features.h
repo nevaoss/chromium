@@ -35,6 +35,7 @@ BASE_DECLARE_FEATURE(kHideContextualGroupHeaders);
 BASE_DECLARE_FEATURE(kHideSuggestionGroupHeaders);
 BASE_DECLARE_FEATURE(kLocalHistoryZeroSuggestBeyondNTP);
 BASE_DECLARE_FEATURE(kZeroSuggestPrefetchDebouncing);
+BASE_DECLARE_FEATURE(kZeroSuggestPrefetchingForComposebox);
 BASE_DECLARE_FEATURE(kZeroSuggestPrefetchingOnSRP);
 BASE_DECLARE_FEATURE(kZeroSuggestPrefetchingOnWeb);
 // Related, kMaxZeroSuggestMatches.
@@ -55,13 +56,27 @@ BASE_DECLARE_FEATURE(kDocumentProviderEnterpriseEligibilityWhenUnknown);
 BASE_DECLARE_FEATURE(kShowPopupOnMouseReleased);
 BASE_DECLARE_FEATURE(kMostVisitedTilesHorizontalRenderGroup);
 BASE_DECLARE_FEATURE(kRichAutocompletion);
+BASE_DECLARE_FEATURE(kAIMSuppressVerbatimMatch);
+BASE_DECLARE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReady);
+inline constexpr base::FeatureParam<int>
+    kOmniboxAimDeferShowUntilVisualStateReadyTimeoutMs{
+        &kOmniboxAimDeferShowUntilVisualStateReady,
+        "omnibox_aim_defer_show_until_visual_state_ready_timeout_ms", 250};
+BASE_DECLARE_FEATURE(kOmniboxWebUIDeferShowUntilVisualStateReady);
+inline constexpr base::FeatureParam<int>
+    kOmniboxWebUIDeferShowUntilVisualStateReadyTimeoutMs{
+        &kOmniboxWebUIDeferShowUntilVisualStateReady,
+        "omnibox_webui_defer_show_until_visual_state_ready_timeout_ms", 250};
+BASE_DECLARE_FEATURE(kOmniboxAimDetachWebContentsOnHide);
+BASE_DECLARE_FEATURE(kOmniboxWebUIDetachWebContentsOnHide);
 
 // Omnibox UI - these affect the UI or function of the location bar (not the
 // popup).
 BASE_DECLARE_FEATURE(kAiModeOmniboxEntryPoint);
 BASE_DECLARE_FEATURE(kHideAimEntrypointOnUserInput);
+BASE_DECLARE_FEATURE(kHideAimEntrypointForUrlSuggestions);
 BASE_DECLARE_FEATURE(kOmniboxMultimodalInput);
-BASE_DECLARE_FEATURE(kRemoveSearchReadyOmnibox);
+BASE_DECLARE_FEATURE(kAndroidDesktopAimGate);
 
 // Navigation experiments.
 BASE_DECLARE_FEATURE(kDefaultTypedNavigationsToHttps);
@@ -96,6 +111,7 @@ BASE_DECLARE_FEATURE(kAiModeStartPack);
 // Search and Suggest requests and params.
 BASE_DECLARE_FEATURE(kAblateSearchProviderWarmup);
 BASE_DECLARE_FEATURE(kReportApplicationLanguageInSearchRequest);
+BASE_DECLARE_FEATURE(kOmniboxAppendInvocationSource);
 
 BASE_DECLARE_FEATURE(kOmniboxAsyncViewInflation);
 BASE_DECLARE_FEATURE(kUseFusedLocationProvider);
@@ -104,6 +120,10 @@ BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdate);
 BASE_DECLARE_FEATURE(kOmniboxMobileParityUpdateV2);
 BASE_DECLARE_FEATURE(kOmniboxXGeoPermissionGranularity);
 BASE_DECLARE_FEATURE(kOmniboxItemDecoration);
+BASE_DECLARE_FEATURE(kExactMatchFavicons);
+
+// Whether to use short suggest path.
+BASE_DECLARE_FEATURE(kUseShortSuggestPathV1);
 
 // Omnibox suggestions tuning
 BASE_DECLARE_FEATURE(kNumNtpZpsRecentSearches);
@@ -113,9 +133,6 @@ BASE_DECLARE_FEATURE(kNumWebZpsRelatedSearches);
 BASE_DECLARE_FEATURE(kNumWebZpsMostVisitedUrls);
 BASE_DECLARE_FEATURE(kNumSrpZpsRecentSearches);
 BASE_DECLARE_FEATURE(kNumSrpZpsRelatedSearches);
-
-// Caret animation for omnibox
-BASE_DECLARE_FEATURE(kOmniboxAnimatedCaret);
 
 // Enterprise search aggregators features.
 BASE_DECLARE_FEATURE(kEnableSearchAggregatorPolicy);
@@ -145,9 +162,15 @@ inline constexpr base::FeatureParam<std::string> kComposeboxClientOverride{
 // Controls whether or not contextual composebox should display suggestions.
 BASE_DECLARE_FEATURE(kComposeboxAttachmentsTypedState);
 
+// Whether to enable Google Drive context menu option in the composebox.
+BASE_DECLARE_FEATURE(kComposeboxDriveContextMenuOption);
+
 // Whether the composebox should show a verbatim match for context in
 // zero-suggest.
 BASE_DECLARE_FEATURE(kComposeboxVerbatimMatchZeroSuggest);
+
+// Whether to disable warmup requests for the composebox.
+BASE_DECLARE_FEATURE(kDisableComposeboxWarmupRequests);
 
 // A flag that allows params from experiment configs to be passed through to
 // the AIM eligibility service to control aspects of URL interception.
@@ -161,6 +184,12 @@ BASE_DECLARE_FEATURE(kOmniboxDebugLogs);
 // Feature flag to enable the "Astrophotography Mode" (Sparkles) icon for the
 // Thinking Pro model when multiple Pro models are available.
 BASE_DECLARE_FEATURE(kThinkingModelIconUpdate);
+
+BASE_DECLARE_FEATURE(kVoiceSearchCoherenceComposeboxes);
+BASE_DECLARE_FEATURE(kVoiceSearchCoherenceSearchbox);
+
+extern const base::FeatureParam<bool>
+    kVoiceSearchCoherenceSearchboxWithLiveTranscription;
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_DECLARE_FEATURE(kDiagnostics);
@@ -176,6 +205,10 @@ BASE_DECLARE_FEATURE(kResetSuggestionsScroll);
 // If enabled, X-Geo headers are sent for all search navigations on all
 // platforms.
 BASE_DECLARE_FEATURE(kPlatformAgnosticXGeo);
+
+// If enabled, Inline Location Signaling is enabled gating all development
+// and experimentation for the feature.
+BASE_DECLARE_FEATURE(kInlineLocationSignaling);
 
 // Note: no new flags beyond this point.
 

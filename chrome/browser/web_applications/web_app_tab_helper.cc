@@ -51,9 +51,8 @@
 
 namespace web_app {
 
-namespace {
-
-std::optional<webapps::AppId> FindTabAppIdForUrlInScope(
+// static
+std::optional<webapps::AppId> WebAppTabHelper::FindAppIdForUrl(
     WebAppRegistrar& registrar,
     const GURL& url) {
   // 1. Check for IWAs or Isolated Sub-Apps, strictly excluding scope
@@ -71,8 +70,6 @@ std::optional<webapps::AppId> FindTabAppIdForUrlInScope(
       WebAppFilter::InstalledInChrome() &
           !(WebAppFilter::IsIsolatedApp() | WebAppFilter::IsIsolatedSubApp()));
 }
-
-}  // namespace
 
 // static
 void WebAppTabHelper::Create(tabs::TabInterface* tab,
@@ -140,6 +137,12 @@ WebAppTabHelper::~WebAppTabHelper() = default;
 const base::UnguessableToken& WebAppTabHelper::GetAudioFocusGroupIdForTesting()
     const {
   return audio_focus_group_id_;
+}
+
+base::CallbackListSubscription
+WebAppTabHelper::AddOnManifestProcessedCallbackForTesting(
+    OnManifestProcessedCallbackList::CallbackType callback) {
+  return manifest_processed_callbacks_.Add(std::move(callback));
 }
 
 webapps::LaunchQueue& WebAppTabHelper::EnsureLaunchQueue() {
@@ -224,7 +227,8 @@ void WebAppTabHelper::ReadyToCommitNavigation(
     content::NavigationHandle* navigation_handle) {
   if (navigation_handle->IsInPrimaryMainFrame()) {
     const GURL& url = navigation_handle->GetURL();
-    SetAppId(FindTabAppIdForUrlInScope(provider_->registrar_unsafe(), url));
+    SetAppId(
+        WebAppTabHelper::FindAppIdForUrl(provider_->registrar_unsafe(), url));
   }
 
   // If navigating to a Web App (including navigation in sub frames), let
@@ -237,6 +241,7 @@ void WebAppTabHelper::ReadyToCommitNavigation(
 }
 
 void WebAppTabHelper::PrimaryPageChanged(content::Page& page) {
+  last_processed_manifest_id_for_current_page_ = std::nullopt;
   get_all_specified_manifests_subscription_ =
       provider_->web_contents_manager().GetPrimaryPageAllSpecifiedManifests(
           *web_contents(),
@@ -274,8 +279,8 @@ WebAppTabHelper::WebAppTabHelper(tabs::TabInterface* tab,
   observation_.Observe(&provider_->install_manager());
   registrar_observation_.Observe(&provider_->registrar_unsafe());
 
-  SetState(FindTabAppIdForUrlInScope(provider_->registrar_unsafe(),
-                                     contents->GetLastCommittedURL()),
+  SetState(WebAppTabHelper::FindAppIdForUrl(provider_->registrar_unsafe(),
+                                            contents->GetLastCommittedURL()),
            /*window_app_id=*/std::nullopt);
 }
 
@@ -312,7 +317,7 @@ bool WebAppTabHelper::CanBeUsedForFocusExisting() const {
 void WebAppTabHelper::OnWebAppInstalled(
     const webapps::AppId& installed_app_id) {
   // Check if current web_contents url is in scope for the newly installed app.
-  std::optional<webapps::AppId> app_id = FindTabAppIdForUrlInScope(
+  std::optional<webapps::AppId> app_id = WebAppTabHelper::FindAppIdForUrl(
       provider_->registrar_unsafe(), web_contents()->GetLastCommittedURL());
 
   if (app_id == installed_app_id) {
@@ -485,11 +490,13 @@ void WebAppTabHelper::MaybeRecordManifestAppliedUseCounter() {
 
 void WebAppTabHelper::OnManifestSpecifiedOnPrimaryPage(
     const content::PageManifestManager::ManifestResult& result) {
-  if (!result.has_value()) {
-    return;
+  if (result.has_value()) {
+    provider_->manifest_update_manager().OnManifestSeenOnPrimaryPage(
+        *web_contents(), result.value(), base::PassKey<WebAppTabHelper>());
+    webapps::ManifestId manifest_id = webapps::ManifestId(result.value()->id);
+    last_processed_manifest_id_for_current_page_ = manifest_id;
+    manifest_processed_callbacks_.Notify(manifest_id);
   }
-  provider_->manifest_update_manager().OnManifestSeenOnPrimaryPage(
-      *web_contents(), result.value(), base::PassKey<WebAppTabHelper>());
 }
 
 WEB_CONTENTS_USER_DATA_KEY_IMPL(WebAppTabHelper);

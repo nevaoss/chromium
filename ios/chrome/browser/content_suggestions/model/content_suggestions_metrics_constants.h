@@ -22,10 +22,8 @@ extern const char kShopCardWithReviewsImpression[];
 extern const char kShopCardWithPriceTrackingOpen[];
 extern const char kShopCardWithReviewsOpen[];
 extern const char kTabResumptionWithPriceDropOpenTab[];
-extern const char kTabResumptionWithPriceTrackingOpenTab[];
 extern const char kTabResumptionOpenTab[];
 extern const char kTabResumptionWithPriceDropImpression[];
-extern const char kTabResumptionWithPriceTrackingImpression[];
 extern const char kTabResumptionImpression[];
 extern const char kAppBundlePromoImpression[];
 extern const char kContentNotificationSnackbarAction[];
@@ -62,9 +60,5 @@ extern const char kMagicStackModuleDisabledHistogram[];
 extern const char kContentNotificationSnackbarEventHistogram[];
 extern const char kIOSSafetyCheckMagicStackHiddenReason[];
 
-// The name of the histogram that records fetch time for the Segmentation
-// ranking for Magic Stack.
-extern const char kMagicStackStartSegmentationRankingFetchTimeHistogram[];
-extern const char kMagicStackNTPSegmentationRankingFetchTimeHistogram[];
 
 #endif  // IOS_CHROME_BROWSER_CONTENT_SUGGESTIONS_MODEL_CONTENT_SUGGESTIONS_METRICS_CONSTANTS_H_

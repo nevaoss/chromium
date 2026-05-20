@@ -23,8 +23,6 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_GLIC_FEATURE,
     FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_NEW_TAB_FEATURE,
     FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_OPEN_IN_BROWSER_FEATURE,
-    FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_PAGE_SUMMARY_PDF_FEATURE,
-    FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_PAGE_SUMMARY_WEB_FEATURE,
     FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_READ_ALOUD_FEATURE,
     FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_SHARE_FEATURE,
     FeatureConstants.ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_TRANSLATE_FEATURE,
@@ -70,7 +68,8 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.GLIC_PROMO_ANDROID_FEATURE,
     FeatureConstants.IDENTITY_DISC_FEATURE,
     FeatureConstants.INSTANCE_SWITCHER,
-    FeatureConstants.IPH_EXTENSIONS_MANAGE_FEATURE,
+    FeatureConstants.IPH_EXTENSIONS_MANAGE_APP_MENU_FEATURE,
+    FeatureConstants.IPH_EXTENSIONS_MANAGE_TOOLBAR_FEATURE,
     FeatureConstants.IPH_MIC_TOOLBAR_FEATURE,
     FeatureConstants.IPH_PDF_PAGE_DOWNLOAD,
     FeatureConstants.IPH_SHARE_SCREENSHOT_FEATURE,
@@ -78,11 +77,11 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.IPH_TAB_SWITCHER_XR,
     FeatureConstants.IPH_TAB_TEARING_XR,
     FeatureConstants.IPH_TOUCH_TO_SEARCH_CALLOUT,
-    FeatureConstants.IPH_WEB_FEED_FOLLOW_FEATURE,
     FeatureConstants.IPH_WEB_FEED_POST_FOLLOW_DIALOG_FEATURE,
     FeatureConstants.IPH_WEB_FEED_POST_FOLLOW_DIALOG_FEATURE_WITH_UI_UPDATE,
     FeatureConstants.KEYBOARD_ACCESSORY_ACCOUNT_NAME_EMAIL_SUGGESTION_FEATURE,
     FeatureConstants.KEYBOARD_ACCESSORY_ADDRESS_FILL_FEATURE,
+    FeatureConstants.KEYBOARD_ACCESSORY_AT_MEMORY_FEATURE,
     FeatureConstants.KEYBOARD_ACCESSORY_AUTOFILL_AI_VALUABLES_FEATURE,
     FeatureConstants.KEYBOARD_ACCESSORY_BAR_SWIPING_FEATURE,
     FeatureConstants.KEYBOARD_ACCESSORY_ENABLE_LOYALTY_CARDS_FEATURE,
@@ -122,6 +121,7 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.SHARING_HUB_WEBNOTES_STYLIZE_FEATURE,
     FeatureConstants.SHOPPING_LIST_MENU_ITEM_FEATURE,
     FeatureConstants.SHOPPING_LIST_SAVE_FLOW_FEATURE,
+    FeatureConstants.SITE_CONTROLS_FEATURE,
     FeatureConstants.TAB_GROUPS_DRAG_AND_DROP_FEATURE,
     FeatureConstants.TAB_GROUPS_REMOTE_GROUP,
     FeatureConstants.TAB_GROUPS_SURFACE,
@@ -142,8 +142,7 @@ import java.lang.annotation.RetentionPolicy;
     FeatureConstants.VIDEO_TUTORIAL_NTP_SEARCH_FEATURE,
     FeatureConstants.VIDEO_TUTORIAL_NTP_SUMMARY_FEATURE,
     FeatureConstants.VIDEO_TUTORIAL_NTP_VOICE_SEARCH_FEATURE,
-    FeatureConstants.VIDEO_TUTORIAL_TRY_NOW_FEATURE,
-    FeatureConstants.WEB_FEED_AWARENESS_FEATURE,
+    FeatureConstants.VIDEO_TUTORIAL_TRY_NOW_FEATURE
     // FEATURE_CONSTANTS_JAVA_STRING_DEF_END
     // keep-sorted end
 })
@@ -164,12 +163,6 @@ public @interface FeatureConstants {
 
     String ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_OPEN_IN_BROWSER_FEATURE =
             "IPH_AdaptiveButtonInTopToolbarCustomization_OpenInBrowser";
-
-    String ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_PAGE_SUMMARY_PDF_FEATURE =
-            "IPH_AdaptiveButtonInTopToolbarCustomization_PageSummary_Pdf";
-
-    String ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_PAGE_SUMMARY_WEB_FEATURE =
-            "IPH_AdaptiveButtonInTopToolbarCustomization_PageSummary_Web";
 
     String ADAPTIVE_BUTTON_IN_TOP_TOOLBAR_CUSTOMIZATION_READ_ALOUD_FEATURE =
             "IPH_AdaptiveButtonInTopToolbarCustomization_ReadAloud";
@@ -292,10 +285,16 @@ public @interface FeatureConstants {
     String INSTANCE_SWITCHER = "IPH_InstanceSwitcher";
 
     /**
+     * An IPH feature that shows after the extensions menu is uninstalled to inform users to manage
+     * their extensions in the app menu.
+     */
+    String IPH_EXTENSIONS_MANAGE_APP_MENU_FEATURE = "IPH_ExtensionsManageAppMenu";
+
+    /**
      * An IPH feature that shows after the first extension is installed to inform users to manage
      * their extensions in the toolbar.
      */
-    String IPH_EXTENSIONS_MANAGE_FEATURE = "IPH_ExtensionsManage";
+    String IPH_EXTENSIONS_MANAGE_TOOLBAR_FEATURE = "IPH_ExtensionsManageToolbar";
 
     /** An IPH feature attached to the mic button in the toolbar prompring user to try voice. */
     String IPH_MIC_TOOLBAR_FEATURE = "IPH_MicToolbar";
@@ -318,9 +317,6 @@ public @interface FeatureConstants {
     /** An IPH feature to inform users that the touch to search panel can be expanded. */
     String IPH_TOUCH_TO_SEARCH_CALLOUT = "IPH_TouchToSearchCallout";
 
-    /** An IPH feature to inform users about the WebFeed follow feature. */
-    String IPH_WEB_FEED_FOLLOW_FEATURE = "IPH_WebFeedFollow";
-
     /** A dialog IPH feature to inform users about the WebFeed post-follow. */
     String IPH_WEB_FEED_POST_FOLLOW_DIALOG_FEATURE = "IPH_WebFeedPostFollowDialog";
 
@@ -332,6 +328,8 @@ public @interface FeatureConstants {
             "IPH_AutofillAccountNameEmailSuggestion";
 
     String KEYBOARD_ACCESSORY_ADDRESS_FILL_FEATURE = "IPH_KeyboardAccessoryAddressFilling";
+
+    String KEYBOARD_ACCESSORY_AT_MEMORY_FEATURE = "IPH_AutofillAtMemory";
 
     String KEYBOARD_ACCESSORY_AUTOFILL_AI_VALUABLES_FEATURE = "IPH_AutofillAiValuables";
 
@@ -432,6 +430,9 @@ public @interface FeatureConstants {
 
     /** An IPH that shows in the bookmark save flow when bookmarking a product. */
     String SHOPPING_LIST_SAVE_FLOW_FEATURE = "IPH_ShoppingListSaveFlow";
+
+    /** An IPH feature to inform users that Site Controls have moved to the app menu. */
+    String SITE_CONTROLS_FEATURE = "IPH_SiteControls";
 
     /** An IPH feature to show a card item on grid tab switcher to educate drag-and-drop. */
     String TAB_GROUPS_DRAG_AND_DROP_FEATURE = "IPH_TabGroupsDragAndDrop";
@@ -535,8 +536,5 @@ public @interface FeatureConstants {
      * tutorial player.
      */
     String VIDEO_TUTORIAL_TRY_NOW_FEATURE = "IPH_VideoTutorial_TryNow";
-
-    /** An IPH used for web feed awareness to be shown on the NTP for the Web Feed tab. */
-    String WEB_FEED_AWARENESS_FEATURE = "IPH_WebFeedAwareness";
     // FEATURE_CONSTANTS_JAVA_INTERFACE_END
 }

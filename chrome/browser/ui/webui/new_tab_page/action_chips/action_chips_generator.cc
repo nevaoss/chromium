@@ -277,7 +277,7 @@ ActionChipPtr CreateCanvasChip(std::string_view suggestion) {
 std::optional<ActionChipPtr> CreateCanvasChipIfEligible(
     std::string_view suggestion,
     const AimEligibilityService* aim_eligibility_service) {
-  if (!ntp_features::kNtpNextEnableCanvasChipParam.Get() ||
+  if (!base::FeatureList::IsEnabled(ntp_features::kNtpNextCanvasChip) ||
       aim_eligibility_service == nullptr ||
       !aim_eligibility_service->IsCanvasEligible()) {
     return std::nullopt;
@@ -293,11 +293,8 @@ std::vector<omnibox::ToolMode> GetAllowedTools(
   }
   const omnibox::SearchboxConfig* searchbox_config =
       aim_eligibility_service->GetSearchboxConfig();
-  if (!searchbox_config->has_rule_set()) {
-    return tools;
-  }
-  for (const int tool : searchbox_config->rule_set().allowed_tools()) {
-    tools.push_back(static_cast<omnibox::ToolMode>(tool));
+  for (const auto& tool_config : searchbox_config->tool_configs()) {
+    tools.push_back(tool_config.tool());
   }
   return tools;
 }
@@ -341,7 +338,7 @@ std::vector<ActionChipPtr> CreateChipsForSteadyState(
   };
 
   const base::span<GeneratorFn> generators =
-      ntp_features::kNtpNextEnableCanvasChipParam.Get()
+      base::FeatureList::IsEnabled(ntp_features::kNtpNextCanvasChip)
           ? base::span<GeneratorFn>(kNewGenerators)
           : base::span<GeneratorFn>(kOldGenerators);
   for (const GeneratorFn generator : generators) {

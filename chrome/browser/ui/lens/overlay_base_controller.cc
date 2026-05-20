@@ -492,11 +492,9 @@ void OverlayBaseController::ShowModalUI() {
   auto* const side_panel_ui =
       tab_->GetBrowserWindowInterface()->GetFeatures().side_panel_ui();
   CHECK(side_panel_ui);
-  auto panel_type = GetSidePanelType();
 
   // Setup observer to be notified of side panel opens and closes.
   side_panel_shown_subscription_ = side_panel_ui->RegisterSidePanelShown(
-      panel_type,
       base::BindRepeating(&OverlayBaseController::OnSidePanelDidOpen,
                           weak_factory_.GetWeakPtr()));
 
@@ -525,12 +523,12 @@ void OverlayBaseController::ShowModalUI() {
 
   // This should be the last thing called in ShowUI, so if something goes wrong
   // in capturing the screenshot, the state gets cleaned up correctly.
-  if (side_panel_ui->IsSidePanelShowing(panel_type) && ShouldCloseSidePanel() &&
+  if (side_panel_ui->IsSidePanelShowing() && ShouldCloseSidePanel() &&
       !IsResultsSidePanelShowing()) {
     // Close the currently opened side panel synchronously if it's not the Lens
     // panel. Postpone the screenshot for a fixed time to allow reflow.
     state_ = State::kClosingOpenedSidePanel;
-    side_panel_ui->Close(panel_type, SidePanelEntryHideReason::kSidePanelClosed,
+    side_panel_ui->Close(SidePanelEntryHideReason::kSidePanelClosed,
                          /*suppress_animations=*/true);
     base::SingleThreadTaskRunner::GetCurrentDefault()
         ->PostNonNestableDelayedTask(
@@ -830,11 +828,14 @@ void OverlayBaseController::ShowPreselectionBubble() {
 
   if (!preselection_widget_) {
     CHECK(preselection_widget_anchor_);
+    PreselectionUIConfig config = GetPreselectionBubbleConfig();
     // Setup the preselection widget.
     preselection_widget_ = views::BubbleDialogDelegateView::CreateBubble(
         std::make_unique<lens::LensPreselectionBubble>(
             tab_->GetHandle(), preselection_widget_anchor_,
-            net::NetworkChangeNotifier::IsOffline(),
+            net::NetworkChangeNotifier::IsOffline(), config.show_cancel_button,
+            config.bubble_background_color, config.icon,
+            config.cancel_button_color,
             /*exit_clicked_callback=*/
             base::BindRepeating(&OverlayBaseController::RequestSyncClose,
                                 weak_factory_.GetWeakPtr(),
@@ -845,10 +846,9 @@ void OverlayBaseController::ShowPreselectionBubble() {
                            DismissalSource::kPreselectionToastEscapeKeyPress)));
     preselection_widget_observer_.Observe(preselection_widget_);
 
-    PreselectionBubbleResources resources = GetPreselectionBubbleResources();
     static_cast<lens::LensPreselectionBubble*>(
         preselection_widget_->widget_delegate())
-        ->SetLabelText(resources.message_string_id);
+        ->SetLabelText(config.message_string_id);
 
     // Setting the parent allows focus traversal out of the preselection widget.
     preselection_widget_->SetFocusTraversableParent(

@@ -12,7 +12,7 @@ import {fakeMetricsPrivate} from 'chrome://webui-test/metrics_test_support.js';
 import {isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {TestContextualTasksBrowserProxy} from './test_contextual_tasks_browser_proxy.js';
-import {fixtureUrl} from './test_utils.js';
+import {createContextualTasksAppElement, fixtureUrl} from './test_utils.js';
 
 // Remove the element to prevent background loadabort events from triggering
 // a race condition with our manual event simulation.
@@ -43,17 +43,18 @@ suite('ContextualTasksAppTest', function() {
     loadTimeData.overrideValues({
       enableBasicModeZOrder: true,
       enableComposeboxJumpFix: false,
+      isGhostLoaderVisible: false,
+      isAiPage: true,
+      nlmUrlParam: 'ajid',
+      enableCustomNlmUi: true,
     });
     metrics = fakeMetricsPrivate();
     const proxy = new TestContextualTasksBrowserProxy('http://example.com');
     BrowserProxyImpl.setInstance(proxy);
   });
 
-  test('gets thread url', () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    document.body.appendChild(document.createElement('contextual-tasks-app'));
+  test('gets thread url', async () => {
+    const {proxy} = await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
     assertEquals(1, proxy.handler.getCallCount('getThreadUrl'));
   });
@@ -66,10 +67,8 @@ suite('ContextualTasksAppTest', function() {
     // Set the q query parameter for the AI page.
     const query = 'abc';
     const fixtureUrlWithQuery = `${fixtureUrl}?q=${query}`;
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrlWithQuery);
-    BrowserProxyImpl.setInstance(proxy);
-
-    document.body.appendChild(document.createElement('contextual-tasks-app'));
+    const {proxy} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrlWithQuery);
 
     assertDeepEquals(
         {value: taskId}, await proxy.handler.whenCalled('getUrlForTask'));
@@ -90,10 +89,7 @@ suite('ContextualTasksAppTest', function() {
     window.history.replaceState({}, '', `?chrome_task_id=${taskId}`);
 
     // Don't set the q query parameter for the AI page.
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    document.body.appendChild(document.createElement('contextual-tasks-app'));
+    const {proxy} = await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
     assertDeepEquals(
         {value: taskId}, await proxy.handler.whenCalled('getUrlForTask'));
@@ -108,16 +104,48 @@ suite('ContextualTasksAppTest', function() {
     assertEquals('AI Mode', document.title);
   });
 
-  test('restores thread if task param set', async () => {
-    window.history.replaceState({}, '', '?chrome_task_id=123');
+  test('properties initialized from loadTimeData', async () => {
+    loadTimeData.overrideValues({
+      isAiPage: false,
+      isZeroState: false,
+    });
 
-    // Don't set the q query parameter for the AI page.
-    const proxy = new TestContextualTasksBrowserProxy('http://example.com');
-    BrowserProxyImpl.setInstance(proxy);
+    const {appElement} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+
+    assertFalse(appElement.hasAttribute('is-ai-page_'));
+    assertFalse(appElement.hasAttribute('is-zero-state_'));
+  });
+
+  test('host initialized from URL parameter', async () => {
+    const forcedHost = 'test.host.com';
+    window.history.replaceState({}, '', `?chrome_host=${forcedHost}`);
 
     const appElement = document.createElement('contextual-tasks-app');
     document.body.appendChild(appElement);
     await microtasksFinished();
+
+    assertEquals(forcedHost, (appElement as any).host_);
+  });
+
+  test('host initialized from loadTimeData when URL param absent', async () => {
+    const forcedHost = 'default.host.com';
+    loadTimeData.overrideValues({chrome_host: forcedHost});
+
+    const appElement = document.createElement('contextual-tasks-app');
+    document.body.appendChild(appElement);
+    await microtasksFinished();
+
+    assertEquals(forcedHost, (appElement as any).host_);
+  });
+
+
+  test('restores thread if task param set', async () => {
+    window.history.replaceState({}, '', '?chrome_task_id=123');
+
+    // Don't set the q query parameter for the AI page.
+    const {proxy} =
+        await createContextualTasksAppElement(/*url=*/ 'http://example.com');
 
     assertEquals(1, proxy.handler.getCallCount('getUrlForTask'));
   });
@@ -129,13 +157,9 @@ suite('ContextualTasksAppTest', function() {
     const threadId = '111';
     const turnId = '222';
     const title = 'title';
-    const proxy = new TestContextualTasksBrowserProxy(
-        `http://example.com?mtid=${threadId}&mstk=${turnId}&q=${title}`);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement} = await createContextualTasksAppElement(
+        /*url=*/ `http://example.com?mtid=${threadId}&mstk=${turnId}&q=${
+            title}`);
 
     const threadUrl = new URL(appElement.getThreadUrlForTesting());
 
@@ -148,12 +172,7 @@ suite('ContextualTasksAppTest', function() {
     window.history.replaceState(
         {}, '', `?chrome_task_id=111&thread=222&turn=333&title=wrong`);
 
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {proxy} = await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
     const initialHistoryLength = window.history.length;
 
@@ -170,12 +189,7 @@ suite('ContextualTasksAppTest', function() {
     window.history.replaceState(
         {}, '', `?chrome_task_id=111&thread=222&turn=333&title=wrong`);
 
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {proxy} = await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
     const initialHistoryLength = window.history.length;
 
@@ -192,12 +206,8 @@ suite('ContextualTasksAppTest', function() {
     window.history.replaceState(
         {}, '', `?chrome_task_id=111&thread=222&turn=333&title=wrong`);
 
-    const proxy = new TestContextualTasksBrowserProxy(
-        `http://example.com?mtid=111&mstk=222&q=title`);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
+    const {appElement, proxy} = await createContextualTasksAppElement(
+        /*url=*/ `http://example.com?mtid=111&mstk=222&q=title`);
     const {promise, resolve} = Promise.withResolvers<void>();
     appElement.setPopStateFinishedCallbackForTesting(resolve);
     await microtasksFinished();
@@ -220,12 +230,8 @@ suite('ContextualTasksAppTest', function() {
     // Make sure the history panel is requested in the URL.
     window.history.replaceState({}, '', `?open_history=true`);
 
-    const proxy = new TestContextualTasksBrowserProxy('http://example.com');
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement} =
+        await createContextualTasksAppElement(/*url=*/ 'http://example.com');
 
     const threadUrl = new URL(appElement.getThreadUrlForTesting());
 
@@ -244,13 +250,13 @@ suite('ContextualTasksAppTest', function() {
     const taskId = '123';
     window.history.replaceState({}, '', `?chrome_task_id=${taskId}`);
 
-    const proxy = new TestContextualTasksBrowserProxy('http://example.com');
-    proxy.handler.setIsPendingErrorPage({value: taskId}, true);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement} = await createContextualTasksAppElement(
+        /*url=*/ 'http://example.com',
+        /*setupProxy=*/
+        (p) => {
+          p.handler.setIsPendingErrorPage({value: taskId}, true);
+        },
+        /*waitForInitialLoadStart=*/ false);
 
     assertTrue(appElement.hasAttribute('is-error-page-visible_'));
   });
@@ -258,26 +264,18 @@ suite('ContextualTasksAppTest', function() {
   test(
       'error page not shown if pending error page is not true for task',
       async () => {
-        const proxy = new TestContextualTasksBrowserProxy('http://example.com');
-        BrowserProxyImpl.setInstance(proxy);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
+        const {appElement} = await createContextualTasksAppElement(
+            /*url=*/ 'http://example.com');
 
         assertFalse(appElement.hasAttribute('is-error-page-visible_'));
       });
 
   test('toolbar visibility changes for tab and side panel', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    // The test will start with the UI in a tab.
-    proxy.handler.setIsShownInTab(true);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement, proxy} = await createContextualTasksAppElement(
+        /*url=*/ fixtureUrl,
+        /*setupProxy=*/ (p) => {
+          p.handler.setIsShownInTab(true);
+        });
 
     assertFalse(!!appElement.shadowRoot.querySelector('top-toolbar'));
 
@@ -306,90 +304,12 @@ suite('ContextualTasksAppTest', function() {
     assertEquals(fixtureUrl, webview.getAttribute('src'));
   });
 
-
-  test(
-      'composebox z-index changes when visibility toggles with enableBasicModeZOrder',
-      async () => {
-        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-        BrowserProxyImpl.setInstance(proxy);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
-
-        const composebox =
-            appElement.shadowRoot.querySelector('contextual-tasks-composebox');
-        const threadFrame = appElement.shadowRoot.querySelector('#threadFrame');
-        const flexCenterContainer =
-            appElement.shadowRoot.querySelector('#flexCenterContainer');
-
-        assertTrue(!!composebox);
-        assertFalse(composebox.hasAttribute('hidden'));
-
-        // Hide the compose box (enter basic mode).
-        proxy.callbackRouterRemote.hideInput();
-        await proxy.callbackRouterRemote.$.flushForTesting();
-
-        // With flag enabled, hidden attribute should NOT be present.
-        assertFalse(composebox.hasAttribute('hidden'));
-
-        const threadFrameStyle = getComputedStyle(threadFrame!);
-        const flexCenterStyle = getComputedStyle(flexCenterContainer!);
-
-        assertEquals(
-            '1', threadFrameStyle.zIndex, 'Thread frame z-index should be 1');
-        assertEquals(
-            '0', flexCenterStyle.zIndex,
-            'Flex center container z-index should be 0');
-
-        // Restore the compose box.
-        proxy.callbackRouterRemote.restoreInput();
-        await proxy.callbackRouterRemote.$.flushForTesting();
-        assertFalse(composebox.hasAttribute('hidden'));
-
-        const threadFrameStyleRestored = getComputedStyle(threadFrame!);
-        const flexCenterStyleRestored = getComputedStyle(flexCenterContainer!);
-
-        // Verify z-index is not stuck
-        assertFalse(threadFrameStyleRestored.zIndex === '1');
-        assertFalse(flexCenterStyleRestored.zIndex === '0');
-      });
-
-  test(
-      'composebox visibility toggles with enableBasicModeZOrder set to false',
-      async () => {
-        loadTimeData.overrideValues({enableBasicModeZOrder: false});
-        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-        BrowserProxyImpl.setInstance(proxy);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
-
-        const composebox =
-            appElement.shadowRoot.querySelector('contextual-tasks-composebox');
-        assertTrue(!!composebox);
-        assertFalse(composebox.hasAttribute('hidden'));
-
-        // Hide the compose box.
-        proxy.callbackRouterRemote.hideInput();
-        await proxy.callbackRouterRemote.$.flushForTesting();
-        assertTrue(composebox.hasAttribute('hidden'));
-
-        // Restore the compose box.
-        proxy.callbackRouterRemote.restoreInput();
-        await proxy.callbackRouterRemote.$.flushForTesting();
-        assertFalse(composebox.hasAttribute('hidden'));
-      });
-
   test('task details updated in url', async () => {
     // Set the q query parameter for the AI page.
     const query = 'abc';
     const fixtureUrlWithQuery = `${fixtureUrl}?q=${query}`;
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrlWithQuery);
-    BrowserProxyImpl.setInstance(proxy);
-
-    document.body.appendChild(document.createElement('contextual-tasks-app'));
+    const {proxy} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrlWithQuery);
 
     const taskId = {value: '12345'};
     proxy.callbackRouterRemote.setTaskDetails(taskId);
@@ -400,10 +320,7 @@ suite('ContextualTasksAppTest', function() {
   });
 
   test('aim url updates webui url params', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    document.body.appendChild(document.createElement('contextual-tasks-app'));
+    const {proxy} = await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
     const aimUrl = `${fixtureUrl}/search?q=123&mtid=456&old_param=1`;
     proxy.callbackRouterRemote.setAimUrl(aimUrl);
@@ -426,13 +343,48 @@ suite('ContextualTasksAppTest', function() {
     assertFalse(currentUrl.searchParams.has('old_param'));
   });
 
-  test('isAiPage reflected in dom', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
+  // Disabled: crbug.com/507859340
+  test.skip('cs param updates dark mode only on commit', async () => {
+    const {appElement} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+    // Initial state should be light mode (or whatever default is).
+    assertFalse(appElement['darkMode_']);
+    const urlWithCs1 = `${fixtureUrl}?cs=1`;
+    // 1. Test that loadstart alone does NOT update theme.
+    const eventStart = {
+      url: urlWithCs1,
+      isTopLevel: true,
+    } as unknown as chrome.webviewTag.LoadStartEvent;
+    appElement.onThreadFrameLoadStartForTesting(eventStart);
     await microtasksFinished();
+    // Should still be false because logic moved to
+    // maybeOnThreadFrameTopLevelNavigation which is called on commit/redirect.
+    assertFalse(appElement['darkMode_']);
+    // 2. Test that loadabort prevents update.
+    const eventAbort = {
+      url: urlWithCs1,
+      isTopLevel: true,
+    } as unknown as chrome.webviewTag.LoadAbortEvent;
+    await appElement.onThreadFrameLoadAbortForTesting(eventAbort);
+    await microtasksFinished();
+    assertFalse(appElement['darkMode_']);
+    // 3. Test that loadcommit updates theme.
+    // Need to call loadstart again to set lastThreadFrameLoadStartEvent_
+    appElement.onThreadFrameLoadStartForTesting(eventStart);
+    await microtasksFinished();
+    const eventCommit = {
+      url: urlWithCs1,
+      isTopLevel: true,
+    } as unknown as chrome.webviewTag.LoadCommitEvent;
+    appElement.onThreadFrameLoadCommitForTesting(eventCommit);
+    await microtasksFinished();
+    assertTrue(appElement['darkMode_']);
+  });
+  test('isAiPage reflected in dom', async () => {
+    const {appElement, proxy} = await createContextualTasksAppElement(
+        /*url=*/ fixtureUrl,
+        /*setupProxy=*/ undefined,
+        /*waitForInitialLoadStart=*/ false);
 
     assertTrue(appElement.hasAttribute('is-ai-page_'));
 
@@ -455,13 +407,11 @@ suite('ContextualTasksAppTest', function() {
     initialThreadUrl.searchParams.set('source', 'some-source');
     initialThreadUrl.searchParams.set('aep', 'some-aep');
 
-    const proxy = new TestContextualTasksBrowserProxy(initialThreadUrl.href);
-    BrowserProxyImpl.setInstance(proxy);
-    proxy.handler.setIsShownInTab(true);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement, proxy} = await createContextualTasksAppElement(
+        /*url=*/ initialThreadUrl.href,
+        /*setupProxy=*/ (p) => {
+          p.handler.setIsShownInTab(true);
+        });
 
     // Switch to side panel view, which should show the toolbar.
     proxy.handler.setIsShownInTab(false);
@@ -494,12 +444,11 @@ suite('ContextualTasksAppTest', function() {
     url.searchParams.set('chrome_task_id', threadUuid);
     window.history.pushState({}, '', url.href);
 
-    const proxy =
-        BrowserProxyImpl.getInstance() as TestContextualTasksBrowserProxy;
-    proxy.handler.setIsShownInTab(true);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
+    const {appElement} = await createContextualTasksAppElement(
+        /*url=*/ url.href,
+        /*setupProxy=*/ (p) => {
+          p.handler.setIsShownInTab(true);
+        });
     const {promise, resolve} = Promise.withResolvers<void>();
     appElement.setPopStateFinishedCallbackForTesting(resolve);
     await microtasksFinished();
@@ -520,373 +469,9 @@ suite('ContextualTasksAppTest', function() {
             true));
   });
 
-  test(
-      'does not force enter basic mode when thread history is open if flag is disabled',
-      async () => {
-        loadTimeData.overrideValues(
-            {forceBasicModeIfOpeningThreadHistory: false});
-        const fixtureUrlWithHistory = new URL(fixtureUrl);
-        fixtureUrlWithHistory.searchParams.set('atvm', '1');
-        const proxy = new TestContextualTasksBrowserProxy(
-            fixtureUrlWithHistory.toString());
-        BrowserProxyImpl.setInstance(proxy);
-        proxy.handler.setIsShownInTab(true);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
-
-        const composebox =
-            appElement.shadowRoot.querySelector('contextual-tasks-composebox');
-        const threadFrame = appElement.shadowRoot.querySelector('#threadFrame');
-        const flexCenterContainer =
-            appElement.shadowRoot.querySelector('#flexCenterContainer');
-
-        assertTrue(!!composebox);
-        assertFalse(composebox.hasAttribute('hidden'));
-
-        const threadFrameStyle = getComputedStyle(threadFrame!);
-        const flexCenterStyle = getComputedStyle(flexCenterContainer!);
-
-        // Verify z-index is not set to basic mode values
-        assertFalse(threadFrameStyle.zIndex === '1');
-        assertFalse(flexCenterStyle.zIndex === '0');
-      });
-
-  test(
-      'force enter basic mode when thread URL has history params', async () => {
-        loadTimeData.overrideValues(
-            {forceBasicModeIfOpeningThreadHistory: true});
-        const fixtureUrlWithHistory = new URL(fixtureUrl);
-        fixtureUrlWithHistory.searchParams.set('atvm', '1');
-        const proxy = new TestContextualTasksBrowserProxy(
-            fixtureUrlWithHistory.toString());
-        BrowserProxyImpl.setInstance(proxy);
-        proxy.handler.setIsShownInTab(true);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
-
-        const composebox =
-            appElement.shadowRoot.querySelector('contextual-tasks-composebox');
-        const threadFrame = appElement.shadowRoot.querySelector('#threadFrame');
-        const flexCenterContainer =
-            appElement.shadowRoot.querySelector('#flexCenterContainer');
-
-        assertTrue(!!composebox);
-        // With z-order enabled, it should NOT be hidden
-        assertFalse(composebox.hasAttribute('hidden'));
-
-        const threadFrameStyle = getComputedStyle(threadFrame!);
-        const flexCenterStyle = getComputedStyle(flexCenterContainer!);
-
-        assertEquals(
-            '1', threadFrameStyle.zIndex, 'Thread frame z-index should be 1');
-        assertEquals(
-            '0', flexCenterStyle.zIndex,
-            'Flex center container z-index should be 0');
-      });
-
-  test('sets basic mode when navigating from AI page and backend sends notification',
-      async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
-
-    await removeThreadFrameToPreventRaceConditions();
-
-    // Verify initial state.
-    assertFalse(appElement.hasAttribute('is-in-basic-mode_'),
-        'Initial state should not be in basic mode');
-
-    // Ensure the app is on an AI page.
-    proxy.callbackRouterRemote.onAiPageStatusChanged(true);
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    // Ensure the new page is also an AI page.
-    proxy.handler.setIsAiPage(true);
-
-    // Simulate navigation start.
-    const loadStartEvent = new Event('loadstart');
-    Object.assign(
-        loadStartEvent, {url: 'http://example.com', isTopLevel: true});
-    appElement.onThreadFrameLoadStartForTesting(
-        loadStartEvent as chrome.webviewTag.LoadStartEvent);
-
-    const loadCommitEvent = new Event('loadcommit');
-    Object.assign(
-        loadCommitEvent, {url: 'http://example.com', isTopLevel: true});
-    appElement.onThreadFrameLoadCommitForTesting(
-        loadCommitEvent as chrome.webviewTag.LoadCommitEvent);
-    await microtasksFinished();
-
-    // Should be in basic mode now because the app is navigating from an AI
-    // page.
-    assertTrue(appElement.hasAttribute('is-in-basic-mode_'),
-        'Should be in basic mode when navigating from an AI page');
-    assertTrue(appElement.isNavigatingForTesting(),
-        'Should be navigating after navigation starts');
-
-    // Misc notifications do not cause z-index flickering:
-    proxy.callbackRouterRemote.restoreInput();
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    assertTrue(appElement.hasAttribute('is-in-basic-mode_'),
-        'Should be in basic mode when navigating from an AI page');
-    assertTrue(appElement.isNavigatingForTesting(),
-        'Should be navigating after navigation starts');
-
-    proxy.callbackRouterRemote.hideInput();
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    assertTrue(appElement.hasAttribute('is-in-basic-mode_'),
-        'Should be in basic mode when navigating from an AI page');
-    assertTrue(appElement.isNavigatingForTesting(),
-        'Should be navigating after navigation starts');
-
-    proxy.callbackRouterRemote.restoreInput();
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    // Simulate navigation complete. Basic mode should not be updated
-    // based on the last submitted state request from the backend.
-    appElement.onThreadFrameContentLoadForTesting();
-    await microtasksFinished();
-    assertFalse(appElement.hasAttribute('is-in-basic-mode_'),
-        'Should change to basic mode false due to backend after navigation completes');
-    assertFalse(appElement.isNavigatingForTesting(),
-        'Should not be navigating after navigation completes');
-  });
-
-  test('sets basic mode as true when navigating due to backend sending notification',
-      async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
-
-    await removeThreadFrameToPreventRaceConditions();
-
-    // Verify initial state.
-    assertFalse(appElement.hasAttribute('is-in-basic-mode_'),
-        'Initial state should not be in basic mode');
-
-    // Ensure the app is on an AI page.
-    proxy.callbackRouterRemote.onAiPageStatusChanged(true);
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    // Ensure the new page is also an AI page.
-    proxy.handler.setIsAiPage(true);
-
-    // Simulate navigation start.
-    const loadStartEvent = new Event('loadstart');
-    Object.assign(
-        loadStartEvent, {url: 'http://example.com', isTopLevel: true});
-    appElement.onThreadFrameLoadStartForTesting(
-        loadStartEvent as chrome.webviewTag.LoadStartEvent);
-
-    const loadCommitEvent = new Event('loadcommit');
-    Object.assign(
-        loadCommitEvent, {url: 'http://example.com', isTopLevel: true});
-    appElement.onThreadFrameLoadCommitForTesting(
-        loadCommitEvent as chrome.webviewTag.LoadCommitEvent);
-    await microtasksFinished();
-
-    // Should be in basic mode now because the app is navigating from an AI
-    // page.
-    assertTrue(
-        appElement.hasAttribute('is-in-basic-mode_'),
-        'Should be in basic mode when navigating from an AI page');
-    assertTrue(appElement.isNavigatingForTesting(),
-        'Should be navigating after navigation starts');
-
-    // Misc notifications do not cause z-index flickering:
-    proxy.callbackRouterRemote.hideInput();
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    assertTrue(appElement.hasAttribute('is-in-basic-mode_'),
-        'Should be in basic mode when navigating from an AI page');
-    assertTrue(appElement.isNavigatingForTesting(),
-        'Should be navigating after navigation starts');
-
-    proxy.callbackRouterRemote.restoreInput();
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    assertTrue(appElement.hasAttribute('is-in-basic-mode_'),
-        'Should be in basic mode when navigating from an AI page');
-    assertTrue(appElement.isNavigatingForTesting(),
-        'Should be navigating after navigation starts');
-
-    proxy.callbackRouterRemote.hideInput();
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    // Simulate navigation complete. Basic mode should not be updated
-    // based on the last submitted state request from the backend.
-    // Basic mode is true based on usage of `hideInput`.
-    appElement.onThreadFrameContentLoadForTesting();
-    await microtasksFinished();
-    assertTrue(appElement.hasAttribute('is-in-basic-mode_'),
-        'Should change to basic mode true due to backend after navigation completes');
-    assertFalse(appElement.isNavigatingForTesting(),
-        'Should not be navigating after navigation completes');
-  });
-
-  test(
-      'does not set basic mode when navigating from AI page to non-AI page',
-      async () => {
-        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-        BrowserProxyImpl.setInstance(proxy);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
-
-        // Verify initial state.
-        assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
-
-        // Ensure the app is on an AI page.
-        proxy.callbackRouterRemote.onAiPageStatusChanged(true);
-        await proxy.callbackRouterRemote.$.flushForTesting();
-        await microtasksFinished();
-
-        // Ensure the new page is NOT an AI page.
-        proxy.handler.setIsAiPage(false);
-
-        // Simulate navigation start.
-        const loadStartEvent = new Event('loadstart');
-        Object.assign(
-            loadStartEvent, {url: 'http://example.com', isTopLevel: true});
-        appElement.$.threadFrame.dispatchEvent(loadStartEvent);
-        await microtasksFinished();
-
-        // Should NOT be in basic mode because we are going to a non-AI page.
-        assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
-        assertFalse(appElement.isNavigatingForTesting());
-
-        // Simulate navigation complete.
-        appElement.$.threadFrame.dispatchEvent(new Event('contentload'));
-        await microtasksFinished();
-
-        // Should still not be in basic mode.
-        assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
-      });
-
-  test('does not set basic mode when navigating from non-AI page', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
-
-    // Verify initial state.
-    assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
-
-    // Ensure the app is NOT on an AI page.
-    proxy.callbackRouterRemote.onAiPageStatusChanged(false);
-    await proxy.callbackRouterRemote.$.flushForTesting();
-    await microtasksFinished();
-
-    // Simulate navigation start.
-    const loadStartEvent = new Event('loadstart');
-    Object.assign(
-        loadStartEvent, {url: 'http://example.com', isTopLevel: true});
-    appElement.$.threadFrame.dispatchEvent(loadStartEvent);
-    await microtasksFinished();
-
-    // Should NOT be in basic mode.
-    assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
-    assertFalse(appElement.isNavigatingForTesting());
-
-    // Simulate navigation complete.
-    appElement.$.threadFrame.dispatchEvent(new Event('contentload'));
-    await microtasksFinished();
-
-    // Should still not be in basic mode.
-    assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
-  });
-
-  // Regression test for crbug.com/484936343.
-  test(
-      'restores basic mode state after navigation when starting in basic mode',
-      async () => {
-        // Enable the flag that forces basic mode on history.
-        loadTimeData.overrideValues(
-            {forceBasicModeIfOpeningThreadHistory: true});
-
-        // Construct a URL with history params.
-        const fixtureUrlWithHistory = new URL(fixtureUrl);
-        fixtureUrlWithHistory.searchParams.set('atvm', '1');
-
-        const proxy = new TestContextualTasksBrowserProxy(
-            fixtureUrlWithHistory.toString());
-        BrowserProxyImpl.setInstance(proxy);
-        proxy.handler.setIsShownInTab(true);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
-
-        await removeThreadFrameToPreventRaceConditions();
-
-        // Verify initial state is basic mode.
-        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
-
-        // Ensure the app is on an AI page so navigation logic triggers.
-        proxy.callbackRouterRemote.onAiPageStatusChanged(true);
-        await proxy.callbackRouterRemote.$.flushForTesting();
-        await microtasksFinished();
-
-        // Ensure the new page is also an AI page.
-        proxy.handler.setIsAiPage(true);
-
-        // Simulate navigation start.
-        const loadStartEvent = new Event('loadstart');
-        Object.assign(
-            loadStartEvent, {url: 'http://example.com', isTopLevel: true});
-        appElement.onThreadFrameLoadStartForTesting(
-            loadStartEvent as chrome.webviewTag.LoadStartEvent);
-
-        const loadCommitEvent = new Event('loadcommit');
-        Object.assign(
-            loadCommitEvent, {url: 'http://example.com', isTopLevel: true});
-        appElement.onThreadFrameLoadCommitForTesting(
-            loadCommitEvent as chrome.webviewTag.LoadCommitEvent);
-        await microtasksFinished();
-
-        // Should still be in basic mode during navigation.
-        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
-        assertTrue(appElement.isNavigatingForTesting());
-
-        // Simulate navigation complete.
-        appElement.onThreadFrameContentLoadForTesting();
-        await microtasksFinished();
-
-        // Should still be in basic mode after navigation (restored).
-        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
-        assertFalse(appElement.isNavigatingForTesting());
-      });
-
   test('sends composebox height update', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
     // Mock the post message handler to verify that the composebox height update
     // is sent.
@@ -920,12 +505,8 @@ suite('ContextualTasksAppTest', function() {
 
   test(
       'lockInput and unlockInput updates composebox inputEnabled', async () => {
-        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-        BrowserProxyImpl.setInstance(proxy);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
+        const {appElement, proxy} =
+            await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
         const composebox = appElement.$.composebox;
         assertTrue(composebox.inputEnabled);
@@ -944,12 +525,8 @@ suite('ContextualTasksAppTest', function() {
       });
 
   test('composebox bounds update styles', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
     const composebox = appElement.$.composebox;
     assertTrue(!!composebox);
@@ -970,7 +547,7 @@ suite('ContextualTasksAppTest', function() {
     const frameRect = appElement.$.threadFrame.getBoundingClientRect();
 
     // Verify styles applied
-    assertEquals('relative', composebox.style.position);
+    assertEquals('fixed', composebox.style.position);
     assertEquals(
         `${window.innerHeight - (frameRect.top + rect.bottom)}px`,
         composebox.style.bottom);
@@ -989,14 +566,89 @@ suite('ContextualTasksAppTest', function() {
     assertEquals('', composebox.style.height);
   });
 
+  test('composebox bounds update styles in nlm', async () => {
+    const {appElement} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+
+    const composebox = appElement.$.composebox;
+    assertTrue(!!composebox);
+
+    const rect = {
+      top: 10,
+      left: 20,
+      width: 100,
+      height: 200,
+      right: 120,
+      bottom: 210,
+    };
+
+    // Simulate callback update
+    appElement.setForcedComposeboxBoundsForTesting(rect);
+    await microtasksFinished();
+    await appElement.updateComplete;
+
+    const frameRect = appElement.$.threadFrame.getBoundingClientRect();
+
+    // Verify styles applied
+    assertEquals('fixed', composebox.style.position);
+
+    // Verify zero state clears styles
+    appElement.setIsZeroStateForTesting(true);
+    await microtasksFinished();
+    await appElement.updateComplete;
+
+    assertEquals('', composebox.style.position);
+
+    // Verify inNlm restores styles even in zero state
+    appElement.setInNlmForTesting(true);
+    await microtasksFinished();
+    await appElement.updateComplete;
+
+    // Re-apply forced bounds as they were cleared in zero state.
+    appElement.setForcedComposeboxBoundsForTesting(rect);
+    await appElement.updateComplete;
+
+    assertEquals('fixed', composebox.style.position);
+    assertEquals(
+        `${window.innerHeight - (frameRect.top + rect.bottom)}px`,
+        composebox.style.bottom);
+    assertEquals(`${frameRect.left + rect.left}px`, composebox.style.left);
+    assertEquals(`${rect.width}px`, composebox.style.width);
+    assertEquals('', composebox.style.height);
+  });
+
+  test('composebox hidden in nlm when no forced bounds', async () => {
+    const {appElement} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+
+    appElement.setIsZeroStateForTesting(false);
+    appElement.setInNlmForTesting(true);
+    appElement.setIsZeroStateForTesting(false);
+    await appElement.updateComplete;
+    await microtasksFinished();
+
+    assertTrue(appElement.$.composebox.hidden);
+
+    // Set forced bounds
+    const rect = {
+      top: 10,
+      left: 20,
+      width: 100,
+      height: 200,
+      right: 120,
+      bottom: 210,
+    };
+    appElement.setForcedComposeboxBoundsForTesting(rect);
+    await appElement.updateComplete;
+    await microtasksFinished();
+
+    assertFalse(appElement.$.composebox.hidden);
+  });
+
   test('composebox hidden when jump fix conditions met', async () => {
     loadTimeData.overrideValues({enableComposeboxJumpFix: true});
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement, proxy} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
     await removeThreadFrameToPreventRaceConditions();
 
     const composebox = appElement.$.composebox;
@@ -1048,19 +700,8 @@ suite('ContextualTasksAppTest', function() {
   });
 
   test('updates clip path on post message', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    // Create a promise to wait for the loadstart handler to finish. Without
-    // this, forcedComposeboxBounds_ might get reset to null before the test
-    // accesses it.
-    const {promise, resolve} = Promise.withResolvers<void>();
-    const appElement = document.createElement('contextual-tasks-app');
-    appElement.setOnLoadStartFinishedCallbackForTesting(resolve);
-
-    // Add the app element to the DOM.
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
     // Get the webview element.
     const webview = appElement.shadowRoot.querySelector<HTMLElement>('webview');
@@ -1069,7 +710,6 @@ suite('ContextualTasksAppTest', function() {
     // Wait for the load handler to finish to avoid a race condition
     // between the post message setting the forcedComposeboxBounds_ and the
     // load commit handler resetting it.
-    await promise;
 
     // Simulate loadcommit to set up the target origin in PostMessageHandler.
     const loadCommitEvent = new Event('loadcommit');
@@ -1144,12 +784,10 @@ suite('ContextualTasksAppTest', function() {
   });
 
   test('sets isFrameLoading to false when content load finishes', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement} = await createContextualTasksAppElement(
+        /*url=*/ fixtureUrl,
+        /*setupProxy=*/ undefined,
+        /*waitForInitialLoadStart=*/ false);
 
     // Remove the thread frame to prevent unwanted loadstart events.
     const threadFrame = appElement.shadowRoot.querySelector('#threadFrame');
@@ -1186,12 +824,8 @@ suite('ContextualTasksAppTest', function() {
   });
 
   test('sets isFrameLoading to false when load aborts', async () => {
-    const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-    BrowserProxyImpl.setInstance(proxy);
-
-    const appElement = document.createElement('contextual-tasks-app');
-    document.body.appendChild(appElement);
-    await microtasksFinished();
+    const {appElement} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
 
     // Remove the thread frame to prevent unwanted loadstart events.
     const threadFrame = appElement.shadowRoot.querySelector('#threadFrame');
@@ -1219,18 +853,14 @@ suite('ContextualTasksAppTest', function() {
   });
 
   test(
-      'hides composebox if load abort contains an error document',
-      async () => {
-        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-        // Override isEmbeddedPageErrorDocument to return true
-        proxy.handler.isEmbeddedPageErrorDocument = () => {
-          return Promise.resolve({isErrorDocument: true});
-        };
-        BrowserProxyImpl.setInstance(proxy);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
+      'hides composebox if load abort contains an error document', async () => {
+        const {appElement} = await createContextualTasksAppElement(
+            /*url=*/ fixtureUrl,
+            /*setupProxy=*/ (p) => {
+              p.handler.isEmbeddedPageErrorDocument = () => {
+                return Promise.resolve({isErrorDocument: true});
+              };
+            });
 
         // Remove the thread frame to prevent unwanted loadstart events.
         const threadFrame = appElement.shadowRoot.querySelector('#threadFrame');
@@ -1274,6 +904,7 @@ suite('ContextualTasksAppTest', function() {
         appElement.setForcedComposeboxBoundsForTesting(initialBounds);
 
         // Wait for any composebox height updates to process.
+        await appElement.updateComplete;
         await microtasksFinished();
         const boundsBeforeNav = appElement.getForcedComposeboxBoundsForTesting();
 
@@ -1336,154 +967,6 @@ suite('ContextualTasksAppTest', function() {
         assertFalse(
             appElement.isLoadErrorForTesting,
             'isLoadError_ should be false if it was not an error document');
-      });
-
-  test(
-      'sets pending basic mode to false when navigating from AI page and initially not in basic mode',
-      async () => {
-        loadTimeData.overrideValues({enableBasicMode: true});
-        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-        BrowserProxyImpl.setInstance(proxy);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
-
-        await removeThreadFrameToPreventRaceConditions();
-        // Verify initial state.
-        assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
-
-        // Ensure the app is on an AI page.
-        proxy.callbackRouterRemote.onAiPageStatusChanged(true);
-        await proxy.callbackRouterRemote.$.flushForTesting();
-        await microtasksFinished();
-
-        // Ensure the new page is also an AI page.
-        proxy.handler.setIsAiPage(true);
-
-        // Simulate navigation start.
-        const loadStartEvent = new Event('loadstart');
-        Object.assign(
-            loadStartEvent, {url: 'http://example.com', isTopLevel: true});
-        appElement.onThreadFrameLoadStartForTesting(
-            loadStartEvent as chrome.webviewTag.LoadStartEvent);
-
-        const loadCommitEvent = new Event('loadcommit');
-        Object.assign(
-            loadCommitEvent, {url: 'http://example.com', isTopLevel: true});
-        appElement.onThreadFrameLoadCommitForTesting(
-            loadCommitEvent as chrome.webviewTag.LoadCommitEvent);
-        await microtasksFinished();
-
-        // Should be in basic mode now because the app is navigating from an AI
-        // page.
-        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
-
-        // Verify pendingBasicMode_ is false (private property access).
-        assertFalse(appElement.getPendingBasicModeForTesting()!);
-
-        // Simulate navigation complete.
-        appElement.onThreadFrameContentLoadForTesting();
-        await microtasksFinished();
-
-        // Should exit basic mode because pendingBasicMode_ was false.
-        assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
-      });
-
-  test(
-      'does not set pending basic mode when navigating from AI page and initially in basic mode',
-      async () => {
-        loadTimeData.overrideValues({enableBasicMode: true});
-        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-        BrowserProxyImpl.setInstance(proxy);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
-
-        // Force into basic mode initially.
-        proxy.callbackRouterRemote.hideInput();
-        await proxy.callbackRouterRemote.$.flushForTesting();
-        await microtasksFinished();
-        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
-
-        // Ensure the app is on an AI page.
-        proxy.callbackRouterRemote.onAiPageStatusChanged(true);
-        await proxy.callbackRouterRemote.$.flushForTesting();
-        await microtasksFinished();
-
-        // Ensure the new page is also an AI page.
-        proxy.handler.setIsAiPage(true);
-
-        // Simulate navigation start.
-        const loadStartEvent = new Event('loadstart');
-        Object.assign(
-            loadStartEvent, {url: 'http://example.com', isTopLevel: true});
-        appElement.$.threadFrame.dispatchEvent(loadStartEvent);
-        await microtasksFinished();
-
-        // Verify pendingBasicMode_ is null (private property access).
-        assertEquals(null, appElement.getPendingBasicModeForTesting());
-
-        // Simulate navigation complete.
-        appElement.$.threadFrame.dispatchEvent(new Event('contentload'));
-        await microtasksFinished();
-
-        // Should remain in basic mode because pendingBasicMode_ was null.
-        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
-      });
-
-  test(
-      'updates basic mode on load commit when navigating from AI page and initially not in basic mode',
-      async () => {
-        loadTimeData.overrideValues({enableBasicMode: true});
-        const proxy = new TestContextualTasksBrowserProxy(fixtureUrl);
-        BrowserProxyImpl.setInstance(proxy);
-
-        const appElement = document.createElement('contextual-tasks-app');
-        document.body.appendChild(appElement);
-        await microtasksFinished();
-
-        await removeThreadFrameToPreventRaceConditions();
-
-        // Verify initial state.
-        assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
-
-        // Ensure the app is on an AI page.
-        proxy.callbackRouterRemote.onAiPageStatusChanged(true);
-        await proxy.callbackRouterRemote.$.flushForTesting();
-        await microtasksFinished();
-
-        // Ensure the new page is also an AI page.
-        proxy.handler.setIsAiPage(true);
-
-        // Simulate navigation start.
-        const loadStartEvent = new Event('loadstart');
-        Object.assign(
-            loadStartEvent, {url: 'http://example.com', isTopLevel: true});
-        appElement.onThreadFrameLoadStartForTesting(
-            loadStartEvent as chrome.webviewTag.LoadStartEvent);
-
-        const loadCommitEvent = new Event('loadcommit');
-        Object.assign(
-            loadCommitEvent, {url: 'http://example.com', isTopLevel: true});
-        appElement.onThreadFrameLoadCommitForTesting(
-            loadCommitEvent as chrome.webviewTag.LoadCommitEvent);
-        await microtasksFinished();
-
-        // Should be in basic mode now because the app is navigating from an AI
-        // page.
-        assertTrue(appElement.hasAttribute('is-in-basic-mode_'));
-
-        // Verify pendingBasicMode_ is false (private property access).
-        assertFalse(appElement.getPendingBasicModeForTesting()!);
-
-        // Simulate load commit.
-        appElement.onThreadFrameContentLoadForTesting();
-        await microtasksFinished();
-
-        // Should exit basic mode because pendingBasicMode_ was false.
-        assertFalse(appElement.hasAttribute('is-in-basic-mode_'));
       });
 
   test('addCommonSearchParams overrides parameters except cs', async () => {

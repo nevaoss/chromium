@@ -63,7 +63,7 @@ class ChromeAutocompleteProviderClientTest : public InProcessBrowserTest {
               return std::make_unique<MockLensSearchController>(&tab);
             }));
     scoped_feature_list_.InitWithFeatures(
-        /*enabled_features*/ {omnibox::kWebUIOmniboxPopup,
+        /*enabled_features*/ {omnibox::internal::kWebUIOmniboxPopup,
                               omnibox::internal::kWebUIOmniboxAimPopup},
         /*disabled_features*/ {});
   }
@@ -92,6 +92,8 @@ class ChromeAutocompleteProviderClientTest : public InProcessBrowserTest {
                   IdentityManagerFactory::GetForProfile(profile),
                   AimEligibilityService::Configuration{
                       .is_off_the_record = profile->IsOffTheRecord()});
+          ON_CALL(*service, IsAimEligible())
+              .WillByDefault(testing::Return(true));
           return service;
         }));
   }

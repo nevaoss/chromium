@@ -43,15 +43,10 @@ import java.util.Queue;
  */
 @NullMarked
 public abstract class ChildConnectionAllocator {
-    /**
-     * Max number of connections allocated for variable allocator. Android allocates 100 UIDs for a
-     * zygote, but unbinding and killing a service is not synchronous. So leave 2 to leave some time
-     * for ActivityManager to respond.
-     */
+    // Max number of connections allocated for variable allocator.
+    // Android allocates 100 UIDs for a zygote, but unbinding and killing a service is not
+    // synchronous. So leave 2 to leave some time for ActivityManager to respond.
     public static final int MAX_VARIABLE_ALLOCATED = 98;
-
-    /** Higher max number of allocations allowed, for when Native Zygote is used. */
-    public static final int MAX_PROCESSES_WITH_NATIVE_ZYGOTE = 150;
 
     private static final String TAG = "ChildConnAllocator";
     private static final String ZYGOTE_SUFFIX = "0";
@@ -190,11 +185,10 @@ public abstract class ChildConnectionAllocator {
             Runnable freeSlotCallback,
             String packageName,
             String serviceClassName,
-            @Nullable String fallbackServiceClassName,
             boolean bindToCaller,
             boolean bindAsExternalService,
             boolean isSandboxedForHistograms,
-            int maxProcessLimit) {
+            int maxAllocated) {
         checkServiceExists(context, packageName, serviceClassName);
 
         // OnePlus devices are having trouble with app zygote in combination with dynamic
@@ -216,7 +210,7 @@ public abstract class ChildConnectionAllocator {
                         serviceClassName,
                         bindToCaller,
                         bindAsExternalService,
-                        maxProcessLimit,
+                        maxAllocated,
                         isSandboxedForHistograms);
             }
         }
@@ -224,12 +218,12 @@ public abstract class ChildConnectionAllocator {
         // costs of the app zygote are not recovered. See https://crbug.com/1044579 for context and
         // experimental results.
         disableZygote = SysUtils.isLowEndDevice() || disableZygote;
-        String suffix = disableZygote ? NON_ZYGOTE_SUFFIX : ZYGOTE_SUFFIX;
-        if (fallbackServiceClassName != null) {
-            fallbackServiceClassName += suffix;
-        } else {
-            fallbackServiceClassName = disableZygote ? null : serviceClassName + NON_ZYGOTE_SUFFIX;
-        }
+
+        // WebView renderers are always spawned from WebView Zygote.
+        boolean forceZygote = !bindAsExternalService;
+        String suffix = (forceZygote || !disableZygote) ? ZYGOTE_SUFFIX : NON_ZYGOTE_SUFFIX;
+        String fallbackServiceClassName =
+                (forceZygote || disableZygote) ? null : serviceClassName + NON_ZYGOTE_SUFFIX;
         return new VariableSizeAllocatorImpl(
                 launcherHandler,
                 freeSlotCallback,
@@ -238,7 +232,7 @@ public abstract class ChildConnectionAllocator {
                 fallbackServiceClassName,
                 bindToCaller,
                 bindAsExternalService,
-                maxProcessLimit,
+                maxAllocated,
                 isSandboxedForHistograms);
     }
 

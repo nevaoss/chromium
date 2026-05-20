@@ -26,6 +26,7 @@ public final class TestUtils {
                 isReadOnly,
                 isEnabled,
                 isEligibleForWalletStorage,
+                /* isMaskedStorageSupported= */ false,
                 /* typeNameAsString= */ "Vehicle",
                 /* typeNameAsMetricsString= */ "Vehicle",
                 /* addEntityTypeString= */ "Add Vehicle",
@@ -49,6 +50,7 @@ public final class TestUtils {
                 isReadOnly,
                 isEnabled,
                 isEligibleForWalletStorage,
+                /* isMaskedStorageSupported= */ true,
                 /* typeNameAsString= */ "Passport",
                 /* typeNameAsMetricsString= */ "Passport",
                 /* addEntityTypeString= */ "Add passport",
@@ -72,6 +74,7 @@ public final class TestUtils {
                 isReadOnly,
                 isEnabled,
                 isEligibleForWalletStorage,
+                /* isMaskedStorageSupported= */ true,
                 /* typeNameAsString= */ "National ID",
                 /* typeNameAsMetricsString= */ "NationalId",
                 /* addEntityTypeString= */ "Add National ID",
@@ -97,6 +100,11 @@ public final class TestUtils {
                         .setUseCount(0)
                         .build();
         return new EntityInstanceWithLabels(
-                entityInstance.getGUID(), entityType, label, subLabel, /* storedInWallet= */ true);
+                entityInstance.getGUID(),
+                entityType,
+                label,
+                subLabel,
+                /* storedInWallet= */ true,
+                /* walletEntityUrl= */ null);
     }
 }

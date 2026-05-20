@@ -119,6 +119,11 @@ UIInterfaceOrientation GetInterfaceOrientation(UIWindow* window);
 // Returns the height of the keyboard in the current orientation.
 CGFloat CurrentKeyboardHeight(NSValue* keyboardFrameValue);
 
+// Returns the visible height of the keyboard in the given window based on the
+// notification.
+CGFloat VisibleKeyboardHeightFromNotification(NSNotification* notification,
+                                              UIWindow* window);
+
 // Create 1x1px image from `color`.
 UIImage* ImageWithColor(UIColor* color);
 
@@ -135,6 +140,9 @@ bool IsPortrait(UIWindow* window);
 
 // Returns true if the window is in landscape orientation.
 bool IsLandscape(UIWindow* window);
+
+// Returns true if the window is in windowed mode (multitasking).
+bool IsWindowedMode(UIWindow* window);
 
 // C does not support function overloading.
 #ifdef __cplusplus
@@ -227,5 +235,8 @@ bool IsBottomOmniboxAvailable();
 // Otherwise, return an array containing every iOS UITrait.
 NSArray<UITrait>* TraitCollectionSetForTraits(NSArray<UITrait>* traits)
     API_AVAILABLE(ios(17.0));
+
+// Returns the memory footprint of an image in KB.
+size_t MemoryFootprintForImage(UIImage* image);
 
 #endif  // IOS_CHROME_BROWSER_SHARED_UI_UTIL_UIKIT_UI_UTIL_H_

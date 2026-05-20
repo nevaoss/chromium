@@ -4,14 +4,20 @@
 
 package org.chromium.chrome.browser.gesturenav;
 
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewPropertyAnimator;
 import android.view.Window;
+import android.widget.TextView;
 
 import com.airbnb.lottie.LottieAnimationView;
 
+import org.chromium.base.CancelableRunnable;
+import org.chromium.base.task.PostTask;
+import org.chromium.base.task.TaskTraits;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -19,12 +25,15 @@ import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.ActivityTabProvider.ActivityTabTabObserver;
 import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimProperties;
 import org.chromium.components.feature_engagement.FeatureConstants;
 import org.chromium.ui.UiUtils;
+import org.chromium.ui.base.LocalizationUtils;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.interpolators.Interpolators;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -41,12 +50,26 @@ public class GestureUserEducationIphController {
 
     private final ViewGroup mAnchorView;
     private final BackPressManager mBackPressManager;
+    private final GestureDetector.SimpleOnGestureListener mGestureDetectorListener =
+            new GestureDetector.SimpleOnGestureListener() {
+                @Override
+                public boolean onDown(MotionEvent e) {
+                    if (mIsIphShowing) {
+                        hideIph();
+                    }
+                    return super.onDown(e);
+                }
+            };
     private final ScrimManager mScrimManager;
+    private @Nullable CancelableRunnable mMaybeShowIphCancelableRunnable;
     private @Nullable PropertyModel mScrimPropertyModel;
     private @Nullable ActivityTabTabObserver mTabObserver;
+    private @Nullable GestureDetector mDetector;
     private @Nullable View mGestureUserEducationIphLayout;
     private @Nullable LottieAnimationView mBackArrowAnimation;
     private @Nullable ViewPropertyAnimator mTextBubbleAnimation;
+    private @Nullable Profile mProfile;
+    private boolean mIsIphShowing;
     private boolean mIsGestureNavModeForTesting;
 
     /**
@@ -67,30 +90,61 @@ public class GestureUserEducationIphController {
         mTabObserver =
                 new ActivityTabProvider.ActivityTabTabObserver(activityTabProvider) {
                     @Override
+                    public void onPageLoadStarted(Tab tab, GURL url) {
+                        if (mMaybeShowIphCancelableRunnable != null) {
+                            mMaybeShowIphCancelableRunnable.cancel();
+                        }
+
+                        if (mIsIphShowing) {
+                            hideIph();
+                        }
+                        super.onPageLoadStarted(tab, url);
+                    }
+
+                    @Override
                     public void onPageLoadFinished(Tab tab, GURL url) {
-                        maybeShowIph(tab);
+                        mMaybeShowIphCancelableRunnable =
+                                new CancelableRunnable(
+                                        () -> {
+                                            maybeShowIph(tab);
+                                        });
+                        PostTask.postDelayedTask(
+                                TaskTraits.UI_DEFAULT,
+                                mMaybeShowIphCancelableRunnable,
+                                ChromeFeatureList.sGestureUserEducationPageDelay.getValue());
                     }
 
                     @Override
                     protected void onObservingDifferentTab(@Nullable Tab tab) {
+                        if (mMaybeShowIphCancelableRunnable != null) {
+                            mMaybeShowIphCancelableRunnable.cancel();
+                        }
+
                         // Hide IPH if tab is switched.
-                        hideIph();
+                        if (mIsIphShowing) {
+                            hideIph();
+                        }
                         super.onObservingDifferentTab(tab);
                     }
                 };
         mScrimManager = scrimManager;
     }
 
-    public void unregisterTabObserver() {
+    public void destroy() {
         if (mTabObserver != null) {
             mTabObserver.destroy();
             mTabObserver = null;
+        }
+
+        if (mMaybeShowIphCancelableRunnable != null) {
+            mMaybeShowIphCancelableRunnable.cancel();
+            mMaybeShowIphCancelableRunnable = null;
         }
     }
 
     private void maybeShowIph(Tab tab) {
         if (shouldShowIph(tab)) {
-            unregisterTabObserver();
+            mIsIphShowing = true;
 
             // Inflate layout
             mGestureUserEducationIphLayout =
@@ -99,6 +153,9 @@ public class GestureUserEducationIphController {
                                     R.layout.gesture_user_education_iph_layout, mAnchorView, false);
             mAnchorView.addView(mGestureUserEducationIphLayout);
 
+            // Create Gesture Detector for touch events on the scrim
+            mDetector = new GestureDetector(tab.getContext(), mGestureDetectorListener);
+
             // Display scrim
             mScrimPropertyModel =
                     new PropertyModel.Builder(ScrimProperties.ALL_KEYS)
@@ -106,22 +163,33 @@ public class GestureUserEducationIphController {
                             .with(ScrimProperties.AFFECTS_NAVIGATION_BAR, false)
                             .with(ScrimProperties.ANCHOR_VIEW, mGestureUserEducationIphLayout)
                             .with(ScrimProperties.CUSTOM_PARENT, mAnchorView)
-                            .with(ScrimProperties.CLICK_DELEGATE, this::hideIph)
+                            .with(ScrimProperties.GESTURE_DETECTOR, mDetector)
                             .build();
 
             mScrimManager.showScrim(mScrimPropertyModel);
+
+            TextView iphBubbleText =
+                    mGestureUserEducationIphLayout.findViewById(R.id.iph_bubble_text);
+            iphBubbleText.setText(
+                    LocalizationUtils.isLayoutRtl()
+                            ? R.string.iph_gesture_user_education_text_bubble_right
+                            : R.string.iph_gesture_user_education_text_bubble_left);
+
+            // Adjust animation direction based on RTL.
+            float rtlSign = LocalizationUtils.isLayoutRtl() ? -1.0f : 1.0f;
 
             // Set and display animations
             mBackArrowAnimation =
                     mGestureUserEducationIphLayout.findViewById(R.id.back_gesture_arrow_animation);
             mBackArrowAnimation.setAnimation(R.raw.back_gesture_arrow_animation);
+            mBackArrowAnimation.setScaleX(rtlSign);
 
             View iphBubble = mGestureUserEducationIphLayout.findViewById(R.id.iph_bubble);
             float density = iphBubble.getResources().getDisplayMetrics().density;
             mTextBubbleAnimation =
                     iphBubble
                             .animate()
-                            .translationX(ANIMATION_X_TRANSLATION * density)
+                            .translationX(rtlSign * ANIMATION_X_TRANSLATION * density)
                             .setInterpolator(Interpolators.STANDARD_INTERPOLATOR)
                             .setDuration(SLIDE_ANIMATION_DURATION_MS)
                             .withEndAction(
@@ -135,13 +203,13 @@ public class GestureUserEducationIphController {
                                                         Interpolators.STANDARD_INTERPOLATOR)
                                                 .start();
                                     });
-
             mTextBubbleAnimation.start();
             mBackArrowAnimation.playAnimation();
         }
     }
 
     private void hideIph() {
+        assert mIsIphShowing;
         if (mScrimPropertyModel != null) {
             mScrimManager.hideScrim(mScrimPropertyModel, false);
         }
@@ -156,6 +224,13 @@ public class GestureUserEducationIphController {
         }
 
         mAnchorView.removeView(mGestureUserEducationIphLayout);
+        mIsIphShowing = false;
+        mDetector = null;
+        if (mProfile != null) {
+            TrackerFactory.getTrackerForProfile(mProfile)
+                    .dismissed(FeatureConstants.GESTURE_USER_EDUCATION);
+        }
+        destroy();
     }
 
     private boolean shouldShowIph(Tab tab) {
@@ -164,9 +239,11 @@ public class GestureUserEducationIphController {
         Window window = windowAndroid == null ? null : windowAndroid.getWindow();
         if (!mIsGestureNavModeForTesting
                 && (window == null || !UiUtils.isGestureNavigationMode(window))) {
-            unregisterTabObserver();
+            destroy();
             return false;
         }
+
+        mProfile = tab.getProfile();
 
         // Ensure that the tab history has at least two web pages to navigate back to.
         boolean validPageHistory =
@@ -181,7 +258,7 @@ public class GestureUserEducationIphController {
                         BackPressHandler.Type.TAB_HISTORY);
         return validPageHistory
                 && backPressHandlerConsumingBackEvent
-                && TrackerFactory.getTrackerForProfile(tab.getProfile())
+                && TrackerFactory.getTrackerForProfile(mProfile)
                         .shouldTriggerHelpUi(FeatureConstants.GESTURE_USER_EDUCATION);
     }
 

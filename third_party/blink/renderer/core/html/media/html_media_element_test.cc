@@ -27,6 +27,7 @@
 #include "third_party/blink/renderer/core/html/media/html_audio_element.h"
 #include "third_party/blink/renderer/core/html/media/html_video_element.h"
 #include "third_party/blink/renderer/core/html/media/media_error.h"
+#include "third_party/blink/renderer/core/html/media/media_source_attachment.h"
 #include "third_party/blink/renderer/core/html/media/media_video_visibility_tracker.h"
 #include "third_party/blink/renderer/core/html/time_ranges.h"
 #include "third_party/blink/renderer/core/html/track/audio_track_list.h"
@@ -88,6 +89,31 @@ AtomicString SrcSchemeToURL(TestURLScheme scheme) {
       NOTREACHED();
   }
 }
+
+class StubMediaSourceAttachment : public MediaSourceAttachment {
+ public:
+  StubMediaSourceAttachment() = default;
+  void Unregister() override {}
+  MediaSourceTracer* StartAttachingToMediaElement(HTMLMediaElement*,
+                                                  bool* success) override {
+    *success = true;
+    return nullptr;
+  }
+  void CompleteAttachingToMediaElement(
+      MediaSourceTracer* tracer,
+      std::unique_ptr<WebMediaSource>) override {}
+  void Close(MediaSourceTracer* tracer) override {}
+  WebTimeRanges BufferedInternal(MediaSourceTracer* tracer) const override {
+    return {};
+  }
+  WebTimeRanges SeekableInternal(MediaSourceTracer* tracer) const override {
+    return {};
+  }
+  void OnTrackChanged(MediaSourceTracer* tracer, TrackBase*) override {}
+  void OnElementTimeUpdate(double time) override {}
+  void OnElementError() override {}
+  void OnElementContextDestroyed() override {}
+};
 
 class MockWebMediaPlayer : public EmptyWebMediaPlayer {
  public:
@@ -434,6 +460,21 @@ class HTMLMediaElementTest : public testing::TestWithParam<MediaTestParam> {
     return !!Media()->player_lazy_load_intersection_observer_;
   }
 
+  void SetLazyMediaLoadStateToFullMediaForTesting() {
+    Media()->lazy_media_load_state_ =
+        decltype(Media()->lazy_media_load_state_)::kFullMedia;
+  }
+
+  void SetLazyMediaLoadStateToDeferredForTesting() {
+    Media()->lazy_media_load_state_ =
+        decltype(Media()->lazy_media_load_state_)::kDeferred;
+  }
+
+  bool IsLazyMediaLoadStateNoneForTesting() const {
+    return Media()->lazy_media_load_state_ ==
+           decltype(Media()->lazy_media_load_state_)::kNone;
+  }
+
   bool ControlsVisible() const { return Media()->ShouldShowControls(); }
 
   bool MediaShouldShowAllControls() const {
@@ -469,6 +510,11 @@ class HTMLMediaElementTest : public testing::TestWithParam<MediaTestParam> {
   }
 
   void ClearMediaPlayer() { Media()->ClearMediaPlayer(); }
+
+  void SetMediaSourceAttachment(
+      scoped_refptr<MediaSourceAttachment> attachment) {
+    Media()->media_source_attachment_ = std::move(attachment);
+  }
 
  protected:
   // Helpers to call MediaPlayerObserver mojo methods and check their results.
@@ -1163,6 +1209,24 @@ TEST_P(HTMLMediaElementTest, VisibilityObserverCreatedForLazyLoad) {
 
   SetReadyState(HTMLMediaElement::kHaveFutureData);
   EXPECT_EQ(HasLazyLoadObserver(), GetParam() == MediaTestParam::kVideo);
+}
+
+TEST_P(HTMLMediaElementTest, LoadAlgorithmResetsLazyMediaLoadState) {
+  ScopedLazyLoadVideoAndAudioForTest scoped_feature(true);
+
+  SetLazyMediaLoadStateToFullMediaForTesting();
+  Media()->load();
+
+  EXPECT_TRUE(IsLazyMediaLoadStateNoneForTesting());
+}
+
+TEST_P(HTMLMediaElementTest, ClearMediaPlayerResetsLazyMediaLoadState) {
+  ScopedLazyLoadVideoAndAudioForTest scoped_feature(true);
+
+  SetLazyMediaLoadStateToDeferredForTesting();
+  ClearMediaPlayer();
+
+  EXPECT_TRUE(IsLazyMediaLoadStateNoneForTesting());
 }
 
 TEST_P(HTMLMediaElementTest, DomInteractive) {
@@ -2705,6 +2769,44 @@ TEST_P(HTMLMediaElementTest, AddTrackCrash) {
         "video1", media::MediaTrack::VideoKind::kMain, "label\x80", "lang\x80",
         true, 0));
   }
+}
+
+TEST_P(HTMLMediaElementTest, MediaShouldBeOpaque_MSE) {
+  Media()->SetSrc(SrcSchemeToURL(TestURLScheme::kHttp));
+  test::RunPendingTasks();
+  ASSERT_TRUE(Media()->GetWebMediaPlayer());
+
+  // MSE content should never be opaque.
+  SetMediaSourceAttachment(base::MakeRefCounted<StubMediaSourceAttachment>());
+
+  // Set some state that would normally make it opaque.
+  EXPECT_CALL(*MockMediaPlayer(), WouldTaintOrigin())
+      .WillRepeatedly(Return(true));
+  SetReadyState(HTMLMediaElement::kHaveNothing);
+  SetNetworkState(WebMediaPlayer::kNetworkStateLoading);
+
+  EXPECT_FALSE(MediaShouldBeOpaque());
+}
+
+TEST_P(HTMLMediaElementTest, MediaShouldBeOpaque_NetworkState) {
+  Media()->SetSrc(SrcSchemeToURL(TestURLScheme::kHttp));
+  EXPECT_CALL(*MockMediaPlayer(), WouldTaintOrigin())
+      .WillRepeatedly(Return(true));
+
+  // SRC content without loading should not be opaque.
+  EXPECT_FALSE(MediaShouldBeOpaque());
+
+  // This will kick off loading and increase network state through loading.
+  test::RunPendingTasks();
+  ASSERT_TRUE(Media()->GetWebMediaPlayer());
+
+  SetNetworkState(WebMediaPlayer::kNetworkStateLoading);
+  EXPECT_TRUE(MediaShouldBeOpaque());
+
+  // Even if state moves back to Idle, it was once loading, so it remains
+  // opaque.
+  SetNetworkState(WebMediaPlayer::kNetworkStateIdle);
+  EXPECT_TRUE(MediaShouldBeOpaque());
 }
 
 }  // namespace blink

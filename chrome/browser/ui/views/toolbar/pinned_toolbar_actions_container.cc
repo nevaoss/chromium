@@ -849,10 +849,20 @@ PinnedToolbarActionsContainer::CreateOrGetButtonForAction(
     return button;
   }
 
-  auto button = std::make_unique<PinnedActionToolbarButton>(
-      browser_view_->browser(), id, weak_ptr_factory_.GetWeakPtr());
+  std::unique_ptr<PinnedActionToolbarButton> button;
+  actions::ActionItem* action_item = GetActionItemFor(id);
+  auto* custom_factory =
+      action_item->GetProperty(kCustomPinnedActionToolbarButtonFactoryKey);
+
+  if (custom_factory && !custom_factory->is_null()) {
+    button = custom_factory->Run(browser_view_->browser(), id,
+                                 weak_ptr_factory_.GetWeakPtr());
+  } else {
+    button = std::make_unique<PinnedActionToolbarButton>(
+        browser_view_->browser(), id, weak_ptr_factory_.GetWeakPtr());
+  }
   action_view_controller_->CreateActionViewRelationship(
-      button.get(), GetActionItemFor(id)->GetAsWeakPtr());
+      button.get(), action_item->GetAsWeakPtr());
 
   button->SetPaintToLayer();
   button->layer()->SetFillsBoundsOpaquely(false);
@@ -868,21 +878,22 @@ ToolbarButton* PinnedToolbarActionsContainer::GetDownloadButton() {
   return GetButtonFor(kActionShowDownloads);
 }
 
-ToolbarButton* PinnedToolbarActionsContainer::GetCastButton() {
-  return GetButtonFor(kActionRouteMedia);
-}
-
 views::BubbleAnchor PinnedToolbarActionsContainer::GetBubbleAnchor(
     actions::ActionId action_id) {
   return views::BubbleAnchor(GetButtonFor(action_id));
 }
 
-void PinnedToolbarActionsContainer::SetActionElementIdentifier(
+void PinnedToolbarActionsContainer::GetBubbleAnchorAsync(
     actions::ActionId action_id,
-    ui::ElementIdentifier element_id) {
-  auto* button = GetButtonFor(action_id);
-  CHECK(button);
-  button->SetProperty(views::kElementIdentifierKey, element_id);
+    base::OnceCallback<void(base::expected<views::BubbleAnchor,
+                                           GetAnchorFailureReason>)> callback) {
+  auto anchor = GetBubbleAnchor(action_id);
+  if (anchor.IsNull()) {
+    std::move(callback).Run(
+        base::unexpected(GetAnchorFailureReason::kAnchorNotFound));
+  } else {
+    std::move(callback).Run(anchor);
+  }
 }
 
 PinnedActionToolbarButton*

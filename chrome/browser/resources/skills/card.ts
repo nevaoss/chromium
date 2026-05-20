@@ -60,6 +60,7 @@ export class SkillCardElement extends CrLitElement {
       skill: {type: Object},
       cardType: {type: String},
       saveDisabled: {type: Boolean},
+      hideTooltip: {type: Boolean},
     };
   }
 
@@ -72,12 +73,14 @@ export class SkillCardElement extends CrLitElement {
     // Default to user created since these are added by the user via the UI.
     source: SkillSource.kUserCreated,
     description: '',
+    curatedBy: '',
     imageUrl: '',
     creationTime: {internalValue: 0n},
     lastUpdateTime: {internalValue: 0n},
   };
   accessor cardType: CardType = CardType.USER_SKILL_CARD;
   accessor saveDisabled: boolean = false;
+  accessor hideTooltip: boolean = false;
 
   private proxy_: SkillsPageBrowserProxy = SkillsPageBrowserProxy.getInstance();
 

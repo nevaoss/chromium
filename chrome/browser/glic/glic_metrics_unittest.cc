@@ -217,8 +217,9 @@ class GlicMetricsTestBase : public testing::Test {
 class GlicMetricsTest : public GlicMetricsTestBase {
  public:
   void SetUp() override {
-    scoped_feature_list_.InitAndDisableFeature(
-        features::kGlicFixTimeToFirstQueryKillSwitch);
+    scoped_feature_list_.InitWithFeatures(
+        /*enabled_features=*/{features::kGlicCaptureRegion},
+        /*disabled_features=*/{features::kGlicFixTimeToFirstQueryKillSwitch});
     GlicMetricsTestBase::SetUp();
 
     enabling_ = std::make_unique<GlicEnabling>(
@@ -255,6 +256,7 @@ class GlicMetricsTest : public GlicMetricsTestBase {
   content::WebContents* test_web_contents() { return test_web_contents_.get(); }
   GlicMetrics* metrics() { return metrics_.get(); }
   MockDelegate* delegate() { return delegate_.get(); }
+  GlicEnabling* enabling() { return enabling_.get(); }
 
  protected:
   base::test::ScopedFeatureList scoped_feature_list_;
@@ -276,8 +278,7 @@ TEST_F(GlicMetricsTest, RecordGlicProfilePreferences) {
   profile()->GetPrefs()->SetBoolean(prefs::kGlicGeolocationEnabled, true);
   profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, true);
   profile()->GetPrefs()->SetBoolean(prefs::kGlicDefaultTabContextEnabled, true);
-  profile()->GetPrefs()->SetBoolean(prefs::kGlicUserEnabledActuationOnWeb,
-                                    true);
+  enabling()->SetUserEnabledActuationOnWeb(true);
 
   metrics()->RecordGlicProfilePreferences();
 
@@ -306,8 +307,7 @@ TEST_F(GlicMetricsTest, RecordGlicProfilePreferences) {
   profile()->GetPrefs()->SetBoolean(prefs::kGlicMicrophoneEnabled, false);
   profile()->GetPrefs()->SetBoolean(prefs::kGlicDefaultTabContextEnabled,
                                     false);
-  profile()->GetPrefs()->SetBoolean(prefs::kGlicUserEnabledActuationOnWeb,
-                                    false);
+  enabling()->SetUserEnabledActuationOnWeb(false);
 
   metrics()->RecordGlicProfilePreferences();
 
@@ -412,9 +412,9 @@ TEST_F(GlicMetricsTest, FreUserInputEntrypointRecorded) {
   // Reset time and submit another input to make sure it's only recorded once.
   metrics()->OnUserInputSubmitted(mojom::WebClientMode::kText);
 
-  histogram_tester().ExpectBucketCount("Glic.Fre.UserInput.Entrypoint",
-                                       glic::GlicEntrypoint::kOsButton, 1);
-  histogram_tester().ExpectTotalCount("Glic.Fre.UserInput.Entrypoint", 1);
+  histogram_tester().ExpectBucketCount("Glic.Fre.UserInput.InvocationSource",
+                                       mojom::InvocationSource::kOsButton, 1);
+  histogram_tester().ExpectTotalCount("Glic.Fre.UserInput.InvocationSource", 1);
 }
 
 TEST_F(GlicMetricsTest, ResponseStartTime_WithFocusedTab) {
@@ -698,17 +698,13 @@ TEST_F(GlicMetricsTest, LogGetContextFromFocusedTabError_ChangingModes) {
 }
 
 TEST_F(GlicMetricsTest, ImpressionBeforeFreNotPermittedByPolicy) {
-  profile()->GetPrefs()->SetInteger(
-      prefs::kGlicCompletedFre,
-      static_cast<int>(prefs::FreStatus::kNotStarted));
+  enabling()->SetCompletedFre(prefs::FreStatus::kNotStarted);
 
   ExpectEntryPointImpressionLogged(EntryPointStatus::kBeforeFreNotEligible);
 }
 
 TEST_F(GlicMetricsTest, ImpressionIncompleteFreNotPermittedByPolicy) {
-  profile()->GetPrefs()->SetInteger(
-      prefs::kGlicCompletedFre,
-      static_cast<int>(prefs::FreStatus::kIncomplete));
+  enabling()->SetCompletedFre(prefs::FreStatus::kIncomplete);
 
   ExpectEntryPointImpressionLogged(EntryPointStatus::kIncompleteFreNotEligible);
 }
@@ -761,17 +757,15 @@ TEST_F(GlicMetricsFeaturesEnabledTest, TimeToEnabledFromStartupDelayed) {
 }
 
 TEST_F(GlicMetricsFeaturesEnabledTest, ImpressionBeforeFre) {
-  profile()->GetPrefs()->SetInteger(
-      prefs::kGlicCompletedFre,
-      static_cast<int>(prefs::FreStatus::kNotStarted));
+  glic::GlicKeyedService::Get(profile())->enabling().SetCompletedFre(
+      prefs::FreStatus::kNotStarted);
 
   ExpectEntryPointImpressionLogged(EntryPointStatus::kBeforeFreAndEligible);
 }
 
 TEST_F(GlicMetricsFeaturesEnabledTest, ImpressionIncompleteFre) {
-  profile()->GetPrefs()->SetInteger(
-      prefs::kGlicCompletedFre,
-      static_cast<int>(prefs::FreStatus::kIncomplete));
+  glic::GlicKeyedService::Get(profile())->enabling().SetCompletedFre(
+      prefs::FreStatus::kIncomplete);
 
   ExpectEntryPointImpressionLogged(EntryPointStatus::kIncompleteFreAndEligible);
 }
@@ -827,14 +821,13 @@ TEST_F(GlicMetricsFeaturesEnabledTest, EnablingChanged) {
   // action.
   EXPECT_EQ(user_action_tester().GetActionCount("Glic.Enabled"), 1);
 
-  profile()->GetPrefs()->SetInteger(
-      prefs::kGlicCompletedFre,
-      static_cast<int>(prefs::FreStatus::kNotStarted));
+  glic::GlicKeyedService::Get(profile())->enabling().SetCompletedFre(
+      prefs::FreStatus::kNotStarted);
   EXPECT_EQ(user_action_tester().GetActionCount("Glic.Disabled"), 1);
   EXPECT_EQ(user_action_tester().GetActionCount("Glic.Enabled"), 1);
 
-  profile()->GetPrefs()->SetInteger(
-      prefs::kGlicCompletedFre, static_cast<int>(prefs::FreStatus::kCompleted));
+  glic::GlicKeyedService::Get(profile())->enabling().SetCompletedFre(
+      prefs::FreStatus::kCompleted);
   EXPECT_EQ(user_action_tester().GetActionCount("Glic.Disabled"), 1);
   EXPECT_EQ(user_action_tester().GetActionCount("Glic.Enabled"), 2);
 
@@ -850,9 +843,8 @@ TEST_F(GlicMetricsFeaturesEnabledTest, EnablingChanged) {
   EXPECT_EQ(user_action_tester().GetActionCount("Glic.Disabled"), 2);
   EXPECT_EQ(user_action_tester().GetActionCount("Glic.Enabled"), 3);
 
-  profile()->GetPrefs()->SetInteger(
-      prefs::kGlicCompletedFre,
-      static_cast<int>(prefs::FreStatus::kIncomplete));
+  glic::GlicKeyedService::Get(profile())->enabling().SetCompletedFre(
+      prefs::FreStatus::kIncomplete);
   EXPECT_EQ(user_action_tester().GetActionCount("Glic.Disabled"), 3);
   EXPECT_EQ(user_action_tester().GetActionCount("Glic.Enabled"), 3);
 }
@@ -1032,30 +1024,12 @@ TEST_F(GlicMetricsTest, FreToFirstQueryElapsedTimeReportedOnlyOnce) {
                                         1);
 }
 
-TEST_F(GlicMetricsTest, OnRecordUseCounter) {
-  metrics()->OnRecordUseCounter(
-      static_cast<uint16_t>(mojom::WebUseCounter::kMaxValue));
-  metrics()->OnRecordUseCounter(
-      static_cast<uint16_t>(mojom::WebUseCounter::kMaxValue) + 1);
-  metrics()->OnRecordUseCounter(1001);
-
-  histogram_tester().ExpectBucketCount("Glic.Api.UseCounter", 1000, 1);
-  histogram_tester().ExpectBucketCount(
-      "Glic.Api.UseCounter",
-      static_cast<uint16_t>(mojom::WebUseCounter::kMaxValue), 1);
-  histogram_tester().ExpectBucketCount(
-      "Glic.Api.UseCounter",
-      static_cast<uint16_t>(mojom::WebUseCounter::kMaxValue) + 1, 1);
-  histogram_tester().ExpectTotalCount("Glic.Api.UseCounter", 3);
-}
-
 class GlicMetricsTrustFirstOnboardingTest : public GlicMetricsTest {
  public:
   void SetUp() override {
     scoped_feature_list_.Reset();
     scoped_feature_list_.InitWithFeatures(
-        {features::kGlicTrustFirstOnboarding},
-        {features::kGlicFixTimeToFirstQueryKillSwitch});
+        {}, {features::kGlicFixTimeToFirstQueryKillSwitch});
     GlicMetricsTestBase::SetUp();
 
     enabling_ = std::make_unique<GlicEnabling>(
@@ -1066,9 +1040,7 @@ class GlicMetricsTrustFirstOnboardingTest : public GlicMetricsTest {
     metrics_->SetDelegateForTesting(std::move(delegate));
 
     // Revert FRE status to NotStarted to simulate new user for this experiment.
-    profile()->GetPrefs()->SetInteger(
-        prefs::kGlicCompletedFre,
-        static_cast<int>(prefs::FreStatus::kNotStarted));
+    enabling_->SetCompletedFre(prefs::FreStatus::kNotStarted);
   }
 };
 
@@ -1085,9 +1057,9 @@ TEST_F(GlicMetricsTrustFirstOnboardingTest, ShownAndDismissed) {
       user_action_tester().GetActionCount("Glic.Fre.Dismissed.Onboarding"), 1);
   histogram_tester().ExpectTotalCount("Glic.Fre.TotalTime.Dismissed.Onboarding",
                                       1);
-  histogram_tester().ExpectUniqueSample("Glic.Fre.Shown.Entrypoint",
+  histogram_tester().ExpectUniqueSample("Glic.Fre.Shown.InvocationSource",
                                         mojom::InvocationSource::kOsButton, 1);
-  histogram_tester().ExpectUniqueSample("Glic.Fre.Dismissed.Entrypoint",
+  histogram_tester().ExpectUniqueSample("Glic.Fre.Dismissed.InvocationSource",
                                         mojom::InvocationSource::kOsButton, 1);
 }
 
@@ -1109,16 +1081,16 @@ TEST_F(GlicMetricsTrustFirstOnboardingTest, ShownAndAccepted) {
   metrics()->OnGlicWindowClose(nullptr, std::nullopt, gfx::Rect());
   EXPECT_EQ(
       user_action_tester().GetActionCount("Glic.Fre.Dismissed.Onboarding"), 0);
-  histogram_tester().ExpectUniqueSample("Glic.Fre.Shown.Entrypoint",
+  histogram_tester().ExpectUniqueSample("Glic.Fre.Shown.InvocationSource",
                                         mojom::InvocationSource::kOsButton, 1);
-  histogram_tester().ExpectUniqueSample("Glic.Fre.Accept.Entrypoint",
+  histogram_tester().ExpectUniqueSample("Glic.Fre.Accept.InvocationSource",
                                         mojom::InvocationSource::kOsButton, 1);
-  histogram_tester().ExpectTotalCount("Glic.Fre.Dismissed.Entrypoint", 0);
+  histogram_tester().ExpectTotalCount("Glic.Fre.Dismissed.InvocationSource", 0);
 }
 
 TEST_F(GlicMetricsTrustFirstOnboardingTest, NotShownIfConsented) {
-  profile()->GetPrefs()->SetInteger(
-      prefs::kGlicCompletedFre, static_cast<int>(prefs::FreStatus::kCompleted));
+  enabling()->SetCompletedFre(prefs::FreStatus::kCompleted);
+  EXPECT_TRUE(enabling()->HasConsented());
 
   metrics()->OnGlicWindowStartedOpening(/*attached=*/false,
                                         mojom::InvocationSource::kOsButton);
@@ -1138,6 +1110,7 @@ TEST_F(GlicMetricsTrustFirstOnboardingTest, FreToFirstQueryTimeRecorded) {
   metrics()->OnUserInputSubmitted(mojom::WebClientMode::kText);
 
   histogram_tester().ExpectUniqueSample("Glic.FreToFirstQueryTime", 1000, 1);
+  EXPECT_EQ(user_action_tester().GetActionCount("Glic.Fre.InputSubmitted"), 1);
 }
 
 TEST_F(GlicMetricsTest, FreToFirstQueryElapsedTimeReportedInMultiInstance) {

@@ -1179,9 +1179,6 @@ void DocumentLoader::UpdateForSameDocumentNavigation(
   if (SoftNavigationHeuristics* heuristics =
           frame_->DomWindow()->GetSoftNavigationHeuristics()) {
     // if `heuristics` exists it means we're in an outermost main frame.
-    //
-    // TODO(crbug.com/41494072): `heuristics` existing does not imply this
-    // navigation was initiated in the main world.
     heuristics->SameDocumentNavigationCommitted(
         old_url, new_url, type, same_document_metrics_token, interaction_id);
   }
@@ -3639,6 +3636,17 @@ void DocumentLoader::RecordUseCountersForCommit() {
     case network::mojom::DeviceBoundSessionUsage::kSiteMatchNotInScope:
     case network::mojom::DeviceBoundSessionUsage::kUnknown:
       break;
+  }
+
+  // At this point, the policy_container_ member has already been moved into the
+  // window, so we need to retrieve it from its new location.
+  PolicyContainer* policy_container = frame_->DomWindow()->GetPolicyContainer();
+  if (policy_container &&
+      (policy_container->GetPolicies()
+           .connection_allowlists.enforced.has_value() ||
+       policy_container->GetPolicies()
+           .connection_allowlists.report_only.has_value())) {
+    CountUse(WebFeature::kConnectionAllowlist);
   }
 }
 

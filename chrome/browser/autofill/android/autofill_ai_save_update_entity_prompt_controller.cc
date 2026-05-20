@@ -55,6 +55,12 @@ AutofillAiSaveUpdateEntityPromptController::
           base::android::AttachCurrentThread(),
           reinterpret_cast<intptr_t>(this))) {
   CHECK(prompt_view_);
+  ui_context_.accepted_consent_string_id =
+      IsWalletableEntity()
+          ? IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_IN_WALLET_SOURCE_NOTICE
+          : IDS_AUTOFILL_AI_SAVE_OR_UPDATE_LOCAL_ENTITY_SOURCE_NOTICE;
+  ui_context_.accept_button_string_id =
+      IDS_AUTOFILL_PREDICTION_IMPROVEMENTS_SAVE_DIALOG_SAVE_BUTTON;
 }
 
 AutofillAiSaveUpdateEntityPromptController::
@@ -103,7 +109,6 @@ std::u16string AutofillAiSaveUpdateEntityPromptController::GetSourceNotice()
   if (!account) {
     return std::u16string();
   }
-
   const std::u16string google_wallet_text =
       l10n_util::GetStringUTF16(IDS_AUTOFILL_GOOGLE_WALLET_TITLE);
   return l10n_util::GetStringFUTF16(
@@ -126,8 +131,14 @@ AutofillAiSaveUpdateEntityPromptController::GetJavaObject() const {
   return base::android::ScopedJavaLocalRef<jobject>(java_object_);
 }
 
-void AutofillAiSaveUpdateEntityPromptController::OpenManagePasses(JNIEnv* env) {
-  ShowGoogleWalletPassesPage(*web_contents_);
+void AutofillAiSaveUpdateEntityPromptController::OnWalletLinkClicked(
+    JNIEnv* env) {
+  if (IsMaskedStorageSupported(entity_instance_.type(),
+                               EntityInstance::RecordType::kServerWallet)) {
+    ShowGoogleWallePrivatePassesHelpCenterPageInCct(*web_contents_);
+  } else {
+    ShowGoogleWalletPassesPage(*web_contents_);
+  }
 }
 
 void AutofillAiSaveUpdateEntityPromptController::OnUserAccepted(JNIEnv* env) {
@@ -149,8 +160,10 @@ void AutofillAiSaveUpdateEntityPromptController::OnPromptDismissed(
 void AutofillAiSaveUpdateEntityPromptController::RunPromptClosedCallback(
     AutofillClient::AutofillAiBubbleResult result) {
   if (prompt_result_callback_) {
-    // TODO(crbug.com/489354073): Pass the correct UI context.
-    std::move(prompt_result_callback_).Run(result, {});
+    std::move(prompt_result_callback_)
+        .Run(result, result == AutofillClient::AutofillAiBubbleResult::kAccepted
+                         ? ui_context_
+                         : AutofillClient::EntityImportUIContext{});
   }
 }
 

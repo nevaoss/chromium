@@ -6,6 +6,7 @@
 #include <array>
 #include <memory>
 
+#include "base/check.h"
 #include "base/bits.h"
 #include "base/compiler_specific.h"
 #include "base/functional/callback_helpers.h"
@@ -16,6 +17,7 @@
 // file. Try to contribute to upstream.
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
+#include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
 #include "build/build_config.h"
 #include "components/viz/common/resources/shared_image_format_utils.h"
@@ -40,9 +42,6 @@
 #include "ui/gl/gl_utils.h"
 #include "ui/gl/gl_version_info.h"
 #include "ui/gl/scoped_make_current.h"
-#include "base/time/time.h"
-#include "base/check_op.h"
-#include "base/check.h"
 
 namespace gpu {
 namespace gles2 {
@@ -619,6 +618,10 @@ error::Error GLES2DecoderPassthroughImpl::DoBufferData(GLenum target,
   CheckErrorCallbackState();
   api()->glBufferDataFn(target, size, data, usage);
   if (CheckErrorCallbackState()) {
+    // Calling buffer data on a mapped buffer will implicitly unmap it
+    // (https://registry.khronos.org/OpenGL-Refpages/es3.1/html/glMapBufferRange.xhtml)
+    // Even if it returns an error.
+    resources_->mapped_buffer_map.erase(bound_buffers_[target]);
     return error::kNoError;
   }
 
@@ -3949,12 +3952,6 @@ error::Error GLES2DecoderPassthroughImpl::DoGetMaxValueInBufferCHROMIUM(
   return error::kNoError;
 }
 
-error::Error GLES2DecoderPassthroughImpl::DoEnableFeatureCHROMIUM(
-    const char* feature) {
-  NOTIMPLEMENTED();
-  return error::kNoError;
-}
-
 error::Error GLES2DecoderPassthroughImpl::DoMapBufferRange(
     GLenum target,
     GLintptr offset,
@@ -4066,14 +4063,36 @@ error::Error GLES2DecoderPassthroughImpl::DoUnmapBuffer(GLenum target) {
 
 error::Error GLES2DecoderPassthroughImpl::DoGetRequestableExtensionsCHROMIUM(
     const char** extensions) {
-  *extensions = reinterpret_cast<const char*>(
-      api()->glGetStringFn(GL_REQUESTABLE_EXTENSIONS_ANGLE));
+  *extensions = requestable_extension_string_.c_str();
   return error::kNoError;
 }
 
 error::Error GLES2DecoderPassthroughImpl::DoRequestExtensionCHROMIUM(
     const char* extension) {
-  api()->glRequestExtensionANGLEFn(extension);
+  gfx::ExtensionSet requested_extensions = gfx::MakeExtensionSet(extension);
+
+  // Remove extension requests that are not in requestable_extensions_
+  {
+    auto iter = requested_extensions.begin();
+    while (iter != requested_extensions.end()) {
+      if (requestable_extensions_.contains(*iter)) {
+        iter++;
+      } else {
+        LOG(WARNING) << "Requested extension " << *iter
+                     << " is not requestable, ignoring.";
+        iter = requested_extensions.erase(iter);
+      }
+    }
+  }
+
+  if (requested_extensions.empty()) {
+    return error::kNoError;
+  }
+
+  std::string validated_requested_extension_string =
+      gfx::MakeExtensionString(requested_extensions);
+  api()->glRequestExtensionANGLEFn(
+      validated_requested_extension_string.c_str());
 
   // Make sure there are no pending GL errors before re-initializing feature
   // info
@@ -4082,6 +4101,7 @@ error::Error GLES2DecoderPassthroughImpl::DoRequestExtensionCHROMIUM(
   // Make sure newly enabled extensions are exposed and usable.
   context_->ReinitializeDynamicBindings();
   feature_info_->ForceReinitialize();
+  BuildRequestableExtensionString();
 
   return error::kNoError;
 }

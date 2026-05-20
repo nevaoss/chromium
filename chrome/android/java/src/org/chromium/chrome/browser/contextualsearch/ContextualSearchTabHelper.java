@@ -29,6 +29,7 @@ import org.chromium.chrome.browser.readaloud.ReadAloudControllerSupplier;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.tab.EmptyTabObserver;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.ui.signin.ForcedSigninStatusProvider;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
 import org.chromium.content_public.browser.GestureListenerManager;
@@ -258,7 +259,7 @@ public class ContextualSearchTabHelper extends EmptyTabObserver
             if (webContentsChanged) {
                 // Ensure the hooks are cleared on the old web contents before proceeding. All of
                 // the objects associated with the web content need to be recreated in order for
-                // selection to continue working. See https://crbug.com/1076326 for more details.
+                // selection to continue working. See https://crbug.com/40688159 for more details.
                 removeContextualSearchHooks(mWebContents);
                 mSelectionClientManager =
                         currentWebContents != null
@@ -368,17 +369,19 @@ public class ContextualSearchTabHelper extends EmptyTabObserver
         boolean isActive =
                 !webContents.isIncognito()
                         && FirstRunStatus.getFirstRunFlowComplete()
+                        && !ForcedSigninStatusProvider.getForProfile(profile)
+                                .isForcedSigninShowing()
                         && !ContextualSearchPolicy.isContextualSearchDisabled(profile)
                         && isDseGoogle
                         && !LocaleManager.getInstance().needToCheckForSearchEnginePromo()
                         // Svelte and Accessibility devices are incompatible with the first-run flow
                         // and Talkback has poor interaction with Contextual Search (see
-                        // http://crbug.com/399708 and http://crbug.com/396934).
+                        // http://crbug.com/40377520 and http://crbug.com/40376140).
                         && !manager.isRunningInCompatibilityMode()
                         && !mTab.isShowingErrorPage()
                         && isDeviceOnline(manager);
         if (mTab.isCustomTab() && !isActive) {
-            // TODO(donnd): remove after https://crbug.com/1192143 is resolved.
+            // TODO(donnd): remove after https://crbug.com/40757075 is resolved.
             Log.w(TAG, "Not allowed to be active! Checking reasons:");
             Log.w(
                     TAG,
@@ -386,6 +389,9 @@ public class ContextualSearchTabHelper extends EmptyTabObserver
                             + !webContents.isIncognito()
                             + " getFirstRunFlowComplete: "
                             + FirstRunStatus.getFirstRunFlowComplete()
+                            + "isForcedSigninShowing: "
+                            + ForcedSigninStatusProvider.getForProfile(profile)
+                                    .isForcedSigninShowing()
                             + " !isContextualSearchDisabled: "
                             + !ContextualSearchManager.isContextualSearchDisabled(profile)
                             + " isDefaultSearchEngineGoogle: "

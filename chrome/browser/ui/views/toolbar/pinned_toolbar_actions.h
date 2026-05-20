@@ -5,12 +5,26 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_TOOLBAR_PINNED_TOOLBAR_ACTIONS_H_
 #define CHROME_BROWSER_UI_VIEWS_TOOLBAR_PINNED_TOOLBAR_ACTIONS_H_
 
+#include "base/functional/callback.h"
+#include "base/types/expected.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_controller.h"
 #include "ui/actions/action_id.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 
 class PinnedActionToolbarButton;
+
+// Reasons GetBubbleAnchorAsync() failed to return an anchor. The particular
+// reason a particular call to GetBubbleAnchorAsync() failed is passed to
+// the callback instead of an anchor.
+enum class GetAnchorFailureReason {
+  // The anchor did not appear after a reasonable amount of time.
+  kTimeout,
+  // The anchor corresponding to the ActionId was not found and not expected to
+  // be found. This can happen if the action's button is not pinned or
+  // popped-out.
+  kAnchorNotFound,
+};
 
 // The PinnedToolbarActions class is a virtual interface, defining access to the
 // window's pinned toolbar actions component.  This class exists so that
@@ -37,16 +51,17 @@ class PinnedToolbarActions : public ToolbarController::PinnedActionsDelegate {
   // Gets a pointer to the download button.
   // TODO(https://crbug.com/474063115): Change this to a non-Views return type.
   virtual ToolbarButton* GetDownloadButton() = 0;
-  // Gets a pointer to the cast button.
-  // TODO(https://crbug.com/474062755): Change this to a non-Views return type.
-  virtual ToolbarButton* GetCastButton() = 0;
 
   // Returns BubbleAnchor for the action.
   virtual views::BubbleAnchor GetBubbleAnchor(actions::ActionId action_id) = 0;
 
-  // Attach an element identifier to the action.
-  virtual void SetActionElementIdentifier(actions::ActionId action_id,
-                                          ui::ElementIdentifier element_id) = 0;
+  // Asynchronous version of GetBubbleAnchor(). The anchor, or reason for
+  // failing to find the anchor, is passed to `callback`.
+  virtual void GetBubbleAnchorAsync(
+      actions::ActionId action_id,
+      base::OnceCallback<
+          void(base::expected<views::BubbleAnchor, GetAnchorFailureReason>)>
+          callback) = 0;
 
   // Returns the ChromeLabs button, or nullptr if ChromeLabs is not supported by
   // the PinnedToolbarActions implementation being used.

@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.h"
-#include "chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.h"
 
 #include <optional>
 #include <string_view>
@@ -12,6 +11,8 @@
 #include "chrome/browser/ui/omnibox/omnibox_popup_state_manager.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_aim_popup_webui_content.h"
+#include "chrome/browser/ui/webui/top_chrome/webui_contents_preload_manager.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "components/permissions/permission_request_manager.h"
 #include "content/public/browser/browser_accessibility_state.h"
 #include "ui/accessibility/ax_mode.h"
@@ -19,8 +20,9 @@
 OmniboxPopupAimPresenter::OmniboxPopupAimPresenter(
     LocationBarView* location_bar_view,
     OmniboxController* controller)
-    : OmniboxPopupPresenterBase(location_bar_view, *location_bar_view),
-      controller_(controller),
+    : OmniboxPopupPresenterBase(location_bar_view,
+                                *location_bar_view,
+                                controller),
       location_bar_view_(location_bar_view) {
   SetWebUIContent(std::make_unique<OmniboxAimPopupWebUIContent>(
       this, location_bar_view_, controller));
@@ -49,7 +51,22 @@ void OmniboxPopupAimPresenter::Hide() {
 }
 
 std::string_view OmniboxPopupAimPresenter::GetPopupMetricPrefix() const {
-  return "Omnibox.Popup.Aim";
+  return OmniboxPopupPresenterBase::kAimPopupMetricPrefix;
+}
+
+std::optional<base::TimeDelta>
+OmniboxPopupAimPresenter::ShouldDeferUntilVisualStateReady() const {
+  if (!base::FeatureList::IsEnabled(
+          omnibox::kOmniboxAimDeferShowUntilVisualStateReady)) {
+    return std::nullopt;
+  }
+  return base::Milliseconds(
+      omnibox::kOmniboxAimDeferShowUntilVisualStateReadyTimeoutMs.Get());
+}
+
+bool OmniboxPopupAimPresenter::ShouldDetachWebContentsOnHide() const {
+  return base::FeatureList::IsEnabled(
+      omnibox::kOmniboxAimDetachWebContentsOnHide);
 }
 
 void OmniboxPopupAimPresenter::OnWidgetActivationChanged(views::Widget* widget,
@@ -61,7 +78,7 @@ void OmniboxPopupAimPresenter::OnWidgetActivationChanged(views::Widget* widget,
   // menu is a child widget so this popup widget is still considered active. We
   // will not hide the popup.
   if (!active &&
-      controller_->popup_state_manager()->popup_state() ==
+      controller()->popup_state_manager()->popup_state() ==
           OmniboxPopupState::kAim &&
       !location_bar_view_->in_popup_state_transition()) {
     // Don't close popup if there's an active permission prompt. This check can
@@ -76,15 +93,17 @@ void OmniboxPopupAimPresenter::OnWidgetActivationChanged(views::Widget* widget,
         return;
       }
     }
-    controller_->popup_state_manager()->SetPopupState(OmniboxPopupState::kNone);
+    controller()->popup_state_manager()->SetPopupState(
+        OmniboxPopupState::kNone);
   }
 }
 
 void OmniboxPopupAimPresenter::WidgetDestroyed() {
   // Update the popup state manager if widget was destroyed externally, e.g., by
   // the OS. This ensures the popup state manager stays in sync.
-  if (controller_->popup_state_manager()->popup_state() ==
+  if (controller()->popup_state_manager()->popup_state() ==
       OmniboxPopupState::kAim) {
-    controller_->popup_state_manager()->SetPopupState(OmniboxPopupState::kNone);
+    controller()->popup_state_manager()->SetPopupState(
+        OmniboxPopupState::kNone);
   }
 }

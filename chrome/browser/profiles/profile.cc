@@ -48,6 +48,7 @@
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/constants/ash_features.h"
+#include "ash/constants/ash_pref_names.h"
 #include "ash/constants/ash_switches.h"
 #include "base/command_line.h"
 #include "chromeos/ash/components/browser_context_helper/browser_context_types.h"
@@ -94,12 +95,20 @@ std::set<content::BrowserContext*>& GetProfileInstances() {
 
 namespace {
 
-const char kDevToolsOTRProfileIDPrefix[] = "Devtools::BrowserContext";
-const char kMediaRouterOTRProfileIDPrefix[] = "MediaRouter::Presentation";
-const char kTestOTRProfileIDPrefix[] = "Test::OTR";
+// The primary Profile ID used by Incognito and Guest profiles.
+constexpr char kPrimaryOTRProfileID[] = "profile::primary_otr";
+
+// WARNING: Adding new Profile ID prefixes is strongly discouraged.
+// Please avoid adding new prefixes and associated custom logic for Profile
+// differentiated by such prefixes. Consult with the profile owners before
+// proceeding if you believe a new prefix is strictly necessary.
+// See `chrome/browser/PRESUBMIT.py` which enforces this via a warning.
+constexpr char kDevToolsOTRProfileIDPrefix[] = "Devtools::BrowserContext";
+constexpr char kMediaRouterOTRProfileIDPrefix[] = "MediaRouter::Presentation";
+constexpr char kTestOTRProfileIDPrefix[] = "Test::OTR";
 
 #if BUILDFLAG(IS_CHROMEOS)
-const char kCaptivePortalOTRProfileIDPrefix[] = "CaptivePortal::Signin";
+constexpr char kCaptivePortalOTRProfileIDPrefix[] = "CaptivePortal::Signin";
 #endif
 
 using perfetto::protos::pbzero::ChromeTrackEvent;
@@ -143,7 +152,7 @@ bool Profile::OTRProfileID::IsCaptivePortal() const {
 const Profile::OTRProfileID Profile::OTRProfileID::PrimaryID() {
   // OTRProfileID value should be same as
   // |OtrProfileId.java#sPrimaryOtrProfileId| variable.
-  return OTRProfileID("profile::primary_otr");
+  return OTRProfileID(kPrimaryOTRProfileID);
 }
 
 // static
@@ -389,8 +398,9 @@ void Profile::RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterStringPref(
       language::prefs::kApplicationLocale, std::string(),
       user_prefs::PrefRegistrySyncable::SYNCABLE_OS_PRIORITY_PREF);
-  registry->RegisterStringPref(prefs::kApplicationLocaleBackup, std::string());
-  registry->RegisterStringPref(prefs::kApplicationLocaleAccepted,
+  registry->RegisterStringPref(ash::prefs::kApplicationLocaleBackup,
+                               std::string());
+  registry->RegisterStringPref(ash::prefs::kApplicationLocaleAccepted,
                                std::string());
 #endif
 

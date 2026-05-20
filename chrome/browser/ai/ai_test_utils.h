@@ -14,6 +14,7 @@
 #include "chrome/browser/ai/ai_manager.h"
 #include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
+#include "components/optimization_guide/core/model_execution/manifest_broker/test/fake_manifest_broker.h"
 #include "components/optimization_guide/core/model_execution/test/fake_model_assets.h"
 #include "components/optimization_guide/core/model_execution/test/fake_model_broker.h"
 #include "components/optimization_guide/core/model_execution/test/mock_on_device_capability.h"
@@ -112,12 +113,31 @@ class AITestUtils {
     // Navigates to disable the specified policy and recreates `ai_manager_`.
     void DisablePolicy(network::mojom::PermissionsPolicyFeature feature);
 
+    // Helpers to set enterprise policies and user settings for testing.
+    void SetBuiltInAIAPIsEnterprisePolicy(bool allowed);
+    void SetGenAILocalEnterprisePolicy(bool allowed);
+    void SetOnDeviceAiUserSetting(bool allowed);
+
     raw_ptr<MockOptimizationGuideKeyedService>
         mock_optimization_guide_keyed_service_;
     std::unique_ptr<optimization_guide::FakeModelBroker> fake_broker_;
     std::unique_ptr<optimization_guide::FakeAdaptationAsset> fake_asset_;
 
     std::unique_ptr<AIManager> ai_manager_;
+  };
+
+  class AITestManifestBase : public AITestBase {
+   public:
+    AITestManifestBase();
+    ~AITestManifestBase() override;
+
+   protected:
+    virtual void SetupManifest();
+    void SetupMockOptimizationGuideKeyedService() override;
+    void TearDown() override;
+
+    std::unique_ptr<optimization_guide::FakeManifestBroker>
+        fake_manifest_broker_;
   };
 
   // Converts string language codes to AILanguageCode mojo struct.

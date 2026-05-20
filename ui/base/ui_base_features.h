@@ -65,6 +65,8 @@ extern const char kApplyNativeOcclusionToCompositorTypeThrottleAndRelease[];
 #if BUILDFLAG(IS_MAC)
 COMPONENT_EXPORT(UI_BASE_FEATURES)
 BASE_DECLARE_FEATURE(kOnlyUseWindowResizeHelperOnResize);
+
+COMPONENT_EXPORT(UI_BASE_FEATURES) BASE_DECLARE_FEATURE(kCATransactionV2);
 #endif  // BUILDFLAG(IS_MAC)
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -131,6 +133,11 @@ BASE_DECLARE_FEATURE(kWaylandTextInputV3);
 COMPONENT_EXPORT(UI_BASE_FEATURES)
 BASE_DECLARE_FEATURE(kWaylandSessionManagement);
 #endif  // BUILDFLAG(IS_OZONE)
+
+#if BUILDFLAG(IS_LINUX)
+COMPONENT_EXPORT(UI_BASE_FEATURES)
+BASE_DECLARE_FEATURE(kGlobalShortcutsPortalPreferredTrigger);
+#endif
 
 // Indicates whether DrmOverlayManager should used the synchronous API to
 // perform pageflip tests.
@@ -265,6 +272,15 @@ BASE_DECLARE_FEATURE(kHandleIMESpanChangesOnUpdateComposition);
 COMPONENT_EXPORT(UI_BASE_FEATURES)
 bool IsHandleIMESpanChangesOnUpdateCompositionEnabled();
 
+// Kill switch for honoring the HTML autocorrect="off" attribute by detecting
+// and reverting touch keyboard autocorrections in TSF.
+// See https://issues.chromium.org/issues/487613498.
+COMPONENT_EXPORT(UI_BASE_FEATURES)
+BASE_DECLARE_FEATURE(kTSFHonorAutocorrectOff);
+
+COMPONENT_EXPORT(UI_BASE_FEATURES)
+bool IsTSFHonorAutocorrectOffEnabled();
+
 // Controls whether the default system accent colors should be used.
 COMPONENT_EXPORT(UI_BASE_FEATURES)
 BASE_DECLARE_FEATURE(kUseSystemDefaultAccentColors);
@@ -303,6 +319,12 @@ BASE_DECLARE_FEATURE_PARAM(int, kCompensationAcceptableLatencyMs);
 // split view alongside the current tab.
 COMPONENT_EXPORT(UI_BASE_FEATURES)
 BASE_DECLARE_FEATURE(kSplitViewLinkOpen);
+
+COMPONENT_EXPORT(UI_BASE_FEATURES)
+BASE_DECLARE_FEATURE(kGlassFrame);
+
+COMPONENT_EXPORT(UI_BASE_FEATURES)
+bool IsGlassFrameEnabled();
 
 }  // namespace features
 

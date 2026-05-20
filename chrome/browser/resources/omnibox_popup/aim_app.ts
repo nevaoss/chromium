@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import '//resources/cr_components/composebox/composebox.js';
+import './omnibox_composebox.js';
 import '/strings.m.js';
 
 import {ColorChangeUpdater} from '//resources/cr_components/color_change_listener/colors_css_updater.js';
@@ -17,11 +18,12 @@ import type {InputState} from '//resources/mojo/components/omnibox/composebox/co
 import {getCss} from './aim_app.css.js';
 import {getHtml} from './aim_app.html.js';
 import {BrowserProxy} from './aim_browser_proxy.js';
+import type {OmniboxComposeboxElement} from './omnibox_composebox.js';
 import type {PageCallbackRouter, PageHandlerInterface} from './omnibox_popup_aim.mojom-webui.js';
 
 export interface OmniboxAimAppElement {
   $: {
-    composebox: ComposeboxElement,
+    composebox: ComposeboxElement|OmniboxComposeboxElement,
   };
 }
 
@@ -40,20 +42,32 @@ export class OmniboxAimAppElement extends CrLitElement {
 
   static override get properties() {
     return {
+      composeboxForkEnabled_: {type: Boolean},
       searchboxLayoutMode_: {type: String},
       hasAllowedInputs_: {type: Boolean},
+      caretAnimationsEnabled_: {type: Boolean},
+      disableComposeboxAnimation_: {type: Boolean},
+      energyEffectEnabled_: {type: Boolean, reflect: true},
+      energyEffectAnimationEnabled_: {type: Boolean, reflect: true},
     };
   }
 
+  protected accessor composeboxForkEnabled_: boolean =
+      loadTimeData.getBoolean('composeboxForkEnabled');
   protected accessor searchboxLayoutMode_: string =
       loadTimeData.getString('searchboxLayoutMode');
   protected accessor hasAllowedInputs_: boolean = false;
-  protected disableCaretColorAnimation_: boolean =
-      loadTimeData.getBoolean('caretColorAnimationDisabled');
-  protected disableComposeboxAnimation_: boolean =
+  protected accessor disableComposeboxAnimation_: boolean =
       loadTimeData.getBoolean('composeboxAnimationDisabled');
-  protected caretAnimationsEnabled_: boolean =
+  protected accessor caretAnimationsEnabled_: boolean =
       loadTimeData.getBoolean('caretAnimationEnabled');
+  protected accessor energyEffectEnabled_: boolean =
+      loadTimeData.getBoolean('energyEffectEnabled');
+  // The use of energyEffectEnabled to set energyEffectAnimationEnabled_ is
+  // intentional. This is to align the gating properties for energy effects
+  // across all surfaces (= Nextbox, Omnibox, and Realbox).
+  protected accessor energyEffectAnimationEnabled_: boolean =
+      loadTimeData.getBoolean('energyEffectEnabled');
 
   private eventTracker_ = new EventTracker();
   private pageHandler_: PageHandlerInterface;

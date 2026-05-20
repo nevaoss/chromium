@@ -59,6 +59,8 @@ class NevaExtensionsBrowserClient : public extensions::ExtensionsBrowserClient {
       content::BrowserContext* context) override;
   content::BrowserContext* GetContextRedirectedToOriginal(
       content::BrowserContext* context) override;
+  content::BrowserContext* GetContextRedirectedToOriginalWithoutAshInternals(
+      content::BrowserContext* context) override;
   content::BrowserContext* GetContextOwnInstance(
       content::BrowserContext* context) override;
   content::BrowserContext* GetContextForOriginalOnly(
@@ -93,8 +95,6 @@ class NevaExtensionsBrowserClient : public extensions::ExtensionsBrowserClient {
       const extensions::ExtensionSet& extensions,
       const extensions::ProcessMap& process_map,
       const GURL& upstream_url) override;
-  PrefService* GetPrefServiceForContext(
-      content::BrowserContext* context) override;
   void GetEarlyExtensionPrefsObservers(
       content::BrowserContext* context,
       std::vector<extensions::EarlyExtensionPrefsObserver*>* observers)

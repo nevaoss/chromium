@@ -17,6 +17,7 @@
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/extensions/extension_settings_overridden_dialog.h"
 #include "chrome/browser/ui/extensions/settings_overridden_dialog.h"
 #include "chrome/browser/ui/hats/hats_service.h"
 #include "chrome/browser/ui/hats/hats_service_factory.h"
@@ -37,10 +38,12 @@
 #include "components/search_engines/search_engines_test_util.h"
 #include "components/search_engines/template_url.h"
 #include "components/search_engines/template_url_service.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "extensions/common/extension_features.h"
+#include "net/base/url_util.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/paint_vector_icon.h"
@@ -63,7 +66,11 @@ enum class DefaultSearch {
 
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebContentsId);
 
-using testing::_;
+using ::testing::_;
+using ::testing::Contains;
+using ::testing::IsEmpty;
+using ::testing::Not;
+using ::testing::Pair;
 
 // This makes icon fetching testable on the dialog, without resorting to
 // fallback/placeholder icons.
@@ -86,7 +93,7 @@ class MockImageFetcherService : public image_fetcher::ImageFetcherService {
   image_fetcher::MockImageFetcher mock_image_fetcher_;
 };
 
-class SettingsOverriddenExplicitChoiceDialogInteractiveUiTest
+class SettingsOverriddenDialogInteractiveUiTest
     : public InteractiveBrowserTest {
  protected:
   const ui::ElementIdentifier kPreviousSettingButtonId =
@@ -95,21 +102,20 @@ class SettingsOverriddenExplicitChoiceDialogInteractiveUiTest
       kSettingsOverriddenDialogNewSettingButtonId;
   const ui::ElementIdentifier kSaveButtonId =
       kSettingsOverriddenDialogSaveButtonId;
+  const ui::ElementIdentifier kKeepItButtonId =
+      kSettingsOverriddenDialogKeepItButtonId;
 
-  SettingsOverriddenExplicitChoiceDialogInteractiveUiTest() {
-    feature_list_.InitAndEnableFeature(
-        extensions_features::kSearchEngineExplicitChoiceDialog);
-
+  SettingsOverriddenDialogInteractiveUiTest() {
     // Register a mock image-fetcher factory service so that it's created
     // in place of the default image-fetcher service.
     create_services_subscription_ =
         BrowserContextDependencyManager::GetInstance()
-            ->RegisterCreateServicesCallbackForTesting(base::BindRepeating(
-                &SettingsOverriddenExplicitChoiceDialogInteractiveUiTest::
-                    OnWillCreateBrowserContextServices,
-                base::Unretained(this)));
+            ->RegisterCreateServicesCallbackForTesting(
+                base::BindRepeating(&SettingsOverriddenDialogInteractiveUiTest::
+                                        OnWillCreateBrowserContextServices,
+                                    base::Unretained(this)));
   }
-  ~SettingsOverriddenExplicitChoiceDialogInteractiveUiTest() override = default;
+  ~SettingsOverriddenDialogInteractiveUiTest() override = default;
 
   void SetUpOnMainThread() override {
     InteractiveBrowserTest::SetUpOnMainThread();
@@ -290,8 +296,21 @@ class SettingsOverriddenExplicitChoiceDialogInteractiveUiTest
 
  private:
   base::CallbackListSubscription create_services_subscription_;
-  base::test::ScopedFeatureList feature_list_;
   extensions::ScopedTestMV2Enabler mv2_enabler_;
+};
+
+class SettingsOverriddenExplicitChoiceDialogInteractiveUiTest
+    : public SettingsOverriddenDialogInteractiveUiTest {
+ protected:
+  SettingsOverriddenExplicitChoiceDialogInteractiveUiTest() {
+    feature_list_.InitWithFeatures(
+        {extensions_features::kSearchEngineExplicitChoiceDialog,
+         omnibox::kOmniboxAppendInvocationSource},
+        {});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
@@ -462,25 +481,27 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
   // on the existing page until the dialog is resolved.
   const GURL kInitialUrl("https://www.google.com/");
 
-  RunTestSequence(
-      InstrumentTab(kWebContentsId),
-      NavigateWebContents(kWebContentsId, kInitialUrl),
-      SetNewSearchProvider(DefaultSearch::kUseDefault),
-      LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
-      WaitForDialogToShow(),
-      // Visible URL should still be the initial site, not the extension's
-      // search.
-      CheckActiveUrl(kInitialUrl),
-      // Select previous search setting.
-      PressButton(kNewSettingButtonId), PressButton(kSaveButtonId),
-      WaitForHide(kSettingsOverriddenDialogId),
-      // Only now should the navigation complete.
-      WaitForWebContentsNavigation(kWebContentsId, GURL(kExtensionSearchUrl)));
+  RunTestSequence(InstrumentTab(kWebContentsId),
+                  NavigateWebContents(kWebContentsId, kInitialUrl),
+                  SetNewSearchProvider(DefaultSearch::kUseDefault),
+                  LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
+                  WaitForDialogToShow(),
+                  // Visible URL should still be the initial site, not the
+                  // extension's search.
+                  CheckActiveUrl(kInitialUrl),
+                  // Select previous search setting.
+                  PressButton(kNewSettingButtonId), PressButton(kSaveButtonId),
+                  WaitForHide(kSettingsOverriddenDialogId),
+                  // Only now should the navigation complete.
+                  WaitForWebContentsNavigation(
+                      kWebContentsId,
+                      net::AppendOrReplaceQueryParameter(
+                          GURL(kExtensionSearchUrl), "source", "chrome.ob")));
 }
 
 class SettingsOverriddenExplicitChoiceDialogHatsInteractiveUiTest
     : public SettingsOverriddenExplicitChoiceDialogInteractiveUiTest {
- public:
+ protected:
   SettingsOverriddenExplicitChoiceDialogHatsInteractiveUiTest() {
     feature_list_.InitAndEnableFeature(
         features::kHappinessTrackingSurveysForDesktopSEHijacking);
@@ -488,7 +509,7 @@ class SettingsOverriddenExplicitChoiceDialogHatsInteractiveUiTest
 
   void OnWillCreateBrowserContextServices(
       content::BrowserContext* context) override {
-    SettingsOverriddenExplicitChoiceDialogInteractiveUiTest::
+    SettingsOverriddenDialogInteractiveUiTest::
         OnWillCreateBrowserContextServices(context);
     Profile* profile = Profile::FromBrowserContext(context);
     HatsServiceFactory::GetInstance()->SetTestingFactory(
@@ -506,6 +527,7 @@ class SettingsOverriddenExplicitChoiceDialogHatsInteractiveUiTest
 IN_PROC_BROWSER_TEST_F(
     SettingsOverriddenExplicitChoiceDialogHatsInteractiveUiTest,
     HatsSurveyTriggered) {
+  using HatsDialog = ExtensionSettingsOverriddenDialog;
   RunTestSequence(
       SetNewSearchProvider(DefaultSearch::kUseDefault),
       LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
@@ -517,10 +539,46 @@ IN_PROC_BROWSER_TEST_F(
             static_cast<MockHatsService*>(hats_service);
         EXPECT_CALL(
             *mock_hats_service,
-            LaunchDelayedSurvey(kHatsSurveyTriggerSEHijacking, 5000, _, _))
+            LaunchDelayedSurvey(
+                kHatsSurveyTriggerSEHijacking, 5000, _,
+                testing::AllOf(
+                    Contains(Pair(HatsDialog::kHatsPsdChannel, _)),
+                    Contains(Pair(HatsDialog::kHatsPsdUserChoice,
+                                  HatsDialog::kHatsUserChoiceNewProvider)),
+                    Contains(Pair(HatsDialog::kHatsPsdTimeDialogVisible, _)),
+                    Contains(Pair(HatsDialog::kHatsPsdNewExtensionName,
+                                  "Search Override Extension")))))
             .WillOnce(testing::Return(true));
       }),
       PressButton(kNewSettingButtonId), PressButton(kSaveButtonId),
+      WaitForHide(kSaveButtonId));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    SettingsOverriddenExplicitChoiceDialogHatsInteractiveUiTest,
+    HatsSurveyTriggered_Reject) {
+  using HatsDialog = ExtensionSettingsOverriddenDialog;
+  RunTestSequence(
+      SetNewSearchProvider(DefaultSearch::kUseDefault),
+      LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
+      WaitForDialogToShow(), Do([this]() {
+        HatsService* hats_service = HatsServiceFactory::GetForProfile(
+            browser()->profile(), /*create_if_necessary=*/true);
+        CHECK(hats_service);
+        MockHatsService* mock_hats_service =
+            static_cast<MockHatsService*>(hats_service);
+        EXPECT_CALL(*mock_hats_service,
+                    LaunchDelayedSurvey(
+                        kHatsSurveyTriggerSEHijacking, 5000, _,
+                        testing::AllOf(
+                            // No need to check all parameters here, they are
+                            // covered in other HaTS tests.
+                            Contains(Pair(
+                                HatsDialog::kHatsPsdUserChoice,
+                                HatsDialog::kHatsUserChoicePreviousProvider)))))
+            .WillOnce(testing::Return(true));
+      }),
+      PressButton(kPreviousSettingButtonId), PressButton(kSaveButtonId),
       WaitForHide(kSaveButtonId));
 }
 
@@ -530,13 +588,21 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
   auto kFirstOption = kPreviousSettingButtonId;
   auto kSecondOption = kNewSettingButtonId;
 
+// See implementation. Depending on platform, the descriptive paragraph in the
+// dialog either acts as a focusable element, or not.
+#if BUILDFLAG(IS_WIN)
+  const bool focusable_description = true;
+#else
+  const bool focusable_description = false;
+#endif
+
   RunTestSequence(
       InstrumentTab(kWebContentsId),
       SetNewSearchProvider(DefaultSearch::kUseDefault),
       LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
       WaitForDialogToShow(), CheckActiveUrl(GURL("about:blank")),
 
-      // Initially, nothing is focused or selected.
+      // Initially, neither option is focused or selected.
       CheckSelectedAndFocused(kFirstOption, false),
       CheckSelectedAndFocused(kSecondOption, false),
 
@@ -550,7 +616,14 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
       CheckSelected(kFirstOption, true), CheckFocused(kFirstOption, false),
       CheckSelectedAndFocused(kSecondOption, false),
 
-      // Press Tab. First radio button should focus.
+      // Press Tab. Focus should rotate back to the descriptive paragraph,
+      // if selectable.
+      focusable_description
+          ? Steps(SendKeyPress(kSettingsOverriddenDialogId, ui::VKEY_TAB),
+                  CheckFocused(kSettingsOverriddenDialogParagraphId, true))
+          : Steps(),
+
+      // Press Tab again. First radio button should focus.
       SendKeyPress(kSettingsOverriddenDialogId, ui::VKEY_TAB),
       CheckSelectedAndFocused(kFirstOption, true),
       CheckSelectedAndFocused(kSecondOption, false),
@@ -568,6 +641,84 @@ IN_PROC_BROWSER_TEST_F(SettingsOverriddenExplicitChoiceDialogInteractiveUiTest,
 
       // Finish the dialog to clean up.
       PressButton(kSaveButtonId), WaitForHide(kSettingsOverriddenDialogId));
+}
+
+class SettingsOverriddenLegacyDialogInteractiveUiTest
+    : public SettingsOverriddenDialogInteractiveUiTest {
+ protected:
+  SettingsOverriddenLegacyDialogInteractiveUiTest() {
+    feature_list_.InitAndDisableFeature(
+        extensions_features::kSearchEngineExplicitChoiceDialog);
+  }
+
+  // Waits for the legacy dialog to show.
+  auto WaitForDialogToShow() {
+    auto steps =
+        Steps(WaitForShow(kSettingsOverriddenDialogId),
+              EnsurePresent(kSaveButtonId), EnsurePresent(kKeepItButtonId));
+    AddDescriptionPrefix(steps, __func__);
+    return steps;
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// Don't bother moving HaTS logic into the base class, because this survey will
+// only live for the duration of the experimental rollout.  Keeping it separate
+// makes for easier cleanup.
+class SettingsOverriddenLegacyDialogHatsInteractiveUiTest
+    : public SettingsOverriddenLegacyDialogInteractiveUiTest {
+ protected:
+  SettingsOverriddenLegacyDialogHatsInteractiveUiTest() {
+    feature_list_.InitAndEnableFeature(
+        features::kHappinessTrackingSurveysForDesktopSEHijacking);
+  }
+
+  void OnWillCreateBrowserContextServices(
+      content::BrowserContext* context) override {
+    SettingsOverriddenDialogInteractiveUiTest::
+        OnWillCreateBrowserContextServices(context);
+    Profile* profile = Profile::FromBrowserContext(context);
+    HatsServiceFactory::GetInstance()->SetTestingFactory(
+        profile, base::BindRepeating([](content::BrowserContext* context)
+                                         -> std::unique_ptr<KeyedService> {
+          return std::make_unique<testing::NiceMock<MockHatsService>>(
+              Profile::FromBrowserContext(context));
+        }));
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// This test covers the HaTS survey launched after interacting with the
+// original (non-explicit-choice) confirmation dialog.  We how a survey in that
+// case as well, to compare user experience across the two dialogs types.
+IN_PROC_BROWSER_TEST_F(SettingsOverriddenLegacyDialogHatsInteractiveUiTest,
+                       HatsSurveyTriggered) {
+  using HatsDialog = ExtensionSettingsOverriddenDialog;
+  RunTestSequence(
+      SetNewSearchProvider(DefaultSearch::kUseDefault),
+      LoadExtensionOverridingSearch(), PerformSearchFromOmnibox(),
+      WaitForDialogToShow(), Do([this]() {
+        HatsService* hats_service = HatsServiceFactory::GetForProfile(
+            browser()->profile(), /*create_if_necessary=*/true);
+        CHECK(hats_service);
+        MockHatsService* mock_hats_service =
+            static_cast<MockHatsService*>(hats_service);
+        EXPECT_CALL(*mock_hats_service,
+                    LaunchDelayedSurvey(
+                        kHatsSurveyTriggerSEHijacking, 5000, _,
+                        testing::AllOf(
+                            // No need to check all parameters here, they are
+                            // covered in other HaTS tests.
+                            Contains(Pair(HatsDialog::kHatsPsdNewExtensionName,
+                                          "Search Override Extension")))))
+            .WillOnce(testing::Return(true));
+      }),
+      // Press "Keep it" button.
+      PressButton(kKeepItButtonId), WaitForHide(kKeepItButtonId));
 }
 
 }  // namespace

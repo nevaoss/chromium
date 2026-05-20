@@ -21,7 +21,7 @@
 #include "cc/layers/surface_layer_impl.h"
 #include "cc/test/fake_impl_task_runner_provider.h"
 #include "cc/test/fake_layer_tree_host.h"
-#include "cc/test/fake_layer_tree_host_client.h"
+#include "cc/test/fake_layer_tree_host_delegate.h"
 #include "cc/test/fake_layer_tree_host_impl.h"
 #include "cc/test/layer_tree_test.h"
 #include "cc/test/test_task_graph_runner.h"
@@ -48,8 +48,8 @@ class SurfaceLayerTest : public testing::Test {
 
   // Synchronizes |layer_tree_host_| and |host_impl_| and pushes surface ids.
   void SynchronizeTrees() {
-    std::unique_ptr<CommitState> commit_state =
-        layer_tree_host_->ActivateCommitState();
+    std::unique_ptr<CommitState> commit_state = layer_tree_host_->WillCommit(
+        /*completion_event*/ nullptr, /*has_updates*/ true);
     TreeSynchronizer::PushLayerProperties(
         *commit_state,
         const_cast<const FakeLayerTreeHost*>(layer_tree_host_.get())
@@ -79,7 +79,7 @@ class SurfaceLayerTest : public testing::Test {
     }
   }
 
-  FakeLayerTreeHostClient fake_client_;
+  FakeLayerTreeHostDelegate fake_client_;
   FakeImplTaskRunnerProvider task_runner_provider_;
   TestTaskGraphRunner task_graph_runner_;
   std::unique_ptr<AnimationHost> animation_host_;

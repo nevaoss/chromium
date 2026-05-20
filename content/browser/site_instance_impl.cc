@@ -1487,7 +1487,13 @@ void SiteInstanceImpl::LockProcessIfNeeded() {
   ProcessLock process_lock = process->GetProcessLock();
   StoragePartitionImpl* storage_partition =
       static_cast<StoragePartitionImpl*>(process->GetStoragePartition());
-  if (!has_site_) {
+  // No need to lock the process if the SiteInstance doesn't have a site. A
+  // guest SiteInstance is a special case, because it is created with an
+  // assigned SiteInfo, in order to hold some guest-specific information such as
+  // its StoragePartitionConfig (see `CreateForGuest()`). But the guest
+  // SiteInstance can still be considered unused while the SiteInfo's url is
+  // empty.
+  if (!has_site_ || (site_info_.IsGuest() && site_info_.is_empty())) {
     CHECK(!process_lock.IsLockedToSite())
         << "A process that's already locked to " << process_lock.ToString()
         << " cannot be updated to a more permissive lock";
@@ -1504,7 +1510,7 @@ void SiteInstanceImpl::LockProcessIfNeeded() {
       auto new_process_lock = ProcessLock::CreateAllowAnySite(
           storage_partition->GetConfig(), GetWebExposedIsolationInfo(),
           /*cross_origin_isolation_key=*/std::nullopt,
-          GetBrowserContext()->UniqueId());
+          GetBrowserContext()->UniqueToken());
       process->SetProcessLock(GetIsolationContext(), new_process_lock);
     } else {
       CHECK(process_lock.AllowsAnySite())
@@ -1512,6 +1518,8 @@ void SiteInstanceImpl::LockProcessIfNeeded() {
       policy->IncludeIsolationContext(process->GetDeprecatedID(),
                                       GetIsolationContext());
     }
+    TRACE_EVENT_INSTANT("navigation",
+                        "SiteInstanceImpl::LockProcessIfNeeded_not_used");
     return;
   }
 
@@ -1562,7 +1570,7 @@ void SiteInstanceImpl::LockProcessIfNeeded() {
       auto new_process_lock = ProcessLock::CreateAllowAnySite(
           storage_partition->GetConfig(), GetWebExposedIsolationInfo(),
           /*cross_origin_isolation_key=*/std::nullopt,
-          GetBrowserContext()->UniqueId());
+          GetBrowserContext()->UniqueToken());
       process->SetProcessLock(GetIsolationContext(), new_process_lock);
     } else {
       CHECK(process_lock.AllowsAnySite())
@@ -1588,6 +1596,10 @@ void SiteInstanceImpl::LockProcessIfNeeded() {
   // origin may require a lock in some isolation contexts but not in others).
   policy->IncludeIsolationContext(process->GetDeprecatedID(),
                                   GetIsolationContext());
+
+  TRACE_EVENT_INSTANT(
+      "navigation", "SiteInstanceImpl::LockProcessIfNeeded_used",
+      "locked_to_site", process->GetProcessLock().IsLockedToSite());
 }
 
 const WebExposedIsolationInfo& SiteInstanceImpl::GetWebExposedIsolationInfo()

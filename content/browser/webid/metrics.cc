@@ -289,9 +289,22 @@ void Metrics::RecordHasNonce(const std::set<GURL>& idps_with_nonce) {
 
 void Metrics::RecordHasNonceOutsideParamsOnly(
     const std::set<GURL>& idps_with_nonce_outside_params_only) {
-  if (!idps_with_nonce_outside_params_only.empty()) {
-    base::UmaHistogramBoolean("Blink.FedCm.HasNonceOutsideParamsOnly", true);
+  if (idps_with_nonce_outside_params_only.empty()) {
+    return;
   }
+  base::UmaHistogramBoolean("Blink.FedCm.HasNonceOutsideParamsOnly", true);
+  GetOrCreateFedCmBuilder()->SetHasNonceOutsideParamsOnly(true);
+  for (const GURL& idp : idps_with_nonce_outside_params_only) {
+    GetOrCreateFedCmIdpBuilder(idp)->SetHasNonceOutsideParamsOnly(true);
+  }
+}
+
+void Metrics::RecordWellKnownInvalidDueToClientMetadata(const GURL& provider) {
+  base::UmaHistogramBoolean("Blink.FedCm.WellKnownInvalidDueToClientMetadata",
+                            true);
+  GetOrCreateFedCmBuilder()->SetWellKnownInvalidDueToClientMetadata(true);
+  GetOrCreateFedCmIdpBuilder(provider)->SetWellKnownInvalidDueToClientMetadata(
+      true);
 }
 
 void Metrics::RecordRequestTokenStatus(
@@ -353,7 +366,8 @@ void Metrics::RecordRequestTokenStatus(
 
   bool is_token_request_successful =
       status == RequestIdTokenStatus::kSuccessUsingTokenInHttpResponse ||
-      status == RequestIdTokenStatus::kSuccessUsingIdentityProviderResolve;
+      status == RequestIdTokenStatus::kSuccessUsingIdentityProviderResolve ||
+      status == RequestIdTokenStatus::kSuccessUsingRedirectTo;
 
   for (const auto& provider : requested_providers) {
     ukm::builders::Blink_FedCmIdp* fedcm_idp_builder =
@@ -838,18 +852,23 @@ void RecordLifecycleStateFailureReason(LifecycleStateFailureReason reason) {
                                 reason);
 }
 
-void RecordRawAccountsSize(int size) {
+void Metrics::RecordRawAccountsSize(int size) {
   CHECK_GT(size, 0);
   base::UmaHistogramCustomCounts("Blink.FedCm.AccountsSize.Raw", size,
                                  /*min=*/1,
                                  /*exclusive_max=*/10, /*buckets=*/10);
+
+  GetOrCreateFedCmBuilder()->SetAccountsSize_Raw(
+      ukm::GetExponentialBucketMinForCounts1000(size));
 }
 
-void RecordReadyToShowAccountsSize(int size) {
+void Metrics::RecordReadyToShowAccountsSize(int size) {
   CHECK_GT(size, 0);
   base::UmaHistogramCustomCounts("Blink.FedCm.AccountsSize.ReadyToShow", size,
                                  /*min=*/1,
                                  /*exclusive_max=*/10, /*buckets=*/10);
+  GetOrCreateFedCmBuilder()->SetAccountsSize_ReadyToShow(
+      ukm::GetExponentialBucketMinForCounts1000(size));
 }
 
 void RecordAccountFieldsType(

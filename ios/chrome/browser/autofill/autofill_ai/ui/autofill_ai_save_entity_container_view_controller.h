@@ -9,16 +9,26 @@
 
 #import "ios/chrome/browser/autofill/autofill_ai/ui/autofill_ai_save_entity_consumer.h"
 
-@protocol AutofillCommands;
 @protocol AutofillAISaveEntityMutator;
+@class CrURL;
+
+// Delegate for AutofillAISaveEntityContainerViewController.
+@protocol AutofillAISaveEntityContainerViewControllerDelegate <NSObject>
+
+// Called when the user taps on a link.
+- (void)didTapLinkWithURL:(CrURL*)url;
+
+@end
 
 // Container view controller for the Autofill AI entity save and update UI.
 // Hosts a table view for entity details and a sticky bottom action button.
 @interface AutofillAISaveEntityContainerViewController
     : UIViewController <AutofillAISaveEntityConsumer>
 
-// Autofill commands handler to dismiss the dialog.
-@property(nonatomic, weak) id<AutofillCommands> autofillHandler;
+// Delegate to handle interaction events.
+@property(nonatomic, weak)
+    id<AutofillAISaveEntityContainerViewControllerDelegate>
+        delegate;
 
 // Mutator for sending user actions (save/cancel) to the mediator.
 @property(nonatomic, weak) id<AutofillAISaveEntityMutator> mutator;

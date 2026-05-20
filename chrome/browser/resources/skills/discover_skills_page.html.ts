@@ -15,15 +15,18 @@ export function getHtml(this: DiscoverSkillsPageElement) {
 ${this.shouldShowNoSearchResults_() ? html`
   <error-page error-type="${ErrorType.NO_SEARCH_RESULTS}"></error-page>
 ` : html`
-${this.topSkills_().length > 0 ? html`
-<h2 class="page-title">$i18n{topPicksTitle}</h2>
-<div class="skill-cards-container">
-  ${this.topSkills_().map(skill => html`
-    <skill-card .skill="${skill}" .cardType="${CardType.DISCOVER_SKILL_CARD}"
+${Array.from(this.topicHeaders_).map(({ categoryName, displayName }) =>
+  this.skillsByTopic_(categoryName).length > 0 ? html`
+<h2 class="page-title">${displayName}</h2>
+<skills-carousel>
+  ${this.skillsByTopic_(categoryName).map(skill => html`
+    <skill-card slot="items" .skill="${skill}"
+        .cardType="${CardType.DISCOVER_SKILL_CARD}"
         class="${skill.imageUrl ? 'skill-with-image' : ''}"
-        .saveDisabled="${this.shouldDisableSave_(skill)}">
+        .saveDisabled="${this.shouldDisableSave_(skill)}"
+        .hideTooltip="${true}">
     </skill-card>`)}
-</div>` : ''}
+</skills-carousel>` : '')}
 ${this.getOtherCategories_().length > 0 ? html`
 <h2 class="page-title" id="browseSkillsTitle">$i18n{browseSkillsTitle}</h2>
 <div id="discoverCategories">

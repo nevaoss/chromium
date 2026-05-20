@@ -15,6 +15,7 @@
 #include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
 #include "chrome/browser/permissions/permission_decision_auto_blocker_factory.h"
 #include "chrome/browser/picture_in_picture/auto_picture_in_picture_tab_observer_helper_base.h"
+#include "chrome/browser/picture_in_picture/auto_picture_in_picture_window_occlusion_helper_base.h"
 #include "chrome/browser/picture_in_picture/auto_pip_setting_helper.h"
 #include "chrome/browser/picture_in_picture/picture_in_picture_window_manager.h"
 #include "chrome/browser/profiles/profile.h"
@@ -31,11 +32,16 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/picture_in_picture/auto_pip_setting_overlay_view.h"
+#include "chrome/browser/picture_in_picture/hats/auto_picture_in_picture_hats_service.h"
+#include "chrome/browser/picture_in_picture/hats/auto_picture_in_picture_hats_service_factory.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 #include "chrome/browser/safe_browsing/safe_browsing_service.h"
 #endif
+
+using OcclusionState =
+    AutoPictureInPictureWindowOcclusionHelperBase::OcclusionState;
 
 AutoPictureInPictureTabHelper::AutoPictureInPictureTabHelper(
     content::WebContents* web_contents)
@@ -54,6 +60,17 @@ AutoPictureInPictureTabHelper::AutoPictureInPictureTabHelper(
       web_contents,
       base::BindRepeating(&AutoPictureInPictureTabHelper::OnTabActivatedChanged,
                           base::Unretained(this)));
+
+  if (base::FeatureList::IsEnabled(
+          media::kAutoPictureInPictureOnWindowOccluded)) {
+    // `base::Unretained` is safe here since we own `window_occlusion_helper_`.
+    window_occlusion_helper_ =
+        AutoPictureInPictureWindowOcclusionHelperBase::Create(
+            web_contents,
+            base::BindRepeating(
+                &AutoPictureInPictureTabHelper::OnOcclusionStateChanged,
+                base::Unretained(this)));
+  }
 
   // On non-Android platforms, we observe the internal AudioFocusManager to
   // track audio focus state. Android has a native system-wide AudioManager,
@@ -315,6 +332,14 @@ void AutoPictureInPictureTabHelper::MaybeRecordTotalPipTimeForSession() {
   total_browser_initiated_pip_time_for_session_ = std::nullopt;
 }
 
+#if !BUILDFLAG(IS_ANDROID)
+AutoPictureInPictureHatsService* AutoPictureInPictureTabHelper::GetHatsService()
+    const {
+  return AutoPictureInPictureHatsServiceFactory::GetForProfile(
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext()));
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
+
 void AutoPictureInPictureTabHelper::MediaPictureInPictureChanged(
     bool is_in_picture_in_picture) {
   if (is_in_picture_in_picture_ == is_in_picture_in_picture) {
@@ -324,9 +349,22 @@ void AutoPictureInPictureTabHelper::MediaPictureInPictureChanged(
   blocked_due_to_content_setting_ = false;
 
   if (!is_in_picture_in_picture_) {
+#if !BUILDFLAG(IS_ANDROID)
+    if (auto* hats_service = GetHatsService()) {
+      // This call will be a no-op for non-autopip windows, since the autopip
+      // HaTS service active window context (`active_window_context_`) is only
+      // set for autopip windows. Without an active window context, calling
+      // `AutoPictureInPictureWindowClosed` or `MaybeLaunchSurvey` is a no-op.
+      hats_service->AutoPictureInPictureWindowClosed();
+      if (tab_observer_helper_->IsTabActivated()) {
+        hats_service->MaybeLaunchSurvey(web_contents());
+      }
+    }
+#endif  // !BUILDFLAG(IS_ANDROID)
+
     is_in_auto_picture_in_picture_ = false;
     MaybeRecordPictureInPictureChanged(false);
-    MaybeStartOrStopObservingTabStrip();
+    MaybeStartOrStopObservers();
     auto_pip_trigger_reason_ =
         media::PictureInPictureEventsInfo::AutoPipReason::kUnknown;
     return;
@@ -336,11 +374,23 @@ void AutoPictureInPictureTabHelper::MediaPictureInPictureChanged(
     current_pip_playback_time_ = base::TimeDelta();
     is_in_auto_picture_in_picture_ = true;
     auto_picture_in_picture_activation_time_ = base::TimeTicks();
+
+#if !BUILDFLAG(IS_ANDROID)
+    if (auto* hats_service = GetHatsService()) {
+      hats_service->AutoPictureInPictureWindowOpened(
+          auto_pip_trigger_reason_, web_contents()->GetLastCommittedURL());
+    }
+#endif  // !BUILDFLAG(IS_ANDROID)
+
     MaybeRecordPictureInPictureChanged(true);
 
-    // If the tab is activated by the time auto picture-in-picture fires, we
-    // should immediately close the auto picture-in-picture.
-    if (is_tab_activated_) {
+    // If the tab is activated and unoccluded by the time auto
+    // picture-in-picture fires, we should immediately close the auto
+    // picture-in-picture.
+    if (tab_observer_helper_->IsTabActivated() &&
+        (!window_occlusion_helper_ ||
+         window_occlusion_helper_->GetOcclusionState() ==
+             OcclusionState::kVisible)) {
       MaybeExitAutoPictureInPicture();
     } else if (is_playing_) {
       // Media is playing, start the watch time timer.
@@ -358,8 +408,17 @@ void AutoPictureInPictureTabHelper::MediaSessionCreated(
 
 void AutoPictureInPictureTabHelper::OnTabActivatedChanged(
     bool is_tab_activated) {
-  is_tab_activated_ = is_tab_activated;
-  if (is_tab_activated_) {
+  // Don't enter or exit autopip if we're somehow still occluded. Note that this
+  // is an unlikely case since tab switching generally occurs on the
+  // active/topmost window but could happen if e.g. a script has closed the
+  // active tab of our window and that has caused our tab to become active.
+  if (window_occlusion_helper_ &&
+      window_occlusion_helper_->GetOcclusionState() ==
+          OcclusionState::kOccluded) {
+    return;
+  }
+
+  if (is_tab_activated) {
     OnTabBecameActive();
   } else {
     auto* active_contents = tab_observer_helper_->GetActiveWebContents();
@@ -377,6 +436,32 @@ void AutoPictureInPictureTabHelper::OnTabActivatedChanged(
 
     MaybeEnterAutoPictureInPicture();
     MaybeScheduleAsyncTasks();
+  }
+}
+
+void AutoPictureInPictureTabHelper::OnOcclusionStateChanged(
+    OcclusionState occlusion_state) {
+  // If the tab is not the active tab in its window, then the window becoming
+  // occluded or unoccluded shouldn't trigger anything.
+  if (!tab_observer_helper_->IsTabActivated()) {
+    return;
+  }
+
+  switch (occlusion_state) {
+    case OcclusionState::kOccluded:
+      if (!is_in_picture_in_picture_) {
+        MaybeEnterAutoPictureInPicture();
+        MaybeScheduleAsyncTasks();
+      }
+      break;
+    case OcclusionState::kVisible:
+      MaybeExitAutoPictureInPicture();
+      break;
+    case OcclusionState::kHidden:
+      // Don't make any changes for a hidden state. If we're already in autopip
+      // then leave it open, and if we're not already in autopip then leave it
+      // closed.
+      break;
   }
 }
 
@@ -468,7 +553,7 @@ void AutoPictureInPictureTabHelper::MediaSessionActionsChanged(
       pscs->OnRegisteredForAutoPictureInPictureChanged();
     }
   }
-  MaybeStartOrStopObservingTabStrip();
+  MaybeStartOrStopObservers();
 }
 
 void AutoPictureInPictureTabHelper::MaybeEnterAutoPictureInPicture() {
@@ -556,12 +641,20 @@ void AutoPictureInPictureTabHelper::MaybeExitAutoPictureInPicture() {
   PictureInPictureWindowManager::GetInstance()->ExitPictureInPicture();
 }
 
-void AutoPictureInPictureTabHelper::MaybeStartOrStopObservingTabStrip() {
+void AutoPictureInPictureTabHelper::MaybeStartOrStopObservers() {
   if (is_enter_auto_picture_in_picture_available_ ||
       is_in_auto_picture_in_picture_) {
     tab_observer_helper_->StartObserving();
+
+    if (window_occlusion_helper_) {
+      window_occlusion_helper_->StartObserving();
+    }
   } else {
     tab_observer_helper_->StopObserving();
+
+    if (window_occlusion_helper_) {
+      window_occlusion_helper_->StopObserving();
+    }
   }
 }
 
@@ -899,7 +992,7 @@ void AutoPictureInPictureTabHelper::OnPictureInPictureDismissed() {
   // We only count dismissals if the tab is not active, to avoid counting cases
   // where the PiP window is automatically closed when switching back to the
   // tab.
-  if (!is_tab_activated_ && auto_blocker_) {
+  if (!tab_observer_helper_->IsTabActivated() && auto_blocker_) {
     // Set `dismissed_prompt_was_quiet` to false for now as the dismissal count
     // threshold is only 1(vs 3) for quiet UI permission prompts, which might be
     // too stringent for auto-pip.
@@ -963,6 +1056,16 @@ void AutoPictureInPictureTabHelper::OnTabBecameActive() {
   // As a result, the outgoing tab notifies the incoming tab unconditionally, so
   // that the incoming tab has the opportunity to close pip.
   MaybeExitAutoPictureInPicture();
+
+#if !BUILDFLAG(IS_ANDROID)
+  // This call will be a no-op for non-autopip windows, since the autopip HaTS
+  // service active window context (`active_window_context_`) is only set for
+  // autopip windows. Without an active window context, calling
+  // `MaybeLaunchSurvey` is a no-op.
+  if (auto* hats_service = GetHatsService()) {
+    hats_service->MaybeLaunchSurvey(web_contents());
+  }
+#endif  // !BUILDFLAG(IS_ANDROID)
 }
 
 WEB_CONTENTS_USER_DATA_KEY_IMPL(AutoPictureInPictureTabHelper);

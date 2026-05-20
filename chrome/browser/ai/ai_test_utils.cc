@@ -8,7 +8,12 @@
 #include <utility>
 
 #include "chrome/browser/ai/ai_manager.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
+#include "components/optimization_guide/core/optimization_guide_features.h"
+#include "components/optimization_guide/core/optimization_guide_switches.h"
+#include "components/policy/core/common/policy_pref_names.h"
+#include "components/prefs/pref_service.h"
 #include "content/public/test/navigation_simulator.h"
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom.h"
 
@@ -125,6 +130,42 @@ void AITestUtils::AITestBase::SetupNullOptimizationGuideKeyedService() {
       std::make_unique<AIManager>(main_rfh()->GetBrowserContext(), main_rfh());
 }
 
+AITestUtils::AITestManifestBase::AITestManifestBase() = default;
+AITestUtils::AITestManifestBase::~AITestManifestBase() = default;
+
+void AITestUtils::AITestManifestBase::SetupManifest() {}
+
+void AITestUtils::AITestManifestBase::SetupMockOptimizationGuideKeyedService() {
+  mock_optimization_guide_keyed_service_ =
+      static_cast<MockOptimizationGuideKeyedService*>(
+          OptimizationGuideKeyedServiceFactory::GetInstance()
+              ->SetTestingFactoryAndUse(
+                  profile(),
+                  base::BindRepeating([](content::BrowserContext* context)
+                                          -> std::unique_ptr<KeyedService> {
+                    return std::make_unique<
+                        testing::NiceMock<MockOptimizationGuideKeyedService>>();
+                  })));
+  ON_CALL(*mock_optimization_guide_keyed_service_, CreateModelBrokerClient())
+      .WillByDefault([&]() {
+        if (!fake_manifest_broker_) {
+          fake_manifest_broker_ =
+              std::make_unique<optimization_guide::FakeManifestBroker>();
+
+          SetupManifest();
+
+          fake_manifest_broker_->Startup();
+        }
+        return std::make_unique<optimization_guide::ModelBrokerClient>(
+            fake_manifest_broker_->state().BindAndPassRemoteBroker(), nullptr);
+      });
+}
+
+void AITestUtils::AITestManifestBase::TearDown() {
+  fake_manifest_broker_.reset();
+  AITestBase::TearDown();
+}
+
 blink::mojom::AIManager* AITestUtils::AITestBase::GetAIManagerInterface() {
   return ai_manager_.get();
 }
@@ -153,6 +194,25 @@ void AITestUtils::AITestBase::DisablePolicy(
   ai_manager_ = std::make_unique<AIManager>(
       navigation->GetFinalRenderFrameHost()->GetBrowserContext(),
       navigation->GetFinalRenderFrameHost());
+}
+
+void AITestUtils::AITestBase::SetBuiltInAIAPIsEnterprisePolicy(bool allowed) {
+  profile()->GetPrefs()->SetBoolean(policy::policy_prefs::kBuiltInAIAPIsEnabled,
+                                    allowed);
+}
+
+void AITestUtils::AITestBase::SetGenAILocalEnterprisePolicy(bool allowed) {
+  g_browser_process->local_state()->SetInteger(
+      optimization_guide::model_execution::prefs::localstate::
+          kGenAILocalFoundationalModelEnterprisePolicySettings,
+      allowed ? 0 : 1);
+}
+
+void AITestUtils::AITestBase::SetOnDeviceAiUserSetting(bool allowed) {
+  g_browser_process->local_state()->SetBoolean(
+      optimization_guide::model_execution::prefs::localstate::
+          kOnDeviceAiUserSettingsEnabled,
+      allowed);
 }
 
 // static

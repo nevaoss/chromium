@@ -9,7 +9,7 @@
 
 #include "base/functional/callback.h"
 #include "base/time/time.h"
-#include "cc/trees/layer_tree_host_client.h"
+#include "cc/trees/layer_tree_host_delegate.h"
 #include "cc/trees/paint_holding_reason.h"
 
 namespace cc {
@@ -45,10 +45,6 @@ class LayerTreeViewDelegate {
       cc::PaintHoldingReason reason,
       std::optional<cc::PaintHoldingCommitTrigger> trigger) = 0;
   virtual void OnCommitRequested() = 0;
-
-  // Notifies that the main thread is ready to commit and is about to post
-  // the commit task to the impl thread.
-  virtual void WillBeginImplCommit() = 0;
 
   // Notifies that the layer tree host has completed a call to
   // RequestMainFrameUpdate in response to a BeginMainFrame.

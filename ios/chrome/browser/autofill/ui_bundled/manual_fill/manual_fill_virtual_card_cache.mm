@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #import "ios/chrome/browser/autofill/ui_bundled/manual_fill/manual_fill_virtual_card_cache.h"
 
+#import "base/check.h"
 #import "ios/web/public/navigation/navigation_context.h"
 
 ManualFillVirtualCardCache::ManualFillVirtualCardCache(
@@ -13,17 +14,31 @@ ManualFillVirtualCardCache::ManualFillVirtualCardCache(
 ManualFillVirtualCardCache::~ManualFillVirtualCardCache() = default;
 
 void ManualFillVirtualCardCache::CacheUnmaskedCard(
-    const autofill::CreditCard& card) {
-  guid_to_unmasked_card_map_[card.guid()] = card;
+    const autofill::CreditCard& card,
+    const url::Origin& origin) {
+  server_id_to_unmasked_card_map_[card.server_id()] = {card, origin};
 }
 
 const autofill::CreditCard* ManualFillVirtualCardCache::GetUnmaskedCard(
-    const std::string& guid) const {
-  auto it = guid_to_unmasked_card_map_.find(guid);
-  if (it != guid_to_unmasked_card_map_.end()) {
-    return &it->second;
+    const std::string& server_id,
+    const url::Origin& current_origin) const {
+  auto it = server_id_to_unmasked_card_map_.find(server_id);
+  if (it != server_id_to_unmasked_card_map_.end() &&
+      it->second.origin.IsSameOriginWith(current_origin)) {
+    return &it->second.card;
   }
   return nullptr;
+}
+
+void ManualFillVirtualCardCache::SetUnmaskingOrigin(const url::Origin& origin) {
+  CHECK(!unmasking_origin_.has_value());
+  unmasking_origin_ = origin;
+}
+
+url::Origin ManualFillVirtualCardCache::GetUnmaskingOrigin() {
+  url::Origin origin = unmasking_origin_.value_or(url::Origin());
+  unmasking_origin_.reset();
+  return origin;
 }
 
 void ManualFillVirtualCardCache::DidFinishNavigation(
@@ -31,7 +46,8 @@ void ManualFillVirtualCardCache::DidFinishNavigation(
     web::NavigationContext* navigation_context) {
   // Clear the sensitive cache whenever the user navigates to a new document.
   if (!navigation_context->IsSameDocument()) {
-    guid_to_unmasked_card_map_.clear();
+    server_id_to_unmasked_card_map_.clear();
+    unmasking_origin_.reset();
   }
 }
 

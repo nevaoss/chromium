@@ -19,6 +19,10 @@
 class AnnotatedPageContentCapturer;
 class ModelQualityLogsUploader;
 
+namespace password_manager {
+class PasswordManagerClient;
+}
+
 namespace content {
 class WebContents;
 }
@@ -64,6 +68,7 @@ class PasswordChangeSubmissionVerifier {
 
   PasswordChangeSubmissionVerifier(
       content::WebContents* web_contents,
+      password_manager::PasswordManagerClient* client,
       ModelQualityLogsUploader* logs_uploader,
       FormSubmissionVerificationResultCallback callback);
   ~PasswordChangeSubmissionVerifier();
@@ -85,6 +90,7 @@ class PasswordChangeSubmissionVerifier {
 
   const base::Time creation_time_;
   const raw_ptr<content::WebContents> web_contents_;
+  const raw_ptr<password_manager::PasswordManagerClient> client_;
   std::unique_ptr<AnnotatedPageContentCapturer> capturer_;
   raw_ptr<ModelQualityLogsUploader> logs_uploader_ = nullptr;
   FormSubmissionVerificationResultCallback callback_;

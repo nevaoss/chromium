@@ -16,7 +16,7 @@ class OmniboxPopupTest : public WebUIMochaBrowserTest {
   OmniboxPopupTest() {
     set_test_loader_host(chrome::kChromeUIOmniboxPopupHost);
     scoped_feature_list_.InitWithFeatures(
-        {omnibox::kWebUIOmniboxPopup},
+        {omnibox::internal::kWebUIOmniboxPopup},
         {omnibox::kWebUIOmniboxFullPopup, omnibox::kAimUsePecApi});
   }
 
@@ -56,4 +56,8 @@ class OmniboxPopupAimTest : public WebUIMochaBrowserTest {
 
 IN_PROC_BROWSER_TEST_F(OmniboxPopupAimTest, App) {
   RunTest("omnibox_popup/aim_app_test.js", "mocha.run();");
+}
+
+IN_PROC_BROWSER_TEST_F(OmniboxPopupAimTest, Composebox) {
+  RunTest("omnibox_popup/omnibox_composebox_test.js", "mocha.run();");
 }

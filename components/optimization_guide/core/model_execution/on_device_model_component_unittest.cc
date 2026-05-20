@@ -209,6 +209,8 @@ TEST_F(OnDeviceModelComponentTest, AlreadyInstalledFlow) {
       "OptimizationGuide.ModelExecution."
       "OnDeviceModelInstalledAtRegistrationTime",
       true, 1);
+  histograms_.ExpectTotalCount(
+      "OptimizationGuide.OnDeviceModel.NewModelInstalled", 0);
 }
 
 TEST_F(OnDeviceModelComponentTest, NotYetInstalledFlow) {
@@ -409,6 +411,26 @@ TEST_F(OnDeviceModelComponentTest, UninstallNeeded) {
   ASSERT_FALSE(WaitForUnexpectedInstallerRegistered());
 }
 
+TEST_F(OnDeviceModelComponentTest, BackgroundDownloadPreventsRetentionUninstall) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kOnDeviceModelBackgroundDownload);
+
+  // This pref records that the model was eligible for download previously,
+  // and hasn't been cleaned up yet.
+  broker_.local_state().SetTime(kLastTimeEligibleForOnDeviceModelDownload,
+                                base::Time::Now() - base::Minutes(1) -
+                                    features::GetOnDeviceModelRetentionTime());
+  broker_.local_state().ClearPref(kLastUsageByFeature);
+
+  // Should NOT uninstall because background download is enabled.
+  DoStartup();
+  EnsurePerformanceClassAvailable();
+
+  task_environment_.RunUntilIdle();
+  EXPECT_FALSE(broker_.component_state().uninstall_called());
+  EXPECT_TRUE(broker_.component_state().installer_registered());
+}
+
 TEST_F(OnDeviceModelComponentTest, UninstallNeededDueToDiskSpace) {
   broker_.local_state().SetTime(kLastTimeEligibleForOnDeviceModelDownload,
                                 base::Time::Now());
@@ -422,6 +444,12 @@ TEST_F(OnDeviceModelComponentTest, UninstallNeededDueToDiskSpace) {
   EnsurePerformanceClassAvailable();
   EXPECT_TRUE(base::test::RunUntil(
       [&] { return broker_.component_state().uninstall_called(); }));
+
+  histograms_.ExpectUniqueSample(
+      "OptimizationGuide.ModelExecution.OnDeviceModelUninstallReason.Unknown",
+      OnDeviceModelComponentStateManager::RegistrationCriteria::
+          UninstallReason::kInsufficientDisk,
+      1);
 }
 
 TEST_F(OnDeviceModelComponentTest, KeepInstalledWhileNotEligible) {
@@ -555,6 +583,9 @@ TEST_F(OnDeviceModelComponentTest, SetReady) {
 
   histograms_.ExpectTotalCount("OptimizationGuide.OnDeviceModel.InstalledModel",
                                1);
+  histograms_.ExpectUniqueSample(
+      "OptimizationGuide.OnDeviceModel.NewModelInstalled",
+      0 /*BaseModel::kUnknown*/, 1);
   EXPECT_FALSE(state->GetInstallDirectory().empty());
   EXPECT_EQ(state->GetComponentVersion(), base::Version("0.0.1"));
 

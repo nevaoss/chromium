@@ -19,7 +19,7 @@
 #include "cc/input/browser_controls_state.h"
 #include "cc/paint/draw_image.h"
 #include "cc/scheduler/scheduler.h"
-#include "cc/trees/layer_tree_host_impl_client.h"
+#include "cc/trees/layer_tree_host_impl_delegate.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 
 class GURL;
@@ -36,7 +36,7 @@ struct CommitTimestamps;
 struct BrowserControlsOffsetTagModifications;
 class LayerTreeFrameSink;
 class LayerTreeHost;
-class LayerTreeHostImpl;
+class ClientLayerTreeHostImpl;
 class LayerTreeMutator;
 class LayerTreeSettings;
 class PaintWorkletLayerPainter;
@@ -50,7 +50,7 @@ struct ThreadUnsafeCommitState;
 // This class aggregates all the interactions that the main side of the
 // compositor needs to have with the impl side.
 // The class is created and lives on the impl thread.
-class CC_EXPORT ProxyImpl : public LayerTreeHostImplClient,
+class CC_EXPORT ProxyImpl : public LayerTreeHostImplDelegate,
                             public SchedulerClient {
  public:
   ProxyImpl(base::WeakPtr<ProxyMain> proxy_main_weak_ptr,
@@ -76,7 +76,8 @@ class CC_EXPORT ProxyImpl : public LayerTreeHostImplClient,
   void InitializePaintWorkletLayerPainterOnImpl(
       std::unique_ptr<PaintWorkletLayerPainter> painter);
   void SetDeferBeginMainFrameFromMain(bool defer_begin_main_frame);
-  void SetPauseRendering(bool pause_rendering);
+  void SetPauseRendering(bool pause_rendering,
+                         bool delay_until_visibility_change);
   void SetNeedsRedrawOnImpl(const gfx::Rect& damage_rect);
   void SetNeedsCommitOnImpl(bool urgent);
   void SetTargetLocalSurfaceIdOnImpl(
@@ -121,7 +122,7 @@ class CC_EXPORT ProxyImpl : public LayerTreeHostImplClient,
   void NotifyNewLocalSurfaceIdExpectedWhilePaused();
 
  private:
-  // LayerTreeHostImplClient implementation
+  // LayerTreeHostImplDelegate implementation
   void DidLoseLayerTreeFrameSinkOnImplThread() override;
   void SetBeginFrameSource(viz::BeginFrameSource* source) override;
   void DidReceiveCompositorFrameAckOnImplThread() override;
@@ -243,7 +244,7 @@ class CC_EXPORT ProxyImpl : public LayerTreeHostImplClient,
 
   DelayedUniqueNotifier smoothness_priority_expiration_notifier_;
 
-  std::unique_ptr<LayerTreeHostImpl> host_impl_;
+  std::unique_ptr<ClientLayerTreeHostImpl> host_impl_;
 
   // Used to post tasks to ProxyMain on the main thread.
   base::WeakPtr<ProxyMain> proxy_main_weak_ptr_;
@@ -255,6 +256,7 @@ class CC_EXPORT ProxyImpl : public LayerTreeHostImplClient,
   // Either thread can request deferring BeginMainFrame; keep track of both.
   bool main_wants_defer_begin_main_frame_ = false;
   bool impl_wants_defer_begin_main_frame_ = false;
+  bool pause_rendering_until_visibility_change_ = false;
 };
 
 }  // namespace cc

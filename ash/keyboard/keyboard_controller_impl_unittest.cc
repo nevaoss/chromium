@@ -25,10 +25,13 @@
 #include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/task_environment.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/aura/window.h"
+#include "ui/display/display.h"
 #include "ui/display/manager/display_manager.h"
+#include "ui/display/screen.h"
 #include "ui/display/test/display_manager_test_api.h"
 #include "ui/wm/core/window_util.h"
 
@@ -176,8 +179,10 @@ class KeyboardControllerImplTest : public AshTestBase {
 
   void CreateFocusedTestWindowInRootWindow(aura::Window* root_window) {
     // Owned by |root_window|.
-    aura::Window* focusable_window = CreateTestWindowInShell(
-        {.bounds = root_window->GetBoundsInScreen(), .window_id = 0});
+    aura::Window* focusable_window =
+        CreateTestWindowInShell(
+            {.bounds = root_window->GetBoundsInScreen(), .window_id = 0})
+            .release();
     focusable_window->Focus();
   }
 
@@ -640,6 +645,70 @@ TEST_F(
       keyboard_controller()->GetContainerForDefaultDisplay()->GetRootWindow());
 }
 
+// This test tests the GetContainerForDefaultDisplay function under tablet mode
+// with an external primary display. When a device enters tablet mode, mirror
+// mode is activated by default. In this case we want KeyboardController to find
+// to the mirroring source display, which would be the Primary display by
+// default despite not having touch capability. See crbug.com/494034448 for
+// details and relevant crashes.
+TEST_F(KeyboardControllerImplTest,
+       DefaultContainerIsPrimaryDisplayInTabletModeAndMirrored) {
+  UpdateDisplay("600x500,600x500");
+
+  // Make primary display touchable.
+  display::test::DisplayManagerTestApi(Shell::Get()->display_manager())
+      .SetTouchSupport(GetPrimaryDisplay().id(),
+                       display::Display::TouchSupport::AVAILABLE);
+
+  EXPECT_EQ(display::Display::TouchSupport::AVAILABLE,
+            GetPrimaryDisplay().touch_support());
+  EXPECT_NE(display::Display::TouchSupport::AVAILABLE,
+            GetSecondaryDisplay().touch_support());
+
+  const display::Display first_display = GetPrimaryDisplay();
+  const display::Display second_display = GetSecondaryDisplay();
+
+  // Enter Tablet Mode:
+  TabletModeControllerTestApi().EnterTabletMode();
+
+  ASSERT_TRUE(base::test::RunUntil(
+      [&] { return display_manager()->IsInMirrorMode(); }));
+  EXPECT_TRUE(display::Screen::Get()->InTabletMode());
+
+  // By default first display is primary, so it is the default display.
+  EXPECT_EQ(
+      GetPrimaryRootWindow(),
+      keyboard_controller()->GetContainerForDefaultDisplay()->GetRootWindow());
+
+  // Exit Tablet Mode:
+  TabletModeControllerTestApi().LeaveTabletMode();
+
+  ASSERT_TRUE(base::test::RunUntil(
+      [&] { return !display_manager()->IsInMirrorMode(); }));
+  EXPECT_FALSE(display::Screen::Get()->InTabletMode());
+
+  // Make the second display primary.
+  Shell::Get()->window_tree_host_manager()->SetPrimaryDisplayId(
+      second_display.id());
+
+  // Enter tablet mode and mirror mode:
+  TabletModeControllerTestApi().EnterTabletMode();
+
+  ASSERT_TRUE(base::test::RunUntil(
+      [&] { return display_manager()->IsInMirrorMode(); }));
+  EXPECT_TRUE(display::Screen::Get()->InTabletMode());
+
+  EXPECT_EQ(second_display.id(), GetPrimaryDisplay().id());
+  EXPECT_EQ(
+      GetPrimaryRootWindow(),
+      keyboard_controller()->GetContainerForDefaultDisplay()->GetRootWindow());
+
+  // Exit Tablet Mode:
+  Shell::Get()->tablet_mode_controller()->SetEnabledForTest(false);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&] { return !display_manager()->IsInMirrorMode(); }));
+}
+
 // Test for http://crbug.com/303429. |GetContainerForDefaultDisplay| should
 // move keyborad to first touchable display when there is one.
 TEST_F(KeyboardControllerImplTest,
@@ -691,7 +760,7 @@ TEST_F(KeyboardControllerImplTest, SwipeUpToShowHotSeat) {
   TabletModeControllerTestApi().EnterTabletMode();
 
   std::unique_ptr<aura::Window> window =
-      CreateTestWindow(gfx::Rect(0, 0, 400, 400));
+      CreateWindowWithAppType(chromeos::AppType::NON_APP, {400, 400});
   wm::ActivateWindow(window.get());
 
   keyboard_controller()->SetEnableFlag(KeyboardEnableFlag::kExtensionEnabled);
@@ -717,7 +786,7 @@ TEST_F(KeyboardControllerImplTest, FlingUpToShowOverviewMode) {
   TabletModeControllerTestApi().EnterTabletMode();
 
   std::unique_ptr<aura::Window> window =
-      CreateTestWindow(gfx::Rect(0, 0, 400, 400));
+      CreateWindowWithAppType(chromeos::AppType::NON_APP, {400, 400});
   wm::ActivateWindow(window.get());
 
   keyboard_controller()->SetEnableFlag(KeyboardEnableFlag::kExtensionEnabled);
@@ -746,7 +815,7 @@ TEST_F(KeyboardControllerImplTest, FlingUpToShowOverviewMode) {
 
 TEST_F(KeyboardControllerImplTest, SwipeUpDoesntHideKeyboardInClamshellMode) {
   std::unique_ptr<aura::Window> window =
-      CreateTestWindow(gfx::Rect(0, 0, 400, 400));
+      CreateWindowWithAppType(chromeos::AppType::NON_APP, {400, 400});
   wm::ActivateWindow(window.get());
 
   keyboard_controller()->SetEnableFlag(KeyboardEnableFlag::kExtensionEnabled);

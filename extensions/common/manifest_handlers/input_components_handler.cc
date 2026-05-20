@@ -37,7 +37,7 @@ InputComponents::~InputComponents() = default;
 // static
 const std::vector<InputComponentInfo>* InputComponents::GetInputComponents(
     const Extension* extension) {
-  InputComponents* info = static_cast<InputComponents*>(
+  const InputComponents* info = static_cast<const InputComponents*>(
       extension->GetManifestData(keys::kInputComponents));
   return info ? &info->input_components : nullptr;
 }
@@ -100,13 +100,19 @@ bool InputComponentsHandler::Parse(Extension* extension,
     if (layouts_value) {
       for (size_t j = 0; j < layouts_value->size(); ++j) {
         const base::Value& layout = (*layouts_value)[j];
-        if (!layout.is_string()) {
+        const std::string* layout_str = layout.GetIfString();
+        if (!layout_str ||
+            !base::ContainsOnlyChars(*layout_str,
+                                     "abcdefghijklmnopqrstuvwxyz"
+                                     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                     "0123456789"
+                                     "_()-:")) {
           *error = ErrorUtils::FormatErrorMessageUTF16(
               errors::kInvalidInputComponentLayoutName, base::NumberToString(i),
               base::NumberToString(j));
           return false;
         }
-        layouts.insert(layout.GetString());
+        layouts.insert(*layout_str);
       }
     }
 

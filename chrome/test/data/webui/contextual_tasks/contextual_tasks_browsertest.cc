@@ -26,14 +26,23 @@ class ContextualTasksBrowserTest : public WebUIMochaBrowserTest {
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-// TODO(crbug.com/487147580): Flaky on multiple platforms.
-IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, DISABLED_App) {
+// TODO(crbug.com/487147580): Re-enable the test
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_App DISABLED_App
+#else
+#define MAYBE_App App
+#endif
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, MAYBE_App) {
   RunTest("contextual_tasks/app_test.js", "mocha.run();");
 }
 
 #if !BUILDFLAG(IS_ANDROID)
-// TODO(crbug.com/480689282): Flaky on Linux debug.
-#if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, App_Composebox_BasicMode) {
+  RunTest("contextual_tasks/app_composebox_basic_mode_test.js", "mocha.run();");
+}
+
+// TODO(crbug.com/487147580): Re-enable the test
+#if BUILDFLAG(IS_LINUX)
 #define MAYBE_Composebox DISABLED_Composebox
 #else
 #define MAYBE_Composebox Composebox
@@ -42,25 +51,38 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, MAYBE_Composebox) {
   RunTest("contextual_tasks/composebox_test.js", "mocha.run();");
 }
 
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Composebox_Files) {
+  RunTest("contextual_tasks/composebox_files_test.js", "mocha.run();");
+}
+
 // TODO(crbug.com/480689282): Flaky on ChromeOS debug.
-#if BUILDFLAG(IS_CHROMEOS) && !defined(NDEBUG)
-#define MAYBE_Composebox_MiscInputs DISABLED_Composebox_MiscInputs
-#else
-#define MAYBE_Composebox_MiscInputs Composebox_MiscInputs
-#endif
+// TODO(crbug.com/487147580): Re-enable on Linux.
+// TODO(crbug.com/490250939): Flaky elsewhere as well.
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
-                       MAYBE_Composebox_MiscInputs) {
+                       DISABLED_Composebox_MiscInputs) {
   RunTest("contextual_tasks/composebox_misc_inputs_test.js", "mocha.run();");
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Composebox_Submit) {
+// TODO(crbug.com/487147580): Re-enable the test
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_Composebox_Submit DISABLED_Composebox_Submit
+#else
+#define MAYBE_Composebox_Submit Composebox_Submit
+#endif
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, MAYBE_Composebox_Submit) {
   RunTest("contextual_tasks/composebox_submit_test.js", "mocha.run();");
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, Composebox_ZeroState) {
+// TODO(crbug.com/480689282): Flaky on Linux debug.
+#if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
+#define MAYBE_Composebox_ZeroState DISABLED_Composebox_ZeroState
+#else
+#define MAYBE_Composebox_ZeroState Composebox_ZeroState
+#endif
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, MAYBE_Composebox_ZeroState) {
   RunTest("contextual_tasks/composebox_zero_state_test.js", "mocha.run();");
 }
-#endif
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, PostMessageHandler) {
   RunTest("contextual_tasks/post_message_handler_test.js", "mocha.run();");
@@ -68,6 +90,10 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, PostMessageHandler) {
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, TopToolbarTest) {
   RunTest("contextual_tasks/top_toolbar_test.js", "mocha.run();");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, OverflowMenu) {
+  RunTest("contextual_tasks/overflow_menu_test.js", "mocha.run();");
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, WebView) {

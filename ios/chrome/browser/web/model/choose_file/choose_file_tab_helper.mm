@@ -8,11 +8,13 @@
 #import <WebKit/WebKit.h>
 
 #import "base/apple/foundation_util.h"
+#import "base/check_deref.h"
 #import "base/feature_list.h"
 #import "base/files/file_util.h"
 #import "base/memory/raw_ptr.h"
 #import "base/metrics/histogram_functions.h"
 #import "base/task/thread_pool.h"
+#import "base/time/time.h"
 #import "ios/chrome/browser/shared/public/commands/file_upload_panel_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/web/model/choose_file/choose_file_controller_impl.h"
@@ -23,11 +25,14 @@
 #import "ios/web/public/web_state.h"
 
 ChooseFileTabHelper::ChooseFileTabHelper(web::WebState* web_state)
-    : file_urls_ready_for_selection_([NSMutableDictionary dictionary]) {
+    : file_urls_ready_for_selection_([NSMutableDictionary dictionary]),
+      web_state_(CHECK_DEREF(web_state)) {
   observation_.Observe(web_state);
 }
 
-ChooseFileTabHelper::~ChooseFileTabHelper() = default;
+ChooseFileTabHelper::~ChooseFileTabHelper() {
+  web_state_->SetCustomOpenPanelSupported(false);
+}
 
 void ChooseFileTabHelper::StartChoosingFiles(
     std::unique_ptr<ChooseFileController> controller) {
@@ -97,11 +102,21 @@ void ChooseFileTabHelper::RunOpenPanel(
       ResetLastChooseFileEvent();
   base::UmaHistogramBoolean("IOS.Web.FileInput.EventMatched",
                             last_choose_file_event.has_value());
+
+  LastTapLocationTabHelper* last_tap_helper =
+      LastTapLocationTabHelper::FromWebState(web_state);
+  CHECK(last_tap_helper);
+  const CGPoint last_tap_point = last_tap_helper->GetLastTapPoint();
+  const BOOL last_tap_is_recent =
+      (base::TimeTicks::Now() - last_tap_helper->GetLastTapTime() <
+       base::Seconds(1));
+  const BOOL voiceover_is_active = UIAccessibilityIsVoiceOverRunning();
+
   if (last_choose_file_event.has_value()) {
-    if (CGPointEqualToPoint(last_choose_file_event->screen_location,
+    if ((last_tap_is_recent && !voiceover_is_active) ||
+        CGPointEqualToPoint(last_choose_file_event->screen_location,
                             CGPointZero)) {
-      last_choose_file_event->screen_location =
-          LastTapLocationTabHelper::FromWebState(web_state)->GetLastTapPoint();
+      last_choose_file_event->screen_location = last_tap_point;
     }
     if (!!last_choose_file_event->allow_multiple_files !=
         !!parameters.allowsMultipleSelection) {

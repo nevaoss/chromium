@@ -8,12 +8,14 @@
 #include <memory>
 #include <string>
 
+#import "base/gtest_prod_util.h"
 #import "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "components/dom_distiller/ios/distiller_page_ios.h"
 #include "url/gurl.h"
 
 class ProfileIOS;
+@class WindowedContainerView;
 
 namespace reading_list {
 
@@ -72,6 +74,10 @@ class ReadingListDistillerPage : public dom_distiller::DistillerPageIOS {
       web::PageLoadCompletionStatus load_completion_status) override;
 
  private:
+  FRIEND_TEST_ALL_PREFIXES(ReadingListDistillerPageTest, IsGoogleCachedAMPPage);
+  FRIEND_TEST_ALL_PREFIXES(ReadingListDistillerPageTest,
+                           OnHandleGoogleCachedAMPPageResult);
+
   // Returns whether there is the loading has no error and if the distillation
   // can continue.
   bool IsLoadingSuccess(web::PageLoadCompletionStatus load_completion_status);
@@ -117,6 +123,7 @@ class ReadingListDistillerPage : public dom_distiller::DistillerPageIOS {
   raw_ptr<FaviconWebStateDispatcher> web_state_dispatcher_;
   raw_ptr<ReadingListDistillerPageDelegate> delegate_;
   int delayed_task_id_;
+  WindowedContainerView* windowed_container_;
   base::WeakPtrFactory<ReadingListDistillerPage> weak_ptr_factory_;
 };
 

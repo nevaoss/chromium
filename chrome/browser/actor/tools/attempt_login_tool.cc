@@ -10,7 +10,6 @@
 #include "base/functional/callback_helpers.h"
 #include "base/notimplemented.h"
 #include "base/strings/utf_string_conversions.h"
-#include "chrome/browser/actor/actor_features.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/tools/click_tool_request.h"
 #include "chrome/browser/actor/tools/observation_delay_controller.h"
@@ -22,7 +21,10 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/actor.mojom-shared.h"
 #include "chrome/common/actor/action_result.h"
+#include "chrome/common/actor/journal_details_builder.h"
 #include "chrome/common/actor_webui.mojom.h"
+#include "components/actor/core/actor_features.h"
+#include "components/actor/public/mojom/actor_types.mojom.h"
 #include "components/favicon/core/favicon_service.h"
 #include "components/password_manager/core/browser/actor_login/actor_login_types.h"
 #include "components/password_manager/core/browser/features/password_features.h"
@@ -59,6 +61,10 @@ mojom::ActionResultCode LoginErrorToActorError(
     case actor_login::ActorLoginError::kFeatureDisabled:
       return mojom::ActionResultCode::kLoginFeatureDisabled;
   }
+}
+
+std::string MaybeTargetDebugString(const std::optional<PageTarget>& target) {
+  return target ? DebugString(*target) : "null";
 }
 
 }  // namespace
@@ -108,6 +114,8 @@ mojom::ActionResultCode AttemptLoginTool::LoginResultToActorResult(
     case actor_login::LoginStatusResult::kRequiresButtonClick:
       // TODO(crbug.com/479505793): Consider adding a more specific error code.
       return mojom::ActionResultCode::kArgumentsInvalid;
+    case actor_login::LoginStatusResult::kErrorPageChangedDuringFilling:
+      return mojom::ActionResultCode::kLoginPasswordFillingPageChanged;
   }
 }
 
@@ -140,16 +148,12 @@ AttemptLoginTool::~AttemptLoginTool() {
   OptimizationGuideKeyedService* opt_guide_service =
       OptimizationGuideKeyedServiceFactory::GetForProfile(profile);
 
-  // Disable MQLS upload if FedCM support or Password Checkup is enabled
-  // while prototyping to avoid uploading incorrect logs.
-  // TODO(crbug.com/480920277): Remove this check once the prototyping is
-  // complete for FedCM.
+  // Disable MQLS upload if Password Checkup is enabled while prototyping to
+  // avoid uploading incorrect logs.
   // TODO(crbug.com/485620841): Remove this check once the prototyping is
   // complete for Automated Password Change.
-  bool prototype_features_enabled =
-      base::FeatureList::IsEnabled(features::kFedCmEmbedderInitiatedLogin) ||
-      base::FeatureList::IsEnabled(
-          password_manager::features::kPasswordCheckupPrototype);
+  bool prototype_features_enabled = base::FeatureList::IsEnabled(
+      password_manager::features::kPasswordCheckupPrototype);
 
   if (opt_guide_service &&
       base::FeatureList::IsEnabled(
@@ -183,6 +187,14 @@ void AttemptLoginTool::Invoke(ToolCallback callback) {
   main_rfh_token_ = main_rfh->GetGlobalFrameToken();
 
   invoke_callback_ = std::move(callback);
+
+  journal().Log(
+      JournalURL(), task_id(), "LoginTargets",
+      JournalDetailsBuilder()
+          .Add("password_button", MaybeTargetDebugString(password_button_))
+          .Add("sign_in_with_google_button",
+               MaybeTargetDebugString(sign_in_with_google_button_))
+          .Build());
 
   // First check if there is a user selected credential for the current request
   // origin. If so, use it immediately.
@@ -442,10 +454,8 @@ void AttemptLoginTool::OnAttemptLogin(
     return;
   }
 
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::kActorLoginReauthTaskRefocus) &&
-      login_status.value() ==
-          actor_login::LoginStatusResult::kErrorDeviceReauthRequired) {
+  if (login_status.value() ==
+      actor_login::LoginStatusResult::kErrorDeviceReauthRequired) {
     if (!tab_handle_.Get()) {
       PostResponseTask(std::move(invoke_callback_),
                        MakeResult(mojom::ActionResultCode::kTabWentAway));
@@ -459,9 +469,7 @@ void AttemptLoginTool::OnAttemptLogin(
     return;
   }
 
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::kActorLoginFederatedClickFromActor) &&
-      login_status.value() ==
+  if (login_status.value() ==
           actor_login::LoginStatusResult::kRequiresButtonClick &&
       selected_credential.type == actor_login::CredentialType::kFederated &&
       selected_credential.federation_detail->idp_origin ==
@@ -478,8 +486,6 @@ void AttemptLoginTool::OnAttemptLogin(
   // The availability of the password submit target is bundled with federated
   // support.
   if (base::FeatureList::IsEnabled(features::kFedCmEmbedderInitiatedLogin) &&
-      base::FeatureList::IsEnabled(
-          password_manager::features::kActorLoginFederatedClickFromActor) &&
       (login_status.value() ==
            actor_login::LoginStatusResult::kSuccessUsernameAndPasswordFilled ||
        login_status.value() ==
@@ -604,7 +610,7 @@ AttemptLoginTool::GetObservationDelayer(
 
 void AttemptLoginTool::UpdateTaskBeforeInvoke(ActorTask& task,
                                               ToolCallback callback) const {
-  task.AddTab(tab_handle_, std::move(callback));
+  task.AddTab(tab_handle_, /*stop_task_on_detach=*/true, std::move(callback));
 }
 
 tabs::TabHandle AttemptLoginTool::GetTargetTab() const {

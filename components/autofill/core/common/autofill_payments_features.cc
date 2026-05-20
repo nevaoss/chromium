@@ -176,7 +176,7 @@ BASE_FEATURE(kAutofillEnableFlatRateCardBenefitsFromCurinos,
 // instead of jumping straight to CVC or biometric auth.
 BASE_FEATURE(kAutofillEnableFpanRiskBasedAuthentication,
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_ANDROID) || \
-    BUILDFLAG(IS_IOS)
+    BUILDFLAG(IS_IOS) || BUILDFLAG(IS_CHROMEOS)
              base::FEATURE_ENABLED_BY_DEFAULT);
 #else
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -216,7 +216,7 @@ BASE_FEATURE(kAutofillEnablePayNowPayLaterTabs,
 // authentication to autofill payment methods, we will trigger a device
 // authentication on ChromeOS.
 BASE_FEATURE(kAutofillEnablePaymentsMandatoryReauthChromeOs,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // When enabled, risk data is prefetched during payments autofill flows to
@@ -242,6 +242,11 @@ BASE_FEATURE(kAutofillEnableTouchToFillReshowForBnpl,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
+// When enabled, travel category and merchant benefits sourced from Curinos will
+// be shown in Autofill.
+BASE_FEATURE(kAutofillEnableTravelCategoryAndMerchantBenefitsFromCurinos,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, Chrome will trigger 3DS authentication during a virtual card
 // retrieval if a challenge is required, 3DS authentication is available for
 // the card, and FIDO is not.
@@ -264,7 +269,7 @@ BASE_FEATURE(kAutofillEnableVirtualCardJavaPaymentsDataManager,
 
 // When enabled, certain strings and logos referencing Google Account, Google
 // Payments, and Google Pay will instead reference Google Wallet.
-BASE_FEATURE(kAutofillEnableWalletBranding, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillEnableWalletBranding, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, further brings certain strings and images referencing Google
 // Pay and Google Wallet into consistency with branding requirements.
@@ -315,6 +320,11 @@ BASE_FEATURE(kAutofillTouchToFillShowManualFillForVcnFix,
 // flag remains as a way to easily enable upload credit card save for testers,
 // as well as enable non-fully-launched countries on a trial basis.
 BASE_FEATURE(kAutofillUpstream, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, users should not see offers to save the same credit card twice
+// in a week, as the strike database enforces a 7-day delay between strikes.
+BASE_FEATURE(kAutofillUpstreamEnforceStrikeDelay,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, updates the VCN strike database with different values of
 // kExpiryTimeDelta as part of of the VCN strike optimization experiment.

@@ -7,24 +7,26 @@
 
 #include <memory>
 
+#include "base/time/time.h"
 #include "chrome/browser/ui/views/toolbar/reload_control.h"
 #include "content/public/browser/context_menu_params.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/menus/simple_menu_model.h"
+#include "ui/views/metrics.h"
 
 namespace views {
 class Widget;
 class MenuRunner;
 }  // namespace views
 
-class WebUIToolbarWebView;
+class WebUIToolbarControlDelegate;
 class WebUIToolbarWebViewPixelBrowserTest;
 
 // WebUIReloadControl implements C++-side functionality for the WebUI-based
 // implementation of the reload button in the toolbar.
 class WebUIReloadControl : public ReloadControl {
  public:
-  explicit WebUIReloadControl(WebUIToolbarWebView* webui_toolbar_web_view);
+  explicit WebUIReloadControl(WebUIToolbarControlDelegate* delegate);
   WebUIReloadControl(const WebUIReloadControl&) = delete;
   WebUIReloadControl& operator=(const WebUIReloadControl&) = delete;
   ~WebUIReloadControl() override;
@@ -50,20 +52,40 @@ class WebUIReloadControl : public ReloadControl {
 
   bool is_initialized() const { return is_initialized_; }
 
+  void set_double_click_interval_for_testing(
+      base::TimeDelta double_click_interval) {
+    double_click_interval_ = double_click_interval;
+  }
+
  private:
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewPixelBrowserTest,
                            CheckReloadButtonColor);
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewBrowserTest,
                            ContextMenuPositionE2E);
+  FRIEND_TEST_ALL_PREFIXES(WebUIToolbarButtonPressAndDragTest,
+                           PressAndDragDown);
 
   void UpdateState();
 
-  const raw_ptr<WebUIToolbarWebView> webui_toolbar_web_view_;
+  const raw_ptr<WebUIToolbarControlDelegate> delegate_;
+
+  // The maximum time allowed before two clicks are considered separate clicks
+  // instead of a double click. This is pulled from the OS on construction and
+  // then cached, even if the system value changes. This matches the behavior of
+  // the legacy ReloadButton.
+  base::TimeDelta double_click_interval_{views::GetDoubleClickInterval()};
+
   std::unique_ptr<ui::SimpleMenuModel> menu_model_;
   std::unique_ptr<views::MenuRunner> menu_runner_;
   bool is_dev_tools_connected_ = false;
   ReloadControl::Mode mode_ = ReloadControl::Mode::kReload;
   bool is_initialized_ = false;
+
+  // The is is incremented whenever ChangeMode() has been called with `force`.
+  // Passed to Javascript, which will unconditionally reset button state
+  // whenever the value changes. Overflow is unlikely, but benign, since the
+  // value is only compared to the most recently received one.
+  int state_token_ = 0;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_TOOLBAR_WEBUI_RELOAD_CONTROL_H_

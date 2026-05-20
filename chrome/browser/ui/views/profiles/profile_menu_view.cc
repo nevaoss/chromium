@@ -48,14 +48,13 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_list.h"
-#include "chrome/browser/ui/browser_navigator.h"
-#include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/hats/survey_config.h"
 #include "chrome/browser/ui/managed_ui.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/passwords/ui_utils.h"
 #include "chrome/browser/ui/profiles/profile_colors_util.h"
 #include "chrome/browser/ui/profiles/profile_picker.h"
@@ -900,6 +899,9 @@ ProfileMenuView::GetIdentitySectionParams(const ProfileAttributesEntry& entry) {
       params.email_subtitle = base::UTF8ToUTF16(primary_account_info.email);
       break;
     case signin_util::SignedInState::kSignInPending:
+    // Only reachable when the sync service is not available, so it is treated
+    // as `kSignInPending`.
+    case signin_util::SignedInState::kSyncPaused:
       button_type = ActionableItem::kSigninReauthButton;
       params.subtitle = l10n_util::GetStringFUTF16(
           IDS_SETTINGS_PENDING_STATE_DESCRIPTION,
@@ -910,9 +912,6 @@ ProfileMenuView::GetIdentitySectionParams(const ProfileAttributesEntry& entry) {
       params.has_dotted_ring = true;
       signin_metrics::LogSigninPendingOffered(access_point);
       break;
-    case signin_util::SignedInState::kSyncPaused:
-      // Sync paused is covered by the sync errors path.
-      NOTREACHED();
   }
 
   // Sets the default action if needed - if a button text was explicitly set and
@@ -932,7 +931,7 @@ void ProfileMenuView::BuildIdentityWithCallToAction() {
           ->GetProfileAttributesStorage()
           .GetProfileAttributesWithPath(profile().GetPath());
   if (!entry) {
-    // May happen if the profile is being deleted. https://crbug.com/1040079
+    // May happen if the profile is being deleted. https://crbug.com/40667165
     return;
   }
 

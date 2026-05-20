@@ -70,7 +70,7 @@ class PostSelectionWorklet {
     }
 
     ctx.lineWidth = cornerWidth;
-    ctx.beginPath;
+    ctx.beginPath();
 
     // Top-Left Corner
     ctx.moveTo(minX, cornerLengthVertical);

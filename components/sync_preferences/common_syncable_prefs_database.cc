@@ -15,6 +15,7 @@
 #include "components/browsing_data/core/pref_names.h"
 #include "components/commerce/core/pref_names.h"
 #include "components/content_settings/core/common/pref_names.h"
+#include "components/contextual_search/pref_names.h"
 #include "components/desktop_to_mobile_promos/pref_names.h"
 #include "components/language/core/browser/pref_names.h"
 #include "components/metrics/demographics/user_demographics.h"
@@ -159,6 +160,9 @@ enum {
   kAutofillAiSyncedOptInStatus = 110,
   kIOSPromoReminder = 111,
   kAutofillAiReauthBeforeViewingSensitiveData = 112,
+  kDriveDisclaimerAccepted = 113,
+  kAutofillAiShoppingEntitiesEnabled = 114,
+  kPrefTranslateRecentTargets = 115,
   // See components/sync_preferences/README.md about adding new entries here.
   // vvvvv IMPORTANT! vvvvv
   // Note to the reviewer: IT IS YOUR RESPONSIBILITY to ensure that new syncable
@@ -183,6 +187,9 @@ constexpr auto kCommonSyncablePrefsAllowlist =
           PrefSensitivity::kNone, MergeBehavior::kNone}},
         {autofill::prefs::kAutofillAiIdentityEntitiesEnabled,
          {syncable_prefs_ids::kAutofillAiIdentityEntitiesEnabled,
+          syncer::PREFERENCES, PrefSensitivity::kNone, MergeBehavior::kNone}},
+        {autofill::prefs::kAutofillAiShoppingEntitiesEnabled,
+         {syncable_prefs_ids::kAutofillAiShoppingEntitiesEnabled,
           syncer::PREFERENCES, PrefSensitivity::kNone, MergeBehavior::kNone}},
         {autofill::prefs::kAutofillAiLastVersionDeduped,
          {syncable_prefs_ids::kAutofillAiLastVersionDeduped,
@@ -361,6 +368,9 @@ constexpr auto kCommonSyncablePrefsAllowlist =
         {translate::prefs::kPrefTranslateRecentTarget,
          {syncable_prefs_ids::kPrefTranslateRecentTarget, syncer::PREFERENCES,
           PrefSensitivity::kNone, MergeBehavior::kNone}},
+        {translate::prefs::kPrefTranslateRecentTargets,
+         {syncable_prefs_ids::kPrefTranslateRecentTargets, syncer::PREFERENCES,
+          PrefSensitivity::kNone, MergeBehavior::kNone}},
 // For Ash, the OS_PRIORITY_PREFERENCES equivalent is defined in
 // chrome/browser/sync/prefs/chrome_syncable_prefs_database.cc instead.
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -458,6 +468,9 @@ constexpr auto kCommonSyncablePrefsAllowlist =
         {prefs::kIOSPromoReminder,
          {syncable_prefs_ids::kIOSPromoReminder, syncer::PREFERENCES,
           PrefSensitivity::kNone, MergeBehavior::kMergeableDict}},
+        {contextual_search::kDriveDisclaimerAccepted,
+         {syncable_prefs_ids::kDriveDisclaimerAccepted, syncer::PREFERENCES,
+          PrefSensitivity::kNone, MergeBehavior::kNone}},
     });
 
 }  // namespace

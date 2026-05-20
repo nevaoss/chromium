@@ -7,6 +7,7 @@
 
 #include <utility>
 
+#include "chrome/browser/ui/animation/browser_animation_types.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout_impl.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout_params.h"
@@ -44,11 +45,17 @@ class BrowserViewTabbedLayoutImpl : public BrowserViewLayoutImpl {
       const BrowserLayoutParams& params) override;
 
  private:
+  // Does the works of laying out the top container.
+  gfx::Rect CalculateTopContainerLayoutImpl(ProposedLayout& layout,
+                                            BrowserLayoutParams params,
+                                            bool needs_exclusion,
+                                            bool suppress_top_separator) const;
+
   // Gets the amount of padding to place between
   int GetMinimumGrabHandlePadding() const;
 
-  // Returns the minimum size of all toolbar-height content except the toolbar-
-  // height side panel.
+  // Returns the minimum size of all toolbar-height content except the side
+  // panel.
   gfx::Size GetMinimumMainAreaSize(const BrowserLayoutParams& params) const;
 
   // Returns the size of the vertical and horizontal tabstrips, as a pair.
@@ -70,33 +77,27 @@ class BrowserViewTabbedLayoutImpl : public BrowserViewLayoutImpl {
     VerticalTabStripCollapsedState vertical_tab_strip_collapsed_state =
         VerticalTabStripCollapsedState::kExpanded;
     int vertical_tab_strip_width = 0;
-    int toolbar_height_side_panel_width = 0;
-    int content_height_side_panel_width = 0;
+    int side_panel_width = 0;
     int min_content_width = 0;
 
-    // The padding placed around a number of UI elements when the toolbar-height
-    // side panel is present.
+    // The padding placed around a number of UI elements when the side panel is
+    // present.
     int side_panel_padding = 0;
 
-    // In some cases, even when there is a toolbar-height side panel, the top
-    // container (containing the toolbar, etc.) are laid out at the top of the
-    // screen, above the side panels - this is usually due to other layout
+    // In some cases, even when there is a side panel, the top container
+    // (containing the toolbar, etc.) are laid out at the top of the screen,
+    // above the side panels - this is usually due to other layout
     // constraints.
     bool force_top_container_to_top = false;
 
-    bool has_toolbar_height_side_panel() const {
-      return toolbar_height_side_panel_width > 0;
-    }
-    bool has_content_height_side_panel() const {
-      return content_height_side_panel_width > 0;
-    }
+    bool has_side_panel() const { return side_panel_width > 0; }
   };
   HorizontalLayout CalculateHorizontalLayout(BrowserLayoutParams& params) const;
 
   // Describes how to render the top of the vertical tab strip.
   struct VerticalTabStripAnimation {
     // Is the vertical tab strip animating?
-    bool is_animating = false;
+    BrowserAnimationMotion current_motion;
     // The y-value of the top of the tab strip.
     int top_offset = 0;
     // The relative size of the top corner.
@@ -105,12 +106,15 @@ class BrowserViewTabbedLayoutImpl : public BrowserViewLayoutImpl {
     double bottom_corner = 0.0;
     // How much of the expand-on-hover is shown.
     double expand_on_hover = 0.0;
+    // How much the tab strip is expanded, not on-hover.
+    double tab_strip_width = 0.0;
   };
   VerticalTabStripAnimation CalculateVerticalTabStripAnimation(
-      const BrowserLayoutParams& params) const;
+      const BrowserLayoutParams& params,
+      WindowState window_state) const;
 
   // Returns the type of tabstrip present.
-  enum class TabStripType { kNone, kWebUi, kVertical, kHorizontal };
+  enum class TabStripType { kNone, kVertical, kHorizontal };
   TabStripType GetTabStripType() const;
 
   // Returns whether the shadow overlay (with its attendant margin) around the
@@ -141,6 +145,12 @@ class BrowserViewTabbedLayoutImpl : public BrowserViewLayoutImpl {
   int GetHorizontalTabStripLeadingMargin(
       const BrowserLayoutParams& params) const;
 
+  // Returns whether to make small adjustments to avoid visual "cracking" due to
+  // discrepancies between pixel and dip scaling; see
+  // https://crbug.com/436278099 for more information on the Pixel Canvas
+  // project which aims to permanently avoid this issue.
+  bool AvoidCrackingForFractionalDisplay() const;
+
   // These cached values serve as a starting point when an expand-on-hover state
   // for the vertical tab strip is animated directly to the expanded state. They
   // are cached every time the animation state is calculated except during the
@@ -148,6 +158,7 @@ class BrowserViewTabbedLayoutImpl : public BrowserViewLayoutImpl {
   // expand animation.
   mutable double last_expand_on_hover_ = 0.0;
   mutable double last_bottom_corner_value_ = 1.0;
+  mutable int last_vertical_tab_strip_width_ = 0;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_LAYOUT_BROWSER_VIEW_TABBED_LAYOUT_IMPL_H_

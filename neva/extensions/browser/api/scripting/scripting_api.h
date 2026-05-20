@@ -15,7 +15,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Based on
-// //chrome/browser/extensions/api/scripting/scripting_api.h
+// //extensions/browser/api/scripting/scripting_api.h
 
 // Copyright 2020 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
@@ -33,9 +33,9 @@
 #include "extensions/browser/extension_function.h"
 #include "extensions/browser/script_executor.h"
 #include "extensions/browser/scripting_utils.h"
+#include "extensions/common/api/scripting.h"
 #include "extensions/common/mojom/code_injection.mojom.h"
 #include "extensions/common/user_script.h"
-#include "neva/extensions/common/api/scripting.h"
 
 namespace neva {
 

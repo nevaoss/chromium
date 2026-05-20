@@ -13,12 +13,12 @@
 #include "base/no_destructor.h"
 #include "base/notimplemented.h"
 #include "build/build_config.h"
+#include "components/accessibility_annotator/core/accessibility_annotator_types.h"
 #include "components/autofill/core/browser/filling/filling_product.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_manager.h"
 #include "components/autofill/core/browser/integrators/compose/autofill_compose_delegate.h"
 #include "components/autofill/core/browser/integrators/identity_credential/identity_credential_delegate.h"
 #include "components/autofill/core/browser/integrators/password_manager/password_manager_delegate.h"
-#include "components/autofill/core/browser/integrators/plus_addresses/autofill_plus_address_delegate.h"
 #include "components/autofill/core/browser/payments/credit_card_access_manager.h"
 #include "components/autofill/core/browser/studies/autofill_ablation_study.h"
 #include "components/autofill/core/browser/studies/autofill_experiments.h"
@@ -38,14 +38,17 @@ AutofillClient::PopupOpenArgs::PopupOpenArgs(
     AutofillSuggestionTriggerSource trigger_source,
     int32_t form_control_ax_id,
     PopupAnchorType anchor_type,
-    bool show_tabbed_popup)
+    bool show_tabbed_popup,
+    bool prefer_prev_arrow_side_on_suggestions_update)
     : element_bounds(element_bounds),
       text_direction(text_direction),
       suggestions(std::move(suggestions)),
       trigger_source(trigger_source),
       form_control_ax_id(form_control_ax_id),
       anchor_type(anchor_type),
-      show_tabbed_popup(show_tabbed_popup) {}
+      show_tabbed_popup(show_tabbed_popup),
+      prefer_prev_arrow_side_on_suggestions_update(
+          prefer_prev_arrow_side_on_suggestions_update) {}
 AutofillClient::PopupOpenArgs::PopupOpenArgs(
     const AutofillClient::PopupOpenArgs&) = default;
 AutofillClient::PopupOpenArgs::PopupOpenArgs(AutofillClient::PopupOpenArgs&&) =
@@ -108,13 +111,15 @@ AutofillComposeDelegate* AutofillClient::GetComposeDelegate() {
   return nullptr;
 }
 
-AutofillPlusAddressDelegate* AutofillClient::GetPlusAddressDelegate() {
-  return nullptr;
-}
-
 accessibility_annotator::AccessibilityQueryService*
 AutofillClient::GetAccessibilityQueryService() {
   return nullptr;
+}
+
+accessibility_annotator::RemoteAnnotatorEnablementState
+AutofillClient::GetAccessibilityAnnotatorEnablementState() const {
+  return accessibility_annotator::RemoteAnnotatorEnablementState::
+      kDisabledNotEligible;
 }
 
 PasswordManagerDelegate* AutofillClient::GetPasswordManagerDelegate(
@@ -194,6 +199,8 @@ const AutofillAblationStudy& AutofillClient::GetAblationStudy() const {
 }
 
 #if BUILDFLAG(IS_ANDROID)
+void AutofillClient::ShowAtMemoryBottomSheet() {}
+
 AutofillSnackbarControllerImpl*
 AutofillClient::GetAutofillSnackbarController() {
   return nullptr;
@@ -249,10 +256,6 @@ bool AutofillClient::SupportsDeviceReauth() const {
   return authenticator &&
          authenticator->CanAuthenticateWithBiometricOrScreenLock();
 }
-
-void AutofillClient::ShowPlusAddressEmailOverrideNotification(
-    const std::string& original_email,
-    EmailOverrideUndoCallback email_override_undo_callback) {}
 
 bool AutofillClient::ShowAutofillFieldIphForFeature(
     const FormFieldData&,
@@ -311,9 +314,6 @@ PasswordFormClassification AutofillClient::ClassifyAsPasswordForm(
     FieldGlobalId field_id) const {
   return {};
 }
-
-void AutofillClient::TriggerPlusAddressUserPerceptionSurvey(
-    plus_addresses::hats::SurveyType survey_type) {}
 
 const syncer::SyncService* AutofillClient::GetSyncService() const {
   return const_cast<const syncer::SyncService*>(
@@ -379,6 +379,11 @@ AutofillManager* AutofillClient::GetAutofillManagerForPrimaryMainFrame() {
 
 OtpPhishGuardDelegate* AutofillClient::GetOtpPhishGuardDelegate() {
   return nullptr;
+}
+
+void AutofillClient::OpenGeminiInSidebar(const std::u16string& prompt) {
+  // TODO(crbug.com/493824736): Implement opening Gemini in the sidebar.
+  NOTIMPLEMENTED();
 }
 
 }  // namespace autofill

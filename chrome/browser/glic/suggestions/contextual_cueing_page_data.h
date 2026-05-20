@@ -52,6 +52,8 @@ struct CueingResult {
   bool auto_open_eligible = false;
   // Parameters controlling auto-send behavior for the prompt.
   std::optional<AutoSendParams> auto_send_params;
+  // The number of pages in the PDF, if available.
+  std::optional<size_t> pdf_page_count;
 };
 
 // Decider for contextual cueing that is scoped to `Page`.
@@ -78,6 +80,8 @@ class ContextualCueingPageData
     kDisallowed,
     kNeedsPdfPageCount,
     kNeedsPageContent,
+    // Allowed pending PDF page count.
+    kAllowedPendingPageCount,
   };
 
   // Holds the info related to word count client signal.

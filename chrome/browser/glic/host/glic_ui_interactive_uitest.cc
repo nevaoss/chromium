@@ -14,6 +14,7 @@
 #include "build/build_config.h"
 #include "chrome/browser/glic/host/glic.mojom-shared.h"
 #include "chrome/browser/glic/host/glic_ui.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/test_support/interactive_glic_test.h"
 #include "chrome/browser/glic/test_support/interactive_test_util.h"
 #include "chrome/browser/profiles/profile_manager.h"
@@ -845,9 +846,9 @@ class GlicUiUnifiedFreIntegrationTest : public GlicUiInteractiveUiTestBase {
     host_resolver()->AddRule("glic.test", "127.0.0.1");
     GlicUiInteractiveUiTestBase::SetUpOnMainThread();
     ASSERT_TRUE(embedded_https_test_server().Start());
-    browser()->profile()->GetPrefs()->SetInteger(
-        glic::prefs::kGlicCompletedFre,
-        static_cast<int>(glic::prefs::FreStatus::kNotStarted));
+    glic::GlicKeyedService::Get(browser()->profile())
+        ->enabling()
+        .SetCompletedFre(glic::prefs::FreStatus::kNotStarted);
   }
 
   const DeepQuery kFreContainer = {"#fre-app-container"};
@@ -918,9 +919,9 @@ IN_PROC_BROWSER_TEST_F(GlicUiUnifiedFreIntegrationTest,
           WaitForElementVisible(test::kGlicHostElementId, kGlicGuestPanel)),
       CheckResult(
           [this]() {
-            return static_cast<glic::prefs::FreStatus>(
-                browser()->profile()->GetPrefs()->GetInteger(
-                    glic::prefs::kGlicCompletedFre));
+            return glic::GlicKeyedService::Get(browser()->profile())
+                ->enabling()
+                .GetCompletedFre();
           },
           glic::prefs::FreStatus::kCompleted),
       WaitForState(kGlicUiStateHistory, IsCurrently(WebUiState::kReady)),
@@ -954,9 +955,9 @@ IN_PROC_BROWSER_TEST_F(GlicUiUnifiedFreIntegrationTest, RejectFreClosesPanel) {
       CheckControllerShowing(false),
       CheckResult(
           [this]() {
-            return static_cast<glic::prefs::FreStatus>(
-                browser()->profile()->GetPrefs()->GetInteger(
-                    glic::prefs::kGlicCompletedFre));
+            return glic::GlicKeyedService::Get(browser()->profile())
+                ->enabling()
+                .GetCompletedFre();
           },
           glic::prefs::FreStatus::kNotStarted));
 }
@@ -1031,9 +1032,7 @@ IN_PROC_BROWSER_TEST_F(GlicUiUnifiedFreIntegrationTest,
 class GlicUiTrustFirstOnboardingTest : public GlicUiInteractiveUiTestBase {
  public:
   GlicUiTrustFirstOnboardingTest()
-      : GlicUiInteractiveUiTestBase(TestParams(/*connected=*/true)) {
-    feature_list_.InitAndEnableFeature(features::kGlicTrustFirstOnboarding);
-  }
+      : GlicUiInteractiveUiTestBase(TestParams(/*connected=*/true)) {}
   ~GlicUiTrustFirstOnboardingTest() override = default;
 
  private:

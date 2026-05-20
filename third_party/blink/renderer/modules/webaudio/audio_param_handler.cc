@@ -402,6 +402,10 @@ void AudioParamHandler::CalculateFinalValues(base::span<float> values,
     }
 
     vector_math::Vclip(values, 1, &min_value, &max_value, values, 1);
+
+    // Clear the channel memory to avoid holding a reference to the external
+    // `values` buffer, which may be garbage collected.
+    summing_bus_->SetChannelMemory(0, nullptr, 0);
   }
 }
 
@@ -1315,7 +1319,7 @@ float AudioParamHandler::ValuesForFrameRangeImpl(
   //
   // TODO(rtoy): Consider making `events_` be scoped_refptr instead of
   // unique_ptr.
-  if (new_events_.size() > 0) {
+  if (!new_events_.empty()) {
     ClampNewEventsToCurrentTime(start_frame / sample_rate);
   }
 
@@ -2285,7 +2289,7 @@ void AudioParamHandler::RemoveCancelledEvents(
     wtf_size_t first_event_to_remove) {
   // For all the events that are being removed, also remove that event
   // from `new_events_`.
-  if (new_events_.size() > 0) {
+  if (!new_events_.empty()) {
     for (wtf_size_t k = first_event_to_remove; k < events_.size(); ++k) {
       new_events_.erase(events_[k].get());
     }

@@ -27,7 +27,6 @@ import androidx.annotation.VisibleForTesting;
 import org.chromium.build.annotations.MonotonicNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.magic_stack.ModuleRegistry;
 import org.chromium.chrome.browser.ntp_customization.feed.FeedSettingsCoordinator;
 import org.chromium.chrome.browser.ntp_customization.most_visited_tiles.MvtSettingsCoordinator;
@@ -64,7 +63,6 @@ public class NtpCustomizationCoordinator {
     private @Nullable FeedSettingsCoordinator mFeedSettingsCoordinator;
     private @Nullable NtpThemeCoordinator mNtpThemeCoordinator;
     private ViewFlipper mViewFlipperView;
-    private boolean mHasMainBottomSheetShown;
 
     /**
      * New Tab Page Customization bottom sheet type.
@@ -142,8 +140,6 @@ public class NtpCustomizationCoordinator {
                 LayoutInflater.from(mContext)
                         .inflate(R.layout.ntp_customization_bottom_sheet, /* root= */ null);
         mViewFlipperView = contentView.findViewById(R.id.ntp_customization_view_flipper);
-        mHasMainBottomSheetShown =
-                NtpCustomizationUtils.getNtpCustomizationBottomSheetShownFromSharedPreference();
 
         // This empty OnClickListener is added to the ViewFlipper to prevent TalkBack from
         // unexpectedly triggering the click listeners of its child list items.
@@ -190,9 +186,7 @@ public class NtpCustomizationCoordinator {
         if (mBottomSheetType == MAIN) {
             // The click listener for each list item in the main bottom sheet should be registered
             // before calling renderListContent().
-            if (ChromeFeatureList.sNewTabPageCustomizationForMvt.isEnabled()) {
-                mMediator.registerClickListener(MVT, getOptionClickListener(MVT));
-            }
+            mMediator.registerClickListener(MVT, getOptionClickListener(MVT));
             mMediator.registerClickListener(NTP_CARDS, getOptionClickListener(NTP_CARDS));
             mMediator.registerClickListener(FEED, getOptionClickListener(FEED));
             if (NtpCustomizationUtils.isNtpThemeCustomizationEnabled()) {
@@ -224,11 +218,6 @@ public class NtpCustomizationCoordinator {
         switch (mBottomSheetType) {
             case MAIN -> {
                 mMediator.showBottomSheet(MAIN);
-                if (!mHasMainBottomSheetShown) {
-                    NtpCustomizationUtils.setNtpCustomizationBottomSheetShownToSharedPreferences(
-                            /* hasShown= */ true);
-                    mHasMainBottomSheetShown = true;
-                }
             }
             case NTP_CARDS -> showNtpCardsBottomSheet();
             case FEED -> showFeedBottomSheet();

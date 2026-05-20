@@ -81,7 +81,6 @@ Suggestion::Text FormatLabelsByFillingProduct(
               : base::StrCat({additional_label, kLabelSeparator,
                               ExtractPassword(label)}));
     case FillingProduct::kAddress:
-    case FillingProduct::kPlusAddresses:
     case FillingProduct::kCreditCard:
     case FillingProduct::kIban:
     case FillingProduct::kAutocomplete:
@@ -312,7 +311,7 @@ void AutofillKeyboardAccessoryControllerImpl::Hide(
 void AutofillKeyboardAccessoryControllerImpl::HideViewAndDie() {
   // Invalidates in particular ChromeAutofillClient's WeakPtr to `this`, which
   // prevents recursive calls triggered by `view_->Hide()`
-  // (crbug.com/1267047).
+  // (crbug.com/40204318).
   weak_ptr_factory_.InvalidateWeakPtrs();
 
   // Mark the popup-like filling sources as unavailable.
@@ -327,8 +326,8 @@ void AutofillKeyboardAccessoryControllerImpl::HideViewAndDie() {
     }
   }
 
-  // TODO(crbug.com/1341374, crbug.com/1277218): Move this into the asynchronous
-  // call?
+  // TODO(crbug.com/40230669, crbug.com/40207703): Move this into the
+  // asynchronous call?
   if (view_) {
     view_->Hide();
     view_.reset();
@@ -386,7 +385,15 @@ void AutofillKeyboardAccessoryControllerImpl::OnSuggestionsChanged() {
         FillingSource::AUTOFILL,
         /*has_suggestions=*/true);
   }
-  if (view_) {
+
+  // If any suggestion is in a loading state, we skip updating the view.
+  // This prevents C++ from pushing a new list of suggestions across JNI and
+  // overwriting the Java side's loading indicator state, allowing the Java UI
+  // to maintain the ViewState.LOADING state while the server fetch takes place.
+  bool is_loading = std::ranges::any_of(suggestions_, [](const Suggestion& s) {
+    return s.is_loading == Suggestion::IsLoading(true);
+  });
+  if (view_ && !is_loading) {
     view_->Show();
   }
 }
@@ -395,14 +402,14 @@ void AutofillKeyboardAccessoryControllerImpl::AcceptSuggestion(
     int index,
     autofill::AutofillMetrics::SuggestionAcceptedMethod accept_method) {
   // Ignore clicks immediately after the popup was shown. This is to prevent
-  // users accidentally accepting suggestions (crbug.com/1279268).
+  // users accidentally accepting suggestions (crbug.com/40058217).
   if (!barrier_for_accepting_.value() && !disable_threshold_for_testing_) {
     return;
   }
 
   if (base::checked_cast<size_t>(index) >= suggestions_.size() ||
       !IsAcceptableSuggestionType(suggestions_[index].type)) {
-    // Prevents crashes from crbug.com/521133. It seems that in rare cases or
+    // Prevents crashes from crbug.com/41195069. It seems that in rare cases or
     // races the suggestions_ and the user-selected index may be out of sync.
     // If the index points out of bounds, Chrome will crash. Prevent this by
     // ignoring the selection and wait for another signal from the user.
@@ -422,12 +429,25 @@ void AutofillKeyboardAccessoryControllerImpl::AcceptSuggestion(
 
   if (base::WeakPtr<ManualFillingController> manual_filling_controller =
           ManualFillingController::GetOrCreate(web_contents_.get())) {
-    // Accepting a suggestion should hide all suggestions. To prevent them from
-    // coming up in Multi-Window mode, mark the source as unavailable.
-    manual_filling_controller->UpdateSourceAvailability(
-        FillingSource::AUTOFILL,
-        /*has_suggestions=*/false);
-    manual_filling_controller->Hide();
+    bool is_loading = false;
+    if (const auto* ai_payload =
+            std::get_if<Suggestion::AutofillAiPayload>(&suggestion.payload)) {
+      is_loading = ai_payload->requires_server_fetch;
+    }
+    // If the suggestion requires a server fetch, we do not hide the manual
+    // filling controller here. Instead, we let the Java side display a loading
+    // UI and keep the soft keyboard open. The controller will be torn down
+    // properly via `HideViewAndDie()` when the fetch eventually completes (or
+    // times out) in
+    // `AutofillExternalDelegate::FillAutofillAiFormAndHidePopup()`.
+    if (!is_loading) {
+      // Accepting a suggestion should hide all suggestions. To prevent them
+      // from coming up in Multi-Window mode, mark the source as unavailable.
+      manual_filling_controller->UpdateSourceAvailability(
+          FillingSource::AUTOFILL,
+          /*has_suggestions=*/false);
+      manual_filling_controller->Hide();
+    }
   }
 
   NotifyUserEducationAboutAcceptedSuggestion(web_contents_.get(), suggestion);
@@ -512,7 +532,6 @@ void AutofillKeyboardAccessoryControllerImpl::OnDeletionDialogClosed(
     case FillingProduct::kPassword:
     case FillingProduct::kPasskey:
     case FillingProduct::kCompose:
-    case FillingProduct::kPlusAddresses:
     case FillingProduct::kAutofillAi:
     case FillingProduct::kLoyaltyCard:
     case FillingProduct::kIdentityCredential:

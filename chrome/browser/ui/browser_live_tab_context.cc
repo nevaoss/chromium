@@ -24,12 +24,13 @@
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_tab_strip_model_delegate.h"
 #include "chrome/browser/ui/browser_tabrestore.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
@@ -154,7 +155,7 @@ std::map<std::string, std::string> BrowserLiveTabContext::GetExtraDataForTab(
     int index) const {
   std::map<std::string, std::string> extra_data;
 
-  glic::PopulateGlicExtraData(tab_strip_model_->GetWebContentsAt(index),
+  glic::PopulateGlicExtraData(tab_strip_model_->GetTabAtIndex(index),
                               &extra_data);
 
   return extra_data;
@@ -213,8 +214,19 @@ BrowserLiveTabContext::GetGroupIdForSavedGroup(const base::Uuid& saved) const {
 
   const std::optional<tab_groups::SavedTabGroup> saved_group =
       tab_group_service->GetGroup(saved);
+  if (!saved_group || !saved_group->local_group_id().has_value()) {
+    return std::nullopt;
+  }
 
-  return saved_group ? saved_group->local_group_id() : std::nullopt;
+  const tab_groups::TabGroupId& local_group_id =
+      saved_group->local_group_id().value();
+  TabGroupModel* group_model = tab_strip_model_->group_model();
+  // Check that the group is in the current tab strip model.
+  if (group_model && group_model->ContainsTabGroup(local_group_id)) {
+    return local_group_id;
+  }
+
+  return std::nullopt;
 }
 
 bool BrowserLiveTabContext::IsTabPinned(int index) const {
@@ -367,7 +379,7 @@ sessions::LiveTab* BrowserLiveTabContext::ReplaceRestoredTab(
 }
 
 void BrowserLiveTabContext::CloseTab() {
-  chrome::CloseTab(browser_->GetBrowserForMigrationOnly());
+  chrome::CloseTab(&*browser_);
 }
 
 // static
@@ -432,14 +444,16 @@ sessions::LiveTabContext* BrowserLiveTabContext::Create(
 // static
 sessions::LiveTabContext* BrowserLiveTabContext::FindContextForWebContents(
     const WebContents* contents) {
-  BrowserWindowInterface* const browser = chrome::FindBrowserWithTab(contents);
+  BrowserWindowInterface* const browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(contents);
   return GetLiveTabContext(browser);
 }
 
 // static
 sessions::LiveTabContext* BrowserLiveTabContext::FindContextWithID(
     SessionID desired_id) {
-  BrowserWindowInterface* const browser = chrome::FindBrowserWithID(desired_id);
+  BrowserWindowInterface* const browser =
+      GlobalBrowserCollection::GetInstance()->FindBrowserWithID(desired_id);
   return GetLiveTabContext(browser);
 }
 
@@ -447,7 +461,16 @@ sessions::LiveTabContext* BrowserLiveTabContext::FindContextWithID(
 sessions::LiveTabContext* BrowserLiveTabContext::FindContextWithGroup(
     tab_groups::TabGroupId group,
     Profile* profile) {
-  BrowserWindowInterface* const browser =
-      chrome::FindBrowserWithGroup(group, profile);
-  return GetLiveTabContext(browser);
+  CHECK(profile);
+  BrowserWindowInterface* target_browser = nullptr;
+  ProfileBrowserCollection::GetForProfile(profile)->ForEach(
+      [&](BrowserWindowInterface* browser) {
+        TabStripModel* const tab_strip_model = browser->GetTabStripModel();
+        if (tab_strip_model->group_model() &&
+            tab_strip_model->group_model()->ContainsTabGroup(group)) {
+          target_browser = browser;
+        }
+        return !target_browser;
+      });
+  return GetLiveTabContext(target_browser);
 }

@@ -113,7 +113,7 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
                 (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         // Android telephony team said it is OK to continue using getNetworkInfo() for our purposes.
         // We cannot use ConnectivityManager#getAllNetworks() because that one only reports enabled
-        // networks. See crbug.com/532455.
+        // networks. See crbug.com/40435982.
         @SuppressWarnings("deprecation")
         NetworkInfo networkInfo =
                 connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_MOBILE);
@@ -230,6 +230,10 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
         return getCrashUploadPermittedSupplier();
     }
 
+    public boolean shouldUseMetricsConsentRestructure() {
+        return PrivacyPreferencesManagerImplJni.get().shouldUseMetricsConsentRestructure();
+    }
+
     @NativeMethods
     public interface Natives {
         boolean isMetricsReportingEnabled();
@@ -237,5 +241,7 @@ public class PrivacyPreferencesManagerImpl implements PrivacyPreferencesManager 
         void setMetricsReportingEnabled(boolean enabled);
 
         boolean isMetricsReportingDisabledByPolicy();
+
+        boolean shouldUseMetricsConsentRestructure();
     }
 }

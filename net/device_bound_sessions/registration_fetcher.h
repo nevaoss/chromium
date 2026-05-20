@@ -58,7 +58,8 @@ class NET_EXPORT RegistrationFetcher {
       const URLRequestContext* context,
       const IsolationInfo& isolation_info,
       std::optional<NetLogSource> net_log_source,
-      const std::optional<url::Origin>& original_request_initiator);
+      const std::optional<url::Origin>& original_request_initiator,
+      unexportable_keys::BackgroundTaskPriority priority);
 
   // Creates an unexportable key from the key service, creates a registration
   // JWT and signs it with the new key. Starts the network request to the DBSC
@@ -78,7 +79,7 @@ class NET_EXPORT RegistrationFetcher {
   // will be called with a std::nullopt.
   virtual void StartFetchWithExistingKey(
       RegistrationRequestParam& request_params,
-      unexportable_keys::UnexportableKeyId key_id,
+      unexportable_keys::UnexportableSigningKeyId key_id,
       RegistrationCompleteCallback callback) = 0;
 
   // Starts the network request to the DBSC registration endpoint for a
@@ -86,7 +87,7 @@ class NET_EXPORT RegistrationFetcher {
   // completion.
   virtual void StartFetchWithFederatedKey(
       RegistrationRequestParam& request_params,
-      unexportable_keys::UnexportableKeyId key_id,
+      unexportable_keys::UnexportableSigningKeyId key_id,
       const GURL& provider_url,
       RegistrationCompleteCallback callback) = 0;
 

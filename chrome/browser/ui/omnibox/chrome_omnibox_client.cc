@@ -56,8 +56,6 @@
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_list.h"
-#include "chrome/browser/ui/browser_navigator.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/hats/hats_service.h"
@@ -66,6 +64,7 @@
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/lens/lens_searchbox_controller.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/omnibox/chrome_omnibox_navigation_observer.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_tab_helper.h"
@@ -244,6 +243,10 @@ bool ChromeOmniboxClient::IsDefaultSearchProviderEnabled() const {
 
 SessionID ChromeOmniboxClient::GetSessionID() const {
   return sessions::SessionTabHelper::IdForTab(location_bar_->GetWebContents());
+}
+
+bool ChromeOmniboxClient::IsChromeOmniboxClient() const {
+  return true;
 }
 
 bool ChromeOmniboxClient::
@@ -754,7 +757,7 @@ void ChromeOmniboxClient::OnTextChanged(const AutocompleteMatch& current_match,
     case AutocompleteActionPredictor::ACTION_PRERENDER:
       // It's possible that there is no current page, for instance if the tab
       // has been closed or on return from a sleep state.
-      // (http://crbug.com/105689)
+      // (http://crbug.com/40120510)
       if (!CurrentPageExists()) {
         break;
       }
@@ -936,6 +939,18 @@ void ChromeOmniboxClient::OpenUrl(GURL gurl) {
   NavigateParams params(browser_, gurl, ui::PAGE_TRANSITION_GENERATED);
   params.disposition = WindowOpenDisposition::CURRENT_TAB;
   Navigate(&params);
+}
+
+void ChromeOmniboxClient::OpenUrlWithCallback(
+    GURL gurl,
+    WindowOpenDisposition disposition,
+    base::OnceCallback<void(base::WeakPtr<content::NavigationHandle>)>
+        callback) {
+  CHECK(browser_);
+  NavigateParams params(browser_, gurl, ui::PAGE_TRANSITION_GENERATED);
+  params.disposition = disposition;
+
+  Navigate(&params, std::move(callback));
 }
 
 void ChromeOmniboxClient::OpenIphLink(GURL gurl) {

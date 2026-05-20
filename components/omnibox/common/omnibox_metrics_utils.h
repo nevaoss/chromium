@@ -28,13 +28,32 @@ enum class ContextType {
   kRegularModel = 8,
   kProNoGenUiModel = 9,
   kUnknown = 10,
-  kMaxValue = kUnknown,
+  kDrive = 11,
+  kMaxValue = kDrive,
 };
-// LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:ContextType,//tools/metrics/histograms/metadata/omnibox/histograms.xml:ContextType)
+// LINT.ThenChange(//tools/metrics/histograms/metadata/contextual_search/enums.xml:ContextType,
+// //ui/webui/resources/cr_components/composebox/common.ts:ContextType,
+// //tools/metrics/actions/actions.xml:ContextType)
+
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+// LINT.IfChange(ResultToContentReadyEarlyExitReason)
+enum class ResultToContentReadyEarlyExitReason {
+  kUnspecified = 0,
+  kNoResultReadyTime = 1,
+  kVisualStateNotReady = 2,
+  kMaxValue = kVisualStateNotReady,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:OmniboxPopupResultToContentReadyEarlyExitReason)
 
 std::string GetToolModeString(omnibox::ToolMode mode);
 
 std::string GetModelModeString(omnibox::ModelMode mode);
+
+std::string GetContextTypeString(ContextType type);
+
+void LogResultToContentReadyEarlyExitReason(
+    ResultToContentReadyEarlyExitReason reason);
 
 }  // namespace omnibox
 

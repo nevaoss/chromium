@@ -4,6 +4,13 @@
 
 #include "chrome/browser/glic/host/context/glic_page_context_fetcher.h"
 
+#include <stdint.h>
+
+#include <utility>
+#include <variant>
+#include <vector>
+
+#include "base/check.h"
 #include "base/functional/callback.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
@@ -147,26 +154,6 @@ void HandleFetchPageResult(
     task_id = journal_entry->GetTaskId();
   }
   if (page_context.screenshot_result.has_value()) {
-#if !BUILDFLAG(IS_ANDROID)  // NEEDS_ANDROID_IMPL
-    if (tab) {
-      // TODO(b/489714641): Remove this code we shouldn't be sending
-      // the screenshot this way.
-      auto encoded_data =
-          SelectionOverlayController::FromTabWebContents(tab->GetContents())
-              ->GetEncodedData();
-      if (encoded_data.has_value()) {
-        page_context.screenshot_result->screenshot_data =
-            std::move(encoded_data.value());
-      }
-
-      if (page_context.annotated_page_content_result.has_value()) {
-        page_context.annotated_page_content_result->proto
-            .mutable_gemini_in_chrome_page_metadata()
-            ->mutable_screenshot_info()
-            ->set_has_selection_region_in_screenshot(true);
-      }
-    }
-#endif
     if (journal) {
       journal->LogScreenshot(tab_context->tab_data->url, task_id,
                              page_context.screenshot_result->mime_type,
@@ -183,12 +170,17 @@ void HandleFetchPageResult(
   }
 
   if (page_context.pdf_result) {
-    auto pdf_document_data = mojom::PdfDocumentData::New();
-    pdf_document_data->origin = page_context.pdf_result->origin;
-    pdf_document_data->size_limit_exceeded =
-        page_context.pdf_result->size_exceeded;
-    pdf_document_data->pdf_data = std::move(page_context.pdf_result->bytes);
-    tab_context->pdf_document_data = std::move(pdf_document_data);
+    // Glic requests PDF bytes exclusively. It does not request PDF text. Only
+    // populate `pdf_document_data` if the `pdf_result` holds PDF bytes.
+    if (auto* pdf_data =
+            std::get_if<std::vector<uint8_t>>(&page_context.pdf_result->data)) {
+      auto pdf_document_data = mojom::PdfDocumentData::New();
+      pdf_document_data->origin = page_context.pdf_result->origin;
+      pdf_document_data->size_limit_exceeded =
+          page_context.pdf_result->size_exceeded;
+      pdf_document_data->pdf_data = std::move(*pdf_data);
+      tab_context->pdf_document_data = std::move(pdf_document_data);
+    }
   }
 
   if (page_context.annotated_page_content_result.has_value()) {

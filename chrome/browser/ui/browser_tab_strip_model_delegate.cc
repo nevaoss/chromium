@@ -13,6 +13,7 @@
 #include "base/functional/callback_helpers.h"
 #include "build/build_config.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
+#include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/reading_list/reading_list_model_factory.h"
@@ -20,7 +21,6 @@
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_live_tab_context.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
@@ -69,7 +69,7 @@ bool BrowserTabStripModelDelegate::IsTabGlicPinned(tabs::TabHandle tab_handle) {
   auto* service =
       glic::GlicKeyedServiceFactory::GetGlicKeyedService(browser_->profile());
 
-  return service->sharing_manager().IsTabPinned(tab_handle);
+  return service->active_instance_sharing_manager().IsTabPinned(tab_handle);
 }
 
 bool BrowserTabStripModelDelegate::GlicPinTabs(
@@ -77,7 +77,7 @@ bool BrowserTabStripModelDelegate::GlicPinTabs(
   auto* service =
       glic::GlicKeyedServiceFactory::GetGlicKeyedService(browser_->profile());
 
-  return service->sharing_manager().PinTabs(tab_handles);
+  return service->active_instance_sharing_manager().PinTabs(tab_handles);
 }
 
 bool BrowserTabStripModelDelegate::GlicUnpinTabs(
@@ -85,7 +85,7 @@ bool BrowserTabStripModelDelegate::GlicUnpinTabs(
   auto* service =
       glic::GlicKeyedServiceFactory::GetGlicKeyedService(browser_->profile());
 
-  return service->sharing_manager().UnpinTabs(tab_handles);
+  return service->active_instance_sharing_manager().UnpinTabs(tab_handles);
 }
 
 void BrowserTabStripModelDelegate::OpenGlicWindowFromSharedTab() {
@@ -102,8 +102,8 @@ void BrowserTabStripModelDelegate::GlicUnpinTabsFromAllConversations(
     base::span<const tabs::TabHandle> tab_handles) {
   auto* service =
       glic::GlicKeyedServiceFactory::GetGlicKeyedService(browser_->profile());
-  service->UnpinTabsFromAllInstances(tab_handles,
-                                     glic::GlicUnpinTrigger::kContextMenu);
+  service->instance_coordinator().UnpinTabsFromAllInstances(
+      tab_handles, glic::GlicUnpinTrigger::kContextMenu);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -264,6 +264,12 @@ void BrowserTabStripModelDelegate::WillCloseGroup(
     const tab_groups::TabGroupId& group) {
   // Store updated information about the tab group in TabRestore.
   CreateHistoricalGroup(group);
+}
+
+void BrowserTabStripModelDelegate::WillCloseSplit(
+    const split_tabs::SplitTabId& split_id) {
+  // TODO(crbug.com/508275923): Implement CreateHistoricalSplit here as part of
+  // the TabRestore process.
 }
 
 void BrowserTabStripModelDelegate::GroupCloseStopped(

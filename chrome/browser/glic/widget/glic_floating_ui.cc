@@ -86,10 +86,8 @@ GlicFloatingUi::~GlicFloatingUi() {
     modal_dialog_host_observers_.Notify(
         &web_modal::ModalDialogHostObserver::OnHostDestroying);
   }
-  // Null during teardown.
-  if (auto* profile_manager = GlicProfileManager::GetInstance()) {
-    profile_manager->SetCurrentDetachedGlic(nullptr);
-  }
+
+  GlicProfileManager::GetInstance()->SetCurrentDetachedGlic(nullptr);
 
   ClearWebContentsDelegate();
   PictureInPictureOcclusionTracker* tracker =
@@ -224,6 +222,9 @@ void GlicFloatingUi::CloseSelectionOverlay() {
   auto* selection_overlay_controller =
       SelectionOverlayController::FromTabWebContents(
           focused_tab->GetContents());
+  if (!selection_overlay_controller) {
+    return;
+  }
   selection_overlay_controller->Close();
 }
 #endif
@@ -316,6 +317,10 @@ bool GlicFloatingUi::IsShowing() const {
   return glic_widget_ != nullptr;
 }
 
+bool GlicFloatingUi::IsShowingOrBackgrounded() const {
+  return IsShowing();
+}
+
 void GlicFloatingUi::Show(const ShowOptions& options) {
   FloatingPanelCanAttachChanged(source_tab_.Get() != nullptr);
   instance_metrics_->OnShowInFloaty(options);
@@ -334,6 +339,7 @@ void GlicFloatingUi::Close(const CloseOptions& options) {
         &web_modal::ModalDialogHostObserver::OnHostDestroying);
   }
   ClearWebContentsDelegate();
+  CloseSelectionOverlay();
   if (screenshot_capturer_) {
     screenshot_capturer_->CloseScreenPicker();
   }

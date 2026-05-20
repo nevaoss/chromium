@@ -205,6 +205,8 @@
   E_CPONLY(kColorGlicInactiveTabUnderlineGradient1) \
   E_CPONLY(kColorGlicInactiveTabUnderlineGradient2) \
   E_CPONLY(kColorGlicInactiveTabUnderlineGradient3) \
+  E_CPONLY(kColorGlicSelectionOverlayToast) \
+  E_CPONLY(kColorGlicSelectionOverlayToastCancelButton) \
   /* Hover Button colors */ \
   E_CPONLY(kColorHoverButtonBackgroundHovered) \
   /* Lens overlay colors. */ \
@@ -239,7 +241,7 @@
   E_CPONLY(kColorTabStripControlButtonInkDrop) \
   E_CPONLY(kColorTabStripControlButtonInkDropRipple) \
   /* New tab button colors for ChromeRefresh.*/ \
-  /* TODO (crbug.com/1399942) remove when theming works */ \
+  /* TODO (crbug.com/40883407) remove when theming works */ \
   E_CPONLY(kColorNewTabButtonCRForegroundFrameActive) \
   E_CPONLY(kColorNewTabButtonCRForegroundFrameInactive) \
   E_CPONLY(kColorNewTabButtonCRBackgroundFrameActive) \
@@ -268,6 +270,7 @@
   E_CPONLY(kColorNewTabPageThreadsRailIconButton) \
   E_CPONLY(kColorNewTabPageChipBackground) \
   E_CPONLY(kColorNewTabPageChipForeground) \
+  E_CPONLY(kColorNewTabPageComposeboxSubmitButtonBackground) \
   E_CPONLY(kColorComposeboxBackground) \
   E_CPONLY(kColorComposeboxFileChipSpinner) \
   E_CPONLY(kColorComposeboxFont) \
@@ -424,6 +427,7 @@
   E_CPONLY(kColorOmniboxKeywordSeparator) \
   E_CPONLY(kColorOmniboxResultsBackground) \
   E_CPONLY(kColorOmniboxResultsBackgroundHovered) \
+  E_CPONLY(kColorOmniboxResultsBackgroundHoverOverlay) \
   E_CPONLY(kColorOmniboxResultsBackgroundSelected) \
   E_CPONLY(kColorOmniboxResultsBackgroundIph) \
   E_CPONLY(kColorOmniboxResultsButtonBorder) \
@@ -1035,6 +1039,7 @@
   E_CPONLY(kColorToolbarButtonText) \
   E_CPONLY(kColorToolbarCloseButtonBackgroundDefault) \
   E_CPONLY(kColorToolbarContentAreaSeparator) \
+  E_CPONLY(kColorToolbarContextualTasksButtonShadow) \
   E_CPONLY(kColorToolbarExtensionSeparatorDisabled) \
   E_CPONLY(kColorToolbarExtensionSeparatorEnabled) \
   E_CPONLY(kColorToolbarFeaturePromoHighlight) \

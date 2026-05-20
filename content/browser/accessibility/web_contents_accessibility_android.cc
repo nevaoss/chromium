@@ -1070,20 +1070,6 @@ void WebContentsAccessibilityAndroid::HandleTextSelectionChanged(
                                                                unique_id);
 }
 
-void WebContentsAccessibilityAndroid::HandleExtendedSelectionChanged(
-    int32_t unique_id,
-    int32_t focus_unique_id,
-    int32_t focus_offset) {
-  JNIEnv* env = AttachCurrentThread();
-  ScopedJavaLocalRef<jobject> obj = GetJavaObject(env);
-  if (obj.is_null()) {
-    return;
-  }
-
-  Java_WebContentsAccessibilityImpl_handleExtendedSelectionChange(
-      env, obj, unique_id, focus_unique_id, focus_offset);
-}
-
 void WebContentsAccessibilityAndroid::HandleEditableTextChanged(
     int32_t unique_id,
     int32_t subType) {
@@ -1256,13 +1242,17 @@ void WebContentsAccessibilityAndroid::ClearNodeInfoCacheForGivenId(
 // TODO(crbug.com/485227837): Remove experiment's methods
 void WebContentsAccessibilityAndroid::ValidateA11yCacheForExperiment() {
   JNIEnv* env = AttachCurrentThread();
-  ScopedJavaLocalRef<jobject> obj = GetJavaObject(env);
+  ScopedJavaLocalRef<jobject> wcai_obj = GetJavaObject(env);
+  if (wcai_obj.is_null()) {
+    return;
+  }
+  ScopedJavaLocalRef<jobject> obj =
+      Java_WebContentsAccessibilityImpl_getFakeAndroidCache(env, wcai_obj);
   if (obj.is_null()) {
     return;
   }
 
-  Java_WebContentsAccessibilityImpl_validateAccessibilityFakeCacheForExperiment(
-      env, obj);
+  Java_FakeAndroidCache_validateAccessibilityForExperiment(env, obj);
 }
 
 std::u16string
@@ -1367,6 +1357,16 @@ bool WebContentsAccessibilityAndroid::IsFocused(JNIEnv* env,
   }
 
   return node->IsFocused();
+}
+
+bool WebContentsAccessibilityAndroid::IsTextSelectable(JNIEnv* env,
+                                                       int32_t unique_id) {
+  BrowserAccessibilityAndroid* node = GetAXFromUniqueID(unique_id);
+  if (!node) {
+    return false;
+  }
+
+  return node->IsTextSelectable();
 }
 
 int32_t WebContentsAccessibilityAndroid::GetEditableTextSelectionStart(
@@ -2239,9 +2239,21 @@ int32_t WebContentsAccessibilityAndroid::FindElementType(
             MaybeFindRowColumn(start_node, element_type, forwards);
         ret) {
       ui::BrowserAccessibility* node = start_node->manager()->GetFromID(*ret);
-      return node ? static_cast<BrowserAccessibilityAndroid*>(node)
-                        ->GetUniqueId()
-                  : ui::kInvalidAXNodeID;
+      if (node) {
+        const BrowserAccessibilityAndroid* android_node =
+            static_cast<const BrowserAccessibilityAndroid*>(node);
+        // Per the W3C ARIA APG for grids[1], if a table/grid cell contains a
+        // single interactive widget, focus should be delegated to that widget.
+        // This logic is safely restricted to tables/grids via
+        // MaybeFindRowColumn().
+        // [1] https://www.w3.org/WAI/ARIA/apg/patterns/grid/#gridNav_focus
+        if (const BrowserAccessibilityAndroid* sole_interesting_node =
+                android_node->GetSoleInterestingNodeFromSubtree()) {
+          android_node = sole_interesting_node;
+        }
+        return android_node->GetUniqueId();
+      }
+      return ui::kInvalidAXNodeID;
     }
 
     predicate = PredicateForSearchKey(element_type);

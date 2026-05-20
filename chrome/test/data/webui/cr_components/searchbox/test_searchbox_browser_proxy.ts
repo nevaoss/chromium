@@ -45,6 +45,8 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
       'notifySessionAbandoned',
       'addFileContext',
       'addTabContext',
+      'addDriveContext',
+      'onDriveUploadClicked',
       'deleteContext',
       'clearFiles',
       'submitQuery',
@@ -53,20 +55,18 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
       'recordToolSelectionAction',
       'setActiveModelMode',
       'recordModelSelectionAction',
-      'setPage',
       'getInputState',
       'activateMetricsFunnel',
       'setPopupSelection',
       'openPopupSelection',
+      'shouldShowDriveDisclaimer',
+      'onDriveDisclaimerAccepted',
+      'getPageClassification',
     ]);
   }
 
   setResultFor(methodName: string, result: any) {
     this.results_.set(methodName, result);
-  }
-
-  setPage(page: PageRemote) {
-    this.methodCalled('setPage', page);
   }
 
   onFocusChanged(focused: boolean) {
@@ -198,6 +198,15 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
     return Promise.resolve('');
   }
 
+  addDriveContext(driveId: string, resourceKey: string, mimeType: string) {
+    this.methodCalled('addDriveContext', {driveId, resourceKey, mimeType});
+    return Promise.resolve('');
+  }
+
+  onDriveUploadClicked() {
+    this.methodCalled('onDriveUploadClicked');
+  }
+
   addTabContext(tabId: number, delayUpload: boolean) {
     this.methodCalled('addTabContext', {tabId, delayUpload});
     return Promise.resolve('');
@@ -252,6 +261,20 @@ class FakePageHandler extends TestBrowserProxy implements PageHandlerInterface {
       disposition: WindowOpenDisposition) {
     this.methodCalled(
         'openPopupSelection', {resultSequenceId, selection, disposition});
+  }
+
+  shouldShowDriveDisclaimer(): Promise<{shouldShow: boolean}> {
+    this.methodCalled('shouldShowDriveDisclaimer');
+    return Promise.resolve({shouldShow: false});
+  }
+
+  onDriveDisclaimerAccepted() {
+    this.methodCalled('onDriveDisclaimerAccepted');
+  }
+
+  getPageClassification() {
+    this.methodCalled('getPageClassification');
+    return Promise.resolve({metricSource: 'NTP_REALBOX'});
   }
 }
 

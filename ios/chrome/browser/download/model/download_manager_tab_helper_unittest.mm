@@ -6,6 +6,7 @@
 
 #import <memory>
 
+#import "base/files/file_util.h"
 #import "base/files/scoped_temp_dir.h"
 #import "base/functional/callback.h"
 #import "base/run_loop.h"
@@ -119,6 +120,14 @@ class DownloadManagerTabHelperTest : public PlatformTest {
 
   DownloadManagerTabHelper* tab_helper() {
     return DownloadManagerTabHelper::FromWebState(web_state_);
+  }
+
+  bool has_files_request_handler() {
+    return !!tab_helper()->files_request_handler_;
+  }
+
+  bool has_content_analysis_info() {
+    return !!tab_helper()->content_analysis_info_;
   }
 
   // Creates a fake download task associated with `web_state_`.
@@ -433,13 +442,10 @@ TEST_F(DownloadManagerTabHelperTest, DownloadCompleteSavedToDriveDoesNotMove) {
   EXPECT_TRUE(tab_helper()->GetDownloadTaskFinalFilePath().empty());
 }
 
-// Tests that when scanning is ENABLED, it currently does NOT proceed because
-// PrepareContentAnalysisRequest is NOTIMPLEMENTED.
-//
-// TODO(crbug.com/482051070): Update this test once the scanning logic is
-// implemented.
+// Tests that when scanning is ENABLED and no policy
+// is set, the scan result will be SUCCESS and the download proceeds,
 TEST_F(DownloadManagerTabHelperTest,
-       DownloadCompleteWithScanningEnabledDoesNotProceed) {
+       DownloadCompleteWithScanningEnabledProceeds) {
   scoped_feature_list_.InitAndEnableFeature(
       enterprise_connectors::kEnableFileDownloadConnectorIOS);
 
@@ -452,7 +458,83 @@ TEST_F(DownloadManagerTabHelperTest,
   tab_helper()->SetCurrentDownload(std::move(task));
   task_ptr->SetDone(true);
 
-  // It should NOT move the file because scanning callback is never
-  // called (NOTIMPLEMENTED).
-  EXPECT_TRUE(tab_helper()->GetDownloadTaskFinalFilePath().empty());
+  // It should move the file because the scan results in SUCCESS (no policy
+  // set).
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return !tab_helper()->GetDownloadTaskFinalFilePath().empty(); }));
+}
+
+// Tests that enterprise metadata (files_request_handler_ and
+// content_analysis_info_) is correctly cleared after a download completes or is
+// replaced.
+TEST_F(DownloadManagerTabHelperTest, EnterpriseMetadataCleanup) {
+  web_state_->WasShown();
+  std::unique_ptr<web::FakeDownloadTask> task =
+      CreateFakeDownloadTask(GURL(kUrl), kMimeType);
+  web::FakeDownloadTask* task_ptr = task.get();
+  task_ptr->SetIdentifier(@"test_id");
+  task_ptr->SetGeneratedFileName(base::FilePath("test.txt"));
+  tab_helper()->SetCurrentDownload(std::move(task));
+
+  // Scanning should NOT be triggered yet.
+  EXPECT_FALSE(has_files_request_handler());
+  EXPECT_FALSE(has_content_analysis_info());
+
+  task_ptr->SetDone(true);
+
+  // Scanning triggers. Since no policy is set, it might complete immediately or
+  // asynchronously. In our case, it should complete quickly.
+  // Wait for the final path to be set, which happens after scanning.
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return !tab_helper()->GetDownloadTaskFinalFilePath().empty(); }));
+
+  // After completion, metadata should be cleared.
+  EXPECT_FALSE(has_files_request_handler());
+  EXPECT_FALSE(has_content_analysis_info());
+
+  // Now test that replacing a download also clears metadata (if it was somehow
+  // set).
+  auto task2 = CreateFakeDownloadTask(GURL(kUrl), kMimeType);
+  tab_helper()->SetCurrentDownload(std::move(task2));
+  EXPECT_FALSE(has_files_request_handler());
+  EXPECT_FALSE(has_content_analysis_info());
+}
+
+// Tests that when a download task is complete, the tab helper notifies the
+// delegate about state updates and correctly reports `IsScannerProcessing()`.
+TEST_F(DownloadManagerTabHelperTest, DownloadCompleteNotifiesDelegate) {
+  scoped_feature_list_.InitAndDisableFeature(
+      enterprise_connectors::kEnableFileDownloadConnectorIOS);
+
+  web_state_->WasShown();
+  std::unique_ptr<web::FakeDownloadTask> task =
+      CreateFakeDownloadTask(GURL(kUrl), kMimeType);
+  web::FakeDownloadTask* task_ptr = task.get();
+  task_ptr->SetIdentifier(@"test_id");
+  task_ptr->SetGeneratedFileName(base::FilePath("test.txt"));
+
+  // Create a dummy source file and start the task to set the response path.
+  base::FilePath source_path = temp_dir_.GetPath().Append("source.txt");
+  ASSERT_TRUE(base::WriteFile(source_path, "test"));
+  task_ptr->Start(source_path);
+
+  tab_helper()->SetCurrentDownload(std::move(task));
+
+  NSInteger initial_update_call_count = delegate_.updateCallCount;
+
+  task_ptr->SetDone(true);
+
+  // IsScannerProcessing should be true while scanning (or moving).
+  // Note: Since scanning is disabled, it might be very fast.
+  // But MaybeMoveDownloadToDownloadsDirectory is called.
+
+  // Wait for the task to finish (moving the file).
+  // Delegate should be notified at least twice:
+  // 1. After scan finishes (MaybeMoveDownloadToDownloadsDirectory).
+  // 2. After move finishes (MoveComplete).
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return delegate_.updateCallCount >= initial_update_call_count + 2;
+  }));
+
+  EXPECT_FALSE(tab_helper()->IsScannerProcessing());
 }

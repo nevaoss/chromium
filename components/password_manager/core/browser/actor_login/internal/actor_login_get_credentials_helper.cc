@@ -9,24 +9,30 @@
 #include <vector>
 
 #include "base/barrier_callback.h"
+#include "base/feature_list.h"
 #include "base/location.h"
 #include "base/task/sequenced_task_runner.h"
+#include "build/build_config.h"
 #include "components/password_manager/core/browser/actor_login/internal/actor_login_metrics_helper_interface.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
+
+#if BUILDFLAG(IS_ANDROID)
+#include "components/password_manager/core/browser/features/password_features.h"
+#endif
 
 namespace actor_login {
 
 ActorLoginGetCredentialsHelper::ActorLoginGetCredentialsHelper(
     std::vector<std::unique_ptr<ActorLoginCredentialsFetcher>> fetchers,
     ActorLoginMetricsHelperInterface* metrics_helper,
-    CredentialsOrErrorReply callback)
+    GetCredentialsCallback callback)
     : fetchers_(std::move(fetchers)),
       metrics_helper_(metrics_helper),
       callback_(std::move(callback)) {
   if (fetchers_.empty()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
-        base::BindOnce(std::move(callback_), std::vector<Credential>()));
+        base::BindOnce(std::move(callback_), std::vector<Credential>(), false));
     return;
   }
 
@@ -71,13 +77,16 @@ void ActorLoginGetCredentialsHelper::OnAllFetchesCompleted(
 
   if (!fetched_credentials) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback_),
-                                  GetErrorOrNoCredentials(std::move(results))));
+        FROM_HERE,
+        base::BindOnce(std::move(callback_),
+                       GetErrorOrNoCredentials(std::move(results)), false));
     return;
   }
+  auto [credentials, duplicate_permissions] =
+      MergeCredentials(std::move(results));
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback_),
-                                MergeCredentials(std::move(results))));
+      FROM_HERE, base::BindOnce(std::move(callback_), std::move(credentials),
+                                duplicate_permissions));
 }
 
 CredentialsOrError ActorLoginGetCredentialsHelper::GetErrorOrNoCredentials(
@@ -91,7 +100,8 @@ CredentialsOrError ActorLoginGetCredentialsHelper::GetErrorOrNoCredentials(
   return std::vector<Credential>();
 }
 
-std::vector<Credential> ActorLoginGetCredentialsHelper::MergeCredentials(
+std::pair<std::vector<Credential>, bool>
+ActorLoginGetCredentialsHelper::MergeCredentials(
     std::vector<FetchResult> results) {
   std::vector<Credential> flattened_credentials;
   for (FetchResult& result : results) {
@@ -124,25 +134,36 @@ std::vector<Credential> ActorLoginGetCredentialsHelper::MergeCredentials(
     }
   }
 
+#if BUILDFLAG(IS_ANDROID)
+  if (base::FeatureList::IsEnabled(
+          password_manager::features::
+              kActorLoginNoPermanentPermissionsAndroid)) {
+    for (Credential& credential : credentials) {
+      credential.has_persistent_permission = false;
+    }
+    return {credentials, false};
+  }
+#endif
+
   const int permission_count = std::ranges::count_if(
       credentials, &Credential::has_persistent_permission);
 
   if (permission_count == 1) {
     Credential approved_credential = *std::ranges::find_if(
         credentials, &Credential::has_persistent_permission);
-    return {approved_credential};
+    return {{approved_credential}, false};
   }
 
+  bool conflicting_permissions = permission_count > 1;
   // We treat multiple credentials with permission as a merge conflict. Discard
   // all permissions to allow the user to resolve the conflict.
-  // TODO(crbug.com/486089293): Also discard the permission in storage.
-  if (permission_count > 1) {
+  if (conflicting_permissions) {
     for (Credential& credential : credentials) {
       credential.has_persistent_permission = false;
     }
   }
 
-  return credentials;
+  return {credentials, conflicting_permissions};
 }
 
 }  // namespace actor_login

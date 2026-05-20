@@ -22,9 +22,10 @@
 #import "ios/chrome/browser/infobars/model/overlays/default_infobar_overlay_request_factory.h"
 #import "ios/chrome/browser/infobars/model/overlays/infobar_overlay_request_inserter.h"
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_service.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
+#import "ios/chrome/browser/intelligence/page_action_menu/ui/page_action_menu_consumer.h"
 #import "ios/chrome/browser/intelligence/page_action_menu/ui/page_action_menu_content_entry_point.h"
 #import "ios/chrome/browser/intelligence/page_action_menu/ui/page_action_menu_feature.h"
 #import "ios/chrome/browser/intelligence/page_action_menu/utils/ai_hub_metrics.h"
@@ -53,6 +54,14 @@ namespace {
 // The size of icons displayed in feature rows.
 const CGFloat kFeatureRowIconSize = 20;
 
+// Returns whether it is possible to start a sign-in.
+bool SigninIsPossible(AuthenticationService* auth_service) {
+  if (!auth_service) {
+    return false;
+  }
+  return !auth_service->HasPrimaryIdentity() && auth_service->SigninEnabled();
+}
+
 }  // namespace
 
 @interface PageActionMenuMediator () <CRWWebStateObserver>
@@ -75,10 +84,10 @@ const CGFloat kFeatureRowIconSize = 20;
   raw_ptr<TemplateURLService> _templateURLService;
 
   // The service for the Gemini floaty.
-  raw_ptr<BwgService> _geminiService;
+  raw_ptr<GeminiService> _geminiService;
 
   // The tab helper for the Gemini floaty.
-  raw_ptr<BwgTabHelper> _geminiTabHelper;
+  raw_ptr<GeminiTabHelper> _geminiTabHelper;
 
   // The tab helper for Reader mode.
   raw_ptr<ReaderModeTabHelper> _readerModeTabHelper;
@@ -91,8 +100,8 @@ const CGFloat kFeatureRowIconSize = 20;
            authenticationService:(AuthenticationService*)authenticationService
               profilePrefService:(PrefService*)profilePrefs
               templateURLService:(TemplateURLService*)templateURLService
-                   geminiService:(BwgService*)geminiService
-                 geminiTabHelper:(BwgTabHelper*)geminiTabHelper
+                   geminiService:(GeminiService*)geminiService
+                 geminiTabHelper:(GeminiTabHelper*)geminiTabHelper
              readerModeTabHelper:(ReaderModeTabHelper*)readerModeTabHelper
           hostContentSettingsMap:
               (HostContentSettingsMap*)hostContentSettingsMap {
@@ -146,12 +155,20 @@ const CGFloat kFeatureRowIconSize = 20;
   return _readerModeTabHelper->IsActive();
 }
 
+- (BOOL)isReaderModeAvailable {
+  return IsReaderModeAvailable();
+}
+
 - (PageActionMenuContentEntryPoint*)geminiEntryPoint {
   if (!_geminiService || !_geminiTabHelper) {
     return [[PageActionMenuContentEntryPoint alloc] initWithEnabled:NO];
   }
 
+  // Signed-out users see an enabled button; tap routes to sign-in.
   if (IsPageActionMenuAuthFlowEnabled() && ![self isUserSignedIn]) {
+    if (!SigninIsPossible(_authenticationService)) {
+      return [[PageActionMenuContentEntryPoint alloc] initWithEnabled:NO];
+    }
     return [[PageActionMenuContentEntryPoint alloc] initWithEnabled:YES];
   }
 
@@ -159,12 +176,14 @@ const CGFloat kFeatureRowIconSize = 20;
       _geminiService->GeminiIneligibilityForProfile();
 
   if (result.has_value()) {
-    // TODO(crbug.com/485297147): Add footer item when the footer UI gets
-    // implemented.
-    return result.value().chrome_enterprise
-               ? [[PageActionMenuContentEntryPoint alloc] initWithEnabled:NO
-                                                               footerItem:nil]
-               : [[PageActionMenuContentEntryPoint alloc] initWithEnabled:NO];
+    if (result.value().chrome_enterprise) {
+      return [[PageActionMenuContentEntryPoint alloc]
+          initWithEnabled:NO
+               footerItem:[ContentEntryPointUnavailabilityItem
+                              geminiEnterprise]];
+    }
+
+    return [[PageActionMenuContentEntryPoint alloc] initWithEnabled:NO];
   }
 
   return [[PageActionMenuContentEntryPoint alloc]
@@ -182,17 +201,15 @@ const CGFloat kFeatureRowIconSize = 20;
   }
 
   if (!featureAvailable) {
-    // TODO(crbug.com/485297147): Add footer item when the footer UI gets
-    // implemented.
-    return [[PageActionMenuContentEntryPoint alloc] initWithEnabled:NO
-                                                         footerItem:nil];
+    return [[PageActionMenuContentEntryPoint alloc]
+        initWithEnabled:NO
+             footerItem:[ContentEntryPointUnavailabilityItem lensEnterprise]];
   }
 
   if (!hasDefaultSearchEngine) {
-    // TODO(crbug.com/485297147): Add footer item when the footer UI gets
-    // implemented.
-    return [[PageActionMenuContentEntryPoint alloc] initWithEnabled:NO
-                                                         footerItem:nil];
+    return [[PageActionMenuContentEntryPoint alloc]
+        initWithEnabled:NO
+             footerItem:[ContentEntryPointUnavailabilityItem lensSearchEngine]];
   }
 
   // Disabled without disclaimer.
@@ -209,6 +226,23 @@ const CGFloat kFeatureRowIconSize = 20;
       _readerModeTabHelper->CurrentPageIsEligibleForReaderMode();
   // There are no readerMode non eligibility disclaimers.
   return [[PageActionMenuContentEntryPoint alloc] initWithEnabled:eligible];
+}
+
+- (NSArray<ContentEntryPointUnavailabilityItem*>*)
+    unavailabilityItemsForTraitCollection:(UITraitCollection*)traitCollection {
+  NSMutableArray<ContentEntryPointUnavailabilityItem*>* items =
+      [NSMutableArray array];
+  NSArray<PageActionMenuContentEntryPoint*>* mainEntryPoints = @[
+    [self lensEntryPointForTraitCollection:traitCollection],
+    [self readerModeEntryPoint], [self geminiEntryPoint]
+  ];
+  for (PageActionMenuContentEntryPoint* entryPoint in mainEntryPoints) {
+    if (entryPoint.unavailabilityItem) {
+      [items addObject:entryPoint.unavailabilityItem];
+    }
+  }
+
+  return items;
 }
 
 - (BOOL)isFeatureAvailable:(PageActionMenuFeatureType)featureType {
@@ -653,7 +687,7 @@ std::string GetTargetLanguageCode(ChromeIOSTranslateClient* translate_client) {
   if (!IsZeroStateSuggestionsAIHubEnabled()) {
     return;
   }
-  BwgTabHelper* tabHelper = BwgTabHelper::FromWebState(_webState);
+  GeminiTabHelper* tabHelper = GeminiTabHelper::FromWebState(_webState);
   if (!tabHelper) {
     return;
   }
@@ -708,8 +742,43 @@ std::string GetTargetLanguageCode(ChromeIOSTranslateClient* translate_client) {
   if (!_authenticationService) {
     return NO;
   }
-  return _authenticationService->HasPrimaryIdentity(
-      signin::ConsentLevel::kSignin);
+  return _authenticationService->HasPrimaryIdentity();
+}
+
+- (BOOL)isManagedAccount {
+  if (!_authenticationService) {
+    return NO;
+  }
+  return _authenticationService->HasPrimaryIdentityManaged();
+}
+
+- (BOOL)isGeminiEligibilityLoading {
+  if (!_geminiService) {
+    return NO;
+  }
+  return _geminiService->IsWorkspacePolicyCheckPending();
+}
+
+// Returns YES if the signed-in user is ineligible due to workspace
+// restriction specifically. This is the only ineligibility that can be
+// resolved by switching accounts without triggering a profile switch.
+// Enterprise managed accounts trigger a profile switch on sign-in, and
+// account capability (U13/U18) applies to all accounts the user owns.
+- (BOOL)isIneligibleGeminiAccountSwitchable {
+  if (![self isUserSignedIn] || !_geminiService ||
+      !_authenticationService->SigninEnabled()) {
+    return NO;
+  }
+
+  std::optional<gemini::IneligibilityReasons> result =
+      _geminiService->GeminiIneligibilityForProfile();
+
+  if (!result.has_value()) {
+    return NO;
+  }
+
+  return !result.value().chrome_enterprise &&
+         !result.value().account_capability && result.value().workspace;
 }
 
 @end

@@ -4,19 +4,25 @@
 
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_first_run_coordinator.h"
 
+#import <AVFoundation/AVFoundation.h>
+
+#import "base/strings/sys_string_conversions.h"
 #import "components/feature_engagement/public/event_constants.h"
 #import "components/feature_engagement/public/tracker.h"
 #import "components/prefs/pref_service.h"
+#import "components/variations/service/variations_service.h"
+#import "components/variations/service/variations_service_utils.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_first_run_mediator.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_first_run_mediator_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
-#import "ios/chrome/browser/intelligence/bwg/model/bwg_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/ui/gemini_fre_wrapper_view_controller.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
+#import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/profile/profile_ios.h"
@@ -27,6 +33,7 @@
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/signin/model/authentication_service.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
+#import "ios/chrome/browser/signin/model/identity_manager_factory.h"
 #import "ios/public/provider/chrome/browser/bwg/bwg_api.h"
 #import "ios/web/public/web_state.h"
 
@@ -50,6 +57,9 @@
 
   // Type of Gemini FRE.
   GeminiFREType _FREType;
+
+  // The completion block passed from Mediator when consent UI is dismissed.
+  void (^_consentCompletion)(void);
 
   // Handler for sending IPH commands.
   id<HelpCommands> _helpCommandsHandler;
@@ -100,8 +110,9 @@
       initWithPrefService:_prefService
              webStateList:self.browser->GetWebStateList()
        baseViewController:self.baseViewController
-               BWGService:GeminiServiceFactory::GetForProfile(self.profile)
+            geminiService:GeminiServiceFactory::GetForProfile(self.profile)
        geminiBrowserAgent:GeminiBrowserAgent::FromBrowser(self.browser)
+          identityManager:IdentityManagerFactory::GetForProfile(self.profile)
                   tracker:_tracker
                entryPoint:_entryPoint
         completionHandler:_completion];
@@ -112,10 +123,18 @@
 
   [self prepareAIHubIPH];
 
+  variations::VariationsService* variations_service =
+      GetApplicationContext()->GetVariationsService();
+  std::string country =
+      variations_service
+          ? base::ToLowerASCII(variations_service->GetStoredPermanentCountry())
+          : "";
+  NSString* nsCountry = base::SysUTF8ToNSString(country);
   _viewController = [[GeminiFREWrapperViewController alloc]
          initWithPromo:_mediator.shouldShowPromo
       isAccountManaged:[self isManagedAccount]
-               FREType:_FREType];
+               FREType:_FREType
+               country:nsCountry];
   _viewController.sheetPresentationController.delegate = self;
   _viewController.mutator = _mediator;
 
@@ -136,9 +155,9 @@
 #pragma mark - Public
 
 - (void)stopWithCompletion:(ProceduralBlock)completion {
-  BwgTabHelper* BWGTabHelper = [self activeWebStateGeminiTabHelper];
-  if (BWGTabHelper) {
-    BWGTabHelper->SetPreventContextualPanelEntryPoint(NO);
+  GeminiTabHelper* geminiTabHelper = [self activeWebStateGeminiTabHelper];
+  if (geminiTabHelper) {
+    geminiTabHelper->SetPreventContextualPanelEntryPoint(NO);
   }
 
   [self presentPageActionMenuIPH];
@@ -149,14 +168,28 @@
   _prefService = nil;
   _tracker = nil;
   _completion = nil;
-  [self dismissPresentedViewWithCompletion:completion];
+  if (!_consentCompletion) {
+    [self dismissPresentedViewWithCompletion:completion];
+  }
   [super stop];
 }
 
 #pragma mark - GeminiMediatorDelegate
 
 - (void)dismissGeminiConsentUIWithCompletion:(void (^)())completion {
-  [self dismissPresentedViewWithCompletion:completion];
+  if (_FREType == GeminiFREType::kLive) {
+    if (completion) {
+      _consentCompletion = completion;
+    }
+    [self handleLiveMicPermission];
+    return;
+  }
+
+  [self dismissPresentedViewWithCompletion:^{
+    if (completion) {
+      completion();
+    }
+  }];
   _viewController = nil;
 }
 
@@ -174,6 +207,102 @@
 
 #pragma mark - Private
 
+// Checks the current microphone permission status and prompts the user if
+// needed.
+- (void)handleLiveMicPermission {
+  CHECK(_FREType == GeminiFREType::kLive);
+  AVAuthorizationStatus status =
+      [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
+  switch (status) {
+    case AVAuthorizationStatusNotDetermined: {
+      __weak __typeof(self) weakSelf = self;
+      [AVCaptureDevice
+          requestAccessForMediaType:AVMediaTypeAudio
+                  completionHandler:^(BOOL granted) {
+                    __strong __typeof(weakSelf) strongSelf = weakSelf;
+                    if (!strongSelf) {
+                      return;
+                    }
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                      [strongSelf handleLiveMicPermissionResult:granted];
+                    });
+                  }];
+      break;
+    }
+    case AVAuthorizationStatusAuthorized:
+      [self handleLiveMicPermissionResult:YES];
+      break;
+    case AVAuthorizationStatusDenied:
+    case AVAuthorizationStatusRestricted:
+      [self showMicrophoneSettingsAlert];
+      break;
+  }
+}
+
+// Handles the result of the microphone permission request.
+- (void)handleLiveMicPermissionResult:(BOOL)granted {
+  if (granted) {
+    // TODO(crbug.com/462400054): Start the Live session.
+    __weak __typeof(self) weakSelf = self;
+    [self dismissPresentedViewWithCompletion:^{
+      __strong __typeof(weakSelf) strongSelf = weakSelf;
+      if (!strongSelf) {
+        return;
+      }
+      if (strongSelf->_consentCompletion) {
+        strongSelf->_consentCompletion();
+      }
+      strongSelf->_consentCompletion = nil;
+    }];
+    _viewController = nil;
+  } else {
+    _consentCompletion = nil;
+  }
+}
+
+// Shows a custom alert directing the user to iOS Settings to enable the
+// microphone.
+- (void)showMicrophoneSettingsAlert {
+  UIAlertController* alert = [UIAlertController
+      alertControllerWithTitle:@"Lorem Ipsum"
+                       message:@"Lorem ipsum dolor sit amet, consectetur "
+                               @"adipiscing elit, sed do eiusmod."
+                preferredStyle:UIAlertControllerStyleAlert];
+
+  __weak __typeof(self) weakSelf = self;
+  [alert
+      addAction:
+          [UIAlertAction
+              actionWithTitle:@"Lorem Settings"
+                        style:UIAlertActionStyleDefault
+                      handler:^(UIAlertAction* action) {
+                        NSURL* settingsURL = [NSURL
+                            URLWithString:UIApplicationOpenSettingsURLString];
+                        [[UIApplication sharedApplication] openURL:settingsURL
+                                                           options:@{}
+                                                 completionHandler:nil];
+                        __strong __typeof(weakSelf) strongSelf = weakSelf;
+                        if (strongSelf) {
+                          [strongSelf dismissPresentedViewWithCompletion:nil];
+                          strongSelf->_viewController = nil;
+                        }
+                      }]];
+
+  [alert addAction:[UIAlertAction
+                       actionWithTitle:@"Lorem Cancel"
+                                 style:UIAlertActionStyleCancel
+                               handler:^(UIAlertAction* action) {
+                                 __strong __typeof(weakSelf) strongSelf =
+                                     weakSelf;
+                                 if (strongSelf) {
+                                   [strongSelf
+                                       dismissPresentedViewWithCompletion:nil];
+                                   strongSelf->_viewController = nil;
+                                 }
+                               }]];
+  [_viewController presentViewController:alert animated:YES completion:nil];
+}
+
 // Dismisses presented view.
 - (void)dismissPresentedViewWithCompletion:(void (^)())completion {
   if (self.baseViewController.presentedViewController) {
@@ -186,18 +315,18 @@
 - (BOOL)isManagedAccount {
   raw_ptr<AuthenticationService> authService =
       AuthenticationServiceFactory::GetForProfile(self.profile);
-  return authService->HasPrimaryIdentityManaged(signin::ConsentLevel::kSignin);
+  return authService->HasPrimaryIdentityManaged();
 }
 
 // Returns the currently active WebState's Gemini tab helper.
-- (BwgTabHelper*)activeWebStateGeminiTabHelper {
+- (GeminiTabHelper*)activeWebStateGeminiTabHelper {
   web::WebState* activeWebState =
       self.browser->GetWebStateList()->GetActiveWebState();
   if (!activeWebState) {
     return nil;
   }
 
-  return BwgTabHelper::FromWebState(activeWebState);
+  return GeminiTabHelper::FromWebState(activeWebState);
 }
 
 // Attempts to present the entry point IPH the user hasn't used the AI Hub entry

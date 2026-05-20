@@ -55,14 +55,15 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_list.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
@@ -79,6 +80,7 @@
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
 #include "chrome/browser/ui/views/page_info/page_info_view_factory.h"
+#include "chrome/browser/ui/views/toolbar/app_menu_control.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/web_apps/file_handler_launch_dialog_view.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_view.h"
@@ -115,6 +117,7 @@
 #include "chrome/browser/web_applications/test/os_integration_test_override_impl.h"
 #include "chrome/browser/web_applications/test/web_app_icon_test_utils.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
+#include "chrome/browser/web_applications/test/web_app_page_waiter.h"
 #include "chrome/browser/web_applications/test/web_app_test_observers.h"
 #include "chrome/browser/web_applications/web_app_command_manager.h"
 #include "chrome/browser/web_applications/web_app_command_scheduler.h"
@@ -358,7 +361,8 @@ base::flat_map<Site, SiteConfig> g_site_configs = {
       .relative_manifest_id = "webapps_integration/not_promotable/basic.html",
       .app_name = "Site C",
       .wco_not_enabled_title = u"Site C",
-      .icon_color = SK_ColorTRANSPARENT}},
+      .icon_color = SK_ColorTRANSPARENT,
+      .alternate_titles = {"Site C - Updated name"}}},
     {Site::kWco,
      {.relative_url = "/webapps_integration/wco/basic.html",
       .relative_manifest_id = "webapps_integration/wco/basic.html",
@@ -844,7 +848,9 @@ class MenuButtonUpdateListener {
   MenuButtonUpdateListener(Browser& app_browser, bool should_expect_expanded) {
     BrowserView& browser_view = app_browser.GetBrowserView();
     WebAppMenuButton* menu_button = views::AsViewClass<WebAppMenuButton>(
-        browser_view.toolbar_button_provider()->GetAppMenuButton());
+        views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+            kToolbarAppMenuButtonElementId,
+            views::ElementTrackerViews::GetContextForView(&browser_view)));
     if (menu_button->IsLabelPresentAndVisible() == should_expect_expanded) {
       return;
     }
@@ -980,8 +986,10 @@ std::ostream& operator<<(std::ostream& os, const StateSnapshot& snapshot) {
       app_dict.Set("name", app.name);
       app_dict.Set("effective_display_mode",
                    static_cast<int>(app.effective_display_mode));
-      app_dict.Set("user_display_mode",
-                   static_cast<int>(app.effective_display_mode));
+      if (app.user_display_mode.has_value()) {
+        app_dict.Set("user_display_mode",
+                     static_cast<int>(app.user_display_mode.value()));
+      }
       app_dict.Set("manifest_launcher_icon_filename",
                    app.manifest_launcher_icon_filename);
       app_dict.Set("install_state", app.install_state);
@@ -1756,6 +1764,8 @@ void WebAppIntegrationTestDriver::LaunchFileExpectDialog(
     return;
   }
   webapps::AppId app_id = GetAppIdBySiteMode(site);
+  const bool is_open_in_app_browser = provider()->registrar_unsafe().AppMatches(
+      app_id, WebAppFilter::OpensInDedicatedWindow());
   views::NamedWidgetShownWaiter waiter(views::test::AnyWidgetTestPasskey{},
                                        "FileHandlerLaunchDialogView");
   FileHandlerLaunchDialogView::SetDefaultRememberSelectionForTesting(
@@ -1763,6 +1773,7 @@ void WebAppIntegrationTestDriver::LaunchFileExpectDialog(
 
   base::RunLoop run_loop;
   BrowserAddedWaiter browser_added_waiter;
+  ui_test_utils::AllBrowserTabAddedWaiter tab_added_waiter;
 #if BUILDFLAG(IS_MAC)
   apps::SetMacShimStartupDoneCallbackForTesting(run_loop.QuitClosure());
 #else
@@ -1792,11 +1803,23 @@ void WebAppIntegrationTestDriver::LaunchFileExpectDialog(
 
   // TODO(cliffordcheng): Wait for multiple browsers and
   //                      support multiple client file handling.
-  if (provider()->registrar_unsafe().AppMatches(
-          app_id, WebAppFilter::OpensInDedicatedWindow()) &&
-      allow_deny != AllowDenyOptions::kDeny) {
-    browser_added_waiter.Wait();
-    app_browser_ = browser_added_waiter.browser_added();
+  if (allow_deny != AllowDenyOptions::kDeny) {
+    content::WebContents* target_contents = nullptr;
+    if (is_open_in_app_browser) {
+      browser_added_waiter.Wait();
+      app_browser_ = browser_added_waiter.browser_added();
+      target_contents = app_browser_->tab_strip_model()->GetActiveWebContents();
+    } else {
+      target_contents = tab_added_waiter.Wait();
+    }
+    ASSERT_TRUE(target_contents);
+    auto url_matcher = base::BindRepeating([](const GURL& url) {
+      return base::EndsWith(url.path(), "foo_handler.html") ||
+             base::EndsWith(url.path(), "bar_handler.html");
+    });
+    test::WebAppPageWaiter page_waiter(target_contents);
+    page_waiter.ExpectUrlIf(url_matcher).ManifestOrLoadedNoManifest();
+    ASSERT_TRUE(page_waiter.WaitAndFlushCommands());
   }
 
   AfterStateChangeAction();
@@ -1809,8 +1832,11 @@ void WebAppIntegrationTestDriver::LaunchFileExpectNoDialog(
     return;
   }
   webapps::AppId app_id = GetAppIdBySiteMode(site);
+  const bool is_open_in_app_browser = provider()->registrar_unsafe().AppMatches(
+      app_id, WebAppFilter::OpensInDedicatedWindow());
   base::RunLoop run_loop;
   BrowserAddedWaiter browser_added_waiter;
+  ui_test_utils::AllBrowserTabAddedWaiter tab_added_waiter;
 #if BUILDFLAG(IS_MAC)
   apps::SetMacShimStartupDoneCallbackForTesting(run_loop.QuitClosure());
 #else
@@ -1827,11 +1853,30 @@ void WebAppIntegrationTestDriver::LaunchFileExpectNoDialog(
 
   // TODO(cliffordcheng): Wait for multiple browsers and
   //                      support multiple client file handling.
-  if (provider()->registrar_unsafe().AppMatches(
-          app_id, WebAppFilter::OpensInDedicatedWindow())) {
+  content::WebContents* target_contents = nullptr;
+  if (is_open_in_app_browser) {
     browser_added_waiter.Wait();
     app_browser_ = browser_added_waiter.browser_added();
+    target_contents = app_browser_->tab_strip_model()->GetActiveWebContents();
+  } else {
+    target_contents = tab_added_waiter.Wait();
   }
+  ASSERT_TRUE(target_contents);
+  bool is_denied = site_remember_deny_open_file_.contains(site);
+  std::string expected_fallback_path = GetSiteConfiguration(site).relative_url;
+
+  auto url_matcher = base::BindRepeating(
+      [](bool is_denied, const std::string& fallback_path, const GURL& url) {
+        if (is_denied) {
+          return url.path() == fallback_path;
+        }
+        return base::EndsWith(url.path(), "foo_handler.html") ||
+               base::EndsWith(url.path(), "bar_handler.html");
+      },
+      is_denied, expected_fallback_path);
+  test::WebAppPageWaiter waiter(target_contents);
+  waiter.ExpectUrlIf(url_matcher).ManifestOrLoadedNoManifest();
+  ASSERT_TRUE(waiter.WaitAndFlushCommands());
 
   AfterStateChangeAction();
 }
@@ -2017,6 +2062,8 @@ void WebAppIntegrationTestDriver::LaunchFromPlatformShortcut(Site site) {
     run_loop.Run();
   }
 #else
+  GURL launch_url = provider()->registrar_unsafe().GetAppLaunchUrl(app_id);
+  content::WebContents* web_contents = nullptr;
   if (is_open_in_app_browser) {
     BrowserAddedWaiter browser_added_waiter;
     LaunchAppStartupBrowserCreator(app_id);
@@ -2024,9 +2071,16 @@ void WebAppIntegrationTestDriver::LaunchFromPlatformShortcut(Site site) {
     app_browser_ = browser_added_waiter.browser_added();
     active_app_id_ = app_id;
     EXPECT_TRUE(AppBrowserController::IsForWebApp(app_browser(), app_id));
+    web_contents = app_browser_->tab_strip_model()->GetActiveWebContents();
   } else {
+    ui_test_utils::AllBrowserTabAddedWaiter tab_added_waiter;
     LaunchAppStartupBrowserCreator(app_id);
+    web_contents = tab_added_waiter.Wait();
   }
+  CHECK(web_contents);
+  test::WebAppPageWaiter waiter(web_contents);
+  waiter.ExpectUrl(launch_url).ManifestOrLoadedNoManifest();
+  ASSERT_TRUE(waiter.WaitAndFlushCommands());
 #endif
   AfterStateChangeAction();
 #endif
@@ -2049,6 +2103,10 @@ void WebAppIntegrationTestDriver::LaunchFromAppShimFallback(Site site) {
   command_line.AppendSwitchASCII(switches::kTestType, "browser");
   command_line.AppendSwitchASCII(switches::kProfileDirectory, "");
 
+  ui_test_utils::AllBrowserTabAddedWaiter tab_added_waiter;
+  GURL launch_url = provider()->registrar_unsafe().GetAppLaunchUrl(app_id);
+  content::WebContents* target_contents = nullptr;
+
   if (is_open_in_app_browser) {
     BrowserAddedWaiter browser_added_waiter;
     // This should have similar logic to the IS_MAC branch in
@@ -2062,11 +2120,17 @@ void WebAppIntegrationTestDriver::LaunchFromAppShimFallback(Site site) {
     app_browser_ = browser_added_waiter.browser_added();
     active_app_id_ = app_id;
     EXPECT_TRUE(AppBrowserController::IsForWebApp(app_browser(), app_id));
+    target_contents = app_browser_->tab_strip_model()->GetActiveWebContents();
   } else {
     ASSERT_TRUE(ChromeBrowserMainParts::ProcessSingletonNotificationForTesting(
         command_line));
     provider()->command_manager().AwaitAllCommandsCompleteForTesting();
+    target_contents = tab_added_waiter.Wait();
   }
+  ASSERT_TRUE(target_contents);
+  test::WebAppPageWaiter waiter(target_contents);
+  waiter.ExpectUrl(launch_url).ManifestOrLoadedNoManifest();
+  ASSERT_TRUE(waiter.WaitAndFlushCommands());
   AfterStateChangeAction();
 }
 #endif
@@ -2418,12 +2482,14 @@ void WebAppIntegrationTestDriver::ManifestUpdateTitle(Site site, Title title) {
   if (!BeforeStateChangeAction(__FUNCTION__)) {
     return;
   }
-  ASSERT_EQ(Site::kStandalone, site)
-      << "Only site mode of 'Standalone' is supported";
-  ASSERT_EQ(Title::kStandaloneUpdated, title)
-      << "Only site mode of 'kStandaloneUpdated' is supported";
+  ASSERT_TRUE(site == Site::kStandalone || site == Site::kNotPromotable)
+      << "Only site modes of 'Standalone' and 'NotPromotable' are supported";
+  ASSERT_TRUE(
+      (site == Site::kStandalone && title == Title::kStandaloneUpdated) ||
+      (site == Site::kNotPromotable && title == Title::kNotPromotableUpdated))
+      << "Only supported title updates are Standalone->StandaloneUpdated and "
+         "NotPromotable->NotPromotableUpdated";
 
-  auto relative_url_path = GetSiteConfiguration(site).relative_url;
   GURL url = GetUrlForSite(site, "?manifest=manifest_title.json");
   webapps::AppId app_id = GetAppIdBySiteMode(site);
 
@@ -2641,8 +2707,8 @@ void WebAppIntegrationTestDriver::SwitchActiveProfile(
   active_profile_ = GetOrCreateProfile(profile_name);
   // Make sure the profile has at least one browser by creating one if one
   // doesn't exist already.
-  if (!chrome::FindTabbedBrowser(active_profile_,
-                                 /*match_original_profiles=*/false)) {
+  if (!ProfileBrowserCollection::GetForProfile(active_profile_)
+           ->FindTabbedBrowser()) {
     delegate_->CreateBrowser(active_profile_);
   }
   AfterStateChangeAction();
@@ -3366,6 +3432,12 @@ void WebAppIntegrationTestDriver::CheckAppTitle(Site site, Title title) {
   ASSERT_TRUE(app_state);
   std::string expected;
   switch (title) {
+    case Title::kNotPromotableOriginal:
+      expected = "Site C";
+      break;
+    case Title::kNotPromotableUpdated:
+      expected = "Site C - Updated name";
+      break;
     case Title::kStandaloneOriginal:
       expected = "Site A";
       break;
@@ -4144,7 +4216,9 @@ void WebAppIntegrationTestDriver::CheckMenuButtonPendingUpdate(
 
   BrowserView& app_browser_view = app_browser()->GetBrowserView();
   WebAppMenuButton* const menu_button = views::AsViewClass<WebAppMenuButton>(
-      app_browser_view.toolbar_button_provider()->GetAppMenuButton());
+      views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+          kToolbarAppMenuButtonElementId,
+          views::ElementTrackerViews::GetContextForView(&app_browser_view)));
   EXPECT_EQ(should_expect_expanded, menu_button->IsLabelPresentAndVisible());
   AfterStateCheckAction();
 }
@@ -4222,6 +4296,7 @@ void WebAppIntegrationTestDriver::AfterStateChangeAction() {
     provider()->command_manager().AwaitAllCommandsCompleteForTesting();
   }
   web_app::test::CompletePageLoadForAllWebContents();
+
   // Updates are triggered by the page load completing, so wait for them to
   // finish.
   if (provider()) {
@@ -4895,11 +4970,11 @@ bool WebAppIntegrationTestDriver::LaunchFromAppShim(
 #endif
 
 Browser* WebAppIntegrationTestDriver::browser() {
-  Browser* browser =
-      chrome::FindTabbedBrowser(profile(), /*match_original_profiles=*/false);
-  CHECK(browser);
-  CHECK(browser->tab_strip_model()->count());
-  return browser;
+  BrowserWindowInterface* browser_window_interface =
+      ProfileBrowserCollection::GetForProfile(profile())->FindTabbedBrowser();
+  CHECK(browser_window_interface);
+  CHECK(browser_window_interface->GetTabStripModel()->count());
+  return browser_window_interface->GetBrowserForMigrationOnly();
 }
 
 Profile* WebAppIntegrationTestDriver::profile() {

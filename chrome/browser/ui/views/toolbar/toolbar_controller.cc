@@ -256,12 +256,21 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
   if (browser_actions) {
     auto* root_item = browser_actions->root_action_item();
     if (root_item) {
+      PinnedToolbarActionsModel* const pinned_actions_model =
+          PinnedToolbarActionsModel::Get(browser->profile());
       for (const auto& item : root_item->GetChildren().children()) {
         auto id = item->GetActionId();
-        if (item->GetProperty(actions::kActionItemPinnableKey) ==
-                std::underlying_type_t<actions::ActionPinnableState>(
-                    actions::ActionPinnableState::kPinnable) &&
-            id.has_value()) {
+        // Add an item if it is pinnable and/or pinned. The tab search item may
+        // be pinned but not pinnable in the event of a race condition after
+        // action item initialization but before the bubble host has been
+        // initialized by TabSearchToolbarButtonController.
+        // TODO(b/471062209): Remove the pinned check as part of
+        // cleanup of the tab search toolbar button feature.
+        if (id.has_value() &&
+            (item->GetProperty(actions::kActionItemPinnableKey) ==
+                 std::underlying_type_t<actions::ActionPinnableState>(
+                     actions::ActionPinnableState::kPinnable) ||
+             pinned_actions_model->Contains(id.value()))) {
           elements.emplace_back(id.value());
         }
       }
@@ -291,11 +300,7 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
        ToolbarController::ResponsiveElementInfo(
            ToolbarController::ElementIdInfo(kToolbarNewTabButtonElementId,
                                             IDS_OVERFLOW_MENU_ITEM_TEXT_NEW_TAB,
-#if BUILDFLAG(ENABLE_WEBUI_TAB_STRIP)
-                                            &kNewTabToolbarButtonIcon,
-#else
                                             nullptr,
-#endif  // BUILDFLAG(ENABLE_WEBUI_TAB_STRIP)
                                             kToolbarNewTabButtonElementId),
            /*is_section_end=*/true),
        ToolbarController::ResponsiveElementInfo(
@@ -325,51 +330,52 @@ std::string ToolbarController::GetActionNameFromElementIdentifier(
     std::variant<ui::ElementIdentifier, actions::ActionId> identifier) {
   static const base::NoDestructor<base::flat_map<
       std::variant<ui::ElementIdentifier, actions::ActionId>, std::string_view>>
-      identifier_to_action_name_map({
-          {kToolbarAvatarButtonElementId, "AvatarButton"},
-          {kToolbarChromeLabsButtonElementId, "ChromeLabsButton"},
-          {kExtensionsMenuButtonElementId, "ExtensionsMenuButton"},
-          {kToolbarForwardButtonElementId, "ForwardButton"},
-          {kToolbarHomeButtonElementId, "HomeButton"},
-          {kToolbarMediaButtonElementId, "MediaButton"},
-          {kToolbarNewTabButtonElementId, "NewTabButton"},
-          {kToolbarSidePanelButtonElementId, "SidePanelButton"},
-          {kToolbarSplitTabsToolbarButtonElementId, "SplitTabs"},
-          {ContextualTasksButton::kContextualTasksToolbarButton,
-           "PinnedContextualTasksSidePanelButton"},
-          {kActionClearBrowsingData, "PinnedClearBrowsingDataButton"},
-          {kActionCopyUrl, "PinnedCopyLinkButton"},
-          {kActionDevTools, "PinnedDeveloperToolsButton"},
-          {kActionNewIncognitoWindow, "PinnedNewIncognitoWindowButton"},
-          {kActionPrint, "PinnedPrintButton"},
-          {kActionQrCodeGenerator, "PinnedQrCodeGeneratorButton"},
-          {kActionRouteMedia, "PinnedCastButton"},
-          {kActionSendTabToSelf, "PinnedSendTabToSelfButton"},
-          {kActionShowAddressesBubbleOrPage,
-           "PinnedShowAddressesBubbleOrPageButton"},
-          {kActionShowChromeLabs, "PinnedShowChromeLabsButton"},
-          {kActionShowDownloads, "PinnedShowDownloadsButton"},
-          {kActionShowPasswordsBubbleOrPage,
-           "PinnedShowPasswordsBubbleOrPageButton"},
-          {kActionShowPaymentsBubbleOrPage,
-           "PinnedShowPaymentsBubbleOrPageButton"},
-          {kActionShowTranslate, "PinnedShowTranslateButton"},
-          {kActionSidePanelShowBookmarks, "PinnedShowBookmarkSidePanelButton"},
-          {kActionSidePanelShowReadAnything,
-           "PinnedShowReadAnythingSidePanelButton"},
-          {kActionSidePanelShowHistoryCluster,
-           "PinnedShowHistorySidePanelButton"},
-          {kActionSidePanelShowReadingList,
-           "PinnedShowReadingListSidePanelButton"},
-          {kActionSidePanelShowSearchCompanion,
-           "PinnedShowSearchCompanionSidePanelButton"},
-          {kActionTaskManager, "PinnedTaskManagerButton"},
-          {kActionSidePanelShowLensOverlayResults,
-           "PinnedShowLensOverlayResultsSidePanelButton"},
-          {kActionSendSharedTabGroupFeedback, "SharedTabGroupFeedbackButton"},
-          {kActionTabSearch, "PinnedTabSearchButton"},
-          {kActionSidePanelShowGlic, "PinnedGlicButton"},
-      });
+      identifier_to_action_name_map(
+          {{kToolbarAvatarButtonElementId, "AvatarButton"},
+           {kToolbarChromeLabsButtonElementId, "ChromeLabsButton"},
+           {kExtensionsMenuButtonElementId, "ExtensionsMenuButton"},
+           {kToolbarForwardButtonElementId, "ForwardButton"},
+           {kToolbarHomeButtonElementId, "HomeButton"},
+           {kToolbarMediaButtonElementId, "MediaButton"},
+           {kToolbarNewTabButtonElementId, "NewTabButton"},
+           {kToolbarSidePanelButtonElementId, "SidePanelButton"},
+           {kToolbarSplitTabsToolbarButtonElementId, "SplitTabs"},
+           {ContextualTasksButton::kContextualTasksToolbarButton,
+            "PinnedContextualTasksSidePanelButton"},
+           {kActionClearBrowsingData, "PinnedClearBrowsingDataButton"},
+           {kActionCopyUrl, "PinnedCopyLinkButton"},
+           {kActionDevTools, "PinnedDeveloperToolsButton"},
+           {kActionNewIncognitoWindow, "PinnedNewIncognitoWindowButton"},
+           {kActionPrint, "PinnedPrintButton"},
+           {kActionQrCodeGenerator, "PinnedQrCodeGeneratorButton"},
+           {kActionRouteMedia, "PinnedCastButton"},
+           {kActionSendTabToSelf, "PinnedSendTabToSelfButton"},
+           {kActionShowAddressesBubbleOrPage,
+            "PinnedShowAddressesBubbleOrPageButton"},
+           {kActionShowChromeLabs, "PinnedShowChromeLabsButton"},
+           {kActionShowDownloads, "PinnedShowDownloadsButton"},
+           {kActionShowPasswordsBubbleOrPage,
+            "PinnedShowPasswordsBubbleOrPageButton"},
+           {kActionShowPaymentsBubbleOrPage,
+            "PinnedShowPaymentsBubbleOrPageButton"},
+           {kActionShowTranslate, "PinnedShowTranslateButton"},
+           {kActionSidePanelShowBookmarks, "PinnedShowBookmarkSidePanelButton"},
+           {kActionSidePanelShowReadAnything,
+            "PinnedShowReadAnythingSidePanelButton"},
+           {kActionSidePanelShowHistoryCluster,
+            "PinnedShowHistorySidePanelButton"},
+           {kActionSidePanelShowReadingList,
+            "PinnedShowReadingListSidePanelButton"},
+           {kActionSidePanelShowSearchCompanion,
+            "PinnedShowSearchCompanionSidePanelButton"},
+           {kActionTaskManager, "PinnedTaskManagerButton"},
+           {kActionSidePanelShowLensOverlayResults,
+            "PinnedShowLensOverlayResultsSidePanelButton"},
+           {kActionSendSharedTabGroupFeedback, "SharedTabGroupFeedbackButton"},
+           {kActionTabSearch, "PinnedTabSearchButton"},
+           {kActionSidePanelShowGlic, "PinnedGlicButton"},
+           {kActionSidePanelShowTabsFromOtherDevices,
+            "PinnedTabsFromOtherDevicesButton"}});
 
   const auto it = identifier_to_action_name_map->find(identifier);
   return it == identifier_to_action_name_map->end()
@@ -607,6 +613,9 @@ ToolbarController::GetResponsiveElementsWithOrderedActions() const {
     actions::ActionId a_action_id = std::get<actions::ActionId>(a.overflow_id);
     actions::ActionId b_action_id = std::get<actions::ActionId>(b.overflow_id);
 
+    if (a_action_id == b_action_id) {
+      return false;
+    }
     for (int ordered_pinned_action_id : ordered_pinned_action_ids) {
       if (a_action_id == ordered_pinned_action_id) {
         return true;
@@ -861,7 +870,9 @@ void ToolbarController::PopulateMenu(views::MenuItemView* parent) {
     }
   }
 
-  parent->GetSubmenu()->InvalidateLayout();
+  if (parent->HasSubmenu()) {
+    parent->GetSubmenu()->InvalidateLayout();
+  }
 }
 
 void ToolbarController::ShowMenu() {

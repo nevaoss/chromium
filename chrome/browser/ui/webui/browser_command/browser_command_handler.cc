@@ -22,13 +22,16 @@
 #include "chrome/browser/search/search.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_finder.h"
-#include "chrome/browser/ui/browser_navigator.h"
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/customize_chrome/side_panel_controller.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/tabs/public/tab_features.h"
+#include "chrome/browser/ui/tabs/split_tab_metrics.h"
+#include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_metrics.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/browser/user_education/tutorial_identifiers.h"
 #include "chrome/browser/user_education/user_education_service.h"
@@ -46,6 +49,7 @@
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/safe_browsing/core/common/safebrowsing_referral_methods.h"
 #include "components/saved_tab_groups/public/features.h"
+#include "components/tabs/public/tab_interface.h"
 #include "components/user_education/common/tutorial/tutorial_identifier.h"
 #include "components/user_education/common/tutorial/tutorial_service.h"
 #include "net/base/url_util.h"
@@ -154,6 +158,9 @@ void BrowserCommandHandler::CanExecuteCommand(
     case Command::kPrewarmGlicFre:
       can_execute = true;
       break;
+    case Command::kOpenSplitView:
+      can_execute = true;
+      break;
     case Command::kEnableVerticalTabs:
       can_execute = true;
       break;
@@ -253,6 +260,9 @@ void BrowserCommandHandler::ExecuteCommandWithDisposition(
     case Command::kPrewarmGlicFre:
       // No-op: Glic FRE pre-warming is removed.
       break;
+    case Command::kOpenSplitView:
+      OpenSplitView();
+      break;
     case Command::kEnableVerticalTabs:
       EnableVerticalTabs();
       break;
@@ -271,7 +281,8 @@ void BrowserCommandHandler::OnTutorialStarted(
 }
 
 void BrowserCommandHandler::StartTutorial(StartTutorialInPage::Params params) {
-  BrowserWindowInterface* browser = chrome::FindBrowserWithProfile(profile_);
+  BrowserWindowInterface* browser =
+      ProfileBrowserCollection::GetForProfile(profile_)->GetLastActiveBrowser();
   StartTutorialInPage::Start(browser->GetBrowserForMigrationOnly(),
                              std::move(params));
 }
@@ -283,7 +294,8 @@ bool BrowserCommandHandler::TutorialServiceExists() {
 }
 
 bool BrowserCommandHandler::BrowserSupportsTabGroups() {
-  BrowserWindowInterface* browser = chrome::FindBrowserWithProfile(profile_);
+  BrowserWindowInterface* browser =
+      ProfileBrowserCollection::GetForProfile(profile_)->GetLastActiveBrowser();
   return browser->GetTabStripModel()->SupportsTabGroups();
 }
 
@@ -301,17 +313,19 @@ void BrowserCommandHandler::StartTabGroupTutorial() {
 
 void BrowserCommandHandler::NavigateToEnhancedProtectionSetting() {
   chrome::ShowSafeBrowsingEnhancedProtectionWithIph(
-      chrome::FindBrowserWithProfile(profile_),
+      ProfileBrowserCollection::GetForProfile(profile_)->GetLastActiveBrowser(),
       safe_browsing::SafeBrowsingSettingReferralMethod::kPromoSlingerReferral);
 }
 
 void BrowserCommandHandler::OpenPasswordManager() {
-  chrome::ShowPasswordManager(chrome::FindBrowserWithProfile(profile_));
+  chrome::ShowPasswordManager(ProfileBrowserCollection::GetForProfile(profile_)
+                                  ->GetLastActiveBrowser());
 }
 
 void BrowserCommandHandler::OpenAISettings() {
-  chrome::ShowSettingsSubPage(chrome::FindBrowserWithProfile(profile_),
-                              chrome::kExperimentalAISettingsSubPage);
+  chrome::ShowSettingsSubPage(
+      ProfileBrowserCollection::GetForProfile(profile_)->GetLastActiveBrowser(),
+      chrome::kExperimentalAISettingsSubPage);
 }
 
 bool BrowserCommandHandler::DefaultSearchProviderIsGoogle() {
@@ -319,7 +333,8 @@ bool BrowserCommandHandler::DefaultSearchProviderIsGoogle() {
 }
 
 bool BrowserCommandHandler::BrowserSupportsSavedTabGroups() {
-  BrowserWindowInterface* browser = chrome::FindBrowserWithProfile(profile_);
+  BrowserWindowInterface* browser =
+      ProfileBrowserCollection::GetForProfile(profile_)->GetLastActiveBrowser();
 
   // Duplicated from chrome/browser/ui/views/bookmarks/bookmark_bar_view.cc
   // Which cannot be included here
@@ -334,7 +349,7 @@ void BrowserCommandHandler::OpenNTPAndStartCustomizeChromeTutorial() {
     params.tutorial_id = tutorial_id;
     params.callback = base::BindOnce(&BrowserCommandHandler::OnTutorialStarted,
                                      base::Unretained(this), tutorial_id);
-    params.target_url = GURL(chrome::kChromeUINewTabPageURL);
+    params.target_url = chrome::ChromeUINewTabPageURLAsGURL();
     StartTutorial(std::move(params));
   }
 }
@@ -397,6 +412,15 @@ void BrowserCommandHandler::OpenGlicSettings() {
 #endif
     NavigateToURL(net::AppendOrReplaceQueryParameter(GURL(url), "p", ks_param),
                   WindowOpenDisposition::SINGLETON_TAB);
+  }
+}
+
+void BrowserCommandHandler::OpenSplitView() {
+  tabs::TabInterface* tab =
+      tabs::TabInterface::MaybeGetFromContents(web_contents_);
+  if (tab && !tab->IsSplit()) {
+    chrome::NewSplitTab(tab->GetBrowserWindowInterface(),
+                        split_tabs::SplitTabCreatedSource::kWhatsNew);
   }
 }
 

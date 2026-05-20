@@ -38,11 +38,31 @@ class GlicHandler : public SettingsPageUIHandler,
   // Returns whether the web actuation toggle should be shown for `profile`.
   static bool ShouldShowWebActuationToggle(Profile* profile);
 
+  void AllowJavascriptForTesting() { AllowJavascript(); }
+
+  // Sends the client whether the web actuation is enabled.
+  void HandleGetWebActuationEnabled(const base::ListValue& args);
+
+  // Updates the web actuation enabled state with the one provided in `args`.
+  void HandleSetWebActuationEnabled(const base::ListValue& args);
+
+  // Sends the client whether experimental triggering is enabled.
+  void HandleGetExperimentalTriggeringEnabled(const base::ListValue& args);
+
+  // Updates the experimental triggering enabled state with the one provided in
+  // `args`.
+  void HandleSetExperimentalTriggeringEnabled(const base::ListValue& args);
+
  private:
   FRIEND_TEST_ALL_PREFIXES(GlicHandlerBrowserTest, UpdateShortcutSuspension);
   FRIEND_TEST_ALL_PREFIXES(GlicHandlerBrowserTest, UpdateGlicShortcut);
   FRIEND_TEST_ALL_PREFIXES(GlicHandlerBrowserTest, GetActorLoginPermissions);
-  FRIEND_TEST_ALL_PREFIXES(GlicHandlerBrowserTest, RevokeActorLoginPermission);
+  FRIEND_TEST_ALL_PREFIXES(GlicHandlerBrowserTest, GetWebActuationEnabled);
+  FRIEND_TEST_ALL_PREFIXES(GlicHandlerBrowserTest, SetWebActuationEnabled);
+  FRIEND_TEST_ALL_PREFIXES(GlicHandlerBrowserTest,
+                           RevokeActorLoginPermissionSucceeded);
+  FRIEND_TEST_ALL_PREFIXES(GlicHandlerBrowserTest,
+                           RevokeActorLoginPermissionFailed);
   FRIEND_TEST_ALL_PREFIXES(GlicHandlerConsentBrowserTest,
                            GetWebActuationToggleVisibility_ConsentAccepted);
   FRIEND_TEST_ALL_PREFIXES(GlicHandlerConsentBrowserTest,
@@ -91,6 +111,9 @@ class GlicHandler : public SettingsPageUIHandler,
   // Handles requests to revoke an actor login permission.
   void HandleRevokeActorLoginPermission(const base::ListValue& args);
 
+  // Resolves the async request to revoke an actor login permission.
+  void OnRevokeActorLoginPermission(std::string callback_id_str, bool success);
+
   // Sends to the settings page the last saved shortcut.
   void HandleGetGlicSelectionShortcut(const base::ListValue& args);
 
@@ -111,6 +134,9 @@ class GlicHandler : public SettingsPageUIHandler,
   // Callback for when the web actuation preference changes.
   void OnWebActuationPrefChanged();
 
+  // Callback for when the experimental triggering preference changes.
+  void OnExperimentalTriggeringPrefChanged();
+
   // Callback for when the ActorKeyedService notifies of a capability change.
   void OnWebActuationCapabilityChanged(bool can_act_on_web);
 
@@ -130,6 +156,8 @@ class GlicHandler : public SettingsPageUIHandler,
 
   // Used to listen to changes in glic enabling status.
   base::CallbackListSubscription glic_enabling_subscription_;
+  base::CallbackListSubscription web_actuation_pref_subscription_;
+  base::CallbackListSubscription experimental_triggering_pref_subscription_;
 
   std::unique_ptr<actor_login::ActorLoginPermissionsManager>
       actor_login_permissions_manager_;

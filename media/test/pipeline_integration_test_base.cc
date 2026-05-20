@@ -82,7 +82,7 @@ class TestDataSourceFactory : public DataSource::Factory {
  public:
   ~TestDataSourceFactory() override = default;
   void Create(const GURL& uri,
-              bool,
+              DataSource::CacheMode,
               DataSource::DataSourceCb callback) override {
     auto file_data_source = std::make_unique<FileDataSource>();
     base::FilePath file_path(
@@ -123,7 +123,8 @@ static std::vector<std::unique_ptr<VideoDecoder>> CreateVideoDecodersForTest(
 #endif
 
 #if BUILDFLAG(ENABLE_FFMPEG_VIDEO_DECODERS)
-  video_decoders.push_back(std::make_unique<FFmpegVideoDecoder>(media_log));
+  video_decoders.push_back(
+      std::make_unique<FFmpegVideoDecoder>(media_log->Clone()));
 #endif
   return video_decoders;
 }
@@ -140,7 +141,8 @@ static std::vector<std::unique_ptr<AudioDecoder>> CreateAudioDecodersForTest(
   }
 
   if (base::FeatureList::IsEnabled(kDirectOpusAudioDecoding)) {
-    audio_decoders.push_back(std::make_unique<OpusAudioDecoder>());
+    audio_decoders.push_back(
+        std::make_unique<OpusAudioDecoder>(media_task_runner));
   }
 
 #if BUILDFLAG(ENABLE_SYMPHONIA)

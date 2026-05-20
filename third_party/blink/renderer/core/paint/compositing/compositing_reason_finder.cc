@@ -271,6 +271,10 @@ CompositingReasons CompositingReasonsForViewportScrollEffect(
     }
   }
 
+  // NOTE: The style-level checks here (position: fixed with bottom-relative or
+  // safe-area-inset-relative positioning) are mirrored in
+  // LayoutBox::StyleDidChange() to invalidate paint properties on the next
+  // document lifecycle update. Keep the two in sync.
   if (layout_object.StyleRef().IsFixedToBottom()) {
     reasons |= CompositingReason::kFixedPosition |
                CompositingReason::kAffectedByOuterViewportBoundsDelta;
@@ -370,8 +374,10 @@ CompositingReasons CompositingReasonFinder::DirectReasonsForPaintProperties(
   CompositingReasons reasons = CompositingReason::kNone;
 
   auto* element = DynamicTo<Element>(object.GetNode());
-  if (element && RuntimeEnabledFeatures::CanvasDrawElementEnabled()) {
-    if (element->IsInCanvasSubtree()) [[unlikely]] {
+  if (element && RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+                     object.GetDocument().GetExecutionContext())) {
+    if (element->IsInCanvasSubtree() &&
+        !object.StyleRef().IsRenderedInTopLayer(*element)) [[unlikely]] {
       auto* canvas_parent =
           DynamicTo<HTMLCanvasElement>(element->parentElement());
       if (IsA<LayoutBox>(object) && canvas_parent &&
@@ -467,7 +473,8 @@ bool CompositingReasonFinder::ShouldForcePreferCompositingToLCDText(
     CompositingReasons reasons) {
   DCHECK_EQ(reasons, DirectReasonsForPaintProperties(object));
 
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled()) {
+  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+          object.GetDocument().GetExecutionContext())) {
     const auto* element = DynamicTo<Element>(object.GetNode());
     if (element && element->IsInCanvasSubtree()) {
       return false;

@@ -1030,11 +1030,10 @@ size_t SourceBufferStream::FreeBuffers(size_t total_bytes_to_free,
 
     if (current_range->GetMemoryUsage() == 0) {
       CHECK_NE(current_range, selected_range_);
-      CHECK(range_for_next_append_ == ranges_.end() ||
-            range_for_next_append_->get() != current_range);
-
-      // Delete |current_range| by popping it out of |ranges_|.
-      reverse_direction ? ranges_.pop_back() : ranges_.pop_front();
+      auto range_to_delete =
+          reverse_direction ? std::prev(ranges_.end()) : ranges_.begin();
+      current_range = nullptr;
+      DeleteAndRemoveRange(&range_to_delete);
     }
 
     if (reverse_direction && new_range_for_append) {
@@ -1291,6 +1290,17 @@ void SourceBufferStream::PrepareRangesForNextAppend(
   // Finally do the deletion of overlap.
   RemoveInternal(buffers_start_timestamp, buffers_end_timestamp, exclude_start,
                  deleted_buffers);
+  if (range_for_next_append_ != ranges_.end()) {
+    base::TimeDelta group_start_pts =
+        new_coded_frame_group_ ? coded_frame_group_start_pts_ : kNoTimestamp;
+    if (!(*range_for_next_append_)
+             ->CanAppendBuffersToEnd(new_buffers, group_start_pts)) {
+      DVLOG(1) << __func__ << " " << GetStreamTypeName()
+               << ": Resetting range_for_next_append_ since it cannot accept "
+                  "new buffers after overlap removal.";
+      range_for_next_append_ = ranges_.end();
+    }
+  }
 }
 
 // static

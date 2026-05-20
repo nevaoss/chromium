@@ -834,6 +834,20 @@ void GPUQueue::copyElementImageToTexture(
                                     exception_state);
 }
 
+void GPUQueue::copyElementImageToTexture(
+    const V8UnionElementOrElementImage* source,
+    float sx,
+    float sy,
+    float swidth,
+    float sheight,
+    uint32_t width,
+    uint32_t height,
+    GPUImageCopyTextureTagged* destination,
+    ExceptionState& exception_state) {
+  CopyElementImageToTextureInternal(source, sx, sy, swidth, sheight, width,
+                                    height, destination, exception_state);
+}
+
 void GPUQueue::CopyElementImageToTextureInternal(
     const V8UnionElementOrElementImage* source,
     std::optional<float> sx,
@@ -844,9 +858,8 @@ void GPUQueue::CopyElementImageToTextureInternal(
     std::optional<uint32_t> height,
     GPUImageCopyTextureTagged* destination,
     ExceptionState& exception_state) {
-  CHECK(RuntimeEnabledFeatures::CanvasDrawElementEnabled());
-  CHECK(!swidth.has_value() || !width.has_value());
-  CHECK(!sheight.has_value() || !height.has_value());
+  CHECK(RuntimeEnabledFeatures::CanvasDrawElementEnabled(
+      device_->GetExecutionContext()));
 
   CanvasRenderingContext* context = nullptr;
   if (source->IsElement()) {

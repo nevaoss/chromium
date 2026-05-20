@@ -36,6 +36,7 @@
 #include "extensions/browser/updater/null_extension_cache.h"
 #include "extensions/browser/url_request_util.h"
 #include "extensions/common/features/feature_channel.h"
+#include "net/http/http_response_headers.h"
 #include "neva/extensions/browser/neva_extension_api_client.h"
 #include "neva/extensions/browser/neva_extension_host_delegate.h"
 #include "neva/extensions/browser/neva_extension_system_factory.h"
@@ -110,6 +111,12 @@ NevaExtensionsBrowserClient::GetContextRedirectedToOriginal(
   return context;
 }
 
+content::BrowserContext*
+NevaExtensionsBrowserClient::GetContextRedirectedToOriginalWithoutAshInternals(
+    content::BrowserContext* context) {
+  return context;
+}
+
 content::BrowserContext* NevaExtensionsBrowserClient::GetContextOwnInstance(
     content::BrowserContext* context) {
   return context;
@@ -179,16 +186,6 @@ bool NevaExtensionsBrowserClient::AllowCrossRendererResourceLoad(
 
   // Couldn't determine if resource is allowed. Block the load.
   return false;
-}
-
-PrefService* NevaExtensionsBrowserClient::GetPrefServiceForContext(
-    BrowserContext* context) {
-  auto context_prefs_it = context_prefs_map_.find(context);
-  if (context_prefs_it != context_prefs_map_.end()) {
-    return context_prefs_it->second;
-  } else {
-    return nullptr;
-  }
 }
 
 void NevaExtensionsBrowserClient::GetEarlyExtensionPrefsObservers(

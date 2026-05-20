@@ -7,9 +7,11 @@
 #import <AppKit/AppKit.h>
 #import <QuartzCore/CADisplayLink.h>
 
+#include "base/containers/flat_set.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/no_destructor.h"
 #include "base/trace_event/trace_event.h"
 #include "ui/display/mac/screen_utils_mac.h"
 
@@ -36,6 +38,19 @@ API_AVAILABLE(macos(14.0))
 namespace ui {
 
 namespace {
+struct CADisplayLinkGlobals {
+  CADisplayLinkGlobals() = default;
+  base::Lock lock;
+  // Set of display IDs where CADisplayLink has become unreliable in the GPU
+  // process (e.g., due to a power event or system refresh rate change).
+  base::flat_set<int64_t> invalidated_displays GUARDED_BY(lock);
+
+  static CADisplayLinkGlobals& Get() {
+    static base::NoDestructor<CADisplayLinkGlobals> instance;
+    return *instance;
+  }
+};
+
 API_AVAILABLE(macos(14.0))
 ui::VSyncParamsMac ComputeVSyncParametersMac(CADisplayLink* display_link,
                                              CGDirectDisplayID display_id) {
@@ -147,6 +162,8 @@ scoped_refptr<DisplayLinkMac> CADisplayLinkMac::GetForDisplay(
                         &CADisplayLinkMac::Step,
                         display_link->weak_factory_.GetWeakPtr())];
 
+    TRACE_EVENT("gpu", "CADisplayLinkMac::GetForDisplay succeeded");
+
     return display_link;
   }
 
@@ -173,6 +190,7 @@ CADisplayLinkMac::~CADisplayLinkMac() {
 
 std::unique_ptr<VSyncCallbackMac> CADisplayLinkMac::RegisterCallback(
     VSyncCallbackMac::Callback callback) {
+  TRACE_EVENT("gpu", "CADisplayLinkMac::RegisterCallback");
   // Make CADisplayLink callbacks to run on the same RUNLOOP of the register
   // thread without PostTask accross threads.
   auto new_callback = base::WrapUnique(new VSyncCallbackMac(
@@ -190,10 +208,24 @@ std::unique_ptr<VSyncCallbackMac> CADisplayLinkMac::RegisterCallback(
 }
 
 void CADisplayLinkMac::UnregisterCallback(VSyncCallbackMac* callback) {
+  TRACE_EVENT("gpu", "CADisplayLinkMac::UnregisterCallback");
   vsync_callback_ = nullptr;
   if (@available(macos 14.0, *)) {
     objc_state_->display_link.paused = YES;
   }
+}
+
+bool CADisplayLinkMac::NotifyEventAndCheckValidity(int64_t display_id) {
+  base::AutoLock lock(CADisplayLinkGlobals::Get().lock);
+  CADisplayLinkGlobals::Get().invalidated_displays.insert(display_id);
+  return false;
+}
+
+// static
+bool CADisplayLinkMac::IsValidInGpuProcess(int64_t display_id) {
+  base::AutoLock lock(CADisplayLinkGlobals::Get().lock);
+  auto& invalidated_displays = CADisplayLinkGlobals::Get().invalidated_displays;
+  return invalidated_displays.find(display_id) == invalidated_displays.end();
 }
 
 }  // namespace ui
