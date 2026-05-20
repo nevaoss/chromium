@@ -134,7 +134,9 @@ void AppRuntimeProxyingURLLoaderFactory::InProgressRequest::UpdateRequestInfo() 
   network::ResourceRequest request_for_info = request_;
   request_for_info.request_initiator = original_initiator_;
   info_.emplace(extensions::WebRequestInfoInitParams(
-      request_id_, factory_->render_process_id_, frame_routing_id_,
+      request_id_,
+      content::GlobalRenderFrameHostId(factory_->render_process_id_,
+                                       frame_routing_id_),
       factory_->navigation_ui_data_ ? factory_->navigation_ui_data_->DeepCopy()
                                     : nullptr,
       request_for_info, false,
