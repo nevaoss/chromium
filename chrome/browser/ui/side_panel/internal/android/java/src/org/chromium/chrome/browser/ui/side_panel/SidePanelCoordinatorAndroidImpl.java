@@ -17,6 +17,7 @@ import org.jni_zero.NativeMethods;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskFeature.InitInfo;
 import org.chromium.chrome.browser.ui.side_panel_container.SidePanelContainerCoordinator;
 import org.chromium.chrome.browser.ui.side_panel_container.SidePanelContent;
 
@@ -40,7 +41,8 @@ public final class SidePanelCoordinatorAndroidImpl implements SidePanelCoordinat
     }
 
     @Override
-    public void onAddedToTask(long nativeBrowserWindowPtr) {
+    public void onAddedToTask(InitInfo initInfo) {
+        long nativeBrowserWindowPtr = initInfo.nativeBrowserWindowPtr;
         log(TAG, "onAddedToTask", nativeBrowserWindowPtr);
         createNativePtr(nativeBrowserWindowPtr);
     }
@@ -49,6 +51,15 @@ public final class SidePanelCoordinatorAndroidImpl implements SidePanelCoordinat
     public void onFeatureRemoved() {
         log(TAG, "onFeatureRemoved");
         destroyNativePtr();
+    }
+
+    @Override
+    public void onWindowResized(boolean canShowSidePanel) {
+        log(TAG, "onWindowResized", canShowSidePanel);
+        if (mNativeSidePanelCoordinatorAndroid != 0) {
+            SidePanelCoordinatorAndroidImplJni.get()
+                    .onWindowResized(mNativeSidePanelCoordinatorAndroid, canShowSidePanel);
+        }
     }
 
     @VisibleForTesting
@@ -112,14 +123,6 @@ public final class SidePanelCoordinatorAndroidImpl implements SidePanelCoordinat
         log(TAG, "removeContentAndClose", type, suppressAnimations);
         mSidePanelContainerCoordinator.removeContentAndClose(
                 result -> notifyCloseAnimationFinished(null), suppressAnimations);
-    }
-
-    public void onWindowResized(boolean shouldShowSidePanel) {
-        log(TAG, "onWindowResized", shouldShowSidePanel);
-        if (mNativeSidePanelCoordinatorAndroid != 0) {
-            SidePanelCoordinatorAndroidImplJni.get()
-                    .onWindowResized(mNativeSidePanelCoordinatorAndroid, shouldShowSidePanel);
-        }
     }
 
     private @Nullable Rect createRectFromCoordinates(int x, int y, int width, int height) {
@@ -190,12 +193,12 @@ public final class SidePanelCoordinatorAndroidImpl implements SidePanelCoordinat
                 long nativeSidePanelCoordinatorAndroid, @JniType("SidePanelType") int panelType);
 
         /**
-         * Sets the visibility of the side panel due to a resize.
+         * See {@link SidePanelCoordinatorAndroid#onWindowResized(boolean).
          *
          * @param nativeSidePanelCoordinatorAndroid The address of the native {@code
          *     SidePanelCoordinatorAndroid}.
-         * @param shouldShowSidePanel Whether the side panel should be visible.
+         * @param canShowSidePanel Whether the side panel can be shown.
          */
-        void onWindowResized(long nativeSidePanelCoordinatorAndroid, boolean shouldShowSidePanel);
+        void onWindowResized(long nativeSidePanelCoordinatorAndroid, boolean canShowSidePanel);
     }
 }

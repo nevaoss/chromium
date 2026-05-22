@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "base/test/bind.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/branding_buildflags.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
@@ -479,7 +480,7 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTest, BubbleUIIcon) {
             const ui::ImageModel& model = image_view->GetImageModel();
             if (model.IsVectorIcon()) {
               return model.GetVectorIcon().vector_icon() ==
-                     &vector_icons::kCropFreeIcon;
+                     &vector_icons::kCropFreeOldIcon;
             }
           }
         }
@@ -699,5 +700,4 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayInteractiveTestWithPolyline,
         SelectionOverlayController::FromTabWebContents(web_contents)->Close();
       }));
 }
-
 }  // namespace glic

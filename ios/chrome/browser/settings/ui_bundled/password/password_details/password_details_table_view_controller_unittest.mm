@@ -12,13 +12,11 @@
 #import "base/strings/sys_string_conversions.h"
 #import "base/strings/utf_string_conversions.h"
 #import "base/test/metrics/histogram_tester.h"
-#import "base/test/scoped_feature_list.h"
 #import "base/test/task_environment.h"
 #import "components/password_manager/core/browser/passkey_credential.h"
 #import "components/password_manager/core/browser/password_form.h"
 #import "components/password_manager/core/browser/password_manager_metrics_util.h"
 #import "components/password_manager/core/browser/ui/credential_ui_entry.h"
-#import "ios/chrome/browser/credential_provider/model/features.h"
 #import "ios/chrome/browser/settings/ui_bundled/cells/settings_image_detail_text_item.h"
 #import "ios/chrome/browser/settings/ui_bundled/password/password_details/cells/table_view_stacked_details_item.h"
 #import "ios/chrome/browser/settings/ui_bundled/password/password_details/credential_details.h"
@@ -226,8 +224,6 @@ class PasswordDetailsTableViewControllerTest
   PasswordDetailsTableViewControllerTest() {
     handler_ = [[FakePasswordDetailsHandler alloc] init];
     delegate_ = [[FakePasswordDetailsDelegate alloc] init];
-    reauthentication_module_ = [[MockReauthenticationModule alloc] init];
-    reauthentication_module_.expectedResult = ReauthenticationResult::kSuccess;
     snack_bar_ = [[FakeSnackbarImplementation alloc] init];
   }
 
@@ -387,7 +383,6 @@ class PasswordDetailsTableViewControllerTest
 
   FakePasswordDetailsHandler* handler() { return handler_; }
   FakePasswordDetailsDelegate* delegate() { return delegate_; }
-  MockReauthenticationModule* reauth() { return reauthentication_module_; }
   FakeSnackbarImplementation* snack_bar() {
     return (FakeSnackbarImplementation*)snack_bar_;
   }
@@ -432,7 +427,6 @@ class PasswordDetailsTableViewControllerTest
   id snack_bar_;
   FakePasswordDetailsHandler* handler_ = nil;
   FakePasswordDetailsDelegate* delegate_ = nil;
-  MockReauthenticationModule* reauthentication_module_ = nil;
   CredentialType credential_type_ = CredentialTypeRegularPassword;
   base::test::TaskEnvironment task_environment_;
 };
@@ -759,8 +753,7 @@ TEST_F(PasswordDetailsTableViewControllerTest,
   CheckTextCellTextWithId(IDS_IOS_DISMISS_WARNING, 0, 5);
 }
 
-// Tests federated credential is shown without password value and editing
-// doesn't require reauth.
+// Tests federated credential is shown without password value.
 TEST_F(PasswordDetailsTableViewControllerTest, TestFederatedCredential) {
   SetFederatedPassword();
 
@@ -771,13 +764,11 @@ TEST_F(PasswordDetailsTableViewControllerTest, TestFederatedCredential) {
   CheckEditCellText(Username(), 0, 1);
   CheckEditCellText(@"www.example.com", 0, 2);
 
-  reauth().expectedResult = ReauthenticationResult::kFailure;
   [passwords_controller() editButtonPressed];
   EXPECT_TRUE(passwords_controller().tableView.editing);
 }
 
-// Tests blocked website is shown without password and username values and
-// editing doesn't require reauth.
+// Tests blocked website is shown without password and username values.
 TEST_F(PasswordDetailsTableViewControllerTest, TestBlockedOrigin) {
   SetBlockedOrigin();
 
@@ -786,7 +777,6 @@ TEST_F(PasswordDetailsTableViewControllerTest, TestBlockedOrigin) {
 
   CheckStackedDetailsCellDetails(@[ HTTPWebsite() ], 0, 0);
 
-  reauth().expectedResult = ReauthenticationResult::kFailure;
   [passwords_controller() editButtonPressed];
   EXPECT_TRUE(passwords_controller().tableView.editing);
 }
@@ -874,8 +864,6 @@ TEST_F(PasswordDetailsTableViewControllerTest, CopyDetailsFailedEmitted) {
 
 // Tests that hidden passkeys are ordered after non-hidden.
 TEST_F(PasswordDetailsTableViewControllerTest, SortsCredentialsByHiddenState) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(kCredentialProviderSignalAPI);
 
   PasskeyCredential::Source source =
       PasskeyCredential::Source::kGooglePasswordManager;

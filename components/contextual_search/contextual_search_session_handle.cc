@@ -254,9 +254,7 @@ void ContextualSearchSessionHandle::StartUrlContextUploadFlow(
 
 void ContextualSearchSessionHandle::StartDriveContextUploadFlow(
     const base::UnguessableToken& file_token,
-    const std::string& drive_id,
-    std::optional<std::string> resource_key,
-    const std::string& mime_type_string) {
+    const DriveUploadParams& params) {
   // Exit early if the file token is not in the list of uploaded context
   // tokens, i.e. it was deleted before the upload flow could start.
   auto it = std::find(uploaded_context_tokens_.begin(),
@@ -267,9 +265,11 @@ void ContextualSearchSessionHandle::StartDriveContextUploadFlow(
 
   if (auto* context_controller = GetController()) {
     auto contextual_input_data = std::make_unique<lens::ContextualInputData>();
-    contextual_input_data->drive_id = drive_id;
-    contextual_input_data->resource_key = resource_key;
-    contextual_input_data->mime_type_string = mime_type_string;
+    contextual_input_data->drive_id = params.drive_id;
+    contextual_input_data->resource_key = params.resource_key;
+    contextual_input_data->mime_type_string = params.mime_type;
+    contextual_input_data->file_name = params.file_name;
+    contextual_input_data->page_title = params.file_name;
     contextual_input_data->primary_content_type = lens::MimeType::kUnknown;
     context_controller->StartFileUploadFlow(
         file_token, std::move(contextual_input_data), std::nullopt);
@@ -492,16 +492,20 @@ void ContextualSearchSessionHandle::NotifyQuerySubmittedSessionState(
   if (auto* metrics_recorder = GetMetricsRecorder()) {
     bool has_tab_context = false;
     bool has_non_tab_context = false;
+    bool has_drive_context = false;
     for (const auto& file_info : file_infos) {
       if (file_info.tab_url.has_value()) {
         has_tab_context = true;
       } else {
         has_non_tab_context = true;
       }
+      if (file_info.input_data && file_info.input_data->drive_id.has_value()) {
+        has_drive_context = true;
+      }
     }
     metrics_recorder->NotifyQuerySubmitted(has_tab_context, has_non_tab_context,
-                                           query_text_length,
-                                           file_infos.size());
+                                           query_text_length, file_infos.size(),
+                                           has_drive_context);
   }
 }
 

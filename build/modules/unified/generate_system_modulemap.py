@@ -21,31 +21,29 @@ from typing import Tuple, List
 _HEADER_RE = re.compile(r'(?:(private)\s+)?(?:(textual)\s+)?header\s+"([^"]+)"')
 _SIMPLE_HEADER_RE = re.compile(r'(\bheader\s+")([^"]+)(")')
 _REQUIRES_RE = re.compile(r'^\s*requires\s+(.*)')
-_STRIP_PREFIX = re.compile(
-    r'^usr/include/(?:(?:x86_64|i386|arm|arm64)-(?:linux|cros)-gnu/)?')
-# Maps GN CPU arg to LLVM CPU arg
-_CPU_ARG = {
-    'x64': 'x86_64',
-    'arm64': 'arm64',
-    'arm': 'arm',
-    'x86': 'i386',
-}
+# This needs to match all triple dirs that exist in /usr/include in the sysroot.
+_TRIPLE = re.compile('^(.*)-(linux|cros)-(gnu|gnueabi|gnueabihf|android)$')
 _DEBUG_SOURCE = '/tmp/debug_generate_system_modulemap.cc'
 _DEBUG_SCRIPT = pathlib.Path('/tmp/debug_generate_system_modulemap.sh')
 
-# Pre-C++23, libc++'s stdatomic.h includes the builtin stdatomic.h
-# But since then, it does not, and thus _Builtin_stdatomic is inaccessible.
-# This tool correctly says not to include the sysroot's stdatomic.h, but it is
-# used by the inaccessible _Builtin_stdatomic module, so we need to manually
-# remove it so it compiles.
-_STRIP = re.compile(r'\nmodule _Builtin_stdatomic \[system\] \{.*?\}\n',
-                    re.MULTILINE | re.DOTALL)
+_MODULEMAP_START = re.compile(
+    r'^[ \t]*\b(?:(?:explicit|framework)\s+)*module\s+"?([^" ]+)"?\s.*\{',
+    re.MULTILINE)
 
 
 # Path.absolute() only exists in python 3.11, gmacs still have python3.9
 # Similar to Path.resolve() but doesn't follow symlinks.
 def _absolute(p: pathlib.Path) -> pathlib.Path:
   return pathlib.Path(os.path.abspath(p))
+
+
+def _format_clang_args(args, os):
+  if os != 'win':
+    return args
+  else:
+    # clang-cl takes args such as /I and rewrites them to -I for clang.
+    # If you provide -clang: it prevents the rewrite.
+    return [f'-clang:{arg}' for arg in args]
 
 
 # Usually ../.., but not always.
@@ -72,10 +70,10 @@ def parse_allowlist():
   allowlist = {}
   last_path = None
   for line in lines:
-    path, *attrs = line.split(", ")
+    path, *attrs = line.split(', ')
     if last_path is not None and path <= last_path:
       raise ValueError(
-          f"Allowlist is not sorted. {path} should be before {last_path}")
+          f'Allowlist is not sorted. {path} should be before {last_path}')
     last_path = path
 
     textual = None
@@ -91,7 +89,7 @@ def parse_allowlist():
         lazy = attr[5:]
       else:
         raise ValueError(
-            f"Unknown attribute {repr(attr)} in allowlist for {path}")
+            f'Unknown attribute {repr(attr)} in allowlist for {path}')
     allowlist[path] = lazy
     if textual is not None:
       force_textual[path] = textual
@@ -157,12 +155,63 @@ class Header:
   requires: list[str] = dataclasses.field(default_factory=list)
 
 
+def _module_end(modulemap: str, start: int) -> int:
+  """Finds the index immediately after the closing brace of the module block.
+
+  Brace counting is pretty rudimentary, and could fail in theory.
+  However, in practice, it works pretty well, as a user is highly unlikely to
+  write a "{" without a "}" in a comment, for example.
+  """
+  depth = 0
+  for c in range(start, len(modulemap)):
+    if modulemap[c] == '{':
+      depth += 1
+    elif modulemap[c] == '}':
+      depth -= 1
+      if depth == 0:
+        return c + 1
+  raise ValueError(f'No closing brace for {modulemap[start:start+100]}...')
+
+
+def strip_modules_from_modulemap(content: str,
+                                 exclude_modules: set[str]) -> str:
+  """Strips modules listed in exclude_modules from the modulemap content."""
+  result = []
+  upto = 0
+
+  for m in _MODULEMAP_START.finditer(content):
+    if m.start() < upto:
+      # Nested within an already excluded module, skip.
+      continue
+
+    if m.group(1) in exclude_modules:
+      result.append(content[upto:m.start()])
+      upto = _module_end(content, m.start())
+
+  result.append(content[upto:])
+  return ''.join(result)
+
+
+def split_modulemap(modulemap: str) -> dict[str, str]:
+  results = {}
+  upto = 0
+  for m in _MODULEMAP_START.finditer(modulemap):
+    # This is a submodule of a previously referenced module
+    if m.start() < upto:
+      continue
+    upto = _module_end(modulemap, m.start())
+    results[m.group(1)] = modulemap[m.start():upto]
+  return results
+
+
 def parse_modulemap(
-    modulemap_path: pathlib.Path) -> Tuple[pathlib.Path, List[Header]]:
+    modulemap_path: pathlib.Path,
+    exclude_modules: set[str] = set()) -> Tuple[pathlib.Path, List[Header]]:
   """Parses a modulemap file into headers.
 
   Args:
     modulemap_path: Path to the modulemap file.
+    exclude_modules: List of modules to exclude from the modulemap.
 
   Returns:
     A tuple of (include_dir, headers relative to that directory).
@@ -171,28 +220,29 @@ def parse_modulemap(
   # A stack of modules, each with their own requirements.
   requires_stack = []
 
-  with open(modulemap_path) as f:
-    for line in f:
-      if '{' in line:
-        requires_stack.append([])
+  content = strip_modules_from_modulemap(modulemap_path.read_text(), exclude_modules)
 
-      m_req = _REQUIRES_RE.search(line)
-      if m_req:
-        req_str = m_req.group(1).split('//')[0].strip()
-        reqs = [r.strip() for r in req_str.split(',') if r.strip()]
-        requires_stack[-1].extend(reqs)
+  for line in content.splitlines():
+    if '{' in line:
+      requires_stack.append([])
 
-      m = _HEADER_RE.search(line)
-      if m:
-        matches.append((
-            m.group(3),
-            bool(m.group(1)),
-            bool(m.group(2)),
-            itertools.chain(*requires_stack),
-        ))
+    m_req = _REQUIRES_RE.search(line)
+    if m_req:
+      req_str = m_req.group(1).split('//')[0].strip()
+      reqs = [r.strip() for r in req_str.split(',') if r.strip()]
+      requires_stack[-1].extend(reqs)
 
-      if '}' in line:
-        requires_stack.pop()
+    m = _HEADER_RE.search(line)
+    if m:
+      matches.append((
+          m.group(3),
+          bool(m.group(1)),
+          bool(m.group(2)),
+          itertools.chain(*requires_stack),
+      ))
+
+    if '}' in line:
+      requires_stack.pop()
 
   assert not requires_stack
   common_prefix = os.path.commonpath([m[0] for m in matches])
@@ -213,19 +263,45 @@ def parse_modulemap(
   return include_dir, headers
 
 
+def parse_depfile(content: str) -> list[pathlib.Path]:
+  """Parses the contents of a Clang-generated depfile.
+
+  Returns:
+    A list of dependency file paths as pathlib.Path objects.
+  """
+  # We know there'll only ever be one thing we're trying to build.
+  content = content.replace('\\\n', '').split(': ', 1)[1]
+  deps = []
+  current = []
+  # Spaces in file names occur in the windows sysroot, so we need to handle
+  # them.
+  for part in content.split():
+    if part.endswith('\\'):
+      current.append(part[:-1])
+    else:
+      current.append(part)
+      deps.append(pathlib.Path(' '.join(current)))
+      current = []
+  return deps
+
+
 def calculate_transitive_headers(clang_args: list[str],
-                                 include_dirs: List[Tuple[pathlib.Path,
+                                 include_dirs: list[Tuple[pathlib.Path,
                                                           List[Header]]],
-                                 sysroot: pathlib.Path,
+                                 sysroot_dirs: list[pathlib.Path],
                                  extra_public_headers: list[str],
                                  target_os: str,
                                  target_cpu: str,
-                                 debug: bool = False) -> List[Header]:
+                                 debug: bool = False) -> list[Header]:
   """Runs Clang to discover transitive dependencies from the provided headers.
 
   Returns a list of all headers discovered that are part of the sysroot.
   """
-  sysroot = _absolute(sysroot)
+  # Sort in reverse order to make sure that foo/bar comes before foo, thus
+  # ensuring we try resolving foo/bar/baz => baz instead of bar/baz.
+  sysroot_dirs = sorted([_absolute(d) for d in sysroot_dirs],
+                        key=lambda p: len(p.parts),
+                        reverse=True)
   context = {
       'is_linux': target_os == 'linux',
       'is_android': target_os == 'android',
@@ -256,44 +332,46 @@ def calculate_transitive_headers(clang_args: list[str],
           f.write(f'#include <{h}>\n')
           f.write(f'#endif\n')
 
-    cmd = clang_args + [
-        # We only need to preprocess for performance reasons, and don't even
-        # care about the preprocessed output.
-        '-E',
+    # We only need to preprocess for performance reasons, and don't even
+    # care about the preprocessed output.
+    cmd = [
+        *clang_args,
+        *_format_clang_args(['-E'], target_os),
         str(source_file),
-        '-o',
-        '/dev/null',
-        # This is what we really care about. Just which headers were in the
-        # transitive includes of a given header.
-        '-MD',
-        '-MF',
-        str(dep_file),
+        *_format_clang_args(
+            [
+                '-o',
+                'NUL' if os.name == 'nt' else '/dev/null',
+                # This is what we really care about. Just which headers were in
+                # the transitive includes of a given header.
+                '-MD',
+                '-MF',
+                str(dep_file),
+            ],
+            target_os)
     ]
 
     if debug:
       shutil.copyfile(source_file, _DEBUG_SOURCE)
-      replacements = {
-          str(source_file): _DEBUG_SOURCE,
-          str(dep_file): _DEBUG_SOURCE + ".o.d"
-      }
-      debug_cmd = [replacements.get(arg, arg) for arg in cmd]
 
-      _DEBUG_SCRIPT.write_text(f"""#!/bin/bash
-cd "{os.getcwd()}"
-{shlex.join(debug_cmd)}
-""")
+      content = f"""#!/bin/bash
+      cd "{os.getcwd()}"
+      {shlex.join(cmd)}
+"""
+      content = content.replace(str(source_file), _DEBUG_SOURCE)
+      content = content.replace(str(dep_file), _DEBUG_SOURCE + '.o.d')
+      _DEBUG_SCRIPT.write_text(content)
       _DEBUG_SCRIPT.chmod(0o755)
-      print(f"Saved debug script to {_DEBUG_SCRIPT}")
+      print(f'Saved debug script to {_DEBUG_SCRIPT}')
       sys.exit(0)
 
     ps = subprocess.run(cmd, check=False)
     if ps.returncode != 0:
-      print(f"Suggestion: Run `cd {os.getcwd()} && {shlex.join(sys.argv)} "
-            "--debug` to debug")
+      print(f'Suggestion: Run `cd {os.getcwd()} && {sys.argv[0]} --debug',
+            f'{shlex.join(sys.argv[1:])}` to debug')
       sys.exit(ps.returncode)
 
-    dep_content = dep_file.read_text().replace('\\\n', '')
-    deps = dep_content.split(': ', 1)[1].split()
+    deps = parse_depfile(dep_file.read_text())
 
     extra_public_headers = set(extra_public_headers)
     headers = []
@@ -303,28 +381,32 @@ cd "{os.getcwd()}"
         # We don't need to add this to the modulemap ourselves.
         continue
 
-      try:
-        rel = str(full.relative_to(sysroot))
-        rel = _STRIP_PREFIX.sub('', rel)
-        short = rel if full.is_relative_to(sysroot) else full.name
-        private = short not in extra_public_headers
-        if short in _FORCE_TEXTUAL:
-          textual = eval(_FORCE_TEXTUAL[rel], context)
-        else:
-          textual = 'bits' in pathlib.Path(rel).parts
-      except ValueError:
-        # relative_to raises ValueError if it's outside the sysroot
-        # It must be incorrectly missing from the modulemap.
-        private = full.name not in extra_public_headers
-        # This has the same effect as it being missing from the modulemap.
-        textual = True
+      rel = full.name
+      found = False
+      for d in sysroot_dirs:
+        if full.is_relative_to(d):
+          rel = str(full.relative_to(d))
+          found = True
+          break
+
+      private = rel not in extra_public_headers
+      if rel in _FORCE_TEXTUAL:
+        textual = eval(_FORCE_TEXTUAL[rel], context)
+      else:
+        # Non-sysroot headers are treated as textual by default to match
+        # existing behaviour.
+        textual = 'bits' in pathlib.Path(rel).parts or not found
       headers.append(Header(path=full, private=private, textual=textual))
 
     return headers
 
 
-def combine_modulemaps(out: pathlib.Path, modulemaps: list[pathlib.Path],
-                       headers: List[Header], module_name: str) -> str:
+def combine_modulemaps(out: pathlib.Path,
+                       modulemaps: list[pathlib.Path],
+                       headers: List[Header],
+                       module_name: str,
+                       extra_modules: list[(str, pathlib.Path)] = [],
+                       exclude_modules: set[str] = set()) -> str:
   """Generates the combined modulemap output string from dependencies."""
   custom_header_prefix = os.path.relpath(
       _SRC_PREFIX / 'buildtools/third_party/libc++', out.parent)
@@ -343,11 +425,11 @@ def combine_modulemaps(out: pathlib.Path, modulemaps: list[pathlib.Path],
 
       mm_content = _SIMPLE_HEADER_RE.sub(
           lambda m: f'{m.group(1)}{rebase_path(m.group(2))}{m.group(3)}',
-          mm.read_text())
+          strip_modules_from_modulemap(mm.read_text(), exclude_modules))
       mm_content = mm_content.replace(
           '@LIBCXX_CONFIG_SITE_MODULE_ENTRY@ // generated via CMake',
           f'textual header "{custom_header_prefix}/__config_site"')
-      s.write(_STRIP.sub('', mm_content))
+      s.write(mm_content)
       s.write('\n')
 
     for header in headers:
@@ -377,6 +459,18 @@ def combine_modulemaps(out: pathlib.Path, modulemaps: list[pathlib.Path],
       s.write('  export *\n')
       s.write('}\n')
 
+    for content, source_modulemap in extra_modules:
+      prefix = os.path.relpath(source_modulemap.parent, out.parent)
+
+      def rebase_path(p: str) -> str:
+        return os.path.normpath(os.path.join(prefix, p))
+
+      mm_content = _SIMPLE_HEADER_RE.sub(
+          lambda m: f'{m.group(1)}{rebase_path(m.group(2))}{m.group(3)}',
+          strip_modules_from_modulemap(content, exclude_modules))
+      s.write(mm_content)
+      s.write('\n')
+
     if module_name:
       s.write('}\n')
     return s.getvalue()
@@ -385,42 +479,79 @@ def combine_modulemaps(out: pathlib.Path, modulemaps: list[pathlib.Path],
 def main(args, extra_args):
   """Executes the modulemap generation pipeline."""
   deps = []
-  if args.sysroot:
+  if args.sysroot or args.os == 'win':
+    sysroot_dirs = []
+    if args.sysroot:
+      extra_args.append(f'--sysroot={args.sysroot}')
+      subdir = args.sysroot / 'usr/include'
+      sysroot_dirs.append(subdir)
+      for d in subdir.iterdir():
+        # We append *every* triple, not just the correct one.
+        # This is because with the target x86_64-unknown-linux-gnu, for example,
+        # the directory is really x86_64-linux-gnu, so we can't just do an exact
+        # match.
+        # This isn't an issue because a file from the wrong triple will never
+        # appear in the depfile, which is what this is used for.
+        if d.is_dir() and _TRIPLE.match(d.name) is not None:
+          sysroot_dirs.append(d)
+
+    if args.os == 'win':
+      for arg in extra_args:
+        if arg.startswith('/I'):
+          sysroot_dirs.append(pathlib.Path(arg.removeprefix('/I')))
+    clang_args = [
+        str(args.clang),
+        *_format_clang_args(
+            [
+                # Some files are only read with optimization flags enabled.
+                '-O2',
+                '-D_FORTIFY_SOURCE=3',
+                # Ensure we're using the right libc++
+                '-nostdinc++',
+                f'-I{_SRC_PREFIX}/third_party/libc++/src/include',
+                f'-I{_SRC_PREFIX}/third_party/libc++abi/src/include',
+                f'-I{_SRC_PREFIX}/buildtools/third_party/libc++',
+                # Libc++ feature/hardening macros required by libc++ headers.
+                '-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE',
+                '-D_LIBCPP_BUILDING_LIBRARY',
+                '-std=c++23',
+                # Ensures that paths to compiler builtin headers are kept
+                # relative rather than being resolved to absolute/canonical
+                # symlinked paths.
+                '-no-canonical-prefixes',
+            ],
+            args.os),
+        *extra_args
+    ]
+
     deps = calculate_transitive_headers(
-        clang_args=[
-            str(args.clang),
-            # Some files are only read with optimization flags enabled.
-            '-O2',
-            '-D_FORTIFY_SOURCE=3',
-            f'--sysroot={args.sysroot}',
-            # Ensure we're using the right libc++
-            '-nostdinc++',
-            '-I../../third_party/libc++/src/include',
-            '-I../../third_party/libc++abi/src/include',
-            '-I../../buildtools/third_party/libc++',
-            # Libc++ feature/hardening macros required by libc++ headers.
-            '-D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_EXTENSIVE',
-            '-D_LIBCPP_BUILDING_LIBRARY',
-            '-std=c++23',
-            # Ensures that paths to compiler builtin headers are kept relative
-            # rather than being resolved to absolute/canonical symlinked paths.
-            '-no-canonical-prefixes',
-            *extra_args,
-        ],
-        include_dirs=[parse_modulemap(mm) for mm in args.modulemap],
-        sysroot=args.sysroot,
+        clang_args=clang_args,
+        include_dirs=[parse_modulemap(mm, set(args.exclude_module)) for mm in args.modulemap],
+        sysroot_dirs=sysroot_dirs,
         extra_public_headers=_HEADERS,
         target_os=args.os,
         target_cpu=args.cpu,
         debug=args.debug,
     )
 
-  out_str = combine_modulemaps(out=args.output,
-                               modulemaps=args.modulemap,
-                               headers=deps,
-                               module_name=args.module_name)
-  args.output.write_text(out_str)
+  known_modules = {}
+  for modulemap in args.partial_modulemap:
+    for name, content in split_modulemap(modulemap.read_text()).items():
+      known_modules[name] = (content, modulemap)
 
+  for module in args.module:
+    if module not in known_modules:
+      available = ', '.join(sorted(known_modules))
+      raise ValueError(f'Module \'{module}\' not found in partial modulemaps. '
+                       f'Available: {available}')
+
+  args.output.write_text(combine_modulemaps(
+      out=args.output,
+      modulemaps=args.modulemap,
+      headers=deps,
+      module_name=args.module_name,
+      extra_modules=[known_modules[module] for module in args.module],
+      exclude_modules=set(args.exclude_module)))
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(
@@ -442,8 +573,27 @@ if __name__ == '__main__':
       type=pathlib.Path,
       required=True,
       help='Path to a modulemap to merge. Can be specified multiple times.')
-  parser.add_argument('--os', help="GN's $target_os variable")
-  parser.add_argument('--cpu', help="GN's $target_cpu variable")
+  parser.add_argument(
+      '--partial-modulemap',
+      action='append',
+      type=pathlib.Path,
+      default=[],
+      help=('Path to a modulemap to partially merge. '
+            'Top-level modules must be specified via --module.'))
+  parser.add_argument('--module',
+                      action='append',
+                      type=str,
+                      default=[],
+                      help=('Name of a top-level module to selectively extract '
+                            'from partial modulemaps.'))
+  parser.add_argument(
+      '--exclude-module',
+      action='append',
+      type=str,
+      default=[],
+      help='Name of a module to exclude from the generated modulemap.')
+  parser.add_argument('--os', help='GN\'s $target_os variable')
+  parser.add_argument('--cpu', help='GN\'s $target_cpu variable')
   parser.add_argument(
       '--debug',
       action='store_true',

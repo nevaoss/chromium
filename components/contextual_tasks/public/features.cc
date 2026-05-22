@@ -27,13 +27,14 @@ namespace contextual_tasks {
 // Enables the contextual tasks side panel while browsing.
 BASE_FEATURE(kContextualTasks, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables extra OAuth scopes for contextual tasks.
+BASE_FEATURE(kContextualTasksExtraOauthScopes,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables the pin button in the toolbar for contextual tasks.
 BASE_FEATURE(kEnableContextualTasksPinButtonInToolbar,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the use of the kSearchResultsOAuth2Scope instead of the
-// kChromeSyncOAuth2Scope.
-BASE_FEATURE(kContextualTasksScopeChange, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables relevant context determination for contextual tasks.
 BASE_FEATURE(kContextualTasksContext, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -92,15 +93,10 @@ BASE_FEATURE(kContextualTasksComposeboxJumpFix,
 // Enables the use of a rounded clip-path for the composebox.
 BASE_FEATURE(kContextualTasksRoundedClipPath, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// On android the menu still needs to be shown in all cases. Enable the feature
-// everywhere else.
-#if BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kContextualTasksHideMenuOnAiPage,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#else
+// Hides the the 3-dot (overflow) menu when viewing an AI page in the side
+// panel. The menu is still shown for lens flows.
 BASE_FEATURE(kContextualTasksHideMenuOnAiPage,
              base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_ANDROID)
 
 BASE_FEATURE(kContextualTasksHideCloseButtonInVerticalTabs,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -131,6 +127,10 @@ BASE_FEATURE(kContextualTasksWebpageApcComparison,
 // Enables Java Fusebox on Android. Meant to be used as a fallback until WebUI
 // based fusebox is fully functional.
 BASE_FEATURE(kContextualTasksJavaFusebox, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables overriding side panel to show Bottom Sheet on demand.
+BASE_FEATURE(kContextualTasksOverrideShowBottomSheetOnLargeScreen,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool GetIsContextualTasksUpdateModeOnNavigationEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksUpdateModelOnNavigation);
@@ -273,6 +273,9 @@ const base::FeatureParam<bool> kForceGscInTabMode(
 // Version 2.4: Adds ability to hideInput/restoreInput
 const base::FeatureParam<std::string> kContextualTasksUserAgentSuffix{
     &kContextualTasks, "contextual-tasks-user-agent-suffix", "Cobrowsing/2.4"};
+
+const base::FeatureParam<std::string> kContextualTasksOAuthScopes{
+    &kContextualTasksExtraOauthScopes, "ContextualTasksOAuthScopes", ""};
 
 const base::FeatureParam<std::string> kContextualTasksHelpUrl(
     &kContextualTasks,
@@ -541,9 +544,6 @@ bool IsCustomNlmUiEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksCustomNlmUi);
 }
 
-bool ShouldUseSearchResultsScope() {
-  return base::FeatureList::IsEnabled(kContextualTasksScopeChange);
-}
 
 bool GetIsBasicModeEnabled() {
   return kContextualTasksEnableBasicMode.Get();
@@ -618,6 +618,12 @@ const char kContextualTasksBackButtonExpandsSidePanelName[] =
     "Contextual Tasks Back Button Expands Side Panel";
 const char kContextualTasksBackButtonExpandsSidePanelDescription[] =
     "Enables expanding the side panel on back navigations.";
+
+const char kContextualTasksOverrideShowBottomSheetOnLargeScreenName[] =
+    "Override Show Bottom Sheet On Large Screen for Contextual Tasks";
+const char kContextualTasksOverrideShowBottomSheetOnLargeScreenDescription[] =
+    "Enables overriding side panel to show Bottom Sheet on large screens for "
+    "contextual tasks.";
 
 }  // namespace flag_descriptions
 

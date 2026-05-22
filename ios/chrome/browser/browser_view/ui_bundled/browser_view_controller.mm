@@ -661,6 +661,10 @@ bool IsFullscreenNextIAEnabled() {
 
 - (void)layoutState:(LayoutState*)layoutState
     didChangeAppBarPosition:(AppBarPosition)appBarPosition {
+  if (!self.view.window) {
+    return;
+  }
+
   [self updateToolbarConstraints];
   [self updateSecondaryToolbarBottomConstraint];
   [self animateTransition];
@@ -857,6 +861,8 @@ bool IsFullscreenNextIAEnabled() {
   _urlLoadingBrowserAgent = nullptr;
   _tabUsageRecorderBrowserAgent = nullptr;
   _snapshotBrowserAgent = nullptr;
+  _fullscreenUIUpdater = nullptr;
+  _fullscreenController = nullptr;
   _fullscreenBrowserAgentObserverBridge = nullptr;
   _fullscreenBrowserAgent = nullptr;
 }
@@ -990,6 +996,9 @@ bool IsFullscreenNextIAEnabled() {
       setBottomOmniboxOffsetForPopup:secondaryToolbarHeightWithInset];
   self.secondaryToolbarHeightConstraint.constant =
       secondaryToolbarHeightWithInset;
+  if (IsChromeNextIaEnabled()) {
+    [self updateForFullscreenProgress:self.footerFullscreenProgress];
+  }
 }
 
 - (void)viewWillLayoutSubviews {
@@ -1393,6 +1402,8 @@ bool IsFullscreenNextIAEnabled() {
     // (Landscape).
     self.secondaryToolbarRegularBottomConstraint = [toolbarView.bottomAnchor
         constraintEqualToAnchor:self.view.bottomAnchor];
+    self.secondaryToolbarRegularBottomConstraint.active =
+        (self.layoutState.appBarPosition != AppBarPosition::kBottom);
   } else {
     [toolbarView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
         .active = YES;
@@ -1410,6 +1421,8 @@ bool IsFullscreenNextIAEnabled() {
       self.toolbarCoordinator.secondaryToolbarViewController.view;
   self.secondaryToolbarAppBarBottomConstraint =
       [toolbarView.bottomAnchor constraintEqualToAnchor:appBar.topAnchor];
+  self.secondaryToolbarAppBarBottomConstraint.active =
+      (self.layoutState.appBarPosition == AppBarPosition::kBottom);
 }
 
 // Adds constraints to the primary and secondary toolbars, anchoring them to the
@@ -1666,8 +1679,7 @@ bool IsFullscreenNextIAEnabled() {
   // If ChromeNextIa is disabled, it always pins to the view edge.
   BOOL useBottomViewEdge = NO;
   if (IsChromeNextIaEnabled()) {
-    useBottomViewEdge =
-        !canShowTabStrip && !isSplitToolbarMode && !_isOffTheRecord;
+    useBottomViewEdge = !canShowTabStrip && !_isOffTheRecord;
   }
 
   NSLayoutYAxisAnchor* topAnchor =
@@ -2018,6 +2030,9 @@ bool IsFullscreenNextIAEnabled() {
 #pragma mark - FullscreenUIElement methods
 
 - (void)updateForFullscreenProgress:(CGFloat)progress {
+  if (_isShutdown) {
+    return;
+  }
   [self updateHeadersForFullscreenProgress:progress];
   [self updateFootersForFullscreenProgress:progress];
   if (!IsFullscreenRefactoringEnabled() &&
@@ -2168,11 +2183,6 @@ bool IsFullscreenNextIAEnabled() {
 
   BOOL shouldUseAppBar =
       (self.layoutState.appBarPosition == AppBarPosition::kBottom);
-
-  // Return early if the constraint is already in the correct state.
-  if (self.secondaryToolbarAppBarBottomConstraint.active == shouldUseAppBar) {
-    return;
-  }
 
   self.secondaryToolbarAppBarBottomConstraint.active = shouldUseAppBar;
   self.secondaryToolbarRegularBottomConstraint.active = !shouldUseAppBar;

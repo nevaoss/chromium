@@ -1291,4 +1291,8 @@ bool LocalFrameClientImpl::IsDomStorageDisabled() const {
   return web_frame_->Client()->IsDomStorageDisabled();
 }
 
+bool LocalFrameClientImpl::IsForInitialWebUI() const {
+  return web_frame_->Client() && web_frame_->Client()->IsForInitialWebUI();
+}
+
 }  // namespace blink

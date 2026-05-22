@@ -200,11 +200,6 @@ BASE_FEATURE(kAllowUndamagedNonrootRenderPassToSkip,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
-// Allow SurfaceAggregator to merge render passes when they contain quads that
-// require overlay (e.g. protected video). See usage in |EmitSurfaceContent|.
-BASE_FEATURE(kAllowForceMergeRenderPassWithRequireOverlayQuads,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // if enabled, Any CompositorFrameSink of type video that defines a preferred
 // framerate that is below the display framerate will throttle OnBeginFrame
 // callbacks to match the preferred framerate.
@@ -385,6 +380,11 @@ BASE_FEATURE(kRpdqFilterLookupOptimizations, base::FEATURE_ENABLED_BY_DEFAULT);
 // `FrameSinkVideoCapturerImpl::MaybeCaptureFrame`.
 BASE_FEATURE(kSharedMemoryVFPoolUseCorrectColorSpace,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, bypasses deadlocks caused by outdated activation dependency
+// tokens when parent frame submission lags behind child surface execution.
+BASE_FEATURE(kBypassOutdatedSurfaceActivation,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN)
 // Use BufferQueue for the primary plane instead of a DXGI swap chain or DComp

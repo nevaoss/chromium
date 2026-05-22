@@ -51,6 +51,10 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
 // Avoids copying ResourceRequest::TrustedParams when possible.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kAvoidTrustedParamsCopies);
 
+// Optimizes mixed content checks by moving InWhichFrameIsContentMixed below
+// fast-exits and caching flag state.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kOptimizeMixedContentChecks);
+
 // Whether async touch moves are sent unthrottled to javascript handlers.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kUnthrottleAsyncTouchMoves);
 
@@ -401,6 +405,9 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
     base::TimeDelta,
     kDelayLayerTreeViewDeletionOnLocalSwapTaskDelayParam);
 
+// Enables detecting JavaScript frameworks on worker load.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kDetectJSFrameworksOnWorker);
+
 // Improves the signal-to-noise ratio of network error related messages in the
 // DevTools Console.
 // See http://crbug.com/40788570.
@@ -746,6 +753,23 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kImageReplacement);
 // See crbug.com/450192387.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kInitialWebUIWithoutExtensions);
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+// If enabled, the initial WebUI surface will sync with the browser without
+// deferring the browser view show.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kInitialWebUISurfaceSync);
+// Specifies the maximum deadline duration (in frames) to wait for the initial
+// WebUI surface synchronization. Calculated based on desired time duration
+// assuming a standard display rate of 60 FPS (e.g., 5 seconds = 300 frames).
+// A sentinel value of std::numeric_limits<size_t>::max() disables the
+// deadline override, allowing an infinite timeout.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    size_t,
+    kInitialWebUISurfaceSyncDeadlineInFrames);
+// Specifies the custom renderer-side commit deferral delay (in milliseconds)
+// used during paint holding for the initial WebUI rendering frame.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    size_t,
+    kInitialWebUISurfaceSyncRendererCommitDelayInMs);
 
 // Use Snappy to compress values for IndexedDB before wiring them to the
 // browser.
@@ -1550,6 +1574,10 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
 // is set to true (false by default), otherwise it is only logged for metrics
 // purposes.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kPreloadingModerateViewportHeuristics);
+
+// If enabled, preloading eligibility checks (e.g., data saver, battery saver)
+// are performed on the renderer side.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kPreloadingEligibilityCheckOnRenderer);
 
 // The number of prerenderings that can run concurrently. This only applies for
 // prerenderings triggered by speculation rules.

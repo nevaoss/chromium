@@ -20,6 +20,10 @@ const base::FeatureParam<int> kGlicChromeStatusIconSizePx{
     &kGlicChromeStatusIcon, "glic-chrome-status-icon-size-px", 20};
 const base::FeatureParam<bool> kGlicChromeStatusIconUseAltIcon{
     &kGlicChromeStatusIcon, "glic-chrome-status-icon-use-alt-icon", false};
+const base::FeatureParam<bool> kGlicChromeStatusIconLogOnly{
+    &kGlicChromeStatusIcon, "glic-chrome-status-icon-log-only", true};
+const base::FeatureParam<std::string> kGlicChromeStatusIconOtherAppID{
+    &kGlicChromeStatusIcon, "glic-chrome-status-icon-other-app-id", ""};
 
 BASE_FEATURE(kGlicOrphanedReattachment, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -149,5 +153,9 @@ BASE_FEATURE(kGlicContextualCueingV2AutoSubmit,
 BASE_FEATURE(kGlicWebDragAndDropFileUpload, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicOptInImpressionMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Killswitch that controls whether the WebContents visibility state is
+// set to hidden when the Glic panel is warming.
+BASE_FEATURE(kGlicContentsInitiallyHidden, base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace features

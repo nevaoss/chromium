@@ -15,11 +15,28 @@ struct FormActivityParams;
 
 class WebStateList;
 
+// LINT.IfChange(ScanCardSuggestionBottomSheetExitReason)
+enum class ScanCardSuggestionBottomSheetExitReason {
+  kIgnore = 0,
+  kAcceptSuggestion = 1,
+  kRejectSuggestion = 2,
+  // Could not present the view controller for the bottom sheet as a modal for
+  // other reasons.
+  kCouldNotPresent = 3,
+  kMaxValue = kCouldNotPresent,
+};
+// LINT.ThenChange(/tools/metrics/histograms/metadata/ios/enums.xml:ScanCardSuggestionBottomSheetExitReason)
+
+namespace web {
+class WebState;
+}  // namespace web
+
 @protocol PaymentsScanSaveAndFillOfferBottomSheetConsumer;
 
 @interface PaymentsScanSaveAndFillOfferBottomSheetMediator : NSObject
 // Designated initializer. `webStateList` must not be nil.
 - (instancetype)initWithParams:(autofill::FormActivityParams)params
+                      webState:(web::WebState*)webState
     NS_DESIGNATED_INITIALIZER;
 
 - (instancetype)init NS_UNAVAILABLE;
@@ -29,11 +46,19 @@ class WebStateList;
 
 - (void)didAcceptScanCardSuggestion;
 
+- (void)didCancelScanCardSuggestion;
+
 // Disconnects the mediator.
 - (void)disconnect;
 
 // Replaces the object in charge of providing suggestions.
 - (void)setProvider:(id<FormInputSuggestionsProvider>)provider;
+
+// Called when the view appeared.
+- (void)scanCardBottomSheetViewDidAppear;
+
+// Logs the exit reason for the scan card bottom sheet.
+- (void)logExitReason:(ScanCardSuggestionBottomSheetExitReason)exitReason;
 
 @end
 

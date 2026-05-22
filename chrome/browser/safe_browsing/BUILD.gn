@@ -39,6 +39,7 @@ static_library("safe_browsing") {
     "//chrome/app:generated_resources",
     "//chrome/browser:browser_features",
     "//chrome/browser:browser_process",
+    "//chrome/browser:file_util_service",
     "//chrome/browser/enterprise",
     "//chrome/browser/enterprise/connectors/reporting",
     "//chrome/browser/google",
@@ -571,6 +572,9 @@ static_library("safe_browsing") {
       }
       if (!is_android) {
         deps += [ "//chrome/browser/user_education" ]
+      }
+      if (!is_android && !is_chromeos) {
+        deps += [ "//chrome/browser/download/bubble" ]
       }
     } else if (safe_browsing_mode == 2) {
       public += [

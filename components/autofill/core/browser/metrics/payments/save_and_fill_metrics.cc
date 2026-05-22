@@ -46,10 +46,8 @@ void LogSaveAndFillFormEvent(SaveAndFillFormEvent event) {
                                 event);
 }
 
-void LogSaveAndFillSuggestionNotShownReason(
-    SaveAndFillSuggestionNotShownReason reason) {
-  base::UmaHistogramEnumeration("Autofill.SaveAndFill.SuggestionNotShownReason",
-                                reason);
+void LogSaveAndFillSuggestionEvent(SaveAndFillSuggestionEvent event) {
+  base::UmaHistogramEnumeration("Autofill.SaveAndFill.SuggestionEvent", event);
 }
 
 void LogSaveAndFillGetDetailsForCreateCardResultAndLatency(
@@ -115,6 +113,27 @@ void LogSaveAndFillFunnelSucceeded(SaveAndFillFlowScenario scenario,
   base::UmaHistogramEnumeration("Autofill.SaveAndFill.Funnel.Succeeded", stage);
   base::UmaHistogramEnumeration(
       base::StrCat({"Autofill.SaveAndFill.Funnel.Succeeded.",
+                    GetFlowScenarioString(scenario)}),
+      stage);
+}
+
+void LogSaveAndFillFunnelCanceled(SaveAndFillFlowScenario scenario,
+                                  SaveAndFillFunnelCanceledStage stage) {
+  if (scenario == SaveAndFillFlowScenario::kUnknown) {
+    return;
+  }
+  if (stage == SaveAndFillFunnelCanceledStage::kSuggestionIgnored) {
+    CHECK(scenario == SaveAndFillFlowScenario::kLocalSaveUploadSaveInfeasible ||
+          scenario == SaveAndFillFlowScenario::kUploadSave);
+  } else if (stage == SaveAndFillFunnelCanceledStage::kDialogCanceled) {
+    CHECK(scenario != SaveAndFillFlowScenario::kLocalSaveUploadSaveFailed &&
+          scenario != SaveAndFillFlowScenario::kLocalSaveBinRangeNotSupported);
+  }
+
+  // Aggregate parent histogram.
+  base::UmaHistogramEnumeration("Autofill.SaveAndFill.Funnel.Canceled", stage);
+  base::UmaHistogramEnumeration(
+      base::StrCat({"Autofill.SaveAndFill.Funnel.Canceled.",
                     GetFlowScenarioString(scenario)}),
       stage);
 }

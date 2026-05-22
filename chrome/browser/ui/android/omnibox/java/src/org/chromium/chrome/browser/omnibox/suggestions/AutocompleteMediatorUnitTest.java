@@ -342,6 +342,27 @@ public class AutocompleteMediatorUnitTest {
 
     @Test
     @SmallTest
+    public void beginEndInput_propagatesSessionStateToProcessors() {
+        // beginInput must notify processors that the session is active so per-session
+        // state (e.g. cached suggestion images) can be set up.
+        mMediator.beginInput(createEmptySession());
+        verify(mMockProcessor, atLeastOnce()).onOmniboxSessionStateChange(true);
+        verify(mMockHeaderProcessor, atLeastOnce()).onOmniboxSessionStateChange(true);
+
+        clearInvocations(mMockProcessor, mMockHeaderProcessor);
+
+        // endInput must notify processors that the session has ended so per-session
+        // state can be released. Regression test: this used to be propagated as `true`,
+        // preventing DropdownItemViewInfoListBuilder from clearing its image cache.
+        mMediator.endInput();
+        verify(mMockProcessor, atLeastOnce()).onOmniboxSessionStateChange(false);
+        verify(mMockHeaderProcessor, atLeastOnce()).onOmniboxSessionStateChange(false);
+        verify(mMockProcessor, never()).onOmniboxSessionStateChange(true);
+        verify(mMockHeaderProcessor, never()).onOmniboxSessionStateChange(true);
+    }
+
+    @Test
+    @SmallTest
     public void endInput_clearsSiteSearchChip() {
         var session = createEmptySession();
         mMediator.beginInput(session);
@@ -1874,25 +1895,69 @@ public class AutocompleteMediatorUnitTest {
         assertFalse(mMediator.isInInputSession());
     }
 
+    private void setUpSiteSearchSpaceTrigger(
+            String keyword,
+            String shortName,
+            @Nullable String fullName,
+            @Nullable String userQuery) {
+        doReturn(true)
+                .when(mPrefService)
+                .getBoolean(AutocompleteMediator.KEYWORD_SPACE_TRIGGERING_ENABLED_PREF);
+        doReturn(keyword + " " + userQuery).when(mTextStateProvider).getTextWithoutAutocomplete();
+        doReturn(true).when(mTemplateUrlService).isLoaded();
+        doReturn(keyword).when(mTemplateUrl).getKeyword();
+        doReturn(shortName).when(mTemplateUrl).getShortName();
+        doReturn(fullName).when(mTemplateUrlService).getFullNameFromTemplateUrl(keyword);
+        doReturn(mTemplateUrl)
+                .when(mAutocompleteController)
+                .getTemplateUrlForText(keyword + " " + userQuery);
+    }
+
     @Test
     @SmallTest
     public void triggerSiteSearchSpaceWithQuerySuccess() {
         // Setup: Start session and mock text state with valid keyword and query.
         var session = createEmptySession();
         mMediator.beginInput(session);
-
-        doReturn(true)
-                .when(mPrefService)
-                .getBoolean(AutocompleteMediator.KEYWORD_SPACE_TRIGGERING_ENABLED_PREF);
-        doReturn("cr abc").when(mTextStateProvider).getTextWithoutAutocomplete();
-        doReturn(true).when(mTemplateUrlService).isLoaded();
-        doReturn("cr").when(mTemplateUrl).getKeyword();
-        doReturn("Cr").when(mTemplateUrl).getShortName();
-        doReturn(mTemplateUrl).when(mAutocompleteController).getTemplateUrlForText("cr abc");
+        String query = "abc";
+        setUpSiteSearchSpaceTrigger(
+                /* keyword= */ "test",
+                /* shortName= */ "Test",
+                /* fullName= */ "Ask Test",
+                /* userQuery= */ query);
 
         assertTrue(mMediator.triggerSiteSearch(SiteSearchActivationSource.SPACE));
 
         // Verify that the query "abc" was set in the omnibox.
-        verify(mAutocompleteDelegate).setOmniboxEditingText("abc");
+        verify(mAutocompleteDelegate).setOmniboxEditingText(query);
+
+        var siteSearchData = session.getAutocompleteInput().getSiteSearchData();
+        assertNotNull(siteSearchData);
+        assertEquals("test", siteSearchData.keyword);
+        assertEquals("Ask Test", siteSearchData.fullName);
+    }
+
+    @Test
+    @SmallTest
+    public void triggerSiteSearchSpaceWithQuerySuccess_fallbackToShortName() {
+        // Setup: Start session and mock text state with valid keyword and query.
+        var session = createEmptySession();
+        mMediator.beginInput(session);
+        String query = "abc";
+        setUpSiteSearchSpaceTrigger(
+                /* keyword= */ "test",
+                /* shortName= */ "Test",
+                /* fullName= */ null,
+                /* userQuery= */ query);
+
+        assertTrue(mMediator.triggerSiteSearch(SiteSearchActivationSource.SPACE));
+
+        // Verify that the query "abc" was set in the omnibox.
+        verify(mAutocompleteDelegate).setOmniboxEditingText(query);
+
+        var siteSearchData = session.getAutocompleteInput().getSiteSearchData();
+        assertNotNull(siteSearchData);
+        assertEquals("test", siteSearchData.keyword);
+        assertEquals("Test", siteSearchData.fullName); // Should fall back to ShortName "Test"
     }
 }

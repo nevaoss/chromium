@@ -118,10 +118,10 @@ class ChildProcessSecurityPolicyTest
     // while the other two modes should enable it with a proper FeatureParam to
     // set the mode.
     if (GetParam() == RustPolicy::kCppOnly) {
-      disabled_features.push_back(kChildProcessSecurityPolicyRust);
+      disabled_features.push_back(features::kChildProcessSecurityPolicyRust);
     } else {
       enabled_features.push_back(
-          {kChildProcessSecurityPolicyRust,
+          {features::kChildProcessSecurityPolicyRust,
            {{kRustPolicyParam.name, kRustPolicyParam.GetName(GetParam())}}});
     }
 
@@ -405,6 +405,22 @@ TEST_P(ChildProcessSecurityPolicyTest, IsWebSafeSchemeTest) {
   EXPECT_FALSE(p->IsWebSafeScheme(kChromeUIScheme));
 
   p->ClearRegisteredSchemeForTesting("registered-web-safe-scheme");
+}
+
+// Web-safe isolated schemes can be requested but not commit.
+TEST_P(ChildProcessSecurityPolicyTest, IsWebSafeIsolatedSchemeTest) {
+  ChildProcessSecurityPolicyImpl* p =
+      ChildProcessSecurityPolicyImpl::GetInstance();
+
+  // Currently, no web-safe isolated schemes are registered within content/, but
+  // embedders can register them.
+  std::string web_safe_isolated_scheme("registered-web-safe-isolated-scheme");
+  EXPECT_FALSE(p->IsWebSafeScheme(web_safe_isolated_scheme));
+  p->RegisterWebSafeIsolatedScheme(web_safe_isolated_scheme);
+  EXPECT_TRUE(p->IsWebSafeScheme(web_safe_isolated_scheme));
+  EXPECT_FALSE(p->CanCommitSchemeInAnyProcess(web_safe_isolated_scheme));
+
+  p->ClearRegisteredSchemeForTesting(web_safe_isolated_scheme);
 }
 
 TEST_P(ChildProcessSecurityPolicyTest, IsPseudoSchemeTest) {

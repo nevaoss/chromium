@@ -153,7 +153,7 @@ void SplitTabsToolbarButton::ButtonPressed(const ui::Event& event) {
         GetAnchorBoundsInScreen(), views::MenuAnchorPosition::kTopLeft,
         ui::GetMenuSourceTypeForEvent(event));
   } else {
-    chrome::NewSplitTab(browser_,
+    chrome::NewSplitTab(browser_, split_tabs::SplitTabLayout::kVertical,
                         split_tabs::SplitTabCreatedSource::kToolbarButton);
   }
 }
@@ -179,17 +179,16 @@ void SplitTabsToolbarButton::UpdateButtonIcon() {
     const split_tabs::SplitTabActiveLocation location =
         split_tabs::GetLastActiveTabLocation(tab_strip_model,
                                              active_tab->GetSplit().value());
-    constexpr auto icons =
-        base::MakeFixedFlatMap<split_tabs::SplitTabActiveLocation,
-                               const gfx::VectorIcon*>({
-            {split_tabs::SplitTabActiveLocation::kStart, &kSplitSceneLeftIcon},
-            {split_tabs::SplitTabActiveLocation::kEnd, &kSplitSceneRightIcon},
-            {split_tabs::SplitTabActiveLocation::kTop, &kSplitSceneUpIcon},
-            {split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownIcon},
-        });
+    constexpr auto icons = base::MakeFixedFlatMap<
+        split_tabs::SplitTabActiveLocation, const gfx::VectorIcon*>({
+        {split_tabs::SplitTabActiveLocation::kStart, &kSplitSceneLeftOldIcon},
+        {split_tabs::SplitTabActiveLocation::kEnd, &kSplitSceneRightOldIcon},
+        {split_tabs::SplitTabActiveLocation::kTop, &kSplitSceneUpOldIcon},
+        {split_tabs::SplitTabActiveLocation::kBottom, &kSplitSceneDownOldIcon},
+    });
     SetVectorIcon(*icons.at(location));
   } else {
-    SetVectorIcon(kSplitSceneIcon);
+    SetVectorIcon(kSplitSceneOldIcon);
   }
 }
 

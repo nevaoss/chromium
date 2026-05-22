@@ -1195,6 +1195,14 @@ Chrome 政策的優先順序高於這項政策，例如擴充功能是否列在 
 <translation id="1858775210076906272">Kerberos 預填設定</translation>
 <translation id="1861206724856734193">設定防止資料外洩的規則清單。</translation>
 <translation id="1862267110714201519">停用 ghost 視窗功能。</translation>
+<translation id="1862749749551522146">「通訊端集區大小隨機化」是一項安全機制，旨在防止攻擊者利用固定的容量上限獲取跨網站資訊。
+如果集區的容量通常為 128 個通訊端，這項機制會隨機將集區上限設為 128 到 256 之間的值。
+這樣最多可讓連到 Proxy 的連線數量增加到 2 倍，但實際預期值約 1.2 倍。
+
+這會影響 <ph name="MAX_CONNECTIONS_PER_PROXY_POLICY_NAME" /> 和 <ph name="MAX_CONNECTIONS_PER_PROXY_FOR_WEBSOCKET_POLICY_NAME" /> 的設定。
+上限值並非採用這些政策定義的數值，而是這些設定值的 2 倍 (不過實際預期值約為 1.2 倍)。
+
+所有集區預設都會啟用這項功能，但此政策允許單獨停用 Proxy 集區的隨機化機制。</translation>
 <translation id="1865417998205858223">金鑰權限</translation>
 <translation id="1865867000796030567">如果將這項政策設為啟用，系統會使用零延遲、自動啟動的資訊站應用程式 <ph name="REQUIRED_PLATFORM_VERSION" /> 資訊清單鍵值，做為自動更新的目標版本前置字元。
 
@@ -2268,6 +2276,24 @@ PAC 樣式的字串：
 <translation id="252742292004421898">允許這些網站使用 Direct Sockets API</translation>
 <translation id="2528762900096510743">啟用自動登出服務</translation>
 <translation id="2529880111512635313">設定強制安裝的應用程式和擴充功能清單</translation>
+<translation id="2530090617700835618">你可以透過這項政策，指定每個 Proxy 伺服器 WebSocket 要求的同時連線數量上限。
+
+如要修改非 WebSocket 要求限制，請參閱 <ph name="MAX_CONNECTIONS_PER_PROXY_POLICY_NAME" />。
+
+如果未設定這項政策，預設值為 128。
+
+已知部分網頁應用程式會耗用許多連線處理停滯的 GET 要求，因此如果設定值低於 128，開啟太多這類網頁應用程式可能會導致瀏覽器網路當機。
+部分 Proxy 伺服器無法處理單一用戶端的大量並行連線，調降這項政策值即可解決這個問題。
+
+最小值為 6。
+如果設定值低於該下限，系統會使用 6。
+請自行承擔低於預設值 (128) 的風險。
+
+最大值為 256。
+如果設定值超過該上限，系統會使用 256。
+請自行承擔高於預設值 (128) 的風險。
+
+請注意，強制執行的限制會受 <ph name="ALLOW_SOCKET_POOL_SIZE_RANDOMIZATION_FOR_PROXIES_POLICY_NAME" /> 影響。</translation>
 <translation id="253135976343875019">在 AC 供電環境下執行時的閒置警告延遲時間</translation>
 <translation id="2532480434098051405">允許使用內嵌圖片並協助改良 AI 模型。</translation>
 <translation id="2535370400681639351">如果將這項政策設為啟用，在遠端主機連線期間，系統會以 Proxy 處理 gnubby 驗證要求。
@@ -4607,15 +4633,6 @@ Protected Audience API 已淘汰，因此這項政策已在 <ph name="PRODUCT_NA
 
           如果不設定這項政策，系統會在初次顯示登入畫面時停用互動朗讀功能，但使用者隨時可以啟用。</translation>
 <translation id="4173974507809462880">在登入時顯示觸控板捲動方向畫面</translation>
-<translation id="4175770453187201981">這項政策會控管網址列和新分頁搜尋框的 Google AI 模式整合設定。
-
-如要存取這項功能，使用者必須將 Google 設為預設搜尋引擎。
-
-0/未設定 = 使用者可以存取這項功能。
-
-1 = 使用者無法存取這項功能。
-
-如果未設定這項政策，系統會根據 <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" /> 政策決定其行為。</translation>
 <translation id="417956245902013347">在登入畫面上啟用插入點醒目顯示無障礙功能。
 
           如果將這項政策設為 True，系統將一律在登入畫面上啟用插入點醒目顯示功能。
@@ -5127,6 +5144,24 @@ Protected Audience API 已淘汰，因此這項政策已在 <ph name="PRODUCT_NA
 
 <ph name="IP_PROTECTION_NAME" />功能最快會在 M139 推出。</translation>
 <translation id="4525328580251166229">控管 Bruschetta 子系統的相關政策。</translation>
+<translation id="452801090660038046">你可以透過這項政策，指定每個 Proxy 伺服器非 WebSocket 要求的同時連線數量上限。
+
+如要修改 WebSocket 要求限制，請參閱 <ph name="MAX_CONNECTIONS_PER_PROXY_FOR_WEBSOCKET_POLICY_NAME" />。
+
+如果未設定這項政策，預設值為 128。
+
+已知部分網頁應用程式會耗用許多連線處理停滯的 GET 要求，因此如果設定值低於 128，開啟太多這類網頁應用程式可能會導致瀏覽器網路當機。
+部分 Proxy 伺服器無法處理單一用戶端的大量並行連線，調降這項政策值即可解決這個問題。
+
+最小值為 6。
+如果設定值低於該下限，系統會使用 6。
+請自行承擔低於預設值 (128) 的風險。
+
+最大值為 256 (<ph name="PRODUCT_NAME" /> 147 以下版本為 99)。
+如果設定值超過上限，系統會使用 256 (<ph name="PRODUCT_NAME" /> 147 以下版本為 99)。
+請自行承擔高於預設值 (128) 的風險。
+
+請注意，強制執行的限制會受 <ph name="ALLOW_SOCKET_POOL_SIZE_RANDOMIZATION_FOR_PROXIES_POLICY_NAME" /> 影響。</translation>
 <translation id="4528981768990874684">停用 <ph name="IP_PROTECTION_NAME" />功能。</translation>
 <translation id="453031441196755904">這項政策已遭到淘汰。</translation>
 <translation id="4531706050939927436">你可以在 Google 管理控制台中使用 Google Play 強制安裝 Android 應用程式 (不會使用這項政策)。</translation>
@@ -5538,7 +5573,6 @@ https://developers.google.com/privacy-sandbox/cookies/storage-partitioning。</t
       如果設為啟用，就會顯示 Gemini 簡介畫面。
 
       如未設定，則會向非受管使用者顯示 Gemini 簡介畫面，但不會向受企業管理的使用者顯示。</translation>
-<translation id="4781685421378746692">這項政策控管是否可透過 <ph name="PRODUCT_NAME" /> 側邊面板或分頁，將網頁和檔案內容分享給 <ph name="GOOGLE_AI_MODE_PRODUCT_NAME" />和<ph name="GOOGLE_LENS_PRODUCT_NAME" />。請注意，這項政策不會影響 <ph name="GOOGLE_AI_MODE_PRODUCT_NAME" />在網頁的運作方式，只會控管使用者在 <ph name="PRODUCT_NAME" /> 中共用資訊的方式。0/未設定 = 使用者可以與 <ph name="GOOGLE_AI_MODE_PRODUCT_NAME" />共用網頁或檔案內容。1 = 使用者無法與 <ph name="GOOGLE_AI_MODE_PRODUCT_NAME" />共用網頁或檔案內容。系統會停用或隱藏共用內容的進入點和側邊面板。如果預設搜尋引擎不是 <ph name="GOOGLE_SEARCH_PRODUCT_NAME" />，系統會因功能已停用而忽略這項政策。這項政策與 <ph name="AI_MODE_SETTINGS_POLICY_NAME" /> 政策無關。<ph name="AI_MODE_SETTINGS_POLICY_NAME" /> 政策只會控管網址列或新分頁搜尋框的進入點，這項政策則控管透過側邊面板或分頁共用內容的功能。這項政策也不會控管 <ph name="GOOGLE_GEMINI_PRODUCT_NAME" /> 整合功能，該功能可由 <ph name="GEMINI_SETTINGS_POLICY_NAME" /> 停用。如果未設定這項政策，系統就會以 <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" /> 政策決定行為。如要進一步瞭解生成式 AI 功能的資料處理方式，請前往 https://support.google.com/chrome/a?p=generative_ai_settings。</translation>
 <translation id="4783415902268741066">允許在瀏覽器側邊面板中顯示預設搜尋引擎的最新搜尋結果頁面</translation>
 <translation id="4786784434769279324">電腦閒置時要執行的動作</translation>
 <translation id="4787763197941188108">覆寫預設的列印頁面大小。
@@ -6582,7 +6616,7 @@ Attribution Reporting API 已淘汰，因此這項政策已在 <ph name="PRODUCT
 
       如果不設定這項政策，使用者可以選擇登入畫面上代表自己的顯示圖片。</translation>
 <translation id="5428716437928918274">Privacy Sandbox 設定控制選項</translation>
-<translation id="5430760800138878127">系統將啟用新的 HTML 剖析器行為，允許更多標記。</translation>
+<translation id="5430760800138878127">系統將啟用新的 HTML 剖析器行為，允許使用更多標記。</translation>
 <translation id="5431392643649571773">啟用 <ph name="PRODUCT_NAME" /> 功能時，系統會允許使用往返快取。當使用者離開頁面時，系統可能會將網頁的目前狀態 (文件樹狀結構、指令碼等等) 保存在往返快取中。如果瀏覽器返回該頁面，系統可能會透過往返快取還原頁面，以快取前的狀態顯示頁面。
 
           這項功能可能會讓某些並未預期會受到此快取的網站無法正常運作，尤其是瀏覽器離開頁面時，需要傳送「<ph name="UNLOAD_HANDLER_NAME" />」事件的網站。如果頁面進入往返快取，系統就不會傳送「<ph name="UNLOAD_HANDLER_NAME" />」事件。
@@ -6661,15 +6695,6 @@ Attribution Reporting API 已淘汰，因此這項政策已在 <ph name="PRODUCT
 <translation id="5481873128882951841">停用 Krisp 降噪</translation>
 <translation id="5483012943408894695">不適用不安全來源相關限制的來源或主機名稱模式</translation>
 <translation id="5483065054530244863">允許本機信任錨點核發的 SHA-1 簽署憑證</translation>
-<translation id="5485491014653571963">你可以透過這項設定允許整合 Gemini 應用程式。
-
-0/未設定 = 使用者可以運用 Gemini 整合。
-
-1 = 使用者無法運用 Gemini 整合。
-
-如果未設定這項政策，系統會根據 <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" /> 政策決定其行為。
-
-詳情請參閱說明中心文章：https://support.google.com/chrome/a?p=gemini_in_chrome。</translation>
 <translation id="5486917900445838803">如果將這項政策設為啟用或不設定，系統會開啟圖形加速功能 (如果有的話)。
 
       如果將這項政策設為停用，圖形加速功能就會關閉。</translation>
@@ -6918,29 +6943,6 @@ Microsoft SharePoint 和 OneDrive 資訊卡需要額外的管理員設定。想�
 <translation id="5622924058222112599">啟用預設的 CECPQ2 推出程序</translation>
 <translation id="5623304306796942802">有多個憑證相符時，顯示提示訊息</translation>
 <translation id="5624310713789233422">控制工具列中企業設定檔徽章的顯示設定</translation>
-<translation id="5624334866248253262">設定資料控管規則清單，避免資料外洩。
-
-      每項規則都包含：
-      - 觸發該規則的條件欄位。只有使用者動作符合「<ph name="DATA_CONTROLS_SOURCES" />」、「<ph name="DATA_CONTROLS_DESTINATIONS" />」、「<ph name="DATA_CONTROLS_AND" />」、「<ph name="DATA_CONTROLS_OR" />」和「<ph name="DATA_CONTROLS_NOT" />」欄位中填入的所有欄位時，才會觸發規則。如果是清單子欄位，只要一個項目相符即可。例如，只要一個網址模式相符就會觸發規則。
-      - 要套用的限制清單。可用的條件或許只有「<ph name="DATA_CONTROLS_SOURCES" />」或「<ph name="DATA_CONTROLS_DESTINATIONS" />」，具體情況視限制而定。
-
-      你可以透過新增規則控管下列項目：
-      - 來源與目的地共用的剪貼簿資料。
-      - 根據來源分頁控管是否禁止螢幕截圖。
-
-      如果將 <ph name="ON_SECURITY_EVENT_ENTERPRISE_CONNECTOR" /> 政策設為 True，系統會將觸發的規則回報給管理員。
-      限制等級可設為「BLOCK」、「WARN」或「REPORT」。
-      - 如果將限制等級設為「BLOCK」，將無法執行該動作。
-      - 如果將限制等級設為「WARN」，系統會顯示警告訊息，使用者可選擇繼續執行或取消動作。
-      - 如果將限制等級設為「REPORT」，使用者動作不會遭到中斷，但如果 <ph name="ON_SECURITY_EVENT_ENTERPRISE_CONNECTOR" /> 政策已啟用，系統就會傳送報告。
-
-      注意：
-      - 網址模式的格式必須符合規定，詳情請參閱 https://support.google.com/chrome/a?p=url_blocklist_filter_format。
-      - 如要瞭解 <ph name="PRODUCT_OS_NAME" /> 專屬的資料外洩防範規則，請參閱 <ph name="DATA_LEAK_PREVENTION_RULES_LIST" /> 政策。
-
-      如果不設定這項政策，系統不會套用任何限制。
-
-      只有取得 Chrome Enterprise 進階版授權的使用者，才能適用這項政策。</translation>
 <translation id="5625771176514429288">系統會允許 Chrome 應用程式在這些平台上執行。</translation>
 <translation id="5627270992026554674">禁止老師使用 Google Classroom 課程學生名單。</translation>
 <translation id="5630352020869108293">還原上次工作階段</translation>
@@ -10427,6 +10429,7 @@ Topics API 已淘汰，因此這項政策已在 <ph name="PRODUCT_NAME" /> 144 �
 <translation id="7941975817681987555">無論使用任何網路連線，皆不預測網路動作</translation>
 <translation id="794447754389837404">禁止這些網站透過 Direct Sockets API 存取私人網路</translation>
 <translation id="7945445169067895719">在裝置暫停或機蓋蓋上時啟用鎖定功能</translation>
+<translation id="7945744599423774764">允許隨機調整 Proxy 的通訊端集區大小</translation>
 <translation id="7946350455013548764">如果將這項政策設為 3，網站即可要求存取 HID 裝置。如果將這項政策設為 2，系統會拒絕網站存取 HID 裝置。如果不設定，網站可要求存取權，但使用者可以變更這項設定。
 
       你可以將特定<ph name="URL_LABEL" />模式列於 <ph name="WEB_HID_ASK_FOR_URLS_POLICY_NAME" /> 和 <ph name="WEB_HID_BLOCKED_FOR_URLS_POLICY_NAME" /> 政策中，藉此覆寫這項政策。</translation>
@@ -10989,6 +10992,7 @@ Topics API 已淘汰，因此這項政策已在 <ph name="PRODUCT_NAME" /> 144 �
 <translation id="8337114537412769126">如果已啟用 <ph name="DEFAULT_SEARCH_PROVIDER_ENABLED_POLICY_NAME" /> 政策，你可以設定 <ph name="DEFAULT_SEARCH_PROVIDER_SUGGEST_URL_POST_PARAMS_POLICY_NAME" /> 政策來指定使用 POST 提供搜尋建議時的參數。設定值由名稱和值的組合所構成 (以半形逗號分隔多個設定值)。如果值為範本參數 (例如 <ph name="SEARCH_TERM_MARKER" />)，實際的搜尋字詞資料會取代該參數。
 
       如果未設定 <ph name="DEFAULT_SEARCH_PROVIDER_SUGGEST_URL_POST_PARAMS_POLICY_NAME" /> 政策，系統會使用 GET 方法傳送建議搜尋要求。</translation>
+<translation id="8337200442224446773">禁止 Proxy 的通訊端集區隨機化</translation>
 <translation id="8337961007759352651">工作站 (網路工作站、Service Worker 等) 指令碼需要使用 JavaScript MIME 類型，例如 <ph name="MIMETYPE_TEXT_JAVASCRIPT" />。系統會拒絕使用舊版 MIME 類型的工作站指令碼，例如 <ph name="MIMETYPE_TEXT_ASCII" />。</translation>
 <translation id="8339089771335211509">WebRTC 只會使用連線至公開網際網路的介面，而且不會使用私人 IP 位址進行連線。</translation>
 <translation id="8339420913453596618">已停用雙重驗證</translation>
@@ -11415,6 +11419,7 @@ Topics API 已淘汰，因此這項政策已在 <ph name="PRODUCT_NAME" /> 144 �
 如果是 <ph name="PRODUCT_NAME" />，裝置必須使用 <ph name="CLOUD_MANAGEMENT_ENROLLMENT_TOKEN" /> 註冊，這項政策才會生效。
 如果是 <ph name="PRODUCT_OS_NAME" />，這項政策會一律生效。</translation>
 <translation id="8619748440665904084">不允許在第一次執行時匯入自動填入表單資料</translation>
+<translation id="8621146428060651659">允許 Proxy 的通訊端集區隨機化</translation>
 <translation id="862621549134406761">啟用 RSA 金鑰用途檢查功能</translation>
 <translation id="8626826495474944836">要求針對所有網站啟用網站隔離功能</translation>
 <translation id="8630797597241896082">允許使用生成式 AI VC 背景並改善 AI 模型</translation>

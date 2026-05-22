@@ -24,6 +24,7 @@
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
+#include "chrome/browser/glic/public/glic_instance.h"
 #include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
@@ -59,9 +60,6 @@
 namespace glic {
 
 namespace {
-
-// The minimum amount of time to wait between processing selection changes.
-constexpr base::TimeDelta kSelectionProcessingDelay = base::Milliseconds(200);
 
 // The maximum length of the selection text sent as a suggested prompt.
 // Selections longer than this are ignored.
@@ -265,10 +263,7 @@ void GlicSelectionObserver::OnWebContentsLostFocus(
   }
 
   // If the web contents loses focus, process any pending selection immediately.
-  if (selection_debounce_timer_.IsRunning()) {
-    selection_debounce_timer_.Stop();
-    ProcessPendingSelection();
-  }
+  ProcessPendingSelection();
 }
 
 void GlicSelectionObserver::OnInputEvent(
@@ -310,6 +305,7 @@ void GlicSelectionObserver::OnInputEvent(
       // initiating a new drag), we preemptively clear the context here to
       // ensure it is not left hanging.
       if (is_left_click_or_touch) {
+        is_selecting_ = true;
         ResetPendingSelection();
         if (has_sent_selection_context_) {
           UpdateSelectionState(std::u16string());
@@ -324,12 +320,7 @@ void GlicSelectionObserver::OnInputEvent(
     case blink::WebInputEvent::Type::kTouchEnd:
     case blink::WebInputEvent::Type::kTouchCancel:
     case blink::WebInputEvent::Type::kGestureTapCancel:
-      // If the user lifts their finger/mouse and we have a pending selection
-      // timer, trigger it instantly so the UI feels perfectly responsive.
-      if (selection_debounce_timer_.IsRunning()) {
-        selection_debounce_timer_.Stop();
-        ProcessPendingSelection();
-      }
+      ProcessPendingSelection();
       break;
 
     case blink::WebInputEvent::Type::kRawKeyDown:
@@ -396,15 +387,9 @@ void GlicSelectionObserver::OnTextSelectionChanged(
     last_selection_frame_token_ = render_frame_host->GetGlobalFrameToken();
   }
 
-  // Always debounce selection changes. If the user is actively dragging,
-  // this timer will be continually pushed back until they pause or release
-  // the mouse. If the mouse is released cleanly, OnInputEvent intercepts the
-  // MouseUp and triggers ProcessPendingSelection instantly. If the OS drops
-  // the MouseUp event, the timer will naturally fire 200ms after they stop
-  // dragging.
-  selection_debounce_timer_.Start(
-      FROM_HERE, kSelectionProcessingDelay, this,
-      &GlicSelectionObserver::ProcessPendingSelection);
+  if (!is_selecting_) {
+    ProcessPendingSelection();
+  }
 }
 
 void GlicSelectionObserver::DismissUI(bool keep_nudge) {
@@ -422,6 +407,7 @@ void GlicSelectionObserver::DismissUI(bool keep_nudge) {
 }
 
 void GlicSelectionObserver::ProcessPendingSelection() {
+  is_selecting_ = false;
   if (!pending_selection_text_.has_value()) {
     return;
   }
@@ -433,7 +419,6 @@ void GlicSelectionObserver::ProcessPendingSelection() {
 }
 
 void GlicSelectionObserver::ResetPendingSelection() {
-  selection_debounce_timer_.Stop();
   pending_selection_text_.reset();
 }
 
@@ -515,10 +500,10 @@ void GlicSelectionObserver::UpdateSelectionState(
     }
 
     if (has_sent_selection_context_ && glic_keyed_service_) {
-      if (glic_keyed_service_->GetInstanceForTab(tab_interface)) {
+      if (auto* instance =
+              glic_keyed_service_->GetInstanceForTab(tab_interface)) {
         // TODO(b/508916357): Use the invoke API.
-        glic_keyed_service_->SendAdditionalContext(
-            tab_interface->GetHandle(),
+        instance->SendAdditionalContext(
             CreateAdditionalContext(web_contents(), u""));
       }
       has_sent_selection_context_ = false;
@@ -544,9 +529,11 @@ void GlicSelectionObserver::UpdateSelectionState(
     }
 
     // TODO(b/508916357): Use the invoke API.
-    glic_keyed_service_->SendAdditionalContext(
-        tab_interface->GetHandle(),
-        CreateAdditionalContext(web_contents(), selected_text));
+    if (auto* instance =
+            glic_keyed_service_->GetInstanceForTab(tab_interface)) {
+      instance->SendAdditionalContext(
+          CreateAdditionalContext(web_contents(), selected_text));
+    }
     has_sent_selection_context_ = true;
   } else {
     if (!features::kGlicSelectionPromptUpdatesOnly.Get()) {
@@ -647,9 +634,11 @@ void GlicSelectionObserver::ShowSelectionAffordance(
         // to IPC timing (especially on double click).
         bounds_retry_count_++;
         pending_selection_text_ = selected_text;
-        selection_debounce_timer_.Start(
-            FROM_HERE, base::Milliseconds(100), this,
-            &GlicSelectionObserver::ProcessPendingSelection);
+        base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+            FROM_HERE,
+            base::BindOnce(&GlicSelectionObserver::ProcessPendingSelection,
+                           weak_ptr_factory_.GetWeakPtr()),
+            base::Milliseconds(100));
       }
     }
   }
@@ -715,7 +704,7 @@ void GlicSelectionObserver::RequestLinkGeneration(
   rfh->GetRemoteInterfaces()->GetInterface(
       text_fragment_remote_.BindNewPipeAndPassReceiver());
 
-  text_fragment_remote_->RequestSelector(
+  text_fragment_remote_->RequestSelectorForSelection(
       base::BindOnce(&GlicSelectionObserver::OnLinkGenerated,
                      weak_ptr_factory_.GetWeakPtr(), url));
 }

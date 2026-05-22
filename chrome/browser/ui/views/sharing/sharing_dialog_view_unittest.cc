@@ -17,7 +17,6 @@
 #include "chrome/browser/ui/views/frame/test_with_browser_view.h"
 #include "chrome/grit/branded_strings.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
-#include "components/sharing_message/fake_device_info.h"
 #include "components/sharing_message/sharing_app.h"
 #include "components/sharing_message/sharing_metrics.h"
 #include "components/sharing_message/sharing_target_device_info.h"
@@ -80,7 +79,7 @@ class SharingDialogViewTest : public TestWithBrowserView {
   std::vector<SharingApp> CreateApps(int count) {
     std::vector<SharingApp> apps;
     for (int i = 0; i < count; ++i) {
-      apps.emplace_back(&kOpenInNewIcon, gfx::Image(),
+      apps.emplace_back(&kOpenInNewOldIcon, gfx::Image(),
                         base::UTF8ToUTF16("app" + base::NumberToString(i)),
                         "app_id_" + base::NumberToString(i));
     }
@@ -158,7 +157,7 @@ TEST_F(SharingDialogViewTest, DevicePressed) {
 }
 
 TEST_F(SharingDialogViewTest, AppPressed) {
-  SharingApp app(&kOpenInNewIcon, gfx::Image(), u"app0", std::string());
+  SharingApp app(&kOpenInNewOldIcon, gfx::Image(), u"app0", std::string());
   EXPECT_CALL(app_callback_, Call(AppEquals(&app)));
 
   auto dialog_data = CreateDialogData(/*devices=*/3, /*apps=*/2);

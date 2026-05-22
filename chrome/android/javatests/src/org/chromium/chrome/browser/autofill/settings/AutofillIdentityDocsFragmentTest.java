@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.autofill.settings;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.RootMatchers.isDialog;
@@ -18,7 +19,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
@@ -52,6 +52,8 @@ import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.R;
+import org.chromium.chrome.browser.autofill.AndroidAutofillAvailabilityStatus;
+import org.chromium.chrome.browser.autofill.AutofillClientProviderUtils;
 import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManager;
 import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManager.EntityDataManagerObserver;
 import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManagerFactory;
@@ -61,7 +63,6 @@ import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncher;
 import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncherFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
-import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.settings.SettingsActivity;
 import org.chromium.chrome.browser.settings.SettingsActivityTestRule;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
@@ -73,7 +74,6 @@ import org.chromium.components.autofill.autofill_ai.utils.TestUtils;
 import org.chromium.components.browser_ui.settings.search.SettingsIndexData;
 import org.chromium.ui.test.util.MockitoHelper;
 
-import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -96,7 +96,6 @@ public class AutofillIdentityDocsFragmentTest {
 
     @Mock private HelpAndFeedbackLauncher mHelpAndFeedbackLauncher;
     @Mock private SettingsIndexData mSearchIndexDataMock;
-    @Mock private Profile mProfileMock;
     @Mock private ReauthenticatorBridge mMockReauthenticatorBridge;
 
     @Mock private EntityDataManager mEntityDataManager;
@@ -140,13 +139,15 @@ public class AutofillIdentityDocsFragmentTest {
     @Test
     @SmallTest
     public void testSearchIndexWhenAllEnabled() {
+        mSettingsActivityTestRule.startSettingsActivity();
+
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     AutofillIdentityDocsFragment.SEARCH_INDEX_DATA_PROVIDER
                             .updateDynamicPreferences(
                                     mSettingsActivityTestRule.getActivity(),
                                     mSearchIndexDataMock,
-                                    mProfileMock);
+                                    mSettingsActivityTestRule.getFragment().getProfile());
                 });
 
         verify(mSearchIndexDataMock, atLeastOnce())
@@ -161,17 +162,23 @@ public class AutofillIdentityDocsFragmentTest {
     @SmallTest
     @DisableFeatures(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA)
     public void testSearchIndexEmptyWhenFeatureDisabled() {
+        mSettingsActivityTestRule.startSettingsActivity();
+
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     AutofillIdentityDocsFragment.SEARCH_INDEX_DATA_PROVIDER
                             .updateDynamicPreferences(
                                     mSettingsActivityTestRule.getActivity(),
                                     mSearchIndexDataMock,
-                                    mProfileMock);
+                                    mSettingsActivityTestRule.getFragment().getProfile());
                 });
 
-        verify(mSearchIndexDataMock, never()).removeEntry(anyString());
-        verify(mSearchIndexDataMock, never()).addEntryForKey(any(), any(), any(), any());
+        verify(mSearchIndexDataMock, never())
+                .addEntryForKey(
+                        eq(AutofillIdentityDocsFragment.class.getName()),
+                        eq(AutofillIdentityDocsFragment.PREF_OPT_IN_TOGGLE),
+                        any(Integer.class),
+                        any(Integer.class));
     }
 
     @Test
@@ -545,9 +552,8 @@ public class AutofillIdentityDocsFragmentTest {
 
         EntityInstance entityInstance =
                 new EntityInstance.Builder(passportType)
-                        .setGUID("guid1")
+                        .setGuid("guid1")
                         .setRecordType(RecordType.LOCAL)
-                        .setModifiedDate(LocalDate.of(2026, 2, 12))
                         .setUseCount(0)
                         .setRequiresReauthToSee(true)
                         .build();
@@ -591,10 +597,9 @@ public class AutofillIdentityDocsFragmentTest {
 
         EntityInstance entityInstance =
                 new EntityInstance.Builder(passportType)
-                        .setGUID("guid1")
+                        .setGuid("guid1")
                         .setRecordType(
                                 org.chromium.components.autofill.autofill_ai.RecordType.LOCAL)
-                        .setModifiedDate(LocalDate.of(2026, 2, 12))
                         .setUseCount(0)
                         .setRequiresReauthToSee(true)
                         .build();
@@ -617,6 +622,120 @@ public class AutofillIdentityDocsFragmentTest {
 
         // Editor should NOT be open.
         onView(withText("Edit passport")).check(doesNotExist());
+    }
+
+    @Test
+    @MediumTest
+    @EnableFeatures(ChromeFeatureList.AUTOFILL_AI_SHOW_WALLET_DISABLED_BANNER)
+    public void testDisabledWalletDataSharingDataCard_shownWhenDisabled() throws Exception {
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    AutofillClientProviderUtils.setAutofillAvailabilityToUseForTesting(
+                            AndroidAutofillAvailabilityStatus.SETTING_TURNED_OFF);
+                });
+        when(mEntityDataManager.isWalletPublicPassStorageEnabled()).thenReturn(false);
+
+        mSettingsActivityTestRule.startSettingsActivity();
+        AutofillIdentityDocsFragment fragment = mSettingsActivityTestRule.getFragment();
+
+        assertNotNull(fragment.findPreference(AutofillAiDelegate.DISABLED_WALLET_DATA_SHARING));
+    }
+
+    @Test
+    @MediumTest
+    public void testDisabledWalletDataSharingDataCard_notShownWhenWalletPublicPassEnabled()
+            throws Exception {
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    AutofillClientProviderUtils.setAutofillAvailabilityToUseForTesting(
+                            AndroidAutofillAvailabilityStatus.SETTING_TURNED_OFF);
+                });
+        when(mEntityDataManager.isWalletPublicPassStorageEnabled()).thenReturn(true);
+
+        mSettingsActivityTestRule.startSettingsActivity();
+        AutofillIdentityDocsFragment fragment = mSettingsActivityTestRule.getFragment();
+
+        assertNull(fragment.findPreference(AutofillAiDelegate.DISABLED_WALLET_DATA_SHARING));
+    }
+
+    @Test
+    @MediumTest
+    public void testDisabledWalletDataSharingDataCard_notShownInThirdPartyMode() throws Exception {
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    AutofillClientProviderUtils.setAutofillAvailabilityToUseForTesting(
+                            AndroidAutofillAvailabilityStatus.AVAILABLE);
+                });
+        when(mEntityDataManager.isWalletPublicPassStorageEnabled()).thenReturn(false);
+
+        mSettingsActivityTestRule.startSettingsActivity();
+        AutofillIdentityDocsFragment fragment = mSettingsActivityTestRule.getFragment();
+
+        assertNull(fragment.findPreference(AutofillAiDelegate.DISABLED_WALLET_DATA_SHARING));
+    }
+
+    @Test
+    @MediumTest
+    @DisableFeatures(ChromeFeatureList.AUTOFILL_AI_SHOW_WALLET_DISABLED_BANNER)
+    public void testDisabledWalletDataSharingDataCard_notShownWhenFeatureDisabled()
+            throws Exception {
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    AutofillClientProviderUtils.setAutofillAvailabilityToUseForTesting(
+                            AndroidAutofillAvailabilityStatus.SETTING_TURNED_OFF);
+                });
+        when(mEntityDataManager.isWalletPublicPassStorageEnabled()).thenReturn(false);
+
+        mSettingsActivityTestRule.startSettingsActivity();
+        AutofillIdentityDocsFragment fragment = mSettingsActivityTestRule.getFragment();
+
+        assertNull(fragment.findPreference(AutofillAiDelegate.DISABLED_WALLET_DATA_SHARING));
+    }
+
+    @Test
+    @MediumTest
+    public void testDisabledSettingsText_linksToAutofillOptionsPage() throws Exception {
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    AutofillClientProviderUtils.setAutofillAvailabilityToUseForTesting(
+                            AndroidAutofillAvailabilityStatus.AVAILABLE);
+                });
+        mSettingsActivityTestRule.startSettingsActivity();
+
+        onView(withId(R.id.card_button))
+                .check(matches(withText(R.string.autofill_disable_settings_button_label)))
+                .perform(scrollTo(), click());
+
+        onView(withText(R.string.autofill_third_party_filling_default))
+                .check(matches(isDisplayed()));
+    }
+
+    @Test
+    @SmallTest
+    public void testSearchIndex_addsSettingsInfoInThirdPartyMode() {
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    AutofillClientProviderUtils.setAutofillAvailabilityToUseForTesting(
+                            AndroidAutofillAvailabilityStatus.AVAILABLE);
+                });
+
+        mSettingsActivityTestRule.startSettingsActivity();
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    AutofillIdentityDocsFragment.SEARCH_INDEX_DATA_PROVIDER
+                            .updateDynamicPreferences(
+                                    mSettingsActivityTestRule.getActivity(),
+                                    mSearchIndexDataMock,
+                                    mSettingsActivityTestRule.getFragment().getProfile());
+                });
+
+        verify(mSearchIndexDataMock, atLeastOnce())
+                .addEntryForKey(
+                        eq(AutofillIdentityDocsFragment.class.getName()),
+                        eq(AutofillAiDelegate.DISABLED_SETTINGS_INFO),
+                        any(Integer.class),
+                        any(Integer.class));
     }
 
     // TODO(crbug.com/482994257): Wallet tests

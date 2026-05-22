@@ -604,11 +604,6 @@ BASE_FEATURE(kEnableTouchscreenMappingExperience,
 BASE_FEATURE(kEnableTouchpadsInDiagnosticsApp,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// If enabled, touchscreen cards will be shown in the diagnostics app's input
-// section.
-BASE_FEATURE(kEnableTouchscreensInDiagnosticsApp,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, touchscreen calibration will be shown in settings.
 BASE_FEATURE(kEnableTouchscreenCalibration, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -667,10 +662,6 @@ BASE_FEATURE(kFastPairBleRotation, base::FEATURE_ENABLED_BY_DEFAULT);
 // Sets mode to DEBUG when fetching metadata from the Nearby server, allowing
 // debug devices to trigger Fast Pair notifications.
 BASE_FEATURE(kFastPairDebugMetadata, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables using longterm Handshake retry logic for Fast Pair.
-BASE_FEATURE(kFastPairHandshakeLongTermRefactor,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables prototype support for Fast Pair for keyboards.
 BASE_FEATURE(kFastPairKeyboards, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -786,7 +777,7 @@ BASE_FEATURE(kFjordOobeForSquid, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kFjordOobeForceEnabled, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls if the Fjord image switch screen is shown during OOBE.
-BASE_FEATURE(kFjordOobeImageSwitch, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kFjordOobeImageSwitch, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables or disables the Flex Auto-Enrollment feature on ChromeOS
 BASE_FEATURE(kFlexAutoEnrollment, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1310,9 +1301,6 @@ BASE_FEATURE(kNearbyPresence, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables a limit on the number of notifications that can show.
 BASE_FEATURE(kNotificationLimit, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables the Night Light feature.
-BASE_FEATURE(kNightLight, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Extracts controller logic from child views of `NotificationCenterView` to
 // place it in a new `NotificationCenterController` class.
 BASE_FEATURE(kNotificationCenterController, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1539,12 +1527,6 @@ BASE_FEATURE(kOrcaSupportDemoMode, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables Jelly colors and components to appear in the Parent Access Widget
 // if jelly-colors is also enabled.
 BASE_FEATURE(kParentAccessJelly, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables a notification warning users that their Thunderbolt device is not
-// supported on their CrOS device.
-// TODO(crbug.com/40199811): Revisit this flag when there is a way to query
-// billboard devices correctly.
-BASE_FEATURE(kPcieBillboardNotification, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Limits the items on the shelf to the ones associated with windows the
 // currently active desk.
@@ -2612,10 +2594,6 @@ bool IsFastPairDebugMetadataEnabled() {
   return base::FeatureList::IsEnabled(kFastPairDebugMetadata);
 }
 
-bool IsFastPairHandshakeLongTermRefactorEnabled() {
-  return base::FeatureList::IsEnabled(kFastPairHandshakeLongTermRefactor);
-}
-
 bool IsFastPairKeyboardsEnabled() {
   return base::FeatureList::IsEnabled(kFastPairKeyboards);
 }
@@ -3056,10 +3034,6 @@ bool IsParentAccessJellyEnabled() {
   return base::FeatureList::IsEnabled(kParentAccessJelly);
 }
 
-bool IsPcieBillboardNotificationEnabled() {
-  return base::FeatureList::IsEnabled(kPcieBillboardNotification);
-}
-
 bool IsPerDeskShelfEnabled() {
   return base::FeatureList::IsEnabled(kPerDeskShelf);
 }
@@ -3264,10 +3238,6 @@ bool IsTouchscreenMappingExperienceEnabled() {
 
 bool IsTouchpadInDiagnosticsAppEnabled() {
   return base::FeatureList::IsEnabled(kEnableTouchpadsInDiagnosticsApp);
-}
-
-bool IsTouchscreenInDiagnosticsAppEnabled() {
-  return base::FeatureList::IsEnabled(kEnableTouchscreensInDiagnosticsApp);
 }
 
 bool IsTouchscreenCalibrationEnabled() {

@@ -483,11 +483,15 @@ bool AdTracker::IsAdScriptInStackHelper(
     return false;
   }
 
-  // We inspect the top two stack frames. It allows us to capture publisher
-  // monkey patch scenarios (i.e., a publisher monkey patch that passively
-  // invokes an ad's intent.
-  std::array<v8::StackTrace::ScriptData, 2> stack_buffer;
-  auto stack = v8::StackTrace::CurrentScriptData(isolate, stack_buffer);
+  // When the `ignore_monkey_patch` heuristic is specified, we inspect the top
+  // five stack frames instead of just the top frame. It allows us to capture
+  // publisher monkey patch scenarios (i.e., one or more publisher monkey
+  // patches that passively invoke an ad's intent).
+  std::array<v8::StackTrace::ScriptData, 5> stack_buffer;
+  size_t limit = (ignore_monkey_patch != MonkeyPatchableApi::kNone) ? 5 : 1;
+  auto stack = v8::StackTrace::CurrentScriptData(
+      isolate,
+      v8::MemorySpan<v8::StackTrace::ScriptData>(stack_buffer.data(), limit));
 
   if (stack.empty()) {
     // There is nothing on the v8 stack. This means that we're in some
@@ -503,7 +507,7 @@ bool AdTracker::IsAdScriptInStackHelper(
     return false;
   }
 
-  auto ad_script_it = ad_script_data_.end();
+  std::optional<AdScriptIdentifier> matched_ad_script;
   int ad_script_index = -1;
 
   for (size_t i = 0; i < stack.size(); ++i) {
@@ -515,12 +519,12 @@ bool AdTracker::IsAdScriptInStackHelper(
     auto it = ad_script_data_.find(script_id);
     if (it != ad_script_data_.end()) {
       ad_script_index = static_cast<int>(i);
-      ad_script_it = it;
+      matched_ad_script = it->value.id;
       break;
     }
   }
 
-  if (ad_script_it == ad_script_data_.end()) {
+  if (!matched_ad_script.has_value()) {
     // The top scripts on the stack are not registered ad script. Are they
     // from ad frames?
 
@@ -538,7 +542,7 @@ bool AdTracker::IsAdScriptInStackHelper(
         IsFunctionAMonkeyPatch(isolate, stack[ad_script_index - 1].function,
                                ignore_monkey_patch)) {
       if (out_ad_script) {
-        *out_ad_script = ad_script_it->value.id;
+        *out_ad_script = *matched_ad_script;
       }
       return true;
     }
@@ -558,7 +562,7 @@ bool AdTracker::IsAdScriptInStackHelper(
   }
 
   if (out_ad_script) {
-    *out_ad_script = ad_script_it->value.id;
+    *out_ad_script = *matched_ad_script;
   }
 
   return true;

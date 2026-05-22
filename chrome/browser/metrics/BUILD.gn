@@ -37,6 +37,7 @@ source_set("metrics") {
   ]
   public_deps = [
     "//base",
+    "//chrome/browser:chrome_browser_field_trials",
     "//chrome/browser:main_extra_parts",
     "//chrome/browser/policy",
     "//chrome/browser/profiles:profile",
@@ -252,6 +253,7 @@ source_set("impl") {
 
   deps = [
     "//build/config/compiler:compiler_buildflags",
+    "//chrome/browser:browser_process_platform_part",
     "//chrome/browser:flags",
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/devtools",
@@ -283,7 +285,6 @@ source_set("impl") {
     "//chrome/browser/upgrade_detector",
     "//components/activity_reporter",
     "//components/crash/core/app",
-    "//components/enterprise/browser/groups:prefs",
     "//components/metrics:component_metrics",
     "//components/metrics/demographics",
     "//components/metrics/private_metrics",
@@ -350,6 +351,7 @@ source_set("impl") {
     ]
     deps += [
       "//chrome/browser/performance_manager/public/user_tuning",
+      "//chrome/browser/ui/location_bar",
       "//chrome/browser/ui/performance_controls",
       "//chrome/browser/ui/tabs",
       "//chrome/browser/ui/tabs:features",

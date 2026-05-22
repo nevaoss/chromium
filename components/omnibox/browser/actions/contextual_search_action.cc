@@ -85,7 +85,7 @@ const gfx::VectorIcon& ContextualSearchFulfillmentAction::GetVectorIcon()
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   return vector_icons::kGoogleLensMonochromeLogoIcon;
 #else
-  return vector_icons::kSearchChromeRefreshIcon;
+  return vector_icons::kSearchChromeRefreshOldIcon;
 #endif
 }
 #endif  // defined(SUPPORT_PEDALS_VECTOR_ICONS)
@@ -132,7 +132,7 @@ const gfx::VectorIcon& ContextualSearchOpenLensAction::GetVectorIcon() const {
              ? vector_icons::kGoogleLensLogoIcon
              : vector_icons::kGoogleLensMonochromeLogoIcon;
 #else
-  return vector_icons::kSearchChromeRefreshIcon;
+  return vector_icons::kSearchChromeRefreshOldIcon;
 #endif
 }
 #endif  // defined(SUPPORT_PEDALS_VECTOR_ICONS)
@@ -165,7 +165,7 @@ void StarterPackBookmarksAction::Execute(ExecutionContext& context) const {
 
 #if defined(SUPPORT_PEDALS_VECTOR_ICONS)
 const gfx::VectorIcon& StarterPackBookmarksAction::GetVectorIcon() const {
-  return omnibox::kStarActiveChromeRefreshIcon;
+  return omnibox::kStarActiveChromeRefreshOldIcon;
 }
 #endif  // defined(SUPPORT_PEDALS_VECTOR_ICONS)
 
@@ -197,7 +197,7 @@ void StarterPackHistoryAction::Execute(ExecutionContext& context) const {
 
 #if defined(SUPPORT_PEDALS_VECTOR_ICONS)
 const gfx::VectorIcon& StarterPackHistoryAction::GetVectorIcon() const {
-  return vector_icons::kHistoryChromeRefreshIcon;
+  return vector_icons::kHistoryChromeRefreshOldIcon;
 }
 #endif  // defined(SUPPORT_PEDALS_VECTOR_ICONS)
 
@@ -229,7 +229,7 @@ void StarterPackTabsAction::Execute(ExecutionContext& context) const {
 
 #if defined(SUPPORT_PEDALS_VECTOR_ICONS)
 const gfx::VectorIcon& StarterPackTabsAction::GetVectorIcon() const {
-  return omnibox::kProductChromeRefreshIcon;
+  return omnibox::kProductChromeRefreshOldIcon;
 }
 #endif  // defined(SUPPORT_PEDALS_VECTOR_ICONS)
 
@@ -261,7 +261,7 @@ void StarterPackAiModeAction::Execute(ExecutionContext& context) const {
 
 #if defined(SUPPORT_PEDALS_VECTOR_ICONS)
 const gfx::VectorIcon& StarterPackAiModeAction::GetVectorIcon() const {
-  return omnibox::kSearchSparkIcon;
+  return omnibox::kSearchSparkOldIcon;
 }
 #endif  // defined(SUPPORT_PEDALS_VECTOR_ICONS)
 

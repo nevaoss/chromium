@@ -37,10 +37,10 @@ const int kLayoutInteriorMarginTop = 4;
 const int kLayoutInteriorMarginRight = 8;
 
 const gfx::VectorIcon& GetRowIcon(actor::ActorTask::State state) {
-  if (tabs::GlicActorTaskIconManager::RequiresAttention(state)) {
-    return kHourglassIcon;
+  if (glic::GlicActorTaskIconManager::RequiresAttention(state)) {
+    return kHourglassOldIcon;
   } else if (state == actor::ActorTask::State::kFinished) {
-    return kTaskSparkIcon;
+    return kTaskSparkOldIcon;
   }
   return glic::GlicVectorIconManager::GetVectorIcon(IDR_ACTOR_AUTO_BROWSE_ICON);
 }
@@ -56,7 +56,7 @@ ui::ColorId GetRowColor(actor::ActorTask::State state,
     return ui::kColorSysStateDisabled;
   }
   if (requires_processing &&
-      tabs::GlicActorTaskIconManager::RequiresAttention(state)) {
+      glic::GlicActorTaskIconManager::RequiresAttention(state)) {
     return ui::kColorSysPrimary;
   }
   return ui::kColorMenuIcon;
@@ -67,7 +67,7 @@ std::u16string GetRowSubtitle(actor::ActorTask::State state, bool has_tab) {
     return l10n_util::GetStringUTF16(
         IDR_ACTOR_TASK_LIST_BUBBLE_ROW_TAB_CLOSED_SUBTITLE);
   }
-  if (tabs::GlicActorTaskIconManager::RequiresAttention(state)) {
+  if (glic::GlicActorTaskIconManager::RequiresAttention(state)) {
     return l10n_util::GetStringUTF16(
         IDR_ACTOR_TASK_LIST_BUBBLE_ROW_CHECK_TASK_SUBTITLE);
   }
@@ -151,7 +151,7 @@ ActorTaskListBubbleRowButton::ActorTaskListBubbleRowButton(
   redirect_icon_ = AddChildView(views::CreateVectorImageButtonWithNativeTheme(
       base::BindRepeating(&ActorTaskListBubbleRowButton::OnRedirectIconPressed,
                           base::Unretained(this)),
-      vector_icons::kLaunchIcon, kRedirectIconSize, ui::kColorMenuIcon,
+      vector_icons::kLaunchOldIcon, kRedirectIconSize, ui::kColorMenuIcon,
       ui::kColorMenuIcon, ui::kColorMenuIcon));
 
   // Set the preferred size on the button directly to accommodate the circle

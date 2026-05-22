@@ -54,7 +54,7 @@ void SetPageActionVisibility(
         ui::ImageModel::FromImageGenerator(
             base::BindRepeating([](const ui::ColorProvider* color_provider) {
               return gfx::CreateVectorIcon(
-                  omnibox::kSearchSparkIcon,
+                  omnibox::kSearchSparkOldIcon,
                   GetLayoutConstant(LayoutConstant::kLocationBarChipIconSize),
                   color_provider->GetColor(kColorOmniboxIconForegroundTonal));
             }),
@@ -129,6 +129,10 @@ bool AiModePageActionController::ShouldShowPageAction(
   // show the AIM entrypoint if the user typed text is non-empty.
   if (base::FeatureList::IsEnabled(omnibox::kHideAimEntrypointOnUserInput) &&
       !edit_model->user_text().empty()) {
+    return false;
+  }
+
+  if (omnibox::kShowRhsAimHint.Get()) {
     return false;
   }
 

@@ -466,6 +466,9 @@ TEST_F(OnDeviceModelServiceControllerTest,
       std::vector<proto::OnDeviceModelPerformanceHint>{
           proto::ON_DEVICE_MODEL_PERFORMANCE_HINT_FASTEST_INFERENCE},
       FakeBaseModelAsset::Content{
+          .cache_weight = 1015,
+          .encoder_cache_weight = 1016,
+          .adapter_cache_weight = 1017,
           .shader_cache_data = "0xcafebabe",
       }));
   Initialize(InitializeParams{
@@ -481,6 +484,8 @@ TEST_F(OnDeviceModelServiceControllerTest,
   ASSERT_TRUE(response_.GetFinalStatus());
   EXPECT_EQ(*response_.value(),
             "Fastest inference"
+            "Encoder cache weight: 1016"
+            "Adapter cache weight: 1017"
             "Shader cache data: 0xcafebabe"
             "execute:foo max:1024");
   // Destroy the session and run until the service is no longer running.
@@ -1911,6 +1916,65 @@ TEST_F(SessionImplTest, DetectsRepeatsAndCancelsResponse) {
   histogram_tester.ExpectUniqueSample(
       "OptimizationGuide.ModelExecution.OnDeviceExecuteModelResult.Compose",
       ExecuteModelResult::kResponseHadRepeats, 1);
+}
+
+TEST_F(SessionImplTest, ExcusedFeaturesIgnoreRepeats) {
+  // Mark kProofreaderApi as used so the model is eligible.
+  model_execution::prefs::RecordFeatureUsage(
+      &broker_.local_state(), mojom::OnDeviceFeature::kProofreaderApi);
+
+  base::HistogramTester histogram_tester;
+  FakeAdaptationAsset proofreader_asset({.config = [] {
+    auto cfg = UnsafeComposeConfig();
+    cfg.set_feature(proto::MODEL_EXECUTION_FEATURE_PROOFREADER_API);
+    return cfg;
+  }()});
+  Initialize({
+      .base_model_content = standard_assets_.base_model_content,
+      .adaptations = {&proofreader_asset},
+  });
+
+  const std::vector<std::string> expected_responses = {
+      "some text",
+      " some more repeating text",
+      " some more repeating text",
+      " more stuff",
+  };
+  broker_.service_settings().set_execute_result(expected_responses);
+
+  auto session = CreateSession(mojom::OnDeviceFeature::kProofreaderApi,
+                               SessionConfigParams{});
+  ASSERT_TRUE(session);
+  session->ExecuteModel(UserInputRequest("foo"),
+                        response_.GetStreamingCallback());
+  EXPECT_TRUE(response_.GetFinalStatus());
+
+  EXPECT_TRUE(response_.value());
+  EXPECT_FALSE(response_.error());
+
+  EXPECT_EQ(*response_.value(), ConcatResponses(expected_responses));
+  EXPECT_THAT(response_.partials(), ElementsAreArray(expected_responses));
+
+  ASSERT_TRUE(response_.model_execution_info());
+  EXPECT_GT(response_.model_execution_info()
+                ->on_device_model_execution_info()
+                .execution_infos_size(),
+            0);
+  EXPECT_FALSE(response_.model_execution_info()
+                   ->on_device_model_execution_info()
+                   .execution_infos(0)
+                   .response()
+                   .on_device_model_service_response()
+                   .has_repeats());
+
+  histogram_tester.ExpectUniqueSample(
+      "OptimizationGuide.ModelExecution.OnDeviceExecuteModelResult."
+      "ProofreaderApi",
+      ExecuteModelResult::kUsedOnDevice, 1);
+  histogram_tester.ExpectUniqueSample(
+      "OptimizationGuide.ModelExecution.OnDeviceResponseHasRepeats."
+      "ProofreaderApi",
+      false, 1);
 }
 
 TEST_F(SessionImplTest, DetectsRepeatsAcrossResponses) {

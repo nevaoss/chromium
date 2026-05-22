@@ -465,7 +465,8 @@ source_set("extensions") {
     # enterprise headers include extension_management.h.
     "//chrome/browser/enterprise",
 
-    # password_manager:impl includes extensions/api/settings_private/generated_pref.h
+    # password_manager:impl includes
+    # extensions/api/settings_private/generated_pref.h
     "//chrome/browser/password_manager:impl",
 
     # ssl includes extensions/api/settings_private/generated_pref.h via
@@ -491,7 +492,12 @@ source_set("extensions") {
     "//chrome/app/theme:chrome_unscaled_resources",
     "//chrome/browser:browser_features",
     "//chrome/browser:browser_process",
+    "//chrome/browser:browser_process_platform_part",
     "//chrome/browser:chrome_content_browser_client_parts",
+    "//chrome/browser:defaults",
+    "//chrome/browser:file_select_helper",
+    "//chrome/browser:file_util_service",
+    "//chrome/browser:icon_loader",
     "//chrome/browser:shell_integration",
     "//chrome/browser/app_mode",
     "//chrome/browser/apps:user_type_filter",
@@ -579,6 +585,7 @@ source_set("extensions") {
     "//components/no_state_prefetch/browser",
     "//components/performance_manager",
     "//components/policy/core/browser",
+    "//components/policy/core/common",
     "//components/pref_registry",
     "//components/privacy_sandbox:features",
     "//components/privacy_sandbox:privacy_sandbox_prefs",
@@ -699,6 +706,10 @@ source_set("extensions") {
     sources += [ "chrome_kiosk_delegate_non_chromeos.cc" ]
   }
 
+  if (!is_chromeos && !is_android) {
+    deps += [ "//chrome/browser/download/bubble" ]
+  }
+
   if (enable_guest_view) {
     deps += [
       "//chrome/browser/guest_view",
@@ -709,8 +720,8 @@ source_set("extensions") {
 
   if (enable_extensions) {
     sources += [
-      # TODO(crbug.com/40245282): Ideally, no API implementations would be included
-      # here.
+      # TODO(crbug.com/40245282): Ideally, no API implementations would be
+      # included here.
       "api/automation_internal/chrome_automation_internal_api_delegate.cc",
       "api/automation_internal/chrome_automation_internal_api_delegate.h",
       "api/bookmark_manager_private/bookmark_manager_private_api.cc",
@@ -998,7 +1009,6 @@ source_set("extensions") {
       "//components/download/public/common:public",
       "//components/drive",
       "//components/embedder_support:user_agent",
-      "//components/enterprise",
       "//components/enterprise/buildflags",
       "//components/enterprise/connectors/core",
       "//components/favicon/content",
@@ -1028,7 +1038,6 @@ source_set("extensions") {
       "//components/performance_manager",
       "//components/permissions",
       "//components/policy:generated",
-      "//components/policy/core/browser",
       "//components/reading_list/core",
       "//components/resources",
       "//components/safe_browsing:buildflags",
@@ -1224,7 +1233,6 @@ source_set("extensions") {
         "preinstalled_apps.h",
       ]
       deps += [
-        "//components/enterprise",
         "//components/enterprise/common/proto:connectors_proto",
         "//components/keep_alive_registry",
       ]
@@ -1549,6 +1557,10 @@ source_set("extensions") {
 
     if (!is_android && !is_chromeos) {
       deps += [ "//chrome/browser/ui/toasts" ]
+    }
+
+    if (enterprise_cloud_content_analysis) {
+      deps += [ "//components/enterprise/common/proto:browser_events_proto" ]
     }
   }  # if (enable_extensions)
 
@@ -1916,6 +1928,7 @@ source_set("unit_tests") {
     "//base/test:test_config",
     "//base/test:test_support",
     "//chrome/browser",
+    "//chrome/browser:browser_process_impl",
     "//chrome/browser/background",
     "//chrome/browser/bookmarks",
     "//chrome/browser/content_settings:content_settings_factory",

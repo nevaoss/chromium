@@ -754,7 +754,7 @@ void OmniboxViewViews::ExecuteCommand(int command_id, int event_flags) {
 
     case IDC_SEND_TAB_TO_SELF:
       send_tab_to_self::SendTabToSelfBubbleController::
-          CreateOrGetFromWebContents(location_bar_view_->GetWebContents())
+          GetOrCreateForWebContents(location_bar_view_->GetWebContents())
               ->ShowBubble();
       return;
 
@@ -2082,6 +2082,18 @@ bool OmniboxViewViews::HandleKeyEvent(views::Textfield* textfield,
   const bool command = event.IsCommandDown();
   switch (event.key_code()) {
     case ui::VKEY_RETURN: {
+      if (omnibox::kShowRhsAimHint.Get()) {
+#if BUILDFLAG(IS_MAC)
+        const bool ai_mode_modifier = command;
+#else
+        const bool ai_mode_modifier = control;
+#endif
+        if (ai_mode_modifier && !shift) {
+          controller()->edit_model()->OpenAiMode(/*via_keyboard=*/true,
+                                                 /*via_context_menu=*/false);
+          return true;
+        }
+      }
       WindowOpenDisposition disposition = WindowOpenDisposition::CURRENT_TAB;
       OpenMatchWithKeyboardModifiers metric_value;
       if (alt && !shift) {
@@ -2652,7 +2664,8 @@ void OmniboxViewViews::MaybeAddSendTabToSelfItem(
       index, IDC_SEND_TAB_TO_SELF,
       l10n_util::GetStringUTF16(IDS_MENU_SEND_TAB_TO_SELF));
 #if !BUILDFLAG(IS_MAC)
-  menu_contents->SetIcon(index, ui::ImageModel::FromVectorIcon(kDevicesIcon));
+  menu_contents->SetIcon(index,
+                         ui::ImageModel::FromVectorIcon(kDevicesOldIcon));
 #endif
   menu_contents->InsertSeparatorAt(++index, ui::NORMAL_SEPARATOR);
 }

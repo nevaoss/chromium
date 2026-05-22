@@ -160,7 +160,6 @@ Refer to README.md for content description and update process.
  <item id="proxy_config_system" added_in_milestone="67" content_hash_code="061e794f" os_list="linux,windows,chromeos,android" file_path="net/proxy_resolution/proxy_config_service.cc" />
  <item id="proxy_config_windows_resolver" added_in_milestone="86" content_hash_code="075530ef" os_list="windows" file_path="net/proxy_resolution/win/windows_system_proxy_resolution_request.cc" />
  <item id="qr_code_save" added_in_milestone="84" content_hash_code="045593bd" os_list="linux,windows,chromeos" file_path="chrome/browser/ui/views/qrcode_generator/qrcode_generator_bubble.cc" />
- <item id="quic_chromium_incoming_pending_session" added_in_milestone="73" content_hash_code="032742d9" os_list="linux,windows,chromeos,android" file_path="net/quic/quic_chromium_client_session.cc" />
  <item id="quic_chromium_incoming_session" added_in_milestone="66" content_hash_code="04aeee25" os_list="linux,windows,chromeos,android" file_path="net/quic/quic_chromium_client_session.cc" />
  <item id="quic_chromium_packet_writer" added_in_milestone="66" content_hash_code="01c48aa5" os_list="linux,windows,chromeos,android" file_path="net/quic/quic_chromium_packet_writer.cc" />
  <item id="ranker_url_fetcher" added_in_milestone="62" content_hash_code="02bd45e2" os_list="linux,windows,chromeos,android" file_path="components/assist_ranker/ranker_url_fetcher.cc" />
@@ -529,4 +528,7 @@ Refer to README.md for content description and update process.
  <item id="device_management_reporting" added_in_milestone="149" content_hash_code="07f8910c" os_list="linux,windows,android,chromeos" file_path="components/policy/core/common/cloud/device_management_service.cc" />
  <item id="device_management_remote_commands" added_in_milestone="149" content_hash_code="02f9a08a" os_list="linux,windows,android,chromeos" file_path="components/policy/core/common/cloud/device_management_service.cc" />
  <item id="private_verification_tokens_service_get_tokens" added_in_milestone="149" content_hash_code="04a115b2" os_list="linux,windows,android,chromeos" file_path="components/private_verification_tokens/common/private_verification_tokens_fetcher.cc" />
+ <item id="safe_browsing_v5_update" added_in_milestone="150" content_hash_code="03eccc50" os_list="linux,windows,android,chromeos" file_path="components/safe_browsing/core/browser/db/v5_update_protocol_manager.cc" />
+ <item id="skills_fetcher" added_in_milestone="150" content_hash_code="023f2b7e" os_list="linux,windows,chromeos" file_path="components/skills/internal/skills_fetcher.cc" />
+ <item id="iwa_installer_view_controller" added_in_milestone="149" type="partial" second_id="iwa_update_manifest_fetcher" content_hash_code="06e97185" os_list="chromeos,windows,linux" semantics_fields="1,2,3" policy_fields="-1,3,4" file_path="chrome/browser/ui/views/web_apps/isolated_web_apps/isolated_web_app_installer_view_controller.cc" />
 </annotations>

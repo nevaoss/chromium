@@ -19,14 +19,6 @@ public class BrowserControlsUtils {
 
     private static @Nullable Boolean sSyncMinHeightWithTotalHeightForTesting;
 
-    // Disallow top browser controls from scrolling off on large tablets by setting min height
-    // equal to overall height.
-    // TODO(https://crbug.com/450970998): Replace with doSyncMinHeightWithTotalHeightV2.
-    public static boolean doSyncMinHeightWithTotalHeight(Context context) {
-        return ChromeFeatureList.sLockTopControlsOnLargeTablets.isEnabled()
-                && DeviceFormFactor.isNonMultiDisplayContextOnLargeTablet(context);
-    }
-
     /**
      * Disallow top browser controls from scrolling off by setting min height equal to overall
      * height. This method checks the form factors internally.
@@ -60,6 +52,13 @@ public class BrowserControlsUtils {
         return isTopControlsRefactorOffsetEnabled()
                 && doSyncMinHeightWithTotalHeightV2(context)
                 && ChromeFeatureList.sLockTopControlsForceAdjustHeightOnStartup.getValue();
+    }
+
+    /** Returns whether the top-controls hairline needs an extra offset to stay hidden. */
+    public static boolean shouldContentOffsetHideTopControlsHairline(
+            int contentOffset, int topControlsMinHeight, int topControlsHairlineHeight) {
+        return contentOffset >= topControlsMinHeight
+                && contentOffset <= topControlsMinHeight + topControlsHairlineHeight;
     }
 
     /**

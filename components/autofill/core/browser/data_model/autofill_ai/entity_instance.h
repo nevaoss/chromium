@@ -271,9 +271,9 @@ class EntityInstance final {
     // copy. Changes happening locally or on the Wallet server are synced among
     // all local storages sharing this entity.
     kServerWallet = 1,
-    // The entity provided by Accessibility Annotator.
-    kAccessibilityAnnotator = 2,
-    kMaxValue = kAccessibilityAnnotator,
+    // The entity provided by Personal Context.
+    kPersonalContext = 2,
+    kMaxValue = kPersonalContext,
   };
 
   // `attributes` must be non-empty and their type must be identical to `type`.
@@ -467,6 +467,8 @@ class EntityInstance final {
   std::string frecency_override_;
 };
 
+std::ostream& operator<<(std::ostream& os,
+                         const EntityInstance::EntityMetadata& m);
 std::ostream& operator<<(std::ostream& os, const AttributeInstance& a);
 std::ostream& operator<<(std::ostream& os, const EntityInstance::RecordType& t);
 std::ostream& operator<<(std::ostream& os, const EntityInstance& e);

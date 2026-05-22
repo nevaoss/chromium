@@ -216,7 +216,7 @@ class InteractiveGlicTestMixin : public T {
                            Api::Log("Glic web contents is ready"))),
             WaitUntil(
                 [this]() -> std::string {
-                  GlicInstance* instance = GetGlicInstanceImpl();
+                  GlicInstanceImpl* instance = GetGlicInstanceImpl();
                   if (!instance) {
                     return "No glic instance for " +
                            instance_tracker_.DescribeGlicTracking();
@@ -850,7 +850,7 @@ class InteractiveGlicTestMixin : public T {
     ss << state;
     return WaitUntil(
         [this]() -> std::string {
-          auto* instance = GetGlicInstance();
+          auto* instance = GetGlicInstanceImpl();
           if (!instance) {
             return "no instance";
           }
@@ -931,12 +931,9 @@ class InteractiveGlicTestMixin : public T {
   auto EnsureGlicWindowState(const std::string& desc, M&&... matchers) {
     return Api::CheckResult(
         [this]() {
-          for (auto* instance : instance_coordinator().GetInstances()) {
-            if (instance && instance->IsShowing()) {
-              return GlicPanelState::kOpen;
-            }
-          }
-          return GlicPanelState::kClosed;
+          return instance_coordinator().IsAnyInstanceShowing()
+                     ? GlicPanelState::kOpen
+                     : GlicPanelState::kClosed;
         },
         testing::Matcher<GlicPanelState>(
             testing::AnyOf(std::forward<M>(matchers)...)),

@@ -520,8 +520,8 @@ class CORE_EXPORT Element : public ContainerNode {
   AtomicStringTable::WeakResult WeakLowercaseIfNecessary(
       const AtomicString&) const;
 
-  // NoncedElement implementation: this is only used by HTMLElement and
-  // SVGElement, but putting the implementation here allows us to use
+  // NoncedElement implementation: this is only used by HTMLElement, SVGElement
+  // and MathMLElement but putting the implementation here allows us to use
   // ElementRareData to hold the data.
   const AtomicString& nonce() const;
   void setNonce(const AtomicString&);
@@ -1573,6 +1573,7 @@ class CORE_EXPORT Element : public ContainerNode {
   virtual bool MatchesReadOnlyPseudoClass() const { return false; }
   virtual bool MatchesReadWritePseudoClass() const { return false; }
   virtual bool MatchesValidityPseudoClasses() const { return false; }
+  bool MatchesOverscrollOpen() const;
 
   virtual bool MayTriggerVirtualKeyboard() const;
 
@@ -1990,7 +1991,7 @@ class CORE_EXPORT Element : public ContainerNode {
   // 2) The Element is part of the active document.
   // See https://github.com/whatwg/html/pull/2373
   //
-  // This applies to the element of the HTML and SVG namespaces.
+  // This applies to the element of the HTML, SVG and MathML namespaces.
   //
   // This function clears the "nonce" attribute whenever conditions (1) and (2)
   // are met.

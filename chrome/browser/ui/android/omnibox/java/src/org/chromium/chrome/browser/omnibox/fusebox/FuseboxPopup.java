@@ -9,9 +9,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewStub;
 import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.ImageView;
 import android.widget.PopupWindow.OnDismissListener;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.core.graphics.Insets;
@@ -27,6 +27,7 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.insets.InsetObserver;
 import org.chromium.ui.insets.InsetObserver.WindowInsetObserver;
 import org.chromium.ui.widget.AnchoredPopupWindow;
+import org.chromium.ui.widget.RectProvider;
 
 import java.util.HashSet;
 import java.util.List;
@@ -43,7 +44,7 @@ class FuseboxPopup {
 
     /* package */ final AnchoredPopupWindow mPopupWindow;
     /* package */ final ViewGroup mViewGroup;
-    /* package */ final ScrollView mScrollView;
+    /* package */ final FuseboxScrollView mScrollView;
     /* package */ final View mAddCurrentTab;
     /* package */ final View mTabButton;
     /* package */ final View mClipboardButton;
@@ -64,6 +65,17 @@ class FuseboxPopup {
     private final @Nullable InsetObserver mInsetObserver;
     private final int mInitialScrollPaddingBottom;
     private @PopupState int mCurrentState = PopupState.HIDDEN;
+
+    private final RectProvider.Observer mDynamicRectObserver =
+            new RectProvider.Observer() {
+                @Override
+                public void onRectChanged() {
+                    updateLayout();
+                }
+
+                @Override
+                public void onRectHidden() {}
+            };
 
     private final WindowInsetObserver mWindowInsetObserver =
             new WindowInsetObserver() {
@@ -88,6 +100,7 @@ class FuseboxPopup {
         mPopupWindow = popupWindow;
         mPopupWindow.setClippingEnabled(false);
         mDynamicRectProvider = dynamicRectProvider;
+        mDynamicRectProvider.startObserving(mDynamicRectObserver);
         mInsetObserver = windowAndroid.getInsetObserver();
         if (mInsetObserver != null) {
             mInsetObserver.addObserver(mWindowInsetObserver);
@@ -107,6 +120,10 @@ class FuseboxPopup {
         mScrollView = contentView.findViewById(R.id.fusebox_scroll_view);
         mInitialScrollPaddingBottom = mScrollView.getPaddingBottom();
 
+        if (isBottomSheet) {
+            mScrollView.setOnSwipeDownListener(this::dismiss);
+        }
+
         ViewStub stub = contentView.findViewById(R.id.fusebox_attachments_stub);
         stub.setLayoutResource(
                 isBottomSheet
@@ -124,7 +141,11 @@ class FuseboxPopup {
         mToolsDivider = contentView.findViewById(R.id.fusebox_tools_divider);
         mToolsHeader = contentView.findViewById(R.id.fusebox_tools_header);
 
-        initializeItem(mAddCurrentTab, R.string.fusebox_add_current_tab, 0, 0);
+        initializeItem(
+                mAddCurrentTab,
+                isBottomSheet ? R.string.fusebox_current_tab : R.string.fusebox_add_current_tab,
+                0,
+                0);
         initializeItem(
                 mTabButton,
                 R.string.omnibox_navattach_tabs,
@@ -139,12 +160,12 @@ class FuseboxPopup {
         initializeItem(
                 mCameraButton,
                 R.string.photo_picker_camera,
-                R.drawable.ic_photo_camera,
+                R.drawable.photo_camera_24dp,
                 R.string.accessibility_omnibox_add_camera_picture);
         initializeItem(
                 mGalleryButton,
                 R.string.omnibox_navattach_gallery,
-                R.drawable.ic_photo_library_fill_24dp,
+                R.drawable.photo_24dp,
                 R.string.accessibility_omnibox_add_images);
         initializeItem(
                 mFileButton,
@@ -170,6 +191,8 @@ class FuseboxPopup {
         if (mInsetObserver != null) {
             mInsetObserver.removeObserver(mWindowInsetObserver);
         }
+        mScrollView.setOnSwipeDownListener(null);
+        mDynamicRectProvider.stopObserving(mDynamicRectObserver);
     }
 
     /** Show the popup window. */
@@ -244,22 +267,30 @@ class FuseboxPopup {
      * <p>TODO(crbug.com/470324794): This isn't right. Figure out why AnchoredPopupWindow won't
      * focus views for us.
      */
+    @SuppressWarnings("AccessibilityFocus")
     void focusFirstViewForAccessibility() {
-        View viewForAccessibility = null;
-        for (int viewIndex = 0; viewIndex < mViewGroup.getChildCount(); viewIndex++) {
-            var view = mViewGroup.getChildAt(viewIndex);
-
-            if (view.getVisibility() == View.VISIBLE && view.isImportantForAccessibility()) {
-                viewForAccessibility = view;
-                break;
-            }
-        }
-
+        View viewForAccessibility = findFirstViewForAccessibility(mViewGroup);
         if (viewForAccessibility == null) return;
 
         // Move focus to the view, emitting event.
         viewForAccessibility.requestFocus();
         viewForAccessibility.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);
+        viewForAccessibility.performAccessibilityAction(
+                AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS, null);
+    }
+
+    private @Nullable View findFirstViewForAccessibility(View view) {
+        if (view.getVisibility() != View.VISIBLE) return null;
+        if (view.isImportantForAccessibility()) return view;
+
+        if (view instanceof ViewGroup) {
+            ViewGroup viewGroup = (ViewGroup) view;
+            for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                View result = findFirstViewForAccessibility(viewGroup.getChildAt(i));
+                if (result != null) return result;
+            }
+        }
+        return null;
     }
 
     /** Dismiss the popup window. */

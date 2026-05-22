@@ -22,6 +22,8 @@ import androidx.core.graphics.drawable.DrawableCompat;
 import org.chromium.base.CallbackController;
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.metrics.RecordUserAction;
+import org.chromium.base.supplier.LazyOneshotSupplier;
+import org.chromium.base.supplier.LazyOneshotSupplierImpl;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.base.supplier.OneshotSupplier;
@@ -31,7 +33,9 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
+import org.chromium.chrome.browser.bookmarks.BookmarkImageFetcher;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
+import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
 import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils;
 import org.chromium.chrome.browser.device.DeviceConditions;
 import org.chromium.chrome.browser.devtools.DevToolsWindowAndroid;
@@ -60,21 +64,28 @@ import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.toolbar.menu_button.MenuItemState;
 import org.chromium.chrome.browser.toolbar.top.ToolbarUtils;
+import org.chromium.chrome.browser.ui.appmenu.AppMenuBookmarkItemProperties;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuHandler;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuItemProperties;
 import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
 import org.chromium.chrome.browser.ui.extensions.ExtensionUi;
+import org.chromium.chrome.browser.ui.favicon.FaviconUtils;
 import org.chromium.chrome.browser.ui.lens.LensOverlayTabHelper;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
+import org.chromium.components.bookmarks.BookmarkId;
+import org.chromium.components.bookmarks.BookmarkItem;
 import org.chromium.components.browser_ui.accessibility.PageZoomManager;
 import org.chromium.components.browser_ui.accessibility.PageZoomMenuItemCoordinator;
 import org.chromium.components.browser_ui.accessibility.PageZoomProperties;
 import org.chromium.components.browser_ui.accessibility.PageZoomUtils;
+import org.chromium.components.browser_ui.util.GlobalDiscardableReferencePool;
 import org.chromium.components.dom_distiller.core.DomDistillerFeatures;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
+import org.chromium.components.image_fetcher.ImageFetcherConfig;
+import org.chromium.components.image_fetcher.ImageFetcherFactory;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.content_public.browser.ContentFeatureList;
 import org.chromium.content_public.browser.ContentFeatureMap;
@@ -93,8 +104,10 @@ import org.chromium.url.GURL;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 
 /** An {@link AppMenuPropertiesDelegateImpl} for ChromeTabbedActivity. */
 @NullMarked
@@ -138,6 +151,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     private final PageZoomMenuItemCoordinator mPageZoomMenuItemCoordinator;
 
     private final OneshotSupplier<HubManager> mHubManagerSupplier;
+
+    private @Nullable BookmarkImageFetcher mImageFetcher;
 
     public TabbedAppMenuPropertiesDelegate(
             Context context,
@@ -200,6 +215,15 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                 TabbedAppMenuItemType.ZOOM_ITEM,
                 new LayoutViewBuilder<>(R.layout.page_zoom_menu_item),
                 PageZoomMenuItemViewBinder::bind);
+    }
+
+    @Override
+    public void destroy() {
+        super.destroy();
+        if (mImageFetcher != null) {
+            mImageFetcher.destroy();
+            mImageFetcher = null;
+        }
     }
 
     @Override
@@ -725,7 +749,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         R.id.history_parent_menu_id,
                         R.string.menu_history,
                         shouldShowIconBeforeItem() ? R.drawable.ic_history_24dp : Resources.ID_NULL,
-                        submenuItems));
+                        () -> submenuItems));
     }
 
     private ListItem buildHistoryItem() {
@@ -753,10 +777,57 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     private ListItem buildBookmarksParentItem() {
         assert shouldShowBookmarksParentItem();
 
-        List<ListItem> submenuItems = new ArrayList<>();
-        submenuItems.add(buildBookmarksItem());
-        submenuItems.add(buildBookmarkThisPageItem());
-        submenuItems.add(buildToggleBookmarksBarItem());
+        Supplier<List<ListItem>> submenuItemsSupplier =
+                () -> {
+                    List<ListItem> submenuItems = new ArrayList<>();
+
+                    submenuItems.add(buildBookmarksItem());
+                    submenuItems.add(buildBookmarkThisPageItem());
+                    submenuItems.add(buildToggleBookmarksBarItem());
+
+                    submenuItems.add(
+                            new ListItem(
+                                    AppMenuHandler.AppMenuItemType.DIVIDER,
+                                    buildModelForDivider(R.id.divider_line_id)));
+
+                    submenuItems.add(buildReadingListItem());
+
+                    BookmarkModel bookmarkModel = mBookmarkModelSupplier.get();
+                    if (bookmarkModel != null && bookmarkModel.isBookmarkModelLoaded()) {
+                        List<ListItem> bookmarksBarItems =
+                                getBookmarkItemList(
+                                        BookmarkUtils.getDesktopBookmarkIds(bookmarkModel),
+                                        bookmarkModel);
+                        if (bookmarksBarItems.size() > 0) {
+                            submenuItems.add(
+                                    new ListItem(
+                                            AppMenuHandler.AppMenuItemType.DIVIDER,
+                                            buildModelForDivider(R.id.divider_line_id)));
+                            submenuItems.addAll(bookmarksBarItems);
+                        }
+
+                        submenuItems.add(
+                                new ListItem(
+                                        AppMenuHandler.AppMenuItemType.DIVIDER,
+                                        buildModelForDivider(R.id.divider_line_id)));
+
+                        submenuItems.add(
+                                buildBookmarkFolderParentItem(
+                                        R.string.menu_mobile_bookmarks,
+                                        Arrays.asList(
+                                                bookmarkModel.getAccountMobileFolderId(),
+                                                bookmarkModel.getMobileFolderId())));
+
+                        submenuItems.add(
+                                buildBookmarkFolderParentItem(
+                                        R.string.menu_other_bookmarks,
+                                        Arrays.asList(
+                                                bookmarkModel.getAccountOtherFolderId(),
+                                                bookmarkModel.getOtherFolderId())));
+                    }
+
+                    return submenuItems;
+                };
 
         return new ListItem(
                 AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU,
@@ -766,7 +837,72 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         shouldShowIconBeforeItem()
                                 ? R.drawable.ic_star_filled_24dp
                                 : Resources.ID_NULL,
-                        submenuItems));
+                        submenuItemsSupplier));
+    }
+
+    private ListItem buildBookmarkFolderParentItem(
+            @StringRes int titleRes, List<BookmarkId> folderIds) {
+        Supplier<List<ListItem>> submenuItemsSupplier =
+                () -> {
+                    List<ListItem> items = new ArrayList<>();
+                    BookmarkModel bookmarkModel = mBookmarkModelSupplier.get();
+                    if (bookmarkModel != null && bookmarkModel.isBookmarkModelLoaded()) {
+                        List<BookmarkId> childIds = new ArrayList<>();
+                        for (BookmarkId folderId : folderIds) {
+                            if (folderId != null) {
+                                childIds.addAll(bookmarkModel.getChildIds(folderId));
+                            }
+                        }
+                        items.addAll(getBookmarkItemList(childIds, bookmarkModel));
+                    }
+                    if (items.size() == 0) {
+                        items.add(
+                                new ListItem(
+                                        AppMenuHandler.AppMenuItemType.EMPTY,
+                                        new PropertyModel.Builder(AppMenuItemProperties.ALL_KEYS)
+                                                .with(AppMenuItemProperties.ENABLED, false)
+                                                .build()));
+                    }
+                    return items;
+                };
+
+        return new ListItem(
+                AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU,
+                buildModelForMenuItemWithSubmenu(
+                        R.id.bookmark_folder_menu_id,
+                        titleRes,
+                        shouldShowIconBeforeItem()
+                                ? R.drawable.ic_folder_outline_24dp
+                                : Resources.ID_NULL,
+                        submenuItemsSupplier));
+    }
+
+    private ListItem buildReadingListItem() {
+        List<ListItem> submenuItems = new ArrayList<>();
+
+        submenuItems.add(
+                new ListItem(
+                        AppMenuHandler.AppMenuItemType.STANDARD,
+                        buildModelForStandardMenuItem(
+                                R.id.add_to_reading_list_menu_id,
+                                R.string.menu_add_to_reading_list,
+                                shouldShowIconBeforeItem() ? R.drawable.ic_list_add_24dp : 0)));
+
+        submenuItems.add(
+                new ListItem(
+                        AppMenuHandler.AppMenuItemType.STANDARD,
+                        buildModelForStandardMenuItem(
+                                R.id.show_reading_list_menu_id,
+                                R.string.menu_show_reading_list,
+                                shouldShowIconBeforeItem() ? R.drawable.ic_list_24dp : 0)));
+
+        return new ListItem(
+                AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU,
+                buildModelForMenuItemWithSubmenu(
+                        R.id.reading_list_parent_menu_id,
+                        R.string.menu_reading_list,
+                        shouldShowIconBeforeItem() ? R.drawable.ic_list_24dp : Resources.ID_NULL,
+                        () -> submenuItems));
     }
 
     private ListItem buildToggleBookmarksBarItem() {
@@ -779,6 +915,96 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                                 ? R.string.menu_hide_bookmarks_bar
                                 : R.string.menu_show_bookmarks_bar,
                         shouldShowIconBeforeItem() ? R.drawable.ic_toolbar_24dp : 0));
+    }
+
+    private BookmarkImageFetcher getImageFetcher() {
+        if (mImageFetcher == null) {
+            Profile profile = getProfileFromTabModel();
+            BookmarkModel bookmarkModel = mBookmarkModelSupplier.get();
+            assert bookmarkModel != null;
+            mImageFetcher =
+                    new BookmarkImageFetcher(
+                            profile,
+                            mContext,
+                            bookmarkModel,
+                            ImageFetcherFactory.createImageFetcher(
+                                    ImageFetcherConfig.IN_MEMORY_WITH_DISK_CACHE,
+                                    profile.getProfileKey(),
+                                    GlobalDiscardableReferencePool.getReferencePool()),
+                            FaviconUtils.createCircularIconGenerator(mContext));
+        }
+        return mImageFetcher;
+    }
+
+    private List<ListItem> getBookmarkItemList(List<BookmarkId> ids, BookmarkModel bookmarkModel) {
+        List<ListItem> submenuItems = new ArrayList<>();
+        for (BookmarkId id : ids) {
+            BookmarkItem item = bookmarkModel.getBookmarkById(id);
+            if (item != null) {
+                submenuItems.add(buildBookmarkListItem(item, bookmarkModel));
+            }
+        }
+        return submenuItems;
+    }
+
+    private ListItem buildBookmarkListItem(BookmarkItem item, BookmarkModel bookmarkModel) {
+        if (item.isFolder()) {
+            return new ListItem(
+                    AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU,
+                    buildModelForMenuItemWithSubmenu(
+                            R.id.bookmark_folder_menu_id,
+                            item.getTitle(),
+                            shouldShowIconBeforeItem()
+                                    ? R.drawable.ic_folder_outline_24dp
+                                    : Resources.ID_NULL,
+                            () -> {
+                                List<ListItem> items =
+                                        getBookmarkItemList(
+                                                bookmarkModel.getChildIds(item.getId()),
+                                                bookmarkModel);
+                                if (items.size() == 0) {
+                                    items.add(
+                                            new ListItem(
+                                                    AppMenuHandler.AppMenuItemType.EMPTY,
+                                                    new PropertyModel.Builder(
+                                                                    AppMenuItemProperties.ALL_KEYS)
+                                                            .with(
+                                                                    AppMenuItemProperties.ENABLED,
+                                                                    false)
+                                                            .build()));
+                                }
+                                return items;
+                            }));
+        } else {
+            PropertyModel model =
+                    populateBaseModelForTextItem(
+                                    new PropertyModel.Builder(
+                                            AppMenuBookmarkItemProperties.ALL_KEYS),
+                                    R.id.bookmark_menu_id)
+                            .with(AppMenuItemProperties.TITLE, item.getTitle())
+                            .with(AppMenuBookmarkItemProperties.BOOKMARK_ID, item.getId())
+                            .with(
+                                    AppMenuBookmarkItemProperties.ICON_SUPPLIER,
+                                    shouldShowIconBeforeItem() ? createIconSupplierFor(item) : null)
+                            .with(AppMenuItemProperties.ICON_NO_TINT, !item.isFolder())
+                            .build();
+            return new ListItem(AppMenuHandler.AppMenuItemType.BOOKMARK, model);
+        }
+    }
+
+    private LazyOneshotSupplier<Drawable> createIconSupplierFor(BookmarkItem item) {
+        if (item.isFolder()) {
+            return LazyOneshotSupplier.fromSupplier(
+                    () ->
+                            AppCompatResources.getDrawable(
+                                    mContext, R.drawable.ic_folder_outline_24dp));
+        }
+        return new LazyOneshotSupplierImpl<>() {
+            @Override
+            public void doSet() {
+                getImageFetcher().fetchFaviconForBookmark(item, this::set);
+            }
+        };
     }
 
     private ListItem buildBookmarksItem() {
@@ -834,7 +1060,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         shouldShowIconBeforeItem()
                                 ? R.drawable.ic_extension_24dp
                                 : Resources.ID_NULL,
-                        submenuItems));
+                        () -> submenuItems));
     }
 
     private ListItem buildExtensionsMenuItem() {
@@ -994,7 +1220,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         shouldShowIconBeforeItem()
                                 ? R.drawable.ic_file_save_24dp
                                 : Resources.ID_NULL,
-                        submenuItems));
+                        () -> submenuItems));
     }
 
     private ListItem buildDownloadPageItem(Tab currentTab) {
@@ -1137,7 +1363,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         shouldShowIconBeforeItem()
                                 ? R.drawable.ic_more_tools_24dp
                                 : Resources.ID_NULL,
-                        submenuItems));
+                        () -> submenuItems));
     }
 
     @Contract("null -> false")
@@ -1568,5 +1794,9 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         var profile = mTabModelSelector.getModel(false).getProfile();
         assert profile != null;
         return profile;
+    }
+
+    public void setImageFetcherForTesting(BookmarkImageFetcher imageFetcher) {
+        mImageFetcher = imageFetcher;
     }
 }

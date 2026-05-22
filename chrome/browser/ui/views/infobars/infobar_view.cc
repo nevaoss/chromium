@@ -184,7 +184,7 @@ InfoBarView::InfoBarView(std::unique_ptr<infobars::InfoBarDelegate> delegate)
     auto close_button = views::CreateVectorImageButton(base::BindRepeating(
         &InfoBarView::CloseButtonPressed, base::Unretained(this)));
     views::SetImageFromVectorIconWithColor(
-        close_button.get(), vector_icons::kCloseChromeRefreshIcon,
+        close_button.get(), vector_icons::kCloseChromeRefreshOldIcon,
         {kColorInfoBarButtonIcon, kColorInfoBarForeground,
          kColorInfoBarButtonIconHovered});
     close_button->SetTooltipText(l10n_util::GetStringUTF16(IDS_ACCNAME_CLOSE));
@@ -273,7 +273,7 @@ gfx::Size InfoBarView::CalculatePreferredSize(
 void InfoBarView::OnThemeChanged() {
   views::View::OnThemeChanged();
   const auto* cp = GetColorProvider();
-  const SkColor background_theme_color = cp->GetColor(ui::kColorSysSurface2);
+  const SkColor background_theme_color = cp->GetColor(kColorInfoBarBackground);
   SetBackground(views::CreateSolidBackground(background_theme_color));
 
   const SkColor text_color = cp->GetColor(kColorInfoBarForeground);

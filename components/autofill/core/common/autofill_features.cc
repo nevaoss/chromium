@@ -654,7 +654,7 @@ BASE_FEATURE(kAutofillFixFormTracking, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the new implementation of `FormFieldData::is_autofilled`.
 // TODO(crbug.com/393114125): Remove when launched.
-BASE_FEATURE(kAutofillFixIsAutofilled, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillFixIsAutofilled, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the rewriter uses updated rewrite rules.
 // TODO(crbug.com/445863287): Cleanup when launched.
@@ -1077,13 +1077,6 @@ BASE_FEATURE(kUseSettingsAddressEditorInPaymentsRequest,
 // autofill") labels and icons to "Your saved info".
 BASE_FEATURE(kYourSavedInfoBrandingInSettings,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Kill switch for indicators of settings controlled by a policy or extension.
-// Applies to toggles on identity docs settings page, travel settings page,
-// and the Enhanced Autofill opt-in.
-// TODO(crbug.com/489667079): Remove when launched.
-BASE_FEATURE(kYourSavedInfoPolicyAndExtentionToggleIndicators,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Defines if the "Your Saved Info" page is eligible to be shown in Chrome
 // settings.

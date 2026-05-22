@@ -142,7 +142,6 @@
 <translation id="147982357559798527">Өзгертілді</translation>
 <translation id="1486096554574027028">Құпия сөздерді іздеу</translation>
 <translation id="1491277525950327607">Параметрді ауыстыру үшін екі рет түртіңіз</translation>
-<translation id="1491965206608166851">Кез келген қолданбаның сақталған құпия сөздері және кіру кілттері арқылы кіріңіз.</translation>
 <translation id="1492417797159476138">Бұл сайт үшін осы пайдаланушы аты сақтап қойылған.</translation>
 <translation id="1497590942294823549">"Мәзір" → "Password Manager"</translation>
 <translation id="1498283581832036924"><ph name="WEBSITE" /> аккаунтыңыз жойылмайды.</translation>
@@ -202,6 +201,7 @@
 <translation id="1657011748321897393">Бөлісу сәтсіз аяқталды, себебі желіге қосылмағансыз.</translation>
 <translation id="1668001730617725852">Жаңа қойындылар тобында ашу</translation>
 <translation id="1670861525135254448">Көлік құралы деректерін сақтаңыз</translation>
+<translation id="1671568970992212376">Фотосуреттерді Google Photos-ға сақтап, кез келген уақытта пайдаланыңыз.</translation>
 <translation id="1674504678466460478"><ph name="SOURCE_LANGUAGE" /> тілінен <ph name="TARGET_LANGUAGE" /> тіліне</translation>
 <translation id="1678855624321223424">Ұйымыңыздың саясаттарына сәйкес бұл файлда құпия ақпарат болуы мүмкін.</translation>
 <translation id="168389590065701766">Енді Google Lens-ді мекенжай жолағынан ашуға және көріп жатқан кез келген нәрсені іздеуге болады.</translation>
@@ -358,12 +358,10 @@
 <translation id="2199562093267256223">Бұл жағдайда топ <ph name="USER_EMAIL" /> аккаунтына кірген барлық құрылғыдан жойылады.</translation>
 <translation id="2202084845446535117">Электрондық пошта аккаунттары жоқ</translation>
 <translation id="2214453882118345682">Камерамен түсіретін нәрселерді сатып алуға, аударуға және анықтауға болады.</translation>
-<translation id="2215819824168709130">Бағаны бақылау картасын жасыру</translation>
 <translation id="2216366330550244277">Тауар бетіне өтіңіз.</translation>
 <translation id="2219935992754556187">Chrome браузері құпия деректеріңізді Face ID-мен қорғайды.</translation>
 <translation id="2220529011494928058">Ақау туралы хабарлау</translation>
 <translation id="2223461067862937305">QR кодын жасау</translation>
-<translation id="2225701818156393674">Тауар бақыланатын тауарлар тізіміне қосылды.</translation>
 <translation id="2230173723195178503">Веббет жүктелді</translation>
 <translation id="2236949375853147973">Әрекеттерім</translation>
 <translation id="2237869114829007407">Кез келген бет немесе тақырып бойынша жалпы ақпарат пен негізгі статистика алыңыз.</translation>
@@ -554,7 +552,6 @@
 <translation id="2902312830803030883">Қосымша әрекеттер</translation>
 <translation id="2904788871580817212">Ашық қойындыда баға төмендеді: <ph name="PREVIOUS_PRICE" /> &gt; <ph name="PRICE" /> (<ph name="PRODUCT_NAME" />, <ph name="DOMAIN" />)</translation>
 <translation id="2905479111267140204">Қауіпсіздігіңізге қауіп төндіруі мүмкін <ph name="NUMBER_OF_PASSWORDS" /> бұрын қолданылған құпия сөзіңіз бар.</translation>
-<translation id="29153882450867370">"Бағаны бақылау" картасын жасыру</translation>
 <translation id="291754862089661335">QR кодын не штрих-кодты осы кадрға қойыңыз</translation>
 <translation id="2918688092312652908">Оқылмаған деп белгілеу</translation>
 <translation id="2922210239002704889">Негізгі бетке немесе пернетақтаға өтіңіз.</translation>
@@ -566,6 +563,7 @@
 <translation id="2969979262385602596">Кіру мүмкін емес. Кейінірек қайталап көріңіз.</translation>
 <translation id="2975761176769946178">URL мекенжайын енгізу қажет.</translation>
 <translation id="297667759942911166">Қойындылар топтарында бірлесіп жұмыс істеңіз</translation>
+<translation id="298696743524648170">Chrome-дағы Gemini-ды пайдалану үшін Chrome-ға Google аккаунтыңызбен кіріңіз.</translation>
 <translation id="2987670534697681860">Бұл құрылғыдағы барлық құпия сөзге қол жеткізу үшін жеке басыңызды растаңыз.</translation>
 <translation id="2989523299700148168">Соңғы кіргендер</translation>
 <translation id="2989805286512600854">Жаңа қойындыда ашу</translation>
@@ -620,6 +618,7 @@
 <translation id="31652791196570636">Жабу</translation>
 <translation id="3167868116600277716">Discover фиді</translation>
 <translation id="3169472444629675720">Discover</translation>
+<translation id="3172755898799085680">Gemini бұл бетте қолжетімсіз</translation>
 <translation id="3174662312949010067">Сақталған құпия сөздерді басқа құрылғыларыңызда да пайдалана аласыз.</translation>
 <translation id="3177338796769255211">Барлық құрылғыда бетбелгілер және т.б. ақпарат алу үшін аккаунтқа кіріңіз.</translation>
 <translation id="3181954750937456830">Safe Browsing қызметі (сізді және құрылғыңызды қауіпті сайттардан қорғайды)</translation>
@@ -854,7 +853,6 @@
 <translation id="4018440314314549819">Сақталған құпия сөздермен автоматты түрде толтыру</translation>
 <translation id="4021447724486050609">Браузерді жаңартыңыз</translation>
 <translation id="4021931095789478915">Оқу тізіміне ${url} қосу</translation>
-<translation id="4026496154402824012">Бұл функцияны өшіру үшін <ph name="BEGIN_LINK" />Құпия сөз опциялары<ph name="END_LINK" /> тармағына өтіңіз.</translation>
 <translation id="4028871427853484857">Аккаунтта сақтау…</translation>
 <translation id="4038354071007134711">Бұл құрылғыдағы қолданбалардың осы файлды ашуы мүмкін емес.</translation>
 <translation id="4042870976416480368">Беттен табу</translation>
@@ -995,6 +993,7 @@
 <translation id="4552042254369397518">Көшірілуде…</translation>
 <translation id="4553044860350038560">Басқа кіру кілттері</translation>
 <translation id="4564893319561643483">"<ph name="TITLE" />" модулін жасыру</translation>
+<translation id="456502772933839252"><ph name="PAGE_TITLE" /> беті бөлісіліп жатыр.</translation>
 <translation id="4565377596337484307">Құпия сөзді жасыру</translation>
 <translation id="4568230126482344545">Соңғы қойындыларды жасыру</translation>
 <translation id="4578835633387306383">Қосу…</translation>
@@ -1134,7 +1133,6 @@
 <translation id="4992255726304765516">Қойындылар тобының түсі <ph name="COLOR" /></translation>
 <translation id="5005498671520578047">Құпия сөзді көшіру</translation>
 <translation id="5009127379503001909">Шолуды жалғастыру</translation>
-<translation id="5012914568031465281">Бағаны бақылау мүмкін болмады.</translation>
 <translation id="5016205925109358554">Serif</translation>
 <translation id="5016420433031926653">Алушы: <ph name="USER_EMAIL" /></translation>
 <translation id="5017529052065664584">Соңғы 15 минут</translation>
@@ -1404,6 +1402,7 @@ Handoff функциясы параметрлердің жалпы бөлімі�
 <translation id="5936065461722368675">Тұтас бетті аудару</translation>
 <translation id="5937560539988385583">Бет аударылды.</translation>
 <translation id="5938160824633642847">Құрылғыңыздың жады толуға жақын. Оны босатып, әрекетті қайталаңыз.</translation>
+<translation id="5941711191222866238">Жию</translation>
 <translation id="5944869793365969636">QR кодын сканерлеу</translation>
 <translation id="5948291296578561264">Бұл суреттерді жинаққа сақтауға мүмкіндік береді.</translation>
 <translation id="5948605885471592910">Кез келген ашық нәрсені көріп, басқарыңыз</translation>
@@ -1606,7 +1605,6 @@ Handoff функциясы параметрлердің жалпы бөлімі�
 <translation id="6571070086367343653">Несие картасын өзгерту</translation>
 <translation id="6574092468346088891">Қауіпсіздік тексерісінің хабарландыруларын қосыңыз.</translation>
 <translation id="6579867704846662339">Басқа қолданбалардың кіріс URL мекенжайларын инкогнито режимінде ашуды таңдауға болады.</translation>
-<translation id="6583087784430677195">Өшіру үшін <ph name="BEGIN_LINK" />Параметрлерді<ph name="END_LINK" /> ашып, "Құпия сөздерді автоматты түрде толтыру" бөліміне өтіңіз.</translation>
 <translation id="6585618849026997638">Бетбелгі енгізу арқылы маңызды бетке орала аласыз.</translation>
 <translation id="6589001036857939353">Қайталанатын контактілерді біріктіру</translation>
 <translation id="659407965921887085">Бұл картадан сіз бақылайтын тауарлардың интернеттегі бағасының төмендегенін көре аласыз.</translation>
@@ -1668,7 +1666,6 @@ Handoff функциясы параметрлердің жалпы бөлімі�
 <translation id="6746338529702829275">Аккаунт деректерін қарап шығу</translation>
 <translation id="6750456911389438250">{count,plural, =1{{count} тарих элементі импортталды}other{{count} тарих элементі импортталды}}</translation>
 <translation id="6755200887046212842">Аккаунттарды басқару</translation>
-<translation id="6755733078693946548">Құпия сөздер мен кіру кілттерін кез келген қолданбада пайдалану</translation>
 <translation id="6759709389246683070">Сайтқа кейінірек кіру туралы еске салғыш орнату үшін осы қойындыны түртіп, ұстап тұрыңыз.</translation>
 <translation id="6761393919622941301">Аудио</translation>
 <translation id="6770452996697898492">[БРОНДАЛДЫ]</translation>
@@ -2011,7 +2008,6 @@ Handoff функциясы параметрлердің жалпы бөлімі�
 <translation id="797588153137233716">Мәзір → Тарих → Браузерді пайдалану деректерін жою</translation>
 <translation id="7977451675950311423">Деректер қолды болған кезде ұрланған құпия сөзді пайдалансаңыз, сізге ескертеді.</translation>
 <translation id="797824194429476746">Қойындылар осы құрылғыда ашық қалады, бірақ топ біржола жойылады.</translation>
-<translation id="797874245254030665">Құпия сөздер мен кіру кілттерін кез келген қолданбада пайдалану</translation>
 <translation id="7982789257301363584">Желі</translation>
 <translation id="798299424881500862">Қызғылт сары тақырып</translation>
 <translation id="7987685713885608670">Қосымша қауіпсіздікті қамтамасыз ету үшін құрылғыдағы құпия сөздерді Google Құпия сөздер реттегішіне сақтамас бұрын шифрлаңыз.</translation>
@@ -2168,6 +2164,7 @@ Handoff функциясы параметрлердің жалпы бөлімі�
 <translation id="8515534223594179607">Браузерді пайдалану деректерін экспорттау</translation>
 <translation id="8522147671363140027">{count,plural, =1{{count} құпия сөз және басқа элементтер тек осы құрылғыға сақталады. Оларды басқа құрылғыларыңызда пайдалану үшін Google аккаунтына ({email}) сақтаңыз.}other{{count} құпия сөз және басқа элементтер тек осы құрылғыға сақталады. Оларды басқа құрылғыларыңызда пайдалану үшін Google аккаунтына ({email}) сақтаңыз.}}</translation>
 <translation id="8524799873541103884"><ph name="INCOGNITO" />, <ph name="FIRST_VISIBLE_TAB" /> және <ph name="LAST_VISIBLE_TAB" /> арасындағы қойындылар, барлығы <ph name="NUMBER_OF_OPEN_TABS" /></translation>
+<translation id="8525306231823319788">Толық экран</translation>
 <translation id="8528009254289981965">Басқа қолданбалардың сілтемелерін инкогнито режимінде ашу</translation>
 <translation id="8529767659511976195">Жаңа</translation>
 <translation id="8531572740963685410">PDF файлдары</translation>
@@ -2289,7 +2286,6 @@ Handoff функциясы параметрлердің жалпы бөлімі�
 <translation id="8879952635974818770">Жекелендірілген контент</translation>
 <translation id="8887595428614802520">Барлық қойынды мен топты жабу</translation>
 <translation id="8888595487174963247">Еске салғышты жою</translation>
-<translation id="8891031436559779793">Қандай да бір сайтта баға төмендесе, сізге хабарланады.</translation>
 <translation id="8893208530912252670">Бейнелер</translation>
 <translation id="8898822736010347272">Жаңа қауіптерді анықтап, интернетте барлығын қорғауға көмектесу үшін кірген кейбір беттердің URL мекенжайларын, шектеулі жүйе ақпаратын және кейбір беттердің контентін Google-ға жібереді.</translation>
 <translation id="8900845556227858314">Браузер қолданбасы</translation>

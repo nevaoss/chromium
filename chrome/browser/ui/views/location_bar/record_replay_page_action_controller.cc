@@ -36,18 +36,18 @@ DEFINE_USER_DATA(RecordReplayPageActionController);
 
 namespace {
 
-views::View* GetAnchorViewForBubble(tabs::TabInterface& tab) {
+views::BubbleAnchor GetAnchorForBubble(tabs::TabInterface& tab) {
   BrowserWindowInterface* bwi = tab.GetBrowserWindowInterface();
   if (!bwi) {
-    return nullptr;
+    return views::BubbleAnchor();
   }
   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(bwi);
   if (!browser_view) {
-    return nullptr;
+    return views::BubbleAnchor();
   }
-  return browser_view->GetLocationBarView()
-      ->page_action_container()
-      ->GetPageActionView(kActionRecordReplay);
+  return views::BubbleAnchor(browser_view->GetLocationBarView()
+                                 ->page_action_container()
+                                 ->GetPageActionView(kActionRecordReplay));
 }
 
 }  // namespace
@@ -75,20 +75,17 @@ void RecordReplayPageActionController::ExecuteAction(
   record_replay::RecordReplayManager& manager = client->GetManager();
   switch (manager.state()) {
     case State::kIdle:
-      if (has_recording_) {
-        views::View* anchor_view = GetAnchorViewForBubble(*tab_);
-        if (!anchor_view) {
+      if (!recent_recordings_.empty()) {
+        views::BubbleAnchor anchor = GetAnchorForBubble(*tab_);
+        if (anchor.IsNull()) {
           break;
         }
 
         // TODO(crbug.com/507035858): Remove (UT) when strings are
         // internationalized.
         bubble_widget_ = record_replay::ReplayRecordingBubbleView::Show(
-            anchor_view, tab_->GetContents(),
-            recording_name_.empty() ? u"Unnamed Recording (UT)"
-                                    : recording_name_,
-            base::BindOnce(&record_replay::RecordReplayManager::StartReplay,
-                           manager.GetWeakPtr()));
+            anchor, tab_->GetContents(), recent_recordings_,
+            manager.GetWeakPtr());
       } else {
         manager.StartRecording();
       }
@@ -100,10 +97,10 @@ void RecordReplayPageActionController::ExecuteAction(
         break;
       }
 
-      views::View* anchor_view = GetAnchorViewForBubble(*tab_);
+      views::BubbleAnchor anchor = GetAnchorForBubble(*tab_);
 
-      // anchor_view can be null if the page action is not visible.
-      if (!anchor_view) {
+      // anchor can be null if the page action is not visible.
+      if (anchor.IsNull()) {
         break;
       }
 
@@ -113,7 +110,7 @@ void RecordReplayPageActionController::ExecuteAction(
       }
 
       record_replay::SaveRecordingBubbleView::Show(
-          anchor_view, tab_->GetContents(),
+          anchor, tab_->GetContents(),
           std::make_unique<record_replay::SaveRecordingBubbleControllerImpl>(
               std::move(*recording), rdm,
               base::BindOnce(&record_replay::RecordReplayManager::ReportToUser,
@@ -138,15 +135,14 @@ void RecordReplayPageActionController::UpdateState() {
   }
   page_action_controller_->Show(kActionRecordReplay);
 
-  client->GetManager().GetMatchingRecording(base::BindOnce(
-      &RecordReplayPageActionController::OnRetrieveRecordingComplete,
+  client->GetManager().GetMatchingRecordings(base::BindOnce(
+      &RecordReplayPageActionController::OnRetrieveRecordingsComplete,
       weak_ptr_factory_.GetWeakPtr()));
 }
 
-void RecordReplayPageActionController::OnRetrieveRecordingComplete(
-    std::optional<record_replay::Recording> recording) {
-  has_recording_ = recording.has_value();
-  recording_name_ = recording ? base::UTF8ToUTF16(recording->name()) : u"";
+void RecordReplayPageActionController::OnRetrieveRecordingsComplete(
+    std::vector<record_replay::Recording> recordings) {
+  recent_recordings_ = std::move(recordings);
 
   record_replay::RecordReplayClient* client =
       tab_->GetTabFeatures()->record_replay_client();
@@ -155,29 +151,29 @@ void RecordReplayPageActionController::OnRetrieveRecordingComplete(
   }
 
   std::u16string tooltip_text;
-  const gfx::VectorIcon* icon = &vector_icons::kScreenRecordIcon;
+  const gfx::VectorIcon* icon = &vector_icons::kScreenRecordOldIcon;
   SkColor color = {};
 
   switch (client->GetManager().state()) {
     case State::kIdle:
-      if (has_recording_) {
-        tooltip_text = u"Replay";
-        icon = &vector_icons::kPlayArrowIcon;
+      if (!recent_recordings_.empty()) {
+        tooltip_text = u"Replay (UT)";
+        icon = &vector_icons::kPlayArrowOldIcon;
         color = gfx::kGoogleGreen600;
       } else {
-        tooltip_text = u"Record";
-        icon = &vector_icons::kScreenRecordIcon;
+        tooltip_text = u"Record (UT)";
+        icon = &vector_icons::kScreenRecordOldIcon;
         color = gfx::kGoogleRed600;
       }
       break;
     case State::kRecording:
-      tooltip_text = u"Stop recording";
-      icon = &vector_icons::kStopCircleIcon;
+      tooltip_text = u"Stop recording (UT)";
+      icon = &vector_icons::kStopCircleOldIcon;
       color = gfx::kGoogleRed600;
       break;
     case State::kReplaying:
-      tooltip_text = u"Stop replay";
-      icon = &vector_icons::kStopCircleIcon;
+      tooltip_text = u"Stop replay (UT)";
+      icon = &vector_icons::kStopCircleOldIcon;
       color = gfx::kGoogleGreen600;
       break;
   }

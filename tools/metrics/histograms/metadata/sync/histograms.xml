@@ -143,6 +143,11 @@ chromium-metrics-reviews@google.com.
   <variant name=".Migration" summary="run the migration"/>
 </variants>
 
+<variants name="TabsFromOtherDevicesVersion">
+  <variant name="List" summary="list version"/>
+  <variant name="Screenshot" summary="screenshot version"/>
+</variants>
+
 <variants name="TrustedVaultTimeSinceMigrationSuffix">
   <variant name=""
       summary="Includes data for users that went through migration any time
@@ -697,7 +702,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.ConfigureTime_{ConfigurationType}.{Result}" units="ms"
-    expires_after="2026-09-06">
+    expires_after="2026-11-08">
   <owner>treib@chromium.org</owner>
   <owner>src/components/sync/OWNERS</owner>
   <summary>
@@ -1125,7 +1130,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.DataTypeUpdateDrop.{Reason}" enum="SyncDataTypes"
-    expires_after="2026-08-30">
+    expires_after="2026-11-08">
   <owner>treib@chromium.org</owner>
   <owner>rushans@google.com</owner>
   <summary>
@@ -1610,7 +1615,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.InitialState2" enum="SyncInitialState"
-    expires_after="2026-09-06">
+    expires_after="2026-11-08">
   <owner>treib@chromium.org</owner>
   <owner>mastiz@chromium.org</owner>
   <summary>
@@ -2318,7 +2323,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.SyncablePrefValueChanged{SyncDataType}"
-    enum="SyncablePref" expires_after="2026-08-30">
+    enum="SyncablePref" expires_after="2026-11-08">
   <owner>treib@chromium.org</owner>
   <owner>src/components/sync/OWNERS</owner>
   <summary>
@@ -2650,6 +2655,40 @@ chromium-metrics-reviews@google.com.
     &quot;Migrate&quot; bucket of &quot;Sync.SyncToSigninMigrationDecision&quot;
     to verify that all migrations that were started also finished.
   </summary>
+</histogram>
+
+<histogram name="Sync.TabsFromOtherDevicesSidePanel.{Version}.Events"
+    enum="TabsFromOtherDevicesSidePanelEvent" expires_after="2027-05-07">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Records events for the TabsFromOtherDevices side panel ({Version}). Recorded
+    when the side panel is created, opened, closed, or a tab is opened from it.
+  </summary>
+  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
+</histogram>
+
+<histogram name="Sync.TabsFromOtherDevicesSidePanel.{Version}.TimeSpentOpen"
+    units="ms" expires_after="2027-05-07">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Records the total time spent with the TabsFromOtherDevices side panel
+    ({Version}) open. Recorded when the side panel is closed or hidden.
+  </summary>
+  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
+</histogram>
+
+<histogram name="Sync.TabsFromOtherDevicesSidePanel.{Version}.TimeToFirstTab"
+    units="ms" expires_after="2027-05-07">
+  <owner>treib@chromium.org</owner>
+  <owner>src/components/sync/OWNERS</owner>
+  <summary>
+    Records the time between opening the TabsFromOtherDevices side panel
+    ({Version}) and opening the first tab from it. Recorded when the first tab
+    is opened.
+  </summary>
+  <token key="Version" variants="TabsFromOtherDevicesVersion"/>
 </histogram>
 
 <histogram name="Sync.ThrottledAllDataTypes" enum="Boolean"

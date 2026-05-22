@@ -93,7 +93,6 @@ source_set("internal") {
       "//chrome/browser/ui/signin",
       "//chrome/browser/ui/sync",
       "//chrome/browser/ui/tabs",
-      "//chrome/browser/ui/tabs:glic",
       "//chrome/browser/ui/tabs:tab_list_bridge",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/tabs/projects:impl",
@@ -145,7 +144,10 @@ source_set("internal") {
     }
 
     if (is_win || is_mac || is_linux) {
-      deps += [ "//chrome/browser/ui/views/session_restore_infobar" ]
+      deps += [
+        "//chrome/browser/download/bubble",
+        "//chrome/browser/ui/views/session_restore_infobar",
+      ]
     }
 
     if (is_win || is_mac || is_linux || is_chromeos) {

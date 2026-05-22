@@ -104,6 +104,7 @@ source_set("browser_tests") {
     "read_anything_controller_browsertest.cc",
     "read_anything_entry_point_controller_browsertest.cc",
     "read_anything_omnibox_controller_browsertest.cc",
+    "read_anything_side_panel_navigation_throttle_browsertest.cc",
   ]
 
   deps = [
@@ -111,6 +112,7 @@ source_set("browser_tests") {
     "//base",
     "//base/test:test_support",
     "//chrome/browser",
+    "//chrome/browser/optimization_guide:test_support",
     "//chrome/browser/pdf:pdf_extension_test_utils",
     "//chrome/browser/search_engines",
     "//chrome/browser/ui",

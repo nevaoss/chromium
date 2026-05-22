@@ -473,8 +473,8 @@ constexpr size_t kPlaceholderAvatarIndex = 0;
 ui::ImageModel GetGuestAvatar(int size) {
   // Guest profiles generally use the default theme, no need to go through the
   // `ThemeService`.
-  return ui::ImageModel::FromVectorIcon(kAccountBoxIcon, ui::kColorSysPrimary,
-                                        size);
+  return ui::ImageModel::FromVectorIcon(kAccountBoxOldIcon,
+                                        ui::kColorSysPrimary, size);
 }
 
 gfx::Image GetSizedAvatarIcon(const gfx::Image& image,
@@ -789,7 +789,7 @@ gfx::Image GetPlaceholderAvatarIconVisibleAgainstBackground(
     int size,
     AvatarVisibilityAgainstBackground visibility) {
   const gfx::VectorIcon& person_icon =
-      vector_icons::kAccountCircleChromeRefreshIcon;
+      vector_icons::kAccountCircleChromeRefreshOldIcon;
 
   // The palette is generated using the user color, which is independent of the
   // profile's light or dark theme.
@@ -817,7 +817,7 @@ gfx::Image GetPlaceholderAvatarIconWithColors(
   CHECK(!icon_params.visibility_against_background.has_value());
 
   const gfx::VectorIcon& person_icon =
-      vector_icons::kAccountCircleChromeRefreshIcon;
+      vector_icons::kAccountCircleChromeRefreshOldIcon;
 
   const gfx::ImageSkia avatar_icon_without_background =
       icon_params.has_padding

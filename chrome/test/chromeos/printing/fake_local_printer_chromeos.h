@@ -15,10 +15,6 @@
 // all methods FAIL(). Methods can be overridden for testing.
 class FakeLocalPrinter : public crosapi::mojom::LocalPrinter {
  public:
-  void ShowSystemPrintSettings(
-      ShowSystemPrintSettingsCallback callback) override;
-  void CreatePrintJob(crosapi::mojom::PrintJobPtr job,
-                      CreatePrintJobCallback callback) override;
   void CancelPrintJob(const std::string& printer_id,
                       unsigned int job_id,
                       CancelPrintJobCallback callback) override;
@@ -28,7 +24,6 @@ class FakeLocalPrinter : public crosapi::mojom::LocalPrinter {
   void AddPrintServerObserver(
       mojo::PendingRemote<crosapi::mojom::PrintServerObserver> remote,
       AddPrintServerObserverCallback callback) override;
-  void GetPolicies(GetPoliciesCallback callback) override;
   void GetPrinterTypeDenyList(GetPrinterTypeDenyListCallback callback) override;
   void AddPrintJobObserver(
       mojo::PendingRemote<crosapi::mojom::PrintJobObserver> remote,

@@ -349,7 +349,7 @@ class TouchBarNotificationBridge : public CommandObserver,
       [[NSCustomTouchBarItem alloc] initWithIdentifier:identifier];
   if ([identifier hasSuffix:kBackTouchId]) {
     auto* button =
-        CreateTouchBarButton(vector_icons::kBackArrowChromeRefreshIcon, self,
+        CreateTouchBarButton(vector_icons::kBackArrowChromeRefreshOldIcon, self,
                              IDC_BACK, IDS_ACCNAME_BACK);
     [button bind:@"enabled" toObject:self withKeyPath:@"canGoBack" options:nil];
     [touchBarItem setView:button];
@@ -357,8 +357,8 @@ class TouchBarNotificationBridge : public CommandObserver,
         setCustomizationLabel:l10n_util::GetNSString(IDS_ACCNAME_BACK)];
   } else if ([identifier hasSuffix:kForwardTouchId]) {
     auto* button =
-        CreateTouchBarButton(vector_icons::kForwardArrowChromeRefreshIcon, self,
-                             IDC_FORWARD, IDS_ACCNAME_FORWARD);
+        CreateTouchBarButton(vector_icons::kForwardArrowChromeRefreshOldIcon,
+                             self, IDC_FORWARD, IDS_ACCNAME_FORWARD);
     [button bind:@"enabled"
            toObject:self
         withKeyPath:@"canGoForward"
@@ -374,13 +374,13 @@ class TouchBarNotificationBridge : public CommandObserver,
                           IDS_TOUCH_BAR_STOP_RELOAD_CUSTOMIZATION_LABEL)];
   } else if ([identifier hasSuffix:kHomeTouchId]) {
     [touchBarItem
-        setView:CreateTouchBarButton(kNavigateHomeChromeRefreshIcon, self,
+        setView:CreateTouchBarButton(kNavigateHomeChromeRefreshOldIcon, self,
                                      IDC_HOME, IDS_ACCNAME_HOME)];
     [touchBarItem
         setCustomizationLabel:l10n_util::GetNSString(
                                   IDS_TOUCH_BAR_HOME_CUSTOMIZATION_LABEL)];
   } else if ([identifier hasSuffix:kNewTabTouchId]) {
-    [touchBarItem setView:CreateTouchBarButton(kNewTabMacTouchbarIcon, self,
+    [touchBarItem setView:CreateTouchBarButton(kNewTabMacTouchbarOldIcon, self,
                                                IDC_NEW_TAB, IDS_TOOLTIP_NEW_TAB,
                                                kTouchBarDefaultIconColor,
                                                kOldTouchBarIconSize)];
@@ -578,11 +578,11 @@ class TouchBarNotificationBridge : public CommandObserver,
         gfx::CreateVectorIcon(vector_icons::kGoogleGLogoIcon,
                               kOldTouchBarIconSize, gfx::kPlaceholderColor));
   } else {
-    image = CreateNSImageFromIcon(vector_icons::kSearchChromeRefreshIcon);
+    image = CreateNSImageFromIcon(vector_icons::kSearchChromeRefreshOldIcon);
   }
 #endif
   if (!image) {
-    image = CreateNSImageFromIcon(vector_icons::kSearchChromeRefreshIcon);
+    image = CreateNSImageFromIcon(vector_icons::kSearchChromeRefreshOldIcon);
   }
 
   if (!_searchButton) {
@@ -647,7 +647,7 @@ class TouchBarNotificationBridge : public CommandObserver,
 
 + (NSImage*)starDefaultIcon {
   static __strong NSImage* starDefaultIcon = CreateNSImageFromIcon(
-      omnibox::kStarChromeRefreshIcon, kTouchBarDefaultIconColor);
+      omnibox::kStarChromeRefreshOldIcon, kTouchBarDefaultIconColor);
   return starDefaultIcon;
 }
 
@@ -657,7 +657,7 @@ class TouchBarNotificationBridge : public CommandObserver,
 
 + (NSImage*)starActiveIcon {
   static __strong NSImage* starActiveIcon = []() {
-    return CreateNSImageFromIcon(omnibox::kStarActiveChromeRefreshIcon,
+    return CreateNSImageFromIcon(omnibox::kStarActiveChromeRefreshOldIcon,
                                  kTouchBarStarActiveColor);
   }();
   return starActiveIcon;
@@ -665,13 +665,13 @@ class TouchBarNotificationBridge : public CommandObserver,
 
 + (NSImage*)navigateStopIcon {
   static __strong NSImage* navigateStopIcon =
-      CreateNSImageFromIcon(kNavigateStopChromeRefreshIcon);
+      CreateNSImageFromIcon(kNavigateStopChromeRefreshOldIcon);
   return navigateStopIcon;
 }
 
 + (NSImage*)reloadIcon {
   static __strong NSImage* reloadIcon =
-      CreateNSImageFromIcon(vector_icons::kReloadChromeRefreshIcon);
+      CreateNSImageFromIcon(vector_icons::kReloadChromeRefreshOldIcon);
   return reloadIcon;
 }
 

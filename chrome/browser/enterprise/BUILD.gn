@@ -98,7 +98,6 @@ source_set("enterprise") {
       "//chrome/browser/ui/tabs:tab_strip_model_observer",
       "//chrome/browser/ui/webui/signin:signin_utils",
       "//chrome/browser/upgrade_detector:build_state_observer",
-      "//extensions/common",
       "//ui/message_center/public/cpp",
       "//ui/views",
     ]
@@ -423,6 +422,8 @@ source_set("impl") {
   deps = [
     "//chrome/app:command_ids",
     "//chrome/browser:browser_process",
+    "//chrome/browser:browser_process_platform_part",
+    "//chrome/browser:file_util_service",
     "//chrome/browser/browsing_data:constants",
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/devtools",
@@ -454,6 +455,7 @@ source_set("impl") {
     "//components/device_event_log",
     "//components/device_signals/core/browser",
     "//components/device_signals/core/common",
+    "//components/dom_distiller/core",
     "//components/enterprise",
     "//components/enterprise/browser/identifiers",
     "//components/enterprise/common:files_scan_data",
@@ -507,7 +509,6 @@ source_set("impl") {
       "signals/device_info_fetcher.cc",
     ]
     deps += [
-      "//chrome/browser/extensions",
       "//chrome/browser/search_engine_choice",
       "//chrome/browser/sync",
       "//chrome/browser/themes",
@@ -787,7 +788,6 @@ source_set("impl") {
       "//chrome/browser/enterprise/connectors/device_trust/key_management/browser",
       "//chrome/browser/enterprise/connectors/device_trust/key_management/core",
       "//chrome/browser/enterprise/connectors/device_trust/key_management/core/persistence",
-      "//chrome/browser/extensions",
       "//chrome/services/system_signals/public/cpp/browser",
     ]
   }
@@ -802,5 +802,9 @@ source_set("impl") {
 
   if (enable_extensions_core) {
     sources += [ "reporting/extension_info.cc" ]
+    deps += [
+      "//chrome/browser/extensions",
+      "//extensions/browser",
+    ]
   }
 }

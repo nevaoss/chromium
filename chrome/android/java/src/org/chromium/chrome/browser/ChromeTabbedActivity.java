@@ -104,6 +104,7 @@ import org.chromium.chrome.browser.auxiliary_search.module.AuxiliarySearchModule
 import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.back_press.MinimizeAppAndCloseTabBackPressHandler;
 import org.chromium.chrome.browser.back_press.MinimizeAppAndCloseTabBackPressHandler.MinimizeAppAndCloseTabType;
+import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.bookmarks.BookmarkPane;
 import org.chromium.chrome.browser.bookmarks.BookmarkUtils;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
@@ -237,7 +238,6 @@ import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.setup_list.SetupListModuleUtils;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.ShareHelper;
-import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfAndroidBridge;
 import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfGestureDetector;
 import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfMetricsRecorder;
 import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
@@ -266,6 +266,7 @@ import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncUtils;
 import org.chromium.chrome.browser.tab_ui.ActionConfirmationManager;
 import org.chromium.chrome.browser.tab_ui.TabGridIphDialogCoordinator;
+import org.chromium.chrome.browser.tab_ui.TabScreenshotSyncHelper;
 import org.chromium.chrome.browser.tab_ui.TabSwitcher;
 import org.chromium.chrome.browser.tab_ui.TabSwitcherUtils;
 import org.chromium.chrome.browser.tabbed_mode.TabbedAppMenuPropertiesDelegate;
@@ -346,6 +347,7 @@ import org.chromium.chrome.browser.usage_stats.UsageStatsService;
 import org.chromium.chrome.browser.util.ChromeAccessibilityUtil;
 import org.chromium.chrome.browser.util.DefaultBrowserInfo;
 import org.chromium.chrome.browser.xr.scenecore.XrModule;
+import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
 import org.chromium.components.browser_ui.share.ShareParams;
 import org.chromium.components.browser_ui.util.BrowserControlsVisibilityDelegate;
@@ -610,6 +612,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     private TabModelSelectorObserver mTabModelSelectorObserver;
     private TabModelSelectorTabObserver mNavigationFinishedObserver;
     private TabModelSelectorTabModelObserver mTabModelObserver;
+    private @Nullable TabScreenshotSyncHelper mTabScreenshotSyncHelper;
     private HistoricalTabModelObserver mHistoricalTabModelObserver;
     private UndoRefocusHelper mUndoRefocusHelper;
     private BrowserControlsVisibilityDelegate mVrBrowserControlsVisibilityDelegate;
@@ -1630,6 +1633,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                                     getSnackbarManager(),
                                     findsService);
                 }
+            }
+
+            if (ChromeFeatureList.isEnabled(ChromeFeatureList.SYNC_TAB_SCREENSHOTS)) {
+                mTabScreenshotSyncHelper =
+                        new TabScreenshotSyncHelper(getTabModelSelector(), getTabContentManager());
             }
         }
     }
@@ -2667,9 +2675,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     }
 
     /**
-     * Records an action when a user chose to handle a URL in Chrome that could have been handled
-     * by an application installed on the phone. Also records the name of that application.
-     * This doesn't include generic URL handlers, such as browsers.
+     * Records an action when a user chose to handle a URL in Chrome that could have been handled by
+     * an application installed on the phone. Also records the name of that application. This
+     * doesn't include generic URL handlers, such as browsers.
      */
     private static void recordAppHandlersForIntent(Intent intent) {
         List<String> packages =
@@ -2773,8 +2781,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 ArchivedTabModelOrchestrator archivedOrchestrator =
                         ArchivedTabModelOrchestrator.getForProfile(mTabModelProfileSupplier.get());
                 @Nullable TabModel archivedTabModel = archivedOrchestrator.getTabModel();
-                @Nullable
-                Tab archivedTab =
+                @Nullable Tab archivedTab =
                         archivedTabModel == null
                                 ? null
                                 : archivedOrchestrator
@@ -3713,10 +3720,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                                 TraceEvent.scoped("CheckSyncErrorOnDidFinishNavigation")) {
                             SyncErrorMessage.maybeShowMessageUi(getWindowAndroid(), profile);
                         }
-                        try (TraceEvent te = TraceEvent.scoped("updateActiveWebContents")) {
-                            SendTabToSelfAndroidBridge.updateActiveWebContents(
-                                    tab.getWebContents());
-                        }
                     }
                 };
         if (startIncognito) mTabModelSelector.selectModel(true);
@@ -4092,7 +4095,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
     @Override
     public boolean onMenuOrKeyboardAction(
-            final int id, boolean fromMenu, @Nullable MotionEventInfo triggeringMotion) {
+            final int id,
+            boolean fromMenu,
+            @Nullable Bundle menuItemData,
+            @Nullable MotionEventInfo triggeringMotion) {
         final Tab currentTab = getActivityTab();
         boolean currentTabIsNtp = isTabNtp(currentTab);
         if (id == R.id.new_tab_menu_id) {
@@ -4180,6 +4186,24 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     BrowserProfileType.MAX_VALUE);
 
             RecordUserAction.record("MobileMenuAllBookmarks");
+        } else if (id == R.id.show_reading_list_menu_id) {
+            assumeNonNull(getCompositorViewHolderSupplier().get())
+                    .hideKeyboard(
+                            () -> {
+                                BookmarkModel bookmarkModel = mBookmarkModelSupplier.get();
+                                BookmarkId folderId =
+                                        bookmarkModel != null
+                                                ? bookmarkModel.getDefaultReadingListFolder()
+                                                : null;
+                                mBookmarkManagerOpenerSupplier
+                                        .get()
+                                        .showBookmarkManager(
+                                                ChromeTabbedActivity.this,
+                                                currentTab,
+                                                getCurrentTabModel().getProfile(),
+                                                folderId);
+                            });
+            RecordUserAction.record("MobileMenuShowReadingList");
         } else if (id == R.id.recent_tabs_menu_id) {
             LoadUrlParams params =
                     new LoadUrlParams(UrlConstants.RECENT_TABS_URL, PageTransition.AUTO_BOOKMARK);
@@ -4362,7 +4386,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             .build());
             RecordUserAction.record("MobileMenuTabSearch");
         } else {
-            return super.onMenuOrKeyboardAction(id, fromMenu, triggeringMotion);
+            return super.onMenuOrKeyboardAction(id, fromMenu, menuItemData, triggeringMotion);
         }
         return true;
     }
@@ -4629,8 +4653,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             ChromeTabCreator tabCreator = getTabCreator(isIncognito);
             Tab parentTab = null;
             if (launchType == TabLaunchType.FROM_CHROME_UI) {
-                int parentIdFromIntent = IntentUtils.safeGetIntExtra(
-                        intent, IntentHandler.EXTRA_PARENT_TAB_ID, Tab.INVALID_TAB_ID);
+                int parentIdFromIntent =
+                        IntentUtils.safeGetIntExtra(
+                                intent, IntentHandler.EXTRA_PARENT_TAB_ID, Tab.INVALID_TAB_ID);
                 if (parentIdFromIntent != Tab.INVALID_TAB_ID && mTabModelSelector != null) {
                     parentTab = mTabModelSelector.getTabById(parentIdFromIntent);
                 }
@@ -4790,6 +4815,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         if (mNavigationFinishedObserver != null) {
             mNavigationFinishedObserver.destroy();
             mNavigationFinishedObserver = null;
+        }
+
+        if (mTabScreenshotSyncHelper != null) {
+            mTabScreenshotSyncHelper.destroy();
+            mTabScreenshotSyncHelper = null;
         }
 
         mTabModelNotificationDotManager.destroy();
@@ -5291,8 +5321,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         if (DeviceInfo.isXr()) {
             assert XrModule.isInstalled() : "XR module must be installed on XR devices. ";
             mXrSceneCoreSessionInitializer =
-                    XrModule.getImpl().getXrSceneCoreSessionInitializer(
-                            getLifecycleDispatcher(), mXrSceneCoreSessionManagerSupplier.get());
+                    XrModule.getImpl()
+                            .getXrSceneCoreSessionInitializer(
+                                    getLifecycleDispatcher(),
+                                    mXrSceneCoreSessionManagerSupplier.get());
             mXrSceneCoreSessionInitializer.initialize(INITIAL_XR_FULL_SPACE_MODE);
         }
     }

@@ -16,12 +16,14 @@
 #include "base/strings/utf_string_conversions.h"
 #include "build/branding_buildflags.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/buildflags.h"
 #include "chrome/browser/devtools/devtools_infobar_delegate.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/collected_cookies_infobar_delegate.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/infobars/content/content_infobar_manager.h"
@@ -54,6 +56,10 @@
 #include "chrome/browser/win/installer_downloader/installer_downloader_pref_names.h"
 #endif
 
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_UPDATER)
+#include "chrome/browser/ui/cocoa/keystone_infobar_delegate.h"
+#endif
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 #include "chrome/browser/ui/startup/default_browser_prompt/default_browser_prompt_manager.h"  // nogncheck
 #include "chrome/browser/ui/startup/default_browser_prompt/default_browser_prompt_prefs.h"  // nogncheck
@@ -84,6 +90,12 @@ void InfoBarInternalsHandler::TriggerInfoBar(InfoBarType type,
 void InfoBarInternalsHandler::GetInfoBars(GetInfoBarsCallback callback) {
   // Please keep the entries in alphabetized order base on the type.
   std::vector<InfoBarEntryPtr> infobar_list;
+  infobar_list.emplace_back(InfoBarEntry::New(
+      /*type=*/InfoBarType::kCollectedCookies, /*name=*/"Collected Cookies",
+      /*description=*/
+      "The Collected Cookies infobar is shown after the user has changed "
+      "the allowed/blocked state of a cookie, reminding them to reload "
+      "the page in order for the new cookies to take effect."));
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   infobar_list.emplace_back(InfoBarEntry::New(
       /*type=*/InfoBarType::kDefaultBrowser, /*name=*/"Default Browser",
@@ -131,6 +143,16 @@ void InfoBarInternalsHandler::GetInfoBars(GetInfoBarsCallback callback) {
       "prevent it to shown and then trigger a show request."));
 #endif
 
+#if BUILDFLAG(IS_MAC) && BUILDFLAG(ENABLE_UPDATER)
+  infobar_list.emplace_back(InfoBarEntry::New(
+      /*type=*/InfoBarType::kKeystone, /*name=*/"Keystone",
+      /*description=*/
+      "The Keystone infobar asks the user to promote the updater to "
+      "system scope. This trigger resets any browser state that "
+      "prevents the infobar from being shown, then shows the infobar. "
+      "This can only be triggered on Mac."));
+#endif
+
 #if BUILDFLAG(ENABLE_PLUGINS)
   infobar_list.emplace_back(InfoBarEntry::New(
       /*type=*/InfoBarType::kReloadPlugin, /*name=*/"Reload Plugin",
@@ -165,6 +187,24 @@ void InfoBarInternalsHandler::GetInfoBars(GetInfoBarsCallback callback) {
 bool InfoBarInternalsHandler::TriggerInfoBarInternal(InfoBarType type) {
   // Please keep the entries in alphabetized order base on the type.
   switch (type) {
+    case InfoBarType::kCollectedCookies: {
+      BrowserWindowInterface* const bwi =
+          GetLastActiveBrowserWindowInterfaceWithAnyProfile();
+      if (!bwi || !bwi->GetActiveTabInterface()) {
+        return false;
+      }
+
+      content::WebContents* web_contents =
+          bwi->GetActiveTabInterface()->GetContents();
+      infobars::ContentInfoBarManager* infobar_manager =
+          infobars::ContentInfoBarManager::FromWebContents(web_contents);
+      if (!infobar_manager) {
+        return false;
+      }
+
+      CollectedCookiesInfoBarDelegate::Create(infobar_manager);
+      return true;
+    }
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
     case InfoBarType::kDefaultBrowser: {
       BrowserWindowInterface* const bwi =
@@ -336,6 +376,25 @@ bool InfoBarInternalsHandler::TriggerInfoBarInternal(InfoBarType type) {
           l10n_util::GetStringFUTF16(IDS_PLUGIN_CRASHED_PROMPT,
                                      u"Infobar Internals"));
       return true;
+    }
+#endif
+#if BUILDFLAG(IS_MAC)
+    case InfoBarType::kKeystone: {
+#if BUILDFLAG(ENABLE_UPDATER)
+      BrowserWindowInterface* const bwi =
+          GetLastActiveBrowserWindowInterfaceWithAnyProfile();
+      Profile* profile = bwi->GetProfile();
+
+      if (!profile) {
+        return false;
+      }
+
+      profile->GetPrefs()->SetBoolean(prefs::kShowUpdatePromotionInfoBar, true);
+      ShowUpdaterPromotionInfoBar();
+      return true;
+#else
+      return false;
+#endif
     }
 #endif
 #if BUILDFLAG(IS_WIN)

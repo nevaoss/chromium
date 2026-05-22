@@ -106,9 +106,10 @@ class GlicInstanceCoordinatorImpl
   void OnPrimaryAccountChanged(
       const signin::PrimaryAccountChangeEvent& event_details) override;
 
-  // GlicInstanceCoordinator and GlicInstanceCoordinatorMetrics::DataProvider
-  // implementation
-  std::vector<GlicInstance*> GetInstances() override;
+  // GlicInstanceCoordinatorMetrics::DataProvider implementation
+  int GetVisibleInstanceCount() const override;
+
+  bool IsAnyPanelShowing() const override;
   // GlicInstanceCoordinator implementation
   GlicInstance* GetInstanceForTab(const tabs::TabInterface* tab) const override;
   // Sorts instances by recency and returns the instance id and
@@ -185,6 +186,7 @@ class GlicInstanceCoordinatorImpl
   void SetWarmingEnabledForTesting(bool warming_enabled);
   GlicWebContentsWarmingPool& GetWebContentsWarmingPoolForTesting();
   std::string DescribeForTesting();
+  std::vector<GlicInstanceImpl*> GetInstancesForTesting();
 
   // Testing support. These methods should not be added to the public interface.
   GlicInstanceImpl* GetInstanceImplFor(const InstanceId& id) const;
@@ -216,6 +218,9 @@ class GlicInstanceCoordinatorImpl
   // Helper method to get a list of recently active instances sorted by time.
   std::vector<GlicInstanceImpl*> GetSortedRecentInstances(size_t limit) const;
 
+  // GlicInstanceCoordinatorMetrics::DataProvider implementation
+  std::vector<Host*> GetAllUnhibernatedHosts() override;
+
   void ShowInstanceForTabs(GlicInstanceImpl* instance,
                            const std::vector<tabs::TabInterface*>& tabs,
                            GlicPinTrigger pin_trigger);
@@ -231,7 +236,6 @@ class GlicInstanceCoordinatorImpl
   void CloseFloaty(const CloseOptions& options = {});
 
   void OnMemoryPressure(base::MemoryPressureLevel level) override;
-  void CheckMemoryUsage();
   void ApplyMaxAwakeInstancesLimit();
 
   void RemoveInstance(GlicInstanceImpl* instance) override;
@@ -277,7 +281,6 @@ class GlicInstanceCoordinatorImpl
 
   base::MemoryPressureListenerRegistration
       memory_pressure_listener_registration_;
-  base::RepeatingTimer memory_monitor_timer_;
 
   bool warming_enabled_ = true;
 

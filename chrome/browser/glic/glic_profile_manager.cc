@@ -143,9 +143,7 @@ Profile* GlicProfileManager::GetProfileForLaunch() const {
 
 void GlicProfileManager::SetActiveGlic(GlicKeyedService* glic) {
   if (last_active_glic_ && last_active_glic_.get() != glic &&
-      last_active_glic_->IsWindowShowing()) {
-    // This is only relevant to single-instance glic, as IsWindowShowing remains
-    // unimplemented in multi-instance.
+      last_active_glic_->instance_coordinator().IsAnyPanelShowing()) {
     last_active_glic_->instance_coordinator().Close({});
   }
   Profile* last_active_glic_profile = nullptr;
@@ -274,7 +272,7 @@ bool GlicProfileManager::IsShowing() const {
   if (!last_active_glic_) {
     return false;
   }
-  return last_active_glic_->IsWindowOrFreShowing();
+  return last_active_glic_->instance_coordinator().IsAnyPanelShowing();
 }
 
 void GlicProfileManager::OnProfileAdded(Profile* profile) {

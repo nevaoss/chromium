@@ -12,6 +12,7 @@
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_macros.h"
+#include "base/power_monitor/power_monitor.h"
 #include "base/rand_util.h"
 #include "base/trace_event/trace_event.h"
 
@@ -71,6 +72,10 @@ ExternalBeginFrameSourceMac::ExternalBeginFrameSourceMac(
   VLOG(kOutputLevel) << "ExternalBeginFrameSourceMac(" << this << ")"
                      << "::ExternalBeginFrameSourceMac() ID:" << display_id;
 
+  if (ui::DisplayLinkMac::SupportsDisplayLinkMacInBrowser()) {
+    base::PowerMonitor::GetInstance()->AddPowerSuspendObserver(this);
+  }
+
   if (display_id == display::kInvalidDisplayId) {
     RecordDisplayLinkCreateStatus(DisplayLinkResult::kFailedInvalidDisplayId);
     DLOG(ERROR)
@@ -84,6 +89,9 @@ ExternalBeginFrameSourceMac::ExternalBeginFrameSourceMac(
 ExternalBeginFrameSourceMac::~ExternalBeginFrameSourceMac() {
   VLOG(kOutputLevel) << "ExternalBeginFrameSourceMac(" << this << ")"
                      << "::~ExternalBeginFrameSourceMac() ID:" << display_id_;
+  if (ui::DisplayLinkMac::SupportsDisplayLinkMacInBrowser()) {
+    base::PowerMonitor::GetInstance()->RemovePowerSuspendObserver(this);
+  }
 }
 
 void ExternalBeginFrameSourceMac::CreateDelayBasedTimeSourceIfNeeded() {
@@ -100,21 +108,13 @@ void ExternalBeginFrameSourceMac::CreateDelayBasedTimeSourceIfNeeded() {
   }
 }
 
-// UpdateVSyncDisplay() is called only when using ExternalDisplayLinkMac which
-// is connected to a CADisplayLink created in the browser and there is a display
-// added/Removed or CADisplayLink error. For display additions and removals, the
-// sequence of calls between SetVSyncDisplayID() and
-// VSyncProviderMac::AddSupportedDisplayLinkId() is uncertain. Therefore,
-// UpdateVSyncDisplay() is called to guarantee that ExternalBeginFrameSourceMac
-// receives the displayLink for the current display.
-void ExternalBeginFrameSourceMac::UpdateVSyncDisplay() {
-  // Check whether the current display is still valid.
-  bool is_allowed = ui::DisplayLinkMac::IsDisplayLinkAllowed(display_id_);
-  if (is_allowed && display_link_mac_) {
-    return;
+// Forces an update of the DisplayLinkMac for the specified display. This is
+// called when the browser-side CADisplayLink state changes (e.g., becomes
+// valid or invalid) or when a display is added or removed.
+void ExternalBeginFrameSourceMac::UpdateVSyncDisplay(int64_t display_id) {
+  if (display_id_ == display_id) {
+    SetVSyncDisplayID(display_id_, /*force_update=*/true);
   }
-
-  SetVSyncDisplayID(display_id_, /*force_update=*/true);
 }
 
 void ExternalBeginFrameSourceMac::SetVSyncDisplayID(int64_t display_id,
@@ -130,9 +130,10 @@ void ExternalBeginFrameSourceMac::SetVSyncDisplayID(int64_t display_id,
   output_surface_->SetVSyncDisplayID(display_id, force_update);
 
   // Remove the current callback from display_link_mac_ or from the timer.
-  if (needs_begin_frames_) {
-    StopBeginFrame();
+  if (needs_begin_frames_ || vsync_callback_mac_) {
+    StopBeginFrame(/*force_stop=*/true);
   }
+  vsync_callback_keep_alive_counter_ = 0;
 
   // Remove the old DisplayLinkMac.
   display_link_mac_.reset();
@@ -239,13 +240,17 @@ void ExternalBeginFrameSourceMac::StartBeginFrame() {
   time_source_->SetActive(/*active=*/true);
 }
 
-void ExternalBeginFrameSourceMac::StopBeginFrame() {
+void ExternalBeginFrameSourceMac::StopBeginFrame(bool force_stop) {
   if (display_link_mac_) {
     DCHECK(vsync_callback_mac_);
     vsyncs_to_skip_ = 0;
-    // Do not reset `vsync_callback_mac_` here. Instead, defer unregistering it
-    // until the keep-alive counter has reached `kMaxKeepAliveCount` in
-    // `OnDisplayLinkCallback()`.
+    // If not force_update, wait until the keep-alive counter has reached
+    // `kMaxKeepAliveCount` in `OnDisplayLinkCallback()`.
+    if (force_stop) {
+      // Remove and unregister VSyncCallbackMac immediately after display
+      // switch.
+      vsync_callback_mac_.reset();
+    }
     return;
   }
 
@@ -266,7 +271,7 @@ void ExternalBeginFrameSourceMac::OnNeedsBeginFrames(bool needs_begin_frames) {
   if (needs_begin_frames_) {
     StartBeginFrame();
   } else {
-    StopBeginFrame();
+    StopBeginFrame(/*force_stop=*/false);
   }
 }
 
@@ -275,13 +280,11 @@ void ExternalBeginFrameSourceMac::OnDisplayLinkCallback(
     ui::VSyncParamsMac params) {
   // If we have reached `kMaxKeepAliveCount` consecutive callbacks without
   // needing a begin frame, stop the display link.
-  vsync_callback_keep_alive_counter_++;
-  if (vsync_callback_keep_alive_counter_ >= kMaxKeepAliveCount) {
-    vsync_callback_mac_.reset();
-    return;
-  }
-
   if (!needs_begin_frames_) {
+    vsync_callback_keep_alive_counter_++;
+    if (vsync_callback_keep_alive_counter_ >= kMaxKeepAliveCount) {
+      vsync_callback_mac_.reset();
+    }
     return;
   }
   vsync_callback_keep_alive_counter_ = 0;
@@ -512,5 +515,13 @@ ExternalBeginFrameSourceMac::GetSupportedFrameIntervals(
   }
 
   return supported_intervals;
+}
+
+void ExternalBeginFrameSourceMac::OnResume() {
+  if (display_link_mac_ &&
+      !display_link_mac_->NotifyEventAndCheckValidity(display_id_)) {
+    // Recreate a new one.
+    SetVSyncDisplayID(display_id_, /*force_update=*/true);
+  }
 }
 }  // namespace viz

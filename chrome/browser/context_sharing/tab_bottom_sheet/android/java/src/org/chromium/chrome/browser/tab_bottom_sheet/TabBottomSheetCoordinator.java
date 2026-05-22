@@ -33,6 +33,9 @@ import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.KeyboardVisibilityDelegate.KeyboardVisibilityListener;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.modaldialog.ModalDialogManager;
+import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogManagerObserver;
+import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogType;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 
@@ -51,10 +54,10 @@ public class TabBottomSheetCoordinator {
     // Interface used by the manager to monitor events related to the state of the
     // bottom sheet.
     interface SheetEventsCallback {
-        // Called when the bottom sheet is closed or suppressed.
+        /** Called when the bottom sheet is closed or suppressed. */
         void onBottomSheetClosed();
 
-        // Called when the bottom sheet is opened or when the bottom sheet state changes.
+        /** Called when the bottom sheet is opened or when the bottom sheet state changes. */
         void onBottomSheetOpened(boolean isExpanded);
     }
 
@@ -146,7 +149,10 @@ public class TabBottomSheetCoordinator {
     private boolean mIsShowingTabBottomSheet;
     private boolean mExpectingLayoutChange;
     private boolean mInitialContainerSizeChanged;
+    private boolean mCanNotBeSuppressed;
     private @Nullable KeyboardVisibilityListener mKeyboardVisibilityListener;
+    private @Nullable ModalDialogManager mObservedModalDialogManager;
+    private @Nullable ModalDialogManagerObserver mModalDialogManagerObserver;
 
     /**
      * @param context The context to use for creating views.
@@ -202,7 +208,8 @@ public class TabBottomSheetCoordinator {
                         mContentView,
                         FULL_HEIGHT_RATIO,
                         mCoBrowseViews.getBackgroundColor(),
-                        mCoBrowseViews.getClientType());
+                        mCoBrowseViews.getClientType(),
+                        () -> mCanNotBeSuppressed);
         mViewBinder =
                 PropertyModelChangeProcessor.create(
                         mModel, mContentView, TabBottomSheetViewBinder::bind);
@@ -253,6 +260,15 @@ public class TabBottomSheetCoordinator {
                         .addKeyboardVisibilityListener(mKeyboardVisibilityListener);
             }
 
+            if (mModalDialogManagerObserver == null) {
+                ModalDialogManager modalDialogManager = mWindowAndroid.getModalDialogManager();
+                if (modalDialogManager != null) {
+                    mModalDialogManagerObserver = buildModalDialogManagerObserver();
+                    modalDialogManager.addObserver(mModalDialogManagerObserver);
+                    mObservedModalDialogManager = modalDialogManager;
+                }
+            }
+
             mIsShowingTabBottomSheet = true;
             return true;
         } else {
@@ -297,6 +313,10 @@ public class TabBottomSheetCoordinator {
         }
     }
 
+    void setCanNotBeSuppressed(boolean canNotBeSuppressed) {
+        mCanNotBeSuppressed = canNotBeSuppressed;
+    }
+
     void closeBottomSheet(boolean animate) {
         mBottomSheetController.hideContent(mSheetContent, animate, StateChangeReason.NONE);
     }
@@ -336,6 +356,14 @@ public class TabBottomSheetCoordinator {
             mKeyboardVisibilityListener = null;
         }
 
+        if (mObservedModalDialogManager != null) {
+            if (mModalDialogManagerObserver != null) {
+                mObservedModalDialogManager.removeObserver(mModalDialogManagerObserver);
+            }
+            mObservedModalDialogManager = null;
+        }
+        mModalDialogManagerObserver = null;
+
         if (mSheetContent != null) {
             mSheetContent.destroy();
             mSheetContent = null;
@@ -358,6 +386,8 @@ public class TabBottomSheetCoordinator {
                 if (mIsShowingTabBottomSheet) {
                     mExpectingLayoutChange = true;
                 }
+                mCoBrowseViews.setAllowFullscreenIme(
+                        configuration.orientation == Configuration.ORIENTATION_LANDSCAPE);
             }
 
             @Override
@@ -441,11 +471,29 @@ public class TabBottomSheetCoordinator {
                     mIsShowingTabBottomSheet = false;
                 }
             }
+
+            @Override
+            public void onInsetAnimationEnd() {
+                mCoBrowseViews.setIgnoreClearFocus(/* ignoreClearFocus= */ false);
+            }
+        };
+    }
+
+    private ModalDialogManagerObserver buildModalDialogManagerObserver() {
+        return new ModalDialogManagerObserver() {
+            @Override
+            public void onDialogShown(View dialogView) {
+                if (mObservedModalDialogManager != null
+                        && mObservedModalDialogManager.getCurrentType() == ModalDialogType.TAB) {
+                    collapseSheet();
+                }
+            }
         };
     }
 
     private KeyboardVisibilityListener buildKeyboardVisibilityListener() {
         return isShowing -> {
+            mCoBrowseViews.setIgnoreClearFocus(isShowing);
             if (isShowing
                     && mIsShowingTabBottomSheet
                     && mContentView != null

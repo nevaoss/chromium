@@ -46,6 +46,7 @@
 #include "chrome/browser/task_manager/web_contents_tags.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/autofill/bubble_manager.h"
+#include "chrome/browser/ui/autofill/payments/omnibox_autofill_page_action_controller.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/commerce/commerce_ui_tab_helper.h"
@@ -96,6 +97,7 @@
 #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
 #include "chrome/browser/ui/web_applications/pwa_install_page_action.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
+#include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/enterprise/browser/reporting/reporting_features.h"
 #include "components/multistep_filter/core/features.h"
@@ -217,10 +219,8 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
           std::make_unique<IntentPickerViewPageActionController>(tab);
     }
 
-    if (IsPageActionMigrated(PageActionIconType::kFileSystemAccess)) {
-      file_system_access_page_action_controller_ =
-          std::make_unique<FileSystemAccessPageActionController>(tab);
-    }
+    file_system_access_page_action_controller_ =
+        std::make_unique<FileSystemAccessPageActionController>(tab);
 
     if (IsPageActionMigrated(PageActionIconType::kZoom)) {
       zoom_view_controller_ = std::make_unique<zoom::ZoomViewController>(
@@ -430,6 +430,13 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     autofill_bubble_manager_ = autofill::BubbleManager::Create(&tab);
   }
 
+  if (base::FeatureList::IsEnabled(
+          autofill::features::kAutofillEnableOmniboxAutofill)) {
+    omnibox_autofill_page_action_controller_ =
+        std::make_unique<autofill::OmniboxAutofillPageActionController>(
+            tab, *page_action_controller_);
+  }
+
   customize_chrome_side_panel_controller_ =
       std::make_unique<customize_chrome::SidePanelControllerViews>(tab);
 
@@ -502,8 +509,9 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
   if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasksContext)) {
     contextual_tasks_tab_visit_tracker_ =
-        std::make_unique<contextual_tasks::ContextualTasksTabVisitTracker>(
-            tab.GetContents());
+        GetUserDataFactory()
+            .CreateInstance<contextual_tasks::ContextualTasksTabVisitTracker>(
+                tab, tab);
   }
 #endif
 

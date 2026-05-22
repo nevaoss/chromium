@@ -475,12 +475,6 @@ inline constexpr char kShowMobileDataNotification[] =
 inline constexpr char kChromeOSReleaseNotesVersion[] =
     "settings.release_notes.version";
 
-// A string pref that contains either a Chrome app ID (see
-// extensions::ExtensionId) or an Android package name (using Java package
-// naming conventions) of the preferred note-taking app. An empty value
-// indicates that the user hasn't selected an app yet.
-inline constexpr char kNoteTakingAppId[] = "settings.note_taking_app_id";
-
 // Automatically open online re-authentication window on the lock screen.
 inline constexpr char kLockScreenAutoStartOnlineReauth[] =
     "lock_screen_auto_start_online_reauth";
@@ -506,16 +500,6 @@ inline constexpr char kTouchVirtualKeyboardEnabled[] =
 // A boolean pref to enable virtual keyboard smart visibility.
 inline constexpr char kVirtualKeyboardSmartVisibilityEnabled[] =
     "ui.virtual_keyboard_smart_visibility_enabled";
-
-// A dictionary pref mapping public keys that identify platform keys to its
-// properties like whether it's meant for corporate usage.
-inline constexpr char kPlatformKeys[] = "platform_keys";
-
-// A boolean preference that will be registered in local_state prefs to track
-// migration of permissions on device-wide key pairs and will be registered in
-// Profile prefs to track migration of permissions on user-owned key pairs.
-inline constexpr char kKeyPermissionsOneTimeMigrationDone[] =
-    "key_permissions_one_time_migration_done";
 
 // A boolean preference that is registered in user prefs to tracks that at least
 // one PKCS#12 certificate+key pair was dual written into NSS software-backed
@@ -593,14 +577,6 @@ inline constexpr char kTextToSpeechPitch[] = "settings.tts.speech_pitch";
 // relative to the system volume, where lower than 1.0 is quieter than the
 // system volume, and higher than 1.0 is louder.
 inline constexpr char kTextToSpeechVolume[] = "settings.tts.speech_volume";
-
-// Boolean pref indicating whether the message displayed on the login screen for
-// the managed guest session should be the full warning or not.
-// True means the full warning should be displayed.
-// False means the normal warning should be displayed.
-// It's true by default, unless it's ensured that all extensions are "safe".
-inline constexpr char kManagedSessionUseFullLoginWarning[] =
-    "managed_session.use_full_warning";
 
 // Amount of times the release notes suggestion chip should be
 // shown before it disappears.
@@ -3416,9 +3392,8 @@ inline constexpr char kAppRatingPromptShown[] = "app_rating_prompt_shown";
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // Integer value for overriding the CPU performance tier.
-// Controlled by enterprise policy.
-inline constexpr char kCpuPerformanceTierPolicyOverride[] =
-    "cpu_performance_tier_policy_override";
+inline constexpr char kCpuPerformanceTierOverride[] =
+    "cpu_performance_tier_override";
 
 // Value indicating that the CPU performance tier has not been overridden.
 inline constexpr int kCpuPerformanceTierOverrideNone = -1;

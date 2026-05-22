@@ -1724,6 +1724,7 @@ void LocalFrame::SetZoomFactors(float layout_zoom_factor,
   }
 
   if (layout_zoom_changed) {
+    document->GetStyleEngine().InvalidateInitialStyle();
     MaybeUpdateWindowControlsOverlayWithNewZoomLevel();
     document->LayoutViewportWasResized();
     document->MediaQueryAffectingValueChanged(MediaValueChange::kOther);
@@ -4235,6 +4236,12 @@ void LocalFrame::PerformFullContentSpellCheck() {
           blink::features::kAndroidSpellcheckFullApiBlink)) {
     return;
   }
+
+  // Interacting with the IME UI (which triggers this Mojo call) counts as a
+  // user interaction. Refresh the transient activation window so the
+  // on-demand spellchecker's security circuit break allows the request.
+  NotifyUserActivation(
+      mojom::blink::UserActivationNotificationType::kInteraction);
 
   ContainerNode* container_node = HighestEditableRoot(
       Selection().ComputeVisibleSelectionInDOMTree().Start());

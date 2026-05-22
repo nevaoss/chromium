@@ -76,7 +76,7 @@ QuickInsertSearchFieldView::QuickInsertSearchFieldView(
           views::Builder<views::ImageButton>(
               std::make_unique<IconButton>(
                   std::move(back_callback), IconButton::Type::kSmallFloating,
-                  &vector_icons::kArrowBackIcon, IDS_ACCNAME_BACK))
+                  &vector_icons::kArrowBackOldIcon, IDS_ACCNAME_BACK))
               .CopyAddressTo(&back_button_)
               .SetProperty(views::kMarginsKey, kButtonHorizontalMargin)
               .SetVisible(false),
@@ -98,8 +98,8 @@ QuickInsertSearchFieldView::QuickInsertSearchFieldView(
                         base::BindRepeating(
                             &QuickInsertSearchFieldView::ClearButtonPressed,
                             base::Unretained(this)),
-                        IconButton::Type::kSmallFloating, &views::kIcCloseIcon,
-                        IDS_APP_LIST_CLEAR_SEARCHBOX))
+                        IconButton::Type::kSmallFloating,
+                        &views::kIcCloseOldIcon, IDS_APP_LIST_CLEAR_SEARCHBOX))
                     .CopyAddressTo(&clear_button_)
                     .SetProperty(views::kMarginsKey, kButtonHorizontalMargin)
                     .SetVisible(false))

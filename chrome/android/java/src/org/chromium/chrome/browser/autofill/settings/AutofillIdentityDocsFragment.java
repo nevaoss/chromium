@@ -18,6 +18,7 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManager;
+import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment.AutofillOptionsReferrer;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
@@ -101,6 +102,10 @@ public class AutofillIdentityDocsFragment extends ChromeBaseSettingsFragment
         screen.removeAll();
         screen.setOrderingAsAdded(true);
 
+        mAutofillAiDelegate.maybeAddDisabledSettingsInfoCard(
+                screen, AutofillOptionsReferrer.AUTOFILL_IDENTITY_DOCS_FRAGMENT);
+        mAutofillAiDelegate.maybeAddDisabledWalletDataSharingDataCard(screen);
+
         if (shouldShowOptInToggle()) {
             addOptInToggle(screen);
         }
@@ -139,6 +144,10 @@ public class AutofillIdentityDocsFragment extends ChromeBaseSettingsFragment
                 @Override
                 public void updateDynamicPreferences(
                         Context context, SettingsIndexData indexData, Profile profile) {
+                    AutofillAiDelegate.maybeAddDisabledSettingsInfoCard(
+                            indexData, profile, getPrefFragmentName());
+                    AutofillAiDelegate.maybeAddDisabledWalletDataSharingDataCard(
+                            indexData, profile, getPrefFragmentName());
                     if (shouldShowOptInToggle()) {
                         indexData.addEntryForKey(
                                 getPrefFragmentName(),

@@ -17,7 +17,6 @@ import android.os.Message;
 import android.webkit.WebSettings;
 
 import androidx.annotation.IntDef;
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
@@ -459,17 +458,21 @@ public class AwSettings {
                                 | HyperlinkContextMenuItems.COPY_LINK_TEXT
                                 | HyperlinkContextMenuItems.OPEN_LINK;
             }
+
+            if (AwFeatureMap.isEnabled(AwFeatures.WEBVIEW_FORCE_WEB_AUTHN)) {
+                mWebauthnMode = WebauthnMode.APP;
+            }
         }
         // Defer initializing the native side until a native WebContents instance is set.
     }
 
     /** Get the AwSettings for the WebView with the given WebContents */
     @Nullable
-    public static AwSettings fromWebContents(@NonNull WebContents webContents) {
+    public static AwSettings fromWebContents(WebContents webContents) {
         return AwSettingsJni.get().fromWebContents(webContents);
     }
 
-    public void runUnderLock(@NonNull Runnable runnable) {
+    public void runUnderLock(Runnable runnable) {
         synchronized (mAwSettingsLock) {
             runnable.run();
         }
@@ -2396,11 +2399,16 @@ public class AwSettings {
 
     public void setWebauthnSupport(@WebauthnMode int support) {
         synchronized (mAwSettingsLock) {
-            if (mWebauthnMode != support && AwFeatureMap.isEnabled(AwFeatures.WEBVIEW_WEBAUTHN)) {
+            if (mWebauthnMode != support) {
                 mWebauthnMode = support;
                 mEventHandler.updateWebkitPreferencesLocked();
-                WebauthnModeProvider.getInstance()
-                        .setWebauthnModeForWebContents(mWebContents, support);
+                mEventHandler.runOnUiThreadBlockingAndLocked(
+                        () -> {
+                            if (mWebContents != null) {
+                                WebauthnModeProvider.getInstance()
+                                        .setWebauthnModeForWebContents(mWebContents, support);
+                            }
+                        });
             }
         }
     }
@@ -2409,9 +2417,7 @@ public class AwSettings {
     public @WebauthnMode int getWebauthnSupportLocked() {
         assert Thread.holdsLock(mAwSettingsLock);
         // TODO(crbug.com/40210253): Consider supporting a NOT_SUPPORTED case.
-        return AwFeatureMap.isEnabled(AwFeatures.WEBVIEW_WEBAUTHN)
-                ? mWebauthnMode
-                : WebauthnMode.NONE;
+        return mWebauthnMode;
     }
 
     public int getWebauthnSupport() {

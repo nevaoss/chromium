@@ -353,8 +353,9 @@ void ComputePropertyTreeUpdate(const PropertyTrees& trees,
   using NodeType = typename TreeType::NodeType;
   new_num_nodes = base::checked_cast<uint32_t>(new_tree.size());
   for (size_t i = 0; i < new_tree.size(); ++i) {
-    const NodeType* old_node = old_tree.size() > i ? old_tree.Node(i) : nullptr;
-    ComputePropertyTreeNodeUpdate(trees, old_node, *new_tree.Node(i), updates);
+    const NodeType* old_node =
+        old_tree.size() > i ? &old_tree.Node(i) : nullptr;
+    ComputePropertyTreeNodeUpdate(trees, old_node, new_tree.Node(i), updates);
   }
 }
 
@@ -405,7 +406,7 @@ void ComputeEffectTreeUpdate(const PropertyTrees& trees,
 
   new_num_nodes = base::checked_cast<uint32_t>(new_tree.size());
   for (size_t i = 0; i < new_tree.size(); ++i) {
-    const auto* old_node = old_tree.size() > i ? old_tree.Node(i) : nullptr;
+    const auto* old_node = old_tree.size() > i ? &old_tree.Node(i) : nullptr;
 
     // Push any copy output requests for this node.
     auto range = copy_requests.equal_range(i);
@@ -414,7 +415,7 @@ void ComputeEffectTreeUpdate(const PropertyTrees& trees,
       copy_requests_for_node.push_back(std::move(it->second));
     }
 
-    ComputePropertyTreeNodeUpdate(trees, old_node, *new_tree.Node(i), updates,
+    ComputePropertyTreeNodeUpdate(trees, old_node, new_tree.Node(i), updates,
                                   std::move(copy_requests_for_node));
   }
 }
@@ -1473,7 +1474,8 @@ base::TimeTicks VizLayerContext::UpdateDisplayTreeFrom(
     const gfx::Rect& viewport_damage_rect,
     bool frame_has_damage,
     bool is_flush,
-    std::vector<ui::LatencyInfo> latency_info) {
+    std::vector<ui::LatencyInfo> latency_info,
+    viz::TrackedElementRects tracked_element_rects) {
   TRACE_EVENT0("viz", "VizLayerContext::UpdateDisplayTreeFrom");
 
   auto& property_trees = *tree.property_trees();
@@ -1506,6 +1508,7 @@ base::TimeTicks VizLayerContext::UpdateDisplayTreeFrom(
   update->is_flush = is_flush;
 
   update->latency_info = std::move(latency_info);
+  update->tracked_element_rects = std::move(tracked_element_rects);
   update->device_viewport = tree.GetDeviceViewport();
   update->device_scale_factor = tree.device_scale_factor();
   DUMP_WILL_BE_CHECK_GT(update->device_scale_factor, 0.f);

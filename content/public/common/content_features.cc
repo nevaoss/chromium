@@ -235,6 +235,11 @@ BASE_FEATURE(kBypassRedirectChecksPerRequest, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCacheControlNoStoreEnterBackForwardCache,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Enables the experimental Rust implementation of
+// ChildProcessSecurityPolicy. See https://crbug.com/482216433.
+BASE_FEATURE(kChildProcessSecurityPolicyRust,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Clear the window.name property for the top-level cross-site navigations that
 // swap BrowsingContextGroups(BrowsingInstances).
 BASE_FEATURE(kClearCrossSiteCrossBrowsingContextGroupWindowName,
@@ -533,7 +538,7 @@ BASE_FEATURE_PARAM(bool,
                    kInitialWebUIUseSeparateProcess,
                    &features::kInitialWebUI,
                    "use_separate_process",
-                   false);
+                   true);
 
 // If enabled, the initial WebUI GPU stream is set to UI priority.
 BASE_FEATURE_PARAM(bool,
@@ -547,7 +552,7 @@ BASE_FEATURE_PARAM(bool,
                    kInitialWebUIWithoutSpellCheck,
                    &features::kInitialWebUI,
                    "without_spellcheck",
-                   false);
+                   true);
 
 // Whether initial WebUI navigations should synchronously go from navigation
 // start to commit, by doing e.g. in-renderer body loading.
@@ -932,6 +937,12 @@ BASE_FEATURE(kServiceWorkerAutoPreload, base::FEATURE_ENABLED_BY_DEFAULT);
 // `webview` permission, meaning ServiceWorkerAutoPreload is almost always not
 // enabled.
 BASE_FEATURE(kOptimizeWebRequestProxyForServiceWorkerAutoPreload,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// crbug.com/40410035: When enabled, download requests ("Save link as",
+// "Save image as", <a download>) are intercepted by service workers, allowing
+// the service worker's fetch event handler to provide a response.
+BASE_FEATURE(kServiceWorkerInterceptDownloads,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // crbug.com/374606637: When this is enabled, race-network-and-fetch-hander will
@@ -1393,9 +1404,6 @@ BASE_FEATURE(kAndroidDisplayCursor,
 // Allows the use of "Smart Zoom", an alternative form of page zoom, and
 // enables the associated UI.
 BASE_FEATURE(kSmartZoom, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables setting the importance for subframes in WebContents.
-BASE_FEATURE(kSubframeImportance, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Skips clearing objects on main document ready. Only has an impact
 // when gin java bridge is enabled.

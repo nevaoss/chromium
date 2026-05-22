@@ -238,6 +238,8 @@ class TestPaymentsAutofillClient : public PaymentsAutofillClient {
   BnplUiDelegate* GetBnplUiDelegate() override;
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
   OmniboxAutofillDelegate* GetOmniboxAutofillDelegate() override;
+  void ShowOmniboxAutofillChip() override;
+  void HideOmniboxAutofillChip() override;
 #endif
 
   // Begin TestPaymentsAutofillClient-specific section.
@@ -450,6 +452,10 @@ class TestPaymentsAutofillClient : public PaymentsAutofillClient {
   // The OmniboxAutofillDelegate used to handle the logic flow and user
   // interactions when the user triggers Autofill from the Omnibox.
   std::unique_ptr<OmniboxAutofillDelegate> omnibox_autofill_delegate_;
+
+  bool omnibox_autofill_chip_shown_ = false;
+
+  bool omnibox_autofill_chip_hidden_ = false;
 #endif
 };
 

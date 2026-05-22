@@ -13,6 +13,7 @@
 #include "base/metrics/user_metrics_action.h"
 #include "base/notimplemented.h"
 #include "base/strings/utf_string_conversions.h"
+#include "base/time/time.h"
 #include "chrome/browser/glic/browser_ui/tab_underline_controller.h"
 #include "chrome/browser/glic/browser_ui/tab_underline_view.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
@@ -143,7 +144,9 @@ VerticalTabView::VerticalTabView(TabCollectionNode* collection_node)
           // TODO(crbug.com/467733947): Hook up metrics logging callback.
           base::DoNothingAs<void(views::View*, const ui::MouseEvent&)>()))),
       hover_controller_(gfx::Animation::ShouldRenderRichAnimation()
-                            ? std::make_unique<GlowHoverController>(this)
+                            ? std::make_unique<GlowHoverController>(
+                                  this,
+                                  kGlowHoverAnimationDuration)
                             : nullptr) {
   tabs::TabInterface* tab = const_cast<tabs::TabInterface*>(GetTabInterface());
   BrowserWindowInterface* browser_window = tab->GetBrowserWindowInterface();
@@ -917,6 +920,9 @@ void VerticalTabView::ResetCollectionNode() {
   // needs the node.
   close_button_->SetCallback(base::RepeatingClosure(base::DoNothing()));
 
+  // Stop listening to tab data changes since the tab will be destroyed.
+  tab_data_changed_subscription_ = base::CallbackListSubscription();
+
   collection_node_ = nullptr;
 }
 
@@ -974,6 +980,7 @@ void VerticalTabView::OnTabStateChanged() {
 
 void VerticalTabView::OnTabDataChanged(TabChangeType change_type,
                                        const tabs::TabData& data) {
+  CHECK(collection_node_);
   UpdateTabData(GetTabInterface());
 }
 

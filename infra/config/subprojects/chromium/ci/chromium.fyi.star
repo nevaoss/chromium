@@ -1383,6 +1383,16 @@ ci.builder(
                     shards = 5,
                 ),
             ),
+            "sync_integration_tests": targets.mixin(
+                args = [
+                    "--test-launcher-filter-file=../../testing/buildbot/filters/linux-arm64-rel-fyi.sync_integration_tests.filter",
+                ],
+            ),
+            "unit_tests": targets.mixin(
+                args = [
+                    "--test-launcher-filter-file=../../testing/buildbot/filters/linux-arm64-rel-fyi.unit_tests.filter",
+                ],
+            ),
         },
     ),
     targets_settings = targets.settings(
@@ -1456,6 +1466,9 @@ ci.builder(
                 ),
             ),
             "content_browsertests": targets.mixin(
+                args = [
+                    "--test-launcher-filter-file=../../testing/buildbot/filters/linux-arm64-wayland-rel-fyi.content_browsertests.filter",
+                ],
                 retry_only_failed_tests = True,
             ),
             "interactive_ui_tests": targets.mixin(
@@ -1813,7 +1826,6 @@ fyi_ios_builder(
             "ios_simulator",
             "arm64",
             "xctest",
-            "enable_swift_cxx_interop",
         ],
     ),
     targets = targets.bundle(
@@ -1871,7 +1883,6 @@ fyi_ios_builder(
             "ios_simulator",
             "arm64",
             "xctest",
-            "enable_swift_cxx_interop",
         ],
     ),
     # ios18-beta-sim compiles with xcode version n-1, but
@@ -1929,7 +1940,6 @@ fyi_ios_builder(
             "ios_simulator",
             "arm64",
             "xctest",
-            "enable_swift_cxx_interop",
         ],
     ),
     targets = targets.bundle(
@@ -1989,7 +1999,6 @@ fyi_ios_builder(
             "ios_simulator",
             "arm64",
             "xctest",
-            "enable_swift_cxx_interop",
         ],
     ),
     # ios18-sdk-sim compiles with xcode version n, and runs

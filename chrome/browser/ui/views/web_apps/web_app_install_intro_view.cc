@@ -91,12 +91,12 @@ class ScrollButton : public views::ImageButton {
             ? IDS_ACCNAME_WEB_APP_DETAILED_INSTALL_DIALOG_LEADING_SCROLL_BUTTON
             : IDS_ACCNAME_WEB_APP_DETAILED_INSTALL_DIALOG_TRAILING_SCROLL_BUTTON));
 
-    SetImageModel(
-        views::Button::ButtonState::STATE_NORMAL,
-        button_type == ButtonType::kLeading
-            ? ui::ImageModel::FromVectorIcon(kLeadingScrollIcon, ui::kColorIcon)
-            : ui::ImageModel::FromVectorIcon(kTrailingScrollIcon,
-                                             ui::kColorIcon));
+    SetImageModel(views::Button::ButtonState::STATE_NORMAL,
+                  button_type == ButtonType::kLeading
+                      ? ui::ImageModel::FromVectorIcon(kLeadingScrollOldIcon,
+                                                       ui::kColorIcon)
+                      : ui::ImageModel::FromVectorIcon(kTrailingScrollOldIcon,
+                                                       ui::kColorIcon));
 
     views::InkDrop::Get(this)->SetBaseColor(
         views::TypographyProvider::Get().GetColorId(
@@ -361,12 +361,15 @@ WebAppInstallIntroView::WebAppInstallIntroView(
       vertical_spacing));
 
   switch (install_type) {
-    case InstallDialogType::kDiy:
-      AddChildView(std::make_unique<SiteIconTextAndOriginView>(
+    case InstallDialogType::kDiy: {
+      auto site_icon_view = std::make_unique<SiteIconTextAndOriginView>(
           icon_image, app_name,
           l10n_util::GetStringUTF16(IDS_DIY_APP_AX_BUBBLE_NAME_LABEL),
-          start_url, nullptr, std::move(text_tracker_callback)));
+          start_url, nullptr, std::move(text_tracker_callback));
+      textfield_ = site_icon_view->title_field();
+      AddChildView(std::move(site_icon_view));
       break;
+    }
     case InstallDialogType::kDetailed: {
       CHECK(fetcher);
       AddChildView(WebAppIconNameAndOriginView::Create(icon_image, app_name,

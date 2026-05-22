@@ -212,7 +212,7 @@ AnchoredMessageBubbleView::AnchoredMessageBubbleView(
           base::Unretained(delegate_))));
   close_button_->SetImageModel(
       views::Button::STATE_NORMAL,
-      ui::ImageModel::FromVectorIcon(vector_icons::kCloseChromeRefreshIcon,
+      ui::ImageModel::FromVectorIcon(vector_icons::kCloseChromeRefreshOldIcon,
                                      ui::kColorIcon, kAnchoredMessageIconSize));
   close_button_->SetTooltipText(l10n_util::GetStringUTF16(IDS_CLOSE));
   close_button_->SetProperty(views::kMarginsKey,
@@ -227,7 +227,7 @@ AnchoredMessageBubbleView::AnchoredMessageBubbleView(
   menu_button_->SetTooltipText(l10n_util::GetStringUTF16(IDS_APPMENU_TOOLTIP));
   menu_button_->SetImageModel(
       views::Button::STATE_NORMAL,
-      ui::ImageModel::FromVectorIcon(kBrowserToolsChromeRefreshIcon,
+      ui::ImageModel::FromVectorIcon(kBrowserToolsChromeRefreshOldIcon,
                                      ui::kColorIcon, kAnchoredMessageIconSize));
   menu_button_->SetProperty(views::kMarginsKey,
                             kAnchoreMessageActionIconMarginsInset);
@@ -309,7 +309,7 @@ void AnchoredMessageBubbleView::OnThemeChanged() {
     close_button_->SetImageModel(
         views::Button::STATE_NORMAL,
         ui::ImageModel::FromVectorIcon(
-            vector_icons::kCloseChromeRefreshIcon,
+            vector_icons::kCloseChromeRefreshOldIcon,
             color_provider->GetColor(ui::kColorSysOnSurfaceVariant),
             kAnchoredMessageIconSize));
   }
@@ -317,7 +317,7 @@ void AnchoredMessageBubbleView::OnThemeChanged() {
     menu_button_->SetImageModel(
         views::Button::STATE_NORMAL,
         ui::ImageModel::FromVectorIcon(
-            ::kBrowserToolsChromeRefreshIcon,
+            ::kBrowserToolsChromeRefreshOldIcon,
             color_provider->GetColor(ui::kColorSysOnSurfaceVariant),
             kAnchoredMessageIconSize));
   }

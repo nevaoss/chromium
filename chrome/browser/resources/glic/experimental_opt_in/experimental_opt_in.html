@@ -2,8 +2,30 @@
 <html dir="$i18n{textdirection}" lang="$i18n{language}">
 <head>
   <meta charset="utf-8">
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      width: auto !important;
+      height: auto !important;
+      overflow: hidden;
+    }
+    webview {
+      display: block;
+      border: none;
+    }
+  </style>
 </head>
 <body>
-  <div>Hello</div>
+  <webview
+      id="webview"
+      partition="persist:glicpart"
+      autosize="on"
+      minwidth="512"
+      maxwidth="512"
+      minheight="200"
+      maxheight="800">
+  </webview>
+  <script type="module" src="experimental_opt_in.js"></script>
 </body>
 </html>

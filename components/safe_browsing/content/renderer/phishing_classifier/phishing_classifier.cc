@@ -81,7 +81,12 @@ void PhishingClassifier::BeginClassification(DoneCallback done_callback) {
   visual_extractor_ = std::make_unique<PhishingVisualFeatureExtractor>();
   done_callback_ = std::move(done_callback);
 
+  // Cache the URL of the frame right before paint capture for visual
+  // extraction. This is needed because the URL of the frame may change
+  // after the page has finished loading and during classification via same
+  // page navigation.
   blink::WebLocalFrame* frame = render_frame_->GetWebFrame();
+  classification_url_ = frame->GetDocument().Url();
 
   PhishingProcessStatus status = CanPerformPhishingDetection(frame);
   switch (status) {
@@ -148,11 +153,9 @@ void PhishingClassifier::VisualExtractionFinished(bool success) {
     return;
   }
 
-  blink::WebLocalFrame* main_frame = render_frame_->GetWebFrame();
-
   std::unique_ptr<ClientPhishingRequest> verdict =
       std::make_unique<ClientPhishingRequest>();
-  verdict->set_url(main_frame->GetDocument().Url().GetString().Utf8());
+  verdict->set_url(classification_url_.spec());
   // Because the client_score is required, set a dummy value so that it can be
   // parsed in the browser host class.
   verdict->set_client_score(0);
@@ -169,25 +172,10 @@ void PhishingClassifier::VisualExtractionFinished(bool success) {
 void PhishingClassifier::OnVisualTfLiteModelDone(
     std::unique_ptr<ClientPhishingRequest> verdict,
     std::vector<double> result) {
-  Scorer* scorer = ScorerStorage::GetInstance()->GetScorer();
-  if (!base::FeatureList::IsEnabled(kClientSideDetectionDeprecateDOMModel)) {
-    if (static_cast<int>(result.size()) != scorer->tflite_thresholds().size()) {
-      // Model is misconfigured, so bail out.
-      RunFailureCallback(Result::kInvalidScore);
-      return;
-    }
-  }
-
-  if (!base::FeatureList::IsEnabled(kClientSideDetectionDeprecateDOMModel)) {
-    verdict->set_tflite_model_version(scorer->tflite_model_version());
-  }
-
   for (size_t i = 0; i < result.size(); i++) {
     ClientPhishingRequest::CategoryScore* category =
         verdict->add_tflite_model_scores();
-    if (!base::FeatureList::IsEnabled(kClientSideDetectionDeprecateDOMModel)) {
-      category->set_label(scorer->tflite_thresholds().at(i).label());
-    }
+
     category->set_value(result[i]);
   }
 
@@ -213,11 +201,6 @@ void PhishingClassifier::OnVisualTfLiteModelImageEmbeddingDone(
   bool has_image_feature_embedding =
       image_feature_embedding.embedding_value_size() > 0;
   if (has_image_feature_embedding) {
-    if (!base::FeatureList::IsEnabled(kClientSideDetectionDeprecateDOMModel)) {
-      Scorer* scorer = ScorerStorage::GetInstance()->GetScorer();
-      image_feature_embedding.set_embedding_model_version(
-          scorer->image_embedding_tflite_model_version());
-    }
     *verdict->mutable_image_feature_embedding() = image_feature_embedding;
   }
   base::UmaHistogramBoolean(

@@ -259,6 +259,11 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
       ui::kColorLabelForegroundDisabled};
 #endif  // BUILDFLAG(ENABLE_COMPOSE)
 
+  // History colors.
+  mixer[kColorHistoryPageBookmarkStar] = {ui::kColorSysPrimary};
+  mixer[kColorHistoryPageSeparator] = {ui::kColorSysSurfaceVariant};
+  mixer[kColorHistoryPageText] = {ui::kColorSysOnSurfaceSubtle};
+
   // History Embeddings colors.
   mixer[kColorHistoryEmbeddingsBackground] = {
       ui::kColorSysBaseContainerElevated};
@@ -404,6 +409,9 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
   mixer[kColorTabAlertPipPlayingActiveFrameInactive] = {ui::kColorSysPrimary};
   mixer[kColorTabAlertPipPlayingInactiveFrameActive] = {ui::kColorSysPrimary};
   mixer[kColorTabAlertPipPlayingInactiveFrameInactive] = {ui::kColorSysPrimary};
+
+  /* cr-tab colors. */
+  mixer[kColorTabNavItemSelected] = {ui::kColorSysPrimary};
 
   // Hover card tab alert colors.
   mixer[kColorHoverCardTabAlertMediaRecordingIcon] = {ui::kColorSysError};

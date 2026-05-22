@@ -92,6 +92,7 @@
 #include "chrome/browser/web_applications/web_app_registry_update.h"
 #include "chrome/browser/web_applications/web_app_sync_bridge.h"
 #include "chrome/common/chrome_features.h"
+#include "content/public/common/content_features.h"
 #include "chrome/test/base/chrome_test_utils.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/interactive_test_utils.h"
@@ -1087,8 +1088,8 @@ IN_PROC_BROWSER_TEST_F(
   const std::string kWindowOpenScript = base::StrCat(
       {"window.open('", url,
        "', '', 'location=0, status=0, scrollbars=0, left=0, top=0, width=",
-       base::NumberToString(blink::kMinimumBorderlessWindowSize), ", height=",
-       base::NumberToString(blink::kMinimumBorderlessWindowSize), "');"});
+       base::NumberToString(blink::kMinimumUnframedWindowSize), ", height=",
+       base::NumberToString(blink::kMinimumUnframedWindowSize), "');"});
   BrowserView* popup_browser_view = OpenPopup(kWindowOpenScript);
 
   EXPECT_TRUE(popup_browser_view->IsUnframedModeEnabled());
@@ -1100,8 +1101,8 @@ IN_PROC_BROWSER_TEST_F(
                                            kBorderlessAppOnloadTitle);
   EXPECT_EQ(init_title_watcher.WaitAndGetTitle(), kBorderlessAppOnloadTitle);
 
-  gfx::Size expected_size(blink::kMinimumBorderlessWindowSize,
-                          blink::kMinimumBorderlessWindowSize);
+  gfx::Size expected_size(blink::kMinimumUnframedWindowSize,
+                          blink::kMinimumUnframedWindowSize);
 
 // For ChromeOS the resizable borders are "outside of the window" where as for
 // Linux they are "inside of the window".
@@ -1113,8 +1114,8 @@ IN_PROC_BROWSER_TEST_F(
       2 * OpaqueBrowserFrameViewLayout::kFrameBorderThickness;
   // window.open() sets the inner size to match with the given size.
   gfx::Size expected_outer_size(
-      blink::kMinimumBorderlessWindowSize + kFrameInsets,
-      blink::kMinimumBorderlessWindowSize + kFrameInsets);
+      blink::kMinimumUnframedWindowSize + kFrameInsets,
+      blink::kMinimumUnframedWindowSize + kFrameInsets);
   WaitForWindowSizeCorrectlyUpdated(popup_browser_view, expected_size,
                                     expected_outer_size);
 #endif
@@ -1165,13 +1166,13 @@ IN_PROC_BROWSER_TEST_F(
       R"(
     window.resizeTo($1,$1)
   )",
-      base::NumberToString(blink::kMinimumBorderlessWindowSize));
+      base::NumberToString(blink::kMinimumUnframedWindowSize));
   EXPECT_TRUE(ExecJs(popup_web_contents, kResizeToScript));
   std::ignore = resized_title_watcher.WaitAndGetTitle();
   EXPECT_EQ(popup_web_contents->GetTitle(), kResizeTitle);
 
-  gfx::Size expected_size(blink::kMinimumBorderlessWindowSize,
-                          blink::kMinimumBorderlessWindowSize);
+  gfx::Size expected_size(blink::kMinimumUnframedWindowSize,
+                          blink::kMinimumUnframedWindowSize);
 
 #if BUILDFLAG(IS_CHROMEOS)
   WaitForWindowSizeCorrectlyUpdated(popup_browser_view, expected_size,
@@ -1181,8 +1182,8 @@ IN_PROC_BROWSER_TEST_F(
       2 * OpaqueBrowserFrameViewLayout::kFrameBorderThickness;
   // window.resizeTo() sets the outer size to match with the given size.
   gfx::Size expected_inner_size(
-      blink::kMinimumBorderlessWindowSize - kFrameInsets,
-      blink::kMinimumBorderlessWindowSize - kFrameInsets);
+      blink::kMinimumUnframedWindowSize - kFrameInsets,
+      blink::kMinimumUnframedWindowSize - kFrameInsets);
   WaitForWindowSizeCorrectlyUpdated(popup_browser_view, expected_inner_size,
                                     expected_size);
 #endif
@@ -3185,6 +3186,13 @@ IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_OriginText,
 // TODO(crbug.com/376592844): Re-enable this test
 IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_OriginText,
                        DISABLED_ThemeColorChange) {
+#if defined(MEMORY_SANITIZER)
+  if (base::FeatureList::IsEnabled(features::kInitialWebUI)) {
+    GTEST_SKIP() << "Skipping test on MSAN with InitialWebUI enabled. "
+                    "See crbug.com/477426026.";
+  }
+#endif
+
   ASSERT_TRUE(embedded_https_test_server().Started());
   InstallAndLaunchWebApp();
   content::WebContents* web_contents =
@@ -3209,6 +3217,13 @@ IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_OriginText,
 // TODO(crbug.com/361839153): Causing time out.
 IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_OriginText,
                        DISABLED_OutOfScopeBarWithThemeColorChange) {
+#if defined(MEMORY_SANITIZER)
+  if (base::FeatureList::IsEnabled(features::kInitialWebUI)) {
+    GTEST_SKIP() << "Skipping test on MSAN with InitialWebUI enabled. "
+                    "See crbug.com/477426026.";
+  }
+#endif
+
   ASSERT_TRUE(embedded_https_test_server().Started());
   InstallAndLaunchWebApp();
   content::WebContents* web_contents =
@@ -3248,6 +3263,13 @@ IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_OriginText,
 // TODO(crbug.com/361839153): Causing time out.
 IN_PROC_BROWSER_TEST_F(WebAppFrameToolbarBrowserTest_OriginText,
                        DISABLED_WebAppOriginTextAccessibleProperties) {
+#if defined(MEMORY_SANITIZER)
+  if (base::FeatureList::IsEnabled(features::kInitialWebUI)) {
+    GTEST_SKIP() << "Skipping test on MSAN with InitialWebUI enabled. "
+                    "See crbug.com/477426026.";
+  }
+#endif
+
   InstallAndLaunchWebApp();
   auto* origin_text = helper()->origin_text_view();
   ui::AXNodeData data;

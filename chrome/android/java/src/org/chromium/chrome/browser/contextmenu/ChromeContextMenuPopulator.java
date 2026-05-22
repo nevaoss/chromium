@@ -455,9 +455,8 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
         //   * some phones always identify as having a touchpad (crbug.com/429262357), and
         //   * known web compatibility issue on tablet devices (crbug.com/45188879).
         return (mParams.getSourceType() == MenuSourceType.MOUSE
-                        || (TabUtils.isUsingDesktopUserAgent(mItemDelegate.getWebContents())
-                                && mParams.getSourceType() == MenuSourceType.LONG_PRESS))
-                && ChromeFeatureList.isEnabled(ChromeFeatureList.CONTEXT_MENU_EMPTY_SPACE);
+                || (TabUtils.isUsingDesktopUserAgent(mItemDelegate.getWebContents())
+                        && mParams.getSourceType() == MenuSourceType.LONG_PRESS));
     }
 
     @VisibleForTesting
@@ -550,7 +549,8 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
             }
             if (areMandatoryFlowsCompleted(getProfile())) {
                 if (!mItemDelegate.isIncognito()
-                        && UrlUtilities.isDownloadableScheme(mParams.getLinkUrl())) {
+                        && UrlUtilities.isDownloadableScheme(mParams.getLinkUrl())
+                        && mMode != ContextMenuMode.THIN_WEB_VIEW) {
                     linkGroup.add(
                             createListItem(
                                     Item.SAVE_LINK_AS,
@@ -635,7 +635,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
                                 Item.OPEN_IMAGE_IN_EPHEMERAL_TAB, mShowEphemeralTabNewLabel));
             }
             imageGroup.add(createListItem(Item.COPY_IMAGE));
-            if (isSrcDownloadableScheme) {
+            if (isSrcDownloadableScheme && mMode != ContextMenuMode.THIN_WEB_VIEW) {
                 imageGroup.add(
                         createListItem(
                                 Item.SAVE_IMAGE,
@@ -690,7 +690,9 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
 
         if (mParams.isVideo() && areMandatoryFlowsCompleted(getProfile())) {
             ModelList videoGroup = new ModelList();
-            if (mParams.canSaveMedia() && UrlUtilities.isDownloadableScheme(mParams.getSrcUrl())) {
+            if (mParams.canSaveMedia()
+                    && UrlUtilities.isDownloadableScheme(mParams.getSrcUrl())
+                    && mMode != ContextMenuMode.THIN_WEB_VIEW) {
                 videoGroup.add(
                         createListItem(
                                 Item.SAVE_VIDEO,
@@ -707,7 +709,8 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
                 }
                 if (ChromeFeatureList.sContextMenuDownloadVideoFrame.isEnabled()
                         && mParams.canSaveMedia()
-                        && UrlUtilities.isDownloadableScheme(mParams.getSrcUrl())) {
+                        && UrlUtilities.isDownloadableScheme(mParams.getSrcUrl())
+                        && mMode != ContextMenuMode.THIN_WEB_VIEW) {
                     videoGroup.add(
                             createListItem(
                                     Item.DOWNLOAD_VIDEO_FRAME,
@@ -1554,7 +1557,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
                 new PropertyModel.Builder(ListMenuSubmenuItemProperties.ALL_KEYS)
                         .with(TITLE, title)
                         .with(ENABLED, true)
-                        .with(ListMenuSubmenuItemProperties.SUBMENU_ITEMS, submenuItems)
+                        .with(ListMenuSubmenuItemProperties.SUBMENU_PROVIDER, () -> submenuItems)
                         .build();
         return new ListItem(ListItemType.MENU_ITEM_WITH_SUBMENU, model);
     }

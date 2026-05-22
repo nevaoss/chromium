@@ -470,6 +470,7 @@
 <translation id="1717688554309417925">Услуги за дебитни карти и чекове</translation>
 <translation id="1719434663396780149">Сигналите за понижение на цената са включени. Можете да промените това от <ph name="BEGIN_LINK" /><ph name="NOTIFICATION_SETTINGS" /><ph name="END_LINK" />.</translation>
 <translation id="1719838434204287058">24 x 30 инча</translation>
+<translation id="1720318856472900922">Удостоверяване на TLS WWW сървър</translation>
 <translation id="1720941539803966190">Затваряне на урока</translation>
 <translation id="1721424275792716183">* Полето е задължително</translation>
 <translation id="1723636263173393300">Това правило не трябва да съдържа повече от <ph name="MAX_ITEMS_LIMIT" /> преки пътя.</translation>
@@ -754,6 +755,7 @@
 <translation id="2168151236314517198">Отпечатването на това съдържание е блокирано чрез администраторско правило</translation>
 <translation id="2171244127100824330">В(ъв) <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" /> за <ph name="ACCOUNT" /></translation>
 <translation id="2172089022819052306">Ремонт и поддръжка на превозни средства</translation>
+<translation id="217231402430591139">Свържете профила си</translation>
 <translation id="2173302385160625112">Проверете връзката си с интернет</translation>
 <translation id="2174875517416416684">Транзакцията ви не бе успешна. Не са изтеглени средства от профила ви.</translation>
 <translation id="2175630235841878061">Файловете над 100 MB не са налице за изтегляне</translation>
@@ -2474,6 +2476,7 @@
 <translation id="4855395119669662878">Администраторът ще започне да качва файловете ви в(ъв) <ph name="CLOUD_PROVIDER" /> на <ph name="DATE_TIME" />. Не прекратявайте връзката на устройството си, докато качването на файловете не завърши. По време процеса ще можете да четете само локалните файлове.</translation>
 <translation id="485902285759009870">Кодът се потвърждава...</translation>
 <translation id="4860260582253463350">За да продължите към YouTube, трябва да се уверим, че това сте вие. Ще получите настройките, зададени във Family Link от родителя или настойника ви.</translation>
+<translation id="4862642413395066333">Подписване на OCSP отговори</translation>
 <translation id="4864406669374375262">Низът на версията е копиран в буферната памет</translation>
 <translation id="486459320933704969">Родител или настойник трябва да разреши да посетите този уебсайт</translation>
 <translation id="4864801646102013152">Подобрение на дома</translation>
@@ -3217,6 +3220,7 @@
 <translation id="6006365096047131769">3 x 5 инча</translation>
 <translation id="6008122969617370890">Подредба от N до 1</translation>
 <translation id="6008256403891681546">JCB</translation>
+<translation id="6012135807160718387">Шифроването от Google защитава информацията ви</translation>
 <translation id="6014801569448771146">Проверка на паролите ви</translation>
 <translation id="6014851866995737824">Правилото бе пренебрегнато, защото липсва списъкът за активиране или този за деактивиране.</translation>
 <translation id="6015796118275082299">Година</translation>
@@ -3608,7 +3612,6 @@
 <translation id="6587923378399804057">Копирана от вас връзка</translation>
 <translation id="6591833882275308647">Устройството ви <ph name="DEVICE_TYPE" /> не е управлявано</translation>
 <translation id="6595495738567740002">За да изтриете „бисквитките“ на Google от това устройство, <ph name="BEGIN_LINK" />излезте от профила си в Chrome<ph name="END_LINK" />.</translation>
-<translation id="6596325263575161958">Опции за шифроване</translation>
 <translation id="6596573334527383067">Показване на резултатите от вчера</translation>
 <translation id="6597665340361269064">90 градуса</translation>
 <translation id="6598976221101665070">Драматични филми</translation>
@@ -3883,7 +3886,6 @@
 <translation id="702275896380648118">Този сайт определя какво харесвате и след това предлага реклами на други сайтове. Той също така получава информация за рекламните ви теми от Chrome, за да ви показва по-подходящи реклами.</translation>
 <translation id="7023162328967545559">Предупреждение от администратор</translation>
 <translation id="7023765275461720661">Искате ли да свържете профила и да платите с(ъс) <ph name="BNPL_ISSUER_NAME" />?</translation>
-<translation id="7029809446516969842">Пароли</translation>
 <translation id="7030164307377592766">промени настройките за попълване на начините на плащане</translation>
 <translation id="7031110846419387930">Информация за вашия браузър, операционна система, устройство, инсталиран софтуер, файлове и IP адреси</translation>
 <translation id="7031646650991750659">Кои приложения от Google Play сте инсталирали</translation>
@@ -4494,6 +4496,7 @@
 <translation id="7947285636476623132">Проверете годината на валидност и опитайте отново</translation>
 <translation id="7947310711271925113">Поп музика</translation>
 <translation id="7947813448670013867"><ph name="SEE_CHROME_TIPS_FOCUSED_FRIENDLY_MATCH_TEXT" />. Натиснете Tab и след това Enter, за да научите повече за функциите на Chrome</translation>
+<translation id="7948579849190819732">Текущ раздел</translation>
 <translation id="7949135979217012031">Антивирусни програми и злонамерен софтуер</translation>
 <translation id="7950027195171824198">Управление на предпочитанията ви за „бисквитките“ от настройките на Chrome</translation>
 <translation id="7951415247503192394">(32 бита)</translation>
@@ -4901,6 +4904,7 @@
 <translation id="8597726363542221027">Употребявани превозни средства</translation>
 <translation id="8600271352425265729">Само този път</translation>
 <translation id="860043288473659153">Име на титуляря на картата</translation>
+<translation id="8601206103050338563">Удостоверяване на TLS WWW клиент</translation>
 <translation id="8601456038554914806">Оборудване за водни спортове</translation>
 <translation id="8601782593888534566">Научна фантастика и фентъзи</translation>
 <translation id="8604103095921958091">Екранът с Общите условия на „Купете сега, платете по-късно“ е отворен на пълната височина.</translation>

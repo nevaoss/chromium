@@ -60,14 +60,6 @@ SendTabToSelfBubbleController::~SendTabToSelfBubbleController() {
   HideBubble();
 }
 
-// Static:
-SendTabToSelfBubbleController*
-SendTabToSelfBubbleController::CreateOrGetFromWebContents(
-    content::WebContents* web_contents) {
-  // TODO(crbug.com/498659392: Remove `CreateOrGetFromWebContents` and use
-  // `GetOrCreateForWebContents` instead everywhere.
-  return GetOrCreateForWebContents(web_contents);
-}
 
 void SendTabToSelfBubbleController::HideBubble() {
   if (send_tab_to_self_bubble_view_) {
@@ -109,17 +101,26 @@ void SendTabToSelfBubbleController::ShowBubble(bool show_back_button) {
       bubble_view = std::make_unique<SendTabToSelfDevicePickerBubbleView>(
           std::move(anchor), &GetWebContents());
       break;
-    case send_tab_to_self::EntryPointDisplayReason::kOfferSignIn:
+    case send_tab_to_self::EntryPointDisplayReason::kOfferSignIn: {
+      const SendTabToSelfPromoBubbleView::PromoType promo_type =
+          GetSharingAccountInfo().IsEmpty()
+              ? SendTabToSelfPromoBubbleView::PromoType::kSignInPromo
+              : SendTabToSelfPromoBubbleView::PromoType::
+                    kAccountAwareSignInPromo;
       bubble_view = std::make_unique<SendTabToSelfPromoBubbleView>(
-          std::move(anchor), &GetWebContents(), /*show_signin_button=*/true);
+          std::move(anchor), &GetWebContents(), promo_type);
       break;
+    }
     case send_tab_to_self::EntryPointDisplayReason::kInformNoTargetDevice:
       bubble_view = std::make_unique<SendTabToSelfPromoBubbleView>(
-          std::move(anchor), &GetWebContents(), /*show_signin_button=*/false);
+          std::move(anchor), &GetWebContents(),
+          SendTabToSelfPromoBubbleView::PromoType::kNoTargetDevice);
       break;
   }
   send_tab_to_self_bubble_view_ = bubble_view.get();
-  views::BubbleDialogDelegateView::CreateBubble(std::move(bubble_view));
+  views::Widget* widget =
+      views::BubbleDialogDelegateView::CreateBubble(std::move(bubble_view));
+  widget_observation_.Observe(widget);
   send_tab_to_self_bubble_view_->SetHighlightedElement(
       kPinnedToolbarActionSendTabToSelfElementId);
   // This is always triggered due to a user gesture, c.f. method
@@ -203,7 +204,8 @@ void SendTabToSelfBubbleController::OnManageDevicesClicked(
   Navigate(&params);
 }
 
-void SendTabToSelfBubbleController::OnBubbleClosed() {
+void SendTabToSelfBubbleController::OnWidgetDestroying(views::Widget* widget) {
+  widget_observation_.Reset();
   send_tab_to_self_bubble_view_ = nullptr;
   BrowserWindowInterface* browser =
       GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
@@ -232,9 +234,13 @@ void SendTabToSelfBubbleController::HandleSendTabToDeviceResult(
     SendTabToSelfResult result) {
   switch (result) {
     case SendTabToSelfResult::kSuccess:
-    case SendTabToSelfResult::kSuccessThrottled:
       if (base::FeatureList::IsEnabled(kSendTabToSelfPostSendToast)) {
         ShowTabSentSuccessToast(&GetWebContents(), device_name);
+      }
+      break;
+    case SendTabToSelfResult::kSuccessThrottled:
+      if (base::FeatureList::IsEnabled(kSendTabToSelfPostSendToast)) {
+        ShowTabSentThrottledToast(&GetWebContents(), device_name);
       }
       break;
     case SendTabToSelfResult::kFailureInvalidUrl:

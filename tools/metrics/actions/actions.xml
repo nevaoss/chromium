@@ -135,6 +135,7 @@ should be able to be added at any place in this file.
 
 <variants name="ContextualSearchContextState">
   <variant name="WithContextNoText" summary="with context but no typed text"/>
+  <variant name="WithDriveContext" summary="with drive context"/>
   <variant name="WithNonTabContext"
       summary="with non-tab context (e.g. files)"/>
   <variant name="WithoutContext" summary="without any context"/>
@@ -15340,6 +15341,17 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Glic.Instance.Open2">
+  <owner>birnie@google.com</owner>
+  <owner>perrier@google.com</owner>
+  <description>
+    Logged when opening a new or closed instance. Note that this may be logged
+    when a new conversation creates a new instance to replace an existing one in
+    an already open UI container, or when detaching/ attaching Floaty from side
+    panel.
+  </description>
+</action>
+
 <action name="Glic.Instance.PauseActorTask">
   <owner>birnie@google.com</owner>
   <owner>perrier@google.com</owner>
@@ -16278,6 +16290,24 @@ should be able to be added at any place in this file.
   <owner>wychen@chromium.org</owner>
   <description>
     User undoes closed group that was closed from grid tab switcher.
+  </description>
+</action>
+
+<action name="HandoffDataRequested">
+  <owner>zheliooo@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <description>
+    Recorded on the sender device when the Android OS requests Handoff data (the
+    active URL) from Chrome.
+  </description>
+</action>
+
+<action name="HandoffDisabled">
+  <owner>zheliooo@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <description>
+    Recorded when Handoff is disabled (e.g. switched to incognito, tab becomes
+    null, or policy disallowed).
   </description>
 </action>
 
@@ -26019,6 +26049,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Mobile.Signin.AgeMismatchSignout.LearnMore">
+  <owner>ddac@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <description>
+    Recorded when the user taps the URL to Learn More in the Age Mismatch
+    Sign-Out dialog. (iOS only).
+  </description>
+</action>
+
 <action name="Mobile.Signin.SnackbarUndoTapped">
   <owner>triploblastic@chromium.org</owner>
   <owner>chrome-signin-team@google.org</owner>
@@ -29045,6 +29084,11 @@ should be able to be added at any place in this file.
   <description>
     User pressed/clicked the &quot;Show Reading Mode&quot; item in the app menu.
   </description>
+</action>
+
+<action name="MobileMenuShowReadingList">
+  <owner>massan@google.com</owner>
+  <description>User pressed 'Show reading list' in the app menu.</description>
 </action>
 
 <action name="MobileMenuSiteInformation">
@@ -33004,6 +33048,9 @@ should be able to be added at any place in this file.
     <variant name=".NewGroup.MultiTab"
         summary="User created a new tab group with multiple tabs via the tab
                  context menu on tab strip on Android."/>
+    <variant name=".NewTabToTheRight"
+        summary="User created a new tab to the right via the tab context menu
+                 on tab strip on Android."/>
     <variant name=".PinTab"
         summary="User pinned a tab via the tab context menu on tab strip on
                  Android."/>
@@ -52173,6 +52220,9 @@ should be able to be added at any place in this file.
     <variant name=".SelectTabs"
         summary="Recorded when the 'Select tabs' option in the context menu
                  is selected."/>
+    <variant name=".SendTabToSelf"
+        summary="Recorded when the 'Send tab to self' option in the context
+                 menu is selected."/>
     <variant name=".ShareTab"
         summary="Recorded when the 'Share' option in the context menu is
                  selected."/>

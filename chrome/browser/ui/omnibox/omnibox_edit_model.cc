@@ -522,14 +522,6 @@ ui::ImageModel OmniboxEditModel::GetSuperGIcon(int image_size,
         image_size);
   }
 
-  // TODO(crbug.com/507061157): Remove this once
-  //   `location_bar::GetSecurityChipIconEnum` and
-  //   `location_bar::IsSecurityChipInteractive` support non-vector icons.
-  if (base::FeatureList::IsEnabled(features::kWebUILocationBar)) {
-    return ui::ImageModel::FromVectorIcon(vector_icons::kGoogleSuperGIcon,
-                                          gfx::kPlaceholderColor, image_size);
-  }
-
   std::optional<int> resource_id;
   // Note: The gradient "Super G" logo requires gradients and clip paths,
   // which are not supported by Chromium vector icons (see
@@ -567,7 +559,7 @@ ui::ImageModel OmniboxEditModel::GetSuperGIcon(int image_size,
 }
 
 ui::ImageModel OmniboxEditModel::GetAddContextIcon(int image_size) const {
-  return ui::ImageModel::FromVectorIcon(kAddChromeRefreshIcon,
+  return ui::ImageModel::FromVectorIcon(kAddChromeRefreshOldIcon,
                                         ui::kColorSysPrimary, image_size);
 }
 
@@ -917,13 +909,12 @@ void OmniboxEditModel::OpenAiMode(bool via_keyboard, bool via_context_menu) {
             contextual_tasks::ContextualTasksContextServiceFactory::
                 GetForProfile(profile),
             chrome_omnibox_client->browser());
-        if (auto* service =
-                contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
-                    profile)) {
-          query_contextualizer_ =
-              std::make_unique<contextual_tasks::QueryContextualizer>(
-                  service, query_contextualizer_delegate_.get());
-        }
+        auto* service =
+            contextual_tasks::ContextualTasksServiceFactory::GetForProfile(
+                profile);
+        query_contextualizer_ =
+            std::make_unique<contextual_tasks::QueryContextualizer>(
+                service, query_contextualizer_delegate_.get());
       }
     }
   }
@@ -3302,7 +3293,7 @@ bool OmniboxEditModel::ShouldAcceptKeywordAfterInsertingSpaceInMiddle(
     return false;
   }
 
-  // Check if  the text was unchanged. E.g. old text was 'youtube[ ]query' and
+  // Check if the text was unchanged. E.g. old text was 'youtube[ ]query' and
   // the user replaced the selected space with another space.
   if (old_text == new_text) {
     return false;
@@ -3312,6 +3303,15 @@ bool OmniboxEditModel::ShouldAcceptKeywordAfterInsertingSpaceInMiddle(
   // 'youtube google |query' shouldn't accept the 'youtube' keyword.
   if (new_text.substr(0, space_position)
           .find_first_of(base::kWhitespaceUTF16) != std::u16string_view::npos) {
+    return false;
+  }
+
+  // Check the word preceding the space matches a keyword.
+  std::u16string keyword;
+  base::TrimWhitespace(new_text.substr(0, space_position), base::TRIM_LEADING,
+                       &keyword);
+  if (!autocomplete_controller()->keyword_provider()->GetTemplateUrlForText(
+          keyword, controller_->client()->GetTemplateURLService())) {
     return false;
   }
 

@@ -663,6 +663,11 @@ allow_unsafe = false
 extra_input_roots = ['../generated', '../data/generated']
 extra_kv = { allow_unsafe = false }
 
+[crate.regex]
+group = 'test'
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
+
 [crate.regex-automata.extra_kv]
 allow_unsafe = true
 
@@ -693,7 +698,21 @@ extra_build_script_input_roots = ['../build/rustc.rs']
 [crate.ryu.extra_kv]
 allow_unsafe = true
 
+[crate.safe_arch]
+group = 'test'
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
+
+[crate.scc]
+group = 'test'
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
+
 [crate.scopeguard]
+extra_kv = { allow_unsafe = true }
+
+[crate.sdd]
+allow_first_party_usage = false
 extra_kv = { allow_unsafe = true }
 
 [crate.serde]
@@ -721,6 +740,11 @@ remove_deps = ['cc'] # Only used in build.rs
 [crate.simd-adler32.extra_kv]
 allow_unsafe = true
 allow_unstable_features = ["stdarch_arm_neon_intrinsics"]
+
+[crate.siphasher]
+group = 'test'
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
 
 [crate.skrifa]
 extra_input_roots = ['../generated']
@@ -834,6 +858,11 @@ extra_kv = { allow_unsafe = true }
 allow_first_party_usage = false
 extra_kv = { allow_unsafe = true }
 
+[crate.uds]
+group = 'test'
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
+
 [crate.unicode-ident.extra_kv]
 allow_unsafe = true
 
@@ -862,6 +891,18 @@ extra_kv = { allow_unsafe = false }
 [crate.virtue]
 allow_first_party_usage = false
 extra_kv = { allow_unsafe = false }
+
+[crate.wait-timeout]
+group = 'test'
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
+
+[crate.wide]
+group = 'test'
+allow_first_party_usage = false
+license = "Zlib"
+license_files = ["LICENSE-ZLIB.md"]
+extra_kv = { allow_unsafe = true }
 
 [crate.winapi-util.extra_kv]
 allow_unsafe = true
@@ -897,6 +938,11 @@ license_files = [ "LICENSE" ]
 
 [crate.xml.extra_kv]
 allow_unsafe = false
+
+[crate.xxhash-rust]
+group = "test"
+allow_first_party_usage = false
+extra_kv = { allow_unsafe = true }
 
 [crate.yoke.extra_kv]
 allow_unsafe = true

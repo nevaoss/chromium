@@ -70,15 +70,14 @@ FakePasswordStoreBackend::GetTaskRunner() const {
 }
 
 void FakePasswordStoreBackend::TriggerOnLoginsRetainedForAndroid(
-    const std::vector<PasswordForm>& password_forms) {
+    const std::vector<StoredCredential>& credentials) {
   stored_passwords_.clear();
-  for (const auto& password_form : password_forms) {
-    PasswordForm stored_form = password_form;
-    stored_form.in_store = is_account_store()
+  for (const auto& cred : credentials) {
+    StoredCredential stored_cred = CloneStoredCredential(cred);
+    stored_cred.in_store = is_account_store()
                                ? PasswordForm::Store::kAccountStore
                                : PasswordForm::Store::kProfileStore;
-    stored_passwords_[password_form.signon_realm].push_back(
-        FromPasswordForm(std::move(stored_form)));
+    stored_passwords_[cred.signon_realm].push_back(std::move(stored_cred));
   }
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -129,12 +128,15 @@ void FakePasswordStoreBackend::NotifyAboutError() {
   remote_form_changes_received_.Run(PasswordStoreBackendError(error_type));
 }
 
+void FakePasswordStoreBackend::SetAffiliatedMatchHelper(
+    AffiliatedMatchHelper* match_helper) {
+  match_helper_ = match_helper;
+}
+
 void FakePasswordStoreBackend::InitBackend(
-    AffiliatedMatchHelper* affiliated_match_helper,
     RemoteChangesReceived remote_form_changes_received,
     base::RepeatingClosure sync_enabled_or_disabled_cb,
     base::OnceCallback<void(bool)> completion) {
-  match_helper_ = affiliated_match_helper;
   remote_form_changes_received_ = std::move(remote_form_changes_received);
   GetTaskRunner()->PostTask(
       FROM_HERE, base::BindOnce(std::move(completion), /*success=*/true));

@@ -513,9 +513,11 @@ class BottomSheetControllerImpl implements ManagedBottomSheetController, ScrimCo
         if (mBottomSheet == null) return;
 
         if (mBottomSheet.getCurrentSheetContent() != null) {
+            boolean shouldRestoreState =
+                    mBottomSheet.getCurrentSheetContent().shouldRestoreStateOnUnsuppress();
             @SheetState
             int openState =
-                    mContentWhenSuppressed == getCurrentSheetContent()
+                    mContentWhenSuppressed == getCurrentSheetContent() && shouldRestoreState
                             ? mSheetStateBeforeSuppress
                             : mBottomSheet.getOpeningState();
             mBottomSheet.setSheetState(openState, true);
@@ -805,15 +807,17 @@ class BottomSheetControllerImpl implements ManagedBottomSheetController, ScrimCo
      */
     private boolean canBottomSheetSwitchContent(BottomSheetContent nextContent) {
         BottomSheetContent currentContent = assumeNonNull(mBottomSheet).getCurrentSheetContent();
+        // TODO(crbug.com/505050661): Remove COBROWSE condition once modes is implemented.
         if (nextContent.getPriority() == BottomSheetContent.ContentPriority.COBROWSE) {
-            return true;
-        }
-        if (nextContent.getPriority() < assumeNonNull(currentContent).getPriority()
-                && !mBottomSheet.isSheetOpen()) {
             return true;
         }
 
         if (assumeNonNull(currentContent).canBeSuppressed(nextContent)) {
+            return true;
+        }
+
+        if (nextContent.getPriority() < currentContent.getPriority()
+                && !mBottomSheet.isSheetOpen()) {
             return true;
         }
 

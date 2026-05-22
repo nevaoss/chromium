@@ -46,8 +46,13 @@ public class TabbedWindowStateTracker implements ChromeAndroidTaskFeature {
     public void onFeatureRemoved() {}
 
     @Override
-    public void onTaskBoundsChanged(Rect newBoundsInDp) {
-        // TODO: Implement this method.
+    public void onTaskBoundsChanged(int displayId, Rect newBoundsInDp, Rect newBoundsInPx) {
+        saveWindowBounds(displayId, newBoundsInPx);
+    }
+
+    @Override
+    public void onTaskVisibilityChanged(boolean isVisible) {
+        ChromeMultiInstancePersistentStore.writeIsVisible(mWindowId, isVisible);
     }
 
     private void saveWindowBounds(int displayId, Rect boundsInPx) {

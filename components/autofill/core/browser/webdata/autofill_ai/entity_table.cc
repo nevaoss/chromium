@@ -36,6 +36,7 @@
 #include "components/os_crypt/async/common/encryptor.h"
 #include "components/webdata/common/web_database.h"
 #include "sql/statement.h"
+#include "sql/statement_id.h"
 #include "sql/table_management_helpers.h"
 #include "sql/transaction.h"
 
@@ -81,7 +82,7 @@ std::optional<EntityInstance::RecordType> ToSafeRecordType(
               static_cast<EntityInstance::RecordType>(underlying_record_type)) {
     case EntityInstance::RecordType::kLocal:
     case EntityInstance::RecordType::kServerWallet:
-    case EntityInstance::RecordType::kAccessibilityAnnotator:
+    case EntityInstance::RecordType::kPersonalContext:
       return record_type;
   }
   return std::nullopt;
@@ -253,13 +254,14 @@ bool EntityTable::MigrateToVersion147AddEntitiesMetadataTable() {
 
 bool EntityTable::AddAttribute(const EntityInstance& entity,
                                const AttributeInstance& attribute) {
+  sql::Statement s;
+  sql::CachedInsertBuilder(SQL_FROM_HERE, *db(), s, attributes::kTableName,
+                           {attributes::kEntityGuid, attributes::kAttributeType,
+                            attributes::kFieldType, attributes::kValueEncrypted,
+                            attributes::kVerificationStatus});
+
   for (FieldType type :
        attribute.type().storable_field_types(/*pass_key=*/{})) {
-    sql::Statement s;
-    sql::InsertBuilder(*db(), s, attributes::kTableName,
-                       {attributes::kEntityGuid, attributes::kAttributeType,
-                        attributes::kFieldType, attributes::kValueEncrypted,
-                        attributes::kVerificationStatus});
     s.BindString(0, *entity.guid());
     s.BindString(1, attribute.type().name_as_string());
     s.BindInt(2, type);
@@ -275,6 +277,7 @@ bool EntityTable::AddAttribute(const EntityInstance& entity,
     if (!s.Run()) {
       return false;
     }
+    s.Reset(/*clear_bound_vars=*/true);
   }
   return true;
 }
@@ -282,8 +285,8 @@ bool EntityTable::AddAttribute(const EntityInstance& entity,
 bool EntityTable::AddEntityMetadata(
     const EntityInstance::EntityMetadata& metadata) {
   sql::Statement s;
-  sql::InsertBuilder(
-      *db(), s, entities_metadata::kTableName,
+  sql::CachedInsertBuilder(
+      SQL_FROM_HERE, *db(), s, entities_metadata::kTableName,
       {entities_metadata::kEntityGuid, entities_metadata::kUseCount,
        entities_metadata::kUseDate, entities_metadata::kDateModified});
   s.BindString(0, *metadata.guid);
@@ -324,8 +327,8 @@ bool EntityTable::AddEntityInstance(const EntityInstance& entity) {
 
   // Add the entity.
   sql::Statement s;
-  sql::InsertBuilder(
-      *db(), s, entities::kTableName,
+  sql::CachedInsertBuilder(
+      SQL_FROM_HERE, *db(), s, entities::kTableName,
       {entities::kGuid, entities::kEntityType, entities::kNickname,
        entities::kRecordType, entities::kAttributesReadOnly,
        entities::kFrecencyOverride});
@@ -418,8 +421,8 @@ bool EntityTable::EntityInstanceExists(
 std::optional<EntityInstance::EntityMetadata> EntityTable::GetEntityMetadata(
     const EntityInstance::EntityId& guid) const {
   sql::Statement s;
-  sql::SelectBuilder(
-      *db(), s, entities_metadata::kTableName,
+  sql::CachedSelectBuilder(
+      SQL_FROM_HERE, *db(), s, entities_metadata::kTableName,
       {entities_metadata::kEntityGuid, entities_metadata::kUseCount,
        entities_metadata::kUseDate, entities_metadata::kDateModified},
       /*modifiers=*/"WHERE entity_guid = ?");
@@ -447,8 +450,9 @@ std::optional<EntityInstance::EntityMetadata> EntityTable::GetEntityMetadata(
 std::optional<EntityType> EntityTable::GetEntityType(
     const EntityInstance::EntityId& guid) const {
   sql::Statement s;
-  sql::SelectBuilder(*db(), s, entities::kTableName, {entities::kEntityType},
-                     /*modifiers=*/"WHERE guid = ?");
+  sql::CachedSelectBuilder(SQL_FROM_HERE, *db(), s, entities::kTableName,
+                           {entities::kEntityType},
+                           /*modifiers=*/"WHERE guid = ?");
   s.BindString(0, *guid);
   if (!s.Step()) {
     return std::nullopt;
@@ -475,11 +479,12 @@ EntityTable::LoadMetadata() const {
   std::map<EntityInstance::EntityId, EntityInstance::EntityMetadata>
       metadata_records;
   sql::Statement s;
-  sql::SelectBuilder(*db(), s, autofill::entities_metadata::kTableName,
-                     {autofill::entities_metadata::kEntityGuid,
-                      autofill::entities_metadata::kUseCount,
-                      autofill::entities_metadata::kUseDate,
-                      autofill::entities_metadata::kDateModified});
+  sql::CachedSelectBuilder(SQL_FROM_HERE, *db(), s,
+                           autofill::entities_metadata::kTableName,
+                           {autofill::entities_metadata::kEntityGuid,
+                            autofill::entities_metadata::kUseCount,
+                            autofill::entities_metadata::kUseDate,
+                            autofill::entities_metadata::kDateModified});
 
   while (s.Step()) {
     EntityInstance::EntityId entity_guid(s.ColumnString(0));
@@ -505,10 +510,10 @@ EntityTable::LoadAttributes() const {
            std::map<std::string, std::vector<AttributeRecord>>>
       attribute_records;
   sql::Statement s;
-  sql::SelectBuilder(*db(), s, attributes::kTableName,
-                     {attributes::kEntityGuid, attributes::kAttributeType,
-                      attributes::kFieldType, attributes::kValueEncrypted,
-                      attributes::kVerificationStatus});
+  sql::CachedSelectBuilder(SQL_FROM_HERE, *db(), s, attributes::kTableName,
+                           {attributes::kEntityGuid, attributes::kAttributeType,
+                            attributes::kFieldType, attributes::kValueEncrypted,
+                            attributes::kVerificationStatus});
 
   // LINT.IfChange(DecryptionStatus)
   enum class DecryptionStatus {
@@ -568,23 +573,30 @@ std::vector<EntityInstance> EntityTable::GetEntityInstances(
   std::map<EntityInstance::EntityId, EntityInstance::EntityMetadata>
       metadata_records = LoadMetadata();
 
-  const std::string where =
-      record_type.has_value()
-          ? base::StrCat(
-                {"WHERE ", entities::kRecordType, "= ",
-                 base::NumberToString(std::to_underlying(*record_type))})
-          : "";
+  // These statement builders must be kept separate in order to take advantage
+  // of the SQL statement cache.
+  sql::Statement s;
+  if (record_type.has_value()) {
+    const std::string where = base::StrCat(
+        {"WHERE ", entities::kRecordType, "= ", sql::kPlaceholder});
+    sql::CachedSelectBuilder(
+        SQL_FROM_HERE, *db(), s, entities::kTableName,
+        {entities::kGuid, entities::kEntityType, entities::kNickname,
+         entities::kRecordType, entities::kAttributesReadOnly,
+         entities::kFrecencyOverride},
+        where);
+    s.BindInt(0, std::to_underlying(*record_type));
+  } else {
+    sql::CachedSelectBuilder(
+        SQL_FROM_HERE, *db(), s, entities::kTableName,
+        {entities::kGuid, entities::kEntityType, entities::kNickname,
+         entities::kRecordType, entities::kAttributesReadOnly,
+         entities::kFrecencyOverride});
+  }
+
   // Collects all entities and populates them with the attributes from the
   // previous query.
   std::vector<EntityInstance> entities;
-  sql::Statement s;
-  sql::SelectBuilder(
-      *db(), s, entities::kTableName,
-      {entities::kGuid, entities::kEntityType, entities::kNickname,
-       entities::kRecordType, entities::kAttributesReadOnly,
-       entities::kFrecencyOverride},
-      where);
-
   while (s.Step()) {
     EntityInstance::EntityId guid(s.ColumnString(0));
     std::string type_name = s.ColumnString(1);

@@ -59,7 +59,6 @@
 #include "base/types/zip.h"
 #include "base/uuid.h"
 #include "build/build_config.h"
-#include "components/accessibility_annotator/core/accessibility_annotator_types.h"
 #include "components/autofill/core/browser/at_memory/at_memory_manager.h"
 #include "components/autofill/core/browser/autofill_browser_util.h"
 #include "components/autofill/core/browser/autofill_field.h"
@@ -86,6 +85,7 @@
 #include "components/autofill/core/browser/field_type_utils.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/filling/addresses/field_filling_address_util.h"
+#include "components/autofill/core/browser/filling/autofill_ai/autofill_ai_access_manager.h"
 #include "components/autofill/core/browser/filling/autofill_ai/field_filling_entity_util.h"
 #include "components/autofill/core/browser/filling/field_filling_skip_reason.h"
 #include "components/autofill/core/browser/filling/filling_product.h"
@@ -175,6 +175,7 @@
 #include "components/autofill/core/common/signatures.h"
 #include "components/autofill/core/common/unique_ids.h"
 #include "components/optimization_guide/proto/features/model_prototyping.pb.h"
+#include "components/personal_context/core/personal_context_types.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
 #include "components/security_interstitials/core/pref_names.h"
@@ -814,8 +815,11 @@ BrowserAutofillManager::MetricsState::~MetricsState() {
 
 BrowserAutofillManager::BrowserAutofillManager(AutofillDriver* driver)
     : AutofillManager(driver),
+      autofill_ai_access_manager_(
+          std::make_unique<AutofillAiAccessManager>(this)),
       otp_manager_(
           new OtpManagerImpl(*this, client().GetOneTimeTokenService())),
+      at_memory_manager_(std::make_unique<AtMemoryManager>(this)),
       account_name_email_strike_manager_(
           std::make_unique<AccountNameEmailStrikeManager>(*this)),
       address_on_typing_manager_(client()) {}
@@ -847,7 +851,22 @@ BrowserAutofillManager::GetCreditCardAccessManager() const {
 }
 
 AtMemoryManager& BrowserAutofillManager::GetAtMemoryManager() {
-  return at_memory_manager_;
+  return *at_memory_manager_;
+}
+
+AutofillAiAccessManager& BrowserAutofillManager::GetAutofillAiAccessManager() {
+  return *autofill_ai_access_manager_;
+}
+
+void BrowserAutofillManager::TriggerAtMemorySuggestions(
+    const FieldGlobalId& field_id) {
+  const FormStructure* form_structure = FindCachedFormById(field_id);
+  if (!form_structure) {
+    return;
+  }
+  OnAskForValuesToFill(form_structure->ToFormData(), field_id, gfx::Rect(),
+                       AutofillSuggestionTriggerSource::kAtMemory,
+                       std::nullopt);
 }
 
 payments::AmountExtractionManager&
@@ -1162,6 +1181,10 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
   if (form_structure && autofill_field) {
     AutofillMetrics::LogParsedFormUntilInteractionTiming(
         base::TimeTicks::Now() - form_structure->form_parsed_timestamp());
+    if (AutofillAiManager* ai_manager = client().GetAutofillAiManager()) {
+      ai_manager->OnFormInteracted(*form_structure,
+                                   driver().GetPageUkmSourceId());
+    }
     if (autofill_metrics::FormEventLoggerBase* logger =
             GetEventFormLogger(*autofill_field);
         logger && ShouldBeParsed(*form_structure, /*log_manager=*/nullptr)) {
@@ -1193,8 +1216,8 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
 
   if (IsAtMemoryTriggerSource(trigger_source)) {
     // Do not show the pop up at all for non eligible profiles.
-    if (client().GetAccessibilityAnnotatorEnablementState() ==
-        accessibility_annotator::RemoteAnnotatorEnablementState::
+    if (client().GetPersonalContextEnablementState() ==
+        personal_context::PersonalContextEnablementState::
             kDisabledNotEligible) {
       return;
     }
@@ -2674,10 +2697,12 @@ void BrowserAutofillManager::Reset() {
   bnpl_manager_.reset();
 
   credit_card_access_manager_.reset();
+  autofill_ai_access_manager_->Reset();
   // Forget stored data (e.g. active subscriptions and pending callbacks) after
   // a navigation.
   otp_manager_ = std::make_unique<OtpManagerImpl>(
       *this, client().GetOneTimeTokenService());
+  at_memory_manager_ = std::make_unique<AtMemoryManager>(this);
   account_name_email_strike_manager_ =
       std::make_unique<AccountNameEmailStrikeManager>(*this);
   metrics_.reset();

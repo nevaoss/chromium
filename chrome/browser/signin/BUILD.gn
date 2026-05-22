@@ -202,6 +202,7 @@ source_set("impl") {
     "//chrome/browser:browser_public_dependencies",
   ]
   deps = [
+    "//chrome/browser:browser_process_platform_part",
     "//chrome/browser:global_features",
     "//chrome/browser/autofill",
     "//chrome/browser/bookmarks",
@@ -216,11 +217,13 @@ source_set("impl") {
     "//chrome/browser/ui/dialogs:browser_dialogs",
     "//chrome/browser/webdata_services",
     "//components/application_locale_storage",
+    "//components/contextual_tasks/public:feature_list",
     "//components/embedder_support:user_agent",
     "//components/plus_addresses/core/common:features",
     "//components/profile_metrics",
     "//components/signin/core/browser",
     "//components/signin/public/webdata",
+    "//components/skills:features",
     "//components/supervised_user/core/browser",
     "//components/sync_bookmarks",
   ]

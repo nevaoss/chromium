@@ -531,10 +531,17 @@ void ReadAnythingAppModel::AddPendingUpdates(const ui::AXTreeID& tree_id,
 
 void ReadAnythingAppModel::ClearPendingUpdates() {
   pending_updates_.clear();
+  has_pending_selection_ = false;
 }
 
 void ReadAnythingAppModel::UnserializePendingUpdates(
     const ui::AXTreeID& tree_id) {
+  // has_pending_selection_ is used to process updates that would not have
+  // otherwise been processed if Immersive is opening and already had a good
+  // distillation. Therefore, it should be reset once UnserializePendingUpdates
+  // is called. If no selection is processed (e.g. due to no pending updates),
+  // that means there is no longer a pending selection to process.
+  has_pending_selection_ = false;
   if (!pending_updates_.contains(tree_id)) {
     VLOG(1) << "Returning early in UnserializePendingUpdates because it "
                "doesn't contain tree id "
@@ -692,6 +699,11 @@ void ReadAnythingAppModel::ApplyAccessibilityUpdates(
     VLOG(1) << "ApplyAccessibilityUpdates- tree ID is not the active tree";
     UnserializeUpdates(updates, tree_id);
   }
+
+  // has_pending_selection_ is used to process updates that would not have
+  // otherwise been processed if Immersive is opening and already had a good
+  // distillation. Therefore, it should be reset once updates are applied.
+  has_pending_selection_ = false;
 }
 
 void ReadAnythingAppModel::QueueAccessibilityUpdates(
@@ -916,6 +928,13 @@ void ReadAnythingAppModel::ProcessNonGeneratedEvents(
 #if BUILDFLAG(IS_MAC)
     VLOG(2) << "Non-generated event type: " << event.event_type;
 #endif
+    if (event.event_type == ax::mojom::Event::kDocumentSelectionChanged ||
+        event.event_type == ax::mojom::Event::kTextSelectionChanged) {
+      // Keep track of pending selections so that Immersive can properly
+      // update if there's been a selection change.
+      has_pending_selection_ = true;
+    }
+
     // Readability distillation ignores state change events as selection
     // post-processing is the only required dynamic update.
     if (is_readability_next_distillation_method()) {
@@ -1049,6 +1068,11 @@ void ReadAnythingAppModel::ProcessGeneratedEvents(
       if (event.event_params->event ==
           ui::AXEventGenerator::Event::DOCUMENT_SELECTION_CHANGED) {
         requires_post_process_selection_ = true;
+        if (event.event_params->event_from == ax::mojom::EventFrom::kUser) {
+          // Direct main panel user interaction fully supersedes any stale
+          // reading-mode-initiated selection actions.
+          selections_from_reading_mode_ = 0;
+        }
       }
       continue;
     }
@@ -1056,6 +1080,11 @@ void ReadAnythingAppModel::ProcessGeneratedEvents(
     switch (event.event_params->event) {
       case ui::AXEventGenerator::Event::DOCUMENT_SELECTION_CHANGED:
         requires_post_process_selection_ = true;
+        if (event.event_params->event_from == ax::mojom::EventFrom::kUser) {
+          // Direct main panel user interaction fully supersedes any stale
+          // reading-mode-initiated selection actions.
+          selections_from_reading_mode_ = 0;
+        }
         break;
       case ui::AXEventGenerator::Event::DOCUMENT_TITLE_CHANGED:
         if (event.event_params->event_from == ax::mojom::EventFrom::kUser) {
@@ -1448,7 +1477,11 @@ bool ReadAnythingAppModel::MapRenderedTextToTree(
     }
   }
 
-  FindGloballyUniqueBlocks(blocks, index, readability_block_counts);
+  std::vector<AlignmentAnchor> candidates =
+      FindGloballyUniqueBlocks(blocks, index, readability_block_counts);
+
+  std::vector<AlignmentAnchor> major_anchors =
+      FilterMonotonicAnchors(std::move(candidates));
 
   // TODO: crbug.com/507461126 - Implement part2 of the algorithm. Gap substring
   // alignment.
@@ -1459,10 +1492,14 @@ bool ReadAnythingAppModel::MapRenderedTextToTree(
   return true;
 }
 
-void ReadAnythingAppModel::FindGloballyUniqueBlocks(
+std::vector<ReadAnythingAppModel::AlignmentAnchor>
+ReadAnythingAppModel::FindGloballyUniqueBlocks(
     const std::vector<std::u16string>& blocks,
     const SuffixArray& index,
     const base::flat_map<std::u16string_view, int>& block_counts) {
+  CHECK_EQ(blocks.size(), text_to_ax_map_.size());
+
+  std::vector<AlignmentAnchor> candidates;
   for (size_t i = 0; i < blocks.size(); ++i) {
     const std::u16string& block = blocks[i];
 
@@ -1474,16 +1511,77 @@ void ReadAnythingAppModel::FindGloballyUniqueBlocks(
     auto range = index.FindRange(block);
 
     // If the block exists exactly once in the source page and in the distilled
-    // output, set the AXNode segments for this block in [text_to_ax_map_|.
+    // output, set the AXNode segments for this block in [text_to_ax_map_| and
+    // add it as a candidate for a major anchor.
     auto it = block_counts.find(block);
     if (std::distance(range.first, range.second) == 1 &&
         it != block_counts.end() && it->second == 1) {
-      size_t ax_start_offset = *range.first;
-      text_to_ax_map_[i] = CreateSegmentsForMatch(
-          ax_start_offset, ax_start_offset + block.size(), 0);
+      size_t ax_start = *range.first;
+      size_t ax_end = ax_start + block.size();
+      DUMP_WILL_BE_CHECK(ax_end <= global_ax_tree_text_.size())
+          << "Block exceeds total text length";
+      if (ax_end > global_ax_tree_text_.size()) {
+        continue;
+      }
+
+      text_to_ax_map_[i] = CreateSegmentsForMatch(ax_start, ax_end, 0);
+      candidates.push_back({i, ax_start, ax_end});
     }
   }
+  return candidates;
 }
+
+std::vector<ReadAnythingAppModel::AlignmentAnchor>
+ReadAnythingAppModel::FilterMonotonicAnchors(
+    std::vector<AlignmentAnchor> candidates) {
+  if (candidates.empty()) {
+    return {};
+  }
+
+  size_t n = candidates.size();
+  std::vector<size_t> tails_indices(n, 0);
+  std::vector<int> prev(n, -1);
+  size_t len = 0;
+
+  // Find the longest increasing anchor set using the LIS algorithm.
+  for (size_t i = 0; i < n; ++i) {
+    // Find the smallest tail that is >= the current anchor's AX position.
+    auto it =
+        std::lower_bound(tails_indices.begin(), tails_indices.begin() + len, i,
+                         [&candidates](size_t tail_idx, size_t current_idx) {
+                           return candidates[tail_idx].ax_start <
+                                  candidates[current_idx].ax_start;
+                         });
+    size_t pos = std::distance(tails_indices.begin(), it);
+
+    if (pos > 0) {
+      prev[i] = static_cast<int>(tails_indices[pos - 1]);
+    }
+
+    tails_indices[pos] = i;
+    if (pos == len) {
+      len++;
+    }
+  }
+
+  // Reconstruct the monotonic subsequence via backtracking.
+  std::vector<AlignmentAnchor> result;
+  for (int i = static_cast<int>(tails_indices[len - 1]); i != -1; i = prev[i]) {
+    result.push_back(candidates[i]);
+  }
+  std::reverse(result.begin(), result.end());
+  return result;
+}
+
+void ReadAnythingAppModel::AlignGaps(const std::vector<std::u16string>& blocks,
+                                     const SuffixArray& index,
+                                     size_t block_start,
+                                     size_t block_end,
+                                     size_t ax_start,
+                                     size_t ax_end) {
+  // TODO: crbug.com/507461126 - Implement recursive gap alignment.
+}
+
 // TODO: crbug.com/509578412 - Evaluate consolidating logic with existing text
 // traversal methods.
 void ReadAnythingAppModel::FlattenAXTree(ui::AXSerializableTree* tree) {

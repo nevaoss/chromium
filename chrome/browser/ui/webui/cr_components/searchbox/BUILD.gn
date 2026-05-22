@@ -33,6 +33,9 @@ source_set("searchbox") {
     "//ui/gfx",
     "//ui/webui/resources/cr_components/composebox:mojo_bindings",
   ]
+  if (!is_android) {
+    deps += [ "//chrome/browser/ui/views/drive_picker_host:mojo_bindings" ]
+  }
 }
 
 source_set("searchbox_impl") {
@@ -52,6 +55,7 @@ source_set("searchbox_impl") {
     "//chrome/browser/contextual_search",
     "//chrome/browser/contextual_tasks",
     "//chrome/browser/contextual_tasks:ui",
+    "//chrome/browser/contextual_tasks:user_data",
     "//chrome/browser/omnibox",
     "//chrome/browser/predictors",
     "//chrome/browser/preloading",
@@ -83,6 +87,7 @@ source_set("searchbox_impl") {
       "//chrome/browser/ui/bookmarks",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/tabs",
+      "//chrome/browser/ui/views/drive_picker_host",
     ]
   }
 }

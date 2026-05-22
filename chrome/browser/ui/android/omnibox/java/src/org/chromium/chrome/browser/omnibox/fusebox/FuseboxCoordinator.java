@@ -193,7 +193,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         mBottomSheetRectProvider = new BottomSheetRectProvider(activity, mParent);
         var dynamicRectProvider =
                 new DynamicRectProvider(viewRectProvider, mBottomSheetRectProvider);
-
         mViewportRectProvider = new ViewportRectProvider(mContext);
         var contextButton = mParent.findViewById(R.id.location_bar_attachments_add);
 
@@ -205,8 +204,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                                         mContext, BrandedColorScheme.APP_DEFAULT),
                                 () -> popupView,
                                 dynamicRectProvider)
-                        // Allows the soft keyboard to show underneath the popup.
-                        .setFocusable(false)
                         .addOnDismissListener(this::onContextPopupDismissed)
                         .setOutsideTouchable(true)
                         .setAnimateFromAnchor(true)
@@ -222,7 +219,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                         popupWindowBuilder.build(),
                         popupView,
                         dynamicRectProvider,
-                        OmniboxFeatures.sShowBottomSheetPopup.getValue());
+                        OmniboxFeatures.shouldShowBottomSheetPopup());
 
         mViewHolder = new FuseboxViewHolder(mParent, popup);
 
@@ -491,6 +488,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         @Override
         public void onConfigurationChanged(Configuration configuration) {
             updateRect();
+            notifyRectChanged();
         }
 
         private void updateRect() {

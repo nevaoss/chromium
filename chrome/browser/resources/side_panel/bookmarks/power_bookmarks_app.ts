@@ -16,7 +16,6 @@ import '//bookmarks-side-panel.top-chrome/shared/sp_list_item_badge.js';
 import '//bookmarks-side-panel.top-chrome/shared/sp_shared_style.css.js';
 import '//resources/cr_elements/cr_hidden_style.css.js';
 import '//resources/cr_elements/cr_icons.css.js';
-import '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import '//resources/cr_elements/cr_button/cr_button.js';
 import '//resources/cr_elements/cr_dialog/cr_dialog.js';
 import '//resources/cr_elements/cr_icon/cr_icon.js';
@@ -32,17 +31,15 @@ import {ColorChangeUpdater} from '//resources/cr_components/color_change_listene
 import type {PriceTrackingBrowserProxy} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
 import {PriceTrackingBrowserProxyImpl} from '//resources/cr_components/commerce/price_tracking_browser_proxy.js';
 import type {BookmarkProductInfo} from '//resources/cr_components/commerce/shared.mojom-webui.js';
-import type {CrActionMenuElement} from '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import type {CrDialogElement} from '//resources/cr_elements/cr_dialog/cr_dialog.js';
 import type {CrLazyRenderElement} from '//resources/cr_elements/cr_lazy_render/cr_lazy_render.js';
 import type {CrToastElement} from '//resources/cr_elements/cr_toast/cr_toast.js';
 import type {CrToolbarSearchFieldElement} from '//resources/cr_elements/cr_toolbar/cr_toolbar_search_field.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {PluralStringProxyImpl} from '//resources/js/plural_string_proxy.js';
-import type {DomRepeatEvent} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 import {PolymerElement} from '//resources/polymer/v3_0/polymer/polymer_bundled.min.js';
 
-import {ActionSource, SortOrder} from './bookmarks.mojom-webui.js';
+import {ActionSource} from './bookmarks.mojom-webui.js';
 import type {BookmarksTreeNode} from './bookmarks.mojom-webui.js';
 import type {BookmarksApiProxy} from './bookmarks_api_proxy.js';
 import {BookmarksApiProxyImpl} from './bookmarks_api_proxy.js';
@@ -51,14 +48,11 @@ import type {PowerBookmarksContextMenuElement} from './power_bookmarks_context_m
 import type {PowerBookmarksEditDialogElement} from './power_bookmarks_edit_dialog.js';
 import {TEMP_FOLDER_ID_PREFIX} from './power_bookmarks_edit_dialog.js';
 import type {PowerBookmarksLabelsElement} from './power_bookmarks_labels.js';
-import type {PowerBookmarksListElement, SortOption} from './power_bookmarks_list.js';
-import {SearchAction} from './power_bookmarks_list.js';
+import type {PowerBookmarksListElement} from './power_bookmarks_list.js';
+import {recordBookmarkAdded, recordFolderAdded, recordSearchCTR, SearchAction} from './power_bookmarks_metrics.js';
 import type {Label} from './power_bookmarks_service.js';
 import {editingDisabledByPolicy, PowerBookmarksService} from './power_bookmarks_service.js';
 import type {PowerBookmarksDelegate} from './power_bookmarks_service.js';
-
-const ADD_FOLDER_ACTION_UMA = 'Bookmarks.FolderAddedFromSidePanel';
-const ADD_URL_ACTION_UMA = 'Bookmarks.AddedFromSidePanel';
 
 export interface PowerBookmarksAppElement {
   $: {
@@ -67,7 +61,6 @@ export interface PowerBookmarksAppElement {
     deletionToast: CrLazyRenderElement<CrToastElement>,
     powerBookmarksContainer: HTMLElement,
     searchField: CrToolbarSearchFieldElement,
-    sortMenu: CrActionMenuElement,
     editDialog: PowerBookmarksEditDialogElement,
     disabledFeatureDialog: CrDialogElement,
     topLevelEmptyState: SpEmptyStateElement,
@@ -107,41 +100,6 @@ export class PowerBookmarksAppElement extends PolymerElement implements
       labels_: {
         type: Array,
         value: () => [],
-      },
-
-      activeSortIndex_: {
-        type: Number,
-        value: () => loadTimeData.getInteger('sortOrder'),
-      },
-
-      sortTypes_: {
-        type: Array,
-        value: () =>
-            [{
-              sortOrder: SortOrder.kNewest,
-              label: loadTimeData.getString('sortNewest'),
-              lowerLabel: loadTimeData.getString('sortNewestLower'),
-            },
-             {
-               sortOrder: SortOrder.kOldest,
-               label: loadTimeData.getString('sortOldest'),
-               lowerLabel: loadTimeData.getString('sortOldestLower'),
-             },
-             {
-               sortOrder: SortOrder.kLastOpened,
-               label: loadTimeData.getString('sortLastOpened'),
-               lowerLabel: loadTimeData.getString('sortLastOpenedLower'),
-             },
-             {
-               sortOrder: SortOrder.kAlphabetical,
-               label: loadTimeData.getString('sortAlphabetically'),
-               lowerLabel: loadTimeData.getString('sortAlphabetically'),
-             },
-             {
-               sortOrder: SortOrder.kReverseAlphabetical,
-               label: loadTimeData.getString('sortReverseAlphabetically'),
-               lowerLabel: loadTimeData.getString('sortReverseAlphabetically'),
-             }],
       },
 
       editing_: {
@@ -199,6 +157,11 @@ export class PowerBookmarksAppElement extends PolymerElement implements
         value: false,
       },
 
+      canAddCurrentUrl_: {
+        type: Boolean,
+        value: false,
+      },
+
       sectionVisibility_: {
         type: Object,
         computed: 'computeSectionVisibility_(hasLoadedData_,' +
@@ -206,6 +169,12 @@ export class PowerBookmarksAppElement extends PolymerElement implements
             'labels_.length, hasSomeActiveFilter_)',
       },
     };
+  }
+
+  static get observers() {
+    return [
+      'updateCanAddCurrentUrl_(currentUrl_) ',
+    ];
   }
 
   private bookmarksApi_: BookmarksApiProxy =
@@ -218,8 +187,6 @@ export class PowerBookmarksAppElement extends PolymerElement implements
   private bookmarksService_: PowerBookmarksService;
   declare private activeFolderPath_: BookmarksTreeNode[];
   declare private labels_: Label[];
-  declare private activeSortIndex_: number;
-  declare private sortTypes_: SortOption[];
   declare private searchQuery_: string|undefined;
   declare private currentUrl_: string|undefined;
   declare private editing_: boolean;
@@ -231,8 +198,8 @@ export class PowerBookmarksAppElement extends PolymerElement implements
   declare private hasLoadedData_: boolean;
   declare private hasSomeActiveFilter_: boolean;
   declare private hasShownBookmarks_: boolean;
+  declare private canAddCurrentUrl_: boolean;
   declare private sectionVisibility_: AppSectionVisibility;
-  private recordCountMetricsOnNextUpdate_: boolean = false;
   private showUiCalled_: boolean = false;
   private visibilityChangedListener_: () => void = () => {
     if (document.visibilityState === 'hidden') {
@@ -304,22 +271,26 @@ export class PowerBookmarksAppElement extends PolymerElement implements
   onBookmarksLoaded() {
     this.$.bookmarksList.onBookmarksLoaded();
     this.hasLoadedData_ = true;
+    this.updateCanAddCurrentUrl_();
   }
 
   onBookmarkChanged(id: string) {
     this.$.bookmarksList.onBookmarkChanged(id);
     this.updateShoppingData_();
+    this.updateCanAddCurrentUrl_();
   }
 
   onBookmarkAdded(bookmark: BookmarksTreeNode, parent: BookmarksTreeNode) {
     this.$.bookmarksList.onBookmarkAdded(bookmark, parent);
     this.updateShoppingData_();
+    this.updateCanAddCurrentUrl_();
   }
 
   onBookmarkMoved(
       bookmark: BookmarksTreeNode, oldParent: BookmarksTreeNode,
       newParent: BookmarksTreeNode) {
     this.$.bookmarksList.onBookmarkMoved(bookmark, oldParent, newParent);
+    this.updateCanAddCurrentUrl_();
   }
 
   onBookmarkRemoved(bookmark: BookmarksTreeNode) {
@@ -334,6 +305,7 @@ export class PowerBookmarksAppElement extends PolymerElement implements
     if (this.selectedBookmarks_[bookmark.id]) {
       this.set(`selectedBookmarks_.${bookmark.id}`, false);
     }
+    this.updateCanAddCurrentUrl_();
   }
 
   getTrackedProductInfos(): {[key: string]: BookmarkProductInfo} {
@@ -398,22 +370,9 @@ export class PowerBookmarksAppElement extends PolymerElement implements
     this.$.bookmarksList.setImageUrl(bookmark, productInfo.info.imageUrl);
   }
 
-  private canAddCurrentUrl_(): boolean {
-    return this.bookmarksService_.canAddUrl(
+  private updateCanAddCurrentUrl_() {
+    this.canAddCurrentUrl_ = this.bookmarksService_.canAddUrl(
         this.currentUrl_, this.getActiveFolder_());
-  }
-
-  private getSortMenuItemLabel_(sortType: SortOption): string {
-    return loadTimeData.getStringF('sortByType', sortType.label);
-  }
-
-  private getSortMenuItemLowerLabel_(sortType: SortOption): string {
-    return loadTimeData.getStringF('sortByType', sortType.lowerLabel);
-  }
-
-  private sortMenuItemIsSelected_(sortType: SortOption): boolean {
-    return this.sortTypes_[this.activeSortIndex_].sortOrder ===
-        sortType.sortOrder;
   }
 
   private async onBookmarksEdited_(event: CustomEvent<{
@@ -427,7 +386,7 @@ export class PowerBookmarksAppElement extends PolymerElement implements
     event.stopPropagation();
     let parentId = event.detail.folderId;
     for (const folder of event.detail.newFolders) {
-      chrome.metricsPrivate.recordUserAction(ADD_FOLDER_ACTION_UMA);
+      recordFolderAdded();
       const result: {newFolderId: string} =
           await this.bookmarksApi_.createFolder(folder.parentId, folder.title);
       folder.children!.forEach(child => child.parentId = result.newFolderId);
@@ -477,14 +436,11 @@ export class PowerBookmarksAppElement extends PolymerElement implements
   }
 
   private onSearchChanged_(e: CustomEvent<string>) {
-    this.recordCountMetricsOnNextUpdate_ = true;
     this.searchQuery_ = e.detail.toLocaleLowerCase();
   }
 
   private onSearchBlurred_() {
-    chrome.metricsPrivate.recordEnumerationValue(
-        'PowerBookmarks.SidePanel.Search.CTR', SearchAction.SEARCHED,
-        SearchAction.COUNT);
+    recordSearchCTR(SearchAction.SEARCHED);
   }
 
   private onContextMenuShown_(bookmark: BookmarksTreeNode) {
@@ -524,9 +480,7 @@ export class PowerBookmarksAppElement extends PolymerElement implements
         });
   }
 
-  private onBulkEditClicked_(event: MouseEvent) {
-    event.preventDefault();
-    event.stopPropagation();
+  private onBulkEditClick_() {
     this.editing_ = !this.editing_;
     if (!this.editing_) {
       this.selectedBookmarks_ = {};
@@ -578,12 +532,6 @@ export class PowerBookmarksAppElement extends PolymerElement implements
     if (!this.$.contextMenu.isOpen()) {
       this.contextMenuBookmark_ = undefined;
     }
-  }
-
-  private onShowSortMenuClicked_(event: CustomEvent<MouseEvent>) {
-    event.preventDefault();
-    event.stopPropagation();
-    this.$.sortMenu.showAt(event.detail.target as HTMLElement);
   }
 
   private onClearSearch_() {
@@ -674,29 +622,13 @@ export class PowerBookmarksAppElement extends PolymerElement implements
         });
   }
 
-  private getActiveSortType(sortTypes: SortOption[], activeSortIndex: number):
-      SortOption {
-    return sortTypes[activeSortIndex];
-  }
-
-  private onSortTypeClicked_(event: DomRepeatEvent<SortOption>) {
-    event.preventDefault();
-    event.stopPropagation();
-    this.$.sortMenu.close();
-    this.activeSortIndex_ = event.model.index;
-    this.bookmarksApi_.setSortOrder(event.model.item.sortOrder);
-    chrome.metricsPrivate.recordEnumerationValue(
-        'PowerBookmarks.SidePanel.SortTypeShown', event.model.item.sortOrder,
-        SortOrder.kCount);
-  }
-
   private onAddTabClicked_() {
     const newParent = this.$.bookmarksList.getParentFolder();
     if (editingDisabledByPolicy([newParent])) {
       this.showDisabledFeatureDialog_();
       return;
     }
-    chrome.metricsPrivate.recordUserAction(ADD_URL_ACTION_UMA);
+    recordBookmarkAdded();
     this.bookmarksApi_.bookmarkCurrentTabInFolder(newParent.id);
   }
 

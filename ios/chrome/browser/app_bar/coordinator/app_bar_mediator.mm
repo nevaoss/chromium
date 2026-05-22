@@ -22,7 +22,6 @@
 #import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
-#import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
@@ -53,6 +52,7 @@
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_params.h"
 #import "ios/web/public/web_state.h"
+#import "ios/web/public/web_state_observer_bridge.h"
 #import "url/gurl.h"
 
 @interface AppBarMediator () <IncognitoStateObserver,
@@ -63,6 +63,9 @@
 
 // Called when the Gemini floaty invocation state changes.
 - (void)geminiFloatyInvokedChanged:(BOOL)isInvoked;
+
+// Called when the Gemini availability changes for a page.
+- (void)geminiAvailabilityChanged:(BOOL)isAvailable;
 
 // The web state list currently observed by this mediator.
 @property(nonatomic, assign) WebStateList* currentWebStateList;
@@ -81,6 +84,9 @@ class GeminiBrowserAgentObserverBridge : public GeminiBrowserAgent::Observer {
       : mediator_(mediator) {}
   void OnFloatyInvokedChanged(bool is_invoked) override {
     [mediator_ geminiFloatyInvokedChanged:is_invoked];
+  }
+  void OnGeminiAvailabilityChanged(bool available) override {
+    [mediator_ geminiAvailabilityChanged:available];
   }
 
  private:
@@ -504,16 +510,6 @@ class GeminiBrowserAgentObserverBridge : public GeminiBrowserAgent::Observer {
 
 - (void)assistantButtonTappedWithState:(AppBarAssistantButtonState)state {
   switch (state) {
-    case AppBarAssistantButtonState::kLens: {
-      OpenLensInputSelectionCommand* command =
-          [[OpenLensInputSelectionCommand alloc]
-                  initWithEntryPoint:LensEntrypoint::AppBar
-                   presentationStyle:LensInputSelectionPresentationStyle::
-                                         SlideFromRight
-              presentationCompletion:nil];
-      [self.lensHandler openLensInputSelection:command];
-      break;
-    }
     case AppBarAssistantButtonState::kAsk: {
       if (!_authenticationService->HasPrimaryIdentity()) {
         ShowSigninCommand* command = [[ShowSigninCommand alloc]
@@ -540,6 +536,9 @@ class GeminiBrowserAgentObserverBridge : public GeminiBrowserAgent::Observer {
       [self.sceneHandler showAssistant];
       break;
     }
+    case AppBarAssistantButtonState::kFallback:
+      // TODO(crbug.com/484000888): Handle fallback action.
+      break;
   }
 }
 
@@ -668,7 +667,7 @@ class GeminiBrowserAgentObserverBridge : public GeminiBrowserAgent::Observer {
 
 // Updates the consumer with the latest state of the assistant button.
 - (void)updateAssistantButton {
-  AppBarAssistantButtonState state = AppBarAssistantButtonState::kLens;
+  AppBarAssistantButtonState state = AppBarAssistantButtonState::kFallback;
 
   if (IsPageActionMenuEnabled()) {
     state = AppBarAssistantButtonState::kAsk;
@@ -676,13 +675,26 @@ class GeminiBrowserAgentObserverBridge : public GeminiBrowserAgent::Observer {
     state = AppBarAssistantButtonState::kAIM;
   }
 
-  BOOL highlighted =
-      _geminiBrowserAgent && _geminiBrowserAgent->is_floaty_invoked();
-  [self.consumer setAssistantButtonState:state highlighted:highlighted];
+  BOOL highlighted = NO;
+  BOOL enabled = YES;
+  if (state == AppBarAssistantButtonState::kAsk) {
+    enabled = _geminiBrowserAgent &&
+              _geminiBrowserAgent->IsGeminiAvailableForActiveWebState();
+    highlighted = enabled && _geminiBrowserAgent &&
+                  _geminiBrowserAgent->is_floaty_invoked();
+  }
+  [self.consumer setAssistantButtonState:state
+                             highlighted:highlighted
+                                 enabled:enabled];
 }
 
 // Called when the Gemini floaty invocation state changes.
 - (void)geminiFloatyInvokedChanged:(BOOL)isInvoked {
+  [self updateAssistantButton];
+}
+
+// Called when the Gemini availability changes.
+- (void)geminiAvailabilityChanged:(BOOL)available {
   [self updateAssistantButton];
 }
 

@@ -1595,17 +1595,17 @@ void MenuItemView::UpdateSelectionBasedState(bool paint_as_selected) {
   const Colors colors = CalculateColors(paint_as_selected);
   if (submenu_arrow_image_view_) {
     submenu_arrow_image_view_->SetImage(ui::ImageModel::FromVectorIcon(
-        vector_icons::kSubmenuArrowChromeRefreshIcon, colors.icon_color));
+        vector_icons::kSubmenuArrowChromeRefreshOldIcon, colors.icon_color));
   }
   MenuDelegate* delegate = GetDelegate();
   if (type_ == Type::kCheckbox && delegate &&
       delegate->IsItemChecked(GetCommand())) {
     radio_check_image_view_->SetImage(
-        ui::ImageModel::FromVectorIcon(kMenuCheckIcon, colors.icon_color));
+        ui::ImageModel::FromVectorIcon(kMenuCheckOldIcon, colors.icon_color));
   } else if (type_ == Type::kRadio) {
     const bool toggled = delegate && delegate->IsItemChecked(GetCommand());
     const gfx::VectorIcon& radio_icon =
-        toggled ? kMenuRadioSelectedIcon : kMenuRadioEmptyIcon;
+        toggled ? kMenuRadioSelectedOldIcon : kMenuRadioEmptyOldIcon;
     const SkColor radio_icon_color = GetColorProvider()->GetColor(
         toggled ? ui::kColorRadioButtonForegroundChecked
                 : ui::kColorRadioButtonForegroundUnchecked);

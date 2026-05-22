@@ -23,24 +23,27 @@ import org.chromium.chrome.browser.autofill.GoogleWalletLauncher;
 import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManager;
 import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManagerFactory;
 import org.chromium.chrome.browser.autofill.editors.autofill_ai.EntityEditorCoordinator;
+import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment;
+import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment.AutofillOptionsReferrer;
 import org.chromium.chrome.browser.device_reauth.BiometricStatus;
 import org.chromium.chrome.browser.device_reauth.DeviceAuthSource;
 import org.chromium.chrome.browser.device_reauth.ReauthenticatorBridge;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
+import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.components.autofill.autofill_ai.EntityInstance;
 import org.chromium.components.autofill.autofill_ai.EntityInstanceWithLabels;
 import org.chromium.components.autofill.autofill_ai.EntityType;
 import org.chromium.components.autofill.autofill_ai.RecordType;
+import org.chromium.components.browser_ui.settings.CardWithButtonPreference;
+import org.chromium.components.browser_ui.settings.SettingsNavigation;
+import org.chromium.components.browser_ui.settings.search.SettingsIndexData;
 import org.chromium.components.browser_ui.styles.SemanticColorUtils;
 import org.chromium.components.user_prefs.UserPrefs;
 
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -49,6 +52,8 @@ import java.util.Set;
 @NullMarked
 public class AutofillAiDelegate {
     private static final int DEFAULT_SNACKBAR_DURATION = 10000;
+    static final String DISABLED_WALLET_DATA_SHARING = "disabled_wallet_data_sharing";
+    static final String DISABLED_SETTINGS_INFO = "disabled_settings_info";
 
     private final ChromeBaseSettingsFragment mFragment;
     private final EntityDataManager.EntityDataManagerObserver mEntityObserver;
@@ -63,7 +68,7 @@ public class AutofillAiDelegate {
                     if (entityDataManager == null) {
                         return;
                     }
-                    entityDataManager.removeEntityInstance(entityInstance.getGUID());
+                    entityDataManager.removeEntityInstance(entityInstance.getGuid());
                 }
 
                 @Override
@@ -102,7 +107,9 @@ public class AutofillAiDelegate {
      * @param fragment The fragment hosting the settings.
      * @param entityObserver Observer to be notified if entities change.
      */
-    AutofillAiDelegate(ChromeBaseSettingsFragment fragment, EntityDataManager.EntityDataManagerObserver entityObserver) {
+    AutofillAiDelegate(
+            ChromeBaseSettingsFragment fragment,
+            EntityDataManager.EntityDataManagerObserver entityObserver) {
         mFragment = fragment;
         mEntityObserver = entityObserver;
     }
@@ -113,7 +120,7 @@ public class AutofillAiDelegate {
 
     void onActivityCreated() {
         EntityDataManager entityDataManager =
-            EntityDataManagerFactory.getForProfile(mFragment.getProfile());
+                EntityDataManagerFactory.getForProfile(mFragment.getProfile());
         if (entityDataManager != null) {
             entityDataManager.registerDataObserver(mEntityObserver);
         }
@@ -121,7 +128,7 @@ public class AutofillAiDelegate {
 
     void onDestroyView() {
         EntityDataManager entityDataManager =
-            EntityDataManagerFactory.getForProfile(mFragment.getProfile());
+                EntityDataManagerFactory.getForProfile(mFragment.getProfile());
         if (entityDataManager != null) {
             entityDataManager.unregisterDataObserver(mEntityObserver);
         }
@@ -141,6 +148,135 @@ public class AutofillAiDelegate {
         return AutofillClientProviderUtils.getAndroidAutofillFrameworkAvailability(
                         UserPrefs.get(profile))
                 == AndroidAutofillAvailabilityStatus.AVAILABLE;
+    }
+
+    private static boolean shouldShowWalletDataSharingDataCard(Profile profile) {
+        EntityDataManager entityDataManager = EntityDataManagerFactory.getForProfile(profile);
+        return !disabledSettingsInThirdPartyMode(profile)
+                && entityDataManager != null
+                && !entityDataManager.isWalletPublicPassStorageEnabled()
+                && ChromeFeatureList.isEnabled(
+                        ChromeFeatureList.AUTOFILL_AI_SHOW_WALLET_DISABLED_BANNER);
+    }
+
+    /** Adds an information card if sharing data from Wallet is disabled. */
+    void maybeAddDisabledWalletDataSharingDataCard(PreferenceScreen screen) {
+        if (shouldShowWalletDataSharingDataCard(mFragment.getProfile())) {
+            addDisabledWalletDataSharingDataCard(screen);
+        }
+    }
+
+    private void addDisabledWalletDataSharingDataCard(PreferenceScreen screen) {
+        // LINT.IfChange(DisabledWalletDataSharingDataCard)
+        CardWithButtonPreference disabledSharingWalletDataPref =
+                new CardWithButtonPreference(getStyledContext(), null);
+        disabledSharingWalletDataPref.setKey(DISABLED_WALLET_DATA_SHARING);
+        disabledSharingWalletDataPref.setTitle(R.string.autofill_wallet_data_sharing_promo_title);
+        disabledSharingWalletDataPref.setSummary(
+                R.string.autofill_wallet_data_sharing_promo_subtitle);
+        // LINT.ThenChange(:DynamicDisabledWalletDataSharingDataCard)
+        disabledSharingWalletDataPref.setButtonText(
+                mFragment
+                        .getResources()
+                        .getString(R.string.autofill_wallet_data_sharing_promo_button_label));
+        disabledSharingWalletDataPref.setOnButtonClick(
+                () -> {
+                    Context context = mFragment.getContext();
+                    if (context != null) {
+                        GoogleWalletLauncher.openGoogleWalletPassesSettings(
+                                context, context.getPackageManager());
+                    }
+                });
+
+        screen.addPreference(disabledSharingWalletDataPref);
+    }
+
+    /** Adds an information card if Chrome settings are disabled in third-party mode. */
+    void maybeAddDisabledSettingsInfoCard(
+            PreferenceScreen screen, @AutofillOptionsReferrer int referrer) {
+        if (disabledSettingsInThirdPartyMode(mFragment.getProfile())) {
+            addDisabledSettingsInfoCard(screen, referrer);
+        }
+    }
+
+    private void addDisabledSettingsInfoCard(
+            PreferenceScreen screen, @AutofillOptionsReferrer int referrer) {
+        // LINT.IfChange(AddDisabledSettingsInfoCard)
+        CardWithButtonPreference disabledSettingsInfoPref =
+                new CardWithButtonPreference(getStyledContext(), null);
+        disabledSettingsInfoPref.setKey(DISABLED_SETTINGS_INFO);
+        disabledSettingsInfoPref.setTitle(R.string.autofill_disable_settings_explanation_title);
+        disabledSettingsInfoPref.setSummary(getDisabledSettingsSummaryResId());
+        // LINT.ThenChange(:DynamicDisabledSettingsInfoCard)
+        disabledSettingsInfoPref.setButtonText(
+                mFragment
+                        .getResources()
+                        .getString(R.string.autofill_disable_settings_button_label));
+        disabledSettingsInfoPref.setIconResource(R.drawable.ic_google_services_24dp);
+        disabledSettingsInfoPref.setOnButtonClick(
+                () -> {
+                    SettingsNavigation settingsNavigation =
+                            SettingsNavigationFactory.createSettingsNavigation();
+                    settingsNavigation.startSettings(
+                            getStyledContext(),
+                            AutofillOptionsFragment.class,
+                            AutofillOptionsFragment.createRequiredArgs(referrer),
+                            /* addToBackStack= */ true);
+                });
+
+        screen.addPreference(disabledSettingsInfoPref);
+    }
+
+    private static int getDisabledSettingsSummaryResId() {
+        return ChromeFeatureList.isEnabled(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA)
+                ? R.string.autofill_disable_settings_explanation_v2
+                : R.string.autofill_disable_settings_explanation;
+    }
+
+    /** Adds an information card to the search index if Chrome settings are disabled. */
+    static void maybeAddDisabledSettingsInfoCard(
+            SettingsIndexData indexData, Profile profile, String prefFragmentName) {
+        if (disabledSettingsInThirdPartyMode(profile)) {
+            if (indexData.getEntryForKey(prefFragmentName, DISABLED_SETTINGS_INFO) == null) {
+                addDisabledSettingsInfoCard(indexData, prefFragmentName);
+            }
+        } else {
+            indexData.removeEntryForKey(prefFragmentName, DISABLED_SETTINGS_INFO);
+        }
+    }
+
+    private static void addDisabledSettingsInfoCard(
+            SettingsIndexData indexData, String prefFragmentName) {
+        // LINT.IfChange(DynamicDisabledSettingsInfoCard)
+        indexData.addEntryForKey(
+                prefFragmentName,
+                DISABLED_SETTINGS_INFO,
+                R.string.autofill_disable_settings_explanation_title,
+                getDisabledSettingsSummaryResId());
+        // LINT.ThenChange(:AddDisabledSettingsInfoCard)
+    }
+
+    /** Adds an information card to the search index if sharing data from Wallet is disabled. */
+    static void maybeAddDisabledWalletDataSharingDataCard(
+            SettingsIndexData indexData, Profile profile, String prefFragmentName) {
+        if (shouldShowWalletDataSharingDataCard(profile)) {
+            if (indexData.getEntryForKey(prefFragmentName, DISABLED_WALLET_DATA_SHARING) == null) {
+                addDisabledWalletDataSharingDataCard(indexData, prefFragmentName);
+            }
+        } else {
+            indexData.removeEntryForKey(prefFragmentName, DISABLED_WALLET_DATA_SHARING);
+        }
+    }
+
+    private static void addDisabledWalletDataSharingDataCard(
+            SettingsIndexData indexData, String prefFragmentName) {
+        // LINT.IfChange(DynamicDisabledWalletDataSharingDataCard)
+        indexData.addEntryForKey(
+                prefFragmentName,
+                DISABLED_WALLET_DATA_SHARING,
+                R.string.autofill_wallet_data_sharing_promo_title,
+                R.string.autofill_wallet_data_sharing_promo_subtitle);
+        // LINT.ThenChange(:DisabledWalletDataSharingDataCard)
     }
 
     void addAutofillAiEntities(PreferenceScreen screen, @Nullable Set<Integer> typeFilter) {
@@ -247,13 +383,12 @@ public class AutofillAiDelegate {
         pref.setEnabled(!disabled);
         pref.setOnPreferenceClickListener(
                 preference -> {
-                    Instant nowInstant = Instant.ofEpochMilli(TimeUtils.currentTimeMillis());
-                    LocalDate modifiedDate =
-                            nowInstant.atZone(ZoneId.systemDefault()).toLocalDate();
+                    long currentDate = TimeUtils.currentTimeMillis();
                     showEntityEditor(
                             new EntityInstance.Builder(entityType)
-                                    .setModifiedDate(modifiedDate)
+                                    .setModifiedDate(currentDate)
                                     .setUseCount(0)
+                                    .setUseDate(currentDate)
                                     .setRecordType(
                                             entityType.isEligibleForWalletStorage()
                                                     ? RecordType.SERVER_WALLET

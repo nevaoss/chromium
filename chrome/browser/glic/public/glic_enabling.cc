@@ -73,7 +73,11 @@ namespace glic {
 // Comma separated list of countries to enable Glic, by default, if country
 // filtering is enabled.
 
+#if BUILDFLAG(IS_ANDROID)
+constexpr char kDefaultEnabledCountries[] = "us";
+#else
 constexpr char kDefaultEnabledCountries[] = "us,ca,nz,in";
+#endif
 
 // Feature flag kGlicLocaleFiltering controls whether locale filtering is
 // applied client side. Two finch params are used to control this, both are a
@@ -89,12 +93,16 @@ constexpr char kDefaultEnabledCountries[] = "us,ca,nz,in";
 // Comma separated list of locales to enable Glic, by default, if locale
 // filtering is enabled.
 constexpr char kDefaultEnabledLocales[] =
+#if BUILDFLAG(IS_ANDROID)
+    "en-US"
+#else
     "af,am,bg,bn,ca,cs,da,de,el,es,es-419,et,fi,fil,fr,gu,hi,hr,hu,id,it,ja,kn,"
     "ko,lt,lv,ml,mr,ms,nl,no,pl,pt-BR,pt-PT,ro,ru,sk,sl,sr,sv,sw,ta,te,th,tr,"
     "uk,vi,zh-CN,zh-TW,en-GB,en-US"
 #if BUILDFLAG(IS_CHROMEOS)
     ",eu,gl,is,zu"
-#endif
+#endif  // BUILDFLAG(IS_CHROMEOS)
+#endif  // BUILDFLAG(IS_ANDROID)
     ;
 
 namespace {
@@ -760,6 +768,12 @@ GlicEnabling::GlicEnabling(Profile* profile,
     subscription_eligibility_service_observation_.Observe(
         subscription_eligibility_service);
   }
+
+  static_assert(std::is_final_v<GlicEnabling>,
+                "If you want to inherit from GlicEnabling, ensure this "
+                "function call does not violate the 'no virtual functions in "
+                "constructors' style guide rule. Consider a 2-phase setup");
+  last_experimental_triggering_state_ = GetExperimentalTriggeringState();
 }
 GlicEnabling::~GlicEnabling() = default;
 
@@ -906,6 +920,19 @@ GlicEnabling::GetExperimentalTriggeringState() const {
   return syncer::DeviceInfo::GlicExperimentalTriggeringState::kNeedsOptIn;
 }
 
+RequiredExperimentalOptIn GlicEnabling::GetRequiredExperimentalOptIn() const {
+  if (!HasConsented()) {
+    return RequiredExperimentalOptIn::kGlic;
+  }
+  if (!GetUserEnabledActuationOnWeb()) {
+    return RequiredExperimentalOptIn::kActuation;
+  }
+  if (!GetExperimentalTriggeringEnabled()) {
+    return RequiredExperimentalOptIn::kExperimental;
+  }
+  return RequiredExperimentalOptIn::kNotNeeded;
+}
+
 void GlicEnabling::SetExperimentalTriggeringEnabled(bool enabled) {
   profile_->GetPrefs()->SetBoolean(prefs::kGlicExperimentalTriggeringEnabled,
                                    enabled);
@@ -939,6 +966,7 @@ GlicEnabling::RegisterOnUserEnabledActuationOnWebChanged(
 
 void GlicEnabling::OnUserEnabledActuationOnWebChanged() {
   user_enabled_actuation_on_web_changed_callback_list_.Notify();
+  MaybeNotifyExperimentalTriggeringStateChanged();
 }
 
 base::CallbackListSubscription
@@ -950,6 +978,14 @@ GlicEnabling::RegisterOnExperimentalTriggeringEnabledChanged(
 
 void GlicEnabling::OnExperimentalTriggeringEnabledChanged() {
   experimental_triggering_enabled_changed_callback_list_.Notify();
+  MaybeNotifyExperimentalTriggeringStateChanged();
+}
+
+base::CallbackListSubscription
+GlicEnabling::RegisterOnExperimentalTriggeringStateChanged(
+    ExperimentalTriggeringStateChangedCallback callback) {
+  return experimental_triggering_state_changed_callback_list_.Add(
+      std::move(callback));
 }
 
 base::CallbackListSubscription GlicEnabling::RegisterOnShowSettingsPageChanged(
@@ -1014,12 +1050,22 @@ void GlicEnabling::UpdateEnabledStatus() {
   enable_changed_callback_list_.Notify();
   show_settings_page_changed_callback_list_.Notify();
   profile_ready_state_changed_callback_list_.Notify();
+  MaybeNotifyExperimentalTriggeringStateChanged();
 }
 
 void GlicEnabling::UpdateConsentStatus() {
   consent_changed_callback_list_.Notify();
   show_settings_page_changed_callback_list_.Notify();
   profile_ready_state_changed_callback_list_.Notify();
+  MaybeNotifyExperimentalTriggeringStateChanged();
+}
+
+void GlicEnabling::MaybeNotifyExperimentalTriggeringStateChanged() {
+  auto new_state = GetExperimentalTriggeringState();
+  if (new_state != last_experimental_triggering_state_) {
+    last_experimental_triggering_state_ = new_state;
+    experimental_triggering_state_changed_callback_list_.Notify();
+  }
 }
 
 }  // namespace glic

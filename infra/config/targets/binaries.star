@@ -855,6 +855,18 @@ targets.binaries.script(
     module_scheme = "single",
 )
 
+targets.binaries.script(
+    name = "content_shell_freeze_test",
+    label = "//content/shell:content_shell_freeze_test",
+    script = "//content/shell/tools/aaudio_freezer_integration_test.py",
+    skip_usage_check = True,
+    resultdb = targets.resultdb(
+        enable = True,
+        result_format = "single",
+    ),
+    module_scheme = "single",
+)
+
 targets.binaries.console_test_launcher(
     name = "content_shell_test_apk",
     label = "//content/shell/android:content_shell_test_apk",
@@ -2022,6 +2034,12 @@ targets.binaries.console_test_launcher(
     module_scheme = "gtest",
 )
 
+targets.binaries.console_test_launcher(
+    name = "puffin_unittests",
+    label = "//third_party/puffin:puffin_unittests",
+    module_scheme = "gtest",
+)
+
 targets.binaries.windowed_test_launcher(
     name = "remoting_unittests",
     label = "//remoting:remoting_unittests",
@@ -2411,6 +2429,13 @@ targets.binaries.console_test_launcher(
         "--ui-test-action-max-timeout=45000",
         "--ui-test-action-timeout=40000",
     ],
+    module_scheme = "gtest",
+)
+
+targets.binaries.console_test_launcher(
+    name = "updater_fuzztests",
+    label = "//chrome/updater:updater_fuzztests",
+    skip_usage_check = True,
     module_scheme = "gtest",
 )
 

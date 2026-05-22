@@ -183,6 +183,11 @@ chromium-metrics-reviews@google.com.
   <variant name="OnOpen" summary="the glic panel is opened."/>
 </variants>
 
+<variants name="PressureLevel">
+  <variant name="CriticalPressure" summary="critical memory pressure"/>
+  <variant name="ModeratePressure" summary="moderate memory pressure"/>
+</variants>
+
 <variants name="ProfileEnablementSuffix">
   <variant name="Startup"
       summary="recorded early in startup when the first window is opened."/>
@@ -838,6 +843,39 @@ chromium-metrics-reviews@google.com.
 
 </histogram>
 
+<histogram name="Glic.Instance.AvgClientPrivateMemoryFootprint.{PressureLevel}"
+    units="MB" expires_after="2027-06-01">
+  <owner>bryantchandler@google.com</owner>
+  <owner>birnie@google.com</owner>
+  <summary>
+    Records the average private memory footprint of Client processes across all
+    unhibernated Glic instances when a {PressureLevel} event is received.
+  </summary>
+  <token key="PressureLevel" variants="PressureLevel"/>
+</histogram>
+
+<histogram name="Glic.Instance.AvgTotalPrivateMemoryFootprint.{PressureLevel}"
+    units="MB" expires_after="2027-06-01">
+  <owner>bryantchandler@google.com</owner>
+  <owner>birnie@google.com</owner>
+  <summary>
+    Records the average total private memory footprint of all processes across
+    all unhibernated Glic instances when a {PressureLevel} event is received.
+  </summary>
+  <token key="PressureLevel" variants="PressureLevel"/>
+</histogram>
+
+<histogram name="Glic.Instance.AvgWebUIPrivateMemoryFootprint.{PressureLevel}"
+    units="MB" expires_after="2027-06-01">
+  <owner>bryantchandler@google.com</owner>
+  <owner>birnie@google.com</owner>
+  <summary>
+    Records the average private memory footprint of WebUI processes across all
+    unhibernated Glic instances when a {PressureLevel} event is received.
+  </summary>
+  <token key="PressureLevel" variants="PressureLevel"/>
+</histogram>
+
 <histogram name="Glic.Instance.EventCounts" enum="GlicInstanceEvent"
     expires_after="2026-10-04">
   <owner>birnie@google.com</owner>
@@ -879,6 +917,18 @@ chromium-metrics-reviews@google.com.
     Recorded each time toggle is called for showing the floaty and is a
     companion metric to Glic.Instance.Floaty.ToggleSource which included
     invocations that close Floaty.
+  </summary>
+</histogram>
+
+<histogram name="Glic.Instance.Floaty.OpenSource2" enum="GlicInvocationSource"
+    expires_after="2026-10-04">
+  <owner>basiaz@google.com</owner>
+  <owner>birnie@google.com</owner>
+  <summary>
+    Records the source of the invocation when the Glic Floaty panel becomes
+    visible for the first time after being closed, for the new metrics behavior.
+    Recorded when detached from Side Panel, when opened directly via os button /
+    hotkey, or when the conversation is switched.
   </summary>
 </histogram>
 
@@ -1043,26 +1093,6 @@ chromium-metrics-reviews@google.com.
     panel is shown.
   </summary>
   <token key="EmbedderType" variants="EmbedderType"/>
-</histogram>
-
-<histogram name="Glic.Instance.PrivateMemoryFootprint.CriticalPressure"
-    units="MB" expires_after="2026-12-09">
-  <owner>birnie@google.com</owner>
-  <owner>bryantchandler@google.com</owner>
-  <summary>
-    Records the private memory footprint of each Glic instance (sum of WebUI +
-    WebClient) when a critical memory pressure event is received.
-  </summary>
-</histogram>
-
-<histogram name="Glic.Instance.PrivateMemoryFootprint.ModeratePressure"
-    units="MB" expires_after="2026-12-09">
-  <owner>birnie@google.com</owner>
-  <owner>bryantchandler@google.com</owner>
-  <summary>
-    Records the private memory footprint of each Glic instance (sum of WebUI +
-    WebClient) when a moderate memory pressure event is received.
-  </summary>
 </histogram>
 
 <histogram name="Glic.Instance.Session.CreateTabCount" units="count"
@@ -1262,6 +1292,19 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Glic.Instance.SidePanel.OpenSource2"
+    enum="GlicInvocationSource" expires_after="2026-10-04">
+  <owner>birnie@google.com</owner>
+  <owner>perrier@google.com</owner>
+  <summary>
+    Records the source of the invocation when the Glic panel becomes visible for
+    the first time after being closed, for the new metrics behavior. Recorded
+    when first visible (for foreground and background instance creation), when
+    popped back from Floaty, for a conversation switch. It is not logged on tab
+    switches.
+  </summary>
+</histogram>
+
 <histogram name="Glic.Instance.SidePanel.ToggleSource"
     enum="GlicInvocationSource" expires_after="2026-10-04">
   <owner>birnie@google.com</owner>
@@ -1352,6 +1395,17 @@ chromium-metrics-reviews@google.com.
     Records the total time a GlicInstance was hidden throughout its lifetime.
     Recorded when the GlicInstance is destroyed.
   </summary>
+</histogram>
+
+<histogram name="Glic.Instance.TotalPrivateMemoryFootprint.{PressureLevel}"
+    units="MB" expires_after="2027-06-01">
+  <owner>bryantchandler@google.com</owner>
+  <owner>birnie@google.com</owner>
+  <summary>
+    Records the absolute total private memory footprint of all processes across
+    all unhibernated Glic instances when a {PressureLevel} event is received.
+  </summary>
+  <token key="PressureLevel" variants="PressureLevel"/>
 </histogram>
 
 <histogram name="Glic.Instance.TotalTabsBoundInLifetime" units="count"
@@ -2338,6 +2392,28 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Glic.SetAltOSIcon.OnChromeStart" enum="BooleanEnabled"
+    expires_after="2026-10-04">
+  <owner>iwells@chromium.org</owner>
+  <owner>basiaz@google.com</owner>
+  <summary>
+    Records whether the Mac alternative toolbar icon became enabled on Chrome
+    startup. Only emitted if the other app was running during Chrome startup.
+    True means the icon changed and false means the alt icon was already set.
+  </summary>
+</histogram>
+
+<histogram name="Glic.SetAltOSIcon.OnOtherAppStart" enum="BooleanEnabled"
+    expires_after="2026-10-04">
+  <owner>iwells@chromium.org</owner>
+  <owner>basiaz@google.com</owner>
+  <summary>
+    Records whether the Mac alternative toolbar icon became enabled due to
+    another app starting. Logged when the other app starts. True means the icon
+    changed and false means the alt icon was already set.
+  </summary>
+</histogram>
+
 <histogram name="Glic.Sharing.TabPinnedForSharing"
     enum="GlicTabPinnedForSharingResult" expires_after="2026-11-04">
   <owner>wry@chromium.org</owner>
@@ -2828,6 +2904,11 @@ chromium-metrics-reviews@google.com.
   <token key="Suffix">
     <variant name="OnOpen"
         summary="when the Glic panel is opened by the user."/>
+    <variant name="OnOpen2"
+        summary="when the Glic panel is opened by the user for the first time
+                 from a closed state, for the new metrics behavior (see
+                 Glic.Instance.{SidePanel,Floaty}.OpenSource2) for detailed
+                 definitions."/>
     <variant name="SteadyState"
         summary="periodically for active users (those who have completed the
                  Glic FRE)."/>

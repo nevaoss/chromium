@@ -18,7 +18,6 @@
 #include "base/values.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
-#include "chrome/browser/accessibility_annotator/accessibility_annotator_enablement_service_factory.h"
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/commerce/shopping_service_factory.h"
@@ -33,6 +32,7 @@
 #include "chrome/browser/password_manager/password_change_service_factory.h"
 #include "chrome/browser/performance_manager/public/user_tuning/user_performance_tuning_manager.h"
 #include "chrome/browser/performance_manager/public/user_tuning/user_tuning_utils.h"
+#include "chrome/browser/personal_context/personal_context_enablement_service_factory.h"
 #include "chrome/browser/preloading/preloading_features.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_service.h"
 #include "chrome/browser/privacy_sandbox/privacy_sandbox_service_factory.h"
@@ -98,8 +98,6 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/settings_resources.h"
 #include "chrome/grit/settings_resources_map.h"
-#include "components/accessibility_annotator/core/accessibility_annotator_enablement_service.h"
-#include "components/accessibility_annotator/core/accessibility_annotator_types.h"
 #include "components/account_manager_core/account_manager_facade.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/core/browser/data_manager/payments/payments_data_manager.h"
@@ -121,6 +119,8 @@
 #include "components/password_manager/core/common/password_manager_features.h"
 #include "components/performance_manager/public/features.h"
 #include "components/permissions/features.h"
+#include "components/personal_context/core/personal_context_enablement_service.h"
+#include "components/personal_context/core/personal_context_types.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
 #include "components/privacy_sandbox/privacy_sandbox_features.h"
@@ -433,12 +433,6 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
           autofill::features::kYourSavedInfoBrandingInSettings));
 
   html_source->AddBoolean(
-      "enableYourSavedInfoPolicyAndExtentionToggleIndicators",
-      base::FeatureList::IsEnabled(
-          autofill::features::
-              kYourSavedInfoPolicyAndExtentionToggleIndicators));
-
-  html_source->AddBoolean(
       "enableYourSavedInfoShoppingPage",
       base::FeatureList::IsEnabled(
           autofill::features::kYourSavedInfoSettingsPageShoppingIntegration));
@@ -478,6 +472,8 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   plural_string_handler->AddLocalizedString(
       "batchUploadPromoLabel", IDS_BATCH_UPLOAD_PROMO_SUBTITLE_ITEMS_WITH_LINK);
 #endif
+  plural_string_handler->AddLocalizedString("cpuPerformanceCores",
+                                            IDS_SETTINGS_CPU_PERFORMANCE_CORES);
   web_ui->AddMessageHandler(std::move(plural_string_handler));
 
   // Add the metrics handler to write uma stats.
@@ -686,15 +682,13 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
       "searchSettingsUpdate",
       base::FeatureList::IsEnabled(switches::kSearchSettingsUpdate));
 
-  accessibility_annotator::AccessibilityAnnotatorEnablementService*
-      enablement_service =
-          AccessibilityAnnotatorEnablementServiceFactory::GetForProfile(
-              profile);
+  personal_context::PersonalContextEnablementService* enablement_service =
+      PersonalContextEnablementServiceFactory::GetForProfile(profile);
   html_source->AddBoolean(
       "showAccessibilityAnnotatorSettingsLink",
-      enablement_service && enablement_service->GetEnablementState() ==
-                                accessibility_annotator::
-                                    RemoteAnnotatorEnablementState::kEnabled);
+      enablement_service &&
+          enablement_service->GetEnablementState() ==
+              personal_context::PersonalContextEnablementState::kEnabled);
   html_source->AddLocalizedString("accessibilityAnnotatorSettingsTitle",
                                   IDS_ACCESSIBILITY_ANNOTATOR_SETTINGS_TITLE);
   html_source->AddLocalizedString(

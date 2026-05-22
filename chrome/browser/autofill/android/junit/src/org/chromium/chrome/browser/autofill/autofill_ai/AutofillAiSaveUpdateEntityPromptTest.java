@@ -56,7 +56,6 @@ import org.chromium.ui.modaldialog.ModalDialogProperties;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.test.util.modaldialog.FakeModalDialogManager;
 
-import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 
@@ -98,10 +97,8 @@ public class AutofillAiSaveUpdateEntityPromptTest {
         mModalDialogManager = new FakeModalDialogManager(ModalDialogType.APP);
         EntityInstance entity =
                 new EntityInstance.Builder(TestUtils.getVehicleEntityType())
-                        .setGUID("")
+                        .setGuid("")
                         .setRecordType(RecordType.LOCAL)
-                        .setModifiedDate(LocalDate.of(2026, 2, 15))
-                        .setUseCount(0)
                         .build();
         mPrompt =
                 new AutofillAiSaveUpdateEntityPrompt(
@@ -407,10 +404,8 @@ public class AutofillAiSaveUpdateEntityPromptTest {
         // Simulate the user finishing the interaction with the editor.
         EntityInstance updatedEntity =
                 new EntityInstance.Builder(TestUtils.getVehicleEntityType())
-                        .setGUID("")
+                        .setGuid("")
                         .setRecordType(RecordType.LOCAL)
-                        .setModifiedDate(LocalDate.of(2026, 2, 15))
-                        .setUseCount(0)
                         .build();
         mPrompt.onDone(updatedEntity, /* descriptionStringId= */ 0, /* acceptButtonStringId= */ 0);
 
@@ -447,10 +442,8 @@ public class AutofillAiSaveUpdateEntityPromptTest {
         // Simulate the user finishing the interaction with the editor.
         EntityInstance updatedEntity =
                 new EntityInstance.Builder(TestUtils.getVehicleEntityType())
-                        .setGUID("")
+                        .setGuid("")
                         .setRecordType(RecordType.LOCAL)
-                        .setModifiedDate(LocalDate.of(2026, 2, 15))
-                        .setUseCount(0)
                         .build();
         mPrompt.onDone(updatedEntity, /* descriptionStringId= */ 0, /* acceptButtonStringId= */ 0);
         when(mEntityEditor.isShowing()).thenReturn(false);

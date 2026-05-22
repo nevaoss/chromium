@@ -2481,7 +2481,7 @@ if (is_win) {
   common_optimize_on_cflags = []
   common_optimize_on_ldflags = []
 
-  if (is_android) {
+  if (is_android && (use_lld || use_mold)) {
     # TODO(jdduke) Re-enable on mips after resolving linking
     # issues with libc++ (crbug.com/456380).
     if (current_cpu != "mipsel" && current_cpu != "mips64el") {
@@ -3081,6 +3081,13 @@ config("minimal_symbols") {
       # TODO(thakis): Consider making clang emit DW_AT_linkage_name in -g1 mode;
       #               failing that consider doing this on non-Android too.
       cflags += [ "-fdebug-info-for-profiling" ]
+    }
+
+    # Compressing debug info speeds up "isolate tests" step (https://crbug.com/503797275)
+    # TODO(crbug.com/510291227): Enabling for linux & chromeos breaks
+    # sandbox_linux_unittests's BaselinePolicy tests. Figure out why.
+    if (is_android && !is_official_build) {
+      configs += [ "//build/config:compress_debug_sections" ]
     }
 
     asmflags = cflags

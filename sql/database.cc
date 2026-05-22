@@ -449,6 +449,9 @@ int Database::WalCheckpointImpl(base::cstring_view db_name,
 
 base::WeakPtr<Database> Database::GetWeakPtr(InternalApiToken) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!is_open()) {
+    return nullptr;
+  }
   return weak_factory_.GetWeakPtr();
 }
 
@@ -1406,7 +1409,6 @@ bool Database::BeginTransaction(InternalApiToken) {
     return false;
   }
 
-  bool success = true;
   DCHECK_GE(transaction_nesting_, 0);
   if (!transaction_nesting_) {
     needs_rollback_ = false;
@@ -1417,7 +1419,7 @@ bool Database::BeginTransaction(InternalApiToken) {
     }
   }
   ++transaction_nesting_;
-  return success;
+  return true;
 }
 
 void Database::RollbackTransaction(InternalApiToken) {
@@ -1498,16 +1500,25 @@ bool Database::CommitTransaction(InternalApiToken) {
 
 bool Database::BeginTransactionDeprecated() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!is_open()) {
+    return false;
+  }
   return BeginTransaction(InternalApiToken());
 }
 
 bool Database::CommitTransactionDeprecated() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!is_open()) {
+    return false;
+  }
   return CommitTransaction(InternalApiToken());
 }
 
 void Database::RollbackTransactionDeprecated() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!is_open()) {
+    return;
+  }
   RollbackTransaction(InternalApiToken());
 }
 
@@ -2523,11 +2534,8 @@ void Database::DoRollback() {
 
   rollback.Run();
 
-  // The cache may have been accumulating dirty pages for commit.  Note that in
-  // some cases sql::Transaction can fire rollback after a database is closed.
-  if (is_open()) {
-    ReleaseCacheMemoryIfNeeded(false);
-  }
+  // The cache may have been accumulating dirty pages for commit.
+  ReleaseCacheMemoryIfNeeded(false);
 
   needs_rollback_ = false;
 }

@@ -7,6 +7,9 @@ module infobar_internals.mojom;
 // Types for every infobar that can be triggered from the internals page.
 // Keep these sorted alphabetically.
 enum InfoBarType {
+  // Collected cookies infobar.
+  kCollectedCookies,
+
   // Default browser infobar. Can only be triggered on non-ChromeOS desktop
   // platforms.
   [EnableIf=is_win|is_mac|is_linux]
@@ -25,6 +28,10 @@ enum InfoBarType {
   // Installer downloader infobar. Can only be triggered on Windows.
   [EnableIf=is_win_and_chrome_branded]
   kInstallerDownloader,
+
+  // Keystone promotion infobar. Can only be triggered on Mac.
+  [EnableIf=is_mac]
+  kKeystone,
 
   // Reload plugin infobar.
   [EnableIf=enable_plugins]

@@ -890,7 +890,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Android.AAudioSetDeviceId.{Direction}.{Result}"
-    enum="AndroidAudioDeviceType" expires_after="2026-06-21">
+    enum="AndroidAudioDeviceType" expires_after="M155">
   <owner>mjel@google.com</owner>
   <owner>tguilbert@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
@@ -983,7 +983,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Android.MissingChannelMask" units="sparse"
-    expires_after="2026-06-01">
+    expires_after="2027-06-01">
   <owner>dvalenzuela@google.com</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -1055,7 +1055,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Android.SupportedChannelMask" units="sparse"
-    expires_after="2026-06-01">
+    expires_after="2027-06-01">
   <owner>dvalenzuela@google.com</owner>
   <owner>openscreen-eng@google.com</owner>
   <summary>
@@ -1142,6 +1142,23 @@ chromium-metrics-reviews@google.com.
     only two valid options, F32 and S16. All other cases will be recorded as
     kUnknownSampleFormat.
   </summary>
+</histogram>
+
+<histogram
+    name="Media.Audio.Capture.Mac.GetApplicationAudioCaptureIdDuration.{Status}"
+    units="ms" expires_after="2027-05-04">
+  <owner>brandstrom@chromium.org</owner>
+  <owner>webrtc-audio-uma@google.com</owner>
+  <summary>
+    Measures the time required to retrieve the ApplicationAudioCaptureId for a
+    given process identifier on macOS. Logged for each call to
+    GetApplicationAudioCaptureIdForProcess() with the status variant (Success or
+    Failure).
+  </summary>
+  <token key="Status">
+    <variant name="Failure"/>
+    <variant name="Success"/>
+  </token>
 </histogram>
 
 <histogram
@@ -4799,9 +4816,22 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram
+    name="Media.GetDisplayMedia.BasicFlow.Mac.GetAppAudioCaptureIdResult"
+    enum="GetAppAudioCaptureIdMacResult" expires_after="2027-05-06">
+  <owner>brandstrom@chromium.org</owner>
+  <owner>webrtc-audio-uma@google.com</owner>
+  <summary>
+    Records the result of trying to get the audio capture ID of an application
+    whose window was selected in the getDisplayMedia() media picker on macOS.
+    This is recorded once for each call to
+    GetApplicationAudioCaptureIdForProcess().
+  </summary>
+</histogram>
+
 <histogram name="Media.GetDisplayMedia.BasicFlow.Win.GetApplicationIdResult"
-    enum="GetAppMainProcessIdWinResult" expires_after="2026-05-11">
-  <owner>eladalon@chromium.org</owner>
+    enum="GetAppMainProcessIdWinResult" expires_after="2027-05-11">
+  <owner>kron@chromium.org</owner>
   <owner>olka@chromium.org</owner>
   <owner>gabrielbrito@microsoft.com</owner>
   <summary>
@@ -5426,7 +5456,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Media.MediaDevices.GetDisplayMedia.Audio.PermissionDeniedBySystem"
-    enum="Boolean" expires_after="2026-05-01">
+    enum="Boolean" expires_after="2027-05-01">
   <owner>kron@chromium.org</owner>
   <owner>video-cmi-apis@google.com</owner>
   <summary>
@@ -7169,12 +7199,12 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.RTCVideoDecoderInitializationLatencyMs" units="ms"
-    expires_after="2026-05-11">
+    expires_after="2027-05-11">
   <owner>kron@chromium.org</owner>
   <owner>webrtc-video@google.com</owner>
   <summary>
     Initialization latency of the hardware video decoder that is used in the RTC
-    pipeline.
+    pipeline. Recorded directly after a decoder is initialized.
   </summary>
 </histogram>
 
@@ -7201,12 +7231,12 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.RTCVideoDecoderReinitializationLatencyMs" units="ms"
-    expires_after="2026-04-27">
+    expires_after="2027-04-27">
   <owner>kron@chromium.org</owner>
   <owner>webrtc-video@google.com</owner>
   <summary>
     Reinitialization latency of the hardware video decoder that is used in the
-    RTC pipeline.
+    RTC pipeline. Recorded directly after a decoder is reinitialized.
   </summary>
 </histogram>
 
@@ -7555,7 +7585,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Ui.GetDisplayMedia.BasicFlow.SourceCount.{Type}"
-    units="count" expires_after="2026-05-24">
+    units="count" expires_after="2027-05-24">
   <owner>eladalon@chromium.org</owner>
   <owner>tovep@chromium.org</owner>
   <summary>
@@ -7615,21 +7645,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram
-    name="Media.Ui.GetDisplayMedia.ScreenSharingPermissionInteractionMac"
-    enum="MediaUiGetDisplayMediaPermissionInteraction"
-    expires_after="2026-05-13">
-  <owner>tovep@chromium.org</owner>
-  <owner>eladalon@chromium.org</owner>
-  <owner>kron@chromium.org</owner>
-  <summary>
-    Records how far the user has proceeded in the journey to open the
-    screen-recording settings when trying to share a screen without having the
-    permission to do so. This histogram is recorded each time the dialog is
-    closed.
-  </summary>
-</histogram>
-
 <histogram name="Media.Ui.GetDisplayMedia.TabSharingInfoBarInteraction"
     enum="MediaUiGetDisplayMediaTabSharingInfoBarInteraction"
     expires_after="2026-09-13">
@@ -7638,21 +7653,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records which controls are clicked in the TabSharingInfoBar. The histogram
     is recorded for each click on such a control.
-  </summary>
-</histogram>
-
-<histogram
-    name="Media.Ui.GetDisplayMedia.WindowSharingPermissionInteractionMac"
-    enum="MediaUiGetDisplayMediaPermissionInteraction"
-    expires_after="2026-05-13">
-  <owner>tovep@chromium.org</owner>
-  <owner>eladalon@chromium.org</owner>
-  <owner>kron@chromium.org</owner>
-  <summary>
-    Records how far the user has proceeded in the journey to open the
-    screen-recording settings when trying to share a window without having the
-    permission to do so. This histogram is recorded each time the dialog is
-    closed.
   </summary>
 </histogram>
 
@@ -8605,7 +8605,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.VideoEncoder.{Usage}.{Impl}.Status" enum="EncoderStatus"
-    expires_after="2026-09-06">
+    expires_after="2026-11-08">
   <owner>hiroh@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>

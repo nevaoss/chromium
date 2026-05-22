@@ -47,7 +47,6 @@ import org.chromium.ui.test.util.NightModeTestUtils;
 import org.chromium.ui.test.util.RenderTestRule;
 import org.chromium.ui.test.util.RenderTestRule.Component;
 
-import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -89,10 +88,8 @@ public class AutofillAiSaveUpdateEntityPromptRenderTest {
 
     private final EntityInstance mEntity =
             new EntityInstance.Builder(TestUtils.getVehicleEntityType())
-                    .setGUID("")
+                    .setGuid("")
                     .setRecordType(RecordType.LOCAL)
-                    .setModifiedDate(LocalDate.of(2026, 2, 15))
-                    .setUseCount(0)
                     .build();
     private AutofillAiSaveUpdateEntityPromptController mPromptController;
     private AutofillAiSaveUpdateEntityPrompt mPrompt;

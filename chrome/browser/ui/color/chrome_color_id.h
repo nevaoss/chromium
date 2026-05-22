@@ -182,6 +182,10 @@
   /* Frame caption colors. */ \
   E_CPONLY(kColorFrameCaptionActive) \
   E_CPONLY(kColorFrameCaptionInactive) \
+  /* History colors. */ \
+  E_CPONLY(kColorHistoryPageBookmarkStar) \
+  E_CPONLY(kColorHistoryPageSeparator) \
+  E_CPONLY(kColorHistoryPageText) \
   /* History embedding colors. */ \
   E_CPONLY(kColorHistoryEmbeddingsBackground) \
   E_CPONLY(kColorHistoryEmbeddingsDivider) \
@@ -235,7 +239,7 @@
   E_CPONLY(kColorMultiContentsViewInactiveContentOutline) \
   E_CPONLY(kColorMultiContentsViewHighlightContentOutline) \
   E_CPONLY(kColorMultiContentsViewMiniToolbarForeground) \
-  /* Nav Menu Item colors. */ \
+  /* cr-nav-menu-item colors. */ \
   E_CPONLY(kColorNavMenuItem) \
   E_CPONLY(kColorNavMenuItemSelected) \
   E_CPONLY(kColorNavMenuItemBackgroundHover) \
@@ -420,6 +424,7 @@
   E_CPONLY(kColorOmniboxChipOnSystemBlockedActivityIndicatorBackground) \
   E_CPONLY(kColorOmniboxChipOnSystemBlockedActivityIndicatorForeground) \
   E_CPONLY(kColorOmniboxComposeboxChipBackground) \
+  E_CPONLY(kColorOmniboxComposeboxContextEntrypointBackground) \
   E_CPONLY(kColorOmniboxComposeboxDivider) \
   E_CPONLY(kColorOmniboxComposeboxFaviconBackground) \
   E_CPONLY(kColorOmniboxComposeboxFileThumbnailOverlay) \
@@ -984,6 +989,8 @@
   E_CPONLY(kColorTabstripScrollContainerShadow) \
   E_CPONLY(kColorTabThrobber) \
   E_CPONLY(kColorTabThrobberPreconnect) \
+  /* cr-tab colors. */ \
+  E_CPONLY(kColorTabNavItemSelected) \
   /* Tab Search colors */ \
   E_CPONLY(kColorTabSearchButtonBackground) \
   E_CPONLY(kColorTabSearchButtonIcon) \
@@ -1089,21 +1096,6 @@
   /* Web contents colors. */ \
   E_CPONLY(kColorWebContentsBackground) \
   E_CPONLY(kColorWebContentsBackgroundLetterboxing) \
-  /* WebUI Tab Strip colors. */ \
-  E_CPONLY(kColorWebUiTabStripBackground) \
-  E_CPONLY(kColorWebUiTabStripFocusOutline) \
-  E_CPONLY(kColorWebUiTabStripIndicatorCapturing) \
-  E_CPONLY(kColorWebUiTabStripIndicatorPip) \
-  E_CPONLY(kColorWebUiTabStripIndicatorRecording) \
-  E_CPONLY(kColorWebUiTabStripScrollbarThumb) \
-  E_CPONLY(kColorWebUiTabStripTabActiveTitleBackground) \
-  E_CPONLY(kColorWebUiTabStripTabActiveTitleContent) \
-  E_CPONLY(kColorWebUiTabStripTabBackground) \
-  E_CPONLY(kColorWebUiTabStripTabBlocked) \
-  E_CPONLY(kColorWebUiTabStripTabLoadingSpinning) \
-  E_CPONLY(kColorWebUiTabStripTabSeparator) \
-  E_CPONLY(kColorWebUiTabStripTabText) \
-  E_CPONLY(kColorWebUiTabStripTabWaitingSpinning) \
   /* Window control button background colors. */ \
   E_CPONLY(kColorWindowControlButtonBackgroundActive) \
   E_CPONLY(kColorWindowControlButtonBackgroundInactive) \

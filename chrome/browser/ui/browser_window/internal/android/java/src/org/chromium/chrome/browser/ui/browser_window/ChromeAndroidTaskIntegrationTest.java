@@ -4,8 +4,6 @@
 
 package org.chromium.chrome.browser.ui.browser_window;
 
-import org.chromium.base.test.util.DisableIf;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -38,6 +36,7 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
+import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -84,7 +83,7 @@ import java.util.concurrent.atomic.AtomicReference;
                 "Tests will be flaky if batched as they create/close windows and change window"
                         + " states in quick succession")
 @NullMarked
-@DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/444482498
+@DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/511289000
 public class ChromeAndroidTaskIntegrationTest {
 
     @Rule
@@ -1467,13 +1466,13 @@ public class ChromeAndroidTaskIntegrationTest {
         int mTimesOnTaskBoundsChanged;
 
         @Override
-        public void onAddedToTask(long nativeBrowserWindowPtr) {}
+        public void onAddedToTask(InitInfo initInfo) {}
 
         @Override
         public void onFeatureRemoved() {}
 
         @Override
-        public void onTaskBoundsChanged(Rect newBoundsInDp) {
+        public void onTaskBoundsChanged(int displayId, Rect newBoundsInDp, Rect newBoundsInPx) {
             mTimesOnTaskBoundsChanged++;
         }
 

@@ -288,10 +288,18 @@ static_library("ui") {
     "//chrome/app/theme:chrome_unscaled_resources",
     "//chrome/app/theme:theme_resources",
     "//chrome/app/vector_icons",
+    "//chrome/browser:bad_message",
     "//chrome/browser:browser_features",
     "//chrome/browser:browser_process",
+    "//chrome/browser:browser_process_impl",
+    "//chrome/browser:browser_process_platform_part",
     "//chrome/browser:buildflags",
+    "//chrome/browser:chained_back_navigation_tracker",
+    "//chrome/browser:chrome_content_browser_client",
     "//chrome/browser:chrome_content_browser_client_parts",
+    "//chrome/browser:command_updater_impl",
+    "//chrome/browser:defaults",
+    "//chrome/browser:file_select_helper",
     "//chrome/browser:flags",
     "//chrome/browser:font_pref",
     "//chrome/browser:global_features",
@@ -374,6 +382,7 @@ static_library("ui") {
     "//chrome/browser/performance_manager",
     "//chrome/browser/performance_manager:impl",
     "//chrome/browser/permissions",
+    "//chrome/browser/personal_context",
     "//chrome/browser/picture_in_picture",
     "//chrome/browser/picture_in_picture:impl",
     "//chrome/browser/plus_addresses",
@@ -496,7 +505,6 @@ static_library("ui") {
     "//chrome/common/search:mojo_bindings",
     "//chrome/installer/util:with_no_strings",
     "//components/access_code_cast/common:metrics",
-    "//components/accessibility_annotator/core",
     "//components/account_id",
     "//components/affiliations/core/browser:affiliations",
     "//components/autofill/content/browser",
@@ -808,17 +816,25 @@ static_library("ui") {
     deps += [ "//chrome/browser/rlz" ]
   }
 
-  # TODO(crbug.com/41437292): Remove this circular dependency.
-  # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
-  # These are all-platform circular includes.
+  # TODO(crbug.com/41437292): Remove this circular dependency. Any circular
+  # includes must depend on the target
+  # "//chrome/browser:browser_public_dependencies". These are all-platform
+  # circular includes.
   if (!is_android) {
-    # //chrome/browser/download:impl sources include headers from //chrome/browser/ui.
+    # //chrome/browser/download:impl sources include headers from
+    # //chrome/browser/ui.
     allow_circular_includes_from += [
       "//chrome/browser/download:impl",
 
       # TODO(crbug.com/504627103): Remove this circular dependency.
       "//chrome/browser/new_tab_page:impl",
     ]
+  }
+
+  if (!is_android && !is_chromeos) {
+    # //chrome/browser/download/bubble:impl sources include UI headers (browser.h,
+    # views/frame/immersive_mode_controller.h, web_applications/app_browser_controller.h).
+    allow_circular_includes_from += [ "//chrome/browser/download/bubble:impl" ]
   }
 
   allow_circular_includes_from += [
@@ -874,7 +890,8 @@ static_library("ui") {
     "//chrome/browser/lifetime:impl",
 
     # notifications:impl includes chrome/browser/ui/browser.h,
-    # chrome/browser/ui/chrome_pages.h, chrome/browser/ui/navigator/browser_navigator.h
+    # chrome/browser/ui/chrome_pages.h,
+    # chrome/browser/ui/navigator/browser_navigator.h
     "//chrome/browser/notifications:impl",
     "//chrome/browser/password_manager:impl",
     "//chrome/browser/permissions",
@@ -928,14 +945,14 @@ static_library("ui") {
     # from //chrome/browser/ui/webui, which are not modularized yet.
     "//chrome/browser/ui/webui/about:impl",
 
-    # TODO(crbug.com/437811373): Remove this circular dependency when the following
-    # headers get componentized:
+    # TODO(crbug.com/437811373): Remove this circular dependency when the
+    # following headers get componentized:
     # - c/b/ui/chrome_pages.h and browser.h
     # - c/b/ui/webui/password_manager/password_manager_ui.h
     "//chrome/browser/ui/passwords:impl",
 
-    # TODO(crbug.com/420905611): Remove this circular dependency when c/b/ui/browser_dialogs.h
-    # gets componentized.
+    # TODO(crbug.com/420905611): Remove this circular dependency when
+    # c/b/ui/browser_dialogs.h gets componentized.
     "//chrome/browser/ui/extensions:impl",
 
     # ssl:impl includes headers from //chrome/browser/ui that can't be
@@ -1548,15 +1565,11 @@ static_library("ui") {
       "//chrome/browser/ui/passwords/settings:impl",
       "//chrome/browser/ui/performance_controls",
       "//chrome/browser/ui/performance_controls:impl",
-      "//chrome/browser/ui/search",
-      "//chrome/browser/ui/search:impl",
       "//chrome/browser/ui/search_engine_choice",
       "//chrome/browser/ui/search_engine_choice:impl",
       "//chrome/browser/ui/shared_highlighting",
       "//chrome/browser/ui/tab_sharing",
       "//chrome/browser/ui/tab_sharing:impl",
-      "//chrome/browser/ui/tabs:glic",
-      "//chrome/browser/ui/tabs:glic_impl",
       "//chrome/browser/ui/tabs/saved_tab_groups",
       "//chrome/browser/ui/tabs/saved_tab_groups:impl",
       "//chrome/browser/ui/task_manager",
@@ -1583,7 +1596,7 @@ static_library("ui") {
       "//chrome/browser/content_extraction",
       "//chrome/browser/download",
       "//chrome/browser/download:impl",
-      "//chrome/browser/enterprise/watermark:watermark_view_lib",
+      "//chrome/browser/enterprise/data_protection:data_protection_view_lib",
       "//chrome/browser/feedback:feedback_enum",
       "//chrome/browser/headless:command_processor",
       "//chrome/browser/hid",
@@ -1839,8 +1852,16 @@ static_library("ui") {
       deps += [ "//chrome/browser/apps/app_service" ]
     }
 
-    # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
-    # Non-android circular dependencies
+    if (!is_chromeos && !is_android) {
+      deps += [
+        "//chrome/browser/download/bubble",
+        "//chrome/browser/download/bubble:impl",
+      ]
+    }
+
+    # Any circular includes must depend on the target
+    # "//chrome/browser:browser_public_dependencies". Non-android circular
+    # dependencies
     allow_circular_includes_from += [
       # //chrome/browser/ui/webui/util/webui_util_desktop.h is included by
       # :ui and its implementation is in //chrome/browser/ui/webui/util:impl.
@@ -1889,7 +1910,6 @@ static_library("ui") {
       "//chrome/browser/ui/webui/top_chrome:impl",
       "//chrome/browser/ui/webui_browser",
       "//chrome/browser/ui/webui_browser:impl",
-      "//chrome/browser/ui/search:impl",
 
       # TODO(crbug.com/382237520): Remove this once NTP code is modularized.
       "//chrome/browser/ui/lens:impl",
@@ -1946,30 +1966,33 @@ static_library("ui") {
       # `translate_bubble_factory.cc` stop including c/b/ui/browser_window.h.
       "//chrome/browser/ui/translate:impl",
 
-      # TODO(crbug.com/430078439): Remove this circular dependency when
-      # .cc files stop including browser.h, browser_window.h and browser_navigator.h.
+      # TODO(crbug.com/430078439): Remove this circular dependency when .cc
+      # files stop including browser.h, browser_window.h and
+      # browser_navigator.h.
       "//chrome/browser/ui/user_education:impl",
 
-      # TODO(crbug.com/432421124): Remove when the following headers aren't included
-      # or get componentized: c/b/ui/browser_dialogs.h, browser_navigation.h, browser.h.
+      # TODO(crbug.com/432421124): Remove when the following headers aren't
+      # included or get componentized: c/b/ui/browser_dialogs.h,
+      # browser_navigation.h, browser.h.
       "//chrome/browser/ui/sync:impl",
 
       # TODO(crbug.com/364501603): Remove this circular dependency when
       # c/b/ui/views/tabs/tab_strip_action_container.h gets componentized.
-      "//chrome/browser/ui/tabs:glic_impl",
+      "//chrome/browser/glic/browser_ui:impl",
 
-      # TODO(crbug.com/438226511): Remove this circular dependency when the following headers
-      # get componentized:
+      # TODO(crbug.com/438226511): Remove this circular dependency when the
+      # following headers get componentized:
       # - c/b/ui/browser.h, browser_finder.h, browser_window.h, browser_window_state.h,
       #   browser_commands.h, chrome_pages.h, browser_navigator.h, intent_picker_tab_helper.h,
       #   browser_tabstrip.h, intent_picker_tab_helper.h.
       "//chrome/browser/ui/web_applications:impl",
 
-      # TODO(crbug.com/438226511): Remove this circular dependency when c/b/ui/browser.h gets
-      # componentized.
+      # TODO(crbug.com/438226511): Remove this circular dependency when
+      # c/b/ui/browser.h gets componentized.
       "//chrome/browser/ui/web_applications:launch_utils",
 
-      #TODO(crbug.com/486967014): Remove once views dep is removed for side panel.
+      # TODO(crbug.com/486967014): Remove once views dep is removed for side
+      # panel.
       "//chrome/browser/ui/side_panel:side_panel_views_dependent",
 
       # hid's :impl includes //chrome/browser/ui/browser_finder.h,
@@ -1984,8 +2007,9 @@ static_library("ui") {
     }
 
     if (is_mac) {
-      # TODO(358538886): find_bar/find_bar_platform_helper_mac.mm includes //c/b/ui/browser.h
-      # and //c/b/ui/tabs/tab_strip_model.h which causes a circular dependency with //c/b/ui.
+      # TODO(358538886): find_bar/find_bar_platform_helper_mac.mm includes
+      # //c/b/ui/browser.h and //c/b/ui/tabs/tab_strip_model.h which causes a
+      # circular dependency with //c/b/ui.
       allow_circular_includes_from += [ "//chrome/browser/ui/find_bar:impl" ]
     }
 
@@ -2052,6 +2076,8 @@ static_library("ui") {
     ]
     deps += [
       "//chrome/browser/new_tab_page:impl",
+      "//chrome/browser/ui/search",
+      "//chrome/browser/ui/search:impl",
       "//chrome/browser/ui/webui/cr_components/composebox",
       "//chrome/browser/ui/webui/cr_components/searchbox",
       "//chrome/browser/ui/webui/cr_components/searchbox:searchbox_impl",
@@ -2060,6 +2086,7 @@ static_library("ui") {
       "//chrome/browser/ui/webui/ntp_microsoft_auth:untrusted",
       "//chrome/browser/ui/webui/searchbox",
     ]
+    allow_circular_includes_from += [ "//chrome/browser/ui/search:impl" ]
     if (is_android) {
       sources += [
         "webui/new_tab_page/stub_searchbox_handler.cc",
@@ -2769,7 +2796,8 @@ static_library("ui") {
       "//ui/base/mojom:ui_base_types",
     ]
 
-    # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
+    # Any circular includes must depend on the target
+    # "//chrome/browser:browser_public_dependencies".
     allow_circular_includes_from += [
       "//chrome/browser/apps/browser_instance",
       "//chrome/browser/ash/accessibility",
@@ -3205,8 +3233,9 @@ static_library("ui") {
       "//services/video_capture/public/mojom",
     ]
 
-    # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
-    # Non-android and non-chromeos-ash circular deps.
+    # Any circular includes must depend on the target
+    # "//chrome/browser:browser_public_dependencies". Non-android and
+    # non-chromeos-ash circular deps.
     allow_circular_includes_from += [
       "//chrome/browser/ui/startup/default_browser_prompt:impl",
       "//chrome/browser/ui/webui/signin:profile_impl",
@@ -3311,7 +3340,8 @@ static_library("ui") {
       "webui/settings/settings_utils_mac.mm",
     ]
 
-    # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
+    # Any circular includes must depend on the target
+    # "//chrome/browser:browser_public_dependencies".
     allow_circular_includes_from += [
       "//chrome/browser/apps/app_shim",
       "//chrome/browser/ui/cocoa",
@@ -3842,6 +3872,8 @@ static_library("ui") {
       "views/desktop_capture/share_this_tab_source_view.h",
       "views/device_chooser_content_view.cc",
       "views/device_chooser_content_view.h",
+      "views/dictation/dictation_bubble_ui.cc",
+      "views/dictation/dictation_bubble_ui.h",
       "views/digital_credentials/digital_identity_bluetooth_manual_dialog_controller.cc",
       "views/digital_credentials/digital_identity_bluetooth_manual_dialog_controller.h",
       "views/digital_credentials/digital_identity_multi_step_dialog.cc",
@@ -3906,8 +3938,6 @@ static_library("ui") {
       "views/extensions/windows_utils_views.cc",
       "views/file_system_access/file_system_access_bubble_controller.cc",
       "views/file_system_access/file_system_access_bubble_controller.h",
-      "views/file_system_access/file_system_access_icon_view.cc",
-      "views/file_system_access/file_system_access_icon_view.h",
       "views/file_system_access/file_system_access_page_action_controller.cc",
       "views/file_system_access/file_system_access_page_action_controller.h",
       "views/file_system_access/file_system_access_restore_permission_bubble_view.cc",
@@ -4127,6 +4157,8 @@ static_library("ui") {
       "views/omnibox/omnibox_popup_presenter_delegate.h",
       "views/omnibox/omnibox_popup_tab_selection_listener.cc",
       "views/omnibox/omnibox_popup_tab_selection_listener.h",
+      "views/omnibox/omnibox_popup_view_full_webui.cc",
+      "views/omnibox/omnibox_popup_view_full_webui.h",
       "views/omnibox/omnibox_popup_view_views.cc",
       "views/omnibox/omnibox_popup_view_views.h",
       "views/omnibox/omnibox_popup_view_webui.cc",
@@ -4688,8 +4720,6 @@ static_library("ui") {
       "views/web_apps/web_app_icon_name_and_origin_view.h",
       "views/web_apps/web_app_install_dialog_delegate.cc",
       "views/web_apps/web_app_install_dialog_delegate.h",
-      "views/web_apps/web_app_install_dialog_flow_view.cc",
-      "views/web_apps/web_app_install_dialog_flow_view.h",
       "views/web_apps/web_app_install_flow_dialog_delegate.cc",
       "views/web_apps/web_app_install_flow_dialog_delegate.h",
       "views/web_apps/web_app_install_intro_view.cc",
@@ -4810,8 +4840,9 @@ static_library("ui") {
     }
 
     public_deps += [
-      # TODO(crbug.com/419210492): Remove this dependency with chrome/browser/ui/sharing_hub
-      # and chrome/browser/ui/views/sharing_hub/ get componentized.
+      # TODO(crbug.com/419210492): Remove this dependency with
+      # chrome/browser/ui/sharing_hub and chrome/browser/ui/views/sharing_hub/
+      # get componentized.
       "//chrome/browser/prefs:util",
       "//chrome/browser/upgrade_detector",
       "//ui/base/mojom:ui_base_types",
@@ -4890,7 +4921,8 @@ static_library("ui") {
       "//chrome/browser/ui/views/user_education",
       "//chrome/browser/ui/views/web_dialogs",
 
-      # TODO(crbug.com/432061436) Remove this dependency when the following headers get
+      # TODO(crbug.com/432061436) Remove this dependency when the following
+      # headers get
       # componentized:
       # c/b/ui/browser.h, browser_finder.h, browser_window.h.
       # c/b/ui/passwords/passwords_model_delegate.h, passwords_client_ui_delegate.h.
@@ -4950,15 +4982,17 @@ static_library("ui") {
       "//ui/views:buildflags",
     ]
 
-    # This dependency is needed because translate_bubble_view.h declares free-functions in
-    # translate_bubble_test_utils.h as `friend`.
+    # This dependency is needed because translate_bubble_view.h declares
+    # free-functions in translate_bubble_test_utils.h as `friend`.
     deps += [ "//chrome/browser/ui/translate:test_support" ]
 
-    # TODO(crbug.com/413572035): Move into build files of the actual modules depending
-    # on this once they are fully modularized. eg: views/autofill, views/user_education.
+    # TODO(crbug.com/413572035): Move into build files of the actual modules
+    # depending on this once they are fully modularized. eg: views/autofill,
+    # views/user_education.
     deps += [ "//components/plus_addresses/core/browser/resources/strings" ]
 
-    # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
+    # Any circular includes must depend on the target
+    # "//chrome/browser:browser_public_dependencies".
     allow_circular_includes_from += [
       # Remove this circular dependency once tab_ui_helpers are modularized.
       "//chrome/browser/ui/tabs/tab_strip_api/tab_strip_model_impl",
@@ -4975,8 +5009,8 @@ static_library("ui") {
       "//chrome/browser/ui/views/page_info:impl",
       "//chrome/browser/ui/window_name_prompt",
 
-      # TODO(crbug.com/408801109): Remove this circular dependency when the following
-      # headers get componentized:
+      # TODO(crbug.com/408801109): Remove this circular dependency when the
+      # following headers get componentized:
       # c/b/ui/browser.h, browser_finder.h, browser_window.h
       # c/b/ui/views/chrome_layout_provider.h
       # c/b/ui/views/accessibility/non_accessible_image_view.h
@@ -4984,15 +5018,15 @@ static_library("ui") {
       # c/b/ui/views/frame/browser_view.h
       "//chrome/browser/ui/views/location_bar/cookie_controls:impl",
 
-      # TODO(crbug.com/434882143): Remove this circular dependency when the following
-      # headers get componentized:
+      # TODO(crbug.com/434882143): Remove this circular dependency when the
+      # following headers get componentized:
       # c/b/ui/browser.h
       # c/b/ui/views/web_apps/frame_toolbar/web_app_menu_button.h
       # c/b/ui/views/permissions/chip/permission_dashboard_controller.h
       "//chrome/browser/ui/views/location_bar",
 
-      # TODO(crbug.com/434882143): Remove this circular dependency when the following
-      # headers get componentized:
+      # TODO(crbug.com/434882143): Remove this circular dependency when the
+      # following headers get componentized:
       # c/b/ui/browser.h, browser_dialogs.h, browser_finder.h, browser_tabstrip.h, view_ids.h, browser_window.h.
       # c/b/ui/views/chrome_layout_provider.h
       # c/b/ui/views/frame/browser_view.h
@@ -5003,13 +5037,13 @@ static_library("ui") {
       # chrome_{typography,layout_provider} get modularized.
       "//chrome/browser/ui/plus_addresses:impl",
 
-      # TODO(crbug.com/432061436) Remove this circular dependency when the following
-      # headers get componentized:
+      # TODO(crbug.com/432061436) Remove this circular dependency when the
+      # following headers get componentized:
       # c/b/ui/browser.h, browser_finder.h, browser_window.h.
       "//chrome/browser/ui/webauthn:impl",
 
-      # TODO(crbug.com/434882143): Remove this circular dependency when the following
-      # headers get componentized:
+      # TODO(crbug.com/434882143): Remove this circular dependency when the
+      # following headers get componentized:
       # c/b/ui/views/frame/browser_view.h
       # c/b/ui/views/omnibox/omnibox_view_views.h
       # c/b/ui/webui/new_tab_page/new_tab_page_ui.h
@@ -5017,22 +5051,22 @@ static_library("ui") {
       # c/b/ui/webui/ntp/new_tab_ui.h
       "//chrome/browser/ui/views/page_action:impl",
 
-      # TODO(crbug.com/451609048): Remove these circular dependencies when the following
-      # header gets componentized:
+      # TODO(crbug.com/451609048): Remove these circular dependencies when the
+      # following header gets componentized:
       # - c/b/ui/views/bookmarks/saved_tab_groups/saved_tab_group_everything_menu.h
       "//chrome/browser/ui/views/tabs/shared:impl",
       "//chrome/browser/ui/views/tabs/vertical:impl",
 
-      # TODO(crbug.com/434882143): Remove this circular dependency when the following
-      # headers get componentized:
+      # TODO(crbug.com/434882143): Remove this circular dependency when the
+      # following headers get componentized:
       # c/b/ui/browser.h, browser_finder.h, browser_navigator.h, browser_window.h
       # c/b/ui/views/chrome_layout_provider.h, chrome_typography.h
       # c/b/ui/views/controls/hover_button.h
       # c/b/ui/views/frame/browser_view.h
       "//chrome/browser/ui/views/send_tab_to_self:impl",
 
-      # TODO(crbug.com/353332589): Remove this circular dependency when the following
-      # headers get componentized:
+      # TODO(crbug.com/353332589): Remove this circular dependency when the
+      # following headers get componentized:
       # - c/b/ui/views/digital_credentials/digital_identity_bluetooth_manual_dialog_controller.h
       # - c/b/ui/views/digital_credentials/digital_identity_multi_step_dialog.h
       "//chrome/browser/digital_credentials",
@@ -5262,7 +5296,8 @@ static_library("ui") {
       ]
     }
 
-    # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
+    # Any circular includes must depend on the target
+    # "//chrome/browser:browser_public_dependencies".
     allow_circular_includes_from += [
       # TODO(361027501): //c/b/u/v/t/chrome_web_contents_view_delegate_views.cc
       # includes //c/b/u/a/t/web_drag_bookmark_handler_aura.cc
@@ -5301,8 +5336,8 @@ static_library("ui") {
       "//extensions/strings",
     ]
 
-    # TODO(crbug.com/420905611): Verify whether this circular dependency declaration can
-    # be removed from here.
+    # TODO(crbug.com/420905611): Verify whether this circular dependency
+    # declaration can be removed from here.
     allow_circular_includes_from += [ "//chrome/browser/extensions" ]
   }
 
@@ -5335,7 +5370,8 @@ static_library("ui") {
       "//ui/color:mixers",
     ]
 
-    # Any circular includes must depend on the target "//chrome/browser:browser_public_dependencies".
+    # Any circular includes must depend on the target
+    # "//chrome/browser:browser_public_dependencies".
     allow_circular_includes_from += [
       "//chrome/browser/apps/platform_apps",
       "//chrome/browser/apps/platform_apps/api",
@@ -5816,6 +5852,8 @@ static_library("test_support") {
       "views/payments/test_secure_payment_confirmation_payment_request_delegate.h",
       "views/web_apps/isolated_web_apps/test_isolated_web_app_installer_model_observer.cc",
       "views/web_apps/isolated_web_apps/test_isolated_web_app_installer_model_observer.h",
+      "views/web_apps/web_app_dialog_test_support.cc",
+      "views/web_apps/web_app_dialog_test_support.h",
       "views/webauthn/authenticator_request_dialog_view_test_api.cc",
       "views/webauthn/authenticator_request_dialog_view_test_api.h",
     ]

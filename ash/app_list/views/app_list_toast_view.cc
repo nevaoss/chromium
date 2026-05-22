@@ -257,7 +257,7 @@ void AppListToastView::SetCloseButton(
 
   close_button_ = AddChildView(std::make_unique<IconButton>(
       std::move(close_button_callback), IconButton::Type::kMediumFloating,
-      &vector_icons::kCloseIcon,
+      &vector_icons::kCloseOldIcon,
       IDS_ASH_LAUNCHER_CLOSE_SORT_TOAST_BUTTON_SPOKEN_TEXT));
   close_button_->SetProperty(views::kMarginsKey, kCloseButtonMargin);
 }
@@ -387,12 +387,12 @@ AppListToastView::ToastPillButton::ToastPillButton(
 
 void AppListToastView::ToastPillButton::OnFocus() {
   PillButton::OnFocus();
-  views::FocusRing::Get(this)->SchedulePaint();
+  views::FocusRing::Get(this)->Refresh();
 }
 
 void AppListToastView::ToastPillButton::OnBlur() {
   PillButton::OnBlur();
-  views::FocusRing::Get(this)->SchedulePaint();
+  views::FocusRing::Get(this)->Refresh();
 }
 
 BEGIN_METADATA(AppListToastView, ToastPillButton)

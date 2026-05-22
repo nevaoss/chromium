@@ -53,6 +53,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &features::kWebViewFasterGetDefaultUserAgent,
     &features::kWebViewFetchOriginTrialsComponent,
     &features::kWebViewFileSystemAccess,
+    &features::kWebViewForceWebAuthn,
     &features::kWebViewHyperlinkContextMenu,
     &features::kWebViewInvokeZoomPickerOnGSU,
     &features::kWebViewLazyFetchHandWritingIcon,
@@ -77,7 +78,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &features::kWebViewUseNonembeddedLowEntropySource,
     &features::kWebViewUseStartupTasksLogic,
     &features::kWebViewUseStartupTasksLogicP2,
-    &features::kWebViewWebauthn,
     // keep-sorted end
 };
 
