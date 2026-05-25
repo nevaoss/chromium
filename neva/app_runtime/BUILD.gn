@@ -457,7 +457,6 @@ repack("app_runtime_resources") {
 
     deps += [
       "//extensions:extensions_resources",
-      "//extensions/shell:resources",
       "//extensions/strings",
     ]
   }
