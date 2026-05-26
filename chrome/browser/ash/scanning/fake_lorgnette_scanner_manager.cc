@@ -10,8 +10,8 @@
 #include <utility>
 
 #include "base/check.h"
-#include "base/containers/fixed_flat_map.h"
 #include "base/containers/map_util.h"
+#include "base/containers/queue.h"
 #include "base/containers/span.h"
 #include "base/containers/to_vector.h"
 #include "base/functional/bind.h"
@@ -19,108 +19,20 @@
 #include "base/notreached.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/strings/string_util.h"
-#include "base/strings/string_view_util.h"
 #include "base/task/single_thread_task_runner.h"
 #include "chromeos/ash/components/dbus/lorgnette/lorgnette_service.pb.h"
+#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "third_party/re2/src/re2/re2.h"
-#include "third_party/skia/include/core/SkBitmap.h"
-#include "ui/gfx/codec/jpeg_codec.h"
 
 namespace ash {
 
 namespace {
 
-using ProtoScanFailureMode = lorgnette::ScanFailureMode;
 using ProtoColorMode = lorgnette::ColorMode;
-using ProtoSourceType = lorgnette::SourceType;
 using ProtoImageFormat = lorgnette::ImageFormat;
+using ProtoScanFailureMode = lorgnette::ScanFailureMode;
 using ProtoScanRegion = lorgnette::ScanRegion;
-
-std::string GetColorModeString(ProtoColorMode color_mode) {
-  switch (color_mode) {
-    case ProtoColorMode::MODE_GRAYSCALE:
-      return "grayscale";
-    case lorgnette::MODE_COLOR:
-      return "color";
-    case lorgnette::MODE_LINEART:
-      return "black_and_white";
-    case lorgnette::MODE_UNSPECIFIED:
-    case ProtoColorMode::ColorMode_INT_MIN_SENTINEL_DO_NOT_USE_:
-    case ProtoColorMode::ColorMode_INT_MAX_SENTINEL_DO_NOT_USE_:
-      NOTREACHED();
-  }
-}
-
-static constexpr auto kPageSizeToPageSizeStrMap =
-    base::MakeFixedFlatMap<std::pair<double, double>, std::string_view>({
-        {{297, 420}, "a3"},           // ISO A3: 297 x 420 mm
-        {{210, 297}, "a4"},           // ISO A4: 210 x 297 mm.
-        {{257, 364}, "b4"},           // ISO B4: 257 x 364 mm.
-        {{215.9, 355.6}, "legal"},    // Legal: 215.9 x 355.6 mm.
-        {{215.9, 279.4}, "letter"},   // NA Letter: 215.9 x 279.4 mm.
-        {{279.4, 431.8}, "tabloid"},  // Tabloid: 279.4 x 431.8 mm.
-        {{0, 0}, "max"},              // Max: the scan region is left unset.
-    });
-
-std::string GetPageSizeString(const ProtoScanRegion& scan_region) {
-  auto bottom_right_x = scan_region.bottom_right_x();
-  auto bottom_right_y = scan_region.bottom_right_y();
-  const auto bottom_region = std::make_pair(bottom_right_x, bottom_right_y);
-  for (const auto& entry : kPageSizeToPageSizeStrMap) {
-    if (bottom_region == entry.first) {
-      return std::string(entry.second);
-    }
-  }
-
-  NOTREACHED();
-}
-
-std::string GetImageFormatString(ProtoImageFormat img_format) {
-  switch (img_format) {
-    case lorgnette::IMAGE_FORMAT_PNG:
-      return "png";
-    case lorgnette::IMAGE_FORMAT_JPEG:
-      return "jpeg";
-    case lorgnette::ImageFormat_INT_MIN_SENTINEL_DO_NOT_USE_:
-    case lorgnette::ImageFormat_INT_MAX_SENTINEL_DO_NOT_USE_:
-      NOTREACHED();
-  }
-}
-
-std::string GetResolution(uint32_t resolution) {
-  return base::StrCat({base::NumberToString(resolution), "_dpi"});
-}
-
-std::string GetScanSettingsMapKey(const lorgnette::ScanSettings& settings) {
-  std::initializer_list<std::string> parts = {
-      base::ToLowerASCII(settings.source_name()),
-      GetImageFormatString(settings.image_format()),
-      GetColorModeString(settings.color_mode()),
-      GetPageSizeString(settings.scan_region()),
-      GetResolution(settings.resolution())};
-  return base::JoinString(parts, "_");
-}
-
-// Maps a specific `ScanSettings` combination to an `alpha` which will be used
-// by `CreateJpeg` to generate a JPEG image. The generated JPEG image will
-// be used to validate that a set of scan settings will always produce the
-// same output.
-static constexpr auto kScanSettingsToAlphaMap =
-    base::MakeFixedFlatMap<std::string_view, int>(
-        {{"flatbed_jpeg_color_letter_300_dpi", /*alpha=*/1},
-         {"adf_simplex_jpeg_grayscale_max_150_dpi", /*alpha=*/2},
-         {"flatbed_jpeg_grayscale_max_150_dpi", /*alpha=*/3}});
-
-// Returns a manually generated JPEG image. `alpha` is used to make them unique.
-std::string CreateJpeg(const int alpha = 255) {
-  SkBitmap bitmap;
-  bitmap.allocN32Pixels(100, 100);
-  bitmap.eraseARGB(alpha, 0, 0, 255);
-  std::optional<std::vector<uint8_t>> bytes =
-      gfx::JPEGCodec::Encode(bitmap, /*quality=*/90);
-  return std::string(base::as_string_view(bytes.value()));
-}
+using ProtoSourceType = lorgnette::SourceType;
 
 // A list of Epson models that do not rotate alternating ADF scanned pages
 // to be excluded in IsRotateAlternate().
@@ -209,6 +121,15 @@ FakeLorgnetteScannerManager::ScannerState::operator=(
     ScannerState&& other) noexcept = default;
 FakeLorgnetteScannerManager::ScannerState::~ScannerState() = default;
 
+FakeLorgnetteScannerManager::JobState::JobState() = default;
+FakeLorgnetteScannerManager::JobState::JobState(const JobState&) = default;
+FakeLorgnetteScannerManager::JobState::JobState(JobState&&) noexcept = default;
+FakeLorgnetteScannerManager::JobState&
+FakeLorgnetteScannerManager::JobState::operator=(const JobState&) = default;
+FakeLorgnetteScannerManager::JobState&
+FakeLorgnetteScannerManager::JobState::operator=(JobState&&) noexcept = default;
+FakeLorgnetteScannerManager::JobState::~JobState() = default;
+
 void FakeLorgnetteScannerManager::GetScannerNames(
     GetScannerNamesCallback callback) {
   std::vector<std::string> names = base::ToVector(
@@ -280,8 +201,8 @@ void FakeLorgnetteScannerManager::OpenScanner(
   } else {
     response.set_result(lorgnette::OPERATION_RESULT_SUCCESS);
     response.mutable_config()->CopyFrom(it->template_config);
-    std::string scanner_handle = CreateFreshHandle();
-    response.mutable_config()->mutable_scanner()->set_token(scanner_handle);
+    response.mutable_config()->mutable_scanner()->set_token(
+        CreateFreshHandle());
     it->active_session.emplace();
     it->active_session->client_id = request.client_id();
     it->active_session->config = response.config();
@@ -451,21 +372,24 @@ void FakeLorgnetteScannerManager::StartPreparedScan(
   lorgnette::StartPreparedScanResponse response;
   *response.mutable_scanner() = request.scanner();
 
-  const std::string& handle = request.scanner().token();
-  auto it = std::ranges::find_if(scanners_, [&handle](const auto& s) {
+  const std::string& scanner_handle = request.scanner().token();
+  auto it = std::ranges::find_if(scanners_, [&scanner_handle](const auto& s) {
     return s.active_session.has_value() &&
-           s.active_session->config.scanner().token() == handle;
+           s.active_session->config.scanner().token() == scanner_handle;
   });
 
   if (it == scanners_.end()) {
     response.set_result(lorgnette::OPERATION_RESULT_INVALID);
   } else if (request.has_max_read_size() && request.max_read_size() < 32768) {
     response.set_result(lorgnette::OPERATION_RESULT_INVALID);
-  } else if (simulate_scanner_failure_) {
-    response.set_result(lorgnette::OPERATION_RESULT_IO_ERROR);
   } else {
     response.set_result(lorgnette::OPERATION_RESULT_SUCCESS);
-    response.mutable_job_handle()->set_token(CreateFreshHandle());
+    std::string job_handle = CreateFreshHandle();
+    response.mutable_job_handle()->set_token(job_handle);
+    JobState job_state;
+    job_state.remaining_chunks =
+        base::queue<std::string>(scan_data_.begin(), scan_data_.end());
+    scan_jobs_[std::move(job_handle)] = std::move(job_state);
   }
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
@@ -476,23 +400,38 @@ void FakeLorgnetteScannerManager::ReadScanData(
     const lorgnette::ReadScanDataRequest& request,
     ReadScanDataCallback callback) {
   CHECK(request.has_job_handle());
-  std::optional<lorgnette::ReadScanDataResponse> response;
-  if (read_scan_data_result_.has_value()) {
-    response.emplace();
-    response->mutable_job_handle()->set_token(request.job_handle().token());
-    if (std::find(cancelled_jobs_.begin(), cancelled_jobs_.end(),
-                  request.job_handle().token()) != cancelled_jobs_.end()) {
-      response->set_result(lorgnette::OPERATION_RESULT_CANCELLED);
-    } else if (!read_scan_data_chunks_.empty()) {
-      response->set_result(lorgnette::OPERATION_RESULT_SUCCESS);
-      response->set_data(read_scan_data_chunks_[0]);
-      read_scan_data_chunks_.erase(read_scan_data_chunks_.begin());
-      response->set_estimated_completion(
-          read_scan_data_chunks_.empty()
-              ? 100
-              : 100 / (read_scan_data_chunks_.size() + 1));
+
+  if (simulate_dbus_failure_) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback), std::nullopt));
+    return;
+  }
+
+  lorgnette::ReadScanDataResponse response;
+  *response.mutable_job_handle() = request.job_handle();
+
+  if (simulate_scanner_failure_) {
+    response.set_result(lorgnette::OPERATION_RESULT_IO_ERROR);
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(callback), std::move(response)));
+    return;
+  }
+
+  auto job_it = scan_jobs_.find(request.job_handle().token());
+  if (job_it == scan_jobs_.end()) {
+    response.set_result(lorgnette::OPERATION_RESULT_INVALID);
+  } else {
+    JobState& job = job_it->second;
+    if (job.cancelled) {
+      response.set_result(lorgnette::OPERATION_RESULT_CANCELLED);
+    } else if (job.remaining_chunks.empty()) {
+      response.set_result(lorgnette::OPERATION_RESULT_EOF);
+      response.set_estimated_completion(100);
     } else {
-      response->set_result(*read_scan_data_result_);
+      response.set_result(lorgnette::OPERATION_RESULT_SUCCESS);
+      response.set_estimated_completion(100 / job.remaining_chunks.size());
+      response.set_data(job.remaining_chunks.front());
+      job.remaining_chunks.pop();
     }
   }
 
@@ -524,29 +463,38 @@ void FakeLorgnetteScannerManager::Scan(const std::string& scanner_name,
                                        ProgressCallback progress_callback,
                                        PageCallback page_callback,
                                        CompletionCallback completion_callback) {
-  MaybeSetScanDataBasedOnSettings(settings);
-  if (scan_data_.has_value()) {
-    uint32_t page_number = 1;
-    for (const std::string& page_data : scan_data_.value()) {
-      if (progress_callback) {
-        for (const uint32_t progress : {7, 22, 40, 42, 59, 74, 95}) {
-          base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-              FROM_HERE,
-              base::BindOnce(progress_callback, progress, page_number));
-        }
-      }
+  last_scan_settings_ = settings;
+  if (simulate_dbus_failure_) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(completion_callback),
+                                  lorgnette::SCAN_FAILURE_MODE_UNKNOWN));
+    return;
+  }
 
-      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-          FROM_HERE, base::BindOnce(page_callback, page_data, page_number++));
+  if (simulate_scanner_failure_) {
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(std::move(completion_callback),
+                                  lorgnette::SCAN_FAILURE_MODE_IO_ERROR));
+    return;
+  }
+
+  uint32_t page_number = 1;
+  for (const std::string& page_data : scan_data_) {
+    if (progress_callback) {
+      for (const uint32_t progress : {7, 22, 40, 42, 59, 74, 95}) {
+        base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+            FROM_HERE,
+            base::BindOnce(progress_callback, progress, page_number));
+      }
     }
+
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, base::BindOnce(page_callback, page_data, page_number++));
   }
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
-      FROM_HERE,
-      base::BindOnce(std::move(completion_callback),
-                     scan_data_.has_value()
-                         ? lorgnette::SCAN_FAILURE_MODE_NO_FAILURE
-                         : lorgnette::SCAN_FAILURE_MODE_DEVICE_BUSY));
+      FROM_HERE, base::BindOnce(std::move(completion_callback),
+                                lorgnette::SCAN_FAILURE_MODE_NO_FAILURE));
 }
 
 void FakeLorgnetteScannerManager::CancelScan(CancelCallback cancel_callback) {
@@ -566,19 +514,24 @@ void FakeLorgnetteScannerManager::CancelScan(
   lorgnette::CancelScanResponse response;
   response.set_success(false);
 
-  if (request.has_job_handle()) {
-    *response.mutable_job_handle() = request.job_handle();
-    const std::string& job_handle = request.job_handle().token();
-    if (std::find(cancelled_jobs_.begin(), cancelled_jobs_.end(), job_handle) ==
-        cancelled_jobs_.end()) {
-      response.set_success(true);
-      response.set_result(lorgnette::OPERATION_RESULT_SUCCESS);
-      cancelled_jobs_.push_back(job_handle);
-    } else {
-      response.set_result(lorgnette::OPERATION_RESULT_UNKNOWN);
-    }
-  } else {
+  if (!request.has_job_handle()) {
     response.set_result(lorgnette::OPERATION_RESULT_INVALID);
+  } else {
+    *response.mutable_job_handle() = request.job_handle();
+    auto job_it = scan_jobs_.find(request.job_handle().token());
+    if (job_it == scan_jobs_.end()) {
+      response.set_result(lorgnette::OPERATION_RESULT_INVALID);
+    } else {
+      JobState& job = job_it->second;
+      if (job.cancelled) {
+        response.set_result(lorgnette::OPERATION_RESULT_CANCELLED);
+      } else {
+        response.set_success(true);
+        response.set_result(lorgnette::OPERATION_RESULT_SUCCESS);
+        job.cancelled = true;
+        job.remaining_chunks = base::queue<std::string>();
+      }
+    }
   }
 
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
@@ -606,26 +559,9 @@ void FakeLorgnetteScannerManager::AddScanner(
                              : CreateDefaultCapabilities());
 }
 
-void FakeLorgnetteScannerManager::ConfigureReadScanDataResponse(
-    std::optional<lorgnette::OperationResult> result,
+void FakeLorgnetteScannerManager::SetDataForFutureScanJobs(
     std::vector<std::string> data_chunks) {
-  read_scan_data_result_ = std::move(result);
-  read_scan_data_chunks_ = std::move(data_chunks);
-}
-
-void FakeLorgnetteScannerManager::SetScanResponse(
-    const std::optional<std::vector<std::string>>& scan_data) {
-  scan_data_ = scan_data;
-}
-
-void FakeLorgnetteScannerManager::MaybeSetScanDataBasedOnSettings(
-    const lorgnette::ScanSettings& settings) {
-  const auto match =
-      kScanSettingsToAlphaMap.find(GetScanSettingsMapKey(settings));
-  if (match != kScanSettingsToAlphaMap.end()) {
-    SetScanResponse(
-        std::initializer_list<std::string>{CreateJpeg(match->second)});
-  }
+  scan_data_ = std::move(data_chunks);
 }
 
 std::string FakeLorgnetteScannerManager::CreateFreshHandle() {

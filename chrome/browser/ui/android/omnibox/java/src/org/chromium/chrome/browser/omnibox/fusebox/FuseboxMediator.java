@@ -27,24 +27,26 @@ import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.base.supplier.NonNullObservableSupplier;
+import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.task.AsyncTask;
 import org.chromium.build.annotations.EnsuresNonNullIf;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList.FuseboxAttachmentChangeListener;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentRecyclerViewAdapter.FuseboxAttachmentType;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.AiModeActivationSource;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachmentButtonType;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonType;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupState;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileIntentUtils;
@@ -56,6 +58,7 @@ import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.browser_ui.util.ChromeItemPickerExtras;
 import org.chromium.components.browser_ui.util.ChromeItemPickerUtils;
+import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimProperties;
 import org.chromium.components.contextual_search.InputState;
@@ -66,6 +69,7 @@ import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
 import org.chromium.components.omnibox.InputTypeProto.InputType;
 import org.chromium.components.omnibox.ModelConfigProto.ModelConfig;
+import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.omnibox.ToolConfigProto.ToolConfig;
@@ -89,7 +93,7 @@ import java.util.function.Supplier;
 
 /** Mediator for the Fusebox component. */
 @NullMarked
-/* package */ class FuseboxMediator implements FuseboxAttachmentChangeListener {
+/* package */ class FuseboxMediator implements FuseboxAttachmentChangeListener, BackPressHandler {
     private final Context mContext;
     private final WindowAndroid mWindowAndroid;
     private final AndroidPermissionDelegate mPermissionDelegate;
@@ -107,6 +111,10 @@ import java.util.function.Supplier;
     private final Snackbar mAttachmentUploadFailedSnackbar;
     private final ScrimManager mScrimManager;
     private final Supplier<@Nullable View> mScrimAnchorViewSupplier;
+    private final SettableNonNullObservableSupplier<@PopupState Integer> mPopupStateSupplier;
+    private final @Nullable BackPressManager mBackPressManager;
+    private final SettableNonNullObservableSupplier<Boolean> mBackPressStateSupplier =
+            ObservableSuppliers.createNonNull(false);
 
     private boolean mIsTextWrapping;
     private boolean mHasContextualTasksFocus;
@@ -139,11 +147,12 @@ import java.util.function.Supplier;
             FuseboxViewHolder viewHolder,
             MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
             SettableNonNullObservableSupplier<@FuseboxState Integer> fuseboxStateSupplier,
-            SettableNonNullObservableSupplier<@FuseboxLayoutMode Integer> fuseboxLayoutModeSupplier,
+            SettableNonNullObservableSupplier<@PopupState Integer> popupStateSupplier,
             SnackbarManager snackbarManager,
             Clipboard clipboard,
             ScrimManager scrimManager,
-            Supplier<@Nullable View> scrimAnchorViewSupplier) {
+            Supplier<@Nullable View> scrimAnchorViewSupplier,
+            @Nullable BackPressManager backPressManager) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mPermissionDelegate = windowAndroid;
@@ -152,10 +161,12 @@ import java.util.function.Supplier;
         mViewHolder.popup.addOnDismissListener(this::hidePopup);
         mTabModelSelectorSupplier = tabModelSelectorSupplier;
         mFuseboxStateSupplier = fuseboxStateSupplier;
+        mPopupStateSupplier = popupStateSupplier;
         mSnackbarManager = snackbarManager;
         mClipboard = clipboard;
         mScrimManager = scrimManager;
         mScrimAnchorViewSupplier = scrimAnchorViewSupplier;
+        mBackPressManager = backPressManager;
 
         // Create the upload failed snackbar.
         mAttachmentUploadFailedSnackbar =
@@ -164,8 +175,6 @@ import java.util.function.Supplier;
                         /* controller= */ null,
                         Snackbar.TYPE_NOTIFICATION,
                         Snackbar.UMA_FUSEBOX_UPLOAD_FAILED);
-
-        fuseboxLayoutModeSupplier.set(getFuseboxLayoutMode());
 
         mModel.set(FuseboxProperties.BUTTON_ADD_CLICKED, this::onPlusButtonClicked);
         mModel.set(
@@ -192,10 +201,16 @@ import java.util.function.Supplier;
 
         mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, false);
         mModel.set(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE, false);
+        if (mBackPressManager != null) {
+            mBackPressManager.addHandler(this, BackPressHandler.Type.FUSEBOX_POPUP);
+        }
     }
 
     /* package */ void destroy() {
         endInput();
+        if (mBackPressManager != null) {
+            mBackPressManager.removeHandler(this);
+        }
     }
 
     public boolean wasActionTaken() {
@@ -384,7 +399,7 @@ import java.util.function.Supplier;
 
         // On Desktop, dedicated button shows in specialized modes only, and reverts to AI Mode.
         if (ToolModeUtils.isAimRequest(mInput.getRequestType())
-                && !OmniboxFeatures.isDesktopPlatform()) {
+                && !OmniboxCapabilities.isDesktopPlatform()) {
             activateSearchMode();
         } else {
             activateAiMode(
@@ -473,7 +488,7 @@ import java.util.function.Supplier;
             // Never show mode button if in Search mode.
             return false;
         } else if (mInput.getRequestType() == AutocompleteRequestType.AI_MODE
-                && OmniboxFeatures.isDesktopPlatform()) {
+                && OmniboxCapabilities.isDesktopPlatform()) {
             // Special Desktop case -> AI Mode only changes the status icon.
             return false;
         }
@@ -504,14 +519,18 @@ import java.util.function.Supplier;
         }
         updateModelForCurrentTab();
         mModel.set(FuseboxProperties.POPUP_ATTACH_CLIPBOARD_VISIBLE, mClipboard.hasImage());
-        mModel.set(
-                FuseboxProperties.POPUP_STATE,
-                shouldShowBottomSheetPopup ? PopupState.BOTTOM : PopupState.FLOATING);
+        @PopupState
+        int targetState = shouldShowBottomSheetPopup ? PopupState.BOTTOM : PopupState.FLOATING;
+        mModel.set(FuseboxProperties.POPUP_STATE, targetState);
+        mPopupStateSupplier.set(targetState);
         if (mScrimManager != null
                 && mModel.get(FuseboxProperties.POPUP_STATE) == PopupState.BOTTOM) {
             View scrimAnchor = mScrimAnchorViewSupplier.get();
             if (scrimAnchor == null) {
                 scrimAnchor = mViewHolder.parentView;
+            }
+            if (mScrimModel != null) {
+                mScrimManager.hideScrim(mScrimModel, /* animate= */ false);
             }
             mScrimModel =
                     new PropertyModel.Builder(ScrimProperties.ALL_KEYS)
@@ -522,6 +541,7 @@ import java.util.function.Supplier;
                             .build();
             mScrimManager.showScrim(mScrimModel);
         }
+        mBackPressStateSupplier.set(true);
     }
 
     /** Hides the popup if currently shown */
@@ -537,8 +557,10 @@ import java.util.function.Supplier;
     private void hidePopup() {
         boolean wasBottomSheet = mModel.get(FuseboxProperties.POPUP_STATE) == PopupState.BOTTOM;
         mModel.set(FuseboxProperties.POPUP_STATE, PopupState.HIDDEN);
+        mPopupStateSupplier.set(PopupState.HIDDEN);
         if (mScrimModel != null) {
             mScrimManager.hideScrim(mScrimModel, /* animate= */ true);
+            mScrimModel = null;
         }
         if (wasBottomSheet) {
             View focusedView = mViewHolder.parentView.findFocus();
@@ -546,7 +568,25 @@ import java.util.function.Supplier;
                 mWindowAndroid.getKeyboardDelegate().showKeyboard(focusedView);
             }
         }
+        mBackPressStateSupplier.set(false);
     }
+
+    // BackpressHandler implementation.
+
+    @Override
+    public @BackPressResult int handleBackPress() {
+        if (handleHidePopup()) {
+            return BackPressResult.SUCCESS;
+        }
+        return BackPressResult.FAILURE;
+    }
+
+    @Override
+    public NonNullObservableSupplier<Boolean> getHandleBackPressChangedSupplier() {
+        return mBackPressStateSupplier;
+    }
+
+    // end BackpressHandler implementation.
 
     private void updateModelForCurrentTab() {
         if (!isInInputSession()) return;
@@ -603,8 +643,8 @@ import java.util.function.Supplier;
 
     private void onAttachmentsChanged() {
         if (!isInInputSession()) return;
+        updateFuseboxState();
         mModel.set(FuseboxProperties.ATTACHMENTS_VISIBLE, !mModelList.isEmpty());
-
         if (!OmniboxFeatures.sShowModelPicker.getValue()) {
             updateClientControlledToolButtonList();
             updatePopupButtonEnabledStates();
@@ -1192,11 +1232,5 @@ import java.util.function.Supplier;
         mInput.setModelMode(modelMode);
         // TODO(https://crbug.com/476434460): Consider replacing with wiring in session state.
         mComposeboxQueryControllerBridge.setActiveModel(modelMode);
-    }
-
-    private @FuseboxLayoutMode int getFuseboxLayoutMode() {
-        return OmniboxFeatures.hasDesktopExperience(mContext)
-                ? FuseboxLayoutMode.POPOVER
-                : FuseboxLayoutMode.SEPARATED;
     }
 }

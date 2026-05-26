@@ -43,6 +43,7 @@ export function getHtml(this: ComposeboxElement) {
         @paste="${this.onPaste}">
       <div id="inputContainer" part="input-container">
         <cr-composebox-input id="composeboxInput"
+            class="${this.hasTabs() ? 'has-tabs' : ''}"
             exportparts="text-container, icon-container, mirror, input, smart-compose, cancel, action-icon, cancel-icon"
             .disableCaretColorAnimation="${this.disableCaretColorAnimation}"
             .showDropdown="${this.showDropdown}"
@@ -63,8 +64,8 @@ export function getHtml(this: ComposeboxElement) {
           <cr-composebox-file-inputs id="fileInputs"
               @file-change="${this.onFileChange}"
               .disableFileInputs="${this.shouldDisableFileInputs_()}">
-            ${this.searchboxLayoutMode === 'Compact' && !this.isOmniboxInCompactMode_ ?
-              getContextMenuHtml.bind(this)()
+           ${this.searchboxLayoutMode === 'Compact' && !this.isOmniboxInCompactMode_ ?
+              (this.hasTabs() ? '' : getContextMenuHtml.bind(this)())
             : ''}
             <div id="carouselContainer" part="carousel-container">
               <div class="carousel-container-inner">
@@ -74,10 +75,13 @@ export function getHtml(this: ComposeboxElement) {
                     exportparts="thumbnail, thumbnail-title"
                     id="carousel"
                     class="${this.carouselOnTop_ ? 'top' : ''}"
-                    .files="${Array.from(this.files.values())}"
+                    .files="${this.getFilteredCarouselFiles()}"
                     ?enable-scrolling="${this.enableCarouselScrolling}"
                     @delete-file="${this.onDeleteFile_}">
                   </cr-composebox-file-carousel> ` : ''}
+                  ${this.searchboxLayoutMode === 'Compact' && !this.isOmniboxInCompactMode_ && this.hasTabs() ? html`
+                    ${this.contextMenuEnabled ? getContextMenuHtml.bind(this)() : ''}
+                  ` : ''}
                   ${this.searchboxLayoutMode === 'Compact' && this.inToolMode ? html`
                   <div class="context-menu-container" id="toolChipsContainer"
                       part="tool-chips-container">
@@ -181,6 +185,7 @@ export function getHtml(this: ComposeboxElement) {
         .liveTranscriptEnabled="${!this.voiceSearchCoherenceEnabled}"
         .submitButtonIconType="${this.submitButtonIconType}"
         .dynamicTimeoutEnabled="${false}"
+        .pageCallbackRouter="${this.searchboxCallbackRouter_}"
         exportparts="voice-close-button, voice-details-link, voice-stop-button, voice-submit-button">
     </cr-composebox-voice-search>
   ` : ''}

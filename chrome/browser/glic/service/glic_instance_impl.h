@@ -71,7 +71,6 @@ class GlicInstanceImpl : public GlicInstance,
                          public Host::Observer,
                          public GlicSharingManagerProvider,
                          public GlicUiEmbedder::Delegate,
-                         public actor::ActorTaskDelegate,
                          public GlicActorTaskManager::Delegate {
  public:
   class InstanceCoordinatorDelegate {
@@ -123,9 +122,11 @@ class GlicInstanceImpl : public GlicInstance,
 
   // Returns whether host's webcontents are focused.
   bool HasFocus();
+  GlicUiEmbedder* GetActiveEmbedder();
 
   // GlicSharingManagerProvider implementation.
   GlicSharingManager& sharing_manager() override;
+  GlicPinCandidateProvider& pin_candidate_provider() override;
 
   void NotifyInstanceActivationChanged(bool is_active);
   base::Time GetLastActivationTimestamp() const override;
@@ -150,7 +151,7 @@ class GlicInstanceImpl : public GlicInstance,
 
   bool HasActiveEmbedder() const;
   bool IsDetached();
-  bool IsActuating() const;
+  bool IsActuating() const override;
   bool IsLiveMode();
 
   glic::mojom::ConversationInfoPtr GetConversationInfo() const;
@@ -180,25 +181,25 @@ class GlicInstanceImpl : public GlicInstance,
   GlicUiEmbedder* GetEmbedderForTab(tabs::TabInterface* tab);
   bool ContextAccessIndicatorEnabled();
   void CloseAllEmbedders();
+  Host& host() override;
 
   // GlicInstance:
-  Host& host() override;
   void SendAdditionalContext(mojom::AdditionalContextPtr context) override;
   void FocusIfActive() override;
+  void NotifyActorTaskListRowClicked(int32_t task_id) override;
   void GetExperimentalTriggeringUpdates(
       mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
       base::OnceCallback<void(bool)> success_status_callback) override;
   const InstanceId& id() const override;
   void SetIdForRestoration(InstanceId id);
   std::optional<std::string> conversation_id() const override;
-  base::WeakPtr<actor::ActorTaskDelegate> GetActorTaskDelegate() override;
   std::string conversation_title() const override;
   base::CallbackListSubscription RegisterStateChange(
       StateChangeCallback callback) override;
   base::CallbackListSubscription AddConversationInfoChangedCallback(
       base::RepeatingCallback<void(const mojom::ConversationInfo&)> callback);
-  void BindTabForTesting(tabs::TabInterface* tab) override;
   void CancelTask() override;
+  GlicActorTaskManager* GetActorTaskManager() override;
 
   // Called exactly once, right before the instance is destroyed.
   using DestructionCallback = base::OnceCallback<void(GlicInstance*)>;
@@ -211,7 +212,6 @@ class GlicInstanceImpl : public GlicInstance,
       bool open_in_background,
       const std::optional<int32_t>& window_id,
       glic::mojom::WebClientHandler::CreateTabCallback callback) override;
-  GlicActorClientSession* BindActorClientSession() override;
   void FetchZeroStateSuggestions(
       bool is_first_run,
       std::optional<std::vector<std::string>> supported_tools,
@@ -236,6 +236,9 @@ class GlicInstanceImpl : public GlicInstance,
   void OnPolylinePointsChanged(const std::vector<int>& counts) override;
   std::unique_ptr<WebUIContentsContainer> CreateWebUIContentsContainer()
       override;
+  void CreateActorHandler(
+      mojo::PendingReceiver<mojom::ActorHandler> receiver,
+      mojo::PendingRemote<mojom::ActorClient> client) override;
 
   // GlicUiEmbedder::Delegate:
   void OnEmbedderWindowActivationChanged(bool has_focus) override;
@@ -272,38 +275,13 @@ class GlicInstanceImpl : public GlicInstance,
   tabs::TabInterface* GetActiveEmbedderTabForTesting();
   std::string DescribeForTesting();
 
-  GlicActorTaskManager* GetActorTaskManager() {
-    return actor_task_manager_.get();
-  }
-
   base::WeakPtr<GlicInstanceImpl> GetWeakPtr() {
     return weak_ptr_factory_.GetWeakPtr();
   }
 
-  // ActorTaskDelegate:
+  // GlicActorTaskManager::Delegate:
   void OnTabAddedToTask(actor::TaskId task_id,
                         const tabs::TabInterface::Handle& tab_handle) override;
-  void RequestToShowCredentialSelectionDialog(
-      actor::TaskId task_id,
-      const base::flat_map<std::string, gfx::Image>& icons,
-      const std::vector<actor_login::Credential>& credentials,
-      actor::ActorTaskDelegate::CredentialSelectedCallback callback) override;
-  void RequestToShowUserConfirmationDialog(
-      actor::TaskId task_id,
-      const url::Origin& navigation_origin,
-      bool for_blocklisted_origin,
-      actor::ActorTaskDelegate::UserConfirmationDialogCallback callback)
-      override;
-  void RequestToConfirmNavigation(
-      actor::TaskId task_id,
-      const url::Origin& navigation_origin,
-      actor::ActorTaskDelegate::NavigationConfirmationCallback callback)
-      override;
-  void RequestToShowAutofillSuggestionsDialog(
-      actor::TaskId task_id,
-      std::vector<autofill::ActorFormFillingRequest> requests,
-      base::WeakPtr<actor::AutofillSelectionDialogEventHandler> event_handler,
-      AutofillSuggestionSelectedCallback callback) override;
 
  private:
   struct EmbedderEntry {
@@ -322,7 +300,6 @@ class GlicInstanceImpl : public GlicInstance,
   void NotifyStateChange();
   void NotifyConversationTitleChanged();
 
-  GlicUiEmbedder* GetActiveEmbedder();
   GlicUiEmbedder* GetEmbedderForKey(EmbedderKey key);
   EmbedderEntry* GetEmbedderEntry(EmbedderKey key);
   void DeactivateCurrentEmbedder();

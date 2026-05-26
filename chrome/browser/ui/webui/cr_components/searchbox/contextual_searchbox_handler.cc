@@ -27,10 +27,14 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_interface.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_contents_user_data.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
+#include "chrome/browser/feature_engagement/non_iph_promo.h"
+#include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/tab_list/tab_list_interface_observer.h"
@@ -51,10 +55,13 @@
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/prefs.h"
 #include "components/contextual_tasks/public/query_contextualizer.h"
+#include "components/feature_engagement/public/feature_constants.h"
+#include "components/feature_engagement/public/tracker.h"
 #include "components/google/core/common/google_util.h"
 #include "components/lens/contextual_input.h"
 #include "components/lens/lens_features.h"
 #include "components/omnibox/browser/autocomplete_input.h"
+#include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/page_classification_functions.h"
 #include "components/omnibox/browser/vector_icons.h"
 #include "components/omnibox/common/composebox_features.h"
@@ -476,6 +483,12 @@ omnibox::InputState ContextualSearchboxHandler::GetInputState() const {
   return omnibox::InputState();
 }
 
+std::string ContextualSearchboxHandler::GetPreviousQuery() {
+  auto* contextual_session_handle = GetContextualSessionHandle();
+  return contextual_session_handle ? contextual_session_handle->previous_query()
+                                   : std::string();
+}
+
 bool ContextualSearchboxHandler::IsSmartTabSharingActive() const {
   if (smart_tab_sharing_active_for_thread_.has_value()) {
     return *smart_tab_sharing_active_for_thread_;
@@ -488,10 +501,39 @@ bool ContextualSearchboxHandler::IsSmartTabSharingActive() const {
 }
 
 void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
-  if (!contextual_tasks::GetIsSmartTabSharingEnabled()) {
+  if (!contextual_tasks::ContextualTasksContextService::
+          GetIsSmartTabSharingEnabled(profile_)) {
     return;
   }
   smart_tab_sharing_active_for_thread_ = active;
+
+#if !BUILDFLAG(IS_ANDROID)
+  if (active && profile_ && !has_incremented_sts_activation_count_) {
+    has_incremented_sts_activation_count_ = true;
+    auto* tracker =
+        feature_engagement::TrackerFactory::GetForBrowserContext(profile_);
+    if (tracker) {
+      tracker->NotifyEvent("smart_tab_sharing_activated");
+
+      // Don't process the default-on promo if STS is already default-on.
+      const bool default_on = profile_->GetPrefs()->GetBoolean(
+          contextual_tasks::kContextualTasksShareOpenTabsEveryThread);
+      if (!default_on) {
+        if (feature_engagement::NonIphPromo::RequestPermissionToShow(
+                profile_,
+                feature_engagement::kIPHSmartTabSharingDefaultOnFeature)) {
+          if (auto* web_ui_interface =
+                  contextual_tasks::GetWebUiInterface(web_contents_)) {
+            if (web_ui_interface->GetPageRemote().is_bound()) {
+              web_ui_interface->GetPageRemote()
+                  ->ShowSmartTabSharingDefaultOnIph();
+            }
+          }
+        }
+      }
+    }
+  }
+#endif
 }
 
 void ContextualSearchboxHandler::GetSmartTabSharingActive(
@@ -1092,13 +1134,12 @@ bool ContextualSearchboxHandler::ShouldOpenInLensSidePanel(
 
   auto* entry_point_controller =
       lens::LensOverlayEntryPointController::From(browser_window_interface);
-  bool lens_overlay_enabled =
-      entry_point_controller && entry_point_controller->IsEnabled();
 
   return active_web_contents &&
          (!eligibility_manager ||
           !eligibility_manager->AreEntryPointsEligible()) &&
-         lens::IsAimM3Enabled(profile_) && lens_overlay_enabled &&
+         entry_point_controller && entry_point_controller->IsEnabled() &&
+         lens::IsAimM3Enabled(profile_) &&
          session_handle->GetSubmittedContextTokens().size() == 1 &&
          session_handle->IsTabInContext(
              sessions::SessionTabHelper::IdForTab(active_web_contents));
@@ -1270,7 +1311,8 @@ void ContextualSearchboxHandler::MaybeTriggerSmartTabSharingPromo(
 
   const bool is_eligible_for_promo =
       !IsSmartTabSharingActive() &&
-      contextual_tasks::GetIsSmartTabSharingEnabled();
+      contextual_tasks::ContextualTasksContextService::
+          GetIsSmartTabSharingEnabled(profile_);
   if (is_eligible_for_promo) {
     contextual_tasks::TabSelectionOptions tab_selection_options;
     tab_selection_options.tab_selection_timeout =
@@ -1287,7 +1329,8 @@ void ContextualSearchboxHandler::MaybeTriggerSmartTabSharingPromo(
         base::BindOnce(
             &ContextualSearchboxHandler::OnRelevantTabsReceivedToMaybeShowPromo,
             weak_ptr_factory_.GetWeakPtr()));
-  } else if (!contextual_tasks::GetIsSmartTabSharingEnabled()) {
+  } else if (!contextual_tasks::ContextualTasksContextService::
+                 GetIsSmartTabSharingEnabled(profile_)) {
     // Run dark experiment if smart tab sharing is not enabled and do not
     // block.
     contextual_tasks::TabSelectionOptions tab_selection_options;
@@ -1336,7 +1379,20 @@ void ContextualSearchboxHandler::ContextualizeQueryAndOpenUrl(
 
 void ContextualSearchboxHandler::OnRelevantTabsReceivedToMaybeShowPromo(
     std::vector<base::WeakPtr<content::WebContents>> relevant_tabs) {
-  // TODO: b/502330712 - If non-empty, propagate to UI to show the promo.
+  if (relevant_tabs.empty()) {
+    return;
+  }
+#if !BUILDFLAG(IS_ANDROID)
+  if (feature_engagement::NonIphPromo::RequestPermissionToShow(
+          profile_, feature_engagement::kIPHSmartTabSharingTryItFeature)) {
+    if (auto* web_ui_interface =
+            contextual_tasks::GetWebUiInterface(web_contents_)) {
+      if (web_ui_interface->GetPageRemote().is_bound()) {
+        web_ui_interface->GetPageRemote()->ShowSmartTabSharingTryItIph();
+      }
+    }
+  }
+#endif
 }
 
 void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(

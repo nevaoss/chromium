@@ -131,6 +131,7 @@ export const ComposeboxEmbedderMixin =
               type: Boolean,
               reflect: true,
             },
+            isOblongShape: {type: Boolean},
             smartComposeInlineHint: {type: String},
             smartComposeStats: {type: Object},
             state: {type: Object},
@@ -146,6 +147,7 @@ export const ComposeboxEmbedderMixin =
             },
             hasVoiceSearchError: {type: Boolean},
             isListening: {type: Boolean},
+            tabFaviconChipsToCoinsEnabled: {type: Boolean},
           };
         }
 
@@ -172,6 +174,9 @@ export const ComposeboxEmbedderMixin =
         // Voice search is listening if there is no error and voice search
         // overlay is open (and active).
         accessor isListening: boolean = false;
+
+        accessor tabFaviconChipsToCoinsEnabled: boolean =
+            loadTimeData.getBoolean('tabFaviconChipsToCoinsEnabled');
 
         browserTabContextAdded: boolean = false;
         pendingUploads: Set<UnguessableToken> = new Set();
@@ -222,6 +227,7 @@ export const ComposeboxEmbedderMixin =
         accessor showFileCarousel: boolean = false;
         accessor showTypedSuggestWithContext: boolean = false;
         accessor usePecApi: boolean = false;
+        accessor isOblongShape: boolean = false;
         searchboxListenerIds: number[] = [];
         showZps: boolean = loadTimeData.getBoolean('composeboxShowZps');
         // Attribute that can be set by parent to enable/disable voice search
@@ -524,8 +530,10 @@ export const ComposeboxEmbedderMixin =
           this.inputState = inputState;
 
           const allowedTypes = this.inputState.allowedInputTypes;
+          const disabledTypes = this.inputState.disabledInputTypes || [];
           this.files.forEach((file, uuid) => {
-            if (!allowedTypes.includes(file.inputType)) {
+            if (!allowedTypes.includes(file.inputType) ||
+                disabledTypes.includes(file.inputType)) {
               this.deleteFile(uuid);
             }
           });
@@ -814,6 +822,10 @@ export const ComposeboxEmbedderMixin =
             'Tab',
           ];
           if (!HANDLED_KEYS.includes(e.key)) {
+            return;
+          }
+
+          if (e.isComposing) {
             return;
           }
 
@@ -1629,6 +1641,7 @@ export const ComposeboxEmbedderMixin =
             ]);
             this.recordFileValidationMetric(ComposeboxFileValidationError.NONE);
             this.focusInput();
+            this.showDropdown = false;
           }
         }
 
@@ -1830,7 +1843,12 @@ export const ComposeboxEmbedderMixin =
             return;
           }
           const {tabs} = await this.getSearchboxHandler().getRecentTabs();
-          this.tabSuggestions = [...tabs];
+          // Order tabs in submenu: selected tabs are first.
+          const addedTabIdsSet = new Set(this.addedTabsIds.keys());
+          this.tabSuggestions = [
+            ...tabs.filter((tab: any) => addedTabIdsSet.has(tab.tabId)),
+            ...tabs.filter((tab: any) => !addedTabIdsSet.has(tab.tabId)),
+          ];
 
           if (this.inputState) {
             const {allowedInputTypes, disabledInputTypes} = this.inputState;
@@ -1930,7 +1948,41 @@ export const ComposeboxEmbedderMixin =
               this.shouldShowVoiceSearch();
         }
 
+        getFilteredCarouselFiles(): ComposeboxFile[] {
+          // Gets the list of files to display in the file carousel.
+          // When the context management flag is enabled, tabs (files with a
+          // URL) are filtered out because they would be displayed as favicons
+          // instead of chips.
+          const filesArray = Array.from(this.files.values());
+          if (this.tabFaviconChipsToCoinsEnabled) {
+            return filesArray.filter(f => !f.url);
+          }
+          return filesArray;
+        }
+
+        getSharedTabs(): TabInfo[] {
+          return Array.from(this.files.values())
+              .filter(file => !!file.url)
+              .map(file => ({
+                     tabId: file.tabId!,
+                     title: file.name,
+                     url: file.url!,
+                   } as TabInfo));
+        }
+
+        hasTabs(): boolean {
+          return this.tabFaviconChipsToCoinsEnabled &&
+              Array.from(this.files.values()).some(f => !!f.url);
+        }
+
         shouldShowDivider(): boolean {
+          if (this.tabFaviconChipsToCoinsEnabled) {
+            const hasNonTabFiles =
+                Array.from(this.files.values()).some(f => !f.url);
+            if (!hasNonTabFiles) {
+              return false;
+            }
+          }
           return this.showDropdown &&
               (this.showFileCarousel || this.shouldShowSubmitButton() ||
                this.inToolMode);
@@ -2039,6 +2091,7 @@ export interface ComposeboxEmbedderMixinInterface extends
   receivedSpeech: boolean;
   result: AutocompleteResult|null;
   searchboxLayoutMode: string;
+  isOblongShape: boolean;
   searchboxNextEnabled: boolean;
   selectedMatch: AutocompleteMatch|null;
   selectedMatchIndex: number;
@@ -2058,6 +2111,7 @@ export interface ComposeboxEmbedderMixinInterface extends
   composeboxNoFlickerSuggestionsFix: boolean;
   searchboxListenerIds: number[];
   showTypedSuggest: boolean;
+  tabFaviconChipsToCoinsEnabled: boolean;
   lastQueriedInput: string;
   haveReceivedSynchronousAutocompleteResponse: boolean;
   lensSendRawFileMediaTypesEnabled: boolean;
@@ -2080,6 +2134,8 @@ export interface ComposeboxEmbedderMixinInterface extends
   getContextEntrypointElement(): HTMLElement|null;
   addTabContextHandleCallback(
       tabUpload: TabUpload, replaceAutoActiveTabToken?: boolean): Promise<void>;
+  getFilteredCarouselFiles(): ComposeboxFile[];
+  getSharedTabs(): TabInfo[];
 
   // Common event handlers
   onContextMenuContainerMousedown(e: FocusEvent): void;
@@ -2159,6 +2215,7 @@ export interface ComposeboxEmbedderMixinInterface extends
   hasMatches(): boolean;
   selectFirstMatch(): void;
   hasFiles(): boolean;
+  hasTabs(): boolean;
   resetSmartComposeStats(): void;
   queryAutocomplete(clearMatches: boolean): void;
   clearAutocompleteMatches(): void;

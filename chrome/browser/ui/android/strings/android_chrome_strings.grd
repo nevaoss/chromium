@@ -2804,6 +2804,15 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_MENU_SHARE_PAGE" desc="Menu item for sharing the current page. [CHAR_LIMIT=27]">
         Share…
       </message>
+      <message name="IDS_MENU_COPY_LINK" desc="Menu item for copying the link to the current page. [CHAR_LIMIT=27]">
+        Copy link
+      </message>
+      <message name="IDS_MENU_SEND_TO_DEVICES" desc="Menu item for sending the page to another device. [CHAR_LIMIT=27]">
+        Send to devices
+      </message>
+      <message name="IDS_MENU_QR_CODE" desc="Menu item for generating a QR Code for the current page. [CHAR_LIMIT=27]">
+        QR code
+      </message>
       <message name="IDS_MENU_BACK_BUTTON_IPH_TEXT" desc="Message on the generic text buble to educate users on the menu back button">
         Open the menu to go back
       </message>
@@ -4133,8 +4142,8 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_MENU_DOWNLOAD" desc="Tooltip for the button to download the current web page. [CHAR_LIMIT=27]">
         Download
       </message>
-      <message name="IDS_MENU_SAVE_AND_PRINT" desc="Parent menu item for items related to saving and printing page">
-        Save and print
+      <message name="IDS_MENU_SAVE_AND_SHARE" desc="Parent menu item for items related to saving and sharing the page. [CHAR_LIMIT=27]">
+        Save and share
       </message>
       <message name="IDS_MENU_DOWNLOAD_PAGE" desc="Menu item for downloading the current web page. [CHAR_LIMIT=27]">
         Download page
@@ -4187,6 +4196,12 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_MENU_OTHER_BOOKMARKS" desc="Menu item for showing bookmarks stored in 'Other bookmarks'. [CHAR_LIMIT=27]">
         Other bookmarks
       </message>
+      <message name="IDS_MENU_TAB_GROUPS" desc="Menu item for showing items related to tab groups. [CHAR_LIMIT=27]">
+        Tab groups
+      </message>
+      <message name="IDS_MENU_CREATE_NEW_TAB_GROUP" desc="Menu item for creating a new tab group. [CHAR_LIMIT=27]">
+        Create new tab group
+      </message>
       <message name="IDS_MENU_RECENT_TABS" desc="Menu item for opening the 'Recent tabs' page that shows recently closed tabs and pages the user has opened on his/her other devices. [CHAR_LIMIT=27]">
         Recent tabs
       </message>
@@ -4204,6 +4219,18 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_CHROME_HISTORY" desc="Menu item for opening the CCT history page. [CHAR_LIMIT=27]">
         Chrome history
+      </message>
+      <message name="IDS_MENU_PASSWORDS_AND_AUTOFILL" desc="Menu item for showing menus related to passwords and autofill. [CHAR_LIMIT=27]">
+        Passwords and autofill
+      </message>
+      <message name="IDS_MENU_PAYMENT_METHODS" desc="Menu item for showing the payments page. [CHAR_LIMIT=27]">
+        Payment methods
+      </message>
+      <message name="IDS_MENU_ADDRESSES_AND_MORE" desc="Menu item for showing the 'Addresses and more' page. [CHAR_LIMIT=27]">
+        Addresses and more
+      </message>
+      <message name="IDS_MENU_GOOGLE_PASSWORD_MANAGER" desc="Menu item for opening the password manager. [CHAR_LIMIT=27]">
+        Google Password Manager
       </message>
       <message name="IDS_MENU_HISTORY" desc="Menu item for opening the history page. [CHAR_LIMIT=27]">
         History
@@ -4311,6 +4338,15 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_MENU_BOOKMARK_ALL_TABS" desc="Menu item for bookmarking all tabs.">
         Bookmark all tabs
+      </message>
+      <message name="IDS_MENU_ABOUT_CHROME" desc="Menu item for opening the 'About Chrome' page in the settings. [CHAR_LIMIT=27]">
+        About Chrome
+      </message>
+      <message name="IDS_MENU_HELP_CENTER" desc="Menu item for opening the help center. [CHAR_LIMIT=27]">
+        Help center
+      </message>
+      <message name="IDS_MENU_REPORT_ISSUE" desc="Menu item for reporting an issue. [CHAR_LIMIT=27]">
+        Report an issue...
       </message>
       <message name="IDS_MENU_EMPTY_SUBMENU" desc="Menu item to show when a folder doesn't contain any items.">
         (empty)

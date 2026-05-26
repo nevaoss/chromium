@@ -488,6 +488,19 @@ TEST(PropertyTreeTest, TransformsWithFlattening) {
   EXPECT_TRANSFORM_EQ(rotation_about_x, grand_child_to_child);
 }
 
+TEST(PropertyTreeTest, UnboundedRenderSurfaceReason) {
+  PropertyTrees property_trees;
+  EffectTree& effect_tree = property_trees.effect_tree_mutable();
+
+  int effect_node_id = effect_tree.Insert(EffectNode(), 0);
+  effect_tree.MutableNode(effect_node_id).render_surface_reason =
+      RenderSurfaceReason::kUnboundedElement;
+
+  EXPECT_TRUE(effect_tree.Node(effect_node_id).HasRenderSurface());
+  EXPECT_EQ(RenderSurfaceReason::kUnboundedElement,
+            effect_tree.Node(effect_node_id).render_surface_reason);
+}
+
 TEST(PropertyTreeTest, MultiplicationOrder) {
   PropertyTrees property_trees;
   TransformTree& tree = property_trees.transform_tree_mutable();
@@ -857,6 +870,22 @@ TEST(ScrollTreeTest, GetScrollOffsetForScrollTimelineNegativeOffset) {
   gfx::PointF offset = scroll_tree.GetScrollOffsetForScrollTimeline(
       scroll_tree.Node(scroll_node_id));
   EXPECT_EQ(offset.y(), 0);
+}
+
+TEST(ScrollTreeTest, GetScrollOffsetForScrollTimelineInvalidTransform) {
+  PropertyTrees property_trees;
+  ScrollTree& scroll_tree = property_trees.scroll_tree_mutable();
+
+  ElementId element_id(5);
+  int scroll_node_id = scroll_tree.Insert(ScrollNode(), 0);
+  scroll_tree.MutableNode(scroll_node_id).transform_id = kInvalidPropertyNodeId;
+  scroll_tree.MutableNode(scroll_node_id).element_id = element_id;
+
+  scroll_tree.SetScrollOffset(element_id, gfx::PointF(0, 10));
+
+  gfx::PointF offset = scroll_tree.GetScrollOffsetForScrollTimeline(
+      scroll_tree.Node(scroll_node_id));
+  EXPECT_EQ(offset.y(), 10);
 }
 
 // Verify that when fractional scroll delta is turned off, that the remaining

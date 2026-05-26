@@ -1794,6 +1794,7 @@ NavigationRequest::NavigationRequest(
   CHECK(IsInOutermostMainFrame() || commit_params_->data_url_as_string.empty());
 #endif
   CheckSoftNavigationHeuristicsInvariants();
+  ScopedCrashKeys crash_keys(*this);
 
 #if !BUILDFLAG(IS_ANDROID)
   // It should not be possible to navigate away from the initial WebUI page,
@@ -1805,7 +1806,14 @@ NavigationRequest::NavigationRequest(
               ->GetSiteInstance()
               ->GetSecurityPrincipal()
               .GetDeprecatedSiteURL());
-  CHECK(!current_rfh_is_initial_webui || IsInitialWebUINavigation());
+  if (current_rfh_is_initial_webui && !IsInitialWebUINavigation()) {
+    // TODO(crbug.com/511971445): Turn this into a CHECK again once
+    // investigation on what can cause this is finished.
+    base::debug::DumpWithoutCrashing();
+    // We should not allow navigating away from initial WebUI. Mark this
+    // request for cancellation in BeginNavigation().
+    should_cancel_on_leaving_initial_webui_ = true;
+  }
   if (IsInitialWebUINavigation()) {
     // Initial WebUI navigations must satisfy all these conditions
     // - Is browser initiated
@@ -1832,7 +1840,6 @@ NavigationRequest::NavigationRequest(
   }
 #endif
 
-  ScopedCrashKeys crash_keys(*this);
 
   ComputeDownloadPolicy();
 
@@ -2486,6 +2493,17 @@ void NavigationRequest::BeginNavigation() {
   CHECK(!HasRenderFrameHost());
   ScopedCrashKeys crash_keys(*this);
   UpdateNavigationHandleTimingsOnBeginNavigation();
+
+  // Cancel the navigation if it is an invalid attempt to navigate away from
+  // an initial WebUI page.
+  if (should_cancel_on_leaving_initial_webui_) {
+    StartNavigation();
+    OnRequestFailedInternal(
+        network::URLLoaderCompletionStatus(net::ERR_ABORTED),
+        /*skip_throttles=*/false, /*error_page_content=*/std::nullopt,
+        /*collapse_frame=*/false);
+    return;
+  }
 
   if (begin_navigation_callback_for_testing_) {
     std::move(begin_navigation_callback_for_testing_).Run();
@@ -3313,8 +3331,7 @@ void NavigationRequest::StartNavigation() {
   SetState(WILL_START_REQUEST);
   is_navigation_started_ = true;
 
-  modified_request_headers_.Clear();
-  removed_request_headers_.clear();
+  headers_update_params_.Clear();
 
   throttle_registry_ = std::make_unique<NavigationThrottleRegistryImpl>(this);
 
@@ -5709,11 +5726,17 @@ void NavigationRequest::OnStartChecksComplete(
 
   devtools_instrumentation::OnNavigationRequestWillBeSent(*this);
 
-  // Merge headers with embedder's headers.
-  net::HttpRequestHeaders headers;
-  headers.AddHeadersFromString(begin_params_->headers);
-  headers.MergeFrom(TakeModifiedRequestHeaders());
-  begin_params_->headers = headers.ToString();
+  {
+    // Merge headers with embedder's headers.
+    net::HttpRequestHeaders headers;
+    headers.AddHeadersFromString(begin_params_->headers);
+    // `removed_headers` is only for redirects (see
+    // `NavigationRequest::RemoveRequestHeader()`) and must be empty here.
+    CHECK(headers_update_params_.removed_headers.empty());
+    headers.MergeFrom(headers_update_params_.modified_headers);
+    headers_update_params_.Clear();
+    begin_params_->headers = headers.ToString();
+  }
 
   // TODO(clamy): Avoid cloning the navigation params and create the
   // ResourceRequest directly here.
@@ -6004,8 +6027,9 @@ void NavigationRequest::OnRedirectChecksComplete(
 
   devtools_instrumentation::OnNavigationRequestWillBeSent(*this);
 
-  net::HttpRequestHeaders modified_headers = TakeModifiedRequestHeaders();
-  std::vector<std::string> removed_headers = TakeRemovedRequestHeaders();
+  network::HttpRequestHeadersUpdateParams headers_update_params =
+      std::move(headers_update_params_);
+  headers_update_params_.Clear();
 
   if (remove_extra_headers_on_cross_origin_redirect_ &&
       !url::Origin::Create(commit_params_->redirects.back())
@@ -6021,7 +6045,7 @@ void NavigationRequest::OnRedirectChecksComplete(
     net::HttpRequestHeaders headers;
     headers.AddHeadersFromString(nav_entry->extra_headers());
     for (const auto& header : headers.GetHeaderVector()) {
-      removed_headers.push_back(header.key);
+      headers_update_params.removed_headers.push_back(header.key);
     }
 
     // Update the NavigationEntry so that history navigations don't include the
@@ -6054,7 +6078,8 @@ void NavigationRequest::OnRedirectChecksComplete(
 
   // Removes the topics header. This will effectively be a no-op if the topics
   // header wasn't sent for the previous request.
-  removed_headers.push_back(kBrowsingTopicsRequestHeaderKey);
+  headers_update_params.removed_headers.push_back(
+      kBrowsingTopicsRequestHeaderKey);
 
   TopicsHeaderValueResult topics_header_value_result =
       GetTopicsHeaderValueForNavigationRequest(frame_tree_node_,
@@ -6063,14 +6088,15 @@ void NavigationRequest::OnRedirectChecksComplete(
   topics_eligible_ = topics_header_value_result.topics_eligible;
 
   if (topics_header_value_result.header_value) {
-    modified_headers.SetHeader(kBrowsingTopicsRequestHeaderKey,
-                               *topics_header_value_result.header_value);
+    headers_update_params.modified_headers.SetHeader(
+        kBrowsingTopicsRequestHeaderKey,
+        *topics_header_value_result.header_value);
   }
 
   if (ad_auction_headers_eligible_) {
     // Redirects are ineligible for ad auction headers.
     ad_auction_headers_eligible_ = false;
-    removed_headers.push_back(kAdAuctionRequestHeaderKey);
+    headers_update_params.removed_headers.push_back(kAdAuctionRequestHeaderKey);
   }
 
   if (shared_storage_writable_opted_in_) {
@@ -6085,10 +6111,11 @@ void NavigationRequest::OnRedirectChecksComplete(
     if (shared_storage_writable_eligible_ !=
         previous_shared_storage_writable_eligible) {
       if (shared_storage_writable_eligible_) {
-        modified_headers.SetHeader(kSecSharedStorageWritableRequestHeaderKey,
-                                   "?1");
+        headers_update_params.modified_headers.SetHeader(
+            kSecSharedStorageWritableRequestHeaderKey, "?1");
       } else {
-        removed_headers.push_back(kSecSharedStorageWritableRequestHeaderKey);
+        headers_update_params.removed_headers.push_back(
+            kSecSharedStorageWritableRequestHeaderKey);
       }
     }
   }
@@ -6097,7 +6124,7 @@ void NavigationRequest::OnRedirectChecksComplete(
   // previous one.
   for (const auto& elem : network::GetClientHintToNameMap()) {
     const auto& header = elem.second;
-    removed_headers.push_back(header);
+    headers_update_params.removed_headers.push_back(header);
   }
 
   // Add any required Client Hints to the current request.
@@ -6121,11 +6148,12 @@ void NavigationRequest::OnRedirectChecksComplete(
         browser_context, client_hints_delegate, is_overriding_user_agent(),
         frame_tree_node_, commit_params_->frame_policy.container_policy,
         common_params_->url);
-    modified_headers.MergeFrom(client_hints_extra_headers);
+    headers_update_params.modified_headers.MergeFrom(
+        client_hints_extra_headers);
     // On a redirect, unless devtools has overridden the User-Agent header, we
     // should send the User-Agent string based on policy.
     if (!devtools_user_agent_override_) {
-      modified_headers.SetHeader(
+      headers_update_params.modified_headers.SetHeader(
           net::HttpRequestHeaders::kUserAgent,
           ComputeUserAgentValue(GetUserAgentOverride()));
     }
@@ -6148,17 +6176,16 @@ void NavigationRequest::OnRedirectChecksComplete(
                   &accept_language_headers);
       commit_params_->reduced_accept_language =
           reduced_accept_language.value_or("");
-      modified_headers.MergeFrom(accept_language_headers);
+      headers_update_params.modified_headers.MergeFrom(accept_language_headers);
     } else {
       // Remove the Accept-Language header passed from previous request, if any.
-      removed_headers.push_back(net::HttpRequestHeaders::kAcceptLanguage);
+      headers_update_params.removed_headers.push_back(
+          net::HttpRequestHeaders::kAcceptLanguage);
       commit_params_->reduced_accept_language = "";
     }
   }
 
-  loader_->FollowRedirect(std::move(removed_headers),
-                          std::move(modified_headers),
-                          /*modified_cors_exempt_headers=*/{});
+  loader_->FollowRedirect(std::move(headers_update_params));
 }
 
 void NavigationRequest::OnFailureChecksComplete(
@@ -9509,13 +9536,13 @@ void NavigationRequest::SetPrerenderActivationNavigationState(
 
 void NavigationRequest::RemoveRequestHeader(std::string_view header_name) {
   CHECK(state_ == WILL_REDIRECT_REQUEST);
-  removed_request_headers_.emplace_back(header_name);
+  headers_update_params_.removed_headers.emplace_back(header_name);
 }
 
 void NavigationRequest::SetRequestHeader(std::string_view header_name,
                                          std::string_view header_value) {
   CHECK(state_ == WILL_START_REQUEST || state_ == WILL_REDIRECT_REQUEST);
-  modified_request_headers_.SetHeader(header_name, header_value);
+  headers_update_params_.modified_headers.SetHeader(header_name, header_value);
 }
 
 void NavigationRequest::SetLCPPNavigationHint(

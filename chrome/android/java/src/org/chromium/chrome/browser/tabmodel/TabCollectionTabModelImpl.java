@@ -6,9 +6,9 @@ package org.chromium.chrome.browser.tabmodel;
 
 import static org.chromium.base.ThreadUtils.assertOnUiThread;
 import static org.chromium.build.NullUtil.assumeNonNull;
-import static org.chromium.chrome.browser.tabmodel.TabGroupModelFilter.MergeNotificationType.DONT_NOTIFY;
-import static org.chromium.chrome.browser.tabmodel.TabGroupModelFilter.MergeNotificationType.NOTIFY_ALWAYS;
-import static org.chromium.chrome.browser.tabmodel.TabGroupModelFilter.MergeNotificationType.NOTIFY_IF_NOT_NEW_GROUP;
+import static org.chromium.chrome.browser.tabmodel.TabGroupMergeNotificationType.DONT_NOTIFY;
+import static org.chromium.chrome.browser.tabmodel.TabGroupMergeNotificationType.NOTIFY_ALWAYS;
+import static org.chromium.chrome.browser.tabmodel.TabGroupMergeNotificationType.NOTIFY_IF_NOT_NEW_GROUP;
 import static org.chromium.chrome.browser.tabmodel.TabGroupTitleUtils.UNSET_TAB_GROUP_TITLE;
 import static org.chromium.chrome.browser.tabmodel.TabGroupUtils.areAnyTabsPartOfSharedGroup;
 
@@ -79,7 +79,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 /**
- * This class implements {@link TabModelInternal} and {@link TabGroupModelFilterInternal}.
+ * This class implements {@link TabModelInternal}.
  *
  * <p>The class uses the tab collection tree-like structure available in components/tabs/ to
  * organize tabs. The tabs in C++ tab collections are only cached with weak ptr references to the
@@ -92,8 +92,7 @@ import java.util.function.Supplier;
  */
 @NullMarked
 @JNINamespace("tabs")
-public class TabCollectionTabModelImpl extends TabModelJniBridge
-        implements TabGroupModelFilterInternal {
+public class TabCollectionTabModelImpl extends TabModelJniBridge {
     /** The name of the UKM event used for tab state changes. */
     private static final String UKM_METRICS_TAB_STATE_CHANGED = "Tab.StateChange";
 
@@ -1310,7 +1309,7 @@ public class TabCollectionTabModelImpl extends TabModelJniBridge
             List<Tab> tabs,
             Tab destinationTab,
             @Nullable Integer indexInGroup,
-            @MergeNotificationType int notify) {
+            @TabGroupMergeNotificationType int notify) {
         try (ScopedStorageBatch ignored = mBatchFactory.get()) {
             mergeListOfTabsToGroupInternal(
                     tabs,
@@ -1503,13 +1502,6 @@ public class TabCollectionTabModelImpl extends TabModelJniBridge
     public void deleteTabGroupCollapsed(Token tabGroupId) {
         if (!tabGroupExists(tabGroupId)) return;
         setTabGroupCollapsed(tabGroupId, false, false);
-    }
-
-    // TabGroupModelFilterInternal overrides.
-
-    @Override
-    public void markTabStateInitialized() {
-        // Intentional no-op. This is handled by mModelDelegate#isTabModelRestored().
     }
 
     @Override
@@ -2195,7 +2187,7 @@ public class TabCollectionTabModelImpl extends TabModelJniBridge
     void mergeListOfTabsToGroupInternal(
             List<Tab> tabs,
             Tab destinationTab,
-            @MergeNotificationType int notify,
+            @TabGroupMergeNotificationType int notify,
             @Nullable Integer indexInGroup,
             @Nullable Token tabGroupIdForNewGroup) {
         assertOnUiThread();

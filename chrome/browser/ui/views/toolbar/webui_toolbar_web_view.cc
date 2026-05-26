@@ -32,6 +32,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
+#include "chrome/browser/ui/extensions/extensions_container.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/split_tab_util.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -47,6 +48,7 @@
 #include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/browser/ui/webui/webui_toolbar/adapters/navigation_controls_state_fetcher_impl.h"
+#include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_extensions_container.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/common/webui_url_constants.h"
@@ -72,6 +74,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
+#include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -187,6 +190,7 @@ WebUIToolbarWebView::WebUIToolbarWebView(
     std::unique_ptr<WebUILocationBar> location_bar)
     : browser_(browser),
       controller_(controller),
+      icon_table_(this),
       reload_control_(this),
       split_tabs_control_(this),
       home_control_(this),
@@ -215,7 +219,7 @@ WebUIToolbarWebView::WebUIToolbarWebView(
   last_queued_state_.location_bar_state->lhs_chips_state =
       toolbar_ui_api::mojom::LhsChipsState::New(
           toolbar_ui_api::mojom::SecurityChipState::New(
-              toolbar_ui_api::mojom::SecurityChipIcon::kHttp,
+              toolbar_ui_api::IconHandle(),
               toolbar_ui_api::mojom::SecurityLevel::kNone, std::u16string(),
               /*is_clickable=*/false, /*is_text_dangerous=*/false,
               /*is_visible=*/true),
@@ -265,6 +269,20 @@ WebUIToolbarWebView::WebUIToolbarWebView(
 
   // The accessibility and tooltip attributes are handled by the WebUI.
   SetProperty(views::kElementIdentifierKey, kWebUIToolbarElementIdentifier);
+
+  if (features::IsWebUIExtensionsContainerEnabled()) {
+    Browser* const browser_ptr = browser->GetBrowserForMigrationOnly();
+    extensions_container_ = std::make_unique<WebUIToolbarExtensionsContainer>(
+        *browser, *browser_ptr->window(), web_contents()->GetWeakPtr());
+    // Register `extensions_container_` as the `ExtensionsContainer` for
+    // `browser`.
+    scoped_extensions_container_user_data_ =
+        std::make_unique<ui::ScopedUnownedUserData<ExtensionsContainer>>(
+            browser->GetUnownedUserDataHost(), *extensions_container_);
+    active_tab_subscription_ =
+        browser->RegisterActiveTabDidChange(base::BindRepeating(
+            &WebUIToolbarWebView::OnActiveTabChanged, base::Unretained(this)));
+  }
 }
 
 WebUIToolbarWebView::~WebUIToolbarWebView() = default;
@@ -318,6 +336,10 @@ void WebUIToolbarWebView::AddedToWidget() {
 void WebUIToolbarWebView::OnThemeChanged() {
   views::View::OnThemeChanged();
   avatar_control_.UpdateIcon();
+  if (extensions_container_) {
+    // Icons may need re-rendering.
+    extensions_container_->NotifyOfAllActions();
+  }
 }
 
 gfx::Size WebUIToolbarWebView::CalculatePreferredSize(
@@ -514,6 +536,10 @@ void WebUIToolbarWebView::AnnounceAlert(const std::u16string& announcement) {
   GetViewAccessibility().AnnounceAlert(announcement);
 }
 
+webui_toolbar::IconTable& WebUIToolbarWebView::GetIconTable() {
+  return icon_table_;
+}
+
 void WebUIToolbarWebView::OnPreferredSizeChanged() {
   PreferredSizeChanged();
 }
@@ -538,6 +564,11 @@ WebUIToolbarWebView::GetNavigationControlsStateFetcher() {
   return std::make_unique<toolbar_ui_api::NavigationControlsStateFetcherImpl>(
       base::BindRepeating(&WebUIToolbarWebView::GetNavigationControlsState,
                           base::Unretained(this)));
+}
+
+std::unique_ptr<toolbar_ui_api::IconTableFetcher>
+WebUIToolbarWebView::GetIconTableFetcher() {
+  return icon_table_.MakeIconTableFetcher();
 }
 
 CommandUpdater* WebUIToolbarWebView::GetCommandUpdater() {
@@ -673,6 +704,17 @@ void WebUIToolbarWebView::PrimaryMainFrameRenderProcessGone(
   }
 }
 
+const ui::ColorProvider* WebUIToolbarWebView::GetColorProvider() const {
+  return views::View::GetColorProvider();
+}
+
+float WebUIToolbarWebView::GetScaleFactor() const {
+  if (auto* ui = web_view_->web_contents()->GetWebUI()) {
+    return ui->GetDeviceScaleFactor();
+  }
+  return 1.0f;
+}
+
 void WebUIToolbarWebView::RecoverFromRendererCrashOrUnresponsiveness() {
   CHECK(web_view_);
   // Note that in some cases the WebView might have been recovered already (e.g.
@@ -752,6 +794,12 @@ void WebUIToolbarWebView::OnHomeButtonDropFile(
     const gfx::PointF& drop_position) {
   if (std::optional<GURL> url = web_view_->ConsumeDroppedUrl(drop_position)) {
     home_control_.OnHomeButtonDropUrl(*url);
+  }
+}
+
+void WebUIToolbarWebView::OnToolbarDropFile(const gfx::PointF& drop_position) {
+  if (std::optional<GURL> url = web_view_->ConsumeDroppedUrl(drop_position)) {
+    browser_->OpenGURL(*url, WindowOpenDisposition::CURRENT_TAB);
   }
 }
 
@@ -878,6 +926,15 @@ void WebUIToolbarWebView::OnContentSettingChanged(
 void WebUIToolbarWebView::OnTouchUiChanged() {
   ++last_queued_state_.layout_constants_version;
   PostPushNavigationState();
+}
+
+void WebUIToolbarWebView::OnActiveTabChanged(
+    BrowserWindowInterface* browser_interface) {
+  if (extensions_container_) {
+    // State of extensions depends on what's active --- e.g. some may be
+    // disabled on some URLs.
+    extensions_container_->NotifyOfAllActions();
+  }
 }
 
 void WebUIToolbarWebView::PostPushNavigationState() {

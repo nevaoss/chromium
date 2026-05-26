@@ -8,7 +8,13 @@
 
 #include "components/autofill/core/browser/webdata/autocomplete/autocomplete_table_label_sensitive.h"
 
-#include <memory>
+#include <stddef.h>
+#include <stdint.h>
+
+#include <ctime>
+#include <limits>
+#include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -17,13 +23,15 @@
 #include "base/check_deref.h"
 #include "base/i18n/case_conversion.h"
 #include "base/i18n/unicodestring.h"
-#include "base/notreached.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/time/time.h"
 #include "components/autofill/core/browser/webdata/autocomplete/autocomplete_entry_label_sensitive.h"
+#include "components/autofill/core/browser/webdata/autofill_table_utils.h"
 #include "components/autofill/core/common/autofill_clock.h"
 #include "components/autofill/core/common/autofill_constants.h"
 #include "components/autofill/core/common/form_field_data.h"
 #include "components/webdata/common/web_database.h"
+#include "components/webdata/common/web_database_table.h"
 #include "sql/statement.h"
 #include "sql/statement_id.h"
 #include "sql/table_management_helpers.h"
@@ -32,8 +40,8 @@
 #include "third_party/icu/source/common/unicode/normalizer2.h"
 #include "third_party/icu/source/common/unicode/uchar.h"
 #include "third_party/icu/source/common/unicode/unistr.h"
+#include "third_party/icu/source/common/unicode/urename.h"
 #include "third_party/icu/source/common/unicode/utypes.h"
-#include "ui/base/l10n/l10n_util.h"
 
 namespace autofill {
 
@@ -215,7 +223,7 @@ bool AutocompleteTableLabelSensitive::GetFormValuesForElementNameAndLabel(
       "  MAX(count) AS max_count "
       "FROM autocomplete, inputs "
       "WHERE (name = inputs._name OR (label != '' AND label_normalized = "
-      "inputs._label)) AND value_lower LIKE inputs._prefix "
+      "inputs._label)) AND value_lower LIKE inputs._prefix ESCAPE '\\' "
       "GROUP BY value, matching_type "
       "ORDER BY "
       "  CASE "
@@ -226,7 +234,8 @@ bool AutocompleteTableLabelSensitive::GetFormValuesForElementNameAndLabel(
       "LIMIT ?"));
   s.BindString16(0, name);
   s.BindString16(1, NormalizeLabel(label));
-  s.BindString16(2, base::i18n::ToLower(prefix) + u"%");
+  s.BindString16(2,
+                 EscapeLikePattern(base::i18n::ToLower(prefix), u'\\') + u"%");
 
   // Later in this function we remove duplicates. Potentially every matching
   // type can return entries with identical values. So to make sure we will

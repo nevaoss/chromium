@@ -55,6 +55,7 @@
 #include "content/public/browser/web_contents.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
 #include "ui/compositor/layer.h"
 #include "ui/gfx/geometry/size.h"
@@ -466,9 +467,12 @@ std::unique_ptr<views::View> GetPasswordIconView(
   std::optional<ui::ImageModel> suggestion_icon_model =
       popup_cell_utils::GetIconImageModelFromIcon(suggestion.icon);
   ui::ImageModel placeholder_icon =
-      suggestion_icon_model ? std::move(*suggestion_icon_model)
-                            : popup_cell_utils::ImageModelFromVectorIcon(
-                                  kGlobeOldIcon, kCustomIconSize);
+      suggestion_icon_model
+          ? std::move(*suggestion_icon_model)
+          : popup_cell_utils::ImageModelFromVectorIcon(
+                ::features::IsRoundedIconsEnabled() ? kGlobeIcon
+                                                    : kGlobeOldIcon,
+                kCustomIconSize);
 
   return std::make_unique<LazyLoadingImageView>(
       gfx::Size(kCustomIconSize, kCustomIconSize), std::move(placeholder_icon),
@@ -666,7 +670,9 @@ std::unique_ptr<PopupRowWithButtonView> CreateAutocompleteRowWithDeleteButton(
   std::unique_ptr<views::ImageButton> button =
       views::CreateVectorImageButtonWithNativeTheme(
           CreateExecuteSoonWrapper(std::move(deletion_action)),
-          views::kIcCloseOldIcon, kCloseIconSize);
+          ::features::IsRoundedIconsEnabled() ? views::kCloseIcon
+                                              : views::kIcCloseOldIcon,
+          kCloseIconSize);
 
   // We are making sure that the vertical distance from the delete button edges
   // to the cell border is the same as the horizontal distance.

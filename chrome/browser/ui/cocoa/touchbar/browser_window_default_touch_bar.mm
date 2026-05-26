@@ -40,6 +40,7 @@
 #import "ui/base/cocoa/touch_bar_util.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/l10n/l10n_util_mac.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/gfx/color_palette.h"
 #include "ui/gfx/color_utils.h"
 #include "ui/gfx/image/image.h"
@@ -162,6 +163,9 @@ class TouchBarNotificationBridge : public CommandObserver,
 
   ~TouchBarNotificationBridge() override {
     UpdateWebContents(nullptr);
+    if (browser_) {
+      browser_->command_controller()->RemoveCommandObserver(this);
+    }
   }
 
   void UpdateTouchBar() { [[owner_ controller] invalidateTouchBar]; }
@@ -193,11 +197,12 @@ class TouchBarNotificationBridge : public CommandObserver,
 
   // BrowserCollectionObserver:
   void OnBrowserClosed(BrowserWindowInterface* browser) override {
+    if (browser == browser_) {
+      browser_->command_controller()->RemoveCommandObserver(this);
+      browser_ = nullptr;
+    }
     if (browser == owner_.browser) {
       owner_.browser = nullptr;
-    }
-    if (browser == browser_) {
-      browser_ = nullptr;
     }
   }
 
@@ -374,16 +379,20 @@ class TouchBarNotificationBridge : public CommandObserver,
                           IDS_TOUCH_BAR_STOP_RELOAD_CUSTOMIZATION_LABEL)];
   } else if ([identifier hasSuffix:kHomeTouchId]) {
     [touchBarItem
-        setView:CreateTouchBarButton(kNavigateHomeChromeRefreshOldIcon, self,
-                                     IDC_HOME, IDS_ACCNAME_HOME)];
+        setView:CreateTouchBarButton(features::IsRoundedIconsEnabled()
+                                         ? kHomeIcon
+                                         : kNavigateHomeChromeRefreshOldIcon,
+                                     self, IDC_HOME, IDS_ACCNAME_HOME)];
     [touchBarItem
         setCustomizationLabel:l10n_util::GetNSString(
                                   IDS_TOUCH_BAR_HOME_CUSTOMIZATION_LABEL)];
   } else if ([identifier hasSuffix:kNewTabTouchId]) {
-    [touchBarItem setView:CreateTouchBarButton(kNewTabMacTouchbarOldIcon, self,
-                                               IDC_NEW_TAB, IDS_TOOLTIP_NEW_TAB,
-                                               kTouchBarDefaultIconColor,
-                                               kOldTouchBarIconSize)];
+    [touchBarItem setView:CreateTouchBarButton(
+                              features::IsRoundedIconsEnabled()
+                                  ? kAddCircleFilledIcon
+                                  : kNewTabMacTouchbarOldIcon,
+                              self, IDC_NEW_TAB, IDS_TOOLTIP_NEW_TAB,
+                              kTouchBarDefaultIconColor, kOldTouchBarIconSize)];
     [touchBarItem
         setCustomizationLabel:l10n_util::GetNSString(
                                   IDS_TOUCH_BAR_NEW_TAB_CUSTOMIZATION_LABEL)];
@@ -647,7 +656,9 @@ class TouchBarNotificationBridge : public CommandObserver,
 
 + (NSImage*)starDefaultIcon {
   static __strong NSImage* starDefaultIcon = CreateNSImageFromIcon(
-      omnibox::kStarChromeRefreshOldIcon, kTouchBarDefaultIconColor);
+      features::IsRoundedIconsEnabled() ? omnibox::kStarIcon
+                                        : omnibox::kStarChromeRefreshOldIcon,
+      kTouchBarDefaultIconColor);
   return starDefaultIcon;
 }
 
@@ -657,15 +668,18 @@ class TouchBarNotificationBridge : public CommandObserver,
 
 + (NSImage*)starActiveIcon {
   static __strong NSImage* starActiveIcon = []() {
-    return CreateNSImageFromIcon(omnibox::kStarActiveChromeRefreshOldIcon,
+    return CreateNSImageFromIcon(features::IsRoundedIconsEnabled()
+                                     ? omnibox::kStarFilledIcon
+                                     : omnibox::kStarActiveChromeRefreshOldIcon,
                                  kTouchBarStarActiveColor);
   }();
   return starActiveIcon;
 }
 
 + (NSImage*)navigateStopIcon {
-  static __strong NSImage* navigateStopIcon =
-      CreateNSImageFromIcon(kNavigateStopChromeRefreshOldIcon);
+  static __strong NSImage* navigateStopIcon = CreateNSImageFromIcon(
+      features::IsRoundedIconsEnabled() ? kCloseSmallIcon
+                                        : kNavigateStopChromeRefreshOldIcon);
   return navigateStopIcon;
 }
 

@@ -1502,7 +1502,7 @@
     {
         "name": "material",
         "group": "com.google.android.material",
-        "version": "1.14.0-rc01"
+        "version": "1.14.0"
     },
     {
         "name": "core-common",
@@ -2127,17 +2127,17 @@
     {
         "name": "asm",
         "group": "org.ow2.asm",
-        "version": "9.9.1"
+        "version": "9.10"
     },
     {
         "name": "asm-commons",
         "group": "org.ow2.asm",
-        "version": "9.9.1"
+        "version": "9.10"
     },
     {
         "name": "asm-tree",
         "group": "org.ow2.asm",
-        "version": "9.9.1"
+        "version": "9.10"
     },
     {
         "name": "reactive-streams",

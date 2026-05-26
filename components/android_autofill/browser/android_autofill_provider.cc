@@ -192,6 +192,10 @@ void AndroidAutofillProvider::OnAskForValuesToFill(
   // in response, see OnAutofillAvailable.
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
 
+  if (credman_sheet_status_ == CredManBottomSheetLifecycle::kIsShowing) {
+    return;  // CredMan prevents 3P autofill UI. Start the session on refocus!
+  }
+
   // We need to create session state here outside of StartNewSession because
   // StartNewSession is called when the form is focused or the field value is
   // changed, and we need to set the current_field and last_queried_field_rfh_id
@@ -209,10 +213,6 @@ void AndroidAutofillProvider::OnAskForValuesToFill(
       });
 
   UpdateCurrentField(manager, form, field);
-
-  if (credman_sheet_status_ == CredManBottomSheetLifecycle::kIsShowing) {
-    return;  // CredMan prevents 3P autofill UI. Start the session on refocus!
-  }
 
   // Focus or field value change will also trigger the query, so it should be
   // ignored if the form is same.
@@ -698,10 +698,6 @@ void AndroidAutofillProvider::SetBottomSheetShownOff() {
 bool MayOfferUsefulPasskeyOptions(WebAuthnCredManDelegate* delegate) {
   if (!delegate) {
     return false;  // Needs delegate to trigger CredMan:
-  }
-  if (!base::FeatureList::IsEnabled(
-          features::kAutofillVirtualViewStructureAndroidPasskeyLongPress)) {
-    return true;  // Assume that hybrid entry point is enough reason to show.
   }
   // Needs *more* than the hybrid option for passkeys. With a request in flux,
   // the remaining chance is hope enough. This needs to be checked on focus.

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {AnnotationBrush, GetTextInfoResult, TextAnnotation, TextAnnotationMessageData, TextAttributes, TextBoxInit, UndoRedoStateChangedDetail, ViewportParams} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
-import {AnnotationBrushType, DEFAULT_TEXTBOX_WIDTH, Ink2Manager, MIN_TEXTBOX_SIZE_PX, PluginController, PluginControllerEventType, TextAlignment, TextTypeface} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
+import type {AnnotationBrush, TextAnnotation, TextAnnotationMessageData, TextAttributes, TextBoxInit, UndoRedoStateChangedDetail, ViewportParams} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
+import {AnnotationBrushType, DEFAULT_TEXTBOX_WIDTH, Ink2Manager, MIN_TEXTBOX_SIZE_PX, PluginController, PluginControllerEventType, TextAlignment, TextAnnotationSource, TextTypeface} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
 import {assert} from 'chrome://resources/js/assert.js';
 import {eventToPromise} from 'chrome://webui-test/test_util.js';
 
@@ -15,6 +15,7 @@ const manager = Ink2Manager.getInstance();
 function getTestAnnotation(id: number): TextAnnotation {
   return {
     id: id,
+    mojoTextInfo: new ArrayBuffer(0),
     pageIndex: 0,
     text: 'Hello World',
     textAttributes: {
@@ -41,17 +42,9 @@ function getTestAnnotationMessageData(id: number): TextAnnotationMessageData {
   return {
     ...getTestAnnotation(id),
     isEdited: false,
-    isUser: true,
-    mojoTextInfo: new ArrayBuffer(0),
     newTypefaces: [],
     pdfZoom: 1.0,
-  };
-}
-
-function getDummyTextInfo(): GetTextInfoResult {
-  return {
-    mojoTextInfo: new ArrayBuffer(0),
-    typefaces: [],
+    source: TextAnnotationSource.USER,
   };
 }
 
@@ -263,8 +256,7 @@ chrome.test.runTests([
 
     // Simulate committing the annotation when the init event is received.
     // This is what ink-text-box does in production.
-    manager.commitTextAnnotation(
-        testAnnotation1ScreenCoords, true, getDummyTextInfo());
+    manager.commitTextAnnotation(testAnnotation1ScreenCoords, true, []);
 
     // Confirm that the finish annotation message is sent with the correct
     // parameters.
@@ -277,10 +269,10 @@ chrome.test.runTests([
     const expectedMessageData1: TextAnnotationMessageData = {
       ...testAnnotation1,
       isEdited: true,
-      isUser: true,
       mojoTextInfo: new ArrayBuffer(0),
       newTypefaces: [],
       pdfZoom: 1.0,
+      source: TextAnnotationSource.USER,
     };
     expectedMessageData1.textAttributes.color = blue;
     assertDeepEquals(expectedMessageData1, finishTextAnnotationMessage.data);
@@ -641,14 +633,14 @@ chrome.test.runTests([
       // and we want to reuse this below.
       annotationPageCoords.isEdited = true;
       const editedAnnot = structuredClone(annotationScreenCoords);
-      manager.commitTextAnnotation(editedAnnot, true, getDummyTextInfo());
+      manager.commitTextAnnotation(editedAnnot, true, []);
       verifyFinishTextAnnotationMessage(annotationPageCoords);
       mockPlugin.clearMessages();
 
       // Committing with edited = false should fire an unmodified event.
       annotationPageCoords.isEdited = false;
       const uneditedAnnot = structuredClone(annotationScreenCoords);
-      manager.commitTextAnnotation(uneditedAnnot, false, getDummyTextInfo());
+      manager.commitTextAnnotation(uneditedAnnot, false, []);
       verifyFinishTextAnnotationMessage(annotationPageCoords);
       mockPlugin.clearMessages();
     }
@@ -672,8 +664,7 @@ chrome.test.runTests([
     testCommitAnnotation(annotationScreenCoords, annotationPageCoords);
     // Delete to clear state.
     annotationScreenCoords.text = '';
-    manager.commitTextAnnotation(
-        annotationScreenCoords, true, getDummyTextInfo());
+    manager.commitTextAnnotation(annotationScreenCoords, true, []);
     mockPlugin.clearMessages();
 
     // 180 degrees
@@ -690,8 +681,7 @@ chrome.test.runTests([
     testCommitAnnotation(annotationScreenCoords, annotationPageCoords);
     // Delete to clear state.
     annotationScreenCoords.text = '';
-    manager.commitTextAnnotation(
-        annotationScreenCoords, true, getDummyTextInfo());
+    manager.commitTextAnnotation(annotationScreenCoords, true, []);
     mockPlugin.clearMessages();
 
     // 90 degrees CW
@@ -708,8 +698,7 @@ chrome.test.runTests([
     testCommitAnnotation(annotationScreenCoords, annotationPageCoords);
     // Delete to clear state.
     annotationScreenCoords.text = '';
-    manager.commitTextAnnotation(
-        annotationScreenCoords, true, getDummyTextInfo());
+    manager.commitTextAnnotation(annotationScreenCoords, true, []);
     mockPlugin.clearMessages();
 
     // Normal orientation (0 degrees).
@@ -1025,14 +1014,14 @@ chrome.test.runTests([
 
     // 2. Commit text annotation (edited) - adds to the stack
     const testAnnotation = getTestAnnotation(0);
-    manager.commitTextAnnotation(testAnnotation, true, getDummyTextInfo());
+    manager.commitTextAnnotation(testAnnotation, true, []);
     assertStackState(true, false, true);
 
     // 3. Commit a text annotation with no edits. This should not impact
     //    the undo/redo stack or fire an event.
     lastState = null;
     const testAnnotation2 = getTestAnnotation(1);
-    manager.commitTextAnnotation(testAnnotation2, false, getDummyTextInfo());
+    manager.commitTextAnnotation(testAnnotation2, false, []);
     // Since it wasn't edited, no 'undo-redo-state-changed' event should have
     // fired.
     chrome.test.assertTrue(lastState === null);
@@ -1113,15 +1102,16 @@ chrome.test.runTests([
 
     // Helper to verify plugin message
     function verifyFinishTextAnnotationMessage(
-        id: number, expectedText: string, expectedIsUser: boolean) {
+        expectedId: number, expectedText: string,
+        expectedSource: TextAnnotationSource) {
       const message =
           mockPlugin
               .findMessage<{type: string, data: TextAnnotationMessageData}>(
                   'finishTextAnnotation');
       chrome.test.assertTrue(message !== undefined);
-      chrome.test.assertEq(id, message.data.id);
+      chrome.test.assertEq(expectedId, message.data.id);
+      chrome.test.assertEq(expectedSource, message.data.source);
       chrome.test.assertEq(expectedText, message.data.text);
-      chrome.test.assertEq(expectedIsUser, message.data.isUser);
       mockPlugin.clearMessages();
     }
 
@@ -1136,21 +1126,21 @@ chrome.test.runTests([
     annot0.text = 'Hello';
 
     // Commit creation
-    manager.commitTextAnnotation(annot0, true, getDummyTextInfo());
+    manager.commitTextAnnotation(annot0, true, []);
     // New message is from the user.
-    verifyFinishTextAnnotationMessage(0, 'Hello', true);
+    verifyFinishTextAnnotationMessage(0, 'Hello', TextAnnotationSource.USER);
     assertAnnotationExists(0, true, 'Hello');
 
     // Undo creation -> should delete it
     manager.undo();
     assertAnnotationExists(0, false);
-    // Deletion sends a message to the plugin with empty text and isUser=false
-    verifyFinishTextAnnotationMessage(0, '', false);
+    // Deletion sends a message to the plugin with empty text
+    verifyFinishTextAnnotationMessage(0, '', TextAnnotationSource.UNDO);
 
     // Redo creation -> should restore it
     manager.redo();
     assertAnnotationExists(0, true, 'Hello');
-    verifyFinishTextAnnotationMessage(0, 'Hello', false);
+    verifyFinishTextAnnotationMessage(0, 'Hello', TextAnnotationSource.REDO);
 
     // --- 2. TEST MODIFICATION ---
     // Initialize an existing annotation (id 0) for edit
@@ -1164,19 +1154,19 @@ chrome.test.runTests([
     annot0Edit.text = 'World';
 
     // Commit modification, which is from the user.
-    manager.commitTextAnnotation(annot0Edit, true, getDummyTextInfo());
-    verifyFinishTextAnnotationMessage(0, 'World', true);
+    manager.commitTextAnnotation(annot0Edit, true, []);
+    verifyFinishTextAnnotationMessage(0, 'World', TextAnnotationSource.USER);
     assertAnnotationExists(0, true, 'World');
 
     // Undo modification -> should restore to 'Hello'
     manager.undo();
     assertAnnotationExists(0, true, 'Hello');
-    verifyFinishTextAnnotationMessage(0, 'Hello', false);
+    verifyFinishTextAnnotationMessage(0, 'Hello', TextAnnotationSource.UNDO);
 
     // Redo modification -> should change back to 'World'
     manager.redo();
     assertAnnotationExists(0, true, 'World');
-    verifyFinishTextAnnotationMessage(0, 'World', false);
+    verifyFinishTextAnnotationMessage(0, 'World', TextAnnotationSource.REDO);
 
     // --- 3. TEST DELETION ---
     // Initialize existing annotation (id 0) for edit
@@ -1188,19 +1178,19 @@ chrome.test.runTests([
     // Empty text deletes the annotation, and matches what ink-text-box does
     // when "Delete" is pressed.
     annot0Delete.text = '';
-    manager.commitTextAnnotation(annot0Delete, true, getDummyTextInfo());
-    verifyFinishTextAnnotationMessage(0, '', true);
+    manager.commitTextAnnotation(annot0Delete, true, []);
+    verifyFinishTextAnnotationMessage(0, '', TextAnnotationSource.USER);
     assertAnnotationExists(0, false);
 
     // Undo deletion -> should restore to 'World'
     manager.undo();
     assertAnnotationExists(0, true, 'World');
-    verifyFinishTextAnnotationMessage(0, 'World', false);
+    verifyFinishTextAnnotationMessage(0, 'World', TextAnnotationSource.UNDO);
 
     // Redo deletion -> should delete again
     manager.redo();
     assertAnnotationExists(0, false);
-    verifyFinishTextAnnotationMessage(0, '', false);
+    verifyFinishTextAnnotationMessage(0, '', TextAnnotationSource.REDO);
 
     chrome.test.succeed();
   },

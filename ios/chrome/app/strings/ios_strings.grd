@@ -2157,9 +2157,6 @@
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_SETTING_TITLE" desc="The title of the settings to toggle the articles suggestions on the NTP on/off">
         Article suggestions
       </message>
-      <message name="IDS_IOS_CONTENT_SUGGESTIONS_SHOPCARD_PRICE_DROP_CONTEXT_MENU_TITLE" desc="Customize cards title for Price Drops on Tab Resumption">
-          This card shows price drops on products in your open tabs
-      </message>
       <message name="IDS_IOS_CONTENT_SUGGESTIONS_SHOPCARD_PRICE_DROP_OPEN_TABS_ACCESSIBILITY_LABEL" desc="Accessibility label for Price Drop on Open Tabs">
           Price drop on your open tab, from <ph name="PREVIOUS_PRICE">$1<ex>$799</ex></ph> to <ph name="PRICE">$2<ex>$699</ex></ph>, <ph name="PRODUCT_NAME">$3<ex>Pixel phone</ex></ph>, <ph name="DOMAIN">$4<ex>store.google.com</ex></ph>
       </message>
@@ -4283,6 +4280,26 @@
       <message name="IDS_IOS_LENS_PROMO_TITLE" desc="The title text for a Lens promo view.">
         Search with Lens
       </message>
+      <message name="IDS_IOS_LEVEL_UP_HEADER_TITLE" desc="The header title displaying at the top of the Level Up task progress card. [iOS only]">
+        Current Chrome Level
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_LEVEL_TITLE" desc="The text displaying the current user level. [iOS only]">
+        Level <ph name="LEVEL_NUMBER">$1<ex>1</ex></ph>
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_MAXIMUM_LEVEL" desc="Progress message displaying that all tasks have been completed and the user is all set. [iOS only]">
+        You’re all set! Get notified when new tasks arrive.
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_SEE_ALL" desc="Link button to open all available level-up tasks. [iOS only]">
+        See All
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_TASKS_REMAINING" desc="Progress message explaining how many tasks remain to level up. [iOS only]">
+        {count, plural,
+          =1 {Complete 1 more task to level up}
+          other {Complete {count} more tasks to level up}}
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_YOUR_TASKS" desc="Title for the tasks card displaying the user's available level-up tasks. [iOS only]">
+        Your tasks
+      </message>
       <message name="IDS_IOS_LINK_TO_TEXT_ERROR_DESCRIPTION" desc="Description message in the alert dialog shown when link-to-text link generation failed. [iOS only]">
         A link to the highlight can not be created.
       </message>
@@ -4620,16 +4637,13 @@
         new feature
       </message>
       <message name="IDS_IOS_NEW_IA_PROMO_IPH_GEMINI_TEXT" desc="Main text for the second in-product help bubble suggesting Gemini built-in. [Length: unlimited] [iOS only]">
-        Use Gemini to summarize, explain, and more.
-      </message>
-      <message name="IDS_IOS_NEW_IA_PROMO_IPH_GEMINI_TITLE" desc="Title for the second in-product help bubble suggesting Gemini built-in. [Length: unlimited] [iOS only]">
-        Gemini Built In
+        Get help with your tabs and tasks
       </message>
       <message name="IDS_IOS_NEW_IA_PROMO_IPH_TEXT" desc="Main text for the in-product help bubble suggesting a faster way to use the app. [Length: unlimited] [iOS only]">
-        Getting around in the app is easier now.
+        Browse faster with the new toolbar
       </message>
       <message name="IDS_IOS_NEW_IA_PROMO_IPH_TITLE" desc="Title for the in-product help bubble suggesting a faster way to use the app. [Length: unlimited] [iOS only]">
-        A faster way to use the app
+        Your controls, where you need them
       </message>
       <message name="IDS_IOS_NEW_INCOGNITO_TAB" desc="Label for text saying the tab is a new Incognito tab.">
         New Incognito tab

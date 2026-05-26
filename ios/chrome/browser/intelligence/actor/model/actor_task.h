@@ -67,6 +67,9 @@ class ActorTask : public web::WebStateObserver,
            const std::string& task_update,
            ActCallback callback);
 
+  // Adds a WebState to the set of controlled WebStates.
+  void AddControlledWebState(web::WebState* web_state);
+
   // Stops the task and cancels any pending actions.
   void Stop(ActorTaskStoppedReason stop_reason);
 
@@ -166,8 +169,9 @@ class ActorTask : public web::WebStateObserver,
   std::string last_task_update_;
 
   // List of registered observers notified of task state changes and tool
-  // executions.
-  CRBProtocolObservers<ActorTaskUpdatesObserver>* observers_;
+  // executions. `CRBProtocolObservers` itself is held strongly, but the
+  // observers inside are held weakly.
+  __strong CRBProtocolObservers<ActorTaskUpdatesObserver>* observers_;
 
   // Weak pointer factory.
   base::WeakPtrFactory<ActorTask> weak_ptr_factory_{this};

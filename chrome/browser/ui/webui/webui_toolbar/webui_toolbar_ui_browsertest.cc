@@ -156,6 +156,7 @@ class MockToolbarUIDelegate
               (override));
   MOCK_METHOD(void, OnHomeButtonDropUrl, (const GURL&), (override));
   MOCK_METHOD(void, OnHomeButtonDropFile, (const gfx::PointF&), (override));
+  MOCK_METHOD(void, OnToolbarDropFile, (const gfx::PointF&), (override));
   MOCK_METHOD(void,
               OnOmniboxAction,
               (toolbar_ui_api::mojom::OmniboxActionPtr action_ptr),
@@ -218,6 +219,11 @@ class WebUIToolbarUIBrowserTest : public InProcessBrowserTest,
         base::BindRepeating(
             [&] { return CreateValidNavigationControlsState(); }));
   }
+  std::unique_ptr<toolbar_ui_api::IconTableFetcher> GetIconTableFetcher()
+      override {
+    return std::make_unique<FakeIconTableFetcher>();
+  }
+
   CommandUpdater* GetCommandUpdater() override {
     return reinterpret_cast<CommandUpdater*>(
         webui::GetBrowserWindowInterface(web_ui()->GetWebContents())
@@ -263,11 +269,14 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarUIBrowserTest, SetReloadButtonState) {
 
   EXPECT_CALL(
       connection.mock_observer(),
-      OnNavigationControlsStateChanged(testing::Pointee(testing::Field(
-          &toolbar_ui_api::mojom::NavigationControlsState::reload_control_state,
-          testing::Pointee(testing::Field(
-              &toolbar_ui_api::mojom::ReloadControlState::is_navigation_loading,
-              true))))))
+      OnNavigationControlsStateChanged(
+          testing::_, testing::Pointee(testing::Field(
+                          &toolbar_ui_api::mojom::NavigationControlsState::
+                              reload_control_state,
+                          testing::Pointee(testing::Field(
+                              &toolbar_ui_api::mojom::ReloadControlState::
+                                  is_navigation_loading,
+                              true))))))
       .Times(1);
   ui()->OnNavigationControlsStateChanged(*state);
   connection.mock_observer().FlushForTesting();
@@ -358,7 +367,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarUIBrowserTest,
   auto source_it = config.sources.find(theme_origin);
   ASSERT_TRUE(source_it != config.sources.end());
 
-  auto resource_it = source_it->second->path_to_resource_map.find("colors.css");
+  auto resource_it =
+      source_it->second->path_to_resource_map.find("colors.css?sets=ui,chrome");
   ASSERT_TRUE(resource_it != source_it->second->path_to_resource_map.end());
   EXPECT_TRUE(resource_it->second->is_response_body());
 }

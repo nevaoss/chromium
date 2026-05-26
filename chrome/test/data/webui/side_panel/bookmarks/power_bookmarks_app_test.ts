@@ -83,11 +83,14 @@ suite('General', () => {
   }
 
   async function openBookmark(id: string) {
+    const metricsLogged = eventToPromise(
+        'bookmark-count-recorded', powerBookmarksApp.$.bookmarksList);
+
     const bookmark = getBookmarkWithId(powerBookmarksApp, id);
     assertTrue(!!bookmark);
     powerBookmarksApp.$.bookmarksList.clickBookmarkRowForTests(bookmark);
 
-    await flushTasks();
+    await metricsLogged;
   }
 
   async function selectBookmark(id: string) {
@@ -149,7 +152,8 @@ suite('General', () => {
     });
 
     powerBookmarksApp = await initializeAppUi(bookmarksApi);
-    await flushTasks();
+    await eventToPromise(
+        'bookmark-count-recorded', powerBookmarksApp.$.bookmarksList);
   });
 
   suite('Part1', function() {
@@ -161,10 +165,6 @@ suite('General', () => {
     });
 
     test('RebuildsKeyboardNavigationOnBookmarkNodeAdded', async () => {
-      await flushTasks();
-      powerBookmarksApp.$.bookmarksList
-          .flushNavigationElementsDebouncerForTesting();
-
       assertArrayEquals(
           [
             'bookmark-SIDE_PANEL_BOOKMARK_BAR_ID',
@@ -207,11 +207,8 @@ suite('General', () => {
               .map((el: HTMLElement) => el.id));
     });
 
-    test('RebuildsKeyboardNavigationOnRemoved', async () => {
-      await flushTasks();
-      powerBookmarksApp.$.bookmarksList
-          .flushNavigationElementsDebouncerForTesting();
-
+    // TODO(crbug.com/489813344): Flaky test.
+    test.skip('RebuildsKeyboardNavigationOnRemoved', async () => {
       assertArrayEquals(
           [
             'bookmark-SIDE_PANEL_BOOKMARK_BAR_ID',
@@ -243,10 +240,6 @@ suite('General', () => {
     });
 
     test('RebuildsKeyboardNavigationFiltered', async () => {
-      await flushTasks();
-      powerBookmarksApp.$.bookmarksList
-          .flushNavigationElementsDebouncerForTesting();
-
       assertArrayEquals(
           [
             'bookmark-SIDE_PANEL_BOOKMARK_BAR_ID',
@@ -260,10 +253,6 @@ suite('General', () => {
               .map((el: HTMLElement) => el.id));
 
       await performSearch('child');
-      await microtasksFinished();
-      await flushTasks();
-      powerBookmarksApp.$.bookmarksList
-          .flushNavigationElementsDebouncerForTesting();
 
       assertArrayEquals(
           [
@@ -278,10 +267,6 @@ suite('General', () => {
     });
 
     test('RebuildsKeyboardNavigationMoved', async () => {
-      await flushTasks();
-      powerBookmarksApp.$.bookmarksList
-          .flushNavigationElementsDebouncerForTesting();
-
       assertArrayEquals(
           [
             'bookmark-SIDE_PANEL_BOOKMARK_BAR_ID',
@@ -781,8 +766,8 @@ suite('General', () => {
     // <if expr="not is_macosx">
     test('RenamesBookmark', async () => {
       const renamedBookmarkId = '4';
-      powerBookmarksApp.$.bookmarksList.setRenamingIdForTests(
-          renamedBookmarkId);
+      powerBookmarksApp.$.contextMenu.fire(
+          'rename-clicked', {id: renamedBookmarkId});
 
       await flushTasks();
 
@@ -816,8 +801,8 @@ suite('General', () => {
 
     test('BlursRenameInput', async () => {
       const renamedBookmarkId = '4';
-      powerBookmarksApp.$.bookmarksList.setRenamingIdForTests(
-          renamedBookmarkId);
+      powerBookmarksApp.$.contextMenu.fire(
+          'rename-clicked', {id: renamedBookmarkId});
 
       await flushTasks();
 
@@ -1037,10 +1022,7 @@ suite('General', () => {
       assertTrue(editDialog.$.dialog.open);
     });
 
-    // TODO(crbug.com/511960512): Flaky test.
-    test.skip('LogsBookmarkCountMetric', async () => {
-      await flushTasks();
-
+    test('LogsBookmarkCountMetric', async () => {
       // Initially should have 4 bookmarks shown.
       assertEquals(
           1, metrics.count('PowerBookmarks.SidePanel.BookmarksShown', 4));

@@ -342,6 +342,7 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
 
         if (ContentFeatureMap.isEnabled(
                         ContentFeatures.ACCESSIBILITY_REQUEST_SCOPED_CONTENT_CHANGED_EVENTS)
+                && AccessibilityState.isAccessibilityToolPresent()
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             mFakeAndroidCache = new FakeAndroidCache(this, mHistogramRecorder);
         }
@@ -699,6 +700,10 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
         mTracker = tracker;
         mTracker.setWebContentsAccessibilityImpl(this);
         ResettersForTesting.register(() -> mTracker = oldValue);
+    }
+
+    public float getScrollYForTesting() {
+        return mDelegate.getAccessibilityCoordinates().getScrollY();
     }
 
     public void setIsAutoDisableAccessibilityCandidateForTesting(

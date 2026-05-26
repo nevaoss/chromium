@@ -35,6 +35,7 @@ source_set("glic") {
     "host/context/glic_focused_tab_manager_interface.h",
     "host/context/glic_page_context_fetcher.h",
     "host/context/glic_page_features_manager.h",
+    "host/context/glic_pin_candidate_provider.h",
     "host/context/glic_pinned_tab_manager.h",
     "host/context/glic_sharing_manager_provider.h",
     "host/glic_annotation_manager.h",
@@ -46,7 +47,6 @@ source_set("glic") {
     "host/glic_web_client_access.h",
     "host/guest_util.h",
     "host/host.h",
-    "host/host_metrics.h",
     "public/glic_close_options.h",
     "public/glic_context_menu_invocation_helper.cc",
     "public/glic_context_menu_invocation_helper.h",
@@ -263,9 +263,13 @@ source_set("impl") {
   sources = [
     "common/application_hotkey_delegate.cc",
     "common/application_hotkey_delegate.h",
-    "common/glic_panel_hotkey_delegate.cc",
-    "common/glic_panel_hotkey_delegate.h",
+    "common/instance_independent_hotkey_manager.cc",
+    "common/instance_independent_hotkey_manager.h",
     "common/local_hotkey_manager.cc",
+    "common/panel_focus_dependent_hotkey_manager.cc",
+    "common/panel_focus_dependent_hotkey_manager.h",
+    "common/panel_visibility_dependent_hotkey_manager.cc",
+    "common/panel_visibility_dependent_hotkey_manager.h",
     "gemini_act_on_web_settings_policy_handler.cc",
     "glic_hotkey.cc",
     "glic_metrics.cc",
@@ -328,7 +332,6 @@ source_set("impl") {
     "host/glic_web_contents_warming_pool.h",
     "host/guest_util.cc",
     "host/host.cc",
-    "host/host_metrics.cc",
     "host/page_metadata_manager.cc",
     "host/page_metadata_manager.h",
     "host/webui_contents_container.cc",
@@ -413,6 +416,7 @@ source_set("impl") {
     "//components/feature_engagement/public:feature_constants",
     "//components/feedback",
     "//components/feedback/content",
+    "//components/google/core/common",
     "//components/guest_view/buildflags",
     "//components/language/core/common",
     "//components/metrics",
@@ -445,6 +449,8 @@ source_set("impl") {
       "experimental_opt_in/glic_experimental_opt_in_controller.h",
       "experimental_opt_in/glic_experimental_opt_in_dialog_view.cc",
       "experimental_opt_in/glic_experimental_opt_in_dialog_view.h",
+      "experimental_opt_in/glic_experimental_opt_in_page_handler.cc",
+      "experimental_opt_in/glic_experimental_opt_in_page_handler.h",
       "experimental_opt_in/glic_experimental_opt_in_ui.cc",
       "experimental_opt_in/glic_experimental_opt_in_ui.h",
       "gemini_experimental_triggering_settings_policy_handler.cc",
@@ -467,8 +473,6 @@ source_set("impl") {
       "widget/glic_widget.cc",
       "widget/glic_window_animator.cc",
       "widget/glic_window_animator.h",
-      "widget/glic_window_config.cc",
-      "widget/glic_window_config.h",
       "widget/glic_window_resize_animation.cc",
       "widget/glic_window_resize_animation.h",
       "widget/inactive_view_controller.cc",
@@ -539,6 +543,9 @@ source_set("impl") {
   if (is_mac) {
     deps += [ "//ui/accelerated_widget_mac" ]
   }
+  if (is_linux) {
+    deps += [ "//chrome/browser:shell_integration_linux" ]
+  }
   if (is_chromeos) {
     deps += [
       "//ash",
@@ -560,6 +567,7 @@ mojom("mojo_bindings") {
   disable_variants = true
 
   sources = [
+    "experimental_opt_in/glic_experimental_opt_in.mojom",
     "host/glic.mojom",
     "host/glic_features.mojom",
     "host/glic_internals.mojom",
@@ -628,8 +636,8 @@ source_set("unit_tests") {
   ]
   if (!is_android) {
     sources += [
-      "common/glic_panel_hotkey_delegate_unittest.cc",
       "common/local_hotkey_manager_unittest.cc",
+      "common/panel_focus_dependent_hotkey_manager_unittest.cc",
       "glic_metrics_provider_unittest.cc",
       "glic_metrics_unittest.cc",
       "glic_selection_observer_unittest.cc",
@@ -753,8 +761,8 @@ source_set("browser_tests") {
       "host/glic_permission_enforcement_browsertest.cc",
       "host/guest_util_browsertest.cc",
       "public/glic_enabling_browsertest.cc",
-      "widget/application_hotkey_delegate_browsertest.cc",
       "widget/glic_side_panel_coordinator_browsertest.cc",
+      "widget/panel_visibility_dependent_hotkey_manager_browsertest.cc",
     ]
 
     deps += [
@@ -768,6 +776,7 @@ source_set("browser_tests") {
       "//chrome/browser/actor/ui:test_support",
       "//chrome/browser/enterprise/connectors/test:test_support",
       "//chrome/browser/extensions",
+      "//chrome/browser/glic/browser_ui:browser_tests",
       "//chrome/browser/glic/common",
       "//chrome/browser/glic/common:browser_tests",
       "//chrome/browser/glic/selection",

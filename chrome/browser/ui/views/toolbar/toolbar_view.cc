@@ -14,7 +14,7 @@
 #include "base/functional/bind.h"
 #include "base/i18n/number_formatting.h"
 #include "base/i18n/rtl.h"
-#include "base/metrics/histogram_macros.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
 #include "base/notimplemented.h"
@@ -538,7 +538,8 @@ void ToolbarView::Init() {
 
   // Only show the Battery Saver button when it is not controlled by the OS. On
   // ChromeOS the battery icon in the shelf shows the same information.
-  if (!performance_manager::user_tuning::IsBatterySaverModeManagedByOS()) {
+  if (!performance_manager::user_tuning::IsBatterySaverModeManagedByOS() &&
+      !features::IsWebUIBatterySaverButtonEnabled()) {
     battery_saver_button_ =
         AddChildView(std::make_unique<BatterySaverButton>(browser_view_));
   }
@@ -864,7 +865,11 @@ void ToolbarView::OnHideGlicNudgeUI() {
   }
 }
 
-void ToolbarView::TriggerGlicActorNudge(const std::u16string nudge_text) {
+void ToolbarView::SetGlicActorNudgeLabel(const std::u16string& nudge_label) {
+  glic_actor_task_icon()->ShowNudgeLabel(nudge_label);
+}
+
+void ToolbarView::TriggerGlicActorNudge(const std::u16string& nudge_text) {
   CHECK(glic_actor_task_icon_);
   if (GetIsShowingGlicNudge()) {
     // If the glic button is showing, start the hide animation in parallel to
@@ -934,6 +939,15 @@ void ToolbarView::HideGlicActorTaskIcon() {
   }
 
   FinalizeHideGlicActorTaskIcon();
+}
+
+void ToolbarView::SetGlicActorNudgePressedState(bool pressed) {
+  glic_actor_task_icon()->SetPressedState(pressed);
+}
+
+void ToolbarView::ShowActorTaskListBubble() {
+  ActorTaskListBubbleController::From(browser_)->ShowBubble(
+      glic_actor_task_icon());
 }
 
 void ToolbarView::FinalizeHideGlicActorTaskIcon() {
@@ -1439,6 +1453,14 @@ void ToolbarView::ChildPreferredSizeChanged(views::View* child) {
   }
 }
 
+void ToolbarView::ChildVisibilityChanged(views::View* child) {
+  if (child == home_) {
+    if (!home_->GetVisible() && show_home_button_.GetValue()) {
+      base::UmaHistogramBoolean("Toolbar.Overflow.HomeButton", true);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // ToolbarView, private:
 
@@ -1459,14 +1481,20 @@ void ToolbarView::InitLayout() {
   // This will cause them to be the first ones to drop out or shrink to minimum.
   // Order 1 - kOrderOffset will be assigned to new flex-able elements.
   constexpr int kOrderOffset = 1000;
-  constexpr int kLocationBarFlexOrder = kOrderOffset + 1;
+  // If kOmniboxResizingPrioritization is enabled, give the location bar the
+  // highest priority as it will first shrink down to its soft minimum but won't
+  // hit its hard minimum until all other items have dropped out.
+  const int location_bar_flex_order =
+      base::FeatureList::IsEnabled(features::kOmniboxResizingPrioritization)
+          ? 1
+          : kOrderOffset + 1;
   constexpr int kToolbarActionsFlexOrder = kOrderOffset + 2;
   constexpr int kExtensionsFlexOrder = kOrderOffset + 3;
 
   const views::FlexSpecification location_bar_flex_rule =
       views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
                                views::MaximumFlexSizeRule::kUnbounded)
-          .WithOrder(kLocationBarFlexOrder);
+          .WithOrder(location_bar_flex_order);
 
   layout_manager_ = SetLayoutManager(std::make_unique<views::FlexLayout>());
 
@@ -1513,7 +1541,28 @@ void ToolbarView::InitLayout() {
             0, GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing)));
   }
 
-  constexpr int kToolbarFlexOrderStart = 1;
+  if (app_menu_button_ &&
+      base::FeatureList::IsEnabled(features::kToolbarAppMenuLabelResizing)) {
+    app_menu_button_->SetProperty(
+        views::kFlexBehaviorKey,
+        views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+                                 views::MaximumFlexSizeRule::kPreferred));
+  }
+
+  if (avatar_ &&
+      base::FeatureList::IsEnabled(features::kToolbarProfileChipResizing)) {
+    // Flex order for the profile avatar button is determined by the
+    // `toolbar_controller`.
+    avatar_->SetProperty(
+        views::kFlexBehaviorKey,
+        views::FlexSpecification(
+            views::MinimumFlexSizeRule::kScaleToMinimumSnapToZero,
+            views::MaximumFlexSizeRule::kPreferred));
+  }
+
+  // Order 1 is reserved for the location bar if kOmniboxResizingPrioritization
+  // is enabled.
+  constexpr int kToolbarFlexOrderStart = 2;
 
   // TODO(crbug.com/40929989): Ignore containers till issue addressed.
   toolbar_controller_ = std::make_unique<ToolbarController>(

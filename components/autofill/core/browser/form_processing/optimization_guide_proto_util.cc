@@ -4,6 +4,8 @@
 
 #include "components/autofill/core/browser/form_processing/optimization_guide_proto_util.h"
 
+#include <stddef.h>
+
 #include <concepts>
 
 #include "base/check_op.h"

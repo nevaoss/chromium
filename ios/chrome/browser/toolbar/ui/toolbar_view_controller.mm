@@ -29,6 +29,7 @@
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button_factory.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button_visibility.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_buttons_utils.h"
+#import "ios/chrome/browser/toolbar/ui/buttons/toolbar_tab_grid_badge_button.h"
 #import "ios/chrome/browser/toolbar/ui/toolbar_constants.h"
 #import "ios/chrome/browser/toolbar/ui/toolbar_height_delegate.h"
 #import "ios/chrome/browser/toolbar/ui/toolbar_mutator.h"
@@ -79,7 +80,8 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
 
 }  // namespace
 
-@interface ToolbarViewController () <TabGroupIndicatorViewDelegate>
+@interface ToolbarViewController () <TabGroupIndicatorViewDelegate,
+                                     UIContextMenuInteractionDelegate>
 @end
 
 @implementation ToolbarViewController {
@@ -92,7 +94,7 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
   ToolbarButton* _shareButton;
   ToolbarButton* _assistantButton;
   UIMenu* _assistantButtonMenu;
-  ToolbarButton* _tabGridButton;
+  ToolbarTabGridBadgeButton* _tabGridButton;
   UIMenu* _tabGridButtonMenu;
   ToolbarButton* _toolsMenuButton;
 
@@ -330,7 +332,9 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
   [super viewDidLoad];
   self.view.translatesAutoresizingMaskIntoConstraints = NO;
   self.view.backgroundColor = [UIColor colorNamed:kBackgroundColor];
-  self.view.accessibilityIdentifier = kToolbarViewIdentifier;
+  self.view.accessibilityIdentifier = _topPosition
+                                          ? kPrimaryToolbarViewIdentifier
+                                          : kSecondaryToolbarViewIdentifier;
 
   [self createView];
   [self setUpHierarchy];
@@ -471,6 +475,14 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
   /// the NTP, until the fakebox is swiped up out of view.
 }
 
+- (void)updateTabCount:(NSUInteger)tabCount {
+  _tabGridButton.tabCount = tabCount;
+}
+
+- (void)setInTabGroup:(BOOL)inTabGroup {
+  _tabGridButton.inTabGroup = inTabGroup;
+}
+
 - (void)setMenu:(UIMenu*)menu forButtonType:(ToolbarButtonType)buttonType {
   switch (buttonType) {
     case ToolbarButtonTypeBack:
@@ -488,10 +500,7 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
       _assistantButton.menu = menu;
       return;
     case ToolbarButtonTypeTabGrid:
-      /// TODO:(crbug.com/493948951): Support this menu when the implementation
-      /// is working.
       _tabGridButtonMenu = menu;
-      _tabGridButton.menu = menu;
       return;
     case ToolbarButtonTypeReload:
     case ToolbarButtonTypeStop:
@@ -671,6 +680,62 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
   [self updateSeparatorVisibility];
   [self.toolbarHeightDelegate toolbarsHeightChanged];
   [self.mutator tabGroupIndicatorVisibilityUpdated:visible];
+}
+
+#pragma mark - UIContextMenuInteractionDelegate
+
+- (UIContextMenuConfiguration*)contextMenuInteraction:
+                                   (UIContextMenuInteraction*)interaction
+                       configurationForMenuAtLocation:(CGPoint)location {
+  if (interaction.view == _tabGridButton) {
+    UIMenu* menu = _tabGridButtonMenu;
+    if (!menu) {
+      return nil;
+    }
+    return [UIContextMenuConfiguration
+        configurationWithIdentifier:nil
+                    previewProvider:nil
+                     actionProvider:^UIMenu*(
+                         NSArray<UIMenuElement*>* suggestedActions) {
+                       return menu;
+                     }];
+  }
+  return nil;
+}
+
+- (UITargetedPreview*)contextMenuInteraction:
+                          (UIContextMenuInteraction*)interaction
+                               configuration:
+                                   (UIContextMenuConfiguration*)configuration
+       highlightPreviewForItemWithIdentifier:(id<NSCopying>)identifier {
+  UIView* view = interaction.view;
+  if ([view isKindOfClass:[ToolbarTabGridBadgeButton class]]) {
+    ToolbarTabGridBadgeButton* tabGridButton = (ToolbarTabGridBadgeButton*)view;
+    UIPreviewParameters* parameters = [[UIPreviewParameters alloc] init];
+    parameters.visiblePath = [tabGridButton visiblePath];
+    parameters.backgroundColor = self.view.backgroundColor;
+
+    return [[UITargetedPreview alloc] initWithView:view parameters:parameters];
+  }
+  return nil;
+}
+
+- (UITargetedPreview*)contextMenuInteraction:
+                          (UIContextMenuInteraction*)interaction
+                               configuration:
+                                   (UIContextMenuConfiguration*)configuration
+       dismissalPreviewForItemWithIdentifier:(id<NSCopying>)identifier {
+  UIView* view = interaction.view;
+  if ([view isKindOfClass:[ToolbarTabGridBadgeButton class]]) {
+    ToolbarTabGridBadgeButton* tabGridButton = (ToolbarTabGridBadgeButton*)view;
+    UIPreviewParameters* parameters = [[UIPreviewParameters alloc] init];
+    parameters.visiblePath = [tabGridButton visiblePath];
+    parameters.shadowPath = [UIBezierPath bezierPath];
+    parameters.backgroundColor = [UIColor clearColor];
+
+    return [[UITargetedPreview alloc] initWithView:view parameters:parameters];
+  }
+  return nil;
 }
 
 #pragma mark - Private
@@ -970,11 +1035,19 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
   [_backButton addTarget:self
                   action:@selector(backButtonTapped)
         forControlEvents:UIControlEventTouchUpInside];
+  [_backButton addAction:[UIAction actionWithHandler:^(UIAction*) {
+                 TriggerHapticFeedbackForImpact(UIImpactFeedbackStyleHeavy);
+               }]
+        forControlEvents:UIControlEventMenuActionTriggered];
   _forwardButton = [self.buttonFactory makeForwardButton];
   _forwardButton.menu = _forwardButtonMenu;
   [_forwardButton addTarget:self
                      action:@selector(forwardButtonTapped)
            forControlEvents:UIControlEventTouchUpInside];
+  [_forwardButton addAction:[UIAction actionWithHandler:^(UIAction*) {
+                    TriggerHapticFeedbackForImpact(UIImpactFeedbackStyleHeavy);
+                  }]
+           forControlEvents:UIControlEventMenuActionTriggered];
   _navigationButtonsContainer =
       [self.buttonFactory makeConjoinedBackButton:_backButton
                                     forwardButton:_forwardButton];
@@ -1001,6 +1074,8 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
   [_tabGridButton addTarget:self
                      action:@selector(tabGridTouchUp)
            forControlEvents:UIControlEventTouchUpInside];
+  [_tabGridButton
+      addInteraction:[[UIContextMenuInteraction alloc] initWithDelegate:self]];
   _toolsMenuButton = [self.buttonFactory makeToolsMenuButton];
   [_toolsMenuButton addTarget:self
                        action:@selector(toolsMenuButtonTapped)

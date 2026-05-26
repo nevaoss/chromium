@@ -145,6 +145,13 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       },
       enableFileHint: {type: Boolean},
       inputPlaceholderOverride: {type: String},
+      contextManagementInComposeboxEnabled_: {type: Boolean},
+      // Must be property so can pass it down to children.
+      searchboxCallbackRouter_: {type: Object},
+      applyContextButtonBackground: {
+        reflect: true,
+        type: Boolean,
+      },
     };
   }
 
@@ -165,6 +172,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   accessor entrypointName: string = '';
   accessor lensButtonDisabled: boolean = false;
   accessor voiceSearchCoherenceEnabled: boolean = false;
+  accessor applyContextButtonBackground: boolean = false;
 
   accessor submitButtonIconType: SubmitButtonIconType =
       SubmitButtonIconType.UPWARD;
@@ -178,14 +186,20 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   // is false.
   protected accessor expanding_: boolean = false;
   protected accessor isOmniboxInCompactMode_: boolean = false;
+  protected accessor searchboxCallbackRouter_: SearchboxPageCallbackRouter;
+
   // Synchronous immediate guard used to deduplicate processing
   // autochips being added, not fully processed chips.
   protected pendingAutomaticActiveTabUrl_: string = '';
 
+  protected accessor contextManagementInComposeboxEnabled_: boolean =
+      loadTimeData.getBoolean('contextManagementInComposeboxEnabled');
+
   // Retains the latest version of the pending automatic active tab's title.
   protected pendingAutomaticActiveTabTitle_: string = '';
   protected dragAndDropHandler_: DragAndDropHandler;
-  private searchboxCallbackRouter_: SearchboxPageCallbackRouter;
+  private webuiOmniboxSimplificationEnabled_: boolean =
+      getLoadTimeBoolean('webuiOmniboxSimplificationEnabled', false);
   private pageHandler_: PageHandlerRemote;
   private searchboxHandler_: SearchboxPageHandlerRemote;
   private resizeObservers_: ResizeObserver[] = [];
@@ -197,6 +211,14 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
       return false;
     }
 
+    // TODO(crbug.com/486707841): Move to the NTP embedder.
+    // Retain the divider for NTP when only tab favicons are present.
+    // Omnibox is excluded as it does not need this divider.
+    const hasNonTabFiles = Array.from(this.files.values()).some(f => !f.url);
+    if (this.entrypointName !== 'Omnibox' && this.hasTabs() &&
+        !hasNonTabFiles) {
+      return this.showDropdown;
+    }
     return super.shouldShowDivider();
   }
 
@@ -317,6 +339,15 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
         changedProperties.has('searchboxLayoutMode')) {
       this.isOmniboxInCompactMode_ = this.entrypointName === 'Omnibox' &&
           this.searchboxLayoutMode === 'Compact';
+    }
+
+    if (changedProperties.has('inputState') ||
+        changedProperties.has('entrypointName')) {
+      const inToolMode = this.inputState?.activeTool !== ToolMode.kUnspecified;
+      const hasBackground = this.entrypointName === 'Omnibox' ?
+          this.webuiOmniboxSimplificationEnabled_ :
+          false;
+      this.applyContextButtonBackground = hasBackground && !inToolMode;
     }
 
     if (changedProperties.has('inputPlaceholderOverride') ||

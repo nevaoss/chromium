@@ -92,7 +92,6 @@ class TabStrip;
 class TabStripRegionView;
 class ToolbarButtonProvider;
 class ToolbarView;
-class TopContainerLoadingBar;
 class TopContainerView;
 class TopControlsSlideController;
 class TopControlsSlideControllerTest;
@@ -257,16 +256,6 @@ class BrowserView : public BrowserWindow,
   const views::View* tab_overlay_view() const {
     return tab_overlay_view_.get();
   }
-
-  // Returns if this browser view will use immersive fullscreen mode, based on
-  // the type of browser this is a view for.
-  bool UsesImmersiveFullscreenMode() const;
-
-  // Returns if this browser view will use immersive fullscreen tabbed mode.
-  // In tabbed mode the tab strip is contained within the window's titlebar. In
-  // non-tabbed mode the tab strip is positioned below the titlebar.
-  // The return value is determined by the type of browser.
-  bool UsesImmersiveFullscreenTabbedMode() const;
 #endif
 
   // Container for the web contents.
@@ -1232,9 +1221,6 @@ class BrowserView : public BrowserWindow,
   // rolled out, we can rely on `MultiContentsView` to manage the contents
   // separator when not overlaid (i.e. no immersive fullscreen).
   raw_ptr<views::View> top_container_separator_ = nullptr;
-
-  // Loading bar (part of top container for / WebUI tab strip).
-  raw_ptr<TopContainerLoadingBar> loading_bar_ = nullptr;
 
   // The do-nothing view which controls the z-order of the find bar widget
   // relative to views which paint into layers and views with an associated

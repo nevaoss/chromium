@@ -29,6 +29,7 @@
 #include "chrome/browser/glic/host/context/glic_active_pinned_focused_tab_manager.h"
 #include "chrome/browser/glic/host/context/glic_empty_focused_browser_manager.h"
 #include "chrome/browser/glic/host/context/glic_empty_focused_tab_manager.h"
+#include "chrome/browser/glic/host/context/glic_pin_candidate_provider.h"
 #include "chrome/browser/glic/host/context/glic_pinned_tab_manager_impl.h"
 #include "chrome/browser/glic/host/context/glic_screenshot_capturer.h"
 #include "chrome/browser/glic/host/context/glic_sharing_manager_coordinator.h"
@@ -290,7 +291,7 @@ GlicInstanceImpl::GlicInstanceImpl(
           actor::ActorKeyedServiceFactory::GetActorKeyedService(profile_)) {
     actor_task_manager_ = std::make_unique<GlicActorTaskManager>(
         profile_, actor_keyed_service, service_->actor_policy_checker(),
-        &instance_metrics_, this);
+        &instance_metrics_, &sharing_manager(), this);
   }
 
   browser_collection_observation_.Observe(
@@ -613,6 +614,10 @@ GlicSharingManager& GlicInstanceImpl::sharing_manager() {
   return sharing_manager_coordinator_.GetActiveSharingManager();
 }
 
+GlicPinCandidateProvider& GlicInstanceImpl::pin_candidate_provider() {
+  return sharing_manager_coordinator_.pin_candidate_provider();
+}
+
 void GlicInstanceImpl::CloseInstanceAndShutdown() {
   VLOG(1) << "Glic [InstanceImpl] CloseInstanceAndShutdown, id=" << id_.value();
   will_be_destroyed_callbacks_.Notify(this);
@@ -700,11 +705,12 @@ void GlicInstanceImpl::CreateTab(
                                  /*success=*/true, created_tab, source_tab);
 }
 
-GlicActorClientSession* GlicInstanceImpl::BindActorClientSession() {
+void GlicInstanceImpl::CreateActorHandler(
+    mojo::PendingReceiver<mojom::ActorHandler> receiver,
+    mojo::PendingRemote<mojom::ActorClient> client) {
   if (actor_task_manager_) {
-    return actor_task_manager_->BindSession();
+    actor_task_manager_->Bind(std::move(receiver), std::move(client));
   }
-  return nullptr;
 }
 
 void GlicInstanceImpl::GetZeroStateSuggestionsAndSubscribe(
@@ -816,6 +822,10 @@ void GlicInstanceImpl::FocusIfActive() {
   web_contents->Focus();
 }
 
+void GlicInstanceImpl::NotifyActorTaskListRowClicked(int32_t task_id) {
+  host_.NotifyActorTaskListRowClicked(task_id);
+}
+
 void GlicInstanceImpl::GetExperimentalTriggeringUpdates(
     mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
     base::OnceCallback<void(bool)> success_status_callback) {
@@ -847,14 +857,14 @@ GlicInstanceImpl::AddConversationInfoChangedCallback(
   return conversation_info_changed_callback_list_.Add(std::move(callback));
 }
 
-void GlicInstanceImpl::BindTabForTesting(tabs::TabInterface* tab) {
-  BindTab(tab, GlicPinTrigger::kContextMenu, true);
-}
-
 void GlicInstanceImpl::CancelTask() {
   if (actor_task_manager_) {
     actor_task_manager_->CancelTask();
   }
+}
+
+GlicActorTaskManager* GlicInstanceImpl::GetActorTaskManager() {
+  return actor_task_manager_.get();
 }
 
 void GlicInstanceImpl::FetchZeroStateSuggestions(
@@ -910,11 +920,6 @@ std::optional<std::string> GlicInstanceImpl::conversation_id() const {
     return conversation_info_->conversation_id;
   }
   return std::nullopt;
-}
-
-base::WeakPtr<actor::ActorTaskDelegate>
-GlicInstanceImpl::GetActorTaskDelegate() {
-  return weak_ptr_factory_.GetWeakPtr();
 }
 
 std::string GlicInstanceImpl::conversation_title() const {
@@ -1539,9 +1544,6 @@ void GlicInstanceImpl::NotifyPanelWillOpen(
 }
 
 void GlicInstanceImpl::OnWebClientCleared() {
-  if (actor_task_manager_) {
-    actor_task_manager_->CancelTask();
-  }
   NotifyPanelWillOpen(mojom::InvocationSource::kDefaultValue, std::nullopt);
 }
 
@@ -1608,42 +1610,6 @@ void GlicInstanceImpl::OnTabAddedToTask(
   }
   instance_metrics_.OnDaisyChain(DaisyChainSource::kActorAddTab,
                                  /*success=*/true, tab);
-}
-
-void GlicInstanceImpl::RequestToShowCredentialSelectionDialog(
-    actor::TaskId task_id,
-    const base::flat_map<std::string, gfx::Image>& icons,
-    const std::vector<actor_login::Credential>& credentials,
-    actor::ActorTaskDelegate::CredentialSelectedCallback callback) {
-  host_.RequestToShowCredentialSelectionDialog(task_id, icons, credentials,
-                                               std::move(callback));
-}
-
-void GlicInstanceImpl::RequestToShowUserConfirmationDialog(
-    actor::TaskId task_id,
-    const url::Origin& navigation_origin,
-    bool for_blocklisted_origin,
-    actor::ActorTaskDelegate::UserConfirmationDialogCallback callback) {
-  host_.RequestToShowUserConfirmationDialog(
-      task_id, navigation_origin, for_blocklisted_origin, std::move(callback));
-}
-
-void GlicInstanceImpl::RequestToConfirmNavigation(
-    actor::TaskId task_id,
-    const url::Origin& navigation_origin,
-    actor::ActorTaskDelegate::NavigationConfirmationCallback callback) {
-  host_.RequestToConfirmNavigation(task_id, navigation_origin,
-                                   std::move(callback));
-}
-
-void GlicInstanceImpl::RequestToShowAutofillSuggestionsDialog(
-    actor::TaskId task_id,
-    std::vector<autofill::ActorFormFillingRequest> requests,
-    base::WeakPtr<actor::AutofillSelectionDialogEventHandler> event_handler,
-    AutofillSuggestionSelectedCallback callback) {
-  host_.RequestToShowAutofillSuggestionsDialog(task_id, std::move(requests),
-                                               std::move(event_handler),
-                                               std::move(callback));
 }
 
 bool GlicInstanceImpl::HasFocus() {

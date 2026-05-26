@@ -278,6 +278,18 @@ namespace internal {
 
 namespace {
 
+// Skip language detector initialization for top chrome ui when Initial WebUI
+// feature is enabled for optimizing browser startup by removing unnecessary
+// work.
+bool ShouldSkipLanguageDetectionInitialization(RenderProcessHost* process) {
+  if (!process) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+         features::kInitialWebUIWithoutLanguageDetection.Get() &&
+         process->IsForTopChromeWebUI();
+}
+
 void BindBarcodeDetectionProvider(
     mojo::PendingReceiver<shape_detection::mojom::BarcodeDetectionProvider>
         receiver) {
@@ -397,12 +409,8 @@ void BindDateTimeChooserForFrame(
 void BindTextSuggestionHostForFrame(
     RenderFrameHost* host,
     mojo::PendingReceiver<blink::mojom::TextSuggestionHost> receiver) {
-  auto* view =
-      RenderWidgetHostViewAndroid::FromRenderWidgetHostView(host->GetView());
-  if (!view || !view->text_suggestion_host())
-    return;
-
-  view->text_suggestion_host()->BindTextSuggestionHost(std::move(receiver));
+  TextSuggestionHostAndroid::GetOrCreateForCurrentDocument(host)
+      ->BindTextSuggestionHost(std::move(receiver));
 }
 #endif
 
@@ -1212,17 +1220,19 @@ void PopulateBinderMapWithContext(
             host->GetLastCommittedOrigin(), std::move(receiver));
       }));
 
-  map->Add<language_detection::mojom::ContentLanguageDetectionDriver>(
-      base::BindRepeating(
-          [](RenderFrameHost* host,
-             mojo::PendingReceiver<
-                 language_detection::mojom::ContentLanguageDetectionDriver>
-                 receiver) {
-            GetContentClient()->browser()->BindLanguageDetectionDriver(
-                host->GetBrowserContext(),
-                &RenderFrameHostImpl::From(host)->document_associated_data(),
-                std::move(receiver));
-          }));
+  if (!ShouldSkipLanguageDetectionInitialization(host->GetProcess())) {
+    map->Add<language_detection::mojom::ContentLanguageDetectionDriver>(
+        base::BindRepeating(
+            [](RenderFrameHost* host,
+               mojo::PendingReceiver<
+                   language_detection::mojom::ContentLanguageDetectionDriver>
+                   receiver) {
+              GetContentClient()->browser()->BindLanguageDetectionDriver(
+                  host->GetBrowserContext(),
+                  &RenderFrameHostImpl::From(host)->document_associated_data(),
+                  std::move(receiver));
+            }));
+  }
 
   map->Add<blink::mojom::BackgroundFetchService>(
       &BackgroundFetchServiceImpl::CreateForFrame);
@@ -1484,17 +1494,19 @@ void PopulateDedicatedWorkerBinders(DedicatedWorkerHost* host,
             host->GetWorkerStorageKey().origin(), std::move(receiver));
       },
       base::Unretained(host)));
-  map->Add<language_detection::mojom::ContentLanguageDetectionDriver>(
-      base::BindRepeating(
-          [](DedicatedWorkerHost* host,
-             mojo::PendingReceiver<
-                 language_detection::mojom::ContentLanguageDetectionDriver>
-                 receiver) {
-            GetContentClient()->browser()->BindLanguageDetectionDriver(
-                host->GetProcessHost()->GetBrowserContext(), host,
-                std::move(receiver));
-          },
-          base::Unretained(host)));
+  if (!ShouldSkipLanguageDetectionInitialization(host->GetProcessHost())) {
+    map->Add<language_detection::mojom::ContentLanguageDetectionDriver>(
+        base::BindRepeating(
+            [](DedicatedWorkerHost* host,
+               mojo::PendingReceiver<
+                   language_detection::mojom::ContentLanguageDetectionDriver>
+                   receiver) {
+              GetContentClient()->browser()->BindLanguageDetectionDriver(
+                  host->GetProcessHost()->GetBrowserContext(), host,
+                  std::move(receiver));
+            },
+            base::Unretained(host)));
+  }
 }
 
 void PopulateBinderMapWithContext(
@@ -1607,17 +1619,19 @@ void PopulateSharedWorkerBinders(SharedWorkerHost* host, mojo::BinderMap* map) {
             host->GetWorkerStorageKey().origin(), std::move(receiver));
       },
       base::Unretained(host)));
-  map->Add<language_detection::mojom::ContentLanguageDetectionDriver>(
-      base::BindRepeating(
-          [](SharedWorkerHost* host,
-             mojo::PendingReceiver<
-                 language_detection::mojom::ContentLanguageDetectionDriver>
-                 receiver) {
-            GetContentClient()->browser()->BindLanguageDetectionDriver(
-                host->GetProcessHost()->GetBrowserContext(), host,
-                std::move(receiver));
-          },
-          base::Unretained(host)));
+  if (!ShouldSkipLanguageDetectionInitialization(host->GetProcessHost())) {
+    map->Add<language_detection::mojom::ContentLanguageDetectionDriver>(
+        base::BindRepeating(
+            [](SharedWorkerHost* host,
+               mojo::PendingReceiver<
+                   language_detection::mojom::ContentLanguageDetectionDriver>
+                   receiver) {
+              GetContentClient()->browser()->BindLanguageDetectionDriver(
+                  host->GetProcessHost()->GetBrowserContext(), host,
+                  std::move(receiver));
+            },
+            base::Unretained(host)));
+  }
 
 #if !BUILDFLAG(IS_ANDROID)
   map->Add<blink::mojom::DirectSocketsService>(base::BindRepeating(
@@ -1790,6 +1804,12 @@ void PopulateServiceWorkerBinders(ServiceWorkerHost* host,
                  receiver) {
             if (auto* process_host = static_cast<RenderProcessHostImpl*>(
                     RenderProcessHost::FromID(host->worker_process_id()))) {
+              // The process ID is not yet populated at the time
+              // PopulateInterfaceBinders is called, so we must check this
+              // condition dynamically.
+              if (ShouldSkipLanguageDetectionInitialization(process_host)) {
+                return;
+              }
               GetContentClient()->browser()->BindLanguageDetectionDriver(
                   process_host->GetBrowserContext(), host, std::move(receiver));
             }

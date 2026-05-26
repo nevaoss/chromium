@@ -31,7 +31,7 @@ export function getHtml(this: ContextualActionMenuElement) {
         <div class="share-tabs-container">
           <button id="shareTabsTrigger" class="dropdown-item"
               role="menuitem"
-              aria-popup="menu"
+              aria-haspopup="menu"
               aria-expanded="${this.shareTabsFlyoutOpen_}"
               @pointerenter="${this.onShareTabsRowPointerenter_}"
               @pointerleave="${this.onShareTabsRowPointerleave_}"
@@ -40,16 +40,20 @@ export function getHtml(this: ContextualActionMenuElement) {
             <span class="tab-title">
               ${this.sharingTabsText_}
             </span>
+            <composebox-favicon-group .tabs="${this.getSelectedTabs_()}">
+            </composebox-favicon-group>
             <cr-icon class="share-tabs-arrow" icon="cr:chevron-right"></cr-icon>
           </button>
           <div class="share-tabs-flyout" role="menu"
               ?hidden="${!this.shareTabsFlyoutOpen_}"
+              data-position="${this.shareTabsFlyoutPosition_}"
               @pointerenter="${this.onShareTabsFlyoutPointerenter_}"
               @pointerleave="${this.onShareTabsFlyoutPointerleave_}"
               @keydown="${this.onShareTabsFlyoutKeydown_}">
             ${this.tabSuggestions.map((tab, index) => html`
               <div class="suggestion-container">
                 <button class="dropdown-item"
+                ?hidden="${!this.shareTabsFlyoutOpen_}"
                     role="${this.enableMultiTabSelection_ ?
                         'menuitemcheckbox' : 'menuitem'}"
                     aria-checked="${this.enableMultiTabSelection_ &&

@@ -9,9 +9,11 @@ import("//components/signin/features.gni")
 import("//extensions/buildflags/buildflags.gni")
 import("//rlz/buildflags/buildflags.gni")
 
-# Allow browser tests that startup with --gcpw-signin flag only on
-# non-Google Chrome builds.
-can_test_gcpw_signin_startup = !is_chrome_branded
+declare_args() {
+  # Allow browser tests that startup with --gcpw-signin flag.
+  # Defaults to !is_chrome_branded, but can be overridden via gn args.
+  can_test_gcpw_signin_startup = !is_chrome_branded
+}
 
 buildflag_header("buildflags") {
   header = "buildflags.h"
@@ -279,7 +281,10 @@ source_set("impl") {
     }
 
     if (is_mac) {
-      deps += [ "//chrome/browser/mac" ]
+      deps += [
+        "//chrome/browser:app_controller_mac",
+        "//chrome/browser/mac",
+      ]
     }
 
     if (is_win || is_mac || is_linux) {
@@ -458,6 +463,7 @@ if (!is_android) {
       "//chrome/browser",
       "//chrome/browser:browser_process",
       "//chrome/browser:buildflags",
+      "//chrome/browser:chrome_browser_main",
       "//chrome/browser/extensions",
       "//chrome/browser/lifetime",
       "//chrome/browser/prefs:util",
@@ -527,7 +533,10 @@ if (!is_android) {
       deps += [ "//chrome/browser/ui/webui/signin:profile" ]
     }
     if (is_mac) {
-      deps += [ "//chrome/browser/apps/app_shim" ]
+      deps += [
+        "//chrome/browser:chrome_browser_application_mac",
+        "//chrome/browser/apps/app_shim",
+      ]
     }
   }
 }
@@ -545,6 +554,7 @@ if (!is_android && !is_chromeos_device) {
       "//base",
       "//chrome/browser",
       "//chrome/browser:browser_process",
+      "//chrome/browser:chrome_browser_main",
       "//chrome/browser:main_extra_parts",
       "//chrome/browser/prefs:util",
       "//chrome/browser/sessions",

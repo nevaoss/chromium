@@ -23,6 +23,7 @@ import android.view.ViewParent;
 import android.view.ViewStub;
 
 import androidx.annotation.Px;
+import androidx.annotation.VisibleForTesting;
 import androidx.window.layout.WindowMetricsCalculator;
 
 import org.chromium.base.Callback;
@@ -158,24 +159,25 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
     }
 
     @Override
-    public SideUiSpecs measureSideUiSpecs() {
-        View sideUiParent = (View) mStartAnchorContainer.getParent();
-        assert sideUiParent == mEndAnchorContainer.getParent()
-                : "Anchor containers should have the same parent.";
+    public SideUiSpecs getCurrentSideUiSpecs() {
+        // Note: When a View's visibility is changed to View.GONE, it won't be laid out so Android
+        // won't update the View's internal states tracking its size. This means View.getWidth() can
+        // return a stale value when the visibility is View.GONE.
+        //
+        // Therefore, we need to explicitly check if the visibility is View.GONE, and if so, return
+        // 0.
+        @Px
+        int startAnchorContainerWidth =
+                mStartAnchorContainer.getVisibility() == View.GONE
+                        ? 0
+                        : mStartAnchorContainer.getWidth();
+        @Px
+        int endAnchorContainerWidth =
+                mEndAnchorContainer.getVisibility() == View.GONE
+                        ? 0
+                        : mEndAnchorContainer.getWidth();
 
-        int sideUiParentHeight = sideUiParent != null ? sideUiParent.getMeasuredHeight() : 0;
-        int sideUiHeight = sideUiParentHeight - mSideUiTopMargin;
-        int sideUiHeightSpec =
-                sideUiHeight > 0
-                        ? makeMeasureSpec(sideUiHeight, EXACTLY)
-                        : makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-        int sideUiWidthSpec = makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-
-        mStartAnchorContainer.measure(sideUiWidthSpec, sideUiHeightSpec);
-        mEndAnchorContainer.measure(sideUiWidthSpec, sideUiHeightSpec);
-
-        return new SideUiSpecs(
-                mStartAnchorContainer.getMeasuredWidth(), mEndAnchorContainer.getMeasuredWidth());
+        return new SideUiSpecs(startAnchorContainerWidth, endAnchorContainerWidth);
     }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -290,29 +292,29 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
         }
     }
 
-    private SideUiSpecs getCurrentSideUiSpecs() {
-        // Note: When a View's visibility is changed to View.GONE, it won't be laid out so Android
-        // won't update the View's internal states tracking its size. This means View.getWidth() can
-        // return a stale value when the visibility is View.GONE.
-        //
-        // Therefore, we need to explicitly check if the visibility is View.GONE, and if so, return
-        // 0.
-        @Px
-        int startAnchorContainerWidth =
-                mStartAnchorContainer.getVisibility() == View.GONE
-                        ? 0
-                        : mStartAnchorContainer.getWidth();
-        @Px
-        int endAnchorContainerWidth =
-                mEndAnchorContainer.getVisibility() == View.GONE
-                        ? 0
-                        : mEndAnchorContainer.getWidth();
-
-        return new SideUiSpecs(startAnchorContainerWidth, endAnchorContainerWidth);
-    }
-
     private ViewGroup getRootView() {
         return (ViewGroup) mAnchorContainerParent.getRootView();
+    }
+
+    @VisibleForTesting
+    SideUiSpecs measureSideUiSpecs() {
+        View sideUiParent = (View) mStartAnchorContainer.getParent();
+        assert sideUiParent == mEndAnchorContainer.getParent()
+                : "Anchor containers should have the same parent.";
+
+        int sideUiParentHeight = sideUiParent != null ? sideUiParent.getMeasuredHeight() : 0;
+        int sideUiHeight = sideUiParentHeight - mSideUiTopMargin;
+        int sideUiHeightSpec =
+                sideUiHeight > 0
+                        ? makeMeasureSpec(sideUiHeight, EXACTLY)
+                        : makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+        int sideUiWidthSpec = makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+
+        mStartAnchorContainer.measure(sideUiWidthSpec, sideUiHeightSpec);
+        mEndAnchorContainer.measure(sideUiWidthSpec, sideUiHeightSpec);
+
+        return new SideUiSpecs(
+                mStartAnchorContainer.getMeasuredWidth(), mEndAnchorContainer.getMeasuredWidth());
     }
 
     /**
@@ -371,85 +373,107 @@ final class SideUiCoordinatorImpl implements SideUiCoordinator, ConfigurationCha
             SideUiSpecs sideUiSpecs,
             @Nullable TransitionSet transitionSet,
             @AnchorSide int anchorSide) {
-        assert mSideUiContainer != null;
-
         // TODO(crbug.com/478338737): Update to account for multiple SideUiContainers.
         assert sideUiSpecs.mStartContainerWidth == EMPTY_SIDE_UI_SPECS.mStartContainerWidth
                         || sideUiSpecs.mEndContainerWidth == EMPTY_SIDE_UI_SPECS.mEndContainerWidth
                 : "Only one SideUiContainer is supported for now, so SideUiSpecs can't have"
                         + " specs for more than one container";
 
+        // End any existing transitions still in progress.
+        TransitionManager.endTransitions(getRootView());
+
+        // Update the side containers, with Transitions if available.
+        if (transitionSet != null) {
+            commitNewSpecsForAnimatedResize(transitionSet, sideUiSpecs, anchorSide);
+        } else {
+            commitNewSpecsForStaticResize(sideUiSpecs, anchorSide);
+        }
+    }
+
+    private void commitNewSpecsForAnimatedResize(
+            TransitionSet transitionSet, SideUiSpecs sideUiSpecs, @AnchorSide int anchorSide) {
+        assert mSideUiContainer != null;
+
+        // TODO(crbug.com/478338737): Update to account for multiple SideUiContainers.
         @Px
         int sideUiWidth =
                 anchorSide == AnchorSide.START
                         ? sideUiSpecs.mStartContainerWidth
                         : sideUiSpecs.mEndContainerWidth;
 
-        // End any existing transitions still in progress.
-        TransitionManager.endTransitions(getRootView());
-
-        // Update the side containers, with Transitions if available.
-        if (transitionSet != null) {
-            // Ensure side UI container is attached and, if showing, starts offscreen with the
-            // side UI width. If hiding, i.e. side UI width is 0, then setWidth() should be
-            // delayed until after the Transition is finished.
-            attachSideUiContainerView(mSideUiContainer.getView(), anchorSide);
-            if (sideUiWidth != 0) {
-                mSideUiContainer.setWidth(sideUiWidth);
-            }
-
-            // TODO(crbug.com/478338737): Update to account for multiple side containers, and move
-            //  into collectTransitions() if possible.
-            transitionSet.addListener(
-                    new TransitionListenerAdapter() {
-                        @Override
-                        public void onTransitionEnd(Transition transition) {
-                            // Detach and close the container after the transition is complete.
-                            if (sideUiWidth == 0) {
-                                assert mSideUiContainer != null;
-                                detachSideUiContainerView(mSideUiContainer.getView());
-                                mSideUiContainer.setWidth(0);
-                            }
-                        }
-                    });
-
-            // Trigger a synchronous measure and layout pass on the container to ensure that the
-            // starting snapshot for the Transition is updated and accurate. If this is not done,
-            // the side panel can have visual bugs where it animates from an incorrect starting
-            // point, especially if the window has been resized recently. Updating View attributes,
-            // like setting a View's translation, is not enough alone.
-            ViewUtils.triggerSynchronousMeasureAndLayout(mAnchorContainerParent);
-            TransitionManager.beginDelayedTransition(getRootView(), transitionSet);
-            if (anchorSide == AnchorSide.START) {
-                SideUiContainerTransition.triggerContainerTransition(
-                        mStartAnchorContainer,
-                        mStartAnchorContainer.getWidth(),
-                        AnchorSide.START,
-                        sideUiWidth);
-            } else {
-                SideUiContainerTransition.triggerContainerTransition(
-                        mEndAnchorContainer,
-                        mEndAnchorContainer.getWidth(),
-                        AnchorSide.END,
-                        sideUiWidth);
-            }
-        } else {
-            // Reset the side UI containers to clear any leftover state from previous Transitions.
-            SideUiContainerTransition.resetContainer(mStartAnchorContainer);
-            SideUiContainerTransition.resetContainer(mEndAnchorContainer);
-
-            if (sideUiWidth != 0) {
-                attachSideUiContainerView(mSideUiContainer.getView(), anchorSide);
-            } else {
-                detachSideUiContainerView(mSideUiContainer.getView());
-            }
+        // Ensure side UI container is attached and, if showing, starts offscreen with the
+        // side UI width. If hiding, i.e. side UI width is 0, then setWidth() should be
+        // delayed until after the Transition is finished.
+        attachSideUiContainerView(mSideUiContainer.getView(), anchorSide);
+        if (sideUiWidth != 0) {
             mSideUiContainer.setWidth(sideUiWidth);
         }
 
-        // Observers should be notified immediately, regardless of whether a Transition animation
-        // has been started. If a delayed Transition has begun, the observers must be notified for
-        // their changes to be captured in the Transition end values - the actual animation will
-        // only begin after all observers have been notified.
+        // TODO(crbug.com/478338737): Update to account for multiple side containers, and move
+        //  into collectTransitions() if possible.
+        transitionSet.addListener(
+                new TransitionListenerAdapter() {
+                    @Override
+                    public void onTransitionEnd(Transition transition) {
+                        // Detach and close the container after the transition is complete.
+                        if (sideUiWidth == 0) {
+                            assert mSideUiContainer != null;
+                            detachSideUiContainerView(mSideUiContainer.getView());
+                            mSideUiContainer.setWidth(0);
+                        }
+                        for (SideUiObserver observer : mSideUiObservers) {
+                            observer.onTransitionEnded(sideUiSpecs);
+                        }
+                    }
+                });
+
+        // Trigger a synchronous measure and layout pass on the container to ensure that the
+        // starting snapshot for the Transition is updated and accurate. If this is not done,
+        // the side panel can have visual bugs where it animates from an incorrect starting
+        // point, especially if the window has been resized recently. Updating View attributes,
+        // like setting a View's translation, is not enough alone.
+        ViewUtils.triggerSynchronousMeasureAndLayout(mAnchorContainerParent);
+        TransitionManager.beginDelayedTransition(getRootView(), transitionSet);
+        if (anchorSide == AnchorSide.START) {
+            SideUiContainerTransition.triggerContainerTransition(
+                    mStartAnchorContainer,
+                    mStartAnchorContainer.getWidth(),
+                    AnchorSide.START,
+                    sideUiWidth);
+        } else {
+            SideUiContainerTransition.triggerContainerTransition(
+                    mEndAnchorContainer,
+                    mEndAnchorContainer.getWidth(),
+                    AnchorSide.END,
+                    sideUiWidth);
+        }
+        for (SideUiObserver observer : mSideUiObservers) {
+            observer.onTransitionBegun(sideUiSpecs);
+        }
+    }
+
+    private void commitNewSpecsForStaticResize(
+            SideUiSpecs sideUiSpecs, @AnchorSide int anchorSide) {
+        assert mSideUiContainer != null;
+
+        // TODO(crbug.com/478338737): Update to account for multiple SideUiContainers.
+        @Px
+        int sideUiWidth =
+                anchorSide == AnchorSide.START
+                        ? sideUiSpecs.mStartContainerWidth
+                        : sideUiSpecs.mEndContainerWidth;
+
+        // Reset the side UI containers to clear any leftover state from previous Transitions.
+        SideUiContainerTransition.resetContainer(mStartAnchorContainer);
+        SideUiContainerTransition.resetContainer(mEndAnchorContainer);
+
+        if (sideUiWidth != 0) {
+            attachSideUiContainerView(mSideUiContainer.getView(), anchorSide);
+        } else {
+            detachSideUiContainerView(mSideUiContainer.getView());
+        }
+        mSideUiContainer.setWidth(sideUiWidth);
+
         notifySideUiSpecsChanged(sideUiSpecs);
     }
 

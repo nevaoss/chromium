@@ -238,9 +238,6 @@ BASE_FEATURE(kAlpsParsing, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kAlpsClientHintParsing, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kShouldKillSessionOnAcceptChMalformed,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kEnableWebsocketsOverHttp3, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN)
@@ -420,14 +417,6 @@ BASE_FEATURE(kDeviceBoundSessionSigningQuotaAndCaching,
 BASE_FEATURE(kDeviceBoundSessionsForRestrictedSites,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kDeviceBoundSessionsForRestrictedSitesExperimentId,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(std::string,
-                   kDeviceBoundSessionsForRestrictedSitesExperimentIdParam,
-                   &kDeviceBoundSessionsForRestrictedSitesExperimentId,
-                   "Value",
-                   "");
-
 BASE_FEATURE(kDeviceBoundSessionsForSingleSignOn,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -502,6 +491,11 @@ BASE_FEATURE_PARAM(bool,
                    "SqlDiskCachePreloadDatabase",
                    false);
 BASE_FEATURE_PARAM(bool,
+                   kSqlDiskCacheWalMode,
+                   &kDiskCacheBackendExperiment,
+                   "SqlDiskCacheWalMode",
+                   true);
+BASE_FEATURE_PARAM(bool,
                    kSqlDiskCacheSynchronousOff,
                    &kDiskCacheBackendExperiment,
                    "SqlDiskCacheSynchronousOff",
@@ -536,6 +530,11 @@ BASE_FEATURE_PARAM(bool,
                    &kDiskCacheBackendExperiment,
                    "SqlDiskCacheSerialCheckpoint",
                    true);
+BASE_FEATURE_PARAM(bool,
+                   kSqlDiskCacheSerialInitialize,
+                   &kDiskCacheBackendExperiment,
+                   "SqlDiskCacheSerialInitialize",
+                   false);
 BASE_FEATURE_PARAM(bool,
                    kSqlDiskCacheSizeAndPriorityAwareEviction,
                    &kDiskCacheBackendExperiment,
@@ -787,8 +786,6 @@ BASE_FEATURE(kDohFallbackAllowedWithLocalNameservers,
 BASE_FEATURE(kAddAutomaticWithDohFallbackMode,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kForceSecureDnsDohFallback, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kUseQuicProxiesWithoutWaitingForConnectResponse,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -814,7 +811,6 @@ BASE_FEATURE(kDrainSpdySessionSynchronouslyOnRemoteEndpointDisconnect,
 BASE_FEATURE(kLogicalClearHttpCache, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSQLitePersistentCookieStoreEarlyInit,
-             "SQLitePersistentCookieStoreEarlyInit",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kSQLitePersistentCookieStoreEarlyInitCheckDisk{

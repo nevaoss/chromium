@@ -23,29 +23,26 @@
 #include "chrome/browser/ui/webui/webui_toolbar/utils/toolbar_button_utils.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_ui.h"
 #include "chrome/grit/generated_resources.h"
+#include "ui/actions/actions.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/models/image_model.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/menu/menu_runner.h"
 
 struct WebUIPinnedToolbarActions::PendingAnchorRequest {
-  PendingAnchorRequest(
-      actions::ActionId id,
-      base::OnceCallback<
-          void(base::expected<views::BubbleAnchor, GetAnchorFailureReason>)> cb,
-      ui::ElementTracker::Subscription sub);
+  PendingAnchorRequest(actions::ActionId id,
+                       base::OnceCallback<void(BubbleAnchorResult)> cb,
+                       ui::ElementTracker::Subscription sub);
   ~PendingAnchorRequest();
   const actions::ActionId action_id;
-  base::OnceCallback<void(
-      base::expected<views::BubbleAnchor, GetAnchorFailureReason>)>
-      callback;
+  base::OnceCallback<void(BubbleAnchorResult)> callback;
   const ui::ElementTracker::Subscription subscription;
 };
 
 WebUIPinnedToolbarActions::PendingAnchorRequest::PendingAnchorRequest(
     actions::ActionId id,
-    base::OnceCallback<
-        void(base::expected<views::BubbleAnchor, GetAnchorFailureReason>)> cb,
+    base::OnceCallback<void(BubbleAnchorResult)> cb,
     ui::ElementTracker::Subscription sub)
     : action_id(id), callback(std::move(cb)), subscription(std::move(sub)) {}
 
@@ -71,6 +68,8 @@ void WebUIPinnedToolbarActions::OnActionsChanged() {
   base::flat_set<actions::ActionId> processed_actions;
 
   action_subscriptions_.clear();
+
+  auto& icon_table = delegate_->GetIconTable();
 
   auto add_state = [&](actions::ActionId id, bool highlighted) {
     // Don't add two copies of one button, e.g. if pinned and popped-out.
@@ -109,6 +108,16 @@ void WebUIPinnedToolbarActions::OnActionsChanged() {
     if (auto element_id = webui_toolbar::ActionIdToElementIdentifier(id)) {
       state->element_id = element_id.GetName();
     }
+
+    ui::ImageModel image_model;
+    if (actions::IsActionItemClass<actions::StatefulImageActionItem>(item)) {
+      image_model = static_cast<actions::StatefulImageActionItem*>(item)
+                        ->GetStatefulImage();
+    } else {
+      image_model = item->GetImage();
+    }
+    state->icon = icon_table.RegisterImageModel(std::move(image_model));
+
     states.push_back(std::move(state));
     processed_actions.insert(id);
   };
@@ -224,8 +233,7 @@ views::BubbleAnchor WebUIPinnedToolbarActions::GetBubbleAnchor(
 
 void WebUIPinnedToolbarActions::GetBubbleAnchorAsync(
     actions::ActionId action_id,
-    base::OnceCallback<void(base::expected<views::BubbleAnchor,
-                                           GetAnchorFailureReason>)> callback) {
+    base::OnceCallback<void(BubbleAnchorResult)> callback) {
   auto element_id = webui_toolbar::ActionIdToElementIdentifier(action_id);
   if (!element_id || !IsActionPinnedOrPoppedOut(action_id)) {
     std::move(callback).Run(

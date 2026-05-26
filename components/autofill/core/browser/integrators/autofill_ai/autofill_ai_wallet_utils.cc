@@ -5,18 +5,24 @@
 #include "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_wallet_utils.h"
 
 #include <optional>
+#include <string>
 #include <utility>
 
+#include "base/check.h"
+#include "base/check_op.h"
+#include "base/feature_list.h"
+#include "base/memory/weak_ptr.h"
 #include "base/strings/escape.h"
 #include "base/strings/stringprintf.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
+#include "components/autofill/core/browser/data_model/autofill_ai/entity_instance.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/consent_auditor/consent_auditor.h"
-#include "components/strings/grit/components_strings.h"
+#include "components/signin/public/base/consent_level.h"
 #include "components/sync/protocol/user_consent_types.pb.h"
 #include "components/wallet/core/common/wallet_features.h"
-#include "ui/base/l10n/l10n_util.h"
+#include "google_apis/gaia/gaia_id.h"
 
 namespace autofill {
 
@@ -71,8 +77,9 @@ void HandleWalletUpsertResponse(
   using enum AutofillClient::AutofillAiImportPromptType;
   using enum UiAction;
 
-  CHECK(IsMaskedStorageSupported(entity.type(), entity.record_type()));
-  CHECK(entity.IsServerInstance());
+  CHECK_EQ(entity.record_type(), EntityInstance::RecordType::kServerWallet);
+  CHECK(IsMaskedStorageSupported(entity.type(),
+                                 EntityInstance::RecordType::kServerWallet));
   CHECK(!entity.IsMaskedEntity());
 
   if (!entity_manager) {
@@ -118,8 +125,8 @@ void HandleWalletUpsertResponse(
 
 std::string GetWalletManagementURL(const EntityInstance& entity) {
   CHECK_EQ(entity.record_type(), EntityInstance::RecordType::kServerWallet);
-  bool is_private_pass =
-      IsMaskedStorageSupported(entity.type(), entity.record_type());
+  bool is_private_pass = IsMaskedStorageSupported(
+      entity.type(), EntityInstance::RecordType::kServerWallet);
   // TODO(crbug.com/454899556): Implement a deep link for public passes. This is
   // not supported by the backend yet.
   if (!is_private_pass) {

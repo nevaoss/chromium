@@ -7,6 +7,7 @@
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/web_ui_mocha_browser_test.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/history_clusters/core/features.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/search/ntp_features.h"
@@ -21,7 +22,8 @@ class NewTabPageBrowserTest : public WebUIMochaBrowserTest {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/{},
         /*disabled_features=*/{omnibox::kAimServerEligibilityEnabled,
-                               ntp_realbox::kNtpRealboxNext});
+                               ntp_realbox::kNtpRealboxNext,
+                               contextual_tasks::kContextualTasksContext});
   }
 
  private:
@@ -96,7 +98,13 @@ IN_PROC_BROWSER_TEST_F(NewTabPageTest, Transparency) {
   RunTest("new_tab_page/transparency_test.js", "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, Composebox) {
+// TODO(https://crbug.com/483519387): flaky on linux-chromeos-dbg.
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_Composebox DISABLED_Composebox
+#else
+#define MAYBE_Composebox Composebox
+#endif
+IN_PROC_BROWSER_TEST_F(NewTabPageTest, MAYBE_Composebox) {
   RunTest("new_tab_page/composebox/composebox_test.js", "mocha.run()");
 }
 

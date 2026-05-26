@@ -22,8 +22,10 @@
 #include "ash/webui/boca_ui/mojom/boca.mojom-shared.h"
 #include "ash/webui/boca_ui/mojom/boca.mojom.h"
 #include "ash/webui/boca_ui/provider/content_settings_handler.h"
+#include "ash/webui/boca_ui/provider/tab_info_collector.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/strings/string_util.h"
 #include "base/test/bind.h"
@@ -356,6 +358,49 @@ class MockSessionManager : public BocaSessionManager {
   ~MockSessionManager() override = default;
 };
 
+class FakeTabInfoCollector : public TabInfoCollector {
+ public:
+  explicit FakeTabInfoCollector(base::OnceClosure on_destroy)
+      : on_destroy_(std::move(on_destroy)) {}
+
+  ~FakeTabInfoCollector() override { std::move(on_destroy_).Run(); }
+
+  void AddWindow(std::vector<mojom::TabInfoPtr> tabs) {
+    auto window = mojom::Window::New();
+    window->tab_list = std::move(tabs);
+    windows_.push_back(std::move(window));
+  }
+
+  std::vector<mojom::WindowPtr> GetWindowTabInfo(
+      UrlTypeGetter url_type_getter) override {
+    get_window_tab_info_count_++;
+    for (auto& window : windows_) {
+      for (auto& tab : window->tab_list) {
+        tab->url_type = url_type_getter.Run(tab->id.value_or(0));
+      }
+    }
+    return std::move(windows_);
+  }
+
+  std::vector<mojom::WindowPtr> GetWindowTabInfoForTarget(
+      aura::Window* target_window,
+      UrlTypeGetter url_type_getter) override {
+    return GetWindowTabInfo(url_type_getter);
+  }
+
+  std::vector<mojom::WindowPtr> GetWindowTabInfoForAllBrowserWindows(
+      UrlTypeGetter url_type_getter) override {
+    return GetWindowTabInfo(url_type_getter);
+  }
+
+  int get_window_tab_info_count() const { return get_window_tab_info_count_; }
+
+ private:
+  int get_window_tab_info_count_ = 0;
+  std::vector<mojom::WindowPtr> windows_;
+  base::OnceClosure on_destroy_;
+};
+
 class MockSpotlightService : public SpotlightService {
  public:
   explicit MockSpotlightService(
@@ -531,34 +576,6 @@ class MockContentSettingsHandler : public ContentSettingsHandler {
               (override));
 };
 
-class TestBocaAppHandler : public BocaAppHandler {
- public:
-  TestBocaAppHandler(
-      mojo::PendingReceiver<mojom::PageHandler> receiver,
-      mojo::PendingRemote<mojom::Page> remote,
-      content::WebUI* webui,
-      std::unique_ptr<ClassroomPageHandlerImpl> classroom_client_impl,
-      std::unique_ptr<ContentSettingsHandler> content_settings_handler,
-      OnTaskSystemWebAppManager* system_web_app_manager,
-      SessionClientImpl* session_client_impl,
-      std::unique_ptr<GeminiStatusFetcher> gemini_status_fetcher,
-      bool is_producer)
-      : BocaAppHandler(std::move(receiver),
-                       std::move(remote),
-                       webui,
-                       std::move(classroom_client_impl),
-                       std::move(content_settings_handler),
-                       system_web_app_manager,
-                       session_client_impl,
-                       std::move(gemini_status_fetcher),
-                       is_producer) {}
-
-  MOCK_METHOD(std::vector<mojom::WindowPtr>,
-              GetWindowTabInfoSync,
-              (),
-              (override));
-};
-
 class BocaAppPageHandlerTest : public testing::Test {
  public:
   BocaAppPageHandlerTest() = default;
@@ -660,12 +677,17 @@ class BocaAppPageHandlerTest : public testing::Test {
     auto content_settings_handler =
         std::make_unique<NiceMock<MockContentSettingsHandler>>();
     mock_content_settings_handler_ = content_settings_handler.get();
-    auto boca_app_handler = std::make_unique<TestBocaAppHandler>(
+    auto fake_tab_info_collector = std::make_unique<FakeTabInfoCollector>(
+        base::BindOnce(&BocaAppPageHandlerTest::ResetTabInfoCollectorPtr,
+                       base::Unretained(this)));
+    fake_tab_info_collector_ptr_ = fake_tab_info_collector.get();
+    auto boca_app_handler = std::make_unique<BocaAppHandler>(
         remote->BindNewPipeAndPassReceiver(),
         // TODO(crbug.com/359929870): Setting nullptr for other dependencies for
         // now. Adding test case for classroom and tab info.
         page_pending_receiver.InitWithNewPipeAndPassRemote(), web_ui_.get(),
         /*classroom_client_impl=*/nullptr, std::move(content_settings_handler),
+        std::move(fake_tab_info_collector),
         /*system_web_app_manager=*/nullptr, &session_client_impl_,
         std::move(gemini_status_fetcher), is_producer);
     *fake_page = std::make_unique<FakePage>(std::move(page_pending_receiver));
@@ -746,6 +768,9 @@ class BocaAppPageHandlerTest : public testing::Test {
   MockContentSettingsHandler* mock_content_settings_handler() {
     return mock_content_settings_handler_;
   }
+  FakeTabInfoCollector* fake_tab_info_collector() {
+    return fake_tab_info_collector_ptr_;
+  }
   MockSpotlightService* spotlight_service() { return &spotlight_service_; }
   FakePage* fake_page() { return fake_page_.get(); }
   sync_preferences::TestingPrefServiceSyncable* pref_service() {
@@ -758,6 +783,8 @@ class BocaAppPageHandlerTest : public testing::Test {
           std::move(success_cb).Run(success);
         }));
   }
+
+  void ResetTabInfoCollectorPtr() { fake_tab_info_collector_ptr_ = nullptr; }
 
   content::BrowserTaskEnvironment* task_environment() {
     return &task_environment_;
@@ -790,6 +817,7 @@ class BocaAppPageHandlerTest : public testing::Test {
   std::unique_ptr<BocaAppHandler> boca_app_handler_;
   StrictMock<MockSpotlightService> spotlight_service_{nullptr};
   raw_ptr<content::BrowserContext> browser_context_;
+  raw_ptr<FakeTabInfoCollector> fake_tab_info_collector_ptr_;
 };
 
 class BocaAppPageHandlerProducerTest : public BocaAppPageHandlerTest {
@@ -2195,10 +2223,13 @@ TEST_F(BocaAppPageHandlerProducerTest, UpdateNonEmptyStudentActivitySucceed) {
   device_1.mutable_view_screen_config()
       ->mutable_connection_param()
       ->set_connection_code("abcd");
+  status_1.set_gemini_enablement_state(::boca::GEMINI_ENABLEMENT_STATE_ENABLED);
   (*status_1.mutable_devices())["device1"] = std::move(device_1);
 
   ::boca::StudentStatus status_2;
   status_2.set_state(::boca::StudentStatus::ADDED);
+  status_2.set_gemini_enablement_state(
+      ::boca::GEMINI_ENABLEMENT_STATE_DISABLED);
   ::boca::StudentDevice device_2;
   device_2.set_state(::boca::StudentDevice::ACTIVE);
   auto* activity_2 = device_2.mutable_activity();
@@ -2221,10 +2252,14 @@ TEST_F(BocaAppPageHandlerProducerTest, UpdateNonEmptyStudentActivitySucceed) {
   EXPECT_EQ("google", result[0]->activity->active_tab);
   // Connection code should be set
   EXPECT_EQ("abcd", result[0]->activity->view_screen_session_code);
+  EXPECT_EQ(mojom::GeminiEnablementState::kEnabled,
+            result[0]->activity->gemini_state);
 
   EXPECT_EQ("2", result[1]->id);
   EXPECT_EQ("youtube", result[1]->activity->active_tab);
   EXPECT_TRUE(result[1]->activity->is_active);
+  EXPECT_EQ(mojom::GeminiEnablementState::kDisabled,
+            result[1]->activity->gemini_state);
 }
 
 TEST_F(BocaAppPageHandlerProducerTest,
@@ -2246,6 +2281,8 @@ TEST_F(BocaAppPageHandlerProducerTest,
   EXPECT_FALSE(result[0]->activity->is_active);
   EXPECT_EQ("", result[0]->activity->active_tab);
   EXPECT_EQ("", result[0]->activity->view_screen_session_code);
+  EXPECT_EQ(mojom::GeminiEnablementState::kUnknown,
+            result[0]->activity->gemini_state);
 }
 
 TEST_F(BocaAppPageHandlerProducerTest,
@@ -2272,6 +2309,8 @@ TEST_F(BocaAppPageHandlerProducerTest,
   EXPECT_FALSE(result[0]->activity->is_active);
   EXPECT_EQ("", result[0]->activity->active_tab);
   EXPECT_EQ("", result[0]->activity->view_screen_session_code);
+  EXPECT_EQ(mojom::GeminiEnablementState::kUnknown,
+            result[0]->activity->gemini_state);
 }
 
 TEST_F(BocaAppPageHandlerProducerTest,
@@ -3845,17 +3884,12 @@ TEST_F(BocaAppPageHandlerConsumerTest,
        SetSitePermission_AllowedWhenUrlMatchesOpenTab) {
   const std::string allowed_url = "https://example.com/safe";
 
-  std::vector<mojom::WindowPtr> windows;
-  auto window = mojom::Window::New();
-  window->tab_list.push_back(
-      mojom::TabInfo::New(std::nullopt, "safe", GURL(allowed_url),
-                          GURL("https://example.com/favicon"),
-                          /*url_type=*/std::nullopt));
-  windows.push_back(std::move(window));
-
-  auto* test_handler = static_cast<TestBocaAppHandler*>(boca_app_handler());
-  EXPECT_CALL(*test_handler, GetWindowTabInfoSync())
-      .WillOnce(Return(testing::ByMove(std::move(windows))));
+  auto tab = mojom::TabInfo::New(std::nullopt, "safe", GURL(allowed_url),
+                                 GURL("https://example.com/favicon"),
+                                 /*url_type=*/std::nullopt);
+  std::vector<mojom::TabInfoPtr> tabs;
+  tabs.push_back(std::move(tab));
+  fake_tab_info_collector()->AddWindow(std::move(tabs));
 
   EXPECT_CALL(
       *mock_content_settings_handler(),
@@ -3864,9 +3898,9 @@ TEST_F(BocaAppPageHandlerConsumerTest,
       .WillOnce(Return(true));
 
   base::test::TestFuture<bool> success_future;
-  test_handler->SetSitePermission(allowed_url, mojom::Permission::kCamera,
-                                  mojom::PermissionSetting::kAllow,
-                                  success_future.GetCallback());
+  boca_app_handler()->SetSitePermission(allowed_url, mojom::Permission::kCamera,
+                                        mojom::PermissionSetting::kAllow,
+                                        success_future.GetCallback());
   EXPECT_TRUE(success_future.Get());
 }
 
@@ -3875,16 +3909,12 @@ TEST_F(BocaAppPageHandlerConsumerTest,
   const std::string requested_url = "https://evil.com/unsafe";
   const std::string open_url = "https://example.com/safe";
 
-  std::vector<mojom::WindowPtr> windows;
-  auto window = mojom::Window::New();
-  window->tab_list.push_back(mojom::TabInfo::New(
-      std::nullopt, "safe", GURL(open_url), GURL("https://example.com/favicon"),
-      /*url_type=*/std::nullopt));
-  windows.push_back(std::move(window));
-
-  auto* test_handler = static_cast<TestBocaAppHandler*>(boca_app_handler());
-  EXPECT_CALL(*test_handler, GetWindowTabInfoSync())
-      .WillOnce(Return(testing::ByMove(std::move(windows))));
+  auto tab = mojom::TabInfo::New(std::nullopt, "safe", GURL(open_url),
+                                 GURL("https://example.com/favicon"),
+                                 /*url_type=*/std::nullopt);
+  std::vector<mojom::TabInfoPtr> tabs;
+  tabs.push_back(std::move(tab));
+  fake_tab_info_collector()->AddWindow(std::move(tabs));
 
   EXPECT_CALL(*mock_content_settings_handler(),
               SetContentSettingForOrigin(_, _, _))
@@ -3904,8 +3934,6 @@ TEST_F(BocaAppPageHandlerConsumerTest,
 TEST_F(BocaAppPageHandlerProducerTest, SetSitePermission_DeniedForProducer) {
   const std::string requested_url = "https://example.com/safe";
 
-  auto* test_handler = static_cast<TestBocaAppHandler*>(boca_app_handler());
-  EXPECT_CALL(*test_handler, GetWindowTabInfoSync()).Times(0);
   EXPECT_CALL(*mock_content_settings_handler(),
               SetContentSettingForOrigin(_, _, _))
       .Times(0);
@@ -3919,20 +3947,15 @@ TEST_F(BocaAppPageHandlerProducerTest, SetSitePermission_DeniedForProducer) {
 
   run_loop.Run();
   EXPECT_FALSE(remote().is_connected());
+  EXPECT_EQ(fake_tab_info_collector()->get_window_tab_info_count(), 0);
 }
 
 TEST_F(BocaAppPageHandlerConsumerTest,
        SetSitePermission_DeniedWhenMultipleWindows) {
   const std::string requested_url = "https://example.com/safe";
 
-  // Return 2 windows.
-  std::vector<mojom::WindowPtr> windows;
-  windows.push_back(mojom::Window::New());
-  windows.push_back(mojom::Window::New());
-
-  auto* test_handler = static_cast<TestBocaAppHandler*>(boca_app_handler());
-  EXPECT_CALL(*test_handler, GetWindowTabInfoSync())
-      .WillOnce(Return(testing::ByMove(std::move(windows))));
+  fake_tab_info_collector()->AddWindow(std::vector<mojom::TabInfoPtr>());
+  fake_tab_info_collector()->AddWindow(std::vector<mojom::TabInfoPtr>());
 
   EXPECT_CALL(*mock_content_settings_handler(),
               SetContentSettingForOrigin(_, _, _))
@@ -3948,13 +3971,6 @@ TEST_F(BocaAppPageHandlerConsumerTest,
 
 TEST_F(BocaAppPageHandlerConsumerTest, SetSitePermission_DeniedWhenNoWindows) {
   const std::string requested_url = "https://example.com/safe";
-
-  // Return 0 windows.
-  std::vector<mojom::WindowPtr> windows;
-
-  auto* test_handler = static_cast<TestBocaAppHandler*>(boca_app_handler());
-  EXPECT_CALL(*test_handler, GetWindowTabInfoSync())
-      .WillOnce(Return(testing::ByMove(std::move(windows))));
 
   EXPECT_CALL(*mock_content_settings_handler(),
               SetContentSettingForOrigin(_, _, _))
@@ -3995,12 +4011,36 @@ TEST_F(BocaAppPageHandlerProducerTest, GetGeminiStatusSuccessWhenFetcherValid) {
       "https://schooltools-pa.googleapis.com/v1/users/$1:getGeminiStatus",
       {kGaiaId.ToString()}, nullptr);
   test_url_loader_factory.AddResponse(
-      url, R"({"status": "ENABLEMENT_STATUS_DISABLED"})");
+      url, base::ReplaceStringPlaceholders(kGeminiStatusFetchResponseTemplate,
+                                           {kGeminiStateDisabled}, nullptr));
 
   base::test::TestFuture<bool> future;
   handler->GetGeminiStatus(future.GetCallback());
   EXPECT_FALSE(future.Get());
   mock_content_settings_handler_ = nullptr;
+}
+
+TEST_F(BocaAppPageHandlerConsumerTest, GetWindowsTabsListVerifyUrlType) {
+  int32_t test_tab_id = 123;
+  session_manager()->OnNewTabAdded(test_tab_id,
+                                   ::boca::URL_TYPE_GEMINI_GUIDED_LEARNING);
+  auto tab =
+      mojom::TabInfo::New(test_tab_id, "Test Tab", GURL("http://test.com"),
+                          GURL("http://icon.com"), std::nullopt);
+  std::vector<mojom::TabInfoPtr> tabs;
+  tabs.push_back(std::move(tab));
+  fake_tab_info_collector()->AddWindow(std::move(tabs));
+
+  base::test::TestFuture<std::vector<mojom::WindowPtr>> future;
+  boca_app_handler()->GetWindowsTabsList(future.GetCallback());
+  auto windows = future.Take();
+
+  ASSERT_EQ(windows.size(), 1u);
+  ASSERT_EQ(windows[0]->tab_list.size(), 1u);
+  ASSERT_TRUE(windows[0]->tab_list[0]->id.has_value());
+  EXPECT_EQ(windows[0]->tab_list[0]->id.value(), test_tab_id);
+  EXPECT_EQ(windows[0]->tab_list[0]->url_type,
+            mojom::UrlType::kGeminiGuidedLearning);
 }
 
 class BocaAppPageHandlerProducerMarkerModeTest : public AshTestBase {

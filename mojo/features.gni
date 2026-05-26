@@ -18,6 +18,7 @@ declare_args() {
   # When this is true, ipcz-based Mojo Core can be disabled by disabling the
   # MojoIpcz feature flag; and it's disabled by default on Chrome OS. When this
   # is false, ipcz-based Mojo Core is used unconditionally.
+<<<<<<< HEAD
   #
   # We also enable this by default for fuzzer builds, since some active fuzzers
   # require the legacy implementation.
@@ -25,4 +26,7 @@ declare_args() {
   # TODO(neva): Remove |is_webos| if mojoipcz is better when considering memory
   # and performance perspective.
   mojo_support_legacy_core = target_os == "chromeos" || use_libfuzzer || is_webos
+=======
+  mojo_support_legacy_core = target_os == "chromeos"
+>>>>>>> 150.0.7847.0~1
 }

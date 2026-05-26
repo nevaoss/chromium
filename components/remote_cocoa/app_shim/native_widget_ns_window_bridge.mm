@@ -2144,7 +2144,7 @@ void NativeWidgetNSWindowBridge::UpdateWindowGeometry() {
   CheckAndNotifyAllWorkspacesStateChanged();
 
   if (content_resized && !ca_transaction_sync_suppressed_ &&
-      !base::FeatureList::IsEnabled(features::kCATransactionV2)) {
+      !base::FeatureList::IsEnabled(features::kAsyncLiveResize)) {
     ui::CATransactionCoordinator::Get().Synchronize();
   }
 
@@ -2175,6 +2175,13 @@ bool NativeWidgetNSWindowBridge::IsWindowModalSheet() const {
 }
 
 void NativeWidgetNSWindowBridge::ShowAsModalSheet() {
+  // -[NSWindow beginSheet:completionHandler:] will block the UI thread while
+  // the animation runs. So that it doesn't animate a fully transparent window,
+  // first wait for a frame. The first step is to pretend that the window is
+  // already visible.
+  window_visible_ = true;
+  host_->OnVisibilityChanged(window_visible_);
+
   NSWindow* parent_window = parent_->ns_window();
   if (NativeWidgetMacNSWindow* parent_widget_window =
           base::apple::ObjCCast<NativeWidgetMacNSWindow>(parent_window)) {

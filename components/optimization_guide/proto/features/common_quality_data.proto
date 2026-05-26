@@ -814,7 +814,7 @@ message FrameData {
 
   // Positive used line height in CSS px. Needed for scaling-proof
   // geometry rules (e.g. menu popup heuristics expecting a minimum size).
-  int32 default_line_height_px = 12 [features = { field_presence: EXPLICIT }];
+  uint32 default_line_height_px = 12 [features = { field_presence: EXPLICIT }];
 
   reserved 7, 10;
 }
@@ -1173,18 +1173,6 @@ message FormFieldData {
 
 message TableRow {
   repeated ContentNode cells = 1;
-}
-
-message UserAnnotationsEntry {
-  // The row ID of this entry from the user annotations database. This is
-  // immutable except when retrieving the row from the database.
-  int64 entry_id = 1 [features = { field_presence: EXPLICIT }];
-
-  // The key for this entry. Not necessarily unique.
-  string key = 2 [features = { field_presence: EXPLICIT }];
-
-  // The value for this entry.
-  string value = 3 [features = { field_presence: EXPLICIT }];
 }
 
 message TabGroup {

@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 
+#include "base/containers/flat_map.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
@@ -26,6 +27,11 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/sharing/glic_experimental_triggering/actor_log.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/browser.h"  // nogncheck
+#include "chrome/browser/ui/browser_commands.h"  // nogncheck
+#include "chrome/browser/ui/browser_window.h"  // nogncheck
+#endif
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/common/chrome_features.h"
 #include "components/sharing_message/proto/sharing_message.pb.h"
@@ -187,13 +193,23 @@ class ExperimentalTriggeringUpdatesHandler
       return;
     }
 
+    // Find or create a valid browser window. On Android, or if window
+    // creation is disabled/fails, clean up and abort.
     BrowserWindowInterface* browser_window =
         message_handler_->GetBrowserWindow();
     if (!browser_window) {
-      DLOG(ERROR) << "No browser window found for Profile for "
-                     "GlicExperimentalTriggering";
-      message_handler_->OnUpdatesHandlerCleanup(context_id_);
-      return;
+      if (base::FeatureList::IsEnabled(
+              features::kGlicExperimentalTriggeringOpenWindowIfNone)) {
+#if !BUILDFLAG(IS_ANDROID)
+        browser_window = chrome::OpenEmptyWindow(message_handler_->profile_);
+#endif
+      }
+      if (!browser_window) {
+        DLOG(ERROR) << "No browser window found for Profile for "
+                       "GlicExperimentalTriggering";
+        message_handler_->OnUpdatesHandlerCleanup(context_id_);
+        return;
+      }
     }
 
     auto options = CreateInvokeOptions(request, browser_window);
@@ -230,7 +246,7 @@ class ExperimentalTriggeringUpdatesHandler
           TaskUpdate::FAILED, TaskUpdate::ERROR_MESSAGE,
           "Failed to stop task due to missing glic instance.");
     } else {
-      instance_->CancelTask();
+      instance_->GetActorTaskManager()->CancelTask();
       SendTaskUpdateMessage(TaskUpdate::STOPPED);
     }
 
@@ -274,6 +290,10 @@ class ExperimentalTriggeringUpdatesHandler
             break;
           case glic::mojom::ExperimentalTriggeringUpdateType::kTerminalFailed:
             SendTaskUpdateMessage(TaskUpdate::FAILED, TaskUpdate::ERROR_MESSAGE,
+                                  std::move(update->data));
+            break;
+          case glic::mojom::ExperimentalTriggeringUpdateType::kYieldToUser:
+            SendTaskUpdateMessage(TaskUpdate::YIELD, std::nullopt,
                                   std::move(update->data));
             break;
           case glic::mojom::ExperimentalTriggeringUpdateType::kUnknown:
@@ -320,7 +340,6 @@ class ExperimentalTriggeringUpdatesHandler
     if (message_sender_) {
       message_sender_->SendMessageToServerTarget(
           server_channel_, kUpdateMessageTimeout, std::move(message),
-          SharingMessageSender::DelegateType::kFCM,
           base::BindOnce([](SharingSendMessageResult result,
                             std::unique_ptr<
                                 components_sharing_message::ResponseMessage>
@@ -414,7 +433,8 @@ void GlicExperimentalTriggeringMessageHandler::OnMessage(
   if (request.request().has_device_opt_in_request()) {
     tabs::TabInterface* active_tab = GetActiveTab();
     if (active_tab) {
-      ProcessDeviceOptInRequest(active_tab);
+      ProcessDeviceOptInRequest(active_tab,
+                                message.server_channel_configuration());
     } else {
       DLOG(ERROR) << "No active tab found for Profile for "
                      "GlicExperimentalTriggering";
@@ -472,15 +492,47 @@ void GlicExperimentalTriggeringMessageHandler::OnMessage(
   std::move(done_callback).Run(nullptr);
 }
 
+void GlicExperimentalTriggeringMessageHandler::SendDeviceOptInResult(
+    components_sharing_message::ServerChannelConfiguration server_channel,
+    bool accepted) {
+  components_sharing_message::SharingMessage message;
+  auto* triggering = message.mutable_glic_experimental_triggering();
+  triggering->mutable_response()->set_device_opt_in_result(
+      accepted ? components_sharing_message::GlicExperimentalTriggering::
+                     ExperimentalTriggeringResponse::ACCEPTED
+               : components_sharing_message::GlicExperimentalTriggering::
+                     ExperimentalTriggeringResponse::DECLINED);
+
+  message_sender_->SendMessageToServerTarget(
+      server_channel, kUpdateMessageTimeout, std::move(message),
+      base::BindOnce(
+          [](SharingSendMessageResult result,
+             std::unique_ptr<components_sharing_message::ResponseMessage>
+                 response) {
+            if (result != SharingSendMessageResult::kSuccessful) {
+              DLOG(ERROR) << "Failed to send device opt-in result to server: "
+                          << static_cast<int>(result);
+            }
+          }));
+}
+
 void GlicExperimentalTriggeringMessageHandler::ProcessDeviceOptInRequest(
-    tabs::TabInterface* active_tab) {
+    tabs::TabInterface* active_tab,
+    components_sharing_message::ServerChannelConfiguration server_channel) {
 #if !BUILDFLAG(IS_ANDROID)
-  if (!opt_in_controller_) {
-    opt_in_controller_ =
-        std::make_unique<glic::GlicExperimentalOptInController>(profile_);
+  glic::GlicKeyedService* glic_service =
+      glic::GlicKeyedServiceFactory::GetGlicKeyedService(profile_,
+                                                         /*create=*/false);
+  if (!glic_service) {
+    return;
   }
 
-  opt_in_controller_->ShowDialog(active_tab->GetContents());
+  auto callback = base::BindOnce(
+      &GlicExperimentalTriggeringMessageHandler::SendDeviceOptInResult,
+      weak_ptr_factory_.GetWeakPtr(), server_channel);
+
+  glic_service->opt_in_controller().ShowDialog(active_tab->GetContents(),
+                                               std::move(callback));
 #endif
 }
 

@@ -4,6 +4,7 @@
 
 import './icons.html.js';
 import './composebox_tab_favicon.js';
+import './composebox_favicon_group.js';
 import '//resources/cr_elements/icons.html.js';
 import '//resources/cr_elements/cr_action_menu/cr_action_menu.js';
 import '//resources/cr_elements/cr_icon/cr_icon.js';
@@ -75,6 +76,7 @@ export class ContextualActionMenuElement extends
       disableAutoReposition: {type: Boolean},
       contextManagementInComposeboxEnabled_: {type: Boolean},
       shareTabsFlyoutOpen_: {type: Boolean},
+      shareTabsFlyoutPosition_: {type: String},
       sharingTabsText_: {type: String},
     };
   }
@@ -101,12 +103,13 @@ export class ContextualActionMenuElement extends
   protected accessor contextManagementInComposeboxEnabled_: boolean =
       getLoadTimeBoolean('contextManagementInComposeboxEnabled', false);
   protected accessor shareTabsFlyoutOpen_: boolean = false;
+  protected accessor shareTabsFlyoutPosition_: string = 'right';
+  protected accessor sharingTabsText_: string = '';
 
   private closeTimer_: number|null = null;
   private pointerOverTrigger_: boolean = false;
   private pointerOverFlyout_: boolean = false;
 
-  protected accessor sharingTabsText_: string = '';
   protected get supportedTools_(): Map<ToolMode, {
     icon: string,
   }> {
@@ -177,12 +180,13 @@ export class ContextualActionMenuElement extends
   override updated(changedProperties: PropertyValues<this>) {
     super.updated(changedProperties);
 
-    if (changedProperties.has('disabledTabIds') &&
-        this.contextManagementInComposeboxEnabled_) {
-      this.updateSharingTabsText_();
+    if (this.contextManagementInComposeboxEnabled_) {
+      if (changedProperties.has('disabledTabIds')) {
+        this.updateSharingTabsText_();
+      }
+      this.manageShareTabsInitialFocus_(changedProperties);
     }
   }
-
   get open(): boolean {
     return this.$.menu.open;
   }
@@ -208,6 +212,30 @@ export class ContextualActionMenuElement extends
 
     if (this.contextManagementInComposeboxEnabled_) {
       this.updateSharingTabsText_();
+    }
+  }
+
+  private manageShareTabsInitialFocus_(
+      changedProperties: PropertyValues<this>) {
+    // Manually manage the initial keyboard focus for the "Share Tabs" menu item.
+    // Because `tabSuggestions` are fetched asynchronously, the
+    // `#shareTabsTrigger` button may not exist in the DOM at the exact moment
+    // the menu is opened. This causes the underlying <cr-action-menu> to
+    // incorrectly assign the initial focus to the next available item. To fix
+    // this, we reclaim the focus once the tab data arrives and the DOM is updated.
+    if (changedProperties.has('tabSuggestions')) {
+      const isNowPopulated =
+          this.tabSuggestions && this.tabSuggestions.length > 0;
+
+      if (isNowPopulated && this.open) {
+        requestAnimationFrame(() => {
+          const triggerBtn =
+              this.shadowRoot.querySelector<HTMLElement>('#shareTabsTrigger');
+          if (triggerBtn) {
+            triggerBtn.focus();
+          }
+        });
+      }
     }
   }
 
@@ -409,6 +437,11 @@ export class ContextualActionMenuElement extends
     return noNewContextAllowed || isTabInContext;
   }
 
+  protected getSelectedTabs_(): TabInfo[] {
+    return this.tabSuggestions.filter(
+        tab => this.disabledTabIds.has(tab.tabId));
+  }
+
   protected onSmartTabSharingToggleChange_(e: Event) {
     const toggle = e.target as CrToggleElement;
     this.fire('smart-tab-sharing-active-changed', {active: toggle.checked});
@@ -473,6 +506,7 @@ export class ContextualActionMenuElement extends
     this.pointerOverTrigger_ = true;
     this.cancelCloseTimer_();
     this.shareTabsFlyoutOpen_ = true;
+    this.updateFlyoutPosition_();
   }
 
   protected onShareTabsRowPointerleave_() {
@@ -495,6 +529,7 @@ export class ContextualActionMenuElement extends
       e.preventDefault();
       e.stopPropagation();
       this.shareTabsFlyoutOpen_ = true;
+      this.updateFlyoutPosition_();
 
       this.updateComplete.then(() => {
         const firstTabItem = this.shadowRoot.querySelector<HTMLElement>(
@@ -518,6 +553,46 @@ export class ContextualActionMenuElement extends
         row.focus();
       }
     }
+  }
+
+  private updateFlyoutPosition_() {
+    this.updateComplete.then(() => {
+      const trigger =
+          this.shadowRoot.querySelector<HTMLElement>('#shareTabsTrigger');
+      const flyout =
+          this.shadowRoot.querySelector<HTMLElement>('.share-tabs-flyout');
+      if (!trigger || !flyout) {
+        return;
+      }
+
+      const triggerRect = trigger.getBoundingClientRect();
+      const flyoutWidth = flyout.offsetWidth || 320;
+      const viewportWidth = window.innerWidth;
+
+      if (triggerRect.right + flyoutWidth + 4 <= viewportWidth) {
+        this.shareTabsFlyoutPosition_ = 'right';
+        flyout.style.left = '';
+        flyout.style.right = '';
+      } else if (triggerRect.left >= flyoutWidth + 4) {
+        this.shareTabsFlyoutPosition_ = 'left';
+        flyout.style.left = '';
+        flyout.style.right = '';
+      } else {
+        this.shareTabsFlyoutPosition_ = 'bottom';
+        const rtl = getComputedStyle(this).direction === 'rtl';
+        if (rtl) {
+          const maxRight = triggerRect.right - flyoutWidth - 12;
+          const boundedRight = Math.max(0, Math.min(110, maxRight));
+          flyout.style.right = `${boundedRight}px`;
+          flyout.style.left = 'auto';
+        } else {
+          const maxLeft = viewportWidth - triggerRect.left - flyoutWidth - 12;
+          const boundedLeft = Math.max(0, Math.min(110, maxLeft));
+          flyout.style.left = `${boundedLeft}px`;
+          flyout.style.right = 'auto';
+        }
+      }
+    });
   }
 
 

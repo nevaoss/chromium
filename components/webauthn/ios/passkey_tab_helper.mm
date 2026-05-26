@@ -6,6 +6,7 @@
 
 #import "base/check_deref.h"
 #import "base/debug/dump_without_crashing.h"
+#import "base/functional/callback.h"
 #import "base/logging.h"
 #import "base/metrics/histogram_functions.h"
 #import "base/notreached.h"
@@ -270,6 +271,7 @@ bool PasskeyTabHelper::PerformRemoteRpIdValidation(
     base::OnceCallback<void(ValidationStatus)> callback) {
   std::unique_ptr<RemoteValidation> loader = RemoteValidation::Create(
       origin, rp_id, web_state_->GetBrowserState()->GetSharedURLLoaderFactory(),
+      /*content_security_policies=*/{}, base::OnceClosure(),
       std::move(callback));
   if (loader) {
     loaders_[passkey_request_id] = std::move(loader);
@@ -340,11 +342,6 @@ void PasskeyTabHelper::HandleCreateRequestedEvent(
   CHECK(request_type == PasskeyRequestParams::RequestType::kConditionalCreate ||
         request_type == PasskeyRequestParams::RequestType::kModal);
 
-  if (HasExcludedPasskey(params)) {
-    DeferToRenderer(web_frame, passkey_request_id, request_type);
-    return;
-  }
-
   const url::Origin& origin = web_frame->GetSecurityOrigin();
   const std::string& rp_id = params.RpId();
   if (!OriginIsAllowedToClaimRelyingPartyId(rp_id, origin)) {
@@ -386,8 +383,12 @@ bool PasskeyTabHelper::CanPerformAutomaticPasskeyUpgrade(
 
 void PasskeyTabHelper::HandleRegistration(RegistrationRequestParams params) {
   IOSPasskeyClient::RequestInfo request_info = params.RequestInfo();
-
   PasskeyRequestParams::RequestType request_type = params.Type();
+
+  if (HasExcludedPasskey(params)) {
+    DeferToRenderer(std::move(request_info), request_type);
+    return;
+  }
 
   // This check is performed after the Incognito interstitial (if applicable)
   // has been shown and the user has chosen to proceed. This is intentional

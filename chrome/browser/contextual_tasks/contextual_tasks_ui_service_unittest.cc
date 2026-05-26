@@ -14,6 +14,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_window_tracker.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_panel_host.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
@@ -91,22 +92,57 @@ constexpr char kSrpUrlWithLensQuery[] =
     "https://www.google.com/search?lns_mode=un";
 constexpr char kLabsUrl[] = "https://labs.google.com/search";
 
-// A mock ContextualTasksUiService that is specifically used for tests around
-// intercepting navigation. Namely the `HandleNavigation` method is the real
-// implementation with the events being mocked.
+class FakeContextualTasksEligibilityManager
+    : public ContextualTasksEligibilityManager {
+ public:
+  FakeContextualTasksEligibilityManager(
+      PrefService* pref_service,
+      signin::IdentityManager* identity_manager,
+      AimEligibilityService* aim_eligibility_service)
+      : ContextualTasksEligibilityManager(pref_service,
+                                          identity_manager,
+                                          aim_eligibility_service) {
+    MaybeNotifyEligibilityChanged();
+  }
+  ~FakeContextualTasksEligibilityManager() override = default;
+
+  void SetIsEligible(bool eligible) {
+    is_eligible_ = eligible;
+    MaybeNotifyEligibilityChanged();
+  }
+
+  bool IsEligibleWithoutIdentity() const override { return is_eligible_; }
+
+ protected:
+  bool CalculateEligibility() const override { return is_eligible_; }
+
+ private:
+  bool is_eligible_ = true;
+};
+
 class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
  public:
   explicit MockUiServiceForUrlIntercept(
       Profile* profile,
       contextual_tasks::ContextualTasksService* contextual_tasks_service,
       AimEligibilityService* aim_eligibility_service)
-      : ContextualTasksUiService(profile,
-                                 /*delegate=*/nullptr,
-                                 contextual_tasks_service,
-                                 /*identity_manager=*/nullptr,
-                                 aim_eligibility_service,
-                                 /*cookie_synchronizer=*/nullptr) {}
+      : ContextualTasksUiService(
+            profile,
+            /*delegate=*/nullptr,
+            contextual_tasks_service,
+            /*identity_manager=*/nullptr,
+            aim_eligibility_service,
+            std::make_unique<FakeContextualTasksEligibilityManager>(
+                profile->GetPrefs(),
+                /*identity_manager=*/nullptr,
+                aim_eligibility_service),
+            /*cookie_synchronizer=*/nullptr) {}
   ~MockUiServiceForUrlIntercept() override = default;
+
+  FakeContextualTasksEligibilityManager* GetFakeEligibilityManager() {
+    return static_cast<FakeContextualTasksEligibilityManager*>(
+        GetEligibilityManager());
+  }
 
   MOCK_METHOD(void,
               SetInitialEntryPointForTask,
@@ -149,12 +185,12 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
                             content::WebContents* source_contents,
                             tabs::TabInterface* tab,
                             bool is_from_embedded_page,
-                            bool is_to_new_tab,
+                            bool from_can_create_window,
                             bool is_same_site_or_from_ui,
                             bool is_mobile_ua = false) override {
     return ContextualTasksUiService::HandleNavigationImpl(
         std::move(url_params), source_contents, tab, is_from_embedded_page,
-        is_to_new_tab, is_same_site_or_from_ui, is_mobile_ua);
+        from_can_create_window, is_same_site_or_from_ui, is_mobile_ua);
   }
 };
 
@@ -196,6 +232,8 @@ class ContextualTasksUiServiceTest : public content::RenderViewHostTestHarness {
     // By default, assume URLs have the correct URL params to be intercepted.
     ON_CALL(*aim_eligibility_service_, HasAimUrlParams(_))
         .WillByDefault(Return(true));
+    ON_CALL(*aim_eligibility_service_, IsCobrowseEligible())
+        .WillByDefault(Return(true));
 
     service_for_nav_ = std::make_unique<MockUiServiceForUrlIntercept>(
         profile_.get(), contextual_tasks_service_.get(),
@@ -211,17 +249,10 @@ class ContextualTasksUiServiceTest : public content::RenderViewHostTestHarness {
     real_service_ = std::make_unique<ContextualTasksUiService>(
         profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
         identity_test_env_->identity_manager(), aim_eligibility_service_.get(),
+        std::make_unique<ContextualTasksEligibilityManager>(
+            profile_->GetPrefs(), identity_test_env_->identity_manager(),
+            aim_eligibility_service_.get()),
         /*cookie_synchronizer=*/nullptr);
-
-    ON_CALL(*contextual_tasks_service_, GetFeatureEligibility)
-        .WillByDefault([]() {
-          FeatureEligibility eligibility;
-          eligibility.contextual_tasks_enabled = true;
-          eligibility.cobrowse_eligible = true;
-          eligibility.aim_eligible = true;
-          eligibility.context_sharing_enabled = true;
-          return eligibility;
-        });
 
     TemplateURLServiceFactory::GetInstance()->SetTestingFactoryAndUse(
         profile_.get(),
@@ -352,6 +383,43 @@ TEST_P(ContextualTasksUiServiceTestParameterized,
   EXPECT_EQ(token_future.Get(), "");
 }
 
+TEST_P(ContextualTasksUiServiceTestParameterized,
+       HandleNavigation_NewTabAllowed_TracksWindow_Timeout) {
+  if (GetParam() == base::test::TaskEnvironment::TimeSource::SYSTEM_TIME) {
+    GTEST_SKIP() << "Timeout won't work on SYSTEM_TIME";
+  }
+
+  GURL navigated_url(kTestUrl);
+  GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(host_web_content_url);
+
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  GURL source_url = net::AppendQueryParameter(
+      host_web_content_url, kTaskQueryParam, task_id.AsLowercaseString());
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(source_url);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(navigated_url, true), web_contents.get(),
+      /*is_from_embedded_page=*/true,
+      /*from_can_create_window=*/true,
+      /*is_same_site_or_from_ui=*/true));
+
+  const auto& trackers = service_for_nav_->window_trackers_for_testing();
+  ASSERT_EQ(1U, trackers.size());
+  EXPECT_EQ(task_id, trackers[0]->task_id());
+
+  // Fast forward time by 10 seconds.
+  task_environment()->FastForwardBy(base::Seconds(10));
+
+  // The tracker should be destroyed.
+  EXPECT_EQ(0U, service_for_nav_->window_trackers_for_testing().size());
+}
+
 INSTANTIATE_TEST_SUITE_P(
     All,
     ContextualTasksUiServiceTestParameterized,
@@ -389,7 +457,7 @@ TEST_F(ContextualTasksUiServiceTest, HandleNavigation_AiPage_ChecksCobrowse) {
 
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   run_loop.Run();
@@ -413,7 +481,7 @@ TEST_F(ContextualTasksUiServiceTest,
 
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/false));
 
   run_loop.Run();
@@ -438,7 +506,7 @@ TEST_F(ContextualTasksUiServiceTest,
 
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   run_loop.Run();
@@ -456,7 +524,8 @@ TEST_F(ContextualTasksUiServiceTest,
 
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false,
+      /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true,
       /*is_mobile_ua=*/true));
 }
@@ -479,7 +548,8 @@ TEST_F(ContextualTasksUiServiceTest,
 
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(webui_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false,
+      /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true,
       /*is_mobile_ua=*/true));
 
@@ -498,7 +568,7 @@ TEST_F(ContextualTasksUiServiceTest, HandleNavigation_AiPage_DebugParam) {
 
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -520,7 +590,7 @@ TEST_F(ContextualTasksUiServiceTest,
 
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -549,7 +619,7 @@ TEST_F(ContextualTasksUiServiceTest,
 
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(virtual_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   run_loop.Run();
@@ -566,7 +636,7 @@ TEST_F(ContextualTasksUiServiceTest, HandleNavigation_AiPage_NcbParam) {
 
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -594,7 +664,7 @@ TEST_F(ContextualTasksUiServiceTest,
 
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(virtual_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   run_loop.Run();
@@ -616,7 +686,7 @@ TEST_F(ContextualTasksUiServiceTest, LinkFromWebUiIntercepted) {
       .Times(0);
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(),
-      /*is_from_embedded_page=*/true, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/true, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
@@ -638,7 +708,7 @@ TEST_F(ContextualTasksUiServiceTest, BrowserUiNavigationFromWebUiIgnored) {
   // like back, forward, and omnibox navigation.
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(navigated_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -660,13 +730,173 @@ TEST_F(ContextualTasksUiServiceTest, NormalLinkNotIntercepted) {
       .Times(0);
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(GURL(kTestUrl), true), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, run_loop.QuitClosure());
   run_loop.Run();
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_NewTabAllowed_TracksWindow) {
+  GURL navigated_url(kTestUrl);
+  GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(host_web_content_url);
+
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  GURL source_url = net::AppendQueryParameter(
+      host_web_content_url, kTaskQueryParam, task_id.AsLowercaseString());
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(source_url);
+
+  EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _)).Times(0);
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(navigated_url, true), web_contents.get(),
+      /*is_from_embedded_page=*/true,
+      /*from_can_create_window=*/true,
+      /*is_same_site_or_from_ui=*/true));
+
+  const auto& trackers = service_for_nav_->window_trackers_for_testing();
+  ASSERT_EQ(1U, trackers.size());
+  EXPECT_EQ(task_id, trackers[0]->task_id());
+  EXPECT_EQ(navigated_url, trackers[0]->expected_url());
+
+  auto* tracker = trackers[0].get();
+  auto new_web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(new_web_contents.get())
+      ->NavigateAndCommit(navigated_url);
+
+  tabs::MockTabInterface mock_tab;
+  ON_CALL(mock_tab, GetContents).WillByDefault(Return(new_web_contents.get()));
+
+  NiceMock<MockTabListInterface> mock_tab_list;
+
+  tracker->OnTabAdded(mock_tab_list, &mock_tab, 0);
+  EXPECT_EQ(&mock_tab, tracker->tracked_tab());
+
+  tracker->OnTabRemoved(mock_tab_list, &mock_tab, TabRemovedReason::kDeleted);
+  {
+    base::RunLoop run_loop;
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, run_loop.QuitClosure());
+    run_loop.Run();
+  }
+  EXPECT_EQ(0U, service_for_nav_->window_trackers_for_testing().size());
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_NewTabAllowed_TracksWindow_TabListDestroyed) {
+  GURL navigated_url(kTestUrl);
+  GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(host_web_content_url);
+
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  GURL source_url = net::AppendQueryParameter(
+      host_web_content_url, kTaskQueryParam, task_id.AsLowercaseString());
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(source_url);
+
+  EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _)).Times(0);
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(navigated_url, true), web_contents.get(),
+      /*is_from_embedded_page=*/true,
+      /*from_can_create_window=*/true,
+      /*is_same_site_or_from_ui=*/true));
+
+  const auto& trackers = service_for_nav_->window_trackers_for_testing();
+  ASSERT_EQ(1U, trackers.size());
+
+  auto* tracker = trackers[0].get();
+  auto new_web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(new_web_contents.get())
+      ->NavigateAndCommit(navigated_url);
+
+  tabs::MockTabInterface mock_tab;
+  ON_CALL(mock_tab, GetContents).WillByDefault(Return(new_web_contents.get()));
+
+  NiceMock<MockTabListInterface> mock_tab_list;
+
+  tracker->OnTabAdded(mock_tab_list, &mock_tab, 0);
+  EXPECT_EQ(&mock_tab, tracker->tracked_tab());
+
+  tracker->OnTabListDestroyed(mock_tab_list);
+  {
+    base::RunLoop run_loop;
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, run_loop.QuitClosure());
+    run_loop.Run();
+  }
+  EXPECT_EQ(0U, service_for_nav_->window_trackers_for_testing().size());
+}
+
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_NewTabAllowed_TracksWindow_TabListDestroyed_BeforeFound) {
+  GURL navigated_url(kTestUrl);
+  GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(host_web_content_url);
+
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  GURL source_url = net::AppendQueryParameter(
+      host_web_content_url, kTaskQueryParam, task_id.AsLowercaseString());
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(source_url);
+
+  EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _)).Times(0);
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(navigated_url, true), web_contents.get(),
+      /*is_from_embedded_page=*/true,
+      /*from_can_create_window=*/true,
+      /*is_same_site_or_from_ui=*/true));
+
+  const auto& trackers = service_for_nav_->window_trackers_for_testing();
+  ASSERT_EQ(1U, trackers.size());
+
+  auto* tracker = trackers[0].get();
+
+  NiceMock<MockTabListInterface> mock_tab_list;
+  MockBrowserWindowInterface mock_browser;
+  ui::UnownedUserDataHost user_data_host;
+  EXPECT_CALL(mock_browser, GetUnownedUserDataHost())
+      .WillRepeatedly(ReturnRef(user_data_host));
+  ui::ScopedUnownedUserData<TabListInterface> scoped_user_data(
+      mock_browser.GetUnownedUserDataHost(), mock_tab_list);
+
+  tracker->OnBrowserCreated(&mock_browser);
+
+  tracker->OnTabListDestroyed(mock_tab_list);
+  {
+    base::RunLoop run_loop;
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, run_loop.QuitClosure());
+    run_loop.Run();
+  }
+  EXPECT_EQ(0U, service_for_nav_->window_trackers_for_testing().size());
 }
 
 TEST_F(ContextualTasksUiServiceTest, AiHostNotIntercepted_BadPath) {
@@ -680,7 +910,7 @@ TEST_F(ContextualTasksUiServiceTest, AiHostNotIntercepted_BadPath) {
       .Times(0);
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(GURL(kTestUrl), false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -697,21 +927,14 @@ TEST_F(ContextualTasksUiServiceTest, AiPageNotIntercepted_NotEligible) {
   content::WebContentsTester::For(web_contents.get())
       ->SetLastCommittedURL(tab_url);
 
-  ON_CALL(*contextual_tasks_service_, GetFeatureEligibility)
-      .WillByDefault([]() {
-        FeatureEligibility eligibility;
-        eligibility.contextual_tasks_enabled = false;
-        eligibility.aim_eligible = false;
-        eligibility.context_sharing_enabled = false;
-        return eligibility;
-      });
+  service_for_nav_->GetFakeEligibilityManager()->SetIsEligible(false);
 
   EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _)).Times(0);
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -736,7 +959,7 @@ TEST_F(ContextualTasksUiServiceTest, AiPageIntercepted_FromTab) {
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
@@ -754,7 +977,7 @@ TEST_F(ContextualTasksUiServiceTest, AiPageIntercepted_FromOmnibox) {
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
@@ -772,7 +995,7 @@ TEST_F(ContextualTasksUiServiceTest, AiPageIntercepted_AlreadyViewingUiInTab) {
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
@@ -790,7 +1013,7 @@ TEST_F(ContextualTasksUiServiceTest, AiPageNotIntercepted) {
       .Times(0);
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(GURL(kAiPageUrl), false), web_contents.get(),
-      /*is_from_embedded_page=*/true, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/true, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -818,7 +1041,7 @@ TEST_F(ContextualTasksUiServiceTest, AiPageNotIntercepted_AccountMismatch) {
       .Times(0);
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -845,7 +1068,7 @@ TEST_F(ContextualTasksUiServiceTest, AiPageNotIntercepted_BrowserSignedOut) {
       .Times(0);
   EXPECT_FALSE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(ai_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -879,7 +1102,7 @@ TEST_F(ContextualTasksUiServiceTest, SearchResultsNavigation_ViewedInTab) {
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(), &tab,
       /*is_from_embedded_page=*/true,
-      /*is_to_new_tab=*/false, /*is_same_site_or_from_ui=*/true));
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
 
@@ -909,7 +1132,7 @@ TEST_F(ContextualTasksUiServiceTest,
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(), &tab,
       /*is_from_embedded_page=*/true,
-      /*is_to_new_tab=*/false, /*is_same_site_or_from_ui=*/true));
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -940,7 +1163,7 @@ TEST_F(ContextualTasksUiServiceTest, AllowedHostNavigation_ViewedInTab) {
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(), &tab,
       /*is_from_embedded_page=*/true,
-      /*is_to_new_tab=*/false, /*is_same_site_or_from_ui=*/true));
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -948,12 +1171,8 @@ TEST_F(ContextualTasksUiServiceTest, AllowedHostNavigation_ViewedInTab) {
   run_loop.Run();
 }
 
-// If navigation to an allowed host is explicitly to a new tab (e.g.
-// target="_blank"), it should be treated as a thread link instead of navigating
-// the same tab.
-TEST_F(ContextualTasksUiServiceTest,
-       AllowedHostNavigation_ToNewTab_InterceptedAsThreadLink) {
-  GURL navigated_url("https://google.com");
+TEST_F(ContextualTasksUiServiceTest, Navigation_ToNewTab_Allowed) {
+  GURL navigated_url("https://example.com");
   GURL host_web_content_url(chrome::kChromeUIContextualTasksURL);
 
   ON_CALL(*aim_eligibility_service_, HasAimUrlParams(_))
@@ -966,15 +1185,20 @@ TEST_F(ContextualTasksUiServiceTest,
   tabs::MockTabInterface tab;
   ON_CALL(tab, GetContents).WillByDefault(Return(web_contents.get()));
 
-  EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(navigated_url, _, _, _))
-      .Times(1);
+  EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _)).Times(0);
   EXPECT_CALL(*service_for_nav_, OnNonThreadNavigationInTab(_, _)).Times(0);
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
-  EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
-      CreateOpenUrlParams(navigated_url, true), web_contents.get(), &tab,
+
+  content::Referrer referrer;
+  content::OpenURLParams params(navigated_url, referrer,
+                                WindowOpenDisposition::NEW_FOREGROUND_TAB,
+                                ui::PAGE_TRANSITION_AUTO_TOPLEVEL, true);
+  EXPECT_FALSE(service_for_nav_->HandleNavigationImpl(
+      std::move(params), web_contents.get(), &tab,
       /*is_from_embedded_page=*/true,
-      /*is_to_new_tab=*/true, /*is_same_site_or_from_ui=*/true));
+      /*from_can_create_window=*/true,
+      /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -1006,7 +1230,7 @@ TEST_F(ContextualTasksUiServiceTest, Navigation_ViewedInTab) {
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(), &tab,
       /*is_from_embedded_page=*/true,
-      /*is_to_new_tab=*/false, /*is_same_site_or_from_ui=*/true));
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -1037,7 +1261,7 @@ TEST_F(ContextualTasksUiServiceTest,
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(), nullptr,
       /*is_from_embedded_page=*/true,
-      /*is_to_new_tab=*/false, /*is_same_site_or_from_ui=*/true));
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
 
@@ -1067,16 +1291,18 @@ TEST_F(ContextualTasksUiServiceTest,
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(), nullptr,
       /*is_from_embedded_page=*/true,
-      /*is_to_new_tab=*/false, /*is_same_site_or_from_ui=*/true));
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
 
 TEST_F(ContextualTasksUiServiceTest, OnNavigationToAiPageIntercepted_SameTab) {
-  ContextualTasksUiService service(/*profile=*/nullptr, /*delegate=*/nullptr,
-                                   contextual_tasks_service_.get(),
-                                   /*identity_manager=*/nullptr,
-                                   aim_eligibility_service_.get(),
-                                   /*cookie_synchronizer=*/nullptr);
+  ContextualTasksUiService service(
+      profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
+      /*identity_manager=*/nullptr, aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), /*identity_manager=*/nullptr,
+          aim_eligibility_service_.get()),
+      /*cookie_synchronizer=*/nullptr);
   GURL intercepted_url("https://google.com/search?udm=50&q=test+query");
 
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
@@ -1111,11 +1337,13 @@ TEST_F(ContextualTasksUiServiceTest, OnNavigationToAiPageIntercepted_SameTab) {
 
 TEST_F(ContextualTasksUiServiceTest,
        OnNavigationToAiPageIntercepted_PreservesCsParam) {
-  ContextualTasksUiService service(/*profile=*/nullptr, /*delegate=*/nullptr,
-                                   contextual_tasks_service_.get(),
-                                   /*identity_manager=*/nullptr,
-                                   aim_eligibility_service_.get(),
-                                   /*cookie_synchronizer=*/nullptr);
+  ContextualTasksUiService service(
+      profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
+      /*identity_manager=*/nullptr, aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), /*identity_manager=*/nullptr,
+          aim_eligibility_service_.get()),
+      /*cookie_synchronizer=*/nullptr);
   GURL intercepted_url("https://google.com/search?udm=50&q=test+query&cs=1");
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
       profile_.get(), content::SiteInstance::Create(profile_.get()));
@@ -1145,11 +1373,13 @@ TEST_F(ContextualTasksUiServiceTest,
 }
 TEST_F(ContextualTasksUiServiceTest,
        GetContextualTaskUrlForTask_WithEntryPoint) {
-  ContextualTasksUiService service(/*profile=*/nullptr, /*delegate=*/nullptr,
-                                   contextual_tasks_service_.get(),
-                                   /*identity_manager=*/nullptr,
-                                   aim_eligibility_service_.get(),
-                                   /*cookie_synchronizer=*/nullptr);
+  ContextualTasksUiService service(
+      profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
+      /*identity_manager=*/nullptr, aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), /*identity_manager=*/nullptr,
+          aim_eligibility_service_.get()),
+      /*cookie_synchronizer=*/nullptr);
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   omnibox::ChromeAimEntryPoint entry_point =
       omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_TOOLBAR_BUTTON;
@@ -1170,11 +1400,13 @@ TEST_F(ContextualTasksUiServiceTest,
 
 TEST_F(ContextualTasksUiServiceTest,
        GetContextualTaskUrlForTask_WithHostOverride) {
-  ContextualTasksUiService service(/*profile=*/nullptr, /*delegate=*/nullptr,
-                                   contextual_tasks_service_.get(),
-                                   /*identity_manager=*/nullptr,
-                                   aim_eligibility_service_.get(),
-                                   /*cookie_synchronizer=*/nullptr);
+  ContextualTasksUiService service(
+      profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
+      /*identity_manager=*/nullptr, aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), /*identity_manager=*/nullptr,
+          aim_eligibility_service_.get()),
+      /*cookie_synchronizer=*/nullptr);
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   GURL intercepted_url("https://gws-prod.corp.google.com/search?udm=50&q=test");
 
@@ -1203,11 +1435,13 @@ TEST_F(ContextualTasksUiServiceTest,
 
 TEST_F(ContextualTasksUiServiceTest,
        GetContextualTaskUrlForTask_WithDefaultHost_NoForcedHost) {
-  ContextualTasksUiService service(/*profile=*/nullptr, /*delegate=*/nullptr,
-                                   contextual_tasks_service_.get(),
-                                   /*identity_manager=*/nullptr,
-                                   aim_eligibility_service_.get(),
-                                   /*cookie_synchronizer=*/nullptr);
+  ContextualTasksUiService service(
+      profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
+      /*identity_manager=*/nullptr, aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), /*identity_manager=*/nullptr,
+          aim_eligibility_service_.get()),
+      /*cookie_synchronizer=*/nullptr);
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
   GURL intercepted_url("https://google.com/search?udm=50&q=test");
 
@@ -1252,7 +1486,7 @@ TEST_F(ContextualTasksUiServiceTest, SrpHomepage_Intercepted) {
       .Times(0);
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(),
-      /*is_from_embedded_page=*/true, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/true, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
@@ -1273,7 +1507,8 @@ TEST_F(ContextualTasksUiServiceTest, AimHomepage_InTab_NotIntercepted) {
       .Times(0);
   EXPECT_FALSE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(nav_url, false), web_contents.get(), &tab,
-      /*is_from_embedded_page=*/true, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/true,
+      /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -1300,7 +1535,7 @@ TEST_F(ContextualTasksUiServiceTest, AimHomepage_InSidePanel_Intercepted) {
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(),
-      /*is_from_embedded_page=*/true, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/true, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
@@ -1325,7 +1560,7 @@ TEST_F(ContextualTasksUiServiceTest, SrpShoppingMode_InSidePanel_Intercepted) {
       .Times(0);
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(),
-      /*is_from_embedded_page=*/true, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/true, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
@@ -1345,7 +1580,8 @@ TEST_F(ContextualTasksUiServiceTest, AimHomepageThinking_InTab_NotIntercepted) {
       .Times(0);
   EXPECT_FALSE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(nav_url, false), web_contents.get(), &tab,
-      /*is_from_embedded_page=*/true, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/true,
+      /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -1373,7 +1609,7 @@ TEST_F(ContextualTasksUiServiceTest,
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(),
-      /*is_from_embedded_page=*/true, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/true, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
@@ -1397,16 +1633,18 @@ TEST_F(ContextualTasksUiServiceTest, LensQuery_Intercepted) {
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(), nullptr,
       /*is_from_embedded_page=*/true,
-      /*is_to_new_tab=*/false, /*is_same_site_or_from_ui=*/true));
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
 
 TEST_F(ContextualTasksUiServiceTest, GetInitialUrlForTask_HasSourceId) {
-  ContextualTasksUiService service(/*profile=*/nullptr, /*delegate=*/nullptr,
-                                   contextual_tasks_service_.get(),
-                                   /*identity_manager=*/nullptr,
-                                   aim_eligibility_service_.get(),
-                                   /*cookie_synchronizer=*/nullptr);
+  ContextualTasksUiService service(
+      profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
+      /*identity_manager=*/nullptr, aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), /*identity_manager=*/nullptr,
+          aim_eligibility_service_.get()),
+      /*cookie_synchronizer=*/nullptr);
   GURL intercepted_url("https://google.com/search?udm=50&q=test+query");
 
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
@@ -1446,11 +1684,13 @@ TEST_F(ContextualTasksUiServiceTest, GetInitialUrlForTask_HasSourceId) {
 }
 
 TEST_F(ContextualTasksUiServiceTest, GetDefaultAiPageUrl_HasSourceIdAndCcb) {
-  ContextualTasksUiService service(/*profile=*/nullptr, /*delegate=*/nullptr,
-                                   contextual_tasks_service_.get(),
-                                   /*identity_manager=*/nullptr,
-                                   aim_eligibility_service_.get(),
-                                   /*cookie_synchronizer=*/nullptr);
+  ContextualTasksUiService service(
+      profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
+      /*identity_manager=*/nullptr, aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), /*identity_manager=*/nullptr,
+          aim_eligibility_service_.get()),
+      /*cookie_synchronizer=*/nullptr);
   GURL url = service.GetDefaultAiPageUrl();
 
   std::string sourceid;
@@ -1480,7 +1720,7 @@ TEST_F(ContextualTasksUiServiceTest, ShareUrl_FromEmbeddedPage_Intercepted) {
       .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(),
-      /*is_from_embedded_page=*/true, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/true, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
@@ -1562,7 +1802,7 @@ TEST_F(ContextualTasksUiServiceTest, SignOutNavigation_OpenedInTab) {
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
       CreateOpenUrlParams(navigated_url, true), web_contents.get(), &tab,
       /*is_from_embedded_page=*/true,
-      /*is_to_new_tab=*/false, /*is_same_site_or_from_ui=*/true));
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true));
   run_loop.Run();
 }
 
@@ -1627,7 +1867,7 @@ TEST_F(ContextualTasksUiServiceTest, HandleNavigation_DisplayUrlRewritten) {
   // Simulate navigation to the virtual URL.
   EXPECT_TRUE(service_for_nav_->HandleNavigation(
       CreateOpenUrlParams(display_url, false), web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -1657,7 +1897,7 @@ TEST_F(ContextualTasksUiServiceTest,
               ui::PageTransition::PAGE_TRANSITION_LINK |
               ui::PageTransition::PAGE_TRANSITION_FORWARD_BACK)),
       web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   run_loop.Run();
@@ -1680,7 +1920,7 @@ TEST_F(ContextualTasksUiServiceTest,
               ui::PageTransition::PAGE_TRANSITION_TYPED |
               ui::PageTransition::PAGE_TRANSITION_FORWARD_BACK)),
       web_contents.get(),
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 }
 
@@ -1753,7 +1993,8 @@ TEST_F(ContextualTasksUiServiceTest,
               ui::PageTransition::PAGE_TRANSITION_LINK |
               ui::PageTransition::PAGE_TRANSITION_FORWARD_BACK)),
       tab->GetContents(), tab,
-      /*is_from_embedded_page=*/false, /*is_to_new_tab=*/false,
+      /*is_from_embedded_page=*/false,
+      /*from_can_create_window=*/false,
       /*is_same_site_or_from_ui=*/true));
 
   base::RunLoop run_loop;
@@ -1790,6 +2031,9 @@ TEST_F(ContextualTasksUiServiceTest, EnsureCookiesSynced) {
   ContextualTasksUiService service(
       profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
       /*identity_manager=*/nullptr, aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), /*identity_manager=*/nullptr,
+          aim_eligibility_service_.get()),
       std::move(mock_synchronizer));
 
   EXPECT_CALL(*mock_ptr, CopyCookiesToWebviewStoragePartition()).Times(1);
@@ -1802,6 +2046,11 @@ TEST_F(ContextualTasksUiServiceTest, PrefetchOnEligibilityChange) {
   scoped_feature_list.InitAndEnableFeatureWithParameters(
       contextual_tasks::kContextualTasks,
       {{"ContextualTasksEnableCookiePrefetch", "true"}});
+
+  auto account_info = identity_test_env_->MakePrimaryAccountAvailable(
+      "test@example.com", signin::ConsentLevel::kSignin);
+  identity_test_env_->SetCookieAccounts(
+      {{.email = account_info.email, .gaia_id = account_info.gaia}});
 
   base::RepeatingClosure captured_callback;
 
@@ -1820,6 +2069,9 @@ TEST_F(ContextualTasksUiServiceTest, PrefetchOnEligibilityChange) {
   ContextualTasksUiService service(
       profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
       identity_test_env_->identity_manager(), aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), identity_test_env_->identity_manager(),
+          aim_eligibility_service_.get()),
       std::move(mock_synchronizer));
 
   EXPECT_CALL(*aim_eligibility_service_, IsCobrowseEligible())
@@ -1835,6 +2087,11 @@ TEST_F(ContextualTasksUiServiceTest, PrefetchOnStartupIfAlreadyEligible) {
       contextual_tasks::kContextualTasks,
       {{"ContextualTasksEnableCookiePrefetch", "true"}});
 
+  auto account_info = identity_test_env_->MakePrimaryAccountAvailable(
+      "test@example.com", signin::ConsentLevel::kSignin);
+  identity_test_env_->SetCookieAccounts(
+      {{.email = account_info.email, .gaia_id = account_info.gaia}});
+
   EXPECT_CALL(*aim_eligibility_service_, RegisterEligibilityChangedCallback(_))
       .WillOnce(Return(base::CallbackListSubscription()));
   EXPECT_CALL(*aim_eligibility_service_, IsCobrowseEligible())
@@ -1849,6 +2106,9 @@ TEST_F(ContextualTasksUiServiceTest, PrefetchOnStartupIfAlreadyEligible) {
   ContextualTasksUiService service(
       profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
       identity_test_env_->identity_manager(), aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), identity_test_env_->identity_manager(),
+          aim_eligibility_service_.get()),
       std::move(mock_synchronizer));
 }
 
@@ -1858,6 +2118,7 @@ TEST_F(ContextualTasksUiServiceTest, OnWebUIReady) {
   ContextualTasksUiService service(
       profile_.get(), std::move(delegate), contextual_tasks_service_.get(),
       /*identity_manager=*/nullptr, /*aim_eligibility_service=*/nullptr,
+      /*eligibility_manager=*/nullptr,
       /*cookie_synchronizer=*/nullptr);
 
   base::Uuid task_id = base::Uuid::GenerateRandomV4();
@@ -1877,6 +2138,7 @@ TEST_F(ContextualTasksUiServiceTest, OnWebUIDestroyed) {
   ContextualTasksUiService service(
       profile_.get(), std::move(delegate), contextual_tasks_service_.get(),
       /*identity_manager=*/nullptr, /*aim_eligibility_service=*/nullptr,
+      /*eligibility_manager=*/nullptr,
       /*cookie_synchronizer=*/nullptr);
 
   std::optional<base::Uuid> task_id = base::Uuid::GenerateRandomV4();

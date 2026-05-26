@@ -7,13 +7,14 @@
 #include <optional>
 
 #include "ash/wm/window_pin_util.h"
+#include "base/functional/bind.h"
 #include "chrome/browser/platform_util.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
-#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/top_container_view.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
@@ -86,31 +87,17 @@ class ImmersiveRevealedLockChromeos : public ImmersiveRevealedLock {
 }  // namespace
 
 ImmersiveModeControllerChromeos::ImmersiveModeControllerChromeos(
-    BrowserWindowInterface* browser)
-    : ImmersiveModeController(browser) {}
+    ui::UnownedUserDataHost& host)
+    : ImmersiveModeController(host) {}
 
 ImmersiveModeControllerChromeos::~ImmersiveModeControllerChromeos() = default;
 
 void ImmersiveModeControllerChromeos::Init(BrowserView* browser_view) {
   browser_view_ = browser_view;
   controller_.Init(this, browser_view_->browser_widget(),
-                   browser_view_->top_container(),
-                   GetHorizontalTabStripViewIfEnabled());
+                   browser_view_->top_container());
 
   window_observation_.Observe(browser_view_->GetNativeWindow());
-}
-
-void ImmersiveModeControllerChromeos::OnTabStripLayoutChanged() {
-  controller_.UpdateTabStrip(GetHorizontalTabStripViewIfEnabled());
-}
-
-views::View*
-ImmersiveModeControllerChromeos::GetHorizontalTabStripViewIfEnabled() {
-  auto* controller =
-      tabs::VerticalTabStripStateController::From(browser_view_->browser());
-  return controller && controller->ShouldDisplayVerticalTabs()
-             ? nullptr
-             : browser_view_->tab_strip_view();
 }
 
 void ImmersiveModeControllerChromeos::SetEnabled(bool enabled) {
@@ -118,11 +105,15 @@ void ImmersiveModeControllerChromeos::SetEnabled(bool enabled) {
     return;
   }
 
-  if (!fullscreen_observer_.IsObserving()) {
-    fullscreen_observer_.Observe(browser_view_->browser()
-                                     ->GetFeatures()
-                                     .exclusive_access_manager()
-                                     ->fullscreen_controller());
+  if (!fullscreen_subscription_) {
+    fullscreen_subscription_ =
+        browser_view_->browser()
+            ->GetFeatures()
+            .exclusive_access_manager()
+            ->fullscreen_controller()
+            ->RegisterOnFullscreenStateChanged(base::BindRepeating(
+                &ImmersiveModeControllerChromeos::OnFullscreenStateChanged,
+                base::Unretained(this)));
   }
 
   chromeos::ImmersiveFullscreenController::EnableForWidget(

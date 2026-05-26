@@ -1094,6 +1094,9 @@ constexpr CGFloat kBannerPromoVerticalSpacing = 8;
 }
 
 - (CGFloat)keyboardAttachedBottomOmniboxHeight {
+  if (IsChromeNextIaEnabled()) {
+    return kKeyboardAttachedOmniboxBottomPadding;
+  }
   return 0;
 }
 
@@ -1247,7 +1250,7 @@ constexpr CGFloat kBannerPromoVerticalSpacing = 8;
       HandlerForProtocol(dispatcher, SceneCommands);
   toolbarViewController.toolbarHeightDelegate = self.toolbarHeightDelegate;
   toolbarViewController.layoutGuideCenter =
-      LayoutGuideCenterForScene(browser->GetSceneState());
+      LayoutGuideCenterForBrowser(browser);
   toolbarViewController.locationBarViewController = locationBar;
   toolbarViewController.bannerPromoDelegate = mediator;
 

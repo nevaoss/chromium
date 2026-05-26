@@ -20,6 +20,7 @@ import org.chromium.base.Log;
 import org.chromium.build.annotations.EnsuresNonNullIf;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.context_sharing.R;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
@@ -27,6 +28,7 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.Shee
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.StateChangeReason;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 import org.chromium.components.browser_ui.bottomsheet.EmptyBottomSheetObserver;
+import org.chromium.components.browser_ui.widget.RoundedCornerOutlineProvider;
 import org.chromium.components.browser_ui.widget.TouchEventObserver;
 import org.chromium.components.browser_ui.widget.TouchEventProvider;
 import org.chromium.ui.KeyboardVisibilityDelegate;
@@ -138,6 +140,7 @@ public class TabBottomSheetCoordinator {
     private final CoBrowseViews mCoBrowseViews;
     private final TabBottomSheetMediator mMediator;
     private final WindowAndroid mWindowAndroid;
+    private final RoundedCornerOutlineProvider mOutlineProvider;
 
     private @Nullable SheetEventsCallback mSheetEventsCallback;
     private @Nullable TabBottomSheetContent mSheetContent;
@@ -192,6 +195,10 @@ public class TabBottomSheetCoordinator {
                         SMALL_SCREEN_HEIGHT_RATIO);
 
         coBrowseViews.setWebUiTouchHandler(mMediator.getWebUiTouchHandler());
+        int radius =
+                mContext.getResources()
+                        .getDimensionPixelSize(R.dimen.tab_bottom_sheet_peek_corner_radius);
+        mOutlineProvider = new RoundedCornerOutlineProvider(radius);
     }
 
     /** Tries to show the bottom sheet. */
@@ -203,6 +210,8 @@ public class TabBottomSheetCoordinator {
             mMediator.onSheetStateChanged(startsExpanded ? SheetState.FULL : SheetState.PEEK);
         }
         mContentView = mCoBrowseViews.getView();
+        mContentView.setOutlineProvider(mOutlineProvider);
+        mContentView.setClipToOutline(true);
         mSheetContent =
                 new TabBottomSheetContent(
                         mContentView,
@@ -230,6 +239,7 @@ public class TabBottomSheetCoordinator {
                         if (mSheetEventsCallback == null) {
                             return;
                         }
+                        updateRoundingEdges();
                         setToFixedHeightOrFallback();
 
                         boolean isSheetHeightSufficient =
@@ -397,15 +407,23 @@ public class TabBottomSheetCoordinator {
 
     private BottomSheetObserver buildBottomSheetObserver() {
         return new EmptyBottomSheetObserver() {
+            private @SheetState int mLastStableState = SheetState.HIDDEN;
+
             @Override
             public void onSheetStateChanged(@SheetState int state, @StateChangeReason int reason) {
                 if (mSheetContent == null
                         || mSheetEventsCallback == null
                         || !mIsShowingTabBottomSheet) return;
                 mMediator.onSheetStateChanged(state);
-                if (state != SheetState.HIDDEN) {
-                    mSheetEventsCallback.onBottomSheetOpened(state != SheetState.PEEK);
+                // We only send the opened notification when the sheet is not hidden and not in the
+                // middle of a closing/hiding flow.
+                if (state != SheetState.HIDDEN && !mBottomSheetController.isSheetHiding()) {
+                    // The sheet is considered expanded if it's in HALF, FULL, or SCROLLING above
+                    // peek.
+                    boolean isExpanded = state != SheetState.PEEK;
+                    mSheetEventsCallback.onBottomSheetOpened(isExpanded);
                 }
+                updateRoundingEdges();
 
                 if (state == SheetState.HALF || state == SheetState.FULL) {
                     observeCompositorViewInteractions();
@@ -415,6 +433,10 @@ public class TabBottomSheetCoordinator {
 
                 if (ChromeFeatureList.sTabBottomSheetResizeWebview.getValue()) {
                     mMediator.onSheetResizingStatusChanged(state == SheetState.SCROLLING);
+                }
+
+                if (state != SheetState.SCROLLING && state != SheetState.NONE) {
+                    handleStableStateEntered(state, reason);
                 }
             }
 
@@ -454,7 +476,7 @@ public class TabBottomSheetCoordinator {
                 }
             }
 
-            // Called before onSheetStateChanged.
+            // Called when the sheet content changes (e.g., when swapped out or hidden).
             @Override
             public void onSheetContentChanged(@Nullable BottomSheetContent newContent) {
                 if (mSheetEventsCallback == null) {
@@ -464,6 +486,11 @@ public class TabBottomSheetCoordinator {
                     mIsShowingTabBottomSheet = true;
                 } else {
                     if (mIsShowingTabBottomSheet) {
+                        // When the sheet is immediately closed or content is swapped,
+                        // onSheetStateChanged may not be called for HIDDEN. Record HIDDEN
+                        // here to ensure full coverage. The deduplication guard in
+                        // handleStableStateEntered prevents double-logging.
+                        handleStableStateEntered(SheetState.HIDDEN, StateChangeReason.NONE);
                         mMediator.onSheetStateChanged(BottomSheetController.SheetState.HIDDEN);
                         mSheetEventsCallback.onBottomSheetClosed();
                         stopObservingCompositorViewInteractions();
@@ -475,6 +502,26 @@ public class TabBottomSheetCoordinator {
             @Override
             public void onInsetAnimationEnd() {
                 mCoBrowseViews.setIgnoreClearFocus(/* ignoreClearFocus= */ false);
+            }
+
+            private void handleStableStateEntered(
+                    @SheetState int state, @StateChangeReason int reason) {
+                if (mLastStableState == state) {
+                    return;
+                }
+
+                @TabBottomSheetClientType int clientType = mCoBrowseViews.getClientType();
+
+                // Record current state hit
+                TabBottomSheetMetrics.recordStateHit(clientType, state);
+
+                // Record transition if between open stable states (PEEK, HALF, FULL)
+                TabBottomSheetMetrics.recordTransition(clientType, mLastStableState, state);
+
+                // Record state change reasons for PEEK and HIDDEN states
+                TabBottomSheetMetrics.recordStateChangeReason(clientType, state, reason);
+
+                mLastStableState = state;
             }
         };
     }
@@ -572,7 +619,30 @@ public class TabBottomSheetCoordinator {
         return isKeyboardShowing() ? SMALL_SCREEN_HEIGHT_RATIO : FULL_HEIGHT_RATIO;
     }
 
+    private void updateRoundingEdges() {
+        if (mOutlineProvider == null) return;
+
+        boolean shouldRound = !mBottomSheetController.isFullWidth();
+        if (mOutlineProvider.isTopEdgeRounded() == shouldRound) {
+            return;
+        }
+
+        if (shouldRound) {
+            mOutlineProvider.setRoundingEdges(true, true, true, false);
+        } else {
+            mOutlineProvider.setRoundingEdges(false, false, false, false);
+        }
+
+        if (mContentView != null) {
+            mContentView.invalidateOutline();
+        }
+    }
+
     // Testing methods.
+    RoundedCornerOutlineProvider getOutlineProviderForTesting() {
+        return mOutlineProvider;
+    }
+
     PropertyModel getModelForTesting() {
         return mModel;
     }

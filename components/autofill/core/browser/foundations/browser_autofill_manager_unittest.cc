@@ -4,8 +4,9 @@
 
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 
+#include <stddef.h>
+
 #include <algorithm>
-#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -52,6 +53,7 @@
 #include "components/autofill/core/browser/data_manager/personal_data_manager.h"
 #include "components/autofill/core/browser/data_manager/test_personal_data_manager.h"
 #include "components/autofill/core/browser/data_manager/valuables/valuables_data_manager_test_api.h"
+#include "components/autofill/core/browser/data_model/addresses/autofill_i18n_api.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_profile.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_profile_test_api.h"
 #include "components/autofill/core/browser/data_model/payments/bnpl_issuer.h"
@@ -92,6 +94,7 @@
 #include "components/autofill/core/browser/metrics/form_events/form_events.h"
 #include "components/autofill/core/browser/metrics/log_event.h"
 #include "components/autofill/core/browser/metrics/loyalty_cards_metrics.h"
+#include "components/autofill/core/browser/metrics/payments/iban_metrics.h"
 #include "components/autofill/core/browser/metrics/ukm_metrics_test_utils.h"
 #include "components/autofill/core/browser/ml_model/autofill_ai/mock_autofill_ai_model_cache.h"
 #include "components/autofill/core/browser/ml_model/autofill_ai/mock_autofill_ai_model_executor.h"
@@ -760,7 +763,7 @@ class MockPaymentsAutofillClient : public payments::TestPaymentsAutofillClient {
   MOCK_METHOD(bool, HasCreditCardScanFeature, (), (const override));
   MOCK_METHOD(void,
               OnCardDataAvailable,
-              (const FilledCardInformationBubbleOptions&),
+              (const FilledCardInformationBubbleOptions&, const url::Origin&),
               (override));
 };
 
@@ -1699,20 +1702,11 @@ TEST_F(BrowserAutofillManagerTest, OnFormsSeen_SendTypePredictionsToRenderer) {
 TEST_F(BrowserAutofillManagerTest,
        GetProfileSuggestions_UnrecognizedAttribute) {
   // Set up our form data.
-  FormData form;
-  form.set_name(u"MyForm");
-  form.set_url(GURL("https://myform.com/form.html"));
-  form.set_action(GURL("https://myform.com/submit.html"));
-  form.set_fields(
-      {// Set a valid autocomplete attribute for the first name.
-       CreateTestFormField("First name", "firstname", "",
-                           FormControlType::kInputText, "given-name"),
-       // Set no autocomplete attribute for the middle name.
-       CreateTestFormField("Middle name", "middle", "",
-                           FormControlType::kInputText, ""),
-       // Set an unrecognized autocomplete attribute for the last name.
-       CreateTestFormField("Last Name", "lastname", "",
-                           FormControlType::kInputText, "unrecognized")});
+  FormData form = test::GetFormData(
+      {.fields = {
+           {.role = NAME_FIRST, .autocomplete_attribute = "given-name"},
+           {.role = NAME_MIDDLE},
+           {.role = NAME_LAST, .autocomplete_attribute = "unrecognized"}}});
   FormsSeen({form});
 
   // Ensure that the single field suggestions are not considered for any
@@ -1838,15 +1832,8 @@ TEST_F(BrowserAutofillManagerTest,
 TEST_F(BrowserAutofillManagerTest,
        GetProfileSuggestions_MinFieldsEnforced_NoAutocomplete) {
   // Set up our form data.
-  FormData form;
-  form.set_name(u"MyForm");
-  form.set_url(GURL("https://myform.com/form.html"));
-  form.set_action(GURL("https://myform.com/submit.html"));
-  form.set_fields({CreateTestFormField("First Name", "firstname", "",
-                                       FormControlType::kInputText),
-                   CreateTestFormField("Last Name", "lastname", "",
-                                       FormControlType::kInputText)});
-
+  FormData form = test::GetFormData(
+      {.fields = {{.role = NAME_FIRST}, {.role = NAME_LAST}}});
   FormsSeen({form});
 
   // Ensure that the single field suggestions are considered for both fields.
@@ -1866,16 +1853,9 @@ TEST_F(BrowserAutofillManagerTest,
 TEST_F(BrowserAutofillManagerTest,
        GetProfileSuggestions_MinFieldsEnforced_WithOneAutocomplete) {
   // Set up our form data.
-  FormData form;
-  form.set_name(u"MyForm");
-  form.set_url(GURL("https://myform.com/form.html"));
-  form.set_action(GURL("https://myform.com/submit.html"));
-  form.set_fields(
-      {CreateTestFormField("First Name", "firstname", "",
-                           FormControlType::kInputText, "given-name"),
-       CreateTestFormField("Last Name", "lastname", "",
-                           FormControlType::kInputText, "")});
-
+  FormData form = test::GetFormData(
+      {.fields = {{.role = NAME_FIRST, .autocomplete_attribute = "given-name"},
+                  {.role = NAME_LAST}}});
   FormsSeen({form});
 
   // Check that suggestions are made for the field that has the autocomplete
@@ -1902,16 +1882,10 @@ TEST_F(BrowserAutofillManagerTest,
 TEST_F(BrowserAutofillManagerTest,
        GetProfileSuggestions_SmallFormWithTwoAutocomplete) {
   // Set up our form data.
-  FormData form;
-  form.set_name(u"MyForm");
-  form.set_url(GURL("https://myform.com/form.html"));
-  form.set_action(GURL("https://myform.com/submit.html"));
-  form.set_fields(
-      {CreateTestFormField("First Name", "firstname", "",
-                           FormControlType::kInputText, "given-name"),
-       CreateTestFormField("Last Name", "lastname", "",
-                           FormControlType::kInputText, "family-name")});
-
+  FormData form = test::GetFormData(
+      {.fields = {
+           {.role = NAME_FIRST, .autocomplete_attribute = "given-name"},
+           {.role = NAME_LAST, .autocomplete_attribute = "family-name"}}});
   FormsSeen({form});
 
   OnAskForValuesToFill(form, form.fields()[0]);
@@ -2191,18 +2165,13 @@ TEST_F(BrowserAutofillManagerTest,
 // Test that we return no suggestions when the form has no relevant fields.
 TEST_F(BrowserAutofillManagerTest, GetProfileSuggestions_UnknownFields) {
   // Set up our form data.
-  FormData form;
-  form.set_name(u"MyForm");
-  form.set_url(GURL("https://myform.com/form.html"));
-  form.set_action(GURL("https://myform.com/submit.html"));
-  form.set_fields(
-      {CreateTestFormField("Username", "username", "",
-                           FormControlType::kInputText),
-       CreateTestFormField("Password", "password", "",
-                           FormControlType::kInputPassword),
-       CreateTestFormField("Quest", "quest", "", FormControlType::kInputText),
-       CreateTestFormField("Color", "color", "", FormControlType::kInputText)});
-
+  FormData form = test::GetFormData(
+      {.fields = {{.label = u"Username", .name = u"username"},
+                  {.label = u"Password",
+                   .name = u"password",
+                   .form_control_type = FormControlType::kInputPassword},
+                  {.label = u"Quest", .name = u"quest"},
+                  {.label = u"Color", .name = u"color"}}});
   FormsSeen({form});
 
   OnAskForValuesToFill(form, form.fields().back());
@@ -3844,31 +3813,20 @@ TEST_F(BrowserAutofillManagerTest, GetFieldSuggestionsWithDuplicateValues) {
 TEST_F(BrowserAutofillManagerTest,
        GetProfileSuggestions_ForEmailFieldWithUserNameAutocomplete) {
   // Set up our form data.
-  FormData form;
-  form.set_name(u"MyForm");
-  form.set_url(GURL("https://myform.com/form.html"));
-  form.set_action(GURL("https://myform.com/submit.html"));
-
-  struct {
-    const char* const label;
-    const char* const name;
-    size_t max_length;
-    const char* const autocomplete_attribute;
-  } test_fields[] = {{"First Name", "firstname", 30, "given-name"},
-                     {"Last Name", "lastname", 30, "family-name"},
-                     {"Email", "email", 30, "username"},
-                     {"Password", "password", 30, "new-password"}};
-
-  for (const auto& test_field : test_fields) {
-    FormControlType field_type =
-        UNSAFE_TODO(strcmp(test_field.name, "password")) == 0
-            ? FormControlType::kInputPassword
-            : FormControlType::kInputText;
-    test_api(form).Append(CreateTestFormField(
-        test_field.label, test_field.name, "", field_type,
-        test_field.autocomplete_attribute, test_field.max_length));
-  }
-
+  FormData form = test::GetFormData(
+      {.fields = {{.role = NAME_FIRST,
+                   .max_length = 30,
+                   .autocomplete_attribute = "given-name"},
+                  {.role = NAME_LAST,
+                   .max_length = 30,
+                   .autocomplete_attribute = "family-name"},
+                  {.role = EMAIL_ADDRESS,
+                   .max_length = 30,
+                   .autocomplete_attribute = "username"},
+                  {.role = PASSWORD,
+                   .max_length = 30,
+                   .autocomplete_attribute = "new-password",
+                   .form_control_type = FormControlType::kInputPassword}}});
   FormsSeen({form});
 
   personal_data().test_address_data_manager().ClearProfiles();
@@ -3962,7 +3920,8 @@ TEST_F(BrowserAutofillManagerTest,
                 Field(&Options::masked_card_number_last_four,
                       filled_card.ObfuscatedNumberWithVisibleLastFourDigits()),
                 Field(&Options::cvc, filled_card.cvc()),
-                Field(&Options::filled_card, filled_card))));
+                Field(&Options::filled_card, filled_card)),
+          _));
 
   FormData form = CreateTestCreditCardFormData(/*is_https=*/true,
                                                /*use_month_type=*/false);
@@ -3992,15 +3951,16 @@ TEST_F(BrowserAutofillManagerTest, FillOrPreviewForm_CreditCard_Bnpl) {
   EXPECT_CALL(cc_access_manager(), FetchCreditCard).Times(0);
 
   using Options = FilledCardInformationBubbleOptions;
-  EXPECT_CALL(
-      payments_autofill_client(),
-      OnCardDataAvailable(AllOf(
-          Field(&Options::masked_card_name,
-                bnpl_virtual_card.CardNameForAutofillDisplay()),
-          Field(&Options::masked_card_number_last_four,
-                bnpl_virtual_card.ObfuscatedNumberWithVisibleLastFourDigits()),
-          Field(&Options::cvc, bnpl_virtual_card.cvc()),
-          Field(&Options::filled_card, bnpl_virtual_card))));
+  EXPECT_CALL(payments_autofill_client(),
+              OnCardDataAvailable(
+                  AllOf(Field(&Options::masked_card_name,
+                              bnpl_virtual_card.CardNameForAutofillDisplay()),
+                        Field(&Options::masked_card_number_last_four,
+                              bnpl_virtual_card
+                                  .ObfuscatedNumberWithVisibleLastFourDigits()),
+                        Field(&Options::cvc, bnpl_virtual_card.cvc()),
+                        Field(&Options::filled_card, bnpl_virtual_card)),
+                  _));
 
   FormData form = CreateTestCreditCardFormData(/*is_https=*/true,
                                                /*use_month_type=*/false);
@@ -4029,7 +3989,8 @@ TEST_F(BrowserAutofillManagerTest,
                 Field(&Options::masked_card_number_last_four,
                       filled_card.ObfuscatedNumberWithVisibleLastFourDigits()),
                 Field(&Options::cvc, filled_card.cvc()),
-                Field(&Options::filled_card, filled_card))));
+                Field(&Options::filled_card, filled_card)),
+          _));
 
   FormData form = CreateTestCreditCardFormData(/*is_https=*/true,
                                                /*use_month_type=*/false);
@@ -4173,15 +4134,10 @@ TEST_F(BrowserAutofillManagerTest,
       features::kAutofillCreditCardUserPerceptionSurvey);
   constexpr size_t n_fields = 3;
   // Set up a CC form.
-  FormData form;
-  form.set_url(GURL("https://myform.com/form.html"));
-  form.set_action(GURL("https://myform.com/submit.html"));
-  form.set_fields({CreateTestFormField("Name on Card", "nameoncard", "",
-                                       FormControlType::kInputText),
-                   CreateTestFormField("Card Number", "cardnumber", "",
-                                       FormControlType::kInputText),
-                   CreateTestFormField("Expiration date", "exp_date", "",
-                                       FormControlType::kInputText)});
+  FormData form = test::GetFormData(
+      {.fields = {{.label = u"Name on Card", .name = u"nameoncard"},
+                  {.label = u"Card Number", .name = u"cardnumber"},
+                  {.label = u"Expiration date", .name = u"exp_date"}}});
 
   // Notify BrowserAutofillManager of the form.
   FormsSeen({form});
@@ -4805,21 +4761,12 @@ TEST_F(BrowserAutofillManagerWithLogEventsTest,
 TEST_F(BrowserAutofillManagerWithLogEventsTest,
        LogEventsOnAutocompleteAttributeField) {
   // Set up our form data.
-  FormData form;
-  form.set_name(u"MyForm");
-  form.set_url(GURL("https://myform.com/form.html"));
-  form.set_action(GURL("https://myform.com/submit.html"));
-  form.set_fields(
-      {CreateTestFormField("First Name", "firstname", "",
-                           FormControlType::kInputText, "given-name"),
-       CreateTestFormField("Last Name", "lastname", "",
-                           FormControlType::kInputText, "family-name"),
-       // Set no autocomplete attribute for the middle name.
-       CreateTestFormField("Middle name", "middle", "",
-                           FormControlType::kInputText, ""),
-       // Set an unrecognized autocomplete attribute for the last name.
-       CreateTestFormField("Email", "email", "", FormControlType::kInputText,
-                           "unrecognized")});
+  FormData form = test::GetFormData(
+      {.fields = {
+           {.role = NAME_FIRST, .autocomplete_attribute = "given-name"},
+           {.role = NAME_LAST, .autocomplete_attribute = "family-name"},
+           {.role = NAME_MIDDLE},
+           {.role = EMAIL_ADDRESS, .autocomplete_attribute = "unrecognized"}}});
 
   // Simulate having seen this form on page load.
   auto form_structure_instance = std::make_unique<FormStructure>(form);

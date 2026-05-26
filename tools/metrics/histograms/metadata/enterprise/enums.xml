@@ -2431,6 +2431,7 @@ chromium-metrics-reviews@google.com.
   <int value="1450" label="SubAppsWithoutPromptsBlockedForOrigins"/>
   <int value="1451" label="IsolatedModeSettings"/>
   <int value="1452" label="GeminiExperimentalTriggeringSettings"/>
+  <int value="1453" label="SmartTabSharingSettings"/>
 </enum>
 
 <enum name="EnterprisePoliciesSources">
@@ -2859,7 +2860,7 @@ chromium-metrics-reviews@google.com.
   <int value="21" label="Fetch CRD availability info command"/>
   <int value="22" label="Fetch support packet command"/>
   <int value="23" label="Query device location command"/>
-  <int value="24" label="Extension update check command"/>
+  <int value="24" label="Browser extension update check command"/>
 </enum>
 
 <enum name="ReportSchedulerReportTrigger">

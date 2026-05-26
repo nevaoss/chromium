@@ -10,13 +10,6 @@ declare_args() {
   if (enable_starboard_media) {
     cast_static_media_lib_target =
         "//chromecast/starboard/media/media:starboard"
-  } else if (is_cast_desktop_build) {
-    # Non-starboard desktop builds should set cast_static_media_lib_target
-    # explicitly if desired.
-    cast_static_media_lib_target = ""
-  } else if (is_cast_audio_only) {
-    cast_static_media_lib_target =
-        "//chromecast/media/cma/backend/alsa:libcast_media_1.0_audio"
   } else {
     cast_static_media_lib_target = ""
   }
@@ -47,10 +40,6 @@ group("libcast_media") {
 
   if (enable_chromium_runtime_cast_renderer) {
     deps += [ "//chromecast/media/cma/backend/proxy" ]
-  }
-
-  if (cast_volume_control_in_avsettings) {
-    deps += [ "//chromecast/media/avsettings:libcast_avsettings_1.0" ]
   }
 }
 

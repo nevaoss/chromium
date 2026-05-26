@@ -10,12 +10,13 @@
 
 namespace crypto {
 
-class MockUnexportableKey : public UnexportableSigningKey, public StatefulKey {
+class MockUnexportableSigningKey : public UnexportableSigningKey,
+                                   public StatefulKey {
  public:
-  MockUnexportableKey();
-  ~MockUnexportableKey() override;
+  MockUnexportableSigningKey();
+  ~MockUnexportableSigningKey() override;
 
-  // UnexportableSigningKey:
+  // UnexportableKey:
   MOCK_METHOD(SignatureVerifier::SignatureAlgorithm,
               Algorithm,
               (),
@@ -25,20 +26,58 @@ class MockUnexportableKey : public UnexportableSigningKey, public StatefulKey {
               (),
               (const, override));
   MOCK_METHOD(std::vector<uint8_t>, GetWrappedKey, (), (const, override));
+  MOCK_METHOD(bool, IsHardwareBacked, (), (const, override));
+#if BUILDFLAG(IS_APPLE)
+  MOCK_METHOD(SecKeyRef, GetSecKeyRef, (), (const, override));
+#endif  // BUILDFLAG(IS_APPLE)
+  MOCK_METHOD(const StatefulKey*, AsStatefulKey, (), (const, override));
+
+  // StatefulKey:
+  MOCK_METHOD(std::string, GetKeyTag, (), (const, override));
+  MOCK_METHOD(base::Time, GetCreationTime, (), (const, override));
+
+  // UnexportableSigningKey:
   MOCK_METHOD(std::optional<std::vector<uint8_t>>,
               SignSlowly,
               (base::span<const uint8_t> data),
               (override));
+#if BUILDFLAG(IS_WIN)
+  MOCK_METHOD(bool, SupportsTls13, (), (override));
+#endif  // BUILDFLAG(IS_WIN)
+};
+
+class MockUnexportableAttestationKey : public UnexportableAttestationKey,
+                                       public StatefulKey {
+ public:
+  MockUnexportableAttestationKey();
+  ~MockUnexportableAttestationKey() override;
+
+  // UnexportableKey:
+  MOCK_METHOD(SignatureVerifier::SignatureAlgorithm,
+              Algorithm,
+              (),
+              (const, override));
+  MOCK_METHOD(std::vector<uint8_t>,
+              GetSubjectPublicKeyInfo,
+              (),
+              (const, override));
+  MOCK_METHOD(std::vector<uint8_t>, GetWrappedKey, (), (const, override));
   MOCK_METHOD(bool, IsHardwareBacked, (), (const, override));
 #if BUILDFLAG(IS_APPLE)
   MOCK_METHOD(SecKeyRef, GetSecKeyRef, (), (const, override));
-#elif BUILDFLAG(IS_WIN)
-  MOCK_METHOD(bool, SupportsTls13, (), (override));
 #endif  // BUILDFLAG(IS_APPLE)
   MOCK_METHOD(const StatefulKey*, AsStatefulKey, (), (const, override));
-  // crypto::StatefulKey:
+
+  // StatefulKey:
   MOCK_METHOD(std::string, GetKeyTag, (), (const, override));
   MOCK_METHOD(base::Time, GetCreationTime, (), (const, override));
+
+  // UnexportableAttestationKey:
+  MOCK_METHOD(std::optional<AttestationStatement>,
+              CertifySlowly,
+              (const UnexportableSigningKey& signing_key,
+               base::span<const uint8_t> challenge),
+              (override));
 };
 
 }  // namespace crypto

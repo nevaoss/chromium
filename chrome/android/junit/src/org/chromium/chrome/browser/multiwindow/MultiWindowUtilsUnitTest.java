@@ -48,6 +48,7 @@ import org.robolectric.util.ReflectionHelpers;
 import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ContextUtils;
+import org.chromium.base.FakeTimeTestRule;
 import org.chromium.base.FeatureOverrides;
 import org.chromium.base.SysUtils;
 import org.chromium.base.supplier.ObservableSuppliers;
@@ -97,6 +98,8 @@ public class MultiWindowUtilsUnitTest {
     @Rule
     public OverrideContextWrapperTestRule mOverrideContextWrapperTestRule =
             new OverrideContextWrapperTestRule();
+
+    @Rule public FakeTimeTestRule mFakeTimeTestRule = new FakeTimeTestRule();
 
     private static final int INSTANCE_ID_0 = 0;
     private static final int INSTANCE_ID_1 = 1;
@@ -1372,6 +1375,8 @@ public class MultiWindowUtilsUnitTest {
     public void testGetTabCountForRelaunchFromSharedPrefs() {
         int windowId1 = 0;
         int windowId2 = 1;
+        ChromeMultiInstancePersistentStore.writeLastAccessedTime(windowId1);
+        ChromeMultiInstancePersistentStore.writeLastAccessedTime(windowId2);
         ChromeMultiInstancePersistentStore.writeTabCountForRelaunchSync(
                 windowId1, /* tabCount= */ 10);
         ChromeMultiInstancePersistentStore.writeTabCountForRelaunchSync(
@@ -1404,7 +1409,7 @@ public class MultiWindowUtilsUnitTest {
 
         writeInstanceInfo(oldestId, URL_1, 3, 0, TASK_ID_5);
         writeInstanceInfo(midId, URL_3, 1, 0, TASK_ID_6);
-        writeInstanceInfo(newestId, null, 0, 0, INVALID_TASK_ID);
+        writeInstanceInfo(newestId, "", 0, 0, INVALID_TASK_ID);
 
         Assert.assertEquals(
                 "The last accessed window ID should be returned.",
@@ -1528,6 +1533,7 @@ public class MultiWindowUtilsUnitTest {
     @Test
     public void testVerifyLatestPersistentStateId_MissingPersistentState() {
         int windowId = INSTANCE_ID_0;
+        ChromeMultiInstancePersistentStore.writeLastAccessedTime(windowId);
         ChromeMultiInstancePersistentStore.writeLatestPersistentStateId(windowId, 123);
 
         var watcher =
@@ -1554,6 +1560,7 @@ public class MultiWindowUtilsUnitTest {
     @Test
     public void testVerifyLatestPersistentStateId_Match() {
         int windowId = INSTANCE_ID_0;
+        ChromeMultiInstancePersistentStore.writeLastAccessedTime(windowId);
         PersistableBundle bundle = new PersistableBundle();
         int persistentStateId = bundle.hashCode();
         bundle.putInt(PERSISTENT_STATE_ID, persistentStateId);
@@ -1571,6 +1578,7 @@ public class MultiWindowUtilsUnitTest {
     @Test
     public void testVerifyLatestPersistentStateId_Mismatch() {
         int windowId = INSTANCE_ID_0;
+        ChromeMultiInstancePersistentStore.writeLastAccessedTime(windowId);
         PersistableBundle bundle = new PersistableBundle();
         int persistentStateId = bundle.hashCode();
         bundle.putInt(PERSISTENT_STATE_ID, persistentStateId + 1);
@@ -1610,6 +1618,8 @@ public class MultiWindowUtilsUnitTest {
         when(mTabModelSelector.getModels()).thenReturn(models);
         when(mIncognitoTabModel.getCount()).thenReturn(0);
         when(mIncognitoTabModel.iterator()).thenAnswer(inv -> Collections.emptyList().iterator());
+
+        ChromeMultiInstancePersistentStore.writeLastAccessedTime(windowId);
 
         // Test if recordTabCountForRelaunchWhenActivityPaused() returns the correct value for
         // standard tabs.
@@ -1665,8 +1675,12 @@ public class MultiWindowUtilsUnitTest {
             int incognitoTabCount,
             int taskId,
             @SupportedProfileType int profileType) {
-        ChromeMultiInstancePersistentStore.writeActiveTabUrl(instanceId, url);
+        // Advance the timestamp for each instance to update its last-accessed time, so the instance
+        // list is in chronological order.
+        mFakeTimeTestRule.advanceMillis(1);
+
         ChromeMultiInstancePersistentStore.writeLastAccessedTime(instanceId);
+        ChromeMultiInstancePersistentStore.writeActiveTabUrl(instanceId, url);
         ChromeMultiInstancePersistentStore.writeTabCount(instanceId, tabCount, incognitoTabCount);
         ChromeMultiInstancePersistentStore.writeTaskId(instanceId, taskId);
         if (taskId != -1) MultiWindowUtils.addAppTaskIdForTesting(taskId);

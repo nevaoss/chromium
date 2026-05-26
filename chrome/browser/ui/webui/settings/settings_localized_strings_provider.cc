@@ -481,10 +481,10 @@ void AddAiStrings(content::WebUIDataSource* html_source) {
       {"aiSuggestionsConsider2Link",
        IDS_CONTEXTUAL_CUEING_SETTINGS_CONSIDER_2_LINK}};
   html_source->AddLocalizedStrings(kLocalizedStrings);
-  html_source->AddLocalizedString(
-      "aiPageTitle", base::FeatureList::IsEnabled(features::kWebuiRefresh2026)
-                         ? IDS_SETTINGS_AI_PAGE_TITLE
-                         : IDS_SETTINGS_AI_INNOVATIONS_PAGE_TITLE);
+  html_source->AddLocalizedString("aiPageTitle",
+                                  features::IsWebuiRefresh2026Enabled()
+                                      ? IDS_SETTINGS_AI_PAGE_TITLE
+                                      : IDS_SETTINGS_AI_INNOVATIONS_PAGE_TITLE);
 
   html_source->AddString("aiPageMainManagedLearnMoreUrl",
                          chrome::kAiSettingsLearnMorePageManagedUrl);
@@ -777,6 +777,7 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
       {"glicPolicyDisabledMessage", IDS_SETTINGS_GLIC_POLICY_DISABLED_MESSAGE},
       {"glicPreferencesSection", IDS_SETTINGS_GLIC_PREFERENCES_SECTION},
       {"glicDataSection", IDS_SETTINGS_GLIC_PERMISSIONS_SECTION},
+      {"glicAutoBrowseSection", IDS_SETTINGS_GLIC_AUTO_BROWSE_SECTION},
       {"glicTabstripButtonToggle", IDS_SETTINGS_GLIC_BUTTON_TOGGLE},
       {"glicTabstripButtonToggleSublabel",
        IDS_SETTINGS_GLIC_BUTTON_TOGGLE_SUBLABEL},
@@ -1868,8 +1869,9 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
                           base::FeatureList::IsEnabled(
                               autofill::features::kAutofillAiReauthRequired));
 
+  // TODO(b/511147685): Rename URL constant.
   html_source->AddString(
-      "accessibilityAnnotatorSettingsUrl",
+      "personalContextSettingsUrl",
       accessibility_annotator::kAccessibilityAnnotatorSettingsURL);
 }
 

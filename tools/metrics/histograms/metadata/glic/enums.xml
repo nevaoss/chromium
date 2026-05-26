@@ -872,6 +872,17 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//chrome/browser/glic/public/context/glic_sharing_manager.h:GlicUnpinTrigger) -->
 
+<!-- LINT.IfChange(GlicWarmedContainerFate) -->
+
+<enum name="GlicWarmedContainerFate">
+  <int value="0" label="Used"/>
+  <int value="1" label="Expired"/>
+  <int value="2" label="Deleted on Chrome Closed"/>
+  <int value="3" label="Crashed"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/glic/host/glic_web_contents_warming_pool.cc:GlicWarmedContainerFate) -->
+
 <!-- LINT.IfChange(GlicWarmingPoolStatus) -->
 
 <enum name="GlicWarmingPoolStatus">
@@ -986,6 +997,18 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="Non-PDF main doc; PDF found"/>
   <int value="3" label="Non-PDF main doc; PDF not found"/>
 </enum>
+
+<!-- LINT.IfChange(PdfTextExtractionStatus) -->
+
+<enum name="PdfTextExtractionStatus">
+  <int value="0" label="Success"/>
+  <int value="1" label="EmptyText"/>
+  <int value="2" label="NotPdf"/>
+  <int value="3" label="PdfExtractionNotAvailable"/>
+  <int value="4" label="PdfDocumentNotLoaded"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/page_content_annotations/content/page_context_fetcher_metrics.h:PdfTextExtractionStatus) -->
 
 <!-- LINT.IfChange(ShareImageResult) -->
 

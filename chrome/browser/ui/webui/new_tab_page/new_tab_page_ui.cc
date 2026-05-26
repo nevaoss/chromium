@@ -145,10 +145,6 @@
 #include "chrome/browser/ui/webui/page_not_available_for_guest/page_not_available_for_guest_ui.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/ui/webui/new_tab_page/stub_searchbox_handler.h"
-#endif
-
 #if !BUILDFLAG(OPTIMIZE_WEBUI)
 #include "chrome/grit/new_tab_shared_resources.h"
 #include "chrome/grit/new_tab_shared_resources_map.h"
@@ -760,6 +756,7 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
                      ntp_composebox::kContextMenuEnableMultiTabSelection.Get());
   source->AddBoolean("contextManagementInComposeboxEnabled",
   base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox));
+  source->AddBoolean("tabFaviconChipsToCoinsEnabled", false);
   source->AddBoolean("searchboxShowComposebox",
                      ntp_composebox::IsNtpComposeboxEnabled(profile));
   source->AddBoolean("composeboxShowZps", true);
@@ -772,10 +769,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
 
   source->AddBoolean("composeboxSmartComposeEnabled",
                      ntp_composebox::kShowSmartCompose.Get());
-  const auto* aim_eligibility_service =
-      AimEligibilityServiceFactory::GetForProfile(profile);
-  source->AddBoolean("composeboxShowDeepSearchButton",
-                     ntp_composebox::IsDeepSearchEnabled(profile));
   source->AddBoolean("composeboxShowCreateImageButton",
                      ntp_composebox::IsCreateImagesEnabled(profile));
 
@@ -795,10 +788,24 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   // Action Chips LoadTimeData
 // TODO(b/502297163): Implement for Android.
 #if !BUILDFLAG(IS_ANDROID)
-  bool action_chips_eligible =
-      aim_eligibility_service && aim_eligibility_service->IsAimEligible() &&
-      (aim_eligibility_service->IsDeepSearchEligible() ||
-       aim_eligibility_service->IsCreateImagesEligible());
+  const auto* aim_eligibility_service =
+      AimEligibilityServiceFactory::GetForProfile(profile);
+  int num_tools_eligible = 0;
+  if (aim_eligibility_service) {
+    if (aim_eligibility_service->IsDeepSearchEligible()) {
+      num_tools_eligible++;
+    }
+    if (aim_eligibility_service->IsCreateImagesEligible()) {
+      num_tools_eligible++;
+    }
+    if (base::FeatureList::IsEnabled(ntp_features::kNtpNextCanvasChip) &&
+        aim_eligibility_service->IsCanvasEligible()) {
+      num_tools_eligible++;
+    }
+  }
+  bool action_chips_eligible = aim_eligibility_service &&
+                               aim_eligibility_service->IsAimEligible() &&
+                               num_tools_eligible >= 2;
   bool show_action_chips =
       action_chips_eligible &&
       profile->GetPrefs()->GetBoolean(prefs::kNtpToolChipsVisible);
@@ -830,16 +837,11 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddInteger("browserPromoCompletedLimit",
                      browser_completed_promo_limit);
 
-// TODO(b/502297163): Implement for Android.
-#if BUILDFLAG(IS_ANDROID)
-  StubSearchboxHandler::SetupWebUIDataSource(source, profile);
-#else
   source->AddLocalizedStrings(SearchboxHandler::GetWebUIDataSourceDict(
       profile, {.enable_voice_search = true,
                 .enable_lens_search = profile->GetPrefs()->GetBoolean(
                     prefs::kLensDesktopNTPSearchEnabled),
                 .session_allows_drag_and_drop = session_allows_drag_and_drop}));
-#endif  // BUILDFLAG(IS_ANDROID)
 
   webui::SetupWebUIDataSource(source, kNewTabPageResources,
                               IDR_NEW_TAB_PAGE_NEW_TAB_PAGE_HTML);

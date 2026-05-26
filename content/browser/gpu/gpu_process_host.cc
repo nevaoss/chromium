@@ -297,7 +297,6 @@ static const char* const kSwitchNames[] = {
     switches::kSkiaGraphiteDawnBackend,
     switches::kSkiaResourceCacheLimitMb,
     switches::kTestGLLib,
-    switches::kUseAdapterLuid,
     switches::kUseFakeMjpegDecodeAccelerator,
     switches::kUseGpuInTests,
     switches::kWebViewDrawFunctorUsesVulkan,

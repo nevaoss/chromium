@@ -1,6 +1,7 @@
 {
-    "checklist": {},
     "task_type": "IMPLEMENTATION",
+    "execution_path": "RIGOR_PATH",
+    "complexity_level": "MEDIUM",
     "goal": "Mock goal for testing.",
     "target_files": [
         "testdata/file1.cc"
@@ -10,9 +11,13 @@
     "build_targets": [
         "//remoting/tools/magi-mode/tests/testdata:test_target"
     ],
-    "next_phase": "SCAFFOLDING",
+    "next_stage": "SCAFFOLDING",
     "paranoia_mode": false,
     "auditability_level": "NORMAL",
+    "context_resolved": true,
+    "approach_confirmed": true,
+    "ambiguity_level": "LOW",
+    "ambiguity_rationale": "Test case with direct goal.",
     "environment": {
         "repo_type": "CHROMIUM",
         "vcs": "JJ",

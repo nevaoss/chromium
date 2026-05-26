@@ -414,7 +414,29 @@ bool BrowserAccessibilityAndroid::IsFocusable() const {
     return HasStringAttribute(ax::mojom::StringAttribute::kName);
   }
 
-  return BrowserAccessibility::IsFocusable();
+  if (!BrowserAccessibility::IsFocusable()) {
+    return false;
+  }
+
+  // Suppress focusability for generic container nodes that have no explicit
+  // name and only contain collection/list items, to prevent TalkBack from
+  // announcing them as 'Page.Page' when they wrap carousels/pagers.
+  if (GetRole() == ax::mojom::Role::kGenericContainer &&
+      !HasStringAttribute(ax::mojom::StringAttribute::kName)) {
+    bool has_only_collection_children = true;
+    for (auto it = InternalChildrenBegin(); it != InternalChildrenEnd(); ++it) {
+      if (!static_cast<const BrowserAccessibilityAndroid*>(it.get())
+               ->IsCollection()) {
+        has_only_collection_children = false;
+        break;
+      }
+    }
+    if (has_only_collection_children && InternalChildCount() > 0) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool BrowserAccessibilityAndroid::IsFormDescendant() const {
@@ -842,40 +864,37 @@ bool BrowserAccessibilityAndroid::IsLeaf() const {
     }
   }
 
-  BrowserAccessibilityManagerAndroid* manager_android =
-      static_cast<BrowserAccessibilityManagerAndroid*>(manager());
-  if (manager_android->prune_tree_for_screen_reader()) {
-    // For some nodes, we will consider children before determining if the node
-    // is a leaf. For nodes with relevant children, we will return false here
-    // and allow the child nodes to be set as a leaf.
+  // For some nodes, we will consider children before determining if the node
+  // is a leaf. For nodes with relevant children, we will return false here
+  // and allow the child nodes to be set as a leaf.
 
-    if (GetRole() == ax::mojom::Role::kComboBoxSelect) {
-      GetLeafMap()[this] = true;
-      return true;
-    }
-
-    // Headings with text can drop their children (with exceptions).
-    std::u16string name = GetSubstringTextContentUTF16(1);
-    if (GetRole() == ax::mojom::Role::kHeading && !name.empty()) {
-      bool ret = IsLeafConsideringChildren();
-      GetLeafMap()[this] = ret;
-      return ret;
-    }
-
-    // Focusable nodes with text can drop their children (with exceptions).
-    if (HasState(ax::mojom::State::kFocusable) && !name.empty()) {
-      bool ret = IsLeafConsideringChildren();
-      GetLeafMap()[this] = ret;
-      return ret;
-    }
-
-    // Nodes with only static text can drop their children, with the exception
-    // that list markers have a different role and should not be dropped.
-    if (HasOnlyTextChildren() && !HasListMarkerChild()) {
-      GetLeafMap()[this] = true;
-      return true;
-    }
+  if (GetRole() == ax::mojom::Role::kComboBoxSelect) {
+    GetLeafMap()[this] = true;
+    return true;
   }
+
+  // Headings with text can drop their children (with exceptions).
+  std::u16string name = GetSubstringTextContentUTF16(1);
+  if (GetRole() == ax::mojom::Role::kHeading && !name.empty()) {
+    bool ret = IsLeafConsideringChildren();
+    GetLeafMap()[this] = ret;
+    return ret;
+  }
+
+  // Focusable nodes with text can drop their children (with exceptions).
+  if (HasState(ax::mojom::State::kFocusable) && !name.empty()) {
+    bool ret = IsLeafConsideringChildren();
+    GetLeafMap()[this] = ret;
+    return ret;
+  }
+
+  // Nodes with only static text can drop their children, with the exception
+  // that list markers have a different role and should not be dropped.
+  if (HasOnlyTextChildren() && !HasListMarkerChild()) {
+    GetLeafMap()[this] = true;
+    return true;
+  }
+
   GetLeafMap()[this] = false;
   return false;
 }

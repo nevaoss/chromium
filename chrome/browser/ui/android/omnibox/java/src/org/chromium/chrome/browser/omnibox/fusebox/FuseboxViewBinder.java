@@ -33,13 +33,12 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonType;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
-import org.chromium.components.omnibox.ToolModeProto.ToolMode;
 import org.chromium.components.omnibox.ToolModeUtils;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -309,19 +308,12 @@ class FuseboxViewBinder {
         ((TextView) buttonView.findViewById(R.id.action_text)).setText(data.text);
         buttonView.setEnabled(data.enabled);
 
-        // TODO(https://crbug.com/489115052): Improve accessibility strings here.
         Resources res = buttonView.getResources();
-        if (data.type == PopupButtonType.TOOL) {
-            if (data.protoId == ToolMode.TOOL_MODE_UNSPECIFIED_VALUE) {
-                CharSequence desc =
-                        data.selected ? res.getText(R.string.acc_ai_mode_selected) : data.text;
-                buttonView.setContentDescription(desc);
-            } else if (data.protoId == ToolMode.TOOL_MODE_IMAGE_GEN_VALUE) {
-                CharSequence desc =
-                        data.selected ? res.getText(R.string.acc_create_image_selected) : data.text;
-                buttonView.setContentDescription(desc);
-            }
-        }
+        CharSequence desc =
+                data.selected
+                        ? res.getString(R.string.acc_fusebox_popup_button_selected, data.text)
+                        : data.text;
+        buttonView.setContentDescription(desc);
 
         @StyleRes
         int textAppearance = OmniboxResourceProvider.getPopupButtonTextRes(brandedColorScheme);
@@ -345,14 +337,13 @@ class FuseboxViewBinder {
         }
 
         @DrawableRes int iconRes = getResIdForIconId(data.iconId);
-        setButtonDrawables(buttonView, data.selected, iconRes);
+        setButtonDrawables(buttonView, iconRes, data.selected);
     }
 
     private static void setButtonDrawables(
-            View buttonView, boolean selected, @DrawableRes int iconRes) {
+            View buttonView, @DrawableRes int iconRes, boolean selected) {
         FuseboxItemViewHolder holder = getViewHolder(buttonView);
         ImageView imageView = holder.mActionIcon;
-        ImageView endImageView = holder.mActionEndIcon;
 
         if (iconRes != Resources.ID_NULL) {
             imageView.setImageResource(iconRes);
@@ -362,6 +353,11 @@ class FuseboxViewBinder {
             imageView.setVisibility(View.GONE);
         }
 
+        setButtonSelected(holder, selected);
+    }
+
+    private static void setButtonSelected(FuseboxItemViewHolder holder, boolean selected) {
+        ImageView endImageView = holder.mActionEndIcon;
         if (selected) {
             endImageView.setImageResource(R.drawable.m3_ic_check_24px);
             endImageView.setVisibility(View.VISIBLE);
@@ -372,16 +368,14 @@ class FuseboxViewBinder {
     }
 
     private static void setCustomButtonDrawables(
-            View buttonView, @Nullable Drawable startDrawable, @Nullable Drawable endDrawable) {
+            View buttonView, @Nullable Drawable startDrawable, boolean selected) {
         FuseboxItemViewHolder holder = getViewHolder(buttonView);
         ImageView imageView = holder.mActionIcon;
-        ImageView endImageView = holder.mActionEndIcon;
 
         imageView.setImageDrawable(startDrawable);
         imageView.setVisibility(startDrawable != null ? View.VISIBLE : View.GONE);
 
-        endImageView.setImageDrawable(endDrawable);
-        endImageView.setVisibility(endDrawable != null ? View.VISIBLE : View.GONE);
+        setButtonSelected(holder, selected);
     }
 
     /** Maps ids found in generated protos to local resources backed drawable ids. */
@@ -613,8 +607,7 @@ class FuseboxViewBinder {
 
         for (View button : view.popup.mAttachmentButtons) {
             @StyleRes int attachmentTextAppearance;
-            if (Integer.valueOf(FuseboxProperties.PopupState.BOTTOM)
-                            .equals(model.get(FuseboxProperties.POPUP_STATE))
+            if (Integer.valueOf(PopupState.BOTTOM).equals(model.get(FuseboxProperties.POPUP_STATE))
                     && view.popup.mAttachmentButtons.contains(button)) {
                 attachmentTextAppearance =
                         OmniboxResourceProvider.getAttachmentButtonTextRes(brandedColorScheme);
@@ -687,7 +680,7 @@ class FuseboxViewBinder {
                         context,
                         favicon,
                         res.getDimensionPixelSize(R.dimen.fusebox_popup_item_icon_size));
-        setCustomButtonDrawables(addCurrentTabButton, drawable, null);
+        setCustomButtonDrawables(addCurrentTabButton, drawable, /* selected= */ false);
 
         if (favicon != null) {
             // This will change the alpha value based on the enabled state. The rgb values will

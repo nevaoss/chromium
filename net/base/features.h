@@ -321,9 +321,6 @@ NET_EXPORT BASE_DECLARE_FEATURE(kAlpsParsing);
 // Whether ALPS parsing is on for client hint parsing specifically.
 NET_EXPORT BASE_DECLARE_FEATURE(kAlpsClientHintParsing);
 
-// Whether to kill the session on Error::kAcceptChMalformed.
-NET_EXPORT BASE_DECLARE_FEATURE(kShouldKillSessionOnAcceptChMalformed);
-
 NET_EXPORT BASE_DECLARE_FEATURE(kEnableWebsocketsOverHttp3);
 
 #if BUILDFLAG(IS_WIN)
@@ -488,14 +485,6 @@ NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionSigningQuotaAndCaching);
 // `NetworkContextParams`.
 NET_EXPORT BASE_DECLARE_FEATURE(kDeviceBoundSessionsForRestrictedSites);
 
-// This feature controls whether we add a query param to registration on
-// restricted sites.
-NET_EXPORT BASE_DECLARE_FEATURE(
-    kDeviceBoundSessionsForRestrictedSitesExperimentId);
-NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
-    std::string,
-    kDeviceBoundSessionsForRestrictedSitesExperimentIdParam);
-
 // This feature will enable the browser to use Device Bound Session Credentials
 // for Single Sign On. This feature is only valid if `kDeviceBoundSessions` is
 // enabled.
@@ -567,7 +556,9 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
 // specified by this param, the SQL backend executes optimistic writes.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
                                       kSqlDiskCacheOptimisticWriteBufferSize);
-// Disables synchronous writes in the WAL file of the SQL disk cache's DB.
+// Whether to enable WAL mode for the SQL disk cache backend.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kSqlDiskCacheWalMode);
+// Disables synchronous writes in the SQL disk cache's DB.
 // This is faster but less safe.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kSqlDiskCacheSynchronousOff);
 // Enables the database preloading for the SQL disk cache backend.
@@ -586,6 +577,8 @@ NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int,
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(int, kSqlDiskCacheMaxReadBufferTotalSize);
 // Execute the checkpoint serially.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kSqlDiskCacheSerialCheckpoint);
+// Execute the initialization serially.
+NET_EXPORT BASE_DECLARE_FEATURE_PARAM(bool, kSqlDiskCacheSerialInitialize);
 // Whether to use size and priority aware eviction for the SQL disk cache.
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(
     bool,
@@ -795,11 +788,6 @@ NET_EXPORT BASE_DECLARE_FEATURE(kDohFallbackAllowedWithLocalNameservers);
 // When enabled, users can make Secure DNS in AUTOMATIC mode fallback to a
 // well-known DoH provider before using insecure DNS.
 NET_EXPORT BASE_DECLARE_FEATURE(kAddAutomaticWithDohFallbackMode);
-
-// When enabled, and when the configured secure_dns_mode is AUTOMATIC, the DoH
-// fallback setting (dns_over_https.automatic_mode_fallback_to_doh) should be
-// forced to be interpreted as enabled.
-NET_EXPORT BASE_DECLARE_FEATURE(kForceSecureDnsDohFallback);
 
 // If true, a CONNECT-UDP response is not needed to start sending datagrams.
 NET_EXPORT BASE_DECLARE_FEATURE(

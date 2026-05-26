@@ -65,6 +65,7 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -2774,14 +2775,20 @@ TEST_F(AuthenticatorRequestDialogControllerTest,
       switch (test_case.expected_button) {
         case kHelloOrSk:
         case kHello:
-          EXPECT_EQ(win_button_it->icon, kLaptopOldIcon);
+          EXPECT_EQ(win_button_it->icon, features::IsRoundedIconsEnabled()
+                                             ? kLaptopWindowsIcon
+                                             : kLaptopOldIcon);
           break;
         case kSk:
-          EXPECT_EQ(win_button_it->icon, kUsbSecurityKeyOldIcon);
+          EXPECT_EQ(win_button_it->icon, features::IsRoundedIconsEnabled()
+                                             ? kSecurityKeyIcon
+                                             : kUsbSecurityKeyOldIcon);
           break;
         case kPhoneOrSk:
         case kPhone:
-          EXPECT_EQ(win_button_it->icon, kSmartphoneOldIcon);
+          EXPECT_EQ(win_button_it->icon, features::IsRoundedIconsEnabled()
+                                             ? kMobileIcon
+                                             : kSmartphoneOldIcon);
           break;
         default:
           NOTREACHED();
@@ -2837,10 +2844,14 @@ TEST_F(AuthenticatorRequestDialogControllerTest,
     switch (test_case.expected_button) {
       case kHelloOrSk:
       case kHello:
-        EXPECT_EQ(win_button_it->icon, kLaptopOldIcon);
+        EXPECT_EQ(win_button_it->icon, features::IsRoundedIconsEnabled()
+                                           ? kLaptopWindowsIcon
+                                           : kLaptopOldIcon);
         break;
       case kSk:
-        EXPECT_EQ(win_button_it->icon, kUsbSecurityKeyOldIcon);
+        EXPECT_EQ(win_button_it->icon, features::IsRoundedIconsEnabled()
+                                           ? kSecurityKeyIcon
+                                           : kUsbSecurityKeyOldIcon);
         break;
       default:
         NOTREACHED();

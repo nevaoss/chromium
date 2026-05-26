@@ -188,52 +188,6 @@ const base::TimeDelta BWGSessionValidityDuration() {
   return base::Minutes(kBWGSessionValidityDurationFeatureParam.Get());
 }
 
-const char kBWGPromoConsentParams[] = "BWGPromoConsentVariations";
-
-BASE_FEATURE_PARAM(int,
-                   kBWGPromoConsentFeatureParam,
-                   &kBWGPromoConsent,
-                   kBWGPromoConsentParams,
-                   0);
-
-BWGPromoConsentVariations BWGPromoConsentVariationsParam() {
-  int param = kBWGPromoConsentFeatureParam.Get();
-  if (!IsPageActionMenuEnabled()) {
-    return BWGPromoConsentVariations::kDisabled;
-  }
-  if (param == 1) {
-    return BWGPromoConsentVariations::kSinglePage;
-  }
-  if (param == 2) {
-    return BWGPromoConsentVariations::kDoublePage;
-  }
-  if (param == 3) {
-    return BWGPromoConsentVariations::kSkipConsent;
-  }
-  if (param == 4) {
-    return BWGPromoConsentVariations::kForceFRE;
-  }
-  if (param == 5) {
-    return BWGPromoConsentVariations::kSkipNewUserDelay;
-  }
-  return BWGPromoConsentVariations::kDisabled;
-}
-
-bool ShouldForceBWGPromo() {
-  if (!IsPageActionMenuEnabled()) {
-    return false;
-  }
-  return BWGPromoConsentVariationsParam() ==
-         BWGPromoConsentVariations::kForceFRE;
-}
-
-bool ShouldSkipBWGPromoNewUserDelay() {
-  return BWGPromoConsentVariationsParam() ==
-         BWGPromoConsentVariations::kSkipNewUserDelay;
-}
-
-BASE_FEATURE(kBWGPromoConsent, base::FEATURE_DISABLED_BY_DEFAULT);
-
 const char kExplainGeminiEditMenuParams[] = "PositionForExplainGeminiEditMenu";
 
 BASE_FEATURE_PARAM(int,
@@ -515,7 +469,7 @@ bool IsGeminiLiveEnabled() {
   return base::FeatureList::IsEnabled(kGeminiLive);
 }
 
-BASE_FEATURE(kGeminiCopresence, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiCopresence, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiCopresenceEnabled() {
   if (!IsPageActionMenuEnabled()) {
@@ -534,16 +488,6 @@ double GetGeminiCopresenceResponseReadyInterval() {
   return base::GetFieldTrialParamByFeatureAsDouble(
       kGeminiCopresence, kGeminiCopresenceResponseReadyInterval,
       kGeminiCopresenceResponseReadyIntervalDefault);
-}
-
-const char kGeminiCopresenceSRPCheck[] = "GeminiCopresenceSRPCheck";
-
-bool IsGeminiCopresenceSRPCheckEnabled() {
-  if (!IsPageActionMenuEnabled()) {
-    return false;
-  }
-  return base::GetFieldTrialParamByFeatureAsBool(
-      kGeminiCopresence, kGeminiCopresenceSRPCheck, /*default_value=*/true);
 }
 
 BASE_FEATURE(kGeminiChatPersistence, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -579,7 +523,7 @@ bool IsGeminiCopresenceTrackSourcesEnabled() {
 }
 
 BASE_FEATURE(kGeminiResponseViewDynamicResizing,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiResponseViewDynamicResizingEnabled() {
   if (!IsPageActionMenuEnabled()) {
@@ -595,6 +539,23 @@ bool IsGeminiDynamicSettingsEnabled() {
     return false;
   }
   return base::FeatureList::IsEnabled(kGeminiDynamicSettings);
+}
+
+BASE_FEATURE(kPageStabilityMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// The length of time after an interaction we will track mutations before
+// reporting UMA.
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kPageStabilityIntervalDuration,
+                   &kPageStabilityMetrics,
+                   base::Milliseconds(4000));
+
+bool IsPageStabilityMetricsEnabled() {
+  return base::FeatureList::IsEnabled(kPageStabilityMetrics);
+}
+
+base::TimeDelta GetPageStabilityIntervalDuration() {
+  return kPageStabilityIntervalDuration.Get();
 }
 
 BASE_FEATURE(kActorTools, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -788,8 +749,21 @@ bool IsPersistTabContextRichExtractionEnabled() {
 
 BASE_FEATURE(kPageContextIPCOptimization, base::FEATURE_DISABLED_BY_DEFAULT);
 
+const char kPageContextIPCOptimizationActionableParam[] = "enable_actionable";
+
+BASE_FEATURE_PARAM(bool,
+                   kPageContextIPCOptimizationActionable,
+                   &kPageContextIPCOptimization,
+                   kPageContextIPCOptimizationActionableParam,
+                   false);
+
 bool IsPageContextIPCOptimizationEnabled() {
   return base::FeatureList::IsEnabled(kPageContextIPCOptimization);
+}
+
+bool IsPageContextIPCOptimizationActionableEnabled() {
+  return IsPageContextIPCOptimizationEnabled() &&
+         kPageContextIPCOptimizationActionable.Get();
 }
 
 BASE_FEATURE(kGeminiClientMigration, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -830,4 +804,57 @@ bool IsGeneralizedGeminiEntryFlowEnabled() {
     return false;
   }
   return base::FeatureList::IsEnabled(kGeneralizedGeminiEntryFlow);
+}
+
+#pragma mark - Debugging Features
+
+const char kBWGPromoConsentParams[] = "BWGPromoConsentVariations";
+
+BASE_FEATURE_PARAM(int,
+                   kBWGPromoConsentFeatureParam,
+                   &kBWGPromoConsent,
+                   kBWGPromoConsentParams,
+                   0);
+
+BWGPromoConsentVariations BWGPromoConsentVariationsParam() {
+  int param = kBWGPromoConsentFeatureParam.Get();
+  if (!IsPageActionMenuEnabled()) {
+    return BWGPromoConsentVariations::kDisabled;
+  }
+  if (param == 1) {
+    return BWGPromoConsentVariations::kSinglePage;
+  }
+  if (param == 2) {
+    return BWGPromoConsentVariations::kDoublePage;
+  }
+  if (param == 3) {
+    return BWGPromoConsentVariations::kSkipConsent;
+  }
+  if (param == 4) {
+    return BWGPromoConsentVariations::kForceFRE;
+  }
+  if (param == 5) {
+    return BWGPromoConsentVariations::kSkipNewUserDelay;
+  }
+  return BWGPromoConsentVariations::kDisabled;
+}
+
+bool ShouldForceBWGPromo() {
+  if (!IsPageActionMenuEnabled()) {
+    return false;
+  }
+  return BWGPromoConsentVariationsParam() ==
+         BWGPromoConsentVariations::kForceFRE;
+}
+
+bool ShouldSkipBWGPromoNewUserDelay() {
+  return BWGPromoConsentVariationsParam() ==
+         BWGPromoConsentVariations::kSkipNewUserDelay;
+}
+
+BASE_FEATURE(kBWGPromoConsent, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kActorServiceLogging, base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsActorServiceLoggingEnabled() {
+  return base::FeatureList::IsEnabled(kActorServiceLogging);
 }

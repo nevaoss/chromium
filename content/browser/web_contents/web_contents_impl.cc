@@ -6497,8 +6497,7 @@ const std::optional<gfx::Rect> WebContentsImpl::GetTextSelectionBounds(
     if (view && root_view) {
       const auto* region = text_input_manager_->GetSelectionRegion(view);
       if (region) {
-        gfx::Rect bounds =
-            gfx::RectBetweenSelectionBounds(region->anchor, region->focus);
+        gfx::Rect bounds = region->bounding_box;
         if (!bounds.IsEmpty()) {
           gfx::Point origin = bounds.origin();
           origin += root_view->GetViewBounds().OffsetFromOrigin();
@@ -8981,12 +8980,14 @@ void WebContentsImpl::NotifyNavigationEntriesDeleted() {
 void WebContentsImpl::OnDidBlockNavigation(
     const GURL& blocked_url,
     const GURL& initiator_url,
+    const url::Origin& initiator_origin,
     blink::mojom::NavigationBlockedReason reason) {
   OPTIONAL_TRACE_EVENT("content", "WebContentsImpl::OnDidBlockNavigation",
                        "blocked_url", blocked_url, "initiator_url",
                        initiator_url, "reason", reason);
   if (delegate_) {
-    delegate_->OnDidBlockNavigation(this, blocked_url, reason);
+    delegate_->OnDidBlockNavigation(this, blocked_url, initiator_url,
+                                    initiator_origin, reason);
   }
 }
 

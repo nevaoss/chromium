@@ -817,7 +817,7 @@ public class SettingsSearchCoordinator
 
         setFragmentState(FS_SETTINGS);
         mBackActionCallback.setEnabled(false);
-        if (mUseMultiColumn) mUpdateFirstVisibleTitle.onResult(0);
+        mUpdateFirstVisibleTitle.onResult(0);
 
         updateHelpMenuVisibility();
         adjustTalkbackTraversalOrder(searchBox);
@@ -1192,6 +1192,7 @@ public class SettingsSearchCoordinator
                 var lp = (Toolbar.LayoutParams) searchBox.getLayoutParams();
                 lp.gravity = Gravity.END;
                 searchBox.setLayoutParams(lp);
+                showTitleTextView(true);
             }
             adjustTalkbackTraversalOrder(isVisible(query) ? query : searchBox);
         } else {

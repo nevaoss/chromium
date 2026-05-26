@@ -190,6 +190,12 @@ std::string GetPermissionRequestString(RequestTypeForUma type) {
       return "LoopbackNetwork";
     case RequestTypeForUma::PERMISSION_SENSORS:
       return "Sensors";
+    case RequestTypeForUma::PERMISSION_GEOLOCATION_APPROXIMATE_OR_PRECISE:
+      return "GeolocationApproximateOrPrecise";
+    case RequestTypeForUma::PERMISSION_GEOLOCATION_APPROXIMATE:
+      return "GeolocationApproximate";
+    case RequestTypeForUma::PERMISSION_GEOLOCATION_UPGRADE:
+      return "GeolocationUpgrade";
 
     case RequestTypeForUma::UNKNOWN:
     case RequestTypeForUma::NUM:
@@ -872,20 +878,10 @@ void PermissionUmaUtil::RecordActivityIndicator(
 }
 
 void PermissionUmaUtil::RecordDismissalType(
-    const std::vector<ContentSettingsType>& content_settings_types,
+    const std::vector<base::WeakPtr<permissions::PermissionRequest>>& requests,
     PermissionPromptDisposition ui_disposition,
     DismissalType dismissalType) {
-  std::optional<RequestType> request_type =
-      ContentSettingsTypeToRequestTypeIfExists(content_settings_types[0]);
-  if (!request_type.has_value()) {
-    return;
-  }
-  RequestTypeForUma type =
-      PermissionUtil::GetUmaValueForRequestType(request_type.value());
-
-  if (content_settings_types.size() > 1) {
-    type = RequestTypeForUma::MULTIPLE_AUDIO_AND_VIDEO_CAPTURE;
-  }
+  RequestTypeForUma type = PermissionUtil::GetUmaValueForRequests(requests);
 
   std::string permission_type = GetPermissionRequestString(type);
   std::string permission_disposition =
@@ -1721,9 +1717,9 @@ void PermissionUmaUtil::RecordPermissionPredictionConcurrentRequests(
 // static
 void PermissionUmaUtil::RecordPermissionPredictionSource(
     PermissionPredictionSource prediction_source,
-    RequestType request_type) {
+    const PermissionRequest& request) {
   std::string permission_string = GetPermissionRequestString(
-      PermissionUtil::GetUmaValueForRequestType(request_type));
+      PermissionUtil::GetUmaValueForRequest(request));
   base::UmaHistogramEnumeration(
       "Permissions.PredictionServiceSource." + permission_string,
       prediction_source);
@@ -1970,8 +1966,8 @@ std::string PermissionUmaUtil::GetPromptDispositionString(
       return "MacOsPrompt";
     case PermissionPromptDisposition::MESSAGE_UI_LOUD:
       return "MessageUILoud";
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_CLAPPER_QUIET_ICON:
-      return "LocationBarLeftClapperQuietIcon";
+    case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_ICON:
+      return "LocationBarLeftQuietIcon";
   }
 
   NOTREACHED();
@@ -2014,7 +2010,7 @@ bool PermissionUmaUtil::IsPromptDispositionQuiet(
     case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_ABUSIVE_CHIP:
     case PermissionPromptDisposition::MINI_INFOBAR:
     case PermissionPromptDisposition::MESSAGE_UI:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_CLAPPER_QUIET_ICON:
+    case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_ICON:
       return true;
     case PermissionPromptDisposition::ANCHORED_BUBBLE:
     case PermissionPromptDisposition::ELEMENT_ANCHORED_BUBBLE:
@@ -2049,7 +2045,7 @@ bool PermissionUmaUtil::IsPromptDispositionLoud(
     case PermissionPromptDisposition::MESSAGE_UI:
     case PermissionPromptDisposition::NONE_VISIBLE:
     case PermissionPromptDisposition::NOT_APPLICABLE:
-    case PermissionPromptDisposition::LOCATION_BAR_LEFT_CLAPPER_QUIET_ICON:
+    case PermissionPromptDisposition::LOCATION_BAR_LEFT_QUIET_ICON:
       return false;
   }
 }

@@ -53,6 +53,7 @@
   --pdf-icon-size: 16px;
   --document-icon-size: 16px;
   --injected-input-icon-size: 24px;
+  --lens-submit-icon-extra-spacing: 0;
 }
 
 :host([energy-effect-enabled_]) {
@@ -85,6 +86,7 @@
   --file-thumbnail-border-radius: 6px;
   --file-chip-border-radius: 12px;
   --icon-menu-button-size: 36px;
+  --lens-submit-icon-extra-spacing: 8px;
 }
 
 :host([energy-effect-enabled_][is-zero-state]) {
@@ -95,6 +97,12 @@
 @media (prefers-color-scheme: light) {
   :host([energy-effect-enabled_]) {
     --color-composebox-file-chip-background: rgba(240, 242, 245, 1);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :host([energy-effect-enabled_]) {
+    --color-composebox-file-chip-background: rgba(78, 80, 89, 1);
   }
 }
 
@@ -136,6 +144,11 @@
 }
 
 #composebox::part(composebox) {
+  --contextual-entrypoint-and-carousel-context-entrypoint-padding-inline-start:
+      12px;
+  --contextual-entrypoint-and-carousel-context-menu-container-padding-inline-start:
+      0;
+  --contextual-entrypoint-and-carousel-context-entrypoint-padding-inline-end: 0;
   min-height: var(--composebox-min-height);
 }
 
@@ -189,8 +202,6 @@
   --text-input-top-spacing: 12px;
   --composebox-context-menu-entrypoint-button-color:
       var(--color-composebox-voice-lens-button);
-  --contextual-entrypoint-and-carousel-context-entrypoint-padding-inline-start: 0;
-
   box-shadow: none;
   box-sizing: border-box;
   display: block;
@@ -336,7 +347,11 @@
 #composebox::part(context-menu-entrypoint-icon) {
   --cr-icon-button-fill-color: var(--composebox-context-menu-entrypoint-button-color);
   --cr-icon-button-icon-size: var(--icon-menu-icon-size);
-  --cr-icon-button-margin-start: 4px;
+  /* Do not set '--cr-icon-button-margin-start' here. Use
+  * 'contextual-entrypoint-and-carousel-context-entrypoint-padding-inline-start'
+  * and the 'inline-end version'. These variables are set in
+  * '#composebox::part(composebox)'.
+  */
   --cr-icon-button-size: var(--icon-menu-button-size);
 }
 
@@ -347,7 +362,6 @@
   --cr-composebox-entrypoint-border-radius: 100px;
   --cr-composebox-entrypoint-height: 36px;
   --cr-composebox-entrypoint-width: 48px;
-  --cr-icon-button-margin-start: 8px;
 }
 
 :host([energy-effect-animation-enabled_]) #composebox::part(context-menu-entrypoint-icon),
@@ -441,6 +455,7 @@
 #composebox[submit-enabled]::part(lens-icon) {
   inset-inline-end: calc(var(--composebox-submit-container-size)
       + var(--icon-menu-spacing)
+      + var(--lens-submit-icon-extra-spacing)
       + var(--composebox-submit-container-inline-end));
 }
 
@@ -564,10 +579,12 @@
 }
 
 /* Lens is only shown in side panel, so adjust spacing. */
-:host([is-side-panel]) #composebox[submit-enabled]::part(voice-icon) {
+:host([is-side-panel][show-lens-button])
+    #composebox[submit-enabled]::part(voice-icon) {
   inset-inline-end: calc(var(--composebox-submit-container-size)
       + var(--icon-menu-button-size)
       + 2 * var(--icon-menu-spacing)
+      + var(--lens-submit-icon-extra-spacing)
       + var(--composebox-submit-container-inline-end));
 }
 
@@ -584,7 +601,7 @@
 }
 
 /* Lens is only shown in side panel, so adjust spacing. */
-:host([is-side-panel]) #composebox::part(voice-icon) {
+:host([is-side-panel][show-lens-button]) #composebox::part(voice-icon) {
   inset-inline-end: calc(
       var(--icon-menu-button-size)
       + var(--icon-menu-spacing)
@@ -600,6 +617,7 @@
 :host([is-side-panel][active-tool-mode='1']) #composebox[submit-enabled]::part(voice-icon) {
   inset-inline-end: calc(var(--composebox-submit-container-size)
       + var(--icon-menu-spacing)
+      + var(--lens-submit-icon-extra-spacing)
       + var(--composebox-submit-container-inline-end));
 }
 
@@ -620,10 +638,6 @@
 
 #composebox::part(composebox-background)::before {
  transition: background-color 400ms ease-in-out;
-}
-
-#composebox[in-voice-search-mode_] {
- box-shadow: 2px 17px 18px -10px rgba(0, 0, 0, 0.05);
 }
 
 :host([is-zero-state]) #contextualTasksSuggestionsContainer {

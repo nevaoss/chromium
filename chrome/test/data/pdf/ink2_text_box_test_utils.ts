@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {hexToColor, Ink2Manager, PdfViewerPrivateProxyImpl, TEXT_COLORS, TextAlignment, TextStyle, TextTypeface} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
+import {hexToColor, Ink2Manager, PdfViewerPrivateProxyImpl, TEXT_COLORS, TextAlignment, TextAnnotationSource, TextStyle, TextTypeface} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
 import type {TextAnnotation, TextAnnotationMessageData, TextBoxRect} from 'chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/pdf_viewer_wrapper.js';
 import {keyDownOn, keyUpOn} from 'chrome://webui-test/keyboard_mock_interactions.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
@@ -25,6 +25,7 @@ export function setupTextBoxTest() {
 export function getTestAnnotation(textBoxRect: TextBoxRect): TextAnnotation {
   return {
     id: 0,
+    mojoTextInfo: new ArrayBuffer(0),
     pageIndex: 0,
     text: 'Hello World',
     textAttributes: {
@@ -68,10 +69,31 @@ export function assertPositionAndSize(
     el: HTMLElement, expectedWidth: string, expectedHeight: string,
     expectedLeft: string, expectedTop: string) {
   const styles = getComputedStyle(el);
-  chrome.test.assertEq(expectedWidth, styles.getPropertyValue('width'));
-  chrome.test.assertEq(expectedHeight, styles.getPropertyValue('height'));
-  chrome.test.assertEq(expectedLeft, styles.getPropertyValue('left'));
-  chrome.test.assertEq(expectedTop, styles.getPropertyValue('top'));
+
+  function parsePixelValue(str: string): number {
+    // Extract the numerical part of the style string.
+    const match = str.match(/^([+-]?\d+(\.\d+)?)px$/);
+    chrome.test.assertTrue(match !== null, `Invalid pixel string: ${str}`);
+    chrome.test.assertEq(3, match.length);
+    return parseFloat(match[1]!);
+  }
+
+  function assertStylePixelValue(expectedString: string, actualString: string) {
+    if (expectedString === 'auto' || actualString === 'auto') {
+      chrome.test.assertEq(expectedString, actualString);
+      return;
+    }
+    const expectedVal = parsePixelValue(expectedString);
+    const actualVal = parsePixelValue(actualString);
+    chrome.test.assertTrue(
+        Math.abs(expectedVal - actualVal) < 1.0,
+        `Expected ${expectedString}, but got ${actualString}`);
+  }
+
+  assertStylePixelValue(expectedWidth, styles.getPropertyValue('width'));
+  assertStylePixelValue(expectedHeight, styles.getPropertyValue('height'));
+  assertStylePixelValue(expectedLeft, styles.getPropertyValue('left'));
+  assertStylePixelValue(expectedTop, styles.getPropertyValue('top'));
 }
 
 export async function dragHandle(
@@ -122,10 +144,9 @@ export function verifyFinishTextAnnotationMessage(
   const expectedMessageData: TextAnnotationMessageData = {
     ...expectedAnnotation,
     isEdited: expectedIsEdited,
-    isUser: true,
-    mojoTextInfo: new ArrayBuffer(0),
     newTypefaces: [],
     pdfZoom: expectedPdfZoom,
+    source: TextAnnotationSource.USER,
   };
   assertDeepEquals(expectedMessageData, message.data);
 }

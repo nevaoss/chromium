@@ -24,6 +24,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import static org.chromium.components.autofill.autofill_ai.utils.TestUtils.buildMercedezVehicleWithLabels;
+
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.test.filters.MediumTest;
@@ -99,6 +101,8 @@ public class AutofillTravelFragmentTest {
         when(mEntityDataManager.canListEntityInstancesInSettings()).thenReturn(true);
         when(mEntityDataManager.isEligibleToAutofillAi()).thenReturn(true);
         when(mEntityDataManager.canEnableOrDisableAutofillAi()).thenReturn(true);
+        when(mEntityDataManager.canEnableOrDisableAutofillAiForType(anyInt())).thenReturn(true);
+        when(mEntityDataManager.isEligibleToAutofillAiForType(anyInt())).thenReturn(true);
     }
 
     @Test
@@ -205,18 +209,11 @@ public class AutofillTravelFragmentTest {
     @Test
     @MediumTest
     public void testAutofillAiEntities_opensEditorOnSuccessfulReauth() {
-        EntityInstanceWithLabels entity1 =
-                new EntityInstanceWithLabels(
-                        "guid1",
-                        TestUtils.getVehicleEntityType(),
-                        /* entityInstanceLabel= */ "Vehicle",
-                        /* entityInstanceSubLabel= */ "Mercedez",
-                        /* storedInWallet= */ false,
-                        /* walletEntityUrl= */ null);
-
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
                 new LinkedHashMap<>();
-        instancesMap.put(TestUtils.getVehicleEntityType(), Arrays.asList(entity1));
+        instancesMap.put(
+                TestUtils.getVehicleEntityType(),
+                Arrays.asList(buildMercedezVehicleWithLabels("guid1")));
         when(mEntityDataManager.getInstancesToList()).thenReturn(instancesMap);
 
         EntityInstance entityInstance =

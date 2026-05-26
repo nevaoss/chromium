@@ -41,6 +41,7 @@
 #include "ui/base/models/image_model.h"
 #include "ui/base/mojom/dialog_button.mojom.h"
 #include "ui/base/mojom/ui_base_types.mojom-shared.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/color/color_id.h"
 #include "ui/compositor/layer.h"
@@ -228,7 +229,8 @@ class UpdateSettingsPane : public views::BoxLayoutView {
   METADATA_HEADER(UpdateSettingsPane, views::BoxLayoutView)
 
  public:
-  UpdateSettingsPane() {
+  explicit UpdateSettingsPane(IsolatedWebAppInstallerView::Delegate* delegate)
+      : delegate_(delegate) {
     views::LayoutProvider* provider = views::LayoutProvider::Get();
 
     auto chevron = CreateUpdateSettingsToggle();
@@ -268,10 +270,6 @@ class UpdateSettingsPane : public views::BoxLayoutView {
     combobox_->SetEnabled(channels.size() > 1);
   }
 
-  const std::optional<UpdateChannel>& GetSelectedChannel() const {
-    return selected_channel_;
-  }
-
  private:
   std::unique_ptr<views::BoxLayoutView> CreateHeaderRow(
       std::unique_ptr<views::View> toggle_button) {
@@ -303,11 +301,15 @@ class UpdateSettingsPane : public views::BoxLayoutView {
         l10n_util::GetStringUTF16(IDS_IWA_INSTALLER_UPDATE_SETTINGS));
 
     views::SetImageFromVectorIconWithColor(
-        button.get(), kKeyboardArrowDownOldIcon, 16,
-        {ui::kColorIcon, ui::kColorIconDisabled});
+        button.get(),
+        features::IsRoundedIconsEnabled() ? kKeyboardArrowDownIcon
+                                          : kKeyboardArrowDownOldIcon,
+        16, {ui::kColorIcon, ui::kColorIconDisabled});
     views::SetToggledImageFromVectorIconWithColor(
-        button.get(), kKeyboardArrowUpOldIcon, 16,
-        {ui::kColorIcon, ui::kColorIconDisabled});
+        button.get(),
+        features::IsRoundedIconsEnabled() ? kKeyboardControlKeyIcon
+                                          : kKeyboardArrowUpOldIcon,
+        16, {ui::kColorIcon, ui::kColorIconDisabled});
 
     return button;
   }
@@ -348,20 +350,19 @@ class UpdateSettingsPane : public views::BoxLayoutView {
   }
 
   void OnUpdateChannelChanged() {
-    if (combobox_model_ && combobox_->GetSelectedIndex().has_value()) {
-      selected_channel_ =
-          combobox_model_->GetChannelAt(combobox_->GetSelectedIndex().value())
-              .channel();
-    } else {
-      selected_channel_ = std::nullopt;
+    std::optional<UpdateChannel> channel;
+    if (combobox_->GetSelectedIndex()) {
+      channel = combobox_model_->GetChannelAt(*combobox_->GetSelectedIndex())
+                    .channel();
     }
+    delegate_->OnUpdateChannelSelected(channel);
   }
 
+  raw_ptr<IsolatedWebAppInstallerView::Delegate> delegate_;
   raw_ptr<views::ToggleImageButton> chevron_;
   raw_ptr<views::BoxLayoutView> settings_container_;
   std::unique_ptr<UpdateChannelComboboxModel> combobox_model_;
   raw_ptr<views::Combobox> combobox_;
-  std::optional<UpdateChannel> selected_channel_;
 };
 BEGIN_METADATA(UpdateSettingsPane)
 END_METADATA
@@ -516,7 +517,10 @@ class GetMetadataView : public InstallerDialogView {
  public:
   GetMetadataView()
       : InstallerDialogView(
-            CreateImageModelFromVector(kFingerprintOldIcon, ui::kColorAccent),
+            CreateImageModelFromVector(features::IsRoundedIconsEnabled()
+                                           ? kFingerprintIcon
+                                           : kFingerprintOldIcon,
+                                       ui::kColorAccent),
             IDS_IWA_INSTALLER_VERIFICATION_TITLE,
             IDS_IWA_INSTALLER_VERIFICATION_SUBTITLE) {
     auto progress_bar =
@@ -543,7 +547,10 @@ class ShowMetadataView : public InstallerDialogView {
  public:
   explicit ShowMetadataView(IsolatedWebAppInstallerView::Delegate* delegate)
       : InstallerDialogView(
-            CreateImageModelFromVector(kFingerprintOldIcon, ui::kColorAccent),
+            CreateImageModelFromVector(features::IsRoundedIconsEnabled()
+                                           ? kFingerprintIcon
+                                           : kFingerprintOldIcon,
+                                       ui::kColorAccent),
             // The title will be updated to the app name when available.
             IDS_IWA_INSTALLER_VERIFICATION_TITLE,
             IDS_IWA_INSTALLER_SHOW_METADATA_SUBTITLE) {
@@ -566,7 +573,7 @@ class ShowMetadataView : public InstallerDialogView {
 
     if (base::FeatureList::IsEnabled(kIwaUpdateChannelsInInstaller)) {
       update_settings_pane_ = contents_container->AddChildView(
-          std::make_unique<UpdateSettingsPane>());
+          std::make_unique<UpdateSettingsPane>(delegate));
     }
 
     SetContentsView(std::move(contents_container),
@@ -585,15 +592,6 @@ class ShowMetadataView : public InstallerDialogView {
     }
   }
 
-  const std::optional<UpdateChannel>& GetSelectedChannel() const {
-    if (update_settings_pane_) {
-      return update_settings_pane_->GetSelectedChannel();
-    }
-    static const base::NoDestructor<std::optional<UpdateChannel>>
-        default_option(UpdateChannel::default_channel());
-    return *default_option;
-  }
-
  private:
   raw_ptr<InfoPane> info_pane_;
   raw_ptr<UpdateSettingsPane> update_settings_pane_;
@@ -608,7 +606,10 @@ class InstallView : public InstallerDialogView {
  public:
   InstallView()
       : InstallerDialogView(
-            CreateImageModelFromVector(kFingerprintOldIcon, ui::kColorAccent),
+            CreateImageModelFromVector(features::IsRoundedIconsEnabled()
+                                           ? kFingerprintIcon
+                                           : kFingerprintOldIcon,
+                                       ui::kColorAccent),
             // The title will be updated to the app name when available.
             IDS_IWA_INSTALLER_VERIFICATION_TITLE,
             IDS_IWA_INSTALLER_INSTALL_SUBTITLE) {
@@ -635,7 +636,10 @@ class InstallSuccessView : public InstallerDialogView {
  public:
   InstallSuccessView()
       : InstallerDialogView(
-            CreateImageModelFromVector(kFingerprintOldIcon, ui::kColorAccent),
+            CreateImageModelFromVector(features::IsRoundedIconsEnabled()
+                                           ? kFingerprintIcon
+                                           : kFingerprintOldIcon,
+                                       ui::kColorAccent),
             // The title will be updated to the app name when available.
             IDS_IWA_INSTALLER_VERIFICATION_TITLE,
             IDS_IWA_INSTALLER_SUCCESS_SUBTITLE) {
@@ -860,10 +864,13 @@ views::Widget* IsolatedWebAppInstallerViewImpl::ShowDialog(
             // user-facing articles are released.
             auto subtitle =
                 ui::DialogModelLabel(IDS_IWA_INSTALLER_CONFIRM_SUBTITLE);
-            return ShowChildDialog(IDS_IWA_INSTALLER_CONFIRM_TITLE, subtitle,
-                                   CreateImageModelFromVector(
-                                       kPrivacyTipOldIcon, ui::kColorAccent),
-                                   IDS_IWA_INSTALLER_CONFIRM_CONTINUE);
+            return ShowChildDialog(
+                IDS_IWA_INSTALLER_CONFIRM_TITLE, subtitle,
+                CreateImageModelFromVector(features::IsRoundedIconsEnabled()
+                                               ? kPrivacyTipIcon
+                                               : kPrivacyTipOldIcon,
+                                           ui::kColorAccent),
+                IDS_IWA_INSTALLER_CONFIRM_CONTINUE);
           },
           [this](
               const IsolatedWebAppInstallerModel::InstallationFailedDialog&) {
@@ -895,11 +902,6 @@ views::Widget* IsolatedWebAppInstallerViewImpl::ShowDialog(
                 std::nullopt);
           }},
       dialog);
-}
-
-const std::optional<UpdateChannel>&
-IsolatedWebAppInstallerViewImpl::GetSelectedUpdateChannel() const {
-  return show_metadata_view_->GetSelectedChannel();
 }
 
 views::Widget* IsolatedWebAppInstallerViewImpl::ShowChildDialog(

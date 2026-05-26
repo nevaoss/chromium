@@ -6,14 +6,17 @@
 
 #include <algorithm>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "base/check.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/power_monitor/power_monitor.h"
 #include "base/rand_util.h"
+#include "base/strings/strcat.h"
 #include "base/trace_event/trace_event.h"
 
 namespace viz {
@@ -41,7 +44,9 @@ enum class DisplayLinkResult {
   kFailedInvalidDisplayId = 1,
   kFailedCreateDisplayLink = 2,
   kFailedRegisterCallback = 3,
-  kMaxValue = kFailedRegisterCallback,
+  kSuccessForcedUpdate = 4,
+  kFailedForcedUpdateCreateDisplayLink = 5,
+  kMaxValue = kFailedForcedUpdateCreateDisplayLink,
 };
 
 void RecordDisplayLinkCreateStatus(DisplayLinkResult result) {
@@ -68,6 +73,7 @@ ExternalBeginFrameSourceMac::ExternalBeginFrameSourceMac(
     int64_t display_id,
     OutputSurface* output_surface)
     : ExternalBeginFrameSource(this, restart_id),
+      create_time_(base::TimeTicks::Now()),
       output_surface_(output_surface) {
   VLOG(kOutputLevel) << "ExternalBeginFrameSourceMac(" << this << ")"
                      << "::ExternalBeginFrameSourceMac() ID:" << display_id;
@@ -76,14 +82,7 @@ ExternalBeginFrameSourceMac::ExternalBeginFrameSourceMac(
     base::PowerMonitor::GetInstance()->AddPowerSuspendObserver(this);
   }
 
-  if (display_id == display::kInvalidDisplayId) {
-    RecordDisplayLinkCreateStatus(DisplayLinkResult::kFailedInvalidDisplayId);
-    DLOG(ERROR)
-        << "DisplayLinkMac ID is not available. "
-           "Switch to DelayBasedTimeSource(Timer) for BeginFrameSource.";
-  } else {
-    SetVSyncDisplayID(display_id, /*force_update=*/false);
-  }
+  SetVSyncDisplayID(display_id, /*force_update=*/true);
 }
 
 ExternalBeginFrameSourceMac::~ExternalBeginFrameSourceMac() {
@@ -171,13 +170,25 @@ void ExternalBeginFrameSourceMac::SetVSyncDisplayID(int64_t display_id,
                                         min_refresh_interval_);
     }
 
-    RecordDisplayLinkCreateStatus(DisplayLinkResult::kSuccess);
+    DisplayLinkResult display_link_result =
+        force_update ? DisplayLinkResult::kSuccessForcedUpdate
+                     : DisplayLinkResult::kSuccess;
+    RecordDisplayLinkCreateStatus(display_link_result);
   } else {
     DisplayLinkResult display_link_result =
-        display_id == display::kInvalidDisplayId
+        display_id < 0
             ? DisplayLinkResult::kFailedInvalidDisplayId
-            : DisplayLinkResult::kFailedCreateDisplayLink;
+            : (force_update
+                   ? DisplayLinkResult::kFailedForcedUpdateCreateDisplayLink
+                   : DisplayLinkResult::kFailedCreateDisplayLink);
     RecordDisplayLinkCreateStatus(display_link_result);
+
+    preferred_interval_ = min_refresh_interval_ = max_refresh_interval_ =
+        GetMinimumFrameInterval();
+    if (update_vsync_params_callback_) {
+      update_vsync_params_callback_.Run(base::TimeTicks::Now(),
+                                        min_refresh_interval_);
+    }
 
     DLOG(ERROR) << "Fail to create DisplayLinkMac with DisplayID: "
                 << display_id_ << ". Switch to DelayBasedTimeSource.";
@@ -204,8 +215,7 @@ void ExternalBeginFrameSourceMac::RefreshRateChangedOnSameDisplay() {
   // Forward the notification to output surface for frame presentation.
   output_surface_->RefreshRateChangedOnSameDisplay();
 
-  if (display_link_mac_ &&
-      !display_link_mac_->NotifyEventAndCheckValidity(display_id_)) {
+  if (display_link_mac_ && !display_link_mac_->NotifyEventAndCheckValidity()) {
     // Recreate a new one.
     SetVSyncDisplayID(display_id_, /*force_update=*/true);
   }
@@ -265,6 +275,11 @@ void ExternalBeginFrameSourceMac::OnNeedsBeginFrames(bool needs_begin_frames) {
   if (needs_begin_frames_ == needs_begin_frames) {
     return;
   }
+
+  if (needs_begin_frames && first_needs_begin_frames_time_.is_null()) {
+    first_needs_begin_frames_time_ = base::TimeTicks::Now();
+  }
+
   needs_begin_frames_ = needs_begin_frames;
   just_started_begin_frame_ = true;
 
@@ -278,6 +293,7 @@ void ExternalBeginFrameSourceMac::OnNeedsBeginFrames(bool needs_begin_frames) {
 // Called on the Viz thread.
 void ExternalBeginFrameSourceMac::OnDisplayLinkCallback(
     ui::VSyncParamsMac params) {
+  RecordFirstFrameHistograms(/*is_timer=*/false);
   // If we have reached `kMaxKeepAliveCount` consecutive callbacks without
   // needing a begin frame, stop the display link.
   if (!needs_begin_frames_) {
@@ -402,6 +418,7 @@ BeginFrameArgs ExternalBeginFrameSourceMac::GetMissedBeginFrameArgs(
 
 // Timer callbacks when DisplayLink is not available.
 void ExternalBeginFrameSourceMac::OnTimerTick() {
+  RecordFirstFrameHistograms(/*is_timer=*/true);
   if (!needs_begin_frames_) {
     return;
   }
@@ -429,6 +446,10 @@ void ExternalBeginFrameSourceMac::OnTimerTick() {
 
 void ExternalBeginFrameSourceMac::SetPreferredInterval(
     base::TimeDelta interval) {
+  if (interval.is_zero()) {
+    interval = display_link_mac_ ? min_refresh_interval_
+                                 : BeginFrameArgs::DefaultInterval();
+  }
   preferred_interval_ = interval;
 
   VLOG(kOutputLevel) << "ExternalBeginFrameSourceMac(" << this << ")"
@@ -517,9 +538,53 @@ ExternalBeginFrameSourceMac::GetSupportedFrameIntervals(
   return supported_intervals;
 }
 
+void ExternalBeginFrameSourceMac::RecordFirstFrameHistograms(bool is_timer) {
+  if (!first_callback_time_.is_null()) {
+    return;
+  }
+  first_callback_time_ = base::TimeTicks::Now();
+
+  static constexpr char kTimeFromConstruction[] =
+      "Viz.ExternalBeginFrameSourceMac.TimeFromConstructionToFirstFrame";
+  static constexpr char kTimeFromFirstNeedsBeginFrames[] =
+      "Viz.ExternalBeginFrameSourceMac."
+      "TimeFromFirstNeedsBeginFramesToFirstFrame";
+
+  const char* suffix = is_timer ? ".Timer" : ".DisplayLink";
+
+  base::TimeDelta construction_to_first_frame =
+      first_callback_time_ - create_time_;
+  base::TimeDelta min = base::Milliseconds(1);
+  base::TimeDelta max = base::Minutes(1);
+  size_t bucket_count = 50;
+
+  base::UmaHistogramCustomTimes(kTimeFromConstruction,
+                                construction_to_first_frame, min, max,
+                                bucket_count);
+  base::UmaHistogramCustomTimes(base::StrCat({kTimeFromConstruction, suffix}),
+                                construction_to_first_frame, min, max,
+                                bucket_count);
+
+  if (!first_needs_begin_frames_time_.is_null()) {
+    base::TimeDelta needs_begin_frames_to_first_frame =
+        first_callback_time_ - first_needs_begin_frames_time_;
+    base::UmaHistogramCustomTimes(kTimeFromFirstNeedsBeginFrames,
+                                  needs_begin_frames_to_first_frame, min, max,
+                                  bucket_count);
+    base::UmaHistogramCustomTimes(
+        base::StrCat({kTimeFromFirstNeedsBeginFrames, suffix}),
+        needs_begin_frames_to_first_frame, min, max, bucket_count);
+  }
+}
+
+void ExternalBeginFrameSourceMac::OnSuspend() {
+  if (first_callback_time_.is_null()) {
+    first_callback_time_ = base::TimeTicks::Max();
+  }
+}
+
 void ExternalBeginFrameSourceMac::OnResume() {
-  if (display_link_mac_ &&
-      !display_link_mac_->NotifyEventAndCheckValidity(display_id_)) {
+  if (display_link_mac_ && !display_link_mac_->NotifyEventAndCheckValidity()) {
     // Recreate a new one.
     SetVSyncDisplayID(display_id_, /*force_update=*/true);
   }

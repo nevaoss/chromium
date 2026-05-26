@@ -311,7 +311,6 @@
 <translation id="1463793142714244641">టైమ్‌షేర్‌లు &amp; వెకేషన్ ప్రాపర్టీలు</translation>
 <translation id="1465457928007067810">IBAN మీ Google ఖాతాలో సేవ్ అయింది</translation>
 <translation id="1467432559032391204">ఎడమ</translation>
-<translation id="1468653229182955856"><ph name="EMBEDDED_ORIGIN" /> ను <ph name="TOP_ORIGIN" />కు కొనసాగేలా చేయడానికి మీకు కావాల్సిన కోడ్ <ph name="ONE_TIME_CODE" /></translation>
 <translation id="1472675084647422956">మరిన్ని చూపించు</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">3 లేదా అంత కంటే ఎక్కువ పదాలను ఎంటర్ చేసి, రాయడంలో సహాయం పొందండి</translation>
@@ -1669,7 +1668,6 @@
 <translation id="3600246354004376029"><ph name="TITLE" />, <ph name="DOMAIN" />, <ph name="TIME" /></translation>
 <translation id="3600492954573979888">'Google గోప్యతా సెట్టింగ్‌లను మేనేజ్ చేయండి' బటన్, మీ Google ఖాతాకు సంబంధించిన గోప్యతా సెట్టింగ్‌లకు వెళ్లడానికి దీన్ని యాక్టివేట్ చేయండి</translation>
 <translation id="3603507503523709">మీ నిర్వాహకుడు యాప్‌ను బ్లాక్ చేశారు</translation>
-<translation id="3605082766859363473">AI మోడ్ ఎంచుకోబడింది</translation>
 <translation id="3605899229568538311">5 x 5 అంగుళాలు</translation>
 <translation id="3606917451836803637">టీవీ షోలు &amp; ప్రోగ్రామ్‌లు</translation>
 <translation id="3608932978122581043">ఫీడ్ ఓరియంటేషన్</translation>
@@ -1817,6 +1815,7 @@
 <translation id="380865868633614173">కార్డ్ సమాచారం సేవ్ అవుతోంది</translation>
 <translation id="3810770279996899697">Password Managerకి MacOS కీచెయిన్ యాక్సెస్ అవసరం</translation>
 <translation id="3810973564298564668">మేనేజ్ చేయండి</translation>
+<translation id="3811328723651698330"><ph name="STRING_1" />, <ph name="STRING_2" /></translation>
 <translation id="3812398568375898177">ఇది ChromeOSలో Android యాప్‌ల పనితీరును మెరుగుపరిచే ముఖ్యమైన అప్‌డేట్.</translation>
 <translation id="3814865536373139791">మీ సంస్థ, పాలసీలను ఎలా మేనేజ్ చేయాలో స్ట్రీమ్‌లైన్ చేసుకోండి</translation>
 <translation id="3815434930383843058">8 x 12 అంగుళాలు</translation>
@@ -1856,6 +1855,7 @@
 <translation id="3875783148670536197">ఎలా చేయాలో నాకు చూపించు</translation>
 <translation id="3877603629930976930">షేర్ చేయకండి</translation>
 <translation id="3878445208930547646">ఈ సైట్ నుండి కాపీ చేయడం అనుమతించబడదు</translation>
+<translation id="3879674895057686427">ఏ భాషలోకి అనువదించాలో ఎంచుకోండి</translation>
 <translation id="3879748587602334249">డౌన్‌లోడ్ మేనేజ‌ర్‌</translation>
 <translation id="3880456882942693779">కళలు &amp; వినోదం</translation>
 <translation id="3880589673277376494">ఇంటర్నెట్ &amp; టెలికామ్</translation>
@@ -2015,7 +2015,6 @@
 <translation id="411918202192379658">ఆటోఫిల్ ఫీచర్‌ను ఇప్పుడు మరింత మెరుగుపరిచాము</translation>
 <translation id="4121428309786185360">గడువు ముగిసేది</translation>
 <translation id="4123572138124678573">దిగువ భాగంలో మూడు రంధ్రాలు</translation>
-<translation id="4125597496726375563">ఎంచుకున్న ఇమేజ్‌ను క్రియేట్ చేయండి</translation>
 <translation id="412601465078863288">అప్‌లోడ్ చేయడానికి సమయం ముగిసింది</translation>
 <translation id="4127317221386336246">వస్త్రాలకు సంబంధించిన ఉపకరణాలు</translation>
 <translation id="4129401438321186435">{COUNT,plural, =1{మరో 1}other{మరో #}}</translation>
@@ -2231,6 +2230,7 @@
 <translation id="443673843213245140">ప్రాక్సీని ఉపయోగించడం ఆపివేయబడింది కానీ స్పష్టమైన ప్రాక్సీ కాన్ఫిగరేషన్ పేర్కొనబడింది.</translation>
 <translation id="4438821706955556403">సాధారణ ధర</translation>
 <translation id="4441832193888514600">క్లౌడ్ యూజర్ పాలసీ ద్వారా మాత్రమే పాలసీని సెట్ చేయాలి కాబట్టి ఇది విస్మరించబడింది.</translation>
+<translation id="4444062564459679679">ఇప్పటికే మీ <ph name="DEVICE_NAME" />‌లోని Chromeకు పంపబడింది</translation>
 <translation id="4445133368066241428">జనాదరణ పొందిన టాపిక్‌లు</translation>
 <translation id="4445694043187340808"><ph name="STARTER_PACK_TABS_FOCUSED_FRIENDLY_MATCH_TEXT" />, ట్యాబ్‌లను సెర్చ్ చేయడానికి Enterను నొక్కండి</translation>
 <translation id="4445964943162061557">ఇది ప్రయోగాత్మక ఫీచర్, ఇది నూటికి నూరు శాతం సరైనదని చెప్పలేము.</translation>
@@ -2395,6 +2395,7 @@
 <translation id="4736934858538408121">వర్చువల్ కార్డ్</translation>
 <translation id="473775607612524610">అప్‌డేట్‌</translation>
 <translation id="4738601419177586157"><ph name="TEXT" /> శోధన సూచన</translation>
+<translation id="473866660302034629"><ph name="TAB_TITLE" />, ఎంచుకున్న ట్యాబ్, <ph name="TOTAL" />‌లో <ph name="INDEX" />, ట్యాబ్‌ల మధ్య మారడానికి ఎడమ లేదా కుడి వైపు బాణం గుర్తును ఉపయోగించండి</translation>
 <translation id="4742407542027196863">పాస్‌వర్డ్‌లను మేనేజ్ చేయండి…</translation>
 <translation id="474270528725216349">సింక్ చేయబడిన పరికరాల్లో కనీసం 1 సైట్ నుండి</translation>
 <translation id="4743275772928623722">మీ సిస్టమ్ అప్‌డేట్ చేయబడింది, కానీ మీ యాప్‌లు, ఫైల్స్‌లో కొన్నింటిని రికవర్ చేయడం సాధ్యం కాలేదు. మీ యాప్‌లు ఆటోమేటిక్‌గా మళ్లీ డౌన్‌లోడ్ చేయబడతాయి.</translation>
@@ -2462,6 +2463,7 @@
 <translation id="4832961164064927107">బార్బెక్యూ &amp; గ్రిల్లింగ్</translation>
 <translation id="4835568975547260025">మీ ప్రశ్నలకు మరింత సందర్భోచితమైన సమాధానాలను అందించడంలో సహాయపడటానికి, Chrome ఆటోమేటిక్‌గా సంబంధిత ఓపెన్ ట్యాబ్‌లను షేర్ చేస్తుంది.</translation>
 <translation id="4840250757394056958">మీ Chrome హిస్టరీని చూడండి</translation>
+<translation id="4842365697443353018">తర్వాత పేమెంట్ చేయడానికి ఫారమ్‌ను క్లియర్ చేయండి</translation>
 <translation id="484462545196658690">ఆటో</translation>
 <translation id="4844937814014739139">షేర్ చేసిన ట్యాబ్‌లను స్క్రోల్ చేయడం, జూమ్ చేయడం</translation>
 <translation id="484671803914931257"><ph name="MERCHANT_NAME" />, మరి కొందరి నుండి డిస్కౌంట్ పొందండి</translation>
@@ -3084,6 +3086,7 @@
 <translation id="5784606427469807560">మీ కార్డ్‌ను నిర్ధారించడంలో సమస్య ఏర్పడింది. మీ ఇంటర్నెట్ కనెక్షన్‌ని చెక్ చేసి, మళ్లీ ట్రై చేయండి.</translation>
 <translation id="5785756445106461925">అలాగే, ఈ పేజీలో సురక్షితం కాని ఇతర వనరులు ఉన్నాయి. ఈ వనరులను బదిలీ చేస్తున్నప్పుడు ఇతరులు చూడగలరు మరియు దాడికి పాల్పడేవారు పేజీ రూపాన్ని మార్చేలా వీటిని ఎడిట్ చేయగలరు.</translation>
 <translation id="5787146423283493983">కీ ఒప్పందాలు</translation>
+<translation id="5789643057113097023">.</translation>
 <translation id="5793317771769868848">ఈ పరికరం నుండి ఈ పేమెంట్ ఆప్షన్ తొలగించబడుతుంది</translation>
 <translation id="5794065675298686371">ధర ట్రాకింగ్ నోటిఫికేషన్‌లను ఆన్ చేయండి</translation>
 <translation id="5797984091151707075">అడ్మిన్ పాలసీ బ్లాక్ చేసింది</translation>
@@ -3501,7 +3504,6 @@
 <translation id="6424600253695044005">క్లౌడ్ స్టోరేజ్</translation>
 <translation id="6425092077175753609">విశిష్టం</translation>
 <translation id="6427730057873428458">గేట్ ఫోల్డ్</translation>
-<translation id="6428450836711225518">మీ ఫోన్ నంబర్‌ను ధృవీకరించండి</translation>
 <translation id="6429267199680088961">A4 ట్యాబ్</translation>
 <translation id="643051589346665201">Google పాస్‌వర్డ్‌ను మార్చండి</translation>
 <translation id="6431556523611594411">ఓపెన్ ట్యాబ్‌లను షేర్ చేయండి</translation>
@@ -3749,7 +3751,6 @@
 <translation id="6820143000046097424">సీరియల్ పోర్ట్‌లు</translation>
 <translation id="6820686453637990663">CVC</translation>
 <translation id="6820949753458790123">సులభ వాయిదాలలో పేమెంట్ చేయండి</translation>
-<translation id="6822745163454377107">ఈ థ్రెడ్‌తో మీ ఓపెన్ ట్యాబ్‌లను షేర్ చేయడం ద్వారా వేగవంతమైన, మరింత అనుకూలమైన సమాధానాలను పొందండి.</translation>
 <translation id="6825578344716086703"><ph name="DOMAIN" />ను చేరుకోవడానికి మీరు ప్రయత్నించారు, కానీ సర్వర్ (SHA-1 వంటి) బలహీనమైన సంతకం అల్గారిథమ్‌ను ఉపయోగించి సంతకం చేసిన ప్రమాణపత్రాన్ని అందించింది. అంటే సర్వర్ అందించిన భద్రత ఆధారాలు నకిలీ కావచ్చు మరియు సర్వర్ మీరు ఊహించిన సర్వర్ కాకపోవచ్చు (మీరు హ్యాకర్‌తో పరస్పర చర్య చేస్తుండవచ్చు).</translation>
 <translation id="6826993739343257035">ARను అనుమతించాలా?</translation>
 <translation id="6828150717884939426">కాల్ చేయడం</translation>
@@ -4450,7 +4451,6 @@
 <translation id="7874796722855317864">"<ph name="PROXY_UNKNOWN_CONDITION" />" అనేది తెలిసిన కండీషన్ రకం కాదు.</translation>
 <translation id="7877007680666472091">సురక్షితమైన కంటెంట్ IDలు</translation>
 <translation id="7878562273885520351">మీ పాస్‌వర్డ్ ఎవరికైనా తెలిసిపోయి ఉండవచ్చు</translation>
-<translation id="7881044256965445977">సెర్చ్ చేసి, మీ లోకల్ నెట్‌వర్క్‌లో ఏదైనా పరికరానికి కనెక్ట్ చేయండి</translation>
 <translation id="7885670691503039914">ఏదైనా సైట్‌లో ధర తగ్గితే, మీరు ఈమెయిల్ అలర్ట్‌లను పొందుతారు. ఈ పేజీ <ph name="LAST_BOOKMARKS_FOLDER" /> బుక్‌మార్క్ ఫోల్డర్‌లో సేవ్ అవుతుంది.</translation>
 <translation id="7886897188117641322">యాడ్‌లను వ్యక్తిగతీకరించడంలో సహాయపడటానికి ఏ విస్తృత కేటగిరీలు టాపిక్‌లను ఉపయోగించవచ్చో ఎంచుకోండి</translation>
 <translation id="7887683347370398519">మీ CVCని చెక్ చేసి, మళ్లీ ట్రై చేయండి</translation>
@@ -4844,6 +4844,7 @@
 <translation id="8511402995811232419">కుక్కీలను మేనేజ్ చేయండి</translation>
 <translation id="851353418319061866">ఖచ్చితత్వ తనిఖీ</translation>
 <translation id="8513580896341796021">డౌన్‌లోడ్ ప్రారంభించబడింది. దీన్ని చూడటానికి, |<ph name="ACCELERATOR" />|‌ను నొక్కండి.</translation>
+<translation id="8515544520486085367">ఆటోఫిల్ పేమెంట్</translation>
 <translation id="8519753333133776369">మీ అడ్మినిస్ట్రేటర్ అనుమతించిన HID పరికరం</translation>
 <translation id="8521013008769249764">సోఫాలు &amp; చేతులు పెట్టుకొని సౌకర్యవంతంగా కూర్చునే కుర్చీలు</translation>
 <translation id="8521812709849134608">కౌంటర్‍టాప్‍లు</translation>
@@ -4976,7 +4977,6 @@
 <translation id="8737685506611670901"><ph name="REPLACED_HANDLER_TITLE" />కి బదులుగా <ph name="PROTOCOL" /> లింక్‌లను తెరవాలనుకుంటోంది</translation>
 <translation id="8738058698779197622">సురక్షిత కనెక్షన్‌ను ఏర్పాటు చేయడానికి, మీ గడియారాన్ని సరైన సమయానికి సెట్ చేయాలి. ఎందుకంటే వెబ్‌సైట్‌లు వాటిని గుర్తించడానికి ఉపయోగించే సర్టిఫికెట్‌లు నిర్దిష్ట కాలవ్యవధులలో మాత్రమే చెల్లుబాటు అవుతాయి. మీ పరికరం యొక్క గడియారం సమయం తప్పుగా ఉన్నందున, Chromium ఈ సర్టిఫికెట్‌లను ధృవీకరించలేకపోయింది.</translation>
 <translation id="8740359287975076522"><ph name="HOST_NAME" /> &lt;abbr id="dnsDefinition"&gt;DNS అడ్రస్‌&lt;/abbr&gt; కనుగొనబడలేదు. సమస్యను నిర్ధారిస్తోంది.</translation>
-<translation id="8742371904523228557"><ph name="ORIGIN" /> కోసం మీ కోడ్ <ph name="ONE_TIME_CODE" /></translation>
 <translation id="874918643257405732">ఈ ట్యాబ్‌ను బుక్‌మార్క్ చేయండి</translation>
 <translation id="8751426954251315517">దయచేసి తర్వాత మళ్లీ ట్రై చేయండి</translation>
 <translation id="8753913772043329557">పాలసీ లాగ్‌లు</translation>
@@ -5154,7 +5154,6 @@
 <translation id="9042827002460091668">మీ ఇంటర్నెట్ కనెక్షన్‌ను చెక్ చేసి, మళ్లీ ట్రై చేయండి</translation>
 <translation id="9043161870923715789">AI మోడ్</translation>
 <translation id="9045525010788763347"><ph name="RESULT_MODIFIED_DATE" /> - <ph name="RESULT_PRODUCT_SOURCE" /></translation>
-<translation id="9046578823518542618"><ph name="URL" />, మీ లోకల్ నెట్‌వర్క్‌లోని ఏదైనా డివైజ్‌ను సెర్చ్ చేసి, దానికి కనెక్ట్ అవ్వాలనుకుంటోంది</translation>
 <translation id="9046864189129893978">(<ph name="MICS_COUNT" />) మైక్రోఫోన్‌లు</translation>
 <translation id="9046865906192819796">'ఇప్పుడు కొనండి, పేమెంట్ తర్వాత చేయండి' సర్వీస్ నియమాల స్క్రీన్ సగం ఎత్తులో తెరవబడింది.</translation>
 <translation id="9047528041803621289">మీ ఆటోమేటిక్ సెట్టింగ్, వెబ్‌లో సెర్చ్ చేయడానికి మిమ్మల్ని అనుమతిస్తుంది. మీరు దీన్ని సెట్టింగ్‌ల్లో మార్చవచ్చు.</translation>
@@ -5268,7 +5267,6 @@
 <translation id="9204089334327209740">అప్‌లోడ్ పూర్తయిన తర్వాత, మీరు మీ ఫైల్స్‌ను <ph name="CLOUD_PROVIDER" />లో సవరించవచ్చు. ట్రాష్‌లోని ఏవైనా ఫైల్స్‌తో సహా లోకల్ స్టోరేజ్ ఆటోమేటిక్‌గా తీసివేయబడుతుంది.</translation>
 <translation id="9205078245616868884">మీ సింక్‌ రహస్య పదబంధంతో మీ డేటా ఎన్‌క్రిప్ట్ చేయ‌బ‌డింది. సింక్‌ను ప్రారంభించడానికి దీన్ని నమోదు చేయండి.</translation>
 <translation id="920643408853370361">ప్రయాణ బీమా</translation>
-<translation id="9206639970165643781">ఈ థ్రెడ్‌లో మెరుగైన సమాధానాల కోసం సంబంధిత తెరిచిన ట్యాబ్‌లను షేర్ చేయాలా?</translation>
 <translation id="9207861905230894330">కథనాన్ని జోడించడంలో విఫలమైంది.</translation>
 <translation id="9209339767782560829">మీ లాగిన్ సర్టిఫికెట్‌ను ఉపయోగించడంలో సమస్య ఏర్పడింది.</translation>
 <translation id="9210152531668884481">నేను ఆమోదిస్తున్నాను</translation>

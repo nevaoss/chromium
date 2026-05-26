@@ -154,9 +154,8 @@ bool IsAudible(const AudioBus* rendered_data) {
 
   uint32_t data_size = rendered_data->length();
   for (uint32_t k = 0; k < rendered_data->NumberOfChannels(); ++k) {
-    const float* data = rendered_data->Channel(k)->Data();
-    float channel_energy;
-    vector_math::Vsvesq(data, &channel_energy, data_size);
+    base::span<const float> data = rendered_data->Channel(k)->Span();
+    float channel_energy = vector_math::Vsvesq(data, data_size);
     energy += channel_energy;
   }
 
@@ -659,13 +658,20 @@ AudioContext::AudioContext(LocalDOMWindow& window,
   // once the context is constructed.  We need the destination to be initialized
   // so we have to compute it here.
   //
-  // TODO(hongchan): Due to the incompatible constructor between
+  // Per specification, baseLatency is the processing latency of the
+  // AudioContext caused by the rendering quantum size or the hardware buffer
+  // size, whichever is greater.
+  //
+  // TODO(crbug.com/512526279): Due to the incompatible constructor between
   // AudioDestinationNode and RealtimeAudioDestinationNode, casting directly
   // from `destination()` is impossible. This is a temporary workaround until
   // the refactoring is completed.
-  base_latency_ =
-      GetRealtimeAudioDestinationNode()->GetOwnHandler().GetFramesPerBuffer() /
-      static_cast<double>(sampleRate());
+  size_t base_latency_frames =
+      std::max(static_cast<size_t>(GetRealtimeAudioDestinationNode()
+                                       ->GetOwnHandler()
+                                       .GetFramesPerBuffer()),
+               static_cast<size_t>(renderQuantumSize()));
+  base_latency_ = base_latency_frames / static_cast<double>(sampleRate());
   SendLogMessage(__func__, String::Format("=> (base latency=%.3f seconds))",
                                           base_latency_));
 
@@ -1777,7 +1783,7 @@ void AudioContext::OnDevicesChanged(mojom::blink::MediaDeviceType device_type,
 
   if (device_type == mojom::blink::MediaDeviceType::kMediaAudioOutput) {
     output_device_ids_.clear();
-    for (auto device : devices) {
+    for (const auto& device : devices) {
       if (device.device_id == media::AudioDeviceDescription::kDefaultDeviceId) {
         // Use the empty string to represent the default audio sink.
         output_device_ids_.insert(g_empty_string);

@@ -316,7 +316,6 @@
 <translation id="1463793142714244641">Таймшер и недвижимость для отдыха</translation>
 <translation id="1465457928007067810">Код IBAN сохранен в аккаунте Google.</translation>
 <translation id="1467432559032391204">Слева</translation>
-<translation id="1468653229182955856">Чтобы продолжить работу на сайте <ph name="TOP_ORIGIN" />, введите код <ph name="ONE_TIME_CODE" /> для фрейма <ph name="EMBEDDED_ORIGIN" />.</translation>
 <translation id="1472675084647422956">Показать больше</translation>
 <translation id="1473183651233018052">JIS B10</translation>
 <translation id="1473495410389165587">Добавьте ещё три слова или более, чтобы получить помощь с написанием.</translation>
@@ -1673,7 +1672,6 @@
 <translation id="3600246354004376029"><ph name="TITLE" />, <ph name="DOMAIN" />, <ph name="TIME" /></translation>
 <translation id="3600492954573979888">Кнопка "Открыть настройки конфиденциальности в аккаунте Google". Нажмите ее, чтобы открыть настройки конфиденциальности в аккаунте Google.</translation>
 <translation id="3603507503523709">Приложение заблокировано администратором</translation>
-<translation id="3605082766859363473">Выбран режим ИИ</translation>
 <translation id="3605899229568538311">5 x 5 дюймов</translation>
 <translation id="3606917451836803637">Телевизионные шоу и программы</translation>
 <translation id="3608932978122581043">Задать ориентацию</translation>
@@ -1821,6 +1819,7 @@
 <translation id="380865868633614173">Сохраняется информация о карте</translation>
 <translation id="3810770279996899697">Менеджеру паролей необходим доступ к Связке ключей macOS</translation>
 <translation id="3810973564298564668">Управление</translation>
+<translation id="3811328723651698330"><ph name="STRING_1" />, <ph name="STRING_2" /></translation>
 <translation id="3812398568375898177">Это важное обновление, которое улучшает производительность приложений для Android на ChromeOS.</translation>
 <translation id="3814865536373139791">Повысьте эффективность управления правилами в организации</translation>
 <translation id="3815434930383843058">8 x 12 дюймов</translation>
@@ -1860,6 +1859,7 @@
 <translation id="3875783148670536197">Подробнее</translation>
 <translation id="3877603629930976930">Не делиться</translation>
 <translation id="3878445208930547646">Копировать материалы этого сайта запрещено</translation>
+<translation id="3879674895057686427">Выбрать язык перевода</translation>
 <translation id="3879748587602334249">Менеджер скачивания</translation>
 <translation id="3880456882942693779">Искусство и развлечения</translation>
 <translation id="3880589673277376494">Интернет и телекоммуникации</translation>
@@ -2019,7 +2019,6 @@
 <translation id="411918202192379658">Автозаполнение стало ещё удобнее</translation>
 <translation id="4121428309786185360">Срок действия</translation>
 <translation id="4123572138124678573">Три отверстия снизу</translation>
-<translation id="4125597496726375563">Создать изображение (выбрано)</translation>
 <translation id="412601465078863288">Превышено время ожидания</translation>
 <translation id="4127317221386336246">Аксессуары</translation>
 <translation id="4129401438321186435">{COUNT,plural, =1{ещё 1 вариант}one{ещё # вариант}few{ещё # варианта}many{ещё # вариантов}other{ещё # варианта}}</translation>
@@ -2235,6 +2234,7 @@
 <translation id="443673843213245140">Прокси-сервер отключен, но при этом его конфигурация задана явным образом.</translation>
 <translation id="4438821706955556403">Средняя цена</translation>
 <translation id="4441832193888514600">Игнорируется, так как правило может быть настроено только на уровне облака.</translation>
+<translation id="4444062564459679679">Уже отправлено в Chrome на устройство <ph name="DEVICE_NAME" />.</translation>
 <translation id="4445133368066241428">Популярные темы</translation>
 <translation id="4445694043187340808"><ph name="STARTER_PACK_TABS_FOCUSED_FRIENDLY_MATCH_TEXT" />. Чтобы найти нужные вкладки, нажмите Ввод.</translation>
 <translation id="4445964943162061557">Это экспериментальная функция. Она не всегда работает корректно.</translation>
@@ -2399,6 +2399,7 @@
 <translation id="4736934858538408121">Виртуальная карта</translation>
 <translation id="473775607612524610">Обновить</translation>
 <translation id="4738601419177586157">Подсказка при поиске "<ph name="TEXT" />"</translation>
+<translation id="473866660302034629">Выбрана вкладка "<ph name="TAB_TITLE" />", <ph name="INDEX" /> из <ph name="TOTAL" />. Чтобы переключаться между вкладками, используйте клавиши со стрелками влево и вправо.</translation>
 <translation id="4742407542027196863">Управление паролями</translation>
 <translation id="474270528725216349">Источник: минимум 1 сайт на синхронизированных устройствах</translation>
 <translation id="4743275772928623722">Система обновлена, но некоторые приложения и файлы не удалось восстановить. Приложения будут заново скачаны автоматически.</translation>
@@ -2466,6 +2467,7 @@
 <translation id="4832961164064927107">Барбекю и гриль</translation>
 <translation id="4835568975547260025">Chrome будет по умолчанию делиться подходящими открытыми вкладками, чтобы вы получали более точные ответы на вопросы.</translation>
 <translation id="4840250757394056958">Посмотреть историю Chrome</translation>
+<translation id="4842365697443353018">Для оплаты в рассрочку очистите форму</translation>
 <translation id="484462545196658690">Авто</translation>
 <translation id="4844937814014739139">Изменение масштаба общих вкладок и их пролистывание</translation>
 <translation id="484671803914931257">Получите скидку в магазине "<ph name="MERCHANT_NAME" />" и у других продавцов</translation>
@@ -3088,6 +3090,7 @@
 <translation id="5784606427469807560">Не удалось подтвердить данные карты. Проверьте подключение к Интернету и повторите попытку.</translation>
 <translation id="5785756445106461925">Обратите внимание, что на странице обнаружен небезопасный контент. Возможно, при передаче ресурсы просматриваются третьими лицами, а злоумышленники могут получить доступ к странице и изменить ее поведение или внешний вид.</translation>
 <translation id="5787146423283493983">Согласование ключей</translation>
+<translation id="5789643057113097023">:</translation>
 <translation id="5793317771769868848">Этот способ оплаты будет удален с устройства.</translation>
 <translation id="5794065675298686371">Отслеживайте цены</translation>
 <translation id="5797984091151707075">Заблокировано правилом администратора.</translation>
@@ -3505,7 +3508,6 @@
 <translation id="6424600253695044005">Облачные хранилища</translation>
 <translation id="6425092077175753609">Material design</translation>
 <translation id="6427730057873428458">Фальцовка калиткой в два сгиба</translation>
-<translation id="6428450836711225518">Подтвердите номер телефона</translation>
 <translation id="6429267199680088961">A4 Tab</translation>
 <translation id="643051589346665201">Изменить пароль Google</translation>
 <translation id="6431556523611594411">Делиться открытыми вкладками</translation>
@@ -3753,7 +3755,6 @@
 <translation id="6820143000046097424">последовательные порты</translation>
 <translation id="6820686453637990663">CVC-код</translation>
 <translation id="6820949753458790123">Удобная рассрочка</translation>
-<translation id="6822745163454377107">Чтобы быстрее получать более точные ответы, предоставьте доступ к открытым вкладкам для этой цепочки.</translation>
 <translation id="6825578344716086703">Вы пытаетесь обратиться к серверу в домене <ph name="DOMAIN" />, но его сертификат подписан с помощью ненадежного алгоритма (например, SHA-1). Это означает, что учетные данные безопасности и сам сервер могут оказаться поддельными. Возможно, вы имеете дело со злоумышленниками.</translation>
 <translation id="6826993739343257035">Разрешить AR?</translation>
 <translation id="6828150717884939426">Позвонить</translation>
@@ -4454,7 +4455,6 @@
 <translation id="7874796722855317864">Неподдерживаемый тип условия (<ph name="PROXY_UNKNOWN_CONDITION" />).</translation>
 <translation id="7877007680666472091">идентификаторы защищенного контента</translation>
 <translation id="7878562273885520351">Злоумышленники могли узнать ваш пароль</translation>
-<translation id="7881044256965445977">Поиск устройств в локальной сети и подключение к ним</translation>
 <translation id="7885670691503039914">Если на одном из сайтов появится скидка, вы получите оповещение по электронной почте. Закладка будет сохранена в папку "<ph name="LAST_BOOKMARKS_FOLDER" />".</translation>
 <translation id="7886897188117641322">Выбирайте, какие категории тем могут использоваться для персонализации рекламы</translation>
 <translation id="7887683347370398519">Проверьте CVC-код и повторите попытку</translation>
@@ -4848,6 +4848,7 @@
 <translation id="8511402995811232419">Открыть настройки файлов cookie</translation>
 <translation id="851353418319061866">Проверка точности</translation>
 <translation id="8513580896341796021">Скачивание началось. Чтобы посмотреть файл, нажмите |<ph name="ACCELERATOR" />|.</translation>
+<translation id="8515544520486085367">Автозаполнение платежных данных</translation>
 <translation id="8519753333133776369">Разрешенное администратором HID-устройство</translation>
 <translation id="8521013008769249764">Диваны и кресла</translation>
 <translation id="8521812709849134608">Столешницы</translation>
@@ -4980,7 +4981,6 @@
 <translation id="8737685506611670901">обработку всех ссылок типа "<ph name="PROTOCOL" />" вместо сервиса <ph name="REPLACED_HANDLER_TITLE" /></translation>
 <translation id="8738058698779197622">Для создания безопасного подключения необходимо, чтобы показания системных часов были верны. Причина в том, что сертификаты для идентификации сайтов имеют ограниченный срок действия. Если часы на устройстве неточны, Chromium не может проверить актуальность этих сертификатов.</translation>
 <translation id="8740359287975076522">Не удается найти &lt;abbr id="dnsDefinition"&gt;DNS-адрес&lt;/abbr&gt; сайта <ph name="HOST_NAME" />. Выполняется диагностика.</translation>
-<translation id="8742371904523228557">Ваш код для сервиса <ph name="ORIGIN" />: <ph name="ONE_TIME_CODE" />.</translation>
 <translation id="874918643257405732">Добавить страницу в закладки</translation>
 <translation id="8751426954251315517">Повторите попытку позже</translation>
 <translation id="8753913772043329557">Журналы правила</translation>
@@ -5158,7 +5158,6 @@
 <translation id="9042827002460091668">Проверьте подключение к интернету и повторите попытку.</translation>
 <translation id="9043161870923715789">Режим ИИ</translation>
 <translation id="9045525010788763347"><ph name="RESULT_MODIFIED_DATE" /> – <ph name="RESULT_PRODUCT_SOURCE" /></translation>
-<translation id="9046578823518542618"><ph name="URL" /> запрашивает разрешение на поиск устройств в локальной сети и подключение к ним.</translation>
 <translation id="9046864189129893978">Микрофоны (<ph name="MICS_COUNT" />)</translation>
 <translation id="9046865906192819796">Экран с условиями покупки в рассрочку открыт наполовину.</translation>
 <translation id="9047528041803621289">Поисковая система по умолчанию будет помогать вам находить нужную информацию. Вы можете выбрать другую в настройках.</translation>
@@ -5272,7 +5271,6 @@
 <translation id="9204089334327209740">Когда загрузка завершится, вы сможете изменять свои файлы в сервисе <ph name="CLOUD_PROVIDER" />. Данные в локальном хранилище, в том числе в корзине, будут автоматически удалены.</translation>
 <translation id="9205078245616868884">Данные зашифрованы с помощью кодовой фразы. Введите ее, чтобы начать синхронизацию.</translation>
 <translation id="920643408853370361">Туристическое страхование</translation>
-<translation id="9206639970165643781">Поделиться подходящими открытыми вкладками, чтобы улучшить ответы в этой цепочке?</translation>
 <translation id="9207861905230894330">Не удалось добавить статью</translation>
 <translation id="9209339767782560829">Возникла проблема с вашим сертификатом для входа.</translation>
 <translation id="9210152531668884481">Сохранить</translation>

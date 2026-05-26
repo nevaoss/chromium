@@ -26,6 +26,7 @@
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
 #include "chrome/browser/ui/toolbar_controller_util.h"
+#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_button.h"
 #include "chrome/browser/ui/views/toolbar/overflow_button.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_button_status_indicator.h"
@@ -37,6 +38,7 @@
 #include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/gfx/paint_vector_icon.h"
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/controls/menu/menu_item_view.h"
@@ -234,12 +236,17 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
       ToolbarController::ResponsiveElementInfo(
           ToolbarController::ElementIdInfo{
               kToolbarHomeButtonElementId, IDS_OVERFLOW_MENU_ITEM_TEXT_HOME,
-              &kNavigateHomeChromeRefreshOldIcon, kToolbarHomeButtonElementId},
+              &(features::IsRoundedIconsEnabled()
+                    ? kHomeIcon
+                    : kNavigateHomeChromeRefreshOldIcon),
+              kToolbarHomeButtonElementId},
           /*is_section_end=*/false),
       ToolbarController::ResponsiveElementInfo(
           ToolbarController::ElementIdInfo{
               kToolbarSplitTabsToolbarButtonElementId,
-              IDS_OVERFLOW_MENU_ITEM_TEXT_SPLIT_TABS, &kSplitSceneOldIcon,
+              IDS_OVERFLOW_MENU_ITEM_TEXT_SPLIT_VIEW,
+              &(features::IsRoundedIconsEnabled() ? kSplitSceneIcon
+                                                  : kSplitSceneOldIcon),
               kToolbarSplitTabsToolbarButtonElementId},
           /*is_section_end=*/false),
       ToolbarController::ResponsiveElementInfo(
@@ -287,30 +294,31 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
            ToolbarController::ElementIdInfo(
                kToolbarBatterySaverButtonElementId,
                IDS_OVERFLOW_MENU_ITEM_TEXT_ENERGY_SAVER,
-               &kBatterySaverRefreshOldIcon,
+               &(features::IsRoundedIconsEnabled()
+                     ? kEnergySavingsLeafIcon
+                     : kBatterySaverRefreshOldIcon),
                kToolbarBatterySaverButtonElementId,
                kToolbarBatterySaverBubbleElementId),
-           /*is_section_end=*/false),
-       ToolbarController::ResponsiveElementInfo(
-           ToolbarController::ElementIdInfo(kToolbarChromeLabsButtonElementId,
-                                            IDS_OVERFLOW_MENU_ITEM_TEXT_LABS,
-                                            &kScienceOldIcon,
-                                            kToolbarChromeLabsButtonElementId,
-                                            kToolbarChromeLabsBubbleElementId),
            /*is_section_end=*/false),
        ToolbarController::ResponsiveElementInfo(
            ToolbarController::ElementIdInfo(
                kToolbarMediaButtonElementId,
                IDS_OVERFLOW_MENU_ITEM_TEXT_MEDIA_CONTROLS,
-               &kMediaToolbarButtonChromeRefreshOldIcon,
+               &(features::IsRoundedIconsEnabled()
+                     ? kQueueMusicIcon
+                     : kMediaToolbarButtonChromeRefreshOldIcon),
                kToolbarMediaButtonElementId, kToolbarMediaBubbleElementId),
            /*is_section_end=*/true),
        ToolbarController::ResponsiveElementInfo(
            ToolbarController::ElementIdInfo(
                kToolbarAvatarButtonElementId,
                IDS_OVERFLOW_MENU_ITEM_TEXT_PROFILE,
-               is_incognito ? (&kIncognitoRefreshMenuOldIcon)
-                            : (&kUserAccountAvatarRefreshOldIcon),
+               is_incognito ? (&(features::IsRoundedIconsEnabled()
+                                     ? kIncognitoIcon
+                                     : kIncognitoRefreshMenuOldIcon))
+                            : (&(features::IsRoundedIconsEnabled()
+                                     ? kAccountCircleIcon
+                                     : kUserAccountAvatarRefreshOldIcon)),
                kToolbarAvatarButtonElementId, kToolbarAvatarBubbleElementId),
            /*is_section_end=*/false)});
   return elements;
@@ -319,10 +327,9 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
 std::vector<ui::ElementIdentifier>
 ToolbarController::GetDefaultOverflowOrder() {
   return std::vector<ui::ElementIdentifier>(
-      {kToolbarHomeButtonElementId, kToolbarChromeLabsButtonElementId,
-       kToolbarMediaButtonElementId, kToolbarForwardButtonElementId,
-       kToolbarBatterySaverButtonElementId, kToolbarAvatarButtonElementId,
-       kToolbarSplitTabsToolbarButtonElementId,
+      {kToolbarHomeButtonElementId, kToolbarMediaButtonElementId,
+       kToolbarForwardButtonElementId, kToolbarBatterySaverButtonElementId,
+       kToolbarAvatarButtonElementId, kToolbarSplitTabsToolbarButtonElementId,
        ContextualTasksButton::kContextualTasksToolbarButton});
 }
 
@@ -335,7 +342,6 @@ std::string ToolbarController::GetActionNameFromElementIdentifier(
       identifier_to_action_name_map(
           {{kToolbarAvatarButtonElementId, "AvatarButton"},
            {kToolbarBatterySaverButtonElementId, "BatterySaverButton"},
-           {kToolbarChromeLabsButtonElementId, "ChromeLabsButton"},
            {kExtensionsMenuButtonElementId, "ExtensionsMenuButton"},
            {kToolbarForwardButtonElementId, "ForwardButton"},
            {kToolbarHomeButtonElementId, "HomeButton"},
@@ -408,7 +414,20 @@ bool ToolbarController::PopOut(ui::ElementIdentifier identifier) {
   auto& original = it->second->original_spec;
 
   if (original.has_value()) {
-    element->SetProperty(views::kFlexBehaviorKey, original.value());
+    if (base::FeatureList::IsEnabled(features::kToolbarProfileChipResizing)) {
+      // Some elements (e.g. profile chip) use flex rules that allow
+      // snapping/scaling to zero. When popping out, elements should never be
+      // below the mininmum size.
+      element->SetProperty(
+          views::kFlexBehaviorKey,
+          views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+                                   views::MaximumFlexSizeRule::kPreferred)
+              .WithOrder((*original).order())
+              .WithWeight((*original).weight())
+              .WithAlignment((*original).alignment()));
+    } else {
+      element->SetProperty(views::kFlexBehaviorKey, original.value());
+    }
   } else {
     element->ClearProperty(views::kFlexBehaviorKey);
   }

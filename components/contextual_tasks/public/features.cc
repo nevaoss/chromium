@@ -174,6 +174,11 @@ const base::FeatureParam<bool> kOnlyUseTitlesForSimilarity(
     "ContextualTasksContextOnlyUseTitles",
     false);
 
+const base::FeatureParam<bool> kDeduplicateRelevantTabsByUrl(
+    &kContextualTasksContext,
+    "ContextualTasksContextDeduplicateByUrl",
+    false);
+
 const base::FeatureParam<double> kTabSelectionScoreThreshold{
     &kContextualTasksContext,
     "ContextualTasksContextTabSelectionScoreThreshold", 0.4};
@@ -479,10 +484,6 @@ bool GetIsContextualTasksSuggestionsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksSuggestionsEnabled);
 }
 
-bool GetIsSmartTabSharingEnabled() {
-  return base::FeatureList::IsEnabled(kContextualTasksContext) &&
-         kContextualTasksContextSmartTabSharing.Get();
-}
 
 base::TimeDelta GetSmartTabSharingTabSelectionTimeout() {
   if (kSmartTabSharingTabSelectionTimeout.Get().is_positive()) {

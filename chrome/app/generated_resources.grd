@@ -689,6 +689,9 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_OPENLINKINPROFILES" desc="The name of the open a link as a different user context menu">
             Open link as
           </message>
+          <message name="IDS_CONTENT_CONTEXT_OPENLINKINPROFILES_V2" desc="The name of the open a link as a different user context menu">
+            Open link as
+          </message>
           <message name="IDS_CONTENT_CONTEXT_OPENLINKINPROFILE" desc="The name of the open a link as a different user command">
             Open link as <ph name="USER">$1<ex>user@gmail.com</ex></ph>
           </message>
@@ -999,6 +1002,9 @@ are declared in tools/grit/grit_args.gni.
           </message>
           <message name="IDS_CONTENT_CONTEXT_OPENLINKINPROFILES" desc="In Title Case: The name of the open a link as a different user context menu">
             Open Link as
+          </message>
+          <message name="IDS_CONTENT_CONTEXT_OPENLINKINPROFILES_V2" desc="In Title Case: The name of the open a link as a different user context menu">
+            Open Link As
           </message>
           <message name="IDS_CONTENT_CONTEXT_OPENLINKINPROFILE" desc="In Title Case: The name of the open a link as a different user command">
             Open Link as <ph name="USER">$1<ex>user@gmail.com</ex></ph>
@@ -6507,6 +6513,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <if expr="enable_extensions_core">
         <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON" desc="The text of the request acces button that appears on the toolbar when an extension requests access to the site" formatter_data="android_java">
           Allow <ph name="EXTENSIONS_REQUESTING_ACCESS_COUNT">$1<ex>3</ex></ph>?
+        </message>
+        <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON_ACCESSIBLE_NAME" desc="Combined label and description for the request access button used by screen readers." formatter_data="android_java">
+          <ph name="BUTTON_TEXT">%1$s<ex>Allow 1</ex></ph>, <ph name="TOOLTIP_TEXT">%2$s<ex>Click to allow on google.com: Extension Name</ex></ph>
         </message>
         <message name="IDS_EXTENSIONS_REQUEST_ACCESS_BUTTON_DISMISSED_TEXT" desc="The text of the button that appears on the toolbar after the user grants access to an extension that requested access to the current site." formatter_data="android_java">
           Allowed
@@ -15277,6 +15286,27 @@ Please help our engineers fix this problem. Tell us what happened right before y
         Set as default
       </message>
 
+      <if expr="is_win">
+        <message name="IDS_RESTORE_WINDOW_MENU_WIN" desc="The Windows browser window menu item text for restoring the window.">
+          &amp;Restore
+        </message>
+        <message name="IDS_MOVE_WINDOW_MENU_WIN" desc="The Windows browser window menu item text for moving the window.">
+          &amp;Move
+        </message>
+        <message name="IDS_SIZE_WINDOW_MENU_WIN" desc="The Windows browser window menu item text for sizing the window.">
+          &amp;Size
+        </message>
+        <message name="IDS_MINIMIZE_WINDOW_MENU_WIN" desc="The Windows browser window menu item text for minimizing the window.">
+          Mi&amp;nimize
+        </message>
+        <message name="IDS_MAXIMIZE_WINDOW_MENU_WIN" desc="The Windows browser window menu item text for maximizing the window.">
+          Ma&amp;ximize
+        </message>
+        <message name="IDS_CLOSE_WINDOW_MENU_WIN" desc="The Windows browser window menu item text for closing the window.">
+          &amp;Close
+        </message>
+      </if>
+
       <if expr="is_linux">
         <message name="IDS_MINIMIZE_WINDOW_MENU" desc="The Linux browser window menu item text for minimizing the window.">
           Minimize
@@ -19392,8 +19422,8 @@ Please help our engineers fix this problem. Tell us what happened right before y
     <message name="IDS_OVERFLOW_MENU_ITEM_TEXT_SIDE_PANEL" desc="Text of overflow menu item of side panel button">
       Open side panel
     </message>
-    <message name="IDS_OVERFLOW_MENU_ITEM_TEXT_SPLIT_TABS" desc="Text of overflow menu item of split tabs button">
-      Split Tabs
+    <message name="IDS_OVERFLOW_MENU_ITEM_TEXT_SPLIT_VIEW" desc="Text of overflow menu item of split tabs button">
+      Split View
     </message>
     <message name="IDS_OVERFLOW_MENU_ITEM_TEXT_CONTEXTUAL_TASKS" desc="Text of overflow menu item of contextual tasks button">
       Contextual Tasks

@@ -65,16 +65,16 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentRecyclerViewAdapter.FuseboxAttachmentType;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachmentButtonType;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupState;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteController;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -86,6 +86,8 @@ import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.browser_ui.util.ChromeItemPickerExtras;
 import org.chromium.components.browser_ui.util.ChromeItemPickerUtils;
+import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
+import org.chromium.components.browser_ui.widget.gesture.BackPressHandler.BackPressResult;
 import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.feature_engagement.Tracker;
@@ -97,6 +99,7 @@ import org.chromium.components.omnibox.IconProto.Icon;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
 import org.chromium.components.omnibox.InputTypeProto.InputType;
 import org.chromium.components.omnibox.ModelConfigProto.ModelConfig;
+import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.omnibox.SectionConfigProto.SectionConfig;
@@ -143,6 +146,7 @@ public class FuseboxMediatorUnitTest {
     @Mock private Tracker mTracker;
     @Mock private ScrimManager mScrimManager;
     @Mock private KeyboardVisibilityDelegate mKeyboardVisibilityDelegate;
+    @Mock private BackPressManager mBackPressManager;
 
     @Captor private ArgumentCaptor<Intent> mIntentCaptor;
 
@@ -155,13 +159,12 @@ public class FuseboxMediatorUnitTest {
     private SettableNonNullObservableSupplier<TabModelSelector> mTabModelSelectorSupplier;
     private final SettableNonNullObservableSupplier<@FuseboxState Integer> mFuseboxStateSupplier =
             ObservableSuppliers.createNonNull(FuseboxState.DISABLED);
-    private final SettableNonNullObservableSupplier<@FuseboxLayoutMode Integer>
-            mFuseboxLayoutModeSupplier =
-                    ObservableSuppliers.createNonNull(FuseboxLayoutMode.SEPARATED);
     private final SettableMonotonicObservableSupplier<InputState> mInputStateSupplier =
             ObservableSuppliers.createMonotonic();
     private final SettableNonNullObservableSupplier<List<SuggestedTabInfo>> mSuggestedTabsSupplier =
             ObservableSuppliers.createNonNull(List.of());
+    private final SettableNonNullObservableSupplier<@PopupState Integer> mPopupStateSupplier =
+            ObservableSuppliers.createNonNull(PopupState.HIDDEN);
 
     private final Bitmap mBitmap = Bitmap.createBitmap(100, 100, Bitmap.Config.ARGB_8888);
 
@@ -226,11 +229,12 @@ public class FuseboxMediatorUnitTest {
                         mViewHolder,
                         mTabModelSelectorSupplier,
                         mFuseboxStateSupplier,
-                        mFuseboxLayoutModeSupplier,
+                        mPopupStateSupplier,
                         mSnackbarManager,
                         mClipboard,
                         mScrimManager,
-                        () -> null);
+                        () -> null,
+                        mBackPressManager);
         mMediator.beginInput(createSession());
     }
 
@@ -436,7 +440,7 @@ public class FuseboxMediatorUnitTest {
     @Test
     public void updateFuseboxState_desktopPlatform_emptyModelList_isCompact() {
         OmniboxFeatures.sCompactFusebox.setForTesting(true);
-        OmniboxFeatures.setIsDesktopPlatformForTesting(true);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         mInput.setRequestType(AutocompleteRequestType.AI_MODE);
         recreateMediator();
 
@@ -446,7 +450,7 @@ public class FuseboxMediatorUnitTest {
     @Test
     public void updateFuseboxState_desktopPlatform_nonEmptyModelList_isExpanded() {
         OmniboxFeatures.sCompactFusebox.setForTesting(true);
-        OmniboxFeatures.setIsDesktopPlatformForTesting(true);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         recreateMediator();
 
         addAttachment("title", "token", FuseboxAttachmentType.ATTACHMENT_IMAGE);
@@ -455,9 +459,22 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    public void testClickRequestTypeChip_transitionsToCompactWhenHasAttachments() {
+        OmniboxFeatures.sCompactFusebox.setForTesting(true);
+        recreateMediator();
+
+        addAttachment("title", "token", FuseboxAttachmentType.ATTACHMENT_IMAGE);
+        assertEquals(FuseboxState.EXPANDED, mModel.get(FuseboxProperties.FUSEBOX_STATE).intValue());
+
+        mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CLICKED).run();
+
+        assertEquals(FuseboxState.COMPACT, mModel.get(FuseboxProperties.FUSEBOX_STATE).intValue());
+    }
+
+    @Test
     public void updateFuseboxState_notDesktop_textWrapping_isExpanded() {
         OmniboxFeatures.sCompactFusebox.setForTesting(true);
-        OmniboxFeatures.setIsDesktopPlatformForTesting(false);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
         mInput.setRequestType(AutocompleteRequestType.SEARCH);
         recreateMediator();
 
@@ -469,7 +486,7 @@ public class FuseboxMediatorUnitTest {
     @Test
     public void updateFuseboxState_notDesktop_notSearchRequest_isExpanded() {
         OmniboxFeatures.sCompactFusebox.setForTesting(true);
-        OmniboxFeatures.setIsDesktopPlatformForTesting(false);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
         mInput.setRequestType(AutocompleteRequestType.AI_MODE);
         recreateMediator();
 
@@ -478,7 +495,7 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void updateFuseboxState_setsShowRequestTypeButton_true() {
-        OmniboxFeatures.setIsDesktopPlatformForTesting(false);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
         mInput.setRequestType(AutocompleteRequestType.AI_MODE);
         recreateMediator();
 
@@ -487,7 +504,7 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void updateFuseboxState_setsShowRequestTypeButton_false_conventional() {
-        OmniboxFeatures.setIsDesktopPlatformForTesting(false);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
         mInput.setRequestType(AutocompleteRequestType.SEARCH);
         recreateMediator();
 
@@ -496,7 +513,7 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void updateFuseboxState_setsShowRequestTypeButton_false_desktopAiMode() {
-        OmniboxFeatures.setIsDesktopPlatformForTesting(true);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         mInput.setRequestType(AutocompleteRequestType.AI_MODE);
         recreateMediator();
 
@@ -539,6 +556,13 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    public void onAddButtonClicked_updatesPopupStateSupplier() {
+        assertEquals(PopupState.HIDDEN, mPopupStateSupplier.get().intValue());
+        mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED).run();
+        assertEquals(PopupState.FLOATING, mPopupStateSupplier.get().intValue());
+    }
+
+    @Test
     public void onHidePopup_bottomSheet_showsKeyboardIfFocused() {
         OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
         ConstraintLayout spyParent = spy(mViewHolder.parentView);
@@ -569,7 +593,7 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void testPopupShowHide_triggersScrim() {
-        OmniboxFeatures.setIsDesktopPlatformForTesting(false);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
         OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
         recreateMediator();
         Runnable runnable = mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED);
@@ -582,6 +606,22 @@ public class FuseboxMediatorUnitTest {
         // Hide popup.
         runnable.run();
         verify(mScrimManager).hideScrim(any(), eq(true));
+    }
+
+    @Test
+    public void testDoubleBeginInput_hidesPreviousScrim() {
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
+        mInput.setFocusReason(OmniboxFocusReason.FAKE_BOX_PLUS_BUTTON_TAP);
+        recreateMediator();
+
+        verify(mScrimManager).showScrim(any());
+        clearInvocations(mScrimManager);
+
+        // Trigger second beginInput on the same mediator (simulating double tap from ntp fakebox).
+        mMediator.beginInput(createSession());
+
+        verify(mScrimManager).hideScrim(any(), eq(false));
+        verify(mScrimManager).showScrim(any());
     }
 
     @Test
@@ -598,7 +638,7 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void testPopupShowHide_desktopPlatform_usesFloatingMode() {
-        OmniboxFeatures.setIsDesktopPlatformForTesting(true);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
         recreateMediator();
         Runnable runnable = mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED);
@@ -632,6 +672,34 @@ public class FuseboxMediatorUnitTest {
 
         assertFalse(mMediator.handleHidePopup());
         assertEquals(PopupState.HIDDEN, (int) mModel.get(FuseboxProperties.POPUP_STATE));
+    }
+
+    @Test
+    public void testBackPressHandler() {
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
+        recreateMediator();
+        verify(mBackPressManager).addHandler(mMediator, BackPressHandler.Type.FUSEBOX_POPUP);
+
+        assertFalse(mMediator.getHandleBackPressChangedSupplier().get());
+
+        // Show popup toggles supplier to true.
+        mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED).run();
+        assertTrue(mMediator.getHandleBackPressChangedSupplier().get());
+
+        // Handle back press hides popup and returns SUCCESS.
+        assertEquals(BackPressResult.SUCCESS, mMediator.handleBackPress());
+        assertFalse(mMediator.getHandleBackPressChangedSupplier().get());
+        assertEquals(PopupState.HIDDEN, (int) mModel.get(FuseboxProperties.POPUP_STATE));
+
+        mMediator.destroy();
+        verify(mBackPressManager).removeHandler(mMediator);
+    }
+
+    @Test
+    public void testBackPressHandler_inactive_returnsFailure() {
+        recreateMediator();
+        assertFalse(mMediator.getHandleBackPressChangedSupplier().get());
+        assertEquals(BackPressResult.FAILURE, mMediator.handleBackPress());
     }
 
     @Test
@@ -1156,7 +1224,7 @@ public class FuseboxMediatorUnitTest {
     @Test
     public void testModelPickerVisibility_hidesInBottomSheet() {
         OmniboxFeatures.sShowModelPicker.setForTesting(true);
-        OmniboxFeatures.setIsDesktopPlatformForTesting(false);
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(false);
         OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
         recreateMediator();
 

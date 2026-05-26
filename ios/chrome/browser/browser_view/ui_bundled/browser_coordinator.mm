@@ -884,6 +884,10 @@ const char kChromeAppStoreUrl[] =
         [LayoutGuideCenterForBrowser(self.browser)
             referencedViewUnderName:kTabGridBottomToolbarGuide];
     if (IsChromeNextIaEnabled()) {
+      // On iPad, the bottom toolbar is not present so return 0 offset.
+      if (!IsSplitToolbarMode(self.viewController)) {
+        return 0;
+      }
       CGPoint originOfBottomToolbar =
           [tabGridBottomToolbarView convertPoint:CGPointZero toView:nil];
       return windowHeight - originOfBottomToolbar.y;
@@ -922,6 +926,10 @@ const char kChromeAppStoreUrl[] =
   UIView* bottomToolbar = [LayoutGuideCenterForBrowser(self.browser)
       referencedViewUnderName:kSecondaryToolbarGuide];
   if (IsChromeNextIaEnabled()) {
+    // On iPad, the bottom toolbar is not present so return 0 offset.
+    if (!IsSplitToolbarMode(self.viewController)) {
+      return 0;
+    }
     CGPoint originOfBottomToolbar = [bottomToolbar convertPoint:CGPointZero
                                                          toView:nil];
     return windowHeight - originOfBottomToolbar.y;
@@ -2173,11 +2181,28 @@ const char kChromeAppStoreUrl[] =
 - (void)geminiEntryFlowDidFinishWithResult:(GeminiEntryFlowResult)result
                                 completion:
                                     (GeminiEntryFlowCompletion)completion {
+  GeminiStartupState* startupState = _geminiEntryFlowCoordinator.startupState;
+
   [_geminiEntryFlowCoordinator stop];
   _geminiEntryFlowCoordinator = nil;
 
+  // Notify the caller first so they can handle their own UI.
   if (completion) {
     completion(result);
+  }
+
+  // Start the Gemini session on success.
+  if (result == kGeminiEntryFlowResultSuccess) {
+    [self startGeminiSessionWithStartupState:startupState];
+  }
+}
+
+// Starts the Gemini session directly via the browser agent.
+- (void)startGeminiSessionWithStartupState:(GeminiStartupState*)startupState {
+  GeminiBrowserAgent* geminiBrowserAgent =
+      GeminiBrowserAgent::FromBrowser(self.browser);
+  if (geminiBrowserAgent) {
+    geminiBrowserAgent->StartGeminiFlow(self.viewController, startupState);
   }
 }
 
@@ -3908,11 +3933,6 @@ const char kChromeAppStoreUrl[] =
     geminiTabHelper->UpdatePresentedSource(source, /*is_presented=*/false);
     gemini::FloatyUpdateSource hideSource =
         gemini::FloatyUpdateSource::IneligibleSite;
-    const GURL& url = self.activeWebState->GetVisibleURL();
-    if (google_util::IsGoogleSearchUrl(url) &&
-        IsGeminiCopresenceSRPCheckEnabled()) {
-      hideSource = gemini::FloatyUpdateSource::SearchRelatedPage;
-    }
     geminiBrowserAgent->HideFloatyIfInvoked(animated, hideSource);
     return;
   }

@@ -110,6 +110,9 @@ enum class RequestTypeForUma {
   PERMISSION_LOCAL_NETWORK = 43,
   PERMISSION_LOOPBACK_NETWORK = 44,
   PERMISSION_SENSORS = 45,
+  PERMISSION_GEOLOCATION_APPROXIMATE_OR_PRECISE = 46,
+  PERMISSION_GEOLOCATION_APPROXIMATE = 47,
+  PERMISSION_GEOLOCATION_UPGRADE = 48,
   // NUM must be the last value in the enum.
   NUM,
 };
@@ -288,7 +291,7 @@ enum class PermissionPromptDisposition {
 
   // Only used on Android. The prompt is suppressed, and the user is notified
   // via an icon on the left-hand side of the location bar.
-  LOCATION_BAR_LEFT_CLAPPER_QUIET_ICON = 16,
+  LOCATION_BAR_LEFT_QUIET_ICON = 16,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/permissions/histograms.xml:PromptDisposition)
 
@@ -644,7 +647,8 @@ class PermissionUmaUtil {
                                       bool clicked);
 
   static void RecordDismissalType(
-      const std::vector<ContentSettingsType>& content_settings_types,
+      const std::vector<base::WeakPtr<permissions::PermissionRequest>>&
+          requests,
       PermissionPromptDisposition ui_disposition,
       DismissalType dismissalType);
 
@@ -772,7 +776,7 @@ class PermissionUmaUtil {
 
   static void RecordPermissionPredictionSource(
       PermissionPredictionSource prediction_source,
-      RequestType request_type);
+      const PermissionRequest& request);
 
   static void RecordPermissionPredictionServiceHoldback(
       RequestType request_type,

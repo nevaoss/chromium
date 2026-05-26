@@ -14,9 +14,7 @@ if (is_android) {
 declare_args() {
   # Denotes the type of Cast product. This is #defined as CAST_PRODUCT_TYPE in
   # version.h. See //third_party/metrics_proto/cast_logs.proto for valid values.
-  if (is_android_arc) {
-    cast_product_type = 7  # CAST_PRODUCT_TYPE_CHROME_OS
-  } else if (is_android) {
+  if (is_android) {
     cast_product_type = 4  # CAST_PRODUCT_TYPE_ANDROID_TV
   } else if (is_fuchsia) {
     cast_product_type = 8  # CAST_PRODUCT_TYPE_FUCHSIA_OS
@@ -25,9 +23,7 @@ declare_args() {
   }
 }
 
-if (is_android_arc) {
-  assert(cast_product_type == 7)
-} else if (is_android) {
+if (is_android) {
   assert(cast_product_type == 4 || cast_product_type == 6)
 } else {
   assert(cast_product_type >= 0 && cast_product_type <= 8 &&
@@ -47,8 +43,6 @@ cast_source_set("base") {
     "cast_features_internal.cc",
     "cast_paths.cc",
     "cast_paths.h",
-    "cast_resource.cc",
-    "cast_resource.h",
     "error_codes.cc",
     "error_codes.h",
     "hash_util.cc",
@@ -67,8 +61,6 @@ cast_source_set("base") {
     "statistics/weighted_mean.h",
     "statistics/weighted_moving_linear_regression.cc",
     "statistics/weighted_moving_linear_regression.h",
-    "system_time_change_notifier.cc",
-    "system_time_change_notifier.h",
     "task_runner_impl.cc",
     "task_runner_impl.h",
   ]
@@ -91,8 +83,6 @@ cast_source_set("base") {
     sources += [
       "android/dumpstate_writer.cc",
       "android/dumpstate_writer.h",
-      "android/system_time_change_notifier_android.cc",
-      "android/system_time_change_notifier_android.h",
     ]
     deps += [ ":jni_headers" ]
   }
@@ -148,7 +138,6 @@ test("cast_base_unittests") {
     "path_utils_unittest.cc",
     "process_utils_unittest.cc",
     "statistics/weighted_moving_linear_regression_unittest.cc",
-    "system_time_change_notifier_unittest.cc",
     "thread_health_checker_unittest.cc",
   ]
 
@@ -291,7 +280,6 @@ if (is_android) {
     sources = [
       "java/src/org/chromium/chromecast/base/CastSysInfoAndroid.java",
       "java/src/org/chromium/chromecast/base/DumpstateWriter.java",
-      "java/src/org/chromium/chromecast/base/SystemTimeChangeNotifierAndroid.java",
     ]
   }
 
@@ -320,7 +308,6 @@ if (is_android) {
       "$java_src_dir/org/chromium/chromecast/base/CastSwitches.java",
       "$java_src_dir/org/chromium/chromecast/base/CastSysInfoAndroid.java",
       "$java_src_dir/org/chromium/chromecast/base/DumpstateWriter.java",
-      "$java_src_dir/org/chromium/chromecast/base/SystemTimeChangeNotifierAndroid.java",
     ]
 
     deps = [
