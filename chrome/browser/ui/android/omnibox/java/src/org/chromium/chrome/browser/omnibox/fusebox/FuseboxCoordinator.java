@@ -176,6 +176,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
 
         mModel =
                 new PropertyModel.Builder(FuseboxProperties.ALL_KEYS)
+                        .with(FuseboxProperties.FUSEBOX_LAYOUT_MODE, getFuseboxLayoutMode())
                         .with(FuseboxProperties.FUSEBOX_STATE, FuseboxState.DISABLED)
                         .with(
                                 FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE,
@@ -460,15 +461,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         if (mMediator != null) {
             mMediator.onPlusButtonClicked();
         }
-    }
-
-    /**
-     * Hides the popup if it is showing.
-     *
-     * @return Whether the popup was hidden.
-     */
-    public boolean handleHidePopup() {
-        return mMediator != null && mMediator.handleHidePopup();
     }
 
     /**

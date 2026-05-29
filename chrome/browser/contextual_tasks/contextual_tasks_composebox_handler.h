@@ -107,6 +107,8 @@ class ContextualTasksComposeboxHandler
       const contextual_tasks::SuggestedTabInfo* suggested_tab) override;
   void OnTaskChanged() override;
 
+  std::vector<int32_t> GetSelectedTabIds() const override;
+
   void ClearFiles(bool should_block_auto_suggested_tabs) override;
 #if !BUILDFLAG(IS_ANDROID)
   void HandleLensButtonClick() override;
@@ -132,6 +134,8 @@ class ContextualTasksComposeboxHandler
   }
   // ui::SelectFileDialog::Listener:
   void FileSelected(const ui::SelectedFileInfo& file, int index) override;
+  void MultiFilesSelected(
+      const std::vector<ui::SelectedFileInfo>& files) override;
   void FileSelectionCanceled() override;
   void OnFileRead(std::unique_ptr<FileData> file_data);
 

@@ -317,6 +317,15 @@ void AnnotatedPageContentRequest::DidFinishNavigationWithPageSettledMonitor(
     return;
   }
 
+  ResetForNewNavigation(navigation_handle->IsSameDocument());
+
+  // Skip about:blank navigations. Legacy path waits for FCP which never occurs
+  // for about:blank, effectively skipping it. We match that behavior here
+  // to avoid unnecessary extractions for pages without meaningful content.
+  if (navigation_handle->GetURL().IsAboutBlank()) {
+    return;
+  }
+
   const bool monitor_already_exists = !!monitor;
   if (!monitor_already_exists) {
     // If the monitor was not created in DidStartNavigation (e.g. because this
@@ -339,8 +348,6 @@ void AnnotatedPageContentRequest::DidFinishNavigationWithPageSettledMonitor(
       "OptimizationGuide.PageContentExtraction."
       "HadSettledMonitorAtDidFinishNavigation",
       monitor_already_exists);
-
-  ResetForNewNavigation(navigation_handle->IsSameDocument());
 
   active_page_settled_monitor_ = std::move(monitor);
   active_page_settled_monitor_->Wait(
@@ -450,7 +457,7 @@ void AnnotatedPageContentRequest::MaybeScheduleExtraction(bool on_hide) {
       base::BindOnce(&AnnotatedPageContentRequest::OnExtractionTimerFired,
                      weak_factory_.GetWeakPtr(), *trigger_source),
       use_page_settled_monitor_
-          ? base::TimeDelta()
+          ? features::GetPageSettledCaptureDelay()
           : features::GetAnnotatedPageContentCaptureDelay());
 }
 
@@ -528,7 +535,7 @@ void AnnotatedPageContentRequest::RequestAnnotatedPageContentSync(
 
 std::optional<AnnotatedPageContentRequest::TriggerSource>
 AnnotatedPageContentRequest::ShouldScheduleExtraction(bool on_hide) const {
-  if (!page_content_extraction_service_->ShouldEnablePageContentExtraction()) {
+  if (!ShouldAllowPageContentExtraction()) {
     return std::nullopt;
   }
 
@@ -564,6 +571,14 @@ AnnotatedPageContentRequest::ShouldScheduleExtraction(bool on_hide) const {
       CHECK(is_hidden_);
       return TriggerSource::kOnHidden;
     }
+  } else if (base::FeatureList::IsEnabled(
+                 features::kAnnotatedPageContentExtractionOnHideFix) &&
+             on_hide) {
+    // Ignore visibility events when not configured to trigger on hide, or if
+    // the page is a PDF (which skips on-hidden triggers). This prevents
+    // triggering on hide when observers register after load is complete and the
+    // page is stable.
+    return std::nullopt;
   }
 
   if (lifecycle_ != Lifecycle::kNavigated) {
@@ -577,9 +592,9 @@ AnnotatedPageContentRequest::ShouldScheduleExtraction(bool on_hide) const {
           features::PageContentExtractionTriggeringMode::kOnLoadAndHidden;
 
   if (trigger_on_load || !on_demand_callbacks_.empty()) {
-    // TODO(b/490161242): Investigate why this check can fail and then consider
-    // re-enabling it.
-    // CHECK(!on_hide);
+    CHECK(!base::FeatureList::IsEnabled(
+              features::kAnnotatedPageContentExtractionOnHideFix) ||
+          !on_hide);
     if (!on_demand_callbacks_.empty()) {
       return TriggerSource::kOnDemand;
     }
@@ -774,8 +789,18 @@ bool AnnotatedPageContentRequest::IsPdf() const {
   return web_contents()->GetContentsMimeType() == pdf::kPDFMimeType;
 }
 
+bool AnnotatedPageContentRequest::ShouldAllowPageContentExtraction() const {
+  // Setting `is_on_demand` to true when there are pending callbacks does not
+  // risk allowing automatic extractions unnecessarily because concurrent
+  // extractions are prevented by the lifecycle state machine
+  // (kScheduled/kRunning checks), and `on_demand_callbacks_` is cleared
+  // whenever an extraction completes or is cancelled.
+  return page_content_extraction_service_->ShouldEnablePageContentExtraction(
+      /*is_on_demand=*/!on_demand_callbacks_.empty());
+}
+
 bool AnnotatedPageContentRequest::ShouldAsyncWaitForExtraction() const {
-  if (!page_content_extraction_service_->ShouldEnablePageContentExtraction()) {
+  if (!ShouldAllowPageContentExtraction()) {
     return false;
   }
 
@@ -831,7 +856,15 @@ void AnnotatedPageContentRequest::GetServerUploadEligibilityAsync(
 void AnnotatedPageContentRequest::
     RefreshExtractedPageContentAndEligibilityForPage(
         GetExtractedPageContentAndEligibilityCallback callback) {
-  if (!page_content_extraction_service_->ShouldEnablePageContentExtraction()) {
+  PageContentExtractionEnablementReason enablement_source =
+      page_content_extraction_service_
+          ->GetPageContentExtractionEnablementReason(/*is_on_demand=*/true);
+
+  base::UmaHistogramEnumeration(
+      "OptimizationGuide.PageContentExtraction.OnDemand.EnabledReason",
+      enablement_source);
+
+  if (enablement_source == PageContentExtractionEnablementReason::kDisabled) {
     std::move(callback).Run(std::nullopt);
     return;
   }

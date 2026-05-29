@@ -77,7 +77,7 @@ export function getHtml(this: ComposeboxElement) {
                     class="${this.carouselOnTop_ ? 'top' : ''}"
                     .files="${this.getFilteredCarouselFiles()}"
                     ?enable-scrolling="${this.enableCarouselScrolling}"
-                    @delete-file="${this.onDeleteFile_}">
+                    @delete-file="${this.onDeleteFile}">
                   </cr-composebox-file-carousel> ` : ''}
                   ${this.searchboxLayoutMode === 'Compact' && !this.isOmniboxInCompactMode_ && this.hasTabs() ? html`
                     ${this.contextMenuEnabled ? getContextMenuHtml.bind(this)() : ''}
@@ -175,6 +175,7 @@ export function getHtml(this: ComposeboxElement) {
     </div>
   ${this.shouldShowVoiceSearch() ? html`
     <cr-composebox-voice-search id="voiceSearch"
+        @voice-permission-changed="${this.onVoicePermissionChanged}"
         @voice-search-cancel="${this.onVoiceSearchCancel}"
         @voice-search-final-result="${this.onVoiceSearchFinalResult}"
         @voice-search-error="${this.onVoiceSearchError}"

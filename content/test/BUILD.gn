@@ -339,6 +339,8 @@ static_library("test_support") {
     "../public/test/prerender_test_util.h",
     "../public/test/privacy_sandbox_coordinator_test_util.cc",
     "../public/test/privacy_sandbox_coordinator_test_util.h",
+    "../public/test/pwn_open_url_helper.cc",
+    "../public/test/pwn_open_url_helper.h",
     "../public/test/render_frame_host_test_support.cc",
     "../public/test/render_frame_host_test_support.h",
     "../public/test/render_view_test.cc",
@@ -2881,6 +2883,7 @@ test("content_unittests") {
     "../browser/preloading/prefetch/prefetch_type_unittest.cc",
     "../browser/preloading/prefetch/prefetch_url_loader_interceptor_unittest.cc",
     "../browser/preloading/prefetcher_unittest.cc",
+    "../browser/preloading/preload_activation_report_manager_unittest.cc",
     "../browser/preloading/preload_serving_metrics_unittest.cc",
     "../browser/preloading/preloading_attempt_impl_unittest.cc",
     "../browser/preloading/preloading_config_unittest.cc",
@@ -3224,6 +3227,7 @@ test("content_unittests") {
       "../browser/date_time_chooser/ios/date_time_chooser_util_unittest.mm",
       "../browser/renderer_host/ios_extended_text_input_traits_unittest.mm",
       "../browser/renderer_host/render_widget_host_view_ios_uiview_unittest.mm",
+      "../browser/renderer_host/render_widget_host_view_ios_unittest.mm",
     ]
   }
 

@@ -181,6 +181,7 @@ source_set("ui") {
     "contextual_tasks_ui_service.h",
     "contextual_tasks_ui_service_factory.h",
     "contextual_tasks_window_tracker.h",
+    "contextual_tasks_window_tracker_manager.h",
     "entry_point_eligibility_manager.h",
   ]
 
@@ -208,6 +209,7 @@ source_set("ui") {
   public_deps = [
     ":contextual_tasks",
     ":mojo_bindings",
+    ":mojom_traits",
     "//base",
     "//chrome/browser/tab_list",
     "//chrome/common:url_constants",
@@ -302,6 +304,7 @@ source_set("ui_impl") {
     "contextual_tasks_url_loader_factory_interceptor.cc",
     "contextual_tasks_url_loader_factory_interceptor.h",
     "contextual_tasks_window_tracker.cc",
+    "contextual_tasks_window_tracker_manager.cc",
     "entry_point_eligibility_manager.cc",
   ]
 
@@ -429,6 +432,19 @@ source_set("ui_impl") {
   }
 }
 
+source_set("mojom_traits") {
+  sources = [
+    "contextual_tasks_mojom_traits.h",
+    "contextual_tasks_types.h",
+  ]
+  public_deps = [
+    ":mojo_bindings_shared_cpp_sources",
+    "//base",
+    "//mojo/public/cpp/base:shared_typemap_traits",
+    "//mojo/public/cpp/bindings",
+  ]
+}
+
 mojom("mojo_bindings") {
   sources = [
     "contextual_tasks.mojom",
@@ -441,6 +457,23 @@ mojom("mojo_bindings") {
     "//ui/base/mojom",
     "//ui/webui/resources/cr_components/composebox:mojo_bindings",
     "//url/mojom:url_mojom_gurl",
+  ]
+
+  cpp_typemaps = [
+    {
+      types = [
+        {
+          mojom = "contextual_tasks.mojom.ContextualTaskId"
+          cpp = "::contextual_tasks::ContextualTaskId"
+        },
+        {
+          mojom = "contextual_tasks.mojom.ContextualWindowId"
+          cpp = "::contextual_tasks::ContextualWindowId"
+        },
+      ]
+      traits_headers = [ "contextual_tasks_mojom_traits.h" ]
+      traits_public_deps = [ ":mojom_traits" ]
+    },
   ]
 }
 
@@ -520,6 +553,7 @@ source_set("unit_tests") {
     "contextual_tasks_tab_visit_tracker_unittest.cc",
     "contextual_tasks_ui_service_unittest.cc",
     "contextual_tasks_ui_unittest.cc",
+    "contextual_tasks_window_tracker_manager_unittest.cc",
     "contextual_tasks_window_tracker_unittest.cc",
     "entry_point_eligibility_manager_unittest.cc",
   ]
@@ -586,6 +620,7 @@ source_set("unit_tests") {
       "//chrome/browser/ui/tabs:test_support",
       "//chrome/browser/ui/webui/searchbox:searchbox_test_utils",
       "//components/omnibox/browser:test_support",
+      "//components/omnibox/common:features",
       "//components/passage_embeddings/core",
       "//services/network/public/cpp",
     ]
@@ -646,6 +681,14 @@ if (is_android) {
     ]
   }
 
+  android_library("utils_java") {
+    sources = [ "android/java/src/org/chromium/chrome/browser/contextual_tasks/ContextualTasksUtils.java" ]
+    deps = [
+      "//components/embedder_support/android:util_java",
+      "//url:gurl_java",
+    ]
+  }
+
   android_library("java") {
     srcjar_deps = [ ":jni_headers" ]
     resources_package = "org.chromium.chrome.browser.contextual_tasks"
@@ -657,6 +700,7 @@ if (is_android) {
 
     deps = [
       ":java_resources",
+      ":utils_java",
       "//base:base_java",
       "//base:supplier_java",
       "//build/android:build_java",

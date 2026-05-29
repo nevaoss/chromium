@@ -53,7 +53,7 @@ class ContextualCueingService;
 class GlicMetrics;
 class GlicUiEmbedder;
 class EmptyEmbedderDelegate;
-class GlicTabContentsObserver;
+class GlicSkillsManagerImpl;
 class GlicZeroStateSuggestionsManager;
 
 BASE_DECLARE_FEATURE(kGlicRemoveDaisyChainingWhenFreShowing);
@@ -232,6 +232,7 @@ class GlicInstanceImpl : public GlicInstance,
   glic::GlicInstanceMetrics& instance_metrics() override;
   glic::GlicInstanceMetricsBackwardsCompatibility&
   instance_metrics_backwards_compatibility() override;
+  GlicSkillsManager& skills_manager() override;
   void OnSelectionAreasChanged(int count) override;
   void OnPolylinePointsChanged(const std::vector<int>& counts) override;
   std::unique_ptr<WebUIContentsContainer> CreateWebUIContentsContainer()
@@ -293,7 +294,6 @@ class GlicInstanceImpl : public GlicInstance,
     std::unique_ptr<GlicUiEmbedder> embedder;
     base::CallbackListSubscription destruction_subscription;
     base::CallbackListSubscription tab_activation_subscription;
-    std::unique_ptr<GlicTabContentsObserver> tab_web_contents_observer;
     bool user_input_submitted_while_bound = false;
   };
 
@@ -406,6 +406,7 @@ class GlicInstanceImpl : public GlicInstance,
 
   std::unique_ptr<GlicZeroStateSuggestionsManager>
       zero_state_suggestions_manager_;
+  std::unique_ptr<GlicSkillsManagerImpl> skills_manager_;
   std::unique_ptr<GlicActorTaskManager> actor_task_manager_;
   base::CallbackListSubscription pinned_tabs_change_subscription_;
 

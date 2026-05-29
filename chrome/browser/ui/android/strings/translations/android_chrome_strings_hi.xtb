@@ -118,6 +118,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="1448440926884431741">ट्रैक किए गए प्रॉडक्ट को Bookmarks में व्यवस्थित करें</translation>
 <translation id="1455845192930279203">क्या आपको फिर भी <ph name="DOWNLOAD_DOMAIN" /> से "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) को डाउनलोड करना है?</translation>
 <translation id="1460751212339734034">समय बचाएं, कम टाइप करें</translation>
+<translation id="146522654774760805">पासवर्ड और जानकारी ऑटोमैटिक भरने की सुविधा</translation>
 <translation id="1466383950273130737">Chrome की भाषा चुनें</translation>
 <translation id="1477626028522505441">सर्वर संबधी समस्‍याओं के कारण <ph name="FILE_NAME" /> डाउनलोड विफल रहा.</translation>
 <translation id="147982357559798527">बदला गया</translation>
@@ -227,6 +228,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="200114059308480249">क्या आप Google पर कुछ खोजते समय, खोज से जुड़े मिलते-जुलते शब्द भी शामिल करना चाहते हैं?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, पिन किया गया ऐसा गुप्त टैब जिसे म्यूट किया गया है</translation>
 <translation id="2021896219286479412">पूरी स्क्रीन के साइट नियंत्रण</translation>
+<translation id="2022953316617983419">क्यूआर कोड</translation>
 <translation id="2024195579772565064">सर्च इंजन मिटाएं</translation>
 <translation id="2029669011553795746">सलाह से जुड़ी सूचनाओं के लिए ऑप्ट इन करने का विकल्प आधी स्क्रीन पर दिख रहा है</translation>
 <translation id="2038563949887743358">अनुरोध डेस्कटॉप साइट चालू करें</translation>
@@ -550,7 +552,6 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="3387650086002190359">सिस्‍टम त्रुटियों के कारण <ph name="FILE_NAME" /> डाउनलोड विफल रहा.</translation>
 <translation id="3417835166382867856">टैब खोजें</translation>
 <translation id="3430670036890315772">अपना प्रोफ़ाइल लॉक बंद करने पर, आपकी सेव की गई जानकारी हट जाएगी</translation>
-<translation id="3435465986463792564">कई विंडो खुली हैं? उन सभी को यहां से मैनेज किया जा सकता है</translation>
 <translation id="3435575784518354875">अपने पासवर्ड का ऐक्सेस बनाए रखने के लिए, उन्हें अभी एक्सपोर्ट करें. इसके बाद, Google Play Services को अपडेट करें और फिर उन्हें Google Password Manager पर इंपोर्ट करें. <ph name="BEGIN_LINK" />पूरे निर्देश देखें<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">सुरक्षा</translation>
 <translation id="3435914367318771664">नए ग्रुप में टैब जोड़ें</translation>
@@ -789,6 +790,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="4409014848144759297"><ph name="WEBSITE_TITLE" /> और <ph name="TAB_COUNT" /> अन्य टैब</translation>
 <translation id="441100617989818073">ऐसे टैब और ग्रुप जिन्हें इस्तेमाल नहीं किया गया है या जो डुप्लीकेट हैं</translation>
 <translation id="4412123112245770507">सेक्शन को छोटा करें</translation>
+<translation id="4412698727486357573">सहायता केंद्र</translation>
 <translation id="4414179633735763985"><ph name="TAB_GROUPS_AND_TABS_PART" /> को मिटाया गया</translation>
 <translation id="4415276339145661267">अपना Google खाता मैनेज करें</translation>
 <translation id="4425140285732600465">कीमत ट्रैक की जा रही है. किसी भी साइट पर कीमत में कमी होने पर सूचना पाएं.</translation>
@@ -1435,7 +1437,6 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="6980258170429555165"><ph name="MENU_NAME" /> मेन्यू को हाइलाइट किया गया है.</translation>
 <translation id="6983306615164277634">जगह बदलने के लिए, पता बार को दबाकर रखें.</translation>
 <translation id="6987047470128880212">इस डिवाइस पर गुप्त टैब का इस्तेमाल नहीं किया जा सकता</translation>
-<translation id="6989358895283601928">सेव करें और प्रिंट करें</translation>
 <translation id="6996145122199359148">यह पेज डाउनलोड करें</translation>
 <translation id="7013762323294215682">यह पासकी आपके Password Manager में सेव हो जाएगी. जिन लोगों के पास इस पासकी का ऐक्सेस होगा वे इसका इस्तेमाल कर पाएंगे.</translation>
 <translation id="7020741890149022655">रीडिंग लिस्ट में जोड़ें <ph name="BEGIN_NEW" />नया<ph name="END_NEW" /></translation>
@@ -2003,6 +2004,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="970715775301869095"><ph name="MINUTES" /> मिनट शेष</translation>
 <translation id="981121421437150478">ऑफ़लाइन</translation>
 <translation id="983192555821071799">सभी टैब बंद करें</translation>
+<translation id="984275831282074731">पेमेंट के तरीके</translation>
 <translation id="984756705737569814">आपके Google खाते में मौजूद पासवर्ड की जांच नहीं की जा सकी</translation>
 <translation id="987264212798334818">सामान्य</translation>
 <translation id="988091779042748639">अपने डिवाइस से गुप्त मोड में की गई ब्राउज़िंग का इतिहास मिटाने के लिए, सभी गुप्त टैब बंद करें.</translation>

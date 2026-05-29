@@ -337,8 +337,11 @@ InlineLayoutAlgorithm::GetLineClampState(const LineInfo* line_info) const {
   }
   if (!(line_info && line_info->IsBlockInInline()) &&
       line_clamp_data.IsAtClampPoint()) {
-    if (!RuntimeEnabledFeatures::CSSLineClampEnabled() ||
-        Style().BlockEllipsis() == EBlockEllipsis::kEllipsis) [[likely]] {
+    EBlockEllipsis block_ellipsis =
+        RuntimeEnabledFeatures::CSSLineClampEnabled()
+            ? Style().BlockEllipsis()
+            : line_clamp_data.block_ellipsis;
+    if (block_ellipsis == EBlockEllipsis::kEllipsis) [[likely]] {
       return LineClampState::kLineClampEllipsis;
     }
   }
@@ -1721,7 +1724,6 @@ void InlineLayoutAlgorithm::PositionLeadingFloats(
   const InlineItems& items = Node().ItemsData(/* is_first_line */ false).items;
 
   unsigned index = GetBreakToken() ? GetBreakToken()->StartItemIndex() : 0;
-  HeapVector<PositionedFloat>& positioned_floats = leading_floats.floats;
   for (; index < items.size(); ++index) {
     const InlineItem& item = *items[index];
 
@@ -1746,20 +1748,19 @@ void InlineLayoutAlgorithm::PositionLeadingFloats(
     PositionedFloat positioned_float = PositionFloat(
         origin_bfc_block_offset, item.GetLayoutObject(), &exclusion_space);
 
+    const InlineBreakToken* parallel_break_token = nullptr;
     if (GetConstraintSpace().HasBlockFragmentation()) {
       // Propagate any breaks before or inside floats to the block container.
       if (const auto* float_break_token = positioned_float.BreakToken()) {
-        const auto* parallel_token =
-            InlineBreakToken::CreateForParallelBlockFlow(
-                node_, {index, item.StartOffset()}, *float_break_token);
-        context_->PropagateParallelFlowBreakToken(parallel_token);
+        parallel_break_token = InlineBreakToken::CreateForParallelBlockFlow(
+            node_, {index, item.StartOffset()}, *float_break_token);
       }
     }
 
-    positioned_floats.push_back(positioned_float);
+    leading_floats.Add(positioned_float, parallel_break_token);
   }
 
-  leading_floats.handled_index = index;
+  leading_floats.SetHandledIndex(index);
 }
 
 PositionedFloat InlineLayoutAlgorithm::PositionFloat(

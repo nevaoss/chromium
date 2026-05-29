@@ -24,6 +24,7 @@
 #include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
 #include "chrome/browser/contextual_cueing/cueing_log.h"
 #include "chrome/browser/contextual_cueing/features.h"
+#include "chrome/browser/contextual_cueing/prefs.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/page_content_annotations/page_content_annotations_service_factory.h"
@@ -56,6 +57,7 @@
 #include "components/sync/service/sync_user_settings.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/render_frame_host.h"
 #include "third_party/re2/src/re2/re2.h"
 #include "ui/actions/actions.h"
 #include "ui/menus/simple_menu_model.h"
@@ -499,10 +501,10 @@ bool ContextualCueingController::IsAllowedToShowCue() {
   }
 
   // Check enterprise policy.
-  if (pref_service->GetInteger(optimization_guide::prefs::
-                                   kContextualCueingEnterprisePolicyAllowed) ==
-      static_cast<int>(optimization_guide::model_execution::prefs::
-                           ModelExecutionEnterprisePolicyValue::kDisable)) {
+  if (pref_service->GetInteger(
+          optimization_guide::prefs::kChromeSuggestionsSettings) ==
+      static_cast<int>(
+          contextual_cueing::ChromeSuggestionsSettingsValue::kDisabled)) {
     RecordContextualCueingDecision(
         ContextualCueingDecision::kDisabledByEnterprisePolicy);
     return false;
@@ -540,13 +542,20 @@ void ContextualCueingController::ShowCue(
     CueTargetType cue_type,
     const CueTarget& target,
     optimization_guide::proto::ContextualCueingResponse response) {
+  CueTabMetrics tab_metrics;
+  CueActionData action_data =
+      target.CueActionDataFromResponse(response, tab_metrics);
+
+  tabs::TabInterface* tab = tab_list_interface_->GetActiveTab();
+  CHECK(tab);
+
+  RecordCueShownMetrics(
+      tab->GetContents()->GetPrimaryMainFrame()->GetPageUkmSourceId(),
+      response.suggested_cuj(), tab_metrics);
 #if BUILDFLAG(IS_ANDROID)
   NOTIMPLEMENTED()
       << "Contextual cueing anchored message UI is not implemented for Android";
 #else
-  tabs::TabInterface* tab = tab_list_interface_->GetActiveTab();
-  CHECK(tab);
-
   auto* action = actions::ActionManager::Get().FindAction(
       kActionAnchoredContextualCue, browser_window_interface_->GetFeatures()
                                         .browser_actions()
@@ -558,7 +567,7 @@ void ContextualCueingController::ShowCue(
   action->SetImage(target.GetOmniboxChipIcon());
   action->SetInvokeActionCallback(base::BindRepeating(
       &ContextualCueingController::OnCueClicked, weak_ptr_factory_.GetWeakPtr(),
-      cue_type, target.CueActionDataFromResponse(response)));
+      cue_type, action_data));
 
   page_actions::PageActionController* page_action_controller =
       tab->GetTabFeatures()->page_action_controller();
@@ -566,6 +575,8 @@ void ContextualCueingController::ShowCue(
     RecordContextualCueingDecision(ContextualCueingDecision::kNoActiveTab);
     return;
   }
+
+  ObserveSidePanel();
 
   page_action_controller->Show(kActionAnchoredContextualCue);
   page_action_controller->SetAnchoredMessageIcon(
@@ -578,7 +589,7 @@ void ContextualCueingController::ShowCue(
 
   auto menu_model = std::make_unique<ContextualCueingMenuModel>(
       browser_window_interface_->GetProfile(), weak_ptr_factory_.GetWeakPtr(),
-      cue_type, target.CueActionDataFromResponse(response));
+      cue_type, action_data);
   page_action_controller->SetAnchoredMessageAction(
       kActionAnchoredContextualCue,
       page_actions::AnchoredMessageActionIconType::kMenu,
@@ -607,6 +618,10 @@ void ContextualCueingController::ShowCue(
 
 void ContextualCueingController::OnCueHidden() {
   current_cuj_.clear();
+}
+
+void ContextualCueingController::OnSidePanelShown() {
+  HideCue();
 }
 
 void ContextualCueingController::OnCueClicked(
@@ -661,6 +676,18 @@ void ContextualCueingController::HideCue() {
   }
   page_action_controller->Hide(kActionAnchoredContextualCue);
 #endif
+}
+
+void ContextualCueingController::ObserveSidePanel() {
+  if (side_panel_shown_subscription_) {
+    return;
+  }
+  if (auto* side_panel_ui =
+          SidePanelUIProvider::From(browser_window_interface_)) {
+    side_panel_shown_subscription_ = side_panel_ui->RegisterSidePanelShown(
+        base::BindRepeating(&ContextualCueingController::OnSidePanelShown,
+                            weak_ptr_factory_.GetWeakPtr()));
+  }
 }
 
 CueTarget* ContextualCueingController::GetTarget(CueTargetType type) {

@@ -272,7 +272,6 @@ class TabImpl implements Tab {
     /** Called when the current window's occlusion changes. */
     private final Callback<Boolean> mOcclusionCallback = (v) -> updateWebContentsVisibility();
 
-
     /** Whether the renderer is currently unresponsive. */
     private boolean mIsRendererUnresponsive;
 
@@ -976,6 +975,7 @@ class TabImpl implements Tab {
         }
     }
 
+    @CalledByNative
     @Override
     public boolean loadIfNeeded(boolean forceBackingSize) {
         if (getActivity(/* withLogs= */ true) == null) {
@@ -1251,6 +1251,11 @@ class TabImpl implements Tab {
     @CalledByNative
     private void destroyInternal(boolean deleteNativeWebContents) {
         ThreadUtils.assertOnUiThread();
+
+        // Ensure the tab signals to C++ it was removed from the TabModel. This should be a no-op
+        // for most tab closures, but during activity shutdown/recreation it can be relevant.
+        clearCurrentTabSupplier(DetachReason.DELETE);
+
         // Set at the start since destroying the WebContents can lead to calling back into
         // this class.
         mIsDestroyed = true;
@@ -1283,7 +1288,6 @@ class TabImpl implements Tab {
             mWebContentsState.destroy();
             mWebContentsState = null;
         }
-
 
         if (mWindowAndroid != null) {
             mWindowAndroid.getOcclusionSupplier().removeObserver(mOcclusionCallback);
@@ -1565,7 +1569,6 @@ class TabImpl implements Tab {
     ObserverList.RewindableIterator<TabObserver> getTabObservers() {
         return mObservers.rewindableIterator();
     }
-
 
     /** Hides the current {@link NativePage}, if any, and shows the {@link WebContents}'s view. */
     void showRenderedPage() {
@@ -2091,7 +2094,7 @@ class TabImpl implements Tab {
     }
 
     @CalledByNative
-    private void clearNativePtr() {
+    void clearNativePtr() {
         assert mNativeTabAndroid != 0;
         var oldValue = sTabMap.remove(mNativeTabAndroid);
         assert oldValue == this;
@@ -3075,9 +3078,11 @@ class TabImpl implements Tab {
 
     void setNativePtrForTesting(long nativePtr) {
         setNativePtr(nativePtr);
-        ResettersForTesting.register(this::clearNativePtr);
+        ResettersForTesting.register(
+                () -> {
+                    if (mNativeTabAndroid != 0) clearNativePtr();
+                });
     }
-
 
     /**
      * Lightweight proxy stub extending {@link ContentView} used when view layer inflation is

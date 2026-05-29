@@ -139,11 +139,16 @@ AutofillAiSaveUpdateEntityPromptController::GetJavaObject() const {
 
 void AutofillAiSaveUpdateEntityPromptController::OnWalletLinkClicked(
     JNIEnv* env) {
-  if (IsMaskedStorageSupported(entity_instance_.type(),
-                               EntityInstance::RecordType::kServerWallet)) {
-    ShowGoogleWallePrivatePassesHelpCenterPageInCct(*web_contents_);
-  } else {
-    ShowGoogleWalletPassesPage(*web_contents_);
+  switch (GetWalletPassType(entity_instance_.type(),
+                            entity_instance_.record_type())) {
+    case EntityInstance::WalletPassType::kUnsupported:
+      NOTREACHED();
+    case EntityInstance::WalletPassType::kPrivate:
+      ShowGoogleWallePrivatePassesHelpCenterPageInCct(*web_contents_);
+      break;
+    case EntityInstance::WalletPassType::kPublic:
+      ShowGoogleWalletPassesPage(*web_contents_);
+      break;
   }
 }
 
@@ -158,7 +163,7 @@ void AutofillAiSaveUpdateEntityPromptController::OnUserEdited(
   had_user_interaction_ = true;
   EntityInstance edited_entity =
       edited_entity_android.ToEntityInstance(entity_instance_);
-  RunPromptClosedCallback(AutofillClient::AutofillAiBubbleResult::kAccepted,
+  RunPromptClosedCallback(AutofillClient::AutofillAiBubbleResult::kEditAccepted,
                           std::move(edited_entity));
 }
 

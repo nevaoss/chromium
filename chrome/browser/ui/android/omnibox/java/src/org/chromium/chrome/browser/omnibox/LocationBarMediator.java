@@ -81,6 +81,7 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList.Fu
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.geo.GeolocationHeader;
 import org.chromium.chrome.browser.omnibox.status.StatusCoordinator;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
@@ -1044,6 +1045,10 @@ class LocationBarMediator
         RecordUserAction.record("MobileOmniboxDeleteUrl");
         if (mCurrentInput == null) return; // session not started yet.
 
+        if (TextUtils.isEmpty(mCurrentInput.getUserText())) {
+            mCurrentInput.setRequestType(mLocationBarDataProvider.getDefaultRequestType());
+        }
+
         mCurrentInput.setUserText(null);
         mUrlCoordinator.setUrlBarData(
                 UrlBarData.forNonUrlText(mCurrentInput.getUserText()),
@@ -1349,6 +1354,8 @@ class LocationBarMediator
                 mDropdown.getId(), ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END);
         set.connect(
                 R.id.navigate_button, ConstraintSet.TOP, mDropdown.getId(), ConstraintSet.BOTTOM);
+        set.connect(R.id.delete_button, ConstraintSet.TOP, R.id.url_bar, ConstraintSet.TOP);
+        set.connect(R.id.delete_button, ConstraintSet.BOTTOM, R.id.url_bar, ConstraintSet.BOTTOM);
         set.constrainWidth(mDropdown.getId(), ConstraintSet.MATCH_CONSTRAINT);
         set.constrainHeight(mDropdown.getId(), ConstraintSet.WRAP_CONTENT);
         set.constrainedHeight(mDropdown.getId(), true);
@@ -1411,12 +1418,14 @@ class LocationBarMediator
      */
     @VisibleForTesting
     /* package */ void handleUrlFocusAnimation(boolean hasFocus) {
-        if (mFuseboxCoordinator.getFuseboxLayoutModeSupplier().get()
-                        == FuseboxLayoutMode.SUGGESTIONS_POPOVER
+        @FuseboxLayoutMode
+        int layoutMode = mFuseboxCoordinator.getFuseboxLayoutModeSupplier().get();
+        if (layoutMode == FuseboxLayoutMode.SUGGESTIONS_POPOVER
                 && hasFocus
                 && !isParentedToSuggestionsContainer()) {
             reparentToSuggestionsContainer();
         }
+        mLocationBarLayout.setFuseboxLayoutMode(layoutMode);
 
         if (hasFocus) {
             mUrlFocusedWithoutAnimations = false;
@@ -1854,6 +1863,10 @@ class LocationBarMediator
     // embedder does not need to be updated after its visibility changes.
     private void updateDeleteButtonVisibility() {
         boolean showDeleteButton = isUrlBarFocusedWithUserInput();
+        if (isParentedToSuggestionsContainer()) {
+            showDeleteButton |=
+                    (mCurrentInput != null && !mCurrentInput.isConventionalRequestType());
+        }
 
         if (mPreviousDeleteButtonVisible == null
                 || showDeleteButton != mPreviousDeleteButtonVisible) {
@@ -2079,12 +2092,9 @@ class LocationBarMediator
         return mShouldShowButtonsWhenUnfocused && shouldShowPageActionButtons();
     }
 
-    /**
-     * @return Whether the delete button should be shown.
-     */
+    /** Returns Whether the url bar is focused and has non-empty input. */
     @VisibleForTesting
     boolean isUrlBarFocusedWithUserInput() {
-        // Show the delete button at the end when the bar has focus and has some text.
         boolean hasText =
                 mUrlCoordinator != null
                         && !TextUtils.isEmpty(mUrlCoordinator.getTextWithAutocomplete());
@@ -2258,10 +2268,6 @@ class LocationBarMediator
     public Boolean handleEscPress() {
         if (mCurrentInput == null) return false;
         if (mAutocompleteCoordinator == null) return false;
-
-        if (mFuseboxCoordinator.handleHidePopup()) {
-            return true;
-        }
 
         if (mAutocompleteCoordinator.isServingSuggestions()) {
             // First ESC keypress should close the suggestions list.
@@ -2500,6 +2506,12 @@ class LocationBarMediator
     @Override
     public boolean allowKeyboardLearning() {
         return !mLocationBarDataProvider.isOffTheRecord();
+    }
+
+    @Override
+    public boolean isKeyboardSuppressed() {
+        // Suppress the keyboard while the fusebox popup is showing as a bottom sheet.
+        return mFuseboxCoordinator.getPopupStateSupplier().get() == PopupState.BOTTOM;
     }
 
     // Traditional way to intercept keycode_back, which is deprecated from T.

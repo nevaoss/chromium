@@ -116,6 +116,7 @@ import org.chromium.components.browser_ui.accessibility.PageZoomIndicatorCoordin
 import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
+import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteInput.SiteSearchData;
@@ -278,6 +279,10 @@ public class LocationBarMediatorTest {
                 .when(mLocationBarDataProvider)
                 .getPrimaryColor();
         lenient().doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        lenient()
+                .doReturn(PageClassification.OTHER_VALUE)
+                .when(mLocationBarDataProvider)
+                .getPageClassification(anyBoolean());
         lenient().doReturn(mSessionState).when(mLocationBarDataProvider).getFuseboxSessionState();
         lenient()
                 .doReturn(mNewTabPageDelegate)
@@ -420,13 +425,13 @@ public class LocationBarMediatorTest {
     @Test
     public void testDestroyEndsInput() {
         AutocompleteInput input = mSessionState.getAutocompleteInput();
-
         mMediator.beginInput(input);
         assertTrue(mSessionState.isSessionActive());
         assertTrue(input.getRequestTypeSupplier().hasObservers());
 
         mMediator.destroy();
         assertFalse(mSessionState.isSessionActive());
+        mSessionState.destroy();
         assertFalse(input.getRequestTypeSupplier().hasObservers());
     }
 
@@ -1191,22 +1196,6 @@ public class LocationBarMediatorTest {
             // Step 4: no other actions can be taken: bail
             assertFalse(mMediator.handleEscPress());
         }
-    }
-
-    @Test
-    public void testHandleEscPress_fuseboxPopupShowing() {
-        mMediator.onFinishNativeInitialization();
-        mProfileSupplier.set(mProfile);
-        mMediator.onUrlFocusChange(true);
-
-        AutocompleteInput input = mSessionState.getAutocompleteInput();
-        input.setUserText("some text");
-
-        when(mFuseboxCoordinator.handleHidePopup()).thenReturn(true);
-
-        assertTrue(mMediator.handleEscPress());
-        verify(mFuseboxCoordinator).handleHidePopup();
-        verify(mAutocompleteCoordinator, never()).stopAutocomplete();
     }
 
     @Test
@@ -2896,5 +2885,59 @@ public class LocationBarMediatorTest {
         verify(mLocationBarLayout).removeView(mDropdown);
         verify(mUrlCoordinator, times(2)).startReparenting();
         verify(mUrlCoordinator).finishReparenting(false);
+    }
+
+    @Test
+    public void testDesktopDeleteButton() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+
+        doReturn(mLocationBarParent).when(mLocationBarLayout).getParent();
+        doReturn(mSuggestionsContainer).when(mAutocompleteCoordinator).getSuggestionsContainer();
+        doReturn(mDropdown).when(mSuggestionsContainer).takeDropdownView();
+        MarginLayoutParams layoutParams = new MarginLayoutParams(-2, -2);
+        doReturn(layoutParams).when(mLocationBarLayout).getLayoutParams();
+        View placeholder = Mockito.mock(View.class);
+        doReturn(placeholder)
+                .when(mLocationBarLayout)
+                .findViewById(R.id.suggestions_container_placeholder);
+        int placeholderIndex = 2;
+        doReturn(placeholderIndex).when(mLocationBarLayout).indexOfChild(placeholder);
+
+        mMediator.handleUrlFocusAnimation(true);
+        assertTrue(mMediator.isParentedToSuggestionsContainer());
+
+        var input = mSessionState.getAutocompleteInput();
+        input.setUserText("modified text").setInitialUserText("initial text");
+        input.setRequestType(AutocompleteRequestType.AI_MODE);
+        reset(mLocationBarLayout);
+        mMediator.deleteButtonClicked(null);
+        assertEquals("", input.getUserText());
+        assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
+        verify(mLocationBarLayout, never()).setDeleteButtonVisibility(false);
+
+        mMediator.deleteButtonClicked(null);
+        assertEquals(AutocompleteRequestType.SEARCH, input.getRequestType());
+        verify(mLocationBarLayout, atLeastOnce()).setDeleteButtonVisibility(false);
+    }
+
+    @Test
+    public void testIsKeyboardSuppressed() {
+        SettableNonNullObservableSupplier<Integer> popupStateSupplier =
+                ObservableSuppliers.createNonNull(FuseboxCoordinator.PopupState.HIDDEN);
+        doReturn(popupStateSupplier).when(mFuseboxCoordinator).getPopupStateSupplier();
+
+        // 1. Popup state is HIDDEN -> not suppressed
+        popupStateSupplier.set(FuseboxCoordinator.PopupState.HIDDEN);
+        assertFalse(mMediator.isKeyboardSuppressed());
+
+        // 2. Popup state is FLOATING -> not suppressed
+        popupStateSupplier.set(FuseboxCoordinator.PopupState.FLOATING);
+        assertFalse(mMediator.isKeyboardSuppressed());
+
+        // 3. Popup state is BOTTOM -> suppressed
+        popupStateSupplier.set(FuseboxCoordinator.PopupState.BOTTOM);
+        assertTrue(mMediator.isKeyboardSuppressed());
     }
 }

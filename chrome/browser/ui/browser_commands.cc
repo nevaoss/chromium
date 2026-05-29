@@ -67,7 +67,6 @@
 #include "chrome/browser/ui/bookmarks/bookmark_utils_desktop.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_command_controller.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_live_tab_context.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
@@ -273,14 +272,14 @@ void CreateAndShowNewWindowWithContents(
   }
   // Preserve the size of the original window. The new window has already
   // been given an offset by the OS, so we shouldn't copy the old bounds.
-  BrowserWindow* new_window = new_browser->window();
+  ui::BaseWindow* new_window = new_browser->GetWindow();
   new_window->SetBounds(
       gfx::Rect(new_window->GetRestoredBounds().origin(),
                 original_browser->GetWindow()->GetRestoredBounds().size()));
 
   // We need to show the browser now.  Otherwise ContainerWin assumes the
   // WebContents is invisible and won't size it.
-  new_browser->window()->Show();
+  new_window->Show();
 
   // The page transition below is only for the purpose of inserting the tab.
   new_browser->tab_strip_model()->AddWebContents(std::move(contents), -1,
@@ -524,7 +523,7 @@ WebContents* GetTabAndRevertIfNecessaryHelper(BrowserWindowInterface* browser,
       new_browser->tab_strip_model()->AddWebContents(std::move(new_tab), -1,
                                                      ui::PAGE_TRANSITION_LINK,
                                                      AddTabTypes::ADD_ACTIVE);
-      new_browser->window()->Show();
+      new_browser->GetWindow()->Show();
       return raw_new_tab;
     }
     default:
@@ -773,7 +772,7 @@ BrowserWindowInterface* OpenEmptyWindow(Profile* profile,
     AddTabAt(browser, GURL(), -1, true);
   }
 
-  browser->window()->Show();
+  browser->GetWindow()->Show();
   return browser;
 }
 
@@ -1513,9 +1512,8 @@ void NewSplitTab(BrowserWindowInterface* browser,
       new_tab_url, active_index + 1, true,
       tab_strip_model->GetTabGroupForTab(active_index),
       tab_strip_model->IsTabPinned(active_index));
-  split_tabs::SplitTabVisualData visual_data = split_tabs::SplitTabVisualData();
-  visual_data.set_split_layout(layout);
-  tab_strip_model->AddToNewSplit({active_index}, visual_data, source);
+  tab_strip_model->AddToNewSplit(
+      {active_index}, split_tabs::SplitTabVisualData(layout), source);
 
   if (content::WebContents* active_contents =
           tab_strip_model->GetActiveWebContents()) {

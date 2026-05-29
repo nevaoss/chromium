@@ -3682,6 +3682,15 @@ Called by update_net_error_codes.py.-->
   <int value="28" label="REPLACED_BY_SYSTEM_APP"/>
 </enum>
 
+<!-- LINT.IfChange(ExtensionSearchRedirectedByApi) -->
+
+<enum name="ExtensionSearchRedirectedByApi">
+  <int value="0" label="DeclarativeNetRequest"/>
+  <int value="1" label="TabsUpdate"/>
+</enum>
+
+<!-- LINT.ThenChange(//extensions/browser/api/constants.h:ExtensionSearchRedirectedByApi) -->
+
 <!-- LINT.IfChange(FastPairPairFailure) -->
 
 <enum name="FastPairPairFailure">
@@ -4520,6 +4529,16 @@ Called by update_net_error_codes.py.-->
   <int value="15" label="Invalid target version"/>
   <int value="16" label="FIS auth error"/>
 </enum>
+
+<!-- LINT.IfChange(GeolocationPromptType) -->
+
+<enum name="GeolocationPromptType">
+  <int value="0" label="Approximate or precise"/>
+  <int value="1" label="Approximate only"/>
+  <int value="2" label="Upgrade to precise"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/permissions/permission_request_data.h:GeolocationPromptType) -->
 
 <enum name="GestureNavigationDirection">
   <int value="0" label="Gesture navigation back"/>
@@ -9807,6 +9826,7 @@ from previous Chrome versions.
   <int value="-1419788257" label="enable-experimental-hotwording"/>
   <int value="-1419449681" label="PermissionChipRequestTypeSensitive:enabled"/>
   <int value="-1418524927" label="AutoPictureInPictureVideoHeuristics:enabled"/>
+  <int value="-1418510190" label="iwa-kd-component-exp-cohort"/>
   <int value="-1418200801" label="LauncherLacrosIntegration:enabled"/>
   <int value="-1418199391" label="FilesInlineSyncStatusProgressEvents:enabled"/>
   <int value="-1418079944" label="CrosSwitcher:disabled"/>
@@ -12504,7 +12524,6 @@ from previous Chrome versions.
   <int value="-535208779" label="enable-native-cups"/>
   <int value="-535037237" label="StartSurfaceReturnTime:enabled"/>
   <int value="-534975514" label="WebAppSystemMediaControls:disabled"/>
-  <int value="-534722229" label="LauncherNudgeShortInterval:enabled"/>
   <int value="-534525820" label="MediaAppPhotosIntegrationImage:enabled"/>
   <int value="-534470003" label="OmniboxOnDeviceHeadProviderIncognito:enabled"/>
   <int value="-534221085" label="LazyImageLoading:disabled"/>
@@ -12995,6 +13014,7 @@ from previous Chrome versions.
   <int value="-366949535" label="KeyboardShortcutViewerApp:enabled"/>
   <int value="-365920680" label="ImageCaptureAPI:disabled"/>
   <int value="-365806433" label="BuiltInModuleAll:disabled"/>
+  <int value="-365166949" label="SuspiciousSiteWarnings:enabled"/>
   <int value="-365082768" label="SystemEmojiPickerGIFSupport:enabled"/>
   <int value="-365039598" label="WebBluetooth:disabled"/>
   <int value="-364604989"
@@ -16761,6 +16781,7 @@ from previous Chrome versions.
   <int value="868009556" label="AutofillUpstream:enabled"/>
   <int value="868879861" label="TpcdMetadataGrants:disabled"/>
   <int value="869531646" label="enable-session-crashed-bubble"/>
+  <int value="869650347" label="SuspiciousSiteWarnings:disabled"/>
   <int value="869770301" label="MessagesForAndroidPasswords:enabled"/>
   <int value="869946821" label="NtpComprehensiveTheming:enabled"/>
   <int value="870299555" label="ThreadingOptimizationsOnIo:enabled"/>
@@ -19367,6 +19388,7 @@ from previous Chrome versions.
   <int value="1719998906" label="KeyboardLockPrompt:enabled"/>
   <int value="1720399117" label="SkiaGraphite:enabled"/>
   <int value="1720657677" label="SensitiveContent:enabled"/>
+  <int value="1721558583" label="ToolbarGlicButtonResizing:disabled"/>
   <int value="1721854955" label="EnableEdidBasedDisplayIds:disabled"/>
   <int value="1722214178" label="ContextManagementInComposebox:enabled"/>
   <int value="1722521465" label="CrosBatterySaverAlwaysOn:disabled"/>
@@ -20201,6 +20223,7 @@ from previous Chrome versions.
   <int value="1988810119" label="AutofillDropdownLayout:enabled"/>
   <int value="1989051182" label="view-passwords:enabled"/>
   <int value="1989739884" label="CustomizeChromeWallpaperSearch:enabled"/>
+  <int value="1989877247" label="ToolbarGlicButtonResizing:enabled"/>
   <int value="1989877708" label="PostScriptPrinting:enabled"/>
   <int value="1990468492" label="AndroidWindowOcclusion:disabled"/>
   <int value="1990528959" label="SchemefulSameSite:disabled"/>
@@ -25242,6 +25265,7 @@ Called by update_net_error_codes.py.-->
   <int value="25"
       label="Opened from Immersive Reading Mode toggle presentation button"/>
   <int value="26" label="Opened from the Reading Mode keyboard shortcut"/>
+  <int value="27" label="Opened from window getting larger"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/side_panel/side_panel_enums.h:SidePanelOpenTrigger) -->

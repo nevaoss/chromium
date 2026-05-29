@@ -11,6 +11,7 @@
 #include "base/atomic_sequence_num.h"
 #include "base/files/file_util.h"
 #include "base/functional/callback_helpers.h"
+#include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/sequence_checker.h"
 #include "base/strings/stringprintf.h"
@@ -158,7 +159,13 @@ void WebNNContextImpl::InitializeContext(ContextBackendUma backend_uma) {
   RecordContextBackendUma(backend_uma);
 #if BUILDFLAG(BUILD_TFLITE_WITH_XNNPACK)
   const xnn_status status = xnn_initialize(/*allocator=*/nullptr);
-  CHECK_EQ(status, xnn_status_success);
+  if (status == xnn_status_success) {
+    is_xnnpack_initialized_ = true;
+  } else {
+    LOG(WARNING) << "Failed to initialize XNNPACK (status=" << status
+                 << "); falling back to built-in TFLite kernels for CPU "
+                    "inference.";
+  }
 #endif  // BUILDFLAG(BUILD_TFLITE_WITH_XNNPACK)
   base::trace_event::MemoryDumpManager::GetInstance()->RegisterDumpProvider(
       this, "WebNN", owning_task_runner_);
@@ -178,9 +185,12 @@ WebNNContextImpl::~WebNNContextImpl() {
       this);
 
 #if BUILDFLAG(BUILD_TFLITE_WITH_XNNPACK)
-  // Deinitialize XNNPACK
-  const xnn_status status = xnn_deinitialize();
-  CHECK_EQ(status, xnn_status_success);
+  // Deinitialize XNNPACK only if it was successfully initialized; otherwise
+  // calling other XNNPACK APIs is unsafe.
+  if (is_xnnpack_initialized_) {
+    const xnn_status status = xnn_deinitialize();
+    CHECK_EQ(status, xnn_status_success);
+  }
 #endif  // BUILDFLAG(BUILD_TFLITE_WITH_XNNPACK)
 }
 
@@ -273,7 +283,7 @@ void WebNNContextImpl::ReportBadGraphBuilderMessage(
 }
 
 void WebNNContextImpl::BuildGraph(
-    mojo::PendingAssociatedReceiver<mojom::WebNNGraph> receiver,
+    mojo::PendingReceiver<mojom::WebNNGraph> receiver,
     mojom::GraphInfoPtr graph_info,
     WebNNGraphImpl::ComputeResourceInfo compute_resource_info,
     base::flat_map<OperandId, std::unique_ptr<WebNNConstantOperand>>
@@ -313,7 +323,7 @@ void WebNNContextImpl::RemoveGraphBuilder(
 }
 
 void WebNNContextImpl::CreateGraphBuilder(
-    mojo::PendingAssociatedReceiver<mojom::WebNNGraphBuilder> receiver) {
+    mojo::PendingReceiver<mojom::WebNNGraphBuilder> receiver) {
   auto graph_builder = std::make_unique<WebNNGraphBuilderImpl>(*this);
   WebNNGraphBuilderImpl* graph_builder_ptr = graph_builder.get();
 
@@ -617,6 +627,17 @@ void WebNNContextImpl::Dispatch(
       std::move(scoped_trace), GetMojoReceiver().GetBadMessageCallback());
 }
 
+void WebNNContextImpl::DestroyGraph(
+    const blink::WebNNGraphToken& graph_handle) {
+  auto it = graph_impls_.find(graph_handle);
+  if (it == graph_impls_.end()) {
+    GetMojoReceiver().ReportBadMessage(kBadMessageInvalidGraph);
+    return;
+  }
+  (*it)->ResetMojoReceiver();
+  graph_impls_.erase(it);
+}
+
 void WebNNContextImpl::RemoveWebNNTensorImpl(
     const blink::WebNNTensorToken& handle) {
   const auto it = tensor_impls_.find(handle);
@@ -627,15 +648,6 @@ void WebNNContextImpl::RemoveWebNNTensorImpl(
   // Upon calling erase, the handle will no longer refer to a valid
   // `WebNNTensorImpl`.
   tensor_impls_.erase(it);
-}
-
-void WebNNContextImpl::RemoveWebNNGraphImpl(
-    const blink::WebNNGraphToken& handle) {
-  const auto it = graph_impls_.find(handle);
-  CHECK(it != graph_impls_.end());
-  // Upon calling erase, the handle will no longer refer to a valid
-  // `WebNNGraphImpl`.
-  graph_impls_.erase(it);
 }
 
 const ContextProperties& WebNNContextImpl::properties() const {

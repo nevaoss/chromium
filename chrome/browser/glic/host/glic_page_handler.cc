@@ -176,7 +176,6 @@ namespace glic {
 
 namespace {
 
-
 #if BUILDFLAG(IS_MAC)
 constexpr mojom::Platform kPlatform = mojom::Platform::kMacOS;
 #elif BUILDFLAG(IS_WIN)
@@ -1056,7 +1055,8 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     if (auto* web_contents = tab->GetContents()) {
       if (auto* selection_overlay_controller =
               SelectionOverlayController::FromTabWebContents(web_contents)) {
-        selection_overlay_controller->DeleteRegion(id);
+        selection_overlay_controller->DeleteRegion(id,
+                                                   /*is_using_keyboard=*/false);
       }
     }
 #else
@@ -1506,12 +1506,10 @@ class GlicWebClientHandler : public glic::mojom::WebClientHandler,
     }
   }
 
-  void OnPinningChanged(
-      const std::vector<content::WebContents*>& pinned_contents) {
+  void OnPinningChanged(const std::vector<tabs::TabInterface*>& pinned_tabs) {
     std::vector<glic::mojom::TabDataPtr> tab_data;
-    for (content::WebContents* web_contents : pinned_contents) {
-      tab_data.push_back(
-          CreateTabData(tabs::TabInterface::GetFromContents(web_contents)));
+    for (tabs::TabInterface* tab : pinned_tabs) {
+      tab_data.push_back(CreateTabData(tab));
     }
     web_client_->NotifyPinnedTabsChanged(std::move(tab_data));
   }
@@ -2024,6 +2022,27 @@ void GlicPageHandler::OpenDisabledByAdminLinkAndClosePanel() {
   host().ClosePanel(this);
   base::RecordAction(
       base::UserMetricsAction("Glic.DisabledByAdminPanelLinkClicked"));
+}
+
+void GlicPageHandler::OpenHelpCenterTopicAndClosePanel(
+    glic::mojom::HelpCenterTopic topic) {
+  // Safe fallback URL in case a newer web client passes a topic not yet
+  // supported by this version of Chrome.
+  GURL help_url = GURL(features::kGlicIneligibleAccountHelpUrl.Get());
+  switch (topic) {
+    case mojom::HelpCenterTopic::kLocationMismatch:
+      help_url = GURL(features::kGlicLocationMismatchHelpUrl.Get());
+      break;
+    case mojom::HelpCenterTopic::kIneligibleAccount:
+      help_url = GURL(features::kGlicIneligibleAccountHelpUrl.Get());
+      break;
+  }
+  auto params = std::make_unique<NavigateParams>(
+      Profile::FromBrowserContext(browser_context_), help_url,
+      ui::PAGE_TRANSITION_AUTO_TOPLEVEL);
+  params->disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  glic::Navigate(std::move(params));
+  host().ClosePanel(this);
 }
 
 void GlicPageHandler::SignInAndClosePanel() {

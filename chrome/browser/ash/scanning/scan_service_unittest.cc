@@ -76,12 +76,10 @@ constexpr char kEpsonTestName[] =
 constexpr char kDocumentSourceName[] = "Flatbed";
 constexpr char kAdfSourceName[] = "ADF Duplex";
 
-// Resolutions used for tests.
-// TODO(crbug.com/479031241): Some tests here rely on these being the default
-// resolutions used by FakeLorgnetteScanManager and moreover on the hardcoded
-// settings map in FakeLorgnetteScan. Get rid of these dependencies.
-constexpr uint32_t kFirstResolution = 75;
-constexpr uint32_t kSecondResolution = 300;
+// Resolutions used for tests, intentionally different from FakeLorgnette's
+// default so as not to hide bugs.
+constexpr uint32_t kFirstResolution = 150;
+constexpr uint32_t kSecondResolution = 600;
 
 // Email used for test profile.
 constexpr char kUserEmail[] = "user@email.com";
@@ -460,16 +458,23 @@ TEST_F(ScanServiceTest, BadScannerId) {
 // results in obtaining no capabilities.
 TEST_F(ScanServiceTest, NoCapabilities) {
   AddScanner(kFirstTestScannerName);
-  fake_lorgnette_scanner_manager_.SimulateDBusFailure(true);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
+  fake_lorgnette_scanner_manager_.SimulateDBusFailure(true);
   auto caps = GetScannerCapabilities(scanners[0]->id);
   EXPECT_TRUE(caps->sources.empty());
 }
 
 // Test that scanner capabilities can be obtained successfully.
 TEST_F(ScanServiceTest, GetScannerCapabilities) {
-  AddScanner(kFirstTestScannerName);
+  lorgnette::ScannerCapabilities capabilities;
+  lorgnette::DocumentSource* source = capabilities.add_sources();
+  source->set_type(lorgnette::SOURCE_PLATEN);
+  source->set_name(kDocumentSourceName);
+  source->add_color_modes(lorgnette::MODE_COLOR);
+  source->add_resolutions(kFirstResolution);
+  source->add_resolutions(kSecondResolution);
+  AddScanner(kFirstTestScannerName, std::move(capabilities));
 
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
@@ -500,7 +505,8 @@ TEST_F(ScanServiceTest, ScanWithUnsupportedFilePath) {
 
   AddScanner(kFirstTestScannerName);
   const std::vector<std::string> scan_data = {"TestData"};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, scan_data);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
@@ -514,7 +520,8 @@ TEST_F(ScanServiceTest, Scan) {
   AddScanner(kFirstTestScannerName);
   const std::vector<std::string> scan_data = {CreateJpeg(), CreateJpeg(),
                                               CreateJpeg()};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, scan_data);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
@@ -561,7 +568,8 @@ TEST_F(ScanServiceTest, RotateEpsonADF) {
   AddScanner(kEpsonTestName, CreateEpsonScannerCapabilities());
   const std::vector<std::string> scan_data = {CreateJpeg(), CreateJpeg(),
                                               CreateJpeg()};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(kEpsonTestName,
+                                                           scan_data);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
@@ -617,7 +625,8 @@ TEST_F(ScanServiceTest, ScanAfterFailedScan) {
   fake_lorgnette_scanner_manager_.SimulateScannerFailure(false);
   const std::vector<std::string> scan_data = {"TestData1", "TestData2",
                                               "TestData3"};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, scan_data);
 
   const std::vector<base::FilePath> saved_scan_paths = CreateSavedScanPaths(
       scanned_files_mount_->GetRootPath(), base::Time::Now(),
@@ -642,7 +651,8 @@ TEST_F(ScanServiceTest, FailedScanAfterSuccessfulScan) {
   AddScanner(kFirstTestScannerName);
   const std::vector<std::string> scan_data = {"TestData1", "TestData2",
                                               "TestData3"};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, scan_data);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
@@ -677,7 +687,8 @@ TEST_F(ScanServiceTest, FailedScanAfterSuccessfulScan) {
 TEST_F(ScanServiceTest, CancelScanBeforeScanCompletes) {
   AddScanner(kFirstTestScannerName);
   const std::vector<std::string> scan_data = {"TestData"};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, scan_data);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
@@ -713,7 +724,8 @@ TEST_F(ScanServiceTest, HoldingSpaceScan) {
        ++type_num) {
     auto type = static_cast<mojo_ipc::FileType>(type_num);
 
-    fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+    fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+        kFirstTestScannerName, scan_data);
     const std::vector<base::FilePath> saved_scan_paths = CreateSavedScanPaths(
         scanned_files_mount_->GetRootPath(), now, type, scan_data.size());
     for (const auto& saved_scan_path : saved_scan_paths)
@@ -759,7 +771,8 @@ TEST_F(ScanServiceTest, MultiPageScan) {
 
   AddScanner(kFirstTestScannerName);
   const std::vector<std::string> scan_data = {CreateJpeg()};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, scan_data);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
@@ -810,7 +823,8 @@ TEST_F(ScanServiceTest, MultiPageScanFails) {
 
   AddScanner(kFirstTestScannerName);
   const std::vector<std::string> scan_data = {CreateJpeg()};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, scan_data);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
@@ -845,7 +859,8 @@ TEST_F(ScanServiceTest, MultiPageScanFails) {
 TEST_F(ScanServiceTest, StartingAnotherMultiPageScan) {
   AddScanner(kFirstTestScannerName);
   const std::vector<std::string> scan_data = {CreateJpeg()};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, scan_data);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
@@ -879,13 +894,15 @@ TEST_F(ScanServiceTest, MultiPageScanRemoveWithTwoPages) {
 
   const std::string first_scanned_image = CreateJpeg(/*alpha=*/1);
   const std::vector<std::string> first_scan_data = {first_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(first_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, first_scan_data);
   EXPECT_TRUE(StartMultiPageScan(scanners[0]->id, settings.Clone()));
   EXPECT_EQ(new_page_index++, fake_scan_job_observer_.new_page_index());
 
   const std::string second_scanned_image = CreateJpeg(/*alpha=*/2);
   const std::vector<std::string> second_scan_data = {second_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(second_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, second_scan_data);
   EXPECT_TRUE(ScanNextPage(scanners[0]->id, settings.Clone()));
   EXPECT_EQ(new_page_index++, fake_scan_job_observer_.new_page_index());
 
@@ -923,19 +940,22 @@ TEST_F(ScanServiceTest, MultiPageScanRemoveWithThreePages) {
 
   const std::string first_scanned_image = CreateJpeg(/*alpha=*/1);
   const std::vector<std::string> first_scan_data = {first_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(first_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, first_scan_data);
   EXPECT_TRUE(StartMultiPageScan(scanners[0]->id, settings.Clone()));
   EXPECT_EQ(new_page_index++, fake_scan_job_observer_.new_page_index());
 
   const std::string second_scanned_image = CreateJpeg(/*alpha=*/2);
   const std::vector<std::string> second_scan_data = {second_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(second_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, second_scan_data);
   EXPECT_TRUE(ScanNextPage(scanners[0]->id, settings.Clone()));
   EXPECT_EQ(new_page_index++, fake_scan_job_observer_.new_page_index());
 
   const std::string third_scanned_image = CreateJpeg(/*alpha=*/3);
   const std::vector<std::string> third_scan_data = {third_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(third_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, third_scan_data);
   EXPECT_TRUE(ScanNextPage(scanners[0]->id, settings.Clone()));
   EXPECT_EQ(new_page_index++, fake_scan_job_observer_.new_page_index());
 
@@ -966,7 +986,8 @@ TEST_F(ScanServiceTest, MultiPageScanRemoveLastPage) {
 
   AddScanner(kFirstTestScannerName);
   const std::vector<std::string> scan_data = {CreateJpeg()};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, scan_data);
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
@@ -1016,7 +1037,8 @@ TEST_F(ScanServiceTest, MultiPageScanRescanWithOnePage) {
 
   const std::string first_scanned_image = CreateJpeg(/*alpha=*/1);
   const std::vector<std::string> first_scan_data = {first_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(first_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, first_scan_data);
   EXPECT_TRUE(StartMultiPageScan(scanners[0]->id, settings.Clone()));
   EXPECT_EQ(new_page_index++, fake_scan_job_observer_.new_page_index());
 
@@ -1024,7 +1046,8 @@ TEST_F(ScanServiceTest, MultiPageScanRescanWithOnePage) {
   const std::string rescanned_scanned_image = CreateJpeg(/*alpha=*/2);
   const std::vector<std::string> rescanned_scan_data = {
       rescanned_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(rescanned_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, rescanned_scan_data);
   EXPECT_TRUE(RescanPage(scanners[0]->id, settings.Clone(), /*page_index=*/0));
   EXPECT_EQ(0u, fake_scan_job_observer_.new_page_index());
   CompleteMultiPageScan();
@@ -1059,19 +1082,22 @@ TEST_F(ScanServiceTest, MultiPageScanRescanWithThreePages) {
 
   const std::string first_scanned_image = CreateJpeg(/*alpha=*/1);
   const std::vector<std::string> first_scan_data = {first_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(first_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, first_scan_data);
   EXPECT_TRUE(StartMultiPageScan(scanners[0]->id, settings.Clone()));
   EXPECT_EQ(new_page_index++, fake_scan_job_observer_.new_page_index());
 
   const std::string second_scanned_image = CreateJpeg(/*alpha=*/2);
   const std::vector<std::string> second_scan_data = {second_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(second_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, second_scan_data);
   EXPECT_TRUE(ScanNextPage(scanners[0]->id, settings.Clone()));
   EXPECT_EQ(new_page_index++, fake_scan_job_observer_.new_page_index());
 
   const std::string third_scanned_image = CreateJpeg(/*alpha=*/3);
   const std::vector<std::string> third_scan_data = {third_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(third_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, third_scan_data);
   EXPECT_TRUE(ScanNextPage(scanners[0]->id, settings.Clone()));
   EXPECT_EQ(new_page_index++, fake_scan_job_observer_.new_page_index());
 
@@ -1079,7 +1105,8 @@ TEST_F(ScanServiceTest, MultiPageScanRescanWithThreePages) {
   const std::string rescanned_scanned_image = CreateJpeg(/*alpha=*/4);
   const std::vector<std::string> rescanned_scan_data = {
       rescanned_scanned_image};
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(rescanned_scan_data);
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, rescanned_scan_data);
   EXPECT_TRUE(RescanPage(scanners[0]->id, settings.Clone(), /*page_index=*/1));
   EXPECT_EQ(1u, fake_scan_job_observer_.new_page_index());
   CompleteMultiPageScan();
@@ -1122,7 +1149,8 @@ TEST_F(ScanServiceTest, ScanDataSettings) {
   auto scanners = GetScanners();
   ASSERT_EQ(scanners.size(), 1u);
 
-  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs({CreateJpeg(1)});
+  fake_lorgnette_scanner_manager_.SetDataForFutureScanJobs(
+      kFirstTestScannerName, {CreateJpeg(1)});
 
   mojo_ipc::ScanSettings settings = CreateScanSettings(
       scanned_files_mount_->GetRootPath(), mojo_ipc::FileType::kPdf, "flatbed",

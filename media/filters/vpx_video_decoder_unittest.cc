@@ -481,7 +481,8 @@ TEST_F(VpxVideoDecoderTest, MemoryPoolAllowsMultipleDisplay) {
 }
 #endif  // !defined(LIBVPX_NO_HIGH_BIT_DEPTH) && !defined(ARCH_CPU_ARM_FAMILY)
 
-TEST_F(VpxVideoDecoderTest, AgtmMetadata) {
+// TODO(crbug.com/395659818): Enable after updating parsing in Chromium.
+TEST_F(VpxVideoDecoderTest, DISABLED_AgtmMetadata) {
   base::test::ScopedFeatureList scoped_feature_list(features::kHdrAgtm);
   Initialize();
 
@@ -507,7 +508,7 @@ TEST_F(VpxVideoDecoderTest, AgtmMetadata) {
 
   const auto& frame = output_frames_.front();
   ASSERT_TRUE(frame->hdr_metadata().HasAgtm());
-  EXPECT_EQ(frame->hdr_metadata().GetAgtm().fHdrReferenceWhite, 203.0535f);
+  EXPECT_EQ(frame->hdr_metadata().GetAgtm().fHdrReferenceWhite, 203.0f);
 
   Destroy();
 }

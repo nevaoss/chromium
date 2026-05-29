@@ -1787,11 +1787,6 @@ inline constexpr char kStrokesAPIEnabledName[] = "Enable Strokes API for Lens";
 inline constexpr char kStrokesAPIEnabledDescription[] =
     "When enabled, Lens will use the Strokes API.";
 
-inline constexpr char kSupervisedUserBlockInterstitialV3Name[] =
-    "Enable URL filter interstitial V3";
-inline constexpr char kSupervisedUserBlockInterstitialV3Description[] =
-    "Enables URL filter interstitial V3 for Family Link users.";
-
 inline constexpr char kSupervisedUserEmitLogRecordSeparatelyName[] =
     "Emit supervised user log record separately";
 inline constexpr char kSupervisedUserEmitLogRecordSeparatelyDescription[] =
@@ -1978,6 +1973,12 @@ inline constexpr char kYourSavedInfoSettingsPageIosName[] =
     "Enable Autofill and passwords settings redesign on iOS";
 inline constexpr char kYourSavedInfoSettingsPageIosDescription[] =
     "Enables the Autofill and passwords settings page redesign on iOS.";
+
+inline constexpr char kZeroStateSuggestionsCentralizationName[] =
+    "Zero-State Suggestions Centralization";
+inline constexpr char kZeroStateSuggestionsCentralizationDescription[] =
+    "Enables the creation of both static and model-led zero-state suggestions "
+    "on the Chrome side.";
 
 inline constexpr char kZeroStateSuggestionsName[] =
     "Enable Zero-State Suggestions";

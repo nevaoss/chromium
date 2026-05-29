@@ -9,6 +9,10 @@
 
 #import <vector>
 
+#import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
+#import "ios/chrome/browser/composebox/public/composebox_mode.h"
+#import "ios/chrome/browser/composebox/public/composebox_model_option.h"
+
 // LINT.IfChange(AiModeActivationSource)
 enum class AiModeActivationSource {
   kToolMenu = 0,
@@ -28,7 +32,8 @@ enum class FuseboxAttachmentButtonType {
   kFiles = 4,
   kClipboard = 5,
   kSuggestedTab = 6,
-  kMaxValue = kSuggestedTab
+  kRecentTab = 7,
+  kMaxValue = kRecentTab
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:FuseboxAttachmentButtonType)
 
@@ -77,8 +82,15 @@ namespace contextual_search {
 class ContextualSearchMetricsRecorder;
 }
 
+enum class ComposeboxEntrypoint;
+
 // A metrics recorder object for the composebox.
 @interface ComposeboxMetricsRecorder : NSObject
+
+// Initializes the recorder with the associated entrypoint.
+- (instancetype)initWithEntrypoint:(ComposeboxEntrypoint)entrypoint
+    NS_DESIGNATED_INITIALIZER;
+- (instancetype)init NS_UNAVAILABLE;
 
 // The C++ metrics recorder to delegate to.
 @property(nonatomic, assign) contextual_search::ContextualSearchMetricsRecorder*
@@ -140,6 +152,18 @@ class ContextualSearchMetricsRecorder;
 
 // Records whether the user edited the text before entering AI Mode.
 - (void)recordTextEditedBeforeAiMode:(BOOL)edited;
+
+// Records that the given tool mode option was displayed.
+- (void)recordToolModeShown:(ComposeboxMode)tool;
+
+// Records that the given model option was displayed.
+- (void)recordModelModeShown:(ComposeboxModelOption)model;
+
+// Records the tool explicitly selected in the menu.
+- (void)recordToolSelected:(ComposeboxMode)tool;
+
+// Records the model explicitly selected in the menu.
+- (void)recordModelSelected:(ComposeboxModelOption)model;
 
 @end
 

@@ -834,9 +834,12 @@ AutofillAgent::EmailVerificationObserver::~EmailVerificationObserver() =
     default;
 
 void AutofillAgent::EmailVerificationObserver::StoreEmailVerificationToken(
-    FieldRendererId field_id,
+    FieldRendererId email_field_id,
+    const std::string& email,
+    FieldRendererId token_field_id,
     const std::string& token) {
-  email_verification_tokens_[field_id] = token;
+  email_verification_tokens_[token_field_id] = TokenInfo{
+      .token = token, .email_field_id = email_field_id, .email = email};
 }
 
 void AutofillAgent::EmailVerificationObserver::WillSendSubmitEvent(
@@ -845,45 +848,31 @@ void AutofillAgent::EmailVerificationObserver::WillSendSubmitEvent(
     return;
   }
 
-  auto is_hidden_input = [](const WebFormControlElement& control) {
-    return control.FormControlTypeForAutofill() ==
-           blink::mojom::FormControlType::kInputHidden;
-  };
+  for (const auto& [field_id, info] : email_verification_tokens_) {
+    WebFormControlElement element =
+        form_util::GetFormControlByRendererId(field_id);
+    if (element && element.GetOwningFormForAutofill() == form) {
+      // To prevent sharing an Email Verification Token (EVT) generated for a
+      // different email address (e.g., if the user edited the email field,
+      // cleared it, or selected a different email address after the token was
+      // sent to the renderer), verify that the email field's current value
+      // still matches the email address used during verification.
+      WebFormControlElement email_element =
+          form_util::GetFormControlByRendererId(info.email_field_id);
+      if (email_element) {
+        std::u16string current_email = email_element.Value().Utf16();
+        std::u16string original_email = base::UTF8ToUTF16(info.email);
+        if (base::i18n::FoldCase(
+                base::TrimWhitespace(current_email, base::TRIM_ALL)) !=
+            base::i18n::FoldCase(
+                base::TrimWhitespace(original_email, base::TRIM_ALL))) {
+          continue;
+        }
+      } else {
+        continue;
+      }
 
-  auto has_email_verification_autocomplete =
-      [](const WebFormControlElement& control) {
-        std::string autocomplete_attr =
-            base::ToLowerASCII(control.GetAttribute("autocomplete").Utf8());
-        std::vector<std::string_view> tokens = base::SplitStringPiece(
-            autocomplete_attr, " ", base::TRIM_WHITESPACE,
-            base::SPLIT_WANT_NONEMPTY);
-        return std::ranges::contains(tokens, "email-verification-token");
-      };
-
-  WebFormControlElement field;
-  for (const WebFormControlElement& control :
-       form.GetFormControlElements()) {  // nocheck
-    if (is_hidden_input(control) &&
-        has_email_verification_autocomplete(control)) {
-      field = control;
-      break;
-    }
-  }
-
-  if (!field) {
-    return;
-  }
-
-  // The verification token is associated with the <input type="email"> that
-  // triggered the verification. We loop through the form controls to find the
-  // email field associated with the token, and if one is found we fill the
-  // token into the hidden field before the form is submitted.
-  for (const WebFormControlElement& control :
-       form.GetFormControlElements()) {  // nocheck
-    auto it =
-        email_verification_tokens_.find(form_util::GetFieldRendererId(control));
-    if (it != email_verification_tokens_.end()) {
-      field.SetValue(WebString::FromUtf8(it->second));
+      element.SetValue(WebString::FromUtf8(info.token));
 
       if (auto* driver = agent_->unsafe_autofill_driver()) {
         driver->OnEmailVerificationTokenShared();
@@ -1696,9 +1685,12 @@ void AutofillAgent::GetPotentialLastFourCombinationsForStandaloneCvc(
   }
 }
 
-void AutofillAgent::SendEmailVerificationToken(FieldRendererId field_id,
+void AutofillAgent::SendEmailVerificationToken(FieldRendererId email_field_id,
+                                               const std::string& email,
+                                               FieldRendererId token_field_id,
                                                const std::string& token) {
-  email_verification_observer_.StoreEmailVerificationToken(field_id, token);
+  email_verification_observer_.StoreEmailVerificationToken(
+      email_field_id, email, token_field_id, token);
 }
 
 void AutofillAgent::DoFillFieldWithValue(std::u16string_view value,
@@ -2115,6 +2107,11 @@ void AutofillAgent::FormElementReset(const WebFormElement& form) {
 void AutofillAgent::PasswordFieldReset(const WebInputElement& element) {
   DCHECK(form_util::MaybeWasOwnedByFrame(element, unsafe_render_frame()));
   password_autofill_agent_->InformAboutFieldClearing(element);
+}
+
+bool AutofillAgent::IsAutofillableElement(
+    const blink::WebFormControlElement& element) const {
+  return form_util::IsAutofillableElement(element);
 }
 
 bool AutofillAgent::IsPrerendering() const {

@@ -533,6 +533,16 @@ if (!is_win && !is_android) {
   }
 }
 
+if (is_android) {
+  # Header-only target so downstream targets can include
+  # profile_key_startup_accessor.h without depending on :browser. The .cc
+  # file remains in //chrome/browser:browser.
+  source_set("profile_key_startup_accessor") {
+    public = [ "android/profile_key_startup_accessor.h" ]
+    deps = [ "//base" ]
+  }
+}
+
 if (is_mac) {
   source_set("chrome_browser_main_mac") {
     public = [ "chrome_browser_main_mac.h" ]
@@ -602,6 +612,7 @@ if (is_chromeos) {
 
 source_set("core") {
   sources = [
+    "about_flags.cc",
     "after_startup_task_utils.cc",
     "browser_about_handler.cc",
     "browser_process_impl.cc",
@@ -612,6 +623,7 @@ source_set("core") {
     "chrome_browser_interface_binders_webui.h",
     "chrome_browser_interface_binders_webui_parts.h",
     "chrome_browser_interface_binders_webui_parts_features.cc",
+    "chrome_browser_main.cc",
     "chrome_content_browser_client.cc",
     "chrome_content_browser_client_binder_policies.cc",
     "chrome_content_browser_client_binder_policies.h",
@@ -625,6 +637,21 @@ source_set("core") {
     "font_family_cache.cc",
     "font_family_cache.h",
     "global_features.cc",
+    "icon_manager.cc",
+    "memory_details.cc",
+    "net_benchmarking.cc",
+    "platform_util_internal.cc",
+    "platform_util_internal.h",
+    "process_resource_usage.cc",
+    "process_singleton_internal.cc",
+    "process_singleton_internal.h",
+    "renderer_preferences_util.cc",
+    "resources_util.cc",
+    "shell_integration.cc",
+    "startup_data.cc",
+    "unexpire_flags.cc",
+    "unexpire_flags.h",
+    "universal_web_contents_observers.cc",
   ]
 
   configs += [
@@ -664,9 +691,13 @@ source_set("core") {
     ":icon_loader",
     ":icon_manager",
     ":main_extra_parts",
+    ":memory_details",
     ":net_benchmarking",
     ":primitives",
+    ":process_resource_usage",
+    ":process_singleton",
     ":renderer_preferences_util",
+    ":resources_util",
     ":shell_integration",
     ":startup_data",
     ":unexpire_flags",
@@ -710,6 +741,7 @@ source_set("core") {
     "//chrome/browser/gpu",
     "//chrome/browser/headless",
     "//chrome/browser/history",
+    "//chrome/browser/infobars",
     "//chrome/browser/interstitials",
     "//chrome/browser/language",
     "//chrome/browser/language_detection",
@@ -743,6 +775,7 @@ source_set("core") {
     "//chrome/browser/permissions",
     "//chrome/browser/permissions/system",
     "//chrome/browser/picture_in_picture",
+    "//chrome/browser/policy:path_parser",
     "//chrome/browser/policy:policy_util",
     "//chrome/browser/predictors",
     "//chrome/browser/predictors:config",
@@ -807,11 +840,11 @@ source_set("core") {
     "//chrome/browser/ui/tabs/tab_group_home:constants",
     "//chrome/browser/ui/webid",
     "//chrome/browser/ui/webui:configs",
-    "//chrome/browser/ui/webui/accessibility_annotator_internals",
+    "//chrome/browser/ui/webui/accessibility_annotator_internals:personal_context_internals",
     "//chrome/browser/ui/webui/actor_internals",
-    "//chrome/browser/ui/webui/actor_internals:mojo_bindings",
     "//chrome/browser/ui/webui/bluetooth_internals",
     "//chrome/browser/ui/webui/bluetooth_internals:mojo_bindings",
+    "//chrome/browser/ui/webui/browsing_topics",
     "//chrome/browser/ui/webui/chrome_finds_internals",
     "//chrome/browser/ui/webui/chrome_finds_internals:mojo_bindings",
     "//chrome/browser/ui/webui/internal_debug_pages_disabled",
@@ -830,6 +863,7 @@ source_set("core") {
     "//chrome/services/speech/buildflags",
     "//components/activity_reporter",
     "//components/actor/core",
+    "//components/actor/public/mojom:mojo_bindings",
     "//components/application_locale_storage",
     "//components/assist_ranker",
     "//components/blocked_content",
@@ -863,6 +897,7 @@ source_set("core") {
     "//components/embedder_support:user_agent",
     "//components/enterprise/data_controls/content/browser",
     "//components/enterprise/data_controls/core/browser:features",
+    "//components/enterprise/networking",
     "//components/error_page/content/browser",
     "//components/facilitated_payments/core/features",
     "//components/feature_engagement/public:feature_constants",
@@ -894,6 +929,7 @@ source_set("core") {
     "//components/network_time",
     "//components/no_state_prefetch/browser",
     "//components/no_state_prefetch/common",
+    "//components/omnibox/common:features",
     "//components/open_from_clipboard:feature_flags",
     "//components/page_content_annotations/core:features",
     "//components/page_load_metrics/browser",
@@ -1103,6 +1139,7 @@ source_set("core") {
 
   if (!is_android) {
     deps += [
+      ":chrome_process_singleton",
       ":intranet_redirect_detector",
       "//chrome/browser/accessibility/live_caption",
       "//chrome/browser/apps/app_service",
@@ -1206,6 +1243,7 @@ source_set("core") {
   }
 
   if (is_win) {
+    sources += [ "chrome_browser_main_win.h" ]
     deps += [
       "//chrome/browser/os_crypt",
       "//chrome/browser/webnn",
@@ -1230,6 +1268,7 @@ source_set("core") {
 
   if (is_mac) {
     deps += [
+      ":chrome_browser_main_mac",
       "//chrome/app_shim",
       "//chrome/browser/apps/app_shim",
       "//chrome/browser/mac",
@@ -1243,7 +1282,15 @@ source_set("core") {
     ]
   }
 
+  if (!is_win && !is_android) {
+    deps += [ ":chrome_browser_main_posix" ]
+  }
+
   if (is_linux) {
+    sources += [
+      "chrome_browser_main_extra_parts_linux.h",
+      "chrome_browser_main_linux.h",
+    ]
     deps += [ "//components/os_crypt/async/browser:posix_key_provider" ]
 
     if (use_dbus) {
@@ -1255,7 +1302,9 @@ source_set("core") {
   }
 
   if (is_android) {
+    sources += [ "chrome_browser_main_android.h" ]
     deps += [
+      ":profile_key_startup_accessor",
       "//chrome/browser/accessibility/accessibility_prefs",
       "//chrome/browser/dev_ui",
       "//chrome/browser/facilitated_payments",
@@ -1424,6 +1473,7 @@ source_set("core") {
   }
 
   if (use_ozone) {
+    sources += [ "chrome_browser_main_extra_parts_ozone.h" ]
     deps += [
       "//ui/events/ozone",
       "//ui/ozone",
@@ -1457,6 +1507,12 @@ source_set("core") {
     ]
   }
 
+  if (enable_builtin_search_provider_assets) {
+    deps += [
+      "//third_party/search_engines_data:search_engines_scaled_resources_grit",
+    ]
+  }
+
   deps += [ "//chrome/browser/vr:chrome_xr_integration_client" ]
 
   if (is_posix && !is_mac) {
@@ -1473,30 +1529,16 @@ source_set("core") {
       ":cloud_identifier_util_ash",
     ]
   }
+
+  if (is_chrome_for_testing) {
+    deps += [ "//chrome/browser/chrome_for_testing:browser" ]
+  }
 }
 
 # Use a static library here because many test binaries depend on this but don't
 # require many files from it. This makes linking more efficient.
 static_library("browser") {
-  sources = [
-    "about_flags.cc",
-    "chrome_browser_main.cc",
-    "icon_manager.cc",
-    "memory_details.cc",
-    "net_benchmarking.cc",
-    "platform_util_internal.cc",
-    "platform_util_internal.h",
-    "process_resource_usage.cc",
-    "process_singleton_internal.cc",
-    "process_singleton_internal.h",
-    "renderer_preferences_util.cc",
-    "resources_util.cc",
-    "shell_integration.cc",
-    "startup_data.cc",
-    "unexpire_flags.cc",
-    "unexpire_flags.h",
-    "universal_web_contents_observers.cc",
-  ]
+  sources = []
 
   configs += [
     "//build/config/compiler:wexit_time_destructors",
@@ -2032,7 +2074,7 @@ static_library("browser") {
     "//chrome/browser/ui/webui:configs",
     "//chrome/browser/ui/webui/about",
     "//chrome/browser/ui/webui/about:impl",
-    "//chrome/browser/ui/webui/accessibility_annotator_internals",
+    "//chrome/browser/ui/webui/accessibility_annotator_internals:personal_context_internals",
     "//chrome/browser/ui/webui/actor_internals",
     "//chrome/browser/ui/webui/bluetooth_internals",
     "//chrome/browser/ui/webui/bluetooth_internals:mojo_bindings",
@@ -2150,6 +2192,7 @@ static_library("browser") {
     "//components/enterprise/device_trust",
     "//components/enterprise/encryption/cache",
     "//components/enterprise/isolated_mode",
+    "//components/enterprise/network_header_injection/core",
     "//components/enterprise/networking",
     "//components/enterprise/obfuscation/core:enterprise_obfuscation",
     "//components/error_page/common",
@@ -2766,6 +2809,8 @@ static_library("browser") {
       "android/media_state_observer.cc",
       "android/media_state_observer.h",
       "android/messages_resource_mapper_initializer.cc",
+      "android/metrics/android_atoms_logger.cc",
+      "android/metrics/android_atoms_logger.h",
       "android/metrics/android_session_durations_service.cc",
       "android/metrics/android_session_durations_service.h",
       "android/metrics/android_session_durations_service_factory.cc",
@@ -2777,8 +2822,6 @@ static_library("browser") {
       "android/metrics/uma_utils.h",
       "android/metrics/variations_session.cc",
       "android/metrics/westworld_histogram_allowlist.h",
-      "android/metrics/westworld_histogram_mapping.cc",
-      "android/metrics/westworld_histogram_mapping.h",
       "android/mojo/chrome_interface_registrar_android.cc",
       "android/mojo/chrome_interface_registrar_android.h",
       "android/navigation_predictor/navigation_predictor_bridge.cc",
@@ -2841,7 +2884,6 @@ static_library("browser") {
       "android/preloading/android_prerender_manager.cc",
       "android/preloading/android_prerender_manager.h",
       "android/profile_key_startup_accessor.cc",
-      "android/profile_key_startup_accessor.h",
       "android/profile_key_util.cc",
       "android/profile_key_util.h",
       "android/quick_delete/quick_delete_bridge.cc",
@@ -2945,7 +2987,6 @@ static_library("browser") {
       "browser_process_platform_part_android.cc",
       "chrome_browser_interface_binders_webui_parts_android.cc",
       "chrome_browser_main_android.cc",
-      "chrome_browser_main_android.h",
       "chrome_content_browser_client_android.cc",
       "chrome_content_browser_client_android.h",
       "commerce/android/price_tracking_utils_android.cc",
@@ -3013,6 +3054,7 @@ static_library("browser") {
     public_deps += [ "//chrome/browser/accessibility/accessibility_prefs" ]
 
     deps += [
+      ":profile_key_startup_accessor",
       "//cc/slim",
       "//chrome/android:jni_headers",
       "//chrome/browser/accessibility/settings",
@@ -4027,7 +4069,6 @@ static_library("browser") {
       "//ash/webui/shortcut_customization_ui/mojom",
       "//ash/webui/status_area_internals",
       "//ash/webui/status_area_internals/mojom",
-      "//ash/webui/system_apps/public:system_web_app_type",
       "//ash/webui/vc_background_ui",
       "//build:chromeos_buildflags",
       "//chrome/app/theme:chrome_unscaled_resources_grit",
@@ -4292,6 +4333,7 @@ static_library("browser") {
       "//chrome/browser/enterprise/connectors/device_trust/attestation/common/proto:interface_proto",
       "//chrome/browser/extensions/api/document_scan",
       "//chrome/browser/extensions/api/enterprise_networking_attributes",
+      "//chromeos/ash/components/system_web_apps:system_web_app_type",
 
       # TODO(crbug.com/353332589): Remove this circular dependency when
       # c/b/browser_process_platform_part_ash.h gets modularized.
@@ -4351,19 +4393,18 @@ static_library("browser") {
       "//chrome/browser/ui/ash/user_education",
       "//chrome/browser/ui/ash/wallpaper",
       "//chrome/browser/ui/ash/web_view",
-      "//chrome/browser/ui/views/borealis",
       "//chrome/browser/ui/views/select_file_dialog_extension",
       "//chrome/browser/ui/webui/ash/add_supervision",
       "//chrome/browser/ui/webui/ash/app_install",
       "//chrome/browser/ui/webui/ash/arc_overview_tracing",
       "//chrome/browser/ui/webui/ash/arc_power_control",
       "//chrome/browser/ui/webui/ash/bluetooth",
-      "//chrome/browser/ui/webui/ash/borealis_installer",
       "//chrome/browser/ui/webui/ash/cellular_setup",
       "//chrome/browser/ui/webui/ash/cloud_upload",
       "//chrome/browser/ui/webui/ash/crostini_installer",
       "//chrome/browser/ui/webui/ash/curtain_ui",
       "//chrome/browser/ui/webui/ash/diagnostics_dialog",
+      "//chrome/browser/ui/webui/ash/dlp_internals",
       "//chrome/browser/ui/webui/ash/drive_internals",
       "//chrome/browser/ui/webui/ash/edu_coexistence",
       "//chrome/browser/ui/webui/ash/emoji",
@@ -4850,13 +4891,10 @@ static_library("browser") {
       "//chrome/browser/ui/ash/user_education",
       "//chrome/browser/ui/ash/wallpaper",
       "//chrome/browser/ui/ash/web_view",
-      "//chrome/browser/ui/views/borealis",
       "//chrome/browser/ui/views/select_file_dialog_extension",
       "//chrome/browser/ui/webui/ash/add_supervision",
       "//chrome/browser/ui/webui/ash/arc_overview_tracing",
       "//chrome/browser/ui/webui/ash/arc_power_control",
-
-      "//chrome/browser/ui/webui/ash/borealis_installer",
       "//chrome/browser/ui/webui/ash/cellular_setup",
       "//chrome/browser/ui/webui/ash/cloud_upload",
       "//chrome/browser/ui/webui/ash/diagnostics_dialog",
@@ -5004,7 +5042,6 @@ static_library("browser") {
     ]
     sources += [
       "chrome_browser_main_win.cc",
-      "chrome_browser_main_win.h",
       "font_prewarmer_tab_helper.cc",
       "fullscreen_win.cc",
       "icon_loader_win.cc",
@@ -5284,7 +5321,6 @@ static_library("browser") {
   if (is_linux || is_chromeos) {
     sources += [
       "chrome_browser_main_linux.cc",
-      "chrome_browser_main_linux.h",
       "memory_details_linux.cc",
     ]
     deps += [ "//third_party/fontconfig" ]
@@ -5296,7 +5332,6 @@ static_library("browser") {
   if (is_linux) {
     sources += [
       "chrome_browser_main_extra_parts_linux.cc",
-      "chrome_browser_main_extra_parts_linux.h",
       "fullscreen_linux.cc",
       "icon_loader_auralinux.cc",
       "shell_integration_linux.cc",
@@ -5411,10 +5446,7 @@ static_library("browser") {
   }
 
   if (use_ozone) {
-    sources += [
-      "chrome_browser_main_extra_parts_ozone.cc",
-      "chrome_browser_main_extra_parts_ozone.h",
-    ]
+    sources += [ "chrome_browser_main_extra_parts_ozone.cc" ]
     deps += [
       "//ui/events/ozone",
       "//ui/ozone",
@@ -5465,7 +5497,11 @@ static_library("browser") {
     ]
 
     if (!is_android) {
-      deps += [ "//chrome/browser/ui/webui/signin/signout_confirmation" ]
+      deps += [
+        "//chrome/browser/ui/webui/feature_showcase",
+        "//chrome/browser/ui/webui/feature_showcase:mojo_bindings",
+        "//chrome/browser/ui/webui/signin/signout_confirmation",
+      ]
     }
   }
 
@@ -5841,12 +5877,6 @@ static_library("browser") {
       "//chrome/browser/chrome_for_testing:browser",
     ]
   }
-
-  if (enable_builtin_search_provider_assets) {
-    deps += [
-      "//third_party/search_engines_data:search_engines_scaled_resources_grit",
-    ]
-  }
 }
 
 # These are the dependencies for the "browser" target that are outside of
@@ -6123,7 +6153,6 @@ group("browser_generated_files") {
       "//chrome/browser/media/router/discovery/access_code:discovery_resources_proto",
       "//chrome/browser/ui/webui/ash/add_supervision:mojo_bindings",
       "//chrome/browser/ui/webui/ash/app_install:mojo_bindings",
-      "//chrome/browser/ui/webui/ash/borealis_installer:mojo_bindings",
       "//chrome/browser/ui/webui/ash/cloud_upload:mojo_bindings",
       "//chrome/browser/ui/webui/ash/dlp_internals:mojo_bindings",
       "//chrome/browser/ui/webui/ash/emoji:mojo_bindings",

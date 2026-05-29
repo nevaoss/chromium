@@ -53,6 +53,8 @@
 #include "components/commerce/core/commerce_feature_list.h"
 #include "components/feed/feed_feature_list.h"
 #include "components/send_tab_to_self/features.h"
+#include "components/split_tabs/split_tab_visual_data.h"
+#include "components/tabs/public/tab_interface.h"
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/context_menu_params.h"
 #include "content/public/browser/web_contents.h"
@@ -157,7 +159,9 @@ void TabMenuModel::BuildSendTabToSelfSubmenu(int index) {
       TabStripModel::CommandSendTabToSelf, IDS_MENU_SEND_TAB_TO_SELF,
       send_tab_to_self_submenu_.get(),
       ui::ImageModel::FromVectorIcon(
-          features::IsRoundedIconsEnabled() ? kDevicesIcon : kDevicesOldIcon,
+          features::IsRoundedIconsEnabled()   ? kDevicesIcon
+          : features::IsRoundedIconsEnabled() ? vector_icons::kDevicesIcon
+                                              : kDevicesOldIcon,
           ui::kColorMenuIcon, kTabMenuIconSize));
 #endif
 }
@@ -171,7 +175,9 @@ void TabMenuModel::BuildLegacySendTabToSelfItem() {
       TabStripModel::CommandSendTabToSelf,
       l10n_util::GetStringUTF16(IDS_MENU_SEND_TAB_TO_SELF),
       ui::ImageModel::FromVectorIcon(
-          features::IsRoundedIconsEnabled() ? kDevicesIcon : kDevicesOldIcon));
+          features::IsRoundedIconsEnabled()   ? kDevicesIcon
+          : features::IsRoundedIconsEnabled() ? vector_icons::kDevicesIcon
+                                              : kDevicesOldIcon));
 #endif
 }
 
@@ -188,7 +194,8 @@ void TabMenuModel::AppendGlicItems(int index,
                        glic_tab_sub_menu_model_.get(),
                        ui::ImageModel::FromVectorIcon(
                            glic::GlicVectorIconManager::GetVectorIcon(
-                               IDR_GLIC_BUTTON_VECTOR_ICON)));
+                               IDR_GLIC_BUTTON_VECTOR_ICON),
+                           ui::kColorMenuIcon, kTabMenuIconSize));
   } else {
     AddSubMenu(TabStripModel::CommandGlicShare,
                l10n_util::GetPluralStringFUTF16(IDS_TAB_CXMENU_GLIC_START_SHARE,
@@ -253,14 +260,26 @@ void TabMenuModel::Build(int index) {
       SetElementIdentifierAt(swap_with_split_index, kSwapSplitTabsMenuItem);
     } else {
       if (tabs::kSplitViewHorizontalDirectAccess.Get()) {
-        split_orientation_submenu_ = std::make_unique<SplitViewLayoutMenuModel>(
-            tab_strip_, tab_strip_->GetTabAtIndex(index)->GetHandle());
+        split_layout_submenu_ =
+            std::make_unique<SplitViewLayoutMenuModel>(base::BindOnce(
+                [](TabStripModel* tab_strip_model, tabs::TabHandle tab_handle,
+                   split_tabs::SplitTabLayout layout) {
+                  if (!tab_handle.Get()) {
+                    return;
+                  }
+
+                  int context_index =
+                      tab_strip_model->GetIndexOfTab(tab_handle.Get());
+                  tab_strip_model->ExecuteAddToNewSplitCommand(context_index,
+                                                               layout);
+                },
+                tab_strip_, tab_strip_->GetTabAtIndex(index)->GetHandle()));
         AddSubMenuWithStringIdAndIcon(
             TabStripModel::CommandAddToSplit,
             index == tab_strip_->active_index()
                 ? IDS_TAB_CXMENU_ADD_TAB_TO_NEW_SPLIT
                 : IDS_TAB_CXMENU_NEW_SPLIT_WITH_CURRENT,
-            split_orientation_submenu_.get(),
+            split_layout_submenu_.get(),
             ui::ImageModel::FromVectorIcon(
                 features::IsRoundedIconsEnabled() ? kSplitSceneIcon
                                                   : kSplitSceneOldIcon,
@@ -400,8 +419,12 @@ void TabMenuModel::Build(int index) {
     SetIconForCommandId(
         TabStripModel::CommandToggleSiteMuted,
         ui::ImageModel::FromVectorIcon(
-            will_mute ? vector_icons::kVolumeOffChromeRefreshOldIcon
-                      : vector_icons::kVolumeUpChromeRefreshOldIcon,
+            will_mute ? features::IsRoundedIconsEnabled()
+                            ? vector_icons::kVolumeOffIcon
+                            : vector_icons::kVolumeOffChromeRefreshOldIcon
+            : features::IsRoundedIconsEnabled()
+                ? vector_icons::kVolumeUpIcon
+                : vector_icons::kVolumeUpChromeRefreshOldIcon,
             ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
   }
 

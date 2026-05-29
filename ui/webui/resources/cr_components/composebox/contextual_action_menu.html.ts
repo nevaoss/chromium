@@ -26,7 +26,8 @@ export function getHtml(this: ContextualActionMenuElement) {
       </button>
       <hr/>
     ` : ''}
-    ${this.tabSuggestions?.length > 0 && this.isBrowserTabAllowed_() ? html`
+    ${this.tabSuggestions?.length > 0 &&
+        this.isInputTypeAllowed_(InputType.kBrowserTab) ? html`
       ${this.contextManagementInComposeboxEnabled_ ? html`
         <div class="share-tabs-container">
           <button id="shareTabsTrigger" class="dropdown-item"
@@ -40,7 +41,7 @@ export function getHtml(this: ContextualActionMenuElement) {
             <span class="tab-title">
               ${this.sharingTabsText_}
             </span>
-            <composebox-favicon-group .tabs="${this.getSelectedTabs_()}">
+            <composebox-favicon-group .tabs="${this.getSelectedTabs_()}" title="${this.i18n('sharingTabsWithGoogle')}">
             </composebox-favicon-group>
             <cr-icon class="share-tabs-arrow" icon="cr:chevron-right"></cr-icon>
           </button>
@@ -57,7 +58,8 @@ export function getHtml(this: ContextualActionMenuElement) {
                     role="${this.enableMultiTabSelection_ ?
                         'menuitemcheckbox' : 'menuitem'}"
                     aria-checked="${this.enableMultiTabSelection_ &&
-                        this.disabledTabIds.has(tab.tabId)}"
+                        (this.isTabSelected_(tab.tabId) ||
+                         this.restoredTabIds.includes(tab.tabId))}"
                     title="${tab.title}" data-index="${index}"
                     aria-label="${this.getInputTypeLabel_(InputType.kBrowserTab)}: ${
                         tab.title}"
@@ -67,13 +69,15 @@ export function getHtml(this: ContextualActionMenuElement) {
                 </cr-composebox-tab-favicon>
                 <span class="tab-title-group">
                   <span class="tab-title">${tab.title}</span>
-                  ${index === 0 ? html`
-                    <span class="recent-tabs-suffix">${
+                  ${this.isRecentTab_(tab.tabId) ? html`
+                    <span class="recent-tabs-suffix"
+                        ?disabled="${this.isTabDisabled_(tab)}">${
                         this.i18n('recentTabsSuffix')}</span>
                   ` : ''}
                 </span>
-                ${this.enableMultiTabSelection_ &&
-                    this.disabledTabIds.has(tab.tabId) ? html`
+                ${(this.enableMultiTabSelection_ &&
+                    (this.isTabSelected_(tab.tabId) ||
+                     this.restoredTabIds.includes(tab.tabId))) ? html`
                   <cr-icon class="share-tabs-check" icon="cr:check"></cr-icon>
                 ` : ''}
                 </button>
@@ -89,7 +93,9 @@ export function getHtml(this: ContextualActionMenuElement) {
           <div class="suggestion-container">
             <button class="dropdown-item"
                 role="${this.enableMultiTabSelection_ ? 'menuitemcheckbox' : 'menuitem'}"
-                aria-checked="${this.enableMultiTabSelection_ && this.disabledTabIds.has(tab.tabId)}"
+                aria-checked="${this.enableMultiTabSelection_ &&
+                  (this.isTabSelected_(tab.tabId) ||
+                  this.restoredTabIds.includes(tab.tabId))}"
                 title="${tab.title}" data-index="${index}"
                 aria-label="${this.getInputTypeLabel_(InputType.kBrowserTab)}: ${
                     tab.title}"
@@ -99,8 +105,10 @@ export function getHtml(this: ContextualActionMenuElement) {
               <cr-composebox-tab-favicon .url="${tab.url}">
               </cr-composebox-tab-favicon>
               <span class="tab-title">${tab.title}</span>
-              ${this.enableMultiTabSelection_ ? html`
-                ${this.disabledTabIds.has(tab.tabId) ? html`
+              ${this.enableMultiTabSelection_ ||
+                this.restoredTabIds.includes(tab.tabId) ? html`
+                ${(this.isTabSelected_(tab.tabId) ||
+                  this.restoredTabIds.includes(tab.tabId)) ? html`
                   <cr-icon class="multi-tab-icon"
                       icon="composebox:checkCircle" id="multi-tab-check"></cr-icon>
                 ` : html`
@@ -117,32 +125,33 @@ export function getHtml(this: ContextualActionMenuElement) {
         <hr/>
       `}
     `: ''}
-    ${this.isImageUploadAllowed_() ? html`
+    ${this.isInputTypeAllowed_(InputType.kLensImage) ? html`
       <button id="imageUpload" class="dropdown-item" role="menuitem"
           @click="${this.onImageUploadClick_}"
-          ?disabled="${this.isImageUploadDisabled_()}">
+          ?disabled="${this.isInputTypeDisabled_(InputType.kLensImage)}">
         <cr-icon icon="composebox:imageUpload"></cr-icon>
         ${this.getInputTypeLabel_(InputType.kLensImage)}
       </button>` : ''}
-    ${this.isFileUploadAllowed_() ? html`<button id="fileUpload" class="dropdown-item"
+    ${this.isInputTypeAllowed_(InputType.kLensFile) ? html`
+      <button id="fileUpload" class="dropdown-item"
         role="menuitem"
         @click="${this.onFileUploadClick_}"
-        ?disabled="${this.isFileUploadDisabled_()}">
+        ?disabled="${this.isInputTypeDisabled_(InputType.kLensFile)}">
       <cr-icon icon="composebox:fileUpload"></cr-icon>
       ${this.getInputTypeLabel_(InputType.kLensFile)}
     </button>`: ''}
-    ${this.isDriveUploadAllowed_() ? html`
+    ${this.isInputTypeAllowed_(InputType.kDrive) ? html`
       <button id="driveUpload" class="dropdown-item" role="menuitem"
           @click="${this.onDriveUploadClick_}"
-          ?disabled="${this.isDriveUploadDisabled_()}">
+          ?disabled="${this.isInputTypeDisabled_(InputType.kDrive)}">
         <cr-icon icon="composebox:driveUpload"></cr-icon>
         ${this.getInputTypeLabel_(InputType.kDrive)}
       </button>` : ''}
 
     <!-- Show a separator if there are tools AND (something above is visible) -->
     ${(this.inputState?.allowedTools.length ?? 0) > 0 &&
-        (this.isImageUploadAllowed_() || this.isFileUploadAllowed_() ||
-         this.isDriveUploadAllowed_()) ?
+        this.isInputTypeAllowed_(
+            InputType.kLensImage, InputType.kLensFile, InputType.kDrive) ?
         html`<hr/>` : ''}
 
     ${(this.inputState?.allowedTools.length ?? 0) > 0 ? html`
@@ -167,8 +176,9 @@ export function getHtml(this: ContextualActionMenuElement) {
     <!-- Show a separator if there are models AND (something above is visible) -->
     ${(this.inputState?.allowedModels.length ?? 0) > 0 &&
       ((this.inputState?.allowedTools.length ?? 0) > 0 ||
-       this.isImageUploadAllowed_() || this.isFileUploadAllowed_() ||
-       this.isDriveUploadAllowed_()) ? html`<hr/>` : ''}
+       this.isInputTypeAllowed_(
+           InputType.kLensImage, InputType.kLensFile,
+           InputType.kDrive)) ? html`<hr/>` : ''}
 
     ${(this.inputState?.allowedModels.length ?? 0) > 0 ? html`
         ${this.showContextMenuHeaders_ && this.getModelHeader_() ? html`

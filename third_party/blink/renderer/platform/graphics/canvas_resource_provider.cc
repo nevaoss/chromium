@@ -155,11 +155,10 @@ Canvas2DResourceProviderBitmap::Canvas2DResourceProviderBitmap(
       std::make_unique<MemoryManagedPaintRecorder>(Size(), this);
 }
 
-scoped_refptr<StaticBitmapImage>
-Canvas2DResourceProviderBitmap::SnapshotForCanvas2D(
+scoped_refptr<StaticBitmapImage> Canvas2DResourceProviderBitmap::Snapshot(
     ImageOrientation orientation) {
   TRACE_EVENT0("blink", "Canvas2DResourceProviderBitmap::Snapshot");
-  return UnacceleratedSnapshotForCanvas2D(orientation);
+  return UnacceleratedSnapshot(orientation);
 }
 
 sk_sp<SkSurface> Canvas2DResourceProviderBitmap::CreateSkSurface() const {
@@ -177,14 +176,12 @@ void Canvas2DResourceProviderBitmap::RasterRecordForCanvas2D(
   return UnacceleratedRasterRecordForCanvas2D(last_recording);
 }
 
-bool Canvas2DResourceProviderBitmap::WritePixelsForCanvas2D(
-    const SkImageInfo& orig_info,
-    const void* pixels,
-    size_t row_bytes,
-    int x,
-    int y) {
-  return UnacceleratedWritePixelsForCanvas2D(orig_info, pixels, row_bytes, x,
-                                             y);
+bool Canvas2DResourceProviderBitmap::WritePixels(const SkImageInfo& orig_info,
+                                                 const void* pixels,
+                                                 size_t row_bytes,
+                                                 int x,
+                                                 int y) {
+  return UnacceleratedWritePixels(orig_info, pixels, row_bytes, x, y);
 }
 
 BASE_FEATURE(kCanvas2DAutoFlushParams, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -520,7 +517,7 @@ void Canvas2DResourceProviderSharedImage::
               .GetGpuFeatureInfo()
               .status_values[gpu::GPU_FEATURE_TYPE_SKIA_GRAPHITE] ==
           gpu::kGpuFeatureStatusEnabled) {
-    RecorderForCanvas2D().DisableLineDrawingAsPaths();
+    Recorder().DisableLineDrawingAsPaths();
   }
 }
 
@@ -530,7 +527,7 @@ void CanvasNon2DResourceProviderSharedImage::PrepareForWebGPUDummyMailbox() {
   }
 }
 
-bool Canvas2DResourceProviderSharedImage::WritePixelsForCanvas2D(
+bool Canvas2DResourceProviderSharedImage::WritePixels(
     const SkImageInfo& orig_info,
     const void* pixels,
     size_t row_bytes,
@@ -538,8 +535,7 @@ bool Canvas2DResourceProviderSharedImage::WritePixelsForCanvas2D(
     int y) {
   if (!is_accelerated_) {
     WillDrawUnaccelerated();
-    return UnacceleratedWritePixelsForCanvas2D(orig_info, pixels, row_bytes, x,
-                                               y);
+    return UnacceleratedWritePixels(orig_info, pixels, row_bytes, x, y);
   }
 
   TRACE_EVENT0("blink", "Canvas2DResourceProviderSharedImage::WritePixels");
@@ -940,8 +936,7 @@ void Canvas2DResourceProviderSharedImage::EndWriteAccess() {
   current_resource_has_write_access_ = false;
 }
 
-scoped_refptr<StaticBitmapImage>
-Canvas2DResourceProviderSharedImage::SnapshotForCanvas2D(
+scoped_refptr<StaticBitmapImage> Canvas2DResourceProviderSharedImage::Snapshot(
     ImageOrientation orientation) {
   TRACE_EVENT0("blink", "Canvas2DResourceProviderSharedImage::Snapshot");
   if (!IsValid()) {
@@ -953,7 +948,7 @@ Canvas2DResourceProviderSharedImage::SnapshotForCanvas2D(
   // while in this case we are simply returning the rendered CPU-side results to
   // the client.
   if (!is_accelerated_) {
-    return UnacceleratedSnapshotForCanvas2D(orientation);
+    return UnacceleratedSnapshot(orientation);
   }
 
   if (!cached_snapshot_) {
@@ -978,11 +973,6 @@ Canvas2DResourceProviderSharedImage::SnapshotForCanvas2D(
   DCHECK(cached_snapshot_);
   DCHECK(!current_resource_has_write_access_);
   return cached_snapshot_;
-}
-
-scoped_refptr<StaticBitmapImage>
-CanvasNon2DResourceProviderSharedImage::SnapshotForCanvas2D(ImageOrientation) {
-  NOTREACHED();
 }
 
 void CanvasNon2DResourceProviderSharedImage::EnsureWriteAccess() {
@@ -1709,8 +1699,7 @@ CanvasResourceProvider::~CanvasResourceProvider() {
 }
 
 std::unique_ptr<MemoryManagedPaintRecorder>
-CanvasResourceProvider::ReleaseRecorderForCanvas2D() {
-  CHECK(IsCanvas2D());
+CanvasResourceProvider::ReleaseRecorder() {
   // When releasing the recorder, we swap it with a new, valid one. This way,
   // the `recorder_for_canvas_2d_` member is guarantied to be always valid.
   auto recorder = std::make_unique<MemoryManagedPaintRecorder>(Size(), this);
@@ -1720,16 +1709,14 @@ CanvasResourceProvider::ReleaseRecorderForCanvas2D() {
   return recorder;
 }
 
-void CanvasResourceProvider::SetRecorderForCanvas2D(
+void CanvasResourceProvider::SetRecorder(
     std::unique_ptr<MemoryManagedPaintRecorder> recorder) {
-  CHECK(IsCanvas2D());
   recorder->SetClient(this);
   recorder_for_canvas_2d_ = std::move(recorder);
   DisableLineDrawingAsPathsIfNecessaryForCanvas2D();
 }
 
 void CanvasResourceProvider::FlushIfRecordingLimitExceededForCanvas2D() {
-  CHECK(IsCanvas2D());
   // When printing we avoid flushing if it is still possible to print in
   // vector mode.
   if (IsPrinting() && clear_frame_for_canvas2d_) {
@@ -1759,7 +1746,6 @@ void CanvasResourceProvider::NotifyWillTransfer(
 
 CanvasResourceProvider::CanvasImageProvider*
 CanvasResourceProvider::GetOrCreateSWCanvasImageProviderForCanvas2D() {
-  CHECK(IsCanvas2D());
   if (canvas_2d_image_provider_) {
     return canvas_2d_image_provider_.get();
   }
@@ -1789,7 +1775,6 @@ void CanvasResourceProvider::InitializeForRecording(
 }
 
 void CanvasResourceProvider::RecordingCleared() {
-  CHECK(IsCanvas2D());
 
   // Since the recording has been cleared, it contains no draw commands and it
   // is now safe to discard the old copy of canvas content on a subsequent
@@ -1800,14 +1785,11 @@ void CanvasResourceProvider::RecordingCleared() {
 
 MemoryManagedPaintCanvas&
 CanvasResourceProvider::GetCanvasForCanvas2DForTesting() {
-  CHECK(IsCanvas2D());
   return recorder_for_canvas_2d_->getRecordingCanvas();
 }
 
 scoped_refptr<UnacceleratedStaticBitmapImage>
-CanvasResourceProvider::UnacceleratedSnapshotForCanvas2D(
-    ImageOrientation orientation) {
-  CHECK(IsCanvas2D());
+CanvasResourceProvider::UnacceleratedSnapshot(ImageOrientation orientation) {
   if (!IsValid())
     return nullptr;
 
@@ -1846,7 +1828,6 @@ SkSurfaceProps CanvasResourceProvider::GetSkSurfaceProps() const {
 }
 
 ScopedRasterTimer CanvasResourceProvider::CreateScopedRasterTimerForCanvas2D() {
-  CHECK(IsCanvas2D());
   return ScopedRasterTimer(nullptr, *this,
                            always_enable_raster_timers_for_testing_);
 }
@@ -1866,9 +1847,10 @@ void CanvasNon2DResourceProviderSharedImage::FlushRecording(
         cc::ImageDecodeCache* cache_rgba8 =
             &Image::SharedCCDecodeCache(kN32_SkColorType);
 
-        canvas_image_provider_ = std::make_unique<CanvasImageProvider>(
-            cache_rgba8, cache_f16, GetColorSpace(), GetSharedImageFormat(),
-            cc::PlaybackImageProvider::RasterMode::kSoftware);
+        canvas_image_provider_ =
+            std::make_unique<CanvasResourceProvider::CanvasImageProvider>(
+                cache_rgba8, cache_f16, GetColorSpace(), GetSharedImageFormat(),
+                cc::PlaybackImageProvider::RasterMode::kSoftware);
       }
       skia_canvas_ = std::make_unique<cc::SkiaPaintCanvas>(
           GetSkSurface()->getCanvas(), canvas_image_provider_.get());
@@ -1926,9 +1908,10 @@ void CanvasNon2DResourceProviderSharedImage::FlushRecording(
           context_provider_wrapper_->ContextProvider().ImageDecodeCache(
               kN32_SkColorType);
 
-      canvas_image_provider_ = std::make_unique<CanvasImageProvider>(
-          cache_rgba8, cache_f16, GetColorSpace(), GetSharedImageFormat(),
-          cc::PlaybackImageProvider::RasterMode::kGpu);
+      canvas_image_provider_ =
+          std::make_unique<CanvasResourceProvider::CanvasImageProvider>(
+              cache_rgba8, cache_f16, GetColorSpace(), GetSharedImageFormat(),
+              cc::PlaybackImageProvider::RasterMode::kGpu);
     }
 
     ri->RasterCHROMIUM(
@@ -1949,7 +1932,6 @@ void CanvasNon2DResourceProviderSharedImage::FlushRecording(
 
 std::optional<cc::PaintRecord> CanvasResourceProvider::FlushCanvas2D(
     FlushReason reason /*=FlushReason::kOther*/) {
-  CHECK(IsCanvas2D());
   if (!recorder_for_canvas_2d_->HasReleasableDrawOps()) {
     return std::nullopt;
   }
@@ -1980,7 +1962,6 @@ std::optional<cc::PaintRecord> CanvasResourceProvider::FlushCanvas2D(
 void CanvasResourceProvider::UnacceleratedRasterRecordForCanvas2D(
     cc::PaintRecord last_recording) {
   CHECK(!IsAccelerated());
-  CHECK(IsCanvas2D());
 
   if (!skia_canvas_for_canvas_2d_) {
     skia_canvas_for_canvas_2d_ = std::make_unique<cc::SkiaPaintCanvas>(
@@ -2239,18 +2220,19 @@ CanvasNon2DResourceProviderSharedImage::CanvasNon2DResourceProviderSharedImage(
     bool is_accelerated,
     gpu::SharedImageUsageSet shared_image_usage_flags,
     CanvasResourceProvider::Delegate* delegate)
-    : CanvasResourceProvider(kSharedImage,
-                             size,
-                             format,
-                             alpha_type,
-                             color_space,
-                             delegate),
+    : size_(size),
+      format_(format),
+      alpha_type_(alpha_type),
+      color_space_(color_space),
+      delegate_(delegate),
+      is_accelerated_(is_accelerated),
+      is_software_(false),
+      snapshot_paint_image_id_(cc::PaintImage::GetNextId()),
       recorder_for_external_draws_(
           std::make_unique<MemoryManagedPaintRecorder>(Size(),
                                                        /*client=*/nullptr)),
-      is_accelerated_(is_accelerated),
-      is_software_(false),
       context_provider_wrapper_(std::move(context_provider_wrapper)) {
+  CanvasMemoryDumpProvider::Instance()->RegisterClient(this);
   if (context_provider_wrapper_) {
     context_provider_wrapper_->AddObserver(this);
     raster_context_provider_ = base::WrapRefCounted(
@@ -2337,21 +2319,22 @@ CanvasNon2DResourceProviderSharedImage::CanvasNon2DResourceProviderSharedImage(
     const gfx::ColorSpace& color_space,
     WebGraphicsSharedImageInterfaceProvider* shared_image_interface_provider,
     CanvasResourceProvider::Delegate* delegate)
-    : CanvasResourceProvider(kSharedImage,
-                             size,
-                             format,
-                             alpha_type,
-                             color_space,
-                             delegate),
+    : size_(size),
+      format_(format),
+      alpha_type_(alpha_type),
+      color_space_(color_space),
+      delegate_(delegate),
+      is_accelerated_(false),
+      is_software_(true),
+      snapshot_paint_image_id_(cc::PaintImage::GetNextId()),
       recorder_for_external_draws_(
           std::make_unique<MemoryManagedPaintRecorder>(Size(),
                                                        /*client=*/nullptr)),
-      is_accelerated_(false),
-      is_software_(true),
       shared_image_interface_provider_(
           shared_image_interface_provider
               ? shared_image_interface_provider->GetWeakPtr()
               : nullptr) {
+  CanvasMemoryDumpProvider::Instance()->RegisterClient(this);
   if (shared_image_interface_provider_) {
     shared_image_interface_provider_->AddGpuChannelLostObserver(this);
     if (auto* sii = shared_image_interface_provider_->SharedImageInterface()) {
@@ -2368,6 +2351,7 @@ CanvasNon2DResourceProviderSharedImage::CanvasNon2DResourceProviderSharedImage(
 
 CanvasNon2DResourceProviderSharedImage::
     ~CanvasNon2DResourceProviderSharedImage() {
+  CanvasMemoryDumpProvider::Instance()->UnregisterClient(this);
   if (context_provider_wrapper_) {
     context_provider_wrapper_->RemoveObserver(this);
   }
@@ -2525,13 +2509,12 @@ sk_sp<SkSurface> CanvasNon2DResourceProviderSharedImage::CreateSkSurface()
   return SkSurfaces::Raster(resource_->CreateSkImageInfo(), &props);
 }
 
-bool CanvasResourceProvider::UnacceleratedWritePixelsForCanvas2D(
+bool CanvasResourceProvider::UnacceleratedWritePixels(
     const SkImageInfo& orig_info,
     const void* pixels,
     size_t row_bytes,
     int x,
     int y) {
-  CHECK(IsCanvas2D());
   TRACE_EVENT0("blink", "CanvasResourceProvider::WritePixels");
   CHECK(!IsAccelerated());
 
@@ -2557,7 +2540,6 @@ bool CanvasResourceProvider::UnacceleratedWritePixelsForCanvas2D(
 }
 
 void CanvasResourceProvider::ClearAtCreationForCanvas2D() {
-  CHECK(IsCanvas2D());
   // Clear the background transparent or opaque, as required. This should only
   // be called when a new resource provider is created to ensure that we're
   // not leaking data or displaying bad pixels (in the case of kOpaque
@@ -2577,7 +2559,6 @@ void CanvasResourceProvider::ClearAtCreationForCanvas2D() {
 
 void CanvasResourceProvider::RestoreBackBufferForCanvas2D(
     const cc::PaintImage& image) {
-  CHECK(IsCanvas2D());
 
   DCHECK_EQ(image.height(), Size().height());
   DCHECK_EQ(image.width(), Size().width());
@@ -2588,8 +2569,8 @@ void CanvasResourceProvider::RestoreBackBufferForCanvas2D(
   // We know this SkImage is software backed because it's guaranteed by
   // PaintImage::GetSwSkImage above
   sk_image->peekPixels(&map);
-  WritePixelsForCanvas2D(map.info(), map.addr(), map.rowBytes(), /*x=*/0,
-                         /*y=*/0);
+  WritePixels(map.info(), map.addr(), map.rowBytes(), /*x=*/0,
+              /*y=*/0);
 }
 
 size_t CanvasResourceProvider::ComputeSurfaceSize() const {

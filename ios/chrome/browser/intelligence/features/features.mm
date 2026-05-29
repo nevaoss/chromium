@@ -194,7 +194,7 @@ BASE_FEATURE_PARAM(int,
                    kExplainGeminiEditMenuFeatureParam,
                    &kExplainGeminiEditMenu,
                    kExplainGeminiEditMenuParams,
-                   0);
+                   2);
 
 PositionForExplainGeminiEditMenu ExplainGeminiEditMenuPosition() {
   if (!IsPageActionMenuEnabled()) {
@@ -214,7 +214,7 @@ PositionForExplainGeminiEditMenu ExplainGeminiEditMenuPosition() {
   return PositionForExplainGeminiEditMenu::kDisabled;
 }
 
-BASE_FEATURE(kExplainGeminiEditMenu, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kExplainGeminiEditMenu, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGeminiPreciseLocation, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -366,25 +366,11 @@ bool IsZeroStateSuggestionsEnabled() {
   return base::FeatureList::IsEnabled(kZeroStateSuggestions);
 }
 
-const char kZeroStateSuggestionsPlacementAIHub[] =
-    "ZeroStateSuggestionsPlacementAIHub";
-const char kZeroStateSuggestionsPlacementAskGemini[] =
-    "ZeroStateSuggestionsPlacementAskGemini";
+BASE_FEATURE(kZeroStateSuggestionsCentralization,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
-bool IsZeroStateSuggestionsAIHubEnabled() {
-  if (!IsZeroStateSuggestionsEnabled()) {
-    return false;
-  }
-  return base::GetFieldTrialParamByFeatureAsBool(
-      kZeroStateSuggestions, kZeroStateSuggestionsPlacementAIHub, false);
-}
-
-bool IsZeroStateSuggestionsAskGeminiEnabled() {
-  if (!IsZeroStateSuggestionsEnabled()) {
-    return false;
-  }
-  return base::GetFieldTrialParamByFeatureAsBool(
-      kZeroStateSuggestions, kZeroStateSuggestionsPlacementAskGemini, false);
+bool IsZeroStateSuggestionsCentralizationEnabled() {
+  return base::FeatureList::IsEnabled(kZeroStateSuggestionsCentralization);
 }
 
 BASE_FEATURE(kPageContextExtractorRefactored, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -713,7 +699,7 @@ bool IsGeminiFloatyAllPagesEnabled() {
   return base::FeatureList::IsEnabled(kGeminiFloatyAllPages);
 }
 
-BASE_FEATURE(kGeminiMapsRichUI, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiMapsRichUI, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiMapsRichUIEnabled() {
   if (!IsPageActionMenuEnabled()) {

@@ -963,12 +963,9 @@ public class IntentHandler {
             // If the intent contains a list of tabs to reparent, it's a valid intent from Chrome.
             @Nullable MultiTabMetadata multiTabMetadata = getMultiTabMetadata(intent);
             if (multiTabMetadata != null) {
-                // Exit early if the incognito intent is not allowed.
-                if (IntentUtils.safeGetBooleanExtra(intent, EXTRA_OPEN_NEW_INCOGNITO_TAB, false)
-                        && !isAllowedIncognitoIntent(
-                                wasIntentSenderChrome(intent), isCustomTab, intent)) {
-                    return true;
-                }
+                // Multi-tab metadata intents should only be from Chrome.
+                if (!wasIntentSenderChrome(intent)) return true;
+
                 ArrayList<Integer> tabIds = multiTabMetadata.tabIds;
                 ArrayList<String> urls = multiTabMetadata.urls;
 
@@ -990,12 +987,8 @@ public class IntentHandler {
             // Ignore all invalid URLs, regardless of what the intent was.
             @Nullable TabGroupMetadata tabGroupMetadata = IntentHandler.getTabGroupMetadata(intent);
             if (tabGroupMetadata != null) {
-                // Exit early if the incognito intent is not allowed.
-                if (tabGroupMetadata.isIncognito
-                        && !isAllowedIncognitoIntent(
-                                wasIntentSenderChrome(intent), isCustomTab, intent)) {
-                    return true;
-                }
+                // Tab group metadata intents should only be from Chrome.
+                if (!wasIntentSenderChrome(intent)) return true;
 
                 // Check url validity and remove invalid urls if needed.
                 List<Entry<Integer, String>> tabIdsToUrls = tabGroupMetadata.tabIdsToUrls;
@@ -1048,7 +1041,7 @@ public class IntentHandler {
 
         // Ignore all intents that specify a Chrome internal scheme if they did not come from
         // a trustworthy source.
-        if (intentHasUnsafeUrl(url, intent)) {
+        if (isUrlUnsafe(url)) {
             Log.w(TAG, "Ignoring internal Chrome URL from untrustworthy source.");
             return true;
         }
@@ -1078,32 +1071,26 @@ public class IntentHandler {
         return pendingUrl != null && pendingUrl.equals(intent.getDataString());
     }
 
-    @Contract("null, _ -> false")
-    private static boolean intentHasUnsafeUrl(@Nullable String url, Intent intent) {
-        if (url != null
-                && (intent.hasCategory(Intent.CATEGORY_BROWSABLE)
-                        || intent.hasCategory(Intent.CATEGORY_DEFAULT)
-                        || intent.getCategories() == null)) {
-            // The native library may be uninitialized at this point. Ensure it's initialized before
-            // calling a native function validateLaunchUrl().
-            LibraryLoader.getInstance().ensureInitialized();
-            if (!IntentHandlerJni.get().validateLaunchUrl(new GURL(url))) {
-                // Allow certain "safe" internal URLs to be launched by external
-                // applications.
-                assumeNonNull(url);
-                String lowerCaseUrl = url.toLowerCase(Locale.US);
-                if (ContentUrlConstants.ABOUT_BLANK_DISPLAY_URL.equals(lowerCaseUrl)
-                        || ContentUrlConstants.ABOUT_BLANK_URL.equals(lowerCaseUrl)
-                        || UrlConstants.CHROME_DINO_URL.equals(lowerCaseUrl)
-                        || lowerCaseUrl.startsWith(UrlConstants.CHROME_EXTENSIONS_URL)
-                        || lowerCaseUrl.startsWith(UrlConstants.PDF_URL)) {
-                    return false;
-                }
+    @Contract("null -> false")
+    private static boolean isUrlUnsafe(@Nullable String url) {
+        if (url == null) return false;
 
-                return true;
-            }
+        // The native library may be uninitialized at this point. Ensure it's initialized before
+        // calling a native function validateLaunchUrl().
+        LibraryLoader.getInstance().ensureInitialized();
+        if (IntentHandlerJni.get().validateLaunchUrl(new GURL(url))) return false;
+
+        // Allow certain "safe" internal URLs to be launched by external
+        // applications.
+        String lowerCaseUrl = url.toLowerCase(Locale.US);
+        if (ContentUrlConstants.ABOUT_BLANK_DISPLAY_URL.equals(lowerCaseUrl)
+                || ContentUrlConstants.ABOUT_BLANK_URL.equals(lowerCaseUrl)
+                || UrlConstants.CHROME_DINO_URL.equals(lowerCaseUrl)
+                || lowerCaseUrl.startsWith(UrlConstants.CHROME_EXTENSIONS_URL)
+                || lowerCaseUrl.startsWith(UrlConstants.PDF_URL)) {
+            return false;
         }
-        return false;
+        return true;
     }
 
     @VisibleForTesting

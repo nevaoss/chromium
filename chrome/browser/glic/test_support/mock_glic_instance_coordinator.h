@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_GLIC_TEST_SUPPORT_MOCK_GLIC_INSTANCE_COORDINATOR_H_
 #define CHROME_BROWSER_GLIC_TEST_SUPPORT_MOCK_GLIC_INSTANCE_COORDINATOR_H_
 
+#include "chrome/browser/glic/host/context/glic_delegating_sharing_manager.h"
 #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/browser/glic/widget/glic_view.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -19,6 +20,10 @@ class MockGlicInstanceCoordinator
   ~MockGlicInstanceCoordinator();
 
   MOCK_METHOD(bool, IsAnyPanelShowing, (), (const, override));
+  MOCK_METHOD(bool,
+              IsConversationPresent,
+              (const std::string&),
+              (const, override));
   MOCK_METHOD(GlicInstance*,
               GetInstanceForTab,
               (const tabs::TabInterface*),
@@ -70,6 +75,10 @@ class MockGlicInstanceCoordinator
               (ActiveInstanceChangedCallback callback),
               (override));
   MOCK_METHOD(GlicInstance*, GetActiveInstance, (), (override));
+  MOCK_METHOD(GlicSharingManager&,
+              active_instance_sharing_manager,
+              (),
+              (override));
 
   MOCK_METHOD(void,
               CreateNewConversationForTabs,
@@ -103,6 +112,7 @@ class MockGlicInstanceCoordinator
               (override));
 
  private:
+  GlicDelegatingSharingManager dummy_sharing_manager_;
   base::WeakPtrFactory<MockGlicInstanceCoordinator> weak_ptr_factory_{this};
 };
 }  // namespace glic

@@ -65,9 +65,7 @@ class TestTool : public ActorTool {
     return web_state_;
   }
 
-  optimization_guide::proto::Action::ActionCase GetActionCase() const override {
-    return optimization_guide::proto::Action::ACTION_NOT_SET;
-  }
+  ToolType GetToolType() const override { return ToolType::kUnknown; }
 
  private:
   base::WeakPtr<web::WebState> web_state_;
@@ -75,7 +73,11 @@ class TestTool : public ActorTool {
 
 class ActorServiceTest : public PlatformTest {
  public:
-  ActorServiceTest() : web_client_(std::make_unique<web::FakeWebClient>()) {
+  explicit ActorServiceTest(
+      base::test::TaskEnvironment::TimeSource time_source =
+          base::test::TaskEnvironment::TimeSource::DEFAULT)
+      : web_client_(std::make_unique<web::FakeWebClient>()),
+        task_environment_(time_source) {
     ActorServiceFactory::GetInstance();
     profile_ = TestProfileIOS::Builder().Build();
   }
@@ -91,9 +93,14 @@ class ActorServiceTest : public PlatformTest {
 
  protected:
   web::ScopedTestingWebClient web_client_;
-  web::WebTaskEnvironment task_environment_{
-      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+  web::WebTaskEnvironment task_environment_;
   std::unique_ptr<TestProfileIOS> profile_;
+};
+
+class ActorServiceMockTimeTest : public ActorServiceTest {
+ public:
+  ActorServiceMockTimeTest()
+      : ActorServiceTest(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {}
 };
 
 // Tests that `ActorService` is successfully created when the `kActorTools`
@@ -481,7 +488,8 @@ TEST_F(ActorServiceTest, PerformActions_Loading_DeferredUntilStopLoading) {
 
 // Tests that a loading WebState times out after 5 seconds, forcing the
 // deferred PerformActions callback to run to prevent hanging.
-TEST_F(ActorServiceTest, PerformActions_Loading_TimeoutResolvesCallback) {
+TEST_F(ActorServiceMockTimeTest,
+       PerformActions_Loading_TimeoutResolvesCallback) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitAndEnableFeature(kActorTools);
 

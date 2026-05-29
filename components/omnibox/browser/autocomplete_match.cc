@@ -268,6 +268,7 @@ AutocompleteMatch::AutocompleteMatch(const AutocompleteMatch& match)
       entity_id(match.entity_id),
       website_uri(match.website_uri),
       document_type(match.document_type),
+      starter_pack_id(match.starter_pack_id),
       enterprise_search_aggregator_type(
           match.enterprise_search_aggregator_type),
       tail_suggest_common_prefix(match.tail_suggest_common_prefix),
@@ -386,6 +387,7 @@ AutocompleteMatch& AutocompleteMatch::operator=(
   history_embeddings_answer_header_loading =
       std::move(match.history_embeddings_answer_header_loading);
   feedback_type = std::move(match.feedback_type);
+  starter_pack_id = std::move(match.starter_pack_id);
   matching_tab_group_uuid = std::move(match.matching_tab_group_uuid);
 #if BUILDFLAG(IS_ANDROID)
   DestroyJavaObject();
@@ -470,6 +472,7 @@ AutocompleteMatch& AutocompleteMatch::operator=(
   history_embeddings_answer_header_loading =
       match.history_embeddings_answer_header_loading;
   feedback_type = match.feedback_type;
+  starter_pack_id = match.starter_pack_id;
   matching_tab_group_uuid = match.matching_tab_group_uuid;
 
 #if BUILDFLAG(IS_ANDROID)
@@ -528,12 +531,16 @@ const gfx::VectorIcon& AutocompleteMatch::GetVectorIcon(
         // When not specified, fall back on regular match icon logic below.
         break;
       case omnibox::SuggestTemplateInfo::HISTORY:
-        return vector_icons::kHistoryChromeRefreshOldIcon;
+        return features::IsRoundedIconsEnabled()
+                   ? vector_icons::kHistoryIcon
+                   : vector_icons::kHistoryChromeRefreshOldIcon;
       case omnibox::SuggestTemplateInfo::NOTES_SPARK:
         return features::IsRoundedIconsEnabled() ? omnibox::kNotesSparkIcon
                                                  : omnibox::kNotesSparkOldIcon;
       case omnibox::SuggestTemplateInfo::SEARCH_LOOP:
-        return vector_icons::kSearchChromeRefreshOldIcon;
+        return features::IsRoundedIconsEnabled()
+                   ? vector_icons::kSearchIcon
+                   : vector_icons::kSearchChromeRefreshOldIcon;
       case omnibox::SuggestTemplateInfo::SEARCH_LOOP_WITH_SPARKLE:
         return features::IsRoundedIconsEnabled() ? omnibox::kSearchSparkIcon
                                                  : omnibox::kSearchSparkOldIcon;
@@ -547,7 +554,9 @@ const gfx::VectorIcon& AutocompleteMatch::GetVectorIcon(
                    : omnibox::kSubdirectoryArrowRightOldIcon;
       default:
         // Out of range value defaults to search loupe.
-        return vector_icons::kSearchChromeRefreshOldIcon;
+        return features::IsRoundedIconsEnabled()
+                   ? vector_icons::kSearchIcon
+                   : vector_icons::kSearchChromeRefreshOldIcon;
     }
   }
 
@@ -595,11 +604,15 @@ const gfx::VectorIcon& AutocompleteMatch::GetVectorIcon(
                  ? features::IsRoundedIconsEnabled()
                        ? omnibox::kSubdirectoryArrowRightIcon
                        : omnibox::kSubdirectoryArrowRightOldIcon
+             : features::IsRoundedIconsEnabled()
+                 ? vector_icons::kSearchIcon
                  : vector_icons::kSearchChromeRefreshOldIcon;
 
     case Type::PEDAL:
       return takeover_action ? takeover_action->GetVectorIcon()
-                             : vector_icons::kSearchChromeRefreshOldIcon;
+             : features::IsRoundedIconsEnabled()
+                 ? vector_icons::kSearchIcon
+                 : vector_icons::kSearchChromeRefreshOldIcon;
 
     case Type::SEARCH_OTHER_ENGINE:
       if (provider != nullptr &&
@@ -608,7 +621,9 @@ const gfx::VectorIcon& AutocompleteMatch::GetVectorIcon(
                    ? omnibox::kExtensionFilledIcon
                    : omnibox::kExtensionAppOldIcon;
       }
-      return vector_icons::kSearchChromeRefreshOldIcon;
+      return features::IsRoundedIconsEnabled()
+                 ? vector_icons::kSearchIcon
+                 : vector_icons::kSearchChromeRefreshOldIcon;
 
     case Type::SEARCH_WHAT_YOU_TYPED:
     case Type::SEARCH_SUGGEST_ENTITY:
@@ -619,12 +634,16 @@ const gfx::VectorIcon& AutocompleteMatch::GetVectorIcon(
     case Type::CLIPBOARD_IMAGE:
     case Type::TILE_SUGGESTION:
     case Type::TILE_REPEATABLE_QUERY:
-      return vector_icons::kSearchChromeRefreshOldIcon;
+      return features::IsRoundedIconsEnabled()
+                 ? vector_icons::kSearchIcon
+                 : vector_icons::kSearchChromeRefreshOldIcon;
 
     case Type::SEARCH_HISTORY:
     case Type::SEARCH_SUGGEST_PERSONALIZED:
       DCHECK(IsSearchHistoryType(type));
-      return vector_icons::kHistoryChromeRefreshOldIcon;
+      return features::IsRoundedIconsEnabled()
+                 ? vector_icons::kHistoryIcon
+                 : vector_icons::kHistoryChromeRefreshOldIcon;
 
     case Type::EXTENSION_APP_DEPRECATED:
       return features::IsRoundedIconsEnabled() ? omnibox::kExtensionFilledIcon
@@ -653,7 +672,9 @@ const gfx::VectorIcon& AutocompleteMatch::GetVectorIcon(
         case IphType::kHistoryEmbeddingsDisclaimer:
           return gfx::VectorIcon::EmptyIcon();
         case IphType::kHistoryScopePromo:
-          return vector_icons::kHistoryChromeRefreshOldIcon;
+          return features::IsRoundedIconsEnabled()
+                     ? vector_icons::kHistoryIcon
+                     : vector_icons::kHistoryChromeRefreshOldIcon;
         case IphType::kHistoryEmbeddingsScopePromo:
           return omnibox::kSparkIcon;
       }
@@ -701,7 +722,9 @@ const gfx::VectorIcon& AutocompleteMatch::GetVectorIcon(
                        ? omnibox::kStarFilledIcon
                        : omnibox::kStarActiveChromeRefreshOldIcon;
           case KEYWORD_MODE_STARTER_PACK_HISTORY:
-            return vector_icons::kHistoryChromeRefreshOldIcon;
+            return features::IsRoundedIconsEnabled()
+                       ? vector_icons::kHistoryIcon
+                       : vector_icons::kHistoryChromeRefreshOldIcon;
           case KEYWORD_MODE_STARTER_PACK_TABS:
             return features::IsRoundedIconsEnabled()
                        ? omnibox::kChromeProductIcon
@@ -1706,6 +1729,12 @@ bool AutocompleteMatch::HasCustomDescription() const {
       !suggest_template->secondary_text().text().empty()) {
     return true;
   }
+
+  if (base::FeatureList::IsEnabled(omnibox::kInlineLocationSignaling) &&
+      extra_headers.contains(kXGeoHeader)) {
+    return true;
+  }
+
   return type == AutocompleteMatchType::SEARCH_SUGGEST_ENTITY ||
          type == AutocompleteMatchType::SEARCH_SUGGEST_PROFILE ||
          type == AutocompleteMatchType::CLIPBOARD_TEXT ||

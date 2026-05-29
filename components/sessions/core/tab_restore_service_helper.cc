@@ -110,6 +110,73 @@ void AddSerializedNavigationEntries(
   }
 }
 
+// Maps LiveTabs for saved groups that bypassed AddRestoredTab.
+void MapSavedGroupTabsToLiveTabs(
+    LiveTabContext* context,
+    const std::map<tab_groups::TabGroupId, std::unique_ptr<tab_restore::Group>>&
+        window_groups,
+    const std::map<tab_groups::TabGroupId, std::vector<tab_restore::Tab*>>&
+        tabs_by_group,
+    std::map<SessionID, LiveTab*>& restored_tab_map) {
+  // Map each local tab group ID to its corresponding vector of LiveTabs.
+  std::map<tab_groups::TabGroupId, std::vector<LiveTab*>> context_group_tabs;
+  for (int i = 0; i < context->GetTabCount(); ++i) {
+    std::optional<tab_groups::TabGroupId> tab_group =
+        context->GetTabGroupForTab(i);
+    if (tab_group.has_value()) {
+      context_group_tabs[tab_group.value()].push_back(context->GetLiveTabAt(i));
+    }
+  }
+
+  // For each saved group in the window, find its mapped LiveTabs and populate
+  // the restored_tab_map mapping.
+  for (const auto& [group_id, group_ptr] : window_groups) {
+    if (!group_ptr->saved_group_id.has_value()) {
+      continue;
+    }
+
+    std::optional<tab_groups::TabGroupId> target_group =
+        context->GetGroupIdForSavedGroup(group_ptr->saved_group_id.value());
+    if (!target_group.has_value()) {
+      continue;
+    }
+
+    auto group_tabs_it = context_group_tabs.find(target_group.value());
+    if (group_tabs_it == context_group_tabs.end()) {
+      continue;
+    }
+    const std::vector<LiveTab*>& local_group_live_tabs = group_tabs_it->second;
+
+    auto it = tabs_by_group.find(group_id);
+    if (it != tabs_by_group.end() &&
+        local_group_live_tabs.size() == it->second.size()) {
+      const std::vector<tab_restore::Tab*>& group_window_tabs = it->second;
+      for (size_t i = 0; i < group_window_tabs.size(); ++i) {
+        restored_tab_map[group_window_tabs[i]->id] = local_group_live_tabs[i];
+      }
+    }
+  }
+}
+
+// Reconstructs split views in the given context by matching up restored tabs
+// from the provided mappings.
+void ReconstructSplits(
+    LiveTabContext* context,
+    const std::map<split_tabs::SplitTabId,
+                   std::vector<raw_ptr<tab_restore::Tab>>>& split_tabs_map,
+    const std::map<SessionID, LiveTab*>& restored_tab_map) {
+  for (const auto& [split_id, tabs] : split_tabs_map) {
+    CHECK(tabs.size() == 2);
+    auto leading_it = restored_tab_map.find(tabs[0]->id);
+    auto trailing_it = restored_tab_map.find(tabs[1]->id);
+    if (leading_it != restored_tab_map.end() &&
+        trailing_it != restored_tab_map.end()) {
+      context->ReconstructSplit(leading_it->second, trailing_it->second,
+                                split_id);
+    }
+  }
+}
+
 }  // namespace
 
 // TabRestoreServiceHelper::Observer -------------------------------------------
@@ -314,9 +381,19 @@ void TabRestoreServiceHelper::CreateHistoricalSplit(
 
   auto split = CreateHistoricalSplitImpl(context, id, split_tabs);
 
-  if (split && split->leading_tab && split->trailing_tab) {
-    CHECK(ValidateSplit(*split));
-    AddEntry(std::move(split), true, true);
+  if (split && split->tabs.size() == 2) {
+    bool tab0_valid = ValidateTab(*split->tabs[0]);
+    bool tab1_valid = ValidateTab(*split->tabs[1]);
+
+    if (tab0_valid && tab1_valid) {
+      AddEntry(std::move(split), true, true);
+    } else if (tab0_valid) {
+      AddEntry(std::move(split->tabs[0]), true, true);
+    } else if (tab1_valid) {
+      AddEntry(std::move(split->tabs[1]), true, true);
+    } else {
+      closing_split_tabs_.erase(id);
+    }
   } else {
     // In the case of an error, clear the cache so that the history can proceed
     // normally.
@@ -358,13 +435,11 @@ TabRestoreServiceHelper::CreateHistoricalSplitImpl(
   split->split_id = id;
   split->timestamp = TimeNow();
 
-  split->leading_tab = std::make_unique<Tab>();
-  PopulateTab(split->leading_tab.get(), split_tabs[0].first, context,
-              split_tabs[0].second);
-
-  split->trailing_tab = std::make_unique<Tab>();
-  PopulateTab(split->trailing_tab.get(), split_tabs[1].first, context,
-              split_tabs[1].second);
+  for (const auto& split_tab : split_tabs) {
+    auto tab = std::make_unique<Tab>();
+    PopulateTab(tab.get(), split_tab.first, context, split_tab.second);
+    split->tabs.push_back(std::move(tab));
+  }
 
   return split;
 }
@@ -465,16 +540,17 @@ bool TabRestoreServiceHelper::DeleteFromSplit(
     Split* split,
     std::unique_ptr<Tab>& remaining_tab) {
   CHECK(ValidateSplit(*split));
-  bool leading_deleted = DeleteFromTab(predicate, split->leading_tab.get());
-  bool trailing_deleted = DeleteFromTab(predicate, split->trailing_tab.get());
+  DCHECK_EQ(split->tabs.size(), 2u);
+  bool leading_deleted = DeleteFromTab(predicate, split->tabs[0].get());
+  bool trailing_deleted = DeleteFromTab(predicate, split->tabs[1].get());
 
   if (leading_deleted && trailing_deleted) {
     return true;
   }
   if (leading_deleted) {
-    remaining_tab = std::move(split->trailing_tab);
+    remaining_tab = std::move(split->tabs[1]);
   } else if (trailing_deleted) {
-    remaining_tab = std::move(split->leading_tab);
+    remaining_tab = std::move(split->tabs[0]);
   }
   return false;
 }
@@ -794,6 +870,11 @@ std::vector<LiveTab*> TabRestoreServiceHelper::RestoreEntryById(
                 : 0;
         const SessionID selected_tab_id = window.tabs[selected_tab_index]->id;
 
+        std::map<SessionID, LiveTab*> restored_tab_map;
+        std::map<split_tabs::SplitTabId, std::vector<raw_ptr<Tab>>>
+            window_split_tabs;
+        std::map<tab_groups::TabGroupId, std::vector<Tab*>> tabs_by_group;
+
         for (const auto& tab : window.tabs) {
           const bool select_tab = tab->id == selected_tab_id;
           LiveTab* restored_tab = context->AddRestoredTab(
@@ -805,8 +886,21 @@ std::vector<LiveTab*> TabRestoreServiceHelper::RestoreEntryById(
                 tab->navigations.at(tab->current_navigation_index)
                     .virtual_url());
             live_tabs.push_back(restored_tab);
+            restored_tab_map[tab->id] = restored_tab;
+          }
+
+          if (tab->split_id.has_value()) {
+            window_split_tabs[tab->split_id.value()].push_back(tab.get());
+          }
+          if (tab->group.has_value()) {
+            tabs_by_group[tab->group.value()].push_back(tab.get());
           }
         }
+
+        MapSavedGroupTabsToLiveTabs(context, window.tab_groups, tabs_by_group,
+                                    restored_tab_map);
+
+        ReconstructSplits(context, window_split_tabs, restored_tab_map);
 
         // Update all tabs to point to the correct context.
         if (auto browser_id = window.tabs[0]->browser_id) {
@@ -897,15 +991,7 @@ std::vector<LiveTab*> TabRestoreServiceHelper::RestoreEntryById(
           }
         }
 
-        // Reconstruct the split tabs after restoring all the tabs in the group.
-        for (const auto& [split_id, tabs] : group.split_tabs) {
-          CHECK(tabs.size() == 2);
-          LiveTab* leading = restored_tab_map[tabs[0]->id];
-          LiveTab* trailing = restored_tab_map[tabs[1]->id];
-          if (leading && trailing) {
-            context->ReconstructSplit(leading, trailing, split_id);
-          }
-        }
+        ReconstructSplits(context, group.split_tabs, restored_tab_map);
       } else {
         // Restore a single tab from the group. Find the tab that matches the
         // ID in the group and restore it.
@@ -937,6 +1023,7 @@ std::vector<LiveTab*> TabRestoreServiceHelper::RestoreEntryById(
     case tab_restore::Type::SPLIT: {
       auto& split = static_cast<tab_restore::Split&>(entry);
       CHECK(ValidateSplit(split));
+      DCHECK_EQ(split.tabs.size(), 2u);
 
       if (split.timestamp != base::Time() &&
           !split.timestamp.ToDeltaSinceWindowsEpoch().is_zero()) {
@@ -946,7 +1033,7 @@ std::vector<LiveTab*> TabRestoreServiceHelper::RestoreEntryById(
       }
 
       LiveTab* restored_leading_tab = nullptr;
-      context = RestoreTab(*split.leading_tab, context, disposition, entry.type,
+      context = RestoreTab(*split.tabs[0], context, disposition, entry.type,
                            &restored_leading_tab, false);
       if (restored_leading_tab) {
         live_tabs.push_back(restored_leading_tab);
@@ -954,15 +1041,14 @@ std::vector<LiveTab*> TabRestoreServiceHelper::RestoreEntryById(
 
       // Directly restore the trailing tab into the same context as the leading
       // tab to ensure that they remain unified in a single browser window.
-      LiveTab* restored_trailing_tab =
-          context->AddRestoredTab(*split.trailing_tab, context->GetTabCount(),
-                                  false, false, entry.type);
-      if (restored_trailing_tab && !split.trailing_tab->navigations.empty()) {
-        int nav_index = std::clamp(
-            split.trailing_tab->current_navigation_index, 0,
-            static_cast<int>(split.trailing_tab->navigations.size() - 1));
+      LiveTab* restored_trailing_tab = context->AddRestoredTab(
+          *split.tabs[1], context->GetTabCount(), false, false, entry.type);
+      if (restored_trailing_tab && !split.tabs[1]->navigations.empty()) {
+        int nav_index =
+            std::clamp(split.tabs[1]->current_navigation_index, 0,
+                       static_cast<int>(split.tabs[1]->navigations.size() - 1));
         client_->OnTabRestored(
-            split.trailing_tab->navigations.at(nav_index).virtual_url());
+            split.tabs[1]->navigations.at(nav_index).virtual_url());
         live_tabs.push_back(restored_trailing_tab);
       }
 
@@ -1310,8 +1396,11 @@ bool TabRestoreServiceHelper::ValidateGroup(const Group& group) {
 }
 
 bool TabRestoreServiceHelper::ValidateSplit(const Split& split) {
-  return split.leading_tab && split.trailing_tab &&
-         ValidateTab(*split.leading_tab) && ValidateTab(*split.trailing_tab);
+  if (split.tabs.size() != 2) {
+    return false;
+  }
+  return split.tabs[0] && split.tabs[1] && ValidateTab(*split.tabs[0]) &&
+         ValidateTab(*split.tabs[1]);
 }
 
 bool TabRestoreServiceHelper::IsTabInteresting(const Tab& tab) {
@@ -1344,8 +1433,11 @@ bool TabRestoreServiceHelper::IsGroupInteresting(const Group& group) {
 }
 
 bool TabRestoreServiceHelper::IsSplitInteresting(const Split& split) {
-  return (split.leading_tab && IsTabInteresting(*split.leading_tab)) ||
-         (split.trailing_tab && IsTabInteresting(*split.trailing_tab));
+  if (split.tabs.size() != 2) {
+    return false;
+  }
+  return (split.tabs[0] && IsTabInteresting(*split.tabs[0])) ||
+         (split.tabs[1] && IsTabInteresting(*split.tabs[1]));
 }
 
 bool TabRestoreServiceHelper::FilterEntry(const Entry& entry) {

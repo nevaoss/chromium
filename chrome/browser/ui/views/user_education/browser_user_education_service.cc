@@ -88,6 +88,7 @@
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/compose/buildflags.h"
 #include "components/compose/core/browser/compose_features.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/data_sharing/public/features.h"
 #include "components/desktop_to_mobile_promos/features.h"
 #include "components/desktop_to_mobile_promos/promos_types.h"
@@ -128,6 +129,7 @@
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/gfx/vector_icon_types.h"
 #include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/vector_icons.h"
@@ -318,8 +320,10 @@ void MaybeRegisterChromeFeaturePromos(
   // This icon got updated, so select the 2023 Refresh version.
   // Note that the WebUI refresh state is not taken into account, so
   // this selection will affect both Views and WebUI help bubbles.
-  const gfx::VectorIcon* const kLightbulbOutlineOldIcon =
-      &vector_icons::kLightbulbOutlineChromeRefreshOldIcon;
+  const gfx::VectorIcon* const kLightbulbOutlineIcon =
+      &(features::IsRoundedIconsEnabled()
+            ? vector_icons::kLightbulbIcon
+            : vector_icons::kLightbulbOutlineChromeRefreshOldIcon);
 
   // Verify that we haven't already registered the expected features.
   // Use a known test feature that is unlikely to change.
@@ -630,7 +634,7 @@ void MaybeRegisterChromeFeaturePromos(
                 tutorial_service->LogIPHLinkClicked(tutorial_id, true);
               }))
           .SetBubbleArrow(HelpBubbleArrow::kNone)
-          .SetBubbleIcon(kLightbulbOutlineOldIcon)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
           .SetCustomActionIsDefault(true)
           .SetCustomActionDismissText(IDS_PROMO_SNOOZE_BUTTON)
           // See: crbug.com/40075441
@@ -881,7 +885,7 @@ void MaybeRegisterChromeFeaturePromos(
           IDS_PASSWORD_MANAGER_IPH_CREATE_SHORTCUT_BODY,
           kPasswordManagerTutorialId)
           .SetBubbleArrow(HelpBubbleArrow::kBottomRight)
-          .SetBubbleIcon(kLightbulbOutlineOldIcon)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
           .SetBubbleTitleText(IDS_PASSWORD_MANAGER_IPH_CREATE_SHORTCUT_TITLE)));
 
 #if BUILDFLAG(ENABLE_PDF_INK2)
@@ -938,7 +942,7 @@ void MaybeRegisterChromeFeaturePromos(
           feature_engagement::kIPHLensOverlayFeature,
           kToolbarAppMenuButtonElementId,
           IDS_TUTORIAL_LENS_OVERLAY_HOMEWORK_INTRO_BODY, kLensOverlayTutorialId)
-          .SetBubbleIcon(kLightbulbOutlineOldIcon)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
           .SetBubbleTitleText(IDS_TUTORIAL_LENS_OVERLAY_HOMEWORK_INTRO_HEADER)
           .SetMetadata(131, "nguyenbryan@google.com",
                        "Triggered by certain URLs to start the Lens Overlay "
@@ -953,7 +957,7 @@ void MaybeRegisterChromeFeaturePromos(
                     IDS_PASSWORD_MANAGER_IPH_SHARE_PASSWORD_BUTTON_SCREENREADER,
                     FeaturePromoSpecification::AcceleratorInfo())
                     .SetInAnyContext(true)
-                    .SetBubbleIcon(kLightbulbOutlineOldIcon)
+                    .SetBubbleIcon(kLightbulbOutlineIcon)
                     .SetBubbleArrow(HelpBubbleArrow::kTopRight)));
 
   // kIPHPowerBookmarksSidePanelFeature:
@@ -998,7 +1002,9 @@ void MaybeRegisterChromeFeaturePromos(
           .SetBubbleTitleText(
               IDS_SIGNIN_DICE_WEB_INTERCEPT_BUBBLE_CHROME_SIGNIN_IPH_TITLE_SIGNIN_REMINDER)
           .SetBubbleArrow(HelpBubbleArrow::kTopRight)
-          .SetBubbleIcon(&vector_icons::kCelebrationOldIcon)
+          .SetBubbleIcon(&(features::IsRoundedIconsEnabled()
+                               ? vector_icons::kCelebrationIcon
+                               : vector_icons::kCelebrationOldIcon))
           .SetReshowPolicy(base::Days(14), /*max_show_count=*/6)));
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
@@ -1045,17 +1051,37 @@ void MaybeRegisterChromeFeaturePromos(
               }))
           .SetBubbleTitleText(IDS_COOKIE_CONTROLS_PROMO_TITLE)
           .SetBubbleArrow(HelpBubbleArrow::kTopRight)
-          .SetBubbleIcon(kLightbulbOutlineOldIcon)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
           .SetCustomActionIsDefault(true)
           .SetCustomActionDismissText(
               IDS_COOKIE_CONTROLS_PROMO_CLOSE_BUTTON_TEXT)));
 
   // kIPHSmartTabSharingFeature:
+  auto smart_tab_sharing_iph_first_time_prompt_option =
+      contextual_tasks::kSmartTabSharingIphFirstTimePromptOption.Get();
+  int smart_tab_sharing_iph_body_text_id = 0;
+  int smart_tab_sharing_iph_header_text_id = 0;
+  switch (smart_tab_sharing_iph_first_time_prompt_option) {
+    case contextual_tasks::SmartTabSharingIphFirstTimePromptOption::
+        kIphFirstTimePromptV1:
+      smart_tab_sharing_iph_body_text_id =
+          IDS_STS_IPH_PROMPT_FIRST_TIME_ADDING_CONTEXT_MESSAGE_BODY;
+      smart_tab_sharing_iph_header_text_id =
+          IDS_STS_IPH_PROMPT_FIRST_TIME_ADDING_CONTEXT_HEADER;
+      break;
+    case contextual_tasks::SmartTabSharingIphFirstTimePromptOption::
+        kIphFirstTimePromptV2:
+      smart_tab_sharing_iph_body_text_id =
+          IDS_STS_IPH_PROMPT_FIRST_TIME_ADDING_CONTEXT_MESSAGE_BODY_V2;
+      smart_tab_sharing_iph_header_text_id =
+          IDS_STS_IPH_PROMPT_FIRST_TIME_ADDING_CONTEXT_HEADER_V2;
+      break;
+  }
   registry.RegisterFeature(std::move(
       user_education::FeaturePromoSpecification::CreateForCustomAction(
           feature_engagement::kIPHSmartTabSharingFeature,
           ContextualTasksUI::kSmartTabSharingMenuItemElementId,
-          IDS_STS_IPH_PROMPT_FIRST_TIME_ADDING_CONTEXT_MESSAGE_BODY,
+          smart_tab_sharing_iph_body_text_id,
           IDS_STS_IPH_PROMPT_FIRST_TIME_ADDING_CONTEXT_TURN_ON,
           base::BindRepeating(
               [](ContextPtr ctx,
@@ -1068,8 +1094,7 @@ void MaybeRegisterChromeFeaturePromos(
                   service->TurnOnSmartTabSharing(browser);
                 }
               }))
-          .SetBubbleTitleText(
-              IDS_STS_IPH_PROMPT_FIRST_TIME_ADDING_CONTEXT_HEADER)
+          .SetBubbleTitleText(smart_tab_sharing_iph_header_text_id)
           .SetCustomActionDismissText(IDS_NO_THANKS)
           .SetCustomActionIsDefault(true)
           .SetBubbleArrow(user_education::HelpBubbleArrow::kBottomRight)
@@ -1081,13 +1106,25 @@ void MaybeRegisterChromeFeaturePromos(
               "and Smart Tab Sharing is available but hasn't been used yet.")));
 
   // kIPHSmartTabSharingTryItFeature:
+  int smart_tab_sharing_iph_try_it_body_id = IDS_STS_IPH_TRY_IT_BODY;
+  int smart_tab_sharing_iph_try_it_header_id = IDS_STS_IPH_TRY_IT_HEADER;
+  switch (contextual_tasks::kSmartTabSharingIphTryItPromoOption.Get()) {
+    case contextual_tasks::SmartTabSharingIphTryItPromoOption::kIphTryItPromoV1:
+      smart_tab_sharing_iph_try_it_body_id = IDS_STS_IPH_TRY_IT_BODY;
+      smart_tab_sharing_iph_try_it_header_id = IDS_STS_IPH_TRY_IT_HEADER;
+      break;
+    case contextual_tasks::SmartTabSharingIphTryItPromoOption::kIphTryItPromoV2:
+      smart_tab_sharing_iph_try_it_body_id = IDS_STS_IPH_TRY_IT_BODY_V2;
+      smart_tab_sharing_iph_try_it_header_id = IDS_STS_IPH_TRY_IT_HEADER_V2;
+      break;
+  }
   registry.RegisterFeature(std::move(
       user_education::FeaturePromoSpecification::CreateForCustomAction(
           feature_engagement::kIPHSmartTabSharingTryItFeature,
           ContextualTasksUI::kSmartTabSharingMenuItemElementId,
-          IDS_STS_IPH_TRY_IT_BODY, IDS_STS_IPH_TRY_IT_TURN_ON,
+          smart_tab_sharing_iph_try_it_body_id, IDS_STS_IPH_TRY_IT_TURN_ON,
           base::DoNothing())
-          .SetBubbleTitleText(IDS_STS_IPH_TRY_IT_HEADER)
+          .SetBubbleTitleText(smart_tab_sharing_iph_try_it_header_id)
           .SetCustomActionDismissText(IDS_STS_IPH_TRY_IT_NOT_NOW)
           .SetInAnyContext(true)
           .SetAdditionalConditions(std::move(
@@ -1098,13 +1135,28 @@ void MaybeRegisterChromeFeaturePromos(
                        "Custom UI IPH promo shown above the composebox.")));
 
   // kIPHSmartTabSharingDefaultOnFeature:
+  int smart_tab_sharing_iph_default_on_body_id = IDS_STS_IPH_DEFAULT_ON_BODY;
+  int smart_tab_sharing_iph_default_on_header_id =
+      IDS_STS_IPH_DEFAULT_ON_HEADER;
+  switch (contextual_tasks::kSmartTabSharingIphDefaultOnOption.Get()) {
+    case contextual_tasks::SmartTabSharingIphDefaultOnOption::kIphDefaultOnV1:
+      smart_tab_sharing_iph_default_on_body_id = IDS_STS_IPH_DEFAULT_ON_BODY;
+      smart_tab_sharing_iph_default_on_header_id =
+          IDS_STS_IPH_DEFAULT_ON_HEADER;
+      break;
+    case contextual_tasks::SmartTabSharingIphDefaultOnOption::kIphDefaultOnV2:
+      smart_tab_sharing_iph_default_on_body_id = IDS_STS_IPH_DEFAULT_ON_BODY_V2;
+      smart_tab_sharing_iph_default_on_header_id =
+          IDS_STS_IPH_DEFAULT_ON_HEADER_V2;
+      break;
+  }
   registry.RegisterFeature(std::move(
       user_education::FeaturePromoSpecification::CreateForCustomAction(
           feature_engagement::kIPHSmartTabSharingDefaultOnFeature,
           ContextualTasksUI::kSmartTabSharingMenuItemElementId,
-          IDS_STS_IPH_DEFAULT_ON_BODY, IDS_STS_IPH_DEFAULT_ON_TURN_ON,
-          base::DoNothing())
-          .SetBubbleTitleText(IDS_STS_IPH_DEFAULT_ON_HEADER)
+          smart_tab_sharing_iph_default_on_body_id,
+          IDS_STS_IPH_DEFAULT_ON_TURN_ON, base::DoNothing())
+          .SetBubbleTitleText(smart_tab_sharing_iph_default_on_header_id)
           .SetCustomActionDismissText(IDS_STS_IPH_DEFAULT_ON_NOT_NOW)
           .SetInAnyContext(true)
           .SetAdditionalConditions(std::move(
@@ -1171,7 +1223,9 @@ void MaybeRegisterChromeFeaturePromos(
           FeaturePromoSpecification::AcceleratorInfo())
           .SetBubbleTitleText(IDS_RESUMPTION_RAIL_IPH_TITLE)
           .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
-          .SetBubbleIcon(&vector_icons::kLightbulbOutlineOldIcon)
+          .SetBubbleIcon(&(features::IsRoundedIconsEnabled()
+                               ? vector_icons::kLightbulb2Icon
+                               : vector_icons::kLightbulbOutlineOldIcon))
           .SetMetadata(147, "gqueen@chromium.org",
                        "Triggered to educate users about the Resumption Rail "
                        "feature entrypoint.")));
@@ -1207,7 +1261,7 @@ void MaybeRegisterChromeFeaturePromos(
           kBrowserDialogAnchorElementId,
           IDS_SPLIT_VIEW_TAB_SWITCH_ENTRY_IPH_BODY, kSplitViewTutorialId)
           .SetBubbleArrow(HelpBubbleArrow::kNone)
-          .SetBubbleIcon(kLightbulbOutlineOldIcon)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
           .SetBubbleTitleText(IDS_SPLIT_VIEW_TAB_SWITCH_ENTRY_IPH_TITLE)
           .SetMetadata(141, "lugli@google.com",
                        "Triggered when user swaps between two tabs three times "
@@ -1246,7 +1300,9 @@ void MaybeRegisterChromeFeaturePromos(
           IDS_SIDE_PANEL_LENS_OVERLAY_PINNABLE_FOLLOWUP_IPH_SCREENREADER,
           FeaturePromoSpecification::AcceleratorInfo())
           .SetBubbleArrow(HelpBubbleArrow::kTopRight)
-          .SetBubbleIcon(&vector_icons::kCelebrationOldIcon)
+          .SetBubbleIcon(&(features::IsRoundedIconsEnabled()
+                               ? vector_icons::kCelebrationIcon
+                               : vector_icons::kCelebrationOldIcon))
           .SetMetadata(
               126, "dfried@chromium.org, jdonnelly@google.com",
               "Triggered when the lens overlay side panel is pinned.")));
@@ -1393,7 +1449,9 @@ void MaybeRegisterChromeFeaturePromos(
               }))
           .SetPromoSubtype(
               FeaturePromoSpecification::PromoSubtype::kActionableAlert)
-          .SetBubbleIcon(&vector_icons::kFamilyLinkOldIcon)
+          .SetBubbleIcon(&(features::IsRoundedIconsEnabled()
+                               ? vector_icons::kFamilyLinkFilledIcon
+                               : vector_icons::kFamilyLinkOldIcon))
           .SetBubbleTitleText(IDS_SUPERVISED_USER_PROFILE_SIGNIN_IPH_TITLE)
           .SetBubbleArrow(HelpBubbleArrow::kTopRight)
           .SetCustomActionIsDefault(false)
@@ -1453,7 +1511,7 @@ void MaybeRegisterChromeFeaturePromos(
           IDS_TAB_SEARCH_TOOLBAR_BUTTON_PROMO_BODY,
           FeaturePromoSpecification::AcceleratorInfo())
           .SetBubbleArrow(HelpBubbleArrow::kTopRight)
-          .SetBubbleIcon(kLightbulbOutlineOldIcon)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
           .SetBubbleTitleText(IDS_TAB_SEARCH_TOOLBAR_BUTTON_PROMO_TITLE)
           .SetMetadata(136, "emshack@chromium.org",
                        "Triggered when the tab search button has been moved "
@@ -1495,7 +1553,9 @@ void MaybeRegisterChromeFeaturePromos(
           .SetBubbleTitleText(IDS_PASSWORD_MANAGER_IPH_TITLE_SAVE_TO_ACCOUNT)
           .SetInAnyContext(true)
           .SetBubbleArrow(HelpBubbleArrow::kBottomRight)
-          .SetBubbleIcon(&vector_icons::kCelebrationOldIcon)
+          .SetBubbleIcon(&(features::IsRoundedIconsEnabled()
+                               ? vector_icons::kCelebrationIcon
+                               : vector_icons::kCelebrationOldIcon))
           .SetMetadata(
               90, "dfried@chromium.org",
               "This is a test IPH, designed to verify that IPH can attach to "
@@ -1605,7 +1665,9 @@ void MaybeRegisterChromeFeaturePromos(
                     IDS_MERCHANT_TRUST_IPH_BODY_SCREEN_READER,
                     FeaturePromoSpecification::AcceleratorInfo())
                     .SetBubbleTitleText(IDS_MERCHANT_TRUST_IPH_TITLE)
-                    .SetBubbleIcon(&vector_icons::kStorefrontOldIcon)
+                    .SetBubbleIcon(&(features::IsRoundedIconsEnabled()
+                                         ? vector_icons::kStorefrontIcon
+                                         : vector_icons::kStorefrontOldIcon))
                     .SetMetadata(134, "tommasin@chromium.org",
                                  "Triggered when the merchant trust entry "
                                  "point is shown and expanded.")));
@@ -1859,7 +1921,7 @@ void MaybeRegisterChromeFeaturePromos(
           kBrowserDialogAnchorElementId, IDS_VERTICAL_TABS_IPH_BODY,
           kVerticalTabsTutorialId)
           .SetBubbleArrow(HelpBubbleArrow::kNone)
-          .SetBubbleIcon(kLightbulbOutlineOldIcon)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
           .SetBubbleTitleText(IDS_VERTICAL_TABS_IPH_TITLE)
           .SetMetadata(
               147, "charlesmeng@google.com",
@@ -1878,7 +1940,7 @@ void MaybeRegisterChromeFeaturePromos(
           kVerticalTabStripCollapseButtonElementId,
           expand_on_hover_iph_body_string_id)
           .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
-          .SetBubbleIcon(kLightbulbOutlineOldIcon)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
           .SetMetadata(148, "charlesmeng@chromium.org",
                        "Triggered when the vertical tabs is enabled and the "
                        "user has not enabled expand on hover before.")));

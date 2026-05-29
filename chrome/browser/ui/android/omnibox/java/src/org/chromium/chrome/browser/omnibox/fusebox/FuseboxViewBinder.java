@@ -14,7 +14,9 @@ import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,9 +34,11 @@ import androidx.recyclerview.widget.RecyclerView.LayoutManager;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.R;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonType;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.omnibox.AutocompleteRequestType;
@@ -93,7 +97,8 @@ class FuseboxViewBinder {
                     v -> model.get(FuseboxProperties.BUTTON_ADD_CLICKED).run());
         } else if (propertyKey == FuseboxProperties.COLOR_SCHEME) {
             updateButtonsVisibilityAndStyling(model, view);
-        } else if (propertyKey == FuseboxProperties.FUSEBOX_STATE) {
+        } else if (propertyKey == FuseboxProperties.FUSEBOX_STATE
+                || propertyKey == FuseboxProperties.FUSEBOX_LAYOUT_MODE) {
             reanchorViewsForCompactFusebox(model, view);
         } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED) {
             view.popup.mCameraButton.setOnClickListener(
@@ -183,6 +188,30 @@ class FuseboxViewBinder {
                     model.get(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE)
                             ? View.VISIBLE
                             : View.GONE);
+        } else if (propertyKey == FuseboxProperties.POPUP_RECENT_TABS_BUTTON_DATA_LIST) {
+            updateRecentTabsButtons(model, view);
+        } else if (propertyKey == FuseboxProperties.POPUP_RECENT_TABS_DIVIDER_VISIBLE) {
+            if (view.popup.mRecentTabsDivider != null) {
+                view.popup.mRecentTabsDivider.setVisibility(
+                        model.get(FuseboxProperties.POPUP_RECENT_TABS_DIVIDER_VISIBLE)
+                                ? View.VISIBLE
+                                : View.GONE);
+            }
+        } else if (propertyKey == FuseboxProperties.POPUP_RECENT_TABS_HEADER_VISIBLE) {
+            if (view.popup.mRecentTabsHeader != null) {
+                view.popup.mRecentTabsHeader.setVisibility(
+                        model.get(FuseboxProperties.POPUP_RECENT_TABS_HEADER_VISIBLE)
+                                ? View.VISIBLE
+                                : View.GONE);
+            }
+        } else if (propertyKey == FuseboxProperties.POPUP_RECENT_TABS_ENABLED) {
+            ViewGroup container = view.popup.mRecentTabsContainer;
+            if (container != null) {
+                boolean enabled = model.get(FuseboxProperties.POPUP_RECENT_TABS_ENABLED);
+                for (int i = 0; i < container.getChildCount(); i++) {
+                    container.getChildAt(i).setEnabled(enabled);
+                }
+            }
         } else if (propertyKey == FuseboxProperties.POPUP_STATE) {
             view.popup.setPopupState(model.get(FuseboxProperties.POPUP_STATE));
         } else if (propertyKey == FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST) {
@@ -246,10 +275,10 @@ class FuseboxViewBinder {
     private static void updateButtons(
             PropertyModel model,
             FuseboxViewHolder view,
+            ViewGroup group,
             @Nullable List<PopupButtonData> buttonDataList,
             int startIndex,
             int endIndex) {
-        ViewGroup group = view.popup.mViewGroup;
         int currentCount = endIndex - startIndex;
         int targetCount = buttonDataList == null ? 0 : buttonDataList.size();
 
@@ -273,7 +302,8 @@ class FuseboxViewBinder {
                                 .inflate(R.layout.fusebox_list_item, group, false);
                 group.addView(buttonView, startIndex + i);
             }
-            bindDynamicButton(view.popup, buttonView, buttonDataList.get(i), brandedColorScheme);
+            bindDynamicButton(
+                    model, view.popup, buttonView, buttonDataList.get(i), brandedColorScheme);
         }
     }
 
@@ -284,7 +314,7 @@ class FuseboxViewBinder {
         int headerIndex = group.indexOfChild(view.popup.mModelsHeader);
         assert headerIndex >= 0;
 
-        updateButtons(model, view, buttonDataList, headerIndex + 1, group.getChildCount());
+        updateButtons(model, view, group, buttonDataList, headerIndex + 1, group.getChildCount());
     }
 
     private static void updateToolButtons(PropertyModel model, FuseboxViewHolder view) {
@@ -296,17 +326,43 @@ class FuseboxViewBinder {
         int dividerIndex = group.indexOfChild(view.popup.mModelsDivider);
         assert dividerIndex >= 0;
 
-        updateButtons(model, view, buttonDataList, headerIndex + 1, dividerIndex);
+        updateButtons(model, view, group, buttonDataList, headerIndex + 1, dividerIndex);
+    }
+
+    private static void updateRecentTabsButtons(PropertyModel model, FuseboxViewHolder view) {
+        ViewGroup container = view.popup.mRecentTabsContainer;
+        if (container == null) return;
+
+        List<PopupButtonData> buttonDataList =
+                model.get(FuseboxProperties.POPUP_RECENT_TABS_BUTTON_DATA_LIST);
+        int targetCount = buttonDataList == null ? 0 : buttonDataList.size();
+        container.setVisibility(targetCount > 0 ? View.VISIBLE : View.GONE);
+
+        updateButtons(
+                model,
+                view,
+                container,
+                buttonDataList,
+                /* startIndex= */ 0,
+                container.getChildCount());
     }
 
     private static void bindDynamicButton(
+            PropertyModel model,
             FuseboxPopup popup,
             View buttonView,
             PopupButtonData data,
             @BrandedColorScheme int brandedColorScheme) {
         buttonView.setOnClickListener((v) -> data.onClicked.run());
-        ((TextView) buttonView.findViewById(R.id.action_text)).setText(data.text);
-        buttonView.setEnabled(data.enabled);
+        TextView actionText = (TextView) buttonView.findViewById(R.id.action_text);
+        actionText.setText(data.text);
+        if (data.type == PopupButtonType.RECENT_TAB) {
+            actionText.setMaxLines(1);
+            actionText.setEllipsize(TextUtils.TruncateAt.END);
+            buttonView.setEnabled(model.get(FuseboxProperties.POPUP_RECENT_TABS_ENABLED));
+        } else {
+            buttonView.setEnabled(data.enabled);
+        }
 
         Resources res = buttonView.getResources();
         CharSequence desc =
@@ -324,6 +380,15 @@ class FuseboxViewBinder {
                 OmniboxResourceProvider.getPrimaryIconBackgroundTintList(
                         buttonView.getContext(), brandedColorScheme);
         themeButton(buttonView, textAppearance, iconTint, iconBackgroundTint);
+        if (data.customIcon != null) {
+            var drawable = new BitmapDrawable(res, data.customIcon);
+            setCustomButtonDrawables(buttonView, drawable, data.selected);
+        } else {
+            int iconId = data.iconId == 0 ? IconResourceIds.GLOBE_VALUE : data.iconId;
+            @DrawableRes int iconRes = getResIdForIconId(iconId);
+            setButtonDrawables(buttonView, iconRes, data.selected);
+        }
+
         if (data.hasColor) {
             FuseboxItemViewHolder holder = getViewHolder(buttonView);
             ImageView imageView = holder.mActionIcon;
@@ -335,9 +400,6 @@ class FuseboxViewBinder {
         } else {
             popup.mDynamicThemedButtons.add(buttonView);
         }
-
-        @DrawableRes int iconRes = getResIdForIconId(data.iconId);
-        setButtonDrawables(buttonView, iconRes, data.selected);
     }
 
     private static void setButtonDrawables(
@@ -380,7 +442,9 @@ class FuseboxViewBinder {
 
     /** Maps ids found in generated protos to local resources backed drawable ids. */
     private static @DrawableRes int getResIdForIconId(int iconId) {
-        if (iconId == IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE_VALUE) {
+        if (iconId == IconResourceIds.GLOBE_VALUE) {
+            return R.drawable.ic_globe_24dp;
+        } else if (iconId == IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE_VALUE) {
             return R.drawable.search_spark_black_24dp;
         } else if (iconId == IconResourceIds.BANANA_VALUE) {
             return R.drawable.create_image_24dp;
@@ -637,10 +701,22 @@ class FuseboxViewBinder {
 
     private static void reanchorViewsForCompactFusebox(
             PropertyModel model, FuseboxViewHolder view) {
+
         boolean singleLine = model.get(FuseboxProperties.FUSEBOX_STATE) != FuseboxState.EXPANDED;
-        int topToTop = singleLine ? R.id.url_bar : ConstraintSet.UNSET;
-        int topToBottom = singleLine ? ConstraintSet.UNSET : R.id.url_bar;
-        int bottomToBottom = singleLine ? ConstraintSet.UNSET : ConstraintSet.PARENT_ID;
+        int topToTop;
+        int topToBottom;
+        int bottomToBottom;
+
+        if (model.get(FuseboxProperties.FUSEBOX_LAYOUT_MODE)
+                == FuseboxLayoutMode.SUGGESTIONS_POPOVER) {
+            topToTop = ConstraintSet.UNSET;
+            topToBottom = R.id.omnibox_suggestions_dropdown;
+            bottomToBottom = ConstraintSet.PARENT_ID;
+        } else {
+            topToTop = singleLine ? R.id.url_bar : ConstraintSet.UNSET;
+            topToBottom = singleLine ? ConstraintSet.UNSET : R.id.url_bar;
+            bottomToBottom = singleLine ? ConstraintSet.UNSET : ConstraintSet.PARENT_ID;
+        }
 
         var cs = new ConstraintSet();
         cs.clone(view.parentView);

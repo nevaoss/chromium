@@ -21,9 +21,11 @@
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/tabs/existing_base_sub_menu_model.h"
+#include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/split_tab_swap_menu_model.h"
+#include "chrome/browser/ui/tabs/split_view_layout_menu_model.h"
 #include "chrome/browser/ui/tabs/tab_menu_model_delegate.h"
 #include "chrome/browser/ui/tabs/test_tab_strip_model_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -41,6 +43,7 @@
 #include "components/optimization_guide/core/model_execution/model_execution_features.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/prefs/testing_pref_service.h"
+#include "components/tabs/public/split_tab_data.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -358,6 +361,62 @@ IN_PROC_BROWSER_TEST_F(TabMenuModelBrowserTest, MultiSelectTabs) {
   }
 }
 
+class TabMenuModelSplitViewHorizontalDirectAccessBrowserTest
+    : public TabMenuModelBrowserTest {
+ public:
+  TabMenuModelSplitViewHorizontalDirectAccessBrowserTest() {
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        /*enabled_features=*/{{tabs::kSplitViewHorizontal,
+                               {{"split_view_horizontal_direct_access",
+                                 "true"}}}},
+        /*disabled_features=*/{});
+  }
+
+  void TestNewSplit(SplitViewLayoutMenuModel::CommandId command_id,
+                    split_tabs::SplitTabLayout expected_layout) {
+    chrome::NewTab(browser());
+
+    TabStripModel* tab_strip_model = browser()->tab_strip_model();
+    ASSERT_EQ(tab_strip_model->count(), 2);
+    ASSERT_EQ(tab_strip_model->active_index(), 1);
+
+    TabMenuModel menu_model(&delegate_,
+                            browser()->GetFeatures().tab_menu_model_delegate(),
+                            tab_strip_model, 0);
+
+    size_t submenu_index =
+        menu_model.GetIndexOfCommandId(TabStripModel::CommandAddToSplit)
+            .value();
+    ui::SimpleMenuModel* submenu = static_cast<ui::SimpleMenuModel*>(
+        menu_model.GetSubmenuModelAt(submenu_index));
+    submenu->ActivatedAt(static_cast<size_t>(
+        submenu->GetIndexOfCommandId(static_cast<int>(command_id)).value()));
+
+    EXPECT_TRUE(tab_strip_model->GetActiveTab()->GetSplit().has_value());
+    EXPECT_EQ(
+        expected_layout,
+        tab_strip_model
+            ->GetSplitData(tab_strip_model->GetActiveTab()->GetSplit().value())
+            ->visual_data()
+            ->split_layout());
+  }
+
+ protected:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(TabMenuModelSplitViewHorizontalDirectAccessBrowserTest,
+                       NewSideBySideSplit) {
+  TestNewSplit(SplitViewLayoutMenuModel::CommandId::kSideBySide,
+               split_tabs::SplitTabLayout::kSideBySide);
+}
+
+IN_PROC_BROWSER_TEST_F(TabMenuModelSplitViewHorizontalDirectAccessBrowserTest,
+                       NewStackedSplit) {
+  TestNewSplit(SplitViewLayoutMenuModel::CommandId::kStacked,
+               split_tabs::SplitTabLayout::kStacked);
+}
+
 IN_PROC_BROWSER_TEST_F(TabMenuModelBrowserTest, SwapWithActiveTab) {
   // Add 3 tabs to the browser.
   chrome::NewTab(browser());
@@ -370,7 +429,7 @@ IN_PROC_BROWSER_TEST_F(TabMenuModelBrowserTest, SwapWithActiveTab) {
   tab_strip_model->ActivateTabAt(0);
   tab_strip_model->AddToNewSplit(
       {1},
-      split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kVertical),
+      split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kSideBySide),
       split_tabs::SplitTabCreatedSource::kToolbarButton);
   EXPECT_TRUE(tab_strip_model->GetSplitForTab(0).has_value());
   EXPECT_TRUE(tab_strip_model->GetSplitForTab(1).has_value());
@@ -400,7 +459,7 @@ IN_PROC_BROWSER_TEST_F(TabMenuModelBrowserTest, SwapWithInactiveTab) {
   // tab active.
   tab_strip_model->AddToNewSplit(
       {1},
-      split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kVertical),
+      split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kSideBySide),
       split_tabs::SplitTabCreatedSource::kToolbarButton);
   EXPECT_FALSE(tab_strip_model->GetSplitForTab(0).has_value());
   EXPECT_TRUE(tab_strip_model->GetSplitForTab(1).has_value());

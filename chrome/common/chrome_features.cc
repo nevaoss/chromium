@@ -156,6 +156,10 @@ BASE_FEATURE(kDesktopPWAsPreventClose,
 // Adds a user settings that allows PWAs to be opened with a tab strip.
 BASE_FEATURE(kDesktopPWAsTabStripSettings, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables the standalone Document Picture-in-Picture window path, replacing
+// the Browser-backed implementation with a dedicated host.
+BASE_FEATURE(kDocumentPipStandaloneWindow, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Allows fullscreen to claim whole display area when in windowing mode
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kDisplayEdgeToEdgeFullscreen, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -183,13 +187,7 @@ BASE_FEATURE(kForcedAppRelaunchOnPlaceholderUpdate,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-// Controls whether the GeoLanguage system is enabled. GeoLanguage uses IP-based
-// coarse geolocation to provide an estimate (for use by other Chrome features
-// such as Translate) of the local/regional language(s) corresponding to the
-// device's location. If this feature is disabled, the GeoLanguage provider is
-// not initialized at startup, and clients calling it will receive an empty list
-// of languages.
-BASE_FEATURE(kGeoLanguage, base::FEATURE_DISABLED_BY_DEFAULT);
+
 
 // Controls whether the actor component of Glic is enabled.
 #if BUILDFLAG(IS_ANDROID)
@@ -454,6 +452,16 @@ BASE_FEATURE(kGlic,
 #endif
 );
 
+BASE_FEATURE(kGlicSupportLinks, base::FEATURE_ENABLED_BY_DEFAULT);
+
+const base::FeatureParam<std::string> kGlicLocationMismatchHelpUrl{
+    &kGlicSupportLinks, "location_mismatch_help_url",
+    "https://support.google.com/gemini/answer/16283624#gic_access"};
+
+const base::FeatureParam<std::string> kGlicIneligibleAccountHelpUrl{
+    &kGlicSupportLinks, "ineligible_account_help_url",
+    "https://support.google.com/gemini/answer/16283624#gic_access"};
+
 const base::FeatureParam<int> kGlicMinRequiredRamMb{
     &kGlic, "glic-min-required-ram-mb", 0};
 
@@ -674,6 +682,15 @@ const base::FeatureParam<std::string> kGlicAllowedOriginsOverride{
     &kGlicCSPConfig, "glic-allowed-origins-override",
     // Space-delimited set of allowed origins.
     "https://gemini.google.com https://www.google.com"};
+// Origins that can use the Glic API. The default Glic guest origin is
+// automatically allowed, this restricts API use if the guest navigates.
+const base::FeatureParam<std::string> kGlicApiAllowedOrigins{
+    &kGlicCSPConfig, "glic-api-allowed-origins",
+    // Space-delimited set of origins allowed to have API access.
+    "https://gemini.google.com "
+    "https://gemini-autopush.corp.google.com "
+    "https://gemini-staging.corp.google.com "
+    "https://gemini-preprod.corp.google.com"};
 
 // Enable/disable Glic web client responsiveness check feature.
 BASE_FEATURE(kGlicClientResponsivenessCheck, base::FEATURE_ENABLED_BY_DEFAULT);

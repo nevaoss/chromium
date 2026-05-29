@@ -23,6 +23,7 @@ import androidx.annotation.VisibleForTesting;
 import org.chromium.base.Callback;
 import org.chromium.base.CallbackController;
 import org.chromium.base.Log;
+import org.chromium.base.TimeUtils;
 import org.chromium.base.TraceEvent;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
@@ -58,6 +59,7 @@ import org.chromium.chrome.browser.ntp_customization.NtpCustomizationConfigManag
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinatorFactory;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
+import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils.NtpBackgroundType;
 import org.chromium.chrome.browser.omnibox.SearchEngineUtils;
 import org.chromium.chrome.browser.omnibox.SearchEngineUtils.SearchBoxHintTextObserver;
 import org.chromium.chrome.browser.omnibox.SearchEngineUtils.SearchEngineIconObserver;
@@ -101,6 +103,7 @@ import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 import org.chromium.ui.text.EmptyTextWatcher;
 import org.chromium.url.GURL;
 
+import java.time.Duration;
 import java.util.function.Supplier;
 
 /**
@@ -110,6 +113,8 @@ import java.util.function.Supplier;
 @NullMarked
 public class NewTabPageCoordinator implements ModuleDelegateHost {
     private static final String TAG = "NewTabPageLayout";
+    // Counts of the number of NTPs have been visible to users.
+    private static int sCount;
 
     private final NewTabPageManager mManager;
     private final Activity mActivity;
@@ -149,6 +154,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private @Nullable ViewGroup mHomeModulesContainer;
     private SetupListManager.@Nullable Observer mSetupListObserver;
     private @Nullable Point mContextMenuStartPosition;
+    private @Nullable NtpCustomizationCoordinator mNtpCustomizationCoordinator;
 
     /**
      * Whether the tiles shown in the layout have finished loading. With {@link #mHasShownView},
@@ -187,9 +193,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private @Nullable FeedSurfaceScrollDelegate mScrollDelegate;
     private @Nullable Callback<Logo> mOnLogoAvailableCallback;
 
-    // mIsComposeplateEnabled is null before checking whether to initialize composeplate view in
+    // mCanShowComposeplateButton is null before checking whether to initialize composeplate view in
     // NewTabPageCoordinator#initialize().
-    private @Nullable Boolean mIsComposeplateEnabled;
+    private @Nullable Boolean mCanShowComposeplateButton;
     private boolean mIsComposeplatePolicyEnabled;
     private boolean mIsComposeplateViewInitialized;
     private @Nullable Supplier<GURL> mComposeplateUrlSupplier;
@@ -287,6 +293,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
                     }
                 };
         mModel.set(NewTabPageLayoutProperties.DELEGATE, mLayoutDelegate);
+        sCount++;
     }
 
     /**
@@ -360,7 +367,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         initializeSearchBoxTextView();
 
         initializeComposeplateFlags(mProfile);
-        if (assumeNonNull(mIsComposeplateEnabled)) {
+        if (assumeNonNull(mCanShowComposeplateButton)) {
             initializeComposeplate();
         }
 
@@ -394,7 +401,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         Resources resources = mActivity.getResources();
         int searchBoxHeight =
                 NtpCustomizationUtils.getSearchBoxHeight(
-                        resources, assumeNonNull(mIsComposeplateEnabled));
+                        resources, assumeNonNull(mCanShowComposeplateButton));
         if (mNtpSearchBox != null) {
             mNtpSearchBox.setHeight(searchBoxHeight);
         }
@@ -488,9 +495,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     }
 
     private void initializeComposeplateFlags(Profile profile) {
-        mIsComposeplateEnabled = ComposeplateUtils.isComposeplateEnabled(profile);
+        mCanShowComposeplateButton = ComposeplateUtils.canShowComposeplateButtonOnNtp(profile);
         mIsComposeplatePolicyEnabled =
-                mIsComposeplateEnabled && ComposeplateUtils.isEnabledByPolicy(profile);
+                mCanShowComposeplateButton && ComposeplateUtils.isEnabledByPolicy(profile);
     }
 
     private void initializeComposeplate() {
@@ -749,21 +756,21 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
         // Skips if the flag hasn't been initialized since the initialization of the following
         // components will be called again in #initialize().
-        if (mIsComposeplateEnabled != null) {
-            // when mSearchProviderIsGoogle is changed, mIsComposeplateEnabled might be changed too,
-            // recalculate its value.
+        if (mCanShowComposeplateButton != null) {
+            // When mSearchProviderIsGoogle is changed, mCanShowComposeplateButton might be changed
+            // too, recalculate its value.
             if (isSearchProviderIsGoogleChanged) {
-                boolean previousIsComposeplateEnabled = mIsComposeplateEnabled;
+                boolean previousCanShowComposeplateButton = mCanShowComposeplateButton;
                 initializeComposeplateFlags(mProfile);
-                if (!previousIsComposeplateEnabled
-                        && mIsComposeplateEnabled
+                if (!previousCanShowComposeplateButton
+                        && mCanShowComposeplateButton
                         && mComposeplateCoordinator == null) {
                     // If the composeplate view is enabled while mComposeplateCoordinator hasn't
                     // been initialized yet, initialize it now.
                     initializeComposeplate();
                 }
 
-                if (previousIsComposeplateEnabled != mIsComposeplateEnabled) {
+                if (previousCanShowComposeplateButton != mCanShowComposeplateButton) {
                     // When the flag value is changed, the height of search box might be changed.
                     setSearchBoxHeightBoundsVerticalInset();
                     // Updates the composeplate view's visibility.
@@ -960,6 +967,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         if (!mHasShownView) {
             mHasShownView = true;
             onInitializationProgressChanged();
+            if (canTriggerCustomizationBottomSheet()) {
+                triggerCustomizationBottomSheet();
+            }
             TraceEvent.instant("NewTabPageSearchAvailable");
         }
     }
@@ -974,7 +984,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         // Skips now if the composeplate flag hasn't been initialized. This prevents logging the
         // impression metrics incorrectly due to the status of whether to show the composeplate
         // button hasn't been initialized.
-        if (mIsComposeplateEnabled == null) return;
+        if (mCanShowComposeplateButton == null) return;
 
         mNtpSearchBox.setVoiceSearchButtonVisibility(shouldShowVoiceSearchButton);
         mNtpSearchBox.setLensButtonVisibility(shouldShowLensButton);
@@ -983,7 +993,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         // visibility.
         if (mComposeplateCoordinator != null) {
             shouldShowComposeplateButton =
-                    mIsComposeplateEnabled
+                    mCanShowComposeplateButton
                             && mSearchProviderIsGoogle
                             && IncognitoUtils.isIncognitoModeEnabled(mProfile);
             mComposeplateCoordinator.setVisibility(
@@ -1172,6 +1182,53 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         }
     }
 
+    /** Returns whether to trigger the NTP theme tip bottom sheet showing. */
+    boolean canTriggerCustomizationBottomSheet() {
+        if (!NtpCustomizationUtils.isNtpThemeCustomizationEnabled(mWindowAndroid, mIsTablet)) {
+            return false;
+        }
+
+        if (!ChromeFeatureList.sNewTabPageCustomizationV2ShowTipBottomSheet.getValue()
+                || (NtpCustomizationConfigManager.getInstance().getBackgroundType()
+                        != NtpBackgroundType.DEFAULT)) {
+            return false;
+        }
+
+        if (ChromeFeatureList.sNewTabPageCustomizationV2ForceShowTipBottomSheet.getValue()) {
+            return true;
+        }
+
+        // Triggers the bottom sheet if this bottom sheet hasn't been shown before and this isn't
+        // the first time that a NTP is open. The bottom sheet is shown once per lifetime.
+        if (sCount <= 1 || NtpCustomizationUtils.isThemeTipBottomSheetShownFromSharedPreference()) {
+            return false;
+        }
+
+        long lastApplyTime = NtpCustomizationUtils.getLastApplyThemeTimestampFromSharedPreference();
+        if (lastApplyTime > 0
+                && (TimeUtils.uptimeMillis() - lastApplyTime) < Duration.ofDays(7).toMillis()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /** Shows the NTP theme tip bottom sheet. */
+    void triggerCustomizationBottomSheet() {
+        mNtpCustomizationCoordinator =
+                NtpCustomizationCoordinatorFactory.getInstance()
+                        .create(
+                                mActivity,
+                                mBottomSheetController,
+                                mTab::getProfile,
+                                NtpCustomizationCoordinator.BottomSheetType.THEME_TIP,
+                                mWindowAndroid,
+                                mModuleRegistrySupplier.get());
+        mNtpCustomizationCoordinator.showBottomSheet();
+        NtpCustomizationUtils.setThemeTipBottomSheetShownTimestampToSharedPreference(
+                TimeUtils.uptimeMillis());
+    }
+
     // ModuleDelegateHost implementation
 
     @Override
@@ -1239,6 +1296,11 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
     @SuppressWarnings("NullAway")
     public void destroy() {
+        if (mNtpCustomizationCoordinator != null) {
+            mNtpCustomizationCoordinator.destroy();
+            mNtpCustomizationCoordinator = null;
+        }
+
         mMostRecentTabSupplier.set(null);
 
         if (mSearchBoxHintTextObserver != null) {
@@ -1420,7 +1482,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         }
 
         // If composeplate view flags haven't been initialized yet, returns now.
-        if (mIsComposeplateEnabled == null) {
+        if (mCanShowComposeplateButton == null) {
             return;
         }
 
@@ -1470,5 +1532,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
     public @Nullable ViewGroup getHomeModulesContainerForTesting() {
         return mHomeModulesContainer;
+    }
+
+    public static void setCountForTesting(int count) {
+        sCount = count;
     }
 }

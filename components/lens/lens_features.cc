@@ -141,6 +141,9 @@ BASE_FEATURE(kLensSendUrlsInComposeboxes, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLensRestrictAnnotatedPageContentToSameSiteFramesForNextQueries,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kLensDeleteContextOnPageNavigation,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 constexpr base::FeatureParam<int> kLensUpdatedFeedbackToastTimeoutMs{
     &kLensUpdatedFeedbackEntrypoint, "feedback-toast-timeout-ms", 8000};
 const base::FeatureParam<int> kLensOverlayMinRamMb{&kLensOverlay, "min_ram_mb",
@@ -585,6 +588,9 @@ const base::FeatureParam<LensAimSuggestionsType> kLensAimSuggestionsType(
 const base::FeatureParam<int> kLensOverlayNonBlockingPrivacyNoticeImpressionCap{
     &kLensOverlayNonBlockingPrivacyNotice, "impression-cap", 0};
 
+const base::FeatureParam<bool> kLensSidePanelUnificationAllowSignedOut{
+    &kLensSidePanelUnification, "allow-signed-out", true};
+
 std::string_view LensAimSuggestionModeToString(
     LensAimSuggestionsType type) {
   switch (type) {
@@ -932,6 +938,15 @@ int GetLensOverlayImageContextMenuActionsTextReceivedTimeout() {
 
 bool IsLensOverlaySidePanelOpenInNewTabEnabled() {
   return base::FeatureList::IsEnabled(kLensOverlaySidePanelOpenInNewTab);
+}
+
+bool IsLensSidePanelUnificationEnabled() {
+  return base::FeatureList::IsEnabled(kLensSidePanelUnification);
+}
+
+bool IsLensSidePanelUnificationAllowSignedOut() {
+  return IsLensSidePanelUnificationEnabled() &&
+         kLensSidePanelUnificationAllowSignedOut.Get();
 }
 
 bool IsLensOverlayClusterInfoOptimizationEnabled() {

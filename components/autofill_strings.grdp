@@ -902,6 +902,9 @@
   <message name="IDS_AUTOFILL_AT_MEMORY_NO_CONNECTION" desc="Message shown when @memory search fails to connect to the server." translateable="false">
     No server connection
   </message>
+  <message name="IDS_AUTOFILL_AT_MEMORY_SEARCH_AFFORDANCE_SUBTITLE" desc="Subtitle of the AtMemory search trigger affordance." translateable="false">
+    Find and fill info with Gemini
+  </message>
   <message name="IDS_AUTOFILL_AT_MEMORY_UNSUPPORTED_QUERY_TITLE" desc="Title for the suggestion shown when the query is unsupported by @memory." translateable="false">
     Couldn't find this info
   </message>
@@ -984,13 +987,22 @@
    <message name="IDS_AUTOFILL_AI_NATIONAL_IDS_TITLE" desc="The title of a chip referring to national ids (IDS_AUTOFILL_AI_NATIONAL_ID_CARD_ENTITY_NAME) on Your saved info settings page.">
     Identity cards
   </message>
+  <message name="IDS_AUTOFILL_AI_NATIONAL_IDS_SHORT_TITLE" desc="The title of a chip referring to national ids (IDS_AUTOFILL_AI_NATIONAL_ID_CARD_ENTITY_NAME) on Your saved info settings page.">
+    ID cards
+  </message>
   <message name="IDS_AUTOFILL_AI_PASSPORTS_TITLE" desc="The title of a chip referring to passports (IDS_AUTOFILL_AI_PASSPORT_ENTITY_NAME) on Your saved info settings page.">
     Passports
   </message>
   <message name="IDS_AUTOFILL_AI_VEHICLES_TITLE" desc="The title of a chip referring to vehicles (IDS_AUTOFILL_AI_VEHICLE_ENTITY_NAME) on Your saved info settings page.">
     Vehicles
   </message>
-    <message name="IDS_AUTOFILL_AI_TRAVEL_INFO_TITLE" desc="The title of a chip referring to travel info (IDS_AUTOFILL_AI_KNOWN_TRAVELER_NUMBER_ENTITY_NAME and IDS_AUTOFILL_AI_REDRESS_NUMBER_ENTITY_NAME) on Your saved info settings page.">
+  <message name="IDS_AUTOFILL_AI_KNOWN_TRAVELER_NUMBER_TITLE" desc="The title of a chip referring to travel info (IDS_AUTOFILL_AI_KNOWN_TRAVELER_NUMBER_ENTITY_NAME and IDS_AUTOFILL_AI_REDRESS_NUMBER_ENTITY_NAME) on Your saved info settings page.">
+    Known Traveler Numbers
+  </message>
+  <message name="IDS_AUTOFILL_AI_REDRESS_NUMBER_TITLE" desc="The title of a chip referring to travel info (IDS_AUTOFILL_AI_KNOWN_TRAVELER_NUMBER_ENTITY_NAME and IDS_AUTOFILL_AI_REDRESS_NUMBER_ENTITY_NAME) on Your saved info settings page.">
+    Redress numbers
+  </message>
+  <message name="IDS_AUTOFILL_AI_TRAVEL_INFO_TITLE" desc="The title of a chip referring to travel info (IDS_AUTOFILL_AI_KNOWN_TRAVELER_NUMBER_ENTITY_NAME and IDS_AUTOFILL_AI_REDRESS_NUMBER_ENTITY_NAME) on Your saved info settings page.">
     Travel info
   </message>
   <message name="IDS_AUTOFILL_AI_FLIGHT_RESERVATIONS_TITLE" desc="The title of a chip referring to flights (IDS_AUTOFILL_AI_FLIGHT_RESERVATION_ENTITY_NAME) on Your saved info settings page.">
@@ -1434,7 +1446,7 @@
     <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_FAILED_WALLET_SAVE_DIALOG_TITLE" desc="The title of the dialog shown when an entity (like passport, driver's license, etc) fails to be saved to Google Wallet." formatter_data="android_java">
       Info saved to device only
     </message>
-    <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_FAILED_WALLET_SAVE_DIALOG_DESCRIPTION" desc="The description text of the dialog shown when an entity (like passport, driver's license, etc) fails to be saved to Google Wallet.">
+    <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_FAILED_WALLET_SAVE_DIALOG_DESCRIPTION" desc="The description text of the dialog shown when an entity (like passport, driver's license, etc) fails to be saved to Google Wallet." formatter_data="android_java">
       Chrome will offer to save it to <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE">$1<ex>Google Wallet</ex></ph> next time you use it
     </message>
     <message name="IDS_AUTOFILL_AI_SAVE_OR_UPDATE_ENTITY_FAILED_WALLET_SAVE_DIALOG_CONFIRMATION_BUTTON_LABEL" desc="The confirmation button text of the dialog shown when an entity (like passport, driver's license, etc) fails to be saved to Google Wallet." formatter_data="android_java">

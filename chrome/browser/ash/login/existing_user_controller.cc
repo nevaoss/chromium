@@ -124,6 +124,7 @@
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/base/user_activity/user_activity_detector.h"
 #include "ui/base/user_activity/user_activity_observer.h"
 #include "ui/message_center/public/cpp/notification.h"
@@ -307,14 +308,26 @@ bool UserHasAnyLocalAuthFactors(const UserContext& context) {
           context.GetAuthFactorsData().FindPinFactor() != nullptr);
 }
 
-// Whether the user has setup a PIN as a secondary factor or not.
-// A PIN is considered a secondary factor, when a user has a PIN and an online
-// password.
-bool UserHasPinAsSecondaryFactor(const UserContext& context) {
+// Checks if the user has a PIN present, an online password present, AND
+// if the PIN is allowed by the QuickUnlock policy.
+//
+// Returns true if and only if all three conditions are met:
+//   1. The user has a PIN set up.
+//   2. The user also has an online password set up.
+//   3. The AuthPolicyConnector confirms that the PIN is allowed by the
+//      QuickUnlock policy for the account.
+//
+// Otherwise, returns false.
+bool IsPinPresentAndAllowedAsSecondaryFactor(const UserContext& context) {
+  // Treat unset as allowed as consumers should always have PIN enabled.
+  bool isPinAllowedByQuickUnlock =
+      AuthPolicyConnector::Get()
+          ->IsPinAllowedByQuickUnlockPolicy(context.GetAccountId())
+          .value_or(true);
   bool has_pin = context.GetAuthFactorsData().FindPinFactor() != nullptr;
   bool has_online_password =
       context.GetAuthFactorsData().FindOnlinePasswordFactor() != nullptr;
-  return has_pin && has_online_password;
+  return has_pin && has_online_password && isPinAllowedByQuickUnlock;
 }
 
 }  // namespace
@@ -847,9 +860,9 @@ bool ExistingUserController::MaybeShowRemoveLocalAuthFactorsScreen(
     return false;
   }
 
-  // If PIN is setup as a secondary factor, we should not remove it, as it may
-  // have been setup by the QuickUnlock policy.
-  if (UserHasPinAsSecondaryFactor(user_context)) {
+  // If PIN is present and allowed as a secondary factor, we should not remove
+  // it, as it may have been setup by the QuickUnlock policy.
+  if (IsPinPresentAndAllowedAsSecondaryFactor(user_context)) {
     return false;
   }
   // Only check for policy after the check for auth mode and auth flow,
@@ -991,7 +1004,9 @@ void ExistingUserController::ShowAutoLaunchManagedGuestSessionNotification() {
       message_center::NotifierId(message_center::NotifierType::SYSTEM_COMPONENT,
                                  kAutoLaunchNotifierId,
                                  NotificationCatalogName::kAutoLaunch),
-      data, std::move(delegate), vector_icons::kBusinessOldIcon,
+      data, std::move(delegate),
+      ::features::IsRoundedIconsEnabled() ? vector_icons::kDomainIcon
+                                          : vector_icons::kBusinessOldIcon,
       message_center::SystemNotificationWarningLevel::NORMAL);
   notification.SetSystemPriority();
   notification.set_pinned(true);

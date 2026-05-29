@@ -4,81 +4,168 @@
     "PersonaDef": {
       "type": "object",
       "properties": {
-        "role": { "type": "string" },
-        "mandate": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }] },
+        "role": {
+          "type": "string"
+        },
+        "mandate": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
         "checklist": {
           "type": "object",
           "patternProperties": {
-            "^.*$": { "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }] }
+            "^.*$": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            }
           }
         }
       },
-      "required": ["role", "mandate", "checklist"]
+      "required": [
+        "role",
+        "mandate",
+        "checklist"
+      ]
     },
     "ChecklistObject": {
       "type": "object",
       "description": "A map of boolean flags representing checklist items.",
       "patternProperties": {
-        "^.*$": { "type": "boolean" }
+        "^.*$": {
+          "type": "boolean"
+        }
       }
     },
     "EnvironmentDef": {
       "type": "object",
       "properties": {
-        "vcs": { "type": "string", "enum": ["GIT", "JJ"] },
-        "harness": { "type": "string", "enum": ["JETSKI", "GENERIC_CLI"] },
+        "vcs": {
+          "type": "string",
+          "enum": [
+            "GIT",
+            "JJ"
+          ]
+        },
+        "harness": {
+          "type": "string",
+          "enum": [
+            "JETSKI",
+            "GENERIC_CLI"
+          ]
+        },
+        "orchestration_pattern": {
+          "type": "string",
+          "enum": [
+            "CENTRALIZED",
+            "DECENTRALIZED"
+          ],
+          "description": "CENTRALIZED for Simulated MAS (JetSki), DECENTRALIZED for True MAS (Gemini CLI)."
+        },
+        "use_reclient": {
+          "type": "boolean",
+          "description": "True if reclient (remote execution) is configured for builds."
+        },
+        "is_debug_build": {
+          "type": "boolean",
+          "description": "True if the build configuration is for Debug, False for Release."
+        },
         "repo_type": {
           "type": "string",
-          "enum": ["CHROMIUM", "GOOGLE_INTERNAL"]
+          "enum": [
+            "CHROMIUM",
+            "GOOGLE_INTERNAL"
+          ]
         },
-        "output_directory": { "type": "string" }
+        "output_directory": {
+          "type": "string"
+        }
       },
-      "required": ["vcs", "harness", "repo_type"]
+      "required": [
+        "vcs",
+        "harness",
+        "orchestration_pattern",
+        "use_reclient",
+        "is_debug_build",
+        "repo_type",
+        "output_directory"
+      ]
     },
     "StateBlock": {
       "type": "object",
       "properties": {
-        "checklist": { "$ref": "#/definitions/ChecklistObject" },
+        "checklist": {
+          "$ref": "#/definitions/ChecklistObject"
+        },
         "unlisted_issues_found": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "iteration": { "type": "integer" },
-        "oscillation_detected": { "type": "boolean" },
+        "iteration": {
+          "type": "integer"
+        },
+        "oscillation_detected": {
+          "type": "boolean"
+        },
         "conflict_report": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "active_constraints": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "resolved_constraints": {
           "type": "array",
-          "items": { "type": "string" }
-        },
-        "ignored_constraints": {
-          "type": "array",
           "items": {
-            "type": "object",
-            "properties": {
-              "constraint": { "type": "string" },
-              "rationale": { "type": "string" }
-            },
-            "required": ["constraint", "rationale"]
+            "type": "string"
           }
         },
         "next_stage": {
           "type": "string",
           "enum": [
-            "CRITIQUE", "SCAFFOLDING", "PREPARATION", "IMPLEMENTATION",
-            "SYNTHESIS", "TEST_FILLING", "ANALYSIS",
-            "TRAINING", "ESCALATION", "VALIDATION", "DEPLOYMENT"
+            "CRITIQUE",
+            "SCAFFOLDING",
+            "PREPARATION",
+            "IMPLEMENTATION",
+            "SYNTHESIS",
+            "TEST_FILLING",
+            "ANALYSIS",
+            "TRAINING",
+            "ESCALATION",
+            "VALIDATION",
+            "DEPLOYMENT"
           ]
         },
         "state_transport": {
           "type": "string",
-          "enum": ["FILE_IO", "EPHEMERAL", "EPHEMERAL_WITH_LOGS"]
+          "enum": [
+            "FILE_IO",
+            "EPHEMERAL_WITH_LOGS"
+          ]
         }
       },
       "required": [
@@ -96,33 +183,59 @@
       "properties": {
         "task_type": {
           "type": "string",
-          "enum": ["IMPLEMENTATION", "REVIEW", "AUDIT"]
+          "enum": [
+            "IMPLEMENTATION",
+            "REVIEW",
+            "AUDIT"
+          ]
         },
         "execution_path": {
           "type": "string",
-          "enum": ["FAST_PATH", "RIGOR_PATH"]
+          "enum": [
+            "FAST_PATH",
+            "RIGOR_PATH"
+          ]
         },
         "complexity_level": {
           "type": "string",
-          "enum": ["LOW", "MEDIUM", "HIGH"]
+          "enum": [
+            "LOW",
+            "MEDIUM",
+            "HIGH"
+          ]
         },
         "unlisted_issues_found": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "goal": { "type": "string" },
-        "target_files": { "type": "array", "items": { "type": "string" } },
-        "anti_goals": { "type": "array", "items": { "type": "string" } },
-        "edge_cases": { "type": "array", "items": { "type": "string" } },
-        "build_targets": { "type": "array", "items": { "type": "string" } },
-        "next_stage": {
-          "type": "string",
-          "enum": ["SCAFFOLDING", "PREPARATION"]
+        "goal": {
+          "type": "string"
         },
-        "paranoia_mode": { "type": "boolean" },
-        "auditability_level": {
-          "type": "string",
-          "enum": ["NORMAL", "VERBOSE"]
+        "target_files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "anti_goals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "edge_cases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "build_targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "context_resolved": {
           "type": "boolean",
@@ -134,14 +247,15 @@
         },
         "ambiguity_level": {
           "type": "string",
-          "enum": ["LOW", "HIGH"],
+          "enum": [
+            "LOW",
+            "HIGH"
+          ],
           "description": "Assessment of how prescriptive the human instructions were versus how much discovery/decision-making is required."
         },
-        "ambiguity_rationale": {
-          "type": "string",
-          "description": "Brief explanation justifying the ambiguity_level."
-        },
-        "environment": { "$ref": "#/definitions/EnvironmentDef" }
+        "environment": {
+          "$ref": "#/definitions/EnvironmentDef"
+        }
       },
       "required": [
         "task_type",
@@ -149,65 +263,102 @@
         "complexity_level",
         "goal",
         "target_files",
-        "anti_goals",
-        "edge_cases",
-        "next_stage",
-        "paranoia_mode",
-        "auditability_level",
         "context_resolved",
         "approach_confirmed",
         "ambiguity_level",
-        "ambiguity_rationale",
         "environment"
       ]
     },
     "ReviewFeedback": {
       "type": "object",
       "properties": {
-        "checklist": { "$ref": "#/definitions/ChecklistObject" },
+        "checklist": {
+          "$ref": "#/definitions/ChecklistObject"
+        },
         "unlisted_issues_found": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "verdict": { "type": "string", "enum": ["ACCEPT", "REJECT"] },
-        "reasoning": { "type": "array", "items": { "type": "string" } },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "ACCEPT",
+            "REJECT"
+          ]
+        },
+        "reasoning": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "comments": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "file": { "type": "string" },
-              "line": { "type": "integer" },
-              "comment": { "type": "string" }
+              "file": {
+                "type": "string"
+              },
+              "line": {
+                "type": "integer"
+              },
+              "comment": {
+                "type": "string"
+              }
             },
-            "required": ["file", "comment"]
+            "required": [
+              "file",
+              "comment"
+            ]
           }
-        },
-        "next_stage": {
-          "type": "string",
-          "enum": ["ANALYSIS"]
         }
       },
-      "required": ["checklist", "verdict", "reasoning", "next_stage"]
+      "required": [
+        "checklist",
+        "verdict",
+        "reasoning"
+      ]
     },
     "Constraints": {
       "type": "object",
       "properties": {
-        "checklist": { "$ref": "#/definitions/ChecklistObject" },
+        "checklist": {
+          "$ref": "#/definitions/ChecklistObject"
+        },
         "unlisted_issues_found": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "iteration": { "type": "integer" },
-        "oscillation_detected": { "type": "boolean" },
+        "iteration": {
+          "type": "integer"
+        },
+        "oscillation_detected": {
+          "type": "boolean"
+        },
         "conflict_report": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
-        "constraints": { "type": "array", "items": { "type": "string" } },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "next_stage": {
           "type": "string",
-          "enum": ["SYNTHESIS", "TRAINING", "ESCALATION"]
+          "enum": [
+            "SYNTHESIS",
+            "TRAINING",
+            "ESCALATION"
+          ]
         }
       },
       "required": [

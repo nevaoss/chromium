@@ -4,6 +4,8 @@
 
 #import "ios/chrome/browser/intelligence/actor/model/snackbar_actor_task_updates_observer.h"
 
+#import "base/strings/sys_string_conversions.h"
+#import "ios/chrome/browser/intelligence/actor/tools/utils/actor_tool_utils.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list_factory.h"
@@ -27,7 +29,7 @@ NSString* const kStateFailed = @"Failed";
 
 // Default task strings.
 NSString* const kDefaultTaskTitle = @"Actor Task";
-NSString* const kDefaultTaskSubtitle = @"No task";
+NSString* const kUnknownTool = @"Unknown tool";
 
 // Format strings.
 NSString* const kStateFormat = @"State: %@";
@@ -97,8 +99,7 @@ NSString* DisplayedStateStringForActorTaskState(actor::ActorTaskState state) {
   if (_snackbarCommands) {
     NSString* titleText =
         _taskTitle.length > 0 ? _taskTitle : kDefaultTaskTitle;
-    NSString* subtitleText =
-        _lastTaskUpdate.length > 0 ? _lastTaskUpdate : kDefaultTaskSubtitle;
+    NSString* subtitleText = _lastTaskUpdate.length > 0 ? _lastTaskUpdate : nil;
 
     SnackbarMessage* message =
         [[SnackbarMessage alloc] initWithTitle:titleText];
@@ -139,10 +140,18 @@ NSString* DisplayedStateStringForActorTaskState(actor::ActorTaskState state) {
 }
 
 - (void)actorTaskWithID:(actor::ActorTaskId)taskID
-        willExecuteTool:(NSString*)toolString
+        willExecuteTool:(actor::ToolType)toolType
              taskUpdate:(NSString*)taskUpdate
              onWebState:(web::WebStateID)webStateID {
   _lastTaskUpdate = [taskUpdate copy];
+  // Do not show wait actions when they have zero duration.
+  if (toolType == actor::ToolType::kWaitZeroDuration) {
+    return;
+  }
+  std::optional<std::string> toolNameOpt =
+      actor::ToolTypeToToolDisplayString(toolType);
+  NSString* toolString =
+      toolNameOpt ? base::SysUTF8ToNSString(*toolNameOpt) : kUnknownTool;
   NSString* leafText = [NSString stringWithFormat:kExecutingFormat, toolString];
   [self showSnackbarWithLeafSubtitle:leafText];
 }

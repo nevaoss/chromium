@@ -76,6 +76,21 @@ namespace autofill {
 
 namespace {
 
+bool DidUserExplicitlyAcceptedImportPrompt(
+    AutofillClient::AutofillAiBubbleResult result) {
+  switch (result) {
+    case AutofillClient::AutofillAiBubbleResult::kAccepted:
+    case AutofillClient::AutofillAiBubbleResult::kEditAccepted:
+      return true;
+    case AutofillClient::AutofillAiBubbleResult::kCancelled:
+    case AutofillClient::AutofillAiBubbleResult::kClosed:
+    case AutofillClient::AutofillAiBubbleResult::kUnknown:
+    case AutofillClient::AutofillAiBubbleResult::kNotInteracted:
+    case AutofillClient::AutofillAiBubbleResult::kLostFocus:
+      return false;
+  }
+}
+
 bool DidUserExplicitlyDeclineImportPrompt(
     AutofillClient::AutofillAiBubbleResult result) {
   switch (result) {
@@ -84,6 +99,7 @@ bool DidUserExplicitlyDeclineImportPrompt(
       return true;
     case AutofillClient::AutofillAiBubbleResult::kUnknown:
     case AutofillClient::AutofillAiBubbleResult::kAccepted:
+    case AutofillClient::AutofillAiBubbleResult::kEditAccepted:
     case AutofillClient::AutofillAiBubbleResult::kNotInteracted:
     case AutofillClient::AutofillAiBubbleResult::kLostFocus:
       return false;
@@ -156,6 +172,15 @@ EntityInstance GetMergedEntity(
                         base::Time::Now(), target_record_type,
                         EntityInstance::AreAttributesReadOnly(false),
                         /*frecency_override=*/"");
+}
+
+// Returns whether saving an entity with the given (`type`, `record_type`)
+// combination is asynchronous. If saving an entity of the given
+// (`type`, `record_type`) is not supported, the function returns false.
+bool IsSaveAsynchronous(EntityType type,
+                        EntityInstance::RecordType record_type) {
+  return GetWalletPassType(type, record_type) ==
+         EntityInstance::WalletPassType::kPrivate;
 }
 
 }  // namespace
@@ -385,7 +410,7 @@ bool AutofillAiManager::MaybeImportForm(const FormStructure& form,
       old_entity = *client_->GetEntityDataManager()->GetEntityInstance(
           candidate_entity.guid());
     }
-    const bool is_save_synchronous = !IsMaskedStorageSupported(
+    const bool is_save_synchronous = !IsSaveAsynchronous(
         candidate_entity.type(), candidate_entity.record_type());
     client_->ShowEntityImportBubble(std::move(candidate_entity),
                                     std::move(old_entity), is_save_synchronous,
@@ -412,8 +437,7 @@ void AutofillAiManager::HandlePromptResult(
 
   AddOrClearImportPromptStrikes(prompt_type, result, form.url(), entity);
 
-  const bool prompt_accepted =
-      result == AutofillClient::AutofillAiBubbleResult::kAccepted;
+  const bool prompt_accepted = DidUserExplicitlyAcceptedImportPrompt(result);
 
   switch (prompt_type) {
     case AutofillClient::AutofillAiImportPromptType::kSave:
@@ -442,14 +466,12 @@ void AutofillAiManager::HandlePromptResult(
     return;
   }
 
-  bool is_save_asynchronous =
-      IsMaskedStorageSupported(entity.type(), entity.record_type());
-  if (!is_save_asynchronous) {
+  if (!IsSaveAsynchronous(entity.type(), entity.record_type())) {
     entity_manager.AddOrUpdateEntityInstance(std::move(entity));
     return;
   }
 
-  // Accessibility Annotator entities do not support saving,
+  // PersonalContext entities do not support saving,
   // thus the record type must be `kServerWallet`.
   CHECK_EQ(entity.record_type(), EntityInstance::RecordType::kServerWallet);
 
@@ -599,14 +621,14 @@ void AutofillAiManager::AddOrClearImportPromptStrikes(
   switch (prompt_type) {
     case AutofillClient::AutofillAiImportPromptType::kSave:
     case AutofillClient::AutofillAiImportPromptType::kMigrate:
-      if (result == AutofillClient::AutofillAiBubbleResult::kAccepted) {
+      if (DidUserExplicitlyAcceptedImportPrompt(result)) {
         ClearStrikesForSave(url, entity);
       } else if (DidUserExplicitlyDeclineImportPrompt(result)) {
         AddStrikeForSaveAttempt(url, entity);
       }
       break;
     case AutofillClient::AutofillAiImportPromptType::kUpdate:
-      if (result == AutofillClient::AutofillAiBubbleResult::kAccepted) {
+      if (DidUserExplicitlyAcceptedImportPrompt(result)) {
         ClearStrikesForUpdate(entity.guid());
       } else if (DidUserExplicitlyDeclineImportPrompt(result)) {
         AddStrikeForUpdateAttempt(entity.guid());

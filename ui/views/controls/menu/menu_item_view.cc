@@ -624,6 +624,13 @@ const ui::ImageModel MenuItemView::GetIcon() const {
   return icon_view_ ? icon_view_->GetImageModel() : ui::ImageModel();
 }
 
+void MenuItemView::SetIconColor(std::optional<ui::ColorVariant> icon_color) {
+  icon_color_ = icon_color;
+  if (GetWidget() && !IsScheduledForDeletion()) {
+    UpdateSelectionBasedState(last_paint_as_selected_);
+  }
+}
+
 void MenuItemView::SetIconView(std::unique_ptr<ImageView> icon_view) {
   {
     // See comment in `update_selection_based_state_in_view_herarchy_changed_`
@@ -1618,7 +1625,10 @@ void MenuItemView::UpdateSelectionBasedState(bool paint_as_selected) {
   const Colors colors = CalculateColors(paint_as_selected);
   if (submenu_arrow_image_view_) {
     submenu_arrow_image_view_->SetImage(ui::ImageModel::FromVectorIcon(
-        vector_icons::kSubmenuArrowChromeRefreshOldIcon, colors.icon_color));
+        features::IsRoundedIconsEnabled()
+            ? vector_icons::kKeyboardArrowRightIcon
+            : vector_icons::kSubmenuArrowChromeRefreshOldIcon,
+        colors.icon_color));
   }
   MenuDelegate* delegate = GetDelegate();
   if (type_ == Type::kCheckbox && delegate &&

@@ -32,6 +32,8 @@ BASE_DECLARE_FEATURE(kEnableExtensionsMenuTeardownFix);
 
 BASE_DECLARE_FEATURE(kImportExportFlags);
 
+BASE_DECLARE_FEATURE(kInfoBarInlineLinks);
+
 // All feature flags associated with Glow Up, apart from those in
 // ui_base_features.h
 BASE_DECLARE_FEATURE(kTabStripDeclutter);
@@ -372,6 +374,8 @@ BASE_DECLARE_FEATURE(kOmniboxResizingPrioritization);
 BASE_DECLARE_FEATURE(kToolbarAppMenuLabelResizing);
 
 BASE_DECLARE_FEATURE(kToolbarProfileChipResizing);
+
+BASE_DECLARE_FEATURE(kToolbarGlicButtonResizing);
 
 // Whether or not OSCryptAsyncAvailabilityInfoBarDelegate is enabled.
 BASE_DECLARE_FEATURE(kOSCryptAsyncAvailabilityInfoBar);

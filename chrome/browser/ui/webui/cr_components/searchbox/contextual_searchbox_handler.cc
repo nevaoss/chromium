@@ -24,6 +24,7 @@
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
+#include "chrome/browser/contextual_tasks/active_task_context_provider.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
@@ -87,6 +88,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_host_controller.h"
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_sanitizer.h"
+#include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_request.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 namespace {
@@ -454,6 +456,17 @@ ContextualSearchboxHandler::~ContextualSearchboxHandler() {
   if (context_controller_) {
     context_controller_->RemoveObserver(this);
   }
+  // Ensure any selected tabs are cleared when shutting down.
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
+      // Clear local tab underlines specific to this surface, not all local tab
+      // underlines shared browser-wide.
+      for (const auto& [token, handle] : selected_tabs) {
+        active_task_context_provider->RemoveLocalTabUnderline(
+            tabs::TabHandle(handle));
+      }
+    }
+  }
 }
 
 void ContextualSearchboxHandler::ResetInputStateModel() {
@@ -539,6 +552,14 @@ void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
 void ContextualSearchboxHandler::GetSmartTabSharingActive(
     composebox::mojom::PageHandler::GetSmartTabSharingActiveCallback callback) {
   std::move(callback).Run(IsSmartTabSharingActive());
+}
+
+std::vector<int32_t> ContextualSearchboxHandler::GetSelectedTabIds() const {
+  std::vector<int32_t> ids;
+  for (const auto& entry : selected_tabs) {
+    ids.push_back(entry.second);
+  }
+  return ids;
 }
 
 void ContextualSearchboxHandler::NotifySessionStarted() {
@@ -735,6 +756,20 @@ void ContextualSearchboxHandler::ContinueAddTabContext(
 
   RecordTabAddedMetric(tab, /*is_tab_suggestion_chip=*/delay_upload);
 
+  // Track explicitly selected tabs so their tab underlines can be cleaned up
+  // later if needed, and so they can be submitted to cobrowsing from an AIM
+  // entrypoint.
+  selected_tabs[context_token] = tab_id;
+
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    // Underline the tabstrip immediately when the tab context is selected
+    // (without submission).
+    if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
+      active_task_context_provider->AddLocalTabUnderline(
+          tabs::TabHandle(tab_id));
+    }
+  }
+
   lens::TabContextualizationController* tab_contextualization_controller =
       lens::TabContextualizationController::From(tab);
   tab_contextualization_controller->GetPageContext(base::BindOnce(
@@ -760,6 +795,7 @@ void ContextualSearchboxHandler::AddTabContext(int32_t tab_id,
     return;
   }
   auto context_token = contextual_session_handle->CreateContextToken();
+
   ContinueAddTabContext(tab_id, delay_upload, context_token,
                         std::move(callback));
 }
@@ -917,8 +953,14 @@ void ContextualSearchboxHandler::OnDriveUploadClicked(
         std::make_unique<DrivePickerHostController>(browser_window_interface);
   }
 
-  drive_picker_controller_->ShowDrivePickerHost(
+  drive_picker_result_handler_receiver_.reset();
+
+  auto request = std::make_unique<drive_picker_host::DrivePickerHostRequest>(
+      drive_picker_host::DrivePickerHostRequest::RequestType::kPickerUi,
       drive_picker_result_handler_receiver_.BindNewPipeAndPassRemote());
+
+  drive_picker_controller_->ShowDrivePickerHost(std::move(request));
+
   drive_picker_result_handler_receiver_.set_disconnect_handler(
       base::BindOnce(&ContextualSearchboxHandler::OnDrivePickerDisconnected,
                      weak_ptr_factory_.GetWeakPtr()));
@@ -1149,6 +1191,18 @@ bool ContextualSearchboxHandler::ShouldOpenInLensSidePanel(
 void ContextualSearchboxHandler::DeleteContext(
     const base::UnguessableToken& context_token,
     bool from_automatic_chip) {
+  // Delete tab underline if it exists:
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    auto it = selected_tabs.find(context_token);
+    if (it != selected_tabs.end()) {
+      if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
+        active_task_context_provider->RemoveLocalTabUnderline(
+            tabs::TabHandle(it->second));
+      }
+    }
+  }
+  selected_tabs.erase(context_token);
+
   auto* contextual_session_handle = GetContextualSessionHandle();
   int num_files = 0;
   if (contextual_session_handle) {
@@ -1173,11 +1227,44 @@ void ContextualSearchboxHandler::DeleteContext(
 
 void ContextualSearchboxHandler::ClearFiles(
     bool should_block_auto_suggested_tabs) {
+  ClearFiles(should_block_auto_suggested_tabs, /*query_submitted=*/false);
+}
+
+void ContextualSearchboxHandler::ClearFiles(
+    bool should_block_auto_suggested_tabs,
+    bool query_submitted) {
   if (auto* contextual_session_handle = GetContextualSessionHandle()) {
-    contextual_session_handle->ClearFiles();
+    // Clears files if `query_submitted`=true, and if
+    // `omnibox::kContextManagementInComposebox` is enabled.
+    contextual_session_handle->ClearFiles(
+        query_submitted);
+    // Clear cached tab images (snapshots) if tab context no longer exists
+    // due to being deleted in `clearFiles` (this will clear it fully
+    // if it does decide to).
+    if (contextual_session_handle->GetUploadedContextTokens().empty()) {
+      context_input_data_ = std::nullopt;
+      tab_context_snapshot_.reset();
+    }
+  } else {  // No active contextual session -> clear all snapshot images.
+    context_input_data_ = std::nullopt;
+    tab_context_snapshot_.reset();
   }
-  context_input_data_ = std::nullopt;
-  tab_context_snapshot_.reset();
+
+  // Clear all tab underlines related to only this surface:
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
+      for (const auto& [token, handle] : selected_tabs) {
+        active_task_context_provider->RemoveLocalTabUnderline(
+            tabs::TabHandle(handle));
+      }
+    }
+  }
+
+  // Clear token-to-tab id pairs if this function is due to the
+  // 'clear all' button being clicked.
+  if (!query_submitted) {
+    selected_tabs.clear();
+  }
 
   // Ensure `input_state_model_` is updated when context is cleared.
   if (input_state_model_) {
@@ -1249,12 +1336,14 @@ void ContextualSearchboxHandler::OnDriveDisclaimerAccepted() {
 
 void ContextualSearchboxHandler::QueryAutocomplete(
     const std::u16string& input,
-    bool prevent_inline_autocomplete) {
+    bool prevent_inline_autocomplete,
+    uint32_t cursor_position) {
   if (contextual_tasks_context_service_) {
     contextual_tasks_context_service_->OnTypedQuery();
   }
 
-  SearchboxHandler::QueryAutocomplete(input, prevent_inline_autocomplete);
+  SearchboxHandler::QueryAutocomplete(input, prevent_inline_autocomplete,
+                                      cursor_position);
 }
 
 void ContextualSearchboxHandler::OnContextUploadStatusChanged(
@@ -1427,7 +1516,9 @@ void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(
 
     file_info_list =
         contextual_session_handle->GetController()->GetFileInfoList();
-
+    // Do not keep tabs in composebox's 'future context to use' since this searchbox handler
+    // will be destroyed when this query is submitted and AIM/cobrowsing opens via
+    // `CreateSearchUrl`. Tabs are passed to cobrowse composebox through web contents instead.
     contextual_session_handle->CreateSearchUrl(
         std::move(search_url_request_info),
         base::BindOnce(
@@ -1440,7 +1531,8 @@ void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(
             weak_ptr_factory_.GetWeakPtr(), disposition));
   }
 
-  ClearFiles(/*should_block_auto_suggested_tabs*/ false);
+  ClearFiles(/*should_block_auto_suggested_tabs=*/false,
+             /*query_submitted=*/true);
 }
 
 void ContextualSearchboxHandler::OnGetTabPageContext(
@@ -1528,20 +1620,27 @@ void ContextualSearchboxHandler::OpenUrl(
             *input_state_model_, *new_contextual_session_handle);
   }
 
+  std::vector<int32_t> selected_tab_ids;
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    selected_tab_ids = GetSelectedTabIds();
+  }
+
   auto navigation_handle_callback = base::BindOnce(
       [](std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
              handle,
          std::unique_ptr<contextual_search::InputStateModel> input_state_model,
+         std::vector<int32_t> selected_tab_ids,
          content::NavigationHandle& navigation_handle) {
         content::WebContents* new_web_contents =
             navigation_handle.GetWebContents();
         ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
             new_web_contents)
             ->SetTaskSession(std::nullopt, std::move(handle),
-                             std::move(input_state_model));
+                             std::move(input_state_model),
+                             std::move(selected_tab_ids));
       },
       std::move(new_contextual_session_handle),
-      std::move(new_input_state_model));
+      std::move(new_input_state_model), std::move(selected_tab_ids));
   // TODO(crbug.com/469137247): Consider moving this logic to the specific
   // subclasses that have aim navigation.
   bool should_open_url = true;
@@ -1611,4 +1710,14 @@ std::optional<base::Uuid> ContextualSearchboxHandler::GetTaskId() {
   auto* helper =
       ContextualSearchWebContentsHelper::FromWebContents(web_contents_);
   return helper ? helper->task_id() : std::nullopt;
+}
+
+contextual_tasks::ActiveTaskContextProvider*
+ContextualSearchboxHandler::GetActiveTaskContextProvider() {
+  auto* browser_window_interface =
+      webui::GetBrowserWindowInterface(web_contents_);
+  return browser_window_interface
+             ? contextual_tasks::ActiveTaskContextProvider::From(
+                   browser_window_interface)
+             : nullptr;
 }

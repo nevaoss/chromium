@@ -6,24 +6,38 @@ import("//build/config/ui.gni")
 
 source_set("infobars") {
   public = [
+    "browser_infobar_manager.h",
     "confirm_infobar_creator.h",
     "infobar_responder.h",
+    "infobar_spec.h",
     "simple_alert_infobar_creator.h",
   ]
 
   sources = [
+    "browser_infobar_manager.cc",
     "confirm_infobar_creator.cc",
     "infobar_responder.cc",
+    "infobar_spec.cc",
     "simple_alert_infobar_creator.cc",
   ]
 
   public_deps = [
     "//base",
+    "//chrome/browser:global_features",
+    "//chrome/browser/ui/browser_window",
     "//components/infobars/content",
+    "//components/infobars/core",
+    "//components/tabs:public",
+  ]
+
+  deps = [
+    "//chrome/app:generated_resources_grit",
+    "//chrome/browser/ui:ui_features",
+    "//ui/base",
   ]
 
   if (toolkit_views) {
-    public_deps += [ "//chrome/browser/ui/views/infobars" ]
+    deps += [ "//chrome/browser/ui/views/infobars" ]
   }
 
   if (is_android) {
@@ -45,5 +59,20 @@ source_set("test_support") {
   deps = [
     "//base",
     "//components/infobars/core",
+  ]
+}
+
+source_set("unit_tests") {
+  testonly = true
+
+  sources = [ "infobar_spec_unittest.cc" ]
+
+  deps = [
+    ":infobars",
+    "//base",
+    "//components/infobars/core",
+    "//content/public/browser",
+    "//testing/gtest",
+    "//url",
   ]
 }

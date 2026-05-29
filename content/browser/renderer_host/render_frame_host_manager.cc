@@ -3662,7 +3662,7 @@ RenderFrameHostManager::DetermineSiteInstanceForURL(
              dest_url_info.url.SchemeIs(url::kDataScheme) &&
              !was_server_redirect && !frame_tree_node_->IsMainFrame() &&
              source_instance && !dest_url_info.is_sandboxed &&
-             !dest_url_info.is_pdf) {
+             !dest_url_info.embedder_isolation_info.is_pdf()) {
     // In the case a subframe data: URL (excluding server redirects, see
     // CanUseSourceSiteInstance), if it can't use the source SiteInstance, it
     // should have its own SiteInstance that shares a group with the initiator.
@@ -4169,7 +4169,7 @@ bool RenderFrameHostManager::CanUseSourceSiteInstance(
   // PDF content should never share a SiteInstance with non-PDF content. In
   // practice, this prevents the PDF viewer extension from incorrectly sharing
   // a process with PDF content that was loaded from a data URL.
-  if (dest_url_info.is_pdf) {
+  if (dest_url_info.embedder_isolation_info.is_pdf()) {
     CHECK(!source_instance->GetProcess()->IsPdf());
     AppendReason(reason,
                  "CanUseSourceSiteInstance => false "
@@ -5601,6 +5601,9 @@ void RenderFrameHostManager::CommitPending(
     }
   }
 
+  bool is_child_view = static_cast<RenderWidgetHostViewBase*>(new_view)
+                           ->IsRenderWidgetHostViewChildFrame();
+
   // If this is a subframe or inner frame tree, it should have a
   // CrossProcessFrameConnector created already.  Use it to link the new RFH's
   // view to the proxy that belongs to the parent frame's SiteInstance. If this
@@ -5615,8 +5618,7 @@ void RenderFrameHostManager::CommitPending(
     proxy_to_parent_or_outer_delegate->SetChildRWHView(
         static_cast<RenderWidgetHostViewChildFrame*>(new_view),
         old_size ? &*old_size : nullptr, allow_paint_holding);
-  } else if (static_cast<RenderWidgetHostViewBase*>(new_view)
-                 ->IsRenderWidgetHostViewChildFrame()) {
+  } else if (is_child_view) {
     // Only use this mechanism when there is no proxy to parent or outer
     // delegate. Otherwise we will partially duplicate SetChildRWHView work.
     delegate_->NotifySwappedRWHVChildFrameFromRenderManager(
@@ -5624,11 +5626,16 @@ void RenderFrameHostManager::CommitPending(
         allow_paint_holding);
   }
 
-  if (render_frame_host_->is_local_root()) {
+  if (frame_tree_node_->GetFrameType() == FrameType::kPrimaryMainFrame) {
+    delegate_->PrimaryMainFrameSwapComplete(render_frame_host_.get());
+  } else if (render_frame_host_->is_local_root()) {
     // RenderFrames are created with a hidden RenderWidgetHost. When navigation
     // finishes, we show it if the delegate is shown.
     if (!frame_tree_node_->frame_tree().IsHidden()) {
-      new_view->Show();
+      // Prerenders won't be a child view, but they'll be hidden so won't be
+      // shown.
+      CHECK(is_child_view);
+      static_cast<RenderWidgetHostViewChildFrame*>(new_view)->Show();
       if (render_frame_host_->child_count()) {
         render_frame_host_->SetVisibilityForChildViews(true);
       }

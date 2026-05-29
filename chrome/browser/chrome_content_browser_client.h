@@ -306,6 +306,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   bool IsTopChromeWebUIURL(const GURL& url) override;
   bool IsMultiCaptureAllowed(
       content::RenderFrameHost* render_frame_host) override;
+  content::WebContents* GetWebContentsFromWindowIfCaptureHandleAllowed(
+      gfx::NativeWindow window) override;
   bool IsFileAccessAllowed(const base::FilePath& path,
                            const base::FilePath& absolute_path,
                            const base::FilePath& profile_path) override;
@@ -596,6 +598,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   bool ShouldEnableAudioProcessHighPriority() override;
   bool ShouldRestrictCoreSharingOnRenderer() override;
   std::optional<std::wstring> GetWindowsSecurityAttributeName() const override;
+  std::vector<uintptr_t> GetAslrBeaconAddresses(
+      sandbox::mojom::Sandbox sandbox_type) override;
 #endif
   void ExposeInterfacesToRenderer(
       service_manager::BinderRegistry* registry,
@@ -1070,6 +1074,9 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   bool IsCrossOriginSubframeAllowedToShowFilePicker(
       content::RenderFrameHost* render_frame_host,
       const url::Origin& requesting_origin) override;
+  std::optional<network::ParsedPermissionsPolicy>
+  GetContainerPolicyOverrideForCommit(
+      content::NavigationHandle& navigation_handle) override;
 
   bool ShouldSkipBeforeUnloadDialog(content::RenderFrameHost* rfh) override;
 

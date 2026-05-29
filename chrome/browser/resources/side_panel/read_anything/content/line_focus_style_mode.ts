@@ -5,6 +5,7 @@
 import {assert} from '//resources/js/assert.js';
 
 import {getRectIndexAtY} from '../shared/dom_queries.js';
+import {getMostCommonPitch} from '../shared/rect_calculations.js';
 
 import type {LineFocusModel} from './line_focus_model.js';
 import type {LineFocusStyle} from './read_anything_types.js';
@@ -136,13 +137,12 @@ export class LineFocusWindowStyleMode extends LineFocusStyleMode {
       return;
     }
 
-    // Use the average line height to calculate a multi-line window if the
-    // window should not adapt to the line heights.
+    // Use a set height to calculate a multi-line window if the window should
+    // not adapt to the line heights.
     if (!this.shouldAdaptToTextBounds()) {
       const center = this.model_.getMaxY() / 2;
-      const averageHeight =
-          (bounds.at(-1)!.bottom - bounds.at(0)!.y) / bounds.length;
-      const windowHeight = averageHeight * this.style_.lines;
+      const mostCommonPitch = getMostCommonPitch(bounds);
+      const windowHeight = mostCommonPitch * this.style_.lines;
       this.model_.setTop(center - (windowHeight / 2));
       this.model_.setWindowHeight(windowHeight);
       return;
@@ -185,7 +185,9 @@ export class LineFocusWindowStyleMode extends LineFocusStyleMode {
   }
 
   getBottomIndex(focalIndex: number): number {
-    return focalIndex + ((this.style_.lines - 1) / 2);
+    return this.shouldAdaptToTextBounds() ?
+        focalIndex + ((this.style_.lines - 1) / 2) :
+        focalIndex;
   }
 
   // The bottom of the window should not go below the last line in the content
@@ -195,6 +197,11 @@ export class LineFocusWindowStyleMode extends LineFocusStyleMode {
     if (bounds.length === 0) {
       return 0;
     }
+
+    if (!this.shouldAdaptToTextBounds()) {
+      return index;
+    }
+
     const numLines = this.style_.lines;
     const offset = Math.floor((numLines - 1) / 2);
     const maxIndex = bounds.length - 1;

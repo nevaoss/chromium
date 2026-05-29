@@ -267,6 +267,14 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
       },
       showSmartTabSharingTryItIph_: {type: Boolean},
       showSmartTabSharingDefaultOnIph_: {type: Boolean},
+      composeboxHovered_: {
+        type: Boolean,
+        reflect: true,
+      },
+      isAimEligible_: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
@@ -296,6 +304,8 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
   // though top-level navigation could fail for numerous reasons.
   protected accessor isLoadError_: boolean = !window.navigator.onLine;
   protected accessor isAiPage_: boolean = loadTimeData.getBoolean('isAiPage');
+  protected accessor isAimEligible_: boolean =
+      loadTimeData.getBoolean('isAimEligible');
   protected accessor isLensOverlayShowing_: boolean = false;
   protected accessor isOverlayOpenForAimVisualSearch_: boolean = false;
   // Indicates if in tab mode. Most start in a tab.
@@ -331,6 +341,7 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
   // embedded page, which allows the client to keep track and know which parts
   // of the composebox are not visible to the user, and therefore not clickable.
   protected accessor occluders_: Rect[]|null = null;
+  protected accessor composeboxHovered_: boolean = false;
 
   protected accessor friendlyZeroStateSubtitle: string =
       loadTimeData.getString('friendlyZeroStateSubtitle');
@@ -488,8 +499,9 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
         if (isZeroState) {
           this.composebox_?.clearInputAndFocus();
           // Reset the forced composebox bounds since the zero state position
-          // is controlled natively.
-          this.forcedComposeboxBounds_ = null;
+          if (!this.shouldSetForceComposeboxBounds_()) {
+            this.forcedComposeboxBounds_ = null;
+          }
         }
       }),
       callbackRouter.setInNlm.addListener((inNlm: boolean) => {
@@ -688,6 +700,13 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
         composebox, 'context-menu-opened',
         () => this.onComposeboxContextMenuOpened_());
 
+    this.eventTracker_.add(composebox, 'mouseenter', () => {
+      this.composeboxHovered_ = true;
+    });
+
+    this.eventTracker_.add(composebox, 'mouseleave', () => {
+      this.composeboxHovered_ = false;
+    });
     this.eventTracker_.add(
         composebox, 'composebox-height-update',
         (e: CustomEvent<{height: number}>) => {
@@ -1036,11 +1055,15 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
       // Since the height is controlled client side and the composebox grows
       // updwards, set the top of the rect to match the current height to avoid
       // miscalculations in the clip path.
-      this.forcedComposeboxBounds_ = {
-        ...inputRect,
-        height: currentHeight,
-        top: inputRect.bottom - currentHeight,
-      };
+      if (this.shouldSetForceComposeboxBounds_()) {
+        this.forcedComposeboxBounds_ = {
+          ...inputRect,
+          height: currentHeight,
+          top: inputRect.bottom - currentHeight,
+        };
+      } else {
+        this.forcedComposeboxBounds_ = null;
+      }
     }
     if (occluders !== undefined) {
       this.occluders_ = occluders;
@@ -1066,6 +1089,10 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
   }
 
   protected isComposeboxHidden_(): boolean {
+    if (!this.isAimEligible_) {
+      return true;
+    }
+
     // Stay hidden until the first isZeroState_ value is determined to prevent
     // the composebox from flickering in.
     if (this.isZeroState_ === undefined) {
@@ -1111,6 +1138,10 @@ export class ContextualTasksAppElement extends ContextualTasksAppElementBase {
       return false;
     }
     return url.searchParams.has(this.nlmUrlParam_);
+  }
+
+  private shouldSetForceComposeboxBounds_(): boolean {
+    return !this.isZeroState_ || this.inNlm_;
   }
 
   getComposeboxBoundsStyles() {

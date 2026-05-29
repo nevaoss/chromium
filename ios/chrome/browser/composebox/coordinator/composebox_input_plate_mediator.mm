@@ -67,6 +67,7 @@
 #import "ios/chrome/browser/composebox/public/composebox_input_plate_controls.h"
 #import "ios/chrome/browser/composebox/public/composebox_model_option.h"
 #import "ios/chrome/browser/composebox/public/features.h"
+#import "ios/chrome/browser/composebox/shared/coordinator/composebox_attachment_diff.h"
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_picker_image_result.h"
 #import "ios/chrome/browser/composebox/shared/metrics/composebox_metrics_recorder.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_item.h"
@@ -315,6 +316,11 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   ComposeboxMode _previousMode;
 }
 
+- (void)setMetricsRecorder:(ComposeboxMetricsRecorder*)metricsRecorder {
+  _metricsRecorder = metricsRecorder;
+  _stateManager.metricsRecorder = metricsRecorder;
+}
+
 - (instancetype)
     initWithContextualSearchSession:
         (std::unique_ptr<contextual_search::ContextualSearchSessionHandle>)
@@ -493,7 +499,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
           ComposeboxPickerImageResult* result =
               [[ComposeboxPickerImageResult alloc]
                   initWithImageProvider:item.imageProvider
-                                assetID:item.assetID];
+                                assetID:item.assetID
+                                 source:item.source];
           [images addObject:result];
         }
         break;
@@ -522,6 +529,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   for (ComposeboxPickerImageResult* item in attachments.images) {
     [self processImageItemProvider:item.imageProvider
                            assetID:item.assetID
+                            source:item.source
                         completion:nil];
   }
 
@@ -666,7 +674,9 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                                                webState) ==
                                            WebStateList::kInvalidIndex)
                                               ? webState
-                                              : nullptr];
+                                              : nullptr
+                                   source:ComposeboxInputItemSource::
+                                              kDragAndDrop];
 }
 
 - (void)processText:(NSString*)text {
@@ -708,9 +718,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
       isPDF ? ComposeboxInputItemType::kComposeboxInputItemTypePDF
             : ComposeboxInputItemType::kComposeboxInputItemTypeRawFile;
 
-  ComposeboxInputItem* item =
-      [[ComposeboxInputItem alloc] initWithComposeboxInputItemType:itemType
-                                                           assetID:assetID];
+  ComposeboxInputItem* item = [[ComposeboxInputItem alloc]
+      initWithComposeboxInputItemType:itemType
+                              assetID:assetID
+                               source:ComposeboxInputItemSource::kFilePicker];
   item.title = base::SysUTF8ToNSString(fileURL.ExtractFileName());
   [self addItem:item];
   item.fileURL = nsURL;
@@ -732,12 +743,17 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 }
 
 - (void)processImageItemProvider:(NSItemProvider*)itemProvider
-                         assetID:(NSString*)assetID {
-  [self processImageItemProvider:itemProvider assetID:assetID completion:nil];
+                         assetID:(NSString*)assetID
+                          source:(ComposeboxInputItemSource)source {
+  [self processImageItemProvider:itemProvider
+                         assetID:assetID
+                          source:source
+                      completion:nil];
 }
 
 - (void)processImageItemProvider:(NSItemProvider*)itemProvider
                          assetID:(NSString*)assetID
+                          source:(ComposeboxInputItemSource)source
                       completion:(void (^)(void))completion {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
 
@@ -755,7 +771,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   ComposeboxInputItem* item = [[ComposeboxInputItem alloc]
       initWithComposeboxInputItemType:ComposeboxInputItemType::
                                           kComposeboxInputItemTypeImage
-                              assetID:assetID];
+                              assetID:assetID
+                               source:source];
   [self addItem:item];
   item.imageProvider = itemProvider;
   __block base::UnguessableToken identifier = item.identifier;
@@ -854,9 +871,11 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
             (std::set<web::WebStateID>)selectedWebStateIDs
                         cachedWebStateIDs:
                             (std::set<web::WebStateID>)cachedWebStateIDs {
-  [self attachSelectedTabsWithWebStateIDs:selectedWebStateIDs
-                        cachedWebStateIDs:cachedWebStateIDs
-                     fromExternalWebState:nullptr];
+  [self
+      attachSelectedTabsWithWebStateIDs:selectedWebStateIDs
+                      cachedWebStateIDs:cachedWebStateIDs
+                   fromExternalWebState:nullptr
+                                 source:ComposeboxInputItemSource::kTabPicker];
 }
 
 - (void)removeDeselectedIDs:(std::set<web::WebStateID>)deselectedIDs {
@@ -872,10 +891,13 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 
 // Creates an input item for the given `webState` and adds it to the items list.
 // Returns the identifier of the created item.
-- (base::UnguessableToken)createInputItemForWebState:(web::WebState*)webState {
+- (base::UnguessableToken)createInputItemForWebState:(web::WebState*)webState
+                                              source:(ComposeboxInputItemSource)
+                                                         source {
   ComposeboxInputItem* item = [[ComposeboxInputItem alloc]
       initWithComposeboxInputItemType:ComposeboxInputItemType::
-                                          kComposeboxInputItemTypeTab];
+                                          kComposeboxInputItemTypeTab
+                               source:source];
   item.title = base::SysUTF16ToNSString(webState->GetTitle());
   base::UnguessableToken identifier = item.identifier;
   _latestTabSelectionMapping[identifier] = webState->GetUniqueIdentifier();
@@ -1065,32 +1087,27 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   std::set<web::WebStateID> webStateIDs =
       [self attachedWebStateIDsInCurrentContext];
   webStateIDs.insert(webState->GetUniqueIdentifier());
-  [self attachSelectedTabsWithWebStateIDs:webStateIDs cachedWebStateIDs:{}];
+  [self
+      attachSelectedTabsWithWebStateIDs:webStateIDs
+                      cachedWebStateIDs:{}
+                   fromExternalWebState:nullptr
+                                 source:ComposeboxInputItemSource::kCurrentTab];
 }
 
 - (void)recordPlusMenuOpenedWithVisibleInternalButtons:
-    (const std::vector<FuseboxAttachmentButtonType>&)visibleInternalButtons {
+            (const std::vector<FuseboxAttachmentButtonType>&)
+                visibleInternalButtons
+                                          uiInputState:
+                                              (ComposeboxUIInputState*)state {
   [self.metricsRecorder
       recordAttachmentsMenuOpenedWithVisibleButtons:visibleInternalButtons];
 
-  contextual_search::ContextualSearchMetricsRecorder* recorder =
-      _contextualSearchSession ? _contextualSearchSession->GetMetricsRecorder()
-                               : nullptr;
-  if (!recorder) {
-    return;
+  for (const auto& tool : state.allowedTools) {
+    [self.metricsRecorder recordToolModeShown:tool];
   }
 
-  std::optional<contextual_search::InputState> inputState =
-      _stateManager.inputState;
-  if (!inputState.has_value()) {
-    return;
-  }
-
-  for (const auto& tool : inputState->allowed_tools) {
-    recorder->RecordToolModeShown(tool);
-  }
-  for (const auto& model : inputState->allowed_models) {
-    recorder->RecordModelModeShown(model);
+  for (const auto& model : state.allowedModels) {
+    [self.metricsRecorder recordModelModeShown:model];
   }
 }
 
@@ -1298,34 +1315,28 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
             (std::set<web::WebStateID>)selectedWebStateIDs
                         cachedWebStateIDs:
                             (std::set<web::WebStateID>)cachedWebStateIDs
-                     fromExternalWebState:(web::WebState*)externalWebState {
-  [self.metricsRecorder recordTabPickerTabsAttached:selectedWebStateIDs.size()];
-
+                     fromExternalWebState:(web::WebState*)externalWebState
+                                   source:(ComposeboxInputItemSource)source {
   _pageContextWrappers.clear();
 
   // Remove tabs from context that were deselected in the tab picker.
   std::set<web::WebStateID> alreadyProcessedIDsFromCurrentWebState =
       [self attachedWebStateIDsInCurrentContext];
-  std::set<web::WebStateID> deselectedIDs;
-  set_difference(alreadyProcessedIDsFromCurrentWebState.begin(),
-                 alreadyProcessedIDsFromCurrentWebState.end(),
-                 selectedWebStateIDs.begin(), selectedWebStateIDs.end(),
-                 inserter(deselectedIDs, deselectedIDs.begin()));
-  [self removeDeselectedIDs:deselectedIDs];
+  composebox::TabDiff currentContextDiff = composebox::ComputeTabDiff(
+      alreadyProcessedIDsFromCurrentWebState, selectedWebStateIDs);
+  [self removeDeselectedIDs:currentContextDiff.removed];
 
   // Prevent duplicate tabs from external web states from being added to
   // context.
   std::set<web::WebStateID> alreadyProcessedIDs = [self allAttachedWebStateIDs];
-  std::set<web::WebStateID> newlyAddedIDs;
-  set_difference(selectedWebStateIDs.begin(), selectedWebStateIDs.end(),
-                 alreadyProcessedIDs.begin(), alreadyProcessedIDs.end(),
-                 inserter(newlyAddedIDs, newlyAddedIDs.begin()));
+  composebox::TabDiff allDiff =
+      composebox::ComputeTabDiff(alreadyProcessedIDs, selectedWebStateIDs);
 
-  if (newlyAddedIDs.empty()) {
+  if (allDiff.added.empty()) {
     return;
   }
 
-  for (const web::WebStateID& candidateID : newlyAddedIDs) {
+  for (const web::WebStateID& candidateID : allDiff.added) {
     web::WebState* candidateWebState;
 
     if (!externalWebState) {
@@ -1340,7 +1351,7 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     }
 
     base::UnguessableToken identifier =
-        [self createInputItemForWebState:candidateWebState];
+        [self createInputItemForWebState:candidateWebState source:source];
     [self attachWebState:candidateWebState
               identifier:identifier
                 isCached:cachedWebStateIDs.contains(candidateID)];
@@ -1894,18 +1905,10 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   [self removeItem:item];
 }
 
-/// Updates the consumer items and maybe trigger AIM.
+/// Updates the consumer items.
 - (void)updateConsumerItems {
   DCHECK_CALLED_ON_VALID_SEQUENCE(_sequenceChecker);
   [self.consumer setItems:_items.containedItems];
-
-  // AI mode is implicitly enabled by items attachment.
-  BOOL shouldSwitchToAIM = !_items.empty && [_modeHolder isRegularSearch];
-  if (shouldSwitchToAIM) {
-    [self.metricsRecorder
-        recordAiModeActivationSource:AiModeActivationSource::kImplicit];
-    _modeHolder.mode = ComposeboxMode::kAIM;
-  }
 }
 
 - (void)updateButtonsVisibility {
@@ -2044,8 +2047,8 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
     if (_contextualSearchSession) {
       _contextualSearchSession->DeleteFile(item.serverToken);
     }
-    [_items removeItem:item];
   }
+  [_items removeItems:invalidatedItems];
 
   if (invalidatedItems.count > 0) {
     [self notifyContextChanged];

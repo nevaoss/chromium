@@ -52,6 +52,7 @@ class Point;
 
 namespace glic {
 
+class GlicActiveInstanceSharingManager;
 class ContextualCueingService;
 class WebUIContentsContainer;
 class GlicWebContentsWarmingPool;
@@ -111,6 +112,7 @@ class GlicInstanceCoordinatorImpl
   int GetVisibleInstanceCount() const override;
 
   bool IsAnyPanelShowing() const override;
+  bool IsConversationPresent(const std::string& conversation_id) const override;
   // GlicInstanceCoordinator implementation
   GlicInstance* GetInstanceForTab(const tabs::TabInterface* tab) const override;
   // Sorts instances by recency and returns the instance id and
@@ -179,6 +181,7 @@ class GlicInstanceCoordinatorImpl
   AddActiveInstanceChangedCallbackAndNotifyImmediately(
       ActiveInstanceChangedCallback callback) override;
   GlicInstance* GetActiveInstance() override;
+  GlicSharingManager& active_instance_sharing_manager() override;
 
   // Returns a pointer to an instance with a Floaty embedder or nullptr.
   GlicInstanceImpl* GetInstanceWithFloaty() const;
@@ -205,7 +208,7 @@ class GlicInstanceCoordinatorImpl
   // Returns a pointer to an instance with the given conversation id or nullptr
   // if no such instance exists.
   GlicInstanceImpl* GetInstanceImplForConversationId(
-      const std::string& conversation_id);
+      const std::string& conversation_id) const;
   GlicInstanceImpl* GetOrCreateInstanceImplForConversationId(
       const std::string& conversation_id,
       const std::optional<std::string>& turn_id);
@@ -296,6 +299,8 @@ class GlicInstanceCoordinatorImpl
       identity_manager_observation_{this};
 
   std::unique_ptr<InstanceIndependentHotkeyManager> hotkey_manager_;
+  std::unique_ptr<GlicActiveInstanceSharingManager>
+      active_instance_sharing_manager_;
   base::WeakPtrFactory<GlicInstanceCoordinatorImpl> weak_ptr_factory_{this};
 };
 

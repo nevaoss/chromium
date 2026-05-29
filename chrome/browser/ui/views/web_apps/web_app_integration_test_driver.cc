@@ -56,7 +56,6 @@
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -707,10 +706,10 @@ class UninstallCompleteWaiter final : public BrowserCollectionObserver,
     if (app_browser != nullptr) {
       LOG(INFO) << base::StringPrintf(
           "An app browser is still open at %p: IsAttemptingToClose(): %v, "
-          "is_delete_scheduled(): %v",
+          "IsDeleteScheduled(): %v",
           app_browser,
           app_browser->capabilities()->IsAttemptingToCloseBrowser(),
-          app_browser->GetBrowserForMigrationOnly()->is_delete_scheduled());
+          app_browser->IsDeleteScheduled());
       return;
     }
 
@@ -1442,8 +1441,8 @@ void WebAppIntegrationTestDriver::InstallMenuOption(Site site) {
   BrowserAddedWaiter browser_added_waiter;
   WebAppTestInstallWithOsHooksObserver install_observer(profile());
   install_observer.BeginListening();
-  auto dont_close_bubble_on_deactivate =
-      web_app::SetDontCloseOnDeactivateForTesting();
+  web_app::test::ScopedDontCloseInstallDialogsOnDeactivate
+      dont_close_bubble_on_deactivate;
 
   CHECK(chrome::ExecuteCommand(browser(), IDC_INSTALL_PWA));
 
@@ -1501,8 +1500,8 @@ void WebAppIntegrationTestDriver::InstallOmniboxIcon(InstallableSite site) {
         run_loop.Quit();
       }));
 
-  auto dont_close_bubble_on_deactivate =
-      web_app::SetDontCloseOnDeactivateForTesting();
+  web_app::test::ScopedDontCloseInstallDialogsOnDeactivate
+      dont_close_bubble_on_deactivate;
 
   BrowserAddedWaiter browser_added_waiter;
   views::test::PropertyWaiter(

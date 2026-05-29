@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_CR_COMPONENTS_SEARCHBOX_CONTEXTUAL_SEARCHBOX_HANDLER_H_
 #define CHROME_BROWSER_UI_WEBUI_CR_COMPONENTS_SEARCHBOX_CONTEXTUAL_SEARCHBOX_HANDLER_H_
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -34,6 +35,7 @@
 #include "components/lens/contextual_input.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "components/omnibox/composebox/composebox_query.mojom.h"
+#include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
@@ -50,6 +52,7 @@ class SkBitmap;
 class DrivePickerHostController;
 
 namespace contextual_tasks {
+class ActiveTaskContextProvider;
 class ContextualTasksContextService;
 class DesktopQueryContextualizerDelegate;
 }  // namespace contextual_tasks
@@ -132,6 +135,7 @@ class ContextualSearchboxHandler
   void DeleteContext(const base::UnguessableToken& file_token,
                      bool from_automatic_chip) override;
   void ClearFiles(bool should_block_auto_suggested_tabs) override;
+  void ClearFiles(bool should_block_auto_suggested_tabs, bool query_submitted);
   void SubmitQuery(const std::string& query_text,
                    uint8_t mouse_button,
                    bool alt_key,
@@ -155,7 +159,8 @@ class ContextualSearchboxHandler
       ShouldShowDriveDisclaimerCallback callback) override;
   void OnDriveDisclaimerAccepted() override;
   void QueryAutocomplete(const std::u16string& input,
-                         bool prevent_inline_autocomplete) override;
+                         bool prevent_inline_autocomplete,
+                         uint32_t cursor_position) override;
 
 #if !BUILDFLAG(IS_ANDROID)
   // drive_picker_host::mojom::DrivePickerResultHandler:
@@ -172,6 +177,9 @@ class ContextualSearchboxHandler
   virtual void GetSmartTabSharingActive(
       composebox::mojom::PageHandler::GetSmartTabSharingActiveCallback
           callback);
+
+  // Returns the list of selected tab IDs that should be transferred.
+  virtual std::vector<int32_t> GetSelectedTabIds() const;
 
   // Continues the process of adding tab context for a given `tab_id`.
   // This method is used when a `context_token` has already been generated
@@ -235,6 +243,12 @@ class ContextualSearchboxHandler
       const contextual_search::InputState& state) {
     OnInputStateChanged(state);
   }
+
+  // Map of context tokens (frontend) to tab IDs (backend);
+  // used for determining which tabs to underline based on frontend changes, and
+  // for sending `tabID`s to cobrowsing when going from an AIM entrypoint to
+  // cobrowsing.
+  std::map<base::UnguessableToken, int32_t> selected_tabs;
 
  protected:
   // SearchboxHandler:
@@ -378,6 +392,9 @@ class ContextualSearchboxHandler
  protected:
   std::optional<bool> smart_tab_sharing_active_for_thread_;
   bool has_incremented_sts_activation_count_ = false;
+
+  // Gets the `ActiveTaskContextProvider` to update tab underlines.
+  contextual_tasks::ActiveTaskContextProvider* GetActiveTaskContextProvider();
 
   // Checks eligibility and triggers the smart tab sharing IPH promo logic.
   void MaybeTriggerSmartTabSharingPromo(

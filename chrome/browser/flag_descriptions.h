@@ -236,10 +236,6 @@ inline constexpr char kApproximateGeolocationPermissionDescription[] =
     "Enables the approximate geolocation permission prompt, with options to "
     "control prompt arm variations.";
 
-inline constexpr char kAndroidDesktopDensityName[] = "Android Desktop Density";
-inline constexpr char kAndroidDesktopDensityDescription[] =
-    "Enables desktop density for some surfaces on Android.";
-
 inline constexpr char kAndroidAppIntegrationMultiDataSourceName[] =
     "Integrate with Android App Search with multiple data sources.";
 inline constexpr char kAndroidAppIntegrationMultiDataSourceDescription[] =
@@ -314,10 +310,6 @@ inline constexpr char kBrowsingHistorySimilarVisitsGroupingName[] =
 inline constexpr char kBrowsingHistorySimilarVisitsGroupingDescription[] =
     "Enables improvements to grouping of similar browsing history on the "
     "history page.";
-
-inline constexpr char kGlicTabRestorationName[] = "Glic Tab Restoration";
-inline constexpr char kGlicTabRestorationDescription[] =
-    "Enables Glic instance restore when tabs are restored.";
 
 inline constexpr char kGlicButtonAutoSummarizeName[] =
     "Glic Button Auto Summarize";
@@ -488,13 +480,6 @@ inline constexpr char kDataSharingSharedDataTypesEnabled[] =
 inline constexpr char kDataSharingSharedDataTypesEnabledWithUi[] =
     "Version out-of-date, show UI ";
 // LINT.ThenChange(//ios/chrome/browser/flags/ios_chrome_flag_descriptions.cc:DataSharingVersioning)
-
-inline constexpr char kDbdRevampDesktopName[] =
-    "Revamped Delete Browsing Data dialog";
-inline constexpr char kDbdRevampDesktopDescription[] =
-    "Enables a revamped Delete Browsing Data dialog on Desktop. This includes "
-    "UI changes and removal of the bulk password deletion option from the "
-    "dialog.";
 
 inline constexpr char kDefaultBrowserChangedOsNotificationDescription[] =
     "Enables the framework to show OS Notification when Chrome is no longer "
@@ -1962,6 +1947,8 @@ inline constexpr char kIwaKeyDistributionComponentExpCohortName[] =
     "Experimental cohort for the Iwa Key Distribution component";
 inline constexpr char kIwaKeyDistributionComponentExpCohortDescription[] =
     "Specifies the experimental cohort for the Iwa Key Distribution component.";
+inline constexpr char kIwaKeyDistributionComponentExpCohortStagingName[] =
+    "Staging";
 
 inline constexpr char kEnableUnframedIwaName[] =
     "Unframed display mode for Isolated Web Apps";
@@ -2892,7 +2879,6 @@ inline constexpr char kLensOverlaySidePanelOpenInNewTabName[] =
 inline constexpr char kLensOverlaySidePanelOpenInNewTabDescription[] =
     "Enables open in new tab in the Lens overlay side panel.";
 
-
 inline constexpr char kLensOverlayPermissionBubbleAltName[] =
     "Lens overlay permission bubble alt appearance";
 inline constexpr char kLensOverlayPermissionBubbleAltDescription[] =
@@ -2947,7 +2933,6 @@ inline constexpr char kLensSearchReinvocationAffordanceName[] =
 inline constexpr char kLensSearchReinvocationAffordanceDescription[] =
     "Enables the Lens button in the AIM Searchbox for reinvocation of "
     "selection overlay.";
-
 
 inline constexpr char kLensVideoCitationsName[] = "Lens video citations";
 inline constexpr char kLensVideoCitationsDescription[] =
@@ -3840,6 +3825,11 @@ inline constexpr char kShowWarningsForSuspiciousNotificationsDescription[] =
     "Enables replacing notification contents with a warning when the on-device "
     "notification content detection model returns a suspicious verdict.";
 
+inline constexpr char kSuspiciousSiteWarningsName[] =
+    "Suspicious Site Warnings";
+inline constexpr char kSuspiciousSiteWarningsDescription[] =
+    "Enables warnings on sites that Safe Browsing deem to be suspicious.";
+
 inline constexpr char kSearchInSettingsName[] = "Search in Settings";
 inline constexpr char kSearchInSettingsDescription[] =
     "Enable search in settings";
@@ -4003,11 +3993,6 @@ inline constexpr char kRustyBmpDescription[] =
 inline constexpr char kQuicName[] = "Experimental QUIC protocol";
 inline constexpr char kQuicDescription[] =
     "Enable experimental QUIC protocol support.";
-
-inline constexpr char kQuickAppAccessTestUIName[] =
-    "Internal test: quick app access";
-inline constexpr char kQuickAppAccessTestUIDescription[] =
-    "Show an app in the quick app access area at the start of the session";
 
 inline constexpr char kQuickShareV2Name[] = "Quick Share v2";
 inline constexpr char kQuickShareV2Description[] =
@@ -4301,12 +4286,6 @@ inline constexpr char kProfileCreationDeclineSigninCTAExperimentDescription[] =
     "As part of the Sign In Level Up experiment, changes the decline "
     "sign in CTA string in profile creation entry points";
 
-inline constexpr char kShowProfilePickerToAllUsersExperimentName[] =
-    "Show profile picker to all users";
-inline constexpr char kShowProfilePickerToAllUsersExperimentDescription[] =
-    "As part of the Growth experiments, show the profile picker to users who "
-    "only have one profile";
-
 inline constexpr char kSmoothScrollingName[] = "Smooth Scrolling";
 inline constexpr char kSmoothScrollingDescription[] =
     "Animate smoothly when scrolling page content.";
@@ -4443,6 +4422,11 @@ inline constexpr char kToolbarAppMenuLabelResizingName[] =
     "Toolbar App Menu Label Resizing";
 inline constexpr char kToolbarAppMenuLabelResizingDescription[] =
     "Enables resizing of the app menu label in the toolbar.";
+
+inline constexpr char kToolbarGlicButtonResizingName[] =
+    "Toolbar Glic Button Label Resizing";
+inline constexpr char kToolbarGlicButtonResizingDescription[] =
+    "Enables resizing of the glic button in the toolbar.";
 
 inline constexpr char kRoundedIconsName[] = "Rounded Icons";
 inline constexpr char kRoundedIconsDescription[] = "Enables rounded icons.";
@@ -5890,7 +5874,6 @@ inline constexpr char kPCCTMinimumHeightDescription[] =
     "When enabled, this sets the minimum "
     "height to 30% or 220dp, whichever is greater, for ephemeral pCCTs.";
 
-
 inline constexpr char kProtectedTabsAndroidName[] =
     "Enable protected tab for Android";
 inline constexpr char kProtectedTabsAndroidDescription[] =
@@ -6069,14 +6052,6 @@ inline constexpr char kTabClosureMethodRefactorName[] =
 inline constexpr char kTabClosureMethodRefactorDescription[] =
     "Enables the refactored changes for tab closure methods where existing "
     "methods usages are switched off and newly introduced are made active.";
-
-inline constexpr char kTabStripDensityChangeAndroidName[] =
-    "Tab Strip Density Change";
-inline constexpr char kTabStripDensityChangeAndroidDescription[] =
-    "Enables tab UI to switch to a denser layout when a peripheral(keyboard, "
-    "mouse, touchpad, etc.) is connected, including reducing minimum tab "
-    "width and button touch target to better support click-first interactions.";
-
 
 inline constexpr char kThreeDotMenuBackButtonName[] =
     "Three Dot Menu Back Button";
@@ -6508,12 +6483,6 @@ inline constexpr char kSmartCardWebApiName[] = "Smart Card API";
 inline constexpr char kSmartCardWebApiDescription[] =
     "Enable access to the Smart Card API. See "
     "https://github.com/WICG/web-smart-card#readme for more information.";
-
-inline constexpr char kTabCaptureInfobarLinksName[] =
-    "Navigation links in the tab-sharing bar";
-inline constexpr char kTabCaptureInfobarLinksDescription[] =
-    "Enables quick-navigation links to the captured and capturing tab in the "
-    "tab-sharing bar.";
 
 inline constexpr char kTranslateOpenSettingsName[] = "Translate Open Settings";
 inline constexpr char kTranslateOpenSettingsDescription[] =
@@ -8371,12 +8340,6 @@ inline constexpr char kEnableManagementPromotionBannerName[] =
 inline constexpr char kEnableManagementPromotionBannerDescription[] =
     "Enables showing the management promotion banner on chrome://management "
     "page.";
-
-inline constexpr char kSupervisedUserBlockInterstitialV3Name[] =
-    "Enable URL filter interstitial V3";
-inline constexpr char kSupervisedUserBlockInterstitialV3Description[] =
-    "Enables URL filter interstitial V3 for Family Link users.";
-
 inline constexpr char kSupervisedUserEmitLogRecordSeparatelyName[] =
     "Emit device log record separately";
 inline constexpr char kSupervisedUserEmitLogRecordSeparatelyDescription[] =

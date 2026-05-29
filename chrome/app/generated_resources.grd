@@ -686,6 +686,12 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_OPENLINKRIGHTVIEW" desc="The name of the open a link in right side of a split view command">
             Open link in right view
           </message>
+          <message name="IDS_CONTENT_CONTEXT_OPENLINKTOPVIEW" desc="The name of the open a link in top side of a split view command">
+            Open link in top view
+          </message>
+          <message name="IDS_CONTENT_CONTEXT_OPENLINKBOTTOMVIEW" desc="The name of the open a link in bottom side of a split view command">
+            Open link in bottom view
+          </message>
           <message name="IDS_CONTENT_CONTEXT_OPENLINKINPROFILES" desc="The name of the open a link as a different user context menu">
             Open link as
           </message>
@@ -723,6 +729,10 @@ are declared in tools/grit/grit_args.gni.
 
           <message name="IDS_CONTENT_CONTEXT_COPYLINKTOTEXT" desc="The name of the Copy Link to Highlight command in the content area context menu">
             Copy link to highlight
+          </message>
+
+          <message name="IDS_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST" desc="In Title Case: The name of the Add link to reading list command in the content area context menu">
+            Add link to reading list
           </message>
 
           <message name="IDS_CONTENT_CONTEXT_ADD_A_NOTE" desc="The name of the Add Note command in the content area context menu">
@@ -821,6 +831,9 @@ are declared in tools/grit/grit_args.gni.
           </message>
           <message name="IDS_CONTENT_CONTEXT_COPY" desc="The name of the Copy command in the content area context menu">
             &amp;Copy
+          </message>
+          <message name="IDS_CONTENT_CONTEXT_COPY_SELECTION" desc="The name of the Copy command with selection in the content area context menu">
+            &amp;Copy "<ph name="SELECTION">$1<ex>text</ex></ph>"
           </message>
           <message name="IDS_CONTENT_CONTEXT_PASTE" desc="The name of the Paste command in the content area context menu" meaning="'Paste' menu command in sentence case">
             &amp;Paste
@@ -1000,6 +1013,12 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_OPENLINKRIGHTVIEW" desc="In Title Case: The name of the open a link in right side of a split view command">
             Open Link in Right View
           </message>
+          <message name="IDS_CONTENT_CONTEXT_OPENLINKTOPVIEW" desc="In Title Case: The name of the open a link in top side of a split view command">
+            Open Link in Top View
+          </message>
+          <message name="IDS_CONTENT_CONTEXT_OPENLINKBOTTOMVIEW" desc="In Title Case: The name of the open a link in bottom side of a split view command">
+            Open Link in Bottom View
+          </message>
           <message name="IDS_CONTENT_CONTEXT_OPENLINKINPROFILES" desc="In Title Case: The name of the open a link as a different user context menu">
             Open Link as
           </message>
@@ -1037,6 +1056,10 @@ are declared in tools/grit/grit_args.gni.
 
           <message name="IDS_CONTENT_CONTEXT_COPYLINKTOTEXT" desc="In Title Case: The name of the Copy Link to Highlight command in the content area context menu">
             Copy Link to Highlight
+          </message>
+
+          <message name="IDS_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST" desc="In Title Case: The name of the Add link to reading list command in the content area context menu">
+            Add Link to Reading List
           </message>
 
           <message name="IDS_CONTENT_CONTEXT_ADD_A_NOTE" desc="In Title Case: The name of the Add Note command in the content area context menu">
@@ -1136,6 +1159,9 @@ are declared in tools/grit/grit_args.gni.
           </message>
           <message name="IDS_CONTENT_CONTEXT_COPY" desc="In Title Case: The name of the Copy command in the content area context menu">
             &amp;Copy
+          </message>
+          <message name="IDS_CONTENT_CONTEXT_COPY_SELECTION" desc="The name of the Copy command with selection in the content area context menu">
+            &amp;Copy "<ph name="SELECTION">$1<ex>text</ex></ph>"
           </message>
           <!-- Paste and Match Style / Paste as Plain Text -->
           <if expr="is_macosx">
@@ -10698,9 +10724,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
         <message name="IDS_IOS_DESKTOP_PASSWORD_PROMO_BUBBLE_SUBTITLE" desc="The subtitle for the iOS desktop password promo bubble which lets the user know they can access their saved password on the Google Password Manager.">
           You can access it on Google Password Manager
         </message>
-        <message name="IDS_IOS_DESKTOP_PASSWORD_PROMO_NOTIFICATION_BODY" desc="The body for the iOS desktop Password promo notification.">
-          Save and autofill your passwords to easily sign in to sites and apps
-        </message>
       </if>
 
       <!--Desktop to iOS address promo strings-->
@@ -10775,9 +10798,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
         <message name="IDS_IOS_DESKTOP_ESB_PROMO_BUBBLE_TITLE_REMINDER" desc="The title for the iOS desktop ESB promo bubble with a reminder button.">
           Enhance Safe Browsing on your <ph name="DEVICE_TYPE">$1<ex>iPhone</ex></ph>
         </message>
-        <message name="IDS_IOS_DESKTOP_SAFE_BROWSING_PROMO_NOTIFICATION_BODY" desc="The body for the iOS desktop Enhanced Safe Browsing promo notification.">
-          Add an extra layer of protection against online threats
-        </message>
       </if>
 
       <!--Desktop to iOS Lens promo strings-->
@@ -10787,9 +10807,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
         </message>
         <message name="IDS_IOS_DESKTOP_LENS_PROMO_BUBBLE_TITLE_REMINDER" desc="The title for the iOS desktop Lens promo bubble with a reminder button.">
           Try Google Lens on your <ph name="DEVICE_TYPE">$1<ex>iPhone</ex></ph>
-        </message>
-        <message name="IDS_IOS_DESKTOP_LENS_PROMO_NOTIFICATION_BODY" desc="The body for the iOS desktop Lens promo notification.">
-          Shop, translate, and identify what you see with your camera.
         </message>
       </if>
 
@@ -10804,12 +10821,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
         <message name="IDS_IOS_DESKTOP_PRICE_TRACKING_PROMO_BUBBLE_TITLE_REMINDER" desc="The title for the iOS desktop Price Tracking promo bubble with a reminder button.">
           Get price tracking alerts on your <ph name="DEVICE_TYPE">$1<ex>iPhone</ex></ph>
         </message>
-        <message name="IDS_IOS_DESKTOP_PRICE_TRACKING_PROMO_NOTIFICATION_BODY" desc="The body for the iOS desktop Price Tracking promo notification.">
-          Keep up with all your price drops on the go
-        </message>
-        <message name="IDS_IOS_DESKTOP_PRICE_TRACKING_PROMO_NOTIFICATION_TITLE" desc="The title for the iOS desktop Price Tracking promo notification.">
-          Enable price tracking alerts
-        </message>
       </if>
 
       <!--Desktop to iOS Tab Groups promo strings-->
@@ -10822,12 +10833,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
         </message>
         <message name="IDS_IOS_DESKTOP_TAB_GROUPS_PROMO_BUBBLE_TITLE_REMINDER" desc="The title for the iOS desktop Tab Groups promo bubble with a reminder button.">
           Use your tab groups on your <ph name="DEVICE_TYPE">$1<ex>iPhone</ex></ph>
-        </message>
-        <message name="IDS_IOS_DESKTOP_TAB_GROUPS_PROMO_NOTIFICATION_BODY" desc="The body for the iOS desktop Tab Groups promo notification.">
-          You can pick up where you left off or create new tab groups on the go
-        </message>
-        <message name="IDS_IOS_DESKTOP_TAB_GROUPS_PROMO_NOTIFICATION_TITLE" desc="The title for the iOS desktop Tab Groups promo notification.">
-          Reminder: Your tab groups
         </message>
       </if>
 
@@ -20264,6 +20269,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
     </message>
     <message name="IDS_REPORT_UNSAFE_SITE_CONFIRMATION_TOAST" desc="Message confirmation after unsafe-site-report sends to Google">
       Report sent
+    </message>
+    <message name="IDS_REPORT_UNSAFE_SITE_A11Y_IMAGE_TEXT" desc="Aria label for the screenshot image of the site to be reported to Google.">
+      Screenshot
     </message>
 
 

@@ -3860,6 +3860,10 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the source that requested showing the feedback app. Only recorded if
     feedback submission is allowed.
+
+    This histogram is only recorded on desktop platforms (Windows, macOS, Linux,
+    ChromeOS). For iOS, see IOS.Feedback.ReportAnIssue.Displayed and
+    IOS.Feedback.ReportAnIssue.NotDisplayed.
   </summary>
 </histogram>
 
@@ -4478,6 +4482,57 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Gamepad.Win.GameInput.GamepadAddedResult"
+    enum="GameInputGamepadAddedResult" expires_after="2026-11-18">
+  <owner>mattreynolds@chromium.org</owner>
+  <owner>gabrielbrito@microsoft.com</owner>
+  <summary>
+    The outcome of a gamepad added event in the Windows GameInput data fetcher.
+    Recorded once per gamepad connection attempt.
+  </summary>
+</histogram>
+
+<histogram name="Gamepad.Win.GameInput.GetCurrentReadingError" enum="Boolean"
+    expires_after="2026-11-18">
+  <owner>mattreynolds@chromium.org</owner>
+  <owner>gabrielbrito@microsoft.com</owner>
+  <summary>
+    Recorded each time GetCurrentReading fails for a connected gamepad in the
+    Windows GameInput data fetcher.
+  </summary>
+</histogram>
+
+<histogram name="Gamepad.Win.GameInput.GuideButtonPressed" enum="Boolean"
+    expires_after="2026-11-18">
+  <owner>mattreynolds@chromium.org</owner>
+  <owner>gabrielbrito@microsoft.com</owner>
+  <summary>
+    Recorded each time the guide button is pressed on a gamepad connected via
+    the Windows GameInput data fetcher.
+  </summary>
+</histogram>
+
+<histogram name="Gamepad.Win.GameInput.HasTriggerRumbleSupport" enum="Boolean"
+    expires_after="2026-11-18">
+  <owner>mattreynolds@chromium.org</owner>
+  <owner>gabrielbrito@microsoft.com</owner>
+  <summary>
+    Whether a newly connected gamepad supports trigger rumble in the Windows
+    GameInput data fetcher. Recorded once per successful gamepad connection.
+  </summary>
+</histogram>
+
+<histogram name="Gamepad.Win.GameInput.InitializationResult"
+    enum="GameInputInitializationResult" expires_after="2026-11-18">
+  <owner>mattreynolds@chromium.org</owner>
+  <owner>gabrielbrito@microsoft.com</owner>
+  <summary>
+    The outcome of GameInput API initialization in the Windows GameInput data
+    fetcher. Recorded once when the data fetcher is added to the gamepad
+    provider.
+  </summary>
+</histogram>
+
 <histogram name="Hardware.Display.Count.OnChange" units="units"
     expires_after="2026-11-15">
   <owner>sashamcintosh@chromium.org</owner>
@@ -4963,6 +5018,19 @@ chromium-metrics-reviews@google.com.
     reduce its cost.
 
     This is only recorded on clients with high-resolution clocks.
+  </summary>
+</histogram>
+
+<histogram name="Mojo.ChannelLinux.SharedMemoryWriteLatencyUs"
+    units="microseconds" expires_after="2026-11-01">
+  <owner>pasko@chromium.org</owner>
+  <owner>nafisabedin@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Measures the time taken to write a channel message to the underlying shared
+    memory ring buffer in ChannelLinux.
+
+    The metric is downsampled to reduce its costs.
   </summary>
 </histogram>
 

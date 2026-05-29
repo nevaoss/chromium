@@ -150,7 +150,6 @@
 #include "chrome/browser/ui/unload_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
-#include "chrome/browser/ui/views/frame/multi_contents_view.h"
 #include "chrome/browser/ui/views/status_bubble_views.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_modal/browser_window_modal_dialog_delegate.h"
@@ -1593,9 +1592,9 @@ void Browser::OnSplitTabChanged(const SplitTabChange& change) {
     }
 
     case SplitTabChange::Type::kVisualsChanged: {
-      // Update for resize from the handle is done from multicontent view
-      // delegate.
-      if (!GetBrowserView().multi_contents_view()->IsSplitResizing()) {
+      // Intermediate ratio updates from dragging shouldn't spam the session
+      // storage. They are saved when the drag completes.
+      if (!change.GetVisualsChange()->is_intermediate()) {
         UpdateSplitTabSessionVisualData(change.split_id);
       }
       break;
@@ -1885,10 +1884,7 @@ WebContents* Browser::OpenURLFromTab(
       for (tabs::TabInterface* tab :
            tab_strip_model()->GetSplitData(split_id)->ListTabs()) {
         if (tab != source_tab) {
-          content::NavigationController::LoadURLParams load_params(params.url);
-          load_params.transition_type = params.transition;
-          load_params.referrer =
-              content::Referrer(params.referrer.url, params.referrer.policy);
+          content::NavigationController::LoadURLParams load_params(params);
           tab->GetContents()->GetController().LoadURLWithParams(load_params);
           return source;
         }

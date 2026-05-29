@@ -72,6 +72,7 @@ source_set("browser_tests") {
       "key_value_pair_viewer/key_value_pair_viewer_browsertest.cc",
       "lens/lens_overlay_webui_browsertest.cc",
       "lens/lens_side_panel_webui_browsertest.cc",
+      "management/management_browsertest.cc",
       "media/media_engagement_browsertest.cc",
       "media_internals/media_internals_browsertest.cc",
       "metrics_internals/metrics_internals_browsertest.cc",
@@ -135,6 +136,7 @@ source_set("browser_tests") {
 
   if (enable_dice_support) {
     sources += [
+      "feature_showcase/feature_showcase_browsertest.cc",
       "intro/intro_browsertest.cc",
       "signin/batch_upload_view_browsertest.cc",
     ]
@@ -247,6 +249,7 @@ source_set("browser_tests") {
     deps += [
       "//build/config/coverage:buildflags",
       "//chrome/app:command_ids",
+      "//chrome/browser/autocomplete:aim_eligibility_service",
       "//chrome/browser/commerce",
       "//chrome/browser/devtools",
       "//chrome/browser/devtools:test_support",
@@ -619,6 +622,7 @@ generate_grd("build_grd") {
       "inspect:build_grdp",
       "key_value_pair_viewer:build_grdp",
       "lens:build_grdp",
+      "management:build_grdp",
       "media:build_grdp",
       "media_internals:build_grdp",
       "metrics_internals:build_grdp",
@@ -686,6 +690,7 @@ generate_grd("build_grd") {
       "$target_gen_dir/mojo/resources.grdp",
       "$target_gen_dir/multistep_filter_internals/resources.grdp",
       "$target_gen_dir/lens/resources.grdp",
+      "$target_gen_dir/management/resources.grdp",
       "$target_gen_dir/net_internals/resources.grdp",
       "$target_gen_dir/new_tab_footer/resources.grdp",
       "$target_gen_dir/new_tab_shared/resources.grdp",
@@ -810,7 +815,6 @@ generate_grd("build_grd") {
       "chromeos/bluetooth:build_grdp",
       "chromeos/boca_receiver_app_ui:build_grdp",
       "chromeos/boca_ui:build_grdp",
-      "chromeos/borealis_installer:build_grdp",
       "chromeos/cellular_setup:build_grdp",
       "chromeos/cloud_upload:build_grdp",
       "chromeos/diagnostics:build_grdp",
@@ -859,7 +863,6 @@ generate_grd("build_grd") {
       "$target_gen_dir/chromeos/boca_ui/resources.grdp",
       "$target_gen_dir/chromeos/boca_receiver_app_ui/resources.grdp",
       "$target_gen_dir/chromeos/projector_app/resources.grdp",
-      "$target_gen_dir/chromeos/borealis_installer/resources.grdp",
       "$target_gen_dir/chromeos/cellular_setup/resources.grdp",
       "$target_gen_dir/chromeos/cloud_upload/resources.grdp",
       "$target_gen_dir/chromeos/diagnostics/resources.grdp",
@@ -900,19 +903,20 @@ generate_grd("build_grd") {
       "$root_gen_dir/ui/file_manager/tests_gen_resources.grdp",
     ]
   } else if (!is_android) {
-    deps += [
-      "intro:build_grdp",
-      "signin:build_grdp",
-    ]
-    grdp_files += [
-      "$target_gen_dir/intro/resources.grdp",
-      "$target_gen_dir/signin/resources.grdp",
-    ]
+    deps += [ "signin:build_grdp" ]
+    grdp_files += [ "$target_gen_dir/signin/resources.grdp" ]
 
     if (enable_dice_support) {
-      deps += [ "signin/signout_confirmation:build_grdp" ]
-      grdp_files +=
-          [ "$target_gen_dir/signin/signout_confirmation/resources.grdp" ]
+      deps += [
+        "feature_showcase:build_grdp",
+        "intro:build_grdp",
+        "signin/signout_confirmation:build_grdp",
+      ]
+      grdp_files += [
+        "$target_gen_dir/feature_showcase/resources.grdp",
+        "$target_gen_dir/intro/resources.grdp",
+        "$target_gen_dir/signin/signout_confirmation/resources.grdp",
+      ]
     }
   }
 

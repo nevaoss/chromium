@@ -10,6 +10,7 @@ import {BookmarksApiProxyImpl} from 'chrome://bookmarks-side-panel.top-chrome/bo
 import type {PowerBookmarkRowElement} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmark_row.js';
 import type {PowerBookmarksAddFolderButtonElement} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_add_folder_button.js';
 import type {PowerBookmarksAppElement} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_app.js';
+import type {PowerBookmarksListHeaderElement} from 'chrome://bookmarks-side-panel.top-chrome/power_bookmarks_list_header.js';
 import {PageCallbackRouter} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import type {PageRemote} from 'chrome://resources/cr_components/commerce/price_tracking.mojom-webui.js';
 import {PriceTrackingBrowserProxyImpl} from 'chrome://resources/cr_components/commerce/price_tracking_browser_proxy.js';
@@ -44,7 +45,7 @@ suite('General', () => {
   let metrics: MetricsTracker;
 
   function getAddTabButton(): CrButtonElement {
-    return powerBookmarksApp.shadowRoot!.querySelector<CrButtonElement>(
+    return powerBookmarksApp.shadowRoot.querySelector<CrButtonElement>(
         '#addCurrentTabButton')!;
   }
 
@@ -70,7 +71,7 @@ suite('General', () => {
 
   async function performSearch(query: string) {
     const searchField =
-        powerBookmarksApp.shadowRoot!.querySelector('cr-toolbar-search-field')!;
+        powerBookmarksApp.shadowRoot.querySelector('cr-toolbar-search-field')!;
     const searchChanged = eventToPromise('search-changed', searchField);
     const metricsLogged = eventToPromise(
         'bookmark-count-recorded', powerBookmarksApp.$.bookmarksList);
@@ -177,6 +178,8 @@ suite('General', () => {
               .getElementsForTesting()
               .map((el: HTMLElement) => el.id));
 
+      const navigationElementsRebuilt = eventToPromise(
+          'rebuild-navigation-elements', powerBookmarksApp.$.bookmarksList);
       bookmarksApi.callbackRouterRemote.onBookmarkNodeAdded({
         id: '999',
         title: 'New bookmark of current url',
@@ -188,10 +191,7 @@ suite('General', () => {
         dateLastUsed: null,
         unmodifiable: false,
       });
-      await microtasksFinished();
-      await flushTasks();
-      powerBookmarksApp.$.bookmarksList
-          .flushNavigationElementsDebouncerForTesting();
+      await navigationElementsRebuilt;
 
       assertArrayEquals(
           [
@@ -207,8 +207,7 @@ suite('General', () => {
               .map((el: HTMLElement) => el.id));
     });
 
-    // TODO(crbug.com/489813344): Flaky test.
-    test.skip('RebuildsKeyboardNavigationOnRemoved', async () => {
+    test('RebuildsKeyboardNavigationOnRemoved', async () => {
       assertArrayEquals(
           [
             'bookmark-SIDE_PANEL_BOOKMARK_BAR_ID',
@@ -221,11 +220,10 @@ suite('General', () => {
               .getElementsForTesting()
               .map((el: HTMLElement) => el.id));
 
+      const navigationElementsRebuilt = eventToPromise(
+          'rebuild-navigation-elements', powerBookmarksApp.$.bookmarksList);
       bookmarksApi.callbackRouterRemote.onBookmarkNodesRemoved(['4']);
-      await flushTasks();
-      await waitAfterNextRender(powerBookmarksApp);
-      powerBookmarksApp.$.bookmarksList
-          .flushNavigationElementsDebouncerForTesting();
+      await navigationElementsRebuilt;
 
       assertArrayEquals(
           [
@@ -279,6 +277,8 @@ suite('General', () => {
               .getElementsForTesting()
               .map((el: HTMLElement) => el.id));
 
+      const navigationElementsRebuilt = eventToPromise(
+          'rebuild-navigation-elements', powerBookmarksApp.$.bookmarksList);
       const movedBookmark = FOLDERS[1]!.children![2]!.children![0]!;
       assertTrue(!!movedBookmark);
       bookmarksApi.callbackRouterRemote.onBookmarkNodeMoved(
@@ -288,10 +288,7 @@ suite('General', () => {
           /*parentId=*/ FOLDERS[1]!.id,  // Moving to other bookmarks.
           /*index=*/ 0,
       );
-      await microtasksFinished();
-      await flushTasks();
-      powerBookmarksApp.$.bookmarksList
-          .flushNavigationElementsDebouncerForTesting();
+      await navigationElementsRebuilt;
 
       assertArrayEquals(
           [
@@ -762,8 +759,6 @@ suite('General', () => {
               ?.getBookmarkDescriptionForTests(folder));
     });
 
-    // TODO(https://crbug.com/512674938): Reenable.
-    // <if expr="not is_macosx">
     test('RenamesBookmark', async () => {
       const renamedBookmarkId = '4';
       powerBookmarksApp.$.contextMenu.fire(
@@ -797,7 +792,6 @@ suite('General', () => {
           rowItemElement.shadowRoot.querySelector<CrInputElement>('cr-input');
       assertFalse(!!input);
     });
-    // </if>
 
     test('BlursRenameInput', async () => {
       const renamedBookmarkId = '4';
@@ -867,7 +861,7 @@ suite('General', () => {
       flush();
 
       const deleteButton: HTMLButtonElement =
-          powerBookmarksApp.shadowRoot!.querySelector('#deleteButton')!;
+          powerBookmarksApp.shadowRoot.querySelector('#deleteButton')!;
       assertFalse(deleteButton.disabled);
       deleteButton.click();
 
@@ -942,7 +936,7 @@ suite('General', () => {
       flush();
 
       const deleteButton: HTMLButtonElement =
-          powerBookmarksApp.shadowRoot!.querySelector('#deleteButton')!;
+          powerBookmarksApp.shadowRoot.querySelector('#deleteButton')!;
       assertFalse(deleteButton.disabled);
       deleteButton.click();
 
@@ -1071,8 +1065,8 @@ suite('General', () => {
       assertFalse(isHidden(footer));
 
       // A search with no results.
-      const searchField = powerBookmarksApp.shadowRoot!.querySelector(
-          'cr-toolbar-search-field');
+      const searchField =
+          powerBookmarksApp.shadowRoot.querySelector('cr-toolbar-search-field');
       assertTrue(!!searchField);
       searchField.$.searchInput.value = 'abcdef';
       searchField.onSearchTermSearch();
@@ -1150,6 +1144,34 @@ suite('General', () => {
       // Cleanup: restore document state.
       Object.defineProperty(
           document, 'visibilityState', {value: originalVisibilityState});
+    });
+
+    test('SortMenuClosesOnFocusout', async () => {
+      const header = powerBookmarksApp.$.bookmarksList.shadowRoot!
+                         .querySelector<PowerBookmarksListHeaderElement>(
+                             'power-bookmarks-list-header');
+      assertTrue(!!header);
+
+      // Open sort menu.
+      const sortButton =
+          header.shadowRoot.querySelector<HTMLElement>('.sort-menu-button');
+      assertTrue(!!sortButton);
+      sortButton.click();
+      await microtasksFinished();
+
+      const sortMenu = header.$.sortMenu;
+      assertTrue(sortMenu.open);
+
+      // Simulate blur by dispatching focusout event with relatedTarget outside
+      // the menu.
+      const event = new FocusEvent('focusout', {
+        relatedTarget: document.body,
+      });
+      sortMenu.dispatchEvent(event);
+
+      await microtasksFinished();
+
+      assertFalse(sortMenu.open);
     });
 
     test('ShowUiOnlyCalledOnce', async () => {

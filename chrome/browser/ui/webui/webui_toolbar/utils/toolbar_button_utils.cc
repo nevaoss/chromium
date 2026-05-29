@@ -173,7 +173,9 @@ ActionItemToPinnedToolbarAction(actions::ActionItem* item) {
                            : kIncognitoRefreshMenuOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::kNewIncognitoWindow;
     case kActionShowPasswordsBubbleOrPage:
-      CHECK_EQ(icon, &vector_icons::kPasswordManagerOldIcon);
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
+                           ? vector_icons::kPasswordManagerIcon
+                           : vector_icons::kPasswordManagerOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kShowPasswordsBubbleOrPage;
     case kActionShowPaymentsBubbleOrPage:
@@ -183,7 +185,9 @@ ActionItemToPinnedToolbarAction(actions::ActionItem* item) {
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kShowPaymentsBubbleOrPage;
     case kActionShowAddressesBubbleOrPage:
-      CHECK_EQ(icon, &vector_icons::kLocationOnChromeRefreshOldIcon);
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
+                           ? vector_icons::kLocationOnIcon
+                           : vector_icons::kLocationOnChromeRefreshOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kShowAddressesBubbleOrPage;
     case kActionSidePanelShowBookmarks:
@@ -199,7 +203,9 @@ ActionItemToPinnedToolbarAction(actions::ActionItem* item) {
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kSidePanelShowReadingList;
     case kActionSidePanelShowHistoryCluster:
-      CHECK_EQ(icon, &vector_icons::kHistoryChromeRefreshOldIcon);
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
+                           ? vector_icons::kHistoryIcon
+                           : vector_icons::kHistoryChromeRefreshOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kSidePanelShowHistoryCluster;
     case kActionShowDownloads:
@@ -220,7 +226,9 @@ ActionItemToPinnedToolbarAction(actions::ActionItem* item) {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
       CHECK_EQ(icon, &vector_icons::kGoogleLensMonochromeLogoIcon);
 #else
-      CHECK_EQ(icon, &vector_icons::kSearchChromeRefreshOldIcon);
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
+                           ? vector_icons::kSearchIcon
+                           : vector_icons::kSearchChromeRefreshOldIcon));
 #endif  // !BUILDFLAG(GOOGLE_CHROME_BRANDING)
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kSidePanelShowLensOverlayResults;
@@ -233,20 +241,24 @@ ActionItemToPinnedToolbarAction(actions::ActionItem* item) {
                            : kQrCodeChromeRefreshOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::kQrCodeGenerator;
     case kActionRouteMedia:
-      if (icon == &vector_icons::kMediaRouterIdleChromeRefreshOldIcon) {
-        return toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaIdle;
-      } else if (icon ==
-                 &vector_icons::kMediaRouterWarningChromeRefreshOldIcon) {
-        return toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaWarning;
-      } else if (icon == &vector_icons::kMediaRouterPausedOldIcon) {
-        return toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaPaused;
-      } else if (icon ==
-                 &vector_icons::kMediaRouterActiveChromeRefreshOldIcon) {
-        return toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaActive;
-      }
-      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
-                           ? kCastIcon
-                           : kCastChromeRefreshOldIcon));
+      CHECK(
+          icon == &(features::IsRoundedIconsEnabled()
+                        ? vector_icons::kCastIcon
+                        : vector_icons::kMediaRouterIdleChromeRefreshOldIcon) ||
+          icon ==
+              &(features::IsRoundedIconsEnabled()
+                    ? vector_icons::kCastWarningIcon
+                    : vector_icons::kMediaRouterWarningChromeRefreshOldIcon) ||
+          icon == &(features::IsRoundedIconsEnabled()
+                        ? vector_icons::kCastPauseIcon
+                        : vector_icons::kMediaRouterPausedOldIcon) ||
+          icon ==
+              &(features::IsRoundedIconsEnabled()
+                    ? vector_icons::kCastConnectedIcon
+                    : vector_icons::kMediaRouterActiveChromeRefreshOldIcon) ||
+          icon == &(features::IsRoundedIconsEnabled()
+                        ? kCastIcon
+                        : kCastChromeRefreshOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMedia;
     case kActionSidePanelShowReadAnything:
       CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
@@ -284,7 +296,9 @@ ActionItemToPinnedToolbarAction(actions::ActionItem* item) {
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kSidePanelShowContextualTasks;
     case kActionSidePanelShowLens:
-      CHECK_EQ(icon, &vector_icons::kImageSearchOldIcon);
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
+                           ? vector_icons::kImageSearchIcon
+                           : vector_icons::kImageSearchOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::kSidePanelShowLens;
     case kActionSidePanelShowAboutThisSite:
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -297,25 +311,34 @@ ActionItemToPinnedToolbarAction(actions::ActionItem* item) {
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kSidePanelShowAboutThisSite;
     case kActionSidePanelShowCustomizeChrome:
-      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
-                           ? kEditIcon
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled() ? kEditIcon
+                       : features::IsRoundedIconsEnabled()
+                           ? vector_icons::kEditIcon
                            : vector_icons::kEditChromeRefreshOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kSidePanelShowCustomizeChrome;
     case kActionSidePanelShowShoppingInsights:
-      CHECK_EQ(icon, &vector_icons::kShoppingBagOldIcon);
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
+                           ? vector_icons::kShoppingBagIcon
+                           : vector_icons::kShoppingBagOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kSidePanelShowShoppingInsights;
     case kActionSidePanelShowMerchantTrust:
-      CHECK_EQ(icon, &vector_icons::kStorefrontOldIcon);
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
+                           ? vector_icons::kStorefrontIcon
+                           : vector_icons::kStorefrontOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kSidePanelShowMerchantTrust;
     case kActionSendSharedTabGroupFeedback:
-      CHECK_EQ(icon, &vector_icons::kFeedbackOldIcon);
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
+                           ? vector_icons::kFeedbackIcon
+                           : vector_icons::kFeedbackOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::
           kSendSharedTabGroupFeedback;
     case kActionSidePanelShowComments:
-      CHECK_EQ(icon, &vector_icons::kChatOldIcon);
+      CHECK_EQ(icon, &(features::IsRoundedIconsEnabled()
+                           ? vector_icons::kChatIcon
+                           : vector_icons::kChatOldIcon));
       return toolbar_ui_api::mojom::PinnedToolbarAction::kSidePanelShowComments;
     default:
       return std::nullopt;
@@ -356,10 +379,6 @@ std::optional<actions::ActionId> PinnedToolbarActionToActionId(
     case toolbar_ui_api::mojom::PinnedToolbarAction::kQrCodeGenerator:
       return kActionQrCodeGenerator;
     case toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMedia:
-    case toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaIdle:
-    case toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaWarning:
-    case toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaPaused:
-    case toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaActive:
       return kActionRouteMedia;
     case toolbar_ui_api::mojom::PinnedToolbarAction::kSidePanelShowReadAnything:
       return kActionSidePanelShowReadAnything;

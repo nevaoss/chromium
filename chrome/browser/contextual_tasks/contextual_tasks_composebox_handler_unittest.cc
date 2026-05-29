@@ -9,6 +9,8 @@
 #include <vector>
 
 #include "base/containers/span.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/run_loop.h"
@@ -47,6 +49,7 @@
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
 #include "components/keyed_service/core/keyed_service.h"
+#include "components/omnibox/common/composebox_features.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/tabs/public/mock_tab_interface.h"
 #include "components/variations/scoped_variations_ids_provider.h"
@@ -141,6 +144,7 @@ class MockContextualTasksUI : public ContextualTasksUI {
               TakeInputStateModel,
               (),
               (override));
+  MOCK_METHOD(std::vector<int32_t>, GetRestoredTabIds, (), (override));
   MOCK_METHOD(bool, IsActiveTabContextSuggestionShowing, (), (const, override));
   MOCK_METHOD(contextual_tasks::ContextualTasksAutoSuggestionManager*,
               GetAutoSuggestionManager,
@@ -1504,6 +1508,30 @@ TEST_F(ContextualTasksComposeboxHandlerTest, DeleteContext_Delayed) {
       .WillOnce(base::test::RunClosure(run_loop.QuitClosure()));
   handler_->CreateAndSendQueryMessage(kQuery);
   run_loop.Run();
+}
+
+TEST_F(ContextualTasksComposeboxHandlerTest, RestoreTabIds) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      omnibox::kContextManagementInComposebox);
+
+  std::vector<int32_t> restored_tab_ids = {1, 2};
+  EXPECT_CALL(*mock_ui_, GetRestoredTabIds())
+      .WillOnce(testing::Return(restored_tab_ids));
+  EXPECT_CALL(mock_searchbox_page_, SetRestoredTabIds(restored_tab_ids))
+      .Times(1);
+
+  handler_->InitializeInputStateModel();
+}
+
+TEST_F(ContextualTasksComposeboxHandlerTest, GetSelectedTabIds) {
+  int32_t tab_id = 15;
+  base::MockCallback<ContextualSearchboxHandler::AddTabContextCallback>
+      callback;
+  handler_->AddTabContext(tab_id, /*delay_upload=*/true, callback.Get());
+
+  std::vector<int32_t> selected_tab_ids = handler_->GetSelectedTabIds();
+  EXPECT_THAT(selected_tab_ids, testing::Contains(tab_id));
 }
 
 TEST_F(ContextualTasksComposeboxHandlerTest, SubmitQuery_WaitsForUpload) {
@@ -3380,4 +3408,118 @@ TEST_F(ContextualTasksComposeboxHandlerTest,
   // Verify: No context was uploaded, pending uploads are back to 0.
   ASSERT_FALSE(handler_->IsAnyContextUploading());
   ASSERT_FALSE(handler_->HasPendingQueryForTesting());
+}
+
+TEST_F(ContextualTasksComposeboxHandlerTest,
+       SubmitQuery_WaitsForModalityChipUpload) {
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  EXPECT_CALL(*mock_ui_, GetTaskId())
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+
+  // Setup context.
+  contextual_tasks::ContextualTask task(task_id);
+  auto context =
+      std::make_unique<contextual_tasks::ContextualTaskContext>(task);
+  EXPECT_CALL(*mock_contextual_tasks_service_ptr_,
+              GetContextForTask(testing::_, testing::_, testing::_, testing::_))
+      .WillOnce(
+          [&context](
+              const base::Uuid&,
+              const std::set<contextual_tasks::ContextualTaskContextSource>&,
+              std::unique_ptr<contextual_tasks::ContextDecorationParams>,
+              base::OnceCallback<void(
+                  std::unique_ptr<contextual_tasks::ContextualTaskContext>)>
+                  callback) { std::move(callback).Run(std::move(context)); });
+
+  base::UnguessableToken token = base::UnguessableToken::Create();
+
+  // Setup FileInfo representing a server-injected modality chip in kProcessing
+  // status.
+  contextual_search::FileInfo uploading_info{};
+  uploading_info.upload_status =
+      contextual_search::ContextUploadStatus::kProcessing;
+  uploading_info.mime_type = lens::MimeType::kUnknown;
+  auto input_data = std::make_unique<lens::ContextualInputData>();
+  input_data->modality_chip_props.emplace();
+  input_data->modality_chip_props->set_id("test_chip_id");
+  uploading_info.input_data = std::move(input_data);
+
+  EXPECT_CALL(*mock_controller_, GetFileInfo(token))
+      .WillRepeatedly(testing::Return(&uploading_info));
+
+  // Expect no queries are sent immediately because the chip is still uploading.
+  EXPECT_CALL(*mock_ui_, PostMessageToWebview(testing::_)).Times(0);
+
+  // Simulate the status transition to kProcessing, which should register the
+  // modality chip in the handler's pending uploads set.
+  SimulateUploadStatusChanged(
+      token, lens::MimeType::kUnknown,
+      contextual_search::ContextUploadStatus::kProcessing, std::nullopt);
+
+  // Verify the chip is tracked as uploading.
+  ASSERT_TRUE(handler_->IsAnyContextUploading());
+  ASSERT_EQ(handler_->GetNumContextUploading(), 1);
+
+  // Submit query manually. It should be stashed.
+  handler_->SubmitQuery("Test query", 0, false, false, false, false);
+  ASSERT_TRUE(handler_->HasPendingQueryForTesting());
+
+  // Now expect the stashed query to be sent when the chip completes
+  // successfully.
+  EXPECT_CALL(*mock_controller_, CreateClientToAimRequest(testing::_))
+      .WillOnce(testing::Return(lens::ClientToAimMessage()));
+  EXPECT_CALL(*mock_ui_, PostMessageToWebview(testing::_)).Times(1);
+
+  // Simulate transition to kUploadSuccessful.
+  SimulateUploadStatusChanged(
+      token, lens::MimeType::kUnknown,
+      contextual_search::ContextUploadStatus::kUploadSuccessful, std::nullopt);
+
+  // Verify pending uploads are cleared and the query has been sent.
+  ASSERT_FALSE(handler_->IsAnyContextUploading());
+  ASSERT_FALSE(handler_->HasPendingQueryForTesting());
+  ASSERT_EQ(handler_->GetNumContextUploading(), 0);
+}
+
+TEST_F(ContextualTasksComposeboxHandlerTest, MultiFilesSelected) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  base::FilePath file1_path = temp_dir.GetPath().AppendASCII("file1.pdf");
+  base::FilePath file2_path = temp_dir.GetPath().AppendASCII("file2.png");
+
+  std::string file1_content = "dummy pdf content";
+  std::string file2_content = "dummy image content";
+
+  ASSERT_TRUE(base::WriteFile(file1_path, file1_content));
+  ASSERT_TRUE(base::WriteFile(file2_path, file2_content));
+
+  std::vector<ui::SelectedFileInfo> files;
+  files.emplace_back(file1_path, file1_path);
+  files.emplace_back(file2_path, file2_path);
+
+  base::RunLoop run_loop;
+  int file_contexts_added = 0;
+  EXPECT_CALL(mock_searchbox_page_, AddFileContext(testing::_, testing::_))
+      .Times(2)
+      .WillRepeatedly([&](const base::UnguessableToken& token,
+                          searchbox::mojom::SelectedFileInfoPtr file_info) {
+        file_contexts_added++;
+        if (file_info->file_name == "file1.pdf") {
+          EXPECT_EQ(file_info->mime_type, "application/pdf");
+        } else if (file_info->file_name == "file2.png") {
+          EXPECT_EQ(file_info->mime_type, "image/png");
+        }
+        if (file_contexts_added == 2) {
+          run_loop.Quit();
+        }
+      });
+
+  handler_->MultiFilesSelected(files);
+
+  // Wait for ThreadPool tasks to finish processing files.
+  run_loop.Run();
+
+  EXPECT_EQ(handler_->GetNumContextUploading(), 2);
 }

@@ -12,7 +12,6 @@
 
 namespace features {
 
-BASE_FEATURE(kGlicTabRestoration, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicAndroidSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicChromeStatusIcon, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -39,8 +38,6 @@ const base::FeatureParam<std::string> kGlicSelectionTopCueOnlyList{
     &kGlicSelectionPrompt, "top_cue_only_list", ""};
 const base::FeatureParam<int> kGlicSelectionPromptWidgetMaxTotalDismisses{
     &kGlicSelectionPrompt, "max_total_dismisses", 10};
-
-BASE_FEATURE(kGlicDaisyChainViaCoordinator, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicClearTurnIdOnPanelWillOpen,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -135,7 +132,7 @@ BASE_FEATURE(kGlicGetTabFaviconById, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicSkipCookieSyncOnOpen, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicCookieSyncOnTokenChange, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kGlicShareImageViaInvoke, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicShareImageViaInvoke, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicWebClientLoadTimes, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicPreLoadingTimeMs{
@@ -156,6 +153,21 @@ BASE_FEATURE(kGlicOptInImpressionMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Killswitch that controls whether the WebContents visibility state is
 // set to hidden when the Glic panel is warming.
-BASE_FEATURE(kGlicContentsInitiallyHidden, base::FEATURE_ENABLED_BY_DEFAULT);
+// TODO(crbug.com/513620671) Investigate enabling on Windows.
+BASE_FEATURE(kGlicContentsInitiallyHidden,
+#if BUILDFLAG(IS_WIN)
+             base::FEATURE_DISABLED_BY_DEFAULT
+#else
+             base::FEATURE_ENABLED_BY_DEFAULT
+#endif
+);
+
+BASE_FEATURE(kGlicAnchorEntryPointForOnboardedUsers,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Killswitch that controls whether to update the WebContents visibility state
+// when toggling the Glic panel.
+BASE_FEATURE(kGlicSetWebContentsVisibilityWhenToggling,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 }  // namespace features

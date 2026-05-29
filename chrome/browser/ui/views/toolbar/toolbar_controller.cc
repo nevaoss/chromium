@@ -230,7 +230,9 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
           ToolbarController::ElementIdInfo{
               kToolbarForwardButtonElementId,
               IDS_OVERFLOW_MENU_ITEM_TEXT_FORWARD,
-              &vector_icons::kForwardArrowChromeRefreshOldIcon,
+              &(features::IsRoundedIconsEnabled()
+                    ? vector_icons::kArrowForwardIcon
+                    : vector_icons::kForwardArrowChromeRefreshOldIcon),
               kToolbarForwardButtonElementId},
           /*is_section_end=*/false),
       ToolbarController::ResponsiveElementInfo(
@@ -327,8 +329,8 @@ ToolbarController::GetDefaultResponsiveElements(Browser* browser) {
 std::vector<ui::ElementIdentifier>
 ToolbarController::GetDefaultOverflowOrder() {
   return std::vector<ui::ElementIdentifier>(
-      {kToolbarHomeButtonElementId, kToolbarMediaButtonElementId,
-       kToolbarForwardButtonElementId, kToolbarBatterySaverButtonElementId,
+      {kToolbarMediaButtonElementId, kToolbarBatterySaverButtonElementId,
+       kToolbarHomeButtonElementId, kToolbarForwardButtonElementId,
        kToolbarAvatarButtonElementId, kToolbarSplitTabsToolbarButtonElementId,
        ContextualTasksButton::kContextualTasksToolbarButton});
 }
@@ -794,12 +796,7 @@ void ToolbarController::ShowStatusIndicator() {
           action_item->GetProperty(kActionItemUnderlineIndicatorKey)) {
         const ui::ImageModel& pinned_icon_image = action_item->GetImage();
         if (!pinned_icon_image.IsEmpty() && pinned_icon_image.IsVectorIcon()) {
-          ui::VectorIconModel vector_icon_model =
-              pinned_icon_image.GetVectorIcon();
-
-          menu_item->icon_view()->SetImage(ui::ImageModel::FromVectorIcon(
-              *vector_icon_model.vector_icon(), kColorToolbarActionItemEngaged,
-              ui::SimpleMenuModel::kDefaultIconSize));
+          menu_item->SetIconColor(kColorToolbarActionItemEngaged);
         }
         status_indicator->Show();
       }
@@ -847,21 +844,13 @@ void ToolbarController::ActionItemChanged(actions::ActionItem* action_item) {
   if (action_item->GetProperty(kActionItemUnderlineIndicatorKey)) {
     const ui::ImageModel& pinned_icon_image = action_item->GetImage();
     if (!pinned_icon_image.IsEmpty() && pinned_icon_image.IsVectorIcon()) {
-      ui::VectorIconModel vector_icon_model = pinned_icon_image.GetVectorIcon();
-
-      menu_item->icon_view()->SetImage(ui::ImageModel::FromVectorIcon(
-          *vector_icon_model.vector_icon(), kColorToolbarActionItemEngaged,
-          ui::SimpleMenuModel::kDefaultIconSize));
+      menu_item->SetIconColor(kColorToolbarActionItemEngaged);
     }
     status_indicator->Show();
   } else {
     const ui::ImageModel& pinned_icon_image = action_item->GetImage();
     if (!pinned_icon_image.IsEmpty() && pinned_icon_image.IsVectorIcon()) {
-      ui::VectorIconModel vector_icon_model = pinned_icon_image.GetVectorIcon();
-
-      menu_item->icon_view()->SetImage(ui::ImageModel::FromVectorIcon(
-          *vector_icon_model.vector_icon(), vector_icon_model.color(),
-          ui::SimpleMenuModel::kDefaultIconSize));
+      menu_item->SetIconColor(std::nullopt);
     }
     status_indicator->Hide();
   }

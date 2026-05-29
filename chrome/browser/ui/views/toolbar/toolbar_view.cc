@@ -783,11 +783,11 @@ void ToolbarView::OnGlicButtonClicked() {
   glic::mojom::InvocationSource source;
   if (button_controller_) {
     source = button_controller_->GetInvocationSource(
-        glic_button_->GetIsShowingNudge());
+        glic_button_->GetIsShowingNudge(), /*is_toolbar=*/true);
   } else {
     source = glic_button_->GetIsShowingNudge()
                  ? glic::mojom::InvocationSource::kNudge
-                 : glic::mojom::InvocationSource::kTopChromeButton;
+                 : glic::mojom::InvocationSource::kToolbarButton;
   }
 
   glic::GlicKeyedServiceFactory::GetGlicKeyedService(
@@ -1539,6 +1539,15 @@ void ToolbarView::InitLayout() {
         views::kMarginsKey,
         gfx::Insets::VH(
             0, GetLayoutConstant(LayoutConstant::kToolbarDividerSpacing)));
+  }
+
+  if (glic_button_ &&
+      base::FeatureList::IsEnabled(features::kToolbarGlicButtonResizing)) {
+    glic_button_->SetProperty(
+        views::kFlexBehaviorKey,
+        views::FlexSpecification(
+            views::MinimumFlexSizeRule::kPreferredSnapToMinimum,
+            views::MaximumFlexSizeRule::kPreferred));
   }
 
   if (app_menu_button_ &&

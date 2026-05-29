@@ -21,6 +21,7 @@
 #import "components/lens/lens_features.h"
 #import "ios/chrome/browser/composebox/public/composebox_attachment_option.h"
 #import "ios/chrome/browser/composebox/public/composebox_constants.h"
+#import "ios/chrome/browser/composebox/public/composebox_input_item_source.h"
 #import "ios/chrome/browser/composebox/public/composebox_input_plate_controls.h"
 #import "ios/chrome/browser/composebox/public/composebox_model_option.h"
 #import "ios/chrome/browser/composebox/public/composebox_theme.h"
@@ -379,17 +380,13 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
           : kOmniboxMinHeight;
   _editView.accessibilityIdentifier = kComposeboxAccessibilityIdentifier;
   [_omniboxContainer addSubview:_editView];
-  NSLayoutConstraint* leadingConstraint = [_editView.leadingAnchor
-      constraintEqualToAnchor:_omniboxContainer.layoutMarginsGuide
-                                  .leadingAnchor];
-  leadingConstraint.priority = UILayoutPriorityDefaultHigh;
-  NSLayoutConstraint* trailingConstraint = [_editView.trailingAnchor
-      constraintEqualToAnchor:_omniboxContainer.layoutMarginsGuide
-                                  .trailingAnchor];
-  trailingConstraint.priority = UILayoutPriorityDefaultHigh;
   [NSLayoutConstraint activateConstraints:@[
-    leadingConstraint,
-    trailingConstraint,
+    [_editView.leadingAnchor
+        constraintEqualToAnchor:_omniboxContainer.layoutMarginsGuide
+                                    .leadingAnchor],
+    [_editView.trailingAnchor
+        constraintEqualToAnchor:_omniboxContainer.layoutMarginsGuide
+                                    .trailingAnchor],
   ]];
   AddSameConstraintsToSides(_editView, _omniboxContainer,
                             LayoutSides::kTop | LayoutSides::kBottom);
@@ -629,23 +626,32 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 
 - (void)aimButtonTapped {
   [self.delegate
-      composeboxViewControllerDidTapAIMButton:self
-                             activationSource:AiModeActivationSource::
-                                                  kDedicatedButton];
+      composeboxViewController:self
+                    didTapTool:ComposeboxMode::kAIM
+              activationSource:AiModeActivationSource::kDedicatedButton];
 }
 
 - (void)imageGenerationButtonTapped {
-  [self.delegate composeboxViewControllerDidTapImageGenerationButton:self];
+  [self.delegate
+      composeboxViewController:self
+                    didTapTool:ComposeboxMode::kImageGeneration
+              activationSource:AiModeActivationSource::kDedicatedButton];
 }
 
 // Called when the canvas button in the input plate is tapped.
 - (void)canvasButtonTapped {
-  [self.delegate composeboxViewControllerDidTapCanvasButton:self];
+  [self.delegate
+      composeboxViewController:self
+                    didTapTool:ComposeboxMode::kCanvas
+              activationSource:AiModeActivationSource::kDedicatedButton];
 }
 
 // Called when the deep search button in the input plate is tapped.
 - (void)deepSearchButtonTapped {
-  [self.delegate composeboxViewControllerDidTapDeepSearchButton:self];
+  [self.delegate
+      composeboxViewController:self
+                    didTapTool:ComposeboxMode::kDeepSearch
+              activationSource:AiModeActivationSource::kDedicatedButton];
 }
 
 // Called when the Ask about this page button in the input plate is tapped.
@@ -672,7 +678,8 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
     visibleButtons.push_back(FuseboxAttachmentButtonType::kFiles);
   }
   [self.delegate composeboxViewController:self
-      didOpenPlusMenuWithVisibleInternalButtons:visibleButtons];
+      didOpenPlusMenuWithVisibleInternalButtons:visibleButtons
+                                   uiInputState:_state];
 }
 
 - (void)micButtonTapped {
@@ -682,7 +689,6 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
 - (void)plusButtonTapped {
   [self.delegate composeboxViewControllerDidTapPlusButton:self
                                          withUIInputState:_state];
-  [self plusButtonDidOpenMenu];
 }
 
 - (void)visualSearchButtonTapped {
@@ -839,32 +845,36 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   [self.delegate composeboxViewControllerDidTapAttachTabsButton:self];
 }
 
-/// Notifies the delegate to handle AIM tapped from the tool menu.
 - (void)handleAIMTappedFromToolMenu {
-  [self.delegate composeboxViewControllerDidTapAIMButton:self
-                                        activationSource:
-                                            AiModeActivationSource::kToolMenu];
+  [self.delegate composeboxViewController:self
+                               didTapTool:ComposeboxMode::kAIM
+                         activationSource:AiModeActivationSource::kToolMenu];
 }
 
 /// Notifies the delegate to handle canvas button tapped from the tool menu.
 - (void)handleImageGenTappedFromToolMenu {
-  [self.delegate composeboxViewControllerDidTapImageGenerationButton:self];
+  [self.delegate composeboxViewController:self
+                               didTapTool:ComposeboxMode::kImageGeneration
+                         activationSource:AiModeActivationSource::kToolMenu];
 }
 
 /// Notifies the delegate to handle canvas tapped from the tool menu.
 - (void)handleCanvasTappedFromToolMenu {
-  [self.delegate composeboxViewControllerDidTapCanvasButton:self];
+  [self.delegate composeboxViewController:self
+                               didTapTool:ComposeboxMode::kCanvas
+                         activationSource:AiModeActivationSource::kToolMenu];
 }
 
 /// Notifies the delegate to handle deep search tapped from the tool menu.
 - (void)handleDeepSearchTappedFromToolMenu {
-  [self.delegate composeboxViewControllerDidTapDeepSearchButton:self];
+  [self.delegate composeboxViewController:self
+                               didTapTool:ComposeboxMode::kDeepSearch
+                         activationSource:AiModeActivationSource::kToolMenu];
 }
-
-/// Notifies the mutator to handle the selection of a new model option.
+/// Notifies the delegate to handle the selection of a new model option.
 - (void)handleModelChangeFromToolsMenuWithOption:
     (ComposeboxModelOption)modelOption {
-  [self.mutator setModelOption:modelOption explicitUserAction:YES];
+  [self.delegate composeboxViewController:self didSelectModel:modelOption];
 }
 
 /// Updates the visibility of the leading/trailing fade views for the carousel.
@@ -2134,8 +2144,10 @@ UIImage* SendButtonImage(BOOL highlighted, ComposeboxTheme* theme) {
   CHECK(
       [itemProvider hasItemConformingToTypeIdentifier:UTTypeImage.identifier]);
 
-  [self.mutator processImageItemProvider:itemProvider
-                                 assetID:[NSUUID UUID].UUIDString];
+  [self.mutator
+      processImageItemProvider:itemProvider
+                       assetID:[NSUUID UUID].UUIDString
+                        source:ComposeboxInputItemSource::kDragAndDrop];
 }
 
 /// Performs a drop for a dragged file from a given `itemProvider`.

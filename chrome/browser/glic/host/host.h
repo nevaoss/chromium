@@ -22,6 +22,7 @@
 #include "chrome/common/actor/task_id.h"
 #include "components/autofill/core/browser/integrators/actor/actor_form_filling_types.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/visibility.h"
 
 class Profile;
 namespace content {
@@ -118,6 +119,8 @@ class Host : public GlicSharingManagerProvider {
     virtual GlicInstanceMetrics& instance_metrics() = 0;
     virtual GlicInstanceMetricsBackwardsCompatibility&
     instance_metrics_backwards_compatibility() = 0;
+
+    virtual GlicSkillsManager& skills_manager() = 0;
 
     virtual bool IsActive() = 0;
 
@@ -248,6 +251,9 @@ class Host : public GlicSharingManagerProvider {
   WebUIContentsContainer* contents_container() { return contents_.get(); }
   // Returns the WebUI web contents. May be null.
   content::WebContents* webui_contents() const;
+
+  // Sets the visibility of the WebUI web contents.
+  void SetWebContentsVisibility(content::Visibility visibility);
 
   // Returns the WebClient web contents. May be null.
   content::WebContents* web_client_contents() const;
@@ -471,9 +477,6 @@ class Host : public GlicSharingManagerProvider {
   std::optional<PageHandlerInfo> handler_info_;
 
   raw_ptr<GlicSharingManagerProvider> sharing_manager_provider_;
-
-  // Responsible for skill update logic.
-  std::unique_ptr<GlicSkillsManager> skills_manager_;
 
   mojom::MicrophoneStatus microphone_status_ =
       mojom::MicrophoneStatus::kUnknown;

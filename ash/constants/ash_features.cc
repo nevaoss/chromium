@@ -1586,8 +1586,6 @@ BASE_FEATURE(kProjectorUseDVSPlaybackEndpoint,
 // Controls whether the quick dim prototype is enabled.
 BASE_FEATURE(kQuickDim, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kQuickAppAccessTestUI, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables or disables fingerprint quick unlock.
 // Note, that this feature is set from session manager via
 // command-line flag.
@@ -2814,10 +2812,6 @@ bool IsLauncherContinueSectionWithRecentsEnabled() {
   return base::FeatureList::IsEnabled(kLauncherContinueSectionWithRecents) ||
          base::FeatureList::IsEnabled(
              kLauncherContinueSectionWithRecentsRollout);
-}
-
-bool IsLauncherNudgeShortIntervalEnabled() {
-  return base::FeatureList::IsEnabled(kLauncherNudgeShortInterval);
 }
 
 bool IsLinkCrossDeviceDogfoodFeedbackEnabled() {

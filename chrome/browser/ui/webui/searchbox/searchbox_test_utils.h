@@ -103,6 +103,10 @@ class MockSearchboxPage : public searchbox::mojom::Page {
               OnEmbeddedPermissionPromptChanged,
               (bool, const gfx::Size&),
               (override));
+  MOCK_METHOD(void,
+              SetRestoredTabIds,
+              (const std::vector<int32_t>& ids),
+              (override));
 };
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -116,6 +120,7 @@ class MockOmniboxPopupPage : public omnibox_popup::mojom::Page {
   void FlushForTesting() { receiver_.FlushForTesting(); }
 
   MOCK_METHOD(void, OnShow, (), (override));
+  MOCK_METHOD(void, OnContextMenuClosed, (), (override));
 };
 #endif
 

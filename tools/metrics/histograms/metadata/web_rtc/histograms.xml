@@ -1601,6 +1601,18 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="WebRTC.PeerConnection.NegotiatedSctpSnap" enum="Boolean"
+    expires_after="2027-05-30">
+  <owner>boivie@google.com</owner>
+  <owner>philipp.hancke@googlemail.com</owner>
+  <owner>webrtc-dev@chromium.org</owner>
+  <summary>
+    Measures whether SCTP SNAP (SCTP Negotiation Acceleration Protocol) was
+    negotiated for the data channel transport. Recorded during the first DTLS
+    connection establishment.
+  </summary>
+</histogram>
+
 <histogram name="WebRTC.PeerConnection.ProvisionalAnswer"
     enum="PeerConnectionProvisionalAnswer" expires_after="2024-06-30">
   <owner>hta@chromium.org</owner>
@@ -1672,6 +1684,18 @@ chromium-metrics-reviews@google.com.
 
     Warning: This histogram was expired from 2024-12-01 to 2026-03-06. Data may
     be missing.
+  </summary>
+</histogram>
+
+<histogram name="WebRTC.PeerConnection.RtpHeaderExtensionRedefinition"
+    enum="Boolean" expires_after="2027-05-20">
+  <owner>hta@chromium.org</owner>
+  <owner>webrtc-dev@chromium.org</owner>
+  <summary>
+    Records whether an RTP header extension is redefined in a PeerConnection.
+    Redefinition happens when the same extension URI is assigned to different
+    IDs, or the same ID is assigned to different URIs, within the same session.
+    Logged when such a redefinition is detected during SDP negotiation.
   </summary>
 </histogram>
 

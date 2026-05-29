@@ -29,50 +29,50 @@ import "url/mojom/url.mojom";
 
 // Struct containing data about eligibility for GLIC.
 struct ProfileEnablement {
-  // Whether the GLIC feature is disabled.
-  bool feature_disabled;
+  // Whether the GLIC feature is enabled.
+  bool feature_enabled;
 
-  // Whether the profile is not regular (e.g. incognito)
-  bool not_regular_profile;
+  // Whether the profile is regular (e.g. not incognito)
+  bool is_regular_profile;
 
-  // Whether the profile is not rolled out. Rollout can happen by the
+  // Whether Glic is rolled out to the profile. Rollout can be enabled by the
   // `GlicRollout` flag, or by the `GlicTieredRollout` flag and synced pref.
-  bool not_rolled_out;
+  bool is_rolled_out;
 
-  // Whether a primary account doesn't exist or is not capable, by failing to
-  // have the can_use_model_execution_features accountcapability.
-  bool primary_account_not_capable;
+  // Whether a primary account exists and is capable, by having the
+  // can_use_model_execution_features accountcapability.
+  bool primary_account_is_capable;
 
-  // Whether the primary account is fully signed in (if it exists).
-  bool primary_account_not_fully_signed_in;
+  // Whether the primary account exists and is fully signed in.
+  bool primary_account_is_fully_signed_in;
 
-  // Whether the profile is disallowed by chrome policy.
-  bool disallowed_by_chrome_policy;
+  // Whether the profile is allowed to use Glic by chrome policy.
+  bool allowed_by_chrome_policy;
 
-  // Whether the profile is disallowed by remote admin.
-  bool disallowed_by_remote_admin;
+  // Whether the profile is allowed to use Glic by remote admin.
+  bool allowed_by_remote_admin;
 
-  // Whether the profile is disallowed by remote for other reasons.
-  bool disallowed_by_remote_other;
+  // Whether the profile is allowed to use Glic by remote for other reasons.
+  bool allowed_by_remote_other;
 
-  // Whether the user has passed the FRE.
-  bool not_consented;
+  // Whether the user has consented with the FRE.
+  bool fre_is_consented;
 
-  // Whether disallowed by country filtering.
-  bool disallowed_by_country_filter;
+  // Whether Glic access is allowed by country filtering.
+  bool allowed_by_country_filter;
 
-  // Whether disallowed by locale filtering.
-  bool disallowed_by_locale_filter;
+  // Whether Glic access is allowed by UI locale filtering.
+  bool allowed_by_locale_filter;
 
   // Whether the user has consented to actuation.
-  bool actuation_not_consented;
+  bool actuation_is_consented;
 
-  // Whether live (audio) functionality is disallowed for this account type.
-  bool live_disallowed;
+  // Whether live (audio) functionality is allowed for this account type.
+  bool live_allowed;
 
-  // Whether 'Create Image with Gemini' functionality is disallowed for this
+  // Whether 'Create Image with Gemini' functionality is allowed for this
   // account type.
-  bool share_image_disallowed;
+  bool share_image_allowed;
 
   // Summary of whether actuation is enabled, and if not, why not.
   ActuationEligibility actuation_eligibility;
@@ -119,6 +119,10 @@ enum ProfileReadyState {
   kIneligible,
   // Similar to kIneligible, but the admin has explicitly disabled Glic.
   kDisabledByAdmin,
+  // Potentially actionable state for travel or VPN region mismatch.
+  kLocationMismatch,
+  // Potentially actionable state for account capability/age restrictions.
+  kIneligibleAccount,
 };
 
 // Directions for adjusting the zoom level of the WebUI page's hosted webview.
@@ -210,6 +214,10 @@ enum WebUiState {
   kDisabledByAdmin = 12,
   // Created for background warming, not yet displayed or fully initialized.
   kWarmed = 13,
+  // Glic is unavailable due to country location mismatch.
+  kLocationMismatch = 14,
+  // Glic is unavailable due to account capabilities.
+  kIneligibleAccount = 15,
 };
 
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:WebUiState)
@@ -273,6 +281,11 @@ struct ZssConfig {
   string? additional_content;
 };
 
+enum HelpCenterTopic {
+  kLocationMismatch,
+  kIneligibleAccount,
+};
+
 // Page handler for the glic WebUI.
 interface PageHandler {
   // Creates a WebClientHandler, for use by a single web client instance.
@@ -293,6 +306,9 @@ interface PageHandler {
 
   // Closes the Glic panel.
   ClosePanel() => ();
+
+  // Opens a help center topic and closes the Glic panel.
+  OpenHelpCenterTopicAndClosePanel(HelpCenterTopic topic);
 
   // Opens the profile picker, and closes the Glic panel.
   OpenProfilePickerAndClosePanel();
@@ -1653,6 +1669,8 @@ enum InvocationSource {
   [MinVersion=20] kPasswordChange = 29,
   // From an Autofill action.
   [MinVersion=21] kAutofill = 30,
+  // Button in the toolbar.
+  [MinVersion=22] kToolbarButton = 31,
 };
 
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInvocationSource, //chrome/browser/glic/service/metrics/metrics_types.h:ResponseSegmentation)

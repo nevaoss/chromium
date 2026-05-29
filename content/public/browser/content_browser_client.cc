@@ -434,6 +434,12 @@ bool ContentBrowserClient::IsMultiCaptureAllowed(
   return false;
 }
 
+content::WebContents*
+ContentBrowserClient::GetWebContentsFromWindowIfCaptureHandleAllowed(
+    gfx::NativeWindow window) {
+  return nullptr;
+}
+
 size_t ContentBrowserClient::GetMaxRendererProcessCountOverride() {
   return 0u;
 }
@@ -1095,6 +1101,11 @@ ContentBrowserClient::GetWindowsSecurityAttributeName() const {
   // Embedders should override this method and return the name of the security
   // attribute previously assigned to the browser's process token.
   return std::nullopt;
+}
+
+std::vector<uintptr_t> ContentBrowserClient::GetAslrBeaconAddresses(
+    sandbox::mojom::Sandbox sandbox_type) {
+  return {};
 }
 
 #endif  // BUILDFLAG(IS_WIN)
@@ -1813,6 +1824,12 @@ bool ContentBrowserClient::IsCrossOriginSubframeAllowedToShowFilePicker(
     RenderFrameHost* render_frame_host,
     const url::Origin& requesting_origin) {
   return false;
+}
+
+std::optional<network::ParsedPermissionsPolicy>
+ContentBrowserClient::GetContainerPolicyOverrideForCommit(
+    NavigationHandle& navigation_handle) {
+  return std::nullopt;
 }
 
 bool ContentBrowserClient::ShouldSkipBeforeUnloadDialog(

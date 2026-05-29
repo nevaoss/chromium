@@ -444,6 +444,7 @@
 <translation id="2496626742194544812">첫 번째 탭으로 이동</translation>
 <translation id="2499505845365628575"><ph name="HISTORY_BUTTON_ACCESSIBILITY_LABEL" />에서 모든 방문 기록을 확인할 수 있습니다.</translation>
 <translation id="2511117522375201202">유출된 비밀번호가 <ph name="NUMBER_OF_PASSWORDS" />개 있어서 보안을 위협할 수 있습니다.</translation>
+<translation id="2512709994717613803">레벨 <ph name="LEVEL_NUMBER" /></translation>
 <translation id="2513103768503127042">여기에서 탭 그룹을 확인할 수 있습니다</translation>
 <translation id="251837347827266434">로그아웃되고, 탭이 닫히며, 인터넷 사용 기록이 삭제됩니다</translation>
 <translation id="2520787026086861736">사용 중지하려면 <ph name="BEGIN_LINK" />자동 완성 및 비밀번호<ph name="END_LINK" />로 이동하세요.</translation>
@@ -1090,6 +1091,7 @@
 <translation id="4840495572919996524">북마크, 방문 기록, 비밀번호 등이 더 이상 Google 계정과 동기화되지 않습니다.</translation>
 <translation id="484280513275854557">로그아웃되고 인터넷 사용 기록이 삭제되었습니다</translation>
 <translation id="484462545196658690">자동</translation>
+<translation id="4846662396507502151">새로운 툴바를 사용해 더 빠르게 탐색하세요.</translation>
 <translation id="4850886885716139402">보기</translation>
 <translation id="4854068532375923088">'Gemini'가 카메라를 사용하도록 허용</translation>
 <translation id="4860895144060829044">전화걸기</translation>
@@ -1428,6 +1430,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="5988097621740394599">탭에서 가격 인하 정보를 확인합니다.</translation>
 <translation id="5988851877894965432">Chrome에서 URL 열기</translation>
 <translation id="599343768974649785">선정적인 텍스트</translation>
+<translation id="6004988584831654445">설정을 완료했습니다. 새로운 작업이 도착하면 알림을 받습니다.</translation>
 <translation id="6006672969046233841">새 탭</translation>
 <translation id="6011308810877101166">추천 검색어 개선</translation>
 <translation id="6012140227487808125">암호화하는 중...</translation>
@@ -1659,6 +1662,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="6685259053455152195">설정을 빠르게 수정하고 주소 표시줄의 기능을 사용하는 바로가기입니다</translation>
 <translation id="6689342293888598653">흰색 배경 색상</translation>
 <translation id="6689685206615181381">시크릿 모드만 사용 가능</translation>
+<translation id="6705491067826837934">필요한 곳에 위치한 제어 기능</translation>
 <translation id="6708501134077648845">비밀번호 옵션</translation>
 <translation id="6709964700841491574">잠금 모드</translation>
 <translation id="6710079714193676716">조직에서 관리합니다. 일부 기능은 제공되지 않을 수 있습니다. <ph name="BEGIN_LINK" />자세히 알아보기<ph name="END_LINK" /></translation>
@@ -1719,6 +1723,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="6903282483217634857">오른쪽으로 이동</translation>
 <translation id="6903907808598579934">동기화 사용 설정</translation>
 <translation id="6906448540340261898">Google 계정의 비밀번호를 언제든지 사용할 수 있도록 설정하세요.</translation>
+<translation id="6906978870282539723">탭 및 작업 관련 도움을 받으세요.</translation>
 <translation id="6908734251759299256">브라우저 업데이트</translation>
 <translation id="6913136913033237761"><ph name="FOLDER_NAME" />, 이 기기에서만 표시</translation>
 <translation id="6914583639806229067">복사한 이미지 검색</translation>
@@ -1814,6 +1819,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="7293429513719260019">언어 선택</translation>
 <translation id="7300448350764260141">온라인 위협으로부터 보호하는 기능을 더욱 강화하세요</translation>
 <translation id="7311244614769792472">검색 결과 없음</translation>
+<translation id="7312823817809783355">내 작업</translation>
 <translation id="7313347584264171202">여기에서 시크릿 탭을 확인할 수 있습니다</translation>
 <translation id="7322186060879266048">{count,plural, =1{키보드 위에 자동 완성 옵션 {count}개가 있습니다.}other{키보드 위에 자동 완성 옵션 {count}개가 있습니다.}}</translation>
 <translation id="7328162502911382168">(<ph name="COUNT" />명)</translation>
@@ -1821,6 +1827,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="7345061034321640811">가져오기가 허용되지 않습니다</translation>
 <translation id="7347998088283246662">비밀번호, 방문 기록, 북마크 등을 가져오세요.</translation>
 <translation id="7352651011704765696">문제가 발생했습니다</translation>
+<translation id="7357999308187750900">모두 보기</translation>
 <translation id="7364796246159120393">파일 선택</translation>
 <translation id="736564850024123010">주소 표시줄 위치를 전환하여 맞춤 환경을 이용하세요</translation>
 <translation id="7366909168761621528">인터넷 사용 기록</translation>
@@ -2079,6 +2086,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="8182037667962849780">{count,plural, =1{{website_1}}=2{{website_2}, {website_1}}=3{{website_1}, {website_2} 외 1개}other{{website_1}, {website_2} 외 {more_count}개}}</translation>
 <translation id="8184895727539791845">Gemini가 카메라를 사용할 수 있도록 iOS 설정에서 카메라를 켜세요.</translation>
 <translation id="8185076488803799132">가져오기</translation>
+<translation id="8187200657863701733">현재 Chrome 레벨</translation>
 <translation id="8189615296021678665">'저장'을 탭하여 다음에 로그인할 때 이 비밀번호에 쉽게 액세스할 수 있도록 합니다.</translation>
 <translation id="8193953846147532858"><ph name="BEGIN_LINK" />내 기기<ph name="END_LINK" /> · <ph name="EMAIL" /></translation>
 <translation id="8195191503358432289">비밀번호 추가</translation>
@@ -2122,6 +2130,7 @@ Handoff는 설정의 일반 섹션에서도 사용 설정할 수 있으며, 이�
 <translation id="8325455175867928593">'관심분야를 기반으로 한 리뷰' 숨기기</translation>
 <translation id="833647236762414178">사이트와 앱에 쉽게 로그인할 수 있도록 비밀번호와 패스키를 만들고, 저장하고, 관리하세요. <ph name="BEGIN_LINK" />자세히 알아보기<ph name="END_LINK" /></translation>
 <translation id="8343993175958086504">콘텐츠를 백업하고 어느 기기에서나 사용하세요</translation>
+<translation id="8345328955902001853">{count,plural, =1{레벨을 올리려면 작업을 1개 더 완료하세요.}other{레벨을 올리려면 작업을 {count}개 더 완료하세요.}}</translation>
 <translation id="8348530355586151720">점 3개 메뉴를 탭합니다.</translation>
 <translation id="8349305172487531364">북마크바</translation>
 <translation id="8361189290032177785">{count,plural, =1{북마크 {count}개 가져옴}other{북마크 {count}개 가져옴}}</translation>

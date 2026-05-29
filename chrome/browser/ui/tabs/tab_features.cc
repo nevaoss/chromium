@@ -16,6 +16,7 @@
 #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/browsing_topics/browsing_topics_service_factory.h"
+#include "chrome/browser/commerce/in_stock_notification/in_stock_notification_manager.h"
 #include "chrome/browser/commerce/shopping_service_factory.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
@@ -84,7 +85,6 @@
 #include "chrome/browser/ui/views/bookmarks/bookmark_page_action_controller.h"
 #include "chrome/browser/ui/views/commerce/discounts_page_action_view_controller.h"
 #include "chrome/browser/ui/views/commerce/price_insights_page_action_view_controller.h"
-#include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_page_action_controller.h"
 #include "chrome/browser/ui/views/file_system_access/file_system_access_page_action_controller.h"
 #include "chrome/browser/ui/views/intent_picker/intent_picker_view_page_action_controller.h"
 #include "chrome/browser/ui/views/js_optimization/js_optimizations_page_action_controller.h"
@@ -126,11 +126,13 @@
 #include "chrome/browser/skills/skills_ui_tab_controller.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/tabs/features.h"
+#include "chrome/browser/ui/tabs/tab_attachment_tracker.h"
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/chrome_features.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/browsing_topics/browsing_topics_service.h"
+#include "components/commerce/core/commerce_feature_list.h"
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/image_fetcher/core/image_fetcher_service.h"
 #include "components/passage_embeddings/core/passage_embeddings_features.h"
@@ -257,14 +259,6 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
                   tab, tab, *profile, *page_action_controller_);
     }
 
-    if (base::FeatureList::IsEnabled(contextual_tasks::kContextualTasks) &&
-        (contextual_tasks::kShowEntryPoint.Get() ==
-         contextual_tasks::EntryPointOption::kPageActionRevisit)) {
-      contextual_tasks_page_action_controller_ =
-          GetUserDataFactory()
-              .CreateInstance<ContextualTasksPageActionController>(tab, &tab);
-    }
-
     if (IsPageActionMigrated(PageActionIconType::kBookmarkStar) &&
         tab.GetBrowserWindowInterface()->GetType() ==
             BrowserWindowInterface::TYPE_NORMAL) {
@@ -357,6 +351,13 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
               .CreateInstance<CollaborationMessagingPageActionController>(
                   tab, tab, *page_action_controller_,
                   *collaboration_messaging_tab_data_);
+    }
+
+    if (base::FeatureList::IsEnabled(commerce::kInStockNotification) &&
+        !profile->IsIncognitoProfile()) {
+      in_stock_notification_manager_ =
+          GetUserDataFactory()
+              .CreateInstance<commerce::InStockNotificationManager>(tab, &tab);
     }
 
     if (glic::GlicEnabling::IsProfileEligible(profile)) {
@@ -491,6 +492,9 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
   tab_creation_metrics_controller_ =
       std::make_unique<TabCreationMetricsController>(&tab);
+
+  tab_attachment_tracker_ =
+      GetUserDataFactory().CreateInstance<TabAttachmentTracker>(tab, &tab);
 
   tab_ui_helper_ = GetUserDataFactory().CreateInstance<TabUIHelper>(tab, tab);
 

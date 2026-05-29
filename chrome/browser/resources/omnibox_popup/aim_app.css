@@ -144,6 +144,10 @@
   transition-duration: var(--on-press-duration);
 }
 
+#composebox::part(input) {
+  min-height: 44px;
+}
+
 #composebox::part(voice-stop-button) {
   background-color: var(--color-sys-neutral-container);
   --cr-icon-button-fill-color: var(--color-sys-on-surface);
@@ -157,12 +161,21 @@
   height: 40px;
 }
 
-cr-composebox[searchbox-layout-mode='TallBottomContext']::part(submit) {
+#composebox[searchbox-layout-mode='TallBottomContext']::part(submit) {
   bottom: 10px;
 }
 
-:host([energy-effect-enabled_]) cr-composebox[searchbox-layout-mode='TallBottomContext']::part(submit) {
+:host([energy-effect-enabled_])
+    #composebox[searchbox-layout-mode='TallBottomContext']::part(submit) {
   inset-inline-end: 8px;
+}
+
+/* Only set min height/width if it exists;
+ * otherwise use existing min height/width.
+ */
+#composebox.has-embedded-permission-prompt::part(composebox) {
+  min-height: var(--cr_composebox_minimum_height);
+  min-width: var(--cr_composebox_minimum_width);
 }
 
 #composebox::part(voice-icon) {
@@ -179,11 +192,12 @@ cr-composebox[searchbox-layout-mode='TallBottomContext']::part(submit) {
   inset-inline-end: 14px;
 }
 
-cr-composebox[submit-enabled][searchbox-layout-mode='TallBottomContext']:not([show-dropdown])::part(submit) {
+#composebox[submit-enabled][searchbox-layout-mode='TallBottomContext']:not([show-dropdown])::part(submit) {
   bottom: 6px;
 }
 
-:host([energy-effect-enabled_]) cr-composebox[submit-enabled][searchbox-layout-mode='TallBottomContext']:not([show-dropdown])::part(submit) {
+:host([energy-effect-enabled_])
+    #composebox[submit-enabled][searchbox-layout-mode='TallBottomContext']:not([show-dropdown])::part(submit) {
   bottom: 10px;
   inset-inline-end: 8px;
 }

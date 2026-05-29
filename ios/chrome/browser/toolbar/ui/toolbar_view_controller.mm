@@ -392,11 +392,16 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
 
 #pragma mark - ToolbarConsumer
 
+- (void)setAssistantButtonVisible:(BOOL)visible enabled:(BOOL)enabled {
+  _assistantButton.forceHidden = !visible;
+  _assistantButton.enabled = enabled;
+}
+
 - (void)setCanGoBack:(BOOL)canGoBack {
   _backButton.enabled = canGoBack;
 }
 
-- (void)setCanGoForward:(BOOL)canGoForward {
+- (void)setCanGoForward:(BOOL)canGoForward animated:(BOOL)animated {
   if (_forwardButton.enabled == canGoForward) {
     return;
   }
@@ -405,8 +410,17 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
     _forwardButton.enabled = YES;
   }
 
-  // `_navigationButtonsContainer` is resized by sliding over its right edge to
-  // reveal or hide the `_forwardButton`.
+  // If no animation is requested, snap instantly.
+  if (!animated) {
+    _forwardButton.hidden = !canGoForward;
+    if (!canGoForward) {
+      _forwardButton.enabled = NO;
+    }
+    [self.view layoutIfNeeded];
+    return;
+  }
+
+  // Otherwise, do the smooth fade.
   __weak __typeof(self) weakSelf = self;
   ToolbarButton* forwardButton = _forwardButton;
   [UIView animateWithDuration:kAnimationDuration
@@ -471,8 +485,6 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
   }
   _NTPVisible = NTPVisible;
   [self updateToolbarVisibility];
-  /// TODO(crbug.com/508170459): The location bar should be initially hidden on
-  /// the NTP, until the fakebox is swiped up out of view.
 }
 
 - (void)updateTabCount:(NSUInteger)tabCount {
@@ -1373,8 +1385,7 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
 
 // Handles assistant button tap.
 - (void)assistantButtonTapped {
-  /// TODO(crbug.com/493956100): Implement this button (iPad).
-  NOTIMPLEMENTED();
+  [self.mutator assistantButtonTapped];
 }
 
 // Handles tools menu button tap.
@@ -1395,8 +1406,6 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
 
 // Updates the visibility of the toolbar.
 - (void)updateToolbarVisibility {
-  /// TODO(crbug.com/508170459): Allow the toolbar to be unhidden in split
-  /// toolbar mode.
   BOOL hideToolbar;
   BOOL alwaysShowToolbar = CanShowTabStrip(self) && _topPosition;
   if (alwaysShowToolbar) {
@@ -1404,7 +1413,7 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
     hideToolbar = NO;
   } else {
     hideToolbar = _NTPVisible && !_incognito && !CanShowTabStrip(self) &&
-                  (_NTPScrollProgress == 0.0 || IsSplitToolbarMode(self));
+                  _NTPScrollProgress == 0.0;
   }
 
   BOOL visibilityChanged = hideToolbar != self.view.isHidden;
@@ -1426,6 +1435,9 @@ constexpr CGFloat kOuterSeparatorVerticalOffset = 4;
     _locationBarContainer.transform = CGAffineTransformIdentity;
     _locationBarContainer.alpha = 1.0;
     self.view.alpha = 1.0;
+    if (_fakeOmniboxTarget) {
+      _fakeOmniboxTarget.hidden = YES;
+    }
   }
 
   [self.toolbarHeightDelegate toolbarsHeightChanged];

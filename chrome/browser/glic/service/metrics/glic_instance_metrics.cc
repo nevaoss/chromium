@@ -187,8 +187,8 @@ void GlicInstanceMetrics::OnPolylinePointsChanged(
 }
 
 void GlicInstanceMetrics::OnPinnedTabsChanged(
-    const std::vector<content::WebContents*>& pinned_contents) {
-  pinned_tab_count_ = pinned_contents.size();
+    const std::vector<tabs::TabInterface*>& pinned_tabs) {
+  pinned_tab_count_ = pinned_tabs.size();
   session_manager_.SetPinnedTabCount(pinned_tab_count_);
 }
 
@@ -788,6 +788,11 @@ void GlicInstanceMetrics::OnWebUiStateChanged(mojom::WebUiState state) {
           "Glic.Instance.WebUiStateChanged.Unavailable"));
       LogEvent(GlicInstanceEvent::kWebUiStateUnavailable);
       break;
+    case mojom::WebUiState::kIneligibleAccount:
+      base::RecordAction(base::UserMetricsAction(
+          "Glic.Instance.WebUiStateChanged.IneligibleAccount"));
+      LogEvent(GlicInstanceEvent::kWebUiStateIneligibleAccount);
+      break;
     case mojom::WebUiState::kReady: {
       base::RecordAction(
           base::UserMetricsAction("Glic.Instance.WebUiStateChanged.Ready"));
@@ -838,6 +843,11 @@ void GlicInstanceMetrics::OnWebUiStateChanged(mojom::WebUiState state) {
       base::RecordAction(
           base::UserMetricsAction("Glic.Instance.WebUiStateChanged.kWarmed"));
       LogEvent(GlicInstanceEvent::kWebUiStateWarmed);
+      break;
+    case mojom::WebUiState::kLocationMismatch:
+      base::RecordAction(base::UserMetricsAction(
+          "Glic.Instance.WebUiStateChanged.LocationMismatch"));
+      LogEvent(GlicInstanceEvent::kWebUiStateLocationMismatch);
       break;
   }
 }

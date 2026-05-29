@@ -4,18 +4,18 @@
 
 import 'chrome://contextual-tasks/strings.m.js';
 import 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
-
-import type {ContextualActionMenuElement} from 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
+
 import type {ComposeboxFaviconGroupElement} from 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
+import type {ContextualActionMenuElement} from 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import type {CrToggleElement} from 'chrome://resources/cr_elements/cr_toggle/cr_toggle.js';
-import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
+import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {InputType, ModelMode, ToolMode} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestPluralStringProxy} from 'chrome://webui-test/test_plural_string_proxy.js';
-import {$$, microtasksFinished} from 'chrome://webui-test/test_util.js';
+import {$$, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {MockInputState} from './composebox_test_utils.js';
 
@@ -1014,4 +1014,331 @@ suite('ContextualActionMenu', () => {
     assertTrue(!!faviconGroup);
     assertEquals(1, faviconGroup.tabs.length);
   });
+
+  test(
+      'Disables uploads and tabs immediately when maxFileCount is reached',
+      async () => {
+        // Recreate actionMenu with maxFileCount = 1.
+        actionMenu.remove();
+        loadTimeData.overrideValues({
+          composeboxFileMaxCount: 1,
+        });
+        actionMenu =
+            document.createElement('cr-composebox-contextual-action-menu');
+        actionMenu.fileNum = 1;  // Set fileNum to 1 (limit reached)
+
+        // Provide tab suggestion.
+        const tabInfo = {
+          tabId: 1,
+          title: 'Google',
+          url: 'https://google.com',
+          lastActiveTime: {internalValue: 0n},
+          showInCurrentTabChip: false,
+          showInPreviousTabChip: false,
+          lastActive: {internalValue: 0n},
+        };
+        actionMenu.tabSuggestions = [tabInfo];
+
+        // inputState allows everything and disables nothing.
+        actionMenu.inputState = new MockInputState({
+          allowedInputTypes: [
+            InputType.kLensImage,
+            InputType.kLensFile,
+            InputType.kDrive,
+            InputType.kBrowserTab,
+          ],
+          disabledInputTypes: [],  // Nothing disabled by C++ yet
+          toolsSectionConfig: {header: ''},
+          modelSectionConfig: {header: ''},
+        });
+
+        document.body.appendChild(actionMenu);
+        await microtasksFinished();
+
+        actionMenu.showAt(actionMenu);
+        await microtasksFinished();
+
+        // Verify uploads are disabled.
+        const imageUpload = $$(actionMenu, '#imageUpload') as HTMLButtonElement;
+        const fileUpload = $$(actionMenu, '#fileUpload') as HTMLButtonElement;
+        const driveUpload = $$(actionMenu, '#driveUpload') as HTMLButtonElement;
+
+        assertTrue(imageUpload.disabled);
+        assertTrue(fileUpload.disabled);
+        assertTrue(driveUpload.disabled);
+
+        // Verify tabs are disabled.
+        const tabButton = actionMenu.$.menu.querySelector<HTMLButtonElement>(
+            '.suggestion-container button')!;
+        assertTrue(isVisible(tabButton));
+        assertTrue(tabButton.disabled);
+      });
+
+  test('Disables all items when uploadButtonDisabled is true', async () => {
+    actionMenu.uploadButtonDisabled = true;
+
+    // Provide tab suggestion.
+    const tabInfo = {
+      tabId: 1,
+      title: 'Google',
+      url: 'https://google.com',
+      lastActiveTime: {internalValue: 0n},
+      showInCurrentTabChip: false,
+      showInPreviousTabChip: false,
+      lastActive: {internalValue: 0n},
+    };
+    actionMenu.tabSuggestions = [tabInfo];
+
+    // inputState allows everything and disables nothing.
+    actionMenu.inputState = new MockInputState({
+      allowedInputTypes: [
+        InputType.kLensImage,
+        InputType.kLensFile,
+        InputType.kDrive,
+        InputType.kBrowserTab,
+      ],
+      allowedTools: [ToolMode.kDeepSearch],
+      toolConfigs: [{
+        tool: ToolMode.kDeepSearch,
+        menuLabel: 'Deep Search',
+        disableActiveModelSelection: false,
+        chipLabel: '',
+        hintText: '',
+        aimUrlParams: [],
+      }],
+      toolsSectionConfig: {header: ''},
+      allowedModels: [ModelMode.kGeminiRegular],
+      modelConfigs: [{
+        model: ModelMode.kGeminiRegular,
+        menuLabel: 'Gemini Regular',
+        hintText: '',
+        aimUrlParams: [],
+      }],
+      modelSectionConfig: {header: ''},
+    });
+
+    actionMenu.showAt(actionMenu);
+    await microtasksFinished();
+
+    // Verify uploads are disabled.
+    const imageUpload = $$(actionMenu, '#imageUpload') as HTMLButtonElement;
+    const fileUpload = $$(actionMenu, '#fileUpload') as HTMLButtonElement;
+    const driveUpload = $$(actionMenu, '#driveUpload') as HTMLButtonElement;
+    assertTrue(imageUpload.disabled);
+    assertTrue(fileUpload.disabled);
+    assertTrue(driveUpload.disabled);
+
+    // Verify tabs are disabled.
+    const tabButton = actionMenu.$.menu.querySelector<HTMLButtonElement>(
+        '.suggestion-container button')!;
+    assertTrue(isVisible(tabButton));
+    assertTrue(tabButton.disabled);
+
+    // Verify tools are disabled.
+    const deepSearch =
+        $$(actionMenu, `[data-mode="${ToolMode.kDeepSearch}"]`) as
+        HTMLButtonElement;
+    assertTrue(deepSearch.disabled);
+
+    // Verify models are disabled.
+    const regularModel =
+        $$(actionMenu, `[data-model="${ModelMode.kGeminiRegular}"]`) as
+        HTMLButtonElement;
+    assertTrue(regularModel.disabled);
+  });
+
+  test('Recent tab suffix disabled state', async () => {
+    loadTimeData.overrideValues({
+      contextManagementInComposeboxEnabled: true,
+    });
+    actionMenu.remove();
+    actionMenu = document.createElement('cr-composebox-contextual-action-menu');
+    const tabInfo: TabInfo = {
+      tabId: 1,
+      title: 'Recent Tab',
+      url: 'https://example.com',
+      showInCurrentTabChip: false,
+      showInPreviousTabChip: false,
+      lastActive: {internalValue: 0n},
+    };
+    actionMenu.tabSuggestions = [tabInfo];
+    actionMenu.recentTabId = tabInfo.tabId;
+    actionMenu.inputState = new MockInputState({
+      allowedInputTypes: [InputType.kBrowserTab],
+      disabledInputTypes: [InputType.kBrowserTab],
+    });
+    document.body.appendChild(actionMenu);
+    await microtasksFinished();
+
+    actionMenu.showAt(actionMenu);
+    await microtasksFinished();
+
+    const trigger = $$(actionMenu, '#shareTabsTrigger') as HTMLElement;
+    trigger.dispatchEvent(new PointerEvent('pointerenter'));
+    await microtasksFinished();
+
+    const suffix = $$(actionMenu, '.recent-tabs-suffix');
+    assertTrue(isVisible(suffix));
+    assertTrue(suffix!.hasAttribute('disabled'));
+  });
+
+  test('Menu closes after tab selection in Realbox', async () => {
+    loadTimeData.overrideValues({
+      contextManagementInComposeboxEnabled: true,
+      composeboxContextMenuEnableMultiTabSelection: true,
+    });
+    actionMenu.remove();
+    actionMenu = document.createElement('cr-composebox-contextual-action-menu');
+    Object.assign(actionMenu, {
+      metricsSource_: 'NewTabPage',
+    });
+
+    const tabInfo: TabInfo = {
+      tabId: 1,
+      title: 'Tab 1',
+      url: 'https://google.com',
+      showInCurrentTabChip: false,
+      showInPreviousTabChip: false,
+      lastActive: {internalValue: 0n},
+    };
+    actionMenu.tabSuggestions = [tabInfo];
+    actionMenu.inputState = new MockInputState({
+      allowedInputTypes: [InputType.kBrowserTab],
+    });
+    document.body.appendChild(actionMenu);
+    await microtasksFinished();
+
+    actionMenu.showAt(actionMenu);
+    Object.assign(actionMenu, {shareTabsFlyoutOpen_: true});
+    await microtasksFinished();
+    assertTrue(actionMenu.$.menu.open);
+
+    const tabButton = actionMenu.$.menu.querySelector<HTMLButtonElement>(
+        '.share-tabs-flyout button.dropdown-item')!;
+    tabButton.click();
+    await microtasksFinished();
+
+    assertFalse(actionMenu.$.menu.open);
+  });
+
+  test(
+      'Menu stays open after tab selection in Side Panel with multi-tab selection',
+      async () => {
+        loadTimeData.overrideValues({
+          contextManagementInComposeboxEnabled: true,
+          composeboxContextMenuEnableMultiTabSelection: true,
+        });
+        actionMenu.remove();
+        actionMenu =
+            document.createElement('cr-composebox-contextual-action-menu');
+        Object.assign(actionMenu, {
+          metricsSource_: 'contextual-tasks',
+        });
+
+        const tabInfo: TabInfo = {
+          tabId: 1,
+          title: 'Tab 1',
+          url: 'https://google.com',
+          showInCurrentTabChip: false,
+          showInPreviousTabChip: false,
+          lastActive: {internalValue: 0n},
+        };
+        actionMenu.tabSuggestions = [tabInfo];
+        actionMenu.inputState = new MockInputState({
+          allowedInputTypes: [InputType.kBrowserTab],
+        });
+        document.body.appendChild(actionMenu);
+        await microtasksFinished();
+
+        actionMenu.showAt(actionMenu);
+        Object.assign(actionMenu, {shareTabsFlyoutOpen_: true});
+        await microtasksFinished();
+        assertTrue(actionMenu.$.menu.open);
+
+        const tabButton = actionMenu.$.menu.querySelector<HTMLButtonElement>(
+            '.share-tabs-flyout button.dropdown-item')!;
+        tabButton.click();
+        await microtasksFinished();
+
+        assertTrue(actionMenu.$.menu.open);
+      });
+
+  test(
+      'Recent tab suffix follows the correct tab after reordering',
+      async () => {
+        const tab1: TabInfo = {
+          tabId: 1,
+          title: 'Tab 1',
+          url: 'https://google.com/1',
+          showInCurrentTabChip: false,
+          showInPreviousTabChip: false,
+          lastActive: {internalValue: 0n},
+        };
+        const tab2: TabInfo = {
+          tabId: 2,
+          title: 'Tab 2',
+          url: 'https://google.com/2',
+          showInCurrentTabChip: false,
+          showInPreviousTabChip: false,
+          lastActive: {internalValue: 0n},
+        };
+
+        actionMenu['contextManagementInComposeboxEnabled_'] = true;
+
+        actionMenu.inputState = new MockInputState({
+          allowedInputTypes: [InputType.kBrowserTab],
+          toolsSectionConfig: {header: ''},
+          modelSectionConfig: {header: ''},
+        });
+
+        // Backend initially provides Tab 1 as the first (most recent) item.
+        actionMenu.tabSuggestions = [tab1, tab2];
+        actionMenu.recentTabId = tab1.tabId;
+
+        actionMenu.showAt(actionMenu);
+        await microtasksFinished();
+        await actionMenu.updateComplete;
+
+        // Precisely target only the tab items inside the Flyout.
+        const getFlyoutItems = () => {
+          return actionMenu.shadowRoot.querySelectorAll(
+              '.share-tabs-flyout .dropdown-item');
+        };
+
+        let items = getFlyoutItems();
+        assertEquals(2, items.length, 'The flyout menu should render 2 tabs');
+
+        // Verify Tab 1 (index 0 in flyout) has the suffix and Tab 2 (index 1)
+        // does not.
+        assertTrue(
+            !!items[0]?.querySelector('.recent-tabs-suffix'),
+            'Tab 1 should have a suffix initially');
+        assertFalse(
+            !!items[1]?.querySelector('.recent-tabs-suffix'),
+            'Tab 2 should not have a suffix initially');
+
+        // Simulate frontend re-sorting (Tab 2 moved to index 0)
+        actionMenu.tabSuggestions = [tab2, tab1];
+
+        actionMenu.requestUpdate();
+        await microtasksFinished();
+        await actionMenu.updateComplete;
+
+        // Allow a small amount of time for the Lit render tree to sync.
+        await new Promise(resolve => setTimeout(resolve, 0));
+
+        // Re-fetch the latest items inside the Flyout.
+        items = getFlyoutItems();
+        assertEquals(2, items.length);
+
+        // The new index 0 (Tab 2) should NOT have the suffix.
+        assertFalse(
+            !!items[0]?.querySelector('.recent-tabs-suffix'),
+            'Tab 2 should not have a suffix after reordering');
+
+        // The suffix should still be on Tab 1, now at index 1.
+        assertTrue(
+            !!items[1]?.querySelector('.recent-tabs-suffix'),
+            'Tab 1 should retain the suffix after reordering');
+      });
 });

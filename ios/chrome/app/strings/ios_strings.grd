@@ -518,6 +518,9 @@
       <message name="IDS_IOS_APPLICATION_SHORTCUT_VOICE_SEARCH_TITLE" desc="Message when opening a Voice Search from springboard force touch static shortcuts. [Length: unlimited] [iOS only]." meaning="3D Touch entry to trigger a voice search.">
         Voice search
       </message>
+      <message name="IDS_IOS_APP_BAR_ACCOUNT" desc="Title of the button opening the account menu. [CHAR_LIMIT=14]" meaning="Tap this button to open the account menu.">
+        Account
+      </message>
       <message name="IDS_IOS_APP_BAR_ALL_TABS" desc="Title of the button opening the TabGrid where all the tabs are visible. Note that if the translation is too long, the 'all' can be dropped and translate only 'Tabs'. [CHAR_LIMIT=14]" meaning="Tap this button to see all your tabs.">
           All Tabs
       </message>
@@ -533,6 +536,9 @@
       <message name="IDS_IOS_APP_BAR_NEW" desc="Title of the button that is either creating a new tab or a new tab group. [CHAR_LIMIT=14]" meaning="Tap this button to create a new entity based on your current context">
           New
           </message>
+      <message name="IDS_IOS_APP_BAR_SIGN_IN" desc="Title of the button opening the sign-in flow. [CHAR_LIMIT=14]" meaning="Tap this button to sign in.">
+        Sign in
+      </message>
       <message name="IDS_IOS_APP_BAR_TABS" desc="Title of the button opening the TabGrid where all the tabs are visible, used when the text is too long to fit in one line. [CHAR_LIMIT=14]" meaning="Tap this button to see all your tabs.">
           Tabs
       </message>
@@ -1160,15 +1166,6 @@
           {count, plural,
           =1 {Bookmark saved}
           other {Bookmarks saved}}
-      </message>
-      <message name="IDS_IOS_BOOKMARK_ACTION_DELETE" desc="Title of the action that deletes a bookmark in the bookmark action sheet. [Length: 30em.] [iOS only]">
-        Delete
-      </message>
-      <message name="IDS_IOS_BOOKMARK_ACTION_EDIT" desc="Title of the action that edits a bookmark in the bookmark action sheet. [Length: 30em.] [iOS only]">
-        Edit
-      </message>
-      <message name="IDS_IOS_BOOKMARK_ACTION_MOVE" desc="Title of the action that moves a bookmark in the bookmark action sheet. [Length: 30em.] [iOS only]">
-        Move
       </message>
       <message name="IDS_IOS_BOOKMARK_CHOOSE_GROUP_BUTTON" desc="Button to assign a folder to an uncategorized bookmark. [iOS only]">
         Choose folder
@@ -2289,6 +2286,9 @@
       <message name="IDS_IOS_CREDENTIAL_BOTTOM_SHEET_SUBTITLE" desc="Shown on the credential bottom sheet to inform users that, upon accepting the prompt, their username and password will be shared with the given website. [iOS only]" meaning="A string under the title logo of the credential bottom sheet.">
         You'll sign in to <ph name="URL">$1<ex>chromium.org</ex></ph>
       </message>
+      <message name="IDS_IOS_CREDENTIAL_BOTTOM_SHEET_SUBTITLE_WITH_PASSKEYS" desc="Shown on the credential bottom sheet to inform users that, upon accepting the prompt, their username and password/passkey will be used to sign in to the given website. [iOS only]" meaning="A string under the title logo of the credential bottom sheet.">
+        Sign in to <ph name="URL">$1<ex>chromium.org</ex></ph>
+      </message>
       <message name="IDS_IOS_CREDENTIAL_BOTTOM_SHEET_USE_KEYBOARD" desc="The action button to dismiss the credential bottom sheet and revert to using the keyboard to fill in username and password information on the webpage.">
               Use keyboard
             </message>
@@ -3311,6 +3311,42 @@
       </message>
       <message name="IDS_IOS_GEMINI_IMAGE_REMIX_TOOL_IPH" desc="Main text in the in-product help tooltip suggesting to users that they can upload an image to remix with Nano Banana.">
         Upload an image to remix with Nano Banana
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_FIRST_BOX_BODY" desc="Body text for the first box of the Gemini Live Consent page.">
+        Live will use your microphone. Tapping the Live button turns on the mic. To turn off the mic, tap the stop button or close Gemini.
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_SECOND_BOX_BODY" desc="Body text for the second box of the Gemini Live Consent page.">
+        Recordings of your interactions with Live and content you share with it are saved and processed per the <ph name="PRIVACY_NOTICE">$1<ex>Gemini Apps Privacy Notice</ex></ph>. <ph name="LEARN_MORE">$2<ex>Learn more</ex></ph>
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_SECOND_BOX_BODY_LINK_1" desc="First link text within the second box body of the Gemini Live Consent page.">
+        Gemini Apps Privacy Notice
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_SECOND_BOX_BODY_LINK_2" desc="Second link text within the second box body of the Gemini Live Consent page.">
+        Learn more
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_THIRD_BOX_BODY" desc="Body text for the third box of the Gemini Live Consent page.">
+        <ph name="RESPECT_PRIVACY">$1<ex>Respect other’s privacy</ex></ph> and ask permission before recording or including them in a Live chat.
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_THIRD_BOX_BODY_LINK" desc="Link text within the third box body of the Gemini Live Consent page.">
+        Respect other’s privacy
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_TITLE" desc="Main title text for the Gemini Live Consent page.">
+        Go Live with Gemini
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_CONTINUE_SESSION_SNACKBAR" desc="Snackbar message shown to ask if the user wants to continue their Gemini Live session.">
+        Are you still using Live? Tap the Live button to keep talking to Gemini
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_MICROPHONE_ALERT_DETAIL" desc="Detail message of modal dialog shown when the user tries to start Gemini Live but has not allowed microphone access. This body instructs the user to enable the microphone in Settings.">
+        To use Live, give Chrome access to your microphone in settings
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_MICROPHONE_ALERT_GO_TO_SETTINGS" desc="Title of the button to redirect the user to iOS Settings to allow microphone permission.">
+        Go to Settings...
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_MICROPHONE_ALERT_NO_THANKS" desc="Title of the button to cancel and dismiss the microphone settings alert.">
+        No thanks
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_MICROPHONE_ALERT_TITLE" desc="Title of modal dialog shown when the user tries to start Gemini Live but has not allowed microphone access.">
+        Turn on Microphone
       </message>
       <message name="IDS_IOS_GEMINI_LIVE_SHARING_LABEL" desc="Label describing the current page context shown in Gemini Live mode, indicating that the current page is being shared. [iOS only]">
         Sharing <ph name="PAGE_TITLE">$1<ex>Example Page</ex></ph>

@@ -31,7 +31,8 @@ base::expected<std::unique_ptr<TypeTool>, ToolExecutionResult> TypeTool::Create(
         ToolExecutionResult(mojom::ActionResultCode::kArgumentsInvalid));
   }
 
-  auto resolution_result = ResolveTab(action.tab_id(), profile);
+  base::expected<TabResolutionResult, ToolExecutionResult> resolution_result =
+      ResolveTab(action.tab_id(), profile);
   if (!resolution_result.has_value()) {
     return base::unexpected(resolution_result.error());
   }
@@ -46,7 +47,7 @@ base::expected<std::unique_ptr<TypeTool>, ToolExecutionResult> TypeTool::Create(
         ToolExecutionResult(mojom::ActionResultCode::kArgumentsInvalid));
   }
 
-  const auto& target = action.target();
+  const optimization_guide::proto::ActionTarget& target = action.target();
   // Callers must either target by coordinate or (document_identifier, node_id).
   if (target.has_content_node_id() && !target.has_document_identifier()) {
     return base::unexpected(
@@ -93,8 +94,8 @@ base::WeakPtr<web::WebState> TypeTool::GetTargetWebState() const {
   return web_state_;
 }
 
-optimization_guide::proto::Action::ActionCase TypeTool::GetActionCase() const {
-  return optimization_guide::proto::Action::kType;
+ToolType TypeTool::GetToolType() const {
+  return ToolType::kType;
 }
 
 TypeTool::TypeTool(const optimization_guide::proto::TypeAction& action,

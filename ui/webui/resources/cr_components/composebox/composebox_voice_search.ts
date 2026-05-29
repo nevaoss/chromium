@@ -20,7 +20,7 @@ import {getCss} from './composebox_voice_search.css.js';
 import {getHtml} from './composebox_voice_search.html.js';
 import {WindowProxy} from './window_proxy.js';
 
-export interface VoicePermissionDialogueState {
+export interface VoicePermissionPromptState {
   isOpened: boolean;
   height: number;
   width: number;
@@ -292,6 +292,10 @@ export class ComposeboxVoiceSearchElement extends
   }
 
   start() {
+    if (this.state_ !== State.UNINITIALIZED &&
+        this.state_ !== State.ERROR_RECEIVED) {
+      return;
+    }
     this.errorMessage_ = '';
     // If continuous is false, then speech webkit determines when to end, and
     // there is no manual set timeout.
@@ -323,7 +327,7 @@ export class ComposeboxVoiceSearchElement extends
       'isOpened': isOpened,
       'height': promptSize.height,
       'width': promptSize.width,
-    } as VoicePermissionDialogueState);
+    } as VoicePermissionPromptState);
     if (isOpened) {
       this.clearTimer_();
     } else {

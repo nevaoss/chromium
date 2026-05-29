@@ -164,7 +164,9 @@ void ReportingService::OnAppEnterForeground() {
   // start succeeding -- this is handled in OnLogUploadComplete() below.
   if (upload_scheduler_ && upload_scheduler_->IsRunning() &&
       !upload_scheduler_->IsCallbackPending() &&
-      failures_started_from_background_.value_or(false)) {
+      failures_started_from_background_.value_or(false) &&
+      !base::FeatureList::IsEnabled(
+          features::kNoResetMetricsUploadBackoffOnForeground)) {
     upload_scheduler_->RestartWithUnsentLogsInterval();
   }
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -238,7 +240,7 @@ void ReportingService::SendNextLogImpl(base::OnceClosure done_callback) {
     // Should only get here if serializing the log failed somehow.
     upload_scheduler_->Stop();
     // Reset backoff interval
-    upload_scheduler_->UploadFinished(true);
+    upload_scheduler_->UploadFinished(/*backoff=*/false);
     return;
   }
   if (!log_store()->has_staged_log()) {
@@ -262,7 +264,7 @@ void ReportingService::SendNextLogImpl(base::OnceClosure done_callback) {
       DVLOG(1) << "Stopping upload_scheduler_.";
       upload_scheduler_->Stop();
     }
-    upload_scheduler_->UploadFinished(true);
+    upload_scheduler_->UploadFinished(/*backoff=*/false);
     return;
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -438,7 +440,9 @@ void ReportingService::OnLogUploadComplete(
     // logic in this case since there's probably nothing wrong with the server
     // (but only if the failures started happening from the background --
     // otherwise, something wrong is probably going on).
-    if (*failures_started_from_background_ && is_in_foreground_) {
+    if (*failures_started_from_background_ && is_in_foreground_ &&
+        !base::FeatureList::IsEnabled(
+            features::kNoResetMetricsUploadBackoffOnForeground)) {
       server_is_healthy = true;
     }
   } else {
@@ -448,7 +452,8 @@ void ReportingService::OnLogUploadComplete(
   log_upload_initiated_from_background_ = std::nullopt;
 #endif  // BUILDFLAG(IS_ANDROID)
 
-  upload_scheduler_->UploadFinished(server_is_healthy);
+  bool backoff = !server_is_healthy;
+  upload_scheduler_->UploadFinished(backoff);
 }
 
 }  // namespace metrics

@@ -105,9 +105,14 @@ void ToolbarUIService::ShowContextMenu(
 }
 
 void ToolbarUIService::OnOmniboxAction(
-    toolbar_ui_api::mojom::OmniboxActionPtr action) {
+    toolbar_ui_api::mojom::OmniboxActionPtr action,
+    OnOmniboxActionCallback callback) {
   if (delegate_) {
-    delegate_->OnOmniboxAction(std::move(action));
+    std::move(callback).Run(delegate_->OnOmniboxAction(std::move(action)));
+  } else {
+    std::move(callback).Run(base::unexpected(
+        Error::New(Code::kFailedPrecondition,
+                   "ToolbarUIService: null delegate_ for OnOmniboxAction")));
   }
 }
 
@@ -181,6 +186,14 @@ void ToolbarUIService::OnLhsChipCollapseAnimationEnded(
   }
 }
 
+void ToolbarUIService::OnLhsChipDrag(
+    toolbar_ui_api::mojom::LhsChipIdentifier identifier,
+    ui::mojom::DragEventSource source) {
+  if (delegate_) {
+    delegate_->OnLhsChipDrag(identifier, source);
+  }
+}
+
 void ToolbarUIService::OnHomeButtonDropUrl(const GURL& url) {
   if (delegate_) {
     delegate_->OnHomeButtonDropUrl(url);
@@ -196,6 +209,16 @@ void ToolbarUIService::OnHomeButtonDropFile(const gfx::PointF& drop_position) {
 void ToolbarUIService::OnToolbarDropFile(const gfx::PointF& drop_position) {
   if (delegate_) {
     delegate_->OnToolbarDropFile(drop_position);
+  }
+}
+
+void ToolbarUIService::ShowAvatarMenu(ShowAvatarMenuCallback callback) {
+  if (delegate_) {
+    delegate_->ShowAvatarMenu();
+  } else {
+    std::move(callback).Run(base::unexpected(Error::New(
+        Code::kFailedPrecondition,
+        "ToolbarUIService: cannot show avatar menu without delegate_")));
   }
 }
 

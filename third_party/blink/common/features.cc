@@ -88,12 +88,13 @@ const base::FeatureParam<AsyncTouchMoveThrottlingPolicy>::Option
          "unthrottled_when_gsu_unconsumed"},
         {AsyncTouchMoveThrottlingPolicy::kUnthrottledAlways,
          "unthrottled_always"}};
-BASE_FEATURE_ENUM_PARAM(AsyncTouchMoveThrottlingPolicy,
-                        kAsyncTouchMoveThrottlingPolicyParam,
-                        &kUnthrottleAsyncTouchMoves,
-                        "policy",
-                        AsyncTouchMoveThrottlingPolicy::kUnthrottledAlways,
-                        &async_touch_move_throttling_policies);
+BASE_FEATURE_ENUM_PARAM(
+    AsyncTouchMoveThrottlingPolicy,
+    kAsyncTouchMoveThrottlingPolicyParam,
+    &kUnthrottleAsyncTouchMoves,
+    "policy",
+    AsyncTouchMoveThrottlingPolicy::kUnthrottledWhenGsuUnconsumed,
+    &async_touch_move_throttling_policies);
 
 // Block all MIDI access with the MIDI_SYSEX permission
 BASE_FEATURE(kBlockMidiByDefault, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -197,6 +198,14 @@ BASE_FEATURE_PARAM(bool,
                    &kBackgroundResourceFetch,
                    "background-code-cache-decoder-start",
                    true);
+
+BASE_FEATURE(kRestrictBackgroundFetchFromServiceWorker,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(std::string,
+                   kBackgroundFetchFromServiceWorkerAllowListStr,
+                   &kRestrictBackgroundFetchFromServiceWorker,
+                   "allowlist",
+                   "");
 
 // Redefine the oklab and oklch spaces to have gamut mapping baked into them.
 // https://crbug.com/1508329
@@ -1001,6 +1010,9 @@ BASE_FEATURE(kFledgeTruncateSelectableBuyerAndSellerReportingIdsToKAnonLimit,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kForceHighPerformanceGPUForWebGL,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kOffscreenCanvasPropagateVisibility,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kForceSkcmsICCParsing, base::FEATURE_DISABLED_BY_DEFAULT);

@@ -232,6 +232,9 @@ chromium-metrics-reviews@google.com.
       label="The user closed the prompt (via the close button or the ESC)"/>
   <int value="4" label="The user did not interact with the prompt"/>
   <int value="5" label="The prompt was closed due to losing focus"/>
+  <int value="6"
+      label="The prompt was closed by pressing 'Done' button in the editor.
+             The editor is only present on Android."/>
 </enum>
 
 <!-- LINT.IfChange(AutofillAiDecryptStatus) -->
@@ -5680,6 +5683,7 @@ Called by update_autofill_enums.py.-->
   <int value="81" label="Autocomplete AtMemory button"/>
   <int value="82" label="Open Gemini"/>
   <int value="83" label="AtMemory no connection"/>
+  <int value="84" label="AtMemory search trigger affordance"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/suggestions/suggestion_type.h:SuggestionType) -->

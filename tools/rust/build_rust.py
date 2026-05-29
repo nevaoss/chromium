@@ -236,11 +236,10 @@ def FetchBetaPackage(name, rust_git_hash, triple=None):
     # Pull the stage0 to find the package intended to be used to build this
     # version of the Rust compiler.
     STAGE0_JSON_URL = (
-        'https://chromium.googlesource.com/external/github.com/'
-        'rust-lang/rust/+/{GIT_HASH}/src/stage0?format=TEXT')
-    base64_text = urllib.request.urlopen(
+        'https://raw.githubusercontent.com/'
+        'rust-lang/rust/{GIT_HASH}/src/stage0')
+    stage0 = urllib.request.urlopen(
         STAGE0_JSON_URL.format(GIT_HASH=rust_git_hash)).read().decode("utf-8")
-    stage0 = base64.b64decode(base64_text).decode("utf-8")
     lines = stage0.splitlines()
 
     # The stage0 file contains the path to all tarballs it uses binaries from.
@@ -868,6 +867,28 @@ def main():
                     f.write(l)
 
         VendorForStdlib(cargo_bin)
+
+    # Create git-commit-info in the source directory so that builds
+    # from tarballs (which lack .git) can set rustc's version info.
+    if os.path.exists(os.path.join(RUST_SRC_DIR, '.git')):
+        if args.skip_checkout:
+            git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'],
+                                               cwd=RUST_SRC_DIR,
+                                               text=True).strip()
+        else:
+            git_hash = checkout_revision
+        git_short_hash = git_hash[:9]
+        git_date = subprocess.check_output([
+            'git', 'log', '-1', '--date=short', '--pretty=format:%cd',
+            f'{git_hash}'
+        ],
+                                           cwd=RUST_SRC_DIR,
+                                           text=True).strip()
+
+        with open(os.path.join(RUST_SRC_GIT_COMMIT_INFO_FILE_PATH), 'w') as f:
+            f.write(f'{git_hash}\n')
+            f.write(f'{git_short_hash}\n')
+            f.write(f'{git_date}\n')
 
     # Gnrt needs the checkout to be up-to-date, workspace submodules to be
     # synced for cargo to work, and the cargo binary itself. All this is done,

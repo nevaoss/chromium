@@ -139,6 +139,7 @@ import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.feed.FeedSurfaceTracker;
 import org.chromium.chrome.browser.feed.FeedUma;
 import org.chromium.chrome.browser.feedback.OmniboxFeedbackSource;
+import org.chromium.chrome.browser.finds.FindsFeatures;
 import org.chromium.chrome.browser.finds.FindsManager;
 import org.chromium.chrome.browser.finds.FindsService;
 import org.chromium.chrome.browser.flags.ActivityType;
@@ -146,6 +147,7 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
 import org.chromium.chrome.browser.gesturenav.NavigationSheet;
+import org.chromium.chrome.browser.glic.GlicKeyedService.GlicInvocationSource;
 import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
 import org.chromium.chrome.browser.history.HistoryManager;
 import org.chromium.chrome.browser.history.HistoryManagerUtils;
@@ -709,18 +711,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     private FindsManager mFindsManager;
     private @Nullable Boolean mCanEnableEdgeToEdgeForCustomizedThemeOnPhone;
 
-    private final Supplier<Boolean> mUrlBarVisibleSupplier =
-            () -> {
-                if (isInOverviewMode()) {
-                    return false;
-                }
-                if (isTablet()) {
-                    TabModel model = getCurrentTabModel();
-                    return model != null && model.getCount() != 0;
-                }
-                return true;
-            };
-
     /** Constructs a ChromeTabbedActivity. */
     public ChromeTabbedActivity() {
         mIntentHandlingTimeMs = SystemClock.uptimeMillis();
@@ -901,7 +891,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                                     mTabModelSelector.getCurrentModel().getProfile())
                             ::getTabModel);
 
-            // Defer creation of this helper so it triggers after TabGroupModelFilter observers.
+            // Defer creation of this helper so it triggers after TabModel observers.
             mUndoRefocusHelper =
                     new UndoRefocusHelper(
                             mTabModelSelector, getLayoutManagerSupplier(), isTablet());
@@ -1161,7 +1151,9 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             Callback<Boolean> glicClickHandler =
                     (preventClose) ->
-                            ((TabbedRootUiCoordinator) mRootUiCoordinator).toggleGlic(preventClose);
+                            ((TabbedRootUiCoordinator) mRootUiCoordinator)
+                                    .toggleGlic(
+                                            preventClose, GlicInvocationSource.TOP_CHROME_BUTTON);
 
             mLayoutManager =
                     new LayoutManagerChromeTablet(
@@ -1641,7 +1633,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             initiateArchivedTabsAutoDeletePromoManager();
 
-            if (ChromeFeatureList.isEnabled(ChromeFeatureList.CHROME_FINDS)) {
+            if (FindsFeatures.sChromeFinds.isEnabled()) {
                 Profile profile = getProfileProviderSupplier().get().getOriginalProfile();
                 FindsService findsService = FindsService.getForProfile(profile);
                 if (findsService != null) {
@@ -1923,7 +1915,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 TabGroupSyncServiceFactory.getForProfile(mTabModelProfileSupplier.get());
         // The following logic does not support operations for tab groups in incognito.
         // TODO(crbug.com/435227138): Update the PaneId and conversion of dependence on
-        // TabGroupSyncService to the TabGroupModelFilter when opening the tab group dialog.
+        // TabGroupSyncService to the TabModel when opening the tab group dialog.
         if (tabGroupSyncService == null || tabGroupId == null) return;
 
         @Nullable SavedTabGroup syncGroup = tabGroupSyncService.getGroup(tabGroupId);
@@ -3244,8 +3236,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 mBookmarkManagerOpenerSupplier,
                 getXrSpaceModeObservableSupplier(),
                 mInactivityTrackerSupplier,
-                getBottomBarHostManager(),
-                mUrlBarVisibleSupplier);
+                getBottomBarHostManager());
     }
 
     @Override

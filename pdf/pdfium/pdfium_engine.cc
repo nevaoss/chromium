@@ -121,6 +121,7 @@
 #include "third_party/skia/include/core/SkFontTypes.h"
 #include "third_party/skia/include/core/SkStream.h"
 #include "third_party/skia/include/core/SkTypeface.h"
+#include "ui/gfx/geometry/vector2d_f.h"
 #include "ui/gfx/skia_span_util.h"
 #endif
 
@@ -141,6 +142,7 @@ using printing::ConvertUnit;
 using printing::ConvertUnitFloat;
 using printing::kPixelsPerInch;
 using printing::kPointsPerInch;
+using printing::kUnitConversionFactorPixelsToPoints;
 
 namespace chrome_pdf {
 
@@ -195,6 +197,70 @@ void AddMetadataToTextObject(FPDF_DOCUMENT doc,
 
   CHECK(FPDFPageObjMark_SetStringParam(doc, text_object, mark, "Text",
                                        attributes.text.c_str()));
+}
+
+// Given the text run in screen coordinates (relative to the top-left origin of
+// the rotated textbox as displayed on screen), the canonical textbox size, and
+// the total rotations of the PDF and the textbox combined, returns the top-left
+// origin of the text run in canonical textbox coordinates.
+gfx::PointF CalculateCanonicalTextRunOrigin(
+    const gfx::RectF& text_run_textbox_rect,
+    const gfx::SizeF& canonical_textbox_size,
+    int total_rotations) {
+  switch (total_rotations % 4) {
+    case 0:
+    case 2:
+      // Note: Case 2 (`transform: rotate(180deg)`) does not rotate Blink's
+      // layout coordinates.
+      return text_run_textbox_rect.origin();
+    case 1:
+      // For the text run rect, its canonical origin (top-left) maps to the
+      // top-right of the screen rect.
+      // For a 90 degree cw rotation, the screen horizontal axis (right()) maps
+      // to the canonical vertical axis (height()).
+      return gfx::PointF(
+          text_run_textbox_rect.y(),
+          canonical_textbox_size.height() - text_run_textbox_rect.right());
+    case 3:
+      // For the text run rect, its canonical origin (top-left) maps to the
+      // bottom-left of the screen rect.
+      // For a 270 degree cw rotation, the screen vertical axis (bottom()) maps
+      // to the canonical horizontal axis (width()).
+      return gfx::PointF(
+          canonical_textbox_size.width() - text_run_textbox_rect.bottom(),
+          text_run_textbox_rect.x());
+  }
+  NOTREACHED();
+}
+
+// Calculates the text object origin transform (relative to the textbox origin)
+// within a text annotation in PDF points.
+FS_MATRIX CalculateTextObjectOriginTransform(
+    const InkTextInfo& item,
+    double pdf_zoom,
+    const InkTextBoxAttributes& attributes,
+    PageOrientation current_orientation,
+    float ascent) {
+  gfx::RectF text_run_textbox_rect = item.location;
+  text_run_textbox_rect.InvScale(pdf_zoom);
+
+  gfx::SizeF canonical_textbox_size = attributes.rect.size();
+  if (attributes.orientation % 2 != 0) {
+    // Swap width and height for 90 degree and 270 degree cw rotations.
+    canonical_textbox_size.Transpose();
+  }
+
+  const int total_rotations =
+      GetClockwiseRotationSteps(current_orientation) + attributes.orientation;
+  gfx::PointF canonical_text_run_origin = CalculateCanonicalTextRunOrigin(
+      text_run_textbox_rect, canonical_textbox_size, total_rotations);
+
+  // Calculate the baseline origin in PDF coordinates.
+  gfx::PointF baseline_origin{canonical_text_run_origin.x(),
+                              canonical_text_run_origin.y() + ascent};
+  baseline_origin.Scale(printing::kUnitConversionFactorPixelsToPoints);
+  return FS_MATRIX{
+      1.0f, 0.0f, 0.0f, 1.0f, baseline_origin.x(), -baseline_origin.y()};
 }
 #endif  // BUILDFLAG(ENABLE_PDF_INK2)
 
@@ -3723,12 +3789,15 @@ void PDFiumEngine::FinishPaint(size_t progressive_index, SkBitmap& image_data) {
   MaybeRequestPendingThumbnail(page_index);
 }
 
-void PDFiumEngine::CancelPaints() {
+std::vector<gfx::Rect> PDFiumEngine::CancelPaints() {
+  std::vector<gfx::Rect> canceled_rects;
   for (const auto& paint : progressive_paints_) {
     FPDF_RenderPage_Close(pages_[paint.page_index()]->GetPage());
+    canceled_rects.push_back(paint.rect());
   }
 
   progressive_paints_.clear();
+  return canceled_rects;
 }
 
 void PDFiumEngine::FillPageSides(int progressive_index) {
@@ -5144,6 +5213,8 @@ FPDF_FONT PDFiumEngine::GetAddedFont(FontId font_id) {
 }
 
 void PDFiumEngine::DiscardText(InkTextId id) {
+  std::vector<gfx::Rect> canceled_rects = CancelPaints();
+
   auto it = ink_text_data_.find(id);
   CHECK(it != ink_text_data_.end());
 
@@ -5164,6 +5235,10 @@ void PDFiumEngine::DiscardText(InkTextId id) {
   if (!PageStillHasEdits(page_index)) {
     edited_pages_unload_preventers_.erase(page_index);
   }
+
+  for (const gfx::Rect& rect : canceled_rects) {
+    client_->Invalidate(rect);
+  }
 }
 
 void PDFiumEngine::DrawText(int page_index,
@@ -5171,12 +5246,16 @@ void PDFiumEngine::DrawText(int page_index,
                             base::span<const InkTextInfo> text_info,
                             double pdf_zoom,
                             const InkTextBoxAttributes& attributes) {
+  std::vector<gfx::Rect> canceled_rects = CancelPaints();
+
   CHECK(PageIndexInBounds(page_index));
   PDFiumPage* pdfium_page = GetPage(page_index);
   CHECK(pdfium_page);
   FPDF_PAGE page = pdfium_page->GetPage();
   CHECK(page);
-  const gfx::Transform transform = GetCanonicalToPdfTransformForPage(page);
+  const FS_MATRIX textbox_matrix =
+      CalculateTextBoxTransform(attributes.rect, attributes.orientation,
+                                GetCanonicalToPdfTransformForPage(page));
   const SkColor color = attributes.color;
   const float pdf_font_size =
       CSSFontSizeToPdfFontSize(attributes.css_font_size);
@@ -5193,11 +5272,6 @@ void PDFiumEngine::DrawText(int page_index,
     // uses a special platform-specific rounded number.
     float ascent;
     CHECK(FPDFFont_GetAscent(font, attributes.css_font_size, &ascent));
-
-    gfx::RectF run_rect = item.location;
-    run_rect.Scale(1.0 / pdf_zoom);
-    run_rect.set_height(ascent);
-    run_rect = transform.MapRect(run_rect + attributes.rect.OffsetFromOrigin());
 
     ScopedFPDFPageObject text_object(
         FPDFPageObj_CreateTextObj(doc(), font, pdf_font_size));
@@ -5223,8 +5297,12 @@ void PDFiumEngine::DrawText(int page_index,
                                   positions.size()));
     }
 
-    FS_MATRIX matrix{1, 0, 0, 1, run_rect.x(), run_rect.y()};
-    CHECK(FPDFPageObj_TransformF(text_object.get(), &matrix));
+    FS_MATRIX text_origin_matrix = CalculateTextObjectOriginTransform(
+        item, pdf_zoom, attributes, GetCurrentOrientation(), ascent);
+    // Local translation must be applied before the textbox's global transform
+    // to ensure correct rotation/scaling of the offset.
+    CHECK(FPDFPageObj_TransformF(text_object.get(), &text_origin_matrix));
+    CHECK(FPDFPageObj_TransformF(text_object.get(), &textbox_matrix));
 
     FPDF_PAGEOBJECTMARK mark =
         FPDFPageObj_AddMark(text_object.get(), kInkTextAnnotationIdentifierKey);
@@ -5257,6 +5335,10 @@ void PDFiumEngine::DrawText(int page_index,
   if (!edited_pages_unload_preventers_.contains(page_index)) {
     edited_pages_unload_preventers_.insert(
         {page_index, PDFiumPage::ScopedPageUnloadPreventer(pdfium_page)});
+  }
+
+  for (const gfx::Rect& rect : canceled_rects) {
+    client_->Invalidate(rect);
   }
 }
 
@@ -5302,6 +5384,8 @@ gfx::Size PDFiumEngine::GetThumbnailSize(int page_index,
 void PDFiumEngine::ApplyStroke(int page_index,
                                InkStrokeId id,
                                const ink::Stroke& stroke) {
+  std::vector<gfx::Rect> canceled_rects = CancelPaints();
+
   // Saving a stroke will have the same page bounds limitations as the original
   // document.
   PDFiumPage* pdfium_page = GetPage(page_index);
@@ -5326,6 +5410,10 @@ void PDFiumEngine::ApplyStroke(int page_index,
     edited_pages_unload_preventers_.insert(
         {page_index, PDFiumPage::ScopedPageUnloadPreventer(pdfium_page)});
   }
+
+  for (const gfx::Rect& rect : canceled_rects) {
+    client_->Invalidate(rect);
+  }
 }
 
 void PDFiumEngine::UpdateStrokeActive(int page_index,
@@ -5342,6 +5430,8 @@ void PDFiumEngine::UpdateStrokeActive(int page_index,
 }
 
 void PDFiumEngine::DiscardStroke(int page_index, InkStrokeId id) {
+  std::vector<gfx::Rect> canceled_rects = CancelPaints();
+
   CHECK(PageIndexInBounds(page_index));
   auto it = ink_stroke_data_.find(id);
   CHECK(it != ink_stroke_data_.end());
@@ -5352,6 +5442,10 @@ void PDFiumEngine::DiscardStroke(int page_index, InkStrokeId id) {
 
   if (!PageStillHasEdits(page_index)) {
     edited_pages_unload_preventers_.erase(page_index);
+  }
+
+  for (const gfx::Rect& rect : canceled_rects) {
+    client_->Invalidate(rect);
   }
 }
 

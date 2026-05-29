@@ -4,8 +4,16 @@
 
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
 
+#include <algorithm>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "base/base64.h"
 #include "base/base64url.h"
+#include "base/check_op.h"
 #include "base/containers/fixed_flat_map.h"
 #include "base/feature_list.h"
 #include "base/metrics/histogram_functions.h"
@@ -46,6 +54,7 @@
 #include "components/omnibox/browser/omnibox_popup_selection.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
 #include "components/omnibox/browser/vector_icons.h"
+#include "components/omnibox/common/input_state.h"
 #include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/search/ntp_features.h"
@@ -84,6 +93,24 @@ const char* kReplyRotated180IconResourceName =
 }  // namespace searchbox_internal
 
 namespace {
+
+std::u16string GetSmartTabSharingMegaplusString() {
+  switch (contextual_tasks::kSmartTabSharingMegaplusStringOption.Get()) {
+    case contextual_tasks::SmartTabSharingMegaplusStringOption::kMegaplusV1:
+      return l10n_util::GetStringUTF16(
+          IDS_STS_MEGAPLUS_SHARE_RELEVANT_OPEN_TABS);
+    case contextual_tasks::SmartTabSharingMegaplusStringOption::kMegaplusV2:
+      return l10n_util::GetStringUTF16(
+          IDS_STS_MEGAPLUS_SHARE_RELEVANT_OPEN_TABS_V2);
+    case contextual_tasks::SmartTabSharingMegaplusStringOption::kMegaplusV3:
+      return l10n_util::GetStringUTF16(
+          IDS_STS_MEGAPLUS_SHARE_RELEVANT_OPEN_TABS_V3);
+    default:
+      return l10n_util::GetStringUTF16(
+          IDS_STS_MEGAPLUS_SHARE_RELEVANT_OPEN_TABS);
+  }
+}
+
 constexpr int kPromptHeightBuffer = 40;
 constexpr int kPromptWidthBuffer = 40;
 
@@ -415,6 +442,7 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
       {"addTab", IDS_NTP_COMPOSEBOX_TAB_PICKER_ADD_TABS_TITLE},
       {"shareTabs", IDS_COMPOSE_ADD_TABS},
       {"recentTabsSuffix", IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX},
+      {"sharingTabsWithGoogle", IDS_COMPOSE_SHARING_TABS_WITH_GOOGLE},
       {"dismissButton", IDS_NTP_DISMISS},
       {"searchboxComposeButtonText", IDS_NTP_COMPOSE_ENTRYPOINT},
       {"searchboxComposeButtonTitle", IDS_NTP_COMPOSE_ENTRYPOINT_A11Y_LABEL},
@@ -513,7 +541,7 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   dict.Set("searchboxCr23SteadyStateShadow",
            ntp_features::kNtpRealboxCr23SteadyStateShadow.Get());
 
-  int max_files = 10;
+  int max_files = omnibox::kDefaultMaxTotalInputs;
   int max_images = max_files;
   int max_pdfs = max_files;
   AimEligibilityService* service =
@@ -568,9 +596,8 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
            options.is_lens ? false
                            : contextual_tasks::ContextualTasksContextService::
                                  GetIsSmartTabSharingEnabled(profile));
-  dict.Set(
-      "stsMegaplusShareRelevantOpenTabs",
-      l10n_util::GetStringUTF16(IDS_STS_MEGAPLUS_SHARE_RELEVANT_OPEN_TABS));
+  dict.Set("stsMegaplusShareRelevantOpenTabs",
+           GetSmartTabSharingMegaplusString());
 
   return dict;
 }
@@ -702,9 +729,15 @@ std::string SearchboxHandler::AutocompleteIconToResourceName(
                   ? omnibox::kTrendingUpIcon.name
                   : omnibox::kTrendingUpChromeRefreshOldIcon.name)) {
     return kTrendingUpIconResourceName;
-  } else if (icon.name == vector_icons::kHistoryChromeRefreshOldIcon.name) {
+  } else if (icon.name ==
+             (features::IsRoundedIconsEnabled()
+                  ? vector_icons::kHistoryIcon.name
+                  : vector_icons::kHistoryChromeRefreshOldIcon.name)) {
     return kHistoryIconResourceName;
-  } else if (icon.name == vector_icons::kSearchChromeRefreshOldIcon.name) {
+  } else if (icon.name ==
+             (features::IsRoundedIconsEnabled()
+                  ? vector_icons::kSearchIcon.name
+                  : vector_icons::kSearchChromeRefreshOldIcon.name)) {
     return kSearchIconResourceName;
   }
 
@@ -1054,7 +1087,13 @@ void SearchboxHandler::OnFocusChanged(bool focused) {
 }
 
 void SearchboxHandler::QueryAutocomplete(const std::u16string& input,
-                                         bool prevent_inline_autocomplete) {
+                                         bool prevent_inline_autocomplete,
+                                         uint32_t cursor_position) {
+  // This shouldn't happen, but, e.g., users may do unintended actions in the
+  // developer console and crashing with a `CHECK()` doesn't seem warranted.
+  cursor_position =
+      std::min(static_cast<size_t>(cursor_position), input.length());
+
   // TODO(tommycli): We use the input being empty as a signal we are requesting
   // on-focus suggestions. It would be nice if we had a more explicit signal.
   bool is_on_focus = input.empty();
@@ -1089,8 +1128,7 @@ void SearchboxHandler::QueryAutocomplete(const std::u16string& input,
     // Don't set lens params if in "Create Image" with an image present or in
     // "Canvas" mode. This prevents the contextual client from being used in
     // this tool mode.
-    if (!GetInputState().image_gen_upload_active &&
-        GetInputState().active_tool != omnibox::ToolMode::TOOL_MODE_CANVAS) {
+    if (GetInputState().active_tool != omnibox::ToolMode::TOOL_MODE_CANVAS) {
       autocomplete_input.set_lens_overlay_suggest_inputs(*suggest_inputs);
     }
   }
@@ -1393,7 +1431,7 @@ void SearchboxHandler::OnEmbeddedPermissionPromptChanged(
                                  prompt_size.height() + kPromptHeightBuffer);
   }
 
-  page_->OnEmbeddedPermissionPromptChanged(is_showing, prompt_size);
+  page_->OnEmbeddedPermissionPromptChanged(is_showing, size_with_buffer);
 
   if (omnibox_delegate_) {
     omnibox_delegate_->OnEmbeddedPermissionDialogChanged(is_showing,

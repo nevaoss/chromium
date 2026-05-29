@@ -5,6 +5,7 @@
 #import "ios/chrome/browser/intelligence/actor/model/snackbar_actor_task_updates_observer.h"
 
 #import "base/strings/sys_string_conversions.h"
+#import "components/optimization_guide/proto/features/actions_data.pb.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list_factory.h"
 #import "ios/chrome/browser/shared/model/browser/test/test_browser.h"
@@ -86,7 +87,7 @@ TEST_F(SnackbarActorTaskUpdatesObserverTest, TestRegistrationStateFormatting) {
       showSnackbarMessage:[OCMArg checkWithBlock:^BOOL(
                                       SnackbarMessage* message) {
         return [message.title isEqualToString:@"Test Task"] &&
-               [message.subtitle isEqualToString:@"No task"] &&
+               message.subtitle == nil &&
                [message.secondarySubtitle isEqualToString:@"State: Finished"];
       }]];
   [observer_ didRegisterAsObserverForTaskID:task_id
@@ -101,7 +102,7 @@ TEST_F(SnackbarActorTaskUpdatesObserverTest, TestRegistrationStateFormatting) {
       showSnackbarMessage:[OCMArg checkWithBlock:^BOOL(
                                       SnackbarMessage* message) {
         return [message.title isEqualToString:@"Test Task"] &&
-               [message.subtitle isEqualToString:@"No task"] &&
+               message.subtitle == nil &&
                [message.secondarySubtitle isEqualToString:@"State: Failed"];
       }]];
   [observer_ didRegisterAsObserverForTaskID:task_id
@@ -195,17 +196,41 @@ TEST_F(SnackbarActorTaskUpdatesObserverTest, TestWillExecuteTool) {
                                currentState:actor::ActorTaskState::kActing
                                   webStates:@[]];
 
+  // 1. Test that kNavigate shows a snackbar.
   [[mock_snackbar_commands_ expect]
       showSnackbarMessage:[OCMArg checkWithBlock:^BOOL(
                                       SnackbarMessage* message) {
         return [message.title isEqualToString:@"Test Task"] &&
                [message.subtitle isEqualToString:@"Navigating..."] &&
                [message.secondarySubtitle
-                   isEqualToString:@"Executing: NavigateTool"];
+                   isEqualToString:@"Executing: Navigating"];
       }]];
   [observer_ actorTaskWithID:task_id
-             willExecuteTool:@"NavigateTool"
+             willExecuteTool:actor::ToolType::kNavigate
                   taskUpdate:@"Navigating..."
+                  onWebState:web_state_id];
+  [mock_snackbar_commands_ verify];
+
+  // 2. Test that kWait (non-zero duration) shows a snackbar.
+  [[mock_snackbar_commands_ expect]
+      showSnackbarMessage:[OCMArg checkWithBlock:^BOOL(
+                                      SnackbarMessage* message) {
+        return
+            [message.title isEqualToString:@"Test Task"] &&
+            [message.subtitle isEqualToString:@"Waiting..."] &&
+            [message.secondarySubtitle isEqualToString:@"Executing: Waiting"];
+      }]];
+  [observer_ actorTaskWithID:task_id
+             willExecuteTool:actor::ToolType::kWait
+                  taskUpdate:@"Waiting..."
+                  onWebState:web_state_id];
+  [mock_snackbar_commands_ verify];
+
+  // 3. Test that kWaitZeroDuration is ignored and does NOT show a snackbar.
+  [[mock_snackbar_commands_ reject] showSnackbarMessage:[OCMArg any]];
+  [observer_ actorTaskWithID:task_id
+             willExecuteTool:actor::ToolType::kWaitZeroDuration
+                  taskUpdate:@"Waiting (zero duration)..."
                   onWebState:web_state_id];
   [mock_snackbar_commands_ verify];
 }

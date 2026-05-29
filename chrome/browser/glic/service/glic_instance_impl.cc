@@ -35,6 +35,7 @@
 #include "chrome/browser/glic/host/context/glic_sharing_manager_coordinator.h"
 #include "chrome/browser/glic/host/context/glic_sharing_manager_impl.h"
 #include "chrome/browser/glic/host/glic.mojom-shared.h"
+#include "chrome/browser/glic/host/glic_skills_manager_impl.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/host/webui_contents_container.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
@@ -67,8 +68,8 @@
 #include "components/user_education/common/user_education_features.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/render_widget_host_view.h"
+#include "content/public/browser/visibility.h"
 #include "content/public/browser/web_contents_delegate.h"
-#include "content/public/browser/web_contents_observer.h"
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "third_party/abseil-cpp/absl/functional/overload.h"
@@ -139,64 +140,6 @@ GetSaasUsageReportingController(Profile* profile) {
 #endif
 }
 }  // namespace
-
-// Web Contents Observer for the tab bound with its respective glic
-// embedder.
-class GlicTabContentsObserver : public content::WebContentsObserver {
- public:
-  GlicTabContentsObserver(content::WebContents* web_contents,
-                          GlicInstanceImpl* instance)
-      : content::WebContentsObserver(web_contents), instance_(instance) {}
-
-  // content::WebContentsObserver:
-  // This is called whenever a navigation happens from clicking a link within
-  // the observed web contents.
-  void DidOpenRequestedURL(content::WebContents* new_contents,
-                           content::RenderFrameHost* source_render_frame_host,
-                           const GURL& url,
-                           const content::Referrer& referrer,
-                           WindowOpenDisposition disposition,
-                           ui::PageTransition transition,
-                           bool started_from_context_menu,
-                           bool renderer_initiated) override {
-    if (!new_contents) {
-      return;
-    }
-
-    tabs::TabInterface* tab_to_bind =
-        tabs::TabInterface::MaybeGetFromContents(new_contents);
-
-    if (!tab_to_bind) {
-      LOG(ERROR) << "Invalid tab_to_bind, null";
-      return;
-    }
-    if (tab_to_bind->GetProfile() != instance_->profile()) {
-      LOG(ERROR) << "Invalid tab_to_bind, wrong profile";
-      return;
-    }
-    if (!GlicInstanceHelper::From(tab_to_bind)) {
-      LOG(ERROR) << "Invalid tab_to_bind, no GlicInstanceHelper in its "
-                    "UnownedUserData";
-      return;
-    }
-
-    if (!tab_to_bind || (tab_to_bind->GetProfile() != instance_->profile()) ||
-        !GlicInstanceHelper::From(tab_to_bind)) {
-      LOG(ERROR) << "Invalid tab_to_bind, null or wrong profile or no "
-                    "GlicInstanceHelper in its UnownedUserData";
-      return;
-    }
-
-    tabs::TabInterface* source_tab = tabs::TabInterface::GetFromContents(
-        content::WebContents::FromRenderFrameHost(source_render_frame_host));
-
-    instance_->MaybeDaisyChainToTab(source_tab, tab_to_bind,
-                                    DaisyChainSource::kTabContents);
-  }
-
- private:
-  raw_ptr<GlicInstanceImpl> instance_ = nullptr;
-};
 
 void GlicInstanceImpl::MaybeDaisyChainToTab(tabs::TabInterface* source_tab,
                                             tabs::TabInterface* target_tab,
@@ -322,11 +265,9 @@ GlicInstanceImpl::~GlicInstanceImpl() {
     UnbindEmbedder(key);
   }
 
-  for (auto* web_contents : sharing_manager().GetPinnedTabs()) {
-    if (auto* tab = tabs::TabInterface::GetFromContents(web_contents)) {
-      if (auto* helper = GlicInstanceHelper::From(tab)) {
-        helper->OnUnpinnedByInstance(this);
-      }
+  for (tabs::TabInterface* tab : sharing_manager().GetPinnedTabs()) {
+    if (auto* helper = GlicInstanceHelper::From(tab)) {
+      helper->OnUnpinnedByInstance(this);
     }
   }
 }
@@ -338,6 +279,13 @@ glic::GlicInstanceMetrics& GlicInstanceImpl::instance_metrics() {
 glic::GlicInstanceMetricsBackwardsCompatibility&
 GlicInstanceImpl::instance_metrics_backwards_compatibility() {
   return instance_metrics_;
+}
+
+GlicSkillsManager& GlicInstanceImpl::skills_manager() {
+  if (!skills_manager_) {
+    skills_manager_ = std::make_unique<GlicSkillsManagerImpl>(this, profile_);
+  }
+  return *skills_manager_;
 }
 
 void GlicInstanceImpl::OnSelectionAreasChanged(int count) {
@@ -410,8 +358,8 @@ bool GlicInstanceImpl::ShouldShowInactiveSidePanel(
 void GlicInstanceImpl::Show(const ShowOptions& options) {
   VLOG(1) << "Glic [InstanceImpl] Show, id=" << id_.value();
 
-  TRACE_EVENT_INSTANT("glic", "GlicInstanceImpl::Show",
-                      perfetto::Flow::FromPointer(this));
+  TRACE_EVENT("glic", "GlicInstanceImpl::Show",
+              perfetto::Flow::FromPointer(this));
 
   if (const auto* side_panel_options =
           std::get_if<SidePanelShowOptions>(&options.embedder_options);
@@ -1116,10 +1064,10 @@ void GlicInstanceImpl::MaybeShowHostUi(
   if (!delegate) {
     return;
   }
+  VLOG(2) << "Glic [InstanceImpl] MaybeShowHostUi, id=" << id_.value();
 
   host_.SetDelegate(delegate);
-  host_.webui_contents()->UpdateWebContentsVisibility(
-      content::Visibility::VISIBLE);
+  host_.SetWebContentsVisibility(content::Visibility::VISIBLE);
   host_.NotifyWindowIntentToShow();
 
   NotifyPanelWillOpen(invocation_source, prompt_suggestion, fre_override);
@@ -1247,10 +1195,6 @@ GlicInstanceImpl::EmbedderEntry& GlicInstanceImpl::BindTab(
   new_entry.tab_activation_subscription = tab->RegisterDidActivate(
       base::BindRepeating(&GlicInstanceImpl::OnBoundTabActivated,
                           weak_ptr_factory_.GetWeakPtr()));
-  if (!base::FeatureList::IsEnabled(features::kGlicDaisyChainViaCoordinator)) {
-    new_entry.tab_web_contents_observer =
-        std::make_unique<GlicTabContentsObserver>(tab->GetContents(), this);
-  }
 
   if (pin_on_bind && ShouldPinOnBind()) {
     // Auto-pin on bind.
@@ -1370,6 +1314,21 @@ void GlicInstanceImpl::MaybeActivateForegroundEmbedder() {
 }
 
 void GlicInstanceImpl::OnAllEmbeddersInactive() {
+  TRACE_EVENT("glic", "GlicInstanceImpl::OnAllEmbeddersInactive");
+
+  if (base::FeatureList::IsEnabled(
+          features::kGlicSetWebContentsVisibilityWhenToggling)) {
+    // Make WebContents hidden to avoid frame production and reduce the priority
+    // of its renderer processes.
+    // Some actuations steps need the WebContents to be visible in order to
+    // make progress, so we need to keep it visible in that case.
+    // TODO(crbug.com/513209932): Hide WebContents when Glic is not showing,
+    // regardless of whether it is actuating or not.
+    if (!IsActuating()) {
+      host_.SetWebContentsVisibility(content::Visibility::HIDDEN);
+    }
+  }
+
   NotifyInstanceActivationChanged(false);
   if (actor_task_manager_) {
     // Attempt to show toast on UI deactivated (and not replaced by anything

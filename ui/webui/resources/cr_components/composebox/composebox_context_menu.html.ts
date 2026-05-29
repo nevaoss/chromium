@@ -37,12 +37,15 @@ export function getHtml(this: ComposeboxElement) {
         .smartTabSharingActive="${this.smartTabSharingActive}"
         .searchboxLayoutMode="${this.searchboxLayoutMode}"
         .tabSuggestions="${this.tabSuggestions}"
+        .recentTabId="${this.recentTabId}"
         .hasImageFiles="${this.hasImageFiles()}"
         .disabledTabIds="${this.addedTabsIds}"
+        .restoredTabIds="${this.restoredTabIds}"
         .fileNum="${this.files.size}"
         .sharedTabs="${this.getSharedTabs()}"
         ?upload-button-disabled="${this.uploadButtonDisabled}"
-        ?show-context-menu-description="${this.showContextMenuDescription}">
+        ?show-context-menu-description="${this.showContextMenuDescription}"
+        .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled}">
     </cr-composebox-contextual-entrypoint-and-menu>
   ` : (hasAllowedInputs(this.inputState, this.usePecApi) ? html`
     <cr-composebox-contextual-entrypoint-button
@@ -54,8 +57,10 @@ export function getHtml(this: ComposeboxElement) {
         .isOblongShape="${this.isOblongShape}"
         .applyContextButtonBackground="${this.applyContextButtonBackground}"
         .sharedTabs="${this.getSharedTabs()}"
+        .restoredTabs="${this.getRestoredTabs()}"
         ?upload-button-disabled="${this.uploadButtonDisabled}"
-        ?show-context-menu-description="${this.showContextMenuDescription}">
+        ?show-context-menu-description="${this.showContextMenuDescription}"
+        .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled}">
     </cr-composebox-contextual-entrypoint-button>
   ` : '')}
   ${this.searchboxLayoutMode === 'Compact' && this.shouldShowVoiceSearch() ? html`

@@ -331,16 +331,16 @@
         "default": "",
       },
     },
-    // Strip actionability from popup-like content that is positioned offscreen
-    // via position:absolute and cannot be reached by scrolling.
-    {
-      name: "AIPageContentAnchoredAbsoluteOffscreenNonActionability",
-      status: "test",
-    },
-    // Strip actionability from popup-like content that is positioned offscreen
+    // Strip actionability from content that is positioned offscreen
     // via position:fixed and cannot be reached by scrolling.
     {
       name: "AIPageContentAnchoredFixedOffscreenNonActionability",
+      status: "stable",
+    },
+    // Strip actionability from content that is positioned offscreen via
+    // absolute/relative/static positioning and cannot be reached by scrolling.
+    {
+      name: "AIPageContentAnchoredNonFixedOffscreenNonActionability",
       status: "stable",
     },
     // Whether to automatically build an APC content_extraction tree on load.
@@ -378,10 +378,16 @@
       name: "AIPageContentPaidContentAnnotation",
       status: "stable"
     },
-    // When enabled, certian element coordinates will be tracked using the
+    // When enabled, iframe element coordinates will be tracked using the
     // Element::SetTrackedElementSubRect() method.
     {
-      name: "AIPageContentTrackedElements",
+      name: "AIPageContentTrackedElementsIframe",
+      status: "test"
+    },
+    // When enabled, native or heuristics password element coordinates will be
+    // tracked using the Element::SetTrackedElementSubRect() method.
+    {
+      name: "AIPageContentTrackedElementsPassword",
       status: "test"
     },
     // Clamp AIPageContent visible bounding boxes to the local-root viewport
@@ -753,7 +759,6 @@
     {
       name: "AutoDarkMode",
       base_feature: "none",
-      origin_trial_feature_name: "AutoDarkMode",
     },
     {
       // When enabled, the dark mode filter (Auto Dark / force-dark) skips
@@ -2448,7 +2453,7 @@
     },
     {
       // When enabled, retarget the relatedTarget attribute of drag events.
-      // This landed in M146 and can be removed in M148.
+      // This landed partly in M146 and more in M150 and can be removed in M152.
       name: "DontLeakShadowTreesInDragEvents",
       status: "stable",
     },
@@ -2473,6 +2478,10 @@
     {
       name: "EditingLineMovementWithRubyFix",
       status: "stable",
+    },
+    {
+      name: "EditingUseDomPositionApi",
+      status: "test",
     },
     {
       // Uses the original event delta to choose the initial elastic overscroll
@@ -2877,6 +2886,10 @@
     },
     {
       name: "FirstLineTextMetrics",
+      status: "stable",
+    },
+    {
+      name: "FirstLineTextTransform",
       status: "stable",
     },
     // When enabled, HTMLFormControlElement::IsReadOnly() returns false for
@@ -3595,6 +3608,10 @@
       name: "LayoutIgnoreMarginsForSticky",
     },
     {
+      name: "LayoutOOFCollectInlinesFix",
+      status: "stable",
+    },
+    {
       name: "LayoutTableCellAlignmentSafe",
       status: "stable",
     },
@@ -4070,6 +4087,14 @@
       status: "stable",
     },
     {
+      // Preserve NBSP in plain-text editing contexts. Only normalize NBSP for
+      // paste/drop in rich-text editing contexts.
+      // See https://issues.chromium.org/issues/513279004.
+      name: "NormalizeNbspRichTextOnly",
+      status: "stable",
+      depends_on: ["NormalizeNbspForPasteAndDrop"],
+    },
+    {
       name: "NotificationConstructor",
       // Android won't be able to reliably support non-persistent notifications, the
       // intended behavior for which is in flux by itself.
@@ -4123,7 +4148,7 @@
     },
     {
       name: "OnDeviceWebSpeechQuality",
-      status: "experimental",
+      status: "stable",
     },
     {
       // The OpaqueRange interface provides a live AbstractRange subtype
@@ -4705,8 +4730,9 @@
     {
       // getType() on a ClipboardItem triggers the
       // clipboard read operation, implementing lazy loading for clipboard data.
+      // Chrome status entry - https://chromestatus.com/feature/5203433409871872
       name: "ReadClipboardDataOnClipboardItemGetType",
-      status: "test",
+      status: "stable",
     },
     {
       // Enables correct reading-flow ordering when slots are involved.
@@ -5040,6 +5066,10 @@
       status: "stable"
     },
     {
+      name: "ScoreLineBreakerAbort",
+      status: "stable",
+    },
+    {
       // https://github.com/w3c/window-management/issues/149
       name: "ScreenDetailedHdrHeadroom",
       status: "experimental",
@@ -5073,6 +5103,11 @@
       // ComputeUniqueSelector()
       name: "ScrollAnchorSerializationUseParentForTextNode",
       status: "stable",
+    },
+    {
+      // https://crbug.com/479472367
+      name: "ScrollAxisLock",
+      status: "experimental",
     },
     {
       name: "ScrollbarColor",
@@ -5556,6 +5591,7 @@
       // Exposes speculation measurement data (preloads, prefetches, prerenders)
       // on performance.speculations.
       name: "SpeculationMeasurement",
+      origin_trial_feature_name: "SpeculationMeasurement",
       status: "experimental",
     },
     {
@@ -5739,6 +5775,10 @@
     {
       name: "SvgSmilClockValueValidation",
       status: "stable",
+    },
+    {
+      name: "SvgSupportMediaFragments",
+      status: "experimental",
     },
     {
       name: "SvgTextPathPathAttribute",
@@ -5959,11 +5999,7 @@
       depends_on: ["TextSpacingTrimFallback"],
       status: "stable",
     },
-    {
-      // crbug.com/331123676
-      name: "TextSpacingTrimYuGothicUI",
-      status: "stable",
-    },
+
     {
       name: "ThrottledHistoryAPIThrowsSecurityError",
       status: "test",
@@ -6496,6 +6532,10 @@
       origin_trial_os: ["android"],
       origin_trial_allows_third_party: true,
     },
+    {
+      name: "WebAuthenticationCmtgKey",
+      status: "experimental",
+    },
     // Enables `uiMode` enumeration field in CredentialRequestOptions struct.
     // and `get()` requests with `uiMode: 'immediate'`.
     // See https://github.com/w3c/webauthn/issues/2228.
@@ -6719,6 +6759,12 @@
     {
       name: "WebPrinting",
       status: {"Android": "", "ChromeOS": "stable", "default": "test"},
+    },
+    {
+      // Experimental implementation of
+      // https://www.ietf.org/archive/id/draft-hancke-tsvwg-snap-00.html
+      name: "WebRtcSctpSnap",
+      status: "test",
     },
     // WebShare is enabled by default on Android (non-WebView), Win, ChromeOS, and Mac.
     // This is done in chrome/renderer/chrome_content_renderer_client.cc to prevent

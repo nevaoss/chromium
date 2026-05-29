@@ -23,7 +23,7 @@
       session.createChild(attachedToMainTarget.result.sessionId);
 
   const hiddenTargetIds = [];
-  for (let i = 0; i < 20; ++i) {
+  for (let i = 0; i < 100; ++i) {
     const {result: {targetId: hiddenId}} =
         await mainSession.protocol.Target.createTarget({
           url: `about:blank`,
@@ -34,7 +34,8 @@
   }
 
   const crashPromises = [];
-  for (targetId of hiddenTargetIds) {
+  for (let i = 0; i < 10; ++i) {
+    const targetId = hiddenTargetIds[i];
     const attachedToHiddenTarget =
         await testRunner.browserP().Target.attachToTarget({
           targetId,

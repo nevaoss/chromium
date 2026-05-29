@@ -4905,11 +4905,28 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Android.MultiWindow.CrashRecoveryDialogShown">
+  <owner>aishwaryarj@google.com</owner>
+  <owner>zheliooo@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <description>Recorded when the crash recovery dialog is shown.</description>
+</action>
+
 <action name="Android.MultiWindow.CrashRecoveryInitiated">
   <owner>aishwaryarj@google.com</owner>
   <owner>zheliooo@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <description>Recorded when crash recovery is initiated.</description>
+</action>
+
+<action name="Android.MultiWindow.CrashRecoveryOptIn">
+  <owner>aishwaryarj@google.com</owner>
+  <owner>zheliooo@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <description>
+    Recorded when the user opts in to crash recovery by clicking the positive
+    button on the recovery dialog.
+  </description>
 </action>
 
 <action name="Android.MultiWindowMode.Enter">
@@ -15270,6 +15287,13 @@ should be able to be added at any place in this file.
   <description>Logged when Close is called on an instance.</description>
 </action>
 
+<action name="Glic.Instance.Close.PeekView">
+  <owner>lindaywang@chromium.org</owner>
+  <description>
+    Logged when a Glic instance peek view is closed on Android.
+  </description>
+</action>
+
 <action name="Glic.Instance.Created">
   <owner>birnie@google.com</owner>
   <owner>perrier@google.com</owner>
@@ -15453,6 +15477,13 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Glic.Instance.Show.PeekView">
+  <owner>lindaywang@chromium.org</owner>
+  <description>
+    Logged when a Glic instance is shown in peek view on Android.
+  </description>
+</action>
+
 <action name="Glic.Instance.Show.SidePanel">
   <owner>birnie@google.com</owner>
   <owner>perrier@google.com</owner>
@@ -15573,6 +15604,24 @@ should be able to be added at any place in this file.
   <owner>birnie@google.com</owner>
   <owner>perrier@google.com</owner>
   <description>The Glic instance WebUI is holding loading.</description>
+</action>
+
+<action name="Glic.Instance.WebUiStateChanged.IneligibleAccount">
+  <owner>birnie@google.com</owner>
+  <owner>perrier@google.com</owner>
+  <description>
+    The Glic instance WebUI is unavailable due to account capabilities. Logged
+    when the WebUI state transitions to kIneligibleAccount.
+  </description>
+</action>
+
+<action name="Glic.Instance.WebUiStateChanged.LocationMismatch">
+  <owner>birnie@google.com</owner>
+  <owner>perrier@google.com</owner>
+  <description>
+    The Glic instance WebUI is unavailable due to country location mismatch.
+    Logged when the WebUI state transitions to kLocationMismatch.
+  </description>
 </action>
 
 <action name="Glic.Instance.WebUiStateChanged.Offline">
@@ -16717,6 +16766,20 @@ should be able to be added at any place in this file.
   <description>Please enter the description of this user action.</description>
 </action>
 
+<action name="Indigo.Onboarding.Complete">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>User completed the onboarding process.</description>
+</action>
+
+<action name="Indigo.Onboarding.Trigger">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>User triggered the onboarding process.</description>
+</action>
+
 <action name="Indigo.PageAction.Click">
   <owner>jbroman@chromium.org</owner>
   <owner>adithyas@chromium.org</owner>
@@ -16738,6 +16801,27 @@ should be able to be added at any place in this file.
   <description>
     The indigo page action was displayed as an anchored message.
   </description>
+</action>
+
+<action name="Indigo.Transformation.Failure" not_user_triggered="true">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>Indigo transformation failed.</description>
+</action>
+
+<action name="Indigo.Transformation.Success" not_user_triggered="true">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>Indigo transformation succeeded.</description>
+</action>
+
+<action name="Indigo.Transformation.Trigger">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>User triggered the transformation.</description>
 </action>
 
 <action name="InfobarModalCancelButtonTap">
@@ -45585,6 +45669,14 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_Impression_FromIOSGeminiButtonToolbar">
+  <owner>thegreenfrog@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <description>
+    Recorded when showing sign in that originates from the Toolbar. iOS only.
+  </description>
+</action>
+
 <action name="Signin_Impression_FromKaleidoscope">
   <obsolete>No longer recorded.</obsolete>
   <owner>beccahughes@chromium.org</owner>
@@ -46548,6 +46640,15 @@ should be able to be added at any place in this file.
   <description>
     Recorded on sign in start from access point
     signin_metrics::AccessPoint::kIOSAppBar. iOS only.
+  </description>
+</action>
+
+<action name="Signin_Signin_FromIOSGeminiButtonToolbar">
+  <owner>thegreenfrog@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kIosGeminiButtonToolbar. iOS only.
   </description>
 </action>
 

@@ -1288,6 +1288,7 @@ class CONTENT_EXPORT WebContentsImpl
   void NotifySwappedRWHVChildFrameFromRenderManager(
       RenderWidgetHostViewChildFrame* new_view,
       bool allow_paint_holding) override;
+  void PrimaryMainFrameSwapComplete(RenderFrameHostImpl* new_frame) override;
 
   // PageDelegate -------------------------------------------------------------
 
@@ -1355,6 +1356,7 @@ class CONTENT_EXPORT WebContentsImpl
 
   //  RenderWidgetHostInputEventRouter::Delegate -------------------------------
   input::TouchEmulator* GetTouchEmulator(bool create_if_necessary) override;
+  void CancelAutoscroll(input::RenderWidgetHostViewInput* view) override;
 
   // Invoked before a form repost warning is shown.
   void NotifyBeforeFormRepostWarningShow() override;
@@ -1687,6 +1689,10 @@ class CONTENT_EXPORT WebContentsImpl
   // Clears the SurfaceEmbedConnector for this WebContents. Called when the
   // WebContents is being detached from a SurfaceEmbed plugin.
   void ClearSurfaceEmbedConnector();
+
+  // Called when the number of active capturers for this WebContents has
+  // changed.
+  void OnCapturerCountChanged();
 
  private:
   using FrameTreeIterationCallback = base::FunctionRef<void(FrameTree&)>;
@@ -2177,6 +2183,10 @@ class CONTENT_EXPORT WebContentsImpl
   // the value returned by GetLastActiveTimeTicks().
   void UpdateVisibilityAndNotifyPageAndView(Visibility new_visibility,
                                             bool is_activity = true);
+
+  // Updates the visibility for the main RenderWidgetHostView and child views
+  // for this WebContents.
+  void SetPrimaryMainFrameViewVisibility(Visibility visibility);
 
   // Returns UKM source id for the currently displayed page.
   // Intentionally kept private, prefer using

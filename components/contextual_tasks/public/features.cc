@@ -205,6 +205,60 @@ const base::FeatureParam<double> kSmartTabSharingPromoScoreThreshold(
     "ContextualTasksContextSmartTabSharingPromoScoreThreshold",
     0.6);
 
+const base::FeatureParam<SmartTabSharingIphFirstTimePromptOption>::Option
+    kSmartTabSharingIphFirstTimePromptOptions[] = {
+        {SmartTabSharingIphFirstTimePromptOption::kIphFirstTimePromptV1,
+         "iphStsFirstTimePromptV1"},
+        {SmartTabSharingIphFirstTimePromptOption::kIphFirstTimePromptV2,
+         "iphStsFirstTimePromptV2"},
+};
+const base::FeatureParam<SmartTabSharingIphFirstTimePromptOption>
+    kSmartTabSharingIphFirstTimePromptOption(
+        &kContextualTasksContext,
+        "ContextualTasksContextSmartTabSharingIphFirstTimePromptOption",
+        SmartTabSharingIphFirstTimePromptOption::kIphFirstTimePromptV1,
+        &kSmartTabSharingIphFirstTimePromptOptions);
+
+const base::FeatureParam<SmartTabSharingIphDefaultOnOption>::Option
+    kSmartTabSharingIphDefaultOnOptions[] = {
+        {SmartTabSharingIphDefaultOnOption::kIphDefaultOnV1,
+         "iphStsDefaultOnV1"},
+        {SmartTabSharingIphDefaultOnOption::kIphDefaultOnV2,
+         "iphStsDefaultOnV2"},
+};
+const base::FeatureParam<SmartTabSharingIphDefaultOnOption>
+    kSmartTabSharingIphDefaultOnOption(
+        &kContextualTasksContext,
+        "ContextualTasksContextSmartTabSharingDefaultOnOption",
+        SmartTabSharingIphDefaultOnOption::kIphDefaultOnV1,
+        &kSmartTabSharingIphDefaultOnOptions);
+
+const base::FeatureParam<SmartTabSharingIphTryItPromoOption>::Option
+    kSmartTabSharingIphTryItPromoOptions[] = {
+        {SmartTabSharingIphTryItPromoOption::kIphTryItPromoV1,
+         "iphStsTryItPromoV1"},
+        {SmartTabSharingIphTryItPromoOption::kIphTryItPromoV2,
+         "iphStsTryItPromoV2"},
+};
+const base::FeatureParam<SmartTabSharingIphTryItPromoOption>
+    kSmartTabSharingIphTryItPromoOption(
+        &kContextualTasksContext,
+        "ContextualTasksContextSmartTabSharingIphTryItPromoOption",
+        SmartTabSharingIphTryItPromoOption::kIphTryItPromoV1,
+        &kSmartTabSharingIphTryItPromoOptions);
+
+const base::FeatureParam<SmartTabSharingMegaplusStringOption>::Option
+    kSmartTabSharingMegaplusOptions[] = {
+        {SmartTabSharingMegaplusStringOption::kMegaplusV1, "megaplusV1"},
+        {SmartTabSharingMegaplusStringOption::kMegaplusV2, "megaplusV2"},
+        {SmartTabSharingMegaplusStringOption::kMegaplusV3, "megaplusV3"},
+};
+const base::FeatureParam<SmartTabSharingMegaplusStringOption>
+    kSmartTabSharingMegaplusStringOption(
+        &kContextualTasksContext,
+        "ContextualTasksContextSmartTabSharingMegaplusStringOption",
+        SmartTabSharingMegaplusStringOption::kMegaplusV1,
+        &kSmartTabSharingMegaplusOptions);
 const base::FeatureParam<double> kContextualTasksContextLoggingSampleRate{
     &kContextualTasksContextLogging, "ContextualTasksContextLoggingSampleRate",
     1.0};
@@ -235,7 +289,6 @@ const base::FeatureParam<std::string> kContextualTasksSignInDomains{
 
 constexpr base::FeatureParam<EntryPointOption>::Option kEntryPointOptions[] = {
     {EntryPointOption::kNoEntryPoint, "no-entry-point"},
-    {EntryPointOption::kPageActionRevisit, "page-action-revisit"},
     {EntryPointOption::kToolbarRevisit, "toolbar-revisit"},
     {EntryPointOption::kToolbarPermanent, "toolbar-permanent"},
     {EntryPointOption::kToolbarEphemeralBranded, "toolbar-ephemeral-branded"}};

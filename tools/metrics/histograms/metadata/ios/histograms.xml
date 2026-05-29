@@ -1253,7 +1253,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.CrossPlatformPromos.Promo.Shown.{Source}"
-    enum="IOSCrossPlatformPromoType" expires_after="2026-06-21">
+    enum="IOSCrossPlatformPromoType" expires_after="2026-11-19">
   <owner>hiramahmood@google.com</owner>
   <owner>scottyoder@google.com</owner>
   <owner>bling-pandamonium@google.com</owner>
@@ -1267,7 +1267,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.CrossPlatformPromos.PushNotification.Interaction"
-    enum="IOSCrossPlatformPromoType" expires_after="2026-06-21">
+    enum="IOSCrossPlatformPromoType" expires_after="2026-11-19">
   <owner>hiramahmood@google.com</owner>
   <owner>scottyoder@google.com</owner>
   <owner>bling-pandamonium@google.com</owner>
@@ -1949,6 +1949,28 @@ chromium-metrics-reviews@google.com.
   <owner>bling-pandamonium@google.com</owner>
   <summary>
     Records the action passed to Chrome for iOS using an external action URL.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Feedback.ReportAnIssue.Displayed"
+    enum="UserFeedbackSender" expires_after="2027-06-01">
+  <owner>jlebel@google.com</owner>
+  <owner>chrome-regionalcapabilities@google.com</owner>
+  <summary>
+    Records the sender of the feedback when the report an issue dialog is
+    displayed.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Feedback.ReportAnIssue.NotDisplayed"
+    enum="UserFeedbackSender" expires_after="2027-06-01">
+  <owner>jlebel@google.com</owner>
+  <owner>chrome-regionalcapabilities@google.com</owner>
+  <summary>
+    Records the sender of the feedback when the report an issue dialog is not
+    displayed (e.g. because the user lacks the capability to submit feedback).
+    TODO(crbug.com/512043635): Remove this histogram once Chrome uses Aloha
+    feedback.
   </summary>
 </histogram>
 
@@ -2808,6 +2830,16 @@ chromium-metrics-reviews@google.com.
   <owner>bling-alchemy-eng@google.com</owner>
   <summary>
     Records the attachment option that was tapped in the input plate in Gemini.
+  </summary>
+</histogram>
+
+<histogram name="IOS.Gemini.InvocationPageType"
+    enum="IOSGeminiInvocationPageType" expires_after="2027-02-03">
+  <owner>fbeauchamp@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <summary>
+    Records the type of page or WebState when Gemini is invoked. Recorded
+    whenever the user initiates a Gemini flow.
   </summary>
 </histogram>
 
@@ -6314,7 +6346,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="IOS.SafeBrowsing.Enhanced.Infobar.Interaction"
     enum="IOSEnhancedSafeBrowseringInfobarInteraction"
-    expires_after="2026-06-26">
+    expires_after="2027-06-26">
   <owner>danieltwhite@google.com</owner>
   <owner>bling-fundamentals@google.com</owner>
   <summary>

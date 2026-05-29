@@ -407,7 +407,8 @@ UIImage* GetManualFillSymbol() {
   // can supply a parameter to use the keyboard down symbol.
   bool useKeyboardDownSymbol =
       !IsLiquidGlassEffectEnabled() ||
-      kIOSKeyboardAccessoryTwoBubbleKeyboardIconParam.Get();
+      (IsIOSKeyboardAccessoryTwoBubbleEnabled() &&
+       kIOSKeyboardAccessoryTwoBubbleKeyboardIconParam.Get());
   if (useKeyboardDownSymbol) {
     closeButtonSymbol =
         DefaultSymbolWithPointSize(kKeyboardDownSymbol, kSymbolActionPointSize);
@@ -640,8 +641,9 @@ UIImage* GetManualFillSymbol() {
     // tint color.
     self.formSuggestionView.overrideUserInterfaceStyle =
         self.traitCollection.userInterfaceStyle;
-    self.formInputAccessoryView.trailingView.overrideUserInterfaceStyle =
-        self.traitCollection.userInterfaceStyle;
+    [self.formInputAccessoryView
+        setSubviewsOverrideUserInterfaceStyle:self.traitCollection
+                                                  .userInterfaceStyle];
   }
 }
 

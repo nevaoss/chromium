@@ -20,6 +20,7 @@
 #include "chrome/browser/glic/common/glic_tab_observer.h"
 #include "chrome/browser/glic/common/instance_independent_hotkey_manager.h"
 #include "chrome/browser/glic/glic_pref_names.h"
+#include "chrome/browser/glic/host/context/glic_active_instance_sharing_manager.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
 #include "chrome/browser/glic/host/guest_util.h"
@@ -57,9 +58,6 @@ constexpr base::FeatureParam<base::TimeDelta> kGlicMaxRecencyValue{
     &kGlicMaxRecency, "duration", base::Minutes(30)};
 
 GlicTabRestoreData* GetTabRestoreData(const TabCreationEvent& creation_event) {
-  if (!base::FeatureList::IsEnabled(features::kGlicTabRestoration)) {
-    return nullptr;
-  }
   if (!creation_event.new_tab) {
     return nullptr;
   }
@@ -94,22 +92,25 @@ GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
           this),
       metrics_(this),
       web_contents_warming_pool_(
-          std::make_unique<GlicWebContentsWarmingPool>(profile)) {
+          std::make_unique<GlicWebContentsWarmingPool>(profile)),
+      active_instance_sharing_manager_(
+          std::make_unique<GlicActiveInstanceSharingManager>(profile,
+                                                             enabling)) {
   if (identity_manager) {
     identity_manager_observation_.Observe(identity_manager);
   }
-  if (base::FeatureList::IsEnabled(features::kGlicDaisyChainNewTabs) ||
-      base::FeatureList::IsEnabled(features::kGlicTabRestoration) ||
-      base::FeatureList::IsEnabled(features::kGlicDaisyChainViaCoordinator)) {
-    tab_observer_ = GlicTabObserver::Create(
-        profile_, base::BindRepeating(&GlicInstanceCoordinatorImpl::OnTabEvent,
-                                      weak_ptr_factory_.GetWeakPtr()));
-  }
+  tab_observer_ = GlicTabObserver::Create(
+      profile_, base::BindRepeating(&GlicInstanceCoordinatorImpl::OnTabEvent,
+                                    weak_ptr_factory_.GetWeakPtr()));
   hotkey_manager_ = std::make_unique<InstanceIndependentHotkeyManager>(this);
+
   metrics_.StartPeriodicMemoryMetricsRecording();
 }
 
 GlicInstanceCoordinatorImpl::~GlicInstanceCoordinatorImpl() {
+  CHECK(active_instance_sharing_manager_);
+  active_instance_sharing_manager_->SetActiveSharingManager(nullptr);
+
   for (auto& [id, instance] : instances_) {
     instance->CloseInstanceAndShutdown();
   }
@@ -138,6 +139,12 @@ void GlicInstanceCoordinatorImpl::OnInstanceActivationChanged(
     active_instance_ = nullptr;
   } else {
     return;
+  }
+  if (active_instance_) {
+    active_instance_sharing_manager_->SetActiveSharingManager(
+        &active_instance_->sharing_manager());
+  } else {
+    active_instance_sharing_manager_->SetActiveSharingManager(nullptr);
   }
   NotifyActiveInstanceChanged();
   ComputeContentAccessIndicator();
@@ -249,6 +256,11 @@ bool GlicInstanceCoordinatorImpl::IsAnyPanelShowing() const {
     }
   }
   return false;
+}
+
+bool GlicInstanceCoordinatorImpl::IsConversationPresent(
+    const std::string& conversation_id) const {
+  return !!GetInstanceImplForConversationId(conversation_id);
 }
 
 GlicInstance* GlicInstanceCoordinatorImpl::GetInstanceForTab(
@@ -513,8 +525,14 @@ GlicInstance* GlicInstanceCoordinatorImpl::GetActiveInstance() {
   return active_instance_;
 }
 
+GlicSharingManager&
+GlicInstanceCoordinatorImpl::active_instance_sharing_manager() {
+  CHECK(active_instance_sharing_manager_);
+  return *active_instance_sharing_manager_;
+}
+
 GlicInstanceImpl* GlicInstanceCoordinatorImpl::GetInstanceImplForConversationId(
-    const std::string& conversation_id) {
+    const std::string& conversation_id) const {
   for (const auto& [id, instance] : instances_) {
     if (instance->conversation_id() == conversation_id) {
       return instance.get();
@@ -929,10 +947,6 @@ void GlicInstanceCoordinatorImpl::OnTabEvent(const GlicTabEvent& event) {
 
 void GlicInstanceCoordinatorImpl::MaybeDaisyChainFromLinkClick(
     const TabCreationEvent& event) {
-  if (!base::FeatureList::IsEnabled(features::kGlicDaisyChainViaCoordinator)) {
-    return;
-  }
-
   if (event.creation_type != TabCreationType::kFromLink || !event.opener ||
       !event.new_tab) {
     return;
@@ -949,10 +963,6 @@ void GlicInstanceCoordinatorImpl::MaybeDaisyChainFromLinkClick(
 
 void GlicInstanceCoordinatorImpl::MaybeDaisyChainFromBookmark(
     const TabCreationEvent& event) {
-  if (!base::FeatureList::IsEnabled(features::kGlicDaisyChainViaCoordinator)) {
-    return;
-  }
-
   if (event.creation_type != TabCreationType::kFromBookmark || !event.old_tab ||
       !event.new_tab) {
     return;

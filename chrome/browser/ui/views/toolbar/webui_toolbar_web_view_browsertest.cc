@@ -58,6 +58,7 @@
 #include "chrome/browser/ui/views/toolbar/reload_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/toolbar/webui_pinned_toolbar_actions.h"
+#include "chrome/browser/ui/views/toolbar/webui_test_utils.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/browser/ui/webui/webui_toolbar/utils/toolbar_button_utils.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_ui.h"
@@ -184,11 +185,6 @@ bool WaitForButtonVisible(content::WebContents* web_contents,
   });
 }
 
-WebUIToolbarWebView* GetWebUIToolbarWebView(Browser* browser) {
-  return BrowserView::GetBrowserViewForBrowser(browser)
-      ->toolbar_button_provider()
-      ->GetWebUIToolbarViewForTesting();
-}
 
 void PinButton(Browser* browser, views::WebView* web_view, const char* pref) {
   browser->profile()->GetPrefs()->SetBoolean(pref, true);
@@ -431,45 +427,6 @@ WebUIToolbarWebView* SetUpAndPinHomeButton(Browser* browser) {
   return webui_toolbar_view;
 }
 
-void SetUpWebUI(const ui::ElementIdentifier& element_id,
-                ui::TrackedElement** element_out,
-                WebUIToolbarWebView** webui_toolbar_view_out,
-                views::WebView** web_view_out,
-                Browser* browser) {
-  // Wait for the WebUIToolbarWebView to be available.
-  *webui_toolbar_view_out = nullptr;
-  ASSERT_TRUE(base::test::RunUntil([&]() {
-    BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser);
-    if (!browser_view || !browser_view->toolbar()) {
-      return false;
-    }
-    ToolbarButtonProvider* provider = browser_view->toolbar();
-    *webui_toolbar_view_out = provider->GetWebUIToolbarViewForTesting();
-    return *webui_toolbar_view_out != nullptr;
-  }));
-  ASSERT_TRUE(*webui_toolbar_view_out);
-
-  if (element_id == kWebUIToolbarElementIdentifier) {
-    // We already have the view, and the Basic test doesn't strictly need the
-    // TrackedElement. ElementTracker might be flaky or slow here.
-    *element_out = views::ElementTrackerViews::GetInstance()->GetElementForView(
-        *webui_toolbar_view_out);
-  } else {
-    ASSERT_TRUE(base::test::RunUntil([&]() {
-      *element_out = BrowserElements::From(browser)->GetElement(element_id);
-      return *element_out != nullptr;
-    }));
-    ASSERT_TRUE(*element_out);
-  }
-
-  ASSERT_EQ((*webui_toolbar_view_out)->children().size(), 1u);
-  *web_view_out = views::AsViewClass<views::WebView>(
-      (*webui_toolbar_view_out)->children()[0].get());
-  ASSERT_TRUE(*web_view_out);
-
-  // Wait for the WebView to finish composition.
-  content::WaitForCopyableViewInWebContents((*web_view_out)->GetWebContents());
-}
 
 }  // namespace
 
@@ -482,7 +439,6 @@ class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
          features::kWebUISplitTabsButton, features::kWebUIBackForwardButton,
          features::kWebUIHomeButton, features::kWebUIPinnedToolbarActions,
          tabs::kHorizontalTabStripComboButton, features::kWebUILocationBar,
-         features::kWebUIExtensionsContainer,
          features::kSkipIPCChannelPausingForNonGuests,
          features::kWebUIInProcessResourceLoadingV2,
          features::kInitialWebUISyncNavStartToCommit},
@@ -524,47 +480,9 @@ class WebUIToolbarWebViewPixelBrowserTest : public InProcessBrowserTest {
     return image.getColor(image.width() / 2, image.height() / 2);
   }
 
-  void BasicPixelTest(Browser* browser, const std::string& screenshot_name) {
-    ui::TrackedElement* element = nullptr;
-    WebUIToolbarWebView* webui_toolbar_view = nullptr;
-    views::WebView* web_view = nullptr;
-    ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
-                                       &webui_toolbar_view, &web_view,
-                                       browser));
-
-    // Assert that WebContents is not loading, as it affects the state of the
-    // reload button.
-    ASSERT_FALSE(web_view->GetWebContents()->IsLoading());
-    // The WebView should be using the light color mode for regular windows,
-    // and dark color mode for incognito windows.
-    ASSERT_EQ(web_view->GetWidget()->GetColorMode(),
-              browser->profile()->IsIncognitoProfile()
-                  ? ui::ColorProviderKey::ColorMode::kDark
-                  : ui::ColorProviderKey::ColorMode::kLight);
-
-    // Pixel test
-    if (base::CommandLine::ForCurrentProcess()->HasSwitch(
-            switches::kVerifyPixels)) {
-      views::ViewSkiaGoldPixelDiff pixel_diff(
-          "WebUIToolbarWebViewPixelBrowserTest");
-      EXPECT_TRUE(pixel_diff.CompareViewScreenshot(screenshot_name,
-                                                   webui_toolbar_view));
-    }
-  }
-
  private:
   base::test::ScopedFeatureList feature_list_;
 };
-
-// TODO(crbug.com/493362471): Re-enable this test.
-IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, Basic) {
-  BasicPixelTest(browser(), "Basic");
-}
-
-// TODO(crbug.com/493362471): Re-enable this test.
-IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, IncognitoBasic) {
-  BasicPixelTest(CreateIncognitoBrowser(), "IncognitoBasic");
-}
 
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest, Accessibility) {
   content::ScopedAccessibilityModeOverride mode_override(ui::kAXModeComplete);
@@ -891,7 +809,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
                                      &webui_toolbar_view, &web_view,
                                      browser()));
 
-  WebUIHomeControl* home_control = &webui_toolbar_view->home_control_;
+  WebUIHomeControl* home_control =
+      webui_toolbar_view->GetHomeControlForTesting();
 
   gfx::Rect control_rect = element->GetScreenBounds();
   gfx::Rect view_rect = webui_toolbar_view->GetBoundsInScreen();
@@ -1736,7 +1655,6 @@ class WebUIToolbarWebViewBrowserTest : public InProcessBrowserTest {
       : WebUIToolbarWebViewBrowserTest(
             {features::kInitialWebUI, features::kWebUIReloadButton,
              features::kWebUISplitTabsButton, features::kWebUIHomeButton,
-             features::kWebUIExtensionsContainer,
              features::kSkipIPCChannelPausingForNonGuests,
              features::kWebUIInProcessResourceLoadingV2,
              features::kInitialWebUISyncNavStartToCommit},
@@ -2097,7 +2015,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
       &webui_toolbar_view->split_tabs_control_;
 
   // Create split [A, B].
-  chrome::NewSplitTab(browser(), split_tabs::SplitTabLayout::kVertical,
+  chrome::NewSplitTab(browser(), split_tabs::SplitTabLayout::kSideBySide,
                       split_tabs::SplitTabCreatedSource::kToolbarButton);
   auto* tab_strip_model = browser()->tab_strip_model();
   ASSERT_TRUE(base::test::RunUntil(
@@ -2270,7 +2188,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
       WaitForButtonVisible(web_view->GetWebContents(), kSplitTabsSelector));
 
   // Create a split tab group manually to simulate being in split mode.
-  chrome::NewSplitTab(browser(), split_tabs::SplitTabLayout::kVertical,
+  chrome::NewSplitTab(browser(), split_tabs::SplitTabLayout::kSideBySide,
                       split_tabs::SplitTabCreatedSource::kToolbarButton);
   auto* tab_strip_model = browser()->tab_strip_model();
   ASSERT_TRUE(base::test::RunUntil(
@@ -2296,7 +2214,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
       WaitForButtonVisible(web_view->GetWebContents(), kSplitTabsSelector));
 
   // Create split [A, B]. A is active.
-  chrome::NewSplitTab(browser(), split_tabs::SplitTabLayout::kVertical,
+  chrome::NewSplitTab(browser(), split_tabs::SplitTabLayout::kSideBySide,
                       split_tabs::SplitTabCreatedSource::kToolbarButton);
   auto* tab_strip_model = browser()->tab_strip_model();
   ASSERT_TRUE(base::test::RunUntil(
@@ -2497,15 +2415,10 @@ class WebUIToolbarWebViewHomeButtonBrowserTest : public InProcessBrowserTest {
     return home_url;
   }
 
-  WebUIToolbarWebView* PerformDragAndDrop(const std::string& new_home_url) {
-    WebUIToolbarWebView* webui_toolbar_view = SetUpAndPinHomeButton(browser());
-    views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
-    content::WebContents* web_contents = web_view->GetWebContents();
-
-    // JS to simulate a drop event on the home button.
-    EXPECT_TRUE(content::ExecJs(
-        web_contents,
-        base::StringPrintf(R"(
+  void SimulateDropOnHomeButton(content::WebContents* web_contents,
+                                const std::string& url) {
+    EXPECT_TRUE(content::ExecJs(web_contents,
+                                base::StringPrintf(R"(
       const homeButton = document.querySelector('toolbar-app').shadowRoot
                              .querySelector('#home').shadowRoot
                              .querySelector('cr-icon-button');
@@ -2519,7 +2432,14 @@ class WebUIToolbarWebViewHomeButtonBrowserTest : public InProcessBrowserTest {
       });
       homeButton.dispatchEvent(dropEvent);
     )",
-                           new_home_url.c_str(), new_home_url.c_str())));
+                                                   url.c_str(), url.c_str())));
+  }
+
+  WebUIToolbarWebView* PerformDragAndDrop(const std::string& new_home_url) {
+    WebUIToolbarWebView* webui_toolbar_view = SetUpAndPinHomeButton(browser());
+    views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
+
+    SimulateDropOnHomeButton(web_view->GetWebContents(), new_home_url);
 
     // Wait for the bubble widget to be created.
     WaitForUndoBubble(webui_toolbar_view);
@@ -2591,7 +2511,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
                               DispatchEventScript(kHomeSelector, "MouseEvent",
                                                   "contextmenu", "button: 2")));
 
-  WebUIHomeControl* home_control = &webui_toolbar_view->home_control_;
+  WebUIHomeControl* home_control =
+      webui_toolbar_view->GetHomeControlForTesting();
 
   EXPECT_TRUE(base::test::RunUntil([&]() {
     return home_control->menu_runner_ &&
@@ -2611,7 +2532,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
                               DispatchEventScript(kHomeSelector, "PointerEvent",
                                                   "pointerdown", "button: 0")));
 
-  WebUIHomeControl* home_control = &webui_toolbar_view->home_control_;
+  WebUIHomeControl* home_control =
+      webui_toolbar_view->GetHomeControlForTesting();
 
   // Wait for the long press timer to trigger and show the menu.
   EXPECT_TRUE(base::test::RunUntil([&]() {
@@ -2807,6 +2729,28 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
   EXPECT_NE(current_home_url, new_home_url);
 
   PerformDragAndDrop(new_home_url);
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
+                       DragAndDropHomeButton_BlockedJavascript) {
+  WebUIToolbarWebView* webui_toolbar_view = SetUpAndPinHomeButton(browser());
+
+  PrefService* prefs = browser()->profile()->GetPrefs();
+  std::string default_homepage = prefs->GetString(prefs::kHomePage);
+
+  // Directly call the drop URL method with a javascript: URL.
+  std::string malicious_url = "javascript:alert(1)";
+  webui_toolbar_view->OnHomeButtonDropUrl(GURL(malicious_url));
+
+  // Verify the homepage preference has NOT changed.
+  EXPECT_EQ(default_homepage, prefs->GetString(prefs::kHomePage));
+
+  // Also verify NO undo bubble appeared.
+  EXPECT_EQ(
+      nullptr,
+      views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+          HomePageUndoBubbleCoordinator::kHomePageUndoBubbleMainViewId,
+          views::ElementTrackerViews::GetContextForView(webui_toolbar_view)));
 }
 
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
@@ -3156,7 +3100,7 @@ class WebUIPinnedToolbarActionsBrowserTest
           {kActionQrCodeGenerator,
            toolbar_ui_api::mojom::PinnedToolbarAction::kQrCodeGenerator},
           {kActionRouteMedia,
-           toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaIdle},
+           toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMedia},
           {kActionSidePanelShowReadAnything,
            toolbar_ui_api::mojom::PinnedToolbarAction::
                kSidePanelShowReadAnything},
@@ -3220,45 +3164,52 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, RouteMediaIcons) {
 
   struct Test {
     base::raw_ref<const gfx::VectorIcon> icon;
-    toolbar_ui_api::mojom::PinnedToolbarAction mojom_action;
     std::string_view expected_icon;
   };
 
+  toolbar_ui_api::mojom::PinnedToolbarAction mojom_action =
+      toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMedia;
+  const bool rounded_icons = features::IsRoundedIconsEnabled();
+
   const auto kRouteMediaIcons = std::to_array<Test>({
-      {base::raw_ref(vector_icons::kMediaRouterIdleChromeRefreshOldIcon),
-       toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaIdle,
-       std::string_view("pinned-toolbar-action:RouteMediaIdle")},
-      {base::raw_ref(vector_icons::kMediaRouterWarningChromeRefreshOldIcon),
-       toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaWarning,
-       std::string_view("pinned-toolbar-action:RouteMediaWarning")},
-      {base::raw_ref(vector_icons::kMediaRouterPausedOldIcon),
-       toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaPaused,
-       std::string_view("pinned-toolbar-action:RouteMediaPaused")},
-      {base::raw_ref(vector_icons::kMediaRouterActiveChromeRefreshOldIcon),
-       toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaActive,
-       std::string_view("pinned-toolbar-action:RouteMediaActive")},
       {base::raw_ref(features::IsRoundedIconsEnabled()
-                         ? kCastIcon
-                         : kCastChromeRefreshOldIcon),
-       toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMedia,
-       std::string_view("pinned-toolbar-action:RouteMedia")},
+                         ? vector_icons::kCastIcon
+                         : vector_icons::kMediaRouterIdleChromeRefreshOldIcon),
+       std::string_view("pinned-toolbar-action:RouteMediaIdle")},
+      {base::raw_ref(
+           features::IsRoundedIconsEnabled()
+               ? vector_icons::kCastWarningIcon
+               : vector_icons::kMediaRouterWarningChromeRefreshOldIcon),
+       std::string_view("pinned-toolbar-action:RouteMediaWarning")},
+      {base::raw_ref(features::IsRoundedIconsEnabled()
+                         ? vector_icons::kCastPauseIcon
+                         : vector_icons::kMediaRouterPausedOldIcon),
+       std::string_view("pinned-toolbar-action:RouteMediaPaused")},
+      {base::raw_ref(
+           features::IsRoundedIconsEnabled()
+               ? vector_icons::kCastConnectedIcon
+               : vector_icons::kMediaRouterActiveChromeRefreshOldIcon),
+       std::string_view("pinned-toolbar-action:RouteMediaActive")},
+      {base::raw_ref(rounded_icons ? kCastIcon : kCastChromeRefreshOldIcon),
+       rounded_icons ? std::string_view("webui-toolbar:cast")
+                     : std::string_view("pinned-toolbar-action:RouteMedia")},
   });
 
   for (const auto& test : kRouteMediaIcons) {
-    SCOPED_TRACE(test.mojom_action);
+    SCOPED_TRACE(test.expected_icon);
     action_item->SetStatefulImage(ui::ImageModel::FromVectorIcon(*test.icon));
-    PinAction(kActionRouteMedia, test.mojom_action);
+    PinAction(kActionRouteMedia, mojom_action);
 
     // Make sure the icon got wired through.
     EXPECT_EQ(test.expected_icon,
               EvalJsOnPinnedButton(
-                  web_contents, test.mojom_action,
+                  web_contents, mojom_action,
                   "return btn?.getAttribute('iron-icon') || '(null)'"));
     EXPECT_EQ("(null)", EvalJsOnPinnedButton(
-                            web_contents, test.mojom_action,
+                            web_contents, mojom_action,
                             "return btn?.getAttribute('style') || '(null)'"));
 
-    UnpinAction(kActionRouteMedia, test.mojom_action);
+    UnpinAction(kActionRouteMedia, mojom_action);
   }
 }
 
@@ -3268,8 +3219,10 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
   auto* action_item = static_cast<actions::StatefulImageActionItem*>(
       actions::ActionManager::Get().FindAction(
           kActionRouteMedia, browser()->GetActions()->root_action_item()));
-  action_item->SetStatefulImage(
-      ui::ImageModel::FromVectorIcon(vector_icons::kPasswordManagerOldIcon));
+  action_item->SetStatefulImage(ui::ImageModel::FromVectorIcon(
+      features::IsRoundedIconsEnabled()
+          ? vector_icons::kPasswordManagerIcon
+          : vector_icons::kPasswordManagerOldIcon));
   PinAction(
       kActionShowPasswordsBubbleOrPage,
       toolbar_ui_api::mojom::PinnedToolbarAction::kShowPasswordsBubbleOrPage);

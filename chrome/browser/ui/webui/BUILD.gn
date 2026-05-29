@@ -55,9 +55,10 @@ source_set("configs") {
     "//chrome/browser/ui",
     "//chrome/browser/ui/webui/about",
     "//chrome/browser/ui/webui/accessibility",
-    "//chrome/browser/ui/webui/accessibility_annotator_internals",
+    "//chrome/browser/ui/webui/accessibility_annotator_internals:personal_context_internals",
     "//chrome/browser/ui/webui/actor_internals",
     "//chrome/browser/ui/webui/autofill_and_password_manager_internals",
+    "//chrome/browser/ui/webui/browsing_topics",
     "//chrome/browser/ui/webui/internal_debug_pages_disabled",
     "//chrome/browser/ui/webui/regional_capabilities_internals",
     "//components/compose:buildflags",
@@ -133,6 +134,7 @@ source_set("configs") {
   if (is_chromeos) {
     deps += [
       "//chrome/browser/ui/webui/ash/config",
+      "//chrome/browser/ui/webui/ash/dlp_internals",
       "//chromeos/constants",
     ]
   }

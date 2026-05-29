@@ -118,6 +118,12 @@ BASE_FEATURE(kExtractRelatedSearchesFromPrefetchedZPSResponse,
 BASE_FEATURE(kAnnotatedPageContentExtraction,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kAnnotatedPageContentExtractionOnHideFix,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kPageContentExtractionAllowOnDemandWithoutObservers,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kAnnotatedPageContentNonSalientFiltering,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -149,9 +155,6 @@ const base::FeatureParam<bool> kPageContentCacheUseUserEngagement{
 
 BASE_FEATURE(kPageSettledMonitor, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kPageContentExtractionUsingPageSettledMonitor,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 const base::FeatureParam<base::TimeDelta> kPageStabilityTimeout{
     &kPageSettledMonitor, "page-stability-timeout", base::Seconds(4)};
 
@@ -171,6 +174,13 @@ const base::FeatureParam<base::TimeDelta> kObservationDelayTimeout{
 
 const base::FeatureParam<base::TimeDelta> kObservationDelayLcp{
     &kPageSettledMonitor, "observation-delay-lcp", base::Seconds(1)};
+
+BASE_FEATURE(kPageContentExtractionUsingPageSettledMonitor,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<base::TimeDelta> kPageSettledCaptureDelay{
+    &kPageContentExtractionUsingPageSettledMonitor, "capture_delay",
+    base::TimeDelta()};
 
 BASE_FEATURE(kPageSettledMonitorExcludeAdFrameLoading,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -326,6 +336,10 @@ PageContentExtractionTriggeringMode GetPageContentExtractionTriggeringMode() {
     return PageContentExtractionTriggeringMode::kOnLoadAndHidden;
   }
   return PageContentExtractionTriggeringMode::kOnLoad;
+}
+
+base::TimeDelta GetPageSettledCaptureDelay() {
+  return kPageSettledCaptureDelay.Get();
 }
 
 bool IsSupportedLocaleForFeature(

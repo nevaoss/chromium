@@ -118,6 +118,7 @@
 <translation id="1448440926884431741">រៀបចំផលិតផលដែលអ្នកតាមដាននៅក្នុងចំណាំ</translation>
 <translation id="1455845192930279203">តើអ្នក​នៅតែចង់​ទាញយក "<ph name="FILE_NAME" />" (<ph name="FILE_SIZE" />) ពី <ph name="DOWNLOAD_DOMAIN" /> ឬ?</translation>
 <translation id="1460751212339734034">សន្សំសំចៃ​ពេលវេលា វាយបញ្ចូល​កាន់តែតិច</translation>
+<translation id="146522654774760805">ពាក្យ​សម្ងាត់ និងការបំពេញស្វ័យប្រវត្តិ</translation>
 <translation id="1466383950273130737">ជ្រើសរើស​ភាសារបស់ Chrome</translation>
 <translation id="1477626028522505441">ការដោនឡូត <ph name="FILE_NAME" /> បានបរាជ័យដោយសារមានបញ្ហាផ្នែកម៉ាស៊ីនមេ។</translation>
 <translation id="147982357559798527">បានប្ដូរ</translation>
@@ -227,6 +228,7 @@
 <translation id="200114059308480249">រួមបញ្ចូល​អក្សរដែលនៅជុំវិញ​នៅក្នុង​ការស្វែងរកនៅលើ Google ឬ?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, ផ្ទាំងឯកជន​ដែលបានបិទ​សំឡេង និងបាន​ខ្ទាស់</translation>
 <translation id="2021896219286479412">ការគ្រប់គ្រងទំព័រពេញអេក្រង់</translation>
+<translation id="2022953316617983419">​កូដ QR</translation>
 <translation id="2024195579772565064">លុបម៉ាស៊ីន​ស្វែងរក</translation>
 <translation id="2029669011553795746">បានបើក​ការភ្ជាប់​ការជូនដំណឹង​អំពី​គន្លឹះ​ពាក់កណ្ដាល​អេក្រង់</translation>
 <translation id="2038563949887743358">បើកសំណើគេហទំព័រសម្រាប់កុំព្យូទ័រ</translation>
@@ -550,7 +552,6 @@
 <translation id="3387650086002190359">ការដោនឡូត <ph name="FILE_NAME" /> បានបរាជ័យដោយសារមានកំហុសប្រព័ន្ធឯកសារ។</translation>
 <translation id="3417835166382867856">ស្វែងរកផ្ទាំង</translation>
 <translation id="3430670036890315772">ការបិទ​ការចាក់​សោកម្រងព័ត៌មាន​របស់​អ្នកនឹង​ដក​ព័ត៌មាន​ដែល​បានរក្សាទុក​របស់​អ្នក​ចេញ</translation>
-<translation id="3435465986463792564">មានវិនដូច្រើនមែនទេ? អ្នកអាច​គ្រប់គ្រងវិនដូ​ទាំងនោះបាន​ពីទីនេះ</translation>
 <translation id="3435575784518354875">ដើម្បី​រក្សាសិទ្ធិ​ចូលប្រើ​ពាក្យ​សម្ងាត់​របស់អ្នក សូម​នាំចេញ​ពាក្យ​សម្ងាត់​ទាំងនោះ​ឥឡូវនេះ, ដំឡើងកំណែ​សេវាកម្ម Google Play, បន្ទាប់មក​នាំចូល​ពាក្យ​សម្ងាត់​ទាំងនោះ​ទៅក្នុង​កម្មវិធី​គ្រប់គ្រង​ពាក្យសម្ងាត់​វិញ។ <ph name="BEGIN_LINK" />មើល​ការណែនាំ​ពេញលេញ<ph name="END_LINK" />។</translation>
 <translation id="3435738964857648380">សុវត្ថិភាព</translation>
 <translation id="3435914367318771664">បញ្ចូលផ្ទាំង​ទៅក្រុមថ្មី</translation>
@@ -789,6 +790,7 @@
 <translation id="4409014848144759297"><ph name="WEBSITE_TITLE" /> និង​ផ្ទាំង <ph name="TAB_COUNT" /> ផ្សេង​ទៀត</translation>
 <translation id="441100617989818073">ក្រុម និងផ្ទាំងស្ទួន ឬមិនបានប្រើ</translation>
 <translation id="4412123112245770507">បង្រួម​ផ្នែក</translation>
+<translation id="4412698727486357573">មជ្ឈមណ្ឌល​ជំនួយ</translation>
 <translation id="4414179633735763985">បាន​លុប <ph name="TAB_GROUPS_AND_TABS_PART" /></translation>
 <translation id="4415276339145661267">គ្រប់គ្រង​គណនី Google របស់​អ្នក</translation>
 <translation id="4425140285732600465">កំពុងតាមដាន​តម្លៃ។ ទទួលបានការជូនដំណឹង ប្រសិនបើមានការធ្លាក់ថ្លៃនៅលើគេហទំព័រណាមួយ។</translation>
@@ -1435,7 +1437,6 @@
 <translation id="6980258170429555165">ម៉ឺនុយ <ph name="MENU_NAME" /> ត្រូវបាន​រំលេច។</translation>
 <translation id="6983306615164277634">អ្នកក៏​អាចចុច​របារអាសយដ្ឋាន​ឱ្យជាប់ ដើម្បី​ប្ដូរទីតាំង​បានផងដែរ។</translation>
 <translation id="6987047470128880212">មិនអាចប្រើមុខងារឯកជន​នៅលើឧបករណ៍​នេះបានទេ</translation>
-<translation id="6989358895283601928">រក្សាទុក និងបោះពុម្ព</translation>
 <translation id="6996145122199359148">ទាញយកទំព័រនេះ</translation>
 <translation id="7013762323294215682">កូដសម្ងាត់នេះ​នឹងត្រូវបាន​រក្សាទុក​ទៅក្នុង​កម្មវិធីគ្រប់គ្រង​ពាក្យសម្ងាត់​របស់អ្នក។ អ្នកដែលមាន​សិទ្ធិចូលប្រើ​កម្មវិធីនេះ​នឹងអាចប្រើ​កូដសម្ងាត់​នេះបាន។</translation>
 <translation id="7020741890149022655">បញ្ចូលទៅក្នុងបញ្ជីអាន<ph name="BEGIN_NEW" />ថ្មី<ph name="END_NEW" /></translation>
@@ -2003,6 +2004,7 @@
 <translation id="970715775301869095">នៅសល់ <ph name="MINUTES" /> នាទីទៀត</translation>
 <translation id="981121421437150478">ក្រៅបណ្តាញ</translation>
 <translation id="983192555821071799">បិទផ្ទាំងទាំងអស់</translation>
+<translation id="984275831282074731">វិធី​បង់ប្រាក់</translation>
 <translation id="984756705737569814">មិនអាច​ពិនិត្យមើល​ពាក្យ​សម្ងាត់​នៅក្នុង​គណនី Google របស់អ្នក​បានទេ</translation>
 <translation id="987264212798334818">ទូទៅ</translation>
 <translation id="988091779042748639">ដើម្បី​លុប​ប្រវត្តិ​រុករក​តាមអ៊ីនធឺណិត​នៃមុខងារ​ឯកជន​ចេញពី​ឧបករណ៍​របស់អ្នក សូមបិទ​ផ្ទាំងឯកជន​ទាំងអស់។</translation>

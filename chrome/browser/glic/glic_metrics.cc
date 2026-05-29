@@ -85,9 +85,9 @@ class BaseDelegate : public GlicMetrics::Delegate {
   }
   std::vector<content::WebContents*> GetPinnedAndSharedWebContents() override {
     std::vector<content::WebContents*> pinned_and_shared;
-    for (content::WebContents* web_contents :
-         sharing_manager_->GetPinnedTabs()) {
-      if (IsTabValidForSharing(web_contents)) {
+    for (tabs::TabInterface* tab : sharing_manager_->GetPinnedTabs()) {
+      content::WebContents* web_contents = tab->GetContents();
+      if (web_contents && IsTabValidForSharing(web_contents)) {
         pinned_and_shared.push_back(web_contents);
       }
     }
@@ -768,16 +768,22 @@ void GlicMetrics::OnImpressionTimerFired() {
 
   // Profile eligible and completed FRE
   EntryPointStatus impression;
-  bool is_os_entrypoint_enabled =
-      g_browser_process->local_state()->GetBoolean(prefs::kGlicLauncherEnabled);
-  if (is_pinned_ && is_os_entrypoint_enabled) {
-    impression = EntryPointStatus::kAfterFreBrowserAndOs;
-  } else if (is_pinned_) {
-    impression = EntryPointStatus::kAfterFreBrowserOnly;
-  } else if (is_os_entrypoint_enabled) {
-    impression = EntryPointStatus::kAfterFreOsOnly;
+  auto enablement = GlicEnabling::EnablementForProfile(profile_);
+  if (enablement.anchor_entrypoint_override_active) {
+    impression = EntryPointStatus::kAfterFreAnchoredButIneligible;
   } else {
-    impression = EntryPointStatus::kAfterFreThreeDotOnly;
+    bool is_os_entrypoint_enabled =
+        g_browser_process->local_state()->GetBoolean(
+            prefs::kGlicLauncherEnabled);
+    if (is_pinned_ && is_os_entrypoint_enabled) {
+      impression = EntryPointStatus::kAfterFreBrowserAndOs;
+    } else if (is_pinned_) {
+      impression = EntryPointStatus::kAfterFreBrowserOnly;
+    } else if (is_os_entrypoint_enabled) {
+      impression = EntryPointStatus::kAfterFreOsOnly;
+    } else {
+      impression = EntryPointStatus::kAfterFreThreeDotOnly;
+    }
   }
   base::UmaHistogramEnumeration("Glic.EntryPoint.Status", impression);
 

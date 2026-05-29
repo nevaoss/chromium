@@ -257,6 +257,33 @@ Called by update_document_policy_enum.py.-->
   <int value="16" label="NetworkEfficiencyGuardrails"/>
 </enum>
 
+<!-- LINT.IfChange(EvpRequestStatus) -->
+
+<enum name="EvpRequestStatus">
+  <int value="0" label="Success"/>
+  <int value="1" label="InvalidEmail"/>
+  <int value="2" label="DnsFetchFailed"/>
+  <int value="3" label="DnsInvalidRecord"/>
+  <int value="4" label="WellKnownHttpNotFound"/>
+  <int value="5" label="WellKnownNoResponse"/>
+  <int value="6" label="WellKnownInvalidResponse"/>
+  <int value="7" label="WellKnownListEmpty"/>
+  <int value="8" label="WellKnownInvalidContentType"/>
+  <int value="9" label="WellKnownMissingIssuanceEndpoint"/>
+  <int value="10" label="WellKnownIssuanceEndpointCrossOrigin"/>
+  <int value="11" label="WellKnownUnsupportedSigningAlgorithm"/>
+  <int value="12" label="TokenHttpNotFound"/>
+  <int value="13" label="TokenNoResponse"/>
+  <int value="14" label="TokenInvalidResponse"/>
+  <int value="15" label="TokenInvalidContentType"/>
+  <int value="16" label="TokenMalformedSdJwt"/>
+  <int value="17" label="TokenInvalidSdJwt"/>
+  <int value="18" label="KeyBindingSigningFailed"/>
+  <int value="19" label="RpOriginIsOpaque"/>
+</enum>
+
+<!-- LINT.ThenChange(//content/browser/webid/delegation/email_verification_request.h:EvpRequestStatus) -->
+
 <!-- LINT.IfChange(FeatureObserver) -->
 
 <enum name="FeatureObserver">
@@ -6538,6 +6565,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="5894" label="InputParsedParentSelectNoOptions"/>
   <int value="5895" label="FocusGroupStart"/>
   <int value="5896" label="WebAuthenticationRemoteCspDisallowsRpId"/>
+  <int value="5897" label="SpeculationMeasurement"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -8438,9 +8466,36 @@ Called by update_use_counter_css.py.-->
   <int value="942" label="flex-line-count"/>
   <int value="943" label="text-decoration-skip-spaces"/>
   <int value="944" label="corner"/>
+  <int value="945" label="scroll-axis-lock"/>
+  <int value="946" label="corner-top-left"/>
+  <int value="947" label="corner-top-right"/>
+  <int value="948" label="corner-bottom-left"/>
+  <int value="949" label="corner-bottom-right"/>
+  <int value="950" label="corner-start-start"/>
+  <int value="951" label="corner-start-end"/>
+  <int value="952" label="corner-end-start"/>
+  <int value="953" label="corner-end-end"/>
+  <int value="954" label="corner-top"/>
+  <int value="955" label="corner-right"/>
+  <int value="956" label="corner-bottom"/>
+  <int value="957" label="corner-left"/>
+  <int value="958" label="corner-block-start"/>
+  <int value="959" label="corner-block-end"/>
+  <int value="960" label="corner-inline-start"/>
+  <int value="961" label="corner-inline-end"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom:CSSSampleId) -->
+
+<!-- LINT.IfChange(OpenId4VpResponseMode) -->
+
+<enum name="OpenId4VpResponseMode">
+  <int value="0" label="dc_api"/>
+  <int value="1" label="dc_api.jwt"/>
+  <int value="2" label="Other"/>
+</enum>
+
+<!-- LINT.ThenChange(//content/browser/digital_credentials/digital_identity_request_impl.cc:OpenId4VpResponseMode) -->
 
 <!-- LINT.IfChange(OriginStatusOnSubresource) -->
 

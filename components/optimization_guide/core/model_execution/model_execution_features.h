@@ -23,6 +23,7 @@ BASE_DECLARE_FEATURE(kTabOrganizationSettingsVisibility);
 BASE_DECLARE_FEATURE(kWallpaperSearchSettingsVisibility);
 BASE_DECLARE_FEATURE(kHistorySearchSettingsVisibility);
 BASE_DECLARE_FEATURE(kFindsSettingsVisibility);
+BASE_DECLARE_FEATURE(kContextualCueingSettingsVisibility);
 
 // Comma-separated list of performance classes (e.g. "3,4,5") accepted by
 // History Search. Use "*" if there is no performance class requirement.
@@ -39,6 +40,9 @@ BASE_DECLARE_FEATURE(kFindsGraduated);
 
 // Feature for disabling the model execution user account capability check.
 BASE_DECLARE_FEATURE(kModelExecutionCapabilityDisable);
+
+// Feature flag to populate PrivateExecuteRequest instead of ExecuteRequest.
+BASE_DECLARE_FEATURE(kPrivateExecuteRequest);
 
 // Checks if the provided `feature` is graduated from experimental AI settings.
 bool IsGraduatedFeature(UserVisibleFeatureKey feature);

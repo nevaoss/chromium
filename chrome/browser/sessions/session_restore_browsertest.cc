@@ -62,7 +62,6 @@
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
@@ -1438,8 +1437,8 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, SplitVisualDataRestored) {
   split_tabs::SplitTabId split_pinned =
       browser()->tab_strip_model()->AddToNewSplit(
           {1},
-          split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kVertical,
-                                         0.5),
+          split_tabs::SplitTabVisualData(
+              split_tabs::SplitTabLayout::kSideBySide, 0.5),
           split_tabs::SplitTabCreatedSource::kTabContextMenu);
 
   browser()->tab_strip_model()->ActivateTabAt(
@@ -1448,8 +1447,8 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, SplitVisualDataRestored) {
   split_tabs::SplitTabId split_group =
       browser()->tab_strip_model()->AddToNewSplit(
           {3},
-          split_tabs::SplitTabVisualData(
-              split_tabs::SplitTabLayout::kHorizontal, 0.7),
+          split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kStacked,
+                                         0.7),
           split_tabs::SplitTabCreatedSource::kTabContextMenu);
 
   browser()->tab_strip_model()->ActivateTabAt(
@@ -1458,15 +1457,15 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, SplitVisualDataRestored) {
   split_tabs::SplitTabId split_unpinned =
       browser()->tab_strip_model()->AddToNewSplit(
           {5},
-          split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kVertical,
-                                         0.3),
+          split_tabs::SplitTabVisualData(
+              split_tabs::SplitTabLayout::kSideBySide, 0.3),
           split_tabs::SplitTabCreatedSource::kTabContextMenu);
 
   const auto groups = GetTabGroups(browser()->tab_strip_model());
 
   // Update a some of the split visual data.
   browser()->tab_strip_model()->UpdateSplitLayout(
-      split_unpinned, split_tabs::SplitTabLayout::kHorizontal);
+      split_unpinned, split_tabs::SplitTabLayout::kStacked);
 
   BrowserWindowInterface* new_browser = QuitBrowserAndRestore(browser());
   EXPECT_EQ(kNumTabs, new_browser->GetTabStripModel()->count());
@@ -1492,7 +1491,7 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, SplitVisualDataRestored) {
                  ->GetSplitData(split_pinned)
                  ->visual_data(),
             split_tabs::SplitTabVisualData(
-                split_tabs::SplitTabLayout::kVertical, 0.5));
+                split_tabs::SplitTabLayout::kSideBySide, 0.5));
 
   EXPECT_EQ(new_browser->GetTabStripModel()
                 ->GetSplitData(split_group)
@@ -1502,8 +1501,8 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, SplitVisualDataRestored) {
   EXPECT_EQ(*new_browser->GetTabStripModel()
                  ->GetSplitData(split_group)
                  ->visual_data(),
-            split_tabs::SplitTabVisualData(
-                split_tabs::SplitTabLayout::kHorizontal, 0.7));
+            split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kStacked,
+                                           0.7));
 
   EXPECT_EQ(new_browser->GetTabStripModel()
                 ->GetSplitData(split_unpinned)
@@ -1513,8 +1512,8 @@ IN_PROC_BROWSER_TEST_F(SessionRestoreTest, SplitVisualDataRestored) {
   EXPECT_EQ(*new_browser->GetTabStripModel()
                  ->GetSplitData(split_unpinned)
                  ->visual_data(),
-            split_tabs::SplitTabVisualData(
-                split_tabs::SplitTabLayout::kHorizontal, 0.3));
+            split_tabs::SplitTabVisualData(split_tabs::SplitTabLayout::kStacked,
+                                           0.3));
 }
 
 IN_PROC_BROWSER_TEST_F(SessionRestoreTest, StartupPagesWithOnlyNtp) {

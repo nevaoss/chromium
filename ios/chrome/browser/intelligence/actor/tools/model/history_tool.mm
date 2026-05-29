@@ -66,10 +66,8 @@ base::WeakPtr<web::WebState> HistoryTool::GetTargetWebState() const {
   return web_state_;
 }
 
-optimization_guide::proto::Action::ActionCase HistoryTool::GetActionCase()
-    const {
-  return is_back_action_ ? optimization_guide::proto::Action::kBack
-                         : optimization_guide::proto::Action::kForward;
+ToolType HistoryTool::GetToolType() const {
+  return is_back_action_ ? ToolType::kBack : ToolType::kForward;
 }
 
 // static
@@ -80,7 +78,8 @@ HistoryTool::CreateInternal(const HistoryAction& action, ProfileIOS* profile) {
     return base::unexpected(ToolExecutionResult(
         InternalToolErrorCode::kCreationMissingRequiredFields));
   }
-  auto resolution_result = ResolveTab(action.tab_id(), profile);
+  base::expected<TabResolutionResult, ToolExecutionResult> resolution_result =
+      ResolveTab(action.tab_id(), profile);
   if (!resolution_result.has_value()) {
     return base::unexpected(resolution_result.error());
   }

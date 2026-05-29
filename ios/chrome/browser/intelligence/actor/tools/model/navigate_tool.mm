@@ -29,7 +29,8 @@ NavigateTool::Create(const optimization_guide::proto::NavigateAction& action,
         InternalToolErrorCode::kCreationMissingRequiredFields));
   }
 
-  auto resolution_result = ResolveTab(action.tab_id(), profile);
+  base::expected<TabResolutionResult, ToolExecutionResult> resolution_result =
+      ResolveTab(action.tab_id(), profile);
   if (!resolution_result.has_value()) {
     return base::unexpected(resolution_result.error());
   }
@@ -81,9 +82,8 @@ base::WeakPtr<web::WebState> NavigateTool::GetTargetWebState() const {
   return web_state_;
 }
 
-optimization_guide::proto::Action::ActionCase NavigateTool::GetActionCase()
-    const {
-  return optimization_guide::proto::Action::kNavigate;
+ToolType NavigateTool::GetToolType() const {
+  return ToolType::kNavigate;
 }
 
 NavigateTool::NavigateTool(const std::string& url,

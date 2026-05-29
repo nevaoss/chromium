@@ -841,6 +841,11 @@ class CONTENT_EXPORT ContentBrowserClient {
   virtual bool IsMultiCaptureAllowed(
       content::RenderFrameHost* render_frame_host);
 
+  // Returns the WebContents associated with the given window if it is allowed
+  // to expose a capture handle. Returns nullptr otherwise.
+  virtual content::WebContents* GetWebContentsFromWindowIfCaptureHandleAllowed(
+      gfx::NativeWindow window);
+
   // Allow the embedder to control the maximum renderer process count. Only
   // applies if it is set to a non-zero value.  Once this limit is exceeded,
   // existing processes will be reused whenever possible, see
@@ -1861,6 +1866,12 @@ class CONTENT_EXPORT ContentBrowserClient {
   // be used in child process tokens, or nullopt if there is no security
   // attribute.
   virtual std::optional<std::wstring> GetWindowsSecurityAttributeName() const;
+
+  // Returns a list of base addresses that should be reserved in sandboxed
+  // child processes to force the OS to choose a different ASLR base for them.
+  // The addresses are later freed in the child process.
+  virtual std::vector<uintptr_t> GetAslrBeaconAddresses(
+      sandbox::mojom::Sandbox sandbox_type);
 #endif
 
   // Binds a new media remoter service to |receiver|, if supported by the
@@ -3088,6 +3099,13 @@ class CONTENT_EXPORT ContentBrowserClient {
   virtual bool IsCrossOriginSubframeAllowedToShowFilePicker(
       RenderFrameHost* render_frame_host,
       const url::Origin& requesting_origin);
+
+  // Returns an override that fully replaces the parent-imposed
+  // `frame_policy.container_policy` at commit, or `std::nullopt` to
+  // leave it untouched. Called from `CommitNavigation()` only; not
+  // invoked on page-activating navigations (BFCache, prerender).
+  virtual std::optional<network::ParsedPermissionsPolicy>
+  GetContainerPolicyOverrideForCommit(NavigationHandle& navigation_handle);
 
   // Checks if the BeforeUnload Dialog event should be skipped.
   virtual bool ShouldSkipBeforeUnloadDialog(content::RenderFrameHost* rfh);

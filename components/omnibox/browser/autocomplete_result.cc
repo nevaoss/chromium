@@ -392,6 +392,53 @@ void AutocompleteResult::Sort(
   if (UndedupTopSearchEntityMatch(&matches_)) {
     matches_[0].ComputeStrippedDestinationURL(input, template_url_service);
   }
+
+  ArrangeInlineLocationSignalingMatch();
+}
+
+void AutocompleteResult::ArrangeInlineLocationSignalingMatch() {
+  if (base::FeatureList::IsEnabled(omnibox::kInlineLocationSignaling)) {
+    const omnibox::InlineLocationSignalingDisplayOrder order =
+        omnibox::kInlineLocationSignalingDisplayOrder.Get();
+
+    for (auto it = matches_.begin(); it != matches_.end(); ++it) {
+      if (it->extra_headers.contains(kXGeoHeader)) {
+        AutocompleteMatch match = *it;
+        auto parent_it = std::find_if(
+            matches_.begin(), matches_.end(), [&](const auto& candidate) {
+              return candidate.destination_url == match.destination_url &&
+                     !candidate.extra_headers.contains(kXGeoHeader);
+            });
+
+        if (parent_it != matches_.end()) {
+          it = matches_.erase(it);
+          parent_it = std::find_if(
+              matches_.begin(), matches_.end(), [&](const auto& candidate) {
+                return candidate.destination_url == match.destination_url &&
+                       !candidate.extra_headers.contains(kXGeoHeader);
+              });
+
+          // Reinsert at configured relative index.
+          switch (order) {
+            case omnibox::InlineLocationSignalingDisplayOrder::kDisplayBelow:
+              it = matches_.insert(parent_it + 1, std::move(match));
+              break;
+            case omnibox::InlineLocationSignalingDisplayOrder::kDisplayAbove:
+              // Safely de-escalate to Below if the parent is the default match
+              // (index 0) to ensure we do not displace it or place a
+              // non-default suggestion at index 0.
+              if (parent_it == matches_.begin()) {
+                it = matches_.insert(parent_it + 1, std::move(match));
+              } else {
+                it = matches_.insert(parent_it, std::move(match));
+              }
+              break;
+          }
+          break;
+        }
+      }
+    }
+  }
 }
 
 void AutocompleteResult::SortAndCull(
@@ -1079,27 +1126,29 @@ void AutocompleteResult::ConvertOpenTabMatches(
       // Do not attach the action for iOS since they have separate UI treatment
       // for tab matches (no button row as on desktop and realbox).
       if (!is_ios && match.has_tab_match.value()) {
-        // The default action for suggestions from the open tab provider in
-        // keyword mode is to switch to the open tab so no button is necessary.
-        if (!match.from_keyword ||
-            match.provider->type() != AutocompleteProvider::TYPE_OPEN_TAB) {
-          if constexpr (is_android) {
-            // On Android, attach the action as ActionInSuggest that will be
-            // interpreted as either action button or chip per the form factor.
-            TemplateAction template_action;
-            template_action.set_action_type(TemplateAction::CHROME_TAB_SWITCH);
-            template_action.set_action_uri(match.destination_url.spec());
-            auto action_in_suggest =
-                base::MakeRefCounted<OmniboxActionInSuggest>(
-                    std::move(template_action), std::nullopt);
+        if constexpr (is_android) {
+          // On Android, we always attach the action to allow switching to tab.
+          // This ensures the "Switch to Tab" button/chip is always available,
+          // and provides the necessary tab ID to the Java layer.
+          // Attach the action as ActionInSuggest that will be
+          // interpreted as either action button or chip per the form factor.
+          TemplateAction template_action;
+          template_action.set_action_type(TemplateAction::CHROME_TAB_SWITCH);
+          template_action.set_action_uri(match.destination_url.spec());
+          auto action_in_suggest = base::MakeRefCounted<OmniboxActionInSuggest>(
+              std::move(template_action), std::nullopt);
 #if BUILDFLAG(IS_ANDROID)
-            action_in_suggest->tab_id = tab_info->second.android_tab_id;
+          action_in_suggest->tab_id = tab_info->second.android_tab_id;
 #endif
-            match.actions.push_back(action_in_suggest);
-          } else {
-            match.actions.push_back(
-                base::MakeRefCounted<TabSwitchAction>(match.destination_url));
-          }
+          match.actions.push_back(action_in_suggest);
+        } else if (!match.from_keyword ||
+                   match.provider->type() !=
+                       AutocompleteProvider::TYPE_OPEN_TAB) {
+          // The default action for suggestions from the open tab provider in
+          // keyword mode is to switch to the open tab so no button is
+          // necessary.
+          match.actions.push_back(
+              base::MakeRefCounted<TabSwitchAction>(match.destination_url));
         }
       }
     }
@@ -1722,6 +1771,9 @@ AutocompleteResult::GetMatchComparisonFields(const AutocompleteMatch& match) {
              omnibox_feature_configs::AiMode::Get()
                  .do_not_dedupe_aim_suggestions) {
     type = AutocompleteMatchDedupeType::kAiMode;
+  } else if (base::FeatureList::IsEnabled(omnibox::kInlineLocationSignaling) &&
+             match.extra_headers.contains(kXGeoHeader)) {
+    type = AutocompleteMatchDedupeType::kInlineLocationSignaling;
   } else {
     type = AutocompleteMatchDedupeType::kNormal;
   }

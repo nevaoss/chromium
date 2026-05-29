@@ -2178,6 +2178,7 @@ interface Document : Node
     getter routeMap
     getter scripts
     getter scrollingElement
+    getter spellCheckCustomDictionary
     getter styleSheets
     getter timeline
     getter title
@@ -7926,6 +7927,7 @@ interface PreloadData
     attribute @@toStringTag
     getter as
     getter crossorigin
+    getter earlyHints
     getter url
     getter used
     method constructor
@@ -13898,7 +13900,6 @@ namespace console
     getter sessionStorage
     getter sharedStorage
     getter speechSynthesis
-    getter spellCheckCustomDictionary
     getter status
     getter statusbar
     getter styleMedia

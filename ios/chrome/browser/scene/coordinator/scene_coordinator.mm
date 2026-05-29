@@ -303,6 +303,7 @@ void OnListFamilyMembersResponse(
     _appBarCoordinator = [[AppBarCoordinator alloc]
         initWithRegularBrowser:_regularBrowser.get()
               incognitoBrowser:_incognitoBrowser.get()];
+    _appBarCoordinator.baseViewController = _viewController;
     [_appBarCoordinator start];
     [_viewController setAppBar:_appBarCoordinator.viewController];
     _viewController.appBarHandler = HandlerForProtocol(
@@ -761,9 +762,13 @@ void OnListFamilyMembersResponse(
     if (info.capabilities.can_submit_feedback() == signin::Tribool::kFalse) {
       // TODO(crbug.com/512043635): Remove this test once Chrome uses Aloha
       // feedback. Aloha feedback is responsible for checking the capability.
+      base::UmaHistogramEnumeration("IOS.Feedback.ReportAnIssue.NotDisplayed",
+                                    sender);
       return;
     }
   }
+
+  base::UmaHistogramEnumeration("IOS.Feedback.ReportAnIssue.Displayed", sender);
 
   DCHECK(baseViewController);
   // This dispatch is necessary to give enough time for the tools menu to

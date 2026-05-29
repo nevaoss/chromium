@@ -63,8 +63,8 @@ import org.chromium.chrome.browser.readaloud.ReadAloudController;
 import org.chromium.chrome.browser.share.ShareUtils;
 import org.chromium.chrome.browser.supervised_user.SupervisedUserServiceBridge;
 import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.chrome.browser.tabmodel.TabGroupModelFilter;
 import org.chromium.chrome.browser.tabmodel.TabGroupTitleUtils;
+import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.toolbar.menu_button.MenuItemState;
@@ -730,8 +730,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             submenuItems.add(buildCreateNewTabGroupItem());
         }
 
-        TabGroupModelFilter filter = mTabModelSelector.getCurrentModel();
-        Set<Token> groupIds = filter.getAllTabGroupIds();
+        TabModel tabModel = mTabModelSelector.getCurrentModel();
+        Set<Token> groupIds = tabModel.getAllTabGroupIds();
         if (groupIds.isEmpty()) {
             return submenuItems;
         }
@@ -743,11 +743,11 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
 
         // TODO(crbug.com/509065807): Observe TabModel to update this while the menu is open.
         for (Token groupId : groupIds) {
-            String title = filter.getTabGroupTitle(groupId);
+            String title = tabModel.getTabGroupTitle(groupId);
             if (TextUtils.isEmpty(title)) {
                 title =
                         TabGroupTitleUtils.getDefaultTitle(
-                                mContext, filter.getTabCountForGroup(groupId));
+                                mContext, tabModel.getTabCountForGroup(groupId));
             }
 
             GradientDrawable drawable = new GradientDrawable();
@@ -755,7 +755,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             drawable.setColor(
                     TabGroupColorPickerUtils.getTabGroupColorPickerItemColor(
                             mContext,
-                            filter.getTabGroupColorWithFallback(groupId),
+                            tabModel.getTabGroupColorWithFallback(groupId),
                             isIncognitoShowing()));
             int size =
                     mContext.getResources()
@@ -1851,20 +1851,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     }
 
     private boolean shouldShowLensOverlayItem(@Nullable Tab currentTab) {
-        if (currentTab == null
-                || currentTab.getWebContents() == null
-                || !ChromeFeatureList.isEnabled(ChromeFeatureList.LENS_OVERLAY_ANDROID)) {
-            return false;
-        }
-
-        // Disable in Incognito for now since the prototype delegates to an external app.
-        if (currentTab.isIncognito()) {
-            return false;
-        }
-
-        GURL url = currentTab.getUrl();
-        // This also filters out NTPs and internal pages.
-        return url != null && UrlUtilities.isHttpOrHttps(url);
+        return LensOverlayTabHelper.shouldShowLensOverlay(currentTab);
     }
 
     private MVCListAdapter.ListItem buildLensOverlayItem(@Nullable Tab currentTab) {
@@ -1872,7 +1859,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         PropertyModel model =
                 buildModelForStandardMenuItem(
                         R.id.lens_overlay_menu_id,
-                        R.string.lens_overlay_app_menu,
+                        R.string.menu_search_tab_with_google_lens,
                         shouldShowIconBeforeItem()
                                 ? R.drawable.lens_camera_icon
                                 : Resources.ID_NULL);

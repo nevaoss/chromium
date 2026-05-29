@@ -186,9 +186,20 @@ if (is_android) {
       "//chrome/browser/ui/browser_window/public/android:java",
       "//components/cached_flags:java",
       "//third_party/android_deps:com_airbnb_android_lottie_java",
+      "//third_party/androidx:androidx_annotation_annotation_java",
       "//third_party/jni_zero:jni_zero_java",
     ]
     srcjar_deps = [ ":glic_pref_names_srcjar" ]
+  }
+
+  android_library("metrics_java") {
+    sources =
+        [ "android/java/src/org/chromium/chrome/browser/glic/GlicMetrics.java" ]
+    deps = [
+      "//base:base_java",
+      "//build/android:build_java",
+      "//third_party/androidx:androidx_annotation_annotation_java",
+    ]
   }
 }
 
@@ -630,6 +641,7 @@ source_set("unit_tests") {
     ":impl",
     "//base/test:test_support",
     "//chrome/browser/background/glic",
+    "//components/tabs:test_support",
     "//testing/gmock",
     "//testing/gtest",
     "//ui/base/clipboard:clipboard_test_support",
@@ -679,7 +691,6 @@ source_set("unit_tests") {
       "//components/live_caption",
       "//components/live_caption:constants",
       "//components/skills/public:metrics",
-      "//components/tabs:test_support",
     ]
   } else {
     sources += [ "common/glic_tab_observer_android_unittest.cc" ]
@@ -759,6 +770,7 @@ source_set("browser_tests") {
       "host/context/glic_tab_data_browsertest.cc",
       "host/glic_api_browsertest.cc",
       "host/glic_permission_enforcement_browsertest.cc",
+      "host/glic_webui_browsertest.cc",
       "host/guest_util_browsertest.cc",
       "public/glic_enabling_browsertest.cc",
       "widget/glic_side_panel_coordinator_browsertest.cc",

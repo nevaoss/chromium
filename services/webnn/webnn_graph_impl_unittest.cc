@@ -20,7 +20,7 @@
 #include "base/test/test_future.h"
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
-#include "mojo/public/cpp/bindings/self_owned_associated_receiver.h"
+#include "mojo/public/cpp/bindings/self_owned_receiver.h"
 #include "mojo/public/cpp/system/functions.h"
 #include "services/webnn/error.h"
 #include "services/webnn/public/cpp/ml_tensor_usage.h"
@@ -53,17 +53,16 @@ namespace {
 // computing graph message.
 class FakeWebNNGraphImpl final : public WebNNGraphImpl {
  public:
-  FakeWebNNGraphImpl(
-      mojo::PendingAssociatedReceiver<mojom::WebNNGraph> receiver,
-      WebNNContextImpl& context,
-      ComputeResourceInfo compute_resource_info)
+  FakeWebNNGraphImpl(mojo::PendingReceiver<mojom::WebNNGraph> receiver,
+                     WebNNContextImpl& context,
+                     ComputeResourceInfo compute_resource_info)
       : WebNNGraphImpl(std::move(receiver),
                        context,
                        std::move(compute_resource_info),
                        /*devices=*/{}) {}
 
   static void CreateAndBuild(
-      mojo::PendingAssociatedReceiver<mojom::WebNNGraph> receiver,
+      mojo::PendingReceiver<mojom::WebNNGraph> receiver,
       base::WeakPtr<WebNNContextImpl> context,
       const mojom::GraphInfo& graph_info,
       ComputeResourceInfo compute_resource_info,
@@ -141,7 +140,7 @@ class FakeWebNNContextImpl final : public WebNNContextImpl {
   ~FakeWebNNContextImpl() override = default;
 
   void CreateGraphImpl(
-      mojo::PendingAssociatedReceiver<mojom::WebNNGraph> receiver,
+      mojo::PendingReceiver<mojom::WebNNGraph> receiver,
       mojom::GraphInfoPtr graph_info,
       WebNNGraphImpl::ComputeResourceInfo compute_resource_info,
       base::flat_map<
@@ -208,8 +207,9 @@ class FakeWebNNBackend : public WebNNContextProviderImpl::BackendForTesting {
     ContextProperties context_properties = context_impl->properties();
     // The receiver bound to FakeWebNNContext.
     auto success = mojom::CreateContextSuccess::New(
-        std::move(remote), std::move(context_properties),
-        context_impl->handle(), mojo::ScopedDataPipeProducerHandle(),
+        std::move(remote), /*compiler_context_remote=*/mojo::NullRemote(),
+        std::move(context_properties), context_impl->handle(),
+        mojo::ScopedDataPipeProducerHandle(),
         mojo::ScopedDataPipeConsumerHandle(), /*command_buffer_id=*/0);
     std::move(callback).Run(
         mojom::CreateContextResult::NewSuccess(std::move(success)));
@@ -261,9 +261,9 @@ bool ValidateDispatch(
     mojom::GraphInfoPtr graph_info,
     base::flat_map<std::string, CreateTensorSuccess> inputs,
     base::flat_map<std::string, CreateTensorSuccess> outputs) {
-  mojo::AssociatedRemote<mojom::WebNNGraphBuilder> graph_builder_remote;
+  mojo::Remote<mojom::WebNNGraphBuilder> graph_builder_remote;
   webnn_context->CreateGraphBuilder(
-      graph_builder_remote.BindNewEndpointAndPassReceiver());
+      graph_builder_remote.BindNewPipeAndPassReceiver());
 
   // Creates WebNN Graph mojo interface with the graph information which is
   // validated before compiling.
@@ -274,7 +274,7 @@ bool ValidateDispatch(
                                     create_graph_future.GetCallback());
   base::expected<mojom::CreateGraphSuccessPtr, mojom::ErrorPtr>
       create_graph_result = create_graph_future.Take();
-  mojo::AssociatedRemote<mojom::WebNNGraph> webnn_graph;
+  mojo::Remote<mojom::WebNNGraph> webnn_graph;
   webnn_graph.Bind(std::move(create_graph_result.value()->graph_remote));
   blink::WebNNGraphToken graph_token = create_graph_result.value()->graph_token;
 
@@ -347,9 +347,9 @@ class WebNNGraphImplTest : public testing::Test {
     WebNNContextProviderImpl::SetBackendForTesting(nullptr);
   }
 
-  mojo::AssociatedRemote<mojom::WebNNGraphBuilder> BindNewGraphBuilderRemote() {
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote;
-    webnn_context_->CreateGraphBuilder(remote.BindNewEndpointAndPassReceiver());
+  mojo::Remote<mojom::WebNNGraphBuilder> BindNewGraphBuilderRemote() {
+    mojo::Remote<mojom::WebNNGraphBuilder> remote;
+    webnn_context_->CreateGraphBuilder(remote.BindNewPipeAndPassReceiver());
     return remote;
   }
 
@@ -390,7 +390,7 @@ struct ArgMinMaxTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -472,7 +472,7 @@ TEST_F(WebNNGraphImplTest, ArgMinMaxTest) {
     {
       // Test the invalid graph when the input and output are same operand.
       auto context_properties = GetContextPropertiesForTesting();
-      mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+      mojo::Remote<mojom::WebNNGraphBuilder> remote =
           BindNewGraphBuilderRemote();
       GraphInfoBuilder builder(remote);
       OperandId input_operand_id =
@@ -499,7 +499,7 @@ struct ClampTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -606,7 +606,7 @@ struct HardSigmoidTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -685,7 +685,7 @@ struct BatchNormalizationTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -920,8 +920,7 @@ TEST_F(WebNNGraphImplTest, BatchNormalizationTest) {
   {
     // Test the invalid graph for input operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 2, 3, 4}, OperandDataType::kFloat32);
@@ -938,8 +937,7 @@ TEST_F(WebNNGraphImplTest, BatchNormalizationTest) {
   {
     // Test the invalid graph for mean operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 2, 3, 4}, OperandDataType::kFloat32);
@@ -955,8 +953,7 @@ TEST_F(WebNNGraphImplTest, BatchNormalizationTest) {
   {
     // Test the invalid graph for variance operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 2, 3, 4}, OperandDataType::kFloat32);
@@ -982,7 +979,7 @@ struct ConcatTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     std::vector<OperandId> input_operand_ids;
@@ -1129,7 +1126,7 @@ struct Conv2dTester {
     context_properties.input_operand_layout = input_operand_layout;
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -1350,8 +1347,7 @@ TEST_F(WebNNGraphImplTest, Conv2dTest) {
   {
     // Test the invalid graph for input operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 1, 5, 5}, OperandDataType::kFloat32);
@@ -1367,8 +1363,7 @@ TEST_F(WebNNGraphImplTest, Conv2dTest) {
   {
     // Test the invalid graph for filter operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 1, 5, 5}, OperandDataType::kFloat32);
@@ -1571,8 +1566,7 @@ TEST_F(WebNNGraphImplTest, ConvTranspose2dTest) {
   {
     // Test the invalid graph for input operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 1, 3, 3}, OperandDataType::kFloat32);
@@ -1588,8 +1582,7 @@ TEST_F(WebNNGraphImplTest, ConvTranspose2dTest) {
   {
     // Test the invalid graph for filter operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 1, 3, 3}, OperandDataType::kFloat32);
@@ -1614,7 +1607,7 @@ struct CumulativeSumTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -1690,8 +1683,7 @@ TEST_F(WebNNGraphImplTest, CumulativeSumTest) {
   {
     // Test the invalid graph for input operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
 
     GraphInfoBuilder builder(remote);
     uint32_t axis = 0;
@@ -1714,7 +1706,7 @@ struct DequantizeLinearTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -1831,8 +1823,7 @@ TEST_F(WebNNGraphImplTest, DequantizeLinearTest) {
   {
     // Test the invalid graph when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kInt8);
@@ -1847,8 +1838,7 @@ TEST_F(WebNNGraphImplTest, DequantizeLinearTest) {
   {
     // Test the invalid graph when the scale is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kInt8);
@@ -1863,8 +1853,7 @@ TEST_F(WebNNGraphImplTest, DequantizeLinearTest) {
   {
     // Test the invalid graph when the zeroPoint is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kInt8);
@@ -1955,7 +1944,7 @@ struct ElementWiseBinaryTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId lhs_operand_id =
@@ -2079,7 +2068,7 @@ struct ElementWiseUnaryTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -2403,7 +2392,7 @@ struct EluTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -2459,8 +2448,7 @@ TEST_F(WebNNGraphImplTest, EluTest) {
   {
     // Test the invalid graph when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -2478,7 +2466,7 @@ struct ExpandTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -2546,8 +2534,7 @@ TEST_F(WebNNGraphImplTest, ExpandTest) {
   {
     // Test the invalid graph when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -2560,8 +2547,7 @@ TEST_F(WebNNGraphImplTest, ExpandTest) {
     static constexpr SupportedRanks kRankLimit = SupportedRanks::UpTo(4);
     context_properties.data_type_limits.expand_input.ranks.IntersectWith(
         kRankLimit);
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -2587,7 +2573,7 @@ struct GatherTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -2679,8 +2665,7 @@ TEST_F(WebNNGraphImplTest, GatherTest) {
   {
     // Test the invalid graph when the output is as same as the input.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kFloat32);
@@ -2693,8 +2678,7 @@ TEST_F(WebNNGraphImplTest, GatherTest) {
   {
     // Test the invalid graph when the output is as same as the indices.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {3}, OperandDataType::kUint32);
@@ -2714,7 +2698,7 @@ struct GatherElementsTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -2814,8 +2798,7 @@ TEST_F(WebNNGraphImplTest, GatherElementsTest) {
   {
     // Test the invalid graph when the output is as same as the input.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kFloat32);
@@ -2829,8 +2812,7 @@ TEST_F(WebNNGraphImplTest, GatherElementsTest) {
   {
     // Test the invalid graph when the output is as same as the indices.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {3}, OperandDataType::kUint32);
@@ -2850,7 +2832,7 @@ struct GatherNDTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -2934,8 +2916,7 @@ TEST_F(WebNNGraphImplTest, GatherNDTest) {
   {
     // Test the invalid graph when the output is as same as the input.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kUint32);
@@ -2948,8 +2929,7 @@ TEST_F(WebNNGraphImplTest, GatherNDTest) {
   {
     // Test the invalid graph when the output is as same as the indices.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 1}, OperandDataType::kUint32);
@@ -2968,7 +2948,7 @@ struct GeluTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -3016,8 +2996,7 @@ TEST_F(WebNNGraphImplTest, GeluTest) {
   {
     // Test the invalid graph when the input has the same id as the output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1}, OperandDataType::kFloat16);
@@ -3045,7 +3024,7 @@ struct GemmTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId a_operand_id = builder.BuildInput("a", a.dimensions, a.type);
@@ -3204,7 +3183,7 @@ struct GruTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -3361,8 +3340,7 @@ TEST_F(WebNNGraphImplTest, GruTest) {
     uint32_t num_directions = 1;
 
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id = builder.BuildInput(
         "input", {steps, batch_size, input_size}, OperandDataType::kFloat32);
@@ -3412,7 +3390,7 @@ struct GruCellTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -3776,8 +3754,7 @@ TEST_F(WebNNGraphImplTest, GruCellTest) {
     // Test the invalid graph when the hidden state has the same id as the
     // output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id = builder.BuildInput(
         "input", {batch_size, input_size}, OperandDataType::kFloat32);
@@ -3817,7 +3794,7 @@ struct InstanceNormalizationTester {
     context_properties.input_operand_layout = input_operand_layout;
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -3959,8 +3936,7 @@ TEST_F(WebNNGraphImplTest, InstanceNormalizationTest) {
   {
     // Test the invalid graph for input operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 2, 3, 4}, OperandDataType::kFloat32);
@@ -3972,8 +3948,7 @@ TEST_F(WebNNGraphImplTest, InstanceNormalizationTest) {
   {
     // Test the invalid graph when the output is the same as the scale.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 2, 3, 4}, OperandDataType::kFloat32);
@@ -3990,8 +3965,7 @@ TEST_F(WebNNGraphImplTest, InstanceNormalizationTest) {
   {
     // Test the invalid graph when the output is the same as the bias.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 2, 3, 4}, OperandDataType::kFloat32);
@@ -4025,7 +3999,7 @@ struct LayerNormalizationTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -4159,8 +4133,7 @@ TEST_F(WebNNGraphImplTest, LayerNormalizationTest) {
   {
     // Test the invalid graph when the output is the same as the input.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 2, 3, 4}, OperandDataType::kFloat32);
@@ -4172,8 +4145,7 @@ TEST_F(WebNNGraphImplTest, LayerNormalizationTest) {
   {
     // Test the invalid graph when the output is the same as the scale.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 2, 3, 4}, OperandDataType::kFloat32);
@@ -4191,8 +4163,7 @@ TEST_F(WebNNGraphImplTest, LayerNormalizationTest) {
   {
     // Test the invalid graph when the output is the same as the bias.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 2, 3, 4}, OperandDataType::kFloat32);
@@ -4244,7 +4215,7 @@ struct LstmTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -4399,8 +4370,7 @@ TEST_F(WebNNGraphImplTest, LstmTest) {
     uint32_t direction_count = 1;
 
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id = builder.BuildInput(
         "input", {steps, batch_size, input_size}, OperandDataType::kFloat32);
@@ -4430,8 +4400,7 @@ TEST_F(WebNNGraphImplTest, LstmTest) {
     uint32_t direction_count = 1;
 
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id = builder.BuildInput(
         "input", {steps, batch_size, input_size}, OperandDataType::kFloat32);
@@ -4487,7 +4456,7 @@ struct LstmCellTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -4704,8 +4673,7 @@ TEST_F(WebNNGraphImplTest, LstmCellTest) {
     // Test the invalid graph when the cell state has the same id as
     // one of the outputs.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id = builder.BuildInput(
         "input", {batch_size, input_size}, OperandDataType::kFloat32);
@@ -4740,7 +4708,7 @@ struct MatmulTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId a_operand_id = builder.BuildInput("a", a.dimensions, a.type);
@@ -4850,8 +4818,7 @@ TEST_F(WebNNGraphImplTest, MatmulTest) {
   {
     // Test the invalid graph when the output is as same as one input.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId a_operand_id =
         builder.BuildInput("a", {2, 3}, OperandDataType::kFloat32);
@@ -4875,7 +4842,7 @@ struct PadTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -4961,8 +4928,7 @@ TEST_F(WebNNGraphImplTest, PadTest) {
   {
     // Test the invalid graph when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kFloat32);
@@ -4996,7 +4962,7 @@ struct Pool2dTester {
     context_properties.input_operand_layout = input_operand_layout;
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -5160,7 +5126,7 @@ struct PreluTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -5271,8 +5237,7 @@ TEST_F(WebNNGraphImplTest, PreluTest) {
   {
     // Test the invalid graph when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kFloat32);
@@ -5284,8 +5249,7 @@ TEST_F(WebNNGraphImplTest, PreluTest) {
   {
     // Test the invalid graph when the slope is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kFloat32);
@@ -5305,7 +5269,7 @@ struct QuantizeLinearTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -5421,8 +5385,7 @@ TEST_F(WebNNGraphImplTest, QuantizeLinearTest) {
   {
     // Test the invalid graph when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kFloat32);
@@ -5437,8 +5400,7 @@ TEST_F(WebNNGraphImplTest, QuantizeLinearTest) {
   {
     // Test the invalid graph when the scale is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kFloat32);
@@ -5453,8 +5415,7 @@ TEST_F(WebNNGraphImplTest, QuantizeLinearTest) {
   {
     // Test the invalid graph when the zeroPoint is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kFloat32);
@@ -5480,7 +5441,7 @@ struct ReduceTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -5739,8 +5700,7 @@ TEST_F(WebNNGraphImplTest, ReduceTest) {
   {
     // Test the invalid graph when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2, 3}, OperandDataType::kFloat32);
@@ -5759,7 +5719,7 @@ struct ReluTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -5830,7 +5790,7 @@ struct Resample2dTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -6039,8 +5999,7 @@ TEST_F(WebNNGraphImplTest, Resample2dTest) {
   {
     // Test the invalid graph when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {1, 1, 2, 4}, OperandDataType::kFloat32);
@@ -6060,7 +6019,7 @@ struct ReshapeTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -6112,8 +6071,7 @@ TEST_F(WebNNGraphImplTest, ReshapeTest) {
     static constexpr SupportedRanks kRankLimit = SupportedRanks::UpTo(4);
     context_properties.data_type_limits.reshape_input.ranks.IntersectWith(
         kRankLimit);
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -6132,7 +6090,7 @@ struct ReverseTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -6187,8 +6145,7 @@ TEST_F(WebNNGraphImplTest, ReverseTest) {
   {
     // Test an invalid reverse where the output is the same as the input.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {3, 3}, OperandDataType::kFloat32);
@@ -6207,7 +6164,7 @@ struct ScatterElementsTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -6354,8 +6311,7 @@ TEST_F(WebNNGraphImplTest, ScatterElementsTest) {
     // Test an invalid ScatterElements where the output is the same as the
     // input.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {3, 3}, OperandDataType::kFloat32);
@@ -6379,7 +6335,7 @@ struct ScatterNDTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -6486,8 +6442,7 @@ TEST_F(WebNNGraphImplTest, ScatterNDTest) {
   {
     // Test an invalid scatterND where the output is the same as the input.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {4, 4, 4}, OperandDataType::kFloat32);
@@ -6518,7 +6473,7 @@ struct SliceTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -6624,7 +6579,7 @@ struct FloatingPointUnaryTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -6700,8 +6655,7 @@ TEST_F(WebNNGraphImplTest, FloatingPointUnaryTest) {
     // Test the invalid graph for leaky relu when the input is as same as
     // output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -6713,8 +6667,7 @@ TEST_F(WebNNGraphImplTest, FloatingPointUnaryTest) {
   {
     // Test the invalid graph for leaky relu when alpha is NAN.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -6728,8 +6681,7 @@ TEST_F(WebNNGraphImplTest, FloatingPointUnaryTest) {
   {
     // Test the invalid graph for linear when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -6741,8 +6693,7 @@ TEST_F(WebNNGraphImplTest, FloatingPointUnaryTest) {
   {
     // Test the invalid graph for linear when alpha is NAN.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -6756,8 +6707,7 @@ TEST_F(WebNNGraphImplTest, FloatingPointUnaryTest) {
   {
     // Test the invalid graph for linear when beta is NAN.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -6772,8 +6722,7 @@ TEST_F(WebNNGraphImplTest, FloatingPointUnaryTest) {
     // Test the invalid graph for sigmoid when the input is as same as
     // output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -6784,8 +6733,7 @@ TEST_F(WebNNGraphImplTest, FloatingPointUnaryTest) {
   {
     // Test the invalid graph for tanh when the input is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {2}, OperandDataType::kFloat32);
@@ -6805,7 +6753,7 @@ struct SoftmaxTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -6893,7 +6841,7 @@ struct SoftplusTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -6941,8 +6889,7 @@ TEST_F(WebNNGraphImplTest, SoftplusTest) {
   {
     // Test the invalid graph for input operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {4, 6}, OperandDataType::kFloat32);
@@ -6960,7 +6907,7 @@ struct SoftsignTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -7009,8 +6956,7 @@ TEST_F(WebNNGraphImplTest, SoftsignTest) {
   {
     // Test the invalid graph for input operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {4, 6}, OperandDataType::kFloat32);
@@ -7029,7 +6975,7 @@ struct SplitTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -7119,8 +7065,7 @@ TEST_F(WebNNGraphImplTest, ValidateSplitTest) {
   }
   {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id = builder.BuildInput("input", {4, 6}, kFloat32);
 
@@ -7139,7 +7084,7 @@ struct TileTester {
 
   void Test(WebNNGraphImplTest& test) {
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
 
     // Build the graph with mojo type.
@@ -7229,8 +7174,7 @@ TEST_F(WebNNGraphImplTest, TileTest) {
   {
     // Test the invalid graph for input operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {4, 6}, OperandDataType::kFloat32);
@@ -7250,7 +7194,7 @@ struct TransposeTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -7340,7 +7284,7 @@ struct TriangularTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
@@ -7383,8 +7327,7 @@ TEST_F(WebNNGraphImplTest, TriangularTest) {
   {
     // Test the invalid graph for input operand == output operand.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId input_operand_id =
         builder.BuildInput("input", {4, 6}, OperandDataType::kFloat32);
@@ -7406,7 +7349,7 @@ struct WhereTester {
     auto context_properties = GetContextPropertiesForTesting();
 
     // Build the graph with mojo type.
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
+    mojo::Remote<mojom::WebNNGraphBuilder> remote =
         test.BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId condition_operand_id =
@@ -7547,8 +7490,7 @@ TEST_F(WebNNGraphImplTest, WhereTest) {
   {
     // Test the invalid graph when the condition is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId condition_operand_id =
         builder.BuildInput("condition", {2, 4}, OperandDataType::kUint8);
@@ -7563,8 +7505,7 @@ TEST_F(WebNNGraphImplTest, WhereTest) {
   {
     // Test the invalid graph when the true_value is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId condition_operand_id =
         builder.BuildInput("condition", {2, 4}, OperandDataType::kUint8);
@@ -7579,8 +7520,7 @@ TEST_F(WebNNGraphImplTest, WhereTest) {
   {
     // Test the invalid graph when the false_value is as same as output.
     auto context_properties = GetContextPropertiesForTesting();
-    mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-        BindNewGraphBuilderRemote();
+    mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
     GraphInfoBuilder builder(remote);
     OperandId condition_operand_id =
         builder.BuildInput("condition", {2, 4}, OperandDataType::kUint8);
@@ -7601,8 +7541,7 @@ TEST_F(WebNNGraphImplTest, ValidateDispatchTest) {
   const OperandDataType kDataType = OperandDataType::kUint8;
   const std::vector<uint32_t> kShape = {3, 5};
   // Build the graph with mojo type.
-  mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-      BindNewGraphBuilderRemote();
+  mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
   const OperandId lhs_operand_id =
       builder.BuildInput("lhs", kShape, kMojoDataType);
@@ -7834,8 +7773,7 @@ TEST_F(WebNNGraphImplTest, ValidateDispatchTest) {
 TEST_F(WebNNGraphImplTest, BuildMultipleInputsAppendingConstants) {
   auto context_properties = GetContextPropertiesForTesting();
   // Build the mojom graph info.
-  mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-      BindNewGraphBuilderRemote();
+  mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
   // The graph outputs are built first, and then inputs / constants.
   OperandId output_operand_id =
@@ -7876,8 +7814,7 @@ TEST_F(WebNNGraphImplTest, BuildMultipleInputsAppendingConstants) {
 TEST_F(WebNNGraphImplTest, BuildMultipleConstantsAppendingInputs) {
   auto context_properties = GetContextPropertiesForTesting();
   // Build the mojom graph info.
-  mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-      BindNewGraphBuilderRemote();
+  mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
   // The graph outputs are built first, and then inputs / constants.
   OperandId output_operand_id =
@@ -7910,8 +7847,7 @@ TEST_F(WebNNGraphImplTest, BuildMultipleConstantsAppendingInputs) {
 
 TEST_F(WebNNGraphImplTest, BuildOperationWithNonexistentInputs) {
   auto context_properties = GetContextPropertiesForTesting();
-  mojo::AssociatedRemote<mojom::WebNNGraphBuilder> remote =
-      BindNewGraphBuilderRemote();
+  mojo::Remote<mojom::WebNNGraphBuilder> remote = BindNewGraphBuilderRemote();
   GraphInfoBuilder builder(remote);
   OperandId input_operand_id =
       builder.BuildInput("input_a", {2, 2}, OperandDataType::kFloat32);

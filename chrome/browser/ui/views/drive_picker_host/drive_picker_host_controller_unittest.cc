@@ -8,6 +8,7 @@
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_host_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/test_with_browser_view.h"
+#include "chrome/browser/ui/webui/drive_picker_host/drive_picker_host_request.h"
 #include "chrome/test/base/testing_profile.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -40,67 +41,100 @@ class DrivePickerHostControllerTest : public TestWithBrowserView {
   std::unique_ptr<DrivePickerHostController> controller_;
 };
 
+TEST_F(DrivePickerHostControllerTest, ShowDrivePickerHostRequestsFocus) {
+  auto request = std::make_unique<drive_picker_host::DrivePickerHostRequest>(
+      drive_picker_host::DrivePickerHostRequest::RequestType::kPickerUi,
+      mojo::PendingRemote<
+          drive_picker_host::mojom::DrivePickerResultHandler>());
+  controller_->ShowDrivePickerHost(std::move(request));
+
+  base::RunLoop().RunUntilIdle();
+
+  ASSERT_TRUE(controller_->picker_widget_);
+  DrivePickerHostView* view = views::AsViewClass<DrivePickerHostView>(
+      controller_->picker_widget_->GetContentsView());
+  ASSERT_TRUE(view);
+
+  // The view should have requested focus.
+  views::FocusManager* focus_manager = view->GetWidget()->GetFocusManager();
+  views::View* focused_view = focus_manager->GetFocusedView();
+  if (!focused_view) {
+    focused_view = focus_manager->GetStoredFocusView();
+  }
+  ASSERT_TRUE(focused_view);
+  EXPECT_TRUE(view->Contains(focused_view));
+}
+
 TEST_F(DrivePickerHostControllerTest, ShowDrivePickerHostCreatesView) {
-  mojo::PendingRemote<drive_picker_host::mojom::DrivePickerResultHandler>
-      remote;
-  controller_->ShowDrivePickerHost(std::move(remote));
+  auto request = std::make_unique<drive_picker_host::DrivePickerHostRequest>(
+      drive_picker_host::DrivePickerHostRequest::RequestType::kPickerUi,
+      mojo::PendingRemote<
+          drive_picker_host::mojom::DrivePickerResultHandler>());
+  controller_->ShowDrivePickerHost(std::move(request));
 
   // Process any pending tasks (like view addition or initial WebUI setup).
   base::RunLoop().RunUntilIdle();
 
+  ASSERT_TRUE(controller_->picker_widget_);
   DrivePickerHostView* view = views::AsViewClass<DrivePickerHostView>(
-      controller_->view_tracker_.view());
+      controller_->picker_widget_->GetContentsView());
   ASSERT_TRUE(view);
-  EXPECT_EQ(browser_view(), view->parent());
+  EXPECT_TRUE(controller_->picker_widget_->IsVisible());
+  EXPECT_EQ(controller_->picker_widget_.get(), view->GetWidget());
   EXPECT_EQ(controller_->web_contents(), view->GetWebContents());
 }
 
 TEST_F(DrivePickerHostControllerTest, PickerCoversBrowserContents) {
-  mojo::PendingRemote<drive_picker_host::mojom::DrivePickerResultHandler>
-      remote;
-  controller_->ShowDrivePickerHost(std::move(remote));
+  auto request = std::make_unique<drive_picker_host::DrivePickerHostRequest>(
+      drive_picker_host::DrivePickerHostRequest::RequestType::kPickerUi,
+      mojo::PendingRemote<
+          drive_picker_host::mojom::DrivePickerResultHandler>());
+  controller_->ShowDrivePickerHost(std::move(request));
 
   base::RunLoop().RunUntilIdle();
 
-  DrivePickerHostView* view = views::AsViewClass<DrivePickerHostView>(
-      controller_->view_tracker_.view());
-  ASSERT_TRUE(view);
+  ASSERT_TRUE(controller_->picker_widget_);
 
-  // The view should cover the entire BrowserView local area.
-  EXPECT_EQ(view->bounds(), browser_view()->GetLocalBounds());
+  // The widget should cover the entire BrowserView screen bounds.
+  EXPECT_EQ(controller_->picker_widget_->GetWindowBoundsInScreen(),
+            browser_view()->GetBoundsInScreen());
 }
 
 TEST_F(DrivePickerHostControllerTest, PickerResizesWithWindow) {
-  mojo::PendingRemote<drive_picker_host::mojom::DrivePickerResultHandler>
-      remote;
-  controller_->ShowDrivePickerHost(std::move(remote));
+  auto request = std::make_unique<drive_picker_host::DrivePickerHostRequest>(
+      drive_picker_host::DrivePickerHostRequest::RequestType::kPickerUi,
+      mojo::PendingRemote<
+          drive_picker_host::mojom::DrivePickerResultHandler>());
+  controller_->ShowDrivePickerHost(std::move(request));
 
   base::RunLoop().RunUntilIdle();
 
-  DrivePickerHostView* view = views::AsViewClass<DrivePickerHostView>(
-      controller_->view_tracker_.view());
-  ASSERT_TRUE(view);
+  ASSERT_TRUE(controller_->picker_widget_);
 
   // Resize the browser window.
   gfx::Rect new_window_bounds(10, 10, 800, 600);
   browser_view()->GetWidget()->SetBounds(new_window_bounds);
 
-  // The picker view should have been updated to match the new local bounds.
-  EXPECT_EQ(view->bounds(), browser_view()->GetLocalBounds());
+  // The picker widget should have been updated to match the new screen bounds.
+  EXPECT_EQ(controller_->picker_widget_->GetWindowBoundsInScreen(),
+            browser_view()->GetBoundsInScreen());
 }
 
 TEST_F(DrivePickerHostControllerTest, ResetControllerStateClearsView) {
-  mojo::PendingRemote<drive_picker_host::mojom::DrivePickerResultHandler>
-      remote;
-  controller_->ShowDrivePickerHost(std::move(remote));
+  auto request = std::make_unique<drive_picker_host::DrivePickerHostRequest>(
+      drive_picker_host::DrivePickerHostRequest::RequestType::kPickerUi,
+      mojo::PendingRemote<
+          drive_picker_host::mojom::DrivePickerResultHandler>());
+  controller_->ShowDrivePickerHost(std::move(request));
 
   base::RunLoop().RunUntilIdle();
 
-  ASSERT_TRUE(controller_->view_tracker_.view());
+  ASSERT_TRUE(controller_->picker_widget_);
+  ASSERT_TRUE(controller_->picker_widget_->GetContentsView());
 
   controller_->ResetControllerState();
 
-  // ResetControllerState should have cleared the view.
-  EXPECT_FALSE(controller_->view_tracker_.view());
+  // ResetControllerState should have cleared both view and widget.
+  EXPECT_FALSE(controller_->picker_widget_);
   EXPECT_FALSE(controller_->is_picker_document_loaded_);
 }

@@ -118,6 +118,7 @@
 <translation id="1448440926884431741">Организујте производе које пратите у Обележивачима</translation>
 <translation id="1455845192930279203">Ипак желите да преузмете фајл <ph name="FILE_NAME" /> (<ph name="FILE_SIZE" />) са домена <ph name="DOWNLOAD_DOMAIN" />?</translation>
 <translation id="1460751212339734034">Уштедите време, куцајте мање</translation>
+<translation id="146522654774760805">Лозинке и аутоматско попуњавање</translation>
 <translation id="1466383950273130737">Изаберите језик за Chrome</translation>
 <translation id="1477626028522505441">Преузимање датотеке <ph name="FILE_NAME" /> није успело због проблема на серверу.</translation>
 <translation id="147982357559798527">Промењено</translation>
@@ -227,6 +228,7 @@
 <translation id="200114059308480249">Желите да уврстите околни текст у Google претраге?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, закачена картица без архивирања са искљученим звуком</translation>
 <translation id="2021896219286479412">Контроле сајта на целом екрану</translation>
+<translation id="2022953316617983419">QR кôд</translation>
 <translation id="2024195579772565064">Избришите претраживач</translation>
 <translation id="2029669011553795746">Опција за омогућавање обавештења о саветима је отворена до половине екрана</translation>
 <translation id="2038563949887743358">Укључи захтевање верзије сајта за рачунаре</translation>
@@ -550,7 +552,6 @@
 <translation id="3387650086002190359">Преузимање датотеке <ph name="FILE_NAME" /> није успело због грешака система датотека.</translation>
 <translation id="3417835166382867856">Претражите картице</translation>
 <translation id="3430670036890315772">Ако искључите закључавање профила, уклонићете сачуване информације</translation>
-<translation id="3435465986463792564">Имате много прозора? Њима можете да управљате одавде.</translation>
 <translation id="3435575784518354875">Да бисте задржали приступ лозинкама, извезите их одмах, ажурирајте Google Play услуге, па их поново увезите у Google менаџер лозинки. <ph name="BEGIN_LINK" />Погледајте комплетна упутства<ph name="END_LINK" />.</translation>
 <translation id="3435738964857648380">Безбедност</translation>
 <translation id="3435914367318771664">Додај картицу у нову групу</translation>
@@ -789,6 +790,7 @@
 <translation id="4409014848144759297"><ph name="WEBSITE_TITLE" /> и још картица (<ph name="TAB_COUNT" />)</translation>
 <translation id="441100617989818073">Некоришћене/дупле картице и групе</translation>
 <translation id="4412123112245770507">Скупи одељак</translation>
+<translation id="4412698727486357573">Центар за помоћ</translation>
 <translation id="4414179633735763985">Избрисано: <ph name="TAB_GROUPS_AND_TABS_PART" /></translation>
 <translation id="4415276339145661267">Управљајте Google налогом</translation>
 <translation id="4425140285732600465">Цена се прати. Добијајте обавештења када се цена снизи на било ком сајту.</translation>
@@ -1435,7 +1437,6 @@ Google налог можда има друге облике историје п�
 <translation id="6980258170429555165">Мени <ph name="MENU_NAME" /> је истакнут.</translation>
 <translation id="6983306615164277634">Можете и да додирнете и задржите траку за адресу да бисте променили позицију.</translation>
 <translation id="6987047470128880212">Режим без архивирања није доступан на овом уређају.</translation>
-<translation id="6989358895283601928">Сачувај и одштампај</translation>
 <translation id="6996145122199359148">Преузми ову страницу</translation>
 <translation id="7013762323294215682">Овај приступни кључ ће се сачувати у менаџеру лозинки. Свако ко има приступ њему моћи ће да користи овај приступни кључ.</translation>
 <translation id="7020741890149022655">Додај на листу за читање <ph name="BEGIN_NEW" />Ново<ph name="END_NEW" /></translation>
@@ -2003,6 +2004,7 @@ Google налог можда има друге облике историје п�
 <translation id="970715775301869095">Још <ph name="MINUTES" /> мин</translation>
 <translation id="981121421437150478">Офлајн</translation>
 <translation id="983192555821071799">Затвори све картице</translation>
+<translation id="984275831282074731">Начини плаћања</translation>
 <translation id="984756705737569814">Провера лозинки на Google налогу није успела</translation>
 <translation id="987264212798334818">Опште</translation>
 <translation id="988091779042748639">Да бисте избрисали историју прегледања без архивирања са уређаја, затворите све картице без архивирања.</translation>

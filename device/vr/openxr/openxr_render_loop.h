@@ -155,8 +155,7 @@ class OpenXrRenderLoop : public XRThread,
                    base::TimeDelta time_waited) final;
   void SubmitFrameDrawnIntoTexture(
       int16_t frame_index,
-      const std::vector<LayerId>& layer_ids,
-      const gpu::SyncToken&,
+      std::vector<device::mojom::XRLayerUpdatePtr> layer_updates,
       const std::vector<gpu::SyncToken>& camera_sync_tokens,
       base::TimeDelta time_waited) override;
   void UpdateLayerBounds(int16_t frame_id,
@@ -328,7 +327,7 @@ class OpenXrRenderLoop : public XRThread,
   mojom::XRVisibilityState visibility_state_ =
       mojom::XRVisibilityState::VISIBLE;
   mojom::VRStageParametersPtr current_stage_parameters_;
-  uint32_t stage_parameters_id_;
+  uint32_t stage_parameters_id_ = 0;
 
   // Lifetime of the platform helper is guaranteed by the OpenXrDevice.
   raw_ptr<OpenXrPlatformHelper> platform_helper_;

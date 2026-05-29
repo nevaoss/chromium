@@ -59,6 +59,7 @@ export class ContextualEntrypointAndMenuElement extends
         type: Boolean,
       },
       disabledTabIds: {type: Object},
+      restoredTabIds: {type: Array},
       tabSuggestions: {type: Array},
       inputState: {type: Object},
       glifAnimationState: {type: String, reflect: true},
@@ -66,6 +67,8 @@ export class ContextualEntrypointAndMenuElement extends
       uploadButtonDisabled: {type: Boolean},
       disableAutoReposition: {type: Boolean},
       usePecApi: {type: Boolean},
+      energyEffectAnimationEnabled: {type: Boolean, reflect: true},
+      recentTabId: {type: Number},
 
       // =========================================================================
       // Protected properties
@@ -75,6 +78,7 @@ export class ContextualEntrypointAndMenuElement extends
         type: Boolean,
       },
       sharedTabs: {type: Array},
+      restoredTabs_: {type: Array},
     };
   }
 
@@ -82,20 +86,25 @@ export class ContextualEntrypointAndMenuElement extends
   accessor showContextMenuDescription: boolean = false;
   accessor smartTabSharingActive: boolean = false;
   accessor disabledTabIds: Map<number, UnguessableToken> = new Map();
+  accessor restoredTabIds: number[] = [];
   accessor tabSuggestions: TabInfo[] = [];
   accessor inputState: InputState|null = null;
   accessor glifAnimationState: GlifAnimationState =
       GlifAnimationState.INELIGIBLE;
   accessor uploadButtonDisabled: boolean = false;
   accessor sharedTabs: TabInfo[] = [];
+  accessor recentTabId: number|null = null;
 
   accessor hasImageFiles: boolean = false;
   accessor searchboxLayoutMode: string = '';
   accessor disableAutoReposition: boolean = false;
   accessor usePecApi: boolean = false;
+  accessor energyEffectAnimationEnabled: boolean = false;
 
   protected accessor enableMultiTabSelection_: boolean =
       loadTimeData.getBoolean('composeboxContextMenuEnableMultiTabSelection');
+
+  protected accessor restoredTabs_: TabInfo[] = [];
 
   // TODO(crbug.com/499310611): Explore avoiding/removing this local property.
   private shouldOpenMenuForMultiSelection_: boolean = false;
@@ -114,6 +123,16 @@ export class ContextualEntrypointAndMenuElement extends
     const entrypoint =
         entrypointButton?.shadowRoot?.querySelector<HTMLElement>('#entrypoint');
     return {entrypointButton, entrypoint};
+  }
+
+  override willUpdate(changedProperties: PropertyValues<this>) {
+    super.willUpdate(changedProperties);
+
+    if (changedProperties.has('tabSuggestions') ||
+        changedProperties.has('restoredTabIds')) {
+      this.restoredTabs_ = this.tabSuggestions.filter(
+          tab => this.restoredTabIds.includes(tab.tabId));
+    }
   }
 
   override updated(changedProperties: PropertyValues<this>) {

@@ -575,10 +575,6 @@ inline constexpr char kStartupBrowserWindowLaunchSuppressed[] =
 inline constexpr char kLoginExtensionApiDataForNextLoginAttempt[] =
     "extensions_api.login.data_for_next_login_attempt";
 
-// String containing last RSU lookup key uploaded. Empty until first upload.
-inline constexpr char kLastRsuDeviceIdUploaded[] =
-    "rsu.last_rsu_device_id_uploaded";
-
 // Int64 pref indicating the time in microseconds since Windows epoch when the
 // timer for update required which will block user session was started. If the
 // timer is not started the pref holds the default value base::Time().
@@ -631,11 +627,6 @@ inline constexpr char kHasResetFirst7DaysSettingsUsedCount[] =
 // "ChromeOS.Settings.NumUniqueSettingsChanged.DeviceLifetime2.{Time}".
 inline constexpr char kHasEverRevokedMetricsConsent[] =
     "settings.has_ever_revoked_metrics_consent";
-
-// A boolean to store that an admin user accessed the host device remotely when
-// no user was present at the device. This boolean enables the device to display
-// a notification to the local user when the session was terminated.
-inline constexpr char kRemoteAdminWasPresent[] = "remote_admin_was_present";
 
 // This boolean controls whether the first window shown on first run should be
 // unconditionally maximized, overriding the heuristic that normally chooses the
@@ -2268,10 +2259,6 @@ inline constexpr char kReportingUsers[] = "reporting_users";
 inline constexpr char kArcAppInstallEventLoggingEnabled[] =
     "arc.app_install_event_logging_enabled";
 
-// Whether we received the remove users remote command, and hence should proceed
-// with removing the users while at the login screen.
-inline constexpr char kRemoveUsersRemoteCommand[] =
-    "remove_users_remote_command";
 
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
@@ -2337,22 +2324,6 @@ inline constexpr char kGlobalHardwareSecureDecryptionDisabledTimes[] =
 inline constexpr char kHardwareSecureDecryptionDisabledTimes[] =
     "hardware_secure_decryption.disabled_times";
 #endif  // BUILDFLAG(IS_WIN)
-
-#if BUILDFLAG(IS_CHROMEOS)
-
-// A boolean pref which determines whether a remote admin can start a CRD
-// connection through the 'start crd session' remote command.
-inline constexpr char
-    kRemoteAccessHostAllowEnterpriseRemoteSupportConnections[] =
-        "enterprise_remote_support_connections_allowed";
-
-// A boolean pref which determines whether a remote admin can start a CRD
-// connection through the 'start crd session' remote command when no local user
-// is present at the device.
-inline constexpr char kDeviceAllowEnterpriseRemoteAccessConnections[] =
-    "device_allow_enterprise_remote_access_connections";
-
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_ANDROID)
@@ -2466,13 +2437,6 @@ inline constexpr char kNetworkProfileLastWarningTime[] =
 inline constexpr char kShortcutMigrationVersion[] =
     "browser.shortcut_migration_version";
 #endif  // BUILDFLAG(IS_WIN)
-
-#if BUILDFLAG(IS_CHROMEOS)
-// The RLZ brand code, if enabled.
-inline constexpr char kRLZBrand[] = "rlz.brand";
-// Whether RLZ pings are disabled.
-inline constexpr char kRLZDisabled[] = "rlz.disabled";
-#endif
 
 // An integer that is incremented whenever changes are made to app shortcuts.
 // Increasing this causes all app shortcuts to be recreated.
@@ -2879,24 +2843,6 @@ inline constexpr char kCaretBrowsingEnabled[] =
 inline constexpr char kShowCaretBrowsingDialog[] =
     "settings.a11y.caretbrowsing.show_dialog";
 
-#if BUILDFLAG(IS_CHROMEOS)
-// String enum pref determining what should happen when a user who authenticates
-// via a security token is removing this token. "IGNORE" - nothing happens
-// (default). "LOGOUT" - The user is logged out. "LOCK" - The session is locked.
-inline constexpr char kSecurityTokenSessionBehavior[] =
-    "security_token_session_behavior";
-// When the above pref is set to "LOGOUT" or "LOCK", this integer pref
-// determines the duration of a notification that appears when the smart card is
-// removed. The action will only happen after the notification timed out. If
-// this pref is set to 0, the action happens immediately.
-inline constexpr char kSecurityTokenSessionNotificationSeconds[] =
-    "security_token_session_notification_seconds";
-// This string pref is set when the notification after the action mentioned
-// above is about to be displayed. It contains the domain that manages the user
-// who was logged out, to be used as part of the notification message.
-inline constexpr char kSecurityTokenSessionNotificationScheduledDomain[] =
-    "security_token_session_notification_scheduled";
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_ANDROID)
 // Boolean pref controlling whether immersive AR sessions are enabled

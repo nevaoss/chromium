@@ -36,7 +36,6 @@
 #include "chrome/browser/ui/views/tabs/projects/layout_constants.h"
 #include "chrome/browser/ui/views/tabs/projects/projects_panel_utils.h"
 #include "chrome/browser/ui/views/tabs/projects/projects_panel_view.h"
-#include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/gfx/geometry/outsets.h"
 #include "ui/gfx/geometry/size.h"
@@ -253,6 +252,9 @@ BrowserViewTabbedLayoutImpl::CalculateHorizontalLayout(
             vertical_tab_strip->GetMinimumSize().width(),
             base::ClampCeil(
                 params.leading_exclusion.ContentWithPadding().width()));
+      } else {
+        min_vertical_tab_strip_width =
+            vertical_tab_strip->GetMinimumSize().width();
       }
 
       // Account for grab handle. This has to be done after the minimum size
@@ -375,6 +377,9 @@ BrowserViewTabbedLayoutImpl::CalculateVerticalTabStripAnimation(
   animation.expand_on_hover =
       *controller->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
                                    TabStripAnimations::kTabStripHoverWidth);
+  animation.tab_strip_width =
+      *controller->GetCurrentValue(TabStripAnimations::kVerticalTabStrip,
+                                   TabStripAnimations::kTabStripWidth);
   animation.top_corner = *controller->GetCurrentValue(
       TabStripAnimations::kVerticalTabStrip, TabStripAnimations::kTopCorner);
   animation.bottom_corner = *controller->GetCurrentValue(
@@ -638,11 +643,6 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
                     vertical_tab_strip_width,
                     params.visual_client_area.height() -
                         vertical_tab_strip_animation.top_offset);
-      // In vertical tabs mode, extra space is allocated next to the top element
-      // to serve as a grab handle, on whatever side the caption buttons are.
-      if (!is_fullscreen(window_state)) {
-        IncreasePaddingToMinimum(params, GetMinimumGrabHandlePadding());
-      }
       int inset_amount = horizontal_layout.vertical_tab_strip_width;
       if (adjust_for_cracking) {
         inset_amount -= 1;
@@ -967,27 +967,16 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
     const bool include_trailing_inset =
         !(is_split_outline_replacing_shadow_or_separator &&
           horizontal_layout.has_side_panel() && !side_panel_leading);
+    const int default_inset = MultiContentsView::kSplitViewContentInset;
+    const int panel_side_inset =
+        base::ClampRound((1.0 - side_panel_reveal_amount) * default_inset);
 
-    gfx::Insets start_contents_view_inset = gfx::Insets::TLBR(
-        include_top_inset ? MultiContentsView::kSplitViewContentInset : 0,
-        include_leading_inset ? MultiContentsView::kSplitViewContentInset : 0,
-        MultiContentsView::kSplitViewContentInset,
-        include_trailing_inset ? MultiContentsView::kSplitViewContentInset : 0);
-    gfx::Insets end_contents_view_inset = start_contents_view_inset;
+    const gfx::Insets contents_insets = gfx::Insets::TLBR(
+        include_top_inset ? default_inset : 0,
+        include_leading_inset ? default_inset : panel_side_inset, default_inset,
+        include_trailing_inset ? default_inset : panel_side_inset);
 
-    // Remove the insets on the shared edge between the start and end contents
-    // views.
-    if (views().multi_contents_view->GetSplitLayout() ==
-        split_tabs::SplitTabLayout::kVertical) {
-      start_contents_view_inset.set_right(0);
-      end_contents_view_inset.set_left(0);
-    } else {
-      start_contents_view_inset.set_bottom(0);
-      end_contents_view_inset.set_top(0);
-    }
-
-    views().multi_contents_view->SetSplitViewInsets(start_contents_view_inset,
-                                                    end_contents_view_inset);
+    views().multi_contents_view->SetSplitViewInsets(contents_insets);
   }
 
   // Update the multi-contents view about if we will be animating content
@@ -1215,12 +1204,9 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
   // parented to the `top_container()` and the frame header is not visible.
   // In these cases, the top container's background color should match the
   // frame color to ensure visual consistency.
-  bool in_immersive_mode =
-      ImmersiveModeController::From(browser()) &&
-      ImmersiveModeController::From(browser())->IsEnabled();
-  bool is_touch_ui = ui::TouchUiController::Get()->touch_ui();
   if (GetTabStripType() == TabStripType::kHorizontal &&
-      (is_touch_ui || in_immersive_mode)) {
+      IsParentedTo(views().horizontal_tab_strip_region_view,
+                   views().top_container)) {
     background->SetPrimaryColor(ui::kColorFrameActive);
   } else {
     background->SetPrimaryColor(CustomCornersBackground::ToolbarTheme());
@@ -1425,13 +1411,13 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
       break;
     }
     case TabStripType::kVertical: {
-      if (!is_fullscreen(window_state)) {
-        // Curve trailing corner when it goes all the way to the edge of the
-        // browser.
-        if (params.trailing_exclusion.IsEmpty()) {
-          toolbar_corners.upper_trailing =
-              toolbar_background->GetWindowCorner(/*upper=*/true);
-        }
+      // Curve trailing corner when it becomes the top trailing corner of the
+      // browser.
+      if (window_state == WindowState::kNormal &&
+          IsParentedTo(views().top_container, views().browser_view) &&
+          params.trailing_exclusion.IsEmpty()) {
+        toolbar_corners.upper_trailing =
+            toolbar_background->GetWindowCorner(/*upper=*/true);
       }
       break;
     }
@@ -1454,7 +1440,8 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
     // Frame-colored corners are shown at the top in horizontal tabstrip mode.
     // This doesn't apply in fullscreen, as the tabstrip is not in the window.
     if (tab_strip_type == TabStripType::kHorizontal &&
-        !is_fullscreen(window_state)) {
+        IsParentedTo(views().horizontal_tab_strip_region_view,
+                     views().browser_view)) {
       // If (due to narrow width) the top container is not laid out in the main
       // area, it also doesn't get rounded corners.
       if (views().main_background_region->y() <= views().top_container->y()) {

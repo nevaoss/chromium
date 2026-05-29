@@ -72,8 +72,12 @@ import org.chromium.chrome.browser.share.ShareDelegate.ShareOrigin;
 import org.chromium.chrome.browser.share.ShareHelper;
 import org.chromium.chrome.browser.share.ShareUtils;
 import org.chromium.chrome.browser.share.link_to_text.LinkToTextHelper;
+import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabContextMenuItemDelegate;
 import org.chromium.chrome.browser.tab.TabUtils;
+import org.chromium.chrome.browser.ui.lens.LensOverlayCoordinator;
+import org.chromium.chrome.browser.ui.lens.LensOverlayInvocationSource;
+import org.chromium.chrome.browser.ui.lens.LensOverlayTabHelper;
 import org.chromium.chrome.browser.ui.signin.ForcedSigninStatusProvider;
 import org.chromium.components.browser_ui.share.ShareParams;
 import org.chromium.components.browser_ui.widget.BrowserUiListMenuUtils;
@@ -491,6 +495,11 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
             }
             if (mItemDelegate.isPrintSupported()) {
                 pageGroup.add(createListItem(Item.PRINT_PAGE));
+            }
+            if (shouldShowLensOverlay()) {
+                Tab tab = getTab();
+                boolean isEnabled = !LensOverlayTabHelper.isOverlayShowing(tab);
+                pageGroup.add(createListItem(Item.LENS_OVERLAY, false, isEnabled));
             }
             groupedItems.add(pageGroup);
         }
@@ -1005,7 +1014,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
             ShareParams linkShareParams =
                     new ShareParams.Builder(
                                     getWindow(),
-                                    ContextMenuUtils.getTitle(mParams),
+                                    ContextMenuUtils.getAltText(mParams),
                                     mParams.getPageUrl().getSpec())
                             .build();
             assumeNonNull(mShareDelegateSupplier.get())
@@ -1016,13 +1025,21 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
         } else if (itemId == R.id.contextmenu_print_page) {
             recordContextMenuSelection(ContextMenuUma.Action.PRINT_PAGE);
             mItemDelegate.startPrint();
+        } else if (itemId == R.id.contextmenu_lens_overlay) {
+            // TODO(b/510385469): Add a new Action enum for Lens Overlay.
+            recordContextMenuSelection(ContextMenuUma.Action.SEARCH_WITH_GOOGLE_LENS);
+            Tab tab = getTab();
+            if (tab != null) {
+                LensOverlayCoordinator.getOrCreateForTab(tab)
+                        .start(LensOverlayInvocationSource.CONTEXT_MENU);
+            }
         } else if (itemId == R.id.contextmenu_share_link) {
             recordContextMenuSelection(ContextMenuUma.Action.SHARE_LINK);
             // TODO(crbug.com/40549331): Migrate ShareParams to GURL.
             ShareParams linkShareParams =
                     new ShareParams.Builder(
                                     getWindow(),
-                                    ContextMenuUtils.getTitle(mParams),
+                                    ContextMenuUtils.getAltText(mParams),
                                     mParams.getUrl().getSpec())
                             .build();
             assumeNonNull(mShareDelegateSupplier.get())
@@ -1038,7 +1055,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
             final ShareParams shareParams =
                     new ShareParams.Builder(
                                     getWindow(),
-                                    ContextMenuUtils.getTitle(mParams),
+                                    ContextMenuUtils.getAltText(mParams),
                                     mParams.getUrl().getSpec())
                             .build();
             assumeNonNull(mShareDelegateSupplier.get())
@@ -1306,7 +1323,7 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
                     ShareParams imageShareParams =
                             new ShareParams.Builder(
                                             getWindow(),
-                                            ContextMenuUtils.getTitle(mParams),
+                                            ContextMenuUtils.getAltText(mParams),
                                             /* url= */ "")
                                     .setSingleImageUri(imageUri)
                                     .setFileContentType(mimeType)
@@ -1490,6 +1507,17 @@ public class ChromeContextMenuPopulator implements ContextMenuPopulator {
                 LENS_SUPPORT_STATUS_HISTOGRAM_NAME,
                 LensMetrics.LensSupportStatus.LENS_SEARCH_SUPPORTED);
         return true;
+    }
+
+    private @Nullable Tab getTab() {
+        if (mItemDelegate instanceof TabContextMenuItemDelegate tabDelegate) {
+            return tabDelegate.getTab();
+        }
+        return null;
+    }
+
+    private boolean shouldShowLensOverlay() {
+        return LensOverlayTabHelper.shouldShowLensOverlay(getTab());
     }
 
     private ListItem createListItem(@Item int item) {
