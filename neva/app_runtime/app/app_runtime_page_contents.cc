@@ -835,7 +835,8 @@ void PageContents::DidGetUserInteraction(const blink::WebInputEvent& event) {
       if (key_codes_filter_.find(keyboard_event.dom_key) !=
           key_codes_filter_.end()) {
         delegate_->OnKeyEvent(
-            ui::KeycodeConverter::DomKeyToKeyString(keyboard_event.dom_key),
+            ui::KeycodeConverter::DomKeyToKeyString(
+                ui::DomKey(keyboard_event.dom_key)),
             keyboard_event.dom_key);
       }
 
