@@ -25,6 +25,10 @@ const char kClearTokenService[] = "clear-token-service";
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 // Force enable the default browser step in the first run experience on Desktop.
 const char kForceFreDefaultBrowserStep[] = "force-fre-default-browser-step";
+
+// Overrides the eligible steps in the Feature Showcase step of the first run
+// experience. Step names should be valid values separated by commas.
+const char kForceFreFeatureShowcaseSteps[] = "force-fre-feature-showcase-steps";
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -467,6 +471,11 @@ const base::FeatureParam<base::TimeDelta>
     kPolicyDisclaimerRegistrationRetryDelay{
         &kEnforceManagementDisclaimer, "PolicyDisclaimerRegistrationRetryDelay",
         base::Hours(8)};
+#endif
+
+#if BUILDFLAG(IS_IOS)
+BASE_FEATURE(kEnforceMustSkipAppleAgeRangeInChromeCapability,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)

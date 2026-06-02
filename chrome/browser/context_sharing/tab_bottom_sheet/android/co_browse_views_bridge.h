@@ -8,6 +8,7 @@
 #include "base/android/scoped_java_ref.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ref.h"
+#include "chrome/browser/context_sharing/tab_bottom_sheet/android/co_browse_container_type.h"
 #include "chrome/browser/context_sharing/tab_bottom_sheet/android/tab_bottom_sheet_client_type.h"
 
 class TabAndroid;
@@ -35,7 +36,8 @@ class CoBrowseViewsBridge {
 
   explicit CoBrowseViewsBridge(
       tabs::TabInterface& tab,
-      context_sharing::TabBottomSheetClientType client_type);
+      context_sharing::TabBottomSheetClientType client_type,
+      context_sharing::CoBrowseContainerType container_type);
   ~CoBrowseViewsBridge();
 
   CoBrowseViewsBridge(const CoBrowseViewsBridge&) = delete;
@@ -46,7 +48,7 @@ class CoBrowseViewsBridge {
   bool CreateCoBrowseViews(content::WebContents* web_contents);
 
   // Sets the web contents for the view.
-  void SetWebContents(content::WebContents* web_contents);
+  void SetWebContents(content::WebContents* web_contents, bool request_focus);
 
   // Returns the Java CoBrowseViews object.
   base::android::ScopedJavaLocalRef<jobject> GetCoBrowseViews();
@@ -57,6 +59,7 @@ class CoBrowseViewsBridge {
 
   const raw_ref<tabs::TabInterface> tab_;
   const context_sharing::TabBottomSheetClientType client_type_;
+  const context_sharing::CoBrowseContainerType container_type_;
   base::android::ScopedJavaGlobalRef<jobject> java_co_browse_views_;
   raw_ptr<ui::WindowAndroid> window_android_ = nullptr;
 };

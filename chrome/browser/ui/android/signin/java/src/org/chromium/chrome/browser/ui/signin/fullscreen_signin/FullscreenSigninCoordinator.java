@@ -36,8 +36,17 @@ import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 public class FullscreenSigninCoordinator implements IdentityManager.Observer {
     /** Delegate for the fullscreen signin MVC. */
     public interface Delegate {
-        /** Notifies when the user clicked the "add account" button. */
+        /**
+         * Notifies when the user clicked the "add account" button.
+         *
+         * @deprecated Use {@link #addAccount(String)} instead.
+         */
+        @Deprecated
+        // TODO(crbug.com/512202548): Remove this method as it is now redundant.
         void addAccount();
+
+        /** Notifies when the user clicked the "add account" button with a specified email. */
+        void addAccount(@Nullable String accountEmail);
 
         /**
          * Notifies when the user accepts the terms of service. Only implemented for the FRE.
@@ -111,6 +120,7 @@ public class FullscreenSigninCoordinator implements IdentityManager.Observer {
     private final FullscreenSigninMediator mMediator;
     private final Delegate mDelegate;
     @Nullable private IdentityManager mIdentityManager;
+    private boolean mDestroyed;
 
     @Nullable
     private PropertyModelChangeProcessor<PropertyModel, FullscreenSigninView, PropertyKey>
@@ -145,6 +155,8 @@ public class FullscreenSigninCoordinator implements IdentityManager.Observer {
     }
 
     private void onProfileAvailable(ProfileProvider result) {
+        if (mDestroyed) return;
+
         mIdentityManager =
                 IdentityServicesProvider.get().getIdentityManager(result.getOriginalProfile());
         assumeNonNull(mIdentityManager).addObserver(this);
@@ -152,9 +164,11 @@ public class FullscreenSigninCoordinator implements IdentityManager.Observer {
 
     /** Releases the resources used by the coordinator. */
     public void destroy() {
+        mDestroyed = true;
         setView(null);
         if (mIdentityManager != null) {
             mIdentityManager.removeObserver(this);
+            mIdentityManager = null;
         }
         mMediator.destroy();
     }
@@ -162,6 +176,8 @@ public class FullscreenSigninCoordinator implements IdentityManager.Observer {
     /** Implements {@link IdentityManager.Observer}. */
     @Override
     public void onPrimaryAccountChanged(PrimaryAccountChangeEvent eventDetails) {
+        if (mDestroyed) return;
+
         if (mMediator.isContinueOrDismissClicked()) {
             // If the sign-in occurred through this promo, then it is already being handled.
             return;

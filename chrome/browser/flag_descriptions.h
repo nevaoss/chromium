@@ -189,13 +189,6 @@ inline constexpr char kAndroidBookmarkBarDescription[] =
     "Enables the bookmark bar which provides users with bookmark access from "
     "top chrome. Note that device form factor restrictions also apply.";
 
-inline constexpr char kAndroidBookmarkBarFastFollowName[] =
-    "Android Bookmark Bar Fast Follow";
-inline constexpr char kAndroidBookmarkBarFastFollowDescription[] =
-    "Enables fast follow for the bookmark bar which adds addition "
-    "functionality. This flag requires having the Android Bookmark Bar flag "
-    "enabled as well.";
-
 inline constexpr char kAndroidBottomBarName[] = "Android Bottom Bar";
 inline constexpr char kAndroidBottomBarDescription[] =
     "Enables the chrome android bottom bar.";
@@ -591,13 +584,6 @@ inline constexpr char kDevToolsProjectSettingsDescription[] =
     "If enabled, DevTools will try to fetch project settings in the "
     "form of a `com.chrome.devtools.json` file from a well-known URI "
     "on local debugging targets.";
-
-inline constexpr char kEnableAdpfEfficiencyModeName[] =
-    "Android Power Efficiency Mode";
-inline constexpr char kEnableAdpfEfficiencyModeDescription[] =
-    "Enables experimental power management on Pixel devices. When active, "
-    "Chrome instructs the system to prioritize battery life over maximum "
-    "performance. Responsiveness may be affected.";
 
 inline constexpr char kEnableSeamlessSigninName[] = "Enable Seamless Sign-in";
 inline constexpr char kEnableSeamlessSigninDescription[] =
@@ -1476,6 +1462,13 @@ inline constexpr char kGlicExperimentalTriggeringName[] =
     "Glic experimental triggering";
 inline constexpr char kGlicExperimentalTriggeringDescription[] =
     "Enables GLIC experimental triggering";
+inline constexpr char
+    kGlicExperimentalTriggeringSuppressDoneNotificationName[] =
+        "Glic experimental triggering suppress done notification";
+inline constexpr char
+    kGlicExperimentalTriggeringSuppressDoneNotificationDescription[] =
+        "Suppresses the done notification for GLIC experimental triggering "
+        "tasks";
 inline constexpr char kGlicActorAutofillName[] = "Glic actor autofill";
 inline constexpr char kGlicActorAutofillDescription[] =
     "Enables autofill actions for the Glic actor. Specific fillable types may "
@@ -1502,6 +1495,18 @@ inline constexpr char kGlicActorSkipScreenshotName[] =
 inline constexpr char kGlicActorSkipScreenshotDescription[] =
     "If enabled, Glic actor will skip capturing and uploading screenshots when "
     "an actor turn is completed.";
+
+inline constexpr char kActorObserveScreenshotDefaultName[] =
+    "Actor observe screenshot default";
+inline constexpr char kActorObserveScreenshotDefaultDescription[] =
+    "If enabled, the actor framework will capture screenshots by default when "
+    "requested.";
+
+inline constexpr char kActorObservePageContentDefaultName[] =
+    "Actor observe page content default";
+inline constexpr char kActorObservePageContentDefaultDescription[] =
+    "If enabled, the actor framework will capture page content by default when "
+    "requested.";
 inline constexpr char kGlicCaptureRegionDescription[] =
     "Enables Glic to capture a region of the screen.";
 inline constexpr char kGlicCaptureRegionName[] = "Glic Capture Region";
@@ -1662,6 +1667,11 @@ inline constexpr char
         "allowed "
         "for enterprise users on Android.";
 
+inline constexpr char kEnableDownloadEnterpriseScanName[] =
+    "Enable enterprise download scanning on Android";
+inline constexpr char kEnableDownloadEnterpriseScanDescription[] =
+    "Enables enterprise deep scanning of downloads on Android.";
+
 inline constexpr char kEnableExperimentalCookieFeaturesName[] =
     "Enable experimental cookie features";
 inline constexpr char kEnableExperimentalCookieFeaturesDescription[] =
@@ -1786,11 +1796,6 @@ inline constexpr char kDevToolsWebMCPSupportName[] =
     "WebMCP support in DevTools";
 inline constexpr char kDevToolsWebMCPSupportDescription[] =
     "Enables WebMCP support in DevTools.";
-
-inline constexpr char kDesktopPWAsBorderlessName[] = "Desktop PWA Borderless";
-inline constexpr char kDesktopPWAsBorderlessDescription[] =
-    "Enable web app manifests to declare borderless mode as a display "
-    "override. Prototype implementation of: go/borderless-mode.";
 
 inline constexpr char kDomStorageSqliteName[] = "DOM Storage SQLite Backend";
 inline constexpr char kDomStorageSqliteDescription[] =
@@ -2286,11 +2291,6 @@ inline constexpr char kIPHExtensionsRequestAccessButtonFeatureDescription[] =
     "Enables In-Product-Help that appears when at least one extension is "
     "requesting access to the current page. This feature is gated by "
     "extensions-menu-access-control.";
-inline constexpr char kExtensionManifestV2DeprecationDisabledName[] =
-    "Extension Manifest V2 Deprecation Disabled Stage";
-inline constexpr char kExtensionManifestV2DeprecationDisabledDescription[] =
-    "Displays a warning that affected MV2 extensions were turned off due to "
-    "the Manifest V2 deprecation.";
 inline constexpr char kExtensionManifestV2DeprecationUnsupportedName[] =
     "Extension Manifest V2 Deprecation Unsupported Stage";
 inline constexpr char kExtensionManifestV2DeprecationUnsupportedDescription[] =
@@ -2366,6 +2366,13 @@ inline constexpr char kFedCmNonceInParamsName[] = "FedCmNonceInParams";
 inline constexpr char kFedCmNonceInParamsDescription[] =
     "Removes nonce as an explicit parameter of the FedCM API. When enabled, a "
     "nonce may be passed in params.";
+
+inline constexpr char kFedCmWebIdentitySubdomainName[] =
+    "FedCmWebIdentitySubdomain";
+inline constexpr char kFedCmWebIdentitySubdomainDescription[] =
+    "Enables subdomain-first discovery for the FedCM well-known file. "
+    "Fetches https://web-identity.<eTLD+1>/.well-known/web-identity first "
+    "and falls back to the apex URL on failure.";
 
 inline constexpr char kFedCmWellKnownEndpointValidationName[] =
     "FedCmWellKnownEndpointValidation";
@@ -2706,6 +2713,15 @@ inline constexpr char kHttpsUpgradesName[] = "HTTPS Upgrades";
 inline constexpr char kHttpsUpgradesDescription[] =
     "Enable automatically upgrading all top-level navigations to HTTPS with "
     "fast fallback to HTTP.";
+
+inline constexpr char
+    kHttpsUpgradesTypedSchemelessNavigationNoTimeoutFallbackName[] =
+        "HTTPS Upgrades Typed Schemeless Navigation No Timeout Fallback";
+inline constexpr char
+    kHttpsUpgradesTypedSchemelessNavigationNoTimeoutFallbackDescription[] =
+        "When enabled, typed schemeless navigations upgraded to HTTPS will not "
+        "fallback to HTTP if the upgraded HTTPS navigation fails due to a "
+        "timeout.";
 
 inline constexpr char kIgnoreGpuBlocklistName[] =
     "Override software rendering list";
@@ -3970,16 +3986,6 @@ inline constexpr char kRendererSideContentDecodingDescription[] =
     "network service sends compressed HTTP response bodies to the renderer "
     "process.";
 
-inline constexpr char kBackgroundCompactMessageName[] =
-    "Enable Background Compaction";
-inline constexpr char kBackgroundCompactDescription[] =
-    "Compact memory for all tabs while chrome is backgrounded";
-inline constexpr char kRunningCompactMessageName[] =
-    "Enable Running Compaction";
-inline constexpr char kRunningCompactDescription[] =
-    "Compact memory tabs that haven't been used in a while while chrome "
-    "is running.";
-
 inline constexpr char kRcapsDynamicProfileCountryName[] =
     "Dynamic Profile Country";
 inline constexpr char kRcapsDynamicProfileCountryDescription[] =
@@ -4138,6 +4144,10 @@ inline constexpr char kTestThirdPartyCookiePhaseoutDescription[] =
     "Enable to test third-party cookie phaseout. "
     "Learn more: https://goo.gle/3pcd-flags";
 
+inline constexpr char kSplitViewTabRestoreName[] = "Split View Tab Restore";
+inline constexpr char kSplitViewTabRestoreDescription[] =
+    "Whether or not a split view should restore together.";
+
 inline constexpr char kVerticalTabsName[] = "Vertical Tabs";
 inline constexpr char kVerticalTabsDescription[] =
     "Enables an option for showing tabs to the side.";
@@ -4159,6 +4169,12 @@ inline constexpr char kSidePanelFlyoverAnimationDescription[] =
     "panels, reducing jank on most platforms. When enabled, the animating "
     "elements will appear to float over the contents, which resize at the "
     "beginning or end of the animation.";
+
+inline constexpr char kUseDefaultDeadlineWhenAnimatingBoundsName[] =
+    "Use Default Deadline Resizing Policy";
+inline constexpr char kUseDefaultDeadlineWhenAnimatingBoundsDescription[] =
+    "Use Default Deadline Resizing Policy when animating vertical tabstrip "
+    "and side panels.";
 
 inline constexpr char kTabGroupColorRefreshName[] = "Tab Group Color Refresh";
 inline constexpr char kTabGroupColorRefreshDescription[] =
@@ -4687,6 +4703,13 @@ inline constexpr char kWebAuthnImmediateGetDescription[] =
     "navigator.credentials.get() request. This will return a NotAllowedError "
     "if there are no credentials for a given get request. The request can also "
     "request passwords.";
+
+inline constexpr char kWebAuthnCrossDeviceFallbackUrlName[] =
+    "WebAuthn Cross-device fallback URL extension";
+inline constexpr char kWebAuthnCrossDeviceFallbackUrlDescription[] =
+    "Enables support for the WebAuthn crossDeviceFallbackUrl extension, "
+    "which allows Relying Parties to provide a fallback URL for hybrid "
+    "authenticator get requests.";
 
 inline constexpr char kWebBluetoothName[] = "Web Bluetooth";
 inline constexpr char kWebBluetoothDescription[] =
@@ -5287,45 +5310,15 @@ inline constexpr char kAndroidWindowOcclusionDescription[] =
     "Enables occlusion tracking on Android, which can save CPU and memory in "
     "multi-window environments.";
 
-inline constexpr char kAndroidWindowPopupCustomTabUiName[] =
-    "Enable new UI mode in Custom Tabs for contextual popups.";
-inline constexpr char kAndroidWindowPopupCustomTabUiDescription[] =
-    "Show the title of a tab opened in a pop-up window in caption bar of the "
-    "top-level window, if exists and has sufficient dimensions.";
-
-inline constexpr char kAndroidWindowPopupLargeScreenName[] =
-    "Enable desktop-like behavior of window popup web API in desktop windowing "
-    "on Android.";
-inline constexpr char kAndroidWindowPopupLargeScreenDescription[] =
-    "Open an actual new window instead of new tab on window.open() Javascript "
-    "call and make moving windows with window.{move|resize}{By|To}() "
-    "possible.";
-
-inline constexpr char kAndroidWindowPopupPredictFinalBoundsName[] =
-    "Try to predict the displacement between top-level window and website "
-    "viewport before creating a popup.";
-inline constexpr char kAndroidWindowPopupPredictFinalBoundsDescription[] =
-    "Size of the website viewport of a new contextual popup may be requested "
-    "as a parameter in a window.open() Javascript call. If this flag is "
-    "enabled, then the final bounds of the popup will be predicted before its "
-    "creation in hope the resizing action won't be needed. See also the "
-    "enable-android-window-popup-resize-after-spawn flag that regulates "
-    "post-creation bounds adjustments.";
-
-inline constexpr char kAndroidWindowPopupResizeAfterSpawnName[] =
-    "Resize a contextual popup after spawning it to compensate for UI elements "
-    "so that its website viewport dimensions match requested ones.";
-inline constexpr char kAndroidWindowPopupResizeAfterSpawnDescription[] =
-    "Size of the website viewport of a new contextual popup may be requested "
-    "as a parameter in a window.open() Javascript call. If this flag is "
-    "enabled, then the popup will be resized after its creation to ensure that "
-    "this web API contract is satisfied. See also the "
-    "enable-android-window-popup-predict-final-bounds flag that regulates "
-    "pre-creation bounds adjustments.";
-
 inline constexpr char kHomeButtonRemovalName[] = "Home Button Removal";
 inline constexpr char kHomeButtonRemovalDescription[] =
     "Enables the Home Button Removal feature.";
+
+inline constexpr char kUpdatePaddingForDisplayCalculationName[] =
+    "Update Padding For Display Calculation";
+inline constexpr char kUpdatePaddingForDisplayCalculationDescription[] =
+    "When this is enabled, padding for display style calculations will use the "
+    "width of the containing view, not the entire screen width.";
 
 inline constexpr char kUpdateTabGroupColorsName[] = "Update Tab Group Colors";
 inline constexpr char kUpdateTabGroupColorsDescription[] =
@@ -5618,6 +5611,15 @@ inline constexpr char kEdgeToEdgeExtraLogsName[] = "edge-to-edge-extra-logs";
 inline constexpr char kEdgeToEdgeExtraLogsDescription[] =
     "When this is enabled, extra logs will be emitted for tracking "
     "edge-to-edge state and inset updates.";
+
+inline constexpr char kWebAppShortEdgesCutoutModeName[] =
+    "Web App Short Edges Cutout Mode";
+inline constexpr char kWebAppShortEdgesCutoutModeDescription[] =
+    "When enabled, installed PWAs (display: standalone or display: fullscreen) "
+    "that opt in via viewport-fit=cover draw under the status and navigation "
+    "bars on Android, with non-zero CSS env(safe-area-inset-*) values for "
+    "controls. Standalone webapps that do not declare viewport-fit=cover are "
+    "unaffected.";
 
 inline constexpr char kEnableAccessibilityLabeledByName[] =
     "Enable Accessibility LabeledBy";
@@ -6199,6 +6201,11 @@ inline constexpr char kComposeboxDriveContextMenuOptionName[] =
     "Composebox Drive Context Menu Option";
 inline constexpr char kComposeboxDriveContextMenuOptionDescription[] =
     "Enables Google Drive option in the Composebox context menu.";
+inline constexpr char kComposeboxDriveContextMenuOptionDisclaimerName[] =
+    "Composebox Drive Context Menu Option Disclaimer";
+inline constexpr char kComposeboxDriveContextMenuOptionDisclaimerDescription[] =
+    "Enables the disclaimer flow for the Google Drive option in the Composebox "
+    "context menu.";
 
 inline constexpr char kEnableHeadlessLiveCaptionName[] =
     "Headless Live Captions";

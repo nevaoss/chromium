@@ -22,6 +22,7 @@
 #include "chrome/browser/glic/public/glic_close_options.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_instance.h"
+#include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/chrome_features.h"
 #include "content/public/browser/web_contents.h"
@@ -76,13 +77,13 @@ class GlicInstanceCoordinator {
       base::span<const tabs::TabHandle> tab_handles,
       GlicUnpinTrigger trigger) = 0;
 
+  virtual base::WeakPtr<GlicInstance> Invoke(GlicInvokeOptions options) = 0;
+
   // Show, summon, or activate the panel if needed, or close it if it's already
   // active and prevent_close is false.
-  virtual void Toggle(
-      BrowserWindowInterface* bwi,
-      bool prevent_close,
-      mojom::InvocationSource source,
-      std::optional<std::string> deprecated_prompt_suggestion) = 0;
+  virtual void Toggle(BrowserWindowInterface* bwi,
+                      bool prevent_close,
+                      mojom::InvocationSource source) = 0;
 
   // Readies glic to show.
   virtual void EnsurePreload() = 0;

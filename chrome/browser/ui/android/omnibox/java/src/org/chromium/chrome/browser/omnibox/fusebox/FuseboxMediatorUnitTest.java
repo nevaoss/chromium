@@ -97,6 +97,7 @@ import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
 import org.chromium.components.omnibox.AimModelsProto.ModelMode;
 import org.chromium.components.omnibox.AutocompleteInput;
+import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.IconProto.Icon;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
@@ -443,6 +444,13 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
+    public void beginInput_withStandbyNoFocusState_isDisabled() {
+        mInput.setAutocompleteState(AutocompleteState.STANDBY_NO_FOCUS);
+        recreateMediator();
+        assertEquals(FuseboxState.DISABLED, mModel.get(FuseboxProperties.FUSEBOX_STATE).intValue());
+    }
+
+    @Test
     public void testBeginInput_FuseboxPopup_ShowsPopup() {
         mInput.setFocusReason(OmniboxFocusReason.FAKE_BOX_PLUS_BUTTON_TAP);
 
@@ -520,6 +528,15 @@ public class FuseboxMediatorUnitTest {
         recreateMediator();
 
         assertEquals(FuseboxState.EXPANDED, mModel.get(FuseboxProperties.FUSEBOX_STATE).intValue());
+    }
+
+    @Test
+    public void updateFuseboxState_standbyNoFocus_isDisabled() {
+        OmniboxFeatures.sCompactFusebox.setForTesting(true);
+        mInput.setAutocompleteState(AutocompleteState.STANDBY_NO_FOCUS);
+        recreateMediator();
+
+        assertEquals(FuseboxState.DISABLED, mModel.get(FuseboxProperties.FUSEBOX_STATE).intValue());
     }
 
     @Test
@@ -894,6 +911,37 @@ public class FuseboxMediatorUnitTest {
                 AutocompleteRequestType.IMAGE_GENERATION,
                 (int) mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE));
         histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void clickSelectedTool_transitionsToSearchMode() {
+        // Initially in Search mode.
+        assertEquals(
+                AutocompleteRequestType.SEARCH,
+                (int) mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE));
+
+        clickToolButton(ToolMode.TOOL_MODE_UNSPECIFIED_VALUE);
+        assertEquals(
+                AutocompleteRequestType.AI_MODE,
+                (int) mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE));
+
+        clickToolButton(ToolMode.TOOL_MODE_UNSPECIFIED_VALUE);
+        assertEquals(
+                AutocompleteRequestType.SEARCH,
+                (int) mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE));
+    }
+
+    @Test
+    public void clickSelectedImageGenTool_transitionsToSearchMode() {
+        clickToolButton(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE);
+        assertEquals(
+                AutocompleteRequestType.IMAGE_GENERATION,
+                (int) mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE));
+
+        clickToolButton(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE);
+        assertEquals(
+                AutocompleteRequestType.SEARCH,
+                (int) mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE));
     }
 
     @Test

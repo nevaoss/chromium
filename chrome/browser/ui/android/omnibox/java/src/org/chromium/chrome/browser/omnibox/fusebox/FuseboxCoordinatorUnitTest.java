@@ -50,6 +50,7 @@ import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Features.DisableFeatures;
+import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.ViewportRectProvider;
@@ -94,6 +95,7 @@ public class FuseboxCoordinatorUnitTest {
     @Mock private SnackbarManager mSnackbarManager;
     @Mock private FuseboxMetrics mMetrics;
     @Mock private RectProvider.Observer mRectProviderObserver;
+    @Mock private BackPressManager mBackPressManager;
 
     private AutocompleteInput mAutocompleteInput;
     private ActivityController<TestActivity> mActivityController;
@@ -144,7 +146,7 @@ public class FuseboxCoordinatorUnitTest {
                         mTemplateUrlServiceSupplier,
                         mSnackbarManager,
                         /* scrimAnchorViewSupplier= */ () -> null,
-                        /* backPressManager= */ null);
+                        mBackPressManager);
     }
 
     private FuseboxSessionState createSession() {
@@ -330,5 +332,34 @@ public class FuseboxCoordinatorUnitTest {
         mCoordinator.getViewHolderForTesting().addButton.setVisibility(View.VISIBLE);
         mCoordinator.onContextPopupDismissed();
         assertTrue(mCoordinator.getViewHolderForTesting().addButton.isFocused());
+    }
+
+    @Test
+    public void testResetToSearchMode() {
+        mCoordinator.setMediatorForTesting(mMediator);
+        mCoordinator.resetToSearchMode();
+        verify(mMediator).activateSearchMode();
+    }
+
+    @Test
+    public void testDseChangedToNonGoogleDuringSession() {
+        // Start with Google DSE.
+        doReturn(true).when(mTemplateUrlService).isDefaultSearchEngineGoogle();
+        mTemplateUrlServiceSupplier.set(mTemplateUrlService);
+        mCoordinator.beginInput(createSession());
+        mCoordinator.setMediatorForTesting(mMediator);
+        RobolectricUtil.runAllBackgroundAndUiIncludingDelayed();
+
+        // Verify session is active (beginInput was called on mediator).
+        verify(mMediator).beginInput(any());
+
+        // Now DSE changes to non-Google.
+        doReturn(false).when(mTemplateUrlService).isDefaultSearchEngineGoogle();
+        mCoordinator.onTemplateURLServiceChanged();
+
+        // Verify that resetToSearchMode() / activateSearchMode() was called first.
+        verify(mMediator).activateSearchMode();
+        // Verify that endInput() was called.
+        verify(mMediator).endInput();
     }
 }

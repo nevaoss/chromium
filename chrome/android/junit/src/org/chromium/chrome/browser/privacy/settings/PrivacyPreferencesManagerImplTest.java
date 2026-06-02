@@ -110,6 +110,10 @@ public class PrivacyPreferencesManagerImplTest {
         when(policyService.isInitializationComplete()).thenReturn(false);
         PolicyServiceFactory.setPolicyServiceForTest(policyService);
 
+        PrivacyPreferencesManagerImpl.Natives preferenceManagerNatives =
+                mock(PrivacyPreferencesManagerImpl.Natives.class);
+        PrivacyPreferencesManagerImplJni.setInstanceForTesting(preferenceManagerNatives);
+
         // Simulate native initialization notification call.
         preferenceManager.onNativeInitialized();
 
@@ -166,20 +170,20 @@ public class PrivacyPreferencesManagerImplTest {
     }
 
     @Test
-    public void testShouldUseMetricsConsentRestructure() {
+    public void testShouldUseMetricsChoiceRestructure() {
         Context context = mock(Context.class);
         PrivacyPreferencesManagerImpl preferenceManager =
                 new TestPrivacyPreferencesManager(context);
 
         PrivacyPreferencesManagerImpl.Natives preferenceManagerNatives =
                 mock(PrivacyPreferencesManagerImpl.Natives.class);
-        when(preferenceManagerNatives.shouldUseMetricsConsentRestructure()).thenReturn(true);
+        when(preferenceManagerNatives.shouldUseMetricsChoiceRestructure()).thenReturn(true);
         PrivacyPreferencesManagerImplJni.setInstanceForTesting(preferenceManagerNatives);
 
-        assertTrue(preferenceManager.shouldUseMetricsConsentRestructure());
+        assertTrue(preferenceManager.shouldUseMetricsChoiceRestructure());
 
-        when(preferenceManagerNatives.shouldUseMetricsConsentRestructure()).thenReturn(false);
-        assertFalse(preferenceManager.shouldUseMetricsConsentRestructure());
+        when(preferenceManagerNatives.shouldUseMetricsChoiceRestructure()).thenReturn(false);
+        assertFalse(preferenceManager.shouldUseMetricsChoiceRestructure());
     }
 
     private void runTest(

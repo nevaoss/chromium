@@ -66,8 +66,8 @@ gfx::Size ToolbarGlicButton::CalculatePreferredSize(
 }
 
 gfx::Size ToolbarGlicButton::GetMinimumSize() const {
-  return gfx::Size(kCollapsedWidth,
-                   GetLayoutConstant(LayoutConstant::kToolbarButtonHeight));
+  const int size = GetLayoutConstant(LayoutConstant::kToolbarButtonHeight);
+  return gfx::Size(size, size);
 }
 
 void ToolbarGlicButton::AddedToWidget() {
@@ -123,6 +123,10 @@ float ToolbarGlicButton::GetCornerRadiusFor(ToolbarButton::Edge edge) const {
   }
 }
 
+int ToolbarGlicButton::GetRoundedCornerRadius() const {
+  return GetLayoutConstant(LayoutConstant::kToolbarButtonHeight) / 2;
+}
+
 int ToolbarGlicButton::GetSplitRoundedEdgeRadius() {
   return split_rounded_edge_radius_;
 }
@@ -155,7 +159,7 @@ void ToolbarGlicButton::AddCloseButton(PressedCallback pressed_callback) {
 
   const ui::ImageModel icon_image_model = ui::ImageModel::FromVectorIcon(
       features::IsRoundedIconsEnabled()
-          ? vector_icons::kCloseIcon
+          ? vector_icons::kCloseSmallIcon
           : vector_icons::kCloseChromeRefreshOldIcon,
       kColorTabSearchButtonCRForegroundFrameActive, kCloseButtonSize);
 
@@ -214,6 +218,35 @@ void ToolbarGlicButton::Collapse() {
 void ToolbarGlicButton::Expand() {
   SetInternalPadding(gfx::Insets());
   GlicButton<ToolbarButton>::Expand();
+}
+
+void ToolbarGlicButton::OnBoundsChanged(const gfx::Rect& previous_bounds) {
+  GlicButton<ToolbarButton>::OnBoundsChanged(previous_bounds);
+
+  // Button layout is kPreferredSnapToMinimum, so if the width is smaller than
+  // the normal width or if the button is collapsed, the label will be hidden.
+  bool should_hide_label =
+      width() < normal_width() || width_state() == WidthState::kCollapsed;
+
+  auto* image_view = static_cast<views::ImageView*>(image_container_view());
+  auto* box_layout = static_cast<views::BoxLayout*>(GetLayoutManager());
+
+  if (should_hide_label) {
+    if (label()->GetVisible()) {
+      label()->SetVisible(false);
+      image_view->SetProperty(views::kMarginsKey, gfx::Insets());
+      box_layout->set_main_axis_alignment(
+          views::BoxLayout::MainAxisAlignment::kCenter);
+    }
+  } else {
+    if (!label()->GetVisible()) {
+      label()->SetVisible(true);
+      image_view->SetProperty(views::kMarginsKey,
+                              gfx::Insets().set_left(kIconLeftMargin));
+      box_layout->set_main_axis_alignment(
+          views::BoxLayout::MainAxisAlignment::kCenter);
+    }
+  }
 }
 
 bool ToolbarGlicButton::GetIsShowingNudge() const {

@@ -119,7 +119,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
     private @Nullable BottomSheetRectProvider mBottomSheetRectProvider;
     private final Supplier<@Nullable View> mScrimAnchorViewSupplier;
     private final ScrimManager mScrimManager;
-    private final @Nullable BackPressManager mBackPressManager;
+    private final BackPressManager mBackPressManager;
     private boolean mHasContextualTasksFocus;
 
     // Mediator is scoped to a particular profile. Can reuse as long as the profile does not change.
@@ -148,7 +148,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
             OneshotSupplier<TemplateUrlService> templateUrlServiceSupplier,
             SnackbarManager snackbarManager,
             Supplier<@Nullable View> scrimAnchorViewSupplier,
-            @Nullable BackPressManager backPressManager) {
+            BackPressManager backPressManager) {
         mActivity = assumeNonNull(ContextUtils.activityFromContext(context));
         mWindowAndroid = windowAndroid;
         mParent = parent;
@@ -402,6 +402,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         mDefaultSearchEngineIsGoogle = isDseGoogle;
 
         if (mInput != null && !mDefaultSearchEngineIsGoogle) {
+            resetToSearchMode();
             endInput();
         }
     }
@@ -454,6 +455,13 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         if (mInput == null || mMetrics == null) return;
         mMetrics.notifyOmniboxSessionEnded(
                 userDidNavigate, mInput.getRequestType(), mInput.getModelMode());
+    }
+
+    /** Resets the current input session back to search mode. */
+    public void resetToSearchMode() {
+        if (mMediator != null) {
+            mMediator.activateSearchMode();
+        }
     }
 
     /** Toggles the attachments, tools, and models menu. */

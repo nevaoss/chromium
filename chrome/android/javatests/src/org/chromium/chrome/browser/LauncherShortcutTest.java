@@ -32,6 +32,7 @@ import org.chromium.base.test.params.ParameterizedRunner;
 import org.chromium.base.test.util.ApplicationTestUtils;
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.CommandLineFlags;
+import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.MinAndroidSdkLevel;
@@ -102,7 +103,7 @@ public class LauncherShortcutTest {
     @After
     public void tearDown() {
         ShortcutManager shortcutManager =
-                mActivityTestRule.getActivity().getSystemService(ShortcutManager.class);
+                ContextUtils.getApplicationContext().getSystemService(ShortcutManager.class);
         List<String> idsToRemove = new ArrayList<>();
         idsToRemove.add(LauncherShortcutActivity.DYNAMIC_OPEN_NEW_INCOGNITO_TAB_ID);
         idsToRemove.add(LauncherShortcutActivity.DYNAMIC_OPEN_NEW_WINDOW_ID);
@@ -112,6 +113,39 @@ public class LauncherShortcutTest {
         List<ShortcutInfo> remainingShortcuts = shortcutManager.getDynamicShortcuts();
         Assert.assertEquals(
                 "Dynamic shortcuts should be cleared in setUp", 0, remainingShortcuts.size());
+    }
+
+    @Test
+    @MediumTest
+    @MinAndroidSdkLevel(VERSION_CODES.S)
+    public void testLauncherShortcut_OpenIncognitoWhenOnlyIncognitoInstancesExist()
+            throws Exception {
+        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(true);
+
+        ChromeTabbedActivity incognitoActivity =
+                mActivityTestRule.getActivityTestRule().newIncognitoWindowFromMenu();
+
+        ChromeTabbedActivity regularActivity = mActivityTestRule.getActivity();
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    regularActivity.finishAndRemoveTask();
+                });
+
+        TabModelSelector incognitoSelector = incognitoActivity.getTabModelSelector();
+        int initialTabCount =
+                ThreadUtils.runOnUiThreadBlocking(() -> incognitoSelector.getTotalTabCount());
+
+        Intent intent = new Intent(LauncherShortcutActivity.ACTION_OPEN_NEW_TAB);
+        intent.setClass(incognitoActivity, LauncherShortcutActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        ContextUtils.getApplicationContext().startActivity(intent);
+
+        CriteriaHelper.pollUiThread(
+                () -> {
+                    Criteria.checkThat(
+                            incognitoSelector.getTotalTabCount(),
+                            org.hamcrest.Matchers.is(initialTabCount + 1));
+                });
     }
 
     @Test
@@ -345,5 +379,44 @@ public class LauncherShortcutTest {
     @SmallTest
     public void testDynamicShortcuts_LanguageChange() {
         testDynamicShortcuts_LanguageChangeInternal();
+    }
+
+    @Test
+    @MediumTest
+    public void testLauncherShortcut_DuplicateIntentsDeduplicated() throws Exception {
+        int initialTabCount =
+                ThreadUtils.runOnUiThreadBlocking(() -> mTabModelSelector.getTotalTabCount());
+
+        android.content.Context context = ContextUtils.getApplicationContext();
+        Intent intent1 = new Intent(LauncherShortcutActivity.ACTION_OPEN_NEW_TAB);
+        intent1.setClass(context, LauncherShortcutActivity.class);
+        intent1.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        Intent intent2 = new Intent(LauncherShortcutActivity.ACTION_OPEN_NEW_TAB);
+        intent2.setClass(context, LauncherShortcutActivity.class);
+        intent2.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    context.startActivity(intent1);
+                    context.startActivity(intent2);
+                });
+
+        mTabAddedCallback.waitForCallback(0);
+
+        // Wait a little bit to make sure no extra tab is added by the duplicate intent.
+        try {
+            mTabAddedCallback.waitForCallback(1, 1, 2, java.util.concurrent.TimeUnit.SECONDS);
+            Assert.fail("A second tab was added when duplicate intents were sent back-to-back!");
+        } catch (TimeoutException e) {
+            // Expected: no second tab added.
+        }
+
+        int tabCount =
+                ThreadUtils.runOnUiThreadBlocking(() -> mTabModelSelector.getTotalTabCount());
+        Assert.assertEquals(
+                "Incorrect total tab count. Duplicate intent was not deduplicated.",
+                initialTabCount + 1,
+                tabCount);
     }
 }

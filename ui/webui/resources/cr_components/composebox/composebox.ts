@@ -36,7 +36,7 @@ import type {PageHandlerRemote} from './composebox.mojom-webui.js';
 import type {ComposeboxDropdownElement} from './composebox_dropdown.js';
 import type {ComposeboxFileInputsElement} from './composebox_file_inputs.js';
 import type {ComposeboxInputElement} from './composebox_input.js';
-import {ComposeboxEmbedderMixin, VoiceSearchAction} from './composebox_mixin.js';
+import {ComposeboxEmbedderMixin, SubmitButtonIconType, VoiceSearchAction} from './composebox_mixin.js';
 import {ComposeboxProxyImpl} from './composebox_proxy.js';
 import type {ContextUploadErrorType} from './composebox_query.mojom-webui.js';
 import {ContextUploadStatus, ToolMode} from './composebox_query.mojom-webui.js';
@@ -45,12 +45,7 @@ import type {ContextualEntrypointButtonElement} from './contextual_entrypoint_bu
 import type {ErrorScrimElement} from './error_scrim.js';
 import type {ComposeboxFileCarouselElement} from './file_carousel.js';
 
-export {VoiceSearchAction};
-
-export enum SubmitButtonIconType {
-  FORWARD = 'forward',
-  UPWARD = 'upward',
-}
+export {SubmitButtonIconType, VoiceSearchAction};
 
 const DEBOUNCE_TIMEOUT_MS: number = 20;
 
@@ -111,9 +106,6 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
         // `searchboxNextEnabled`. For NTP-specific styling, use CSS from the
         // embedding component (e.g., `new_tab_page/app.css`).
       },
-      submitButtonIconType: {
-        type: String,
-      },
       lensButtonDisabled: {
         reflect: true,
         type: Boolean,
@@ -146,6 +138,8 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
         reflect: true,
       },
       enableFileHint: {type: Boolean},
+      // TODO(crbug.com/486707842): Move to the Contextual Tasks embedder.
+      isSidePanel: {type: Boolean},
       inputPlaceholderOverride: {type: String},
       contextManagementInComposeboxEnabled_: {type: Boolean},
       // Must be property so can pass it down to children.
@@ -158,6 +152,7 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   }
 
   accessor energyEffectEnabled: boolean = false;
+  accessor isSidePanel: boolean = false;
   accessor energyEffectAnimationEnabled: boolean = false;
   accessor isZeroState: boolean = false;
   accessor isFollowupQuery: boolean = false;
@@ -175,15 +170,12 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
   accessor lensButtonDisabled: boolean = false;
   accessor voiceSearchCoherenceEnabled: boolean = false;
   accessor applyContextButtonBackground: boolean = false;
-
-  accessor submitButtonIconType: SubmitButtonIconType =
-      SubmitButtonIconType.UPWARD;
   protected isRtl_: boolean = document.documentElement.dir === 'rtl';
 
   // If isCollapsible is set to true, the composebox will be a pill shape until
   // it gets focused, at which point it will expand. If false, defaults to the
   // expanded state.
-  protected accessor isCollapsible: boolean = false;
+  accessor isCollapsible: boolean = false;
   // Whether the composebox is currently expanded. Always true if isCollapsible
   // is false.
   protected accessor expanding_: boolean = false;
@@ -432,11 +424,6 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     this.expanding_ = expanding;
   }
 
-  protected computeCancelButtonTitle_() {
-    return this.input.trim().length > 0 || this.files.size > 0 ?
-        this.i18n('composeboxCancelButtonTitleInput') :
-        this.i18n('composeboxCancelButtonTitle');
-  }
 
   override hasValidQuery(): boolean {
     // If there is at least one file that supports unimodal search, query is
@@ -892,8 +879,8 @@ export class ComposeboxElement extends ComposeboxEmbedderMixin
     super.clearAllInputs(querySubmitted, shouldBlockAutoSuggestedTabs);
   }
 
-  protected shouldDisableFileInputs_() {
-    return !this.contextMenuEnabled || !this.showMenuOnClick ||
+  override shouldDisableFileInputs() {
+    return super.shouldDisableFileInputs() ||
         this.entrypointName === 'ContextualTasks';
   }
 

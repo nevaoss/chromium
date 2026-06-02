@@ -49,6 +49,7 @@ export function getHtml(this: ContextualTasksComposeboxElement) {
         >
       <cr-composebox
           id="composebox"
+          .isSidePanel="${this.isSidePanel}"
           .autofocus="${false}"
           carousel-on-top_
           entrypoint-name="ContextualTasks"
@@ -63,7 +64,7 @@ export function getHtml(this: ContextualTasksComposeboxElement) {
           .enableCarouselScrolling="${true}"
           .isFollowupQuery="${!this.isZeroState}"
           .enableFileHint="${this.enableFileHint_}"
-          .isCanvasQuerySubmitted="${this.isCanvasQuerySubmitted}"
+          .isCanvasQuerySubmitted="${this.isCanvasQuerySubmitted()}"
           .clearAllInputsWhenSubmittingQuery="${true}"
           .showVoiceSearch="${true}"
           .usePecApi="${this.usePecApi_}"

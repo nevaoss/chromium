@@ -325,6 +325,89 @@ Suggestion TransformResultIntoSuggestion(
   return suggestion;
 }
 
+bool IsSpiiEntryType(accessibility_annotator::EntryType type) {
+  switch (type) {
+    case accessibility_annotator::EntryType::kIban:
+    case accessibility_annotator::EntryType::kCreditCardNumber:
+    case accessibility_annotator::EntryType::kCreditCardSecurityCode:
+    case accessibility_annotator::EntryType::kPassportNumber:
+    case accessibility_annotator::EntryType::kPassportFull:
+    case accessibility_annotator::EntryType::kNationalIdCardNumber:
+    case accessibility_annotator::EntryType::kNationalIdCardFull:
+    case accessibility_annotator::EntryType::kDriversLicenseNumber:
+    case accessibility_annotator::EntryType::kDriversLicenseFull:
+    case accessibility_annotator::EntryType::kRedressNumberNumber:
+    case accessibility_annotator::EntryType::kRedressNumberFull:
+    case accessibility_annotator::EntryType::kKnownTravelerNumberFull:
+    case accessibility_annotator::EntryType::kKnownTravelerNumberNumber:
+      return true;
+    case accessibility_annotator::EntryType::kNameFull:
+    case accessibility_annotator::EntryType::kAddressFull:
+    case accessibility_annotator::EntryType::kAddressStreetAddress:
+    case accessibility_annotator::EntryType::kAddressCity:
+    case accessibility_annotator::EntryType::kAddressState:
+    case accessibility_annotator::EntryType::kAddressZip:
+    case accessibility_annotator::EntryType::kAddressCountry:
+    case accessibility_annotator::EntryType::kPhone:
+    case accessibility_annotator::EntryType::kCompanyName:
+    case accessibility_annotator::EntryType::kEmail:
+    case accessibility_annotator::EntryType::kIbanNickname:
+    case accessibility_annotator::EntryType::kVehicle:
+    case accessibility_annotator::EntryType::kVehicleMake:
+    case accessibility_annotator::EntryType::kVehicleModel:
+    case accessibility_annotator::EntryType::kVehicleYear:
+    case accessibility_annotator::EntryType::kVehicleOwner:
+    case accessibility_annotator::EntryType::kVehiclePlateNumber:
+    case accessibility_annotator::EntryType::kVehiclePlateState:
+    case accessibility_annotator::EntryType::kVehicleVin:
+    case accessibility_annotator::EntryType::kPassportName:
+    case accessibility_annotator::EntryType::kPassportCountry:
+    case accessibility_annotator::EntryType::kPassportIssueDate:
+    case accessibility_annotator::EntryType::kPassportExpirationDate:
+    case accessibility_annotator::EntryType::kFlightReservationFull:
+    case accessibility_annotator::EntryType::kFlightReservationFlightNumber:
+    case accessibility_annotator::EntryType::kFlightReservationTicketNumber:
+    case accessibility_annotator::EntryType::kFlightReservationConfirmationCode:
+    case accessibility_annotator::EntryType::kFlightReservationPassengerName:
+    case accessibility_annotator::EntryType::kFlightReservationDepartureAirport:
+    case accessibility_annotator::EntryType::kFlightReservationArrivalAirport:
+    case accessibility_annotator::EntryType::kFlightReservationDepartureDate:
+    case accessibility_annotator::EntryType::kFlightReservationArrivalDate:
+    case accessibility_annotator::EntryType::kNationalIdCardName:
+    case accessibility_annotator::EntryType::kNationalIdCardCountry:
+    case accessibility_annotator::EntryType::kNationalIdCardIssueDate:
+    case accessibility_annotator::EntryType::kNationalIdCardExpirationDate:
+    case accessibility_annotator::EntryType::kDriversLicenseName:
+    case accessibility_annotator::EntryType::kDriversLicenseState:
+    case accessibility_annotator::EntryType::kDriversLicenseIssueDate:
+    case accessibility_annotator::EntryType::kDriversLicenseExpirationDate:
+    case accessibility_annotator::EntryType::kRedressNumberName:
+    case accessibility_annotator::EntryType::kKnownTravelerNumberName:
+    case accessibility_annotator::EntryType::kKnownTravelerNumberExpirationDate:
+    case accessibility_annotator::EntryType::kCreditCardExpirationDate:
+    case accessibility_annotator::EntryType::kCreditCardNameOnCard:
+    case accessibility_annotator::EntryType::kCreditCardNickname:
+    case accessibility_annotator::EntryType::kOrderFull:
+    case accessibility_annotator::EntryType::kOrderId:
+    case accessibility_annotator::EntryType::kOrderAccount:
+    case accessibility_annotator::EntryType::kOrderDate:
+    case accessibility_annotator::EntryType::kOrderMerchantName:
+    case accessibility_annotator::EntryType::kOrderMerchantDomain:
+    case accessibility_annotator::EntryType::kOrderProductNames:
+    case accessibility_annotator::EntryType::kOrderGrandTotal:
+    case accessibility_annotator::EntryType::kShipmentFull:
+    case accessibility_annotator::EntryType::kShipmentTrackingNumber:
+    case accessibility_annotator::EntryType::kShipmentAssociatedOrderId:
+    case accessibility_annotator::EntryType::kShipmentDeliveryAddress:
+    case accessibility_annotator::EntryType::kShipmentDeliveryZipCode:
+    case accessibility_annotator::EntryType::kShipmentCarrierName:
+    case accessibility_annotator::EntryType::kShipmentCarrierDomain:
+    case accessibility_annotator::EntryType::kShipmentEstimatedDeliveryDate:
+    case accessibility_annotator::EntryType::kUnknown:
+      return false;
+  }
+}
+
 // Creates a suggestion to display when the query is supported, but yields no
 // results.
 Suggestion CreateNoDataSuggestion() {
@@ -391,12 +474,14 @@ AtMemoryManager::~AtMemoryManager() = default;
 
 void AtMemoryManager::OnPopupShown(
     AutofillSuggestionTriggerSource trigger_source,
+    bool is_context_secure,
     UpdateSuggestionsCallback update_callback) {
   if (at_memory_funnel_metrics_ || !IsAtMemoryTriggerSource(trigger_source)) {
     return;
   }
 
   trigger_source_ = trigger_source;
+  is_context_secure_ = is_context_secure;
   update_callback_ = std::move(update_callback);
   at_memory_funnel_metrics_ = std::make_unique<AtMemoryFunnelMetrics>();
   at_memory_funnel_metrics_->OnPopupShown(trigger_source);
@@ -425,11 +510,11 @@ void AtMemoryManager::OnPopupHidden() {
   trigger_source_ = AutofillSuggestionTriggerSource::kUnspecified;
   update_callback_.Reset();
   if (at_memory_funnel_metrics_) {
-    at_memory_funnel_metrics_->OnPopupHidden();
     at_memory_funnel_metrics_.reset();
   }
   is_searching_ = false;
   is_full_search_running_ = false;
+  is_context_secure_ = false;
   query_weak_ptr_factory_.InvalidateWeakPtrs();
 }
 
@@ -448,17 +533,27 @@ void AtMemoryManager::FillOrPreviewSearchResult(
           form, field, payload.value, FillingProduct::kAtMemory,
           /*field_type_used=*/std::nullopt);
       break;
-    case mojom::ActionPersistence::kFill:
+    case mojom::ActionPersistence::kFill: {
+      if (at_memory_funnel_metrics_) {
+        at_memory_funnel_metrics_->OnSuggestionAccepted();
+      }
+      // Transfer ownership of the metrics session to the filling path.
+      // Ensures that the metrics will be properly recorded once the suggestion
+      // is filled or one of the async steps in between fails.
+      std::unique_ptr<AtMemoryFunnelMetrics> metrics =
+          std::move(at_memory_funnel_metrics_);
       switch (payload.entry_type) {
         case accessibility_annotator::EntryType::kIban: {
           CHECK(!std::holds_alternative<std::monostate>(payload.identifier));
-          FillIban(payload.identifier, form, field, suggestion);
+          FillIban(payload.identifier, form, field, suggestion,
+                   std::move(metrics));
           break;
         }
         case accessibility_annotator::EntryType::kCreditCardNumber:
         case accessibility_annotator::EntryType::kCreditCardSecurityCode: {
           CHECK(std::holds_alternative<std::string>(payload.identifier));
-          FillCreditCard(payload.identifier, form, field, suggestion);
+          FillCreditCard(payload.identifier, form, field, suggestion,
+                         std::move(metrics));
           break;
         }
         case accessibility_annotator::EntryType::kPassportFull:
@@ -480,13 +575,13 @@ void AtMemoryManager::FillOrPreviewSearchResult(
                  std::holds_alternative<EntityType>(*data_type)));
           FillSensitiveAutofillAiData(
               std::get<EntityInstance::EntityId>(payload.identifier), form,
-              field, suggestion, *data_type);
+              field, suggestion, *data_type, std::move(metrics));
           break;
         }
 
         default: {
-          if (at_memory_funnel_metrics_) {
-            at_memory_funnel_metrics_->OnSuggestionAccepted();
+          if (metrics) {
+            metrics->MarkFilled();
           }
           owner_->FillOrPreviewField(
               action_persistence,
@@ -497,6 +592,7 @@ void AtMemoryManager::FillOrPreviewSearchResult(
         }
       }
       break;
+    }
   }
 }
 
@@ -567,6 +663,21 @@ void AtMemoryManager::OnSearchResultsReceived(
     return;
   }
 
+  // If the context is insecure, filter out any SPII entries and metadata from
+  // the results.
+  if (!is_context_secure_) {
+    std::erase_if(result.entries,
+                  [](const accessibility_annotator::MemorySearchResult& entry) {
+                    return IsSpiiEntryType(entry.type);
+                  });
+    for (accessibility_annotator::MemorySearchResult& entry : result.entries) {
+      std::erase_if(entry.metadata_list,
+                    [](const accessibility_annotator::EntryMetadata& metadata) {
+                      return IsSpiiEntryType(metadata.type);
+                    });
+    }
+  }
+
   bool expecting_more_data =
       result.status ==
       accessibility_annotator::MemorySearchStatus::kPartialResponseSuccess;
@@ -610,7 +721,8 @@ void AtMemoryManager::FillIban(
     const Suggestion::AtMemoryPayload::Identifier& identifier,
     const FormData& form,
     const FormFieldData& field,
-    const Suggestion& suggestion) {
+    const Suggestion& suggestion,
+    std::unique_ptr<AtMemoryFunnelMetrics> metrics) {
   Suggestion::Payload iban_payload;
   if (const Iban::Guid* guid = std::get_if<Iban::Guid>(&identifier)) {
     iban_payload = Suggestion::Guid(guid->value());
@@ -631,12 +743,13 @@ void AtMemoryManager::FillIban(
       base::BindOnce(
           [](base::WeakPtr<AtMemoryManager> manager, const FormData& form,
              const FormFieldData& field, const Suggestion& suggestion,
+             std::unique_ptr<AtMemoryFunnelMetrics> metrics,
              const std::u16string& unmasked_value) {
             if (!manager) {
               return;
             }
-            if (manager->at_memory_funnel_metrics_) {
-              manager->at_memory_funnel_metrics_->OnSuggestionAccepted();
+            if (metrics) {
+              metrics->MarkFilled();
             }
             manager->owner_->FillOrPreviewField(
                 mojom::ActionPersistence::kFill,
@@ -644,14 +757,16 @@ void AtMemoryManager::FillIban(
                 unmasked_value, FillingProduct::kAtMemory,
                 /*field_type_used=*/std::nullopt);
           },
-          fill_weak_ptr_factory_.GetWeakPtr(), form, field, suggestion));
+          fill_weak_ptr_factory_.GetWeakPtr(), form, field, suggestion,
+          std::move(metrics)));
 }
 
 void AtMemoryManager::FillCreditCard(
     const Suggestion::AtMemoryPayload::Identifier& identifier,
     const FormData& form,
     const FormFieldData& field,
-    const Suggestion& suggestion) {
+    const Suggestion& suggestion,
+    std::unique_ptr<AtMemoryFunnelMetrics> metrics) {
   CHECK(std::holds_alternative<std::string>(identifier));
   const std::string& guid = std::get<std::string>(identifier);
 
@@ -674,12 +789,13 @@ void AtMemoryManager::FillCreditCard(
       base::BindOnce(
           [](base::WeakPtr<AtMemoryManager> manager, const FormData& form,
              const FormFieldData& field, const Suggestion& suggestion,
+             std::unique_ptr<AtMemoryFunnelMetrics> metrics,
              const CreditCard& fetched_card) {
             if (!manager) {
               return;
             }
-            if (manager->at_memory_funnel_metrics_) {
-              manager->at_memory_funnel_metrics_->OnSuggestionAccepted();
+            if (metrics) {
+              metrics->MarkFilled();
             }
             const Suggestion::AtMemoryPayload& payload =
                 suggestion.GetPayload<Suggestion::AtMemoryPayload>();
@@ -701,7 +817,8 @@ void AtMemoryManager::FillCreditCard(
                 fill_value, FillingProduct::kAtMemory,
                 /*field_type_used=*/std::nullopt);
           },
-          fill_weak_ptr_factory_.GetWeakPtr(), form, field, suggestion));
+          fill_weak_ptr_factory_.GetWeakPtr(), form, field, suggestion,
+          std::move(metrics)));
 }
 
 void AtMemoryManager::FillSensitiveAutofillAiData(
@@ -709,7 +826,8 @@ void AtMemoryManager::FillSensitiveAutofillAiData(
     const FormData& form,
     const FormFieldData& field,
     const Suggestion& suggestion,
-    const AtMemoryDataType& data_type) {
+    const AtMemoryDataType& data_type,
+    std::unique_ptr<AtMemoryFunnelMetrics> metrics) {
   EntityDataManager* entity_data_manager =
       owner_->client().GetEntityDataManager();
   CHECK(entity_data_manager);
@@ -724,7 +842,7 @@ void AtMemoryManager::FillSensitiveAutofillAiData(
       *entity, /*will_fill_sensitive_info=*/true,
       base::BindOnce(&AtMemoryManager::OnAutofillAiFetched,
                      fill_weak_ptr_factory_.GetWeakPtr(), form, field,
-                     suggestion, data_type));
+                     suggestion, data_type, std::move(metrics)));
 }
 
 void AtMemoryManager::OnAutofillAiFetched(
@@ -732,6 +850,7 @@ void AtMemoryManager::OnAutofillAiFetched(
     const FormFieldData& field,
     const Suggestion& suggestion,
     const AtMemoryDataType& data_type,
+    std::unique_ptr<AtMemoryFunnelMetrics> metrics,
     base::expected<EntityInstance, AutofillAiAccessManager::FailureReason>
         result,
     bool reauth_attempted) {
@@ -741,10 +860,6 @@ void AtMemoryManager::OnAutofillAiFetched(
       owner_->client().ShowAutofillAiFetchFromWalletFailureNotification();
     }
     return;
-  }
-
-  if (at_memory_funnel_metrics_) {
-    at_memory_funnel_metrics_->OnSuggestionAccepted();
   }
 
   const EntityInstance& fetched_entity = result.value();
@@ -765,6 +880,10 @@ void AtMemoryManager::OnAutofillAiFetched(
       fetched_entity, *target_attribute_type, form, field, *owner_);
   if (!attribute_fill_value) {
     return;
+  }
+
+  if (metrics) {
+    metrics->MarkFilled();
   }
 
   owner_->FillOrPreviewField(mojom::ActionPersistence::kFill,

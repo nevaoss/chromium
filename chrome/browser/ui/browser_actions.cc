@@ -34,6 +34,7 @@
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/global_keyboard_shortcuts_mac.h"
 #endif
+#include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_actions.h"
 #include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller.h"
@@ -477,13 +478,23 @@ void BrowserActions::InitializeSidePanelActions() {
                 IDS_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_TITLE))
             .SetTooltipText(l10n_util::GetStringUTF16(
                 IDS_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_TITLE))
-            .SetImage(ui::ImageModel::FromVectorIcon(kDockToRightSparkIcon,
-                                                     ui::kColorIcon))
+            .SetImage(ui::ImageModel::FromVectorIcon(
+                kDockToRightSparkCustomIcon, ui::kColorIcon))
             .SetProperty(
                 actions::kActionItemPinnableKey,
                 static_cast<
                     std::underlying_type_t<actions::ActionPinnableState>>(
                     actions::ActionPinnableState::kNotPinnable))
+            .Build());
+  }
+
+  if (glic::GlicEnabling::IsEnabledByGlobalCriteria()) {
+    root_action_item_->AddChild(
+        SidePanelAction(
+            SidePanelEntryId::kGlic, IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC,
+            IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC, omnibox::kSparkIcon,
+            kActionSidePanelShowGlic, bwi, false)
+            .SetVisible(glic::GlicEnabling::ShouldShowGlicButton(profile))
             .Build());
   }
 }
@@ -597,7 +608,8 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_JS_OPTIMIZATIONS_DISABLED_ICON_TOOLTIP))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              vector_icons::kV8OffIcon,
+              features::IsRoundedIconsEnabled() ? vector_icons::kV8OffIcon
+                                                : vector_icons::kV8OffOldIcon,
               ui::kColorIcon, ui::SimpleMenuModel::kDefaultIconSize))
           .SetEnabled(true)
           .Build());
@@ -918,9 +930,8 @@ void BrowserActions::InitializeChromeMenuActions() {
           .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled()   ? kAddIcon
-              : features::IsRoundedIconsEnabled() ? vector_icons::kAddIcon
-                                                  : vector_icons::kAddOldIcon,
+              features::IsRoundedIconsEnabled() ? vector_icons::kAdd2Icon
+                                                : vector_icons::kAddOldIcon,
               ui::kColorIcon))
           .Build());
 

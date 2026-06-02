@@ -156,8 +156,6 @@ ci/Linux UBSan Builder
 ci/Linux UBSan Tests
 ci/Linux Wayland FYI Release (AMD)
 ci/Linux Wayland FYI Release (Intel)
-ci/MSAN Release (chained origins)
-ci/MSAN Release (no origins)
 ci/Mac ASAN Release
 ci/Mac ASAN Release Media
 ci/Mac ASan 64 Builder
@@ -542,6 +540,7 @@ try/gpu-fyi-try-linux-amd-9900x-exp
 try/gpu-fyi-try-linux-amd-rel
 try/gpu-fyi-try-linux-amd-rx-5500xt-exp
 try/gpu-fyi-try-linux-amd-rx-7600-rel
+try/gpu-fyi-try-linux-amd-rx-9070xt-exp
 try/gpu-fyi-try-linux-intel-arc-140v-exp
 try/gpu-fyi-try-linux-intel-exp
 try/gpu-fyi-try-linux-intel-rel
@@ -550,6 +549,7 @@ try/gpu-fyi-try-linux-nvidia-dbg
 try/gpu-fyi-try-linux-nvidia-exp
 try/gpu-fyi-try-linux-nvidia-rel
 try/gpu-fyi-try-linux-nvidia-rtx-4070-super-rel
+try/gpu-fyi-try-linux-nvidia-rtx-5080-exp
 try/gpu-fyi-try-linux-nvidia-tsn
 try/gpu-fyi-try-linux-wayland-amd-rel
 try/gpu-fyi-try-linux-wayland-intel-rel
@@ -587,7 +587,9 @@ try/gpu-fyi-try-win11-qualcomm-snapdragon-x-elite-rel-64
 try/gpu-fyi-try-win11-x64-amd-780m-exp
 try/gpu-fyi-try-win11-x64-amd-890m-exp
 try/gpu-fyi-try-win11-x64-amd-9900x-exp
+try/gpu-fyi-try-win11-x64-amd-rx-9070xt-exp
 try/gpu-fyi-try-win11-x64-intel-arc-140v-exp
+try/gpu-fyi-try-win11-x64-nvidia-rtx-5080-exp
 try/gpu-try-android-pixel-2-64
 try/gpu-try-linux-nvidia-rel
 try/gpu-try-mac-amd-retina-dbg
@@ -636,8 +638,7 @@ try/linux-headless-shell-rel
 try/linux-js-coverage-rel
 try/linux-libfuzzer-asan-rel
 try/linux-metadata-validator
-try/linux-msan-chained-origins-rel
-try/linux-msan-no-origins-rel
+try/linux-no-initial-webui-rel
 try/linux-oi-rel
 try/linux-perfetto-rel
 try/linux-presubmit

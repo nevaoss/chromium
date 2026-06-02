@@ -550,6 +550,11 @@ BASE_FEATURE_PARAM(int,
                    &kDiskCacheBackendExperiment,
                    "SqlDiskCacheCacheSize",
                    0);
+BASE_FEATURE_PARAM(bool,
+                   kSqlDiskCacheConsolidatedInMemoryIndex,
+                   &kDiskCacheBackendExperiment,
+                   "SqlDiskCacheConsolidatedInMemoryIndex",
+                   false);
 #endif  // ENABLE_DISK_CACHE_SQL_BACKEND
 
 BASE_FEATURE(kIgnoreHSTSForLocalhost, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -679,6 +684,13 @@ BASE_FEATURE_PARAM(bool,
                    &kNetTaskScheduler,
                    "url_request_redirect_job",
                    true);
+
+BASE_FEATURE(kNetTaskSchedulerInTests, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kNetTaskSchedulerForceEnableInTests,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kNetworkServicePerPriorityTaskQueues,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNetTaskScheduler2, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
@@ -863,5 +875,21 @@ bool IsDnsPlatformSupported() {
   return false;
 #endif
 }
+
+BASE_FEATURE(kNoVarySearchCacheLoadOnSeparateTaskRunner,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+constexpr base::FeatureParam<base::TaskPriority>::Option
+    kNoVarySearchCacheLoadOnSeparateTaskRunnerOptions[] = {
+        {base::TaskPriority::BEST_EFFORT, "BEST_EFFORT"},
+        {base::TaskPriority::USER_VISIBLE, "USER_VISIBLE"},
+        {base::TaskPriority::USER_BLOCKING, "USER_BLOCKING"},
+};
+
+BASE_FEATURE_ENUM_PARAM(base::TaskPriority,
+                        kNoVarySearchCacheLoadTaskRunnerPriority,
+                        &kNoVarySearchCacheLoadOnSeparateTaskRunner,
+                        base::TaskPriority::BEST_EFFORT,
+                        &kNoVarySearchCacheLoadOnSeparateTaskRunnerOptions);
 
 }  // namespace net::features

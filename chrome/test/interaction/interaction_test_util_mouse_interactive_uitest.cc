@@ -242,7 +242,6 @@ IN_PROC_BROWSER_TEST_P(InteractionTestUtilMouseUiTest, PerformGesturesAsync) {
                             },
                             seq->SeizeStepTransitionControl());
 
-
                         // Perform gestures asynchronously.
                         mouse_->PerformGestures(
                             base::BindOnce(

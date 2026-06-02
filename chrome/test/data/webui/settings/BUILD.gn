@@ -12,6 +12,7 @@ build_webui_tests("build") {
 
   files = [
     "about_page_test.ts",
+    "account_page_test.ts",
     "ai_history_search_subpage_test.ts",
     "ai_info_card_test.ts",
     "ai_logging_info_bullet_test.ts",
@@ -170,6 +171,7 @@ build_webui_tests("build") {
     "storage_access_site_list_test.ts",
     "storage_access_static_site_list_entry_test.ts",
     "sync_encryption_options_test.ts",
+    "sync_account_control_test.ts",
     "sync_test_util.ts",
     "tab_discard_exception_dialog_test.ts",
     "test_about_page_browser_proxy.ts",
@@ -215,7 +217,6 @@ build_webui_tests("build") {
     ]
   } else {
     files += [
-      "account_page_test.ts",
       "clear_browsing_data_account_indicator_test.ts",
       "default_browser_test.ts",
       "fake_language_settings_private.ts",
@@ -230,7 +231,6 @@ build_webui_tests("build") {
       "relaunch_confirmation_dialog_test.ts",
       "spell_check_page_metrics_test_browser.ts",
       "spell_check_page_test.ts",
-      "sync_account_control_test.ts",
       "system_page_test.ts",
       "test_batch_upload_promo_browser_proxy.ts",
       "test_captions_browser_proxy.ts",

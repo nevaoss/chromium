@@ -33,7 +33,7 @@ import {WindowProxy} from './window_proxy.js';
 /** The width of the dropdown menu in pixels. */
 const MENU_WIDTH_PX = 190;
 
-const SHARE_TABS_MENU_WIDTH_PX = 320;
+const SHARE_TABS_MENU_WIDTH_PX = 240;
 const SHARE_TABS_FLYOUT_CLOSE_DELAY_MS = 300;
 
 export interface ContextualActionMenuElement {
@@ -75,11 +75,16 @@ export class ContextualActionMenuElement extends
       showContextMenuHeaders_: {type: Boolean},
       smartTabSharingVisible_: {type: Boolean},
       disableAutoReposition: {type: Boolean},
-      contextManagementInComposeboxEnabled_: {type: Boolean},
+      contextManagementInComposeboxEnabled_: {
+        reflect: true,
+        type: Boolean,
+        attribute: 'context-management-enabled',
+      },
       shareTabsFlyoutOpen_: {type: Boolean},
       shareTabsFlyoutPosition_: {type: String},
       sharingTabsText_: {type: String},
       uploadButtonDisabled: {type: Boolean},
+      isSidePanel: {type: Boolean},
       recentTabId: {type: Number},
     };
   }
@@ -93,6 +98,7 @@ export class ContextualActionMenuElement extends
   accessor smartTabSharingActive: boolean = false;
   accessor disableAutoReposition: boolean = false;
   accessor uploadButtonDisabled: boolean = false;
+  accessor isSidePanel: boolean = false;
 
   protected accessor enableMultiTabSelection_: boolean =
       loadTimeData.getBoolean('composeboxContextMenuEnableMultiTabSelection');
@@ -465,7 +471,7 @@ export class ContextualActionMenuElement extends
   }
 
   protected deleteTabContext_(uuid: UnguessableToken) {
-    this.fire('delete-tab-context', {uuid: uuid});
+    this.fire('delete-tab-context', {uuid: uuid, fromUserAction: true});
   }
 
   protected addTabContext_(tabInfo: TabInfo) {

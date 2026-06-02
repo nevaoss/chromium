@@ -19,6 +19,7 @@ import android.widget.ProgressBar;
 import androidx.annotation.CallSuper;
 import androidx.annotation.ColorInt;
 import androidx.annotation.DrawableRes;
+import androidx.annotation.IdRes;
 import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.widget.TooltipCompat;
 
@@ -65,6 +66,7 @@ import org.chromium.chrome.browser.user_education.UserEducationHelper;
 import org.chromium.chrome.browser.util.BrowserUiUtils;
 import org.chromium.chrome.browser.util.BrowserUiUtils.ModuleTypeOnStartAndNtp;
 import org.chromium.components.feature_engagement.Tracker;
+import org.chromium.ui.AsyncViewStub;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.util.MotionEventUtils;
 import org.chromium.ui.util.TokenHolder;
@@ -746,6 +748,16 @@ public abstract class ToolbarLayout extends FrameLayout
      */
     @VisibleForTesting
     public abstract LocationBar getLocationBar();
+
+    @Override
+    public @Nullable AsyncViewStub getSuggestionsContainerStub() {
+        return getRootView().findViewById(R.id.omnibox_suggestions_container_stub);
+    }
+
+    @Override
+    public @IdRes int getSuggestionsContainerInflatedViewId() {
+        return R.id.omnibox_suggestions_container;
+    }
 
     /** Returns the {@link ToolbarTabController} for interacting with the current tab. */
     public ToolbarTabController getToolbarTabController() {

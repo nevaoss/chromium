@@ -31,6 +31,7 @@ import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_C
 import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_CUSTOMIZATION_PRIMARY_COLOR;
 import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_CUSTOMIZATION_PRIMARY_COLOR_FOR_DAILY_REFRESH;
 import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_CUSTOMIZATION_THEME_COLOR_ID;
+import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_CUSTOMIZATION_THEME_IS_SNACKBAR_SHOWN;
 import static org.chromium.chrome.browser.preferences.ChromePreferenceKeys.NTP_CUSTOMIZATION_THEME_TIP_BOTTOM_SHEET_SHOWN_TIMESTAMP_MS;
 import static org.chromium.components.browser_ui.styles.SemanticColorUtils.getDefaultIconColor;
 
@@ -228,8 +229,10 @@ public class NtpCustomizationUtils {
                 return R.string.ntp_customization_ntp_cards_bottom_sheet_opened_full;
             case FEED:
                 return R.string.ntp_customization_feed_bottom_sheet_opened_full;
-            case THEME, THEME_TIP:
+            case THEME:
                 return R.string.ntp_customization_theme_bottom_sheet_opened_full;
+            case THEME_TIP:
+                return R.string.ntp_customization_theme_tip_bottom_sheet_opened_full;
             case THEME_COLLECTIONS:
             case SINGLE_THEME_COLLECTION:
                 return R.string.ntp_customization_theme_collections_bottom_sheet_opened_full;
@@ -256,8 +259,10 @@ public class NtpCustomizationUtils {
                 return R.string.ntp_customization_ntp_cards_bottom_sheet_opened_half;
             case FEED:
                 return R.string.ntp_customization_feed_bottom_sheet_opened_half;
-            case THEME, THEME_TIP:
+            case THEME:
                 return R.string.ntp_customization_theme_bottom_sheet_opened_half;
+            case THEME_TIP:
+                return R.string.ntp_customization_theme_tip_bottom_sheet_opened_half;
             case THEME_COLLECTIONS:
             case SINGLE_THEME_COLLECTION:
                 return R.string.ntp_customization_theme_collections_bottom_sheet_opened_half;
@@ -266,6 +271,20 @@ public class NtpCustomizationUtils {
             default:
                 assert false : "Bottom sheet type not supported!";
                 return -1;
+        }
+    }
+
+    /**
+     * Returns the resource ID for the accessibility string announced when the bottom sheet is
+     * closed.
+     */
+    public static int getSheetClosedAccessibilityStringId(
+            @NtpCustomizationCoordinator.BottomSheetType int type) {
+        switch (type) {
+            case THEME_TIP:
+                return R.string.ntp_customization_theme_tip_bottom_sheet_closed;
+            default:
+                return R.string.ntp_customization_main_bottom_sheet_closed;
         }
     }
 
@@ -904,6 +923,18 @@ public class NtpCustomizationUtils {
     public static boolean isThemeTipBottomSheetShownFromSharedPreference() {
         SharedPreferencesManager prefsManager = ChromeSharedPreferences.getInstance();
         return prefsManager.contains(NTP_CUSTOMIZATION_THEME_TIP_BOTTOM_SHEET_SHOWN_TIMESTAMP_MS);
+    }
+
+    /** Sets whether the customized NTP theme snackbar has been shown to the SharedPreference. */
+    public static void setThemeSnackbarShownToSharedPreference(boolean shown) {
+        SharedPreferencesManager prefsManager = ChromeSharedPreferences.getInstance();
+        prefsManager.writeBoolean(NTP_CUSTOMIZATION_THEME_IS_SNACKBAR_SHOWN, shown);
+    }
+
+    /** Gets whether the customized NTP theme snackbar has been shown from the SharedPreference. */
+    public static boolean isThemeSnackbarShownFromSharedPreference() {
+        SharedPreferencesManager prefsManager = ChromeSharedPreferences.getInstance();
+        return prefsManager.readBoolean(NTP_CUSTOMIZATION_THEME_IS_SNACKBAR_SHOWN, false);
     }
 
     /**
@@ -1558,6 +1589,7 @@ public class NtpCustomizationUtils {
         prefsManager.removeKey(NTP_CUSTOMIZATION_LAST_DAILY_REFRESH_TIMESTAMP);
         prefsManager.removeKey(NTP_CUSTOMIZATION_CHROME_COLOR_DAILY_REFRESH_ENABLED);
         prefsManager.removeKey(NTP_CUSTOMIZATION_THEME_TIP_BOTTOM_SHEET_SHOWN_TIMESTAMP_MS);
+        prefsManager.removeKey(NTP_CUSTOMIZATION_THEME_IS_SNACKBAR_SHOWN);
         prefsManager.removeKey(NTP_CUSTOMIZATION_LAST_APPLY_THEME_TIMESTAMP_MS);
         prefsManager.removeKey(NTP_CUSTOMIZATION_THEME_COLOR_ID);
         prefsManager.removeKey(NTP_CUSTOMIZATION_PRIMARY_COLOR_FOR_DAILY_REFRESH);

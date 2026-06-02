@@ -232,6 +232,10 @@ should be able to be added at any place in this file.
       summary="For AddToHomescreen IPH feature."/>
   <variant name="_AddToHomescreenTextBubble"
       summary="For AddToHomescreen IPH feature using text bubble (obsolete)."/>
+  <variant name="_AndroidBottomBarGlic"
+      summary="Describes the GLIC button added in the bottom bar."/>
+  <variant name="_AndroidBottomBarNewTab"
+      summary="Describes the new tab button moved down in the bottom bar."/>
   <variant name="_AndroidTabDeclutter" summary="For archived tabs on android."/>
   <variant name="_AppRatingPrompt" summary="For App Rating Prompt feature."/>
   <variant name="_AppSpecificHistory"
@@ -618,8 +622,7 @@ should be able to be added at any place in this file.
       summary="For iOSTabGridSwipeRightForIncognito feature"/>
   <variant name="_iOSTabGroupsDesktop"
       summary="For iOSTabGroupsDesktopFeature"/>
-  <variant name="_iOSWelcomeBackFeature"
-      summary="For iOSWelcomeBackFeature feature"/>
+  <variant name="_iOSWelcomeBack" summary="For iOSWelcomeBack feature"/>
   <variant name="_KeyboardAccessoryAddressFilling"
       summary="For KeyboardAccessoryAddressFilling feature."/>
   <variant name="_KeyboardAccessoryBarSwiping"
@@ -727,6 +730,8 @@ should be able to be added at any place in this file.
       summary="For reading mode keyboard shortcut feature."/>
   <variant name="_ReadingModePageActionLabel"
       summary="For reading mode omnibox entrypoint."/>
+  <variant name="_ReadingModePresentationMode"
+      summary="For changing reading mode presentation mode onboarding."/>
   <variant name="_ReadingModeSidePanel"
       summary="For reading mode side panel feature."/>
   <variant name="_ReadLaterAppMenuBookmarks"
@@ -11683,19 +11688,22 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="CredentialManager_AccountChooser_Accepted">
-  <owner>vasilii@chromium.org</owner>
+  <owner>kazinova@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <description>
     The user chose a credential via the account chooser.
   </description>
 </action>
 
 <action name="CredentialManager_AccountChooser_Dismissed">
-  <owner>vasilii@chromium.org</owner>
+  <owner>kazinova@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <description>The user dismissed the account chooser.</description>
 </action>
 
 <action name="CredentialManager_Autosignin">
-  <owner>vasilii@chromium.org</owner>
+  <owner>kazinova@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <description>
     The website tried to automatically sign the user in and got a credential
     back from the browser.
@@ -13797,16 +13805,6 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
-<action
-    name="Extensions.Mv2Deprecation.Warning.FindAlternativeForExtension.Entry">
-  <owner>emiliapaz@chomium.org</owner>
-  <owner>extensions-core@chromium.org</owner>
-  <description>
-    The user clicked on the find alternative button in the extension's detailed
-    page in chrome://extensions during the MV2 'warning' experiment stage.
-  </description>
-</action>
-
 <action name="Extensions.Mv2Deprecation.Warning.RemoveExtension">
   <owner>emiliapaz@chomium.org</owner>
   <owner>extensions-core@chromium.org</owner>
@@ -15466,6 +15464,13 @@ should be able to be added at any place in this file.
   <owner>perrier@google.com</owner>
   <description>
     Recorded when a Glic Multi Instance Session is started.
+  </description>
+</action>
+
+<action name="Glic.Instance.Show.BottomSheet">
+  <owner>lindaywang@chromium.org</owner>
+  <description>
+    Logged when a Glic instance is shown in the bottom sheet on Android.
   </description>
 </action>
 
@@ -24728,7 +24733,7 @@ should be able to be added at any place in this file.
 
 <action name="ManageGoogleAccount_Clicked">
   <owner>kazinova@google.com</owner>
-  <owner>vasilii@chromium.org</owner>
+  <owner>vsemeniuk@google.com</owner>
   <description>
     Recorded when the user clicked the &quot;Manage your Google Account&quot;
     link in the settings WebUI.
@@ -28877,6 +28882,12 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileMenuHomepage">
+  <owner>hanxi@chromium.org</owner>
+  <owner>yyanting@google.com</owner>
+  <description>User pressed the 'Homepage' item in the app menu.</description>
+</action>
+
 <action name="MobileMenuIncognitoSearch">
   <obsolete>Deprecated as of 3/2023</obsolete>
   <owner>gambard@chromium.org</owner>
@@ -32768,6 +32779,12 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileToolbarPlusButtonTap">
+  <owner>radunitescu@google.com</owner>
+  <owner>stkhapugin@google.com</owner>
+  <description>User tapped on Plus button on toolbar.</description>
+</action>
+
 <action name="MobileToolbarReload">
   <owner>tedchoc@chromium.org</owner>
   <description>
@@ -33146,6 +33163,12 @@ should be able to be added at any place in this file.
   </description>
   <token key="ActionType">
     <variant name="" summary="aggregated"/>
+    <variant name=".AddTabToReadingList"
+        summary="User added a tab to their reading list via the tab context
+                 menu on tab strip on Android."/>
+    <variant name=".AddTabToReadingList.MultiTab"
+        summary="User added multiple tabs to their reading list via the tab
+                 context menu on tab strip on Android."/>
     <variant name=".AddToTabGroup"
         summary="User opened the bottom sheet to add a tab to a new or
                  existing tab group, via the tab context menu on tab strip on
@@ -33236,6 +33259,9 @@ should be able to be added at any place in this file.
     <variant name=".RemoveTabFromTabGroup.MultiTab"
         summary="User removed multiple tabs from their tab group via the tab
                  context menu on tab strip on Android."/>
+    <variant name=".SendToYourDevices"
+        summary="User sent a tab to another device via the tab context menu
+                 on tab strip on Android."/>
     <variant name=".ShareTab"
         summary="User shared the URL open in a tab, via the tab context menu
                  on tab strip on Android."/>
@@ -36933,20 +36959,19 @@ should be able to be added at any place in this file.
 
 <action name="Options_ShowPasswordCheck">
   <owner>kazinova@google.com</owner>
-  <owner>vasilii@chromium.org</owner>
+  <owner>vsemeniuk@google.com</owner>
   <description>Settings: passwords check</description>
 </action>
 
 <action name="Options_ShowPasswordDetailsInPasswordManager">
   <owner>mamir@chromium.org</owner>
   <owner>vsemeniuk@google.com</owner>
-  <owner>vasilii@chromium.org</owner>
   <description>Settings: credential details for domain</description>
 </action>
 
 <action name="Options_ShowPasswordManager">
   <owner>kazinova@google.com</owner>
-  <owner>vasilii@chromium.org</owner>
+  <owner>vsemeniuk@google.com</owner>
   <description>Settings: saved passwords</description>
 </action>
 
@@ -38072,7 +38097,8 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="PasswordManager_Autofilled">
-  <owner>vasilii@chromium.org</owner>
+  <owner>kazinova@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <description>Username/password were autofilled on pageload.</description>
 </action>
 
@@ -38112,7 +38138,8 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="PasswordManager_LoginFailed">
-  <owner>vasilii@chromium.org</owner>
+  <owner>kazinova@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <description>
     The user submitted a password form, but the website appeared to reject the
     credentials. This action reflects the password manager component's logic for
@@ -38124,7 +38151,8 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="PasswordManager_LoginPassed">
-  <owner>vasilii@chromium.org</owner>
+  <owner>kazinova@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <description>
     The user submitted a password form and the website appeared to accept the
     credentials. This action reflects the password manager component's logic for
@@ -38142,7 +38170,7 @@ should be able to be added at any place in this file.
 
 <action name="PasswordManager_RemovePasskey">
   <owner>nsatragno@chromium.org</owner>
-  <owner>vasilii@chromium.org</owner>
+  <owner>markusheintz@google.com</owner>
   <description>
     The user removed a Google Password Manager passkey from within the Password
     Manager. Desktop only.
@@ -38150,14 +38178,16 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="PasswordManager_RemovePasswordException">
-  <owner>vasilii@chromium.org</owner>
+  <owner>vsemeniuk@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <description>
     The user deleted a blocklisted credential from within the Password Manager.
   </description>
 </action>
 
 <action name="PasswordManager_RemoveSavedPassword">
-  <owner>vasilii@chromium.org</owner>
+  <owner>vsemeniuk@google.com</owner>
+  <owner>chrome-password-manager-metrics-alerts@google.com</owner>
   <description>
     The user deleted a stored credential from within the Password Manager.
   </description>
@@ -46631,6 +46661,15 @@ should be able to be added at any place in this file.
   <description>
     Recorded when a user taps on the identity pill to enable history sync after
     a profile startup.
+  </description>
+</action>
+
+<action name="Signin_Signin_FromIndigo">
+  <owner>jbroman@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kIndigo.
   </description>
 </action>
 

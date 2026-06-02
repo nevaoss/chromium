@@ -20,12 +20,12 @@
 #include "third_party/blink/renderer/core/layout/early_break.h"
 #include "third_party/blink/renderer/core/layout/floats_utils.h"
 #include "third_party/blink/renderer/core/layout/fragmentation_utils.h"
-#include "third_party/blink/renderer/core/layout/inline/fit_text_scale.h"
-#include "third_party/blink/renderer/core/layout/inline/fit_text_utils.h"
 #include "third_party/blink/renderer/core/layout/inline/inline_cursor.h"
 #include "third_party/blink/renderer/core/layout/inline/inline_node.h"
 #include "third_party/blink/renderer/core/layout/inline/physical_line_box_fragment.h"
 #include "third_party/blink/renderer/core/layout/inline/ruby_utils.h"
+#include "third_party/blink/renderer/core/layout/inline/text_fit_scale.h"
+#include "third_party/blink/renderer/core/layout/inline/text_fit_utils.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
 #include "third_party/blink/renderer/core/layout/layout_result.h"
 #include "third_party/blink/renderer/core/layout/length_utils.h"
@@ -664,13 +664,13 @@ const LayoutResult* BlockLayoutAlgorithm::LayoutInlineChild(
     const InlineNode& node) {
   ParagraphScale paragraph_scale;
   if (RuntimeEnabledFeatures::CssTextFitEnabled()) {
-    const FitText& fit_text = Style().TextFit();
+    const TextFit& text_fit = Style().GetTextFit();
     const bool grow_consistent =
-        fit_text.Type() == FitTextType::kGrow &&
-        fit_text.Target() == FitTextTarget::kConsistent;
+        text_fit.Type() == TextFitType::kGrow &&
+        text_fit.Target() == TextFitTarget::kConsistent;
     const bool shrink_consistent =
-        fit_text.Type() == FitTextType::kShrink &&
-        fit_text.Target() == FitTextTarget::kConsistent;
+        text_fit.Type() == TextFitType::kShrink &&
+        text_fit.Target() == TextFitTarget::kConsistent;
     if (grow_consistent || shrink_consistent) {
       // Compute the paragraph scaling factor with a cloned
       // BlockLayoutAlgorithm.

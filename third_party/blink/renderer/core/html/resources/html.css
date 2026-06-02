@@ -1559,18 +1559,19 @@ button[interestfor] {
 
 [interestfor]::interest-button {
   content: '\24D8' / '';
-  display: inline-block;
+  display: if(media(hover:hover): none; else: inline-block);
   color: inherit;
   background-color: transparent;
   box-sizing: border-box;
-  margin-inline-start: 0.25em;
-  min-block-size: max(24px, 1lh);
   min-inline-size: 24px;
+  min-block-size: max(24px, 1lh);
+  margin-inline-start: 0.25em;
+  margin-block: min(-24px, -1lh);
+  align-content: center;
   text-align: center;
   user-select: none;
   cursor: help;
 }
-
 [interestfor]::interest-button:hover {
   background-color: color-mix(in lab, currentColor 10%, transparent);
 }
@@ -2456,6 +2457,13 @@ select optgroup optgroup {
     }
     menuitem:disabled {
       color: color-mix(currentColor 50%, transparent);
+    }
+
+    a:any-link, img[usemap] {
+      /* The menubar/menulist/menuitem elements are for application menus, not
+       * navigation menus.  Hide links to strongly discourage misuse as
+       * navigation menus. */
+      display: none;
     }
   }
 }

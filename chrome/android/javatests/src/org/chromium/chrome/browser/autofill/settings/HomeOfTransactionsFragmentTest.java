@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.autofill.settings;
 
 import static androidx.test.espresso.Espresso.onView;
 import static androidx.test.espresso.action.ViewActions.click;
+import static androidx.test.espresso.action.ViewActions.scrollTo;
 import static androidx.test.espresso.assertion.ViewAssertions.doesNotExist;
 import static androidx.test.espresso.assertion.ViewAssertions.matches;
 import static androidx.test.espresso.matcher.ViewMatchers.isDisplayed;
@@ -47,11 +48,12 @@ import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.PayloadCallbackHelper;
 import org.chromium.chrome.R;
-import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManager;
-import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManagerFactory;
 import org.chromium.chrome.browser.autofill.options.AutofillOptionsFragment;
+import org.chromium.chrome.browser.autofill.settings.HomeOfTransactionsFragment.AutofillSettingsReferrer;
+import org.chromium.chrome.browser.autofill.settings.HomeOfTransactionsFragment.YourSavedInfoDataCategory;
 import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncher;
 import org.chromium.chrome.browser.feedback.HelpAndFeedbackLauncherFactory;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -98,7 +100,6 @@ public class HomeOfTransactionsFragmentTest {
 
     @Mock private SettingsIndexData mSearchIndexDataMock;
     @Mock private Profile mProfileMock;
-    @Mock private EntityDataManager mEntityDataManager;
     @Mock private PasswordManagerUtilBridge.Natives mPasswordManagerUtilBridgeJniMock;
     @Mock private HelpAndFeedbackLauncher mHelpAndFeedbackLauncher;
     @Mock private SigninAndHistorySyncActivityLauncher mSigninLauncher;
@@ -113,7 +114,6 @@ public class HomeOfTransactionsFragmentTest {
 
     @Before
     public void setUp() {
-        EntityDataManagerFactory.setInstanceForTesting(mEntityDataManager);
         PasswordManagerUtilBridgeJni.setInstanceForTesting(mPasswordManagerUtilBridgeJniMock);
         when(mPasswordManagerUtilBridgeJniMock.isPasswordManagerAvailable(anyBoolean()))
                 .thenReturn(true);
@@ -343,6 +343,10 @@ public class HomeOfTransactionsFragmentTest {
     @SmallTest
     @EnableFeatures({ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID})
     public void testPasswordsItemWhenNotManaged() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Autofill.YourSavedInfoSettingsPage.CategoryLinkClick",
+                        YourSavedInfoDataCategory.PASSWORD_MANAGER);
         mSettingsActivityTestRule.startSettingsActivity();
 
         onView(withText(R.string.password_manager_settings_title))
@@ -351,6 +355,7 @@ public class HomeOfTransactionsFragmentTest {
         onView(withText(R.string.password_manager_settings_title)).perform(click());
 
         assertNotNull(mSuccessCallbackHelper.getOnlyPayloadBlocking());
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -367,9 +372,11 @@ public class HomeOfTransactionsFragmentTest {
 
     @Test
     @SmallTest
-    @EnableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
+    @EnableFeatures({
+        ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID,
+        ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA
+    })
     public void testSearchIndexWhenAllEnabled() {
-        when(mEntityDataManager.canListEntityInstancesInSettings()).thenReturn(true);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     HomeOfTransactionsFragment.SEARCH_INDEX_DATA_PROVIDER.updateDynamicPreferences(
@@ -431,18 +438,28 @@ public class HomeOfTransactionsFragmentTest {
     @SmallTest
     @EnableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
     public void testClickPaymentsLaunchesPayments() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Autofill.YourSavedInfoSettingsPage.CategoryLinkClick",
+                        YourSavedInfoDataCategory.PAYMENTS);
         mSettingsActivityTestRule.startSettingsActivity();
 
         testItemClick(R.string.autofill_payments_title, AutofillPaymentMethodsFragment.class);
+        histogramWatcher.assertExpected();
     }
 
     @Test
     @SmallTest
     @EnableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
     public void testClickContactInfoLaunchesContactInfo() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Autofill.YourSavedInfoSettingsPage.CategoryLinkClick",
+                        YourSavedInfoDataCategory.CONTACT_INFO);
         mSettingsActivityTestRule.startSettingsActivity();
 
         testItemClick(R.string.autofill_contact_info_title, AutofillProfilesFragment.class);
+        histogramWatcher.assertExpected();
     }
 
     @Test
@@ -461,16 +478,21 @@ public class HomeOfTransactionsFragmentTest {
         ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA
     })
     public void testClickIdentityDocsLaunchesIdentityDocs() {
-        when(mEntityDataManager.canListEntityInstancesInSettings()).thenReturn(true);
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Autofill.YourSavedInfoSettingsPage.CategoryLinkClick",
+                        YourSavedInfoDataCategory.IDENTITY_DOCS);
         mSettingsActivityTestRule.startSettingsActivity();
 
         testItemClick(R.string.autofill_identity_docs_title, AutofillIdentityDocsFragment.class);
+        histogramWatcher.assertExpected();
     }
 
     @Test
     @SmallTest
-    public void testIdentityDocsNotVisibleWhenCannotListEntities() {
-        when(mEntityDataManager.canListEntityInstancesInSettings()).thenReturn(false);
+    @EnableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
+    @DisableFeatures(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA)
+    public void testIdentityDocsNotVisibleAutofillAiDisabled() {
         mSettingsActivityTestRule.startSettingsActivity();
 
         onView(withText(R.string.autofill_identity_docs_title)).check(doesNotExist());
@@ -483,19 +505,42 @@ public class HomeOfTransactionsFragmentTest {
         ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA
     })
     public void testClickTravelLaunchesTravel() {
-        when(mEntityDataManager.canListEntityInstancesInSettings()).thenReturn(true);
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Autofill.YourSavedInfoSettingsPage.CategoryLinkClick",
+                        YourSavedInfoDataCategory.TRAVEL);
         mSettingsActivityTestRule.startSettingsActivity();
 
         testItemClick(R.string.autofill_travel_title, AutofillTravelFragment.class);
+        histogramWatcher.assertExpected();
     }
 
     @Test
     @SmallTest
-    public void testTravelNotVisibleWhenCannotListEntities() {
-        when(mEntityDataManager.canListEntityInstancesInSettings()).thenReturn(false);
+    @EnableFeatures(ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID)
+    @DisableFeatures(ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA)
+    public void testTravelNotVisibleWhenAutofillAiDisabled() {
         mSettingsActivityTestRule.startSettingsActivity();
 
         onView(withText(R.string.autofill_travel_title)).check(doesNotExist());
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures({
+        ChromeFeatureList.YOUR_SAVED_INFO_SETTINGS_PAGE_ANDROID,
+        ChromeFeatureList.AUTOFILL_AI_WITH_DATA_SCHEMA
+    })
+    public void testReportsEventOnlyOnce() {
+        var histogramWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Autofill.YourSavedInfoSettingsPage.VisitReferrer",
+                        AutofillSettingsReferrer.SETTINGS_MENU);
+
+        mSettingsActivityTestRule.startSettingsActivity();
+        mSettingsActivityTestRule.recreateActivity();
+
+        histogramWatcher.assertExpected();
     }
 
     private static void signInPromoDeclined(boolean value) {
@@ -509,7 +554,7 @@ public class HomeOfTransactionsFragmentTest {
         // We need to set the testing instance right before the click, otherwise Settings tests
         // don't launch proper fragment to initiate tests.
         SettingsNavigationFactory.setInstanceForTesting(mSettingsNavigation);
-        onView(withText(titleRes)).perform(click());
+        onView(withText(titleRes)).perform(scrollTo(), click());
 
         verify(mSettingsNavigation).startSettings(any(), eq(expectedFragment), any(), eq(true));
     }

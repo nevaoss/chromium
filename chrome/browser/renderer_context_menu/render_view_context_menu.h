@@ -36,6 +36,7 @@
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/gfx/geometry/vector2d.h"
+#include "ui/gfx/text_constants.h"
 #include "ui/menus/simple_menu_model.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -48,7 +49,7 @@
 #endif
 
 class AccessibilityLabelsMenuObserver;
-class Browser;
+class BrowserWindowInterface;
 #if BUILDFLAG(ENABLE_COMPOSE)
 class ChromeComposeClient;
 #endif
@@ -181,7 +182,7 @@ class RenderViewContextMenu
 
   // This may return nullptr (e.g. for WebUI dialogs). Virtual to allow tests to
   // override.
-  virtual Browser* GetBrowser() const;
+  virtual BrowserWindowInterface* GetBrowser() const;
 
   // May return nullptr if the WebContents does not have an associated
   // BrowserWindowInterface (e.g. in isolated WebUI, or in tests).
@@ -244,6 +245,9 @@ class RenderViewContextMenu
                                bool started_from_context_menu) override;
 
  private:
+  std::u16string GetElidedSelectionText(size_t max_length,
+                                        gfx::BreakType break_type);
+
   void ExecGlic();
 
   friend class RenderViewContextMenuTest;
@@ -354,7 +358,8 @@ class RenderViewContextMenu
   void AppendSendTabToSelfItem(bool add_separator);
   bool AppendQRCodeGeneratorItem(bool for_image,
                                  bool draw_icon,
-                                 bool add_separator);
+                                 bool add_separator,
+                                 bool ignore_simplification = false);
   void AddItemWithOptionalIcon(int command,
                                int string,
                                const gfx::VectorIcon& icon);

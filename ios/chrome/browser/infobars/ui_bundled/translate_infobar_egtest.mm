@@ -25,6 +25,7 @@
 #import "ios/chrome/browser/reader_mode/model/features.h"
 #import "ios/chrome/browser/reader_mode/ui/constants.h"
 #import "ios/chrome/browser/shared/model/url/chrome_url_constants.h"
+#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/translate/model/translate_app_interface.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ios/chrome/test/earl_grey/chrome_earl_grey.h"
@@ -314,6 +315,11 @@ class TestResponseProvider {
     config.features_disabled.push_back(kProactiveSuggestionsFramework);
   }
 
+  // TODO(crbug.com/514608938): Fix test for Chrome Next.
+  if ([self isRunningTest:@selector
+            (testTranslateBadgeWithReaderModeBadgeSupport)]) {
+    config.features_disabled.push_back(kChromeNextIa);
+  }
   return config;
 }
 
@@ -1013,6 +1019,11 @@ class TestResponseProvider {
 // Test that tapping cancel in the Modal doesn't save changes to source/target
 // languages and doesn't start a Translate
 - (void)testTranslateModalCancel {
+  // TODO(crbug.com/516439940): Re-enable this flaky test on iOS below 26.
+  if (!base::ios::IsRunningOnIOS26OrLater()) {
+    EARL_GREY_TEST_DISABLED(@"Flaky on iOS below 26.");
+  }
+
   // Load a page with French text.
   GURL URL = self.testServer->GetURL(kFrenchPagePath);
   [ChromeEarlGrey loadURL:URL];

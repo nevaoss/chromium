@@ -100,6 +100,19 @@ gfx::RectF SVGLayoutSupport::LocalVisualRect(const LayoutObject& object) {
   return visual_rect;
 }
 
+gfx::RectF SVGLayoutSupport::ApplyFiltersToRect(const LayoutObject& object,
+                                                const gfx::RectF& rect) {
+  CHECK(!object.NeedsPaintPropertyUpdate());
+  if (!object.StyleRef().HasFilter()) {
+    return rect;
+  }
+  gfx::RectF float_rect = rect;
+  const gfx::RectF filter_reference_box =
+      SVGResources::ReferenceBoxForEffects(object);
+  float_rect.UnionEvenIfEmpty(filter_reference_box);
+  return object.StyleRef().Filter().MapRect(float_rect);
+}
+
 PhysicalRect SVGLayoutSupport::VisualRectInAncestorSpace(
     const LayoutObject& object,
     const LayoutBoxModelObject& ancestor,
@@ -118,9 +131,7 @@ static gfx::RectF MapToSVGRootIncludingFilter(
   gfx::RectF visual_rect = local_visual_rect;
   const LayoutObject* parent = &object;
   for (; !parent->IsSVGRoot(); parent = parent->Parent()) {
-    const ComputedStyle& style = parent->StyleRef();
-    if (style.HasFilter())
-      visual_rect = style.Filter().MapRect(visual_rect);
+    visual_rect = SVGLayoutSupport::ApplyFiltersToRect(*parent, visual_rect);
     visual_rect = parent->LocalToSVGParentTransform().MapRect(visual_rect);
   }
 
@@ -158,10 +169,12 @@ bool SVGLayoutSupport::MapToVisualRectInAncestorSpace(
       object, root_border_box_transform, &filter_skipped);
 
   gfx::RectF adjusted_rect;
-  if (filter_skipped)
+  if (filter_skipped &&
+      !(visual_rect_flags & VisualRectFlags::kIgnoreFilters)) {
     adjusted_rect = MapToSVGRootIncludingFilter(object, local_visual_rect);
-  else
+  } else {
     adjusted_rect = root_border_box_transform.MapRect(local_visual_rect);
+  }
 
   if (adjusted_rect.IsEmpty()) {
     result_rect = PhysicalRect();

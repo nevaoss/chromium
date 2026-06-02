@@ -561,6 +561,9 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
                     default -> mCurrentPosition.get();
                 };
 
+        boolean animatingToTop = stateTransition == StateTransition.ANIMATE_TO_TOP;
+        boolean animatingToBottom = stateTransition == StateTransition.ANIMATE_TO_BOTTOM;
+
         if (newControlsPosition == mCurrentPosition.get()) return;
 
         int newTopHeight;
@@ -573,7 +576,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
 
         if (newControlsPosition == ControlsPosition.TOP) {
             newTopHeight = mBrowserControlsSizer.getTopControlsHeight() + controlContainerHeight;
-            updateLayerVisibility();
+            updateLayerVisibility(animatingToTop);
             mControlContainer.getView().setTranslationY(0);
             mToolbarProgressBarContainer.setTranslationY(0);
             Runnable progressBarChangeRunnable =
@@ -603,7 +606,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
             maybeForceBottomToolbarLayoutUpdateAndCapture(ntpShowing);
 
             newTopHeight = mBrowserControlsSizer.getTopControlsHeight() - controlContainerHeight;
-            updateLayerVisibility();
+            updateLayerVisibility(animatingToBottom);
             CoordinatorLayout.LayoutParams progressBarLayoutParams =
                     (LayoutParams) mToolbarProgressBarContainer.getLayoutParams();
             progressBarLayoutParams.setAnchorId(View.NO_ID);
@@ -611,9 +614,6 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
             progressBarLayoutParams.gravity = Gravity.BOTTOM;
             mToolbarProgressBarContainer.setLayoutParams(progressBarLayoutParams);
         }
-
-        boolean animatingToTop = stateTransition == StateTransition.ANIMATE_TO_TOP;
-        boolean animatingToBottom = stateTransition == StateTransition.ANIMATE_TO_BOTTOM;
 
         mBottomControlsStacker.updateLayerVisibilitiesAndSizes();
         if (animatingToTop || animatingToBottom) {
@@ -686,21 +686,12 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
             boolean isFormFieldFocusedWithKeyboardVisible,
             boolean doesUserPreferTopToolbar,
             @ControlsPosition int currentPosition) {
-        boolean allowBottomAnchoredFocusedOmnibox =
-                ChromeFeatureList.sAndroidBottomToolbarV2.isEnabled();
-        boolean forceBottomForFocusedOmnibox =
-                isOmniboxFocused
-                        && (ChromeFeatureList.sAndroidBottomToolbarV2ForceBottomForFocusedOmnibox
-                                        .getValue()
-                                || (allowBottomAnchoredFocusedOmnibox
-                                        && !doesUserPreferTopToolbar));
         @ControlsPosition int newControlsPosition;
-        if (!forceBottomForFocusedOmnibox
-                && (ntpShowing
-                        || tabSwitcherShowing
-                        || (isOmniboxFocused && !allowBottomAnchoredFocusedOmnibox)
-                        || isFindInPageShowing
-                        || doesUserPreferTopToolbar)) {
+        if (ntpShowing
+                || tabSwitcherShowing
+                || isOmniboxFocused
+                || isFindInPageShowing
+                || doesUserPreferTopToolbar) {
             newControlsPosition = ControlsPosition.TOP;
         } else {
             newControlsPosition = ControlsPosition.BOTTOM;
@@ -760,8 +751,7 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
             int keyboardHeight = windowInsetsCompat.getInsets(WindowInsetsCompat.Type.ime()).bottom;
 
             // Ignore keyboard's height for offset calculation if the keyboard resizes the window.
-            if (shouldIgnoreKeyboardHeightInResizeMode()
-                    || shouldIgnoreKeyboardHeightForIncognitoNtp()) {
+            if (shouldIgnoreKeyboardHeightInResizeMode()) {
                 keyboardHeight = 0;
             }
 
@@ -793,44 +783,6 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
         assert height >= 0;
         mControlContainerHeight = height;
         mBottomControlsStacker.requestLayerUpdate(false);
-    }
-
-    /**
-     * Returns whether the keyboard height should be ignored for toolbar's Y offset calculation when
-     * omnibox is focused. Can return {@code true} only when {@code AndroidBottomToolbarV2} and
-     * {@code OmniboxAutofocusOnIncognitoNtp} features are enabled.
-     *
-     * <p>{@code OmniboxAutofocusOnIncognitoNtp} feature requires the keyboard to not be in overlay
-     * mode to work correctly. This is managed by not attaching the {@code
-     * DeferredIMEWindowInsetApplicationCallback} in {@code AutocompleteMediator}.
-     *
-     * <p>TODO(crbug.com/485814887): This is a temporary method that should be removed after the
-     * feature is stable, along with the {@code sEnableToolbarPositioningInResizeMode} killswitch.
-     *
-     * @return Whether the keyboard height should be ignored.
-     */
-    private boolean shouldIgnoreKeyboardHeightForIncognitoNtp() {
-        InsetObserver insetObserver = mWindowAndroid.getInsetObserver();
-        // If the inset observer isn't available but the Incognito NTP Omnibox Autofocus is
-        // active, we assume the keyboard is in resizing mode.
-        boolean isKeyboardInResizingMode =
-                insetObserver == null || !insetObserver.isKeyboardInOverlayMode();
-
-        boolean isIncognitoNtpShowing = mIsIncognitoNtpShowingSupplier.get();
-        boolean isOmniboxFocused = mIsOmniboxFocusedSupplier.get();
-
-        boolean allowOmniboxAutofocusOnIncognitoNtp =
-                ChromeFeatureList.sOmniboxAutofocusOnIncognitoNtp.isEnabled();
-        boolean allowForceBottomForFocusedOmnibox =
-                ChromeFeatureList.sAndroidBottomToolbarV2ForceBottomForFocusedOmnibox.getValue()
-                        || (ChromeFeatureList.sAndroidBottomToolbarV2.isEnabled()
-                                && !isToolbarConfiguredToShowOnTop());
-
-        return allowForceBottomForFocusedOmnibox
-                && allowOmniboxAutofocusOnIncognitoNtp
-                && isIncognitoNtpShowing
-                && isOmniboxFocused
-                && isKeyboardInResizingMode;
     }
 
     /**
@@ -992,6 +944,10 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
      * @return Whether the layer visibility is changed.
      */
     private boolean updateLayerVisibility() {
+        return updateLayerVisibility(/* animate= */ false);
+    }
+
+    private boolean updateLayerVisibility(boolean animate) {
         boolean isBottomToolbar = mCurrentPosition.get() == ControlsPosition.BOTTOM;
         BottomSheetContent bottomSheetContent = mBottomSheetController.getCurrentSheetContent();
         @SheetState int bottomSheetState = mBottomSheetController.getSheetState();
@@ -1016,16 +972,22 @@ public class ToolbarPositionController implements OnSharedPreferenceChangeListen
             @LayerVisibility
             int finalTarget = isBottomToolbar ? LayerVisibility.VISIBLE : LayerVisibility.HIDDEN;
             if (finalTarget == LayerVisibility.VISIBLE) {
-                if (mLayerVisibility == LayerVisibility.HIDDEN
-                        || mLayerVisibility == LayerVisibility.HIDING) {
+                if (animate
+                        && (mLayerVisibility == LayerVisibility.HIDDEN
+                                || mLayerVisibility == LayerVisibility.HIDING)) {
                     targetVisibility = LayerVisibility.SHOWING;
+                } else if (!animate) {
+                    targetVisibility = LayerVisibility.VISIBLE;
                 } else {
                     targetVisibility = mLayerVisibility;
                 }
             } else {
-                if (mLayerVisibility == LayerVisibility.VISIBLE
-                        || mLayerVisibility == LayerVisibility.SHOWING) {
+                if (animate
+                        && (mLayerVisibility == LayerVisibility.VISIBLE
+                                || mLayerVisibility == LayerVisibility.SHOWING)) {
                     targetVisibility = LayerVisibility.HIDING;
+                } else if (!animate) {
+                    targetVisibility = LayerVisibility.HIDDEN;
                 } else {
                     targetVisibility = mLayerVisibility;
                 }

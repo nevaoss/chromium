@@ -35,10 +35,12 @@ import org.chromium.base.MathUtils;
 import org.chromium.base.Token;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.build.annotations.RequiresNonNull;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
+import org.chromium.chrome.browser.bookmarks.TabBookmarker;
 import org.chromium.chrome.browser.collaboration.CollaborationServiceFactory;
 import org.chromium.chrome.browser.compositor.overlays.strip.TabContextMenuCoordinator.AnchorInfo;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -50,6 +52,9 @@ import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.ShareUtils;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfAndroidBridge;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfCoordinator;
+import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
@@ -70,9 +75,15 @@ import org.chromium.chrome.browser.tasks.tab_management.GroupWindowState;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupListBottomSheetCoordinator;
 import org.chromium.chrome.browser.tasks.tab_management.TabShareUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabStripReorderingHelper;
+import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
+import org.chromium.chrome.browser.ui.signin.SigninAndHistorySyncActivityLauncher;
 import org.chromium.chrome.browser.url_constants.UrlConstantResolver;
 import org.chromium.chrome.browser.url_constants.UrlConstantResolverFactory;
 import org.chromium.chrome.tab_ui.R;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetControllerProvider;
+import org.chromium.components.browser_ui.device_lock.DeviceLockActivityLauncher;
+import org.chromium.components.browser_ui.device_lock.DeviceLockActivityLauncherSupplier;
 import org.chromium.components.browser_ui.widget.ListItemBuilder;
 import org.chromium.components.browser_ui.widget.list_view.ListViewTouchTracker;
 import org.chromium.components.collaboration.CollaborationService;
@@ -81,7 +92,9 @@ import org.chromium.components.tab_group_sync.SavedTabGroup;
 import org.chromium.components.tab_group_sync.TabGroupSyncService;
 import org.chromium.components.tab_groups.TabGroupColorId;
 import org.chromium.content_public.browser.LoadUrlParams;
+import org.chromium.ui.base.ActivityResultTracker;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.widget.AnchoredPopupWindow.HorizontalOrientation;
@@ -140,6 +153,31 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         }
     }
 
+    @VisibleForTesting
+    interface SendTabToSelfCoordinatorCreator {
+        SendTabToSelfCoordinator create(
+                Context context,
+                @Nullable WindowAndroid windowAndroid,
+                String url,
+                String title,
+                BottomSheetController bottomSheetController,
+                Profile profile,
+                DeviceLockActivityLauncher deviceLockActivityLauncher,
+                Supplier<@Nullable Tab> tabProvider,
+                Activity activity,
+                SigninAndHistorySyncActivityLauncher signinAndHistorySyncActivityLauncher,
+                ActivityResultTracker activityResultTracker,
+                MonotonicObservableSupplier<ModalDialogManager> modalDialogManagerSupplier,
+                SnackbarManager snackbarManager);
+    }
+
+    private static SendTabToSelfCoordinatorCreator sSendTabToSelfCreator =
+            SendTabToSelfCoordinator::new;
+
+    static void setSendTabToSelfCreatorForTesting(SendTabToSelfCoordinatorCreator creator) {
+        sSendTabToSelfCreator = creator;
+    }
+
     private final TabGroupCreationCallback mTabGroupCreationCallback;
     private final WindowAndroid mWindowAndroid;
     private final Activity mActivity;
@@ -159,7 +197,11 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             Activity activity,
             @Nullable TabGroupSyncService tabGroupSyncService,
             CollaborationService collaborationService,
-            BiConsumer<AnchorInfo, Boolean> reorderFunction) {
+            Supplier<TabBookmarker> tabBookmarkerSupplier,
+            BiConsumer<AnchorInfo, Boolean> reorderFunction,
+            SnackbarManager snackbarManager,
+            @Nullable ActivityResultTracker activityResultTracker,
+            @Nullable ModalDialogManager modalDialogManager) {
         super(
                 R.layout.tab_switcher_action_menu_layout,
                 R.layout.tab_switcher_action_menu_layout,
@@ -168,7 +210,13 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                         tabGroupListBottomSheetCoordinator,
                         tabGroupCreationCallback,
                         multiInstanceManager,
-                        shareDelegateSupplier),
+                        shareDelegateSupplier,
+                        tabBookmarkerSupplier,
+                        windowAndroid,
+                        activity,
+                        snackbarManager,
+                        activityResultTracker,
+                        modalDialogManager),
                 tabModelSupplier,
                 multiInstanceManager,
                 tabGroupSyncService,
@@ -258,6 +306,11 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
      *     the tab's URL when the user selects the "Share" option.
      * @param windowAndroid The {@link WindowAndroid} where this context menu will be shown.
      * @param activity The {@link Activity}.
+     * @param tabBookmarkerSupplier Supplies the {@link TabBookmarker} to add/edit bookmarks.
+     * @param reorderFunction Callback to run when reordering tabs.
+     * @param snackbarManager The {@link SnackbarManager} used to show snackbar UI.
+     * @param activityResultTracker The {@link ActivityResultTracker} to track activity results.
+     * @param modalDialogManager The {@link ModalDialogManager} to show modal dialogs.
      */
     public static TabContextMenuCoordinator createContextMenuCoordinator(
             Supplier<TabModel> tabModelSupplier,
@@ -267,7 +320,11 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             MonotonicObservableSupplier<ShareDelegate> shareDelegateSupplier,
             WindowAndroid windowAndroid,
             Activity activity,
-            BiConsumer<AnchorInfo, Boolean> reorderFunction) {
+            Supplier<TabBookmarker> tabBookmarkerSupplier,
+            BiConsumer<AnchorInfo, Boolean> reorderFunction,
+            SnackbarManager snackbarManager,
+            @Nullable ActivityResultTracker activityResultTracker,
+            @Nullable ModalDialogManager modalDialogManager) {
         Profile profile = assumeNonNull(tabModelSupplier.get().getProfile());
 
         @Nullable TabGroupSyncService tabGroupSyncService =
@@ -286,7 +343,11 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                 activity,
                 tabGroupSyncService,
                 collaborationService,
-                reorderFunction);
+                tabBookmarkerSupplier,
+                reorderFunction,
+                snackbarManager,
+                activityResultTracker,
+                modalDialogManager);
     }
 
     @VisibleForTesting
@@ -295,7 +356,13 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             TabGroupListBottomSheetCoordinator tabGroupListBottomSheetCoordinator,
             TabGroupCreationCallback tabGroupCreationCallback,
             MultiInstanceManager multiInstanceManager,
-            MonotonicObservableSupplier<ShareDelegate> shareDelegateSupplier) {
+            MonotonicObservableSupplier<ShareDelegate> shareDelegateSupplier,
+            Supplier<TabBookmarker> tabBookmarkerSupplier,
+            WindowAndroid windowAndroid,
+            Activity activity,
+            SnackbarManager snackbarManager,
+            @Nullable ActivityResultTracker activityResultTracker,
+            @Nullable ModalDialogManager modalDialogManager) {
         return (menuId, anchorInfo, collaborationId, listViewTouchTracker) -> {
             List<Integer> tabIds = anchorInfo.getAllTabIds();
             assert !tabIds.isEmpty() : "Empty tab id list provided";
@@ -335,6 +402,17 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                 closeTabsToTheRightItemCallback(tabModel, tabIds);
             } else if (menuId == R.id.new_tab_to_the_right_menu_id) {
                 newTabToTheRightItemCallback(tabModel, anchorInfo);
+            } else if (menuId == R.id.add_tab_to_reading_list_menu_id) {
+                addTabToReadingListItemCallback(tabBookmarkerSupplier, tabs);
+            } else if (menuId == R.id.send_to_your_devices_menu_id) {
+                sendToYourDevicesItemCallback(
+                        tabModel,
+                        anchorInfo,
+                        windowAndroid,
+                        activity,
+                        snackbarManager,
+                        activityResultTracker,
+                        modalDialogManager);
             }
         };
     }
@@ -483,6 +561,64 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         }
     }
 
+    private static void addTabToReadingListItemCallback(
+            Supplier<TabBookmarker> tabBookmarkerSupplier, List<Tab> tabs) {
+        TabBookmarker tabBookmarker = tabBookmarkerSupplier.get();
+        if (tabBookmarker != null) {
+            tabBookmarker.addToReadingList(tabs);
+        }
+    }
+
+    private static void sendToYourDevicesItemCallback(
+            TabModel tabModel,
+            AnchorInfo anchorInfo,
+            WindowAndroid windowAndroid,
+            Activity activity,
+            SnackbarManager snackbarManager,
+            @Nullable ActivityResultTracker activityResultTracker,
+            @Nullable ModalDialogManager modalDialogManager) {
+        Tab tab = tabModel.getTabById(anchorInfo.getAnchorTabId());
+        if (tab == null) return;
+
+        GURL url = tab.getUrl();
+        if (url == null || url.isEmpty()) return;
+
+        Profile profile = tabModel.getProfile();
+        if (profile == null) return;
+
+        String title = tab.getTitle();
+
+        BottomSheetController bottomSheetController =
+                BottomSheetControllerProvider.from(windowAndroid);
+        if (bottomSheetController == null) return;
+
+        DeviceLockActivityLauncher deviceLockActivityLauncher =
+                DeviceLockActivityLauncherSupplier.get(windowAndroid);
+        if (activityResultTracker == null
+                || deviceLockActivityLauncher == null
+                || modalDialogManager == null) {
+            return;
+        }
+        ;
+
+        SendTabToSelfCoordinator sttsCoordinator =
+                sSendTabToSelfCreator.create(
+                        activity,
+                        windowAndroid,
+                        url.getSpec(),
+                        title,
+                        bottomSheetController,
+                        profile,
+                        deviceLockActivityLauncher,
+                        () -> tab,
+                        activity,
+                        SigninAndHistorySyncActivityLauncherImpl.get(),
+                        activityResultTracker,
+                        ObservableSuppliers.createMonotonic(modalDialogManager),
+                        snackbarManager);
+        sttsCoordinator.show();
+    }
+
     /**
      * Show the context menu for the given tabs.
      *
@@ -572,6 +708,12 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         if (ChromeFeatureList.sMediaIndicatorsAndroid.isEnabled()) {
             itemList.add(createMuteUnmuteSiteItem(tabs, isIncognito));
         }
+        if (ChromeFeatureList.sAndroidContextMenuNewActions.isEnabled() && !isIncognito) {
+            itemList.add(createAddTabToReadingListItem(anchorInfo));
+            if (shouldShowSendToYourDevicesItem(tabs.get(0))) {
+                itemList.add(createSendToYourDevicesItem());
+            }
+        }
         itemList.add(createCloseItem(isIncognito));
         itemList.add(createCloseAllTabsItem(isIncognito));
         if (ChromeFeatureList.sAndroidContextMenuNewActions.isEnabled()) {
@@ -605,6 +747,9 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         itemList.add(createPinUnpinTabItem(tabs, isIncognito));
         if (ChromeFeatureList.sMediaIndicatorsAndroid.isEnabled()) {
             itemList.add(createMuteUnmuteSiteItem(tabs, isIncognito));
+        }
+        if (ChromeFeatureList.sAndroidContextMenuNewActions.isEnabled() && !isIncognito) {
+            itemList.add(createAddTabToReadingListItem(anchorInfo));
         }
         itemList.add(createCloseItem(isIncognito));
         if (ChromeFeatureList.sAndroidContextMenuNewActions.isEnabled()) {
@@ -824,6 +969,42 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         return true;
     }
 
+    private ListItem createAddTabToReadingListItem(AnchorInfo anchorInfo) {
+        String title =
+                mActivity
+                        .getResources()
+                        .getQuantityString(
+                                R.plurals.add_tab_to_reading_list_menu_item,
+                                anchorInfo.getAllTabIds().size());
+
+        return new ListItemBuilder()
+                .withTitle(title)
+                .withMenuId(R.id.add_tab_to_reading_list_menu_id)
+                .build();
+    }
+
+    private boolean shouldShowSendToYourDevicesItem(Tab tab) {
+        GURL url = tab.getUrl();
+        if (url == null || url.isEmpty()) return false;
+
+        Profile profile = getTabModel().getProfile();
+        if (profile == null) return false;
+
+        Integer displayReason =
+                SendTabToSelfAndroidBridge.getEntryPointDisplayReason(profile, url.getSpec());
+        return displayReason != null;
+    }
+
+    private ListItem createSendToYourDevicesItem() {
+        String title =
+                mActivity.getResources().getString(R.string.send_tab_to_self_context_menu_title);
+
+        return new ListItemBuilder()
+                .withTitle(title)
+                .withMenuId(R.id.send_to_your_devices_menu_id)
+                .build();
+    }
+
     private ListItem createCloseItem(boolean isIncognito) {
         return buildListItem(R.string.close, R.id.close_tab, isIncognito);
     }
@@ -884,6 +1065,10 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
             recordUserAction("CloseTabsToTheRight", isMultipleTabs);
         } else if (menuId == R.id.new_tab_to_the_right_menu_id) {
             recordUserAction("NewTabToTheRight", /* isMultipleTabs= */ false);
+        } else if (menuId == R.id.add_tab_to_reading_list_menu_id) {
+            recordUserAction("AddTabToReadingList", isMultipleTabs);
+        } else if (menuId == R.id.send_to_your_devices_menu_id) {
+            recordUserAction("SendToYourDevices", false);
         } else {
             assert false : "Unknown menu id: " + menuId;
         }

@@ -231,6 +231,7 @@ import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager.SnackbarManageable;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManagerProvider;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
+import org.chromium.chrome.browser.ui.signin.StartupSigninStateCheckController;
 import org.chromium.chrome.browser.ui.system.StatusBarColorController;
 import org.chromium.chrome.browser.webapps.AppInstallMenuHandler;
 import org.chromium.components.bookmarks.BookmarkId;
@@ -404,6 +405,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     // The FullscreenVideoPictureInPictureController is initialized lazily
     // https://crbug.com/41323316.
     private FullscreenVideoPictureInPictureController mFullscreenVideoPictureInPictureController;
+    private StartupSigninStateCheckController mStartupSigninStateCheckController;
 
     private ActorPictureInPictureController mActorPipController;
 
@@ -763,6 +765,14 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                                             mTabModelProfileSupplier.get()),
                             mRootUiCoordinator::getBookmarkBarVisibility);
             mTabBookmarkerSupplier.set(tabBookmarker);
+            if (!isCustomTab()) {
+                mStartupSigninStateCheckController =
+                        new StartupSigninStateCheckController(
+                                /* context= */ this,
+                                /* dialogManager= */ getModalDialogManager(),
+                                /* lifecycleDispatcher= */ getLifecycleDispatcher(),
+                                /* profileSupplier= */ mTabModelProfileSupplier);
+            }
 
             mShowContentRunnable =
                     () -> {
@@ -1781,11 +1791,13 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
-        super.onTopResumedActivityChanged(isTopResumedActivity);
+        // Update WindowAndroid state first so code triggered by super.onTopResumedActivityChanged()
+        // can get the correct states from WindowAndroid.
         WindowAndroid windowAndroid = getWindowAndroid();
         if (windowAndroid != null) {
             windowAndroid.onActivityTopResumedChanged(isTopResumedActivity);
         }
+        super.onTopResumedActivityChanged(isTopResumedActivity);
     }
 
     /**
@@ -1962,6 +1974,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (mActorPipController != null) {
             mActorPipController.destroy();
             mActorPipController = null;
+        }
+
+        if (mStartupSigninStateCheckController != null) {
+            mStartupSigninStateCheckController = null;
         }
 
         onDestroyInternal();
@@ -2901,17 +2917,26 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
 
         if (id == R.id.bookmark_menu_id) {
-            if (menuItemData != null
+            assert menuItemData != null
                     && menuItemData.containsKey(
-                            AppMenuPropertiesDelegateImpl.BOOKMARK_ID_BUNDLE_KEY)) {
-                BookmarkId bookmarkId =
-                        BookmarkId.getBookmarkIdFromString(
-                                menuItemData.getString(
-                                        AppMenuPropertiesDelegateImpl.BOOKMARK_ID_BUNDLE_KEY));
-                BookmarkOpener opener =
-                        new BookmarkOpenerImpl(mBookmarkModelSupplier, this, getComponentName());
-                opener.openBookmarkInCurrentTab(bookmarkId, currentTab.isIncognito());
-            }
+                            AppMenuPropertiesDelegateImpl.BOOKMARK_ID_BUNDLE_KEY);
+            BookmarkId bookmarkId =
+                    BookmarkId.getBookmarkIdFromString(
+                            menuItemData.getString(
+                                    AppMenuPropertiesDelegateImpl.BOOKMARK_ID_BUNDLE_KEY));
+            BookmarkOpener opener =
+                    new BookmarkOpenerImpl(mBookmarkModelSupplier, this, getComponentName());
+            opener.openBookmarkInCurrentTab(bookmarkId, currentTab.isIncognito());
+            return true;
+        }
+
+        if (id == R.id.tab_group_tab_menu_item) {
+            assert menuItemData != null
+                    && menuItemData.containsKey(AppMenuPropertiesDelegateImpl.TAB_ID_BUNDLE_KEY);
+            TabModelUtils.selectTabById(
+                    getTabModelSelector(),
+                    menuItemData.getInt(AppMenuPropertiesDelegateImpl.TAB_ID_BUNDLE_KEY),
+                    TabSelectionType.FROM_USER);
             return true;
         }
 

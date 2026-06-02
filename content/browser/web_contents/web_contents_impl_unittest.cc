@@ -1571,9 +1571,9 @@ TEST_F(WebContentsImplTest, NavigationExitsFullscreen) {
   // Toggle fullscreen mode on (as if initiated via IPC from renderer).
   EXPECT_FALSE(contents()->IsFullscreen());
   EXPECT_FALSE(fake_delegate.IsFullscreenForTabOrPending(contents()));
-  main_test_rfh()->frame_tree_node()->UpdateUserActivationState(
+  EXPECT_TRUE(main_test_rfh()->frame_tree_node()->UpdateUserActivationState(
       blink::mojom::UserActivationUpdateType::kNotifyActivation,
-      blink::mojom::UserActivationNotificationType::kTest);
+      blink::mojom::UserActivationNotificationType::kTest));
   orig_rfh->EnterFullscreen(blink::mojom::FullscreenOptions::New(),
                             base::BindOnce(&ExpectTrue));
   EXPECT_TRUE(contents()->IsFullscreen());
@@ -1607,9 +1607,9 @@ TEST_F(WebContentsImplTest, FullscreenNoExitOnIframeNavigate) {
 
   // Make the top page fullscreen.
   EXPECT_FALSE(contents()->IsFullscreen());
-  main_rfh->frame_tree_node()->UpdateUserActivationState(
+  EXPECT_TRUE(main_rfh->frame_tree_node()->UpdateUserActivationState(
       blink::mojom::UserActivationUpdateType::kNotifyActivation,
-      blink::mojom::UserActivationNotificationType::kTest);
+      blink::mojom::UserActivationNotificationType::kTest));
   main_rfh->EnterFullscreen(blink::mojom::FullscreenOptions::New(),
                             base::BindOnce(&ExpectTrue));
   EXPECT_TRUE(contents()->IsFullscreen());
@@ -1643,9 +1643,9 @@ TEST_F(WebContentsImplTest, FullscreenNoExitOnIframeSameDocumentNavigate) {
 
   // Make the top page fullscreen.
   EXPECT_FALSE(contents()->IsFullscreen());
-  main_rfh->frame_tree_node()->UpdateUserActivationState(
+  EXPECT_TRUE(main_rfh->frame_tree_node()->UpdateUserActivationState(
       blink::mojom::UserActivationUpdateType::kNotifyActivation,
-      blink::mojom::UserActivationNotificationType::kTest);
+      blink::mojom::UserActivationNotificationType::kTest));
   main_rfh->EnterFullscreen(blink::mojom::FullscreenOptions::New(),
                             base::BindOnce(&ExpectTrue));
   EXPECT_TRUE(contents()->IsFullscreen());
@@ -1686,9 +1686,9 @@ TEST_F(WebContentsImplTest,
 
   // Make the subframe fullscreen.
   EXPECT_FALSE(contents()->IsFullscreen());
-  sub_rfh->frame_tree_node()->UpdateUserActivationState(
+  EXPECT_TRUE(sub_rfh->frame_tree_node()->UpdateUserActivationState(
       blink::mojom::UserActivationUpdateType::kNotifyActivation,
-      blink::mojom::UserActivationNotificationType::kTest);
+      blink::mojom::UserActivationNotificationType::kTest));
   sub_rfh->EnterFullscreen(blink::mojom::FullscreenOptions::New(),
                            base::BindOnce(&ExpectTrue));
   EXPECT_TRUE(contents()->IsFullscreen());
@@ -1728,9 +1728,9 @@ TEST_F(WebContentsImplTest,
 
   // Make the subframe fullscreen.
   EXPECT_FALSE(contents()->IsFullscreen());
-  sub_rfh->frame_tree_node()->UpdateUserActivationState(
+  EXPECT_TRUE(sub_rfh->frame_tree_node()->UpdateUserActivationState(
       blink::mojom::UserActivationUpdateType::kNotifyActivation,
-      blink::mojom::UserActivationNotificationType::kTest);
+      blink::mojom::UserActivationNotificationType::kTest));
   sub_rfh->EnterFullscreen(blink::mojom::FullscreenOptions::New(),
                            base::BindOnce(&ExpectTrue));
   EXPECT_TRUE(contents()->IsFullscreen());
@@ -1775,9 +1775,9 @@ TEST_F(WebContentsImplTest, HistoryNavigationExitsFullscreen) {
 
   for (int i = 0; i < 2; ++i) {
     // Toggle fullscreen mode on (as if initiated via IPC from renderer).
-    main_test_rfh()->frame_tree_node()->UpdateUserActivationState(
+    EXPECT_TRUE(main_test_rfh()->frame_tree_node()->UpdateUserActivationState(
         blink::mojom::UserActivationUpdateType::kNotifyActivation,
-        blink::mojom::UserActivationNotificationType::kTest);
+        blink::mojom::UserActivationNotificationType::kTest));
     main_test_rfh()->EnterFullscreen(blink::mojom::FullscreenOptions::New(),
                                      base::BindOnce(&ExpectTrue));
     EXPECT_TRUE(contents()->IsFullscreen());
@@ -1811,9 +1811,9 @@ TEST_F(WebContentsImplTest, CrashExitsFullscreen) {
   // Toggle fullscreen mode on (as if initiated via IPC from renderer).
   EXPECT_FALSE(contents()->IsFullscreen());
   EXPECT_FALSE(fake_delegate.IsFullscreenForTabOrPending(contents()));
-  main_test_rfh()->frame_tree_node()->UpdateUserActivationState(
+  EXPECT_TRUE(main_test_rfh()->frame_tree_node()->UpdateUserActivationState(
       blink::mojom::UserActivationUpdateType::kNotifyActivation,
-      blink::mojom::UserActivationNotificationType::kTest);
+      blink::mojom::UserActivationNotificationType::kTest));
   main_test_rfh()->EnterFullscreen(blink::mojom::FullscreenOptions::New(),
                                    base::BindOnce(&ExpectTrue));
   EXPECT_TRUE(contents()->IsFullscreen());
@@ -2037,12 +2037,13 @@ TEST_F(WebContentsImplTest, UpdateWebContentsVisibility) {
       main_test_rfh()->GetRenderViewHost()->GetWidget()->GetView());
   TestWebContentsObserver observer(contents());
 
-  EXPECT_FALSE(view->is_showing());
+  // Test WebContents always start visible.
+  EXPECT_TRUE(view->is_showing());
   EXPECT_FALSE(view->is_occluded());
 
-  // WebContents must be made visible once before it can be hidden.
+  // WebContents must be made visible once before its visibility can be changed.
   contents()->UpdateWebContentsVisibility(Visibility::HIDDEN);
-  EXPECT_FALSE(view->is_showing());
+  EXPECT_TRUE(view->is_showing());
   EXPECT_FALSE(view->is_occluded());
   EXPECT_EQ(Visibility::VISIBLE, contents()->GetVisibility());
 
@@ -2180,9 +2181,10 @@ void HideOrOccludeWithCapturerTest(WebContentsImpl* contents,
   TestRenderWidgetHostView* view = static_cast<TestRenderWidgetHostView*>(
       contents->GetRenderWidgetHostView());
 
-  EXPECT_FALSE(view->is_showing());
+  // Test WebContents always start visible.
+  EXPECT_TRUE(view->is_showing());
 
-  // WebContents must be made visible once before it can be hidden.
+  // WebContents must be made visible once before its visibility can be changed.
   contents->UpdateWebContentsVisibility(Visibility::VISIBLE);
   EXPECT_TRUE(view->is_showing());
   EXPECT_FALSE(view->is_occluded());
@@ -2250,7 +2252,8 @@ TEST_F(WebContentsImplTest, KeepVisibleUntilFirstVisuallyNonEmptyPaint) {
   TestRenderWidgetHostView* view = static_cast<TestRenderWidgetHostView*>(
       contents()->GetRenderWidgetHostView());
 
-  EXPECT_FALSE(view->is_showing());
+  // Test WebContents always start visible.
+  EXPECT_TRUE(view->is_showing());
 
   WebUIConfigMap::GetInstance().AddWebUIConfig(
       std::make_unique<KeepVisibleWebUIConfig>());
@@ -2258,6 +2261,7 @@ TEST_F(WebContentsImplTest, KeepVisibleUntilFirstVisuallyNonEmptyPaint) {
   const GURL kGURL("chrome://keep-visible/");
   NavigationSimulator::NavigateAndCommitFromBrowser(contents(), kGURL);
 
+  // WebContents must be made visible once before its visibility can be changed.
   contents()->UpdateWebContentsVisibility(Visibility::VISIBLE);
   EXPECT_TRUE(view->is_showing());
   EXPECT_FALSE(view->is_occluded());

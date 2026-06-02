@@ -11,6 +11,8 @@
 #include "chrome/browser/actor/actor_test_util.h"
 #include "chrome/browser/background/glic/glic_background_mode_manager.h"
 #include "chrome/browser/background/glic/glic_launcher_configuration.h"
+#include "chrome/browser/glic/public/glic_invoke_options.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/selection/selection_overlay_controller.h"
 #include "chrome/browser/glic/test_support/interactive_glic_test.h"
 #include "chrome/browser/global_features.h"
@@ -693,13 +695,7 @@ class SelectionOverlayHotkeyInteractiveTest
  public:
   SelectionOverlayHotkeyInteractiveTest() {
     scoped_feature_list_.InitWithFeatures(
-        {::features::kGlicDefaultTabContextSetting,
-#if BUILDFLAG(IS_CHROMEOS)
-         features::kGlicShowStatusTrayIcon,
-         chromeos::features::kSupportCustomIconsInStatusArea
-#endif
-        },
-        {});
+        {::features::kGlicDefaultTabContextSetting}, {});
   }
   ~SelectionOverlayHotkeyInteractiveTest() override = default;
 
@@ -755,11 +751,18 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayHotkeyInteractiveTest,
   RunTestSequence(
       OpenGlic(),
       // SimulateAcceleratorPress() did not work.
-      Do([]() {
-        GlicBackgroundModeManager* const manager =
-            g_browser_process->GetFeatures()->glic_background_mode_manager();
-        manager->HandleHotkey(
-            GlicLauncherConfiguration::GetDefaultSelectionHotkey());
+      Do([this]() {
+        content::WebContents* web_contents =
+            browser()->tab_strip_model()->GetActiveWebContents();
+        tabs::TabInterface* tab =
+            tabs::TabInterface::GetFromContents(web_contents);
+        GlicKeyedService* glic_keyed_service =
+            GlicKeyedService::Get(browser()->profile());
+        GlicInvokeOptions options(
+            glic::mojom::InvocationSource::kCaptureRegionHotkey);
+        options.wait_for_panel_open = true;
+        options.target = Target(tab);
+        glic_keyed_service->Invoke(std::move(options));
       }),
       WaitForShow(OverlayBaseController::kOverlayId),
       InstrumentNonTabWebView(kOverlayWebContentsId,
@@ -768,11 +771,10 @@ IN_PROC_BROWSER_TEST_F(SelectionOverlayHotkeyInteractiveTest,
                         "el => el.screenshot_ !== null"),
       WaitForElementVisible(kOverlayWebContentsId, {"selection-overlay-app",
                                                     "glic-selection-overlay"}),
-      Do([]() {
-        GlicBackgroundModeManager* const manager =
-            g_browser_process->GetFeatures()->glic_background_mode_manager();
-        manager->HandleHotkey(
-            GlicLauncherConfiguration::GetDefaultSelectionHotkey());
+      Do([this]() {
+        content::WebContents* web_contents =
+            browser()->tab_strip_model()->GetActiveWebContents();
+        SelectionOverlayController::FromTabWebContents(web_contents)->Close();
       }),
       WaitForHide(OverlayBaseController::kOverlayId));
 }
@@ -791,11 +793,18 @@ IN_PROC_BROWSER_TEST_F(
       NavigateWebContents(kActiveTab, GURL(chrome::kChromeUISettingsURL)),
       OpenGlic(),
       // SimulateAcceleratorPress() did not work.
-      Do([]() {
-        GlicBackgroundModeManager* const manager =
-            g_browser_process->GetFeatures()->glic_background_mode_manager();
-        manager->HandleHotkey(
-            GlicLauncherConfiguration::GetDefaultSelectionHotkey());
+      Do([this]() {
+        content::WebContents* web_contents =
+            browser()->tab_strip_model()->GetActiveWebContents();
+        tabs::TabInterface* tab =
+            tabs::TabInterface::GetFromContents(web_contents);
+        GlicKeyedService* glic_keyed_service =
+            GlicKeyedService::Get(browser()->profile());
+        GlicInvokeOptions options(
+            glic::mojom::InvocationSource::kCaptureRegionHotkey);
+        options.wait_for_panel_open = true;
+        options.target = Target(tab);
+        glic_keyed_service->Invoke(std::move(options));
       }),
       Wait(base::Seconds(1)),
       EnsureNotPresent(OverlayBaseController::kOverlayId));

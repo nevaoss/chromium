@@ -2020,6 +2020,29 @@ void PartitionRoot::CheckMetadataIntegrity(const void* ptr) {
 #endif  // PA_BUILDFLAG(USE_PARTITION_COOKIE)
 }
 
+// static
+PA_NOINLINE PartitionRoot* PartitionRoot::GetRootFromAddress(void* object) {
+  uintptr_t address = reinterpret_cast<uintptr_t>(UntagPtr(object));
+  if (!IsManagedByPartitionAlloc(address)) {
+    // No PartitionRoot because the `object` is not managed by PartitionAlloc.
+    return nullptr;
+  }
+
+  auto table = internal::ReservationOffsetTable::Get(address);
+  if (table.IsManagedByNormalBuckets(address)) {
+    return GetRootFromAddressInFirstSuperpage(object);
+  }
+
+  if (table.IsManagedByDirectMap(address)) {
+    uintptr_t reservation_start_address =
+        table.GetDirectMapReservationStart(address);
+    return GetRootFromAddressInFirstSuperpage(
+        internal::TagAddr(reservation_start_address));
+  }
+
+  return nullptr;
+}
+
 template <AllocFlags flags>
 PA_NOINLINE PA_MALLOC_FN void* PartitionRoot::AlignedAlloc(
     size_t alignment,
@@ -2050,9 +2073,12 @@ template <FreeFlags flags>
 PA_NOINLINE void PartitionRoot::FreeInline(void* object) {
   FreeInlineInternal<flags>(object);
 }
+
 template <FreeFlags flags>
-PA_NOINLINE void PartitionRoot::FreeWithSize(void* object, size_t size) {
-  FreeWithSizeInline<flags>(object, size);
+PA_NOINLINE void PartitionRoot::FreeInline(
+    void* object,
+    FreeHintType<FreeHintFlags(flags)> hint) {
+  FreeInlineInternal<flags>(object, hint);
 }
 
 template <FreeFlags flags>
@@ -2074,17 +2100,10 @@ PA_NOINLINE void PartitionRoot::AlignedFree(void* object) {
 }
 
 template <FreeFlags flags>
-PA_NOINLINE void PartitionRoot::FreeWithSizeInUnknownRoot(void* object,
-                                                          size_t size) {
-  FreeWithSizeInlineInUnknownRoot<flags>(object, size);
-}
-
-template <FreeFlags flags>
-PA_NOINLINE void PartitionRoot::FreeWithSizeAndAlignmentInUnknownRoot(
+PA_NOINLINE void PartitionRoot::FreeInUnknownRoot(
     void* object,
-    size_t size,
-    size_t alignment) {
-  FreeWithSizeAndAlignmentInlineInUnknownRoot<flags>(object, size, alignment);
+    FreeHintType<FreeHintFlags(flags)> hint) {
+  FreeInlineInUnknownRoot<flags>(object, hint);
 }
 
 #define DEFINE_PARTITION_ROOT_EXPORT_TEMPLATE 1

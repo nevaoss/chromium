@@ -46,6 +46,7 @@
 <translation id="1147031633655575115">目前的登录者是：<ph name="USER" /></translation>
 <translation id="1149401351239820326">到期月份</translation>
 <translation id="1150989369772528668">日历</translation>
+<translation id="1161444134753003495">登录</translation>
 <translation id="1161663161838091892">同步标签页和历史记录即可继续</translation>
 <translation id="1162834932051545794">{count,plural, =1{{count} 张信用卡}other{{count} 张信用卡}}</translation>
 <translation id="1164891049599601209">在诈骗网站上输入过</translation>
@@ -81,7 +82,6 @@
 <translation id="1275718070701477396">已选择</translation>
 <translation id="1279024913354609713">不允许</translation>
 <translation id="1285320974508926690">一律不翻译此网站</translation>
-<translation id="1287229685519872919">Google Workspace 数据</translation>
 <translation id="1291506870746876680">您离开<ph name="BEGIN_BOLD" />“<ph name="SITE_NAME" />”<ph name="END_BOLD" />后，这个网站的权限将重置为停用。</translation>
 <translation id="1293491796138057740">您的信息会保存到 <ph name="USER_EMAIL" /> 的 Google 钱包中。您可以在各项 Google 产品中使用这些信息更快地填写表单。</translation>
 <translation id="1293556467332435079">文件</translation>
@@ -168,7 +168,6 @@
 <translation id="1547610699249301703">分享密码</translation>
 <translation id="1554043146674176775">关闭 AI 模式</translation>
 <translation id="1554477036522844996">打开新的窗口</translation>
-<translation id="1554605811306591212">须遵守 Google 的《<ph name="TERMS" />》《<ph name="KOREAN_LOCATION_TERMS" />》和《<ph name="PRIVACY_NOTICE" />》。Gemini 是一款 AI 工具，可能会犯错（包括与人相关的信息）。</translation>
 <translation id="1558391695376153246">关闭无痕式标签页</translation>
 <translation id="1565371473877914088">打开新的无痕式标签页</translation>
 <translation id="1567960978791353852">显示阅读模式</translation>
@@ -330,6 +329,7 @@
 <translation id="2078437078822043850">向右滚动即可在无痕模式下浏览内容。</translation>
 <translation id="2079545284768500474">撤销</translation>
 <translation id="2085876078937250610">保存…</translation>
+<translation id="2089180529062519164">开启麦克风</translation>
 <translation id="2096239473850415494">无法下载</translation>
 <translation id="2096716221239095980">删除所有数据</translation>
 <translation id="2104436223719117661">热搜</translation>
@@ -374,6 +374,7 @@
 <translation id="2251686759395008410">菜单 → 历史记录</translation>
 <translation id="2252378061043785266">永不显示此网站</translation>
 <translation id="2252749852083403809">正在保存到 <ph name="USER_EMAIL" /> 的云端硬盘中。</translation>
+<translation id="225614027745146050">欢迎</translation>
 <translation id="2256933947031277845">贵单位要求您只能使用特定账号登录。</translation>
 <translation id="2257567812274161158">同步功能无法正常运行。</translation>
 <translation id="2258326562203545455">{count,plural, =1{您可将书签保存到您的 Google 账号 {email}。}other{您可将书签保存到您的 Google 账号 {email}。}}</translation>
@@ -434,7 +435,6 @@
 <translation id="2468444275314013497">您的浏览器很安全</translation>
 <translation id="2473876017985765807">您已经保存了在 <ph name="WEBSITE" /> 上使用的密码</translation>
 <translation id="247430852844518481">您可以设置提醒，以便日后再次访问此页面</translation>
-<translation id="2478246185006364308">Google 条款</translation>
 <translation id="2479148705183875116">前往“设置”</translation>
 <translation id="2482878487686419369">通知</translation>
 <translation id="2484459871750294497">如何启用此功能？</translation>
@@ -823,11 +823,11 @@
 <translation id="3931215329146376310">{count,plural, =1{用于登录此网站的新密码}other{用于登录此网站的新密码}}</translation>
 <translation id="3933372629914873850">您将登录 <ph name="URL" /></translation>
 <translation id="3934905113567851655">双指张合即可调整大小</translation>
+<translation id="393732545649378031">账号</translation>
 <translation id="3940195383040445971">跟踪标签页上的价格</translation>
 <translation id="3941941395924123592">{COUNT,plural, =1{关闭 {COUNT} 个标签页}other{关闭 {COUNT} 个标签页}}</translation>
 <translation id="3946483119107054883">下载为 CSV 文件</translation>
 <translation id="3948600256434252210">向右滑动即可在无痕模式下浏览内容。</translation>
-<translation id="3949712484278252781">您与 Gemini 的对话以及您的 <ph name="GOOGLE_WORKSPACE_DATA" />不会经过人工审核，也不会用于改进生成式 AI 模型。</translation>
 <translation id="3950479158728806902">自动创建通行密钥，登录更迅速</translation>
 <translation id="3950820424414687140">登录</translation>
 <translation id="395377504920307820">在不登录账号的情况下使用</translation>
@@ -848,7 +848,6 @@
 <translation id="3994911892367422121">知道了</translation>
 <translation id="3995521777587992544">网页加载进度条，已加载 <ph name="EMAIL" />。</translation>
 <translation id="3997522473364371632">您的管理员管理已禁用密码分享功能。</translation>
-<translation id="4000707564769984863">观看：<ph name="WATCH_LINK" /></translation>
 <translation id="4002066346123236978">标题</translation>
 <translation id="4004204301268239848">系统会将密码保存在您的 Google 账号中，以便您在任何设备上使用。</translation>
 <translation id="4007463141047732631">修改分组</translation>
@@ -879,7 +878,6 @@
 <translation id="4129768137228347731">保存<ph name="ENTITY_TYPE" />？</translation>
 <translation id="4133139945030148655">一切准备就绪</translation>
 <translation id="4133265950310064865">增强型保护</translation>
-<translation id="4142372594294312814">关于生成式 AI 必须了解的 5 个要点</translation>
 <translation id="4145507240503767005"><ph name="SEARCH_ENGINE_NAME" />，<ph name="SEARCH_ENGINE_DOMAIN" /></translation>
 <translation id="4147897805161313378">Google 相册</translation>
 <translation id="4148023517926189160">此网站想下载文件并将其添加到您的日历中。</translation>
@@ -961,7 +959,6 @@
 <translation id="441218095371040430">使用键盘</translation>
 <translation id="4415276339145661267">管理您的 Google 账号</translation>
 <translation id="4416582610654027550">请输入一个有效网址</translation>
-<translation id="441868831736628555">隐私权声明</translation>
 <translation id="4420409367264901497">修改书签</translation>
 <translation id="4425365312778464779">此账号处于受管理状态</translation>
 <translation id="443008484043213881">工具</translation>
@@ -1241,7 +1238,6 @@
 <translation id="5329451663851195956">下拉即可刷新。</translation>
 <translation id="5336910966955551309">长按即可固定喜爱的网站</translation>
 <translation id="5338512273860059533">正在登录。</translation>
-<translation id="5340148832014094861">需遵守《<ph name="GOOGLE_TERMS" />》和《<ph name="GEMINI_APPS_PRIVACY" />》。Gemini 是一款 AI 工具，可能会出现错误（包括与人相关的信息）。</translation>
 <translation id="5343472494710226394">根据您的兴趣推送的新闻、体育赛事和内容。</translation>
 <translation id="5352128922772839949">保存文件</translation>
 <translation id="5355191726083956201">已开启增强型保护</translation>
@@ -1476,6 +1472,7 @@
 <translation id="6140948187512243695">显示详细信息</translation>
 <translation id="6144589619057374135">在无痕模式下打开 ${url}</translation>
 <translation id="6146563240635539929">视频</translation>
+<translation id="6148392728478209113">您还在使用 Live 模式吗？点按“Live”按钮即可继续与 Gemini 对话</translation>
 <translation id="6151006591088192882">通过<ph name="BIOMETRIC_AUTHENITCATION_TYPE" />解锁无痕式标签页</translation>
 <translation id="6152340033632117531">闲置</translation>
 <translation id="6152406514676263192">开启同步功能后，您便会看到系统根据您的兴趣推荐的最相关的内容。</translation>
@@ -1513,6 +1510,7 @@
 <translation id="6241132809279377987">在 iPhone 上使用 Google 应用，解锁更多精彩功能</translation>
 <translation id="6247557882553405851">Google 密码管理工具</translation>
 <translation id="6251835855431997163">自动填充<ph name="VALUE" /></translation>
+<translation id="6253686838150111720">登录 <ph name="URL" /></translation>
 <translation id="6254066287920239840">在应用（而非浏览器）中打开链接。</translation>
 <translation id="6259928806013786178">未能开启阅读模式</translation>
 <translation id="6268773951964630964">搜索复制的图片</translation>
@@ -1532,7 +1530,6 @@
 <translation id="6327249202318869726">您的账号已停用 Gemini。如需了解详情，请与管理员联系。</translation>
 <translation id="6331836477476466332">更安全、更强大的浏览器</translation>
 <translation id="6337234675334993532">加密</translation>
-<translation id="6337313937331295309">Gemini 应用隐私权声明</translation>
 <translation id="633809752005859102">出错了，我们马上处理。</translation>
 <translation id="6339793034470834130">如需使用网页检查器，请使用数据线连接到计算机上的 Safari，并从“开发”菜单中访问 iPhone。您可在计算机上 Safari 设置中的“高级”部分内启用“开发”菜单。</translation>
 <translation id="6340285871011301182">无法进行局部翻译。</translation>
@@ -1812,7 +1809,6 @@
 <translation id="7261217796641151584">共享分组</translation>
 <translation id="7266578100016339897">这有助于您保持井井有条。您随时可以在“设置”中更改此设置。</translation>
 <translation id="7272437679830969316">无法验证您的身份。未复制密码。</translation>
-<translation id="7275307913765547631">韩国位置信息条款</translation>
 <translation id="728025568708172005">带我看看</translation>
 <translation id="7280980607183752256">无法导入此文件</translation>
 <translation id="7282197670900591579">香橼黄色主题</translation>
@@ -1870,6 +1866,7 @@
 <translation id="7468373585447318060">及时了解您跟踪的所有商品的降价情况。</translation>
 <translation id="746872191028309255">使用相机拍照或从图库中选择照片，从而购买所见内容。</translation>
 <translation id="7471557245617580330">创建新标签页</translation>
+<translation id="7473555040328423550">添加标签页</translation>
 <translation id="7476548258282096076">此卡片会显示您最常访问的网站。</translation>
 <translation id="7484645889979462775">一律不保存此网站的密码</translation>
 <translation id="7486006552035434095">让您的各部设备保持同步</translation>
@@ -1887,7 +1884,6 @@
 <translation id="7512909159512473473">输入口令…</translation>
 <translation id="7514365320538308">下载</translation>
 <translation id="7514530647142300459">继续使用 Google 账号 <ph name="EMAIL" /> 中的密码</translation>
-<translation id="7522587739845660862">您的位置信息</translation>
 <translation id="7522948500476882302">下载文件时，可选择在 1 个月后自动删除文件</translation>
 <translation id="7524055474074101597">在不同应用中使用保存的密码和其他信息。</translation>
 <translation id="7525067979554623046">创建</translation>
@@ -1904,7 +1900,6 @@
 <translation id="7582666837709186351">使用相机翻译照片或周围环境中的文字。</translation>
 <translation id="7582857256643797524">您的设备已启用此设置</translation>
 <translation id="7583004045319035904">请使用<ph name="BIOMETRIC_AUTHENITCATION_TYPE" />解锁您的无痕式标签页。</translation>
-<translation id="7588149553568293500">了解您有哪些选择。</translation>
 <translation id="7596103009408415410">{COUNT,plural, =1{要关闭 {COUNT} 个闲置标签页吗？}other{要关闭 {COUNT} 个闲置标签页吗？}}</translation>
 <translation id="7598439272585186139">获享更高的安全性</translation>
 <translation id="7600965453749440009">一律不翻译<ph name="LANGUAGE" /></translation>
@@ -2030,7 +2025,6 @@
 <translation id="7996239959906074962">设置…</translation>
 <translation id="800361585186029508">在 Google Chrome 中打开输入的网址。</translation>
 <translation id="8005666035647241369">保存到此设备上的 Google 密码管理工具中</translation>
-<translation id="8006265839264939135">条款</translation>
 <translation id="8010488806779226127">探索提升浏览体验的实用功能</translation>
 <translation id="8011489434346330032">网页检查器</translation>
 <translation id="8014007212279733632">先验证身份，再自动填充敏感信息</translation>
@@ -2128,6 +2122,7 @@
 <translation id="8319282042900445670">已设为在 <ph name="DATE" /><ph name="TIME" />发出提醒</translation>
 <translation id="8320212361750431956">近期活动</translation>
 <translation id="8325455175867928593">隐藏“根据您的兴趣推荐的评价”</translation>
+<translation id="8333459276976141586">Live 模式会使用麦克风。点按“Live”按钮即可开启麦克风。如要关闭麦克风，请点按“停止”按钮或关闭 Gemini。</translation>
 <translation id="833647236762414178">您可以创建、保存和管理密码和通行密钥，以便轻松登录网站和应用。<ph name="BEGIN_LINK" />了解详情<ph name="END_LINK" /></translation>
 <translation id="8343993175958086504">备份您的资料，在任何设备上使用</translation>
 <translation id="8345328955902001853">{count,plural, =1{再完成 1 项任务即可升级}other{再完成 {count} 项任务即可升级}}</translation>
@@ -2204,6 +2199,7 @@
 <translation id="8571019948162152515">要删除“<ph name="FILENAME" />”吗？</translation>
 <translation id="8571213806525832805">过去 4 周</translation>
 <translation id="8577056989960190117">自动填充失效年份 <ph name="YEAR" /></translation>
+<translation id="8582026929965253036">与 Gemini 进行 Live 对话</translation>
 <translation id="8587001564479545614">创建辅助 PIN 码</translation>
 <translation id="8588404856427128947">已关闭</translation>
 <translation id="8590286732816598906">标签页分组，<ph name="GROUP_TITLE" />，菜单。</translation>
@@ -2278,6 +2274,7 @@
 <translation id="8803526663383843427">开启时</translation>
 <translation id="8803639129939845298">安全</translation>
 <translation id="8813277370772331957">稍后提醒我</translation>
+<translation id="8814308045751067027">如需使用 Live 模式，请在设置中授予 Chrome 麦克风使用权</translation>
 <translation id="8814719628147284151">继续</translation>
 <translation id="881559332211266856">更新身份纠正识别号</translation>
 <translation id="8817524703470045896">跟踪价格，并在有网站降价时收到提醒</translation>
@@ -2353,7 +2350,6 @@
 <translation id="9066097352053395362">隐藏“修改书签”</translation>
 <translation id="9070824521421603770">您将退出账号，而且标签页将被关闭</translation>
 <translation id="9072837124205571418">来自所有设备的标签页分组</translation>
-<translation id="9075970015528364598">对话内容会接受审核，并用于改进 Google AI。<ph name="LEARN_ABOUT_CHOICES" /><ph name="INFO_ABOUT_LOCATION" />也会存储在活动记录中。</translation>
 <translation id="9081058212938299310">更新 <ph name="USERNAME" /> 的密码？</translation>
 <translation id="9083838294503912307">要在您的所有设备上保持同步并获享个性化体验，请开启同步功能。</translation>
 <translation id="9084367296493549256">{count,plural, =1{您有 {count} 个安全系数低的密码，这可能会给您带来安全风险。请立即修改以确保安全。}other{您有 {count} 个安全系数低的密码，这可能会给您带来安全风险。请立即修改以确保安全。}}</translation>

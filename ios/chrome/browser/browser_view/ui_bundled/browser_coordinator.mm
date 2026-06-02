@@ -35,7 +35,6 @@
 #import "components/infobars/core/infobar_manager.h"
 #import "components/password_manager/core/browser/ui/credential_ui_entry.h"
 #import "components/password_manager/core/common/password_manager_features.h"
-#import "components/plus_addresses/core/common/features.h"
 #import "components/prefs/pref_service.h"
 #import "components/profile_metrics/browser_profile_type.h"
 #import "components/safe_browsing/core/common/features.h"
@@ -101,6 +100,7 @@
 #import "ios/chrome/browser/commerce/model/push_notification/push_notification_feature.h"
 #import "ios/chrome/browser/commerce/model/shopping_service_factory.h"
 #import "ios/chrome/browser/composebox/coordinator/composebox_coordinator.h"
+#import "ios/chrome/browser/composebox/menu/coordinator/composebox_menu_coordinator.h"
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/composebox/public/composebox_focus_params.h"
 #import "ios/chrome/browser/content_settings/model/host_content_settings_map_factory.h"
@@ -188,7 +188,6 @@
 #import "ios/chrome/browser/phone_number/ui_bundled/country_code_picker_coordinator.h"
 #import "ios/chrome/browser/picture_in_picture/coordinator/picture_in_picture_coordinator.h"
 #import "ios/chrome/browser/picture_in_picture/public/picture_in_picture_configuration.h"
-#import "ios/chrome/browser/plus_addresses/coordinator/plus_address_bottom_sheet_coordinator.h"
 #import "ios/chrome/browser/popup_menu/coordinator/popup_menu_coordinator.h"
 #import "ios/chrome/browser/prerender/model/prerender_browser_agent.h"
 #import "ios/chrome/browser/prerender/model/prerender_browser_agent_delegate.h"
@@ -565,9 +564,6 @@ const char kChromeAppStoreUrl[] =
     CardUnmaskAuthenticationCoordinator* cardUnmaskAuthenticationCoordinator;
 
 @property(nonatomic, strong)
-    PlusAddressBottomSheetCoordinator* plusAddressBottomSheetCoordinator;
-
-@property(nonatomic, strong)
     AutofillEditProfileCoordinator* autofillEditProfileCoordinator;
 
 @property(nonatomic, strong)
@@ -863,6 +859,9 @@ const char kChromeAppStoreUrl[] =
 
   // The coordinator for Cobalt popups.
   ChromeCoordinator* _cobaltPopupCoordinator;
+
+  // The coordinator showing the multimodal composebox menu.
+  ComposeboxMenuCoordinator* _composeboxMenuCoordinator;
 }
 
 #pragma mark - SnackbarCoordinatorDelegate
@@ -1860,9 +1859,6 @@ const char kChromeAppStoreUrl[] =
   [self.cardUnmaskAuthenticationCoordinator stop];
   self.cardUnmaskAuthenticationCoordinator = nil;
 
-  [self.plusAddressBottomSheetCoordinator stop];
-  self.plusAddressBottomSheetCoordinator = nil;
-
   [self dismissSaveCardBottomSheet];
 
   [self.virtualCardEnrollmentBottomSheetCoordinator stop];
@@ -2010,6 +2006,7 @@ const char kChromeAppStoreUrl[] =
   [self dismissDockingPromo];
   [self hideWelcomeBackPromo];
   [self hideComposeboxImmediately:YES completion:nil];
+  [self dismissMultimodalActionsMenu];
 }
 
 // Starts independent mediators owned by this coordinator.
@@ -2412,14 +2409,6 @@ const char kChromeAppStoreUrl[] =
     self.cardUnmaskAuthenticationCoordinator.shouldStartWithCvcAuth = YES;
     [self.cardUnmaskAuthenticationCoordinator start];
   }
-}
-
-- (void)showPlusAddressesBottomSheet {
-  self.plusAddressBottomSheetCoordinator =
-      [[PlusAddressBottomSheetCoordinator alloc]
-          initWithBaseViewController:self.viewController
-                             browser:self.browser];
-  [self.plusAddressBottomSheetCoordinator start];
 }
 
 - (void)showSaveCardBottomSheetOnOriginWebState:(web::WebState*)originWebState {
@@ -2936,11 +2925,6 @@ const char kChromeAppStoreUrl[] =
   self.cardUnmaskAuthenticationCoordinator = nil;
 }
 
-- (void)dismissPlusAddressBottomSheet {
-  [self.plusAddressBottomSheetCoordinator stop];
-  self.plusAddressBottomSheetCoordinator = nil;
-}
-
 - (void)dismissVirtualCardEnrollmentBottomSheet {
   [self.virtualCardEnrollmentBottomSheetCoordinator stop];
   self.virtualCardEnrollmentBottomSheetCoordinator = nil;
@@ -3088,6 +3072,25 @@ const char kChromeAppStoreUrl[] =
   [_signinCoordinator start];
 }
 
+- (void)showMultimodalActionsMenu {
+  if (IsComposeboxPlusButtonBottomSheet()) {
+    [_composeboxMenuCoordinator stop];
+    _composeboxMenuCoordinator = [[ComposeboxMenuCoordinator alloc]
+        initWithBaseViewController:self.viewController
+                           browser:self.browser
+                        entrypoint:ComposeboxEntrypoint::kNTPPlusButton];
+    [_composeboxMenuCoordinator start];
+  } else {
+    [self showComposeboxFromEntrypoint:ComposeboxEntrypoint::kNTPPlusButton
+                             withQuery:nil];
+  }
+}
+
+- (void)dismissMultimodalActionsMenu {
+  [_composeboxMenuCoordinator stop];
+  _composeboxMenuCoordinator = nil;
+}
+
 - (void)showComposebox {
   [self exitFullscreen];
 
@@ -3199,9 +3202,6 @@ const char kChromeAppStoreUrl[] =
   [self.paymentsSuggestionBottomSheetCoordinator stop];
   self.paymentsSuggestionBottomSheetCoordinator = nil;
 
-  [self.plusAddressBottomSheetCoordinator stop];
-  self.plusAddressBottomSheetCoordinator = nil;
-
   [self dismissSaveCardBottomSheet];
 
   [self.virtualCardEnrollmentBottomSheetCoordinator stop];
@@ -3268,7 +3268,7 @@ const char kChromeAppStoreUrl[] =
 
   [self cancelCollaborationFlows];
   [self.NTPCoordinator clearPresentedState];
-
+  [self dismissMultimodalActionsMenu];
   // The composebox replaces the omnibox.
   if (dismissOmnibox) {
     [self hideComposebox];
@@ -3887,6 +3887,21 @@ const char kChromeAppStoreUrl[] =
                          FREType:GeminiFREType::kNewUser
                completionHandler:completion];
   [_geminiFirstRunCoordinator start];
+}
+
+- (void)startGeminiLiveFREWithCompletion:(void (^)(BOOL success))completion {
+  // TODO(crbug.com/513889315): Implement this.
+  if (completion) {
+    completion(NO);
+  }
+}
+
+- (void)showGeminiLiveMicrophoneAlertWithCompletion:
+    (void (^)(BOOL granted))completion {
+  // TODO(crbug.com/513889315): Implement this.
+  if (completion) {
+    completion(NO);
+  }
 }
 
 - (void)hideFloatyIfInvokedAnimated:(BOOL)animated

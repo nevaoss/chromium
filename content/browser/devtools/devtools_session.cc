@@ -85,6 +85,7 @@ bool TerminateOnCrossProcessNavigation(crdtp::span<uint8_t> method) {
       crdtp::SpanFrom("Runtime.evaluate"),
       crdtp::SpanFrom("Runtime.runScript"),
       crdtp::SpanFrom("Runtime.terminateExecution"),
+      crdtp::SpanFrom("WebMCP.invokeTool"),
   };
   DCHECK(std::is_sorted(kEntries->begin(), kEntries->end(), crdtp::SpanLt()));
   return std::binary_search(kEntries->begin(), kEntries->end(), method,
@@ -123,6 +124,8 @@ DevToolsSession::DevToolsSession(DevToolsAgentHostClient* client, Mode mode)
   session_state_cookie_ = blink::mojom::DevToolsSessionState::New();
   session_state_cookie_->browser_originating_session_state =
       blink::mojom::BrowserOriginatingSessionState::New();
+  handle_command_callback_ = base::BindRepeating(
+      &DevToolsSession::HandleCommand, weak_factory_.GetWeakPtr());
 }
 
 DevToolsSession::DevToolsSession(DevToolsAgentHostClient* client,
@@ -138,6 +141,8 @@ DevToolsSession::DevToolsSession(DevToolsAgentHostClient* client,
   session_state_cookie_ = blink::mojom::DevToolsSessionState::New();
   session_state_cookie_->browser_originating_session_state =
       blink::mojom::BrowserOriginatingSessionState::New();
+  handle_command_callback_ = base::BindRepeating(
+      &DevToolsSession::HandleCommand, weak_factory_.GetWeakPtr());
 }
 
 DevToolsSession::~DevToolsSession() {
@@ -380,9 +385,7 @@ void DevToolsSession::DispatchProtocolMessageInternal(
   DevToolsManagerDelegate* delegate =
       DevToolsManager::GetInstance()->delegate();
   if (delegate && !dispatchable.Method().empty()) {
-    delegate->HandleCommand(this, message,
-                            base::BindOnce(&DevToolsSession::HandleCommand,
-                                           weak_factory_.GetWeakPtr()));
+    delegate->HandleCommand(this, message, handle_command_callback_);
   } else {
     HandleCommandInternal(std::move(dispatchable), message);
   }

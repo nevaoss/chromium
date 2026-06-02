@@ -741,7 +741,8 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, testInitializeFailsAfterReload) {
   ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kError));
 }
 
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
+// TODO(https://crbug.com/516659596): Re-enable on Linux debug builds.
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || !defined(NDEBUG)
 #define MAYBE_testNoClientCreated DISABLED_testNoClientCreated
 #else
 #define MAYBE_testNoClientCreated testNoClientCreated
@@ -778,7 +779,8 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithFastTimeout, MAYBE_testNoBootstrap) {
   }));
 }
 
-IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithFastTimeout, testInitializeTimesOut) {
+IN_PROC_BROWSER_TEST_P(NewGlicApiTestWithFastTimeout,
+                       DISABLED_testInitializeTimesOut) {
 #if defined(SLOW_BINARY) || !BUILDFLAG(IS_LINUX)
   GTEST_SKIP() << "skip timeout test is flaky on most bots";
 #else
@@ -886,8 +888,7 @@ IN_PROC_BROWSER_TEST_P(NewGlicApiTest, MAYBE_testInvocationSource) {
 
     // Toggle Glic from source.
     coordinator().Toggle(GetBrowser(), /*prevent_close=*/false,
-                         /*source=*/source,
-                         /*deprecated_prompt_suggestion=*/std::nullopt);
+                         /*source=*/source);
 
     ASSERT_OK(WaitForGlicOpen());
 

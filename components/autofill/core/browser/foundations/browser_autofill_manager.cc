@@ -1133,8 +1133,8 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
               FormControlType::kInputPassword &&
           !autofill_field->value().empty() &&
           autofill_field->last_modifier() != FieldModifier::kAutofill) {
-        client().HideAutofillSuggestions(
-            SuggestionHidingReason::kFieldValueChanged);
+        client().HideSuggestions(SuggestionHidingReason::kFieldValueChanged,
+                                 /*product=*/std::nullopt);
         return;
       }
 #if !BUILDFLAG(IS_ANDROID)
@@ -1825,6 +1825,10 @@ void BrowserAutofillManager::FillOrPreviewField(
   form_filler_->FillOrPreviewField(action_persistence, action_type, field,
                                    autofill_field, value, filling_product,
                                    field_type_used);
+  // Notify observers of the single-field filling event.
+  NotifyObservers(&Observer::OnFillOrPreviewField, form.global_id(),
+                  field.global_id(), action_persistence, value,
+                  field_type_used);
   if (action_persistence != mojom::ActionPersistence::kFill) {
     return;
   }
@@ -2105,18 +2109,6 @@ void BrowserAutofillManager::OnFocusOnFormFieldImpl(
         type, MAX_VALID_FIELD_TYPE);
   }
 
-  // Notify installed screen readers if the focus is on a field for which there
-  // are suggestions to present. Ignore if a screen reader is not present.
-  if (!external_delegate_->HasActiveScreenReader()) {
-    return;
-  }
-
-  const FormFieldData& field = CHECK_DEREF(form.FindFieldByGlobalId(field_id));
-  SuggestionsContext context =
-      BuildSuggestionsContext(form, form_structure, field, autofill_field,
-                              AutofillSuggestionTriggerSource::kUnspecified,
-                              GetAcUnrecognizedBehavior(client()));
-
   // This code path checks if suggestions to be announced to a screen reader are
   // available when the focus on a form field changes. This cannot happen in
   // `OnAskForValuesToFillImpl()`, since the `AutofillSuggestionAvailability` is
@@ -2125,15 +2117,27 @@ void BrowserAutofillManager::OnFocusOnFormFieldImpl(
   // suggestions generated, but only the way suggestions behave when they are
   // accepted. For this reason, checking whether suggestions are available can
   // be done with the `kUnspecified` suggestion trigger source.
-  std::vector<Suggestion> suggestions =
-      GetAvailableSuggestions(form, form_structure, field, autofill_field,
-                              AutofillSuggestionTriggerSource::kUnspecified,
-                              /*one_time_passwords=*/{}, context);
-  external_delegate_->OnAutofillAvailabilityEvent(
-      (context.suppress_reason == SuppressReason::kNotSuppressed &&
-       !suggestions.empty())
-          ? mojom::AutofillSuggestionAvailability::kAutofillAvailable
-          : mojom::AutofillSuggestionAvailability::kNoSuggestions);
+  if (external_delegate_->HasActiveScreenReader() &&
+      !base::FeatureList::IsEnabled(
+          features::kAutofillDoNotUpdateAutofillAvailabilityOnFocusEvents)) {
+    const FormFieldData& field =
+        CHECK_DEREF(form.FindFieldByGlobalId(field_id));
+    SuggestionsContext context =
+        BuildSuggestionsContext(form, form_structure, field, autofill_field,
+                                AutofillSuggestionTriggerSource::kUnspecified,
+                                GetAcUnrecognizedBehavior(client()));
+    std::vector<Suggestion> suggestions =
+        GetAvailableSuggestions(form, form_structure, field, autofill_field,
+                                AutofillSuggestionTriggerSource::kUnspecified,
+                                /*one_time_passwords=*/{}, context);
+    // Notify installed screen readers if the focus is on a field for which
+    // there are suggestions to present.
+    external_delegate_->OnAutofillAvailabilityEvent(
+        (context.suppress_reason == SuppressReason::kNotSuppressed &&
+         !suggestions.empty())
+            ? mojom::AutofillSuggestionAvailability::kAutofillAvailable
+            : mojom::AutofillSuggestionAvailability::kNoSuggestions);
+  }
 }
 
 void BrowserAutofillManager::OnSelectControlSelectionChangedImpl(
@@ -2199,7 +2203,13 @@ void BrowserAutofillManager::DidShowSuggestions(
     AutofillSuggestionTriggerSource trigger_source) {
   NotifyObservers(&Observer::OnSuggestionsShown, suggestions);
 
-  GetAtMemoryManager().OnPopupShown(trigger_source,
+  auto [form_structure, autofill_field] =
+      GetCachedFormAndField(form_id, field_id);
+
+  const bool is_context_secure =
+      form_structure ? !IsFormOrClientNonSecure(client(), *form_structure)
+                     : client().IsContextSecure();
+  GetAtMemoryManager().OnPopupShown(trigger_source, is_context_secure,
                                     update_suggestions_callback);
 
   const DenseSet<SuggestionType> shown_suggestion_types(suggestions,
@@ -2212,9 +2222,6 @@ void BrowserAutofillManager::DidShowSuggestions(
         ->GetIbanManager()
         ->OnIbanSuggestionsShown(field_id);
   }
-
-  auto [form_structure, autofill_field] =
-      GetCachedFormAndField(form_id, field_id);
 
   if (AutofillAiManager* ai_manager = client().GetAutofillAiManager();
       ai_manager && form_structure && autofill_field &&
@@ -2318,7 +2325,8 @@ void BrowserAutofillManager::DidShowSuggestions(
 
 void BrowserAutofillManager::OnHidePopupImpl() {
   client().GetSingleFieldFillRouter().CancelPendingQueries();
-  client().HideAutofillSuggestions(SuggestionHidingReason::kRendererEvent);
+  client().HideSuggestions(SuggestionHidingReason::kRendererEvent,
+                           /*product=*/std::nullopt);
   client().HideAutofillFieldIph();
   if (touch_to_fill_delegate_) {
     touch_to_fill_delegate_->HideTouchToFill();

@@ -22,10 +22,14 @@ extern const base::FeatureParam<bool> kGlicChromeStatusIconUseAltIcon;
 extern const base::FeatureParam<bool> kGlicChromeStatusIconLogOnly;
 extern const base::FeatureParam<std::string> kGlicChromeStatusIconOtherAppID;
 
+BASE_DECLARE_FEATURE(kGlicOSIconVariant);
+extern const base::FeatureParam<int> kGlicOSIconVariantParam;
+
 BASE_DECLARE_FEATURE(kGlicOrphanedReattachment);
 
 BASE_DECLARE_FEATURE(kAutoOpenGlicForPdf);
 extern const base::FeatureParam<bool> kAutoOpenGlicForPdfWithOnboarding;
+extern const base::FeatureParam<base::TimeDelta> kAutoOpenGlicCooldown;
 
 BASE_DECLARE_FEATURE(kGlicInvoke);
 
@@ -98,6 +102,7 @@ BASE_DECLARE_FEATURE(kGlicWebDragAndDropFileUpload);
 BASE_DECLARE_FEATURE(kGlicOptInImpressionMetrics);
 
 BASE_DECLARE_FEATURE(kGlicContentsInitiallyHidden);
+BASE_DECLARE_FEATURE(kGlicShowForSignedOut);
 
 BASE_DECLARE_FEATURE(kGlicSetWebContentsVisibilityWhenToggling);
 

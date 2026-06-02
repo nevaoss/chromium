@@ -30,6 +30,9 @@ extern const char kClearTokenService[];
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 extern const char kForceFreDefaultBrowserStep[];
+
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+extern const char kForceFreFeatureShowcaseSteps[];
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 // Feature declarations, sorted by the name of the BASE_DECLARE_FEATURE in each
@@ -372,6 +375,14 @@ BASE_DECLARE_FEATURE(kEnforceManagementDisclaimer);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 extern const base::FeatureParam<base::TimeDelta>
     kPolicyDisclaimerRegistrationRetryDelay;
+#endif
+
+#if BUILDFLAG(IS_IOS)
+// Feature flag controlling whether the MustSkipAppleAgeRangeInChrome account
+// capability should be used to determine whether the client must skip Apple's
+// age range check.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnforceMustSkipAppleAgeRangeInChromeCapability);
 #endif
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)

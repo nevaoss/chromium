@@ -92,7 +92,7 @@
   presentationController.prefersEdgeAttachedInCompactHeight = YES;
   presentationController.detents = @[
     [_viewController preferredHeightDetent],
-    [UISheetPresentationControllerDetent mediumDetent]
+    [UISheetPresentationControllerDetent largeDetent]
   ];
 
   [self.baseViewController presentViewController:_viewController
@@ -144,6 +144,7 @@
 
 - (void)paymentsBottomSheetDidDisappear {
   [self logExitReasonIfNeeded:ScanCardSuggestionBottomSheetExitReason::kIgnore];
+  [_mediator refocus];
   [_mediator disconnect];
   id<BrowserCoordinatorCommands> handler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), BrowserCoordinatorCommands);

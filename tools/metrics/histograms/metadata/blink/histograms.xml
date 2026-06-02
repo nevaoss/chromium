@@ -1093,19 +1093,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Blink.CullRect.UpdateTime" units="microseconds"
-    expires_after="2026-05-31">
-  <owner>pdr@chromium.org</owner>
-  <owner>wangxianzhu@chromium.org</owner>
-  <owner>paint-dev@chromium.org</owner>
-  <improvement direction="LOWER_IS_BETTER"/>
-  <summary>
-    Time spent updating the cull rect in the Blink document lifecycle.
-
-    Note: Not recorded on ~5% of Windows machines with low-resolution clocks.
-  </summary>
-</histogram>
-
 <histogram name="Blink.DecodedImage.AvifDensity.Count.{ImageArea}"
     units="0.01 bits per pixel" expires_after="2026-08-23">
   <owner>wtc@google.com</owner>
@@ -1452,13 +1439,14 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Blink.EffectiveZoom" units="%" expires_after="2026-07-05">
-  <owner>pdr@chromium.org</owner>
-  <owner>paint-dev@chromium.org</owner>
+<histogram name="Blink.Evp.PermissionUi.Status" enum="EvpPermissionUiStatus"
+    expires_after="2026-11-01">
+  <owner>yigu@chromium.org</owner>
+  <owner>web-identity-eng@google.com</owner>
   <summary>
-    The EffectiveZoom as reported by ComputedStyle in a Blink renderer. The
-    value is reported each time the effective zoom is set to a new value. The
-    maximum zoom reported is 400% to keep the histogram of reasonable size.
+    Records the outcome and dismissal reasons of the Email Verification
+    Permission UI. Recorded once per permission UI showing when it is dismissed
+    or accepted.
   </summary>
 </histogram>
 
@@ -2130,7 +2118,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.FedCm.LifecycleStateFailureReason"
-    enum="FedCmLifecycleStateFailureReason" expires_after="2026-09-22">
+    enum="FedCmLifecycleStateFailureReason" expires_after="2026-11-22">
   <owner>cbiesinger@chromium.org</owner>
   <owner>web-identity-eng@google.com</owner>
   <summary>

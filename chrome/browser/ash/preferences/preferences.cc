@@ -382,7 +382,7 @@ void Preferences::RegisterProfilePrefs(
   registry->RegisterBooleanPref(ash::prefs::kLockScreenAutoStartOnlineReauth,
                                 false);
 
-  registry->RegisterBooleanPref(::prefs::kShowMobileDataNotification, true);
+  registry->RegisterBooleanPref(ash::prefs::kShowMobileDataNotification, true);
 
   // Initially all existing users would see "What's new" for current version
   // after update.
@@ -394,9 +394,10 @@ void Preferences::RegisterProfilePrefs(
 
   registry->RegisterStringPref(ash::prefs::kTermsOfServiceURL, "");
 
-  registry->RegisterBooleanPref(::prefs::kTouchVirtualKeyboardEnabled, false);
-  registry->RegisterBooleanPref(::prefs::kVirtualKeyboardSmartVisibilityEnabled,
-                                true);
+  registry->RegisterBooleanPref(ash::prefs::kTouchVirtualKeyboardEnabled,
+                                false);
+  registry->RegisterBooleanPref(
+      ash::prefs::kVirtualKeyboardSmartVisibilityEnabled, true);
 
   registry->RegisterStringPref(prefs::kCaptureModePolicySavePath,
                                std::string());

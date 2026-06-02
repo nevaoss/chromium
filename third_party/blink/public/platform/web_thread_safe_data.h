@@ -79,8 +79,7 @@ class BLINK_PLATFORM_EXPORT WebThreadSafeData {
   WebThreadSafeData& operator=(const WebThreadSafeData&);
 
 #if INSIDE_BLINK
-  WebThreadSafeData(scoped_refptr<RawData>);
-  WebThreadSafeData(scoped_refptr<RawData>&&);
+  explicit WebThreadSafeData(scoped_refptr<RawData>);
   WebThreadSafeData& operator=(scoped_refptr<RawData>);
 #else
   operator std::string() const {

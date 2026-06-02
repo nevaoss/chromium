@@ -149,6 +149,7 @@
 #include "third_party/blink/public/common/features.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/base/interaction/element_identifier.h"
+#include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
 #include "ui/webui/webui_util.h"
 
 #if !BUILDFLAG(OPTIMIZE_WEBUI)
@@ -634,8 +635,12 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   html_source->AddString("aiSuggestionsHelpCenterArticleLink",
                          contextual_cueing::kHelpCenterArticleLink.Get());
 
-  const bool enable_ai_mode_search = contextual_tasks::
-      ContextualTasksContextService::GetIsSmartTabSharingEnabled(profile);
+  const bool enable_ai_mode_search =
+      contextual_tasks::ContextualTasksContextService::
+          GetIsSmartTabSharingEnabled(profile) &&
+      base::FeatureList::IsEnabled(
+          contextual_tasks::
+              kContextualTasksContextSmartTabSharingDefaultOnAvailability);
   html_source->AddBoolean("enableAiModeSearchSetting", enable_ai_mode_search);
 
   const bool show_ai_settings_for_testing = base::FeatureList::IsEnabled(
@@ -700,6 +705,15 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   html_source->AddString(
       "webuiRefresh2026",
       features::IsWebuiRefresh2026Enabled() ? "webui-refresh-2026" : "");
+
+  ui::TrackedElementHandlerDocumentSingleton::Register(
+      this, std::vector<ui::ElementIdentifier>{
+                kEnhancedProtectionSettingElementId,
+                kAnonymizedUrlCollectionPersonalizationSettingId,
+                kInactiveTabSettingElementId,
+                kGlicOsToggleElementId,
+                kGlicOsWidgetKeyboardShortcutElementId,
+            });
 
   TryShowHatsSurveyWithTimeout();
 }
@@ -839,14 +853,9 @@ void SettingsUI::CreateHelpBubbleHandler(
     mojo::PendingRemote<help_bubble::mojom::HelpBubbleClient> client,
     mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandler> handler) {
   help_bubble_handler_ = std::make_unique<user_education::HelpBubbleHandler>(
-      std::move(handler), std::move(client), this,
-      std::vector<ui::ElementIdentifier>{
-          kEnhancedProtectionSettingElementId,
-          kAnonymizedUrlCollectionPersonalizationSettingId,
-          kInactiveTabSettingElementId,
-          kGlicOsToggleElementId,
-          kGlicOsWidgetKeyboardShortcutElementId,
-      });
+      std::move(handler), std::move(client),
+      ui::TrackedElementHandlerDocumentSingleton::GetOrCreate(
+          web_ui()->GetRenderFrameHost()));
 }
 
 void SettingsUI::CreateCustomizeColorSchemeModeHandler(

@@ -103,7 +103,6 @@ by a child template that "extends" this file.
       resizeTo, moveBy}|).
     -->
     <uses-permission android:name="android.permission.REPOSITION_SELF_WINDOWS"/>
-    <uses-permission android:name="android.permission.REQUEST_FULLSCREEN_MODE"/>
     <uses-permission android:name="android.permission.USE_CREDENTIALS"/>
     <uses-permission-sdk-23 android:name="android.permission.USE_BIOMETRIC"/>
     <uses-permission-sdk-23 android:name="android.permission.USE_FINGERPRINT"/>
@@ -485,6 +484,7 @@ by a child template that "extends" this file.
             android:theme="@style/Theme.BrowserUI.NoDisplay"
             android:taskAffinity=""
             android:excludeFromRecents="true"
+            android:launchMode="singleInstance"
             android:exported="false">
             <property android:name="android.window.PROPERTY_SUPPORTS_MULTI_INSTANCE_SYSTEM_UI"
                 android:value="true" />

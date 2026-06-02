@@ -293,6 +293,7 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
   _tabGridButton = [self createTabGridButton];
   [self updateTabGridButtonForTabGridVisibility];
   [self updateNewTabButtonAccessibilityLabel];
+  [self updateNewTabButtonAccessibilityHint];
 
   // When rotated in landscape, add spacers at the beginning and end of the
   // stack view so that the buttons width match the "height" of the stack view,
@@ -371,6 +372,7 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
   [self updateTabGridButtonForTabGridVisibility];
   [self updateNewTabButtonForTabGroupsVisibility];
   [self updateNewTabButtonAccessibilityLabel];
+  [self updateNewTabButtonAccessibilityHint];
 }
 
 - (void)setIncognito:(BOOL)incognito {
@@ -974,8 +976,19 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
     }
   } else {
     _openNewTabButton.accessibilityLabel =
-        l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_NEW_TAB);
+        _backgroundView.incognito
+            ? l10n_util::GetNSString(IDS_IOS_TOOLBAR_OPEN_NEW_TAB_INCOGNITO)
+            : l10n_util::GetNSString(IDS_IOS_TOOLBAR_OPEN_NEW_TAB);
   }
+}
+
+// Updates the accessibility hint for the new tab button based on the current
+// state.
+- (void)updateNewTabButtonAccessibilityHint {
+  _openNewTabButton.accessibilityHint =
+      _isTabGridVisible
+          ? nil
+          : l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_NEW_TAB);
 }
 
 // Updates the Tab Grid button for the given Tab Grid showing state.
@@ -1011,6 +1024,10 @@ CGFloat ButtonHighlightAlpha(UIButton* button) {
                     label.textColor = labelColor;
                   }
                   completion:nil];
+  _tabGridButton.accessibilityHint =
+      _isTabGridVisible
+          ? nil
+          : l10n_util::GetNSString(IDS_IOS_TOOLBAR_ACCESSIBILITY_HINT_TAB_GRID);
 }
 
 // Calls the button's setNeedsUpdateConfiguration, either immediately or in an

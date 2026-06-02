@@ -390,9 +390,28 @@ unsigned FragmentainerUniqueIdentifier(const PhysicalBoxFragment& fragment) {
   return 0;
 }
 
+const LayoutBlock* GetLayoutCaretBlockFromInnerEditor(
+    const LayoutObject* layout_object) {
+  if (!layout_object->IsTextControlInnerEditor()) {
+    return nullptr;
+  }
+  const LayoutBlock* caret_block =
+      layout_object->GetFrame()->Selection().GetCaretLayoutBlock();
+  if (!caret_block || caret_block == layout_object ||
+      caret_block->Parent() != layout_object) {
+    return nullptr;
+  }
+  return caret_block;
+}
+
 bool ShouldPaintCursorCaret(const PhysicalBoxFragment& fragment) {
-  return fragment.GetLayoutObject()->GetFrame()->Selection().ShouldPaintCaret(
-      fragment);
+  const auto* layout_object = fragment.GetLayoutObject();
+  // Defer caret painting until InnerEditor is painted.
+  // See:
+  // https://docs.google.com/document/d/1Op8-rI8Le4LHBfIYgXpGxvjPdj6CMxmmx_lvF1_kV4w
+  return (RuntimeEnabledFeatures::PaintCaretAfterInnerEditorPaintEnabled() &&
+          GetLayoutCaretBlockFromInnerEditor(layout_object)) ||
+         layout_object->GetFrame()->Selection().ShouldPaintCaret(fragment);
 }
 
 bool ShouldPaintDragCaret(const PhysicalBoxFragment& fragment) {
@@ -403,8 +422,18 @@ bool ShouldPaintDragCaret(const PhysicalBoxFragment& fragment) {
       .ShouldPaintCaret(fragment);
 }
 
+bool IsAnonymousLayoutInInnerEditor(const LayoutObject* layout_object) {
+  return layout_object->IsAnonymous() && layout_object->Parent() &&
+         layout_object->Parent()->IsTextControlInnerEditor();
+}
+
 bool ShouldPaintCarets(const PhysicalBoxFragment& fragment) {
-  return ShouldPaintCursorCaret(fragment) || ShouldPaintDragCaret(fragment);
+  // Defer caret painting until InnerEditor is painted.
+  // See:
+  // https://docs.google.com/document/d/1Op8-rI8Le4LHBfIYgXpGxvjPdj6CMxmmx_lvF1_kV4w
+  return !(RuntimeEnabledFeatures::PaintCaretAfterInnerEditorPaintEnabled() &&
+           IsAnonymousLayoutInInnerEditor(fragment.GetLayoutObject())) &&
+         (ShouldPaintCursorCaret(fragment) || ShouldPaintDragCaret(fragment));
 }
 
 PaintInfo FloatPaintInfo(const PaintInfo& paint_info) {
@@ -555,11 +584,13 @@ void BoxFragmentPainter::PaintAdHighlightIfNeeded(
 }
 
 PhysicalRect BoxFragmentPainter::InkOverflowIncludingFilters() const {
-  if (box_item_)
-    return box_item_->SelfInkOverflowRect();
+  if (box_item_) {
+    return To<LayoutBoxModelObject>(GetPhysicalFragment().GetLayoutObject())
+        ->ApplyFiltersToRect(box_item_->SelfInkOverflowRect());
+  }
   const auto& fragment = GetPhysicalFragment();
   DCHECK(!fragment.IsInlineBox());
-  return To<LayoutBox>(fragment.GetLayoutObject())
+  return To<LayoutBoxModelObject>(fragment.GetLayoutObject())
       ->VisualOverflowRectIncludingFilters();
 }
 
@@ -942,8 +973,17 @@ void BoxFragmentPainter::PaintCaretsIfNeeded(
   }
 
   LocalFrame* frame = box_fragment_.GetLayoutObject()->GetFrame();
-  if (ShouldPaintCursorCaret(box_fragment_))
-    frame->Selection().PaintCaret(paint_info.context, paint_offset);
+  if (ShouldPaintCursorCaret(box_fragment_)) {
+    PhysicalOffset block_offset;
+    if (const auto* caret_block = GetLayoutCaretBlockFromInnerEditor(
+            box_fragment_.GetLayoutObject())) {
+      block_offset = caret_block->LocalToAncestorPoint(
+          PhysicalOffset(),
+          To<LayoutBoxModelObject>(box_fragment_.GetLayoutObject()));
+    }
+    frame->Selection().PaintCaret(paint_info.context,
+                                  paint_offset + block_offset);
+  }
 
   if (ShouldPaintDragCaret(box_fragment_)) {
     frame->GetPage()->GetDragCaret().PaintDragCaret(frame, paint_info.context,
@@ -2435,7 +2475,9 @@ bool BoxFragmentPainter::NodeAtPoint(const HitTestContext& hit_test,
     } else if (fragment.IsSvgText()) {
       pointer_events_bounding_box =
           fragment.Style().UsedPointerEvents() == EPointerEvents::kBoundingBox;
-      hit_test_self = pointer_events_bounding_box;
+      hit_test_self =
+          pointer_events_bounding_box ||
+          hit_test.result->GetHitTestRequest().IsHitTestVisualOverflow();
     }
   }
 
@@ -2460,15 +2502,9 @@ bool BoxFragmentPainter::NodeAtPoint(const HitTestContext& hit_test,
     PhysicalRect bounds_rect(physical_offset, size);
     if (hit_test.result->GetHitTestRequest().IsHitTestVisualOverflow())
         [[unlikely]] {
-      // We'll include overflow from children here (in addition to self-overflow
-      // caused by filters), because we want to record a match if we hit the
-      // overflow of a child below the stop node. This matches legacy behavior
-      // in LayoutBox::NodeAtPoint(); see call to
-      // VisualOverflowRectIncludingFilters().
       bounds_rect = InkOverflowIncludingFilters();
       bounds_rect.Move(physical_offset);
-    }
-    if (pointer_events_bounding_box) [[unlikely]] {
+    } else if (pointer_events_bounding_box) [[unlikely]] {
       bounds_rect = PhysicalRect::EnclosingRect(
           GetPhysicalFragment().GetLayoutObject()->ObjectBoundingBox());
     }

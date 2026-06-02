@@ -35,6 +35,10 @@
 #include "components/security_state/core/security_state.h"
 #include "ui/gfx/geometry/rect_f.h"
 
+namespace net {
+class SchemefulSite;
+}
+
 class GoogleGroupsManager;
 class GURL;
 class PrefService;
@@ -583,8 +587,11 @@ class AutofillClient {
       AutofillSuggestionTriggerSource trigger_source,
       AutofillSuggestionsIgnoreFocusLoss ignore_focus_loss);
 
-  // Hides the Autofill suggestions UI if it is currently showing.
-  virtual void HideAutofillSuggestions(SuggestionHidingReason reason) = 0;
+  // Hides the suggestions UI if it is currently showing.
+  // If `product` is specified, only hides suggestions if they belong to that
+  // specific `FillingProduct`.
+  virtual void HideSuggestions(SuggestionHidingReason reason,
+                               std::optional<FillingProduct> product) = 0;
 
   // Maybe triggers a hats survey that measures the user's perception of
   // Autofill. When triggering happens, the survey dialog will be displayed with
@@ -670,7 +677,8 @@ class AutofillClient {
 
 #if BUILDFLAG(IS_ANDROID)
   // Shows the @memory bottom sheet. Triggered by keyboard accessory controller.
-  virtual void ShowAtMemoryBottomSheet();
+  virtual void ShowAtMemoryBottomSheet(
+      base::span<const Suggestion> suggestions);
 
   // The AutofillSnackbarController is used to show a snackbar notification
   // on Android.
@@ -686,6 +694,11 @@ class AutofillClient {
   // Whether we can add more information to the contents of suggestions text due
   // to the use of a large keyboard accessory view. See b/40942168.
   virtual bool ShouldFormatForLargeKeyboardAccessory() const;
+
+  // Returns true if the device is considered a large form factor for the
+  // purposes of the keyboard accessory. On Android, this considers screen
+  // dimensions and physical keyboard status.
+  virtual bool IsAndroidLargeFormFactor() const;
 
   // Returns a pointer to a DeviceAuthenticator. Might be nullptr if the given
   // platform is not supported.
@@ -766,6 +779,17 @@ class AutofillClient {
   virtual void ShowAutofillAiFetchFromWalletFailureNotification();
 
   virtual void ShowEmailVerifiedToast();
+
+  // Shows a yes/no prompt asking the user to confirm that they want to verify
+  // their email. The prompt is anchored on the field at `element_bounds`.
+  // `issuer_site` is the site that issued the assertion.
+  // `callback` is called with the user's decision (true for yes, false for no).
+  // Dismissing the bubble is treated as no.
+  virtual void ShowEmailVerificationPopup(
+      const gfx::RectF& element_bounds,
+      const net::SchemefulSite& issuer_site,
+      const std::u16string& email,
+      base::OnceCallback<void(bool)> callback);
 
   // May return null on platforms where OTPs are not supported.
   virtual OtpFieldDetector* GetOtpFieldDetector();

@@ -247,9 +247,6 @@
 -keepnames,allowaccessmodification class ** extends java.lang.Throwable {}
 
 # Allow R8 to optimize away proto lite functionality that is not used.
--assumenosideeffects class com.google.protobuf.ManifestSchemaFactory {
-    com.google.protobuf.MessageInfoFactory getDescriptorMessageInfoFactory();
-}
 -assumenosideeffects class com.google.protobuf.SchemaUtil {
     java.lang.Class getGeneratedMessageClass();
     java.lang.Class getUnknownFieldSetSchemaClass();
@@ -296,6 +293,9 @@
 # Keep implementation classes needed for split compat. These will be accessed by
 # reflection.
 -keep,allowobfuscation,allowoptimization,allowaccessmodification public class ** extends org.chromium.chrome.browser.base.SplitCompat*$Impl {
+  public <init>();
+}
+-keep,allowobfuscation,allowoptimization,allowaccessmodification public class ** extends org.chromium.base.SplitCompatService$Impl {
   public <init>();
 }
 

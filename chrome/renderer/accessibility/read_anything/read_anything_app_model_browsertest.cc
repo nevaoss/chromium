@@ -13,6 +13,7 @@
 #include "base/containers/span.h"
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
+#include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/threading/platform_thread.h"
 #include "base/time/time.h"
@@ -2515,6 +2516,58 @@ TEST_F(ReadAnythingAppModelTest, MapRenderedTextToTree_ResetsMappingState) {
   EXPECT_TRUE(model().text_to_ax_map()[1].empty());
 }
 
+TEST_F(ReadAnythingAppModelTest, MapRenderedTextToTree_RecordsMetrics) {
+  base::HistogramTester histograms;
+  model().set_should_map_rendered_text_to_tree_for_readability(true);
+  // Setup a tree
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  update.root_id = 1;
+  update.nodes = {test::TextNode(1, u"Hello World")};
+  ApplyAccessibilityUpdates(tree_id_, {update});
+  model().MapRenderedTextToTree({u"Hello World"});
+
+  histograms.ExpectUniqueSample(
+      "Accessibility.ReadAnything.ReadabilityMapping.SuccessRate", 100, 1);
+  histograms.ExpectTotalCount(
+      "Accessibility.ReadAnything.ReadabilityMapping.0_Total.ExecutionTime", 1);
+  histograms.ExpectTotalCount(
+      "Accessibility.ReadAnything.ReadabilityMapping.1_Flattening."
+      "ExecutionTime",
+      1);
+  histograms.ExpectTotalCount(
+      "Accessibility.ReadAnything.ReadabilityMapping.2_SuffixArray."
+      "ExecutionTime",
+      1);
+  histograms.ExpectTotalCount(
+      "Accessibility.ReadAnything.ReadabilityMapping.3_InitialAnchors."
+      "ExecutionTime",
+      1);
+  histograms.ExpectTotalCount(
+      "Accessibility.ReadAnything.ReadabilityMapping.4_GapAlignment."
+      "ExecutionTime",
+      1);
+}
+
+TEST_F(ReadAnythingAppModelTest,
+       MapRenderedTextToTree_RecordsPartialSuccessRate) {
+  base::HistogramTester histograms;
+  model().set_should_map_rendered_text_to_tree_for_readability(true);
+  // Setup a tree
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  update.root_id = 1;
+  update.nodes = {test::TextNode(1, u"Mapped Text")};
+  ApplyAccessibilityUpdates(tree_id_, {update});
+
+  // Provide two blocks: one that matches perfectly, and one that doesn't match
+  // at all. Both blocks are the same length (11 characters).
+  model().MapRenderedTextToTree({u"Mapped Text", u"Unmap Text!"});
+
+  histograms.ExpectUniqueSample(
+      "Accessibility.ReadAnything.ReadabilityMapping.SuccessRate", 50, 1);
+}
+
 TEST_F(ReadAnythingAppModelTest,
        MapRenderedTextToTree_ClearsPreviousDataOnNewCall) {
   // Setup a valid tree with text and flatten it to populate data.
@@ -2604,9 +2657,9 @@ TEST_F(ReadAnythingAppModelTest, MapRenderedTextToTree_UniquenessConstraints) {
   ui::AXTreeUpdate update;
   test::SetUpdateTreeID(&update, tree_id_);
   ui::AXNodeData root = test::GenericContainerNode(1);
-  ui::AXNodeData node2 = test::TextNode(2, u"Duplicate");
+  ui::AXNodeData node2 = test::TextNode(2, u"Twinword");
   ui::AXNodeData node3 = test::TextNode(3, u"Unique");
-  ui::AXNodeData node4 = test::TextNode(4, u"Duplicate");
+  ui::AXNodeData node4 = test::TextNode(4, u"Twinword");
   root.child_ids = {node2.id, node3.id, node4.id};
   update.root_id = root.id;
   update.nodes = {root, node2, node3, node4};
@@ -2616,8 +2669,8 @@ TEST_F(ReadAnythingAppModelTest, MapRenderedTextToTree_UniquenessConstraints) {
   // "Duplicate" is unique in blocks, but not AXTree (appears twice).
   // "Unique" is unique in both.
   // "Repeated" is unique in AXTree (it's not there), but not in blocks.
-  std::vector<std::u16string> blocks = {u"Duplicate", u"Unique", u"Repeated",
-                                        u"Repeated"};
+  std::vector<std::u16string> blocks = {u"Twinword", u"Unique", u"Repeat",
+                                        u"Repeat"};
 
   // Run mapping algorithm.
   model().set_should_map_rendered_text_to_tree_for_readability(true);
@@ -2660,6 +2713,7 @@ TEST_F(ReadAnythingAppModelTest, MapRenderedTextToTree_PartialNodeMapping) {
 
   // Node 2 ("Hello") contains "llo"
   EXPECT_EQ(mapping[0].id, 2);
+  EXPECT_EQ(mapping[0].ax_node_offset, 2);
   EXPECT_EQ(mapping[0].start, 0);  // "llo" is at the start of our 7-char block
   EXPECT_EQ(mapping[0].end, 3);
 
@@ -2667,11 +2721,13 @@ TEST_F(ReadAnythingAppModelTest, MapRenderedTextToTree_PartialNodeMapping) {
   EXPECT_EQ(mapping[1].id, 3);
   EXPECT_EQ(mapping[1].start, 3);
   EXPECT_EQ(mapping[1].end, 4);
+  EXPECT_EQ(mapping[1].ax_node_offset, 0);
 
   // Node 4 ("World!") contains "Wor"
   EXPECT_EQ(mapping[2].id, 4);
   EXPECT_EQ(mapping[2].start, 4);
   EXPECT_EQ(mapping[2].end, 7);  // End of our 7-char block
+  EXPECT_EQ(mapping[2].ax_node_offset, 0);
 }
 
 TEST_F(ReadAnythingAppModelTest, FlattenAXTree_BuildsContiguousString) {

@@ -19,8 +19,8 @@ import android.view.ViewGroup;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.VisibleForTesting;
-import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
+import androidx.recyclerview.widget.RecyclerView;
 
 import org.chromium.base.CallbackController;
 import org.chromium.base.CallbackUtils;
@@ -39,6 +39,8 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.app.feed.FeedActionDelegateImpl;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsUtils;
+import org.chromium.chrome.browser.browser_controls.BrowserControlsVisibilityManager;
 import org.chromium.chrome.browser.device_lock.DeviceLockActivityLauncherImpl;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
 import org.chromium.chrome.browser.feed.FeedActionDelegate;
@@ -87,12 +89,15 @@ import org.chromium.chrome.browser.tab_ui.InvalidationAwareThumbnailProvider;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tasks.HomeSurfaceTracker;
 import org.chromium.chrome.browser.toolbar.top.Toolbar;
+import org.chromium.chrome.browser.ui.bottombar.BottomBarConfigUtils;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
+import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
 import org.chromium.chrome.browser.ui.edge_to_edge.TopInsetProvider;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager.SnackbarManageable;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
 import org.chromium.chrome.browser.ui.native_page.NativePageHost;
+import org.chromium.chrome.browser.ui.theme.ChromeSemanticColorUtils;
 import org.chromium.chrome.browser.url_constants.UrlConstantResolver;
 import org.chromium.chrome.browser.url_constants.UrlConstantResolverFactory;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
@@ -112,6 +117,7 @@ import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 
+import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -191,6 +197,8 @@ public class NewTabPage
     private boolean mUseLightIconTint;
 
     private @Nullable NtpSmoothTransitionDelegate mSmoothTransitionDelegate;
+
+    private RecyclerView.@Nullable OnScrollListener mNtpScrollListener;
 
     private final CallbackController mCallbackController = new CallbackController();
 
@@ -445,7 +453,7 @@ public class NewTabPage
         mContext = activity;
         mTitle = activity.getResources().getString(R.string.new_tab_title);
 
-        mBackgroundColor = ContextCompat.getColor(mContext, R.color.home_surface_background_color);
+        mBackgroundColor = ChromeSemanticColorUtils.getHomeSurfaceBackgroundColor(activity);
 
         mIsTablet = isTablet;
         mTemplateUrlService = TemplateUrlServiceFactory.getForProfile(profile);
@@ -574,6 +582,8 @@ public class NewTabPage
 
         sTotalCount++;
         NewTabPageUma.recordSimultaneousNtpCount(sTotalCount);
+
+        updateNtpScrollListener(true);
 
         TraceEvent.end(TAG);
     }
@@ -1053,6 +1063,8 @@ public class NewTabPage
             mHomepageStateListener = null;
         }
 
+        updateNtpScrollListener(false);
+
         sTotalCount--;
         mIsDestroyed = true;
     }
@@ -1094,7 +1106,7 @@ public class NewTabPage
     public @ColorInt int getToolbarTextBoxBackgroundColor(@ColorInt int defaultColor) {
         if (isLocationBarShownInNtp()) {
             if (!isLocationBarScrolledToTopInNtp()) {
-                return ContextCompat.getColor(mContext, R.color.home_surface_background_color);
+                return getBackgroundColor();
             }
 
             if (mIsInNightMode) {
@@ -1253,5 +1265,85 @@ public class NewTabPage
 
     public void enableSearchBoxEditText(boolean enable) {
         mNewTabPageCoordinator.enableSearchBoxEditText(enable);
+    }
+
+    private void updateNtpScrollListener(boolean attach) {
+        if (!(mFeedSurfaceProvider instanceof FeedSurfaceCoordinator)) return;
+        RecyclerView recyclerView =
+                ((FeedSurfaceCoordinator) mFeedSurfaceProvider).getRecyclerView();
+
+        if (attach && recyclerView != null && mNtpScrollListener == null) {
+            mNtpScrollListener = new NtpScrollListener(mBrowserControlsStateProvider, mContext);
+            recyclerView.addOnScrollListener(mNtpScrollListener);
+        } else if (!attach && mNtpScrollListener != null) {
+            if (recyclerView != null) {
+                recyclerView.removeOnScrollListener(mNtpScrollListener);
+            }
+            mNtpScrollListener = null;
+        }
+    }
+
+    private static class NtpScrollListener extends RecyclerView.OnScrollListener {
+        private static final int SCROLL_THRESHOLD_DP = 20;
+
+        private final WeakReference<BrowserControlsStateProvider> mControlsProviderRef;
+        private final WeakReference<Context> mContextRef;
+
+        private int mAccumulatedScrollY;
+
+        NtpScrollListener(BrowserControlsStateProvider controlsProvider, Context context) {
+            mControlsProviderRef = new WeakReference<>(controlsProvider);
+            mContextRef = new WeakReference<>(context);
+        }
+
+        @Override
+        public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+            if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                mAccumulatedScrollY = 0;
+            }
+        }
+
+        @Override
+        public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+            BrowserControlsStateProvider provider = mControlsProviderRef.get();
+            Context context = mContextRef.get();
+            if (provider == null || context == null) return;
+            if (!(provider instanceof BrowserControlsVisibilityManager)) return;
+
+            BrowserControlsVisibilityManager manager = (BrowserControlsVisibilityManager) provider;
+            int bottomControlsHeight = manager.getBottomControlsHeight();
+            if (bottomControlsHeight <= 0) return;
+
+            boolean isBottomBarEnabled = BottomBarConfigUtils.isBottomBarEnabled(context);
+            boolean isBottomChinEnabled =
+                    context instanceof Activity
+                            && EdgeToEdgeUtils.isEdgeToEdgeBottomChinEnabled((Activity) context);
+            if (!isBottomBarEnabled && !isBottomChinEnabled) {
+                return;
+            }
+
+            float density = context.getResources().getDisplayMetrics().density;
+            int thresholdPx = (int) (SCROLL_THRESHOLD_DP * density);
+
+            if (Integer.signum(dy) != Integer.signum(mAccumulatedScrollY)
+                    && dy != 0
+                    && mAccumulatedScrollY != 0) {
+                mAccumulatedScrollY = 0;
+            }
+
+            mAccumulatedScrollY += dy;
+
+            if (mAccumulatedScrollY > thresholdPx) {
+                if (!BrowserControlsUtils.areBottomControlsOffScreen(manager)) {
+                    manager.hideAndroidControls(true);
+                }
+                mAccumulatedScrollY = 0;
+            } else if (mAccumulatedScrollY < -thresholdPx) {
+                if (!BrowserControlsUtils.areBottomControlsFullyVisible(manager)) {
+                    manager.showAndroidControls(true);
+                }
+                mAccumulatedScrollY = 0;
+            }
+        }
     }
 }

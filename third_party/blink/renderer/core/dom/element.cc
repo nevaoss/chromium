@@ -129,6 +129,7 @@
 #include "third_party/blink/renderer/core/dom/first_letter_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/flat_tree_traversal.h"
 #include "third_party/blink/renderer/core/dom/focus_params.h"
+#include "third_party/blink/renderer/core/dom/focusgroup_dom_token_list.h"
 #include "third_party/blink/renderer/core/dom/indexed_pseudo_element.h"
 #include "third_party/blink/renderer/core/dom/interest_invoker_target_data.h"
 #include "third_party/blink/renderer/core/dom/invalidate_node_list_caches_scope.h"
@@ -2643,7 +2644,8 @@ int Element::clientWidth() {
             .Round();
       }
       return AdjustForAbsoluteZoom::AdjustInt(
-          layout_view->GetLayoutSize().width(), layout_view->StyleRef());
+          layout_view->GetLayoutSize(kExcludeScrollbars).width(),
+          layout_view->StyleRef());
     }
   }
 
@@ -2684,7 +2686,8 @@ int Element::clientHeight() {
             .Round();
       }
       return AdjustForAbsoluteZoom::AdjustInt(
-          layout_view->GetLayoutSize().height(), layout_view->StyleRef());
+          layout_view->GetLayoutSize(kExcludeScrollbars).height(),
+          layout_view->StyleRef());
     }
   }
 
@@ -3875,6 +3878,12 @@ void Element::AttributeChanged(const AttributeModificationParams& params) {
       }
     }
   } else if (name == html_names::kFocusgroupAttr) {
+    // Keep the DOMTokenList in sync when the content attribute changes.
+    if (const ElementRareDataVector* data = RareData()) {
+      if (DOMTokenList* token_list = data->GetFocusgroupTokenList()) {
+        token_list->DidUpdateAttributeValue(params.old_value, params.new_value);
+      }
+    }
     // Only update the focusgroup flags when the node has been added to the
     // tree. This is because the computed focusgroup value will depend on the
     // focusgroup value of its closest ancestor node that is a focusgroup, if
@@ -11282,6 +11291,18 @@ DOMTokenList& Element::classList() {
     data_ = rare_data;
   }
   return *rare_data->GetClassList();
+}
+
+DOMTokenList& Element::focusGroup() {
+  ElementRareDataVector* rare_data = &EnsureRareData();
+  if (!rare_data->GetFocusgroupTokenList()) {
+    auto* token_list = MakeGarbageCollected<FocusgroupDOMTokenList>(*this);
+    token_list->DidUpdateAttributeValue(
+        g_null_atom, getAttribute(html_names::kFocusgroupAttr));
+    rare_data = rare_data->SetFocusgroupTokenList(token_list);
+    data_ = rare_data;
+  }
+  return *rare_data->GetFocusgroupTokenList();
 }
 
 DOMStringMap& Element::dataset() {

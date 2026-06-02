@@ -117,7 +117,7 @@
     {
         "name": "browser",
         "group": "androidx.browser",
-        "version": "1.10.0"
+        "version": "1.11.0-SNAPSHOT"
     },
     {
         "name": "app",
@@ -1472,12 +1472,12 @@
     {
         "name": "wire-runtime",
         "group": "com.squareup.wire",
-        "version": "6.0.0"
+        "version": "6.4.0"
     },
     {
         "name": "wire-runtime-jvm",
         "group": "com.squareup.wire",
-        "version": "6.0.0"
+        "version": "6.4.0"
     },
     {
         "name": "javawriter",

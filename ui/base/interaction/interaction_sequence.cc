@@ -1157,7 +1157,7 @@ void InteractionSequence::CompleteStepTransition() {
   }
 
   step_transition_callback_ = base::BindOnce(&InteractionSequence::FinishStep,
-                                            weak_factory_.GetWeakPtr());
+                                             weak_factory_.GetWeakPtr());
 
   RunIfValid(std::move(current_step_->start_callback), this,
              current_step_->element.get());

@@ -367,7 +367,7 @@ def enable_boringssl(module, arch):
         static_libs = module.target[arch].static_libs
         whole_static_libs = module.target[arch].whole_static_libs
     shared_libs.add(f'{MODULE_PREFIX}{LIBCRYPTO_UNSTRIPPED}')
-    if module.type == "cc_library_static":
+    if module.type == "cc_library_static" or module.type == "rust_ffi_static":
         static_libs.add(f'{MODULE_PREFIX}ssl_and_pki')
     else:
         whole_static_libs.add(f'{MODULE_PREFIX}ssl_and_pki')
@@ -1748,6 +1748,16 @@ class BaseActionSanitizer():
             os.path.splitext(it)[1] == '.h' for it in self.target.outputs)
 
 
+class GenerateCanonicalLocalesListSanitizer(BaseActionSanitizer):
+
+    def _sanitize_args(self):
+        self._set_arg_at(0, '$(out)')
+        super()._sanitize_args()
+
+    def is_header_generated(self):
+        return True
+
+
 class WriteBuildDateHeaderSanitizer(BaseActionSanitizer):
 
     def _sanitize_args(self):
@@ -2184,6 +2194,8 @@ def get_action_sanitizer(gn, target, gn_type, arch, is_test_target):
         return PerfettoWriteBuildFlagHeaderSanitizer(target, arch)
     if target.script == "//base/write_build_date_header.py":
         return WriteBuildDateHeaderSanitizer(target, arch)
+    if target.script == "//tools/i18n/generate_canonical_locales_list.py":
+        return GenerateCanonicalLocalesListSanitizer(target, arch)
     if target.script == "//tools/metrics/histograms/generate_allowlist_from_histograms_file.py":
         return WriteGenerateAllowlistFromHistogramsFileSanitizer(target, arch)
     if target.script == "//build/util/version.py":
@@ -3192,6 +3204,9 @@ def create_modules_from_target(blueprint, gn, gn_target_name, parent_gn_type,
         ]:
             module.crate_name = target.crate_name
             module.crate_root = gn_utils.label_to_path(target.crate_root)
+            if target.inputs:
+                module.srcs.update(
+                    gn_utils.label_to_path(inp) for inp in target.inputs)
             if target.rust_package_version:
                 module.cargo_env_compat = True
                 module.cargo_pkg_version = target.rust_package_version

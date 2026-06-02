@@ -10,9 +10,11 @@
 #include "base/callback_list.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
+#include "chrome/browser/contextual_cueing/contextual_cueing_enums.h"
 #include "chrome/browser/contextual_cueing/cue_target.h"
 #include "components/optimization_guide/proto/features/contextual_cueing.pb.h"
 #include "components/page_content_annotations/core/page_content_annotations_service.h"
+#include "services/metrics/public/cpp/ukm_source_id.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
 class BrowserWindowInterface;
@@ -82,12 +84,18 @@ class ContextualCueingController
   // Returns the CueTarget for the given CueTargetType, or nullptr if there is
   // none.
   CueTarget* GetTarget(CueTargetType type);
-  // Getter function for CUJ of shown cue
-  const std::string& current_cuj() const { return current_cuj_; }
+  void OnCueInteraction(ContextualCueingInteraction interaction_type,
+                        CueTargetType cue_type,
+                        const std::string& cuj,
+                        CueActionData data);
 
  private:
   // Initiates a model execution request to MES for the current window state.
   void InitiateModelExecutionRequest();
+
+  // Calculate the amount of time the current cue has been shown, and reset the
+  // shown timestamp.
+  base::TimeDelta ExtractCueShownDuration();
 
   // Callback for when the model execution response is received.
   void OnModelExecutionResponseReceived(
@@ -98,16 +106,22 @@ class ContextualCueingController
   // Whether the URL is eligible for a cue.
   bool IsUrlEligibleForCue(const GURL& url);
 
-  // Returns true if the cue should be shown to the user.
-  bool IsAllowedToShowCue();
+  // Returns ContextualCueingDecision::kUnspecified if the cue should be shown
+  // to the user, or the specific decision explaining why it is not allowed.
+  ContextualCueingDecision IsAllowedToShowCue();
 
   // Returns true if the user is subject to age restrictions.
   bool IsUserSubjectToAgeRestrictions();
+
+  // Returns the active tab's ukm::SourceId, or ukm::kInvalidSourceId if there
+  // is no active tab.
+  ukm::SourceId GetActiveTabSourceId() const;
 
   void ShowCue(CueTargetType cue_type,
                const CueTarget& target,
                optimization_guide::proto::ContextualCueingResponse response);
   void OnCueClicked(CueTargetType cue_type,
+                    std::string cuj,
                     CueActionData data,
                     actions::ActionItem*,
                     actions::ActionInvocationContext);
@@ -134,8 +148,8 @@ class ContextualCueingController
   raw_ptr<TemplateURLService> template_url_service_;
   raw_ptr<signin::IdentityManager> identity_manager_;
   absl::flat_hash_map<CueTargetType, std::unique_ptr<CueTarget>> cue_targets_;
-  std::string current_cuj_;
   base::CallbackListSubscription side_panel_shown_subscription_;
+  base::TimeTicks cue_shown_time_;
 
 #if !BUILDFLAG(IS_ANDROID)
   std::unique_ptr<page_actions::PageActionObserver> page_action_observer_;

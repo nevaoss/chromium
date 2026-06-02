@@ -12,6 +12,7 @@ import("//components/enterprise/buildflags/buildflags.gni")
 import("//components/guest_view/buildflags/buildflags.gni")
 import("//components/safe_browsing/buildflags.gni")
 import("//components/spellcheck/spellcheck_build_features.gni")
+import("//content/browser/devtools/features.gni")
 import("//content/public/common/features.gni")
 import("//extensions/buildflags/buildflags.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
@@ -1581,6 +1582,10 @@ source_set("extensions") {
       "api/tabs/app_window_helper.h",
     ]
   }
+
+  if (enable_devtools_frontend) {
+    deps += [ "//chrome/browser/ui/webui/devtools" ]
+  }
 }
 
 static_library("test_support") {
@@ -1743,6 +1748,7 @@ source_set("chrome_extensions_browser_client") {
       "//chrome/browser/extensions",
       "//chrome/browser/extensions/api/runtime",
       "//chrome/browser/profiles",
+      "//chrome/browser/ui/webui/devtools",
       "//chrome/common",
       "//components/signin/core/browser",
       "//components/update_client",
@@ -1874,6 +1880,7 @@ source_set("unit_tests") {
     "event_router_forwarder_unittest.cc",
     "extension_action_icon_factory_unittest.cc",
     "extension_action_runner_unittest.cc",
+    "extension_allowlist_unittest.cc",
     "extension_commands_global_registry_unittest.cc",
     "extension_error_controller_unittest.cc",
     "extension_garbage_collector_unittest.cc",
@@ -2044,7 +2051,6 @@ source_set("unit_tests") {
       "chrome_app_icon_unittest.cc",
       "chrome_app_sorting_unittest.cc",
       "error_console/error_console_unittest.cc",
-      "extension_allowlist_unittest.cc",
       "extension_error_ui_default_unittest.cc",
       "initial_external_extension_loader_unittest.cc",
       "manifest_v2_experiment_manager_unittest.cc",

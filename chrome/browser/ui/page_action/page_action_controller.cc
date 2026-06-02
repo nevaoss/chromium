@@ -210,8 +210,15 @@ void PageActionControllerImpl::DoShowAnchoredMessage(
       PageActionPassKey(),
       /*show=*/true);
   active_anchored_message_ = action_id;
+  anchored_message_timeout_pause_count_ = 0;
+  anchored_message_has_timeout_ =
+      config.priority != PageActionPriorityCategory::kUserInteraction;
+
+  if (!anchored_message_has_timeout_) {
+    return;
+  }
   anchored_message_timeout_.Start(
-      FROM_HERE, base::Seconds(12),
+      FROM_HERE, base::Seconds(15),
       base::BindRepeating(&PageActionControllerImpl::DowngradeAnchoredMessage,
                           base::Unretained(this), action_id));
 }
@@ -233,6 +240,8 @@ void PageActionControllerImpl::DoHideAnchoredMessage(
     actions::ActionId action_id) {
   if (active_anchored_message_ == action_id) {
     active_anchored_message_ = std::nullopt;
+    anchored_message_timeout_pause_count_ = 0;
+    anchored_message_has_timeout_ = false;
     if (anchored_message_timeout_.IsRunning()) {
       anchored_message_timeout_.Stop();
     }
@@ -244,16 +253,24 @@ void PageActionControllerImpl::DoHideAnchoredMessage(
 
 void PageActionControllerImpl::PauseAnchoredMessageTimeout(
     actions::ActionId action_id) {
-  if (active_anchored_message_ == action_id &&
-      anchored_message_timeout_.IsRunning()) {
-    anchored_message_timeout_.Stop();
+  if (active_anchored_message_ == action_id) {
+    ++anchored_message_timeout_pause_count_;
+    if (anchored_message_timeout_pause_count_ == 1 &&
+        anchored_message_timeout_.IsRunning()) {
+      anchored_message_timeout_.Stop();
+    }
   }
 }
 
 void PageActionControllerImpl::ResumeAnchoredMessageTimeout(
     actions::ActionId action_id) {
   if (active_anchored_message_ == action_id) {
-    anchored_message_timeout_.Reset();
+    --anchored_message_timeout_pause_count_;
+    CHECK_GE(anchored_message_timeout_pause_count_, 0);
+    if (anchored_message_timeout_pause_count_ == 0 &&
+        anchored_message_has_timeout_) {
+      anchored_message_timeout_.Reset();
+    }
   }
 }
 
@@ -386,7 +403,10 @@ void PageActionControllerImpl::ClearAnchoredMessageIcon(
 
 void PageActionControllerImpl::SetAnchoredMessageExpandableContent(
     actions::ActionId action_id,
-    std::optional<AnchoredMessageExpandableContent> expandable_content) {}
+    std::optional<AnchoredMessageExpandableContent> expandable_content) {
+  FindPageActionModel(action_id).SetAnchoredMessageExpandableContent(
+      PageActionPassKey(), std::move(expandable_content));
+}
 
 void PageActionControllerImpl::SetAnchoredMessageAction(
     actions::ActionId action_id,
@@ -489,10 +509,10 @@ void PageActionControllerImpl::RegisterCallbacks(PageActionPassKey,
   delegate->SetClickCallback(
       base::BindRepeating(&PageActionControllerImpl::RecordClickMetric,
                           weak_factory_.GetWeakPtr(), action_id));
-  delegate->SetAnchoredMessagePauseCallback(base::BindRepeating(
+  delegate->SetAnchoredMessageExpandCallback(base::BindRepeating(
       &PageActionControllerImpl::PauseAnchoredMessageTimeout,
       weak_factory_.GetWeakPtr(), action_id));
-  delegate->SetAnchoredMessageResumeCallback(base::BindRepeating(
+  delegate->SetAnchoredMessageCollapseCallback(base::BindRepeating(
       &PageActionControllerImpl::ResumeAnchoredMessageTimeout,
       weak_factory_.GetWeakPtr(), action_id));
 }

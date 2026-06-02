@@ -145,6 +145,7 @@ Các mẫu URL không được xung đột với <ph name="CONTROLLED_FRAME_ALLO
 Để biết thông tin chi tiết về các mẫu URL hợp lệ, vui lòng truy cập vào https://chromeenterprise.google/policies/url-patterns. Chúng tôi không chấp nhận giá trị <ph name="WILDCARD_VALUE" /> đối với chính sách này.</translation>
 <translation id="1082802595100075771">Cho phép người dùng chọn sử dụng một dịch vụ ẩn danh của Google để cung cấp nội dung mô tả tự động cho những hình ảnh chưa gắn nhãn</translation>
 <translation id="1084697375611053264">Chỉ định danh sách các miền ứng dụng web bên thứ ba được phép sử dụng <ph name="DESK_API_NAME" /> để kiểm soát không gian làm việc trên <ph name="PRODUCT_OS_NAME" />. Các mẫu URL này phải tuân theo định dạng đã xác định cho thuộc tính "matches" trong https://developer.chrome.com/docs/extensions/mv3/manifest/externally_connectable/#reference</translation>
+<translation id="1086596047220085412">Chế độ cài đặt cách chia sẻ thẻ thông minh</translation>
 <translation id="1087057100912843460">Cho phép bản cập nhật</translation>
 <translation id="1087187152710800704">Từ chối cấp quyền Quản lý cửa sổ trên tất cả trang web theo mặc định</translation>
 <translation id="1087437665304381368">Chính sách này chỉ kiểm soát chế độ nhà phát triển của <ph name="PRODUCT_OS_NAME" />. Nếu muốn ngăn khả năng truy cập vào Tùy chọn của nhà phát triển Android, bạn cần đặt chính sách <ph name="DEVELOPER_TOOLS_DISABLED_POLICY_NAME" />.</translation>
@@ -1089,6 +1090,7 @@ gặp sự cố do thay đổi này. Phiên bản cuối cùng hỗ trợ chính
       Để biết thêm thông tin, vui lòng truy cập <ph name="REMOTE_ACCESS_HOST_CLIENT_DOMAIN_LIST_POLICY_NAME" />.
 
       Lưu ý: Tùy chọn cài đặt này sẽ ghi đè chính sách <ph name="REMOTE_ACCESS_HOST_DOMAIN_POLICY_NAME" />, nếu có.</translation>
+<translation id="1723571018091915166">Không cho phép chia sẻ thẻ thông minh với các công cụ tích hợp <ph name="GOOGLE_AI_MODE_PRODUCT_NAME" />.</translation>
 <translation id="172374442286684480">Cho phép tất cả trang web lưu dữ liệu trên máy</translation>
 <translation id="1729169799290004131">Việc đặt chính sách này sẽ chỉ định tỷ lệ phần trăm độ sáng màn hình, tắt các tính năng tự động điều chỉnh độ sáng. Độ sáng màn hình ban đầu sẽ thay đổi theo giá trị của chính sách nhưng người dùng có thể thay đổi giá trị này.
 
@@ -2166,6 +2168,7 @@ Khi bạn đặt chính sách này, người dùng sẽ không thể ghi đè gi
 
 Nếu bạn không đặt chính sách này, thì màn hình bảo vệ quyền riêng tư sẽ tắt lúc ban đầu nhưng người dùng vẫn có thể kiểm soát.</translation>
 <translation id="2413899611035194909">Hiển thị các tuỳ chọn hỗ trợ tiếp cận trong trình đơn ở khay hệ thống của màn hình đăng nhập</translation>
+<translation id="2414712434655365347">Định cấu hình tính năng Chèn tiêu đề HTTP cho các mẫu URL cụ thể</translation>
 <translation id="2415715982424988916">Khám phá (được hỗ trợ kể từ phiên bản 91)</translation>
 <translation id="2420958105721932612">Chỉ định cách cài đặt một ứng dụng. AVAILABLE: Ứng dụng không được cài đặt tự động, nhưng người dùng có thể cài đặt. Đây là giá trị mặc định nếu bạn không chỉ định chính sách này. FORCE_INSTALLED: Ứng dụng được cài đặt tự động và người dùng không thể gỡ cài đặt. BLOCKED: Ứng dụng bị chặn và không cài đặt được. Nếu ứng dụng đã được cài đặt theo chính sách trước đó, thì ứng dụng sẽ bị gỡ cài đặt.</translation>
 <translation id="2421400544595297401">Không cho phép người dùng chưa liên kết sử dụng ứng dụng Android</translation>
@@ -3474,7 +3477,6 @@ Nếu bạn không đặt chính sách này, thì thao tác mới sẽ được 
 <translation id="3229163415739929305">Thao tác đặt thành Bật hoặc không đặt chính sách này cũng sẽ kích hoạt tính năng tìm nạp siêu dữ liệu tải trang và mô hình máy học giúp nâng cao trải nghiệm duyệt web.
       Nếu bạn đặt chính sách này thành Tắt, có thể một số tính năng sẽ không hoạt động bình thường.</translation>
 <translation id="3231311173895401135">Để trình duyệt quyết định chế độ hỗ trợ</translation>
-<translation id="3231684792162319504">Không cho phép kích hoạt Gemini trong giai đoạn thử nghiệm.</translation>
 <translation id="3231837273069128027">Việc đặt chính sách này sẽ định cấu hình tình trạng có sẵn và chế độ của các bản cập nhật chương trình cơ sở <ph name="TPM_FIRMWARE_UPDATE_TPM" />.
 
       Bạn có thể chỉ định từng tùy chọn cài đặt trong thuộc tính JSON:
@@ -5253,7 +5255,6 @@ Nếu bạn đặt chính sách này, người dùng sẽ không thể thay đ�
 <translation id="4435032708588431506">Cho phép QUIC</translation>
 <translation id="443665821428652897">Xóa dữ liệu trang web khi đóng trình duyệt (không dùng nữa)</translation>
 <translation id="4436941175475497595">Tắt chế độ xem trước bản in</translation>
-<translation id="4436992815485865052">Cho phép kích hoạt Gemini trong giai đoạn thử nghiệm.</translation>
 <translation id="4439336120285389675">Chỉ định danh sách các tính năng trên nền tảng web không dùng nữa để bật lại tạm thời.
 
       Chính sách này cung cấp cho quản trị viên khả năng bật lại các tính năng trên nền tảng web không dùng nữa trong thời gian giới hạn. Các tính năng do thẻ chuỗi xác định và các tính năng tương ứng với thẻ được bao gồm trong danh sách do chính sách này chỉ định sẽ được bật lại.
@@ -6685,7 +6686,6 @@ Lưu ý: Tính năng này chưa được phát hành rộng rãi nên có thể 
 <translation id="5255790642269910630">Nếu bạn đặt chính sách này, thì mỗi màn hình sẽ xoay theo hướng đã chỉ định mỗi khi khởi động lại và vào lần đầu tiên màn hình được kết nối sau khi giá trị chính sách thay đổi. Người dùng có thể thay đổi chế độ xoay màn hình thông qua trang cài đặt sau khi đăng nhập. Tuy nhiên, chế độ này sẽ chuyển về như cũ vào lần khởi động lại tiếp theo. Chính sách này áp dụng cho màn hình chính và phụ.
 
 Nếu bạn không đặt chính sách này, thì giá trị mặc định là 0 độ và người dùng có thể thay đổi giá trị này. Trong trường hợp này, giá trị mặc định sẽ không được áp dụng lại khi khởi động lại.</translation>
-<translation id="5256792633540454282">Kiểm soát việc kích hoạt Gemini trong giai đoạn thử nghiệm</translation>
 <translation id="5257395339965216304">Dữ liệu ứng dụng được lưu trữ</translation>
 <translation id="5258445772095084618">Cho phép người dùng chưa liên kết sử dụng máy ảo cần thiết để hỗ trợ ứng dụng Linux</translation>
 <translation id="5258651513421638932">Cho phép Ứng dụng tách biệt kết nối với Thẻ thông minh</translation>
@@ -7711,7 +7711,6 @@ Trên <ph name="MAC_OS_NAME" />, chính sách này chỉ có trên các phiên b
 
       Chính sách này không còn dùng nữa, vui lòng sử dụng <ph name="PRINTERS_BULK_BLOCKLIST" />.</translation>
 <translation id="591088232153082363">Pin sạc thích ứng dựa trên thói quen sử dụng pin.</translation>
-<translation id="5911656389795271430">Đây là chính sách thử nghiệm.</translation>
 <translation id="5913506885872855604">Bạn có thể dùng chế độ này để coi một số dải địa chỉ nội bộ là "công khai" và do đó không phải trải qua các quy trình kiểm tra <ph name="LOCAL_NETWORK_ACCES" />. Ngược lại, bạn cũng có thể dùng tính năng này để coi một số dải địa chỉ công khai có thể được dùng nội bộ là "cục bộ" để các dải địa chỉ này được bảo vệ bằng các quy trình kiểm tra <ph name="LOCAL_NETWORK_ACCESS" />.
 
 Quy tắc ghi đè không gian địa chỉ IP có hai dạng:
@@ -8150,6 +8149,25 @@ Từ phiên bản 114 trở lên, bạn không bắt buộc phải đặt chính
 <translation id="624219423122512710">Thao tác của trình duyệt ở trạng thái rảnh</translation>
 <translation id="6244061205361004687">Cho phép người dùng ngắt kết nối hoặc sửa đổi VPN theo cách thủ công</translation>
 <translation id="6244210204546589761">Các URL sẽ mở khi khởi động</translation>
+<translation id="6245828368576563662">Chính sách này cho phép xác định danh sách các quy tắc để chèn các tiêu đề HTTP tuỳ chỉnh vào những yêu cầu web khớp với các mẫu URL cụ thể. Các tiêu đề được thiết lập theo chính sách này sẽ được ưu tiên hơn những tiêu đề vốn có trong yêu cầu, cũng như những thay đổi mà người dùng hoặc tiện ích cố gắng thực hiện.
+
+Một trường hợp sử dụng phổ biến của chính sách này là thực thi các chế độ kiểm soát quyền truy cập của đối tượng thuê bằng cách chèn các tiêu đề tuỳ chỉnh (ví dụ: <ph name="EXAMPLE_HEADER_NAME" />).
+
+Chính sách này chấp nhận một danh sách các Quy tắc. Mỗi quy tắc chứa:
+
+* <ph name="PATTERNS_KEY" />: Danh sách các mẫu URL cần so khớp. Xem cách định dạng mẫu URL ( https://support.google.com/chrome/a?p=url_blocklist_filter_format ).
+
+* <ph name="HEADERS_KEY" />: Danh sách các đối tượng đại diện cho tiêu đề cần chèn, mỗi đối tượng chứa:
+
+  * <ph name="HEADER_NAME_KEY" />: Tên của tiêu đề cần chèn.
+
+  * <ph name="HEADER_VALUE_KEY" />: Giá trị của tiêu đề cần chèn.
+
+Nếu nhiều quy tắc khớp với một yêu cầu, thì các tiêu đề trong tất cả các quy tắc trùng khớp sẽ được áp dụng. Trong trường hợp có nhiều tiêu đề cùng tên, tiêu đề có mẫu URL cụ thể nhất sẽ được áp dụng. Nếu các mẫu có mức độ cụ thể như nhau, thì mẫu xuất hiện cuối cùng trong danh sách sẽ được áp dụng.
+
+Tên tiêu đề phải tuân thủ RFC 2616 ( https://www.rfc-editor.org/rfc/rfc2616 ). Giá trị tiêu đề không được chứa các ký hiệu NUL, CR hoặc LF. Kích thước của từng tiêu đề không được vượt quá 8 KB. Tiêu đề và mẫu URL không hợp lệ sẽ bị bỏ qua.
+
+Chính sách này chỉ áp dụng cho tổng cộng 500 mẫu URL trên tất cả các quy tắc. Mỗi quy tắc có thể chứa tối đa 20 tiêu đề. Các mẫu và tiêu đề vượt quá ngưỡng này sẽ bị bỏ qua.</translation>
 <translation id="624595269193747921">Liệu có giới hạn phạm vi tìm kiếm máy in phù hợp ở một nhóm máy in cụ thể hay không.</translation>
 <translation id="6246290059248303618">Hiện bộ điều khiển nội dung nghe nhìn cho các phiên <ph name="PRODUCT_NAME" /> do các thiết bị khác trên mạng cục bộ bắt đầu</translation>
 <translation id="6247316685259031374">Chính sách này kiểm soát môi trường hộp cát của tiến trình âm thanh.
@@ -9551,12 +9569,6 @@ Nếu bạn không đặt chính sách này cho một trang web thì hệ thốn
       Nếu bạn không đặt chính sách này, thì kệ sẽ được đặt ở cuối màn hình theo mặc định và người dùng có thể thay đổi vị trí của kệ.</translation>
 <translation id="7039815268521168329">Hiển thị quy trình so khớp giọng nói của Trợ lý Google trong quá trình thiết lập ban đầu</translation>
 <translation id="7040229947030068419">Giá trị mẫu:</translation>
-<translation id="7044626519138840387">Danh sách nguồn gốc của các ứng dụng máy tính từ xa có thể thực thi các yêu cầu API WebAuthn bắt nguồn từ một phiên duyệt web trên một máy chủ từ xa.
-
-Bất kỳ nguồn gốc nào được định cấu hình trong chính sách này đều có thể thực hiện yêu cầu WebAuthn cho mã nhận dạng bên phụ thuộc (mã nhận dạng RP) mà thông thường không được phép nhận.
-
-Chỉ cho phép nguồn gốc HTTPS hợp lệ. Không hỗ trợ ký tự đại diện.
-Mọi mục nhập không hợp lệ đều sẽ bị bỏ qua.</translation>
 <translation id="7044883996351280650">Kiểm soát dịch vụ sao lưu và khôi phục trên thiết bị Android</translation>
 <translation id="7045221780834308118">Nếu bạn đặt chính sách này thành Enabled (Bật), thì các ứng dụng web bên thứ ba có thể sử dụng Desk API để kiểm soát các không gian làm việc trên <ph name="PRODUCT_OS_NAME" />. Nếu bạn tắt hoặc không đặt chính sách này, thì <ph name="DESK_API_NAME" /> sẽ không hoạt động. Chính sách này sẽ chỉ có hiệu lực trên các thiết bị đã đăng ký.</translation>
 <translation id="7046113122884041950">Không cho phép sử dụng Smart Lock</translation>
@@ -10952,6 +10964,7 @@ Nếu bạn đặt chính sách này thành Disabled (Tắt) hoặc không đặ
 
 Nếu bạn đặt chính sách <ph name="ENABLE_MEDIA_ROUTER_POLICY_NAME" /> thành Disabled (Tắt), thì giá trị của chính sách này sẽ không có hiệu lực và biểu tượng thanh công cụ sẽ không xuất hiện.</translation>
 <translation id="7933141401888114454">Cho phép tạo người dùng được giám sát</translation>
+<translation id="793360449603660370">Cho phép chia sẻ thẻ thông minh với các công cụ tích hợp <ph name="GOOGLE_AI_MODE_PRODUCT_NAME" />.</translation>
 <translation id="793473937901685727">Đặt mức độ khả dụng của chứng chỉ cho ứng dụng ARC</translation>
 <translation id="7936302526928951356">Chuỗi User-Agent sẽ không làm phiên bản lớn dừng lại.</translation>
 <translation id="7936632434238618620">Khi đặt chính sách này, bạn có thể tạo danh sách các mẫu URL chỉ định trang web mà Chrome có thể tự động chọn chứng chỉ máy khách. Giá trị là một mảng từ điển JSON phân thành chuỗi, mỗi mảng có dạng <ph name="AUTO_SELECT_CERTIFICATE_FOR_URLS_EXAMPLE" />, trong đó <ph name="URL_PATTERN_PLACEHOLDER" /> là mẫu thông tin cài đặt nội dung. <ph name="FILTER_PLACEHOLDER" /> giới hạn các chứng chỉ máy khách mà trình duyệt sẽ tự động chọn. Bất kể bộ lọc là gì, chỉ các chứng chỉ khớp với yêu cầu chứng chỉ của máy chủ mới được chọn. Trên Android và iOS, Chrome chỉ có thể chọn những chứng chỉ máy khách mà trình duyệt tự cung cấp chứ không thể truy cập vào những chứng chỉ được cài đặt ở cấp hệ điều hành.

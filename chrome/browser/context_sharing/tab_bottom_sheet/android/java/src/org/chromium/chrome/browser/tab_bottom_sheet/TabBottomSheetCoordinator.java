@@ -14,6 +14,7 @@ import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
+import android.view.accessibility.AccessibilityEvent;
 
 import androidx.annotation.Px;
 
@@ -428,6 +429,9 @@ public class TabBottomSheetCoordinator {
 
                 if (state == SheetState.HALF || state == SheetState.FULL) {
                     observeCompositorViewInteractions();
+                    if (mContentView != null) {
+                        mContentView.sendAccessibilityEvent(AccessibilityEvent.TYPE_VIEW_FOCUSED);
+                    }
                 } else {
                     stopObservingCompositorViewInteractions();
                 }
@@ -520,6 +524,13 @@ public class TabBottomSheetCoordinator {
                     GlicMetrics.recordShowPeekView();
                 }
 
+                if ((state == SheetState.HALF || state == SheetState.FULL)
+                        && mLastStableState != SheetState.HALF
+                        && mLastStableState != SheetState.FULL
+                        && clientType == TabBottomSheetClientType.GLIC) {
+                    GlicMetrics.recordShowBottomSheet();
+                }
+
                 // Record transition if between open stable states (PEEK, HALF, FULL)
                 TabBottomSheetMetrics.recordTransition(clientType, mLastStableState, state);
 
@@ -597,7 +608,9 @@ public class TabBottomSheetCoordinator {
 
     private int getVisibleViewportHeight() {
         Window window = mWindowAndroid.getWindow();
-        assert window != null;
+        if (window == null) {
+            return 0;
+        }
 
         Rect visibleViewportRect = new Rect();
         View decorView = window.getDecorView();

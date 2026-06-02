@@ -54,6 +54,7 @@
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/host/webui_contents_container.h"
 #include "chrome/browser/glic/public/features.h"
+#include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/public/glic_side_panel_coordinator.h"
@@ -631,9 +632,16 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testAllTestsAreRegistered) {
   AssertAllTestsRegistered(GetTestSuiteNames());
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testCookieSyncFails) {
+class GlicApiTestWithFailedCookieSync : public GlicApiTest {
+ public:
+  GlicApiTestWithFailedCookieSync()
+      : GlicApiTest(
+            base::FieldTrialParams(),
+            GlicTestEnvironmentConfig{.override_cookie_sync_result = false}) {}
+};
+
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithFailedCookieSync, testCookieSyncFails) {
   GlicHistogramTester histogram_tester;
-  glic_test_service().SetResultForFutureCookieSync(false);
   GlicInstanceTracker instance_tracker(browser()->profile());
 
   GetService()->ToggleUI(/*bwi=*/browser(), /*prevent_close=*/false,
@@ -1988,10 +1996,10 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest,
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testPanelWillOpenHasPromptSuggestion) {
   // Simulate click on contextual cue with prompt suggestion.
+  glic::GlicInvokeOptions options(glic::mojom::InvocationSource::kNudge);
+  options.prompts.push_back("Prompt Suggestion");
   glic::GlicKeyedServiceFactory::GetGlicKeyedService(browser()->profile())
-      ->ToggleUI(browser(),
-                 /*prevent_close=*/false, glic::mojom::InvocationSource::kNudge,
-                 "Prompt Suggestion");
+      ->Invoke(std::move(options));
 
   ExecuteJsTest();
 }
@@ -3325,6 +3333,10 @@ INSTANTIATE_TEST_SUITE_P(,
                          &WithTestParams::PrintTestVariant);
 INSTANTIATE_TEST_SUITE_P(,
                          GlicApiTestNoFloatyOrLiveMode,
+                         DefaultTestParamSet(),
+                         &WithTestParams::PrintTestVariant);
+INSTANTIATE_TEST_SUITE_P(,
+                         GlicApiTestWithFailedCookieSync,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
 }  // namespace

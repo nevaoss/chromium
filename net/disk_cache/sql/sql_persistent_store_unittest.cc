@@ -42,6 +42,7 @@
 #include "net/disk_cache/sql/entry_write_buffer.h"
 #include "net/disk_cache/sql/sql_async_task_manager.h"
 #include "net/disk_cache/sql/sql_backend_constants.h"
+#include "net/disk_cache/sql/sql_persistent_store_backend_shard.h"
 #include "sql/database.h"
 #include "sql/meta_table.h"
 #include "sql/statement.h"
@@ -333,6 +334,7 @@ class SqlPersistentStoreTestBase : public testing::Test {
     base::test::TestFuture<SqlPersistentStore::ResIdOrError> future;
     store_->WriteEntryData(key, res_id, old_body_end, std::move(buffer),
                            truncate, /*doomed_new_entry=*/false,
+                           /*sparse_write=*/false, /*header_size=*/0,
                            future.GetCallback());
     auto result = future.Take();
     return result.error_or(SqlPersistentStore::Error::kOk);
@@ -3535,6 +3537,7 @@ TEST_P(SqlPersistentStoreTest, WriteEntryDataCreatesNew) {
   store_->WriteEntryData(kKey, kTime, /*old_body_end=*/0,
                          EntryWriteBuffer(write_buffer, kData.size(), 0),
                          /*truncate=*/false, /*doomed_new_entry=*/false,
+                         /*sparse_write=*/false, /*header_size=*/0,
                          future.GetCallback());
 
   auto result = future.Take();
@@ -3561,6 +3564,7 @@ TEST_P(SqlPersistentStoreTest, WriteEntryDataCreatesNewDoomed) {
   store_->WriteEntryData(kKey, kTime, /*old_body_end=*/0,
                          EntryWriteBuffer(write_buffer, kData.size(), 0),
                          /*truncate=*/false, /*doomed_new_entry=*/true,
+                         /*sparse_write=*/false, /*header_size=*/0,
                          future.GetCallback());
 
   auto result = future.Take();
@@ -4094,6 +4098,7 @@ TEST_P(SqlPersistentStoreTest, WriteDataCallbackNotRunOnStoreDestruction) {
       kKey, res_id, /*old_body_end=*/0,
       EntryWriteBuffer(std::move(write_buffer), kData.size(), 0),
       /*truncate=*/false, /*doomed_new_entry=*/false,
+      /*sparse_write=*/false, /*header_size=*/0,
       base::BindLambdaForTesting(
           [&](SqlPersistentStore::ResIdOrError) { callback_run = true; }));
   store_.reset();
@@ -5595,6 +5600,40 @@ TEST_P(SqlPersistentStoreTest, DoomEntryWhileIndexLoading) {
   EXPECT_FALSE(open_result3->has_value());
 }
 
+TEST_P(SqlPersistentStoreTest,
+       DoomedEntryBeforeIndexLoadNotIncorrectlyCleanedUp) {
+  const CacheEntryKey kKey("my-key");
+  const std::string kData = "hello world";
+
+  CreateAndInitStore();
+  const auto res_id = CreateEntryAndGetResId(kKey);
+
+  WriteDataAndAssertSuccess(kKey, res_id, /*old_body_end=*/0, /*offset=*/0,
+                            kData, /*truncate=*/false);
+
+  // 1. Doom the entry before the index is loaded. This adds it to
+  // `pending_doomed_hash_and_res_ids_`.
+  EXPECT_EQ(DoomEntry(kKey, res_id), SqlPersistentStore::Error::kOk);
+
+  // Verify that the entry's data is still readable before index load.
+  ReadAndVerifyData(kKey, res_id, /*offset=*/0, /*buffer_len=*/kData.size(),
+                    /*body_end=*/kData.size(), /*sparse_reading=*/false, kData);
+
+  // 2. Load the index. The entry should be filtered out from the background
+  // cleanup list by the logic in `LoadInMemoryIndex`.
+  EXPECT_TRUE(LoadInMemoryIndex());
+
+  // 3. Run background cleanup. It should return false if the entry was
+  // correctly filtered out.
+  base::test::TestFuture<SqlPersistentStore::Error> cleanup_future;
+  EXPECT_FALSE(
+      store_->MaybeRunCleanupDoomedEntries(cleanup_future.GetCallback()));
+
+  // 4. Verify data is still readable, ensuring it wasn't incorrectly deleted.
+  ReadAndVerifyData(kKey, res_id, /*offset=*/0, /*buffer_len=*/kData.size(),
+                    /*body_end=*/kData.size(), /*sparse_reading=*/false, kData);
+}
+
 TEST_P(SqlPersistentStoreTest, DoomEntryRecoversIndexOnDbFailure) {
   CreateAndInitStore();
 
@@ -5643,6 +5682,106 @@ TEST_P(SqlPersistentStoreTest, DoomEntryRecoversIndexOnDbFailure) {
   EXPECT_FALSE(open_result->has_value());
 }
 
+TEST_P(SqlPersistentStoreTest,
+       DoomedEntryDuringEvictionRemovedFromIndexAfterReturn) {
+  const int64_t kMaxBytes = 10000;
+  const int64_t kHighWatermark =
+      kMaxBytes * kSqlBackendEvictionHighWaterMarkPermille / 1000;  // 9500
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+
+  ASSERT_TRUE(LoadInMemoryIndex());
+
+  const CacheEntryKey kKey1("key1");
+  const auto res_id1 = CreateEntryAndGetResId(kKey1);
+  const CacheEntryKey kKey2("key2");
+  const auto res_id2 = CreateEntryAndGetResId(kKey2);
+
+  // Fill data for kKey2 to exceed the high watermark.
+  FillDataInRange(kKey2, res_id2, 0, 0, 9600, 'a');
+  EXPECT_GT(GetSizeOfAllEntries(), kHighWatermark);
+
+  // Trigger eviction. This will move the index to the backend.
+  // We exclude res_id1 to ensure it's not doomed by the eviction itself.
+  std::vector<SqlPersistentStore::ResIdAndShardId> excluded_list;
+  excluded_list.emplace_back(res_id1, SqlPersistentStore::ShardId(0));
+  base::test::TestFuture<SqlPersistentStore::Error> eviction_future;
+  store_->StartEviction(
+      std::move(excluded_list), /*is_idle_time_eviction=*/false,
+      base::MakeRefCounted<base::RefCountedData<std::atomic_bool>>(
+          std::in_place, false),
+      eviction_future.GetCallback());
+
+  // At this point, the index should be missing from the IO thread.
+  EXPECT_EQ(store_->GetIndexStateForHash(kKey1.hash()),
+            SqlPersistentStore::IndexState::kNotReady);
+
+  // Doom kKey1 while the index is on the backend.
+  base::test::TestFuture<SqlPersistentStore::Error> doom_future;
+  store_->DoomEntry(kKey1, res_id1, /*accept_index_mismatch=*/false,
+                    doom_future.GetCallback());
+
+  // Wait for eviction and doom to complete.
+  EXPECT_EQ(eviction_future.Get(), SqlPersistentStore::Error::kOk);
+  EXPECT_EQ(doom_future.Get(), SqlPersistentStore::Error::kOk);
+
+  // The index should be back on the IO thread, and kKey1 should be missing
+  // because it was removed from `pending_doomed_hash_and_res_ids_`.
+  EXPECT_EQ(store_->GetIndexStateForHash(kKey1.hash()),
+            SqlPersistentStore::IndexState::kHashNotFound);
+}
+
+TEST_P(SqlPersistentStoreTest, DoomEntryDbFailureEvictionRace) {
+  const int64_t kMaxBytes = 10000;
+  const int64_t kHighWatermark =
+      kMaxBytes * kSqlBackendEvictionHighWaterMarkPermille / 1000;  // 9500
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+
+  // Load the in-memory index, which is necessary for the index recovery
+  // mechanism.
+  ASSERT_TRUE(LoadInMemoryIndex());
+
+  const CacheEntryKey kKey("my-key");
+  const auto res_id = CreateEntryAndGetResId(kKey);
+
+  // Fill data to exceed the high watermark (9500 for 10000 max).
+  FillDataInRange(kKey, res_id, 0, 0, 9600, 'a');
+  EXPECT_GT(GetSizeOfAllEntries(), kHighWatermark);
+
+  // The entry should be in the index.
+  EXPECT_EQ(store_->GetIndexStateForHash(kKey.hash()),
+            SqlPersistentStore::IndexState::kHashFound);
+
+  // Simulate a database failure.
+  store_->SetSimulateDbFailureForTesting(true);
+
+  // Try to doom the entry, but don't wait for it to finish.
+  base::test::TestFuture<SqlPersistentStore::Error> doom_future;
+  store_->DoomEntry(kKey, res_id, /*accept_index_mismatch=*/false,
+                    doom_future.GetCallback());
+
+  // Immediately start an eviction. This will steal the index from the shard.
+  // When DoomEntry's DB task completes and returns to the shard, it will try
+  // to recover the index because of the DB failure, but the index will be
+  // missing. This tests that we don't crash when `weak_ptr->index_.has_value()`
+  // is false.
+  auto abort_flag =
+      base::MakeRefCounted<base::RefCountedData<std::atomic_bool>>(
+          std::in_place, false);
+  base::test::TestFuture<SqlPersistentStore::Error> eviction_future;
+  store_->StartEviction({}, /*is_idle_time_eviction=*/false, abort_flag,
+                        eviction_future.GetCallback());
+
+  // Wait for both to finish.
+  ASSERT_EQ(doom_future.Get(), SqlPersistentStore::Error::kFailedForTesting);
+  ASSERT_EQ(eviction_future.Get(),
+            SqlPersistentStore::Error::kFailedForTesting);
+
+  // Disable the failure simulation to ensure a successful cleanup.
+  store_->SetSimulateDbFailureForTesting(false);
+}
+
 TEST_P(SqlPersistentStoreTest, SetAndGetEntryInMemoryData) {
   CreateAndInitStore();
   const CacheEntryKey kKey("my-key");
@@ -5654,7 +5793,7 @@ TEST_P(SqlPersistentStoreTest, SetAndGetEntryInMemoryData) {
   EXPECT_TRUE(LoadInMemoryIndex());
 
   // 3. Set in-memory data hints.
-  const uint8_t hints_value = 42;
+  const uint8_t hints_value = 3;
   store_->SetInMemoryEntryDataHints(kKey.hash(), res_id,
                                     MemoryEntryDataHints(hints_value));
 
@@ -5906,6 +6045,413 @@ TEST_P(SqlPersistentStoreTest, StartEvictionPrioritizesHighPriorityEntries) {
     }
   }
   EXPECT_EQ(gone_count, 1);
+}
+
+TEST_P(SqlPersistentStoreTest,
+       StartEvictionPrioritizesHighPriorityEntriesWithConsolidatedIndex) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeaturesAndParameters(
+      {{net::features::kDiskCacheBackendExperiment,
+        {{"SqlDiskCacheSizeAndPriorityAwareEviction", "true"},
+         {"SqlDiskCacheConsolidatedInMemoryIndex", "true"}}},
+       {net::features::kSimpleCachePrioritizedCaching, {}}},
+      {});
+
+  const int64_t kMaxBytes = 10000;
+  const int64_t kHighWatermark =
+      kMaxBytes * kSqlBackendEvictionHighWaterMarkPermille / 1000;  // 9500
+  const int64_t kLowWatermark =
+      kMaxBytes * kSqlBackendEvictionLowWaterMarkPermille / 1000;  // 9000
+
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+  EXPECT_TRUE(LoadInMemoryIndex());
+
+  // Add 9 low priority entries.
+  // Each entry size = 650 + 300 + 4 = 954. Total = 8586.
+  std::vector<CacheEntryKey> low_priority_keys;
+  for (int i = 0; i < 9; ++i) {
+    const CacheEntryKey key(base::StringPrintf("low%d", i));
+    low_priority_keys.push_back(key);
+    auto res_id = CreateEntryAndGetResId(key);
+    FillDataInRange(key, res_id, 0, 0, 650, 'a');
+  }
+
+  // Add 1 high priority entry, same size and age.
+  // Size = 650 + 300 + 13 ("high_priority") = 963.
+  // Total size = 8586 + 963 = 9549 (> 9500).
+  const CacheEntryKey high_priority_key("high_priority");
+  auto high_priority_res_id = CreateEntryAndGetResId(high_priority_key);
+  FillDataInRange(high_priority_key, high_priority_res_id, 0, 0, 650, 'b');
+
+  // Set hints to HINT_HIGH_PRIORITY.
+  ASSERT_EQ(UpdateEntryHeaderAndLastUsed(
+                high_priority_key, high_priority_res_id, base::Time::Now(),
+                nullptr, 0, MemoryEntryDataHints(HINT_HIGH_PRIORITY)),
+            SqlPersistentStore::Error::kOk);
+
+  // Set all to same age.
+  base::Time now = base::Time::Now();
+  for (const auto& key : low_priority_keys) {
+    ASSERT_EQ(UpdateEntryLastUsedByKey(key, now),
+              SqlPersistentStore::Error::kOk);
+  }
+  ASSERT_EQ(UpdateEntryLastUsedByKey(high_priority_key, now),
+            SqlPersistentStore::Error::kOk);
+
+  // Advance clock.
+  task_environment_.FastForwardBy(base::Seconds(10));
+
+  EXPECT_GT(GetSizeOfAllEntries(), kHighWatermark);
+
+  // Start eviction.
+  ASSERT_EQ(StartEviction({}, /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+
+  // One entry should be evicted. Target to remove = 9549 - 9000 = 549.
+  EXPECT_LE(GetSizeOfAllEntries(), kLowWatermark);
+  EXPECT_EQ(GetEntryCount(), 9);
+
+  // Verify the high priority entry is still there.
+  auto open_high = OpenEntry(high_priority_key);
+  ASSERT_TRUE(open_high.has_value());
+  EXPECT_TRUE(open_high->has_value());
+
+  // Verify one of the low priority entries is gone.
+  int gone_count = 0;
+  for (const auto& key : low_priority_keys) {
+    auto open_result = OpenEntry(key);
+    if (open_result.has_value() && !open_result->has_value()) {
+      gone_count++;
+    }
+  }
+  EXPECT_EQ(gone_count, 1);
+}
+
+TEST_P(SqlPersistentStoreTest, EvictionCollectsMetadata) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeaturesAndParameters(
+      {{net::features::kDiskCacheBackendExperiment,
+        {{"SqlDiskCacheSizeAndPriorityAwareEviction", "true"},
+         {"SqlDiskCacheConsolidatedInMemoryIndex", "true"}}}},
+      {});
+
+  const int64_t kMaxBytes = 10000;
+  const int64_t kHighWatermark =
+      kMaxBytes * kSqlBackendEvictionHighWaterMarkPermille / 1000;  // 9500
+  const int64_t kLowWatermark =
+      kMaxBytes * kSqlBackendEvictionLowWaterMarkPermille / 1000;  // 9000
+
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+  EXPECT_TRUE(LoadInMemoryIndex());
+
+  // 1. Add entries to trigger the eviction.
+  std::vector<CacheEntryKey> keys;
+  int i = 0;
+  while (GetSizeOfAllEntries() <= kHighWatermark) {
+    const CacheEntryKey key(base::StringPrintf("key%04d", i++));
+    keys.push_back(key);
+    auto create_result = CreateEntry(key);
+    ASSERT_TRUE(create_result.has_value());
+    task_environment_.AdvanceClock(base::Seconds(1));
+  }
+
+  EXPECT_FALSE(store_->GetShardForTesting(SqlPersistentStoreShardId(0))
+                   .GetIndexForTesting()
+                   ->is_entry_metadata_ready());
+
+  // 2. Perform the eviction.
+  // This will set is_entry_metadata_ready_ to true in the in-memory index.
+  ASSERT_EQ(StartEviction({}, /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+  EXPECT_LE(GetSizeOfAllEntries(), kLowWatermark);
+  EXPECT_TRUE(store_->GetShardForTesting(SqlPersistentStoreShardId(0))
+                  .GetIndexForTesting()
+                  ->is_entry_metadata_ready());
+
+  // Keep track of which entries are still alive.
+  std::vector<CacheEntryKey> alive_keys;
+  for (const auto& key : keys) {
+    if (store_->GetIndexStateForHash(key.hash()) ==
+        SqlPersistentStore::IndexState::kHashFound) {
+      alive_keys.push_back(key);
+
+      // Verify that metadata is available after the first eviction.
+      auto open_result = OpenEntry(key);
+      ASSERT_TRUE(open_result.has_value());
+      ASSERT_TRUE(open_result->has_value());
+      auto res_id = (*open_result)->res_id;
+      auto metadata = store_->GetShardForTesting(key.hash())
+                          .GetIndexForTesting()
+                          ->GetEntryMetadataForTesting(key.hash(), res_id);
+      ASSERT_TRUE(metadata.has_value());
+
+      EXPECT_EQ(metadata->last_used.InSecondsFSinceUnixEpoch(),
+                base::Time::FromSecondsSinceUnixEpoch(
+                    static_cast<uint32_t>(
+                        (*open_result)->last_used.InSecondsFSinceUnixEpoch()))
+                    .InSecondsFSinceUnixEpoch());
+
+      uint64_t expected_initial_size = (*open_result)->body_end;
+      if ((*open_result)->head) {
+        expected_initial_size += (*open_result)->head->capacity();
+      }
+      uint64_t expected_usage = expected_initial_size + key.string().size();
+      EXPECT_EQ(metadata->bytes_usage, ((expected_usage + 255) >> 8) << 8);
+      EXPECT_EQ(metadata->hints.value(), 0);
+    }
+  }
+  ASSERT_GE(alive_keys.size(), 2u);
+
+  // 3. Update the oldest alive entry, and increase the size of the second
+  // oldest entry.
+  CacheEntryKey oldest_alive_key = alive_keys.front();
+  auto open_oldest = OpenEntry(oldest_alive_key);
+  ASSERT_TRUE(open_oldest.has_value());
+  ASSERT_TRUE(open_oldest->has_value());
+  auto oldest_res_id = (*open_oldest)->res_id;
+
+  // Advance clock so the entry gets a newer last_used time.
+  base::Time new_last_used = base::Time::Now() + base::Seconds(10);
+  task_environment_.AdvanceClock(base::Seconds(10));
+  ASSERT_EQ(UpdateEntryLastUsedByKey(oldest_alive_key, new_last_used),
+            SqlPersistentStore::Error::kOk);
+
+  // Verify the in-memory index metadata was updated.
+  auto oldest_metadata =
+      store_->GetShardForTesting(oldest_alive_key.hash())
+          .GetIndexForTesting()
+          ->GetEntryMetadataForTesting(oldest_alive_key.hash(), oldest_res_id);
+  ASSERT_TRUE(oldest_metadata.has_value());
+  EXPECT_EQ(oldest_metadata->last_used.InSecondsFSinceUnixEpoch(),
+            base::Time::FromSecondsSinceUnixEpoch(
+                static_cast<uint32_t>(new_last_used.InSecondsFSinceUnixEpoch()))
+                .InSecondsFSinceUnixEpoch());
+  EXPECT_EQ(oldest_metadata->hints.value(), 0);
+
+  CacheEntryKey second_oldest_key = alive_keys[1];
+  auto open_second = OpenEntry(second_oldest_key);
+  ASSERT_TRUE(open_second.has_value());
+  ASSERT_TRUE(open_second->has_value());
+  auto res_id = (*open_second)->res_id;
+  auto initial_size = (*open_second)->body_end;
+  if ((*open_second)->head) {
+    initial_size += (*open_second)->head->capacity();
+  }
+
+  // We write some data to increase the size of the second oldest entry.
+  // This proves bytes_usage updates are reflected in the index.
+  const std::string kData(300, 'x');  // 300 bytes of 'x'
+  auto write_buffer = base::MakeRefCounted<net::StringIOBuffer>(kData);
+  ASSERT_EQ(WriteEntryData(second_oldest_key, res_id, /*old_body_end=*/0,
+                           EntryWriteBuffer(std::move(write_buffer),
+                                            kData.size(), /*offset=*/0),
+                           /*truncate=*/true),
+            SqlPersistentStore::Error::kOk);
+
+  // Verify the in-memory index metadata was updated for usage.
+  auto second_metadata =
+      store_->GetShardForTesting(second_oldest_key.hash())
+          .GetIndexForTesting()
+          ->GetEntryMetadataForTesting(second_oldest_key.hash(), res_id);
+  ASSERT_TRUE(second_metadata.has_value());
+  // The entry size is updated using chunks of 256 bytes, so we check for
+  // equality using the chunk representation logic.
+  uint64_t expected_usage =
+      initial_size + kData.size() + second_oldest_key.string().size();
+  EXPECT_EQ(second_metadata->bytes_usage, ((expected_usage + 255) >> 8) << 8);
+  EXPECT_EQ(second_metadata->hints.value(), 0);
+}
+
+TEST_P(SqlPersistentStoreTest, SecondEvictionUsesInMemoryIndex) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeaturesAndParameters(
+      {{net::features::kDiskCacheBackendExperiment,
+        {{"SqlDiskCacheSizeAndPriorityAwareEviction", "true"},
+         {"SqlDiskCacheConsolidatedInMemoryIndex", "true"}}}},
+      {});
+
+  const int64_t kMaxBytes = 10000;
+  const int64_t kHighWatermark =
+      kMaxBytes * kSqlBackendEvictionHighWaterMarkPermille / 1000;
+
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+  EXPECT_TRUE(LoadInMemoryIndex());
+
+  int i = 0;
+  while (GetSizeOfAllEntries() <= kHighWatermark) {
+    const CacheEntryKey key(base::StringPrintf("key%04d", i++));
+    auto create_result = CreateEntry(key);
+    task_environment_.AdvanceClock(base::Seconds(1));
+  }
+
+  base::HistogramTester histogram_tester;
+
+  ASSERT_EQ(StartEviction({}, /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+
+  histogram_tester.ExpectTotalCount(
+      "Net.SqlDiskCache.Backend.RunEviction.TimeToSelectEntries.Database."
+      "Success",
+      1);
+  histogram_tester.ExpectTotalCount(
+      "Net.SqlDiskCache.Backend.RunEviction.TimeToSelectEntries.InMemory."
+      "Success",
+      0);
+
+  task_environment_.AdvanceClock(base::Seconds(1));
+  while (GetSizeOfAllEntries() <= kHighWatermark) {
+    const CacheEntryKey key(base::StringPrintf("key%04d", i++));
+    auto create_result = CreateEntry(key);
+    task_environment_.AdvanceClock(base::Seconds(1));
+  }
+
+  ASSERT_EQ(StartEviction({}, /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+  EXPECT_LT(GetSizeOfAllEntries(), kHighWatermark);
+
+  histogram_tester.ExpectTotalCount(
+      "Net.SqlDiskCache.Backend.RunEviction.TimeToSelectEntries.InMemory."
+      "Success",
+      1);
+}
+
+TEST_P(SqlPersistentStoreTest, InMemoryEvictionRespectsPriority) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeaturesAndParameters(
+      {{net::features::kDiskCacheBackendExperiment,
+        {{"SqlDiskCacheSizeAndPriorityAwareEviction", "true"},
+         {"SqlDiskCacheConsolidatedInMemoryIndex", "true"}}},
+       {net::features::kSimpleCachePrioritizedCaching, {}}},
+      {});
+
+  const int64_t kMaxBytes = 10000;
+  const int64_t kHighWatermark =
+      kMaxBytes * kSqlBackendEvictionHighWaterMarkPermille / 1000;
+
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+  EXPECT_TRUE(LoadInMemoryIndex());
+
+  std::vector<CacheEntryKey> keys;
+  int i = 0;
+  while (GetSizeOfAllEntries() <= kHighWatermark) {
+    const CacheEntryKey key(base::StringPrintf("key%04d", i++));
+    keys.push_back(key);
+    auto create_result = CreateEntry(key);
+    task_environment_.AdvanceClock(base::Seconds(1));
+  }
+
+  ASSERT_EQ(StartEviction({}, /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+
+  std::vector<CacheEntryKey> alive_keys;
+  for (const auto& key : keys) {
+    if (store_->GetIndexStateForHash(key.hash()) ==
+        SqlPersistentStore::IndexState::kHashFound) {
+      alive_keys.push_back(key);
+    }
+  }
+  ASSERT_GE(alive_keys.size(), 1u);
+
+  CacheEntryKey oldest_alive_key = alive_keys.front();
+  auto open_oldest = OpenEntry(oldest_alive_key);
+  auto oldest_res_id = (*open_oldest)->res_id;
+
+  base::Time new_last_used = base::Time::Now() + base::Seconds(10);
+  task_environment_.AdvanceClock(base::Seconds(10));
+
+  ASSERT_EQ(UpdateEntryHeaderAndLastUsed(
+                oldest_alive_key, oldest_res_id, new_last_used, nullptr, 0,
+                MemoryEntryDataHints(HINT_HIGH_PRIORITY)),
+            SqlPersistentStore::Error::kOk);
+
+  task_environment_.AdvanceClock(base::Seconds(1));
+  while (GetSizeOfAllEntries() <= kHighWatermark) {
+    const CacheEntryKey key(base::StringPrintf("key%04d", i++));
+    auto create_result = CreateEntry(key);
+    task_environment_.AdvanceClock(base::Seconds(1));
+  }
+
+  base::HistogramTester histogram_tester;
+
+  ASSERT_EQ(StartEviction({}, /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+  EXPECT_LT(GetSizeOfAllEntries(), kHighWatermark);
+
+  EXPECT_EQ(store_->GetIndexStateForHash(oldest_alive_key.hash()),
+            SqlPersistentStore::IndexState::kHashFound);
+
+  histogram_tester.ExpectTotalCount(
+      "Net.SqlDiskCache.Backend.RunEviction.TimeToSelectEntries.InMemory."
+      "Success",
+      1);
+}
+
+TEST_P(SqlPersistentStoreTest, InMemoryEvictionRespectsExcludedResIds) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeaturesAndParameters(
+      {{net::features::kDiskCacheBackendExperiment,
+        {{"SqlDiskCacheSizeAndPriorityAwareEviction", "true"},
+         {"SqlDiskCacheConsolidatedInMemoryIndex", "true"}}}},
+      {});
+
+  const int64_t kMaxBytes = 10000;
+  const int64_t kHighWatermark =
+      kMaxBytes * kSqlBackendEvictionHighWaterMarkPermille / 1000;
+
+  CreateStore(kMaxBytes);
+  ASSERT_EQ(Init(), SqlPersistentStore::Error::kOk);
+  EXPECT_TRUE(LoadInMemoryIndex());
+
+  std::vector<CacheEntryKey> keys;
+  int i = 0;
+  while (GetSizeOfAllEntries() <= kHighWatermark) {
+    const CacheEntryKey key(base::StringPrintf("key%04d", i++));
+    keys.push_back(key);
+    auto create_result = CreateEntry(key);
+    task_environment_.AdvanceClock(base::Seconds(1));
+  }
+
+  ASSERT_EQ(StartEviction({}, /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+
+  std::vector<CacheEntryKey> alive_keys;
+  for (const auto& key : keys) {
+    if (store_->GetIndexStateForHash(key.hash()) ==
+        SqlPersistentStore::IndexState::kHashFound) {
+      alive_keys.push_back(key);
+    }
+  }
+  ASSERT_GE(alive_keys.size(), 1u);
+
+  CacheEntryKey oldest_alive_key = alive_keys.front();
+  auto open_oldest = OpenEntry(oldest_alive_key);
+  auto oldest_res_id = (*open_oldest)->res_id;
+
+  task_environment_.AdvanceClock(base::Seconds(1));
+  while (GetSizeOfAllEntries() <= kHighWatermark) {
+    const CacheEntryKey key(base::StringPrintf("key%04d", i++));
+    auto create_result = CreateEntry(key);
+    task_environment_.AdvanceClock(base::Seconds(1));
+  }
+
+  base::HistogramTester histogram_tester;
+
+  ASSERT_EQ(StartEviction({{oldest_res_id, SqlPersistentStoreShardId(0)}},
+                          /*is_idle_time_eviction=*/false),
+            SqlPersistentStore::Error::kOk);
+  EXPECT_LT(GetSizeOfAllEntries(), kHighWatermark);
+
+  EXPECT_EQ(store_->GetIndexStateForHash(oldest_alive_key.hash()),
+            SqlPersistentStore::IndexState::kHashFound);
+
+  histogram_tester.ExpectTotalCount(
+      "Net.SqlDiskCache.Backend.RunEviction.TimeToSelectEntries.InMemory."
+      "Success",
+      1);
 }
 
 #if DCHECK_IS_ON()

@@ -4,15 +4,12 @@
 
 #include "chrome/browser/contextual_cueing/contextual_cueing_menu_model.h"
 
-#include "base/logging.h"
+#include <optional>
+
 #include "chrome/browser/contextual_cueing/contextual_cueing_controller.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_enums.h"
-#include "chrome/browser/contextual_cueing/contextual_cueing_metrics.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service.h"
 #include "chrome/browser/contextual_cueing/contextual_cueing_service_factory.h"
-#include "chrome/browser/ui/chrome_pages.h"
-#include "chrome/browser/ui/scoped_tabbed_browser_displayer.h"
-#include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
@@ -24,10 +21,28 @@ namespace contextual_cueing {
 
 namespace {
 
+// LINT.IfChange
 // Command IDs for the contextual cueing anchored message menu.
 static constexpr int kContextualCueingDismissCommand = 1;
 static constexpr int kContextualCueingEditPromptCommand = 2;
 static constexpr int kContextualCueingOpenSettingsCommand = 3;
+// LINT.ThenChange(:command_id_switch)
+
+std::optional<ContextualCueingInteraction> CommandIdToInteraction(
+    int command_id) {
+  // LINT.IfChange(command_id_switch)
+  switch (command_id) {
+    case kContextualCueingDismissCommand:
+      return ContextualCueingInteraction::kCueDismissed;
+    case kContextualCueingEditPromptCommand:
+      return ContextualCueingInteraction::kCueEditPrompt;
+    case kContextualCueingOpenSettingsCommand:
+      return ContextualCueingInteraction::kCueSuggestionsSettings;
+    default:
+      return std::nullopt;
+  }
+  // LINT.ThenChange()
+}
 
 }  // namespace
 
@@ -35,11 +50,13 @@ ContextualCueingMenuModel::ContextualCueingMenuModel(
     Profile* profile,
     base::WeakPtr<ContextualCueingController> controller,
     CueTargetType cue_type,
+    std::string cuj,
     CueActionData data)
     : ui::SimpleMenuModel(this),
       profile_(profile),
       controller_(controller),
       cue_type_(cue_type),
+      cuj_(cuj),
       data_(data) {
   contextual_cueing_service_ =
       ContextualCueingServiceFactory::GetForProfile(profile_);
@@ -54,12 +71,13 @@ ContextualCueingMenuModel::ContextualCueingMenuModel(
   AddItemWithStringIdAndIcon(
       kContextualCueingEditPromptCommand,
       IDS_CONTEXTUAL_CUEING_MENU_EDIT_PROMPT,
-      ui::ImageModel::FromVectorIcon(vector_icons::kEditSquareIcon,
+      ui::ImageModel::FromVectorIcon(features::IsRoundedIconsEnabled()
+                                         ? vector_icons::kEditSquareIcon
+                                         : vector_icons::kEditSquareOldIcon,
                                      ui::kColorMenuIcon, 16));
   AddSeparator(ui::NORMAL_SEPARATOR);
   AddItemWithStringIdAndIcon(
-      kContextualCueingOpenSettingsCommand,
-      IDS_CONTEXTUAL_CUEING_MENU_SUGGESTION_SETTINGS,
+      kContextualCueingOpenSettingsCommand, IDS_CONTEXTUAL_CUEING_MENU_SETTINGS,
       ui::ImageModel::FromVectorIcon(features::IsRoundedIconsEnabled()
                                          ? vector_icons::kSettingsFilledIcon
                                          : vector_icons::kSettingsOldIcon,
@@ -70,35 +88,17 @@ ContextualCueingMenuModel::~ContextualCueingMenuModel() = default;
 
 void ContextualCueingMenuModel::ExecuteCommand(int command_id,
                                                int event_flags) {
-  switch (command_id) {
-    case kContextualCueingDismissCommand:
-      RecordContextualCueingInteraction(
-          ContextualCueingInteraction::kCueDismissed,
-          controller_->current_cuj());
-      contextual_cueing_service_->OnCueDismissed(cue_type_);
-      break;
-    case kContextualCueingEditPromptCommand:
-      RecordContextualCueingInteraction(
-          ContextualCueingInteraction::kCueEditPrompt,
-          controller_->current_cuj());
-      if (CueTarget* target = controller_->GetTarget(cue_type_)) {
-        target->OnEditPrompt(std::move(data_));
-      }
-      break;
-    case kContextualCueingOpenSettingsCommand: {
-      RecordContextualCueingInteraction(
-          ContextualCueingInteraction::kCueSuggestionsSettings,
-          controller_->current_cuj());
-      chrome::ShowSettingsSubPageForProfile(profile_,
-                                            chrome::kSuggestionsSubPage);
-      break;
-    }
-    default:
-      break;
+  if (!controller_) {
+    return;
   }
 
-  // User interacted with the cue, so hide it.
-  controller_->HideCue();
+  auto interaction = CommandIdToInteraction(command_id);
+  if (!interaction) {
+    return;
+  }
+
+  controller_->OnCueInteraction(*interaction, cue_type_, cuj_,
+                                std::move(data_));
 }
 
 }  // namespace contextual_cueing

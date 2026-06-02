@@ -24,6 +24,10 @@ const base::FeatureParam<bool> kGlicChromeStatusIconLogOnly{
 const base::FeatureParam<std::string> kGlicChromeStatusIconOtherAppID{
     &kGlicChromeStatusIcon, "glic-chrome-status-icon-other-app-id", ""};
 
+BASE_FEATURE(kGlicOSIconVariant, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<int> kGlicOSIconVariantParam{&kGlicOSIconVariant,
+                                                      "variant", 0};
+
 BASE_FEATURE(kGlicOrphanedReattachment, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicSelectionPrompt, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -47,6 +51,11 @@ const base::FeatureParam<bool> kAutoOpenGlicForPdfWithOnboarding({
     &kAutoOpenGlicForPdf,
     "AutoOpenGlicForPdfWithOnboarding",
     true,
+});
+const base::FeatureParam<base::TimeDelta> kAutoOpenGlicCooldown({
+    &kAutoOpenGlicForPdf,
+    "AutoOpenGlicCooldown",
+    base::Hours(1),
 });
 
 BASE_FEATURE(kGlicInvoke, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -164,6 +173,16 @@ BASE_FEATURE(kGlicContentsInitiallyHidden,
 
 BASE_FEATURE(kGlicAnchorEntryPointForOnboardedUsers,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If kGlicShowForSignedOut is enabled, the GiC panel can be shown to signed out
+// users to show the sign-in promotion.
+BASE_FEATURE(kGlicShowForSignedOut,
+#if BUILDFLAG(IS_ANDROID)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 
 // Killswitch that controls whether to update the WebContents visibility state
 // when toggling the Glic panel.

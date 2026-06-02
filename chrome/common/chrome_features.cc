@@ -201,7 +201,11 @@ BASE_FEATURE(kGlicActorApcComparison, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<double> kGlicActorApcComparisonSamplingRate{
     &kGlicActorApcComparison, "sampling-rate", 0.1};
 
+BASE_FEATURE(kGlicIgnoreDogfoodClient, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kGlicExperimentalTriggering, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicExperimentalTriggeringSuppressDoneNotification,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicExperimentalTriggeringOptInBypass,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicExperimentalTriggeringOpenWindowIfNone,
@@ -250,7 +254,7 @@ BASE_FEATURE(kGlicHandoffButtonHideWhenOmniboxPopupOpened,
 
 // If enabled, the magic cursor is shown during actuation for mouse movements
 // and clicks.
-BASE_FEATURE(kGlicActorUiMagicCursor, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicActorUiMagicCursor, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Default: 1.5 pixels per millisecond
 const base::FeatureParam<double> kGlicActorUiMagicCursorSpeed{
@@ -534,7 +538,7 @@ const base::FeatureParam<std::string> kGlicGuestURL{
     &kGlicURLConfig, "glic-guest-url", "https://gemini.google.com/glic"};
 
 #if BUILDFLAG(IS_CHROMEOS)
-BASE_FEATURE(kGlicShowStatusTrayIcon, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicShowStatusTrayIcon, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 BASE_FEATURE_PARAM(std::string,
@@ -654,6 +658,11 @@ BASE_FEATURE_PARAM(std::string,
                    &kGlicLearnMoreURLConfig,
                    "glic-actuation-on-web-toggle-learn-more-url",
                    "https://support.google.com/gemini?p=gic_agent");
+BASE_FEATURE_PARAM(std::string,
+                   kGlicExperimentalTriggeringLearnMoreURL,
+                   &kGlicLearnMoreURLConfig,
+                   "glic-experimental-triggering-toggle-learn-more-url",
+                   "https://gemini.google/overview/agent/spark/");
 BASE_FEATURE_PARAM(
     std::string,
     kGlicWebActuationToggleConsiderSafelyURL,
@@ -992,6 +1001,8 @@ BASE_FEATURE(kPrivacyGuideForceAvailable, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPdfGlicSummarize, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<int> kPdfGlicSummarizeArm{&kPdfGlicSummarize, "arm",
                                                    3};
+const base::FeatureParam<bool> kPdfGlicSummarizeUseLongButtonText{
+    &kPdfGlicSummarize, "use_long_button_text", false};
 BASE_FEATURE(kPdfGlicSummarizeFre, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
@@ -1159,6 +1170,11 @@ BASE_FEATURE(kHttpsFirstModeV2ForTypicallySecureUsers,
 
 // Enables automatically upgrading main frame navigations to HTTPS.
 BASE_FEATURE(kHttpsUpgrades, base::FEATURE_ENABLED_BY_DEFAULT);
+// When enabled, typed schemeless navigations (e.g., typed "example.com" in the
+// Omnibox) that are upgraded to HTTPS will not fallback to HTTP if the HTTPS
+// navigation fails due to a timeout.
+BASE_FEATURE(kHttpsUpgradesTypedSchemelessNavigationNoTimeoutFallback,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<base::TimeDelta> kHttpsUpgradesFallbackDelay{
     &kHttpsUpgrades, "fallback-delay", base::Seconds(3)};
@@ -1172,17 +1188,27 @@ BASE_FEATURE(kHttpsFirstModeIncognito, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Experimental image replacement feature. b/482792874
 BASE_FEATURE(kIndigo, base::FEATURE_DISABLED_BY_DEFAULT);
+
 const base::FeatureParam<base::TimeDelta> kIndigoAnchoredMessageResetDuration{
     &kIndigo, "indigo_anchored_message_reset_duration", base::Hours(24)};
 const base::FeatureParam<std::string> kIndigoGenerateUrl{
     &kIndigo, "indigo_generate_url", ""};
 const base::FeatureParam<std::string> kIndigoStatusUrl{&kIndigo,
                                                        "indigo_status_url", ""};
+const base::FeatureParam<std::string> kIndigoDeleteUrl{&kIndigo,
+                                                       "indigo_delete_url", ""};
 const base::FeatureParam<std::string> kIndigoOnboardingUrl{
     &kIndigo, "indigo_onboarding_url", ""};
 const base::FeatureParam<std::string> kIndigoScopes{
     &kIndigo, "indigo_scopes",
     "https://www.googleapis.com/auth/userinfo.email"};
+
+// Experimental image replacement feature opens glic.
+BASE_FEATURE(kIndigoOpenGlic, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<std::string> kIndigoGlicPrompt{
+    &kIndigoOpenGlic, "indigo_glic_prompt", ""};
+const base::FeatureParam<std::string> kIndigoGlicPromptKey{
+    &kIndigoOpenGlic, "indigo_glic_prompt_key", ""};
 
 #if !BUILDFLAG(IS_ANDROID)
 // A feature that controls whether Instant uses a spare renderer.
@@ -1195,7 +1221,12 @@ BASE_FEATURE(kIsolatedWebAppDevMode, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables users on unmanaged devices to install Isolated Web Apps.
 BASE_FEATURE(kIsolatedWebAppUnmanagedInstall,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_CHROMEOS)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif  // BUILDFLAG(IS_CHROMEOS)
+);
 
 #if BUILDFLAG(IS_CHROMEOS)
 // Enables users to install isolated web apps in managed guest sessions.
@@ -1780,6 +1811,11 @@ BASE_FEATURE(kWebUIHomeButton, base::FEATURE_DISABLED_BY_DEFAULT);
 // from chrome://webui-toolbar.top-chrome. crbug.com/503821930
 BASE_FEATURE(kWebUIBatterySaverButton, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, the performance intervention button will be replaced with WebUI
+// loaded from chrome://webui-toolbar.top-chrome. crbug.com/503822129
+BASE_FEATURE(kWebUIPerformanceInterventionButton,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, the app menu button will be replaced with WebUI loaded from
 // chrome://webui-toolbar.top-chrome.
 BASE_FEATURE(kWebUIAppMenuButton, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1847,13 +1883,13 @@ const base::FeatureParam<base::TimeDelta> kSmartRestartDelay{
 BASE_FEATURE(kSmartRestartLockScreen, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<int> kSmartRestartLockScreenTabThreshold{
-    &kSmartRestartLockScreen, "tab_threshold", -1};
+    &kSmartRestartLockScreen, "lock_tab_threshold", -1};
 
 const base::FeatureParam<int> kSmartRestartLockScreenDisruptionThreshold{
-    &kSmartRestartLockScreen, "disruption_threshold", 2};
+    &kSmartRestartLockScreen, "lock_disruption_threshold", 2};
 
 const base::FeatureParam<base::TimeDelta> kSmartRestartLockScreenDelay{
-    &kSmartRestartLockScreen, "restart_delay", base::Minutes(5)};
+    &kSmartRestartLockScreen, "lock_restart_delay", base::Minutes(5)};
 #endif  // BUILDFLAG(IS_ANDROID)
 
 }  // namespace features

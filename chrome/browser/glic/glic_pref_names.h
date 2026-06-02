@@ -85,8 +85,8 @@ enum class GlicActuationOnWebPolicyState {
   kMaxValue = kDisabled
 };
 
-// Values for the "glic.experimental_triggering_setting" pref.
-enum class GlicExperimentalTriggeringPolicyState {
+// Values for the "glic.spark_setting" pref.
+enum class GlicSparkPolicyState {
   kMinValue = 0,
 
   kEnabled = kMinValue,
@@ -109,10 +109,9 @@ inline constexpr char kGlicTabContextEnabled[] = "glic.tab_context_enabled";
 inline constexpr char kGlicDefaultTabContextEnabled[] =
     "glic.default_tab_context_enabled";
 
-// Integer pref that determines if Glic experimental triggering is enabled.
+// Integer pref that determines if Glic Spark is enabled.
 // Controlled by enterprise policy.
-inline constexpr char kGlicExperimentalTriggeringPolicySettings[] =
-    "glic.experimental_triggering_policy_settings";
+inline constexpr char kGlicSparkPolicySettings[] = "glic.spark_policy_settings";
 
 // Boolean pref that determines the rollout eligibility for the user profile.
 inline constexpr char kGlicRolloutEligibility[] =
@@ -161,6 +160,10 @@ inline constexpr char kGlicActuationOnWebAllowedForURLs[] =
     "glic.actuation_on_web_allowed_for_urls";
 inline constexpr char kGlicActuationOnWebBlockedForURLs[] =
     "glic.actuation_on_web_blocked_for_urls";
+
+// Dict pref storing details for Gemini Enterprise.
+inline constexpr char kGlicGeminiEnterpriseSettings[] =
+    "glic.gemini_enterprise_settings";
 
 // Boolean pref that tracks if the Glic partition needs a cookie sync.
 inline constexpr char kGlicPartitionNeedsCookieSync[] =

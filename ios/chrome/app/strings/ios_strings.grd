@@ -732,6 +732,11 @@
       <message name="IDS_IOS_AUTOFILL_COUNTRY" desc="Title of the field of a profile address representing the country/nation of the address. [Length: 15em] [iOS only]">
         Country
       </message>
+      <message name="IDS_IOS_AUTOFILL_CREDENTIAL_OPTIONS_AVAILABLE_ACCESSIBILITY_ANNOUNCEMENT" is_accessibility_with_no_ui="true" desc="The accessibility announcement to indicate the number of options available to the user above the keyboard in relation to credentials (passwords and passkeys). This announcement is triggered when the user enters edit mode in a credential-related form field and has options available in the keyboard accessory for autofill purposes. According to the number of available options, the string goes from singular to plural. [iOS only]">
+        {count, plural,
+           =1 {{count} option for credential available above your keyboard.}
+           other {{count} options for credential available above your keyboard.}}
+      </message>
       <message name="IDS_IOS_AUTOFILL_CREDIT_CARD_AUTOFILL_DATA" desc="The accessible name for the button in the keyboard accessory shown when filling out forms used to open the expanded view to see credit card autofill data. This is spoken by VoiceOver. [Length: unlimited] [iOS only]">
         Payment methods
       </message>
@@ -1421,44 +1426,23 @@
       <message name="IDS_IOS_BWG_CONSENT_FIRST_BOX_TITLE" desc="First box title text for the Gemini Consent page for managed accounts.">
           Get more relevant answers by sharing your tabs
       </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_LINK_1" desc="Text for the first link in the BWG consent footnote.">
-          Google Terms
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_LINK_2" desc="Text for the second link in the BWG consent footnote.">
-          Gemini Apps Privacy Notice
-      </message>
       <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT" desc="Format string for the Gemini consent footnote.">
-          <ph name="GOOGLE_TERMS">$1<ex>Google Terms</ex></ph> and the <ph name="GEMINI_APPS_PRIVACY">$2<ex>Gemini Apps Privacy Notice</ex></ph> apply. Gemini is AI and can make mistakes, including about people.
+          <ph name="BEGIN_LINK">BEGIN_LINK</ph>Google Terms<ph name="END_LINK">END_LINK</ph> and the <ph name="BEGIN_LINK">BEGIN_LINK</ph>Gemini Apps Privacy Notice<ph name="END_LINK">END_LINK</ph> apply. Gemini is AI and can make mistakes, including about people.
       </message>
       <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA" desc="Format string for the Gemini consent footnote for accounts in South Korea.">
-          Our <ph name="TERMS">$1<ex>Terms</ex></ph>, <ph name="KOREAN_LOCATION_TERMS">$2<ex>Korean Location Terms</ex></ph>, and <ph name="PRIVACY_NOTICE">$3<ex>Privacy Notice</ex></ph> apply. Gemini is AI and can make mistakes, including about people.
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA_LINK_1" desc="Text for the first link in the Gemini consent footnote for South Korea.">
-          Terms
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA_LINK_2" desc="Text for the second link in the Gemini consent footnote for South Korea.">
-          Korean Location Terms
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA_LINK_3" desc="Text for the third link in the Gemini consent footnote for South Korea.">
-          Privacy Notice
+          Our <ph name="BEGIN_LINK">BEGIN_LINK</ph>Terms<ph name="END_LINK">END_LINK</ph>, <ph name="BEGIN_LINK">BEGIN_LINK</ph>Korean Location Terms<ph name="END_LINK">END_LINK</ph>, and <ph name="BEGIN_LINK">BEGIN_LINK</ph>Privacy Notice<ph name="END_LINK">END_LINK</ph> apply. Gemini is AI and can make mistakes, including about people.
       </message>
       <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_US_ONLY_ADDITION" desc="US-only footer addition message.">
           Some content may not be suitable for everyone.
       </message>
       <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_WATCH_LABEL" desc="Footer label for watch video.">
-          Watch: <ph name="WATCH_LINK">$1<ex>5 must-knows for generative AI</ex></ph>
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_WATCH_LINK" desc="Footer link text for watch video.">
-          5 must-knows for generative AI
+          Watch: <ph name="BEGIN_LINK">BEGIN_LINK</ph>5 must-knows for generative AI<ph name="END_LINK">END_LINK</ph>
       </message>
       <message name="IDS_IOS_BWG_CONSENT_MANAGED_FIRST_BOX_BODY" desc="First box body text for the Gemini Consent page for managed accounts.">
           By default, your current tab is shared when you start a new chat. When tabs are shared, their contents and URLs are sent to Google but won’t be used to improve generative AI models. You can change this setting anytime.
       </message>
       <message name="IDS_IOS_BWG_CONSENT_MANAGED_SECOND_BOX_BODY" desc="Second box body text for the Gemini Consent page for managed accounts.">
-          Neither your conversations with Gemini nor your <ph name="GOOGLE_WORKSPACE_DATA">$1<ex>Google Workspace data</ex></ph> will be reviewed by human reviewers or used to improve generative AI models.
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_MANAGED_SECOND_BOX_BODY_LINK" desc="The link text in the second box body for managed accounts.">
-        Google Workspace data
+          Neither your conversations with Gemini nor your <ph name="BEGIN_LINK">BEGIN_LINK</ph>Google Workspace data<ph name="END_LINK">END_LINK</ph> will be reviewed by human reviewers or used to improve generative AI models.
       </message>
       <message name="IDS_IOS_BWG_CONSENT_MANAGED_SECOND_BOX_TITLE" desc="Second box title text for the Gemini Consent page for managed accounts.">
           Your organization's data is private and secure
@@ -1467,13 +1451,7 @@
           By default, your current tab is shared when you start a new chat. When tabs are shared, their contents and URLs are sent to Google. You can change this setting anytime.
       </message>
       <message name="IDS_IOS_BWG_CONSENT_NON_MANAGED_SECOND_BOX_BODY" desc="Second box body text for the Gemini Consent page for non managed accounts.">
-          Chats are reviewed and used to improve Google AI. <ph name="LEARN_ABOUT_CHOICES">$1<ex>Learn about your choices.</ex></ph> <ph name="INFO_ABOUT_LOCATION">$2<ex>Info about your location</ex></ph> is also stored with your activity.
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_NON_MANAGED_SECOND_BOX_BODY_LINK_1" desc="The first link text in the second box body for non managed accounts.">
-        Learn about your choices.
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_NON_MANAGED_SECOND_BOX_BODY_LINK_2" desc="The second link text within the second box body for non managed accounts.">
-        Info about your location
+          Chats are reviewed and used to improve Google AI. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn about your choices.<ph name="END_LINK">END_LINK</ph> <ph name="BEGIN_LINK">BEGIN_LINK</ph>Info about your location<ph name="END_LINK">END_LINK</ph> is also stored with your activity.
       </message>
       <message name="IDS_IOS_BWG_CONSENT_NON_MANAGED_SECOND_BOX_TITLE" desc="Second box title text for the Gemini Consent page for non managed accounts.">
           Your activity improves Google AI
@@ -1700,6 +1678,9 @@
       <message name="IDS_IOS_COLLAPSED_PRIMARY_TOOLBAR_BUTTON" desc="The accessibility label for the collapsed toolbar button in primary toolbar. [iOS only].">
         Collapsed primary toolbar button
       </message>
+      <message name="IDS_IOS_COLLAPSED_SECONDARY_TOOLBAR_BUTTON" desc="The accessibility label for the collapsed toolbar button in secondary toolbar. [iOS only].">
+        Collapsed secondary toolbar button
+      </message>
       <message name="IDS_IOS_COMPOSEBOX_ADD_ATTACHMENT_BUTTON_ACCESSIBILITY_LABEL" desc="The accessibility announcement read by Voice Over for the button that enables the user to add other attachments to the search query. [iOS only].">
         Add attachment
       </message>
@@ -1777,6 +1758,9 @@
         {COUNT, plural,
         =1 {Add up to 1 tab}
         other {Add up to {COUNT} tabs}}
+      </message>
+      <message name="IDS_IOS_COMPOSEBOX_MENU_ADD_CURRENT_TAB_ACTION" desc="The contextual menu option for attaching the current tab. [iOS only].">
+        Add tab
       </message>
       <message name="IDS_IOS_COMPOSEBOX_MENU_CURRENT_TAB_ACTION" desc="The contextual menu option for attaching the current tab. [iOS only].">
         Current tab
@@ -3316,25 +3300,28 @@
         Live will use your microphone. Tapping the Live button turns on the mic. To turn off the mic, tap the stop button or close Gemini.
       </message>
       <message name="IDS_IOS_GEMINI_LIVE_CONSENT_SECOND_BOX_BODY" desc="Body text for the second box of the Gemini Live Consent page.">
-        Recordings of your interactions with Live and content you share with it are saved and processed per the <ph name="PRIVACY_NOTICE">$1<ex>Gemini Apps Privacy Notice</ex></ph>. <ph name="LEARN_MORE">$2<ex>Learn more</ex></ph>
-      </message>
-      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_SECOND_BOX_BODY_LINK_1" desc="First link text within the second box body of the Gemini Live Consent page.">
-        Gemini Apps Privacy Notice
-      </message>
-      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_SECOND_BOX_BODY_LINK_2" desc="Second link text within the second box body of the Gemini Live Consent page.">
-        Learn more
+        Recordings of your interactions with Live and content you share with it are saved and processed per the <ph name="BEGIN_LINK">BEGIN_LINK</ph>Gemini Apps Privacy Notice<ph name="END_LINK">END_LINK</ph>. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn more<ph name="END_LINK">END_LINK</ph>
       </message>
       <message name="IDS_IOS_GEMINI_LIVE_CONSENT_THIRD_BOX_BODY" desc="Body text for the third box of the Gemini Live Consent page.">
-        <ph name="RESPECT_PRIVACY">$1<ex>Respect other’s privacy</ex></ph> and ask permission before recording or including them in a Live chat.
-      </message>
-      <message name="IDS_IOS_GEMINI_LIVE_CONSENT_THIRD_BOX_BODY_LINK" desc="Link text within the third box body of the Gemini Live Consent page.">
-        Respect other’s privacy
+        <ph name="BEGIN_LINK">BEGIN_LINK</ph>Respect other’s privacy<ph name="END_LINK">END_LINK</ph> and ask permission before recording or including them in a Live chat.
       </message>
       <message name="IDS_IOS_GEMINI_LIVE_CONSENT_TITLE" desc="Main title text for the Gemini Live Consent page.">
         Go Live with Gemini
       </message>
       <message name="IDS_IOS_GEMINI_LIVE_CONTINUE_SESSION_SNACKBAR" desc="Snackbar message shown to ask if the user wants to continue their Gemini Live session.">
         Are you still using Live? Tap the Live button to keep talking to Gemini
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_INTRO_TTS" desc="The intro text spoken by TTS when the user enters a Gemini Live session.">
+        Hi, I'm Gemini. We're about to go live, where you can ask questions about the page you're on just by talking. But before we get started, take a quick look at this important information.
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_IPH" desc="Main text in the in-product help tooltip suggesting to users that they can talk to Gemini in Live mode about the current page.">
+        Go Live with Gemini to ask about a page, brainstorm out loud, and talk back and forth.
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_JUST_A_SEC" desc="Status text shown in the Gemini Live session when Gemini is processing the user's speech.">
+        Just a sec
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_LISTENING" desc="Status text shown in the Gemini Live session when Gemini is listening to the user.">
+        Listening
       </message>
       <message name="IDS_IOS_GEMINI_LIVE_MICROPHONE_ALERT_DETAIL" desc="Detail message of modal dialog shown when the user tries to start Gemini Live but has not allowed microphone access. This body instructs the user to enable the microphone in Settings.">
         To use Live, give Chrome access to your microphone in settings
@@ -3347,6 +3334,9 @@
       </message>
       <message name="IDS_IOS_GEMINI_LIVE_MICROPHONE_ALERT_TITLE" desc="Title of modal dialog shown when the user tries to start Gemini Live but has not allowed microphone access.">
         Turn on Microphone
+      </message>
+      <message name="IDS_IOS_GEMINI_LIVE_RESPONDING" desc="Status text shown in the Gemini Live session when Gemini is responding to the user.">
+        Responding
       </message>
       <message name="IDS_IOS_GEMINI_LIVE_SHARING_LABEL" desc="Label describing the current page context shown in Gemini Live mode, indicating that the current page is being shared. [iOS only]">
         Sharing <ph name="PAGE_TITLE">$1<ex>Example Page</ex></ph>
@@ -4332,6 +4322,9 @@
         {count, plural,
           =1 {Complete 1 more task to level up}
           other {Complete {count} more tasks to level up}}
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_WELCOME" desc="The welcome text displayed in the user profile header of the Level Up feature screen. [iOS only]">
+        Welcome
       </message>
       <message name="IDS_IOS_LEVEL_UP_YOUR_TASKS" desc="Title for the tasks card displaying the user's available level-up tasks. [iOS only]">
         Your tasks
@@ -7532,6 +7525,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_SIGNIN_GROUP_COLLABORATION_TITLE" desc="Title displayed to the user when they attempt to access a shared group while being signed out.">
         Collaborate in tab groups
+      </message>
+      <message name="IDS_IOS_SIGNIN_PROMO_AUTOFILL_AND_PASSWORDS" desc="This string is on a promo intended to promote signing in to Chrome with the user's Google Account. It appears on the Autofill and Passwords settings page when the user is not signed in. We want users to read this promo and click 'Continue as {name}' to sign in to their Google Account. The tone should be informative and lightweight.">
+        Sign in to get your passwords and more on all your devices.
       </message>
       <message name="IDS_IOS_SIGNIN_PROMO_BOOKMARKS" desc="This string is on a promo intended to promote signing in to Chrome with the user's Google Account. It appears on the Bookmarks page when the user is not signed in. We want users to read this promo and click 'Continue as name' to sign in to their Google Account. The tone should be informative and lightweight. [Length: 90em]">
         Sign in to get your bookmarks on all your devices.

@@ -149,16 +149,86 @@ void PossiblyRemoveAutofillWarnings(std::vector<Suggestion>& suggestions) {
 // for which this method returns `true` makes screen readers change
 // the field announcement to notify users about available autofill options,
 // e.g. VoiceOver adds "with autofill menu.".
-bool HasAutofillSugestionsForA11y(SuggestionType item_id) {
-  switch (item_id) {
-    // TODO(crbug.com/374918460): Consider adding other types that can be
-    // classified as "providing autofill capabilities".
-    case SuggestionType::kFillAutofillAi:
+bool HasAutofillSuggestionsForA11y(SuggestionType type) {
+  if (!base::FeatureList::IsEnabled(
+          features::kAutofillDoNotUpdateAutofillAvailabilityOnFocusEvents)) {
+    switch (type) {
+      // TODO(crbug.com/374918460): Consider adding other types that can be
+      // classified as "providing autofill capabilities".
+      case SuggestionType::kFillAutofillAi:
+      case SuggestionType::kLoyaltyCardEntry:
+        return true;
+      default:
+        return AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
+            type);
+    }
+  }
+
+  switch (type) {
+    case SuggestionType::kAddressEntry:
+    case SuggestionType::kAddressFieldByFieldFilling:
+    case SuggestionType::kAddressEntryOnTyping:
+    case SuggestionType::kCreditCardEntry:
+    case SuggestionType::kVirtualCreditCardEntry:
+    case SuggestionType::kIbanEntry:
+    case SuggestionType::kSaveAndFillCreditCardEntry:
+    case SuggestionType::kMerchantPromoCodeEntry:
+    case SuggestionType::kIdentityCredential:
     case SuggestionType::kLoyaltyCardEntry:
+    case SuggestionType::kOneTimePasswordEntry:
+    case SuggestionType::kDevtoolsTestAddresses:
+    case SuggestionType::kFillAutofillAi:
       return true;
-    default:
-      return AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
-          item_id);
+    case SuggestionType::kAutocompleteEntry:
+    // Autocomplete entries are handled separately by the caller. The other
+    // entries should not have announcements.
+    case SuggestionType::kManageAddress:
+    case SuggestionType::kManageAutofillAi:
+    case SuggestionType::kManageAutofillAiIdentityDocs:
+    case SuggestionType::kManageAutofillAiTravel:
+    case SuggestionType::kManageCreditCard:
+    case SuggestionType::kManageIban:
+    case SuggestionType::kManageLoyaltyCard:
+    case SuggestionType::kComposeProactiveNudge:
+    case SuggestionType::kComposeResumeNudge:
+    case SuggestionType::kComposeSavedStateNotification:
+    case SuggestionType::kComposeDisable:
+    case SuggestionType::kComposeGoToSettings:
+    case SuggestionType::kComposeNeverShowOnThisSiteAgain:
+    case SuggestionType::kSeePromoCodeDetails:
+    case SuggestionType::kDatalistEntry:
+    case SuggestionType::kPasswordEntry:
+    case SuggestionType::kBackupPasswordEntry:
+    case SuggestionType::kTroubleSigningInEntry:
+    case SuggestionType::kAllSavedPasswordsEntry:
+    case SuggestionType::kGeneratePasswordEntry:
+    case SuggestionType::kAccountStoragePasswordEntry:
+    case SuggestionType::kPasswordFieldByFieldFilling:
+    case SuggestionType::kFillPassword:
+    case SuggestionType::kViewPasswordDetails:
+    case SuggestionType::kFreeformFooter:
+    case SuggestionType::kInsecureContextPaymentDisabledMessage:
+    case SuggestionType::kScanCreditCard:
+    case SuggestionType::kBnplEntry:
+    case SuggestionType::kAllLoyaltyCardsEntry:
+    case SuggestionType::kWebauthnCredential:
+    case SuggestionType::kWebauthnSignInWithAnotherDevice:
+    case SuggestionType::kTitle:
+    case SuggestionType::kSeparator:
+    case SuggestionType::kUndoOrClear:
+    case SuggestionType::kMixedFormMessage:
+    case SuggestionType::kDevtoolsTestAddressEntry:
+    case SuggestionType::kDevtoolsTestAddressByCountry:
+    case SuggestionType::kPendingStateSignin:
+    case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kBnplFootnote:
+    case SuggestionType::kAtMemoryInactivityNudge:
+    case SuggestionType::kAutocompleteAtMemoryButton:
+    case SuggestionType::kOpenGemini:
+    case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAtMemorySearchAffordance:
+      return false;
   }
 }
 
@@ -357,10 +427,11 @@ void AutofillExternalDelegate::AttemptToDisplayAutofillSuggestions(
     OnAutofillAvailabilityEvent(
         mojom::AutofillSuggestionAvailability::kNoSuggestions);
     // No suggestions, any popup currently showing is obsolete.
-    if (!base::FeatureList::IsEnabled(
+    if (!manager_->client().IsAndroidLargeFormFactor() ||
+        !base::FeatureList::IsEnabled(
             features::kAutofillAndroidKeyboardAccessoryDynamicPositioning)) {
-      manager_->client().HideAutofillSuggestions(
-          SuggestionHidingReason::kNoSuggestions);
+      manager_->client().HideSuggestions(SuggestionHidingReason::kNoSuggestions,
+                                         /*product=*/std::nullopt);
       return;
     }
   }
@@ -486,19 +557,14 @@ void AutofillExternalDelegate::OnSuggestionsShown(
                                                         &Suggestion::type);
 
   if (std::ranges::any_of(shown_suggestion_types,
-                          HasAutofillSugestionsForA11y)) {
+                          HasAutofillSuggestionsForA11y)) {
     OnAutofillAvailabilityEvent(
         mojom::AutofillSuggestionAvailability::kAutofillAvailable);
-  } else {
-    // We send autocomplete availability event even though there might be no
-    // autocomplete suggestions shown.
-    // TODO(crbug.com/315748930): Provide AX event only for autocomplete
-    // entries.
+  } else if (shown_suggestion_types.contains(
+                 SuggestionType::kAutocompleteEntry)) {
     OnAutofillAvailabilityEvent(
         mojom::AutofillSuggestionAvailability::kAutocompleteAvailable);
-
-    if (shown_suggestion_types.contains(SuggestionType::kAutocompleteEntry) &&
-        autofill_metrics::ShouldLogAutofillSuggestionShown(trigger_source_)) {
+    if (autofill_metrics::ShouldLogAutofillSuggestionShown(trigger_source_)) {
       AutofillMetrics::OnAutocompleteSuggestionsShown();
     }
   }
@@ -765,8 +831,9 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       const base::optional_ref<const EntityInstance> entity =
           GetEntityInstance(suggestion);
       if (!entity || !autofill_field || !form_structure) {
-        manager_->client().HideAutofillSuggestions(
-            SuggestionHidingReason::kAcceptSuggestion);
+        manager_->client().HideSuggestions(
+            SuggestionHidingReason::kAcceptSuggestion,
+            FillingProduct::kAutofillAi);
         return;
       }
       const bool will_fill_sensitive_info = WillFillSensitiveAttributes(
@@ -918,8 +985,8 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
     return;
   }
 
-  manager_->client().HideAutofillSuggestions(
-      SuggestionHidingReason::kAcceptSuggestion);
+  manager_->client().HideSuggestions(SuggestionHidingReason::kAcceptSuggestion,
+                                     /*product=*/std::nullopt);
 }
 
 void AutofillExternalDelegate::DidPerformButtonActionForSuggestion(
@@ -1034,8 +1101,8 @@ bool AutofillExternalDelegate::RemoveSuggestion(const Suggestion& suggestion) {
 }
 
 void AutofillExternalDelegate::DidEndTextFieldEditing() {
-  manager_->client().HideAutofillSuggestions(
-      SuggestionHidingReason::kEndEditing);
+  manager_->client().HideSuggestions(SuggestionHidingReason::kEndEditing,
+                                     /*product=*/std::nullopt);
 }
 
 void AutofillExternalDelegate::OnTabSelected(TabbedPaneTabType tab_type) {
@@ -1114,8 +1181,8 @@ void AutofillExternalDelegate::OnEntityInstanceFetched(
     manager_->client().ShowAutofillAiFetchFromWalletFailureNotification();
   }
 
-  manager_->client().HideAutofillSuggestions(
-      SuggestionHidingReason::kAcceptSuggestion);
+  manager_->client().HideSuggestions(SuggestionHidingReason::kAcceptSuggestion,
+                                     FillingProduct::kAutofillAi);
 }
 
 void AutofillExternalDelegate::PreviewAddressFieldByFieldFillingSuggestion(

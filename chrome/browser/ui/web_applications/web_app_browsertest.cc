@@ -222,6 +222,11 @@ using ::base::BucketsAre;
 
 class WebAppBrowserTest : public WebAppBrowserTestBase {
  public:
+  WebAppBrowserTest() {
+    scoped_feature_list_.InitAndDisableFeature(
+        ::features::kWebAppInstallDialog);
+  }
+
   GURL GetSecureAppURL() {
     return embedded_https_test_server().GetURL("app.com", "/ssl/google.html");
   }
@@ -281,6 +286,9 @@ class WebAppBrowserTest : public WebAppBrowserTestBase {
 
     return result;
   }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 using WebAppLaunchUseCounterBrowserTest = WebAppBrowserTest;
@@ -1779,7 +1787,7 @@ IN_PROC_BROWSER_TEST_F(WebAppBrowserTest, ShortcutIconCorrectColor) {
   base::FilePath shortcut_path;
   auto* provider = WebAppProvider::GetForTest(profile());
   std::vector<SkColor> expected_pixel_colors = {SkColorSetRGB(92, 92, 92)};
-  std::optional<SkColor> icon_pixel_color = std::nullopt;
+  std::optional<SkColor> icon_pixel_color;
 #if BUILDFLAG(IS_MAC)
   icon_pixel_color = os_integration_override().GetShortcutIconTopLeftColor(
       profile(), os_integration_override().chrome_apps_folder(), app_id,

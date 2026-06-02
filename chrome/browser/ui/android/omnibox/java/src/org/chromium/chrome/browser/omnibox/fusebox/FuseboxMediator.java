@@ -65,6 +65,7 @@ import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
+import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
 import org.chromium.components.omnibox.InputTypeProto.InputType;
@@ -112,7 +113,7 @@ import java.util.function.Supplier;
     private final ScrimManager mScrimManager;
     private final Supplier<@Nullable View> mScrimAnchorViewSupplier;
     private final SettableNonNullObservableSupplier<@PopupState Integer> mPopupStateSupplier;
-    private final @Nullable BackPressManager mBackPressManager;
+    private final BackPressManager mBackPressManager;
     private final SettableNonNullObservableSupplier<Boolean> mBackPressStateSupplier =
             ObservableSuppliers.createNonNull(false);
 
@@ -152,7 +153,7 @@ import java.util.function.Supplier;
             Clipboard clipboard,
             ScrimManager scrimManager,
             Supplier<@Nullable View> scrimAnchorViewSupplier,
-            @Nullable BackPressManager backPressManager) {
+            BackPressManager backPressManager) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mPermissionDelegate = windowAndroid;
@@ -205,16 +206,12 @@ import java.util.function.Supplier;
 
         mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, false);
         mModel.set(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE, false);
-        if (mBackPressManager != null) {
-            mBackPressManager.addHandler(this, BackPressHandler.Type.FUSEBOX_POPUP);
-        }
+        mBackPressManager.addHandler(this, BackPressHandler.Type.FUSEBOX_POPUP);
     }
 
     /* package */ void destroy() {
         endInput();
-        if (mBackPressManager != null) {
-            mBackPressManager.removeHandler(this);
-        }
+        mBackPressManager.removeHandler(this);
     }
 
     public boolean wasActionTaken() {
@@ -411,7 +408,7 @@ import java.util.function.Supplier;
         }
     }
 
-    private void activateSearchMode() {
+    /* package */ void activateSearchMode() {
         if (trySetRequestType(AutocompleteRequestType.SEARCH)) {
             assert mModelList != null;
             mModelList.clear();
@@ -460,6 +457,8 @@ import java.util.function.Supplier;
                                 == PageClassification.CO_BROWSING_COMPOSEBOX_VALUE;
 
         if (!isInInputSession()) {
+            targetState = FuseboxState.DISABLED;
+        } else if (mInput.getAutocompleteState() == AutocompleteState.STANDBY_NO_FOCUS) {
             targetState = FuseboxState.DISABLED;
         } else if (!mHasContextualTasksFocus && isContextualTasks) {
             targetState = FuseboxState.COMPACT;
@@ -1277,10 +1276,14 @@ import java.util.function.Supplier;
             FuseboxMetrics.notifyModelButtonSelected(data.protoId);
             setModelMode(data.protoId);
         } else if (data.type == PopupButtonType.TOOL) {
-            FuseboxMetrics.notifyToolButtonSelected(data.protoId);
-            @AutocompleteRequestType
-            int requestType = ToolModeUtils.getRequestTypeForToolMode(data.protoId);
-            activateAiMode(requestType, AiModeActivationSource.TOOL_MENU);
+            if (data.selected) {
+                activateSearchMode();
+            } else {
+                FuseboxMetrics.notifyToolButtonSelected(data.protoId);
+                @AutocompleteRequestType
+                int requestType = ToolModeUtils.getRequestTypeForToolMode(data.protoId);
+                activateAiMode(requestType, AiModeActivationSource.TOOL_MENU);
+            }
         }
     }
 

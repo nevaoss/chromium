@@ -317,6 +317,7 @@ if (is_android) {
       "//components/password_manager/core/browser:password_manager_java_enums",
       "//components/payments/content/android:full_java",
       "//components/payments/content/android:java",
+      "//components/payments/content/android:service_impl_java",
       "//components/payments/content/android:service_java",
       "//components/payments/content/android/ui:java",
       "//components/payments/mojom:mojom_java",
@@ -426,12 +427,14 @@ if (is_android) {
   robolectric_library("chrome_junit_tests_org.chromium.chrome.browser") {
     sources = [
       "//chrome/android/java/src/org/chromium/chrome/browser/bottombar/BottomBarContainerCoordinatorUnitTest.java",
+      "src/org/chromium/chrome/browser/BrowserExitReasonTrackerUnitTest.java",
       "src/org/chromium/chrome/browser/ChromeActionModeHandlerUnitTest.java",
       "src/org/chromium/chrome/browser/ChromeActivityUnitTest.java",
       "src/org/chromium/chrome/browser/ChromeBaseAppCompatActivityUnitTest.java",
       "src/org/chromium/chrome/browser/ChromeLocalizationUtilsTest.java",
       "src/org/chromium/chrome/browser/DeferredStartupHandlerTest.java",
       "src/org/chromium/chrome/browser/ExampleRobolectricTest.java",
+      "src/org/chromium/chrome/browser/ExternalIntentUrlCheckerTest.java",
       "src/org/chromium/chrome/browser/HomeSurfaceTrackerUnitTest.java",
       "src/org/chromium/chrome/browser/IntentHandlerRobolectricTest.java",
       "src/org/chromium/chrome/browser/LaunchIntentDispatcherTest.java",
@@ -891,7 +894,8 @@ if (is_android) {
       "src/org/chromium/chrome/browser/media/document_picture_in_picture_header/DocumentPictureInPictureHeaderCoordinatorUnitTest.java",
       "src/org/chromium/chrome/browser/media/document_picture_in_picture_header/DocumentPictureInPictureHeaderMediatorUnitTest.java",
       "src/org/chromium/chrome/browser/media/document_picture_in_picture_header/DocumentPictureInPictureHeaderViewBinderUnitTest.java",
-      "src/org/chromium/chrome/browser/media/immersive_playback/ImmersivePlaybackConfirmationDialogTest.java",
+      "src/org/chromium/chrome/browser/media/immersive_playback/ImmersivePlaybackSnackbarControllerTest.java",
+      "src/org/chromium/chrome/browser/media/immersive_playback/ImmersiveVideoFormatSelectionDialogTest.java",
       "src/org/chromium/chrome/browser/media/ui/MediaNotificationActionsUpdatedTest.java",
       "src/org/chromium/chrome/browser/media/ui/MediaNotificationControllerTest.java",
       "src/org/chromium/chrome/browser/media/ui/MediaNotificationFaviconTest.java",
@@ -1132,6 +1136,7 @@ if (is_android) {
       ":chrome_junit_tests_helper",
       "//chrome/browser/ui/android/pdf:pdf_utils_java",
       "//chrome/browser/ui/android/toolbar:adaptive_features_java",
+      "//components/messages/android:factory_java",
       "//components/paint_preview/common/mojom:mojom_java",
       "//components/strings:components_strings_grd",
     ]
@@ -1436,10 +1441,15 @@ if (is_android) {
       "src/org/chromium/chrome/browser/ui/ExpandedSheetHelperImplUnitTest.java",
       "src/org/chromium/chrome/browser/ui/IncognitoRestoreAppLaunchDrawBlockerUnitTest.java",
       "src/org/chromium/chrome/browser/ui/activity_recreation/ActivityRecreationControllerUnitTest.java",
+      "src/org/chromium/chrome/browser/ui/color/ColorProviderBridgeImplTest.java",
       "src/org/chromium/chrome/browser/ui/system/StatusBarColorControllerUnitTest.java",
     ]
 
-    deps = [ ":chrome_junit_tests_helper" ]
+    deps = [
+      ":chrome_junit_tests_helper",
+      "//ui/android:ui_java_test_support",
+      "//ui/color:ui_color_android_java",
+    ]
   }
 
   robolectric_library(
@@ -1588,6 +1598,7 @@ if (is_android) {
       "//components/dom_distiller/content/browser/android:dom_distiller_content_java",
       "//components/dom_distiller/core/android:dom_distiller_core_java",
       "//components/dom_distiller/core/mojom:mojom_java",
+      "//components/metrics:metrics_java",
       "//third_party/androidx:androidx_pdf_pdf_viewer_fragment_java",
       "//ui/android:ui_android_features_java",
     ]

@@ -8,6 +8,7 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
@@ -45,6 +46,7 @@ import org.chromium.chrome.browser.devtools.DevToolsWindowAndroid;
 import org.chromium.chrome.browser.enterprise.util.ManagedBrowserUtils;
 import org.chromium.chrome.browser.feed.FeedFeatures;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.homepage.HomepageManager;
 import org.chromium.chrome.browser.hub.HubManager;
 import org.chromium.chrome.browser.hub.Pane;
 import org.chromium.chrome.browser.hub.PaneId;
@@ -63,6 +65,7 @@ import org.chromium.chrome.browser.readaloud.ReadAloudController;
 import org.chromium.chrome.browser.share.ShareUtils;
 import org.chromium.chrome.browser.supervised_user.SupervisedUserServiceBridge;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabFavicon;
 import org.chromium.chrome.browser.tabmodel.TabGroupTitleUtils;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -73,8 +76,10 @@ import org.chromium.chrome.browser.ui.appmenu.AppMenuBookmarkItemProperties;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuDelegate;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuHandler;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuItemProperties;
+import org.chromium.chrome.browser.ui.appmenu.AppMenuTabItemProperties;
 import org.chromium.chrome.browser.ui.default_browser_promo.DefaultBrowserPromoUtils;
 import org.chromium.chrome.browser.ui.extensions.ExtensionUi;
+import org.chromium.chrome.browser.ui.favicon.FaviconHelper;
 import org.chromium.chrome.browser.ui.favicon.FaviconUtils;
 import org.chromium.chrome.browser.ui.lens.LensOverlayTabHelper;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -86,6 +91,7 @@ import org.chromium.components.browser_ui.accessibility.PageZoomMenuItemCoordina
 import org.chromium.components.browser_ui.accessibility.PageZoomProperties;
 import org.chromium.components.browser_ui.accessibility.PageZoomUtils;
 import org.chromium.components.browser_ui.util.GlobalDiscardableReferencePool;
+import org.chromium.components.browser_ui.widget.RoundedIconGenerator;
 import org.chromium.components.dom_distiller.core.DomDistillerFeatures;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
@@ -160,6 +166,9 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
     private final OneshotSupplier<HubManager> mHubManagerSupplier;
 
     private @Nullable BookmarkImageFetcher mImageFetcher;
+    private @Nullable FaviconHelper mFaviconHelper;
+    private final FaviconHelper.DefaultFaviconHelper mDefaultFaviconHelper;
+    private final RoundedIconGenerator mRoundedIconGenerator;
 
     public TabbedAppMenuPropertiesDelegate(
             Context context,
@@ -194,6 +203,8 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         mSnackbarManager = snackbarManager;
         mPageZoomMenuItemCoordinator = new PageZoomMenuItemCoordinator(pageZoomManager);
         mHubManagerSupplier = hubManagerSupplier;
+        mDefaultFaviconHelper = new FaviconHelper.DefaultFaviconHelper();
+        mRoundedIconGenerator = FaviconUtils.createCircularIconGenerator(mContext);
 
         incognitoReauthControllerOneshotSupplier.onAvailable(
                 mIncognitoReauthCallbackController.makeCancelable(
@@ -224,12 +235,23 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                 PageZoomMenuItemViewBinder::bind);
     }
 
+    private FaviconHelper getFaviconHelper() {
+        if (mFaviconHelper == null) {
+            mFaviconHelper = new FaviconHelper();
+        }
+        return mFaviconHelper;
+    }
+
     @Override
     public void destroy() {
         super.destroy();
         if (mImageFetcher != null) {
             mImageFetcher.destroy();
             mImageFetcher = null;
+        }
+        if (mFaviconHelper != null) {
+            mFaviconHelper.destroy();
+            mFaviconHelper = null;
         }
     }
 
@@ -314,6 +336,13 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
         // Manage windows
         if (MultiWindowUtils.shouldShowManageWindowsMenu()) modelList.add(buildManageWindowsItem());
 
+        // Tab groups
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+            if (shouldShowTabGroupsParentItem(currentTab)) {
+                modelList.add(buildTabGroupsParentItem(currentTab));
+            }
+        }
+
         // Divider
         maybeAddDividerLine(modelList, R.id.divider_line_id);
 
@@ -350,6 +379,11 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             maybeAddDividerLine(modelList, R.id.page_info_divider_line_id);
         }
 
+        // Homepage
+        if (currentTab != null && HomepageManager.getInstance().shouldShowHomepageMenuItem()) {
+            modelList.add(buildHomepageItem());
+        }
+
         // Downloads
         modelList.add(buildDownloadsItem());
 
@@ -358,13 +392,6 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             modelList.add(buildBookmarksParentItem());
         } else {
             modelList.add(buildBookmarksItem());
-        }
-
-        // Tab groups
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
-            if (shouldShowTabGroupsParentItem(currentTab)) {
-                modelList.add(buildTabGroupsParentItem(currentTab));
-            }
         }
 
         // Recent Tabs
@@ -647,6 +674,15 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                         shouldShowIconBeforeItem() ? R.drawable.ic_add_box_rounded_corner : 0));
     }
 
+    private ListItem buildHomepageItem() {
+        return new ListItem(
+                AppMenuHandler.AppMenuItemType.STANDARD,
+                buildModelForStandardMenuItem(
+                        R.id.homepage_menu_id,
+                        R.string.options_homepage_title,
+                        shouldShowIconBeforeItem() ? R.drawable.ic_home_24dp : 0));
+    }
+
     private boolean isIncognitoShowing() {
         return mTabModelSelector.getCurrentModel().isIncognito();
     }
@@ -763,15 +799,92 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
             drawable.setSize(size, size);
 
             PropertyModel model =
-                    buildBaseModelForTextItem(R.id.tab_group_menu_item_id)
-                            .with(AppMenuItemProperties.TITLE, title)
-                            .with(AppMenuItemProperties.ICON, drawable)
-                            .with(AppMenuItemProperties.ICON_NO_TINT, true)
-                            .build();
-            submenuItems.add(new ListItem(AppMenuHandler.AppMenuItemType.STANDARD, model));
+                    buildModelForMenuItemWithSubmenu(
+                            R.id.tab_group_menu_item_id,
+                            title,
+                            drawable,
+                            () -> getTabsSubmenuItems(groupId, tabModel));
+            model.set(AppMenuItemProperties.ICON_NO_TINT, true);
+
+            submenuItems.add(
+                    new ListItem(AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU, model));
         }
 
         return submenuItems;
+    }
+
+    private List<ListItem> getTabsSubmenuItems(Token groupId, TabModel tabModel) {
+        List<ListItem> submenuItems = new ArrayList<>();
+        List<Tab> tabs = tabModel.getTabsInGroup(groupId);
+        for (Tab tab : tabs) {
+            PropertyModel model =
+                    populateBaseModelForTextItem(
+                                    new PropertyModel.Builder(AppMenuTabItemProperties.ALL_KEYS),
+                                    R.id.tab_group_tab_menu_item)
+                            .with(AppMenuItemProperties.TITLE, tab.getTitle())
+                            .with(AppMenuTabItemProperties.TAB_ID, tab.getId())
+                            .with(
+                                    AppMenuItemProperties.ICON_SUPPLIER,
+                                    createIconSupplierForTab(tab))
+                            .build();
+            submenuItems.add(new ListItem(AppMenuHandler.AppMenuItemType.TAB, model));
+        }
+        return submenuItems;
+    }
+
+    private LazyOneshotSupplier<Drawable> createIconSupplierForTab(Tab tab) {
+        return new LazyOneshotSupplierImpl<>() {
+            @Override
+            public void doSet() {
+                GURL faviconUrl = tab.getUrl();
+                int faviconDisplaySize =
+                        mContext.getResources().getDimensionPixelSize(R.dimen.default_favicon_size);
+
+                Bitmap tabFavicon = TabFavicon.getBitmap(tab);
+                if (tabFavicon != null) {
+                    set(
+                            FaviconUtils.getIconDrawableWithFilter(
+                                    tabFavicon,
+                                    faviconUrl,
+                                    mRoundedIconGenerator,
+                                    mDefaultFaviconHelper,
+                                    mContext,
+                                    faviconDisplaySize));
+                    return;
+                }
+
+                FaviconHelper.FaviconImageCallback faviconCallback =
+                        (image, iconUrl) -> {
+                            set(
+                                    FaviconUtils.getIconDrawableWithFilter(
+                                            image,
+                                            faviconUrl,
+                                            mRoundedIconGenerator,
+                                            mDefaultFaviconHelper,
+                                            mContext,
+                                            faviconDisplaySize));
+                        };
+
+                Profile profile = getProfileFromTabModel();
+                if (tab.getTabGroupId() != null && !tab.isOffTheRecord()) {
+                    getFaviconHelper()
+                            .getForeignFaviconImageForURL(
+                                    profile,
+                                    faviconUrl,
+                                    faviconDisplaySize,
+                                    /* fallbackToHost= */ false,
+                                    faviconCallback);
+                } else {
+                    getFaviconHelper()
+                            .getLocalFaviconImageForURL(
+                                    profile,
+                                    faviconUrl,
+                                    faviconDisplaySize,
+                                    /* fallbackToHost= */ false,
+                                    faviconCallback);
+                }
+            }
+        };
     }
 
     private ListItem buildNewWindowItem() {
@@ -1143,15 +1256,17 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                             .with(AppMenuItemProperties.TITLE, item.getTitle())
                             .with(AppMenuBookmarkItemProperties.BOOKMARK_ID, item.getId())
                             .with(
-                                    AppMenuBookmarkItemProperties.ICON_SUPPLIER,
-                                    shouldShowIconBeforeItem() ? createIconSupplierFor(item) : null)
+                                    AppMenuItemProperties.ICON_SUPPLIER,
+                                    shouldShowIconBeforeItem()
+                                            ? createIconSupplierForBookmark(item)
+                                            : null)
                             .with(AppMenuItemProperties.ICON_NO_TINT, !item.isFolder())
                             .build();
             return new ListItem(AppMenuHandler.AppMenuItemType.BOOKMARK, model);
         }
     }
 
-    private LazyOneshotSupplier<Drawable> createIconSupplierFor(BookmarkItem item) {
+    private LazyOneshotSupplier<Drawable> createIconSupplierForBookmark(BookmarkItem item) {
         if (item.isFolder()) {
             return LazyOneshotSupplier.fromSupplier(
                     () ->
@@ -1895,6 +2010,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
 
     private @Nullable ListItem maybeBuildOpenGlicItem(@Nullable Tab currentTab) {
         if (currentTab == null
+                || currentTab.isIncognito()
                 || currentTab.getWebContents() == null
                 || !ChromeFeatureList.sGlic.isEnabled()) {
             return null;
@@ -1903,7 +2019,7 @@ public class TabbedAppMenuPropertiesDelegate extends AppMenuPropertiesDelegateIm
                 AppMenuHandler.AppMenuItemType.STANDARD,
                 buildModelForStandardMenuItem(
                         R.id.glic_menu_id,
-                        R.string.glic_button_entrypoint_ask_gemini_label,
+                        R.string.glic_button_entrypoint_open_gemini_label,
                         shouldShowIconBeforeItem() ? R.drawable.ic_spark_24dp : Resources.ID_NULL));
     }
 

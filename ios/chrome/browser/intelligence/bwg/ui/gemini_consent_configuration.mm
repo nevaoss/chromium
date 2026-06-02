@@ -95,6 +95,7 @@ NSString* const kWarningShieldSymbol = @"exclamationmark.shield";
                                                   collapsible:NO];
     }
     case GeminiFREType::kNewUser: {
+      // TODO(crbug.com/510812963): Add new FRE rows for the updated consent.
       NSArray<GeminiConsentRow*>* rows = @[
         [self standardFirstRowForManaged:isManaged],
         [self standardSecondRowForManaged:isManaged],
@@ -165,55 +166,42 @@ NSString* const kWarningShieldSymbol = @"exclamationmark.shield";
 // Creates an attributed string by resolving placeholders and formatting
 // hyperlinks.
 + (NSAttributedString*)attributedTextWithText:(NSString*)text
-                                        links:(NSArray<NSString*>*)links
                                       actions:(NSArray<NSString*>*)actions
                                textAttributes:(NSDictionary*)textAttributes
                                     fontStyle:(UIFontTextStyle)fontStyle {
-  std::vector<std::u16string> substitutions;
-  for (NSString* linkText in links) {
-    substitutions.push_back(base::SysNSStringToUTF16(linkText));
-  }
-
-  std::u16string fullTextUTF16 = base::ReplaceStringPlaceholders(
-      base::SysNSStringToUTF16(text), substitutions, nullptr);
-  NSString* fullText = base::SysUTF16ToNSString(fullTextUTF16);
-
+  StringWithTags parsedString = ParseStringWithLinks(text);
   NSMutableAttributedString* attributedText =
-      [[NSMutableAttributedString alloc] initWithString:fullText
+      [[NSMutableAttributedString alloc] initWithString:parsedString.string
                                              attributes:textAttributes];
 
-  // Looks for the first associated link string, assuming their uniqueness.
-  auto styleLinks = ^(NSString* link, NSUInteger idx, BOOL* stop) {
-    NSRange range = [fullText rangeOfString:link];
-    if (range.location != NSNotFound) {
-      NSDictionary* attrs = [self linkAttributesForAction:actions[idx]
-                                                fontStyle:fontStyle];
-      [attributedText addAttributes:attrs range:range];
+  auto styleLink = ^(NSString* action, NSUInteger idx, BOOL* stop) {
+    if (idx >= parsedString.ranges.size()) {
+      *stop = YES;
+      return;
     }
+    NSRange range = parsedString.ranges[idx];
+    NSDictionary* attrs = [self linkAttributesForAction:action
+                                              fontStyle:fontStyle];
+    [attributedText addAttributes:attrs range:range];
   };
-  [links enumerateObjectsUsingBlock:styleLinks];
+  [actions enumerateObjectsUsingBlock:styleLink];
 
   return [attributedText copy];
 }
 
-// Helper to construct body text.
-+ (NSAttributedString*)bodyAttributedTextForText:(NSString*)text
-                                           links:(NSArray<NSString*>*)links
-                                         actions:(NSArray<NSString*>*)actions {
+// Helper to construct body text using embedded link delimiters.
++ (NSAttributedString*)attributedTextForBody:(NSString*)text
+                                     actions:(NSArray<NSString*>*)actions {
   return [self attributedTextWithText:text
-                                links:links
                               actions:actions
                        textAttributes:[self defaultTextAttributes]
                             fontStyle:UIFontTextStyleBody];
 }
 
-// Helper to construct footnote text.
-+ (NSAttributedString*)footerAttributedTextForText:(NSString*)text
-                                             links:(NSArray<NSString*>*)links
-                                           actions:
-                                               (NSArray<NSString*>*)actions {
+// Helper to construct footnote text using embedded link delimiters.
++ (NSAttributedString*)attributedTextForFooter:(NSString*)text
+                                       actions:(NSArray<NSString*>*)actions {
   return [self attributedTextWithText:text
-                                links:links
                               actions:actions
                        textAttributes:[self footnoteTextAttributes]
                             fontStyle:UIFontTextStyleFootnote];
@@ -246,29 +234,19 @@ NSString* const kWarningShieldSymbol = @"exclamationmark.shield";
 
   NSAttributedString* body;
   if (isManaged) {
-    NSString* linkText = l10n_util::GetNSString(
-        IDS_IOS_BWG_CONSENT_MANAGED_SECOND_BOX_BODY_LINK);
     NSString* text =
         l10n_util::GetNSString(IDS_IOS_BWG_CONSENT_MANAGED_SECOND_BOX_BODY);
-    body = [self bodyAttributedTextForText:text
-                                     links:@[ linkText ]
-                                   actions:@[
-                                     kGeminiSecondBoxLinkActionManagedAccount
-                                   ]];
+    body = [self
+        attributedTextForBody:text
+                      actions:@[ kGeminiSecondBoxLinkActionManagedAccount ]];
   } else {
-    NSString* link1 = l10n_util::GetNSString(
-        IDS_IOS_BWG_CONSENT_NON_MANAGED_SECOND_BOX_BODY_LINK_1);
-    NSString* link2 = l10n_util::GetNSString(
-        IDS_IOS_BWG_CONSENT_NON_MANAGED_SECOND_BOX_BODY_LINK_2);
     NSString* text =
         l10n_util::GetNSString(IDS_IOS_BWG_CONSENT_NON_MANAGED_SECOND_BOX_BODY);
-    body =
-        [self bodyAttributedTextForText:text
-                                  links:@[ link1, link2 ]
-                                actions:@[
-                                  kGeminiSecondBoxLink1ActionNonManagedAccount,
-                                  kGeminiSecondBoxLink2ActionNonManagedAccount
-                                ]];
+    body = [self attributedTextForBody:text
+                               actions:@[
+                                 kGeminiSecondBoxLink1ActionNonManagedAccount,
+                                 kGeminiSecondBoxLink2ActionNonManagedAccount
+                               ]];
   }
 
   return [[GeminiConsentRow alloc] initWithIcon:icon title:title body:body];
@@ -284,15 +262,6 @@ NSString* const kWarningShieldSymbol = @"exclamationmark.shield";
       isKorea ? IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA
               : IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT);
 
-  NSArray<NSString*>* links = isKorea ? @[
-    l10n_util::GetNSString(IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA_LINK_1),
-    l10n_util::GetNSString(IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA_LINK_2),
-    l10n_util::GetNSString(IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA_LINK_3),
-  ] : @[
-    l10n_util::GetNSString(IDS_IOS_BWG_CONSENT_FOOTNOTE_LINK_1),
-    l10n_util::GetNSString(IDS_IOS_BWG_CONSENT_FOOTNOTE_LINK_2),
-  ];
-
   NSArray<NSString*>* actions = isKorea ? @[
     kGeminiFirstFootnoteLinkAction,
     kGeminiKoreanTermsLinkAction,
@@ -303,8 +272,7 @@ NSString* const kWarningShieldSymbol = @"exclamationmark.shield";
   ];
 
   NSMutableAttributedString* footnote =
-      [[self footerAttributedTextForText:baseText links:links
-                                 actions:actions] mutableCopy];
+      [[self attributedTextForFooter:baseText actions:actions] mutableCopy];
 
   if ([country isEqualToString:kUSCountryCode]) {
     NSString* addition =
@@ -314,13 +282,10 @@ NSString* const kWarningShieldSymbol = @"exclamationmark.shield";
   }
 
   if (useStrict) {
-    NSString* watchLink =
-        l10n_util::GetNSString(IDS_IOS_BWG_CONSENT_FOOTNOTE_WATCH_LINK);
     NSMutableAttributedString* strictFootnote = [[self
-        footerAttributedTextForText:
-            l10n_util::GetNSString(IDS_IOS_BWG_CONSENT_FOOTNOTE_WATCH_LABEL)
-                              links:@[ watchLink ]
-                            actions:@[ kGeminiWatchLinkAction ]] mutableCopy];
+        attributedTextForFooter:l10n_util::GetNSString(
+                                    IDS_IOS_BWG_CONSENT_FOOTNOTE_WATCH_LABEL)
+                        actions:@[ kGeminiWatchLinkAction ]] mutableCopy];
     [[strictFootnote mutableString] appendString:@"\n\n"];
     [strictFootnote appendAttributedString:footnote];
     footnote = strictFootnote;
@@ -379,20 +344,14 @@ NSString* const kWarningShieldSymbol = @"exclamationmark.shield";
 + (GeminiConsentRow*)liveSecondRow {
   UIImage* icon = DefaultSymbolWithConfiguration(
       kInfoCircleSymbol, [self defaultSymbolConfiguration]);
-  NSString* link1 = l10n_util::GetNSString(
-      IDS_IOS_GEMINI_LIVE_CONSENT_SECOND_BOX_BODY_LINK_1);
-  NSString* link2 = l10n_util::GetNSString(
-      IDS_IOS_GEMINI_LIVE_CONSENT_SECOND_BOX_BODY_LINK_2);
   NSString* text =
       l10n_util::GetNSString(IDS_IOS_GEMINI_LIVE_CONSENT_SECOND_BOX_BODY);
-
   NSAttributedString* body =
-      [self bodyAttributedTextForText:text
-                                links:@[ link1, link2 ]
-                              actions:@[
-                                kGeminiLivePrivacyNoticeLinkAction,
-                                kGeminiLiveLearnMoreLinkAction
-                              ]];
+      [self attributedTextForBody:text
+                          actions:@[
+                            kGeminiLivePrivacyNoticeLinkAction,
+                            kGeminiLiveLearnMoreLinkAction
+                          ]];
   return [[GeminiConsentRow alloc] initWithIcon:icon title:nil body:body];
 }
 
@@ -400,15 +359,11 @@ NSString* const kWarningShieldSymbol = @"exclamationmark.shield";
 + (GeminiConsentRow*)liveThirdRow {
   UIImage* icon = DefaultSymbolWithConfiguration(
       kWarningShieldSymbol, [self defaultSymbolConfiguration]);
-  NSString* linkText =
-      l10n_util::GetNSString(IDS_IOS_GEMINI_LIVE_CONSENT_THIRD_BOX_BODY_LINK);
   NSString* text =
       l10n_util::GetNSString(IDS_IOS_GEMINI_LIVE_CONSENT_THIRD_BOX_BODY);
-
   NSAttributedString* body =
-      [self bodyAttributedTextForText:text
-                                links:@[ linkText ]
-                              actions:@[ kGeminiLivePrivacyPolicyLinkAction ]];
+      [self attributedTextForBody:text
+                          actions:@[ kGeminiLivePrivacyPolicyLinkAction ]];
   return [[GeminiConsentRow alloc] initWithIcon:icon title:nil body:body];
 }
 

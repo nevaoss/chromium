@@ -106,7 +106,7 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
 
   // Download History WebUI colors.
   mixer[kColorDownloadManagerItemError] = {ui::kColorSysError};
-  mixer[kColorDownloadManagerItemBackground] = {ui::kColorSysSurface};
+  mixer[kColorDownloadManagerItemBackground] = {ui::kColorSysSurface1};
   mixer[kColorDownloadManagerItemBackgroundInactive] = {
       ui::kColorSysStateDisabledContainer};
   mixer[kColorDownloadManagerProgress] = {ui::kColorSysPrimary};
@@ -405,10 +405,6 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
   // Settings info card colors.
   mixer[kColorSettingsInfoCardBackground] = {ui::kColorSysBaseContainer};
 
-  // Privacy Settings delete browsing dialog container colors.
-  mixer[kColorSettingsPrivacyDbdContainerBackground] = {
-      ui::kColorSysBaseContainer};
-
   // Tabstrip tab alert colors.
   mixer[kColorTabAlertAudioPlayingActiveFrameActive] = {
       ui::kColorSysOnSurfaceSubtle};
@@ -479,4 +475,10 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
   mixer[kColorGlicSelectionOverlayToast] = {ui::kColorSysInverseSurfacePrimary};
   mixer[kColorGlicSelectionOverlayToastCancelButton] = {
       ui::kColorSysInversePrimary};
+
+  // General WebUI page colors.
+  mixer[kColorWebuiCardBackground] = {ui::kColorSysSurface};
+  mixer[kColorWebuiDialogBackground] = {ui::kColorSysSurface};
+  mixer[kColorWebuiDialogContainerBackground] = {ui::kColorSysBaseContainer};
+  mixer[kColorWebuiPageBackground] = {ui::kColorSysSurface};
 }

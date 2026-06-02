@@ -28,6 +28,8 @@
 #include "chrome/renderer/accessibility/read_anything/read_anything_test_utils.h"
 #include "chrome/test/base/chrome_render_view_test.h"
 #include "content/public/renderer/render_frame.h"
+#include "gin/converter.h"
+#include "gin/dictionary.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/strings/grit/services_strings.h"
 #include "third_party/blink/public/platform/scheduler/web_agent_group_scheduler.h"
@@ -5170,6 +5172,32 @@ TEST_F(ReadAnythingAppControllerReadabilityTest,
             ReadAnythingAppModel::DistillationMethod::kScreen2x);
 }
 
+TEST_F(
+    ReadAnythingAppControllerReadabilityTest,
+    AccessibilityEventReceived_Readability_DoesNotProcessSelectionIfFeatureDisabled) {
+  // Set conditions to process readability accessibility updates
+  EXPECT_CALL(page_handler_,
+              OnDistillationStateChanged(
+                  read_anything::mojom::ReadAnythingDistillationState::
+                      kDistillationInProgress))
+      .Times(1);
+  controller().SetDistillationState(
+      read_anything::mojom::ReadAnythingDistillationState::
+          kDistillationInProgress);
+
+  // Set up: requires_post_process_selection is true.
+  model().set_requires_post_process_selection(true);
+
+  // Call AccessibilityEventReceived.
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  AccessibilityEventReceived({update});
+
+  // Verification: PostProcessSelection was NOT called because the feature flag
+  // is disabled, so requires_post_process_selection remains true.
+  EXPECT_TRUE(model().requires_post_process_selection());
+}
+
 TEST_F(ReadAnythingAppControllerTest, Draw_DebouncesForPdf) {
   static constexpr ui::AXNodeID kId = 4;
   ui::AXNodeData node;
@@ -5380,7 +5408,7 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
 }
 
 TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
-       GetAXMapping_ValidIndex) {
+       GetAXMapping_ReturnsCorrectMapping) {
   ui::AXNodeData node;
   node.id = 2;
   node.role = ax::mojom::Role::kStaticText;
@@ -5403,4 +5431,44 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   ASSERT_TRUE(result->IsArray());
   v8::Local<v8::Array> array = result.As<v8::Array>();
   EXPECT_EQ(array->Length(), 1u);
+
+  // Verify the dictionary contents
+  v8::Local<v8::Value> item = array->Get(context, 0).ToLocalChecked();
+  ASSERT_TRUE(item->IsObject());
+  v8::Local<v8::Object> obj = item.As<v8::Object>();
+  gin::Dictionary dict(isolate, obj);
+  int axNodeId, start, end, axNodeOffset;
+  EXPECT_TRUE(dict.Get("axNodeId", &axNodeId));
+  EXPECT_TRUE(dict.Get("start", &start));
+  EXPECT_TRUE(dict.Get("end", &end));
+  EXPECT_TRUE(dict.Get("axNodeOffset", &axNodeOffset));
+  EXPECT_EQ(axNodeId, 2);
+  EXPECT_EQ(start, 0);
+  EXPECT_EQ(end, 11);
+  EXPECT_EQ(axNodeOffset, 0);
+}
+
+TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
+       AccessibilityEventReceived_Readability_ProcessesSelectionIfRequired) {
+  // Set conditions to process readability accessibility updates
+  EXPECT_CALL(page_handler_,
+              OnDistillationStateChanged(
+                  read_anything::mojom::ReadAnythingDistillationState::
+                      kDistillationInProgress))
+      .Times(1);
+  controller().SetDistillationState(
+      read_anything::mojom::ReadAnythingDistillationState::
+          kDistillationInProgress);
+
+  // Set up: requires_post_process_selection is true.
+  model().set_requires_post_process_selection(true);
+
+  // Call AccessibilityEventReceived.
+  ui::AXTreeUpdate update;
+  test::SetUpdateTreeID(&update, tree_id_);
+  AccessibilityEventReceived({update});
+
+  // Verification: PostProcessSelection was called, which reset
+  // requires_post_process_selection to false.
+  EXPECT_FALSE(model().requires_post_process_selection());
 }

@@ -148,8 +148,12 @@
 #endif
 
 #if BUILDFLAG(IS_WIN)
+#include <windows.h>
+
 #include "base/win/windows_version.h"
 #include "content/public/browser/gpu_data_manager.h"
+#include "ui/aura/window.h"
+#include "ui/aura/window_tree_host.h"
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -804,15 +808,21 @@ bool BrowserCommandController::ExecuteCommandWithDisposition(
 
 #if BUILDFLAG(IS_WIN)
     case IDC_MOVE_WINDOW: {
-      // TODO(crbug.com/509985102): Implement this with the Windows frame
-      // context menu changes.
-      NOTIMPLEMENTED();
+      HWND hwnd = BrowserView::GetBrowserViewForBrowser(browser_)
+                      ->GetWidget()
+                      ->GetNativeWindow()
+                      ->GetHost()
+                      ->GetAcceleratedWidget();
+      PostMessage(hwnd, WM_SYSCOMMAND, SC_MOVE, 0);
       break;
     }
     case IDC_SIZE_WINDOW: {
-      // TODO(crbug.com/509985102): Implement this with the Windows frame
-      // context menu changes.
-      NOTIMPLEMENTED();
+      HWND hwnd = BrowserView::GetBrowserViewForBrowser(browser_)
+                      ->GetWidget()
+                      ->GetNativeWindow()
+                      ->GetHost()
+                      ->GetAcceleratedWidget();
+      PostMessage(hwnd, WM_SYSCOMMAND, SC_SIZE, 0);
       break;
     }
 #endif  // BUILDFLAG(IS_WIN)
@@ -2352,6 +2362,10 @@ void BrowserCommandController::UpdateGlicState() {
       command_updater_.UpdateCommandEnabled(
           IDC_OPEN_GLIC,
           glic::GlicEnabling::IsEnabledForProfile(profile()) && !glic_active);
+
+      if (auto* const action = FindAction(kActionSidePanelShowGlic)) {
+        action->SetVisible(glic::GlicEnabling::ShouldShowGlicButton(profile()));
+      }
     }
   }
 }
@@ -2524,6 +2538,12 @@ void BrowserCommandController::UpdateCommandAndActionEnabled(
 void BrowserCommandController::UpdateCommandsForEnableGlicChanged() {
   command_updater_.UpdateCommandEnabled(
       IDC_OPEN_GLIC, glic::GlicEnabling::IsEnabledForProfile(profile()));
+
+  if (glic::GlicEnabling::IsEnabledByGlobalCriteria()) {
+    if (auto* const action = FindAction(kActionSidePanelShowGlic)) {
+      action->SetVisible(glic::GlicEnabling::ShouldShowGlicButton(profile()));
+    }
+  }
 }
 
 BrowserWindow* BrowserCommandController::window() {

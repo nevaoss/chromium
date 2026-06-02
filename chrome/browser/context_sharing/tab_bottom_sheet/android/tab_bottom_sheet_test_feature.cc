@@ -4,6 +4,7 @@
 
 #include "chrome/browser/context_sharing/tab_bottom_sheet/android/tab_bottom_sheet_test_feature.h"
 
+#include "chrome/browser/context_sharing/tab_bottom_sheet/android/co_browse_container_type.h"
 #include "chrome/browser/context_sharing/tab_bottom_sheet/android/co_browse_views_bridge.h"
 #include "chrome/browser/context_sharing/tab_bottom_sheet/android/tab_bottom_sheet_bridge.h"
 #include "chrome/browser/context_sharing/tab_bottom_sheet/android/tab_bottom_sheet_client_type.h"
@@ -15,7 +16,8 @@ namespace context_sharing {
 TabBottomSheetTestFeature::TabBottomSheetTestFeature(tabs::TabInterface* tab)
     : tab_(*tab) {
   views_bridge_ = std::make_unique<CoBrowseViewsBridge>(
-      *tab, TabBottomSheetClientType::kUnknown);
+      *tab, TabBottomSheetClientType::kUnknown,
+      CoBrowseContainerType::kBottomSheet);
   tab_bottom_sheet_bridge_ = std::make_unique<TabBottomSheetBridge>(this, tab);
 }
 
@@ -37,7 +39,7 @@ void TabBottomSheetTestFeature::Close(bool animate) {
 void TabBottomSheetTestFeature::SetWebContents(
     content::WebContents* web_contents) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  views_bridge_->SetWebContents(web_contents);
+  views_bridge_->SetWebContents(web_contents, /*request_focus=*/true);
 }
 
 void TabBottomSheetTestFeature::OnClosed() {

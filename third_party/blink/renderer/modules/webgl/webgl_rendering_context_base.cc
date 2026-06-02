@@ -138,7 +138,6 @@
 #include "third_party/blink/renderer/platform/bindings/exception_state.h"
 #include "third_party/blink/renderer/platform/bindings/script_state.h"
 #include "third_party/blink/renderer/platform/graphics/accelerated_static_bitmap_image.h"
-#include "third_party/blink/renderer/platform/graphics/canvas_non2d_snapshot_provider_bitmap.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource.h"
 #include "third_party/blink/renderer/platform/graphics/canvas_resource_provider.h"
 #include "third_party/blink/renderer/platform/graphics/gpu/canvas_utils.h"
@@ -1922,14 +1921,6 @@ void WebGLRenderingContextBase::MarkLayerComposited() {
 bool WebGLRenderingContextBase::OnMemoryDump(
     const base::trace_event::MemoryDumpArgs& args,
     base::trace_event::ProcessMemoryDump* pmd) {
-  // This is used for local data gathering for now. Allow it in background once
-  // it's confirmed that it's cheap enough (which also requires updating the
-  // background allowlist, this is just an extra check).
-  if (args.level_of_detail !=
-      base::trace_event::MemoryDumpLevelOfDetail::kDetailed) {
-    return true;
-  }
-
   std::string context_name =
       Host()->IsOffscreenCanvas()
           ? base::StringPrintf("webgl/offscreen_context_0x%" PRIXPTR,
@@ -1937,6 +1928,31 @@ bool WebGLRenderingContextBase::OnMemoryDump(
           : base::StringPrintf("webgl/context_0x%" PRIXPTR,
                                reinterpret_cast<uintptr_t>(this));
 
+  if (args.level_of_detail ==
+      base::trace_event::MemoryDumpLevelOfDetail::kBackground) {
+    auto* dump = pmd->CreateAllocatorDump(context_name);
+    uint64_t total_size = 0;
+    for (auto& buffer : buffers_) {
+      if (buffer && buffer->HasObject()) {
+        total_size += buffer->GetSize();
+      }
+    }
+    if (GetDrawingBuffer()) {
+      total_size += GetDrawingBuffer()->EstimatedSizeInBytes().InBytes();
+    }
+    if (resource_provider_) {
+      total_size += resource_provider_->EstimatedSizeInBytes().InBytes();
+    }
+    if (cached_snapshot_) {
+      total_size += cached_snapshot_->EstimatedSizeInBytes().InBytes();
+    }
+    dump->AddScalar(base::trace_event::MemoryAllocatorDump::kNameSize,
+                    base::trace_event::MemoryAllocatorDump::kUnitsBytes,
+                    total_size);
+    return true;
+  }
+
+  // Detailed dump below.
   for (auto& buffer : buffers_) {
     if (buffer && buffer->HasObject()) {
       uint64_t buffer_size = buffer->GetSize();
@@ -5861,7 +5877,7 @@ scoped_refptr<Image> WebGLRenderingContextBase::DrawImageIntoBufferForTexImage(
   // TODO(https://crbug.com/1341235): The choice of color type should match the
   // format of the TexImage function. The choice of alpha type should opaque for
   // opaque images. The color space should match the unpack color space.
-  auto snapshot = CanvasNon2DSnapshotProviderBitmap::DoExternalDrawAndSnapshot(
+  auto snapshot = DrawAndSnapshotToImage(
       {kPremul_SkAlphaType,
        gfx::ColorSpace::CreateSRGB(),
        GetN32FormatForCanvas(),
@@ -5932,6 +5948,10 @@ gfx::Rect WebGLRenderingContextBase::SafeGetImageSize(Image* image) {
     return gfx::Rect();
 
   return GetTextureSourceSize(image);
+}
+
+bool WebGLRenderingContextBase::IsOpaque() const {
+  return !CreationAttributes().alpha;
 }
 
 SkAlphaType WebGLRenderingContextBase::GetAlphaType() const {

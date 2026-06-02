@@ -83,6 +83,7 @@ class GlicGlobalEnabling {
   ~GlicGlobalEnabling();
   bool IsEnabledByGlobalCriteria();
   bool IsSystemRequirementMet() const;
+  bool IsOsVersionSupported() const;
   bool IsLocaleEnabled() const { return locale_enablement_.value_or(true); }
   bool IsCountryEnabled() const { return country_enablement_.value_or(true); }
 
@@ -128,10 +129,19 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
   // will not change at runtime.
   static bool IsEnabledByGlobalCriteria();
 
+  // Checks whether this client is likely a dogfooder, taking the ignore dogfood
+  // feature into account.
+  static bool IsLikelyDogfoodClient();
+
   // Returns true if a profile is eligible for Glic. Some profiles - such as
   // incognito, guest, system profile, etc. - are never eligible. An eligible
   // profile is one where Glic could potentially be enabled, regardless of
   // whether it is currently enabled or not.
+  //
+  // NOTE: This only represents static structural suitability (i.e., the client
+  // device is globally capable and the profile type is suitable). It does NOT
+  // check active user account status (such as sign-in state or GAIA account
+  // capabilities).
   //
   // This is a foundational, static check that does not change at runtime. It
   // controls whether Glic infrastructure (e.g., `GlicKeyedService`, UI
@@ -217,6 +227,9 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
     bool is_rolled_out : 1 = true;
     bool primary_account_is_capable : 1 = true;
     bool primary_account_is_fully_signed_in : 1 = true;
+    // The profile is signed out, but kGlicShowForSignedOut is enabled, so the
+    // GiC panel can be shown to show the sign-in promotion.
+    bool primary_account_needs_signed_in : 1 = false;
     bool allowed_by_chrome_policy : 1 = true;
     bool allowed_by_remote_admin : 1 = true;
     bool allowed_by_remote_other : 1 = true;
@@ -235,6 +248,9 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
     // met.
     bool system_requirement_met : 1 = true;
 
+    // Whether the OS version is supported.
+    bool os_version_supported : 1 = true;
+
     // Whether the user has onboarded with this profile previously which keeps
     // Glic partially enabled to show error states instead of hiding the button.
     bool anchor_entrypoint_override_active : 1 = false;
@@ -251,7 +267,8 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
       kCountryDisabled = 1,
       kLocaleDisabled = 2,
       kSystemRequirementNotMet = 3,
-      kMaxValue = kSystemRequirementNotMet,
+      kOsVersionNotSupported = 4,
+      kMaxValue = kOsVersionNotSupported,
     };
     // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicFeatureDisabledReason)
 
@@ -274,6 +291,12 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
       return feature_enabled && is_regular_profile;
     }
 
+    // Returns true if Glic is fully enabled and allowed to run on this profile.
+    // Unlike `GlicEnabling::IsProfileEligible()`, this is a dynamic check that
+    // can change at runtime. It evaluates dynamic profile state such as whether
+    // the user is signed in, active user account capabilities (e.g.,
+    // GAIA/Gemini capabilities), rollout groups, enterprise policies, and
+    // location filters.
     bool IsEnabled() const {
       bool base_checks = IsProfileEligible() && is_rolled_out &&
                          primary_account_is_capable && !DisallowedByAdmin() &&
@@ -306,6 +329,21 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
               fre_is_consented);
     }
 
+    // Returns true if the Glic button/entrypoint should be dynamically visible
+    // in the UI at the current moment.
+    //
+    // NOTE: This represents dynamic, runtime visibility, not static structural
+    // capability. During window startup construction (such as in
+    // `HorizontalTabStripRegionView` or `ToolbarView`), the parent view
+    // container must be created if Glic could potentially become active
+    // (meaning `GlicEnabling::IsProfileEligible()` is true, even if the user
+    // starts signed out). Once the container is created, this method is used by
+    // `GlicButtonController` to dynamically show or hide the button inside the
+    // container at runtime (e.g., rendering it immediately after sign-in
+    // completes).
+    //
+    // Always returns false if the Glic feature is disabled by feature flag,
+    // enterprise admin policy, or if the user is not in the rollout group.
     bool ShouldShowGlicButton() const {
       if (!feature_flag_enabled) {
         return false;

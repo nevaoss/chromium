@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
 
 #import "base/feature_list.h"
 #import "base/functional/bind.h"
@@ -20,6 +21,7 @@
 #import "ios/chrome/browser/share_kit/model/test_constants.h"
 #import "ios/chrome/browser/shared/model/prefs/pref_names.h"
 #import "ios/chrome/browser/shared/model/url/chrome_url_constants.h"
+#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/signin/model/fake_system_identity.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_groups/recent_activity_constants.h"
 #import "ios/chrome/browser/tab_switcher/ui_bundled/tab_grid/tab_groups/tab_group_app_interface.h"
@@ -220,7 +222,10 @@ std::unique_ptr<net::test_server::HttpResponse> HandleAttackerPage(
 @implementation SharedTabGroupsTestCase
 
 - (AppLaunchConfiguration)appConfigurationForTestCase {
-  return SharedTabGroupAppLaunchConfiguration();
+  AppLaunchConfiguration config = SharedTabGroupAppLaunchConfiguration();
+  // TODO(crbug.com/514608938): Fix test for Chrome Next.
+  config.features_disabled.push_back(kChromeNextIa);
+  return config;
 }
 
 - (void)setUp {
@@ -273,6 +278,13 @@ std::unique_ptr<net::test_server::HttpResponse> HandleAttackerPage(
 
 // Tests that the user education is shown in the grid only once.
 - (void)testUserEducationInGrid {
+#if TARGET_OS_SIMULATOR
+  // TODO(crbug.com/515080596): Re-enable this flaky test on iPhone simulator.
+  if (![ChromeEarlGrey isIPadIdiom]) {
+    EARL_GREY_TEST_DISABLED(@"Flaky on iPhone simulator.");
+  }
+#endif
+
   [ChromeEarlGrey
       removeUserDefaultsObjectForKey:kSharedTabGroupUserEducationShownOnceKey];
 
@@ -312,6 +324,13 @@ std::unique_ptr<net::test_server::HttpResponse> HandleAttackerPage(
 
 // Checks opening the Share flow from the Tab Grid and cancelling.
 - (void)testShareGroupButCancel {
+  // TODO(crbug.com/515680760): Re-enable this flaky test on iPhone simulator.
+#if TARGET_OS_SIMULATOR
+  if (![ChromeEarlGrey isIPadIdiom]) {
+    EARL_GREY_TEST_DISABLED(@"Flaky on iPhone simulator.");
+  }
+#endif
+
   // Open the tab grid.
   [ChromeEarlGreyUI openTabGrid];
 

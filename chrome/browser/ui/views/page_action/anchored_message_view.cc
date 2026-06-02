@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/views/page_action/anchored_message_view.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <memory>
 #include <optional>
@@ -16,8 +17,10 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/page_action/page_action_controller.h"
+#include "chrome/browser/ui/views/page_action/multi_icon_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_ink_drop_util.h"
 #include "chrome/grit/branded_strings.h"
+#include "chrome/grit/generated_resources.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/vector_icons/vector_icons.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -38,10 +41,13 @@
 #include "ui/views/bubble/bubble_border.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/button/image_button.h"
+#include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/button/menu_button.h"
 #include "ui/views/controls/image_view.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/menu/menu_runner.h"
+#include "ui/views/controls/separator.h"
+#include "ui/views/layout/animating_layout_manager.h"
 #include "ui/views/layout/box_layout.h"
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/layout/layout_types.h"
@@ -168,6 +174,10 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AnchoredMessageBubbleView,
                                       kAnchoredMessageCloseIconId);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AnchoredMessageBubbleView,
                                       kAnchoredMessageMenuIconId);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AnchoredMessageBubbleView,
+                                      kAnchoredMessageExpandButtonId);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(AnchoredMessageBubbleView,
+                                      kAnchoredMessageExpandedContentId);
 
 AnchoredMessageBubbleView::AnchoredMessageBubbleView(
     views::BubbleAnchor parent,
@@ -185,37 +195,60 @@ AnchoredMessageBubbleView::AnchoredMessageBubbleView(
   set_corner_radius(kAnchoredMessageHeight / 2);
   set_margins(kAnchoredMessageMarginsInset);
 
-  auto* layout = SetLayoutManager(std::make_unique<views::FlexLayout>());
-  layout->SetOrientation(views::LayoutOrientation::kHorizontal);
-  layout->SetMainAxisAlignment(views::LayoutAlignment::kStart);
-  layout->SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
+  auto* animating_layout =
+      SetLayoutManager(std::make_unique<views::AnimatingLayoutManager>());
+  animating_layout
+      ->SetBoundsAnimationMode(
+          views::AnimatingLayoutManager::BoundsAnimationMode::kAnimateMainAxis)
+      .SetOrientation(views::LayoutOrientation::kVertical);
 
-  icon_view_ = AddChildView(std::make_unique<views::ImageView>());
+  auto* layout = animating_layout->SetTargetLayoutManager(
+      std::make_unique<views::FlexLayout>());
+  layout->SetOrientation(views::LayoutOrientation::kVertical);
+  layout->SetCrossAxisAlignment(views::LayoutAlignment::kStretch);
+
+  top_row_ = AddChildView(std::make_unique<views::View>());
+  auto* top_row_layout =
+      top_row_->SetLayoutManager(std::make_unique<views::FlexLayout>());
+  top_row_layout->SetOrientation(views::LayoutOrientation::kHorizontal);
+  top_row_layout->SetMainAxisAlignment(views::LayoutAlignment::kStart);
+  top_row_layout->SetCrossAxisAlignment(views::LayoutAlignment::kCenter);
+
+  icon_view_ = top_row_->AddChildView(std::make_unique<views::ImageView>());
   icon_view_->SetProperty(views::kMarginsKey, kAnchoredMessageIconMarginsInset);
   icon_view_->SetImageSize(
       gfx::Size(kAnchoredMessageIconSize, kAnchoredMessageIconSize));
   icon_view_->SetProperty(views::kElementIdentifierKey, kAnchoredMessageIconId);
 
-  label_ = AddChildView(std::make_unique<views::Label>());
+  label_ = top_row_->AddChildView(std::make_unique<views::Label>());
   label_->SetHorizontalAlignment(gfx::ALIGN_LEFT);
   label_->SetVerticalAlignment(gfx::ALIGN_MIDDLE);
   label_->SetMultiLine(false);
   label_->SetProperty(views::kElementIdentifierKey, kAnchoredMessageLabelId);
 
-  chip_container_ = AddChildView(std::make_unique<ChipContainerView>(
+  expand_button_ = top_row_->AddChildView(std::make_unique<MultiIconButton>(
+      base::BindRepeating(&AnchoredMessageBubbleView::OnExpandButtonPressed,
+                          base::Unretained(this))));
+  expand_button_->SetProperty(views::kElementIdentifierKey,
+                              kAnchoredMessageExpandButtonId);
+  expand_button_->SetProperty(views::kMarginsKey,
+                              gfx::Insets::TLBR(0, 8, 0, 0));
+  expand_button_->SetVisible(false);
+
+  chip_container_ = top_row_->AddChildView(std::make_unique<ChipContainerView>(
       std::u16string(), std::nullopt, delegate_));
   chip_container_->SetProperty(views::kElementIdentifierKey,
                                kAnchoredMessageChipId);
 
-  close_button_ =
-      AddChildView(std::make_unique<views::ImageButton>(base::BindRepeating(
+  close_button_ = top_row_->AddChildView(
+      std::make_unique<views::ImageButton>(base::BindRepeating(
           &AnchoredMessageBubbleView::Delegate::CloseAnchoredMessage,
           base::Unretained(delegate_))));
   close_button_->SetImageModel(
       views::Button::STATE_NORMAL,
       ui::ImageModel::FromVectorIcon(
           features::IsRoundedIconsEnabled()
-              ? vector_icons::kCloseIcon
+              ? vector_icons::kCloseSmallIcon
               : vector_icons::kCloseChromeRefreshOldIcon,
           ui::kColorIcon, kAnchoredMessageIconSize));
   close_button_->SetTooltipText(l10n_util::GetStringUTF16(IDS_CLOSE));
@@ -224,11 +257,12 @@ AnchoredMessageBubbleView::AnchoredMessageBubbleView(
   close_button_->SetProperty(views::kElementIdentifierKey,
                              kAnchoredMessageCloseIconId);
 
-  menu_button_ = AddChildView(std::make_unique<views::MenuButton>(
+  menu_button_ = top_row_->AddChildView(std::make_unique<views::MenuButton>(
       base::BindRepeating(&AnchoredMessageBubbleView::MenuButtonPressed,
                           base::Unretained(this))));
   ConfigureInkDropForToolbar(menu_button_);
-  menu_button_->SetTooltipText(l10n_util::GetStringUTF16(IDS_APPMENU_TOOLTIP));
+  menu_button_->SetTooltipText(
+      l10n_util::GetStringUTF16(IDS_ANCHORED_MESSAGE_MENU_TOOLTIP));
   menu_button_->SetImageModel(
       views::Button::STATE_NORMAL,
       ui::ImageModel::FromVectorIcon(features::IsRoundedIconsEnabled()
@@ -239,6 +273,13 @@ AnchoredMessageBubbleView::AnchoredMessageBubbleView(
                             kAnchoreMessageActionIconMarginsInset);
   menu_button_->SetProperty(views::kElementIdentifierKey,
                             kAnchoredMessageMenuIconId);
+
+  bottom_container_ = AddChildView(std::make_unique<views::View>());
+  bottom_container_->SetProperty(views::kElementIdentifierKey,
+                                 kAnchoredMessageExpandedContentId);
+  bottom_container_->SetLayoutManager(std::make_unique<views::BoxLayout>(
+      views::BoxLayout::Orientation::kVertical, gfx::Insets(), 8));
+  bottom_container_->SetVisible(false);
 
   UpdateContent(model);
 }
@@ -290,13 +331,68 @@ void AnchoredMessageBubbleView::UpdateContent(
 
   // Update margins dynamically to avoid excessive spacing when some components
   // are hidden.
-  bool add_padding_before_chip =
-      icon_view_->GetVisible() || label_->GetVisible();
+  bool add_padding_before_chip = icon_view_->GetVisible() ||
+                                 label_->GetVisible() ||
+                                 expand_button_->GetVisible();
   chip_container_->SetProperty(
       views::kMarginsKey,
       gfx::Insets::TLBR(
           0, add_padding_before_chip ? kAnchoredMessageSpaceLeftOfChip : 0, 0,
           0));
+
+  const auto& expandable_content = model.GetAnchoredMessageExpandableContent();
+  if (expandable_content) {
+    std::vector<std::reference_wrapper<const ui::ImageModel>> icons;
+    for (const auto& item : expandable_content->items) {
+      if (item.icon) {
+        icons.emplace_back(*item.icon);
+      }
+    }
+    expand_button_->Update(icons);
+    expand_button_->SetVisible(true);
+
+    bottom_container_->RemoveAllChildViews();
+
+    auto* separator =
+        bottom_container_->AddChildView(std::make_unique<views::Separator>());
+    separator->SetProperty(views::kMarginsKey, gfx::Insets::VH(8, 0));
+
+    if (expandable_content->heading) {
+      auto* title_label = bottom_container_->AddChildView(
+          std::make_unique<views::Label>(*expandable_content->heading));
+      title_label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+      title_label->SetTextStyle(views::style::STYLE_BODY_4_MEDIUM);
+      title_label->SetEnabledColor(ui::kColorSysOnSurface);
+    }
+
+    for (const auto& item : expandable_content->items) {
+      auto* item_row =
+          bottom_container_->AddChildView(std::make_unique<views::View>());
+      auto* item_layout =
+          item_row->SetLayoutManager(std::make_unique<views::BoxLayout>(
+              views::BoxLayout::Orientation::kHorizontal, gfx::Insets(), 8));
+      item_layout->set_cross_axis_alignment(
+          views::BoxLayout::CrossAxisAlignment::kCenter);
+
+      if (item.icon) {
+        auto* item_icon =
+            item_row->AddChildView(std::make_unique<views::ImageView>());
+        item_icon->SetImage(item.icon.value());
+        item_icon->SetImageSize(
+            gfx::Size(kAnchoredMessageIconSize, kAnchoredMessageIconSize));
+      }
+
+      auto* item_label =
+          item_row->AddChildView(std::make_unique<views::Label>(item.text));
+      item_label->SetHorizontalAlignment(gfx::ALIGN_LEFT);
+      item_label->SetTextStyle(views::style::STYLE_BODY_4);
+      item_label->SetEnabledColor(ui::kColorSysOnSurface);
+    }
+  } else {
+    expand_button_->SetVisible(false);
+    bottom_container_->RemoveAllChildViews();
+    bottom_container_->SetVisible(false);
+  }
 
   OnThemeChanged();
 }
@@ -316,7 +412,7 @@ void AnchoredMessageBubbleView::OnThemeChanged() {
         views::Button::STATE_NORMAL,
         ui::ImageModel::FromVectorIcon(
             features::IsRoundedIconsEnabled()
-                ? vector_icons::kCloseIcon
+                ? vector_icons::kCloseSmallIcon
                 : vector_icons::kCloseChromeRefreshOldIcon,
             color_provider->GetColor(ui::kColorSysOnSurfaceVariant),
             kAnchoredMessageIconSize));
@@ -353,6 +449,16 @@ AnchoredMessageBubbleView::~AnchoredMessageBubbleView() {
   SetAnchorView(nullptr);
 }
 
+void AnchoredMessageBubbleView::OnExpandButtonPressed() {
+  const bool expand = !bottom_container_->GetVisible();
+  bottom_container_->SetVisible(expand);
+  if (expand) {
+    delegate_->AnchoredMessageExpanded();
+  } else {
+    delegate_->AnchoredMessageCollapsed();
+  }
+}
+
 void AnchoredMessageBubbleView::MenuButtonPressed() {
   if (!menu_model_) {
     return;
@@ -367,7 +473,7 @@ void AnchoredMessageBubbleView::MenuButtonPressed() {
       GetWidget(), nullptr, menu_button_->GetBoundsInScreen(),
       views::MenuAnchorPosition::kTopLeft, ui::mojom::MenuSourceType::kNone);
   if (menu_runner_->IsRunning()) {
-    delegate_->PauseAnchoredMessageTimeout();
+    delegate_->AnchoredMessageExpanded();
   } else {
     pressed_lock_.reset();
   }
@@ -375,7 +481,7 @@ void AnchoredMessageBubbleView::MenuButtonPressed() {
 
 void AnchoredMessageBubbleView::OnMenuClosed() {
   pressed_lock_.reset();
-  delegate_->ResumeAnchoredMessageTimeout();
+  delegate_->AnchoredMessageCollapsed();
 }
 
 void AnchoredMessageBubbleView::OnWidgetDestroying(views::Widget* widget) {

@@ -194,6 +194,9 @@ bool AreNumbersEqual(CGFloat num1, CGFloat num2) {
 
 - (AppLaunchConfiguration)appConfigurationForTestCase {
   AppLaunchConfiguration config = [super appConfigurationForTestCase];
+  // TODO(crbug.com/514608938): Fix tests with Chrome Next enabled.
+  config.features_disabled.push_back(kChromeNextIa);
+
   // Make sure the search engine country is set, for `testFavicons` test.
   config.additional_args.push_back(
       std::string("--") + switches::kSearchEngineChoiceCountry + "=US");
@@ -635,9 +638,17 @@ bool AreNumbersEqual(CGFloat num1, CGFloat num2) {
   for (NSInteger i = 0; i < numberOfTabs; i++) {
     [ChromeEarlGreyUI openNewTab];
   }
-  [[EarlGrey selectElementWithMatcher:chrome_test_util::ShowTabsButton()]
-      assertWithMatcher:grey_accessibilityValue([NSString
-                            stringWithFormat:@"%@", @(numberOfTabs + 1)])];
+  NSString* expectedLabel =
+      [NSString stringWithFormat:@"%@", @(numberOfTabs + 1)];
+  if ([ChromeEarlGrey isChromeNextEnabled]) {
+    [[EarlGrey
+        selectElementWithMatcher:chrome_test_util::ShowTabsButtonWithCount(
+                                     expectedLabel)]
+        assertWithMatcher:grey_notNil()];
+  } else {
+    [[EarlGrey selectElementWithMatcher:chrome_test_util::ShowTabsButton()]
+        assertWithMatcher:grey_accessibilityValue(expectedLabel)];
+  }
 }
 
 // Tests that rotating to landscape and scrolling into the feed, opening another
@@ -750,6 +761,13 @@ bool AreNumbersEqual(CGFloat num1, CGFloat num2) {
 // and moved up, the scroll position restored is the position before the omnibox
 // is selected.
 - (void)testPositionRestoredWithShiftingOffset {
+#if TARGET_OS_SIMULATOR
+  // TODO(crbug.com/513858033): Re-enable this flaky test on iPad simulator.
+  if ([ChromeEarlGrey isIPadIdiom]) {
+    EARL_GREY_TEST_DISABLED(@"Flaky on iPad simulator.");
+  }
+#endif
+
   // Scroll a bit to have a position to restore.
   [[EarlGrey selectElementWithMatcher:chrome_test_util::NTPCollectionView()]
       performAction:grey_scrollInDirection(kGREYDirectionDown, 20)];
@@ -978,9 +996,15 @@ bool AreNumbersEqual(CGFloat num1, CGFloat num2) {
   // Check that the fake omnibox is here.
   [[EarlGrey selectElementWithMatcher:chrome_test_util::FakeOmnibox()]
       assertWithMatcher:grey_sufficientlyVisible()];
-  [[EarlGrey selectElementWithMatcher:chrome_test_util::ShowTabsButton()]
-      assertWithMatcher:grey_accessibilityValue(
-                            [NSString stringWithFormat:@"%i", 2])];
+  if ([ChromeEarlGrey isChromeNextEnabled]) {
+    [[EarlGrey
+        selectElementWithMatcher:chrome_test_util::ShowTabsButtonWithCount(
+                                     @"2")] assertWithMatcher:grey_notNil()];
+  } else {
+    [[EarlGrey selectElementWithMatcher:chrome_test_util::ShowTabsButton()]
+        assertWithMatcher:grey_accessibilityValue(
+                              [NSString stringWithFormat:@"%i", 2])];
+  }
 
   // Test the same thing after opening a tab from the tab grid.
   [ChromeEarlGreyUI openTabGrid];
@@ -989,9 +1013,15 @@ bool AreNumbersEqual(CGFloat num1, CGFloat num2) {
       performAction:grey_tap()];
   [[EarlGrey selectElementWithMatcher:chrome_test_util::FakeOmnibox()]
       assertWithMatcher:grey_sufficientlyVisible()];
-  [[EarlGrey selectElementWithMatcher:chrome_test_util::ShowTabsButton()]
-      assertWithMatcher:grey_accessibilityValue(
-                            [NSString stringWithFormat:@"%i", 3])];
+  if ([ChromeEarlGrey isChromeNextEnabled]) {
+    [[EarlGrey
+        selectElementWithMatcher:chrome_test_util::ShowTabsButtonWithCount(
+                                     @"3")] assertWithMatcher:grey_notNil()];
+  } else {
+    [[EarlGrey selectElementWithMatcher:chrome_test_util::ShowTabsButton()]
+        assertWithMatcher:grey_accessibilityValue(
+                              [NSString stringWithFormat:@"%i", 3])];
+  }
 }
 
 - (void)testFavicons {

@@ -1951,6 +1951,7 @@ interface Document : Node
     getter lastModified
     getter linkColor
     getter links
+    getter modelContext
     getter onabort
     getter onanimationcancel
     getter onanimationend
@@ -5660,15 +5661,10 @@ interface IntegrityViolationReportBody : ReportBody
     method toJSON
 interface InteractionContentfulPaint : PerformanceEntry
     attribute @@toStringTag
-    getter element
-    getter id
     getter interactionId
-    getter loadTime
+    getter largestContentfulPaint
     getter paintTime
     getter presentationTime
-    getter renderTime
-    getter size
-    getter url
     method constructor
     method toJSON
 interface InterestEvent : Event
@@ -7372,6 +7368,18 @@ interface PerformanceScriptTiming : PerformanceEntry
     getter sourceURL
     getter window
     getter windowAttribution
+    method constructor
+    method toJSON
+interface PerformanceScrollTiming : PerformanceEntry
+    attribute @@toStringTag
+    getter checkerboardTime
+    getter deltaX
+    getter deltaY
+    getter firstFrameTime
+    getter framesExpected
+    getter framesProduced
+    getter scrollSource
+    getter target
     method constructor
     method toJSON
 interface PerformanceServerTiming
@@ -9585,6 +9593,7 @@ interface SourceBufferList : EventTarget
     setter onremovesourcebuffer
 interface SpeculationData
     attribute @@toStringTag
+    getter navigationDestinationURL
     getter navigations
     getter preloads
     method constructor
@@ -9632,6 +9641,7 @@ interface SpeechRecognition : EventTarget
     getter onstart
     getter processLocally
     getter quality
+    getter unspokenPunctuation
     method abort
     method constructor
     method start
@@ -9654,6 +9664,7 @@ interface SpeechRecognition : EventTarget
     setter onstart
     setter processLocally
     setter quality
+    setter unspokenPunctuation
 interface SpeechRecognitionErrorEvent : Event
     attribute @@toStringTag
     getter error
@@ -12211,6 +12222,7 @@ interface webkitSpeechRecognition : EventTarget
     getter onstart
     getter processLocally
     getter quality
+    getter unspokenPunctuation
     method abort
     method constructor
     method start
@@ -12233,6 +12245,7 @@ interface webkitSpeechRecognition : EventTarget
     setter onstart
     setter processLocally
     setter quality
+    setter unspokenPunctuation
 interface webkitSpeechRecognitionError : Event
     attribute @@toStringTag
     getter error

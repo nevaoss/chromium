@@ -4681,8 +4681,11 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_READING_LIST_UNREAD" desc="The header for the unread section in the reading list UI.">
         Unread - Available offline
       </message>
-      <message name="IDS_READING_LIST_SAVED" desc="App-based message shown after user adds a new link to the reading list. [CHAR_LIMIT=32]">
+      <message name="IDS_READING_LIST_SAVED" desc="App-based message shown after user adds a new link to the reading list.">
         Added to reading list
+      </message>
+      <message name="IDS_READING_LIST_SAVED_PLURAL" desc="App-based message shown after user adds multiple links to the reading list.">
+        Pages added to reading list
       </message>
       <message name="IDS_READING_LIST_MARK_AS_READ" desc="The text for the action to mark the reading list as read.">
         Mark as read
@@ -4831,6 +4834,15 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <!-- Pdf Page -->
       <message name="IDS_PDF_PAGE_DOWNLOAD_IPH_TEXT" desc="Text shown in the text bubble to inform users about the option to download a PDF when the PDF document is opened in Chrome.">
         You can download PDFs here
+      </message>
+      <message name="IDS_PDF_TWO_PAGE_VIEW" desc="Menu option to enable two-page view in PDF.">
+        Two-page view
+      </message>
+      <message name="IDS_PDF_SINGLE_PAGE_VIEW" desc="Menu option to enable single page view in PDF.">
+        Single-page view
+      </message>
+      <message name="IDS_PDF_DOCUMENT_PROPERTIES" desc="Menu option to view PDF document properties.">
+        Document properties
       </message>
 
       <!-- Accessibility -->
@@ -5206,9 +5218,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_ACCESSIBILITY_OMNIBOX_SUGGESTED_ITEMS" desc="Announcement about the presence and volume of suggestions below the Omnibox.">
         <ph name="SUGGESTIONS_COUNT">%d<ex>12</ex></ph> suggested items in list below.
       </message>
-      <message name="IDS_ACCESSIBILITY_OMNIBOX_SUGGESTED_ITEMS_ABOVE" desc="Announcement about the presence and volume of suggestions below the Omnibox.">
-        <ph name="SUGGESTIONS_COUNT">%d<ex>12</ex></ph> suggested items in list above.
-      </message>
       <message name="IDS_ACCESSIBILITY_OMNIBOX_MOST_VISITED_TILE_SEARCH" desc="Announces that interacting with a Tile executes a specific search query.">
         Search: <ph name="SEARCH_QUERY">%s<ex>Weather in San Francisco</ex></ph>
       </message>
@@ -5328,9 +5337,6 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <!-- Share targets -->
       <message name="IDS_PRINT_SHARE_ACTIVITY_TITLE" desc="Title of the Print Share activity that will appear in the Android share dialog.">
         Print
-      </message>
-      <message name="IDS_SEND_TAB_TO_SELF_SHARE_ACTIVITY_TITLE" desc="Title of the Send Tab To Self Share activity that will appear in the Android share dialog.">
-        Send to your devices
       </message>
       <message name="IDS_SEND_TAB_TO_SELF_CONTEXT_MENU_TITLE" desc="Title of the Send Tab To Self option in the tab context menu.">
         Send to your device
@@ -5922,7 +5928,7 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
 
       <!-- In-Product Help strings -->
       <message name="IDS_IPH_GLIC_PROMO_TEXT" desc="The in-product-help promotion message to try Glic.">
-        Gemini is now on your toolbar. To change your pinned tool anytime, long-press the icon.
+        Try Gemini in Chrome to get answers, key takeaways and more
       </message>
       <message name="IDS_IPH_GLIC_PROMO_ACCESSIBILITY_TEXT" desc="The in-product-help accessibility text to try Glic.">
         Gemini is now on your toolbar. To change your pinned tool anytime, long-press the icon.
@@ -6076,6 +6082,15 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <!-- SendTabToSelf -->
       <message name="IDS_SEND_TAB_TO_SELF_TOAST" desc="Text for a toast indicating that the tab is being shared on the user's other synced devices.">
         Sending to <ph name="device_name">%1$s<ex>Tanya's Pixel 2</ex></ph>...
+      </message>
+      <message name="IDS_SEND_TAB_TO_SELF_MESSAGE_BANNER_TITLE" desc="The title for the message banner shown on Android when links are received in the background.">
+        Links received
+      </message>
+      <message name="IDS_SEND_TAB_TO_SELF_MESSAGE_BANNER_SUBTITLE" desc="The subtitle for the message banner shown on Android indicating the sender device.">
+        From <ph name="DEVICE_NAME">%1$s<ex>Tanya's Pixel 10a</ex></ph>
+      </message>
+      <message name="IDS_SEND_TAB_TO_SELF_MESSAGE_OPEN" desc="Label for the button to open a tab received from another device.">
+        Open
       </message>
       <message name="IDS_SEND_TAB_TO_SELF_NOTIFICATION_CONTEXT_TEXT" desc="Text displayed as the second line of a notification indicating the domain and the device the tab is shared from.">
         <ph name="DOMAIN">%1$s<ex>www.google.com</ex></ph> - Sent from <ph name="DEVICE_NAME">%2$s<ex>Tanya's Pixel 2XL</ex></ph>
@@ -7592,6 +7607,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
 
     <!-- Glic strings -->
+      <message name="IDS_GLIC_BUTTON_ENTRYPOINT_OPEN_GEMINI_LABEL" desc="Label on the 3-dot menu item used to open Gemini in Chrome.">
+        Open Gemini
+      </message>
       <message name="IDS_GLIC_ACTOR_TASK_IN_PROGRESS" desc="Snackbar message shown when a Glic actor task is still in progress.">
         Your task is still in progress
       </message>
@@ -7599,42 +7617,39 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
         Gemini isn’t available in Incognito mode
       </message>
 
-      <!-- Immersive Playback Confirmation Dialog strings -->
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_TITLE" desc="Title of the dialog asking the user to confirm entering immersive playback mode." translateable="false">
-        Immersive Mode
+      <!-- Immersive Playback Confirmation strings -->
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_MESSAGE" desc="Message in the snackbar asking the user if they want to view the video in immersive mode." translateable="false">
+        View this video in immersive mode?
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_MESSAGE" desc="Message in the dialog asking the user if they want to view the video in immersive mode." translateable="false">
-        Do you want to view this video in immersive mode?
-      </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_STEREO_MODE_LABEL" desc="Label for the stereo mode selection spinner in the immersive playback confirmation dialog." translateable="false">
-        Stereo Mode:
-      </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_PROJECTION_TYPE_LABEL" desc="Label for the projection type selection spinner in the immersive playback confirmation dialog." translateable="false">
-        Projection Type:
-      </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_STEREO_MODE_MONO" desc="Option for mono (non-stereo) mode in the immersive playback confirmation dialog." translateable="false">
-        Mono
-      </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_STEREO_MODE_SIDE_BY_SIDE" desc="Option for side-by-side stereo mode in the immersive playback confirmation dialog." translateable="false">
-        Side by Side
-      </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_STEREO_MODE_TOP_BOTTOM" desc="Option for top-bottom stereo mode in the immersive playback confirmation dialog." translateable="false">
-        Top-Bottom
-      </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_PROJECTION_TYPE_QUAD" desc="Option for quad (flat) projection in the immersive playback confirmation dialog." translateable="false">
-        Quad
-      </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_PROJECTION_TYPE_SPHERE" desc="Option for spherical (360) projection in the immersive playback confirmation dialog." translateable="false">
-        Sphere
-      </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_PROJECTION_TYPE_HEMISPHERE" desc="Option for hemispherical (180) projection in the immersive playback confirmation dialog." translateable="false">
-        Hemisphere
-      </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_CONFIRM" desc="Text for the positive button to confirm entering immersive mode." translateable="false">
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_YES" desc="Text for the positive button in the snackbar to proceed to format selection." translateable="false">
         Yes
       </message>
-      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_DECLINE" desc="Text for the negative button to decline entering immersive mode." translateable="false">
-        No
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_FORMAT_TITLE" desc="Title of the dialog for selecting immersive playback format." translateable="false">
+        Format
+      </message>
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_OPTION_STANDARD" desc="Option for standard projection in the immersive playback confirmation dialog." translateable="false">
+        Standard
+      </message>
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_OPTION_STEREO_3D" desc="Option for stereoscopic 3D projection in the immersive playback confirmation dialog." translateable="false">
+        Stereoscopic (3D)
+      </message>
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_OPTION_VR180" desc="Option for VR 180 projection in the immersive playback confirmation dialog." translateable="false">
+        VR 180
+      </message>
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_OPTION_VR360" desc="Option for VR 360 projection in the immersive playback confirmation dialog." translateable="false">
+        VR 360
+      </message>
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_OK" desc="Text for the positive button in the format selection dialog." translateable="false">
+        OK
+      </message>
+      <message name="IDS_IMMERSIVE_PLAYBACK_CONFIRMATION_CANCEL" desc="Text for the negative button in the format selection dialog." translateable="false">
+        Cancel
+      </message>
+      <message name="IDS_ACCESSIBILITY_IMMERSIVE_VIDEO_FORMAT" desc="Content description for a button that opens the format selection popup in immersive video playback." translateable="false">
+        Select video format
+      </message>
+      <message name="IDS_ACCESSIBILITY_EXIT_IMMERSIVE_PLAYBACK" desc="Content description for a button that exits immersive video playback." translateable="false">
+        Exit immersive playback
       </message>
     </messages>
   </release>

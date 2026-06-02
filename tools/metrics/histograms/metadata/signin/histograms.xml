@@ -529,7 +529,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Signin.AccountInPref.State" enum="AccountInPrefState"
-    expires_after="2026-09-20">
+    expires_after="2026-11-22">
   <owner>rsult@google.com</owner>
   <owner>droger@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -813,6 +813,23 @@ prefs when the profile is loaded.  -->
   </summary>
 </histogram>
 
+<histogram name="Signin.AgeMismatchSignout.TimeToProperSignin" units="ms"
+    expires_after="2027-05-01">
+  <owner>ddac@chromium.org</owner>
+  <owner>ljjlee@google.com</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records the total time duration from the first age-mismatch sign-out until
+    the user successfully signs in with the can_sign_in_to_chrome capability
+    confirmed as true. The timestamp is stored in Local State (app-level), so
+    the duration is measured across all profiles. The timestamp is not updated
+    on subsequent consecutive age-mismatch sign-outs, representing the total
+    continuous time spent without a valid/eligible account. Logged on iOS when
+    the user successfully signs in with the can_sign_in_to_chrome capability
+    true.
+  </summary>
+</histogram>
+
 <histogram name="Signin.Android.FRESigninEvents" enum="FRESigninEvents"
     expires_after="2026-09-27">
   <owner>mthiesse@chromium.org</owner>
@@ -844,7 +861,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.AndroidGetAccountIdsTime" units="ms"
-    expires_after="2026-09-20">
+    expires_after="2026-11-22">
   <owner>bsazonov@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -2090,7 +2107,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.Intercept.ChromeSignin.NumberOfDaysSinceLastDecline"
-    units="Days" expires_after="2026-09-20">
+    units="Days" expires_after="2026-11-22">
   <owner>rsult@google.com</owner>
   <owner>droger@chromium.org</owner>
   <summary>
@@ -2849,7 +2866,7 @@ should be kept to monitor/debug signin Multilogin issues-->
 </histogram>
 
 <histogram name="Signin.PAMInitialize.PrimaryAccountInfoState"
-    enum="PAMInitializePrimaryAccountInfoState" expires_after="2026-09-20">
+    enum="PAMInitializePrimaryAccountInfoState" expires_after="2026-11-22">
   <owner>msarda@chromium.org</owner>
   <owner>droger@chromium.org</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -3770,7 +3787,7 @@ kept as long as profile signout is possible -->
 </histogram>
 
 <histogram name="Signin.SyncOptIn.IdentityPill.SyncAtShowCount"
-    units="ShowCount" expires_after="2026-09-20">
+    units="ShowCount" expires_after="2026-11-22">
   <owner>ernn@google.com</owner>
   <owner>rsult@google.com</owner>
   <owner>chrome-signin-team-desktop@google.com</owner>
@@ -3782,7 +3799,7 @@ kept as long as profile signout is possible -->
 </histogram>
 
 <histogram name="Signin.SyncOptIn.Offered" enum="SigninAccessPoint"
-    expires_after="2026-09-20">
+    expires_after="2026-11-22">
   <owner>ernn@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
   <summary>
@@ -3934,6 +3951,49 @@ kept as long as profile signout is possible -->
     refresh token. Recorded every time Chrome attempts to request a bound
     refresh token during Dice signin. This will not be recorded if token binding
     is not supported by either Chrome or GAIA.
+  </summary>
+</histogram>
+
+<histogram name="Signin.TokenBinding.UpgradeDuration" units="ms"
+    expires_after="2026-11-15">
+  <owner>alexilin@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <improvement direction="LOWER_IS_BETTER"/>
+  <summary>
+    Records the total end-to-end duration required to perform an opportunistic
+    refresh token binding upgrade against GAIA servers, including both local
+    binding key registration JWT generation and the subsequent network API call.
+    When an unbound session refresh token encounters a server challenge during
+    access token minting, Chrome initiates this opportunistic upgrade. Recorded
+    immediately upon the final completion or abortion of the upgrade flow
+    (regardless of success or failure).
+  </summary>
+</histogram>
+
+<histogram name="Signin.TokenBinding.UpgradeHttpResult"
+    enum="CombinedHttpResponseAndNetErrorCode" expires_after="2026-11-15">
+  <owner>alexilin@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records the network error code or HTTP response status of the opportunistic
+    refresh token binding upgrade request sent to GAIA servers. When an unbound
+    session refresh token encounters a server challenge during access token
+    minting, Chrome initiates this opportunistic upgrade. Recorded immediately
+    upon the completion of the upgrade API network call.
+  </summary>
+</histogram>
+
+<histogram name="Signin.TokenBinding.UpgradeResult"
+    enum="OAuth2UpgradeTokenFlowResult" expires_after="2026-11-15">
+  <owner>alexilin@chromium.org</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records the overall result of an opportunistic refresh token binding upgrade
+    attempt, indicating whether it succeeded, failed due to local registration
+    token generation error, or encountered network/server errors. When an
+    unbound session refresh token encounters a server challenge during access
+    token minting, Chrome initiates this opportunistic upgrade. Recorded upon
+    the final completion or abortion of the token upgrade attempt.
   </summary>
 </histogram>
 
