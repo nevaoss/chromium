@@ -453,7 +453,7 @@ PageDiscardingHelper::CanDiscardResult PageDiscardingHelper::CanDiscard(
 }
 
 bool PageDiscardingHelper::IsPageOptedOutOfDiscarding(
-    const std::string& browser_context_id,
+    const base::UnguessableToken& browser_context_id,
     const GURL& url) const {
   auto it = profiles_no_discard_patterns_.find(browser_context_id);
   if (it == profiles_no_discard_patterns_.end()) {

@@ -31,6 +31,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
+#include "base/unguessable_token.h"
 #include "components/memory_pressure/reclaim_target.h"
 #include "components/memory_pressure/unnecessary_discard_monitor.h"
 #include "components/performance_manager/public/decorators/page_live_state_decorator.h"
@@ -181,7 +182,7 @@ class PageDiscardingHelper
       const PageNode* page_node) const;
 
  private:
-  bool IsPageOptedOutOfDiscarding(const std::string& browser_context_id,
+  bool IsPageOptedOutOfDiscarding(const base::UnguessableToken& browser_context_id,
                                   const GURL& url) const;
 
   // Called after each discard attempt. |success| will indicate whether or not
@@ -200,7 +201,7 @@ class PageDiscardingHelper
   // The mechanism used to do the actual discarding.
   std::unique_ptr<mechanism::PageDiscarder> page_discarder_;
 
-  std::map<std::string, std::unique_ptr<url_matcher::URLMatcher>>
+  std::map<base::UnguessableToken, std::unique_ptr<url_matcher::URLMatcher>>
       profiles_no_discard_patterns_;
 
   memory_pressure::UnnecessaryDiscardMonitor unnecessary_discard_monitor_;
