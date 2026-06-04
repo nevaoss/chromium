@@ -46,6 +46,7 @@
 <translation id="1147031633655575115">ເຂົ້າສູ່ລະບົບເປັນ <ph name="USER" /></translation>
 <translation id="1149401351239820326">ເດືອນ​ໝົດອາຍຸ</translation>
 <translation id="1150989369772528668">ປະຕິທິນ</translation>
+<translation id="1161444134753003495">ເຂົ້າສູ່ລະບົບ</translation>
 <translation id="1161663161838091892">ຊິ້ງແຖບ ແລະ ປະຫວັດເພື່ອດຳເນີນການຕໍ່</translation>
 <translation id="1162834932051545794">{count,plural, =1{{count} ບັດເຄຣດິດ}other{{count} ບັດເຄຣດິດ}}</translation>
 <translation id="1164891049599601209">ມີການປ້ອນໃນເວັບໄຊຫຼອກລວງ</translation>
@@ -168,6 +169,7 @@
 <translation id="1554043146674176775">ປິດໂໝດ AI</translation>
 <translation id="1554477036522844996">ໜ້າຈໍໃໝ່</translation>
 <translation id="1558391695376153246">ປິດແຖບ​ບໍ່ເປີດເຜີຍຕົວຕົນ</translation>
+<translation id="1560153516220021659">ປຸ່ມແຖບເຄື່ອງມືຮອງທີ່ຫຍໍ້ລົງ</translation>
 <translation id="1565371473877914088">ແຖບບໍ່ເປີດເຜີຍຕົວຕົນໃໝ່</translation>
 <translation id="1567960978791353852">ສະແດງໂໝດການອ່ານ</translation>
 <translation id="1571780780926010134">ແຖບບໍ່ເປີດເຜີຍຕົວຕົນ</translation>
@@ -175,6 +177,7 @@
 <translation id="1580783302095112590">ສົ່ງ​ເມວ​ແລ້ວ.</translation>
 <translation id="1582732959743469162">ນີ້ຈະຢຸດທຸກຄວາມຄືບໜ້າສຳລັບການດາວໂຫຼດປັດຈຸບັນຂອງທ່ານ.</translation>
 <translation id="1594034544529347967">ເລີ່ມ</translation>
+<translation id="1598485494295307681">ກຳລັງຟັງ</translation>
 <translation id="1598751033135758830">ເປີດໃນແອັບ…</translation>
 <translation id="1600571977391127696">ເນື້ອຫາບາງຢ່າງອາດບໍ່ເໝາະສົມສຳລັບທຸກຄົນ.</translation>
 <translation id="1601560923496285236">ນໍາໃຊ້</translation>
@@ -538,6 +541,7 @@
 <translation id="2829172210806130158">ຊອກຫາໃນໜ້າຈໍຂອງທ່ານ</translation>
 <translation id="2831109159746537587">ລອງຂີດວົງ ຫຼື ແຕະຮູບເພື່ອຊອກຫາ</translation>
 <translation id="2834399722155632105">3. ແຕະຕົວເລືອກລະຫັດຜ່ານ</translation>
+<translation id="2834418947367581526">ສະບາຍດີ, ຂ້ອຍແມ່ນ Gemini. ພວກເຮົາກຳລັງຈະໃຊ້ຄຸນສົມບັດ Live, ທີ່ທ່ານພຽງເວົ້າກໍຖາມຄຳຖາມກ່ຽວກັບໜ້າເວັບທີ່ທ່ານເປີດຢູ່ໄດ້. ແຕ່ກ່ອນທີ່ພວກເຮົາຈະເລີ່ມ, ກະລຸນາເບິ່ງຂໍ້ມູນສຳຄັນຕໍ່ໄປນີ້.</translation>
 <translation id="2834956026595107950"><ph name="TITLE" />, <ph name="STATE" />, <ph name="URL" /></translation>
 <translation id="2841013758207633010">ເວລາ</translation>
 <translation id="284581348330507117">ສ້າງລະຫັດຜ່ານທີ່ບໍ່ຊໍ້າກັນ</translation>
@@ -690,6 +694,7 @@
 <translation id="3447332786336558089">ຫຼັງຈາກທ່ານອອກຈາກລະບົບແລ້ວ, ລະບົບຈະປິດແຖບ ແລະ ລຶບຂໍ້ມູນບັນຊີທີ່ບໍ່ໄດ້ບັນທຶກໄວ້ອອກຈາກອຸປະກອນເຄື່ອງນີ້. ເຊິ່ງອາດຮວມທັງລະຫັດຜ່ານ, ປະຫວັດ ແລະ ອື່ນໆ.</translation>
 <translation id="3449029510150690417">ສ້າງກຸ່ມແຖບໃໝ່ຂອງທ່ານໂດຍໃສ່ຊື່ ແລະ ສີໃຫ້ມັນ</translation>
 <translation id="345348365500626747">ພົບທີ່ຢູ່</translation>
+<translation id="3459644598174926977">ໃຊ້ຄຸນສົມບັດ Live ກັບ Gemini ເພື່ອຖາມກ່ຽວກັບໜ້າເວັບ, ລະດົມແນວຄິດ ແລະ ໂອ້ລົມໂຕ້ຕອບ.</translation>
 <translation id="3464194322481586217">ບໍ່ສາມາດຕິດຕາມລາຄາໄດ້.</translation>
 <translation id="3469117812148449995">ຕົວເລືອກໃນການບັນທຶກລະຫັດຜ່ານ</translation>
 <translation id="3472469028191701821">ເປີດໃນແຖບໃໝ່</translation>
@@ -824,6 +829,7 @@
 <translation id="3931215329146376310">{count,plural, =1{ລະຫັດຜ່ານໃໝ່ສຳລັບເວັບໄຊນີ້}other{ລະຫັດຜ່ານໃໝ່ສຳລັບເວັບໄຊນີ້}}</translation>
 <translation id="3933372629914873850">ທ່ານຈະເຂົ້າສູ່ລະບົບ <ph name="URL" /></translation>
 <translation id="3934905113567851655">ບີບນິ້ວເພື່ອປັບຂະໜາດ</translation>
+<translation id="393732545649378031">ບັນຊີ</translation>
 <translation id="3940195383040445971">ຕິດຕາມລາຄາໃນແຖບ</translation>
 <translation id="3941941395924123592">{COUNT,plural, =1{ປິດ {COUNT} ແຖບ}other{ປິດ {COUNT} ແຖບ}}</translation>
 <translation id="3946483119107054883">ດາວໂຫຼດເປັນ CSV</translation>
@@ -1127,6 +1133,7 @@
 <translation id="4941089862236492464">ຂໍ​ອະ​ໄພ​ມີ​ບັນ​ຫາ​ການ​ແບ່ງ​ປັນ​ລາຍ​ການ​ຂອງ​ທ່ານ.</translation>
 <translation id="4944543191714094452">ຊອກຫາໃນໜ້າ…</translation>
 <translation id="4945756290001680296">ເຂົ້າເຖິງການຕັ້ງຄ່າລະຫັດຜ່ານ</translation>
+<translation id="4946307855175300628">ກຳລັງຕອບ</translation>
 <translation id="4949302115427722371">ຈັດການການຕັ້ງຄ່າ…</translation>
 <translation id="4958444002117714549">ຂະ​ຫຍາຍ​ລາຍ​ຊື່</translation>
 <translation id="496392417432935267">ເປີດຢູ່ບ່ອນອື່ນແລ້ວ</translation>
@@ -1474,6 +1481,7 @@ Handoff ຍັງ​ຕ້ອງ​ໄດ້​ເປີດ​ໃຊ້​ງາ
 <translation id="6140948187512243695">ສະແດງລາຍລະອຽດ</translation>
 <translation id="6144589619057374135">ເປີດ ${url} ໃນໂໝດທີ່ບໍ່ເປີດເຜີຍຕົວຕົນ</translation>
 <translation id="6146563240635539929">ວິດີໂອ</translation>
+<translation id="6148392728478209113">ທ່ານຍັງໃຊ້ຄຸນສົມບັດ Live ຢູ່ບໍ? ແຕະປຸ່ມ Live ເພື່ອລົມກັບ Gemini ຕໍ່</translation>
 <translation id="6151006591088192882">ປົດລັອກແຖບບໍ່ເປີດເຜີຍຕົວຕົນດ້ວຍ <ph name="BIOMETRIC_AUTHENITCATION_TYPE" /></translation>
 <translation id="6152340033632117531">ບໍ່ໄດ້ນຳໃຊ້</translation>
 <translation id="6152406514676263192">ຊິ້ງຂໍ້ມູນສຳລັບເນື້ອຫາທີ່ກ່ຽວຂ້ອງທີ່ສຸດໂດຍອ້າງອີງໃສ່ຄວາມສົນໃຈຂອງທ່ານ.</translation>
@@ -1547,6 +1555,7 @@ Handoff ຍັງ​ຕ້ອງ​ໄດ້​ເປີດ​ໃຊ້​ງາ
 <translation id="6355820183143562453">ເຊື່ອງບັດການຕິດຕາມລາຄາ</translation>
 <translation id="6355820205320395730">ລະຫັດຜ່ານງ່າຍແມ່ນລະຫັດຜ່ານທີ່ເດົາໄດ້ງ່າຍ. ກວດສອບໃຫ້ແນ່ໃຈວ່າທ່ານກຳລັງສ້າງລະຫັດຜ່ານຍາກ. <ph name="BEGIN_LINK" />ເບິ່ງເຄັດລັບຄວາມປອດໄພເພີ່ມເຕີມ.<ph name="END_LINK" /></translation>
 <translation id="6357455205205567365">ເຂົ້າສູ່ລະບົບເພື່ອຮັບຂໍ້ມູນທັງໝົດຂອງທ່ານ ເຊັ່ນ: ລະຫັດຜ່ານ, ບຸກມາກ ແລະ ອື່ນໆ.</translation>
+<translation id="6364268785720100355">ເຂົ້າສູ່ລະບົບເພື່ອຮັບລະຫັດຜ່ານ ແລະ ອື່ນໆໃນອຸປະກອນທຸກເຄື່ອງຂອງທ່ານ.</translation>
 <translation id="6368038301482806847">ເລືອກໂປຣແກຣມຊອກຫາຈາກລາຍຊື່.</translation>
 <translation id="6368102751067608420">ເພື່ອລຶບຂໍ້ມູນໃນຕົວຈັດການລະຫັດຜ່ານທັງໝົດ</translation>
 <translation id="6372558618707314581">ເຂົ້າໄປໜ້າໃດກໍໄດ້ທີ່ທ່ານຕ້ອງການ</translation>
@@ -1676,6 +1685,7 @@ Handoff ຍັງ​ຕ້ອງ​ໄດ້​ເປີດ​ໃຊ້​ງາ
 <translation id="6736243959894955139">ທີ່ຢູ່</translation>
 <translation id="6746338529702829275">ກວດສອບຂໍ້ມູນບັນຊີຂອງທ່ານ</translation>
 <translation id="6750456911389438250">{count,plural, =1{ນຳເຂົ້າລາຍການປະຫວັດ {count} ລາຍການແລ້ວ}other{ນຳເຂົ້າລາຍການປະຫວັດ {count} ລາຍການແລ້ວ}}</translation>
+<translation id="6751817018972413719">{count,plural, =1{ຕົວເລືອກຂໍ້ມູນການເຂົ້າສູ່ລະບົບ {count} ລາຍການພ້ອມໃຫ້ນຳໃຊ້ຢູ່ເທິງແປ້ນພິມຂອງທ່ານ.}other{ຕົວເລືອກຂໍ້ມູນການເຂົ້າສູ່ລະບົບ {count} ລາຍການພ້ອມໃຫ້ນຳໃຊ້ຢູ່ເທິງແປ້ນພິມຂອງທ່ານ.}}</translation>
 <translation id="6755200887046212842">ຈັດການ​ບັນ​ຊີ</translation>
 <translation id="6757899787818440812">ຄວາມສູງປານກາງ</translation>
 <translation id="6759709389246683070">ທ່ານສາມາດແຕະແຖບນີ້ຄ້າງໄວ້ເພື່ອຕັ້ງການແຈ້ງເຕືອນໃຫ້ກັບຄືນມາເບິ່ງໃນພາຍຫຼັງໄດ້</translation>
@@ -2227,6 +2237,7 @@ Handoff ຍັງ​ຕ້ອງ​ໄດ້​ເປີດ​ໃຊ້​ງາ
 <translation id="8643403533759285912">ລຶບກຸ່ມ</translation>
 <translation id="8647280737650867362">ບໍ່ສາມາດຍົກເລີກການຕິດຕາມລາຄາໄດ້.</translation>
 <translation id="8654802032646794042">ຍົກເລີກ</translation>
+<translation id="8659875081143553823">ຖ້າບຶດໜຶ່ງ</translation>
 <translation id="8660600697590740984">ຮູບທີ່ສຳເນົາດ້ວຍ Lens</translation>
 <translation id="866266761389616183">ອ່າ, ຊວຍແທ້!</translation>
 <translation id="8663764600409216912">ທ່ານກຳລັງໃຊ້ລະຫັດຜ່ານທີ່ຄາດເດົາໄດ້ຍາກ</translation>

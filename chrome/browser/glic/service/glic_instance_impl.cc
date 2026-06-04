@@ -288,14 +288,6 @@ GlicSkillsManager& GlicInstanceImpl::skills_manager() {
   return *skills_manager_;
 }
 
-void GlicInstanceImpl::OnSelectionAreasChanged(int count) {
-  instance_metrics_.OnSelectionAreasChanged(count);
-}
-
-void GlicInstanceImpl::OnPolylinePointsChanged(const std::vector<int>& counts) {
-  instance_metrics_.OnPolylinePointsChanged(counts);
-}
-
 std::unique_ptr<WebUIContentsContainer>
 GlicInstanceImpl::CreateWebUIContentsContainer() {
   return coordinator_delegate_->CreateWebUIContentsContainer();
@@ -371,10 +363,6 @@ void GlicInstanceImpl::Show(const ShowOptions& options) {
   }
 
   EmbedderKey new_key = GetEmbedderKey(options);
-  // Look up the current embedder for that tab/key.
-  EmbedderEntry* entry = GetEmbedderEntry(new_key);
-  const bool new_embedder_will_show =
-      !entry || !entry->embedder || !entry->embedder->IsShowing();
 
   GlicUiEmbedder* embedder_to_show = nullptr;
 
@@ -400,13 +388,8 @@ void GlicInstanceImpl::Show(const ShowOptions& options) {
   MaybeShowHostUi(embedder_to_show, options.invocation_source,
                   options.prompt_suggestion, options.fre_override);
 
-  // Order matters: MarkShownAndCheckIfFirstTime has side effects and
-  // must be called even if new_embedder_will_show is true.
-  if (instance_metrics().MarkShownAndCheckIfFirstTime(new_key) ||
-      new_embedder_will_show) {
-    instance_metrics().OnOpen(
-        options.invocation_source, options,
-        /* should_log_old_metric=*/new_embedder_will_show);
+  if (instance_metrics().MarkShownAndCheckIfFirstTime(new_key)) {
+    instance_metrics().OnOpen(options.invocation_source, options);
     service_->metrics()->OnGlicWindowStartedOpening(/*attached=*/false,
                                                     options.invocation_source);
   }
@@ -735,7 +718,11 @@ void GlicInstanceImpl::UnbindEmbedder(EmbedderKey key) {
   }
 
   if (auto* entry = GetEmbedderEntry(key)) {
+    base::WeakPtr<GlicInstanceImpl> weak_this = weak_ptr_factory_.GetWeakPtr();
     CloseInternal(key, *entry, {.suppress_animations = true});
+    if (!weak_this) {
+      return;
+    }
   }
 
   // Deactivate if this was the active embedder. This ensures predictable state
@@ -1522,8 +1509,12 @@ void GlicInstanceImpl::CloseAllEmbedders() {
   for (auto& [key, entry] : embedders_) {
     keys.push_back(key);
   }
+  base::WeakPtr<GlicInstanceImpl> weak_this = weak_ptr_factory_.GetWeakPtr();
   for (const auto& key : keys) {
     Close(key);
+    if (!weak_this) {
+      return;
+    }
   }
 }
 

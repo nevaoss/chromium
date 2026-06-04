@@ -20,6 +20,7 @@
 #include "components/signin/public/base/binding_key_registration_token_result.h"
 #include "components/unexportable_keys/service_error.h"
 #include "components/unexportable_keys/unexportable_key_id.h"
+#include "crypto/signature_verifier.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_set.h"
 
 namespace unexportable_keys {
@@ -64,11 +65,22 @@ class TokenBindingHelper {
   static constexpr Error kNoErrorForMetrics = static_cast<Error>(0);
   // LINT.ThenChange(//tools/metrics/histograms/metadata/signin/enums.xml:TokenBindingGenerateAssertionResult)
 
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  //
+  // LINT.IfChange(SaveBindingKeyResult)
+  enum class SaveBindingKeyResult {
+    kSuccess = 0,
+    kRefreshTokenNotFound = 1,
+    kMaxValue = kRefreshTokenNotFound,
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/signin/enums.xml:TokenBindingUpgradeSaveBindingKeyResult)
+
   using GenerateAssertionCallback = base::OnceCallback<void(std::string)>;
-  using SaveBindingKeyCallback =
-      base::RepeatingCallback<bool(const CoreAccountId& account_id,
-                                   std::string_view refresh_token,
-                                   std::vector<uint8_t> wrapped_binding_key)>;
+  using SaveBindingKeyCallback = base::RepeatingCallback<SaveBindingKeyResult(
+      const CoreAccountId& account_id,
+      std::string_view refresh_token,
+      std::vector<uint8_t> wrapped_binding_key)>;
 
   explicit TokenBindingHelper(
       unexportable_keys::UnexportableKeyService& unexportable_key_service);
@@ -96,6 +108,15 @@ class TokenBindingHelper {
   // key parameter.
   void ClearAllKeys();
 
+  // Initiates background generation or unwrapping of a binding key after all
+  // credentials are loaded on startup.
+  void OnAllCredentialsLoaded(bool has_refresh_tokens);
+
+  // Returns `true` if the binding key was successfully generated or unwrapped.
+  // Returns `false` if the key hasn't been created yet or if it failed to
+  // create/unwrap.
+  bool IsRegistrationKeyReady() const;
+
   // Asynchronously generates a registration token for binding a refresh token
   // to a binding key. If one of the accounts is already bound, reuses its
   // binding key. Otherwise, generates a new binding key.
@@ -103,7 +124,8 @@ class TokenBindingHelper {
   // The result is returned through `callback`. Returns `std::nullopt` if the
   // generation fails.
   void GenerateBindingKeyRegistrationToken(
-      std::string_view supported_algorithms,
+      base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
+          supported_algorithms,
       std::string_view auth_code,
       base::OnceCallback<void(
           std::optional<signin::BindingKeyRegistrationTokenResult>)> callback);
@@ -154,7 +176,9 @@ class TokenBindingHelper {
       std::string_view refresh_token,
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       std::string_view device_id,
-      std::string_view challenge);
+      std::string_view challenge,
+      base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
+          supported_algorithms);
 
   // Sets the callback to persist the binding key after a token binding upgrade.
   // Must be called exactly once.
@@ -163,6 +187,9 @@ class TokenBindingHelper {
   base::WeakPtr<TokenBindingHelper> GetWeakPtr();
 
  private:
+  void MaybeInitializeRegistrationTokenHelper(
+      base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
+          supported_algorithms);
   void OnUpgradeRegistrationTokenGenerated(
       const CoreAccountId& account_id,
       std::optional<signin::BindingKeyRegistrationTokenResult> result);

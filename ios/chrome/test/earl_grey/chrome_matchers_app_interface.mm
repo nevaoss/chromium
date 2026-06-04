@@ -328,8 +328,10 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 }
 
 + (id<GREYMatcher>)contextMenuItemWithAccessibilityLabel:(NSString*)label {
-  return grey_allOf(grey_accessibilityLabel(label),
-                    grey_accessibilityTrait(UIAccessibilityTraitButton), nil);
+  return grey_allOf(
+      grey_accessibilityLabel(label),
+      grey_accessibilityTrait(UIAccessibilityTraitButton),
+      grey_ancestor(grey_kindOfClassName(@"_UIContextMenuContainerView")), nil);
 }
 
 + (id<GREYMatcher>)contextMenuItemWithAccessibilityLabelID:(int)messageID {
@@ -549,12 +551,12 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 
 + (id<GREYMatcher>)reloadButton {
   if (IsChromeNextIaEnabled()) {
-    if (!IsIPad()) {
-      return grey_allOf(grey_accessibilityID(kToolsMenuReload),
-                        grey_sufficientlyVisible(), nil);
-    }
-    return grey_allOf(grey_accessibilityID(kToolbarReloadButtonIdentifier),
-                      grey_sufficientlyVisible(), nil);
+    return grey_anyOf(
+        grey_allOf(grey_accessibilityID(kToolbarReloadButtonIdentifier),
+                   grey_sufficientlyVisible(), nil),
+        grey_allOf(grey_accessibilityID(kToolsMenuReload),
+                   grey_sufficientlyVisible(), nil),
+        nil);
   }
   return [ChromeMatchersAppInterface
       buttonWithAccessibilityLabelID:(IDS_IOS_ACCNAME_RELOAD)];
@@ -562,8 +564,12 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 
 + (id<GREYMatcher>)stopButton {
   if (IsChromeNextIaEnabled()) {
-    return grey_allOf(grey_accessibilityID(kToolbarStopButtonIdentifier),
-                      grey_sufficientlyVisible(), nil);
+    return grey_anyOf(
+        grey_allOf(grey_accessibilityID(kToolbarStopButtonIdentifier),
+                   grey_sufficientlyVisible(), nil),
+        grey_allOf(grey_accessibilityID(kToolsMenuStop),
+                   grey_sufficientlyVisible(), nil),
+        nil);
   }
   return [ChromeMatchersAppInterface
       buttonWithAccessibilityLabelID:(IDS_IOS_ACCNAME_STOP)];
@@ -691,11 +697,15 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 }
 
 + (id<GREYMatcher>)toolsMenuButton {
-  NSString* toolsMenuID = IsChromeNextIaEnabled()
-                              ? kToolbarToolsMenuButtonIdentifier
-                              : kLegacyToolbarToolsMenuButtonIdentifier;
-  return grey_allOf(grey_accessibilityID(toolsMenuID),
-                    grey_sufficientlyVisible(), nil);
+  if (IsChromeNextIaEnabled()) {
+    return grey_allOf(
+        grey_anyOf(grey_accessibilityID(kToolbarToolsMenuButtonIdentifier),
+                   grey_accessibilityID(kNTPToolsMenuButtonIdentifier), nil),
+        grey_sufficientlyVisible(), nil);
+  }
+  return grey_allOf(
+      grey_accessibilityID(kLegacyToolbarToolsMenuButtonIdentifier),
+      grey_sufficientlyVisible(), nil);
 }
 
 + (id<GREYMatcher>)toolsMenuNTPButton {
@@ -707,8 +717,12 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
 
 + (id<GREYMatcher>)openNewTabButton {
   if (IsChromeNextIaEnabled()) {
-    return grey_allOf(grey_accessibilityID(kAppBarNewTabButtonIdentifier),
-                      grey_sufficientlyVisible(), nil);
+    id<GREYMatcher> appBarNewTabButton =
+        grey_allOf(grey_accessibilityID(kAppBarNewTabButtonIdentifier),
+                   grey_sufficientlyVisible(), nil);
+    id<GREYMatcher> tabStripNewTabButton =
+        grey_accessibilityID(@"TabStripNewTabButtonAccessibilityIdentifier");
+    return grey_anyOf(appBarNewTabButton, tabStripNewTabButton, nil);
   }
   return grey_allOf(
       [ChromeMatchersAppInterface
@@ -746,6 +760,11 @@ UIWindow* WindowWithAccessibilityIdentifier(NSString* accessibility_id) {
       grey_anyOf(grey_accessibilityID(shareID),
                  grey_accessibilityID(kOmniboxShareButtonIdentifier), nil),
       grey_sufficientlyVisible(), nil);
+}
+
++ (id<GREYMatcher>)overflowMenuShareButton {
+  return grey_allOf(grey_accessibilityID(kToolsMenuShareId),
+                    grey_sufficientlyVisible(), nil);
 }
 
 + (id<GREYMatcher>)showTabsButton {

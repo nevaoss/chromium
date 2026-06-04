@@ -9,9 +9,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
+import androidx.annotation.Px;
+
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.ui.side_ui.SideUiContainer;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
 
 /**
  * Coordinator that acts as a container for the Vertical Tab List within the Side UI framework. This
@@ -45,8 +48,18 @@ public class VerticalTabsSideUiCoordinator implements SideUiContainer {
     }
 
     @Override
+    public @SideUiId int getSideUiId() {
+        return SideUiId.VERTICAL_TABS;
+    }
+
+    @Override
     public int getCurrentWidth() {
         return mRootView.getWidth();
+    }
+
+    @Override
+    public int getMinWidthDp() {
+        return 0;
     }
 
     @Override
@@ -69,6 +82,9 @@ public class VerticalTabsSideUiCoordinator implements SideUiContainer {
             mRootView.setLayoutParams(layoutParams);
         }
     }
+
+    @Override
+    public void onContainerResized(@Px int containerWidth) {}
 
     @Override
     public void onWindowResized(boolean canShowSideUi) {

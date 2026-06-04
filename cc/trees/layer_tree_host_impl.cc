@@ -1394,6 +1394,8 @@ DrawResult LayerTreeHostImpl::CalculateRenderPasses(FrameData* frame,
       DCHECK(quad->shared_quad_state);
     }
   }
+  DCHECK(settings_.enable_unbounded_element ||
+         frame->unbounded_render_passes.empty());
   for (const auto& render_pass : frame->unbounded_render_passes) {
     for (auto* quad : render_pass->quad_list) {
       DCHECK(quad->shared_quad_state);
@@ -3195,6 +3197,7 @@ viz::CompositorFrame LayerTreeHostImpl::GenerateCompositorFrame(
   if (!frame->unbounded_render_passes.empty() && delegate_) {
     // Unbounded element is not implemented for TreesInViz yet.
     CHECK(!settings_.TreesInVizInClientProcess());
+    CHECK(settings_.enable_unbounded_element);
 
     viz::CompositorFrame unbounded_frame;
     // TODO(508672616): What other uses of `metadata` are relevant to unbounded
@@ -3204,7 +3207,12 @@ viz::CompositorFrame LayerTreeHostImpl::GenerateCompositorFrame(
     unbounded_frame.render_pass_list =
         std::move(frame->unbounded_render_passes);
 
-    populate_resources(unbounded_frame, unbounded_frame.render_pass_list);
+    // TODO(crbug.com/508672616): populate_resources is currently skipped for
+    // unbounded_frame because SubmitUnboundedCompositorFrame has an empty
+    // default implementation and drops the frame. In a later patchset when
+    // the frame is actually submitted to Viz, re-enable this call to ensure
+    // exported resources are properly tracked and returned.
+    // populate_resources(unbounded_frame, unbounded_frame.render_pass_list);
 
     // TODO(508672616): Consider moving this Submit call to
     // LayerTreeHostImpl::DrawLayers where the bounded compositor frame is

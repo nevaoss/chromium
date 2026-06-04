@@ -37,6 +37,7 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.app.feed.FeedActionDelegateImpl;
+import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsUtils;
@@ -67,6 +68,7 @@ import org.chromium.chrome.browser.ntp_customization.theme.chrome_colors.NtpThem
 import org.chromium.chrome.browser.ntp_customization.theme.upload_image.BackgroundImageInfo;
 import org.chromium.chrome.browser.omnibox.OmniboxStub;
 import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionHandler;
+import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionIntentHandler;
 import org.chromium.chrome.browser.privacy.settings.PrivacyPreferencesManagerImpl;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.readaloud.ReadAloudController;
@@ -91,7 +93,6 @@ import org.chromium.chrome.browser.tasks.HomeSurfaceTracker;
 import org.chromium.chrome.browser.toolbar.top.Toolbar;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarConfigUtils;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
-import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeUtils;
 import org.chromium.chrome.browser.ui.edge_to_edge.TopInsetProvider;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager.SnackbarManageable;
@@ -185,7 +186,7 @@ public class NewTabPage
     private final Activity mActivity;
     private boolean mSnapshotSingleTabCardChanged;
     private final boolean mIsInNightMode;
-    private final boolean mCanSupportEdgeToEdgeForCustomizedTheme;
+    private final boolean mSupportsEnableEdgeToEdgeOnTop;
     private final TopInsetProvider mTopInsetProvider;
     private TopInsetProvider.@Nullable Observer mTopInsetChangeObserver;
     private boolean mIsUseEdgeToEdgeForCustomizedTheme;
@@ -284,7 +285,7 @@ public class NewTabPage
                     feedReliabilityLogger.onVoiceSearch();
                 }
                 mVoiceRecognitionHandler.startVoiceRecognition(
-                        VoiceRecognitionHandler.VoiceInteractionSource.NTP,
+                        VoiceRecognitionIntentHandler.VoiceInteractionSource.NTP,
                         CallbackUtils.emptyRunnable());
                 mTracker.notifyEvent(EventConstants.NTP_VOICE_SEARCH_BUTTON_CLICKED);
             } else if (mOmniboxStub != null) {
@@ -397,7 +398,9 @@ public class NewTabPage
      * @param tabStripHeightSupplier Supplier for the tab strip height.
      * @param moduleRegistrySupplier Supplier for the {@link ModuleRegistry}.
      * @param edgeToEdgeControllerSupplier Supplier for the {@link EdgeToEdgeController}.
+     * @param topInsetProvider Provider for top insets.
      * @param startupMetricsTracker Used to record NTP startup metric.
+     * @param backPressManager Manages back press dispatching.
      */
     public NewTabPage(
             Activity activity,
@@ -423,7 +426,8 @@ public class NewTabPage
             OneshotSupplier<ModuleRegistry> moduleRegistrySupplier,
             MonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeControllerSupplier,
             TopInsetProvider topInsetProvider,
-            StartupMetricsTracker startupMetricsTracker) {
+            StartupMetricsTracker startupMetricsTracker,
+            BackPressManager backPressManager) {
         mConstructedTimeNs = System.nanoTime();
         TraceEvent.begin(TAG);
 
@@ -517,7 +521,8 @@ public class NewTabPage
                         snackbarManager,
                         mIsTablet,
                         mTabStripHeightSupplier,
-                        homeSurfaceTracker);
+                        homeSurfaceTracker,
+                        backPressManager);
 
         initializeFeedSurfaceProvider(
                 activity,
@@ -551,10 +556,9 @@ public class NewTabPage
         mToolbarHeight =
                 activity.getResources().getDimensionPixelSize(R.dimen.toolbar_height_no_shadow);
 
-        mCanSupportEdgeToEdgeForCustomizedTheme =
-                NtpCustomizationUtils.canEnableEdgeToEdgeForCustomizedTheme(
-                        windowAndroid, mIsTablet);
-        if (mCanSupportEdgeToEdgeForCustomizedTheme) {
+        mSupportsEnableEdgeToEdgeOnTop =
+                NtpCustomizationUtils.supportsEnableEdgeToEdgeOnTop(windowAndroid, mIsTablet);
+        if (mSupportsEnableEdgeToEdgeOnTop) {
             // Apply edge-to-edge adjustments exclusively to phones. These are not required for LFF
             // devices.
             initTopInsetProviderObserver();
@@ -1235,7 +1239,7 @@ public class NewTabPage
     /** Sets whether the NTP is currently set as edge-to-edge. */
     private void setIsUseEdgeToEdgeForCustomizedTheme() {
         mIsUseEdgeToEdgeForCustomizedTheme =
-                mCanSupportEdgeToEdgeForCustomizedTheme
+                mSupportsEnableEdgeToEdgeOnTop
                         && !mIsTablet
                         && NtpCustomizationConfigManager.getInstance().getBackgroundType()
                                 != NtpBackgroundType.DEFAULT;
@@ -1269,16 +1273,23 @@ public class NewTabPage
 
     private void updateNtpScrollListener(boolean attach) {
         if (!(mFeedSurfaceProvider instanceof FeedSurfaceCoordinator)) return;
+
+        if (!BottomBarConfigUtils.isNtpScrollOffEnabled(mTab, mContext)) return;
+
         RecyclerView recyclerView =
                 ((FeedSurfaceCoordinator) mFeedSurfaceProvider).getRecyclerView();
+        if (recyclerView == null) {
+            if (mNtpScrollListener != null) {
+                mNtpScrollListener = null;
+            }
+            return;
+        }
 
-        if (attach && recyclerView != null && mNtpScrollListener == null) {
+        if (attach && mNtpScrollListener == null) {
             mNtpScrollListener = new NtpScrollListener(mBrowserControlsStateProvider, mContext);
             recyclerView.addOnScrollListener(mNtpScrollListener);
         } else if (!attach && mNtpScrollListener != null) {
-            if (recyclerView != null) {
-                recyclerView.removeOnScrollListener(mNtpScrollListener);
-            }
+            recyclerView.removeOnScrollListener(mNtpScrollListener);
             mNtpScrollListener = null;
         }
     }
@@ -1313,14 +1324,6 @@ public class NewTabPage
             BrowserControlsVisibilityManager manager = (BrowserControlsVisibilityManager) provider;
             int bottomControlsHeight = manager.getBottomControlsHeight();
             if (bottomControlsHeight <= 0) return;
-
-            boolean isBottomBarEnabled = BottomBarConfigUtils.isBottomBarEnabled(context);
-            boolean isBottomChinEnabled =
-                    context instanceof Activity
-                            && EdgeToEdgeUtils.isEdgeToEdgeBottomChinEnabled((Activity) context);
-            if (!isBottomBarEnabled && !isBottomChinEnabled) {
-                return;
-            }
 
             float density = context.getResources().getDisplayMetrics().density;
             int thresholdPx = (int) (SCROLL_THRESHOLD_DP * density);

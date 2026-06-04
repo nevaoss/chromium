@@ -274,20 +274,6 @@ public class NtpCustomizationUtils {
         }
     }
 
-    /**
-     * Returns the resource ID for the accessibility string announced when the bottom sheet is
-     * closed.
-     */
-    public static int getSheetClosedAccessibilityStringId(
-            @NtpCustomizationCoordinator.BottomSheetType int type) {
-        switch (type) {
-            case THEME_TIP:
-                return R.string.ntp_customization_theme_tip_bottom_sheet_closed;
-            default:
-                return R.string.ntp_customization_main_bottom_sheet_closed;
-        }
-    }
-
     /** Returns whether custom Ntp's background theme is enabled by flag and policy. */
     public static boolean isNtpThemeCustomizationEnabled() {
         return ChromeFeatureList.sNewTabPageCustomizationV2.isEnabled()
@@ -998,21 +984,16 @@ public class NtpCustomizationUtils {
         }
     }
 
-    /** Returns whether all flags are enabled to allow edge-to-edge for customized theme. */
-    public static boolean canEnableEdgeToEdgeForCustomizedTheme(
-            WindowAndroid windowAndroid, boolean isTablet) {
-        return canEnableEdgeToEdgeForCustomizedTheme(isTablet)
-                && EdgeToEdgeStateProvider.isEdgeToEdgeEnabledForWindow(windowAndroid);
-    }
-
     /**
-     * Returns whether all flags are enabled to allow edge-to-edge for customized theme. This method
-     * doesn't check EdgeToEdgeStateProvider.
+     * Returns whether all flags are enabled to support truly edge-to-edge for customized theme on
+     * top.
      */
-    public static boolean canEnableEdgeToEdgeForCustomizedTheme(boolean isTablet) {
+    public static boolean supportsEnableEdgeToEdgeOnTop(
+            WindowAndroid windowAndroid, boolean isTablet) {
         return !isTablet
                 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                && NtpCustomizationUtils.isNtpThemeCustomizationEnabled();
+                && NtpCustomizationUtils.isNtpThemeCustomizationEnabled()
+                && EdgeToEdgeStateProvider.isEdgeToEdgeEnabledForWindow(windowAndroid);
     }
 
     /**
@@ -1168,10 +1149,12 @@ public class NtpCustomizationUtils {
      * Returns whether it is necessary to apply an adjusted icon tint for NTPs. Returns true if the
      * device is a phone, edge-to-edge is enabled and NTP has a customized background image.
      *
+     * @param windowAndroid The instance of {@link WindowAndroid}.
      * @param isTablet Whether the current device is a tablet.
      */
-    public static boolean shouldAdjustIconTintForNtp(boolean isTablet) {
-        if (!canEnableEdgeToEdgeForCustomizedTheme(isTablet)) return false;
+    public static boolean shouldAdjustIconTintForNtp(
+            WindowAndroid windowAndroid, boolean isTablet) {
+        if (!supportsEnableEdgeToEdgeOnTop(windowAndroid, isTablet)) return false;
 
         @NtpBackgroundType
         int backgroundType = NtpCustomizationConfigManager.getInstance().getBackgroundType();

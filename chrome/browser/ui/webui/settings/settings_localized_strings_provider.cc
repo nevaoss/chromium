@@ -457,6 +457,13 @@ void AddAiStrings(content::WebUIDataSource* html_source) {
        IDS_SETTINGS_PASSWORD_CHANGE_ENCRYPTION},
       {"passwordChangeLearnMore", IDS_SETTINGS_PASSWORD_CHANGE_SUBLABEL},
 
+      // Skills settings.
+      {"skillsGalleryHeader", IDS_SETTINGS_SKILLS_GALLERY_HEADER},
+      {"skillsGalleryLabel", IDS_SETTINGS_SKILLS_GALLERY_LABEL},
+      {"skillsSettingLabel", IDS_SETTINGS_SKILLS_SETTING_LABEL},
+      {"skillsSettingSublabel", IDS_SETTINGS_SKILLS_SETTING_SUBLABEL},
+      {"skillsToggleLabel", IDS_SETTINGS_SKILLS_TOGGLE_LABEL},
+
       // AI Mode Search Settings strings for Smart Tab Sharing (STS)
       {"stsSettingsEntrypointGoogleSearchAiMode",
        IDS_STS_SETTINGS_ENTRYPOINT_GOOGLE_SEARCH_AI_MODE},
@@ -939,17 +946,8 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
 
-#if BUILDFLAG(IS_CHROMEOS)
-  html_source->AddLocalizedString(
-      "glicOsWidgetToggle",
-      base::FeatureList::IsEnabled(features::kGlicShowStatusTrayIcon)
-          ? IDS_SETTINGS_GLIC_OS_WIDGET_TOGGLE
-          : IDS_SETTINGS_GLIC_OS_WIDGET_TOGGLE_SHORTCUTS_ONLY);
-#else
   html_source->AddLocalizedString("glicOsWidgetToggle",
                                   IDS_SETTINGS_GLIC_OS_WIDGET_TOGGLE);
-
-#endif  // BUILDFLAG(IS_CHROMEOS)
   html_source->AddLocalizedString(
       "glicDefaultTabAccessWhenOn2",
       glic::GlicEnabling::EnablementForProfile(profile).EligibleForLive()
@@ -1008,6 +1006,16 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
           base::UTF8ToUTF16(
               features::kGlicWebActuationToggleConsiderUnexpectedResultsURL
                   .Get())));
+  html_source->AddString(
+      "glicExperimentalTriggeringConsider3",
+      l10n_util::GetStringFUTF16(
+          IDS_SETTINGS_GLIC_EXPERIMENTAL_TRIGGERING_CONSIDER_3,
+          base::UTF8ToUTF16(
+              google_util::AppendGoogleLocaleParam(
+                  glic::GetHelpCenterUrl(
+                      features::kGlicExperimentalTriggeringSafetyURL.Get()),
+                  application_locale)
+                  .spec())));
   html_source->AddBoolean(
       "glicExtensionsFeatureEnabled",
       base::FeatureList::IsEnabled(features::kGlicExtensions));
@@ -1039,8 +1047,7 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
       base::FeatureList::IsEnabled(features::kGlicCaptureRegion));
   html_source->AddBoolean(
       "showGlicExperimentalTriggering",
-      base::FeatureList::IsEnabled(features::kGlicExperimentalTriggering) &&
-          GlicHandler::ShouldShowWebActuationToggle(profile));
+      GlicHandler::ShouldShowExperimentalTriggeringToggle(profile));
 }
 
 void AddResetStrings(content::WebUIDataSource* html_source, Profile* profile) {
@@ -1500,6 +1507,8 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
        IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_LABEL},
       {"emailVerificationSectionTitle",
        IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_SECTION_TITLE},
+      {"emailVerificationEmptyLabel",
+       IDS_AUTOFILL_SETTINGS_EMAIL_VERIFICATION_EMPTY_LABEL},
       {"enableCreditCardsLabel", IDS_AUTOFILL_ENABLE_CREDIT_CARDS_TOGGLE_LABEL},
       {"enableCreditCardsSublabel",
        IDS_AUTOFILL_ENABLE_CREDIT_CARDS_TOGGLE_SUBLABEL},
@@ -1547,6 +1556,12 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
       {"moreActionsForCreditCardWithCvc",
        IDS_SETTINGS_AUTOFILL_MORE_ACTIONS_FOR_CREDIT_CARD_WITH_CVC},
       {"removeAddress", IDS_SETTINGS_ADDRESS_REMOVE},
+      {"removeVerifiedEmailPermission",
+       IDS_SETTINGS_REMOVE_VERIFIED_EMAIL_PERMISSION},
+      {"removeVerifiedEmailPermissionTitle",
+       IDS_SETTINGS_REMOVE_VERIFIED_EMAIL_PERMISSION_TITLE},
+      {"removeVerifiedEmailPermissionBody",
+       IDS_SETTINGS_REMOVE_VERIFIED_EMAIL_PERMISSION_BODY},
       {"removeAddressConfirmationTitle",
        IDS_SETTINGS_ADDRESS_REMOVE_CONFIRMATION_TITLE},
       {"removeSyncAddressConfirmationDescription",
@@ -1815,12 +1830,9 @@ void AddAutofillStrings(content::WebUIDataSource* html_source,
 
   bool is_mandatory_reauth_feature_flag_enabled = false;
 
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
-  // The feature is already launched on Windows and Mac.
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
+  // The feature is already launched on Windows, Mac and ChromeOS.
   is_mandatory_reauth_feature_flag_enabled = true;
-#elif BUILDFLAG(IS_CHROMEOS)
-  is_mandatory_reauth_feature_flag_enabled = base::FeatureList::IsEnabled(
-      autofill::features::kAutofillEnablePaymentsMandatoryReauthChromeOs);
 #endif
   html_source->AddBoolean("mandatoryReauthFeatureFlagEnabled",
                           is_mandatory_reauth_feature_flag_enabled);
@@ -2321,6 +2333,7 @@ bool ShouldLinkSecureDnsOsSettings() {
 void AddPrivacyStrings(content::WebUIDataSource* html_source,
                        Profile* profile) {
   static constexpr webui::LocalizedString kLocalizedStrings[] = {
+      {"newBadgeLabel", IDS_NEW_BADGE},
       {"privacyPageTitle", IDS_SETTINGS_PRIVACY},
       {"privacyPageMore", IDS_SETTINGS_PRIVACY_MORE},
       {"doNotTrack", IDS_SETTINGS_ENABLE_DO_NOT_TRACK},

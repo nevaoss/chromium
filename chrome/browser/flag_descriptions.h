@@ -86,11 +86,23 @@ inline constexpr char kCanvasHibernationName[] = "Hibernation for 2D canvas";
 inline constexpr char kCanvasHibernationDescription[] =
     "Enables canvas hibernation for 2D canvas.";
 
+inline constexpr char kCapabilityDelegationDigitalCredentialsName[] =
+    "Capability Delegation for Digital Credentials";
+inline constexpr char kCapabilityDelegationDigitalCredentialsDescription[] =
+    "Allows a web page to delegate the capability of requesting digital "
+    "credentials (via both create and get requests of the Digital Credentials "
+    "API) to trusted cross-origin iframes.";
+
 inline constexpr char kCaptureHandleForStandalonePwasAndIwasName[] =
     "Capture Handle for Standalone PWAs and IWAs";
 inline constexpr char kCaptureHandleForStandalonePwasAndIwasDescription[] =
     "Enables Capture Handle support for standalone PWAs and IWAs "
     "when their windows are captured.";
+
+inline constexpr char kCentralizedInfoBarFrameworkName[] =
+    "Centralized InfoBar Framework";
+inline constexpr char kCentralizedInfoBarFrameworkDescription[] =
+    "Enables the centralized desktop infobars framework.";
 
 inline constexpr char kCredentialManagementUnifiedUiName[] =
     "Credential Management Unified UI";
@@ -208,6 +220,12 @@ inline constexpr char kAndroidOpenIncognitoAsWindowName[] =
 inline constexpr char kAndroidOpenIncognitoAsWindowDescription[] =
     "Open regular and incognito tabs in separate windows.";
 
+inline constexpr char kAndroidOpenIncognitoAsWindowRestrictionsName[] =
+    "Open incognito tabs in new window restrictions";
+inline constexpr char kAndroidOpenIncognitoAsWindowRestrictionsDescription[] =
+    "Enables physical memory and display size restrictions when opening "
+    "incognito tabs in a new window.";
+
 inline constexpr char kEnforceIncognitoIsolationName[] =
     "Enforce Incognito Isolation";
 inline constexpr char kEnforceIncognitoIsolationDescription[] =
@@ -222,6 +240,13 @@ inline constexpr char kAndroidProgressBarVisualUpdateDescription[] =
 inline constexpr char kAndroidSmsOtpFillingName[] = "Enable SMS OTP filling";
 inline constexpr char kAndroidSmsOtpFillingDescription[] =
     "Enables filling of OTPs received via SMS on Android";
+
+inline constexpr char kApiMimeHandlerName[] =
+    "Enable chrome.mimeHandler extension API";
+inline constexpr char kApiMimeHandlerDescription[] =
+    "Enables the chrome.mimeHandler extension API for extensions with a "
+    "mime_types_handler manifest entry. The API is currently limited to "
+    "a small set of MIME types (e.g. application/pdf).";
 
 inline constexpr char kApproximateGeolocationPermissionName[] =
     "Approximate Geolocation Permission";
@@ -239,11 +264,6 @@ inline constexpr char kAndroidHistoryClusteringName[] =
     "Android History Clustering";
 inline constexpr char kAndroidHistoryClusteringDescription[] =
     "Enables history clustering UI on Android.";
-
-inline constexpr char kAndroidBottomToolbarV2Name[] = "Bottom Toolbar V2";
-inline constexpr char kAndroidBottomToolbarV2Description[] =
-    "If enabled, allows the Omnibox to be persistently anchored to the bottom "
-    "of the screen.";
 
 inline constexpr char kAnnotatorModeName[] = "Enable annotator tool";
 inline constexpr char kAnnotatorModeDescription[] =
@@ -489,6 +509,12 @@ inline constexpr char kDefaultBrowserPromptSurfacesDescription[] =
     "Enables using various default browser prompt surfaces.";
 inline constexpr char kDefaultBrowserPromptSurfacesName[] =
     "Default Browser Prompt Surfaces";
+
+inline constexpr char kDefaultBrowserSetterSelectionDescription[] =
+    "Enables selecting a default browser setter (e.g. shell integration, "
+    "visual guide).";
+inline constexpr char kDefaultBrowserSetterSelectionName[] =
+    "Default Browser Setter Selection";
 
 inline constexpr char kDefaultSearchEnginePrewarmName[] =
     "Default search engine prewarm";
@@ -877,6 +903,12 @@ inline constexpr char kAutofillAiWalletFlightReservationDescription[] =
     "Enables Autofill AI support for flight reservation entities from Google "
     "Wallet.";
 
+inline constexpr char kAutofillAiWalletPassBranding2026Name[] =
+    "Autofill AI Google Wallet Pass Branding Updates";
+inline constexpr char kAutofillAiWalletPassBranding2026Description[] =
+    "When enabled, brings Autofill AI strings and images referencing passes "
+    "in Google Wallet into consistency with 2026 branding requirements.";
+
 inline constexpr char kAutofillAiWalletPrivatePassesName[] =
     "Autofill AI Google Wallet private passes";
 inline constexpr char kAutofillAiWalletPrivatePassesDescription[] =
@@ -968,6 +1000,11 @@ inline constexpr char kIPHAutofillCreditCardBenefitFeatureDescription[] =
     "Enables In-Product-Help that appears when at least one autofill credit "
     "card suggestion includes card benefits.";
 
+inline constexpr char kIPHDesktopRealboxContextualSearchFeatureName[] =
+    "IPH Desktop Realbox Contextual Search";
+inline constexpr char kIPHDesktopRealboxContextualSearchFeatureDescription[] =
+    "Enables In-Product Help for Desktop Realbox Contextual Search.";
+
 inline constexpr char kAutofillEnableCardInfoRuntimeRetrievalName[] =
     "Enable retrieval of card info(with CVC) from issuer for enrolled cards";
 inline constexpr char kAutofillEnableCardInfoRuntimeRetrievalDescription[] =
@@ -985,6 +1022,11 @@ inline constexpr char kAutofillEnableEwalletNewAccountLinkingName[] =
 inline constexpr char kAutofillEnableEwalletNewAccountLinkingDescription[] =
     "When enabled, Chrome will sync eWallet creation options for unlinked "
     "ewallets.";
+
+inline constexpr char kAutofillEnableGradientGoogleLogosName[] =
+    "Enable gradient-style GPay and Wallet logos";
+inline constexpr char kAutofillEnableGradientGoogleLogosDescription[] =
+    "When enabled, gradient-style GPay and Wallet branding logos will be used.";
 
 inline constexpr char kAutofillEnableNewAmexNetworkArtName[] =
     "Enable new American Express network art";
@@ -1009,14 +1051,6 @@ inline constexpr char kAutofillEnableOmniboxAutofillName[] =
 inline constexpr char kAutofillEnableOmniboxAutofillDescription[] =
     "When enabled, an Autofill payments omnibox chip will appear for relevant "
     "payment checkout forms.";
-
-inline constexpr char kAutofillEnablePaymentsMandatoryReauthChromeOsName[] =
-    "Enable mandatory re-auth for payments autofill on ChromeOS";
-inline constexpr char
-    kAutofillEnablePaymentsMandatoryReauthChromeOsDescription[] =
-        "When enabled, in use-cases where we would not have triggered any "
-        "interactive authentication to autofill payment methods, we will "
-        "trigger a device authentication on ChromeOS.";
 
 inline constexpr char kAutofillEnablePayNowPayLaterTabsName[] =
     "Enable Pay Now Pay Later tabs UI for payments autofill on Chrome";
@@ -1507,6 +1541,16 @@ inline constexpr char kActorObservePageContentDefaultName[] =
 inline constexpr char kActorObservePageContentDefaultDescription[] =
     "If enabled, the actor framework will capture page content by default when "
     "requested.";
+
+inline constexpr char kActorScriptToolSkipScreenshotName[] =
+    "Actor script tool skip screenshot";
+inline constexpr char kActorScriptToolSkipScreenshotDescription[] =
+    "If enabled, script tools will explicitly vote to skip screenshots.";
+
+inline constexpr char kActorScriptToolSkipPageContentName[] =
+    "Actor script tool skip page content";
+inline constexpr char kActorScriptToolSkipPageContentDescription[] =
+    "If enabled, script tools will explicitly vote to skip page content.";
 inline constexpr char kGlicCaptureRegionDescription[] =
     "Enables Glic to capture a region of the screen.";
 inline constexpr char kGlicCaptureRegionName[] = "Glic Capture Region";
@@ -1571,6 +1615,15 @@ inline constexpr char kGlicGuestUrlPresetsName[] = "Glic guest URL presets";
 inline constexpr char kGlicGuestUrlPresetsDescription[] =
     "Overrides the Bluebird environment URL used for Glic with user-configured "
     "values. Intended for manual testing only.";
+inline constexpr char kGlicGeminiEnterpriseSettingsOverrideName[] =
+    "Glic Gemini Enterprise Settings Override";
+inline constexpr char kGlicGeminiEnterpriseSettingsOverrideDescription[] =
+    "Overrides the Gemini Enterprise settings (project_id, app_id, location) "
+    "for Glic local development and testing.";
+inline constexpr char kGlicGeminiEnterpriseSettingsEnabledName[] =
+    "Glic Gemini Enterprise Settings Enabled Feature";
+inline constexpr char kGlicGeminiEnterpriseSettingsEnabledDescription[] =
+    "Enables the Glic Gemini Enterprise settings feature.";
 inline constexpr char kGlicDisableActorSafetyChecksName[] =
     "Glic disable actor safety checks";
 inline constexpr char kGlicDisableActorSafetyChecksDescription[] =
@@ -2732,6 +2785,12 @@ inline constexpr char kIgnoreGpuBlocklistDescription[] =
 inline constexpr char kImportExportFlagsName[] = "Import and export flags";
 inline constexpr char kImportExportFlagsDescription[] =
     "Enables importing and exporting flags from chrome://flags.";
+
+inline constexpr char kIncognitoAsWindowFullScreenName[] =
+    "Incognito as full-screen window";
+inline constexpr char kIncognitoAsWindowFullScreenDescription[] =
+    "Open incognito windows in full-screen when launched from a regular "
+    "window, and vice-versa.";
 
 inline constexpr char kIncognitoScreenshotName[] = "Incognito Screenshot";
 inline constexpr char kIncognitoScreenshotDescription[] =
@@ -4248,6 +4307,11 @@ inline constexpr char kAccessibilityOnScreenModeDescription[] =
     "allows assistive technologies to access only accessibility nodes that are "
     "on-screen";
 
+inline constexpr char kCanvasAccessibilityName[] = "Canvas Accessibility";
+inline constexpr char kCanvasAccessibilityDescription[] =
+    "Enables canvas accessibility and allows selecting the algorithm to add "
+    "text for inaccessible canvas content.";
+
 inline constexpr char kDefaultSiteInstanceGroupsName[] =
     "Default SiteInstanceGroups";
 inline constexpr char kDefaultSiteInstanceGroupsDescription[] =
@@ -4981,11 +5045,11 @@ inline constexpr char kRewriterAPIForGeminiNanoDescription[] =
     "You must comply with our Prohibited Use Policy [2] which provides "
     "additional details about appropriate use of Generative AI.";
 
-inline constexpr char kProofreaderAPIForGeminiNanoName[] =
-    "Proofreader API for Gemini Nano";
-inline constexpr char kProofreaderAPIForGeminiNanoDescription[] =
+inline constexpr char kProofreaderAPIName[] =
+    "Proofreader API for Small Expert Model";
+inline constexpr char kProofreaderAPIDescription[] =
     "Enables the Proofreader API, allowing you to proofread a piece of text"
-    "with a built-in large language model (Gemini Nano in Chrome)."
+    "with a built-in small expert model in Chrome. "
     "The API may be subject to changes including the supported options."
     "Please refer to the built-in AI article [1] for details. "
     "You must comply with our Prohibited Use Policy [2] which provides "
@@ -5217,6 +5281,12 @@ inline constexpr char kAndroidPkAutocorrectUnderlineV2Description[] =
     "by underlining the original typo after a correction is made, which then "
     "disappears as typing resumes. V2 simplifies V1 implementation, while "
     "improving the input app-compatibility.";
+
+inline constexpr char kAndroidForceTextInputStateUpdateUponFocusName[] =
+    "Android Force TextInputState Update Upon Focus";
+inline constexpr char kAndroidForceTextInputStateUpdateUponFocusDescription[] =
+    "Forces an active text input state update calculation and push whenever "
+    "focus is gained on an editable text field.";
 
 inline constexpr char kAndroidShareFullLinkName[] =
     "Share Full Link on Android";
@@ -5606,6 +5676,11 @@ inline constexpr char kDrawChromePagesEdgeToEdgeName[] =
     "Draw Chrome Pages Edge-to-Edge";
 inline constexpr char kDrawChromePagesEdgeToEdgeDescription[] =
     "Enables drawing more native pages and secondary activities edge-to-edge.";
+
+inline constexpr char kEdgelessTopInsetName[] = "Edgeless Top Inset";
+inline constexpr char kEdgelessTopInsetDescription[] =
+    "Enables the prototype edgeless top inset feature, allowing opted-in "
+    "pages to draw under the top inset.";
 
 inline constexpr char kEdgeToEdgeExtraLogsName[] = "edge-to-edge-extra-logs";
 inline constexpr char kEdgeToEdgeExtraLogsDescription[] =
@@ -6109,6 +6184,11 @@ inline constexpr char kUseWebUiNtpAndroidName[] = "Use WebUI NTP on Android";
 inline constexpr char kUseWebUiNtpAndroidDescription[] =
     "When enabled, use the WebUI NTP instead of the native NTP on Android.";
 
+inline constexpr char kTextClassifierTimeoutName[] = "TextClassifier Timeout";
+inline constexpr char kTextClassifierTimeoutDescription[] =
+    "Enable timeout for TextClassifier calls. The timeout is configurable with "
+    "a default of 200ms.";
+
 inline constexpr char kXplatSyncedSetupName[] = "Cross-platform synced setup";
 inline constexpr char kXplatSyncedSetupDescription[] =
     "Enables the Cross-platform synced setup feature.";
@@ -6608,21 +6688,6 @@ inline constexpr char kPrintWithReducedRasterizationName[] =
     "Print with reduced rasterization";
 inline constexpr char kPrintWithReducedRasterizationDescription[] =
     "When using GDI printing, avoid rasterization if possible.";
-
-inline constexpr char kReadPrinterCapabilitiesWithXpsName[] =
-    "Read printer capabilities with XPS";
-inline constexpr char kReadPrinterCapabilitiesWithXpsDescription[] =
-    "When enabled, utilize XPS interface to read printer capabilities.";
-
-inline constexpr char kUseXpsForPrintingName[] = "Use XPS for printing";
-inline constexpr char kUseXpsForPrintingDescription[] =
-    "When enabled, use XPS printing API instead of the GDI print API.";
-
-inline constexpr char kUseXpsForPrintingFromPdfName[] =
-    "Use XPS for printing from PDF";
-inline constexpr char kUseXpsForPrintingFromPdfDescription[] =
-    "When enabled, use XPS printing API instead of the GDI print API when "
-    "printing PDF documents.";
 
 // Mac -------------------------------------------------------------------------
 
@@ -8394,6 +8459,12 @@ inline constexpr char kAndroidEntraSsoName[] =
 inline constexpr char kAndroidEntraSsoDescription[] =
     "Enables native support for Entra SSO on Android provided by selected "
     "Authentication Brokers.";
+
+inline constexpr char kEnableDlpFileSystemApiName[] =
+    "Enable DLP upload scans for FileSystem API.";
+inline constexpr char kEnableDlpFileSystemApiDescription[] =
+    "Enable DLP upload scan support for FileSystem API-backed cloud storage on "
+    "ChromeOS.";
 
 // ============================================================================
 // Don't just add flags to the end, put them in the alphabetical order.

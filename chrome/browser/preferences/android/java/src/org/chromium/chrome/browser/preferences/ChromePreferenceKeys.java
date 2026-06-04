@@ -731,6 +731,8 @@ public final class ChromePreferenceKeys {
     public static final KeyPrefix HOME_MODULES_IMPRESSION_COUNT_BEFORE_INTERACTION =
             new KeyPrefix("Chrome.HomeModules.ImpressionCountBeforeInteraction.*");
 
+    public static final String POLICY_USER_FEEDBACK_ALLOWED = "Chrome.Policy.UserFeedbackAllowed";
+
     /**
      * Save the timestamp of the last time that we record metrics on whether user enables the price
      * tracking annotations.
@@ -883,17 +885,17 @@ public final class ChromePreferenceKeys {
             "Chrome.SearchEngineChoice.PendingOsChoiceDialogShownAttempts";
 
     public static final String SEARCH_WIDGET_IS_VOICE_SEARCH_AVAILABLE =
-            "org.chromium.chrome.browser.searchwidget.IS_VOICE_SEARCH_AVAILABLE";
+            "Chrome.Widget.IsVoiceSearchAvailable";
     public static final String SEARCH_WIDGET_NUM_CONSECUTIVE_CRASHES =
-            "org.chromium.chrome.browser.searchwidget.NUM_CONSECUTIVE_CRASHES";
+            "Chrome.Widget.NumConsecutiveCrashes";
     public static final String SEARCH_WIDGET_SEARCH_ENGINE_SHORTNAME =
-            "org.chromium.chrome.browser.searchwidget.SEARCH_ENGINE_SHORTNAME";
-    public static final String SEARCH_WIDGET_SEARCH_ENGINE_URL =
-            "org.chromium.chrome.browser.searchwidget.SEARCH_ENGINE_URL";
+            "Chrome.Widget.SearchEngineShortName";
+    public static final String SEARCH_WIDGET_SEARCH_ENGINE_URL = "Chrome.Widget.SearchEngineUrl";
+    public static final String SEARCH_WIDGET_ACCOUNT_EMAIL = "Chrome.Widget.AccountEmail";
     public static final String SEARCH_WIDGET_IS_GOOGLE_LENS_AVAILABLE =
-            "org.chromium.chrome.browser.searchwidget.IS_GOOGLE_LENS_AVAILABLE";
+            "Chrome.Widget.IsGoogleLensAvailable";
     public static final String SEARCH_WIDGET_IS_INCOGNITO_AVAILABLE =
-            "org.chromium.chrome.browser.searchwidget.IS_INCOGNITO_AVAILABLE";
+            "Chrome.Widget.IsIncognitoAvailable";
 
     // Segmentation platform related prefs.
     public static final String SEGMENTATION_FEED_ACTIVE_USER = "Chrome.Segmentation.FeedActiveUser";
@@ -1282,6 +1284,7 @@ public final class ChromePreferenceKeys {
                 PIH_PRIVACY_NOTICE_CLOSED,
                 PIH_PRIVACY_NOTICE_LAST_SHOWN_TIMESTAMP,
                 PIH_PRIVACY_NOTICE_SHOWN_TOTAL_COUNT,
+                POLICY_USER_FEEDBACK_ALLOWED,
                 PRICE_TRACKING_ANNOTATIONS_ENABLED_METRICS_TIMESTAMP,
                 PRICE_TRACKING_CHROME_MANAGED_NOTIFICATIONS_TIMESTAMPS,
                 PRICE_TRACKING_IDS_FOR_TABS_WITH_PRICE_DROP,
@@ -1305,6 +1308,13 @@ public final class ChromePreferenceKeys {
                 READER_MODE_ACTION_SUPPRESSION_END_TIMESTAMP,
                 SEARCH_ENGINE_CHOICE_OS_CHOICE_APPLIED_TIMESTAMP,
                 SEARCH_ENGINE_CHOICE_PENDING_OS_CHOICE_DIALOG_SHOWN_ATTEMPTS,
+                SEARCH_WIDGET_ACCOUNT_EMAIL,
+                SEARCH_WIDGET_IS_GOOGLE_LENS_AVAILABLE,
+                SEARCH_WIDGET_IS_INCOGNITO_AVAILABLE,
+                SEARCH_WIDGET_IS_VOICE_SEARCH_AVAILABLE,
+                SEARCH_WIDGET_NUM_CONSECUTIVE_CRASHES,
+                SEARCH_WIDGET_SEARCH_ENGINE_SHORTNAME,
+                SEARCH_WIDGET_SEARCH_ENGINE_URL,
                 SEGMENTATION_FEED_ACTIVE_USER,
                 SERIAL_NOTIFICATION_IDS,
                 SETUP_LIST_COMPLETED_KEY_PREFIX.pattern(),

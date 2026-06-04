@@ -22,8 +22,23 @@ import java.util.Map;
 @NullMarked
 public interface SideUiCoordinator extends SideUiStateProvider {
 
-    /** Minimum width for {@code WebContents}, regardless of side panel visibility. */
+    /**
+     * Minimum width (in dp) reserved for {@code WebContents} when calculating {@link SideUiSpecs}
+     * and determining {@link SideUiContainer}s' visibility.
+     */
     int MIN_WEB_CONTENTS_WIDTH_DP = 412;
+
+    /**
+     * The IDs assigned to known {@link SideUiContainer}s listed in descending order of their
+     * priorities by which they consume available space. The smaller number indicates higher
+     * priority.
+     */
+    @IntDef({SideUiId.SIDE_PANEL, SideUiId.VERTICAL_TABS})
+    @interface SideUiId {
+        int VERTICAL_TABS = 0;
+        int SIDE_PANEL = 1;
+        int NUM_ENTRIES = 2;
+    }
 
     /**
      * The sides of the window that a {@link SideUiContainer} will anchor to. Each value should have
@@ -40,11 +55,13 @@ public interface SideUiCoordinator extends SideUiStateProvider {
      * POD-type that holds the info for a request to reposition or resize a {@link SideUiContainer}.
      */
     final class SideUiContainerProperties {
+        final @SideUiId int mSideUiId;
         final @AnchorSide int mAnchorSide;
         final @Px int mWidth;
 
-        public SideUiContainerProperties(@AnchorSide int anchorSide, @Px int width) {
-            mAnchorSide = anchorSide;
+        public SideUiContainerProperties(@SideUiId int id, @AnchorSide int side, @Px int width) {
+            mSideUiId = id;
+            mAnchorSide = side;
             mWidth = width;
         }
     }
@@ -67,21 +84,19 @@ public interface SideUiCoordinator extends SideUiStateProvider {
         /** Maps @AnchorSide to ContainerWidth. */
         private final Map<Integer, Integer> mSideUiWidths = new ArrayMap<>();
 
+        public SideUiSpecs(Map<Integer, Integer> sideUiWidths) {
+            mSideUiWidths.putAll(sideUiWidths);
+        }
+
         public SideUiSpecs(@Px int leftContainerWidth, @Px int rightContainerWidth) {
+            assert leftContainerWidth >= 0;
+            assert rightContainerWidth >= 0;
             mSideUiWidths.put(AnchorSide.LEFT, leftContainerWidth);
             mSideUiWidths.put(AnchorSide.RIGHT, rightContainerWidth);
         }
 
-        public int leftWidth() {
-            return mSideUiWidths.containsKey(AnchorSide.LEFT)
-                    ? mSideUiWidths.get(AnchorSide.LEFT)
-                    : 0;
-        }
-
-        public int rightWidth() {
-            return mSideUiWidths.containsKey(AnchorSide.RIGHT)
-                    ? mSideUiWidths.get(AnchorSide.RIGHT)
-                    : 0;
+        public int getWidth(@AnchorSide int side) {
+            return mSideUiWidths.getOrDefault(side, 0);
         }
 
         @Override
@@ -104,6 +119,8 @@ public interface SideUiCoordinator extends SideUiStateProvider {
      * Registers a {@link SideUiContainer} to be maintained by this coordinator.
      *
      * @param sideUiContainer The {@link SideUiContainer} to register.
+     * @throw IllegalArgumentException if the given sideUiContainer has conflicts with the existing
+     *     ones, such as duplicated {@link SideUiId} or {@link AnchorSide}.
      */
     void registerSideUiContainer(SideUiContainer sideUiContainer);
 
@@ -124,6 +141,9 @@ public interface SideUiCoordinator extends SideUiStateProvider {
      *     position for the registered {@link SideUiContainer}.
      * @param suppressAnimations Whether animations should be suppressed for the container update.
      *     If true, the update will happen immediately, without animations.
+     * @throw IllegalArgumentException if the given properties comes with an invalid {@link
+     *     SideUiId} not found in the registered containers, such as duplicated {@link SideUiId} or
+     *     {@link AnchorSide}.
      */
     void requestUpdateContainer(SideUiContainerProperties properties, boolean suppressAnimations);
 

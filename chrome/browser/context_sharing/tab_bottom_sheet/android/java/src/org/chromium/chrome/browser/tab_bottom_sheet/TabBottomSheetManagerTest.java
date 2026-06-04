@@ -65,6 +65,7 @@ import org.chromium.device.geolocation.LocationProviderOverrider;
 import org.chromium.device.geolocation.MockLocationProvider;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.modelutil.PropertyModel;
 
 /** Instrumentation tests for {@link TabBottomSheetManager}. */
 @RunWith(ChromeJUnit4ClassRunner.class)
@@ -117,9 +118,11 @@ public class TabBottomSheetManagerTest {
                             new CoBrowseViews(
                                     rootView,
                                     TabBottomSheetClientType.UNKNOWN,
+                                    CoBrowseContainerType.BOTTOM_SHEET,
                                     null,
                                     null,
-                                    Color.WHITE);
+                                    Color.WHITE,
+                                    new TestTabBottomSheetContentProvider());
                     mManager =
                             (TabBottomSheetManagerImpl)
                                     tabbedRootUiCoordinator.getTabBottomSheetManagerForTesting();
@@ -224,7 +227,8 @@ public class TabBottomSheetManagerTest {
                                         mWindowAndroid,
                                         webContents,
                                         TabBottomSheetClientType.UNKNOWN,
-                                        CoBrowseContainerType.BOTTOM_SHEET));
+                                        CoBrowseContainerType.BOTTOM_SHEET,
+                                        new TestTabBottomSheetContentProvider()));
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -275,7 +279,8 @@ public class TabBottomSheetManagerTest {
                                         mWindowAndroid,
                                         webContents,
                                         TabBottomSheetClientType.UNKNOWN,
-                                        CoBrowseContainerType.BOTTOM_SHEET));
+                                        CoBrowseContainerType.BOTTOM_SHEET,
+                                        new TestTabBottomSheetContentProvider()));
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -425,10 +430,12 @@ public class TabBottomSheetManagerTest {
     @Test
     @SmallTest
     public void testSetPeekView_BeforeShow() {
-        View peekView = new View(mActivity);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    mManager.setPeekView(peekView);
+                    PropertyModel model =
+                            new PropertyModel.Builder(TabBottomSheetPeekProperties.ALL_KEYS)
+                                    .build();
+                    mManager.setPeekViewModel(model);
                 });
         showBottomSheetAndBlockUntilReady();
 
@@ -440,10 +447,12 @@ public class TabBottomSheetManagerTest {
     public void testSetPeekView_AfterShow() {
         showBottomSheetAndBlockUntilReady();
 
-        View peekView = new View(mActivity);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    mManager.setPeekView(peekView);
+                    PropertyModel model =
+                            new PropertyModel.Builder(TabBottomSheetPeekProperties.ALL_KEYS)
+                                    .build();
+                    mManager.setPeekViewModel(model);
                 });
 
         CriteriaHelper.pollUiThread(() -> mCoBrowseViews.hasPeekView());
@@ -452,17 +461,19 @@ public class TabBottomSheetManagerTest {
     @Test
     @SmallTest
     public void testRemovePeekView() {
-        View peekView = new View(mActivity);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    mManager.setPeekView(peekView);
+                    PropertyModel model =
+                            new PropertyModel.Builder(TabBottomSheetPeekProperties.ALL_KEYS)
+                                    .build();
+                    mManager.setPeekViewModel(model);
                 });
         showBottomSheetAndBlockUntilReady();
         CriteriaHelper.pollUiThread(() -> mCoBrowseViews.hasPeekView());
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    mManager.removePeekView(peekView);
+                    mManager.removePeekViewModel();
                 });
 
         CriteriaHelper.pollUiThread(() -> !mCoBrowseViews.hasPeekView());
@@ -516,10 +527,12 @@ public class TabBottomSheetManagerTest {
                                 new CoBrowseViews(
                                         LayoutInflater.from(mActivity)
                                                 .inflate(R.layout.tab_bottom_sheet, null),
+                                        CoBrowseContainerType.BOTTOM_SHEET,
                                         TabBottomSheetClientType.UNKNOWN,
                                         null,
                                         null,
-                                        Color.WHITE));
+                                        Color.WHITE,
+                                        new TestTabBottomSheetContentProvider()));
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {

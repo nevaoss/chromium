@@ -75,6 +75,11 @@ class ProcessDiceHeaderDelegate {
       const std::string& email,
       const GoogleServiceAuthError& error) = 0;
 
+  // Called when the entire Dice signin session is complete (all fetches
+  // finished).
+  virtual void OnDiceSigninSessionComplete(
+      std::vector<CoreAccountId> secondary_accounts) = 0;
+
   virtual signin_metrics::AccessPoint GetAccessPoint() = 0;
 };
 

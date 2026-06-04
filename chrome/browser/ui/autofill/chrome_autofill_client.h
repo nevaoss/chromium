@@ -271,12 +271,13 @@ class ChromeAutofillClient : public ContentAutofillClient {
   void ShowAutofillAiLocalSaveNotification() final;
   void ShowAutofillAiSaveToWalletFailureNotification() final;
   void ShowAutofillAiFetchFromWalletFailureNotification() final;
-  void ShowEmailVerifiedToast() final;
+  void ShowEmailVerifiedToast(const GURL& issuer) final;
   void ShowEmailVerificationPopup(
       const gfx::RectF& element_bounds,
       const net::SchemefulSite& issuer_site,
       const std::u16string& email,
-      base::OnceCallback<void(bool)> callback) final;
+      base::OnceCallback<void(EmailVerificationPermissionUiResult)> callback)
+      final;
 
   // TODO(crbug.com/407666146): Create a test API.
   base::WeakPtr<AutofillSuggestionController>

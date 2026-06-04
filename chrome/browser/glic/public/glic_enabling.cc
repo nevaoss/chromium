@@ -10,12 +10,15 @@
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/functional/function_ref.h"
+#include "base/json/json_reader.h"
+#include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/system/sys_info.h"
+#include "base/values.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/enterprise/browser_management/browser_management_service.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
@@ -398,7 +401,6 @@ GlicEnabling::ProfileEnablement GlicEnabling::EnablementForProfile(
   result.allowed_by_locale_filter = global_enabling.IsLocaleEnabled();
   result.system_requirement_met = global_enabling.IsSystemRequirementMet();
   result.fre_is_consented = HasConsentedForProfile(profile);
-
   result.os_version_supported = global_enabling.IsOsVersionSupported();
 
   bool global_criteria_met = global_enabling.IsEnabledByGlobalCriteria();
@@ -535,11 +537,8 @@ bool GlicGlobalEnabling::IsSystemRequirementMet() const {
     }
 #if BUILDFLAG(IS_CHROMEOS)
     constexpr base::ByteCount kMinimumMemoryThreshold = base::GiB(8);
-
-    // TODO(b:513258292): Remove the bypassing once Glic is fully launched.
     const bool bypass_cbx_requirement =
-        base::FeatureList::IsEnabled(
-            chromeos::features::kGlicEnableFor8GbDevices) &&
+        GlicEnabling::IsLikelyDogfoodClient() &&
         base::SysInfo::AmountOfTotalPhysicalMemory().AsDeprecatedByteCount() >=
             kMinimumMemoryThreshold;
 
@@ -870,6 +869,59 @@ bool GlicEnabling::IsShareImageEnabledForProfile(Profile* profile) {
          base::FeatureList::IsEnabled(features::kGlicShareImage);
 }
 
+namespace {
+std::optional<glic::mojom::GeminiEnterpriseSettings>
+ParseGeminiEnterpriseSettings(const base::DictValue& dict) {
+  const std::string* project_id = dict.FindString("project_id");
+  const std::string* app_id = dict.FindString("app_id");
+  const std::string* location = dict.FindString("location");
+  if (project_id && app_id && location) {
+    glic::mojom::GeminiEnterpriseSettings settings;
+    settings.project_id = *project_id;
+    settings.app_id = *app_id;
+    settings.location = *location;
+    return settings;
+  }
+  return std::nullopt;
+}
+}  // namespace
+
+// static
+std::optional<glic::mojom::GeminiEnterpriseSettings>
+GlicEnabling::GetGeminiEnterpriseSettings(Profile* profile) {
+  if (!base::FeatureList::IsEnabled(
+          features::kGlicGeminiEnterpriseSettingsEnabled)) {
+    return std::nullopt;
+  }
+
+  auto* command_line = base::CommandLine::ForCurrentProcess();
+  // TODO(b/517605114): Remove this command line switch override before launch.
+  if (command_line->HasSwitch(
+          switches::kGlicGeminiEnterpriseSettingsOverride)) {
+    std::string switch_value = command_line->GetSwitchValueASCII(
+        switches::kGlicGeminiEnterpriseSettingsOverride);
+    auto parsed_json = base::JSONReader::Read(
+        switch_value, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+    if (parsed_json && parsed_json->is_dict()) {
+      if (auto settings =
+              ParseGeminiEnterpriseSettings(parsed_json->GetDict());
+          settings.has_value()) {
+        return settings;
+      } else {
+        LOG(ERROR) << "Gemini Enterprise settings override is missing "
+                      "required fields.";
+      }
+    } else {
+      LOG(ERROR) << "Gemini Enterprise settings override is not a valid "
+                    "JSON dictionary.";
+    }
+  }
+
+  const base::DictValue& pref_dict =
+      profile->GetPrefs()->GetDict(glic::prefs::kGlicGeminiEnterpriseSettings);
+  return ParseGeminiEnterpriseSettings(pref_dict);
+}
+
 GlicEnabling::GlicEnabling(Profile* profile,
                            ProfileAttributesStorage* profile_attributes_storage)
     : profile_(profile),
@@ -966,6 +1018,18 @@ bool GlicEnabling::IsUserEnabledActuationOnWebDefault() const {
   return pref && pref->IsDefaultValue();
 }
 
+bool GlicEnabling::IsExperimentalTriggeringEnabledDefault() const {
+  const PrefService::Preference* pref = profile_->GetPrefs()->FindPreference(
+      prefs::kGlicExperimentalTriggeringEnabled);
+  return pref && pref->IsDefaultValue();
+}
+
+bool GlicEnabling::IsExperimentalTriggeringUserControlled() const {
+  const PrefService::Preference* pref = profile_->GetPrefs()->FindPreference(
+      prefs::kGlicExperimentalTriggeringEnabled);
+  return pref && !pref->IsManaged();
+}
+
 void GlicEnabling::SetUserEnabledActuationOnWeb(bool enabled) {
   profile_->GetPrefs()->SetBoolean(prefs::kGlicUserEnabledActuationOnWeb,
                                    enabled);
@@ -1047,9 +1111,7 @@ GlicEnabling::GetExperimentalTriggeringState() const {
   bool is_managed = is_device_managed || has_managed_account;
 
   // Apply policy if managed, unless it's a dogfood client.
-  bool is_likely_dogfood_client = IsLikelyDogfoodClient();
-
-  if (is_managed && !is_likely_dogfood_client) {
+  if (is_managed && !IsLikelyDogfoodClient()) {
     // Check policy
     auto* pref_service = profile_->GetPrefs();
     auto policy_state = static_cast<glic::prefs::GlicSparkPolicyState>(
@@ -1146,6 +1208,12 @@ base::CallbackListSubscription GlicEnabling::RegisterProfileReadyStateChanged(
 
 void GlicEnabling::OnPrimaryAccountChanged(
     const signin::PrimaryAccountChangeEvent& event_details) {
+#if BUILDFLAG(IS_ANDROID)
+  if (event_details.GetEventTypeFor(signin::ConsentLevel::kSignin) ==
+      signin::PrimaryAccountChangeEvent::Type::kCleared) {
+    SetCompletedFre(prefs::FreStatus::kNotStarted);
+  }
+#endif
   UpdateEnabledStatus();
 }
 

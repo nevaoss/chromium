@@ -32,10 +32,10 @@
 #include "third_party/blink/renderer/core/layout/svg/layout_svg_root.h"
 #include "third_party/blink/renderer/core/layout/svg/svg_resources.h"
 #include "third_party/blink/renderer/core/paint/css_mask_painter.h"
-#include "third_party/blink/renderer/core/paint/outline_painter.h"
 #include "third_party/blink/renderer/core/paint/paint_layer.h"
 #include "third_party/blink/renderer/core/svg/svg_element.h"
 #include "third_party/blink/renderer/core/svg/svg_length_functions.h"
+#include "third_party/blink/renderer/platform/geometry/infinite_int_rect.h"
 #include "third_party/blink/renderer/platform/geometry/stroke_data.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/clear_collection_scope.h"
 #include "third_party/blink/renderer/platform/wtf/math_extras.h"
@@ -81,46 +81,22 @@ struct SearchCandidate {
   double distance;
 };
 
-gfx::RectF SVGLayoutSupport::LocalVisualRect(const LayoutObject& object) {
-  // For LayoutSVGRoot, use LayoutSVGRoot::localVisualRect() instead.
-  DCHECK(!object.IsSVGRoot());
-
-  // Return early for any cases where we don't actually paint
-  if (object.StyleRef().Visibility() != EVisibility::kVisible &&
-      !object.EnclosingLayer()->HasVisibleContent()) {
-    return gfx::RectF();
-  }
-
-  gfx::RectF visual_rect = object.VisualRectInLocalSVGCoordinates();
-  if (int outset = OutlinePainter::OutlineOutsetExtent(
-          object.StyleRef(),
-          LayoutObject::OutlineInfo::GetUnzoomedFromStyle(object.StyleRef()))) {
-    visual_rect.Outset(outset);
-  }
-  return visual_rect;
-}
-
 gfx::RectF SVGLayoutSupport::ApplyFiltersToRect(const LayoutObject& object,
                                                 const gfx::RectF& rect) {
-  CHECK(!object.NeedsPaintPropertyUpdate());
   if (!object.StyleRef().HasFilter()) {
     return rect;
+  }
+  if (object.NeedsPaintPropertyUpdate()) {
+    // TODO(crbug.com/40578621): This can happen when we calculate visual
+    // overflow for an object that has not yet built paint properties. Assume
+    // the worst-case and return an infinite rect.
+    return gfx::RectF(InfiniteIntRect());
   }
   gfx::RectF float_rect = rect;
   const gfx::RectF filter_reference_box =
       SVGResources::ReferenceBoxForEffects(object);
   float_rect.UnionEvenIfEmpty(filter_reference_box);
   return object.StyleRef().Filter().MapRect(float_rect);
-}
-
-PhysicalRect SVGLayoutSupport::VisualRectInAncestorSpace(
-    const LayoutObject& object,
-    const LayoutBoxModelObject& ancestor,
-    VisualRectFlags flags) {
-  PhysicalRect rect;
-  MapToVisualRectInAncestorSpace(object, &ancestor, LocalVisualRect(object),
-                                 rect, flags);
-  return rect;
 }
 
 static gfx::RectF MapToSVGRootIncludingFilter(

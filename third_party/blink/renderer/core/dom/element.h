@@ -27,6 +27,7 @@
 
 #include "base/check_op.h"
 #include "base/dcheck_is_on.h"
+#include "base/functional/function_ref.h"
 #include "base/types/pass_key.h"
 #include "third_party/blink/public/common/input/pointer_id.h"
 #include "third_party/blink/public/common/metrics/document_update_reason.h"
@@ -268,8 +269,6 @@ enum class CommandEventType {
   kToggleMuted,
   // Menu
   kToggleMenu,
-  kHideMenu,
-  kShowMenu,
   // Scroll
   kPageUp,
   kPageDown,
@@ -410,7 +409,21 @@ class CORE_EXPORT Element : public ContainerNode {
   Element* GetElementAttributeResolvingReferenceTarget(
       const QualifiedName& name) const;
   void SetElementAttribute(const QualifiedName&, Element*);
+  // GetAttrAssociatedElements returns the result of the 'get the
+  // attr-associated elements' algorithm [1]. It returns null if and only if the
+  // IDL attribute's explicitly set elements [2] is null and the content
+  // attribute is not set. GetAttrAssociatedElementsResolvingReferenceTarget
+  // returns null under the same conditions. It returns the result of resolving
+  // the reference target [3] on each member of the result of
+  // GetAttrAssociatedElements, discarding the values for which resolving the
+  // reference target returns null.
+  // [1] https://html.spec.whatwg.org/#attr-associated-elements
+  // [2] https://html.spec.whatwg.org/#explicitly-set-attr-elements
+  // [3] https://github.com/whatwg/html/pull/10995
   GCedHeapVector<Member<Element>>* GetAttrAssociatedElements(
+      const QualifiedName& name) const;
+  GCedHeapVector<Member<Element>>*
+  GetAttrAssociatedElementsResolvingReferenceTarget(
       const QualifiedName& name) const;
 
   // If treescope_element is connected, then we will search treescope_element's
@@ -1528,6 +1541,8 @@ class CORE_EXPORT Element : public ContainerNode {
 
   bool PseudoElementStylesDependOnFontMetrics() const;
   bool PseudoElementStylesDependOnAttr() const;
+  bool PseudoElementStylesDependOnFunc(
+      base::FunctionRef<bool(const ComputedStyle&)> func) const;
 
   // Retrieve the ComputedStyle (if any) corresponding to the provided
   // PseudoId from cache, calculating the ComputedStyle on-demand if it's
@@ -2216,8 +2231,6 @@ class CORE_EXPORT Element : public ContainerNode {
 
   ShadowRoot* GetShadowRootInternal() const;
 
-  template <typename Functor>
-  bool PseudoElementStylesDependOnFunc(Functor& func) const;
 
   // Returns true if the element satisfies conditions for focusability for
   // spatial navigation, even if the spatial navigation is not currently

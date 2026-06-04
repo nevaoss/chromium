@@ -145,6 +145,15 @@
   "chrome/browser/dev_ui_browser_resources.grd": {
     "includes": [2250],
   },
+  # Both indigo_strings.grd for chrome/browser/indigo/resources and
+  # chrome/browser/indigo/resources/internal start with the same ids because
+  # only one of them is built.
+  "chrome/browser/indigo/resources/internal/indigo_strings.grd": {
+    "messages": [2255],
+  },
+  "chrome/browser/indigo/resources/indigo_strings.grd": {
+    "messages": [2255],
+  },
   "chrome/browser/nearby_sharing/internal/nearby_share_internal_icons.grd": {
     "includes": [2260],
   },
@@ -223,14 +232,6 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/accessibility/resources.grd": {
     "META": {"sizes": {"includes": [10],}},
     "includes": [2740],
-  },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/accessibility_annotator_info/resources.grd": {
-    "META": {"sizes": {"includes": [10],}},
-    "includes": [2745],
-  },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/accessibility_annotator_internals/resources.grd": {
-    "META": {"sizes": {"includes": [10],}},
-    "includes": [2747],
   },
   "<(SHARED_INTERMEDIATE_DIR)/components/actor/core/internals/resources/resources.grd": {
     "META": {"sizes": {"includes": [10],}},
@@ -476,6 +477,10 @@
     "META": {"sizes": {"includes": [10]}},
     "includes": [3765],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/context_hub/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [3768],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/contextual_tasks/resources.grd": {
     "META": {"sizes": {"includes": [60]}},
     "includes": [3770],
@@ -684,6 +689,14 @@
     "META": {"sizes": {"includes": [200]}},
     "includes": [4540],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/personal_context_notice/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4550],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/personal_context_internals/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [4555],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/predictors/resources.grd": {
     "META": {"sizes": {"includes": [5],}},
     "includes": [4560],
@@ -891,10 +904,6 @@
     "META": {"sizes": {"includes": [10]}},
     "includes": [5230],
   },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/tab_strip_internals/resources.grd": {
-    "META": {"sizes": {"includes": [10]}},
-    "includes": [5240],
-  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/webui_browser/resources.grd": {
     "META": {"sizes": {"includes": [50]}},
     "includes": [5250],
@@ -912,7 +921,7 @@
     "includes": [5280],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/webnn_internals/resources.grd": {
-    "META": {"sizes": {"includes": [13]}},
+    "META": {"sizes": {"includes": [16]}},
     "includes": [5290],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/ai_overlay_dialog/resources.grd": {
@@ -922,6 +931,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/emulator/resources.grd": {
     "META": {"sizes": {"includes": [20]}},
     "includes": [5330],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/tab_strip_internals/resources.grd": {
+    "META": {"sizes": {"includes": [20]}},
+    "includes": [5350],
   },
   # END chrome/ WebUI resources section
 

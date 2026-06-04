@@ -17,7 +17,6 @@ import android.view.accessibility.AccessibilityEvent;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.VisibleForTesting;
-import androidx.asynclayoutinflater.view.AsyncLayoutInflater;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.window.layout.WindowMetricsCalculator;
 
@@ -49,6 +48,7 @@ import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.search_engines.TemplateUrlService.TemplateUrlServiceObserver;
+import org.chromium.ui.AsyncLayoutInflater;
 import org.chromium.ui.base.Clipboard;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -127,6 +127,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
     private @Nullable @BrandedColorScheme Integer mLastBrandedColorScheme;
     private boolean mDestroyed;
     private @Nullable Callback<Boolean> mOnInteractionCompletedCallback;
+    private @Nullable Runnable mOnFirstPickerInteractionCanceledCallback;
 
     /**
      * Creates a new instance of {@link FuseboxCoordinator}.
@@ -195,8 +196,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                         this::finishDeferredInitialization);
     }
 
-    private void finishDeferredInitialization(
-            View popupView, int resid, @Nullable ViewGroup parent) {
+    private void finishDeferredInitialization(View popupView) {
         if (mDestroyed) return;
 
         Resources res = mActivity.getResources();
@@ -272,7 +272,8 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                         Clipboard.getInstance(),
                         mScrimManager,
                         mScrimAnchorViewSupplier,
-                        mBackPressManager);
+                        mBackPressManager,
+                        mOnFirstPickerInteractionCanceledCallback);
         mMediator.onContextualTaskFocusChanged(mHasContextualTasksFocus);
         if (mLastBrandedColorScheme != null) {
             mMediator.updateVisualsForState(mLastBrandedColorScheme);
@@ -492,6 +493,14 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
     /** Set callback to be invoked when the popup is dismissed. */
     public void setOnInteractionCompletedCallback(Callback<Boolean> callback) {
         mOnInteractionCompletedCallback = callback;
+    }
+
+    /** Set callback to be invoked when the first picker interaction is canceled. */
+    public void setOnFirstPickerInteractionCanceledCallback(Runnable callback) {
+        mOnFirstPickerInteractionCanceledCallback = callback;
+        if (mMediator != null) {
+            mMediator.setOnFirstPickerInteractionCanceledCallback(callback);
+        }
     }
 
     private @FuseboxLayoutMode int getFuseboxLayoutMode() {

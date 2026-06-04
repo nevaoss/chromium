@@ -44,6 +44,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "third_party/blink/public/common/features.h"
 #include "ui/views/widget/widget.h"
 #include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
 #include "ui/webui/webui_util.h"
@@ -98,6 +99,9 @@ WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
                      features::IsWebUIAvatarButtonEnabled());
   source->AddBoolean("enableExtensionsContainer",
                      features::IsWebUIExtensionsContainerEnabled());
+  source->AddBoolean(
+      "initialWebUISurfaceSyncEnabled",
+      base::FeatureList::IsEnabled(blink::features::kInitialWebUISurfaceSync));
 
   BrowserWindowInterface* browser =
       webui::GetBrowserWindowInterface(web_ui->GetWebContents());
@@ -107,9 +111,17 @@ WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
   web_ui->AddMessageHandler(std::make_unique<MetricsHandler>());
 
   if (browser) {
+    // This use of unretained is safe because the
+    // TrackedElementHandlerDocumentSingleton only stores the callback for at
+    // most the lifetime of the WebContents, which is always shorter than the
+    // Browser.
     ui::TrackedElementHandlerDocumentSingleton::Register(
         this, GetKnownElementIdentifiers(),
-        BrowserElements::From(browser)->GetContext());
+        base::BindRepeating(
+            [](BrowserWindowInterface* browser) {
+              return BrowserElements::From(browser)->GetContext();
+            },
+            base::Unretained(browser)));
   }
 }
 

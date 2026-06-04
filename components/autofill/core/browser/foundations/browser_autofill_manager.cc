@@ -322,6 +322,7 @@ FillDataType GetEventTypeFromSingleFieldSuggestionType(SuggestionType type) {
     case SuggestionType::kOpenGemini:
     case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemorySearchAffordance:
+    case SuggestionType::kPersonalContextNotice:
       NOTREACHED();
   }
   NOTREACHED();
@@ -732,6 +733,7 @@ bool IsManagementFooterOption(const Suggestion& suggestion) {
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemorySearchAffordance:
+    case SuggestionType::kPersonalContextNotice:
       return false;
   }
 }
@@ -1197,8 +1199,11 @@ void BrowserAutofillManager::OnAskForValuesToFillImpl(
             kDisabledNotEligible) {
       return;
     }
-    // Show empty suggestions with a search bar to start the flow.
-    external_delegate_->OnSuggestionsReturned(field_id, {});
+    std::vector<Suggestion> suggestions;
+    GetAtMemoryManager().MaybeAppendPersonalContextNotice(suggestions);
+
+    // Show suggestions with a search bar to start the flow.
+    external_delegate_->OnSuggestionsReturned(field_id, suggestions);
     return;
   }
 
@@ -2208,7 +2213,7 @@ void BrowserAutofillManager::DidShowSuggestions(
 
   const bool is_context_secure =
       form_structure ? !IsFormOrClientNonSecure(client(), *form_structure)
-                     : client().IsContextSecure();
+                     : !IsFormOrClientNonSecure(client(), last_query_form());
   GetAtMemoryManager().OnPopupShown(trigger_source, is_context_secure,
                                     update_suggestions_callback);
 
@@ -2853,10 +2858,18 @@ std::unique_ptr<FormStructure> BrowserAutofillManager::ValidateSubmittedForm(
     return nullptr;
   }
 
-  auto submitted_form = std::make_unique<FormStructure>(form);
-  submitted_form->RetrieveFromCache(
-      *cached_submitted_form,
-      FormStructure::RetrieveFromCacheReason::kFormImport);
+  // TODO(crbug.com/40232021): Optimize this after improving the relationship
+  // between `FormStructure` and `FormData`.
+  std::unique_ptr<FormStructure> submitted_form =
+      FormStructure::Clone(*cached_submitted_form, /*pass_key=*/{});
+  submitted_form->UpdateFormData(form, base::PassKey<BrowserAutofillManager>());
+
+  // The form signature should match between query and upload requests to the
+  // server. On many websites, form elements are dynamically added, removed, or
+  // rearranged via JavaScript between page load and form submission, so we
+  // copy over the |form_signature_field_names_| corresponding to the query
+  // request.
+  submitted_form->set_form_signature(cached_submitted_form->form_signature());
 
   return submitted_form;
 }
@@ -3216,12 +3229,6 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
 
 autofill_metrics::FormEventLoggerBase*
 BrowserAutofillManager::GetEventFormLogger(const AutofillField& field) {
-  if (field.ShouldSuppressSuggestionsAndFillingByDefault(
-          GetAcUnrecognizedBehavior(client())) &&
-      !base::FeatureList::IsEnabled(
-          features::kAutofillConsiderAutocompleteUnrecognizedFieldsInMetrics)) {
-    return nullptr;
-  }
   // TODO(crbug.com/432645177): When migrating Loyalty Cards to AutofillType, we
   // need to pick the right logger(s) here.
   const DenseSet<FormType> form_types = field.Type().GetFormTypes();

@@ -152,6 +152,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "DefaultPassthroughCommandDecoder", "Use the passthrough GLES2 command decoder."),
         Flag.baseFeature(
+                GpuFeatures.GPU_PERSISTENT_CACHE,
+                "Use GpuPersistentCache for GPU blob caching in memory and on disk (if "
+                        + "enabled separately by enabling GpuShaderDiskCache)"),
+        Flag.baseFeature(
                 GpuFeatures.WEBVIEW_SURFACE_CONTROL,
                 "Use SurfaceControl. Requires WebViewThreadSafeMedia and Android device and OS "
                         + "support. Is not supported for TV, see WebViewSurfaceControlForTV."),
@@ -294,9 +298,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_NEW_REGEX_FOR_PHONE_COUNTRY_CODE,
                 "If enabled, more patterns are added to the PHONE_COUNTRY_CODE regex."),
-        Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_OPTIMIZE_CACHE_UPDATES,
-                "Reduces the number of field members copied between forms during cache updates."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_POLICY_CONTROLLED_FEATURE_AUTOFILL,
                 "Enables the policy-controlled feature \"autofill\"."),
@@ -486,10 +487,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "WebRtcEncodedTransformDirectCallback",
                 "Directly invoke WebRTC Encoded Transform callbacks in a worker."),
-        Flag.baseFeature(
-                "WebRtcAudioSinkUseTimestampAligner",
-                "Align WebRTC and Chrome clocks using a timestamp aligner for absolute capture"
-                        + " times in Audio RTP packets."),
         Flag.baseFeature("WebRtcPqcForDtls", "Enable Post-Quantum Cryptography in WebRTC"),
         Flag.baseFeature(
                 ContentSwitches.DISABLE_DOMAIN_BLOCKING_FOR3DAP_IS,
@@ -695,6 +692,7 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("V8Flag_verify_bytecode_light"),
         Flag.baseFeature("V8Flag_enforce_global_heap_limit"),
         Flag.baseFeature("V8Flag_turbolev"),
+        Flag.baseFeature("V8Flag_sqrt_allocation_limits"),
         Flag.baseFeature("V8FlushBaselineCode"),
         Flag.baseFeature("V8FlushCodeBasedOnTabVisibility"),
         Flag.baseFeature("V8FlushCodeBasedOnTime"),
@@ -726,6 +724,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AwSwitches.WEBVIEW_STATIC_METHODS_NOT_TRIGGER_STARTUP,
                 "When enabled, static methods in SharedStatics do not trigger startup."),
+        Flag.baseFeature(
+                AwSwitches.WEBVIEW_PROFILE_STORE_NOT_TRIGGER_STARTUP,
+                "When enabled, profile store methods do not trigger startup."),
         Flag.baseFeature(
                 ContentFeatures.ACCESSIBILITY_EXTENDED_SELECTION,
                 "Register, un-register Accessibility extended selection."),
@@ -905,11 +906,12 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.BF_CACHE_OPEN_BROADCAST_CHANNEL,
                 "Start putting pages with broadcast channel into bfcache."),
         Flag.baseFeature(
-                AwFeatures.WEBVIEW_LAZY_FETCH_HAND_WRITING_ICON, "Fetch Hand Writing icon lazily"),
-        Flag.baseFeature(
                 AwFeatures.WEBVIEW_FORCE_WEB_AUTHN,
                 "Force all WebView instances to enable WebAuthn by default in APP mode. This has"
                         + " no effect for apps which explicitly choose a WebAuthn mode."),
+        Flag.baseFeature(
+                ContentFeatures.IDB_SQLITE_ON_DISK_ROLLOUT,
+                "Enables the SQLite backing store rollout for on-disk IndexedDB."),
         Flag.baseFeature(
                 ContentFeatures.IGNORE_DUPLICATE_NAVS,
                 "Ignore duplicate navigations, keeping the older navigations instead."),
@@ -950,10 +952,6 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 MediaFeatures.MEDIA_CODEC_BLOCK_MODEL,
                 "Controls use of MediaCodec's LinearBlock mode."),
-        Flag.baseFeature(
-                MediaFeatures.SURFACE_INPUT_FOR_ANDROID_VEA,
-                "Enables the use of a Surface (ANativeWindow) as the input for the "
-                        + "NdkVideoEncodeAccelerator on Android."),
         Flag.baseFeature(BlinkFeatures.FETCH_LATER_API, "Enables FetchLater API."),
         Flag.baseFeature(
                 ContentFeatures.IO_THREAD_INTERACTIVE_THREAD_TYPE,
@@ -1218,6 +1216,10 @@ public final class ProductionSupportedFlagList {
                 "When enabled, physical keyboard autocorrect underline will display. V2 simplifies"
                         + " V1, while improving the input compatibility."),
         Flag.baseFeature(
+                ContentFeatureList.ANDROID_FORCE_TEXT_INPUT_STATE_UPDATE_UPON_FOCUS,
+                "When enabled, forces pushing active text input state update calculation "
+                        + "whenever focus is gained on an editable text field."),
+        Flag.baseFeature(
                 ContentFeatures.ANDROID_BLOCK_MISSPELLING_SUGGESTION_SPAN_IN_COMPOSITION_MODE,
                 "When enabled, misspelling suggestion span will be blocked from showing in"
                         + " composition mode."),
@@ -1297,6 +1299,10 @@ public final class ProductionSupportedFlagList {
                 ContentFeatures.NO_SELECTION_MENU_CACHING,
                 "When this flag is enabled, the menu which is shown when selecting text will not be"
                         + " cached. Instead, it is recomputed each time it is shown."),
+        Flag.baseFeature(
+                ContentFeatureList.TEXT_CLASSIFIER_TIMEOUT,
+                "Enable timeout for TextClassifier calls. The timeout is configurable with a"
+                        + " default of 200ms."),
         Flag.baseFeature(
                 BlinkFeatures.XML_RUST_FOR_NON_XSLT,
                 "Enables the Rust based XML parser in situations where the XML document is"
@@ -1393,6 +1399,13 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_ENABLE_DNS_PLATFORM,
                 "Enables the resolution of hostnames via platform DNS APIs in WebView."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_CPP_METRICS_FILTERING,
+                "Enables WebView UMA metrics filtering in C++ instead of Java."),
+        Flag.baseFeature(
+                BlinkFeatures.SELECT_WEBVIEW_UNTRUSTED_EVENT_REMOVAL,
+                "Enables the removal of a WebView-specific hack to allow select elements to be"
+                        + " opened with untrusted mousedown events."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

@@ -41,9 +41,20 @@ base::expected<TaskParameter, std::string> MapParameter(
     param.set_description(*desc);
   }
 
+  const auto* strategy_dict = dict.FindDict("extraction_strategy");
+  if (strategy_dict) {
+    const std::string* selector = strategy_dict->FindString("dom_css_selector");
+    if (selector && !selector->empty()) {
+      param.mutable_extraction_strategy()->set_dom_css_selector(*selector);
+    }
+  }
+
   return param;
 }
 
+// TODO(crbug.com/504555471): base::DictValue and base::ListValue are
+// deprecated. We need to change them to base::Value::Dict and base::Value::List
+// respectively.
 base::expected<TaskStep, std::string> MapStep(const base::DictValue& dict,
                                               int default_step_index,
                                               const GURL& default_url) {
@@ -127,14 +138,6 @@ base::expected<TaskDefinition, std::string> ParseDetailedSyntax(
         }
       }
     }
-
-    StepDefinition legacy_step;
-    legacy_step.set_description(step.value().description());
-    for (int i = 0; i < step.value().parameters_size(); ++i) {
-      legacy_step.add_expected_data_keys(step.value().parameters(i).key());
-    }
-    (*definition.mutable_steps())[step_index + 1] = std::move(legacy_step);
-
     *definition.add_task_steps() = std::move(step.value());
 
     step_index++;
@@ -155,11 +158,6 @@ base::expected<TaskDefinition, std::string> ParseQuickSyntax(
   step->set_step_index(0);
   step->set_description(fallback_desc);
   step->set_url(url.spec());
-
-  StepDefinition legacy_step;
-  legacy_step.set_description(fallback_desc);
-  (*definition.mutable_steps())[1] = legacy_step;
-
   return definition;
 }
 

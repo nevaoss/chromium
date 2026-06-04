@@ -643,7 +643,6 @@ should be able to be added at any place in this file.
   <variant name="_LowUserEngagementDetector"
       summary="For LowUserEngagementDetector feature."/>
   <variant name="_MediaDownload" summary="For MediaDownload feature."/>
-  <variant name="_MerchantTrust" summary="For MerchantTrust feature."/>
   <variant name="_MicToolbar" summary="In product help for toolbar mic."/>
   <variant name="_MostVisitedTilesCustomizationPin"
       summary="In product help for MVT Customization feature to pin a
@@ -10893,6 +10892,36 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="ContextualSearch.AddTabsButton.Clicked.{ContextualSearchSource}">
+  <owner>samiraarabgol@google.com</owner>
+  <owner>chrome-desktop-search@google.com</owner>
+  <description>
+    Recorded when the user clicks the Add tabs (AI Mode) entrypoint button in a
+    WebUI searchbox on {ContextualSearchSource}.
+  </description>
+  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
+</action>
+
+<action name="ContextualSearch.AddTabsButton.Hovered.{ContextualSearchSource}">
+  <owner>samiraarabgol@google.com</owner>
+  <owner>chrome-desktop-search@google.com</owner>
+  <description>
+    Recorded when the user hovers over the Add tabs (AI Mode) entrypoint button
+    in a WebUI searchbox on {ContextualSearchSource}.
+  </description>
+  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
+</action>
+
+<action name="ContextualSearch.AddTabsButton.Shown.{ContextualSearchSource}">
+  <owner>samiraarabgol@google.com</owner>
+  <owner>chrome-desktop-search@google.com</owner>
+  <description>
+    Recorded when the Add tabs (AI Mode) entrypoint button is shown to the user
+    in a WebUI searchbox on {ContextualSearchSource}.
+  </description>
+  <token key="ContextualSearchSource" variants="ContextualSearchSource"/>
+</action>
+
 <action
     name="ContextualSearch.AiModeButtonClick.{ContextualSearchAiModeButtonSurface}">
   <owner>niharm@google.com</owner>
@@ -15033,6 +15062,87 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Glic.ExperimentalTriggering.OptIn.Actuation.Accepted">
+  <owner>sauski@google.com</owner>
+  <owner>nyquist@chromium.org</owner>
+  <description>
+    Logged when Actuation Opt-In is required and the Glic Experimental Opt-In
+    dialog is accepted.
+  </description>
+</action>
+
+<action name="Glic.ExperimentalTriggering.OptIn.Actuation.NoThanks">
+  <owner>sauski@google.com</owner>
+  <owner>nyquist@chromium.org</owner>
+  <description>
+    Logged when Actuation Opt-In is required and the Glic Experimental Opt-In
+    dialog is rejected.
+  </description>
+</action>
+
+<action name="Glic.ExperimentalTriggering.OptIn.Actuation.Shown">
+  <owner>sauski@google.com</owner>
+  <owner>nyquist@chromium.org</owner>
+  <description>
+    Logged when Actuation Opt-In is required and the Glic Experimental Opt-In
+    dialog is shown.
+  </description>
+</action>
+
+<action name="Glic.ExperimentalTriggering.OptIn.Experimental.Accepted">
+  <owner>sauski@google.com</owner>
+  <owner>nyquist@chromium.org</owner>
+  <description>
+    Logged when Experimental Triggering Opt-In is required and the Glic
+    Experimental Opt-In dialog is accepted.
+  </description>
+</action>
+
+<action name="Glic.ExperimentalTriggering.OptIn.Experimental.NoThanks">
+  <owner>sauski@google.com</owner>
+  <owner>nyquist@chromium.org</owner>
+  <description>
+    Logged when Experimental Triggering Opt-In is required and the Glic
+    Experimental Opt-In dialog is rejected.
+  </description>
+</action>
+
+<action name="Glic.ExperimentalTriggering.OptIn.Experimental.Shown">
+  <owner>sauski@google.com</owner>
+  <owner>nyquist@chromium.org</owner>
+  <description>
+    Logged when Experimental Triggering Opt-In is required and the Glic
+    Experimental Opt-In dialog is shown.
+  </description>
+</action>
+
+<action name="Glic.ExperimentalTriggering.OptIn.Glic.Accepted">
+  <owner>sauski@google.com</owner>
+  <owner>nyquist@chromium.org</owner>
+  <description>
+    Logged when Glic FRE is required and the Glic Experimental Opt-In dialog is
+    accepted.
+  </description>
+</action>
+
+<action name="Glic.ExperimentalTriggering.OptIn.Glic.NoThanks">
+  <owner>sauski@google.com</owner>
+  <owner>nyquist@chromium.org</owner>
+  <description>
+    Logged when Glic FRE is required and the Glic Experimental Opt-In dialog is
+    rejected.
+  </description>
+</action>
+
+<action name="Glic.ExperimentalTriggering.OptIn.Glic.Shown">
+  <owner>sauski@google.com</owner>
+  <owner>nyquist@chromium.org</owner>
+  <description>
+    Logged when Glic FRE is required and the Glic Experimental Opt-In dialog is
+    shown.
+  </description>
+</action>
+
 <action name="Glic.FocusHotKey">
   <owner>andreaxg@google.com</owner>
   <owner>erikchen@chromium.org</owner>
@@ -15118,6 +15228,14 @@ should be able to be added at any place in this file.
   <description>
     User closed the disabled by admin panel in the FRE by clicking the
     confirmation button.
+  </description>
+</action>
+
+<action name="Glic.Fre.Dismissed">
+  <owner>perrier@chromium.org</owner>
+  <owner>sauski@google.com</owner>
+  <description>
+    Logged when an onboarding opt-in dialog or flow is implicitly dismissed.
   </description>
 </action>
 
@@ -15394,19 +15512,10 @@ should be able to be added at any place in this file.
   <owner>birnie@google.com</owner>
   <owner>perrier@google.com</owner>
   <description>
-    Logged when Open is called on a new or closed instance. Note that this may
-    be logged when a new conversation creates a new instance to replace an
-    existing one in an already open UI container.
-  </description>
-</action>
-
-<action name="Glic.Instance.Open2">
-  <owner>birnie@google.com</owner>
-  <owner>perrier@google.com</owner>
-  <description>
-    Logged when opening a new or closed instance. Note that this may be logged
-    when a new conversation creates a new instance to replace an existing one in
-    an already open UI container, or when detaching/ attaching Floaty from side
+    Logged when opening a new or closed instance. Logged for instances created
+    in both the foreground and background. Note that this may be logged when a
+    new conversation creates a new instance to replace an existing one in an
+    already open UI container, or when detaching/ attaching Floaty from side
     panel.
   </description>
 </action>
@@ -16805,6 +16914,24 @@ should be able to be added at any place in this file.
   <owner>baranerf@google.com</owner>
   <description>
     The indigo page action was displayed as an anchored message.
+  </description>
+</action>
+
+<action name="Indigo.ReplaceImage.Complete">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    User completed the replace image onboarding process.
+  </description>
+</action>
+
+<action name="Indigo.ReplaceImage.Trigger">
+  <owner>jbroman@chromium.org</owner>
+  <owner>adithyas@chromium.org</owner>
+  <owner>baranerf@google.com</owner>
+  <description>
+    User triggered the replace image onboarding process.
   </description>
 </action>
 
@@ -25822,17 +25949,6 @@ should be able to be added at any place in this file.
   <token key="MerchantTrust_Type" variants="MerchantTrust_Type"/>
 </action>
 
-<action
-    name="MerchantTrust.BubbleOpenedFromLocationBarChip{MerchantTrust_Type}">
-  <owner>tommasin@chromium.org</owner>
-  <owner>privacy-on-the-web@google.com</owner>
-  <description>
-    Triggered when user opens the merchant trust bubble from the location bar
-    chip. {MerchantTrust_Type}
-  </description>
-  <token key="MerchantTrust_Type" variants="MerchantTrust_Type"/>
-</action>
-
 <action name="MerchantTrust.BubbleOpenedFromPageInfo{MerchantTrust_Type}">
   <owner>tommasin@chromium.org</owner>
   <owner>privacy-on-the-web@google.com</owner>
@@ -33270,6 +33386,9 @@ should be able to be added at any place in this file.
     <variant name=".Shown.MultiTab"
         summary="Recorded when the tab context menu is shown with multiple
                  tabs selected."/>
+    <variant name=".ShowTabsVertically"
+        summary="User switched the layout to the vertical tabs view via the
+                 tab context menu on tab strip on Android."/>
     <variant name=".UnmuteSite"
         summary="User unmuted a site via the tab context menu on tab strip on
                  Android."/>
@@ -45783,6 +45902,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_Impression_FromOverflowMenu">
+  <owner>jlebel@google.com</owner>
+  <owner>chrome-signin-mobile-team@google.com</owner>
+  <description>
+    Recorded when showing sign in that originates from the Overflow Menu. iOS
+    only.
+  </description>
+</action>
+
 <action name="Signin_Impression_FromPasswordBubble" not_user_triggered="true">
   <owner>gogerald@chromium.org</owner>
   <description>
@@ -46818,6 +46946,15 @@ should be able to be added at any place in this file.
   <description>
     Recorded on sign in start from access point
     signin_metrics::AccessPoint::kOIDCRedirectionInterception.
+  </description>
+</action>
+
+<action name="Signin_Signin_FromOverflowMenu">
+  <owner>jlebel@google.com</owner>
+  <owner>chrome-signin-mobile-team@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kOverflowMenu. iOS only.
   </description>
 </action>
 
@@ -56173,6 +56310,12 @@ should be able to be added at any place in this file.
   <owner>dpenning@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <description>App Menu: Recently Closed: Open a recent group.</description>
+</action>
+
+<action name="WrenchMenu_OpenRecentSplit">
+  <owner>kunaldaftari@google.com</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>App Menu: Recently Closed: Open a recent split.</description>
 </action>
 
 <action name="WrenchMenu_OpenRecentTabFromDevice">

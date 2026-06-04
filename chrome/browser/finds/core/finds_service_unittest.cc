@@ -450,8 +450,7 @@ TEST_F(FindsServiceTest, VerifyHistoryLookbackIntervalWithFinchParam) {
   // Override the feature param to something non-default.
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitAndEnableFeatureWithParameters(
-      finds::features::kChromeFinds,
-      {{"model_execution_cooldown_duration_in_days", "14"}});
+      finds::features::kChromeFinds, {{"history_time_window_in_days", "14"}});
 
   EXPECT_CALL(*history_service_, QueryHistory(_, _, _, _))
       .WillOnce([](const std::u16string& text_query,
@@ -1148,6 +1147,31 @@ TEST_F(FindsServiceTest, TestModelExecutionDisabledByParam) {
   histogram_tester_.ExpectUniqueSample(
       "Finds.Result",
       FindsService::Result::Status::kModelExecutionDisabledByParam, 1);
+}
+
+TEST_F(FindsServiceTest,
+       RecordRecentSearchSuggestionClickAndCheckThresholdReached) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeatureWithParameters(
+      finds::features::kChromeFinds,
+      {{"omnibox_recent_search_suggestion_count_threshold", "3"}});
+
+  testing::NiceMock<MockFindsServiceObserver> observer;
+  service_->AddObserver(&observer);
+  EXPECT_FALSE(
+      service_->RecordRecentSearchSuggestionClickAndCheckThresholdReached());
+  EXPECT_FALSE(
+      service_->RecordRecentSearchSuggestionClickAndCheckThresholdReached());
+  EXPECT_TRUE(
+      service_->RecordRecentSearchSuggestionClickAndCheckThresholdReached());
+
+  EXPECT_CALL(observer, OnOptInCriteriaFulfilled()).Times(1);
+  service_->RecentSearchSuggestionCountForOptInReached();
+
+  histogram_tester_.ExpectUniqueSample(
+      "Notifications.ChromeFinds.OptInCriteriaFulfilled.Reason",
+      FindsOptInTriggerReason::kOmniboxRecentSearchSuggestionCount, 1);
+  service_->RemoveObserver(&observer);
 }
 
 }  // namespace finds

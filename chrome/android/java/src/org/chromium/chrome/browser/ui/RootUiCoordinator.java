@@ -683,7 +683,7 @@ public class RootUiCoordinator
                         shouldAllowThemingInNightMode(),
                         shouldAllowBrightThemeColors(),
                         shouldAllowThemingOnTablets());
-        if (NtpCustomizationUtils.canEnableEdgeToEdgeForCustomizedTheme(mIsTablet)) {
+        if (NtpCustomizationUtils.supportsEnableEdgeToEdgeOnTop(mWindowAndroid, mIsTablet)) {
             mAdjustedTopUiThemeColorProvider =
                     new AdjustedTopUiThemeColorProvider(
                             mActivity,
@@ -860,10 +860,11 @@ public class RootUiCoordinator
         }
     }
 
-    // TODO(pnoland, crbug.com/40585866): remove this in favor of wiring it directly.
-    public ToolbarManager getToolbarManager() {
-        assert mToolbarManager != null;
-        return mToolbarManager;
+    /**
+     * @return The {@link OneshotSupplier} for the {@link ToolbarManager}.
+     */
+    public OneshotSupplier<ToolbarManager> getToolbarManagerSupplier() {
+        return mToolbarManagerOneshotSupplier;
     }
 
     public StatusBarColorController getStatusBarColorController() {
@@ -1389,8 +1390,7 @@ public class RootUiCoordinator
         }
 
         if (mWindowAndroid.getInsetObserver() != null
-                && NtpCustomizationUtils.canEnableEdgeToEdgeForCustomizedTheme(
-                        mWindowAndroid, mIsTablet)) {
+                && NtpCustomizationUtils.supportsEnableEdgeToEdgeOnTop(mWindowAndroid, mIsTablet)) {
             // Only create TopInsetCoordinator if there's a valid TransitiveTopInsetProvider
             // available. TopInsetCoordinator registers a listener with the singleton
             // NtpCustomizationConfigManager, which must be removed via destroy(). The destroy()
@@ -2134,9 +2134,8 @@ public class RootUiCoordinator
                             mOmniboxChipManager,
                             mBottomBarHostManager,
                             mActionRegistry,
-                            (preventClose) ->
-                                    toggleGlic(
-                                            preventClose, GlicInvocationSource.TOP_CHROME_BUTTON));
+                            (preventClose, invocationSource) ->
+                                    toggleGlic(preventClose, invocationSource));
             if (!mSupportsAppMenuSupplier.getAsBoolean()) {
                 mToolbarManager.getToolbar().disableMenuButton();
             }
@@ -2325,7 +2324,9 @@ public class RootUiCoordinator
                         mTabModelSelectorSupplier.asNonNull().get(),
                         mWindowAndroid,
                         mActionModeControllerCallback,
-                        mBackPressManager);
+                        mBackPressManager,
+                        mActivity.findViewById(R.id.secondary_ui_container),
+                        mBrowserControlsManager);
 
         mFindToolbarObserver =
                 new FindToolbarObserver() {
@@ -2858,6 +2859,10 @@ public class RootUiCoordinator
 
     public @Nullable OpenInAppMenuItemProvider getOpenInAppMenuItemProvider() {
         return mOpenInAppEntryPoint;
+    }
+
+    public @Nullable OmniboxChipManager getOmniboxChipManager() {
+        return mOmniboxChipManager;
     }
 
     public @Nullable HandoffController getHandoffController() {

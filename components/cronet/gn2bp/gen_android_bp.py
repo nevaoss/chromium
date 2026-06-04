@@ -238,6 +238,14 @@ def initialize_globals(import_channel: str):
                 "third_party/perfetto/build_config/",
             })
         ],
+        # See https://crbug.com/517894073#comment5
+        f'lib{MODULE_PREFIX}third_party_boringssl_raw_bssl_sys_bindings': [
+            ('export_include_dirs', {
+                "third_party/boringssl/src/include",
+            }), ('local_include_dirs', {
+                "third_party/boringssl/src/include",
+            })
+        ],
         # end export_include_dir.
         # TODO: https://crbug.com/418746360 - Handle //base:build_date_internal
         # for os:linux_glibc.
@@ -367,10 +375,10 @@ def enable_boringssl(module, arch):
         static_libs = module.target[arch].static_libs
         whole_static_libs = module.target[arch].whole_static_libs
     shared_libs.add(f'{MODULE_PREFIX}{LIBCRYPTO_UNSTRIPPED}')
-    if module.type == "cc_library_static" or module.type == "rust_ffi_static":
-        static_libs.add(f'{MODULE_PREFIX}ssl_and_pki')
-    else:
+    if module.type in ("cc_binary", "cc_library_shared", "rust_binary"):
         whole_static_libs.add(f'{MODULE_PREFIX}ssl_and_pki')
+    else:
+        static_libs.add(f'{MODULE_PREFIX}ssl_and_pki')
 
 
 def add_androidx_experimental_java_deps(module, _):
@@ -647,6 +655,9 @@ def write_blueprint_key_value(output,
   purely cosmetic feature to make the Blueprint file more readable.
   """
 
+    def escape(s):
+        return str(s).replace('\\', '\\\\').replace('"', '\\"')
+
     if isinstance(value, bool):
         if value:
             output.append('    %s: true,' % name)
@@ -660,7 +671,7 @@ def write_blueprint_key_value(output,
     if isinstance(value, list) and not list_to_multiline_string:
         output.append('    %s: [' % name)
         for item in sorted(value) if sort else value:
-            output.append('        "%s",' % item)
+            output.append('        "%s",' % escape(item))
         output.append('    ],')
         return
     if isinstance(value, Module.Target):
@@ -680,7 +691,7 @@ def write_blueprint_key_value(output,
         '    %s: "%s",' %
         (name,
          NEWLINE.join(
-             str(line).replace('\\', '\\\\').replace('"', '\\"')
+             escape(line)
              for line in (value if isinstance(value, list) else [value]))))
 
 
@@ -1204,7 +1215,7 @@ def _set_rust_flags(module: Module.Target, rust_flags: List[str],
         if feature_regex:
             module.features.add(feature_regex.group(1))
         else:
-            module.cfgs.add(cfg.replace("\"", "\\\""))
+            module.cfgs.add(cfg)
 
     pre_filter_flags = []
     for (key, values) in rust_flags_dict.items():
@@ -2798,8 +2809,7 @@ def _get_cflags(cflags, defines):
         cflags.append(f"-U{libcpp_hardening_flag}")
 
     # Consider proper allowlist or denylist if needed
-    cflags.extend(
-        sorted(["-D%s" % define.replace("\"", "\\\"") for define in defines]))
+    cflags.extend(sorted(["-D%s" % define for define in defines]))
     return cflags
 
 

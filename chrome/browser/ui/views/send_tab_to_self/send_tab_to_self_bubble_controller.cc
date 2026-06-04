@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_bubble_controller.h"
 
+#include <algorithm>
 #include <string_view>
 #include <vector>
 
@@ -34,7 +35,6 @@
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/common/url_constants.h"
-#include "chrome/grit/generated_resources.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
 #include "components/send_tab_to_self/features.h"
@@ -47,6 +47,7 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/sync/service/sync_service.h"
+#include "components/sync_device_info/device_info.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -58,6 +59,27 @@
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 
 namespace send_tab_to_self {
+
+namespace {
+
+// TODO(crbug.com/492072882): Inefficiently fetches the whole sorted list just
+// to find one device by GUID. There should exist
+// SendTabToSelfModel::GetTargetDeviceInfo(guid)
+syncer::DeviceInfo::FormFactor GetFormFactorForDevice(
+    SendTabToSelfModel* model,
+    const std::string& target_device_guid) {
+  if (!model) {
+    return syncer::DeviceInfo::FormFactor::kUnknown;
+  }
+  const std::vector<TargetDeviceInfo> devices =
+      model->GetTargetDeviceInfoSortedList();
+  std::vector<TargetDeviceInfo>::const_iterator it = std::ranges::find(
+      devices, target_device_guid, &TargetDeviceInfo::cache_guid);
+  return it != devices.end() ? it->form_factor
+                             : syncer::DeviceInfo::FormFactor::kUnknown;
+}
+
+}  // namespace
 
 SendTabToSelfBubbleController::~SendTabToSelfBubbleController() {
   HideBubble();
@@ -153,19 +175,14 @@ void SendTabToSelfBubbleController::ShowBubbleWithAnchor(
           std::move(anchor.value()), &GetWebContents());
       break;
     case send_tab_to_self::EntryPointDisplayReason::kOfferSignIn: {
-      const SendTabToSelfPromoBubbleView::PromoType promo_type =
-          GetSharingAccountInfo().IsEmpty()
-              ? SendTabToSelfPromoBubbleView::PromoType::kSignInPromo
-              : SendTabToSelfPromoBubbleView::PromoType::
-                    kAccountAwareSignInPromo;
-      bubble_view = std::make_unique<SendTabToSelfPromoBubbleView>(
-          std::move(anchor.value()), &GetWebContents(), promo_type);
+      bubble_view = std::make_unique<SendTabToSelfSignInPromoBubbleView>(
+          std::move(anchor.value()), &GetWebContents(),
+          /*is_account_aware=*/!GetSharingAccountInfo().IsEmpty());
       break;
     }
     case send_tab_to_self::EntryPointDisplayReason::kInformNoTargetDevice:
-      bubble_view = std::make_unique<SendTabToSelfPromoBubbleView>(
-          std::move(anchor.value()), &GetWebContents(),
-          SendTabToSelfPromoBubbleView::PromoType::kNoTargetDevice);
+      bubble_view = std::make_unique<SendTabToSelfNoTargetDeviceBubbleView>(
+          std::move(anchor.value()), &GetWebContents());
       break;
   }
   send_tab_to_self_bubble_view_ = bubble_view.get();
@@ -242,12 +259,16 @@ void SendTabToSelfBubbleController::OnDeviceSelected(
   SendTabToSelfPageHandler* handler =
       SendTabToSelfPageHandler::GetOrCreateForWebContents(&GetWebContents());
 
+  syncer::DeviceInfo::FormFactor form_factor =
+      GetFormFactorForDevice(GetModel(), target_device_guid);
+
   const GURL url = GetWebContents().GetLastCommittedURL();
   handler->SendTabToDevice(
       target_device_guid, url, base::UTF16ToUTF8(GetWebContents().GetTitle()),
       base::BindOnce(
           &SendTabToSelfBubbleController::HandleSendTabToDeviceResult,
-          weak_ptr_factory_.GetWeakPtr(), url, std::string(device_name)));
+          weak_ptr_factory_.GetWeakPtr(), url, std::string(device_name),
+          form_factor));
 }
 
 void SendTabToSelfBubbleController::OnManageDevicesClicked(
@@ -292,16 +313,17 @@ void SendTabToSelfBubbleController::OnBackButtonPressed() {
 void SendTabToSelfBubbleController::HandleSendTabToDeviceResult(
     const GURL& url,
     std::string_view device_name,
+    syncer::DeviceInfo::FormFactor form_factor,
     SendTabToSelfResult result) {
   switch (result) {
     case SendTabToSelfResult::kSuccess:
       if (base::FeatureList::IsEnabled(kSendTabToSelfPostSendToast)) {
-        ShowTabSentSuccessToast(&GetWebContents(), device_name);
+        ShowTabSentSuccessToast(&GetWebContents(), device_name, form_factor);
       }
       break;
     case SendTabToSelfResult::kSuccessThrottled:
       if (base::FeatureList::IsEnabled(kSendTabToSelfPostSendToast)) {
-        ShowTabSentThrottledToast(&GetWebContents(), device_name);
+        ShowTabSentThrottledToast(&GetWebContents(), device_name, form_factor);
       }
       break;
     case SendTabToSelfResult::kFailureInvalidUrl:
@@ -311,7 +333,8 @@ void SendTabToSelfBubbleController::HandleSendTabToDeviceResult(
     case SendTabToSelfResult::kFailureSyncDisabled:
     case SendTabToSelfResult::kFailureEntryRemoved:
     case SendTabToSelfResult::kFailureCommitTimeout:
-      ShowTabSentFailure(&GetWebContents(), url);
+    case SendTabToSelfResult::kFailureNoInternetConnection:
+      ShowTabSentFailure(&GetWebContents(), result, url);
       break;
   }
 }

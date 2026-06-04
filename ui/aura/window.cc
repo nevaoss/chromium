@@ -1031,6 +1031,7 @@ void Window::RemoveOrDestroyChildren() {
 }
 
 void Window::AfterPropertyChange(const void* key, int64_t old_value) {
+  ScopedDeleteBlocker blocker(this);
   for (WindowObserver& observer : observers_)
     observer.OnWindowPropertyChanged(this, key, old_value);
 }
@@ -1130,6 +1131,7 @@ void Window::SetOcclusionInfo(OcclusionState occlusion_state,
   occlusion_state_ = occlusion_state;
   occluded_region_in_root_ = occluded_region;
 
+  ScopedDeleteBlocker blocker(this);
   if (delegate_)
     delegate_->OnWindowOcclusionChanged(old_occlusion_state, occlusion_state);
 
@@ -1177,6 +1179,7 @@ void Window::OnParentChanged() {
 void Window::StackChildRelativeTo(Window* child,
                                   Window* target,
                                   StackDirection direction) {
+  ScopedDeleteBlocker blocker(this);
   DCHECK_NE(child, target);
   DCHECK(child);
   DCHECK(target);
@@ -1228,6 +1231,7 @@ void Window::StackChildLayerRelativeTo(Window* child,
 }
 
 void Window::OnStackingChanged() {
+  ScopedDeleteBlocker blocker(this);
   for (WindowObserver& observer : observers_)
     observer.OnWindowStackingChanged(this);
 }
@@ -1576,6 +1580,8 @@ void Window::OnPaintLayer(const ui::PaintContext& context) {
 void Window::OnLayerBoundsChanged(const gfx::Rect& old_bounds,
                                   ui::PropertyChangeReason reason) {
   WindowOcclusionTracker::ScopedPause pause_occlusion_tracking;
+
+  ScopedDeleteBlocker blocker(this);
 
   bounds_ = layer()->bounds();
 

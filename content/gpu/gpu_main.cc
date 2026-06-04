@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <fcntl.h>
 #include <stddef.h>
 #include <stdlib.h>
 
@@ -10,7 +11,6 @@
 #include <utility>
 
 #include "base/allocator/partition_alloc_support.h"
-#include "base/byte_size.h"
 #include "base/check.h"
 #include "base/command_line.h"
 #include "base/feature_list.h"
@@ -190,7 +190,7 @@ class ContentSandboxHelper : public gpu::GpuSandboxHelper {
 
     // On Linux, reading system memory doesn't work through the GPU sandbox.
     // This value is cached, so access it here to populate the cache.
-    base::SysInfo::AmountOfTotalPhysicalMemory();
+    base::SysInfo::AmountOfPhysicalMemory();
   }
 
   bool EnsureSandboxInitialized(gpu::GpuWatchdogThread* watchdog_thread,

@@ -156,16 +156,10 @@
       },
     },
   },
-  'ci_only': {
-    'ci_only': True,
-  },
   'crosier-no-arc': {
     'args': [
       '--test-launcher-filter-file=../../testing/buildbot/filters/chromeos.reven.chromeos_integration_tests.filter',
     ],
-  },
-  'experiments': {
-    'experiment_percentage': 100,
   },
   'gce': {
     'swarming': {
@@ -925,6 +919,7 @@
   },
   'tfc-cq-tast': {
     'skylab': {
+      'timeout_sec': 5400,
       'cros_test_names_from_file': [
         'chromeos/tast_control_cq_tests.txt',
       ],
@@ -947,6 +942,16 @@
     'args': [
       '--stop-ui',
       '--gtest_filter="VaapiTest.*"',
+    ],
+  },
+  'vaapi_unittest_libfake_args': {
+    'args': [
+      '--env-var',
+      'LIBVA_DRIVERS_PATH',
+      './',
+      '--env-var',
+      'LIBVA_DRIVER_NAME',
+      'libfake',
     ],
   },
   'very_limited_capacity_bot': {

@@ -12,6 +12,7 @@
 <translation id="1035113036584565771">Məsləhət bildirişləri tanıtımı bağlandı</translation>
 <translation id="1036348656032585052">Deaktiv edin</translation>
 <translation id="1045899828449635435">Bu saytlardan da data silinsin?</translation>
+<translation id="1049461303780085993">Cavablar, əsas məqamlar və daha çoxunu əldə etmək üçün Chrome-da Gemini-ı sınayın</translation>
 <translation id="1049743911850919806">Gizli Rejim</translation>
 <translation id="1052842760770519282">Parollarınızdan bəziləri əlçatan deyil</translation>
 <translation id="1057623954802068161">Səhifənin yuxarısına sürüşdürün</translation>
@@ -196,7 +197,6 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="1877073879466606884">Daxil olduğunuz profil idarə olunan profildir. Administrator profil ayarlarına uzaqdan dəyişiklik edə, hesabat vasitəsilə brauzer haqqında məlumatları təhlil edə və digər zəruri tapşırıqları yerinə yetirə bilər.</translation>
 <translation id="1879904908408734349">Giriş üzrə aşağıdakı vərəq bağlanıb</translation>
 <translation id="1883903952484604915">Fayllarım</translation>
-<translation id="1889626070177134359">Yuxarıdakı siyahıda <ph name="SUGGESTIONS_COUNT" /> element təklif edilib.</translation>
 <translation id="189358972401248634">Digər dillərdə</translation>
 <translation id="1899175549411605574">Qiymət statistikası üzrə aşağı vərəq</translation>
 <translation id="1900260903084164610">Davam etməklə, <ph name="BEGIN_TOS_LINK" />Xidmət Şərtləri<ph name="END_TOS_LINK" /> ilə razılaşırsınız.</translation>
@@ -256,6 +256,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="2138632817776076519"><ph name="TAB_TITLE" />, Seçilmiş qeydəalma tabı</translation>
 <translation id="2141396931810938595">İstifadənizə əsasən</translation>
 <translation id="2145315049852051678">Chrome brauzerin ən təhlükəsiz ayarlara malik olub-olmadığını müntəzəm yoxlayır. Nəzərdən keçirilməli məqam olsa, sizə bildirəcəyik.</translation>
+<translation id="2149968176347646218">Bağlantı güvənli deyil</translation>
 <translation id="2149973817440762519">Əlfəcinə düzəliş edin</translation>
 <translation id="2163089732491971196">Google Hesabında Chrome datasını istifadə etmək və yadda saxlamaq üçün parol ifadəsi daxil edin</translation>
 <translation id="2166228530126694506">Versiya <ph name="VERSION_NUMBER" /></translation>
@@ -298,6 +299,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="2318045970523081853">Zəng etmək üçün klikləyin</translation>
 <translation id="232137538351753795">Geri qayıtmaq üçün sol kənardan sürüşdürün</translation>
 <translation id="2323763861024343754">Sayt yaddaşı</translation>
+<translation id="2327445548174191329"><ph name="DEVICE_NAME" /> cihazından</translation>
 <translation id="2328474416100889417">Hər kəs "<ph name="GROUP_NAME" />" tab qrupuna girişini dərhal itirəcək və bütün dəvət keçidləri deaktiv ediləcək</translation>
 <translation id="2330186936255788117">Daha çox əlfəcin</translation>
 <translation id="2332515770639153015">Qabaqcıl Güvənli Baxış aktivdir</translation>
@@ -835,6 +837,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="4595237294768457124">Yeni tab səhifəsi açın</translation>
 <translation id="4595276580892809760">Qalereyadan şəkillər əlavə edin</translation>
 <translation id="4595805675102978678">Google Hesabı xətası</translation>
+<translation id="4599585406846903742">Tək səhifə görünüşü</translation>
 <translation id="4601095002996233687">Şübhəli endirmələr üçün hərtərəfli skanlama.</translation>
 <translation id="4606559747793337066">Sayt və ya tətbiq öz səhifəsindəki keçidləri məxfi olaraq əvvəlcədən yükləməyi tələb etdikdə Chrome kukilər olmadan Google serverləri vasitəsilə səhifələri şifrələyir və əvvəlcədən yükləyir. Bu, kimliyinizi əvvəlcədən yüklənmiş saytdan gizlədir.</translation>
 <translation id="4616150815774728855">Açın: <ph name="WEBAPK_NAME" /></translation>
@@ -1089,6 +1092,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="569536719314091526">Əlavə seçimlər düyməsində bu səhifəni istədiyiniz dilə tərcümə edin</translation>
 <translation id="5696597120588531049">Chrome sizi data pozuntuları, güvənli olmayan vebsaytlar və digər güvənlik məsələlərindən qoruya bilər</translation>
 <translation id="5698878456427040674">Seçilmiş hesabın dəstəklənib-dəstəklənmədiyini yoxlayın.</translation>
+<translation id="5700415746238689851">Gemini-ı açın</translation>
 <translation id="5709213329446699338"><ph name="SITE" /> silsilə porta qoşulmaq istəyir</translation>
 <translation id="5715150588940290235">Yadda saxlanmış təhlükəsizlik kodları silinsin?</translation>
 <translation id="572328651809341494">Son panellər</translation>
@@ -1325,6 +1329,7 @@ Yalnız parol ifadəsini bilən şəxs şifrələnmiş datanı oxuya bilər. Goo
 <translation id="6595046016124923392">Sizin üçün təsvirləri yaxşılaşdırmaq üçün şəkillər Google'a göndərilir.</translation>
 <translation id="6602173570135186741">Avto doldurma və parollar</translation>
 <translation id="661266467055912436">Siz və vebdəki hər kəs üçün təhlükəsizliyi artırır.</translation>
+<translation id="6615455863669487791">Mənə göstərin</translation>
 <translation id="6621391692573306628">Bu tabı başqa cihaza göndərmək üçün hər iki cihazda Chrome'a daxil olun</translation>
 <translation id="6627583120233659107">Qovluğa düzəliş edin</translation>
 <translation id="6633067410344541938">Anonim rejimi kiliddən çıxarın</translation>
@@ -1768,6 +1773,7 @@ Bu ayarı dəyişmək üçün <ph name="BEGIN_LINK" />hesabda Chrome datasını 
 <translation id="8271267069224406035">Spamı bildirin</translation>
 <translation id="8277710303010772444">Axtarışa başlayın</translation>
 <translation id="8279945625179116733"><ph name="APP_NAME" /> tərəfindən qorunur</translation>
+<translation id="8280797717392145626">Keçidlər qəbul edildi</translation>
 <translation id="8281886186245836920">Keçin</translation>
 <translation id="8282297628636750033">Mümkün olduqda saytlara tünd tema tətbiq edin</translation>
 <translation id="8282950411412455249">Təhlükəsizlik ayarlarına keçin</translation>
@@ -1903,6 +1909,7 @@ Bu ayarı dəyişmək üçün <ph name="BEGIN_LINK" />hesabda Chrome datasını 
 <translation id="8863714995118816041"><ph name="SITE_NAME" /> üçün icazələr yenidən verildi</translation>
 <translation id="8865415417596392024">Hesabdakı Chrome datası</translation>
 <translation id="8872506776304248286">Tətbiqdə açın</translation>
+<translation id="8880275451109933094">İki səhifə görünüşü</translation>
 <translation id="8890668505403261809">Anonim tablarınızı axtarın</translation>
 <translation id="8892234476517513962">Artıq daxil olmusunuz</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />, Seçilmiş, qeydəalma anonim tabı</translation>

@@ -52,7 +52,6 @@
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/grit/generated_resources.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "components/prefs/pref_service.h"
 #include "components/signin/core/browser/signin_error_controller.h"
@@ -782,7 +781,8 @@ void PeopleHandler::HandleShowSyncSetupUI(const base::ListValue& args) {
 
 #if BUILDFLAG(IS_CHROMEOS)
   // Mark Sync as requested by the user, in case it was reset via dashboard.
-  if (service) {
+  if (service && (service->HasSyncConsent() ||
+                  !syncer::IsReplaceSyncPromosWithSignInPromosEnabled())) {
     service->GetUserSettings()->ClearSyncFeatureDisabledViaDashboard();
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)

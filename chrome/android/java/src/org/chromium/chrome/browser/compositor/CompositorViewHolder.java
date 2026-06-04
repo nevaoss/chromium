@@ -88,6 +88,7 @@ import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.theme.ToolbarThemeColorProvider;
 import org.chromium.chrome.browser.toolbar.ControlContainer;
 import org.chromium.chrome.browser.ui.side_panel.AndroidSidePanelEnabledFn;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
 import org.chromium.chrome.browser.ui.side_ui.SideUiObserver;
 import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
@@ -1153,7 +1154,8 @@ public class CompositorViewHolder extends FrameLayout
                 && mSideUiStateProvider != null
                 && widthOverride == null) {
             SideUiSpecs sideUiSpecs = mSideUiStateProvider.getCurrentSideUiSpecs();
-            horizontalViewportInsets = sideUiSpecs.leftWidth() + sideUiSpecs.rightWidth();
+            horizontalViewportInsets =
+                    sideUiSpecs.getWidth(AnchorSide.LEFT) + sideUiSpecs.getWidth(AnchorSide.RIGHT);
         }
 
         // The view size takes into account of the browser controls whose height should be
@@ -1186,14 +1188,16 @@ public class CompositorViewHolder extends FrameLayout
             boolean keyboardInsetTransitionInProgress =
                     mDeferredWebContentsHeightInsetUpdate != null
                             || rawKeyboardInset != mAppliedWebContentsHeightInset;
+            boolean keyboardVisible =
+                    KeyboardVisibilityDelegate.getInstance().isKeyboardShowing(this);
 
-            if (!keyboardCompensationActive && !keyboardInsetTransitionInProgress) {
+            if (!keyboardCompensationActive
+                    && !keyboardInsetTransitionInProgress
+                    && !keyboardVisible) {
+                // Only refresh the baseline once keyboard state has fully settled.
                 mLastStableOutsetModeWebContentsHeight = webContentsHeight;
-            } else if (keyboardCompensationActive
-                    && mLastStableOutsetModeWebContentsHeight != null
-                    && webContentsHeight > mLastStableOutsetModeWebContentsHeight) {
-                // While keyboard compensation is active, WebContents height should never exceed
-                // the last stable baseline captured with compensation inactive.
+            } else if (mLastStableOutsetModeWebContentsHeight != null) {
+                // Clamp both directions while keyboard state is in flight.
                 webContentsHeight = mLastStableOutsetModeWebContentsHeight;
             }
         }
@@ -1419,7 +1423,8 @@ public class CompositorViewHolder extends FrameLayout
         if (webContents == null) return null;
 
         Point viewportSize = getViewportSize();
-        int sideUiTotalWidth = sideUiSpecs.leftWidth() + sideUiSpecs.rightWidth();
+        int sideUiTotalWidth =
+                sideUiSpecs.getWidth(AnchorSide.LEFT) + sideUiSpecs.getWidth(AnchorSide.RIGHT);
         int startWidth = ViewUtils.dpToPx(mActivity, webContents.getWidth());
         int targetWidth = viewportSize.x - sideUiTotalWidth;
 
@@ -1463,12 +1468,13 @@ public class CompositorViewHolder extends FrameLayout
 
     @Override
     public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs) {
-        int sideUiTotalWidth = sideUiSpecs.leftWidth() + sideUiSpecs.rightWidth();
+        int sideUiTotalWidth =
+                sideUiSpecs.getWidth(AnchorSide.RIGHT) + sideUiSpecs.getWidth(AnchorSide.LEFT);
         int webContentsWidth = getViewportSize().x - sideUiTotalWidth;
         updateWebContentsSize(getCurrentTab(), webContentsWidth);
 
         // TODO(crbug.com/514774842): Account for offset X for animations.
-        mLayoutManager.setContentOffsetX(sideUiSpecs.leftWidth());
+        mLayoutManager.setContentOffsetX(sideUiSpecs.getWidth(AnchorSide.LEFT));
 
         repositionTabViewForSideUi(sideUiSpecs);
         onViewportChanged();
@@ -1502,8 +1508,8 @@ public class CompositorViewHolder extends FrameLayout
         // TODO(b/496307238): verify if need to explicitly trigger repositionTabViewForSideUi again
         // after layout params are set.
         if (layoutParams == null) return;
-        layoutParams.leftMargin = sideUiSpecs.leftWidth();
-        layoutParams.rightMargin = sideUiSpecs.rightWidth();
+        layoutParams.leftMargin = sideUiSpecs.getWidth(AnchorSide.LEFT);
+        layoutParams.rightMargin = sideUiSpecs.getWidth(AnchorSide.RIGHT);
         mView.setLayoutParams(layoutParams);
     }
 
@@ -1623,8 +1629,8 @@ public class CompositorViewHolder extends FrameLayout
     private void adjustRectForSideUi(RectF outRect) {
         if (mSideUiStateProvider != null) {
             SideUiSpecs sideUiSpecs = mSideUiStateProvider.getCurrentSideUiSpecs();
-            outRect.left += sideUiSpecs.leftWidth();
-            outRect.right -= sideUiSpecs.rightWidth();
+            outRect.left += sideUiSpecs.getWidth(AnchorSide.LEFT);
+            outRect.right -= sideUiSpecs.getWidth(AnchorSide.RIGHT);
         }
     }
 

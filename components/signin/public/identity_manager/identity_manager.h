@@ -28,6 +28,7 @@
 #include "components/signin/public/identity_manager/access_token_fetcher.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_mutator.h"
+#include "crypto/signature_verifier.h"
 #include "google_apis/gaia/oauth2_access_token_manager.h"
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -322,7 +323,8 @@ class IdentityManager : public KeyedService,
   // Returns false if the generation cannot be started. In that case, `callback`
   // will not be invoked.
   bool GenerateBindingKeyRegistrationToken(
-      std::string_view supported_algorithms,
+      base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
+          supported_algorithms,
       std::string_view auth_code,
       base::OnceCallback<void(
           std::optional<signin::BindingKeyRegistrationTokenResult>)> callback);
@@ -376,6 +378,13 @@ class IdentityManager : public KeyedService,
   // triggered and there will be a subsequent invocation of
   // IdentityManager::Observer::OnAccountsInCookieJarChanged().
   AccountsInCookieJarInfo GetAccountsInCookieJar() const;
+
+  // Returns the accounts in the cookie jar without triggering an internal
+  // update even if the accounts in the cookie jar are stale.
+  //
+  // TODO(crbug.com/517864199): Remove once GetAccountsInCookieJar() no longer
+  // triggers an update.
+  AccountsInCookieJarInfo GetCachedAccountsInCookieJar() const;
 
   // Returns the session index of the primary account in the cookie jar, or
   // std::nullopt if the primary account is not signed in or not found in the

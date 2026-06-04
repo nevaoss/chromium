@@ -31,10 +31,12 @@
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
 #include "chrome/browser/ui/accelerator_table.h"
+#include "chrome/browser/ui/omnibox/ai_mode_button_config.h"
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/global_keyboard_shortcuts_mac.h"
 #endif
 #include "chrome/browser/glic/public/glic_enabling.h"
+#include "chrome/browser/indigo/resources/grit/indigo_strings.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_actions.h"
 #include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller.h"
@@ -125,6 +127,7 @@
 #include "components/lens/lens_features.h"
 #include "components/media_router/browser/media_router_dialog_controller.h"
 #include "components/media_router/browser/media_router_metrics.h"
+#include "components/multistep_filter/core/features.h"
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/browser/vector_icons.h"
 #include "components/policy/core/common/policy_pref_names.h"
@@ -608,9 +611,8 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_JS_OPTIMIZATIONS_DISABLED_ICON_TOOLTIP))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? vector_icons::kV8OffIcon
-                                                : vector_icons::kV8OffOldIcon,
-              ui::kColorIcon, ui::SimpleMenuModel::kDefaultIconSize))
+              vector_icons::kShieldIcon, ui::kColorIcon,
+              ui::SimpleMenuModel::kDefaultIconSize))
           .SetEnabled(true)
           .Build());
 
@@ -930,8 +932,9 @@ void BrowserActions::InitializeChromeMenuActions() {
           .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? vector_icons::kAdd2Icon
-                                                : vector_icons::kAddOldIcon,
+              features::IsRoundedIconsEnabled()
+                  ? vector_icons::kAddWeight500Icon
+                  : vector_icons::kAddOldIcon,
               ui::kColorIcon))
           .Build());
 
@@ -1439,6 +1442,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               ui::kColorIcon))
           .Build());
 
+  const auto& ai_config = ai_mode_button_config::GetCurrentAiModeButtonConfig();
   root_action_item_->AddChild(
       actions::ActionItem::Builder(
           base::BindRepeating(
@@ -1473,9 +1477,8 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionAiMode)
-          .SetText(l10n_util::GetStringUTF16(IDS_AI_MODE_ENTRYPOINT_LABEL))
-          .SetTooltipText(l10n_util::GetStringUTF16(
-              IDS_STARTER_PACK_AI_MODE_ACTION_SUGGESTION_CONTENTS))
+          .SetText(ai_config.text)
+          .SetTooltipText(ai_config.tooltip)
           .SetImage(ui::ImageModel::FromVectorIcon(
               features::IsRoundedIconsEnabled() ? omnibox::kSearchSparkIcon
                                                 : omnibox::kSearchSparkOldIcon))
@@ -1767,6 +1770,26 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               ui::kColorIcon, ui::SimpleMenuModel::kDefaultIconSize))
           .SetText(l10n_util::GetStringUTF16(IDS_INDIGO_ENTRYPOINT_CHIP_TEXT))
           .Build());
+
+  if (base::FeatureList::IsEnabled(multistep_filter::kMultistepFilter)) {
+    root_action_item_->AddChild(
+        actions::ActionItem::Builder()
+            .SetActionId(kActionMultistepFilter)
+            // TODO(b/512435534): Add SetInvokeActionCallback once the
+            // controller is updated.
+            .SetImage(ui::ImageModel::FromVectorIcon(
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+                vector_icons::kPlayCircleSparkIcon
+#else
+                features::IsRoundedIconsEnabled()
+                    ? vector_icons::kPlayArrowIcon
+                    : vector_icons::kPlayArrowChromeRefreshOldIcon
+#endif
+                ))
+            .SetText(
+                l10n_util::GetStringUTF16(IDS_MULTISTEP_FILTER_CUE_ACTION_TEXT))
+            .Build());
+  }
 
   if (base::FeatureList::IsEnabled(contextual_cueing::kContextualCueingV2)) {
     root_action_item_->AddChild(

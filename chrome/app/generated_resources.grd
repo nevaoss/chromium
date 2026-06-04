@@ -2445,7 +2445,7 @@ are declared in tools/grit/grit_args.gni.
       </message>
 
       <message name="IDS_EMAIL_VERIFIED" desc="Toast message to notify the user when their email is automatically verified by the browser.">
-        Email automatically verified
+        <ph name="ISSUER">$1<ex>google.com</ex></ph> verified your email
       </message>
 
       <if expr="is_chromeos">
@@ -4381,35 +4381,11 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_CERT_DETAILS_CERTIFICATE" desc="The label of the Certificate element in the details page of the certificate info dialog.">
           Certificate
         </message>
-        <message name="IDS_CERT_DETAILS_VERSION" desc="The label of the Version element in the details page of the certificate info dialog.">
-          Version
-        </message>
         <message name="IDS_CERT_DETAILS_VERSION_FORMAT" desc="The format of the Version field value in the details page of the certificate info dialog.">
           Version <ph name="NUMBER">$1<ex>3</ex></ph>
         </message>
-        <message name="IDS_CERT_DETAILS_SERIAL_NUMBER" desc="The label of the Serial Number element in the details page of the certificate info dialog.">
-          Serial Number
-        </message>
         <message name="IDS_CERT_DETAILS_CERTIFICATE_SIG_ALG" desc="The label of the Certificate Signature Algorithm element in the details page of the certificate info dialog.">
           Certificate Signature Algorithm
-        </message>
-        <message name="IDS_CERT_DETAILS_ISSUER" desc="The label of the Issuer element in the details page of the certificate info dialog.">
-          Issuer
-        </message>
-        <message name="IDS_CERT_DETAILS_VALIDITY" desc="The label of the Validity element in the details page of the certificate info dialog.">
-          Validity
-        </message>
-        <message name="IDS_CERT_DETAILS_NOT_BEFORE" desc="The label of the Validity->Not Before element in the details page of the certificate info dialog.">
-          Not Before
-        </message>
-        <message name="IDS_CERT_DETAILS_NOT_AFTER" desc="The label of the Validity->Not After element in the details page of the certificate info dialog.">
-          Not After
-        </message>
-        <message name="IDS_CERT_DETAILS_SUBJECT" desc="The label of the Subject element in the details page of the certificate info dialog. (In this case, subject refers to the entity the certificate was issued to.)">
-          Subject
-        </message>
-        <message name="IDS_CERT_DETAILS_SUBJECT_KEY_INFO" desc="The label of the Subject Public Key Info element in the details page of the certificate info dialog. (In this case, subject refers to the entity the certificate was issued to.)">
-          Subject Public Key Info
         </message>
         <message name="IDS_CERT_DETAILS_SUBJECT_KEY_ALG" desc="The label of the Subject Public Key Algorithm element in the details page of the certificate info dialog. (In this case, subject refers to the entity the certificate was issued to.)">
           Subject Public Key Algorithm
@@ -4528,9 +4504,6 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_CERT_X509_SUBJECT_DIRECTORY_ATTR" desc="description of extension Certificate Subject Directory Attributes">
           Certificate Subject Directory Attributes
         </message>
-        <message name="IDS_CERT_X509_SUBJECT_KEYID" desc="description of extension Certificate Subject Key ID">
-          Certificate Subject Key ID
-        </message>
         <message name="IDS_CERT_KEYID_FORMAT" desc="format for key id in certificate extensions details">
           Key ID: <ph name="KEY_ID">$1<ex>19 EB 8E 93</ex></ph>
         </message>
@@ -4540,44 +4513,14 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_CERT_SERIAL_NUMBER_FORMAT" desc="format for serial number in certificate extensions details">
           Serial Number: <ph name="SERIAL_NUMBER">$1<ex>19 EB 8E 93</ex></ph>
         </message>
-        <message name="IDS_CERT_X509_KEY_USAGE" desc="description of extension Certificate Key Usage">
-          Certificate Key Usage
-        </message>
-        <message name="IDS_CERT_X509_ISSUER_ALT_NAME" desc="description of extension Certificate Issuer Alternative Name">
-          Certificate Issuer Alternative Name
-        </message>
-        <message name="IDS_CERT_X509_BASIC_CONSTRAINTS" desc="description of extension Certificate Basic Constraints">
-          Certificate Basic Constraints
-        </message>
         <message name="IDS_CERT_X509_NAME_CONSTRAINTS" desc="description of extension Certificate Name Constraints">
           Certificate Name Constraints
-        </message>
-        <message name="IDS_CERT_X509_CRL_DIST_POINTS" desc="description of extension CRL Distribution Points">
-          CRL Distribution Points
-        </message>
-        <message name="IDS_CERT_X509_CERT_POLICIES" desc="description of extension Certificate Policies">
-          Certificate Policies
-        </message>
-        <message name="IDS_CERT_X509_SCT_LIST" desc="description of extension Signed Certificate Timestamp List">
-          Signed Certificate Timestamp List
-        </message>
-        <message name="IDS_CERT_QC_STATEMENTS" desc="description of extension Qualified Certificate Statements">
-          Qualified Certificate Statements
         </message>
         <message name="IDS_CERT_X509_POLICY_MAPPINGS" desc="description of extension Certificate Policy Mappings">
           Certificate Policy Mappings
         </message>
         <message name="IDS_CERT_X509_POLICY_CONSTRAINTS" desc="description of extension Certificate Policy Constraints">
           Certificate Policy Constraints
-        </message>
-        <message name="IDS_CERT_X509_AUTH_KEYID" desc="description of extension Certification Authority Key Identifier">
-          Certification Authority Key ID
-        </message>
-        <message name="IDS_CERT_X509_EXT_KEY_USAGE" desc="description of extension Extended Key Usage">
-          Extended Key Usage
-        </message>
-        <message name="IDS_CERT_X509_KEY_USAGE_SIGNING" desc="description of certificate usage Signing">
-          Signing
         </message>
         <message name="IDS_CERT_X509_BASIC_CONSTRAINT_IS_CA" desc="description of certificate constraint Is a Certification Authority">
           Is a Certification Authority
@@ -4626,30 +4569,6 @@ are declared in tools/grit/grit_args.gni.
         </message>
         <message name="IDS_CERT_MULTILINE_INFO_START_FORMAT" desc="format for header line where further info will appear on the following lines">
           <ph name="OID">$1<ex>OID.1.23.45.6</ex></ph>:
-        </message>
-        <message name="IDS_CERT_GENERAL_NAME_RFC822_NAME" desc="label for the certRFC822Name general name type">
-          Email Address
-        </message>
-        <message name="IDS_CERT_GENERAL_NAME_DNS_NAME" desc="label for the certDNSName general name type">
-          DNS Name
-        </message>
-        <message name="IDS_CERT_GENERAL_NAME_X400_ADDRESS" desc="label for the certX400Address general name type">
-          X.400 Address
-        </message>
-        <message name="IDS_CERT_GENERAL_NAME_DIRECTORY_NAME" desc="label for the certDirectoryName general name type">
-          X.500 Name
-        </message>
-        <message name="IDS_CERT_GENERAL_NAME_EDI_PARTY_NAME" desc="label for the certEDIPartyName general name type">
-          EDI Party Name
-        </message>
-        <message name="IDS_CERT_GENERAL_NAME_URI" desc="label for the certURI general name type">
-          URI
-        </message>
-        <message name="IDS_CERT_GENERAL_NAME_IP_ADDRESS" desc="label for the certIPAddress general name type">
-          IP Address
-        </message>
-        <message name="IDS_CERT_GENERAL_NAME_REGISTERED_ID" desc="label for the certRegisteredID general name type">
-          Registered OID
         </message>
         <message name="IDS_CERT_EXT_MS_APP_POLICIES" desc="description of extension Microsoft Application Policies">
           Microsoft Application Policies
@@ -4721,12 +4640,6 @@ are declared in tools/grit/grit_args.gni.
         </message>
         <message name="IDS_CERT_EKU_NETSCAPE_INTERNATIONAL_STEP_UP" desc="description of extended key usage Netscape International Step-Up">
           Netscape International Step-Up
-        </message>
-        <message name="IDS_CERT_EXTENSION_CRITICAL" desc="The text displayed in the certificate details dialog for a given extension which is critical">
-          Critical
-        </message>
-        <message name="IDS_CERT_EXTENSION_NON_CRITICAL" desc="The text displayed in the certificate details dialog for a given extension which is not critical">
-          Not Critical
         </message>
         <message name="IDS_CERT_DUMP_ERROR" desc="The text displayed in the certificate viewer dialog for a given field which could not be decoded">
           Error: Unable to decode certificate
@@ -9055,9 +8968,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_MODULES_CUSTOMIZE_IPH" desc="The description of the IPH that shows for customizing NTP Desktop modules.">
         Customize what you see on this page
       </message>
-      <message name="IDS_NTP_MODULES_FEED_TITLE" desc="Title shown in the header of the Following feed NTP module on the new tab page showing updates from sites followed by the user.">
-        Following
-      </message>
       <message name="IDS_NTP_MODULES_HISTORY_CLUSTERS_RESUME_BROWSING" desc="A label for the title in NTP History clusters Module.">
         Resume browsing
       </message>
@@ -10367,6 +10277,14 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_SPLIT_VIEW_RESIZE_RIGHT_SIDE_ACCESSIBLE_ALERT" is_accessibility_with_no_ui="true"
                desc="Accessible alert text used in IDS_SPLIT_VIEW_RESIZE_ACCESSIBLE_ALERT for which side the window/pane is seen on.">
                Right
+      </message>
+      <message name="IDS_SPLIT_VIEW_RESIZE_TOP_SIDE_ACCESSIBLE_ALERT" is_accessibility_with_no_ui="true"
+               desc="Accessible alert text used in IDS_SPLIT_VIEW_RESIZE_ACCESSIBLE_ALERT for which side the window/pane is seen on.">
+               Top
+      </message>
+      <message name="IDS_SPLIT_VIEW_RESIZE_BOTTOM_SIDE_ACCESSIBLE_ALERT" is_accessibility_with_no_ui="true"
+               desc="Accessible alert text used in IDS_SPLIT_VIEW_RESIZE_ACCESSIBLE_ALERT for which side the window/pane is seen on.">
+               Bottom
       </message>
 
       <!-- Vertical Tab Strings -->
@@ -15027,6 +14945,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
         <message name="IDS_RECENTLY_CLOSED_GROUP_UNNAMED" desc="In Title Case: Title of recently closed group that does not have a name, in Recent Tabs menu. [ICU_Syntax]">
           {NUM_TABS, plural, =1 {1 Tab} other {# Tabs}}
         </message>
+        <message name="IDS_RECENTLY_CLOSED_SPLIT" desc="In Title Case: Title of recently closed split views in Recent Tabs menu.">
+          Split View
+        </message>
         <message name="IDS_RECENT_TABS_NO_DEVICE_TABS" desc="In Title Case: The label in the Recent Tabs menu in the wrench menu when there's no tabs from other devices.">
           No Tabs from Other Devices
         </message>
@@ -15049,6 +14970,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
         </message>
         <message name="IDS_RECENTLY_CLOSED_GROUP_UNNAMED" desc="Title of recently closed group that does not have a name, in Recent Tabs menu. [ICU_Syntax]">
           {NUM_TABS, plural, =1 {1 tab} other {# tabs}}
+        </message>
+        <message name="IDS_RECENTLY_CLOSED_SPLIT" desc="Title of recently closed split views in Recent Tabs menu.">
+          Split view
         </message>
         <message name="IDS_RECENT_TABS_NO_DEVICE_TABS" desc="The label in the Recent Tabs menu in the wrench menu when there's no tabs from other devices.">
           No tabs from other devices
@@ -15073,9 +14997,15 @@ Please help our engineers fix this problem. Tell us what happened right before y
         </message>
       </if>
 
+      <!-- Default Browser messages -->
       <message name="IDS_DEFAULT_BROWSER_INFOBAR_OK_BUTTON_LABEL" desc="The label of the 'set as default' button on the default browser infobar.">
         Set as default
       </message>
+      <if expr="is_win">
+        <message name="IDS_DEFAULT_BROWSER_VISUAL_GUIDED_SETTER_INSTRUCTION_STEP_1" desc="Instruction step 1 of the default browser visual guided setter.">
+         Click <ph name="BEGIN_BOLD">&lt;strong&gt;</ph>Set Default<ph name="END_BOLD">&lt;/strong&gt;</ph> in your Windows settings.
+        </message>
+      </if>
 
       <if expr="is_win">
         <message name="IDS_RESTORE_WINDOW_MENU_WIN" desc="The Windows browser window menu item text for restoring the window.">
@@ -15152,6 +15082,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_SYNC_ERROR_BUBBLE_VIEW_TITLE" desc="Title in the sync error bubble view/notification.">
         Sync isn't working
       </message>
+      <message name="IDS_SYNC_ERROR_BUBBLE_VIEW_TITLE_2" desc="Title in the sync error bubble view/notification.">
+        Verify it's you
+      </message>
       <message name="IDS_SYNC_ERROR_PASSWORDS_BUBBLE_VIEW_TITLE" desc="Title in the sync error bubble view/notification for the case where the error only affects sync-ed passwords.">
         Password sync isn't working
       </message>
@@ -15191,11 +15124,20 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </if>
 
       <if expr="is_chromeos">
+        <message name="IDS_SYNC_DASHBOARD_DISABLED_BUBBLE_VIEW_TITLE" desc="Title in the notification shown when sync has been reset from the Google Dashboard.">
+          ChromeOS data no longer synced
+        </message>
+        <message name="IDS_SYNC_DASHBOARD_DISABLED_BUBBLE_VIEW_MESSAGE" desc="Message in the notification shown when sync has been reset from the Google Dashboard.">
+          To get your apps, settings, and Wi-Fi networks on all your devices, turn on sync in your ChromeOS settings
+        </message>
         <message name="IDS_SYNC_PASSPHRASE_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sync error bubble view when the user needs to enter their sync passphrase.">
           To start sync, enter your passphrase
         </message>
         <message name="IDS_SYNC_NEEDS_KEYS_FOR_PASSWORDS_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sync error notification when the user needs to reauth to retrieve the sync encryption keys, required to resume syncing of passwords specifically (other sync data works normally).">
           To sync your passwords, verify it's you
+        </message>
+        <message name="IDS_SYNC_NEEDS_KEYS_FOR_PASSWORDS_ERROR_BUBBLE_VIEW_MESSAGE_2" desc="Message in the sync error notification when the user needs to reauth to retrieve the sync encryption keys, required to resume syncing of passwords specifically (other sync data works normally).">
+          To use and save passwords in your Google Account, verify it's you
         </message>
         <message name="IDS_SYNC_NEEDS_KEYS_FOR_EVERYTHING_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sync error notification when the user needs to reauth to retrieve the sync encryption keys and resume sync.">
           To start sync, verify it's you
@@ -15205,6 +15147,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
         </message>
         <message name="IDS_SYNC_RECOVERABILITY_DEGRADED_FOR_PASSWORDS_ERROR_BUBBLE_VIEW_MESSAGE" desc="Message in the sync error notification when the user needs to reauth to add recovery options, affecting passwords only.">
           To make sure you can always access your saved passwords, verify it's you
+        </message>
+        <message name="IDS_SYNC_RECOVERABILITY_DEGRADED_FOR_PASSWORDS_ERROR_BUBBLE_VIEW_MESSAGE_2" desc="Message in the sync error notification when the user needs to reauth to add recovery options, affecting passwords only.">
+          To make sure you can always use the passwords in your Google Account, verify it's you
         </message>
       </if>
 
@@ -17788,15 +17733,6 @@ Please help our engineers fix this problem. Tell us what happened right before y
         </message>
       </if>
 
-      <message name="IDS_WEBAUTHN_CABLE_ACTIVATE_TITLE" desc="Title of the dialog shown when the user tries to sign-in using a phone as a security key.">
-        Check your phone
-      </message>
-      <message name="IDS_WEBAUTHN_CABLE_ACTIVATE_TITLE_DEVICE" desc="Title of the dialog shown when the user tries to sign-in using a phone as a security key.">
-        Check your device
-      </message>
-      <message name="IDS_WEBAUTHN_CABLE_ACTIVATE_DESCRIPTION" desc="Contents of the dialog shown when the user tries to sign-in using a phone as a security key.">
-        A notification was sent to your phone to confirm it's you.
-      </message>
       <message name="IDS_WEBAUTHN_CABLEV2_CONNECTING_TITLE" desc="The title of a dialog that is shown when the computer is connecting to a phone or tablet.">
         Connecting to your device
       </message>
@@ -19070,6 +19006,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_MULTISTEP_FILTER_SUGGESTION_RECENT_APPLY_BUTTON" desc="Text for the apply button on the Multistep Filter suggestion recent toast." translateable="false">
         Apply
       </message>
+      <message name="IDS_MULTISTEP_FILTER_CUE_ACTION_TEXT" desc="Text for the action button on the contextual cue for multistep filters." translateable="false">
+        Continue
+      </message>
       <message name="IDS_LINK_COPIED_TOAST_BODY" desc="Text on a toast notification that is shown when a link is successfully copied.">
         Link copied
       </message>
@@ -19481,17 +19420,6 @@ Please help our engineers fix this problem. Tell us what happened right before y
     Help improve spam protection by sharing notification content and the site's URL with Google. Content may be reviewed by humans.
   </message>
 
-     <!-- Merchant Trust IPH strings -->
-    <message name="IDS_MERCHANT_TRUST_IPH_TITLE" desc="Title of in product help to introduce merchant trust feature.">
-      See ratings for this store
-    </message>
-    <message name="IDS_MERCHANT_TRUST_IPH_BODY" desc="Content of in product help to introduce merchant trust feature.">
-      You can get a summary of what people are saying in their reviews
-    </message>
-    <message name="IDS_MERCHANT_TRUST_IPH_BODY_SCREEN_READER" desc="Announcement to screen reader users when the merchant trust IPH is shown." is_accessibility_with_no_ui="true">
-      You can get a summary of what people are saying in their reviews
-    </message>
-
     <!-- Chrome Apps Deprecation -->
     <if expr="is_chromeos">
       <message name="IDS_USER_INSTALLED_CHROME_APP_DEPRECATION_NOTIFICATION_MESSAGE" desc="Message of the notification displayed while launching a user-installed app.">
@@ -19521,6 +19449,12 @@ Please help our engineers fix this problem. Tell us what happened right before y
       </message>
       <message name="IDS_PDF_GLIC_SUMMARIZE_PROMPT" desc="Prompt sent to Gemini to summarize a PDF document.">
         Summarize this document
+      </message>
+      <message name="IDS_PDF_GLIC_SUMMARIZE_IPH_TITLE" desc="Title of the In Product Help bubble shown for the button to summarize PDF.">
+        Summarize with Gemini
+      </message>
+      <message name="IDS_PDF_GLIC_SUMMARIZE_IPH_GOT_IT" desc="Label on a button inside In Product Help Bubble that acknowledges it and dismisses the bubble.">
+        Got it
       </message>
     </if>
 
@@ -20012,28 +19946,6 @@ Please help our engineers fix this problem. Tell us what happened right before y
       Screenshot
     </message>
 
-
-    <!-- Indigo -->
-    <if expr="not is_android">
-      <message name="IDS_INDIGO_TOOLBAR_CAPTION" desc="Text indicating the content was generated by Google. Displayed in the Indigo toolbar." translateable="false">
-        Generated by Google
-      </message>
-      <message name="IDS_INDIGO_TOOLBAR_EXPAND" desc="Tooltip for expanding the Indigo toolbar." translateable="false">
-        Expand
-      </message>
-      <message name="IDS_INDIGO_TOOLBAR_COLLAPSE" desc="Tooltip for collapsing the Indigo toolbar." translateable="false">
-        Collapse
-      </message>
-      <message name="IDS_INDIGO_TOOLBAR_REGENERATE" desc="Button label to regenerate the Indigo content." translateable="false">
-        Regenerate
-      </message>
-      <message name="IDS_INDIGO_TOOLBAR_REPLACE_ORIGINAL_PHOTO" desc="Button label to replace the original photo." translateable="false">
-        Replace original photo
-      </message>
-      <message name="IDS_INDIGO_TOOLBAR_DELETE_ORIGINAL_PHOTO" desc="Button label to delete the original photo." translateable="false">
-        Delete original photo
-      </message>
-    </if>
 
     <!-- Chrome finds Notifications -->
     <message name="IDS_CHROME_FINDS_NOTIFICATIONS_HELPFUL_BUTTON_TEXT" desc="Text for the helpful button found on Chrome finds notifications.">

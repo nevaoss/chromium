@@ -46,6 +46,7 @@
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/passwords/ui_utils.h"
+#include "chrome/browser/ui/side_panel/mock_side_panel_ui.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/browser/user_education/user_education_service_factory.h"
@@ -506,6 +507,7 @@ class RenderViewContextMenuPrefsTest
   ui::UnownedUserDataHost unowned_user_data_host_;
   BrowserWindowFeatures features_;
   std::optional<lens::LensOverlayEntryPointController> lens_controller_;
+  MockSidePanelUI side_panel_ui_{unowned_user_data_host_};
   GURL last_preresolved_url_;
   base::OnceClosure preresolved_finished_closure_;
 
@@ -2295,6 +2297,52 @@ TEST_F(RenderViewContextMenuMenuSimplificationTest, PureSelectionLayout) {
   EXPECT_TRUE(menu.IsItemPresent(IDC_PRINT));
   EXPECT_TRUE(menu.IsItemPresent(IDC_CONTENT_CONTEXT_SEARCHWEBFOR));
   EXPECT_TRUE(menu.IsItemPresent(IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE));
+}
+
+TEST_F(RenderViewContextMenuMenuSimplificationTest, PageMenuSeparators) {
+  content::ContextMenuParams params = CreateParams(MenuItem::PAGE);
+  params.selection_text = u"";
+  params.is_editable = false;
+
+  TestRenderViewContextMenu menu(*web_contents()->GetPrimaryMainFrame(),
+                                 params);
+  menu.SetBrowser(GetBrowser());
+  ChromeTranslateClient::CreateForWebContents(web_contents());
+  menu.Init();
+
+  const ui::MenuModel& model = menu.menu_model();
+
+  std::optional<size_t> print_index;
+  for (size_t i = 0; i < model.GetItemCount(); ++i) {
+    if (model.GetCommandIdAt(i) == IDC_PRINT) {
+      print_index = i;
+      break;
+    }
+  }
+
+  ASSERT_TRUE(print_index.has_value());
+
+  std::optional<size_t> next_item_index;
+  for (size_t i = print_index.value() + 1; i < model.GetItemCount(); ++i) {
+    int command_id = model.GetCommandIdAt(i);
+    if (command_id == IDC_CONTENT_CONTEXT_LENS_REGION_SEARCH ||
+        command_id == IDC_CONTENT_CONTEXT_OPEN_IN_READING_MODE) {
+      next_item_index = i;
+      break;
+    }
+  }
+
+  ASSERT_TRUE(next_item_index.has_value());
+
+  bool found_separator = false;
+  for (size_t i = print_index.value() + 1; i < next_item_index.value(); ++i) {
+    if (model.GetTypeAt(i) == ui::MenuModel::TYPE_SEPARATOR) {
+      found_separator = true;
+      break;
+    }
+  }
+
+  EXPECT_TRUE(found_separator);
 }
 
 TEST_F(RenderViewContextMenuMenuSimplificationTest, LinkAndSelectionLayout) {

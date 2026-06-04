@@ -131,6 +131,7 @@
 #include "chrome/browser/ui/tabs/split_view_layout_menu_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/translate/partial_translate_bubble_model.h"
+#include "chrome/browser/ui/translate/translate_controller.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
@@ -271,6 +272,7 @@
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/image/image_skia_operations.h"
 #include "ui/gfx/text_elider.h"
+#include "ui/gfx/vector_icon_types.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "url/origin.h"
 
@@ -1202,7 +1204,11 @@ void RenderViewContextMenu::InitMenu() {
   const bool use_simplified_menu_for_text_selection =
       ShouldUseSimplifiedTextSelection();
 
+  bool took_simplified_page_items_path = false;
   if (content_type_->SupportsGroup(ContextMenuContentType::ITEM_GROUP_PAGE)) {
+    took_simplified_page_items_path = features::IsMenuSimplificationEnabled() &&
+                                      params_.selection_text.empty() &&
+                                      !params_.is_editable;
     AppendPageItems();
   }
 
@@ -1228,7 +1234,9 @@ void RenderViewContextMenu::InitMenu() {
   }
 
   if (features::IsMenuSimplificationEnabled()) {
-    AppendLensGeminiSection();
+    if (!took_simplified_page_items_path) {
+      AppendLensGeminiSection();
+    }
   } else {
     if (content_type_->SupportsGroup(
             ContextMenuContentType::ITEM_GROUP_SEARCHWEBFORIMAGE)) {
@@ -1897,13 +1905,11 @@ void RenderViewContextMenu::AppendLinkItems() {
       // Opening a link in split view should also go through the same
       // constraints as opening a link in a new tab since a split view tab is a
       // new tab that is then joined with the current active tab.
-      BrowserWindowInterface* const browser = GetBrowser();
-      if (browser &&
-          browser->GetType() == BrowserWindowInterface::TYPE_NORMAL) {
+      if (IsNormalBrowser()) {
         tabs::TabInterface* tab =
             tabs::TabInterface::MaybeGetFromContents(GetWebContents());
         auto [string_id, icon] = GetOpenLinkInSplitStringAndIcon(
-            tab, browser->GetBrowserForMigrationOnly());
+            tab, GetBrowser()->GetBrowserForMigrationOnly());
 
         if (tabs::kSplitViewHorizontalDirectAccess.Get() &&
             !(tab && tab->IsSplit())) {
@@ -2245,27 +2251,24 @@ void RenderViewContextMenu::AppendSearchWebForImageItems() {
 }
 
 void RenderViewContextMenu::AppendGlicShareImageItem() {
-  const BrowserWindowInterface* browser = GetBrowser();
-  const bool is_normal_browser =
-      browser && browser->GetType() == BrowserWindowInterface::TYPE_NORMAL;
-  if (glic::GlicEnabling::IsShareImageEnabledForProfile(GetProfile()) &&
-      !IsGlicWindow(this, browser_context_) && is_normal_browser) {
-    tabs::TabInterface* tab =
-        tabs::TabInterface::MaybeGetFromContents(source_web_contents_);
-    // Ensure we're in a tab for these items.
-    if (tab) {
-      menu_model_.AddItemWithIcon(
-          IDC_CONTENT_CONTEXT_GLICSHAREIMAGE,
-          l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_GLICSHAREIMAGE),
-          ui::ImageModel::FromVectorIcon(
-              glic::GlicVectorIconManager::GetVectorIcon(
-                  IDR_GLIC_BUTTON_VECTOR_ICON),
-              ui::kColorMenuIcon, kTabMenuIconSize));
-      menu_model_.SetElementIdentifierAt(
-          menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_GLICSHAREIMAGE)
-              .value(),
-          kGlicShareImageMenuItem);
-    }
+  if (!CanAppendGlicShareImageItem()) {
+    return;
+  }
+  tabs::TabInterface* tab =
+      tabs::TabInterface::MaybeGetFromContents(source_web_contents_);
+  // Ensure we're in a tab for these items.
+  if (tab) {
+    menu_model_.AddItemWithIcon(
+        IDC_CONTENT_CONTEXT_GLICSHAREIMAGE,
+        l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_GLICSHAREIMAGE),
+        ui::ImageModel::FromVectorIcon(
+            glic::GlicVectorIconManager::GetVectorIcon(
+                IDR_GLIC_BUTTON_VECTOR_ICON),
+            ui::kColorMenuIcon, kTabMenuIconSize));
+    menu_model_.SetElementIdentifierAt(
+        menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_GLICSHAREIMAGE)
+            .value(),
+        kGlicShareImageMenuItem);
   }
 }
 
@@ -2454,12 +2457,13 @@ void RenderViewContextMenu::AppendPageItems() {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
 
     // Ask gemini
+    size_t count_before = menu_model_.GetItemCount();
     MaybeAppendOpenGlicItem();
     // Remove separator to group with Lens
-    size_t count = menu_model_.GetItemCount();
-    if (count > 0 &&
-        menu_model_.GetTypeAt(count - 1) == ui::MenuModel::TYPE_SEPARATOR) {
-      menu_model_.RemoveItemAt(count - 1);
+    if (menu_model_.GetItemCount() > count_before &&
+        menu_model_.GetTypeAt(menu_model_.GetItemCount() - 1) ==
+            ui::MenuModel::TYPE_SEPARATOR) {
+      menu_model_.RemoveItemAt(menu_model_.GetItemCount() - 1);
     }
 
     // Search with google lens
@@ -2573,7 +2577,7 @@ void RenderViewContextMenu::AppendExitFullscreenItem() {
   }
 
   // Only show item if in fullscreen mode.
-  ExclusiveAccessManager* manager = browser->GetExclusiveAccessManager();
+  ExclusiveAccessManager* manager = ExclusiveAccessManager::From(browser);
   if (!manager ||
       !manager->fullscreen_controller()->IsControllerInitiatedFullscreen()) {
     return;
@@ -2718,9 +2722,7 @@ void RenderViewContextMenu::AppendReadAnythingItem() {
   }
 
   // Show Read Anything option if it's not already open in the side panel.
-  if (GetBrowser() &&
-      GetBrowser()->GetType() == BrowserWindowInterface::TYPE_NORMAL &&
-      !IsReadAnythingEntryShowing(GetBrowser())) {
+  if (IsNormalBrowser() && !IsReadAnythingEntryShowing(GetBrowser())) {
     std::u16string label;
     const std::u16string printable_selection_text = PrintableSelectionText();
     if (is_menu_simplification_enabled && !printable_selection_text.empty()) {
@@ -3201,15 +3203,15 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
   // NOTE: If new commands are being added, please disable them by default and
   // notify the ChromeOS team by filing a bug under this component --
   // b/?q=componentid:1389107.
-  Browser* const browser =
-      GetBrowser() ? GetBrowser()->GetBrowserForMigrationOnly() : nullptr;
+  BrowserWindowInterface* const browser_window = GetBrowser();
   bool should_disable_command_for_locked_fullscreen_or_on_task = false;
-  if (browser && platform_util::IsBrowserLockedFullscreen(browser)) {
+  if (browser_window &&
+      platform_util::IsBrowserLockedFullscreen(browser_window)) {
     should_disable_command_for_locked_fullscreen_or_on_task = true;
   }
 #if BUILDFLAG(IS_CHROMEOS)
-  if (browser && ash::boca::OnTaskLockedController::From(browser)
-                     ->is_locked_for_on_task()) {
+  if (browser_window && ash::boca::OnTaskLockedController::From(browser_window)
+                            ->is_locked_for_on_task()) {
     bool is_page_nav_command =
         (id == IDC_BACK) || (id == IDC_FORWARD) || (id == IDC_RELOAD);
     bool is_allowed_content_context_command =
@@ -4507,12 +4509,20 @@ bool RenderViewContextMenu::AppendQRCodeGeneratorItem(
   auto string_id = for_image ? IDS_CONTEXT_MENU_GENERATE_QR_CODE_IMAGE
                              : IDS_CONTEXT_MENU_GENERATE_QR_CODE_PAGE;
 #if BUILDFLAG(IS_MAC)
-  draw_icon = false;
+  draw_icon &= features::IsMenuSimplificationEnabled();
 #endif
   if (draw_icon) {
+    const gfx::VectorIcon* qr_code_icon = &kQrcodeGeneratorCustomIcon;
+    if (features::IsMenuSimplificationEnabled()) {
+      if (features::IsRoundedIconsEnabled()) {
+        qr_code_icon = &kQrCodeIcon;
+      } else {
+        qr_code_icon = &kQrCodeChromeRefreshOldIcon;
+      }
+    }
     menu_model_.AddItemWithStringIdAndIcon(
         IDC_CONTENT_CONTEXT_GENERATE_QR_CODE, string_id,
-        ui::ImageModel::FromVectorIcon(kQrcodeGeneratorCustomIcon));
+        ui::ImageModel::FromVectorIcon(*qr_code_icon));
   } else {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_GENERATE_QR_CODE,
                                     string_id);
@@ -4904,7 +4914,7 @@ void RenderViewContextMenu::ExecExitFullscreen() {
     NOTREACHED();
   }
 
-  ExclusiveAccessManager* manager = browser->GetExclusiveAccessManager();
+  ExclusiveAccessManager* manager = ExclusiveAccessManager::From(browser);
   if (manager) {
     manager->ExitExclusiveAccess();
   }
@@ -5246,13 +5256,13 @@ void RenderViewContextMenu::ExecPartialTranslate() {
     chrome_translate_client->GetTranslateLanguages(
         embedder_web_contents_, &source_language, &target_language,
         /*for_display=*/false);
-    Browser* browser =
-        GetBrowser() ? GetBrowser()->GetBrowserForMigrationOnly() : nullptr;
+    BrowserWindowInterface* browser = GetBrowser();
     if (browser) {
-      // TODO(crbug.com/514729745): Remove StartPartialTranslate in
-      // favor of a BrowserWindowInterface service.
-      browser->window()->StartPartialTranslate(source_language, target_language,
-                                               params_.selection_text);
+      TranslateController* controller = TranslateController::From(browser);
+      if (controller) {
+        controller->StartPartialTranslate(source_language, target_language,
+                                          params_.selection_text);
+      }
     }
   }
 }
@@ -5283,12 +5293,17 @@ void RenderViewContextMenu::ExecProtocolHandlerSettings(int event_flags) {
 
 void RenderViewContextMenu::MaybeAppendOpenGlicItem() {
   // Append an item for opening Glic
-  if (glic::GlicEnabling::IsContextualMenuItemEnabled(GetProfile())) {
-    if (content_type_->SupportsGroup(
-            ContextMenuContentType::ITEM_GROUP_GLICSHAREIMAGE) &&
-        CanAppendGlicShareImageItem()) {
-      return;
-    }
+  if (!IsNormalBrowser()) {
+    return;
+  }
+  if (content_type_->SupportsGroup(
+          ContextMenuContentType::ITEM_GROUP_GLICSHAREIMAGE) &&
+      CanAppendGlicShareImageItem()) {
+    return;
+  }
+
+  if (glic::GlicEnabling::IsContextualMenuItemEnabled(GetProfile()) &&
+      !IsGlicWindow(this, browser_context_)) {
     std::string arm = features::kGlicContextMenuArm.Get();
     bool show_summarize_page = (arm == "arm2");
     menu_model_.AddItemWithStringIdAndIcon(
@@ -5474,6 +5489,11 @@ BrowserWindowInterface* RenderViewContextMenu::GetBrowser() const {
       embedder_web_contents_);
 }
 
+bool RenderViewContextMenu::IsNormalBrowser() const {
+  const BrowserWindowInterface* browser = GetBrowser();
+  return browser && browser->GetType() == BrowserWindowInterface::TYPE_NORMAL;
+}
+
 ToastController* RenderViewContextMenu::GetToastController() const {
   // If the context menu is opened in a normal tab, get the browser directly.
   BrowserWindowInterface* browser = GetBrowser();
@@ -5639,6 +5659,10 @@ bool RenderViewContextMenu::CanAppendRegionSearchItem() const {
 }
 
 bool RenderViewContextMenu::CanAppendGlicShareImageItem() const {
+  if (!IsNormalBrowser()) {
+    return false;
+  }
+
   if (!glic::GlicEnabling::IsShareImageEnabledForProfile(GetProfile()) ||
       IsGlicWindow(this, browser_context_)) {
     return false;

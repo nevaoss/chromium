@@ -151,9 +151,14 @@ TEST_F(TokenBindingHelperTest, ClearAllKeys) {
   helper().SetBindingKey(account_id, wrapped_key);
   helper().SetBindingKey(account_id2, wrapped_key2);
 
+  helper().OnAllCredentialsLoaded(true);
+  RunBackgroundTasks();
+  EXPECT_TRUE(helper().IsRegistrationKeyReady());
+
   helper().ClearAllKeys();
   EXPECT_FALSE(helper().HasBindingKey(account_id));
   EXPECT_FALSE(helper().HasBindingKey(account_id2));
+  EXPECT_FALSE(helper().IsRegistrationKeyReady());
 }
 
 TEST_F(TokenBindingHelperTest, GetBoundTokenCount) {
@@ -353,8 +358,9 @@ TEST_F(TokenBindingHelperTest,
   base::test::TestFuture<
       std::optional<signin::BindingKeyRegistrationTokenResult>>
       future;
-  helper().GenerateBindingKeyRegistrationToken("ES256", "auth_code",
-                                               future.GetCallback());
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code",
+      future.GetCallback());
   RunBackgroundTasks();
 
   ASSERT_TRUE(future.Get().has_value());
@@ -376,8 +382,9 @@ TEST_F(TokenBindingHelperTest,
   base::test::TestFuture<
       std::optional<signin::BindingKeyRegistrationTokenResult>>
       future;
-  helper().GenerateBindingKeyRegistrationToken("ES256", "auth_code",
-                                               future.GetCallback());
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code",
+      future.GetCallback());
   RunBackgroundTasks();
 
   ASSERT_TRUE(future.Get().has_value());
@@ -400,10 +407,12 @@ TEST_F(TokenBindingHelperTest,
       std::optional<signin::BindingKeyRegistrationTokenResult>>
       future_2;
 
-  helper().GenerateBindingKeyRegistrationToken("ES256", "auth_code_1",
-                                               future_1.GetCallback());
-  helper().GenerateBindingKeyRegistrationToken("ES256", "auth_code_2",
-                                               future_2.GetCallback());
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code_1",
+      future_1.GetCallback());
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code_2",
+      future_2.GetCallback());
   RunBackgroundTasks();
 
   ASSERT_TRUE(future_1.Get().has_value());
@@ -431,30 +440,37 @@ TEST_F(TokenBindingHelperTest,
       std::optional<signin::BindingKeyRegistrationTokenResult>>
       future_3;
 
-  helper().GenerateBindingKeyRegistrationToken("ES256", "auth_code_1",
-                                               future_1.GetCallback());
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code_1",
+      future_1.GetCallback());
   RunBackgroundTasks();
   ASSERT_TRUE(future_1.Get().has_value());
   EXPECT_EQ(future_1.Get()->wrapped_binding_key, wrapped_key);
+  EXPECT_TRUE(helper().IsRegistrationKeyReady());
 
   // Setting the second-to-last key to empty should not clear the helper or
   // change key selection.
   helper().SetBindingKey(account_id_1, {});
+  EXPECT_TRUE(helper().IsRegistrationKeyReady());
 
-  helper().GenerateBindingKeyRegistrationToken("ES256", "auth_code_2",
-                                               future_2.GetCallback());
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code_2",
+      future_2.GetCallback());
   RunBackgroundTasks();
   ASSERT_TRUE(future_2.Get().has_value());
   EXPECT_EQ(future_1.Get()->binding_key_id, future_2.Get()->binding_key_id);
 
   // Setting the last key to empty should clear the helper.
   helper().SetBindingKey(account_id_2, {});
+  EXPECT_FALSE(helper().IsRegistrationKeyReady());
 
-  helper().GenerateBindingKeyRegistrationToken("ES256", "auth_code_3",
-                                               future_3.GetCallback());
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code_3",
+      future_3.GetCallback());
   RunBackgroundTasks();
   ASSERT_TRUE(future_3.Get().has_value());
   EXPECT_NE(future_2.Get()->binding_key_id, future_3.Get()->binding_key_id);
+  EXPECT_TRUE(helper().IsRegistrationKeyReady());
 }
 
 TEST_F(TokenBindingHelperTest,
@@ -466,8 +482,9 @@ TEST_F(TokenBindingHelperTest,
       std::optional<signin::BindingKeyRegistrationTokenResult>>
       future_2;
 
-  helper().GenerateBindingKeyRegistrationToken("ES256", "auth_code_1",
-                                               future_1.GetCallback());
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code_1",
+      future_1.GetCallback());
 
   // Adding an unbound token (setting binding key to empty for an account that
   // didn't have a binding key) should not clear the in-progress registration
@@ -475,8 +492,9 @@ TEST_F(TokenBindingHelperTest,
   CoreAccountId account_id = CoreAccountId::FromGaiaId(GaiaId("test_gaia_id"));
   helper().SetBindingKey(account_id, {});
 
-  helper().GenerateBindingKeyRegistrationToken("ES256", "auth_code_2",
-                                               future_2.GetCallback());
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code_2",
+      future_2.GetCallback());
   RunBackgroundTasks();
 
   ASSERT_TRUE(future_1.Get().has_value());
@@ -484,17 +502,79 @@ TEST_F(TokenBindingHelperTest,
   EXPECT_EQ(future_1.Get()->binding_key_id, future_2.Get()->binding_key_id);
 }
 
+TEST_F(TokenBindingHelperTest,
+       RegistrationKeyIsReadyAfterAllCredentialsLoaded) {
+  EXPECT_FALSE(helper().IsRegistrationKeyReady());
+
+  helper().OnAllCredentialsLoaded(true);
+  EXPECT_FALSE(helper().IsRegistrationKeyReady());
+
+  RunBackgroundTasks();
+  EXPECT_TRUE(helper().IsRegistrationKeyReady());
+}
+
+TEST_F(TokenBindingHelperTest, OnAllCredentialsLoadedNoRefreshTokens) {
+  EXPECT_FALSE(helper().IsRegistrationKeyReady());
+
+  helper().OnAllCredentialsLoaded(/*has_refresh_tokens=*/false);
+  RunBackgroundTasks();
+  EXPECT_FALSE(helper().IsRegistrationKeyReady());
+}
+
+TEST_F(TokenBindingHelperTest,
+       OnAllCredentialsLoadedDoesNotGenerateNewKeyIfEmpty) {
+  helper().OnAllCredentialsLoaded(true);
+  RunBackgroundTasks();
+  EXPECT_TRUE(helper().IsRegistrationKeyReady());
+
+  base::test::TestFuture<
+      std::optional<signin::BindingKeyRegistrationTokenResult>>
+      future;
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code",
+      future.GetCallback());
+  RunBackgroundTasks();
+
+  ASSERT_TRUE(future.Get().has_value());
+  const signin::BindingKeyRegistrationTokenResult& result = *future.Get();
+  EXPECT_FALSE(result.wrapped_binding_key.empty());
+}
+
+TEST_F(TokenBindingHelperTest, OnAllCredentialsLoadedReusesExistingKey) {
+  CoreAccountId account_id = CoreAccountId::FromGaiaId(GaiaId("test_gaia_id"));
+  std::vector<uint8_t> wrapped_key = GetWrappedKey(GenerateNewSigningKey());
+  helper().SetBindingKey(account_id, wrapped_key);
+
+  helper().OnAllCredentialsLoaded(true);
+  RunBackgroundTasks();
+  EXPECT_TRUE(helper().IsRegistrationKeyReady());
+
+  base::test::TestFuture<
+      std::optional<signin::BindingKeyRegistrationTokenResult>>
+      future;
+  helper().GenerateBindingKeyRegistrationToken(
+      {crypto::SignatureVerifier::ECDSA_SHA256}, "auth_code",
+      future.GetCallback());
+  RunBackgroundTasks();
+
+  ASSERT_TRUE(future.Get().has_value());
+  const signin::BindingKeyRegistrationTokenResult& result = *future.Get();
+  EXPECT_EQ(result.wrapped_binding_key, wrapped_key);
+}
+
 class TokenBindingHelperUpgradeTest : public TokenBindingHelperTest {
  public:
   TokenBindingHelperUpgradeTest() {
-    ON_CALL(mock_save_callback_, Run).WillByDefault(Return(true));
+    ON_CALL(mock_save_callback_, Run)
+        .WillByDefault(
+            Return(TokenBindingHelper::SaveBindingKeyResult::kSuccess));
     helper().SetSaveBindingKeyCallback(mock_save_callback_.Get());
   }
 
   void StartUpgrade(const CoreAccountId& account_id) {
-    helper().PerformTokenBindingUpgrade(account_id, "test_token",
-                                        shared_factory_, "test_device_id",
-                                        "test_challenge");
+    helper().PerformTokenBindingUpgrade(
+        account_id, "test_token", shared_factory_, "test_device_id",
+        "test_challenge", {crypto::SignatureVerifier::ECDSA_SHA256});
   }
 
   network::TestURLLoaderFactory* test_url_loader_factory() {
@@ -521,7 +601,7 @@ TEST_F(TokenBindingHelperUpgradeTest, PerformTokenBindingUpgrade) {
   CoreAccountId account_id = CoreAccountId::FromGaiaId(GaiaId("test_gaia_id"));
   EXPECT_CALL(mock_save_callback(),
               Run(account_id, std::string_view("test_token"), testing::_))
-      .WillOnce(Return(true));
+      .WillOnce(Return(TokenBindingHelper::SaveBindingKeyResult::kSuccess));
 
   StartUpgrade(account_id);
   RunBackgroundTasks();
@@ -540,6 +620,9 @@ TEST_F(TokenBindingHelperUpgradeTest, PerformTokenBindingUpgrade) {
   histogram_tester().ExpectUniqueSample(
       "Signin.TokenBinding.UpgradeResult",
       signin::OAuth2UpgradeTokenFlowResult::kSuccess, 1);
+  histogram_tester().ExpectUniqueSample(
+      "Signin.TokenBinding.UpgradeSaveBindingKeyResult",
+      TokenBindingHelper::SaveBindingKeyResult::kSuccess, 1);
 }
 
 TEST_F(TokenBindingHelperUpgradeTest,
@@ -547,7 +630,8 @@ TEST_F(TokenBindingHelperUpgradeTest,
   CoreAccountId account_id = CoreAccountId::FromGaiaId(GaiaId("test_gaia_id"));
   EXPECT_CALL(mock_save_callback(),
               Run(account_id, std::string_view("test_token"), _))
-      .WillOnce(Return(false));
+      .WillOnce(Return(
+          TokenBindingHelper::SaveBindingKeyResult::kRefreshTokenNotFound));
 
   StartUpgrade(account_id);
   RunBackgroundTasks();
@@ -558,6 +642,9 @@ TEST_F(TokenBindingHelperUpgradeTest,
       "Signin.TokenBinding.UpgradeResult",
       signin::OAuth2UpgradeTokenFlowResult::kFailedToSaveBindingKey, 1);
   histogram_tester().ExpectTotalCount("Signin.TokenBinding.UpgradeDuration", 1);
+  histogram_tester().ExpectUniqueSample(
+      "Signin.TokenBinding.UpgradeSaveBindingKeyResult",
+      TokenBindingHelper::SaveBindingKeyResult::kRefreshTokenNotFound, 1);
 }
 
 TEST_F(TokenBindingHelperUpgradeTest,

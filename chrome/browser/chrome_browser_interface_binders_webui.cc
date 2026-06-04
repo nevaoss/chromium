@@ -10,8 +10,6 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
 #include "chrome/browser/media/media_engagement_score_details.mojom.h"
 #include "chrome/browser/optimization_guide/optimization_guide_internals_ui.h"
-#include "chrome/browser/ui/webui/accessibility_annotator_internals/personal_context_internals.mojom.h"
-#include "chrome/browser/ui/webui/accessibility_annotator_internals/personal_context_internals_ui.h"
 #include "chrome/browser/ui/webui/actor_internals/actor_internals_ui.h"
 #include "chrome/browser/ui/webui/bluetooth_internals/bluetooth_internals.mojom.h"
 #include "chrome/browser/ui/webui/bluetooth_internals/bluetooth_internals_ui.h"
@@ -20,6 +18,8 @@
 #include "chrome/browser/ui/webui/chrome_finds_internals/chrome_finds_internals_ui.h"
 #include "chrome/browser/ui/webui/chrome_urls/chrome_urls_ui.h"
 #include "chrome/browser/ui/webui/connectors_internals/connectors_internals_ui.h"
+#include "chrome/browser/ui/webui/context_hub/context_hub.mojom.h"
+#include "chrome/browser/ui/webui/context_hub/context_hub_ui.h"
 #include "chrome/browser/ui/webui/data_sharing_internals/data_sharing_internals_ui.h"
 #include "chrome/browser/ui/webui/engagement/site_engagement_ui.h"
 #include "chrome/browser/ui/webui/location_internals/location_internals.mojom.h"
@@ -28,6 +28,8 @@
 #include "chrome/browser/ui/webui/omnibox/aim_eligibility/aim_eligibility.mojom.h"
 #include "chrome/browser/ui/webui/omnibox/omnibox_internals.mojom.h"
 #include "chrome/browser/ui/webui/omnibox/omnibox_ui.h"
+#include "chrome/browser/ui/webui/personal_context_internals/personal_context_internals.mojom.h"
+#include "chrome/browser/ui/webui/personal_context_internals/personal_context_internals_ui.h"
 #include "chrome/browser/ui/webui/policy/policy_ui.h"
 #include "chrome/browser/ui/webui/privacy_sandbox/privacy_sandbox_internals_ui.h"
 #include "chrome/browser/ui/webui/segmentation_internals/segmentation_internals_ui.h"
@@ -66,7 +68,6 @@
 #include "chrome/browser/ui/webui/user_education_internals/user_education_internals_ui.h"
 #include "chrome/browser/ui/webui/webnn_internals/webnn_internals.mojom.h"
 #include "chrome/browser/ui/webui/webnn_internals/webnn_internals_ui.h"
-#include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
 #if !BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ui/webui/signin/profile_picker_ui.h"
 #endif
@@ -117,19 +118,6 @@ void BindTrackedElementHandler(
     content::RenderFrameHost* frame_host,
     mojo::PendingReceiver<tracked_element::mojom::TrackedElementHandler>
         pending_receiver) {
-#if !BUILDFLAG(IS_ANDROID)
-  auto* web_ui = frame_host->GetWebUI();
-  if (web_ui) {
-    auto* controller = web_ui->GetController();
-    // The WebUIBrowserUI is constructed before the ElementContext is a
-    // available, so we can't use the global binding flow.
-    if (auto* browser_ui = controller->GetAs<WebUIBrowserUI>()) {
-      browser_ui->BindInterface(std::move(pending_receiver));
-      return;
-    }
-  }
-#endif
-
   auto handler =
       ui::TrackedElementHandlerDocumentSingleton::GetOrCreate(frame_host);
   if (handler) {
@@ -265,6 +253,9 @@ void PopulateChromeWebUIFrameBindersPartsAllPlatforms(
   RegisterWebUIControllerInterfaceBinder<
       subresource_filter::mojom::SubresourceFilterInternalsHandler,
       subresource_filter::SubresourceFilterInternalsUI>(map);
+
+  RegisterWebUIControllerInterfaceBinder<
+      browser::context_hub::mojom::PageHandlerFactory, ContextHubUI>(map);
 
   RegisterWebUIControllerInterfaceBinder<
       browser::personal_context_internals::mojom::PageHandlerFactory,

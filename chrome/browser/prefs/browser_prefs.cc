@@ -55,6 +55,7 @@
 #include "chrome/browser/notifications/notification_display_service_impl.h"
 #include "chrome/browser/notifications/notifier_state_tracker.h"
 #include "chrome/browser/notifications/platform_notification_service_impl.h"
+#include "chrome/browser/notifications/scheduler/public/tips_prefs.h"
 #include "chrome/browser/permissions/quiet_notification_permission_ui_state.h"
 #include "chrome/browser/platform_experience/prefs.h"
 #include "chrome/browser/prefs/chrome_pref_service_factory.h"
@@ -432,6 +433,7 @@
 #include "chrome/browser/ash/release_notes/release_notes_storage.h"
 #include "chrome/browser/ash/scanning/chrome_scanning_app_delegate.h"
 #include "chrome/browser/ash/settings/hardware_data_usage_controller.h"
+#include "chrome/browser/ash/settings/metrics_reporting_level_controller.h"
 #include "chrome/browser/ash/settings/stats_reporting_controller.h"
 #include "chrome/browser/ash/system/automatic_reboot_manager.h"
 #include "chrome/browser/ash/system/input_device_settings.h"
@@ -1488,6 +1490,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
   ash::ServicesCustomizationDocument::RegisterPrefs(registry);
   ash::StartupUtils::RegisterPrefs(registry);
   ash::StatsReportingController::RegisterLocalStatePrefs(registry);
+  ash::MetricsReportingLevelController::RegisterLocalStatePrefs(registry);
   ash::system::AutomaticRebootManager::RegisterPrefs(registry);
   ash::TimeZoneResolver::RegisterPrefs(registry);
   ash::UserImageManagerImpl::RegisterPrefs(registry);
@@ -1715,6 +1718,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   QuietNotificationPermissionUiState::RegisterProfilePrefs(registry);
   regional_capabilities::prefs::RegisterProfilePrefs(registry);
   RegisterBrowserUserPrefs(registry);
+  registry->RegisterBooleanPref(prefs::kRestrictYouTubeCookiesDeletion, false);
   RegisterGeminiSettingsPrefs(registry);
   RegisterPrefersDefaultScrollbarStylesPrefs(registry);
   RegisterSafetyHubProfilePrefs(registry);
@@ -2128,22 +2132,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   registry->RegisterBooleanPref(ntp_tiles::prefs::kTipsHomeModuleEnabled, true);
 
 #if BUILDFLAG(IS_ANDROID)
-  registry->RegisterBooleanPref(prefs::kAndroidTipNotificationShownESB, false);
-  registry->RegisterBooleanPref(prefs::kAndroidTipNotificationShownQuickDelete,
-                                false);
-  registry->RegisterBooleanPref(prefs::kAndroidTipNotificationShownLens, false);
-  registry->RegisterBooleanPref(
-      prefs::kAndroidTipNotificationShownBottomOmnibox, false);
-  registry->RegisterBooleanPref(
-      prefs::kAndroidTipNotificationShownPasswordAutofill, false);
-  registry->RegisterBooleanPref(prefs::kAndroidTipNotificationShownSignin,
-                                false);
-  registry->RegisterBooleanPref(
-      prefs::kAndroidTipNotificationShownCreateTabGroups, false);
-  registry->RegisterBooleanPref(prefs::kAndroidTipNotificationShownCustomizeMVT,
-                                false);
-  registry->RegisterBooleanPref(prefs::kAndroidTipNotificationShownRecentTabs,
-                                false);
+  notifications::tips::prefs::RegisterProfilePrefs(registry);
 #endif  // BUILDFLAG(IS_ANDROID)
 
   registry->RegisterBooleanPref(prefs::kStaticStorageQuotaEnabled, false);

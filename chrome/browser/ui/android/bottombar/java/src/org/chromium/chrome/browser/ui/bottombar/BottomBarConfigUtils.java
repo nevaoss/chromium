@@ -52,6 +52,13 @@ public class BottomBarConfigUtils {
         return !tab.isIncognito()
                 && tab.getNativePage() != null
                 && "newtab".equals(tab.getNativePage().getHost())
-                && isBottomBarEnabled(context);
+                && isBottomBarEnabled(context)
+                && !shouldDisableOnNtp()
+                && ChromeFeatureList.sAndroidBottomBarNtpScrollOffEnabled.getValue();
+    }
+
+    /** Whether to always use the filled GLIC icon. */
+    public static boolean alwaysUseFilledIcon() {
+        return ChromeFeatureList.sAndroidBottomBarAlwaysUseFilledGlicIcon.getValue();
     }
 }

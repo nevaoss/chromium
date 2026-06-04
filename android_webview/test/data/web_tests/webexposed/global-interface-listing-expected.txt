@@ -2447,7 +2447,6 @@ interface Element : Node
     getter ariaValueMin
     getter ariaValueNow
     getter ariaValueText
-    getter ariaVirtualContent
     getter assignedSlot
     getter attributes
     getter childElementCount
@@ -2629,7 +2628,6 @@ interface Element : Node
     setter ariaValueMin
     setter ariaValueNow
     setter ariaValueText
-    setter ariaVirtualContent
     setter classList
     setter className
     setter containerTiming
@@ -2715,7 +2713,6 @@ interface ElementInternals
     getter ariaValueMin
     getter ariaValueNow
     getter ariaValueText
-    getter ariaVirtualContent
     getter behaviors
     getter form
     getter labels
@@ -2782,7 +2779,6 @@ interface ElementInternals
     setter ariaValueMin
     setter ariaValueNow
     setter ariaValueText
-    setter ariaVirtualContent
     setter role
 interface EncodedAudioChunk
     attribute @@toStringTag
@@ -7389,6 +7385,14 @@ interface PerformanceServerTiming
     getter name
     method constructor
     method toJSON
+interface PerformanceSoftNavigation : PerformanceEntry
+    attribute @@toStringTag
+    getter interactionId
+    getter navigationType
+    getter paintTime
+    getter presentationTime
+    method constructor
+    method getLargestInteractionContentfulPaint
 interface PerformanceTiming
     attribute @@toStringTag
     getter connectEnd
@@ -7978,6 +7982,7 @@ interface Request
     method getRetryOptions
     method json
     method text
+    method textStream
 interface ResizeObserver
     attribute @@toStringTag
     method constructor
@@ -8018,6 +8023,7 @@ interface Response
     method formData
     method json
     method text
+    method textStream
 interface RestrictionTarget
     static method fromElement
     attribute @@toStringTag
@@ -9541,14 +9547,6 @@ interface SnapEvent : Event
     attribute @@toStringTag
     getter snapTargetBlock
     getter snapTargetInline
-    method constructor
-interface SoftNavigationEntry : PerformanceEntry
-    attribute @@toStringTag
-    getter interactionId
-    getter largestInteractionContentfulPaint
-    getter navigationType
-    getter paintTime
-    getter presentationTime
     method constructor
 interface SourceBuffer : EventTarget
     attribute @@toStringTag

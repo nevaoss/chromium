@@ -12,6 +12,7 @@
 <translation id="1035113036584565771">Notifica di promozione suggerita chiusa</translation>
 <translation id="1036348656032585052">Disattiva</translation>
 <translation id="1045899828449635435">Vuoi cancellare anche i dati di questi siti?</translation>
+<translation id="1049461303780085993">Prova Gemini in Chrome per ottenere risposte, informazioni e altro ancora</translation>
 <translation id="1049743911850919806">Incognito</translation>
 <translation id="1052842760770519282">Alcune delle tue password non sono accessibili</translation>
 <translation id="1057623954802068161">Scorri a inizio pagina</translation>
@@ -30,6 +31,7 @@
 <translation id="1108938384783527433">Sincronizzazione della cronologia</translation>
 <translation id="1111673857033749125">I preferiti salvati sugli altri dispositivi verranno visualizzati qui.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, scheda Picture in picture</translation>
+<translation id="1124357650933674597">{NUM_WINDOWS,plural, =1{Ripristina 1 finestra}other{Ripristina # finestre}}</translation>
 <translation id="1126696498560056882">Gestisci gli account su questo dispositivo</translation>
 <translation id="1135018701024399762">La modalità Incognito mantiene la navigazione nascosta agli altri utenti che utilizzano il tuo dispositivo</translation>
 <translation id="113752097246673894">Accedi a Chrome come <ph name="EMAIL" /> per trovare preferiti e altri dati su tutti i tuoi dispositivi</translation>
@@ -195,7 +197,6 @@ Solo chi conosce la tua passphrase può leggere i tuoi dati criptati. La passphr
 <translation id="1877073879466606884">Il profilo a cui hai eseguito l'accesso è un profilo gestito. L'amministratore può apportare modifiche alle impostazioni del profilo da remoto, analizzare le informazioni sul browser tramite i report ed eseguire altre attività necessarie.</translation>
 <translation id="1879904908408734349">Riquadro inferiore di accesso chiuso</translation>
 <translation id="1883903952484604915">I miei file</translation>
-<translation id="1889626070177134359"><ph name="SUGGESTIONS_COUNT" /> elementi suggeriti nell'elenco sopra.</translation>
 <translation id="189358972401248634">Altre lingue</translation>
 <translation id="1899175549411605574">Riquadro inferiore di insight sul prezzo</translation>
 <translation id="1900260903084164610">Se continui, accetti i <ph name="BEGIN_TOS_LINK" />Termini di servizio<ph name="END_TOS_LINK" />.</translation>
@@ -255,6 +256,7 @@ Solo chi conosce la tua passphrase può leggere i tuoi dati criptati. La passphr
 <translation id="2138632817776076519"><ph name="TAB_TITLE" />, scheda con registrazione selezionata</translation>
 <translation id="2141396931810938595">In base al tuo utilizzo</translation>
 <translation id="2145315049852051678">Chrome esegue controlli regolari per verificare che il browser disponga delle impostazioni più sicure. Ti informeremo qualora fosse necessario un controllo da parte tua.</translation>
+<translation id="2149968176347646218">La connessione non è sicura</translation>
 <translation id="2149973817440762519">Modifica Preferito</translation>
 <translation id="2163089732491971196">Per usare e salvare i dati di Chrome nel tuo Account Google, inserisci la tua passphrase</translation>
 <translation id="2166228530126694506">Versione <ph name="VERSION_NUMBER" /></translation>
@@ -297,6 +299,7 @@ Solo chi conosce la tua passphrase può leggere i tuoi dati criptati. La passphr
 <translation id="2318045970523081853">Tocca per chiamare</translation>
 <translation id="232137538351753795">Scorri dal bordo sinistro per tornare indietro</translation>
 <translation id="2323763861024343754">Memoria utilizzata dai siti</translation>
+<translation id="2327445548174191329">Da <ph name="DEVICE_NAME" /></translation>
 <translation id="2328474416100889417">Tutte le persone perderanno immediatamente l'accesso al gruppo di schede "<ph name="GROUP_NAME" />" e tutti i link di invito verranno disattivati</translation>
 <translation id="2330186936255788117">Altri preferiti</translation>
 <translation id="2332515770639153015">Navigazione sicura avanzata attiva</translation>
@@ -510,6 +513,7 @@ Solo chi conosce la tua passphrase può leggere i tuoi dati criptati. La passphr
 <translation id="3166827708714933426">Scorciatoie di finestre e schede</translation>
 <translation id="3167258285411721858">Puoi richiedere il sito mobile di <ph name="HOST_NAME" /></translation>
 <translation id="3181145110929454111"><ph name="TAB_TITLE" />, schede Incognito con audio disattivato fissate selezionate</translation>
+<translation id="3183941812169784232">Ripristinare tutte le finestre?</translation>
 <translation id="3187472288455401631">Misurazione degli annunci</translation>
 <translation id="3189635831478931757">Gruppo di schede <ph name="GROUP_TITLE" /></translation>
 <translation id="3200536777393523575">Chiudere la finestra corrente?</translation>
@@ -722,6 +726,7 @@ Solo chi conosce la tua passphrase può leggere i tuoi dati criptati. La passphr
 <translation id="4164642020717536140">Navigazione sul web veloce e sicura</translation>
 <translation id="4165077084524712774">Altri strumenti</translation>
 <translation id="4170577491341606575">Recupero dei tuoi dati in corso…</translation>
+<translation id="4176838562184310003">Chrome non è stato chiuso correttamente e può tentare di ripristinare le finestre e le schede andate perse. Alcune finestre potrebbero essere ridotte a icona durante il ripristino.</translation>
 <translation id="4177222230309051052">Recupera tutti i tuoi preferiti</translation>
 <translation id="4177501066905053472">Argomenti degli annunci</translation>
 <translation id="417865198503699526">Cerca un'impostazione</translation>
@@ -832,6 +837,7 @@ Il tuo Account Google potrebbe avere altre forme di cronologia di navigazione, a
 <translation id="4595237294768457124">Apri una pagina Nuova scheda</translation>
 <translation id="4595276580892809760">Allega immagini dalla galleria</translation>
 <translation id="4595805675102978678">Errore dell'Account Google</translation>
+<translation id="4599585406846903742">Visualizzazione a pagina singola</translation>
 <translation id="4601095002996233687">Scansioni approfondite per rilevare i download sospetti.</translation>
 <translation id="4606559747793337066">Quando un sito o un'app richiede di precaricare privatamente i link sulle sue pagine, Chrome cripta e precarica le pagine tramite i server di Google senza usare cookie. In questo modo la tua identità rimane nascosta ai siti precaricati.</translation>
 <translation id="4616150815774728855">Apri <ph name="WEBAPK_NAME" /></translation>
@@ -1086,6 +1092,7 @@ Il tuo Account Google potrebbe avere altre forme di cronologia di navigazione, a
 <translation id="569536719314091526">Traduci questa pagina in una lingua qualsiasi usando il pulsante Altre opzioni</translation>
 <translation id="5696597120588531049">Chrome può contribuire a proteggerti da violazioni dei dati, siti web non sicuri e non solo</translation>
 <translation id="5698878456427040674">Verifica se l'account selezionato è supportato.</translation>
+<translation id="5700415746238689851">Apri Gemini</translation>
 <translation id="5709213329446699338"><ph name="SITE" /> vuole collegarsi a una porta seriale</translation>
 <translation id="5715150588940290235">Eliminare i codici di sicurezza salvati?</translation>
 <translation id="572328651809341494">Schede recenti</translation>
@@ -1324,6 +1331,7 @@ Ad esempio, alcuni siti web potrebbero rispondere alla richiesta mostrando annun
 <translation id="6595046016124923392">Le immagini vengono inviate a Google per migliorare le descrizioni.</translation>
 <translation id="6602173570135186741">Compilazione automatica e password</translation>
 <translation id="661266467055912436">Migliora il livello di sicurezza per te e per chiunque sul web.</translation>
+<translation id="6615455863669487791">Mostrami</translation>
 <translation id="6621391692573306628">Per inviare questa scheda a un altro dispositivo, accedi a Chrome su entrambi i dispositivi</translation>
 <translation id="6627583120233659107">Modifica cartella</translation>
 <translation id="6633067410344541938">Sblocca la modalità Incognito</translation>
@@ -1767,6 +1775,7 @@ Per modificare questa impostazione, <ph name="BEGIN_LINK" />elimina i dati di Ch
 <translation id="8271267069224406035">Segnala come spam</translation>
 <translation id="8277710303010772444">Inizia la ricerca</translation>
 <translation id="8279945625179116733">Protetta da <ph name="APP_NAME" /></translation>
+<translation id="8280797717392145626">Link ricevuti</translation>
 <translation id="8281886186245836920">Salta</translation>
 <translation id="8282297628636750033">Applica il tema scuro ai siti, se possibile</translation>
 <translation id="8282950411412455249">Vai alle impostazioni di sicurezza</translation>
@@ -1902,6 +1911,7 @@ Per modificare questa impostazione, <ph name="BEGIN_LINK" />elimina i dati di Ch
 <translation id="8863714995118816041">Autorizzazioni consentite di nuovo per il sito <ph name="SITE_NAME" /></translation>
 <translation id="8865415417596392024">Dati di Chrome nel tuo account</translation>
 <translation id="8872506776304248286">Apri nell'app</translation>
+<translation id="8880275451109933094">Visualizzazione a due pagine</translation>
 <translation id="8890668505403261809">Cerca nelle schede Incognito</translation>
 <translation id="8892234476517513962">Hai già eseguito l'accesso</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />, scheda Incognito con registrazione selezionata</translation>

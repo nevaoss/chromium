@@ -115,10 +115,8 @@ class OmniboxWebUiInteractiveTestBase
         {omnibox::internal::kWebUIOmniboxPopup, {}},
         {omnibox::kOmniboxWebUIDeferShowUntilVisualStateReady, {}}};
     if (force_enable_aim) {
-      base::FieldTrialParams aim_params = {
-          {omnibox::kShowRecentTabChip.name, "true"}};
       features.emplace_back(omnibox::internal::kWebUIOmniboxAimPopup,
-                            aim_params);
+                            base::FieldTrialParams());
       base::FieldTrialParams simplification_params = {
           {omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.name,
            "below_results"},
@@ -509,7 +507,8 @@ IN_PROC_BROWSER_TEST_F(OmniboxAimWebUiInteractiveTest,
 }
 
 // TODO(crbug.com/505548434): Flaky on Mac.
-#if BUILDFLAG(IS_MAC)
+// TODO(crbug.com/517370516): Flaky on Win Arm64.
+#if BUILDFLAG(IS_MAC) || (BUILDFLAG(IS_WIN) && defined(ARCH_CPU_ARM64))
 #define MAYBE_ClassicContextMenuOpensDeepSearch \
   DISABLED_ClassicContextMenuOpensDeepSearch
 #else
@@ -848,16 +847,9 @@ INSTANTIATE_TEST_SUITE_P(
       return prefix + name;
     });
 
-// TODO(crbug.com/505527138): The tests are flaky on Mac builders.
-#if BUILDFLAG(IS_MAC) || (BUILDFLAG(IS_WIN) && defined(ARCH_CPU_ARM64))
-#define MAYBE_ClassicContextMenuUploadTriggersAimPopup \
-  DISABLED_ClassicContextMenuUploadTriggersAimPopup
-#else
-#define MAYBE_ClassicContextMenuUploadTriggersAimPopup \
-  ClassicContextMenuUploadTriggersAimPopup
-#endif  // BUILDFLAG(IS_MAC) || (BUILDFLAG(IS_WIN) && defined(ARCH_CPU_ARM64))
+// TODO(crbug.com/505527138): The tests are flaky.
 IN_PROC_BROWSER_TEST_P(OmniboxAimUploadInteractiveTest,
-                       MAYBE_ClassicContextMenuUploadTriggersAimPopup) {
+                       DISABLED_ClassicContextMenuUploadTriggersAimPopup) {
   base::FilePath test_data_dir;
   ASSERT_TRUE(base::PathService::Get(chrome::DIR_TEST_DATA, &test_data_dir));
   base::FilePath file_path = test_data_dir.AppendASCII(GetParam().file_name);

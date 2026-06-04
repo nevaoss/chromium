@@ -10,6 +10,7 @@
 #include "base/json/values_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/time/time.h"
 #include "base/values.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/content/browser/content_autofill_driver.h"
@@ -25,6 +26,7 @@
 #include "components/prefs/scoped_user_pref_update.h"
 #include "components/strike_database/history_clearable_strike_database.h"
 #include "components/strike_database/strike_database.h"
+#include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/runtime_feature_state/runtime_feature_state_document_data.h"
 #include "content/public/browser/webid/email_verifier.h"
@@ -85,57 +87,144 @@ const AutofillField* FindField(
   return iter != std::ranges::end(fields) ? iter->get() : nullptr;
 }
 
-void OnEmailVerificationDecision(base::WeakPtr<AutofillManager> manager,
-                                 FieldGlobalId email_field_id,
-                                 std::string email_utf8,
-                                 FieldGlobalId token_field_id,
-                                 std::string token,
-                                 net::SchemefulSite issuer,
-                                 bool confirmed) {
+}  // namespace
+
+void EmailVerifierDelegate::Verify(
+    base::WeakPtr<AutofillManager> manager,
+    FieldGlobalId email_field_id,
+    std::string email_utf8,
+    FieldGlobalId token_field_id,
+    const std::string& nonce,
+    const content::webid::EmailVerifier::Result& result) {
+  content::webid::EmailVerifier* verifier =
+      GetOrCreateEmailVerifier(manager->client(), email_field_id.frame_token);
+  if (!verifier) {
+    return;
+  }
+  verifier->Verify(
+      result, nonce,
+      base::BindOnce(
+          [](base::WeakPtr<EmailVerifierDelegate> delegate,
+             base::WeakPtr<AutofillManager> manager,
+             FieldGlobalId email_field_id, std::string email,
+             FieldGlobalId token_field_id, net::SchemefulSite issuer_site,
+             std::optional<std::string> token) {
+            if (!manager || !token) {
+              return;
+            }
+            if (delegate) {
+              delegate->issuers_[token_field_id] = issuer_site.GetURL();
+            }
+            manager->driver().SendEmailVerificationToken(
+                email_field_id, email, token_field_id, *token);
+          },
+          weak_ptr_factory_.GetWeakPtr(), manager, email_field_id, email_utf8,
+          token_field_id, result.issuer_site));
+}
+
+void EmailVerifierDelegate::OnEmailVerificationDecision(
+    base::WeakPtr<AutofillManager> manager,
+    FieldGlobalId email_field_id,
+    std::string email_utf8,
+    FieldGlobalId token_field_id,
+    std::string nonce,
+    content::webid::EmailVerifier::Result result,
+    AutofillClient::EmailVerificationPermissionUiResult ui_result) {
   if (!manager) {
     return;
   }
 
   PrefService* prefs = manager->client().GetPrefs();
-  if (prefs && confirmed) {
-    // Remember that the user allows this email address.
-    ScopedDictPrefUpdate update(prefs, prefs::kAutofillEmailVerificationState);
-    base::DictValue email_dict;
-    if (const auto* existing =
-            prefs->GetDict(prefs::kAutofillEmailVerificationState)
-                .FindDict(email_utf8)) {
-      email_dict = existing->Clone();
-    }
-    email_dict.Set("allowed", true);
-    email_dict.Set("issuer_site", issuer.Serialize());
-    email_dict.Set("timestamp", base::TimeToValue(base::Time::Now()));
-    update->Set(email_utf8, std::move(email_dict));
+  switch (ui_result) {
+    case AutofillClient::EmailVerificationPermissionUiResult::kAccepted: {
+      if (prefs) {
+        // Remember that the user allows this email address.
+        ScopedDictPrefUpdate update(prefs,
+                                    prefs::kAutofillEmailVerificationState);
+        base::DictValue email_dict;
+        if (const base::DictValue* existing =
+                prefs->GetDict(prefs::kAutofillEmailVerificationState)
+                    .FindDict(email_utf8)) {
+          email_dict = existing->Clone();
+        }
+        email_dict.Set("allowed", true);
+        email_dict.Set("issuer_site", result.issuer_site.Serialize());
+        email_dict.Set("timestamp", base::TimeToValue(base::Time::Now()));
+        update->Set(email_utf8, std::move(email_dict));
+      }
 
-    manager->driver().SendEmailVerificationToken(email_field_id, email_utf8,
-                                                 token_field_id, token);
-  }
-  // We update the strike database whether the user declined or not.
-  // If declined: Add a strike
-  // If accepted: Clear previous strikes.
-  if (manager->client().GetStrikeDatabase()) {
-    EmailVerificationStrikeDatabase strike_db(
-        manager->client().GetStrikeDatabase());
-    if (confirmed) {
-      strike_db.ClearStrikes(
-          EmailVerificationStrikeDatabase::GetId(email_utf8));
-    } else {
-      strike_db.AddStrike(EmailVerificationStrikeDatabase::GetId(email_utf8));
+      Verify(manager, email_field_id, email_utf8, token_field_id, nonce,
+             result);
+
+      if (manager->client().GetStrikeDatabase()) {
+        EmailVerificationStrikeDatabase strike_db(
+            manager->client().GetStrikeDatabase());
+        strike_db.ClearStrikes(
+            EmailVerificationStrikeDatabase::GetId(email_utf8));
+      }
+      break;
+    }
+    case AutofillClient::EmailVerificationPermissionUiResult::kDeclined: {
+      if (manager->client().GetStrikeDatabase()) {
+        EmailVerificationStrikeDatabase strike_db(
+            manager->client().GetStrikeDatabase());
+        strike_db.AddStrike(EmailVerificationStrikeDatabase::GetId(email_utf8));
+      }
+      break;
+    }
+    case AutofillClient::EmailVerificationPermissionUiResult::kIgnored: {
+      break;
     }
   }
 }
 
-}  // namespace
+void EmailVerifierDelegate::OnIsVerifiable(
+    base::WeakPtr<AutofillManager> manager,
+    FieldGlobalId email_field_id,
+    FieldGlobalId nonce_field_id,
+    gfx::RectF email_field_bounds,
+    std::u16string email,
+    std::string nonce,
+    bool already_allowed,
+    std::optional<content::webid::EmailVerifier::Result> result) {
+  if (!manager || !result) {
+    return;
+  }
+
+  if (already_allowed) {
+    Verify(manager, email_field_id, base::UTF16ToUTF8(email), nonce_field_id,
+           nonce, *result);
+    return;
+  }
+
+  net::SchemefulSite issuer_site = result->issuer_site;
+  manager->client().ShowEmailVerificationPopup(
+      email_field_bounds, issuer_site, email,
+      base::BindOnce(&EmailVerifierDelegate::OnEmailVerificationDecision,
+                     weak_ptr_factory_.GetWeakPtr(), manager, email_field_id,
+                     base::UTF16ToUTF8(email), nonce_field_id, nonce,
+                     std::move(*result)));
+}
 
 EmailVerifierDelegate::EmailVerifierDelegate(AutofillClient* client) {
   observation_.Observe(client);
+  if (auto* content_client = static_cast<ContentAutofillClient*>(client)) {
+    Observe(content_client->web_contents());
+  }
 }
 
 EmailVerifierDelegate::~EmailVerifierDelegate() = default;
+
+void EmailVerifierDelegate::DidFinishNavigation(
+    content::NavigationHandle* navigation_handle) {
+  if (navigation_handle->IsInPrimaryMainFrame() &&
+      navigation_handle->HasCommitted()) {
+    // `HasCommitted` returns true even for same document commits, e.g.
+    // if the state is cleared on pushState() or #anchor navigations.
+    // We clear the issuers_ map on these navigations too.
+    issuers_.clear();
+  }
+}
 
 void EmailVerifierDelegate::OnFillOrPreviewForm(
     AutofillManager& manager,
@@ -206,11 +295,23 @@ void EmailVerifierDelegate::OnFillOrPreviewField(
   }
 
   const AutofillField* triggering_email_field = form->GetFieldById(field_id);
-  if (!triggering_email_field || field_type_used != EMAIL_ADDRESS) {
+  if (!triggering_email_field ||
+      (field_type_used != EMAIL_ADDRESS &&
+       triggering_email_field->Type().GetAddressType() != EMAIL_ADDRESS)) {
     return;
   }
 
   TriggerVerification(manager, *form, *triggering_email_field, value);
+}
+
+void EmailVerifierDelegate::OnEmailVerificationTokenShared(
+    AutofillManager& manager,
+    FieldGlobalId field_id) {
+  if (auto it = issuers_.find(field_id); it != issuers_.end()) {
+    GURL issuer_url = it->second;
+    issuers_.erase(it);
+    manager.client().ShowEmailVerifiedToast(issuer_url);
+  }
 }
 
 void EmailVerifierDelegate::TriggerVerification(
@@ -257,34 +358,13 @@ void EmailVerifierDelegate::TriggerVerification(
         email_data && email_data->FindBool("allowed").value_or(false);
   }
 
-  verifier->Verify(
-      email_utf8, base::UTF16ToUTF8(nonce_field->nonce()),
-      base::BindOnce(
-          [](bool already_allowed, base::WeakPtr<AutofillManager> manager,
-             FieldGlobalId email_field_id, FieldGlobalId nonce_field_id,
-             gfx::RectF email_field_bounds, std::u16string email,
-             std::optional<content::webid::EmailVerifier::Result> result) {
-            if (!manager || !result) {
-              return;
-            }
-
-            std::string email_utf8 = base::UTF16ToUTF8(email);
-            if (already_allowed) {
-              manager->driver().SendEmailVerificationToken(
-                  email_field_id, email_utf8, nonce_field_id,
-                  result->verification);
-              return;
-            }
-
-            manager->client().ShowEmailVerificationPopup(
-                email_field_bounds, result->issuer_site, email,
-                base::BindOnce(&OnEmailVerificationDecision, manager,
-                               email_field_id, email_utf8, nonce_field_id,
-                               std::move(result->verification),
-                               result->issuer_site));
-          },
-          already_allowed, manager.GetWeakPtr(), email_field.global_id(),
-          nonce_field->global_id(), email_field.bounds(), email_value));
+  verifier->CheckIfVerifiable(
+      email_utf8,
+      base::BindOnce(&EmailVerifierDelegate::OnIsVerifiable,
+                     weak_ptr_factory_.GetWeakPtr(), manager.GetWeakPtr(),
+                     email_field.global_id(), nonce_field->global_id(),
+                     email_field.bounds(), email_value,
+                     base::UTF16ToUTF8(nonce_field->nonce()), already_allowed));
 }
 
 }  // namespace autofill

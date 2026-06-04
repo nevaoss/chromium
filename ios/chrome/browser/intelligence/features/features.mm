@@ -803,7 +803,7 @@ bool IsGeminiScreenContextMigrationEnabled() {
   return base::FeatureList::IsEnabled(kGeminiScreenContextMigration);
 }
 
-BASE_FEATURE(kAppStoreInAppEvents, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAppStoreInAppEvents, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsAppStoreInAppEventsEnabled() {
   return IsPageActionMenuEnabled() &&
@@ -870,4 +870,10 @@ BASE_FEATURE(kBWGPromoConsent, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kActorServiceLogging, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsActorServiceLoggingEnabled() {
   return base::FeatureList::IsEnabled(kActorServiceLogging);
+}
+
+BASE_FEATURE(kIOSBottomSheetMigration, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsIOSBottomSheetMigrationEnabled() {
+  return base::FeatureList::IsEnabled(kIOSBottomSheetMigration);
 }

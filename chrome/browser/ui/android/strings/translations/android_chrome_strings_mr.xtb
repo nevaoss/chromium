@@ -12,6 +12,7 @@
 <translation id="1035113036584565771">टिपा असलेला नोटिफिकेशन प्रोमो बंद केला आहे</translation>
 <translation id="1036348656032585052">बंद करा</translation>
 <translation id="1045899828449635435">डेटासुद्धा साफ करायचा?</translation>
+<translation id="1049461303780085993">उत्तरे, महत्त्वाचे मुद्दे आणि आणखी बरेच काही मिळवण्यासाठी Chrome मधील Gemini वापरून पहा</translation>
 <translation id="1049743911850919806">गुप्त</translation>
 <translation id="1052842760770519282">तुमचे काही पासवर्ड ॲक्सेस करता येत नाहीत</translation>
 <translation id="1057623954802068161">स्क्रोल करून पेजच्या सर्वात वरती जा</translation>
@@ -196,7 +197,6 @@
 <translation id="1877073879466606884">तुम्ही साइन इन केलेली प्रोफाइल ही व्यवस्थापित केलेली प्रोफाइल आहे. तुमचा अ‍ॅडमिनिस्ट्रेटर हा तुमच्या प्रोफाइल सेटिंग्जमध्ये रिमोट पद्धतीने बदल करू शकतो, तक्रारीद्वारे ब्राउझरशी संबंधित माहितीचे विश्लेषण करू शकतो आणि इतर आवश्यक टास्क करू शकतो.</translation>
 <translation id="1879904908408734349">तळाशी असलेल्या शीटमध्ये साइन इन करा बंद केले आहे</translation>
 <translation id="1883903952484604915">माझ्या फाइल</translation>
-<translation id="1889626070177134359">वरील सूचीमध्ये <ph name="SUGGESTIONS_COUNT" /> सुचवलेले आयटम आहेत.</translation>
 <translation id="189358972401248634">इतर भाषा</translation>
 <translation id="1899175549411605574">किमतीच्या इनसाइटची तळाशी असलेली शीट</translation>
 <translation id="1900260903084164610">पुढे सुरू ठेवून, तुम्ही <ph name="BEGIN_TOS_LINK" />सेवा अटी<ph name="END_TOS_LINK" /> यांना सहमती दर्शवता.</translation>
@@ -256,6 +256,7 @@
 <translation id="2138632817776076519"><ph name="TAB_TITLE" />, निवडलेला रेकॉर्ड करत असलेला टॅब</translation>
 <translation id="2141396931810938595">तुमच्या वापरावर आधारित</translation>
 <translation id="2145315049852051678">तुमच्या ब्राउझरची सेटिंग्ज सर्वात सुरक्षित असल्याची खात्री करण्यासाठी Chrome ती नियमितपणे तपासते. एखाद्या गोष्टीचे पुनरावलोकन करणे आवश्यक असल्यास, आम्ही तुम्हाला कळवू.</translation>
+<translation id="2149968176347646218">कनेक्शन सुरक्षित नाही</translation>
 <translation id="2149973817440762519">बुकमार्क संपादित करा</translation>
 <translation id="2163089732491971196">तुमच्या Google खाते मधील Chrome डेटा वापरण्यासाठी आणि सेव्ह करण्यासाठी, तुमचा पासफ्रेझ वापरा</translation>
 <translation id="2166228530126694506">आवृत्ती <ph name="VERSION_NUMBER" /></translation>
@@ -298,6 +299,7 @@
 <translation id="2318045970523081853">कॉल करण्यासाठी टॅप करा</translation>
 <translation id="232137538351753795">मागे जाण्यासाठी डाव्या कडेवरून स्वाइप करा</translation>
 <translation id="2323763861024343754">साइट स्टोरेज</translation>
+<translation id="2327445548174191329"><ph name="DEVICE_NAME" /> कडून</translation>
 <translation id="2328474416100889417">सर्वजण लगेच “<ph name="GROUP_NAME" />” या टॅब गटाचा ॲक्सेस गमवतील आणि सर्व आमंत्रण लिंक बंद केल्या जातील</translation>
 <translation id="2330186936255788117">आणखी बुकमार्क</translation>
 <translation id="2332515770639153015">वर्धित सुरक्षित ब्राउझिंग सुरू केलेले आहे</translation>
@@ -676,6 +678,7 @@
 <translation id="3943322906274039960"><ph name="TAB_TITLE" />, पिन केलेला चित्रात-चित्र टॅब</translation>
 <translation id="3950820424414687140">साइन इन करा</translation>
 <translation id="395377504920307820">खात्याशिवाय वापरा</translation>
+<translation id="3955353672249727801">वाचन सूचीमध्ये पेज जोडली आहेत</translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{तयार झाल्यावर, Chrome तुमचे पेज लोड करेल}other{तयार झाल्यावर, Chrome तुमची पेज लोड करेल}}</translation>
 <translation id="3969142555815019568">Chrome तुमचे पासवर्ड तपासू शकत नाही</translation>
 <translation id="3969863827134279083">वर हलवा</translation>
@@ -835,6 +838,7 @@
 <translation id="4595237294768457124">नवीन टॅब पेज उघडा</translation>
 <translation id="4595276580892809760">गॅलरीमधून इमेज अटॅच करा</translation>
 <translation id="4595805675102978678">Google खाते शी संबंधित एरर</translation>
+<translation id="4599585406846903742">एक पेज व्ह्यू</translation>
 <translation id="4601095002996233687">संशयास्पद डाउनलोडसाठी तपशीलवार स्कॅनची सुविधा.</translation>
 <translation id="4606559747793337066">साइट किंवा अ‍ॅपद्वारे त्याच्या पेजवरील लिंक खाजगीरीत्या प्रीलोड करण्याची विनंती केली गेल्यास, Chrome हे कुकीशिवाय Google सर्व्हरद्वारे पेज एन्क्रिप्ट आणि प्रीलोड करते. यामुळे, प्रीलोड केलेल्या साइटपासून तुमची ओळख लपवली जाते.</translation>
 <translation id="4616150815774728855"><ph name="WEBAPK_NAME" /> उघडा</translation>
@@ -1089,6 +1093,7 @@
 <translation id="569536719314091526">अधिक पर्याय बटणावरून या पेजचे कोणत्याही भाषेत भाषांतर करा</translation>
 <translation id="5696597120588531049">Chrome तुम्हाला डेटा भंग, असुरक्षित वेबसाइट आणि आणखी बर्‍याच गोष्टींपासून सुरक्षित ठेवण्यात मदत करू शकते</translation>
 <translation id="5698878456427040674">निवडलेल्या खात्याला सपोर्ट आहे का हे तपासा.</translation>
+<translation id="5700415746238689851">Gemini उघडा</translation>
 <translation id="5709213329446699338"><ph name="SITE" /> ला सिरीअल पोर्टशी कनेक्ट करायचे आहे</translation>
 <translation id="5715150588940290235">सेव्ह केलेले सुरक्षा कोड हटवायचे आहेत का?</translation>
 <translation id="572328651809341494">अलीकडील टॅब</translation>
@@ -1327,6 +1332,7 @@
 <translation id="6595046016124923392">तुम्हाला दिसत असलेली वर्णने सुधारण्यासाठी इमेज Google कडे पाठवल्या जातात.</translation>
 <translation id="6602173570135186741">ऑटोफिल आणि पासवर्ड</translation>
 <translation id="661266467055912436">तुमच्यासाठी आणि वेबवरील प्रत्येकजणासाठी सुरक्षिततेत सुधारणा करते.</translation>
+<translation id="6615455863669487791">मला दर्शवा</translation>
 <translation id="6621391692573306628">हा टॅब दुसर्‍या डिव्हाइसवर पाठवण्यासाठी, दोन्ही डिव्हाइसवर Chrome मध्ये साइन इन करा</translation>
 <translation id="6627583120233659107">फोल्डर संपादित करा</translation>
 <translation id="6633067410344541938">गुप्त मोड अनलॉक करा</translation>
@@ -1770,6 +1776,7 @@
 <translation id="8271267069224406035">स्पॅमची तक्रार करा</translation>
 <translation id="8277710303010772444">शोध सुरू करा</translation>
 <translation id="8279945625179116733"><ph name="APP_NAME" /> द्वारे सुरक्षित</translation>
+<translation id="8280797717392145626">मिळालेल्या लिंक</translation>
 <translation id="8281886186245836920">वगळा</translation>
 <translation id="8282297628636750033">शक्य असेल तेव्हा, साइटवर गडद थीम लागू करा</translation>
 <translation id="8282950411412455249">सुरक्षा सेटिंग्जवर जा</translation>
@@ -1905,6 +1912,7 @@
 <translation id="8863714995118816041"><ph name="SITE_NAME" /> ला पुन्हा परवानग्या दिल्या आहेत</translation>
 <translation id="8865415417596392024">तुमच्या खात्यामधील Chrome डेटा</translation>
 <translation id="8872506776304248286">अनुप्रयोगामध्ये उघडा</translation>
+<translation id="8880275451109933094">दोन पेज व्ह्यू</translation>
 <translation id="8890668505403261809">तुमचे गुप्त टॅब शोधा</translation>
 <translation id="8892234476517513962">तुम्ही आधीपासून साइन इन केलेले आहे</translation>
 <translation id="8894890673032951011"><ph name="TAB_TITLE" />, निवडलेला रेकॉर्ड करत असलेला गुप्त टॅब</translation>

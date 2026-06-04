@@ -45,6 +45,7 @@ import org.chromium.chrome.browser.sync.SyncServiceFactory;
 import org.chromium.chrome.browser.ui.signin.ForcedSigninController;
 import org.chromium.chrome.browser.ui.signin.ForcedSigninStatusProvider;
 import org.chromium.chrome.browser.ui.signin.R;
+import org.chromium.chrome.browser.ui.signin.SigninAndHistorySyncCoordinator.SigninFlow;
 import org.chromium.chrome.browser.ui.signin.SigninSurveyController;
 import org.chromium.chrome.browser.ui.signin.account_picker.AccountPickerCoordinator;
 import org.chromium.chrome.browser.ui.signin.account_picker.AccountPickerDialogCoordinator;
@@ -449,6 +450,13 @@ public class FullscreenSigninMediator
         if (mDialogCoordinator != null) mDialogCoordinator.dismissDialog();
     }
 
+    void onAddAccountCanceled() {
+        if (mConfig.selectedAccountEmail == null) {
+            return;
+        }
+        mDelegate.abortFlow();
+    }
+
     /** Implements {@link ProfileDataCache.Observer}. */
     @Override
     public void onProfileDataUpdated(DisplayableProfileData profileData) {
@@ -756,8 +764,11 @@ public class FullscreenSigninMediator
         mDelegate.acceptTermsOfService(mAllowMetricsAndCrashUploading);
         SigninPreferencesManager.getInstance().temporarilySuppressNewTabPagePromos();
         Profile profile = assumeNonNull(mDelegate.getProfileSupplier().get()).getOriginalProfile();
-        if (assumeNonNull(IdentityServicesProvider.get().getIdentityManager(profile))
-                .hasPrimaryAccount()) {
+        // If switching account, dismissing the page should not sign the user out of the already
+        // signed in account.
+        if (mConfig.signinFlow != SigninFlow.SWITCH_ACCOUNT
+                && assumeNonNull(IdentityServicesProvider.get().getIdentityManager(profile))
+                        .hasPrimaryAccount()) {
             mModel.set(FullscreenSigninProperties.SHOW_SIGNIN_PROGRESS_SPINNER, true);
             Runnable signOutCallback =
                     () -> {

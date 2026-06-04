@@ -46,6 +46,14 @@ void ApplyDefaultChromeRefreshToolbarColors(ui::ColorMixer& mixer,
       kColorAvatarButtonHighlightDefault};
 }
 
+void ApplyChromeRefresh2026ColorOverrides(ui::ColorMixer& mixer) {
+  if (!features::IsWebuiRefresh2026Enabled()) {
+    return;
+  }
+
+  mixer[ui::kColorToolbarSearchFieldBackground] = {ui::kColorSysSurface4};
+}
+
 }  // namespace
 
 void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
@@ -190,6 +198,14 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
   // Split View colors.
   mixer[kColorSplitViewBackground] = {ui::kColorSysSurface2};
   mixer[kColorMultiContentsViewMiniToolbarForeground] = {kColorToolbarText};
+
+  // Slider colors.
+  mixer[kColorSliderActive] = {ui::kColorSysPrimary};
+  mixer[kColorSliderActiveContainer] = {ui::kColorSysDivider};
+  mixer[kColorSliderActiveRipple] = {ui::kColorSysStateRipplePrimary};
+  mixer[kColorSliderActiveText] = {ui::kColorSysOnPrimary};
+  mixer[kColorSliderDisabled] = {ui::kColorSysNeutralOutline};
+  mixer[kColorSliderDisabledContainer] = {ui::kColorSysSurfaceVariant};
 
   // Side Panel colors.
   mixer[kColorSidePanelBackground] = {ui::kColorSysBaseContainer};
@@ -477,8 +493,11 @@ void AddMaterialChromeColorMixer(ui::ColorProvider* provider,
       ui::kColorSysInversePrimary};
 
   // General WebUI page colors.
-  mixer[kColorWebuiCardBackground] = {ui::kColorSysSurface};
+  mixer[kColorWebuiCardBackground] = {ui::kColorSysSurfaceSection};
   mixer[kColorWebuiDialogBackground] = {ui::kColorSysSurface};
-  mixer[kColorWebuiDialogContainerBackground] = {ui::kColorSysBaseContainer};
+  mixer[kColorWebuiDialogContainerBackground] = {
+      ui::kColorSysBaseContainerOnSurface};
   mixer[kColorWebuiPageBackground] = {ui::kColorSysSurface};
+
+  ApplyChromeRefresh2026ColorOverrides(mixer);
 }

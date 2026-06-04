@@ -1065,6 +1065,17 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Accessibility.CrosCursorColor.Value"
+    enum="AccessibilityCursorColorValue" expires_after="2027-06-01">
+  <owner>katie@chromium.org</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    The color of the Chrome OS accessibility cursor.
+
+    Note: This metric is logged once after startup.
+  </summary>
+</histogram>
+
 <histogram name="Accessibility.CrosDictation.Language" enum="LocaleCodeBCP47"
     expires_after="2026-10-04">
   <owner>katie@chromium.org</owner>
@@ -3201,6 +3212,17 @@ even if they fit the naming pattern. -->
   </summary>
 </histogram>
 
+<histogram name="Accessibility.ReadAnything.MainPanelSelectionOnOpen"
+    enum="Boolean" expires_after="2027-01-01">
+  <owner>gusmartin@google.com</owner>
+  <owner>chrome-irm-devs@google.com</owner>
+  <summary>
+    Records whether a text selection was present in the main browser tab at the
+    moment Reading Mode was opened. Recorded once per Reading Mode session (Open
+    to Close), excluding tab switches or view-mode transitions.
+  </summary>
+</histogram>
+
 <histogram name="Accessibility.ReadAnything.MergedDistillationTime.{Result}"
     units="ms" expires_after="2026-10-04">
   <owner>abigailbklein@google.com</owner>
@@ -3533,6 +3555,19 @@ even if they fit the naming pattern. -->
     Records the installation state of the WASM TTS extension engine whenever a
     system voice is used. This is intended to help understand when system voices
     are being used over natural voices.
+  </summary>
+</histogram>
+
+<histogram
+    name="Accessibility.ReadAnything.TimeFromActiveAXTreeIDChangedToRenderedTextBlocks"
+    units="ms" expires_after="2027-06-01">
+  <owner>martinglopez@google.com</owner>
+  <owner>chrome-irm-devs@google.com</owner>
+  <summary>
+    Records the time elapsed from when the browser triggers
+    OnActiveAXTreeIDChanged (due to tab switch, page navigation, or sidebar
+    opening) to when the WebUI finishes layout and renders the distilled text
+    content in the viewport.
   </summary>
 </histogram>
 

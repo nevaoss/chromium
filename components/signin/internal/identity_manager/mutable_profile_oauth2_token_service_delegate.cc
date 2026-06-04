@@ -412,10 +412,9 @@ MutableProfileOAuth2TokenServiceDelegate::CreateAccessTokenFetcher(
         std::string(
             version_info::GetChannelString(client_->GetClientChannel())));
     if (token_binding_helper_ &&
+        token_binding_helper_->IsRegistrationKeyReady() &&
         base::FeatureList::IsEnabled(
             switches::kEnableChromeRefreshTokenBindingUpgrade)) {
-      // TODO(crbug.com/514242898): Add an extra condition to check if an
-      // upgrade key was successfully pre-generated.
       fetcher->EnableTokenUpgradeEligibility(
           base::BindOnce(&TokenBindingHelper::PerformTokenBindingUpgrade,
                          token_binding_helper_->GetWeakPtr(), account_id,
@@ -482,7 +481,8 @@ bool MutableProfileOAuth2TokenServiceDelegate::
 
 bool MutableProfileOAuth2TokenServiceDelegate::
     GenerateBindingKeyRegistrationToken(
-        std::string_view supported_algorithms,
+        base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
+            supported_algorithms,
         std::string_view auth_code,
         base::OnceCallback<
             void(std::optional<signin::BindingKeyRegistrationTokenResult>)>
@@ -555,7 +555,8 @@ void MutableProfileOAuth2TokenServiceDelegate::AddBindingKeyToService(
   }
 }
 
-bool MutableProfileOAuth2TokenServiceDelegate::UpdateRefreshTokenBindingKey(
+TokenBindingHelper::SaveBindingKeyResult
+MutableProfileOAuth2TokenServiceDelegate::UpdateRefreshTokenBindingKey(
     const CoreAccountId& account_id,
     std::string_view refresh_token,
     std::vector<uint8_t> wrapped_binding_key) {
@@ -563,7 +564,7 @@ bool MutableProfileOAuth2TokenServiceDelegate::UpdateRefreshTokenBindingKey(
   auto iter = refresh_tokens_.find(account_id);
   if (iter == refresh_tokens_.end() ||
       iter->second.refresh_token.value() != refresh_token) {
-    return false;
+    return TokenBindingHelper::SaveBindingKeyResult::kRefreshTokenNotFound;
   }
 
   CHECK(token_binding_helper_);
@@ -575,7 +576,7 @@ bool MutableProfileOAuth2TokenServiceDelegate::UpdateRefreshTokenBindingKey(
   // successfully before resuming the upgrade flow.
   PersistCredentials(account_id, iter->second.refresh_token.value(),
                      token_binding_info);
-  return true;
+  return TokenBindingHelper::SaveBindingKeyResult::kSuccess;
 }
 
 std::vector<CoreAccountId>
@@ -1106,6 +1107,9 @@ bool MutableProfileOAuth2TokenServiceDelegate::FixAccountErrorIfPossible() {
 }
 
 void MutableProfileOAuth2TokenServiceDelegate::FinishLoadingCredentials() {
+  if (token_binding_helper_) {
+    token_binding_helper_->OnAllCredentialsLoaded(!refresh_tokens_.empty());
+  }
   FireRefreshTokensLoaded();
 }
 

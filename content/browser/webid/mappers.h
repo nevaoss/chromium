@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "content/browser/renderer_host/render_frame_host_impl.h"
+#include "content/browser/webid/delegation/evt_verifier.h"
 #include "content/browser/webid/idp_network_request_manager.h"
 #include "content/browser/webid/metrics.h"
 #include "content/common/content_export.h"
@@ -107,10 +108,25 @@ IdAssertionFetchStatusToRequestResultAndTokenStatus(FetchStatus status);
 CONTENT_EXPORT blink::mojom::EmailVerificationRequestResult
 WellKnownParseStatusToEvpRequestStatus(ParseStatus parse_status);
 
+// Converts a ParseStatus from an email verification well-known fetch to an
+// EvpRequestStatus.
+// Should not be invoked when parse_status is ParseStatus::kSuccess.
+CONTENT_EXPORT blink::mojom::EmailVerificationRequestResult
+EmailVerificationWellKnownParseStatusToEvpRequestStatus(
+    ParseStatus parse_status);
+
+// Converts a ParseStatus from an accounts list fetch to an EvpRequestStatus.
+// Should not be invoked when parse_status is ParseStatus::kSuccess.
+CONTENT_EXPORT blink::mojom::EmailVerificationRequestResult
+AccountsListParseStatusToEvpRequestStatus(ParseStatus parse_status);
+
 // Converts a ParseStatus from a token fetch to an EvpRequestStatus.
 // Should not be invoked when parse_status is ParseStatus::kSuccess.
 CONTENT_EXPORT blink::mojom::EmailVerificationRequestResult
 TokenParseStatusToEvpRequestStatus(ParseStatus parse_status);
+
+CONTENT_EXPORT blink::mojom::EmailVerificationRequestResult
+VerificationResultToEvpRequestStatus(EvtVerifier::Result result);
 
 // Returns a list of fields that we should mediate authorization for. If
 // empty, we should not show a permission request dialog.

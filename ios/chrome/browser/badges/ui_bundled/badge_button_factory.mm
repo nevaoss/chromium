@@ -172,8 +172,7 @@ const CGFloat kInfobarSymbolPointSizeModifier = 4;
                         SmallIncognitoPalette());
   button = [self createButtonForType:kBadgeTypeIncognito image:image];
   button.fullScreenImage = CustomSymbolTemplateWithPointSize(
-      IsChromeNextIaEnabled() ? kIncognitoSymbol : kLegacyIncognitoSymbol,
-      kSymbolIncognitoFullScreenPointSize);
+      kIncognitoSymbol, kSymbolIncognitoFullScreenPointSize);
 
   button.tintColor = [UIColor colorNamed:kTextPrimaryColor];
   button.accessibilityTraits &= ~UIAccessibilityTraitButton;
@@ -325,7 +324,8 @@ const CGFloat kInfobarSymbolPointSizeModifier = 4;
 
 // Returns the size of the infobar symbol image.
 - (CGFloat)infoBarSymbolPointSize {
-  if (IsProactiveSuggestionsFrameworkEnabled() && !self.incognito) {
+  if (IsProactiveSuggestionsFrameworkEnabled() &&
+      (!self.incognito || IsChromeNextIaEnabled())) {
     return kInfobarSymbolPointSize - kInfobarSymbolPointSizeModifier;
   }
 

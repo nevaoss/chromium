@@ -41,6 +41,7 @@ import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentModelList.FuseboxAttachmentChangeListener;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxAttachmentRecyclerViewAdapter.FuseboxAttachmentType;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.AiModeActivationSource;
@@ -127,6 +128,8 @@ import java.util.function.Supplier;
     private @Nullable FuseboxMetrics mMetrics;
     private @Nullable PropertyModel mScrimModel;
     private boolean mActionTaken;
+    private @Nullable Runnable mOnFirstPickerInteractionCanceledCallback;
+    private boolean mNeedUnfocusOnCancel;
 
     private final ListObserver<Void> mListObserver =
             new ListObserver<>() {
@@ -153,7 +156,8 @@ import java.util.function.Supplier;
             Clipboard clipboard,
             ScrimManager scrimManager,
             Supplier<@Nullable View> scrimAnchorViewSupplier,
-            BackPressManager backPressManager) {
+            BackPressManager backPressManager,
+            @Nullable Runnable onFirstPickerInteractionCanceledCallback) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mPermissionDelegate = windowAndroid;
@@ -168,6 +172,7 @@ import java.util.function.Supplier;
         mScrimManager = scrimManager;
         mScrimAnchorViewSupplier = scrimAnchorViewSupplier;
         mBackPressManager = backPressManager;
+        mOnFirstPickerInteractionCanceledCallback = onFirstPickerInteractionCanceledCallback;
 
         // Create the upload failed snackbar.
         mAttachmentUploadFailedSnackbar =
@@ -181,6 +186,7 @@ import java.util.function.Supplier;
         mModel.set(
                 FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE_CLICKED,
                 this::onRequestTypeButtonClicked);
+        mModel.set(FuseboxProperties.ACTIVATION_CHIP_CLICKED, this::onActivationChipClicked);
 
         mModel.set(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_CLICKED, this::onTabPickerClicked);
         mModel.set(FuseboxProperties.POPUP_ATTACH_CLIPBOARD_CLICKED, this::onClipboardClicked);
@@ -216,6 +222,10 @@ import java.util.function.Supplier;
 
     public boolean wasActionTaken() {
         return mActionTaken;
+    }
+
+    public void setOnFirstPickerInteractionCanceledCallback(Runnable callback) {
+        mOnFirstPickerInteractionCanceledCallback = callback;
     }
 
     @EnsuresNonNullIf(
@@ -329,6 +339,7 @@ import java.util.function.Supplier;
         mMetrics = null;
         mIsTextWrapping = false;
         updateFuseboxState();
+        updateActivationChip();
     }
 
     /**
@@ -354,6 +365,9 @@ import java.util.function.Supplier;
             mInput.getRequestTypeSupplier().removeObserver(mOnAutocompleteRequestTypeChanged);
         }
         mInput = input;
+        if (mInput == null) {
+            mNeedUnfocusOnCancel = false;
+        }
 
         if (mInput != null) {
             // TODO(crbug.com/481365131): there must be a better way to do that.
@@ -361,6 +375,7 @@ import java.util.function.Supplier;
                     && mInput.getFocusReason() == OmniboxFocusReason.NTP_AI_MODE) {
                 FuseboxMetrics.notifyAiModeActivated(AiModeActivationSource.NTP_BUTTON);
             } else if (mInput.getFocusReason() == OmniboxFocusReason.FAKE_BOX_PLUS_BUTTON_TAP) {
+                mNeedUnfocusOnCancel = true;
                 showPopup();
             }
 
@@ -411,7 +426,6 @@ import java.util.function.Supplier;
     /* package */ void activateSearchMode() {
         if (trySetRequestType(AutocompleteRequestType.SEARCH)) {
             assert mModelList != null;
-            mModelList.clear();
             if (OmniboxFeatures.sShowModelPicker.getValue()
                     && mComposeboxQueryControllerBridge != null) {
                 InputState inputState =
@@ -465,13 +479,20 @@ import java.util.function.Supplier;
         } else if (!OmniboxFeatures.sCompactFusebox.getValue()) {
             targetState = FuseboxState.EXPANDED;
         } else {
+            boolean isPopover =
+                    mModel.get(FuseboxProperties.FUSEBOX_LAYOUT_MODE)
+                            == FuseboxLayoutMode.SUGGESTIONS_POPOVER;
             targetState =
                     // If we're showing the request type button...
                     showRequestTypeButton
                                     // or the text is wrapping...
                                     || mIsTextWrapping
-                                    // or the attachments list has elements - expand the fusebox.
+                                    // or the attachments list has elements...
                                     || !mModelList.isEmpty()
+                                    // or popover with any ai request type, even when the request
+                                    // button isn't showing, - expand the fusebox.
+                                    || (isPopover
+                                            && ToolModeUtils.isAimRequest(mInput.getRequestType()))
                             ? FuseboxState.EXPANDED
                             : FuseboxState.COMPACT;
         }
@@ -701,6 +722,16 @@ import java.util.function.Supplier;
         mModelList.add(attachment);
     }
 
+    private boolean hasUserAddedAttachments() {
+        if (mModelList == null) return false;
+        for (int i = 0; i < mModelList.size(); i++) {
+            if (!mModelList.get(i).isSuggestedTab) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void onAttachmentsChanged() {
         if (!isInInputSession()) return;
         updateFuseboxState();
@@ -708,6 +739,10 @@ import java.util.function.Supplier;
         if (!OmniboxFeatures.sShowModelPicker.getValue()) {
             updateClientControlledToolButtonList();
             updatePopupButtonEnabledStates();
+        }
+
+        if (mNeedUnfocusOnCancel && hasUserAddedAttachments()) {
+            mNeedUnfocusOnCancel = false;
         }
     }
 
@@ -755,6 +790,16 @@ import java.util.function.Supplier;
                 intent, this::onTabPickerResult, R.string.low_memory_error);
     }
 
+    private void handlePickerCanceled() {
+        if (!isInInputSession()) return;
+        if (mNeedUnfocusOnCancel) {
+            mNeedUnfocusOnCancel = false;
+            if (mOnFirstPickerInteractionCanceledCallback != null) {
+                mOnFirstPickerInteractionCanceledCallback.run();
+            }
+        }
+    }
+
     @VisibleForTesting
     /* package */ void onTabPickerResult(int resultCode, @Nullable Intent data) {
         if (!isInInputSession()) return;
@@ -763,6 +808,7 @@ import java.util.function.Supplier;
             if (data != null && data.hasExtra(ChromeItemPickerExtras.EXTRA_ITEM_PICKER_ERROR)) {
                 onAttachmentUploadFailed();
             }
+            handlePickerCanceled();
             return;
         }
 
@@ -877,10 +923,15 @@ import java.util.function.Supplier;
         updateFuseboxState();
         mModel.set(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE, type);
 
-        if (type != AutocompleteRequestType.AI_MODE && isInInputSession()) {
-            mModelList.removeSuggestedTabs();
+        if (isInInputSession()) {
+            if (!ToolModeUtils.isAimRequest(type)) {
+                mModelList.clear();
+            } else if (type != AutocompleteRequestType.AI_MODE) {
+                mModelList.removeSuggestedTabs();
+            }
         }
 
+        updateActivationChip();
         if (OmniboxFeatures.sShowModelPicker.getValue()) {
             if (!isInInputSession()) return;
             InputState inputState = mComposeboxQueryControllerBridge.getInputStateSupplier().get();
@@ -891,6 +942,16 @@ import java.util.function.Supplier;
             updateClientControlledToolButtonList();
             updatePopupButtonEnabledStates();
         }
+    }
+
+    private void updateActivationChip() {
+        boolean showActivationChip =
+                isInInputSession()
+                        && mModel.get(FuseboxProperties.FUSEBOX_LAYOUT_MODE)
+                                == FuseboxLayoutMode.SUGGESTIONS_POPOVER
+                        && mModel.get(FuseboxProperties.AUTOCOMPLETE_REQUEST_TYPE)
+                                == AutocompleteRequestType.SEARCH;
+        mModel.set(FuseboxProperties.ACTIVATION_CHIP_VISIBLE, showActivationChip);
     }
 
     private void updatePopupButtonEnabledStates() {
@@ -958,11 +1019,15 @@ import java.util.function.Supplier;
                     if (resultCode != Activity.RESULT_OK
                             || data == null
                             || data.getExtras() == null) {
+                        handlePickerCanceled();
                         return;
                     }
 
                     var bitmap = (Bitmap) data.getExtras().get("data");
-                    if (bitmap == null) return;
+                    if (bitmap == null) {
+                        handlePickerCanceled();
+                        return;
+                    }
 
                     long startTime = SystemClock.elapsedRealtime();
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -1009,11 +1074,18 @@ import java.util.function.Supplier;
         mWindowAndroid.showCancelableIntent(
                 intent,
                 (resultCode, data) -> {
+                    if (resultCode != Activity.RESULT_OK || data == null) {
+                        handlePickerCanceled();
+                        return;
+                    }
                     if (!isInInputSession()) return;
-                    if (resultCode != Activity.RESULT_OK || data == null) return;
 
                     try (var batchToken = mModelList.beginBatchEdit()) {
                         var uris = extractUrisFromResult(data);
+                        if (uris.isEmpty()) {
+                            handlePickerCanceled();
+                            return;
+                        }
                         for (var uri : uris) {
                             fetchAttachmentDetails(
                                     uri,
@@ -1048,11 +1120,18 @@ import java.util.function.Supplier;
         mWindowAndroid.showCancelableIntent(
                 i,
                 (resultCode, data) -> {
-                    if (resultCode != Activity.RESULT_OK || data == null) return;
+                    if (resultCode != Activity.RESULT_OK || data == null) {
+                        handlePickerCanceled();
+                        return;
+                    }
                     if (!isInInputSession()) return;
 
                     try (var batchToken = mModelList.beginBatchEdit()) {
                         var uris = extractUrisFromResult(data);
+                        if (uris.isEmpty()) {
+                            handlePickerCanceled();
+                            return;
+                        }
                         for (var uri : uris) {
                             fetchAttachmentDetails(
                                     uri,
@@ -1062,6 +1141,12 @@ import java.util.function.Supplier;
                     }
                 },
                 /* errorId= */ android.R.string.cancel);
+    }
+
+    private void onActivationChipClicked() {
+        if (!isInInputSession()) return;
+        mInput.setAutocompleteState(AutocompleteState.ENABLED);
+        activateAiMode(AutocompleteRequestType.AI_MODE, AiModeActivationSource.DEDICATED_BUTTON);
     }
 
     private void onClipboardClicked() {
@@ -1272,6 +1357,7 @@ import java.util.function.Supplier;
 
     private void onDynamicButtonClicked(PopupButtonData data) {
         mActionTaken = true;
+        mNeedUnfocusOnCancel = false;
         if (data.type == PopupButtonType.MODEL) {
             FuseboxMetrics.notifyModelButtonSelected(data.protoId);
             setModelMode(data.protoId);
