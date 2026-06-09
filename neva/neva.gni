@@ -94,6 +94,10 @@ declare_args() {
 
   # Disable doxygen generation by default
   use_neva_doxygen = false
+
+  # TODO(neva): Should be removed when Neva will support
+  # use_unified_system_module.
+  use_unified_system_module_neva = false
 }
 
 declare_args() {

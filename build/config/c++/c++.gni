@@ -61,7 +61,9 @@ declare_args() {
 
   # Unified modules controls whether we unify sysroot, libc++, and builtins
   # into a single module.
-  use_unified_system_module = is_linux
+  # TODO(neva): Should be revised when Neva will support
+  # use_unified_system_module.
+  use_unified_system_module = is_linux && use_unified_system_module_neva
 }
 
 if (enable_strict_deps) {
