@@ -143,6 +143,12 @@ bool NevaExtensionsBrowserClient::IsExtensionIncognitoEnabled(
   return false;
 }
 
+bool NevaExtensionsBrowserClient::IsExtensionIncognitoEnabled(
+    const extensions::Extension* extension,
+    content::BrowserContext* context) const {
+  return false;
+}
+
 bool NevaExtensionsBrowserClient::CanExtensionCrossIncognito(
     const extensions::Extension* extension,
     content::BrowserContext* context) const {

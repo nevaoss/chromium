@@ -71,6 +71,9 @@ class NevaExtensionsBrowserClient : public extensions::ExtensionsBrowserClient {
   bool IsExtensionIncognitoEnabled(
       const std::string& extension_id,
       content::BrowserContext* context) const override;
+  bool IsExtensionIncognitoEnabled(
+      const extensions::Extension* extension,
+      content::BrowserContext* context) const override;
   bool CanExtensionCrossIncognito(
       const extensions::Extension* extension,
       content::BrowserContext* context) const override;
