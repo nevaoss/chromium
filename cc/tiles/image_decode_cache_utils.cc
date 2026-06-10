@@ -41,11 +41,11 @@ size_t ImageDecodeCacheUtils::GetWorkingSetBytesForImageDecode(
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
     const base::CommandLine& cmd = *base::CommandLine::ForCurrentProcess();
     if (cmd.HasSwitch(::switches::kDecodedImageWorkingSetBudgetMB)) {
-      int budget_bytes_mb = 0;
-      if (base::StringToInt(cmd.GetSwitchValueASCII(
+      uint64_t budget_bytes_mb = 0;
+      if (base::StringToUint64(cmd.GetSwitchValueASCII(
                                 ::switches::kDecodedImageWorkingSetBudgetMB),
                             &budget_bytes_mb)) {
-        base::ByteCount budget_bytes = base::MiB(budget_bytes_mb);
+        base::ByteSize budget_bytes = base::MiBU(budget_bytes_mb);
         if (!using_low_memory_policy ||
             budget_bytes < decoded_image_working_set_budget) {
           decoded_image_working_set_budget = budget_bytes;
