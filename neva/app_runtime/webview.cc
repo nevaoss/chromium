@@ -314,7 +314,7 @@ void WebView::ResumePaintingAndSetVisibilityVisible() {
       static_cast<content::RenderWidgetHostViewAura*>(
           web_contents_->GetRenderViewHost()->GetWidget()->GetView());
   if (host_view)
-    host_view->Show();
+    host_view->ShowWithVisibility(content::PageVisibilityState::kVisible);
 }
 
 bool WebView::SetSkipFrame(bool enable) {
