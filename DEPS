@@ -4635,7 +4635,7 @@ hooks = [
     'name': 'Remove-dl-linkage-from-rust-libc',
     'pattern': '.',
     'action': ['bash', '-c',
-              'src/neva/patches/0013-Remove-dl-linkage-from-rust-libc.bash']
+              'src/neva/patches/0013-Remove-libraries-linkage-from-rust-libc.bash']
   },
   # Apply 'V8: Do not exit function while ICU is not initialized for webOS' patch
   {
