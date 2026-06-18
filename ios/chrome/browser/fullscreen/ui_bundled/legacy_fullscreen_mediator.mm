@@ -120,8 +120,13 @@ void LegacyFullscreenMediator::ExitFullscreenWithoutAnimation() {
 }
 
 void LegacyFullscreenMediator::Disconnect() {
+  base::WeakPtr<LegacyFullscreenMediator> weak_this =
+      weak_factory_.GetWeakPtr();
   for (auto& observer : observers_) {
     observer.FullscreenControllerWillShutDown(controller_);
+    if (!weak_this) {
+      return;
+    }
   }
   resizer_.webState = nullptr;
   resizer_ = nil;
@@ -135,10 +140,18 @@ void LegacyFullscreenMediator::Disconnect() {
 
 void LegacyFullscreenMediator::FullscreenModelToolbarHeightsUpdated(
     FullscreenModel* model) {
+  if (IsDisconnected()) {
+    return;
+  }
+  base::WeakPtr<LegacyFullscreenMediator> weak_this =
+      weak_factory_.GetWeakPtr();
   for (auto& observer : observers_) {
     observer.FullscreenViewportInsetRangeChanged(controller_,
                                                  model_->min_toolbar_insets(),
                                                  model_->max_toolbar_insets());
+    if (!weak_this) {
+      return;
+    }
   }
   BOOL compensateFrameChangeByOffset = resizer_.compensateFrameChangeByOffset;
   // The compensateFrameChangeByOffset property determines whether the webview's
@@ -160,13 +173,21 @@ void LegacyFullscreenMediator::FullscreenModelToolbarHeightsUpdated(
 
 void LegacyFullscreenMediator::FullscreenModelProgressUpdated(
     FullscreenModel* model) {
+  if (IsDisconnected()) {
+    return;
+  }
   DCHECK_EQ(model_, model);
   // Stops the animation only if there is a current animation running.
   if (animator_ && animator_.state == UIViewAnimatingStateActive) {
     StopAnimating(true /* update_model */);
   }
+  base::WeakPtr<LegacyFullscreenMediator> weak_this =
+      weak_factory_.GetWeakPtr();
   for (auto& observer : observers_) {
     observer.FullscreenProgressUpdated(controller_, model_->progress());
+    if (!weak_this) {
+      return;
+    }
   }
 
   [resizer_ updateForCurrentState];
@@ -174,18 +195,29 @@ void LegacyFullscreenMediator::FullscreenModelProgressUpdated(
 
 void LegacyFullscreenMediator::FullscreenModelEnabledStateChanged(
     FullscreenModel* model) {
+  if (IsDisconnected()) {
+    return;
+  }
   DCHECK_EQ(model_, model);
   // Stops the animation only if there is a current animation running.
   if (animator_ && animator_.state == UIViewAnimatingStateActive) {
     StopAnimating(true /* update_model */);
   }
+  base::WeakPtr<LegacyFullscreenMediator> weak_this =
+      weak_factory_.GetWeakPtr();
   for (auto& observer : observers_) {
     observer.FullscreenEnabledStateChanged(controller_, model->enabled());
+    if (!weak_this) {
+      return;
+    }
   }
 }
 
 void LegacyFullscreenMediator::FullscreenModelScrollEventStarted(
     FullscreenModel* model) {
+  if (IsDisconnected()) {
+    return;
+  }
   DCHECK_EQ(model_, model);
   start_progress_ = model_->progress();
   StopAnimating(true /* update_model */);
@@ -200,6 +232,9 @@ void LegacyFullscreenMediator::FullscreenModelScrollEventStarted(
 
 void LegacyFullscreenMediator::FullscreenModelScrollEventEnded(
     FullscreenModel* model) {
+  if (IsDisconnected()) {
+    return;
+  }
   DCHECK_EQ(model_, model);
   if (ios::provider::IsFullscreenSmoothScrollingSupported()) {
     if (model_->progress() >= 0.5) {
@@ -233,6 +268,9 @@ void LegacyFullscreenMediator::FullscreenModelScrollEventEnded(
 }
 
 void LegacyFullscreenMediator::FullscreenModelWasReset(FullscreenModel* model) {
+  if (IsDisconnected()) {
+    return;
+  }
   fullscreen_enter_trigger_ = std::nullopt;
   has_reached_bottom_once_ = false;
   // Stop any in-progress animations.  Don't update the model because this
@@ -241,11 +279,19 @@ void LegacyFullscreenMediator::FullscreenModelWasReset(FullscreenModel* model) {
   StopAnimating(false /* update_model */);
   // Update observers for the reset progress value and set the inset range in
   // case this is a new WebState.
+  base::WeakPtr<LegacyFullscreenMediator> weak_this =
+      weak_factory_.GetWeakPtr();
   for (auto& observer : observers_) {
     observer.FullscreenViewportInsetRangeChanged(
         controller_, controller_->GetMinViewportInsets(),
         controller_->GetMaxViewportInsets());
+    if (!weak_this) {
+      return;
+    }
     observer.FullscreenProgressUpdated(controller_, model_->progress());
+    if (!weak_this) {
+      return;
+    }
   }
 
   [resizer_ updateForCurrentState];
@@ -297,12 +343,20 @@ void LegacyFullscreenMediator::AnimateWithStyle(FullscreenAnimatorStyle style) {
     }
     for (auto& observer : mediator->observers_) {
       observer.FullscreenDidAnimate(mediator->controller_, style);
+      if (!weak_mediator) {
+        return;
+      }
     }
   }];
 
   // Notify observers that the animation will occur.
+  base::WeakPtr<LegacyFullscreenMediator> weak_this =
+      weak_factory_.GetWeakPtr();
   for (auto& observer : observers_) {
     observer.FullscreenWillAnimate(controller_, animator_);
+    if (!weak_this) {
+      return;
+    }
   }
 
   // Only start the animator if animations have been added.
@@ -327,8 +381,13 @@ void LegacyFullscreenMediator::StopAnimating(bool update_model) {
 }
 
 void LegacyFullscreenMediator::ResizeHorizontalInsets() {
+  base::WeakPtr<LegacyFullscreenMediator> weak_this =
+      weak_factory_.GetWeakPtr();
   for (auto& observer : observers_) {
     observer.ResizeHorizontalInsets(controller_);
+    if (!weak_this) {
+      return;
+    }
   }
 }
 

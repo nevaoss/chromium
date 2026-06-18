@@ -7,7 +7,7 @@ import 'chrome://new-tab-page/new_tab_page.js';
 import type {NtpSearchboxElement} from 'chrome://new-tab-page/new_tab_page.js';
 import {BrowserProxyImpl, MetricsReporterImpl, SearchboxBrowserProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import {ContextType} from 'chrome://resources/cr_components/composebox/common.js';
-import type {ComposeboxState, FileUpload, TabUpload} from 'chrome://resources/cr_components/composebox/common.js';
+import type {ComposeboxState, DriveUpload, FileUpload, TabUpload} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
@@ -136,7 +136,6 @@ suite('NewTabPageRealboxTabsTest', () => {
     await microtasksFinished();
 
     assertEquals(testProxy.handler.getCallCount('getRecentTabs'), 1);
-    assertDeepEquals((realbox as any).tabSuggestions_, sampleTabs);
 
     // Once the context menu is closed again, getRecentTabs should not be called
     // on tab strip changes.
@@ -228,6 +227,66 @@ suite('NewTabPageRealboxNextTest', () => {
     const tabUpload = event.detail.files[0] as TabUpload;
     assertEquals(tabUpload.tabId, 1);
     assertEquals(tabUpload.title, 'title');
+  });
+
+  test('selecting drive upload opens composebox', async () => {
+    const sampleToken = {high: BigInt(123), low: BigInt(456)};
+    testProxy.handler.setResultFor('onDriveUploadClicked', Promise.resolve({
+      response: {
+        files: [{
+          token: sampleToken,
+          mimeType: 'application/pdf',
+          fileName: 'sample.pdf',
+          thumbnailUrl: null,
+          iconUrl: null,
+        }],
+        error: null,
+      },
+    }));
+
+    const contextElement = realbox.shadowRoot.querySelector(
+        'cr-composebox-contextual-entrypoint-and-menu');
+    assertTrue(!!contextElement);
+
+    // Act & Assert.
+    const whenOpenComposeBox = eventToPromise<CustomEvent<ComposeboxState>>(
+        'open-composebox', realbox);
+    contextElement.dispatchEvent(new CustomEvent('open-drive-upload', {
+      bubbles: true,
+      composed: true,
+    }));
+    const event = await whenOpenComposeBox;
+    assertEquals(event.detail.files.length, 1);
+    const driveUpload = event.detail.files[0] as DriveUpload;
+    assertDeepEquals(sampleToken, driveUpload.token);
+    assertEquals('application/pdf', driveUpload.mimeType);
+    assertEquals('sample.pdf', driveUpload.fileName);
+    assertEquals(null, driveUpload.thumbnailUrl);
+  });
+
+  test('selecting drive upload opens composebox with error', async () => {
+    testProxy.handler.setResultFor(
+        'onDriveUploadClicked', Promise.resolve({
+          response: {
+            files: [],
+            error: 1,
+          },
+        }));
+
+    const contextElement = realbox.shadowRoot.querySelector(
+        'cr-composebox-contextual-entrypoint-and-menu');
+    assertTrue(!!contextElement);
+
+    // Act & Assert.
+    const whenOpenComposeBox = eventToPromise<CustomEvent<ComposeboxState>>(
+        'open-composebox', realbox);
+    contextElement.dispatchEvent(new CustomEvent('open-drive-upload', {
+      bubbles: true,
+      composed: true,
+    }));
+    const event = await whenOpenComposeBox;
+    assertEquals(event.detail.files.length, 0);
+    assertEquals(1, event.detail.error);
   });
 
   test('clicking deep search button opens composebox', async () => {
@@ -332,10 +391,9 @@ suite('NewTabPageRealboxNextTest', () => {
     const file2 = event.detail.files[1] as FileUpload;
     assertEquals('pasted.pdf', file2.file.name);
     assertEquals('application/pdf', file2.file.type);
-    assertFalse((realbox.$.input as any).pastedInInput_);
   });
 
-  test('pasting text sets pastedInInput flag', async () => {
+  test('pasting text affects preventInlineAutocomplete', async () => {
     // Re-create realbox to pick up new loadTimeData.
     realbox = await createAndAppendRealbox({ntpRealboxNextEnabled: true});
 
@@ -358,7 +416,7 @@ suite('NewTabPageRealboxNextTest', () => {
 
     assertFalse(pasteEvent.defaultPrevented);
     assertFalse(openComposeboxCalled);
-    assertTrue((realbox.$.input as any).pastedInInput_);
+    assertTrue(realbox.$.input.preventInlineAutocomplete(''));
   });
 
   test('useWebKitSearchboxIcons with compose button enabled', async () => {
@@ -677,6 +735,33 @@ suite('NewTabPageRealboxNextTest', () => {
     assertEquals(1, metrics.count(metricName, ContextType.PRO_NO_GEN_UI_MODEL));
   });
 
+  test('metrics are recorded for drive uploads', async () => {
+    loadTimeData.overrideValues({
+      composeboxSource: 'TestSource',
+    });
+    realbox = createAndAppendRealbox({
+      composeButtonEnabled: true,
+      composeboxEnabled: true,
+      ntpRealboxNextEnabled: true,
+    });
+    await microtasksFinished();
+
+    const entrypointAndMenu = realbox.shadowRoot.querySelector(
+        'cr-composebox-contextual-entrypoint-and-menu');
+    assertTrue(!!entrypointAndMenu);
+
+    const metricName =
+        'TestSource.AimEntrypoint.ClassicPopup.ContextualElement.Clicked';
+
+    entrypointAndMenu.dispatchEvent(new CustomEvent('open-drive-upload', {
+      bubbles: true,
+      composed: true,
+    }));
+    await testProxy.handler.whenCalled('onDriveUploadClicked');
+    await microtasksFinished();
+    assertEquals(1, metrics.count(metricName, ContextType.DRIVE));
+  });
+
   test('metrics are recorded for file uploads', async () => {
     loadTimeData.overrideValues({
       composeboxSource: 'TestSource',
@@ -787,7 +872,6 @@ suite('NewTabPageRealboxNextTest', () => {
     await microtasksFinished();
 
     assertEquals(testProxy.handler.getCallCount('getRecentTabs'), 1);
-    assertDeepEquals((realbox as any).tabSuggestions_, sampleTabs);
 
     // Verify shown metrics for input types based on SAMPLE_INPUT_STATE
     assertEquals(1, metrics.count(metricName, ContextType.IMAGE));

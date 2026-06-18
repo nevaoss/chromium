@@ -39,7 +39,8 @@ export function getHtml(this: TopToolbarElement) {
         @click="${this.onNewThreadClick_}"
         iron-icon="contextual_tasks:edit_square"
         class="no-overlap" title="$i18n{newThreadTooltip}"
-        aria-label="$i18n{newThreadTooltip}">
+        aria-label="$i18n{newThreadTooltip}"
+        ?hidden="${!this.isAimEligible}">
     </cr-icon-button>
     <cr-icon-button id="threadHistoryButton"
         @click="${this.onThreadHistoryClick_}"
@@ -48,13 +49,15 @@ export function getHtml(this: TopToolbarElement) {
         aria-label="$i18n{threadHistoryTooltip}"
         ?hidden="${!this.isAiPage}">
     </cr-icon-button>
+
+    ${!this.contextManagementInComposeboxEnabled_ ? html`
     <contextual-tasks-favicon-group id="sources"
         .contextInfos="${this.contextInfos}"
         title="$i18n{contextTooltip}"
         aria-label="$i18n{contextTooltip}"
         @click="${this.onSourcesClick_}"
         ?hidden="${!this.shouldShowSourcesMenuButton_()}">
-    </contextual-tasks-favicon-group>
+    </contextual-tasks-favicon-group>` : ''}
     ${this.isExpandButtonEnabled ? html`
       <cr-icon-button id="openInNewTabButton"
         iron-icon="contextual_tasks:open_in_full_tab"

@@ -134,6 +134,7 @@ class CORE_EXPORT LocalFrameClient : public FrameClient {
   virtual WebLocalFrame* GetWebFrame() const { return nullptr; }
 
   virtual bool HasWebView() const = 0;  // mainly for assertions
+  virtual bool IsForInitialWebUI() const { return false; }
 
   virtual base::UnguessableToken GetDevToolsFrameToken() const = 0;
 
@@ -157,7 +158,8 @@ class CORE_EXPORT LocalFrameClient : public FrameClient {
       bool is_client_redirect,
       bool is_browser_initiated,
       bool should_skip_screenshot,
-      base::UnguessableToken same_document_metrics_token) {}
+      base::UnguessableToken same_document_metrics_token,
+      bool caused_by_ad) {}
   virtual void DidFailAsyncSameDocumentCommit() {}
   virtual void DispatchDidOpenDocumentInputStream(const KURL&) {}
   virtual void DispatchDidReceiveTitle(const String&) = 0;

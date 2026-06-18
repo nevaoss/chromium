@@ -350,13 +350,15 @@ class CONTENT_EXPORT WebContentsImpl
   void OnCaptureHandleConfigUpdate(Page& page) override;
 
   // Returns the focused WebContents.
-  // If there are multiple inner/outer WebContents (when embedding <webview>,
-  // <guestview>, ...) returns the single one containing the currently focused
-  // frame. Otherwise, returns this WebContents.
+  // Returns nullptr if this WebContents is an inner WebContents embedded via
+  // SurfaceEmbed and the focused frame is not inside it. Otherwise, returns the
+  // WebContents containing the currently focused frame.
   WebContentsImpl* GetFocusedWebContents();
 
   // Returns the focused FrameTree. For MPArch we may return a different
   // focused frame tree even though the focused WebContents is the same.
+  // Returns nullptr if this WebContents is an inner WebContents embedded via
+  // SurfaceEmbed and the focused frame is not inside it.
   FrameTree* GetFocusedFrameTree();
 
   // TODO(lukasza): Maybe this method can be removed altogether (so that the
@@ -652,8 +654,8 @@ class CONTENT_EXPORT WebContentsImpl
   bool IsFullscreen() override;
   bool ShouldShowStaleContentOnEviction() override;
   void ExitFullscreen(bool will_cause_resize) override;
-  [[nodiscard]] base::ScopedClosureRunner ForSecurityDropFullscreen(
-      int64_t display_id) override;
+  [[nodiscard]] std::optional<base::ScopedClosureRunner>
+  ForSecurityDropFullscreen(int64_t display_id) override;
   void ResumeLoadingCreatedWebContents() override;
   void SetIsOverlayContent(bool is_overlay_content) override;
   bool IsFocusedElementEditable() override;
@@ -731,6 +733,7 @@ class CONTENT_EXPORT WebContentsImpl
   void OnDidBlockNavigation(
       const GURL& blocked_url,
       const GURL& initiator_url,
+      const url::Origin& initiator_origin,
       blink::mojom::NavigationBlockedReason reason) override;
   void OnDidFinishLoad(RenderFrameHostImpl* render_frame_host,
                        const GURL& url) override;
@@ -947,8 +950,8 @@ class CONTENT_EXPORT WebContentsImpl
           blink_popup_widget_host,
       mojo::PendingAssociatedReceiver<blink::mojom::WidgetHost>
           blink_widget_host,
-      mojo::PendingAssociatedRemote<blink::mojom::Widget> blink_widget)
-      override;
+      mojo::PendingAssociatedRemote<blink::mojom::Widget> blink_widget,
+      GlobalRenderFrameHostId creator_frame_id) override;
   void DidLoadResourceFromMemoryCache(
       RenderFrameHostImpl* source,
       const GURL& url,
@@ -1092,6 +1095,10 @@ class CONTENT_EXPORT WebContentsImpl
   void DidStartNavigation(NavigationHandle* navigation_handle) override;
   void DidRedirectNavigation(NavigationHandle* navigation_handle) override;
   void ReadyToCommitNavigation(NavigationHandle* navigation_handle) override;
+  void OnStartDragging(
+      DropData* drop_data,
+      const GlobalRenderFrameHostToken& source_rfh_token) override;
+  void OnDragSourceEnded() override;
   void DidFinishNavigation(NavigationHandle* navigation_handle) override;
   void DidCancelNavigationBeforeStart(
       NavigationHandle* navigation_handle) override;
@@ -1193,6 +1200,13 @@ class CONTENT_EXPORT WebContentsImpl
                          bool should_show_context_menu) override;
   void MoveCaret(const gfx::Point& extent) override;
   base::UnguessableToken GetCompositorFrameSinkGroupingId() const override;
+
+  // Called just after a surface embed child web contents is attached.
+  void SurfaceEmbedChildWebContentsAttached(
+      WebContents* inner_web_contents,
+      RenderFrameHost* embedder_render_frame_host);
+  // Called just after a surface embed child web contents is detached.
+  void SurfaceEmbedChildWebContentsDetached(WebContents* inner_web_contents);
   void AdjustSelectionByCharacterOffset(int start_adjust,
                                         int end_adjust,
                                         bool show_selection_menu) override;
@@ -1280,6 +1294,7 @@ class CONTENT_EXPORT WebContentsImpl
   void NotifySwappedRWHVChildFrameFromRenderManager(
       RenderWidgetHostViewChildFrame* new_view,
       bool allow_paint_holding) override;
+  void PrimaryMainFrameCommitted(RenderFrameHostImpl* new_frame) override;
 
   // PageDelegate -------------------------------------------------------------
 
@@ -1347,6 +1362,7 @@ class CONTENT_EXPORT WebContentsImpl
 
   //  RenderWidgetHostInputEventRouter::Delegate -------------------------------
   input::TouchEmulator* GetTouchEmulator(bool create_if_necessary) override;
+  void CancelAutoscroll(input::RenderWidgetHostViewInput* view) override;
 
   // Invoked before a form repost warning is shown.
   void NotifyBeforeFormRepostWarningShow() override;
@@ -1679,6 +1695,10 @@ class CONTENT_EXPORT WebContentsImpl
   // Clears the SurfaceEmbedConnector for this WebContents. Called when the
   // WebContents is being detached from a SurfaceEmbed plugin.
   void ClearSurfaceEmbedConnector();
+
+  // Called when the number of active capturers for this WebContents has
+  // changed.
+  void OnCapturerCountChanged();
 
  private:
   using FrameTreeIterationCallback = base::FunctionRef<void(FrameTree&)>;
@@ -2169,6 +2189,10 @@ class CONTENT_EXPORT WebContentsImpl
   // the value returned by GetLastActiveTimeTicks().
   void UpdateVisibilityAndNotifyPageAndView(Visibility new_visibility,
                                             bool is_activity = true);
+
+  // Updates the visibility for the main RenderWidgetHostView and child views
+  // for this WebContents.
+  void SetPrimaryMainFrameViewVisibility(Visibility visibility);
 
   // Returns UKM source id for the currently displayed page.
   // Intentionally kept private, prefer using
@@ -2853,6 +2877,11 @@ class CONTENT_EXPORT WebContentsImpl
 #if BUILDFLAG(IS_ANDROID)
   bool supports_forward_transition_animation_ = true;
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+  void SetDragSource(const DragId& drag_id,
+                     const GlobalRenderFrameHostToken& source_rfh_token);
+
+  std::optional<DragId> active_drag_id_;
 
   const UniqueToken web_contents_token_;
   const base::trace_event::TrackRegistration<perfetto::NamedTrack>

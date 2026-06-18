@@ -15,6 +15,7 @@
 
 #include "base/apple/foundation_util.h"
 #include "base/containers/span.h"
+#include "base/strings/string_util.h"
 #include "base/strings/string_view_util.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/strings/utf_string_conversions.h"
@@ -91,12 +92,23 @@ void ClipboardIOS::GetAllAvailableFormats(
   DCHECK(CalledOnValidThread());
   DCHECK_EQ(buffer, ClipboardBuffer::kCopyPaste);
 
-  NSArray* types = GetPasteboard().pasteboardTypes;
+  NSArray<NSDictionary<NSString*, id>*>* items = GetPasteboard().items;
   base::flat_set<ClipboardFormatType> formats;
-  for (NSString* type in types) {
-    formats.insert(
-        ClipboardFormatType::Deserialize(base::SysNSStringToUTF8(type)));
+  for (NSDictionary<NSString*, id>* item in items) {
+    for (NSString* type in item) {
+      std::string type_utf8 = base::SysNSStringToUTF8(type);
+      if (base::IsStringASCII(type_utf8)) {
+        formats.insert(ClipboardFormatType::Deserialize(type_utf8));
+      }
+    }
   }
+
+  if (formats.contains(ClipboardFormatType::PngType()) ||
+      formats.contains(ClipboardFormatType::BitmapType())) {
+    formats.insert(ClipboardFormatType::PngType());
+    formats.insert(ClipboardFormatType::BitmapType());
+  }
+
   std::move(callback).Run(std::move(formats));
 }
 

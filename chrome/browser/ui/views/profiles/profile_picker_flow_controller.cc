@@ -49,7 +49,6 @@
 #include "chrome/browser/ui/webui/signin/signin_ui_error.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/branded_strings.h"
-#include "chrome/grit/generated_resources.h"
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_switches.h"
 #include "google_apis/gaia/core_account_id.h"
@@ -295,7 +294,9 @@ class ReauthFlowStepController : public ProfileManagementStepController {
     reauth_provider_->SwitchToReauth(std::move(step_shown_callback));
   }
 
-  void OnHidden() override { host()->SetNativeToolbarVisible(false); }
+  void OnHidden() override {
+    host()->SetNativeToolbarSigninButtonsVisible(false);
+  }
 
   void OnNavigateBackRequested() override {
     NavigateBackInternal(reauth_provider_->contents());
@@ -349,6 +350,7 @@ class FirstWebContentsProfilerForProfilePicker
       metrics::StartupProfilingFinishReason finish_reason) override;
   void RecordNavigationFinished(base::TimeTicks navigation_start) override;
   void RecordFirstNonEmptyPaint() override;
+  void RecordFirstNonEmptyPaintForOsLaunch() override;
   bool WasStartupInterrupted() override;
 
  private:
@@ -385,6 +387,15 @@ void FirstWebContentsProfilerForProfilePicker::RecordFirstNonEmptyPaint() {
   TRACE_EVENT_BEGIN("startup", histogram_name,
                     perfetto::Track::FromPointer(this), pick_time_);
   TRACE_EVENT_END("startup", perfetto::Track::FromPointer(this), paint_time);
+}
+
+void FirstWebContentsProfilerForProfilePicker::
+    RecordFirstNonEmptyPaintForOsLaunch() {
+  base::TimeTicks paint_time = base::TimeTicks::Now();
+  base::UmaHistogramLongTimes100(
+      "ProfilePicker.FirstProfileTime.FirstWebContentsNonEmptyPaint."
+      "AutoLaunchByOs",
+      paint_time - pick_time_);
 }
 
 bool FirstWebContentsProfilerForProfilePicker::WasStartupInterrupted() {
@@ -741,7 +752,7 @@ void ProfilePickerFlowController::OnSwitchToProfileComplete(
     bool exit_flow_after_profile_picked,
     base::OnceCallback<void(bool)> pick_profile_complete_callback,
     Browser* browser) {
-  if (!browser || browser->is_delete_scheduled()) {
+  if (!browser || browser->IsDeleteScheduled()) {
     // The browser is destroyed or about to be destroyed.
     if (pick_profile_complete_callback) {
       std::move(pick_profile_complete_callback).Run(false);

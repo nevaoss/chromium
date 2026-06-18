@@ -56,6 +56,7 @@ namespace payments {
 
 struct BnplIssuerContext;
 struct BnplTosModel;
+class IosBnplUiDelegate;
 class MandatoryReauthManager;
 
 // Chrome iOS implementation of PaymentsAutofillClient. Owned by the
@@ -106,8 +107,8 @@ class IOSChromePaymentsAutofillClient : public PaymentsAutofillClient {
       base::OnceClosure accept_virtual_card_callback,
       base::OnceClosure decline_virtual_card_callback) override;
   void VirtualCardEnrollCompleted(PaymentsRpcResult result) override;
-  void OnCardDataAvailable(
-      const FilledCardInformationBubbleOptions& options) override;
+  void OnCardDataAvailable(const FilledCardInformationBubbleOptions& options,
+                           const url::Origin& origin) override;
   void ConfirmSaveIbanLocally(const Iban& iban,
                               bool should_show_prompt,
                               SaveIbanPromptCallback callback) override;
@@ -156,7 +157,6 @@ class IOSChromePaymentsAutofillClient : public PaymentsAutofillClient {
   CreditCardRiskBasedAuthenticator* GetRiskBasedAuthenticator() override;
   bool IsRiskBasedAuthEffectivelyAvailable() const override;
   bool IsMandatoryReauthEnabled() override;
-  bool IsUsingCustomCardIconEnabled() const override;
   void ShowMandatoryReauthOptInPrompt(
       base::OnceClosure accept_mandatory_reauth_callback,
       base::OnceClosure cancel_mandatory_reauth_callback,
@@ -284,6 +284,10 @@ class IOSChromePaymentsAutofillClient : public PaymentsAutofillClient {
   // the infobar for uploading the card to server.
   bool show_save_card_bottom_sheet_for_upload_;
 
+  // The BnplUiDelegate used to handle the UI in the BNPL flow depending on the
+  // platform.
+  // Lazily initialized: access only through `GetBnplUiDelegate()`.
+  std::unique_ptr<IosBnplUiDelegate> bnpl_ui_delegate_;
 };
 
 }  // namespace payments

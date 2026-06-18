@@ -29,6 +29,7 @@
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/view_class_properties.h"
 
@@ -162,21 +163,8 @@ void LensOverlayHomeworkPageActionIconView::OnExecuting(
       LensSearchController::FromTabWebContents(GetWebContents());
   CHECK(controller);
 
-  if (lens::features::IsLensOverlayStraightToSrpEnabled()) {
-    std::string query_text =
-        lens::features::GetStraightToSrpQuery().empty()
-            ? l10n_util::GetStringUTF8(IDS_LENS_CONTEXTUAL_SEARCH_DEFAULT_QUERY)
-            : lens::features::GetStraightToSrpQuery();
-    controller->IssueTextSearchRequest(
-        lens::LensOverlayInvocationSource::kHomeworkActionChip, query_text,
-        /*additional_query_parameters=*/{},
-        AutocompleteMatchType::Type::SEARCH_SUGGEST,
-        /*is_zero_prefix_suggestion=*/false,
-        /*suppress_contextualization=*/false);
-  } else {
-    controller->OpenLensOverlay(
-        lens::LensOverlayInvocationSource::kHomeworkActionChip);
-  }
+  controller->OpenLensOverlay(
+      lens::LensOverlayInvocationSource::kHomeworkActionChip);
   UserEducationService::MaybeNotifyNewBadgeFeatureUsed(
       GetWebContents()->GetBrowserContext(), lens::features::kLensOverlay);
 
@@ -197,7 +185,9 @@ const gfx::VectorIcon& LensOverlayHomeworkPageActionIconView::GetVectorIcon()
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
   return vector_icons::kGoogleLensMonochromeLogoIcon;
 #else
-  return vector_icons::kSearchChromeRefreshIcon;
+  return features::IsRoundedIconsEnabled()
+             ? vector_icons::kSearchIcon
+             : vector_icons::kSearchChromeRefreshOldIcon;
 #endif
 }
 

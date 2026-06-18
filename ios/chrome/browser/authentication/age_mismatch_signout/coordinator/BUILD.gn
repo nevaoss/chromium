@@ -10,6 +10,7 @@ source_set("scene_agent") {
   deps = [
     ":coordinator",
     "//base",
+    "//components/prefs",
     "//components/signin/internal/identity_manager:capabilities",
     "//components/signin/public/base",
     "//components/signin/public/identity_manager/objc",
@@ -21,6 +22,7 @@ source_set("scene_agent") {
     "//ios/chrome/browser/shared/coordinator/scene:scene_state_header",
     "//ios/chrome/browser/shared/coordinator/scene/state",
     "//ios/chrome/browser/shared/model/application_context",
+    "//ios/chrome/browser/shared/model/prefs:pref_names",
     "//ios/chrome/browser/shared/model/profile",
     "//ios/chrome/browser/signin/model",
     "//ios/chrome/browser/signin/model:authentication_service",
@@ -32,6 +34,8 @@ source_set("scene_agent") {
 
 source_set("coordinator") {
   sources = [
+    "age_mismatch_signout_constants.h",
+    "age_mismatch_signout_constants.mm",
     "age_mismatch_signout_coordinator.h",
     "age_mismatch_signout_coordinator.mm",
     "age_mismatch_signout_mediator.h",
@@ -40,6 +44,7 @@ source_set("coordinator") {
   deps = [
     "//base",
     "//components/signin/public/base",
+    "//components/signin/public/identity_manager",
     "//components/strings",
     "//ios/chrome/app/strings",
     "//ios/chrome/browser/authentication/age_mismatch_signout/age_mismatch_learn_more/coordinator",
@@ -70,12 +75,17 @@ source_set("coordinator") {
 
 source_set("unit_tests") {
   testonly = true
-  sources = [ "signin_account_capabilities_scene_agent_unittest.mm" ]
+  sources = [
+    "age_mismatch_signout_coordinator_unittest.mm",
+    "age_mismatch_signout_mediator_unittest.mm",
+    "signin_account_capabilities_scene_agent_unittest.mm",
+  ]
   deps = [
     ":coordinator",
     ":scene_agent",
     "//base",
     "//base/test:test_support",
+    "//components/prefs",
     "//components/signin/internal/identity_manager:capabilities",
     "//components/signin/public/base",
     "//components/signin/public/identity_manager",
@@ -84,11 +94,15 @@ source_set("unit_tests") {
     "//ios/chrome/app/application_delegate:app_state",
     "//ios/chrome/app/profile",
     "//ios/chrome/app/profile:test_utils",
+    "//ios/chrome/browser/authentication/age_mismatch_signout/ui",
+    "//ios/chrome/browser/authentication/ui_bundled/signin:constants",
+    "//ios/chrome/browser/shared/coordinator/layout_guide:layout_guide_scene_agent",
     "//ios/chrome/browser/shared/coordinator/scene:scene_state_header",
     "//ios/chrome/browser/shared/coordinator/scene:scene_testing",
     "//ios/chrome/browser/shared/coordinator/scene/test",
     "//ios/chrome/browser/shared/model/application_context",
     "//ios/chrome/browser/shared/model/browser/test:test_support",
+    "//ios/chrome/browser/shared/model/prefs:pref_names",
     "//ios/chrome/browser/shared/model/profile/test",
     "//ios/chrome/browser/signin/model",
     "//ios/chrome/browser/signin/model:authentication_service",
@@ -97,6 +111,8 @@ source_set("unit_tests") {
     "//ios/chrome/browser/signin/model:fake_system_identity_manager",
     "//ios/chrome/browser/signin/model:system_identity",
     "//ios/chrome/browser/signin/model:test_support",
+    "//ios/chrome/browser/signin/model/avatar",
+    "//ios/chrome/common/ui/promo_style",
     "//ios/chrome/test:test_support",
     "//ios/web/public/test",
     "//testing/gtest",

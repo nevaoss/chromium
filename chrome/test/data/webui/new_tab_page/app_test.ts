@@ -1465,6 +1465,107 @@ suite('NewTabPageAppTest', () => {
                     .querySelector<HTMLInputElement>('#input')!.value);
           });
     });
+
+    test(
+        'startup and on voice error updates showing error scrim' +
+            'property properly',
+        async () => {
+          const realbox = $$(app, '#searchbox') as NtpSearchboxElement;
+          assertTrue(!!realbox, 'realbox should exist');
+          realbox.onVoiceSearchClick();
+          await microtasksFinished();
+          await app.updateComplete;
+
+          assertTrue(
+              realbox.inVoiceSearchMode,
+              'Voice search should have started, regardless if voice' +
+                  ' coherence is being utilized',
+          );
+          assertTrue(
+              realbox.isListening,
+              'Realbox voice search should be listening',
+          );
+          let overlay =
+              app.shadowRoot.querySelector('ntp-voice-search-overlay');
+          assertTrue(
+              !!overlay,
+              'Voice search overlay should have started, regardless if' +
+                  ' voice coherence is being utilized',
+          );
+          assertFalse(
+              realbox.hasVoiceSearchError,
+              'Realbox voice error should hide when opening voice search',
+          );
+
+          app.onVoiceSearchError();
+          await microtasksFinished();
+          await app.updateComplete;
+
+          assertTrue(
+              realbox.inVoiceSearchMode,
+              'Voice search mode should still be active after error',
+          );
+          assertTrue(
+              realbox.hasVoiceSearchError,
+              'Realbox voice error should be showing after error event fired',
+          );
+          assertFalse(
+              realbox.isListening,
+              'Realbox voice search should not be listening with error',
+          );
+          overlay = app.shadowRoot.querySelector('ntp-voice-search-overlay');
+          assertTrue(
+              !!overlay,
+              'Voice search overlay should still show with error',
+          );
+
+          app.onVoiceSearchOverlayClose();
+          await microtasksFinished();
+          await app.updateComplete;
+
+          assertFalse(
+              realbox.inVoiceSearchMode,
+              'Voice search mode should not be active' +
+                  ' after closing after error',
+          );
+          assertFalse(
+              realbox.hasVoiceSearchError,
+              'Realbox voice error should not be showing after closing',
+          );
+          assertFalse(
+              realbox.isListening,
+              'Realbox voice search should still not be listneing',
+          );
+          overlay = app.shadowRoot.querySelector('ntp-voice-search-overlay');
+
+          assertFalse(
+              !!overlay,
+              'Voice search overlay should not show after error closes overlay',
+          );
+
+          realbox.onVoiceSearchClick();
+          await microtasksFinished();
+          await app.updateComplete;
+
+          assertTrue(
+              realbox.inVoiceSearchMode,
+              'Voice search start after voice button clicked again',
+          );
+          assertTrue(
+              realbox.isListening,
+              'Realbox voice search should be listening again',
+          );
+          overlay = app.shadowRoot.querySelector('ntp-voice-search-overlay');
+          assertTrue(
+              !!overlay,
+              'Voice search overlay should show after voice mode starts again',
+          );
+          assertFalse(
+              realbox.hasVoiceSearchError,
+              'Realbox voice error should not show when starting' +
+                  ' voice search again',
+          );
+        });
   });
 
   suite('WallpaperSearch', () => {
@@ -2139,7 +2240,8 @@ suite('NewTabPageAppTest', () => {
         detail: {text: '', files: []},
       }));
       await microtasksFinished();
-      assertTrue((app as any).showComposebox_);
+      let composeboxDialog = app.shadowRoot.querySelector('#composeboxDialog');
+      assertTrue(!!composeboxDialog);
       assertFalse(scrim.hidden);
 
       // 5 & 6. Close composebox and clear modes (the 'x' button clicks).
@@ -2150,7 +2252,8 @@ suite('NewTabPageAppTest', () => {
         composed: true,
       }));
       await microtasksFinished();
-      assertFalse((app as any).showComposebox_);
+      composeboxDialog = app.shadowRoot.querySelector('#composeboxDialog');
+      assertFalse(!!composeboxDialog);
 
       // The scrim should now be hidden because focus was lost
       // when the dialog closed.
@@ -2540,6 +2643,7 @@ suite('NewTabPageAppReducedMotionTest', () => {
         installMock(WindowProxy, (mock) => WindowProxy.setInstance(mock));
     windowProxy.setResultFor('waitForLazyRender', Promise.resolve());
     windowProxy.setResultFor('createIframeSrc', '');
+    windowProxy.setResultFor('now', new Date());
     windowProxy.setResultFor('url', url);
     windowProxy.setResultFor('matchMedia', {
       matches: false,
@@ -2635,7 +2739,7 @@ suite('NewTabPageAppReducedMotionTest', () => {
 
           assertEquals(
               GlifAnimationState.SPINNER_ONLY,
-              (app as any).contextMenuGlifAnimationState_);
+              app.$.searchbox.contextMenuGlifAnimationState);
         });
   });
 
@@ -2647,7 +2751,9 @@ suite('NewTabPageAppReducedMotionTest', () => {
         async () => {
           setReducedMotionPreference(true);
           await createAndAppendApp();
-          (app as any).showComposebox_ = true;
+          app.$.searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+            detail: {text: '', files: []},
+          }));
           await microtasksFinished();
 
           const scrim = app.shadowRoot.querySelector('#scrim')!;
@@ -2659,7 +2765,9 @@ suite('NewTabPageAppReducedMotionTest', () => {
         async () => {
           setReducedMotionPreference(false);
           await createAndAppendApp();
-          (app as any).showComposebox_ = true;
+          app.$.searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+            detail: {text: '', files: []},
+          }));
           await microtasksFinished();
 
           const scrim = app.shadowRoot.querySelector('#scrim')!;

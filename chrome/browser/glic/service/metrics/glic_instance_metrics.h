@@ -10,6 +10,7 @@
 
 #include "base/callback_list.h"
 #include "base/containers/flat_map.h"
+#include "base/containers/flat_set.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ref.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
@@ -47,6 +48,8 @@ namespace glic {
 
 class GlicSharingManager;
 struct ShowOptions;
+
+using SafeEmbedderKey = std::variant<tabs::TabHandle, FloatingEmbedderKey>;
 
 // This enumerates a set of possible lifecycle errors which are logged when the
 // sequence of received events was not expected.
@@ -123,7 +126,10 @@ enum class GlicInstanceEvent {
   kShown = 47,
   kOpen = 48,
   kWebUiStateWarmed = 49,
-  kMaxValue = kWebUiStateWarmed,
+  // kOpen2 = 50 - Only used in Canary M150
+  kWebUiStateLocationMismatch = 51,
+  kWebUiStateIneligibleAccount = 52,
+  kMaxValue = kWebUiStateIneligibleAccount,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicInstanceEvent)
 
@@ -179,6 +185,9 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   void OnReaction(mojom::MetricUserInputReactionType reaction_type);
   void OnGlicScrollAttempt();
   void OnGlicScrollComplete(bool success);
+
+  // Called when the opt-in CTA is shown.
+  void OnOptinImpression();
 
   // Called when GlicInstanceImpl is destroyed.
   void OnInstanceDestroyed();
@@ -254,6 +263,12 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   // instance.
   void OnOpen(glic::mojom::InvocationSource source, const ShowOptions& options);
 
+  // Returns true if this is the first time this specific embedder is becoming
+  // visible after being opened/closed.
+  bool MarkShownAndCheckIfFirstTime(EmbedderKey key);
+
+  void ResetShownState(EmbedderKey key);
+
   // Called when a tab that was bound to this instance is destroyed.
   void OnBoundTabDestroyed();
 
@@ -290,9 +305,6 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   void OnUserResizeStarted(const gfx::Size& start_size);
   void OnUserResizeEnded(const gfx::Size& end_size);
 
-  void OnSelectionAreasChanged(int count);
-  void OnPolylinePointsChanged(const std::vector<int>& counts);
-
   void OnZoomLevelChange();
 
   // Records the number of tabs attached as context for a Glic response.
@@ -300,6 +312,10 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
 
   void RecordTabPinningStatusEvent(tabs::TabInterface* tab,
                                    GlicPinningStatusEvent event);
+
+  enum class PendingImpression {
+    kOptIn = 0,
+  };
 
   // Routes skills WebUI actions from the frontend to their respective
   // metrics funnels.
@@ -354,8 +370,7 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   void OnSessionStarted();
   void OnSessionFinished();
 
-  void OnPinnedTabsChanged(
-      const std::vector<content::WebContents*>& pinned_contents);
+  void OnPinnedTabsChanged(const std::vector<tabs::TabInterface*>& pinned_tabs);
 
   // Records the response latency (from user input submitted to response stop)
   // by the number of attached tabs.
@@ -407,6 +422,11 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
 
   std::map<tabs::TabHandle, int> tab_depths_;
 
+  bool is_client_ready_ = false;
+  bool is_opt_in_pending_ = false;
+
+  void MaybeRecordOptInImpression();
+
   base::CallbackListSubscription pinned_tabs_changed_subscription_;
   base::CallbackListSubscription tab_pinning_status_subscription_;
   const raw_ref<const metrics::ProfileMetricsService> profile_metrics_service_;
@@ -416,6 +436,7 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   raw_ptr<PrefService> pref_service_ = nullptr;
 
   bool first_side_panel_close_recorded_ = false;
+  bool first_floaty_close_recorded_ = false;
   bool saas_usage_recorded_ = false;
 
   // The following variables are used for recording scroll related metrics.
@@ -424,13 +445,11 @@ class GlicInstanceMetrics : public GlicInstanceMetricsBackwardsCompatibility {
   // session ends).
   int scroll_attempt_count_ = 0;
 
-  // Whether region selection is active.
-  int selection_areas_count_ = 0;
-  std::vector<int> polyline_point_counts_;
-
   // The number of zoom change attempts (tracked per instance and reset when
   // the instance is destroyed).
   int zoom_change_count_ = 0;
+
+  base::flat_set<SafeEmbedderKey> seen_embedders_;
 };
 
 }  // namespace glic

@@ -13,6 +13,7 @@
 :host {
   display: flex;
   flex-direction: column;
+  position: var(--cr-composebox-input-position, static);
   width: 100%;
 }
 
@@ -43,6 +44,16 @@
 
 :host-context([searchbox-next-enabled][searchbox-layout-mode='Compact']) #iconContainer {
   display: none;
+}
+
+:host-context([searchbox-next-enabled][searchbox-layout-mode='Compact']):host(.has-tabs:not([entrypoint-name='Omnibox'])) #iconContainer {
+  display: flex;
+  margin-inline-start: -24px;
+}
+
+:host-context([searchbox-next-enabled][searchbox-layout-mode='Compact']):host(.has-tabs:not([entrypoint-name='Omnibox'])) #aimIcon {
+  width: 24px;
+  height: 24px;
 }
 
 :host-context([searchbox-next-enabled]) #iconContainer {
@@ -148,6 +159,14 @@
   left: anchor(start);
 }
 
+:host-context([dir='rtl']) #caret {
+  left: anchor(left);
+}
+
+:host-context([dir='rtl']) #caret.at-start {
+  left: anchor(right);
+}
+
 :host([entrypoint-name='Omnibox']) #caret {
   height: 18px;
   top: anchor(top);
@@ -223,19 +242,17 @@
 
 #tabChip {
   align-items: center;
-  border: 1px solid var(--color-composebox-type-ahead-chip);
-  border-radius: 8px;
-  box-sizing: border-box;
-  color: var(--color-composebox-type-ahead-chip);
+  background-color: var(--color-composebox-type-ahead-chip);
+  border-radius: 4px;
+  color: var(--color-composebox-type-ahead);
   display: inline-flex;
-  font-size: 12px;
-  font-weight: 700;
-  height: 24px;
+  font-size: 8px;
+  font-weight: 500;
+  height: 14px;
   justify-content: center;
-  line-height: 18px;
   margin-inline-start: 4px;
-  padding: 0;
-  width: 38px;
+  vertical-align: middle;
+  width: 24px;
 }
 
 :host-context([expanding_]) #input,
@@ -273,7 +290,7 @@
   --cr-icon-button-icon-size: 20px;
   position: absolute;
   top: var(--composebox-cancel-button-top);
-  inset-inline-end: 12px;
+  inset-inline-end: var(--composebox-cancel-button-inline-end, 12px);
   /* Uses the same transitions as the submit button so they are in sync. */
   transition: var(--submit-enabled-transition);
 }

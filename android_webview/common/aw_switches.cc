@@ -116,18 +116,18 @@ const char kStartupNonBlockingWebViewConstructor[] =
 const char kPostChromiumStartupInWebViewConstructor[] =
     "post-chromium-startup-in-webview-constructor";
 
-// Defers GMS calls during startup.
-const char kWebViewDeferStartupGmsCalls[] = "webview-defer-startup-gms-calls";
+// Certain static methods in SharedStatics do not trigger startup.
+const char kWebViewStaticMethodsNotTriggerStartup[] =
+    "webview-static-methods-not-trigger-startup";
+
+// Certain ProfileStore methods do not trigger startup.
+const char kWebViewProfileStoreNotTriggerStartup[] =
+    "webview-profile-store-not-trigger-startup";
 
 // Opts in WebView to GMSCore's bindService optimizations
 const char kWebViewOptInToGmsBindServiceOptimization[] =
     "webview-opt-in-to-gms-bind-service-optimization";
 
-// Enables/disables renderer-side native library prefetching.
-const char kWebViewRendererLibraryPrefetch[] =
-    "webview-renderer-library-prefetch";
-const char kWebViewRendererLibraryPrefetchDisabled[] = "disabled";
-const char kWebViewRendererLibraryPrefetchEnabled[] = "enabled";
 
 // Enables different reductions of the user-agent.
 const char kWebViewReduceUserAgentMinorVersion[] =

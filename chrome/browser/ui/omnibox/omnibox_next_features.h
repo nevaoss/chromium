@@ -41,6 +41,7 @@ extern const base::FeatureParam<AddContextButtonVariant>
     kWebUIOmniboxAimPopupAddContextButtonVariantParam;
 extern const base::FeatureParam<bool> kHideClassicContextButton;
 BASE_DECLARE_FEATURE(kAiModeEntryPointAlwaysNavigates);
+BASE_DECLARE_FEATURE(kAiModeSpaceDoesNotActivate);
 BASE_DECLARE_FEATURE(kWebUIOmniboxDisableCaretColorAnimation);
 BASE_DECLARE_FEATURE(kWebUIOmniboxAimPopupDisableAnimation);
 BASE_DECLARE_FEATURE(kWebUIOmniboxFullPopup);
@@ -70,15 +71,13 @@ extern const base::FeatureParam<bool> kShowComposeboxZps;
 extern const base::FeatureParam<bool> kShowContextMenu;
 // Whether or not to show a description in the context menu entrypoint, or just
 // the icon.
+// TODO (crbug.com/509939902): Remove this when finch experiment reference
+// is removed.
 extern const base::FeatureParam<bool> kShowContextMenuDescription;
 // Whether to show tab previews on hover for the composebox context menu.
 extern const base::FeatureParam<bool> kShowContextMenuTabPreviews;
 // Whether to show the lens search chip in the composebox.
 extern const base::FeatureParam<bool> kShowLensSearchChip;
-// Whether to delay an upload if tab context is added from the recent tab chip.
-extern const base::FeatureParam<bool> kAddTabUploadDelayOnRecentTabChipClick;
-// Whether to show the recent tab chip in the composebox.
-extern const base::FeatureParam<bool> kShowRecentTabChip;
 // Whether to show the smart compose in the composebox.
 extern const base::FeatureParam<bool> kShowSmartCompose;
 // Whether to show the tools and models in the composebox.
@@ -92,9 +91,10 @@ extern const base::FeatureParam<bool> kContextButtonHasBackground;
 // Whether the button should be an oblong shape vs circular.
 extern const base::FeatureParam<bool> kContextButtonShapeIsOblong;
 // Whether to show the "Ask about tabs" label for the context menu entrypoint.
-extern const base::FeatureParam<bool> kContextButtonShowAskAboutTabsLabel;
-// Whether to show the "Ask about tabs" action in the context menu.
-extern const base::FeatureParam<bool> kContextMenuShowAskAboutTabsAction;
+extern const base::FeatureParam<bool> kContextButtonShowSuggestionLabel;
+// If enabled, then the WebUI Omnibox will be rendered in a WebView in the
+// BrowserView.
+extern const base::FeatureParam<bool> kWebUIOmniboxFullPopupV2UseBrowserView;
 
 // Returns true if `kWebUIOmniboxPopup` is enabled.
 bool IsWebUIOmniboxPopupEnabled();
@@ -102,6 +102,9 @@ bool IsWebUIOmniboxPopupEnabled();
 // Returns true if either `kWebUIOmniboxFullPopup` or `kWebUIOmniboxFullPopupV2`
 // is enabled.
 bool IsWebUIOmniboxFullPopupEnabled();
+
+// Returns true if `kWebUIOmniboxInBrowserView` is enabled.
+bool IsWebUIOmniboxInBrowserViewEnabled();
 
 // Returns true if the `kWebUIOmniboxAimPopup` base::Feature is enabled.
 // This does NOT include user eligibility checks. Most UI code should use the

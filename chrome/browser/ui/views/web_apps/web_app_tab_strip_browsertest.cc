@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/memory/raw_ptr.h"
 #include "base/memory/stack_allocated.h"
 #include "base/strings/string_util.h"
 #include "base/test/bind.h"
@@ -16,7 +17,6 @@
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_commands.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -24,6 +24,7 @@
 #include "chrome/browser/ui/tab_ui_helper.h"
 #include "chrome/browser/ui/tabs/existing_window_sub_menu_model.h"
 #include "chrome/browser/ui/tabs/tab_menu_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/unload_controller.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -58,6 +59,7 @@
 #include "components/embedder_support/switches.h"
 #include "components/page_load_metrics/browser/page_load_metrics_test_waiter.h"
 #include "components/tabs/public/tab_interface.h"
+#include "components/url_formatter/url_formatter.h"
 #include "components/webapps/browser/install_result_code.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_features.h"
@@ -85,6 +87,60 @@ constexpr SkColor kAppBackgroundColor = SK_ColorBLUE;
 // The page shouldn't have a manifest so no updating will occur to override
 // our settings.
 constexpr char kAppPath[] = "/web_apps/no_manifest.html";
+
+class TabAddedAndRemovedWaiter : public TabStripModelObserver {
+ public:
+  explicit TabAddedAndRemovedWaiter(TabStripModel* tab_strip)
+      : tab_strip_(tab_strip) {
+    tab_strip_->AddObserver(this);
+  }
+  ~TabAddedAndRemovedWaiter() override {
+    if (tab_strip_) {
+      tab_strip_->RemoveObserver(this);
+    }
+  }
+
+  void Wait() {
+    if (added_ && removed_) {
+      return;
+    }
+    run_loop_.Run();
+  }
+
+  // TabStripModelObserver:
+  void OnTabStripModelChanged(
+      TabStripModel* tab_strip_model,
+      const TabStripModelChange& change,
+      const TabStripSelectionChange& selection) override {
+    if (change.type() == TabStripModelChange::kInserted) {
+      for (const auto& contents : change.GetInsert()->contents) {
+        if (!added_contents_) {
+          added_contents_ = contents.contents;
+          added_ = true;
+          break;
+        }
+      }
+    } else if (change.type() == TabStripModelChange::kRemoved) {
+      for (const auto& contents : change.GetRemove()->contents) {
+        if (added_contents_ && contents.contents == added_contents_) {
+          removed_ = true;
+          added_contents_ = nullptr;
+          if (added_ && removed_) {
+            run_loop_.Quit();
+          }
+          break;
+        }
+      }
+    }
+  }
+
+ private:
+  raw_ptr<TabStripModel> tab_strip_;
+  raw_ptr<content::WebContents> added_contents_ = nullptr;
+  bool added_ = false;
+  bool removed_ = false;
+  base::RunLoop run_loop_;
+};
 
 }  // namespace
 namespace web_app {
@@ -197,7 +253,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest,
   EXPECT_FALSE(custom_tab_bar->GetVisible());
 
   // Add second tab.
-  chrome::NewTab(app.browser);
+  chrome::NewTab(app.browser, NewTabTypes::kNoUserAction);
   ASSERT_EQ(app.browser->tab_strip_model()->count(), 2);
 
   // Navigate tab out of scope, custom tab bar should appear.
@@ -225,6 +281,54 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest,
       app.browser->tab_strip_model()->GetActiveWebContents()->GetVisibleURL(),
       out_of_scope_url);
   EXPECT_TRUE(custom_tab_bar->GetVisible());
+}
+
+IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest,
+                       CustomTabBarStaleOriginOnTabSwitchSpoof) {
+  App app = InstallAndLaunch();
+
+  CustomTabBarView* custom_tab_bar =
+      app.browser_view->toolbar()->custom_tab_bar();
+  EXPECT_FALSE(custom_tab_bar->GetVisible());
+
+  // Add second tab.
+  chrome::NewTab(app.browser, NewTabTypes::kNoUserAction);
+  ASSERT_EQ(app.browser->tab_strip_model()->count(), 2);
+
+  GURL out_of_scope_url1 =
+      embedded_test_server()->GetURL("a.com", "/banners/theme-color.html");
+  GURL out_of_scope_url2 =
+      embedded_test_server()->GetURL("b.com", "/banners/theme-color.html");
+
+  // Navigate Tab 1 (active) to out_of_scope_url2.
+  content::WebContents* tab2 =
+      app.browser->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(content::NavigateToURL(tab2, out_of_scope_url2));
+  EXPECT_TRUE(custom_tab_bar->GetVisible());
+  std::u16string expected_loc2 = web_app::AppBrowserController::FormatUrlOrigin(
+      out_of_scope_url2, url_formatter::kFormatUrlOmitDefaults);
+  EXPECT_EQ(custom_tab_bar->location_for_testing(), expected_loc2);
+
+  // Switch to Tab 0.
+  app.browser->tab_strip_model()->ActivateTabAt(0);
+  content::WebContents* tab1 =
+      app.browser->tab_strip_model()->GetActiveWebContents();
+  // Navigate Tab 0 to out_of_scope_url1.
+  ASSERT_TRUE(content::NavigateToURL(tab1, out_of_scope_url1));
+  EXPECT_TRUE(custom_tab_bar->GetVisible());
+  std::u16string expected_loc1 = web_app::AppBrowserController::FormatUrlOrigin(
+      out_of_scope_url1, url_formatter::kFormatUrlOmitDefaults);
+  EXPECT_EQ(custom_tab_bar->location_for_testing(), expected_loc1);
+
+  // Now switch back to Tab 1.
+  app.browser->tab_strip_model()->ActivateTabAt(1);
+  // Custom tab bar should update to show expected_loc2.
+  EXPECT_EQ(custom_tab_bar->location_for_testing(), expected_loc2);
+
+  // Switch back to Tab 0.
+  app.browser->tab_strip_model()->ActivateTabAt(0);
+  // Custom tab bar should update to show expected_loc1.
+  EXPECT_EQ(custom_tab_bar->location_for_testing(), expected_loc1);
 }
 
 IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, PopOutTabOnInstall) {
@@ -307,7 +411,9 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest,
       future.GetCallback());
   content::WebContents* web_contents = future.template Get<1>().get();
   ASSERT_TRUE(web_contents);
-  Browser* app_browser = chrome::FindBrowserWithTab(web_contents);
+  Browser* app_browser = GlobalBrowserCollection::GetInstance()
+                             ->FindBrowserWithTab(web_contents)
+                             ->GetBrowserForMigrationOnly();
   App app{app_id, app_browser,
           BrowserView::GetBrowserViewForBrowser(app_browser), web_contents};
 
@@ -367,7 +473,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, AutoNewTabUrl) {
 
   EXPECT_TRUE(registrar().IsTabbedWindowModeEnabled(app_id));
 
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
   EXPECT_EQ(
       app_browser->tab_strip_model()->GetActiveWebContents()->GetVisibleURL(),
       registrar().GetAppStartUrl(app_id));
@@ -381,7 +487,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, NewTabUrl) {
 
   EXPECT_TRUE(registrar().IsTabbedWindowModeEnabled(app_id));
 
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
   EXPECT_EQ(
       app_browser->tab_strip_model()->GetActiveWebContents()->GetVisibleURL(),
       embedded_test_server()->GetURL("/web_apps/favicon_only.html"));
@@ -463,7 +569,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, MonochromeAppIconOnHomeTab) {
 
   // Adding a new tab causes the home tab to be inactive and colored black (the
   // app theme_color), so the icon should change color.
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
 
   EXPECT_EQ(tab_strip->count(), 2);
   EXPECT_EQ(tab_strip->active_index(), 1);
@@ -538,7 +644,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, ReparentingPinsHomeTab) {
   webapps::AppId app_id = InstallTestWebApp(start_url);
   BrowserWindowInterface* app_browser =
       FindWebAppBrowser(browser()->profile(), app_id);
-  CloseAndWait(app_browser->GetBrowserForMigrationOnly());
+  CloseAndWait(app_browser);
 
   // Navigate to the app URL in the browser.
   ASSERT_TRUE(ui_test_utils::NavigateToURL(
@@ -640,8 +746,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, NavigationThrottle) {
   EXPECT_EQ(tab_strip->GetWebContentsAt(0)->GetVisibleURL(), start_url);
 }
 
-// TODO(crbug.com/40257354): Enable this test.
-IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, DISABLED_TargetBlankLink) {
+IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, TargetBlankLink) {
   GURL start_url =
       embedded_test_server()->GetURL("/web_apps/tab_strip_customizations.html");
   webapps::AppId app_id = InstallTestWebApp(start_url);
@@ -651,8 +756,10 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, DISABLED_TargetBlankLink) {
   EXPECT_TRUE(registrar().IsTabbedWindowModeEnabled(app_id));
 
   // Open a second tab then refocus the home tab.
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
   tab_strip->ActivateTabAt(0);
+
+  TabAddedAndRemovedWaiter added_removed_waiter(tab_strip);
 
   // Navigate to a home tab URL via a target=_blank link.
   content::TestNavigationObserver nav_observer(
@@ -660,10 +767,13 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, DISABLED_TargetBlankLink) {
   ASSERT_TRUE(ExecJs(
       tab_strip->GetActiveWebContents(),
       "document.getElementById('test-link-with-blank-target').click();"));
+
+  added_removed_waiter.Wait();
+
   nav_observer.Wait();
 
   // Expect no new tab was opened, and the home tab is focused.
-  EXPECT_EQ(tab_strip->count(), 3);
+  EXPECT_EQ(tab_strip->count(), 2);
   EXPECT_EQ(tab_strip->active_index(), 0);
   EXPECT_EQ(tab_strip->GetActiveWebContents()->GetVisibleURL(),
             embedded_test_server()->GetURL(
@@ -682,7 +792,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, OpenInChrome) {
   EXPECT_FALSE(
       app_browser->command_controller()->IsCommandEnabled(IDC_OPEN_IN_CHROME));
 
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
   // 'Open in Chrome' menu item should be enabled for other tabs.
   EXPECT_TRUE(
       app_browser->command_controller()->IsCommandEnabled(IDC_OPEN_IN_CHROME));
@@ -717,7 +827,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, MoveTabsToNewWindow) {
   webapps::AppId app_id = InstallTestWebApp(start_url);
   Browser* app_browser = LaunchWebAppBrowser(app_id);
 
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
 
   size_t initial_browser_count =
       GlobalBrowserCollection::GetInstance()->GetSize();
@@ -749,7 +859,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, MoveTabsToExistingWindow) {
       embedded_test_server()->GetURL("/web_apps/tab_strip_customizations.html");
   webapps::AppId app_id = InstallTestWebApp(start_url);
   Browser* app_browser = LaunchWebAppBrowser(app_id);
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
 
   // Open a second app browser window.
   ui_test_utils::BrowserCreatedObserver browser_created_observer;
@@ -1247,9 +1357,9 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, CloseAllTabsCommand) {
   EXPECT_EQ(tab_strip->GetWebContentsAt(0)->GetVisibleURL(), start_url);
   EXPECT_EQ(tab_strip->active_index(), 0);
 
-  chrome::NewTab(app_browser);
-  chrome::NewTab(app_browser);
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
 
   EXPECT_EQ(tab_strip->count(), 4);
 
@@ -1310,7 +1420,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, MiddleClickHomeTabLink) {
   EXPECT_EQ(tab_strip->GetWebContentsAt(0)->GetVisibleURL(), start_url);
   EXPECT_EQ(tab_strip->active_index(), 0);
 
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
 
   // Middle click home tab link from a different tab.
   app_browser->OpenURL(OpenURLParams(start_url, content::Referrer(),
@@ -1349,7 +1459,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripBrowserTest, PageTitle) {
                                                    /*is_for_tab=*/false),
                        u"Tab Strip Customizations - Pinned"));
 
-  chrome::NewTab(app_browser);
+  chrome::NewTab(app_browser, NewTabTypes::kNoUserAction);
   content::WaitForLoadStop(tab_strip->GetActiveWebContents());
 
   EXPECT_TRUE(
@@ -1451,8 +1561,7 @@ IN_PROC_BROWSER_TEST_P(WebAppTabStripForOnTaskBrowserTest,
 INSTANTIATE_TEST_SUITE_P(
     All,
     WebAppTabStripForOnTaskBrowserTest,
-    testing::Values(apps::test::LinkCapturingFeatureVersion::kV1DefaultOff,
-                    apps::test::LinkCapturingFeatureVersion::kV2DefaultOff),
+    testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOff),
     apps::test::LinkCapturingVersionToString);
 
 #endif  // BUILDFLAG(IS_CHROMEOS)
@@ -1461,8 +1570,7 @@ INSTANTIATE_TEST_SUITE_P(
     All,
     WebAppTabStripBrowserTest,
 #if BUILDFLAG(IS_CHROMEOS)
-    testing::Values(apps::test::LinkCapturingFeatureVersion::kV1DefaultOff,
-                    apps::test::LinkCapturingFeatureVersion::kV2DefaultOff)
+    testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOff)
 #else
     testing::Values(apps::test::LinkCapturingFeatureVersion::kV2DefaultOff,
                     apps::test::LinkCapturingFeatureVersion::kV2DefaultOn)

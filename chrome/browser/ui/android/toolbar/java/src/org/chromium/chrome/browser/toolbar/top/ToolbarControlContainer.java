@@ -349,6 +349,35 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
     }
 
     @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        if (ChromeFeatureList.sToolbarSnapshotRefactor.isEnabled()) {
+            View toolbar = findViewById(R.id.toolbar);
+            View hairline = findViewById(R.id.toolbar_hairline);
+
+            if (toolbar != null && hairline != null) {
+                int tabStripHeight = mToolbar.getTabStripHeight();
+
+                // Set the hairline's top margin to toolbar view to avoid the hairline's top
+                // margin from becoming too big (e.g. toolbar height + tab strip height).
+                MarginLayoutParams hairlineParams = (MarginLayoutParams) hairline.getLayoutParams();
+                if (hairlineParams.topMargin != mToolbarLayoutHeight) {
+                    hairlineParams.topMargin = mToolbarLayoutHeight;
+                }
+
+                // Set a top margin of tab strip height to the toolbar_container.
+                MarginLayoutParams containerParams =
+                        (MarginLayoutParams) mToolbarContainer.getLayoutParams();
+                if (containerParams.topMargin != tabStripHeight) {
+                    containerParams.topMargin = tabStripHeight;
+                }
+            }
+        }
+
+        // Run the measure pass once with the correct params already in place.
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
+    @Override
     public void onHeightTransitionFinished(boolean success) {
         if (!success) return;
 
@@ -781,10 +810,10 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
         }
 
         private boolean shouldCaptureWhileHidden() {
-            return ChromeFeatureList.sToolbarStaleCaptureBugFix.isEnabled()
+            return ChromeFeatureList.sToolbarCaptureFixForSPAs.isEnabled()
                     && !mIsDestroyed
                     && mBrowserControlsStateProvider != null
-                    && mBrowserControlsStateProvider.getBrowserControlHiddenRatio() >= 1f;
+                    && mBrowserControlsStateProvider.getTopControlHiddenRatio() >= 1f;
         }
 
         @Override
@@ -975,11 +1004,15 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
                     mControlsToken = TokenHolder.INVALID_TOKEN;
                 }
             } else if (Boolean.TRUE.equals(compositorInMotion) && super.isDirty()) {
+                // For SPAs, the toolbar will stay fully hidden if navigating to another page in the
+                // same origin. But since the toolbar is hidden, we won't capture, which results in
+                // the toolbar animating back into view every time on the first scroll after a
+                // navigation in the SPA. This is a bad user experience. If ToolbarCaptureFixForSPAs
+                // is enabled, we won't animate the controls back into view for this case.
                 boolean controlsPartiallyVisible =
-                        ChromeFeatureList.sToolbarStaleCaptureBugFix.isEnabled()
+                        ChromeFeatureList.sToolbarCaptureFixForSPAs.isEnabled()
                                 && mBrowserControlsStateProvider != null
-                                && mBrowserControlsStateProvider.getBrowserControlHiddenRatio()
-                                        < 1f;
+                                && mBrowserControlsStateProvider.getTopControlHiddenRatio() < 1f;
                 if (controlsPartiallyVisible || mControlContainerIsVisibleSupplier.getAsBoolean()) {
                     CaptureReadinessResult captureReadinessResult =
                             mToolbar.isReadyForTextureCapture();
@@ -1141,15 +1174,17 @@ public class ToolbarControlContainer extends OptimizedFrameLayout
     }
 
     @Override
-    public void doSynchronousLayoutAndCapture() {
+    public void doSynchronousLayout(boolean forceCaptureAfterLayout) {
         int widthSpec = View.MeasureSpec.makeMeasureSpec(getWidth(), View.MeasureSpec.EXACTLY);
         int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
 
         measure(widthSpec, heightSpec);
         layout(getLeft(), getTop(), getLeft() + getMeasuredWidth(), getTop() + getMeasuredHeight());
 
-        ViewResourceAdapter resourceAdapter = getToolbarResourceAdapter();
-        resourceAdapter.invalidate(null);
-        resourceAdapter.triggerBitmapCapture();
+        if (forceCaptureAfterLayout) {
+            ViewResourceAdapter resourceAdapter = getToolbarResourceAdapter();
+            resourceAdapter.invalidate(null);
+            resourceAdapter.triggerBitmapCapture();
+        }
     }
 }

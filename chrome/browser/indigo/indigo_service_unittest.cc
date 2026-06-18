@@ -4,11 +4,17 @@
 
 #include "chrome/browser/indigo/indigo_service.h"
 
+#include "base/command_line.h"
+#include "base/files/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/test/mock_callback.h"
+#include "base/test/scoped_command_line.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
+#include "chrome/browser/component_updater/indigo_component_installer.h"
 #include "chrome/browser/indigo/indigo_prefs.h"
+#include "chrome/browser/indigo/proto/indigo_prompts.pb.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/prefs/pref_registry_simple.h"
@@ -30,6 +36,14 @@ class IndigoServiceTest : public testing::Test {
   void SetUp() override {
     scoped_feature_list_.InitAndEnableFeature(features::kIndigo);
     ::indigo::prefs::RegisterProfilePrefs(prefs_.registry());
+    if (set_script_switch_in_setup_) {
+      scoped_command_line_.GetProcessCommandLine()->AppendSwitchASCII(
+          "indigo-script", "/dummy/path");
+    }
+  }
+
+  void TearDown() override {
+    component_updater::ResetIndigoInstallDirForTesting();
   }
 
   void CreateService() {
@@ -112,6 +126,8 @@ class IndigoServiceTest : public testing::Test {
   int remote_eligibility_fetch_count_ = 0;
   IndigoService::RemoteEligibilityCallback pending_remote_eligibility_callback_;
   bool auto_complete_remote_eligibility_fetch_ = true;
+  bool set_script_switch_in_setup_ = true;
+  base::test::ScopedCommandLine scoped_command_line_;
 };
 
 TEST_F(IndigoServiceTest, DefaultStateNotSignedIn) {
@@ -135,6 +151,30 @@ TEST_F(IndigoServiceTest, CapabilitiesDisable) {
   identity_test_env_.UpdateAccountInfoForAccount(info);
 
   EXPECT_TRUE(LocalEligibilityBecomes(LocalEligibility::kMissingCapabilities));
+}
+
+TEST_F(IndigoServiceTest, RefreshTokenError) {
+  CreateService();
+  MakeAccountAvailableAndCapable();
+  EXPECT_TRUE(LocalEligibilityBecomes(LocalEligibility::kEligible));
+
+  identity_test_env_.SetInvalidRefreshTokenForPrimaryAccount();
+  EXPECT_TRUE(LocalEligibilityBecomes(
+      LocalEligibility::kRefreshTokenInPersistentErrorState));
+  EXPECT_TRUE(service_->IsLocallyEligible());
+}
+
+TEST_F(IndigoServiceTest, RefreshTokenErrorResolved) {
+  CreateService();
+  MakeAccountAvailableAndCapable();
+  EXPECT_TRUE(LocalEligibilityBecomes(LocalEligibility::kEligible));
+
+  identity_test_env_.SetInvalidRefreshTokenForPrimaryAccount();
+  EXPECT_TRUE(LocalEligibilityBecomes(
+      LocalEligibility::kRefreshTokenInPersistentErrorState));
+
+  identity_test_env_.SetRefreshTokenForPrimaryAccount();
+  EXPECT_TRUE(LocalEligibilityBecomes(LocalEligibility::kEligible));
 }
 
 TEST_F(IndigoServiceTest, PolicyDisabledFromConstruction) {
@@ -188,7 +228,28 @@ TEST_F(IndigoServiceTest, RemoteEligibilityUnsupported) {
   EXPECT_FALSE(combined_eligibility.remote_eligibility->has_user_image);
 }
 
-TEST_F(IndigoServiceTest, InvalidateRemoteEligibility_NoFetchInProgress) {
+TEST_F(IndigoServiceTest, MultipleCallsConsecutively_TriggersOneFetch) {
+  auto_complete_remote_eligibility_fetch_ = false;
+  CreateService();
+  MakeAccountAvailableAndCapable();
+  EXPECT_TRUE(LocalEligibilityBecomes(LocalEligibility::kEligible));
+
+  base::test::TestFuture<CombinedEligibility> future1;
+  base::test::TestFuture<CombinedEligibility> future2;
+
+  service_->GetCombinedEligibility(
+      future1.GetCallback<const CombinedEligibility&>());
+  service_->GetCombinedEligibility(
+      future2.GetCallback<const CombinedEligibility&>());
+
+  CompleteRemoteEligibilityFetch();
+
+  EXPECT_TRUE(future1.Get().remote_eligibility.has_value());
+  EXPECT_TRUE(future2.Get().remote_eligibility.has_value());
+  EXPECT_EQ(remote_eligibility_fetch_count_, 1);
+}
+
+TEST_F(IndigoServiceTest, CallsAfterCompletion_TriggersNewFetch) {
   CreateService();
   MakeAccountAvailableAndCapable();
   EXPECT_TRUE(LocalEligibilityBecomes(LocalEligibility::kEligible));
@@ -196,44 +257,11 @@ TEST_F(IndigoServiceTest, InvalidateRemoteEligibility_NoFetchInProgress) {
   CombinedEligibility combined_eligibility = GetCombinedEligibility();
   EXPECT_EQ(remote_eligibility_fetch_count_, 1);
   EXPECT_TRUE(combined_eligibility.remote_eligibility.has_value());
-  EXPECT_TRUE(combined_eligibility.remote_eligibility
-                  ->is_service_supported_for_account);
-
-  service_->InvalidateRemoteEligibility();
 
   // Next call should trigger a new fetch.
   combined_eligibility = GetCombinedEligibility();
   EXPECT_EQ(remote_eligibility_fetch_count_, 2);
   EXPECT_TRUE(combined_eligibility.remote_eligibility.has_value());
-  EXPECT_TRUE(combined_eligibility.remote_eligibility
-                  ->is_service_supported_for_account);
-}
-
-TEST_F(IndigoServiceTest, InvalidateRemoteEligibility_FetchInProgress) {
-  auto_complete_remote_eligibility_fetch_ = false;
-  CreateService();
-  MakeAccountAvailableAndCapable();
-  EXPECT_TRUE(LocalEligibilityBecomes(LocalEligibility::kEligible));
-
-  base::test::TestFuture<CombinedEligibility> future;
-  service_->GetCombinedEligibility(
-      future.GetCallback<const CombinedEligibility&>());
-  EXPECT_EQ(remote_eligibility_fetch_count_, 1);
-
-  service_->InvalidateRemoteEligibility();
-  // Invalidation should have cancelled the first fetch's reply (by invalidating
-  // weak ptrs) and started a *new* fetch because there was a pending callback.
-  EXPECT_EQ(remote_eligibility_fetch_count_, 2);
-
-  // Now complete the *second* fetch.
-  CompleteRemoteEligibilityFetch(base::ok(RemoteEligibility{
-      .is_service_supported_for_account = true, .has_user_image = true}));
-
-  // The first callback (which was restarted) should now complete.
-  CombinedEligibility combined_eligibility = future.Get();
-  EXPECT_TRUE(combined_eligibility.remote_eligibility.has_value());
-  EXPECT_TRUE(combined_eligibility.remote_eligibility
-                  ->is_service_supported_for_account);
 }
 
 TEST_F(IndigoServiceTest, ErrorMessageStored) {
@@ -251,6 +279,114 @@ TEST_F(IndigoServiceTest, ErrorMessageStored) {
   CombinedEligibility combined_eligibility = future.Get();
   EXPECT_FALSE(combined_eligibility.remote_eligibility.has_value());
   EXPECT_EQ(combined_eligibility.remote_eligibility.error(), "Server down");
+}
+
+class IndigoServiceNoScriptTest : public IndigoServiceTest {
+ public:
+  IndigoServiceNoScriptTest() { set_script_switch_in_setup_ = false; }
+};
+
+TEST_F(IndigoServiceNoScriptTest, ScriptNotAvailable) {
+  CreateService();
+  EXPECT_EQ(service_->GetLocalEligibility(), LocalEligibility::kMissingScript);
+}
+
+TEST_F(IndigoServiceNoScriptTest, DynamicComponentReady) {
+  CreateService();
+  EXPECT_EQ(service_->GetLocalEligibility(), LocalEligibility::kMissingScript);
+
+  base::test::TestFuture<LocalEligibility> future;
+  auto sub = service_->RegisterLocalEligibilityChangedCallback(
+      future.GetRepeatingCallback());
+
+  // Simulate component ready.
+  component_updater::IndigoComponentInstallerPolicy policy;
+  policy.ComponentReady(base::Version("1.0"),
+                        base::FilePath(FILE_PATH_LITERAL("/dummy/path")),
+                        base::DictValue());
+
+  // It should transition to kNotSignedIn (since we are not signed in).
+  EXPECT_EQ(future.Take(), LocalEligibility::kNotSignedIn);
+  EXPECT_EQ(service_->GetLocalEligibility(), LocalEligibility::kNotSignedIn);
+}
+
+TEST_F(IndigoServiceTest, LoadPrompts) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // Create a test proto.
+  chrome::aix::indigo::IndigoPrompts proto;
+  auto* prompt1 = proto.add_prompts();
+  prompt1->set_key("v5");
+  prompt1->set_prompt("Test prompt v5");
+  auto* prompt2 = proto.add_prompts();
+  prompt2->set_key("v6");
+  prompt2->set_prompt("Test prompt v6");
+
+  // Serialize to file.
+  base::FilePath prompts_path =
+      temp_dir.GetPath().Append(FILE_PATH_LITERAL("indigo_prompts.bin"));
+  std::string serialized;
+  ASSERT_TRUE(proto.SerializeToString(&serialized));
+  ASSERT_TRUE(base::WriteFile(prompts_path, serialized));
+
+  CreateService();
+
+  // Initially prompts should not be loaded.
+  EXPECT_EQ(service_->GetPrompt("v5"), std::nullopt);
+
+  base::test::TestFuture<void> prompts_loaded_future;
+  service_->SetPromptsLoadedCallbackForTesting(
+      prompts_loaded_future.GetCallback());
+
+  // Simulate component ready with the temp dir.
+  component_updater::IndigoComponentInstallerPolicy policy;
+  policy.ComponentReady(base::Version("1.0"), temp_dir.GetPath(),
+                        base::DictValue());
+
+  // Wait for the background task to load prompts.
+  EXPECT_TRUE(prompts_loaded_future.Wait());
+
+  // Verify prompts are loaded.
+  EXPECT_EQ(service_->GetPrompt("v5"), "Test prompt v5");
+  EXPECT_EQ(service_->GetPrompt("v6"), "Test prompt v6");
+  EXPECT_EQ(service_->GetPrompt("non_existent"), std::nullopt);
+}
+
+TEST_F(IndigoServiceTest, LoadPromptsComponentAlreadyReady) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // Create a test proto.
+  chrome::aix::indigo::IndigoPrompts proto;
+  auto* prompt1 = proto.add_prompts();
+  prompt1->set_key("v5");
+  prompt1->set_prompt("Test prompt v5");
+
+  // Serialize to file.
+  base::FilePath prompts_path =
+      temp_dir.GetPath().Append(FILE_PATH_LITERAL("indigo_prompts.bin"));
+  std::string serialized;
+  ASSERT_TRUE(proto.SerializeToString(&serialized));
+  ASSERT_TRUE(base::WriteFile(prompts_path, serialized));
+
+  // Simulate component ready BEFORE service creation.
+  component_updater::IndigoComponentInstallerPolicy policy;
+  policy.ComponentReady(base::Version("1.0"), temp_dir.GetPath(),
+                        base::DictValue());
+
+  CreateService();
+
+  // Verify prompts are loaded. Since the component was already ready,
+  // the service should start loading them immediately.
+  if (service_->GetPrompt("v5") != "Test prompt v5") {
+    base::test::TestFuture<void> prompts_loaded_future;
+    service_->SetPromptsLoadedCallbackForTesting(
+        prompts_loaded_future.GetCallback());
+    EXPECT_TRUE(prompts_loaded_future.Wait());
+  }
+
+  EXPECT_EQ(service_->GetPrompt("v5"), "Test prompt v5");
 }
 
 }  // namespace indigo

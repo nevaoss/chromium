@@ -24,6 +24,7 @@
 #include "ui/base/models/image_model.h"
 #include "ui/base/models/image_model_utils.h"
 #include "ui/base/resource/resource_bundle.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_variant.h"
 #include "ui/compositor/layer.h"
@@ -106,11 +107,15 @@ void BnplIssuerView::PopulateIssuers() {
         views::Button::PressedCallback(base::BindRepeating(
             &BnplIssuerView::IssuerSelected, base::Unretained(this), issuer)),
         std::move(image_view), std::u16string(issuer.GetDisplayName()),
-        controller_->GetSelectionOptionText(issuer.issuer_id()), nullptr, true,
-        std::u16string(),
+        GetBnplIssuerSelectionOptionText(
+            issuer.issuer_id(), controller_->GetAppLocale(), issuer_contexts),
+        /*secondary_view=*/nullptr,
+        /*add_vertical_label_spacing=*/true,
+        /*footer=*/std::u16string(),
+        /*icon_label_spacing=*/
         layout_provider->GetDistanceMetric(
             views::DISTANCE_RELATED_LABEL_HORIZONTAL),
-        true);
+        /*multiline_subtitle=*/true);
     issuer_button->SetBorder(views::CreateEmptyBorder(
         gfx::Insets::VH(layout_provider->GetDistanceMetric(
                             views::DISTANCE_UNRELATED_CONTROL_VERTICAL),
@@ -153,7 +158,9 @@ void BnplIssuerView::PopulateIssuers() {
     issuer_button->AddChildView(
         views::Builder<views::ImageView>()
             .SetImage(ui::ImageModel::FromVectorIcon(
-                kChevronRightChromeRefreshIcon,
+                ::features::IsRoundedIconsEnabled()
+                    ? kChevronRightIcon
+                    : kChevronRightChromeRefreshOldIcon,
                 issuer_eligible ? kColorBnplIssuerLabelForeground
                                 : kColorBnplIssuerLabelForegroundDisabled))
             .SetProperty(views::kMarginsKey,

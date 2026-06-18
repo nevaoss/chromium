@@ -13,10 +13,10 @@
 #include "base/types/expected.h"
 #include "build/build_config.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
+#include "chrome/browser/contextual_tasks/active_task_context_provider.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -57,6 +57,7 @@
 #include "components/omnibox/browser/searchbox.mojom-shared.h"
 #include "components/omnibox/browser/suggestion_answer.h"
 #include "components/omnibox/browser/vector_icons.h"
+#include "components/omnibox/common/composebox_features.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/profile_metrics/browser_profile_type.h"
@@ -146,6 +147,15 @@ WebuiOmniboxHandler::WebuiOmniboxHandler(
 
   OnAimPopupEligibilityChanged();
   OnContentSharingPolicyChanged();
+
+  // Ensure the page receives the current autocomplete state on startup.
+  // This handles the case where results are generated before the remote is
+  // bound and the handler is created and starts observing the
+  // AutocompleteController.
+  if (base::FeatureList::IsEnabled(
+          omnibox::kOmniboxWebUIPopupStabilizeStartupShow)) {
+    OnResultChanged(controller_->autocomplete_controller(), false);
+  }
 }
 
 WebuiOmniboxHandler::~WebuiOmniboxHandler() = default;
@@ -217,16 +227,24 @@ void WebuiOmniboxHandler::AddTabContext(int32_t tab_id,
 
   searchbox_context_data->SetPendingContext(std::move(context));
 
+  auto context_token = base::UnguessableToken::Create();
+  // When a tab is selected from the NTP context menu, immediately underline
+  // it on the tabstrip (before the popup opens and before any async context
+  // uploads begin) so the user gets immediate visual feedback.
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    selected_tabs[context_token] = tab_id;
+    if (auto* active_task_context_provider = GetActiveTaskContextProvider()) {
+      active_task_context_provider->AddLocalTabUnderline(
+          tabs::TabHandle(tab_id));
+    }
+  }
+
   edit_model()->OpenAiMode(false, /*via_context_menu=*/false);
-  std::move(callback).Run(base::ok(base::UnguessableToken::Create()));
+  std::move(callback).Run(base::ok(context_token));
 }
 void WebuiOmniboxHandler::StepSelection(
     OmniboxPopupSelection::Direction direction,
     OmniboxPopupSelection::Step step) {
-  if (!IsRemoteBound()) {
-    return;
-  }
-
   searchbox::mojom::SelectionStep mojom_step;
   switch (step) {
     case OmniboxPopupSelection::Step::kWholeLine: {
@@ -253,18 +271,10 @@ void WebuiOmniboxHandler::StepSelection(
 
 void WebuiOmniboxHandler::OpenCurrentSelection(
     WindowOpenDisposition disposition) {
-  if (!IsRemoteBound()) {
-    return;
-  }
-
   page_->OpenCurrentSelection(disposition);
 }
 
 void WebuiOmniboxHandler::SetAimButtonVisible(bool visible) {
-  if (!IsRemoteBound()) {
-    return;
-  }
-
   page_->SetAimButtonVisible(visible);
 }
 
@@ -303,17 +313,23 @@ WebuiOmniboxHandler::CreateAutocompleteMatch(
   return mojom_match;
 }
 
+void WebuiOmniboxHandler::OnFocusChanged(bool focused) {
+  if (focused) {
+    edit_model()->OnSetFocus(false);
+  } else {
+    edit_model()->OnWillKillFocus();
+    if (!base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopupV2)) {
+      edit_model()->OnKillFocus();
+    }
+  }
+}
+
 // TODO(crbug.com/469098088): Use something other than
 //   `AutocompleteController::Observer::OnStart()` to reduce the IPC overhead
 //   due to the fact that `AutocompleteController::Start()` gets invoked on
 //   *every* keystroke in the Omnibox.
 void WebuiOmniboxHandler::OnStart(AutocompleteController* controller,
                                   const AutocompleteInput& input) {
-  // Ignore the call until the page remote is bound and ready to receive calls.
-  if (!IsRemoteBound()) {
-    return;
-  }
-
   const AutocompleteProviderClient* client =
       autocomplete_controller()->autocomplete_provider_client();
   // Check if there are zero suggest (either on NTP or on web) or the
@@ -326,16 +342,12 @@ void WebuiOmniboxHandler::OnStart(AutocompleteController* controller,
 
 void WebuiOmniboxHandler::OnResultChanged(AutocompleteController* controller,
                                           bool default_match_changed) {
-  const bool ready = IsRemoteBound();
+  // TODO: (crbug.com/506266490) - Clean up these metrics since it is no longer
+  // relevant to track after moving to factory pattern for searchbox::mojom.
   if (metrics_reporter_ && !metrics_reporter_->HasLocalMark("FirstAccess")) {
     metrics_reporter_->Mark("FirstAccess");
     base::UmaHistogramBoolean(
-        "Omnibox.Popup.WebUI.PageRemoteIsBoundOnFirstCall", ready);
-  }
-
-  // Ignore the call until the page remote is bound and ready to receive calls.
-  if (!ready) {
-    return;
+        "Omnibox.Popup.WebUI.PageRemoteIsBoundOnFirstCall", true);
   }
 
   if (metrics_reporter_ && !metrics_reporter_->HasLocalMark("ResultChanged")) {
@@ -347,18 +359,6 @@ void WebuiOmniboxHandler::OnResultChanged(AutocompleteController* controller,
 void WebuiOmniboxHandler::OnSelectionChanged(
     OmniboxPopupSelection old_selection,
     OmniboxPopupSelection selection) {
-  const bool ready = IsRemoteBound();
-  if (metrics_reporter_ && !metrics_reporter_->HasLocalMark("FirstAccess")) {
-    metrics_reporter_->Mark("FirstAccess");
-    base::UmaHistogramBoolean("Omnibox.Popup.WebUI.PageIsReadyOnFirstCall",
-                              ready);
-  }
-
-  // Ignore the call until the page remote is bound and ready to receive calls.
-  if (!ready) {
-    return;
-  }
-
   page_->UpdateSelection(
       searchbox::mojom::OmniboxPopupSelection::New(
           old_selection.line, ConvertLineState(old_selection.state),
@@ -369,11 +369,6 @@ void WebuiOmniboxHandler::OnSelectionChanged(
 }
 
 void WebuiOmniboxHandler::OnKeywordStateChanged(bool is_keyword_selected) {
-  // Ignore the call until the page remote is bound and ready to receive calls.
-  if (!IsRemoteBound()) {
-    return;
-  }
-
   page_->SetKeywordSelected(is_keyword_selected);
 }
 
@@ -387,6 +382,14 @@ void WebuiOmniboxHandler::OnActiveTabChanged(TabListInterface& tab_list,
                                              tabs::TabInterface* tab) {
   web_contents_observer_.ScopedObserve(tab->GetContents());
   ContextualSearchboxHandler::OnActiveTabChanged(tab_list, tab);
+}
+
+void WebuiOmniboxHandler::StopAutocomplete(bool clear_result) {
+  if (base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopupV2) &&
+      clear_result) {
+    controller_->edit_model()->Revert();
+  }
+  ContextualSearchboxHandler::StopAutocomplete(clear_result);
 }
 
 void WebuiOmniboxHandler::OnTabWillDetach(
@@ -455,11 +458,6 @@ int WebuiOmniboxHandler::GetContextMenuMaxTabSuggestions() {
 }
 
 void WebuiOmniboxHandler::OnContentSharingPolicyChanged() {
-  // Ignore the call until the page remote is bound and ready to receive calls.
-  if (!IsRemoteBound()) {
-    return;
-  }
-
   page_->UpdateContentSharingPolicy(
       contextual_search::ContextualSearchService::IsContextSharingEnabled(
           profile_->GetPrefs()));
@@ -468,18 +466,14 @@ void WebuiOmniboxHandler::OnContentSharingPolicyChanged() {
 void WebuiOmniboxHandler::OnAimPopupEligibilityChanged() {
   InitializeInputStateModel();
 
-  if (IsRemoteBound()) {
-    page_->UpdateAimPopupEligibility(
-        omnibox::IsAimPopupEnabled(profile_) &&
-        profile_->GetPrefs()->GetBoolean(omnibox::kShowAiModeOmniboxButton));
-  }
+  page_->UpdateAimPopupEligibility(
+      omnibox::IsAimPopupEnabled(profile_) &&
+      profile_->GetPrefs()->GetBoolean(omnibox::kShowAiModeOmniboxButton));
 }
 
 void WebuiOmniboxHandler::OnNavigationFinished(
     content::NavigationHandle* navigation_handle) {
   if (navigation_handle->HasCommitted() && navigation_handle->IsInMainFrame()) {
-    if (IsRemoteBound()) {
-      page_->OnTabStripChanged();
-    }
+    page_->OnTabStripChanged();
   }
 }

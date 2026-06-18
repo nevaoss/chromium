@@ -6,6 +6,7 @@ import '//resources/cr_components/composebox/composebox_dropdown.js';
 import '//resources/cr_components/composebox/composebox.js';
 import '//resources/cr_components/localized_link/localized_link.js';
 
+import {GlifAnimationState} from '//resources/cr_components/composebox/common.js';
 import type {ComposeboxElement} from '//resources/cr_components/composebox/composebox.js';
 import type {PageHandlerRemote} from '//resources/cr_components/composebox/composebox.mojom-webui.js';
 import {LensOverlayDismissalSource} from '//resources/cr_components/composebox/composebox.mojom-webui.js';
@@ -42,12 +43,12 @@ const ICON_TYPE_TO_NAME: {[id: number]: string} = {
 
 function recordVoiceSearchAction(voiceSearchState: VoiceSearchState) {
   // Safety return statement in rare case chrome metrics is not available.
-  if (!chrome.metricsPrivate) {
+  if (!chrome.histograms) {
     return;
   }
 
-  chrome.metricsPrivate.recordEnumerationValue(
-      'ContextualTasks.VoiceSearch.State', voiceSearchState,
+  chrome.histograms.recordEnumerationValue(
+      'ContextualTasks.VoiceSearch.StateV2', voiceSearchState,
       VoiceSearchState.MAX_VALUE + 1);
 }
 
@@ -115,6 +116,10 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
         type: Boolean,
         value: loadTimeData.getBoolean('composeboxShowContextMenu'),
       },
+      voiceSearchCoherenceEnabled_: {
+        type: Boolean,
+        reflect: true,
+      },
       zeroStateSuggestions_: {type: Object},
       inputState_: {
         type: Object,
@@ -142,13 +147,13 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
       selectedMatchIndex_: {type: Number},
       enableFileHint_: {type: Boolean},
       lensButtonDisabled_: {type: Boolean},
-      isCanvasQuerySubmitted: {type: Boolean},
       caretAnimationsEnabled_: {type: Boolean},
+      usePecApi_: {type: Boolean},
       energyEffectEnabled_: {type: Boolean, reflect: true},
       energyEffectAnimationEnabled_: {type: Boolean, reflect: true},
+      glifAnimationState_: {type: String},
     };
   }
-
   accessor enableNativeZeroStateSuggestions: boolean = false;
   accessor inNlm: boolean = false;
   accessor inToolMode_: boolean = false;
@@ -157,7 +162,6 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   accessor isLensOverlayShowing: boolean = false;
   accessor isOverlayOpenForAimVisualSearch: boolean = false;
   accessor inputEnabled: boolean = true;
-  accessor isCanvasQuerySubmitted: boolean = false;
 
   protected accessor zeroStateSuggestions_: AutocompleteResult = {
     input: '',
@@ -175,6 +179,8 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   protected accessor isComposeboxFocused_: boolean = false;
   protected accessor showContextMenu_: boolean =
       loadTimeData.getBoolean('composeboxShowContextMenu');
+  protected accessor voiceSearchCoherenceEnabled_: boolean =
+      loadTimeData.getBoolean('voiceSearchCoherenceComposeboxesEnabled');
   protected accessor inputState_: InputState|null = null;
   protected accessor showSuggestionsActivityLink_: boolean = false;
   protected accessor inVoiceSearchMode_: boolean = false;
@@ -201,6 +207,8 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   private forceSkipSubmitGlifAnimation_: boolean = false;
   protected accessor caretAnimationsEnabled_: boolean =
       loadTimeData.getBoolean('caretAnimationEnabled');
+  protected accessor usePecApi_: boolean =
+      loadTimeData.getBoolean('contextualMenuUsePecApi');
   protected accessor energyEffectEnabled_: boolean =
       loadTimeData.getBoolean('energyEffectEnabled');
   // The use of energyEffectEnabled to set energyEffectAnimationEnabled_ is
@@ -208,6 +216,8 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   // across all surfaces (= Nextbox, Omnibox, and Realbox).
   protected accessor energyEffectAnimationEnabled_: boolean =
       loadTimeData.getBoolean('energyEffectEnabled');
+  protected accessor glifAnimationState_: GlifAnimationState =
+      GlifAnimationState.INELIGIBLE;
 
   constructor() {
     super();
@@ -230,6 +240,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
       // Do not play the glow animation if opening on a thread.
       if (!this.isZeroState) {
         composebox.animationState = GlowAnimationState.NONE;
+        this.glifAnimationState_ = GlifAnimationState.INELIGIBLE;
       }
       this.eventTracker_.add(
           composebox, 'can-submit-files-and-input-changed',
@@ -257,11 +268,13 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
         if (this.isZeroState || this.forceSkipSubmitGlifAnimation_) {
           this.forceSkipSubmitGlifAnimation_ = false;
           composebox.animationState = GlowAnimationState.NONE;
+          this.glifAnimationState_ = GlifAnimationState.INELIGIBLE;
           this.clearInputAndFocus(/* querySubmitted= */ true);
           return;
         }
         // Force animation to replay visibly on subsequent submissions.
         composebox.animationState = GlowAnimationState.NONE;
+        this.glifAnimationState_ = GlifAnimationState.INELIGIBLE;
         requestAnimationFrame(() => {
           composebox.animationState = GlowAnimationState.SUBMITTING;
         });
@@ -343,15 +356,17 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   }
 
   // Must have `$` access in updated to avoid violating Lit contract since
-  // since `willUpdate` runs before `render`, which will cause `$`
-  // to not be populated yet.
+  // `willUpdate` runs before `render`, which will cause `$` to not be
+  // populated yet.
   override updated(changedProperties: PropertyValues<this>) {
     super.updated(changedProperties);
     if (changedProperties.has('isZeroState')) {
       if (this.isZeroState) {
-        this.isCanvasQuerySubmitted = false;
         // Opening zero state triggers animation.
         this.$.composebox.animationState = GlowAnimationState.SUBMITTING;
+        this.glifAnimationState_ = GlifAnimationState.STARTED;
+      } else {
+        this.glifAnimationState_ = GlifAnimationState.INELIGIBLE;
       }
       if (this.isZeroState && !this.isSidePanel) {
         // Get zero state autocomplete matches. In the side panel, we wait for
@@ -359,6 +374,9 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
         // autocomplete.
         this.$.composebox.queryAutocomplete(/*clearMatches=*/ false);
       }
+    }
+    if (changedProperties.has('isSidePanel')) {
+      this.toggleAttribute('show-lens-button', this.shouldShowLensButton_());
     }
   }
 
@@ -379,7 +397,8 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   }
 
   protected shouldShowLensButton_() {
-    return this.isSidePanel;
+    return this.isSidePanel &&
+        loadTimeData.getBoolean('supportsLensButtonInComposebox');
   }
 
   get inputState() {
@@ -419,6 +438,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
       return;
     }
     this.lensButtonDisabled_ = false;
+    this.fire('update-tooltip-visibility');
   }
 
   protected onSuggestionsResultChanged_(e: CustomEvent<AutocompleteResult>) {
@@ -544,36 +564,15 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
     this.$.composebox.deleteFile(fileToken);
   }
 
+  isCanvasQuerySubmitted(): boolean {
+    return !this.isZeroState &&
+        (this.inputState?.isCanvasQuerySubmitted ?? false);
+  }
+
   getComposebox() {
     return this.$.composebox;
   }
 
-  setActiveTool(toolMode: ToolMode) {
-    this.searchboxHandler_.setActiveToolMode(toolMode);
-  }
-  setToolFromUrl(urlString: string) {
-    const urlObj = new URL(urlString);
-    const inputState = this.inputState;
-    if (inputState && inputState.toolConfigs) {
-      for (const config of inputState.toolConfigs) {
-        if (config.aimUrlParams && config.aimUrlParams.length > 0) {
-          const hasParam = config.aimUrlParams.some(p => {
-            const value = urlObj.searchParams.get(p.paramKey);
-            return value === p.paramValue;
-          });
-          if (hasParam) {
-            if (config.tool === 2 /* ToolMode.kCanvas */) {
-              this.isCanvasQuerySubmitted = true;
-            }
-            if (inputState.activeTool !== config.tool) {
-              this.setActiveTool(config.tool);
-            }
-            break;
-          }
-        }
-      }
-    }
-  }
 
   get isComposeboxFocusedForTesting() {
     return this.isComposeboxFocused_;

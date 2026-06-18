@@ -43,6 +43,7 @@ inline constexpr char kChromeUITracingURL[] = "chrome://tracing/";
 inline constexpr char kChromeUIVersionURL[] = "chrome://version/";
 
 // URL components for Chrome on iOS.
+inline constexpr char kChromeUIActorInternalsHost[] = "actor-internals";
 inline constexpr char kChromeUIAutofillInternalsHost[] = "autofill-internals";
 inline constexpr char kChromeUIBrowserCrashHost[] =
     "inducebrowsercrashforrealz";
@@ -224,7 +225,7 @@ inline constexpr char kGeminiExtensionsURL[] = "https://gemini.google.com/apps";
 
 // URL navigated to after the Gemini App Store External Actions event.
 inline constexpr char kGeminiAppStorePromoURL[] =
-    "https://www.google.com/chrome/ai-innovations/";
+    "https://www.google.com/chrome/mobile/#scrollable-gemini-in-chrome-slide-1";
 
 // Gets the hosts/domains that are shown in chrome://chrome-urls.
 inline constexpr std::array<std::string_view, 22> kChromeHostURLs = {

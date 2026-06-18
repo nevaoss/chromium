@@ -91,6 +91,16 @@ display::Display GetDisplayForWindow(NSWindow* window) {
       gfx::NativeWindow(window));
 }
 
+bool IsBackgroundEffectView(NSView* view) {
+  if ([view isKindOfClass:[NSVisualEffectView class]]) {
+    return true;
+  }
+
+  Class glass_effect_view_class = NSClassFromString(@"NSGlassEffectView");
+  return glass_effect_view_class &&
+         [view isKindOfClass:glass_effect_view_class];
+}
+
 }  // namespace
 
 @class NSWindowRestorationOptions;
@@ -254,14 +264,13 @@ NSComparisonResult SubviewSorter(__kindof NSView* lhs,
                                  void* rank_as_void) {
   DCHECK_NE(lhs, rhs);
 
-  // Put `NSVisualEffectView` before `ViewsCompositorSuperview` otherwise when
-  // using `NSVisualEffectView` for `vibrancy` it will hide content displayed by
-  // the compositor.
-  if ([lhs isKindOfClass:[NSVisualEffectView class]]) {
+  // Put background effect views before `ViewsCompositorSuperview`, otherwise
+  // they can cover content displayed by the compositor.
+  if (IsBackgroundEffectView(lhs)) {
     return NSOrderedAscending;
   }
   if ([lhs isKindOfClass:[ViewsCompositorSuperview class]]) {
-    if ([rhs isKindOfClass:[NSVisualEffectView class]]) {
+    if (IsBackgroundEffectView(rhs)) {
       return NSOrderedDescending;
     }
     return NSOrderedAscending;
@@ -638,6 +647,14 @@ void NativeWidgetNSWindowBridge::SetBounds(
     const gfx::Rect& new_bounds,
     const gfx::Size& minimum_content_size,
     const std::optional<gfx::Size>& maximum_content_size) {
+  // Ensure that any changes to the window frame be atomic with the updates to
+  // their content.
+  if (!ca_transaction_sync_suppressed_ &&
+      base::FeatureList::IsEnabled(features::kCATransactionV2) &&
+      !base::FeatureList::IsEnabled(features::kAsyncLiveResize)) {
+    ui::CATransactionCoordinator::Get().Synchronize();
+  }
+
   // Discard any pending live resizes.
   live_resize_.pending_window_frame = std::nullopt;
   live_resize_.queued_pending_window_frame = std::nullopt;
@@ -1620,7 +1637,14 @@ void NativeWidgetNSWindowBridge::FullscreenControllerTransitionComplete(
   UpdateWindowDisplay();
 
   // Add any children that were skipped during the fullscreen transition.
+  // A weak pointer is needed because OrderChildren() can synchronously run a
+  // modal sheet animation (ShowAsModalSheet), entering a nested run-loop during
+  // which this bridge may be destroyed.
+  base::WeakPtr<NativeWidgetNSWindowBridge> weak_ptr = factory_.GetWeakPtr();
   OrderChildren();
+  if (!weak_ptr) {
+    return;
+  }
 
   host_->OnWindowFullscreenTransitionComplete(is_fullscreen);
   if (is_fullscreen && immersive_mode_controller_) {
@@ -1932,6 +1956,11 @@ void NativeWidgetNSWindowBridge::SetCALayerParams(
     live_resize_.pending_window_frame =
         std::exchange(live_resize_.queued_pending_window_frame, std::nullopt);
     if (live_resize_.pending_window_frame.has_value()) {
+      // The pending size must be different from the current size (otherwise we
+      // will never un-set `live_resize_.pending_window_frame`) and hang the
+      // resize.
+      DCHECK_NE(gfx::Size(live_resize_.pending_window_frame->size),
+                content_dip_size_);
       SendWindowFrameChangeToHost(live_resize_.pending_window_frame.value());
     }
   }
@@ -2109,6 +2138,14 @@ void NativeWidgetNSWindowBridge::OnLiveResizeToFrame(NSRect new_window_frame) {
     return;
   }
 
+  // If we already have a compositor frame of the expected size, then we will
+  // not get re-notified of frames of the current size, which will cause us to
+  // never un-set `live_resize_.pending_window_frame` and hang the resize.
+  // http://crbug.com/510621306
+  if (gfx::Size(new_window_frame.size) == content_dip_size_) {
+    return;
+  }
+
   // Tell the compositor about the new frame, so it can produce the right
   // sized frame. We will call -[NSWindow setFrame:] when the compositor
   // produces the frame.
@@ -2131,7 +2168,7 @@ void NativeWidgetNSWindowBridge::UpdateWindowGeometry() {
   CheckAndNotifyAllWorkspacesStateChanged();
 
   if (content_resized && !ca_transaction_sync_suppressed_ &&
-      !base::FeatureList::IsEnabled(features::kCATransactionV2)) {
+      !base::FeatureList::IsEnabled(features::kAsyncLiveResize)) {
     ui::CATransactionCoordinator::Get().Synchronize();
   }
 
@@ -2162,6 +2199,13 @@ bool NativeWidgetNSWindowBridge::IsWindowModalSheet() const {
 }
 
 void NativeWidgetNSWindowBridge::ShowAsModalSheet() {
+  // -[NSWindow beginSheet:completionHandler:] will block the UI thread while
+  // the animation runs. So that it doesn't animate a fully transparent window,
+  // first wait for a frame. The first step is to pretend that the window is
+  // already visible.
+  window_visible_ = true;
+  host_->OnVisibilityChanged(window_visible_);
+
   NSWindow* parent_window = parent_->ns_window();
   if (NativeWidgetMacNSWindow* parent_widget_window =
           base::apple::ObjCCast<NativeWidgetMacNSWindow>(parent_window)) {

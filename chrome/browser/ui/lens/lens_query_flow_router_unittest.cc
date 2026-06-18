@@ -12,6 +12,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_cookie_synchronizer.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
+#include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
@@ -350,12 +351,15 @@ class MockContextualTasksUiService
     : public contextual_tasks::ContextualTasksUiService {
  public:
   explicit MockContextualTasksUiService(Profile* profile)
-      : ContextualTasksUiService(profile,
-                                 /*delegate=*/nullptr,
-                                 /*contextual_tasks_service=*/nullptr,
-                                 /*identity_manager=*/nullptr,
-                                 /*aim_eligibility_service=*/nullptr,
-                                 /*cookie_synchronizer=*/nullptr) {}
+      : ContextualTasksUiService(
+            profile,
+            std::make_unique<testing::NiceMock<
+                contextual_tasks::MockContextualTasksUiServiceDelegate>>(),
+            /*contextual_tasks_service=*/nullptr,
+            /*identity_manager=*/nullptr,
+            /*aim_eligibility_service=*/nullptr,
+            /*eligibility_manager=*/nullptr,
+            /*cookie_synchronizer=*/nullptr) {}
   ~MockContextualTasksUiService() override = default;
 
   MOCK_METHOD(void,
@@ -520,14 +524,14 @@ TEST_F(LensQueryFlowRouterTest, StartQueryFlow_RoutesToLensQueryController) {
 
   // Assert: Create start query flow function call expectation.
   EXPECT_CALL(*mock_query_controller_,
-              StartQueryFlow(BitmapEquals(screenshot), example_url,
-                             testing::Eq(page_title), testing::IsEmpty(),
-                             testing::IsEmpty(), primary_content_type,
-                             testing::Eq(std::nullopt), ui_scale_factor,
-                             invocation_time));
+              StartQueryFlow(BitmapEquals(screenshot), BitmapEquals(screenshot),
+                             example_url, testing::Eq(page_title),
+                             testing::IsEmpty(), testing::IsEmpty(),
+                             primary_content_type, testing::Eq(std::nullopt),
+                             ui_scale_factor, invocation_time));
 
   // Act: Start query flow.
-  router.StartQueryFlow(screenshot, example_url, page_title, {}, {},
+  router.StartQueryFlow(screenshot, screenshot, example_url, page_title, {}, {},
                         primary_content_type, std::nullopt, ui_scale_factor,
                         invocation_time);
 }
@@ -939,7 +943,7 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   GURL example_url("https://example.com");
 
   // Call StartQueryFlow to generate the token.
-  router.StartQueryFlow(screenshot, example_url, "Title", {}, {},
+  router.StartQueryFlow(screenshot, screenshot, example_url, "Title", {}, {},
                         lens::MimeType::kAnnotatedPageContent, std::nullopt,
                         1.0f, base::TimeTicks::Now());
 
@@ -1032,7 +1036,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
       .Times(0);
 
   // Act: Start query flow.
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
 }
@@ -1085,7 +1090,8 @@ TEST_F(
                   _, ContextualInputDataMatches(expected_input_data), _));
 
   // Act: Start query flow.
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, page_contents, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
 }
@@ -1109,7 +1115,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
 
@@ -1171,7 +1178,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
 
@@ -1233,7 +1241,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
 
@@ -1335,7 +1344,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
   expected_request_info->additional_params["plla"] =
@@ -1395,7 +1405,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
 
@@ -1459,7 +1470,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
 
@@ -1599,7 +1611,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
   expected_request_info->additional_params["plla"] =
@@ -1659,7 +1672,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
 
@@ -1703,7 +1717,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
 
@@ -1782,7 +1797,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
   expected_request_info->additional_params["plla"] =
@@ -1815,6 +1831,96 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   router.SendContextualTextQuery(query_start_time, query_text, selection_type,
                                  additional_params,
                                  lens::LensOverlayInvocationSource::kAppMenu);
+}
+
+TEST_F(
+    LensQueryFlowRouterContextualTaskEnabledTest,
+    SendContextualTextQuery_OmniboxContextualSuggestion_RoutesToContextualTasks) {
+  // Arrange: Set up and create the router.
+  TestLensQueryFlowRouter router(mock_lens_search_controller_.get(),
+                                 mock_context_controller_.get(),
+                                 profile_.get());
+  router.SetTabContextualizationController(
+      mock_tab_contextualization_controller_.get());
+
+  // Arrange: Set up the parameters.
+  base::Time query_start_time = base::Time::Now();
+  std::string query_text = "test query";
+  lens::LensOverlaySelectionType selection_type =
+      lens::LensOverlaySelectionType::MULTIMODAL_SUGGEST_TYPEAHEAD;
+  std::map<std::string, std::string> additional_params;
+  additional_params["lns_fp"] = "1";
+  additional_params["lns_mode"] = "text";
+  additional_params["plla"] = "0";
+  base::UnguessableToken file_token = base::UnguessableToken::Create();
+
+  // Arrange: Create expected request info.
+  auto expected_request_info = std::make_unique<CreateSearchUrlRequestInfo>();
+  expected_request_info->search_url_type =
+      contextual_search::ContextualSearchContextController::SearchUrlType::kAim;
+  expected_request_info->query_text = query_text;
+  expected_request_info->query_start_time = query_start_time;
+  expected_request_info->lens_overlay_selection_type = selection_type;
+  lens::AppendLensOverlaySidePanelParams(additional_params, router.gen204_id(),
+                                         /*has_text=*/true,
+                                         /*has_image=*/false);
+  expected_request_info->additional_params = additional_params;
+  expected_request_info->image_crop = std::nullopt;
+  expected_request_info->aim_entry_point =
+      omnibox::DESKTOP_CHROME_OTHER_OMNIBOX_COMPOSEBOX_ENTRY_POINT;
+  expected_request_info->file_tokens.push_back(file_token);
+
+  // Assert: Expect NotifyResultsPanelOpened to be called.
+  EXPECT_CALL(*mock_lens_overlay_controller_, NotifyResultsPanelOpened())
+      .Times(1);
+
+  // Mock GetFileInfo to return valid status so IsActiveTabContextEligible
+  // returns true.
+  SetFileInfoWithEligibility(file_token, /*is_eligible=*/true);
+
+  // Assert: Create expectation to call CreateSearchUrl.
+  EXPECT_CALL(*router.mock_session_handle(), NotifySessionStarted());
+  EXPECT_CALL(*router.mock_session_handle(), CreateContextToken())
+      .WillOnce(Return(file_token));
+  // StartTabContextUploadFlow is called as part of UploadContextualInputData.
+  EXPECT_CALL(*router.mock_session_handle(),
+              StartTabContextUploadFlow(_, _, _));
+
+  GURL example_url("https://example.com");
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
+                        {}, {}, lens::MimeType::kAnnotatedPageContent,
+                        std::nullopt, 1.0f, base::TimeTicks::Now());
+  expected_request_info->additional_params["plla"] =
+      base::NumberToString(router.gen204_id());
+  EXPECT_CALL(
+      *router.mock_session_handle(),
+      CreateSearchUrl(
+          CreateSearchUrlRequestInfoMatches(expected_request_info.get()), _))
+      .WillOnce(base::test::RunOnceCallback<1>(
+          GURL("https://www.google.com/search?q=test")));
+  auto* service = static_cast<MockContextualTasksUiService*>(
+      contextual_tasks::ContextualTasksUiServiceFactory::GetForBrowserContext(
+          profile_.get()));
+  // Expect StartTaskUiInSidePanel to be called with the real URL and the
+  // session handle.
+  EXPECT_CALL(*service,
+              StartTaskUiInSidePanel(
+                  mock_browser_window_interface_.get(), &mock_tab_interface_,
+                  GURL("https://www.google.com/search?q=test"),
+                  testing::Pointer(router.mock_session_handle())))
+      .WillOnce(
+          [&router](
+              BrowserWindowInterface*, tabs::TabInterface*, const GURL&,
+              std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+                  handle) {
+            router.SetTransferredSessionHandle(std::move(handle));
+          });
+
+  // Act: Call the method.
+  router.SendContextualTextQuery(
+      query_start_time, query_text, selection_type, additional_params,
+      lens::LensOverlayInvocationSource::kOmniboxContextualSuggestion);
 }
 
 TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
@@ -1874,7 +1980,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
   expected_request_info->additional_params["plla"] =
@@ -1937,7 +2044,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   EXPECT_CALL(*router.mock_session_handle(),
               StartTabContextUploadFlow(_, _, _));
 
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
 
@@ -1977,7 +2085,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   EXPECT_CALL(*router.mock_session_handle(),
               StartTabContextUploadFlow(_, _, _));
 
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
 
@@ -2013,7 +2122,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   EXPECT_CALL(*router.mock_session_handle(),
               StartTabContextUploadFlow(_, _, _));
   // Act: Start query flow to set the token.
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
 
@@ -2072,7 +2182,8 @@ TEST_F(
               StartTabContextUploadFlow(_, _, _));
 
   // Act: Start query flow to set the token.
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
 
@@ -2130,7 +2241,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   // Act
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
 }
@@ -2166,7 +2278,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
   EXPECT_CALL(*side_panel_session_handle, StartTabContextUploadFlow(_, _, _));
 
   // Act
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
 }
@@ -2211,7 +2324,8 @@ TEST_F(LensQueryFlowRouterContextualTaskEnabledTest,
               StartTabContextUploadFlow(_, _, _));
 
   GURL example_url("https://example.com");
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, "Title",
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, "Title",
                         {}, {}, lens::MimeType::kAnnotatedPageContent,
                         std::nullopt, 1.0f, base::TimeTicks::Now());
 
@@ -2383,7 +2497,8 @@ TEST_F(
   EXPECT_CALL(*router.mock_session_handle(), StartTabContextUploadFlow(_, _, _))
       .Times(0);
 
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
 }
@@ -2411,7 +2526,8 @@ TEST_F(
   EXPECT_CALL(*router.mock_session_handle(),
               StartTabContextUploadFlow(_, _, _));
 
-  router.StartQueryFlow(router.GetViewportScreenshot(), example_url, page_title,
+  router.StartQueryFlow(router.GetViewportScreenshot(),
+                        router.GetViewportScreenshot(), example_url, page_title,
                         {}, {}, primary_content_type, std::nullopt,
                         ui_scale_factor, invocation_time);
   router.MaybeResumeQueryFlow();

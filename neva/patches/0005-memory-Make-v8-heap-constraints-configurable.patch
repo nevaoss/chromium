@@ -1,4 +1,4 @@
-From 80dc257d0ea69b6d6a8b243db2a07d92d06eab9f Mon Sep 17 00:00:00 2001
+From 6dc52b5c77a9afa7e6ca41fd81d2eb042f9c485c Mon Sep 17 00:00:00 2001
 From: "donghwan.yu" <donghwan.yu@lge.com>
 Date: Thu, 22 Jan 2026 11:27:16 +0900
 Subject: [PATCH] Make v8 heap constraints configurable
@@ -51,11 +51,11 @@ Reviewed-on: http://gpro.lge.com/c/webosose/chromium-v8/+/284058
  include/v8-isolate.h         | 36 +++++++++++++++++
  src/api/api.cc               | 22 +++++++++++
  src/flags/flag-definitions.h | 14 +++++++
- src/heap/heap-controller.cc  | 35 ++++++++++++++++
+ src/heap/heap-controller.cc  | 37 ++++++++++++++++-
  src/heap/heap-controller.h   | 58 ++++++++++++++++++++++++++-
  src/heap/heap.cc             | 77 ++++++++++++++++++++++++++++++++++++
  src/heap/heap.h              |  7 ++++
- 7 files changed, 248 insertions(+), 1 deletion(-)
+ 7 files changed, 249 insertions(+), 2 deletions(-)
 
 diff --git a/include/v8-isolate.h b/include/v8-isolate.h
 index 44bde532a62..c3b924315cb 100644
@@ -112,10 +112,10 @@ index 44bde532a62..c3b924315cb 100644
  
  /**
 diff --git a/src/api/api.cc b/src/api/api.cc
-index 631f8a50ca1..2bf9733abd4 100644
+index 02724893553..723be964c2e 100644
 --- a/src/api/api.cc
 +++ b/src/api/api.cc
-@@ -595,6 +595,19 @@ void ResourceConstraints::ConfigureDefaults(uint64_t physical_memory,
+@@ -596,6 +596,19 @@ void ResourceConstraints::ConfigureDefaults(uint64_t physical_memory,
    }
  }
  
@@ -135,7 +135,7 @@ index 631f8a50ca1..2bf9733abd4 100644
  #ifdef ENABLE_SLOW_DCHECKS
  namespace api_internal {
  void StackAllocated<true>::VerifyOnStack() const {
-@@ -10125,6 +10138,15 @@ void Isolate::Initialize(Isolate* v8_isolate,
+@@ -10138,6 +10151,15 @@ void Isolate::Initialize(Isolate* v8_isolate,
    }
  
    i_isolate->heap()->ConfigureHeap(params.constraints, cpp_heap);
@@ -152,10 +152,10 @@ index 631f8a50ca1..2bf9733abd4 100644
      uintptr_t limit =
          reinterpret_cast<uintptr_t>(params.constraints.stack_limit());
 diff --git a/src/flags/flag-definitions.h b/src/flags/flag-definitions.h
-index d6937a4a98e..13a6f53b642 100644
+index 6c98be12edb..9eb5a90b808 100644
 --- a/src/flags/flag-definitions.h
 +++ b/src/flags/flag-definitions.h
-@@ -2769,6 +2769,20 @@ DEFINE_BOOL(
+@@ -2823,6 +2823,20 @@ DEFINE_BOOL(
  DEFINE_BOOL(parallel_reclaim_unmodified_wrappers, true,
              "reclaim wrapper objects in parallel")
  
@@ -177,10 +177,10 @@ index d6937a4a98e..13a6f53b642 100644
              "use high priority threads for concurrent Marking")
  
 diff --git a/src/heap/heap-controller.cc b/src/heap/heap-controller.cc
-index 621ef5c2254..fdb9ca02f36 100644
+index c14a858883b..5434e4c9fd4 100644
 --- a/src/heap/heap-controller.cc
 +++ b/src/heap/heap-controller.cc
-@@ -140,11 +140,34 @@ double MemoryController<Trait>::DynamicGrowingFactor(
+@@ -175,11 +175,34 @@ double MemoryController<Trait>::DynamicGrowingFactor(
    return factor;
  }
  
@@ -215,20 +215,21 @@ index 621ef5c2254..fdb9ca02f36 100644
            new_space_capacity;
    const uint64_t halfway_to_the_max = (current_size + max_size) / 2;
    return base::saturated_cast<size_t>(
-@@ -236,7 +259,11 @@ Heap::LimitsComputationResult HeapLimits::UpdateAllocationLimits(
-   const size_t computed_old_generation_allocation_limit =
-       old_gen_consumed_bytes_at_last_gc * v8_growing_factor;
+@@ -309,7 +332,11 @@ Heap::LimitsComputationResult HeapLimits::UpdateAllocationLimits(
+   }
+ 
    const size_t preliminary_old_generation_allocation_limit =
+-      V8HeapTrait::BoundAllocationLimit(
 +#if defined(USE_NEVA_APPRUNTIME)
 +      V8HeapTrait::BoundAllocationLimit(isolate(),
 +#else
-       V8HeapTrait::BoundAllocationLimit(
++      V8HeapTrait::BoundAllocationLimit(
 +#endif // defined(USE_NEVA_APPRUNTIME)
            old_gen_consumed_bytes_at_last_gc,
            computed_old_generation_allocation_limit, min_old_generation_size_,
            max_old_generation_size(), new_space_capacity);
-@@ -306,6 +333,10 @@ Heap::LimitsComputationResult HeapLimits::UpdateAllocationLimits(
-         dict.Add("external_growing_factor", external_growing_factor);
+@@ -367,6 +394,10 @@ Heap::LimitsComputationResult HeapLimits::UpdateAllocationLimits(
+         dict.Add("embedder_size_at_last_gc", embedder_size_at_last_gc_);
          dict.Add("external_memory_low_since_last_gc",
                   external_memory_low_since_last_gc());
 +#if defined(USE_NEVA_APPRUNTIME)
@@ -238,7 +239,7 @@ index 621ef5c2254..fdb9ca02f36 100644
          dict.Add("max_old_generation_size", max_old_generation_size());
          dict.Add("max_global_memory_size", max_global_memory_size());
          dict.Add("boundary_min_old_gen_allocation_limit",
-@@ -334,7 +365,11 @@ void HeapLimits::ShrinkAllocationLimitIfNotConfigured(
+@@ -395,7 +426,11 @@ void HeapLimits::ShrinkAllocationLimitIfNotConfigured(
      return;
    }
    size_t new_old_generation_allocation_limit = std::max(
@@ -251,7 +252,7 @@ index 621ef5c2254..fdb9ca02f36 100644
            static_cast<double>(old_generation_allocation_limit()) *
            (tracer()->AverageSurvivalRatio() / 100)));
 diff --git a/src/heap/heap-controller.h b/src/heap/heap-controller.h
-index 5fb7052e9a9..69b00902eb3 100644
+index dacc271244a..478b372840a 100644
 --- a/src/heap/heap-controller.h
 +++ b/src/heap/heap-controller.h
 @@ -26,8 +26,13 @@ struct BaseControllerTrait {
@@ -269,7 +270,7 @@ index 5fb7052e9a9..69b00902eb3 100644
                                       size_t min_size, size_t max_size,
                                       size_t new_space_capacity);
  };
-@@ -210,6 +215,48 @@ class V8_EXPORT_PRIVATE HeapLimits {
+@@ -215,6 +220,48 @@ class V8_EXPORT_PRIVATE HeapLimits {
      using_initial_limit_.store(value, std::memory_order_relaxed);
    }
  
@@ -318,7 +319,7 @@ index 5fb7052e9a9..69b00902eb3 100644
   private:
    static constexpr size_t kExternalAllocationLimitForInterrupt = 128 * KB;
  
-@@ -268,6 +315,15 @@ class V8_EXPORT_PRIVATE HeapLimits {
+@@ -278,6 +325,15 @@ class V8_EXPORT_PRIVATE HeapLimits {
    // generation and on every allocation in large object space.
    std::atomic<size_t> old_generation_allocation_limit_{0};
    std::atomic<size_t> global_allocation_limit_{0};
@@ -335,10 +336,10 @@ index 5fb7052e9a9..69b00902eb3 100644
  
  }  // namespace internal
 diff --git a/src/heap/heap.cc b/src/heap/heap.cc
-index 422d844cb9d..595770f68ca 100644
+index 21b59e36be0..7b90ee273b1 100644
 --- a/src/heap/heap.cc
 +++ b/src/heap/heap.cc
-@@ -1468,6 +1468,12 @@ void Heap::PreciseCollectAllGarbage(GCFlags gc_flags,
+@@ -1389,6 +1389,12 @@ void Heap::PreciseCollectAllGarbage(GCFlags gc_flags,
  }
  
  uint64_t Heap::external_memory_hard_limit() {
@@ -351,7 +352,7 @@ index 422d844cb9d..595770f68ca 100644
    return limits()->external_memory_low_since_last_gc() +
           limits()->max_old_generation_size() / 2;
  }
-@@ -1477,6 +1483,12 @@ uint64_t Heap::external_memory_limit_for_interrupt() {
+@@ -1398,6 +1404,12 @@ uint64_t Heap::external_memory_limit_for_interrupt() {
  }
  
  uint64_t Heap::external_memory_soft_limit() {
@@ -364,7 +365,7 @@ index 422d844cb9d..595770f68ca 100644
    return limits()->external_memory_low_since_last_gc() +
           kExternalAllocationSoftLimit;
  }
-@@ -3679,6 +3691,13 @@ bool Heap::HasHighFragmentation() {
+@@ -3631,6 +3643,13 @@ bool Heap::HasHighFragmentation() {
  
    // Fragmentation is high if committed > 2 * used + kSlack.
    // Rewrite the expression to avoid overflow.
@@ -378,7 +379,7 @@ index 422d844cb9d..595770f68ca 100644
    return committed - used > used + kSlack;
  }
  
-@@ -5140,6 +5159,64 @@ void Heap::ConfigureHeap(const v8::ResourceConstraints& constraints,
+@@ -5077,6 +5096,64 @@ void Heap::ConfigureHeap(const v8::ResourceConstraints& constraints,
    configured_ = true;
  }
  
@@ -444,10 +445,10 @@ index 422d844cb9d..595770f68ca 100644
    size_t first_part =
        std::min(strlen(string), kTraceRingBufferSize - ring_buffer_end_);
 diff --git a/src/heap/heap.h b/src/heap/heap.h
-index 4882047e952..0e193da537e 100644
+index 79d69c07415..37c23052f04 100644
 --- a/src/heap/heap.h
 +++ b/src/heap/heap.h
-@@ -702,6 +702,13 @@ class Heap final {
+@@ -722,6 +722,13 @@ class Heap final {
                       v8::CppHeap* cpp_heap);
    void ConfigureHeapDefault();
  

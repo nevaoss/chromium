@@ -48,6 +48,8 @@ enum class CancelationReason {
   kAgeMismatchCanceled,
   // Canceled due to age mismatch, user wants to stay signed out.
   kAgeMismatchCanceledStaySignedOut,
+  // Sign-in is not allowed.
+  kSignInNotAllowed,
 };
 
 }  // namespace signin_ui
@@ -178,6 +180,10 @@ extern const char* const kUMASSORecallPromoSeenCount;
 // Default timeout to wait for fetching account capabilities, which determine
 // minor mode restrictions status.
 inline constexpr base::TimeDelta kMinorModeRestrictionsFetchDeadline =
+    base::Milliseconds(500);
+
+// Default timeout to wait for fetching the CanSignInToChrome capability.
+inline constexpr base::TimeDelta kCanSignInToChromeCapabilityFetchTimeout =
     base::Milliseconds(500);
 
 // URL to the learn more screen about managed profiles.

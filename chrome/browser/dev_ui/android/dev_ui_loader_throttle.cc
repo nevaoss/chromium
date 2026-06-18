@@ -34,14 +34,15 @@ bool IsWebUiHostInDevUiDfm(const std::string& host) {
   // Each WebUI host (including synonyms) in the DevUI DFM must have an entry.
   // Assume linear search is fast enough. Can optimize later if needed.
   return host == chrome::kChromeUIAccessibilityHost ||
-         host == chrome::kChromeUIAccessibilityAnnotatorInternalsHost ||
          host == chrome::kChromeUIActorInternalsHost ||
          host == chrome::kChromeUIAutofillInternalsHost ||
          host == chrome::kChromeUIBluetoothInternalsHost ||
          host == chrome::kChromeUIBrowsingTopicsInternalsHost ||
+         host == chrome::kChromeUIChromeFindsInternalsHost ||
          host == chrome::kChromeUIComponentsHost ||
          host == chrome::kChromeUICrashesHost ||
          host == chrome::kChromeUIDeviceLogHost ||
+         host == chrome::kChromeUIContextHubHost ||
          host == chrome::kChromeUIDownloadInternalsHost ||
          host == chrome::kChromeUIFamilyLinkUserInternalsHost ||
          host == chrome::kChromeUIGCMInternalsHost ||
@@ -56,6 +57,7 @@ bool IsWebUiHostInDevUiDfm(const std::string& host) {
          host == chrome::kChromeUINetInternalsHost ||
          host == chrome::kChromeUIOmniboxHost ||
          host == chrome::kChromeUIPasswordManagerInternalsHost ||
+         host == chrome::kChromeUIPersonalContextInternalsHost ||
          host == chrome::kChromeUIPolicyHost ||
          host == chrome::kChromeUIPredictorsHost ||
          host == chrome::kChromeUISandboxHost ||

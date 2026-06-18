@@ -16,6 +16,8 @@
 #include "base/token.h"
 #include "base/trace_event/trace_event.h"
 #include "base/tracing/trace_time.h"
+#include "build/blink_buildflags.h"
+#include "build/build_config.h"
 #include "services/tracing/public/cpp/background_tracing/tracing_agent_observer_manager.h"
 #include "services/tracing/public/cpp/background_tracing/triggers_data_source.h"
 #include "services/tracing/public/cpp/perfetto/perfetto_config.h"
@@ -325,10 +327,14 @@ TracingScenario::CreateTracingSession() {
   // should support it (see OnSetupTrigger()). Otherwise this is a configuration
   // error.
   DCHECK(!use_system_backend_ || tracing::SystemBackgroundTracingEnabled());
+#if BUILDFLAG(USE_BLINK)
   auto backend_type =
       (use_system_backend_ && tracing::SystemBackgroundTracingEnabled())
           ? perfetto::BackendType::kSystemBackend
           : perfetto::BackendType::kCustomBackend;
+#else
+  auto backend_type = perfetto::BackendType::kInProcessBackend;
+#endif
   return perfetto::Tracing::NewTrace(backend_type);
 }
 
@@ -381,7 +387,9 @@ void TracingScenario::OnNestedScenarioStop(
       [](TracingScenario* self, NestedTracingScenario* nested_scenario) {
         CHECK_EQ(nested_scenario->current_state(),
                  NestedTracingScenario::State::kStopping);
-        CHECK_EQ(self->current_state_, State::kRecording);
+        CHECK(self->current_state_ == State::kRecording ||
+              self->current_state_ == State::kStarting)
+            << static_cast<int>(self->current_state_);
         CHECK_EQ(self->active_scenario_, nested_scenario);
         nested_scenario->Disable();
         self->active_scenario_ = nullptr;

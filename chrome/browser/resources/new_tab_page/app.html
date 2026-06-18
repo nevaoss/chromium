@@ -54,30 +54,47 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
         ?can-show-secondary-side="${this.realboxCanShowSecondarySide}"
         ?compose-button-enabled="${this.composeButtonEnabled}"
         ?composebox-enabled="${this.composeboxEnabled}"
+        .hasVoiceSearchError="${this.hasVoiceSearchError}"
         searchbox-layout-mode="${this.ntpRealboxNextEnabled_ ? 'Compact' : ''}"
         .inVoiceSearchMode="${this.showVoiceSearchOverlay_}"
         ?ntp-realbox-next-enabled="${this.ntpRealboxNextEnabled_}"
         ?cycling-placeholders="${this.searchboxCyclingPlaceholders_}"
         context-menu-glif-animation-state="${this.contextMenuGlifAnimationState_}"
+        .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled_}"
         ?multi-line-enabled="${this.multiLineEnabled_}">
     </ntp-searchbox>
     ${this.showComposebox_ ? html`
       <div id="dialogAnchor"></div>
       <dialog id="composeboxDialog">
-        <cr-composebox id="composebox"
-            ?ntp-realbox-next-enabled="${this.ntpRealboxNextEnabled_}"
-            ?searchbox-next-enabled="${this.ntpRealboxNextEnabled_}"
-            .submitButtonIconType="${this.ntpRealboxNextEnabled_ ? SubmitButtonIconType.FORWARD : SubmitButtonIconType.UPWARD}"
-            ?disable-caret-color-animation="${!this.caretAnimationsEnabled_}"
-            .observeResize="${false}"
-            .state="${this.composeboxState_}"
-            @close-composebox="${this.onCloseComposebox_}"
-            .closeOnEscape="${false}"
-            .clearAllInputsWhenSubmittingQuery="${true}"
-            .showVoiceSearch="${true}"
-            @voice-search-action="${this.onComposeVoiceSearchAction_}"
-            searchbox-layout-mode="${this.ntpRealboxNextEnabled_ ? 'Compact' : ''}">
-        </cr-composebox>
+        ${this.useNtpComposeboxFork_ ? html`
+          <ntp-composebox id="composebox"
+              searchbox-layout-mode="Compact"
+              searchbox-next-enabled
+              ?disable-caret-color-animation="${!this.caretAnimationsEnabled_}"
+              .state="${this.composeboxState_}"
+              .usePecApi="${this.usePecApi_}"
+              .showVoiceSearch="${true}"
+              @close-composebox="${this.onCloseComposebox_}">
+          </ntp-composebox>
+        ` : html`
+          <cr-composebox id="composebox"
+              ?ntp-realbox-next-enabled="${this.ntpRealboxNextEnabled_}"
+              ?searchbox-next-enabled="${this.ntpRealboxNextEnabled_}"
+              .submitButtonIconType="${this.ntpRealboxNextEnabled_ ? SubmitButtonIconType.FORWARD : SubmitButtonIconType.UPWARD}"
+              ?disable-caret-color-animation="${!this.caretAnimationsEnabled_}"
+              .observeResize="${false}"
+              .state="${this.composeboxState_}"
+              @close-composebox="${this.onCloseComposebox_}"
+              .closeOnEscape="${false}"
+              .clearAllInputsWhenSubmittingQuery="${true}"
+              .showVoiceSearch="${true}"
+              .energyEffectEnabled="${this.energyEffectEnabled_}"
+              .energyEffectAnimationEnabled="${this.energyEffectAnimationEnabled_}"
+              .usePecApi="${this.usePecApi_}"
+              @voice-search-action="${this.onComposeVoiceSearchAction_}"
+              searchbox-layout-mode="${this.ntpRealboxNextEnabled_ ? 'Compact' : ''}">
+          </cr-composebox>
+        `}
         ${this.enableThreadsRail_ ? html`
           <cr-threads-rail id="threadsRail">
           </cr-threads-rail>
@@ -189,7 +206,7 @@ import {SubmitButtonIconType} from '//resources/cr_components/composebox/compose
   <div id="contentBottomSpacer"></div>
 </div>
 ${this.showVoiceSearchOverlay_ ? html`
-  <ntp-voice-search-overlay @close="${this.onVoiceSearchOverlayClose_}">
+  <ntp-voice-search-overlay @close="${this.onVoiceSearchOverlayClose}">
   </ntp-voice-search-overlay>
 ` : ''}
 ${!this.ntpRealboxNextEnabled_ && this.showComposebox_ ? html`

@@ -72,6 +72,11 @@ export class TopToolbarElement extends CrLitElement {
       isExpandButtonEnabled: {type: Boolean},
       isPinButtonEnabled: {type: Boolean},
       isPinned: {type: Boolean},
+      contextManagementInComposeboxEnabled_: {type: Boolean},
+      isAimEligible: {
+        type: Boolean,
+        reflect: true,
+      },
     };
   }
 
@@ -79,6 +84,7 @@ export class TopToolbarElement extends CrLitElement {
   accessor contextInfos: ContextInfo[] = [];
   accessor darkMode: boolean = false;
   accessor isAiPage: boolean = loadTimeData.getBoolean('isAiPage');
+  accessor isAimEligible: boolean = loadTimeData.getBoolean('isAimEligible');
   accessor enableOpenInNewTabButton: boolean = false;
   accessor showReopenTabs_: boolean = false;
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
@@ -93,6 +99,8 @@ export class TopToolbarElement extends CrLitElement {
       this.hideOverflowMenuOnAiPageEnabled_ && this.isAiPage;
   protected accessor isPinned: boolean =
       loadTimeData.getBoolean('isSidePanelPinned');
+  protected accessor contextManagementInComposeboxEnabled_: boolean =
+      loadTimeData.getBoolean('contextManagementInComposeboxEnabled');
 
   override connectedCallback() {
     super.connectedCallback();

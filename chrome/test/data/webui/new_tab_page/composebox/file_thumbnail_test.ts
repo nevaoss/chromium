@@ -3,9 +3,10 @@
 // found in the LICENSE file.
 
 import {ComposeboxFileThumbnailElement} from 'chrome://new-tab-page/lazy_load.js';
+import type {CrIconElement} from 'chrome://new-tab-page/new_tab_page.js';
 import {ContextUploadStatus} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {assertEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
+import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {createComposeboxFile} from './test_support.js';
@@ -82,9 +83,10 @@ suite('NewTabPageComposeboxFileThumbnailTest', () => {
     assertEquals(title.textContent, fileThumbnailElement.file.name);
 
     // Assert pdf icon is shown.
-    const icon = fileThumbnailElement.shadowRoot.querySelector('.pdf-icon');
+    const icon = fileThumbnailElement.shadowRoot.querySelector<CrIconElement>(
+        '.pdf-icon');
     assertTrue(!!icon);
-    assertEquals((icon as any).icon, 'thumbnail:pdf');
+    assertEquals(icon.icon, 'thumbnail:pdf');
   });
 
   test('display document file (flag enabled) for non-pdf', async () => {
@@ -105,10 +107,10 @@ suite('NewTabPageComposeboxFileThumbnailTest', () => {
     assertEquals(title.textContent, fileThumbnailElement.file.name);
 
     // Assert document icon is shown.
-    const icon =
-        fileThumbnailElement.shadowRoot.querySelector('.document-icon');
+    const icon = fileThumbnailElement.shadowRoot.querySelector<CrIconElement>(
+        '.document-icon');
     assertTrue(!!icon);
-    assertEquals((icon as any).icon, 'thumbnail:document');
+    assertEquals(icon.icon, 'thumbnail:document');
   });
 
   test('display pdf file (flag enabled)', async () => {
@@ -130,9 +132,38 @@ suite('NewTabPageComposeboxFileThumbnailTest', () => {
     assertEquals(title.textContent, fileThumbnailElement.file.name);
 
     // Assert pdf icon is shown.
-    const icon = fileThumbnailElement.shadowRoot.querySelector('.pdf-icon');
+    const icon = fileThumbnailElement.shadowRoot.querySelector<CrIconElement>(
+        '.pdf-icon');
     assertTrue(!!icon);
-    assertEquals((icon as any).icon, 'thumbnail:pdf');
+    assertEquals(icon.icon, 'thumbnail:pdf');
+  });
+
+  test('display document file (flag enabled) for google doc', async () => {
+    loadTimeData.overrideValues({lensSendRawFileMediaTypesEnabled: true});
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    fileThumbnailElement = new ComposeboxFileThumbnailElement();
+    document.body.appendChild(fileThumbnailElement);
+
+    // Arrange.
+    const iconUrl =
+        'https://drive-thirdparty.googleusercontent.com/32/type/application/vnd.google-apps.document';
+    fileThumbnailElement.file = createComposeboxFile(
+        0, {type: 'application/vnd.google-apps.document', iconUrl: iconUrl});
+    await microtasksFinished();
+
+    // Assert one document file.
+    const title =
+        fileThumbnailElement.shadowRoot.querySelector('#documentTitle');
+    assertTrue(!!title);
+    assertEquals(title.tagName, 'P');
+    assertEquals(title.textContent, fileThumbnailElement.file.name);
+
+    // Assert auto-src image icon is shown.
+    const icon =
+        fileThumbnailElement.shadowRoot.querySelector('.document-icon');
+    assertTrue(!!icon);
+    assertEquals(icon.tagName, 'IMG');
+    assertEquals(icon.getAttribute('auto-src'), iconUrl);
   });
 
   test('display tab file', async () => {
@@ -247,5 +278,91 @@ suite('NewTabPageComposeboxFileThumbnailTest', () => {
     const removeButton =
         fileThumbnailElement.shadowRoot.querySelector('#removeTabButton');
     assertEquals(null, removeButton);
+  });
+
+  test('shows animation for entering attachment', async () => {
+    // Arrange.
+    fileThumbnailElement = new ComposeboxFileThumbnailElement();
+    document.body.appendChild(fileThumbnailElement);
+
+    const animation = new Animation();
+    fileThumbnailElement.getAnimations = () => {
+      return [animation];
+    };
+
+    fileThumbnailElement.file =
+        createComposeboxFile(1, {type: 'image/jpeg', objectUrl: 'data:foo'});
+    await microtasksFinished();
+
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    assertTrue(fileThumbnailElement.classList.contains('entering'));
+
+    // Simulate all animations finishing.
+    animation.finish();
+    await microtasksFinished();
+
+    assertFalse(fileThumbnailElement.classList.contains('entering'));
+  });
+
+  test('shows animation for exiting attachment', async () => {
+    fileThumbnailElement.file =
+        createComposeboxFile(1, {type: 'image/jpeg', objectUrl: 'data:foo'});
+    await microtasksFinished();
+    // Ensure the entering is completed before setting up the exiting mock.
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    const animation = new Animation();
+    fileThumbnailElement.getAnimations = () => {
+      return [animation];
+    };
+
+    let eventFired = false;
+    fileThumbnailElement.addEventListener('delete-file', () => {
+      eventFired = true;
+    });
+
+    fileThumbnailElement.$.removeImgButton.click();
+
+    assertTrue(fileThumbnailElement.classList.contains('exiting'));
+    assertFalse(eventFired);
+
+    // Simulate all animations finishing.
+    animation.finish();
+    await microtasksFinished();
+
+    assertTrue(eventFired);
+    assertFalse(fileThumbnailElement.classList.contains('exiting'));
+  });
+
+  test('ignores delete button clicks while already exiting', async () => {
+    fileThumbnailElement.file =
+        createComposeboxFile(1, {type: 'image/jpeg', objectUrl: 'data:foo'});
+    await microtasksFinished();
+    // Ensure the entering is completed before setting up the exiting mock.
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    const animation = new Animation();
+    fileThumbnailElement.getAnimations = () => {
+      return [animation];
+    };
+
+    let eventCount = 0;
+    fileThumbnailElement.addEventListener('delete-file', () => {
+      eventCount++;
+    });
+
+    // First click initiates exiting animation.
+    fileThumbnailElement.$.removeImgButton.click();
+    assertTrue(fileThumbnailElement.classList.contains('exiting'));
+
+    // Second click should be ignored by the early return.
+    fileThumbnailElement.$.removeImgButton.click();
+
+    // Complete the animation.
+    animation.finish();
+    await microtasksFinished();
+
+    // Only one delete-file event should have been fired.
+    assertEquals(1, eventCount);
   });
 });

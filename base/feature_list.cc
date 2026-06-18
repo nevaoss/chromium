@@ -445,6 +445,7 @@ void FeatureList::AssociateReportingFieldTrial(
     const std::string& feature_name,
     OverrideState for_overridden_state,
     FieldTrial* field_trial) {
+  DCHECK(!initialized_);
   DCHECK(
       IsFeatureOverriddenFromCommandLine(feature_name, for_overridden_state));
 
@@ -675,6 +676,13 @@ void FeatureList::SetInstance(std::unique_ptr<FeatureList> instance) {
 
   EarlyFeatureAccessTracker::GetInstance()->AssertNoAccess();
 
+  // Don't configure random bytes field trials for a possibly early access
+  // FeatureList instance, as the state of the involved Features might change
+  // with the final FeatureList for this process.
+  if (!g_feature_list_instance->IsEarlyAccessInstance()) {
+    // Configured first because it takes precedence over the getrandom() trial.
+    internal::ConfigureBoringSSLBackedRandBytesFieldTrial();
+  }
 
 #if BUILDFLAG(DCHECK_IS_CONFIGURABLE)
   // Update the behaviour of LOGGING_DCHECK to match the Feature configuration.

@@ -34,6 +34,7 @@
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/pointer/touch_ui_controller.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/color/color_provider.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/geometry/insets.h"
@@ -289,7 +290,9 @@ void OmniboxMatchCellView::OnMatchUpdate(const OmniboxResultView* result_view,
             icon)));
   };
   if (match.type == AutocompleteMatchType::CALCULATOR) {
-    apply_vector_icon(omnibox::kAnswerCalculatorIcon);
+    apply_vector_icon(features::IsRoundedIconsEnabled()
+                          ? omnibox::kEqualIcon
+                          : omnibox::kAnswerCalculatorOldIcon);
     separator_view_->SetSize(gfx::Size());
   } else if (layout_style_ != LayoutStyle::SEARCH_SUGGESTION_WITH_IMAGE) {
     answer_image_view_->SetImage(ui::ImageModel());
@@ -345,6 +348,10 @@ void OmniboxMatchCellView::OnMatchUpdate(const OmniboxResultView* result_view,
     description_view_->SetTextWithStyling(match.description,
                                           match.description_class);
   }
+}
+
+void OmniboxMatchCellView::OnSecondaryTextVisibilityChanged() {
+  PreferredSizeChanged();
 }
 
 void OmniboxMatchCellView::SetIcon(const gfx::ImageSkia& image,
@@ -510,7 +517,9 @@ void OmniboxMatchCellView::Layout(PassKey) {
   }
 
   int content_width = content_view_->GetPreferredSize().width();
-  int description_width = description_view_->GetPreferredSize().width();
+  int description_width = description_view_->GetVisible()
+                              ? description_view_->GetPreferredSize().width()
+                              : 0;
   const gfx::Size separator_size = separator_view_->GetPreferredSize();
   int iph_link_width = iph_link_view_->GetPreferredSize().width();
   ComputeMatchMaxWidths(
@@ -562,7 +571,10 @@ gfx::Size OmniboxMatchCellView::CalculatePreferredSize(
             tail_suggest_common_prefix_width_ +
             content_view_->GetPreferredSize().width() +
             iph_link_view_->GetPreferredSize().width();
-    const int description_width = description_view_->GetPreferredSize().width();
+    const int description_width =
+        description_view_->GetVisible()
+            ? description_view_->GetPreferredSize().width()
+            : 0;
     if (description_width > 0) {
       width += separator_view_->GetPreferredSize().width() + description_width;
     }

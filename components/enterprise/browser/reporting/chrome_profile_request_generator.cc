@@ -108,10 +108,13 @@ void ChromeProfileRequestGenerator::Generate(
   request->GetChromeProfileReportRequest().set_report_type(
       GetReportTypeFromSignalsMode(generation_config.security_signals_mode));
 
-  bool policies_enabled =
-      enterprise_signals::features::IsPolicyDataCollectionEnabled();
+  bool is_signals_only = generation_config.security_signals_mode ==
+                         SecuritySignalsMode::kSignalsOnly;
 
-  profile_report_generator_.set_policies_enabled(policies_enabled);
+  profile_report_generator_.set_policies_enabled(
+      is_signals_only
+          ? enterprise_signals::features::IsPolicyDataCollectionEnabled()
+          : true);
 
   auto barrier_callback = base::BarrierCallback<
       std::variant<std::unique_ptr<em::BrowserReport>,
@@ -122,8 +125,7 @@ void ChromeProfileRequestGenerator::Generate(
                             weak_ptr_factory_.GetWeakPtr(), std::move(request),
                             std::move(callback), generation_config)));
 
-  if (generation_config.security_signals_mode ==
-      SecuritySignalsMode::kSignalsOnly) {
+  if (is_signals_only) {
     barrier_callback.Run(std::make_unique<em::BrowserReport>());
   } else {
     browser_report_generator_.Generate(
@@ -398,8 +400,10 @@ void ChromeProfileRequestGenerator::OnAggregatedSignalsReceived(
   std::string signals_string =
       GetSecuritySignalsInReport(request->GetChromeProfileReportRequest());
 
+  auto* request_ptr = request.get();
   device_attestation_service_->GetAttestationResponse(
-      kAttestationFlowName, signals_string, report_timestamp, report_nonce,
+      kAttestationFlowName, request_ptr->GetChromeProfileReportRequest(),
+      signals_string, report_timestamp, report_nonce,
       base::BindOnce(&ChromeProfileRequestGenerator::OnAttestationResultReady,
                      weak_ptr_factory_.GetWeakPtr(), report_timestamp,
                      report_nonce, std::move(callback), std::move(request)));
@@ -410,18 +414,19 @@ void ChromeProfileRequestGenerator::OnAttestationResultReady(
     std::string_view nonce,
     ReportCallback callback,
     std::unique_ptr<ReportRequest> request,
-    const enterprise::BlobGenerationResult& attestation_result) {
+    const enterprise::AttestationResult& attestation_result) {
   auto attestation_payload = std::make_unique<em::AttestationPayload>();
   attestation_payload->set_timestamp(timestamp);
   attestation_payload->set_nonce(nonce);
-  if (enterprise_signals::features::IsContentBindingVersioningEnabled()) {
+  if (attestation_result.content_binding_version > 0) {
     attestation_payload->set_content_binding_version(
-        GetCurrentContentBindingsVersion());
+        attestation_result.content_binding_version);
   }
 
   attestation_payload->set_attestation_blob(
-      attestation_result.attestation_blob);
-  attestation_payload->set_attestation_error(attestation_result.error_message);
+      attestation_result.blob_generation_result.attestation_blob);
+  attestation_payload->set_attestation_error(
+      attestation_result.blob_generation_result.error_message);
   request->GetChromeProfileReportRequest().set_allocated_attestation_payload(
       attestation_payload.release());
   VLOG_POLICY(2, REPORTING)

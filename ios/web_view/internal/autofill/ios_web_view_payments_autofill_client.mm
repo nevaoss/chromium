@@ -136,7 +136,8 @@ void IOSWebViewPaymentsAutofillClient::VirtualCardEnrollCompleted(
 }
 
 void IOSWebViewPaymentsAutofillClient::OnCardDataAvailable(
-    const FilledCardInformationBubbleOptions& options) {}
+    const FilledCardInformationBubbleOptions& options,
+    const url::Origin& origin) {}
 
 void IOSWebViewPaymentsAutofillClient::ConfirmSaveIbanLocally(
     const Iban& iban,
@@ -314,10 +315,6 @@ bool IOSWebViewPaymentsAutofillClient::IsRiskBasedAuthEffectivelyAvailable()
 
 bool IOSWebViewPaymentsAutofillClient::IsMandatoryReauthEnabled() {
   return false;
-}
-
-bool IOSWebViewPaymentsAutofillClient::IsUsingCustomCardIconEnabled() const {
-  return GetPrefService()->GetBoolean(ios_web_view::kUseCardCustomImageEnabled);
 }
 
 void IOSWebViewPaymentsAutofillClient::ShowMandatoryReauthOptInPrompt(

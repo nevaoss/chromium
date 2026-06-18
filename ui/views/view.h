@@ -128,7 +128,6 @@ class FocusTraversable;
 class LayoutProvider;
 class ScrollView;
 class SizeBounds;
-class SubmenuView;
 class ViewAccessibility;
 class ViewMaskLayer;
 class ViewObserver;
@@ -327,7 +326,6 @@ class VIEWS_EXPORT View : public ui::LayerDelegate,
     friend class ::ash::ArcNotificationContentView;
     friend class ::exo::ShellSurfaceBase;
     friend class ::eye_dropper::EyeDropperView;
-    friend class SubmenuView;
     // TODO(neva): Remove when OwnedByClientPassKey() is not in use in
     // neva_app_runtime.
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -2448,6 +2446,7 @@ class VIEWS_EXPORT View : public ui::LayerDelegate,
   void SetWidth(int width);
   void SetHeight(int height);
   bool GetIsDrawn() const;
+  bool GetIsPaintLocked() const;
 
   // Special property accessor used by metadata to get the ToolTip text.
   std::u16string GetTooltip() const;

@@ -58,7 +58,8 @@ BASE_FEATURE(kLensOverlayVisualSelectionUpdates,
 BASE_FEATURE(kLensOverlayUpdatedClientContext,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kLensSearchSidePanelNewFeedback, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kLensSearchSidePanelNewFeedback,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the Lens Overlay omnibox entry point. This is a separate feature from
 // kLensOverlay so that the omnibox entry point can be disabled without a
@@ -90,8 +91,6 @@ BASE_FEATURE(kLensSearchNotFoundOnPageToast,
              "kLensSearchNotFoundOnPageToast",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kLensOverlayStraightToSrp, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kLensSearchAimM3, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLensSearchAimM3EnUs, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLensSearchAimM3UseAimEligibility,
@@ -115,8 +114,6 @@ BASE_FEATURE(kLensAimSuggestions, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLensAimSuggestionsGradientBackground,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kLensSearchZeroStateCsb, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kLensVideoCitations, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLensUpdatedFeedbackEntrypoint, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -128,6 +125,9 @@ BASE_FEATURE(kLensOverlayOptimizationFilter, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLensOverlayNonBlockingPrivacyNotice,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kLensOverlayNonBlockingPrivacyNoticeForImageSearch,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kLensUseSeparateRequestIdForViewportImages,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -138,7 +138,13 @@ BASE_FEATURE(kLensSendRawFileMediaTypes, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLensSendUrlsInComposeboxes, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kLensOnlySendAaiForModalityChips,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kLensRestrictAnnotatedPageContentToSameSiteFramesForNextQueries,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kLensDeleteContextOnPageNavigation,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 constexpr base::FeatureParam<int> kLensUpdatedFeedbackToastTimeoutMs{
@@ -540,9 +546,6 @@ const base::FeatureParam<base::TimeDelta>
         &kLensOverlayEduActionChip, "lens-action-chip-show-debounce-interval",
         base::Seconds(1)};
 
-constexpr base::FeatureParam<std::string> kLensOverlayStraightToSrpQuery{
-    &kLensOverlayStraightToSrp, "query", ""};
-
 constexpr base::FeatureParam<bool> kOpenAimInSidePanel{
     &kLensSearchAimM3, "open-aim-in-side-panel", true};
 
@@ -572,9 +575,6 @@ constexpr base::FeatureParam<bool>
         &kLensOverlayTextSelectionContextMenuEntrypoint, "contextualize",
         false};
 
-constexpr base::FeatureParam<std::string> kZeroStateCsbQuery{
-    &kLensSearchZeroStateCsb, "zero-state-csb-query", ""};
-
 const base::FeatureParam<
     LensAimSuggestionsType>::Option kLensAimSuggestionsTypeOptions[] = {
     {LensAimSuggestionsType::kNone, kLensAimSuggestionsTypeNone},
@@ -590,6 +590,9 @@ const base::FeatureParam<LensAimSuggestionsType> kLensAimSuggestionsType(
 
 const base::FeatureParam<int> kLensOverlayNonBlockingPrivacyNoticeImpressionCap{
     &kLensOverlayNonBlockingPrivacyNotice, "impression-cap", 0};
+
+const base::FeatureParam<bool> kLensSidePanelUnificationAllowSignedOut{
+    &kLensSidePanelUnification, "allow-signed-out", true};
 
 std::string_view LensAimSuggestionModeToString(
     LensAimSuggestionsType type) {
@@ -940,6 +943,15 @@ bool IsLensOverlaySidePanelOpenInNewTabEnabled() {
   return base::FeatureList::IsEnabled(kLensOverlaySidePanelOpenInNewTab);
 }
 
+bool IsLensSidePanelUnificationEnabled() {
+  return base::FeatureList::IsEnabled(kLensSidePanelUnification);
+}
+
+bool IsLensSidePanelUnificationAllowSignedOut() {
+  return IsLensSidePanelUnificationEnabled() &&
+         kLensSidePanelUnificationAllowSignedOut.Get();
+}
+
 bool IsLensOverlayClusterInfoOptimizationEnabled() {
   return base::FeatureList::IsEnabled(kLensOverlayLatencyOptimizations) &&
          kEnableClusterInfoOptimization.Get();
@@ -1254,13 +1266,6 @@ bool IsLensSearchNotFoundOnPageToastEnabled() {
   return base::FeatureList::IsEnabled(kLensSearchNotFoundOnPageToast);
 }
 
-bool IsLensOverlayStraightToSrpEnabled() {
-  return base::FeatureList::IsEnabled(kLensOverlayStraightToSrp);
-}
-
-std::string GetStraightToSrpQuery() {
-  return kLensOverlayStraightToSrpQuery.Get();
-}
 
 bool IsLensOverlayTextSelectionContextMenuEntrypointEnabled() {
   return base::FeatureList::IsEnabled(
@@ -1279,13 +1284,6 @@ bool IsLensSidePanelWebviewResultsEnabled() {
   return base::FeatureList::IsEnabled(kLensSidePanelEnableWebviewResults);
 }
 
-bool IsLensSearchZeroStateCsbEnabled() {
-  return base::FeatureList::IsEnabled(kLensSearchZeroStateCsb);
-}
-
-std::string GetZeroStateCsbQuery() {
-  return IsLensSearchZeroStateCsbEnabled() ? kZeroStateCsbQuery.Get() : "";
-}
 
 bool IsLensVideoCitationsEnabled() {
   return base::FeatureList::IsEnabled(kLensVideoCitations);
@@ -1311,6 +1309,12 @@ bool IsLensOverlayNonBlockingPrivacyNoticeEnabled() {
   return base::FeatureList::IsEnabled(kLensOverlayNonBlockingPrivacyNotice);
 }
 
+bool IsLensOverlayNonBlockingPrivacyNoticeForImageSearchEnabled() {
+  return base::FeatureList::IsEnabled(kLensOverlayNonBlockingPrivacyNotice) &&
+         base::FeatureList::IsEnabled(
+             kLensOverlayNonBlockingPrivacyNoticeForImageSearch);
+}
+
 int GetLensOverlayNonBlockingPrivacyNoticeImpressionCap() {
   return kLensOverlayNonBlockingPrivacyNoticeImpressionCap.Get();
 }
@@ -1321,6 +1325,10 @@ bool IsLensSendRawFileMediaTypesEnabled() {
 
 bool IsLensSendUrlsInComposeboxesEnabled() {
   return base::FeatureList::IsEnabled(kLensSendUrlsInComposeboxes);
+}
+
+bool IsLensOnlySendAaiForModalityChipsEnabled() {
+  return base::FeatureList::IsEnabled(kLensOnlySendAaiForModalityChips);
 }
 
 }  // namespace lens::features

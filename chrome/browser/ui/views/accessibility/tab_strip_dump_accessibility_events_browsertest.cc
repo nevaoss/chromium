@@ -27,7 +27,6 @@ class TabStripDumpAccessibilityEventsTest
  public:
   std::vector<ui::AXPropertyFilter> DefaultFilters() const override {
     std::vector<ui::AXPropertyFilter> filters;
-    filters.emplace_back("*", ui::AXPropertyFilter::DENY);
     filters.emplace_back("EVENT_OBJECT_SELECTION*",
                          ui::AXPropertyFilter::ALLOW);
     return filters;
@@ -124,7 +123,7 @@ IN_PROC_BROWSER_TEST_P(TabStripDumpAccessibilityEventsTest,
   ui::AXPlatform::GetInstance().NotifyAssistiveTechChanged(
       ui::AssistiveTech::kJaws);
 
-  chrome::NewTab(browser());
+  chrome::NewTab(browser(), NewTabTypes::kNoUserAction);
   WaitForBrowserSerialization();
 
   widget()->Activate();

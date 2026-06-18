@@ -413,8 +413,9 @@ void ChromeNativeAppWindowViews::InitializeWindow(
   extension_keybinding_registry_ =
       std::make_unique<ExtensionKeybindingRegistryViews>(
           Profile::FromBrowserContext(app_window->browser_context()),
-          widget()->GetFocusManager(),
-          extensions::ExtensionKeybindingRegistry::PLATFORM_APPS_ONLY, nullptr);
+          /*tab_list_interface=*/nullptr,
+          extensions::ExtensionKeybindingRegistry::PLATFORM_APPS_ONLY,
+          widget()->GetFocusManager());
 }
 
 gfx::Image ChromeNativeAppWindowViews::GetCustomImage() {
@@ -450,8 +451,7 @@ void ChromeNativeAppWindowViews::OnIconUpdated(
   UpdateWindowIcon();
 }
 
-std::optional<int> ChromeNativeAppWindowViews::NonClientHitTest(
-    const gfx::Point& point) {
+int ChromeNativeAppWindowViews::NonClientHitTest(const gfx::Point& point) {
   if (!widget()->IsFullscreen()) {
     // Check for possible draggable region in the client area for the frameless
     // window.
@@ -461,5 +461,5 @@ std::optional<int> ChromeNativeAppWindowViews::NonClientHitTest(
     }
   }
 
-  return std::nullopt;
+  return HTNOWHERE;
 }

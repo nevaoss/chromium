@@ -37,9 +37,10 @@ namespace base {
 
 namespace internal {
 
+void ConfigureBoringSSLBackedRandBytesFieldTrial();
+
 // Returns a random double in range [0, 1). For use in allocator shim to avoid
-// infinite recursion. Thread-safe. This call is generally a lot slower than
-// performing a memory allocation, it must be heavily throttled in the field.
+// infinite recursion. Thread-safe.
 BASE_EXPORT double RandDoubleAvoidAllocation();
 
 }  // namespace internal
@@ -51,8 +52,6 @@ class InsecureRandomGenerator;
 // Returns a random number in range [0, UINT64_MAX]. Thread-safe.
 BASE_EXPORT uint64_t RandUint64();
 
-// Returns a random number between min and max (inclusive). Thread-safe.
-//
 // Returns a random number between min and max (inclusive). Thread-safe.
 BASE_EXPORT int RandIntInclusive(int min, int max);
 

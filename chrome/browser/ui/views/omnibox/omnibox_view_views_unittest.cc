@@ -35,10 +35,10 @@
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_tab_helper.h"
 #include "chrome/browser/ui/views/bubble_anchor_util_views.h"
 #include "chrome/common/pref_names.h"
-#include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/test_browser_window.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/views/chrome_views_test_base.h"
@@ -109,6 +109,16 @@ class TestingOmniboxView : public OmniboxViewViews {
   Range scheme_range() const { return scheme_range_; }
   Range emphasis_range() const { return emphasis_range_; }
   bool base_text_emphasis() const { return base_text_emphasis_; }
+  bool aim_page_action_icon_has_fake_focus() const {
+    return aim_page_action_icon_has_fake_focus_;
+  }
+  void set_aim_page_action_icon_has_fake_focus(bool value) {
+    aim_page_action_icon_has_fake_focus_ = value;
+  }
+  void ApplyFocusRingToAimButton(bool focus_aim) override {
+    OmniboxViewViews::ApplyFocusRingToAimButton(focus_aim);
+    aim_page_action_icon_has_fake_focus_ = focus_aim;
+  }
 
   // Returns the latest color applied to |range| via ApplyColor(), or
   // std::nullopt if no color has been applied to |range|.
@@ -281,6 +291,7 @@ class TestLocationBar : public LocationBar {
   ~TestLocationBar() override = default;
 
   void set_omnibox_view(OmniboxViewViews* view) { omnibox_view_ = view; }
+  void set_profile(Profile* profile) { profile_ = profile; }
 
   // LocationBar:
   void FocusLocation(bool select_all, bool clear_focus_if_failed) override {}
@@ -290,6 +301,7 @@ class TestLocationBar : public LocationBar {
   void SaveStateToContents(content::WebContents* contents) override {}
   void Revert() override {}
   OmniboxView* GetOmniboxView() override { return nullptr; }
+  OmniboxPopupView* GetOmniboxPopupView() override { return nullptr; }
   OmniboxController* GetOmniboxController() override { return nullptr; }
   bool ShouldCloseOmniboxPopup(ui::MouseEvent* event) override { return false; }
   ChipController* GetChipController() override { return nullptr; }
@@ -313,7 +325,7 @@ class TestLocationBar : public LocationBar {
 
   ui::TrackedElement* GetAnchorOrNull() override { return nullptr; }
   Browser* GetBrowser() override { return nullptr; }
-  Profile* GetProfile() override { return nullptr; }
+  Profile* GetProfile() override { return profile_; }
   bool IsInitialized() const override { return true; }
   bool IsVisible() const override { return true; }
   bool IsDrawn() const override { return true; }
@@ -330,6 +342,7 @@ class TestLocationBar : public LocationBar {
 
   raw_ptr<LocationBarModel> location_bar_model_;
   raw_ptr<OmniboxViewViews> omnibox_view_ = nullptr;
+  raw_ptr<Profile> profile_ = nullptr;
 };
 
 // OmniboxViewViewsTest -------------------------------------------------------
@@ -486,6 +499,7 @@ void OmniboxViewViewsTest::SetUp() {
       base::BindRepeating(&BuildChromeSigninClientWithURLLoader,
                           &test_url_loader_factory_));
   profile_ = profile_builder.Build();
+  location_bar_.set_profile(profile_.get());
   auto browser_window = std::make_unique<TestBrowserWindow>();
   Browser::CreateParams params(profile(), /*user_gesture*/ true);
   params.type = Browser::TYPE_NORMAL;
@@ -534,6 +548,7 @@ void OmniboxViewViewsTest::TearDown() {
   browser_ = nullptr;
 
   util_.reset();
+  location_bar()->set_profile(nullptr);
   profile_.reset();
 
   ChromeViewsTestBase::TearDown();
@@ -568,6 +583,31 @@ TEST_F(OmniboxViewViewsTest, UpdatePopupCall) {
   ui::KeyEvent pressed(ui::EventType::kKeyPressed, ui::VKEY_BACK, 0);
   omnibox_textfield()->OnKeyEvent(&pressed);
   omnibox_view()->CheckUpdatePopupCallInfo(3, u"a", Range(1));
+}
+
+class OmniboxViewViewsAiModeSpaceTest : public OmniboxViewViewsTest {
+ public:
+  OmniboxViewViewsAiModeSpaceTest()
+      : OmniboxViewViewsTest({{omnibox::kAiModeSpaceDoesNotActivate, {}}}, {}) {
+  }
+};
+
+TEST_F(OmniboxViewViewsAiModeSpaceTest, AiModeSpaceDoesNotActivate) {
+  omnibox_view()->set_aim_page_action_icon_has_fake_focus(true);
+  ASSERT_TRUE(omnibox_view()->aim_page_action_icon_has_fake_focus());
+
+  ui::KeyEvent space_pressed(
+      ui::EventType::kKeyPressed, ui::VKEY_SPACE, ui::DomCode::SPACE, 0,
+      ui::DomKey::FromCharacter(' '), ui::EventTimeForNow());
+  omnibox_textfield()->OnKeyEvent(&space_pressed);
+
+  EXPECT_FALSE(space_pressed.handled());
+  EXPECT_FALSE(omnibox_view()->aim_page_action_icon_has_fake_focus());
+
+  // Simulate the fallthrough insertion since `OnKeyEvent` might not do it in
+  // unit tests.
+  omnibox_textfield()->InsertChar(space_pressed);
+  omnibox_view()->CheckUpdatePopupCallInfo(1, u" ", Range(1));
 }
 
 // Test that text cursor is shown in the omnibox after entering any single

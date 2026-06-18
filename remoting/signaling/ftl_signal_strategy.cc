@@ -29,6 +29,20 @@
 
 namespace remoting {
 
+namespace {
+
+scoped_refptr<const ProtobufHttpRequestConfig::RetryPolicy>
+GetNotFoundRetryPolicy() {
+  auto simple_policy = ProtobufHttpRequestConfig::GetSimpleRetryPolicy();
+  auto policy = base::MakeRefCounted<ProtobufHttpRequestConfig::RetryPolicy>();
+  policy->backoff_policy = simple_policy->backoff_policy;
+  policy->retry_timeout = simple_policy->retry_timeout;
+  policy->retriable_error_codes = {HttpStatus::Code::NOT_FOUND};
+  return policy;
+}
+
+}  // namespace
+
 class FtlSignalStrategy::Core {
  public:
   Core(std::unique_ptr<OAuthTokenGetter> oauth_token_getter,
@@ -59,7 +73,10 @@ class FtlSignalStrategy::Core {
 
  private:
   template <typename T>
-  bool Send(T&& message, const char* message_type);
+  bool Send(T&& message,
+            const char* message_type,
+            scoped_refptr<const ProtobufHttpRequestConfig::RetryPolicy>
+                retry_policy = nullptr);
   // Methods are called in the order below when Connect() is called.
   void OnGetOAuthTokenResponse(OAuthTokenGetter::Status status,
                                const OAuthTokenInfo& token_info);
@@ -68,9 +85,12 @@ class FtlSignalStrategy::Core {
   void OnReceiveMessagesStreamStarted();
   void OnReceiveMessagesStreamClosed(const HttpStatus& status);
 
-  void SendMessageImpl(const SignalingAddress& receiver,
-                       ftl::ChromotingMessage&& message,
-                       FtlMessagingClient::DoneCallback callback);
+  void SendMessageImpl(
+      const SignalingAddress& receiver,
+      ftl::ChromotingMessage&& message,
+      FtlMessagingClient::DoneCallback callback,
+      scoped_refptr<const ProtobufHttpRequestConfig::RetryPolicy> retry_policy =
+          nullptr);
   void OnSendMessageResponse(const SignalingAddress& receiver,
                              const std::string& stanza_id,
                              const HttpStatus& status);
@@ -200,15 +220,29 @@ void FtlSignalStrategy::Core::RemoveFtlListener(FtlListener* listener) {
 }
 
 bool FtlSignalStrategy::Core::SendMessage(JingleMessage&& message) {
-  return Send(std::move(message), "message");
+  // Note that duplicate messages may be sent, but the client and host are
+  // responsible for filtering out duplicates.
+  scoped_refptr<const ProtobufHttpRequestConfig::RetryPolicy> policy;
+  if (message.action() == JingleMessage::ActionType::kSessionAccept) {
+    policy = GetNotFoundRetryPolicy();
+  }
+
+  return Send(std::move(message), "message", std::move(policy));
 }
 
 bool FtlSignalStrategy::Core::SendReply(JingleMessageReply&& message) {
-  return Send(std::move(message), "reply");
+  // Generally we don't want to retry replies either, but session-initiate
+  // replies have been observed to be rejected with NOT_FOUND, possible due to
+  // replicate delays in the back-end. Since we don't know here what message
+  // we are replying to, we consider NOT_FOUND to be retriable here.
+  return Send(std::move(message), "reply", GetNotFoundRetryPolicy());
 }
 
 template <typename T>
-bool FtlSignalStrategy::Core::Send(T&& message, const char* message_type) {
+bool FtlSignalStrategy::Core::Send(
+    T&& message,
+    const char* message_type,
+    scoped_refptr<const ProtobufHttpRequestConfig::RetryPolicy> retry_policy) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (GetState() != CONNECTED) {
@@ -229,10 +263,12 @@ bool FtlSignalStrategy::Core::Send(T&& message, const char* message_type) {
   // TODO: crbug.com/504910955 - Re-enable iq_stanza once parsing issues are
   // resolved.
 
-  SendMessageImpl(
-      destination_address, std::move(crd_message),
+  auto done_callback =
       base::BindOnce(&Core::OnSendMessageResponse, weak_factory_.GetWeakPtr(),
-                     destination_address, message_id));
+                     destination_address, message_id);
+
+  SendMessageImpl(destination_address, std::move(crd_message),
+                  std::move(done_callback), std::move(retry_policy));
   return GetState() == CONNECTED;
 }
 
@@ -249,7 +285,8 @@ bool FtlSignalStrategy::Core::SendFtlMessage(
   SendMessageImpl(
       destination_address, std::move(message),
       base::BindOnce(&Core::OnSendMessageResponse, weak_factory_.GetWeakPtr(),
-                     destination_address, std::string()));
+                     destination_address, std::string()),
+      /*retry_policy=*/nullptr);
 
   return true;
 }
@@ -416,7 +453,8 @@ void FtlSignalStrategy::Core::OnMessageReceived(
 void FtlSignalStrategy::Core::SendMessageImpl(
     const SignalingAddress& receiver,
     ftl::ChromotingMessage&& message,
-    FtlMessagingClient::DoneCallback callback) {
+    FtlMessagingClient::DoneCallback callback,
+    scoped_refptr<const ProtobufHttpRequestConfig::RetryPolicy> retry_policy) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   std::string receiver_username;
@@ -431,7 +469,23 @@ void FtlSignalStrategy::Core::SendMessageImpl(
   std::string message_payload;
   if (message.has_xmpp()) {
     if (message.xmpp().has_iq_stanza()) {
-      message_payload = message.xmpp().iq_stanza().DebugString();
+      const ftl::IqStanza& iq_stanza = message.xmpp().iq_stanza();
+      JingleMessage jingle_message;
+      std::string error;
+      if (JingleMessageFromProto(iq_stanza, &jingle_message, &error)) {
+        message_payload = jingle_message.ToSerializedXml();
+      } else {
+        JingleMessageReply jingle_reply;
+        if (JingleMessageReplyFromProto(iq_stanza, &jingle_reply)) {
+          message_payload = jingle_reply.ToSerializedXml();
+        } else {
+          message_payload =
+              "Failed to convert IqStanza to JingleMessage (error: " + error +
+              ") or JingleMessageReply. Raw fields: id=" + iq_stanza.id() +
+              ", sender=" + iq_stanza.sender().local_part() +
+              ", receiver=" + iq_stanza.receiver().local_part();
+        }
+      }
     } else {
       message_payload = message.xmpp().stanza();
     }
@@ -448,7 +502,7 @@ void FtlSignalStrategy::Core::SendMessageImpl(
            << "\n=========================================================";
 
   messaging_client_->SendMessage(receiver, std::move(message),
-                                 std::move(callback));
+                                 std::move(callback), std::move(retry_policy));
 }
 
 void FtlSignalStrategy::Core::OnSendMessageResponse(

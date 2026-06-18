@@ -19,6 +19,7 @@
 #include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_search/input_state_model.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/lens/lens_url_utils.h"
 #include "components/metrics/metrics_provider.h"
 #include "components/omnibox/browser/autocomplete_match_type.h"
@@ -28,6 +29,10 @@
 #include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "ui/base/models/menu_model.h"
 #include "ui/base/window_open_disposition.h"
+
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
+#endif
 
 namespace {
 
@@ -194,6 +199,27 @@ void ComposeboxHandler::OnContextMenuOpened() {
   }
 }
 
+void ComposeboxHandler::NotifyComposeboxQuerySubmittedWithContext() {
+#if !BUILDFLAG(IS_ANDROID)
+  if (!web_contents_) {
+    return;
+  }
+  auto* browser_window_interface =
+      webui::GetBrowserWindowInterface(web_contents_);
+  if (!browser_window_interface) {
+    return;
+  }
+  auto* user_education_interface =
+      BrowserUserEducationInterface::From(browser_window_interface);
+  if (!user_education_interface) {
+    return;
+  }
+  user_education_interface->NotifyFeaturePromoFeatureUsed(
+      feature_engagement::kIPHDesktopRealboxContextualSearchFeature,
+      FeaturePromoFeatureUsedAction::kClosePromoIfPresent);
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
+
 void ComposeboxHandler::NavigateUrl(const GURL& url) {
   if (!url.is_valid()) {
     return;
@@ -270,6 +296,16 @@ void ComposeboxHandler::SubmitQuery(const std::string& query_text,
       PageClassificationToAimEntryPoint(
           omnibox_controller()->client()->GetPageClassification(
               /*is_prefetch=*/false));
+
+  if (auto* metrics_recorder = GetMetricsRecorder()) {
+    int file_count = 0;
+    if (auto* session_handle = GetContextualSessionHandle()) {
+      file_count = session_handle->GetUploadedContextFileInfos().size();
+    }
+    metrics_recorder->RecordNoAcMatchSubmitQuery(query_text.size(), file_count,
+                                                 /*is_ac_match=*/false);
+  }
+
   SubmitQuery(query_text, disposition, aim_entry_point,
               /*additional_params=*/{});
 }

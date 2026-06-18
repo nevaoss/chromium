@@ -49,6 +49,7 @@
 #import "ios/chrome/browser/https_upgrades/model/https_upgrade_service_factory.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/action_target_java_script_feature.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/click_tool_java_script_feature.h"
+#import "ios/chrome/browser/intelligence/actor/tools/model/page_stability_java_script_feature.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/scroll_tool_java_script_feature.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/select_tool_java_script_feature.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/type_tool_java_script_feature.h"
@@ -90,6 +91,7 @@
 #import "ios/chrome/browser/web/model/choose_file/choose_file_java_script_feature.h"
 #import "ios/chrome/browser/web/model/choose_file/choose_file_tab_helper.h"
 #import "ios/chrome/browser/web/model/chrome_main_parts.h"
+#import "ios/chrome/browser/web/model/dark_mode_detection/dark_mode_detection_java_script_feature.h"
 #import "ios/chrome/browser/web/model/error_page_util.h"
 #import "ios/chrome/browser/web/model/font_size/font_size_java_script_feature.h"
 #import "ios/chrome/browser/web/model/image_fetch/image_fetch_java_script_feature.h"
@@ -436,6 +438,9 @@ std::vector<web::JavaScriptFeature*> ChromeWebClient::GetJavaScriptFeatures(
   features.push_back(WebPerformanceMetricsJavaScriptFeature::GetInstance());
   features.push_back(ChooseFileJavaScriptFeature::GetInstance());
   features.push_back(PageContextExtractorJavaScriptFeature::GetInstance());
+  if (IsIOSDarkModeDetectionEnabled()) {
+    features.push_back(DarkModeDetectionJavaScriptFeature::GetInstance());
+  }
 
   if (base::FeatureList::IsEnabled(kActorTools)) {
     features.push_back(actor::ActionTargetJavaScriptFeature::GetInstance());
@@ -443,6 +448,9 @@ std::vector<web::JavaScriptFeature*> ChromeWebClient::GetJavaScriptFeatures(
     features.push_back(actor::ScrollToolJavaScriptFeature::GetInstance());
     features.push_back(actor::SelectToolJavaScriptFeature::GetInstance());
     features.push_back(actor::TypeToolJavaScriptFeature::GetInstance());
+  }
+  if (IsActorEnabled() || IsPageStabilityMetricsEnabled()) {
+    features.push_back(actor::PageStabilityJavaScriptFeature::GetInstance());
   }
 
   features.push_back(
@@ -470,7 +478,7 @@ std::vector<web::JavaScriptFeature*> ChromeWebClient::GetJavaScriptFeatures(
     }
   }
 
-  if (base::FeatureList::IsEnabled(kAimCobrowse)) {
+  if (IsAimCobrowseEnabled()) {
     features.push_back(AimCobrowseJavaScriptFeature::GetInstance());
   }
 
@@ -486,23 +494,6 @@ void ChromeWebClient::PrepareErrorPage(
     const std::optional<net::SSLInfo>& ssl_info,
     int64_t navigation_id,
     base::OnceCallback<void(NSString*)> callback) {
-  OfflinePageTabHelper* offline_page_tab_helper =
-      OfflinePageTabHelper::FromWebState(web_state);
-  // WebState that are not attached to a tab may not have an
-  // OfflinePageTabHelper.
-  if (offline_page_tab_helper &&
-      (offline_page_tab_helper->CanHandleErrorLoadingURL(url))) {
-    // An offline version of the page will be displayed to replace this error
-    // page. Loading an error page here can cause a race between the
-    // navigation to load the error page and the navigation to display the
-    // offline version of the page. If the latter navigation interrupts the
-    // former and causes it to fail, this can incorrectly appear to be a
-    // navigation back to the previous committed URL. To avoid this race,
-    // return a nil error page here to avoid an error page load. See
-    // crbug.com/980912.
-    std::move(callback).Run(nil);
-    return;
-  }
   DCHECK(error);
   NSError* final_underlying_error =
       base::ios::GetFinalUnderlyingErrorFromError(error);
@@ -533,6 +524,23 @@ void ChromeWebClient::PrepareErrorPage(
         ssl_info.value(), url, ssl_info.value().is_fatal_cert_error,
         navigation_id, std::move(callback));
   } else {
+    OfflinePageTabHelper* offline_page_tab_helper =
+        OfflinePageTabHelper::FromWebState(web_state);
+    // WebState that are not attached to a tab may not have an
+    // OfflinePageTabHelper.
+    if (offline_page_tab_helper &&
+        (offline_page_tab_helper->CanHandleErrorLoadingURL(url))) {
+      // An offline version of the page will be displayed to replace this error
+      // page. Loading an error page here can cause a race between the
+      // navigation to load the error page and the navigation to display the
+      // offline version of the page. If the latter navigation interrupts the
+      // former and causes it to fail, this can incorrectly appear to be a
+      // navigation back to the previous committed URL. To avoid this race,
+      // return a nil error page here to avoid an error page load. See
+      // crbug.com/980912.
+      std::move(callback).Run(nil);
+      return;
+    }
     std::move(callback).Run(
         GetErrorPage(url, error, is_post, is_off_the_record));
   }

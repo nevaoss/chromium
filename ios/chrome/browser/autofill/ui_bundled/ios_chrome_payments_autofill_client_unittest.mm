@@ -23,8 +23,8 @@
 #import "ios/chrome/browser/autofill/autofill_ai/error_dialog/model/autofill_ai_error_dialog_context.h"
 #import "ios/chrome/browser/autofill/autofill_ai/public/save_entity_params.h"
 #import "ios/chrome/browser/autofill/model/bottom_sheet/autofill_bottom_sheet_tab_helper.h"
+#import "ios/chrome/browser/autofill/model/manual_fill_virtual_card_cache.h"
 #import "ios/chrome/browser/autofill/ui_bundled/chrome_autofill_client_ios.h"
-#import "ios/chrome/browser/autofill/ui_bundled/manual_fill/manual_fill_virtual_card_cache.h"
 #import "ios/chrome/browser/infobars/model/infobar_ios.h"
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
 #import "ios/chrome/browser/infobars/model/infobar_type.h"
@@ -88,8 +88,6 @@
 - (void)showScanCardSaveAndFillBottomSheet:
     (const autofill::FormActivityParams&)params {
 }
-- (void)showPlusAddressesBottomSheet {
-}
 
 - (void)showSaveCardBottomSheetOnOriginWebState:(web::WebState*)originWebState {
   _showSaveCardBottomSheet = YES;
@@ -135,7 +133,8 @@
 
 - (void)showSaveEntityDialog:(autofill::SaveEntityParams)params {
   std::move(params.callback)
-      .Run(autofill::AutofillClient::AutofillAiBubbleResult::kUnknown, {});
+      .Run(autofill::AutofillClient::AutofillAiBubbleResult::kUnknown,
+           std::nullopt, {});
 }
 
 - (void)dismissSaveEntityDialog {
@@ -805,10 +804,8 @@ TEST_F(IOSChromePaymentsAutofillClientTest,
 
   url::Origin test_origin = url::Origin::Create(GURL("https://example.com"));
   ManualFillVirtualCardCache::CreateForWebState(web_state_.get());
-  ManualFillVirtualCardCache::FromWebState(web_state_.get())
-      ->SetUnmaskingOrigin(test_origin);
 
-  payments_client()->OnCardDataAvailable(options);
+  payments_client()->OnCardDataAvailable(options, test_origin);
 
   ManualFillVirtualCardCache* cache =
       ManualFillVirtualCardCache::FromWebState(web_state_.get());

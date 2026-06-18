@@ -25,6 +25,7 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/autofill/autofill_popup_controller.h"
 #include "chrome/browser/ui/autofill/autofill_suggestion_controller_utils.h"
+#include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/views/autofill/payments/bnpl_issuer_linked_pill.h"
 #include "chrome/browser/ui/views/autofill/popup/lazy_loading_image_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_base_view.h"
@@ -54,7 +55,9 @@
 #include "content/public/browser/web_contents.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/color/color_id.h"
+#include "ui/compositor/layer.h"
 #include "ui/gfx/geometry/size.h"
 #include "ui/gfx/text_constants.h"
 #include "ui/views/accessibility/view_accessibility.h"
@@ -108,6 +111,7 @@ constexpr auto kMainTextStyleHighlighted =
     views::style::TextStyle::STYLE_BODY_3_BOLD;
 constexpr auto kMinorTextStyle = views::style::TextStyle::STYLE_BODY_4;
 constexpr auto kDisabledTextStyle = views::style::TextStyle::STYLE_DISABLED;
+constexpr float kDisabledBnplOpacity = 0.38f;
 
 // Returns a wrapper around `closure` that posts it to the default message
 // queue instead of executing it directly. This is to avoid that the callback's
@@ -141,6 +145,15 @@ bool IsDeactivatedPasswordOrPasskey(const Suggestion& suggestion) {
     case FillingProduct::kNone:
       return false;
   }
+}
+
+// Used to check if a suggestion should be displayed with styling specific to
+// deactivated BNPL suggestions.
+// TODO(crbug.com/503847790): Consolidate all deactivated suggestion styles,
+// pending alignment from UX.
+bool IsDeactivatedBnplSuggestion(const Suggestion& suggestion) {
+  return suggestion.type == SuggestionType::kBnplEntry &&
+         suggestion.HasDeactivatedStyle();
 }
 
 std::unique_ptr<views::BoxLayoutView> GetAlternativePaymentMethodBadge(
@@ -217,6 +230,10 @@ std::unique_ptr<views::Label> CreateMainTextLabel(
   if (!suggestion.main_text.is_primary) {
     label->SetEnabledColor(ui::kColorLabelForegroundSecondary);
   }
+  if (IsDeactivatedBnplSuggestion(suggestion)) {
+    label->SetEnabledColor(kColorAutofillPopupDeactivatedBnplForeground);
+  }
+
   return label;
 }
 
@@ -273,6 +290,9 @@ std::vector<std::unique_ptr<views::View>> CreateSubtextViews(
                                                          : kMinorTextStyle));
       if (!IsDeactivatedPasswordOrPasskey(suggestion)) {
         label->SetEnabledColor(ui::kColorLabelForegroundSecondary);
+      }
+      if (IsDeactivatedBnplSuggestion(suggestion)) {
+        label->SetEnabledColor(kColorAutofillPopupDeactivatedBnplForeground);
       }
       // To make sure the popup width will not exceed its maximum value,
       // divide the maximum label width by the number of labels.
@@ -447,9 +467,12 @@ std::unique_ptr<views::View> GetPasswordIconView(
   std::optional<ui::ImageModel> suggestion_icon_model =
       popup_cell_utils::GetIconImageModelFromIcon(suggestion.icon);
   ui::ImageModel placeholder_icon =
-      suggestion_icon_model ? std::move(*suggestion_icon_model)
-                            : popup_cell_utils::ImageModelFromVectorIcon(
-                                  kGlobeIcon, kCustomIconSize);
+      suggestion_icon_model
+          ? std::move(*suggestion_icon_model)
+          : popup_cell_utils::ImageModelFromVectorIcon(
+                ::features::IsRoundedIconsEnabled() ? kGlobeIcon
+                                                    : kGlobeOldIcon,
+                kCustomIconSize);
 
   return std::make_unique<LazyLoadingImageView>(
       gfx::Size(kCustomIconSize, kCustomIconSize), std::move(placeholder_icon),
@@ -507,8 +530,6 @@ std::unique_ptr<PopupRowContentView> CreateComposePopupRowContentView(
   return view;
 }
 
-// TODO(crbug.com/477689220): Add screenshot tests to cover this UI and other
-// Pay Later tab related UIs.
 std::unique_ptr<PopupRowContentView> CreateBnplPopupRowContentView(
     const Suggestion& suggestion,
     FillingProduct main_filling_product) {
@@ -544,10 +565,20 @@ std::unique_ptr<PopupRowContentView> CreateBnplPopupRowContentView(
   std::vector<std::unique_ptr<views::View>> subtexts =
       CreateSubtextViews(*view, suggestion, main_filling_product);
 
+  std::unique_ptr<views::ImageView> icon =
+      popup_cell_utils::GetIconImageView(suggestion);
+  if (suggestion.HasDeactivatedStyle()) {
+    if (icon) {
+      icon->SetPaintToLayer();
+      icon->layer()->SetFillsBoundsOpaquely(false);
+      icon->layer()->SetOpacity(kDisabledBnplOpacity);
+    }
+  }
+
   popup_cell_utils::AddSuggestionContentToView(
       suggestion, std::move(main_text_label), std::move(minor_texts),
-      /*description_label=*/nullptr, std::move(subtexts),
-      popup_cell_utils::GetIconImageView(suggestion), *view);
+      /*description_label=*/nullptr, std::move(subtexts), std::move(icon),
+      *view);
 
   return view;
 }
@@ -637,7 +668,9 @@ std::unique_ptr<PopupRowWithButtonView> CreateAutocompleteRowWithDeleteButton(
   std::unique_ptr<views::ImageButton> button =
       views::CreateVectorImageButtonWithNativeTheme(
           CreateExecuteSoonWrapper(std::move(deletion_action)),
-          views::kIcCloseIcon, kCloseIconSize);
+          ::features::IsRoundedIconsEnabled() ? views::kCloseIcon
+                                              : views::kIcCloseOldIcon,
+          kCloseIconSize);
 
   // We are making sure that the vertical distance from the delete button edges
   // to the cell border is the same as the horizontal distance.

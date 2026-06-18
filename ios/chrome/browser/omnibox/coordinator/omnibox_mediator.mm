@@ -412,7 +412,8 @@ using base::UserMetricsAction;
   [self.consumer updateReturnKeyAvailability];
 
   // When no suggestion is previewed, just show the default image.
-  if (!suggestion) {
+  BOOL hasText = _omniboxTextController.textInput.text.length != 0;
+  if (!suggestion || !hasText) {
     [self setDefaultLeftImage];
     return;
   }
@@ -496,7 +497,8 @@ using base::UserMetricsAction;
   // Download the favicon.
   // The code below mimics that in OmniboxPopupMediator.
   self.faviconLoader->FaviconForPageUrl(
-      pageURL, self.faviconSize, self.faviconSize,
+      pageURL, /*desired_size=*/self.faviconSize,
+      /*min_size=*/kMinFaviconSizePt,
       /*fallback_to_google_server=*/false, handleFaviconResult);
 }
 
@@ -539,11 +541,15 @@ using base::UserMetricsAction;
   // autocomplete suggestions to include potential new clipboard data.
   __weak __typeof(self) weakSelf = self;
 
+  if (![_omniboxTextController hasFocus]) {
+    return;
+  }
+
   // Clipboard suggestions are only shown when the text is empty; no need to
   // refresh otherwise. The `clipboardTypes` also don't need to be updated
   // as they should remain in sync with the visually displayed suggestion.
   BOOL hasText = _omniboxTextController.textInput.text.length != 0;
-  if (!hasText) {
+  if (hasText) {
     return;
   }
 

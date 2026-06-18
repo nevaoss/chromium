@@ -72,6 +72,7 @@ extern const char kHatsSurveyTriggerSettings[];
 extern const char kHatsSurveyTriggerSEHijacking[];
 extern const char kHatsSurveyTriggerSettingsPrivacy[];
 extern const char kHatsSurveyTriggerSettingsSecurity[];
+extern const char kHatsSurveyTriggerSettingsSecurityV2[];
 extern const char kHatsSurveyTriggerTrustSafetyPrivacySettings[];
 extern const char kHatsSurveyTriggerTrustSafetyTrustedSurface[];
 extern const char kHatsSurveyTriggerTrustSafetyTransactions[];
@@ -93,6 +94,7 @@ extern const char kHatsSurveyTriggerComposeClose[];
 extern const char kHatsSurveyTriggerComposeNudgeClose[];
 #endif  // #if BUILDFLAG(ENABLE_COMPOSE)
 extern const char kHatsSurveyTriggerWhatsNew[];
+extern const char kHatsSurveyTriggerReadingModeExit[];
 #else   // BUILDFLAG(IS_ANDROID)
 extern const char kHatsSurveyTriggerAndroidStartupSurvey[];
 extern const char kHatsSurveyTriggerSigninFirstRun[];

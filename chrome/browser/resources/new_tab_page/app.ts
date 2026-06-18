@@ -5,6 +5,7 @@
 import './action_chips/action_chips.js';
 import './iframe.js';
 import './logo.js';
+import './ntp_composebox.js';
 import './ntp_searchbox.js';
 import '/strings.m.js';
 import 'chrome://new-tab-page/shared/customize_buttons/customize_buttons.js';
@@ -50,7 +51,6 @@ import {ParentTrustedDocumentProxy} from './modules/microsoft_auth_frame_connect
 import type {PageCallbackRouter, PageHandlerRemote, Theme} from './new_tab_page.mojom-webui.js';
 import {NtpBackgroundImageSource} from './new_tab_page.mojom-webui.js';
 import {NewTabPageProxy} from './new_tab_page_proxy.js';
-
 import {ShowNtpPromosResult} from './ntp_promo.mojom-webui.js';
 import type {NtpSearchboxElement} from './ntp_searchbox.js';
 import {$$} from './utils.js';
@@ -213,6 +213,8 @@ export class AppElement extends AppElementBase {
       composeButtonEnabled: {type: Boolean},
       composeboxEnabled: {type: Boolean},
 
+      hasVoiceSearchError: {type: Boolean},
+
       // =======================================================================
       // Protected properties
       // =======================================================================
@@ -266,6 +268,7 @@ export class AppElement extends AppElementBase {
       browserPromoCompletedLimit_: {type: Number},
       showBrowserPromo_: {type: Boolean},
       caretAnimationsEnabled_: {type: Boolean},
+      usePecApi_: {type: Boolean},
 
       modulesShownToUser: {
         type: Boolean,
@@ -332,6 +335,9 @@ export class AppElement extends AppElementBase {
        */
       enableThreadsRail_: {type: Boolean},
 
+      // Whether to use ntp-composebox instead of cr-composebox.
+      useNtpComposeboxFork_: {type: Boolean},
+
       // =======================================================================
       // Private properties
       // =======================================================================
@@ -349,6 +355,7 @@ export class AppElement extends AppElementBase {
     };
   }
 
+  accessor hasVoiceSearchError = false;
   accessor realboxCanShowSecondarySide: boolean = false;
   accessor realboxHadSecondarySide: boolean = false;
   accessor composeButtonEnabled: boolean =
@@ -378,6 +385,8 @@ export class AppElement extends AppElementBase {
   protected accessor showComposebox_: boolean = false;
   protected accessor caretAnimationsEnabled_: boolean =
       loadTimeData.getBoolean('caretAnimationEnabled');
+  protected accessor usePecApi_: boolean =
+      loadTimeData.getBoolean('contextualMenuUsePecApi');
   protected accessor logoEnabled_: boolean =
       loadTimeData.getBoolean('logoEnabled');
   protected accessor oneGoogleBarEnabled_: boolean =
@@ -442,6 +451,8 @@ export class AppElement extends AppElementBase {
       loadTimeData.getBoolean('composeboxShowContextMenuDescription');
   protected accessor enableThreadsRail_: boolean =
       loadTimeData.getBoolean('enableThreadsRail');
+  protected accessor useNtpComposeboxFork_: boolean =
+      loadTimeData.getBoolean('useNtpComposeboxFork');
   protected accessor energyEffectEnabled_: boolean =
       loadTimeData.getBoolean('energyEffectEnabled');
   protected accessor energyEffectAnimationEnabled_: boolean =
@@ -742,7 +753,8 @@ export class AppElement extends AppElementBase {
 
     if (this.ntpRealboxNextEnabled_) {
       this.registerHelpBubble(
-          CONTEXTUAL_ENTRYPOINT_ELEMENT_ID, ['#searchbox', '#context'],
+          CONTEXTUAL_ENTRYPOINT_ELEMENT_ID,
+          ['#searchbox', '#context', '#entrypointButton', '#entrypoint'],
           {fixed: true});
     }
   }
@@ -796,6 +808,11 @@ export class AppElement extends AppElementBase {
         this.showComposebox_ && this.enableThreadsRail_) {
       recordBoolean('NewTabPage.ThreadsRail.Shown', true);
     }
+  }
+
+  // For voice coherence: when error event is fired, this will run.
+  onVoiceSearchError() {
+    this.hasVoiceSearchError = true;
   }
 
   // Called to update the OGB of relevant NTP state changes.
@@ -1011,8 +1028,9 @@ export class AppElement extends AppElementBase {
     }
   }
 
-  protected onVoiceSearchOverlayClose_() {
+  onVoiceSearchOverlayClose() {
     this.showVoiceSearchOverlay_ = false;
+    this.hasVoiceSearchError = false;
   }
 
   /**
@@ -1340,18 +1358,12 @@ export class AppElement extends AppElementBase {
   private onWindowClick_(e: Event) {
     if (this.ntpRealboxNextEnabled_) {
       const searchbox = this.shadowRoot.querySelector('ntp-searchbox');
-      const actionChips = this.shadowRoot.querySelector('ntp-action-chips');
-      const helpBubble =
-          searchbox ? searchbox.shadowRoot.querySelector('help-bubble') : null;
-      if (helpBubble) {
-        const isClickOnBubble = e.composedPath().includes(helpBubble);
-        const isClickOnSearchbox =
-            searchbox && e.composedPath().includes(searchbox);
-        const isClickOnActionChips =
-            actionChips && e.composedPath().includes(actionChips);
-        if (!isClickOnBubble && (isClickOnSearchbox || isClickOnActionChips)) {
-          this.hideHelpBubble(CONTEXTUAL_ENTRYPOINT_ELEMENT_ID);
-        }
+      const isClickOnBubble = e.composedPath().some(
+          el => (el as HTMLElement)?.tagName === 'HELP-BUBBLE');
+      const isClickOnSearchbox =
+          searchbox && e.composedPath().includes(searchbox);
+      if (!isClickOnBubble && isClickOnSearchbox) {
+        this.hideHelpBubble(CONTEXTUAL_ENTRYPOINT_ELEMENT_ID);
       }
     }
 

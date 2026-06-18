@@ -643,7 +643,7 @@ void AppRuntimeContentBrowserClient::SiteInstanceGotProcessAndSite(
       extensions::ExtensionRegistry::Get(browser_context);
   const extensions::Extension* extension =
       registry->enabled_extensions().GetExtensionOrAppByURL(
-          site_instance->GetSiteURL());
+          site_instance->GetSecurityPrincipal().GetDeprecatedSiteURL());
 
   // If this isn't an extension renderer there's nothing to do.
   if (!extension) {
@@ -727,9 +727,11 @@ void AppRuntimeContentBrowserClient::
         NonNetworkURLLoaderFactoryMap* factories) {
   DCHECK(factories);
 
-  factories->emplace(extensions::kExtensionScheme,
-                     extensions::CreateExtensionURLLoaderFactory(
-                         render_process_id, render_frame_id));
+  factories->emplace(
+      extensions::kExtensionScheme,
+      extensions::CreateExtensionURLLoaderFactory(
+          content::ChildProcessId::FromUnsafeValue(render_process_id),
+          render_frame_id));
 }
 
 bool AppRuntimeContentBrowserClient::ShouldSendOutermostOriginToRenderer(

@@ -264,6 +264,7 @@
         "chrome://extensions/*",
         "chrome://glic/*",
         "chrome://glic-fre/*",
+        "chrome://glic-experimental-opt-in/*",
         "chrome://graduation/*",
         "chrome://home/*",
         "chrome://chrome-signin/*",
@@ -500,13 +501,20 @@
       "chrome-untrusted://demo-mode-app/*"
     ]
   },
-  "mimeHandler": {
+  "mimeHandler": [{
     "dependencies": ["manifest:mime_types_handler"],
     "contexts": ["privileged_extension"],
     // "desktop_android" is not supported.
     "platforms": ["chromeos", "linux", "mac", "win"],
+    "channel": "dev"
+  }, {
+    "dependencies": ["manifest:mime_types_handler"],
+    "contexts": ["privileged_extension"],
+    // "desktop_android" is not supported.
+    "platforms": ["chromeos", "linux", "mac", "win"],
+    "channel": "stable",
     "feature_flag": "ApiMimeHandler"
-  },
+  }],
   "mimeHandlerPrivate": {
     "dependencies": ["manifest:mime_types_handler"],
     "contexts": ["privileged_extension"],
@@ -922,6 +930,7 @@
       "chrome://contextual-tasks/*",
       "chrome://glic/*",
       "chrome://glic-fre/*",
+      "chrome://glic-experimental-opt-in/*",
       "chrome://graduation/*",
       "chrome://home/*",
       "chrome://mobilesetup/*",
@@ -967,6 +976,7 @@
       "chrome://contextual-tasks/*",
       "chrome://glic/*",
       "chrome://glic-fre/*",
+      "chrome://glic-experimental-opt-in/*",
       "chrome://graduation/*",
       "chrome://home/*",
       "chrome://mobilesetup/*",

@@ -15,6 +15,7 @@
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_entry_flow_result.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/page_action_menu/coordinator/page_action_menu_mediator.h"
 #import "ios/chrome/browser/intelligence/page_action_menu/ui/page_action_menu_content_entry_point.h"
@@ -40,10 +41,10 @@
 #import "ios/chrome/browser/shared/public/commands/reader_mode_options_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/public/commands/snackbar_commands.h"
+#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/public/snackbar/snackbar_message.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
 #import "ios/chrome/grit/ios_strings.h"
-#import "ios/public/provider/chrome/browser/bwg/bwg_api.h"
 #import "ui/base/l10n/l10n_util.h"
 #import "url/gurl.h"
 
@@ -51,7 +52,8 @@
     AccountMenuCoordinatorDelegate,
     PageActionMenuViewControllerDelegate,
     UINavigationControllerDelegate,
-    UIAdaptivePresentationControllerDelegate>
+    UIAdaptivePresentationControllerDelegate,
+    ReaderModeOptionsCommands>
 @end
 
 namespace {
@@ -117,7 +119,9 @@ constexpr NSTimeInterval kEligibilityPollTimeout = 5.0;
   // This ensures eligibility data is available or loading by the time
   // the user interacts with Ask Gemini. The spinner handles the case
   // where the check is still in flight.
-  geminiService->CheckGeminiEnterpriseEligibilityIfNeeded();
+  if (geminiService) {
+    geminiService->CheckGeminiEnterpriseEligibilityIfNeeded();
+  }
 
   if (readerModeTabHelper) {
     DistillerService* distillerService =
@@ -128,6 +132,7 @@ constexpr NSTimeInterval kEligibilityPollTimeout = 5.0;
 
   _viewController.delegate = self;
   _viewController.mutator = _mediator;
+  _viewController.readerModeOptionsHandler = self;
 
   _viewController.readerModeHandler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), ReaderModeCommands);
@@ -179,7 +184,7 @@ constexpr NSTimeInterval kEligibilityPollTimeout = 5.0;
   if (IsPageActionMenuAuthFlowEnabled() &&
       [_mediator isGeminiEligibilityLoading] && [_mediator isManagedAccount]) {
     [_viewController updateGeminiLoadingState:YES];
-    [self startEligibilityPolling];
+    [self startManagedAccountEligibilityPolling];
   }
 
   [super start];
@@ -211,21 +216,6 @@ constexpr NSTimeInterval kEligibilityPollTimeout = 5.0;
 
 #pragma mark - PageActionMenuViewControllerDelegate
 
-- (void)viewControllerDidTapReaderModeOptionsButton:
-    (PageActionMenuViewController*)viewController {
-  _readerModeOptionsViewController =
-      [[ReaderModeOptionsViewController alloc] init];
-  [_readerModeOptionsViewController updateHideReaderModeButtonVisibility:NO];
-  _readerModeOptionsViewController.readerModeOptionsHandler =
-      HandlerForProtocol(self.browser->GetCommandDispatcher(),
-                         ReaderModeOptionsCommands);
-  _readerModeOptionsViewController.mutator = _readerModeOptionsMediator;
-  _readerModeOptionsViewController.controlsView.mutator =
-      _readerModeOptionsMediator;
-  [_navigationController pushViewController:_readerModeOptionsViewController
-                                   animated:YES];
-}
-
 - (void)viewControllerDidTapTranslateOptionsButton:
     (PageActionMenuViewController*)viewController {
   __weak __typeof(self) weakSelf = self;
@@ -240,6 +230,63 @@ constexpr NSTimeInterval kEligibilityPollTimeout = 5.0;
 
 - (void)viewControllerDidTapSignedOutGemini:
     (PageActionMenuViewController*)viewController {
+  if (IsGeneralizedGeminiEntryFlowEnabled()) {
+    [self startGeminiEntryFlowViaCommand];
+    return;
+  }
+
+  [self startGeminiAuthFlowDirectly];
+}
+
+// Starts the Gemini entry flow via the generalized BWGCommands method.
+// Used when GeneralizedGeminiEntryFlow is enabled.
+- (void)startGeminiEntryFlowViaCommand {
+  __weak __typeof(self) weakSelf = self;
+
+  id<BWGCommands> bwgHandler =
+      HandlerForProtocol(self.browser->GetCommandDispatcher(), BWGCommands);
+
+  [bwgHandler
+      startGeminiEntryFlowWithStartupState:
+          [[GeminiStartupState alloc]
+              initWithEntryPoint:gemini::EntryPoint::AIHubSignInSheet]
+                        baseViewController:_navigationController
+                               accessPoint:signin_metrics::AccessPoint::
+                                               kIosPageActionMenu
+                  showSnackbarOnCompletion:YES
+                                completion:^(GeminiEntryFlowResult result) {
+                                  [weakSelf handleEntryFlowResult:result];
+                                }];
+}
+
+// Handles the result of the Gemini entry flow for the PAM context.
+- (void)handleEntryFlowResult:(GeminiEntryFlowResult)result {
+  switch (result) {
+    case kGeminiEntryFlowResultSuccess:
+      // Dismiss PAM. Gemini session is started by BrowserCoordinator
+      // after this completion returns.
+      [self.pageActionMenuHandler dismissPageActionMenuWithCompletion:nil];
+      break;
+    case kGeminiEntryFlowResultCancelled:
+      // User cancelled sign-in — PAM stays open.
+      break;
+    case kGeminiEntryFlowResultAccountIneligibleByGemini:
+    case kGeminiEntryFlowResultAccountIneligibleByEnterprise:
+    case kGeminiEntryFlowResultAccountCapabilityRestricted:
+    case kGeminiEntryFlowResultPageIneligible:
+    case kGeminiEntryFlowResultUnknown:
+      // Ineligible — dismiss PAM. Snackbar handled by the command.
+      [self.pageActionMenuHandler dismissPageActionMenuWithCompletion:nil];
+      break;
+    case kGeminiEntryFlowResultTimeout:
+      // Currently unreachable.
+      break;
+  }
+}
+
+// Starts the Gemini auth flow directly within the PAM coordinator.
+// Used when ChromeNextIA is not enabled.
+- (void)startGeminiAuthFlowDirectly {
   signin_metrics::PromoAction promoAction =
       signin_metrics::PromoAction::PROMO_ACTION_NO_SIGNIN_PROMO;
   _signinCoordinator = [SigninCoordinator
@@ -468,6 +515,53 @@ constexpr NSTimeInterval kEligibilityPollTimeout = 5.0;
 - (void)stopAccountMenu {
   [_accountMenuCoordinator stop];
   _accountMenuCoordinator = nil;
+}
+
+// Polls until the workspace policy check resolves, then updates the
+// Ask Gemini button state. Used only for managed accounts when the PAM
+// opens and the check is still in flight.
+- (void)startManagedAccountEligibilityPolling {
+  __weak __typeof(self) weakSelf = self;
+  NSDate* startTime = [NSDate date];
+  _eligibilityPollTimer = [NSTimer
+      scheduledTimerWithTimeInterval:kEligibilityPollInterval
+                             repeats:YES
+                               block:^(NSTimer* timer) {
+                                 [weakSelf
+                                     pollManagedAccountEligibilityWithStartTime:
+                                         startTime];
+                               }];
+}
+
+// Called by the managed account poll timer. Hides the spinner when
+// the eligibility check resolves or times out.
+- (void)pollManagedAccountEligibilityWithStartTime:(NSDate*)startTime {
+  NSTimeInterval elapsed = -[startTime timeIntervalSinceNow];
+  if (elapsed < kEligibilityPollTimeout &&
+      [_mediator isGeminiEligibilityLoading]) {
+    return;
+  }
+
+  [self stopEligibilityPolling];
+  [_viewController updateGeminiLoadingState:NO];
+}
+
+#pragma mark - ReaderModeOptionsCommands
+
+- (void)showReaderModeOptions {
+  _readerModeOptionsViewController =
+      [[ReaderModeOptionsViewController alloc] init];
+  [_readerModeOptionsViewController updateHideReaderModeButtonVisibility:NO];
+  _readerModeOptionsViewController.readerModeOptionsHandler = self;
+  _readerModeOptionsViewController.mutator = _readerModeOptionsMediator;
+  _readerModeOptionsViewController.controlsView.mutator =
+      _readerModeOptionsMediator;
+  [_navigationController pushViewController:_readerModeOptionsViewController
+                                   animated:YES];
+}
+
+- (void)hideReaderModeOptions {
+  [self.pageActionMenuHandler dismissPageActionMenuWithCompletion:nil];
 }
 
 @end

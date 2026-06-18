@@ -52,6 +52,7 @@
 #include "ui/views/controls/menu/menu_config.h"
 #include "ui/views/controls/menu/menu_controller.h"
 #include "ui/views/controls/native/native_view_host.h"
+#include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/views_delegate.h"
 #include "ui/views/widget/native_widget_mac.h"
@@ -888,7 +889,7 @@ bool NativeWidgetMacNSWindowHost::IsWindowKey() const {
 }
 
 void NativeWidgetMacNSWindowHost::SetVisibilityState(
-    WindowVisibilityState new_state) {
+    remote_cocoa::mojom::WindowVisibilityState new_state) {
   // On macOS 14 an application can't generally activate themselves. If we're
   // trying to activate a window in a remote application host, this yield
   // should make sure this works as long as chrome is the currently active
@@ -899,22 +900,6 @@ void NativeWidgetMacNSWindowHost::SetVisibilityState(
       [NSApp yieldActivationToApplicationWithBundleIdentifier:
                  base::SysUTF8ToNSString(application_host_->bundle_id())];
     }
-  }
-
-  // If we are going to be making the window visible, make the compositor
-  // visible pre-emptively, rather than waiting until the visibilty
-  // notification makes its way back via OnVisibilityChanged.
-  bool preemptively_make_visible =
-      new_state == WindowVisibilityState::kShowInactive ||
-      new_state == WindowVisibilityState::kShowAndActivateWindow;
-  if (!compositor_) {
-    preemptively_make_visible = false;
-  }
-  if (parent_ && !parent_->is_visible_) {
-    preemptively_make_visible = false;
-  }
-  if (preemptively_make_visible) {
-    OnVisibilityChanged(true);
   }
 
   GetNSWindowMojo()->SetVisibilityState(new_state);
@@ -1328,7 +1313,11 @@ bool NativeWidgetMacNSWindowHost::GetHitTestResult(
   // directly. It will eventually handled by the owner of that NSView, e.g.
   // RenderWidgetHostViewCocoa.
   if (views::IsViewClass<views::NativeViewHost>(target_view)) {
-    *hit_test_result = remote_cocoa::mojom::HitTestResult::kSubView;
+    if (target_view->GetProperty(kIsBlockedByModalKey)) {
+      *hit_test_result = remote_cocoa::mojom::HitTestResult::kBlockedSubView;
+    } else {
+      *hit_test_result = remote_cocoa::mojom::HitTestResult::kSubView;
+    }
     return true;
   }
 

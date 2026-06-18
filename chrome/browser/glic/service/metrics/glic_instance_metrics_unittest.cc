@@ -13,6 +13,7 @@
 #include "base/test/task_environment.h"
 #include "chrome/browser/glic/glic_metrics.h"
 #include "chrome/browser/glic/host/glic.mojom-shared.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/service/metrics/metrics_types.h"
 #include "chrome/common/chrome_features.h"
 #include "components/metrics/profile_metrics_service.h"
@@ -58,6 +59,34 @@ class GlicInstanceMetricsTestWithPolyline : public GlicInstanceMetricsTest {
  private:
   base::test::ScopedFeatureList feature_list_;
 };
+
+TEST_F(GlicInstanceMetricsTest, OptinImpression) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kGlicOptInImpressionMetrics);
+
+  metrics_.OnOptinImpression();
+  EXPECT_EQ(
+      user_action_tester_.GetActionCount("Glic.Onboarding.OptInImpression"), 0);
+
+  metrics_.OnVisibilityChanged(true);
+  metrics_.OnClientReady(GlicInstanceMetrics::EmbedderType::kSidePanel);
+
+  EXPECT_EQ(
+      user_action_tester_.GetActionCount("Glic.Onboarding.OptInImpression"), 1);
+}
+
+TEST_F(GlicInstanceMetricsTest, OptinImpression_KillSwitchDisabled) {
+  base::test::ScopedFeatureList disabled_feature_list;
+  disabled_feature_list.InitAndDisableFeature(
+      features::kGlicOptInImpressionMetrics);
+
+  metrics_.OnOptinImpression();
+  metrics_.OnVisibilityChanged(true);
+  metrics_.OnClientReady(GlicInstanceMetrics::EmbedderType::kSidePanel);
+
+  EXPECT_EQ(
+      user_action_tester_.GetActionCount("Glic.Onboarding.OptInImpression"), 0);
+}
 
 TEST_F(GlicInstanceMetricsTest, OnActivationChanged_LogsTimeSinceLastActive) {
   // First activation.
@@ -336,6 +365,71 @@ TEST_F(GlicInstanceMetricsTest,
       base::Minutes(5), 1);
 }
 
+TEST_F(GlicInstanceMetricsTest, FloatyFirstOpenDuration_LoggedOnFirstClose) {
+  ShowOptions show_options{FloatingShowOptions{}};
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+  metrics_.OnShowInFloaty(show_options);
+  task_environment_.FastForwardBy(base::Minutes(5));
+
+  metrics_.OnFloatyClosed();
+
+  histogram_tester_.ExpectUniqueTimeSample(
+      "Glic.InvocationSource.TopChromeButton.FloatyFirstOpenDuration",
+      base::Minutes(5), 1);
+}
+
+TEST_F(GlicInstanceMetricsTest,
+       FloatyFirstOpenDuration_NotLoggedOnSecondClose) {
+  ShowOptions show_options{FloatingShowOptions{}};
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+  metrics_.OnShowInFloaty(show_options);
+
+  task_environment_.FastForwardBy(base::Minutes(5));
+  metrics_.OnFloatyClosed();
+
+  histogram_tester_.ExpectTotalCount(
+      "Glic.InvocationSource.TopChromeButton.FloatyFirstOpenDuration", 1);
+
+  metrics_.OnOpen(mojom::InvocationSource::kOsButton, show_options);
+  metrics_.OnShowInFloaty(show_options);
+  task_environment_.FastForwardBy(base::Minutes(2));
+  metrics_.OnFloatyClosed();
+
+  histogram_tester_.ExpectTotalCount(
+      "Glic.InvocationSource.TopChromeButton.FloatyFirstOpenDuration", 1);
+  histogram_tester_.ExpectTotalCount(
+      "Glic.InvocationSource.OsButton.FloatyFirstOpenDuration", 0);
+}
+
+TEST_F(GlicInstanceMetricsTest,
+       FloatyFirstOpenDuration_ShownWithoutToggleCall) {
+  ShowOptions show_options{FloatingShowOptions{}};
+  metrics_.OnShowInFloaty(show_options);
+  task_environment_.FastForwardBy(base::Minutes(5));
+  metrics_.OnFloatyClosed();
+
+  histogram_tester_.ExpectUniqueTimeSample(
+      "Glic.InvocationSource.Unsupported.FloatyFirstOpenDuration",
+      base::Minutes(5), 1);
+}
+
+TEST_F(GlicInstanceMetricsTest, FloatyFirstOpenDuration_LoggedOnUnbind) {
+  ShowOptions show_options{FloatingShowOptions{}};
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+  metrics_.OnShowInFloaty(show_options);
+  task_environment_.FastForwardBy(base::Minutes(5));
+
+  metrics_.OnUnbindEmbedder(FloatingEmbedderKey{});
+
+  histogram_tester_.ExpectUniqueTimeSample(
+      "Glic.InvocationSource.TopChromeButton.FloatyFirstOpenDuration",
+      base::Minutes(5), 1);
+
+  // Verify that Floaty.OpenDuration is logged on unbind.
+  histogram_tester_.ExpectUniqueTimeSample("Glic.Instance.Floaty.OpenDuration",
+                                           base::Minutes(5), 1);
+}
+
 TEST_F(GlicInstanceMetricsTest, InstanceEvents_LogsEventCountsAndHadEvent) {
   ShowOptions show_options{FloatingShowOptions{}};
   metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
@@ -369,6 +463,25 @@ TEST_F(GlicInstanceMetricsTest, InstanceEvents_LogsEventCountsAndHadEvent) {
   histogram_tester_.ExpectBucketCount(
       "Glic.InvocationSource.TopChromeButton.HadEvent",
       GlicInstanceEvent::kTurnCompleted, 1);
+}
+
+TEST_F(GlicInstanceMetricsTest, InstanceEvents_Open) {
+  ShowOptions show_options{FloatingShowOptions{}};
+
+  metrics_.OnOpen(mojom::InvocationSource::kTopChromeButton, show_options);
+
+  histogram_tester_.ExpectBucketCount("Glic.Instance.EventCounts",
+                                      GlicInstanceEvent::kOpen, 1);
+
+  EXPECT_EQ(user_action_tester_.GetActionCount("Glic.Instance.Open"), 1);
+
+  histogram_tester_.ExpectUniqueSample(
+      "Glic.Instance.InitialInvocationSource",
+      mojom::InvocationSource::kTopChromeButton, 1);
+
+  histogram_tester_.ExpectUniqueSample(
+      "Glic.Instance.Floaty.OpenSource",
+      mojom::InvocationSource::kTopChromeButton, 1);
 }
 
 TEST_F(GlicInstanceMetricsTest,
@@ -549,59 +662,6 @@ TEST_F(GlicInstanceMetricsTest, ScrollToMetrics) {
 
   histogram_tester_.ExpectUniqueTimeSample(
       "Glic.ScrollTo.UserPromptToScrollTime.Text", base::Milliseconds(400), 1);
-}
-
-TEST_F(GlicInstanceMetricsTest, SelectionUsed) {
-  metrics_.OnVisibilityChanged(true);
-  metrics_.OnSelectionAreasChanged(2);
-  metrics_.OnUserInputSubmitted(mojom::WebClientMode::kText);
-  histogram_tester_.ExpectBucketCount(
-      "Glic.Instance.InputSubmitted.SelectionCount", 2, 1);
-
-  // Check that it's NOT reset after submission.
-  metrics_.OnUserInputSubmitted(mojom::WebClientMode::kText);
-  histogram_tester_.ExpectBucketCount(
-      "Glic.Instance.InputSubmitted.SelectionCount", 2, 2);
-
-  // Check that it can be cleared.
-  metrics_.OnSelectionAreasChanged(0);
-  metrics_.OnUserInputSubmitted(mojom::WebClientMode::kText);
-  histogram_tester_.ExpectBucketCount(
-      "Glic.Instance.InputSubmitted.SelectionCount", 0, 1);
-  histogram_tester_.ExpectBucketCount(
-      "Glic.Instance.InputSubmitted.SelectionCount", 2, 2);
-}
-
-TEST_F(GlicInstanceMetricsTestWithPolyline, PolylineSelectionUsed) {
-  metrics_.OnVisibilityChanged(true);
-  metrics_.OnPolylinePointsChanged({4, 10});
-  metrics_.OnUserInputSubmitted(mojom::WebClientMode::kText);
-
-  histogram_tester_.ExpectBucketCount(
-      "Glic.Instance.InputSubmitted.Selection.PolylinePointCount", 4, 1);
-  histogram_tester_.ExpectBucketCount(
-      "Glic.Instance.InputSubmitted.Selection.PolylinePointCount", 10, 1);
-  histogram_tester_.ExpectTotalCount(
-      "Glic.Instance.InputSubmitted.Selection.PolylinePointCount", 2);
-
-  // Check that it's NOT reset after submission (Persistence)
-  metrics_.OnPolylinePointsChanged({4, 8, 8, 10});
-  metrics_.OnUserInputSubmitted(mojom::WebClientMode::kText);
-  histogram_tester_.ExpectBucketCount(
-      "Glic.Instance.InputSubmitted.Selection.PolylinePointCount", 4, 2);
-  histogram_tester_.ExpectBucketCount(
-      "Glic.Instance.InputSubmitted.Selection.PolylinePointCount", 8, 2);
-  histogram_tester_.ExpectBucketCount(
-      "Glic.Instance.InputSubmitted.Selection.PolylinePointCount", 10, 2);
-  histogram_tester_.ExpectTotalCount(
-      "Glic.Instance.InputSubmitted.Selection.PolylinePointCount", 6);
-
-  // Check that it can be cleared
-  metrics_.OnPolylinePointsChanged({});
-  metrics_.OnUserInputSubmitted(mojom::WebClientMode::kText);
-
-  histogram_tester_.ExpectTotalCount(
-      "Glic.Instance.InputSubmitted.Selection.PolylinePointCount", 6);
 }
 
 TEST_F(GlicInstanceMetricsTest, Floaty_OpenCloseClose_LogsError) {

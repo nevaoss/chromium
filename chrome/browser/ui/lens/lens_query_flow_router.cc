@@ -57,6 +57,18 @@ std::vector<lens::ContextualInput> ConvertPageContentToContextualInput(
   }
   return contextual_inputs;
 }
+
+omnibox::ChromeAimEntryPoint AimEntryPointFromInvocationSource(
+    lens::LensOverlayInvocationSource invocation_source) {
+  // TODO(crbug.com/483805922): Create individual AIM entry points for each
+  // Lens invocation source.
+  if (invocation_source ==
+      lens::LensOverlayInvocationSource::kOmniboxContextualSuggestion) {
+    return omnibox::DESKTOP_CHROME_OTHER_OMNIBOX_COMPOSEBOX_ENTRY_POINT;
+  }
+  return omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT;
+}
+
 }  // namespace
 
 namespace lens {
@@ -98,6 +110,7 @@ bool LensQueryFlowRouter::IsOff() const {
 
 void LensQueryFlowRouter::StartQueryFlow(
     const SkBitmap& screenshot,
+    const SkBitmap& initial_image,
     GURL page_url,
     std::optional<std::string> page_title,
     std::vector<lens::mojom::CenterRotatedBoxPtr> significant_region_boxes,
@@ -161,9 +174,9 @@ void LensQueryFlowRouter::StartQueryFlow(
   }
 
   lens_overlay_query_controller()->StartQueryFlow(
-      screenshot, page_url, page_title, std::move(significant_region_boxes),
-      underlying_page_contents, primary_content_type, pdf_current_page,
-      ui_scale_factor, invocation_time);
+      screenshot, initial_image, page_url, page_title,
+      std::move(significant_region_boxes), underlying_page_contents,
+      primary_content_type, pdf_current_page, ui_scale_factor, invocation_time);
 }
 
 void LensQueryFlowRouter::MaybeResumeQueryFlow() {
@@ -812,10 +825,8 @@ LensQueryFlowRouter::CreateSearchUrlRequestInfoFromInteraction(
 
   request_info->additional_params = additional_search_query_params;
   request_info->invocation_source = invocation_source;
-  // TODO(crbug.com/483805922): Create individual AIM entry points for each
-  // Lens invocation source.
   request_info->aim_entry_point =
-      omnibox::DESKTOP_CHROME_LENS_CONTEXTUAL_SEARCHBOX_ENTRY_POINT;
+      AimEntryPointFromInvocationSource(invocation_source);
 
   if (region) {
     auto client_logs =

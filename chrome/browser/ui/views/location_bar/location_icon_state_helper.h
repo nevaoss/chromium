@@ -5,10 +5,14 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_LOCATION_ICON_STATE_HELPER_H_
 #define CHROME_BROWSER_UI_VIEWS_LOCATION_BAR_LOCATION_ICON_STATE_HELPER_H_
 
+#include <optional>
 #include <string>
 
 #include "components/security_state/core/security_state.h"
 #include "ui/accessibility/ax_enums.mojom-forward.h"
+namespace ui {
+class ImageModel;
+}
 
 class LocationBarModel;
 
@@ -17,16 +21,6 @@ class WebContents;
 }
 
 namespace location_bar {
-
-enum class SecurityChipIcon {
-  kHttp,
-  kSecurePageInfo,
-  kNotSecureWarning,
-  kDangerous,
-  kGoogleSuperG,
-  kGoogleGMonochrome,
-  kAddContext,
-};
 
 struct SecurityChipAccessibilityState {
   ax::mojom::Role role;
@@ -39,17 +33,21 @@ std::u16string GetSecurityChipText(const LocationBarModel* model,
                                    content::WebContents* web_contents,
                                    bool is_editing_or_empty);
 
+// Returns whether the location bar should display the security chip
+// text for the page state described by `model`. Covers special schemes
+// (chrome://, chrome-extension://, file://, dom-distiller://),
+// contextual-tasks pages, security warnings/errors, and pages rendered
+// by a generic MIME handler extension. `is_editing_or_empty` suppresses
+// the chip while the user is interacting with the omnibox.
+// `web_contents` may be nullptr; when non-null it enables checks that
+// require live tab state (currently the MIME handler extension path).
 bool ShouldShowSecurityChipText(const LocationBarModel* model,
+                                content::WebContents* web_contents,
                                 bool is_editing_or_empty);
 
-// Semantic Icon & Interactivity
-// GetSecurityChipIconEnum returns the corresponding semantic icon shape.
-// Native Views uses the enum to drive its legacy SkColor logic, WebUI
-// passes the enum directly to its frontend via Mojo.
-SecurityChipIcon GetSecurityChipIconEnum(const LocationBarModel* model,
-                                         bool is_add_context_button_shown);
-
-bool IsSecurityChipInteractive(bool is_editing_or_empty, SecurityChipIcon icon);
+// Returns the resource ID if the icon is the Google Super G gradient icon;
+// nullopt otherwise.
+std::optional<int> MaybeGetGradientGoogleSuperGIcon(const ui::ImageModel& icon);
 
 // Accessibility & Tooltip
 SecurityChipAccessibilityState GetSecurityChipAccessibilityState(

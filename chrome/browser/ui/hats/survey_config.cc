@@ -27,6 +27,7 @@
 #include "components/variations/service/google_groups_manager.h"
 #include "extensions/common/extension_features.h"
 #include "media/base/media_switches.h"
+#include "ui/accessibility/accessibility_features.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/download/download_warning_desktop_hats_utils.h"
@@ -141,13 +142,15 @@ constexpr char kHatsSurveyTriggerRedWarning[] = "red-warning";
 constexpr char kHatsSurveyTriggerSettings[] = "settings";
 constexpr char kHatsSurveyTriggerSEHijacking[] = "search-engine-hijacking";
 constexpr char kHatsSurveyTriggerSettingsPrivacy[] = "settings-privacy";
-constexpr char kHatsSurveyTriggerSettingsSecurity[] = "settings-security-v2";
+constexpr char kHatsSurveyTriggerSettingsSecurity[] = "settings-security";
+constexpr char kHatsSurveyTriggerSettingsSecurityV2[] = "settings-security-v2";
 constexpr char kHatsSurveyTriggerTrustSafetyPrivacySettings[] =
     "ts-privacy-settings";
 constexpr char kHatsSurveyTriggerTrustSafetyTrustedSurface[] =
     "ts-trusted-surface";
 constexpr char kHatsSurveyTriggerTrustSafetyTransactions[] = "ts-transactions";
 constexpr char kHatsSurveyTriggerWhatsNew[] = "whats-new";
+constexpr char kHatsSurveyTriggerReadingModeExit[] = "reading-mode-exit";
 constexpr char kHatsSurveyTriggerTrustSafetyV2BrowsingData[] =
     "ts-v2-browsing-data";
 constexpr char kHatsSurveyTriggerTrustSafetyV2ControlGroup[] =
@@ -290,6 +293,16 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       /*presupplied_trigger_id=*/
       features::kHappinessTrackingSurveysForSecurityPageTriggerId.Get(),
       std::vector<std::string>{},
+      std::vector<std::string>{"Security Page User Action",
+                               "Safe Browsing Setting Before Trigger",
+                               "Safe Browsing Setting After Trigger",
+                               "Client Channel", "Time On Page"});
+  survey_configs.emplace_back(
+      &features::kHappinessTrackingSurveysForSecurityPage,
+      kHatsSurveyTriggerSettingsSecurityV2,
+      /*presupplied_trigger_id=*/
+      features::kHappinessTrackingSurveysForSecurityPageTriggerId.Get(),
+      std::vector<std::string>{},
       std::vector<std::string>{
           "Security page user actions",
           "Safe browsing setting when security page opened",
@@ -322,7 +335,7 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       /*product_specific_string_data_fields=*/
       std::vector<std::string>{"Channel", "User choice",
                                "Duration dialog was visible",
-                               "New extension name"});
+                               "New extension name", "New extension ID"});
 
   // NTP modules survey.
   survey_configs.emplace_back(
@@ -711,6 +724,10 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
   survey_configs.emplace_back(
       &features::kHappinessTrackingSurveysForDesktopWhatsNew,
       kHatsSurveyTriggerWhatsNew);
+
+  // Reading Mode survey.
+  survey_configs.emplace_back(&features::kHatsReadingModeSurvey,
+                              kHatsSurveyTriggerReadingModeExit);
 
   // Performance Controls surveys.
   survey_configs.emplace_back(

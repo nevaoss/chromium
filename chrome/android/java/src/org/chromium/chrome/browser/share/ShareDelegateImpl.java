@@ -18,6 +18,7 @@ import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.Callback;
 import org.chromium.base.DeviceInfo;
+import org.chromium.base.FeatureList;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
@@ -27,6 +28,7 @@ import org.chromium.chrome.browser.data_sharing.DataSharingTabManager;
 import org.chromium.chrome.browser.device_lock.DeviceLockActivityLauncherImpl;
 import org.chromium.chrome.browser.enterprise.util.DataProtectionBridge;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.history_clusters.HistoryClustersTabHelper;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.offlinepages.OfflinePageUtils;
@@ -37,6 +39,7 @@ import org.chromium.chrome.browser.share.ShareContentTypeHelper.ContentType;
 import org.chromium.chrome.browser.share.android_share_sheet.AndroidShareSheetController;
 import org.chromium.chrome.browser.share.android_share_sheet.TabGroupSharingController;
 import org.chromium.chrome.browser.share.link_to_text.LinkToTextHelper;
+import org.chromium.chrome.browser.share.send_tab_to_self.SendTabToSelfCoordinator;
 import org.chromium.chrome.browser.share.share_sheet.ShareSheetCoordinator;
 import org.chromium.chrome.browser.tab.SadTab;
 import org.chromium.chrome.browser.tab.Tab;
@@ -369,6 +372,10 @@ public class ShareDelegateImpl implements ShareDelegate {
     @VisibleForTesting
     static String getUrlToShare(GURL visibleUrl, @Nullable GURL canonicalUrl) {
         if (PdfUtils.isDownloadedPdf(visibleUrl.getSpec())) return "";
+        if (FeatureList.isNativeInitialized()
+                && ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_SHARE_FULL_LINK)) {
+            return visibleUrl.getSpec();
+        }
         if (canonicalUrl == null || canonicalUrl.isEmpty()) {
             return visibleUrl.getSpec();
         }
@@ -423,6 +430,46 @@ public class ShareDelegateImpl implements ShareDelegate {
             return true;
         }
         return !(mIsCustomTab || Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE);
+    }
+
+    @Override
+    public void sendTabToSelf(Tab tab) {
+        // Early return if critical dependencies are missing.
+        if (mBottomSheetController == null) return;
+
+        Profile profile = mProfileSupplier.get();
+        if (profile == null) return;
+
+        // WindowAndroid hosts the STTS bottom sheet and sign-in promo.
+        WindowAndroid windowAndroid = tab.getWindowAndroid();
+        if (windowAndroid == null) return;
+
+        // Safely resolve the Activity (weak reference might be null during teardown).
+        Activity activity = windowAndroid.getActivity().get();
+        if (activity == null) {
+            if (mContext instanceof Activity) {
+                activity = (Activity) mContext;
+            } else {
+                return;
+            }
+        }
+
+        SendTabToSelfCoordinator sttsCoordinator =
+                new SendTabToSelfCoordinator(
+                        mContext,
+                        windowAndroid,
+                        tab.getUrl().getSpec(),
+                        tab.getTitle(),
+                        mBottomSheetController,
+                        profile,
+                        DeviceLockActivityLauncherImpl.get(),
+                        () -> tab,
+                        activity,
+                        mSigninAndHistorySyncActivityLauncher,
+                        mActivityResultTracker,
+                        mModalDialogManagerSupplier,
+                        mSnackbarManager);
+        sttsCoordinator.show();
     }
 
     public static void setShowShareSheetHookForTesting(Callback<Boolean> hook) {

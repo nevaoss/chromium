@@ -84,6 +84,14 @@ BASE_FEATURE(kHideSuggestionGroupHeaders,
 // remote zero-prefix suggestions are enabled.
 BASE_FEATURE(kLocalHistoryZeroSuggestBeyondNTP, DISABLED);
 
+// Enables showing tabs from other devices in zero-prefix suggest.
+BASE_FEATURE(kOmniboxCrossDeviceTabZeroSuggest, DISABLED);
+BASE_FEATURE_PARAM(int,
+                   kOmniboxCrossDeviceTabZeroSuggestMaxAge,
+                   &kOmniboxCrossDeviceTabZeroSuggest,
+                   "max_age_minutes",
+                   5);
+
 // Enables the use of a request debouncer to throttle the number of ZPS prefetch
 // requests initiated over a given period of time (to help minimize the
 // performance impact of ZPS prefetching on the remote Suggest service).
@@ -163,7 +171,7 @@ BASE_FEATURE(kMostVisitedTilesHorizontalRenderGroup,
 BASE_FEATURE(kRichAutocompletion, "OmniboxRichAutocompletion", ENABLED);
 
 // When enabled, the multimodal input button is shown in the Omnibox.
-BASE_FEATURE(kOmniboxMultimodalInput, DISABLED);
+BASE_FEATURE(kOmniboxMultimodalInput, ENABLED);
 
 // An additional gate to the behavior of OmniboxMultimodalInput on desktop.
 BASE_FEATURE(kAndroidDesktopAimGate, DISABLED);
@@ -171,6 +179,13 @@ BASE_FEATURE(kAndroidDesktopAimGate, DISABLED);
 // Whether the AI Mode entrypoint is shown in the Omnibox as a RHS button. Only
 // used on desktop platforms.
 BASE_FEATURE(kAiModeOmniboxEntryPoint, ENABLED);
+
+// Whether the aim button should dynamically change to portray the submission
+// type.
+BASE_FEATURE(kDynamicAimSubmit, DISABLED);
+
+const base::FeatureParam<bool> kShowRhsAimHint{&kDynamicAimSubmit,
+                                               "Omnibox_ShowRhsAimHint", false};
 
 // Hides the AIM entrypoint in the Omnibox when user input is in progress. Only
 // used on desktop platforms.
@@ -194,11 +209,18 @@ BASE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReady, ENABLED);
 // painted a clean frame, avoiding the issue of the popup being shown with a
 // stale frame.
 BASE_FEATURE(kOmniboxWebUIDeferShowUntilVisualStateReady, DISABLED);
+// If enabled, stabilizes the popup showing behavior on startup by forcing
+// layout with a 1px height and hiding it initially to avoid visual artifacts.
+BASE_FEATURE(kOmniboxWebUIPopupStabilizeStartupShow, ENABLED);
 // When enabled, the AIM WebUI popup will detach its web contents when hidden.
 BASE_FEATURE(kOmniboxAimDetachWebContentsOnHide, ENABLED);
 // When enabled, the Omnibox WebUI popup will detach its web contents when
 // hidden.
 BASE_FEATURE(kOmniboxWebUIDetachWebContentsOnHide, ENABLED);
+
+// When enabled, the Omnibox WebUI popup will mark its web contents as hidden
+// when hidden, to unlock frames from compositor cache.
+BASE_FEATURE(kOmniboxWebUIPopupMarkAsHidden, DISABLED);
 
 // Feature used to default typed navigations to use HTTPS instead of HTTP.
 // This only applies to navigations that don't have a scheme such as
@@ -365,6 +387,10 @@ BASE_FEATURE(kComposeboxAttachmentsTypedState, DISABLED);
 // Whether to enable Google Drive context menu option in the composebox.
 BASE_FEATURE(kComposeboxDriveContextMenuOption, DISABLED);
 
+// Whether to enable Google Drive context menu option's disclaimer flow in the
+// composebox.
+BASE_FEATURE(kComposeboxDriveContextMenuOptionDisclaimer, DISABLED);
+
 // Whether the composebox should show a verbatim match for context in
 // zero-suggest.
 BASE_FEATURE(kComposeboxVerbatimMatchZeroSuggest, ENABLED);
@@ -380,13 +406,19 @@ BASE_FEATURE(kOmniboxDebugLogs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kThinkingModelIconUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Kill switch - Enables voice search coherence across composeboxes in NTP,
-// cobrowsing, omnibox:
+// cobrowsing, omnibox by default, unless feature param overrides.
 //  - Submit and stop buttons in voice search mode.
 //  - New voice recording animation.
 //  - New metrics for voice search across composeboxes.
 //  - No live transcription below the new recording animation.
 BASE_FEATURE(kVoiceSearchCoherenceComposeboxes,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables voice search coherence (as described above) only for cobrowsing.
+// Overrides the default (default was all surfaces enabled).
+const base::FeatureParam<bool> kVoiceSearchCoherenceComposeboxCobrowsingOnly{
+    &kVoiceSearchCoherenceComposeboxes,
+    "VoiceSearchCoherenceComposeboxCobrowsingOnly", false};
 
 // Enables voice search live experiment for NTP searchbox, (arm 1):
 //  - Submit and stop buttons in voice search mode.
@@ -416,15 +448,15 @@ BASE_FEATURE(kJumpStartOmnibox, DISABLED);
 // the volume of JNI jumps.
 BASE_FEATURE(kSuppressIntermediateACUpdatesOnLowEndDevices, DISABLED);
 
-// (Android only) Show tab groups via the search feature in the hub.
-BASE_FEATURE(kAndroidHubSearchTabGroups, ENABLED);
-
 // When enabled, delay focusTab to prioritize navigation
 // (https://crbug.com/374852568).
 BASE_FEATURE(kPostDelayedTaskFocusTab, ENABLED);
 
 // Controls various Omnibox Diagnostics features.
 BASE_FEATURE(kDiagnostics, "OmniboxDiagnostics", DISABLED);
+
+// Force the realbox on Android regardless of platform/configuration checks.
+BASE_FEATURE(kForceAndroidRealbox, DISABLED);
 
 // When enabled, offer a desktop-like omnibox UI enhancement on large form
 // factors.
@@ -445,13 +477,13 @@ namespace android {
 static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
   static const base::Feature* const kFeaturesExposedToJava[] = {
       &kDiagnostics,
+      &kForceAndroidRealbox,
       &kOmniboxTouchDownTriggerForPrefetch,
       &kOmniboxAsyncViewInflation,
       &kRichAutocompletion,
       &kUrlBarWithoutLigatures,
       &kUseFusedLocationProvider,
       &kJumpStartOmnibox,
-      &kAndroidHubSearchTabGroups,
       &kPostDelayedTaskFocusTab,
       &kOmniboxMobileParityUpdateV2,
       &kOmniboxXGeoPermissionGranularity,
@@ -466,7 +498,8 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kAIMSuppressVerbatimMatch,
       &kResetSuggestionsScroll,
       &kOmniboxItemDecoration,
-      &kExactMatchFavicons};
+      &kExactMatchFavicons,
+      &kStarterPackExpansion};
   static base::NoDestructor<base::android::FeatureMap> kFeatureMap(
       kFeaturesExposedToJava);
   return reinterpret_cast<int64_t>(kFeatureMap.get());
@@ -482,6 +515,31 @@ BASE_FEATURE(kPlatformAgnosticXGeo, DISABLED);
 // If enabled, Inline Location Signaling is enabled gating all development
 // and experimentation for the feature.
 BASE_FEATURE(kInlineLocationSignaling, DISABLED);
+
+constexpr base::FeatureParam<InlineLocationSignalingDisplayOrder>::Option
+    kInlineLocationSignalingDisplayOrderOptions[] = {
+        {InlineLocationSignalingDisplayOrder::kDisplayBelow, "DisplayBelow"},
+        {InlineLocationSignalingDisplayOrder::kDisplayAbove, "DisplayAbove"},
+};
+
+const base::FeatureParam<InlineLocationSignalingDisplayOrder>
+    kInlineLocationSignalingDisplayOrder{
+        &kInlineLocationSignaling, "display_order",
+        InlineLocationSignalingDisplayOrder::kDisplayBelow,
+        &kInlineLocationSignalingDisplayOrderOptions};
+
+constexpr base::FeatureParam<InlineLocationSignalingWording>::Option
+    kInlineLocationSignalingWordingOptions[] = {
+        {InlineLocationSignalingWording::kUseApproximateLocation,
+         "UseApproximateLocation"},
+        {InlineLocationSignalingWording::kUseLocation, "UseLocation"},
+};
+
+const base::FeatureParam<InlineLocationSignalingWording>
+    kInlineLocationSignalingWording{
+        &kInlineLocationSignaling, "wording",
+        InlineLocationSignalingWording::kUseApproximateLocation,
+        &kInlineLocationSignalingWordingOptions};
 
 // Note: no new flags beyond this point.
 

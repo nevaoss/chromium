@@ -12,8 +12,12 @@
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/sequence_checker.h"
+#include "base/task/sequenced_task_runner.h"
+#include "base/task/task_traits.h"
+#include "base/task/thread_pool.h"
 #include "base/time/time.h"
 #include "remoting/base/async_file_util.h"
+#include "remoting/base/constants.h"
 #include "remoting/base/logging.h"
 #include "remoting/proto/control.pb.h"
 #include "third_party/webrtc/modules/desktop_capture/desktop_capture_types.h"
@@ -55,6 +59,20 @@ bool IsLayoutValid(const protocol::VideoLayout& layout) {
   return true;
 }
 
+std::unique_ptr<protocol::VideoLayout> CreateDefaultLayout() {
+  auto default_layout = std::make_unique<protocol::VideoLayout>();
+  default_layout->set_pixel_type(
+      protocol::VideoLayout::PixelType::VideoLayout_PixelType_LOGICAL);
+  protocol::VideoTrackLayout* track = default_layout->add_video_track();
+  track->set_position_x(0);
+  track->set_position_y(0);
+  track->set_width(1280);
+  track->set_height(960);
+  track->set_x_dpi(kDefaultDpi);
+  track->set_y_dpi(kDefaultDpi);
+  return default_layout;
+}
+
 }  // namespace
 
 PersistentDisplayLayoutManager::PersistentDisplayLayoutManager(
@@ -64,6 +82,8 @@ PersistentDisplayLayoutManager::PersistentDisplayLayoutManager(
     : display_layout_file_path_(display_layout_file_path),
       display_info_monitor_(std::move(display_info_monitor)),
       desktop_resizer_(std::move(desktop_resizer)),
+      io_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
+          {base::MayBlock(), base::TaskPriority::BEST_EFFORT})),
       write_display_layout_timer_(
           FROM_HERE,
           kWriteDisplayLayoutDelay,
@@ -75,24 +95,27 @@ PersistentDisplayLayoutManager::~PersistentDisplayLayoutManager() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
-void PersistentDisplayLayoutManager::Start() {
+void PersistentDisplayLayoutManager::Start(base::OnceClosure on_done) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ReadFileAsync(
       display_layout_file_path_,
       base::BindOnce(&PersistentDisplayLayoutManager::OnDisplayLayoutFileLoaded,
-                     weak_ptr_factory_.GetWeakPtr()));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(on_done)));
 }
 
 void PersistentDisplayLayoutManager::OnDisplayLayoutFileLoaded(
+    base::OnceClosure on_done,
     base::FileErrorOr<std::string> load_file_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   ApplyDisplayLayout(load_file_result);
-  display_info_monitor_->AddCallback(base::BindRepeating(
-      &PersistentDisplayLayoutManager::OnDisplayInfoReceived,
-      weak_ptr_factory_.GetWeakPtr()));
+  display_info_subscription_ =
+      display_info_monitor_->AddCallback(base::BindRepeating(
+          &PersistentDisplayLayoutManager::OnDisplayInfoReceived,
+          weak_ptr_factory_.GetWeakPtr()));
   display_info_monitor_->Start();
+  std::move(on_done).Run();
 }
 
 void PersistentDisplayLayoutManager::OnDisplayInfoReceived() {
@@ -109,24 +132,26 @@ void PersistentDisplayLayoutManager::ApplyDisplayLayout(
     const base::FileErrorOr<std::string>& load_file_result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  bool success = false;
   if (load_file_result.has_value()) {
     auto display_layout_from_file = std::make_unique<protocol::VideoLayout>();
     if (display_layout_from_file->ParseFromString(*load_file_result)) {
       // Run some simple checks to make sure the file is not corrupted.
-      if (!IsLayoutValid(*display_layout_from_file)) {
+      if (IsLayoutValid(*display_layout_from_file)) {
+        for (protocol::VideoTrackLayout& track :
+             *display_layout_from_file->mutable_video_track()) {
+          // Clear the screen ID to indicate that a new display should be
+          // created. See comment in protobuf.
+          track.clear_screen_id();
+        }
+        if (desktop_resizer_) {
+          HOST_LOG << "Applying display layout from file: "
+                   << display_layout_file_path_;
+          desktop_resizer_->SetVideoLayout(*display_layout_from_file);
+          success = true;
+        }
+      } else {
         LOG(ERROR) << "Invalid display layout from file.";
-        return;
-      }
-      for (protocol::VideoTrackLayout& track :
-           *display_layout_from_file->mutable_video_track()) {
-        // Clear the screen ID to indicate that a new display should be created.
-        // See comment in protobuf.
-        track.clear_screen_id();
-      }
-      if (desktop_resizer_) {
-        HOST_LOG << "Applying display layout from file: "
-                 << display_layout_file_path_;
-        desktop_resizer_->SetVideoLayout(*display_layout_from_file);
       }
     } else {
       LOG(ERROR) << "Failed to parse display layout.";
@@ -136,20 +161,31 @@ void PersistentDisplayLayoutManager::ApplyDisplayLayout(
     LOG(ERROR) << "Failed to read file " << display_layout_file_path_ << ": "
                << base::File::ErrorToString(load_file_result.error());
   }
+
+  if (!success && desktop_resizer_) {
+    auto default_layout = CreateDefaultLayout();
+    HOST_LOG << "Applying standard default display layout ("
+             << default_layout->video_track(0).width() << "x"
+             << default_layout->video_track(0).height() << ").";
+    desktop_resizer_->SetVideoLayout(*default_layout);
+  }
 }
 
 void PersistentDisplayLayoutManager::WriteDisplayLayout() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  WriteFileAsync(
+  if (!latest_display_layout_) {
+    return;
+  }
+
+  WriteImportantFileAndEnsureParentDirAsync(
       display_layout_file_path_, latest_display_layout_->SerializeAsString(),
+      io_task_runner_,
       base::BindOnce(
-          [](const base::FilePath& display_layout_file_path,
-             base::FileErrorOr<void> result) {
+          [](const base::FilePath& path, base::FileErrorOr<void> result) {
             if (!result.has_value()) {
-              LOG(ERROR) << "Failed to write display layout to file "
-                         << display_layout_file_path << ": "
-                         << base::File::ErrorToString(result.error());
+              LOG(ERROR) << "Failed to write display layout to file " << path
+                         << ": " << base::File::ErrorToString(result.error());
             }
           },
           display_layout_file_path_));

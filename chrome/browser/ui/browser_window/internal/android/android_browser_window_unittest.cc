@@ -44,8 +44,11 @@ class AndroidBrowserWindowUnitTest : public testing::Test {
   }
 
   void TearDown() override {
-    SetProfileManager(nullptr);
+    // Destroy the native AndroidBrowserWindow before resetting the
+    // ProfileManager. This matches the production destruction order, where
+    // AndroidBrowserWindow is destroyed before its associated Profile.
     InvokeJavaResetAndDestroy();
+    SetProfileManager(nullptr);
   }
 
   AndroidBrowserWindow* InvokeJavaGetOrCreateNativePtr() const {
@@ -63,12 +66,6 @@ class AndroidBrowserWindowUnitTest : public testing::Test {
   AndroidBaseWindow* InvokeJavaGetOrCreateNativeBaseWindowPtr() const {
     return reinterpret_cast<AndroidBaseWindow*>(
         Java_AndroidBrowserWindowNativeUnitTestSupport_invokeGetOrCreateNativeBaseWindowPtr(
-            AttachCurrentThread(), java_test_support_));
-  }
-
-  AndroidBrowserWindow* InvokeJavaGetNativePtrForTesting() const {
-    return reinterpret_cast<AndroidBrowserWindow*>(
-        Java_AndroidBrowserWindowNativeUnitTestSupport_invokeGetNativePtrForTesting(
             AttachCurrentThread(), java_test_support_));
   }
 
@@ -140,11 +137,6 @@ TEST_F(AndroidBrowserWindowUnitTest, JavaGetNativePtrMethodReturnsCreatedPtr) {
 }
 
 TEST_F(AndroidBrowserWindowUnitTest,
-       JavaGetNativePtrMethodCrashesIfNoPtrWasCreated) {
-  EXPECT_DEATH(InvokeJavaGetNativePtr(), "");
-}
-
-TEST_F(AndroidBrowserWindowUnitTest,
        JavaDestroyMethodMarksWindowAsScheduledForDeletion) {
   // Arrange.
   InvokeJavaGetOrCreateNativePtr();
@@ -165,8 +157,7 @@ TEST_F(AndroidBrowserWindowUnitTest,
   InvokeJavaResetAndDestroy();
 
   // Assert: the native pointers on the Java side should be set to null.
-  AndroidBrowserWindow* android_browser_window =
-      InvokeJavaGetNativePtrForTesting();
+  AndroidBrowserWindow* android_browser_window = InvokeJavaGetNativePtr();
   AndroidBaseWindow* android_base_window =
       InvokeJavaGetNativeBaseWindowPtrForTesting();
   EXPECT_EQ(nullptr, android_browser_window);

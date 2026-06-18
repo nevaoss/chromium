@@ -9,6 +9,7 @@
 #include "ash/constants/ash_switches.h"
 #include "ash/public/cpp/login_screen_test_api.h"
 #include "ash/public/cpp/reauth_reason.h"
+#include "base/logging.h"
 #include "base/run_loop.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/test_future.h"
@@ -107,12 +108,13 @@ class LocalAuthFactorsPolicyControllerTest : public LoginManagerTest {
   void UpdatePolicy() { provider_.UpdateChromePolicy(policy_map_); }
 
   void OnFactorChanged(const AccountId& account_id,
-                       ash::auth::mojom::AuthFactor factor) {
+                       ash::auth::mojom::AuthFactor factor,
+                       ash::auth::mojom::ConfigureResult result) {
     LocalAuthFactorsPolicyController* controller =
         LocalAuthFactorsPolicyControllerFactory::GetForProfile(
             GetProfile(account_id));
     CHECK(controller);
-    controller->OnFactorChanged(factor);
+    controller->OnFactorChanged(factor, result);
   }
 
   void SetComplexityPolicy(LocalAuthFactorsComplexity complexity) {
@@ -142,10 +144,13 @@ class LocalAuthFactorsPolicyControllerTest : public LoginManagerTest {
   void PerformLoginAndVerifyPolicyEnforcement(
       const LoginManagerMixin::TestUserInfo& user,
       ReauthReason expected_reason) {
-    LoginUser(user.account_id);
-    ClearPendingPrefProcessedCallback();
     DisableAllAllowedAuthFactorsPolicy();
-    WaitForPrefProcessedCallback();
+    ClearPendingPrefProcessedCallback();
+    LoginUser(user.account_id);
+    if (LocalAuthFactorsPolicyControllerFactory::GetForProfile(
+            GetProfile(user.account_id))) {
+      WaitForPrefProcessedCallback();
+    }
     AssertReauthReason(user.account_id, expected_reason);
   }
 
@@ -185,6 +190,11 @@ class LocalAuthFactorsPolicyControllerTest : public LoginManagerTest {
   const LoginManagerMixin::TestUserInfo saml_user_{
       LoginManagerMixin::CreateEnterpriseAccountId(6),
       UserAuthConfig::Create({AshAuthFactor::kLocalPassword})
+          .RequireReauth(/*require_reauth=*/false)};
+
+  const LoginManagerMixin::TestUserInfo unmanaged_user_{
+      LoginManagerMixin::CreateConsumerAccountId(7),
+      UserAuthConfig::Create({AshAuthFactor::kGaiaPassword})
           .RequireReauth(/*require_reauth=*/false)};
 
   base::test::TestFuture<void> on_pref_processed_future_;
@@ -293,6 +303,27 @@ IN_PROC_BROWSER_TEST_F(LocalAuthFactorsPolicyControllerTest,
 }
 
 IN_PROC_BROWSER_TEST_F(LocalAuthFactorsPolicyControllerTest,
+                       PRE_NoForceReauthForUnmanagedGaiaPassword) {
+  base::HistogramTester histogram_tester;
+  PerformLoginAndVerifyPolicyEnforcement(unmanaged_user_, ReauthReason::kNone);
+  histogram_tester.ExpectBucketCount(
+      "Enterprise.LocalAuthFactorsPolicy.ForcedReauth", false, 0);
+  histogram_tester.ExpectBucketCount(
+      "Enterprise.LocalAuthFactorsPolicy.ForcedReauth", true, 0);
+}
+
+IN_PROC_BROWSER_TEST_F(LocalAuthFactorsPolicyControllerTest,
+                       NoForceReauthForUnmanagedGaiaPassword) {
+  // Reauth might be forced for other reasons (e.g. invalid tokens in tests),
+  // but it should NOT be ReauthReason::kForcedByLocalAuthFactorsPolicy.
+  auto known_user = user_manager::KnownUser(g_browser_process->local_state());
+  auto actual_reason = static_cast<ReauthReason>(
+      known_user.FindReauthReason(unmanaged_user_.account_id)
+          .value_or(static_cast<int>(ReauthReason::kNone)));
+  EXPECT_NE(actual_reason, ReauthReason::kForcedByLocalAuthFactorsPolicy);
+}
+
+IN_PROC_BROWSER_TEST_F(LocalAuthFactorsPolicyControllerTest,
                        PRE_ReauthForcedWhenPinDisabledAfterPolicyEnforcement) {
   // Pin allowed by QuickUnlock, so we do not expect a Reauth.
   PerformLoginAndVerifyPolicyEnforcement(gaia_password_and_pin_user_,
@@ -368,7 +399,8 @@ IN_PROC_BROWSER_TEST_F(LocalAuthFactorsPolicyControllerTest,
   }
 
   // Simulate updating only the password.
-  OnFactorChanged(account_id, ash::auth::mojom::AuthFactor::kLocalPassword);
+  OnFactorChanged(account_id, ash::auth::mojom::AuthFactor::kLocalPassword,
+                  ash::auth::mojom::ConfigureResult::kSuccess);
 
   // The notification should still be shown because PIN also needs update.
   WaitForNotificationShownCallback();
@@ -381,7 +413,8 @@ IN_PROC_BROWSER_TEST_F(LocalAuthFactorsPolicyControllerTest,
   }
 
   // Simulate updating the PIN.
-  OnFactorChanged(account_id, ash::auth::mojom::AuthFactor::kCryptohomePin);
+  OnFactorChanged(account_id, ash::auth::mojom::AuthFactor::kCryptohomePin,
+                  ash::auth::mojom::ConfigureResult::kSuccess);
 
   // Wait for the notification to be asynchronously dismissed.
   WaitForNotificationClosedCallback();
@@ -396,6 +429,30 @@ IN_PROC_BROWSER_TEST_F(LocalAuthFactorsPolicyControllerTest,
   histogram_tester.ExpectBucketCount(
       "Enterprise.LocalAuthFactorsPolicy.LocalAuthFactorChanged",
       static_cast<int>(LocalAuthFactorType::kPin), 1);
+}
+
+IN_PROC_BROWSER_TEST_F(LocalAuthFactorsPolicyControllerTest,
+                       NoHistogramRecordedOnFailedFactorChange) {
+  base::HistogramTester histogram_tester;
+  const AccountId& account_id = local_password_and_pin_user_.account_id;
+  LoginUser(account_id);
+
+  // Simulate a failed update attempt for the password.
+  OnFactorChanged(account_id, ash::auth::mojom::AuthFactor::kLocalPassword,
+                  ash::auth::mojom::ConfigureResult::kFatalError);
+
+  // No histogram should be recorded on failure.
+  histogram_tester.ExpectTotalCount(
+      "Enterprise.LocalAuthFactorsPolicy.LocalAuthFactorChanged", 0);
+
+  // Simulate a successful update attempt for the password.
+  OnFactorChanged(account_id, ash::auth::mojom::AuthFactor::kLocalPassword,
+                  ash::auth::mojom::ConfigureResult::kSuccess);
+
+  // Histogram should be recorded on success.
+  histogram_tester.ExpectBucketCount(
+      "Enterprise.LocalAuthFactorsPolicy.LocalAuthFactorChanged",
+      static_cast<int>(LocalAuthFactorType::kLocalPassword), 1);
 }
 
 IN_PROC_BROWSER_TEST_F(LocalAuthFactorsPolicyControllerTest,

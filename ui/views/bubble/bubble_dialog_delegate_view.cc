@@ -231,6 +231,14 @@ class BubbleDialogDelegate::AnchorViewObserver : public ViewObserver {
 
   View* anchor_view() const { return anchor_view_; }
 
+  void UpdateBubbleVisibility(bool visible) {
+    bubble_widget_visible_ = visible;
+    if (visible && update_bounds_when_visible_) {
+      parent_->OnAnchorBoundsChanged();
+      update_bounds_when_visible_ = false;
+    }
+  }
+
   // ViewObserver:
   void OnViewIsDeleting(View* observed_view) override {
     // The anchor is being deleted, make sure the parent bubble no longer
@@ -242,7 +250,11 @@ class BubbleDialogDelegate::AnchorViewObserver : public ViewObserver {
 
   void OnViewVisibleBoundsChanged(View* observed_view) override {
     DCHECK_EQ(anchor_view_, observed_view);
-    parent_->OnAnchorBoundsChanged();
+    if (bubble_widget_visible_) {
+      parent_->OnAnchorBoundsChanged();
+    } else {
+      update_bounds_when_visible_ = true;
+    }
   }
 
   // TODO(pbos): Consider observing View visibility changes and only updating
@@ -277,6 +289,8 @@ class BubbleDialogDelegate::AnchorViewObserver : public ViewObserver {
       scoped_notify_;
   const raw_ptr<BubbleDialogDelegate> parent_;
   const raw_ptr<View> anchor_view_;
+  bool bubble_widget_visible_ = true;
+  bool update_bounds_when_visible_ = false;
 };
 
 // This class is responsible for observing events on a BubbleDialogDelegate's
@@ -510,32 +524,44 @@ BubbleDialogDelegate::~BubbleDialogDelegate() {
 }
 
 // static
-Widget* BubbleDialogDelegate::CreateBubbleDeprecated(
-    BubbleDialogDelegate* bubble_delegate,
-    Widget::InitParams::Ownership ownership) {
+Widget* BubbleDialogDelegate::CreateBubbleInternal(
+    BubbleDialogDelegate* delegate,
+    Widget::InitParams::Ownership ownership,
+    Widget::ClosedCallback on_close) {
   // On Mac, ModalType::kWindow is implemented using sheets, which can't be
   // anchored at a specific point - they are always placed near the top center
   // of the window. To avoid unpleasant surprises, disallow setting an anchor
   // view or rectangle on these types of bubbles.
-  if (bubble_delegate->GetModalType() == ui::mojom::ModalType::kWindow) {
-    DCHECK(!bubble_delegate->GetAnchorView());
-    DCHECK_EQ(bubble_delegate->GetAnchorRect(), gfx::Rect());
+  if (delegate->GetModalType() == ui::mojom::ModalType::kWindow) {
+    DCHECK(!delegate->GetAnchorView());
+    DCHECK_EQ(delegate->GetAnchorRect(), gfx::Rect());
   }
 
-  bubble_delegate->Init();
+  delegate->Init();
   // Get the latest anchor widget from the anchor view at bubble creation time.
-  if (auto* anchor_view = bubble_delegate->GetAnchorView()) {
-    bubble_delegate->SetAnchorView(anchor_view);
+  if (auto* anchor_view = delegate->GetAnchorView()) {
+    delegate->SetAnchorView(anchor_view);
   }
-  Widget* const bubble_widget = CreateBubbleWidget(bubble_delegate, ownership);
 
-  bubble_delegate->set_adjust_if_offscreen(
-      PlatformStyle::kAdjustBubbleIfOffscreen);
+  Widget* const bubble_widget = CreateBubbleWidget(delegate, ownership);
 
-  bubble_delegate->SizeToContents();
-  bubble_delegate->bubble_widget_observer_ =
-      std::make_unique<BubbleWidgetObserver>(bubble_delegate, bubble_widget);
+  delegate->set_adjust_if_offscreen(PlatformStyle::kAdjustBubbleIfOffscreen);
+  delegate->SizeToContents();
+  delegate->bubble_widget_observer_ =
+      std::make_unique<BubbleWidgetObserver>(delegate, bubble_widget);
+
+  if (on_close) {
+    bubble_widget->MakeCloseSynchronous(std::move(on_close));
+  }
+
   return bubble_widget;
+}
+
+// static
+Widget* BubbleDialogDelegate::CreateBubbleDeprecated(
+    BubbleDialogDelegate* bubble_delegate,
+    Widget::InitParams::Ownership ownership) {
+  return CreateBubbleInternal(bubble_delegate, ownership);
 }
 
 // static
@@ -543,6 +569,14 @@ Widget* BubbleDialogDelegate::CreateBubbleDeprecated(
     std::unique_ptr<BubbleDialogDelegate> bubble_delegate_unique,
     Widget::InitParams::Ownership ownership) {
   return CreateBubbleDeprecated(bubble_delegate_unique.release(), ownership);
+}
+
+// static
+std::unique_ptr<Widget> BubbleDialogDelegate::CreateBubble(
+    BubbleDialogDelegate* delegate,
+    base::OnceCallback<void(Widget::ClosedReason)> on_close) {
+  return base::WrapUnique(CreateBubbleInternal(
+      delegate, Widget::InitParams::CLIENT_OWNS_WIDGET, std::move(on_close)));
 }
 
 // static
@@ -582,9 +616,9 @@ BubbleDialogDelegate* BubbleDialogDelegate::AsBubbleDialogDelegate() {
 std::unique_ptr<FrameView> BubbleDialogDelegate::CreateFrameView(
     Widget* widget) {
   const FrameMargins& margin = frame_margins();
-  auto frame = std::make_unique<BubbleDialogFrameView>(margin.title.value());
+  auto frame = std::make_unique<BubbleDialogFrameView>(margin.title);
 
-  frame->SetFootnoteMargins(margin.footnote.value());
+  frame->SetFootnoteMargins(margin.footnote);
   frame->SetFootnoteView(DisownFootnoteView());
 
   std::unique_ptr<BubbleBorder> border =
@@ -1268,6 +1302,10 @@ void BubbleDialogDelegate::OnBubbleWidgetVisibilityChanged(bool visible) {
       bubble_shown_duration_ += base::TimeTicks::Now() - *bubble_shown_time_;
       bubble_shown_time_.reset();
     }
+  }
+
+  if (anchor_view_observer_) {
+    anchor_view_observer_->UpdateBubbleVisibility(visible);
   }
 
   UpdateHighlightedButton(visible);

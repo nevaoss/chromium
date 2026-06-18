@@ -91,4 +91,43 @@ TEST_F(ContextualSearchSessionHandleTest,
                                       std::move(buffer), std::nullopt);
 }
 
+TEST_F(ContextualSearchSessionHandleTest,
+       StartDriveContextUploadFlow_ValidToken) {
+  base::UnguessableToken token = handle_->CreateContextToken();
+  std::string test_drive_id = "test_drive_id";
+  std::string test_resource_key = "test_resource_key";
+  std::string test_mime_type = "application/vnd.google-apps.document";
+
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(token, _, _))
+      .WillOnce([&](const base::UnguessableToken& file_token,
+                    std::unique_ptr<lens::ContextualInputData> input_data,
+                    std::optional<lens::ImageEncodingOptions> image_options) {
+        EXPECT_EQ(input_data->primary_content_type, lens::MimeType::kUnknown);
+        EXPECT_EQ(input_data->drive_id, test_drive_id);
+        EXPECT_EQ(input_data->resource_key, test_resource_key);
+        EXPECT_EQ(input_data->mime_type_string, test_mime_type);
+      });
+
+  ContextualSearchSessionHandle::DriveUploadParams params;
+  params.drive_id = test_drive_id;
+  params.resource_key = test_resource_key;
+  params.mime_type = test_mime_type;
+  params.file_name = "test.doc";
+  handle_->StartDriveContextUploadFlow(token, params);
+}
+
+TEST_F(ContextualSearchSessionHandleTest,
+       StartDriveContextUploadFlow_InvalidToken) {
+  base::UnguessableToken token = base::UnguessableToken::Create();
+
+  EXPECT_CALL(*mock_controller_ptr_, StartFileUploadFlow(_, _, _)).Times(0);
+
+  ContextualSearchSessionHandle::DriveUploadParams params;
+  params.drive_id = "id";
+  params.resource_key = "key";
+  params.mime_type = "type";
+  params.file_name = "name";
+  handle_->StartDriveContextUploadFlow(token, params);
+}
+
 }  // namespace contextual_search

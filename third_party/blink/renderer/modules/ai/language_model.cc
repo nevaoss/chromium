@@ -253,7 +253,7 @@ class CloneLanguageModelClient
     LanguageModel* cloned_language_model = MakeGarbageCollected<LanguageModel>(
         language_model_->GetExecutionContext(),
         std::move(language_model_remote), language_model_->GetTaskRunner(),
-        std::move(info));
+        std::move(info), language_model_->has_context());
     GetResolver()->Resolve(cloned_language_model);
     Cleanup();
   }
@@ -467,11 +467,13 @@ LanguageModel::LanguageModel(
     ExecutionContext* execution_context,
     mojo::PendingRemote<mojom::blink::AILanguageModel> pending_remote,
     scoped_refptr<base::SequencedTaskRunner> task_runner,
-    blink::mojom::blink::AILanguageModelInstanceInfoPtr info)
+    blink::mojom::blink::AILanguageModelInstanceInfoPtr info,
+    bool has_context)
     : ExecutionContextClient(execution_context),
       task_runner_(task_runner),
       language_model_remote_(execution_context),
-      info_(std::move(info)) {
+      info_(std::move(info)),
+      has_context_(has_context) {
   CHECK(info_);
   language_model_remote_.Bind(std::move(pending_remote), task_runner);
 }
@@ -845,6 +847,7 @@ void LanguageModel::ExecuteMeasureInputUsage(
     ScriptPromiseResolver<IDLDouble>* resolver,
     AbortSignal* signal,
     Vector<mojom::blink::AILanguageModelPromptPtr> prompts) {
+  auto reject_fn = RejectOnDestruction(resolver, signal);
   language_model_remote_->MeasureInputUsage(
       std::move(prompts),
       BindOnce(
@@ -867,7 +870,8 @@ void LanguageModel::ExecuteMeasureInputUsage(
             }
             resolver->Resolve(static_cast<double>(usage.value()));
           },
-          WrapPersistent(resolver), WrapPersistent(signal)));
+          WrapPersistent(resolver), WrapPersistent(signal))
+          .Then(std::move(reject_fn)));
 }
 
 bool LanguageModel::ValidateInput(ScriptState* script_state,

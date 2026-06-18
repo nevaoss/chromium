@@ -17,6 +17,7 @@
 
 #include "base/check.h"
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
@@ -33,6 +34,8 @@
 #include "remoting/base/capabilities.h"
 #include "remoting/base/constants.h"
 #include "remoting/base/errors.h"
+#include "remoting/base/fifo_buffer.h"
+#include "remoting/base/ipc_fifo_buffer.h"
 #include "remoting/base/local_session_policies_provider.h"
 #include "remoting/base/logging.h"
 #include "remoting/base/session_options.h"
@@ -70,6 +73,7 @@
 #include "remoting/host/webauthn/remote_webauthn_state_change_notifier.h"
 #include "remoting/proto/control.pb.h"
 #include "remoting/proto/event.pb.h"
+#include "remoting/protocol/audio_sample_info.h"
 #include "remoting/protocol/audio_stream.h"
 #include "remoting/protocol/capability_names.h"
 #include "remoting/protocol/client_stub.h"
@@ -100,6 +104,30 @@ constexpr char kRtcLogTransferDataChannelPrefix[] = "rtc-log-transfer-";
 
 constexpr base::TimeDelta kDefaultBoostCaptureInterval = base::Milliseconds(5);
 constexpr base::TimeDelta kDefaultBoostDuration = base::Milliseconds(50);
+
+std::string_view PixelTypeToString(
+    remoting::protocol::VideoLayout::PixelType pixel_type) {
+  switch (pixel_type) {
+    case remoting::protocol::VideoLayout_PixelType_LOGICAL:
+      return "DIPs";
+    case remoting::protocol::VideoLayout_PixelType_PHYSICAL:
+      return "Physical pixels";
+    default:
+      return "Unknown pixel type";
+  }
+}
+
+void LogVideoTrack(int index,
+                   const remoting::protocol::VideoTrackLayout& track) {
+  HOST_LOG << "  track " << index << ": "
+           << "id="
+           << (track.has_screen_id() ? base::NumberToString(track.screen_id())
+                                     : "[none]")
+           << ", name='" << track.display_name()
+           << "', pos=" << track.position_x() << "," << track.position_y()
+           << ", " << track.width() << "x" << track.height() << ", dpi=["
+           << track.x_dpi() << "," << track.y_dpi() << "]";
+}
 
 }  // namespace
 
@@ -164,10 +192,14 @@ void ClientSession::NotifyClientResolution(
     const protocol::ClientResolution& resolution) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(resolution.width_pixels() >= 0 && resolution.height_pixels() >= 0);
-  VLOG(1) << "Received ClientResolution (width=" << resolution.width_pixels()
-          << ", height=" << resolution.height_pixels()
-          << ", x_dpi=" << resolution.x_dpi()
-          << ", y_dpi=" << resolution.y_dpi() << ")";
+  HOST_LOG << "Received ClientResolution (width=" << resolution.width_pixels()
+           << ", height=" << resolution.height_pixels()
+           << ", x_dpi=" << resolution.x_dpi()
+           << ", y_dpi=" << resolution.y_dpi() << ", screen_id="
+           << (resolution.has_screen_id()
+                   ? base::NumberToString(resolution.screen_id())
+                   : "[none]")
+           << ")";
 
   if (!screen_controls_) {
     return;
@@ -300,12 +332,9 @@ void ClientSession::SetCapabilities(
   extension_manager_->OnNegotiatedCapabilities(connection_->client_stub(),
                                                capabilities_);
 
-  if (HasCapability(capabilities_, protocol::kMicrophoneRemotingCapability)) {
-    audio_injector_ = desktop_environment_->CreateAudioInjector();
-    if (audio_injector_) {
-      audio_injector_->Start(weak_factory_.GetWeakPtr());
-      connection_->set_audio_stub(audio_injector_->GetWeakPtr());
-    }
+  if (HasCapability(capabilities_, protocol::kMicrophoneRemotingCapability) &&
+      !audio_injector_) {
+    CreateAudioInjectorAndBuffer();
   }
 
   if (HasCapability(capabilities_, protocol::kFileTransferCapability)) {
@@ -476,6 +505,15 @@ void ClientSession::ControlPeerConnection(
 }
 
 void ClientSession::SetVideoLayout(const protocol::VideoLayout& video_layout) {
+  HOST_LOG << "Received VideoLayout ("
+           << PixelTypeToString(video_layout.pixel_type()) << ", primary_id="
+           << (video_layout.has_primary_screen_id()
+                   ? base::NumberToString(video_layout.primary_screen_id())
+                   : "[none]")
+           << ")";
+  for (int i = 0; i < video_layout.video_track_size(); i++) {
+    LogVideoTrack(i, video_layout.video_track(i));
+  }
   screen_controls_->SetVideoLayout(video_layout);
 }
 
@@ -675,6 +713,10 @@ void ClientSession::OnConnectionChannelsConnected() {
   DCHECK(!channels_connected_);
   channels_connected_ = true;
 
+  if (pending_audio_writer_) {
+    connection_->SetAudioWriter(std::move(pending_audio_writer_));
+  }
+
   // Negotiate capabilities with the client.
   VLOG(1) << "Host capabilities: " << host_capabilities_;
   protocol::Capabilities capabilities;
@@ -787,6 +829,21 @@ void ClientSession::OnIncomingDataChannel(
     const std::string& channel_name,
     std::unique_ptr<protocol::MessagePipe> pipe) {
   data_channel_manager_.OnIncomingDataChannel(channel_name, std::move(pipe));
+}
+
+void ClientSession::OnIncomingAudioFormatChanged(
+    const protocol::AudioSampleInfo& info,
+    base::OnceCallback<void(bool)> done) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (audio_injector_) {
+    audio_injector_->SetSampleInfo(info, std::move(done));
+  } else {
+    if (pending_audio_format_ack_callback_) {
+      std::move(pending_audio_format_ack_callback_).Run(false);
+    }
+    pending_audio_sample_info_ = info;
+    pending_audio_format_ack_callback_ = std::move(done);
+  }
 }
 
 const std::string& ClientSession::client_jid() const {
@@ -1056,6 +1113,36 @@ void ClientSession::OnDesktopEnvironmentCreated(
   desktop_environment_ready_callbacks_.clear();
 }
 
+void ClientSession::CreateAudioInjectorAndBuffer() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  std::unique_ptr<IpcFifoBufferWriter> writer;
+  std::unique_ptr<IpcFifoBufferReader> reader;
+
+  // Please see the documentation for DesktopEnvironment::CreateAudioInjector,
+  // which explains why we always use IpcFifoBuffer.
+  if (CreateIpcFifoBuffer(kDefaultFifoBufferCapacity, writer, reader)) {
+    audio_injector_ =
+        desktop_environment_->CreateAudioInjector(std::move(reader));
+    if (audio_injector_) {
+      if (pending_audio_sample_info_) {
+        base::OnceCallback<void(bool)> done =
+            pending_audio_format_ack_callback_
+                ? std::move(pending_audio_format_ack_callback_)
+                : base::DoNothing();
+        audio_injector_->SetSampleInfo(*pending_audio_sample_info_,
+                                       std::move(done));
+        pending_audio_sample_info_.reset();
+      }
+      audio_injector_->Start(weak_factory_.GetWeakPtr());
+      if (channels_connected_) {
+        connection_->SetAudioWriter(std::move(writer));
+      } else {
+        pending_audio_writer_ = std::move(writer);
+      }
+    }
+  }
+}
+
 void ClientSession::OnLocalSessionPoliciesChanged(
     const SessionPolicies& new_policies) {
   DCHECK(local_session_policy_update_subscription_);
@@ -1126,7 +1213,7 @@ void ClientSession::OnDesktopDisplayChanged(
     return;
   }
 
-  LOG(INFO) << "ClientSession::OnDesktopDisplayChanged";
+  HOST_LOG << "ClientSession::OnDesktopDisplayChanged";
 
   // Scan display list to calculate the full desktop size.
   int min_x = 0;
@@ -1135,27 +1222,18 @@ void ClientSession::OnDesktopDisplayChanged(
   int max_y = 0;
   int dpi_x = 0;
   int dpi_y = 0;
-  std::string_view dips_or_physical_pixels;
-  switch (displays->pixel_type()) {
-    case protocol::VideoLayout::PixelType::VideoLayout_PixelType_LOGICAL:
-      dips_or_physical_pixels = "DIPs";
-      break;
-    case protocol::VideoLayout::PixelType::VideoLayout_PixelType_PHYSICAL:
-      dips_or_physical_pixels = "Physical pixels";
-      break;
-    default:
-      dips_or_physical_pixels = "Unknown pixel type";
-  }
-  LOG(INFO) << "  Scanning display info... (" << dips_or_physical_pixels << ")";
+  std::string_view dips_or_physical_pixels =
+      PixelTypeToString(displays->pixel_type());
+  HOST_LOG << "Scanning display info... (" << dips_or_physical_pixels
+           << ", primary_id="
+           << (displays->has_primary_screen_id()
+                   ? base::NumberToString(displays->primary_screen_id())
+                   : "[none]")
+           << ")";
   for (int display_id = 0; display_id < displays->video_track_size();
        display_id++) {
-    protocol::VideoTrackLayout track = displays->video_track(display_id);
-    LOG(INFO) << "   #" << display_id << " : " << track.position_x() << ","
-              << track.position_y() << " " << track.width() << "x"
-              << track.height() << " [" << track.x_dpi() << "," << track.y_dpi()
-              << "], screen_id=" << track.screen_id() << ", primary="
-              << (displays->has_primary_screen_id() &&
-                  track.screen_id() == displays->primary_screen_id());
+    const protocol::VideoTrackLayout& track = displays->video_track(display_id);
+    LogVideoTrack(display_id, track);
     if (dpi_x == 0) {
       dpi_x = track.x_dpi();
     }
@@ -1240,9 +1318,9 @@ void ClientSession::OnDesktopDisplayChanged(
   video_track->set_height(size.height());
   video_track->set_x_dpi(dpi_x);
   video_track->set_y_dpi(dpi_y);
-  LOG(INFO) << "  Full Desktop (" << dips_or_physical_pixels << ") = 0,0 "
-            << size.width() << "x" << size.height() << " [" << dpi_x << ","
-            << dpi_y << "]";
+  HOST_LOG << "Full Desktop (" << dips_or_physical_pixels << ") = 0,0 "
+           << size.width() << "x" << size.height() << ", dpi=[" << dpi_x << ","
+           << dpi_y << "]";
 
   desktop_display_info_.CopyFromVideoLayoutProto(*displays);
 
@@ -1255,13 +1333,7 @@ void ClientSession::OnDesktopDisplayChanged(
     video_track->set_media_stream_id(
         protocol::WebrtcVideoStream::StreamNameForId(display.screen_id()));
 
-    LOG(INFO) << "  Display " << display_id << " = " << display.position_x()
-              << "," << display.position_y() << " " << display.width() << "x"
-              << display.height() << " [" << display.x_dpi() << ","
-              << display.y_dpi() << "], screen_id=" << display.screen_id()
-              << ", primary="
-              << (displays->has_primary_screen_id() &&
-                  display.screen_id() == displays->primary_screen_id());
+    LogVideoTrack(display_id, display);
   }
 
   // Set the display index, if this is the first message being processed or if
@@ -1318,6 +1390,11 @@ void ClientSession::OnDesktopAttached() {
     // able to connect now.
     remote_webauthn_message_handler_->NotifyWebAuthnStateChange();
   }
+
+  if (HasCapability(capabilities_, protocol::kMicrophoneRemotingCapability) &&
+      !audio_injector_) {
+    CreateAudioInjectorAndBuffer();
+  }
 }
 
 void ClientSession::OnDesktopDetached() {
@@ -1335,6 +1412,8 @@ void ClientSession::OnDesktopDetached() {
   if (remote_open_url_message_handler_) {
     remote_open_url_message_handler_->ClearReceivers();
   }
+
+  audio_injector_.reset();
 }
 
 void ClientSession::OnSecurityKeyConnection(

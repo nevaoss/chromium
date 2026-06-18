@@ -50,8 +50,8 @@ Non è possibile salvare nuovi preferiti nel tuo account finché non ne elimini 
 <translation id="1811860791247653035">Per accedere alla personalizzazione e ad altre funzionalità, includi Chromium in <ph name="FEATURE_NAME_1" /> e <ph name="FEATURE_NAME_2" /></translation>
 <translation id="1838412507805038478">Chromium ha verificato che il certificato del sito web è stato emesso da <ph name="ISSUER" />.</translation>
 <translation id="1839447949248872139">Apri i link in Chromium per impostazione predefinita</translation>
-<translation id="1843424232666537147">Chromium offre funzioni che consentono di gestire i dati Internet e la velocità di caricamento delle pagine web.
-<ph name="BEGIN_LINK" />Ulteriori informazioni<ph name="END_LINK" /></translation>
+<translation id="1843424232666537147">Chromium offre funzioni che consentono di gestire i dati internet e la velocità di caricamento delle pagine web.
+<ph name="BEGIN_LINK" />Scopri di più<ph name="END_LINK" /></translation>
 <translation id="1847960401032164406">Maps in Chromium</translation>
 <translation id="1867772173333403444">4. Seleziona Chromium</translation>
 <translation id="1965068424387304464">Suggerimento per Chromium: salva le password</translation>
@@ -310,6 +310,7 @@ Solo chi conosce la tua passphrase può leggere i tuoi dati criptati. La passphr
 <translation id="7763454117143368771">Usa Chromium come browser predefinito per proteggerti da siti pericolosi e tenere al sicuro le tue password</translation>
 <translation id="7784950022329154821">Blocca le schede Incognito quando chiudi Chromium</translation>
 <translation id="78025249032851484">Chromium non è aggiornato.</translation>
+<translation id="784098351033299289">Chromium utilizza Google Maps per fornirti indicazioni stradali e informazioni locali sui link a Maps</translation>
 <translation id="7859018312476869945">Quando digiti nella barra degli indirizzi o nella casella di ricerca, Chromium invia ciò che digiti al tuo motore di ricerca predefinito per ricevere suggerimenti migliori. Questa opzione è disattivata nella modalità Incognito.</translation>
 <translation id="7890287942691234100">Inizia a usare lo scanner di Chromium</translation>
 <translation id="7905064834449738336">Quando utilizzi una password, Chromium ti avvisa se è stata pubblicata online. Durante questa operazione, le tue password e i tuoi nomi utente vengono criptati, quindi non possono essere letti da nessuno, Google compresa.</translation>

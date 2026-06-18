@@ -656,6 +656,35 @@ suite('SearchboxTest', () => {
     testProxy.handler.reset();
   });
 
+  test('queryAutocomplete passes cursor position', async () => {
+    realbox.$.input.inputElement.value = 'hello';
+    realbox.$.input.inputElement.selectionStart = 3;
+    realbox.$.input.inputElement.selectionEnd = 3;
+    realbox.$.input.inputElement.dispatchEvent(new InputEvent('input'));
+
+    const args = await testProxy.handler.whenCalled('queryAutocomplete');
+    assertEquals(args.input, 'hello');
+    assertEquals(args.cursorPosition, 3);
+  });
+
+  test(
+      'queryAutocomplete passes cursor position when input is out of sync',
+      async () => {
+        // Simulate a programmatic update that makes them out of sync
+        realbox.$.input.inputElement.value = 'hello';
+        realbox.$.input.inputElement.selectionStart = 3;
+        realbox.$.input.inputElement.selectionEnd = 3;
+
+        // Dispatch event with 'hello world' but DOM is still 'hello'
+        realbox.$.input.dispatchEvent(new CustomEvent(
+            'searchbox-input-text-updated',
+            {detail: {value: 'hello world', isComposing: false}}));
+
+        const args = await testProxy.handler.whenCalled('queryAutocomplete');
+        assertEquals(args.input, 'hello world');
+        assertEquals(args.cursorPosition, 11);
+      });
+
   test('clearing the input stops autocomplete', async () => {
     realbox.$.input.inputElement.value = 'h';
     realbox.$.input.inputElement.dispatchEvent(new InputEvent('input'));
@@ -2044,7 +2073,7 @@ suite('SearchboxTest', () => {
         assertEquals(
             matchEls[1]!.$.icon.$.image.getAttribute('src'),
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[1]!.imageUrl}`);
+                encodeURIComponent(matches[1]!.imageUrl)}`);
 
         // Mock image finishing loading, which should remove the temporary
         // background color.
@@ -2168,12 +2197,12 @@ suite('SearchboxTest', () => {
         assertIconState(
             matchEls[0], /*hasEntityImage=*/ false, /*expectUseIconImg=*/ false,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[0]!.iconUrl}`);
+                encodeURIComponent(matches[0]!.iconUrl)}`);
         // Test initial icon state for the second match: icon image not used.
         assertIconState(
             matchEls[1], /*hasEntityImage=*/ true, /*expectUseIconImg=*/ false,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[1]!.iconUrl}`);
+                encodeURIComponent(matches[1]!.iconUrl)}`);
 
         // Select the first match.
         let arrowDownEvent = arrowDown(realbox);
@@ -2189,18 +2218,18 @@ suite('SearchboxTest', () => {
         assertIconState(
             realbox, /*hasEntityImage=*/ false, /*expectUseIconImg=*/ false,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[0]!.iconUrl}`);
+                encodeURIComponent(matches[0]!.iconUrl)}`);
 
         // Mock icon image finishing loading for the first match and the realbox
         // itself. The icon image should be used icon.
         await assertAndLoadIcon(
             matchEls[0], /*hasEntityImage=*/ false,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[0]!.iconUrl}`);
+                encodeURIComponent(matches[0]!.iconUrl)}`);
         await assertAndLoadIcon(
             realbox, /*hasEntityImage=*/ false,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[0]!.iconUrl}`);
+                encodeURIComponent(matches[0]!.iconUrl)}`);
 
         // Select the second match.
         arrowDownEvent = arrowDown(realbox);
@@ -2215,17 +2244,17 @@ suite('SearchboxTest', () => {
         assertIconState(
             realbox, /*hasEntityImage=*/ false, /*expectUseIconImg=*/ false,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[1]!.iconUrl}`);
+                encodeURIComponent(matches[1]!.iconUrl)}`);
         // Mock icon image finishing loading for the second match and the
         // realbox itself. The icon image should be used.
         await assertAndLoadIcon(
             matchEls[1], /*hasEntityImage=*/ true,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[1]!.iconUrl}`);
+                encodeURIComponent(matches[1]!.iconUrl)}`);
         await assertAndLoadIcon(
             realbox, /*hasEntityImage=*/ false,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[1]!.iconUrl}`);
+                encodeURIComponent(matches[1]!.iconUrl)}`);
 
         // Select the first match by pressing 'Escape'.
         const escapeEvent = new KeyboardEvent('keydown', {
@@ -2247,13 +2276,13 @@ suite('SearchboxTest', () => {
         assertIconState(
             realbox, /*hasEntityImage=*/ false, /*expectUseIconImg=*/ false,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[0]!.iconUrl}`);
+                encodeURIComponent(matches[0]!.iconUrl)}`);
         // Mock icon image finishing loading for the realbox (now showing the
         // first match's icon image again).
         await assertAndLoadIcon(
             realbox, /*hasEntityImage=*/ false,
             `//image?staticEncode=true&encodeType=webp&url=${
-                matches[0]!.iconUrl}`);
+                encodeURIComponent(matches[0]!.iconUrl)}`);
       });
 
 

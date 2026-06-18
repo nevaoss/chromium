@@ -51,6 +51,7 @@
 #include "base/task/thread_pool.h"
 #include "base/threading/simple_thread.h"
 #include "base/threading/thread_restrictions.h"
+#include "base/time/time.h"
 #include "base/trace_event/memory_dump_manager.h"
 #include "base/trace_event/memory_pressure_level_proto.h"
 #include "base/trace_event/trace_event.h"
@@ -127,6 +128,7 @@
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/self_owned_receiver.h"
+#include "mojo/public/cpp/system/invitation.h"
 #include "mojo/public/cpp/system/message_pipe.h"
 #include "net/base/net_errors.h"
 #include "net/base/port_util.h"
@@ -163,6 +165,7 @@
 #include "third_party/blink/public/web/web_v8_features.h"
 #include "third_party/blink/public/web/web_view.h"
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
+#include "third_party/perfetto/include/perfetto/tracing/track_event_args.h"
 #include "third_party/skia/include/core/SkFontMgr.h"
 #include "third_party/skia/include/core/SkGraphics.h"
 #include "ui/base/ui_base_switches.h"
@@ -490,18 +493,64 @@ void RenderThreadImpl::Init() {
 
   mojo::PendingRemote<viz::mojom::Gpu> remote_gpu;
   BindHostReceiver(remote_gpu.InitWithNewPipeAndPassReceiver());
-  gpu_ = viz::Gpu::Create(std::move(remote_gpu), GetIOTaskRunner());
+  base::TimeTicks init_start_time = base::TimeTicks::Now();
+  const base::CommandLine& command_line =
+      *base::CommandLine::ForCurrentProcess();
+  std::optional<base::TimeTicks> gpu_request_start_time;
+  if (command_line.HasSwitch(switches::kGpuChannelRequestStartTimeTicks)) {
+    int64_t start_time_internal = 0;
+    if (base::StringToInt64(command_line.GetSwitchValueASCII(
+                                switches::kGpuChannelRequestStartTimeTicks),
+                            &start_time_internal)) {
+      gpu_request_start_time =
+          base::TimeTicks() + base::Microseconds(start_time_internal);
+    }
+  }
 
-  // Establish the GPU channel now, so its ready when needed and we don't have
-  // to wait on a sync call.
-  gpu_->EstablishGpuChannel(
-      base::BindOnce([](scoped_refptr<gpu::GpuChannelHost> host) {
+  auto gpu_channel_established_callback = base::BindOnce(
+      [](base::TimeTicks init_start_time,
+         std::optional<base::TimeTicks> gpu_request_start_time,
+         scoped_refptr<gpu::GpuChannelHost> host) {
         // We don't call OnPotentialNewGpuChannelHost() here since this occurs
         // before the RenderMediaClient has been initialized.
         if (host) {
           GetContentClient()->SetGpuInfo(host->gpu_info());
         }
-      }));
+        base::UmaHistogramBoolean("GPU.InitialChannelEstablishmentSucceeded",
+                                  host != nullptr);
+        base::TimeTicks now = base::TimeTicks::Now();
+        base::UmaHistogramTimes("GPU.EstablishGpuChannel.InitialChannelLatency",
+                                now - init_start_time);
+        if (gpu_request_start_time) {
+          base::UmaHistogramTimes(
+              "GPU.EstablishGpuChannel.InitialChannelBrowserToRendererLatency",
+              now - gpu_request_start_time.value());
+        }
+      },
+      init_start_time, gpu_request_start_time);
+
+  mojo::ScopedMessagePipeHandle initial_gpu_channel = TakeInitialGPUChannel();
+  const bool use_early_channel =
+      base::FeatureList::IsEnabled(features::kSendGPUChannelEarly) &&
+      command_line.HasSwitch(switches::kGpuClientId) &&
+      initial_gpu_channel.is_valid();
+  if (use_early_channel) {
+    // In the early channel path, we use the pre-allocated pipe passed from the
+    // browser.
+    int client_id = 0;
+    CHECK(base::StringToInt(
+        command_line.GetSwitchValueASCII(switches::kGpuClientId), &client_id));
+    gpu_ = viz::Gpu::Create(std::move(remote_gpu), GetIOTaskRunner(), client_id,
+                            std::move(initial_gpu_channel),
+                            std::move(gpu_channel_established_callback));
+  } else {
+    // In the standard path, we create a new pipe and ask the browser to
+    // connect it on demand.
+    gpu_ = viz::Gpu::Create(std::move(remote_gpu), GetIOTaskRunner());
+    // Establish the GPU channel now, so its ready when needed and we don't have
+    // to wait on a sync call.
+    gpu_->EstablishGpuChannel(std::move(gpu_channel_established_callback));
+  }
 
   // NOTE: Do not add interfaces to |binders| within this method. Instead,
   // modify the definition of |ExposeRendererInterfacesToBrowser()| to ensure
@@ -523,8 +572,6 @@ void RenderThreadImpl::Init() {
       base::BindRepeating(&RenderThreadImpl::OnRendererInterfaceReceiver,
                           base::Unretained(this)));
 
-  const base::CommandLine& command_line =
-      *base::CommandLine::ForCurrentProcess();
 
 #if defined(ENABLE_IPC_FUZZER)
   if (command_line.HasSwitch(switches::kIpcDumpDirectory)) {
@@ -567,15 +614,6 @@ void RenderThreadImpl::Init() {
   // Note that under Linux, the media library will normally already have
   // been initialized by the Zygote before this instance became a Renderer.
   media::InitializeMediaLibrary();
-
-  // In tests or in single-process mode, the render thread does not live on the
-  // main thread of the process, so we can't register a sync listener.
-  if (base::SingleThreadTaskRunner::GetMainThreadDefault()
-          ->BelongsToCurrentThread()) {
-    memory_pressure_listener_registration_ =
-        std::make_unique<base::MemoryPressureListenerRegistration>(
-            base::MemoryPressureListenerTag::kRenderThreadImpl, this);
-  }
 
   mojo::PendingRemote<discardable_memory::mojom::DiscardableSharedMemoryManager>
       manager_remote;
@@ -1322,19 +1360,21 @@ scoped_refptr<gpu::GpuChannelHost> RenderThreadImpl::EstablishGpuChannelSync() {
 
 void RenderThreadImpl::EstablishGpuChannel(
     EstablishGpuChannelCallback callback) {
-  TRACE_EVENT_BEGIN("gpu", "RenderThreadImpl::EstablishGpuChannel",
-                    perfetto::Track::FromPointer(this));
+  TRACE_EVENT_INSTANT("gpu", "RenderThreadImpl::EstablishGpuChannel",
+                      perfetto::Flow::FromPointer(this));
   gpu_->EstablishGpuChannel(base::BindOnce(
       [](EstablishGpuChannelCallback callback, RenderThreadImpl* thread,
+         perfetto::TerminatingFlow flow,
          scoped_refptr<gpu::GpuChannelHost> host) {
-        TRACE_EVENT_END("gpu", perfetto::Track::FromPointer(thread));
+        TRACE_EVENT_INSTANT(
+            "gpu", "RenderThreadImpl::EstablishGpuChannel callback", flow);
         OnPotentialNewGpuChannelHost(host.get());
         std::move(callback).Run(std::move(host));
       },
       // The GPU process can crash; in that case, run the callback with no host
       // to signal the compositor to wait and try again.
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), nullptr),
-      this));
+      this, perfetto::TerminatingFlow::FromPointer(this)));
 }
 
 blink::AssociatedInterfaceRegistry*
@@ -1444,6 +1484,10 @@ void RenderThreadImpl::OnSystemColorsChanged(int32_t aqua_color_variant) {
   // Let blink know it should invalidate and recalculate styles for elements
   // that rely on system colors, such as the accent and highlight colors.
   blink::SystemColorsChanged();
+}
+
+void RenderThreadImpl::OnRegisteredFontsChanged() {
+  blink::RegisteredFontsChanged();
 }
 #endif
 
@@ -1667,18 +1711,6 @@ void RenderThreadImpl::OnRendererForegrounded() {
       MainFrameCounter::has_main_frame());
   blink::OnProcessForegrounded();
   process_foregrounded_count_++;
-}
-
-void RenderThreadImpl::OnMemoryPressure(
-    base::MemoryPressureLevel memory_pressure_level) {
-  TRACE_EVENT(
-      "memory", "RenderThreadImpl::OnMemoryPressure",
-      [&](perfetto::EventContext ctx) {
-        auto* event = ctx.event<perfetto::protos::pbzero::ChromeTrackEvent>();
-        auto* data = event->set_chrome_memory_pressure_notification();
-        data->set_level(base::trace_event::MemoryPressureLevelToTraceEnum(
-            memory_pressure_level));
-      });
 }
 
 void RenderThreadImpl::OnRendererInterfaceReceiver(

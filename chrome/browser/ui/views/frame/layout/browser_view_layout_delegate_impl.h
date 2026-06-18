@@ -8,6 +8,7 @@
 #include "base/auto_reset.h"
 #include "base/memory/raw_ref.h"
 #include "chrome/browser/ui/views/frame/layout/browser_view_layout_delegate.h"
+#include "components/prefs/pref_change_registrar.h"
 
 class BrowserFrameView;
 class BrowserView;
@@ -25,7 +26,7 @@ class BrowserViewLayoutDelegateImpl : public BrowserViewLayoutDelegate {
   bool ShouldDrawVerticalTabStrip() const override;
   bool IsVerticalTabStripCollapsed() const override;
   bool ShouldDrawWebAppFrameToolbar() const override;
-  bool GetBorderlessModeEnabled() const override;
+  bool GetUnframedModeEnabled() const override;
   BrowserLayoutParams GetBrowserLayoutParams(
       bool use_browser_bounds) const override;
   WindowState GetBrowserWindowState() const override;
@@ -57,7 +58,11 @@ class BrowserViewLayoutDelegateImpl : public BrowserViewLayoutDelegate {
   const BrowserFrameView* GetFrameView() const;
 
  private:
+  void OnTabSearchPinnedStateChanged();
+
   const raw_ref<BrowserView> browser_view_;
+  PrefChangeRegistrar pref_registrar_;
+  bool tab_search_pinned_to_tab_strip_ = false;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_LAYOUT_BROWSER_VIEW_LAYOUT_DELEGATE_IMPL_H_

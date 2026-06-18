@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include "base/byte_size.h"
 #include "base/check.h"
 #include "base/check_op.h"
 #include "base/feature_list.h"
@@ -14,6 +15,7 @@
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/observer_list.h"
 #include "base/system/sys_info.h"
 #include "base/task/sequenced_task_runner.h"
@@ -54,6 +56,12 @@ namespace content {
 
 namespace {
 
+// If enabled, cancels the prerender when a navigation in the prerendered page
+// is restarted as cross-document. This feature is enabled by default as
+// a crash fix. The feature flag is kept as a kill switch.
+BASE_FEATURE(kPrerenderCancelOnCrossDocumentRestart,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 bool IsBackground(Visibility visibility) {
   // PrerenderHostRegistry treats HIDDEN and OCCLUDED as background.
   switch (visibility) {
@@ -93,7 +101,8 @@ bool DeviceHasEnoughMemoryForPrerender() {
       blink::features::kPrerender2MemoryThresholdParamName,
       kDefaultMemoryThresholdMb);
 
-  return base::SysInfo::AmountOfPhysicalMemory().InMiB() > memory_threshold_mb;
+  return base::SysInfo::AmountOfTotalPhysicalMemory() >
+         base::MiBU(base::saturated_cast<uint64_t>(memory_threshold_mb));
 }
 
 // Create a resource request for `back_url` that only checks whether the
@@ -232,6 +241,7 @@ PreloadingEligibility ToEligibility(PrerenderFinalStatus status) {
     case PrerenderFinalStatus::kUaChangeRequiresReload:
     case PrerenderFinalStatus::kBlockedByClient:
     case PrerenderFinalStatus::kMixedContent:
+    case PrerenderFinalStatus::kCrossDocumentRestart:
       NOTREACHED();
     case PrerenderFinalStatus::kTriggerBackgrounded:
       return PreloadingEligibility::kHidden;
@@ -1627,6 +1637,19 @@ void PrerenderHostRegistry::DidFinishNavigation(
   auto* navigation_request = NavigationRequest::From(navigation_handle);
 
   if (navigation_request->IsSameDocument()) {
+    // If a navigation in the prerendered page starts as same-document but is
+    // restarted as cross-document, it can cause duplicate DidFinishNavigation
+    // calls and CHECK failures because the initial start was ignored.
+    // Since prerendering is an optimization, we cancel the prerender in this
+    // corner case to avoid complex state management.
+    // This is guarded by a kill switch feature flag.
+    if (navigation_request->was_reset_for_cross_document_restart() &&
+        base::FeatureList::IsEnabled(kPrerenderCancelOnCrossDocumentRestart)) {
+      PrerenderHostId prerender_host_id =
+          navigation_handle->GetPrerenderHostId();
+      CancelHost(prerender_host_id,
+                 PrerenderFinalStatus::kCrossDocumentRestart);
+    }
     return;
   }
 

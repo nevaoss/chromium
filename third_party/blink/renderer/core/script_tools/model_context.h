@@ -14,6 +14,7 @@
 #include "third_party/blink/public/mojom/content_extraction/script_tools.mojom-blink.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise.h"
 #include "third_party/blink/renderer/bindings/core/v8/script_promise_resolver.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_execute_tool_options.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_model_context.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_tool_execute_callback.h"
 #include "third_party/blink/renderer/core/core_export.h"
@@ -29,8 +30,10 @@
 namespace blink {
 class AbortSignal;
 class Element;
+class ExecuteToolOptions;
 class SourceLocation;
 class ModelContextOptions;
+class ModelContextGetToolOptions;
 class ModelContextRegisterToolOptions;
 class ModelContextTool;
 class RegisteredTool;
@@ -46,6 +49,12 @@ class DeclarativeWebMCPTool : public GarbageCollectedMixin {
       String input_arguments,
       base::OnceCallback<void(base::expected<String, ScriptToolError>)>
           done_callback) = 0;
+
+  virtual String ToolName() const = 0;
+
+  virtual String ToolDescription() const = 0;
+
+  virtual String ToolTitle() const = 0;
 
   // Returns the input json-schema associated with the tool.
   virtual String ComputeInputSchema() = 0;
@@ -114,7 +123,7 @@ class CORE_EXPORT ModelContext : public EventTarget,
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  ModelContext(Document& document, scoped_refptr<base::SingleThreadTaskRunner>);
+  ModelContext(Document& document);
 
   DEFINE_ATTRIBUTE_EVENT_LISTENER(toolchange, kToolchange)
 
@@ -128,7 +137,13 @@ class CORE_EXPORT ModelContext : public EventTarget,
                     ModelContextRegisterToolOptions* options,
                     ExceptionState& exception_state);
   ScriptPromise<IDLSequence<RegisteredTool>> getTools(
-      ScriptState* script_state);
+      ScriptState* script_state,
+      const ModelContextGetToolOptions* options = nullptr);
+  ScriptPromise<IDLNullable<IDLString>> executeTool(
+      ScriptState* script_state,
+      RegisteredTool* tool,
+      String input_arguments,
+      const ExecuteToolOptions* options = nullptr);
   void UnregisterTool(const String& name);
 
   std::optional<ScriptToolDeclaration> GetScriptToolDeclaration(
@@ -142,6 +157,7 @@ class CORE_EXPORT ModelContext : public EventTarget,
   using CrossDocumentScriptToolResultCallback =
       base::OnceCallback<void(String)>;
   void GetCrossDocumentScriptToolResult(
+      const base::UnguessableToken& invocation_id,
       CrossDocumentScriptToolResultCallback result_callback);
 
   bool CancelTool(const base::UnguessableToken& invocation_id);
@@ -150,17 +166,16 @@ class CORE_EXPORT ModelContext : public EventTarget,
     tool_change_closure_ = std::move(cb);
   }
 
-  void RegisterDeclarativeTool(String name,
-                               String description,
-                               DeclarativeWebMCPTool* tool);
+  void RegisterDeclarativeTool(DeclarativeWebMCPTool* tool);
   void PauseExecution();
 
   // mojom::blink::ScriptToolReceiver implementation:
   void NotifyToolChange() override;
+  void ExecuteScriptTool(const String& name,
+                         const String& input_arguments,
+                         ExecuteScriptToolCallback callback) override;
 
   void DidFinishParsing();
-
-  void MaybeNotifyToolChanged();
 
   // Returns registered tools, sorted by CodeUnitCompareLessThan().
   HeapVector<Member<const ToolData>> ListTools() const;
@@ -170,6 +185,11 @@ class CORE_EXPORT ModelContext : public EventTarget,
   void OnGetScriptToolsCompleted(
       ScriptPromiseResolver<IDLSequence<RegisteredTool>>* resolver,
       Vector<mojom::blink::ScriptToolPtr> tools);
+
+  void OnExecuteScriptToolCompleted(
+      ScriptPromiseResolver<IDLNullable<IDLString>>* resolver,
+      const String& result,
+      bool success);
 
   void Trace(Visitor*) const override;
 
@@ -196,9 +216,6 @@ class CORE_EXPORT ModelContext : public EventTarget,
       const base::UnguessableToken& invocation_id,
       base::expected<String, std::pair<ScriptValue, ScriptState*>> result);
 
-  void OnToolChange(bool force);
-  void InvokeToolChangeClosure(bool force);
-
   void MaybeRecordToolCount();
 
   HeapHashMap<String, Member<ToolData>> tool_map_;
@@ -221,10 +238,6 @@ class CORE_EXPORT ModelContext : public EventTarget,
   HeapMojoRemote<mojom::blink::ModelContextHost> model_context_host_remote_;
   HeapMojoReceiver<mojom::blink::ModelContext, ModelContext>
       model_context_receiver_{this, nullptr};
-
-  // True when a task to invoke tool_change_closure_ is pending.
-  // This batches multiple synchronous tool changes into a single notification.
-  bool tool_change_task_pending_ = false;
 
   // true when there is a pending or completed task to record the number
   // of registered tools.

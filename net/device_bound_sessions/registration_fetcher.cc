@@ -13,6 +13,7 @@
 #include "base/functional/callback_helpers.h"
 #include "base/metrics/histogram_functions.h"
 #include "components/unexportable_keys/background_task_priority.h"
+#include "components/unexportable_keys/service_error.h"
 #include "components/unexportable_keys/unexportable_key_service.h"
 #include "net/base/features.h"
 #include "net/base/net_errors.h"
@@ -20,6 +21,7 @@
 #include "net/device_bound_sessions/registration_request_param.h"
 #include "net/device_bound_sessions/session_binding_utils.h"
 #include "net/device_bound_sessions/session_challenge_param.h"
+#include "net/device_bound_sessions/session_error.h"
 #include "net/device_bound_sessions/session_json_utils.h"
 #include "net/device_bound_sessions/session_key.h"
 #include "net/device_bound_sessions/url_fetcher.h"
@@ -51,10 +53,13 @@ void OnDataSigned(
     unexportable_keys::UnexportableKeyService& unexportable_key_service,
     std::string header_and_payload,
     base::OnceCallback<
-        void(std::optional<RegistrationFetcher::RegistrationToken>)> callback,
+        void(SessionErrorOr<RegistrationFetcher::RegistrationToken>)> callback,
     unexportable_keys::ServiceErrorOr<std::vector<uint8_t>> result) {
   if (!result.has_value()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(
+        base::unexpected(unexportable_keys::IsPersistentError(result.error())
+                             ? SessionError::kSigningError
+                             : SessionError::kTransientSigningError));
     return;
   }
 
@@ -62,7 +67,11 @@ void OnDataSigned(
   std::optional<std::string> registration_token =
       AppendSignatureToHeaderAndPayload(header_and_payload, algorithm, pubkey,
                                         signature);
-  std::move(callback).Run(std::move(registration_token));
+  if (!registration_token.has_value()) {
+    std::move(callback).Run(base::unexpected(SessionError::kSigningError));
+    return;
+  }
+  std::move(callback).Run(std::move(registration_token).value());
 }
 
 void SignChallengeWithKey(
@@ -74,18 +83,24 @@ void SignChallengeWithKey(
     std::optional<std::string> challenge,
     std::optional<std::string> authorization,
     std::optional<std::string> session_identifier,
-    base::OnceCallback<
-        void(std::optional<RegistrationFetcher::RegistrationToken>)> callback) {
+    base::OnceCallback<void(
+        SessionErrorOr<RegistrationFetcher::RegistrationToken>)> callback) {
   auto expected_algorithm = unexportable_key_service.GetAlgorithm(key_id);
   if (!expected_algorithm.has_value()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(base::unexpected(
+        unexportable_keys::IsPersistentError(expected_algorithm.error())
+            ? SessionError::kSigningError
+            : SessionError::kTransientSigningError));
     return;
   }
 
   auto expected_public_key =
       unexportable_key_service.GetSubjectPublicKeyInfo(key_id);
   if (!expected_public_key.has_value()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(base::unexpected(
+        unexportable_keys::IsPersistentError(expected_public_key.error())
+            ? SessionError::kSigningError
+            : SessionError::kTransientSigningError));
     return;
   }
 
@@ -100,7 +115,7 @@ void SignChallengeWithKey(
   }
 
   if (!header_and_payload.has_value()) {
-    std::move(callback).Run(std::nullopt);
+    std::move(callback).Run(base::unexpected(SessionError::kSigningError));
     return;
   }
 
@@ -400,6 +415,8 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
       return SessionError::kSessionProviderWellKnownHasProviderOrigin;
     }
 
+    // TODO(crbug.com/511776603): Evaluate whether to use the final redirect URL
+    // instead of the original URL here in a follow-up.
     std::string target_origin =
         url::Origin::Create(fetcher_endpoint_).Serialize();
     if (!maybe_params->relying_origins.has_value() ||
@@ -455,6 +472,8 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
       return SessionError::kRelyingPartyWellKnownHasRelyingOrigins;
     }
 
+    // TODO(crbug.com/511776603): Evaluate whether to use the final redirect URL
+    // instead of the original URL here in a follow-up.
     if (!maybe_params->provider_origin.has_value() ||
         url::Origin::Create(provider_url_).Serialize() !=
             *maybe_params->provider_origin) {
@@ -468,7 +487,7 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
 
   void AttemptChallengeSigning() {
     base::OnceCallback<void(
-        std::optional<RegistrationFetcher::RegistrationToken>)>
+        SessionErrorOr<RegistrationFetcher::RegistrationToken>)>
         callback =
             base::BindOnce(&RegistrationFetcherImpl::OnRegistrationTokenCreated,
                            GetWeakPtr(), current_challenge_, *key_id_);
@@ -516,11 +535,11 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
   void OnRegistrationTokenCreated(
       std::optional<std::string> challenge,
       unexportable_keys::UnexportableSigningKeyId key_id,
-      std::optional<RegistrationFetcher::RegistrationToken>
+      SessionErrorOr<RegistrationFetcher::RegistrationToken>
           registration_token) {
-    if (!registration_token) {
+    if (!registration_token.has_value()) {
       RunCallback(CreateErrorRegistrationResult(
-          SessionError(SessionError::kSigningError)));
+          SessionError(registration_token.error())));
       // `this` may be deleted.
       return;
     }
@@ -562,8 +581,6 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
     request.set_site_for_cookies(isolation_info_.site_for_cookies());
     request.set_initiator(original_request_initiator_);
     request.set_isolation_info(isolation_info_);
-    request.set_force_ignore_site_for_cookies(
-        context_->network_delegate()->ShouldForceIgnoreSiteForCookies(request));
 
     if (IsForRefreshRequest()) {
       request.SetExtraRequestHeaderByName(
@@ -653,8 +670,12 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
       }
     }
 
+    // Use the final URL after redirects for validation checks to ensure we
+    // validate the origin that actually served the response.
+    GURL final_registration_url = url_fetcher_->request().url();
+
     base::expected<SessionParams, SessionError> params_or_error =
-        ParseSessionInstructionJson(url_fetcher_->request().url(), *key_id_,
+        ParseSessionInstructionJson(final_registration_url, *key_id_,
                                     session_identifier_,
                                     url_fetcher_->data_received());
     if (!params_or_error.has_value()) {
@@ -664,8 +685,9 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
       return;
     }
 
+    const SessionParams& params = *params_or_error;
     base::expected<std::unique_ptr<Session>, SessionError> session_or_error =
-        Session::CreateIfValid(params_or_error.value());
+        Session::CreateIfValid(params);
     if (!session_or_error.has_value()) {
       RunCallback(
           CreateErrorRegistrationResult(std::move(session_or_error).error()));
@@ -678,7 +700,7 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
     // challenges work for the registration case as well.
     auto challenge_params =
         device_bound_sessions::SessionChallengeParam::CreateIfValid(
-            fetcher_endpoint_, headers);
+            final_registration_url, headers);
     for (const SessionChallengeParam& challenge_param : challenge_params) {
       if (challenge_param.session_id() == *session->id()) {
         session->set_cached_challenge(challenge_param.challenge());
@@ -707,15 +729,19 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
     }
 
     // Session::CreateIfValid confirms that the registration endpoint is
-    // same-site with the scope origin. But we still need to validate
-    // that this subdomain is allowed to register a session for the
-    // whole site.
+    // same-site with the scope origin and allowed to register a session for the
+    // scope origin. But for cross-origin same-site registrations, we still need
+    // to validate that this subdomain is allowed to register a session for the
+    // scope origin via a .well-known check.
     if (features::kDeviceBoundSessionsCheckSubdomainRegistration.Get() &&
-        !IsForRefreshRequest() && params_or_error->scope.include_site &&
+        !IsForRefreshRequest() && params.scope.include_site &&
+        // We compare hosts rather than origins here because the DBSC spec
+        // (https://w3c.github.io/webappsec-dbsc/#algo-create-session) defines
+        // the scope of .well-known files to be the host.
         // Skip all validations if the fetcher endpoint is not a subdomain but
         // rather the top-level site (which matches the origin when including
         // the site).
-        fetcher_endpoint_.GetHost() != session->origin().host()) {
+        final_registration_url.host() != session->origin().host()) {
       GURL::Replacements replacements;
       replacements.SetPathStr("/.well-known/device-bound-sessions");
       replacements.SetHostStr(session->origin().host());
@@ -729,10 +755,10 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
           isolation_info_.site_for_cookies());
       url_fetcher_->request().set_initiator(original_request_initiator_);
       url_fetcher_->request().set_isolation_info(isolation_info_);
-      url_fetcher_->Start(
-          base::BindOnce(&RegistrationFetcherImpl::
-                             OnSubdomainRegistrationWellKnownRequestComplete,
-                         GetWeakPtr(), std::move(session)));
+      url_fetcher_->Start(base::BindOnce(
+          &RegistrationFetcherImpl::
+              OnSubdomainRegistrationWellKnownRequestComplete,
+          GetWeakPtr(), std::move(final_registration_url), std::move(session)));
       return;
     }
 
@@ -741,13 +767,15 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
   }
 
   void OnSubdomainRegistrationWellKnownRequestComplete(
+      GURL final_registration_url,
       std::unique_ptr<Session> session) {
     RunCallback(OnSubdomainRegistrationWellKnownRequestCompleteInternal(
-        std::move(session)));
+        std::move(final_registration_url), std::move(session)));
     // `this` may be deleted.
   }
 
   RegistrationResult OnSubdomainRegistrationWellKnownRequestCompleteInternal(
+      GURL final_registration_url,
       std::unique_ptr<Session> session) {
     HttpResponseHeaders* headers = url_fetcher_->request().response_headers();
     const int response_code = headers ? headers->response_code() : 0;
@@ -775,7 +803,7 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
     if (!maybe_params->registering_origins.has_value() ||
         !std::ranges::contains(
             *maybe_params->registering_origins,
-            url::Origin::Create(fetcher_endpoint_).Serialize())) {
+            url::Origin::Create(final_registration_url).Serialize())) {
       return CreateErrorRegistrationResult(
           SessionError(SessionError::kSubdomainRegistrationUnauthorized));
     }
@@ -886,8 +914,8 @@ void RegistrationFetcher::CreateRegistrationTokenAsyncForTesting(
     unexportable_keys::UnexportableKeyService& unexportable_key_service,
     std::string challenge,
     std::optional<std::string> authorization,
-    base::OnceCallback<
-        void(std::optional<RegistrationFetcher::RegistrationToken>)> callback) {
+    base::OnceCallback<void(
+        SessionErrorOr<RegistrationFetcher::RegistrationToken>)> callback) {
   static constexpr crypto::SignatureVerifier::SignatureAlgorithm
       kSupportedAlgos[] = {crypto::SignatureVerifier::ECDSA_SHA256,
                            crypto::SignatureVerifier::RSA_PKCS1_SHA256};
@@ -898,12 +926,15 @@ void RegistrationFetcher::CreateRegistrationTokenAsyncForTesting(
              const std::string& challenge,
              std::optional<std::string>&& authorization,
              base::OnceCallback<void(
-                 std::optional<RegistrationFetcher::RegistrationToken>)>
+                 SessionErrorOr<RegistrationFetcher::RegistrationToken>)>
                  callback,
              unexportable_keys::ServiceErrorOr<
                  unexportable_keys::UnexportableSigningKeyId> key_result) {
             if (!key_result.has_value()) {
-              std::move(callback).Run(std::nullopt);
+              std::move(callback).Run(base::unexpected(
+                  unexportable_keys::IsPersistentError(key_result.error())
+                      ? SessionError::kSigningError
+                      : SessionError::kTransientSigningError));
               return;
             }
 

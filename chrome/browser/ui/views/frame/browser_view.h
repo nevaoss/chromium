@@ -92,7 +92,6 @@ class TabStrip;
 class TabStripRegionView;
 class ToolbarButtonProvider;
 class ToolbarView;
-class TopContainerLoadingBar;
 class TopContainerView;
 class TopControlsSlideController;
 class TopControlsSlideControllerTest;
@@ -177,9 +176,9 @@ class BrowserView : public BrowserWindow,
   static BrowserView* GetBrowserViewForBrowser(
       const BrowserWindowInterface* browser);
 
-  // After calling RevealTabStripIfNeeded(), there is normally a delay before
-  // the tabstrip is hidden. Tests can use this function to disable that delay
-  // (and hide immediately).
+  // After calling RevealTopContainerIfNeeded(), there is normally a delay
+  // before the tabstrip is hidden. Tests can use this function to disable that
+  // delay (and hide immediately).
   static void SetDisableRevealerDelayForTesting(bool disable);
 
   bool IsLoadingAnimationRunning() const;
@@ -232,6 +231,13 @@ class BrowserView : public BrowserWindow,
   // Container for the tabstrip, toolbar, etc.
   TopContainerView* top_container() { return top_container_; }
 
+  std::optional<int> theme_background_y_offset() const {
+    return theme_background_y_offset_;
+  }
+  void set_theme_background_y_offset(std::optional<int> offset) {
+    theme_background_y_offset_ = offset;
+  }
+
 #if BUILDFLAG(IS_MAC)
   views::Widget* overlay_widget() { return overlay_widget_.get(); }
   const views::Widget* overlay_widget() const { return overlay_widget_.get(); }
@@ -250,16 +256,6 @@ class BrowserView : public BrowserWindow,
   const views::View* tab_overlay_view() const {
     return tab_overlay_view_.get();
   }
-
-  // Returns if this browser view will use immersive fullscreen mode, based on
-  // the type of browser this is a view for.
-  bool UsesImmersiveFullscreenMode() const;
-
-  // Returns if this browser view will use immersive fullscreen tabbed mode.
-  // In tabbed mode the tab strip is contained within the window's titlebar. In
-  // non-tabbed mode the tab strip is positioned below the titlebar.
-  // The return value is determined by the type of browser.
-  bool UsesImmersiveFullscreenTabbedMode() const;
 #endif
 
   // Container for the web contents.
@@ -555,9 +551,6 @@ class BrowserView : public BrowserWindow,
   void TabDraggingStatusChanged(bool is_dragging) override;
   void LinkOpeningFromGesture(WindowOpenDisposition disposition) override;
   void FocusAppMenu() override;
-  void FocusInactivePopupForAccessibility() override;
-  void RotatePaneFocus(bool forwards) override;
-  void FocusWebContentsPane() override;
   bool IsTabStripEditable() const override;
   void DisableTabStripEditingForTesting() override;
   bool IsToolbarVisible() const override;
@@ -585,9 +578,7 @@ class BrowserView : public BrowserWindow,
       const std::string& target_language,
       translate::TranslateErrors error_type,
       bool is_user_gesture) override;
-  void StartPartialTranslate(const std::string& source_language,
-                             const std::string& target_language,
-                             const std::u16string& text_selection) override;
+
   DownloadBubbleUIController* GetDownloadBubbleUIController() override;
   void ConfirmBrowserCloseWithPendingDownloads(
       int download_count,
@@ -897,10 +888,11 @@ class BrowserView : public BrowserWindow,
   void CutCopyPaste(int command_id);
 
   // If the browser is in immersive full screen mode, it will reveal the
-  // tabstrip for a short duration. This is useful for shortcuts that perform
-  // tab navigations and need to give users a visual clue as to what tabs are
-  // affected.
-  void RevealTabStripIfNeeded();
+  // top container for a short duration. The top container will have the toolbar
+  // and possibly the tab strip (only in horizontal mode). This is useful for
+  // shortcuts that perform tab navigations and need to give users a visual clue
+  // as to what tabs are affected.
+  void RevealTopContainerIfNeeded();
 
   void OnVerticalTabStripModeChanged(
       tabs::VerticalTabStripStateController* controller);
@@ -1046,11 +1038,6 @@ class BrowserView : public BrowserWindow,
   // this returns false.
   bool CanChangeWindowIcon() const;
 
-  // Searches for inactive bubbles anchored to elements in this browser view
-  // and activates them. It returns true if it succeeded activating a bubble or
-  // false otherwise.
-  bool ActivateFirstInactiveBubbleForAccessibility();
-
   // Notifies that window bounds changed to extensions if needed.
   void TryNotifyWindowBoundsChanged(const gfx::Rect& widget_bounds);
 
@@ -1171,6 +1158,11 @@ class BrowserView : public BrowserWindow,
   // fullscreen mode. See BrowserView::ReparentTopContainerForEndOfImmersive.
   std::optional<size_t> top_container_insertion_index_;
 
+  // Optional offset applied to background painted by ThemedBackground w.r.t to
+  // the browswe_view. (See `ThemedBackground::PaintThemeAlignedImage()` for
+  // details)
+  std::optional<int> theme_background_y_offset_;
+
   // Menu button and page status icons. Only used by web-app windows.
   raw_ptr<WebAppFrameToolbarView> web_app_frame_toolbar_ = nullptr;
 
@@ -1228,9 +1220,6 @@ class BrowserView : public BrowserWindow,
   // rolled out, we can rely on `MultiContentsView` to manage the contents
   // separator when not overlaid (i.e. no immersive fullscreen).
   raw_ptr<views::View> top_container_separator_ = nullptr;
-
-  // Loading bar (part of top container for / WebUI tab strip).
-  raw_ptr<TopContainerLoadingBar> loading_bar_ = nullptr;
 
   // The do-nothing view which controls the z-order of the find bar widget
   // relative to views which paint into layers and views with an associated
@@ -1314,8 +1303,9 @@ class BrowserView : public BrowserWindow,
   base::OnceClosure loading_animation_state_change_closure_;
 
   // Start timestamp for all throbbers. Set when the loading animation
-  // starts and used for all consecutive tabs (while any are loading) to keep
-  // throbbers in sync.
+  // starts. For paint-driven animations (i.e. when `kCompositorLoadingThrobber`
+  // is disabled), this is used for all consecutive tabs (while any are loading)
+  // to keep throbbers in sync.
   base::TimeTicks loading_animation_start_;
 
   views::UnhandledKeyboardEventHandler unhandled_keyboard_event_handler_;

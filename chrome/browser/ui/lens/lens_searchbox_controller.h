@@ -168,21 +168,14 @@ class LensSearchboxController : public LensSearchboxClient {
 
   // Searchbox handler for passing in image and text selections. The handler is
   // null if the WebUI containing the searchbox has not been initialized yet,
-  // like in the case of side panel opening. In addition, the handler may be
-  // initialized, but the remote not yet set because the WebUI calls SetPage()
-  // once it is ready to receive data from C++. Therefore, we must always check
-  // that:
-  //      1) searchbox_handler_ exists and
-  //      2) searchbox_handler_->IsRemoteBound() is true.
+  // like in the case of side panel opening. Therefore, we must always check
+  // that side_panel_searchbox_handler_ exists.
   std::unique_ptr<LensSearchboxHandler> side_panel_searchbox_handler_;
 
   // Handler for the contextual searchbox in the overlay. The handler is
   // null if the WebUI containing the searchbox has not been initialized yet.
-  // In addition, the handler may be initialized, but the remote not yet set
-  // because the WebUI calls SetPage() once it is ready to receive data from
-  // C++. Therefore, we must always check that:
-  //      1) contextual_searchbox_handler_ exists and
-  //      2) contextual_searchbox_handler_->IsRemoteBound() is true.
+  // Therefore, we must always check that overlay_searchbox_handler_
+  // exists.
   // TODO(crbug.com/404941800): Does this actually need to be kept alive? Its
   // currently unused.
   std::unique_ptr<LensSearchboxHandler> overlay_searchbox_handler_;
@@ -202,7 +195,7 @@ class LensSearchboxController : public LensSearchboxClient {
 
   // A pending text query to be loaded in the side panel. Needed when the side
   // panel is not bound at the time of a text request.
-  std::optional<std::string> pending_text_query_ = std::nullopt;
+  std::optional<std::string> pending_text_query_;
 
   // Must be last member.
   base::WeakPtrFactory<LensSearchboxController> weak_factory_{this};

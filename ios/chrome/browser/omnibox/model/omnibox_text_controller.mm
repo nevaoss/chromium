@@ -96,6 +96,10 @@ const char kOmniboxFocusResultedInNavigation[] =
   return [self.textInput.view isFirstResponder];
 }
 
+- (BOOL)hasFocus {
+  return _omniboxTextModel && _omniboxTextModel->HasFocus();
+}
+
 - (void)focusOmnibox {
   id<OmniboxTextInput> textInput = self.textInput;
   if ([self isOmniboxFirstResponder]) {
@@ -833,13 +837,14 @@ const char kOmniboxFocusResultedInNavigation[] =
 }
 
 - (void)refineWithText:(const std::u16string&)text {
+  std::u16string sanitizedText = omnibox::SanitizeTextForPaste(text);
   id<OmniboxTextInput> textInput = self.textInput;
   // Exit preedit state and append the match. Refocus if necessary.
   [textInput exitPreEditState];
-  [self setUserText:text];
+  [self setUserText:sanitizedText];
 
-  [self setWindowText:text
-               caretPos:text.length()
+  [self setWindowText:sanitizedText
+               caretPos:sanitizedText.length()
       startAutocomplete:true
       notifyTextChanged:true];
 
@@ -849,7 +854,7 @@ const char kOmniboxFocusResultedInNavigation[] =
   [textInput.omniboxTextInputDelegate textInputDidChange:textInput];
   [textInput.view becomeFirstResponder];
   // Set the caret pos to the end of the text (crbug.com/331622199).
-  [self setCaretPos:text.length()];
+  [self setCaretPos:sanitizedText.length()];
 }
 
 #pragma mark - Private

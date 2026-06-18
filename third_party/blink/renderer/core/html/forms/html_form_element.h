@@ -36,6 +36,7 @@
 #include "third_party/blink/renderer/core/script_tools/script_tool_types.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
+#include "third_party/blink/renderer/platform/scheduler/public/post_cancellable_task.h"
 
 namespace blink {
 
@@ -52,7 +53,12 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
   DEFINE_WRAPPERTYPEINFO();
 
  public:
-  void ScheduleWebMCPSchemaUpdate();
+  // This method is called anytime a form control's association changes with
+  // regard to `this`, or when a control's attributes are changed. It will only
+  // queue a task to register a new tool if `this` already has an existing
+  // `active_webmcp_tool_`, and if the form control change impacts the tool's
+  // generated input schema.
+  void ScheduleWebMCPSchemaUpdateIfActive();
   enum RelAttribute {
     kNone = 0,
     kNoReferrer = 1 << 0,
@@ -184,6 +190,7 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
   InsertionNotificationRequest InsertedInto(ContainerNode&) override;
   void RemovedFrom(ContainerNode&) override;
   void FinishParsingChildren() override;
+  void ChildrenChanged(const ChildrenChange&) override;
 
   void HandleLocalEvents(Event&) override;
 
@@ -236,8 +243,8 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
   void RemoveFromPastNamesMap(HTMLElement&);
   bool PastNamesEmpty() const;
 
-  bool IsValidWebMCPForm() const;
-  void UpdateMcpDefinitionsIfNeeded();
+  void ScheduleDeclarativeWebMCPToolRegistration();
+  void RegisterDeclarativeWebMCPTool();
   void ReportInvalidMCPFormIssueIfNeeded(const String& name,
                                          const String& description);
 
@@ -269,12 +276,17 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
     HTMLFormMcpTool& operator=(const HTMLFormMcpTool&) = delete;
     HTMLFormMcpTool(HTMLFormElement& form,
                     String tool_name,
-                    String tool_description)
+                    String tool_description,
+                    String tool_title)
         : tool_name_(tool_name),
           tool_description_(tool_description),
+          tool_title_(tool_title),
           form_(form) {
       CHECK(!tool_name.IsNull() && !tool_description.IsNull());
     }
+    String ToolName() const override { return tool_name_; }
+    String ToolDescription() const override { return tool_description_; }
+    String ToolTitle() const override { return tool_title_; }
     String ComputeInputSchema() override;
     Element* FormElement() const override { return form_; }
     void ExecuteTool(
@@ -290,15 +302,14 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
         const String& input_arguments,
         bool require_submit_button,
         HTMLFormControlElement** submit_button);
-    String ToolName() const { return tool_name_; }
-    String ToolDescription() const { return tool_description_; }
-    bool IsValidTool() const { return !tool_name_.IsNull(); }
+    const String& LastComputedSchema() const { return last_computed_schema_; }
+    void SetLastComputedSchema(String schema) {
+      last_computed_schema_ = schema;
+    }
     std::optional<base::UnguessableToken> InvocationId() const {
       return invocation_id_;
     }
-    bool CurrentlyRunning() const {
-      return IsValidTool() && is_currently_running_;
-    }
+    bool CurrentlyRunning() const { return is_currently_running_; }
     HTMLFormControlElement* ActiveToolSubmitButton() const {
       CHECK(is_currently_running_);
       return active_submit_button_;
@@ -315,8 +326,17 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
 
     bool is_currently_running_ = false;
     bool is_handling_submit_ = false;
+    // Both `tool_name_` and `tool_description_` are guaranteed to be non-null
+    // (i.e., `blink::String::IsNull()`), since the `toolname` and
+    // `tooldescription` attributes must be present on `form_`, for it to
+    // represent a valid declarative tool.
+    //
+    // `tool_title_` on the other hand can be `IsNull()` if the `tooltitle`
+    // attribute is not present, which is valid.
     String tool_name_;
     String tool_description_;
+    String tool_title_;
+    String last_computed_schema_;
     Member<HTMLFormElement> form_;
     Member<HTMLFormControlElement> active_submit_button_;
     base::OnceCallback<void(McpToolCallbackResult)> done_callback_;
@@ -342,6 +362,11 @@ class CORE_EXPORT HTMLFormElement final : public HTMLElement {
   bool has_elements_associated_by_form_attribute_ : 1;
   bool did_finish_parsing_children_ : 1;
   bool is_in_reset_function_ : 1;
+  // Because forms undergo lots of synchronous mutations during construction,
+  // each of which affects the declarative WebMCP tool's input JSON schema, we
+  // batch all such changes and postpone tool registration behind the task
+  // below, which gets queued on each mutation.
+  TaskHandle mcp_registration_task_;
 
   Member<RelList> rel_list_;
   unsigned rel_attribute_ = 0;

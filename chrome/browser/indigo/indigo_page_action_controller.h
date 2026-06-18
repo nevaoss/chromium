@@ -7,9 +7,11 @@
 
 #include <optional>
 
+#include "base/functional/callback.h"
 #include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
+#include "chrome/browser/indigo/api_client.h"
 #include "chrome/browser/indigo/indigo_service.h"
 #include "chrome/browser/ui/tabs/contents_observing_tab_feature.h"
 #include "chrome/browser/ui/views/indigo/indigo_toolbar.h"
@@ -37,12 +39,53 @@ class IndigoOnboardingDialog;
 struct OnboardingResult;
 class IndigoService;
 
+// LINT.IfChange(IndigoTransformationResult)
+
+// Results of Indigo action invocation.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class IndigoTransformationResult {
+  kUnknown = 0,
+  kSuccess = 1,
+  kNotSignedIn = 2,
+  kMissingCapabilities = 3,
+  kDisabledByPolicy = 4,
+  kMissingScript = 5,
+  kRemoteStatusMissing = 6,
+  kServiceNotSupported = 7,
+  kMissingUserImage = 8,
+  kNotOnboarded = 9,
+  kGenerateImageError = 10,
+  kRefreshTokenInPersistentErrorState = 11,
+  kMaxValue = kRefreshTokenInPersistentErrorState,
+};
+
+// LINT.ThenChange(//tools/metrics/histograms/metadata/indigo/enums.xml:IndigoTransformationResult)
+
+enum class ResetType {
+  kResetReplacementsAndContentScript,
+  kResetReplacementsOnly,
+};
+
+enum class OnboardingDisposition {
+  // Triggered in the normal course of using the feature.
+  kDefault,
+  // Triggered to replace the existing image.
+  kReplacePhoto,
+};
+
 // Manages the Indigo page action and its various entry points, ensuring they
 // are correctly displayed.
 class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
                                    public IndigoToolbar::Delegate {
  public:
   DECLARE_USER_DATA(IndigoPageActionController);
+
+  using OnboardingDialogFactory =
+      base::RepeatingCallback<std::unique_ptr<IndigoOnboardingDialog>(
+          tabs::TabInterface&,
+          const GURL&,
+          base::OnceCallback<void(const OnboardingResult&)>)>;
 
   explicit IndigoPageActionController(
       tabs::TabInterface& tab_interface,
@@ -58,6 +101,9 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   // Shows the toolbar at the specified rectangle in the web contents view.
   void ShowToolbarInside(const gfx::Rect& rect);
 
+  // Resets all image replacements and hides the toolbar.
+  void Reset(ResetType reset_type);
+
   // content::WebContentsObserver:
   void DidFinishNavigation(
       content::NavigationHandle* navigation_handle) override;
@@ -68,12 +114,47 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   void OnReplaceOriginalPhoto(IndigoToolbar* toolbar) override;
   void OnDeleteOriginalPhoto(IndigoToolbar* toolbar) override;
 
+  class TestApi {
+   public:
+    explicit TestApi(IndigoPageActionController* controller)
+        : controller_(controller) {}
+
+    void CheckEligibilityForOnboarding(const CombinedEligibility& eligibility) {
+      controller_->CheckEligibilityForOnboarding(eligibility);
+    }
+
+    void CheckOnboardingResult(OnboardingDisposition disposition,
+                               const OnboardingResult& result) {
+      controller_->OnOnboardingDialogClosed(disposition, result);
+    }
+
+    void SetOnboardingDialogFactory(OnboardingDialogFactory factory) {
+      controller_->onboarding_dialog_factory_for_testing_ = std::move(factory);
+    }
+
+   private:
+    raw_ptr<IndigoPageActionController> controller_;
+  };
+
  private:
   // Updates the visibility and states of all entry points.
   void UpdateEntryPointsState();
 
-  // Called when the onboarding dialog is closed.
-  void OnOnboardingDialogClosed(const OnboardingResult& result);
+  // Shows the onboarding dialog with the appropriate URL based on disposition.
+  void ShowOnboardingDialog(OnboardingDisposition disposition);
+
+  // Called when the eligibility has been fetched.
+  void CheckEligibilityForOnboarding(const CombinedEligibility& eligibility);
+
+  // Called when eligibility is known and onboarding is completed (if needed).
+  void ContinueInvoke(const CombinedEligibility& eligibility);
+
+  // Updates state and handles preference changes when the dialog closes.
+  void OnOnboardingDialogClosed(OnboardingDisposition disposition,
+                                const OnboardingResult& result);
+
+  // Called when the delete request completes.
+  void OnDeleteOriginalPhotoComplete(base::expected<void, DeleteError> result);
 
   // Called when the profile state has changed in a way that might affect
   // whether this feature should be offered.
@@ -85,6 +166,17 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
       const GURL& url,
       optimization_guide::OptimizationGuideDecision decision,
       const optimization_guide::OptimizationMetadata&);
+
+  void TabWillBecomeHidden(tabs::TabInterface* tab);
+  void TabDidBecomeVisible(tabs::TabInterface* tab);
+
+  // Retrieves the indigo overlay view for this tab. May return nullptr if
+  // the tab is currently invisible (backgrounded) or has no active browser
+  // window.
+  views::View* GetIndigoOverlayView() const;
+
+  // Hides the toolbar if it is currently shown.
+  void HideToolbar();
 
   // `page_action_controller_` is owned by the same `TabFeatures` that owns
   // `this`. Since `page_action_controller_` is initialized before `this` and
@@ -109,13 +201,28 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   // The onboarding dialog, if shown.
   std::unique_ptr<IndigoOnboardingDialog> onboarding_dialog_;
 
+  // Factory for creating the onboarding dialog in tests.
+  OnboardingDialogFactory onboarding_dialog_factory_for_testing_;
+
   // The floating toolbar, if shown.
   std::unique_ptr<IndigoToolbar> toolbar_;
+
+  base::CallbackListSubscription tab_became_hidden_subscription_;
+  base::CallbackListSubscription tab_became_visible_subscription_;
 
   base::CallbackListSubscription indigo_service_subscription_;
 
   ui::ScopedUnownedUserData<IndigoPageActionController>
       scoped_unowned_user_data_;
+
+  // Weak pointer factory used for the invocation flow. This is invalidated on
+  // navigation to ensure that if a user starts an action (like onboarding) and
+  // then navigates away, the action does not continue on the new page.
+  base::WeakPtrFactory<IndigoPageActionController> invoke_weak_ptr_factory_{
+      this};
+
+  // Weak pointer factory for general callbacks that should persist across
+  // navigations (as long as this controller exists).
   base::WeakPtrFactory<IndigoPageActionController> weak_ptr_factory_{this};
 };
 

@@ -553,7 +553,8 @@ class CONTENT_EXPORT RenderFrameImpl
       bool is_client_redirect,
       const std::optional<blink::SameDocNavigationScreenshotDestinationToken>&
           screenshot_destination,
-      base::UnguessableToken same_document_metrics_token) override;
+      base::UnguessableToken same_document_metrics_token,
+      bool caused_by_ad) override;
   void DidFailAsyncSameDocumentCommit() override;
   void WillFreezePage() override;
   void DidOpenDocumentInputStream(const blink::WebURL& url) override;
@@ -1594,6 +1595,11 @@ class CONTENT_EXPORT RenderFrameImpl
   // subset of topchrome WebUIs that are loaded and shown from the initial
   // browser startup, e.g. the reload button.
   bool is_initial_webui_ = false;
+
+  // Set to true while CommitSameDocumentNavigation is calling into Blink,
+  // so reentrant calls to DidFailAsyncSameDocumentCommit know not to consume
+  // the incoming NavigationState.
+  bool is_committing_same_document_navigation_ = false;
 
   base::WeakPtrFactory<RenderFrameImpl> weak_factory_{this};
 };

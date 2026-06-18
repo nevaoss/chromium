@@ -4,9 +4,12 @@
 
 #import "ios/chrome/browser/authentication/age_mismatch_signout/coordinator/age_mismatch_signout_coordinator.h"
 
+#import "base/metrics/histogram_functions.h"
+#import "base/metrics/user_metrics.h"
 #import "base/not_fatal_until.h"
 #import "components/signin/public/identity_manager/identity_manager.h"
 #import "ios/chrome/browser/authentication/age_mismatch_signout/age_mismatch_learn_more/coordinator/age_mismatch_learn_more_coordinator.h"
+#import "ios/chrome/browser/authentication/age_mismatch_signout/coordinator/age_mismatch_signout_constants.h"
 #import "ios/chrome/browser/authentication/age_mismatch_signout/coordinator/age_mismatch_signout_mediator.h"
 #import "ios/chrome/browser/authentication/age_mismatch_signout/ui/age_mismatch_signout_view_controller.h"
 #import "ios/chrome/browser/authentication/ui_bundled/signin/signin_constants.h"
@@ -51,20 +54,17 @@
 
 - (void)start {
   [super start];
+  base::UmaHistogramEnumeration(kAgeMismatchSignoutPromptModeHistogram, _mode);
   _mediator = [[AgeMismatchSignoutMediator alloc]
             initWithIdentity:_identity
       identityAvatarProvider:GetApplicationContext()
-                                 ->GetIdentityAvatarProvider()];
+                                 ->GetIdentityAvatarProvider()
+             identityManager:IdentityManagerFactory::GetForProfile(
+                                 self.browser->GetProfile())];
   _viewController =
       [[AgeMismatchSignoutViewController alloc] initWithMode:_mode];
   _viewController.delegate = self;
   _mediator.consumer = _viewController;
-
-  signin::IdentityManager* identityManager =
-      IdentityManagerFactory::GetForProfile(self.browser->GetProfile());
-  if (identityManager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
-    _viewController.hideStaySignedOutButton = YES;
-  }
 
   [self.baseViewController presentViewController:_viewController
                                         animated:YES
@@ -84,18 +84,25 @@
 #pragma mark - PromoStyleViewControllerDelegate
 
 - (void)didTapPrimaryActionButton {
+  base::UmaHistogramEnumeration(kAgeMismatchSignoutActionHistogram,
+                                AgeMismatchSignoutAction::kUseAnotherAccount);
   [_viewController blockUI];
-  [self.delegate ageMismatchSignoutCoordinatorWantsToSignIn:self];
+  [self.delegate
+      ageMismatchSignoutCoordinatorUserWantsToUseAnotherAccount:self];
 }
 
 - (void)didTapSecondaryActionButton {
+  base::UmaHistogramEnumeration(kAgeMismatchSignoutActionHistogram,
+                                AgeMismatchSignoutAction::kUseWithoutAccount);
   [_viewController blockUI];
-  [self.delegate ageMismatchSignoutCoordinatorWantsToBeStopped:self];
+  [self.delegate ageMismatchSignoutCoordinatorUserWantsToStaySignedOut:self];
 }
 
 - (void)didTapURLInDisclaimer:(NSURL*)URL {
   CHECK([URL isEqual:[NSURL URLWithString:kAgeMismatchSignoutLearnMoreURL]],
         base::NotFatalUntil::M153);
+  base::RecordAction(
+      base::UserMetricsAction(kAgeMismatchSignoutLearnMoreAction));
   AgeMismatchLearnMoreCoordinator* coordinator =
       [[AgeMismatchLearnMoreCoordinator alloc]
           initWithBaseViewController:_viewController

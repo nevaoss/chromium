@@ -9,6 +9,17 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 
+async function pollUntil(predicate: () => boolean, timeoutMs = 1000):
+    Promise<void> {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error('pollUntil timed out');
+    }
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  }
+}
+
 suite('ComposeboxInputTest', () => {
   let inputElement: ComposeboxInputElement;
 
@@ -130,27 +141,53 @@ suite('ComposeboxInputTest', () => {
       assertTrue(getComputedStyle(smartCompose).display !== 'none');
   });
 
-  test('#tabChip has fixed 38*24 box model', async () => {
-    inputElement.smartComposeInlineHint = 'foo';
+  test('input minHeight stays unset for short hint', async () => {
     inputElement.smartComposeEnabled = true;
+    inputElement.smartComposeInlineHint = 'short';
+    await inputElement.updateComplete;
+    await new Promise<void>(
+        resolve => requestAnimationFrame(
+            () => requestAnimationFrame(() => resolve())));
+
+    const input = inputElement.$.input;
+    const smartCompose =
+        inputElement.shadowRoot.querySelector<HTMLElement>('#smartCompose');
+    assertTrue(!!smartCompose);
+    assertEquals('', input.style.minHeight);
+    assertEquals('', smartCompose.style.minHeight);
+  });
+
+  test('input minHeight extends for multi-line hint', async () => {
+    inputElement.smartComposeEnabled = true;
+    inputElement.smartComposeInlineHint = 'first line\nsecond line';
     await inputElement.updateComplete;
 
-    const chip =
-        inputElement.shadowRoot.querySelector<HTMLElement>('#tabChip');
-    assertTrue(!!chip);
+    const input = inputElement.$.input;
+    await pollUntil(() => input.style.minHeight !== '');
 
-    const rect = chip.getBoundingClientRect();
-    assertEquals(38, rect.width);
-    assertEquals(24, rect.height);
-
-    const computed = getComputedStyle(chip);
-    assertEquals('0px', computed.paddingTop);
-    assertEquals('0px', computed.paddingBottom);
-    assertEquals('0px', computed.paddingLeft);
-    assertEquals('0px', computed.paddingRight);
-    assertEquals('inline-flex', computed.display);
-    assertEquals('18px', computed.lineHeight);
+    const smartCompose =
+        inputElement.shadowRoot.querySelector<HTMLElement>('#smartCompose');
+    assertTrue(!!smartCompose);
+    assertTrue(input.style.minHeight !== '');
+    assertEquals('', smartCompose.style.minHeight);
   });
+
+  test('inline minHeight is reset when hint clears', async () => {
+    inputElement.smartComposeEnabled = true;
+    inputElement.smartComposeInlineHint = 'first line\nsecond line';
+    await inputElement.updateComplete;
+
+    const input = inputElement.$.input;
+    await pollUntil(() => input.style.minHeight !== '');
+    assertTrue(input.style.minHeight !== '');
+
+    inputElement.smartComposeInlineHint = '';
+    await inputElement.updateComplete;
+    await pollUntil(() => input.style.minHeight === '');
+
+    assertEquals('', input.style.minHeight);
+  });
+
 });
 
 suite('ComposeboxScrollCaret', () => {
@@ -316,6 +353,11 @@ suite('ComposeboxCaretGeometry', () => {
   let inputElement: ComposeboxInputElement;
   let originalDir: string;
 
+  function setDirection(dir: 'ltr'|'rtl') {
+    document.documentElement.dir = dir;
+    inputElement.updateDirection();
+  }
+
   setup(async () => {
     originalDir = document.documentElement.dir;
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -330,7 +372,7 @@ suite('ComposeboxCaretGeometry', () => {
 
   // Verify the caret's rendered position aligns with its anchor span.
   test('CaretRenderedPositionMatchesAnchorSpanLtr', async () => {
-    document.documentElement.dir = 'ltr';
+    setDirection('ltr');
     const input = inputElement.$.input as HTMLTextAreaElement;
     const caret = inputElement.shadowRoot.querySelector<HTMLElement>('#caret');
     const mirror =
@@ -362,7 +404,7 @@ suite('ComposeboxCaretGeometry', () => {
   });
 
   test('CaretRenderedPositionMatchesAnchorSpanRtl', async () => {
-    document.documentElement.dir = 'rtl';
+    setDirection('rtl');
     const input = inputElement.$.input as HTMLTextAreaElement;
     const caret = inputElement.shadowRoot.querySelector<HTMLElement>('#caret');
     const mirror =
@@ -379,17 +421,51 @@ suite('ComposeboxCaretGeometry', () => {
     input.focus();
     await inputElement.updateComplete;
 
-    const anchoredSpan = mirror.childNodes[4] as HTMLElement;
+    const anchoredSpan = mirror.firstChild as HTMLElement;
     assertTrue(!!anchoredSpan);
 
     const caretRect = caret.getBoundingClientRect();
     const spanRect = anchoredSpan.getBoundingClientRect();
 
-    // In RTL, `left: anchor(end)` resolves to the span's left (start) edge.
+    // In RTL, the caret should be at the left edge of the leftmost span.
     assertTrue(Math.abs(caretRect.left - spanRect.left) < 2);
 
     // The caret's top should be near the span's top (within the 2px offset)
     assertTrue(Math.abs(caretRect.top - (spanRect.top - 2)) < 2);
+  });
+
+  test('CaretPositionedAtFarLeftOfLtrTextInRtl', async () => {
+    setDirection('rtl');
+    const input = inputElement.$.input as HTMLTextAreaElement;
+    const caret = inputElement.shadowRoot.querySelector<HTMLElement>('#caret');
+    const mirror =
+        inputElement.shadowRoot.querySelector<HTMLElement>('#mirror');
+    assertTrue(!!caret);
+    assertTrue(!!mirror);
+
+    input.value = 'AB';
+    input.dispatchEvent(new Event('input', {bubbles: true}));
+    input.setSelectionRange(2, 2);
+    input.dispatchEvent(new Event('keyup', {bubbles: true}));
+    await inputElement.updateComplete;
+
+    input.focus();
+    await inputElement.updateComplete;
+
+    const firstSpan = mirror.childNodes[0] as HTMLElement;
+    const secondSpan = mirror.childNodes[1] as HTMLElement;
+    assertTrue(!!firstSpan);
+    assertTrue(!!secondSpan);
+
+    const caretRect = caret.getBoundingClientRect();
+    const firstSpanRect = firstSpan.getBoundingClientRect();
+    const secondSpanRect = secondSpan.getBoundingClientRect();
+
+    // Caret should be at the left edge of the first span ('A').
+    assertTrue(Math.abs(caretRect.left - firstSpanRect.left) < 2);
+
+    // Caret should NOT be at the left edge of the second span ('B').
+    assertTrue(Math.abs(caretRect.left - secondSpanRect.left) > 5);
   });
 
   test('CaretAtStartPositionedAtFirstSpanStart', async () => {

@@ -3,14 +3,20 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <vector>
 
 #include "base/base64.h"
+#include "base/metrics/statistics_recorder.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 #include "chrome/browser/page_load_metrics/page_load_metrics_initialize.h"
+#include "chrome/browser/prefs/session_startup_pref.h"
+#include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
+#include "chrome/browser/profiles/keep_alive/scoped_profile_keep_alive.h"
 #include "chrome/browser/ui/browser_commands.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
@@ -24,10 +30,13 @@
 #include "chrome/common/webui_url_utils.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
+#include "components/keep_alive_registry/keep_alive_types.h"
+#include "components/keep_alive_registry/scoped_keep_alive.h"
 #include "components/metrics/content/subprocess_metrics_provider.h"
 #include "components/metrics/mapping/metrics_mapping_features.h"
 #include "components/metrics/mapping/metrics_name_mapping.pb.h"
 #include "components/ukm/test_ukm_recorder.h"
+#include "components/viz/common/features.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -37,6 +46,8 @@
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_source.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/features.h"
+#include "ui/base/mojom/window_show_state.mojom.h"
 #include "url/gurl.h"
 
 namespace waap {
@@ -97,6 +108,11 @@ class ToolbarDependencyProvider : public WebUIToolbarUI::DependencyProvider {
             []() { return CreateValidNavigationControlsState(); }));
   }
 
+  std::unique_ptr<toolbar_ui_api::IconTableFetcher> GetIconTableFetcher()
+      override {
+    return std::make_unique<FakeIconTableFetcher>();
+  }
+
   CommandUpdater* GetCommandUpdater() override {
     return reinterpret_cast<CommandUpdater*>(
         browser_->GetFeatures().browser_command_controller());
@@ -123,14 +139,40 @@ class WebUIToolbarInitializer : public WebUIControllerInitalizer {
 
 class InitialWebUIBrowserTestBase : public InProcessBrowserTest {
  public:
-  InitialWebUIBrowserTestBase() {
-    scoped_feature_list_.InitWithFeaturesAndParameters(
-        {{features::kInitialWebUI, {{"use_separate_process", "true"}}},
-         {features::kWebUIReloadButton, {}},
-         {features::kSkipIPCChannelPausingForNonGuests, {}},
-         {features::kWebUIInProcessResourceLoadingV2, {}},
-         {features::kInitialWebUISyncNavStartToCommit, {}}},
-        {});
+  InitialWebUIBrowserTestBase()
+      : InitialWebUIBrowserTestBase(
+            std::vector<base::test::FeatureRefAndParams>{}) {}
+
+  explicit InitialWebUIBrowserTestBase(
+      std::vector<base::test::FeatureRefAndParams> additional_features) {
+    std::vector<base::test::FeatureRefAndParams> base_features = {
+        {features::kInitialWebUI, {{"use_separate_process", "true"}}},
+        {features::kWebUIReloadButton, {}},
+        {features::kSkipIPCChannelPausingForNonGuests, {}},
+        {features::kWebUIInProcessResourceLoadingV2, {}},
+        {features::kInitialWebUISyncNavStartToCommit, {}}};
+
+    std::vector<base::test::FeatureRefAndParams> features;
+    features.reserve(base_features.size() + additional_features.size());
+
+    for (const auto& base_f : base_features) {
+      bool overridden = false;
+      for (const auto& add_f : additional_features) {
+        if (&add_f.feature.get() == &base_f.feature.get()) {
+          overridden = true;
+          break;
+        }
+      }
+      if (!overridden) {
+        features.push_back(base_f);
+      }
+    }
+
+    for (const auto& add_f : additional_features) {
+      features.push_back(add_f);
+    }
+
+    scoped_feature_list_.InitWithFeaturesAndParameters(features, {});
   }
 
   void SetUpOnMainThread() override {
@@ -587,5 +629,164 @@ IN_PROC_BROWSER_TEST_F(InitialWebUIMetricsDropBrowserTest,
 // `metrics::BeginFirstWebContentsProfiling()` is skipped, and the startup
 // metrics, such as `Startup.FirstWebContents.NonEmptyPaint3`, are never
 // recorded.
+
+class InitialWebUISurfaceSyncBrowserTest : public InitialWebUIBrowserTestBase {
+ public:
+  InitialWebUISurfaceSyncBrowserTest()
+      : InitialWebUIBrowserTestBase(
+            {{blink::features::kInitialWebUISurfaceSync, {}},
+             {features::kBypassOutdatedSurfaceActivation, {}},
+             {features::kWebUIReloadButton,
+              {{"WebUIReloadButtonDeferBrowserViewShow", "false"}}}}) {}
+};
+
+IN_PROC_BROWSER_TEST_F(InitialWebUISurfaceSyncBrowserTest,
+                       FirstPaintGapIsZero) {
+  base::HistogramTester histogram_tester;
+
+  // We need to wait for the histogram.
+  const std::string expected_metric =
+      "InitialWebUI.NewWindow.AllSources.WithExistingWindow."
+      "BrowserWindowToReloadButton.FirstPaintGap";
+
+  base::StatisticsRecorder::HistogramWaiter waiter(expected_metric);
+
+  // Create a new window.
+  Browser::CreateParams params(browser()->profile(), true);
+  Browser* new_browser = Browser::Create(params);
+
+  if (auto* manager = InitialWebUIWindowMetricsManager::From(new_browser)) {
+    manager->SkipStartupForTesting();
+    manager->SetWindowCreationInfo(
+        waap::NewWindowCreationSource::kBrowserInitiated,
+        base::TimeTicks::Now());
+  }
+
+  AddBlankTabAndShow(new_browser);
+  waiter.Wait();
+
+  // Assert that the FirstPaintGap is 0.
+  histogram_tester.ExpectUniqueSample(expected_metric, 0, 1);
+}
+
+// TODO(crbug.com/507317176): The following two tests now only work on Windows
+// when dealing with the minimized window. Since we have manually tested the
+// behavior on Linux and macOS, we will only enable them on Windows and maybe
+// fix it later.
+
+#if BUILDFLAG(IS_WIN)
+
+// Tests that the duration metrics are not recorded for windows created as
+// minimized.
+IN_PROC_BROWSER_TEST_F(InitialWebUINavigationBrowserTest,
+                       InitiallyMinimizedWindowSkipsMetrics) {
+  base::HistogramTester histogram_tester;
+
+  // Create a minimized browser window.
+  Browser::CreateParams params(browser()->profile(), true);
+  params.initial_show_state = ui::mojom::WindowShowState::kMinimized;
+  Browser* new_browser = Browser::Create(params);
+
+  if (auto* manager = InitialWebUIWindowMetricsManager::From(new_browser)) {
+    manager->SkipStartupForTesting();
+    manager->SetWindowCreationInfo(
+        waap::NewWindowCreationSource::kBrowserInitiated,
+        base::TimeTicks::Now());
+  }
+
+  // Show the window which should be shown minimized, and verify it.
+  new_browser->window()->Show();
+  EXPECT_TRUE(new_browser->window()->IsMinimized());
+
+  // Restore (open) the window.
+  new_browser->window()->Restore();
+  EXPECT_FALSE(new_browser->window()->IsMinimized());
+
+  // Simulate presentation and paint events (which now happen after the window
+  // is opened).
+  if (auto* manager = InitialWebUIWindowMetricsManager::From(new_browser)) {
+    base::TimeTicks t1 = base::TimeTicks::Now();
+    manager->OnBrowserWindowFirstPresentation(t1);
+    manager->OnReloadButtonFirstPaint(t1 + base::Milliseconds(50));
+  }
+
+  // Verify ShowRequestedToFirstPaint was not recorded.
+  histogram_tester.ExpectTotalCount(
+      "InitialWebUI.NewWindow.AllSources.WithoutExistingWindow.BrowserWindow."
+      "ShowRequestedToFirstPaint.FromConstructor",
+      0);
+
+  // Verify FirstPaintGap was not recorded.
+  histogram_tester.ExpectTotalCount(
+      "InitialWebUI.NewWindow.AllSources.WithoutExistingWindow."
+      "BrowserWindowToReloadButton.FirstPaintGap",
+      0);
+}
+
+// Tests that the duration metrics should be skipped for the windows that are
+// restored as minimized.
+IN_PROC_BROWSER_TEST_F(InitialWebUINavigationBrowserTest,
+                       SessionRestoreMinimizedWindow) {
+  Profile* profile = browser()->profile();
+
+  // Enable session restore and minimize the current window.
+  SessionStartupPref pref(SessionStartupPref::LAST);
+  SessionStartupPref::SetStartupPref(profile, pref);
+  browser()->window()->Minimize();
+  EXPECT_TRUE(browser()->window()->IsMinimized());
+
+  // Keep the profile and process alive when we close the window.
+  auto keep_alive = std::make_unique<ScopedKeepAlive>(
+      KeepAliveOrigin::SESSION_RESTORE, KeepAliveRestartOption::DISABLED);
+  auto profile_keep_alive = std::make_unique<ScopedProfileKeepAlive>(
+      profile, ProfileKeepAliveOrigin::kBrowserWindow);
+
+  // Close the browser and reset the static state of the metrics manager so the
+  // next window restored is treated as startup, which allows us to test the
+  // startup metric paths.
+  CloseBrowserSynchronously(browser());
+  InitialWebUIWindowMetricsManager::ResetForTesting();
+
+  // Create a new window, which should trigger session restore.
+  base::HistogramTester histogram_tester;
+  ui_test_utils::BrowserCreatedObserver browser_created_observer;
+
+  chrome::NewEmptyWindow(profile);
+
+  Browser* restored_browser = browser_created_observer.Wait();
+  ASSERT_TRUE(restored_browser);
+
+  // Verify the restored window is minimized.
+  EXPECT_TRUE(restored_browser->window()->IsMinimized());
+
+  // Restore (open) the window.
+  restored_browser->window()->Restore();
+  EXPECT_FALSE(restored_browser->window()->IsMinimized());
+
+  // Simulate paint events (which now happen after the window is opened).
+  if (auto* manager =
+          InitialWebUIWindowMetricsManager::From(restored_browser)) {
+    base::TimeTicks t1 = base::TimeTicks::Now();
+    manager->OnBrowserWindowFirstPresentation(t1);
+    manager->OnReloadButtonFirstPaint(t1 + base::Milliseconds(50));
+  }
+
+  // Verify no metrics were recorded, since it is treated as startup as we
+  // reset for testing, we should check startup metrics.
+  histogram_tester.ExpectTotalCount(
+      "InitialWebUI.Startup.SessionRestore.BrowserWindow."
+      "ShowRequestedToFirstPaint",
+      0);
+
+  histogram_tester.ExpectTotalCount(
+      "InitialWebUI.Startup.SessionRestore.BrowserWindowToReloadButton."
+      "FirstPaintGap",
+      0);
+
+  keep_alive.reset();
+  profile_keep_alive.reset();
+}
+
+#endif  // BUILDFLAG(IS_WIN)
 
 }  // namespace waap

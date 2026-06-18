@@ -145,7 +145,7 @@ const base::FeatureParam<DevToolsFreestylerUserTier>
 
 // Whether the DevTools AI Code Completion for Styles pane is enabled.
 BASE_FEATURE(kDevToolsAiCodeCompletionStyles,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kDevToolsAiCodeCompletionStylesModelId{
     &kDevToolsAiCodeCompletionStyles, "aida_model_id",
     /*default_value=*/""};
@@ -230,6 +230,8 @@ const base::FeatureParam<bool> kDevToolsConsoleInsightsTeasersAllowWithoutGpu{
 
 BASE_FEATURE(kDevToolsAiAssistanceV2, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kDevToolsAiV2Architecture, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Whether the Protocol Monitor panel is enabled.
 BASE_FEATURE(kDevToolsProtocolMonitor, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -239,4 +241,8 @@ BASE_FEATURE(kDevToolsGeminiRebranding, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDevToolsAiOriginTrialsApis, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDevToolsUseGcaApi, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Whether the Plus Button is shown in main DevTools panel/drawer tabbed
+// locations, replacing the "More tools" overflow menu.
+BASE_FEATURE(kDevToolsPlusButton, base::FEATURE_DISABLED_BY_DEFAULT);
 }  // namespace features

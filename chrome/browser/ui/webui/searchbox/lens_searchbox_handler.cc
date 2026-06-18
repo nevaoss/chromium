@@ -17,6 +17,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/sessions/core/session_id.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
+#include "ui/base/ui_base_features.h"
 #include "url/gurl.h"
 
 namespace {
@@ -121,10 +122,6 @@ LensSearchboxHandler::LensSearchboxHandler(
       lens_searchbox_client_(lens_searchbox_client) {
   autocomplete_controller_observation_.Observe(autocomplete_controller());
 
-  // The client may have text waiting to be sent to the searchbox that it
-  // couldn't do earlier since the page binding was not set. So now we let the
-  // client know the binding is ready.
-  lens_searchbox_client_->OnPageBound();
 }
 
 LensSearchboxHandler::~LensSearchboxHandler() = default;
@@ -134,7 +131,9 @@ std::string LensSearchboxHandler::AutocompleteIconToResourceName(
   // The default icon for contextual suggestions is the subdirectory arrow right
   // icon. For the Lens searchbox, we want to stay consistent with the search
   // spark loupe instead.
-  if (icon.name == omnibox::kSubdirectoryArrowRightIcon.name) {
+  if (icon.name == (features::IsRoundedIconsEnabled()
+                        ? omnibox::kSubdirectoryArrowRightIcon.name
+                        : omnibox::kSubdirectoryArrowRightOldIcon.name)) {
     return searchbox_internal::kSearchSparkIconResourceName;
   }
 
@@ -147,10 +146,12 @@ void LensSearchboxHandler::OnFocusChanged(bool focused) {
 }
 
 void LensSearchboxHandler::QueryAutocomplete(const std::u16string& input,
-                                             bool prevent_inline_autocomplete) {
+                                             bool prevent_inline_autocomplete,
+                                             uint32_t cursor_position) {
   lens_searchbox_client_->OnTextModified();
 
-  SearchboxHandler::QueryAutocomplete(input, prevent_inline_autocomplete);
+  SearchboxHandler::QueryAutocomplete(input, prevent_inline_autocomplete,
+                                      cursor_position);
 }
 
 void LensSearchboxHandler::SetInputText(const std::string& input_text) {

@@ -12,7 +12,7 @@
 #include "base/memory/weak_ptr.h"
 #include "chrome/browser/picture_in_picture/picture_in_picture_occlusion_observer.h"
 #include "chrome/browser/picture_in_picture/scoped_picture_in_picture_occlusion_observation.h"
-#include "chrome/browser/ui/page_actions/page_action_observer.h"
+#include "chrome/browser/ui/page_action/page_action_observer.h"
 #include "chrome/browser/ui/tabs/public/tab_dialog_manager.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/views/webid/account_selection_bubble_view.h"
@@ -503,6 +503,8 @@ class FedCmAccountSelectionView : public AccountSelectionView,
       const page_actions::PageActionState& page_action) override;
   void OnPageActionChipShown(
       const page_actions::PageActionState& page_action) override;
+  void OnPageActionChipHidden(
+      const page_actions::PageActionState& page_action) override;
   void OnPageActionAnchoredMessageShown(
       const page_actions::PageActionState& page_action) override;
 
@@ -611,6 +613,17 @@ class FedCmAccountSelectionView : public AccountSelectionView,
   // This class is owned by IdentityDialogController and thus can outlive the
   // associated UI. Any uses of tab_ must be preceded by a nullptr check.
   raw_ptr<tabs::TabInterface> tab_;
+
+  // Tracks whether impressions have been recorded for the current request flow
+  // to prevent duplicate logging on tab activation/deactivation.
+  bool chip_impression_recorded_{false};
+  bool icon_impression_recorded_{false};
+
+  // Tracks whether the current request flow requested a suggestion chip to be
+  // shown. This allows `OnPageActionIconShown` to ignore the premature icon
+  // shown notification that occurs during initial page action display before
+  // the suggestion chip expands.
+  bool chip_requested_for_flow_{false};
 
   // Holds subscriptions for TabInterface callbacks.
   std::vector<base::CallbackListSubscription> tab_subscriptions_;

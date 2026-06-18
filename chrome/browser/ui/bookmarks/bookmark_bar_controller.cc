@@ -4,10 +4,10 @@
 
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
 
+#include "base/feature_list.h"
 #include "base/types/to_address.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/defaults.h"
-#include "chrome/browser/extensions/extension_url_overrides.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search/search.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
@@ -25,9 +25,11 @@
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "components/bookmarks/browser/bookmark_model.h"
+#include "components/bookmarks/common/bookmark_bar_visibility_state.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
+#include "components/search/ntp_features.h"
 #include "components/tabs/public/split_tab_data.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_entry.h"
@@ -52,11 +54,7 @@ bool IsShowingNTP(content::WebContents* web_contents) {
   if (entry->IsInitialEntry()) {
     entry = web_contents->GetController().GetVisibleEntry();
   }
-  GURL url = entry->GetURL();
-  // Attempt reverse lookup of the url in case an extension overrode the new tab
-  // page. This function updates the url parameter in place.
-  ExtensionUrlOverrides::HandleChromeURLOverrideReverse(
-      &url, web_contents->GetBrowserContext());
+  const GURL& url = entry->GetURL();
   return NewTabUI::IsNewTab(url) || NewTabPageUI::IsNewTabPageOrigin(url) ||
          NewTabPageThirdPartyUI::IsNewTabPageOrigin(url) ||
          search::NavEntryIsInstantNTP(web_contents, entry);
@@ -75,12 +73,29 @@ BookmarkBarController::BookmarkBarController(BrowserWindowInterface& browser,
 
   // Set up preference observer for bookmark bar visibility.
   Profile* profile = browser_->GetProfile();
-  pref_change_registrar_.Init(profile->GetPrefs());
+  PrefService* prefs = profile->GetPrefs();
+  pref_change_registrar_.Init(prefs);
   pref_change_registrar_.Add(
       bookmarks::prefs::kShowBookmarkBar,
       base::BindRepeating(&BookmarkBarController::UpdateBookmarkBarState,
                           base::Unretained(this),
                           StateChangeReason::kPrefChange));
+
+  // If the `kNtpSimplificationBookmarkBar` feature is enabled update
+  // `kBookmarkBarVisibilityState` when `kShowBookmarkBar` is true to respect
+  // user choice of always showing the bookmark bar.
+  if (base::FeatureList::IsEnabled(
+          ntp_features::kNtpSimplificationBookmarkBar)) {
+    const PrefService::Preference* state_pref =
+        prefs->FindPreference(bookmarks::prefs::kBookmarkBarVisibilityState);
+
+    if (state_pref && state_pref->IsDefaultValue() &&
+        prefs->GetBoolean(bookmarks::prefs::kShowBookmarkBar)) {
+      prefs->SetInteger(
+          bookmarks::prefs::kBookmarkBarVisibilityState,
+          static_cast<int>(bookmarks::BookmarkBarVisibilityState::kAlwaysShow));
+    }
+  }
 
   // Initialize the bookmark bar state.
   UpdateBookmarkBarState(StateChangeReason::kInit);

@@ -12,6 +12,7 @@
 #include <optional>
 #include <utility>
 
+#include "base/byte_size.h"
 #include "base/check_op.h"
 #include "base/system/sys_info.h"
 #include "base/task/current_thread.h"
@@ -189,7 +190,7 @@ IsolateHolder::getDefaultIsolateParams() {
       std::make_unique<v8::Isolate::CreateParams>();
   params->code_event_handler = DebugImpl::GetJitCodeEventHandler();
   params->constraints.ConfigureDefaults(
-      base::SysInfo::AmountOfPhysicalMemory().InBytesUnsigned(),
+      base::SysInfo::AmountOfTotalPhysicalMemory().InBytes(),
       base::SysInfo::AmountOfVirtualMemory().InBytes());
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   // It passes now 0 values as params, but if each user/isolate wants to

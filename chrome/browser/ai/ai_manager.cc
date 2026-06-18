@@ -16,13 +16,17 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/weak_ptr.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
+#include "base/strings/strcat.h"
 #include "base/strings/stringprintf.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
 #include "base/types/expected.h"
 #include "base/types/optional_ref.h"
 #include "base/types/pass_key.h"
+#include "base/version_info/channel.h"
+#include "base/version_info/version_info.h"
 #include "chrome/browser/ai/ai_classifier.h"
 #include "chrome/browser/ai/ai_context_bound_object.h"
 #include "chrome/browser/ai/ai_context_bound_object_set.h"
@@ -38,6 +42,7 @@
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/common/channel_info.h"
 #include "components/language/core/common/locale_util.h"
 #include "components/on_device_ai/ai_utils.h"
 #include "components/optimization_guide/core/delivery/model_util.h"
@@ -108,12 +113,10 @@ const char kEmptyOutputLanguageWarning[] =
 const char kExperimentalLanguageWarning[] =
     "The specified languages are experimental in %s API and output quality "
     "cannot be guaranteed. The supported language codes are: [%s]";
+const char kSpeedPreferenceMarkdownWarning[] =
+    "The 'speed' performance preference utilizes a model with limited support "
+    "for 'markdown' format.";
 
-constexpr char kModelVersionParam[] = "model_version";
-// Feature flag for enabling foundational models in the AI API, requires the
-// field param kModelVersionParam to specify the model version. Example:
-// --enable-features=AIApiFoundationalModel:model_version=v4
-BASE_FEATURE(kAIApiFoundationalModel, base::FEATURE_DISABLED_BY_DEFAULT);
 // Eagerly initializes other downloadable APIs when any session type is created.
 BASE_FEATURE(kBuiltInAIEagerInit, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -289,8 +292,33 @@ void Insert(LanguageSet& set, const std::vector<AILanguageCodePtr>& languages) {
   }
 }
 
+// Returns the use case name based on the `model_version` param from the
+// `experimental_use_cases` field of the config.
 template <typename FeatureConfigProto>
-std::optional<std::string> GetUseCaseFromFeatureConfig(
+std::optional<std::string> GetExperimentalUseCaseByModelVersion(
+    const FeatureConfigProto& feature_config) {
+  // Support experimental use cases on Canary/Dev/Unknown and unofficial builds.
+  version_info::Channel channel = chrome::GetChannel();
+  if (channel != version_info::Channel::CANARY &&
+      channel != version_info::Channel::DEV &&
+      channel != version_info::Channel::UNKNOWN &&
+      version_info::IsOfficialBuild()) {
+    return std::nullopt;
+  }
+
+  if (base::FeatureList::IsEnabled(kAIApiFoundationalModel)) {
+    std::string model_version = base::GetFieldTrialParamValueByFeature(
+        kAIApiFoundationalModel, kModelVersionParam);
+    auto it = feature_config.experimental_use_cases().find(model_version);
+    if (it != feature_config.experimental_use_cases().end()) {
+      return it->second;
+    }
+  }
+  return std::nullopt;
+}
+
+template <typename FeatureConfigProto>
+std::optional<FeatureConfigProto> ParseFeatureConfig(
     const std::optional<mojo_base::ProtoWrapper>& wrapper) {
   if (!wrapper.has_value()) {
     return std::nullopt;
@@ -305,29 +333,35 @@ std::optional<std::string> GetUseCaseFromFeatureConfig(
     return std::nullopt;
   }
 
-  if (base::FeatureList::IsEnabled(kAIApiFoundationalModel)) {
-    std::string model_version = base::GetFieldTrialParamValueByFeature(
-        kAIApiFoundationalModel, kModelVersionParam);
-    auto it = feature_config.experimental_use_cases().find(model_version);
-    if (it != feature_config.experimental_use_cases().end()) {
-      return it->second;
-    }
+  return feature_config;
+}
+
+template <typename FeatureConfigProto>
+std::optional<std::string> GetUseCaseFromFeatureConfig(
+    const std::optional<mojo_base::ProtoWrapper>& wrapper) {
+  auto feature_config = ParseFeatureConfig<FeatureConfigProto>(wrapper);
+  if (!feature_config) {
     return std::nullopt;
   }
 
-  return feature_config.default_use_case();
+  if (std::optional<std::string> experimental_use_case =
+          GetExperimentalUseCaseByModelVersion(*feature_config)) {
+    return experimental_use_case;
+  }
+
+  return feature_config->default_use_case();
 }
 
-// Create a session for the feature by reading the use case from the
-// FeatureConfigProto config provided by the model broker.
-template <typename FeatureConfigProto>
-void CreateSessionWithConfig(
+// Creates a session for a feature by determining the correct model use case
+// (e.g. default, performance preference, or experimental use case) via the
+// provided `UseCaseResolver` and the feature configuration.
+void CreateSessionWithConfigAndResolver(
     optimization_guide::ModelBrokerClient* broker_client,
     base::OnceCallback<
         void(std::unique_ptr<optimization_guide::OnDeviceSession>)> callback,
+    AIManager::UseCaseResolver resolver,
     std::optional<mojo_base::ProtoWrapper> wrapper) {
-  std::optional<std::string> use_case =
-      GetUseCaseFromFeatureConfig<FeatureConfigProto>(wrapper);
+  std::optional<std::string> use_case = std::move(resolver).Run(wrapper);
 
   if (!use_case.has_value() || use_case->empty()) {
     std::move(callback).Run(nullptr);
@@ -337,6 +371,20 @@ void CreateSessionWithConfig(
   broker_client->CreateSession(*use_case,
                                ::optimization_guide::SessionConfigParams{},
                                std::move(callback));
+}
+
+// Convenience template that creates a session using the default use case
+// resolution logic derived from `FeatureConfigProto`.
+template <typename FeatureConfigProto>
+void CreateSessionWithConfig(
+    optimization_guide::ModelBrokerClient* broker_client,
+    base::OnceCallback<
+        void(std::unique_ptr<optimization_guide::OnDeviceSession>)> callback,
+    std::optional<mojo_base::ProtoWrapper> wrapper) {
+  CreateSessionWithConfigAndResolver(
+      broker_client, std::move(callback),
+      base::BindOnce(&GetUseCaseFromFeatureConfig<FeatureConfigProto>),
+      std::move(wrapper));
 }
 
 // Request assets and wait for the model broker client to become
@@ -472,9 +520,9 @@ bool IsLanguageInSet(const blink::mojom::AILanguageCodePtr& language,
 
 // Checks if the provided options satisfy the requirements for the 'speed'
 // performance preference:
-// 1. Languages must be supported for speed preference. 2. Format must be plain
-// text. 3. Type must be TLDR or KeyPoints. 4. Length must be short or medium.
-// 5. `shared_context` must not be specified.
+// 1. Languages must be supported for speed preference.
+// 2. Type must be TLDR or KeyPoints. 3. Length must be short or medium.
+// 4. `shared_context` must not be specified.
 // TODO(crbug.com/508631503): In the long term, model configs should express
 // the subset of supported options, and this matching code should be more
 // generalized.
@@ -483,7 +531,6 @@ enum class SpeedPreferenceIncompatibilityReason {
   kInputLanguageNotSupported,
   kContextLanguageNotSupported,
   kSharedContextNotSupported,
-  kFormatNotSupported,
   kTypeNotSupported,
   kLengthNotSupported,
   kManifestBrokerDisabled,
@@ -528,11 +575,6 @@ IsSpeedPreferenceCompatible(
         SpeedPreferenceIncompatibilityReason::kSharedContextNotSupported);
   }
 
-  if (options->format != blink::mojom::AISummarizerFormat::kPlainText) {
-    return base::unexpected(
-        SpeedPreferenceIncompatibilityReason::kFormatNotSupported);
-  }
-
   if (options->type != blink::mojom::AISummarizerType::kTLDR &&
       options->type != blink::mojom::AISummarizerType::kKeyPoints) {
     return base::unexpected(
@@ -549,51 +591,64 @@ IsSpeedPreferenceCompatible(
 }
 
 std::optional<std::string> ResolveSummarizerUseCaseName(
-    const std::optional<mojo_base::ProtoWrapper>& config_wrapper,
-    const blink::mojom::AISummarizerCreateOptionsPtr& options) {
+    const blink::mojom::AISummarizerCreateOptionsPtr& options,
+    const std::optional<mojo_base::ProtoWrapper>& config_wrapper) {
   // Keys used in the preference_use_cases map in the manifest.
   constexpr char kPreferenceSpeed[] = "speed";
-  constexpr char kPreferenceCapability[] = "capability";
 
-  if (!config_wrapper) {
+  auto metadata =
+      ParseFeatureConfig<optimization_guide::proto::SummarizerFeatureConfig>(
+          config_wrapper);
+  if (!metadata) {
     return std::nullopt;
   }
 
-  auto any_metadata = config_wrapper->As<optimization_guide::proto::Any>();
-  if (!any_metadata) {
-    return std::nullopt;
-  }
-
-  optimization_guide::proto::SummarizerFeatureConfig metadata;
-  if (!metadata.ParseFromString(any_metadata->value())) {
-    return std::nullopt;
-  }
-
+  std::optional<std::string> use_case =
+      GetExperimentalUseCaseByModelVersion(*metadata).value_or(
+          metadata->default_use_case());
   if (!options) {
-    return metadata.default_use_case();
+    return use_case;
   }
 
   const char* pref_str = nullptr;
   switch (options->preference) {
     case blink::mojom::PerformancePreference::kAuto:
-      return metadata.default_use_case();
+    case blink::mojom::PerformancePreference::kCapability:
+      return use_case;
     case blink::mojom::PerformancePreference::kSpeed:
       pref_str = kPreferenceSpeed;
       break;
-    case blink::mojom::PerformancePreference::kCapability:
-      pref_str = kPreferenceCapability;
-      break;
   }
 
-  auto it = metadata.preference_use_cases().find(pref_str);
-  if (it != metadata.preference_use_cases().end()) {
+  auto it = metadata->preference_use_cases().find(pref_str);
+  if (it != metadata->preference_use_cases().end()) {
     return it->second;
   }
   VLOG(1) << "Manifest missing preference use case mapping for: " << pref_str;
   return std::nullopt;
 }
 
+void CheckAndLogEligibility(
+    content::BrowserContext* browser_context,
+    optimization_guide::mojom::OnDeviceFeature feature) {
+  auto* service = OptimizationGuideKeyedServiceFactory::GetForProfile(
+      Profile::FromBrowserContext(browser_context));
+  if (service) {
+    base::UmaHistogramEnumeration(
+        base::StrCat(
+            {"OptimizationGuide.ModelExecution.OnDeviceModelEligibilityReason.",
+             optimization_guide::GetVariantName(feature)}),
+        service->GetOnDeviceModelEligibility(feature));
+  }
+}
+
 }  // namespace
+
+// Feature flag for enabling foundational models in the AI API, requires the
+// field param kModelVersionParam to specify the model version. Example:
+// --enable-features=AIApiFoundationalModel:model_version=v4
+BASE_FEATURE(kAIApiFoundationalModel, base::FEATURE_DISABLED_BY_DEFAULT);
+const char kModelVersionParam[] = "model_version";
 
 AIManager::AIManager(content::BrowserContext* browser_context,
                      content::RenderFrameHost* rfh)
@@ -649,9 +704,14 @@ void AIManager::CanCreateLanguageModel(
                                   kUnavailableModelAdaptationNotAvailable);
       return;
     }
-    // Note: Tool use capabilities are gated by RuntimeEnabledFeatures in Blink.
     // Tool use capability is signaled by the presence of tool declarations.
     if (options->tools.has_value() && !options->tools->empty()) {
+      // Check if tool declarations are used without the feature flag.
+      if (!base::FeatureList::IsEnabled(blink::features::kAIPromptAPIToolUse)) {
+        std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
+                                    kUnavailableModelAdaptationNotAvailable);
+        return;
+      }
       input_capabilities.Put(on_device_model::CapabilityFlags::kToolUse);
     }
   }
@@ -697,6 +757,9 @@ void AIManager::CreateLanguageModel(
         blink::mojom::AIManagerCreateClientError::kUnsupportedLanguage);
     return;
   }
+
+  CheckAndLogEligibility(
+      browser_context_, optimization_guide::mojom::OnDeviceFeature::kPromptApi);
 
   if (!model_broker_client_) {
     mojo::Remote<blink::mojom::AIManagerCreateLanguageModelClient>
@@ -807,11 +870,13 @@ void AIManager::CreateLanguageModelInternal(
     return;
   }
   if (!params->capabilities.empty()) {
-    // Check if multimodal input (image/audio) is used without the feature flag
-    // or if the model doesn't support the requested capabilities.
+    // Check if image/audio/tool input types are used without feature flags, or
+    // the model doesn't support the requested capabilities.
     if ((HasMultimodalInputCapabilities(params->capabilities) &&
          !base::FeatureList::IsEnabled(
              blink::features::kAIPromptAPIMultimodalInput)) ||
+        (params->capabilities.Has(on_device_model::CapabilityFlags::kToolUse) &&
+         !base::FeatureList::IsEnabled(blink::features::kAIPromptAPIToolUse)) ||
         !model_client->capabilities().HasAll(params->capabilities)) {
       mojo::Remote<blink::mojom::AIManagerCreateLanguageModelClient>
           client_remote(std::move(client));
@@ -876,25 +941,22 @@ void AIManager::CanCreateSummarizer(
     }
     auto result = IsSpeedPreferenceCompatible(options);
     if (!result.has_value()) {
-      std::move(callback).Run(
-          blink::mojom::ModelAvailabilityCheckResult::
-              kUnavailableUnsupportedOptionsForPerformancePreference);
+      std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
+                                  kUnavailableIncompatiblePreferenceOptions);
       return;
+    }
+    if (options->format == blink::mojom::AISummarizerFormat::kMarkDown) {
+      MaybeLogSpeedPreferenceMarkdownWarning();
     }
   }
 
   if (base::FeatureList::IsEnabled(
           optimization_guide::kOptimizationGuideManifestBroker)) {
-    if (!model_broker_client_) {
-      std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
-                                  kUnavailableFeatureExecutionNotEnabled);
-      return;
-    }
-    model_broker_client_->GetConfig(
+    CanCreateSessionWithConfig<
+        optimization_guide::proto::SummarizerFeatureConfig>(
         optimization_guide::mojom::OnDeviceFeature::kSummarize,
-        base::BindOnce(&AIManager::OnGetSummarizerConfigForCanCreate,
-                       weak_factory_.GetWeakPtr(), std::move(options),
-                       std::move(callback)));
+        on_device_model::Capabilities(), std::move(callback),
+        base::BindOnce(&ResolveSummarizerUseCaseName, std::move(options)));
   } else {
     CanCreateSession(optimization_guide::mojom::OnDeviceFeature::kSummarize,
                      on_device_model::Capabilities(), std::move(callback));
@@ -933,63 +995,18 @@ void AIManager::CreateSummarizer(
           std::move(client));
       on_device_ai::SendClientRemoteError(
           client_remote, blink::mojom::AIManagerCreateClientError::
-                             kUnsupportedOptionsForPerformancePreference);
+                             kIncompatiblePreferenceOptions);
       return;
+    }
+    if (options->format == blink::mojom::AISummarizerFormat::kMarkDown) {
+      MaybeLogSpeedPreferenceMarkdownWarning();
     }
   }
 
+  CheckAndLogEligibility(
+      browser_context_, optimization_guide::mojom::OnDeviceFeature::kSummarize);
+
   if (!model_broker_client_) {
-    mojo::Remote<blink::mojom::AIManagerCreateSummarizerClient> client_remote(
-        std::move(client));
-    on_device_ai::SendClientRemoteError(
-        client_remote,
-        blink::mojom::AIManagerCreateClientError::kUnableToCreateSession);
-    return;
-  }
-
-  if (base::FeatureList::IsEnabled(
-          optimization_guide::kOptimizationGuideManifestBroker)) {
-    model_broker_client_->GetConfig(
-        optimization_guide::mojom::OnDeviceFeature::kSummarize,
-        base::BindOnce(&AIManager::OnGetSummarizerConfigForCreate,
-                       weak_factory_.GetWeakPtr(), std::move(client),
-                       std::move(options)));
-  } else {
-    auto callback =
-        CreateSummarizerSessionCallback(std::move(options), std::move(client));
-
-    model_broker_client_->CreateSession(
-        optimization_guide::mojom::OnDeviceFeature::kSummarize,
-        ::optimization_guide::SessionConfigParams{}, std::move(callback));
-  }
-}
-
-void AIManager::OnGetSummarizerConfigForCanCreate(
-    blink::mojom::AISummarizerCreateOptionsPtr options,
-    CanCreateSummarizerCallback callback,
-    std::optional<mojo_base::ProtoWrapper> config_wrapper) {
-  std::optional<std::string> use_case_opt =
-      ResolveSummarizerUseCaseName(config_wrapper, options);
-
-  if (!use_case_opt.has_value() || use_case_opt->empty()) {
-    VLOG(1) << "Failed to resolve summarizer use case name from manifest.";
-    std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
-                                kUnavailableFeatureExecutionNotEnabled);
-    return;
-  }
-  CanCreateSession(std::move(*use_case_opt), on_device_model::Capabilities(),
-                   std::move(callback));
-}
-
-void AIManager::OnGetSummarizerConfigForCreate(
-    mojo::PendingRemote<blink::mojom::AIManagerCreateSummarizerClient> client,
-    blink::mojom::AISummarizerCreateOptionsPtr options,
-    std::optional<mojo_base::ProtoWrapper> config_wrapper) {
-  std::optional<std::string> use_case_opt =
-      ResolveSummarizerUseCaseName(config_wrapper, options);
-
-  if (!use_case_opt.has_value() || use_case_opt->empty()) {
-    VLOG(1) << "Failed to resolve summarizer use case name from manifest.";
     mojo::Remote<blink::mojom::AIManagerCreateSummarizerClient> client_remote(
         std::move(client));
     on_device_ai::SendClientRemoteError(
@@ -1010,12 +1027,25 @@ void AIManager::OnGetSummarizerConfigForCreate(
     }
   }
 
+  // Clone because `options` is move-only but needed by both
+  // `CreateSummarizerSessionCallback` and the use case resolver.
+  auto options_clone = options ? options.Clone() : nullptr;
   auto callback =
       CreateSummarizerSessionCallback(std::move(options), std::move(client));
 
-  model_broker_client_->CreateSession(
-      std::move(*use_case_opt), ::optimization_guide::SessionConfigParams{},
-      std::move(callback));
+  if (base::FeatureList::IsEnabled(
+          optimization_guide::kOptimizationGuideManifestBroker)) {
+    model_broker_client_->GetConfig(
+        optimization_guide::mojom::OnDeviceFeature::kSummarize,
+        base::BindOnce(&CreateSessionWithConfigAndResolver,
+                       model_broker_client_.get(), std::move(callback),
+                       base::BindOnce(&ResolveSummarizerUseCaseName,
+                                      std::move(options_clone))));
+  } else {
+    model_broker_client_->CreateSession(
+        optimization_guide::mojom::OnDeviceFeature::kSummarize,
+        ::optimization_guide::SessionConfigParams{}, std::move(callback));
+  }
 }
 
 // Returns a callback to handle session creation for the summarizer.
@@ -1080,6 +1110,10 @@ void AIManager::CreateProofreader(
         blink::mojom::AIManagerCreateClientError::kUnsupportedLanguage);
     return;
   }
+
+  CheckAndLogEligibility(
+      browser_context_,
+      optimization_guide::mojom::OnDeviceFeature::kProofreaderApi);
 
   if (!model_broker_client_) {
     mojo::Remote<blink::mojom::AIManagerCreateProofreaderClient> client_remote(
@@ -1210,6 +1244,10 @@ void AIManager::CreateWriter(
     return;
   }
 
+  CheckAndLogEligibility(
+      browser_context_,
+      optimization_guide::mojom::OnDeviceFeature::kWritingAssistanceApi);
+
   if (!model_broker_client_) {
     mojo::Remote<blink::mojom::AIManagerCreateWriterClient> client_remote(
         std::move(client));
@@ -1299,6 +1337,10 @@ void AIManager::CreateRewriter(
     return;
   }
 
+  CheckAndLogEligibility(
+      browser_context_,
+      optimization_guide::mojom::OnDeviceFeature::kWritingAssistanceApi);
+
   if (!model_broker_client_) {
     mojo::Remote<blink::mojom::AIManagerCreateRewriterClient> client_remote(
         std::move(client));
@@ -1341,6 +1383,10 @@ void AIManager::CreateRewriter(
 void AIManager::CanCreateClassifier(
     blink::mojom::AIClassifierCreateOptionsPtr options,
     CanCreateClassifierCallback callback) {
+  if (!base::FeatureList::IsEnabled(blink::features::kAIClassifierAPI)) {
+    receivers_.ReportBadMessage("Feature not enabled");
+    return;
+  }
   // TODO(crbug.com/499365168): Enforce permissions policy and
   // CheckAndFixLanguages.
   if (auto pref_blocked_result = GetPrefBlockedResult()) {
@@ -1354,12 +1400,21 @@ void AIManager::CanCreateClassifier(
 void AIManager::CreateClassifier(
     mojo::PendingRemote<blink::mojom::AIManagerCreateClassifierClient> client,
     blink::mojom::AIClassifierCreateOptionsPtr options) {
+  if (!base::FeatureList::IsEnabled(blink::features::kAIClassifierAPI)) {
+    receivers_.ReportBadMessage("Feature not enabled");
+    return;
+  }
   // TODO(crbug.com/499365168): Enforce permissions policy and
   // CheckAndFixLanguages.
   if (IsBlocked()) {
     receivers_.ReportBadMessage("Policy or user setting disabled");
     return;
   }
+
+  CheckAndLogEligibility(
+      browser_context_,
+      optimization_guide::mojom::OnDeviceFeature::kClassifier);
+
   if (!model_broker_client_) {
     mojo::Remote<blink::mojom::AIManagerCreateClassifierClient> client_remote(
         std::move(client));
@@ -1427,13 +1482,12 @@ void AIManager::CanCreateSession(const std::string& use_case_string,
                          weak_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-template <typename FeatureConfigProto>
 void AIManager::FinishCanCreateSessionWithConfig(
     on_device_model::Capabilities capabilities,
     CanCreateLanguageModelCallback callback,
+    UseCaseResolver resolver,
     std::optional<mojo_base::ProtoWrapper> wrapper) {
-  std::optional<std::string> use_case =
-      GetUseCaseFromFeatureConfig<FeatureConfigProto>(wrapper);
+  std::optional<std::string> use_case = std::move(resolver).Run(wrapper);
   if (!use_case.has_value() || use_case->empty()) {
     std::move(callback).Run(blink::mojom::ModelAvailabilityCheckResult::
                                 kUnavailableConfigNotAvailableForFeature);
@@ -1449,7 +1503,8 @@ template <typename FeatureConfigProto>
 void AIManager::CanCreateSessionWithConfig(
     optimization_guide::mojom::OnDeviceFeature capability,
     on_device_model::Capabilities capabilities,
-    CanCreateLanguageModelCallback callback) {
+    CanCreateLanguageModelCallback callback,
+    UseCaseResolver resolver) {
   StartModelPathValidationIfOverrideSet();
 
   if (!model_broker_client_) {
@@ -1459,10 +1514,19 @@ void AIManager::CanCreateSessionWithConfig(
   }
 
   model_broker_client_->GetConfig(
-      capability,
-      base::BindOnce(
-          &AIManager::FinishCanCreateSessionWithConfig<FeatureConfigProto>,
-          weak_factory_.GetWeakPtr(), capabilities, std::move(callback)));
+      capability, base::BindOnce(&AIManager::FinishCanCreateSessionWithConfig,
+                                 weak_factory_.GetWeakPtr(), capabilities,
+                                 std::move(callback), std::move(resolver)));
+}
+
+template <typename FeatureConfigProto>
+void AIManager::CanCreateSessionWithConfig(
+    optimization_guide::mojom::OnDeviceFeature capability,
+    on_device_model::Capabilities capabilities,
+    CanCreateLanguageModelCallback callback) {
+  CanCreateSessionWithConfig<FeatureConfigProto>(
+      capability, capabilities, std::move(callback),
+      base::BindOnce(&GetUseCaseFromFeatureConfig<FeatureConfigProto>));
 }
 
 void AIManager::FinishCanCreateSession(
@@ -1722,4 +1786,14 @@ void AIManager::MaybeLogExperimentalLanguageWarning(
   rfh->AddMessageToConsole(
       blink::mojom::ConsoleMessageLevel::kWarning,
       base::StringPrintf(kExperimentalLanguageWarning, api_name, list));
+}
+
+void AIManager::MaybeLogSpeedPreferenceMarkdownWarning() {
+  auto* rfh = rfh_.AsRenderFrameHostIfValid();
+  if (!rfh || did_log_speed_preference_markdown_warning_) {
+    return;
+  }
+  did_log_speed_preference_markdown_warning_ = true;
+  rfh->AddMessageToConsole(blink::mojom::ConsoleMessageLevel::kWarning,
+                           kSpeedPreferenceMarkdownWarning);
 }

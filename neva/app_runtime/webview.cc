@@ -314,7 +314,7 @@ void WebView::ResumePaintingAndSetVisibilityVisible() {
       static_cast<content::RenderWidgetHostViewAura*>(
           web_contents_->GetRenderViewHost()->GetWidget()->GetView());
   if (host_view)
-    host_view->Show();
+    host_view->ShowWithVisibility(content::PageVisibilityState::kVisible);
 }
 
 bool WebView::SetSkipFrame(bool enable) {
@@ -980,7 +980,7 @@ void WebView::ForwardAppRuntimeEvent(AppRuntimeEvent* event) {
                            ? ui::EventType::kKeyPressed
                            : ui::EventType::kKeyReleased,
                        ui::KeyboardCode(keycode), ui::DomCode::NONE,
-                       key_event->GetFlags(), key_event->GetDomKey(),
+                       key_event->GetFlags(), ui::DomKey(key_event->GetDomKey()),
                        base::TimeTicks()),
           wchar_t(keycode));
 
