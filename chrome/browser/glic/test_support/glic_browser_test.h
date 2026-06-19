@@ -155,9 +155,11 @@ class GlicBrowserTestMixin : public T {
     // Java.
 #if BUILDFLAG(IS_DESKTOP_ANDROID)
         {chrome::android::kEnableAndroidSidePanel, {}},
+        {chrome::android::kEnableAndroidSidePanelLogs, {}},
         {features::kGlicAndroidSidePanel, {}},
 #endif
     };
+
     glic_test_environment_.SetGlicPagePath(
         "/glic/browser_tests/minimal_client.html");
     scoped_feature_list_.InitWithFeaturesAndParameters(enabled_features, {});
@@ -177,6 +179,12 @@ class GlicBrowserTestMixin : public T {
     // This is needed to force is_desktop() to return true for desktop Android
     // builds.
     command_line->AppendSwitch(switches::kForceDesktopAndroid);
+#endif
+#if BUILDFLAG(IS_ANDROID)
+    // Disable the first-run experience (FRE) so that when we launch a new
+    // ChromeTabbedActivity in tests, it shows the browser window instead of the
+    // FRE onboarding screens.
+    command_line->AppendSwitch("disable-fre");
 #endif
   }
 
@@ -233,12 +241,13 @@ class GlicBrowserTestMixin : public T {
     return WaitForGlicOpen(T::GetTabListInterface()->GetActiveTab());
   }
 
-  void RegisterConversation(GlicInstanceImpl* instance,
+  void RegisterConversation(GlicInstance* instance,
                             const std::string& conversation_id) {
     CHECK(instance);
     auto info = mojom::ConversationInfo::New();
     info->conversation_id = conversation_id;
-    instance->RegisterConversation(std::move(info), base::DoNothing());
+    static_cast<GlicInstanceImpl*>(instance)->RegisterConversation(
+        std::move(info), base::DoNothing());
   }
 
   // Registers a conversation and submits input to prevent the instance from
@@ -602,7 +611,8 @@ class GlicBrowserTestMixin : public T {
     glic_test_environment_.SetGlicFreUrlOverride(url);
   }
 
-  [[nodiscard]] TestResult<void> WaitForGlicClient(GlicInstance* instance) {
+  [[nodiscard]] TestResult<void> WaitForGlicClient(
+      GlicInstance* instance = nullptr) {
     auto* instance_impl = GetInstanceImpl(instance);
     return RunUntilEqual(
         [&]() { return instance_impl->host().IsWebClientConnected(); }, true,

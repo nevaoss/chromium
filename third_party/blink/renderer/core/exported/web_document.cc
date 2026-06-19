@@ -442,8 +442,8 @@ bool WebDocument::ExecuteScriptTool(
     const WebString& name,
     const WebString& input_arguments,
     WebScriptToolResultCallback tool_result_cb) {
-  if (auto* model_context = ModelContextSupplement::modelContext(
-          *Unwrap<Document>()->domWindow()->navigator())) {
+  if (auto* model_context =
+          ModelContextSupplement::modelContext(*Unwrap<Document>())) {
     auto web_tool_declaration = std::make_unique<WebScriptToolDeclaration>();
     if (auto script_tool_declaration =
             model_context->GetScriptToolDeclaration(name)) {
@@ -482,8 +482,8 @@ bool WebDocument::ExecuteScriptTool(
 
 void WebDocument::CancelScriptTool(
     const base::UnguessableToken& invocation_id) {
-  if (auto* model_context = ModelContextSupplement::modelContext(
-          *Unwrap<Document>()->domWindow()->navigator())) {
+  if (auto* model_context =
+          ModelContextSupplement::modelContext(*Unwrap<Document>())) {
     model_context->CancelTool(invocation_id);
   }
 }

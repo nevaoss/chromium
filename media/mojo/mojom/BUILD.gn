@@ -972,6 +972,10 @@ mojom("video_encode") {
           cpp = "::media::BitstreamBufferMetadata"
         },
         {
+          mojom = "media.mojom.YuvPsnr"
+          cpp = "::media::YuvPsnr"
+        },
+        {
           mojom = "media.mojom.VideoBitrateAllocation"
           cpp = "::media::VideoBitrateAllocation"
         },

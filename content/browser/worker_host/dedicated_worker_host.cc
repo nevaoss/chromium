@@ -67,6 +67,7 @@
 #include "third_party/blink/public/mojom/devtools/console_message.mojom.h"
 #include "third_party/blink/public/mojom/loader/fetch_client_settings_object.mojom.h"
 #include "third_party/blink/public/mojom/script_source_location.mojom.h"
+#include "third_party/perfetto/include/perfetto/tracing/track.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "content/browser/direct_sockets/direct_sockets_service_impl.h"
@@ -393,8 +394,9 @@ void DedicatedWorkerHost::StartScriptLoad(
       nearest_ancestor_render_frame_host->GetSiteInstance()->GetPartitionDomain(
           storage_partition_impl);
 
-  TRACE_EVENT_BEGIN("loading", "WorkerScriptFetcher CreateAndStart",
-                    perfetto::Track::FromPointer(this));
+  TRACE_EVENT_BEGIN(
+      "loading", "WorkerScriptFetcher CreateAndStart",
+      perfetto::NamedTrack::FromPointer("content::DedicatedWorkerHost", this));
   WorkerScriptFetcher::CreateAndStart(
       worker_process_host_->GetDeprecatedID(), token_, script_url,
       *nearest_ancestor_render_frame_host, creator_render_frame_host,
@@ -424,7 +426,8 @@ void DedicatedWorkerHost::DidStartScriptLoad(
     std::optional<WorkerScriptFetcherResult> result) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   // WorkerScriptFetcher CreateAndStart
-  TRACE_EVENT_END("loading", perfetto::Track::FromPointer(this));
+  TRACE_EVENT_END("loading", perfetto::NamedTrack::FromPointer(
+                                 "content::DedicatedWorkerHost", this));
   TRACE_EVENT("loading", "DedicatedWorkerHost::DidStartScriptLoad",
               "final_response_url", script_request_url_);
 
@@ -805,11 +808,7 @@ void DedicatedWorkerHost::CreateWebSocketConnector(
               ancestor_render_frame_host_id_.frame_routing_id),
           GetWorkerStorageKey().origin(),
           ancestor_render_frame_host->GetIsolationInfoForSubresources(),
-          worker_client_security_state_->Clone(),
-          // TODO(crbug.com/492462310): Pass network_restrictions_id from the
-          // ancestor frame so Connection-Allowlist is enforced for dedicated
-          // worker WebSocket connections.
-          /*network_restrictions_id=*/std::nullopt),
+          worker_client_security_state_->Clone(), network_restrictions_id_),
       std::move(receiver));
 }
 
@@ -824,13 +823,15 @@ void DedicatedWorkerHost::CreateWebTransportConnector(
     receiver.ResetWithReason(0, "The parent frame has already been gone.");
     return;
   }
-  mojo::MakeSelfOwnedReceiver(std::make_unique<WebTransportConnectorImpl>(
-                                  worker_process_host_->GetDeprecatedID(),
-                                  ancestor_render_frame_host->GetWeakPtr(),
-                                  GetWorkerStorageKey().origin(),
-                                  isolation_info_.network_anonymization_key(),
-                                  worker_client_security_state_->Clone()),
-                              std::move(receiver));
+  mojo::MakeSelfOwnedReceiver(
+      std::make_unique<WebTransportConnectorImpl>(
+          worker_process_host_->GetDeprecatedID(),
+          ancestor_render_frame_host->GetWeakPtr(),
+          GetWorkerStorageKey().origin(),
+          isolation_info_.network_anonymization_key(),
+          worker_client_security_state_->Clone(),
+          network_restrictions_id_),
+      std::move(receiver));
 }
 
 void DedicatedWorkerHost::CreateWakeLockService(

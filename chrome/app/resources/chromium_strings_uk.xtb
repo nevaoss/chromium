@@ -34,6 +34,7 @@
 <translation id="1324107359134968521">Для пошуку пристроїв із Bluetooth вебпереглядачу
 Chromium потрібен доступ до Bluetooth. <ph name="IDS_SERIAL_DEVICE_CHOOSER_AUTHORIZE_BLUETOOTH_LINK" /></translation>
 <translation id="1330562121671411446">Визначити мову</translation>
+<translation id="1330742950061766891">Використовувати рекомендовані налаштування вебпереглядача Chromium</translation>
 <translation id="1342274909142618978">Також видалити дані з Chromium (<ph name="URL" />)</translation>
 <translation id="1345251407431278948">Пошук за зображенням закріплено. Щоб скористатися ним, натисніть нову кнопку на панелі інструментів.</translation>
 <translation id="1356661055722410047">Новинка! Тепер ви можете перекладати текст і зображення на екрані.</translation>
@@ -581,7 +582,6 @@ Chromium не може відновити ваші налаштування.</tr
 <translation id="7368826207863345663">Щоб отримувати майбутні оновлення Chromium, потрібна операційна система macOS 13 або новішої версії. На цьому комп’ютері встановлено macOS 12.</translation>
 <translation id="7376384068949534168">Останнім часом ви не відвідували цей сайт. Вебпереглядач Chromium скасував такі дозволи: "<ph name="PERMISSION_1" />" і "<ph name="PERMISSION_2" />".</translation>
 <translation id="73786666777299047">Відкрити Веб-магазин Chrome</translation>
-<translation id="7384121030444253939">Це розширення більше не підтримується. Chromium радить вилучити його.</translation>
 <translation id="7407655596887111931">Тепер Chromium – ваш вебпереглядач за умовчанням</translation>
 <translation id="7413153308467572558">Продовжуйте роботу з місця, де зупинилися: Chromium відновлює ваші вкладки після кожного перезапуску. Щоб вимкнути цю функцію, перейдіть у</translation>
 <translation id="7427879960656355200">Імпортувати паролі в Chromium</translation>

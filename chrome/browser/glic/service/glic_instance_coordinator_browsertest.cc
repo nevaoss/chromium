@@ -15,7 +15,6 @@
 #include "base/test/test_future.h"
 #include "base/timer/elapsed_timer.h"
 #include "build/build_config.h"
-#include "chrome/browser/glic/fre/glic_fre_controller.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/glic_tab_restore_data.h"
 #include "chrome/browser/glic/host/glic.mojom-shared.h"
@@ -74,12 +73,6 @@
 
 namespace glic {
 
-namespace {
-
-
-
-}  // namespace
-
 class GlicInstanceCoordinatorBrowserTest
     : public GlicBrowserTestMixin<PlatformBrowserTest> {
  public:
@@ -102,7 +95,6 @@ class GlicInstanceCoordinatorBrowserTest
   void SetUpOnMainThread() override {
     GlicBrowserTestMixin::SetUpOnMainThread();
   }
-
 
   void RestoreMostRecentTab() {
 #if BUILDFLAG(IS_ANDROID)
@@ -269,8 +261,9 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUnbindOnCloseTest,
   EXPECT_EQ(GetContentsVisibility(instance1), content::Visibility::HIDDEN);
 }
 
-// TODO(crbug.com/514816170): Re-enable when no longer flaky
-#if BUILDFLAG(IS_ANDROID)
+// TODO(crbug.com/514816170): Re-enable when no longer flaky on Android and
+// Windows.
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_WIN)
 #define MAYBE_UnboundWhenClosedBySidePanelCoordinator \
   DISABLED_UnboundWhenClosedBySidePanelCoordinator
 #else
@@ -1255,7 +1248,6 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
   EXPECT_FALSE(instance2->IsHibernated());
 }
 
-
 class GlicInstanceCoordinatorNoWarmingTest
     : public GlicInstanceCoordinatorBrowserTest {
  public:
@@ -1332,7 +1324,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorActuationBrowserTest,
 
   tabs::TabInterface* active_tab = GetTabListInterface()->GetActiveTab();
 
-  GlicInvokeOptions options(Target(active_tab),
+  GlicInvokeOptions options(Target(*active_tab),
                             glic::mojom::InvocationSource::kOsButton);
   options.feature_mode = mojom::FeatureMode::kActuation;
 
@@ -1342,7 +1334,9 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorActuationBrowserTest,
   // Create a completion callback for the handler itself.
   base::test::TestFuture<void> handler_completion_future;
   auto handler = std::make_unique<GlicInvokeHandler>(
-      *instance, GlicInvokeHandler::ResolvedTarget{active_tab, false},
+      *instance,
+      GlicInvokeHandler::ResolvedTarget{
+          GlicInvokeHandler::TabSurface{active_tab, false}},
       std::move(options), GlicInvokeWithAutoSubmitOptions(), std::nullopt,
       base::BindLambdaForTesting([&](GlicInstance*, GlicInvokeHandler*) {
         handler_completion_future.SetValue();
@@ -1432,6 +1426,40 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
   // TabListInterface::From(&mock_bwi) will return nullptr.
   // IsPanelShowingForBrowser should return false and NOT crash.
   EXPECT_FALSE(coordinator().IsPanelShowingForBrowser(mock_bwi));
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest, HotkeyTriggersOpen) {
+  EXPECT_EQ(coordinator().GetInstancesForTesting().size(), 0u);
+
+  // Simulate receiving the hotkey command.
+  bool handled = coordinator().GetHotkeyManagerForTesting()->AcceleratorPressed(
+      LocalHotkeyManager::Command::kOpenGlic);
+  EXPECT_TRUE(handled);
+
+  ASSERT_OK(WaitForGlicOpen());
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
+                       GetInvokeTargetCases) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
+
+  // 1. Verify non-nullopt case (attached embedder).
+  std::optional<Target> target = instance->GetInvokeTarget();
+  ASSERT_TRUE(target.has_value());
+  EXPECT_TRUE(std::holds_alternative<tabs::TabHandle>(target->surface));
+  EXPECT_EQ(std::get<tabs::TabHandle>(target->surface), tab->GetHandle());
+
+  // Prevent deletion on close so the instance stays alive when closed.
+  PreventDeletionOnClose(instance);
+
+  // Close the embedder.
+  instance->Close(EmbedderKey(tab), CloseOptions());
+  ASSERT_OK(WaitForGlicClose(instance));
+
+  // 2. Verify nullopt case (no active embedder).
+  EXPECT_FALSE(instance->HasActiveEmbedder());
+  EXPECT_EQ(instance->GetInvokeTarget(), std::nullopt);
 }
 
 }  // namespace glic

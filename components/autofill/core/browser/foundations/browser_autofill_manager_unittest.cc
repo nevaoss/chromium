@@ -4563,9 +4563,9 @@ TEST_F(BrowserAutofillManagerTest, FormSubmittedWithDifferentFields) {
   // Websites would typically invoke JavaScript either on page load or on form
   // submit to achieve this.
   test_api(form).Remove(-1);
-  FormFieldData& field = test_api(form).field(3);
+  FormFieldData field = test_api(form).field(3);
   test_api(form).field(3) = form.fields()[7];
-  test_api(form).field(7) = field;
+  test_api(form).field(7) = std::move(field);
 
   // Simulate form submission.
   FormSubmitted(form);
@@ -5971,9 +5971,8 @@ TEST_F(BrowserAutofillManagerTest, DidShowSuggestions_FormNonSecureAction) {
   // Submit search query. This should invoke Query on mock query service.
   base::RepeatingCallback<void(accessibility_annotator::MemorySearchResults)>
       search_callback;
-  EXPECT_CALL(*mock_query_service_ptr,
-              Query(std::u16string_view(u"query"), _, _))
-      .WillOnce(testing::SaveArg<2>(&search_callback));
+  EXPECT_CALL(*mock_query_service_ptr, Query(std::u16string_view(u"query"), _))
+      .WillOnce(testing::SaveArg<1>(&search_callback));
   autofill_manager().GetAtMemoryManager().OnSearchSubmitted(u"query");
   ASSERT_FALSE(search_callback.is_null());
 

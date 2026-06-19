@@ -899,6 +899,11 @@ void HWNDMessageHandler::EndMoveLoop() {
   ::SendMessage(hwnd(), WM_CANCELMODE, 0, 0);
 }
 
+// static
+bool HWNDMessageHandler::IsInNativeMoveResizeLoop() {
+  return UserResizeMoveDetector::InMoveResizeLoop();
+}
+
 void HWNDMessageHandler::SendFrameChanged() {
   ::SetWindowPos(hwnd(), nullptr, 0, 0, 0, 0,
                  SWP_FRAMECHANGED | SWP_NOACTIVATE | SWP_NOCOPYBITS |
@@ -2377,7 +2382,11 @@ LRESULT HWNDMessageHandler::OnInputEvent(UINT message,
 }
 
 void HWNDMessageHandler::OnMove(const gfx::Point& point) {
+  auto ref = msg_handler_weak_factory_.GetWeakPtr();
   delegate_->HandleMove();
+  if (!ref) {
+    return;
+  }
   SetMsgHandled(FALSE);
 }
 

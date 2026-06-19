@@ -71,6 +71,8 @@ public class AwPrefetchTest extends AwParameterizedTest {
     private final TestAwContentsClient mContentsClient;
     private AwEmbeddedTestServer mTestServer;
     private String mPrefetchUrl;
+    private AwBrowserContext mBrowserContext;
+    private AwPrefetchManager mPrefetchManager;
 
     public AwPrefetchTest(AwSettingsMutation param) {
         mActivityTestRule = new AwActivityTestRule(param.getMutation());
@@ -96,6 +98,12 @@ public class AwPrefetchTest extends AwParameterizedTest {
                 () ->
                         AwPrefetchTestUtil.setLatestPrefetchInfoForTesting(
                                 prefetchOrigin.toString(), /* javascriptEnabled= */ true));
+
+        // Create the custom context after hints are set, so it picks them up.
+        mBrowserContext =
+                ThreadUtils.runOnUiThreadBlocking(
+                        () -> AwBrowserContextStore.getNamedContext("TestContext", true));
+        mPrefetchManager = mBrowserContext.getPrefetchManager();
     }
 
     @After
@@ -108,7 +116,33 @@ public class AwPrefetchTest extends AwParameterizedTest {
     @LargeTest
     @Feature({"AndroidWebView"})
     @CommandLineFlags.Add({ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1"})
-    public void testPrefetchRequestResponseSuccess() throws Throwable {
+    public void testPrefetchRequestResponseSuccess_UIThread() throws Throwable {
+        testPrefetchRequestResponseSuccess(/* runOnWorkerThread= */ false);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "disable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchRequestResponseSuccess_WorkerThread_OMTDisabled() throws Throwable {
+        testPrefetchRequestResponseSuccess(/* runOnWorkerThread= */ true);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "enable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchRequestResponseSuccess_WorkerThread_OMTEnabled() throws Throwable {
+        testPrefetchRequestResponseSuccess(/* runOnWorkerThread= */ true);
+    }
+
+    private void testPrefetchRequestResponseSuccess(boolean runOnWorkerThread) throws Throwable {
         // Prepare PrefetchParameters
         Map<String, String> additionalHeaders = new HashMap<>();
         additionalHeaders.put("foo", "bar");
@@ -119,7 +153,8 @@ public class AwPrefetchTest extends AwParameterizedTest {
                 new AwPrefetchParameters(additionalHeaders, expectedNoVarySearch, true);
 
         // Do the prefetch request.
-        TestAwPrefetchCallback callback = startPrefetchingAndWait(mPrefetchUrl, prefetchParameters);
+        TestAwPrefetchCallback callback =
+                startPrefetchAndWaitV2(runOnWorkerThread, mPrefetchUrl, prefetchParameters);
 
         // wait then do the checks
         callback.mOnStatusUpdatedHelper.waitForNext();
@@ -250,7 +285,33 @@ public class AwPrefetchTest extends AwParameterizedTest {
     @LargeTest
     @Feature({"AndroidWebView"})
     @CommandLineFlags.Add({ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1"})
-    public void testPrefetchCancellation() throws Throwable {
+    public void testPrefetchCancellation_UIThread() throws Throwable {
+        testPrefetchCancellation(/* runOnWorkerThread= */ false);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "disable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchCancellation_WorkerThread_OMTDisabled() throws Throwable {
+        testPrefetchCancellation(/* runOnWorkerThread= */ true);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "enable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchCancellation_WorkerThread_OMTEnabled() throws Throwable {
+        testPrefetchCancellation(/* runOnWorkerThread= */ true);
+    }
+
+    private void testPrefetchCancellation(boolean runOnWorkerThread) throws Throwable {
         // Prepare PrefetchParameters
         AwNoVarySearchData expectedNoVarySearch =
                 new AwNoVarySearchData(false, false, new String[] {"ts", "uid"}, null);
@@ -258,7 +319,8 @@ public class AwPrefetchTest extends AwParameterizedTest {
                 new AwPrefetchParameters(null, expectedNoVarySearch, true);
 
         // Do the prefetch request.
-        TestAwPrefetchCallback callback = startPrefetchingAndWait(mPrefetchUrl, prefetchParameters);
+        TestAwPrefetchCallback callback =
+                startPrefetchAndWaitV2(runOnWorkerThread, mPrefetchUrl, prefetchParameters);
 
         // Wait for the prefetch success & key for cancellation.
         callback.mOnStatusUpdatedHelper.waitForNext();
@@ -269,24 +331,20 @@ public class AwPrefetchTest extends AwParameterizedTest {
         Assert.assertNull(callback.getOnStatusUpdatedHelper().getExtras());
         Assert.assertNull(callback.getOnErrorHelper().mError);
 
-        AwPrefetchManager prefetchManager =
-                mActivityTestRule.getAwBrowserContext().getPrefetchManager();
         Assert.assertNotEquals(
-                prefetchManager.getNoPrefetchKeyForTesting(), callback.getPrefetchKey());
+                mPrefetchManager.getNoPrefetchKeyForTesting(), callback.getPrefetchKey());
 
         // Test cancellation.
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     final int prefetchKey = callback.getPrefetchKey();
-                    Assert.assertTrue(prefetchManager.getIsPrefetchInCacheForTesting(prefetchKey));
-                    mActivityTestRule
-                            .getAwBrowserContext()
-                            .getPrefetchManager()
-                            .cancelPrefetch(prefetchKey);
+                    Assert.assertTrue(mPrefetchManager.getIsPrefetchInCacheForTesting(prefetchKey));
+                    mPrefetchManager.cancelPrefetch(prefetchKey);
 
                     // The prefetch for this key should no longer be in the cache after
                     // cancellation.
-                    Assert.assertFalse(prefetchManager.getIsPrefetchInCacheForTesting(prefetchKey));
+                    Assert.assertFalse(
+                            mPrefetchManager.getIsPrefetchInCacheForTesting(prefetchKey));
                 });
     }
 
@@ -294,19 +352,17 @@ public class AwPrefetchTest extends AwParameterizedTest {
     @SmallTest
     @Feature({"AndroidWebView"})
     public void testSettingConfigsWithInValidValues() {
-        AwPrefetchManager prefetchManager =
-                mActivityTestRule.getAwBrowserContext().getPrefetchManager();
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     // Updating with negative values shouldn't be applied
-                    prefetchManager.updatePrefetchConfiguration(-1, -1);
-                    Assert.assertTrue(prefetchManager.getPrefetchTtlSeconds() > 0);
-                    Assert.assertTrue(prefetchManager.getMaxPrefetches() > 0);
+                    mPrefetchManager.updatePrefetchConfiguration(-1, -1);
+                    Assert.assertTrue(mPrefetchManager.getPrefetchTtlSeconds() > 0);
+                    Assert.assertTrue(mPrefetchManager.getMaxPrefetches() > 0);
 
                     // Updating with 0 shouldn't be applied as well.
-                    prefetchManager.updatePrefetchConfiguration(0, 0);
-                    Assert.assertTrue(prefetchManager.getPrefetchTtlSeconds() > 0);
-                    Assert.assertTrue(prefetchManager.getMaxPrefetches() > 0);
+                    mPrefetchManager.updatePrefetchConfiguration(0, 0);
+                    Assert.assertTrue(mPrefetchManager.getPrefetchTtlSeconds() > 0);
+                    Assert.assertTrue(mPrefetchManager.getMaxPrefetches() > 0);
                 });
     }
 
@@ -314,13 +370,11 @@ public class AwPrefetchTest extends AwParameterizedTest {
     @SmallTest
     @Feature({"AndroidWebView"})
     public void testSettingConfigsWithValidValues() {
-        AwPrefetchManager prefetchManager =
-                mActivityTestRule.getAwBrowserContext().getPrefetchManager();
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    prefetchManager.updatePrefetchConfiguration(60, 5);
-                    Assert.assertEquals(60, prefetchManager.getPrefetchTtlSeconds());
-                    Assert.assertEquals(5, prefetchManager.getMaxPrefetches());
+                    mPrefetchManager.updatePrefetchConfiguration(60, 5);
+                    Assert.assertEquals(60, mPrefetchManager.getPrefetchTtlSeconds());
+                    Assert.assertEquals(5, mPrefetchManager.getMaxPrefetches());
                 });
     }
 
@@ -643,7 +697,33 @@ public class AwPrefetchTest extends AwParameterizedTest {
     @LargeTest
     @Feature({"AndroidWebView"})
     @CommandLineFlags.Add({ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1"})
-    public void testPrefetchAfterNavigationLogging() throws Throwable {
+    public void testPrefetchAfterNavigationLogging_UIThread() throws Throwable {
+        testPrefetchAfterNavigationLogging(/* runOnWorkerThread= */ false);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "disable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchAfterNavigationLogging_WorkerThread_OMTDisabled() throws Throwable {
+        testPrefetchAfterNavigationLogging(/* runOnWorkerThread= */ true);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "enable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchAfterNavigationLogging_WorkerThread_OMTEnabled() throws Throwable {
+        testPrefetchAfterNavigationLogging(/* runOnWorkerThread= */ true);
+    }
+
+    private void testPrefetchAfterNavigationLogging(boolean runOnWorkerThread) throws Throwable {
         mActivityTestRule.startBrowserProcess();
 
         final String url = getUrl(BASIC_PREFETCH_RELATIVE_PATH);
@@ -652,7 +732,7 @@ public class AwPrefetchTest extends AwParameterizedTest {
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     AwTestContainerView testView =
-                            mActivityTestRule.createAwTestContainerViewOnMainSync(mContentsClient);
+                            createAwTestContainerViewOnMainSync(mContentsClient);
                     final AwContents awContents = testView.getAwContents();
 
                     AwActivityTestRule.enableJavaScriptOnUiThread(awContents);
@@ -662,22 +742,20 @@ public class AwPrefetchTest extends AwParameterizedTest {
         try (var histogramWatcher =
                 HistogramWatcher.newBuilder()
                         .expectAnyRecord(
-                                "Prefetch.PrefetchContainer.PrefetchMatchMissedToPrefetchStarted.Embedder_WebView")
+                                "Prefetch.PrefetchContainer.PrefetchMatchMissed"
+                                        + "ToPrefetchStarted.Embedder_WebView")
                         .build()) {
 
             // Make a prefetch request with the exact same URL as the navigation.
             TestAwPrefetchCallback callback =
-                    startPrefetchingAndWait(url, getAwPrefetchParameters());
+                    startPrefetchAndWaitV2(runOnWorkerThread, url, getAwPrefetchParameters());
             callback.mOnStatusUpdatedHelper.waitForNext();
 
             // Cancel the prefetch so that the histogram is logged.
             ThreadUtils.runOnUiThreadBlocking(
                     () -> {
                         final int prefetchKey = callback.getPrefetchKey();
-                        mActivityTestRule
-                                .getAwBrowserContext()
-                                .getPrefetchManager()
-                                .cancelPrefetch(prefetchKey);
+                        mPrefetchManager.cancelPrefetch(prefetchKey);
                     });
             histogramWatcher.pollInstrumentationThreadUntilSatisfied();
         }
@@ -687,7 +765,36 @@ public class AwPrefetchTest extends AwParameterizedTest {
     @LargeTest
     @Feature({"AndroidWebView"})
     @CommandLineFlags.Add({ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1"})
-    public void testPrefetchAfterNavigationLogging_notLoggedScenario() throws Throwable {
+    public void testPrefetchAfterNavigationLogging_notLoggedScenario_UIThread() throws Throwable {
+        testPrefetchAfterNavigationLogging_notLoggedScenario(/* runOnWorkerThread= */ false);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "disable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchAfterNavigationLogging_notLoggedScenario_WorkerThread_OMTDisabled()
+            throws Throwable {
+        testPrefetchAfterNavigationLogging_notLoggedScenario(/* runOnWorkerThread= */ true);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "enable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchAfterNavigationLogging_notLoggedScenario_WorkerThread_OMTEnabled()
+            throws Throwable {
+        testPrefetchAfterNavigationLogging_notLoggedScenario(/* runOnWorkerThread= */ true);
+    }
+
+    private void testPrefetchAfterNavigationLogging_notLoggedScenario(boolean runOnWorkerThread)
+            throws Throwable {
         mActivityTestRule.startBrowserProcess();
 
         // Do a navigation and wait for it to complete.
@@ -695,7 +802,7 @@ public class AwPrefetchTest extends AwParameterizedTest {
                 () -> {
                     final String url = getUrl(BASIC_PREFETCH_RELATIVE_PATH + "/1");
                     AwTestContainerView testView =
-                            mActivityTestRule.createAwTestContainerViewOnMainSync(mContentsClient);
+                            createAwTestContainerViewOnMainSync(mContentsClient);
                     final AwContents awContents = testView.getAwContents();
 
                     AwActivityTestRule.enableJavaScriptOnUiThread(awContents);
@@ -705,23 +812,21 @@ public class AwPrefetchTest extends AwParameterizedTest {
         try (var histogramWatcher =
                 HistogramWatcher.newBuilder()
                         .expectNoRecords(
-                                "Prefetch.PrefetchContainer.PrefetchMatchMissedToPrefetchStarted.Embedder_WebView")
+                                "Prefetch.PrefetchContainer.PrefetchMatchMissed"
+                                        + "ToPrefetchStarted.Embedder_WebView")
                         .build()) {
 
             // Make a prefetch request with the exact same URL as the navigation.
             final String url = getUrl(BASIC_PREFETCH_RELATIVE_PATH);
             TestAwPrefetchCallback callback =
-                    startPrefetchingAndWait(url, getAwPrefetchParameters());
+                    startPrefetchAndWaitV2(runOnWorkerThread, url, getAwPrefetchParameters());
             callback.mOnStatusUpdatedHelper.waitForNext();
 
             // Cancel the prefetch so that the histogram is logged.
             ThreadUtils.runOnUiThreadBlocking(
                     () -> {
                         final int prefetchKey = callback.getPrefetchKey();
-                        mActivityTestRule
-                                .getAwBrowserContext()
-                                .getPrefetchManager()
-                                .cancelPrefetch(prefetchKey);
+                        mPrefetchManager.cancelPrefetch(prefetchKey);
                     });
             histogramWatcher.pollInstrumentationThreadUntilSatisfied();
         }
@@ -781,13 +886,39 @@ public class AwPrefetchTest extends AwParameterizedTest {
     @LargeTest
     @Feature({"AndroidWebView"})
     @CommandLineFlags.Add({ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1"})
-    public void testPrefetchUsesHttpCacheByDefault() throws Throwable {
+    public void testPrefetchUsesHttpCacheByDefault_UIThread() throws Throwable {
+        testPrefetchUsesHttpCacheByDefault(/* runOnWorkerThread= */ false);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "disable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchUsesHttpCacheByDefault_WorkerThread_OMTDisabled() throws Throwable {
+        testPrefetchUsesHttpCacheByDefault(/* runOnWorkerThread= */ true);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "enable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchUsesHttpCacheByDefault_WorkerThread_OMTEnabled() throws Throwable {
+        testPrefetchUsesHttpCacheByDefault(/* runOnWorkerThread= */ true);
+    }
+
+    private void testPrefetchUsesHttpCacheByDefault(boolean runOnWorkerThread) throws Throwable {
         final String testPath = "/cachetime";
         final String testUrl = getUrl(testPath);
 
         // Perform a standard prefetch to populate the cache with a cacheable response.
         TestAwPrefetchCallback callback =
-                startPrefetchingAndWait(testUrl, getAwPrefetchParameters());
+                startPrefetchAndWaitV2(runOnWorkerThread, testUrl, getAwPrefetchParameters());
         callback.mOnStatusUpdatedHelper.waitForNext();
         Assert.assertEquals(
                 "Prefetch should complete successfully.",
@@ -803,15 +934,12 @@ public class AwPrefetchTest extends AwParameterizedTest {
         // the HTTP cache.
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    mActivityTestRule
-                            .getAwBrowserContext()
-                            .getPrefetchManager()
-                            .cancelPrefetch(prefetchKey);
+                    mPrefetchManager.cancelPrefetch(prefetchKey);
                 });
 
         // Load the same URL in a WebView.
         final AwTestContainerView testContainerView =
-                mActivityTestRule.createAwTestContainerViewOnMainSync(mContentsClient);
+                createAwTestContainerViewOnMainSync(mContentsClient);
         final AwContents awContents = testContainerView.getAwContents();
         mActivityTestRule.loadUrlSync(
                 awContents, mContentsClient.getOnPageFinishedHelper(), testUrl);
@@ -831,7 +959,35 @@ public class AwPrefetchTest extends AwParameterizedTest {
         ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
         "enable-features=ExternalExperimentAllowlist:123/PrefetchStudy,Group1"
     })
-    public void testPrefetchRequestWithVariationsId() throws Throwable {
+    public void testPrefetchRequestWithVariationsId_UIThread() throws Throwable {
+        testPrefetchRequestWithVariationsId(/* runOnWorkerThread= */ false);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "enable-features=ExternalExperimentAllowlist:123/PrefetchStudy,Group1",
+        "disable-features=PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchRequestWithVariationsId_WorkerThread_OMTDisabled() throws Throwable {
+        testPrefetchRequestWithVariationsId(/* runOnWorkerThread= */ true);
+    }
+
+    @Test
+    @LargeTest
+    @Feature({"AndroidWebView"})
+    @CommandLineFlags.Add({
+        ContentSwitches.HOST_RESOLVER_RULES + "=MAP * 127.0.0.1",
+        "enable-features=ExternalExperimentAllowlist:123/PrefetchStudy,Group1,"
+                + "PrefetchOffTheMainThread,WebViewPrefetchOffTheMainThread"
+    })
+    public void testPrefetchRequestWithVariationsId_WorkerThread_OMTEnabled() throws Throwable {
+        testPrefetchRequestWithVariationsId(/* runOnWorkerThread= */ true);
+    }
+
+    private void testPrefetchRequestWithVariationsId(boolean runOnWorkerThread) throws Throwable {
         // The Variations ID (123) must match the entry in the ExternalExperimentAllowlist
         // defined in the @CommandLineFlags above. The metrics service will only register
         // IDs that have been explicitly allowlisted for privacy and security reasons.
@@ -845,7 +1001,8 @@ public class AwPrefetchTest extends AwParameterizedTest {
                         .build();
 
         // Do the prefetch request.
-        TestAwPrefetchCallback callback = startPrefetchingAndWait(mPrefetchUrl, prefetchParameters);
+        TestAwPrefetchCallback callback =
+                startPrefetchAndWaitV2(runOnWorkerThread, mPrefetchUrl, prefetchParameters);
 
         // wait then do the checks
         callback.mOnStatusUpdatedHelper.waitForNext();
@@ -1120,19 +1277,44 @@ public class AwPrefetchTest extends AwParameterizedTest {
         return prefetchParameters;
     }
 
+    private AwTestContainerView createAwTestContainerViewOnMainSync(TestAwContentsClient client) {
+        return mActivityTestRule.createAwTestContainerViewOnMainSync(
+                client,
+                /* supportsLegacyQuirks= */ false,
+                /* testDependencyFactory= */ null,
+                mBrowserContext);
+    }
+
+    private TestAwPrefetchCallback startPrefetchAndWaitV2(
+            boolean runOnWorkerThread, String url, AwPrefetchParameters prefetchParameters)
+            throws Exception {
+        if (!runOnWorkerThread) {
+            return startPrefetchingAndWait(url, prefetchParameters, mPrefetchManager);
+        } else {
+            return startPrefetchAsyncAndWait(url, prefetchParameters, mPrefetchManager);
+        }
+    }
+
     private TestAwPrefetchCallback startPrefetchingAndWait(
             String url, AwPrefetchParameters prefetchParameters) {
+        return startPrefetchingAndWait(
+                url,
+                prefetchParameters,
+                mActivityTestRule.getAwBrowserContext().getPrefetchManager());
+    }
+
+    private TestAwPrefetchCallback startPrefetchingAndWait(
+            String url,
+            AwPrefetchParameters prefetchParameters,
+            AwPrefetchManager prefetchManager) {
         TestAwPrefetchCallback callback = new TestAwPrefetchCallback();
 
         Executor callbackExecutor = Runnable::run;
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     int prefetchKey =
-                            mActivityTestRule
-                                    .getAwBrowserContext()
-                                    .getPrefetchManager()
-                                    .startPrefetchRequest(
-                                            url, prefetchParameters, callback, callbackExecutor);
+                            prefetchManager.startPrefetchRequest(
+                                    url, prefetchParameters, callback, callbackExecutor);
                     callback.setPrefetchKey(prefetchKey);
                 });
 

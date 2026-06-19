@@ -20,6 +20,7 @@
 #include "components/viz/common/features.h"
 #include "components/viz/common/frame_sinks/begin_frame_args.h"
 #include "components/viz/common/frame_sinks/begin_frame_source.h"
+#include "components/viz/service/display/display_damage_tracker.h"
 #include "components/viz/service/display/frame_deadline_decider.h"
 #include "components/viz/service/performance_hint/hint_session.h"
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
@@ -31,7 +32,7 @@ namespace {
 
 base::TimeDelta ComputeAdpfTarget(const BeginFrameArgs& args) {
   if (args.possible_deadlines) {
-    const auto& deadline = args.possible_deadlines->GetPreferredDeadline();
+    const auto& deadline = args.possible_deadlines->GetOSPreferredDeadline();
     // Arbitrarily use 75% of the deadline for CPU work.
     return deadline.latch_delta * 3 / 4;
   }
@@ -277,10 +278,10 @@ void DisplayScheduler::OnPresentationFeedback(
     int64_t choreographer_vsync_id,
     base::TimeTicks frame_time,
     base::TimeDelta interval,
-    std::optional<PossibleDeadline> deadline,
-    std::optional<PossibleDeadline> preferred) {
-  if (deadline.has_value() && !feedback.failed()) {
-    base::TimeTicks target_latch_time = frame_time + deadline->latch_delta;
+    std::optional<PossibleDeadline> selected_deadline) {
+  if (selected_deadline.has_value() && !feedback.failed()) {
+    base::TimeTicks target_latch_time =
+        frame_time + selected_deadline->latch_delta;
     // The `feedback.latch_timestamp` can be later than the `target_latch_time
     // = it->frame_time + it->deadline.latch_delta`. This could be because we
     // missed the latch, measured by `feedback.ready_timestamp`. If we did not
@@ -310,8 +311,13 @@ bool DisplayScheduler::DrawAndSwap() {
   params.max_pending_swaps = MaxPendingSwaps();
   if (current_begin_frame_args_.possible_deadlines) {
     auto& deadlines = *current_begin_frame_args_.possible_deadlines;
-    auto selected_deadline =
-        deadlines.deadlines[decider_.SelectDeadline(deadlines)];
+    auto earliest_input_time =
+        damage_tracker_
+            ? damage_tracker_->GetEarliestInputGenerationTimeOfDamagedSurfaces()
+            : std::nullopt;
+    auto selected_deadline = deadlines.deadlines[decider_.SelectDeadline(
+        deadlines, current_begin_frame_args_.interval, params.max_pending_swaps,
+        current_begin_frame_args_.frame_time, earliest_input_time)];
     // TODO(crbug.com/500826814): Move this logic into FrameDeadlineDecider.
     if (base::FeatureList::IsEnabled(features::kSelectFutureFrameDeadline)) {
       base::TimeTicks now = NowTicks();
@@ -344,8 +350,7 @@ bool DisplayScheduler::DrawAndSwap() {
     last_targeted_latch_time_ =
         current_begin_frame_args_.frame_time + selected_deadline.latch_delta;
     params.choreographer_vsync_id = selected_deadline.vsync_id;
-    params.deadline = selected_deadline;
-    params.preferred_deadline = deadlines.GetPreferredDeadline();
+    params.selected_deadline = selected_deadline;
   }
   bool success = client_ && client_->DrawAndSwap(params);
   if (!success)
@@ -456,7 +461,7 @@ int DisplayScheduler::MaxPendingSwaps() const {
   // Estimate the max pending swap based on the frame rate and presentation
   // time.
   const auto& deadline =
-      current_begin_frame_args_.possible_deadlines->GetPreferredDeadline();
+      current_begin_frame_args_.possible_deadlines->GetOSPreferredDeadline();
   int64_t total_time_nanos = deadline.present_delta.InNanoseconds();
   int64_t interval_nanos = current_begin_frame_args_.interval.InNanoseconds();
   // Assuming no frames are dropped, then:
@@ -697,8 +702,9 @@ void DisplayScheduler::DidSwapBuffers() {
     begin_frame_source_->SetIsGpuBusy(true);
 
   uint32_t swap_id = next_swap_id_++;
-  TRACE_EVENT_BEGIN("viz", "DisplayScheduler:pending_swaps",
-                    perfetto::Track(swap_id));
+  TRACE_EVENT_BEGIN(
+      "viz", "DisplayScheduler:pending_swaps",
+      perfetto::NamedTrack("DisplayScheduler:pending_swaps", swap_id));
 }
 
 void DisplayScheduler::DidReceiveSwapBuffersAck() {
@@ -710,7 +716,7 @@ void DisplayScheduler::DidReceiveSwapBuffersAck() {
   // throttled state.
   begin_frame_source_->SetIsGpuBusy(false);
   TRACE_EVENT_END(
-      "viz", /* DisplayScheduler:pending_swaps */ perfetto::Track(swap_id));
+      "viz", perfetto::NamedTrack("DisplayScheduler:pending_swaps", swap_id));
   ScheduleBeginFrameDeadline();
 }
 

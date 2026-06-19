@@ -45,6 +45,7 @@
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_suggestion_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_suggestion_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_picker_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_view_state_change_handler.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_feature_availability.h"
@@ -67,6 +68,7 @@
 #import "ios/chrome/browser/shared/public/commands/bwg_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/fullscreen_commands.h"
+#import "ios/chrome/browser/shared/public/commands/omnibox_commands.h"
 #import "ios/chrome/browser/shared/public/commands/settings_commands.h"
 #import "ios/chrome/browser/shared/public/commands/snackbar_commands.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
@@ -252,7 +254,12 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
       bwg_gateway_.cameraHandler = gemini_camera_handler_;
     }
 
-    if (IsGeminiActorEnabled() && IsActorEnabled()) {
+    if (IsGeminiMultiTabContextEnabled()) {
+      gemini_tab_picker_handler_ = [[GeminiTabPickerHandler alloc] init];
+      bwg_gateway_.tabPickerHandler = gemini_tab_picker_handler_;
+    }
+
+    if (IsGeminiActorEnabled()) {
       gemini_actuation_handler_ = [[GeminiActuationHandler alloc]
           initWithActorService:actor::ActorServiceFactory::GetForProfile(
                                    browser_->GetProfile())
@@ -511,6 +518,7 @@ void GeminiBrowserAgent::OnSceneActivationLevelChanged(
                                   /*animated=*/false);
     }
   }
+  UpdateGeminiLiveIconVisibility();
 }
 
 void GeminiBrowserAgent::OnWillEnterIncognito() {
@@ -621,6 +629,24 @@ bool GeminiBrowserAgent::HasCompletedFirstRun() {
   return pref_service->GetBoolean(prefs::kIOSBwgConsent);
 }
 
+void GeminiBrowserAgent::UpdateGeminiLiveIconVisibility() {
+  if (IsChromeNextIaEnabled()) {
+    return;
+  }
+  CGFloat progress = 1.0;
+  if (fullscreen_controller_) {
+    progress = fullscreen_controller_->GetProgress();
+  }
+  BOOL visible = IsInGeminiLiveMode() && (progress < 0.1);
+
+  CommandDispatcher* dispatcher = browser_->GetCommandDispatcher();
+  if ([dispatcher dispatchingForProtocol:@protocol(OmniboxCommands)]) {
+    id<OmniboxCommands> omnibox_handler =
+        HandlerForProtocol(dispatcher, OmniboxCommands);
+    [omnibox_handler setCustomLeadingViewVisible:visible animated:YES];
+  }
+}
+
 CGFloat GeminiBrowserAgent::GetFloatyOffset() {
   CHECK(IsFullscreenInitialized());
   CGFloat max_bottom_inset =
@@ -712,6 +738,7 @@ void GeminiBrowserAgent::InvokeFloaty(GeminiConfiguration* config) {
   for (auto& observer : observers_) {
     observer.OnFloatyInvokedChanged(is_floaty_invoked_);
   }
+  UpdateGeminiLiveIconVisibility();
 }
 
 void GeminiBrowserAgent::ForceShowFloatyIfInvoked() {
@@ -822,6 +849,7 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
 
 void GeminiBrowserAgent::OnProcessingStatusChanged(
     ios::provider::GeminiClientMode processing_status) {
+  UpdateGeminiLiveIconVisibility();
   if (!IsInGeminiLiveMode()) {
     return;
   }
@@ -946,9 +974,22 @@ void GeminiBrowserAgent::DismissFloaty() {
     return;
   }
 
+  feature_engagement::Tracker* tracker =
+      feature_engagement::TrackerFactory::GetForProfile(browser_->GetProfile());
+  if (tracker) {
+    if (has_triggered_gemini_live_iph_) {
+      tracker->Dismissed(feature_engagement::kIPHiOSGeminiLiveIPHFeature);
+      has_triggered_gemini_live_iph_ = false;
+    }
+    if (has_triggered_gemini_live_new_badge_) {
+      tracker->Dismissed(feature_engagement::kIPHiOSGeminiLiveNewBadgeFeature);
+      has_triggered_gemini_live_new_badge_ = false;
+    }
+  }
+
   // TODO(crbug.com/517583120): Remove when the temporary actuation prototype is
   // cleaned up.
-  if (IsGeminiActorEnabled() && IsActorEnabled()) {
+  if (IsGeminiActorEnabled()) {
     if (actor::ActorService* actor_service =
             actor::ActorServiceFactory::GetForProfile(browser_->GetProfile())) {
       actor_service->StopAllTasks();
@@ -980,6 +1021,7 @@ void GeminiBrowserAgent::DismissFloaty() {
   } else {
     ios::provider::ResetGemini();
   }
+  UpdateGeminiLiveIconVisibility();
 }
 
 void GeminiBrowserAgent::ForceDismissFloaty() {
@@ -1230,6 +1272,8 @@ void GeminiBrowserAgent::OnGeminiTabHelperDestroyed(
 void GeminiBrowserAgent::FullscreenProgressUpdated(
     FullscreenController* controller,
     CGFloat progress) {
+  UpdateGeminiLiveIconVisibility();
+
   if (!is_floaty_invoked_ || is_floaty_temporarily_hidden_) {
     return;
   }
@@ -1439,6 +1483,8 @@ GeminiConfiguration* GeminiBrowserAgent::CreateGeminiConfiguration(
         feature_engagement::kIPHiOSGeminiLiveIPHFeature);
     config.shouldShowGeminiLiveNewBadge = tracker->ShouldTriggerHelpUI(
         feature_engagement::kIPHiOSGeminiLiveNewBadgeFeature);
+    has_triggered_gemini_live_iph_ = config.shouldShowGeminiLiveIPH;
+    has_triggered_gemini_live_new_badge_ = config.shouldShowGeminiLiveNewBadge;
   } else {
     config.shouldShowGeminiLiveIPH = NO;
     config.shouldShowGeminiLiveNewBadge = NO;
@@ -1594,7 +1640,7 @@ void GeminiBrowserAgent::OnViewStateChanged(
   } else if (view_state == ios::provider::GeminiViewState::kHidden) {
     // TODO(crbug.com/517583120): Remove when the temporary actuation prototype
     // is cleaned up.
-    if (IsGeminiActorEnabled() && IsActorEnabled()) {
+    if (IsGeminiActorEnabled()) {
       if (actor::ActorService* actor_service =
               actor::ActorServiceFactory::GetForProfile(
                   browser_->GetProfile())) {

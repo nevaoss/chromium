@@ -44,7 +44,6 @@
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/web_contents.h"
-#include "services/metrics/public/cpp/ukm_recorder.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/mojom/permissions_policy/permissions_policy_feature.mojom-shared.h"
 #include "third_party/libaddressinput/chromium/chrome_metadata_source.h"
@@ -175,30 +174,6 @@ ChromePaymentRequestDelegate::GetRegionDataLoader() {
                                             GetApplicationLocale());
 }
 
-ukm::UkmRecorder* ChromePaymentRequestDelegate::GetUkmRecorder() {
-  return ukm::UkmRecorder::Get();
-}
-
-std::string ChromePaymentRequestDelegate::GetAuthenticatedEmail() const {
-  auto* rfh = content::RenderFrameHost::FromID(frame_routing_id_);
-  if (!rfh) {
-    return std::string();
-  }
-
-  // Check if the profile is signed in. Guest profiles or incognito windows may
-  // not have an IdentityManager, and are considered not signed in.
-  Profile* profile = Profile::FromBrowserContext(rfh->GetBrowserContext());
-  signin::IdentityManager* identity_manager =
-      IdentityManagerFactory::GetForProfile(profile);
-  if (!identity_manager) {
-    return std::string();
-  }
-  // If there's no primary account, `GetPrimaryAccountInfo()` will return an
-  // empty result.
-  return identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
-      .email;
-}
-
 PrefService* ChromePaymentRequestDelegate::GetPrefService() {
   return Profile::FromBrowserContext(GetBrowserContextOrNull())->GetPrefs();
 }
@@ -284,11 +259,6 @@ void ChromePaymentRequestDelegate::GetTwaPackageName(
 
 PaymentRequestDialog* ChromePaymentRequestDelegate::GetDialogForTesting() {
   return shown_dialog_.get();
-}
-
-std::optional<base::UnguessableToken>
-ChromePaymentRequestDelegate::GetChromeOSTWAInstanceId() const {
-  return std::nullopt;
 }
 
 std::string

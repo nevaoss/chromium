@@ -14,7 +14,6 @@
 #include "base/values.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
-#include "chrome/browser/glic/fre/fre_util.h"
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
@@ -64,6 +63,13 @@ mojom::ProfileEnablementPtr BuildProfileEnablement(
   result->allowed_by_locale_filter = enablement.allowed_by_locale_filter;
   result->live_allowed = enablement.live_allowed;
   result->share_image_allowed = enablement.share_image_allowed;
+  if (enablement.gemini_enterprise_settings) {
+    result->gemini_enterprise_settings =
+        glic::mojom::GeminiEnterpriseSettings::New(
+            enablement.gemini_enterprise_settings->project_id,
+            enablement.gemini_enterprise_settings->app_id,
+            enablement.gemini_enterprise_settings->location);
+  }
   auto* service = GlicKeyedService::Get(profile);
   result->actuation_is_consented =
       (service && service->enabling().GetUserEnabledActuationOnWeb());
@@ -125,13 +131,13 @@ void GlicInternalsPageHandler::GetInternalsDataPayload(
 
   GlicKeyedService* glic_service = GetGlicService();
   payload->enablement = BuildProfileEnablement(
-      browser_context_,
-      glic_service ? &glic_service->actor_policy_checker() : nullptr);
+      browser_context_, (glic_service && glic_service->HasActorPolicyChecker())
+                            ? &glic_service->actor_policy_checker()
+                            : nullptr);
 
   mojom::ConfigInfoPtr config = mojom::ConfigInfo::New();
   config->guest_url = GetGuestURL();
-  config->fre_guest_url =
-      GetFreURL(Profile::FromBrowserContext(browser_context_));
+  config->fre_guest_url = GURL();
 
   config->autopush_guest_url = GURL(g_browser_process->local_state()->GetString(
       prefs::kGlicGuestUrlPresetAutopush));

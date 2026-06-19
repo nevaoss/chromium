@@ -610,11 +610,6 @@ BASE_FEATURE(kAutofillEnableSkippingUnrecognizedAttribute,
 BASE_FEATURE(kAutofillEnableStreetAddressMergeModes,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// When enabled, chrome will support home and work addresses from account.
-// TODO: crbug.com/354706653 - Clean up when launched.
-BASE_FEATURE(kAutofillEnableSupportForHomeAndWork,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, chrome will support name and email address profile.
 // TODO(crbug.com/356845298): Clean up when launched.
 BASE_FEATURE(kAutofillEnableSupportForNameAndEmail,
@@ -782,16 +777,6 @@ BASE_FEATURE_PARAM(bool,
                    &kAutofillModelPredictions,
                    "small_form_rules",
                    false);
-
-// Controls autofill popup style, if enabled it becomes more prominent,
-// i.e. its shadow becomes more emphasized, position is also updated.
-// TODO(crbug.com/40235454): Remove once the experiment is over.
-BASE_FEATURE(kAutofillMoreProminentPopup, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(int,
-                   kAutofillMoreProminentPopupMaxOffsetToCenterParam,
-                   &kAutofillMoreProminentPopup,
-                   "max_offset_to_center_px",
-                   92);
 
 // When Enabled Autofill server will stop applying small form rule and Chrome
 // will take care of this logic.

@@ -326,6 +326,12 @@
         "default": "",
       },
     },
+    {
+      name: "AIEmbeddingsAPI",
+    },
+    {
+      name: "AIEmbeddingsAPIForWorkers",
+    },
     // Strip actionability from content that is positioned offscreen
     // via position:fixed and cannot be reached by scrolling.
     {
@@ -2041,6 +2047,12 @@
       status: "experimental",
     },
     {
+      // Support resolving naming conficts for scroll and view timeline names
+      // by selecting the last in flat tree order.
+      name: "CSSTimelineNameConflictResolution",
+      status: "experimental",
+    },
+    {
       // Support for the 'all' keyword of the 'timeline-scope' property.
       //
       // https://drafts.csswg.org/scroll-animations-1/#timeline-scope
@@ -2139,6 +2151,9 @@
       name: "DeclarativeCSSModulesStyleTag",
       implied_by: ["DeclarativeCSSModules"],
       origin_trial_feature_name: "DeclarativeCSSModules",
+    },
+    {
+      name: "DeclarativeSkeletons",
     },
     {
       // https://chromestatus.com/feature/5133099851317248
@@ -3209,8 +3224,8 @@
       },
     },
     {
+      // https://crbug.com/40571175
       name: "GetComputedStyleOutsideFlatTree",
-      status: "stable",
     },
     {
       name: "GetDisplayMedia",
@@ -3282,6 +3297,9 @@
         "ChromeOS": "stable",
         "default": "experimental",
       },
+    },
+    {
+      name: "HarfRustShaping",
     },
     {
       name: "HasUAVisualTransition",
@@ -4608,6 +4626,13 @@
       status: "stable",
     },
     {
+      // When enabled, fixes selection jumping when drag-selecting out of
+      // a float box boundary.
+      // See https://crbug.com/41340914
+      name: "PreventTextSelectionJump",
+      status: "stable",
+    },
+    {
       // When enabled, prevents undo to be applied if the enclosing block
       // is not editable
       name: "PreventUndoIfNotEditable",
@@ -5655,6 +5680,7 @@
       // on performance.speculations.
       name: "SpeculationMeasurement",
       origin_trial_feature_name: "SpeculationMeasurement",
+      origin_trial_allows_third_party: true,
       status: "experimental",
     },
     {
@@ -5796,6 +5822,10 @@
     },
     {
       name: "SvgFallBackToContainerSize",
+      status: "stable",
+    },
+    {
+      name: "SvgFeImageEXIFOrientation",
       status: "stable",
     },
     {
@@ -6729,9 +6759,7 @@
     },
     {
       name: "WebGPUImmediatesFeature",
-      status: "experimental",
-      public: true,
-      implied_by: ["WebGPUExperimentalFeatures"],
+      status: "stable",
     },
     {
       // Enables GPUBuffer::mapSync for WebGPU.
@@ -6784,6 +6812,7 @@
     {
       name: "WebMCP",
       origin_trial_feature_name: "WebMCP",
+      origin_trial_allows_third_party: true,
       public: true,
       base_feature_status: "enabled",
       copied_from_base_feature_if: "overridden",
@@ -6842,6 +6871,14 @@
       // https://www.ietf.org/archive/id/draft-hancke-tsvwg-snap-00.html
       name: "WebRtcSctpSnap",
       status: "test",
+    },
+    {
+      // Restricts the sharing of SerialPort instances across different V8
+      // worlds (e.g., main world and isolated worlds) to prevent cross-world
+      // leaks.
+      name: "WebSerialWorldIsolatedCache",
+      status: "stable",
+      base_feature: "none",
     },
     // WebShare is enabled by default on Android (non-WebView), Win, ChromeOS, and Mac.
     // This is done in chrome/renderer/chrome_content_renderer_client.cc to prevent
@@ -6993,6 +7030,12 @@
       public: true,
       status: "experimental",
       base_feature: "none",
+    },
+    {
+      name: "WebXRMediaBinding",
+      depends_on: ["WebXRLayers"],
+      public: true,
+      status: "experimental",
     },
     {
       name: "WebXRMeshDetection",

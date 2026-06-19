@@ -998,6 +998,8 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(RenderViewContextMenu,
                                       kSearchForImageItem);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(RenderViewContextMenu,
                                       kSearchForVideoFrameItem);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(RenderViewContextMenu,
+                                      kVideoFrameSubmenuItem);
 
 RenderViewContextMenu::RenderViewContextMenu(
     content::RenderFrameHost& render_frame_host,
@@ -1361,8 +1363,6 @@ void RenderViewContextMenu::InitMenu() {
   if (content_type_->SupportsGroup(
           ContextMenuContentType::ITEM_GROUP_PARTIAL_TRANSLATE) &&
       !use_simplified_menu_for_text_selection &&
-      content_type_->SupportsGroup(
-          ContextMenuContentType::ITEM_GROUP_SEARCHWEBFORIMAGE) &&
       search::DefaultSearchProviderIsGoogle(GetProfile()) &&
       CanTranslate(/*menu_logging=*/false)) {
     // If the target language isn't supported in partial translation, fall
@@ -2293,7 +2293,7 @@ void RenderViewContextMenu::AppendCanvasItems() {
 
 void RenderViewContextMenu::AppendVideoItems() {
   const bool use_submenu =
-      base::FeatureList::IsEnabled(media::kContextMenu2026);
+      base::FeatureList::IsEnabled(features::kMenuSimplification);
 
   if (use_submenu) {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_PICTUREINPICTURE,
@@ -2395,6 +2395,8 @@ void RenderViewContextMenu::AppendVideoItems() {
         IDC_CONTENT_CONTEXT_VIDEO_FRAME,
         l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_VIDEO_FRAME),
         &video_frame_submenu_model_);
+    menu_model_.SetElementIdentifierAt(menu_model_.GetItemCount() - 1,
+                                       kVideoFrameSubmenuItem);
   }
 }
 
@@ -2440,6 +2442,8 @@ void RenderViewContextMenu::AppendPluginItems() {
 }
 
 void RenderViewContextMenu::AppendPageItems() {
+  AppendExitFullscreenItem();
+
   if (features::IsMenuSimplificationEnabled() &&
       params_.selection_text.empty() && !params_.is_editable) {
     // Navigation
@@ -2496,8 +2500,6 @@ void RenderViewContextMenu::AppendPageItems() {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
     return;
   }
-
-  AppendExitFullscreenItem();
 
   const bool use_simplified_text_selection = ShouldUseSimplifiedTextSelection();
 
@@ -3552,7 +3554,7 @@ bool RenderViewContextMenu::IsCommandIdChecked(int id) const {
 
 bool RenderViewContextMenu::IsItemForCommandIdDynamic(int command_id) const {
   if (command_id == IDC_CONTENT_CONTEXT_PICTUREINPICTURE &&
-      base::FeatureList::IsEnabled(media::kContextMenu2026)) {
+      base::FeatureList::IsEnabled(features::kMenuSimplification)) {
     return true;
   }
   return RenderViewContextMenuBase::IsItemForCommandIdDynamic(command_id);
@@ -3561,7 +3563,7 @@ bool RenderViewContextMenu::IsItemForCommandIdDynamic(int command_id) const {
 std::u16string RenderViewContextMenu::GetLabelForCommandId(
     int command_id) const {
   if (command_id == IDC_CONTENT_CONTEXT_PICTUREINPICTURE &&
-      base::FeatureList::IsEnabled(media::kContextMenu2026)) {
+      base::FeatureList::IsEnabled(features::kMenuSimplification)) {
     return l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PICTUREINPICTURE);
   }
   return RenderViewContextMenuBase::GetLabelForCommandId(command_id);
@@ -3570,7 +3572,7 @@ std::u16string RenderViewContextMenu::GetLabelForCommandId(
 ui::ImageModel RenderViewContextMenu::GetIconForCommandId(
     int command_id) const {
   if (command_id == IDC_CONTENT_CONTEXT_PICTUREINPICTURE &&
-      base::FeatureList::IsEnabled(media::kContextMenu2026)) {
+      base::FeatureList::IsEnabled(features::kMenuSimplification)) {
     return ui::ImageModel::FromVectorIcon(
         IsCommandIdChecked(IDC_CONTENT_CONTEXT_PICTUREINPICTURE)
             ? features::IsRoundedIconsEnabled() ? vector_icons::kPipExitIcon
@@ -5718,7 +5720,7 @@ void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
 
     if (CanPartiallyTranslateTargetLanguage()) {
       AppendPartialTranslateItem();
-    } else {
+    } else if (CanTranslate(/*menu_logging=*/false)) {
       AppendTranslateItem();
     }
   } else {
@@ -5734,7 +5736,7 @@ void RenderViewContextMenu::AppendRevisedTextSelectionSection() {
 
     if (CanPartiallyTranslateTargetLanguage()) {
       AppendPartialTranslateItem();
-    } else {
+    } else if (CanTranslate(/*menu_logging=*/false)) {
       AppendTranslateItem();
     }
   }

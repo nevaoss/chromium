@@ -44,6 +44,7 @@ class ScopedFullscreenDisabler;
 @class GeminiPageStateChangeHandler;
 @class GeminiSessionHandler;
 @class GeminiCameraHandler;
+@class GeminiTabPickerHandler;
 @class GeminiConsentProviderHandler;
 @class GeminiPageContext;
 @class GeminiViewStateChangeHandler;
@@ -238,6 +239,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Sets whether the dormant snackbar is showing.
   void SetIsShowingLiveSessionDormantSnackbar(bool showing);
 
+  // Updates the Gemini Live leading icon visibility in the location bar.
+  void UpdateGeminiLiveIconVisibility();
+
   // Returns the floaty offset based on current fullscreen progress.
   CGFloat GetFloatyOffset();
 
@@ -346,6 +350,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Handler for Gemini camera.
   __strong GeminiCameraHandler* gemini_camera_handler_ = nullptr;
 
+  // Handler for Gemini tab picker.
+  __strong GeminiTabPickerHandler* gemini_tab_picker_handler_ = nullptr;
+
   // Handler for Gemini consent provider.
   __strong GeminiConsentProviderHandler* gemini_consent_provider_handler_ =
       nullptr;
@@ -438,6 +445,11 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Whether we are currently displaying the Live session dormant snackbar.
   bool is_showing_live_session_dormant_snackbar_ = false;
+
+  // Track if we have triggered feature engagement for Gemini Live IPH or New
+  // Badge.
+  bool has_triggered_gemini_live_iph_ = false;
+  bool has_triggered_gemini_live_new_badge_ = false;
 
   // Weak pointer factory.
   // Observers for GeminiBrowserAgent.

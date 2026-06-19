@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_GLIC_PUBLIC_GLIC_INSTANCE_H_
 #define CHROME_BROWSER_GLIC_PUBLIC_GLIC_INSTANCE_H_
 
+#include <optional>
 #include <vector>
 
 #include "base/callback_list.h"
@@ -27,6 +28,7 @@ class TabInterface;
 
 namespace glic {
 
+struct Target;
 class GlicActorTaskManager;
 class Host;
 
@@ -77,11 +79,6 @@ class GlicInstance {
   // Returns the current panel state.
   virtual mojom::PanelState GetPanelState() = 0;
 
-  // Register for this callback to detect UI changes to the instance.
-  using StateChangeCallback = base::RepeatingCallback<void(bool)>;
-  virtual base::CallbackListSubscription RegisterStateChange(
-      StateChangeCallback callback) = 0;
-
   // TODO(b/501233062): Remove from the public interface once the existing
   // user has migrated away from the API.
   using DestructionCallback = base::OnceCallback<void(GlicInstance*)>;
@@ -112,6 +109,10 @@ class GlicInstance {
 
   // Gets the window size of the active embedder.
   virtual gfx::Size GetPanelSize() = 0;
+
+  // Gets the invoke target that points at the currently active embedder for the
+  // instance. Returns std::nullopt if there is no active embedder.
+  virtual std::optional<Target> GetInvokeTarget() = 0;
 
   // Get this instance's unique identifier.
   virtual const InstanceId& id() const = 0;

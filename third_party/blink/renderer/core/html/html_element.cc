@@ -86,6 +86,8 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/settings.h"
+#include "third_party/blink/renderer/core/frame/web_frame_widget_impl.h"
+#include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/fullscreen/fullscreen.h"
 #include "third_party/blink/renderer/core/html/custom/custom_element.h"
 #include "third_party/blink/renderer/core/html/custom/custom_element_registry.h"
@@ -141,6 +143,7 @@
 #include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/scheduler/public/post_cancellable_task.h"
 #include "third_party/blink/renderer/platform/text/bidi_paragraph.h"
+#include "third_party/blink/renderer/platform/widget/frame_widget.h"
 #include "third_party/blink/renderer/platform/wtf/std_lib_extras.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 #include "third_party/blink/renderer/platform/wtf/text/character_names.h"
@@ -1627,13 +1630,19 @@ ScriptPromise<IDLUndefined> HTMLElement::showUnboundedElement(
 
   SetUnboundedElementActive(true);
 
-  // TODO(crbug.com/508672616) Store and use the local mojo endpoints.
   mojo::PendingAssociatedRemote<mojom::blink::UnboundedSurfaceHost> host_remote;
   auto host_receiver = host_remote.InitWithNewEndpointAndPassReceiver();
 
   mojo::PendingAssociatedReceiver<mojom::blink::UnboundedSurfaceClient>
       client_receiver;
   auto client_remote = client_receiver.InitWithNewEndpointAndPassRemote();
+
+  if (auto* web_frame = WebLocalFrameImpl::FromFrame(frame)) {
+    if (WebFrameWidgetImpl* widget = web_frame->FrameWidgetImpl()) {
+      widget->RegisterActiveUnboundedElement(this, std::move(client_receiver),
+                                             std::move(host_remote));
+    }
+  }
 
   frame->GetLocalFrameHostRemote().RequestUnboundedSurface(
       std::move(host_receiver), std::move(client_remote), bounds);
@@ -1654,6 +1663,11 @@ void HTMLElement::SetUnboundedElementActive(bool active) {
     return;
   }
   SetElementFlag(ElementFlags::kIsUnboundedElementActive, active);
+  if (active) {
+    GetDocument().IncrementActiveUnboundedElementCount();
+  } else {
+    GetDocument().DecrementActiveUnboundedElementCount();
+  }
   SetNeedsStyleRecalc(
       kSubtreeStyleChange,
       StyleChangeReasonForTracing::Create(style_change_reason::kPseudoClass));
@@ -1947,7 +1961,7 @@ void HTMLElement::ShowPopoverInternal(Element* invoker,
   if (invoker_menuitem) {
     // There are some edge cases where :open doesn't change here, but in
     // practice this basically means it's changing.
-    invoker->PseudoStateChanged(CSSSelector::kPseudoOpen);
+    invoker_menuitem->OpenPseudoChanged();
   }
 
   CHECK(!original_document.AllOpenPopovers().Contains(this));
@@ -2465,10 +2479,10 @@ PopoverHideResult HTMLElement::HidePopoverInternal(
     // :popover-open https://issues.chromium.org/issues/375004874
     OwnerShadowHost()->PseudoStateChanged(CSSSelector::kPseudoOpen);
   }
-  if (IsA<HTMLMenuItemElement>(invoker)) {
+  if (auto* invoker_menuitem = DynamicTo<HTMLMenuItemElement>(invoker)) {
     // There are some edge cases where :open doesn't change here, but in
     // practice this basically means it's changing.
-    invoker->PseudoStateChanged(CSSSelector::kPseudoOpen);
+    invoker_menuitem->OpenPseudoChanged();
   }
 
   document.AllOpenPopovers().erase(this);
@@ -3724,6 +3738,12 @@ void HTMLElement::RemovedFrom(ContainerNode& insertion_point) {
           HidePopoverTransitionBehavior::kNoEventsNoWaiting,
           /*exception_state=*/nullptr);
     }
+  }
+
+  if (RuntimeEnabledFeatures::UnboundedElementEnabled() &&
+      IsUnboundedElementActive() &&
+      !GetDocument().StatePreservingAtomicMoveInProgress()) {
+    SetUnboundedElementActive(false);
   }
 
   Element::RemovedFrom(insertion_point);

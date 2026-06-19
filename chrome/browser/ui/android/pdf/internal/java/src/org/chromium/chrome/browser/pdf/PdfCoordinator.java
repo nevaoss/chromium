@@ -28,8 +28,8 @@ import androidx.pdf.PdfPoint;
 import androidx.pdf.PdfSandboxHandle;
 import androidx.pdf.SandboxedPdfLoader;
 import androidx.pdf.content.ExternalLink;
+import androidx.pdf.ink.EditablePdfViewerFragment;
 import androidx.pdf.view.PdfView;
-import androidx.pdf.viewer.fragment.PdfViewerFragment;
 
 import kotlin.coroutines.Continuation;
 import kotlin.coroutines.CoroutineContext;
@@ -49,6 +49,7 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.pdf.PdfUtils.PdfLoadResult;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.ui.native_page.NativePageHost;
+import org.chromium.chrome.modules.on_demand.OnDemandModule;
 import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.ui.base.MimeTypeUtils;
@@ -63,8 +64,8 @@ import java.util.function.Consumer;
 /**
  * The class responsible for setting up PdfPage.
  *
- * <p>Lint suppression for NewApi is added because we are using PdfViewerFragment and inline pdf
- * support is enabled via PdfUtils#shouldOpenPdfInline.
+ * <p>Lint suppression for NewApi is added because we are using an EditablePdfViewerFragment and
+ * inline pdf support is enabled via PdfUtils#shouldOpenPdfInline.
  */
 @SuppressLint("NewApi")
 @NullMarked
@@ -242,7 +243,7 @@ public class PdfCoordinator
     }
 
     /** The class responsible for rendering pdf document. */
-    public static class ChromePdfViewerFragment extends PdfViewerFragment {
+    public static class ChromePdfViewerFragment extends EditablePdfViewerFragment {
 
         private static final String KEY_VIEW_TAG = "view_tag";
         private @Nullable PdfActionsDelegate mDelegate;
@@ -652,6 +653,11 @@ public class PdfCoordinator
             return null;
         }
 
+        if (!PdfUtils.isUriSafeForSharing(mUri, mActivity)) {
+            Log.e(TAG, "Blocked getFileUri for unsafe URI: " + mUri);
+            return null;
+        }
+
         if (targetPackage == null) {
             targetPackage = PackageUtils.getDefaultAssistantPackageName(mActivity);
             PdfUtils.recordGetAssistantPackageResult(targetPackage != null);
@@ -670,6 +676,12 @@ public class PdfCoordinator
         if (mUri == null) {
             return null;
         }
+
+        if (!PdfUtils.isUriSafeForSharing(mUri, mActivity)) {
+            Log.e(TAG, "Blocked requestAssistContent for unsafe URI: " + mUri);
+            return null;
+        }
+
         String structuredData;
         try {
             structuredData =
@@ -740,6 +752,30 @@ public class PdfCoordinator
     @Override
     public void toggleFitToPage(boolean fitToPageHeight, int pageIndex) {
         mChromePdfViewerFragment.fitToPage(fitToPageHeight, pageIndex);
+    }
+
+    @Override
+    public void toggleTwoPagesPerRow(
+            boolean twoPagesPerRowEnabled, float zoomLevel, int currentPageIndex) {
+        assert mToolbarCoordinator != null;
+        mChromePdfViewerFragment.setPagesPerRow(twoPagesPerRowEnabled);
+        mChromePdfViewerFragment.zoomTo(zoomLevel);
+        mChromePdfViewerFragment.scrollToPage(currentPageIndex);
+    }
+
+    @Override
+    public void download() {
+        // TODO(crbug.com/501138999): Implement download action
+    }
+
+    @Override
+    public void print() {
+        mNativePageHost.print();
+    }
+
+    @Override
+    public void rotate() {
+        // TODO(crbug.com/501138999): Implement rotate action
     }
 
     // Implementation of PdfActionsDelegate
@@ -815,22 +851,4 @@ public class PdfCoordinator
         mToolbarCoordinator.onViewportChanged(pageIndex, zoomLevel);
     }
 
-    @Override
-    public void toggleTwoPagesPerRow(
-            boolean twoPagesPerRowEnabled, float zoomLevel, int currentPageIndex) {
-        assert mToolbarCoordinator != null;
-        mChromePdfViewerFragment.setPagesPerRow(twoPagesPerRowEnabled);
-        mChromePdfViewerFragment.zoomTo(zoomLevel);
-        mChromePdfViewerFragment.scrollToPage(currentPageIndex);
-    }
-
-    @Override
-    public void download() {
-        // TODO(crbug.com/501138999): Implement download action
-    }
-
-    @Override
-    public void rotate() {
-        // TODO(crbug.com/501138999): Implement rotate action
-    }
 }

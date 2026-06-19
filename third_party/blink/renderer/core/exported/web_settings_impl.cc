@@ -833,12 +833,6 @@ void WebSettingsImpl::SetModalContextMenu(bool is_available) {
   settings_->SetModalContextMenu(is_available);
 }
 
-void WebSettingsImpl::
-    SetRequireTransientActivationAndAuthorizationForSubAppsAPIs(
-        bool is_required) {
-  settings_->SetRequireTransientActivationAndAuthorizationForSubAppsAPI(
-      is_required);
-}
 
 void WebSettingsImpl::SetRootScrollbarThemeColor(
     std::optional<SkColor> theme_color) {

@@ -22,7 +22,6 @@
 #include "chrome/browser/enterprise/reporting/saas_usage/saas_usage_reporting_controller_factory.h"
 #endif
 #include "chrome/browser/glic/common/future_browser_features.h"
-#include "chrome/browser/glic/fre/glic_fre_controller.h"
 #include "chrome/browser/glic/glic_metrics.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/glic_zero_state_suggestions_manager.h"
@@ -176,9 +175,8 @@ void GlicInstanceImpl::MaybeDaisyChainToTab(tabs::TabInterface* source_tab,
   }
 }
 
-void GlicInstanceImpl::NotifyStateChange() {
+void GlicInstanceImpl::NotifyVisibilityChange() {
   instance_metrics_.OnVisibilityChanged(HasActiveEmbedder());
-  state_change_callback_list_.Notify(IsShowing());
   if (coordinator_delegate_) {
     coordinator_delegate_->OnInstanceVisibilityChanged(this, IsShowing());
   }
@@ -320,6 +318,25 @@ gfx::Size GlicInstanceImpl::GetPanelSize() {
   return gfx::Size();
 }
 
+std::optional<Target> GlicInstanceImpl::GetInvokeTarget() {
+  if (!active_embedder_key_.has_value()) {
+    return std::nullopt;
+  }
+
+  Target target;
+  target.conversation = ConversationId(conversation_id().value_or(""));
+
+  target.surface = std::visit(
+      absl::Overload{
+          [](tabs::TabInterface* tab) {
+            return Target::Surface(tab->GetHandle());
+          },
+          [](FloatingEmbedderKey) { return Target::Surface(Floating()); }},
+      active_embedder_key_.value());
+
+  return target;
+}
+
 bool GlicInstanceImpl::IsActuating() const {
   return actor_task_manager_ && actor_task_manager_->IsActuating();
 }
@@ -380,7 +397,7 @@ void GlicInstanceImpl::Show(const ShowOptions& options) {
     embedder_to_show = CreateActiveEmbedder(options);
     CHECK(embedder_to_show);
     host_.SetDelegate(embedder_to_show->GetHostEmbedderDelegate());
-    SetActiveEmbedderAndNotifyStateChange(new_key);
+    SetActiveEmbedderAndNotifyVisibilityChange(new_key);
   }
 
   MaybeWarmZeroStateSuggestions();
@@ -779,11 +796,6 @@ void GlicInstanceImpl::SetIdForRestoration(InstanceId id) {
   id_ = id;
 }
 
-base::CallbackListSubscription GlicInstanceImpl::RegisterStateChange(
-    StateChangeCallback callback) {
-  return state_change_callback_list_.Add(std::move(callback));
-}
-
 base::CallbackListSubscription GlicInstanceImpl::RegisterWillBeDestroyed(
     DestructionCallback callback) {
   return will_be_destroyed_callbacks_.Add(std::move(callback));
@@ -864,6 +876,17 @@ std::string GlicInstanceImpl::conversation_title() const {
   return conversation_info_->conversation_title;
 }
 
+std::vector<tabs::TabInterface*> GlicInstanceImpl::GetBoundTabs() const {
+  std::vector<tabs::TabInterface*> tabs;
+  for (const auto& [key, entry] : embedders_) {
+    if (tabs::TabInterface* const* tab =
+            std::get_if<tabs::TabInterface*>(&key)) {
+      tabs.push_back(*tab);
+    }
+  }
+  return tabs;
+}
+
 glic::mojom::ConversationInfoPtr GlicInstanceImpl::GetConversationInfo() const {
   return conversation_info_->Clone();
 }
@@ -911,7 +934,7 @@ GlicUiEmbedder* GlicInstanceImpl::GetActiveEmbedder() {
 void GlicInstanceImpl::DeactivateCurrentEmbedder() {
   auto* old_embedder = GetActiveEmbedder();
   if (!old_embedder) {
-    ClearActiveEmbedderAndNotifyStateChange();
+    ClearActiveEmbedderAndNotifyVisibilityChange();
     return;
   }
 
@@ -930,7 +953,11 @@ void GlicInstanceImpl::DeactivateCurrentEmbedder() {
   // Avoid use-after-free.
   host_.SetDelegate(&empty_embedder_delegate_);
   it->second.embedder = old_embedder->CreateInactiveEmbedder();
-  ClearActiveEmbedderAndNotifyStateChange();
+  ClearActiveEmbedderAndNotifyVisibilityChange();
+
+  if (it->second.embedder) {
+    it->second.embedder->InitializeAfterRegistration();
+  }
 
   // Special case: call back to DidCloseFor if the embedder was closed by
   // deletion (eg. floating embedder).
@@ -990,20 +1017,20 @@ void GlicInstanceImpl::ShowInactiveSidePanelEmbedderFor(
   entry.embedder->Show(ShowOptions(options));
 }
 
-void GlicInstanceImpl::SetActiveEmbedderAndNotifyStateChange(
+void GlicInstanceImpl::SetActiveEmbedderAndNotifyVisibilityChange(
     std::optional<EmbedderKey> new_key) {
   maybe_activate_foreground_embedder_timer_.Stop();
   active_embedder_key_ = new_key;
   sharing_manager_coordinator_.UpdateState(GetPanelState().kind,
                                            interaction_mode_);
-  NotifyStateChange();
+  NotifyVisibilityChange();
   NotifyPanelStateChanged();
 }
 
-void GlicInstanceImpl::ClearActiveEmbedderAndNotifyStateChange() {
+void GlicInstanceImpl::ClearActiveEmbedderAndNotifyVisibilityChange() {
   if (active_embedder_key_.has_value()) {
     active_embedder_key_.reset();
-    NotifyStateChange();
+    NotifyVisibilityChange();
     NotifyPanelStateChanged();
     host().PanelWasClosed();
 #if !BUILDFLAG(IS_ANDROID)

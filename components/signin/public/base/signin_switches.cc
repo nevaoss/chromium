@@ -449,6 +449,8 @@ const base::FeatureParam<base::TimeDelta> kSearchAIModePromoPageLoadDelay{
 const base::FeatureParam<base::TimeDelta> kSearchAIModePromoFrequency{
     &kEnableSearchAIModeSigninPromo, "SearchAIModePromoFrequency",
     base::Days(14)};
+BASE_FEATURE(kSearchAIModeSignInPromoSelfDismissal,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 #if BUILDFLAG(IS_ANDROID)
@@ -483,6 +485,8 @@ BASE_FEATURE(kEnforceMustFetchAppleAgeRangeInChromeCapability,
 BASE_FEATURE(kEnforceMustSkipAppleAgeRangeInChromeCapability,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
+
+BASE_FEATURE(kFetchAccountInfoOnRestart, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kFirstRunDesktopRefresh, base::FEATURE_DISABLED_BY_DEFAULT);

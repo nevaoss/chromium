@@ -26,6 +26,7 @@ import org.chromium.base.ApplicationStatus.ActivityStateListener;
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.DeviceInfo;
+import org.chromium.base.IntentUtils;
 import org.chromium.base.Log;
 import org.chromium.base.TimeUtils;
 import org.chromium.base.metrics.RecordHistogram;
@@ -133,6 +134,8 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
 
     private final Supplier<DesktopWindowStateManager> mDesktopWindowStateManagerSupplier;
     private final MultiInstanceStateObserver mOnMultiInstanceStateChanged;
+
+    private boolean mIsCreationLimitMessageEnqueued;
 
     MultiInstanceManagerApi31(
             Activity activity,
@@ -432,6 +435,9 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
         int id = INVALID_WINDOW_ID;
         boolean newInstanceIdAllocated = false;
         @InstanceAllocationType int allocationType = InstanceAllocationType.INVALID_INSTANCE;
+        boolean isRelaunch =
+                IntentUtils.safeGetBooleanExtra(
+                        mActivity.getIntent(), IntentHandler.EXTRA_FROM_RELAUNCH, false);
         for (int i = 0; i < getMaxInstances(); ++i) {
             int persistedTaskId = ChromeMultiInstancePersistentStore.readTaskId(i);
             if (persistedTaskId != INVALID_TASK_ID) {
@@ -443,6 +449,7 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
 
             boolean instanceExists = ChromeMultiInstancePersistentStore.hasInstance(i);
             if (instanceExists
+                    && !isRelaunch
                     && (DeviceInfo.isDesktop()
                             && ChromeFeatureList.sOnStartupWindowPolicy.isEnabled())) {
                 // This supports updated default id allocation / startup behavior where a newly
@@ -611,7 +618,9 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
         recordInstanceCountHistogram();
         recordActivityCountHistogram();
         ActivityManager activityManager =
-                (ActivityManager) mActivity.getSystemService(Context.ACTIVITY_SERVICE);
+                (ActivityManager)
+                        ContextUtils.getApplicationContext()
+                                .getSystemService(Context.ACTIVITY_SERVICE);
         String launchActivityName = ChromeTabbedActivity.MAIN_LAUNCHER_ACTIVITY_NAME;
         if (activityManager != null) {
             sState =
@@ -1279,8 +1288,19 @@ class MultiInstanceManagerApi31 extends MultiInstanceManagerImpl
 
     @Override
     public void showInstanceCreationLimitMessage() {
+        if (mIsCreationLimitMessageEnqueued) return;
+
+        MessageDispatcher messageDispatcher = getMessageDispatcher();
+        if (messageDispatcher == null) {
+            return;
+        }
+
+        mIsCreationLimitMessageEnqueued = true;
         MultiWindowUtils.showInstanceCreationLimitMessage(
-                getMessageDispatcher(), mActivity, this::showInstanceSwitcherDialog);
+                messageDispatcher,
+                mActivity,
+                this::showInstanceSwitcherDialog,
+                () -> mIsCreationLimitMessageEnqueued = false);
     }
 
     @VisibleForTesting

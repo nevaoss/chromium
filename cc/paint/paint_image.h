@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "base/gtest_prod_util.h"
@@ -104,9 +105,6 @@ struct CC_PAINT_EXPORT ImageHeaderMetadata {
 
   // The subsampling format used for the chroma planes, e.g., YUV 4:2:0.
   YUVSubsampling yuv_subsampling = YUVSubsampling::kUnknown;
-
-  // Any HDR metadata included with the image.
-  gfx::HDRMetadata hdr_metadata;
 
   // The visible size of the image (i.e., the area that contains meaningful
   // pixels).
@@ -500,6 +498,21 @@ class CC_PAINT_EXPORT PaintImage {
 
   // The input parameters that are needed to execute the JS paint callback.
   scoped_refptr<DeferredPaintRecord> deferred_paint_record_;
+};
+
+// Lookup table to get the animation frame to be used for rasterization.
+class CC_PAINT_EXPORT AnimatedImageFrameIndexMap
+    : public base::RefCounted<AnimatedImageFrameIndexMap>,
+      public base::flat_map<PaintImage::Id, size_t> {
+ public:
+  AnimatedImageFrameIndexMap();
+  AnimatedImageFrameIndexMap(
+      base::sorted_unique_t sorted_unique,
+      const std::vector<std::pair<PaintImage::Id, size_t>>& entries);
+
+ private:
+  friend class base::RefCounted<AnimatedImageFrameIndexMap>;
+  ~AnimatedImageFrameIndexMap();
 };
 
 }  // namespace cc

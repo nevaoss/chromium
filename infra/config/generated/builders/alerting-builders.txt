@@ -429,6 +429,7 @@ ci/win10-angle-chromium-x64-nvidia
 ci/win11-arm64-rel-tests
 ci/win32-archive-rel
 ci/win32-official
+ci/windows-no-initial-webui-rel
 try/3pp-linux-amd64-packager
 try/android-10-arm64-rel
 try/android-10-x86-nofieldtrial-rel
@@ -744,7 +745,6 @@ try/win-swangle-try-x86
 try/win-updater-try-builder-dbg
 try/win-updater-try-builder-rel
 try/win-utr-tester
-try/win-webium-product-rel
 try/win-x64-libfuzzer-asan-rel-tests
 try/win10-dbg
 try/win11-rel

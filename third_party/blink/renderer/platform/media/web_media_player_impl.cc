@@ -24,6 +24,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
@@ -674,8 +675,9 @@ void WebMediaPlayerImpl::Shutdown() {
   pipeline_controller_->Stop();
 
   if (last_reported_memory_usage_) {
-    external_memory_accounter_.Decrease(isolate_.get(),
-                                        last_reported_memory_usage_);
+    external_memory_accounter_.Decrease(
+        isolate_.get(),
+        base::checked_cast<size_t>(last_reported_memory_usage_));
   }
 
   // Destruct compositor resources in the proper order.
@@ -2758,6 +2760,7 @@ void WebMediaPlayerImpl::OnIdleTimeout() {
 void WebMediaPlayerImpl::OnFrameShown() {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
   background_pause_timer_.Stop();
+  is_frame_hidden_ = false;
 
   // Foreground videos don't require user gesture to continue playback.
   allow_background_video_playback_ = true;
@@ -2779,6 +2782,7 @@ void WebMediaPlayerImpl::OnFrameShown() {
 
 void WebMediaPlayerImpl::OnFrameHidden() {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
+  is_frame_hidden_ = true;
 
   // Backgrounding a video requires a user gesture to resume playback.
   if (IsFrameHidden()) {
@@ -3661,10 +3665,9 @@ bool WebMediaPlayerImpl::IsPageHidden() const {
 bool WebMediaPlayerImpl::IsFrameHidden() const {
   DCHECK(main_task_runner_->BelongsToCurrentThread());
   if (base::FeatureList::IsEnabled(media::kSuspendMediaForFrozenFrames)) {
-    return delegate_->IsFrameHidden();
+    return is_frame_hidden_;
   }
-  return delegate_->IsFrameHidden() &&
-         !was_suspended_for_frame_closed_or_frozen_;
+  return is_frame_hidden_ && !was_suspended_for_frame_closed_or_frozen_;
 }
 
 bool WebMediaPlayerImpl::IsPausedBecausePageHidden() const {
@@ -4080,7 +4083,8 @@ void WebMediaPlayerImpl::OnFirstFrame(base::TimeTicks frame_time,
 
   media::PipelineStatistics ps = GetPipelineStatistics();
   if (client_) {
-    client_->OnFirstFrame(frame_time, ps.video_bytes_decoded);
+    client_->OnFirstFrame(frame_time,
+                          base::checked_cast<size_t>(ps.video_bytes_decoded));
 
     // Needed to signal HTMLVideoElement that it should remove the poster image.
     if (has_poster_) {

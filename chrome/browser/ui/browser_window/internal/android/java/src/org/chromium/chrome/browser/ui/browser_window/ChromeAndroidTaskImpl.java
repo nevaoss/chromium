@@ -1198,11 +1198,13 @@ final class ChromeAndroidTaskImpl
                                 topActivityScopedObjects.mActivity,
                                 topActivityScopedObjects.mActivityWindowAndroid.getDisplay()));
 
+        if (mId == null || taskId != mId) return;
+
         for (var feature : mFeatures.values()) {
             feature.onTaskVisibilityChanged(isVisible);
         }
 
-        if (mId == null || taskId != mId || mState != State.PENDING_UPDATE) return;
+        if (mState != State.PENDING_UPDATE) return;
         if (!isVisible) {
             @PendingAction
             int[] actions =
@@ -1878,11 +1880,13 @@ final class ChromeAndroidTaskImpl
                             nativeBrowserWindowPtr,
                             isTaskVisible,
                             mWindowStateManager.getCurrentBoundsInPx(),
+                            mWindowStateManager.getCurrentBoundsInDp(),
                             displayId);
                 },
                 new InitInfo(
                         nativeBrowserWindowPtr,
                         /* isVisible= */ false,
+                        new Rect(),
                         new Rect(),
                         Display.DEFAULT_DISPLAY));
     }

@@ -41,6 +41,7 @@ import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
+import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.back_press.BackPressManager;
@@ -56,6 +57,7 @@ import org.chromium.chrome.browser.lifecycle.NativeInitObserver;
 import org.chromium.chrome.browser.locale.LocaleManager;
 import org.chromium.chrome.browser.omnibox.LocationBarMediator.OmniboxUma;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.PopupState;
 import org.chromium.chrome.browser.omnibox.geo.GeolocationHeader;
@@ -92,6 +94,7 @@ import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteMatch;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxFocusReason;
+import org.chromium.components.omnibox.TextSelection;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.DeviceFormFactor;
@@ -99,6 +102,7 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.interpolators.Interpolators;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.widget.ViewRectProvider;
+import org.chromium.url.GURL;
 
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -300,6 +304,8 @@ public class LocationBarCoordinator
         final boolean isIncognito =
                 incognitoStateProvider != null && incognitoStateProvider.isIncognitoSelected();
         OmniboxResourceProvider.setTabFaviconFactory(tabFaviconFunction);
+        SettableNullableObservableSupplier<GURL> exactMatchUrlSupplier =
+                ObservableSuppliers.createNullable();
         mFuseboxCoordinator =
                 new FuseboxCoordinator(
                         context,
@@ -312,16 +318,21 @@ public class LocationBarCoordinator
                                 mAutocompleteCoordinator != null
                                         ? mAutocompleteCoordinator.getSuggestionsDropdown()
                                         : null,
-                        backPressManager);
+                        backPressManager,
+                        exactMatchUrlSupplier);
         NonNullObservableSupplier<Integer> fuseboxStateSupplier;
+        NonNullObservableSupplier<Integer> fuseboxLayoutModeSupplier;
         if (OmniboxFeatures.isMultimodalInputEnabled(context)) {
             fuseboxStateSupplier = mFuseboxCoordinator.getFuseboxStateSupplier();
             fuseboxStateSupplier.addSyncObserverAndPostIfNonNull(mOnFuseboxStateChange);
             mFuseboxCoordinator
                     .getPopupStateSupplier()
                     .addSyncObserverAndPostIfNonNull(mOnPopupStateChange);
+            fuseboxLayoutModeSupplier = mFuseboxCoordinator.getFuseboxLayoutModeSupplier();
         } else {
             fuseboxStateSupplier = ObservableSuppliers.createNonNull(FuseboxState.DISABLED);
+            fuseboxLayoutModeSupplier =
+                    ObservableSuppliers.createNonNull(FuseboxLayoutMode.TOOLBAR);
         }
 
         if (mLocationBarLayout instanceof LocationBarTablet tabletLayout) {
@@ -381,7 +392,8 @@ public class LocationBarCoordinator
                         mFuseboxCoordinator,
                         locationBarEmbedder,
                         omniboxChipManager,
-                        scrimHandler);
+                        scrimHandler,
+                        exactMatchUrlSupplier);
         mBackButton = mLocationBarLayout.findViewById(R.id.omnibox_back_button);
         if (mBackButton != null) {
             mBackButton.setOnClickListener(v -> mLocationBarMediator.onBackButtonClicked());
@@ -442,6 +454,7 @@ public class LocationBarCoordinator
                         pageInfoAction,
                         browserControlsVisibilityDelegate,
                         fuseboxStateSupplier,
+                        fuseboxLayoutModeSupplier,
                         this::onPlusButtonClicked,
                         mLocationBarMediator.getExactMatchUrlSupplier());
         mLocationBarMediator.setCoordinators(
@@ -602,7 +615,6 @@ public class LocationBarCoordinator
         }
 
         if (mOptionalButtonCoordinator != null) {
-            mLocationBarMediator.setOptionalButtonColorChangeCallback(null);
             mOptionalButtonCoordinator.hideButton();
             mOptionalButtonData = null;
         }
@@ -679,6 +691,7 @@ public class LocationBarCoordinator
     @Override
     public void updateVisualsForState() {
         mLocationBarMediator.updateVisualsForState();
+        updateOptionalButtonState();
     }
 
     private void onPlusButtonClicked() {
@@ -688,8 +701,7 @@ public class LocationBarCoordinator
             mFuseboxCoordinator.plusButtonClicked();
         } else {
             mLocationBarMediator.beginInput(
-                    new AutocompleteInput()
-                            .setFocusReason(OmniboxFocusReason.FAKE_BOX_PLUS_BUTTON_TAP)
+                    new AutocompleteInput(OmniboxFocusReason.FAKE_BOX_PLUS_BUTTON_TAP)
                             .setAutocompleteState(AutocompleteState.STANDBY_NO_FOCUS));
         }
     }
@@ -848,7 +860,9 @@ public class LocationBarCoordinator
     @Override
     public void setOmniboxEditingText(String text) {
         mUrlCoordinator.setUrlBarData(
-                UrlBarData.forNonUrlText(text), UrlBar.ScrollType.NO_SCROLL, UrlBarData.SELECT_END);
+                UrlBarData.forNonUrlText(text),
+                UrlBar.ScrollType.NO_SCROLL,
+                TextSelection.SELECT_END);
         updateButtonVisibility();
     }
 
@@ -1438,8 +1452,6 @@ public class LocationBarCoordinator
                             mTrackerSupplier);
 
             var context = mLocationBarLayout.getContext();
-            mLocationBarMediator.setOptionalButtonColorChangeCallback(
-                    mOptionalButtonCoordinator::setIconForegroundColor);
 
             mOptionalButtonCoordinator.setCollapsedStateWidth(
                     context.getResources().getDimensionPixelSize(R.dimen.min_touch_target_size));
@@ -1503,6 +1515,8 @@ public class LocationBarCoordinator
                 || mOptionalButtonData == null) {
             mOptionalButtonCoordinator.hideButton();
         } else {
+            mOptionalButtonCoordinator.setBrandedColorScheme(
+                    mLocationBarMediator.getBrandedColorScheme());
             mOptionalButtonCoordinator.setBackgroundColorFilter(
                     locationBarDataProvider.getPrimaryColor());
             mOptionalButtonCoordinator.updateButton(

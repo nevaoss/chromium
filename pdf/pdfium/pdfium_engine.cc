@@ -170,18 +170,24 @@ constexpr int kMaxTextboxId = std::numeric_limits<int>::max();
 void AddMetadataToTextObject(FPDF_DOCUMENT doc,
                              FPDF_PAGEOBJECT text_object,
                              FPDF_PAGEOBJECTMARK mark,
+                             int textbox_id,
                              const InkTextBoxAttributes& attributes) {
+  CHECK(FPDFPageObjMark_SetIntParam(doc, text_object, mark, "TextboxId",
+                                    textbox_id));
   CHECK(FPDFPageObjMark_SetIntParam(doc, text_object, mark, "Version",
                                     kInkTextAnnotationVersion));
 
+  gfx::RectF bounds = attributes.rect;
+  bounds.Scale(kUnitConversionFactorPixelsToPoints);
+
   CHECK(FPDFPageObjMark_SetFloatParam(doc, text_object, mark, "BoundsX",
-                                      attributes.rect.x()));
+                                      bounds.x()));
   CHECK(FPDFPageObjMark_SetFloatParam(doc, text_object, mark, "BoundsY",
-                                      attributes.rect.y()));
+                                      bounds.y()));
   CHECK(FPDFPageObjMark_SetFloatParam(doc, text_object, mark, "BoundsWidth",
-                                      attributes.rect.width()));
+                                      bounds.width()));
   CHECK(FPDFPageObjMark_SetFloatParam(doc, text_object, mark, "BoundsHeight",
-                                      attributes.rect.height()));
+                                      bounds.height()));
 
   CHECK(FPDFPageObjMark_SetIntParam(doc, text_object, mark, "Typeface",
                                     static_cast<int>(attributes.typeface)));
@@ -5261,10 +5267,10 @@ void PDFiumEngine::DrawText(int page_index,
   const SkColor color = attributes.color;
   const float pdf_font_size =
       CSSFontSizeToPdfFontSize(attributes.css_font_size);
-  const int textbox_id = GetNextTextboxId();
 
   std::vector<FPDF_PAGEOBJECT> page_objects;
   page_objects.reserve(text_info.size());
+  FPDF_PAGEOBJECTMARK mark = nullptr;
   for (const InkTextInfo& item : text_info) {
     FPDF_FONT font = GetAddedFont(item.font_id);
     CHECK(font);
@@ -5306,16 +5312,15 @@ void PDFiumEngine::DrawText(int page_index,
     CHECK(FPDFPageObj_TransformF(text_object.get(), &text_origin_matrix));
     CHECK(FPDFPageObj_TransformF(text_object.get(), &textbox_matrix));
 
-    FPDF_PAGEOBJECTMARK mark =
-        FPDFPageObj_AddMark(text_object.get(), kInkTextAnnotationIdentifierKey);
-    CHECK(mark);
-    CHECK(FPDFPageObjMark_SetIntParam(doc(), text_object.get(), mark,
-                                      "TextboxId", textbox_id));
-
     if (&item == &text_info.front()) {
-      // Only apply metadata to the first text object in the textbox. Other
-      // text objects in the textbox can be identified by the TextboxId.
-      AddMetadataToTextObject(doc(), text_object.get(), mark, attributes);
+      mark = FPDFPageObj_AddMark(text_object.get(),
+                                 kInkTextAnnotationIdentifierKey);
+      CHECK(mark);
+      AddMetadataToTextObject(doc(), text_object.get(), mark,
+                              GetNextTextboxId(), attributes);
+    } else {
+      CHECK(mark);
+      CHECK(FPDFPageObj_AddExistingMark(text_object.get(), mark));
     }
 
     CHECK(FPDFPage_InsertObject(page, text_object.release()));

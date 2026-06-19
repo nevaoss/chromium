@@ -36,6 +36,7 @@
 <translation id="1324107359134968521">Chromium-ին անհրաժեշտ է Bluetooth-ի հասանելիություն՝
  Bluetooth սարքեր որոնելու համար։ <ph name="IDS_SERIAL_DEVICE_CHOOSER_AUTHORIZE_BLUETOOTH_LINK" /></translation>
 <translation id="1330562121671411446">Ճանաչել լեզուն</translation>
+<translation id="1330742950061766891">Օգտագործել դիտարկիչի՝ Chromium-ի առաջարկած կարգավորումները</translation>
 <translation id="1342274909142618978">Նաև հեռացնել տվյալները Chromium-ից (<ph name="URL" />)</translation>
 <translation id="1345251407431278948">«Որոնում պատկերով» գործառույթն ամրացված է․ այն բացելու համար օգտագործեք գործիքագոտու նոր կոճակը</translation>
 <translation id="1356661055722410047">Նորույթ․ դուք կարող եք ձեր էկրանին թարգմանել ինչպես տեքստ, այնպես էլ պատկերներ</translation>
@@ -373,6 +374,7 @@
 <translation id="5187123684706427865">Chromium հաշիվը պահանջում է վերաիսկորոշում</translation>
 <translation id="5231355151045086930">Դուրս գալ Chromium-ից</translation>
 <translation id="5234764350956374838">Փակել</translation>
+<translation id="5249261924633168472">Բացել հղումը Chromium-ի ինկո&amp;գնիտո պատուհանում</translation>
 <translation id="5254739261293693943">Հարցնել այս տեսանյութի մասին</translation>
 <translation id="5276305953263010518">Ներբեռնեք Chromium հավելվածը՝ գաղտնաբառերը ցանկացած պահի պահելու համար</translation>
 <translation id="5277894862589591112">Փոփոխությունները կիրառելու համար վերագործարկեք Chromium-ը</translation>
@@ -582,7 +584,6 @@ Chromium-ին չհաջողվեց վերականգնել ձեր կարգավոր�
 <translation id="7368826207863345663">Chromium-ի հետագա թարմացումները ստանալու համար ձեզ անհրաժեշտ է macOS 13 կամ ավելի նոր տարբերակ։ Այս համակարգիչն օգտագործում է macOS 12 տարբերակը։</translation>
 <translation id="7376384068949534168">Դուք վաղուց չեք այցելել կայք։ Chromium-ը հեռացրել է «<ph name="PERMISSION_1" />» և «<ph name="PERMISSION_2" />» թույլտվությունները։</translation>
 <translation id="73786666777299047">Բացել Chrome Web Store-ը</translation>
-<translation id="7384121030444253939">Այս ընդլայնումն այլևս չի աջակցվում։ Chromium-ը խորհուրդ է տալիս հեռացնել այն։</translation>
 <translation id="7407655596887111931">Chromium-ն այժմ ձեր կանխադրված դիտարկիչն է</translation>
 <translation id="7413153308467572558">Շարունակեք այնտեղից, որտեղ կանգ էիք առել։ Chromium-ը վերականգնում է ներդիրները յուրաքանչյուր վերագործարկումից հետո։ Այս գործառույթն անջատելու համար անցեք</translation>
 <translation id="7427879960656355200">Արտահանեք գաղտնաբառեր Chromium</translation>

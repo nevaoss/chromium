@@ -8,6 +8,7 @@ import android.app.Activity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 
 import androidx.annotation.VisibleForTesting;
 import androidx.recyclerview.widget.GridLayoutManager;
@@ -20,6 +21,7 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabFavicon;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider;
+import org.chromium.chrome.browser.tabmodel.TabCreatorUtil;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
@@ -32,6 +34,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListEditorCoordinator
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListConfigDelegate;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListItemOnClickListenerProvider;
+import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListLayoutType;
 import org.chromium.chrome.browser.tasks.tab_management.TabListModel;
 import org.chromium.chrome.browser.tasks.tab_management.TabListRecyclerView;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
@@ -118,7 +121,7 @@ public class VerticalTabListCoordinator {
                         if (item.type == UiType.TAB) {
                             if (item.model.get(TabProperties.IS_PINNED)) {
                                 return UiType.PINNED_TAB;
-                            } else if (item.model.get(TabProperties.TAB_GROUP_CARD_COLOR) != null) {
+                            } else if (item.model.get(TabProperties.TAB_GROUP_HEADER_ID) != null) {
                                 return UiType.TAB_GROUP;
                             }
                         }
@@ -176,7 +179,6 @@ public class VerticalTabListCoordinator {
         // TODO(crbug.com/509226293):
         // 1. Wire up header container (R.id.vertical_tab_header_container) for search & grid
         // buttons.
-        // 2. Wire up footer container (R.id.vertical_tab_footer_container)
         // 3. Attach ItemTouchHelper for vertical row dragging & reordering.
         // 4. Register Right-click / Long-press Context Menu listener for tab interactions.
 
@@ -185,15 +187,18 @@ public class VerticalTabListCoordinator {
         TabListConfigDelegate tabListConfigDelegate =
                 new TabListConfigDelegate() {
                     @Override
-                    public boolean supportsNestedTabGroups() {
-                        return true;
+                    public @TabListLayoutType int getLayoutType() {
+                        return TabListLayoutType.NESTED;
                     }
 
                     @Override
-                    public boolean shouldActOnRelatedTabs() {
-                        return true;
+                    public boolean supportsMessageCards() {
+                        return false;
                     }
                 };
+
+        ImageButton newTabButton = mContainerView.findViewById(R.id.new_tab_button);
+        newTabButton.setOnClickListener(v -> handleNewTabButtonClick());
 
         mMediator =
                 new TabListMediator(
@@ -292,6 +297,13 @@ public class VerticalTabListCoordinator {
                     }
                 });
         return layoutManager;
+    }
+
+    private void handleNewTabButtonClick() {
+        TabModel model = mTabModelSelector.getCurrentModel();
+
+        if (!model.isIncognitoBranded()) model.commitAllTabClosures();
+        TabCreatorUtil.launchNtp(model.getTabCreator());
     }
 
     /** Returns the default grid column span count for the Left Rail. */

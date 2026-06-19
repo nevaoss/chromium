@@ -556,7 +556,7 @@ void ShowBookmarkTabGroupDialogHelper(
   details.bookmark_data.children = std::move(children);
   DCHECK(!details.bookmark_data.children.empty());
   BookmarkEditor::Show(
-      browser->window()->GetNativeWindow(), profile, details,
+      browser->GetWindow()->GetNativeWindow(), profile, details,
       BookmarkEditor::SHOW_TREE,
       base::BindOnce(
           [](Browser* browser, base::OnceClosure callback) {
@@ -610,7 +610,7 @@ void OpenAllIfAllowed(
   // before the user can answer "Yes".
 
   chrome::ShowQuestionMessageBoxAsync(
-      browser->window()->GetNativeWindow(),
+      browser->GetWindow()->GetNativeWindow(),
       l10n_util::GetStringUTF16(IDS_PRODUCT_NAME),
       l10n_util::GetStringFUTF16(IDS_BOOKMARK_BAR_SHOULD_OPEN_ALL,
                                  base::NumberToString16(child_count)),
@@ -677,7 +677,8 @@ void ShowBookmarkTabGroupDialog(
     base::OnceCallback<void(Browser*, const tab_groups::TabGroupId&)>
         on_save_callback) {
   std::vector<BookmarkEditor::EditDetails::BookmarkData> children;
-  GetURLsAndFoldersForTabGroup(browser, tab_group, &children);
+  GetURLsAndFoldersForTabGroup(browser->tab_strip_model(), tab_group,
+                               &children);
 
   ShowBookmarkTabGroupDialogHelper(
       browser, tab_group.visual_data()->title(), std::move(children),
@@ -781,10 +782,9 @@ void GetURLsAndFoldersForTabEntries(
 }
 
 void GetURLsAndFoldersForTabGroup(
-    const Browser* browser,
+    const TabStripModel* tab_strip_model,
     const TabGroup& tab_group,
     std::vector<BookmarkEditor::EditDetails::BookmarkData>* folder_data) {
-  TabStripModel* const tab_strip_model = browser->tab_strip_model();
   const gfx::Range tab_range = tab_group.ListTabs();
 
   for (size_t i = tab_range.start(); i < tab_range.end(); ++i) {

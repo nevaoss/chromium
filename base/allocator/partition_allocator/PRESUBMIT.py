@@ -303,7 +303,6 @@ def CheckUnexpectedPreprocessorDefines(input_api, output_api):
         'ADDRESS_SANITIZER',
         'MEMORY_SANITIZER',
         'THREAD_SANITIZER',
-        'WIN32',
         '_CPPUNWIND',
         '_MSC_VER',
         '_WIN32',
@@ -354,9 +353,6 @@ def CheckUnexpectedPreprocessorDefines(input_api, output_api):
         # TODO - The following macros are defined outside of partition_alloc and
         # should be removed/replaced with PA_BUILDFLAG or PA_CONFIG at some
         # point.
-        'BASE_ALLOCATOR_PARTITION_ALLOCATOR_SRC_PARTITION_ALLOC_PARTITION_ALLOC_BASE_CHECK_H_',
-        'BASE_ALLOCATOR_PARTITION_ALLOCATOR_SRC_PARTITION_ALLOC_PARTITION_ALLOC_CHECK_H_',
-        'BASE_CHECK_H_',
         'HAS_HW_CAPS',
         'HAVE_BACKTRACE',
         'LINUX_NAME_REGION',
@@ -364,6 +360,7 @@ def CheckUnexpectedPreprocessorDefines(input_api, output_api):
         'NDEBUG',
         'NEEDS_HANDLING_OF_HW_CAPABILITIES',
     }
+
 
     target_path_prefix = (
         'base/allocator/partition_allocator/src/partition_alloc/')

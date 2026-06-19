@@ -6,11 +6,9 @@ package org.chromium.chrome.browser.tab_bottom_sheet;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
-import static org.mockito.ArgumentCaptor.captor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,7 +18,6 @@ import android.content.Context;
 import android.graphics.Color;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.Window;
@@ -42,10 +39,8 @@ import org.robolectric.shadows.ShadowLooper;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.R;
 import org.chromium.components.embedder_support.contextmenu.ContextMenuPopulatorFactory;
-import org.chromium.components.embedder_support.delegate.WebContentsDelegateAndroid;
 import org.chromium.components.embedder_support.view.ContentView;
 import org.chromium.components.thinwebview.ThinWebView;
-import org.chromium.components.thinwebview.ThinWebViewAttachParams;
 import org.chromium.components.thinwebview.ThinWebViewFactory;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.EventForwarder;
@@ -65,7 +60,6 @@ public class TabBottomSheetWebUiTest {
     @Mock private ThinWebView mThinWebView;
     @Mock private View mView;
     @Mock private ContextMenuPopulatorFactory mContextMenuPopulatorFactory;
-    @Mock private CoBrowseViewsZoomControl mZoomControl;
     @Mock private ContentView mMockContentView;
     @Mock private Window mMockWindow;
     @Mock private View mMockDecorView;
@@ -104,7 +98,6 @@ public class TabBottomSheetWebUiTest {
                         mWindowAndroid,
                         mContextMenuPopulatorFactory,
                         Color.WHITE,
-                        mZoomControl,
                         mMockContentView);
         TabBottomSheetWebUi.setInTestModeForTesting();
     }
@@ -251,25 +244,6 @@ public class TabBottomSheetWebUiTest {
     }
 
     @Test
-    public void testCreateWebContentsDelegate_ContentsZoomChange() {
-        mWebUi.setWebContents(mWebContents, true);
-
-        ArgumentCaptor<ThinWebViewAttachParams> paramsCaptor =
-                ArgumentCaptor.forClass(ThinWebViewAttachParams.class);
-        verify(mThinWebView).attachWebContents(eq(mWebContents), any(), paramsCaptor.capture());
-
-        ThinWebViewAttachParams params = paramsCaptor.getValue();
-        WebContentsDelegateAndroid delegate = params.webContentsDelegate;
-        assertNotNull(delegate);
-
-        delegate.contentsZoomChange(true);
-        verify(mZoomControl).zoomIn(mWebContents);
-
-        delegate.contentsZoomChange(false);
-        verify(mZoomControl).zoomOut(mWebContents);
-    }
-
-    @Test
     public void testSetWebContents_resetsTouchOffset() {
         mWebUi.setWebContents(mWebContents, true);
 
@@ -301,26 +275,6 @@ public class TabBottomSheetWebUiTest {
         verify(focusedView, times(0)).clearFocus();
     }
 
-    @Test
-    public void testOnTouchListener() {
-        mWebUi.setWebContents(mWebContents, false);
-
-        ArgumentCaptor<View.OnTouchListener> touchListenerCaptor = captor();
-
-        verify(mMockContentView).setOnTouchListener(touchListenerCaptor.capture());
-        View.OnTouchListener touchListener = touchListenerCaptor.getValue();
-        assertNotNull(touchListener);
-
-        MotionEvent eventDown = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 0f, 0f, 0);
-        touchListener.onTouch(mMockContentView, eventDown);
-        verify(mMockContentView, times(1)).requestFocus();
-
-        reset(mMockContentView);
-        MotionEvent eventUp = MotionEvent.obtain(0, 0, MotionEvent.ACTION_UP, 0f, 0f, 0);
-        touchListener.onTouch(mMockContentView, eventUp);
-        verify(mMockContentView, times(0)).requestFocus();
-    }
-
     private static class TestTabBottomSheetWebUi extends TabBottomSheetWebUi {
         private final ContentView mMockContentView;
 
@@ -330,15 +284,13 @@ public class TabBottomSheetWebUiTest {
                 WindowAndroid windowAndroid,
                 ContextMenuPopulatorFactory contextMenuPopulatorFactory,
                 int backgroundColor,
-                CoBrowseViewsZoomControl zoomControl,
                 ContentView mockContentView) {
             super(
                     context,
                     containerView,
                     windowAndroid,
                     contextMenuPopulatorFactory,
-                    backgroundColor,
-                    zoomControl);
+                    backgroundColor);
             mMockContentView = mockContentView;
         }
 

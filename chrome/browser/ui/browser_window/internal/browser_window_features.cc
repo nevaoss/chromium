@@ -67,7 +67,6 @@
 #include "chrome/browser/ui/desktop_to_mobile_promos/ios_promo_controller.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/extensions/extension_installed_watcher.h"
-#include "chrome/browser/ui/extensions/mv2_disabled_dialog_controller.h"
 #include "chrome/browser/ui/find_bar/find_bar.h"
 #include "chrome/browser/ui/find_bar/find_bar_controller.h"
 #include "chrome/browser/ui/focus/browser_focus_controller.h"
@@ -170,6 +169,7 @@
 #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
 #include "chrome/browser/ui/webui_browser/zoom_bubble_manager_webui_browser.h"
 #include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
+#include "chrome/browser/ui/window_metadata/window_metadata_controller.h"
 #include "chrome/browser/ui/zoom/browser_window_zoom_observer.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
@@ -195,7 +195,6 @@
 #include "components/search/search.h"
 #include "content/public/common/content_constants.h"
 #include "extensions/browser/manifest_v2_experiment_manager.h"
-#include "extensions/browser/mv2_experiment_stage.h"
 #include "extensions/common/extension_features.h"
 #include "ui/views/interaction/element_highlighter_views.h"
 
@@ -283,7 +282,8 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 
   browser_actions_->InitializeBrowserActions();
 
-  if (webui_browser::IsWebUIBrowserEnabled()) {
+  if (webui_browser::IsWebUIBrowserEnabled() &&
+      browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL) {
     browser_elements_ =
         GetUserDataFactory().CreateInstance<BrowserElementsWebUiBrowser>(
             *browser, *browser);
@@ -491,9 +491,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
                 contextual_tasks_entry_point_eligibility_manager_.get());
 
     if (contextual_tasks::kShowEntryPoint.Get() ==
-            contextual_tasks::EntryPointOption::kToolbarRevisit ||
-        contextual_tasks::kShowEntryPoint.Get() ==
-            contextual_tasks::EntryPointOption::kToolbarEphemeralBranded) {
+        contextual_tasks::EntryPointOption::kToolbarEphemeralBranded) {
       contextual_tasks_ephemeral_button_controller_ =
           GetUserDataFactory()
               .CreateInstance<ContextualTasksEphemeralButtonController>(
@@ -597,6 +595,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   unload_controller_ = std::make_unique<UnloadController>(browser);
+
+  window_metadata_controller_ = std::make_unique<WindowMetadataController>(
+      *browser,
+      browser->GetBrowserForMigrationOnly()->create_params().user_title);
 
   // Initialize embedder features last.
   embedder_browser_window_features_ =
@@ -747,19 +749,6 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
       }
     }
 
-    auto* experiment_manager =
-        extensions::ManifestV2ExperimentManager::Get(profile);
-    if (experiment_manager) {
-      extensions::MV2ExperimentStage experiment_stage =
-          experiment_manager->GetCurrentExperimentStage();
-      if (experiment_stage ==
-              extensions::MV2ExperimentStage::kDisableWithReEnable ||
-          experiment_stage == extensions::MV2ExperimentStage::kUnsupported) {
-        mv2_disabled_dialog_controller_ =
-            std::make_unique<extensions::Mv2DisabledDialogController>(browser);
-      }
-    }
-
     if (browser->GetTabStripModel()->SupportsTabGroups() &&
         tab_groups::SavedTabGroupUtils::SupportsSharedTabGroups() &&
         tab_groups::TabGroupSyncServiceFactory::GetForProfile(profile)) {
@@ -839,12 +828,6 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
     bookmark_bar_controller_->SetDelegate(browser_view);
   }
 
-  if (auto* const provider =
-          browser_elements_->AsA<BrowserElementsWebUiBrowser>()) {
-    provider->Init(views::Widget::GetWidgetForNativeWindow(
-        browser->window()->GetNativeWindow()));
-  }
-
   if (webui_browser_window) {
     focus_manager = webui_browser_window->widget()->GetFocusManager();
 
@@ -883,15 +866,6 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
 
 void BrowserWindowFeatures::InitPostBrowserViewConstruction(
     BrowserView* browser_view) {
-  if (auto* const provider =
-          browser_elements_->AsA<BrowserElementsViewsImpl>()) {
-    provider->Init(browser_view);
-    provider->AddRetrievalCallback(
-        kActiveContentsWebViewRetrievalId,
-        base::BindRepeating(&BrowserView::GetActiveContentsWebView,
-                            base::Unretained(browser_view)));
-  }
-
   scrim_view_controller_ = std::make_unique<ScrimViewController>(browser_view);
 
   // Set the window for the animation controller. Add animation providers here
@@ -1101,9 +1075,6 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
     side_panel_coordinator_->TearDownPreBrowserWindowDestruction();
   }
 
-  if (mv2_disabled_dialog_controller_) {
-    mv2_disabled_dialog_controller_->TearDown();
-  }
 
   color_provider_browser_helper_.reset();
 
@@ -1189,6 +1160,10 @@ SidePanelUI* BrowserWindowFeatures::side_panel_ui() {
   // TODO(crbug.com/428946261): Remove this and replace all clients with
   // `SidePanelUI::From()`.
   return browser_ ? SidePanelUI::From(browser_) : nullptr;
+}
+
+actions::ActionItem* BrowserWindowFeatures::GetRootActionItem() {
+  return browser_actions() ? browser_actions()->root_action_item() : nullptr;
 }
 
 ToastController* BrowserWindowFeatures::toast_controller() {

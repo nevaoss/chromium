@@ -268,30 +268,72 @@ void PartitionAddressSpace::InitZeroSegment() {
     return;
   }
 
-  zero_segment_size_ = GetZeroSegmentSizeFromOS();
-
   const size_t min_zero_segment_size =
       static_cast<size_t>(PA_CONFIG(USER_SPACE_ZERO_SEGMENT_SIZE_MB)) * 1024 *
       1024;
-  // If the minimum zero segment returned from the OS is already big enough, we
-  // are good.
-  if (zero_segment_size_ >= min_zero_segment_size) {
-    return;
+
+  const WellKnownReadOnlyRegions well_known = GetWellKnownReadOnlyRegions();
+  PA_CHECK(well_known.count <= WellKnownReadOnlyRegions::kMaxRegions);
+
+  // Reserves a region given by `address` and `size`. Returns false in case of
+  // failure. Previously reserved regions are intentionally leaked allowing for
+  // partial user space segment.
+  const auto reserve_region = [](uintptr_t address, size_t size) -> bool {
+    const uintptr_t allocated_base =
+        AllocPages(address, size, PageAllocationGranularity(),
+                   PageAccessibilityConfiguration(
+                       PageAccessibilityConfiguration::kInaccessible),
+                   PageTag::kPartitionAlloc);
+    if (allocated_base == address) {
+      return true;
+    }
+    if (allocated_base) {
+      FreePages(allocated_base, size);
+    }
+    return false;
+  };
+
+  uintptr_t current_addr = 0;
+  for (size_t i = 0; i < well_known.count; ++i) {
+    const auto& region = well_known.regions[i];
+    if (region.address >= min_zero_segment_size) {
+      break;
+    }
+    if (region.address > current_addr) {
+      const uintptr_t gap_start =
+          base::bits::AlignUp(current_addr, PageAllocationGranularity());
+      const uintptr_t gap_end =
+          base::bits::AlignDown(region.address, PageAllocationGranularity());
+      if (gap_end > gap_start) {
+        const size_t gap_size = gap_end - gap_start;
+        if (!reserve_region(gap_start, gap_size)) {
+          zero_segment_size_ =
+              current_addr;  // Keep the contiguous region we have so far.
+          return;
+        }
+      }
+    }
+
+    current_addr = region.address + region.size;
   }
 
-  // Otherwise, try to allocate more pages trailing the OS parts.
-  const size_t allocation_size = min_zero_segment_size - zero_segment_size_;
-  const uintptr_t hint_address = zero_segment_size_;
-  const uintptr_t allocated_base =
-      AllocPages(hint_address, allocation_size, PageAllocationGranularity(),
-                 PageAccessibilityConfiguration(
-                     PageAccessibilityConfiguration::kInaccessible),
-                 PageTag::kPartitionAlloc);
-  if (allocated_base == hint_address) {
-    zero_segment_size_ += allocation_size;
-  } else if (allocated_base) {
-    FreePages(allocated_base, allocation_size);
+  // Reserve the trailing gap if applicable.
+  if (min_zero_segment_size > current_addr) {
+    const uintptr_t gap_start =
+        base::bits::AlignUp(current_addr, PageAllocationGranularity());
+    const uintptr_t gap_end = base::bits::AlignDown(
+        min_zero_segment_size, PageAllocationGranularity());
+    if (gap_end > gap_start) {
+      const size_t gap_size = gap_end - gap_start;
+      if (!reserve_region(gap_start, gap_size)) {
+        zero_segment_size_ =
+            current_addr;  // Keep the contiguous region we have so far.
+        return;
+      }
+    }
   }
+
+  zero_segment_size_ = min_zero_segment_size;
 }
 #endif  // PA_CONFIG(ENABLE_USER_SPACE_ZERO_SEGMENT)
 

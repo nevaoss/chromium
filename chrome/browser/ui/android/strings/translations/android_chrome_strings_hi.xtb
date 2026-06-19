@@ -20,6 +20,7 @@
 <translation id="1070689840697074178">PDF फ़ाइलें यहां से डाउनलोड की जा सकती हैं</translation>
 <translation id="107147699690128016">अगर आप फ़ाइल का एक्सटेंशन बदलते हैं, तो हो सकता है कि फ़ाइल अलग ऐप्लिकेशन में खुले. इससे आपके डिवाइस को नुकसान पहुंच सकता है.</translation>
 <translation id="1073328695547557412">Google Lens के आइकॉन पर टैप करें</translation>
+<translation id="1080116354587839789">चौड़ाई में फ़िट करें</translation>
 <translation id="1086486568852410168">Google Lens की मदद से खोजें</translation>
 <translation id="1087799850623149508">पता बार को सबसे नीचे ले जाने के लिए, उसे दबाकर रखें</translation>
 <translation id="1089606299949659462">समीक्षा पूरी हुई!</translation>
@@ -83,7 +84,6 @@
 <translation id="1303507811548703290"><ph name="DOMAIN" /> - <ph name="DEVICE_NAME" /> से भेजा गया</translation>
 <translation id="1310482092992808703">टैब को समूह में लगाएं</translation>
 <translation id="1318262688555255786"><ph name="PAGE_TITLE" /> वेबपेज का लिंक शेयर करें. सोर्स: <ph name="PAGE_URL" /></translation>
-<translation id="1320912611264252795">बुकमार्क सेव फ़्लो के फ़ोल्डर, पूरी स्क्रीन पर खुले हैं</translation>
 <translation id="1327257854815634930">नेविगेशन का इतिहास अपने पूरे आकार में खुला हुआ है</translation>
 <translation id="1331212799747679585">Chrome अपडेट नहीं किया जा सकता. ज़्यादा विकल्प</translation>
 <translation id="1332501820983677155">Google Chrome सुविधा शॉर्टकट</translation>
@@ -536,6 +536,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="3285065882678541460">{TAB_COUNT,plural, =1{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_ONE" /> टैब}one{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> टैब}other{<ph name="TAB_GROUPS_PART" />, <ph name="TAB_COUNT_MANY" /> टैब}}</translation>
 <translation id="3286508210927575634">{PASSWORDS_COUNT,plural, =1{1 पासवर्ड को सिर्फ़ इस डिवाइस में सेव किया गया है. अपने दूसरे डिवाइसों पर इसका इस्तेमाल करने के लिए, इसे अपने Google खाते में सेव करें.}one{# पासवर्ड को सिर्फ़ इस डिवाइस में सेव किया गया है. अपने दूसरे डिवाइसों पर इसका इस्तेमाल करने के लिए, इसे अपने Google खाते में सेव करें.}other{# पासवर्ड सिर्फ़ इस डिवाइस में सेव किए गए हैं. अपने दूसरे डिवाइसों पर इनका इस्तेमाल करने के लिए, इन्हें अपने Google खाते में सेव करें.}}</translation>
 <translation id="3293181007446299124">आपके ब्राउज़िंग इतिहास को आपके डिवाइस पर निजी रखा जाता है. साथ ही, आपकी पहचान को सुरक्षित रखने के लिए, रिपोर्ट को देर से भेजा जाता है</translation>
+<translation id="3301639354590628973">क्या आपको खाते स्विच करने हैं?</translation>
 <translation id="3301936297336370235">सुझाए गए पासवर्ड को इस्तेमाल करने की पुष्टि करें</translation>
 <translation id="3302615849591357577"><ph name="COLOR_NAME" /> रंग वाले <ph name="TITLE_OF_GROUP" /> टैब के ग्रुप को, एक नए बैकग्राउंड वाले टैब ग्रुप के तौर पर वापस लाएं.</translation>
 <translation id="3303855915957856445">कोई खोज नतीजे नहीं मिले</translation>
@@ -713,7 +714,6 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="4092709865241032354">इस साइट के लिए अपना उपयोगकर्ता नाम जोड़ें, ताकि Google Password Manager साइन इन करने के लिए आपके क्रेडेंशियल सेव कर सके</translation>
 <translation id="4095146165863963773">ऐप्लिकेशन डेटा मिटाएं?</translation>
 <translation id="4095483462103784441">नया टैब ग्रुप बनाएं</translation>
-<translation id="4096227151372679484">बुकमार्क सेव फ़्लो के फ़ोल्डर, आधी स्क्रीन पर खुले हैं</translation>
 <translation id="4105527135143631701">Google Password Manager अपडेट करने का डायलॉग बॉक्स खुल गया है</translation>
 <translation id="4113030288477039509">आपके व्यवस्थापक द्वारा प्रबंधित</translation>
 <translation id="4116038641877404294">पेजों को ऑफ़लाइन इस्तेमाल करने के लिए उन्हें डाउनलोड करें</translation>
@@ -1435,6 +1435,7 @@ Chrome के अनुभव को बेहतर बनाने के ल�
 <translation id="6937524809504266803">मनमुताबिक अनुभव और लिंक करना</translation>
 <translation id="6937876069006524083">निकनेम (ज़रूरी नहीं)</translation>
 <translation id="6942665639005891494">सेटिंग मेन्यू विकल्प का इस्तेमाल करके डिफ़ॉल्ट डाउनलोड स्थान किसी भी समय बदलें</translation>
+<translation id="6944854424004126054">विंडो पुनर्स्थापित करें</translation>
 <translation id="6945221475159498467">चुनें</translation>
 <translation id="6955535239952325894">यह सेटिंग, प्रबंधित किए गए ब्राउज़र पर काम नहीं करती है</translation>
 <translation id="6963766334940102469">बुकमार्क मिटाएं</translation>

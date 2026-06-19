@@ -17,13 +17,11 @@ namespace password_manager::features {
 // All features in alphabetical order. The features should be documented
 // alongside the definition of their values in the .cc file.
 
-#if !BUILDFLAG(IS_IOS)
 BASE_DECLARE_FEATURE(kActorLogin);
 // Killswitch for the conflicting permission cleanup. Conflicting permissions
 // are the ones granted for 2 different accounts on the same website.
 BASE_DECLARE_FEATURE(kActorLoginConflictingPermissionCleanup);
 BASE_DECLARE_FEATURE(kActorLoginLocalClassificationModel);
-#endif  // !BUILDFLAG(IS_IOS)
 
 #if BUILDFLAG(IS_ANDROID)
 // When enabled, it completely ignores existing permanent permissions
@@ -151,6 +149,10 @@ extern const base::FeatureParam<int>
 BASE_DECLARE_FEATURE(kIOSProactivePasswordGenerationBottomSheet);
 #endif  // BUILDFLAG(IS_IOS)
 
+// Enables rendering a passkey hybrid QR code directly inside the autofill
+// dropdown during conditional UI.
+BASE_DECLARE_FEATURE(kMagiChromeQrCodeAutofill);
+
 // Marks all submitted credentials as leaked, useful for testing of a password
 // leak dialog.
 BASE_DECLARE_FEATURE(kMarkAllCredentialsAsLeaked);
@@ -233,6 +235,10 @@ BASE_DECLARE_FEATURE(kUseDetachedWidget);
 BASE_DECLARE_FEATURE(kWebAuthnUsePasskeyFromAnotherDeviceInContextMenu);
 
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
+// Enables the "Use a passkey / Use a different passkey" in the password manual
+// fallback.
+BASE_DECLARE_FEATURE(kWebAuthnUsePasskeyFromAnotherDeviceInManualFallback);
 
 // All features parameters in alphabetical order.
 

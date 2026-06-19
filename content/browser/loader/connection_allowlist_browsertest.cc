@@ -10,9 +10,14 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/run_loop.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/test_future.h"
 #include "content/browser/preloading/prefetch/prefetch_key.h"
 #include "content/browser/preloading/prefetch/prefetch_service.h"
+#include "content/browser/preloading/prefetch/prefetch_status.h"
+#include "content/browser/preloading/prerender/prerender_features.h"
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/storage_partition_impl.h"
 #include "content/public/browser/browser_context.h"
@@ -23,6 +28,8 @@
 #include "content/public/test/content_browser_test.h"
 #include "content/public/test/content_browser_test_content_browser_client.h"
 #include "content/public/test/content_browser_test_utils.h"
+#include "content/public/test/prerender_test_util.h"
+#include "content/public/test/service_worker_test_helpers.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "content/public/test/url_loader_monitor.h"
 #include "content/shell/browser/shell.h"
@@ -41,6 +48,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "third_party/blink/public/common/features.h"
+#include "third_party/blink/public/common/notifications/platform_notification_data.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/loader/resource_load_info.mojom-shared.h"
 #include "url/gurl.h"
@@ -51,6 +59,11 @@ namespace {
 constexpr char kSameOriginAllowlistedPage[] = "/response_origin.html";
 constexpr char kCrossOriginAllowlistedPage[] =
     "/response_and_cross_origin.html";
+}
+
+bool IsPrerender2FallbackPrefetchSpecRulesEnabled() {
+  return base::FeatureList::IsEnabled(
+      features::kPrerender2FallbackPrefetchSpecRules);
 }
 
 struct ResponseEntry {
@@ -72,7 +85,10 @@ class ConnectionAllowlistContentBrowserClient
 // the link header response.
 class ConnectionAllowlistTest : public ContentBrowserTest {
  public:
-  ConnectionAllowlistTest() {
+  ConnectionAllowlistTest()
+      : prerender_helper_(
+            base::BindRepeating(&ConnectionAllowlistTest::GetWebContents,
+                                base::Unretained(this))) {
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/{network::features::kConnectionAllowlists,
                               blink::features::
@@ -83,6 +99,9 @@ class ConnectionAllowlistTest : public ContentBrowserTest {
 
   void SetUpOnMainThread() override {
     ContentBrowserTest::SetUpOnMainThread();
+
+    prerender_helper_.RegisterServerRequestMonitor(
+        embedded_https_test_server());
 
     host_resolver()->AddRule("*", "127.0.0.1");
     embedded_https_test_server().SetSSLConfig(
@@ -102,11 +121,41 @@ class ConnectionAllowlistTest : public ContentBrowserTest {
     response_map_[relative_url] = std::move(entry);
   }
 
+  WebContents* GetWebContents() { return shell()->web_contents(); }
+
+  test::PrerenderTestHelper& prerender_helper() { return prerender_helper_; }
+
+  bool WaitForSpeculationRulesPrefetch(const GURL& url,
+                                       PrefetchContainer::LoadState load_state,
+                                       PrefetchStatus prefetch_status) {
+    RenderFrameHost* rfh = shell()->web_contents()->GetPrimaryMainFrame();
+    PrefetchService* prefetch_service =
+        PrefetchService::GetFromFrameTreeNodeId(rfh->GetFrameTreeNodeId());
+    if (!prefetch_service) {
+      return false;
+    }
+
+    PrefetchKey key(
+        static_cast<const RenderFrameHostImpl*>(rfh)->GetDocumentToken(), url);
+
+    return base::test::RunUntil([&]() {
+      base::WeakPtr<PrefetchContainer> prefetch_container =
+          prefetch_service->MatchUrl(key);
+
+      return prefetch_container &&
+             prefetch_container->GetLoadState() == load_state &&
+             prefetch_container->GetPrefetchStatus() == prefetch_status;
+    });
+  }
+
  protected:
   std::unique_ptr<net::test_server::HttpResponse> ServeResponses(
       const net::test_server::HttpRequest& request) {
-    if (auto it = response_map_.find(request.relative_url);
-        it != response_map_.end()) {
+    auto it = response_map_.find(request.relative_url);
+    if (it == response_map_.end()) {
+      it = response_map_.find(request.GetURL().path());
+    }
+    if (it != response_map_.end()) {
       auto response = std::make_unique<net::test_server::BasicHttpResponse>();
       response->set_content(it->second.content);
       for (const auto& [key, value] : it->second.headers) {
@@ -123,6 +172,7 @@ class ConnectionAllowlistTest : public ContentBrowserTest {
     return nullptr;
   }
 
+  test::PrerenderTestHelper prerender_helper_;
   base::test::ScopedFeatureList scoped_feature_list_;
   absl::flat_hash_map<std::string, ResponseEntry> response_map_;
   std::unique_ptr<ConnectionAllowlistContentBrowserClient>
@@ -1203,6 +1253,1604 @@ IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
       prefetch_service->MatchUrl(PrefetchKey(document_token, same_origin_url)));
   EXPECT_FALSE(prefetch_service->MatchUrl(
       PrefetchKey(document_token, cross_origin_url)));
+}
+
+// The connection allowlist of the initiator network context is checked for
+// Speculation Rules prefetch.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       SpeculationRulesSameOriginPrefetchBlocked) {
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL allowed_url = embedded_https_test_server().GetURL("a.test", "/allow.js");
+  GURL denied_url = embedded_https_test_server().GetURL("a.test", "/deny.js");
+
+  RegisterResponse("/allow.js", ResponseEntry("console.log('allow');"));
+  RegisterResponse("/deny.js", ResponseEntry("console.log('deny');"));
+  RegisterResponse(kSameOriginAllowlistedPage,
+                   ResponseEntry(absl::StrFormat(R"(
+        <html>
+          <head>
+            <script type="speculationrules">
+            {
+              "prefetch": [
+                {
+                  "source": "list",
+                  "urls": ["%s", "%s"],
+                  "eagerness": "immediate"
+                }
+              ]
+            }
+            </script>
+          </head>
+          <body>Hello</body>
+        </html>
+      )",
+                                                 allowed_url.spec().c_str(),
+                                                 denied_url.spec().c_str()),
+                                 {{"Connection-Allowlist",
+                                   R"(("*://a.test:*/allow.js"))"}}));
+
+  URLLoaderMonitor monitor;
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  monitor.WaitForUrls({allowed_url});
+  EXPECT_EQ(monitor.WaitForRequestCompletion(allowed_url).error_code, net::OK);
+
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      allowed_url, PrefetchContainer::LoadState::kCompleted,
+      PrefetchStatus::kPrefetchSuccessful));
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      denied_url, PrefetchContainer::LoadState::kFailedIneligible,
+      PrefetchStatus::kPrefetchIneligibleBlockedByConnectionAllowlist));
+}
+
+// Speculation Rules prefetch uses an isolated network context when the prefetch
+// URL is cross origin. The connection allowlist of the initiator network
+// context is checked, instead of the isolated network context.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       SpeculationRulesCrossOriginPrefetchBlocked) {
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL allowed_url = embedded_https_test_server().GetURL("b.test", "/allow.js");
+  GURL denied_url = embedded_https_test_server().GetURL("b.test", "/deny.js");
+
+  RegisterResponse("/allow.js", ResponseEntry("console.log('allow');"));
+  RegisterResponse("/deny.js", ResponseEntry("console.log('deny');"));
+  RegisterResponse(kSameOriginAllowlistedPage,
+                   ResponseEntry(absl::StrFormat(R"(
+        <html>
+          <head>
+            <script type="speculationrules">
+            {
+              "prefetch": [
+                {
+                  "source": "list",
+                  "urls": ["%s", "%s"],
+                  "eagerness": "immediate"
+                }
+              ]
+            }
+            </script>
+          </head>
+          <body>Hello</body>
+        </html>
+      )",
+                                                 allowed_url.spec().c_str(),
+                                                 denied_url.spec().c_str()),
+                                 {{"Connection-Allowlist",
+                                   R"(("*://b.test:*/allow.js"))"}}));
+
+  URLLoaderMonitor monitor;
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  monitor.WaitForUrls({allowed_url});
+  EXPECT_EQ(monitor.WaitForRequestCompletion(allowed_url).error_code, net::OK);
+
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      allowed_url, PrefetchContainer::LoadState::kCompleted,
+      PrefetchStatus::kPrefetchSuccessful));
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      denied_url, PrefetchContainer::LoadState::kFailedIneligible,
+      PrefetchStatus::kPrefetchIneligibleBlockedByConnectionAllowlist));
+}
+
+// The connection allowlist of the initiator network context is checked for
+// Speculation Rules prefetch.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       SpeculationRulesHeaderSameOriginPrefetchBlocked) {
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL allowed_url = embedded_https_test_server().GetURL("a.test", "/allow.js");
+  GURL denied_url = embedded_https_test_server().GetURL("a.test", "/deny.js");
+
+  RegisterResponse("/allow.js", ResponseEntry("console.log('allow');"));
+  RegisterResponse("/deny.js", ResponseEntry("console.log('deny');"));
+  RegisterResponse(
+      kSameOriginAllowlistedPage,
+      ResponseEntry("<html><body>Hello</body></html>",
+                    {{"Connection-Allowlist",
+                      R"(("*://a.test:*/rules.json" "*://a.test:*/allow.js"))"},
+                     {"Speculation-Rules", R"("/rules.json")"}}));
+
+  RegisterResponse(
+      "/rules.json",
+      ResponseEntry(absl::StrFormat(R"(
+        {
+          "prefetch": [
+            {"source": "list", "urls": ["%s", "%s"], "eagerness": "immediate"}
+          ]
+        }
+      )",
+                                    allowed_url.spec().c_str(),
+                                    denied_url.spec().c_str()),
+                    {{"Content-Type", "application/speculationrules+json"}}));
+
+  URLLoaderMonitor monitor;
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  GURL rules_url = embedded_https_test_server().GetURL("a.test", "/rules.json");
+  monitor.WaitForUrls({rules_url, allowed_url});
+  EXPECT_EQ(monitor.WaitForRequestCompletion(rules_url).error_code, net::OK);
+  EXPECT_EQ(monitor.WaitForRequestCompletion(allowed_url).error_code, net::OK);
+
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      allowed_url, PrefetchContainer::LoadState::kCompleted,
+      PrefetchStatus::kPrefetchSuccessful));
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      denied_url, PrefetchContainer::LoadState::kFailedIneligible,
+      PrefetchStatus::kPrefetchIneligibleBlockedByConnectionAllowlist));
+}
+
+// Speculation Rules prefetch uses an isolated network context when the prefetch
+// URL is cross origin. The connection allowlist of the initiator network
+// context is checked, instead of the isolated network context.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       SpeculationRulesHeaderCrossOriginPrefetchBlocked) {
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL allowed_url = embedded_https_test_server().GetURL("b.test", "/allow.js");
+  GURL denied_url = embedded_https_test_server().GetURL("b.test", "/deny.js");
+
+  RegisterResponse("/allow.js", ResponseEntry("console.log('allow');"));
+  RegisterResponse("/deny.js", ResponseEntry("console.log('deny');"));
+  RegisterResponse(
+      kSameOriginAllowlistedPage,
+      ResponseEntry("<html><body>Hello</body></html>",
+                    {{"Connection-Allowlist",
+                      R"(("*://a.test:*/rules.json" "*://b.test:*/allow.js"))"},
+                     {"Speculation-Rules", R"("/rules.json")"}}));
+
+  RegisterResponse(
+      "/rules.json",
+      ResponseEntry(absl::StrFormat(R"(
+        {
+          "prefetch": [
+            {"source": "list", "urls": ["%s", "%s"], "eagerness": "immediate"}
+          ]
+        }
+      )",
+                                    allowed_url.spec().c_str(),
+                                    denied_url.spec().c_str()),
+                    {{"Content-Type", "application/speculationrules+json"}}));
+
+  URLLoaderMonitor monitor;
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  GURL rules_url = embedded_https_test_server().GetURL("a.test", "/rules.json");
+  monitor.WaitForUrls({rules_url, allowed_url});
+  EXPECT_EQ(monitor.WaitForRequestCompletion(rules_url).error_code, net::OK);
+  EXPECT_EQ(monitor.WaitForRequestCompletion(allowed_url).error_code, net::OK);
+
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      allowed_url, PrefetchContainer::LoadState::kCompleted,
+      PrefetchStatus::kPrefetchSuccessful));
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      denied_url, PrefetchContainer::LoadState::kFailedIneligible,
+      PrefetchStatus::kPrefetchIneligibleBlockedByConnectionAllowlist));
+}
+
+// Speculation Rules prefetch redirect is allowed by connection allowlist with
+// `redirects=allow`.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       SpeculationRulesPrefetchRedirectAllowed) {
+  net::test_server::ControllableHttpResponse controllable_response(
+      &embedded_https_test_server(), "/redirect.js");
+
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL redirect_url =
+      embedded_https_test_server().GetURL("a.test", "/redirect.js");
+  GURL target_url =
+      embedded_https_test_server().GetURL("a.test", "/redirect-target.js");
+
+  RegisterResponse("/redirect-target.js",
+                   ResponseEntry("console.log('Redirect is allowed');"));
+  RegisterResponse(kSameOriginAllowlistedPage,
+                   ResponseEntry(absl::StrFormat(R"(
+        <html>
+          <head>
+            <script type="speculationrules">
+            {
+              "prefetch": [
+                {
+                  "source": "list",
+                  "urls": ["%s"],
+                  "eagerness": "immediate"
+                }
+              ]
+            }
+            </script>
+          </head>
+          <body>Hello</body>
+        </html>
+      )",
+                                                 redirect_url.spec().c_str()),
+                                 {{"Connection-Allowlist",
+                                   "(response-origin);redirects=allow"}}));
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  controllable_response.WaitForRequest();
+  controllable_response.Send(
+      "HTTP/1.1 302 Found\r\n"
+      "Location: " +
+      target_url.spec() + "\r\n\r\n");
+  controllable_response.Done();
+
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      redirect_url, PrefetchContainer::LoadState::kCompleted,
+      PrefetchStatus::kPrefetchSuccessful));
+}
+
+// Speculation Rules prefetch redirect is blocked by connection allowlist with
+// `redirects=block`.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       SpeculationRulesPrefetchRedirectBlocked) {
+  net::test_server::ControllableHttpResponse controllable_response(
+      &embedded_https_test_server(), "/redirect.js");
+
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL redirect_url =
+      embedded_https_test_server().GetURL("a.test", "/redirect.js");
+  GURL target_url =
+      embedded_https_test_server().GetURL("a.test", "/redirect-target.js");
+
+  RegisterResponse("/redirect-target.js",
+                   ResponseEntry("console.log('Redirect is blocked');"));
+  RegisterResponse(kSameOriginAllowlistedPage,
+                   ResponseEntry(absl::StrFormat(R"(
+        <html>
+          <head>
+            <script type="speculationrules">
+            {
+              "prefetch": [
+                {
+                  "source": "list",
+                  "urls": ["%s"],
+                  "eagerness": "immediate"
+                }
+              ]
+            }
+            </script>
+          </head>
+          <body>Hello</body>
+        </html>
+      )",
+                                                 redirect_url.spec().c_str()),
+                                 {{"Connection-Allowlist",
+                                   "(response-origin);redirects=block"}}));
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  controllable_response.WaitForRequest();
+  controllable_response.Send(
+      "HTTP/1.1 302 Found\r\n"
+      "Location: " +
+      target_url.spec() + "\r\n\r\n");
+  controllable_response.Done();
+
+  // For inegligible redirect, the prefetch status is set to
+  // `PrefetchStatus::kPrefetchFailedIneligibleRedirect` ignoring the specific
+  // `PreloadingEligibility` reason.
+  EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+      redirect_url, PrefetchContainer::LoadState::kFailedDeterminedHead,
+      PrefetchStatus::kPrefetchFailedIneligibleRedirect));
+}
+
+// Verifies that if a document is controlled by a Service Worker, and the
+// document's Connection-Allowlist blocks a URL, the fetch is blocked in Blink
+// before it can be forwarded to the Service Worker.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       ServiceWorkerSubresourceFetchBlocked) {
+  RegisterResponse(
+      "/sw.js",
+      ResponseEntry(
+          "self.addEventListener('install', e => self.skipWaiting());\n"
+          "self.addEventListener('activate', e => "
+          "e.waitUntil(self.clients.claim()));\n"
+          "self.addEventListener('fetch', event => {\n"
+          "  if (event.request.url.indexOf('cross-origin-resource') !== -1) "
+          "{\n"
+          "    event.respondWith(fetch(event.request));\n"
+          "  }\n"
+          "});",
+          {{"Content-Type", "text/javascript"}}));
+
+  RegisterResponse(
+      kSameOriginAllowlistedPage,
+      ResponseEntry("<html><body>Hello</body></html>",
+                    {{"Connection-Allowlist", "(response-origin)"}}));
+
+  RegisterResponse(
+      "/cross-origin-resource",
+      ResponseEntry("allowed-content", {{"Access-Control-Allow-Origin", "*"}}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL cross_origin_url =
+      embedded_https_test_server().GetURL("b.test", "/cross-origin-resource");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+            (async () => {
+              const reg = await navigator.serviceWorker.register('/sw.js');
+              await new Promise(resolve => {
+                const worker = reg.installing || reg.waiting || reg.active;
+                if (worker.state === 'activated') {
+                  resolve();
+                } else {
+                  worker.addEventListener('statechange', () => {
+                    if (worker.state === 'activated') {
+                      resolve();
+                    }
+                  });
+                }
+              });
+              return !!navigator.serviceWorker.controller;
+            })();
+          )"));
+
+  // Fetch the cross-origin resource.
+  // Since the document has Connection-Allowlist: (response-origin), it should
+  // be blocked in Blink before reaching the Service Worker.
+  EXPECT_TRUE(EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                     JsReplace(R"(
+            (async () => {
+              try {
+                await fetch($1);
+                return 'success';
+              } catch (e) {
+                return 'error';
+              }
+            })();
+          )",
+                               cross_origin_url))
+                  .ExtractString()
+                  .starts_with("error"));
+}
+
+// Verifies that if the Service Worker lets the fetch fall back to the
+// network, the request is blocked (since the document has a
+// Connection-Allowlist blocking it).
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       ServiceWorkerSubresourceFetchBlockedByFallback) {
+  RegisterResponse(
+      "/sw.js",
+      ResponseEntry(
+          "self.addEventListener('install', e => self.skipWaiting());\n"
+          "self.addEventListener('activate', e => "
+          "e.waitUntil(self.clients.claim()));\n"
+          "self.addEventListener('fetch', event => {\n"
+          "  // Do not respond, let it fallback to network\n"
+          "});",
+          {{"Content-Type", "text/javascript"}}));
+
+  RegisterResponse(
+      kSameOriginAllowlistedPage,
+      ResponseEntry("<html><body>Hello</body></html>",
+                    {{"Connection-Allowlist", "(response-origin)"}}));
+
+  RegisterResponse(
+      "/cross-origin-resource",
+      ResponseEntry("denied-content", {{"Access-Control-Allow-Origin", "*"}}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL cross_origin_url =
+      embedded_https_test_server().GetURL("b.test", "/cross-origin-resource");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+            (async () => {
+              const reg = await navigator.serviceWorker.register('/sw.js');
+              await new Promise(resolve => {
+                const worker = reg.installing || reg.waiting || reg.active;
+                if (worker.state === 'activated') {
+                  resolve();
+                } else {
+                  worker.addEventListener('statechange', () => {
+                    if (worker.state === 'activated') {
+                      resolve();
+                    }
+                  });
+                }
+              });
+              return !!navigator.serviceWorker.controller;
+            })();
+          )"));
+
+  // Fetch the cross-origin resource.
+  // The fetch is blocked early in Blink before reaching the SW or falling
+  // back.
+  EXPECT_TRUE(EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                     JsReplace(R"(
+            (async () => {
+              try {
+                await fetch($1);
+                return 'success';
+              } catch (e) {
+                return 'error';
+              }
+            })();
+          )",
+                               cross_origin_url))
+                  .ExtractString()
+                  .starts_with("error"));
+}
+
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       ServiceWorkerConnectionAllowlistEnforced) {
+  RegisterResponse(
+      "/sw.js",
+      ResponseEntry(
+          "self.addEventListener('install', e => self.skipWaiting());\n"
+          "self.addEventListener('activate', e => "
+          "e.waitUntil(self.clients.claim()));\n"
+          "self.addEventListener('fetch', event => {\n"
+          "  if (event.request.url.indexOf('cross-origin-resource') !== -1) "
+          "{\n"
+          "    event.respondWith(fetch(event.request));\n"
+          "  }\n"
+          "});",
+          {{"Content-Type", "text/javascript"},
+           {"Connection-Allowlist", "(response-origin)"}}));
+
+  // Main page has NO Connection-Allowlist.
+  RegisterResponse(kSameOriginAllowlistedPage,
+                   ResponseEntry("<html><body>Hello</body></html>", {}));
+
+  RegisterResponse(
+      "/cross-origin-resource",
+      ResponseEntry("allowed-content", {{"Access-Control-Allow-Origin", "*"}}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL cross_origin_url =
+      embedded_https_test_server().GetURL("b.test", "/cross-origin-resource");
+
+  URLLoaderMonitor monitor;
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+            (async () => {
+              const reg = await navigator.serviceWorker.register('/sw.js');
+              await new Promise(resolve => {
+                const worker = reg.installing || reg.waiting || reg.active;
+                if (worker.state === 'activated') {
+                  resolve();
+                } else {
+                  worker.addEventListener('statechange', () => {
+                    if (worker.state === 'activated') {
+                      resolve();
+                    }
+                  });
+                }
+              });
+              return !!navigator.serviceWorker.controller;
+            })();
+          )"));
+
+  // Fetch the cross-origin resource.
+  // The fetch is allowed by the document, but blocked in the Network Service
+  // when the Service Worker tries to fetch it.
+  EXPECT_TRUE(EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                     JsReplace(R"(
+            (async () => {
+              try {
+                await fetch($1);
+                return 'success';
+              } catch (e) {
+                return 'error';
+              }
+            })();
+          )",
+                               cross_origin_url))
+                  .ExtractString()
+                  .starts_with("error"));
+
+  EXPECT_EQ(monitor.WaitForRequestCompletion(cross_origin_url).error_code,
+            net::ERR_NETWORK_ACCESS_REVOKED);
+}
+
+// Verifies that Navigation Preload is subject to the Service Worker's
+// Connection-Allowlist. If a Service Worker with a strict
+// Connection-Allowlist (e.g. empty allowlist "()" which blocks all
+// connections) enables navigation preload, the preload request should be
+// blocked, causing the FetchEvent promise to reject and the navigation to
+// fail.
+IN_PROC_BROWSER_TEST_F(
+    ConnectionAllowlistTest,
+    ServiceWorkerNavigationPreloadEnforcesServiceWorkerAllowlist) {
+  RegisterResponse(
+      "/sw.js",
+      ResponseEntry(
+          "self.addEventListener('install', e => self.skipWaiting());\n"
+          "self.addEventListener('activate', e => {\n"
+          "  e.waitUntil(Promise.all([\n"
+          "    self.registration.navigationPreload.enable(),\n"
+          "    self.clients.claim()\n"
+          "  ]));\n"
+          "});\n"
+          "self.addEventListener('fetch', event => {\n"
+          "  if (event.request.url.indexOf('controlled-page') !== -1) {\n"
+          "    event.respondWith(async function() {\n"
+          "      const response = await event.preloadResponse;\n"
+          "      if (response) {\n"
+          "        return response;\n"
+          "      }\n"
+          "      return new Response('no-preload-response');\n"
+          "    }());\n"
+          "  }\n"
+          "});",
+          {{"Content-Type", "text/javascript"},
+           {"Connection-Allowlist", "()"}}));
+
+  RegisterResponse("/controlled-page",
+                   ResponseEntry("preload-response-content", {}));
+
+  // Main page has NO Connection-Allowlist.
+  RegisterResponse("/main.html",
+                   ResponseEntry("<html><body>Hello</body></html>", {}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url = embedded_https_test_server().GetURL("a.test", "/main.html");
+  GURL controlled_url =
+      embedded_https_test_server().GetURL("a.test", "/controlled-page");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+            (async () => {
+              const reg = await navigator.serviceWorker.register('/sw.js');
+              await new Promise(resolve => {
+                const worker = reg.installing || reg.waiting || reg.active;
+                if (worker.state === 'activated') {
+                  resolve();
+                } else {
+                  worker.addEventListener('statechange', () => {
+                    if (worker.state === 'activated') {
+                      resolve();
+                    }
+                  });
+                }
+              });
+              return !!navigator.serviceWorker.controller;
+            })();
+          )"));
+
+  // Navigate to the controlled page.
+  // The preload request is to a.test/controlled-page.
+  // Since the Service Worker's allowlist is empty () (which blocks all
+  // connections), the navigation preload request is blocked, causing the
+  // fetch event to fail and the navigation to fail with net::ERR_FAILED.
+  TestNavigationObserver nav_observer(shell()->web_contents());
+  EXPECT_TRUE(ExecJs(shell()->web_contents(),
+                     JsReplace("window.location.href = $1", controlled_url)));
+  nav_observer.Wait();
+
+  EXPECT_FALSE(nav_observer.last_navigation_succeeded());
+  EXPECT_EQ(net::ERR_FAILED, nav_observer.last_net_error_code());
+}
+
+// Verifies that a navigation triggered via WindowClient.navigate() is subject
+// to the Service Worker's Connection-Allowlist to see if the URL is allowed.
+// Once the navigation request starts, it considers the document being
+// navigated as the initiator in the current spec and implementation. We keep
+// that invariant and check for the document's CA for URL allowed and redirects
+// too.
+IN_PROC_BROWSER_TEST_F(
+    ConnectionAllowlistTest,
+    ServiceWorkerWindowClientNavigateEnforcesServiceWorkerAndDocumentAllowlists) {
+  RegisterResponse(
+      "/sw.js",
+      ResponseEntry(
+          "self.addEventListener('install', e => self.skipWaiting());\n"
+          "self.addEventListener('activate', e => "
+          "e.waitUntil(self.clients.claim()));\n"
+          "self.addEventListener('message', event => {\n"
+          "  event.waitUntil(async function() {\n"
+          "    const clients = await self.clients.matchAll({type: "
+          "'window'});\n"
+          "    for (const client of clients) {\n"
+          "      try {\n"
+          "        await client.navigate(event.data.url);\n"
+          "        event.source.postMessage({result: 'success'});\n"
+          "      } catch (e) {\n"
+          "        event.source.postMessage({result: 'failure', error: "
+          "e.message});\n"
+          "      }\n"
+          "    }\n"
+          "  }());\n"
+          "});",
+          {{"Content-Type", "text/javascript"},
+           {"Connection-Allowlist", "()"}}));
+
+  RegisterResponse("/main.html",
+                   ResponseEntry("<html><body>Hello</body></html>", {}));
+  RegisterResponse("/final.html", ResponseEntry("final-content", {}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url = embedded_https_test_server().GetURL("a.test", "/main.html");
+  GURL target_url =
+      embedded_https_test_server().GetURL("a.test", "/final.html");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+            (async () => {
+              const reg = await navigator.serviceWorker.register('/sw.js');
+              await new Promise(resolve => {
+                const worker = reg.installing || reg.waiting || reg.active;
+                if (worker.state === 'activated') {
+                  resolve();
+                } else {
+                  worker.addEventListener('statechange', () => {
+                    if (worker.state === 'activated') {
+                      resolve();
+                    }
+                  });
+                }
+              });
+              return !!navigator.serviceWorker.controller;
+            })();
+          )"));
+
+  // Tell the Service Worker to navigate the client window to target_url.
+  // Since the Service Worker's allowlist is empty () (prohibiting all
+  // connections), the navigate() promise should reject.
+  EXPECT_EQ("failure", EvalJs(shell()->web_contents(), JsReplace(R"(
+      new Promise(resolve => {
+        navigator.serviceWorker.addEventListener('message', event => {
+          resolve(event.data.result);
+        }, {once: true});
+        navigator.serviceWorker.controller.postMessage({url: $1});
+      });
+  )",
+                                                                 target_url)));
+}
+
+// Verifies that a navigation triggered via WindowClient.navigate() is subject
+// to the Document's Connection-Allowlist, even when the initial URL is
+// allowed but redirects are disallowed (default Connection Allowlist behavior).
+IN_PROC_BROWSER_TEST_F(
+    ConnectionAllowlistTest,
+    ServiceWorkerWindowClientNavigateRedirectObeysDocumentAllowlist) {
+  RegisterResponse(
+      "/sw.js",
+      ResponseEntry(
+          "self.addEventListener('install', e => self.skipWaiting());\n"
+          "self.addEventListener('activate', e => "
+          "e.waitUntil(self.clients.claim()));\n"
+          "self.addEventListener('message', event => {\n"
+          "  event.waitUntil(async function() {\n"
+          "    const clients = await self.clients.matchAll({type: 'window'});\n"
+          "    for (const client of clients) {\n"
+          "      try {\n"
+          "        await client.navigate(event.data.url);\n"
+          "      } catch (e) {}\n"
+          "    }\n"
+          "  }());\n"
+          "});",
+          {{"Content-Type", "text/javascript"}}));
+
+  RegisterResponse("/main.html",
+                   ResponseEntry("<html><body>Hello</body></html>",
+                                 {{"Connection-Allowlist",
+                                   R"((response-origin "*://a.test:*/*"))"}}));
+  RegisterResponse("/final.html", ResponseEntry("final-content", {}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url = embedded_https_test_server().GetURL("a.test", "/main.html");
+  // Initial URL is on a.test (allowed) but it redirects (disallowed)
+  GURL target_url = embedded_https_test_server().GetURL(
+      "a.test", "/cross-site/b.test/final.html");
+  GURL final_url = embedded_https_test_server().GetURL("b.test", "/final.html");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+             (async () => {
+               const reg = await navigator.serviceWorker.register('/sw.js');
+               await new Promise(resolve => {
+                 const worker = reg.installing || reg.waiting || reg.active;
+                 if (worker.state === 'activated') {
+                   resolve();
+                 } else {
+                   worker.addEventListener('statechange', () => {
+                     if (worker.state === 'activated') {
+                       resolve();
+                     }
+                   });
+                 }
+               });
+               return !!navigator.serviceWorker.controller;
+             })();
+           )"));
+
+  TestNavigationObserver nav_observer(shell()->web_contents());
+  EXPECT_TRUE(ExecJs(
+      shell()->web_contents(),
+      JsReplace("navigator.serviceWorker.controller.postMessage({url: $1});",
+                target_url)));
+  nav_observer.Wait();
+
+  EXPECT_FALSE(nav_observer.last_navigation_succeeded());
+  EXPECT_EQ(net::ERR_UNSAFE_REDIRECT, nav_observer.last_net_error_code());
+}
+
+// Verifies that a navigation triggered via WindowClient.navigate() is subject
+// to the Document's Connection-Allowlist when the destination URL is allowed
+// by the Service Worker's Connection-Allowlist but blocked by the Document's
+// Connection-Allowlist.
+IN_PROC_BROWSER_TEST_F(
+    ConnectionAllowlistTest,
+    ServiceWorkerWindowClientNavigateObeysDocumentAllowlist) {
+  RegisterResponse(
+      "/sw.js",
+      ResponseEntry(
+          "self.addEventListener('install', e => self.skipWaiting());\n"
+          "self.addEventListener('activate', e => "
+          "e.waitUntil(self.clients.claim()));\n"
+          "self.addEventListener('message', event => {\n"
+          "  event.waitUntil(async function() {\n"
+          "    const clients = await self.clients.matchAll({type: 'window'});\n"
+          "    for (const client of clients) {\n"
+          "      try {\n"
+          "        await client.navigate(event.data.url);\n"
+          "      } catch (e) {}\n"
+          "    }\n"
+          "  }());\n"
+          "});",
+          {{"Content-Type", "text/javascript"},
+           {"Connection-Allowlist",
+            R"((response-origin "*://a.test:*/*" "*://b.test:*/*"))"}}));
+
+  RegisterResponse("/main.html",
+                   ResponseEntry("<html><body>Hello</body></html>",
+                                 {{"Connection-Allowlist",
+                                   R"((response-origin "*://a.test:*/*"))"}}));
+  RegisterResponse("/final.html", ResponseEntry("final-content", {}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url = embedded_https_test_server().GetURL("a.test", "/main.html");
+  GURL target_url =
+      embedded_https_test_server().GetURL("b.test", "/final.html");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+             (async () => {
+               const reg = await navigator.serviceWorker.register('/sw.js');
+               await new Promise(resolve => {
+                 const worker = reg.installing || reg.waiting || reg.active;
+                 if (worker.state === 'activated') {
+                   resolve();
+                 } else {
+                   worker.addEventListener('statechange', () => {
+                     if (worker.state === 'activated') {
+                       resolve();
+                     }
+                   });
+                 }
+               });
+               return !!navigator.serviceWorker.controller;
+             })();
+           )"));
+
+  TestNavigationObserver nav_observer(shell()->web_contents());
+  EXPECT_TRUE(ExecJs(
+      shell()->web_contents(),
+      JsReplace("navigator.serviceWorker.controller.postMessage({url: $1});",
+                target_url)));
+  nav_observer.Wait();
+
+  EXPECT_FALSE(nav_observer.last_navigation_succeeded());
+  EXPECT_EQ(net::ERR_NETWORK_ACCESS_REVOKED,
+            nav_observer.last_net_error_code());
+}
+
+// Verifies that clients.openWindow() is subject to the Service Worker's
+// Connection-Allowlist.
+IN_PROC_BROWSER_TEST_F(
+    ConnectionAllowlistTest,
+    ServiceWorkerClientsOpenWindowEnforcesServiceWorkerAllowlist) {
+  RegisterResponse(
+      "/sw.js",
+      ResponseEntry(
+          R"(self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => {
+  e.waitUntil(self.clients.claim());
+});
+self.addEventListener('notificationclick', event => {
+  event.waitUntil(async function() {
+    try {
+      await self.clients.openWindow(event.notification.body);
+      const clients = await self.clients.matchAll({type: 'window'});
+      for (const client of clients) {
+        client.postMessage({result: 'success'});
+      }
+    } catch (e) {
+      const clients = await self.clients.matchAll({type: 'window'});
+      for (const client of clients) {
+        client.postMessage({
+          result: 'failure',
+          error: e.message
+        });
+      }
+    }
+  }());
+});)",
+          {{"Content-Type", "text/javascript"},
+           {"Connection-Allowlist", "()"}}));
+
+  RegisterResponse("/main.html",
+                   ResponseEntry("<html><body>Hello</body></html>", {}));
+  RegisterResponse("/final.html", ResponseEntry("final-content", {}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url = embedded_https_test_server().GetURL("a.test", "/main.html");
+  GURL target_url =
+      embedded_https_test_server().GetURL("a.test", "/final.html");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker, and set up message listener.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+             (async () => {
+               const reg = await navigator.serviceWorker.register('/sw.js');
+               await new Promise(resolve => {
+                 const worker = reg.installing || reg.waiting || reg.active;
+                 if (worker.state === 'activated') {
+                   resolve();
+                 } else {
+                   worker.addEventListener('statechange', () => {
+                     if (worker.state === 'activated') {
+                       resolve();
+                     }
+                   });
+                 }
+               });
+               window.sw_messages = [];
+               navigator.serviceWorker.addEventListener('message', event => {
+                 window.sw_messages.push(event.data);
+                 if (window.on_sw_message) window.on_sw_message(event.data);
+               });
+               return !!navigator.serviceWorker.controller;
+             })();
+           )"));
+
+  // Dispatch notification click.
+  StoragePartition* partition = shell()
+                                    ->web_contents()
+                                    ->GetBrowserContext()
+                                    ->GetDefaultStoragePartition();
+  scoped_refptr<ServiceWorkerContextWrapper> wrapper =
+      static_cast<ServiceWorkerContextWrapper*>(
+          partition->GetServiceWorkerContext());
+
+  GURL scope_url = embedded_https_test_server().GetURL("a.test", "/");
+
+  // Ensure the service worker is started.
+  base::RunLoop run_loop;
+  wrapper->StartActiveServiceWorker(
+      scope_url,
+      blink::StorageKey::CreateFirstParty(url::Origin::Create(scope_url)),
+      base::BindOnce(
+          [](base::OnceClosure quit, blink::ServiceWorkerStatusCode status) {
+            EXPECT_EQ(blink::ServiceWorkerStatusCode::kOk, status);
+            std::move(quit).Run();
+          },
+          run_loop.QuitClosure()));
+  run_loop.Run();
+
+  blink::PlatformNotificationData notification_data;
+  notification_data.body = base::UTF8ToUTF16(target_url.spec());
+
+  content::DispatchServiceWorkerNotificationClick(wrapper.get(), scope_url,
+                                                  notification_data);
+
+  // Expect failure since the SW CA blocks everything.
+  EXPECT_EQ("failure", EvalJs(shell()->web_contents(), R"(
+      new Promise(resolve => {
+        if (window.sw_messages.length > 0) {
+          resolve(window.sw_messages[0].result);
+        } else {
+          window.on_sw_message = data => {
+            resolve(data.result);
+          };
+        }
+      });
+  )"));
+
+  // Verify that no new window was opened.
+  EXPECT_EQ(1u, Shell::windows().size());
+}
+
+// Verifies that clients.openWindow() succeeds when the destination URL is
+// allowed by the Service Worker's Connection-Allowlist.
+IN_PROC_BROWSER_TEST_F(
+    ConnectionAllowlistTest,
+    ServiceWorkerClientsOpenWindowObeysServiceWorkerAllowlist) {
+  RegisterResponse(
+      "/sw.js",
+      ResponseEntry(
+          R"(self.addEventListener('install', e => self.skipWaiting());
+self.addEventListener('activate', e => {
+  e.waitUntil(self.clients.claim());
+});
+self.addEventListener('notificationclick', event => {
+  event.waitUntil(async function() {
+    try {
+      await self.clients.openWindow(event.notification.body);
+      const clients = await self.clients.matchAll({type: 'window'});
+      for (const client of clients) {
+        client.postMessage({result: 'success'});
+      }
+    } catch (e) {
+      const clients = await self.clients.matchAll({type: 'window'});
+      for (const client of clients) {
+        client.postMessage({
+          result: 'failure',
+          error: e.message
+        });
+      }
+    }
+  }());
+});)",
+          {{"Content-Type", "text/javascript"},
+           {"Connection-Allowlist", R"((response-origin "*://a.test:*/*"))"}}));
+
+  RegisterResponse("/main.html",
+                   ResponseEntry("<html><body>Hello</body></html>", {}));
+  RegisterResponse("/final.html", ResponseEntry("final-content", {}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url = embedded_https_test_server().GetURL("a.test", "/main.html");
+  GURL target_url =
+      embedded_https_test_server().GetURL("a.test", "/final.html");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker, and set up message listener.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+             (async () => {
+               const reg = await navigator.serviceWorker.register('/sw.js');
+               await new Promise(resolve => {
+                 const worker = reg.installing || reg.waiting || reg.active;
+                 if (worker.state === 'activated') {
+                   resolve();
+                 } else {
+                   worker.addEventListener('statechange', () => {
+                     if (worker.state === 'activated') {
+                       resolve();
+                     }
+                   });
+                 }
+               });
+               window.sw_messages = [];
+               navigator.serviceWorker.addEventListener('message', event => {
+                 window.sw_messages.push(event.data);
+                 if (window.on_sw_message) window.on_sw_message(event.data);
+               });
+               return !!navigator.serviceWorker.controller;
+             })();
+           )"));
+
+  // Dispatch notification click.
+  StoragePartition* partition = shell()
+                                    ->web_contents()
+                                    ->GetBrowserContext()
+                                    ->GetDefaultStoragePartition();
+  scoped_refptr<ServiceWorkerContextWrapper> wrapper =
+      static_cast<ServiceWorkerContextWrapper*>(
+          partition->GetServiceWorkerContext());
+
+  GURL scope_url = embedded_https_test_server().GetURL("a.test", "/");
+
+  // Ensure the service worker is started.
+  base::RunLoop run_loop;
+  wrapper->StartActiveServiceWorker(
+      scope_url,
+      blink::StorageKey::CreateFirstParty(url::Origin::Create(scope_url)),
+      base::BindOnce(
+          [](base::OnceClosure quit, blink::ServiceWorkerStatusCode status) {
+            EXPECT_EQ(blink::ServiceWorkerStatusCode::kOk, status);
+            std::move(quit).Run();
+          },
+          run_loop.QuitClosure()));
+  run_loop.Run();
+
+  blink::PlatformNotificationData notification_data;
+  notification_data.body = base::UTF8ToUTF16(target_url.spec());
+
+  content::WebContentsAddedObserver new_window_observer;
+  TestNavigationObserver nav_observer(target_url);
+  nav_observer.StartWatchingNewWebContents();
+
+  content::DispatchServiceWorkerNotificationClick(wrapper.get(), scope_url,
+                                                  notification_data);
+
+  // Expect success since the SW CA allows a.test.
+  EXPECT_EQ("success", EvalJs(shell()->web_contents(), R"(
+      new Promise(resolve => {
+        if (window.sw_messages.length > 0) {
+          resolve(window.sw_messages[0].result);
+        } else {
+          window.on_sw_message = data => {
+            resolve(data.result);
+          };
+        }
+      });
+  )"));
+
+  nav_observer.Wait();
+  EXPECT_TRUE(nav_observer.last_navigation_succeeded());
+  EXPECT_EQ(target_url, nav_observer.last_navigation_url());
+
+  // Verify that a new window was opened.
+  WebContents* new_window = new_window_observer.GetWebContents();
+  EXPECT_TRUE(new_window);
+}
+
+class ConnectionAllowlistSyntheticResponseTest
+    : public ConnectionAllowlistTest {
+ public:
+  ConnectionAllowlistSyntheticResponseTest() {
+    synthetic_response_feature_list_.InitWithFeaturesAndParameters(
+        {{blink::features::kServiceWorkerSyntheticResponse,
+          {{blink::features::kServiceWorkerSyntheticResponseAllowedUrl.name,
+            "https://b.test/synthetic_response?query=foo"}}},
+         {network::features::kURLLoaderUseProvidedResponseBodyStream, {}},
+         {network::features::kServiceWorkerSyntheticResponseHeaderCheck, {}}},
+        {});
+  }
+
+ private:
+  base::test::ScopedFeatureList synthetic_response_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistSyntheticResponseTest,
+                       SyntheticResponseBlockedByInitiatorAllowlist) {
+  RegisterResponse(
+      kSameOriginAllowlistedPage,
+      ResponseEntry("<html><body>Hello</body></html>",
+                    {{"Connection-Allowlist", "(response-origin)"}}));
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL target_url = embedded_https_test_server().GetURL(
+      "b.test", "/synthetic_response?query=foo");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Navigate to a cross-origin URL that is eligible for Synthetic Response.
+  // Since the initiator page has Connection-Allowlist: (response-origin),
+  // this cross-origin navigation must be blocked and fail with
+  // net::ERR_NETWORK_ACCESS_REVOKED.
+  TestNavigationObserver nav_observer(shell()->web_contents());
+  EXPECT_FALSE(NavigateToURLFromRenderer(shell()->web_contents(), target_url));
+
+  nav_observer.Wait();
+  EXPECT_FALSE(nav_observer.last_navigation_succeeded());
+  EXPECT_EQ(net::ERR_NETWORK_ACCESS_REVOKED,
+            nav_observer.last_net_error_code());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ConnectionAllowlistTest,
+    ServiceWorkerRaceNetworkRequestBypassesServiceWorkerAllowlist) {
+  // Register the service worker script with Connection-Allowlist which blocks
+  // connections except for the service worker script and its imports. The
+  // service worker script imports the static router script to configure
+  // 'race-network-and-fetch-handler'.
+  RegisterResponse(
+      "/service_worker/sw.js",
+      ResponseEntry(
+          "importScripts('/service_worker/static_router_race_match_all.js');",
+          {{"Content-Type", "text/javascript"},
+           {"Connection-Allowlist",
+            R"((response-origin "*://a.test:*/service_worker/*"))"}}));
+
+  RegisterResponse(kSameOriginAllowlistedPage,
+                   ResponseEntry("<html><body>Hello</body></html>", {}));
+
+  // The race request will fetch `/service_worker/controlled-page`.
+  RegisterResponse("/service_worker/controlled-page",
+                   ResponseEntry("race-response-content", {}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL controlled_url = embedded_https_test_server().GetURL(
+      "a.test", "/service_worker/controlled-page?sw_slow");
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // Register and activate the Service Worker.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+            (async () => {
+              const reg = await navigator.serviceWorker.register(
+                  '/service_worker/sw.js');
+              await new Promise(resolve => {
+                const worker = reg.installing || reg.waiting || reg.active;
+                if (worker.state === 'activated') {
+                  resolve();
+                } else {
+                  worker.addEventListener('statechange', () => {
+                    if (worker.state === 'activated') {
+                      resolve();
+                    }
+                  });
+                }
+              });
+              return reg.active && reg.active.state === 'activated';
+            })();
+          )"));
+
+  // Navigate to the controlled page.
+  // The service worker's fetch handler is delayed (sw_slow), so the parallel
+  // RaceNetworkRequest will complete first.
+  // Although the Service Worker's allowlist is empty () (prohibiting all
+  // connections), the RaceNetworkRequest succeeds because it bypasses the
+  // SW's allowlist (passes std::nullopt).
+  TestNavigationObserver nav_observer(shell()->web_contents());
+  EXPECT_TRUE(ExecJs(shell()->web_contents(),
+                     JsReplace("window.location.href = $1", controlled_url)));
+  nav_observer.Wait();
+
+  EXPECT_TRUE(nav_observer.last_navigation_succeeded());
+  EXPECT_EQ(controlled_url, shell()->web_contents()->GetLastCommittedURL());
+  EXPECT_EQ("race-response-content",
+            EvalJs(shell()->web_contents(), "document.body.innerText")
+                .ExtractString());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ConnectionAllowlistTest,
+    ServiceWorkerRaceNetworkRequestBlockedByInitiatorAllowlist) {
+  // Register the service worker script with Connection-Allowlist which blocks
+  // connections except for the service worker script and its imports.
+  RegisterResponse(
+      "/service_worker/sw.js",
+      ResponseEntry(
+          "importScripts('/service_worker/static_router_race_match_all.js');",
+          {{"Content-Type", "text/javascript"},
+           {"Connection-Allowlist",
+            R"((response-origin "*://a.test:*/service_worker/*"))"}}));
+
+  // /register.html has no connection allowlist so it can register the Service
+  // Worker.
+  RegisterResponse(
+      "/register.html",
+      ResponseEntry("<html><body>Register page</body></html>", {}));
+
+  // /initiator.html has Connection-Allowlist: () which blocks all
+  // connections.
+  RegisterResponse("/initiator.html",
+                   ResponseEntry("<html><body>Initiator page</body></html>",
+                                 {{"Connection-Allowlist", "()"}}));
+
+  // The race request will fetch `/service_worker/controlled-page`.
+  RegisterResponse("/service_worker/controlled-page",
+                   ResponseEntry("race-response-content", {}));
+
+  ASSERT_TRUE(embedded_https_test_server().Start());
+
+  GURL register_url =
+      embedded_https_test_server().GetURL("a.test", "/register.html");
+  GURL initiator_url =
+      embedded_https_test_server().GetURL("a.test", "/initiator.html");
+  GURL controlled_url = embedded_https_test_server().GetURL(
+      "a.test", "/service_worker/controlled-page?sw_slow");
+
+  // Go to the register page.
+  EXPECT_TRUE(NavigateToURL(shell(), register_url));
+
+  // Register and activate the Service Worker.
+  EXPECT_EQ(true, EvalJs(shell()->web_contents()->GetPrimaryMainFrame(),
+                         R"(
+            (async () => {
+              const reg = await navigator.serviceWorker.register(
+                  '/service_worker/sw.js');
+              await new Promise(resolve => {
+                const worker = reg.installing || reg.waiting || reg.active;
+                if (worker.state === 'activated') {
+                  resolve();
+                } else {
+                  worker.addEventListener('statechange', () => {
+                    if (worker.state === 'activated') {
+                      resolve();
+                    }
+                  });
+                }
+              });
+              return reg.active && reg.active.state === 'activated';
+            })();
+          )"));
+
+  // Navigate to the initiator page, which has Connection-Allowlist: ().
+  EXPECT_TRUE(NavigateToURL(shell(), initiator_url));
+
+  // From the initiator page, navigate to the controlled page.
+  // Although the RaceNetworkRequest bypasses the Service Worker's allowlist,
+  // it must still be blocked by the initiator page's allowlist, failing with
+  // net::ERR_NETWORK_ACCESS_REVOKED.
+  TestNavigationObserver nav_observer(shell()->web_contents());
+  EXPECT_FALSE(
+      NavigateToURLFromRenderer(shell()->web_contents(), controlled_url));
+  nav_observer.Wait();
+
+  EXPECT_FALSE(nav_observer.last_navigation_succeeded());
+  EXPECT_EQ(net::ERR_NETWORK_ACCESS_REVOKED,
+            nav_observer.last_net_error_code());
+}
+
+// Observe the error code of prerendering navigation requests. This class is
+// required because:
+// - `TestNavigationObserver` ignores prerender requests on purpose.
+// - `URLLoaderMonitor` fails to monitor prerender requests initiated by the
+// URLLoaderFactory obtained by `GetURLLoaderFactoryForBrowserProcess()`.
+// `URLLoaderMonitor` needs to be constructed before the URLLoaderFactory is
+// created, which is difficult because this URLLoaderFactory is created during
+// browser startup.
+
+class PrerenderRequestObserver : public WebContentsObserver {
+ public:
+  PrerenderRequestObserver(WebContents* web_contents, const GURL& url)
+      : WebContentsObserver(web_contents), url_(url) {}
+  void DidFinishNavigation(NavigationHandle* navigation_handle) override {
+    if (navigation_handle->GetURL() == url_) {
+      future_.SetValue(navigation_handle->GetNetErrorCode());
+    }
+  }
+
+  net::Error TakeErrorCode() { return future_.Take(); }
+
+ private:
+  GURL url_;
+  base::test::TestFuture<net::Error> future_;
+};
+
+// Note SpeculationRules API currently does not support cross-site prerender.
+// Only same-site prerender is tested. See crbug.com/1176054.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest, SpeculationRulesPrerender) {
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL allowed_url = embedded_https_test_server().GetURL("a.test", "/allow.js");
+  GURL denied_url = embedded_https_test_server().GetURL("a.test", "/deny.js");
+
+  RegisterResponse("/allow.js", ResponseEntry("console.log('allow');"));
+  RegisterResponse("/deny.js", ResponseEntry("console.log('deny');"));
+  RegisterResponse(kSameOriginAllowlistedPage,
+                   ResponseEntry(absl::StrFormat(R"(
+        <html>
+          <head>
+            <script type="speculationrules">
+            {
+              "prerender": [
+                {
+                  "source": "list",
+                  "urls": ["%s", "%s"],
+                  "eagerness": "immediate"
+                }
+              ]
+            }
+            </script>
+          </head>
+          <body>Hello</body>
+        </html>
+      )",
+                                                 allowed_url.spec().c_str(),
+                                                 denied_url.spec().c_str()),
+                                 {{"Connection-Allowlist",
+                                   R"(("*://a.test:*/allow.js"))"}}));
+
+  PrerenderRequestObserver allowed_observer(GetWebContents(), allowed_url);
+  PrerenderRequestObserver denied_observer(GetWebContents(), denied_url);
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // The prefetch to allowed URL ahead of the prerender succeeds. It is then
+  // used by the prerendering navigation request.
+  if (IsPrerender2FallbackPrefetchSpecRulesEnabled()) {
+    EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+        allowed_url, PrefetchContainer::LoadState::kCompleted,
+        PrefetchStatus::kPrefetchResponseUsed));
+  }
+
+  // Verify allowed URL succeeds.
+  EXPECT_EQ(allowed_observer.TakeErrorCode(), net::OK);
+  prerender_helper().WaitForPrerenderLoadCompletion(allowed_url);
+  EXPECT_TRUE(prerender_helper().GetHostForUrl(allowed_url));
+  EXPECT_EQ(prerender_helper().GetRequestCount(allowed_url), 1);
+
+  // The prefetch to denied URL ahead of the prerender is blocked.
+  if (IsPrerender2FallbackPrefetchSpecRulesEnabled()) {
+    EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+        denied_url, PrefetchContainer::LoadState::kFailedIneligible,
+        PrefetchStatus::kPrefetchIneligibleBlockedByConnectionAllowlist));
+  }
+
+  // Verify denied URL fails.
+  EXPECT_EQ(denied_observer.TakeErrorCode(), net::ERR_NETWORK_ACCESS_REVOKED);
+  EXPECT_FALSE(prerender_helper().GetHostForUrl(denied_url));
+  EXPECT_EQ(prerender_helper().GetRequestCount(denied_url), 0);
+}
+
+// Note SpeculationRules API currently does not support cross-site prerender.
+// Only same-site prerender is tested. See crbug.com/1176054.
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       SpeculationRulesHeaderPrerender) {
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL allowed_url = embedded_https_test_server().GetURL("a.test", "/allow.js");
+  GURL denied_url = embedded_https_test_server().GetURL("a.test", "/deny.js");
+
+  RegisterResponse("/allow.js", ResponseEntry("console.log('allow');"));
+  RegisterResponse("/deny.js", ResponseEntry("console.log('deny');"));
+  RegisterResponse(
+      kSameOriginAllowlistedPage,
+      ResponseEntry("<html><body>Hello</body></html>",
+                    {{"Connection-Allowlist",
+                      R"(("*://a.test:*/rules.json" "*://a.test:*/allow.js"))"},
+                     {"Speculation-Rules", R"("/rules.json")"}}));
+
+  RegisterResponse(
+      "/rules.json",
+      ResponseEntry(absl::StrFormat(R"(
+        {
+          "prerender": [
+            {
+              "source": "list",
+              "urls": ["%s", "%s"],
+              "eagerness": "immediate"
+            }
+          ]
+        }
+      )",
+                                    allowed_url.spec().c_str(),
+                                    denied_url.spec().c_str()),
+                    {{"Content-Type", "application/speculationrules+json"}}));
+
+  PrerenderRequestObserver allowed_observer(GetWebContents(), allowed_url);
+  PrerenderRequestObserver denied_observer(GetWebContents(), denied_url);
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  // The prefetch to allowed URL ahead of the prerender succeeds. It is then
+  // used by the prerendering navigation request.
+  if (IsPrerender2FallbackPrefetchSpecRulesEnabled()) {
+    EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+        allowed_url, PrefetchContainer::LoadState::kCompleted,
+        PrefetchStatus::kPrefetchResponseUsed));
+  }
+
+  // Verify allowed URL succeeds.
+  EXPECT_EQ(allowed_observer.TakeErrorCode(), net::OK);
+  prerender_helper().WaitForPrerenderLoadCompletion(allowed_url);
+  EXPECT_TRUE(prerender_helper().GetHostForUrl(allowed_url));
+  EXPECT_EQ(prerender_helper().GetRequestCount(allowed_url), 1);
+
+  // The prefetch to denied URL ahead of the prerender is blocked.
+  if (IsPrerender2FallbackPrefetchSpecRulesEnabled()) {
+    EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+        denied_url, PrefetchContainer::LoadState::kFailedIneligible,
+        PrefetchStatus::kPrefetchIneligibleBlockedByConnectionAllowlist));
+  }
+
+  // Verify denied URL fails.
+  EXPECT_EQ(denied_observer.TakeErrorCode(), net::ERR_NETWORK_ACCESS_REVOKED);
+  EXPECT_FALSE(prerender_helper().GetHostForUrl(denied_url));
+  EXPECT_EQ(prerender_helper().GetRequestCount(denied_url), 0);
+}
+
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       SpeculationRulesPrerenderRedirectAllowed) {
+  net::test_server::ControllableHttpResponse controllable_response(
+      &embedded_https_test_server(), "/redirect.js");
+
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL redirect_url =
+      embedded_https_test_server().GetURL("a.test", "/redirect.js");
+  GURL target_url =
+      embedded_https_test_server().GetURL("a.test", "/redirect-target.js");
+
+  RegisterResponse("/redirect-target.js",
+                   ResponseEntry("console.log('Redirect is allowed');"));
+  RegisterResponse(kSameOriginAllowlistedPage,
+                   ResponseEntry(absl::StrFormat(R"(
+        <html>
+          <head>
+            <script type="speculationrules">
+            {
+              "prerender": [
+                {
+                  "source": "list",
+                  "urls": ["%s"],
+                  "eagerness": "immediate"
+                }
+              ]
+            }
+            </script>
+          </head>
+          <body>Hello</body>
+        </html>
+      )",
+                                                 redirect_url.spec().c_str()),
+                                 {{"Connection-Allowlist",
+                                   "(response-origin);redirects=allow"}}));
+
+  PrerenderRequestObserver observer(shell()->web_contents(), target_url);
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  controllable_response.WaitForRequest();
+  controllable_response.Send(
+      "HTTP/1.1 302 Found\r\n"
+      "Location: " +
+      target_url.spec() + "\r\n\r\n");
+  controllable_response.Done();
+
+  // The prefetch ahead of the prerender succeeds. It is then used by the
+  // prerendering navigation request.
+  if (IsPrerender2FallbackPrefetchSpecRulesEnabled()) {
+    EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+        redirect_url, PrefetchContainer::LoadState::kCompleted,
+        PrefetchStatus::kPrefetchResponseUsed));
+  }
+
+  // Verify that the prerender redirect is allowed.
+  EXPECT_EQ(observer.TakeErrorCode(), net::OK);
+  prerender_helper().WaitForPrerenderLoadCompletion(redirect_url);
+  EXPECT_TRUE(prerender_helper().GetHostForUrl(redirect_url));
+  EXPECT_EQ(prerender_helper().GetRequestCount(redirect_url), 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ConnectionAllowlistTest,
+                       SpeculationRulesPrerenderRedirectBlocked) {
+  net::test_server::ControllableHttpResponse controllable_response(
+      &embedded_https_test_server(), "/redirect.js");
+
+  auto server_handle = embedded_https_test_server().StartAndReturnHandle();
+  ASSERT_TRUE(server_handle);
+
+  GURL main_url =
+      embedded_https_test_server().GetURL("a.test", kSameOriginAllowlistedPage);
+  GURL redirect_url =
+      embedded_https_test_server().GetURL("a.test", "/redirect.js");
+  GURL target_url =
+      embedded_https_test_server().GetURL("a.test", "/redirect-target.js");
+
+  RegisterResponse("/redirect-target.js",
+                   ResponseEntry("console.log('Redirect is blocked');"));
+  RegisterResponse(kSameOriginAllowlistedPage,
+                   ResponseEntry(absl::StrFormat(R"(
+        <html>
+          <head>
+            <script type="speculationrules">
+            {
+              "prerender": [
+                {
+                  "source": "list",
+                  "urls": ["%s"],
+                  "eagerness": "immediate"
+                }
+              ]
+            }
+            </script>
+          </head>
+          <body>Hello</body>
+        </html>
+      )",
+                                                 redirect_url.spec().c_str()),
+                                 {{"Connection-Allowlist",
+                                   "(response-origin);redirects=block"}}));
+
+  PrerenderRequestObserver observer(shell()->web_contents(), redirect_url);
+
+  EXPECT_TRUE(NavigateToURL(shell(), main_url));
+
+  controllable_response.WaitForRequest();
+  controllable_response.Send(
+      "HTTP/1.1 302 Found\r\n"
+      "Location: " +
+      target_url.spec() + "\r\n\r\n");
+  controllable_response.Done();
+
+  // The prefetch ahead of the prerender is blocked by connection allowlist
+  // because redirect is not allowed.
+  if (IsPrerender2FallbackPrefetchSpecRulesEnabled()) {
+    EXPECT_TRUE(WaitForSpeculationRulesPrefetch(
+        redirect_url, PrefetchContainer::LoadState::kFailedDeterminedHead,
+        PrefetchStatus::kPrefetchFailedIneligibleRedirect));
+  }
+
+  // Verify that the prerender is aborted because the prefetch is blocked due to
+  // connection allowlist.
+  EXPECT_EQ(observer.TakeErrorCode(), net::ERR_ABORTED);
+  EXPECT_FALSE(prerender_helper().GetHostForUrl(redirect_url));
 }
 
 }  // namespace content

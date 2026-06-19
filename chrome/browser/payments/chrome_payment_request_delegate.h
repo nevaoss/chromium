@@ -46,8 +46,6 @@ class ChromePaymentRequestDelegate : public ContentPaymentRequestDelegate {
   const GURL& GetLastCommittedURL() const override;
   autofill::AddressNormalizer* GetAddressNormalizer() override;
   autofill::RegionDataLoader* GetRegionDataLoader() override;
-  ukm::UkmRecorder* GetUkmRecorder() override;
-  std::string GetAuthenticatedEmail() const override;
   PrefService* GetPrefService() override;
   bool IsBrowserWindowActive() const override;
 
@@ -67,8 +65,6 @@ class ChromePaymentRequestDelegate : public ContentPaymentRequestDelegate {
   PaymentRequestDialog* GetDialogForTesting() override;
 
   const base::WeakPtr<PaymentUIObserver> GetPaymentUIObserver() const override;
-  std::optional<base::UnguessableToken> GetChromeOSTWAInstanceId()
-      const override;
   std::string GetSecurePaymentConfirmationKeychainAccessGroup() const override;
 
  protected:

@@ -130,6 +130,9 @@ const base::FeatureParam<base::TimeDelta>
         &kNetworkQualityEstimator,
         "EffectiveConnectionTypeRecomputationInterval", base::Seconds(10)};
 
+BASE_FEATURE(kOnlyParseFirstContentDisposition,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kSplitCacheByIncludeCredentials,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -214,19 +217,6 @@ BASE_FEATURE(kCookieSameSiteConsidersRedirectChain,
 
 BASE_FEATURE(kAllowSameSiteNoneCookiesInSandbox,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kWaitForFirstPartySetsInit, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Controls the maximum time duration an outermost frame navigation should be
-// deferred by RWS initialization.
-extern const base::FeatureParam<base::TimeDelta>
-    kWaitForFirstPartySetsInitNavigationThrottleTimeout{
-        &kWaitForFirstPartySetsInit,
-        "kWaitForFirstPartySetsInitNavigationThrottleTimeout",
-        base::Seconds(0)};
-
-BASE_FEATURE(kRequestStorageAccessNoCorsRequired,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kStaticKeyPinningEnforcement, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -658,9 +648,11 @@ BASE_FEATURE_PARAM(double,
                    0.2);
 
 BASE_FEATURE(kTcpSocketPoolLimitRandomizationForProxy,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNetTaskScheduler, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kNetTaskSchedulerHostResolver, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE_PARAM(bool,
                    kNetTaskSchedulerHttpProxyConnectJob,
                    &kNetTaskScheduler,
@@ -835,6 +827,8 @@ BASE_FEATURE(kSQLitePersistentCookieStoreEarlyInit,
 
 const base::FeatureParam<bool> kSQLitePersistentCookieStoreEarlyInitCheckDisk{
     &kSQLitePersistentCookieStoreEarlyInit, "check_disk", true};
+
+BASE_FEATURE(kEarlyCookieLoadOnPreconnect, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEnableErrorCodePropagationForPreconnect,
              base::FEATURE_DISABLED_BY_DEFAULT);

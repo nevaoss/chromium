@@ -437,10 +437,14 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerTabListOnlyIfMultipleTest,
       ukm::GetExponentialBucketMin(2, 1.5));
 
   EXPECT_TRUE(observer.expandable_content_.has_value());
+  EXPECT_EQ(observer.expandable_content_->expand_button_tooltip,
+            u"Show tab sharing details. Sharing 2 tabs from www.activetab.com, "
+            u"www.example.com");
 }
 
-IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
-                       NoLongerActiveTabAfterCategoryClassification) {
+IN_PROC_BROWSER_TEST_F(
+    ContextualCueingControllerBrowserTest,
+    ShouldNotRecordDecisionIfReturnedCategoryClassificationNotForActiveTab) {
   base::HistogramTester histogram_tester;
   ukm::TestAutoSetUkmRecorder ukm_recorder;
 
@@ -464,13 +468,11 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                   page_content_annotations::CategoryType::kShopping, 0.4),
           }));
 
-  histogram_tester.ExpectUniqueSample(
-      "ContextualCueing.V2.Decision",
-      ContextualCueingDecision::kNoLongerActiveTabAfterCategoryClassification,
-      1);
-  VerifyProactiveCueDecision(
-      ukm_recorder,
-      ContextualCueingDecision::kNoLongerActiveTabAfterCategoryClassification);
+  histogram_tester.ExpectTotalCount("ContextualCueing.V2.Decision", 0);
+  EXPECT_TRUE(ukm_recorder
+                  .GetEntriesByName(
+                      ukm::builders::ContextualCueing_CueShown::kEntryName)
+                  .empty());
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
@@ -675,6 +677,11 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   EXPECT_TRUE(model_observer.content_.has_value());
   EXPECT_EQ(model_observer.content_->items.size(), 1u);
   EXPECT_FALSE(model_observer.content_->items[0].text.empty());
+  EXPECT_EQ(model_observer.content_->expand_button_tooltip,
+            u"Show tab sharing details. Sharing 1 tab from www.example.com");
+  // No favicon provided, so we should have logged it as missing.
+  histogram_tester.ExpectUniqueSample("ContextualCueing.V2.MissingFaviconCount",
+                                      1, 1);
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
@@ -924,6 +931,43 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                              ContextualCueingDecision::kFeaturePromoActive);
 }
 
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       CueNotShowingBecauseAnotherAnchoredMessageOpen) {
+#if BUILDFLAG(IS_ANDROID)
+  GTEST_SKIP()
+      << "Contextual cueing anchored message not implemented for Android";
+#else
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.activetab.com/abc"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+  SeedExecutionResult(MakeCompleteResponse());
+
+  page_actions::PageActionController* page_action_controller =
+      GetPageActionController();
+  ASSERT_TRUE(page_action_controller);
+
+  // Show an anchored message using another action ID.
+  page_action_controller->ShowAnchoredMessage(
+      kActionSidePanelShowReadAnything,
+      {.priority = page_actions::PageActionPriorityCategory::kCoreSiteUtility});
+
+  SimulateFilterPassed();
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+
+  histogram_tester.ExpectUniqueSample(
+      "ContextualCueing.V2.Decision",
+      ContextualCueingDecision::kAnchoredMessageAlreadyShowing, 1);
+  VerifyProactiveCueDecision(
+      ukm_recorder, ContextualCueingDecision::kAnchoredMessageAlreadyShowing);
+#endif
+}
+
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, HistorySyncOff) {
   ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
       browser(), GURL("https://www.activetab.com/abc"),
@@ -977,6 +1021,12 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                        NotEnoughPageLoadsSinceLastCue) {
+  page_actions::PageActionController* page_action_controller =
+      GetPageActionController();
+  CHECK(page_action_controller);
+  page_actions::PageActionObserver observer(kActionAnchoredContextualCue);
+  observer.RegisterAsPageActionObserver(*page_action_controller);
+
   {
     base::HistogramTester histogram_tester;
     ukm::TestAutoSetUkmRecorder ukm_recorder;
@@ -1002,8 +1052,14 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
 
     // Simulate a new page load.
     ASSERT_TRUE(ui_test_utils::NavigateToURL(
-        browser(), GURL("https://www.activetab.com/abc")));
-    SimulateFilterPassed();
+        browser(), GURL("https://www.activetab.com/def")));
+
+    // Wait until previous page action is gone.
+    ASSERT_TRUE(base::test::RunUntil([&]() {
+      return !observer.GetCurrentPageActionState().anchored_message_showing;
+    }));
+
+    SimulateFilterPassed(GURL("https://www.activetab.com/def"));
 
     optimization_guide::RetryForHistogramUntilCountReached(
         &histogram_tester, "ContextualCueing.V2.Decision", 1);

@@ -623,6 +623,14 @@ TabDragContext* TabDragController::GetSourceContext() {
                                : nullptr;
 }
 
+void TabDragController::SetGroupHeaderWasCollapsedFromDrag(
+    bool was_collapsed_from_drag) {
+  if (drag_data_.group_header_drag_data_.has_value()) {
+    drag_data_.group_header_drag_data_->was_collapsed_from_drag =
+        was_collapsed_from_drag;
+  }
+}
+
 void TabDragController::TabWasAdded() {
   // Stop dragging when a new tab is added and dragging a window, unless we're
   // doing so ourselves (e.g. while attaching to a new browser). Doing otherwise
@@ -1511,6 +1519,20 @@ TabDragController::Detach(ReleaseCapture release_capture) {
     }
   }
   std::ranges::sort(dragged_indices);
+
+  int next_active_index = TabStripModel::kNoTab;
+  if (drag_data_.group_header_drag_data_.has_value() &&
+      drag_data_.group_header_drag_data_->was_collapsed_from_drag &&
+      !dragged_indices.empty()) {
+    const int last_dragged_index = dragged_indices.back();
+    if (last_dragged_index + 1 < attached_model->count()) {
+      next_active_index =
+          (last_dragged_index + 1) - static_cast<int>(dragged_indices.size());
+    } else if (dragged_indices.front() > 0) {
+      next_active_index = dragged_indices.front() - 1;
+    }
+  }
+
   const std::vector<tab_groups::TabGroupId> groups_to_move =
       attached_model->GetGroupsDestroyedFromRemovingIndices(dragged_indices);
 
@@ -1531,6 +1553,13 @@ TabDragController::Detach(ReleaseCapture release_capture) {
     } else if (attached_context_ == source_context_ &&
                !initial_selection_model_.empty()) {
       RestoreInitialSelection();
+    }
+
+    if (next_active_index != TabStripModel::kNoTab) {
+      attached_model->ActivateTabAt(
+          next_active_index,
+          TabStripUserGestureDetails(
+              TabStripUserGestureDetails::GestureType::kOther));
     }
   }
 
@@ -2252,6 +2281,30 @@ void TabDragController::CompleteDrag() {
       absl::StrFormat("TabStrip.%s.TabDragDestination", GetTabStripMode()),
       destination);
 
+  bool has_pinned = false;
+  bool has_unpinned = false;
+  for (const auto& data : drag_data_.tab_drag_data_) {
+    if (data.view_type == TabSlotView::ViewType::kTabGroupHeader ||
+        !data.pinned) {
+      has_unpinned = true;
+    } else if (data.pinned) {
+      has_pinned = true;
+    }
+  }
+
+  TabDragPinnedness pinnedness;
+  if (has_pinned && has_unpinned) {
+    pinnedness = TabDragPinnedness::kMixed;
+  } else if (has_pinned) {
+    pinnedness = TabDragPinnedness::kAllPinned;
+  } else {
+    pinnedness = TabDragPinnedness::kAllUnpinned;
+  }
+
+  base::UmaHistogramEnumeration(
+      absl::StrFormat("TabStrip.%s.TabDragPinnedness", GetTabStripMode()),
+      pinnedness);
+
   if (current_drag_target_ && current_drag_target_->CanDropTab()) {
     current_drag_target_->HandleTabDrop(*this);
     OnContextStoppedDragging();
@@ -2297,10 +2350,10 @@ void TabDragController::CompleteDrag() {
             attached_context_->GetWidget()->GetNativeWindow())
             ->browser();
 
-    if (new_browser->app_controller() &&
-        new_browser->app_controller()->has_tab_strip()) {
-      web_app::MaybeAddPinnedHomeTab(new_browser,
-                                     new_browser->app_controller()->app_id());
+    auto* const app_controller =
+        web_app::AppBrowserController::From(new_browser);
+    if (app_controller && app_controller->has_tab_strip()) {
+      web_app::MaybeAddPinnedHomeTab(new_browser, app_controller->app_id());
     }
   }
 
