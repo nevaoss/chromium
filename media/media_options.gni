@@ -39,23 +39,16 @@ declare_args() {
   # prevents silent errors.
   link_pulseaudio = false
 
-  # Enable usage of FFmpeg within the media library. Used for most software
+# Enable usage of FFmpeg within the media library. Used for most software
   # based decoding, demuxing, and sometimes optimized FFTs. If disabled,
   # implementors must provide their own demuxers and decoders.
   media_use_ffmpeg = true
 
   # Enable usage of Symphonia within the media library. Used experimentally
   # for software decoding.
-  # TODO(crbug.com/40074653): enable on Android, Fuchsia when stabilized.
-<<<<<<< HEAD
-  media_use_symphonia = (is_linux || is_mac || is_win || is_chromeos)
-=======
   media_use_symphonia = true
->>>>>>> 150.0.7835.0~1
-
   # Enable usage of libvpx within the media library. Used for software based
   # decoding of VP9 and VP8A type content.
-  media_use_libvpx = true
 
   # Enables the use of OpenSLES on Android.
   # Should not be disabled for versions of Android before Q, since we only
