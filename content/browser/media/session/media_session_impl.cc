@@ -52,17 +52,10 @@
 #include "content/browser/media/session/media_session_android.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
-<<<<<<< HEAD
-#if BUILDFLAG(IS_WIN)
-#include "content/public/common/content_features.h"
-#endif  // BUILDFLAG(IS_WIN)
-
 #if BUILDFLAG(IS_WEBOS)
 #include "content/browser/media/session/webos/media_session_webos.h"
 #endif  // BUILDFLAG(IS_WEBOS)
 
-=======
->>>>>>> 151.0.7880.0~1
 namespace content {
 
 using blink::mojom::MediaSessionPlaybackState;
