@@ -72,7 +72,7 @@ class DiscardAttemptMarker : public NodeAttachedDataImpl<DiscardAttemptMarker> {
 
 const char kDescriberName[] = "PageDiscardingHelper";
 
-using NodeRssMap = base::flat_map<const PageNode*, base::ByteCount>;
+using NodeRssMap = base::flat_map<const PageNode*, base::ByteSize>;
 
 // Returns the mapping from page_node to its RSS estimation.
 NodeRssMap GetPageNodeRssEstimate(
@@ -81,7 +81,7 @@ NodeRssMap GetPageNodeRssEstimate(
   NodeRssMap::container_type result_container;
   result_container.reserve(candidates.size());
   for (auto candidate : candidates) {
-    result_container.emplace_back(candidate.page_node(), base::ByteCount(0));
+    result_container.emplace_back(candidate.page_node(), base::ByteSize(0));
   }
   NodeRssMap result(std::move(result_container));
 
@@ -115,7 +115,7 @@ NodeRssMap GetPageNodeRssEstimate(
       if (iter == result.end()) {
         continue;
       }
-      iter->second += frame_rss.AsDeprecatedByteCount();
+      iter->second += frame_rss;
     }
   }
   return result;
@@ -203,8 +203,8 @@ void PageDiscardingHelper::DiscardMultiplePages(
     // Record metrics about the tab that is about to be discarded.
     RecordDiscardedTabMetrics(candidates[0]);
   } else {
-    const base::ByteCount reclaim_target_value = reclaim_target->target;
-    base::ByteCount total_reclaim;
+    const base::ByteSize reclaim_target_value = reclaim_target->target;
+    base::ByteSize total_reclaim;
     NodeRssMap page_node_rss = GetPageNodeRssEstimate(candidates);
     for (auto& candidate : candidates) {
       if (total_reclaim >= reclaim_target_value) {
@@ -221,8 +221,8 @@ void PageDiscardingHelper::DiscardMultiplePages(
       // RSS value to 80 MiB for these nodes. 80 MiB is the average
       // Memory.Renderer.PrivateMemoryFootprint histogram value on Windows in
       // August 2021.
-      std::optional<base::ByteCount> node_reclaim =
-          page_node_rss[node].is_zero() ? base::MiB(80) : page_node_rss[node];
+      std::optional<base::ByteSize> node_reclaim =
+          page_node_rss[node].is_zero() ? base::MiBU(80) : page_node_rss[node];
       total_reclaim += node_reclaim.value();
 
       LOG(WARNING) << "Queueing discard attempt, type="
@@ -481,7 +481,7 @@ void PageDiscardingHelper::PostDiscardAttemptCallback(
 
   for (const auto& discard_event : discard_events) {
     unnecessary_discard_monitor_.OnDiscard(
-        discard_event.estimated_memory_freed.AsDeprecatedByteCount(),
+        discard_event.estimated_memory_freed,
         discard_event.discard_time);
   }
 
