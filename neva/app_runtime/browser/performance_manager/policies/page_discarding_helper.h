@@ -181,7 +181,7 @@ class PageDiscardingHelper
       const PageNode* page_node) const;
 
  private:
-  bool IsPageOptedOutOfDiscarding(const std::string& browser_context_id,
+ bool IsPageOptedOutOfDiscarding(const base::UnguessableToken& browser_context_id,
                                   const GURL& url) const;
 
   // Called after each discard attempt. |success| will indicate whether or not
@@ -200,7 +200,7 @@ class PageDiscardingHelper
   // The mechanism used to do the actual discarding.
   std::unique_ptr<mechanism::PageDiscarder> page_discarder_;
 
-  std::map<std::string, std::unique_ptr<url_matcher::URLMatcher>>
+ std::map<base::UnguessableToken, std::unique_ptr<url_matcher::URLMatcher>>
       profiles_no_discard_patterns_;
 
   memory_pressure::UnnecessaryDiscardMonitor unnecessary_discard_monitor_;
