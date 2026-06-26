@@ -1327,7 +1327,9 @@ by a child template that "extends" this file.
           android:process=":sandboxed_process{{ i }}"
           android:permission="{{ manifest_package }}.permission.CHILD_SERVICE"
           android:isolatedProcess="true"
+          {% if (i == 0) %}
           android:useAppZygote="true"
+          {% endif %}
           android:exported="{{sandboxed_service_exported|default(false)}}"
           {% if (sandboxed_service_exported|default(false)) == 'true' %}
           android:externalService="true"
@@ -1468,6 +1470,14 @@ by a child template that "extends" this file.
       <provider
             android:name="org.chromium.chrome.browser.provider.PageContentProvider"
             android:authorities="{{ manifest_package }}.PageContentProvider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+      </provider>
+
+      <!-- Provider for screenshot content. -->
+      <provider
+            android:name="org.chromium.chrome.browser.screenshotprovider.ScreenshotContentProvider"
+            android:authorities="{{ manifest_package }}.ScreenshotContentProvider"
             android:exported="false"
             android:grantUriPermissions="true">
       </provider>

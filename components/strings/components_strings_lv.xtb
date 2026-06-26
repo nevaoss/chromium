@@ -91,6 +91,7 @@
 <translation id="1149617035358809955">verificēt jūsu identitāti, lai varētu ievadīt jūsu maksājumu informāciju</translation>
 <translation id="1150565364351027703">Saulesbrilles</translation>
 <translation id="1150979032973867961">Šis serveris nevarēja pierādīt, ka šī ir vietne <ph name="DOMAIN" />; tās drošības sertifikāts netiek uzskatīts par uzticamu jūsu datora operētājsistēmā. Iespējams, tas ir nepareizas konfigurācijas dēļ vai arī kāds ir ļaunprātīgi izmantojis jūsu savienojumu.</translation>
+<translation id="1151858212483238980">Varat automātiski aizpildīt kartes, kas ir saglabātas lietotnē Google maks.</translation>
 <translation id="1151972924205500581">Nepieciešama parole</translation>
 <translation id="1156303062776767266">Jūs skatāt vietēju vai kopīgotu failu</translation>
 <translation id="1158211211994409885"><ph name="HOST_NAME" /> negaidīti pārtrauca savienojumu.</translation>
@@ -131,6 +132,7 @@ Pretējā gadījumā šī iespēja būtu liegta saskaņā ar jūsu konfidenciali
 <translation id="1202892408424955784">Izsekotie produkti</translation>
 <translation id="1204184165594298176">{0,plural, =1{Faila kopēšana ir bloķēta}zero{<ph name="FILE_COUNT" /> failu kopēšana ir bloķēta}one{<ph name="FILE_COUNT" /> faila kopēšana ir bloķēta}other{<ph name="FILE_COUNT" /> failu kopēšana ir bloķēta}}</translation>
 <translation id="120509973613679868">Komandējumi</translation>
+<translation id="1205344127823614428">Varat automātiski aizpildīt kartes, kas ir saglabātas lietotnē Google maks.</translation>
 <translation id="120587177308723209">Simulācijas sporta spēles</translation>
 <translation id="1206967143813997005">Sākotnējais paraksts nav derīgs</translation>
 <translation id="1209206284964581585">Pagaidām slēpt</translation>
@@ -2152,6 +2154,7 @@ Varat arī sazināties ar vietnes īpašnieku un ieteikt jaunināt vietni uz pro
 <translation id="4318312030194671742">Paint priekšskatījuma burtliča pakalpojums</translation>
 <translation id="4318566738941496689">Jūsu ierīces nosaukums un tīkla adrese</translation>
 <translation id="4320119221194966055">Aizdevumi privātpersonām</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{Saņemta saite no ierīces “<ph name="DEVICE_NAME" />”}zero{Saņemtas # saites no ierīces “<ph name="DEVICE_NAME" />”}one{Saņemta # saite no ierīces “<ph name="DEVICE_NAME" />”}other{Saņemtas # saites no ierīces “<ph name="DEVICE_NAME" />”}}</translation>
 <translation id="4325600325087822253">17. paplāte</translation>
 <translation id="4325863107915753736">Rakstu neizdevās atrast.</translation>
 <translation id="4326324639298822553">Pārbaudiet derīguma termiņa datumu un mēģiniet vēlreiz.</translation>
@@ -3183,6 +3186,7 @@ Varat arī sazināties ar vietnes īpašnieku un ieteikt jaunināt vietni uz pro
 <translation id="5968400720580217226">MI režīms</translation>
 <translation id="5969199813874624822">Saglabāt un sekot cenai</translation>
 <translation id="5969933937005244170">Atbilstošas atvērtās cilnes tiks izmantotas tikai tad, ja tās kopīgosiet pavedienā</translation>
+<translation id="5972020793760134803">Pārslēgties uz cilni</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">Sestais rullis</translation>
 <translation id="5975083100439434680">Tālināt</translation>
@@ -3593,6 +3597,7 @@ Varat arī sazināties ar vietnes īpašnieku un ieteikt jaunināt vietni uz pro
 <translation id="6579858392010591435">Svētki un sezonāli pasākumi</translation>
 <translation id="6581831440014388355">Nevēlama ķermeņa un sejas apmatojuma epilācija</translation>
 <translation id="658230438113661756">Vietnē, kuru mēģinājāt apmeklēt, uzbrucēji var instalēt kaitīgu programmatūru, kas zog vai dzēš kādu informāciju, piemēram, jūsu paroles, fotoattēlus, ziņojumus vai kredītkaršu numurus. Chrome stingri iesaka doties atpakaļ. <ph name="BEGIN_LEARN_MORE_LINK" />Uzziniet vairāk par šo brīdinājumu.<ph name="END_LEARN_MORE_LINK" /></translation>
+<translation id="6583309742916093092">Saglabātas lietotnē Google maks</translation>
 <translation id="6587893660316489419">Aploksne B5</translation>
 <translation id="6587923378399804057">Jūsu kopētā saite</translation>
 <translation id="6591833882275308647">Jūsu <ph name="DEVICE_TYPE" /> ierīce netiek pārvaldīta</translation>
@@ -3748,6 +3753,7 @@ Varat arī sazināties ar vietnes īpašnieku un ieteikt jaunināt vietni uz pro
 <translation id="6834757537110528125">Šī vietne neatbalsta drošu savienojumu</translation>
 <translation id="6841864657731852591">Dobspiedes cilindrs</translation>
 <translation id="6842196666980060516">184 x 260 mm</translation>
+<translation id="6844746916504777213">Nekad nekopīgot šīs vietnes</translation>
 <translation id="6844998850832008753">Roku kustību izsekošana ir atļauta šajā reizē</translation>
 <translation id="6849023911358004088">Poga “Pārvaldīt drošības iestatījumus”. Aktivizējiet, lai Chrome iestatījumos pārvaldītu funkciju “Droša pārlūkošana” un citas iespējas.</translation>
 <translation id="6850286078059909152">Teksta krāsa</translation>
@@ -4417,6 +4423,7 @@ Papildu informācija:
 <translation id="7840103971441592723">Ekrānuzņēmumu izveide ir sākta</translation>
 <translation id="784137052867620416">Shopping Insights</translation>
 <translation id="7841633276323004751">Maksājumu veidi, kurus var atlasīt maksājuma turpināšanai. Tastatūra ir paslēpta.</translation>
+<translation id="784189052219692670">Tagad Gemini var izgūt jūsu personas informāciju no visām jūsu Google lietotnēm un automātiski aizpildīt to lapā, kuru skatāt.</translation>
 <translation id="7844689747373518809">{COUNT,plural, =0{Nav}=1{1 lietotne (<ph name="EXAMPLE_APP_1" />)}=2{2 lietotnes (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" />)}zero{# lietotnes (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" /> <ph name="AND_MORE" />)}one{# lietotne (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" /> <ph name="AND_MORE" />)}other{# lietotnes (<ph name="EXAMPLE_APP_1" />, <ph name="EXAMPLE_APP_2" /> <ph name="AND_MORE" />)}}</translation>
 <translation id="7846161022626028328">Radās kļūda. Mēģiniet vēlreiz.</translation>
 <translation id="784623644169604270">Nav pēdējā laikā veiktu darbību</translation>
@@ -4820,6 +4827,7 @@ Papildu informācija:
 <translation id="8488350697529856933">Attiecas uz</translation>
 <translation id="8490137692873530638">10. izvades vieta</translation>
 <translation id="8493948351860045254">Atbrīvot vietu</translation>
+<translation id="8495170825732897952">Ierakstiet @@ jebkurā veidlapā, lai izgūtu un aizpildītu informāciju, nepārslēdzot cilnes</translation>
 <translation id="8498870489552322848">ievadīt sensitīvu informāciju lietotnē <ph name="APP_NAME" /></translation>
 <translation id="8498891568109133222">Vietne <ph name="HOST_NAME" /> pārāk ilgi nereaģēja.</translation>
 <translation id="8502023382441452707">Dzimšanas dienas un vārda dienas</translation>
@@ -4975,6 +4983,7 @@ Papildu informācija:
 <translation id="8758529215314160755">Varat rediģēt savu vārdu savā <ph name="BEGIN_LINK" />Google kontā<ph name="END_LINK" /> (<ph name="ACCOUNT" />).</translation>
 <translation id="8759274551635299824">Kartes derīguma termiņš ir beidzies</translation>
 <translation id="87601671197631245">Šajā vietnē tiek izmantota novecojusi drošības konfigurācija, tādēļ var tikt atklāta jūsu informācija (piemēram, paroles, ziņojumi vai kredītkaršu dati), kad tā tiek nosūtīta uz šo vietni.</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{Nosūtīta saite no ierīces “<ph name="DEVICE_NAME" />”}zero{Nosūtītas # saites no ierīces “<ph name="DEVICE_NAME" />”}one{Nosūtīta # saite no ierīces “<ph name="DEVICE_NAME" />”}other{Nosūtītas # saites no ierīces “<ph name="DEVICE_NAME" />”}}</translation>
 <translation id="8763927697961133303">USB ierīce</translation>
 <translation id="8763986294015493060">Aizveriet visus atvērtos inkognito režīma logus.</translation>
 <translation id="8766943070169463815">Ir atvērta drošu maksājumu akreditācijas datu autentifikācijas lapa</translation>

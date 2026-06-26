@@ -66,6 +66,12 @@ export function enumToClient(
   val: mojomGlic.ClientCapabilities | null):
     glicApi.ClientCapabilities | undefined;
 export function enumToClient(
+  val: mojomGlic.ClientErrorDialogType):
+    glicApi.ClientErrorDialogType;
+export function enumToClient(
+  val: mojomGlic.ClientErrorDialogType | null):
+    glicApi.ClientErrorDialogType | undefined;
+export function enumToClient(
   val: mojomGlic.CreateTaskErrorReason):
     glicApi.CreateTaskErrorReason;
 export function enumToClient(
@@ -239,7 +245,7 @@ export function enumToClient(
 export function enumToClient(
   val: mojomGlic.WebUseCounter | null):
     glicApi.WebUseCounter | undefined;
-export function enumToClient(val: any): any {
+export function enumToClient(val: unknown): unknown {
   return val ?? undefined;
 }
 
@@ -297,6 +303,12 @@ export function enumFromClient(
 export function enumFromClient(
   val: glicApi.ClientCapabilities | undefined):
     mojomGlic.ClientCapabilities | null;
+export function enumFromClient(
+  val: glicApi.ClientErrorDialogType):
+    mojomGlic.ClientErrorDialogType;
+export function enumFromClient(
+  val: glicApi.ClientErrorDialogType | undefined):
+    mojomGlic.ClientErrorDialogType | null;
 export function enumFromClient(
   val: glicApi.CreateTaskErrorReason):
     mojomGlic.CreateTaskErrorReason;
@@ -471,6 +483,6 @@ export function enumFromClient(
 export function enumFromClient(
   val: glicApi.WebUseCounter | undefined):
     mojomGlic.WebUseCounter | null;
-export function enumFromClient(val: any): any {
+export function enumFromClient(val: unknown): unknown {
   return val ?? null;
 }

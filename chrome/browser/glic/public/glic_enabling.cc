@@ -703,6 +703,11 @@ bool GlicEnabling::IsContextualMenuItemEnabled(Profile* profile) {
   return enabled;
 }
 
+bool GlicEnabling::IsSelectionPromptEnabledForProfile(Profile* profile) {
+  return IsEnabledForProfile(profile) &&
+         base::FeatureList::IsEnabled(features::kGlicSelectionPrompt);
+}
+
 bool GlicEnabling::IsLiveAndFloatyEnabledByFlags() {
   // Despite the name, when off, this disables live mode and floaty.
   return base::FeatureList::IsEnabled(features::kGlicLiveMode);
@@ -730,6 +735,10 @@ GlicEnabling::GlicEnabling(Profile* profile,
   pref_registrar_.Add(
       prefs::kGlicUserEnabledActuationOnWeb,
       base::BindRepeating(&GlicEnabling::OnUserEnabledActuationOnWebChanged,
+                          base::Unretained(this)));
+  pref_registrar_.Add(
+      prefs::kGlicExperimentalTriggeringEnabled,
+      base::BindRepeating(&GlicEnabling::OnExperimentalTriggeringEnabledChanged,
                           base::Unretained(this)));
   if (!base::FeatureList::IsEnabled(features::kGlicRollout) &&
       base::FeatureList::IsEnabled(features::kGlicTieredRollout)) {
@@ -763,7 +772,7 @@ bool GlicEnabling::IsAllowed() {
   return IsEnabledForProfile(profile_);
 }
 
-bool GlicEnabling::HasConsented() {
+bool GlicEnabling::HasConsented() const {
   return GetCompletedFre() == prefs::FreStatus::kCompleted;
 }
 
@@ -790,6 +799,21 @@ bool GlicEnabling::IsUserEnabledActuationOnWebDefault() const {
 
 void GlicEnabling::SetUserEnabledActuationOnWeb(bool enabled) {
   profile_->GetPrefs()->SetBoolean(prefs::kGlicUserEnabledActuationOnWeb,
+                                   enabled);
+}
+
+bool GlicEnabling::GetExperimentalTriggeringEnabled() const {
+  return profile_->GetPrefs()->GetBoolean(
+      prefs::kGlicExperimentalTriggeringEnabled);
+}
+
+bool GlicEnabling::IsExperimentalTriggeringFullyOptedIn() const {
+  return HasConsented() && GetUserEnabledActuationOnWeb() &&
+         GetExperimentalTriggeringEnabled();
+}
+
+void GlicEnabling::SetExperimentalTriggeringEnabled(bool enabled) {
+  profile_->GetPrefs()->SetBoolean(prefs::kGlicExperimentalTriggeringEnabled,
                                    enabled);
 }
 
@@ -821,6 +845,17 @@ GlicEnabling::RegisterOnUserEnabledActuationOnWebChanged(
 
 void GlicEnabling::OnUserEnabledActuationOnWebChanged() {
   user_enabled_actuation_on_web_changed_callback_list_.Notify();
+}
+
+base::CallbackListSubscription
+GlicEnabling::RegisterOnExperimentalTriggeringEnabledChanged(
+    ExperimentalTriggeringEnabledChangedCallback callback) {
+  return experimental_triggering_enabled_changed_callback_list_.Add(
+      std::move(callback));
+}
+
+void GlicEnabling::OnExperimentalTriggeringEnabledChanged() {
+  experimental_triggering_enabled_changed_callback_list_.Notify();
 }
 
 base::CallbackListSubscription GlicEnabling::RegisterOnShowSettingsPageChanged(

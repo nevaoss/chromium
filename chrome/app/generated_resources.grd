@@ -630,6 +630,9 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_READING_MODE" desc="Context menu menuitem to open page in reading mode view">
            Open in reading mode
           </message>
+          <message name="IDS_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE" desc="Context menu item to listen to this page">
+           Listen to this page
+          </message>
           <message name="IDS_CONTENT_CONTEXT_CLOSE_GLIC" desc="Context menu item to close glic view">
            Close
           </message>
@@ -934,6 +937,9 @@ are declared in tools/grit/grit_args.gni.
           </message>
           <message name="IDS_CONTENT_CONTEXT_READING_MODE" desc="Context menu menuitem to open page in reading mode view">
            Open in Reading Mode
+          </message>
+          <message name="IDS_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE" desc="In Title Case: Context menu item to listen to this page">
+           Listen to This Page
           </message>
           <message name="IDS_CONTENT_CONTEXT_CLOSE_GLIC" desc="Context menu item to close glic view">
            Close
@@ -3558,6 +3564,9 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_WEB_APP_INSTALL_SUCCESS_OPEN_APP" desc="Text for button that opens the current tab in the newly installed app.">
         Open tab in app
       </message>
+      <message name="IDS_INSTALL_PWA_DIALOG_INSTALLING" desc="Text shown when the app is installing.">
+        Installing app…
+      </message>
       <message name="IDS_WEB_APP_DETAILED_INSTALL_DIALOG_DESCRIPTION_TITLE" desc="Title above app description to explain the content below is from this app">
         From the app
       </message>
@@ -3575,6 +3584,19 @@ are declared in tools/grit/grit_args.gni.
       </message>
       <message name="IDS_INSTALL_PWA_DIALOG_ORIGIN_LABEL" desc="The label in front of the origin of the site that is installing the web app.">
         from: <ph name="APP_ORIGIN">$1<ex>example.com</ex></ph>
+      </message>
+       <!-- Install dialog resources for Windows specific behavior. They cannot be guarded by expr="is_win", because these resources need to be compiled for screenshot testing. -->
+      <message name="IDS_WEB_APP_INSTALL_ADD_TO_START_MENU" desc="Installer option text for the new install dialog for web apps, signifying that a shortcut will be added to the Start Menu on Windows">
+        Adding to Start Menu
+      </message>
+      <message name="IDS_WEB_APP_INSTALL_CHROME_APPS_LOCATION" desc="Installer option text signifying where inside the Start Menu the web app shortcut will be created on Windows.">
+        Chrome Apps &gt; <ph name="APP_NAME">$1<ex>AppName</ex></ph>
+      </message>
+      <message name="IDS_WEB_APP_INSTALL_CREATE_DESKTOP_SHORTCUT" desc="Label of the checkbox to add a shortcut to the desktop after installing the web app.">
+        Add desktop shortcut
+      </message>
+      <message name="IDS_WEB_APP_INSTALL_PIN_TO_TASKBAR" desc="Label of the checkbox to pin an installed web app shortcut to taskbar.">
+        Pin to Taskbar
       </message>
 
       <message name="IDS_BOOKMARK_APP_AX_BUBBLE_NAME_LABEL" desc="Text preceding the name of a bookmark app, read by spoken feedback.">
@@ -4130,7 +4152,7 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_TRACKING_PROTECTION_BUBBLE_SITE_NOT_WORKING_DESCRIPTION" desc="Descriptive text in the trackings protection bubble mentioning the option to enable third-party cookies and mentions the trade off of doing so.">
         Try temporarily allowing third-party cookies, which means less browsing protection but site features are more likely to work as expected.
       </message>
-      <message name="IDS_COOKIE_CONTROLS_BUBBLE_SITE_NOT_WORKING_DESCRIPTION" desc="Descriptive text in the third-party cookies bubble describing the option to allow third-party cookies and the trade offs of doing so." translateable="false">
+      <message name="IDS_COOKIE_CONTROLS_BUBBLE_SITE_NOT_WORKING_DESCRIPTION" desc="Descriptive text in the third-party cookies bubble describing the option to allow third-party cookies and the trade offs of doing so.">
         Try allowing third-party cookies, which means less browsing protection but site features are more likely to work as expected.
       </message>
       <message name="IDS_TRACKING_PROTECTION_BUBBLE_BLOCKING_RESTART_TITLE" desc="Subtitle shown on the tracking protection bubble indicating how long until cookies are blocked again.">
@@ -5048,7 +5070,7 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_TASK_MANAGER_PRELOADED_RENDERER_FOR_UI" desc="Task Manager row for the render process that is preloaded with Top Chrome WebUI resources.">
         Preloaded UI Renderer
       </message>
-      <!-- TODO(liuwilliam): crbug/1325318 renaming the rest of existing Prerender to NoStatePrefetch -->
+      <!-- TODO(liuwilliam): crbug.com/40225436 renaming the rest of existing Prerender to NoStatePrefetch -->
       <message name="IDS_TASK_MANAGER_NO_STATE_PREFETCH_PREFIX" desc="The prefix for a Task Manager No State Prefetch row">
         Prerender: <ph name="PRERENDER_CONTENTS_NAME">$1<ex>http://www.google.com</ex></ph>
       </message>
@@ -8616,7 +8638,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Can't upload. File appears to be empty.
       </message>
       <message name="IDS_NTP_COMPOSE_FILE_UPLOAD_INVALID_TOO_LARGE" desc="The text to display when a file upload exceeds the allowed size">
-        Can't upload. File exceeds maximum supported size.
+        Can't upload. File exceeds maximum supported size of <ph name="MAX_FILE_SIZE">$1<ex>100</ex></ph> MB.
       </message>
       <message name="IDS_NTP_COMPOSE_FILE_UPLOAD_IMAGE_PROCESSING_ERROR" desc="The text to display when an file upload image can't be processed.">
         Can't upload. Failed to process image file.
@@ -9829,6 +9851,43 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_LINE_FOCUS_OFF_LABEL" desc="Dropdown option for turning off line focus.">
         Off
       </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_SMALL_FOCUS_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for the small height window line focus option.">
+        Small focus style
+      </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_MEDIUM_FOCUS_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for the medium height window line focus option.">
+        Medium focus style
+      </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_LARGE_FOCUS_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for the large height window line focus option.">
+        Large focus style
+      </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_UNDERLINE_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for the single-line underline line focus option.">
+        Underline style
+      </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_STATIC_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for the line focus option of staying in the middle of the panel.">
+        Static movement
+      </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_CURSOR_LINE_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for the line focus option of a single line following the cursor.">
+        Follow cursor movement
+      </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_OFF_LABEL_SCREENREADER" desc="Screen reader label for the dropdown option for turning off line focus.">
+        Off (no line focus)
+      </message>
+      <if expr="is_macosx">
+        <message name="IDS_READING_MODE_KEYBOARD_SHORTCUT_IPH_BODY" desc="Text for the help bubble describing the keyboard shortcut used to open and close reading mode.">
+          Open reading mode faster with a shortcut. Press ⌥ + ⌘ + R to toggle reading mode.
+        </message>
+        <message name="IDS_READING_MODE_KEYBOARD_SHORTCUT_IPH_SCREENREADER" is_accessibility_with_no_ui="true" desc="Accessible text for the help bubble describing the keyboard shortcut used to open and close reading mode.">
+          Open reading mode faster with a shortcut. Press ⌥ + ⌘ + R to toggle reading mode.
+        </message>
+      </if>
+      <if expr="not is_macosx">
+        <message name="IDS_READING_MODE_KEYBOARD_SHORTCUT_IPH_BODY" desc="Text for the help bubble describing the keyboard shortcut used to open and close reading mode.">
+          Open reading mode faster with a shortcut. Press Alt + Shift + R to toggle reading mode.
+        </message>
+        <message name="IDS_READING_MODE_KEYBOARD_SHORTCUT_IPH_SCREENREADER" is_accessibility_with_no_ui="true" desc="Accessible text for the help bubble describing the keyboard shortcut used to open and close reading mode.">
+          Open reading mode faster with a shortcut. Press Alt + Shift + R to toggle reading mode.
+        </message>
+      </if>
       <message name="IDS_READ_ANYTHING_LOADING" desc="Message to show while Read Anything is figuring out what text to display.">
         Getting ready
       </message>
@@ -18551,6 +18610,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
     <message name="IDS_DEEP_SCANNING_DIALOG_SAVE_TO_CLOUD_STORAGE_MESSAGE" desc="Button text to allow the user to save a file to cloud storage">
       <ph name="FILE_NAME">$1<ex>foo.txt</ex></ph> has sensitive data. Your organization will let you save it to cloud storage or discard it
     </message>
+    <message name="IDS_DEEP_SCANNING_DIALOG_SAVE_TO_CLOUD_STORAGE_CUSTOM_MESSAGE" desc="Message shown for force save with a custom message.">
+      <ph name="FILE_NAME">$1<ex>foo.txt</ex></ph> has sensitive data. Your organization will let you save it to cloud storage or discard it. Your administrator says: <ph name="CUSTOM_MESSAGE">$2<ex>Please don't upload this type of data.</ex></ph>
+    </message>
 
     <!-- Data sharing UI strings -->
     <message name="IDS_DATA_SHARING_BUBBLE_DIALOG_TITLE" desc="Title of the data sharing bubble">
@@ -20137,6 +20199,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
     </message>
     <message name="IDS_REPORT_UNSAFE_SITE_DIALOG_URL_LABEL" desc="Label which denotes URL of the unsafe-site in report-unsafe-site dialog">
       URL
+    </message>
+    <message name="IDS_REPORT_UNSAFE_SITE_DIALOG_SENDING_BUTTON_LABEL" desc="Dialog button label while unsafe-site-report is sending to Google">
+      Sending...
     </message>
 
     <!-- Indigo -->

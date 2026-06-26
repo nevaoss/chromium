@@ -2006,6 +2006,8 @@ component("base") {
       "win/security_descriptor.h",
       "win/security_util.cc",
       "win/security_util.h",
+      "win/shell_util.cc",
+      "win/shell_util.h",
       "win/shlwapi.h",
       "win/shortcut.cc",
       "win/shortcut.h",
@@ -3076,7 +3078,6 @@ if (enable_rust_translit) {
 component("i18n") {
   output_name = "base_i18n"
   sources = [
-    "i18n/base_i18n_export.h",
     "i18n/base_i18n_switches.cc",
     "i18n/base_i18n_switches.h",
     "i18n/break_iterator.cc",
@@ -3123,6 +3124,8 @@ component("i18n") {
   configs += [ "//build/config/compiler:wexit_time_destructors" ]
   public_deps = [
     ":base",
+    "//base/i18n:base_i18n_export",
+    "//base/i18n:language_code",
     "//third_party/ced",
     "//third_party/icu",
   ]
@@ -4159,6 +4162,7 @@ test("base_unittests") {
       "win/scoped_winrt_initializer_unittest.cc",
       "win/security_descriptor_unittest.cc",
       "win/security_util_unittest.cc",
+      "win/shell_util_unittest.cc",
       "win/shortcut_unittest.cc",
       "win/sid_unittest.cc",
       "win/startup_information_unittest.cc",
@@ -4200,7 +4204,7 @@ test("base_unittests") {
     deps += [ ":stack_canary_linux_unittests" ]
   }
 
-  sources += [ "test/test_trace_processor_example_unittest.cc" ]
+  sources += [ "test/tracing/test_trace_processor_example_unittest.cc" ]
 
   if (is_posix) {
     sources += [
@@ -4541,7 +4545,7 @@ test("base_unittests") {
   }
 
   sources += [
-    "test/trace_event_analyzer_unittest.cc",
+    "test/tracing/trace_event_analyzer_unittest.cc",
     "trace_event/memory_allocator_dump_unittest.cc",
     "trace_event/memory_dump_manager_unittest.cc",
     "trace_event/memory_dump_scheduler_unittest.cc",

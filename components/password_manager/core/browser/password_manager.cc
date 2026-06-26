@@ -1096,6 +1096,10 @@ void PasswordManager::OnPasswordFormsParsed(
   }
   CreatePendingLoginManagers(driver, form_data);
 
+  for (Observer& observer : observers_) {
+    observer.OnPasswordFormsParsed(driver, form_data);
+  }
+
   PasswordGenerationFrameHelper* password_generation_manager =
       driver ? driver->GetPasswordGenerationHelper() : nullptr;
   if (password_generation_manager) {
@@ -1278,6 +1282,14 @@ void PasswordManager::OnNonPasswordLoginDetected() {
   if (base::FeatureList::IsEnabled(
           features::kPreventPasswordManagerOnFederatedLogin)) {
     ResetSubmittedManager();
+    return;
+  }
+
+  if (base::FeatureList::IsEnabled(features::kPreventAPCOnFederatedLogin)) {
+    PasswordFormManager* manager = GetSubmittedManager();
+    if (manager) {
+      manager->SetNonPasswordLoginDetected(true);
+    }
   }
 }
 
@@ -1582,6 +1594,10 @@ void PasswordManager::OnPasswordFormsRendered(
 }
 
 void PasswordManager::OnLoginSuccessful() {
+  // This method may be triggered even if `OnNonPasswordLoginDetected` was
+  // triggered for the same submission. Currently there is an experiment
+  // PreventPasswordManagerOnFederatedLogin running, which prevents
+  // `OnLoginSuccessful` from triggering if a non-password login was detected.
   std::unique_ptr<BrowserSavePasswordProgressLogger> logger =
       GetLoggerIfAvailable(client_);
   if (logger) {
@@ -1651,7 +1667,8 @@ void PasswordManager::OnLoginSuccessful() {
         client_->GetLeakDetectionInitiator(),
         CreateFormForLeakCheck(submitted_manager->GetPendingCredentials(),
                                *submitted_manager->GetSubmittedForm()),
-        submitted_manager->GetURL());
+        submitted_manager->GetURL(),
+        submitted_manager->IsNonPasswordLoginDetected());
   }
 
   // TODO(crbug.com/40570965): Implement checking whether to save with

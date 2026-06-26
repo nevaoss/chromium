@@ -51,9 +51,22 @@ class RecordingDataManagerImpl : public RecordingDataManager {
       base::OnceCallback<
           void(std::vector<std::pair<int64_t, ActivityAnnotation>>)> callback)
       override;
+  void SaveActivityData(int64_t annotation_id,
+                        ActivityData data,
+                        base::OnceCallback<void(bool)> callback) override;
+  void GetActivityData(
+      int64_t annotation_id,
+      base::OnceCallback<void(std::optional<ActivityData>)> callback) override;
+  void DeleteActivityData(int64_t annotation_id,
+                          base::OnceCallback<void(bool)> callback) override;
 
  private:
+  // Reads the feature parameter and seeds the database if empty.
+  void SeedDatabaseIfEmpty();
+
   base::SequenceBound<CapabilitiesDatabase> db_;
+
+  base::WeakPtrFactory<RecordingDataManagerImpl> weak_ptr_factory_{this};
 };
 
 }  // namespace record_replay

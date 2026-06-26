@@ -21,6 +21,7 @@ group("resources") {
     "cloud_upload:resources",
     "crostini_installer:resources",
     "desk_api:resources",
+    "drive_internals:resources",
     "edu_coexistence:resources",
     "emoji_picker:resources",
     "enterprise_reporting:resources",
@@ -42,11 +43,14 @@ group("resources") {
     "notification_tester:resources",
     "parent_access:resources",
     "password_change:resources",
+    "power:resources",
     "remote_maintenance_curtain:resources",
     "sensor_info:resources",
     "set_time_dialog:resources",
     "skyvault:resources",
+    "slow:resources",
     "supervision:resources",
+    "sys_internals:resources",
     "vm:resources",
   ]
 }
@@ -83,35 +87,10 @@ grit("multidevice_setup_resources") {
 
 group("closure_compile") {
   deps = [
-    ":closure_compile_local",
     "account_manager:closure_compile",
     "account_manager/components:closure_compile",
     "emulator:closure_compile",
     "multidevice_internals:closure_compile",
     "smb_shares:closure_compile",
-    "sys_internals:closure_compile",
   ]
-}
-
-js_type_check("closure_compile_local") {
-  deps = [
-    ":power",
-    ":slow",
-  ]
-}
-
-js_library("power") {
-  deps = [
-    "//ash/webui/common/resources:cr.m",
-    "//ash/webui/common/resources:load_time_data.m",
-    "//ash/webui/common/resources:util",
-  ]
-}
-
-js_library("slow") {
-  deps = [
-    "//ash/webui/common/resources:cr.m",
-    "//ash/webui/common/resources:util",
-  ]
-  externs_list = [ "$externs_path/chrome_send.js" ]
 }

@@ -39,7 +39,6 @@ import org.chromium.chrome.browser.signin.services.SigninFlowTimestampsLogger.Ev
 import org.chromium.chrome.browser.signin.services.SigninFlowTimestampsLogger.FlowVariant;
 import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.browser.signin.services.SigninManager.SignInCallback;
-import org.chromium.chrome.browser.signin.services.SigninManager.SignOutCallback;
 import org.chromium.chrome.browser.signin.services.SigninMetricsUtils;
 import org.chromium.chrome.browser.signin.services.SigninPreferencesManager;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
@@ -57,7 +56,6 @@ import org.chromium.components.signin.AccountUtils;
 import org.chromium.components.signin.AccountsChangeObserver;
 import org.chromium.components.signin.base.AccountInfo;
 import org.chromium.components.signin.base.CoreAccountInfo;
-import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.signin.metrics.AccountConsistencyPromoAction;
 import org.chromium.components.signin.metrics.SigninAccessPoint;
@@ -554,7 +552,7 @@ public class FullscreenSigninMediator
                 // and the sign-in animation profile picture data cache should have been
                 // initialized.
                 assumeNonNull(mSigninAnimationProfileDataCache)
-                        .getProfileDataOrDefault(assumeNonNull(mSelectedAccount).getEmail())
+                        .getById(assumeNonNull(mSelectedAccount).getId())
                         .getImage());
         if (sAnimationsEnabled) {
             mModel.set(
@@ -660,7 +658,7 @@ public class FullscreenSigninMediator
             @SigninAccessPoint int accessPoint,
             SigninFlowTimestampsLogger signinTimestampsLogger,
             @Nullable SignInCallback signInCallback) {
-        SignOutCallback signOutCallback =
+        Runnable signOutCallback =
                 () -> {
                     if (mDestroyed) return;
                     FreManagementNoticeDialogHelper.checkAccountManagementAndSignIn(
@@ -672,11 +670,7 @@ public class FullscreenSigninMediator
                             mContext,
                             mModalDialogManager);
                 };
-        assumeNonNull(mSigninManager)
-                .signOut(
-                        SignoutReason.ABORT_SIGNIN,
-                        signOutCallback,
-                        /* forceWipeUserData= */ false);
+        assumeNonNull(mSigninManager).signOut(SignoutReason.ABORT_SIGNIN, signOutCallback);
     }
 
     /**
@@ -698,7 +692,7 @@ public class FullscreenSigninMediator
         IdentityManager identityManager =
                 IdentityServicesProvider.get().getIdentityManager(profile);
         if (identityManager == null) return null;
-        return identityManager.getPrimaryAccountInfo(ConsentLevel.SIGNIN);
+        return identityManager.getPrimaryAccountInfo();
     }
 
     private @AccountConsistencyPromoAction int getSigninPromoAction() {
@@ -729,9 +723,9 @@ public class FullscreenSigninMediator
         SigninPreferencesManager.getInstance().temporarilySuppressNewTabPagePromos();
         Profile profile = assumeNonNull(mDelegate.getProfileSupplier().get()).getOriginalProfile();
         if (assumeNonNull(IdentityServicesProvider.get().getIdentityManager(profile))
-                .hasPrimaryAccount(ConsentLevel.SIGNIN)) {
+                .hasPrimaryAccount()) {
             mModel.set(FullscreenSigninProperties.SHOW_SIGNIN_PROGRESS_SPINNER, true);
-            SignOutCallback signOutCallback =
+            Runnable signOutCallback =
                     () -> {
                         if (mDestroyed) {
                             // FirstRunActivity was destroyed while we were waiting for the
@@ -741,11 +735,7 @@ public class FullscreenSigninMediator
 
                         mDelegate.advanceToNextPage();
                     };
-            assumeNonNull(mSigninManager)
-                    .signOut(
-                            SignoutReason.ABORT_SIGNIN,
-                            signOutCallback,
-                            /* forceWipeUserData= */ false);
+            assumeNonNull(mSigninManager).signOut(SignoutReason.ABORT_SIGNIN, signOutCallback);
         } else {
             mDelegate.advanceToNextPage();
         }
@@ -776,8 +766,7 @@ public class FullscreenSigninMediator
 
             mModel.set(
                     FullscreenSigninProperties.BOTTOM_GROUP_ACCOUNT_DATA,
-                    mContinueButtonProfileDataCache.getProfileDataOrDefault(
-                            mSelectedAccount.getEmail()));
+                    mContinueButtonProfileDataCache.getById(mSelectedAccount.getId()));
             mModel.set(FullscreenSigninProperties.ENABLE_ACCOUNT_SELECTION, !mIsChild);
 
             // Until real data arrives, PROFILE_PICTURE is a placeholder silhouette.
@@ -791,7 +780,7 @@ public class FullscreenSigninMediator
                 mModel.set(
                         FullscreenSigninProperties.PROFILE_PICTURE,
                         mSigninAnimationProfileDataCache
-                                .getProfileDataOrDefault(mSelectedAccount.getEmail())
+                                .getById(mSelectedAccount.getId())
                                 .getImage());
             }
         }

@@ -33,6 +33,7 @@
 #include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service.h"
 #include "chrome/browser/ui/tabs/tab_strip_api/tab_strip_service_feature.h"
+#include "chrome/browser/ui/tabs/vertical_tab_strip_state.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/animations/tab_strip_animations.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -86,6 +87,7 @@ namespace {
 constexpr int kResizeAreaWidth = 5;
 constexpr int kCollapsedResizeAreaWidth = 2;
 constexpr int kKeyboardResizeWidth = 50;
+constexpr int kSnapDistance = 15;
 
 // Shadow is used in expand-on-hover mode. Shadow radius and opacity are dynamic
 // and set by the layout.
@@ -439,6 +441,17 @@ void VerticalTabStripRegionView::SetToolbarHeightForLayout(int toolbar_height) {
 void VerticalTabStripRegionView::SetCaptionButtonWidthForLayout(
     int caption_button_width) {
   top_button_container_->SetCaptionButtonWidthForLayout(caption_button_width);
+}
+
+void VerticalTabStripRegionView::SetIsExitingExpandOnHoverForLayout(
+    bool is_exiting_expand_on_hover) {
+  top_button_container_->SetIsExitingExpandOnHoverForLayout(
+      is_exiting_expand_on_hover);
+}
+
+bool VerticalTabStripRegionView::WillWrapDueToOverflow(
+    int available_width) const {
+  return top_button_container_->WillWrapDueToOverflow(available_width);
 }
 
 TabDragTarget* VerticalTabStripRegionView::GetTabDragTarget(
@@ -934,6 +947,12 @@ void VerticalTabStripRegionView::OnResize(int resize_amount,
   if (!new_state.collapsed) {
     new_state.uncollapsed_width =
         std::clamp(proposed_width, kUncollapsedMinWidth, kUncollapsedMaxWidth);
+    if (std::abs(new_state.uncollapsed_width -
+                 tabs::kVerticalTabStripDefaultUncollapsedWidth) <
+        kSnapDistance) {
+      new_state.uncollapsed_width =
+          tabs::kVerticalTabStripDefaultUncollapsedWidth;
+    }
     if (done_resizing) {
       // We only want to save the uncollapsed width to the state controller if
       // the user has lifted their mouse, otherwise dragging the resize area to
@@ -1284,17 +1303,31 @@ void VerticalTabStripRegionView::CalculateMouseVelocityForExpandOnHover() {
   // specified interval.
   expand_on_hover_heuristic_timer_.Reset();
 
+  // Increment the number of samples received.
+  expand_on_hover_heuristic_samples_ += 1;
+
   const int dx = std::abs(current_point.x() -
                           (*point_at_expand_on_hover_timer_start_).x());
   const base::TimeDelta dt =
       base::TimeTicks::Now() - *time_at_expand_on_hover_timer_start_;
 
-  // Avoid divide by zero errors by waiting for more samples.
-  if (dt.InMilliseconds() <= 0) {
+  // Wait a minimum amount of time before potentially expanding. This also
+  // avoids divide by zero errors because this param is at least 0.
+  if (dt <= tabs::kVerticalTabsExpandOnHoverVelocityHeuristicDelay.Get()) {
     return;
   }
 
-  expand_on_hover_heuristic_samples_ += 1;
+  // If the mouse is close to the inside edge, wait longer till the mouse is
+  // more fully inside the tab strip.
+  const int distance_from_inside_edge =
+      std::abs(current_point.x() - GetContentsBounds().right());
+  if (dt <= tabs::kVerticalTabsExpandOnHoverVelocityHeuristicEdgeDelay.Get() &&
+      distance_from_inside_edge <=
+          tabs::kVerticalTabsExpandOnHoverVelocityHeuristicDistanceFromEdge
+              .Get()) {
+    return;
+  }
+
   if (expand_on_hover_heuristic_samples_ >=
           tabs::kVerticalTabsExpandOnHoverVelocityHeuristicMinSamples.Get() &&
       static_cast<double>(dx) / dt.InMilliseconds() <

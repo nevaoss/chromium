@@ -14,6 +14,7 @@
 #include "base/memory/raw_ref.h"
 #include "base/memory/stack_allocated.h"
 #include "base/numerics/checked_math.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/task/bind_post_task.h"
 #include "base/task/thread_pool.h"
 #include "base/types/expected.h"
@@ -57,31 +58,6 @@ BASE_FEATURE(kWebNNUseXNNPackForConstantTransposeFolding,
 
 using DependentOperationsMap =
     base::flat_map<OperandId, base::flat_set<OperationId>>;
-
-webnn::ReduceKind MojoReduceTypeToComponent(mojom::Reduce::Kind kind) {
-  switch (kind) {
-    case mojom::Reduce::Kind::kL1:
-      return webnn::ReduceKind::kL1;
-    case mojom::Reduce::Kind::kL2:
-      return webnn::ReduceKind::kL2;
-    case mojom::Reduce::Kind::kLogSum:
-      return webnn::ReduceKind::kLogSum;
-    case mojom::Reduce::Kind::kLogSumExp:
-      return webnn::ReduceKind::kLogSumExp;
-    case mojom::Reduce::Kind::kMax:
-      return webnn::ReduceKind::kMax;
-    case mojom::Reduce::Kind::kMean:
-      return webnn::ReduceKind::kMean;
-    case mojom::Reduce::Kind::kMin:
-      return webnn::ReduceKind::kMin;
-    case mojom::Reduce::Kind::kProduct:
-      return webnn::ReduceKind::kProduct;
-    case mojom::Reduce::Kind::kSum:
-      return webnn::ReduceKind::kSum;
-    case mojom::Reduce::Kind::kSumSquare:
-      return webnn::ReduceKind::kSumSquare;
-  }
-}
 
 webnn::RecurrentNetworkDirection MojoRecurrentNetworkDirectionToComponent(
     mojom::RecurrentNetworkDirection direction) {
@@ -448,7 +424,8 @@ webnn::GruAttributes ConvertToGruAttributes(
   component_attributes.return_sequence = gru.return_sequence;
   component_attributes.direction =
       MojoRecurrentNetworkDirectionToComponent(gru.direction);
-  component_attributes.activation_count = gru.activations.size();
+  component_attributes.activation_count =
+      base::checked_cast<uint32_t>(gru.activations.size());
   component_attributes.label = gru.label;
 
   return component_attributes;
@@ -468,7 +445,8 @@ webnn::GruCellAttributes ConvertToGruCellAttributes(
         GetMojoOperand(operands, gru_cell.recurrent_bias_operand_id.value());
     component_attributes.recurrent_bias = recurrent_bias->descriptor;
   }
-  component_attributes.activation_count = gru_cell.activations.size();
+  component_attributes.activation_count =
+      base::checked_cast<uint32_t>(gru_cell.activations.size());
   component_attributes.label = gru_cell.label;
 
   return component_attributes;
@@ -2586,7 +2564,7 @@ bool OperationValidationContext::ValidateReduce(const mojom::Reduce& reduce,
 
   const base::expected<OperandDescriptor, std::string> validated_output =
       ValidateReduceAndInferOutput(
-          *context_properties_, MojoReduceTypeToComponent(reduce.kind),
+          *context_properties_, FromMojoReduceType(reduce.kind),
           input->descriptor, reduce.label, reduce.axes, reduce.keep_dimensions);
   if (!validated_output.has_value()) {
     return false;
@@ -2760,12 +2738,12 @@ TransposePendingPermutation(
     size_t element_size = bit_size / 8;
 
     base::FixedArray<uint32_t> inverse_permutation(rank);
-    for (size_t i = 0; i < rank; ++i) {
+    for (uint32_t i = 0; i < rank; ++i) {
       inverse_permutation[permutation[i]] = i;
     }
     auto& transposed_shape = descriptor.shape();
     base::FixedArray<uint32_t> original_shape(rank);
-    for (size_t i = 0; i < rank; ++i) {
+    for (uint32_t i = 0; i < rank; ++i) {
       original_shape[i] = descriptor.shape()[inverse_permutation[i]];
     }
 
@@ -2850,7 +2828,7 @@ TransposePendingPermutation(
             .copy_from(
                 data.subspan(original_offset * element_size, element_size));
 
-        for (int dimension = rank - 1; dimension >= 0; --dimension) {
+        for (size_t dimension = rank; dimension-- > 0;) {
           transposed_idx[dimension]++;
           if (transposed_idx[dimension] < transposed_shape[dimension]) {
             // Not overflowed, continue to next element.
@@ -3080,7 +3058,7 @@ WebNNGraphBuilderImpl::ValidateGraphImpl(
 
   for (size_t id = 0; id < graph_info.operands.size(); ++id) {
     const mojom::OperandPtr& operand = graph_info.operands[id];
-    const OperandId operand_id(id);
+    const OperandId operand_id(base::checked_cast<uint32_t>(id));
     const size_t byte_length = operand->descriptor.PackedByteLength();
     if (byte_length > context_properties.tensor_byte_length_limit) {
       return std::nullopt;
@@ -3256,7 +3234,7 @@ WebNNGraphBuilderImpl::ValidateGraphImpl(
   // operands are connected to the graph inputs and outputs.
   for (size_t id = 0; id < graph_info.operands.size(); ++id) {
     const mojom::OperandPtr& operand = graph_info.operands[id];
-    const OperandId operand_id(id);
+    const OperandId operand_id(base::checked_cast<uint32_t>(id));
     if (operand->kind == mojom::Operand::Kind::kOutput) {
       // Graph outputs must be the output of some operator.
       // Intermediate outputs can be eliminated by constant folding logic so

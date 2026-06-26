@@ -1049,7 +1049,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackPress.IncorrectEdgeSwipe" enum="SwipeEdge"
-    expires_after="2026-08-23">
+    expires_after="2026-10-25">
   <owner>eleanorlee@google.com</owner>
   <owner>lazzzis@chromium.org</owner>
   <owner>clank-app-team@google.com</owner>
@@ -1090,7 +1090,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackPress.Intercept{Direction}"
-    enum="BackPressConsumer" expires_after="2026-08-16">
+    enum="BackPressConsumer" expires_after="2026-10-25">
   <owner>lazzzis@chromium.org</owner>
   <owner>src/chrome/browser/back_press/android/OWNERS</owner>
   <summary>
@@ -1762,30 +1762,11 @@ chromium-metrics-reviews@google.com.
   </summary>
   <token key="Source">
     <variant name="AppMenu" summary="Clicked from the App Menu."/>
+    <variant name="AppMenu.RoleManagerDialog"
+        summary="App Menu click that successfully showed the Role Manager
+                 Dialog."/>
     <variant name="Settings" summary="Clicked from Chrome Settings."/>
   </token>
-</histogram>
-
-<histogram name="Android.DefaultBrowserPromo.Outcome.AppMenu"
-    enum="AndroidDefaultBrowserPromoOutcomeType" expires_after="2027-01-30">
-  <owner>eleanorlee@google.com</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    The final default browser state (outcome) after the user has been prompted
-    to set Chrome as the default via the App Menu item. Recorded when the system
-    UI prompting the user to change their default is dismissed.
-  </summary>
-</histogram>
-
-<histogram name="Android.DefaultBrowserPromo.Outcome.FRE"
-    enum="AndroidDefaultBrowserPromoOutcomeType" expires_after="2027-04-09">
-  <owner>eleanorlee@google.com</owner>
-  <owner>twellington@chromium.org</owner>
-  <summary>
-    The final default browser state (outcome) after the user has been prompted
-    to set Chrome as the default via the First Run Experience. Recorded when the
-    Role Manager Dialog is dismissed.
-  </summary>
 </histogram>
 
 <histogram name="Android.DefaultBrowserPromo.Outcome.{CurrentState}"
@@ -1825,6 +1806,30 @@ chromium-metrics-reviews@google.com.
     <variant name="FourthPromo" summary="four"/>
     <variant name="SecondPromo" summary="two"/>
     <variant name="ThirdPromo" summary="three"/>
+  </token>
+</histogram>
+
+<histogram name="Android.DefaultBrowserPromo.Outcome.{Source}"
+    enum="AndroidDefaultBrowserPromoOutcomeType" expires_after="2027-04-22">
+  <owner>eleanorlee@google.com</owner>
+  <owner>twellington@chromium.org</owner>
+  <summary>
+    The final default browser state (outcome) after the user has been prompted
+    to set Chrome as the default via the {Source}.
+  </summary>
+  <token key="Source">
+    <variant name="AppMenu"
+        summary="Promo shown in App Menu. Recorded when the Role Manager
+                 Dialog is dismissed."/>
+    <variant name="AppMenu.DeepLink"
+        summary="Promo shown in App Menu. Recorded upon returning to Chrome
+                 from a deep-link."/>
+    <variant name="FRE"
+        summary="Promo shown in FRE. Recorded when the Role Manager Dialog is
+                 dismissed."/>
+    <variant name="Settings"
+        summary="Promo shown in Main Settings. Recorded upon returning to
+                 Chrome from a deep-link."/>
   </token>
 </histogram>
 
@@ -1877,7 +1882,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Display.IsDisplayTopologyAvaialble" enum="Boolean"
-    expires_after="2026-08-23">
+    expires_after="2026-10-25">
   <owner>renkens@google.com</owner>
   <owner>boliu@chromium.org</owner>
   <summary>
@@ -2315,7 +2320,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Event.ActionDown" enum="InputDeviceSource"
-    expires_after="2026-08-23">
+    expires_after="2026-10-25">
   <owner>mvanouwerkerk@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <owner>src/chrome/android/OWNERS</owner>
@@ -2419,16 +2424,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.FontLookup.FetchAllFontFiles.Time" units="ms"
-    expires_after="2025-03-09">
-  <owner>twellington@chromium.org</owner>
-  <owner>clank-app-team@google.com</owner>
-  <summary>
-    Records the time taken to fetch all available font files from the GMS Core
-    Android downloadable font provider.
-  </summary>
-</histogram>
-
 <histogram name="Android.FontLookup.GmsFontRequest.Time" units="ms"
     expires_after="2023-08-08">
   <owner>twellington@chromium.org</owner>
@@ -2501,7 +2496,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Hub.PaneFocused" enum="HubPaneId"
-    expires_after="2026-08-23">
+    expires_after="2026-10-25">
   <owner>ckitagawa@chromium.org</owner>
   <owner>clank-hub-dev@google.com</owner>
   <summary>
@@ -2515,7 +2510,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Hub.PaneFocused.PaneSwitcher" enum="HubPaneId"
-    expires_after="2026-08-23">
+    expires_after="2026-10-25">
   <owner>ckitagawa@chromium.org</owner>
   <owner>clank-hub-dev@google.com</owner>
   <summary>
@@ -2643,7 +2638,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Input.TouchEvent.Action" enum="MotionEventAction"
-    expires_after="2026-07-26">
+    expires_after="2026-10-25">
   <owner>lizeb@google.com</owner>
   <owner>clank-performance-team@google.com</owner>
   <summary>
@@ -2682,7 +2677,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.InputHintChecker.InputHintResult"
-    enum="InputHintResult" expires_after="2026-06-14">
+    enum="InputHintResult" expires_after="2026-10-25">
   <owner>pasko@chromium.org</owner>
   <owner>mthiesse@chromium.org</owner>
   <summary>
@@ -2875,7 +2870,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.InputOnViz.Viz.StateProcessingResult3"
-    enum="InputOnVizStateProcessingResult" expires_after="2026-08-23">
+    enum="InputOnVizStateProcessingResult" expires_after="2026-10-25">
   <owner>kartarsingh@google.com</owner>
   <owner>woa-performance-team@google.com</owner>
   <summary>
@@ -3684,7 +3679,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.MultipleUserProfilesState"
-    enum="MultipleUserProfilesState" expires_after="2026-07-12">
+    enum="MultipleUserProfilesState" expires_after="2026-10-25">
   <owner>ckitagawa@chromium.org</owner>
   <owner>yfriedman@chromium.org</owner>
   <owner>chrome-metrics-team@google.com</owner>
@@ -5002,7 +4997,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Pdf.DownloadTime.Transient" units="ms"
-    expires_after="2026-06-30">
+    expires_after="2026-10-25">
   <owner>shuyng@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
@@ -5335,7 +5330,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.PredictiveGestureNavigation{Transition}"
-    enum="PredictiveNavTransitionPhase" expires_after="2026-08-23">
+    enum="PredictiveNavTransitionPhase" expires_after="2026-10-25">
   <owner>lazzzis@google.com</owner>
   <owner>clank-app-team@google.com</owner>
   <summary>
@@ -8285,6 +8280,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.WebView.Preconnect.Event"
+    enum="AndroidWebViewPreconnectEvent" expires_after="2026-09-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records events during the WebView preconnect lifecycle. Logged when the
+    preconnect process begins and when the session is closed.
+  </summary>
+</histogram>
+
 <histogram name="Android.WebView.PrimaryCpuAbiBitness"
     enum="PrimaryCpuAbiBitness" expires_after="2026-11-30">
   <owner>tasak@google.com</owner>
@@ -9300,18 +9305,6 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
-    name="Android.WebView.UniversalAccess.OriginUrlMismatchInHistoryUtil"
-    enum="BooleanAllowed" expires_after="2024-11-03">
-  <owner>torne@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Records when we allow a cross origin push state from a file URL solely
-    because AllowUniversalAccessFromFileURLs is enabled. This is logged from the
-    implementation of history.
-  </summary>
-</histogram>
-
-<histogram
     name="Android.WebView.UniversalAccess.OriginUrlMismatchInRenderFrame"
     enum="BooleanAllowed" expires_after="2023-12-10">
   <owner>torne@chromium.org</owner>
@@ -9522,6 +9515,38 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram
+    name="Android.Window.OcclusionExperimental.MaxOfMinVisibleRectsDuration.{DimensionBucket}"
+    units="ms" expires_after="2027-04-02">
+  <owner>kalutes@google.com</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records the duration spent in each bucket of the maximum of all the minimum
+    dimensions of visible rects for a window. This value gives a rough idea of
+    'how much a window is visible by'. For example, if a window has two visible
+    rects on the left and top sides with dimensions of 1000x20 and 50x1000,
+    respectively, then this metric value will be 50 and count towards the 31-50
+    bucket.
+
+    This metric is logged when the bucket changes for a WindowAndroid instance
+    or when the window is destroyed.
+  </summary>
+<!-- LINT.IfChange(DimensionBucket) -->
+
+  <token key="DimensionBucket">
+    <variant name="0" summary="0 pixels"/>
+    <variant name="1To10" summary="1 to 10 pixels"/>
+    <variant name="11To30" summary="11 to 30 pixels"/>
+    <variant name="31To50" summary="31 to 50 pixels"/>
+    <variant name="51To100" summary="51 to 100 pixels"/>
+    <variant name="101To200" summary="101 to 200 pixels"/>
+    <variant name="201Plus" summary="201+ pixels"/>
+    <variant name="FullyVisible" summary="Fully visible"/>
+  </token>
+<!-- LINT.ThenChange(//ui/android/java/src/org/chromium/ui/base/WindowAndroidOcclusionMetrics.java:DimensionBucket) -->
+
+</histogram>
+
 <histogram name="Android.Window.OcclusionExperimental.OccludedCount"
     units="count" expires_after="2027-04-02">
   <owner>kalutes@google.com</owner>
@@ -9568,7 +9593,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Window.TimeToAcquireWindowBounds" units="ms"
-    expires_after="2026-08-23">
+    expires_after="2026-10-25">
   <owner>chominskib@google.com</owner>
   <owner>lt-web-apps-team@google.com</owner>
   <summary>
@@ -9578,7 +9603,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Window.TimeToUpdateWindowBounds" units="ms"
-    expires_after="2026-08-23">
+    expires_after="2026-10-25">
   <owner>chominskib@google.com</owner>
   <owner>lt-web-apps-team@google.com</owner>
   <summary>

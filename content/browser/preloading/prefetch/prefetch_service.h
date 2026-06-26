@@ -75,9 +75,9 @@ enum class PrefetchRedirectNetworkContextTransition {
 // prefetch, and provide prefetched resources to URL loader interceptor when
 // needed.
 //
-// `PrefetchService` is an `PrefetchContainer::Observer` to `PrefetchContainer`s
+// `PrefetchService` is an `PrefetchContainerObserver` to `PrefetchContainer`s
 // in `owned_prefetches_`.
-class CONTENT_EXPORT PrefetchService : public PrefetchContainer::Observer {
+class CONTENT_EXPORT PrefetchService : public PrefetchContainerObserver {
  public:
   static PrefetchService* GetFromFrameTreeNodeId(
       FrameTreeNodeId frame_tree_node_id);
@@ -364,14 +364,13 @@ class CONTENT_EXPORT PrefetchService : public PrefetchContainer::Observer {
                           const net::RedirectInfo& redirect_info,
                           network::mojom::URLResponseHeadPtr redirect_head);
 
-  // PrefetchContainer::Observer overrides:
+  // PrefetchContainerObserver overrides:
   void OnWillBeDestroyed(const PrefetchContainer& prefetch_container) override;
-  void OnGotInitialEligibility(const PrefetchContainer& prefetch_container,
-                               PreloadingEligibility eligibility) override;
+  void OnGotInitialEligibility(
+      const PrefetchContainer& prefetch_container) override;
   void OnDeterminedHead(const PrefetchContainer& prefetch_container) override;
   void OnPrefetchCompletedOrFailed(
-      const PrefetchContainer& prefetch_container,
-      const network::URLLoaderCompletionStatus& completion_status) override;
+      const PrefetchContainer& prefetch_container) override;
 
   // If `should_progress` is true, calls `PrefetchScheduler::ProgressAsync()`
   // (implicitly).

@@ -35,6 +35,7 @@
   --composebox-submit-container-inline-end:
       var(--composebox-last-icon-inline-end);
   --composebox-last-icon-inline-end: 12px;
+  --cr-composebox-tool-chip-animation: none;
   --cr-composebox-tool-chip-height: var(--icon-menu-button-size);
   --cr-searchbox-height: 52px;
   --cr-searchbox-min-width: min(calc(100%), 1100px);
@@ -50,6 +51,17 @@
   --pdf-icon-size: 16px;
   --document-icon-size: 16px;
   --injected-input-icon-size: 24px;
+}
+
+:host([energy-effect-enabled_]) {
+  --cr-composebox-tool-chip-animation:
+    fade-in 100ms cubic-bezier(0, 0, 0, 1) forwards,
+    slide-in 350ms cubic-bezier(0.42, 1.67, 0.21, 0.9) forwards;
+  --cancel-button-inline-end: 12px;
+  --context-carousel-inline-start-spacing: 12px;
+  --context-carousel-top-position: 12px;
+  --cr-composebox-text-container-padding-block-start: 12px;
+  --contextual-entrypoint-and-carousel-context-menu-container-padding-inline-start: 8px;
 }
 
 /* Composebox default colors are for light mode on AIM results. */
@@ -225,6 +237,10 @@
   padding-top: var(--carousel-height, 60px);
 }
 
+:host([energy-effect-enabled_]) #composebox[show-file-carousel][expanding_]::part(input-container) {
+  padding-top: calc(var(--carousel-height, 60px) - 8px);
+}
+
 #composebox::part(icon-container) {
   display: none;
 }
@@ -251,6 +267,16 @@
   --cr-icon-button-icon-size: var(--icon-menu-icon-size);
   --cr-icon-button-margin-start: 4px;
   --cr-icon-button-size: var(--icon-menu-button-size);
+}
+
+:host([energy-effect-enabled_]) #composebox::part(context-menu-entrypoint-icon),
+:host([energy-effect-enabled_]) #composebox::part(entrypoint-button) {
+  --cr-composebox-entrypoint-background-color:
+      var(--color-composebox-context-entrypoint-background);
+  --cr-composebox-entrypoint-border-radius: 100px;
+  --cr-composebox-entrypoint-height: 36px;
+  --cr-composebox-entrypoint-width: 48px;
+  --cr-icon-button-margin-start: 8px;
 }
 
 /* Controls cancel and submit buttons. */
@@ -344,6 +370,18 @@
   top: auto;
 }
 
+:host([energy-effect-enabled_]) #composebox::part(submit-icon),
+:host([energy-effect-enabled_]) #composebox::part(submit-overlay) {
+  bottom: 0;
+}
+
+#composebox:not([submit-enabled])::part(submit) {
+  display: block; /* Override display: none from shared CSS */
+  opacity: 0;
+  transform: scale(0);
+  visibility: hidden;
+}
+
 #composebox[submit-enabled]::part(submit) {
   bottom: var(--composebox-icon-menu-bottom);
   display: block;
@@ -351,6 +389,13 @@
   inset-inline-start: auto;
   position: absolute;
   top: auto;
+  opacity: 1;
+  transform: scale(1);
+  visibility: visible;
+  transition:
+    opacity 100ms linear,
+    transform 100ms cubic-bezier(0.4, 0, 1, 1),
+    visibility 0ms;
 }
 
 /* TODO(crbug.com/454388827: - Color the tab chips to spec. */
@@ -601,6 +646,13 @@
 }
 
 /* Needed for space between header and composebox. */
-:host([is-side-panel]) #composebox:not([show-dropdown]) {
+:host([is-side-panel][is-zero-state]) #composebox:not([show-dropdown]) {
   margin-top: 24px;
+}
+
+/* Disable animations if requested */
+@container style(--cr-animations-disabled: 1) {
+  #composebox::part(submit) {
+    transition: none;
+  }
 }

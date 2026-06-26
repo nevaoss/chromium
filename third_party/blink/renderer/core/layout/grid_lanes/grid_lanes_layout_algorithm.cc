@@ -5,7 +5,6 @@
 #include "third_party/blink/renderer/core/layout/grid_lanes/grid_lanes_layout_algorithm.h"
 
 #include "base/notreached.h"
-#include "third_party/blink/renderer/core/layout/disable_layout_side_effects_scope.h"
 #include "third_party/blink/renderer/core/layout/grid/grid_baseline_accumulator.h"
 #include "third_party/blink/renderer/core/layout/grid/grid_data.h"
 #include "third_party/blink/renderer/core/layout/grid/grid_item.h"
@@ -16,6 +15,7 @@
 #include "third_party/blink/renderer/core/layout/grid_lanes/stacking_baseline_accumulator.h"
 #include "third_party/blink/renderer/core/layout/layout_utils.h"
 #include "third_party/blink/renderer/core/layout/logical_box_fragment.h"
+#include "third_party/blink/renderer/platform/wtf/functional.h"
 
 namespace blink {
 
@@ -189,6 +189,12 @@ const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
 
   // Place out-of-flow items after setting the intrinsic block size, since
   // out-of-flow items don't contribute to the intrinsic size of the container.
+  //
+  // TODO(celestepan): Handle content alignment (justify-content /
+  // align-content) and fill-reverse for OOF items. At the moment, we are
+  // adjusting their offsets in `MoveChildrenInDirection`, which is called
+  // earlier in `PlaceGridLanesItems`, but we don't populate the OOF children
+  // until here.
   if (!oof_children.empty()) {
     PlaceOutOfFlowItems(*layout_data, block_size, oof_children);
   }
@@ -199,30 +205,6 @@ const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
 }
 
 namespace {
-
-// TODO(almaher): Should we consolidate this with LayoutGridItemForMeasure()?
-const LayoutResult* LayoutGridLanesItemForMeasure(
-    const GridItemData& grid_lanes_item,
-    const ConstraintSpace& constraint_space,
-    SizingConstraint sizing_constraint) {
-  const auto& node = grid_lanes_item.node;
-
-  // Disable side effects during MinMax computation to avoid potential "MinMax
-  // after layout" crashes. This is not necessary during the layout pass, and
-  // would have a negative impact on performance if used there.
-  //
-  // TODO(ikilpatrick): For subgrid, ideally we don't want to disable side
-  // effects as it may impact performance significantly; this issue can be
-  // avoided by introducing additional cache slots (see crbug.com/1272533).
-  //
-  // TODO(almaher): Handle subgrid here.
-  std::optional<DisableLayoutSideEffectsScope> disable_side_effects;
-  if (!node.GetLayoutBox()->NeedsLayout() &&
-      sizing_constraint != SizingConstraint::kLayout) {
-    disable_side_effects.emplace();
-  }
-  return node.Layout(constraint_space);
-}
 
 LayoutUnit AlignContentOffset(
     LayoutUnit intrinsic_size,
@@ -385,38 +367,76 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItems(
   if (is_for_columns) {
     intrinsic_block_size_ = stacking_axis_size;
   }
+
   // Apply content alignment/justification. This is an additional offset
   // determined by the intrinsic inline or block size of the grid-lanes
   // container, so it must occur after that has been determined. This must also
   // occur after the container baselines have been set.
   const auto& content_alignment =
       is_for_columns ? style.AlignContent() : style.JustifyContent();
-  if (content_alignment != ComputedStyleInitialValues::InitialAlignContent()) {
+  const auto child_available_size = ChildAvailableSize();
+
+  // At this stage for individual items, we only need to perform fill-reverse
+  // for the case of columns with an indefinite stacking axis, which is in the
+  // block direction. Every other case of fill-reverse will have been handled
+  // earlier in `RunGridLanesPlacementPhase`.
+  const bool is_fill_reverse = style.IsReverseGridLanesFillDirection();
+  const bool apply_fill_reverse_to_children =
+      is_fill_reverse && is_for_columns &&
+      child_available_size.block_size == kIndefiniteSize;
+
+  if (content_alignment != ComputedStyleInitialValues::InitialAlignContent() ||
+      apply_fill_reverse_to_children) {
+    const LayoutUnit container_stacking_axis_available_size =
+        is_for_columns ? child_available_size.block_size
+                       : child_available_size.inline_size;
+    const LayoutUnit effective_stacking_axis_size =
+        container_stacking_axis_available_size != kIndefiniteSize
+            ? container_stacking_axis_available_size
+            : stacking_axis_size;
     const LayoutUnit intrinsic_inline_size =
         is_for_columns ? grid_axis_size : stacking_axis_size;
 
+    // For definite stacking axis, use the container's available size to
+    // compute alignment. For indefinite stacking axis, use the intrinsic
+    // stacking-axis size (alignment will have no free space unless the
+    // resolved container size differs due to min-height/etc).
     LayoutUnit align_content_offset = AlignContentOffset(
         is_for_columns ? intrinsic_block_size_ : intrinsic_inline_size,
-        is_for_columns ? ChildAvailableSize().block_size
-                       : ChildAvailableSize().inline_size,
+        effective_stacking_axis_size,
         baseline_accumulator->FirstBaseline().value_or(LayoutUnit()),
         content_alignment);
 
-    // In fill-reverse, items are already positioned at the end of the stacking
-    // axis (via the per-item flip in `RunGridLanesPlacementPhase`). The content
-    // alignment offset computed above assumes items start at the beginning of
-    // the tracks, so we negate it to shift items in the correct direction.
-    if (style.IsReverseGridLanesFillDirection()) {
+    // In fill-reverse, items either already are, or will be, positioned at the
+    // end of the stacking axis. The content alignment offset computed above
+    // assumes items start at the beginning of the tracks, so we negate it to
+    // shift items in the correct direction.
+    if (is_fill_reverse) {
       align_content_offset *= -1;
     }
 
-    const bool is_definite_size =
-        is_for_columns ? ChildAvailableSize().block_size != kIndefiniteSize
-                       : ChildAvailableSize().inline_size != kIndefiniteSize;
-    if (is_definite_size) {
-      container_builder_.MoveChildrenInDirection(
-          align_content_offset, /*is_block_direction=*/is_for_columns);
+    const LayoutUnit border_scrollbar_padding_start =
+        is_for_columns ? BorderScrollbarPadding().block_start
+                       : BorderScrollbarPadding().inline_start;
+    std::optional<BoxFragmentBuilder::AdditionalOffsetAdjustment>
+        additional_offset_adjustment;
+    if (apply_fill_reverse_to_children) {
+      additional_offset_adjustment.emplace(blink::BindRepeating(
+          [](WritingDirectionMode writing_direction, bool is_block_direction,
+             LayoutUnit stacking_axis_size,
+             LayoutUnit border_scrollbar_padding_start,
+             LogicalFragmentLink& child) {
+            child.ReverseChildOffset(writing_direction, is_block_direction,
+                                     stacking_axis_size,
+                                     border_scrollbar_padding_start);
+          },
+          container_builder_.GetWritingDirection(),
+          /*is_block_direction=*/is_for_columns, effective_stacking_axis_size,
+          border_scrollbar_padding_start));
     }
+    container_builder_.MoveChildrenInDirection(
+        align_content_offset, /*is_block_direction=*/is_for_columns,
+        additional_offset_adjustment);
   }
 }
 
@@ -469,6 +489,45 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
         running_positions.FinalizeItemSpanAndGetMaxPosition(
             grid_axis_start_offset, grid_lanes_item, track_collection);
 
+    // For auto-placed subgrids, the inherited track collection in the
+    // subgridded (grid) axis was built from the temporary placement at the
+    // beginning of the container during track sizing. Now that the grid lanes
+    // placement algorithm has determined the final position, rebuild the
+    // subgrid's inherited track collection using the updated range indices so
+    // the subgrid layout uses the correct tracks.
+    //
+    // TODO(almaher): What about nested subgrids? Those won't be updated
+    // correctly. Will this require a separate pass, or do we just need to
+    // make this update for the rest of its subtree, as well?
+    //
+    // TODO(almaher): Also, note that this only updates the inherited track
+    // collection. For cases where the opposing axis depends on the sizing in
+    // the grid axis, we will need to run another pass altogether to ensure
+    // accurate sizing. We will likely need a way to store the final position
+    // for these subgrids before the second pass.
+    if (is_subgrid && grid_lanes_item.is_auto_placed &&
+        grid_lanes_item.StartLine(grid_axis_direction) !=
+            grid_axis_start_offset) {
+      CHECK(child_layout_subtree);
+      GridLayoutData* child_layout_data = child_layout_subtree->LayoutData();
+      CHECK(child_layout_data->HasSubgriddedAxis(grid_axis_direction));
+
+      const SubgriddedItemData subgridded_item_data(
+          grid_lanes_item, &layout_data, container_writing_mode);
+      const ConstraintSpace subgrid_space =
+          CreateConstraintSpaceForLayout(subgridded_item_data);
+      const FragmentGeometry subgrid_fragment_geometry =
+          CalculateInitialFragmentGeometryForSubgrid(grid_lanes_item,
+                                                     subgrid_space);
+
+      const GridLayoutAlgorithm subgrid_algorithm(
+          {grid_lanes_item.node, subgrid_fragment_geometry, subgrid_space});
+      child_layout_data->SetTrackCollection(CreateSubgridTrackCollection(
+          subgridded_item_data, grid_lanes_item.node.Style(), subgrid_space,
+          subgrid_algorithm.BorderScrollbarPadding(),
+          subgrid_algorithm.GetGridAvailableSize(), grid_axis_direction));
+    }
+
     // During track sizing, we may force a specific inline size on an item
     // if the available space in that direction is indefinite, particularly for
     // orthogonal items. In Grid, that constraint is maintained during layout
@@ -514,8 +573,8 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
     const auto& item_style = item_node.Style();
     const LayoutResult* result =
         is_for_layout ? result = item_node.Layout(space)
-                      : LayoutGridLanesItemForMeasure(grid_lanes_item, space,
-                                                      *sizing_constraint);
+                      : LayoutGridItemForMeasure(grid_lanes_item, space,
+                                                 *sizing_constraint);
 
     const auto& physical_fragment =
         To<PhysicalBoxFragment>(result->GetPhysicalFragment());
@@ -589,14 +648,14 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
       // For fill-reverse, items stack from the end of the container instead
       // of the start. We compute the base offset from the container's end so
       // that alignment (which adds margins) works correctly without needing
-      // to mirror or swap margins after the fact.
+      // to mirror or swap margins after the fact. Columns with an indefinite
+      // block size are handled after placement. Only columns can have an
+      // indefinite stacking axis size, since rows use the viewport width if no
+      // width is defined.
       if (style.IsReverseGridLanesFillDirection()) {
         // `ChildAvailableSize()` returns the content-box size of the container
         // (i.e., the resolved size minus border, scrollbar, and padding). We
         // use it here to determine the stacking-axis offset for fill-reverse.
-        //
-        // TODO(celestepan): Account for fill-reverse case with indefinite
-        // height (columns) and indefinite width (rows).
         const LayoutUnit container_stacking_axis_size =
             is_for_columns ? ChildAvailableSize().block_size
                            : ChildAvailableSize().inline_size;
@@ -1225,11 +1284,11 @@ const LayoutResult* GridLanesLayoutAlgorithm::LayoutItemForMeasureWithFallback(
     const MinMaxSizes sizes = min_max_sizes_result.sizes;
     const auto fallback_space = CreateConstraintSpaceForMeasure(
         *grid_lanes_item, /*opt_fixed_inline_size=*/sizes.max_size);
-    return LayoutGridLanesItemForMeasure(*grid_lanes_item, fallback_space,
-                                         sizing_constraint);
+    return LayoutGridItemForMeasure(*grid_lanes_item, fallback_space,
+                                    sizing_constraint);
   }
-  return LayoutGridLanesItemForMeasure(*grid_lanes_item, space_for_measure,
-                                       sizing_constraint);
+  return LayoutGridItemForMeasure(*grid_lanes_item, space_for_measure,
+                                  sizing_constraint);
 }
 
 // TODO(almaher): Eventually look into consolidating repeated code with
@@ -1253,8 +1312,6 @@ LayoutUnit GridLanesLayoutAlgorithm::ComputeGridLanesItemBlockContribution(
   //  - We'll need to do a full layout for tables.
   //  - We'll need special logic for replaced elements.
   //  - We'll need to respect the aspect-ratio when appropriate.
-
-  // TODO(almaher): Properly handle subgrid here.
 
   const LayoutResult* result = LayoutItemForMeasureWithFallback(
       grid_lanes_item, space_for_measure, sizing_constraint);

@@ -11,8 +11,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import static org.chromium.chrome.browser.url_constants.UrlConstantResolver.getOriginalNonNativeNtpGurl;
-
 import android.content.Context;
 
 import androidx.test.filters.MediumTest;
@@ -49,6 +47,7 @@ import org.chromium.chrome.browser.tab.MockTab;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.toolbar.top.ToolbarLayout;
+import org.chromium.chrome.browser.url_constants.UrlConstantResolver;
 import org.chromium.chrome.test.ChromeJUnit4RunnerDelegate;
 import org.chromium.chrome.test.R;
 import org.chromium.chrome.test.transit.ChromeTransitTestRules;
@@ -115,7 +114,7 @@ public class LocationBarModelTest {
                 () -> {
                     TestLocationBarModel model =
                             new TestLocationBarModel(mActivityTestRule.getActivity());
-                    model.setVisibleGurl(getOriginalNonNativeNtpGurl());
+                    model.setVisibleGurl(UrlConstantResolver.getOriginalNonNativeNtpGurl());
                     assertDisplayAndEditText(model, "", null);
 
                     model.setVisibleGurl(JUnitTestGURLs.CHROME_ABOUT);
@@ -131,7 +130,7 @@ public class LocationBarModelTest {
                     model.setDisplayUrl("one.com");
                     assertDisplayAndEditText(model, "one.com", "https://one.com");
 
-                    // https://crbug.com/1214481
+                    // https://crbug.com/40056044
                     model.setVisibleGurl(GURL.emptyGURL());
                     model.setDisplayUrl("about:blank");
                     model.setFullUrl("about:blank");

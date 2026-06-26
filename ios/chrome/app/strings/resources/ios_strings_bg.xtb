@@ -54,6 +54,7 @@
 <translation id="1179890706672152411">Хранилището ви е пълно</translation>
 <translation id="1181037720776840403">Премахване</translation>
 <translation id="1190609913194133056">Център за известия</translation>
+<translation id="1199631150313925648">Ръчно въвеждане</translation>
 <translation id="1199963004393929848">Зелена тема</translation>
 <translation id="1201402288615127009">Напред</translation>
 <translation id="1204075260022434100">{count,plural, =1{Отметката е запазена в папката „{title}“ в профила ви {email}}other{{count} отметки са запазени в папката „{title}“ в профила ви {email}}}</translation>
@@ -958,6 +959,7 @@
 <translation id="441868831736628555">Съобщение за поверителност</translation>
 <translation id="4420409367264901497">Редактиране на отметката</translation>
 <translation id="4425365312778464779">Този профил е управляван</translation>
+<translation id="443008484043213881">Инструменти</translation>
 <translation id="4430277756566635951">Понастоящем сте избрали: <ph name="EMAIL" />. Изберете профил.</translation>
 <translation id="4430505936695785931">Получавайте запазени пароли в други приложения</translation>
 <translation id="4431224949908513835">Изберете начин на плащане, който да се попълни.</translation>
@@ -1076,6 +1078,7 @@
 <translation id="4824497107140370669">{count,plural, =0{{domain}}=1{{domain} и още 1}other{{domain} и още {count}}}</translation>
 <translation id="4826588772550366629">камерата и микрофона ви</translation>
 <translation id="4828431027673677473">Продукти въз основа на интересите ви</translation>
+<translation id="4829420936835028285">Редактиране на групата раздели</translation>
 <translation id="4833786495304741580">Автоматично изпраща до Google статистически данни за употребата и сигнали за сривове.</translation>
 <translation id="483689884442613745">Запазване…</translation>
 <translation id="4840495572919996524">Вашите отметки, история, пароли и други неща повече няма да се синхронизират с профила ви в Google.</translation>
@@ -1083,7 +1086,6 @@
 <translation id="484462545196658690">Автоматично</translation>
 <translation id="4850886885716139402">Изглед</translation>
 <translation id="4854068532375923088">Разрешаване на Gemini да използва камерата ви</translation>
-<translation id="4860114370595561279">Запазената от вас информация се съхранява на устройството ви</translation>
 <translation id="4860895144060829044">Обаждане</translation>
 <translation id="4861953997778766866">Всеки може да прави промени в споделените от вас групи раздели</translation>
 <translation id="4865063548323785458">Запазвайте и попълвайте автоматично паролите си, за да влизате лесно в сайтове и приложения</translation>
@@ -1294,6 +1296,7 @@
 <translation id="5581786858144165447">Режим „Попитайте AI“</translation>
 <translation id="5585019845078534178">Карти</translation>
 <translation id="5591526871732898147">Прикачено изображение {index}</translation>
+<translation id="5594597292424622277">Поставяне на видеоклипа на пауза</translation>
 <translation id="5595485650161345191">Редактиране на адреса</translation>
 <translation id="559567008082979829">Задайте изтеглянията ви да се изтриват след един месец.</translation>
 <translation id="5596627076506792578">Още опции</translation>
@@ -2163,6 +2166,7 @@
 <translation id="8528009254289981965">Отваряне на връзки от други приложения в режим „инкогнито“</translation>
 <translation id="8529767659511976195">Ново</translation>
 <translation id="8531572740963685410">PDF файлове</translation>
+<translation id="8532059953132740592">Пускане на видеоклипа</translation>
 <translation id="8533411848724153701">Gemini</translation>
 <translation id="8533670235862049797">Безопасно сърфиране е включено</translation>
 <translation id="8534481786647257214">Публикацията в Google+ е завършена.</translation>

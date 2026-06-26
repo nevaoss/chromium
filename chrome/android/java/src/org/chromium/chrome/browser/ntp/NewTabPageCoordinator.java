@@ -52,7 +52,8 @@ import org.chromium.chrome.browser.magic_stack.ModuleDelegateHost;
 import org.chromium.chrome.browser.magic_stack.ModuleRegistry;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.ntp.NewTabPage.OnSearchBoxScrollListener;
-import org.chromium.chrome.browser.ntp.search.SearchBoxCoordinator;
+import org.chromium.chrome.browser.ntp.search.NtpSearchBox;
+import org.chromium.chrome.browser.ntp.search.NtpSearchBoxFactory;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationConfigManager;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinatorFactory;
@@ -133,7 +134,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     private final boolean mEnableLogs;
 
     private @Nullable LogoCoordinator mLogoCoordinator;
-    private @Nullable SearchBoxCoordinator mSearchBoxCoordinator;
+    private @Nullable NtpSearchBox mSearchBoxCoordinator;
     private @Nullable MostVisitedTilesCoordinator mMostVisitedTilesCoordinator;
     private @Nullable OnSearchBoxScrollListener mSearchBoxScrollListener;
     private @Nullable UiConfig mUiConfig;
@@ -330,9 +331,15 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             mUiConfig.updateDisplayStyle();
         }
 
-        mSearchBoxCoordinator = new SearchBoxCoordinator(mActivity, mNewTabPageLayout, mIsTablet);
-        mSearchBoxCoordinator.initialize(
-                lifecycleDispatcher, mProfile.isOffTheRecord(), mWindowAndroid);
+        mSearchBoxCoordinator =
+                NtpSearchBoxFactory.createSearchBox(
+                        mActivity,
+                        mNewTabPageLayout,
+                        mIsTablet,
+                        lifecycleDispatcher,
+                        mProfile.isOffTheRecord(),
+                        mWindowAndroid);
+        mModel.set(NewTabPageLayoutProperties.SEARCH_BOX_VIEW, mSearchBoxCoordinator.getView());
 
         updateSearchBoxTwoSideMargin();
         initializeLogoCoordinator();
@@ -532,7 +539,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     }
 
     private void onComposeplateButtonClicked(View view) {
-        if (OmniboxFeatures.sOmniboxMultimodalInput.isEnabled()
+        if (OmniboxFeatures.isMultimodalInputEnabled(mActivity)
                 && OmniboxFeatures.sRedirectComposeplateButton.getValue()
                 && !mIsTablet
                 && mIsComposeplatePolicyEnabled) {
@@ -639,10 +646,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
 
         mMostVisitedTilesCoordinator.initWithNative(
                 profile, mManager, tileGroupDelegate, touchEnabledDelegate);
-
-        if (ChromeFeatureList.sNewTabPageCustomizationForMvt.isEnabled()) {
-            mMostVisitedTilesCoordinator.updateMvtVisibility();
-        }
+        mMostVisitedTilesCoordinator.updateMvtVisibility();
     }
 
     private void initializeSigninPromoCoordinator() {
@@ -1297,6 +1301,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         }
 
         if (mSearchBoxCoordinator != null) {
+            mModel.set(NewTabPageLayoutProperties.SEARCH_BOX_VIEW, null);
             mSearchBoxCoordinator.destroy();
             mSearchBoxCoordinator = null;
         }

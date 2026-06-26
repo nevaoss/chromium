@@ -44,7 +44,7 @@ static tabs::TabInterface* CreateBrowserAndGetActiveTab(Profile* profile) {
   tabs::TabInterface* tab = TabListInterface::From(browser)->GetActiveTab();
   if (!tab) {
     tab = TabListInterface::From(browser)->OpenTab(
-        GURL(chrome::kChromeUINewTabURL), -1);
+        chrome::ChromeUINewTabURLAsGURL(), -1);
   }
   return tab;
 }
@@ -84,7 +84,7 @@ GlicInvokeHandler::ResolvedTarget GlicInvokeHandler::ResolveTargetSurface(
       return {nullptr, /*is_new=*/false};
     }
     tabs::TabInterface* tab = TabListInterface::From(browser)->OpenTab(
-        GURL(chrome::kChromeUINewTabURL), -1);
+        chrome::ChromeUINewTabURLAsGURL(), -1);
     if (tab) {
       return {tab, /*is_new=*/true};
     }
@@ -165,6 +165,19 @@ void GlicInvokeHandler::Invoke() {
       std::make_unique<ShowInstanceTask>(&*instance_, show_options));
   tasks.push_back(
       std::make_unique<WaitForClientConnectedTask>(&instance_->host()));
+  if (options_.on_client_connected) {
+    tasks.push_back(std::make_unique<PostCallbackTask>(base::BindOnce(
+        [](base::WeakPtr<GlicInstanceImpl> instance,
+           base::OnceCallback<void(GlicInstance*)> cb) {
+          if (instance) {
+            std::move(cb).Run(instance.get());
+          }
+        },
+        instance_->GetWeakPtr(), std::move(options_.on_client_connected))));
+  }
+  // TODO(b/505086089): Handle client disconnects.
+  tasks.push_back(
+      std::make_unique<NotifyIsInvokingTask>(&instance_->host(), true));
 
   if (options_.wait_for_panel_open) {
     tasks.push_back(std::make_unique<StabilizationTask>(tab_->GetContents()));
@@ -187,7 +200,6 @@ void GlicInvokeHandler::Invoke() {
 
     tasks.push_back(std::make_unique<WaitForActuationTask>(
         &*instance_, options_.timeout.value_or(kDefaultTimeout),
-        options_.actuation_timeout.value_or(base::Minutes(10)),
         base::BindOnce(&GlicInvokeHandler::OnError,
                        weak_ptr_factory_.GetWeakPtr()),
         std::move(on_actuation_started)));
@@ -216,6 +228,10 @@ void GlicInvokeHandler::OnTabClosed(tabs::TabInterface* tab) {
 
 void GlicInvokeHandler::OnSuccess() {
   timeout_timer_.Stop();
+  instance_->host().NotifyIsInvoking(false);
+  if (main_task_) {
+    main_task_->NotifySequenceCompleted(/*success=*/true);
+  }
 
   if (options_.on_success) {
     std::move(options_.on_success).Run();
@@ -227,6 +243,10 @@ void GlicInvokeHandler::OnSuccess() {
 
 void GlicInvokeHandler::OnError(GlicInvokeError error) {
   timeout_timer_.Stop();
+  instance_->host().NotifyIsInvoking(false);
+  if (main_task_) {
+    main_task_->NotifySequenceCompleted(/*success=*/false);
+  }
 
   if (options_.on_error) {
     std::move(options_.on_error).Run(error);

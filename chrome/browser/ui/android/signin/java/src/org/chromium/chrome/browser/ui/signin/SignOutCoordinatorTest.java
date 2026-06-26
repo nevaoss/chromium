@@ -44,7 +44,6 @@ import org.chromium.chrome.browser.sync.SyncServiceFactory;
 import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
-import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.signin.metrics.SignoutReason;
 import org.chromium.components.sync.DataType;
@@ -98,12 +97,12 @@ public class SignOutCoordinatorTest {
                 .runAfterOperationInProgress(any(Runnable.class));
         doAnswer(
                         args -> {
-                            SigninManager.SignOutCallback signOutCallback = args.getArgument(1);
-                            signOutCallback.signOutComplete();
+                            Runnable signOutCallback = args.getArgument(1);
+                            signOutCallback.run();
                             return null;
                         })
                 .when(mSigninManagerMock)
-                .signOut(eq(signOutReason), any(SigninManager.SignOutCallback.class), eq(false));
+                .signOut(eq(signOutReason), any(Runnable.class));
 
         startSignOutFlow(signOutReason, mOnSignOut, false);
 
@@ -142,12 +141,12 @@ public class SignOutCoordinatorTest {
                 .runAfterOperationInProgress(any(Runnable.class));
         doAnswer(
                         args -> {
-                            SigninManager.SignOutCallback signOutCallback = args.getArgument(1);
-                            signOutCallback.signOutComplete();
+                            Runnable signOutCallback = args.getArgument(1);
+                            signOutCallback.run();
                             return null;
                         })
                 .when(mSigninManagerMock)
-                .signOut(eq(signOutReason), any(SigninManager.SignOutCallback.class), eq(false));
+                .signOut(eq(signOutReason), any(Runnable.class));
 
         startSignOutFlow(signOutReason, mOnSignOut, false, /* suppressSnackbar= */ true);
 
@@ -218,12 +217,11 @@ public class SignOutCoordinatorTest {
                 .runAfterOperationInProgress(any(Runnable.class));
         doAnswer(
                         args -> {
-                            args.getArgument(1, SigninManager.SignOutCallback.class)
-                                    .signOutComplete();
+                            args.getArgument(1, Runnable.class).run();
                             return null;
                         })
                 .when(mSigninManagerMock)
-                .signOut(eq(signOutReason), any(SigninManager.SignOutCallback.class), eq(false));
+                .signOut(eq(signOutReason), any(Runnable.class));
         startSignOutFlow(signOutReason, mOnSignOut, false);
         onView(withText(R.string.sign_out_unsaved_data_title))
                 .inRoot(isDialog())
@@ -281,12 +279,11 @@ public class SignOutCoordinatorTest {
                 .runAfterOperationInProgress(any(Runnable.class));
         doAnswer(
                         args -> {
-                            args.getArgument(1, SigninManager.SignOutCallback.class)
-                                    .signOutComplete();
+                            args.getArgument(1, Runnable.class).run();
                             return null;
                         })
                 .when(mSigninManagerMock)
-                .signOut(eq(signOutReason), any(SigninManager.SignOutCallback.class), eq(false));
+                .signOut(eq(signOutReason), any(Runnable.class));
         startSignOutFlow(signOutReason, mOnSignOut, true);
         onView(withText(R.string.sign_out_title)).inRoot(isDialog()).check(matches(isDisplayed()));
 
@@ -363,7 +360,7 @@ public class SignOutCoordinatorTest {
     @SmallTest
     public void testUndoSigninWithSnackbarThrowsNotSignedIn() {
         IdentityServicesProvider.setIdentityManagerForTesting(mIdentityManagerMock);
-        doReturn(false).when(mIdentityManagerMock).hasPrimaryAccount(ConsentLevel.SIGNIN);
+        doReturn(false).when(mIdentityManagerMock).hasPrimaryAccount();
 
         assertUndoSignInWithSnackbarThrows(
                 IllegalStateException.class,
@@ -390,11 +387,12 @@ public class SignOutCoordinatorTest {
     private void setUpMocks() {
         IdentityServicesProvider.setIdentityManagerForTesting(mIdentityManagerMock);
         IdentityServicesProvider.setSigninManagerForTesting(mSigninManagerMock);
-        doReturn(true).when(mIdentityManagerMock).hasPrimaryAccount(ConsentLevel.SIGNIN);
+        doReturn(true).when(mIdentityManagerMock).hasPrimaryAccount();
         SyncServiceFactory.setInstanceForTesting(mSyncService);
         doAnswer(
                         args -> {
-                            args.getArgument(0, Callback.class).onResult(mUnsyncedDataTypes);
+                            Callback<Set<Integer>> callback = args.getArgument(0);
+                            callback.onResult(mUnsyncedDataTypes);
                             return null;
                         })
                 .when(mSyncService)

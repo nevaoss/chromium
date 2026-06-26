@@ -409,7 +409,7 @@ void ExecutionEngine::OnNavigationSensitiveUrlListChecked(
   // If not sensitive, check if it's an origin the actor has previously
   // interacted with or received instructions from the server to interact with.
   if (not_sensitive &&
-      origin_checker_.IsNavigationAllowed(initiator, destination)) {
+      origin_checker_.IsNavigationAllowed(source, destination)) {
     LogNavigationGating(source, initiator, destination,
                         /*applied_gate=*/false);
     ukm::builders::Actor_OriginGating builder(ukm_source_id);
@@ -1144,10 +1144,7 @@ void ExecutionEngine::SetUserSelectedCredential(
   // Fetch strongly affiliated domains, in order to be able to reuse the
   // permission for sites that do not have the exact same origin but are
   // strongly affiliated.
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::
-              kActorLoginPermissionsUseStrongAffiliations) &&
-      affiliation_service) {
+  if (affiliation_service) {
     affiliation_service->GetAffiliationsAndBranding(
         affiliations::FacetURI::FromPotentiallyInvalidSpec(
             origin.GetURL().GetWithEmptyPath().spec()),
@@ -1191,17 +1188,13 @@ ExecutionEngine::GetUserSelectedCredential(
     return it->second;
   }
 
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::
-              kActorLoginPermissionsUseStrongAffiliations)) {
-    // Check if the current origin is affiliated with a previously encountered
-    // one within the current task.
-    auto aff_it = affiliated_origin_map_.find(request_origin);
-    if (aff_it != affiliated_origin_map_.end()) {
-      auto original_cred_it = user_selected_credentials_.find(aff_it->second);
-      if (original_cred_it != user_selected_credentials_.end()) {
-        return original_cred_it->second;
-      }
+  // Check if the current origin is affiliated with a previously encountered
+  // one within the current task.
+  auto aff_it = affiliated_origin_map_.find(request_origin);
+  if (aff_it != affiliated_origin_map_.end()) {
+    auto original_cred_it = user_selected_credentials_.find(aff_it->second);
+    if (original_cred_it != user_selected_credentials_.end()) {
+      return original_cred_it->second;
     }
   }
 

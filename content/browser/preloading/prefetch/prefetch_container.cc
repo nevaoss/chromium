@@ -15,6 +15,7 @@
 #include "content/browser/devtools/devtools_instrumentation.h"
 #include "content/browser/preloading/prefetch/assert_prefetch_container_observer.h"
 #include "content/browser/preloading/prefetch/no_vary_search_helper.h"
+#include "content/browser/preloading/prefetch/prefetch_container_observer.h"
 #include "content/browser/preloading/prefetch/prefetch_cookie_listener.h"
 #include "content/browser/preloading/prefetch/prefetch_document_manager.h"
 #include "content/browser/preloading/prefetch/prefetch_features.h"
@@ -42,7 +43,6 @@
 #include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/navigation_controller.h"
-#include "content/public/browser/prefetch_request_status_listener.h"
 #include "content/public/browser/preloading.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_features.h"
@@ -332,6 +332,13 @@ PrefetchContainer::PrefetchContainer(
   }
 
   assert_observer_ = std::make_unique<AssertPrefetchContainerObserver>(*this);
+
+  if (auto* browser_initiator_info = request().GetBrowserInitiatorInfo()) {
+    if (auto* request_status_listener_observer =
+            browser_initiator_info->request_status_listener_observer()) {
+      AddObserver(request_status_listener_observer);
+    }
+  }
 }
 
 PrefetchContainer::~PrefetchContainer() {
@@ -346,7 +353,7 @@ PrefetchContainer::~PrefetchContainer() {
   // https://chromium-review.googlesource.com/c/chromium/src/+/5657659/comments/0cfb14c0_3050963e
   //
   // TODO(crbug.com/356314759): Do it.
-  NotifyObservers(&Observer::OnWillBeDestroyed);
+  NotifyObservers(&PrefetchContainerObserver::OnWillBeDestroyed);
 
   CancelStreamingURLLoaderIfNotServing();
 
@@ -389,6 +396,13 @@ PrefetchContainer::~PrefetchContainer() {
   }
 
   TRACE_EVENT_END("loading", request_->preload_pipeline_info().GetTrack());
+
+  if (auto* browser_initiator_info = request().GetBrowserInitiatorInfo()) {
+    if (auto* request_status_listener_observer =
+            browser_initiator_info->request_status_listener_observer()) {
+      RemoveObserver(request_status_listener_observer);
+    }
+  }
 
   // Destroy `assert_observer_` before `WeakPtr`s are invalidated to allow it
   // call `RemoveObserver()`.
@@ -790,6 +804,10 @@ void PrefetchContainer::OnEligibilityCheckComplete(
   if (redirect_chain_.size() == 1) {
     // This case is for just the URL that was originally requested to be
     // prefetched.
+
+    CHECK(!initial_eligibility_);
+    initial_eligibility_ = eligibility;
+
     if (is_eligible) {
       SetLoadState(LoadState::kEligible);
       if (!IsDecoy()) {
@@ -801,7 +819,6 @@ void PrefetchContainer::OnEligibilityCheckComplete(
           PrefetchStatusFromIneligibleReason(eligibility);
       MaybeRecordPrefetchStatusToUMA(new_prefetch_status);
       SetPrefetchStatusWithoutUpdatingTriggeringOutcome(new_prefetch_status);
-      OnInitialPrefetchFailedIneligible(eligibility);
     }
 
     if (request().attempt()) {
@@ -823,7 +840,7 @@ void PrefetchContainer::OnEligibilityCheckComplete(
       }
     }
 
-    NotifyObservers(&Observer::OnGotInitialEligibility, eligibility);
+    NotifyObservers(&PrefetchContainerObserver::OnGotInitialEligibility);
   } else {
     // This case is for any URLs from redirects.
     if (!is_eligible) {
@@ -991,6 +1008,27 @@ std::optional<int> PrefetchContainer::GetResponseCode() const {
   return response_code;
 }
 
+const std::optional<network::URLLoaderCompletionStatus>&
+PrefetchContainer::GetCompletionStatus() const {
+  switch (GetLoadState()) {
+    case LoadState::kNotStarted:
+    case LoadState::kEligible:
+    case LoadState::kFailedIneligible:
+    case LoadState::kFailedHeldback:
+    case LoadState::kStarted:
+    case LoadState::kDeterminedHead:
+    case LoadState::kFailedDeterminedHead:
+      CHECK(!completion_status_);
+      break;
+    case LoadState::kCompleted:
+    case LoadState::kFailed:
+      CHECK(completion_status_);
+      break;
+  }
+
+  return completion_status_;
+}
+
 void PrefetchContainer::CancelStreamingURLLoaderIfNotServing() {
   if (!streaming_loader_) {
     return;
@@ -1084,7 +1122,7 @@ void PrefetchContainer::OnDeterminedHead(bool is_successful_determined_head) {
         *GetNonRedirectHead(), GetURL(), rfhi_can_be_null);
   }
 
-  NotifyObservers(&Observer::OnDeterminedHead);
+  NotifyObservers(&PrefetchContainerObserver::OnDeterminedHead);
 }
 
 void PrefetchContainer::StartTimeoutTimerIfNeeded(
@@ -1104,8 +1142,7 @@ void PrefetchContainer::SetPrefetchResponseCompletedCallbackForTesting(
       std::move(callback);
 }
 
-void PrefetchContainer::OnPrefetchCompleteInternal(
-    const network::URLLoaderCompletionStatus& completion_status) {
+void PrefetchContainer::OnPrefetchCompleteInternal() {
   DVLOG(1) << *this << "::OnPrefetchComplete";
 
   UMA_HISTOGRAM_COUNTS_100("PrefetchProxy.Prefetch.RedirectChainSize",
@@ -1128,10 +1165,9 @@ void PrefetchContainer::OnPrefetchCompleteInternal(
   // TODO(crbug.com/40250089): Call
   // `devtools_instrumentation::OnPrefetchBodyDataReceived()` with body of the
   // response.
-  NotifyPrefetchRequestComplete(completion_status);
+  NotifyPrefetchRequestComplete();
 
-  int net_error = completion_status.error_code;
-  int64_t body_length = completion_status.decoded_body_length;
+  int net_error = GetCompletionStatus()->error_code;
 
   RecordPrefetchProxyPrefetchMainframeNetError(net_error);
 
@@ -1149,7 +1185,8 @@ void PrefetchContainer::OnPrefetchCompleteInternal(
   if (net_error == net::OK) {
     prefetch_container_metrics_.time_prefetch_completed_successfully =
         base::TimeTicks::Now();
-    RecordPrefetchProxyPrefetchMainframeBodyLength(body_length);
+    RecordPrefetchProxyPrefetchMainframeBodyLength(
+        GetCompletionStatus()->decoded_body_length);
   }
 
   const PrefetchStatus prefetch_status = GetPrefetchStatus();
@@ -1164,28 +1201,10 @@ void PrefetchContainer::OnPrefetchCompleteInternal(
       }
     }
   }
-
-  if (auto* browser_initiator_info = request().GetBrowserInitiatorInfo()) {
-    if (auto* listener = browser_initiator_info->request_status_listener()) {
-      switch (prefetch_status) {
-        case PrefetchStatus::kPrefetchSuccessful:
-        case PrefetchStatus::kPrefetchResponseUsed:
-          listener->OnPrefetchResponseCompleted();
-          break;
-        case PrefetchStatus::kPrefetchFailedNon2XX:
-          listener->OnPrefetchResponseServerError(
-              GetResponseCode().value_or(0));
-          break;
-        default:
-          listener->OnPrefetchResponseError();
-          break;
-      }
-    }
-  }
 }
 
 // TODO(https://crbug.com/432518638): We should be able to calculate
-// `is_success` and `completion_status` from the last `PrefetchResponseReader`.
+// `is_success` from the last `PrefetchResponseReader`.
 // Before https://crbug.com/432518638 is fixed, we explicitly plumb them here to
 // ensure the correct `PrefetchResponseReader`'s states are used.
 void PrefetchContainer::OnPrefetchComplete(
@@ -1201,10 +1220,12 @@ void PrefetchContainer::OnPrefetchComplete(
   TRACE_EVENT("loading", "PrefetchContainer::OnPrefetchComplete",
               request_->preload_pipeline_info().GetFlow());
 
-  SetLoadState(is_success ? LoadState::kCompleted : LoadState::kFailed);
-  OnPrefetchCompleteInternal(completion_status);
+  completion_status_ = completion_status;
 
-  NotifyObservers(&Observer::OnPrefetchCompletedOrFailed, completion_status);
+  SetLoadState(is_success ? LoadState::kCompleted : LoadState::kFailed);
+  OnPrefetchCompleteInternal();
+
+  NotifyObservers(&PrefetchContainerObserver::OnPrefetchCompletedOrFailed);
 
   if (GetPrefetchResponseCompletedCallbackForTesting()) {
     GetPrefetchResponseCompletedCallbackForTesting().Run(  // IN-TEST
@@ -1524,22 +1545,11 @@ std::ostream& operator<<(std::ostream& ostream,
   }
 }
 
-void PrefetchContainer::OnInitialPrefetchFailedIneligible(
-    PreloadingEligibility eligibility) {
-  CHECK(redirect_chain_.size() == 1);
-  CHECK_NE(eligibility, PreloadingEligibility::kEligible);
-  if (auto* browser_initiator_info = request().GetBrowserInitiatorInfo()) {
-    if (auto* listener = browser_initiator_info->request_status_listener()) {
-      listener->OnPrefetchStartFailedGeneric();
-    }
-  }
-}
-
-void PrefetchContainer::AddObserver(Observer* observer) {
+void PrefetchContainer::AddObserver(PrefetchContainerObserver* observer) {
   observers_.AddObserver(observer);
 }
 
-void PrefetchContainer::RemoveObserver(Observer* observer) {
+void PrefetchContainer::RemoveObserver(PrefetchContainerObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
@@ -1746,8 +1756,7 @@ void PrefetchContainer::NotifyPrefetchResponseReceived(
       ftn, GetDevtoolsRequestId(), GetCurrentURL(), head);
 }
 
-void PrefetchContainer::NotifyPrefetchRequestComplete(
-    const network::URLLoaderCompletionStatus& completion_status) {
+void PrefetchContainer::NotifyPrefetchRequestComplete() {
   // Ensured by the caller `PrefetchContainer::OnPrefetchCompleteInternal()`.
   CHECK(!IsDecoy());
 
@@ -1765,7 +1774,7 @@ void PrefetchContainer::NotifyPrefetchRequestComplete(
   }
 
   devtools_instrumentation::OnPrefetchRequestComplete(
-      ftn, GetDevtoolsRequestId(), completion_status);
+      ftn, GetDevtoolsRequestId(), *GetCompletionStatus());
 }
 
 std::string PrefetchContainer::GetMetricsSuffix() const {

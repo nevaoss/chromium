@@ -133,6 +133,7 @@ source_set("impl") {
       "//chrome/browser/media/router:media_router_feature",
       "//chrome/browser/prefs",
       "//chrome/browser/profiles",
+      "//chrome/browser/profiles:misc",
       "//chrome/browser/profiles:profile",
       "//chrome/browser/profiles:profile_manager",
       "//chrome/browser/profiles:profile_util",
@@ -216,6 +217,7 @@ source_set("impl") {
       "//ui/gfx",
       "//ui/gfx:color_utils",
       "//ui/menus",
+      "//ui/strings:ui_strings_grit",
     ]
     if (is_chromeos) {
       deps += [ "//chrome/browser/policy:system_features_disable_list" ]

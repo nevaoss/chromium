@@ -9,7 +9,11 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -65,6 +69,7 @@ public class PdfCoordinatorUnitTest {
     private PdfView mPdfView;
     private static final String PDF_URL =
             "chrome-native://pdf/link?url=https%3A%2F%2Fwww.irs.gov%2Fpub%2Firs-pdf%2Ffw4.pdf";
+    private static final String PDF_TITLE = "fw4.pdf";
     private static final String LINK_URL = "https://www.bar.com";
     private static final String FILE_PATH =
             "/data/user/10/com.google.android.apps.chrome/cache/pdfs/fw4.pdf";
@@ -89,7 +94,13 @@ public class PdfCoordinatorUnitTest {
         // is called.
         mPdfCoordinator =
                 new PdfCoordinator(
-                        mNativePageHost, mProfile, mActivity, FILE_PATH, TAB_ID, PDF_URL);
+                        mNativePageHost,
+                        mProfile,
+                        mActivity,
+                        FILE_PATH,
+                        PDF_TITLE,
+                        TAB_ID,
+                        PDF_URL);
         mPdfView = new PdfView(mActivity);
         mPdfView.layout(0, 0, /* width= */ 500, /* height= */ PDF_CONTENT_HEIGHT);
         mPdfCoordinator.mChromePdfViewerFragment.setPdfViewForTesting(mPdfView);
@@ -192,6 +203,69 @@ public class PdfCoordinatorUnitTest {
         assertTrue("Zoom out button should be enabled at max zoom", zoomOutButton.isEnabled());
     }
 
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testOnLinkClicked_RejectsDangerousSchemes() {
+        when(mProfile.isOffTheRecord()).thenReturn(false);
+        createPdfCoordinator();
+
+        String[] blockedUris = {
+            "javascript:alert('XSS-from-PDF')",
+            "intent://scan/#Intent;scheme=zxing;package=com.evil.app;end",
+            "file:///etc/hosts",
+            "content://com.android.contacts/contacts",
+            "chrome://settings/",
+            "chrome-untrusted://feedback/",
+            "devtools://devtools/bundled/inspector.html",
+            "data:text/html,<script>alert(1)</script>",
+            "about:blank",
+            "market://details?id=com.evil.app",
+        };
+
+        for (String raw : blockedUris) {
+            assertFalse(
+                    "onLinkClicked should reject " + raw,
+                    mPdfCoordinator.onLinkClicked(Uri.parse(raw)));
+        }
+        verify(mNativePageHost, never()).loadUrl(any(LoadUrlParams.class), anyBoolean());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testOnLinkClicked_RejectsSchemelessUri() {
+        when(mProfile.isOffTheRecord()).thenReturn(false);
+        createPdfCoordinator();
+
+        assertFalse(
+                "onLinkClicked should reject schemeless URI.",
+                mPdfCoordinator.onLinkClicked(Uri.parse("//www.example.com/foo")));
+        verify(mNativePageHost, never()).loadUrl(any(LoadUrlParams.class), anyBoolean());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testOnLinkClicked_AcceptsAllowedSchemes() {
+        when(mProfile.isOffTheRecord()).thenReturn(false);
+        createPdfCoordinator();
+
+        String[] allowedUris = {
+            "http://www.example.com/",
+            "https://www.example.com/",
+            "HTTPS://MixedCase.Example.com/",
+            "mailto:user@example.com",
+            "tel:+10000000000",
+            "ftp://ftp.example.com/file",
+        };
+
+        for (String raw : allowedUris) {
+            assertTrue(
+                    "onLinkClicked should accept " + raw,
+                    mPdfCoordinator.onLinkClicked(Uri.parse(raw)));
+        }
+        verify(mNativePageHost, times(allowedUris.length))
+                .loadUrl(any(LoadUrlParams.class), eq(false));
+    }
+
     private void runOnLinkClickedTest(boolean isIncognito) {
         when(mProfile.isOffTheRecord()).thenReturn(isIncognito);
         createPdfCoordinator();
@@ -238,7 +312,14 @@ public class PdfCoordinatorUnitTest {
     public void testGetFileUri_NullUri() {
         when(mProfile.isOffTheRecord()).thenReturn(false);
         mPdfCoordinator =
-                new PdfCoordinator(mNativePageHost, mProfile, mActivity, null, TAB_ID, PDF_URL);
+                new PdfCoordinator(
+                        mNativePageHost,
+                        mProfile,
+                        mActivity,
+                        null,
+                        PDF_TITLE,
+                        TAB_ID,
+                        PDF_URL);
 
         Uri uri =
                 mPdfCoordinator.getFileUri(

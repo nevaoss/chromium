@@ -447,6 +447,10 @@ if (is_debug) {
   default_compiler_configs += [ "//build/config:release" ]
 }
 
+if (current_os == "zos") {
+  default_compiler_configs += [ "//build/config/zos:compiler" ]
+}
+
 # Static libraries and source sets use only the compiler ones.
 set_defaults("static_library") {
   configs = default_compiler_configs
@@ -625,15 +629,24 @@ foreach(_target_type,
         use_libcxx_modules = false
       }
 
+      if (!defined(strict_deps)) {
+        strict_deps = enable_strict_deps
+      }
+
+      if (use_libcxx_modules && is_clang) {
+        if (strict_deps) {
+          configs += [ "//build/modules:strict_deps" ]
+        }
+      } else {
+        not_needed([ "strict_deps" ])
+      }
+
       if (use_libcxx_modules) {
         # Add a dependency needed for Clang modules builds.
         deps += [ "//buildtools/third_party/libc++:all_modules" ]
 
-        # Strict deps check requires libcxx modules.
-        if (!defined(strict_deps) || strict_deps) {
-          configs += [ "//build/modules:strict_deps" ]
-        }
-        if (!defined(invoker.generate_modulemap) && defined(generate_modulemap)) {
+        if (!defined(invoker.generate_modulemap) &&
+            defined(generate_modulemap)) {
           generate_modulemap = generate_modulemap
         }
       }
@@ -754,15 +767,24 @@ foreach(_target_type,
         use_libcxx_modules = false
       }
 
+      if (!defined(strict_deps)) {
+        strict_deps = enable_strict_deps
+      }
+
+      if (use_libcxx_modules && is_clang) {
+        if (strict_deps) {
+          configs += [ "//build/modules:strict_deps" ]
+        }
+      } else {
+        not_needed([ "strict_deps" ])
+      }
+
       if (use_libcxx_modules) {
         # Add a dependency needed for Clang modules builds.
         deps += [ "//buildtools/third_party/libc++:all_modules" ]
 
-        # Strict deps check requires libcxx modules.
-        if (!defined(strict_deps) || strict_deps) {
-          configs += [ "//build/modules:strict_deps" ]
-        }
-        if (!defined(invoker.generate_modulemap) && defined(generate_modulemap)) {
+        if (!defined(invoker.generate_modulemap) &&
+            defined(generate_modulemap)) {
           generate_modulemap = generate_modulemap
         }
       }

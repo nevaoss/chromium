@@ -71,13 +71,17 @@ constexpr double kVerticalTabStripOutlineFadeOnHover = 0.5;
 
 // Increases the leading or trailing exclusion padding to `minimum`.
 void IncreasePaddingToMinimum(BrowserLayoutParams& params, int minimum) {
-  if (params.leading_exclusion.content.width() > 0.0) {
-    params.leading_exclusion.horizontal_padding =
-        std::max(params.leading_exclusion.horizontal_padding,
-                 static_cast<float>(minimum));
-  } else {
+  // Default to increasing the trailing exclusion padding. On ChromeOS, the
+  // leading exclusion is sometimes used for a profile avatar while the trailing
+  // exclusion is used for the caption buttons. This keeps the padding
+  // consistent.
+  if (params.trailing_exclusion.content.width() > 0.0) {
     params.trailing_exclusion.horizontal_padding =
         std::max(params.trailing_exclusion.horizontal_padding,
+                 static_cast<float>(minimum));
+  } else {
+    params.leading_exclusion.horizontal_padding =
+        std::max(params.leading_exclusion.horizontal_padding,
                  static_cast<float>(minimum));
   }
 }
@@ -169,6 +173,20 @@ int BrowserViewTabbedLayoutImpl::GetHorizontalTabStripLeadingMargin(
   return leading_margin;
 }
 
+bool BrowserViewTabbedLayoutImpl::AvoidCrackingForFractionalDisplay() const {
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+  // This is primarily an issue on Linux and Windows; add other platforms here
+  // as needed.
+  if (auto* const widget = views().browser_view->GetWidget()) {
+    if (const auto display = widget->GetNearestDisplay()) {
+      const float scale = display->device_scale_factor();
+      return scale != std::floor(scale);
+    }
+  }
+#endif
+  return false;
+}
+
 std::pair<gfx::Size, gfx::Size>
 BrowserViewTabbedLayoutImpl::GetMinimumTabStripSize(
     const BrowserLayoutParams& params) const {
@@ -197,12 +215,6 @@ BrowserViewTabbedLayoutImpl::GetMinimumTabStripSize(
       }
       return std::make_pair(result, gfx::Size());
     }
-    case TabStripType::kWebUi:
-      // WebUI tabstrip is lazily-created.
-      return std::make_pair(gfx::Size(),
-                            views().webui_tab_strip
-                                ? views().webui_tab_strip->GetMinimumSize()
-                                : gfx::Size());
     case TabStripType::kNone:
       return std::make_pair(gfx::Size(), gfx::Size());
   }
@@ -495,9 +507,6 @@ gfx::Size BrowserViewTabbedLayoutImpl::GetMinimumMainAreaSize(
 
 BrowserViewTabbedLayoutImpl::TabStripType
 BrowserViewTabbedLayoutImpl::GetTabStripType() const {
-  if (delegate().ShouldUseTouchableTabstrip()) {
-    return TabStripType::kWebUi;
-  }
   if (delegate().ShouldDrawVerticalTabStrip()) {
 #if BUILDFLAG(IS_MAC)
     // Do not lay out the vertical tabstrip in content-fullscreen on Mac. This
@@ -629,30 +638,9 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
 
   BrowserLayoutParams params = browser_params;
   bool needs_exclusion = true;
+  const bool adjust_for_cracking = AvoidCrackingForFractionalDisplay();
   const TabStripType tab_strip_type = GetTabStripType();
   HorizontalLayout horizontal_layout = CalculateHorizontalLayout(params);
-
-  if (tab_strip_type == TabStripType::kWebUi) {
-    // When the WebUI tab strip is present, it does not paint over the caption
-    // buttons or other exclusion areas.
-    params.SetTop(base::ClampCeil(
-        std::max(params.leading_exclusion.ContentWithPadding().height(),
-                 params.trailing_exclusion.ContentWithPadding().height())));
-    needs_exclusion = false;
-  }
-
-  // Lay out WebUI tabstrip if visible.
-  if (IsParentedTo(views().webui_tab_strip, views().browser_view)) {
-    const int width = params.visual_client_area.width();
-    const int height = tab_strip_type == TabStripType::kWebUi &&
-                               views().webui_tab_strip->GetVisible()
-                           ? views().webui_tab_strip->GetHeightForWidth(width)
-                           : 0;
-    layout.AddChild(views().webui_tab_strip,
-                    gfx::Rect(params.visual_client_area.origin(),
-                              gfx::Size(width, height)));
-    params.Inset(gfx::Insets::TLBR(height, 0, 0, 0));
-  }
 
   // Lay out horizontal tab strip region if present.
   if (IsParentedTo(views().horizontal_tab_strip_region_view,
@@ -689,20 +677,38 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
             horizontal_layout.vertical_tab_strip_width;
       }
 
-      // TODO(crbug.com/493595250): Once the expand on hover animations are
-      // specced this logic should be revisited, updated, and moved to
-      // CalculateVerticalTabStripAnimation.
       const int vertical_tab_strip_hover_width =
-          (tabs::kVerticalTabStripDefaultUncollapsedWidth -
-           horizontal_layout.vertical_tab_strip_width) *
+          std::max(0, tabs::kVerticalTabStripDefaultUncollapsedWidth -
+                          horizontal_layout.vertical_tab_strip_width) *
           vertical_tab_strip_animation.expand_on_hover;
+
+      int vertical_tab_strip_width =
+          horizontal_layout.vertical_tab_strip_width +
+          vertical_tab_strip_hover_width;
+
+      // The overall width during an expand must change monotonically.
+      if (vertical_tab_strip_animation.current_motion ==
+          TabStripAnimations::kExpand) {
+        const int target_width =
+            views().vertical_tab_strip_region_view->uncollapsed_width();
+        if (last_vertical_tab_strip_width_ > target_width) {
+          vertical_tab_strip_width =
+              std::max(target_width, std::min(vertical_tab_strip_width,
+                                              last_vertical_tab_strip_width_));
+        } else {
+          vertical_tab_strip_width =
+              std::min(target_width, std::max(vertical_tab_strip_width,
+                                              last_vertical_tab_strip_width_));
+        }
+      } else {
+        last_vertical_tab_strip_width_ = vertical_tab_strip_width;
+      }
 
       vertical_tab_strip_bounds =
           gfx::Rect(params.visual_client_area.x(),
                     params.visual_client_area.y() +
                         vertical_tab_strip_animation.top_offset,
-                    horizontal_layout.vertical_tab_strip_width +
-                        vertical_tab_strip_hover_width,
+                    vertical_tab_strip_width,
                     params.visual_client_area.height() -
                         vertical_tab_strip_animation.top_offset);
       // In vertical tabs mode, extra space is allocated next to the top element
@@ -710,8 +716,11 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
       if (delegate().GetBrowserWindowState() != WindowState::kFullscreen) {
         IncreasePaddingToMinimum(params, GetMinimumGrabHandlePadding());
       }
-      params.InsetHorizontal(horizontal_layout.vertical_tab_strip_width,
-                             /*leading=*/true);
+      int inset_amount = horizontal_layout.vertical_tab_strip_width;
+      if (adjust_for_cracking) {
+        inset_amount -= 1;
+      }
+      params.InsetHorizontal(inset_amount, /*leading=*/true);
 
       // Let the vertical tab strip animate out over the content.
       if (vertical_tab_strip_animation.current_motion) {
@@ -842,9 +851,15 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
   // Lay out the main area background.
   ProposedLayout* main_background_layout = nullptr;
   if (IsParentedTo(views().main_background_region, views().browser_view)) {
+    gfx::Rect main_background_bounds = params.visual_client_area;
+    if (adjust_for_cracking &&
+        main_background_bounds.y() > browser_params.visual_client_area.y()) {
+      main_background_bounds.Outset(gfx::Outsets::TLBR(1, 0, 0, 0));
+    }
     main_background_layout = &layout.AddChild(
         views().main_background_region, params.visual_client_area,
-        horizontal_layout.has_toolbar_height_side_panel());
+        horizontal_layout.has_toolbar_height_side_panel() ||
+            adjust_for_cracking);
   }
 
   // Lay out toolbar-height side panel.
@@ -1159,6 +1174,20 @@ BrowserViewTabbedLayoutImpl::CalculateProposedLayout(
         std::max(0, toolbar_height));
     views().vertical_tab_strip_region_view->SetCaptionButtonWidthForLayout(
         std::max(0, caption_button_width));
+
+    const int padding =
+        GetLayoutConstant(LayoutConstant::kVerticalTabStripHorizontalPadding);
+    const int target_width =
+        views().vertical_tab_strip_region_view->uncollapsed_width();
+    const bool will_wrap_at_destination =
+        views().vertical_tab_strip_region_view->WillWrapDueToOverflow(
+            target_width - 2 * padding);
+
+    views().vertical_tab_strip_region_view->SetIsExitingExpandOnHoverForLayout(
+        vertical_tab_strip_animation.current_motion &&
+        vertical_tab_strip_animation.expand_on_hover > 0.0 &&
+        vertical_tab_strip_animation.top_offset > 0 &&
+        will_wrap_at_destination);
   }
 
   return layout;
@@ -1171,20 +1200,6 @@ gfx::Rect BrowserViewTabbedLayoutImpl::CalculateTopContainerLayout(
   const int original_top = params.visual_client_area.y();
 
   const TabStripType tab_strip_type = GetTabStripType();
-
-  // If the WebUI tabstrip is in the top container (which can happen in
-  // immersive mode), ensure it is laid out here.
-  if (IsParentedTo(views().webui_tab_strip, views().top_container)) {
-    const int width = params.visual_client_area.width();
-    const int height = tab_strip_type == TabStripType::kWebUi &&
-                               views().webui_tab_strip->GetVisible()
-                           ? views().webui_tab_strip->GetHeightForWidth(width)
-                           : 0;
-    layout.AddChild(views().webui_tab_strip,
-                    gfx::Rect(params.visual_client_area.origin(),
-                              gfx::Size(width, height)));
-    params.Inset(gfx::Insets::TLBR(height, 0, 0, 0));
-  }
 
   if (IsParentedTo(views().horizontal_tab_strip_region_view,
                    views().top_container)) {
@@ -1303,10 +1318,6 @@ void BrowserViewTabbedLayoutImpl::ConfigureTopContainerBackground(
 
 void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
     const BrowserLayoutParams& params) {
-  if (base::FeatureList::IsEnabled(features::kGlassToolbar)) {
-    return;
-  }
-
   const auto tab_strip_type = GetTabStripType();
   const auto window_state = delegate().GetBrowserWindowState();
 
@@ -1444,10 +1455,6 @@ void BrowserViewTabbedLayoutImpl::DoPostLayoutVisualAdjustments(
       }
       break;
     }
-    case TabStripType::kWebUi:
-      // In WebUI tabstrip mode, there's a titlebar at the top of the window
-      // directly above the toolbar, so no corners are needed.
-      break;
     default:
       // This can happen in content fullscreen on Mac, but otherwise doesn't
       // happen.

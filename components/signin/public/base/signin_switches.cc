@@ -245,6 +245,12 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    base::Milliseconds(3000));
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
+#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+BASE_FEATURE(kCrossDeviceSignin, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<std::string> kCrossDeviceSigninUrl{&kCrossDeviceSignin,
+                                                            "url", ""};
+#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kDisableU18FeedbackDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
@@ -361,11 +367,11 @@ BASE_FEATURE(kEnableOAuthMultiloginStandardCookiesBinding,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
-// Kill switch for enabling binding the OAuthMultilogin cookies to a device with
-// DBSC standard for the Glic partition.
+// Enables binding the OAuthMultilogin cookies to a device with DBSC standard
+// for secondary partitions.
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
-BASE_FEATURE(kEnableOAuthMultiloginStandardCookiesBindingForGlicPartition,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kEnableOAuthMultiloginStandardCookiesBindingForSecondaryPartitions,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 BASE_FEATURE(kEnablePreferencesAccountStorage,
@@ -474,6 +480,9 @@ bool IsFirstRunDesktopRevampEnabled(bool is_in_search_engine_choice_region) {
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kForceHistoryOptInScreen, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kForceShowWebSigninLoadingDialog,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
@@ -483,6 +492,11 @@ BASE_FEATURE(kForceStartupSigninPromo, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
 BASE_FEATURE(kFullscreenSignInPromoUseDate, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(int,
+                   kFullscreenSignInPromoUseDateInterval,
+                   &kFullscreenSignInPromoUseDate,
+                   "interval",
+                   -1);
 #endif
 
 BASE_FEATURE(kGaiaAccountIdEnforcement, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -500,6 +514,9 @@ BASE_FEATURE(kIdentityInAuthErrorFollowUps, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 #if BUILDFLAG(IS_IOS)
+BASE_FEATURE(kIgnoreChromeManageAccountsInSubframes,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Feature flag to ignore invalid grant errors in AuthenticationService.
 BASE_FEATURE(kIgnoreInvalidGrantError, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
@@ -539,9 +556,6 @@ BASE_FEATURE(kProfileCreationDeclineSigninCTAExperiment,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kProfileCreationFrictionReductionExperimentPrefillNameRequirement,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kProfileCreationFrictionReductionExperimentRemoveSigninStep,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kProfileCreationFrictionReductionExperimentSkipCustomizeProfile,
@@ -706,13 +720,5 @@ BASE_FEATURE(kUsePrimaryAndTonalButtonsForPromos,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // keep-sorted end
-
-bool IsExtensionsExplicitBrowserSigninEnabled() {
-#if BUILDFLAG(IS_CHROMEOS)
-  return false;
-#else
-  return true;
-#endif
-}
 
 }  // namespace switches

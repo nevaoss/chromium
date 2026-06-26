@@ -523,7 +523,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   media::mojom::AvailabilityStatus
   GetOnDeviceSpeechRecognitionAvailabilityStatus(
       content::BrowserContext* context,
-      const std::string& language) override;
+      const std::string& language,
+      media::mojom::SpeechRecognitionQuality quality) override;
 #if BUILDFLAG(IS_CHROMEOS)
   content::TtsControllerDelegate* GetTtsControllerDelegate() override;
 #endif
@@ -686,6 +687,7 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   void RegisterNonNetworkWorkerMainResourceURLLoaderFactories(
       content::BrowserContext* browser_context,
       const std::optional<url::Origin>& request_initiator,
+      network::mojom::RequestDestination request_destination,
       NonNetworkURLLoaderFactoryMap* factories) override;
   void RegisterNonNetworkServiceWorkerUpdateURLLoaderFactories(
       content::BrowserContext* browser_context,
@@ -870,11 +872,13 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   void StartRtcDiagnosticLogging(
       content::RenderFrameHost& frame_host,
       bool should_upload_on_stop,
-      base::flat_map<std::string, std::string> metadata,
+      const base::flat_map<std::string, std::string>& metadata,
       base::OnceCallback<void(const std::string&)> callback) override;
 
-  void FinishRtcDiagnosticLogging(content::RenderFrameHost& frame_host,
-                                  base::OnceClosure callback) override;
+  void FinishRtcDiagnosticLogging(
+      content::RenderFrameHost& frame_host,
+      const base::flat_map<std::string, std::string>& metadata,
+      base::OnceClosure callback) override;
 
   void CancelRtcDiagnosticLogging(content::RenderFrameHost& frame_host,
                                   base::OnceClosure callback) override;

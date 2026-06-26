@@ -655,6 +655,16 @@ chromium-metrics-reviews@google.com.
   <int value="9" label="kBrowserContextShutDown"/>
 </enum>
 
+<!-- LINT.IfChange(MirrorHeaderEvent) -->
+
+<enum name="MirrorHeaderEvent">
+  <int value="0" label="Account not on device"/>
+  <int value="1" label="Account in persistent error state"/>
+  <int value="2" label="Account recently added"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/signin/chrome_signin_helper.h:MirrorHeaderEvent) -->
+
 <enum name="OAuth2LoginAccountRevokedMigrationState">
   <int value="0" label="Account ID migration not started"/>
   <int value="1" label="Account ID migration in progress"/>
@@ -929,8 +939,8 @@ chromium-metrics-reviews@google.com.
   <int value="29" label="Forced sign-in"/>
   <int value="30" label="(obsolete) Re-signin after an account rename"/>
   <int value="31"
-      label="Bottom sheet from web sign-in (Mobile). Implicit web sign-in
-             (Desktop, deprecated)"/>
+      label="Bottom sheet from web sign-in (Mobile). Web sign-in, not used
+             for Chrome sign-in (Desktop)"/>
   <int value="32" label="Safety check settings page"/>
   <int value="33" label="(obsolete) Kaleidoscope"/>
   <int value="34" label="(obsolete) Enterprise sign-out coordinator"/>
@@ -1007,6 +1017,8 @@ chromium-metrics-reviews@google.com.
   <int value="98" label="Search AI Mode (Desktop only)"/>
   <int value="99" label="App Bar (iOS only)"/>
   <int value="100" label="Page Action Menu (iOS only)"/>
+  <int value="101"
+      label="Autofill and passwords settings page on iOS and Android"/>
 </enum>
 
 <enum name="SigninAccountReconcilorState">

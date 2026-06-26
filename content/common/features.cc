@@ -13,6 +13,14 @@ namespace features {
 
 // Please keep features in alphabetical order.
 
+#if BUILDFLAG(IS_ANDROID)
+// When enabled, fires CONTENT_CHANGE_TYPE_CONTENT_INVALID events to Android
+// when aria-invalid is true.
+// TODO(crbug.com/500812737): Remove killswitch after stability period.
+BASE_FEATURE(kAccessibilityAriaInvalidAndErrorMessage,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
+
 // When enabled, Android events will include more metadata about the incoming
 // events.
 BASE_FEATURE(kAccessibilityExpandEventMetadata,
@@ -37,9 +45,6 @@ BASE_FEATURE(kAndroidDesktopStyleScrollbars, base::FEATURE_DISABLED_BY_DEFAULT);
 // the service implemented on the Java side.
 BASE_FEATURE(kAndroidDownloadableFontsMatching,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Adds OOPIF support for android drag and drop.
-BASE_FEATURE(kAndroidDragDropOopif, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN)
 // Flag guard for Windows Arabic Indic digit input solution.
@@ -122,10 +127,6 @@ BASE_FEATURE(kBeforeUnloadBrowserResponseQueue,
 BASE_FEATURE(kHidePastePopupOnGSB, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
-// Holdback the removal of debug reason strings in crrev.com/c/6312375
-// to measure the impact.
-BASE_FEATURE(kHoldbackDebugReasonStringRemoval,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_MAC)
 BASE_FEATURE(kCancelCompositionWhenWindowLosesFocus,
@@ -658,6 +659,14 @@ BASE_FEATURE(kRemoveCachedProcessFromBindingManager,
 // Fix for scrolling to focused editable input fields after tapping to show the
 // on-screen keyboard (crbug.com/462636368).
 #if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kSandboxedProcessServiceLimitOnAndroid,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(int,
+                   kSandboxedProcessServiceLimitOnAndroidCount,
+                   &kSandboxedProcessServiceLimitOnAndroid,
+                   "count",
+                   98);
+
 BASE_FEATURE(kScrollAfterOSKViewportShrinkFix,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif

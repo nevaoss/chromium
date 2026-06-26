@@ -262,6 +262,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaFoundationMultiGpuAdapterSelection);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kInternalMediaSession);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kOnDeviceWebSpeech);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kOnDeviceWebSpeechGeminiNano);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kOnDeviceWebSpeechSmallExpertModel);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kLiveCaption);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kLiveCaptionAutomaticLanguageDownload);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kLiveCaptionRightClick);
@@ -498,7 +499,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaLogToConsole);
 
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kAomVpxUsePresentationThreadType);
 
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseRustJpegParser);
 
 #if defined(USE_WEBOS_CODEC)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebOSVideoDecodeAccelerator);
@@ -547,6 +547,15 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kAutoPictureInPicturePageInfoDetails);
 // Causes the AVC parser to output Treats H.264 SEI recovery points with a
 // `recovery_frame_cnt=0` as keyframes.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kParseSEIRecoveryPoints);
+
+// When enabled, non-IDR H.264 frames with SEI recovery points
+// (recovery_frame_cnt=0) are promoted to keyframes for MSE random access,
+// and SPS/PPS parameter sets are injected for these frames so the hardware
+// decoder can initialize after a seek/reset. This enables playback of
+// open-GOP content in SourceBuffer. Limited to clear content to work
+// around hardware decoders that don't handle non-IDR keyframes (some older
+// Intel/AMD devices mishandle SEI + SPS/PPS); see https://crbug.com/451536366.
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaSourceSeiRecoveryPointKeyframe);
 
 // When enabled, H.264 keyframe detection becomes stricter for samples whose avc
 // config does not provide SPS/PPS. In that case, an IDR alone is not

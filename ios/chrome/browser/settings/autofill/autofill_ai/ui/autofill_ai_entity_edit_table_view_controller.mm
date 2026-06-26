@@ -461,11 +461,8 @@ typedef NS_ENUM(NSInteger, ItemType) {
 - (BOOL)textField:(UITextField*)textField
     shouldChangeCharactersInRange:(NSRange)range
                 replacementString:(NSString*)string {
-  // If the input view is a UIDatePicker, block all direct keyboard input.
-  if ([textField.inputView isKindOfClass:[UIDatePicker class]]) {
-    return NO;
-  }
-  return YES;
+  // If the text field has a custom input view, block all direct keyboard input.
+  return !textField.inputView;
 }
 
 #pragma mark - TableViewLinkHeaderFooterItemDelegate
@@ -502,15 +499,15 @@ typedef NS_ENUM(NSInteger, ItemType) {
   return present;
 }
 
-- (autofill::DenseSet<autofill::AttributeType>)missingRequiredFields {
+- (autofill::DenseSet<autofill::AttributeType>)missingFields {
   const autofill::DenseSet<autofill::AttributeType> presentAttributes =
       [self presentAttributes];
-  return [self.mutator getMissingRequiredFieldsFor:presentAttributes];
+  return [self.mutator getMissingImportConstraintsFor:presentAttributes];
 }
 
 - (BOOL)validateFields {
   const autofill::DenseSet<autofill::AttributeType> missingFields =
-      [self missingRequiredFields];
+      [self missingFields];
 
   NSMutableArray<TableViewItem*>* itemsToReconfigure =
       [[NSMutableArray alloc] init];

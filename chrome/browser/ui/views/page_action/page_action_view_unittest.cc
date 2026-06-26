@@ -363,12 +363,14 @@ TEST_F(PageActionViewTest, ChipStateUpdatesForegroundColor) {
 }
 
 TEST_F(PageActionViewTest, SuggestionText) {
+  EXPECT_CALL(*model(), GetVisible()).WillRepeatedly(Return(true));
   EXPECT_CALL(*model(), GetText()).WillRepeatedly(ReturnRef(kTestText));
   page_action_view()->OnPageActionModelChanged(*model());
   EXPECT_EQ(page_action_view()->GetText(), kTestText);
 }
 
 TEST_F(PageActionViewTest, TooltipText) {
+  EXPECT_CALL(*model(), GetVisible()).WillRepeatedly(Return(true));
   EXPECT_CALL(*model(), GetTooltipText()).WillRepeatedly(ReturnRef(kTestText));
   page_action_view()->OnPageActionModelChanged(*model());
   EXPECT_EQ(page_action_view()->GetTooltipText(), kTestText);
@@ -419,6 +421,7 @@ TEST_F(PageActionViewTest, OnThemeChangedUpdatesIconImage) {
       vector_icons::kBackArrowIcon, ui::kColorSysPrimary, kOriginalIconSize);
   EXPECT_CALL(*model(), GetImage()).WillRepeatedly(ReturnRef(icon_image));
 
+  EXPECT_CALL(*model(), GetVisible()).WillRepeatedly(Return(true));
   page_action_view()->OnPageActionModelChanged(*model());
   EXPECT_EQ(page_action_view()
                 ->GetImageModel(views::Button::STATE_NORMAL)
@@ -446,6 +449,7 @@ TEST_F(PageActionViewTest, UpdateIconImageHandlesDifferentImageTypes) {
   EXPECT_CALL(*model(), GetImage()).WillRepeatedly(ReturnRef(bitmap_image));
 
   // Trigger the icon update.
+  EXPECT_CALL(*model(), GetVisible()).WillRepeatedly(Return(true));
   page_action_view()->OnPageActionModelChanged(*model());
 
   // Check that the image model in the PageActionView is correctly set and is
@@ -556,6 +560,21 @@ TEST_F(PageActionViewTest, ChipExpandedCallbackNoAnimation) {
 
   page_action_view()->OnPageActionModelChanged(*model());
   second_loop.Run();
+}
+
+TEST_F(PageActionViewTest, AnchoredMessageChipClickCallbackOrder) {
+  base::MockCallback<base::RepeatingCallback<void(PageActionTrigger)>>
+      click_callback;
+  base::MockCallback<base::RepeatingClosure> close_callback;
+
+  page_action_view()->SetClickCallback(click_callback.Get());
+  page_action_view()->SetAnchoredMessageCloseCallback(close_callback.Get());
+
+  testing::InSequence s;
+  EXPECT_CALL(click_callback, Run(PageActionTrigger::kMouse));
+  EXPECT_CALL(close_callback, Run());
+
+  page_action_view()->AnchoredMessageChipClick();
 }
 
 class PageActionViewTriggerTest : public PageActionViewTest {

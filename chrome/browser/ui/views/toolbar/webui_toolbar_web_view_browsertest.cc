@@ -48,6 +48,7 @@
 #include "chrome/browser/ui/views/toolbar/home_button.h"
 #include "chrome/browser/ui/views/toolbar/reload_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
+#include "chrome/browser/ui/views/toolbar/webui_pinned_toolbar_actions.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/browser/ui/webui/webui_toolbar/utils/toolbar_button_utils.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_ui.h"
@@ -161,7 +162,7 @@ bool WaitForButtonVisible(content::WebContents* web_contents,
 
 WebUIToolbarWebView* GetWebUIToolbarWebView(Browser* browser) {
   return BrowserView::GetBrowserViewForBrowser(browser)
-      ->toolbar()
+      ->toolbar_button_provider()
       ->GetWebUIToolbarViewForTesting();
 }
 
@@ -1185,6 +1186,78 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewStabilityTest,
   ASSERT_TRUE(observer.last_navigation_succeeded());
 }
 
+class WebUIToolbarWebViewRaceTest : public InProcessBrowserTest {
+ public:
+  WebUIToolbarWebViewRaceTest() {
+    feature_list_.InitWithFeatures(
+        {features::kInitialWebUI, features::kWebUIReloadButton,
+         features::kWebUIInProcessResourceLoadingV2,
+         features::kSkipIPCChannelPausingForNonGuests},
+        {features::kInitialWebUISyncNavStartToCommit});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// Regression test for crbug.com/478033216.
+IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewRaceTest,
+                       BindInterfaceAfterCloseRace) {
+  // 1. Setup: Create a new browser window.
+  Browser* new_browser = CreateBrowser(browser()->profile());
+  ui_test_utils::WaitForBrowserSetLastActive(new_browser);
+
+  WebUIToolbarWebView* toolbar_view = ::GetWebUIToolbarWebView(new_browser);
+  ASSERT_TRUE(toolbar_view);
+  content::WebContents* webui_contents =
+      toolbar_view->GetWebViewForTesting()->GetWebContents();
+  ASSERT_TRUE(webui_contents);
+
+  // 2. Prepare Navigation Manager to hang the navigation.
+  GURL toolbar_url(chrome::kChromeUIWebUIToolbarURL);
+
+  // Trigger a reload to start a new navigation that we can control.
+  content::TestNavigationManager nav_manager(webui_contents, toolbar_url);
+  webui_contents->GetController().Reload(content::ReloadType::NORMAL,
+                                         /*check_for_repost=*/false);
+  EXPECT_TRUE(nav_manager.WaitForResponse());
+
+  // 3. Resume navigation (this queues the commit task on the UI thread).
+  nav_manager.ResumeNavigation();
+
+  // 4. Initiate browser closure.
+  // This synchronously calls Browser::OnWindowClosing() which nulls the
+  // BrowserWindowInterface reference and posts SynchronouslyDestroyBrowser.
+  new_browser->window()->Close();
+
+  // 5. Queue BindInterface manually.
+  // This mimics the Mojo request from the renderer arriving after the BWI is
+  // nulled but BEFORE the browser is destroyed.
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          [](base::WeakPtr<content::WebContents> weak_wc) {
+            if (!weak_wc) {
+              return;
+            }
+            auto* rfh = weak_wc->GetPrimaryMainFrame();
+            auto* web_ui = rfh ? rfh->GetWebUI() : nullptr;
+            auto* ui = web_ui ? web_ui->GetController()->GetAs<WebUIToolbarUI>()
+                              : nullptr;
+            if (ui) {
+              mojo::PendingRemote<tracked_element::mojom::TrackedElementHandler>
+                  remote;
+              ui->BindInterface(remote.InitWithNewPipeAndPassReceiver());
+            }
+          },
+          webui_contents->GetWeakPtr()));
+
+  // 6. Return to the message loop.
+  // This will process: [Commit Task] -> [BindInterface Task] -> [Destruction
+  // Task]. Without the fix, both Commit and BindInterface tasks would crash.
+  std::ignore = nav_manager.WaitForNavigationFinished();
+}
+
 // Verify that the crash is recovered by reloading the page until it hits the
 // limit set in `WebUIReloadButtonMaxCrashRecoveryTimes`, after that it will
 // remain crashed.
@@ -2096,7 +2169,7 @@ class WebUIToolbarWebViewHomeButtonBrowserTest : public InProcessBrowserTest {
     GURL home_url(
         browser()->profile()->GetPrefs()->GetString(prefs::kHomePage));
     if (home_url.is_empty()) {
-      return GURL(chrome::kChromeUINewTabURL);
+      return chrome::ChromeUINewTabURLAsGURL();
     }
     return home_url;
   }
@@ -2483,8 +2556,6 @@ class WebUIPinnedToolbarActionsBrowserTest
              features::kWebUIInProcessResourceLoadingV2,
              features::kInitialWebUISyncNavStartToCommit,
              tabs::kHorizontalTabStripComboButton,
-             // Need non-zero initial toolbar size, otherwise hidden on Mac.
-             features::kWebUIReloadButton,
              // Facilitate testing kActionSidePanelShowComments
              collaboration::features::kCollaborationComments,
              // Facilitate testing kActionsSidePanelShowContextualTasks
@@ -2617,6 +2688,29 @@ class WebUIPinnedToolbarActionsBrowserTest
     EXPECT_TRUE(pinned_actions->GetBubbleAnchor(action_id).IsNull());
   }
 
+  void VerifyPinnedToolbarWidth() {
+    WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
+    views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
+    content::WebContents* web_contents = web_view->GetWebContents();
+    auto* pinned_actions = static_cast<WebUIPinnedToolbarActions*>(
+        webui_toolbar_view->GetPinnedToolbarActions());
+
+    // Verify HTML element width matches C++ calculated width.
+    ASSERT_TRUE(base::test::RunUntil([&]() {
+      return content::EvalJs(
+                 web_contents,
+                 base::StringPrintf(
+                     R"(
+        (() => {
+          const el = %s;
+          return el ? el.getBoundingClientRect().width : -1;
+        })();
+      )",
+                     GetButtonAppJS("#pinnedToolbarActions").c_str()))
+                 .ExtractInt() == pinned_actions->GetWidth();
+    }));
+  }
+
   raw_ptr<PinnedToolbarActionsModel> model_;
 
   const std::vector<
@@ -2705,6 +2799,7 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
 IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, PinAllTogether) {
   for (const auto& [action_id, mojom_action] : kActionMappings) {
     PinAction(action_id, mojom_action);
+    EXPECT_NO_FATAL_FAILURE(VerifyPinnedToolbarWidth());
   }
 
   for (const auto& [action_id, mojom_action] : kActionMappings) {

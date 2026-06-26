@@ -124,8 +124,8 @@ export class GlicApiCommunicator implements PostMessageRequestHandler {
   }
 
   // PostMessageRequestHandler impl.
-  handleRawRequest(type: string, payload: any, extras: ResponseExtras):
-      Promise<{payload: any}|undefined> {
+  handleRawRequest(type: string, payload: unknown, extras: ResponseExtras):
+      Promise<{payload: unknown}|undefined> {
     this.stopBootstrapPing();
 
     if (type === 'glicBrowserWebClientCreated') {
@@ -180,6 +180,7 @@ export class GlicApiHost implements PostMessageRequestHandler {
   sender: GatedSender;
   private enableApiActivationGating = true;
   panelIsActive = false;
+  private isInvoking = false;
   private handler: WebClientHandlerRemote;
   private webClientErrorTimer: OneShotTimer;
   private webClientState =
@@ -266,7 +267,15 @@ export class GlicApiHost implements PostMessageRequestHandler {
   }
 
   shouldGateRequests(): boolean {
+    if (this.isInvoking) {
+      return false;
+    }
     return !this.panelIsActive && this.enableApiActivationGating;
+  }
+
+  setIsInvoking(isInvoking: boolean) {
+    this.isInvoking = isInvoking;
+    this.updateSenderActive();
   }
 
   waitingOnPanelWillOpen() {
@@ -462,9 +471,14 @@ export class GlicApiHost implements PostMessageRequestHandler {
   }
 
   // PostMessageRequestHandler implementation.
-  async handleRawRequest(type: string, payload: any, extras: ResponseExtras):
-      Promise<{payload: any}|undefined> {
-    const handlerFunction = (this.messageHandler as any)[type];
+  async handleRawRequest(
+      type: string, payload: unknown,
+      extras: ResponseExtras): Promise<{payload: unknown}|undefined> {
+    type HandlerFunction = (payload: unknown, extras: ResponseExtras) =>
+        Promise<{payload: unknown}>;
+    type IndexableMessageHandler = Record<string, HandlerFunction>;
+    const handlerFunction =
+        (this.messageHandler as unknown as IndexableMessageHandler)[type]!;
     if (typeof handlerFunction !== 'function') {
       console.warn(`GlicApiHost: Unknown message type ${type}`);
       return;
@@ -481,7 +495,7 @@ export class GlicApiHost implements PostMessageRequestHandler {
         Object.hasOwn(BACKGROUND_RESPONSES, type)) {
       const backgroundResponse =
           BACKGROUND_RESPONSES[type as keyof typeof BACKGROUND_RESPONSES] as
-          HostBackgroundResponse<any>;
+          HostBackgroundResponse<unknown>;
       if (Object.hasOwn(backgroundResponse, 'throws')) {
         const friendlyName =
             type.replaceAll(/^glicBrowser|^glicWebClient/g, '');
@@ -491,11 +505,13 @@ export class GlicApiHost implements PostMessageRequestHandler {
         console.warn(`Using background request behavior for ${type}`);
       }
       if (Object.hasOwn(backgroundResponse, 'does')) {
-        response = await (backgroundResponse as HostBackgroundResponseDoes<any>)
-                       .does();
+        response =
+            await (backgroundResponse as HostBackgroundResponseDoes<unknown>)
+                .does();
       } else {
         response =
-            (backgroundResponse as HostBackgroundResponseReturns<any>).returns;
+            (backgroundResponse as HostBackgroundResponseReturns<unknown>)
+                .returns;
       }
     } else {
       response =
@@ -510,9 +526,9 @@ export class GlicApiHost implements PostMessageRequestHandler {
 
   onRequestReceived(type: string): void {
     this.reportRequestCountEvent(type, GlicRequestEvent.REQUEST_RECEIVED);
-    if (document.visibilityState === 'hidden') {
+    if (!this.panelIsActive) {
       this.reportRequestCountEvent(
-          type, GlicRequestEvent.REQUEST_RECEIVED_WHILE_HIDDEN);
+          type, GlicRequestEvent.REQUEST_RECEIVED_WHILE_INACTIVE);
     }
   }
 
@@ -531,10 +547,9 @@ export class GlicApiHost implements PostMessageRequestHandler {
       return;
     }
     const requestTypeNumber: number|undefined =
-        (HOST_REQUEST_TYPES as any)[histogramSuffix];
+        (HOST_REQUEST_TYPES as unknown as
+         Record<string, number>)[histogramSuffix];
     if (!requestTypeNumber) {
-      console.warn(
-          `reportRequestCountEvent: invalid requestType ${histogramSuffix}`);
       return;
     }
     chrome.histograms.recordEnumerationValue(
@@ -544,17 +559,17 @@ export class GlicApiHost implements PostMessageRequestHandler {
     switch (event) {
       case GlicRequestEvent.REQUEST_HANDLER_EXCEPTION:
         chrome.histograms.recordEnumerationValue(
-            `Glic.Api.RequestCounts.Error`, requestTypeNumber,
+            `Glic.Api.StatusCounts.Error`, requestTypeNumber,
             HOST_REQUEST_TYPES.MAX_VALUE + 1);
         break;
-      case GlicRequestEvent.REQUEST_RECEIVED_WHILE_HIDDEN:
+      case GlicRequestEvent.REQUEST_RECEIVED_WHILE_INACTIVE:
         chrome.histograms.recordEnumerationValue(
-            `Glic.Api.RequestCounts.Hidden`, requestTypeNumber,
+            `Glic.Api.StatusCounts.Inactive`, requestTypeNumber,
             HOST_REQUEST_TYPES.MAX_VALUE + 1);
         break;
       case GlicRequestEvent.REQUEST_RECEIVED:
         chrome.histograms.recordEnumerationValue(
-            `Glic.Api.RequestCounts.Received`, requestTypeNumber,
+            `Glic.Api.StatusCounts.Received`, requestTypeNumber,
             HOST_REQUEST_TYPES.MAX_VALUE + 1);
         break;
       default:
@@ -584,8 +599,9 @@ enum GlicRequestEvent {
   REQUEST_RECEIVED = 0,
   RESPONSE_SENT = 1,
   REQUEST_HANDLER_EXCEPTION = 2,
-  REQUEST_RECEIVED_WHILE_HIDDEN = 3,
-  MAX_VALUE = REQUEST_RECEIVED_WHILE_HIDDEN,
+  // Deprecated: REQUEST_RECEIVED_WHILE_HIDDEN = 3,
+  REQUEST_RECEIVED_WHILE_INACTIVE = 4,
+  MAX_VALUE = REQUEST_RECEIVED_WHILE_INACTIVE,
 }
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicRequestEvent)
 

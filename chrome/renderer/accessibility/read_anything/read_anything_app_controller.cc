@@ -458,11 +458,6 @@ ReadAnythingAppController::ReadAnythingAppController(
   content::RenderThread::Get()->BindHostReceiver(
       factory.BindNewPipeAndPassReceiver());
   ukm_recorder_ = ukm::MojoUkmRecorder::Create(*factory);
-  if (features::IsDataCollectionModeForScreen2xEnabled()) {
-    model_.SetDataCollectionForScreen2xCallback(
-        base::BindOnce(&ReadAnythingAppController::DistillAndScreenshot,
-                       weak_ptr_factory_.GetWeakPtr()));
-  }
 
   model_observer_.Observe(&model_);
   self_ = this;
@@ -491,6 +486,12 @@ void ReadAnythingAppController::OnNodeWillBeDeleted(ui::AXTree* tree,
 
 void ReadAnythingAppController::OnNodeDeleted(ui::AXTree* tree,
                                               ui::AXNodeID node_id) {
+  // Ignore node deletions for Readability as there is no mapping to the
+  // AXTree for this distillation method.
+  if (model_.is_readability_next_distillation_method()) {
+    return;
+  }
+
   if (!displayed_nodes_pending_deletion_.contains(node_id)) {
     return;
   }
@@ -614,23 +615,22 @@ void ReadAnythingAppController::AccessibilityEventReceived(
   model_.PrepareForAXTreeUpdates(tree_id);
   if (model_.should_apply_accessibility_updates_for_readability_links()) {
     ApplyAccessibilityUpdatesForReadabilityLinks(tree_id, updates, events);
-    return;
-  }
-
-  // Remove the const-ness of the data here so that subsequent methods can move
-  // the data.
-  if (tree_id == model_.active_tree_id() && IsUpdateProcessingPaused()) {
-    VLOG(1)
-        << "In AccessibilityEventReceived. Calling QueueAccessibilityUpdates "
-           "because distiller should not run yet.";
-
-    model_.QueueAccessibilityUpdates(
-        tree_id, const_cast<std::vector<ui::AXTreeUpdate>&>(updates),
-        const_cast<std::vector<ui::AXEvent>&>(events));
   } else {
-    model_.ApplyAccessibilityUpdates(
-        tree_id, const_cast<std::vector<ui::AXTreeUpdate>&>(updates),
-        const_cast<std::vector<ui::AXEvent>&>(events));
+    // Remove the const-ness of the data here so that subsequent methods can
+    // move the data.
+    if (tree_id == model_.active_tree_id() && IsUpdateProcessingPaused()) {
+      VLOG(1)
+          << "In AccessibilityEventReceived. Calling QueueAccessibilityUpdates "
+             "because distiller should not run yet.";
+
+      model_.QueueAccessibilityUpdates(
+          tree_id, const_cast<std::vector<ui::AXTreeUpdate>&>(updates),
+          const_cast<std::vector<ui::AXEvent>&>(events));
+    } else {
+      model_.ApplyAccessibilityUpdates(
+          tree_id, const_cast<std::vector<ui::AXTreeUpdate>&>(updates),
+          const_cast<std::vector<ui::AXEvent>&>(events));
+    }
   }
 
   // From this point onward, `updates` and `events` should not be accessed.
@@ -638,14 +638,38 @@ void ReadAnythingAppController::AccessibilityEventReceived(
     return;
   }
 
-  ProcessModelUpdates();
+  // Trigger model updates for Screen2x or for Readability when the select text
+  // feature is enabled.
+  if (features::IsReadAnythingReadabilitySelectTextEnabled() ||
+      !model_.is_readability_next_distillation_method()) {
+    ProcessModelUpdates();
+    return;
+  }
 }
 
 void ReadAnythingAppController::ProcessModelUpdates() {
+  // When the Readability feature is enabled as standalone, treat readability
+  // distilation as static and ignore model updates.
+  if (model_.is_readability_next_distillation_method() &&
+      !features::IsReadAnythingReadabilitySelectTextEnabled()) {
+    return;
+  }
+
+  // TODO: crbug.com/505770261 - Implement selection_mode for readability.
+  // If IsReadAnythingReadabilitySelectTextEnabled, Readability should
+  // only be able to trigger PostProcessSelection.
+  if (model_.is_readability_next_distillation_method()) {
+    DCHECK(!model_.requires_distillation())
+        << "Readability should not trigger Screen2x distillation.";
+    DCHECK(!model_.redraw_required())
+        << "Readability should not trigger a re-draw.";
+    DCHECK(!model_.reset_draw_timer())
+        << "Readability should not reset the draw timer.";
+    DCHECK(!model_.reset_distillation_delay_timer())
+        << "Readability should not reset the distillation delay timer.";
+  }
+
   if (model_.requires_distillation()) {
-    if (model_.is_readability_next_distillation_method()) {
-      return;
-    }
     Distill();
   }
 
@@ -889,25 +913,7 @@ void ReadAnythingAppController::OnAXTreeDestroyed(const ui::AXTreeID& tree_id) {
   model_.OnAXTreeDestroyed(tree_id);
 }
 
-void ReadAnythingAppController::DistillAndScreenshot() {
-  // For screen2x data generation mode, chrome is opened from the CLI to a
-  // specific URL. The caller monitors for a dump of the distilled proto written
-  // to a local file. Distill should only be called once the page finished
-  // loading and is stable, so the proto represents the entire webpage.
-  CHECK(features::IsDataCollectionModeForScreen2xEnabled());
-  CHECK(model_.PageFinishedLoadingForDataCollection());
-  CHECK(model_.ScreenAIServiceReadyForDataCollection());
-
-  Distill(/*for_training_data=*/true);
-  page_handler_->OnScreenshotRequested();
-}
-
-void ReadAnythingAppController::Distill(bool for_training_data) {
-  if (!for_training_data &&
-      features::IsDataCollectionModeForScreen2xEnabled()) {
-    return;
-  }
-
+void ReadAnythingAppController::Distill() {
   if (IsUpdateProcessingPaused()) {
     // When distillation is in progress, the model may have queued up tree
     // updates. In those cases, assume we eventually get to `OnAXTreeDistilled`,
@@ -1235,9 +1241,6 @@ void ReadAnythingAppController::OnSettingsRestoredFromPrefs(
 }
 
 void ReadAnythingAppController::ScreenAIServiceReady() {
-  if (features::IsDataCollectionModeForScreen2xEnabled()) {
-    model_.SetScreenAIServiceReadyForDataCollection();
-  }
   distiller_->ScreenAIServiceReady();
 }
 
@@ -2973,6 +2976,11 @@ void ReadAnythingAppController::UpdateContent(const std::string& title,
   model_.set_current_content_distillation_method(
       ReadAnythingAppModel::DistillationMethod::kReadability);
   ExecuteJavaScript("chrome.readingMode.updateContent();");
+
+  if (features::IsReadAnythingReadabilitySelectTextEnabled() &&
+      !IsUpdateProcessingPaused() && model_.ContainsActiveTree()) {
+    PostProcessSelection();
+  }
 
   model_.set_should_extract_anchors_from_tree_for_readability(true);
   bool didProcessAnchors = model_.ProcessAXTreeAnchors();

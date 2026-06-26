@@ -351,15 +351,6 @@ bool IsScreenAIOCREnabled() {
   return base::FeatureList::IsEnabled(ax::mojom::features::kScreenAIOCREnabled);
 }
 
-// This feature is only used for generating training data for Screen2x and
-// should never be used in any other circumstance, and should not be enabled by
-// default.
-BASE_FEATURE(kDataCollectionModeForScreen2x, base::FEATURE_DISABLED_BY_DEFAULT);
-bool IsDataCollectionModeForScreen2xEnabled() {
-  return base::FeatureList::IsEnabled(
-      ::features::kDataCollectionModeForScreen2x);
-}
-
 BASE_FEATURE(kImmersiveReadAnything, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsImmersiveReadAnythingEnabled() {
   return base::FeatureList::IsEnabled(::features::kImmersiveReadAnything);
@@ -455,17 +446,10 @@ bool IsReadAnythingWithReadabilityEnabled() {
 
 BASE_FEATURE(kReadAnythingReadabilitySelectText,
              base::FEATURE_DISABLED_BY_DEFAULT);
-bool IsReadaAnythingReadabilitySelectTextEnabled() {
+bool IsReadAnythingReadabilitySelectTextEnabled() {
   return base::FeatureList::IsEnabled(
              ::features::kReadAnythingReadabilitySelectText) &&
          base::FeatureList::IsEnabled(::features::kReadAnythingWithReadability);
-}
-
-// This feature is only for debug purposes and for security/privacy reasons,
-// should be never enabled by default .
-BASE_FEATURE(kScreenAIDebugMode, base::FEATURE_DISABLED_BY_DEFAULT);
-bool IsScreenAIDebugModeEnabled() {
-  return base::FeatureList::IsEnabled(::features::kScreenAIDebugMode);
 }
 
 // This feature is only used in tests and must not be enabled by default.

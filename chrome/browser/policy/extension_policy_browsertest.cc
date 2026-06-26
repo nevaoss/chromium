@@ -98,7 +98,7 @@
 #include "chrome/browser/extensions/scoped_test_mv2_enabler.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/web_applications/os_integration/os_integration_manager.h"
-#include "chrome/browser/web_applications/proto/web_app_install_state.pb.h"
+#include "chrome/browser/web_applications/proto/web_app_install_state.pb.h"  // nogncheck
 #include "chrome/browser/web_applications/test/web_app_test_observers.h"
 #include "chrome/browser/web_applications/test/web_app_test_utils.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
@@ -2531,9 +2531,16 @@ class WebAppInstallForceListPolicyPlaceholderWithAppFallbackNameTest
       delete;
 };
 
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_StartUpInstallationPlaceholderFallbackName \
+  DISABLED_StartUpInstallationPlaceholderFallbackName
+#else
+#define MAYBE_StartUpInstallationPlaceholderFallbackName \
+  StartUpInstallationPlaceholderFallbackName
+#endif
 IN_PROC_BROWSER_TEST_F(
     WebAppInstallForceListPolicyPlaceholderWithAppFallbackNameTest,
-    StartUpInstallationPlaceholderFallbackName) {
+    MAYBE_StartUpInstallationPlaceholderFallbackName) {
   const web_app::WebAppRegistrar& registrar =
       web_app::WebAppProvider::GetForTest(browser()->profile())
           ->registrar_unsafe();

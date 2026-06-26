@@ -26,6 +26,7 @@
 #include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/variations/scoped_variations_ids_provider.h"
+#include "content/public/common/content_features.h"
 #include "content/public/test/mock_navigation_handle.h"
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/test_web_ui.h"
@@ -33,6 +34,8 @@
 #include "net/base/url_util.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/web_preferences/web_preferences.h"
+#include "third_party/blink/public/mojom/css/preferred_color_scheme.mojom.h"
 #include "url/gurl.h"
 
 using testing::_;
@@ -702,6 +705,10 @@ TEST_F(ContextualTasksUiTest, DidFinishNavigation_ZeroState) {
        true},  // Other noise/params
       {GURL("https://www.google.com/search?udm=50&q=%20"),
        false},  // Whitespace
+      {GURL("https://www.google.com/search?udm=50&smstk=test"),
+       false},  // smstk present
+      {GURL("https://www.google.com/search?udm=50&smstk="),
+       true},  // smstk empty
   };
 
   ON_CALL(*service_for_nav_, IsAiUrl(GURL("https://google.com")))
@@ -987,6 +994,87 @@ TEST_F(ContextualTasksUiTest, OnWebUIReadyCalledOnConstruction) {
       .Times(1);
 
   ContextualTasksUI controller(&web_ui);
+}
+
+class MockMPArchNavigationHandle : public content::MockNavigationHandle {
+ public:
+  MockMPArchNavigationHandle() = default;
+  ~MockMPArchNavigationHandle() override = default;
+
+  bool IsGuestViewMainFrame() const override { return is_guest_view_; }
+  void set_is_guest_view_main_frame(bool is_guest_view) {
+    is_guest_view_ = is_guest_view;
+  }
+
+ private:
+  bool is_guest_view_ = false;
+};
+
+TEST_F(ContextualTasksUiTest, FrameNavObserver_DidFinishNavigation_MPArch) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(features::kGuestViewMPArch);
+
+  testing::NiceMock<MockTaskInfoDelegate> delegate;
+  SetupMockDelegate(&delegate, std::nullopt, std::nullopt, std::nullopt);
+  auto observer = std::make_unique<ContextualTasksUI::FrameNavObserver>(
+      embedded_web_contents_.get(), service_for_nav_.get(),
+      contextual_tasks_service_.get(), &delegate);
+
+  GURL url(kAiPageUrl);
+  url = net::AppendQueryParameter(url, "q", "test");
+  url = net::AppendQueryParameter(url, "mtid", "5678");
+
+  // Simulate an MPArch guest main frame navigation.
+  auto handle = std::make_unique<MockMPArchNavigationHandle>();
+  handle->set_url(url);
+  handle->set_has_committed(true);
+  handle->set_is_guest_view_main_frame(true);
+
+  EXPECT_CALL(*contextual_tasks_service_, GetTaskFromServerId(_, "5678"))
+      .Times(1);
+  EXPECT_CALL(*contextual_tasks_service_, CreateTaskFromUrl(url))
+      .WillOnce(
+          Return(ContextualTask(base::Uuid::ParseCaseInsensitive(kUuid))));
+
+  observer->DidFinishNavigation(handle.get());
+
+  // Simulate a top-level navigation.
+  auto top_level_handle = std::make_unique<MockMPArchNavigationHandle>();
+  top_level_handle->set_url(url);
+  top_level_handle->set_has_committed(true);
+  top_level_handle->set_is_guest_view_main_frame(false);
+
+  // No interaction with the service should occur since top-level navs are
+  // filtered out.
+  EXPECT_CALL(*contextual_tasks_service_, GetTaskFromServerId(_, "5678"))
+      .Times(0);
+
+  observer->DidFinishNavigation(top_level_handle.get());
+}
+
+TEST_F(ContextualTasksUiTest, DidFinishNavigation_UpdatesThemeFromCsParam) {
+  MockTaskInfoDelegate delegate;
+  SetupMockDelegate(&delegate, std::nullopt, std::nullopt, std::nullopt);
+  auto observer = std::make_unique<ContextualTasksUI::FrameNavObserver>(
+      embedded_web_contents_.get(), service_for_nav_.get(),
+      contextual_tasks_service_.get(), &delegate);
+  GURL url("https://www.google.com/search?udm=50&cs=1");
+  content::WebContents* wc = embedded_web_contents_.get();
+  blink::web_pref::WebPreferences prefs = wc->GetOrCreateWebPreferences();
+  // Initialize to light mode to verify it changes to dark.
+  prefs.preferred_color_scheme = blink::mojom::PreferredColorScheme::kLight;
+  wc->SetWebPreferences(prefs);
+  base::Uuid task_id = base::Uuid::ParseCaseInsensitive(kUuid);
+  ContextualTask task(task_id);
+  ON_CALL(*contextual_tasks_service_, CreateTask()).WillByDefault(Return(task));
+  auto handle = CreateMockNavigationHandle(url);
+  handle->set_has_committed(true);
+  handle->set_is_same_document(true);
+  observer->DidFinishNavigation(handle.get());
+  blink::web_pref::WebPreferences updated_prefs =
+      wc->GetOrCreateWebPreferences();
+  EXPECT_EQ(updated_prefs.preferred_color_scheme,
+            blink::mojom::PreferredColorScheme::kDark);
 }
 
 }  // namespace contextual_tasks

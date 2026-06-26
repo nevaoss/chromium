@@ -12,15 +12,18 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.util.DisplayMetrics;
-import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.VisibleForTesting;
+import androidx.asynclayoutinflater.view.AsyncLayoutInflater;
 import androidx.constraintlayout.widget.ConstraintLayout;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.DeviceInfo;
+import org.chromium.base.ThreadUtils;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.base.supplier.ObservableSuppliers;
@@ -36,6 +39,8 @@ import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
+import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
+import org.chromium.components.browser_ui.widget.scrim.ScrimManager.ScrimClient;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteRequestType;
@@ -55,6 +60,7 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.util.function.Supplier;
 
 /** Coordinator for the Fusebox component. */
 @NullMarked
@@ -68,6 +74,16 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         int EXPANDED = 2;
     }
 
+    @IntDef({FuseboxLayoutMode.SEPARATED, FuseboxLayoutMode.POPOVER})
+    @Retention(RetentionPolicy.SOURCE)
+    @Target(ElementType.TYPE_USE)
+    public @interface FuseboxLayoutMode {
+        // The Fusebox UI is separated from associated suggestions.
+        int SEPARATED = 1;
+        // The Fusebox UI is intermingled with associated suggestions in a single popover window.
+        int POPOVER = 2;
+    }
+
     private @Nullable FuseboxViewHolder mViewHolder;
     private @Nullable PropertyModel mModel;
     private final Context mContext;
@@ -77,17 +93,24 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
     private @Nullable AutocompleteInput mInput;
     private boolean mDefaultSearchEngineIsGoogle = true;
     private boolean mDeferredInitialized;
+    private @Nullable FuseboxSessionState mPendingSession;
     private TemplateUrlService mTemplateUrlService;
     private final SettableNonNullObservableSupplier<@FuseboxState Integer> mFuseboxStateSupplier =
             ObservableSuppliers.createNonNull(FuseboxState.DISABLED);
+    private final SettableNonNullObservableSupplier<@FuseboxLayoutMode Integer>
+            mFuseboxLayoutModeSupplier =
+                    ObservableSuppliers.createNonNull(FuseboxLayoutMode.SEPARATED);
     private final SnackbarManager mSnackbarManager;
     private @Nullable ViewportRectProvider mViewportRectProvider;
     private @Nullable FuseboxMetrics mMetrics;
     private @Nullable BottomSheetRectProvider mBottomSheetRectProvider;
+    private final Supplier<@Nullable View> mScrimAnchorViewSupplier;
+    private final ScrimManager mScrimManager;
 
     // Mediator is scoped to a particular profile. Can reuse as long as the profile does not change.
     private @Nullable FuseboxMediator mMediator;
     private @Nullable @BrandedColorScheme Integer mLastBrandedColorScheme;
+    private boolean mDestroyed;
 
     /**
      * Creates a new instance of {@link FuseboxCoordinator}.
@@ -98,6 +121,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
      * @param tabModelSelectorSupplier The supplier of the tab model selector.
      * @param templateUrlServiceSupplier The supplier of the template URL service.
      * @param snackbarManager The snackbar manager to show messages.
+     * @param scrimAnchorViewSupplier Supplier for the view to anchor the scrim to.
      */
     public FuseboxCoordinator(
             Context context,
@@ -105,14 +129,19 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
             ConstraintLayout parent,
             MonotonicObservableSupplier<TabModelSelector> tabModelSelectorSupplier,
             OneshotSupplier<TemplateUrlService> templateUrlServiceSupplier,
-            SnackbarManager snackbarManager) {
+            SnackbarManager snackbarManager,
+            Supplier<@Nullable View> scrimAnchorViewSupplier) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mParent = parent;
+        mScrimManager =
+                new ScrimManager(
+                        context, (ViewGroup) parent.getRootView(), ScrimClient.FUSEBOX_POPUP);
         mTabModelSelectorSupplier = tabModelSelectorSupplier;
         mSnackbarManager = snackbarManager;
+        mScrimAnchorViewSupplier = scrimAnchorViewSupplier;
 
-        if (!OmniboxFeatures.sOmniboxMultimodalInput.isEnabled()
+        if (!OmniboxFeatures.isMultimodalInputEnabled(context)
                 || parent.findViewById(R.id.fusebox_request_type) == null) {
             mDeferredInitialized = true;
             return;
@@ -125,45 +154,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         if (mDeferredInitialized) return;
         mDeferredInitialized = true;
 
-        Resources res = mContext.getResources();
-
-        // Prepare rect provider for the floating popup window.
-        var viewRectProvider = new ViewRectProvider(mParent);
-        viewRectProvider.setInsetPx(
-                0, res.getDimensionPixelSize(R.dimen.fusebox_vertical_space_above_popup), 0, 0);
-
-        // Prepare rect provider for the bottom-sheet like popup window.
-        Activity activity = assumeNonNull(ContextUtils.activityFromContext(mContext));
-        mBottomSheetRectProvider = new BottomSheetRectProvider(activity, mParent);
-        var dynamicRectProvider =
-                new DynamicRectProvider(viewRectProvider, mBottomSheetRectProvider);
-
-        var popupView = LayoutInflater.from(mContext).inflate(R.layout.fusebox_context_popup, null);
-        mViewportRectProvider = new ViewportRectProvider(mContext);
-        var contextButton = mParent.findViewById(R.id.location_bar_attachments_add);
-
-        var popupWindowBuilder =
-                new AnchoredPopupWindow.Builder(
-                                mContext,
-                                contextButton.getRootView(),
-                                OmniboxResourceProvider.getPopupBackgroundDrawable(
-                                        mContext, BrandedColorScheme.APP_DEFAULT),
-                                () -> popupView,
-                                dynamicRectProvider)
-                        .setFocusable(true)
-                        .addOnDismissListener(this::onContextPopupDismissed)
-                        .setOutsideTouchable(true)
-                        .setAnimateFromAnchor(true)
-                        .setPreferredHorizontalOrientation(HorizontalOrientation.LAYOUT_DIRECTION)
-                        .setViewportRectProvider(mViewportRectProvider)
-                        .setHorizontalOverlapAnchor(true)
-                        .setVerticalOverlapAnchor(true);
-
-        var popup =
-                new FuseboxPopup(
-                        mContext, popupWindowBuilder.build(), popupView, dynamicRectProvider);
-
-        mViewHolder = new FuseboxViewHolder(mParent, popup);
         mModel =
                 new PropertyModel.Builder(FuseboxProperties.ALL_KEYS)
                         .with(FuseboxProperties.FUSEBOX_STATE, FuseboxState.DISABLED)
@@ -179,7 +169,74 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                                 OmniboxFeatures.sShowDedicatedModeButton.getValue())
                         .with(FuseboxProperties.POPUP_STATE, FuseboxProperties.PopupState.HIDDEN)
                         .build();
-        PropertyModelChangeProcessor.create(mModel, mViewHolder, FuseboxViewBinder::bind);
+
+        new AsyncLayoutInflater(mContext)
+                .inflate(
+                        R.layout.fusebox_context_popup,
+                        mParent,
+                        this::finishDeferredInitialization);
+    }
+
+    private void finishDeferredInitialization(
+            View popupView, int resid, @Nullable ViewGroup parent) {
+        if (mDestroyed) return;
+
+        Resources res = mContext.getResources();
+
+        // Prepare rect provider for the floating popup window.
+        var viewRectProvider = new ViewRectProvider(mParent);
+        viewRectProvider.setInsetPx(
+                0, res.getDimensionPixelSize(R.dimen.fusebox_vertical_space_above_popup), 0, 0);
+
+        // Prepare rect provider for the bottom-sheet like popup window.
+        Activity activity = assumeNonNull(ContextUtils.activityFromContext(mContext));
+        mBottomSheetRectProvider = new BottomSheetRectProvider(activity, mParent);
+        var dynamicRectProvider =
+                new DynamicRectProvider(viewRectProvider, mBottomSheetRectProvider);
+
+        mViewportRectProvider = new ViewportRectProvider(mContext);
+        var contextButton = mParent.findViewById(R.id.location_bar_attachments_add);
+
+        var popupWindowBuilder =
+                new AnchoredPopupWindow.Builder(
+                                mContext,
+                                contextButton.getRootView(),
+                                OmniboxResourceProvider.getPopupBackgroundDrawable(
+                                        mContext, BrandedColorScheme.APP_DEFAULT),
+                                () -> popupView,
+                                dynamicRectProvider)
+                        // Allows the soft keyboard to show underneath the popup.
+                        .setFocusable(false)
+                        .addOnDismissListener(this::onContextPopupDismissed)
+                        .setOutsideTouchable(true)
+                        .setAnimateFromAnchor(true)
+                        .setPreferredHorizontalOrientation(HorizontalOrientation.LAYOUT_DIRECTION)
+                        .setViewportRectProvider(mViewportRectProvider)
+                        .setHorizontalOverlapAnchor(true)
+                        .setVerticalOverlapAnchor(true);
+
+        var popup =
+                new FuseboxPopup(
+                        mContext,
+                        popupWindowBuilder.build(),
+                        popupView,
+                        dynamicRectProvider,
+                        OmniboxFeatures.sShowBottomSheetPopup.getValue());
+
+        mViewHolder = new FuseboxViewHolder(mParent, popup);
+
+        if (mPendingSession != null) {
+            beginInput(mPendingSession);
+            mPendingSession = null;
+        }
+
+        ThreadUtils.postOnUiThread(
+                () -> {
+                    if (mDestroyed || mModel == null || mViewHolder == null) return;
+
+                    PropertyModelChangeProcessor.create(
+                            mModel, mViewHolder, FuseboxViewBinder::bind);
+                });
     }
 
     @EnsuresNonNull("mMediator")
@@ -194,14 +251,18 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                         assumeNonNull(mViewHolder),
                         mTabModelSelectorSupplier,
                         mFuseboxStateSupplier,
+                        mFuseboxLayoutModeSupplier,
                         mSnackbarManager,
-                        Clipboard.getInstance());
+                        Clipboard.getInstance(),
+                        mScrimManager,
+                        mScrimAnchorViewSupplier);
         if (mLastBrandedColorScheme != null) {
             mMediator.updateVisualsForState(mLastBrandedColorScheme);
         }
     }
 
     public void destroy() {
+        mDestroyed = true;
         endInput();
         if (mMediator != null) {
             mMediator.destroy();
@@ -216,6 +277,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         if (mBottomSheetRectProvider != null) {
             mBottomSheetRectProvider.destroy();
         }
+        mScrimManager.destroy();
     }
 
     /** Apply a variant of the branded color scheme to Fusebox UI elements */
@@ -240,8 +302,16 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         var composeBox = session.getComposeboxQueryControllerBridge();
         if (composeBox == null) return;
 
-        if (!mDeferredInitialized) {
-            ensureDeferredInitialized();
+        if (mViewHolder == null) {
+            // - If mDeferredInitialized is false - this is the first time we run beginInput and we
+            //   need to make sure the UI is built.
+            // - If mDeferredInitialized is true, but mViewHolder is null - then we already
+            //   determined that the user or scenario is not eligible (e.g. feature flag disabled).
+            if (!mDeferredInitialized) {
+                mPendingSession = session;
+                ensureDeferredInitialized();
+            }
+            return;
         }
 
         // We can't do inclusive check due to missing `isPhone()` case in `DeviceInfo`.
@@ -264,8 +334,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         // Terminate any current input to re-set session and re-install observers.
         // This should ideally be an assert ensuring that we don't begin a new input while the old
         // one is still active; will turn to an assert separately in case this scenario happens.
-        if (mModel == null
-                || !composeBox.isFuseboxEligible()
+        if (!composeBox.isFuseboxEligible()
                 || !isSupportedDeviceType
                 || !isSupportedPageClass
                 || !mDefaultSearchEngineIsGoogle) {
@@ -290,6 +359,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         }
         mInput = null;
         mMetrics = null;
+        mPendingSession = null;
     }
 
     // TemplateUrlServiceObserver
@@ -366,6 +436,11 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
      */
     public NonNullObservableSupplier<@FuseboxState Integer> getFuseboxStateSupplier() {
         return mFuseboxStateSupplier;
+    }
+
+    /** Registers a callback notified when the layout mode of the fusebox changes. */
+    public NonNullObservableSupplier<@FuseboxLayoutMode Integer> getFuseboxLayoutModeSupplier() {
+        return mFuseboxLayoutModeSupplier;
     }
 
     /**

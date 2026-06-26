@@ -82,6 +82,8 @@
 #import "ios/chrome/browser/metrics/model/tab_usage_recorder_browser_agent.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_tab_helper.h"
 #import "ios/chrome/browser/picture_in_picture/model/picture_in_picture_scene_agent.h"
+#import "ios/chrome/browser/policy/model/browser_management_service.h"
+#import "ios/chrome/browser/policy/model/browser_management_service_factory.h"
 #import "ios/chrome/browser/policy/model/policy_util.h"
 #import "ios/chrome/browser/policy/model/policy_watcher_browser_agent.h"
 #import "ios/chrome/browser/policy/ui_bundled/idle/idle_timeout_policy_scene_agent.h"
@@ -101,6 +103,7 @@
 #import "ios/chrome/browser/shared/coordinator/scene/scene_controller+OTRProfileDeletion.h"
 #import "ios/chrome/browser/shared/coordinator/scene/scene_ui_provider.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/incognito_state.h"
+#import "ios/chrome/browser/shared/coordinator/scene/state/scene_ui_blocker_state.h"
 #import "ios/chrome/browser/shared/coordinator/scene/tab_activity_utils.h"
 #import "ios/chrome/browser/shared/coordinator/scene/task_updater_scene_agent.h"
 #import "ios/chrome/browser/shared/coordinator/scene/url_context.h"
@@ -248,6 +251,22 @@ void InjectNTP(Browser* browser) {
       WebStateList::InsertionParams::Automatic().Activate());
 }
 
+// Returns true if the profile is unmanaged according to
+// `policy::BrowserManagementService`. If the service is unavailable, the
+// management status is undefined and so the profile is potentially managed,
+// so this returns false.
+bool IsProfileUnmanaged(ProfileIOS* profile) {
+  policy::BrowserManagementService* service =
+      policy::BrowserManagementServiceFactory::GetForProfile(profile);
+  // If the profile does not have a `BrowserManagementService`, the management
+  // status is undefined and so the profile is potentially managed.
+  if (!service) {
+    return false;
+  }
+  // Otherwise, the profile is unmanaged if it is not managed.
+  return !service->IsManaged();
+}
+
 }  // namespace
 
 // TODO(crbug.com/429355979): Order and group methods by interface.
@@ -255,6 +274,7 @@ void InjectNTP(Browser* browser) {
 
 @interface SceneController () <AuthenticationServiceObserving,
                                ProfileStateObserver,
+                               SceneUIBlockerStateObserver,
                                SceneUIHandler,
                                SceneUIProvider,
                                SceneURLLoadingServiceDelegate,
@@ -336,6 +356,7 @@ void InjectNTP(Browser* browser) {
   if (self) {
     _sceneState = sceneState;
     [_sceneState addObserver:self];
+    [_sceneState.uiBlockerState addObserver:self];
 
     _sceneURLLoadingService = std::make_unique<SceneUrlLoadingService>();
     _sceneURLLoadingService->SetDelegate(self);
@@ -667,7 +688,9 @@ void InjectNTP(Browser* browser) {
   }
 }
 
-- (void)sceneStateDidHideModalOverlay:(SceneState*)sceneState {
+#pragma mark - SceneUIBlockerStateObserver
+
+- (void)didHideModalOverlay {
   [self handleExternalIntents];
 }
 
@@ -1138,6 +1161,7 @@ void InjectNTP(Browser* browser) {
   self.browserLifecycleManager = nil;
 
   [self.sceneState.profileState removeObserver:self];
+  [_sceneState.uiBlockerState removeObserver:self];
   _sceneURLLoadingService.reset();
 
   _imageTranscoder = nullptr;
@@ -1262,7 +1286,7 @@ void InjectNTP(Browser* browser) {
     return NO;
   }
 
-  if (self.sceneState.presentingModalOverlay) {
+  if (self.sceneState.uiBlockerState.presentingModalOverlay) {
     return NO;
   }
 
@@ -1452,7 +1476,9 @@ void InjectNTP(Browser* browser) {
                           prefService:prefService]];
   }
 
-  if (web::features::IsCobaltEnabled()) {
+  // Add Cobalt scene agent if the feature is enabled and the profile management
+  // status is defined and unmanaged.
+  if (web::features::IsCobaltEnabled() && IsProfileUnmanaged(profile)) {
     ObservingSceneAgent* cobaltSceneAgent =
         ios::provider::CreateCobaltSceneAgent();
     if (cobaltSceneAgent) {
@@ -2081,6 +2107,11 @@ void InjectNTP(Browser* browser) {
       } else {
         NOTREACHED() << "Credential import is available on iOS 26+ only.";
       }
+    case TRIGGER_GEMINI_PROMO:
+      if (IsAppStoreInAppEventsEnabled()) {
+        // TODO(crbug.com/506473258): Implement Gemini FRE on app startup.
+      }
+      return nil;
     default:
       return nil;
   }

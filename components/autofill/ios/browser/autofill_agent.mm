@@ -719,9 +719,6 @@ bool HasGuid(const Suggestion::Payload& payload) {
       suggestion.featureForIPH =
           SuggestionFeatureForIPH::kAutofillExternalAccountProfile;
     } else if (popup_suggestion.iph_metadata.feature ==
-               &feature_engagement::kIPHPlusAddressCreateSuggestionFeature) {
-      suggestion.featureForIPH = SuggestionFeatureForIPH::kPlusAddressCreation;
-    } else if (popup_suggestion.iph_metadata.feature ==
                &feature_engagement::
                    kIPHAutofillHomeWorkProfileSuggestionFeature) {
       suggestion.featureForIPH =
@@ -760,20 +757,6 @@ bool HasGuid(const Suggestion::Payload& payload) {
   return fieldID == _lastQueriedFieldID;
 }
 
-- (void)showPlusAddressEmailOverrideNotification:
-    (base::OnceClosure)emailOverrideUndoCallback {
-  CHECK(_delegate);
-  [_delegate
-      showSnackbarWithMessage:
-          l10n_util::GetNSString(
-              IDS_PLUS_ADDRESS_SNACKBAR_UNDO_EMAIL_SWAP_DESCRIPTION_TEXT_IOS)
-                   buttonText:
-                       l10n_util::GetNSString(
-                           IDS_PLUS_ADDRESS_SNACKBAR_UNDO_EMAIL_SWAP_ACTION_TEXT_IOS)
-                messageAction:base::CallbackToBlock(
-                                  std::move(emailOverrideUndoCallback))
-             completionAction:nil];
-}
 
 #pragma mark - CRWWebStateObserver
 

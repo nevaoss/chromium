@@ -14,6 +14,7 @@
 #include "base/thread_annotations.h"
 #include "components/accessibility_annotator/core/storage/accessibility_annotator_backend.h"
 #include "components/accessibility_annotator/core/storage/content_annotations_table.h"
+#include "components/accessibility_annotator/core/storage/intent_table.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/os_crypt/async/browser/os_crypt_async.h"
 
@@ -32,9 +33,9 @@ using ContentAnnotationsData =
 class AccessibilityAnnotatorDatabase {
  public:
   // Current version number. This value is to be incremented when the database
-  // schema used by this class evolves in a non-backwards compatible way. When
-  // this number changes, all existing databases will be migrated to the new
-  // schema via the `MigrateOldVersionsAsNeeded` function.
+  // schema used by this class evolves in any way. When this number changes, all
+  // existing databases will be migrated to the new schema via the
+  // `MigrateOldVersionsAsNeeded` function.
   static constexpr int kCurrentVersionNumber = 1;
 
   AccessibilityAnnotatorDatabase();
@@ -58,14 +59,12 @@ class AccessibilityAnnotatorDatabase {
       history::VisitID visit_id);
   std::vector<std::pair<history::VisitID, ContentAnnotationsData>>
   GetAllContentAnnotations();
-  bool DeleteContentAnnotations(base::span<const history::VisitID> visit_ids);
+  std::vector<history::VisitID> DeleteContentAnnotations(
+      base::span<const history::VisitID> visit_ids);
   bool ClearAllContentAnnotations();
 
  private:
   SEQUENCE_CHECKER(sequence_checker_);
-
-  // Creates the tables if they don't exist. Returns true on success.
-  bool CreateTablesIfNecessary();
 
   // Migrates the database from the detected version to the current version.
   // Returns true on success, false otherwise.
@@ -77,6 +76,8 @@ class AccessibilityAnnotatorDatabase {
 
   ContentAnnotationsTable content_annotations_table_
       GUARDED_BY_CONTEXT(sequence_checker_);
+
+  IntentTable intent_table_ GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 }  // namespace accessibility_annotator

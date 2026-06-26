@@ -176,6 +176,7 @@ struct RendererPreferences {
   [EnableIf=is_win]
   int32 message_font_height = 0;
 
+<<<<<<< HEAD
   // The width of a vertical scroll bar in dips.
   [EnableIf=is_win]
   int32 vertical_scroll_bar_width_in_dips = 0;
@@ -221,6 +222,8 @@ struct RendererPreferences {
   bool is_enact_browser = false;
   ///@}
 
+=======
+>>>>>>> 5766c4211250d449c1bd381942aba397b2649706
   // Whether the selection clipboard buffer is available.  Linux environments
   // may support this.
   [EnableIf=is_selection_clipboard_buffer_possible]

@@ -111,7 +111,7 @@ class BrowserViewTabbedLayoutImpl : public BrowserViewLayoutImpl {
       const BrowserLayoutParams& params) const;
 
   // Returns the type of tabstrip present.
-  enum class TabStripType { kNone, kWebUi, kVertical, kHorizontal };
+  enum class TabStripType { kNone, kVertical, kHorizontal };
   TabStripType GetTabStripType() const;
 
   // Returns whether the shadow overlay (with its attendant margin) around the
@@ -142,6 +142,12 @@ class BrowserViewTabbedLayoutImpl : public BrowserViewLayoutImpl {
   int GetHorizontalTabStripLeadingMargin(
       const BrowserLayoutParams& params) const;
 
+  // Returns whether to make small adjustments to avoid visual "cracking" due to
+  // discrepancies between pixel and dip scaling; see
+  // https://crbug.com/436278099 for more information on the Pixel Canvas
+  // project which aims to permanently avoid this issue.
+  bool AvoidCrackingForFractionalDisplay() const;
+
   // These cached values serve as a starting point when an expand-on-hover state
   // for the vertical tab strip is animated directly to the expanded state. They
   // are cached every time the animation state is calculated except during the
@@ -149,6 +155,7 @@ class BrowserViewTabbedLayoutImpl : public BrowserViewLayoutImpl {
   // expand animation.
   mutable double last_expand_on_hover_ = 0.0;
   mutable double last_bottom_corner_value_ = 1.0;
+  mutable int last_vertical_tab_strip_width_ = 0;
 };
 
 #endif  // CHROME_BROWSER_UI_VIEWS_FRAME_LAYOUT_BROWSER_VIEW_TABBED_LAYOUT_IMPL_H_

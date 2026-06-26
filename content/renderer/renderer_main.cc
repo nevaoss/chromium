@@ -151,10 +151,14 @@ void LogTimeToStartRunLoop(const base::CommandLine& command_line,
 int RendererMain(MainFunctionParams parameters) {
   // Don't use the TRACE_EVENT0 macro because the tracing infrastructure doesn't
   // expect synchronous events around the main loop of a thread.
+<<<<<<< HEAD
   TRACE_EVENT_INSTANT0("startup", "RendererMain", TRACE_EVENT_SCOPE_THREAD);
 #if defined(USE_LTTNG)
   base::NativeLibrary lttng_native_library = neva::LttngInit();
 #endif
+=======
+  TRACE_EVENT_INSTANT("startup", "RendererMain");
+>>>>>>> 5766c4211250d449c1bd381942aba397b2649706
 
 #if BUILDFLAG(IS_MAC)
   // Declare that this process has CPU security mitigations enabled (see
@@ -279,8 +283,8 @@ int RendererMain(MainFunctionParams parameters) {
     if (parameters.needs_startup_tracing_after_sandbox_init) {
       tracing::InitTracingPostFeatureList(/*enable_consumer=*/false,
                                           /*will_trace_thread_restart=*/false);
-      TRACE_EVENT_INSTANT1("startup", "RendererMain", TRACE_EVENT_SCOPE_THREAD,
-                           "needs_startup_tracing_after_sandbox_init", true);
+      TRACE_EVENT_INSTANT("startup", "RendererMain",
+                          "needs_startup_tracing_after_sandbox_init", true);
     }
 
     std::unique_ptr<RenderProcess> render_process = RenderProcessImpl::Create();
@@ -341,8 +345,7 @@ int RendererMain(MainFunctionParams parameters) {
       if (pool)
         pool->Recycle();
 #endif
-      TRACE_EVENT_INSTANT0("toplevel", "RendererMain.START_MSG_LOOP",
-                           TRACE_EVENT_SCOPE_THREAD);
+      TRACE_EVENT_INSTANT("toplevel", "RendererMain.START_MSG_LOOP");
       const base::TimeTicks run_loop_start_time = base::TimeTicks::Now();
       RenderThreadImpl::current()->set_run_loop_start_time(run_loop_start_time);
       LogTimeToStartRunLoop(command_line, run_loop_start_time);

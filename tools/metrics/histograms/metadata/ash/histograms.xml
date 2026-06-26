@@ -3462,7 +3462,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ash.EventLatency.{EventType}.TotalLatency.1MinAfterResume"
-    units="microseconds" expires_after="2026-07-26">
+    units="microseconds" expires_after="2026-10-25">
   <owner>kawasin@google.com</owner>
   <owner>baseos-perf@google.com</owner>
   <summary>
@@ -4703,7 +4703,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ash.Login.Lock.SessionStateChange" enum="SessionLockEvent"
-    expires_after="2026-07-05">
+    expires_after="2026-10-25">
   <owner>mslus@google.com</owner>
   <owner>cros-lurs@google.com</owner>
   <summary>Records all session lock and unlock events.</summary>
@@ -4887,7 +4887,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ash.LoginAnimation.Smoothness.{TabletOrClamshellMode}"
-    units="%" expires_after="2026-07-28">
+    units="%" expires_after="2026-10-25">
   <owner>oshima@chromium.org</owner>
   <owner>chromeos-wm@google.com</owner>
   <summary>
@@ -5349,7 +5349,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Ash.NightLight.AutoNightLightNotificationShown"
     enum="BooleanShown" expires_after="2026-10-08">
-  <owner>cambickel@google.com</owner>
+  <owner>longbowei@google.com</owner>
   <owner>cros-device-enablement@google.com</owner>
   <summary>
     Emitted when the Auto Night Light notification is shown. Warning: this
@@ -5359,7 +5359,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Ash.NightLight.AutoNightLightNotificationState"
     enum="AshAutoNightLightNotificationState" expires_after="2026-10-08">
-  <owner>cambickel@google.com</owner>
+  <owner>longbowei@google.com</owner>
   <owner>cros-device-enablement@google.com</owner>
   <summary>
     Emitted when the user interacts with the Auto Night Light notification to
@@ -5371,7 +5371,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Ash.NightLight.ScheduleType" enum="AshNightLightScheduleType"
     expires_after="2026-10-08">
-  <owner>cambickel@google.com</owner>
+  <owner>longbowei@google.com</owner>
   <owner>cros-device-enablement@google.com</owner>
   <summary>
     The selected Night Light schedule type. Emitted when the user changes the
@@ -5382,7 +5382,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Ash.NightLight.ScheduleType.Initial"
     enum="AshNightLightScheduleType" expires_after="2026-10-08">
-  <owner>cambickel@google.com</owner>
+  <owner>longbowei@google.com</owner>
   <owner>cros-device-enablement@google.com</owner>
   <summary>The selected Night Light schedule type. Emitted on login.</summary>
 </histogram>
@@ -7021,7 +7021,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ash.Projector.CreationFlow.{TabletOrClamshellMode}"
-    enum="ProjectorCreationFlow" expires_after="2026-08-16">
+    enum="ProjectorCreationFlow" expires_after="2026-10-25">
   <owner>dorianbrandon@google.com</owner>
   <owner>bzielinski@google.com</owner>
   <owner>cros-projector@google.com</owner>
@@ -7092,7 +7092,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Ash.Projector.SpeechRecognitionEndState.{Location}"
-    enum="SpeechRecognitionEndState" expires_after="2026-08-16">
+    enum="SpeechRecognitionEndState" expires_after="2026-10-25">
   <owner>dorianbrandon@google.com</owner>
   <owner>bzielinski@google.com</owner>
   <owner>cros-projector@google.com</owner>
@@ -8095,24 +8095,6 @@ chromium-metrics-reviews@google.com.
     to launch an app/window/etc, this is used instead of log in to give data on
     users that do not lock/unlock or log in frequently.
   </summary>
-</histogram>
-
-<histogram name="Ash.ShelfIcon.AnimationSmoothness{ShelfIconAnimationType}"
-    units="%" expires_after="2021-03-30">
-  <owner>andrewxu@chromium.org</owner>
-  <owner>newcomer@chromium.org</owner>
-  <summary>
-    Relative smoothness of animations of the shelf icons. 100% represents
-    ideally smooth 60 frames per second. Recorded when shelf icon animations are
-    completed, including icon move, icon fade-in and icon fade-out.
-    {ShelfIconAnimationType}
-  </summary>
-  <token key="ShelfIconAnimationType">
-    <variant name=""/>
-    <variant name=".FadeIn" summary="Shelf icon fade-in animation"/>
-    <variant name=".FadeOut" summary="Shelf icon fade-out animation"/>
-    <variant name=".Move" summary="Shelf icon move animation"/>
-  </token>
 </histogram>
 
 <histogram name="Ash.ShortcutCustomization.AddAccelerator.{ActionName}"

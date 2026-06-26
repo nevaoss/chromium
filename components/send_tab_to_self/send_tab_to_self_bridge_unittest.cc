@@ -110,7 +110,10 @@ std::unique_ptr<syncer::DeviceInfo> CreateDevice(
       /*fcm_registration_token=*/std::string(),
       /*interested_data_types=*/syncer::DataTypeSet(),
       /*auto_sign_out_last_signin_timestamp=*/std::nullopt,
-      /*desktop_to_ios_promo_receiving_enabled=*/false);
+      /*desktop_to_ios_promo_receiving_enabled=*/false,
+      /*desktop_to_ios_promo_receiving_types=*/
+      MobilePromoOnDesktopPromoTypeSet{},
+      /*glic_experimental_triggering_opted_in=*/false);
 }
 
 sync_pb::DataTypeState StateWithEncryption(
@@ -137,6 +140,17 @@ class FakeSessionSyncService : public sync_sessions::SessionSyncService {
 
   sync_sessions::FakeOpenTabsUIDelegate* GetOpenTabsUIDelegate() override {
     return &open_tabs_delegate_;
+  }
+
+  void AddTabScreenshot(SessionID tab_id,
+                        std::string&& screenshot_data,
+                        const GURL& url) override {}
+
+  void ReadTabScreenshot(
+      const std::string& session_tag,
+      SessionID tab_id,
+      base::OnceCallback<void(std::optional<std::string>)> callback) override {
+    std::move(callback).Run(std::nullopt);
   }
 
   base::CallbackListSubscription SubscribeToForeignSessionsChanged(
@@ -1297,7 +1311,10 @@ TEST_F(SendTabToSelfBridgeTest,
           /*fcm_registration_token=*/std::string(),
           /*interested_data_types=*/syncer::DataTypeSet(),
           /*auto_sign_out_last_signin_timestamp=*/std::nullopt,
-          /*desktop_to_ios_promo_receiving_enabled=*/false);
+          /*desktop_to_ios_promo_receiving_enabled=*/false,
+          /*desktop_to_ios_promo_receiving_types=*/
+          MobilePromoOnDesktopPromoTypeSet{},
+          /*glic_experimental_triggering_opted_in=*/false);
   syncer::DeviceDisplayNames names1 =
       syncer::GetDeviceDisplayNames(device1.get());
   ASSERT_EQ("Manufacturer Phone model1", names1.full_name);
@@ -1318,7 +1335,10 @@ TEST_F(SendTabToSelfBridgeTest,
           /*fcm_registration_token=*/std::string(),
           /*interested_data_types=*/syncer::DataTypeSet(),
           /*auto_sign_out_last_signin_timestamp=*/std::nullopt,
-          /*desktop_to_ios_promo_receiving_enabled=*/false);
+          /*desktop_to_ios_promo_receiving_enabled=*/false,
+          /*desktop_to_ios_promo_receiving_types=*/
+          MobilePromoOnDesktopPromoTypeSet{},
+          /*glic_experimental_triggering_opted_in=*/false);
   syncer::DeviceDisplayNames names2 =
       syncer::GetDeviceDisplayNames(device2.get());
   ASSERT_EQ("Manufacturer Phone model2", names2.full_name);
@@ -1470,7 +1490,10 @@ TEST_F(SendTabToSelfBridgeTest, GetTargetDeviceInfoSortedList_FormFactors) {
           /*fcm_registration_token=*/std::string(),
           /*interested_data_types=*/syncer::DataTypeSet(),
           /*auto_sign_out_last_signin_timestamp=*/std::nullopt,
-          /*desktop_to_ios_promo_receiving_enabled=*/false);
+          /*desktop_to_ios_promo_receiving_enabled=*/false,
+          /*desktop_to_ios_promo_receiving_types=*/
+          MobilePromoOnDesktopPromoTypeSet{},
+          /*glic_experimental_triggering_opted_in=*/false);
 
   std::unique_ptr<syncer::DeviceInfo> phone =
       std::make_unique<syncer::DeviceInfo>(
@@ -1486,7 +1509,10 @@ TEST_F(SendTabToSelfBridgeTest, GetTargetDeviceInfoSortedList_FormFactors) {
           /*fcm_registration_token=*/std::string(),
           /*interested_data_types=*/syncer::DataTypeSet(),
           /*auto_sign_out_last_signin_timestamp=*/std::nullopt,
-          /*desktop_to_ios_promo_receiving_enabled=*/false);
+          /*desktop_to_ios_promo_receiving_enabled=*/false,
+          /*desktop_to_ios_promo_receiving_types=*/
+          MobilePromoOnDesktopPromoTypeSet{},
+          /*glic_experimental_triggering_opted_in=*/false);
 
   AddTestDevice(desktop.get());
   AddTestDevice(phone.get());

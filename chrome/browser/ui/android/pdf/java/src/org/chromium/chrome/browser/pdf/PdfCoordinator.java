@@ -9,6 +9,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.SystemClock;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ProgressBar;
@@ -43,6 +44,9 @@ import org.chromium.ui.base.PageTransition;
 import org.chromium.url.GURL;
 import org.chromium.url.Origin;
 
+import java.util.Locale;
+import java.util.Set;
+
 /**
  * The class responsible for setting up PdfPage.
  *
@@ -54,6 +58,14 @@ import org.chromium.url.Origin;
 public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDelegate {
     private static final String TAG = "PdfCoordinator";
     private static final int PAGE_TRANSITION_TYPE = PageTransition.LINK;
+
+    // PDF link annotations are untrusted input (ISO 32000-1 §12.6.4.7 leaves scheme policy
+    // to the viewer). Restrict to schemes that have a meaningful web-navigation or
+    // communication semantic, mirroring the defaults used by pdf.js
+    // (PDFLinkService.getAnchorUrl) and Adobe Reader's Trust Manager. Blocks dangerous
+    // schemes such as javascript:, data:, file:, content:, intent:, chrome:, devtools:.
+    private static final Set<String> ALLOWED_LINK_SCHEMES =
+            Set.of("http", "https", "mailto", "tel", "ftp");
 
     static final String JSON_KEY_FILE_METADATA = "file_metadata";
     static final String JSON_KEY_FILE_URI = "file_uri";
@@ -79,6 +91,7 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
     private final NativePageHost mNativePageHost;
 
     private final String mTabId;
+    private String mTitle;
     private final String mUrl;
     private final boolean mIsIncognito;
     /** A unique id to identity the FragmentContainerView in the current PdfPage. */
@@ -112,6 +125,7 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
      * @param profile The current Profile.
      * @param activity The current Activity.
      * @param filepath The pdf filepath.
+     * @param title The pdf title.
      * @param tabId The id of the tab.
      * @param url The url of the pdf.
      */
@@ -120,12 +134,14 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
             Profile profile,
             Activity activity,
             @Nullable String filepath,
+            String title,
             int tabId,
             String url) {
         mActivity = activity;
         mTabId = String.valueOf(tabId);
         mNativePageHost = host;
         mIsIncognito = profile.isOffTheRecord();
+        mTitle = title;
         mUrl = url;
         mView = LayoutInflater.from(activity).inflate(R.layout.pdf_page, null);
         mProgressBar = mView.findViewById(R.id.progress_bar);
@@ -182,41 +198,35 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
             mPdfView = pdfView;
 
             // TODO(crbug.com/498644542): call getPageCount() within onLoadDocumentSuccess()
-            if (PdfUtils.isInlinePdfV2Enabled()) {
-                // Add a one-time listener to track total page count and remove itself afterwards.
-                // This listener is necessary because getPdfDocument() can return null up until the
-                // viewport is changed.
-                mPdfView.addOnViewportChangedListener(
-                        new PdfView.OnViewportChangedListener() {
-                            @Override
-                            public void onViewportChanged(
-                                    int firstVisiblePage,
-                                    int visiblePagesCount,
-                                    android.util.SparseArray pageLocations,
-                                    float zoomLevel) {
-                                if (mDelegate != null
-                                        && mPdfView != null
-                                        && mPdfView.getPdfDocument() != null) {
-                                    mDelegate.onDocumentLoaded(
-                                            mPdfView.getPdfDocument().getPageCount());
-                                    mPdfView.post(
-                                            () -> {
-                                                if (mPdfView != null) {
-                                                    mPdfView.removeOnViewportChangedListener(this);
-                                                }
-                                            });
-                                }
-                            }
-                        });
-
-                // Add a persistent listener to track page changes.
-                mPdfView.addOnViewportChangedListener(
-                        (firstVisiblePage, visiblePagesCount, pageLocations, zoomLevel) -> {
-                            if (mDelegate != null) {
-                                mDelegate.onViewportChanged(firstVisiblePage, zoomLevel);
-                            }
-                        });
+            if (!PdfUtils.isInlinePdfV2Enabled() || mDelegate == null) {
+                return;
             }
+            final PdfView capturedView = pdfView;
+            final PdfActionsDelegate delegate = mDelegate;
+
+            // Add a one-time listener to track total page count and remove itself afterwards.
+            // This listener is necessary because getPdfDocument() can return null up until the
+            // viewport is changed.
+            capturedView.addOnViewportChangedListener(
+                    new PdfView.OnViewportChangedListener() {
+                        @Override
+                        public void onViewportChanged(
+                                int firstVisiblePage,
+                                int visiblePagesCount,
+                                SparseArray pageLocations,
+                                float zoomLevel) {
+                            if (capturedView.getPdfDocument() != null) {
+                                capturedView.removeOnViewportChangedListener(this);
+                                delegate.onDocumentLoaded(
+                                        capturedView.getPdfDocument().getPageCount());
+                            }
+                        }
+                    });
+
+            // Add a persistent listener to track page changes.
+            capturedView.addOnViewportChangedListener(
+                    (firstVisiblePage, visiblePagesCount, pageLocations, zoomLevel) ->
+                            delegate.onViewportChanged(firstVisiblePage, zoomLevel));
         }
 
         /** Public no-arg constructor for FragmentManager. */
@@ -350,8 +360,10 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
      * Called after pdf download complete.
      *
      * @param pdfFilePath The filepath of the downloaded pdf document.
+     * @param pdfFileName The filename of the downloaded pdf document.
      */
-    void onDownloadComplete(String pdfFilePath) {
+    void onDownloadComplete(String pdfFilePath, String pdfFileName) {
+        mTitle = pdfFileName;
         loadPdfFile(pdfFilePath);
     }
 
@@ -529,6 +541,10 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
         if (!PdfUtils.isInlinePdfV2Enabled()) {
             return false;
         }
+        String scheme = uri.getScheme();
+        if (scheme == null || !ALLOWED_LINK_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))) {
+            return false;
+        }
         LoadUrlParams params = new LoadUrlParams(uri.toString(), PAGE_TRANSITION_TYPE);
         params.setIsRendererInitiated(true);
         // TODO(crbug.com/484103003): Reconsider initiator origin if renderer initiated is true.
@@ -540,7 +556,9 @@ public class PdfCoordinator implements PdfActionsDelegate, PdfToolbarActionsDele
     @Override
     public void onDocumentLoaded(int pageCount) {
         assert mToolbarCoordinator != null;
-        mToolbarCoordinator.onDocumentLoaded(pageCount);
+        assert mUri != null;
+        assert mTitle != null;
+        mToolbarCoordinator.onDocumentLoaded(pageCount, mTitle);
     }
 
     @Override

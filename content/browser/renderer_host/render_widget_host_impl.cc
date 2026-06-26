@@ -2100,6 +2100,14 @@ void RenderWidgetHostImpl::InsertVisualStateCallback(
       mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false)));
 }
 
+void RenderWidgetHostImpl::SetReadyForInputCallbackForTesting(  // IN-TEST
+    base::OnceClosure callback) {
+  ready_for_input_callback_for_testing_ = std::move(callback);
+  if (input_router_active_ && ready_for_input_callback_for_testing_) {
+    std::move(ready_for_input_callback_for_testing_).Run();
+  }
+}
+
 void RenderWidgetHostImpl::SetHungRendererDelay(const base::TimeDelta& delay) {
   hung_renderer_delay_ = delay;
   GetRenderInputRouter()->SetHungRendererDelay(delay);
@@ -2677,8 +2685,7 @@ void RenderWidgetHostImpl::ResetDelegatedInkPointPrediction(
     // Let viz know that the most recent point it received from us is probably
     // the last point the user is inking, so it shouldn't predict anything
     // beyond it.
-    TRACE_EVENT_INSTANT0("delegated_ink_trails", "Delegated ink trail ended",
-                         TRACE_EVENT_SCOPE_THREAD);
+    TRACE_EVENT_INSTANT("delegated_ink_trails", "Delegated ink trail ended");
     delegated_ink_point_renderer->ResetPrediction();
     ended_delegated_ink_trail = true;
   }
@@ -3237,6 +3244,13 @@ void RenderWidgetHostImpl::OnStartStylusWriting() {
 void RenderWidgetHostImpl::OnUnconfirmedTapConvertedToTap() {
   if (view_) {
     view_->OnUnconfirmedTapConvertedToTap();
+  }
+}
+
+void RenderWidgetHostImpl::OnInputRouterActive() {
+  input_router_active_ = true;
+  if (ready_for_input_callback_for_testing_) {
+    std::move(ready_for_input_callback_for_testing_).Run();
   }
 }
 

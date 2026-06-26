@@ -9,6 +9,8 @@ source_set("model") {
     "data_protection_tab_helper.h",
     "data_protection_tab_helper.mm",
     "data_protection_tab_helper_observer.h",
+    "data_protection_tab_helper_observer_bridge.h",
+    "data_protection_tab_helper_observer_bridge.mm",
     "data_protection_url_lookup_service_factory.h",
     "data_protection_url_lookup_service_factory.mm",
   ]
@@ -37,6 +39,7 @@ source_set("model") {
     "//ios/chrome/browser/shared/model/profile",
     "//ios/chrome/browser/shared/model/profile:profile_keyed_service_factory",
     "//ios/chrome/browser/shared/model/url:constants",
+    "//ios/chrome/browser/tabs/model:dependency_installer",
     "//ios/public/provider/chrome/browser/screenshot_protection:screenshot_protection_api",
     "//ios/web/public",
     "//url",
@@ -47,6 +50,7 @@ source_set("unit_tests") {
   testonly = true
   sources = [
     "data_protection_scene_agent_unittest.mm",
+    "data_protection_tab_helper_observer_bridge_unittest.mm",
     "data_protection_tab_helper_unittest.mm",
   ]
   deps = [
@@ -75,6 +79,7 @@ source_set("unit_tests") {
     "//ios/chrome/browser/shared/coordinator/scene:scene_state_header",
     "//ios/chrome/browser/shared/coordinator/scene/state",
     "//ios/chrome/browser/shared/coordinator/scene/test",
+    "//ios/chrome/browser/shared/model/browser/test:test_support",
     "//ios/chrome/browser/shared/model/profile/test",
     "//ios/chrome/test/app:test_support",
     "//ios/web/public/test",

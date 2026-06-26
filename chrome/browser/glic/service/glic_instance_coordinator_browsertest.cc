@@ -35,9 +35,9 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/common/chrome_features.h"
 #include "components/keep_alive_registry/keep_alive_types.h"
 #include "components/keep_alive_registry/scoped_keep_alive.h"
@@ -1182,6 +1182,40 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
+                       InvokeCallsOnClientConnected) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  base::test::TestFuture<void> success_future;
+  base::test::TestFuture<GlicInstance*> connected_future;
+
+  GlicInvokeOptions options(glic::Target(tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_success = success_future.GetCallback();
+  options.on_client_connected = connected_future.GetCallback();
+
+  // Verify there is no connected web client before starting.
+  auto* instance_before = coordinator().GetInstanceForTab(tab);
+  EXPECT_TRUE(!instance_before ||
+              !instance_before->host().IsWebClientConnected());
+
+  // Call invoke. This will create the instance and wait for WebClientSet.
+  coordinator().Invoke(std::move(options));
+
+  // The connected callback should be called after observing WebClientSet.
+  EXPECT_TRUE(connected_future.Wait());
+
+  // Verify that there is a connected web client when our callback fires.
+  GlicInstance* instance = connected_future.Get();
+  ASSERT_TRUE(instance);
+  EXPECT_TRUE(instance->host().IsWebClientConnected());
+
+  // Verify that the passed instance is the correct one.
+  EXPECT_EQ(instance, coordinator().GetInstanceForTab(tab));
+
+  // The success callback should be called after full completion.
+  EXPECT_TRUE(success_future.Wait());
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
                        InvokeWithWaitForPanelOpen) {
   // Create a tab with a loaded page to measure width.
   tabs::TabInterface* tab = CreateAndActivateTab(GetSimpleTestUrl());
@@ -1366,7 +1400,9 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
       browser()->profile()->GetPrimaryOTRProfile(/*create_if_needed=*/true);
 
   // Initially there should be no browsers for incognito profile.
-  EXPECT_EQ(chrome::FindLastActiveWithProfile(incognito_profile), nullptr);
+  EXPECT_EQ(ProfileBrowserCollection::GetForProfile(incognito_profile)
+                ->GetLastActiveBrowser(),
+            nullptr);
 
   BrowserWindowInterface* new_browser = nullptr;
   {
@@ -1378,7 +1414,8 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorBrowserTest,
     ASSERT_TRUE(resolved.tab);
 
     // Verify it created an incognito browser.
-    new_browser = chrome::FindLastActiveWithProfile(incognito_profile);
+    new_browser = ProfileBrowserCollection::GetForProfile(incognito_profile)
+                      ->GetLastActiveBrowser();
     ASSERT_TRUE(new_browser);
     EXPECT_TRUE(new_browser->GetProfile()->IsOffTheRecord());
   }
@@ -1553,7 +1590,7 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorDefaultToLastActiveBrowserTest,
             1);
 
   // Simulate user input to trigger first action metric.
-  instance2->instance_metrics()->OnUserInputSubmitted(
+  instance2->instance_metrics().OnUserInputSubmitted(
       mojom::WebClientMode::kText);
 
   histogram_tester.ExpectUniqueSample(
@@ -1672,7 +1709,7 @@ class GlicInstanceCoordinatorNoWarmingTest
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorNoWarmingTest,
                        NoWarmingWhenDelayed) {
   GlicWebContentsWarmingPool& warming_pool =
-      coordinator().service()->web_contents_warming_pool();
+      coordinator().GetWebContentsWarmingPoolForTesting();
 
   // Initially, there shouldn't be a warmed container.
   ASSERT_FALSE(warming_pool.HasWarmedContainerForTesting());

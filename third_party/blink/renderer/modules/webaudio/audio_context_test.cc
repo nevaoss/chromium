@@ -7,6 +7,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_worklet_options.h"
 #include "third_party/blink/renderer/modules/webaudio/audio_worklet.h"
 #include "third_party/blink/renderer/modules/webaudio/audio_worklet_messaging_proxy.h"
+#include "third_party/blink/renderer/core/workers/worker_thread.h"
 #include "third_party/blink/renderer/modules/webaudio/delay_node.h"
 
 #include <array>
@@ -1477,9 +1478,7 @@ TEST_F(AudioContextStatsTest, HasPendingActivityAfterClose) {
 
 // Test that AudioWorklet and its messaging proxy are signaled to terminate
 // when the AudioContext is closed.
-// TODO(https://crbug.com/505063231): This test is causing a data race on
-// TSAN bots.
-TEST_F(AudioContextTest, DISABLED_AudioWorkletTerminatedOnClose) {
+TEST_F(AudioContextTest, AudioWorkletTerminatedOnClose) {
   AudioContextOptions* options = AudioContextOptions::Create();
   AudioContext* audio_context = AudioContext::Create(
       GetFrame().DomWindow(), options, ASSERT_NO_EXCEPTION);
@@ -1500,6 +1499,9 @@ TEST_F(AudioContextTest, DISABLED_AudioWorkletTerminatedOnClose) {
   audio_context->closeContext(script_state, exception_state);
 
   EXPECT_TRUE(proxy->AskedToTerminate());
+
+  // Wait for worker thread to shut down to avoid race on g_platform.
+  proxy->GetBackingWorkerThread()->WaitForShutdownForTesting();
 }
 
 TEST_F(AudioContextTest, ChannelCountRunning) {

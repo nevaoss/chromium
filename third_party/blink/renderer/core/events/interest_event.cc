@@ -9,6 +9,7 @@
 #include "third_party/blink/renderer/core/dom/events/event_dispatcher.h"
 #include "third_party/blink/renderer/core/dom/events/event_path.h"
 #include "third_party/blink/renderer/core/dom/events/event_target.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 
 namespace blink {
 
@@ -24,7 +25,12 @@ InterestEvent::InterestEvent(const AtomicString& type,
 InterestEvent::InterestEvent(const AtomicString& type,
                              Element* source,
                              Event::Cancelable cancelable)
-    : Event(type, Bubbles::kNo, cancelable, ComposedMode::kComposed),
+    : Event(type,
+            Bubbles::kNo,
+            cancelable,
+            RuntimeEnabledFeatures::InterestEventsNonComposedEnabled()
+                ? ComposedMode::kScoped
+                : ComposedMode::kComposed),
       source_(source) {
   DCHECK(RuntimeEnabledFeatures::HTMLInterestForAttributeEnabled());
 }

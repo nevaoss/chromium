@@ -13,6 +13,7 @@
 #include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/test/mock_callback.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
 #include "components/prefs/testing_pref_service.h"
@@ -34,6 +35,7 @@
 #include "components/sync/test/mock_commit_queue.h"
 #include "components/sync/test/mock_data_type_local_change_processor.h"
 #include "components/sync/test/test_matchers.h"
+#include "components/sync_sessions/features.h"
 #include "components/sync_sessions/mock_sync_sessions_client.h"
 #include "components/sync_sessions/session_sync_prefs.h"
 #include "components/sync_sessions/test_matchers.h"
@@ -1947,12 +1949,15 @@ TEST_F(SessionSyncBridgeTest, ShouldDoGarbageCollection) {
       CreateTabSpecifics(kStaleSessionTag, kWindowId, kTabId, kTabNodeId,
                          "http://baz.com/"),
       stale_mtime));
-  updates.push_back(SpecificsToUpdateResponse(
-      CreateTabScreenshotSpecifics(kStaleSessionTag, kTabNodeId), stale_mtime));
-  updates.push_back(SpecificsToUpdateResponse(
-      CreateTabScreenshotSpecifics(kStaleSessionTag,
-                                   kOrphanedScreenshotTabNodeId),
-      stale_mtime));
+  if (base::FeatureList::IsEnabled(kSyncTabScreenshots)) {
+    updates.push_back(SpecificsToUpdateResponse(
+        CreateTabScreenshotSpecifics(kStaleSessionTag, kTabNodeId),
+        stale_mtime));
+    updates.push_back(SpecificsToUpdateResponse(
+        CreateTabScreenshotSpecifics(kStaleSessionTag,
+                                     kOrphanedScreenshotTabNodeId),
+        stale_mtime));
+  }
 
   // Two entities belong to a recent session.
   updates.push_back(SpecificsToUpdateResponse(
@@ -1970,13 +1975,16 @@ TEST_F(SessionSyncBridgeTest, ShouldDoGarbageCollection) {
   EXPECT_CALL(mock_processor(), Delete(SessionStore::GetTabStorageKey(
                                            kStaleSessionTag, kTabNodeId),
                                        _, _));
-  EXPECT_CALL(mock_processor(), Delete(SessionStore::GetTabScreenshotStorageKey(
-                                           kStaleSessionTag, kTabNodeId),
-                                       _, _));
-  EXPECT_CALL(mock_processor(),
-              Delete(SessionStore::GetTabScreenshotStorageKey(
-                         kStaleSessionTag, kOrphanedScreenshotTabNodeId),
-                     _, _));
+  if (base::FeatureList::IsEnabled(kSyncTabScreenshots)) {
+    EXPECT_CALL(mock_processor(),
+                Delete(SessionStore::GetTabScreenshotStorageKey(
+                           kStaleSessionTag, kTabNodeId),
+                       _, _));
+    EXPECT_CALL(mock_processor(),
+                Delete(SessionStore::GetTabScreenshotStorageKey(
+                           kStaleSessionTag, kOrphanedScreenshotTabNodeId),
+                       _, _));
+  }
 
   EXPECT_CALL(mock_foreign_session_updated_cb(), Run()).Times(AtLeast(1));
   real_processor()->OnUpdateReceived(GetDataTypeStateWithInitialSyncDone(),
@@ -2002,7 +2010,9 @@ TEST_F(SessionSyncBridgeTest, ShouldReturnBrowserTypeInGetData) {
             tab_data->specifics.session().tab().browser_type());
 }
 
-TEST_F(SessionSyncBridgeTest, ShouldProcessScreenshots) {
+TEST_F(SessionSyncBridgeTest, ShouldProcessForeignTabScreenshot) {
+  base::test::ScopedFeatureList scoped_feature_list{kSyncTabScreenshots};
+
   const std::string kForeignSessionTag = "foreignsessiontag";
   const int kForeignWindowId = 2000001;
   const int kForeignTabId = 2000002;
@@ -2033,6 +2043,131 @@ TEST_F(SessionSyncBridgeTest, ShouldProcessScreenshots) {
                                kForeignTabId, kForeignTabNodeId, _))),
                    Pair(_, EntityDataHasSpecifics(MatchesTabScreenshot(
                                kForeignSessionTag, kForeignTabNodeId)))}));
+}
+
+TEST_F(SessionSyncBridgeTest, ShouldAddTabScreenshot) {
+  base::test::ScopedFeatureList scoped_feature_list{kSyncTabScreenshots};
+
+  const int kWindowId = 1000001;
+  const int kTabId = 1000002;
+  const int kTabNodeId = 0;
+
+  AddWindow(kWindowId);
+  AddTab(kWindowId, "https://foo.com/", kTabId);
+
+  InitializeBridge();
+  StartSyncing();
+
+  const std::string kScreenshotData = "test screenshot data";
+  const GURL kUrl("https://foo.com/");
+
+  std::string screenshot_storage_key =
+      SessionStore::GetTabScreenshotStorageKey(kLocalCacheGuid, kTabNodeId);
+
+  EXPECT_CALL(
+      mock_processor(),
+      Put(screenshot_storage_key,
+          EntityDataHasSpecifics(MatchesTabScreenshot(
+              kLocalCacheGuid, kTabNodeId, kScreenshotData, kUrl.spec())),
+          _));
+
+  bridge()->AddTabScreenshot(SessionID::FromSerializedValue(kTabId),
+                             std::string(kScreenshotData), kUrl);
+
+  // Note: GetAllData() is based on the in-memory representation, so it does not
+  // return the actual screenshot *data*, only a placeholder entity.
+  EXPECT_THAT(
+      GetAllData(),
+      testing::IsSupersetOf({Pair(screenshot_storage_key,
+                                  EntityDataHasSpecifics(MatchesTabScreenshot(
+                                      kLocalCacheGuid, kTabNodeId)))}));
+}
+
+TEST_F(SessionSyncBridgeTest, ShouldIgnoreAddTabScreenshotBeforeSyncing) {
+  base::test::ScopedFeatureList scoped_feature_list{kSyncTabScreenshots};
+
+  const int kWindowId = 1000001;
+  const int kTabId = 1000002;
+
+  AddWindow(kWindowId);
+  AddTab(kWindowId, "https://foo.com/", kTabId);
+
+  InitializeBridge();
+  // Do NOT call StartSyncing().
+
+  EXPECT_CALL(mock_processor(), Put).Times(0);
+
+  bridge()->AddTabScreenshot(SessionID::FromSerializedValue(kTabId), "data",
+                             GURL("https://foo.com/"));
+}
+
+TEST_F(SessionSyncBridgeTest, ShouldIgnoreAddTabScreenshotForUnknownTab) {
+  base::test::ScopedFeatureList scoped_feature_list{kSyncTabScreenshots};
+
+  const int kWindowId = 1000001;
+  const int kTabId = 1000002;
+  const int kUnknownTabId = 1000003;
+
+  AddWindow(kWindowId);
+  AddTab(kWindowId, "https://foo.com/", kTabId);
+
+  InitializeBridge();
+  StartSyncing();
+
+  EXPECT_CALL(mock_processor(), Put).Times(0);
+
+  bridge()->AddTabScreenshot(SessionID::FromSerializedValue(kUnknownTabId),
+                             "data", GURL("https://foo.com/"));
+}
+
+TEST_F(SessionSyncBridgeTest, ShouldReadTabScreenshot) {
+  base::test::ScopedFeatureList scoped_feature_list{kSyncTabScreenshots};
+
+  const int kWindowId = 1000001;
+  const int kTabId = 1000002;
+  const std::string kScreenshotData = "test screenshot data";
+  const GURL kUrl("https://foo.com/");
+
+  AddWindow(kWindowId);
+  AddTab(kWindowId, kUrl.spec(), kTabId);
+
+  InitializeBridge();
+  StartSyncing();
+
+  bridge()->AddTabScreenshot(SessionID::FromSerializedValue(kTabId),
+                             std::string(kScreenshotData), kUrl);
+
+  base::test::TestFuture<std::optional<std::string>> future;
+  bridge()->ReadTabScreenshot(kLocalCacheGuid,
+                              SessionID::FromSerializedValue(kTabId),
+                              future.GetCallback());
+
+  EXPECT_EQ(future.Get(), kScreenshotData);
+}
+
+TEST_F(SessionSyncBridgeTest, ShouldReturnEmptyScreenshotBeforeSyncing) {
+  base::test::ScopedFeatureList scoped_feature_list{kSyncTabScreenshots};
+
+  InitializeBridge();
+
+  base::test::TestFuture<std::optional<std::string>> future;
+  bridge()->ReadTabScreenshot(
+      kLocalCacheGuid, SessionID::FromSerializedValue(7), future.GetCallback());
+
+  EXPECT_EQ(future.Get(), std::nullopt);
+}
+
+TEST_F(SessionSyncBridgeTest, ShouldReturnEmptyScreenshotForUnknownTab) {
+  base::test::ScopedFeatureList scoped_feature_list{kSyncTabScreenshots};
+
+  InitializeBridge();
+  StartSyncing();
+
+  base::test::TestFuture<std::optional<std::string>> future;
+  bridge()->ReadTabScreenshot(
+      kLocalCacheGuid, SessionID::FromSerializedValue(7), future.GetCallback());
+
+  EXPECT_EQ(future.Get(), std::nullopt);
 }
 
 }  // namespace

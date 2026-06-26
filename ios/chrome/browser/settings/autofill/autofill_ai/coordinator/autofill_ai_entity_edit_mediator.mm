@@ -224,22 +224,35 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
   BOOL isSaveAsynchronous = autofill::IsMaskedStorageSupported(
       _entityInstance->type(), _entityInstance->record_type());
 
-  // TODO(crbug.com/496450943): Guard against the user signing out while the
-  // settings view is still open.
-  if (isSaveAsynchronous && _walletPassManager) {
-    [self.consumer setLoadingState:YES];
+  if (!isSaveAsynchronous || !_walletPassManager) {
+    _entityDataManager->AddOrUpdateEntityInstance(*_entityInstance);
+    [self.consumer didFinishSavingWithLocalFallback:NO];
+    return;
+  }
 
-    autofill::EntityInstance originalEntity = *_entityInstance;
+  if (![self.delegate mediator:self
+          canPerformWalletSaveForType:_entityInstance->type()]) {
+    // Save to local.
+    EntityInstance local_entity = _entityInstance->CopyWithNewRecordType(
+        EntityInstance::RecordType::kLocal);
+    _entityDataManager->AddOrUpdateEntityInstance(local_entity);
+    [self.consumer didFinishSavingWithLocalFallback:YES];
+    return;
+  }
 
-    consent_auditor::ConsentAuditor::SessionId sessionId;
-    if (base::FeatureList::IsEnabled(
-            wallet::features::kWalletApiPrivatePassesConsent)) {
-      sessionId = autofill::RecordWalletPrivatePassConsent(
-          /*consent_string_id=*/autofill::GetSaveToWalletSubtitleStringId(),
-          /*clicked_button_string_id=*/
-          autofill::GetSaveEntityAcceptButtonStringId(), *_consentAuditor,
-          *_identityManager);
-    }
+  [self.consumer setLoadingState:YES];
+
+  autofill::EntityInstance originalEntity = *_entityInstance;
+
+  consent_auditor::ConsentAuditor::SessionId sessionId;
+  if (base::FeatureList::IsEnabled(
+          wallet::features::kWalletApiPrivatePassesConsent)) {
+    sessionId = autofill::RecordWalletPrivatePassConsent(
+        /*consent_string_id=*/autofill::GetSaveToWalletSubtitleStringId(),
+        /*clicked_button_string_id=*/
+        autofill::GetSaveEntityAcceptButtonStringId(), *_consentAuditor,
+        *_identityManager);
+  }
     __weak __typeof(self) weakSelf = self;
     auto callback = base::BindOnce(
         [](__typeof(self) weakSelf,
@@ -254,11 +267,6 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
 
     _walletPassManager->SaveWalletEntityInstance(*_entityInstance, sessionId,
                                                  std::move(callback));
-  } else {
-    // Standard local save.
-    _entityDataManager->AddOrUpdateEntityInstance(*_entityInstance);
-    [self.consumer didFinishSavingWithLocalFallback:NO];
-  }
 }
 
 - (void)didChangeDate:(NSDate*)date
@@ -268,18 +276,19 @@ NSDateFormatter* CreateDateFormatterForLocale(const std::string& locale) {
   [self.consumer updateItem:item];
 }
 
-- (autofill::DenseSet<autofill::AttributeType>)getMissingRequiredFieldsFor:
+- (autofill::DenseSet<autofill::AttributeType>)getMissingImportConstraintsFor:
     (const autofill::DenseSet<autofill::AttributeType>&)presentAttributes {
-  bool satisfied = std::ranges::any_of(
-      _entityInstance->type().required_fields(), [&](const auto& constraint) {
-        return presentAttributes.contains_all(constraint);
-      });
+  bool satisfied =
+      std::ranges::any_of(_entityInstance->type().import_constraints(),
+                          [&](const auto& constraint) {
+                            return presentAttributes.contains_all(constraint);
+                          });
   if (satisfied) {
     return {};
   }
 
   autofill::DenseSet<autofill::AttributeType> missingTypes;
-  for (const auto& constraint : _entityInstance->type().required_fields()) {
+  for (const auto& constraint : _entityInstance->type().import_constraints()) {
     for (auto type : constraint) {
       if (!presentAttributes.contains(type)) {
         missingTypes.insert(type);

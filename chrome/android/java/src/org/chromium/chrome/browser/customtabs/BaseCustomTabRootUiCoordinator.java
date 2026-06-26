@@ -34,6 +34,8 @@ import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.blink.mojom.DisplayMode;
+import org.chromium.build.annotations.EnsuresNonNull;
+import org.chromium.build.annotations.MonotonicNonNull;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.ActivityTabProvider;
@@ -136,7 +138,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
     private final Supplier<CustomTabMinimizeDelegate> mMinimizeDelegateSupplier;
     private final SearchActivityClient mCustomTabSearchClient;
 
-    private CustomTabHeightStrategy mCustomTabHeightStrategy;
+    private @MonotonicNonNull CustomTabHeightStrategy mCustomTabHeightStrategy;
 
     private @Nullable BrandingController mBrandingController;
 
@@ -341,7 +343,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
         }
     }
 
-    MismatchNotificationChecker createMismatchNotificationChecker(String appId) {
+    @Nullable MismatchNotificationChecker createMismatchNotificationChecker(String appId) {
         CustomTabsConnection connection = CustomTabsConnection.getInstance();
         Intent intent = mIntentDataProvider.get().getIntent();
         if (!connection.isAppForAccountMismatchNotification(intent)) return null;
@@ -407,6 +409,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
     }
 
     @Override
+    @EnsuresNonNull("mToolbarManager")
     protected void initializeToolbar() {
         CustomTabsConnection connection = CustomTabsConnection.getInstance();
         boolean shouldEnableOmnibox =
@@ -443,6 +446,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                             mActivityLifecycleDispatcher,
                             mActivityTabProvider);
 
+            assert mFindToolbarManager != null;
             super.initializeToolbar();
 
             mToolbarManager.setOptionalButtonDelegate(mToolbarButtonsCoordinator);
@@ -450,6 +454,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                     .get()
                     .onToolbarInitialized(mToolbarManager, mToolbarButtonsCoordinator);
             View coordinator = mActivity.findViewById(R.id.coordinator);
+            assumeNonNull(mCustomTabHeightStrategy);
             mCustomTabHeightStrategy.onToolbarInitialized(
                     coordinator,
                     toolbar,
@@ -457,12 +462,14 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                     mToolbarButtonsCoordinator);
 
             if (shouldEnableOmnibox) {
+                assert omniboxParams != null;
                 toolbar.setOmniboxParams(omniboxParams);
             }
 
             return;
         }
 
+        assert mFindToolbarManager != null;
         super.initializeToolbar();
 
         // TODO(crbug.com/402213312): Move as much of this as possible into
@@ -475,6 +482,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
         var cpac = getContextualPageActionController();
         if (cpac != null) cpac.setButtonVisibilitySupplier(toolbar.getShowOptionalButton());
         View coordinator = mActivity.findViewById(R.id.coordinator);
+        assumeNonNull(mCustomTabHeightStrategy);
         mCustomTabHeightStrategy.onToolbarInitialized(
                 coordinator,
                 toolbar,
@@ -516,7 +524,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
 
     @Override
     protected AdaptiveToolbarBehavior createAdaptiveToolbarBehavior(
-            Supplier<Tracker> trackerSupplier) {
+            Supplier<@Nullable Tracker> trackerSupplier) {
         return new CustomTabAdaptiveToolbarBehavior(
                 mActivity,
                 mActivityTabProvider,
@@ -691,7 +699,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                 CustomTabHeightStrategy.createStrategy(
                         mActivity,
                         intentDataProvider,
-                        () -> mCompositorViewHolderSupplier.get(),
+                        () -> assumeNonNull(mCompositorViewHolderSupplier.get()),
                         () -> assumeNonNull(mTabModelSelectorSupplier.get()).getCurrentTab(),
                         mActivityLifecycleDispatcher,
                         mFullscreenManager,
@@ -748,9 +756,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
             assumeNonNull(appHeaderState);
             layoutParams.topMargin = appHeaderState.getCaptionControlsTopOffset();
         } else {
-            layoutParams.addRule(
-                    RelativeLayout.BELOW,
-                    org.chromium.chrome.browser.web_app_header.R.id.web_app_header_layout);
+            layoutParams.addRule(RelativeLayout.BELOW, R.id.web_app_header_layout);
             layoutParams.topMargin = 0;
         }
 
@@ -765,6 +771,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
     @Override
     public void onPostInflationStartup() {
         super.onPostInflationStartup();
+        assumeNonNull(mCustomTabHeightStrategy);
         mCustomTabHeightStrategy.onPostInflationStartup();
         mCustomTabHistoryIphController =
                 CustomTabAppMenuHelper.maybeCreateHistoryIphController(
@@ -785,9 +792,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
             mWebAppHeaderLayoutCoordinator =
                     new WebAppHeaderLayoutCoordinator(
                             mActivity,
-                            mActivity.findViewById(
-                                    org.chromium.chrome.browser.web_app_header.R.id
-                                            .web_app_header_layout),
+                            mActivity.findViewById(R.id.web_app_header_layout),
                             desktopWindowStateManager,
                             mActivityTabProvider.asObservable(),
                             mWebAppThemeColorProvider.get(),
@@ -838,6 +843,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
     protected void onScrimColorChanged(@ColorInt int scrimColor) {
         super.onScrimColorChanged(scrimColor);
         // TODO(jinsukkim): Separate CCT scrim update action from status bar scrim stuff.
+        assumeNonNull(mCustomTabHeightStrategy);
         mCustomTabHeightStrategy.setScrimColor(scrimColor);
     }
 
@@ -878,6 +884,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
         super.onFindToolbarShown();
         CustomTabToolbar toolbar = mActivity.findViewById(R.id.toolbar);
         toolbar.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS);
+        assumeNonNull(mCustomTabHeightStrategy);
         mCustomTabHeightStrategy.onFindToolbarShown();
     }
 
@@ -886,6 +893,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
         super.onFindToolbarHidden();
         CustomTabToolbar toolbar = mActivity.findViewById(R.id.toolbar);
         toolbar.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        assumeNonNull(mCustomTabHeightStrategy);
         mCustomTabHeightStrategy.onFindToolbarHidden();
     }
 
@@ -986,9 +994,11 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
 
     /**
      * Perform slide-down animation on closing.
+     *
      * @param finishRunnable Runnable finishing the activity after the animation.
      */
     void handleCloseAnimation(Runnable finishRunnable) {
+        assumeNonNull(mCustomTabHeightStrategy);
         mCustomTabHeightStrategy.handleCloseAnimation(finishRunnable);
     }
 
@@ -1025,7 +1035,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
                         }));
     }
 
-    CustomTabHeightStrategy getCustomTabSizeStrategyForTesting() {
+    @Nullable CustomTabHeightStrategy getCustomTabSizeStrategyForTesting() {
         return mCustomTabHeightStrategy;
     }
 
@@ -1035,7 +1045,7 @@ public class BaseCustomTabRootUiCoordinator extends RootUiCoordinator {
     }
 
     @VisibleForTesting
-    public WebAppHeaderLayoutCoordinator getWebAppHeaderLayoutCoordinator() {
+    public @Nullable WebAppHeaderLayoutCoordinator getWebAppHeaderLayoutCoordinator() {
         return mWebAppHeaderLayoutCoordinator;
     }
 

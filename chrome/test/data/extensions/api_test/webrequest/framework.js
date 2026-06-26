@@ -51,7 +51,7 @@ const initiators = {
 // These events are recorded in capturedUnexpectedData instead of
 // capturedEventData.
 // This is set by subtests, so we can't use `const` here.
-let ignoreUnexpected = false;
+let ignoreUnexpected = false;  // eslint-disable-line prefer-const
 
 // This is a debugging aid to print all received events as well as the
 // information whether they were expected.
@@ -156,8 +156,9 @@ function navigateAndWait(url, callback) {
               JSON.stringify(info)} ${JSON.stringify(tab)}`);
         }
         if (tab.id == tabId && info.status == 'complete') {
-          if (callback)
+          if (callback) {
             callback(tab);
+          }
           done();
         }
       });
@@ -172,7 +173,7 @@ function deepCopy(obj) {
     return obj;
   }
   if (Array.isArray(obj)) {
-    const tmpArray = new Array();
+    const tmpArray = [];
     for (let i = 0; i < obj.length; i++) {
       tmpArray.push(deepCopy(obj[i]));
     }
@@ -558,7 +559,10 @@ function initListeners(filter, extraInfoSpec) {
 
   chrome.webRequest.onAuthRequired.addListener(
       onAuthRequired, filter, intersect(extraInfoSpec, [
-        'asyncBlocking', 'blocking', 'responseHeaders', 'extraHeaders'
+        'asyncBlocking',
+        'blocking',
+        'responseHeaders',
+        'extraHeaders',
       ]));
 
   chrome.webRequest.onResponseStarted.addListener(

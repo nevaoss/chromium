@@ -570,8 +570,20 @@ BASE_FEATURE_PARAM(std::string,
                    "DisabledTools",
                    "");
 
+const char kActorToolsPageStabilityParam[] = "PageStabilityEnabled";
+
+BASE_FEATURE_PARAM(bool,
+                   kPageStabilityEnabled,
+                   &kActorTools,
+                   kActorToolsPageStabilityParam,
+                   false);
+
 bool IsActorEnabled() {
   return base::FeatureList::IsEnabled(kActorTools);
+}
+
+bool IsPageStabilityEnabled() {
+  return kPageStabilityEnabled.Get();
 }
 
 bool IsToolDisabled(optimization_guide::proto::Action::ActionCase tool) {
@@ -640,20 +652,16 @@ int GetModelBasedPageClassificationExecutionRate() {
   return kModelBasedPageClassificationExecutionRateFeatureParam.Get();
 }
 
-BASE_FEATURE(kPageActionMenuIcon, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kPageActionMenuIcon, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const char kPageActionMenuIconParams[] = "PageActionMenuIconParams";
 
 PageActionMenuIconVariations GetPageActionMenuIcon() {
-  int param = base::GetFieldTrialParamByFeatureAsInt(
-      kPageActionMenuIcon, kPageActionMenuIconParams, 0);
-  if (param == 1) {
-    return PageActionMenuIconVariations::kSparkles1;
-  }
-  if (param == 2) {
+  if (@available(iOS 26, *)) {
     return PageActionMenuIconVariations::kSparkles2;
+  } else {
+    return PageActionMenuIconVariations::kDefault;
   }
-  return PageActionMenuIconVariations::kDefault;
 }
 
 BASE_FEATURE(kGeminiBackendMigration, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -747,4 +755,11 @@ bool IsGeminiMultiTabContextEnabled() {
     return false;
   }
   return base::FeatureList::IsEnabled(kGeminiMultiTabContext);
+}
+
+BASE_FEATURE(kAppStoreInAppEvents, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsAppStoreInAppEventsEnabled() {
+  return IsPageActionMenuEnabled() &&
+         base::FeatureList::IsEnabled(kAppStoreInAppEvents);
 }

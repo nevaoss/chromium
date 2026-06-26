@@ -1629,34 +1629,6 @@ inline constexpr char kSelectFileLastDirectory[] = "selectfile.last_directory";
 inline constexpr char kAllowFileSelectionDialogs[] =
     "select_file_dialogs.allowed";
 
-#if BUILDFLAG(IS_CHROMEOS)
-
-// Whether the user can remove OneDrive.
-inline constexpr char kAllowUserToRemoveODFS[] = "allow_user_to_remove_odfs";
-
-// Whether M365 has been already been set as default to open supported links.
-inline constexpr char kM365SupportedLinkDefaultSet[] =
-    "filebrowser.m365_supported_link_default_set";
-
-// Pref that contains the value of the MicrosoftOneDriveMount policy.
-inline constexpr char kMicrosoftOneDriveMount[] =
-    "filebrowser.office.microsoft_one_drive_mount";
-
-// Pref that contains the value of the MicrosoftOneDriveAccountRestrictions
-// policy.
-inline constexpr char kMicrosoftOneDriveAccountRestrictions[] =
-    "filebrowser.office.microsoft_one_drive_account_restrictions";
-
-// Pref that contains the value of the MicrosoftOfficeCloudUpload policy.
-inline constexpr char kMicrosoftOfficeCloudUpload[] =
-    "filebrowser.office.microsoft_office_cloud_upload";
-
-// Pref that contains the value of the GoogleWorkspaceCloudUpload policy.
-inline constexpr char kGoogleWorkspaceCloudUpload[] =
-    "filebrowser.office.google_workspace_cloud_upload";
-
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
 // Extensions which should be opened upon completion.
 inline constexpr char kDownloadExtensionsToOpen[] =
     "download.extensions_to_open";
@@ -1692,6 +1664,11 @@ inline constexpr char kDNSInterceptionChecksEnabled[] =
 // before shutting everything down.
 inline constexpr char kRestartLastSessionOnShutdown[] =
     "restart.last.session.on.shutdown";
+
+// Whether to restart the current Chrome session automatically in the background
+// as the last thing before shutting everything down.
+inline constexpr char kRestartInBackgroundOnShutdown[] =
+    "restart.in.background.on.shutdown";
 
 #if !BUILDFLAG(IS_ANDROID)
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -2264,36 +2241,6 @@ inline constexpr char kDnsOverHttpsTemplates[] = "dns_over_https.templates";
 inline constexpr char kDnsOverHttpsAutomaticModeFallbackToDoh[] =
     "dns_over_https.automatic_mode_fallback_to_doh";
 
-#if BUILDFLAG(IS_CHROMEOS)
-// String containing a space-separated list of DNS over HTTPS URI templates,
-// with placeholders for user and device identifiers, to use in secure mode or
-// automatic mode. If no templates are specified in automatic mode, we will
-// attempt discovery of DoH servers associated with the configured insecure
-// resolvers. This is very similar to kDnsOverHttpsTemplates except that on
-// ChromeOS it supports additional placeholder variables which are used to
-// transport identity information to the DNS provider. This is ignored on all
-// other platforms than ChromeOS. On ChromeOS if it exists it will override
-// kDnsOverHttpsTemplates, otherwise kDnsOverHttpsTemplates will be used. This
-// pref is controlled by an enterprise policy.
-inline constexpr char kDnsOverHttpsTemplatesWithIdentifiers[] =
-    "dns_over_https.templates_with_identifiers";
-// String containing a salt value. This is used together with
-// kDnsOverHttpsTemplatesWithIdentifiers, only. The value will be used as a salt
-// to a hash applied to the various identity variables to prevent dictionary
-// attacks. This pref is controlled by an enterprise policy.
-inline constexpr char kDnsOverHttpsSalt[] = "dns_over_https.salt";
-// String containing a space-separated list of effective DNS over HTTPS URI
-// templates. If `kDnsOverHttpsTemplatesWithIdentifiers` is set, this string is
-// the result of evaluating `kDnsOverHttpsTemplatesWithIdentifiers` against real
-// user and device data; the identity placeholders are replaced with the
-// hex-encoded hashed value of the user and device identifier. When
-// `kDnsOverHttpsTemplatesWithIdentifiers` is empty or not set,
-// `kDnsOverHttpsEffectiveTemplates` is equal to `kDnsOverHttpsTemplates`.
-// This pref is set at runtime by ash::SecureDnsManager.
-inline constexpr char kDnsOverHttpsEffectiveTemplatesChromeOS[] =
-    "dns_over_https.effective_templates_with_identifiers";
-#endif  // BUILDFLAG(IS_CHROMEOS)
-
 // Boolean that specifies whether additional DNS query types (e.g. HTTPS) may be
 // queried alongside the traditional A and AAAA queries.
 inline constexpr char kAdditionalDnsQueryTypesEnabled[] =
@@ -2357,10 +2304,6 @@ inline constexpr char kSameOriginTabCaptureAllowedByOrigins[] =
     "hardware.same_origin_tab_capture_allowed_by_origins";
 
 #if BUILDFLAG(IS_CHROMEOS)
-// The hardware keyboard layout of the device. This should look like
-// "xkb:us::eng".
-inline constexpr char kHardwareKeyboardLayout[] = "intl.hardware_keyboard";
-
 // An any-api scoped refresh token for enterprise-enrolled devices.  Allows
 // for connection to Google APIs when the user isn't logged in.  Currently used
 // for for getting a cloudprint scoped token to allow printing in Guest mode,
@@ -2592,32 +2535,6 @@ inline constexpr char kMediaGalleriesUniqueId[] = "media_galleries.gallery_id";
 inline constexpr char kMediaGalleriesRememberedGalleries[] =
     "media_galleries.remembered_galleries";
 #endif  // !BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_CHROMEOS)
-inline constexpr char kPolicyPinnedLauncherApps[] =
-    "policy_pinned_launcher_apps";
-// Keeps names of rolled default pin layouts for shelf in order not to apply
-// this twice. Names are separated by comma.
-inline constexpr char kShelfDefaultPinLayoutRolls[] =
-    "shelf_default_pin_layout_rolls";
-// Same as kShelfDefaultPinLayoutRolls, but for tablet form factor devices.
-inline constexpr char kShelfDefaultPinLayoutRollsForTabletFormFactor[] =
-    "shelf_default_pin_layout_rolls_for_tablet_form_factor";
-// Keeps track of whether the Gemini app was pinned to shelf as a default app,
-// to prevent applying the default pin twice (after the user unpins the app).
-// NOTE: The Gemini app was previously referred to as the container app.
-inline constexpr char kShelfGeminiAppPinRolls[] =
-    "shelf_container_app_pin_layout_rolls";
-// Keeps track of whether the NotebookLM app was pinned to shelf as a default
-// app, to prevent applying the default pin twice (after the user unpins the
-// app).
-inline constexpr char kShelfNotebookLmAppPinRolls[] =
-    "shelf_notebook_lm_app_pin_layout_rolls";
-// Keeps track of whether the Mall app was pinned to shelf as a default app,
-// to prevent applying the default pin twice (after the user unpins the app).
-inline constexpr char kShelfMallAppPinRolls[] =
-    "shelf_mall_app_pin_layout_rolls";
-#endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_WIN)
 // Counts how many more times the 'profile on a network share' warning should be
@@ -3044,16 +2961,6 @@ inline constexpr char kKnownInterceptionDisclosureInfobarLastShown[] =
     "known_interception_disclosure_infobar_last_shown";
 #endif
 
-#if BUILDFLAG(IS_CHROMEOS)
-inline constexpr char kRequiredClientCertificateForUser[] =
-    "required_client_certificate_for_user";
-inline constexpr char kRequiredClientCertificateForDevice[] =
-    "required_client_certificate_for_device";
-inline constexpr char kCertificateProvisioningStateForUser[] =
-    "cert_provisioning_user_state";
-inline constexpr char kCertificateProvisioningStateForDevice[] =
-    "cert_provisioning_device_state";
-#endif
 // A boolean pref that enables certificate prompts when multiple certificates
 // match the auto-selection policy. This pref is controlled exclusively by
 // policies (PromptOnMultipleMatchingCertificates or, in the sign-in profile,
@@ -3244,7 +3151,7 @@ inline constexpr char kVirtualKeyboardResizesLayoutByDefault[] =
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // A boolean indicating whether Access-Control-Allow-Methods matching in CORS
-// preflights is fixed according to the spec. https://crbug.com/1228178
+// preflights is fixed according to the spec. https://crbug.com/40777535
 inline constexpr char
     kAccessControlAllowMethodsInCORSPreflightSpecConformant[] =
         "access_control_allow_methods_in_cors_preflight_spec_conformant";

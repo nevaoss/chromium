@@ -107,6 +107,8 @@ class VerticalTabStripRegionView final
   // aligned to the leading, top corner.
   void SetToolbarHeightForLayout(int toolbar_height);
   void SetCaptionButtonWidthForLayout(int caption_button_width);
+  void SetIsExitingExpandOnHoverForLayout(bool is_exiting_expand_on_hover);
+  bool WillWrapDueToOverflow(int available_width) const;
 
   TabDragTarget* GetTabDragTarget(const gfx::Point& point_in_screen);
 
@@ -175,6 +177,9 @@ class VerticalTabStripRegionView final
 
   bool is_expanded_on_hover() const { return is_expanded_on_hover_; }
   ShadowFrameView* shadow_frame() { return shadow_frame_; }
+  int uncollapsed_width() const {
+    return target_collapse_state_.uncollapsed_width;
+  }
 
   views::ResizeArea* resize_area_for_testing() { return resize_area_; }
   RootTabCollectionNode* root_node_for_testing() { return root_node_.get(); }

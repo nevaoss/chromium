@@ -152,6 +152,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="1228893227497259893">Identificador de entidade errado</translation>
 <translation id="1230244617745022071"><ph name="SOURCE" /> (detetado automaticamente)</translation>
 <translation id="1232569758102978740">Sem nome</translation>
+<translation id="1234539281285007945">O campo <ph name="FIELD_1" /> é obrigatório</translation>
 <translation id="1236081509407217141">Permitir a RV?</translation>
 <translation id="1236689197410206751">AfterPay</translation>
 <translation id="1240347957665416060">O nome do dispositivo</translation>
@@ -472,6 +473,7 @@ Se não permitir, isto será bloqueado pelas suas definições de privacidade. I
 <translation id="1721424275792716183">* Campo de preenchimento obrigatório</translation>
 <translation id="1723636263173393300">Esta política não deve ter mais de <ph name="MAX_ITEMS_LIMIT" /> atalhos.</translation>
 <translation id="1725591448053514783">Envelope You 6</translation>
+<translation id="172754119609519423">Os campos <ph name="FIELD_1" />, <ph name="FIELD_2" /> ou <ph name="FIELD_3" /> são obrigatórios</translation>
 <translation id="1727613060316725209">O certificado é válido</translation>
 <translation id="1728677426644403582">Está a ver a fonte de uma página Web</translation>
 <translation id="173080396488393970">Este tipo de cartão não é suportado</translation>
@@ -1432,6 +1434,7 @@ Para ocultar as opções para pagar depois, aceda às <ph name="BEGIN_LINK" />de
 <translation id="3220264767789936523">Vestuário formal</translation>
 <translation id="3223287115535306850">Ícone de iniciação da app</translation>
 <translation id="3223425961342298674">Acesso à localização não permitido</translation>
+<translation id="3225277284238802910">Os campos <ph name="FIELD_1" /> ou <ph name="FIELD_2" /> são obrigatórios</translation>
 <translation id="3225319735946384299">Assinatura de código</translation>
 <translation id="3225919329040284222">O servidor apresentou um certificado que não corresponde às expectativas existentes. Estas expectativas são incluídas para determinados Web sites de alta segurança para sua proteção.</translation>
 <translation id="3226128629678568754">Prima o botão de atualização para enviar novamente os dados necessários para carregar a página.</translation>
@@ -2156,6 +2159,7 @@ Para ocultar as opções para pagar depois, aceda às <ph name="BEGIN_LINK" />de
 <translation id="4318312030194671742">Serviço do compositor de Pré-visualizações de pintura</translation>
 <translation id="4318566738941496689">O nome do dispositivo e o endereço de rede.</translation>
 <translation id="4320119221194966055">Empréstimos pessoais</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{Link recebido do <ph name="DEVICE_NAME" />}other{# links recebidos do <ph name="DEVICE_NAME" />}}</translation>
 <translation id="4325600325087822253">Tabuleiro 17</translation>
 <translation id="4325863107915753736">Falha ao encontrar o artigo</translation>
 <translation id="4326324639298822553">Verifique a data de validade e tente novamente</translation>
@@ -3187,6 +3191,7 @@ Para ocultar as opções para pagar depois, aceda às <ph name="BEGIN_LINK" />de
 <translation id="5968400720580217226">Modo IA</translation>
 <translation id="5969199813874624822">Guarde e monitorize o preço</translation>
 <translation id="5969933937005244170">Os separadores abertos relevantes só são usados se os partilhar numa discussão</translation>
+<translation id="5972020793760134803">Mudar para o separador</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">Sexto rolo</translation>
 <translation id="5975083100439434680">Reduzir</translation>
@@ -4982,6 +4987,7 @@ Detalhes adicionais:
 <translation id="8758529215314160755">Pode editar o seu nome na sua <ph name="BEGIN_LINK" />Conta Google <ph name="END_LINK" /> <ph name="ACCOUNT" /></translation>
 <translation id="8759274551635299824">Este cartão expirou</translation>
 <translation id="87601671197631245">Este site utiliza uma configuração de segurança desatualizada, que pode expor as suas informações (por exemplo, palavras-passe, mensagens ou cartões de crédito) quando são enviadas para este site.</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{Link enviado do <ph name="DEVICE_NAME" />}other{# links enviados do <ph name="DEVICE_NAME" />}}</translation>
 <translation id="8763927697961133303">Dispositivo USB</translation>
 <translation id="8763986294015493060">Feche todas as janelas de navegação anónima atualmente abertas</translation>
 <translation id="8766943070169463815">A página de autenticação das credenciais de pagamento seguro está aberta</translation>

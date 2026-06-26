@@ -10,6 +10,7 @@ import android.widget.FrameLayout;
 import androidx.annotation.ColorInt;
 
 import org.chromium.base.Callback;
+import org.chromium.base.supplier.NonNullObservableSupplier;
 import org.chromium.base.supplier.NullableObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -18,6 +19,7 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.theme.ThemeColorProvider;
 import org.chromium.chrome.browser.toolbar.bottom.BottomControlsContentDelegate;
 import org.chromium.chrome.browser.toolbar.bottom.BottomControlsCoordinator.BottomControlsVisibilityController;
+import org.chromium.chrome.browser.ui.actions.ActionRegistry;
 import org.chromium.chrome.browser.ui.bottombar.BottomBar;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarCoordinator;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarMediator;
@@ -48,13 +50,21 @@ public class BottomBarContainerCoordinator
     public BottomBarContainerCoordinator(
             FrameLayout bottomBarContainer,
             Callback<Boolean> requestLayerUpdateCallback,
+            ActionRegistry actionRegistry,
             NullableObservableSupplier<Tab> tabSupplier,
-            ThemeColorProvider themeColorProvider) {
+            ThemeColorProvider themeColorProvider,
+            NonNullObservableSupplier<Boolean> homepageEnabledSupplier) {
         mBottomBarContainer = bottomBarContainer;
         mRequestLayerUpdateCallback = requestLayerUpdateCallback;
 
         mBottomBarCoordinator =
-                new BottomBarCoordinator(bottomBarContainer, themeColorProvider, tabSupplier, this);
+                new BottomBarCoordinator(
+                        bottomBarContainer,
+                        actionRegistry,
+                        themeColorProvider,
+                        tabSupplier,
+                        homepageEnabledSupplier,
+                        this);
     }
 
     @Override

@@ -24,10 +24,9 @@ public class ExtensionsMenuItemProperties {
     public static final WritableObjectPropertyKey<@Nullable Bitmap> ICON =
             new WritableObjectPropertyKey<>();
 
-    public static final WritableObjectPropertyKey<String> TITLE = new WritableObjectPropertyKey<>();
+    public static final WritableBooleanPropertyKey IS_PINNED = new WritableBooleanPropertyKey();
 
-    public static final WritableIntPropertyKey CONTEXT_MENU_BUTTON_ICON =
-            new WritableIntPropertyKey();
+    public static final WritableObjectPropertyKey<String> TITLE = new WritableObjectPropertyKey<>();
 
     public static final WritableObjectPropertyKey<View.OnClickListener>
             CONTEXT_MENU_BUTTON_ON_CLICK = new WritableObjectPropertyKey<>();
@@ -59,12 +58,14 @@ public class ExtensionsMenuItemProperties {
     public static final WritableObjectPropertyKey<String> SITE_PERMISSIONS_BUTTON_ACCESSIBLE_NAME =
             new WritableObjectPropertyKey<>();
 
+    public static final WritableBooleanPropertyKey IS_ENTERPRISE = new WritableBooleanPropertyKey();
+
     public static final PropertyKey[] ALL_KEYS =
             new PropertyKey[] {
                 EXTENSION_ID,
                 ICON,
+                IS_PINNED,
                 TITLE,
-                CONTEXT_MENU_BUTTON_ICON,
                 CONTEXT_MENU_BUTTON_ON_CLICK,
                 PRIMARY_ACTION_ON_CLICK,
                 SITE_ACCESS_TOGGLE_CHECKED,
@@ -74,6 +75,7 @@ public class ExtensionsMenuItemProperties {
                 SITE_PERMISSIONS_BUTTON_ACCESSIBLE_NAME,
                 SITE_PERMISSIONS_BUTTON_ON_CLICK,
                 SITE_PERMISSIONS_BUTTON_STATUS,
-                SITE_PERMISSIONS_BUTTON_TEXT
+                SITE_PERMISSIONS_BUTTON_TEXT,
+                IS_ENTERPRISE
             };
 }

@@ -8,7 +8,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -199,15 +198,23 @@ public class MissingDeviceLockLauncherTest {
         mSharedPreferencesManager.writeBoolean(
                 ChromePreferenceKeys.DEVICE_LOCK_SHOW_ALERT_IF_REMOVED, true);
 
-        doReturn(TestAccounts.ACCOUNT1).when(mIdentityManager).getPrimaryAccountInfo(anyInt());
+        doReturn(TestAccounts.ACCOUNT1).when(mIdentityManager).getPrimaryAccountInfo();
         doAnswer(
                         (invocation) -> {
-                            SigninManager.SignOutCallback callback = invocation.getArgument(1);
-                            callback.signOutComplete();
+                            Runnable callback = invocation.getArgument(1);
+                            callback.run();
                             return null;
                         })
                 .when(mSigninManager)
-                .signOut(anyInt(), any(), anyBoolean());
+                .signOut(anyInt(), any());
+        doAnswer(
+                        (invocation) -> {
+                            Runnable callback = invocation.getArgument(0);
+                            callback.run();
+                            return null;
+                        })
+                .when(mSigninManager)
+                .wipeSyncUserData(any());
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -215,8 +222,8 @@ public class MissingDeviceLockLauncherTest {
                             () -> mWipeDataCallbackCalled.set(true), /* wipeAllData= */ true);
                 });
         verify(mSigninManager, times(1)).runAfterOperationInProgress(any());
-        verify(mSigninManager, times(1)).signOut(anyInt(), any(), eq(true));
-        verify(mSigninManager, times(0)).wipeSyncUserData(any());
+        verify(mSigninManager, times(1)).signOut(anyInt(), any());
+        verify(mSigninManager, times(1)).wipeSyncUserData(any());
         verify(mPasswordStoreBridge, never()).clearAllPasswords();
         verify(mPersonalDataManager, never()).deleteAllLocalCreditCards();
         assertTrue(
@@ -233,15 +240,15 @@ public class MissingDeviceLockLauncherTest {
         mSharedPreferencesManager.writeBoolean(
                 ChromePreferenceKeys.DEVICE_LOCK_SHOW_ALERT_IF_REMOVED, true);
 
-        doReturn(TestAccounts.ACCOUNT1).when(mIdentityManager).getPrimaryAccountInfo(anyInt());
+        doReturn(TestAccounts.ACCOUNT1).when(mIdentityManager).getPrimaryAccountInfo();
         doAnswer(
                         (invocation) -> {
-                            SigninManager.SignOutCallback callback = invocation.getArgument(1);
-                            callback.signOutComplete();
+                            Runnable callback = invocation.getArgument(1);
+                            callback.run();
                             return null;
                         })
                 .when(mSigninManager)
-                .signOut(anyInt(), any(), anyBoolean());
+                .signOut(anyInt(), any());
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -249,7 +256,7 @@ public class MissingDeviceLockLauncherTest {
                             () -> mWipeDataCallbackCalled.set(true), /* wipeAllData= */ false);
                 });
         verify(mSigninManager, times(1)).runAfterOperationInProgress(any());
-        verify(mSigninManager, times(1)).signOut(anyInt(), any(), eq(false));
+        verify(mSigninManager, times(1)).signOut(anyInt(), any());
         verify(mSigninManager, times(0)).wipeSyncUserData(any());
         verify(mPasswordStoreBridge, times(1)).clearAllPasswords();
         verify(mPersonalDataManager, times(1)).deleteAllLocalCreditCards();
@@ -267,7 +274,7 @@ public class MissingDeviceLockLauncherTest {
         mSharedPreferencesManager.writeBoolean(
                 ChromePreferenceKeys.DEVICE_LOCK_SHOW_ALERT_IF_REMOVED, true);
 
-        doReturn(null).when(mIdentityManager).getPrimaryAccountInfo(anyInt());
+        doReturn(null).when(mIdentityManager).getPrimaryAccountInfo();
         doAnswer(
                         (invocation) -> {
                             Runnable callback = invocation.getArgument(0);
@@ -283,7 +290,7 @@ public class MissingDeviceLockLauncherTest {
                             () -> mWipeDataCallbackCalled.set(true), /* wipeAllData= */ true);
                 });
         verify(mSigninManager, times(1)).runAfterOperationInProgress(any());
-        verify(mSigninManager, times(0)).signOut(anyInt(), any(), anyBoolean());
+        verify(mSigninManager, times(0)).signOut(anyInt(), any());
         verify(mSigninManager, times(1)).wipeSyncUserData(any());
         verify(mPasswordStoreBridge, never()).clearAllPasswords();
         verify(mPersonalDataManager, never()).deleteAllLocalCreditCards();
@@ -302,7 +309,7 @@ public class MissingDeviceLockLauncherTest {
         mSharedPreferencesManager.writeBoolean(
                 ChromePreferenceKeys.DEVICE_LOCK_SHOW_ALERT_IF_REMOVED, true);
 
-        doReturn(null).when(mIdentityManager).getPrimaryAccountInfo(anyInt());
+        doReturn(null).when(mIdentityManager).getPrimaryAccountInfo();
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -310,7 +317,7 @@ public class MissingDeviceLockLauncherTest {
                             () -> mWipeDataCallbackCalled.set(true), /* wipeAllData= */ false);
                 });
         verify(mSigninManager, times(1)).runAfterOperationInProgress(any());
-        verify(mSigninManager, never()).signOut(anyInt(), any(), anyBoolean());
+        verify(mSigninManager, never()).signOut(anyInt(), any());
         verify(mSigninManager, never()).wipeSyncUserData(any());
         verify(mPasswordStoreBridge, times(1)).clearAllPasswords();
         verify(mPersonalDataManager, times(1)).deleteAllLocalCreditCards();

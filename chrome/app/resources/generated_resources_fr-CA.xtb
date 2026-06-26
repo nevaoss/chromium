@@ -834,6 +834,7 @@ Les autorisations que vous avez déjà accordées à des applications peuvent s'
 <translation id="1567579616025300478">Ce site n'est pas autorisé à enregistrer des données sur votre appareil.</translation>
 <translation id="156793199942386351">La touche « <ph name="CURRENTKEY" /> » est déjà attribuée à l'action « <ph name="ACTION" /> ». Appuyez sur n'importe quelle touche pour <ph name="RESPONSE" />.</translation>
 <translation id="1567993339577891801">Console JavaScript</translation>
+<translation id="157005186601751931">Ouvrir l'onglet dans l'appli</translation>
 <translation id="1570604804919108255">Réactiver les notifications</translation>
 <translation id="1570990174567554976">Dossier de favoris « <ph name="BOOKMARK_TITLE" /> » créé.</translation>
 <translation id="1571041387761170095">Pas de mots de passe faibles ou réutilisés</translation>
@@ -1047,7 +1048,6 @@ Les autorisations que vous avez déjà accordées à des applications peuvent s'
 <translation id="1703666494654169921">Ne pas autoriser les sites à utiliser des données ni des appareils de réalité virtuelle</translation>
 <translation id="1704097193565924901">En majuscule</translation>
 <translation id="1704230497453185209">Ne pas autoriser les sites à faire jouer des sons</translation>
-<translation id="1706015824809136764">Épingler Gemini au raccourci de la barre d'outils</translation>
 <translation id="1706586824377653884">Ajouté par votre administrateur</translation>
 <translation id="170658918174941828">Nous recevrons la version de Chrome, la version de votre système d'exploitation, les paramètres de diffusion, les statistiques des performances de duplication d'écran et les journaux des diagnostics de votre canal de communication ainsi que toute autre information que vous choisirez d'inclure ci-dessus. Vos commentaires nous servent à diagnostiquer les problèmes et à améliorer la fonctionnalité. Les renseignements personnels que vous nous envoyez, de manière explicite ou accessoire, sont protégés conformément à nos politiques de confidentialité. En nous envoyant ces commentaires, vous acceptez que Google les utilise pour améliorer ses produits ou ses services.</translation>
 <translation id="17081583771848899">lanceur+alt+<ph name="TOP_ROW_KEY" /></translation>
@@ -1550,7 +1550,6 @@ Vous pouvez gérer les paramètres de ce compte en installant l'application Fami
 <translation id="204914487372604757">Créer un raccourci</translation>
 <translation id="2049573977943974163">Activer « <ph name="EXTENSION_NAME" /> »?</translation>
 <translation id="2050339315714019657">Portrait</translation>
-<translation id="2050394140692183739">Raccourci actuel de la barre d'outils</translation>
 <translation id="2051555741181591333">Désactiver automatiquement le point d'accès sans fil</translation>
 <translation id="2051669996101374349">Dans la mesure du possible, utilisez le protocole HTTPS et soyez averti avant de charger des sites qui ne le prennent pas en charge. Vous ne pouvez pas modifier ce paramètre, car la protection avancée est activée.</translation>
 <translation id="2052572566310583903">Installée sur vos autres appareils</translation>
@@ -1807,7 +1806,7 @@ Vous pouvez gérer les paramètres de ce compte en installant l'application Fami
 <translation id="2231351769755997720">Aucune suggestion proposée. Essayez de poser votre propre question à propos de cette page.</translation>
 <translation id="2232751457155581899">Les sites peuvent demander à suivre la position de votre caméra</translation>
 <translation id="2233502537820838181">Plus d'infor&amp;mation</translation>
-<translation id="223356358902285214">Activité sur le Web et dans les applications</translation>
+<translation id="223356358902285214">Activité sur le Web et dans les applis</translation>
 <translation id="2234031676056123135">Personnalisez vos raccourcis</translation>
 <translation id="2234065144797002621">Ruisseau</translation>
 <translation id="2234208862050358325">Utilisez les touches 1, 2, 3, q, e, a, s, d pour déplacer le curseur</translation>
@@ -2318,7 +2317,6 @@ https://support.google.com/chrome/?p=applescript</translation>
 <translation id="2565214867520763227">Activer le lecteur d'écran</translation>
 <translation id="2566146433999774844">Se joindre au groupe d'onglets avec <ph name="OWNER_FIRST_NAME" /> et <ph name="NUM_OTHER_MEMBERS" /> autres</translation>
 <translation id="256726287944589768">Afficher le bas de page sur la page Nouvel onglet</translation>
-<translation id="2567313753132089780">Le mot de passe doit comporter au moins 12 caractères et inclure des lettres majuscules et minuscules, des chiffres et des symboles</translation>
 <translation id="2568774940984945469">Conteneur de barres d'information</translation>
 <translation id="2569972178052279830">Nom du détaillant</translation>
 <translation id="257088987046510401">Thèmes</translation>
@@ -3169,7 +3167,6 @@ Par exemple, certains sites Web peuvent répondre à cette demande en diffusant 
 <translation id="3157931365184549694">Restaurer</translation>
 <translation id="3158033540161634471">Configurer votre empreinte digitale</translation>
 <translation id="3158203338449343164">Annuler l'épinglage de la Recherche d'onglets</translation>
-<translation id="3158732900546890991">Le mot de passe doit comporter au moins huit caractères et inclure au moins deux des éléments suivants : lettres majuscules, lettres minuscules, chiffres ou symboles</translation>
 <translation id="3158770568048368350">Cette étape pourrait vous déconnecter brièvement de votre réseau cellulaire</translation>
 <translation id="3159335509547415276">En savoir plus sur les comptes bloqués</translation>
 <translation id="3159493096109238499">Beige</translation>
@@ -3752,6 +3749,7 @@ l‘<ph name="BEGIN_LINK" />
 <translation id="3572031449439748861"><ph name="NUM_EXTENSIONS" /> extensions ont été désactivées</translation>
 <translation id="3575121482199441727">Autoriser pour ce site</translation>
 <translation id="3575224072358507281">Collecter l'adresse IP et les résultats de mesure du réseau pour Measurement Lab conformément à sa politique de confidentialité (measurementlab.net/privacy)</translation>
+<translation id="3576324189521867626">Installation réussie</translation>
 <translation id="3577036603268648505">Être plus en sécurité en ligne</translation>
 <translation id="3577473026931028326">Un problème est survenu. Réessayez.</translation>
 <translation id="3577487026101678864">La synchronisation des fichiers est activée</translation>
@@ -4237,6 +4235,7 @@ Vous pouvez gérer les paramètres à partir du menu de la carte ou voir plus d'
 <translation id="3874532133373654352">Votre organisation gère la façon dont les données recueillies par ces fonctionnalités peuvent être utilisées. <ph name="BEGIN_LINK" />En savoir plus<ph name="END_LINK" /></translation>
 <translation id="3874845889165401548">Cette fonctionnalité utilise l'IA et est expérimentale</translation>
 <translation id="3875511946736639169">Afficher les images</translation>
+<translation id="3875777964669698078">Transcription en cours...</translation>
 <translation id="3875815154304214043">L'application <ph name="APP_NAME" /> est configurée pour s'ouvrir dans un nouvel onglet du navigateur, les liens pris en charge s'ouvriront aussi dans le navigateur. <ph name="BEGIN_LINK_LEARN_MORE" />En savoir plus<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="3876219572815410515">Fenêtres redimensionnées vers le haut</translation>
 <translation id="3877075909000773256">Paramètres de partage à proximité pour l'appareil de <ph name="USER_NAME" />. Partage sous le compte <ph name="USER_EMAIL" />.</translation>
@@ -4708,6 +4707,7 @@ Souhaitez-vous lancer <ph name="CONTROL_PANEL_APPLET_NAME" />?</translation>
 <translation id="4223404254440398437">Accès au microphone non autorisé</translation>
 <translation id="4224541845943007092">Lire et enregistrer l'entrée au clavier à partir de la barre d'adresse</translation>
 <translation id="4225397296022057997">Sur tous les sites</translation>
+<translation id="4225895483398857530">Raccourci de la barre d'outils</translation>
 <translation id="4226303886821889519">Version de l'outil de mise à jour : <ph name="VERSION" /></translation>
 <translation id="4228071595943929139">Utilisez l'adresse de courriel de votre organisation</translation>
 <translation id="4228209296591583948">{NUM_EXTENSIONS,plural, =1{Cette extension n'est pas autorisée}one{Cette extension n'est pas autorisée}other{Certaines extensions ne sont pas autorisées}}</translation>
@@ -6109,6 +6109,7 @@ Appuyez sur Ctrl+Alt+diminuer la luminosité pour dézoomer.</translation>
 <translation id="5204967432542742771">Entrez le mot de passe</translation>
 <translation id="5205484256512407285">Ne jamais utiliser les données cellulaires pour effectuer les transferts</translation>
 <translation id="520568280985468584">Le réseau a bien été ajouté. L'activation de votre réseau cellulaire peut prendre plusieurs minutes.</translation>
+<translation id="5207395053540207113">Autoriser Recherche à accéder au contenu Disque?</translation>
 <translation id="5207949376430453814">Mettre le point d'insertion de texte en surbrillance</translation>
 <translation id="520840839826327499"><ph name="SERVICE_NAME" /> veut vérifier si vous utilisez un appareil Chrome OS admissible.</translation>
 <translation id="5208926629108082192">Informations sur le réseau mobile de l'appareil</translation>
@@ -6599,6 +6600,7 @@ Vous pouvez attribuer plusieurs commutateurs à cette action.</translation>
 <translation id="5555639311269196631">Désactiver le point d'accès sans fil</translation>
 <translation id="5555760010546505198">Inversion des couleurs, correction des couleurs, loupe et paramètres d'affichage</translation>
 <translation id="555604722231274592">Activer le <ph name="FEATURE_NAME" /></translation>
+<translation id="5556191579768914260">Afficher l'erreur</translation>
 <translation id="5556459405103347317">Actualiser</translation>
 <translation id="555671485580955310">Synchroniser l'historique et les onglets</translation>
 <translation id="5558129378926964177">Zoom &amp;avant</translation>
@@ -9016,6 +9018,7 @@ Vous pouvez gérer les paramètres à partir du menu de la carte ou afficher plu
 <translation id="727595954130325265">Magasiner maintenant</translation>
 <translation id="7277275452721470458">Activité du mode IA</translation>
 <translation id="727952162645687754">Erreur de téléchargement</translation>
+<translation id="7280265656690268844">L'optimisation JavaScript est désactivée</translation>
 <translation id="7280649757394340890">Paramètres vocaux de synthèse vocale</translation>
 <translation id="7280683802406059877">Personnaliser le raccourci-clavier</translation>
 <translation id="7280877790564589615">Autorisation demandée</translation>
@@ -10133,7 +10136,6 @@ Conservez votre fichier de clé en lieu sûr. Vous en aurez besoin lors de la cr
 <translation id="8032569120109842252">Suivi</translation>
 <translation id="8033827949643255796">caractère sélectionné</translation>
 <translation id="8033958968890501070">Délai dépassé</translation>
-<translation id="8034399942062051455">L'optimisation V8 est désactivée</translation>
 <translation id="8034697324150621782">Échanger avec l'affichage du haut</translation>
 <translation id="8035059678007243127">Page de navigation privée de la mise en cache complète bidirectionnelle : <ph name="BACK_FORWARD_CACHE_INCOGNITO_PAGE_URL" /></translation>
 <translation id="8036143516314698610">Afficher le bouton des groupes d'onglets enregistrés</translation>
@@ -11353,6 +11355,7 @@ Cela peut inclure des renseignements sur les fichiers, les logiciels installés,
 <translation id="8866424952450451412">Gérez vos flux de travail personnalisés propulsés par</translation>
 <translation id="8867102760244540173">Rechercher des onglets…</translation>
 <translation id="8867228703146808825">Copier les renseignements de la version dans le presse-papier</translation>
+<translation id="8867568208303837180">Envoi en cours…</translation>
 <translation id="8868333925931032127">Démarrage du mode Démo en cours…</translation>
 <translation id="8868626022555786497">Utilisé</translation>
 <translation id="8868838761037459823">Renseignements sur la connexion cellulaire</translation>
@@ -11782,7 +11785,6 @@ Cela peut inclure des renseignements sur les fichiers, les logiciels installés,
 <translation id="914031120300235526">Impossible de déverrouiller le profil</translation>
 <translation id="9143298529634201539">Supprimer la suggestion?</translation>
 <translation id="9143922477019434797">Protéger vos mots de passe</translation>
-<translation id="914621365454686586">Autoriser Recherche à accéder au contenu Disque?</translation>
 <translation id="9147392381910171771">&amp;Options</translation>
 <translation id="9148058034647219655">Quitter</translation>
 <translation id="9148126808321036104">Connectez-vous de nouveau</translation>

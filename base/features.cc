@@ -12,6 +12,7 @@
 #include "base/task/thread_pool/job_task_source.h"
 #include "base/threading/platform_thread.h"
 #include "build/blink_buildflags.h"
+#include "build/build_config.h"
 #include "build/buildflag.h"
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
@@ -198,6 +199,11 @@ BASE_FEATURE(kUserBlockingAboveNormalPriority, FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kRetryCreateFileMappingOnCommitLimit, FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kPumpPeekMessageWithObserver, FEATURE_DISABLED_BY_DEFAULT);
+
+// Prevents base::DeletePathRecursively on Windows from traversing NTFS reparse
+// points (such as directory junctions). This protects against TOCTOU
+// vulnerabilities and prevents deleting files outside the target directory.
+BASE_FEATURE(kPreventReparsePointTraversal, FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_POSIX)
@@ -205,12 +211,25 @@ BASE_FEATURE(kPumpPeekMessageWithObserver, FEATURE_DISABLED_BY_DEFAULT);
 // space. The `kSpinCount` parameter represents the maximum number of pause
 // instructions (yields) that will be executed with an exponential backoff
 // before blocking in the kernel.
-BASE_FEATURE(kBaseLockTrySpin, FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(int,
-                   kSpinCount,
-                   &kBaseLockTrySpin,
-                   "Spin count for base::Lock",
-                   0);
+BASE_FEATURE(kBaseLockTrySpin, FEATURE_DISABLED_BY_DEFAULT);
+#if defined(ARCH_CPU_X86_FAMILY)
+BASE_FEATURE_PARAM(int, kSpinCountX86, &kBaseLockTrySpin, "spin_count_x86", 0);
+#elif defined(ARCH_CPU_ARM_FAMILY)
+BASE_FEATURE_PARAM(int, kSpinCountArm, &kBaseLockTrySpin, "spin_count_arm", 0);
+#endif
+
+namespace {
+int GetBaseLockSpinCount() {
+#if defined(ARCH_CPU_X86_FAMILY)
+  return kSpinCountX86.Get();
+#elif defined(ARCH_CPU_ARM_FAMILY)
+  return kSpinCountArm.Get();
+#else
+    return 0;
+#endif  // defined(ARCH_CPU_X86_FAMILY)
+}
+}  // namespace
+
 #endif  // BUILDFLAG(IS_POSIX)
 
 bool IsReducePPMsEnabled() {
@@ -222,7 +241,7 @@ void Init() {
                                  std::memory_order_relaxed);
 #if BUILDFLAG(IS_POSIX)
   if (FeatureList::IsEnabled(kBaseLockTrySpin)) {
-    base::internal::LockImpl::SetTrySpinCount(kSpinCount.Get());
+    base::internal::LockImpl::SetTrySpinCount(GetBaseLockSpinCount());
   }
 #endif  // BUILDFLAG(IS_POSIX)
 

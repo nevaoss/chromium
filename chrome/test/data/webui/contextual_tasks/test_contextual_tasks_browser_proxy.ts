@@ -29,6 +29,8 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'onLensOverlayStateChanged',
       'onSidePanelStateChanged',
       'restoreInput',
+      'enterBasicMode',
+      'exitBasicMode',
       'setOAuthToken',
       'setTaskDetails',
       'setThreadTitle',
@@ -41,6 +43,7 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'setShowReopenTabs',
       'onSidePanelPinStateChanged',
       'setInNlm',
+      'setExpandButtonEnabled',
     ]);
   }
 
@@ -85,6 +88,14 @@ class MockPage extends TestBrowserProxy implements PageInterface {
 
   restoreInput() {
     this.methodCalled('restoreInput');
+  }
+
+  enterBasicMode() {
+    this.methodCalled('enterBasicMode');
+  }
+
+  exitBasicMode() {
+    this.methodCalled('exitBasicMode');
   }
 
   onZeroStateChange() {
@@ -159,6 +170,10 @@ class MockPage extends TestBrowserProxy implements PageInterface {
 
   onSidePanelPinStateChanged(isPinned: boolean) {
     this.methodCalled('onSidePanelPinStateChanged', isPinned);
+  }
+
+  setExpandButtonEnabled(enabled: boolean) {
+    this.methodCalled('setExpandButtonEnabled', enabled);
   }
 }
 

@@ -1080,7 +1080,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Accessibility.CrosColorCorrection.FilterAmount" units="%"
-    expires_after="2026-08-23">
+    expires_after="2026-10-25">
   <owner>katie@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -1092,7 +1092,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Accessibility.CrosColorCorrection.FilterType"
-    enum="ColorCorrectionFilterTypes" expires_after="2026-08-23">
+    enum="ColorCorrectionFilterTypes" expires_after="2026-10-25">
   <owner>katie@chromium.org</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -2308,7 +2308,7 @@ even if they fit the naming pattern. -->
 </histogram>
 
 <histogram name="Accessibility.LiveTranslate.GetTranslation.TargetLanguage"
-    enum="LocaleCodeBCP47" expires_after="2026-08-02">
+    enum="LocaleCodeBCP47" expires_after="2026-10-25">
   <owner>danft@google.com</owner>
   <owner>evliu@google.com</owner>
   <owner>chrome-media-ux@google.com</owner>
@@ -2766,7 +2766,7 @@ even if they fit the naming pattern. -->
 
 <histogram
     name="Accessibility.Performance.ProcessDeferredUpdatesLifecycleStage"
-    units="microseconds" expires_after="2026-08-02">
+    units="microseconds" expires_after="2026-10-25">
   <owner>lucasradaelli@google.com</owner>
   <owner>mschillaci@google.com</owner>
   <owner>lucasradaelli@google.com</owner>
@@ -3501,7 +3501,7 @@ even if they fit the naming pattern. -->
 </histogram>
 
 <histogram name="Accessibility.ReadAnything.SpeechError"
-    enum="ReadAnythingSpeechError" expires_after="2026-08-23">
+    enum="ReadAnythingSpeechError" expires_after="2026-10-25">
   <owner>lwinston@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
@@ -3608,7 +3608,7 @@ even if they fit the naming pattern. -->
 </histogram>
 
 <histogram name="Accessibility.ReadAnything.WordsHeard" units="words"
-    expires_after="2026-08-01">
+    expires_after="2026-10-25">
   <owner>kristislee@google.com</owner>
   <owner>komo-eng@google.com</owner>
   <summary>
@@ -4046,6 +4046,35 @@ even if they fit the naming pattern. -->
   <summary>
     Whether on-device speech recognition is used for the Web Speech API. Logged
     when the speech recognition session is created.
+  </summary>
+</histogram>
+
+<histogram name="Accessibility.Win.ActiveClientApis" enum="ActiveClientApi"
+    expires_after="2027-04-17">
+  <owner>lucasradaelli@google.com</owner>
+  <owner>benjamin.beaudry@microsoft.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <owner>janewman@microsoft.com</owner>
+  <summary>
+    Records which Windows accessibility client APIs (UIA, MSAA/IA2, or both)
+    have been actively used during the lifetime of the process. Recorded once
+    per UMA upload interval when the kNativeAPIs accessibility mode is active.
+    Unlike Accessibility.Win.RequestedClientApis, this only tracks API calls
+    that led to functions which may potentially modify the process-wide AXMode.
+  </summary>
+</histogram>
+
+<histogram name="Accessibility.Win.RequestedClientApis" enum="ActiveClientApi"
+    expires_after="2027-04-17">
+  <owner>lucasradaelli@google.com</owner>
+  <owner>benjamin.beaudry@microsoft.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <owner>janewman@microsoft.com</owner>
+  <summary>
+    Records which Windows accessibility client APIs (UIA, MSAA/IA2, or both)
+    were requested via WM_GETOBJECT during the lifetime of the process. This is
+    an upper-bound signal recorded once per UMA upload interval regardless of
+    whether the kNativeAPIs accessibility mode is active.
   </summary>
 </histogram>
 

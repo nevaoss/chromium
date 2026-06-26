@@ -834,6 +834,7 @@
 <translation id="1567579616025300478">या साइटला तुमच्या डिव्हाइसवर डेटा सेव्ह करण्याची अनुमती नाही.</translation>
 <translation id="156793199942386351">'<ph name="CURRENTKEY" />' ही आधीपासून '<ph name="ACTION" />' या कृतीसाठी असाइन केलेली आहे. <ph name="RESPONSE" /> साठी कोणतीही की प्रेस करा.</translation>
 <translation id="1567993339577891801">JavaScript कन्सोल</translation>
+<translation id="157005186601751931">ॲपमध्ये टॅब उघडा</translation>
 <translation id="1570604804919108255">सूचना अनम्यूट करा</translation>
 <translation id="1570990174567554976">'<ph name="BOOKMARK_TITLE" />' बुकमार्क फोल्डर तयार केले.</translation>
 <translation id="1571041387761170095">कोणतेही कमकुवत आणि पुन्हा वापरलेला पासवर्ड नाहीत</translation>
@@ -1047,7 +1048,6 @@
 <translation id="1703666494654169921">साइटना आभासी वास्तविकता डिव्हाइस किंवा डेटा वापरण्याची अनुमती देऊ नका</translation>
 <translation id="1704097193565924901">कॅपिटल करणे</translation>
 <translation id="1704230497453185209">साइटना आवाज प्ले करण्याची अनुमती देऊ नका</translation>
-<translation id="1706015824809136764">Gemini ला टूलबार शॉर्टकटवर पिन करा</translation>
 <translation id="1706586824377653884">तुमच्या ॲडमिनिस्ट्रेटरने जोडले</translation>
 <translation id="170658918174941828">तुम्ही वर समावेश करण्यासाठी निवडता त्या सर्व माहितीच्या समावेशासह
     तुमची Chrome ची आवृत्ती, ऑपरेटिंग सिस्टमची आवृत्ती, Cast सेटिंग्ज,
@@ -1559,7 +1559,6 @@
 <translation id="204914487372604757">शॉर्टकट तयार करा </translation>
 <translation id="2049573977943974163">"<ph name="EXTENSION_NAME" />" सुरू करायचे आहे का?</translation>
 <translation id="2050339315714019657">पोर्ट्रेट</translation>
-<translation id="2050394140692183739">सद्य टूलबार शॉर्टकट</translation>
 <translation id="2051555741181591333">हॉटस्पॉट आपोआप बंद करा</translation>
 <translation id="2051669996101374349">शक्य असेल, तेव्ह HTTPS वापरा आणि त्याला सपोर्ट न करणारी साइट लोड करण्यापूर्वी चेतावणी मिळवा. प्रगत संरक्षण सुरू केल्यामुळे, तुम्ही हे सेटिंग बदलू शकत नाही.</translation>
 <translation id="2052572566310583903">तुमच्या इतर डिव्हाइसवर इंस्टॉल केले</translation>
@@ -2329,7 +2328,6 @@
 <translation id="2565214867520763227">स्क्रीन रीडर सुरू करा</translation>
 <translation id="2566146433999774844"><ph name="OWNER_FIRST_NAME" /> आणि आणखी <ph name="NUM_OTHER_MEMBERS" /> लोकांसोबत टॅब गटामध्ये सामील व्हा</translation>
 <translation id="256726287944589768">नवीन टॅब पेजवर फूटर दाखवा</translation>
-<translation id="2567313753132089780">पासवर्ड किमान १२ वर्णांचा असणे आवश्यक आहे आणि त्यामध्ये अप्परकेस व लोअरकेस अक्षरे, संख्या आणि चिन्हे यांचा समावेश असणे आवश्यक आहे</translation>
 <translation id="2568774940984945469">इंफोबार कंटेनर</translation>
 <translation id="2569972178052279830">रिटेल विक्रेत्याचे नाव</translation>
 <translation id="257088987046510401">थीम</translation>
@@ -3179,7 +3177,6 @@
 <translation id="3157931365184549694">पुनर्संचयित करा</translation>
 <translation id="3158033540161634471">तुमचे फिंगरप्रिंट सेट करा</translation>
 <translation id="3158203338449343164">टॅब शोध अनपिन करा</translation>
-<translation id="3158732900546890991">पासवर्ड किमान ८ वर्णांचा असणे आणि त्यामध्ये पुढीलपैकी किमान दोन गोष्टी वापरलेल्या असणे आवश्यक आहे: अप्पर केस अक्षरे, लोअर केस अक्षरे, अंक किंवा चिन्हे</translation>
 <translation id="3158770568048368350">यामुळे तुमचे मोबाइल नेटवर्क काही वेळासाठी डिस्कनेक्ट होऊ शकते</translation>
 <translation id="3159335509547415276">ब्लॉक केलेल्या खात्यांविषयी जाणून घ्या</translation>
 <translation id="3159493096109238499">फिकट तपकिरी</translation>
@@ -3762,6 +3759,7 @@
 <translation id="3572031449439748861"><ph name="NUM_EXTENSIONS" /> बंद केलेली होती</translation>
 <translation id="3575121482199441727">या साइटला अनुमती द्या</translation>
 <translation id="3575224072358507281">Measurement Lab साठी, त्यांचे गोपनीयता धोरण (measurementlab.net/privacy) यानुसार आयपी अ‍ॅड्रेस आणि नेटवर्क मापनासंबंधित परिणाम गोळा करा</translation>
+<translation id="3576324189521867626">यशस्वीरित्या इंस्टॉल केला</translation>
 <translation id="3577036603268648505">ऑनलाइन अधिक सुरक्षित रहा</translation>
 <translation id="3577473026931028326">काहीतरी चूक झाली. पुन्हा प्रयत्न करा.</translation>
 <translation id="3577487026101678864">फाइल सिंक सुरू आहे</translation>
@@ -4717,6 +4715,7 @@
 <translation id="4223404254440398437">मायक्रोफोनला अनुमती नाही</translation>
 <translation id="4224541845943007092">अ‍ॅड्रेस बारमधील कीबोर्ड इनपुट वाचा आणि सेव्ह करा</translation>
 <translation id="4225397296022057997">सर्व साइटवर</translation>
+<translation id="4225895483398857530">टूलबार शॉर्टकट</translation>
 <translation id="4226303886821889519">अपडेटरची आवृत्ती: <ph name="VERSION" /></translation>
 <translation id="4228071595943929139">तुमच्या संस्थेचा ईमेल अ‍ॅड्रेस वापरा</translation>
 <translation id="4228209296591583948">{NUM_EXTENSIONS,plural, =1{या एक्स्टेंशनला अनुमती नाही}other{काही एक्स्टेंशनला अनुमती नाही}}</translation>
@@ -5662,6 +5661,7 @@
 <translation id="4881685975363383806">मला पुढील वेळी आठवण करून देऊ नका</translation>
 <translation id="4881695831933465202">उघडा</translation>
 <translation id="4882312758060467256">या साइटचा ॲक्सेस आहे</translation>
+<translation id="4882805770036405108">शॉर्टकट वापरून वाचन मोड अधिक जलद उघडा. वाचन मोड टॉगल करण्यासाठी ⌥ + ⌘ + R प्रेस करा.</translation>
 <translation id="4882848900607400156">तुम्ही तुमचे अचूक स्थान शेअर करता, तेव्हा Gemini तुमच्या प्रश्नांची उत्तरे अधिक अचूकपणे देऊ शकते. जनरेटिव्ह AI मॉडेलमध्ये सुधारणा करण्यासाठी तुमचा डेटा वापरला जात नाही.</translation>
 <translation id="4882919381756638075">व्हिडिओ चॅटिंगसारख्या संवाद वैशिष्ट्यांसाठी साइट सामान्यपणे तुमचा मायक्रोफोन वापरतात</translation>
 <translation id="4883436287898674711">सर्व <ph name="WEBSITE_1" /> साइट</translation>
@@ -6119,6 +6119,7 @@
 <translation id="5204967432542742771">पासवर्ड एंटर करा</translation>
 <translation id="5205484256512407285">ट्रान्सफर करण्यासाठी कधीही मोबाइल डेटा वापरू नका</translation>
 <translation id="520568280985468584">नेटवर्क यशस्वीरीत्या जोडले गेले. तुमचे मोबाइल नेटवर्क अ‍ॅक्टिव्ह होण्यासाठी काही मिनिटे लागू शकतात.</translation>
+<translation id="5207395053540207113">Search ला Drive मधील आशय अ‍ॅक्सेस करण्याची अनुमती द्यायची आहे का?</translation>
 <translation id="5207949376430453814">मजकूर कॅरेट हायलाइट करा</translation>
 <translation id="520840839826327499"><ph name="SERVICE_NAME" /> ला तुम्ही पात्र ChromeOS डिव्हाइस वापरत आहात की नाही हे तपासायचे आहे.</translation>
 <translation id="5208926629108082192">डिव्हाइसच्या मोबाइल नेटवर्कची माहिती</translation>
@@ -8905,6 +8906,7 @@ I feel - विटांची इमारत</translation>
 <translation id="7186903260115204164">नवीन ड्रॉ टूल वापरून फ्रीहँड ड्रॉइंग, स्वाक्षऱ्या आणि हायलाइट जोडा</translation>
 <translation id="7186935534137027449">अ‍ॅप कमांड</translation>
 <translation id="7188508872042490670">डिव्‍हाइसवरील साइट डेटा</translation>
+<translation id="7188755083797868960">शॉर्टकट वापरून वाचन मोड अधिक जलद उघडा. वाचन मोड टॉगल करण्यासाठी Alt + Shift + R प्रेस करा.</translation>
 <translation id="7189234443051076392">तुमच्या डिव्हाइसवर पुरेशी जागा असल्याची खात्री करा</translation>
 <translation id="7189451821249468368">तुमच्याकडे या डिव्हाइसची नोंदणी करण्यासाठी पुरेसे अपग्रेड नाहीत. कृपया आणखी खरेदी करण्यासाठी विक्रीशी विभागाशी संपर्क साधा. हा मेसेज एररमुळे दिसत आहे असे वाटत असल्यास, कृपया सपोर्टशी संपर्क साधा.</translation>
 <translation id="7189558282078169397">इतर डिव्हाइसमधील टॅब</translation>
@@ -9030,6 +9032,7 @@ I feel - विटांची इमारत</translation>
 <translation id="727595954130325265">आता खरेदी करा</translation>
 <translation id="7277275452721470458">AI मोड अ‍ॅक्टिव्हिटी</translation>
 <translation id="727952162645687754">डाउनलोड एरर</translation>
+<translation id="7280265656690268844">JavaScript ऑप्टिमायझेशन बंद आहे</translation>
 <translation id="7280649757394340890">टेक्‍स्‍ट टू स्‍पीच व्हॉइस सेटिंग्ज</translation>
 <translation id="7280683802406059877">कीबोर्ड शॉर्टकट कस्टमाइझ करा</translation>
 <translation id="7280877790564589615">परवानगीची विनंती केली</translation>
@@ -10147,7 +10150,6 @@ I feel - विटांची इमारत</translation>
 <translation id="8032569120109842252">फॉलो करत आहे</translation>
 <translation id="8033827949643255796">निवडलेले</translation>
 <translation id="8033958968890501070">वेळ संपली</translation>
-<translation id="8034399942062051455">V8 ऑप्टिमायझेशन बंद आहे</translation>
 <translation id="8034697324150621782">वरून दिसणाऱ्या दृश्यासह बदला</translation>
 <translation id="8035059678007243127">बॅक/फॉरवर्ड कॅशे केलेले गुप्त पेज: <ph name="BACK_FORWARD_CACHE_INCOGNITO_PAGE_URL" /></translation>
 <translation id="8036143516314698610">सेव्ह केलेले टॅब गट बटण दाखवा</translation>
@@ -11368,6 +11370,7 @@ I feel - विटांची इमारत</translation>
 <translation id="8866424952450451412">याद्वारे सक्षम केलेले तुमचे कस्टम वर्कफ्लो व्यवस्थापित करा</translation>
 <translation id="8867102760244540173">टॅब शोधा…</translation>
 <translation id="8867228703146808825">बिल्ड तपशील क्लिपबोर्डवर कॉपी करा</translation>
+<translation id="8867568208303837180">पाठवित आहे...</translation>
 <translation id="8868333925931032127">डेमो मोड सुरू करत आहे</translation>
 <translation id="8868626022555786497">वापरात आहे</translation>
 <translation id="8868838761037459823">सेल्युलरचे तपशील</translation>
@@ -11797,7 +11800,6 @@ I feel - विटांची इमारत</translation>
 <translation id="914031120300235526">प्रोफाइल अनलॉक करू शकत नाही</translation>
 <translation id="9143298529634201539">सूचना काढून टाकायची का?</translation>
 <translation id="9143922477019434797">तुमचे पासवर्ड संरक्षित करा</translation>
-<translation id="914621365454686586">Drive मधील आशय अ‍ॅक्सेस करण्यासाठी शोधा ला अनुमती द्यायची आहे का?</translation>
 <translation id="9147392381910171771">&amp;पर्याय</translation>
 <translation id="9148058034647219655">निर्गमन</translation>
 <translation id="9148126808321036104">पुन्हा साइन इन करा </translation>

@@ -58,7 +58,11 @@ enum class ContextualCueingDecision {
   // The cue couldn't be shown because not enough time has passed since the
   // last cue was dismissed.
   kNotEnoughTimeSinceLastDismissal = 21,
-  kMaxValue = kNotEnoughTimeSinceLastDismissal,
+  // The cue couldn't be shown because the side panel is showing.
+  kSidePanelShowing = 22,
+  // The cue couldn't be shown because there are no eligible cue surfaces.
+  kNoEligibleCueSurfaces = 23,
+  kMaxValue = kNoEligibleCueSurfaces,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/contextual_cueing/enums.xml:ContextualCueingDecision)
 

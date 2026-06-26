@@ -305,6 +305,10 @@ class ProfileMenuViewBrowserTest : public ProfileMenuViewTestBase,
     InProcessBrowserTest::SetUpOnMainThread();
     SetTargetBrowser(browser());
   }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_{
+      syncer::kReplaceSyncPromosWithSignInPromos};
 };
 
 IN_PROC_BROWSER_TEST_F(ProfileMenuViewBrowserTest,
@@ -341,6 +345,39 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewBrowserTest,
   WidgetDestroyedObserver destroyed_observer(
       coordinator->GetProfileMenuViewBaseForTesting()->GetWidget(), browser());
   CloseBrowserSynchronously(browser());
+}
+
+// Regression test for crbug.com/502882736
+IN_PROC_BROWSER_TEST_F(ProfileMenuViewBrowserTest,
+                       ProfileMenuDoubleOpenBeforeBatchUploadResults) {
+  batch_upload_test_helper().SetReturnDescriptionOnRequest(true);
+  batch_upload_test_helper().SetReturnDescriptions(syncer::DataType::PASSWORDS,
+                                                   /*item_count=*/5);
+
+  AvatarToolbarButtonTestAccessor avatar_accessor(browser());
+  views::test::WidgetVisibleWaiter(avatar_accessor.GetWidget()).Wait();
+  ASSERT_TRUE(avatar_accessor.GetEnabled());
+
+  // Simulates triggering opening the Profile Menu - blocks on first local data
+  // request.
+  avatar_accessor.Click();
+  auto* coordinator = browser()->GetFeatures().profile_menu_coordinator();
+  // Menu is not shown yet since the data is not returned.
+  ASSERT_FALSE(coordinator->IsShowing());
+  // Simulates re-triggering opening the Profile Menu before the first request
+  // is completed - blocks on second local data request.
+  avatar_accessor.Click();
+
+  // Fire first local data return.
+  batch_upload_test_helper().FireReturnDescriptionRequest();
+  // Profile Menu should show on the result of the first request.
+  ASSERT_NO_FATAL_FAILURE(WaitForMenuToBeActive(profile_menu_view()));
+  ASSERT_TRUE(coordinator->IsShowing());
+
+  // Fire second local data return - this should be a no-op.
+  batch_upload_test_helper().FireReturnDescriptionRequest();
+  // Profile menu should still be shown.
+  EXPECT_TRUE(coordinator->IsShowing());
 }
 
 class ProfileMenuViewExtensionsTest : public ProfileMenuViewTestBase,
@@ -601,7 +638,7 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewSignoutTest, OpenLogoutTab) {
   TabStripModel* tab_strip = browser()->tab_strip_model();
   EXPECT_EQ(1, tab_strip->count());
   EXPECT_EQ(0, tab_strip->active_index());
-  EXPECT_NE(GURL(chrome::kChromeUINewTabURL),
+  EXPECT_NE(chrome::ChromeUINewTabURLAsGURL(),
             tab_strip->GetActiveWebContents()->GetURL());
 
   // Signout creates a new tab.
@@ -621,11 +658,11 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewSignoutTest, OpenLogoutTab) {
 IN_PROC_BROWSER_TEST_F(ProfileMenuViewSignoutTest, SignoutFromNTP) {
   // Start from the NTP.
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(),
-                                           GURL(chrome::kChromeUINewTabURL)));
+                                           chrome::ChromeUINewTabURLAsGURL()));
   TabStripModel* tab_strip = browser()->tab_strip_model();
   EXPECT_EQ(1, tab_strip->count());
   EXPECT_EQ(0, tab_strip->active_index());
-  EXPECT_EQ(GURL(chrome::kChromeUINewTabURL),
+  EXPECT_EQ(chrome::ChromeUINewTabURLAsGURL(),
             tab_strip->GetActiveWebContents()->GetURL());
 
   // Signout navigates the current tab.
@@ -794,7 +831,7 @@ IN_PROC_BROWSER_TEST_F(ProfileMenuViewSyncErrorButtonTest, OpenReauthTab) {
   TabStripModel* tab_strip = browser()->tab_strip_model();
   EXPECT_EQ(1, tab_strip->count());
   EXPECT_EQ(0, tab_strip->active_index());
-  EXPECT_NE(GURL(chrome::kChromeUINewTabURL),
+  EXPECT_NE(chrome::ChromeUINewTabURLAsGURL(),
             tab_strip->GetActiveWebContents()->GetURL());
 
   // Reauth creates a new tab.

@@ -27,6 +27,7 @@
 #include "base/task/single_thread_task_runner.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/threading/thread_restrictions.h"
 #include "chrome/app/chrome_command_ids.h"
@@ -70,6 +71,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/common/chrome_constants.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/pref_names.h"
@@ -376,7 +378,7 @@ class AppControllerProfilePickerBrowserTest : public InProcessBrowserTest {
 
 // Test that for a guest last profile, commandDispatch should open UserManager
 // if guest mode is disabled. Note that this test might be flaky under ASAN
-// due to https://crbug.com/674475. Please disable this test under ASAN
+// due to https://crbug.com/40498250. Please disable this test under ASAN
 // as the tests below if that happened.
 IN_PROC_BROWSER_TEST_F(AppControllerProfilePickerBrowserTest,
                        OpenGuestProfileOnlyIfGuestModeIsEnabled) {
@@ -465,7 +467,7 @@ IN_PROC_BROWSER_TEST_F(AppControllerProfilePickerBrowserTest,
 }
 
 // "About Chrome" does not unlock the profile (regression test for
-// https://crbug.com/1226844).
+// https://crbug.com/40188984).
 IN_PROC_BROWSER_TEST_F(AppControllerProfilePickerBrowserTest,
                        AboutPanelDoesNotUnlockProfile) {
   signin_util::ScopedForceSigninSetterForTesting signin_setter(true);
@@ -683,7 +685,7 @@ class AppControllerReplaceNTPBrowserTest : public InProcessBrowserTest {
 };
 
 // Tests that when a GURL is opened after startup, it replaces the NTP.
-// Flaky. See crbug.com/1234765.
+// Flaky. See crbug.com/40781670.
 IN_PROC_BROWSER_TEST_F(AppControllerReplaceNTPBrowserTest,
                        DISABLED_ReplaceNTPAfterStartup) {
   // Depending on network connectivity, the NTP URL can either be
@@ -727,7 +729,7 @@ IN_PROC_BROWSER_TEST_F(AppControllerReplaceNTPBrowserTest,
 
 // Tests that, even if an incognito browser is the last active browser, a GURL
 // is opened in a regular (non-incognito) browser.
-// Regression test for https://crbug.com/757253, https://crbug.com/1444747
+// Regression test for https://crbug.com/40536115, https://crbug.com/40912038
 IN_PROC_BROWSER_TEST_F(AppControllerBrowserTest, OpenInRegularBrowser) {
   ASSERT_TRUE(embedded_test_server()->Start());
   // Ensure the AppController is the NSApp delegate.
@@ -738,7 +740,8 @@ IN_PROC_BROWSER_TEST_F(AppControllerBrowserTest, OpenInRegularBrowser) {
   EXPECT_EQ(1, browser()->tab_strip_model()->count());
   EXPECT_EQ(1, incognito_browser->tab_strip_model()->count());
   EXPECT_TRUE(incognito_browser->profile()->IsIncognitoProfile());
-  EXPECT_EQ(incognito_browser, chrome::FindLastActive());
+  EXPECT_EQ(incognito_browser,
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
   // Assure that `windowDidBecomeMain` is called even if this browser process
   // lost focus because of other browser processes in other shards taking
   // focus. It prevents flakiness.
@@ -765,34 +768,27 @@ IN_PROC_BROWSER_TEST_F(AppControllerBrowserTest, OpenInRegularBrowser) {
 
 // Tests that, even if only an incognito browser is currently opened, a GURL
 // is opened in a regular (non-incognito) browser.
-// Regression test for https://crbug.com/757253, https://crbug.com/1444747
-// TODO(crbug.com/505221665): Re-enable this test once it's no longer flaky.
-#if BUILDFLAG(IS_MAC)
-#define MAYBE_OpenInRegularBrowserWhenOnlyIncognitoBrowserIsOpened \
-  DISABLED_OpenInRegularBrowserWhenOnlyIncognitoBrowserIsOpened
-#else
-#define MAYBE_OpenInRegularBrowserWhenOnlyIncognitoBrowserIsOpened \
-  OpenInRegularBrowserWhenOnlyIncognitoBrowserIsOpened
-#endif
-IN_PROC_BROWSER_TEST_F(
-    AppControllerBrowserTest,
-    MAYBE_OpenInRegularBrowserWhenOnlyIncognitoBrowserIsOpened) {
+// Regression test for https://crbug.com/40536115, https://crbug.com/40912038
+IN_PROC_BROWSER_TEST_F(AppControllerBrowserTest,
+                       OpenInRegularBrowserWhenOnlyIncognitoBrowserIsOpened) {
   ASSERT_TRUE(embedded_test_server()->Start());
   // Ensure the AppController is the NSApp delegate.
   std::ignore = AppController.sharedController;
 
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1u);
-  // Close the current browser.
+  // Create an incognito browser.
   Profile* profile = browser()->profile();
-  ui_test_utils::BrowserDestroyedObserver observer(browser());
-  chrome::CloseAllBrowsers();
-  observer.Wait();
-  EXPECT_TRUE(GlobalBrowserCollection::GetInstance()->IsEmpty());
-  // Create an incognito browser and check that it is the last active browser.
   Browser* incognito_browser = CreateIncognitoBrowser(profile);
   EXPECT_TRUE(incognito_browser->profile()->IsIncognitoProfile());
+  EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 2u);
+
+  // Close the original browser.
+  CloseBrowserSynchronously(browser());
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1u);
-  EXPECT_EQ(incognito_browser, chrome::FindLastActive());
+
+  // Check that the incognito browser is the last active browser.
+  EXPECT_EQ(incognito_browser,
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
   // Assure that `windowDidBecomeMain` is called even if this browser process
   // lost focus because of other browser processes in other shards taking
   // focus. It prevents flakiness.
@@ -802,15 +798,14 @@ IN_PROC_BROWSER_TEST_F(
                     object:incognito_browser->window()
                                ->GetNativeWindow()
                                .GetNativeNSWindow()];
-  // Open a url.
+
+  // Open a url, waiting for a new browser window to open.
+  ui_test_utils::BrowserCreatedObserver browser_created_observer;
   GURL simple(embedded_test_server()->GetURL("/simple.html"));
-  content::TestNavigationObserver event_navigation_observer(simple);
-  event_navigation_observer.StartWatchingNewWebContents();
   SendOpenUrlToAppController(simple);
-  event_navigation_observer.Wait();
-  // Check that a new regular browser is opened
-  // and the url is opened in the regular browser.
-  BrowserWindowInterface* new_browser = chrome::FindLastActive();
+  BrowserWindowInterface* new_browser = browser_created_observer.Wait();
+
+  // Check that a new regular browser is opened and the url is opened in it.
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 2u);
   EXPECT_TRUE(new_browser->GetProfile()->IsRegularProfile());
   EXPECT_EQ(profile, new_browser->GetProfile());
@@ -832,7 +827,8 @@ IN_PROC_BROWSER_TEST_F(AppControllerBrowserTest, OpenUrlInGuestBrowser) {
   EXPECT_EQ(1, guest_browser->tab_strip_model()->count());
   EXPECT_TRUE(guest_browser->profile()->IsGuestSession());
   guest_browser->window()->Show();
-  EXPECT_EQ(guest_browser, chrome::FindLastActive());
+  EXPECT_EQ(guest_browser,
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
   // Assure that `windowDidBecomeMain` is called even if this browser process
   // lost focus because of other browser processes in other shards taking
   // focus. It prevents flakiness.
@@ -858,7 +854,7 @@ IN_PROC_BROWSER_TEST_F(AppControllerBrowserTest, OpenUrlInGuestBrowser) {
 
 // Tests that when a GURL is opened while incognito forced and there is no
 // browser opened, it is opened in a new incognito browser.
-// Test for https://crbug.com/1444747#c8
+// Test for https://crbug.com/40912038#c8
 // TODO(crbug.com/505499902): Re-enable this test once it's no longer flaky.
 #if BUILDFLAG(IS_MAC)
 #define MAYBE_OpenUrlWhenForcedIncognito DISABLED_OpenUrlWhenForcedIncognito
@@ -886,7 +882,8 @@ IN_PROC_BROWSER_TEST_F(AppControllerBrowserTest,
   event_navigation_observer.Wait();
   // Check that a new incognito browser is opened
   // and the url is opened in the incognito browser.
-  BrowserWindowInterface* new_browser = chrome::FindLastActive();
+  BrowserWindowInterface* new_browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1u);
   EXPECT_TRUE(new_browser->GetProfile()->IsIncognitoProfile());
   EXPECT_TRUE(new_browser->GetProfile()->IsPrimaryOTRProfile());
@@ -898,7 +895,7 @@ IN_PROC_BROWSER_TEST_F(AppControllerBrowserTest,
 
 // Tests that when a GURL is opened while incognito forced and an incognito
 // browser is opened, it is opened in the already opened incognito browser.
-// Test for https://crbug.com/1444747#c8
+// Test for https://crbug.com/40912038#c8
 // TODO(crbug.com/504176001): Re-enable this test once it's no longer flaky.
 #if BUILDFLAG(IS_MAC)
 #define MAYBE_OpenUrlWhenForcedIncognitoAndIncognitoBrowserIsOpened \
@@ -926,7 +923,8 @@ IN_PROC_BROWSER_TEST_F(
   EXPECT_TRUE(incognito_browser->profile()->IsIncognitoProfile());
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1u);
   EXPECT_EQ(1, incognito_browser->tab_strip_model()->count());
-  EXPECT_EQ(incognito_browser, chrome::FindLastActive());
+  EXPECT_EQ(incognito_browser,
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
   // Assure that `windowDidBecomeMain` is called even if this browser process
   // lost focus because of other browser processes in other shards taking
   // focus. It prevents flakiness.
@@ -1064,7 +1062,8 @@ IN_PROC_BROWSER_TEST_F(AppControllerShortcutsNotAppsBrowserTest,
 
   // It should be opened in a new browser in the second profile.
   EXPECT_EQ(1, browser()->tab_strip_model()->count());
-  BrowserWindowInterface* new_browser = chrome::FindLastActive();
+  BrowserWindowInterface* new_browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   EXPECT_EQ(profile2_ptr, new_browser->GetProfile());
   EXPECT_EQ(1, new_browser->GetTabStripModel()->count());
   EXPECT_EQ(simple, new_browser->GetTabStripModel()
@@ -1186,7 +1185,7 @@ IN_PROC_BROWSER_TEST_F(AppControllerMainMenuBrowserTest,
                 profile1, ServiceAccessType::EXPLICIT_ACCESS));
 }
 
-// Disabled because of flakiness. See crbug.com/1278031.
+// Disabled because of flakiness. See crbug.com/40809975.
 IN_PROC_BROWSER_TEST_F(AppControllerMainMenuBrowserTest,
                        DISABLED_ReloadingDestroyedProfileDoesNotCrash) {
   ProfileManager* profile_manager = g_browser_process->profile_manager();
@@ -1290,7 +1289,7 @@ IN_PROC_BROWSER_TEST_F(AppControllerMainMenuBrowserTest,
 }
 
 // Tests opening a new window from a browser command while incognito is forced.
-// Regression test for https://crbug.com/1206726
+// Regression test for https://crbug.com/40181046
 IN_PROC_BROWSER_TEST_F(AppControllerMainMenuBrowserTest,
                        ForcedIncognito_NewWindow) {
   EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1u);
@@ -1532,6 +1531,86 @@ IN_PROC_BROWSER_TEST_F(AppControllerHandoffPrerenderBrowserTest,
   EXPECT_TRUE(navigation_manager.was_activated());
   EXPECT_TRUE(navigation_manager.was_successful());
   EXPECT_EQ(g_handoff_url, prerender_url);
+}
+
+// Tests for the Smart Restart feature's interaction with the Dock.
+class AppControllerSmartRestartBrowserTest : public InProcessBrowserTest {
+ public:
+  AppControllerSmartRestartBrowserTest() {
+    feature_list_.InitAndEnableFeature(features::kSmartRestart);
+  }
+
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    InProcessBrowserTest::SetUpCommandLine(command_line);
+    command_line->AppendSwitch(switches::kNoStartupWindow);
+  }
+
+ protected:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// Tests that clicking the Dock icon successfully opens a browser window when
+// Smart Restart is enabled, even if the process started with
+// --no-startup-window.
+IN_PROC_BROWSER_TEST_F(AppControllerSmartRestartBrowserTest,
+                       SmartRestartDockClickUnblocksWindows) {
+  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
+  EXPECT_TRUE(cmd_line->HasSwitch(switches::kNoStartupWindow));
+
+  // The browser should have started with 0 windows due to the flag.
+  EXPECT_EQ(0u, GlobalBrowserCollection::GetInstance()->GetSize());
+
+  // Observe for the new browser that will be created.
+  ui_test_utils::BrowserCreatedObserver observer;
+
+  // Simulate Dock click (applicationShouldHandleReopen:).
+  AppController* app_controller = AppController.sharedController;
+  [app_controller applicationShouldHandleReopen:NSApp hasVisibleWindows:NO];
+
+  // The original process command line should remain unchanged (poisoned).
+  EXPECT_TRUE(cmd_line->HasSwitch(switches::kNoStartupWindow));
+
+  // A window should eventually open because LaunchBrowserStartup used a fresh
+  // command line (without the flag) for this specific user action.
+  observer.Wait();
+  EXPECT_EQ(1u, GlobalBrowserCollection::GetInstance()->GetSize());
+}
+
+class AppControllerSmartRestartDisabledBrowserTest
+    : public InProcessBrowserTest {
+ public:
+  AppControllerSmartRestartDisabledBrowserTest() {
+    feature_list_.InitAndDisableFeature(features::kSmartRestart);
+  }
+
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    InProcessBrowserTest::SetUpCommandLine(command_line);
+    command_line->AppendSwitch(switches::kNoStartupWindow);
+  }
+
+ protected:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// Tests that the user is NOT marked as interacted if Smart Restart is
+// disabled.
+IN_PROC_BROWSER_TEST_F(AppControllerSmartRestartDisabledBrowserTest,
+                       SmartRestartDisabledDockClickDoesNotSetState) {
+  base::CommandLine* cmd_line = base::CommandLine::ForCurrentProcess();
+  EXPECT_TRUE(cmd_line->HasSwitch(switches::kNoStartupWindow));
+
+  EXPECT_EQ(0u, GlobalBrowserCollection::GetInstance()->GetSize());
+
+  AppController* app_controller = AppController.sharedController;
+  [app_controller applicationShouldHandleReopen:NSApp hasVisibleWindows:NO];
+
+  // The flag should STAY because the feature is disabled.
+  EXPECT_TRUE(cmd_line->HasSwitch(switches::kNoStartupWindow));
+
+  // No window should open because the flag still suppresses it.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return GlobalBrowserCollection::GetInstance()->GetSize() == 0u;
+  }));
 }
 
 }  // namespace

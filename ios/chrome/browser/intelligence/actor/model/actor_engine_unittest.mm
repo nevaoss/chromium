@@ -6,6 +6,7 @@
 
 #import "base/run_loop.h"
 #import "base/test/task_environment.h"
+#import "components/actor/public/mojom/actor_types.mojom.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_task.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_types.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool.h"
@@ -23,11 +24,15 @@ class MockTool : public ActorTool {
 
   void Execute(ToolExecutionCallback callback) override {
     if (success_) {
-      std::move(callback).Run(ToolExecutionResult(base::ok()));
+      std::move(callback).Run(ToolExecutionResult::Ok());
     } else {
-      std::move(callback).Run(ToolExecutionResult(
-          base::unexpected(ActorToolError(ActorToolErrorCode::kUnknown))));
+      std::move(callback).Run(
+          ToolExecutionResult(mojom::ActionResultCode::kArgumentsInvalid));
     }
+  }
+
+  base::WeakPtr<web::WebState> GetTargetWebState() const override {
+    return nullptr;
   }
 
  private:
@@ -40,8 +45,11 @@ class ActorEngineTest : public PlatformTest {
  protected:
   ActorEngineTest()
       : journal_(std::make_unique<AggregatedJournal>()),
-        task_(ActorTaskId(), "Test Task", journal_.get()),
-        engine_(task_.task_id(), journal_.get()) {}
+        task_(ActorTaskId(),
+              "Test Task",
+              /*allow_incognito_web_states=*/false,
+              journal_.get()),
+        engine_(ActorTaskId(), journal_.get()) {}
 
   // Wrapper methods to access private members of ActorEngine for testing.
 
@@ -95,7 +103,7 @@ TEST_F(ActorEngineTest, ActSuccess) {
 
   EXPECT_TRUE(callback_called);
   EXPECT_EQ(results.size(), 1ul);
-  EXPECT_TRUE(results[0].tool_result.has_value());
+  EXPECT_TRUE(results[0].tool_result.IsOk());
 }
 
 // Tests that a single action failing aborts the engine sequence and returns a
@@ -122,7 +130,7 @@ TEST_F(ActorEngineTest, ActFailure) {
 
   EXPECT_TRUE(callback_called);
   EXPECT_EQ(results.size(), 1ul);
-  EXPECT_FALSE(results[0].tool_result.has_value());
+  EXPECT_FALSE(results[0].tool_result.IsOk());
 }
 
 // Tests that a sequence where the first action succeeds and the second fails
@@ -150,8 +158,8 @@ TEST_F(ActorEngineTest, ActSequenceSuccessFailure) {
 
   EXPECT_TRUE(callback_called);
   EXPECT_EQ(results.size(), 2ul);
-  EXPECT_TRUE(results[0].tool_result.has_value());
-  EXPECT_FALSE(results[1].tool_result.has_value());
+  EXPECT_TRUE(results[0].tool_result.IsOk());
+  EXPECT_FALSE(results[1].tool_result.IsOk());
 }
 
 // Tests that an empty sequence of actions completes immediately with success
@@ -204,8 +212,8 @@ TEST_F(ActorEngineTest, ActMultipleSuccess) {
 
   EXPECT_TRUE(callback_called);
   EXPECT_EQ(results.size(), 2ul);
-  EXPECT_TRUE(results[0].tool_result.has_value());
-  EXPECT_TRUE(results[1].tool_result.has_value());
+  EXPECT_TRUE(results[0].tool_result.IsOk());
+  EXPECT_TRUE(results[1].tool_result.IsOk());
 }
 
 // Tests the helper method that maps the 1-based `next_action_index_` to the
@@ -222,14 +230,14 @@ TEST_F(ActorEngineTest, InProgressActionIndex) {
 // overwrites a previously recorded success for the same action (e.g., if a
 // post-invoke step fails).
 TEST_F(ActorEngineTest, CompleteActionsOverwrite) {
-  PushActionResult(ActionResult(ToolExecutionResult(base::ok())));
+  PushActionResult(ActionResult(ToolExecutionResult::Ok()));
   SetNextActionIndex(1);
 
-  CompleteActions(ActionResult(ToolExecutionResult(
-      base::unexpected(ActorToolError(ActorToolErrorCode::kUnknown)))));
+  CompleteActions(ActionResult(
+      ToolExecutionResult(mojom::ActionResultCode::kArgumentsInvalid)));
 
   EXPECT_EQ(GetActionResults().size(), 1ul);
-  EXPECT_FALSE(GetActionResults()[0].tool_result.has_value());
+  EXPECT_FALSE(GetActionResults()[0].tool_result.IsOk());
   EXPECT_EQ(GetState(), ActorEngine::State::kFailed);
 }
 

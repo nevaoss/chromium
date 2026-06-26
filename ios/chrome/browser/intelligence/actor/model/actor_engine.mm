@@ -7,9 +7,11 @@
 #import "base/functional/bind.h"
 #import "base/strings/string_number_conversions.h"
 #import "base/strings/stringprintf.h"
+#import "components/actor/public/mojom/actor_types.mojom.h"
 #import "ios/chrome/browser/intelligence/actor/model/aggregated_journal.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool.h"
-#import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_error.h"
+#import "ios/chrome/browser/intelligence/actor/tools/model/observation_delay_controller.h"
+#import "ios/chrome/browser/intelligence/actor/tools/public/actor_tool_types.h"
 
 namespace actor {
 
@@ -53,6 +55,27 @@ std::string EngineResultToString(ActorEngine::EngineResult result) {
     case ActorEngine::EngineResult::kCancelled:
       return "Cancelled";
   }
+}
+
+// Waits or immediately finishes tool execution based on the `tool_result`.
+void WaitOrImmediatelyFinishTool(base::OnceClosure on_delay_complete,
+                                 ToolExecutionResult tool_result,
+                                 ObservationDelayController* delay_controller) {
+  // TODO(crbug.com/504625981): Move tool-specific state machine
+  // into an iOS version of chrome/browser/actor/tools/tool_controller.h.
+  if (!tool_result.requires_page_stabilization() || !delay_controller) {
+    std::move(on_delay_complete).Run();
+    return;
+  }
+  delay_controller->Wait(
+      // TODO(crbug.com/498991756): Get the WebFrame from the tool.
+      /*web_frame=*/nullptr,
+      base::BindOnce(
+          [](base::OnceClosure callback,
+             ObservationDelayController::Result delay_result) {
+            std::move(callback).Run();
+          },
+          std::move(on_delay_complete)));
 }
 
 // TODO(crbug.com/503841160): Log the proper WebState URLs.
@@ -106,8 +129,8 @@ void EndAsyncEntry(AggregatedJournal::PendingAsyncEntry* entry,
   CHECK(entry);
 
   std::vector<JournalDetails> details;
-  if (!tool_result.has_value()) {
-    details.push_back({"error", GetActorToolErrorMessage(tool_result.error())});
+  if (!tool_result.IsOk()) {
+    details.push_back({"error", GetToolExecutionResultMessage(tool_result)});
   }
   entry->EndEntry(std::move(details));
 }
@@ -115,12 +138,16 @@ void EndAsyncEntry(AggregatedJournal::PendingAsyncEntry* entry,
 }  // namespace
 
 ActorEngine::ActorEngine(ActorTaskId task_id, AggregatedJournal* journal)
-    : state_(State::kInit), task_id_(task_id), journal_(journal) {}
+    : state_(State::kInit),
+      task_id_(task_id),
+      journal_(journal),
+      observation_delay_controller_(
+          new ObservationDelayController(task_id, journal)) {}
 
 ActorEngine::~ActorEngine() = default;
 
 void ActorEngine::Act(std::vector<std::unique_ptr<ActorTool>> actions,
-                      PerformActionsCallback callback) {
+                      ActCallback callback) {
   // TODO(crbug.com/503054406): Add guards for invalid start states.
   action_sequence_ = std::move(actions);
   completion_callback_ = std::move(callback);
@@ -161,7 +188,7 @@ void ActorEngine::SetState(State new_state) {
 
 void ActorEngine::ExecuteNextAction() {
   if (next_action_index_ >= action_sequence_.size()) {
-    CompleteActions(ActionResult(ToolExecutionResult(base::ok())));
+    CompleteActions(ActionResult(ToolExecutionResult::Ok()));
     return;
   }
 
@@ -175,11 +202,11 @@ void ActorEngine::ExecuteNextAction() {
 
   // TODO(crbug.com/496195979): Add UI pre-invoke.
   SetState(State::kUiPreInvoke);
-  FinishedUiPreInvoke(ActionResult(ToolExecutionResult(base::ok())));
+  FinishedUiPreInvoke(ActionResult(ToolExecutionResult::Ok()));
 }
 
 void ActorEngine::FinishedUiPreInvoke(ActionResult result) {
-  if (!result.tool_result.has_value()) {
+  if (!result.tool_result.IsOk()) {
     CompleteActions(std::move(result));
     return;
   }
@@ -200,11 +227,15 @@ void ActorEngine::OnToolExecutionComplete(ToolExecutionResult tool_result) {
   EndAsyncEntry(current_async_entry_.get(), tool_result);
   current_async_entry_.reset();
 
-  FinishedToolInvoke(ActionResult(std::move(tool_result)));
+  base::OnceClosure on_delay_complete =
+      base::BindOnce(&ActorEngine::FinishedToolInvoke,
+                     weak_ptr_factory_.GetWeakPtr(), ActionResult(tool_result));
+  WaitOrImmediatelyFinishTool(std::move(on_delay_complete), tool_result,
+                              observation_delay_controller_.get());
 }
 
 void ActorEngine::FinishedToolInvoke(ActionResult result) {
-  bool success = result.tool_result.has_value();
+  bool success = result.tool_result.IsOk();
 
   if (!success) {
     CompleteActions(std::move(result));
@@ -215,11 +246,11 @@ void ActorEngine::FinishedToolInvoke(ActionResult result) {
 
   // TODO(crbug.com/496195979): Add UI post-invoke.
   SetState(State::kUiPostInvoke);
-  FinishedUiPostInvoke(ActionResult(ToolExecutionResult(base::ok())));
+  FinishedUiPostInvoke(ActionResult(ToolExecutionResult::Ok()));
 }
 
 void ActorEngine::FinishedUiPostInvoke(ActionResult result) {
-  if (!result.tool_result.has_value()) {
+  if (!result.tool_result.IsOk()) {
     CompleteActions(std::move(result));
     return;
   }
@@ -227,7 +258,7 @@ void ActorEngine::FinishedUiPostInvoke(ActionResult result) {
 }
 
 void ActorEngine::CompleteActions(ActionResult result) {
-  bool success = result.tool_result.has_value();
+  bool success = result.tool_result.IsOk();
 
   // Successful tool results are already appended in `FinishedToolInvoke`,
   // therefore only record/overwrite the result if it is a failure.

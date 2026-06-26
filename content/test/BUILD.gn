@@ -11,6 +11,7 @@ import("//build/config/ui.gni")
 import("//build/nocompile.gni")
 import("//components/guest_view/buildflags/buildflags.gni")
 import("//components/viz/common/debugger/viz_debugger.gni")
+import("//components/vrp_flags/features.gni")
 import("//content/common/features.gni")
 import("//content/public/common/features.gni")
 import("//device/vr/buildflags/buildflags.gni")
@@ -2437,6 +2438,11 @@ test("content_browsertests") {
     deps += [ "//device/vr:vr_fakes" ]
   }
 
+  if (enable_vrp_flags) {
+    sources += [ "../browser/vrp_flags/vrp_flags_browsertest.cc" ]
+    deps += [ "//components/vrp_flags" ]
+  }
+
   if ((is_win || is_chromeos || is_linux) && !is_tsan &&
       mojo_support_legacy_core) {
     # NOTE: We don't bother to build these tests when TSan is enabled, because
@@ -2716,6 +2722,7 @@ test("content_unittests") {
     "../browser/first_party_sets/first_party_sets_loader_unittest.cc",
     "../browser/font_access/font_access_manager_unittest.cc",
     "../browser/font_access/font_enumeration_data_source_unittest.cc",
+    "../browser/generic_sensor/frame_sensor_provider_proxy_unittest.cc",
     "../browser/generic_sensor/web_contents_sensor_provider_proxy_unittest.cc",
     "../browser/geolocation/geolocation_service_impl_unittest.cc",
     "../browser/gpu/gpu_data_manager_impl_private_unittest.cc",

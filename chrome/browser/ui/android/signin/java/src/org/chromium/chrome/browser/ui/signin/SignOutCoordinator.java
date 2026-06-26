@@ -22,7 +22,6 @@ import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
 import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
-import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.signin.metrics.SignoutReason;
 import org.chromium.components.sync.SyncService;
@@ -43,9 +42,8 @@ import java.util.stream.IntStream;
 public class SignOutCoordinator {
     /**
      * Starts the sign-out flow. The caller must verify existence of a signed-in account and whether
-     * sign-out is allowed before calling. Child users may only call this method if there is an
-     * account with {@link ConsentLevel#SYNC}. It can show three different UIs depending on user
-     * state:
+     * sign-out is allowed before calling. Child users must not call this method. It can show three
+     * different UIs depending on user state:
      * <li>A snackbar indicating user has signed-out.
      * <li>A confirmation dialog indicating user has unsaved data.
      * <li>A confirmation dialog indicating that user may be signed-out as a side-effect of some
@@ -86,9 +84,8 @@ public class SignOutCoordinator {
     // signout snackbar from here, which means after fixing b/343933167.
     /**
      * Starts the sign-out flow. The caller must verify existence of a signed-in account and whether
-     * sign-out is allowed before calling. Child users may only call this method if there is an
-     * account with {@link ConsentLevel#SYNC}. It can show three different UIs depending on user
-     * state:
+     * sign-out is allowed before calling. Child users must not call this method. It can show three
+     * different UIs depending on user state:
      * <li>A snackbar indicating user has signed-out.
      * <li>A confirmation dialog indicating user has unsaved data.
      * <li>A confirmation dialog indicating that user may be signed-out as a side-effect of some
@@ -123,7 +120,7 @@ public class SignOutCoordinator {
 
         IdentityManager identityManager =
                 assumeNonNull(IdentityServicesProvider.get().getIdentityManager(profile));
-        if (!identityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)) {
+        if (!identityManager.hasPrimaryAccount()) {
             throw new IllegalStateException("There is no signed-in account");
         }
 
@@ -212,7 +209,7 @@ public class SignOutCoordinator {
 
         IdentityManager identityManager =
                 assumeNonNull(IdentityServicesProvider.get().getIdentityManager(profile));
-        if (!identityManager.hasPrimaryAccount(ConsentLevel.SIGNIN)) {
+        if (!identityManager.hasPrimaryAccount()) {
             throw new IllegalStateException("There is no signed-in account");
         }
 
@@ -440,7 +437,7 @@ public class SignOutCoordinator {
     private static void signOut(
             SigninManager signinManager,
             @SignoutReason int signOutReason,
-            SigninManager.SignOutCallback signOutCallback) {
+            Runnable signOutCallback) {
         signinManager.runAfterOperationInProgress(
                 () -> {
                     if (!signinManager.isSignOutAllowed()) {
@@ -448,8 +445,7 @@ public class SignOutCoordinator {
                         // asynchronous. In that case return early instead.
                         return;
                     }
-                    signinManager.signOut(
-                            signOutReason, signOutCallback, /* forceWipeUserData= */ false);
+                    signinManager.signOut(signOutReason, signOutCallback);
                 });
     }
 }

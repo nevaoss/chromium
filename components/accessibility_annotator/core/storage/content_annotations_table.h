@@ -62,9 +62,10 @@ class ContentAnnotationsTable {
   // success. Must be called before any other methods.
   bool Init(sql::Database* db, const os_crypt_async::Encryptor* encryptor);
 
-  // Creates the tables if they do not exist. Returns true on success. Must be
-  // called after `Init()`.
-  bool CreateTablesIfNecessary();
+  // Creates the tables required at database version 1. Returns true on success.
+  // Should only be called when creating the database from a clean state. Must
+  // be called after `Init()`.
+  bool MigrateFromCleanStateToVersion1();
 
   // Inserts or replaces `data` in content_annotations table. Returns true on
   // success.
@@ -80,9 +81,10 @@ class ContentAnnotationsTable {
   std::vector<std::pair<history::VisitID, ContentAnnotationsData>>
   GetAllContentAnnotations();
 
-  // Deletes records from content_annotations table by visit_ids. Returns true
-  // on success.
-  bool DeleteContentAnnotations(base::span<const history::VisitID> visit_ids);
+  // Deletes records from content_annotations table by visit_ids. Returns the
+  // list of visit_ids that were actually deleted.
+  std::vector<history::VisitID> DeleteContentAnnotations(
+      base::span<const history::VisitID> visit_ids);
 
   // Clears all records from content_annotations table. Returns true on success.
   bool ClearAllContentAnnotations();

@@ -13,6 +13,7 @@
 #include "base/auto_reset.h"
 #include "base/compiler_specific.h"
 #include "base/cpu.h"
+#include "base/types/optional_ref.h"
 #include "third_party/blink/renderer/core/animation/timeline_offset.h"
 #include "third_party/blink/renderer/core/core_probes_inl.h"
 #include "third_party/blink/renderer/core/css/css_custom_ident_value.h"
@@ -24,6 +25,7 @@
 #include "third_party/blink/renderer/core/css/css_style_sheet.h"
 #include "third_party/blink/renderer/core/css/css_syntax_string_parser.h"
 #include "third_party/blink/renderer/core/css/css_unparsed_declaration_value.h"
+#include "third_party/blink/renderer/core/css/css_url_data.h"
 #include "third_party/blink/renderer/core/css/navigation_query.h"
 #include "third_party/blink/renderer/core/css/parser/at_rule_descriptor_parser.h"
 #include "third_party/blink/renderer/core/css/parser/container_query_parser.h"
@@ -64,6 +66,7 @@
 #include "third_party/blink/renderer/platform/heap/garbage_collected.h"
 #include "third_party/blink/renderer/platform/instrumentation/tracing/trace_event.h"
 #include "third_party/blink/renderer/platform/instrumentation/use_counter.h"
+#include "third_party/blink/renderer/platform/runtime_enabled_features.h"
 #include "third_party/blink/renderer/platform/wtf/text/atomic_string.h"
 #include "third_party/blink/renderer/platform/wtf/text/text_position.h"
 
@@ -74,7 +77,10 @@ namespace blink {
 namespace {
 
 // This may still consume tokens if it fails
-AtomicString ConsumeStringOrURI(CSSParserTokenStream& stream) {
+AtomicString ConsumeStringOrURI(
+    CSSParserTokenStream& stream,
+    const CSSParserContext& context,
+    base::optional_ref<CSSUrlRequestModifiers> modifiers) {
   const CSSParserToken& token = stream.Peek();
 
   if (token.GetType() == kStringToken || token.GetType() == kUrlToken) {
@@ -98,9 +104,19 @@ AtomicString ConsumeStringOrURI(CSSParserTokenStream& stream) {
            stream.Peek().GetType() == kBadStringToken)
         << "Got unexpected token " << stream.Peek();
     const CSSParserToken& uri = stream.ConsumeIncludingWhitespace();
-    if (uri.GetType() != kBadStringToken && stream.UncheckedAtEnd()) {
-      DCHECK_EQ(uri.GetType(), kStringToken);
-      result = uri.Value().ToAtomicString();
+    if (uri.GetType() != kBadStringToken) {
+      const bool should_consume_modifiers =
+          RuntimeEnabledFeatures::CSSURLRequestModifiersEnabled() &&
+          modifiers.has_value();
+      const bool consumed_modifiers =
+          should_consume_modifiers &&
+          css_parsing_utils::ConsumeUrlRequestModifiers(stream, context,
+                                                        *modifiers);
+      if ((!should_consume_modifiers || consumed_modifiers) &&
+          stream.UncheckedAtEnd()) {
+        DCHECK_EQ(uri.GetType(), kStringToken);
+        result = uri.Value().ToAtomicString();
+      }
     }
   }
   stream.ConsumeWhitespace();
@@ -928,9 +944,10 @@ StyleRuleBase* CSSParserImpl::ConsumeAtRuleContents(
     case CSSAtRuleID::kCSSAtRuleImport: {
       // @import rules have a URI component that is not technically part of the
       // prelude.
-      AtomicString uri = ConsumeStringOrURI(stream);
+      CSSUrlRequestModifiers modifiers;
+      AtomicString uri = ConsumeStringOrURI(stream, *context_, modifiers);
       stream.EnsureLookAhead();
-      return ConsumeImportRule(std::move(uri), stream);
+      return ConsumeImportRule(std::move(uri), stream, modifiers);
     }
     case CSSAtRuleID::kCSSAtRuleNamespace:
       return ConsumeNamespaceRule(stream);
@@ -1070,7 +1087,8 @@ StyleRuleCharset* CSSParserImpl::ConsumeCharsetRule(
 
 StyleRuleImport* CSSParserImpl::ConsumeImportRule(
     const AtomicString& uri,
-    CSSParserTokenStream& stream) {
+    CSSParserTokenStream& stream,
+    const CSSUrlRequestModifiers& modifiers) {
   wtf_size_t prelude_offset_start = stream.LookAheadOffset();
 
   if (uri.IsNull()) {
@@ -1182,7 +1200,8 @@ StyleRuleImport* CSSParserImpl::ConsumeImportRule(
       uri, std::move(layer), style_scope,
       supported == CSSSupportsParser::Result::kSupported,
       supports_string.ToString(), media_query_set,
-      context_->IsOriginClean() ? OriginClean::kTrue : OriginClean::kFalse);
+      context_->IsOriginClean() ? OriginClean::kTrue : OriginClean::kFalse,
+      modifiers);
 }
 
 StyleRuleNamespace* CSSParserImpl::ConsumeNamespaceRule(
@@ -1193,7 +1212,8 @@ StyleRuleNamespace* CSSParserImpl::ConsumeNamespaceRule(
         stream.ConsumeIncludingWhitespace().Value().ToAtomicString();
   }
 
-  AtomicString uri(ConsumeStringOrURI(stream));
+  AtomicString uri(
+      ConsumeStringOrURI(stream, *context_, /*modifiers=*/std::nullopt));
   if (uri.IsNull()) {
     // Parse error, expected string or URI.
     ConsumeErroneousAtRule(stream, CSSAtRuleID::kCSSAtRuleNamespace);
@@ -2190,31 +2210,16 @@ StyleRuleContainer* CSSParserImpl::ConsumeContainerRule(
     StyleRule* parent_rule_for_nesting) {
   // Consume the prelude.
   wtf_size_t prelude_offset_start = stream.LookAheadOffset();
-  ContainerQueryParser query_parser(*context_);
 
-  // <container-name>
-  AtomicString name;
-  if (stream.Peek().GetType() == kIdentToken) {
-    CSSParserLocalContext local_context =
-        CSSParserLocalContext::CreateWithoutPropertyForAtRules();
-    auto* ident = DynamicTo<CSSCustomIdentValue>(
-        css_parsing_utils::ConsumeSingleContainerName(stream, *context_,
-                                                      local_context));
-    if (ident) {
-      name = ident->Value();
-    }
-  }
-
-  const ConditionalExpNode* query = query_parser.ParseCondition(stream);
-  if (!query &&
-      (name.IsNull() || !RuntimeEnabledFeatures::ContainerNameOnlyEnabled())) {
+  const ContainerQuerySet* container_query_set =
+      ContainerQueryParser::ParseContainerQuerySet(stream, *context_);
+  if (!container_query_set) {
     ConsumeErroneousAtRule(stream, CSSAtRuleID::kCSSAtRuleContainer);
     return nullptr;
   }
-  ContainerQuery* container_query = MakeGarbageCollected<ContainerQuery>(
-      ContainerSelector(std::move(name), query), query);
 
   wtf_size_t prelude_offset_end = stream.LookAheadOffset();
+
   if (!ConsumeEndOfPreludeForAtRuleWithBlock(
           stream, CSSAtRuleID::kCSSAtRuleContainer)) {
     return nullptr;
@@ -2239,7 +2244,7 @@ StyleRuleContainer* CSSParserImpl::ConsumeContainerRule(
 
   // NOTE: There will be a copy of rules here, to deal with the different inline
   // size.
-  return MakeGarbageCollected<StyleRuleContainer>(*container_query,
+  return MakeGarbageCollected<StyleRuleContainer>(*container_query_set,
                                                   std::move(rules));
 }
 

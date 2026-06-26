@@ -20,6 +20,7 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
@@ -572,7 +573,7 @@ IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest, DenialOfService) {
 // Verify that an onunload popup does not show up for about:blank.
 IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest, Regress427477) {
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(),
-                                           GURL(chrome::kChromeUINewTabURL)));
+                                           chrome::ChromeUINewTabURLAsGURL()));
   ASSERT_TRUE(
       ui_test_utils::NavigateToURL(browser(), GURL(url::kAboutBlankURL)));
 
@@ -614,7 +615,8 @@ IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest, ModalPopUnder) {
 
   NavigateAndCheckPopupShown(url, kExpectPopup);
 
-  BrowserWindowInterface* popup_browser = chrome::FindLastActive();
+  BrowserWindowInterface* popup_browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   ASSERT_NE(popup_browser, browser());
 
 // Showing an alert will raise the tab over the popup.
@@ -631,7 +633,8 @@ IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest, ModalPopUnder) {
       ui_test_utils::WaitForAppModalDialog();
   ASSERT_TRUE(dialog);
 #if !BUILDFLAG(IS_MAC)
-  if (chrome::FindLastActive() != browser()) {
+  if (GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser() !=
+      browser()) {
     alert_waiter.WaitForActivation();
   }
 #endif
@@ -645,7 +648,8 @@ IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest, ModalPopUnder) {
 #if !BUILDFLAG(IS_MAC)
   waiter.WaitForActivation();
 #endif
-  ASSERT_EQ(popup_browser, chrome::FindLastActive());
+  ASSERT_EQ(popup_browser,
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
 }
 
 #if BUILDFLAG(ENABLE_PRINT_PREVIEW)
@@ -670,7 +674,8 @@ IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest, MAYBE_PrintPreviewPopUnder) {
 
   NavigateAndCheckPopupShown(url, kExpectPopup);
 
-  BrowserWindowInterface* popup_browser = chrome::FindLastActive();
+  BrowserWindowInterface* popup_browser =
+      GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser();
   ASSERT_NE(popup_browser, browser());
 
   // Show a print preview dialog and confirm it doesn't activate the
@@ -683,7 +688,8 @@ IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest, MAYBE_PrintPreviewPopUnder) {
       dialog_controller->GetOrCreatePreviewDialogForTesting(original_tab);
   observer.Wait();
   observer.StopWatchingNewWebContents();
-  EXPECT_EQ(popup_browser, chrome::FindLastActive());
+  EXPECT_EQ(popup_browser,
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
 
   // Navigate away; this will close the print preview dialog.
   content::WebContentsDestroyedWatcher watcher(print_preview_dialog);
@@ -692,7 +698,8 @@ IN_PROC_BROWSER_TEST_F(PopupBlockerBrowserTest, MAYBE_PrintPreviewPopUnder) {
   watcher.Wait();
 
   // The popup is still in front and being activated.
-  EXPECT_EQ(popup_browser, chrome::FindLastActive());
+  EXPECT_EQ(popup_browser,
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
 }
 #endif  // BUILDFLAG(ENABLE_PRINT_PREVIEW)
 

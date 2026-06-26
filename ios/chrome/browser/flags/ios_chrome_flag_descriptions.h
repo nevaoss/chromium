@@ -50,6 +50,9 @@ extern const char kAnimatedDefaultBrowserPromoInFREDescription[];
 extern const char kAppBackgroundRefreshName[];
 extern const char kAppBackgroundRefreshDescription[];
 
+extern const char kAppStoreInAppEventsName[];
+extern const char kAppStoreInAppEventsDescription[];
+
 extern const char kAppleCalendarExperienceKitName[];
 extern const char kAppleCalendarExperienceKitDescription[];
 
@@ -74,6 +77,9 @@ extern const char kAssistantSidePanelDescription[];
 extern const char kAutofillAcrossIframesName[];
 extern const char kAutofillAcrossIframesDescription[];
 
+extern const char kAutofillAiAvailableByDefaultName[];
+extern const char kAutofillAiAvailableByDefaultDescription[];
+
 extern const char kAutofillAiCreateEntityDataManagerName[];
 extern const char kAutofillAiCreateEntityDataManagerDescription[];
 
@@ -91,6 +97,9 @@ extern const char kAutofillAiValuablesIPHDescription[];
 
 extern const char kAutofillAiWalletFlightReservationName[];
 extern const char kAutofillAiWalletFlightReservationDescription[];
+
+extern const char kAutofillAiWalletPrivatePassesDeepLinkName[];
+extern const char kAutofillAiWalletPrivatePassesDeepLinkDescription[];
 
 extern const char kAutofillAiWalletPrivatePassesName[];
 extern const char kAutofillAiWalletPrivatePassesDescription[];
@@ -285,6 +294,9 @@ extern const char kCredentialProviderPasskeyPRFDescription[];
 
 extern const char kCredentialProviderPerformanceImprovementsName[];
 extern const char kCredentialProviderPerformanceImprovementsDescription[];
+
+extern const char kCrossDeviceSigninName[];
+extern const char kCrossDeviceSigninDescription[];
 
 extern const char kDataSharingDebugLogsName[];
 extern const char kDataSharingDebugLogsDescription[];
@@ -552,6 +564,9 @@ extern const char kIOSKeyboardAccessoryDefaultViewDescription[];
 
 extern const char kIOSKeyboardAccessoryTwoBubbleName[];
 extern const char kIOSKeyboardAccessoryTwoBubbleDescription[];
+
+extern const char kIOSMiniMapUniversalLinkName[];
+extern const char kIOSMiniMapUniversalLinkDescription[];
 
 extern const char kIOSOmniboxAimServerEligibilityEnName[];
 extern const char kIOSOmniboxAimServerEligibilityEnDescription[];
@@ -1063,17 +1078,11 @@ extern const char kTabGroupColorOnSurfaceDescription[];
 extern const char kTabGroupInOverflowMenuName[];
 extern const char kTabGroupInOverflowMenuDescription[];
 
-extern const char kTabGroupInTabIconContextMenuName[];
-extern const char kTabGroupInTabIconContextMenuDescription[];
-
 extern const char kTabGroupIndicatorName[];
 extern const char kTabGroupIndicatorDescription[];
 
 extern const char kTabGroupSyncName[];
 extern const char kTabGroupSyncDescription[];
-
-extern const char kTabRecallNewTabGroupButtonName[];
-extern const char kTabRecallNewTabGroupButtonDescription[];
 
 extern const char kTabResumptionImagesName[];
 extern const char kTabResumptionImagesDescription[];
@@ -1099,6 +1108,9 @@ extern const char kUseFeedEligibilityServiceDescription[];
 extern const char kUseSceneViewControllerName[];
 extern const char kUseSceneViewControllerDescription[];
 
+extern const char kUseUIGraphicsImageRendererForFallbackIconsName[];
+extern const char kUseUIGraphicsImageRendererForFallbackIconsDescription[];
+
 extern const char kVariationsExperimentalCorpusName[];
 extern const char kVariationsExperimentalCorpusDescription[];
 
@@ -1110,6 +1122,9 @@ extern const char kViewCertificateInformationDescription[];
 
 extern const char kWaitThresholdMillisecondsForCapabilitiesApiName[];
 extern const char kWaitThresholdMillisecondsForCapabilitiesApiDescription[];
+
+extern const char kWalletApiPrivatePassesEnabledName[];
+extern const char kWalletApiPrivatePassesEnabledDescription[];
 
 extern const char kWalletServiceUseSandboxName[];
 extern const char kWalletServiceUseSandboxDescription[];

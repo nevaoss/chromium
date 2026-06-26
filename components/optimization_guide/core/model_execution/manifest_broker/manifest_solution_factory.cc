@@ -19,7 +19,9 @@
 #include "base/trace_event/trace_event.h"
 #include "components/optimization_guide/core/model_execution/model_execution_util.h"
 #include "components/optimization_guide/core/model_execution/on_device_features.h"
+#include "components/optimization_guide/core/model_execution/on_device_model_feature_adapter.h"
 #include "components/optimization_guide/core/model_execution/usage_tracker.h"
+#include "components/optimization_guide/core/optimization_guide_constants.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/proto/manifest.pb.h"
 #include "components/optimization_guide/proto/model_execution.pb.h"
@@ -306,10 +308,18 @@ void ManifestSolutionFactory::UpdateAssetState(const std::string& asset_id,
 
 void ManifestSolutionFactory::UpdateSolutions() {
   TRACE_EVENT("optimization_guide", "ManifestSolutionFactory::UpdateSolutions");
-  for (const auto& [use_case_name, _] :
-       manifest_.GetDeviceCategoryConfig().use_cases()) {
+  const auto& use_cases = manifest_.GetDeviceCategoryConfig().use_cases();
+  for (const auto& [use_case_name, _] : use_cases) {
     broker_impl_->GetSolutionProvider(use_case_name)
         .Update(CreateSolutionForUseCase(use_case_name));
+  }
+  for (auto feature : OnDeviceFeatureSet::All()) {
+    std::string use_case_name = ToUseCaseName(feature);
+    if (!use_cases.contains(use_case_name)) {
+      broker_impl_->GetSolutionProvider(use_case_name)
+          .Update(base::unexpected(
+              OnDeviceModelEligibilityReason::kFeatureExecutionNotEnabled));
+    }
   }
 }
 
@@ -419,7 +429,7 @@ ManifestSolutionFactory::CreateSolutionForUseCase(
   if (!required_assets) {
     // Use case not found in manifest.
     return base::unexpected(
-        OnDeviceModelEligibilityReason::kConfigNotAvailableForFeature);
+        OnDeviceModelEligibilityReason::kFeatureExecutionNotEnabled);
   }
   // Check that all assets are available.
   bool has_unavailable_asset = false;
@@ -544,6 +554,11 @@ void ManifestSolutionFactory::LoadBaseModel(const std::string& model_id,
   on_device_model::ModelAssetPaths paths;
   // We should not get here unless the asset is available.
   paths.weights = *ResolveFile(recipe.weights_file());
+  if (recipe.backend_type() == proto::BaseModelRecipe::BACKEND_TYPE_CPU) {
+    paths.cache = paths.weights.DirName().Append(kExperimentalCacheFile);
+  }
+  paths.encoder_cache = paths.weights.DirName().Append(kEncoderCacheFile);
+  paths.adapter_cache = paths.weights.DirName().Append(kAdapterCacheFile);
 
   service_client_->AddPendingUsage();
   base::ThreadPool::PostTaskAndReplyWithResult(
@@ -565,6 +580,11 @@ void ManifestSolutionFactory::LoadBaseModel(const std::string& model_id,
                 factory->manifest_.GetRecipes().base_models().at(model_id);
             auto params = on_device_model::mojom::LoadModelParams::New();
             params->max_tokens = recipe.max_tokens();
+            if (params->max_tokens == 0) {
+              LOG(ERROR) << "Model recipe " << model_id << " has 0 max_tokens, "
+                         << "using fallback value " << kOnDeviceModelMaxTokens;
+              params->max_tokens = kOnDeviceModelMaxTokens;
+            }
             params->performance_hint =
                 ConvertPerformanceHint(recipe.performance_hint());
             for (int32_t rank : recipe.supported_adaptation_ranks()) {

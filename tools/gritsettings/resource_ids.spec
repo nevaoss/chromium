@@ -182,6 +182,10 @@
     "META": {"sizes": {"includes": [10]}},
     "includes": [2505],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/drive_picker_host/untrusted/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [2515],
+  },
   # chrome/browser/glic/resources/internal/browser_resources.grd and
   # chrome/browser/glic/resources/browser_resources.grd must share the same id
   # because they define the same resources, but only one of them is built
@@ -310,6 +314,10 @@
     "META": {"sizes": {"includes": [10],}},
     "includes": [3140],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/drive_internals/resources.grd": {
+    "META": {"sizes": {"includes": [5]}},
+    "includes": [3150],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/edu_coexistence/resources.grd": {
     "META": {"sizes": {"includes": [20],}},
     "includes": [3160],
@@ -390,6 +398,10 @@
     "META": {"sizes": {"includes": [30]}},
     "includes": [3560],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/power/resources.grd": {
+    "META": {"sizes": {"includes": [5]}},
+    "includes": [3570],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/remote_maintenance_curtain/resources.grd": {
     "META": {"sizes": {"includes": [10]}},
     "includes": [3580],
@@ -406,6 +418,10 @@
     "META": {"sizes": {"includes": [10]}},
     "includes": [3640],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/slow/resources.grd": {
+    "META": {"sizes": {"includes": [5]}},
+    "includes": [3650],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/supervision/resources.grd": {
     "META": {"sizes": {"includes": [10],}},
     "includes": [3660],
@@ -413,6 +429,10 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/vm/resources.grd": {
     "META": {"sizes": {"includes": [5],}},
     "includes": [3690],
+  },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/sys_internals/resources.grd": {
+    "META": {"sizes": {"includes": [50]}},
+    "includes": [3695],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/components/resources.grd": {
     "META": {"sizes": {"includes": [5]}},
@@ -503,11 +523,11 @@
     "includes": [4035],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/history/resources.grd": {
-    "META": {"sizes": {"includes": [53]}},
+    "META": {"sizes": {"includes": [60]}},
     "includes": [4040],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/indigo/resources.grd": {
-    "META": {"sizes": {"includes": [10],}},
+    "META": {"sizes": {"includes": [20],}},
     "includes": [4043],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/indigo_internals/resources.grd": {

@@ -118,7 +118,9 @@ suite('NewTabPageAppTest', () => {
         disabledInputTypes: [],
       },
     });
-
+    searchboxHandler.setResultFor(
+        'getPageClassification',
+        Promise.resolve({metricSource: 'NTP_REALBOX'}));
     app = document.createElement('ntp-app');
     document.body.appendChild(app);
     await microtasksFinished();
@@ -1298,10 +1300,6 @@ suite('NewTabPageAppTest', () => {
     });
 
     test('Sequential ESC clears input then closes composebox', async () => {
-      // Arrange: Override the flag to FALSE for this specific test.
-      loadTimeData.overrideValues({composeboxCloseByEscape: false});
-      await microtasksFinished();
-
       // Arrange: Create and open the Composebox UI.
       const searchbox = $$(app, '#searchbox');
       assertTrue(!!searchbox);
@@ -2598,6 +2596,9 @@ suite('NewTabPageAppReducedMotionTest', () => {
         modelConfigs: [],
       },
     }));
+    searchboxHandler.setResultFor(
+        'getPageClassification',
+        Promise.resolve({metricSource: 'NTP_REALBOX'}));
     installMock(
         ActionChipsHandlerRemote, mock => ActionChipsApiProxyImpl.setInstance({
           getHandler: () => mock,

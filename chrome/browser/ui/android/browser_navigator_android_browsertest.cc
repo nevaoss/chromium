@@ -27,6 +27,7 @@
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
+#include "ui/base/base_window.h"
 
 namespace {
 
@@ -121,7 +122,7 @@ class NavigateAndroidBrowserTest : public BrowserWindowAndroidBrowserTestBase {
 
   void SetTabToNewTabPageWithNoHistory() {
     content::NavigationController::LoadURLParams params{
-        GURL(chrome::kChromeUINewTabURL)};
+        chrome::ChromeUINewTabURLAsGURL()};
     params.should_replace_current_entry = true;
     web_contents_->GetController().LoadURLWithParams(params);
     content::TestNavigationObserver observer(web_contents_);
@@ -739,6 +740,51 @@ IN_PROC_BROWSER_TEST_F(NavigateAndroidBrowserTest, Async_Disposition_NewPopup) {
 }
 
 IN_PROC_BROWSER_TEST_F(NavigateAndroidBrowserTest,
+                       Async_Disposition_NewPopup_WithFeatures) {
+  const GURL url1 = StartAtURL("/title1.html");
+  ASSERT_EQ(1u, GetAllBrowserWindowInterfaces().size());
+
+  // Prepare and execute a NEW_POPUP navigation with bounds.
+  const GURL url2 = embedded_test_server()->GetURL("/title2.html");
+  NavigateParams params(browser_window_, url2, ui::PAGE_TRANSITION_LINK);
+  params.disposition = WindowOpenDisposition::NEW_POPUP;
+  params.window_features.bounds = gfx::Rect(10, 20, 300, 400);
+
+  base::test::TestFuture<base::WeakPtr<content::NavigationHandle>> future;
+  Navigate(&params, future.GetCallback());
+  base::WeakPtr<content::NavigationHandle> handle = future.Get();
+  ASSERT_TRUE(handle);
+  ASSERT_TRUE(handle->GetWebContents());
+
+  // Observe the navigation in the new tab's WebContents.
+  content::TestNavigationObserver navigation_observer(handle->GetWebContents());
+  navigation_observer.Wait();
+
+  // Verify a new window was created and the navigation occurred in it.
+  std::vector<BrowserWindowInterface*> windows =
+      GetAllBrowserWindowInterfaces();
+  ASSERT_EQ(2u, windows.size());
+  BrowserWindowInterface* new_window =
+      windows[0] == browser_window_ ? windows[1] : windows[0];
+  EXPECT_NE(params.browser, browser_window_);
+  EXPECT_EQ(params.browser, new_window);
+  EXPECT_EQ(new_window->GetType(), BrowserWindowInterface::Type::TYPE_POPUP);
+
+  // Verify bounds.
+  EXPECT_EQ(new_window->GetWindow()->GetBounds(), gfx::Rect(10, 20, 300, 400));
+
+  TabListInterface* new_tab_list = TabListInterface::From(new_window);
+  EXPECT_EQ(1, new_tab_list->GetTabCount());
+  tabs::TabInterface* new_tab = new_tab_list->GetTab(0);
+  ASSERT_TRUE(new_tab);
+  EXPECT_EQ(url2, new_tab->GetContents()->GetLastCommittedURL());
+
+  // Verify the original window is unchanged.
+  EXPECT_EQ(1, tab_list_->GetTabCount());
+  EXPECT_EQ(url1, web_contents_->GetLastCommittedURL());
+}
+
+IN_PROC_BROWSER_TEST_F(NavigateAndroidBrowserTest,
                        Disposition_NewPopup_ReturnsNull) {
   // Prepare and execute a NEW_POPUP navigation.
   const GURL url = embedded_test_server()->GetURL("/title1.html");
@@ -991,7 +1037,7 @@ IN_PROC_BROWSER_TEST_F(
   // 2. Navigate to NTP in the same tab. This tab now has history (can go back
   // to url1).
   ASSERT_TRUE(
-      content::NavigateToURL(web_contents_, GURL(chrome::kChromeUINewTabURL)));
+      content::NavigateToURL(web_contents_, chrome::ChromeUINewTabURLAsGURL()));
   ASSERT_EQ(1, tab_list_->GetTabCount());
   content::NavigationController& controller = web_contents_->GetController();
   ASSERT_TRUE(controller.CanGoBack());

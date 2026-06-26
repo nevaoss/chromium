@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {ActorTaskInterruptReason, AdditionalContext, AnnotatedPageData, CancelActionsResult, CaptureRegionErrorReason, CaptureRegionResult, ChromeVersion, ClientCapabilities, ConversationInfo, CreateActorTabOptions, CreateSkillRequest, CreateTabOptions, DraggableArea, ExperimentalTriggeringUpdate, FocusedTabData, FormFactor, FormFillingResponse, GetPinCandidatesOptions, GlicBrowserHost, GlicBrowserHostJournal, GlicBrowserHostMetrics, GlicHostRegistry, GlicWebClient, InvokeOptions, Journal, MicrophoneStatus, NavigationConfirmationRequest, Observable, ObservableValue, OnResponseStoppedDetails, OpenPanelInfo, OpenSettingsOptions, PageMetadata, PanelOpeningData, PanelState, PdfDocumentData, PinCandidate, PinTabsOptions, Platform, ResizeWindowOptions, ResumeActorTaskResult, Screenshot, ScrollToParams, SelectAutofillSuggestionsDialogRequest, SelectCredentialDialogRequest, Skill, SkillPreview, SkillsWebClientEvent, TabContextOptions, TabContextResult, TabData, TaskOptions, UnpinTabsOptions, UpdateSkillRequest, UserConfirmationDialogRequest, UserProfileInfo, WebClientMode, ZeroStateSuggestions, ZeroStateSuggestionsOptions, ZeroStateSuggestionsV2} from '../../glic_api/glic_api.js';
+import type {ActorTaskInterruptReason, AdditionalContext, AnnotatedPageData, CancelActionsResult, CaptureRegionErrorReason, CaptureRegionParams, CaptureRegionResult, ChromeVersion, ClientCapabilities, ClientErrorDialogType, ConversationInfo, CreateActorTabOptions, CreateSkillRequest, CreateTabOptions, DraggableArea, ExperimentalTriggeringUpdate, FocusedTabData, FormFactor, FormFillingResponse, GetPinCandidatesOptions, GlicBrowserHost, GlicBrowserHostJournal, GlicBrowserHostMetrics, GlicHostRegistry, GlicWebClient, InvokeOptions, Journal, MicrophoneStatus, NavigationConfirmationRequest, Observable, ObservableValue, OnResponseStoppedDetails, OpenPanelInfo, OpenSettingsOptions, PageMetadata, PanelOpeningData, PanelState, PdfDocumentData, PinCandidate, PinTabsOptions, Platform, ResizeWindowOptions, ResumeActorTaskResult, Screenshot, ScrollToParams, SelectAutofillSuggestionsDialogRequest, SelectCredentialDialogRequest, Skill, SkillPreview, SkillsWebClientEvent, TabContextOptions, TabContextResult, TabData, TaskOptions, UnpinTabsOptions, UpdateSkillRequest, UserConfirmationDialogRequest, UserProfileInfo, WebClientMode, ZeroStateSuggestions, ZeroStateSuggestionsOptions, ZeroStateSuggestionsV2} from '../../glic_api/glic_api.js';
 import {ActorTaskPauseReason, ActorTaskState, ActorTaskStopReason, HostCapability} from '../../glic_api/glic_api.js';
 import {ObservableValue as ObservableValueImpl, Subject} from '../../observable.js';
 import {OneShotTimer} from '../../timer.js';
@@ -189,7 +189,7 @@ class WebClientMessageHandler implements WebClientMessageHandlerInterface {
           subscriber.unsubscribe();
         }
       },
-      error: (_err: any) => {
+      error: (_err: unknown) => {
         this.host.sender.requestNoResponse(
             'glicBrowserOnExperimentalTriggeringUpdate', {
               observationId: payload.observationId,
@@ -844,14 +844,20 @@ class GlicBrowserHostImpl implements GlicBrowserHost {
         'glicBrowserWebClientInitialized', {success, exception});
   }
 
-  async handleRawRequest(type: string, payload: any, extras: ResponseExtras):
-      Promise<{payload: any}|undefined> {
+  async handleRawRequest(
+      type: string, payload: unknown,
+      extras: ResponseExtras): Promise<{payload: unknown}|undefined> {
     if (!this.handlerFunctionNames.has(type)) {
       return;
     }
-    const handlerFunction = (this.webClientMessageHandler as any)[type];
-    const response = await handlerFunction.call(
-        this.webClientMessageHandler, payload, extras);
+
+    type HandlerFunction = (payload: unknown, extras: ResponseExtras) =>
+        Promise<{payload: unknown}>;
+    type IndexableWebClientMessageHandler = Record<string, HandlerFunction>;
+
+    const response =
+        await (this.webClientMessageHandler as unknown as
+               IndexableWebClientMessageHandler)[type]!(payload, extras);
     if (!response) {
       return;
     }
@@ -1097,6 +1103,11 @@ class GlicBrowserHostImpl implements GlicBrowserHost {
         'glicBrowserOnMicrophoneStatusChange', {status});
   }
 
+  setErrorDialogState?(shownDialogType?: ClientErrorDialogType): void {
+    this.sender.requestNoResponse(
+        'glicBrowserSetErrorDialogState', {shownDialogType});
+  }
+
   async resizeWindow(
       width: number, height: number,
       options?: ResizeWindowOptions): Promise<void> {
@@ -1115,12 +1126,13 @@ class GlicBrowserHostImpl implements GlicBrowserHost {
     return screenshotResult.screenshot;
   }
 
-  captureRegion?(): ObservableValue<CaptureRegionResult> {
+  captureRegion?
+      (params?: CaptureRegionParams): ObservableValue<CaptureRegionResult> {
     if (this.captureRegionObservable) {
       this.captureRegionObservable.complete();
     }
-    this.captureRegionObservable =
-        new CaptureRegionObservable(this.idGenerator.next(), this.sender);
+    this.captureRegionObservable = new CaptureRegionObservable(
+        this.idGenerator.next(), this.sender, params);
     return this.captureRegionObservable;
   }
 
@@ -1633,7 +1645,11 @@ class GlicBrowserHostMetricsImpl implements GlicBrowserHostMetrics {
   }
 
   onRecordUseCounter?(counter: number): void {
-    this.sender.requestNoResponse('glicBrowserOnRecordUseCounter', {counter});
+    // Since the frontend can contain a newer version than what Chrome is
+    // built against, we use a sparse histogram.
+    this.sender.requestNoResponse(
+        'glicBrowserRecordHistogram',
+        {name: 'Glic.Api.UseCounter', sparseValue: counter});
   }
 }
 
@@ -1648,7 +1664,9 @@ export class IdGenerator {
 class CaptureRegionObservable extends ObservableValueImpl<CaptureRegionResult> {
   observationId: number;
 
-  constructor(observationId: number, private sender: PostMessageRequestSender) {
+  constructor(
+      observationId: number, private sender: PostMessageRequestSender,
+      private params?: CaptureRegionParams) {
     super(false);
     this.observationId = observationId;
   }
@@ -1659,9 +1677,10 @@ class CaptureRegionObservable extends ObservableValueImpl<CaptureRegionResult> {
       return;
     }
     if (hasActiveSubscription) {
-      this.sender.requestNoResponse(
-          'glicBrowserSubscribeToCaptureRegion',
-          {observationId: this.observationId});
+      this.sender.requestNoResponse('glicBrowserSubscribeToCaptureRegion', {
+        observationId: this.observationId,
+        params: this.params,
+      });
     } else {
       this.sender.requestNoResponse(
           'glicBrowserUnsubscribeFromCaptureRegion',
@@ -1671,7 +1690,7 @@ class CaptureRegionObservable extends ObservableValueImpl<CaptureRegionResult> {
     }
   }
 
-  override error(e: any) {
+  override error(e: Error) {
     if (this.isStopped()) {
       return;
     }

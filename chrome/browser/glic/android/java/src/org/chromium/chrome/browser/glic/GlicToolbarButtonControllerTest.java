@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import android.content.Context;
 import android.graphics.drawable.LayerDrawable;
+import android.view.View;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -47,6 +48,8 @@ import org.chromium.components.feature_engagement.Tracker;
 import org.chromium.ui.widget.AnchoredPopupWindow;
 import org.chromium.url.JUnitTestGURLs;
 
+import java.util.Collections;
+
 /** Unit tests for {@link GlicToolbarButtonController}. */
 @RunWith(BaseRobolectricTestRunner.class)
 @EnableFeatures({
@@ -68,6 +71,7 @@ public class GlicToolbarButtonControllerTest {
     @Mock private ButtonDataProvider.ButtonDataObserver mObserver;
     @Mock private GlicKeyedServiceFactory.Natives mGlicKeyedServiceFactoryJniMock;
     @Mock private GlicKeyedService mGlicKeyedService;
+    @Mock private GlicEnabling.Natives mGlicEnablingJniMock;
     @Captor private ArgumentCaptor<ActorKeyedService.Observer> mActorObserverCaptor;
 
     private Context mContext;
@@ -85,7 +89,9 @@ public class GlicToolbarButtonControllerTest {
                         ObservableSuppliers.alwaysFalse());
         when(mBrowserControlsVisibilityManager.getBrowserVisibilityDelegate())
                 .thenReturn(mBrowserControlsVisibilityDelegate);
+        GlicEnablingJni.setInstanceForTesting(mGlicEnablingJniMock);
         when(mGlicKeyedServiceFactoryJniMock.getForProfile(mProfile)).thenReturn(mGlicKeyedService);
+        when(mGlicEnablingJniMock.isEnabledForProfile(any())).thenReturn(true);
         mController =
                 new GlicToolbarButtonController(
                         mContext,
@@ -410,14 +416,14 @@ public class GlicToolbarButtonControllerTest {
         // Mock an active task.
         ActorTask task = mock(ActorTask.class);
         when(task.getTitle()).thenReturn("Test Task");
-        when(mActorService.getActiveTasks()).thenReturn(java.util.Collections.singletonList(task));
+        when(mActorService.getActiveTasks()).thenReturn(Collections.singletonList(task));
 
         // Set up show hook.
         Runnable showHook = mock(Runnable.class);
         AnchoredPopupWindow.setShowHookForTesting(showHook);
 
         // Click should show menu.
-        android.view.View view = new android.view.View(mContext);
+        View view = new View(mContext);
         mController.onClick(view);
 
         // Verify popup was shown.

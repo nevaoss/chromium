@@ -183,6 +183,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHiOSLensKeyboardFeature,
     &kIPHiOSLensOverlayEntrypointTipFeature,
     &kIPHiOSLensOverlayEscapeHatchTipFeature,
+    &kIPHiOSNewIAPromoFeature,
     &kIPHiOSOneTimeDefaultBrowserNotificationFeature,
     &kIPHiOSOverflowMenuCustomizationFeature,
     &kIPHIOSPageActionMenu,
@@ -280,7 +281,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHPdfInkSignaturesFeature,
     &kIPHPdfSearchifyFeature,
     &kIPHPerformanceInterventionDialogFeature,
-    &kIPHPlusAddressFirstSaveFeature,
     &kIPHPowerBookmarksSidePanelFeature,
     &kIPHPriceInsightsPageActionIconLabelFeature,
     &kIPHPriceTrackingEmailConsentFeature,
@@ -291,6 +291,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHReadingListDiscoveryFeature,
     &kIPHReadingListEntryPointFeature,
     &kIPHReadingListInSidePanelFeature,
+    &kIPHReadingModeKeyboardShortcutFeature,
     &kIPHReadingModePageActionLabelFeature,
     &kIPHReadingModeSidePanelFeature,
     &kIPHShoppingCollectionFeature,
@@ -334,7 +335,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHAutofillVirtualCardCVCSuggestionFeature,
     &kIPHAutofillVirtualCardSuggestionFeature,
     &kIPHCookieControlsFeature,
-    &kIPHPlusAddressCreateSuggestionFeature,
 // keep-sorted end
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) ||

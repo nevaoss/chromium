@@ -35,6 +35,7 @@
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
@@ -198,7 +199,8 @@ void WaitUntilBrowserBecomeLastActive(Browser* browser) {
 }
 
 void ExpectBrowserBecomesActiveOrLastActive(Browser* browser) {
-  EXPECT_EQ(browser, chrome::FindLastActive());
+  EXPECT_EQ(browser,
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
 }
 
 }  // namespace
@@ -496,8 +498,10 @@ IN_PROC_BROWSER_TEST_P(HostedOrWebAppTest,
     ui_test_utils::WaitForBrowserSetLastActive(browser_created_observer.Wait());
   }
 
-  CheckWebContentsHasAppPrefs(
-      chrome::FindLastActive()->GetTabStripModel()->GetActiveWebContents());
+  CheckWebContentsHasAppPrefs(GlobalBrowserCollection::GetInstance()
+                                  ->GetLastActiveBrowser()
+                                  ->GetTabStripModel()
+                                  ->GetActiveWebContents());
 }
 
 // Tests that the WebContents of a regular browser window launched using
@@ -510,7 +514,8 @@ IN_PROC_BROWSER_TEST_P(HostedOrWebAppTest, WebContentsPrefsOpenInChrome) {
   CheckWebContentsHasAppPrefs(app_contents);
 
   chrome::OpenInChrome(app_browser_);
-  ASSERT_EQ(browser(), chrome::FindLastActive());
+  ASSERT_EQ(browser(),
+            GlobalBrowserCollection::GetInstance()->GetLastActiveBrowser());
 
   CheckWebContentsDoesNotHaveAppPrefs(
       browser()->tab_strip_model()->GetActiveWebContents());

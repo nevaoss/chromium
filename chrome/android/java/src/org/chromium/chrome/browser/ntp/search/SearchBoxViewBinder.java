@@ -40,9 +40,6 @@ class SearchBoxViewBinder
                     model.get(SearchBoxProperties.VOICE_SEARCH_COLOR_STATE_LIST));
             ImageViewCompat.setImageTintList(
                     lensButton, model.get(SearchBoxProperties.VOICE_SEARCH_COLOR_STATE_LIST));
-        } else if (SearchBoxProperties.VOICE_SEARCH_DRAWABLE == propertyKey) {
-            voiceSearchButton.setImageDrawable(
-                    model.get(SearchBoxProperties.VOICE_SEARCH_DRAWABLE));
         } else if (SearchBoxProperties.VOICE_SEARCH_VISIBILITY == propertyKey) {
             voiceSearchButton.setVisibility(
                     model.get(SearchBoxProperties.VOICE_SEARCH_VISIBILITY)
@@ -105,12 +102,6 @@ class SearchBoxViewBinder
                     searchBoxContainer.getPaddingLeft(),
                     searchBoxContainer.getPaddingTop(),
                     model.get(SearchBoxProperties.SEARCH_BOX_END_PADDING),
-                    searchBoxContainer.getPaddingBottom());
-        } else if (SearchBoxProperties.SEARCH_BOX_START_PADDING == propertyKey) {
-            searchBoxContainer.setPadding(
-                    model.get(SearchBoxProperties.SEARCH_BOX_START_PADDING),
-                    searchBoxContainer.getPaddingTop(),
-                    searchBoxContainer.getPaddingEnd(),
                     searchBoxContainer.getPaddingBottom());
         } else if (SearchBoxProperties.SEARCH_BOX_TEXT_STYLE_RES_ID == propertyKey) {
             searchBoxTextView.setTextAppearance(

@@ -311,6 +311,8 @@ bool IsGeminiDynamicSettingsEnabled();
 // Feature flag for Actor tools.
 BASE_DECLARE_FEATURE(kActorTools);
 bool IsActorEnabled();
+extern const char kActorToolsPageStabilityParam[];
+bool IsPageStabilityEnabled();
 
 // Returns true if the specified tool is disabled via the "DisabledTools"
 // feature parameter of the `kActorTools` feature.
@@ -399,5 +401,13 @@ BASE_DECLARE_FEATURE(kGeminiMultiTabContext);
 
 // Returns true if the GeminiMultiTabContext feature is enabled.
 bool IsGeminiMultiTabContextEnabled();
+
+// Feature flag to control the App Store In-App Events feature. Enables a
+// user to tap the promo within the iOS App Store and invoke the Gemini FRE
+// after navigating to a Gemini related web page through an external action.
+BASE_DECLARE_FEATURE(kAppStoreInAppEvents);
+
+// Returns true if the App Store In-App Events feature is enabled.
+bool IsAppStoreInAppEventsEnabled();
 
 #endif  // IOS_CHROME_BROWSER_INTELLIGENCE_FEATURES_FEATURES_H_

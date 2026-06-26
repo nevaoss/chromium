@@ -46,6 +46,12 @@ class CapabilitiesDatabase {
                               std::string target_url,
                               std::optional<int64_t> recording_id);
 
+  // Checks if the "ActivityAnnotations" table is empty.
+  bool IsActivityAnnotationsTableEmpty();
+
+  // Reads JSON and seeds the database if empty.
+  void MaybeSeedAnnotationsFromJson(const std::string& json_string);
+
   // Retrieves the annotation for a given ID, if it exists.
   std::optional<ActivityAnnotation> GetActivityAnnotation(
       int64_t annotation_id);
@@ -53,6 +59,18 @@ class CapabilitiesDatabase {
   // Retrieves all annotations for a site, returning their IDs and proto data.
   std::vector<std::pair<int64_t, ActivityAnnotation>>
   GetActivityAnnotationsByUrl(const std::string& url);
+
+  // Saves or updates activity data for an annotation.
+  bool SaveActivityData(int64_t annotation_id, const ActivityData& data);
+
+  // Retrieves activity data for an annotation.
+  std::optional<ActivityData> GetActivityData(int64_t annotation_id);
+
+  // Deletes activity data for an annotation.
+  bool DeleteActivityData(int64_t annotation_id);
+
+  // Deletes an activity annotation.
+  bool DeleteActivityAnnotation(int64_t annotation_id);
 
  private:
   // Returns the current version of the database.
@@ -66,6 +84,9 @@ class CapabilitiesDatabase {
 
   // Creates the "ActivityAnnotations" table if it doesn't exist.
   bool CreateActivityAnnotationsTable();
+
+  // Creates the "ActivityData" table if it doesn't exist.
+  bool CreateActivityDataTable();
 
   sql::Database db_;
 

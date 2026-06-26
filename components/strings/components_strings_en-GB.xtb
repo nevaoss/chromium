@@ -152,6 +152,7 @@ This will otherwise be blocked by your privacy settings. This will allow the con
 <translation id="1228893227497259893">Wrong entity identifier</translation>
 <translation id="1230244617745022071"><ph name="SOURCE" /> (auto-detected)</translation>
 <translation id="1232569758102978740">Untitled</translation>
+<translation id="1234539281285007945"><ph name="FIELD_1" /> is required</translation>
 <translation id="1236081509407217141">Allow VR?</translation>
 <translation id="1236689197410206751">AfterPay</translation>
 <translation id="1240347957665416060">Your device name</translation>
@@ -472,6 +473,7 @@ This will otherwise be blocked by your privacy settings. This will allow the con
 <translation id="1721424275792716183">* Field is required</translation>
 <translation id="1723636263173393300">This policy should not have more than <ph name="MAX_ITEMS_LIMIT" /> shortcuts.</translation>
 <translation id="1725591448053514783">Envelope You 6</translation>
+<translation id="172754119609519423"><ph name="FIELD_1" />, <ph name="FIELD_2" /> or <ph name="FIELD_3" /> is required</translation>
 <translation id="1727613060316725209">Certificate is valid</translation>
 <translation id="1728677426644403582">You're viewing the source of a web page</translation>
 <translation id="173080396488393970">This type of card isn’t supported</translation>
@@ -1432,6 +1434,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="3220264767789936523">Formal Wear</translation>
 <translation id="3223287115535306850">App launching throbber</translation>
 <translation id="3223425961342298674">Location not allowed</translation>
+<translation id="3225277284238802910"><ph name="FIELD_1" /> or <ph name="FIELD_2" /> is required</translation>
 <translation id="3225319735946384299">Code Signing</translation>
 <translation id="3225919329040284222">The server presented a certificate that doesn't match built-in expectations. These expectations are included for certain, high-security websites in order to protect you.</translation>
 <translation id="3226128629678568754">Press the reload button to resubmit the data needed to load the page.</translation>
@@ -2156,6 +2159,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="4318312030194671742">Paint preview compositor service</translation>
 <translation id="4318566738941496689">Your device name and network address</translation>
 <translation id="4320119221194966055">Personal loans</translation>
+<translation id="432088302786119211">{COUNT,plural, =1{Link received from <ph name="DEVICE_NAME" />}other{# links received from <ph name="DEVICE_NAME" />}}</translation>
 <translation id="4325600325087822253">Tray 17</translation>
 <translation id="4325863107915753736">Failed to find article</translation>
 <translation id="4326324639298822553">Check your expiry date and try again</translation>
@@ -3187,6 +3191,7 @@ To hide pay later options, go to <ph name="BEGIN_LINK" />payment settings<ph nam
 <translation id="5968400720580217226">AI Mode</translation>
 <translation id="5969199813874624822">Save and Track price</translation>
 <translation id="5969933937005244170">Relevant open tabs will only be used if you share them in a thread</translation>
+<translation id="5972020793760134803">Switch to tab</translation>
 <translation id="5973514677932942122"><ph name="EXPIRATION_DATE" /> | <ph name="SECURITY_CODE" /></translation>
 <translation id="5974052231147553524">Sixth roll</translation>
 <translation id="5975083100439434680">Zoom out</translation>
@@ -4982,6 +4987,7 @@ Additional details:
 <translation id="8758529215314160755">You can edit your name in your <ph name="BEGIN_LINK" />Google Account<ph name="END_LINK" /> <ph name="ACCOUNT" /></translation>
 <translation id="8759274551635299824">This card has expired</translation>
 <translation id="87601671197631245">This site uses an outdated security configuration, which may expose your information (for example, passwords, messages or credit cards) when it is sent to this site.</translation>
+<translation id="8763676559028782284">{COUNT,plural, =1{Link sent from <ph name="DEVICE_NAME" />}other{# links sent from <ph name="DEVICE_NAME" />}}</translation>
 <translation id="8763927697961133303">USB device</translation>
 <translation id="8763986294015493060">Close all incognito windows that are currently open</translation>
 <translation id="8766943070169463815">Secure payment credential authentication sheet is opened</translation>

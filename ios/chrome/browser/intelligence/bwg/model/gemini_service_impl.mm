@@ -89,8 +89,7 @@ GeminiServiceImpl::GeminiIneligibilityForProfile() {
   // with having the entrypoint maybe disappear at a later time (actual Gemini
   // requests to ineligible accounts will fail regardless).
   const bool is_managed_account =
-      auth_service_ &&
-      auth_service_->HasPrimaryIdentityManaged(signin::ConsentLevel::kSignin);
+      auth_service_ && auth_service_->HasPrimaryIdentityManaged();
   const bool is_eligible =
       can_use_model_execution && allowed_by_enterprise &&
       !is_disabled_by_gemini_policy_.value_or(is_managed_account) &&
@@ -165,6 +164,13 @@ void GeminiServiceImpl::CheckGeminiEnterpriseEligibility() {
                          eligibility_weak_ptr_factory_.GetWeakPtr())));
 }
 
+void GeminiServiceImpl::CheckGeminiEnterpriseEligibilityIfNeeded() {
+  if (!is_disabled_by_gemini_policy_.has_value() &&
+      !eligibility_weak_ptr_factory_.HasWeakPtrs()) {
+    CheckGeminiEnterpriseEligibility();
+  }
+}
+
 bool GeminiServiceImpl::CanUseGeminiModelExecution(
     const AccountInfo& account_info) {
   // If the account info was not found, the user is likely not authenticated.
@@ -187,6 +193,8 @@ bool GeminiServiceImpl::CanUseGeminiModelExecution(
 
 void GeminiServiceImpl::ClearConsentPref() {
   pref_service_->ClearPref(prefs::kIOSBwgConsent);
+  pref_service_->ClearPref(prefs::kIOSGeminiLiveConsent);
+  pref_service_->ClearPref(prefs::kIOSGeminiLiveIntroPlayed);
 }
 
 void GeminiServiceImpl::LogFREState() {

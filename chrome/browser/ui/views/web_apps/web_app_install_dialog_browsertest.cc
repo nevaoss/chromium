@@ -19,8 +19,11 @@
 #include "chrome/browser/shortcuts/shortcut_icon_generator.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
+#include "chrome/browser/ui/views/web_apps/progress_delay.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_dialog_delegate.h"
+#include "chrome/browser/ui/views/web_apps/web_app_install_dialog_flow_view.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_flow_dialog_delegate.h"
+#include "chrome/browser/ui/views/web_apps/web_app_install_options_view.h"
 #include "chrome/browser/ui/web_applications/web_app_dialogs.h"
 #include "chrome/browser/web_applications/ui_manager/update_dialog_types.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
@@ -34,7 +37,9 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "third_party/skia/include/core/SkColor.h"
+#include "ui/base/interaction/element_tracker.h"
 #include "ui/gfx/geometry/size.h"
+#include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/test/dialog_test.h"
 #include "ui/views/test/widget_test.h"
 #include "ui/views/widget/any_widget_observer.h"
@@ -46,15 +51,17 @@ namespace web_app {
 
 namespace {
 
-int GetTimesToAcceptDialog(const std::string& name) {
+int GetTimesToAcceptDialog(const std::string& name, InstallOsType os_type) {
   if (name == "Intro") {
     return 0;
   } else if (name == "InstallOptions") {
     return 1;
   } else if (name == "Progress") {
-    return 2;
+    // Adjust the click count for `kOther` because the `InstallOptions` step is
+    // skipped on this OS.
+    return os_type == InstallOsType::kOther ? 1 : 2;
   } else if (name == "Successful") {
-    return 3;
+    return os_type == InstallOsType::kOther ? 2 : 3;
   }
 
   NOTREACHED();
@@ -90,7 +97,8 @@ class TestWebAppScreenshotFetcher : public WebAppScreenshotFetcher {
   }
 
  private:
-  std::vector<gfx::Size> sizes_ = {gfx::Size(400, 300)};
+  std::vector<gfx::Size> sizes_ = {gfx::Size(400, 300), gfx::Size(400, 300),
+                                   gfx::Size(400, 300)};
   base::WeakPtrFactory<TestWebAppScreenshotFetcher> weak_ptr_factory_{this};
 };
 
@@ -114,7 +122,6 @@ class WebAppInstallDialogBrowserTest
   void ShowUi(const std::string& name) override {
     InstallOsType os_type = GetOsType();
     InstallDialogType dialog_type = GetDialogType();
-
     auto install_info = WebAppInstallInfo::CreateWithStartUrlForTesting(
         GURL("https://example.com"));
     install_info->title = u"Test App";
@@ -140,7 +147,9 @@ class WebAppInstallDialogBrowserTest
         dialog_type == InstallDialogType::kDetailed
             ? screenshot_fetcher_.GetWeakPtr()
             : base::WeakPtr<WebAppScreenshotFetcher>(),
-        /*show_initiating_origin=*/false, dialog_type, os_type);
+        /*show_initiating_origin=*/false, dialog_type, os_type,
+        std::make_unique<ProgressDelay>(/*delay_time=*/base::Seconds(0),
+                                        /*steps=*/1));
 
     views::Widget* widget = waiter.WaitIfNeededAndGet();
     ASSERT_NE(nullptr, widget);
@@ -149,9 +158,9 @@ class WebAppInstallDialogBrowserTest
         name, "_", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     std::vector<int> parts_to_accept_times;
     // Map the separate parts into their "number of times to accept".
-    // "Successful_Cancel" -> [3, -1]
+    // "Successful" -> [2]
     for (const std::string& part : parts) {
-      parts_to_accept_times.push_back(GetTimesToAcceptDialog(part));
+      parts_to_accept_times.push_back(GetTimesToAcceptDialog(part, os_type));
     }
 
     int total_accepts = std::accumulate(parts_to_accept_times.begin(),
@@ -195,6 +204,9 @@ IN_PROC_BROWSER_TEST_P(WebAppInstallDialogBrowserTest, InvokeUi_Intro) {
 
 IN_PROC_BROWSER_TEST_P(WebAppInstallDialogBrowserTest,
                        InvokeUi_InstallOptions) {
+  if (std::get<0>(GetParam()) == InstallOsType::kOther) {
+    GTEST_SKIP() << "InstallOptions step does not exist for kOther";
+  }
   ShowAndVerifyUi();
 }
 
@@ -258,6 +270,70 @@ INSTANTIATE_TEST_SUITE_P(
     /** prefix */,
     WebAppInstallDialogClosedTest,
     testing::Combine(testing::Values(InstallOsType::kOther),
+                     testing::Values(InstallDialogType::kSimple,
+                                     InstallDialogType::kDetailed,
+                                     InstallDialogType::kDiy)),
+    [](const testing::TestParamInfo<WebAppInstallDialogTestParams>& info) {
+      std::string os_type = base::ToString(std::get<0>(info.param));
+      std::string dialog_type = base::ToString(std::get<1>(info.param));
+      return os_type + "_" + dialog_type;
+    });
+
+class WebAppInstallDialogCheckboxTest : public WebAppInstallDialogBrowserTest {
+ protected:
+  WebAppInstallOptionsView* NavigateToAndGetOptionsView() {
+    ShowUi("InstallOptions");
+    EXPECT_TRUE(widget_);
+
+    views::View* options_view =
+        views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+            WebAppInstallOptionsView::kViewId,
+            views::ElementTrackerViews::GetContextForWidget(widget_.get()));
+    EXPECT_TRUE(options_view);
+    if (!options_view) {
+      return nullptr;
+    }
+    return static_cast<WebAppInstallOptionsView*>(options_view);
+  }
+
+  void CompleteInstallationAndVerifyDialogAccepted() {
+    // Accept the dialog until the installation is completed (InstallOptions ->
+    // Progress -> Successful).
+    widget_->widget_delegate()->AsDialogDelegate()->AcceptDialog();
+    widget_->widget_delegate()->AsDialogDelegate()->AcceptDialog();
+
+    // Close the dialog.
+    views::test::WidgetDestroyedWaiter destruction_waiter(widget_.get());
+    widget_->widget_delegate()->AsDialogDelegate()->AcceptDialog();
+    destruction_waiter.Wait();
+
+    EXPECT_EQ(dialog_accepted_, true);
+    ASSERT_TRUE(dialog_install_info_);
+  }
+};
+
+IN_PROC_BROWSER_TEST_P(WebAppInstallDialogCheckboxTest,
+                       VerifyCrosCheckboxUnchecked) {
+  WebAppInstallOptionsView* options_view = NavigateToAndGetOptionsView();
+  ASSERT_TRUE(options_view);
+  options_view->SetPinToShelfCheckedForTesting(false);
+  CompleteInstallationAndVerifyDialogAccepted();
+  EXPECT_EQ(dialog_install_info_->add_to_quick_launch_bar, false);
+}
+
+IN_PROC_BROWSER_TEST_P(WebAppInstallDialogCheckboxTest,
+                       VerifyCrosCheckboxChecked) {
+  WebAppInstallOptionsView* options_view = NavigateToAndGetOptionsView();
+  ASSERT_TRUE(options_view);
+  options_view->SetPinToShelfCheckedForTesting(true);
+  CompleteInstallationAndVerifyDialogAccepted();
+  EXPECT_EQ(dialog_install_info_->add_to_quick_launch_bar, true);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    /* prefix */,
+    WebAppInstallDialogCheckboxTest,
+    testing::Combine(testing::Values(InstallOsType::kCros),
                      testing::Values(InstallDialogType::kSimple,
                                      InstallDialogType::kDetailed,
                                      InstallDialogType::kDiy)),

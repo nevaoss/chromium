@@ -81,6 +81,10 @@ inline constexpr char kCredentialManagementUnifiedUiName[] =
 inline constexpr char kCredentialManagementUnifiedUiDescription[] =
     "Enables the Unified UI for the credential management password APIs.";
 
+inline constexpr char kCrossDeviceSigninName[] = "Cross-Device Sign-in";
+inline constexpr char kCrossDeviceSigninDescription[] =
+    "Guards the logic to start sign-in from a given QR Code.";
+
 inline constexpr char kCrossTabElementCaptureName[] =
     "Element Capture cross-tab";
 inline constexpr char kCrossTabElementCaptureDescription[] =
@@ -164,11 +168,6 @@ inline constexpr char kNewTabPageCustomizationV2Name[] =
     "Customize the new tab page V2";
 inline constexpr char kNewTabPageCustomizationV2Description[] =
     "Allows users to customize the new tab page, like appearance.";
-
-inline constexpr char kNewTabPageCustomizationForMvtName[] =
-    "Customize the new tab page for Most Visiteid Tiles";
-inline constexpr char kNewTabPageCustomizationForMvtDescription[] =
-    "Allows users to enable or disable the Most Visiteid Tiles section";
 
 inline constexpr char kAndroidAppearanceSettingsName[] = "Appearance Settings";
 inline constexpr char kAndroidAppearanceSettingsDescription[] =
@@ -496,6 +495,11 @@ inline constexpr char kDisableAutofillStrikeSystemDescription[] =
     "When enabled, the Autofill strike system will not block a feature from "
     "being offered.";
 
+inline constexpr char kDisablePartnerHomepageAndroidName[] =
+    "Disable Partner Homepage";
+inline constexpr char kDisablePartnerHomepageAndroidDescription[] =
+    "Disables the partner homepage on Android.";
+
 inline constexpr char kDisableFacilitatedPaymentsMerchantAllowlistName[] =
     "Disable the merchant allowlist check for facilitated payments";
 inline constexpr char
@@ -552,6 +556,11 @@ inline constexpr char kDesktopUAOnConnectedDisplayDescription[] =
     "When enabled, this feature will request a desktop user agent on external "
     "displays.";
 
+inline constexpr char kTabsFromOtherDevicesSidePanelName[] =
+    "Tabs from other devices side panel";
+inline constexpr char kTabsFromOtherDevicesSidePanelDescription[] =
+    "Enables the tabs from other devices side panel.";
+
 inline constexpr char kTabStripDeclutterName[] = "Tab Strip Declutter";
 inline constexpr char kTabStripDeclutterDescription[] =
     "Enables the Tab Strip Declutter feature on Desktop.";
@@ -581,11 +590,30 @@ inline constexpr char kEnableActivitylessSigninAllEntryPointDescription[] =
     "When enabled, activityless sign-in will be used for all entry points on "
     "Android.";
 
+inline constexpr char kEnableWebSigninLoadingDialogName[] =
+    "Enable Web Signin Loading Dialog";
+inline constexpr char kEnableWebSigninLoadingDialogDescription[] =
+    "Enables a dialog to be shown while users wait for cookies to be minted.";
+
+inline constexpr char kEnergyEffectName[] = "Energy Effect";
+inline constexpr char kEnergyEffectDescription[] =
+    "Enables the Energy Effect for the Realbox.";
+
+inline constexpr char kEnergyEffectAnimationName[] = "Energy Effect Animation";
+inline constexpr char kEnergyEffectAnimationDescription[] =
+    "Enables animations for the Energy Effect for the Realbox.";
+
 inline constexpr char kForceHistoryOptInScreenName[] =
     "Force history opt-in screen";
 inline constexpr char kForceHistoryOptInScreenDescription[] =
     "If enabled, the history opt-in screen will be forced to show up even if "
     "the user declined history sync too recently or too often";
+
+inline constexpr char kForceShowWebSigninLoadingDialogName[] =
+    "Force Web Signin Loading Dialog";
+inline constexpr char kForceShowWebSigninLoadingDialogDescription[] =
+    "Force show the web signin loading dialog while waiting for cookies "
+    "without a timeout.";
 
 inline constexpr char kFluidResizeName[] =
     "Enable Android desktop fluid resize";
@@ -1439,10 +1467,6 @@ inline constexpr char kGlassFrameName[] = "Glass Frame";
 inline constexpr char kGlassFrameDescription[] =
     "Enables a glass effect on the browser frame.";
 
-inline constexpr char kGlassToolbarName[] = "Glass Toolbar";
-inline constexpr char kGlassToolbarDescription[] =
-    "Enables a glass effect on the toolbar.";
-
 inline constexpr char kGlicActorName[] = "Glic actor";
 inline constexpr char kGlicActorDescription[] = "Enables the Glic actor.";
 inline constexpr char kGlicExperimentalTriggeringName[] =
@@ -1565,6 +1589,10 @@ inline constexpr char kGlicHorizontalTabToolbarButtonName[] =
 inline constexpr char kGlicHorizontalTabToolbarButtonDescription[] =
     "Enables the toolbar Gemini button when the horizontal tab strip is "
     "enabled, and disables the tab strip Gemini button.";
+inline constexpr char kGlicToolbarButtonLocationName[] =
+    "Glic Toolbar Button Location";
+inline constexpr char kGlicToolbarButtonLocationDescription[] =
+    "Specifies the location of the toolbar Gemini button.";
 
 inline constexpr char kSkillsEnabledName[] = "Skills";
 inline constexpr char kSkillsEnabledDescription[] =
@@ -1855,6 +1883,11 @@ inline constexpr char kEnableGamepadMultitouchName[] = "Gamepad Multitouch";
 inline constexpr char kEnableGamepadMultitouchDescription[] =
     "Enables the ability to receive input from multitouch surface "
     "on the gamepad object.";
+
+inline constexpr char kEnableWindowsGameInputDataFetcherName[] =
+    "Enable GameInput data fetcher";
+inline constexpr char kEnableWindowsGameInputDataFetcherDescription[] =
+    "Enables Gamepad API to use GameInput for gamepad access.";
 
 inline constexpr char kEnableGpuServiceLoggingName[] =
     "Enable gpu service logging";
@@ -2795,6 +2828,10 @@ inline constexpr char kLensOverlayName[] = "Lens overlay";
 inline constexpr char kLensOverlayDescription[] =
     "Enables Lens search via an overlay on any page.";
 
+inline constexpr char kLensOverlayAndroidName[] = "Lens overlay on Android";
+inline constexpr char kLensOverlayAndroidDescription[] =
+    "Enables Lens search via an overlay on any page on Android.";
+
 inline constexpr char kLensOverlayEduActionChipName[] =
     "Lens Overlay EDU action chip";
 inline constexpr char kLensOverlayEduActionChipDescription[] =
@@ -3204,6 +3241,11 @@ inline constexpr char kOmniboxMultimodalInputName[] =
     "Omnibox Multimodal Input";
 inline constexpr char kOmniboxMultimodalInputDescription[] =
     "When enabled, the multimodal input toolbar is shown in the Omnibox.";
+
+inline constexpr char kAndroidDesktopAimGateName[] = "Android Desktop AIM Gate";
+inline constexpr char kAndroidDesktopAimGateDescription[] =
+    "Gates the behavior of Omnibox Multimodal Input on android desktop "
+    "devices.";
 
 inline constexpr char kOmniboxNumNtpZpsRecentSearchesName[] =
     "Omnibox: Recent Searches on new tab page ZPS";
@@ -3829,12 +3871,6 @@ inline constexpr char kPrivacySandboxAdTopicsContentParityDescription[] =
     "Consent Dialog. All of these changes are subject to regional "
     "availability.";
 
-inline constexpr char kPrivacySandboxAdsApiUxEnhancementsName[] =
-    "Privacy Sandbox Ads API UX Enhancements";
-inline constexpr char kPrivacySandboxAdsApiUxEnhancementsDescription[] =
-    "Enables UI and text updates to the Privacy Sandbox Ads APIs Notice and "
-    "Consent UX, and settings pages to improve user comprehension";
-
 inline constexpr char kPrivacySandboxEnrollmentOverridesName[] =
     "Privacy Sandbox Enrollment Overrides";
 inline constexpr char kPrivacySandboxEnrollmentOverridesDescription[] =
@@ -4235,15 +4271,6 @@ inline constexpr char
              "prefills the name requirement in profile customization bubble";
 
 inline constexpr char
-    kProfileCreationFrictionReductionExperimentRemoveSigninStepName[] =
-        "Remove sign-in step from profile creation for friction reduction "
-        "experiment";
-inline constexpr char
-    kProfileCreationFrictionReductionExperimentRemoveSigninStepDescription[] =
-        "As part of the profile creation friction reduction experiment, "
-        "removes the sign-in step";
-
-inline constexpr char
     kProfileCreationFrictionReductionExperimentSkipCustomizeProfileName[] =
         "Skip customize profile step for friction reduction experiment";
 inline constexpr char
@@ -4412,6 +4439,9 @@ inline constexpr char kTopControlsRefactorV2Description[] =
 inline constexpr char kToolbarGlowUpName[] = "Toolbar Glow Up";
 inline constexpr char kToolbarGlowUpDescription[] =
     "Enables the Toolbar Glow Up feature.";
+
+inline constexpr char kRoundedIconsName[] = "Rounded Icons";
+inline constexpr char kRoundedIconsDescription[] = "Enables rounded icons.";
 
 inline constexpr char kToolbarPhoneAnimationRefactorName[] =
     "Toolbar Phone Animation Refactor";
@@ -5327,6 +5357,10 @@ inline constexpr char kAndroidWindowPopupResizeAfterSpawnDescription[] =
     "enable-android-window-popup-predict-final-bounds flag that regulates "
     "pre-creation bounds adjustments.";
 
+inline constexpr char kAndroidTabGroupColorsName[] = "Android Tab Group Colors";
+inline constexpr char kAndroidTabGroupColorsDescription[] =
+    "Enable new tab group colors on Android.";
+
 inline constexpr char kAndroidZoomImmersiveName[] = "Android Zoom Immersive";
 inline constexpr char kAndroidZoomImmersiveDescription[] =
     "Enable immersive mode on Android via app menu page zoom option.";
@@ -6042,12 +6076,6 @@ inline constexpr char kSubmenusInAppMenuDescription[] =
     "Enables displaying submenus in the app menu, using drilldown or flyout "
     "depending on conditions.";
 
-inline constexpr char kSubmenusTabContextMenuLffTabStripName[] =
-    "Submenus in LFF Tab Context Menu on LFF Tab Strip";
-inline constexpr char kSubmenusTabContextMenuLffTabStripDescription[] =
-    "Enables submenus (for moving tabs to groups or windows) in the tab "
-    "context menu on LFF tab strip";
-
 inline constexpr char kTabBottomSheetName[] = "Tab bottom sheet";
 inline constexpr char kTabBottomSheetDescription[] =
     "Enables the tab bottom sheet feature.";
@@ -6127,11 +6155,6 @@ inline constexpr char kWebFeedDeprecationDescription[] =
 inline constexpr char kWebFeedOnboardingName[] = "Web Feed Onboarding";
 inline constexpr char kWebFeedOnboardingDescription[] =
     "Helps the user understand how to use the web feed.";
-
-inline constexpr char kWebFeedSortName[] = "Web Feed Sort";
-inline constexpr char kWebFeedSortDescription[] =
-    "Allows users to sort their web content in the web feed. "
-    "Only works if Web Feed is also enabled.";
 
 inline constexpr char kWebSerialWiredDevicesAndroidName[] =
     "Web Serial API for Wired Devices";
@@ -6313,6 +6336,11 @@ inline constexpr char kReadAnythingDocsLoadMoreButtonName[] =
 inline constexpr char kReadAnythingDocsLoadMoreButtonDescription[] =
     "Adds a button to the end of the Reading Mode UI. When clicked, "
     "the main page scrolls to show the next page's content.";
+
+inline constexpr char kReadAnythingReadabilitySelectTextName[] =
+    "Reading Mode Select Text with Readability";
+inline constexpr char kReadAnythingReadabilitySelectTextDescription[] =
+    "Enables the select text feature for readability distillation";
 
 inline constexpr char kReadAnythingWithReadabilityName[] =
     "Reading Mode Experimental Webpage Distilation";
@@ -7799,6 +7827,11 @@ inline constexpr char kTrafficCountersForWiFiTestingDescription[] =
 
 inline constexpr char kUploadOfficeToCloudName[] =
     "Enable Office files upload workflow.";
+
+inline constexpr char kUserMediaElementName[] = "UserMediaElement";
+inline constexpr char kUserMediaElementDescription[] =
+    "Enables the <usermedia> element, allowing sites to embed a "
+    "camera/microphone permission request directly in the page.";
 
 inline constexpr char kUserMediaScreenCapturingName[] =
     "User Media Screen Capturing";

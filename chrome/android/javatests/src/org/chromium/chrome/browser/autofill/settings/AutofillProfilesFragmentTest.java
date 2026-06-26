@@ -29,7 +29,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -114,7 +114,6 @@ import org.chromium.components.autofill.autofill_ai.utils.TestUtils;
 import org.chromium.components.browser_ui.settings.CardWithButtonPreference;
 import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
 import org.chromium.components.signin.base.AccountInfo;
-import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.signin.test.util.TestAccounts;
 import org.chromium.components.sync.SyncService;
@@ -866,7 +865,7 @@ public class AutofillProfilesFragmentTest {
         IdentityServicesProvider.setInstanceForTests(mIdentityServicesProvider);
         when(IdentityServicesProvider.get().getIdentityManager(any()))
                 .thenReturn(mIdentityManagerMock);
-        when(mIdentityManagerMock.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(false);
+        when(mIdentityManagerMock.hasPrimaryAccount()).thenReturn(false);
         setUpMockSyncService(new HashSet<>());
 
         verifyAddressProfileIcons(/* expectedLocalIconLayout= */ 0);
@@ -1138,7 +1137,8 @@ public class AutofillProfilesFragmentTest {
                         vehicleType,
                         /* entityInstanceLabel= */ "Vehicle",
                         /* entityInstanceSubLabel= */ "Mercedez",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
                 new LinkedHashMap<>();
         instancesMap.put(vehicleType, Arrays.asList(entity1));
@@ -1173,7 +1173,8 @@ public class AutofillProfilesFragmentTest {
                         vehicleType,
                         /* entityInstanceLabel= */ "Vehicle",
                         /* entityInstanceSubLabel= */ "Mercedez",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         EntityInstanceWithLabels entity2 =
                 new EntityInstanceWithLabels(
@@ -1181,7 +1182,8 @@ public class AutofillProfilesFragmentTest {
                         passportType,
                         /*entityName*/ "Passport",
                         /* entityInstanceSubLabel= */ "Germany",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
                 new LinkedHashMap<>();
@@ -1348,7 +1350,12 @@ public class AutofillProfilesFragmentTest {
 
         EntityInstanceWithLabels entity =
                 new EntityInstanceWithLabels(
-                        "guid1", disabledType, "Label", "Sublabel", /* storedInWallet= */ false);
+                        "guid1",
+                        disabledType,
+                        "Label",
+                        "Sublabel",
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
                 new LinkedHashMap<>();
@@ -1389,7 +1396,8 @@ public class AutofillProfilesFragmentTest {
                         vehicleType,
                         /* entityInstanceLabel= */ "B",
                         /* entityInstanceSubLabel= */ "2",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         EntityInstanceWithLabels entity2 =
                 new EntityInstanceWithLabels(
@@ -1397,7 +1405,8 @@ public class AutofillProfilesFragmentTest {
                         vehicleType,
                         /* entityInstanceLabel= */ "A",
                         /* entityInstanceSubLabel= */ "1",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         EntityInstanceWithLabels entity3 =
                 new EntityInstanceWithLabels(
@@ -1405,7 +1414,8 @@ public class AutofillProfilesFragmentTest {
                         vehicleType,
                         /* entityInstanceLabel= */ "A",
                         /* entityInstanceSubLabel= */ "2",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         // Sorting is now expected to be done by getInstancesToList.
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
@@ -1449,7 +1459,7 @@ public class AutofillProfilesFragmentTest {
     @Test
     @MediumTest
     @Feature({"Preferences"})
-    public void testAutofillAiEntities_opensEditorOnAddClick() throws Exception {
+    public void testAutofillAiEntities_opensEditorOnAddClickForLocalEntity() throws Exception {
         EntityType vehicleType = TestUtils.getVehicleEntityType();
 
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
@@ -1476,7 +1486,59 @@ public class AutofillProfilesFragmentTest {
                             return category.findPreference("Vehicle" + " Add");
                         });
         assertNotNull(addVehicle);
+        int callCount = rule.mClickUpdate.getCallCount();
         ThreadUtils.runOnUiThreadBlocking(addVehicle::performClick);
+        rule.mClickUpdate.waitForCallback(callCount);
+
+        onView(withText("Add Vehicle")).check(matches(isDisplayed()));
+
+        // Click the "Done" button.
+        onView(withText("Done")).perform(click());
+        verify(sEntityDataManager)
+                .addOrUpdateEntityInstance(
+                        any(),
+                        eq(R.string.autofill_ai_save_or_update_local_entity_source_notice),
+                        eq(R.string.done),
+                        any());
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"Preferences"})
+    public void testAutofillAiEntities_opensEditorOnAddClickForWalletEntity() throws Exception {
+        EntityType vehicleType =
+                TestUtils.getVehicleEntityType(
+                        /* isReadOnly= */ false,
+                        /* isEnabled= */ true,
+                        /* isEligibleForWalletStorage= */ true);
+
+        LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
+                new LinkedHashMap<>();
+        instancesMap.put(vehicleType, Collections.emptyList());
+
+        when(sEntityDataManager.getInstancesToList()).thenReturn(instancesMap);
+        when(sEntityDataManager.isEligibleToAutofillAi()).thenReturn(true);
+        when(sEntityDataManager.getAutofillAiOptInStatus()).thenReturn(true);
+        when(sEntityDataManager.canEnableOrDisableAutofillAi()).thenReturn(true);
+        EntityDataManagerFactory.setInstanceForTesting(sEntityDataManager);
+
+        // Trigger a rebuild of the profile list to pick up the new mock entities.
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> sSettingsActivityTestRule.getFragment().onPersonalDataChanged());
+
+        Preference addVehicle =
+                ThreadUtils.runOnUiThreadBlocking(
+                        () -> {
+                            PreferenceCategory category =
+                                    sSettingsActivityTestRule
+                                            .getFragment()
+                                            .findPreference("Vehicle");
+                            return category.findPreference("Vehicle" + " Add");
+                        });
+        assertNotNull(addVehicle);
+        int callCount = rule.mClickUpdate.getCallCount();
+        ThreadUtils.runOnUiThreadBlocking(addVehicle::performClick);
+        rule.mClickUpdate.waitForCallback(callCount);
 
         onView(withText("Add Vehicle")).check(matches(isDisplayed()));
 
@@ -1486,7 +1548,10 @@ public class AutofillProfilesFragmentTest {
         ArgumentCaptor<Runnable> localSaveFallbackCaptor = ArgumentCaptor.forClass(Runnable.class);
         verify(sEntityDataManager)
                 .addOrUpdateEntityInstance(
-                        any(), anyInt(), anyInt(), localSaveFallbackCaptor.capture());
+                        any(),
+                        eq(R.string.autofill_ai_save_or_update_entity_in_wallet_source_notice),
+                        eq(R.string.done),
+                        localSaveFallbackCaptor.capture());
 
         ThreadUtils.runOnUiThreadBlocking(() -> localSaveFallbackCaptor.getValue().run());
 
@@ -1526,7 +1591,8 @@ public class AutofillProfilesFragmentTest {
                         vehicleType,
                         /* entityInstanceLabel= */ "Vehicle",
                         /* entityInstanceSubLabel= */ "Mercedez",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
                 new LinkedHashMap<>();
@@ -1594,7 +1660,9 @@ public class AutofillProfilesFragmentTest {
                             return category.findPreference("Vehicle" + " Add");
                         });
         assertNotNull(addVehicle);
+        int callCount = rule.mClickUpdate.getCallCount();
         ThreadUtils.runOnUiThreadBlocking(addVehicle::performClick);
+        rule.mClickUpdate.waitForCallback(callCount);
 
         onView(withText("Add Vehicle")).check(matches(isDisplayed()));
 
@@ -1640,7 +1708,9 @@ public class AutofillProfilesFragmentTest {
                             return category.findPreference("Vehicle" + " Add");
                         });
         assertNotNull(addVehicle);
+        int callCount = rule.mClickUpdate.getCallCount();
         ThreadUtils.runOnUiThreadBlocking(addVehicle::performClick);
+        rule.mClickUpdate.waitForCallback(callCount);
 
         onView(withText("Add Vehicle")).check(matches(isDisplayed()));
 
@@ -1669,7 +1739,8 @@ public class AutofillProfilesFragmentTest {
                         vehicleType,
                         /* entityInstanceLabel= */ "Vehicle",
                         /* entityInstanceSubLabel= */ "Mercedez",
-                        /* storedInWallet= */ true);
+                        /* storedInWallet= */ true,
+                        /* walletEntityUrl= */ null);
 
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
                 new LinkedHashMap<>();
@@ -1714,7 +1785,8 @@ public class AutofillProfilesFragmentTest {
                         vehicleType,
                         /* entityInstanceLabel= */ "Vehicle",
                         /* entityInstanceSubLabel= */ "Mercedez",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap1 =
                 new LinkedHashMap<>();
@@ -1823,7 +1895,8 @@ public class AutofillProfilesFragmentTest {
                         TestUtils.getVehicleEntityType(),
                         /* entityInstanceLabel= */ "Vehicle",
                         /* entityInstanceSubLabel= */ "Mercedez",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
                 new LinkedHashMap<>();
@@ -1872,7 +1945,8 @@ public class AutofillProfilesFragmentTest {
                         TestUtils.getVehicleEntityType(),
                         /* entityInstanceLabel= */ "Vehicle",
                         /* entityInstanceSubLabel= */ "Mercedez",
-                        /* storedInWallet= */ false);
+                        /* storedInWallet= */ false,
+                        /* walletEntityUrl= */ null);
 
         LinkedHashMap<EntityType, List<EntityInstanceWithLabels>> instancesMap =
                 new LinkedHashMap<>();
@@ -2032,9 +2106,8 @@ public class AutofillProfilesFragmentTest {
         IdentityServicesProvider.setInstanceForTests(mIdentityServicesProvider);
         when(IdentityServicesProvider.get().getIdentityManager(any()))
                 .thenReturn(mIdentityManagerMock);
-        when(mIdentityManagerMock.getPrimaryAccountInfo(ConsentLevel.SIGNIN))
-                .thenReturn(accountInfo);
-        when(mIdentityManagerMock.hasPrimaryAccount(ConsentLevel.SIGNIN)).thenReturn(true);
+        when(mIdentityManagerMock.getPrimaryAccountInfo()).thenReturn(accountInfo);
+        when(mIdentityManagerMock.hasPrimaryAccount()).thenReturn(true);
     }
 
     private void setUpMockSyncService(Set<Integer> selectedTypes) {
@@ -2198,7 +2271,7 @@ public class AutofillProfilesFragmentTest {
                 .show(
                         sSettingsActivityTestRule.getActivity(),
                         ContextUtils.getApplicationContext()
-                                .getString(org.chromium.chrome.R.string.help_context_autofill),
+                                .getString(R.string.help_context_autofill),
                         /* url= */ null);
     }
 }

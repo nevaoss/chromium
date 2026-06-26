@@ -83,6 +83,26 @@ if (current_toolchain == default_toolchain && !use_unified_system_module) {
     visibility = [ ":headers" ]
   }
 
+  # TODO(crbug.com/503250165): copy_libcxx_headers does not handle file
+  # removals correctly.  It'd probably better if it used a script that took all
+  # files either on the commandline or in a response file, and that then
+  # deleted the outdir before copying over all files. That way, when files are
+  # added or removed, ninja's commandline tracking logic will notice file
+  # removals. For now, this action deletes one file where removal is important.
+  action("remove_float_h") {
+    script = "//build/rm.py"
+    stamp = "$target_gen_dir/clean_up_float_h_stamp"
+    outputs = [ stamp ]
+    args = [
+      "--stamp",
+      rebase_path(stamp, root_build_dir),
+      "-f",
+      "gen/third_party/libc++/src/include/float.h",
+    ]
+
+    visibility = [ ":headers" ]
+  }
+
   # Note: there are setups where clang_modules is enabled for some, but not all,
   # toolchains (see https://crrev.com/c/6849070). So, this copy must happen
   # unconditionally.
@@ -110,6 +130,7 @@ group("headers") {
     deps = [
       ":copy_custom_headers($default_toolchain)",
       ":copy_libcxx_headers($default_toolchain)",
+      ":remove_float_h($default_toolchain)",
     ]
   }
 }
@@ -256,10 +277,7 @@ if (use_clang_modules && use_unified_system_module) {
   }
 
   builtin_module("_Builtin_limits") {
-    public_deps = [
-      ":std_float_h",
-      ":sysroot_limits",
-    ]
+    public_deps = [ ":sysroot_limits" ]
   }
 
   builtin_module("_Builtin_stdalign") {
@@ -268,15 +286,10 @@ if (use_clang_modules && use_unified_system_module) {
   builtin_module("_Builtin_stdarg") {
   }
 
-  builtin_module("_Builtin_stdatomic") {
-    public_deps = [
-      ":_Builtin_stddef",
-      ":_Builtin_stdint",
-      ":sysroot_stdatomic",
-    ]
+  builtin_module("_Builtin_stdbool") {
   }
 
-  builtin_module("_Builtin_stdbool") {
+  builtin_module("_Builtin_stdckdint") {
   }
 
   builtin_module("_Builtin_stddef") {
@@ -301,8 +314,8 @@ if (use_clang_modules && use_unified_system_module) {
       "//buildtools/third_party/libc++:_Builtin_limits",
       "//buildtools/third_party/libc++:_Builtin_stdalign",
       "//buildtools/third_party/libc++:_Builtin_stdarg",
-      "//buildtools/third_party/libc++:_Builtin_stdatomic",
       "//buildtools/third_party/libc++:_Builtin_stdbool",
+      "//buildtools/third_party/libc++:_Builtin_stdckdint",
       "//buildtools/third_party/libc++:_Builtin_stddef",
       "//buildtools/third_party/libc++:_Builtin_stdint",
       "//buildtools/third_party/libc++:_Builtin_unwind",
@@ -312,13 +325,13 @@ if (use_clang_modules && use_unified_system_module) {
 
   libcxx_module("std") {
     public_deps = [
+      ":_Builtin_float",
       ":_Builtin_limits",
       ":_Builtin_stdalign",
       ":std_core",
       ":std_ctype_h",
       ":std_errno_h",
       ":std_fenv_h",
-      ":std_float_h",
       ":std_inttypes_h",
       ":std_math_h",
       ":std_private_mbstate_t",
@@ -369,13 +382,6 @@ if (use_clang_modules && use_unified_system_module) {
     ]
   }
 
-  libcxx_module("std_float_h") {
-    public_deps = [
-      ":_Builtin_float",
-      ":std_config",
-    ]
-  }
-
   libcxx_module("std_inttypes_h") {
     public_deps = [
       ":_Builtin_inttypes",
@@ -399,11 +405,7 @@ if (use_clang_modules && use_unified_system_module) {
   }
 
   libcxx_module("std_stdatomic_h") {
-    public_deps = [
-      ":_Builtin_stdatomic",
-      ":std_config",
-      ":sysroot_stdint",
-    ]
+    public_deps = [ ":std" ]
   }
 
   libcxx_module("std_string_h") {
@@ -436,7 +438,6 @@ if (use_clang_modules && use_unified_system_module) {
       ":std_ctype_h",
       ":std_errno_h",
       ":std_fenv_h",
-      ":std_float_h",
       ":std_inttypes_h",
       ":std_math_h",
       ":std_private_mbstate_t",

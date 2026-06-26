@@ -64,11 +64,14 @@ class PanelStateObserver : public base::CheckedObserver {
  public:
   virtual void PanelStateChanged(const mojom::PanelState& panel_state,
                                  const PanelStateContext& context) = 0;
+  virtual void OnInstanceDestroyed() {}
 };
 
 // Public interface for one instance of the glic web client.
 class GlicInstance {
  public:
+  virtual ~GlicInstance();
+
   virtual bool IsShowing() const = 0;
 
   virtual bool IsActive() = 0;
@@ -98,6 +101,9 @@ class GlicInstance {
 
   // Get the current conversation ID for this instance.
   virtual std::optional<std::string> conversation_id() const = 0;
+
+  // Get the current conversation title for this instance.
+  virtual std::string conversation_title() const = 0;
 
   // Returns the timestamp when the instance last became active.
   virtual base::Time GetLastActivationTimestamp() const = 0;

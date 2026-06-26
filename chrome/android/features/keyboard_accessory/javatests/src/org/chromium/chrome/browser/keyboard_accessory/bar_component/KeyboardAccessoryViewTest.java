@@ -49,6 +49,7 @@ import android.graphics.Rect;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
@@ -807,9 +808,19 @@ public class KeyboardAccessoryViewTest {
     @Test
     @MediumTest
     public void testScrollingNotResetOnItemUpdate() throws InterruptedException {
+        AtomicInteger obfuscatedChildAt = new AtomicInteger(-1);
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
+                    mModel.set(OBFUSCATED_CHILD_AT_CALLBACK, obfuscatedChildAt::set);
                     mModel.set(VISIBLE, true);
+                    mModel.get(BAR_ITEMS).set(createAutofillChipAndTab("John", null));
+                });
+        KeyboardAccessoryView view = mKeyboardAccessoryView.take();
+        CriteriaHelper.pollUiThread(() -> view.mBarItemsView.getChildCount() > 0);
+        assertThat(obfuscatedChildAt.get(), is(-1));
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
                     mModel.get(BAR_ITEMS)
                             .set(
                                     new BarItem[] {
@@ -830,8 +841,8 @@ public class KeyboardAccessoryViewTest {
                                         createSheetOpener()
                                     });
                 });
-        KeyboardAccessoryView view = mKeyboardAccessoryView.take();
-        CriteriaHelper.pollUiThread(() -> view.mBarItemsView.getChildCount() > 0);
+        onViewWaiting(withText("Item 1 - very long text to fill width"));
+        CriteriaHelper.pollUiThread(() -> obfuscatedChildAt.get() > -1);
 
         // Scroll the view manually
         ThreadUtils.runOnUiThreadBlocking(() -> view.mBarItemsView.scrollBy(500, 0));
@@ -1176,7 +1187,7 @@ public class KeyboardAccessoryViewTest {
 
         CoordinatorLayout.LayoutParams params =
                 (CoordinatorLayout.LayoutParams) view.getLayoutParams();
-        assertEquals(android.view.Gravity.LEFT | android.view.Gravity.TOP, params.gravity);
+        assertEquals(Gravity.LEFT | Gravity.TOP, params.gravity);
         assertEquals(verticalOffset, params.topMargin);
         assertEquals(0, view.getPaddingTop());
         assertEquals(
@@ -1209,7 +1220,7 @@ public class KeyboardAccessoryViewTest {
         ThreadUtils.runOnUiThreadBlocking(() -> view.setStyle(topNotchStyle));
         CoordinatorLayout.LayoutParams params =
                 (CoordinatorLayout.LayoutParams) view.getLayoutParams();
-        assertEquals(android.view.Gravity.LEFT | android.view.Gravity.TOP, params.gravity);
+        assertEquals(Gravity.LEFT | Gravity.TOP, params.gravity);
         assertEquals(verticalOffset, params.topMargin);
         assertEquals(0, view.getPaddingBottom());
         assertEquals(

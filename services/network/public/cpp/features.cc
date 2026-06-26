@@ -605,10 +605,15 @@ BASE_FEATURE(kNetworkServicePerPriorityTaskQueues,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kUseUnexportableKeyServiceInBrowserProcess,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+#if BUILDFLAG(IS_WIN)
+             base::FEATURE_ENABLED_BY_DEFAULT
+#else
+             base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+);
 
 BASE_FEATURE(kBypassRequestForbiddenHeadersCheck,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the network service will prohibit modifications to the Origin
 // header in FollowRedirect.

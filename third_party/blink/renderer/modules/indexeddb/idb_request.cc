@@ -28,12 +28,12 @@
 
 #include "third_party/blink/renderer/modules/indexeddb/idb_request.h"
 
-#include <atomic>
 #include <memory>
 #include <optional>
 #include <utility>
 
 #include "base/metrics/histogram_macros.h"
+#include "base/trace_event/trace_id_helper.h"
 #include "third_party/blink/public/platform/web_blob_info.h"
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_binding_for_modules.h"
@@ -181,9 +181,10 @@ void RecordHistogram(IDBRequest::TypeForMetrics type,
 
 IDBRequest::AsyncTraceState::AsyncTraceState(TypeForMetrics type)
     : type_(type), start_time_(base::TimeTicks::Now()) {
+  id_ = base::trace_event::GetNextGlobalTraceId();
   TRACE_EVENT_BEGIN("IndexedDB",
                     perfetto::StaticString(RequestTypeToName(type)),
-                    perfetto::NamedTrack::FromPointer("IDBRequest", this));
+                    perfetto::Track(id_));
 }
 
 void IDBRequest::AsyncTraceState::WillDispatchResult(bool success) {
@@ -195,8 +196,7 @@ void IDBRequest::AsyncTraceState::WillDispatchResult(bool success) {
 
 void IDBRequest::AsyncTraceState::RecordAndReset() {
   if (type_) {
-    TRACE_EVENT_END("IndexedDB",
-                    perfetto::NamedTrack::FromPointer("IDBRequest", this));
+    TRACE_EVENT_END("IndexedDB", perfetto::Track(id_));
     type_.reset();
   }
 }
@@ -263,7 +263,7 @@ IDBRequest::~IDBRequest() {
   if (!GetExecutionContext())
     return;
   if (ready_state_ == DONE)
-    DCHECK(metrics_.IsEmpty());
+    DCHECK(metrics_.IsEmpty()) << metrics_.id();
   else
     DCHECK_EQ(ready_state_, kEarlyDeath);
 }

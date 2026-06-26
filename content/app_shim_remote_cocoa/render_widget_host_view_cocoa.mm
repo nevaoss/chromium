@@ -805,6 +805,20 @@ static NSWindow* __weak _deferredResignKeyWindow;
       [self acceptsMouseEventsOption] > AcceptMouseEvents::kWhenInActiveWindow;
 }
 
+- (BOOL)shouldBecomeFirstResponderOnRightClick {
+  if (![self acceptsFirstResponder]) {
+    return NO;
+  }
+
+  if (_responderDelegate &&
+      [_responderDelegate respondsToSelector:@selector
+                          (shouldBecomeFirstResponderOnRightClick)]) {
+    return [_responderDelegate shouldBecomeFirstResponderOnRightClick];
+  }
+
+  return NO;
+}
+
 - (AcceptTooltipEvents)acceptsTooltipEvents {
   // The embedder may override this behavior to mimic native UI.
   if (_responderDelegate &&
@@ -997,6 +1011,17 @@ static NSWindow* __weak _deferredResignKeyWindow;
     if (_preContextualMenuSelectionRange.length == 0) {
       _willInvokeContextMenuWithEmptySelection = YES;
     }
+  }
+
+  // By default, a right mouse event does not make the view the first
+  // responder. Consequently, the page does not receive focus or blur events.
+  // This causes unintuitive behavior for WebUI-based menus that rely on blur
+  // events to dismiss themselves. Therefore, we allow the embedder to decide
+  // whether to make the view the first responder on a right mouse down.
+  if (theEvent.type == NSEventTypeRightMouseDown &&
+      [self shouldBecomeFirstResponderOnRightClick] &&
+      [self.window firstResponder] != self) {
+    [self.window makeFirstResponder:self];
   }
 
   if (_responderDelegate &&
@@ -1213,7 +1238,7 @@ static NSWindow* __weak _deferredResignKeyWindow;
   // to perform browser commands such as switching tabs. We only want to handle
   // key equivalents if we're first responder in the keyWindow.
   if (![[self window] isKeyWindow] || [[self window] firstResponder] != self) {
-    TRACE_EVENT_INSTANT0("browser", "NotKeyWindow", TRACE_EVENT_SCOPE_THREAD);
+    TRACE_EVENT_INSTANT("browser", "NotKeyWindow");
     return NO;
   }
 

@@ -58,7 +58,6 @@ import org.chromium.components.signin.AccountUtils;
 import org.chromium.components.signin.GAIAServiceType;
 import org.chromium.components.signin.base.AccountInfo;
 import org.chromium.components.signin.base.CoreAccountInfo;
-import org.chromium.components.signin.identitymanager.ConsentLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.signin.metrics.SignoutReason;
 import org.chromium.components.sync.SyncService;
@@ -171,7 +170,7 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
 
         if (getPreferenceScreen() != null) getPreferenceScreen().removeAll();
 
-        mSignedInCoreAccountInfo = getIdentityManager().getPrimaryAccountInfo(ConsentLevel.SIGNIN);
+        mSignedInCoreAccountInfo = getIdentityManager().getPrimaryAccountInfo();
         List<AccountInfo> accounts =
                 AccountUtils.getAccountsIfFulfilledOrEmpty(
                         AccountManagerFacadeProvider.getInstance().getAccounts());
@@ -223,16 +222,13 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
         } else {
             signOutPreference.setLayoutResource(R.layout.account_management_account_row);
             signOutPreference.setIcon(R.drawable.ic_signout_40dp);
-            signOutPreference.setTitle(
-                    getIdentityManager().hasPrimaryAccount(ConsentLevel.SYNC)
-                            ? R.string.sign_out_and_turn_off_sync
-                            : R.string.sign_out);
+            signOutPreference.setTitle(R.string.sign_out);
             signOutPreference.setOnPreferenceClickListener(
                     preference -> {
                         if (!isVisible() || !isResumed()) {
                             return false;
                         }
-                        if (!getIdentityManager().hasPrimaryAccount(ConsentLevel.SIGNIN)) {
+                        if (!getIdentityManager().hasPrimaryAccount()) {
                             // Primary account might have been signed-out asynchronously already.
                             return false;
                         }
@@ -342,7 +338,7 @@ public class AccountManagementFragment extends ChromeBaseSettingsFragment
                             assert assertNonNull(
                                             IdentityServicesProvider.get()
                                                     .getIdentityManager(getProfile()))
-                                    .hasPrimaryAccount(ConsentLevel.SIGNIN);
+                                    .hasPrimaryAccount();
                             SyncSettingsUtils.openGoogleMyAccount(getActivity());
                         }));
 

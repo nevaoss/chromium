@@ -108,14 +108,12 @@ BASE_DECLARE_FEATURE(kCCTClientDataHeader);
 BASE_DECLARE_FEATURE(kCCTContextualMenuItems);
 BASE_DECLARE_FEATURE(kCCTDestroyTabWhenModelIsEmpty);
 BASE_DECLARE_FEATURE(kCCTExtendTrustedCdnPublisher);
-BASE_DECLARE_FEATURE(kCCTFixWarmup);
 BASE_DECLARE_FEATURE(kCCTFreInSameTask);
 BASE_DECLARE_FEATURE(kCCTGoogleBottomBar);
 BASE_DECLARE_FEATURE(kCCTGoogleBottomBarVariantLayouts);
 BASE_DECLARE_FEATURE(kCCTIncognitoAvailableToThirdParty);
 BASE_DECLARE_FEATURE(kCCTMinimized);
 BASE_DECLARE_FEATURE(kCCTMinimizedEnabledByDefault);
-BASE_DECLARE_FEATURE(kCCTMultipleParallelRequests);
 BASE_DECLARE_FEATURE(kCCTNavigationMetrics);
 BASE_DECLARE_FEATURE(kCCTNavigationalPrefetch);
 BASE_DECLARE_FEATURE(kCCTNestedSecurityIcon);
@@ -130,7 +128,6 @@ BASE_DECLARE_FEATURE(kCCTResetTimeoutAllowed);
 BASE_DECLARE_FEATURE(kCCTResetTimeoutEnabled);
 BASE_DECLARE_FEATURE(kCCTResizableForThirdParties);
 BASE_DECLARE_FEATURE(kCCTRetainingStateInMemory);
-BASE_DECLARE_FEATURE(kCCTShowTabFix);
 BASE_DECLARE_FEATURE(kCCTTabModalDialog);
 BASE_DECLARE_FEATURE(kCCTToolbarRefactor);
 BASE_DECLARE_FEATURE(kCacheActivityTaskID);
@@ -163,6 +160,7 @@ BASE_DECLARE_FEATURE(kDeferNavigationStateChanged);
 BASE_DECLARE_FEATURE(kDesktopAndroidLinkCapturing);
 BASE_DECLARE_FEATURE(kDesktopUAOnConnectedDisplay);
 BASE_DECLARE_FEATURE(kDeviceAuthenticatorAndroidx);
+BASE_DECLARE_FEATURE(kDisablePartnerHomepageAndroid);
 BASE_DECLARE_FEATURE(kDiscardPageWithCrashedSubframePolicy);
 BASE_DECLARE_FEATURE(kDiscardPageWithCrashedSubframeRelaxedEligibility);
 BASE_DECLARE_FEATURE(kDontAutoHideBrowserControls);
@@ -222,7 +220,6 @@ BASE_DECLARE_FEATURE(kMoveToFrontInLaunchIntentDispatcher);
 BASE_DECLARE_FEATURE(kMultiInstanceSharedPrefsMigration);
 BASE_DECLARE_FEATURE(kMvcUpdateViewWhenModelChanged);
 BASE_DECLARE_FEATURE(kNavBarColorAnimation);
-BASE_DECLARE_FEATURE(kNewTabPageCustomizationForMvt);
 BASE_DECLARE_FEATURE(kNewTabPageCustomizationV2);
 BASE_DECLARE_FEATURE(kNotificationPermissionVariant);
 BASE_DECLARE_FEATURE(kNotificationTrampoline);
@@ -275,7 +272,6 @@ BASE_DECLARE_FEATURE(kShowTabListAnimations);
 BASE_DECLARE_FEATURE(kSmallerTabStripTitleLimit);
 BASE_DECLARE_FEATURE(kStartSurfaceReturnTime);
 BASE_DECLARE_FEATURE(kSubmenusInAppMenu);
-BASE_DECLARE_FEATURE(kSubmenusTabContextMenuLffTabStrip);
 BASE_DECLARE_FEATURE(kSuppressToolbarCapturesAtGestureEnd);
 BASE_DECLARE_FEATURE(kTabBottomSheet);
 BASE_DECLARE_FEATURE(kTabClosureMethodRefactor);
@@ -320,6 +316,11 @@ inline constexpr base::FeatureParam<int> kAppIntegrationMaxDonationCountParam(
     "max_donation_count",
     100);
 
+inline constexpr base::FeatureParam<std::string>
+    kAndroidSidePanelDevFeatureScopeParam(&kEnableAndroidSidePanelDevFeature,
+                                          "scope",
+                                          "window");
+
 inline constexpr base::FeatureParam<int>
     kAppIntegrationCCTVisitDurationLimitSecParam(
         &kAndroidAppIntegrationMultiDataSource,
@@ -347,6 +348,11 @@ inline constexpr base::FeatureParam<bool> kCCTNavigationalPrefetchHoldback(
     "holdback",
     false);
 
+inline constexpr base::FeatureParam<bool>
+    kEnableAndroidSidePanelDisableAnimations(&kEnableAndroidSidePanel,
+                                             "disable_animations",
+                                             false);
+
 // If it does not support PERCEPTIBLE importance (e.g. Android Q- does not
 // support not-perceptible binding), protected tabs have MODERATE importance as
 // fallback.
@@ -354,6 +360,11 @@ inline constexpr base::FeatureParam<bool> kFallbackToModerateParam(
     &kProtectedTabsAndroid,
     "fallback_to_moderate",
     /*default_value=*/false);
+
+inline constexpr base::FeatureParam<int> kGestureUserEducationPageDelay(
+    &kGestureUserEducationBackSwipe,
+    "gesture-user-education-page-delay",
+    /*default_value=*/4000);
 
 inline constexpr base::FeatureParam<int> kProtectRecentlyVisibleTabDuration(
     &kProtectRecentlyVisibleTab,
