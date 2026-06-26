@@ -151,14 +151,10 @@ void LogTimeToStartRunLoop(const base::CommandLine& command_line,
 int RendererMain(MainFunctionParams parameters) {
   // Don't use the TRACE_EVENT0 macro because the tracing infrastructure doesn't
   // expect synchronous events around the main loop of a thread.
-<<<<<<< HEAD
-  TRACE_EVENT_INSTANT0("startup", "RendererMain", TRACE_EVENT_SCOPE_THREAD);
+  TRACE_EVENT_INSTANT("startup", "RendererMain");
 #if defined(USE_LTTNG)
   base::NativeLibrary lttng_native_library = neva::LttngInit();
 #endif
-=======
-  TRACE_EVENT_INSTANT("startup", "RendererMain");
->>>>>>> 5766c4211250d449c1bd381942aba397b2649706
 
 #if BUILDFLAG(IS_MAC)
   // Declare that this process has CPU security mitigations enabled (see

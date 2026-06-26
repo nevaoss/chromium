@@ -56,29 +56,8 @@ WebThemeEngineHelper::SwapNativeThemeEngineForTesting(
   return new_theme;
 }
 
-<<<<<<< HEAD
-void WebThemeEngineHelper::DidUpdateRendererPreferences(
-    const blink::RendererPreferences& renderer_prefs) {
-#if BUILDFLAG(IS_WIN)
-  // Update Theme preferences on Windows.
-  WebThemeEngineDefault::cacheScrollBarMetrics(
-      renderer_prefs.vertical_scroll_bar_width_in_dips,
-      renderer_prefs.horizontal_scroll_bar_height_in_dips,
-      renderer_prefs.arrow_bitmap_height_vertical_scroll_bar_in_dips,
-      renderer_prefs.arrow_bitmap_width_horizontal_scroll_bar_in_dips);
-#endif
 
-// TODO(neva, 92.0.4515.0): Need to migrate conceptually unrelated
-// code out of this class.
-#if BUILDFLAG(IS_NEVA_APPRUNTIME)
-  if (!renderer_prefs.file_security_origin.empty())
-    url::Origin::SetFileOriginChanged(true);
-  SetMutableLocalOrigin(renderer_prefs.file_security_origin);
-#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-}
 
-=======
->>>>>>> 5766c4211250d449c1bd381942aba397b2649706
 const WebThemeEngine::ScrollbarStyle&
 WebThemeEngineHelper::AndroidScrollbarStyle() {
   if (ScrollbarThemeSettings::DesktopAndroidScrollbarsEnabled()) {

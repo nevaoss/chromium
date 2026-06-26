@@ -262,14 +262,10 @@ DiscardableSharedMemoryManager::DiscardableSharedMemoryManager()
   DCHECK(!g_instance)
       << "A DiscardableSharedMemoryManager already exists in this process.";
   g_instance = this;
-<<<<<<< HEAD
-  DCHECK_NE(memory_limit_, 0u);
-#if BUILDFLAG(IS_NEVA_APPRUNTIME)
-  VLOG(1) << "Discardable memory limit: " << default_memory_limit_ << " bytes";
-#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
   DCHECK_NE(max_bytes_, 0u);
->>>>>>> 5766c4211250d449c1bd381942aba397b2649706
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  VLOG(1) << "Discardable memory limit: " << default_max_bytes_ << " bytes";
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
   enforce_memory_policy_callback_ =
       base::BindRepeating(&DiscardableSharedMemoryManager::EnforceMemoryPolicy,
                           weak_ptr_factory_.GetWeakPtr());

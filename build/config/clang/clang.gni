@@ -54,13 +54,9 @@ declare_args() {
   # Indicates if the build should use the Chrome-specific plugins for enforcing
   # coding guidelines, etc. Only used when compiling with Chromium's Clang.
   # Setting this enables all of the functionality of the plugin.
-<<<<<<< HEAD
   # TODO(neva): Please remove `is_webos` condition once webOS supports clang build.
   clang_use_chrome_plugins = is_clang && current_os != "zos" && !is_webos
-=======
-  clang_use_chrome_plugins = is_clang && current_os != "zos"
 }
->>>>>>> 5766c4211250d449c1bd381942aba397b2649706
 
 declare_args() {
   # Use this instead of clang_use_chrome_plugins to enable just the raw-ptr
