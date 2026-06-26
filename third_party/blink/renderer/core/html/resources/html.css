@@ -976,6 +976,11 @@ noframes, param, rp, script, style, template, title {
 input[type="hidden" i] {
   display: none !important;
 }
+@supports blink-feature(UnboundedElement) {
+  [unbounded] {
+    visibility: hidden;
+  }
+}
 
 area:-webkit-any-link {
     cursor: pointer;
@@ -2464,6 +2469,10 @@ select optgroup optgroup {
 [overscrollarea],
 :-internal-overscroll-target {
   -internal-overscroll-position: auto;
+}
+
+:-internal-overscroll-target:not(:overscroll-open) {
+  interactivity: inert;
 }
 
 @supports blink-feature(CustomizableCombobox) {

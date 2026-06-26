@@ -68,7 +68,10 @@ Do not assume specific tool names (e.g., `update_topic`, `read_file`,
 `project.magi.json#environment` immediately upon invocation to ground
 themselves in the active VCS (`JJ` or `GIT`) and Harness (`JETSKI` or
 `GENERIC_CLI`). They MUST adjust their tool usage and command construction
-natively to match this environment.
+natively to match this environment. They MUST also ensure that any interim
+files generated during execution (e.g., drafts, reviews, logs) are placed in
+the dedicated subfolder `remoting/tools/magi-mode/.temp/` to minimize
+permission prompts and maintain workspace hygiene.
 
 **THE CHECKLIST LIFECYCLE STATE MACHINE:** The session's verification
 integrity is governed by a deterministic boolean checklist state machine.
@@ -103,8 +106,10 @@ next expert.
 *   **Scoping Lead:** `SCAFFOLDING`
 *   **Architect / Test Expert:** `PREPARATION`
 *   **Engineering Manager:** `IMPLEMENTATION`
+    (or `CRITIQUE` if `task_type` is `REVIEW` or `AUDIT`)
 *   **Domain Experts:** `SYNTHESIS`
-*   **Synthesizing Architect:** `CRITIQUE`
+*   **Synthesizing Architect:** `TEST_FILLING`
+*   **Test Expert:** `CRITIQUE`
 *   **Reviewers:** `ANALYSIS`
 *   **Review Analyst:** `TPM_UPDATE`
 *   **Technical Program Manager:** `SYNTHESIS` (if iteration needed) or
@@ -124,6 +129,14 @@ next expert.
   specification to `project.magi.json` conforming to `magi_schema.json`.
   The `"checklist"` field MUST be initialized as an empty object `{}`.
 
+  The Scoping Lead MUST also determine the `task_type` based on the request:
+  *   `IMPLEMENTATION`: Default. For creating new features or fixing bugs. Sets
+      `next_phase` to `SCAFFOLDING`.
+  *   `REVIEW`: For reviewing existing changes or a CL. Sets `next_phase` to
+      `PREPARATION`.
+  *   `AUDIT`: For analyzing existing code for modernization or flaws. Sets
+      `next_phase` to `PREPARATION`.
+
   **Environment Discovery:** Before writing the file, the Scoping Lead MUST
   discover the environment:
   *   **VCS:** Check for a `.jj/` directory or run `jj status`. If successful,
@@ -132,12 +145,13 @@ next expert.
       available. If yes, set `harness` to `"JETSKI"`. Otherwise, set to
       `"GENERIC_CLI"`.
 
-  The `project.magi.json` file MUST contain a `next_phase` of `SCAFFOLDING` and
+  The `project.magi.json` file MUST contain the appropriate `next_phase` and
   the following structure:
   ```json
   {
     "$schema": "./magi_schema.json#definitions/ProjectSpec",
     "checklist": {},
+    "task_type": "IMPLEMENTATION",
     "goal": "A one-sentence summary of the fix/feature.",
     "target_files": ["Absolute paths to the files that must be modified."],
     "anti_goals": ["What should explicitly NOT be changed."],
@@ -159,6 +173,8 @@ next expert.
   and upload commands used by the agents.
 
 ### 1. Scaffolding (The Architect & Test Phase)
+*This phase is ONLY executed if `task_type` is `IMPLEMENTATION`. For `REVIEW`*
+*and `AUDIT` tasks, this phase is skipped.*
 - **Roughing In (The Architect):** First, invoke an Architect sub-agent. The
   Architect MUST read `project.magi.json` to understand the goal. Their mandate
   is to create necessary files, define class interfaces, set up Mojo pipes, and
@@ -188,13 +204,44 @@ next expert.
   scaffold, the Orchestrator MUST act as or invoke an "Engineering Manager"
   sub-agent. The Engineering Manager reads `project.magi.json` to understand the
   requirements and `src/remoting/tools/magi-mode/PERSONAS.md` (the routing
-  catalog) to assess and select the most appropriate Domain Experts required
-  to implement the stubs. It returns the absolute file paths of their definition
-  files to the Orchestrator.
-- **Checklist Initialization:** The Orchestrator MUST read the `checklist` from
-  every selected persona JSON file, compute the **Union Set** of all checklist
-  keys, and initialize `state_block.magi.json#checklist` with all these keys
-  set to `false`.
+  catalog) to assess and select both the **Implementors** and the **Reviewers**.
+    *   **Implementors**: Defaults to the "Big Three" (Security, Performance,
+        Architect). The Engineering Manager MAY select additional Domain Experts
+        if the task requires specialized work. If `task_type` is `REVIEW` or
+        `AUDIT`, the Engineering Manager MUST skip selecting Implementors.
+    *   **Reviewers**: Includes all selected Implementors, plus the Language
+        Expert, and any relevant Domain Experts. If the change includes new or
+        modified tests, the Test Expert MUST also be included.
+  The Engineering Manager returns the absolute file paths of these selected
+  personas (separated into `implementors` and `reviewers`) to the Orchestrator.
+  The Engineering Manager MUST also read its own persona file from
+  `src/remoting/tools/magi-mode/personas/core/engineering_manager.json` and
+  evaluate the selection checklist to ensure all technical dimensions are
+  covered for both roles. It MUST include the checklist evaluation in its JSON
+  output. The Engineering Manager MUST set `next_phase` to `IMPLEMENTATION` for
+  `IMPLEMENTATION` tasks, or `CRITIQUE` for `REVIEW` and `AUDIT` tasks.
+- **State Initialization:** The Orchestrator MUST directly write the initial
+  State Block to `state_block.magi.json` using the schema defined in
+  `magi_schema.json` to prevent invoking a boilerplate agent. The `checklist`
+  field is initialized with the **Union Set** of all checklist keys from every
+  selected persona, set to `false`:
+  ```json
+  {
+    "$schema": "./magi_schema.json#definitions/StateBlock",
+    "checklist": {
+      "[Merged keys from selected personas]": false
+    },
+    "iteration": 1,
+    "stall_count": 0,
+    "active_constraints": [],
+    "resolved_constraints": [],
+    "implementors": ["[Selected Implementors]"],
+    "reviewers": ["[Selected Reviewers]"],
+    "next_phase": "[Determined by task type]",
+    "review_mode": "[SUPERVISOR/CONSENSUS]",
+    "state_transport": "[FILE_IO/EPHEMERAL/EPHEMERAL_WITH_LOGS]"
+  }
+  ```
 - **Review Mode Selection:** The Engineering Manager MUST select the
   `review_mode` (`SUPERVISOR` or `CONSENSUS`) and include it in the initial
   `state_block.magi.json`.
@@ -243,6 +290,17 @@ next expert.
 ### 3. Parallel Implementation
 Invoke the selected expert sub-agents in parallel (`wait_for_previous: false`).
 Instruct each to implement the stubbed internals from the Base Scaffold.
+
+**Mandates for Domain Experts:**
+- **Production Code Focus:** Domain experts SHOULD focus primarily on
+  implementing the production code logic.
+- **Domain Edge Cases:** If a domain expert identifies specific edge cases or
+  scenarios that need verification, they MUST add a stubbed test case in the
+  test file (with both `ADD_FAILURE() << "NOT IMPLEMENTED"` and a descriptive
+  TODO comment) rather than fully implementing the test.
+- **Test Hooks & Accessors:** Domain experts MUST provide any necessary public
+  accessors, test-only hooks, or `friend` declarations in the production code
+  that the Test Expert will need to verify internal state.
 **File I/O:** Each sub-agent MUST read `project.magi.json` to ground their
 implementation in the actual requirements. They MUST securely save their draft
 to disk using the versioned naming convention
@@ -253,36 +311,35 @@ priority requires it.*
 
 ### 4. The Synthesis Phase
 Once the Domain Experts finish:
-1.  **State Initialization:** The Orchestrator MUST directly write the initial
-    State Block to `state_block.magi.json` using the schema defined in
-    `magi_schema.json` to prevent invoking a boilerplate agent:
-    ```json
-    {
-      "$schema": "./magi_schema.json#definitions/StateBlock",
-      "checklist": {
-        "[Merged keys from selected personas]": false
-      },
-      "iteration": 1,
-      "stall_count": 0,
-      "active_constraints": [],
-      "resolved_constraints": [],
-      "personas": ["[Selected Experts]"],
-      "next_phase": "CRITIQUE",
-      "review_mode": "[SUPERVISOR/CONSENSUS]",
-      "state_transport": "[FILE_IO/EPHEMERAL/EPHEMERAL_WITH_LOGS]"
-    }
-    ```
-2.  **The Synthesizing Architect:** Read the `[filename].[persona].magi.[N]`
+1.  **The Synthesizing Architect:** Read the `[filename].[persona].magi.[N]`
     drafts and synthesize them into "Draft A" in the original file.
     *   **Conflict Resolution:** The Synthesizing Architect MUST use a surgical
         3-way merge strategy (Base Scaffold + Draft A + Draft B) rather than
         full-file overwrites to resolve conflicts between domain experts.
     *   **Synthesis Build:** If `build_targets` are defined in
         `project.magi.json`, the Synthesizing Architect MUST run the local
-        build/test suite on "Draft A" and attach the build logs to the
-        synthesis report before signaling `next_phase: CRITIQUE`.
+        build/test suite on "Draft A". The Orchestrator MUST verify that the
+        scaffold compiles and that the tests still fail with "NOT IMPLEMENTED"
+        (as Domain Experts only added stubbed tests). The Synthesizing Architect
+        MUST attach the build logs to the synthesis report before signaling
+        `next_phase: TEST_FILLING`.
+
+### 4.5 Test Filling (The Test Expert)
+*This phase is ONLY executed if `task_type` is `IMPLEMENTATION`.*
+1.  **Action:** Invoke the Test Expert sub-agent.
+2.  **Mandate:** The Test Expert reads the synthesized "Draft A" and fills out
+    the actual implementation of all tests (both the original scaffold and any
+    new domain-specific stubs added by Domain Experts in Phase 3).
+3.  **Verification:** The Test Expert MUST run the tests to verify they now PASS
+    (or fail for legitimate reasons, not "NOT IMPLEMENTED").
+4.  **Output:** The Test Expert saves the updated test files and signals
+    `next_phase: CRITIQUE` to proceed to Phase 5.
 ### 5. The Review Workflow (Consensus Loop vs. Supervisor)
-1.  **Blind Critique:** Push Draft A to an expanded panel of Reviewers.
+1.  **Blind Critique:** Push the files to be reviewed to the expanded panel of
+    Reviewers selected in Phase 2.
+    *   For `IMPLEMENTATION` tasks, this is the synthesized "Draft A".
+    *   For `REVIEW` and `AUDIT` tasks, there is no synthesized draft, so the
+        original target files specified in `project.magi.json` MUST be pushed.
     **File I/O:** Output routing depends on `state_transport`:
     *   `FILE_IO`: Save feedback to disk as
         `review.[persona].magi.[iteration].json`.
@@ -417,6 +474,15 @@ tooling personas are available in `personas/infra/`:
     performing builds or adding new files SHOULD consult this persona to ensure
     correct target discovery and usage of `autoninja`.
 
+#### Workspace Management
+*   **Interim File Isolation**: To minimize permission prompts for the user and
+    maintain workspace hygiene, all interim files generated by the protocol
+    (e.g., drafts, reviews, logs) MUST be placed in a dedicated subfolder:
+    `remoting/tools/magi-mode/.temp/`.
+*   **Cleanup**: The Release Engineer (or the agent in charge of cleanup) MUST
+    delete the `.temp/` directory at the end of the run, rather than requiring
+    the user to add it to `.gitignore`.
+
 ### 10. Validation
 Run the standard suite (`git cl presubmit`, `gn check`, and unit tests). Upon
 success, signal `next_phase: DEPLOYMENT`.
@@ -432,7 +498,7 @@ The Release Engineer's **exclusive mandate** is:
    `project.magi.json#environment/vcs`. Run `jj st` (for JJ) or `git status`
    (for Git). Detect and revert accidental submodule bumps. Remove any
    lingering temporary files generated by the protocol (e.g., `*.magi`,
-   `*.magi.*`).
+   `*.magi.*`) and delete the `remoting/tools/magi-mode/.temp/` directory.
 2. **Formatting:** Enforce `git cl format` or project-specific formatters.
 3. **The Feature CL:** Upload the main feature CL containing only the product
    source changes (using the VCS-specific track defined in the VCS Isolation

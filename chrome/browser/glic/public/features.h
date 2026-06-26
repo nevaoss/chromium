@@ -21,6 +21,8 @@ BASE_DECLARE_FEATURE(kGlicClearTurnIdOnPanelWillOpen);
 BASE_DECLARE_FEATURE(kGlicChromeStatusIcon);
 extern const base::FeatureParam<int> kGlicChromeStatusIconSizePx;
 extern const base::FeatureParam<bool> kGlicChromeStatusIconUseAltIcon;
+extern const base::FeatureParam<bool> kGlicChromeStatusIconLogOnly;
+extern const base::FeatureParam<std::string> kGlicChromeStatusIconOtherAppID;
 
 BASE_DECLARE_FEATURE(kGlicOrphanedReattachment);
 
@@ -96,6 +98,9 @@ BASE_DECLARE_FEATURE(kGlicContextualCueingV2AutoSubmit);
 BASE_DECLARE_FEATURE(kGlicWebDragAndDropFileUpload);
 
 BASE_DECLARE_FEATURE(kGlicOptInImpressionMetrics);
+
+BASE_DECLARE_FEATURE(kGlicContentsInitiallyHidden);
+
 }  // namespace features
 
 #endif  // CHROME_BROWSER_GLIC_PUBLIC_FEATURES_H_

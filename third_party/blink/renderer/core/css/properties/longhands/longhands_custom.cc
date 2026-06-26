@@ -1488,7 +1488,12 @@ const CSSValue* BorderImageRepeat::CSSValueFromComputedStyleInternal(
 }
 
 const CSSValue* BorderImageRepeat::InitialValue() const {
-  return CSSIdentifierValue::Create(CSSValueID::kStretch);
+  DEFINE_STATIC_LOCAL(const Persistent<CSSValuePair>, value,
+                      (MakeGarbageCollected<CSSValuePair>(
+                          CSSIdentifierValue::Create(CSSValueID::kStretch),
+                          CSSIdentifierValue::Create(CSSValueID::kStretch),
+                          CSSValuePair::kDropIdenticalValues)));
+  return value;
 }
 
 const CSSValue* BorderImageSlice::ParseSingleValue(
@@ -3906,7 +3911,7 @@ const CSSValue* Display::CSSValueFromComputedStyleInternal(
     const LayoutObject*,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
-  if (style.IsDisplayLayoutCustomBox()) {
+  if (style.IsDisplayLayoutCustom()) {
     return MakeGarbageCollected<cssvalue::CSSLayoutFunctionValue>(
         MakeGarbageCollected<CSSCustomIdentValue>(
             style.DisplayLayoutCustomName()),

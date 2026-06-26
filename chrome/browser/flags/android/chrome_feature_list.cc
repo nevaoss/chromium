@@ -13,9 +13,9 @@
 #include "base/features.h"
 #include "base/no_destructor.h"
 #include "build/android_buildflags.h"
+#include "cc/base/features.h"
 #include "chrome/browser/android/webapk/webapk_features.h"
 #include "chrome/browser/browser_features.h"
-#include "chrome/browser/contextmenu/context_menu_features.h"
 #include "chrome/browser/finds/core/finds_features.h"
 #include "chrome/browser/flags/android/chrome_session_state.h"
 #include "chrome/browser/notifications/chime/android/features.h"
@@ -114,7 +114,6 @@ namespace {
 const base::Feature* const kFeaturesExposedToJava[] = {
 // FEATURE_EXPORT_LIST_START
 // go/keep-sorted start
-    &autofill::features::kAndroidAutofillSupportForHttpAuth,
     &autofill::features::kAutofillAiAvailableByDefault,
     &autofill::features::kAutofillAiCreateEntityDataManager,
     &autofill::features::kAutofillAiEditEntitiesFromSaveUpdatePrompt,
@@ -179,7 +178,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &features::kAbortNavigationsFromTabClosures,
     &features::kAndroidAnimatedProgressBarInBrowser,
     &features::kBackForwardCache,
-    &features::kContextMenuEmptySpace,
+    &features::kBrowserControlsScrollSnapAnimation,
     &features::kDisplayEdgeToEdgeFullscreen,
     &features::kElasticOverscroll,
     &features::kEnableExclusiveAccessManager,
@@ -245,6 +244,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidThemeResourceProvider,
     &kAndroidToolbarScrollAblation,
     &kAndroidUseAdminsForEnterpriseInfo,
+    &kAndroidVerticalTabs,
     &kAndroidWindowPopupCustomTabUi,
     &kAndroidWindowPopupLargeScreen,
     &kAndroidWindowPopupPredictFinalBounds,
@@ -310,7 +310,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kCCTResetTimeoutEnabled,
     &kCCTResizableForThirdParties,
     &kCCTTabModalDialog,
-    &kCCTToolbarRefactor,
     &kCacheActivityTaskID,
     &kCacheDeprecatedSystemLocationSetting,
     &kCacheIsMultiInstanceApi31Enabled,
@@ -369,6 +368,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kGridTabSwitcherSurfaceColorUpdate,
     &kGroupNewTabWithParent,
     &kHistoryPaneAndroid,
+    &kHomeButtonRemoval,
     &kHomeModulePrefRefactor,
     &kIncognitoModeForcedAndroid,
     &kIncognitoNtpSmallIcon,
@@ -382,7 +382,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kLoadAllTabsAtStartup,
     &kLoadNativeEarly,
     &kLockBackPressHandlerAtStart,
-    &kLockTopControlsOnLargeTablets,
     &kLockTopControlsOnLargeTabletsV2,
     &kLogoViewRefactor,
     &kLongScreenshotsLenientMemoryCheck,
@@ -410,7 +409,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kPowerSavingModeBroadcastReceiverInBackground,
     &kPreconnectOnTabCreation,
     &kPriceChangeModule,
-    &kProcessRankPolicyAndroid,
     &kProtectRecentlyVisibleTab,
     &kProtectedTabsAndroid,
     &kPwaRestoreUi,
@@ -447,7 +445,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kTabStorageSqlitePrototype,
     &kTabStripAutoSelectOnCloseChange,
     &kTabStripDensityChangeAndroid,
-    &kTabStripEmptySpaceContextMenuAndroid,
     &kTabSwitcherDragDropAndroid,
     &kTabSwitcherGroupSuggestionsAndroid,
     &kTabSwitcherGroupSuggestionsTestModeAndroid,
@@ -491,6 +488,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &notifications::features::kUseChimeAndroidSdk,
     &page_info::kPageInfoAboutThisSiteMoreLangs,
     &paint_preview::kPaintPreviewDemo,
+    &password_manager::features::kActorLoginPermissionsUi,
     &password_manager::features::kBiometricTouchToFill,
     &password_manager::features::kPasswordFormGroupedAffiliations,
     &payments::facilitated::kEnablePixAccountLinkingNative,
@@ -530,6 +528,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &switches::kClankDefaultSearchApi,
     &sync_preferences::features::kCrossDevicePrefTrackerExtraLogs,
     &sync_sessions::kOptimizeAssociateWindowsAndroid,
+    &sync_sessions::kSyncTabScreenshots,
     &syncer::kNewTabPageCustomizationThemeSync,
     &syncer::kSyncEnableNewSyncDashboardUrl,
     &syncer::kSyncEnablePasswordsSyncErrorMessageAlternative,
@@ -579,7 +578,7 @@ BASE_FEATURE(kAndroidDesktopDensity, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidElegantTextHeight, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidFirstRunLaunchBounds, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidHistoryClustering, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kAndroidNewMediaPicker, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidNewMediaPicker, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidNoVisibleHintForDifferentTLD, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidOmniboxFocusedNewTabPage, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidPageInfoAsAppMenuItem, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -597,6 +596,7 @@ BASE_FEATURE(kAndroidThemeModule, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidThemeResourceProvider, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidToolbarScrollAblation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidUseAdminsForEnterpriseInfo, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidVerticalTabs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidWindowPopupCustomTabUi, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidWindowPopupLargeScreen, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidWindowPopupPredictFinalBounds, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -662,7 +662,6 @@ BASE_FEATURE(kCCTResetTimeoutAllowed, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTResetTimeoutEnabled, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTResizableForThirdParties, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTTabModalDialog, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kCCTToolbarRefactor, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCacheActivityTaskID, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCacheDeprecatedSystemLocationSetting, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCacheIsMultiInstanceApi31Enabled, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -724,6 +723,7 @@ BASE_FEATURE(kGmsCoreBindServiceOptimization, base::FEATURE_DISABLED_BY_DEFAULT)
 BASE_FEATURE(kGridTabSwitcherSurfaceColorUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGroupNewTabWithParent, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kHistoryPaneAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kHomeButtonRemoval, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kHomeModulePrefRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIncognitoModeForcedAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIncognitoNtpSmallIcon, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -737,7 +737,6 @@ BASE_FEATURE(kLinkHoverStatusBar, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLoadAllTabsAtStartup, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLoadNativeEarly, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLockBackPressHandlerAtStart, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kLockTopControlsOnLargeTablets, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLockTopControlsOnLargeTabletsV2, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLogoViewRefactor, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kLongScreenshotsLenientMemoryCheck, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -768,7 +767,6 @@ BASE_FEATURE(kPersistAcrossRebootsDebugLogs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPowerSavingModeBroadcastReceiverInBackground, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPreconnectOnTabCreation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPriceChangeModule, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kProcessRankPolicyAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kProtectRecentlyVisibleTab, base::FEATURE_DISABLED_BY_DEFAULT);
 // Put a higher memory priority to protected background tabs (e.g. tabs with
 // user edits in forms) to prevent them from being killed by LMKD before any
@@ -809,7 +807,6 @@ BASE_FEATURE(kTabClosureMethodRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabStorageSqlitePrototype, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabStripAutoSelectOnCloseChange, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTabStripDensityChangeAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kTabStripEmptySpaceContextMenuAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTabSwitcherDragDropAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabSwitcherGroupSuggestionsAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabSwitcherGroupSuggestionsTestModeAndroid, base::FEATURE_DISABLED_BY_DEFAULT);

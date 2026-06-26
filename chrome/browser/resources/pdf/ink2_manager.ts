@@ -5,9 +5,11 @@
 import {assert, assertNotReached} from 'chrome://resources/js/assert.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 
-import type {AnnotationBrush, Color, Point, TextAnnotation, TextAttributes, TextBoxRect, TextStyles} from './constants.js';
+import type {AnnotationBrush, Color, Point, TextAnnotation, TextAnnotationMessageData, TextAttributes, TextBoxRect, TextStyles} from './constants.js';
 import {AnnotationBrushType, TextAlignment, TextStyle, TextTypeface} from './constants.js';
 import {PluginController, PluginControllerEventType} from './controller.js';
+import type {GetTextInfoResult} from './pdf_viewer_private_proxy.js';
+import {UndoRedoStack} from './undo_redo_stack.js';
 import type {Viewport, ViewportRect} from './viewport.js';
 
 export interface ViewportParams {
@@ -106,6 +108,16 @@ export function convertRotatedCoordinates(
 
 export class Ink2Manager extends EventTarget {
   private brush_: AnnotationBrush = {type: AnnotationBrushType.PEN};
+  private stack_ = new UndoRedoStack(this);
+  private originalTextAnnotation_: TextAnnotation|null = null;
+
+  constructor() {
+    super();
+    this.pluginController_.getEventTarget().addEventListener(
+        PluginControllerEventType.FINISH_INK_STROKE,
+        this.handleFinishInkStroke_.bind(this));
+  }
+
   // Map from page numbers to annotations on that page.
   // The annotations on each page are stored in a map from id to TextAnnotation.
   private annotations_: Map<number, Map<number, TextAnnotation>> = new Map();
@@ -143,8 +155,21 @@ export class Ink2Manager extends EventTarget {
     this.viewport_ = viewport;
   }
 
-  resetAnnotationIdForTest() {
+  clearAnnotationsForTesting() {
+    this.annotations_.clear();
     this.nextAnnotationId_ = 0;
+  }
+
+  getAnnotationsForTesting(): Map<number, Map<number, TextAnnotation>> {
+    return this.annotations_;
+  }
+
+  resetTextResolverForTesting() {
+    this.textResolver_ = null;
+  }
+
+  resetStackForTesting() {
+    this.stack_.resetForTesting();
   }
 
   // Initialize a text annotation at `location` in screen coordinates.
@@ -189,6 +214,7 @@ export class Ink2Manager extends EventTarget {
 
     // Is the click in an existing box?
     let existing = null;
+    this.originalTextAnnotation_ = null;
     // Get the annotations for the current page.
     const annotationsMap = this.annotations_.get(page);
     const annotations =
@@ -202,9 +228,11 @@ export class Ink2Manager extends EventTarget {
           location.y >= screenBox.locationY &&
           location.y <= (screenBox.locationY + screenBox.height)) {
         // Don't update the original. Create a new object and update its
-        // rectangle to use the computed screen coordinates.
+        // rectangle to use the computed screen coordinates. Set isUser since
+        // this is triggered by a user action, and isn't undo/redo.
         existing = structuredClone(annotation);
         existing.textBoxRect = screenBox;
+        this.originalTextAnnotation_ = structuredClone(annotation);
         break;
       }
     }
@@ -243,11 +271,7 @@ export class Ink2Manager extends EventTarget {
     this.pageIndex_ = page;
     const annotation: TextAnnotation = existing ? existing : {
       id: this.nextAnnotationId_,
-      isEdited: false,
-      mojoTextInfo: new ArrayBuffer(0),
-      newTypefaces: [],
       pageIndex: page,
-      pdfZoom: this.viewport_.getZoom(),
       text: '',
       textAttributes: structuredClone(this.attributes_),
       textBoxRect: {
@@ -521,14 +545,7 @@ export class Ink2Manager extends EventTarget {
     };
   }
 
-  /**
-   * Updates the stored annotation and notifies the plugin of the new or
-   * modified annotation.
-   */
-  commitTextAnnotation(annotation: TextAnnotation) {
-    annotation.textBoxRect = this.screenToPageCoordinates_(
-        annotation.pageIndex, annotation.textBoxRect);
-
+  private updateStoredAnnotation_(annotation: TextAnnotation) {
     let pageAnnotations = this.annotations_.get(annotation.pageIndex);
     if (!pageAnnotations) {
       // Adding a new annotation, on a page that doesn't have any existing ones.
@@ -543,16 +560,43 @@ export class Ink2Manager extends EventTarget {
     } else {
       pageAnnotations.set(annotation.id, annotation);
     }
-    this.pluginController_.finishTextAnnotation(annotation);
-    this.existingAnnotationAttributes_ = null;
+  }
 
-    // Using PluginController's event target to dispatch this event, even
-    // though it originates here, because PluginController dispatches this
-    // event for normal Ink strokes and this way clients only need to listen
-    // on one instance.
-    this.pluginController_.getEventTarget().dispatchEvent(new CustomEvent(
-        PluginControllerEventType.FINISH_INK_STROKE,
-        {detail: annotation.isEdited}));
+  /**
+   * Updates the stored annotation and notifies the plugin of the new or
+   * modified annotation.
+   */
+  commitTextAnnotation(
+      annotation: TextAnnotation, isEdited: boolean,
+      textInfo: GetTextInfoResult) {
+    annotation.textBoxRect = this.screenToPageCoordinates_(
+        annotation.pageIndex, annotation.textBoxRect);
+
+    if (isEdited) {
+      this.updateStoredAnnotation_(annotation);
+      const before = this.originalTextAnnotation_;
+      const after = annotation.text === '' ? null : structuredClone(annotation);
+      if (before !== null || after !== null) {
+        this.stack_.push({
+          type: 'text',
+          before,
+          after,
+        });
+      }
+    }
+
+    assert(this.viewport_);
+    const messageData: TextAnnotationMessageData = {
+      ...annotation,
+      isEdited,
+      isUser: true,
+      mojoTextInfo: textInfo.mojoTextInfo,
+      newTypefaces: textInfo.typefaces,
+      pdfZoom: this.viewport_.getZoom(),
+    };
+    this.pluginController_.finishTextAnnotation(messageData);
+    this.existingAnnotationAttributes_ = null;
+    this.originalTextAnnotation_ = null;
   }
 
   textBoxFocused(textBoxRect: TextBoxRect) {
@@ -608,6 +652,84 @@ export class Ink2Manager extends EventTarget {
     this.dispatchEvent(new CustomEvent(
         'attributes-changed',
         {detail: structuredClone(this.getCurrentTextAttributes())}));
+  }
+
+  private handleFinishInkStroke_(e: Event) {
+    if ((e as CustomEvent<boolean>).detail) {
+      this.stack_.push({type: 'ink'});
+    }
+  }
+
+  // Note: Undo/Redo state is tracked for all annotations, but changes are only
+  // applied by the frontend for text annotations. Undo/redo of ink strokes are
+  // handled exclusively by the backend.
+  undo() {
+    const state = this.stack_.undo();
+    if (!state) {
+      return;
+    }
+
+    if (state.type === 'text') {
+      this.applyTextUndoRedo_(state.before, state.after);
+    }
+    this.pluginController_.undo();
+  }
+
+  redo() {
+    const state = this.stack_.redo();
+    if (!state) {
+      return;
+    }
+
+    if (state.type === 'text') {
+      this.applyTextUndoRedo_(state.after, state.before);
+    }
+    this.pluginController_.redo();
+  }
+
+  private applyTextUndoRedo_(
+      update: TextAnnotation|null, previous: TextAnnotation|null) {
+    const isDeletion = update === null;
+    // If deleting, the relevant annotation is the "previous" one, which is
+    // being deleted. Otherwise, the relevant annotation is the update.
+    const annotation = isDeletion ? previous : update;
+    assert(annotation);
+    assert(this.viewport_);
+
+    // Since this is an undo or redo of a previous change, the map for this page
+    // should always have been created already.
+    const pageAnnotations = this.annotations_.get(annotation.pageIndex);
+    assert(pageAnnotations);
+    if (isDeletion) {
+      pageAnnotations.delete(annotation.id);
+    } else {
+      pageAnnotations.set(annotation.id, annotation);
+    }
+
+    const messageData: TextAnnotationMessageData = {
+      ...annotation,
+      isEdited: true,
+      isUser: false,
+      mojoTextInfo: new ArrayBuffer(0),
+      newTypefaces: [],
+      pdfZoom: this.viewport_.getZoom(),
+    };
+    if (isDeletion) {
+      messageData.text = '';
+    }
+    this.pluginController_.finishTextAnnotation(messageData);
+  }
+
+  initiateSave() {
+    this.stack_.initiateSave();
+  }
+
+  cancelSave() {
+    this.stack_.cancelSave();
+  }
+
+  saved() {
+    this.stack_.setSaved();
   }
 
   static getInstance(): Ink2Manager {

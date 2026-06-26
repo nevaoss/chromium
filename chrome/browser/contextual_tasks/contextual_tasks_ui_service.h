@@ -68,6 +68,8 @@ class ContextualTasksUIInterface;
 class ContextualTasksUiService : public KeyedService {
   FRIEND_TEST_ALL_PREFIXES(ContextualTasksUiServiceTest,
                            IsAllowedHost_WithOverride);
+  FRIEND_TEST_ALL_PREFIXES(ContextualTasksUiServiceTest,
+                           IsAllowedHost_LensDebugNotAllowed);
 
  public:
   class Observer : public base::CheckedObserver {
@@ -138,7 +140,9 @@ class ContextualTasksUiService : public KeyedService {
   virtual bool HandleNavigation(content::OpenURLParams url_params,
                                 content::WebContents* source_contents,
                                 bool is_from_embedded_page,
-                                bool is_to_new_tab);
+                                bool is_to_new_tab,
+                                bool is_same_site_or_from_ui,
+                                bool is_mobile_ua = false);
 
   // Returns the contextual_task UI for a task.
   virtual GURL GetContextualTaskUrlForTask(const base::Uuid& task_id);
@@ -259,6 +263,10 @@ class ContextualTasksUiService : public KeyedService {
   static GURL CopyParamsFromWebUIUrl(const GURL& base_url,
                                      const GURL& webui_url);
 
+  // Returns a copy of base_url with the URL params from webui_url applied to
+  // it. If the result is empty, returns base_url.
+  static GURL GetAiUrlFromWebUIUrl(const GURL& base_url, const GURL& webui_url);
+
   // Returns whether the provided host is trusted for overrides.
   static bool IsTrustedHost(const std::string& host);
 
@@ -333,11 +341,14 @@ class ContextualTasksUiService : public KeyedService {
                                     content::WebContents* source_contents,
                                     tabs::TabInterface* tab,
                                     bool is_from_embedded_page,
-                                    bool is_to_new_tab);
+                                    bool is_to_new_tab,
+                                    bool is_same_site_or_from_ui,
+                                    bool is_mobile_ua = false);
 
   // Used primarily for debugging - loads a URL in the specified WebContents.
-  virtual void LoadUrlInWebContents(const GURL& url,
-                                    content::WebContents* web_contents);
+  virtual void LoadUrlInWebContents(
+      const GURL& url,
+      base::WeakPtr<content::WebContents> web_contents);
 
   // Creates a LensMediaLinkHandler for the given WebContents.
   // Virtual to allow overriding in tests to mock the handler.
@@ -386,6 +397,11 @@ class ContextualTasksUiService : public KeyedService {
   bool MaybeHandleVideoCitation(const GURL& url,
                                 tabs::TabInterface* tab,
                                 const base::Uuid& task_id);
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Called when back button expands side panel.
+  void OnBackButtonExpandsSidePanel(base::WeakPtr<tabs::TabInterface> weak_tab);
+#endif
 
   // A callback for checking whether text fragments from a URL are on a page.
   void OnTextFinderLookupComplete(

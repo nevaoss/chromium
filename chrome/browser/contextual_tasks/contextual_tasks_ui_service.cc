@@ -67,6 +67,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "components/url_formatter/url_formatter.h"
 #include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/common/url_constants.h"
@@ -822,11 +823,14 @@ bool ContextualTasksUiService::HandleNavigation(
     content::OpenURLParams url_params,
     content::WebContents* source_contents,
     bool is_from_embedded_page,
-    bool is_to_new_tab) {
+    bool is_to_new_tab,
+    bool is_same_site_or_from_ui,
+    bool is_mobile_ua) {
   return HandleNavigationImpl(
       std::move(url_params), source_contents,
       tabs::TabInterface::MaybeGetFromContents(source_contents),
-      is_from_embedded_page, is_to_new_tab);
+      is_from_embedded_page, is_to_new_tab, is_same_site_or_from_ui,
+      is_mobile_ua);
 }
 
 void ContextualTasksUiService::GetAccessToken(
@@ -894,7 +898,9 @@ bool ContextualTasksUiService::HandleNavigationImpl(
     content::WebContents* source_contents,
     tabs::TabInterface* tab,
     bool is_from_embedded_page,
-    bool is_to_new_tab) {
+    bool is_to_new_tab,
+    bool is_same_site_or_from_ui,
+    bool is_mobile_ua) {
   OMNIBOX_LOG("nav_trace")
       << "ContextualTasks navigation trace: HandleNavigationImpl called "
          "for URL: "
@@ -908,6 +914,25 @@ bool ContextualTasksUiService::HandleNavigationImpl(
            "returning early, not eligible";
     return false;
   }
+
+#if !BUILDFLAG(IS_ANDROID)
+  if (is_mobile_ua) {
+    // Exit cobrowsing if emulating a mobile device. Cobrowse on mobile is
+    // dependent on Android to function correctly.
+    if (IsContextualTasksUrl(url_params.url)) {
+      // Redirect contextual tasks URL to aim page URL.
+      GURL url = GetAiUrlFromWebUIUrl(GetDefaultAiPageUrl(), url_params.url);
+      // Post a task to open the URL.
+      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE,
+          base::BindOnce(&ContextualTasksUiService::LoadUrlInWebContents,
+                         weak_ptr_factory_.GetWeakPtr(), url,
+                         source_contents->GetWeakPtr()));
+      return true;
+    }
+    return false;
+  }
+#endif
 
   // If the target URL is a contextual tasks "display URL", then replace it with
   // the proper AIM URL.
@@ -953,33 +978,8 @@ bool ContextualTasksUiService::HandleNavigationImpl(
         base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
             FROM_HERE,
             base::BindOnce(
-                [](base::WeakPtr<tabs::TabInterface> weak_tab) {
-                  if (!weak_tab) {
-                    return;
-                  }
-                  auto* browser = weak_tab->GetBrowserWindowInterface();
-                  if (!browser) {
-                    return;
-                  }
-                  auto* controller =
-                      contextual_tasks::ContextualTasksPanelController::From(
-                          browser);
-                  if (controller &&
-                      controller->IsPanelOpenForContextualTask()) {
-                    controller->MoveTaskUiToNewTab();
-                    // TODO(crbug.com/497899043): Restore history stack.
-                    auto* tab_strip_model = browser->GetTabStripModel();
-                    if (tab_strip_model) {
-                      int index =
-                          tab_strip_model->GetIndexOfTab(weak_tab.get());
-                      if (index != TabStripModel::kNoTab) {
-                        tab_strip_model->CloseWebContentsAt(
-                            index, TabCloseTypes::CLOSE_EXPAND_SIDE_PANEL);
-                      }
-                    }
-                  }
-                },
-                tab->GetWeakPtr()));
+                &ContextualTasksUiService::OnBackButtonExpandsSidePanel,
+                weak_ptr_factory_.GetWeakPtr(), tab->GetWeakPtr()));
         OMNIBOX_LOG("nav_trace")
             << "ContextualTasks navigation trace: HandleNavigationImpl "
                "closing tab and expanding side panel";
@@ -1014,6 +1014,17 @@ bool ContextualTasksUiService::HandleNavigationImpl(
       should_bypass_interception = true;
       bypass_reason = "debug param";
     }
+
+    // If the page is to AI and the navigation is not same site, apply a param
+    // to the URL to mark it as untrusted. Likewise, remove it if present and
+    // the navigation is same site.
+    if (!is_same_site_or_from_ui) {
+      url_params.url =
+          net::AppendOrReplaceQueryParameter(url_params.url, "cru", "1");
+    } else {
+      url_params.url = net::AppendOrReplaceQueryParameter(url_params.url, "cru",
+                                                          std::nullopt);
+    }
   }
 
   if (should_bypass_interception) {
@@ -1026,7 +1037,7 @@ bool ContextualTasksUiService::HandleNavigationImpl(
           FROM_HERE,
           base::BindOnce(&ContextualTasksUiService::LoadUrlInWebContents,
                          weak_ptr_factory_.GetWeakPtr(), url_params.url,
-                         source_contents));
+                         source_contents->GetWeakPtr()));
       return true;
     } else {
       return false;
@@ -1065,7 +1076,10 @@ bool ContextualTasksUiService::HandleNavigationImpl(
   ui::PageTransition page_transition = url_params.transition;
   bool is_forward_back_link_navigation =
       (page_transition & ui::PAGE_TRANSITION_FORWARD_BACK) &&
-      ui::PageTransitionCoreTypeIs(page_transition, ui::PAGE_TRANSITION_LINK);
+      (ui::PageTransitionCoreTypeIs(page_transition,
+                                    ui::PAGE_TRANSITION_LINK) ||
+       ui::PageTransitionCoreTypeIs(page_transition,
+                                    ui::PAGE_TRANSITION_RELOAD));
 
   // Intercept any navigation where the wrapping WebContents is the WebUI host
   // unless it is the embedded page.
@@ -1209,9 +1223,60 @@ bool ContextualTasksUiService::HandleNavigationImpl(
   return false;
 }
 
+#if !BUILDFLAG(IS_ANDROID)
+void ContextualTasksUiService::OnBackButtonExpandsSidePanel(
+    base::WeakPtr<tabs::TabInterface> weak_tab) {
+  if (!weak_tab) {
+    return;
+  }
+  auto* browser = weak_tab->GetBrowserWindowInterface();
+  if (!browser) {
+    return;
+  }
+  auto* controller =
+      contextual_tasks::ContextualTasksPanelController::From(browser);
+  if (controller && controller->IsPanelOpenForContextualTask()) {
+    content::WebContents* side_panel_contents =
+        controller->GetActiveWebContents();
+    controller->MoveTaskUiToNewTab();
+    auto* tab_strip_model = browser->GetTabStripModel();
+    if (tab_strip_model) {
+      int index = tab_strip_model->GetIndexOfTab(weak_tab.get());
+      if (index != TabStripModel::kNoTab) {
+        // Append last committed URL of the original tab to the
+        // side panel WebContents to make the forward navigation
+        // work.
+        if (side_panel_contents) {
+          GURL last_committed_url =
+              weak_tab->GetContents()->GetLastCommittedURL();
+          if (last_committed_url.is_valid() && !last_committed_url.is_empty()) {
+            std::vector<std::unique_ptr<content::NavigationEntry>> entries;
+            entries.push_back(
+                content::NavigationController::CreateNavigationEntry(
+                    last_committed_url, content::Referrer(), std::nullopt,
+                    std::nullopt, ui::PAGE_TRANSITION_LINK, false,
+                    std::string(), browser->GetProfile(), nullptr));
+            side_panel_contents->GetController().PruneAllButLastCommitted();
+            side_panel_contents->GetController().Restore(
+                side_panel_contents->GetController()
+                    .GetLastCommittedEntryIndex(),
+                content::RestoreType::kRestored, &entries);
+          }
+        }
+        tab_strip_model->CloseWebContentsAt(
+            index, TabCloseTypes::CLOSE_EXPAND_SIDE_PANEL);
+      }
+    }
+  }
+}
+#endif
+
 void ContextualTasksUiService::LoadUrlInWebContents(
     const GURL& url,
-    content::WebContents* web_contents) {
+    base::WeakPtr<content::WebContents> web_contents) {
+  if (!web_contents) {
+    return;
+  }
   content::NavigationController::LoadURLParams params(url);
   params.transition_type = ::ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
   web_contents->GetController().LoadURLWithParams(params);
@@ -1580,6 +1645,12 @@ void ContextualTasksUiService::StartTaskUiInSidePanel(
   CHECK(!url.is_empty());
   CHECK(contextual_tasks_service_);
 
+  // Abort if the tab is no longer active to prevent opening the panel on the
+  // wrong tab.
+  if (!tab_interface || !tab_interface->IsActivated()) {
+    return;
+  }
+
   // Get the controller for the current window.
   auto* controller =
       ContextualTasksPanelController::From(browser_window_interface);
@@ -1654,6 +1725,12 @@ void ContextualTasksUiService::StartTaskUiInSidePanelWithErrorPage(
     tabs::TabInterface* tab_interface,
     std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
         session_handle) {
+  // Abort if the tab is no longer active to prevent opening the panel on the
+  // wrong tab.
+  if (!tab_interface || !tab_interface->IsActivated()) {
+    return;
+  }
+
   // Create a new task.
   ContextualTask task = contextual_tasks_service_->CreateTask();
   auto* controller =
@@ -1782,7 +1859,6 @@ GURL ContextualTasksUiService::CopyParamsFromWebUIUrl(const GURL& base_url,
       }
     }
   }
-
   // Now add all other params from the WebUI URL.
   net::QueryIterator it(webui_url);
   while (!it.IsAtEnd()) {
@@ -1796,6 +1872,25 @@ GURL ContextualTasksUiService::CopyParamsFromWebUIUrl(const GURL& base_url,
   }
 
   return aim_url;
+}
+
+GURL ContextualTasksUiService::GetAiUrlFromWebUIUrl(const GURL& base_url,
+                                                    const GURL& webui_url) {
+  GURL url = CopyParamsFromWebUIUrl(base_url, webui_url);
+
+  std::string host_value;
+  // If there is the chrome_host param in the URL, use it to set the host of
+  // the AI url.
+  if (net::GetValueForKeyInQuery(url, kChromeHostParam, &host_value) &&
+      !host_value.empty()) {
+    GURL::Replacements replacements;
+    replacements.SetHostStr(host_value);
+    url = url.ReplaceComponents(replacements);
+  }
+
+  // Remove kChromeHostParam from the new url if it exists.
+  return net::AppendOrReplaceQueryParameter(url, kChromeHostParam,
+                                            std::nullopt);
 }
 
 void ContextualTasksUiService::OnLensOverlayStateChanged(
@@ -1906,7 +2001,13 @@ void ContextualTasksUiService::OnImageClickedFromSourcesMenu(
 }
 
 bool ContextualTasksUiService::IsAllowedHost(const GURL& url) {
-  if (net::SchemefulSite::IsSameSite(url, GURL(kAiPageHost))) {
+  // TODO(crbug.com/498566984): Remove this once the AimEligibilityService tells
+  //                            us which hosts to intercept.
+  bool is_lens_debug_host = url.host() == "lndb.corp.google.com" ||
+                            url.host() == "lndb-autopush.corp.google.com";
+  if (net::SchemefulSite::IsSameSite(url, GURL(kAiPageHost)) &&
+      !is_lens_debug_host) {
+    // Exclude lens debugging hosts.
     return true;
   }
   std::string forced_host = GetForcedEmbeddedPageHost();

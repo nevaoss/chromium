@@ -365,8 +365,14 @@ import java.util.function.Supplier;
         mAttachmentUploadFailedSnackbar.setTextAppearance(textAppearanceResId);
     }
 
-    /** Apply a variant of the branded color scheme to Fusebox UI elements */
+    /** Apply a variant of the branded color scheme to Fusebox UI elements. */
     /* package */ void updateVisualsForState(@BrandedColorScheme int brandedColorScheme) {
+        // Collapse LIGHT/DARK_BRANDED_THEME into APP_DEFAULT. There's no difference to fusebox and
+        // switching will cause UI elements to reload the same resources.
+        if (brandedColorScheme != BrandedColorScheme.INCOGNITO) {
+            brandedColorScheme = BrandedColorScheme.APP_DEFAULT;
+        }
+
         mBrandedColorScheme = brandedColorScheme;
         mModel.set(FuseboxProperties.COLOR_SCHEME, brandedColorScheme);
         if (mModelList == null) return;
@@ -492,13 +498,15 @@ import java.util.function.Supplier;
 
     private void showPopup() {
         if (!isInInputSession()) return;
+        boolean shouldShowBottomSheetPopup = OmniboxFeatures.shouldShowBottomSheetPopup();
+        if (shouldShowBottomSheetPopup) {
+            mWindowAndroid.getKeyboardDelegate().hideKeyboard(mViewHolder.parentView);
+        }
         updateModelForCurrentTab();
         mModel.set(FuseboxProperties.POPUP_ATTACH_CLIPBOARD_VISIBLE, mClipboard.hasImage());
         mModel.set(
                 FuseboxProperties.POPUP_STATE,
-                OmniboxFeatures.sShowBottomSheetPopup.getValue()
-                        ? PopupState.BOTTOM
-                        : PopupState.FLOATING);
+                shouldShowBottomSheetPopup ? PopupState.BOTTOM : PopupState.FLOATING);
         if (mScrimManager != null
                 && mModel.get(FuseboxProperties.POPUP_STATE) == PopupState.BOTTOM) {
             View scrimAnchor = mScrimAnchorViewSupplier.get();
@@ -527,9 +535,16 @@ import java.util.function.Supplier;
     }
 
     private void hidePopup() {
+        boolean wasBottomSheet = mModel.get(FuseboxProperties.POPUP_STATE) == PopupState.BOTTOM;
         mModel.set(FuseboxProperties.POPUP_STATE, PopupState.HIDDEN);
         if (mScrimModel != null) {
             mScrimManager.hideScrim(mScrimModel, /* animate= */ true);
+        }
+        if (wasBottomSheet) {
+            View focusedView = mViewHolder.parentView.findFocus();
+            if (focusedView != null) {
+                mWindowAndroid.getKeyboardDelegate().showKeyboard(focusedView);
+            }
         }
     }
 
@@ -586,38 +601,6 @@ import java.util.function.Supplier;
         mModelList.add(attachment);
     }
 
-    /**
-     * Check whether additional attachments of a specific kind are allowed, showing a snackbar when
-     * limit is reached.
-     */
-    @VisibleForTesting
-    /* package */ boolean isMaxAttachmentCountReached(@FuseboxAttachmentType int attachmentType) {
-        if (!isInInputSession()) return true;
-
-        boolean isImageGenerationUsed =
-                mInput.getRequestType() == AutocompleteRequestType.IMAGE_GENERATION;
-
-        // Permit image reselection when image generation is picked.
-        if ((attachmentType == FuseboxAttachmentType.ATTACHMENT_IMAGE
-                        || attachmentType == FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL)
-                && isImageGenerationUsed) {
-            return false;
-        }
-
-        // Permit tab reselection (except image generation).
-        if (attachmentType == FuseboxAttachmentType.ATTACHMENT_TAB
-                && !isImageGenerationUsed
-                && !mModelList.getAttachedTabIds().isEmpty()) {
-            return false;
-        }
-
-        // Permit additional attachments, except when creating images.
-        if (mModelList.getRemainingAttachments() > 0 && !isImageGenerationUsed) {
-            return false;
-        }
-        return true;
-    }
-
     private void onAttachmentsChanged() {
         if (!isInInputSession()) return;
         mModel.set(FuseboxProperties.ATTACHMENTS_VISIBLE, !mModelList.isEmpty());
@@ -630,7 +613,6 @@ import java.util.function.Supplier;
 
     private boolean areAttachmentsCompatibleWithCreateImage() {
         if (!isInInputSession()) return false;
-        int imageCount = 0;
         for (MVCListAdapter.ListItem listItem : mModelList) {
             if (listItem.type == FuseboxAttachmentType.ATTACHMENT_FILE) {
                 return false;
@@ -641,12 +623,8 @@ import java.util.function.Supplier;
             if (listItem.type == FuseboxAttachmentType.ATTACHMENT_PDF) {
                 return false;
             }
-            if (listItem.type == FuseboxAttachmentType.ATTACHMENT_IMAGE
-                    || listItem.type == FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL) {
-                imageCount++;
-            }
         }
-        return imageCount <= 1;
+        return true;
     }
 
     private void onTabPickerClicked() {
@@ -655,7 +633,6 @@ import java.util.function.Supplier;
         mActionTaken = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.TAB_PICKER);
-        if (isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_TAB)) return;
 
         Intent intent = ChromeItemPickerUtils.createChromeItemPickerIntent(mContext);
         if (intent == null) return;
@@ -781,7 +758,6 @@ import java.util.function.Supplier;
         mActionTaken = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.CAMERA);
-        if (isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_IMAGE)) return;
 
         if (mPermissionDelegate.hasPermission(Manifest.permission.CAMERA)) {
             launchCamera();
@@ -847,7 +823,7 @@ import java.util.function.Supplier;
                 new PopupButtonData(
                         this::onDynamicButtonClicked,
                         mContext.getString(R.string.ai_mode_entrypoint_label),
-                        R.drawable.search_spark_black_24dp,
+                        IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE_VALUE,
                         /* enabled= */ true,
                         mInput.getRequestType() == AutocompleteRequestType.AI_MODE,
                         PopupButtonType.TOOL,
@@ -859,7 +835,7 @@ import java.util.function.Supplier;
                     new PopupButtonData(
                             this::onDynamicButtonClicked,
                             mContext.getString(R.string.omnibox_create_image),
-                            R.drawable.create_image_24dp,
+                            IconResourceIds.BANANA_VALUE,
                             areAttachmentsCompatibleWithCreateImage(),
                             mInput.getRequestType() == AutocompleteRequestType.IMAGE_GENERATION,
                             PopupButtonType.TOOL,
@@ -910,24 +886,22 @@ import java.util.function.Supplier;
         mActionTaken = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.GALLERY);
-        if (isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_IMAGE)) return;
 
-        boolean allowMultipleAttachments =
-                mInput.getRequestType() != AutocompleteRequestType.IMAGE_GENERATION;
         Intent intent;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            int imageMax = allowMultipleAttachments ? mModelList.getRemainingAttachments() : 1;
             intent =
                     new Intent(MediaStore.ACTION_PICK_IMAGES)
                             .setType(MimeTypeUtils.IMAGE_ANY_MIME_TYPE)
-                            .putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, imageMax);
+                            .putExtra(
+                                    MediaStore.EXTRA_PICK_IMAGES_MAX,
+                                    mModelList.getRemainingAttachments());
         } else {
             intent =
                     new Intent(Intent.ACTION_PICK)
                             .setDataAndType(
                                     MediaStore.Images.Media.INTERNAL_CONTENT_URI,
                                     MimeTypeUtils.IMAGE_ANY_MIME_TYPE)
-                            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, allowMultipleAttachments);
+                            .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
         }
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
@@ -956,7 +930,6 @@ import java.util.function.Supplier;
         mActionTaken = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.FILES);
-        if (isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_FILE)) return;
 
         String mimeType =
                 ChromeFeatureList.sLensSendRawFileMediaTypes.isEnabled()
@@ -996,7 +969,6 @@ import java.util.function.Supplier;
         mActionTaken = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.CLIPBOARD);
-        if (isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_IMAGE)) return;
 
         long startTime = SystemClock.elapsedRealtime();
         new AsyncTask<byte[]>() {
@@ -1048,11 +1020,6 @@ import java.util.function.Supplier;
             return;
         }
         if (!isInInputSession()) return;
-
-        // Image generation is only allowed to have a single piece of context.
-        if (mInput.getRequestType() == AutocompleteRequestType.IMAGE_GENERATION) {
-            mModelList.clear();
-        }
 
         // Use FuseboxModelList's unified add method.
         mModelList.add(attachment);
@@ -1180,7 +1147,7 @@ import java.util.function.Supplier;
         }
         boolean showModelPicker = modelButtonDataList.size() >= 2;
         boolean showModelPickerDivider =
-                showModelPicker && !OmniboxFeatures.sShowBottomSheetPopup.getValue();
+                showModelPicker && !OmniboxFeatures.shouldShowBottomSheetPopup();
         mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, showModelPickerDivider);
         mModel.set(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE, showModelPicker);
         mModel.set(

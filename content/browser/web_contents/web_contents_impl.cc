@@ -563,7 +563,7 @@ int64_t AdjustWindowRectForDisplay(gfx::Rect* rect, RenderFrameHost* host) {
 }
 
 // Adjusts the bounds to the minimum window size provided. Defaults to
-// `blink::kMinimumWindowSize` but can be overridden, e.g. for borderless apps.
+// `blink::kMinimumWindowSize` but can be overridden, e.g. for unframed apps.
 void AdjustWindowRectForMinimum(gfx::Rect* bounds,
                                 int minimum_size = blink::kMinimumWindowSize) {
   // Size 0 indicates default size, not minimum.
@@ -3147,11 +3147,9 @@ void WebContentsImpl::SetPrimaryPageImportance(
   // and the subframes.
   base::android::ScopedServiceBindingBatch scoped_service_binding_batch;
 
-  if (base::FeatureList::IsEnabled(features::kSubframeImportance)) {
-    if (subframe_importance != primary_subframe_importance_) {
-      primary_subframe_importance_ = subframe_importance;
-      ApplyPrimaryPageSubframeImportance();
-    }
+  if (subframe_importance != primary_subframe_importance_) {
+    primary_subframe_importance_ = subframe_importance;
+    ApplyPrimaryPageSubframeImportance();
   }
 
   GetPrimaryMainFrame()->GetRenderWidgetHost()->SetImportance(
@@ -5780,18 +5778,18 @@ RenderWidgetHostImpl* WebContentsImpl::CreateNewPopupWidget(
 int64_t WebContentsImpl::AdjustWindowRect(gfx::Rect* bounds,
                                           RenderFrameHostImpl* opener) {
   // Auto-resize can override other mechanisms for enforcing min/max window size
-  // for some modals and popups to fit the size of their contents. Borderless
+  // for some modals and popups to fit the size of their contents. Unframed
   // apps shouldn't have overlap with auto-resize mode windows.
   if (!(GetRenderWidgetHostView() &&
         static_cast<RenderWidgetHostViewBase*>(GetRenderWidgetHostView())
             ->IsAutoResizeEnabled())) {
-    // For borderless apps the minimum size is
-    // `blink::kMinimumBorderlessWindowSize` instead of the default
+    // For unframed apps the minimum size is
+    // `blink::kMinimumUnframedWindowSize` instead of the default
     // `blink::kMinimumWindowSize`.
     int minimum_size =
         GetDisplayMode() == blink::mojom::DisplayMode::kUnframed &&
                 IsWindowManagementGranted(opener)
-            ? blink::kMinimumBorderlessWindowSize
+            ? blink::kMinimumUnframedWindowSize
             : blink::kMinimumWindowSize;
     AdjustWindowRectForMinimum(bounds, minimum_size);
   }
@@ -9013,8 +9011,7 @@ void WebContentsImpl::RenderFrameCreated(
   }
 
 #if BUILDFLAG(IS_ANDROID)
-  if (base::FeatureList::IsEnabled(features::kSubframeImportance) &&
-      render_frame_host->GetParent() &&
+  if (render_frame_host->GetParent() &&
       render_frame_host->frame_tree()->is_primary()) {
     if (auto* rwh = render_frame_host->GetLocalRenderWidgetHost()) {
       rwh->SetImportance(primary_subframe_importance_);
@@ -9608,6 +9605,25 @@ void WebContentsImpl::InnerWebContentsAttached(
   if (inner_web_contents->IsCurrentlyAudible()) {
     OnAudioStateChanged();
   }
+}
+
+void WebContentsImpl::SurfaceEmbedChildWebContentsAttached(
+    WebContents* inner_web_contents,
+    RenderFrameHost* embedder_render_frame_host) {
+  OPTIONAL_TRACE_EVENT0(
+      "content", "WebContentsImpl::SurfaceEmbedChildWebContentsAttached");
+  observers_.NotifyObservers(
+      &WebContentsObserver::SurfaceEmbedChildWebContentsAttached,
+      inner_web_contents, embedder_render_frame_host);
+}
+
+void WebContentsImpl::SurfaceEmbedChildWebContentsDetached(
+    WebContents* inner_web_contents) {
+  OPTIONAL_TRACE_EVENT0(
+      "content", "WebContentsImpl::SurfaceEmbedChildWebContentsDetached");
+  observers_.NotifyObservers(
+      &WebContentsObserver::SurfaceEmbedChildWebContentsDetached,
+      inner_web_contents);
 }
 
 void WebContentsImpl::InnerWebContentsDetached(
@@ -12278,9 +12294,7 @@ void WebContentsImpl::NotifyPageBecamePrimary(PageImpl& page) {
   // pages restored from back/forward cache. Note that we don't need to clear
   // importance for non-primary pages because the importance is ignored at
   // RenderWidgetHostImpl::GetPriority() and updated when it becomes inactive.
-  if (base::FeatureList::IsEnabled(features::kSubframeImportance)) {
-    ApplyPrimaryPageSubframeImportance();
-  }
+  ApplyPrimaryPageSubframeImportance();
 #endif
 
   // Clear |save_package_| since the primary page changed.

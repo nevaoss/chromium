@@ -123,7 +123,7 @@ class MODULES_EXPORT ClipboardPromise final
   class ClipboardItemDataPromiseFulfill;
   class ClipboardItemDataPromiseReject;
   void HandlePromiseWrite(
-      GCedHeapVector<Member<V8UnionBlobOrString>>* clipboard_item_list);
+      HeapVector<Member<V8UnionBlobOrString>> clipboard_item_list);
   void WriteClipboardItemData(
       GCedHeapVector<Member<V8UnionBlobOrString>>* clipboard_item_list);
 
@@ -166,6 +166,10 @@ class MODULES_EXPORT ClipboardPromise final
 
   // Resolves the read promise.
   void ResolveRead();
+
+  // Callback for the asynchronous SystemClipboard::ReadPlainText used by
+  // navigator.clipboard.readText(). Resolves `script_promise_resolver_`.
+  void OnReadPlainText(const String& text);
 
   // Returns the `PermissionService` associated with the promise, or nullptr if
   // the remote connection fails.

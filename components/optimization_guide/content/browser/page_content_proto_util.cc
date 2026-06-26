@@ -45,6 +45,11 @@ BASE_FEATURE(kAnnotatedPageContentAutofillCreditCardRedactions,
 // are applied to the page content.
 BASE_FEATURE(kAnnotatedPageContentAutofillOtpRedactions,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether sensitive fields in OOPIFs that are omitted from the APC
+// tree are still redacted. This acts as a killswitch for that security fix.
+BASE_FEATURE(kAnnotatedPageContentRedactOrphanFrames,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 }  // namespace features
 
 namespace {
@@ -138,14 +143,6 @@ bool ShouldRedactContent(proto::RedactionDecision redaction_decision) {
       LOG(ERROR) << "Missing case statement in ShouldRedactContent";
       return false;
   }
-}
-
-// Returns whether or not a given form control node should have its content
-// redacted (irrespective of the reason).
-bool ShouldRedactContent(
-    const optimization_guide::proto::FormControlData& form_control_data) {
-  return form_control_data.has_redaction_decision() &&
-         ShouldRedactContent(form_control_data.redaction_decision());
 }
 
 optimization_guide::proto::ClickabilityReason ConvertClickabilityReason(
@@ -299,6 +296,23 @@ void ConvertRect(const gfx::Rect& mojom_rect,
   proto_rect->set_height(mojom_rect.height());
 }
 
+optimization_guide::proto::CssPosition ConvertCssPosition(
+    blink::mojom::AIPageContentCssPosition mojom_css_position) {
+  switch (mojom_css_position) {
+    case blink::mojom::AIPageContentCssPosition::kStatic:
+      return optimization_guide::proto::CSS_POSITION_STATIC_DEFAULT;
+    case blink::mojom::AIPageContentCssPosition::kRelative:
+      return optimization_guide::proto::CSS_POSITION_RELATIVE;
+    case blink::mojom::AIPageContentCssPosition::kAbsolute:
+      return optimization_guide::proto::CSS_POSITION_ABSOLUTE;
+    case blink::mojom::AIPageContentCssPosition::kFixed:
+      return optimization_guide::proto::CSS_POSITION_FIXED;
+    case blink::mojom::AIPageContentCssPosition::kSticky:
+      return optimization_guide::proto::CSS_POSITION_STICKY;
+  }
+  NOTREACHED();
+}
+
 void ConvertGeometry(const blink::mojom::AIPageContentGeometry& mojom_geometry,
                      optimization_guide::proto::Geometry* proto_geometry) {
   ConvertRect(mojom_geometry.outer_bounding_box,
@@ -308,6 +322,8 @@ void ConvertGeometry(const blink::mojom::AIPageContentGeometry& mojom_geometry,
   for (const gfx::Rect& rect : mojom_geometry.fragment_visible_bounding_boxes) {
     ConvertRect(rect, proto_geometry->add_fragment_visible_bounding_boxes());
   }
+  proto_geometry->set_css_position(
+      ConvertCssPosition(mojom_geometry.css_position));
 }
 
 void ConvertScrollerInfo(
@@ -626,9 +642,10 @@ optimization_guide::proto::RedactionDecision ConvertRedactionDecision(
 
 void ConvertFormControlData(
     const blink::mojom::AIPageContentFormControlData& mojom_form_control_data,
-    blink::mojom::AIPageContentRedactionDecision redaction_decision,
     const std::optional<AutofillFieldMetadata>& autofill_metadata,
-    optimization_guide::proto::FormControlData* proto_form_control_data) {
+    optimization_guide::proto::ContentAttributes* proto_attributes) {
+  optimization_guide::proto::FormControlData* proto_form_control_data =
+      proto_attributes->mutable_form_control_data();
   proto_form_control_data->set_form_control_type(
       ConvertFormControlType(mojom_form_control_data.form_control_type));
   proto_form_control_data->set_is_checked(mojom_form_control_data.is_checked);
@@ -656,11 +673,6 @@ void ConvertFormControlData(
     }
     proto_select_option->set_is_selected(select_option->is_selected);
   }
-  // Set the deprecated proto field for compatibility. The canonical redaction
-  // decision now lives on `ContentAttributes.redaction_decision`.
-  // TODO(crbug.com/480135178): Remove when consumers are migrated.
-  proto_form_control_data->set_redaction_decision(
-      ConvertRedactionDecision(redaction_decision));
 
   // Incorporate any information received from Autofill.
   if (autofill_metadata) {
@@ -673,7 +685,7 @@ void ConvertFormControlData(
     // one, use the Autofill decision when its feature gate is enabled.
     //
     // TODO(b/454611037): Handle <select> related data as well.
-    if (proto_form_control_data->redaction_decision() ==
+    if (proto_attributes->redaction_decision() ==
             proto::REDACTION_DECISION_NO_REDACTION_NECESSARY &&
         IsAutofillRedactionReasonEnabled(autofill_metadata->redaction_reason)) {
       proto::RedactionDecision autofill_redaction_decision =
@@ -681,16 +693,20 @@ void ConvertFormControlData(
               *proto_form_control_data, autofill_metadata->redaction_reason);
       if (autofill_redaction_decision !=
           proto::REDACTION_DECISION_NO_REDACTION_NECESSARY) {
-        proto_form_control_data->set_redaction_decision(
-            autofill_redaction_decision);
+        proto_attributes->set_redaction_decision(autofill_redaction_decision);
 
-        if (ShouldRedactContent(
-                proto_form_control_data->redaction_decision())) {
+        if (ShouldRedactContent(proto_attributes->redaction_decision())) {
           proto_form_control_data->clear_field_value();
         }
       }
     }
   }
+
+  // Set the deprecated proto field for compatibility. The canonical redaction
+  // decision now lives on `ContentAttributes.redaction_decision`.
+  // TODO(crbug.com/480135178): Remove when consumers are migrated.
+  proto_form_control_data->set_redaction_decision(
+      proto_attributes->redaction_decision());
 }
 
 void ConvertTableData(
@@ -819,9 +835,8 @@ base::expected<void, std::string> ConvertAttributes(
     }
     ConvertFormControlData(
         *mojom_attributes.form_control_data,
-        mojom_attributes.redaction_decision,
         GetAutofillFieldData(source_frame_token, session, *proto_attributes),
-        proto_attributes->mutable_form_control_data());
+        proto_attributes);
   } else if (mojom_attributes.table_data) {
     if (mojom_attributes.attribute_type !=
         blink::mojom::AIPageContentAttributeType::kTable) {
@@ -1172,8 +1187,7 @@ class Converter {
     // form control data.
     const optimization_guide::proto::ContentAttributes& proto_attributes =
         proto_node->content_attributes();
-    if (proto_attributes.has_form_control_data() &&
-        ShouldRedactContent(proto_attributes.form_control_data())) {
+    if (ShouldRedactContent(proto_attributes.redaction_decision())) {
       return base::ok();
     }
 
@@ -1256,6 +1270,17 @@ class Converter {
            blink::mojom::AIPageContentMode::kActionableElements;
   }
 
+  // Collects redaction boxes for a frame that was not visited during the main
+  // frame's tree walk (an "orphan" frame).
+  void CollectRedactionBoxesForOrphanFrame(
+      const blink::mojom::AIPageContent& page_content,
+      content::GlobalRenderFrameHostToken frame_token) {
+    AddRendererPasswordRedactionBoxes(page_content);
+    if (page_content.root_node) {
+      CollectRedactionBoxesForOrphanNode(frame_token, *page_content.root_node);
+    }
+  }
+
   void AddRendererPasswordRedactionBoxes(
       const blink::mojom::AIPageContent& mojom_page_content) {
     // Password boxes are emitted by the renderer and feed the final
@@ -1295,8 +1320,7 @@ class Converter {
       const blink::mojom::AIPageContentAttributes& mojom_attributes,
       const optimization_guide::proto::ContentAttributes& proto_attributes) {
     if (proto_attributes.has_form_control_data()) {
-      const auto redaction_decision =
-          proto_attributes.form_control_data().redaction_decision();
+      const auto redaction_decision = proto_attributes.redaction_decision();
       const bool should_collect_sensitive_payment =
           options_->include_sensitive_payments_for_redaction &&
           redaction_decision ==
@@ -1333,6 +1357,44 @@ class Converter {
   }
   optimization_guide::proto::AnnotatedPageContent& page_content_proto() {
     return page_content_result_->proto;
+  }
+
+  // Recursively walks the nodes of an orphan frame to collect redaction boxes.
+  void CollectRedactionBoxesForOrphanNode(
+      content::GlobalRenderFrameHostToken frame_token,
+      const blink::mojom::AIPageContentNode& mojom_node) {
+    const auto& mojom_attributes = *mojom_node.content_attributes;
+    // Password redaction boxes are reported at the frame level and are handled
+    // by `CollectRedactionBoxesForOrphanFrame()`. This helper only deals with
+    // browser-derived sensitive information redactions.
+    if (mojom_attributes.form_control_data) {
+      proto::ContentAttributes proto_attributes;
+      // Create minimal attributes to check for browser-side redaction signals.
+      // The dom_node_id is the primary identifier used to look up Autofill
+      // metadata for the field.
+      if (mojom_attributes.dom_node_id) {
+        proto_attributes.set_common_ancestor_dom_node_id(
+            *mojom_attributes.dom_node_id);
+      }
+      proto_attributes.set_redaction_decision(
+          ConvertRedactionDecision(mojom_attributes.redaction_decision));
+      ConvertFormControlData(
+          *mojom_attributes.form_control_data,
+          GetAutofillFieldData(frame_token, session_, proto_attributes),
+          &proto_attributes);
+      MaybeAddSensitivePaymentOrOtpData(mojom_attributes, proto_attributes);
+
+      // If the node is redacted, do not walk children. This is consistent with
+      // the behavior in `ConvertNode()`.
+      if (ShouldRedactContent(proto_attributes.redaction_decision())) {
+        return;
+      }
+    }
+
+    // Recurse into children.
+    for (const auto& child : mojom_node.children_nodes) {
+      CollectRedactionBoxesForOrphanNode(frame_token, *child);
+    }
   }
 
   blink::mojom::AIPageContentOptionsPtr options_;
@@ -1448,6 +1510,27 @@ base::expected<void, std::string> ConvertAIPageContentToProto(
   if (main_frame_page_content->page_interaction_info) {
     ConvertPageInteractionInfo(*main_frame_page_content->page_interaction_info,
                                proto_page_interaction_info);
+  }
+
+  // Password redaction boxes are collected from all frames that returned a
+  // result. Normally these are handled during the `ConvertNode()` tree walk.
+  // However, a compromised renderer could omit an iframe from the tree to
+  // bypass redaction.
+  //
+  // We do this after `ConvertNode()` so that `frame_token_set` is fully
+  // populated, allowing us to identify and also redact sensitive fields from
+  // "orphan" frames that were not reached during the main walk.
+  if (base::FeatureList::IsEnabled(
+          features::kAnnotatedPageContentRedactOrphanFrames)) {
+    for (const auto& [token, content_or_redacted] : page_content_map) {
+      if (!frame_token_set.contains(token)) {
+        if (const auto* content_ptr =
+                std::get_if<blink::mojom::AIPageContentPtr>(
+                    &content_or_redacted)) {
+          converter.CollectRedactionBoxesForOrphanFrame(**content_ptr, token);
+        }
+      }
+    }
   }
 
   auto mode = optimization_guide::proto::ANNOTATED_PAGE_CONTENT_MODE_DEFAULT;

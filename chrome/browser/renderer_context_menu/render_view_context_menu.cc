@@ -47,6 +47,7 @@
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/devtools/features.h"
 #include "chrome/browser/devtools/views/devtools_floaty.h"
+#include "chrome/browser/dictation/features.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/download/download_stats.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_clipboard_utils.h"
@@ -80,6 +81,7 @@
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/renderer_context_menu/accessibility_labels_menu_observer.h"
 #include "chrome/browser/renderer_context_menu/context_menu_content_type_factory.h"
+#include "chrome/browser/renderer_context_menu/dictation_menu_observer.h"
 #include "chrome/browser/renderer_context_menu/link_to_text_menu_observer.h"
 #include "chrome/browser/renderer_context_menu/spelling_menu_observer.h"
 #include "chrome/browser/search/search.h"
@@ -425,7 +427,7 @@ ui::ImageModel GetLensContextMenuIcon() {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
       vector_icons::kGoogleLensMonochromeLogoIcon
 #else
-      vector_icons::kSearchChromeRefreshIcon
+      vector_icons::kSearchChromeRefreshOldIcon
 #endif
   );
 }
@@ -602,13 +604,14 @@ const std::map<int, int>& GetIdcToUmaMap(UmaEnumIdLookupType type) {
        {IDC_CONTENT_CONTEXT_GLIC, 162},
        {IDC_CONTENT_CONTEXT_VIDEO_FRAME, 163},
        {IDC_CONTENT_CONTEXT_LISTEN_TO_THIS_PAGE, 164},
+       {IDC_CONTENT_CONTEXT_DICTATION, 165},
        // To add new items:
        //   - Add one more line above this comment block, using the UMA value
        //     from the line below this comment block.
        //   - Increment the UMA value in that latter line.
        //   - Add the new item to the RenderViewContextMenuItem enum in
        //     tools/metrics/histograms/metadata/ui/enums.xml.
-       {0, 165}});
+       {0, 166}});
   // LINT.ThenChange(//tools/metrics/histograms/metadata/ui/enums.xml:RenderViewContextMenuItem)
 
   // LINT.IfChange(ContextMenuOptionDesktop)
@@ -1821,8 +1824,8 @@ void RenderViewContextMenu::AppendLinkItems() {
 
         menu_model_.AddItemWithStringIdAndIcon(
             IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW, string_id,
-            ui::ImageModel::FromVectorIcon(kSplitSceneIcon, ui::kColorMenuIcon,
-                                           kTabMenuIconSize));
+            ui::ImageModel::FromVectorIcon(
+                kSplitSceneOldIcon, ui::kColorMenuIcon, kTabMenuIconSize));
         const int command_index =
             menu_model_
                 .GetIndexOfCommandId(IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW)
@@ -2086,6 +2089,10 @@ void RenderViewContextMenu::AppendSearchWebForImageItems() {
     return;
   }
 
+  if (!IsSearchAllowedByPolicy()) {
+    return;
+  }
+
   const auto* provider = GetImageSearchProvider();
   if (!provider) {
     return;
@@ -2220,7 +2227,8 @@ void RenderViewContextMenu::AppendVideoItems() {
   }
 
   // Search for video frame menu item.
-  if (base::FeatureList::IsEnabled(media::kContextMenuSearchForVideoFrame)) {
+  if (base::FeatureList::IsEnabled(media::kContextMenuSearchForVideoFrame) &&
+      IsSearchAllowedByPolicy()) {
     const int search_for_video_frame_idc = GetSearchForVideoFrameIdc();
     auto* entry_point_controller =
         GetBrowser() ? lens::LensOverlayEntryPointController::From(GetBrowser())
@@ -2516,8 +2524,7 @@ void RenderViewContextMenu::AppendRotationItems() {
 void RenderViewContextMenu::AppendSearchProvider() {
   DCHECK(browser_context_);
 
-  if (!enterprise_data_protection::IsSearchWithAllowed(
-          GetWebContentsForDataControls())) {
+  if (!IsSearchAllowedByPolicy()) {
     return;
   }
 
@@ -2623,6 +2630,8 @@ void RenderViewContextMenu::AppendSpellingAndSearchSuggestionItems() {
               GetBrowserContext(), compose::features::kEnableCompose));
       render_separator = true;
     }
+
+    AppendDictationItems();
   }
 #endif  // BUILDFLAG(ENABLE_COMPOSE)
   if (render_separator) {
@@ -2736,6 +2745,19 @@ bool RenderViewContextMenu::AppendAccessibilityLabelsItems() {
   observers_.AddObserver(accessibility_labels_menu_observer_.get());
   accessibility_labels_menu_observer_->InitMenu(params_);
   return accessibility_labels_menu_observer_->ShouldShowLabelsItem();
+}
+
+void RenderViewContextMenu::AppendDictationItems() {
+  if (!base::FeatureList::IsEnabled(dictation::kDictation)) {
+    return;
+  }
+
+  if (!dictation_menu_observer_) {
+    dictation_menu_observer_ =
+        std::make_unique<dictation::DictationMenuObserver>(this, GetBrowser());
+  }
+  observers_.AddObserver(dictation_menu_observer_.get());
+  dictation_menu_observer_->InitMenu(params_);
 }
 
 void RenderViewContextMenu::AppendProtocolHandlerSubMenu() {
@@ -3375,11 +3397,13 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       break;
 
     case IDC_CONTENT_CONTEXT_SEARCHLENSFORVIDEOFRAME:
-      ExecSearchForVideoFrame(event_flags, /*is_lens_query=*/true);
-      break;
-
     case IDC_CONTENT_CONTEXT_SEARCHWEBFORVIDEOFRAME:
-      ExecSearchForVideoFrame(event_flags, /*is_lens_query=*/false);
+      enterprise_data_protection::ShouldAllowSearchWith(
+          GetWebContentsForDataControls(), /*selection_size=*/0,
+          base::BindOnce(&RenderViewContextMenu::ExecSearchForVideoFrame,
+                         weak_pointer_factory_.GetWeakPtr(), event_flags,
+                         /*is_lens_query=*/id ==
+                             IDC_CONTENT_CONTEXT_SEARCHLENSFORVIDEOFRAME));
       break;
 
     case IDC_CONTENT_CONTEXT_GLIC:
@@ -3829,6 +3853,11 @@ bool RenderViewContextMenu::IsSaveAsItemAllowedByPolicy(
   return true;
 }
 
+bool RenderViewContextMenu::IsSearchAllowedByPolicy() const {
+  return enterprise_data_protection::IsSearchWithAllowed(
+      GetWebContentsForDataControls());
+}
+
 bool RenderViewContextMenu::ShouldOpenTextQueryInLens() const {
   BrowserWindowInterface* browser = GetBrowser();
   return lens::features::
@@ -4089,9 +4118,19 @@ bool RenderViewContextMenu::IsRegionSearchEnabled() const {
 }
 
 bool RenderViewContextMenu::IsVideoFrameItemEnabled(int id) const {
-  return (params_.media_flags & ContextMenuData::kMediaEncrypted) == 0 &&
-         (params_.media_flags & ContextMenuData::kMediaHasReadableVideoFrame) !=
-             0;
+  if ((params_.media_flags & ContextMenuData::kMediaEncrypted) != 0 ||
+      (params_.media_flags & ContextMenuData::kMediaHasReadableVideoFrame) ==
+          0) {
+    return false;
+  }
+
+  switch (id) {
+    case IDC_CONTENT_CONTEXT_SEARCHLENSFORVIDEOFRAME:
+    case IDC_CONTENT_CONTEXT_SEARCHWEBFORVIDEOFRAME:
+      return IsSearchAllowedByPolicy();
+    default:
+      return true;
+  }
 }
 
 // Returns true if the item was appended.
@@ -4146,7 +4185,7 @@ void RenderViewContextMenu::AppendSendTabToSelfItem(bool add_separator) {
     menu_model_.AddSubMenuWithStringIdAndIcon(
         IDC_SEND_TAB_TO_SELF, IDS_MENU_SEND_TAB_TO_SELF,
         send_tab_to_self_submenu_.get(),
-        ui::ImageModel::FromVectorIcon(kDevicesIcon));
+        ui::ImageModel::FromVectorIcon(kDevicesOldIcon));
 #endif
     return;
   }
@@ -4158,7 +4197,7 @@ void RenderViewContextMenu::AppendSendTabToSelfItem(bool add_separator) {
   menu_model_.AddItemWithIcon(
       IDC_SEND_TAB_TO_SELF,
       l10n_util::GetStringUTF16(IDS_MENU_SEND_TAB_TO_SELF),
-      ui::ImageModel::FromVectorIcon(kDevicesIcon));
+      ui::ImageModel::FromVectorIcon(kDevicesOldIcon));
 #endif
 }
 

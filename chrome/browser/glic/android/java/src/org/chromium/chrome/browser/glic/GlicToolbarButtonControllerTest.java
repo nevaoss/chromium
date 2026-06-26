@@ -88,6 +88,7 @@ public class GlicToolbarButtonControllerTest {
         mActivity = Robolectric.setupActivity(Activity.class);
 
         when(mTab.getProfile()).thenReturn(mProfile);
+        when(mProfile.getOriginalProfile()).thenReturn(mProfile);
         when(mTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
         ActorKeyedServiceFactory.setForTesting(mActorService);
         GlicKeyedServiceFactory.setForTesting(mGlicKeyedService);
@@ -138,7 +139,7 @@ public class GlicToolbarButtonControllerTest {
         when(mTab.isIncognito()).thenReturn(true);
         ButtonData buttonData = mController.get(mTab);
 
-        Assert.assertFalse(buttonData.canShow());
+        Assert.assertTrue(buttonData.canShow());
     }
 
     @Test
@@ -312,6 +313,7 @@ public class GlicToolbarButtonControllerTest {
 
         // Switch profile.
         Profile newProfile = mock(Profile.class);
+        when(newProfile.getOriginalProfile()).thenReturn(newProfile);
         Tab newTab = mock(Tab.class);
         when(newTab.getProfile()).thenReturn(newProfile);
         when(newTab.getUrl()).thenReturn(JUnitTestGURLs.EXAMPLE_URL);
@@ -466,5 +468,54 @@ public class GlicToolbarButtonControllerTest {
         // Verify popup was NOT shown.
         verify(showHook, never()).run();
         verify(mToggleGlicCallback).onClick(false);
+    }
+
+    @Test
+    public void testShouldForciblyShowGlicButton_FeatureDisabled() {
+        when(mGlicEnablingJniMock.isEnabledForProfile(any())).thenReturn(false);
+        Assert.assertFalse(mController.shouldForciblyShowGlicButton(mProfile));
+    }
+
+    @Test
+    public void testShouldForciblyShowGlicButton_NoActiveTask() {
+        when(mActorService.getActiveTasks()).thenReturn(null);
+        Assert.assertFalse(mController.shouldForciblyShowGlicButton(mProfile));
+    }
+
+    @Test
+    public void testShouldForciblyShowGlicButton_WithActiveTask() {
+        when(mActorService.getActiveTasks())
+                .thenReturn(Collections.singletonList(mock(ActorTask.class)));
+        Assert.assertTrue(mController.shouldForciblyShowGlicButton(mProfile));
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_BOTTOM_BAR)
+    public void testShouldForciblyShowGlicButton_BottomBarEnabled() {
+        when(mActorService.getActiveTasks())
+                .thenReturn(Collections.singletonList(mock(ActorTask.class)));
+        Assert.assertFalse(mController.shouldForciblyShowGlicButton(mProfile));
+    }
+
+    @Test
+    public void testShouldForciblyShowGlicButton_PanelOpen() {
+        ChromeAndroidTask task = mock(ChromeAndroidTask.class);
+        when(task.getNativeBrowserWindowPtr(mProfile, mActivity)).thenReturn(123L);
+        when(mGlicKeyedService.isPanelShowingForBrowser(123L)).thenReturn(true);
+
+        GlicToolbarButtonController controller =
+                new GlicToolbarButtonController(
+                        mActivity,
+                        () -> mTab,
+                        mToggleGlicCallback,
+                        () -> mTracker,
+                        () -> task,
+                        mBrowserControlsVisibilityManager,
+                        () -> mTabModelSelector);
+
+        when(mActorService.getActiveTasks()).thenReturn(null);
+        Assert.assertTrue(controller.shouldForciblyShowGlicButton(mProfile));
+        verify(mActorService).addObserver(any());
+        verify(mGlicKeyedService).addGlobalShowHideObserver(any());
     }
 }

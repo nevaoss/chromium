@@ -521,6 +521,7 @@ chromium-metrics-reviews@google.com.
         summary="Request without user interaction."/>
     <variant name=".Repeated"
         summary="Repeated request to open external application.."/>
+    <variant name=".ShortcutsURL" summary="Request to open a shortcuts URL."/>
   </token>
 </histogram>
 
@@ -1878,6 +1879,7 @@ chromium-metrics-reviews@google.com.
   </summary>
   <token key="RestoreType">
     <variant name="Group" summary="tab group"/>
+    <variant name="Split" summary="split view"/>
     <variant name="Tab" summary="tab"/>
     <variant name="Window" summary="window"/>
   </token>
@@ -2104,7 +2106,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.FreezeAndAppendPendingNavigationResult"
-    enum="BooleanSuccess" expires_after="2026-09-06">
+    enum="BooleanSuccess" expires_after="2026-11-08">
   <owner>ckitagawa@chromium.org</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
@@ -3116,7 +3118,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Tabs.TabSearch.TimeToClose" units="ms"
-    expires_after="2026-09-09">
+    expires_after="2026-11-08">
   <owner>emshack@chromium.org</owner>
   <owner>shibalik@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -3684,6 +3686,15 @@ chromium-metrics-reviews@google.com.
   <owner>top-chrome-desktop-ui@google.com</owner>
   <summary>
     The width of each open browser window, in DIPs, reported every 5 minutes.
+    Desktop only.
+  </summary>
+</histogram>
+
+<histogram name="Tabs.WindowWidth2" units="DIPs" expires_after="2026-11-12">
+  <owner>agale@chromium.org</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    The width of each open browser window, in DIPs, reported once per UMA log.
     Desktop only.
   </summary>
 </histogram>

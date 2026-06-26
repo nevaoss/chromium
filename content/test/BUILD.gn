@@ -937,7 +937,8 @@ static_library("test_support") {
 if (is_fuchsia) {
   # TODO(crbug.com/40830160): Split this test suite into chrome/WebEngine
   # versions.
-  # TODO(crbug.com/40829930): Move WebEngine-specific suites to //fuchsia_web/webengine/
+  # TODO(crbug.com/40829930): Move WebEngine-specific suites to
+  # //fuchsia_web/webengine/
   group("performance_web_engine_test_suite") {
     testonly = true
     data = [ "//content/test/gpu/run_telemetry_benchmark_fuchsia.py" ]
@@ -1085,10 +1086,10 @@ group("telemetry_gpu_integration_test_data") {
   data_deps = [ ":telemetry_gpu_common_data" ]
 }
 
-# Instead of implicitly depends on the main function from libbrowsertest_support.a,
-# executables should now depend on 'default_content_test_launcher' if they want to
-# use the main function from content_test_launcher.cc.
-# see b/324126269 for detailes.
+# Instead of implicitly depends on the main function from
+# libbrowsertest_support.a, executables should now depend on
+# 'default_content_test_launcher' if they want to use the main function from
+# content_test_launcher.cc. see b/324126269 for details.
 source_set("default_content_test_launcher") {
   testonly = true
   sources = [ "content_test_launcher.cc" ]
@@ -1601,6 +1602,7 @@ test("content_browsertests") {
     "../browser/file_system_access/file_system_access_file_writer_impl_browsertest.cc",
     "../browser/file_system_access/file_system_access_handle_impl_browsertest_util.cc",
     "../browser/file_system_access/file_system_access_handle_impl_browsertest_util.h",
+    "../browser/file_system_access/file_system_access_sync_access_handle_browsertest.cc",
     "../browser/file_system_access/file_system_chooser_browsertest.cc",
     "../browser/find_request_manager_browsertest.cc",
     "../browser/first_party_sets/first_party_sets_handler_impl_browsertest.cc",
@@ -1761,6 +1763,7 @@ test("content_browsertests") {
     "../browser/renderer_host/spare_render_process_host_manager_browsertest.cc",
     "../browser/renderer_host/speculative_render_view_host_browsertest.cc",
     "../browser/renderer_host/unassigned_site_instance_browsertest.cc",
+    "../browser/renderer_host/unbounded_element_browsertest.cc",
     "../browser/renderer_host/view_transition_browsertest.cc",
     "../browser/resource_loading_browsertest.cc",
     "../browser/screen_details/screen_details_browsertest.cc",
@@ -1886,6 +1889,7 @@ test("content_browsertests") {
     "../renderer/render_widget_browsertest.cc",
     "../renderer/visual_state_browsertest.cc",
     "../renderer/webclipboard_impl_browsertest.cc",
+    "../shell/browser/mojo_bindings_test_browsertest.cc",
     "../shell/browser/rust_mojo_test_browsertest.cc",
     "../test/browser_test_utils_browsertest.cc",
     "../test/content_browser_test_test.cc",
@@ -1940,6 +1944,10 @@ test("content_browsertests") {
   }
 
   defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+
+  if (enable_mojom_fuzzer) {
+    defines += [ "MOJOM_FUZZER_BUILD_MODE" ]
+  }
 
   configs += [ "//build/config:precompiled_headers" ]
 
@@ -2110,21 +2118,27 @@ test("content_browsertests") {
     deps += [ "//components/variations" ]
   }
 
-  data_deps = [ "//content/shell:pak" ]
+  data_deps = [
+    "//content/shell:pak",
+    "//mojo/public/js:bindings_lite",
+    "//url/mojom:url_mojom_scheme_host_port_js_data_deps",
+  ]
 
   data = [
     "data/",
     "//media/test/data/",
     "//mojo/public/interfaces/bindings/tests/data/validation/",
-    "$root_gen_dir/third_party/perfetto/protos/perfetto/config/chrome/scenario_config.descriptor",
-    "$root_gen_dir/mojo/public/js/mojo_bindings_lite.js",
     "$root_gen_dir/content/shell/common/rust_test.test-mojom-lite.js",
+    "$root_gen_dir/mojo/public/js/mojo_bindings_lite.js",
+    "$root_gen_dir/third_party/perfetto/protos/perfetto/config/chrome/scenario_config.descriptor",
+    "$root_gen_dir/url/mojom/scheme_host_port.mojom-lite.js",
   ]
 
   if (!is_ios && !is_android) {
     sources += [ "../browser/file_system_access/file_system_access_observer_browsertest.cc" ]
 
-    # Add Material Design components for accessibility tests on desktop platforms
+    # Add Material Design components for accessibility tests on desktop
+    # platforms
     data += [ "//third_party/material_web_components/" ]
   }
 
@@ -3139,6 +3153,7 @@ test("content_unittests") {
     "../common/memory_coordinator/mojom/memory_consumer_traits_unittest.cc",
     "../common/pseudonymization_salt_unittest.cc",
     "../common/scheduler_loop_quarantine_task_observer_unittest.cc",
+    "../common/service_worker/forwarded_race_network_request_url_loader_factory_unittest.cc",
     "../common/service_worker/race_network_request_read_buffer_manager_unittest.cc",
     "../common/service_worker/race_network_request_simple_buffer_manager_unittest.cc",
     "../common/service_worker/race_network_request_url_loader_client_unittest.cc",
@@ -3563,6 +3578,7 @@ test("content_unittests") {
   # Screen capture unit tests.
   if (enable_screen_capture) {
     sources += [
+      "../browser/media/capture/desktop_media_id_unittest.cc",
       "../browser/media/capture/frame_sink_video_capture_device_unittest.cc",
       "../browser/media/capture/web_contents_auto_scaler_unittest.cc",
       "../browser/media/capture/web_contents_frame_tracker_unittest.cc",
@@ -3570,6 +3586,7 @@ test("content_unittests") {
     ]
     if (is_mac) {
       sources += [
+        "../browser/media/capture/desktop_capture_util_mac_unittest.mm",
         "../browser/media/capture/pip_screen_capture_coordinator_impl_unittest.cc",
         "../browser/media/capture/pip_screen_capture_coordinator_proxy_impl_unittest.cc",
       ]
@@ -3885,7 +3902,8 @@ group("fuzzers") {
 # test_buildbucket_api_gpu_cases.py on bots. This also tells the build system
 # when the tests should be re-run - when one of the dependent files changes.
 #
-# TODO(crbug.com/40130215): Remove once power testing is migrated to perf waterfall.
+# TODO(crbug.com/40130215): Remove once power testing is migrated to perf
+# waterfall.
 group("test_buildbucket_api_gpu_use_cases") {
   data = [
     # The test runner and its dependencies.

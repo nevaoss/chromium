@@ -247,8 +247,6 @@ BASE_FEATURE(kPageSpecificDataDialogRelatedInstalledAppsSection,
 BASE_FEATURE(kEnableManagementPromotionBanner,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kInlineFullscreenPerfExperiment, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kPageActionsMigration, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE_PARAM(bool,
@@ -274,12 +272,6 @@ BASE_FEATURE_PARAM(bool,
                    &kPageActionsMigration,
                    "zoom",
                    false);
-
-BASE_FEATURE_PARAM(bool,
-                   kPageActionsMigrationFileSystemAccess,
-                   &kPageActionsMigration,
-                   "file_system_access",
-                   true);
 
 BASE_FEATURE_PARAM(bool,
                    kPageActionsMigrationCookieControls,
@@ -346,6 +338,9 @@ BASE_FEATURE(kSavePasswordsContextualUi, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kByDateHistoryInSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTabsFromOtherDevicesSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kTabsFromOtherDevicesSidePanelExcludeStableChannel,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTabsFromOtherDevicesSidePanelPinnedByDefault,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -487,14 +482,7 @@ BASE_FEATURE_PARAM(bool,
                    "vertical_tab_grab_handle_remove_always",
                    true);
 
-// Support for configurable tab glow hover delay. If the feature is disabled
-// we use a zero delay. The default value is 200ms.
-BASE_FEATURE(kTabGlowHoverDelayEnabled, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kTabGlowHoverFadeInDelay,
-                   &kTabGlowHoverDelayEnabled,
-                   "tab_glow_hover_fade_in_delay",
-                   base::Milliseconds(200));
+BASE_FEATURE(kOSCryptAsyncAvailabilityInfoBar,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace features

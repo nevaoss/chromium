@@ -41,6 +41,7 @@
 #include "chrome/browser/ui/autofill/autofill_bubble_base.h"
 #include "chrome/browser/ui/autofill/payments/filled_card_information_bubble_controller_impl.h"
 #include "chrome/browser/ui/autofill/payments/mandatory_reauth_bubble_controller_impl.h"
+#include "chrome/browser/ui/autofill/payments/omnibox_autofill_page_action_controller.h"
 #include "chrome/browser/ui/autofill/payments/save_payment_icon_controller.h"
 #include "chrome/browser/ui/autofill/payments/virtual_card_enroll_bubble_controller_impl.h"
 #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
@@ -114,6 +115,7 @@
 #include "chrome/common/chrome_features.h"
 #include "chrome/grit/branded_strings.h"
 #include "chrome/grit/generated_resources.h"
+#include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/collaboration/public/messaging/activity_log.h"
 #include "components/commerce/core/metrics/discounts_metric_collector.h"
 #include "components/content_settings/core/common/features.h"
@@ -262,12 +264,12 @@ void BrowserActions::InitializeSidePanelActions() {
   root_action_item_->AddChild(
       SidePanelAction(SidePanelEntryId::kBookmarks, IDS_BOOKMARK_MANAGER_TITLE,
                       IDS_BOOKMARK_MANAGER_TITLE,
-                      kBookmarksSidePanelRefreshIcon,
+                      kBookmarksSidePanelRefreshOldIcon,
                       kActionSidePanelShowBookmarks, bwi, true)
           .Build());
   root_action_item_->AddChild(
       SidePanelAction(SidePanelEntryId::kReadingList, IDS_READ_LATER_TITLE,
-                      IDS_READ_LATER_TITLE, kReadingListIcon,
+                      IDS_READ_LATER_TITLE, kReadingListOldIcon,
                       kActionSidePanelShowReadingList, bwi, true)
           .Build());
   if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(profile)) {
@@ -275,7 +277,7 @@ void BrowserActions::InitializeSidePanelActions() {
         SidePanelAction(SidePanelEntryId::kTabsFromOtherDevices,
                         IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE,
                         IDS_SIDE_PANEL_TABS_FROM_OTHER_DEVICES_TITLE,
-                        kDevicesChromeRefreshIcon,
+                        kDevicesChromeRefreshOldIcon,
                         kActionSidePanelShowTabsFromOtherDevices, bwi, true)
             .Build());
   }
@@ -290,20 +292,20 @@ void BrowserActions::InitializeSidePanelActions() {
       SidePanelAction(SidePanelEntryId::kCustomizeChrome,
                       IDS_SIDE_PANEL_CUSTOMIZE_CHROME_TITLE,
                       IDS_SIDE_PANEL_CUSTOMIZE_CHROME_TITLE,
-                      vector_icons::kEditChromeRefreshIcon,
+                      vector_icons::kEditChromeRefreshOldIcon,
                       kActionSidePanelShowCustomizeChrome, bwi, false)
           .Build());
   root_action_item_->AddChild(
       SidePanelAction(SidePanelEntryId::kShoppingInsights,
                       IDS_SHOPPING_INSIGHTS_SIDE_PANEL_TITLE,
                       IDS_SHOPPING_INSIGHTS_SIDE_PANEL_TITLE,
-                      vector_icons::kShoppingBagIcon,
+                      vector_icons::kShoppingBagOldIcon,
                       kActionSidePanelShowShoppingInsights, bwi, false)
           .Build());
   root_action_item_->AddChild(
       SidePanelAction(
           SidePanelEntryId::kMerchantTrust, IDS_MERCHANT_TRUST_SIDE_PANEL_TITLE,
-          IDS_MERCHANT_TRUST_SIDE_PANEL_TITLE, vector_icons::kStorefrontIcon,
+          IDS_MERCHANT_TRUST_SIDE_PANEL_TITLE, vector_icons::kStorefrontOldIcon,
           kActionSidePanelShowMerchantTrust, bwi, false)
           .Build());
 
@@ -313,7 +315,7 @@ void BrowserActions::InitializeSidePanelActions() {
     root_action_item_->AddChild(
         SidePanelAction(SidePanelEntryId::kHistoryClusters, IDS_HISTORY_TITLE,
                         IDS_HISTORY_CLUSTERS_SHOW_SIDE_PANEL,
-                        vector_icons::kHistoryChromeRefreshIcon,
+                        vector_icons::kHistoryChromeRefreshOldIcon,
                         kActionSidePanelShowHistoryCluster, bwi, true)
             .Build());
   }
@@ -322,7 +324,7 @@ void BrowserActions::InitializeSidePanelActions() {
     root_action_item_->AddChild(
         SidePanelAction(SidePanelEntryId::kHistory, IDS_HISTORY_TITLE,
                         IDS_HISTORY_SHOW_SIDE_PANEL,
-                        vector_icons::kHistoryChromeRefreshIcon,
+                        vector_icons::kHistoryChromeRefreshOldIcon,
                         kActionSidePanelShowHistory, bwi, true)
             .Build());
   }
@@ -349,8 +351,8 @@ void BrowserActions::InitializeSidePanelActions() {
             .SetText(l10n_util::GetStringUTF16(IDS_READING_MODE_TITLE))
             .SetTooltipText(l10n_util::GetStringFUTF16(IDS_READING_MODE_TOOLTIP,
                                                        reading_mode_shortcut))
-            .SetImage(ui::ImageModel::FromVectorIcon(kMenuBookChromeRefreshIcon,
-                                                     ui::kColorIcon))
+            .SetImage(ui::ImageModel::FromVectorIcon(
+                kMenuBookChromeRefreshOldIcon, ui::kColorIcon))
             .SetProperty(
                 actions::kActionItemPinnableKey,
                 static_cast<
@@ -366,8 +368,8 @@ void BrowserActions::InitializeSidePanelActions() {
             .SetText(l10n_util::GetStringUTF16(IDS_READING_MODE_TITLE))
             .SetTooltipText(l10n_util::GetStringFUTF16(IDS_READING_MODE_TOOLTIP,
                                                        reading_mode_shortcut))
-            .SetImage(ui::ImageModel::FromVectorIcon(kMenuBookChromeRefreshIcon,
-                                                     ui::kColorIcon))
+            .SetImage(ui::ImageModel::FromVectorIcon(
+                kMenuBookChromeRefreshOldIcon, ui::kColorIcon))
             .SetProperty(
                 actions::kActionItemPinnableKey,
                 static_cast<
@@ -381,7 +383,7 @@ void BrowserActions::InitializeSidePanelActions() {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
         vector_icons::kGoogleLensMonochromeLogoIcon;
 #else
-        vector_icons::kSearchChromeRefreshIcon;
+        vector_icons::kSearchChromeRefreshOldIcon;
 #endif
     root_action_item_->AddChild(
         actions::ActionItem::Builder(
@@ -414,7 +416,7 @@ void BrowserActions::InitializeSidePanelActions() {
   // lens side panel coordinator. They have default values here.
   root_action_item_->AddChild(
       SidePanelAction(SidePanelEntryId::kLens, IDS_LENS_DEFAULT_TITLE,
-                      IDS_LENS_DEFAULT_TITLE, vector_icons::kImageSearchIcon,
+                      IDS_LENS_DEFAULT_TITLE, vector_icons::kImageSearchOldIcon,
                       kActionSidePanelShowLens, bwi, false)
           .Build());
 
@@ -423,8 +425,8 @@ void BrowserActions::InitializeSidePanelActions() {
         SidePanelAction(SidePanelEntryId::kComments,
                         IDS_COLLABORATION_SHARED_TAB_GROUPS_COMMENTS_TITLE,
                         IDS_COLLABORATION_SHARED_TAB_GROUPS_COMMENTS_TITLE,
-                        vector_icons::kChatIcon, kActionSidePanelShowComments,
-                        bwi, false)
+                        vector_icons::kChatOldIcon,
+                        kActionSidePanelShowComments, bwi, false)
             .Build());
   }
 
@@ -473,7 +475,7 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_AUTOFILL_OFFERS_REMINDER_ICON_TOOLTIP_TEXT))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              kLocalOfferFlippedRefreshIcon, ui::kColorIcon,
+              kLocalOfferFlippedRefreshOldIcon, ui::kColorIcon,
               ui::SimpleMenuModel::kDefaultIconSize))
           .Build());
 
@@ -494,7 +496,7 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetTooltipText(
               l10n_util::GetStringUTF16(IDS_MEMORY_SAVER_CHIP_ACCNAME))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              kPerformanceSpeedometerIcon, ui::kColorIcon,
+              kPerformanceSpeedometerOldIcon, ui::kColorIcon,
               ui::SimpleMenuModel::kDefaultIconSize))
           .SetEnabled(true)
           .Build());
@@ -537,44 +539,34 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetEnabled(true)
           .Build());
 
-  if (base::FeatureList::IsEnabled(
-          content_settings::features::
-              kBlockV8OptimizerOnUnfamiliarSitesSetting)) {
-    root_action_item_->AddChild(
-        actions::ActionItem::Builder(
-            base::BindRepeating(
-                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
-                   actions::ActionInvocationContext context) {
-                  if (!bwi) {
-                    return;
-                  }
-                  auto anchor =
-                      bwi->GetBrowserForMigrationOnly()
-                          ->GetBrowserView()
-                          .toolbar_button_provider()
-                          ->GetBubbleAnchor(kActionShowJsOptimizationsIcon);
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                if (!bwi) {
+                  return;
+                }
+                auto anchor =
+                    bwi->GetBrowserForMigrationOnly()
+                        ->GetBrowserView()
+                        .toolbar_button_provider()
+                        ->GetBubbleAnchor(kActionShowJsOptimizationsIcon);
 
-                  bwi->GetActiveTabInterface()
-                      ->GetTabFeatures()
-                      ->js_optimizations_page_action_controller()
-                      ->ShowBubble(anchor, item);
-                },
-                bwi))
-            .SetActionId(kActionShowJsOptimizationsIcon)
-            .SetTooltipText(l10n_util::GetStringUTF16(
-                IDS_JS_OPTIMIZATIONS_DISABLED_ICON_TOOLTIP))
-            .SetImage(ui::ImageModel::FromVectorIcon(
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-                vector_icons::kV8OffIcon,
-#else
-                // TODO(crbug.com/457422266): Figure out which icon to use for
-                // non-branded builds.
-                vector_icons::kCodeIcon,
-#endif
-                ui::kColorIcon, ui::SimpleMenuModel::kDefaultIconSize))
-            .SetEnabled(true)
-            .Build());
-  }
+                bwi->GetActiveTabInterface()
+                    ->GetTabFeatures()
+                    ->js_optimizations_page_action_controller()
+                    ->ShowBubble(anchor, item);
+              },
+              bwi))
+          .SetActionId(kActionShowJsOptimizationsIcon)
+          .SetTooltipText(l10n_util::GetStringUTF16(
+              IDS_JS_OPTIMIZATIONS_DISABLED_ICON_TOOLTIP))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              vector_icons::kV8OffIcon,
+              ui::kColorIcon, ui::SimpleMenuModel::kDefaultIconSize))
+          .SetEnabled(true)
+          .Build());
 
   if (base::FeatureList::IsEnabled(
           record_replay::features::kRecordReplayBase)) {
@@ -591,7 +583,7 @@ void BrowserActions::InitializePageActionIconActions() {
                 bwi))
             .SetActionId(kActionRecordReplay)
             .SetImage(ui::ImageModel::FromVectorIcon(
-                vector_icons::kScreenRecordIcon, ui::kColorIcon,
+                vector_icons::kScreenRecordOldIcon, ui::kColorIcon,
                 ui::SimpleMenuModel::kDefaultIconSize))
             .SetEnabled(true)
             .Build());
@@ -613,7 +605,7 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetActionId(kActionZoomNormal)
           .SetText(l10n_util::GetStringUTF16(IDS_ZOOM_NORMAL))
           .SetTooltipText(l10n_util::GetStringUTF16(IDS_TOOLTIP_ZOOM))
-          .SetImage(ui::ImageModel::FromVectorIcon(kZoomInIcon))
+          .SetImage(ui::ImageModel::FromVectorIcon(kZoomInOldIcon))
           .Build());
 
   // The action does nothing, but is used to configure the page action, which
@@ -623,7 +615,7 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetActionId(kActionFind)
           .SetTooltipText(l10n_util::GetStringUTF16(IDS_TOOLTIP_FIND))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              omnibox::kFindInPageChromeRefreshIcon))
+              omnibox::kFindInPageChromeRefreshOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -652,7 +644,7 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_FALLBACK_ICON_TOOLTIP))
           .SetImage(
-              ui::ImageModel::FromVectorIcon(kCreditCardChromeRefreshIcon))
+              ui::ImageModel::FromVectorIcon(kCreditCardChromeRefreshOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -682,7 +674,7 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_AUTOFILL_FILLED_CARD_INFORMATION_ICON_TOOLTIP_VIRTUAL_CARD))
           .SetImage(
-              ui::ImageModel::FromVectorIcon(kCreditCardChromeRefreshIcon))
+              ui::ImageModel::FromVectorIcon(kCreditCardChromeRefreshOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -707,7 +699,7 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_SHOPPING_INSIGHTS_ICON_TOOLTIP_TEXT))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              vector_icons::kShoppingBagRefreshIcon))
+              vector_icons::kShoppingBagRefreshOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -739,8 +731,8 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetText(l10n_util::GetStringUTF16(IDS_DISCOUNT_ICON_EXPANDED_TEXT))
           .SetTooltipText(
               l10n_util::GetStringUTF16(IDS_DISCOUNT_ICON_EXPANDED_TEXT))
-          .SetImage(
-              ui::ImageModel::FromVectorIcon(vector_icons::kShoppingmodeIcon))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              vector_icons::kShoppingmodeOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -760,7 +752,7 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_AUTOFILL_MANDATORY_REAUTH_ICON_TOOLTIP))
           .SetImage(
-              ui::ImageModel::FromVectorIcon(kCreditCardChromeRefreshIcon))
+              ui::ImageModel::FromVectorIcon(kCreditCardChromeRefreshOldIcon))
           .Build());
 }
 
@@ -780,7 +772,7 @@ void BrowserActions::InitializeChromeMenuActions() {
               },
               profile),
           kActionNewIncognitoWindow, IDS_NEW_INCOGNITO_WINDOW,
-          IDS_NEW_INCOGNITO_WINDOW, kIncognitoRefreshMenuIcon)
+          IDS_NEW_INCOGNITO_WINDOW, kIncognitoRefreshMenuOldIcon)
           .SetEnabled(IncognitoModePrefs::IsIncognitoAllowed(profile))
           .Build());
 
@@ -793,7 +785,7 @@ void BrowserActions::InitializeChromeMenuActions() {
               },
               bwi),
           kActionTabSearch, IDS_TAB_SEARCH_MENU, IDS_TAB_SEARCH_MENU,
-          vector_icons::kExpandMoreIcon)
+          vector_icons::kExpandMoreOldIcon)
           .SetProperty(
               actions::kActionItemPinnableKey,
               static_cast<std::underlying_type_t<actions::ActionPinnableState>>(
@@ -852,7 +844,7 @@ void BrowserActions::InitializeChromeMenuActions() {
                 bwi))
             .SetActionId(kActionToggleProjectsPanel)
             .SetImage(ui::ImageModel::FromVectorIcon(
-                kSavedTabGroupBarEverythingIcon, ui::kColorIcon))
+                kSavedTabGroupBarEverythingOldIcon, ui::kColorIcon))
             .Build());
   }
 
@@ -869,7 +861,7 @@ void BrowserActions::InitializeChromeMenuActions() {
               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
           .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(IDS_NEW_TAB)))
-          .SetImage(ui::ImageModel::FromVectorIcon(vector_icons::kAddIcon,
+          .SetImage(ui::ImageModel::FromVectorIcon(vector_icons::kAddOldIcon,
                                                    ui::kColorIcon))
           .Build());
 
@@ -888,7 +880,7 @@ void BrowserActions::InitializeChromeMenuActions() {
           .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(IDS_SAVED_TAB_GROUPS_MENU)))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              kSavedTabGroupBarEverythingIcon, ui::kColorIcon))
+              kSavedTabGroupBarEverythingOldIcon, ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -899,7 +891,7 @@ void BrowserActions::InitializeChromeMenuActions() {
                 chrome::Print(bwi);
               },
               bwi),
-          kActionPrint, IDS_PRINT, IDS_PRINT, kPrintMenuIcon)
+          kActionPrint, IDS_PRINT, IDS_PRINT, kPrintMenuOldIcon)
           .SetEnabled(chrome::CanPrint(bwi))
           .Build());
 
@@ -922,7 +914,7 @@ void BrowserActions::InitializeChromeMenuActions() {
                            },
                            bwi, is_incognito),
                        kActionClearBrowsingData, IDS_CLEAR_BROWSING_DATA,
-                       IDS_CLEAR_BROWSING_DATA, kTrashCanRefreshIcon)
+                       IDS_CLEAR_BROWSING_DATA, kTrashCanRefreshOldIcon)
           .SetEnabled(is_incognito ||
                       (!is_guest_session && !profile->IsSystemProfile()))
           .Build());
@@ -937,7 +929,7 @@ void BrowserActions::InitializeChromeMenuActions() {
                 },
                 bwi),
             kActionTaskManager, IDS_TASK_MANAGER, IDS_TASK_MANAGER,
-            kTaskManagerIcon)
+            kTaskManagerOldIcon)
             .Build());
   }
 
@@ -951,7 +943,7 @@ void BrowserActions::InitializeChromeMenuActions() {
                     DevToolsOpenedByAction::kPinnedToolbarButton);
               },
               bwi),
-          kActionDevTools, IDS_DEV_TOOLS, IDS_DEV_TOOLS, kDeveloperToolsIcon)
+          kActionDevTools, IDS_DEV_TOOLS, IDS_DEV_TOOLS, kDeveloperToolsOldIcon)
           .Build());
 
   if (send_tab_to_self::SendTabToSelfToolbarIconController::CanShowOnBrowser(
@@ -973,7 +965,7 @@ void BrowserActions::InitializeChromeMenuActions() {
                 },
                 bwi, tab_strip_model),
             kActionSendTabToSelf, IDS_SEND_TAB_TO_SELF, IDS_SEND_TAB_TO_SELF,
-            kDevicesChromeRefreshIcon)
+            kDevicesChromeRefreshOldIcon)
             .SetEnabled(chrome::CanSendTabToSelf(bwi))
             .SetVisible(!sharing_hub::SharingIsDisabledByPolicy(profile))
             .Build());
@@ -1039,7 +1031,7 @@ void BrowserActions::InitializeChromeMenuActions() {
               },
               bwi),
           kActionQrCodeGenerator, IDS_APP_MENU_CREATE_QR_CODE,
-          IDS_APP_MENU_CREATE_QR_CODE, kQrCodeChromeRefreshIcon)
+          IDS_APP_MENU_CREATE_QR_CODE, kQrCodeChromeRefreshOldIcon)
           .SetEnabled(false)
           .SetVisible(!sharing_hub::SharingIsDisabledByPolicy(profile))
           .Build());
@@ -1070,7 +1062,7 @@ void BrowserActions::InitializeChromeMenuActions() {
           kActionShowAddressesBubbleOrPage,
           IDS_ADDRESSES_AND_MORE_SUBMENU_OPTION,
           IDS_ADDRESSES_AND_MORE_SUBMENU_OPTION,
-          vector_icons::kLocationOnChromeRefreshIcon)
+          vector_icons::kLocationOnChromeRefreshOldIcon)
           .SetEnabled(!is_guest_session)
           .Build());
 
@@ -1110,7 +1102,7 @@ void BrowserActions::InitializeChromeMenuActions() {
               },
               bwi, tab_strip_model),
           kActionShowPaymentsBubbleOrPage, IDS_PAYMENT_METHOD_SUBMENU_OPTION,
-          IDS_PAYMENT_METHOD_SUBMENU_OPTION, kCreditCardChromeRefreshIcon)
+          IDS_PAYMENT_METHOD_SUBMENU_OPTION, kCreditCardChromeRefreshOldIcon)
           .SetEnabled(!is_guest_session)
           .Build());
 
@@ -1125,7 +1117,8 @@ void BrowserActions::InitializeChromeMenuActions() {
                   ChromeLabsCoordinator::From(bwi)->ShowOrHide();
                 },
                 bwi),
-            kActionShowChromeLabs, IDS_CHROMELABS, IDS_CHROMELABS, kScienceIcon)
+            kActionShowChromeLabs, IDS_CHROMELABS, IDS_CHROMELABS,
+            kScienceOldIcon)
             .SetVisible(ShouldShowChromeLabsUI(profile))
             .Build());
   }
@@ -1155,7 +1148,7 @@ void BrowserActions::InitializeChromeMenuActions() {
               },
               bwi, tab_strip_model),
           kActionShowPasswordsBubbleOrPage, IDS_VIEW_PASSWORDS,
-          IDS_VIEW_PASSWORDS, vector_icons::kPasswordManagerIcon)
+          IDS_VIEW_PASSWORDS, vector_icons::kPasswordManagerOldIcon)
           .SetEnabled(!is_guest_session)
           .Build());
 }
@@ -1185,8 +1178,8 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               l10n_util::GetStringUTF16(IDS_TOOLTIP_INTENT_PICKER_ICON)))
           .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(IDS_TOOLTIP_INTENT_PICKER_ICON)))
-          .SetImage(ui::ImageModel::FromVectorIcon(kOpenInNewChromeRefreshIcon,
-                                                   ui::kColorIcon))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              kOpenInNewChromeRefreshOldIcon, ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -1207,8 +1200,8 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(
                   IDS_FILE_SYSTEM_ACCESS_WRITE_USAGE_TOOLTIP)))
-          .SetImage(ui::ImageModel::FromVectorIcon(kFileSaveChromeRefreshIcon,
-                                                   ui::kColorIcon))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              kFileSaveChromeRefreshOldIcon, ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -1221,7 +1214,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi, tab_strip_model),
           kActionCopyUrl, IDS_APP_MENU_COPY_LINK, IDS_APP_MENU_COPY_LINK,
-          kLinkChromeRefreshIcon)
+          kLinkChromeRefreshOldIcon)
           .SetEnabled(chrome::CanCopyUrl(bwi))
           .SetVisible(!sharing_hub::SharingIsDisabledByPolicy(profile))
           .Build());
@@ -1244,7 +1237,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi),
           kActionRouteMedia, IDS_MEDIA_ROUTER_MENU_ITEM_TITLE,
-          IDS_MEDIA_ROUTER_ICON_TOOLTIP_TEXT, kCastChromeRefreshIcon)
+          IDS_MEDIA_ROUTER_ICON_TOOLTIP_TEXT, kCastChromeRefreshOldIcon)
           .SetEnabled(chrome::CanRouteMedia(bwi))
           .CopyAddressTo(&media_router_action)
           .Build());
@@ -1264,7 +1257,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi),
           kActionShowDownloads, IDS_SHOW_DOWNLOADS, IDS_TOOLTIP_DOWNLOAD_ICON,
-          kDownloadToolbarButtonChromeRefreshIcon)
+          kDownloadToolbarButtonChromeRefreshOldIcon)
           .Build());
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
@@ -1283,7 +1276,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
             kActionSendSharedTabGroupFeedback,
             IDS_DATA_SHARING_SHARED_GROUPS_FEEDBACK,
             IDS_DATA_SHARING_SHARED_GROUPS_FEEDBACK,
-            vector_icons::kFeedbackIcon)
+            vector_icons::kFeedbackOldIcon)
             .Build());
   }
 
@@ -1337,7 +1330,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               bwi))
           .SetActionId(kActionShowCollaborationRecentActivity)
           .SetImage(ui::ImageModel().FromVectorIcon(
-              kPersonFilledPaddedSmallIcon, ui::kColorIcon))
+              kPersonFilledPaddedSmallOldIcon, ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -1377,7 +1370,8 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           .SetText(l10n_util::GetStringUTF16(IDS_AI_MODE_ENTRYPOINT_LABEL))
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_STARTER_PACK_AI_MODE_ACTION_SUGGESTION_CONTENTS))
-          .SetImage(ui::ImageModel::FromVectorIcon(omnibox::kSearchSparkIcon))
+          .SetImage(
+              ui::ImageModel::FromVectorIcon(omnibox::kSearchSparkOldIcon))
           .SetProperty(actions::kActionItemPinnableKey, false)
           .Build());
 
@@ -1407,7 +1401,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
               vector_icons::kGoogleLensMonochromeLogoIcon
 #else
-              vector_icons::kSearchChromeRefreshIcon
+              vector_icons::kSearchChromeRefreshOldIcon
 #endif
               ))
           .SetText(l10n_util::GetStringUTF16(
@@ -1431,7 +1425,8 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionPinActionToToolbar)
-          .SetImage(ui::ImageModel::FromVectorIcon(kKeepIcon, ui::kColorIcon))
+          .SetImage(
+              ui::ImageModel::FromVectorIcon(kKeepOldIcon, ui::kColorIcon))
           .SetText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(
                   IDS_SIDE_PANEL_TOOLBAR_BUTTON_CXMENU_PIN)))
@@ -1455,7 +1450,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               bwi))
           .SetActionId(kActionUnpinActionFromToolbar)
           .SetImage(
-              ui::ImageModel::FromVectorIcon(kKeepOffIcon, ui::kColorIcon))
+              ui::ImageModel::FromVectorIcon(kKeepOffOldIcon, ui::kColorIcon))
           .SetText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(
                   IDS_SIDE_PANEL_TOOLBAR_BUTTON_CXMENU_UNPIN)))
@@ -1470,8 +1465,8 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionSidePanelShowCustomizeChromeToolbar)
-          .SetImage(
-              ui::ImageModel::FromVectorIcon(kSettingsMenuIcon, ui::kColorIcon))
+          .SetImage(ui::ImageModel::FromVectorIcon(kSettingsMenuOldIcon,
+                                                   ui::kColorIcon))
           .SetText(BrowserActions::GetCleanTitleAndTooltipText(
               l10n_util::GetStringUTF16(IDS_SHOW_CUSTOMIZE_CHROME_TOOLBAR)))
           .Build());
@@ -1486,7 +1481,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               bwi))
           .SetActionId(kActionInstallPwa)
           .SetImage(ui::ImageModel::FromVectorIcon(
-              kInstallDesktopChromeRefreshIcon, ui::kColorIcon))
+              kInstallDesktopChromeRefreshOldIcon, ui::kColorIcon))
           .SetProperty(actions::kActionItemPinnableKey, false)
           // Text and TooltipText are not populated yet because they are
           // dynamic. They depend on the current tab WebContents.
@@ -1554,7 +1549,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                 l10n_util::GetStringUTF16(
                     IDS_TAB_GROUP_HEADER_CXMENU_UNFOCUS_GROUP)))
             .SetImage(ui::ImageModel::FromVectorIcon(
-                vector_icons::kArrowBackIcon, ui::kColorIcon))
+                vector_icons::kArrowBackOldIcon, ui::kColorIcon))
             .Build());
   }
 
@@ -1575,7 +1570,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
             .SetText(l10n_util::GetStringUTF16(IDS_APPMENU_TOOLTIP))
             .SetTooltipText(l10n_util::GetStringUTF16(IDS_APPMENU_TOOLTIP))
             .SetImage(ui::ImageModel::FromVectorIcon(
-                vector_icons::kMicIcon, ui::kColorIcon,
+                vector_icons::kMicOldIcon, ui::kColorIcon,
                 ui::SimpleMenuModel::kDefaultIconSize))
             .SetProperty(
                 actions::kActionItemPinnableKey,
@@ -1645,7 +1640,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_INDIGO_ENTRYPOINT_CHIP_TOOLTIP_TEXT))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              vector_icons::kCodeIcon, ui::kColorIcon,
+              vector_icons::kCodeOldIcon, ui::kColorIcon,
               ui::SimpleMenuModel::kDefaultIconSize))
           .SetText(l10n_util::GetStringUTF16(IDS_INDIGO_ENTRYPOINT_CHIP_TEXT))
           .Build());
@@ -1655,6 +1650,31 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
         actions::ActionItem::Builder()
             // Anchored message icon, strings and callback are set at cue time.
             .SetActionId(kActionAnchoredContextualCue)
+            .Build());
+  }
+
+  if (base::FeatureList::IsEnabled(
+          autofill::features::kAutofillEnableOmniboxAutofill)) {
+    root_action_item_->AddChild(
+        actions::ActionItem::Builder(
+            base::BindRepeating(
+                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                   actions::ActionInvocationContext context) {
+                  if (!bwi) {
+                    return;
+                  }
+                  auto* tab = bwi->GetActiveTabInterface();
+                  if (!tab) {
+                    return;
+                  }
+                  // TODO(crbug.com/490215251): Set the callback to display the
+                  // Autofill bubble.
+                },
+                bwi))
+            .SetActionId(kActionAutofillPayment)
+            .SetImage(
+                ui::ImageModel::FromVectorIcon(kCreditCardChromeRefreshOldIcon))
+            .SetText(l10n_util::GetStringUTF16(IDS_AUTOFILL_PAYMENT_TEXT))
             .Build());
   }
 }

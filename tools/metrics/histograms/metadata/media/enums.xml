@@ -1219,6 +1219,12 @@ chromium-metrics-reviews@google.com.
   <int value="0" label="Enum placerholder. See crbug/1179826"/>
 </enum>
 
+<enum name="GetAppAudioCaptureIdMacResult">
+  <int value="0" label="kSuccess"/>
+  <int value="1" label="kFailedToFindBundleId"/>
+  <int value="2" label="kFailedToFindBrowserForPWA"/>
+</enum>
+
 <enum name="GetAppMainProcessIdWinResult">
   <int value="0" label="kSuccess"/>
   <int value="1" label="kFailedToGetWindowProcessId"/>
@@ -1887,12 +1893,6 @@ chromium-metrics-reviews@google.com.
   <int value="3" label="kUserSelectedWindow"/>
   <int value="4" label="kUserSelectedOtherTab"/>
   <int value="5" label="kUserSelectedThisTab"/>
-</enum>
-
-<enum name="MediaUiGetDisplayMediaPermissionInteraction">
-  <int value="0" label="PermissionButtonNotShown"/>
-  <int value="1" label="PermissionButtonShown"/>
-  <int value="2" label="PermissionButtonClicked"/>
 </enum>
 
 <enum name="MediaUiGetDisplayMediaPreferCurrentTabFlowUserInteraction">

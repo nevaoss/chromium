@@ -471,6 +471,7 @@
 <translation id="1717688554309417925">डेबिट और जांच सेवाएं</translation>
 <translation id="1719434663396780149">कीमत में कमी से जुड़ी सूचनाएं पाने की सुविधा चालू है. <ph name="BEGIN_LINK" /><ph name="NOTIFICATION_SETTINGS" /><ph name="END_LINK" /> पर जाकर, इसे बंद किया जा सकता है.</translation>
 <translation id="1719838434204287058">24 x 30 इंच</translation>
+<translation id="1720318856472900922">TLS WWW सर्वर प्रमाणीकरण</translation>
 <translation id="1720941539803966190">ट्यूटोरियल बंद करें</translation>
 <translation id="1721424275792716183">* फ़ील्ड ज़रूरी है</translation>
 <translation id="1723636263173393300">इस नीति में <ph name="MAX_ITEMS_LIMIT" /> से ज़्यादा शॉर्टकट नहीं हो सकते.</translation>
@@ -549,6 +550,7 @@
 <translation id="1832474362231610822">फ़ोटो को OneDrive में सेव किया गया</translation>
 <translation id="1832730227369924598">डेस्क सिंक</translation>
 <translation id="1834452765064623979">निर्माण और रखरखाव</translation>
+<translation id="1837606605602726453">रिस्क स्कोर और कैटगरी को अनदेखा किया गया है, क्योंकि एडमिन ने एक्सटेंशन को साफ़ तौर से अनुमति दी है या ब्लॉक किया है.</translation>
 <translation id="1838374766361614909">खोज साफ़ करें</translation>
 <translation id="1839331950812095887">अपने विचारों के बारे में बताने वाले कुछ शब्द</translation>
 <translation id="1839551713262164453">गड़बड़ियों के चलते नीति मानों की पुष्टि नहीं हो सकी</translation>
@@ -1287,7 +1289,7 @@
 <translation id="2995517112308048736">फ़ाइल का साइज़:</translation>
 <translation id="299990983510665749">हैचबैक</translation>
 <translation id="3002501248619246229">इनपुट ट्रे मीडिया को चुनें</translation>
-<translation id="3005723025932146533">सहेजी गई कॉपी दिखाएं</translation>
+<translation id="3005723025932146533">सेव की गई कॉपी दिखाएं</translation>
 <translation id="300580149047131921">इस सुविधा का हाल ही में इस्तेमाल किया गया है</translation>
 <translation id="3006864083554020786">घर का पता</translation>
 <translation id="3007110814003834680">चुनिंदा साइटों के लिए रेफ़रंस न लिए जाने की सुविधा</translation>
@@ -2475,6 +2477,7 @@
 <translation id="4855395119669662878">आपका एडमिन, <ph name="DATE_TIME" /> को <ph name="CLOUD_PROVIDER" /> पर आपकी फ़ाइलें अपलोड करना शुरू करेगा. फ़ाइल अपलोड होने तक, अपने डिवाइस को इंटरनेट से कनेक्ट रखें. इस दौरान, डिवाइस में सेव की गई फ़ाइलों को सिर्फ़ पढ़ा जा सकेगा.</translation>
 <translation id="485902285759009870">कोड की पुष्टि की जा रही है...</translation>
 <translation id="4860260582253463350">YouTube पर जारी रखने के लिए, आपको अपनी पहचान की पुष्टि करनी होगी. आपको वहीं सेटिंग मिलेंगी जो Family Link में आपके माता-पिता ने तय की हैं.</translation>
+<translation id="4862642413395066333">OCSP प्रतिसाद हस्ताक्षरित करना</translation>
 <translation id="4864406669374375262">वर्शन स्ट्रिंग को क्लिपबोर्ड पर कॉपी किया गया</translation>
 <translation id="486459320933704969">इस वेबसाइट पर जाने के लिए, आपके पास अपने माता-पिता या अभिभावक की अनुमति होनी चाहिए</translation>
 <translation id="4864801646102013152">होम इंप्रूवमेंट</translation>
@@ -3610,7 +3613,6 @@
 <translation id="6587923378399804057">आपका कॉपी किया हुआ लिंक</translation>
 <translation id="6591833882275308647">आपका <ph name="DEVICE_TYPE" /> प्रबंधित नहीं किया जाता</translation>
 <translation id="6595495738567740002">इस डिवाइस से Google की कुकी मिटाने के लिए, <ph name="BEGIN_LINK" />Chrome से साइन आउट करें<ph name="END_LINK" />.</translation>
-<translation id="6596325263575161958">एनक्रिप्ट (सुरक्षित) करने के तरीकों के लिए विकल्प</translation>
 <translation id="6596573334527383067">कल की गई खोजों की जानकारी दिखाएं</translation>
 <translation id="6597665340361269064">90 डिग्री</translation>
 <translation id="6598976221101665070">ड्रामा फ़िल्में</translation>
@@ -3885,7 +3887,6 @@
 <translation id="702275896380648118">यह साइट, आपकी पसंद के विषयों का पता लगाती है और फिर दूसरी साइटों पर, उनके हिसाब से विज्ञापन के सुझाव देती है. यह साइट आपके पसंदीदा, विज्ञापन के विषयों के बारे में जानने के लिए Chrome की भी मदद लेती है, ताकि आपको ज़्यादा काम के विज्ञापन दिखाए जा सकें.</translation>
 <translation id="7023162328967545559">एडमिन की चेतावनी</translation>
 <translation id="7023765275461720661">क्या आपको खाता लिंक करना है और <ph name="BNPL_ISSUER_NAME" /> से पेमेंट करना है?</translation>
-<translation id="7029809446516969842">पासवर्ड</translation>
 <translation id="7030164307377592766">पेमेंट के तरीके की जानकारी भरने के लिए, सेटिंग में बदलाव करें</translation>
 <translation id="7031110846419387930">आपके ब्राउज़र, ओएस, डिवाइस, इंस्टॉल किए गए सॉफ़्टवेयर, फ़ाइलों, और आईपी पतों की जानकारी</translation>
 <translation id="7031646650991750659">आपने Google Play के कौनसे ऐप्लिकेशन इंस्टॉल किए हैं</translation>
@@ -4496,6 +4497,7 @@
 <translation id="7947285636476623132">अपने क्रेडिट कार्ड की समय सीमा खत्म होने का साल जांचें और फिर से कोशिश करें</translation>
 <translation id="7947310711271925113">पॉप म्यूज़िक</translation>
 <translation id="7947813448670013867"><ph name="SEE_CHROME_TIPS_FOCUSED_FRIENDLY_MATCH_TEXT" />, Chrome की सुविधाओं के बारे में जानने के लिए, पहले Tab दबाएं और फिर Enter दबाएं</translation>
+<translation id="7948579849190819732">मौजूदा टैब</translation>
 <translation id="7949135979217012031">एंटीवायरस और मैलवेयर</translation>
 <translation id="7950027195171824198">Chrome की सेटिंग में कुकी की सेटिंग मैनेज करें</translation>
 <translation id="7951415247503192394">(32-बिट)</translation>
@@ -4904,6 +4906,7 @@
 <translation id="8597726363542221027">सेकंड हैंड वाहन</translation>
 <translation id="8600271352425265729">सिर्फ़ इस बार अनुमति दें</translation>
 <translation id="860043288473659153">कार्डधारक का नाम</translation>
+<translation id="8601206103050338563">TLS WWW क्लाइंट प्रमाणीकरण</translation>
 <translation id="8601456038554914806">वॉटर स्पोर्ट्स इक्विपमेंट</translation>
 <translation id="8601782593888534566">साइंस फ़िक्शन और फ़ैंटसी</translation>
 <translation id="8604103095921958091">'अभी खरीदें, बाद में पेमेंट करें' सुविधा की सेवा की शर्तों वाला पेज, पूरी स्क्रीन पर खुला है.</translation>

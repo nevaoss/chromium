@@ -14,7 +14,8 @@ if (is_android) {
   import("//third_party/jni_zero/jni_zero.gni")
 }
 
-# This target is only for public headers for classes used outside this directory (i.e. services and factories).
+# This target is only for public headers for classes used outside this directory
+# (i.e. services and factories).
 source_set("contextual_tasks") {
   sources = [
     "active_task_context_provider.h",
@@ -63,7 +64,8 @@ source_set("contextual_tasks") {
   ]
 }
 
-# This target is for all non-public files (all .c - including factories and services - and non-public .h).
+# This target is for all non-public files (all .c - including factories and
+# services - and non-public .h).
 source_set("impl") {
   visibility = [
     ":*",
@@ -170,11 +172,10 @@ source_set("ui") {
   ]
 
   if (is_android) {
-    if (is_desktop_android) {
-      sources += [ "android/contextual_tasks_panel_host_desktop_android.h" ]
-    } else {
-      sources += [ "android/contextual_tasks_panel_host_android.h" ]
-    }
+    sources += [
+      "android/contextual_tasks_panel_host_android.h",
+      "android/contextual_tasks_panel_host_desktop_android.h",
+    ]
   }
 
   if (!is_android) {
@@ -214,12 +215,10 @@ source_set("ui") {
   ]
 
   if (is_android) {
-    public_deps +=
-        [ "//chrome/browser/context_sharing/tab_bottom_sheet/android" ]
-
-    if (is_desktop_android) {
-      public_deps += [ "//chrome/browser/ui/side_panel" ]
-    }
+    public_deps += [
+      "//chrome/browser/context_sharing/tab_bottom_sheet/android",
+      "//chrome/browser/ui/side_panel",
+    ]
   }
 
   # Required for the shared Composebox and Searchbox handlers to compile on
@@ -241,9 +240,9 @@ source_set("ui") {
   }
   if (!is_android) {
     public_deps += [
+      "//chrome/browser/glic/browser_ui",
       "//chrome/browser/ui/side_panel",
       "//chrome/browser/ui/side_panel:side_panel_views_dependent",
-      "//chrome/browser/ui/tabs:glic",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/views/side_panel",
       "//ui/webui/resources/cr_components/help_bubble:mojo_bindings",
@@ -254,6 +253,23 @@ source_set("ui") {
     public_deps +=
         [ "//components/guest_view/browser/slim_web_view:page_handler" ]
   }
+}
+
+source_set("user_data") {
+  sources = [
+    "contextual_tasks_web_contents_user_data.cc",
+    "contextual_tasks_web_contents_user_data.h",
+  ]
+  deps = [
+    ":ui",
+    "//base",
+    "//chrome/browser/autocomplete:aim_eligibility_service",
+    "//chrome/browser/profiles:profile",
+    "//chrome/browser/signin",
+    "//components/contextual_search:public",
+    "//components/omnibox/browser",
+    "//content/public/browser",
+  ]
 }
 
 source_set("ui_impl") {
@@ -275,11 +291,10 @@ source_set("ui_impl") {
   ]
 
   if (is_android) {
-    if (is_desktop_android) {
-      sources += [ "android/contextual_tasks_panel_host_desktop_android.cc" ]
-    } else {
-      sources += [ "android/contextual_tasks_panel_host_android.cc" ]
-    }
+    sources += [
+      "android/contextual_tasks_panel_host_android.cc",
+      "android/contextual_tasks_panel_host_desktop_android.cc",
+    ]
   }
 
   if (!is_android) {
@@ -296,6 +311,7 @@ source_set("ui_impl") {
   deps = [
     ":impl",
     ":ui",
+    ":user_data",
     "//base",
     "//chrome/browser:browser_process",
     "//chrome/browser:global_features",
@@ -344,13 +360,9 @@ source_set("ui_impl") {
     deps += [
       "//chrome/browser/android:tabs_public",
       "//chrome/browser/context_sharing/tab_bottom_sheet/android",
+      "//chrome/browser/ui/side_panel:side_panel_ui_provider",
+      "//chrome/browser/ui/side_panel/android",
     ]
-    if (is_desktop_android) {
-      deps += [
-        "//chrome/browser/ui/side_panel:side_panel_ui_provider",
-        "//chrome/browser/ui/side_panel/android",
-      ]
-    }
   }
 
   if (!is_android) {
@@ -498,6 +510,7 @@ source_set("unit_tests") {
     sources += [
       "contextual_tasks_composebox_handler_unittest.cc",
       "contextual_tasks_panel_host_desktop_unittest.cc",
+      "contextual_tasks_web_contents_user_data_unittest.cc",
     ]
   }
 
@@ -507,6 +520,7 @@ source_set("unit_tests") {
     ":test_support",
     ":ui",
     ":ui_impl",
+    ":user_data",
     "//base",
     "//base/test:test_support",
     "//chrome/browser:global_features",
@@ -563,6 +577,7 @@ source_set("interactive_ui_tests") {
 
   if (!is_android) {
     sources += [
+      "contextual_tasks_interactive_uitest.cc",
       "contextual_tasks_side_panel_coordinator_interactive_uitest.cc",
       "contextual_tasks_ui_service_interactive_uitest.cc",
     ]
@@ -594,6 +609,8 @@ source_set("interactive_ui_tests") {
     deps += [
       ":ui",
       "//chrome/browser/tab_list",
+      "//chrome/browser/ui/contextual_search",
+      "//chrome/browser/ui/webui/searchbox:searchbox_test_utils",
     ]
   }
 }

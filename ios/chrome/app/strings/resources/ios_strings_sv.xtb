@@ -142,7 +142,6 @@
 <translation id="147982357559798527">Ändrade</translation>
 <translation id="1486096554574027028">Sök efter lösenord</translation>
 <translation id="1491277525950327607">Aktivera eller inaktivera inställningen genom att trycka snabbt två gånger</translation>
-<translation id="1491965206608166851">Logga in med dina sparade lösenord och nycklar från vilken app som helst</translation>
 <translation id="1492417797159476138">Du har redan sparat användarnamnet för den här webbplatsen</translation>
 <translation id="1497590942294823549">Meny → Lösenordshantering</translation>
 <translation id="1498283581832036924"><ph name="WEBSITE" />-kontot raderas inte.</translation>
@@ -202,6 +201,7 @@
 <translation id="1657011748321897393">Det går inte att dela. Du är inte ansluten till nätverket.</translation>
 <translation id="1668001730617725852">Öppna i en ny flikgrupp</translation>
 <translation id="1670861525135254448">Spara fordonet</translation>
+<translation id="1671568970992212376">Spara foton i Google Foto och få åtkomst till dem när du vill.</translation>
 <translation id="1674504678466460478"><ph name="SOURCE_LANGUAGE" /> till <ph name="TARGET_LANGUAGE" /></translation>
 <translation id="1678855624321223424">Utifrån organisationens policyer kan den här filen innehålla känsliga uppgifter</translation>
 <translation id="168389590065701766">Nu kan du öppna Google Lens från adressfältet och söka efter det du ser</translation>
@@ -358,12 +358,10 @@
 <translation id="2199562093267256223">Detta raderar gruppen från alla enheter som är inloggade på <ph name="USER_EMAIL" />.</translation>
 <translation id="2202084845446535117">Inga e-postkonton</translation>
 <translation id="2214453882118345682">Köp, översätt och identifiera det du ser med kameran.</translation>
-<translation id="2215819824168709130">Dölj kortet Bevaka pris</translation>
 <translation id="2216366330550244277">Öppna sidan för en produkt</translation>
 <translation id="2219935992754556187">Chrome skyddar dina känsliga uppgifter med Face ID</translation>
 <translation id="2220529011494928058">Rapportera ett problem</translation>
 <translation id="2223461067862937305">Skapa en QR-kod</translation>
-<translation id="2225701818156393674">Produkten har lagts till i listan med bevakade produkter.</translation>
 <translation id="2230173723195178503">Webbsidan har lästs in</translation>
 <translation id="2236949375853147973">Min aktivitet</translation>
 <translation id="2237869114829007407">Få en översikt och viktiga insikter för alla sidor eller ämnen</translation>
@@ -554,7 +552,6 @@
 <translation id="2902312830803030883">Fler åtgärder</translation>
 <translation id="2904788871580817212">Prissänkning på den öppna fliken, från <ph name="PREVIOUS_PRICE" /> till <ph name="PRICE" />, <ph name="PRODUCT_NAME" />, <ph name="DOMAIN" /></translation>
 <translation id="2905479111267140204">Du har <ph name="NUMBER_OF_PASSWORDS" /> återanvända lösenord som kan innebära en säkerhetsrisk.</translation>
-<translation id="29153882450867370">Dölj Bevaka pris</translation>
 <translation id="291754862089661335">Passa in QR-koden eller streckkoden i den här rutan</translation>
 <translation id="2918688092312652908">Markera som oläst</translation>
 <translation id="2922210239002704889">Öppna startsidan eller tangentbordet</translation>
@@ -856,7 +853,6 @@
 <translation id="4018440314314549819">Autofyll sparade lösenord</translation>
 <translation id="4021447724486050609">Uppdatera webbläsaren</translation>
 <translation id="4021931095789478915">Lägg till ${url} i läslistan</translation>
-<translation id="4026496154402824012">Inaktivera genom att öppna <ph name="BEGIN_LINK" />Lösenordsalternativ<ph name="END_LINK" /></translation>
 <translation id="4028871427853484857">Spara i kontot …</translation>
 <translation id="4038354071007134711">Det går inte att öppna filen med någon av apparna på enheten.</translation>
 <translation id="4042870976416480368">Sök på sidan</translation>
@@ -1137,7 +1133,6 @@
 <translation id="4992255726304765516">Flikgruppens färg <ph name="COLOR" /></translation>
 <translation id="5005498671520578047">Kopiera lösenord</translation>
 <translation id="5009127379503001909">Fortsätt surfa</translation>
-<translation id="5012914568031465281">Det gick inte att bevaka priset.</translation>
 <translation id="5016205925109358554">Serif</translation>
 <translation id="5016420433031926653">Skicka till <ph name="USER_EMAIL" /></translation>
 <translation id="5017529052065664584">De senaste 15 minuterna</translation>
@@ -1407,6 +1402,7 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="5936065461722368675">Översätt hela sidan</translation>
 <translation id="5937560539988385583">Sidan har översatts</translation>
 <translation id="5938160824633642847">Det finns nästan ingen plats kvar på enheten. Frigör utrymme och försök igen.</translation>
+<translation id="5941711191222866238">Minimera</translation>
 <translation id="5944869793365969636">Skanna QR-kod</translation>
 <translation id="5948291296578561264">Gör så att du kan spara foton i fotobiblioteket.</translation>
 <translation id="5948605885471592910">Se och hantera allt du har öppet</translation>
@@ -1609,7 +1605,6 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="6571070086367343653">Redigera kreditkort</translation>
 <translation id="6574092468346088891">Aktivera aviseringar från säkerhetskontroll</translation>
 <translation id="6579867704846662339">Du kan välja att öppna inkommande webbadresser från andra appar i inkognitoläget.</translation>
-<translation id="6583087784430677195">Inaktivera genom att öppna <ph name="BEGIN_LINK" />Inställningar<ph name="END_LINK" /> och sedan Autofyll lösenord.</translation>
 <translation id="6585618849026997638">Du kan återgå till en sida som är viktig för dig genom att lägga till ett bokmärke</translation>
 <translation id="6589001036857939353">Sammanfoga dubbletter</translation>
 <translation id="659407965921887085">Det här kortet visar prissänkningar på webben för produkter som du för närvarande bevakar</translation>
@@ -1671,7 +1666,6 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="6746338529702829275">Granska din kontodata</translation>
 <translation id="6750456911389438250">{count,plural, =1{{count} historikobjekt har importerats}other{{count} historikobjekt har importerats}}</translation>
 <translation id="6755200887046212842">Hantera konton</translation>
-<translation id="6755733078693946548">Få åtkomst till lösenord och nycklar från vilken app som helst</translation>
 <translation id="6759709389246683070">Du kan trycka länge på den här fliken för att ställa in en påminnelse om att besöka den senare</translation>
 <translation id="6761393919622941301">Ljud</translation>
 <translation id="6770452996697898492">[BOKAT]</translation>
@@ -2014,7 +2008,6 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="797588153137233716">Meny → Historik → Radera webbinformation</translation>
 <translation id="7977451675950311423">Varnar dig om du använder ett lösenord som har läckt ut i samband med ett dataintrång.</translation>
 <translation id="797824194429476746">Flikarna förblir öppna på den här enheten men gruppen raderas permanent.</translation>
-<translation id="797874245254030665">Få åtkomst till dina lösenord och nycklar från vilken app som helst</translation>
 <translation id="7982789257301363584">Nätverk</translation>
 <translation id="798299424881500862">Orange tema</translation>
 <translation id="7987685713885608670">Öka säkerheten genom att kryptera lösenord på enheten innan de sparas i Google Lösenordshantering</translation>
@@ -2171,6 +2164,7 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="8515534223594179607">Exportera webbinformation</translation>
 <translation id="8522147671363140027">{count,plural, =1{{count} lösenord och andra objekt sparas endast på den här enheten. Om du vill använda dem på dina andra enheter kan du spara dem i Google-kontot {email}.}other{{count} lösenord och andra objekt sparas endast på den här enheten. Om du vill använda dem på dina andra enheter kan du spara dem i Google-kontot {email}.}}</translation>
 <translation id="8524799873541103884"><ph name="INCOGNITO" />-flikarna <ph name="FIRST_VISIBLE_TAB" /> till <ph name="LAST_VISIBLE_TAB" /> av <ph name="NUMBER_OF_OPEN_TABS" /></translation>
+<translation id="8525306231823319788">Helskärm</translation>
 <translation id="8528009254289981965">Öppna länkar från andra appar i inkognitoläget</translation>
 <translation id="8529767659511976195">Nytt</translation>
 <translation id="8531572740963685410">PDF-filer</translation>
@@ -2292,7 +2286,6 @@ Du måste även aktivera Handoff i avsnittet Allmänt i inställningarna och sam
 <translation id="8879952635974818770">Anpassat innehåll</translation>
 <translation id="8887595428614802520">Stäng alla flikar och grupper</translation>
 <translation id="8888595487174963247">Ta bort påminnelse</translation>
-<translation id="8891031436559779793">Du får en avisering om priset sänks på en webbplats.</translation>
 <translation id="8893208530912252670">Videor</translation>
 <translation id="8898822736010347272">Skickar webbadresser till vissa sidor som du besöker, vissa systemuppgifter och visst sidinnehåll till Google för att upptäcka och blockera nya hot och skydda alla användare på internet.</translation>
 <translation id="8900845556227858314">Webbläsarapp</translation>

@@ -834,6 +834,12 @@ class TabStripModel {
   // If |context_index| is selected the command applies to all selected tabs.
   void ExecuteAddToExistingWindowCommand(int context_index, int browser_index);
 
+  // Adds the tab at |context_index| to a new split with the current active tab.
+  // If |context_index| is active, the currently selected tabs are added to a
+  // new split.
+  void ExecuteAddToNewSplitCommand(int context_index,
+                                   split_tabs::SplitTabLayout layout);
+
   // Returns true if 'CommandToggleSiteMuted' will mute. |index| is the
   // index supplied to |ExecuteContextMenuCommand|.
   bool WillContextMenuMuteSites(int index);
@@ -1406,6 +1412,12 @@ class TabStripModel {
   // For each split that has tabs in `indices`, remove any of them that contain
   // tabs not in `indices`.
   void MaybeRemoveSplitsForUpdate(const std::vector<int>& indices);
+
+  // Checks if both tabs of a split view are closing simultaneously and, if so,
+  // creates a historical split entry in the tab restore service.
+  void CreateHistoricalSplitIfClosing(
+      const std::vector<tabs::TabInterface*>& tabs,
+      uint32_t close_types);
 
   void NotifyForegroundTabsWillEnterBackground();
 

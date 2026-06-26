@@ -1229,6 +1229,33 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="IOS.DarkModeDetection.SupportsDarkMode"
+    enum="IOSDarkModeDetectionCrossedState" expires_after="2027-05-01">
+  <owner>qpubert@google.com</owner>
+  <owner>bling-squid-squad@google.com</owner>
+  <summary>
+    Tracks whether the loaded webpage natively supports dark mode via any of the
+    native indicators (meta tag, CSS color-scheme, or prefers-color-scheme media
+    queries). Logged on page load.
+  </summary>
+</histogram>
+
+<histogram name="IOS.DarkModeDetection.SupportsVia{SupportType}"
+    enum="IOSDarkModeDetectionCrossedState" expires_after="2027-05-01">
+  <owner>qpubert@google.com</owner>
+  <owner>bling-squid-squad@google.com</owner>
+  <summary>
+    Tracks whether the loaded webpage natively supports dark mode via
+    {SupportType}. Logged on page load.
+  </summary>
+  <token key="SupportType">
+    <variant name="Css" summary="the CSS color-scheme root property"/>
+    <variant name="MediaQuery"
+        summary="CSS prefers-color-scheme media queries"/>
+    <variant name="Meta" summary="the HTML color-scheme meta tag"/>
+  </token>
+</histogram>
+
 <histogram name="IOS.DefaultBrowserAbandonment{PeriodConsidered}"
     enum="Boolean" expires_after="2026-08-30">
   <owner>gujen@google.com</owner>
@@ -1953,7 +1980,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.FilePicker.Drive.SearchOutcome"
-    enum="IOSFilePickerDriveSearchOutcome" expires_after="2026-09-04">
+    enum="IOSFilePickerDriveSearchOutcome" expires_after="2026-11-08">
   <owner>qpubert@google.com</owner>
   <owner>erahmaoui@google.com</owner>
   <owner>bling-team@google.com</owner>
@@ -5186,7 +5213,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.PaymentsBottomSheet.ExitReason"
-    enum="PaymentsSuggestionBottomSheetExitReason" expires_after="2026-09-06">
+    enum="PaymentsSuggestionBottomSheetExitReason" expires_after="2026-11-08">
   <owner>sugoi@chromium.org</owner>
   <owner>tmartino@chromium.org</owner>
   <summary>
@@ -5265,7 +5292,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.PersistTabContext.DeleteDirectoryResult"
-    enum="IOSPersistTabContextDeleteDirectoryResult" expires_after="2026-09-06">
+    enum="IOSPersistTabContextDeleteDirectoryResult" expires_after="2026-11-08">
   <owner>cloutierc@google.com</owner>
   <owner>nicolasmacbeth@google.com</owner>
   <owner>bling-alchemy-eng@google.com</owner>
@@ -5347,7 +5374,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.PersistTabContext.StorageDifference" units="difference"
-    expires_after="2026-09-06">
+    expires_after="2026-11-08">
   <owner>cloutierc@google.com</owner>
   <owner>nicolasmacbeth@google.com</owner>
   <owner>bling-alchemy-eng@google.com</owner>
@@ -6250,7 +6277,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.SafeBrowsing.RedirectedRequestResponseHostsMatch"
-    enum="BooleanMatched" expires_after="2026-06-19">
+    enum="BooleanMatched" expires_after="2027-06-19">
   <owner>danieltwhite@google.com</owner>
   <owner>gambard@chromium.org</owner>
   <summary>
@@ -6722,6 +6749,42 @@ chromium-metrics-reviews@google.com.
     destination album if necessary, upload the media item and add it to the
     destination album. See IOS.SaveToPhotos.UploadFailureLatency for recording
     of unsuccessful completion.
+  </summary>
+</histogram>
+
+<histogram name="IOS.ScanCard.EndToEndLatency" units="ms"
+    expires_after="2027-04-01">
+  <owner>qihuizhao@google.com</owner>
+  <owner>yiwenqian@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Records the total elapsed time from the initiation of the scan card session
+    to the successful extraction of card attributes. Recorded when the scanner
+    finished scan and card details are set.
+  </summary>
+</histogram>
+
+<histogram name="IOS.ScanCardBottomSheet.ExitReason"
+    enum="ScanCardSuggestionBottomSheetExitReason" expires_after="2027-03-31">
+  <owner>qihuizhao@google.com</owner>
+  <owner>yiwenqian@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Tracks the reason the Scan Card bottom sheet suggestion was dismissed or
+    accepted. Recorded when the user accepts the suggestion or the bottom sheet
+    is dismissed.
+  </summary>
+</histogram>
+
+<histogram name="IOS.ScanCardBottomSheet.TimeToSelection" units="ms"
+    expires_after="2027-03-31">
+  <owner>qihuizhao@google.com</owner>
+  <owner>yiwenqian@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    Records the elapsed time between displaying the Scan Card bottom sheet
+    suggestion and selecting the scan button. Recorded when the user taps the
+    scan button.
   </summary>
 </histogram>
 
@@ -7782,7 +7845,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="IOS.Variations.FirstRun.SeedFetchResult"
-    enum="VariationsSeedFetchResult" expires_after="2026-09-06">
+    enum="VariationsSeedFetchResult" expires_after="2026-11-08">
   <owner>ginnyhuang@chromium.org</owner>
   <owner>bling-pandamonium@google.com</owner>
   <summary>

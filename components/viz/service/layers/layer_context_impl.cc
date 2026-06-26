@@ -521,17 +521,17 @@ base::expected<bool, std::string> UpdatePropertyTree(
           "Invalid parent_id for non-root property tree node");
     }
 
-    auto& node = *tree.Node(wire->id);
+    auto& node = tree.MutableNode(wire->id);
     node.id = wire->id;
     node.parent_id = wire->parent_id;
     RETURN_IF_ERROR(UpdatePropertyTreeNode(trees, node, *wire));
   }
 
-  auto* root_node = tree.Node(cc::kRootPropertyNodeId);
-  if (!root_node) {
+  if (cc::kRootPropertyNodeId >= static_cast<int>(tree.size())) {
     return base::unexpected("Missing root property node");
   }
-  if (root_node->parent_id != cc::kInvalidPropertyNodeId) {
+  auto& root_node = tree.MutableNode(cc::kRootPropertyNodeId);
+  if (root_node.parent_id != cc::kInvalidPropertyNodeId) {
     return base::unexpected(
         "Root property node must have an invalid parent ID");
   }
@@ -2036,6 +2036,9 @@ base::expected<void, std::string> LayerContextImpl::DoUpdateDisplayTree(
 
   RETURN_IF_FALSE(update->next_frame_token > 0, "invalid frame token");
   host_impl_->set_next_frame_token_from_client(update->next_frame_token);
+
+  host_impl_->set_tracked_element_rects_from_client(
+      std::move(update->tracked_element_rects));
 
   for (const auto& latency : update->latency_info) {
     if (latency.terminated()) {

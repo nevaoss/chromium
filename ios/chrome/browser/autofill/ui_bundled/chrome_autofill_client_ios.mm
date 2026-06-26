@@ -452,7 +452,9 @@ void ChromeAutofillClientIOS::UpdateAutofillDataListValues(
 void ChromeAutofillClientIOS::HideAutofillSuggestions(
     SuggestionHidingReason reason) {
   [bridge_ hideAutofillPopup];
-  [commands_handler_ resetAutofillSuggestionsLoadingStates];
+  if (reason == SuggestionHidingReason::kAcceptSuggestion) {
+    [commands_handler_ resetAutofillSuggestionsLoadingStates];
+  }
 }
 
 bool ChromeAutofillClientIOS::IsAutofillEnabled() const {
@@ -615,7 +617,8 @@ void ChromeAutofillClientIOS::ShowEntityImportBubble(
   // Enhanced Autofill is only available to signed-in users.
   std::optional<std::u16string> user_email = GetUserEmail();
   if (!user_email.has_value()) {
-    std::move(prompt_result_callback).Run(AutofillAiBubbleResult::kUnknown, {});
+    std::move(prompt_result_callback)
+        .Run(AutofillAiBubbleResult::kUnknown, std::nullopt, {});
     return;
   }
 

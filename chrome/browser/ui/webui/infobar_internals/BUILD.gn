@@ -52,10 +52,12 @@ source_set("impl") {
     ":infobar_internals",
     ":mojo_bindings",
     "//chrome/browser:browser_process",
+    "//chrome/browser:buildflags",
     "//chrome/browser:global_features",
     "//chrome/browser/devtools",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/resources/infobar_internals:resources",
+    "//chrome/browser/ui",
     "//chrome/browser/ui/browser_window",
     "//components/infobars/content",
     "//content/public/browser",
@@ -79,6 +81,10 @@ source_set("impl") {
       "//chrome/browser/startup",
       "//chrome/browser/ui/startup",
     ]
+  }
+
+  if (is_mac) {
+    deps += [ "//chrome/browser/ui/cocoa" ]
   }
 
   if (enable_extensions) {

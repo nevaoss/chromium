@@ -3780,6 +3780,47 @@
       "features": [
         "disable_vaapi"
       ]
+    },
+    {
+      "id": 476,
+      "description": "Qualcomm GPUs crash when invalidating incomplete framebuffers",
+      "cr_bugs": [507508103],
+      "os": {
+        "type": "android"
+      },
+      "gl_vendor": "Qualcomm.*",
+      "driver_version": {
+        "op": "<",
+        "value": "881"
+      },
+      "features": [
+        "dont_invalidate_incomplete_fbos"
+      ]
+    },
+    {
+      "id": 477,
+      "description": "Recreate FBO upon flush/finish/fencesync under certain conditions on Qualcomm GPUs",
+      "gl_vendor": "Qualcomm.*",
+      "driver_version": {
+        "op": "<",
+        "value": "878"
+      },
+      "features": [
+        "recreate_fbo_upon_flush"
+      ]
+    },
+    {
+      "id": 478,
+      "description": "Program binaries don't contain transform feedback varyings on Mali GPUs",
+      "cr_bugs": [510589906],
+      "os": {
+        "type": "linux"
+      },
+      "gl_vendor": "ARM.*",
+      "gl_renderer": "Mali.*",
+      "features": [
+        "disable_program_caching_for_transform_feedback"
+      ]
     }
   ]
 }

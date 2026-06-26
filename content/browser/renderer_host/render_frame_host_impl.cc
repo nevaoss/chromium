@@ -8696,6 +8696,11 @@ void RenderFrameHostImpl::UpdateUserGestureCarryoverInfo() {
   if (!IsActive()) {
     return;
   }
+  if (!HasTransientUserActivation()) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(), bad_message::RFH_NO_TRANSIENT_USER_ACTIVATION);
+    return;
+  }
   delegate_->UpdateUserGestureCarryoverInfo();
 }
 #endif
@@ -11788,6 +11793,15 @@ CanCommitStatus RenderFrameHostImpl::CanCommitOriginAndUrl(
   // (e.g. "http://localhost"). In such cases, don't verify the URL, but require
   // the URL to commit in the process of the main frame.
   if (IsMhtmlSubframe()) {
+    // Documents derived from an MHTML archive are behind sandbox flags, so
+    // their origin is opaque. The early-return below validates neither URL
+    // nor origin, so a compromised renderer could otherwise launder an
+    // arbitrary non-opaque origin past this point via
+    // DidCommitSameDocumentNavigation.
+    if (!origin.opaque()) {
+      LogCanCommitOriginAndUrlFailureReason("mhtml_subframe_non_opaque_origin");
+      return CanCommitStatus::CANNOT_COMMIT_ORIGIN;
+    }
     RenderFrameHostImpl* main_frame = GetMainFrame();
     if (IsSameSiteInstance(main_frame)) {
       return CanCommitStatus::CAN_COMMIT_ORIGIN_AND_URL;
@@ -15946,7 +15960,8 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
     //
     // Guest views currently don't appear to set the origin correctly for
     // synchronous new window commits under MPArch.
-    if ((!frame_tree_->is_guest() ||
+    if (is_synchronous_about_blank_commit &&
+        (!frame_tree_->is_guest() ||
          !base::FeatureList::IsEnabled(features::kGuestViewMPArch)) &&
         !params->origin.opaque() &&
         !params->origin.CanBeDerivedFrom(last_committed_origin_.GetURL())) {

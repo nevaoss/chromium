@@ -7,6 +7,9 @@
 #include <memory>
 
 #include "chrome/browser/glic/experimental_opt_in/glic_experimental_opt_in_dialog_view.h"
+#include "chrome/browser/glic/public/glic_enabling.h"
+#include "chrome/browser/glic/public/glic_keyed_service.h"
+#include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/tabs/public/tab_dialog_manager.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
@@ -35,7 +38,15 @@ views::Widget* GlicExperimentalOptInController::ShowDialog(
     return nullptr;
   }
 
-  dialog_view_ = std::make_unique<GlicExperimentalOptInDialogView>(profile_);
+  GlicKeyedService* service =
+      GlicKeyedServiceFactory::GetGlicKeyedService(profile_);
+  if (!service || service->enabling().GetRequiredExperimentalOptIn() ==
+                      RequiredExperimentalOptIn::kNotNeeded) {
+    return nullptr;
+  }
+
+  dialog_view_ = std::make_unique<GlicExperimentalOptInDialogView>(
+      profile_, tab_interface);
   dialog_view_->SetOwnershipOfNewWidget(
       views::Widget::InitParams::CLIENT_OWNS_WIDGET);
 

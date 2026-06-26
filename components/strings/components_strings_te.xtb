@@ -465,6 +465,7 @@
 <translation id="1717688554309417925">డెబిట్ &amp; చెకింగ్ సర్వీస్‌లు</translation>
 <translation id="1719434663396780149">ధర తగ్గుదల అలర్ట్‌లు ఆన్‌లో ఉన్నాయి. మీరు దీన్ని <ph name="BEGIN_LINK" /><ph name="NOTIFICATION_SETTINGS" /><ph name="END_LINK" />‌లో మార్చవచ్చు.</translation>
 <translation id="1719838434204287058">24 x 30 అంగుళాలు</translation>
+<translation id="1720318856472900922">TLS WWW సర్వర్ ప్రామాణీకరణ</translation>
 <translation id="1720941539803966190">ట్యుటోరియల్‌ను మూసివేయండి</translation>
 <translation id="1721424275792716183">* అవసరమైన ఫీల్డ్</translation>
 <translation id="1723636263173393300">ఈ పాలసీలో <ph name="MAX_ITEMS_LIMIT" /> కంటే ఎక్కువ షార్ట్‌కట్‌లు ఉండకూడదు.</translation>
@@ -543,6 +544,7 @@
 <translation id="1832474362231610822">ఫోటో OneDriveలో సేవ్ అయింది</translation>
 <translation id="1832730227369924598">డెస్క్ సింక్</translation>
 <translation id="1834452765064623979">నిర్మాణం &amp; నిర్వహణ</translation>
+<translation id="1837606605602726453">ఎక్స్‌టెన్షన్‌ను అడ్మినిస్ట్రేటర్ ద్వారా స్పష్టంగా అనుమతించారు లేదా బ్లాక్ చేశారు కాబట్టి, రిస్క్ స్కోర్, కేటగిరీలను విస్మరించడం జరిగింది.</translation>
 <translation id="1838374766361614909">శోధనను తీసివేయండి</translation>
 <translation id="1839331950812095887">మీ ఆలోచనలకు ఒక వాక్య రూపం తీసుకువచ్చే కొన్ని పదాలు</translation>
 <translation id="1839551713262164453">విధాన విలువల క్రమబద్ధీకరణ ఎర్రర్‌లతో విఫలమైంది</translation>
@@ -2470,6 +2472,7 @@
 <translation id="4855395119669662878">మీ అడ్మినిస్ట్రేటర్ మీ ఫైల్స్‌ను <ph name="CLOUD_PROVIDER" />కు <ph name="DATE_TIME" /> సమయానికి అప్‌లోడ్ చేయడం ప్రారంభిస్తారు. మీ ఫైల్ అప్‌లోడ్ పూర్తయ్యే వరకు మీ డివైజ్‌ను కనెక్ట్ చేసి ఉంచండి. అప్‌లోడ్ సమయంలో, మీరు లోకల్ ఫైల్స్‌ను మాత్రమే చదవగలరు.</translation>
 <translation id="485902285759009870">కోడ్‌ను వెరిఫై చేస్తోంది...</translation>
 <translation id="4860260582253463350">YouTubeకు కొనసాగడానికి, ఇది మీరేనని మేము నిర్ధారించుకోవాలి. Family Linkలో మీ తల్లి/తండ్రి లేదా గార్డియన్ సెటప్ చేసిన సెట్టింగ్‌లను మీరు పొందుతారు.</translation>
+<translation id="4862642413395066333">OCSP ప్రతిస్పందనలను సైన్ చేస్తోంది</translation>
 <translation id="4864406669374375262">క్లిప్‌బోర్డ్‌కు వెర్షన్ స్ట్రింగ్ కాపీ చేయబడింది</translation>
 <translation id="486459320933704969">ఈ వెబ్‌సైట్‌ను సందర్శించడానికి, తల్లి/తండ్రి లేదా గార్డియన్ తప్పనిసరిగా మిమ్మల్ని అనుమతించాలి</translation>
 <translation id="4864801646102013152">గృహ మరమ్మత్తులు</translation>
@@ -3439,6 +3442,7 @@
 <translation id="634500758737709758">దిశలు (డైరెక్షన్స్)</translation>
 <translation id="6348220984832452017">యాక్టివ్‌గా ఉన్న వేరియేషన్‌లు</translation>
 <translation id="6349101878882523185"><ph name="APP_NAME" />‌ను ఇన్‌స్టాల్ చేయండి</translation>
+<translation id="6350739641326887427">Pix కోడ్‌ను కాపీ చేసి, పేస్ట్ చేయకుండానే పేమెంట్ చేయండి. <ph name="BEGIN_LINK1" />ఇది ఎలా పని చేస్తుందో చూడండి<ph name="END_LINK1" /></translation>
 <translation id="6351658970066645919">బ్రౌజింగ్ డేటాను తొలగించండి</translation>
 <translation id="6353505687280762741">{COUNT,plural, =0{ఏవీ లేవు}=1{1 పాస్‌వర్డ్ (<ph name="DOMAIN_LIST" />కు చెందినది, సింక్ చేయబడింది)}=2{2 పాస్‌వర్డ్‌లు (<ph name="DOMAIN_LIST" />కు చెందినవి, సింక్ చేయబడ్డాయి)}other{# పాస్‌వర్డ్‌లు (<ph name="DOMAIN_LIST" />కు చెందినవి, సింక్ చేయబడ్డాయి)}}</translation>
 <translation id="6354918092619878358">SECG దీర్ఘవృత్తాకార వక్రం secp256r1 (ANSI X9.62 prime256v1, NIST P-256గా కూడా పిలువబడతాయి)</translation>
@@ -3605,7 +3609,6 @@
 <translation id="6587923378399804057">మీరు కాపీ చేసిన లింక్</translation>
 <translation id="6591833882275308647">మీ <ph name="DEVICE_TYPE" /> నిర్వహించబడటం లేదు</translation>
 <translation id="6595495738567740002">ఈ డివైజ్ నుండి Google కుక్కీలను తొలగించడానికి, <ph name="BEGIN_LINK" />Chrome నుండి సైన్ అవుట్ అవ్వండి<ph name="END_LINK" />.</translation>
-<translation id="6596325263575161958">ఎన్‌క్రిప్షన్ ఎంపికలు</translation>
 <translation id="6596573334527383067">నిన్నటి సెర్చ్ ఫలితాలను చూడండి</translation>
 <translation id="6597665340361269064">90 డిగ్రీలు</translation>
 <translation id="6598976221101665070">డ్రామా సినిమాలు</translation>
@@ -3655,6 +3658,7 @@
 <translation id="668132230070712111">వీడియో Google Driveకు సేవ్ చేయబడింది</translation>
 <translation id="6681790815630918386">CVC సేవ్ అయింది</translation>
 <translation id="6683022854667115063">హెడ్‌ఫోన్స్</translation>
+<translation id="6686570026048064255">Pix కోడ్ గుర్తింపును ఆఫ్ చేయడానికి, <ph name="BEGIN_LINK1" />Chrome సెట్టింగ్‌ల<ph name="END_LINK1" />కు వెళ్లండి</translation>
 <translation id="6687230248707087982">ఎన్వలప్ (ప్లెయిన్)</translation>
 <translation id="6687335167692595844">రిక్వెస్ట్ చేయబడిన ఫాంట్ సైజ్‌</translation>
 <translation id="6688743156324860098">అప్‌డేట్ చేయి…</translation>
@@ -3880,7 +3884,6 @@
 <translation id="702275896380648118">ఈ సైట్ మీకు నచ్చిన అంశాలను నిర్ణయించి, ఆపై ఇతర సైట్‌లకు యాడ్‌లను సూచిస్తుంది. మీకు మరింత సందర్భోచితమైన యాడ్‌లను చూపడానికి ఈ సైట్ మీ యాడ్ టాపిక్‌లను Chrome నుండి కూడా పొందుతుంది.</translation>
 <translation id="7023162328967545559">అడ్మిన్ హెచ్చరిక</translation>
 <translation id="7023765275461720661">ఖాతాను లింక్ చేసి, <ph name="BNPL_ISSUER_NAME" />‌తో పేమెంట్ చేయాలనుకుంటున్నారా?</translation>
-<translation id="7029809446516969842">పాస్‌వర్డ్‌లు</translation>
 <translation id="7030164307377592766">పేమెంట్ ఆప్షన్‌లను పూరించడానికి సంబంధించిన సెట్టింగ్‌లను ఎడిట్ చేయండి</translation>
 <translation id="7031110846419387930">మీ బ్రౌజర్, OS, పరికరం, ఇన్‌స్టాల్ చేసిన సాఫ్ట్‌వేర్, ఫైల్స్, IP అడ్రస్‌ల గురించిన సమాచారం</translation>
 <translation id="7031646650991750659">ఏ Google Play యాప్‌లు మీరు ఇన్‌స్టాల్ చేశారు</translation>
@@ -4491,6 +4494,7 @@
 <translation id="7947285636476623132">మీ గడువు ముగింపు సంవత్సరాన్ని చెక్ చేసి, మళ్లీ ట్రై చేయండి</translation>
 <translation id="7947310711271925113">పాప్ మ్యూజిక్</translation>
 <translation id="7947813448670013867"><ph name="SEE_CHROME_TIPS_FOCUSED_FRIENDLY_MATCH_TEXT" />, Chrome ఫీచర్‌ల గురించి తెలుసుకోవడానికి Tabను నొక్కి, ఆపై Enterను నొక్కండి</translation>
+<translation id="7948579849190819732">ప్రస్తుత ట్యాబ్</translation>
 <translation id="7949135979217012031">యాంటీ-వైరస్ &amp; మాల్‌వేర్</translation>
 <translation id="7950027195171824198">Chrome సెట్టింగ్‌లలో మీ కుక్కీ ప్రాధాన్యతలను మేనేజ్ చేయండి</translation>
 <translation id="7951415247503192394">(32-బిట్)</translation>
@@ -4898,6 +4902,7 @@
 <translation id="8597726363542221027">వాడిన వాహనాలు</translation>
 <translation id="8600271352425265729">ఈ ఒక్కసారి మాత్రమే</translation>
 <translation id="860043288473659153">కార్డుదారుని పేరు</translation>
+<translation id="8601206103050338563">TLS WWW క్లయింట్ ప్రామాణీకరణ</translation>
 <translation id="8601456038554914806">నీటి క్రీడలకు సంబంధించిన సామాగ్రి</translation>
 <translation id="8601782593888534566">సైన్స్ ఫిక్షన్ &amp; ఫాంటసీ</translation>
 <translation id="8604103095921958091">'ఇప్పుడు కొనండి, పేమెంట్ తర్వాత చేయండి' సర్వీస్ నియమాల స్క్రీన్ పూర్తి ఎత్తులో తెరవబడింది.</translation>

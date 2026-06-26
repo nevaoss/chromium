@@ -55,7 +55,9 @@ class WebUIToolbarControlDelegate {
   // Announces an alert to accessibility screen readers.
   virtual void AnnounceAlert(const std::u16string& announcement) = 0;
 
-  // Indicate preferred size of a toolbar control has changed.
+  // Indicate preferred size of a toolbar control has changed. This results in
+  // synchronously fully recalculating layout to see if anything needs to be
+  // changed, so should only be called when something actually changed.
   virtual void OnPreferredSizeChanged() = 0;
 
   // Indicates a toolbar control's state has changed.
@@ -210,6 +212,8 @@ class WebUIToolbarWebView
                            DropFileOnHomeButtonAndUndo);
   FRIEND_TEST_ALL_PREFIXES(WebUIToolbarWebViewPixelBrowserTest,
                            BackForwardButtonsModifierClick);
+  FRIEND_TEST_ALL_PREFIXES(WebUIToolbarSurfaceSyncBrowserTest,
+                           SetsDeadlineOnInit);
 
   // WebUIToolbarControlDelegate:
   BrowserWindowInterface* GetBrowser() override;
@@ -258,6 +262,10 @@ class WebUIToolbarWebView
   };
 
   void SetInitializationState(InitializationState new_state);
+
+  // Applies the specified surface synchronization deadline in frames to both
+  // the toolbar and the active main content's RenderWidgetHostView.
+  void SetSurfaceSyncDeadline(std::optional<uint32_t> deadline_in_frames);
 
   WebUIToolbarUI* GetWebUIToolbarUI();
 

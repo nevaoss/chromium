@@ -209,16 +209,16 @@ void SidePanelCoordinatorAndroid::Close(SidePanelEntryHideReason hide_reason,
 }
 
 void SidePanelCoordinatorAndroid::OnWindowResized(JNIEnv* env,
-                                                  bool should_show_side_panel) {
-  SPLOG("OnWindowResized - should_show_side_panel: " << should_show_side_panel);
+                                                  bool can_show_side_panel) {
+  SPLOG("OnWindowResized - can_show_side_panel: " << can_show_side_panel);
 
-  if (is_window_too_small_ == !should_show_side_panel) {
+  if (is_window_too_small_ == !can_show_side_panel) {
     return;
   }
 
-  is_window_too_small_ = !should_show_side_panel;
+  is_window_too_small_ = !can_show_side_panel;
 
-  if (should_show_side_panel) {
+  if (can_show_side_panel) {
     CHECK(!IsSidePanelShowing() || IsClosing())
         << "Side panel should not be visible when the window changes from "
            "being too small to being large enough.";
@@ -501,7 +501,7 @@ void SidePanelCoordinatorAndroid::MaybeShowEntryOnTabStripModelChanged(
   // If the side panel isn't showing, check if we should show it.
   std::optional<SidePanelEntry*> new_active_entry =
       new_contextual_registry ? new_contextual_registry->GetActiveEntry()
-                              : nullptr;
+                              : std::nullopt;
   if (new_active_entry) {
     UniqueKey key{new_contextual_registry->GetTabInterface().GetHandle(),
                   (*new_active_entry)->key()};

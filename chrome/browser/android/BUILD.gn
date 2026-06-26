@@ -35,12 +35,14 @@ source_set("tabs_impl") {
     "//chrome/browser/actor",
     "//chrome/browser/actor/android",
     "//chrome/browser/contextual_search",
+    "//chrome/browser/contextual_tasks",
     "//chrome/browser/glic",
     "//chrome/browser/net",
     "//chrome/browser/preloading/new_tab_page_preload",
     "//chrome/browser/sync",
     "//chrome/browser/ui/contextual_search",
     "//chrome/browser/ui/side_panel/android",
+    "//chrome/browser/ui/webui:webui_util",
 
     # TODO(crbug.com/489548570): Remove "side_panel_container/internal:android"
     # since it's for the tab-scoped dev feature.

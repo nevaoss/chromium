@@ -554,6 +554,30 @@
       <message name="IDS_IOS_ASK_GEMINI_EDIT_MENU" desc="Edit Menu button to ask Gemini about the selected text.">
         Ask Gemini
       </message>
+      <message name="IDS_IOS_ASSISTANT_GRABBER_ACTION_EXPAND_FULL" desc="Accessibility custom action name to expand the sheet to full screen [iOS only].">
+        Expand to Full screen
+      </message>
+      <message name="IDS_IOS_ASSISTANT_GRABBER_ACTION_EXPAND_MEDIUM" desc="Accessibility custom action name to expand the sheet to medium height [iOS only].">
+        Expand to Medium
+      </message>
+      <message name="IDS_IOS_ASSISTANT_GRABBER_ACTION_MINIMIZE" desc="Accessibility custom action name to minimize the sheet [iOS only].">
+        Minimize
+      </message>
+      <message name="IDS_IOS_ASSISTANT_GRABBER_VALUE_LARGE" desc="Accessibility value for the grabber when sheet is full screen [iOS only].">
+        Full screen
+      </message>
+      <message name="IDS_IOS_ASSISTANT_GRABBER_VALUE_MEDIUM" desc="Accessibility value for the grabber when sheet is medium height [iOS only].">
+        Medium height
+      </message>
+      <message name="IDS_IOS_ASSISTANT_GRABBER_VALUE_MINIMIZED" desc="Accessibility value for the grabber when sheet is minimized [iOS only].">
+        Minimized
+      </message>
+      <message name="IDS_IOS_ASSISTANT_SHEET_GRABBER_ACCESSIBILITY_HINT" desc="Accessibility hint for the bottom sheet grabber in Assistant. Read by Text To Speech [iOS only].">
+        Readjusts the height of the sheet.
+      </message>
+      <message name="IDS_IOS_ASSISTANT_SHEET_GRABBER_ACCESSIBILITY_LABEL" desc="Accessibility label for the bottom sheet grabber in Assistant. Read by Text To Speech [iOS only]." meaning="Voice Over will read this to the user followed by 'Button' when the grabber is focused.">
+        Sheet grabber
+      </message>
       <message name="IDS_IOS_AUTH_REASON" desc="A description that appears when the user needs to authenticate to use a suggestion.">
       Chrome keeps your sensitive data secure with Face ID
       </message>
@@ -1400,20 +1424,14 @@
       <message name="IDS_IOS_BWG_CONSENT_FIRST_BOX_TITLE" desc="First box title text for the Gemini Consent page for managed accounts.">
           Get more relevant answers by sharing your tabs
       </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_MANAGED_LINK">
-          Your privacy &amp; Gemini.
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_MANAGED_TEXT" desc="Footnote text for the Gemini Consent page for managed accounts.">
-          Your organization's chats aren't used to improve our models. Gemini may display inaccurate info, including about people, so double-check it. <ph name="YOUR_PRIVACY_GEMINI">$1<ex>Your privacy &amp; Gemini</ex></ph>
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_NON_MANAGED_LINK_1" desc="Text for the first link in the BWG consent footnote.">
+      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_LINK_1" desc="Text for the first link in the BWG consent footnote.">
           Google Terms
       </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_NON_MANAGED_LINK_2" desc="Text for the second link in the BWG consent footnote.">
+      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_LINK_2" desc="Text for the second link in the BWG consent footnote.">
           Gemini Apps Privacy Notice
       </message>
-      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_NON_MANAGED_TEXT" desc="Format string for the Gemini consent footnote for non-managed accounts.">
-          <ph name="GOOGLE_TERMS">$1<ex>Google Terms</ex></ph> and the <ph name="GEMINI_APPS_PRIVACY">$2<ex>Gemini Apps Privacy Notice</ex></ph> apply. Gemini can make mistakes, so double-check it.
+      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT" desc="Format string for the Gemini consent footnote.">
+          <ph name="GOOGLE_TERMS">$1<ex>Google Terms</ex></ph> and the <ph name="GEMINI_APPS_PRIVACY">$2<ex>Gemini Apps Privacy Notice</ex></ph> apply. Gemini is AI and can make mistakes, including about people.
       </message>
       <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA" desc="Format string for the Gemini consent footnote for accounts in South Korea.">
           Our <ph name="TERMS">$1<ex>Terms</ex></ph>, <ph name="KOREAN_LOCATION_TERMS">$2<ex>Korean Location Terms</ex></ph>, and <ph name="PRIVACY_NOTICE">$3<ex>Privacy Notice</ex></ph> apply. Gemini is AI and can make mistakes, including about people.
@@ -1426,6 +1444,15 @@
       </message>
       <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_TEXT_SOUTH_KOREA_LINK_3" desc="Text for the third link in the Gemini consent footnote for South Korea.">
           Privacy Notice
+      </message>
+      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_US_ONLY_ADDITION" desc="US-only footer addition message.">
+          Some content may not be suitable for everyone.
+      </message>
+      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_WATCH_LABEL" desc="Footer label for watch video.">
+          Watch: <ph name="WATCH_LINK">$1<ex>5 must-knows for generative AI</ex></ph>
+      </message>
+      <message name="IDS_IOS_BWG_CONSENT_FOOTNOTE_WATCH_LINK" desc="Footer link text for watch video.">
+          5 must-knows for generative AI
       </message>
       <message name="IDS_IOS_BWG_CONSENT_MANAGED_FIRST_BOX_BODY" desc="First box body text for the Gemini Consent page for managed accounts.">
           By default, your current tab is shared when you start a new chat. When tabs are shared, their contents and URLs are sent to Google but won’t be used to improve generative AI models. You can change this setting anytime.
@@ -2309,9 +2336,6 @@
       </message>
       <message name="IDS_IOS_CREDENTIAL_PROVIDER_PROMO_REMIND_ME_LATER" desc="Text of the tertiary button in the inital step and 'Learn More' step views of the Credential Provider Exention Promo. [iOS only]">
         Remind me later
-      </message>
-      <message name="IDS_IOS_CREDENTIAL_PROVIDER_PROMO_TITLE" desc="Title text of the Credential Provider Exention promo. [iOS only]">
-        Sign in with your saved passwords &amp; passkeys from any app
       </message>
       <message name="IDS_IOS_CREDENTIAL_PROVIDER_SETTINGS_TURN_ON_AUTOFILL" desc="Title of the button that allows setting the app as a credential provider. The translation and capitalization of 'AutoFill' must match that of iOS settings." meaning="The translation and capitalization of 'AutoFill' must match that of iOS settings.">
         Turn on AutoFill…
@@ -4438,8 +4462,8 @@
       <message name="IDS_IOS_MANUAL_FALLBACK_EXPIRATION_YEAR_CHIP_ACCESSIBILITY_LABEL" desc="Accessibility label for the expiration year chip button displayed in the payment method manual fallback screen and that's allowing the user to autofill a specific form field with their payment method's expiration year.">
         Autofill the expiration year <ph name="YEAR">$1<ex>26</ex></ph>
       </message>
-      <message name="IDS_IOS_MANUAL_FALLBACK_MANAGE_ADDRESSES" desc="The title for the button in the manual fallback UI that takes the user to the addresses settings. In this screen they see all the addresses and can erase them. [30em]">
-        Manage addresses…
+      <message name="IDS_IOS_MANUAL_FALLBACK_MANAGE_ADDRESSES_AND_MORE" desc="The title for the button in the manual fallback UI that takes the user to the addresses and more settings. In this screen they see all the addresses and Autofill AI entities and can erase them. [30em]">
+        Manage addresses and more…
       </message>
       <message name="IDS_IOS_MANUAL_FALLBACK_MANAGE_CREDIT_CARDS" desc="The title for the button in the manual fallback UI that takes the user to the payments settings. In this screen they see all the credit cards and can erase them. [30em]">
         Manage payment methods…
@@ -4868,6 +4892,9 @@
       <message name="IDS_IOS_OPEN_SETTINGS" desc="Text of the button that will take the user to the Settings page to configure the default browser [iOS only]">
         Open Settings
       </message>
+      <message name="IDS_IOS_OPEN_SHORTCUTS_URL" desc="Alert to let the user know that the website is trying to open the Shortcuts application. [iOS only]">
+        This site is trying to open the &quot;Shortcuts&quot; application.
+      </message>
       <message name="IDS_IOS_OPEN_SOURCE_LICENSES" desc="The label to access the open source licenses, displayed in the application settings [Length: 30em] [iOS only]">
         Open source licenses
       </message>
@@ -4992,6 +5019,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_OVERFLOW_MENU_HIDE_ACTION_FIND_IN_PAGE" desc="The title for the context menu item to hide Find in Page. This should match the title of the Find in Page action in the menu." meaning="[iOS only] [Length: Unlimited]">
         Hide Find in Page
       </message>
+      <message name="IDS_IOS_OVERFLOW_MENU_HIDE_ACTION_HIDE_TOOLBARS" desc="The title for the context menu item to hide Hide Toolbar. This should match the title of the Hide Toolbar action in the menu." meaning="[iOS only] [Length: Unlimited]">
+        Hide Hide Toolbar
+      </message>
       <message name="IDS_IOS_OVERFLOW_MENU_HIDE_ACTION_LENS_OVERLAY" desc="The title for the context menu item to hide Search screen with Google Lens. This should match the title of the Search screen with Google Lens action in the menu." meaning="[iOS only] [Length: Unlimited]">
         Hide Search screen with Google Lens
       </message>
@@ -5021,6 +5051,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_OVERFLOW_MENU_HIDE_DESTINATION_HISTORY" desc="The title for the context menu item to hide History. This should match the title of the History destination in the menu." meaning="[iOS only] [Length: Unlimited]">
         Hide History
+      </message>
+      <message name="IDS_IOS_OVERFLOW_MENU_HIDE_DESTINATION_LEVEL_UP" desc="The title for the context menu item to hide Level Up. This should match the title of the Level Up destination in the menu." meaning="[iOS only] [Length: Unlimited]">
+        Hide Level Up
       </message>
       <message name="IDS_IOS_OVERFLOW_MENU_HIDE_DESTINATION_PASSWORDS" desc="The title for the context menu item to hide Passwords. This should match the title of the Passwords destination in the menu." meaning="[iOS only] [Length: Unlimited]">
         Hide Password Manager
@@ -6950,13 +6983,7 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SETTINGS_PASSWORDS_EXCEPTIONS_HEADING" desc="The title for a list of sites where passwords will not be saved. These items are already saved by the browser and can only be deleted. [Length: one line] [iOS only]">
       Never saved
       </message>
-      <message name="IDS_IOS_SETTINGS_PASSWORDS_IN_OTHER_APPS_CAPTION" desc="The caption label below subtitle of the view that teaches users to turn off iOS AutoFill from Chrome password manager">
-        To turn off, open <ph name="BEGIN_LINK">BEGIN_LINK</ph>Settings<ph name="END_LINK">END_LINK</ph> and go to AutoFill Passwords.
-      </message>
-      <message name="IDS_IOS_SETTINGS_PASSWORDS_IN_OTHER_APPS_CAPTION_IOS17" desc="The caption label below subtitle of the view that teaches users to turn off iOS AutoFill from Chrome password manager. 'Password Options' is the name of an iOS setting (iOS settings &gt; Passwords &gt; Password Options). The translation and capitalization should match that of the iOS setting. [iOS only]" meaning="Translation and capitalization of 'Password Options' should match that of the iOS setting.">
-        To turn off, go to <ph name="BEGIN_LINK">BEGIN_LINK</ph>Password Options<ph name="END_LINK">END_LINK</ph>
-      </message>
-      <message name="IDS_IOS_SETTINGS_PASSWORDS_IN_OTHER_APPS_CAPTION_IOS18" desc="The caption label below the title of the view that teaches users how to turn off iOS AutoFill from Chrome password manager on iOS 18 and above. 'AutoFill &amp; Passwords' is the name of an iOS setting (iOS settings &gt; General &gt; AutoFill &amp; Passwords). The translation and capitalization should match that of the iOS setting. [iOS only]" meaning="Translation and capitalization of 'AutoFill &amp; Passwords' should match that of the iOS setting.">
+      <message name="IDS_IOS_SETTINGS_PASSWORDS_IN_OTHER_APPS_CAPTION" desc="The caption label below the title of the view that teaches users how to turn off iOS AutoFill from Chrome password manager. 'AutoFill &amp; Passwords' is the name of an iOS setting (iOS settings &gt; General &gt; AutoFill &amp; Passwords). The translation and capitalization should match that of the iOS setting. [iOS only]" meaning="Translation and capitalization of 'AutoFill &amp; Passwords' should match that of the iOS setting.">
         To turn off, go to <ph name="BEGIN_LINK">BEGIN_LINK</ph>AutoFill &amp; Passwords<ph name="END_LINK">END_LINK</ph>
       </message>
       <message name="IDS_IOS_SETTINGS_PASSWORDS_IN_OTHER_APPS_SHORTENED_STEP_1_IOS16" desc="Text of the row indicating the first step of shortened instruction of of turning on iOS auto-fill from Chrome password manager on iOS 16 and above [iOS only]">
@@ -6983,17 +7010,11 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_SETTINGS_PASSWORDS_NUMBER_ACCOUNT" desc="A description presented to the user of how many accounts have sign-in information available by tapping on this menu item. [iOS only]">
         <ph name="NUMBER_OF_ACCOUNTS">$1<ex>2</ex></ph> accounts
       </message>
-      <message name="IDS_IOS_SETTINGS_PASSWORDS_PASSKEYS_IN_OTHER_APPS" desc="The title of the view in password settings that allows users to turn on iOS auto-fill from Chrome password manager. Refer to Glossary when translating passkeys. [iOS only]">
-        Access passwords &amp; passkeys from any app
+      <message name="IDS_IOS_SETTINGS_PASSWORDS_PASSKEYS_IN_OTHER_APPS" desc="The title of the view in password settings that allows users to turn on iOS AutoFill from Chrome password manager. Refer to Glossary when translating passkeys. [iOS only]">
+        Autofill passwords &amp; passkeys
       </message>
       <message name="IDS_IOS_SETTINGS_PASSWORDS_PASSKEYS_IN_OTHER_APPS_HEADER" desc="The title of the view that teaches users to turn on iOS AutoFill from Chrome password manager. Refer to Glossary when translating passkeys. [iOS only]">
-        Access your passwords &amp; passkeys from any app
-      </message>
-      <message name="IDS_IOS_SETTINGS_PASSWORDS_PASSKEYS_IN_OTHER_APPS_HEADER_IOS18" desc="The title of the view that teaches users to turn on iOS AutoFill from Chrome password manager. Used on iOS 18+. Refer to Glossary when translating passkeys. [iOS only]">
         Autofill passwords and passkeys
-      </message>
-      <message name="IDS_IOS_SETTINGS_PASSWORDS_PASSKEYS_IN_OTHER_APPS_IOS18" desc="The title of the view in password settings that allows users to turn on iOS AutoFill from Chrome password manager. Used on iOS 18+. Refer to Glossary when translating passkeys. [iOS only]">
-        Autofill passwords &amp; passkeys
       </message>
       <message name="IDS_IOS_SETTINGS_PASSWORDS_PASSKEYS_SAVED_HEADING" desc="The title for a list of items, with each entry consisting of a password or a passkey, and a corresponding username and website. These items are already saved by the browser and can be deleted/edited. Refer to Glossary for the meaning of 'passkey', do not translate it as 'password'. [Length: one line] [iOS only]">
         Saved passwords &amp; passkeys
@@ -8285,6 +8306,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_TOOLS_MENU_LENS_COPIED_IMAGE" desc="If a user has an image on their clipboard, this string will appear as an option when the user long-presses on Chrome's search icon and Lens is enabled. The user can select this option to search the image using Lens. This string is a complete sentence. If necessary for your language, you can translate as 'Lens image that you copied.'" meaning="[Length:Unlimited]">
         Lens image you copied
+      </message>
+      <message name="IDS_IOS_TOOLS_MENU_LEVEL_UP" desc="The iOS menu item for opening Level Up [iOS only]" meaning="[Length: 16em] [iOS only] This is a feature name in title case.">
+        Level Up
       </message>
       <message name="IDS_IOS_TOOLS_MENU_NEW_INCOGNITO_SEARCH" desc="The iOS menu item for opening a new Incognito tab and doing a new search in that tab." meaning="Do a new search in a new Incognito tab">
         Incognito Search

@@ -62,12 +62,13 @@ import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.Stat
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetObserver;
 import org.chromium.components.browser_ui.widget.TouchEventObserver;
 import org.chromium.components.browser_ui.widget.TouchEventProvider;
-import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.KeyboardVisibilityDelegate;
-import org.chromium.ui.base.EventForwarder;
 import org.chromium.ui.base.TestActivity;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.modaldialog.ModalDialogManager;
+import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogManagerObserver;
+import org.chromium.ui.modaldialog.ModalDialogManager.ModalDialogType;
 import org.chromium.ui.modelutil.PropertyModel;
 
 /** Unit tests for {@link TabBottomSheetCoordinator}. */
@@ -121,6 +122,9 @@ public class TabBottomSheetCoordinatorTest {
     private ArgumentCaptor<KeyboardVisibilityDelegate.KeyboardVisibilityListener>
             mKeyboardVisibilityListenerCaptor;
 
+    @Mock private ModalDialogManager mMockModalDialogManager;
+    @Captor private ArgumentCaptor<ModalDialogManagerObserver> mModalDialogManagerObserverCaptor;
+
     private CoBrowseViews mCoBrowseViews;
     private Context mContext;
     private View mView;
@@ -149,6 +153,7 @@ public class TabBottomSheetCoordinatorTest {
                 "actor_control_container should be found in CoBrowseViews",
                 mView.findViewById(R.id.actor_control_container));
         when(mWindowAndroid.getKeyboardDelegate()).thenReturn(mKeyboardDelegate);
+        when(mWindowAndroid.getModalDialogManager()).thenReturn(mMockModalDialogManager);
 
         when(mWindowAndroid.getWindow()).thenReturn(mMockWindow);
         when(mMockWindow.getDecorView()).thenReturn(mMockDecorView);
@@ -342,6 +347,26 @@ public class TabBottomSheetCoordinatorTest {
 
         verify(mMockBottomSheetController).collapseSheet(true);
         assertFalse(mCoordinator.isExpectingLayoutChangeForTesting());
+    }
+
+    @Test
+    public void testAllowFullscreenImeOnLandscape() {
+        simulateShowSuccessAndGetObserver();
+
+        verify(mContext).registerComponentCallbacks(mComponentCallbacksArgumentCaptor.capture());
+        ComponentCallbacks callbacks = mComponentCallbacksArgumentCaptor.getValue();
+
+        Configuration landscapeConfig = new Configuration();
+        landscapeConfig.orientation = Configuration.ORIENTATION_LANDSCAPE;
+        callbacks.onConfigurationChanged(landscapeConfig);
+
+        verify(mMockWebUi).setAllowFullscreenIme(true);
+
+        Configuration portraitConfig = new Configuration();
+        portraitConfig.orientation = Configuration.ORIENTATION_PORTRAIT;
+        callbacks.onConfigurationChanged(portraitConfig);
+
+        verify(mMockWebUi).setAllowFullscreenIme(false);
     }
 
     @Test
@@ -673,14 +698,64 @@ public class TabBottomSheetCoordinatorTest {
     }
 
     @Test
-    public void testSetWebContents_resetsTouchOffset() {
-        WebContents mockWebContents = mock(WebContents.class);
-        EventForwarder mockEventForwarder = mock(EventForwarder.class);
-        when(mockWebContents.getEventForwarder()).thenReturn(mockEventForwarder);
+    public void testKeyboardVisibility_SetsIgnoreClearFocusOnWebUi() {
+        simulateShowSuccessAndGetObserver();
 
-        mCoBrowseViews.setWebContents(mockWebContents);
+        verify(mKeyboardDelegate)
+                .addKeyboardVisibilityListener(mKeyboardVisibilityListenerCaptor.capture());
+        KeyboardVisibilityDelegate.KeyboardVisibilityListener listener =
+                mKeyboardVisibilityListenerCaptor.getValue();
+        assertNotNull(listener);
 
-        verify(mockEventForwarder).setCurrentTouchOffsetX(0.0f);
-        verify(mockEventForwarder).setCurrentTouchOffsetY(0.0f);
+        listener.keyboardVisibilityChanged(true);
+        verify(mMockWebUi).setIgnoreClearFocus(true);
+
+        listener.keyboardVisibilityChanged(false);
+        verify(mMockWebUi).setIgnoreClearFocus(false);
+    }
+
+    @Test
+    public void testModalDialogObserver_RegistrationAndUnregistration() {
+        // 1. Show sheet and verify observer registration
+        simulateShowSuccessAndGetObserver();
+        verify(mMockModalDialogManager).addObserver(mModalDialogManagerObserverCaptor.capture());
+        ModalDialogManagerObserver observer = mModalDialogManagerObserverCaptor.getValue();
+        assertNotNull(observer);
+
+        // 2. Destroy coordinator and verify observer unregistration
+        mCoordinator.destroy();
+        verify(mMockModalDialogManager).removeObserver(observer);
+    }
+
+    @Test
+    public void testModalDialogObserver_TabModalCollapsesSheet() {
+        simulateShowSuccessAndGetObserver();
+        verify(mMockModalDialogManager).addObserver(mModalDialogManagerObserverCaptor.capture());
+        ModalDialogManagerObserver observer = mModalDialogManagerObserverCaptor.getValue();
+
+        // Setup: Mock active tab-modal dialog state
+        when(mMockModalDialogManager.getCurrentType()).thenReturn(ModalDialogType.TAB);
+
+        // Trigger observer
+        observer.onDialogShown(mock(View.class));
+
+        // Verify sheet collapse is called (via bottom sheet controller)
+        verify(mMockBottomSheetController).collapseSheet(eq(true));
+    }
+
+    @Test
+    public void testModalDialogObserver_AppModalDoesNotCollapseSheet() {
+        simulateShowSuccessAndGetObserver();
+        verify(mMockModalDialogManager).addObserver(mModalDialogManagerObserverCaptor.capture());
+        ModalDialogManagerObserver observer = mModalDialogManagerObserverCaptor.getValue();
+
+        // Setup: Mock active app-modal dialog state
+        when(mMockModalDialogManager.getCurrentType()).thenReturn(ModalDialogType.APP);
+
+        // Trigger observer
+        observer.onDialogShown(mock(View.class));
+
+        // Verify collapse is NOT triggered
+        verify(mMockBottomSheetController, never()).collapseSheet(anyBoolean());
     }
 }

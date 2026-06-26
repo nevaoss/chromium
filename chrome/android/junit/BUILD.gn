@@ -472,6 +472,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/app/tabmodel/PersistentStoreMigrationManagerImplUnitTest.java",
       "src/org/chromium/chrome/browser/app/tabmodel/TabCountTrackerUnitTest.java",
       "src/org/chromium/chrome/browser/app/tabmodel/TabModelOrchestratorUnitTest.java",
+      "src/org/chromium/chrome/browser/app/tabmodel/TabRestorerUnitTest.java",
       "src/org/chromium/chrome/browser/app/tabmodel/TabStateStoreUnitTest.java",
       "src/org/chromium/chrome/browser/app/tabmodel/TabbedModeTabModelOrchestratorUnitTest.java",
     ]
@@ -675,6 +676,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/contextualsearch/ContextualSearchContextTest.java",
       "src/org/chromium/chrome/browser/contextualsearch/ContextualSearchInternalStateTest.java",
       "src/org/chromium/chrome/browser/contextualsearch/ContextualSearchSelectionControllerTest.java",
+      "src/org/chromium/chrome/browser/contextualsearch/ContextualSearchTabHelperTest.java",
       "src/org/chromium/chrome/browser/contextualsearch/ContextualSearchTranslationImplTest.java",
       "src/org/chromium/chrome/browser/contextualsearch/RelatedSearchesListTest.java",
       "src/org/chromium/chrome/browser/contextualsearch/RelatedSearchesStampTest.java",
@@ -699,6 +701,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/customtabs/CustomTabAppMenuPropertiesDelegateUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/CustomTabBottomBarDelegateUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/CustomTabCookiesFetcherUnitTest.java",
+      "src/org/chromium/chrome/browser/customtabs/CustomTabDelegateFactoryUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/CustomTabFileUtilsUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/CustomTabIntentDataProviderTest.java",
       "src/org/chromium/chrome/browser/customtabs/CustomTabNavigationBarControllerTest.java",
@@ -739,7 +742,6 @@ if (is_android) {
       "src/org/chromium/chrome/browser/customtabs/features/partialcustomtab/PartialCustomTabVersionCompatTest.java",
       "src/org/chromium/chrome/browser/customtabs/features/toolbar/BrandingSecurityButtonAnimationDelegateUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/features/toolbar/BrowserServicesThemeColorProviderUnitTest.java",
-      "src/org/chromium/chrome/browser/customtabs/features/toolbar/ButtonVisibilityRuleUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/features/toolbar/CustomTabHistoryIphControllerUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/features/toolbar/CustomTabToolbarColorControllerUnitTest.java",
       "src/org/chromium/chrome/browser/customtabs/features/toolbar/CustomTabToolbarCoordinatorUnitTest.java",
@@ -900,6 +902,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/media/ui/MediaNotificationTestTabHolder.java",
       "src/org/chromium/chrome/browser/media/ui/MediaNotificationThrottlerTest.java",
       "src/org/chromium/chrome/browser/media/ui/MediaNotificationTitleUpdatedTest.java",
+      "src/org/chromium/chrome/browser/media/ui/MediaSessionTabHelperTest.java",
     ]
 
     deps = [
@@ -1086,6 +1089,7 @@ if (is_android) {
       "//chrome/browser/tab_group_suggestion:toolbar_java",
       "//chrome/browser/ui/android/toolbar:adaptive_features_java",
       "//chrome/browser/ui/android/toolbar:optional_button_java",
+      "//components/dom_distiller/content/browser/android:dom_distiller_content_java",
     ]
   }
 
@@ -1478,6 +1482,7 @@ if (is_android) {
       "//chrome/browser/commerce/subscriptions/test/android/java/src/org/chromium/chrome/browser/subscriptions/CommerceSubscriptionsServiceFactoryUnitTest.java",
       "//chrome/browser/commerce/subscriptions/test/android/java/src/org/chromium/chrome/browser/subscriptions/CommerceSubscriptionsServiceUnitTest.java",
       "src/org/chromium/chrome/browser/about_settings/AboutSettingsBridgeTest.java",
+      "src/org/chromium/chrome/browser/accessibility/AccessibilityTabHelperTest.java",
       "src/org/chromium/chrome/browser/accessibility/PageZoomIphControllerTest.java",
       "src/org/chromium/chrome/browser/accessibility/settings/CaretBrowsingDialogTest.java",
       "src/org/chromium/chrome/browser/actor/ActorForegroundServiceControllerImplTest.java",
@@ -1530,6 +1535,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/multiwindow/MultiInstanceOrchestratorImplUnitTest.java",
       "src/org/chromium/chrome/browser/multiwindow/MultiWindowUtilsUnitTest.java",
       "src/org/chromium/chrome/browser/multiwindow/TabReparentingDelegateUnitTest.java",
+      "src/org/chromium/chrome/browser/multiwindow/TabbedCrashRecoveryDelegateUnitTest.java",
       "src/org/chromium/chrome/browser/multiwindow/TabbedWindowStateTrackerUnitTest.java",
       "src/org/chromium/chrome/browser/multiwindow/WindowOcclusionTrackerUnitTest.java",
       "src/org/chromium/chrome/browser/multiwindow/WindowZOrderTrackerUnitTest.java",

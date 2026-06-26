@@ -477,7 +477,7 @@
     "includes": [3765],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/contextual_tasks/resources.grd": {
-    "META": {"sizes": {"includes": [50]}},
+    "META": {"sizes": {"includes": [60]}},
     "includes": [3770],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/data_sharing/resources.grd": {
@@ -657,7 +657,7 @@
     "includes": [4450],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/omnibox/resources.grd": {
-    "META": {"sizes": {"includes": [40]}},
+    "META": {"sizes": {"includes": [50]}},
     "includes": [4460],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/omnibox_popup/resources.grd": {
@@ -1411,7 +1411,7 @@
     "includes": [7495],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/feature_showcase/resources.grd": {
-    "META": {"sizes": {"includes": [10]}},
+    "META": {"sizes": {"includes": [50]}},
     "includes": [7505],
   },
   # END components/ section.
@@ -1658,11 +1658,11 @@
     "includes": [9380],
   },
   "extensions/renderer/resources/extensions_renderer_resources.grd": {
-    "includes": [9400],
     "structures": [9420],
   },
-  "extensions/shell/app_shell_resources.grd": {
-    "includes": [9440],
+  "<(SHARED_INTERMEDIATE_DIR)/extensions/renderer/resources/resources.grd": {
+    "META": {"sizes": {"includes": [100]}},
+    "includes": [9430],
   },
   "extensions/strings/extensions_strings.grd": {
     "messages": [9460],

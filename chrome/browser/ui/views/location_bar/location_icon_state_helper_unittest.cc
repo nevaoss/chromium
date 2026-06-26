@@ -29,7 +29,6 @@ using location_bar::GetSecurityChipAccessibilityState;
 using location_bar::GetSecurityChipIconEnum;
 using location_bar::GetSecurityChipText;
 using location_bar::GetSecurityChipTooltipText;
-using location_bar::IsSecurityChipInteractive;
 using location_bar::ShouldAnimateSecurityChipTextChange;
 using location_bar::ShouldShowSecurityChipText;
 
@@ -110,34 +109,16 @@ TEST_F(SecurityChipStateHelperTest, SecurityChipIconEnum) {
       GetSecurityChipIconEnum(model(), /*is_add_context_button_shown=*/true));
 
   model()->set_security_level(security_state::SecurityLevel::SECURE);
-  model()->set_icon(omnibox::kHttpIcon);
+  model()->set_icon(omnibox::kHttpOldIcon);
   EXPECT_EQ(
       SecurityChipIcon::kSecurePageInfo,
       GetSecurityChipIconEnum(model(), /*is_add_context_button_shown=*/false));
 
   model()->set_security_level(security_state::SecurityLevel::DANGEROUS);
-  model()->set_icon(omnibox::kHttpIcon);
+  model()->set_icon(omnibox::kHttpOldIcon);
   EXPECT_EQ(
       SecurityChipIcon::kDangerous,
       GetSecurityChipIconEnum(model(), /*is_add_context_button_shown=*/false));
-
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)  // nocheck
-  model()->set_icon(vector_icons::kGoogleSuperGIcon);
-  EXPECT_EQ(
-      SecurityChipIcon::kGoogleSuperG,
-      GetSecurityChipIconEnum(model(), /*is_add_context_button_shown=*/false));
-#endif
-}
-
-TEST_F(SecurityChipStateHelperTest, SecurityChipInteractivity) {
-  EXPECT_FALSE(IsSecurityChipInteractive(
-      /*is_editing_or_empty=*/true, SecurityChipIcon::kHttp));
-  EXPECT_TRUE(IsSecurityChipInteractive(
-      /*is_editing_or_empty=*/false, SecurityChipIcon::kHttp));
-  EXPECT_FALSE(IsSecurityChipInteractive(
-      /*is_editing_or_empty=*/false, SecurityChipIcon::kGoogleSuperG));
-  EXPECT_FALSE(IsSecurityChipInteractive(
-      /*is_editing_or_empty=*/false, SecurityChipIcon::kGoogleGMonochrome));
 }
 
 TEST_F(SecurityChipStateHelperTest, AccessibilityState) {
@@ -179,7 +160,7 @@ TEST_F(SecurityChipStateHelperTest, IsGradientGoogleSuperGIcon) {
   EXPECT_FALSE(location_bar::IsGradientGoogleSuperGIcon(empty_icon));
 
   ui::ImageModel vector_icon =
-      ui::ImageModel::FromVectorIcon(omnibox::kHttpIcon);
+      ui::ImageModel::FromVectorIcon(omnibox::kHttpOldIcon);
   EXPECT_FALSE(location_bar::IsGradientGoogleSuperGIcon(vector_icon));
 
   gfx::ImageSkia target_16 =

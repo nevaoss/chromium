@@ -433,11 +433,6 @@ inline constexpr char kComposeboxIOSName[] = "ComposeboxIOS";
 inline constexpr char kComposeboxIOSDescription[] =
     "Enables the composebox that replaces the regular omnibox in edit state.";
 
-inline constexpr char kComposeboxImmersiveSRPName[] =
-    "Enable the immersive SRP within the composebox";
-inline constexpr char kComposeboxImmersiveSRPDescription[] =
-    "When enabled, the composebox will open SRPs in an embedded web view.";
-
 inline constexpr char kComposeboxIpadName[] = "ComposeboxIpad";
 inline constexpr char kComposeboxIpadDescription[] =
     "Enables the composeboxIpad feature.";
@@ -486,12 +481,6 @@ inline constexpr char kCredentialProviderPasskeyLargeBlobName[] =
 inline constexpr char kCredentialProviderPasskeyLargeBlobDescription[] =
     "Enables support for the Large Blob extension for Passkeys in the "
     "Credential Provider Extension.";
-
-inline constexpr char kCredentialProviderPasskeyPRFName[] =
-    "Credential Provider PRF support";
-inline constexpr char kCredentialProviderPasskeyPRFDescription[] =
-    "Enables support for the PRF extension for Passkeys in the Credential "
-    "Provider Extension.";
 
 inline constexpr char kCredentialProviderPerformanceImprovementsName[] =
     "Credential Provider Performance Improvements";
@@ -892,6 +881,11 @@ inline constexpr char kIOSActorToolsName[] = "iOS Actor Tools";
 inline constexpr char kIOSActorToolsDescription[] =
     "Enables all actor tools on iOS.";
 
+inline constexpr char kIOSBackendPromoServiceIntegrationName[] =
+    "IOS Backend Promo Service Integration";
+inline constexpr char kIOSBackendPromoServiceIntegrationDescription[] =
+    "Enables Backend Promo Service integration.";
+
 inline constexpr char kIOSBrowserEditMenuMetricsName[] =
     "Browser edit menu metrics";
 inline constexpr char kIOSBrowserEditMenuMetricsDescription[] =
@@ -958,10 +952,6 @@ inline constexpr char kIOSExpandedTipsDescription[] =
     "Enables a feature that adds several new Tips Notifications that can be "
     "sent.";
 
-inline constexpr char kIOSHowToChromeName[] = "How to Chrome";
-inline constexpr char kIOSHowToChromeDescription[] =
-    "Enables the 'How to Chrome' feature on iOS.";
-
 inline constexpr char kIOSKeyboardAccessoryDefaultViewName[] =
     "Default Input Accessory View";
 inline constexpr char kIOSKeyboardAccessoryDefaultViewDescription[] =
@@ -973,6 +963,10 @@ inline constexpr char kIOSKeyboardAccessoryTwoBubbleName[] =
 inline constexpr char kIOSKeyboardAccessoryTwoBubbleDescription[] =
     "When enabled, the two-bubble design is used for the Keyboard Accessory "
     "view.";
+
+inline constexpr char kIOSLevelUpName[] = "Level Up";
+inline constexpr char kIOSLevelUpDescription[] =
+    "Enables the 'Level Up' feature on iOS.";
 
 inline constexpr char kIOSMiniMapUniversalLinkCounterfactualName[] =
     "Counterfactual for opening Maps Universal links in native view";
@@ -1859,10 +1853,6 @@ inline constexpr char kSyncWalletVehicleRegistrationsName[] =
 inline constexpr char kSyncWalletVehicleRegistrationsDescription[] =
     "Enables syncing vehicle registrations in the wallet to the server.";
 
-inline constexpr char kSyncedGroupColorName[] = "SyncedGroupColor";
-inline constexpr char kSyncedGroupColorDescription[] =
-    "Enables the SyncedGroupColor feature.";
-
 inline constexpr char kTabGridNewTransitionsName[] =
     "Enable new TabGrid transitions";
 inline constexpr char kTabGridNewTransitionsDescription[] =
@@ -1907,6 +1897,10 @@ inline constexpr char kTabSwitcherOverflowMenuDescription[] =
 inline constexpr char kTaiyakiAllSurfacesName[] = "Taiyaki (all surfaces)";
 inline constexpr char kTaiyakiAllSurfacesDescription[] =
     "Enables Taiyaki for all surfaces (including post-FRE).";
+
+inline constexpr char kUpdateTabGroupColorsName[] = "UpdateTabGroupColors";
+inline constexpr char kUpdateTabGroupColorsDescription[] =
+    "Enables the UpdateTabGroupColors feature.";
 
 inline constexpr char kUpdatedFRESequenceName[] =
     "Update the sequence of the First Run screens";

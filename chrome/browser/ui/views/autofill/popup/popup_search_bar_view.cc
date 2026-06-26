@@ -50,9 +50,9 @@ PopupSearchBarView::PopupSearchBarView(const std::u16string& placeholder,
   int icon_size = layout_provider->GetDistanceMetric(
       views::DISTANCE_BUBBLE_HEADER_VECTOR_ICON_SIZE);
 
-  search_icon_ = AddChildView(
-      std::make_unique<views::ImageView>(ui::ImageModel::FromVectorIcon(
-          vector_icons::kSearchChromeRefreshIcon, ui::kColorIcon, icon_size)));
+  search_icon_ = AddChildView(std::make_unique<views::ImageView>(
+      ui::ImageModel::FromVectorIcon(vector_icons::kSearchChromeRefreshOldIcon,
+                                     ui::kColorIcon, icon_size)));
 
   throbber_ = AddChildView(std::make_unique<views::Throbber>(icon_size));
   SetLoading(is_loading);
@@ -83,7 +83,7 @@ PopupSearchBarView::PopupSearchBarView(const std::u16string& placeholder,
           views::CreateVectorImageButtonWithNativeTheme(
               base::BindRepeating(&PopupSearchBarView::OnClearPressed,
                                   base::Unretained(this)),
-              vector_icons::kCloseChromeRefreshIcon))
+              vector_icons::kCloseChromeRefreshOldIcon))
           // Reset the border set by `CreateVectorImageButtonWithNativeTheme()`
           // as it sets an unnecessary padding to the highlighting circle.
           .SetBorder(nullptr)
@@ -122,6 +122,9 @@ void PopupSearchBarView::OnDidChangeFocus(views::View* focused_before,
 bool PopupSearchBarView::HandleKeyEvent(views::Textfield* sender,
                                         const ui::KeyEvent& key_event) {
   if (key_event.type() == ui::EventType::kKeyPressed) {
+    if (key_event.key_code() == ui::VKEY_RETURN) {
+      input_change_notification_timer_.Stop();
+    }
     return delegate_->SearchBarHandleKeyPressed(key_event);
   }
   return false;

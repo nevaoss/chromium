@@ -268,7 +268,7 @@ unsigned LocaleIcu::FirstDayOfWeek() {
   return first_day_of_week_.value();
 }
 
-bool LocaleIcu::IsRTL() {
+bool LocaleIcu::IsRtl() {
   UErrorCode status = U_ZERO_ERROR;
   return uloc_getCharacterOrientation(locale_.c_str(), &status) ==
          ULOC_LAYOUT_RTL;
@@ -425,7 +425,7 @@ const Vector<String>& LocaleIcu::ShortStandAloneMonthLabels() {
   return short_stand_alone_month_labels_;
 }
 
-const Vector<String>& LocaleIcu::TimeAMPMLabels() {
+const Vector<String>& LocaleIcu::TimeAmPmLabels() {
   InitializeDateTimeFormat();
   return time_ampm_labels_;
 }

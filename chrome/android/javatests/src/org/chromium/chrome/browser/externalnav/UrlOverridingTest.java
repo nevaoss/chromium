@@ -71,6 +71,7 @@ import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.DisableIf;
+import org.chromium.base.test.util.DisableLeakChecks;
 import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -163,6 +164,10 @@ import java.util.concurrent.atomic.AtomicReference;
     ChromeFeatureList.CCT_DESTROY_TAB_WHEN_MODEL_IS_EMPTY,
     "Prewarm",
     ChromeFeatureList.DESKTOP_ANDROID_LINK_CAPTURING
+})
+@DisableLeakChecks({
+    "crbug.com/512492165 (ActorForegroundServiceManager)",
+    "crbug.com/512492107 (CustomTabActivity)"
 })
 public class UrlOverridingTest {
     @Rule
@@ -1108,7 +1113,7 @@ public class UrlOverridingTest {
 
     @Test
     @SmallTest
-    @DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/444482498
+    @DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/511287942
     public void testRedirectionFromIntentColdWithTask() throws Exception {
         // Set up task with finished ChromeActivity.
         Context context = ContextUtils.getApplicationContext();

@@ -403,6 +403,7 @@
     "preciselocation",
     "privatetoken",
     "type",
+    "unbounded",
     "usemap",
     "valign",
     "value",

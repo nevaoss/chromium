@@ -470,6 +470,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="1717688554309417925">Dịch vụ ghi nợ và séc</translation>
 <translation id="1719434663396780149">Thông báo giảm giá đang bật. Bạn có thể thay đổi chế độ này trong <ph name="BEGIN_LINK" /><ph name="NOTIFICATION_SETTINGS" /><ph name="END_LINK" />.</translation>
 <translation id="1719838434204287058">24 x 30 inch</translation>
+<translation id="1720318856472900922">Xác thực Máy chủ TLS WWW</translation>
 <translation id="1720941539803966190">Đóng hướng dẫn</translation>
 <translation id="1721424275792716183">Trường * là bắt buộc</translation>
 <translation id="1723636263173393300">Chính sách này không được chứa nhiều hơn <ph name="MAX_ITEMS_LIMIT" /> lối tắt.</translation>
@@ -548,6 +549,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="1832474362231610822">Đã lưu ảnh vào OneDrive</translation>
 <translation id="1832730227369924598">Đồng bộ hoá không gian làm việc</translation>
 <translation id="1834452765064623979">Xây dựng và bảo trì</translation>
+<translation id="1837606605602726453">Điểm rủi ro và danh mục bị bỏ qua vì tiện ích này được quản trị viên cho phép hoặc chặn một cách rõ ràng.</translation>
 <translation id="1838374766361614909">Xóa tìm kiếm</translation>
 <translation id="1839331950812095887">một vài từ tóm tắt suy nghĩ của bạn</translation>
 <translation id="1839551713262164453">Không xác thực được các giá trị của chính sách do xảy ra lỗi</translation>
@@ -754,6 +756,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="2168151236314517198">Chính sách của quản trị viên không cho phép in nội dung này</translation>
 <translation id="2171244127100824330">Trong <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" /> cho <ph name="ACCOUNT" /></translation>
 <translation id="2172089022819052306">Sửa chữa và bảo dưỡng xe</translation>
+<translation id="217231402430591139">Liên kết tài khoản của bạn</translation>
 <translation id="2173302385160625112">Kiểm tra đường kết nối Internet của bạn</translation>
 <translation id="2174875517416416684">Giao dịch không thực hiện được. Bạn chưa rút bất kỳ khoản tiền nào từ tài khoản của mình.</translation>
 <translation id="2175630235841878061">Không thể tải xuống nếu kích thước tệp lớn hơn 100 MB</translation>
@@ -2474,6 +2477,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="4855395119669662878">Quản trị viên của bạn sẽ bắt đầu tải các tệp của bạn lên <ph name="CLOUD_PROVIDER" /> vào <ph name="DATE_TIME" />. Hãy duy trì kết nối thiết bị cho đến khi quá trình tải tệp lên hoàn tất. Trong quá trình tải lên, bạn sẽ chỉ có thể đọc các tệp trên máy.</translation>
 <translation id="485902285759009870">Đang xác minh mã...</translation>
 <translation id="4860260582253463350">Để giúp bạn truy cập YouTube, chúng tôi cần xác minh danh tính của bạn. Bạn sẽ sử dụng các chế độ cài đặt mà cha mẹ hoặc người giám hộ thiết lập trong Family Link.</translation>
+<translation id="4862642413395066333">Ký Phản hồi OCSP</translation>
 <translation id="4864406669374375262">Đã sao chép chuỗi phiên bản vào bảng nhớ tạm</translation>
 <translation id="486459320933704969">Bạn phải được cha mẹ hoặc người giám hộ cho phép truy cập trang web này</translation>
 <translation id="4864801646102013152">Sửa sang nhà cửa</translation>
@@ -3217,6 +3221,7 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="6006365096047131769">3 x 5 inch</translation>
 <translation id="6008122969617370890">Thứ tự từ N đến 1</translation>
 <translation id="6008256403891681546">JCB</translation>
+<translation id="6012135807160718387">Công nghệ mã hoá của Google giúp bảo vệ thông tin của bạn</translation>
 <translation id="6014801569448771146">Kiểm tra mật khẩu của bạn</translation>
 <translation id="6014851866995737824">Chính sách bị bỏ qua vì thiếu danh sách "bật" hoặc "tắt".</translation>
 <translation id="6015796118275082299">Năm</translation>
@@ -3608,7 +3613,6 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="6587923378399804057">Liên kết bạn đã sao chép</translation>
 <translation id="6591833882275308647"><ph name="DEVICE_TYPE" /> của bạn không được quản lý</translation>
 <translation id="6595495738567740002">Để xoá cookie của Google khỏi thiết bị này, hãy <ph name="BEGIN_LINK" />đăng xuất khỏi Chrome<ph name="END_LINK" />.</translation>
-<translation id="6596325263575161958">Tùy chọn mã hóa</translation>
 <translation id="6596573334527383067">Hiện kết quả từ hôm qua</translation>
 <translation id="6597665340361269064">90 độ</translation>
 <translation id="6598976221101665070">Phim chính kịch</translation>
@@ -3883,7 +3887,6 @@ Nếu bạn từ chối, chế độ cài đặt quyền riêng tư của bạn 
 <translation id="702275896380648118">Trang web này xác định sở thích của bạn, sau đó đề xuất quảng cáo mà các trang web khác nên hiển thị. Trang web này cũng thu thập thông tin về chủ đề quảng cáo bạn quan tâm qua Chrome để hiển thị cho bạn những quảng cáo phù hợp hơn.</translation>
 <translation id="7023162328967545559">Cảnh báo của quản trị viên</translation>
 <translation id="7023765275461720661">Liên kết tài khoản và thanh toán bằng <ph name="BNPL_ISSUER_NAME" />?</translation>
-<translation id="7029809446516969842">Mật khẩu</translation>
 <translation id="7030164307377592766">sửa đổi chế độ cài đặt cho việc điền phương thức thanh toán</translation>
 <translation id="7031110846419387930">Thông tin về trình duyệt, hệ điều hành, thiết bị, phần mềm đã cài đặt, tệp và địa chỉ IP</translation>
 <translation id="7031646650991750659">Những ứng dụng bạn đã cài đặt bằng Google Play</translation>
@@ -4494,6 +4497,7 @@ Thông tin chi tiết bổ sung:
 <translation id="7947285636476623132">Kiểm tra năm hết hạn của bạn và thử lại</translation>
 <translation id="7947310711271925113">Nhạc Pop</translation>
 <translation id="7947813448670013867"><ph name="SEE_CHROME_TIPS_FOCUSED_FRIENDLY_MATCH_TEXT" />, nhấn phím Tab rồi nhấn phím Enter để tìm hiểu về các tính năng của Chrome</translation>
+<translation id="7948579849190819732">Thẻ hiện tại</translation>
 <translation id="7949135979217012031">Chống vi-rút và phần mềm độc hại</translation>
 <translation id="7950027195171824198">Quản lý các lựa chọn ưu tiên về cookie trong phần Cài đặt của Chrome</translation>
 <translation id="7951415247503192394">(32 bit)</translation>
@@ -4902,6 +4906,7 @@ Thông tin chi tiết bổ sung:
 <translation id="8597726363542221027">Xe đã qua sử dụng</translation>
 <translation id="8600271352425265729">Chỉ lần này</translation>
 <translation id="860043288473659153">Tên chủ thẻ</translation>
+<translation id="8601206103050338563">Xác thực Ứng dụng khách TLS WWW</translation>
 <translation id="8601456038554914806">Thiết bị dành cho thể thao dưới nước</translation>
 <translation id="8601782593888534566">Khoa học viễn tưởng và giả tưởng</translation>
 <translation id="8604103095921958091">Màn hình điều khoản dịch vụ Mua trước trả sau đã mở toàn bộ.</translation>

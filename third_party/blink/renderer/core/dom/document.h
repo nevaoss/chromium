@@ -2036,8 +2036,9 @@ class CORE_EXPORT Document : public ContainerNode,
 
   void RequestResizeResponsiveIframe(ExceptionState* = nullptr);
 
-  // A META element with name=responsive-embedded-sizing was added, removed, or
-  // modified. Re-collect the META values.
+  // A META element with name=responsive-embedded-sizing sets this flag.
+  // This flag is immutable once set.
+  // https://drafts.csswg.org/css-sizing-4/#document-responsive-embedded-sizing-flag
   void SetResponsiveEmbeddedSizing() { responsive_embedded_sizing_ = true; }
 
   // A META element with name=text-scale was added, removed, or
@@ -2255,6 +2256,10 @@ class CORE_EXPORT Document : public ContainerNode,
   static Document* parseHTMLUnsafe(ExecutionContext* context,
                                    const V8UnionStringOrTrustedHTML* html,
                                    SetHTMLUnsafeOptions* options,
+                                   ExceptionState& exception_state);
+  static Document* parseHTMLUnsafe(ExecutionContext* context,
+                                   const V8UnionStringOrTrustedHTML* html,
+                                   TrustedParserOptions* options,
                                    ExceptionState& exception_state);
   static Document* parseHTML(ExecutionContext* context,
                              const String& html,

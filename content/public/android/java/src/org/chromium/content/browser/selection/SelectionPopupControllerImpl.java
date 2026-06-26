@@ -640,6 +640,7 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
     public void showActionModeOrClearOnFailure() {
         if (!isActionModeSupported()
                 || mView == null
+                || !mView.isAttachedToWindow()
                 || getMenuType() != SelectionMenuType.ACTION_MODE) {
             return;
         }
@@ -688,7 +689,8 @@ public class SelectionPopupControllerImpl extends ActionModeCallbackHelper
             assumeNonNull(mCallback);
             SelectionMenuItem menuItem = delegate.getMinimalMenuItem(item);
             logSelectionAction(menuItem.groupId, menuItem.id);
-            boolean isSubmenuParent = item.containsKey(ListMenuSubmenuItemProperties.SUBMENU_ITEMS);
+            boolean isSubmenuParent =
+                    item.containsKey(ListMenuSubmenuItemProperties.SUBMENU_PROVIDER);
             View.OnClickListener clickListener = delegate.getClickListener(item);
             if (!mCallback.onDropdownItemClicked(menuItem, !isSubmenuParent)
                     && clickListener != null) {

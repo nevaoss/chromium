@@ -28,8 +28,6 @@ class SyncService;
 
 namespace password_manager {
 
-struct PasswordForm;
-
 class PasswordStoreBackend;
 class PasswordStoreConsumer;
 class SmartBubbleStatsStore;
@@ -63,12 +61,12 @@ class PasswordStoreInterface : public RefcountedKeyedService {
                                  const PasswordStoreChangeList& changes) = 0;
 
     // Notifies the observer that password data changed. Will be called from
-    // the UI thread. The `retained_passwords` are a complete list of passwords
-    // and blocklisted sites. The passed `store` issued the observer
+    // the UI thread. The `retained_credentials` are a complete list of
+    // passwords and blocklisted sites. The passed `store` issued the observer
     // notification in case there might be multiple ones.
     virtual void OnLoginsRetained(
         PasswordStoreInterface* store,
-        const std::vector<PasswordForm>& retained_passwords) = 0;
+        const std::vector<StoredCredential>& retained_credentials) = 0;
 
     // Notifies the observer that error state of the password store may have
     // changed. This happens when the store backend receives a notification
@@ -149,24 +147,24 @@ class PasswordStoreInterface : public RefcountedKeyedService {
       const PasswordFormDigest& form_digest,
       base::OnceClosure completion = base::NullCallback()) = 0;
 
-  // Searches for a matching PasswordForm, and notifies `consumer` on
+  // Searches for a matching StoredCredential, and notifies `consumer` on
   // completion.
   // TODO(crbug.com/40185049): Use a smart pointer for consumer.
   virtual void GetLogins(const PasswordFormDigest& form,
                          base::WeakPtr<PasswordStoreConsumer> consumer) = 0;
 
-  // Gets the complete list of non-blocklist PasswordForms.`consumer` will be
-  // notified on completion.
+  // Gets the complete list of non-blocklist StoredCredentials. `consumer` will
+  // be notified on completion.
   // TODO(crbug.com/40185049): Use a smart pointer for consumer.
   virtual void GetAutofillableLogins(
       base::WeakPtr<PasswordStoreConsumer> consumer) = 0;
 
-  // Gets the complete list of PasswordForms (regardless of their blocklist
+  // Gets the complete list of StoredCredentials (regardless of their blocklist
   // status) and notify `consumer` on completion.
   // TODO(crbug.com/40185049): Use a smart pointer for consumer.
   virtual void GetAllLogins(base::WeakPtr<PasswordStoreConsumer> consumer) = 0;
 
-  // Gets the complete list of PasswordForms, regardless of their blocklist
+  // Gets the complete list of StoredCredentials, regardless of their blocklist
   // status. Also fills in affiliation and branding information for Android
   // credentials.
   // TODO(crbug.com/40185049): Use a smart pointer for consumer.

@@ -69,11 +69,11 @@ const SendTabToSelfEntry* FakeSendTabToSelfModel::SendEntry(
   }
 
   for (auto& observer : observers_) {
-    observer.EntryAddedLocally(result);
+    observer.OnEntryAddedLocally(result);
   }
 
   if (commit_confirmation) {
-    std::move(commit_confirmation).Run(SendTabToSelfResult::kSuccess);
+    std::move(commit_confirmation).Run(send_result_);
   }
 
   return result;
@@ -95,7 +95,7 @@ void FakeSendTabToSelfModel::MarkEntryOpened(const std::string& guid) {
   if (it != entries_.end()) {
     it->second->MarkOpened(base::Time::Now());
     for (auto& observer : observers_) {
-      observer.EntriesOpenedRemotely({it->second.get()});
+      observer.OnEntriesOpenedRemotely({it->second.get()});
     }
   }
 }
@@ -135,6 +135,10 @@ void FakeSendTabToSelfModel::SetLocalDeviceName(std::string_view device_name) {
   local_device_name_ = std::string(device_name);
 }
 
+void FakeSendTabToSelfModel::SetSendResult(SendTabToSelfResult result) {
+  send_result_ = result;
+}
+
 void FakeSendTabToSelfModel::SetSendEntryCallback(SendEntryCallback callback) {
   send_entry_callback_ = std::move(callback);
 }
@@ -155,7 +159,7 @@ const SendTabToSelfEntry* FakeSendTabToSelfModel::AddEntryRemotely(
   entries_[guid] = std::move(entry);
 
   for (auto& observer : observers_) {
-    observer.EntriesAddedRemotely({result});
+    observer.OnEntriesAddedRemotely({result});
   }
 
   return result;

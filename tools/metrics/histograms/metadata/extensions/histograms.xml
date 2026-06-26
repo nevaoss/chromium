@@ -1132,7 +1132,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 
 <histogram
     name="Extensions.DeclarativeNetRequest.EvaluateBeforeRequestTime.SingleExtension2"
-    units="microseconds" expires_after="2026-06-21">
+    units="microseconds" expires_after="2026-12-21">
   <owner>kelvinjiang@chromium.org</owner>
   <owner>src/extensions/OWNERS</owner>
   <summary>
@@ -1251,7 +1251,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 
 <histogram name="Extensions.DeclarativeNetRequest.RedirectAction"
     enum="DeclarativeNetRequestRedirectType" expires_after="2026-12-31">
-  <owner>marwant@chromium.org</owner>
+  <owner>quarz@chromium.org</owner>
   <owner>src/extensions/OWNERS</owner>
   <summary>
     Logs the type of redirect action when a request is redirected by the
@@ -3248,33 +3248,6 @@ This is emitted for two scenarios when a worker may be unregistered:
   <token key="UserType" variants="UserType"/>
 </histogram>
 
-<histogram name="Extensions.ListenersContainerSize.{Container}"
-    units="listeners" expires_after="2024-11-30">
-  <owner>spvm@chromium.org</owner>
-  <owner>chrome-catan@google.com</owner>
-  <summary>
-    The size of the {Container} EventListener vector over which we search for a
-    listener to which to dispatch an event. Emitted once per event dispatch.
-  </summary>
-  <token key="Container">
-    <variant name="Active"
-        summary="Active listeners for the browser context for which this
-                 metric is emitted."/>
-    <variant name="CrossActive"
-        summary="Cross Active listeners for the browser context for which
-                 this metric is emitted."/>
-    <variant name="CrossInactive"
-        summary="Cross Inactive listeners for the browser context for which
-                 this metric is emitted."/>
-    <variant name="Global"
-        summary="Global listeners for the browser context for which this
-                 metric is emitted."/>
-    <variant name="Inactive"
-        summary="Inactive listeners for the browser context for which this
-                 metric is emitted."/>
-  </token>
-</histogram>
-
 <histogram name="Extensions.LoadAll2" units="units" expires_after="never">
 <!-- expires-never: Monitoring extension usage. -->
 
@@ -4161,7 +4134,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.ServiceWorkerBackground.Registration_FailStatus"
-    enum="ServiceWorkerStatusCode" expires_after="2026-09-06">
+    enum="ServiceWorkerStatusCode" expires_after="2026-11-08">
   <owner>jlulejian@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
@@ -4371,7 +4344,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 
 <histogram
     name="Extensions.ServiceWorkerBackground.WorkerRegistrationRetryAttemptsResult"
-    enum="Boolean" expires_after="2026-09-06">
+    enum="Boolean" expires_after="2026-11-08">
   <owner>jlulejian@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
@@ -4388,7 +4361,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.ServiceWorkerBackground.WorkerRegistrationState"
-    enum="Boolean" expires_after="2026-09-06">
+    enum="Boolean" expires_after="2026-11-08">
   <owner>jlulejian@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
@@ -4611,6 +4584,20 @@ This is emitted for two scenarios when a worker may be unregistered:
     Warning: This histogram was expired from 2023-08-08 to 2023-10-16; data may
     be missing.
   </summary>
+</histogram>
+
+<histogram name="Extensions.Tabs.RemoveAction" enum="TabsRemoveActionType"
+    expires_after="2026-12-31">
+  <owner>quarz@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>Tracks Tabs API remove actions.</summary>
+</histogram>
+
+<histogram name="Extensions.Tabs.UpdateAction" enum="TabsUpdateActionType"
+    expires_after="2026-12-31">
+  <owner>quarz@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>Tracks Tabs API update actions.</summary>
 </histogram>
 
 <histogram name="Extensions.Toolbar.ExtensionsActivatedFromRequestAccessButton"

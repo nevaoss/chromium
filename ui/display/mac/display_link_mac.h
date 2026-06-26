@@ -100,11 +100,6 @@ class DISPLAY_EXPORT DisplayLinkMac : public base::RefCounted<DisplayLinkMac> {
 
   static bool SupportsDisplayLinkMacInBrowser();
 
-  // For CADisplayLink and CVDisplayLink in GPU, always return true;
-  // For ExternalDisplayLinkMac, check whether the display id has been added in
-  // AddSupportedDisplayLinkId().
-  static bool IsDisplayLinkAllowed(int64_t display_id);
-
   // CADisplayLink is not designed for multi-process use and can become
   // non-functional in the GPU process following a power state change or a
   // system refresh rate update.

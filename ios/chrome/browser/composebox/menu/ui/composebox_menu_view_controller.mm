@@ -15,6 +15,7 @@
 #import "ios/chrome/browser/composebox/menu/ui/composebox_menu_separator_footer.h"
 #import "ios/chrome/browser/composebox/public/composebox_mode.h"
 #import "ios/chrome/browser/composebox/public/composebox_model_option.h"
+#import "ios/chrome/browser/composebox/shared/ui/composebox_ui_constants.h"
 #import "ios/chrome/browser/composebox/ui/composebox_strings.h"
 #import "ios/chrome/browser/composebox/ui/composebox_ui_input_state.h"
 #import "ios/chrome/browser/composebox/ui/composebox_ui_util.h"
@@ -44,10 +45,7 @@ const CGFloat kAttachmentItemSpacing = 6.0f;
 const NSDirectionalEdgeInsets kListSectionInsets = {0, 16.0, 20.0, 16.0};
 
 // Insets for the attachments section.
-const NSDirectionalEdgeInsets kAttachmentSectionInsets = {16.0, 16.0, 8.0,
-                                                          16.0};
-
-
+const NSDirectionalEdgeInsets kAttachmentSectionInsets = {6.0, 16.0, 8.0, 16.0};
 
 // Vertical padding for the separator.
 const CGFloat kSeparatorVerticalPadding = 10.0f;
@@ -168,6 +166,15 @@ UIImage* IconForModel(ComposeboxModelOption option) {
   [self setUpCollectionView];
   [self setUpDataSource];
   [self applySnapshot];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+  [super viewDidAppear:animated];
+
+  __weak __typeof(self) weakSelf = self;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [weakSelf focusFirstMenuItem];
+  });
 }
 
 - (CGSize)preferredContentSize {
@@ -342,8 +349,9 @@ UIImage* IconForModel(ComposeboxModelOption option) {
     NSCollectionLayoutSize* itemSize = [NSCollectionLayoutSize
         sizeWithWidthDimension:[NSCollectionLayoutDimension
                                    absoluteDimension:itemWidth]
-               heightDimension:[NSCollectionLayoutDimension
-                                   fractionalHeightDimension:1.0]];
+               heightDimension:
+                   [NSCollectionLayoutDimension
+                       estimatedDimension:kAttachmentGroupEstimatedHeight]];
 
     NSCollectionLayoutItem* item =
         [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -399,6 +407,23 @@ UIImage* IconForModel(ComposeboxModelOption option) {
 }
 
 #pragma mark - Private
+
+// Focuses the first item in the menu for accessibility.
+- (void)focusFirstMenuItem {
+  if (_collectionView.numberOfSections > 0 &&
+      [_collectionView numberOfItemsInSection:0] > 0) {
+    NSIndexPath* firstIndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+    UICollectionViewCell* cell =
+        [_collectionView cellForItemAtIndexPath:firstIndexPath];
+    if (cell) {
+      UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification,
+                                      cell);
+    } else {
+      UIAccessibilityPostNotification(UIAccessibilityScreenChangedNotification,
+                                      _collectionView);
+    }
+  }
+}
 
 - (NSArray<ComposeboxMenuItem*>*)availableAttachmentItems {
   CHECK(_inputState);
@@ -589,12 +614,24 @@ UIImage* IconForModel(ComposeboxModelOption option) {
       [cell defaultContentConfiguration];
   configuration.text = item.title;
   configuration.image = item.image;
+  cell.accessibilityLabel = item.title;
 
-  configuration.textProperties.color = [UIColor
-      colorNamed:item.disabled ? kTextSecondaryColor : kTextPrimaryColor];
-  configuration.imageProperties.tintColor = [UIColor
-      colorNamed:item.disabled ? kTextSecondaryColor : kTextPrimaryColor];
-  cell.userInteractionEnabled = !item.disabled;
+  if (item.disabled) {
+    configuration.textProperties.color =
+        [UIColor colorNamed:kTextSecondaryColor];
+    configuration.imageProperties.tintColor =
+        [UIColor colorNamed:kTextSecondaryColor];
+    cell.userInteractionEnabled = NO;
+    cell.accessibilityTraits |= UIAccessibilityTraitNotEnabled;
+    cell.isAccessibilityElement = YES;
+  } else {
+    configuration.textProperties.color = [UIColor colorNamed:kTextPrimaryColor];
+    configuration.imageProperties.tintColor =
+        [UIColor colorNamed:kTextPrimaryColor];
+    cell.userInteractionEnabled = YES;
+    cell.accessibilityTraits &= ~UIAccessibilityTraitNotEnabled;
+    cell.isAccessibilityElement = YES;
+  }
 
   cell.contentConfiguration = configuration;
 
@@ -617,9 +654,13 @@ UIImage* IconForModel(ComposeboxModelOption option) {
     UICellAccessoryCheckmark* checkmark =
         [[UICellAccessoryCheckmark alloc] init];
     cell.accessories = @[ checkmark ];
+    cell.accessibilityTraits |= UIAccessibilityTraitSelected;
   } else {
     cell.accessories = @[];
+    cell.accessibilityTraits &= ~UIAccessibilityTraitSelected;
   }
+  cell.accessibilityIdentifier =
+      AccessibilityIdentifierForMenuItemType(item.type);
 }
 #pragma mark - UIResponder
 

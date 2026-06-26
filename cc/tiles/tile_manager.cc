@@ -671,6 +671,7 @@ void TileManager::ExternalDependencyCompletedForRasterTask(
 
 bool TileManager::PrepareTiles(
     const GlobalStateThatImpactsTilePriority& state) {
+  TRACE_EVENT("cc", __PRETTY_FUNCTION__);
   ++prepare_tiles_count_;
   last_active_time_ = NowWithOverride();
   ScheduleReduceTileMemoryWhenIdle(base::TimeDelta());
@@ -685,6 +686,10 @@ bool TileManager::PrepareTiles(
   }
 
   signals_ = Signals();
+  if (global_state_.viewport_size != state.viewport_size) {
+    resource_pool_->NotifyOfViewportSizeChange(global_state_.viewport_size,
+                                               state.viewport_size);
+  }
   global_state_ = state;
 
   // Ensure that we don't schedule any decode work for checkered images until
@@ -1087,7 +1092,7 @@ TileManager::PrioritizedWorkToSchedule TileManager::AssignGpuMemoryToTiles() {
 
   did_oom_on_last_assign_ = !had_enough_memory_to_schedule_tiles_needed_now;
   // Since this is recorded once per frame, subsample these metrics.
-  if (metrics_sub_sampler_.ShouldSample(metrics_sampling_rate_)) {
+  if (base::ShouldRecordSubsampledMetric(metrics_sampling_rate_)) {
     if (!running_on_renderer_process_) {
       UMA_HISTOGRAM_BOOLEAN("Compositing.TileManager.EnoughMemory.Browser",
                             had_enough_memory_to_schedule_tiles_needed_now);
@@ -1213,7 +1218,7 @@ void TileManager::AddCheckeredImagesToDecodeQueue(
 }
 
 void TileManager::ScheduleTasks(PrioritizedWorkToSchedule work_to_schedule) {
-  auto start_time = metrics_sub_sampler_.ShouldSample(metrics_sampling_rate_)
+  auto start_time = base::ShouldRecordSubsampledMetric(metrics_sampling_rate_)
                         ? base::TimeTicks::Now()
                         : base::TimeTicks();
 
@@ -1461,7 +1466,7 @@ scoped_refptr<TileTask> TileManager::CreateRasterTask(
         &invalidated_rect, target_color_params.color_space, debug_name);
 
     constexpr double kLogProbability = 0.001;
-    if (metrics_sub_sampler_.ShouldSample(kLogProbability)) {
+    if (base::ShouldRecordSubsampledMetric(kLogProbability)) {
       // Note this minimum area needs to be above zero to avoid division by zero
       // error.
       constexpr uint64_t kMinAreaForReporting = 256 * 256;

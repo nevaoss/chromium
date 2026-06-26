@@ -11,15 +11,21 @@
 #include <vector>
 
 #include "base/memory/raw_ptr.h"
+#include "base/scoped_observation.h"
 #include "components/send_tab_to_self/entry_point_display_reason.h"
 #include "components/send_tab_to_self/metrics_util.h"
 #include "content/public/browser/web_contents_user_data.h"
+#include "ui/views/widget/widget_observer.h"
 #include "url/gurl.h"
 
 class Profile;
 
 namespace actions {
 class ActionItem;
+}
+
+namespace views {
+class Widget;
 }
 
 namespace content {
@@ -43,7 +49,8 @@ class SendTabToSelfBubbleView;
 struct TargetDeviceInfo;
 
 class SendTabToSelfBubbleController
-    : public content::WebContentsUserData<SendTabToSelfBubbleController> {
+    : public content::WebContentsUserData<SendTabToSelfBubbleController>,
+      public views::WidgetObserver {
  public:
   SendTabToSelfBubbleController(const SendTabToSelfBubbleController&) = delete;
   SendTabToSelfBubbleController& operator=(
@@ -51,8 +58,6 @@ class SendTabToSelfBubbleController
 
   ~SendTabToSelfBubbleController() override;
 
-  static SendTabToSelfBubbleController* CreateOrGetFromWebContents(
-      content::WebContents* web_contents);
   // Hides send tab to self bubble.
   void HideBubble();
   // Displays send tab to self bubble.
@@ -75,9 +80,6 @@ class SendTabToSelfBubbleController
 
   // Handler for when user clicks the link to manage their available devices.
   void OnManageDevicesClicked(const ui::Event& event);
-
-  // Close the bubble when the user clicks on the close button.
-  void OnBubbleClosed();
 
   // Close the bubble when the user clicks on the back button.
   void OnBackButtonPressed();
@@ -104,11 +106,6 @@ class SendTabToSelfBubbleController
 
  private:
   friend class content::WebContentsUserData<SendTabToSelfBubbleController>;
-  friend class SendTabToSelfDevicePickerBubbleViewTest;
-  FRIEND_TEST_ALL_PREFIXES(SendTabToSelfDevicePickerBubbleViewTest,
-                           PopulateScrollView);
-  FRIEND_TEST_ALL_PREFIXES(SendTabToSelfDevicePickerBubbleViewTest,
-                           DevicePressed);
 
   Profile* GetProfile();
   virtual std::optional<EntryPointDisplayReason> GetEntryPointDisplayReason();
@@ -117,13 +114,18 @@ class SendTabToSelfBubbleController
                                    std::string_view device_name,
                                    SendTabToSelfResult result);
 
+  // views::WidgetObserver:
+  void OnWidgetDestroying(views::Widget* widget) override;
+
   // Weak reference. Will be nullptr if no bubble is currently shown.
   raw_ptr<SendTabToSelfBubbleView> send_tab_to_self_bubble_view_ = nullptr;
   // True if the back button is currently shown.
   bool show_back_button_ = false;
 
-
   raw_ptr<actions::ActionItem> send_tab_to_self_action_item_ = nullptr;
+
+  base::ScopedObservation<views::Widget, views::WidgetObserver>
+      widget_observation_{this};
 
   base::WeakPtrFactory<SendTabToSelfBubbleController> weak_ptr_factory_{this};
 

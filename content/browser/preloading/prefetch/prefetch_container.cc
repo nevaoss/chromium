@@ -390,8 +390,8 @@ PrefetchContainer::~PrefetchContainer() {
 
   if (auto* renderer_initiator_info = request().GetRendererInitiatorInfo()) {
     if (renderer_initiator_info->prefetch_document_manager()) {
-      renderer_initiator_info->prefetch_document_manager()
-          ->PrefetchWillBeDestroyed(this);
+      renderer_initiator_info->prefetch_document_manager()->OnWillBeDestroyed(
+          *this);
     }
   }
 
@@ -420,8 +420,7 @@ PrefetchContainer::CreateConstServingHandle() const {
   // `std::unique_ptr<const PrefetchServingHandle>`, as
   // `const PrefetchServingHandle` doesn't use its
   // non-const `PrefetchContainer` reference.
-  return std::make_unique<const PrefetchServingHandle>(
-      weak_method_factory_.GetMutableWeakPtr(), 0);
+  return std::make_unique<const PrefetchServingHandle>(GetMutableWeakPtr(), 0);
 }
 
 const std::vector<std::unique_ptr<PrefetchSingleRedirectHop>>&
@@ -830,13 +829,10 @@ void PrefetchContainer::OnEligibilityCheckComplete(
     prefetch_container_metrics_.time_initial_eligibility_got =
         base::TimeTicks::Now();
 
-    // Recording an eligiblity for PrefetchReferringPageMetrics.
-    // TODO(crbug.com/40946257): Current code doesn't support
-    // PrefetchReferringPageMetrics when the prefetch is initiated by browser.
     if (auto* renderer_initiator_info = request().GetRendererInitiatorInfo()) {
       if (renderer_initiator_info->prefetch_document_manager()) {
         renderer_initiator_info->prefetch_document_manager()
-            ->OnEligibilityCheckComplete(is_eligible);
+            ->OnGotInitialEligibility(*this);
       }
     }
 
@@ -855,7 +851,7 @@ void PrefetchContainer::OnEligibilityCheckComplete(
 
 void PrefetchContainer::UpdateResourceRequest(
     const net::RedirectInfo& redirect_info,
-    PrefetchUpdateHeadersParams update_headers_params) {
+    const PrefetchUpdateHeadersParams& update_headers_params) {
   CHECK(resource_request_);
 
   // TODO(jbroman): We have several places that invoke
@@ -869,17 +865,11 @@ void PrefetchContainer::UpdateResourceRequest(
       &should_clear_upload);
   CHECK(!should_clear_upload);
 
-  if (base::FeatureList::IsEnabled(
-          features::kPrefetchFixHeaderUpdatesOnRedirect)) {
-    // Probably this code block is anyway no-op when
-    // `kPrefetchFixHeaderUpdatesOnRedirect` is disabled, but is guarded by the
-    // flag to avoid unexpected behavior changes, just in case.
-    for (const std::string& name : update_headers_params.removed_headers) {
-      resource_request_->cors_exempt_headers.RemoveHeader(name);
-    }
-    resource_request_->cors_exempt_headers.MergeFrom(
-        update_headers_params.modified_cors_exempt_headers);
+  for (const std::string& name : update_headers_params.removed_headers) {
+    resource_request_->cors_exempt_headers.RemoveHeader(name);
   }
+  resource_request_->cors_exempt_headers.MergeFrom(
+      update_headers_params.modified_cors_exempt_headers);
 
   resource_request_->UpdateOnRedirect(redirect_info);
   UpdateVariationsHeaderForPrefetch(*resource_request_, request());
@@ -1189,16 +1179,10 @@ void PrefetchContainer::OnPrefetchCompleteInternal() {
         GetCompletionStatus()->decoded_body_length);
   }
 
-  const PrefetchStatus prefetch_status = GetPrefetchStatus();
-
-  if (prefetch_status == PrefetchStatus::kPrefetchSuccessful) {
-    // TODO(crbug.com/40946257): Current code doesn't support
-    // PrefetchReferringPageMetrics when the prefetch is initiated by browser.
-    if (auto* renderer_initiator_info = request().GetRendererInitiatorInfo()) {
-      if (renderer_initiator_info->prefetch_document_manager()) {
-        renderer_initiator_info->prefetch_document_manager()
-            ->OnPrefetchSuccessful(this);
-      }
+  if (auto* renderer_initiator_info = request().GetRendererInitiatorInfo()) {
+    if (renderer_initiator_info->prefetch_document_manager()) {
+      renderer_initiator_info->prefetch_document_manager()
+          ->OnPrefetchCompletedOrFailed(*this);
     }
   }
 }
@@ -1368,9 +1352,9 @@ void PrefetchContainer::SimulatePrefetchRedirectedForTest(  // IN-TEST
 
   OnEligibilityCheckComplete(eligibility);
 
-  auto [updates_for_resource_request, updates_for_follow_redirect] =
+  auto update_headers_params =
       PrepareRedirectHeadersForPrefetch(redirect_info.new_url, request());
-  UpdateResourceRequest(redirect_info, std::move(updates_for_resource_request));
+  UpdateResourceRequest(redirect_info, std::move(update_headers_params));
 }
 
 void PrefetchContainer::SimulatePrefetchCompletedForTest() {

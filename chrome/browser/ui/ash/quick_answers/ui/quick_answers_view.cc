@@ -127,16 +127,16 @@ const gfx::Insets GetIconInsets(Design design) {
 
 const gfx::VectorIcon& GetVectorIcon(std::optional<Intent> intent) {
   if (!intent) {
-    return omnibox::kAnswerDefaultIcon;
+    return omnibox::kAnswerDefaultOldIcon;
   }
 
   switch (intent.value()) {
     case Intent::kDefinition:
       return chromeos::kDictionaryIcon;
     case Intent::kTranslation:
-      return omnibox::kAnswerTranslationIcon;
+      return omnibox::kAnswerTranslationOldIcon;
     case Intent::kUnitConversion:
-      return omnibox::kAnswerCalculatorIcon;
+      return omnibox::kAnswerCalculatorOldIcon;
   }
 
   NOTREACHED() << "Invalid intent enum value specified";
@@ -412,7 +412,7 @@ QuickAnswersView::QuickAnswersView(
                   .SetImageModel(
                       views::Button::STATE_NORMAL,
                       ui::ImageModel::FromVectorIcon(
-                          vector_icons::kDogfoodIcon,
+                          vector_icons::kDogfoodOldIcon,
                           design_ == Design::kCurrent ? ui::kColorIconSecondary
                                                       : ui::kColorSysSecondary,
                           kDogfoodButtonSizeDip)))
@@ -427,7 +427,7 @@ QuickAnswersView::QuickAnswersView(
                   .SetImageModel(
                       views::Button::ButtonState::STATE_NORMAL,
                       ui::ImageModel::FromVectorIcon(
-                          vector_icons::kSettingsOutlineIcon,
+                          vector_icons::kSettingsOutlineOldIcon,
                           design_ == Design::kCurrent ? ui::kColorIconSecondary
                                                       : ui::kColorSysSecondary,
                           kSettingsButtonSizeDip))

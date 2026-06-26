@@ -14,6 +14,9 @@
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/actor/ui/actor_ui_metrics.h"
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
+#include "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.h"
+#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager.h"
+#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager_factory.h"
 #include "chrome/browser/glic/browser_ui/glic_button_controller.h"
 #include "chrome/browser/glic/glic_profile_manager.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
@@ -29,9 +32,6 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/layout_constants.h"
-#include "chrome/browser/ui/tabs/glic_actor_nudge_controller.h"
-#include "chrome/browser/ui/tabs/glic_actor_task_icon_manager.h"
-#include "chrome/browser/ui/tabs/glic_actor_task_icon_manager_factory.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -305,7 +305,7 @@ TabStripActionContainer::~TabStripActionContainer() {
 void TabStripActionContainer::AddedToWidget() {
   views::View::AddedToWidget();
   if (auto* controller =
-          tabs::GlicActorNudgeController::From(browser_window_interface_)) {
+          glic::GlicActorNudgeController::From(browser_window_interface_)) {
     controller->UpdateCurrentActorNudgeState();
   }
 }
@@ -524,9 +524,14 @@ std::unique_ptr<glic::TabStripGlicButton>
 TabStripActionContainer::CreateGlicButton() {
   glic::GlicKeyedService* service =
       glic::GlicKeyedService::Get(browser_window_interface_->GetProfile());
+  // TODO(b/512097288): Use IsPanelShowingForBrowser() instead of
+  // IsAnyPanelShowing() to avoid state leakage across windows.
+  // Also, refactor this so only one class is responsible for setting the
+  // tooltip.
   std::u16string tooltip_text = l10n_util::GetStringUTF16(
-      service->IsWindowOrFreShowing() ? IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP_CLOSE
-                                      : IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP);
+      service->instance_coordinator().IsAnyPanelShowing()
+          ? IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP_CLOSE
+          : IDS_GLIC_TAB_STRIP_BUTTON_TOOLTIP);
   std::unique_ptr<glic::TabStripGlicButton> glic_button =
       std::make_unique<glic::TabStripGlicButton>(
           browser_window_interface_,
@@ -635,7 +640,7 @@ TabStripActionContainer::CreateGlicActorTaskIcon() {
 void TabStripActionContainer::OnGlicActorTaskIconClicked() {
   Profile* const profile = browser_window_interface_->GetProfile();
   auto* icon_manager =
-      tabs::GlicActorTaskIconManagerFactory::GetForProfile(profile);
+      glic::GlicActorTaskIconManagerFactory::GetForProfile(profile);
   CHECK(icon_manager);
 
   // Only show the bubble if the button is not currently pressed. Clicking on

@@ -8,6 +8,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.view.View;
+import android.widget.PopupWindow.OnDismissListener;
 
 import androidx.annotation.VisibleForTesting;
 
@@ -17,6 +18,7 @@ import org.chromium.chrome.browser.actor.ActorTask;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
+import org.chromium.chrome.browser.ui.side_panel.AndroidSidePanelEnabledFn;
 import org.chromium.components.browser_ui.widget.BrowserUiListMenuUtils;
 import org.chromium.components.browser_ui.widget.ListItemBuilder;
 import org.chromium.ui.listmenu.BasicListMenu;
@@ -43,6 +45,16 @@ public class GlicTaskMenuCoordinator {
     private final Supplier<@Nullable TabModelSelector> mTabModelSelectorSupplier;
     private final GlicButtonDelegate mToggleGlicCallback;
     private @Nullable AnchoredPopupWindow mMenuWindow;
+    private @Nullable OnDismissListener mOnDismiss;
+
+    /**
+     * Sets a listener to be called when the task menu is dismissed.
+     *
+     * @param onDismiss The listener to set.
+     */
+    public void setOnDismiss(@Nullable OnDismissListener onDismiss) {
+        mOnDismiss = onDismiss;
+    }
 
     /**
      * Constructs the task menu coordinator.
@@ -149,6 +161,9 @@ public class GlicTaskMenuCoordinator {
                         .setAnimateFromAnchor(true)
                         .setAllowNonTouchableSize(true)
                         .build();
+        if (mOnDismiss != null) {
+            mMenuWindow.addOnDismissListener(mOnDismiss);
+        }
         mMenuWindow.show();
     }
 
@@ -184,22 +199,28 @@ public class GlicTaskMenuCoordinator {
             modelList.add(builder.build());
         }
 
-        // Divider
-        modelList.add(BasicListMenu.buildMenuDivider(false));
+        if (shouldShowAskGemini()) {
+            // Divider
+            modelList.add(BasicListMenu.buildMenuDivider(false));
 
-        // Ask Gemini
-        modelList.add(
-                new ListItemBuilder()
-                        .withTitleRes(R.string.glic_button_entrypoint_ask_gemini_label)
-                        .withStartIconRes(R.drawable.ic_spark_24dp)
-                        .withIsIncognito(false)
-                        .withClickListener(
-                                v -> {
-                                    mToggleGlicCallback.onClick(/* preventClose= */ false);
-                                    dismiss();
-                                })
-                        .build());
+            // Ask Gemini
+            modelList.add(
+                    new ListItemBuilder()
+                            .withTitleRes(R.string.glic_button_entrypoint_ask_gemini_label)
+                            .withStartIconRes(R.drawable.ic_spark_24dp)
+                            .withIsIncognito(false)
+                            .withClickListener(
+                                    v -> {
+                                        mToggleGlicCallback.onClick(/* preventClose= */ false);
+                                        dismiss();
+                                    })
+                            .build());
+        }
         return modelList;
+    }
+
+    private boolean shouldShowAskGemini() {
+        return !AndroidSidePanelEnabledFn.isEnabled();
     }
 
     private void switchToActuatingTab(Set<Integer> tabs) {

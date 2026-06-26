@@ -24,6 +24,7 @@ source_set("model") {
     "gemini_suggestion_delegate.h",
     "gemini_suggestion_handler.h",
     "gemini_suggestion_handler.mm",
+    "gemini_tab_picker_delegate.h",
     "gemini_view_state_delegate.h",
   ]
   deps = [
@@ -162,6 +163,7 @@ source_set("gemini_service") {
     "//ios/chrome/app:tests_hook",
     "//ios/chrome/browser/intelligence/bwg/metrics",
     "//ios/chrome/browser/intelligence/bwg/utils:constants",
+    "//ios/chrome/browser/intelligence/bwg/utils:feature_availability",
     "//ios/chrome/browser/intelligence/bwg/utils:prefs",
     "//ios/chrome/browser/intelligence/features",
     "//ios/chrome/browser/optimization_guide/model",

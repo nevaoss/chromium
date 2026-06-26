@@ -430,7 +430,7 @@ SelectionOverlayController::GetPreselectionBubbleConfig() {
       .show_cancel_button = true,
       .cancel_button_color = kColorGlicSelectionOverlayToastCancelButton,
       .bubble_background_color = kColorGlicSelectionOverlayToast,
-      .icon = &vector_icons::kCropFreeIcon};
+      .icon = &vector_icons::kCropFreeOldIcon};
 }
 
 bool SelectionOverlayController::IsOverlayViewShared() const {
@@ -561,18 +561,11 @@ void SelectionOverlayController::RenderRegions() {
   if (GlicInstance* instance = service->GetInstanceForTab(tab_)) {
     mojom::AdditionalContextPtr additional_context =
         CreateAdditionalContext(std::move(captured_regions));
-    service->SendAdditionalContext(tab_->GetHandle(),
-                                   std::move(additional_context));
+    instance->SendAdditionalContext(std::move(additional_context));
     instance->OnSelectionAreasChanged(selected_regions_.size());
     instance->OnPolylinePointsChanged(polyline_counts);
-    if (instance->IsActive()) {
-      if (content::WebContents* web_contents =
-              instance->host().webui_contents()) {
-        web_contents->Focus();
-      }
-    }
+    instance->FocusIfActive();
   }
-
 }
 
 glic::mojom::AdditionalContextPtr

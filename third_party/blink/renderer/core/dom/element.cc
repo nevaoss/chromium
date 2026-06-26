@@ -4126,6 +4126,7 @@ void Element::ParserSetAttributes(
   DCHECK(!element_data_);
   DCHECK(!HasChildren());
   DCHECK_EQ(attribute_or_class_bloom_, 0u);
+  EventDispatchForbiddenScope assert_no_event_dispatch;
 
   if (!attribute_vector.empty()) {
     if (ElementDataCache* cache = GetDocument().GetElementDataCache()) {
@@ -4340,7 +4341,7 @@ Node::InsertionNotificationRequest Element::InsertedInto(
       if (rare_data->HasCustomElementRegistrySet() &&
           insertion_point.IsInTreeScope()) {
         auto* registry = rare_data->GetCustomElementRegistry();
-        if (registry && registry->IsGlobalRegistry() &&
+        if (registry &&
             registry ==
                 insertion_point.GetTreeScope().customElementRegistry()) {
           rare_data->ClearCustomElementRegistry();
@@ -4512,8 +4513,7 @@ void Element::RemovedFrom(ContainerNode& insertion_point) {
     ElementRareDataVector* data = RareData();
     if (!data->HasCustomElementRegistrySet() &&
         insertion_point.IsInTreeScope()) {
-      data_ = data->SetCustomElementRegistry(
-          insertion_point.GetTreeScope().customElementRegistry());
+      data_ = data->SetCustomElementRegistry(customElementRegistry());
     }
   }
 
@@ -8870,6 +8870,21 @@ void Element::OverscrollTargetStateChanged() {
   PseudoStateChanged(CSSSelector::kPseudoOverscrollTarget);
 }
 
+bool Element::MatchesOverscrollOpen() const {
+  if (!RuntimeEnabledFeatures::OverscrollGesturesEnabled()) {
+    return false;
+  }
+  if (auto* pseudo = GetPseudoElement(kPseudoIdOverscrollAreaParent)) {
+    if (auto* box_model_object =
+            DynamicTo<LayoutBoxModelObject>(pseudo->GetLayoutObject())) {
+      auto* scrollable_area = DynamicTo<PaintLayerScrollableArea>(
+          box_model_object->GetScrollableArea());
+      return scrollable_area->IsCurrentlyOverscrolling();
+    }
+  }
+  return false;
+}
+
 void Element::FocusWithinStateChanged() {
   if (GetComputedStyle() && GetComputedStyle()->AffectedByFocusWithin()) {
     StyleChangeType change_type =
@@ -10607,6 +10622,10 @@ PseudoElement* Element::CreatePseudoElementIfNeeded(
     return nullptr;
   }
 
+  if (IsTransitionPseudoElement(pseudo_id)) {
+    pseudo_element->RetargetAnimations();
+  }
+
   probe::PseudoElementCreated(pseudo_element);
   return pseudo_element;
 }
@@ -11906,6 +11925,7 @@ void Element::CloneAttributesFrom(const Element& other) {
   CHECK_EQ(attribute_or_class_bloom_, 0u);
   CHECK(!hasAttributes());
   CHECK(!GetAttrNodeList());
+  EventDispatchForbiddenScope assert_no_event_dispatch;
 
   other.SynchronizeAllAttributes();
   if (!other.element_data_) {

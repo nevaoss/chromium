@@ -57,7 +57,7 @@ TEST(PopupCellUtilsTest,
      GetExpandableMenuIcon_ComposeSuggestions_ReturnThreeDotsMenuIcon) {
   EXPECT_EQ(GetExpandableMenuIconNameFromSuggestionType(
                 SuggestionType::kComposeProactiveNudge),
-            kBrowserToolsChromeRefreshIcon.name);
+            kBrowserToolsChromeRefreshOldIcon.name);
   // No other Compose type should allow an expandable menu.
   EXPECT_FALSE(IsExpandableSuggestionType(SuggestionType::kComposeResumeNudge));
   EXPECT_FALSE(IsExpandableSuggestionType(
@@ -68,7 +68,7 @@ TEST(PopupCellUtilsTest,
      GetExpandableMenuIcon_NonComposeSuggestions_ReturnSubMenuArrowIcon) {
   EXPECT_EQ(GetExpandableMenuIconNameFromSuggestionType(
                 SuggestionType::kAddressEntry),
-            vector_icons::kSubmenuArrowChromeRefreshIcon.name);
+            vector_icons::kSubmenuArrowChromeRefreshOldIcon.name);
 }
 
 const VoiceOverTestParam kVoiceOverTestCases[] = {

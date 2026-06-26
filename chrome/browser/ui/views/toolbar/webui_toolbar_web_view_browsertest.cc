@@ -28,6 +28,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
+#include "chrome/browser/translate/chrome_translate_client.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
@@ -72,6 +73,8 @@
 #include "components/metrics/content/subprocess_metrics_provider.h"
 #include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
+#include "components/translate/core/browser/translate_step.h"
+#include "components/translate/core/common/translate_errors.h"
 #include "components/vector_icons/vector_icons.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "components/zoom/zoom_controller.h"
@@ -2087,7 +2090,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
       &webui_toolbar_view->split_tabs_control_;
 
   // Create split [A, B].
-  chrome::NewSplitTab(browser(),
+  chrome::NewSplitTab(browser(), split_tabs::SplitTabLayout::kVertical,
                       split_tabs::SplitTabCreatedSource::kToolbarButton);
   auto* tab_strip_model = browser()->tab_strip_model();
   ASSERT_TRUE(base::test::RunUntil(
@@ -2260,7 +2263,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
       WaitForButtonVisible(web_view->GetWebContents(), kSplitTabsSelector));
 
   // Create a split tab group manually to simulate being in split mode.
-  chrome::NewSplitTab(browser(),
+  chrome::NewSplitTab(browser(), split_tabs::SplitTabLayout::kVertical,
                       split_tabs::SplitTabCreatedSource::kToolbarButton);
   auto* tab_strip_model = browser()->tab_strip_model();
   ASSERT_TRUE(base::test::RunUntil(
@@ -2286,7 +2289,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewSplitTabsBrowserTest,
       WaitForButtonVisible(web_view->GetWebContents(), kSplitTabsSelector));
 
   // Create split [A, B]. A is active.
-  chrome::NewSplitTab(browser(),
+  chrome::NewSplitTab(browser(), split_tabs::SplitTabLayout::kVertical,
                       split_tabs::SplitTabCreatedSource::kToolbarButton);
   auto* tab_strip_model = browser()->tab_strip_model();
   ASSERT_TRUE(base::test::RunUntil(
@@ -3129,15 +3132,15 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, RouteMediaIcons) {
   const std::vector<std::pair<const gfx::VectorIcon&,
                               toolbar_ui_api::mojom::PinnedToolbarAction>>
       kRouteMediaIcons = {
-          {vector_icons::kMediaRouterIdleChromeRefreshIcon,
+          {vector_icons::kMediaRouterIdleChromeRefreshOldIcon,
            toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaIdle},
-          {vector_icons::kMediaRouterWarningChromeRefreshIcon,
+          {vector_icons::kMediaRouterWarningChromeRefreshOldIcon,
            toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaWarning},
-          {vector_icons::kMediaRouterPausedIcon,
+          {vector_icons::kMediaRouterPausedOldIcon,
            toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaPaused},
-          {vector_icons::kMediaRouterActiveChromeRefreshIcon,
+          {vector_icons::kMediaRouterActiveChromeRefreshOldIcon,
            toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMediaActive},
-          {kCastChromeRefreshIcon,
+          {kCastChromeRefreshOldIcon,
            toolbar_ui_api::mojom::PinnedToolbarAction::kRouteMedia},
       };
 
@@ -3209,6 +3212,34 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, InvokeActions) {
     ASSERT_TRUE(base::test::RunUntil(
         [&]() { return !IsPinnedButtonVisible(web_contents, mojom_action); }));
   }
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
+                       HighlightOnShowTranslateBubble) {
+  WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
+  content::WebContents* web_ui_contents =
+      webui_toolbar_view->GetWebViewForTesting()->GetWebContents();
+
+  actions::ActionId action_id = kActionShowTranslate;
+  toolbar_ui_api::mojom::PinnedToolbarAction mojom_action =
+      toolbar_ui_api::mojom::PinnedToolbarAction::kShowTranslate;
+
+  // Pin Translate action.
+  PinAction(action_id, mojom_action);
+
+  // Show translate bubble.
+  browser()->window()->ShowTranslateBubble(
+      browser()->tab_strip_model()->GetActiveWebContents(),
+      translate::TRANSLATE_STEP_BEFORE_TRANSLATE, "fr", "en",
+      translate::TranslateErrors::NONE, true);
+
+  // Verify it's highlighted.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return EvalJsOnPinnedButton(web_ui_contents, mojom_action,
+                                "return !!btn && "
+                                "btn.hasAttribute('is-menu-open');")
+        .ExtractBool();
+  }));
 }
 
 IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, EphemeralActions) {
@@ -3364,6 +3395,48 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, PinUnpinnable) {
   SetPinnableProperty(action_id, true);
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return IsPinnedButtonVisible(web_contents, mojom_action); }));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
+                       ActivatedRendering) {
+  WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
+  views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  actions::ActionId action_id = kActionPrint;
+  toolbar_ui_api::mojom::PinnedToolbarAction mojom_action =
+      toolbar_ui_api::mojom::PinnedToolbarAction::kPrint;
+
+  PinAction(action_id, mojom_action);
+
+  auto verify_activated = [&](bool expected) {
+    ASSERT_TRUE(base::test::RunUntil([&]() {
+      return EvalJsOnPinnedButton(
+                 web_contents, mojom_action,
+                 base::StringPrintf(
+                     "const indicator = "
+                     "actionEl.shadowRoot.querySelector('.status-indicator'); "
+                     "return btn.hasAttribute('is-activated') === %s && "
+                     "!!indicator && indicator.checkVisibility() === %s;",
+                     expected ? "true" : "false", expected ? "true" : "false"))
+          .ExtractBool();
+    }));
+  };
+
+  // Initially not activated.
+  verify_activated(false);
+
+  // Set activated.
+  actions::ActionManager::Get()
+      .FindAction(action_id, browser()->GetActions()->root_action_item())
+      ->SetProperty(kActionItemUnderlineIndicatorKey, true);
+  verify_activated(true);
+
+  // Set not activated.
+  actions::ActionManager::Get()
+      .FindAction(action_id, browser()->GetActions()->root_action_item())
+      ->SetProperty(kActionItemUnderlineIndicatorKey, false);
+  verify_activated(false);
 }
 
 IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest, StateAccessors) {
@@ -3620,6 +3693,64 @@ IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
   EXPECT_TRUE(announcement_observer.verify_last_announcement(
       IDS_TOOLBAR_BUTTON_UNPINNED));
   ASSERT_FALSE(model_->Contains(action_id));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
+                       AboutThisSiteIcon) {
+  auto* webui_toolbar_view = GetWebUIToolbarWebView(browser());
+  views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  // Pin "About This Site" action.
+  PinAction(
+      kActionSidePanelShowAboutThisSite,
+      toolbar_ui_api::mojom::PinnedToolbarAction::kSidePanelShowAboutThisSite);
+
+  // Define the expected icon name.
+  std::string expected_icon;
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+  expected_icon = "internal-icons:page_insights";
+#else
+  expected_icon = "pinned-toolbar-action:SidePanelShowAboutThisSite";
+#endif
+
+  // Verify iron-icon attribute in WebUI.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return EvalJsOnPinnedButton(web_contents,
+                                toolbar_ui_api::mojom::PinnedToolbarAction::
+                                    kSidePanelShowAboutThisSite,
+                                "return btn?.getAttribute('iron-icon') || '';")
+               .ExtractString() == expected_icon;
+  }));
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIPinnedToolbarActionsBrowserTest,
+                       LensOverlayResultsIcon) {
+  auto* webui_toolbar_view = GetWebUIToolbarWebView(browser());
+  views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
+  content::WebContents* web_contents = web_view->GetWebContents();
+
+  // Pin "Lens Overlay Results" action.
+  PinAction(kActionSidePanelShowLensOverlayResults,
+            toolbar_ui_api::mojom::PinnedToolbarAction::
+                kSidePanelShowLensOverlayResults);
+
+  // Define the expected icon name.
+  std::string expected_icon;
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+  expected_icon = "internal-icons:google_lens_monochrome_logo";
+#else
+  expected_icon = "pinned-toolbar-action:SidePanelShowLensOverlayResults";
+#endif
+
+  // Verify iron-icon attribute in WebUI.
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return EvalJsOnPinnedButton(web_contents,
+                                toolbar_ui_api::mojom::PinnedToolbarAction::
+                                    kSidePanelShowLensOverlayResults,
+                                "return btn?.getAttribute('iron-icon') || '';")
+               .ExtractString() == expected_icon;
+  }));
 }
 
 struct DragTestParam {
@@ -3961,4 +4092,63 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewContentSettingsBrowserTest,
                web_ui_contents,
                toolbar_ui_api::mojom::ContentSettingImageType::kGeolocation);
   }));
+}
+
+class WebUIToolbarSurfaceSyncBrowserTest
+    : public WebUIToolbarWebViewBrowserTest {
+ public:
+  WebUIToolbarSurfaceSyncBrowserTest()
+      : WebUIToolbarWebViewBrowserTest(
+            {features::kInitialWebUI, features::kWebUIReloadButton,
+             features::kWebUISplitTabsButton, features::kWebUIHomeButton,
+             features::kSkipIPCChannelPausingForNonGuests,
+             features::kWebUIInProcessResourceLoadingV2,
+             features::kInitialWebUISyncNavStartToCommit,
+             blink::features::kInitialWebUISurfaceSync},
+            {}) {}
+};
+
+// Verifies that when `blink::features::kInitialWebUISurfaceSync` is enabled,
+// initializing the WebUI toolbar overrides the surface synchronization
+// deadlines of both the toolbar's native view and the active tab's main web
+// contents view to ensure initial UI elements sync without dropping frames.
+// Also verifies that these overrides automatically clear after the initial
+// paint completes.
+IN_PROC_BROWSER_TEST_F(WebUIToolbarSurfaceSyncBrowserTest, SetsDeadlineOnInit) {
+  WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(browser());
+  ASSERT_TRUE(webui_toolbar_view);
+  views::WebView* web_view = webui_toolbar_view->GetWebViewForTesting();
+  ASSERT_TRUE(web_view);
+  content::WebContents* web_ui_contents = web_view->GetWebContents();
+  ASSERT_TRUE(web_ui_contents);
+
+  content::RenderWidgetHostView* toolbar_rwhv =
+      web_ui_contents->GetRenderWidgetHostView();
+  ASSERT_TRUE(toolbar_rwhv);
+
+  content::WebContents* active_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(active_contents);
+  content::RenderWidgetHostView* main_rwhv =
+      active_contents->GetRenderWidgetHostView();
+  ASSERT_TRUE(main_rwhv);
+
+  uint32_t expected_deadline = static_cast<uint32_t>(
+      blink::features::kInitialWebUISurfaceSyncDeadlineInFrames.Get());
+
+  // Simulate application of specified deadline upon toolbar initialization
+  // when active web contents are fully attached.
+  webui_toolbar_view->SetSurfaceSyncDeadline(expected_deadline);
+
+  EXPECT_EQ(toolbar_rwhv->GetForceSpecifiedDeadlineForTesting(),
+            std::make_optional(expected_deadline));
+  EXPECT_EQ(main_rwhv->GetForceSpecifiedDeadlineForTesting(),
+            std::make_optional(expected_deadline));
+
+  // Verify that deadlines reset to std::nullopt after the initial paint
+  // completion callback fires.
+  webui_toolbar_view->DidFirstVisuallyNonEmptyPaint();
+
+  EXPECT_EQ(toolbar_rwhv->GetForceSpecifiedDeadlineForTesting(), std::nullopt);
+  EXPECT_EQ(main_rwhv->GetForceSpecifiedDeadlineForTesting(), std::nullopt);
 }

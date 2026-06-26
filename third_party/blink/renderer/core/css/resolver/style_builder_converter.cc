@@ -1956,6 +1956,15 @@ StyleInterestDelay StyleBuilderConverter::ConvertInterestDelayValue(
       StyleBuilderConverter::ConvertTimeValue(state, value));
 }
 
+int StyleBuilderConverter::ClampLineWidth(double width) {
+  if (width > 0.0 && width < 1.0) {
+    return 1;
+  }
+
+  // Clamp the result to a reasonable range for layout.
+  return ClampTo<int>(std::floor(width), 0, LayoutUnit::Max().ToInt());
+}
+
 int StyleBuilderConverter::ConvertBorderWidth(const StyleResolverState& state,
                                               const CSSValue& value) {
   double result = 0;
@@ -1983,12 +1992,7 @@ int StyleBuilderConverter::ConvertBorderWidth(const StyleResolverState& state,
         primitive_value.ComputeLength<float>(state.CssToLengthConversionData());
   }
 
-  if (result > 0.0 && result < 1.0) {
-    return 1;
-  }
-
-  // Clamp the result to a reasonable range for layout.
-  return ClampTo<int>(floor(result), 0, LayoutUnit::Max().ToInt());
+  return ClampLineWidth(result);
 }
 
 int StyleBuilderConverter::ConvertOutlineOffset(const StyleResolverState& state,
@@ -2750,14 +2754,14 @@ ShapeValue* StyleBuilderConverter::ConvertShapeValue(StyleResolverState& state,
   }
 
   const BasicShape* shape = nullptr;
-  CSSBoxType css_box = CSSBoxType::kMissing;
+  ShapeBox css_box = ShapeBox::kMissing;
   const auto& value_list = To<CSSValueList>(value);
   for (unsigned i = 0; i < value_list.length(); ++i) {
     const CSSValue& item_value = value_list.Item(i);
     if (item_value.IsBasicShapeValue()) {
       shape = BasicShapeForValue(state, item_value);
     } else {
-      css_box = To<CSSIdentifierValue>(item_value).ConvertTo<CSSBoxType>();
+      css_box = To<CSSIdentifierValue>(item_value).ConvertTo<ShapeBox>();
     }
   }
 
@@ -2765,7 +2769,7 @@ ShapeValue* StyleBuilderConverter::ConvertShapeValue(StyleResolverState& state,
     return MakeGarbageCollected<ShapeValue>(*shape, css_box);
   }
 
-  DCHECK_NE(css_box, CSSBoxType::kMissing);
+  DCHECK_NE(css_box, ShapeBox::kMissing);
   return MakeGarbageCollected<ShapeValue>(css_box);
 }
 

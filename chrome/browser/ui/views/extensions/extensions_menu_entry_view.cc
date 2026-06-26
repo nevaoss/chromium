@@ -8,6 +8,7 @@
 #include "base/metrics/user_metrics_action.h"
 #include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/ui/views/controls/hover_button.h"
@@ -54,14 +55,14 @@ views::Builder<HoverButton> GetSitePermissionsButtonBuilder(
     button_builder.SetHorizontalAlignment(gfx::ALIGN_LEFT)
         .SetImageModel(views::Button::ButtonState::STATE_NORMAL,
                        ui::ImageModel::FromVectorIcon(
-                           vector_icons::kBusinessChromeRefreshIcon,
+                           vector_icons::kBusinessChromeRefreshOldIcon,
                            kColorExtensionMenuIcon, small_icon_size));
   } else {
     // Add right-aligned arrow icon for non-enterprise extensions when the
     // button is not disabled.
     auto arrow_icon = ui::ImageModel::FromVectorIcon(
-        vector_icons::kSubmenuArrowChromeRefreshIcon, kColorExtensionMenuIcon,
-        small_icon_size);
+        vector_icons::kSubmenuArrowChromeRefreshOldIcon,
+        kColorExtensionMenuIcon, small_icon_size);
 
     button_builder.SetHorizontalAlignment(gfx::ALIGN_RIGHT)
         .SetImageModel(views::Button::ButtonState::STATE_NORMAL, arrow_icon)
@@ -77,7 +78,7 @@ views::Builder<HoverButton> GetSitePermissionsButtonBuilder(
 DEFINE_ELEMENT_IDENTIFIER_VALUE(kExtensionsMenuEntryViewElementId);
 
 ExtensionsMenuEntryView::ExtensionsMenuEntryView(
-    Browser* browser,
+    BrowserWindowInterface* browser,
     bool is_enterprise,
     ToolbarActionViewModel* view_model,
     views::Button::PressedCallback action_button_callback,
@@ -261,14 +262,14 @@ void ExtensionsMenuEntryView::UpdateContextMenuButton(
   const int icon_size = ChromeLayoutProvider::Get()->GetDistanceMetric(
       DISTANCE_EXTENSIONS_MENU_BUTTON_ICON_SIZE);
   auto three_dot_icon = ui::ImageModel::FromVectorIcon(
-      kBrowserToolsChromeRefreshIcon, kColorExtensionMenuIcon, icon_size);
+      kBrowserToolsChromeRefreshOldIcon, kColorExtensionMenuIcon, icon_size);
 
   // Show a pin button for the context menu normal state icon when the action is
   // pinned in the toolbar. All other states should look, and behave, the same.
   context_menu_button_->SetImageModel(
       views::Button::STATE_NORMAL,
       button_state.is_on ? ui::ImageModel::FromVectorIcon(
-                               kKeepIcon, kColorExtensionMenuIcon, icon_size)
+                               kKeepOldIcon, kColorExtensionMenuIcon, icon_size)
                          : three_dot_icon);
   context_menu_button_->SetImageModel(views::Button::STATE_HOVERED,
                                       three_dot_icon);

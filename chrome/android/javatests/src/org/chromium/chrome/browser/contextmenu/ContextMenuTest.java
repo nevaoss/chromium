@@ -56,6 +56,7 @@ import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.Criteria;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.DisableIf;
+import org.chromium.base.test.util.DisableLeakChecks;
 import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -132,7 +133,8 @@ import java.util.concurrent.atomic.AtomicReference;
 })
 @DisableFeatures({ContentFeatures.ANDROID_DESKTOP_ZOOM_SCALING})
 @Batch(Batch.PER_CLASS)
-@DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/444482498
+@DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/511288174
+@DisableLeakChecks("crbug.com/512492353 (OfflineContentAggregatorBridge)")
 public class ContextMenuTest {
 
     @Mock private TabContextMenuItemDelegate mItemDelegate;
@@ -738,7 +740,6 @@ public class ContextMenuTest {
     @Test
     @LargeTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
-    @EnableFeatures({ChromeFeatureList.CONTEXT_MENU_EMPTY_SPACE})
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testSavePageLongPress() throws TimeoutException {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);
@@ -761,7 +762,6 @@ public class ContextMenuTest {
     @LargeTest
     @Restriction(DeviceFormFactor.DESKTOP)
     @DisabledTest(message = "https://crbug.com/445993228")
-    @EnableFeatures({ChromeFeatureList.CONTEXT_MENU_EMPTY_SPACE})
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testSavePageRightClick() throws TimeoutException {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);
@@ -1314,7 +1314,6 @@ public class ContextMenuTest {
     @Test
     @SmallTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
-    @EnableFeatures({ChromeFeatureList.CONTEXT_MENU_EMPTY_SPACE})
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testSharePageLongPress() throws Exception {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);
@@ -1355,7 +1354,6 @@ public class ContextMenuTest {
     @Test
     @SmallTest
     @Restriction(DeviceFormFactor.DESKTOP)
-    @EnableFeatures({ChromeFeatureList.CONTEXT_MENU_EMPTY_SPACE})
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testSharePageRightClick() throws Exception {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);
@@ -1395,7 +1393,6 @@ public class ContextMenuTest {
     @Test
     @MediumTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
-    @EnableFeatures({ChromeFeatureList.CONTEXT_MENU_EMPTY_SPACE})
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testPrintPageLongPress() throws Exception {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);
@@ -1426,7 +1423,6 @@ public class ContextMenuTest {
     @MediumTest
     @Restriction(DeviceFormFactor.DESKTOP)
     @DisabledTest(message = "https://crbug.com/445993228")
-    @EnableFeatures({ChromeFeatureList.CONTEXT_MENU_EMPTY_SPACE})
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testPrintPageRightClick() throws Exception {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);

@@ -470,6 +470,7 @@ Ndryshe kjo do të bllokohet nga cilësimet e tua të privatësisë. Kjo do ta l
 <translation id="1717688554309417925">Shërbime për karta debiti dhe llogari rrjedhëse</translation>
 <translation id="1719434663396780149">Sinjalizimet për uljet e çmimeve janë aktive. Mund ta ndryshosh këtë te <ph name="BEGIN_LINK" /><ph name="NOTIFICATION_SETTINGS" /><ph name="END_LINK" />.</translation>
 <translation id="1719838434204287058">24 x 30 inç</translation>
+<translation id="1720318856472900922">Vërtetimi i serverit TLS WWW</translation>
 <translation id="1720941539803966190">Mbyll udhëzuesin</translation>
 <translation id="1721424275792716183">* Fusha është e detyrueshme</translation>
 <translation id="1723636263173393300">Kjo politikë nuk duhet të ketë më shumë se <ph name="MAX_ITEMS_LIMIT" /> shkurtore.</translation>
@@ -754,6 +755,7 @@ Ndryshe kjo do të bllokohet nga cilësimet e tua të privatësisë. Kjo do ta l
 <translation id="2168151236314517198">Printimi i kësaj përmbajtjeje është bllokuar nga politika e administratorit</translation>
 <translation id="2171244127100824330">Te <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" /> për <ph name="ACCOUNT" /></translation>
 <translation id="2172089022819052306">Riparimi dhe mirëmbajtja e automjetit</translation>
+<translation id="217231402430591139">Lidh llogarinë tënde</translation>
 <translation id="2173302385160625112">Kontrollo lidhjen e internetit</translation>
 <translation id="2174875517416416684">Transaksioni yt nuk u krye. Nuk u tërhoqën fonde nga llogaria jote.</translation>
 <translation id="2175630235841878061">Skedarët mbi 100 MB nuk ofrohen për shkarkim</translation>
@@ -2474,6 +2476,7 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="4855395119669662878">Administratori yt do të fillojë ngarkimin e skedarëve të tu në <ph name="CLOUD_PROVIDER" /> më <ph name="DATE_TIME" />. Mbaje pajisjen të lidhur derisa ngarkimi i skedarit të përfundojë. Gjatë ngarkimit, do të mund të lexosh vetëm skedarët lokalë.</translation>
 <translation id="485902285759009870">Po verifikon kodin...</translation>
 <translation id="4860260582253463350">Për të vazhduar në YouTube, duhet të sigurohemi që je ti. Do të marrësh cilësimet që prindi ose kujdestari yt ka konfiguruar në Family Link.</translation>
+<translation id="4862642413395066333">Po nënshkruan përgjigjet OCSP</translation>
 <translation id="4864406669374375262">Vargu i versionit u kopjua te kujtesa e fragmenteve</translation>
 <translation id="486459320933704969">Një prind ose kujdestar duhet të pranojë që ta vizitosh këtë uebsajt</translation>
 <translation id="4864801646102013152">Përmirësimi i shtëpisë</translation>
@@ -3217,6 +3220,7 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="6006365096047131769">3 x 5 inç</translation>
 <translation id="6008122969617370890">Renditja N deri në 1</translation>
 <translation id="6008256403891681546">JCB</translation>
+<translation id="6012135807160718387">Enkriptimi i Google mbron informacionet e tua</translation>
 <translation id="6014801569448771146">Kontrollo fjalëkalimet e tua</translation>
 <translation id="6014851866995737824">U shpërfill, pasi mungon lista "aktivizo" ose "çaktivizo".</translation>
 <translation id="6015796118275082299">Viti</translation>
@@ -3441,6 +3445,7 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="634500758737709758">Udhëzimet</translation>
 <translation id="6348220984832452017">Variantet aktive</translation>
 <translation id="6349101878882523185">Instalo <ph name="APP_NAME" /></translation>
+<translation id="6350739641326887427">Paguaj pa kopjuar dhe ngjitur kodin Pix. <ph name="BEGIN_LINK1" />Shiko se si funksionon<ph name="END_LINK1" /></translation>
 <translation id="6351658970066645919">Fshi të dhënat e shfletimit</translation>
 <translation id="6353505687280762741">{COUNT,plural, =0{Asnjë}=1{1 fjalëkalim (për <ph name="DOMAIN_LIST" />, sinkronizuar)}=2{2 fjalëkalime (për <ph name="DOMAIN_LIST" />, sinkronizuar)}other{# fjalëkalime (për <ph name="DOMAIN_LIST" />, sinkronizuar)}}</translation>
 <translation id="6354918092619878358">Kurba eliptike SECG secp256r1 (e njohur edhe si ANSI X9.62 prime256v1, NIST P-256)</translation>
@@ -3607,7 +3612,6 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="6587923378399804057">Lidhja që kopjove</translation>
 <translation id="6591833882275308647">Pajisja jote <ph name="DEVICE_TYPE" /> nuk është e menaxhuar</translation>
 <translation id="6595495738567740002">Për të fshirë kukit e Google nga kjo pajisje, <ph name="BEGIN_LINK" />dil nga Chrome<ph name="END_LINK" />.</translation>
-<translation id="6596325263575161958">Opsionet e enkriptimit</translation>
 <translation id="6596573334527383067">Shfaq rezultatet nga dje</translation>
 <translation id="6597665340361269064">90 gradë</translation>
 <translation id="6598976221101665070">Filma dramatikë</translation>
@@ -3657,6 +3661,7 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="668132230070712111">Videoja u ruajt te "Disku i Google"</translation>
 <translation id="6681790815630918386">Kodi CVC u ruajt</translation>
 <translation id="6683022854667115063">Kufje</translation>
+<translation id="6686570026048064255">Për të çaktivizuar zbulimin e kodit Pix, shko te <ph name="BEGIN_LINK1" />"Cilësimet" e Chrome<ph name="END_LINK1" /></translation>
 <translation id="6687230248707087982">Zarf (i thjeshtë)</translation>
 <translation id="6687335167692595844">Kërkohet madhësia e fontit</translation>
 <translation id="6688743156324860098">Përditëso…</translation>
@@ -3882,7 +3887,6 @@ Për të fshehur opsionet e "Paguaj më vonë", shko te <ph name="BEGIN_LINK" />
 <translation id="702275896380648118">Ky sajt përcakton gjërat që të pëlqejnë dhe më pas sugjeron reklama për sajtet e tjera. Ky sajt merr po ashtu temat e tua të reklamave nga Chrome për të të shfaqur reklama më të përshtatshme</translation>
 <translation id="7023162328967545559">Paralajmërim nga administratori</translation>
 <translation id="7023765275461720661">Të lidhet llogaria dhe të paguhet me <ph name="BNPL_ISSUER_NAME" />?</translation>
-<translation id="7029809446516969842">Fjalëkalimet</translation>
 <translation id="7030164307377592766">të modifikojë cilësimet për plotësimin e mënyrave të pagesave</translation>
 <translation id="7031110846419387930">Informacionet për shfletuesin, sistemin operativ, softuerët e instaluar, skedarët dhe adresat IP</translation>
 <translation id="7031646650991750659">Cilat aplikacione të Google Play ke instaluar</translation>
@@ -4492,6 +4496,7 @@ Detaje shtesë:
 <translation id="7947285636476623132">Kontrollo vitin e skadimit dhe provo përsëri</translation>
 <translation id="7947310711271925113">Muzikë pop</translation>
 <translation id="7947813448670013867"><ph name="SEE_CHROME_TIPS_FOCUSED_FRIENDLY_MATCH_TEXT" />, shtyp Tab pastaj Enter për të mësuar për veçoritë e Chrome</translation>
+<translation id="7948579849190819732">Skeda aktuale</translation>
 <translation id="7949135979217012031">Antiviruse dhe softuerë keqdashës</translation>
 <translation id="7950027195171824198">Menaxho preferencat e tua për kukit te cilësimet e Chrome</translation>
 <translation id="7951415247503192394">(32-bitësh)</translation>
@@ -4899,6 +4904,7 @@ Detaje shtesë:
 <translation id="8597726363542221027">Automjete të përdorura</translation>
 <translation id="8600271352425265729">Vetëm këtë herë</translation>
 <translation id="860043288473659153">Emri i mbajtësit të kartës</translation>
+<translation id="8601206103050338563">Vërtetimi i klientit TLS WWW</translation>
 <translation id="8601456038554914806">Pajisje për sporte ujore</translation>
 <translation id="8601782593888534566">Fantashkenca dhe fantazia</translation>
 <translation id="8604103095921958091">Ekrani i kushteve të shërbimit për metodën "Bli tani, paguaj më vonë" u hap në lartësi të plotë.</translation>

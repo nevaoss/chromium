@@ -1187,8 +1187,26 @@ void PartitionAllocSupport::ReconfigureAfterFeatureListInit(
   partition_alloc::TagViolationReportingMode memory_tagging_reporting_mode =
       partition_alloc::TagViolationReportingMode::kUndefined;
 
+#if !BUILDFLAG(IS_CHROMEOS)
+  // Enable free with size on non-ChromeOS purely based on feature flag.
   const bool enable_free_with_size =
       base::FeatureList::IsEnabled(base::features::kPartitionAllocFreeWithSize);
+#else
+  bool enable_free_with_size = false;  // Default to false.
+  // TODO(crbug.com/495493036): Remove this opt out once the bug is fixed.
+  static constexpr auto kOptOutChromeOSPlatforms =
+      std::to_array<std::string_view>(
+          {std::string_view("REX"), std::string_view("OVIS")});
+  if (std::ranges::find(kOptOutChromeOSPlatforms,
+                        base::SysInfo::HardwareModelName()) ==
+      kOptOutChromeOSPlatforms.end()) {
+    // If we aren't on an opt-d out device, check the feature enablement. This
+    // prevents the device being considered part of the experiment if it was
+    // opt-ed out (querying for feature status marks as active).
+    enable_free_with_size = base::FeatureList::IsEnabled(
+        base::features::kPartitionAllocFreeWithSize);
+  }
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 
   const bool enable_strict_free_size_check =
       base::features::kPartitionAllocStrictFreeSizeCheck.Get();
@@ -1303,6 +1321,17 @@ void PartitionAllocSupport::ReconfigureAfterFeatureListInit(
   // 100 is a reasonable cap for this value.
   UmaHistogramCounts100("Memory.PartitionAlloc.PartitionRoot.ExtrasSize",
                         int(extras_size));
+
+#if PA_CONFIG(DYNAMICALLY_SELECT_POOL_SIZE)
+  // We don't care about the normal case... That is just daily sessions, we
+  // don't want to record this if it isn't interesting to reduce impact on data
+  // volume and sampling.
+  if (partition_alloc::internal::PartitionAddressSpace::
+          IsCorePoolSizeReduced()) {
+    base::UmaHistogramBoolean("Memory.PartitionAlloc.CorePoolSizeReduced",
+                              true);
+  }
+#endif
 
   partition_alloc::internal::StackTopRegistry::Get().NotifyThreadCreated(
       partition_alloc::internal::GetStackTop());

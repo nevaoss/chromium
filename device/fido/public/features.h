@@ -6,6 +6,7 @@
 #define DEVICE_FIDO_PUBLIC_FEATURES_H_
 
 #include "base/component_export.h"
+#include "base/feature.h"
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
 #include "build/build_config.h"
@@ -14,10 +15,6 @@ namespace device {
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
-// Enables the Passkey Unlock Manager.
-COMPONENT_EXPORT(FIDO_PUBLIC)
-BASE_DECLARE_FEATURE(kPasskeyUnlockManager);
-
 // Allows the passkey unlock error UI to be shown.
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_DECLARE_FEATURE(kPasskeyUnlockErrorUi);
@@ -76,6 +73,15 @@ BASE_DECLARE_FEATURE(kWebAuthnEnclaveAuthenticatorDelay);
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_DECLARE_FEATURE(kWebAuthnAmbientSignin);
 
+enum class WebAuthnAmbientSigninDisplay {
+  kSuggestionChip,
+  kAnchoredMessage,
+};
+
+COMPONENT_EXPORT(FIDO_PUBLIC)
+extern const base::FeatureParam<WebAuthnAmbientSigninDisplay>
+    kWebAuthnAmbientSigninDisplayParam;
+
 // Enables publishing prelinking information on Android.
 #if BUILDFLAG(IS_ANDROID)
 COMPONENT_EXPORT(FIDO_PUBLIC)
@@ -99,11 +105,6 @@ BASE_DECLARE_FEATURE(kDigitalCredentialsHybridLinking);
 // Checks attestation from the enclave service.
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_DECLARE_FEATURE(kWebAuthnEnclaveAttestation);
-
-// Enables hiding passkeys instead of hard deleting them when reported as
-// obsolete by the signal API.
-COMPONENT_EXPORT(FIDO_PUBLIC)
-BASE_DECLARE_FEATURE(kWebAuthnSignalApiHidePasskeys);
 
 // Enables rate limiting of immediate requests based on main frame's eTLD+1.
 COMPONENT_EXPORT(FIDO_PUBLIC)
@@ -154,12 +155,6 @@ BASE_DECLARE_FEATURE(kWebAuthnIWARemoteDesktopAllowedOriginsPolicy);
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_DECLARE_FEATURE(kWebAuthnSendPinGeneration);
 
-// Enables the Authenticator interface to support
-// 'navigator.credentials.get({password: true, mediation: "immediate"})'
-// requests.
-COMPONENT_EXPORT(FIDO_PUBLIC)
-BASE_DECLARE_FEATURE(kAuthenticatorPasswordsOnlyImmediateRequests);
-
 // Controls setting the `create_new_vault` flag when refreshing a PIN. When
 // enabled, the enclave will produce new Vault parameters to create a new Vault
 // instead of replacing it.
@@ -203,6 +198,15 @@ BASE_DECLARE_FEATURE(kWebAuthnCreatePinWhenSystemUvDisabled);
 COMPONENT_EXPORT(FIDO_PUBLIC)
 BASE_DECLARE_FEATURE(kWebAuthnWinPrfOnCreate);
 #endif  // BUILDFLAG(IS_WIN)
+
+// Enable max priority mode in WebAuthn websocket connections to cloud services.
+COMPONENT_EXPORT(FIDO_PUBLIC)
+BASE_DECLARE_FEATURE(kWebAuthnSocketMaxPriorityMode);
+
+// Enables appending Google account session index (authuser=[index]) to the
+// GPM PIN reset URL.
+COMPONENT_EXPORT(FIDO_PUBLIC)
+BASE_DECLARE_FEATURE(kWebAuthnGpmPinResetUsesAccountIndex);
 
 }  // namespace device
 

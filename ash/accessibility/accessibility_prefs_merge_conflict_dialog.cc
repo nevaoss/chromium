@@ -193,26 +193,40 @@ AccessibilityPrefsMergeConflictDialog::
 
 void AccessibilityPrefsMergeConflictDialog::BuildResolutionList(
     views::View* main_container) {
+  bool added_resolution_item = false;
+
   for (const auto& conflict : controller_->conflicts()) {
-    bool match = false;
+    // If the conflict does not require a resolution dialog, skip.
+    if (!conflict.needs_conflict_resolution_dialog) {
+      continue;
+    }
+
+    // Every conflict requiring resolution must have a corresponding UI config.
+    bool found_ui_config = false;
 
     // Find the UI metadata for this pref in kAccessibilityPrefUiTable.
-    // Every conflict is expected to have a matching entry.
     for (const auto& config : kAccessibilityPrefUiTable) {
       if (conflict.pref_name != config.pref_name) {
         continue;
       }
 
-      match = true;
+      found_ui_config = true;
+      added_resolution_item = true;
       AddScrollListToggleItem(main_container, *config.icon,
                               l10n_util::GetStringUTF16(config.label_id),
-                              conflict.pref_name, conflict.local_value);
+                              conflict.pref_name,
+                              conflict.local_value.GetBool());
       break;
     }
 
-    // Assert that every conflict had a matching config.
-    CHECK(match) << "No UI config found for pref: " << conflict.pref_name;
+    CHECK(found_ui_config)
+        << "Missing accessibility UI config for conflicting pref: "
+        << conflict.pref_name;
   }
+
+  CHECK(added_resolution_item)
+      << "BuildResolutionList() expected at least one conflict requiring "
+         "resolution UI.";
 }
 
 HoverHighlightView*
@@ -308,7 +322,7 @@ void AccessibilityPrefsMergeConflictDialog::OnPrefRowPressed(
       new_state ? HoverHighlightView::AccessibilityState::CHECKED_CHECKBOX
                 : HoverHighlightView::AccessibilityState::UNCHECKED_CHECKBOX);
 
-  controller_->UpdateConflict(pref_name, new_state);
+  controller_->UpdateConflict(pref_name, base::Value(new_state));
 }
 
 BEGIN_METADATA(AccessibilityPrefsMergeConflictDialog)

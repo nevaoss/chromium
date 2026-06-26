@@ -56,6 +56,7 @@
 #include "chrome/browser/after_startup_task_utils.h"
 #include "chrome/browser/ai/ai_manager.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
+#include "chrome/browser/battery/battery_saver.h"
 #include "chrome/browser/bluetooth/chrome_bluetooth_delegate.h"
 #include "chrome/browser/bluetooth/chrome_bluetooth_delegate_impl_client.h"
 #include "chrome/browser/browser_about_handler.h"
@@ -349,6 +350,7 @@
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/security_principal.h"
 #include "content/public/browser/service_worker_context.h"
+#include "content/public/browser/site_instance.h"
 #include "content/public/browser/site_isolation_mode.h"
 #include "content/public/browser/site_isolation_policy.h"
 #include "content/public/browser/sms_fetcher.h"
@@ -746,7 +748,6 @@
 #endif  // BUILDFLAG(OS_LEVEL_GEOLOCATION_PERMISSION_SUPPORTED)
 
 #if BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/contextmenu/context_menu_features.h"
 #include "chrome/browser/feed/feed_service_factory.h"
 #include "chrome/browser/safe_browsing/advanced_protection_status_manager_android.h"
 #include "components/feed/feed_feature_list.h"
@@ -1637,7 +1638,7 @@ void ChromeContentBrowserClient::RegisterProfilePrefs(
   registry->RegisterBooleanPref(prefs::kPrefetchWithServiceWorkerEnabled, true);
   registry->RegisterBooleanPref(prefs::kServiceWorkerAutoPreloadEnabled, true);
 
-  registry->RegisterIntegerPref(prefs::kCpuPerformanceTierPolicyOverride,
+  registry->RegisterIntegerPref(prefs::kCpuPerformanceTierOverride,
                                 prefs::kCpuPerformanceTierOverrideNone);
 }
 
@@ -4491,11 +4492,14 @@ bool ChromeContentBrowserClient::CanCreateWindow(
     bool is_from_embedded_page =
         web_contents != responsible_web_contents ||
         guest_view::GuestViewBase::FromRenderFrameHost(opener);
+    content::SiteInstance* site = opener->GetSiteInstance();
+    bool is_same_site_or_from_ui = site && site->IsSameSiteWithURL(target_url);
     if (contextual_tasks_ui_service &&
-        contextual_tasks_ui_service->HandleNavigation(std::move(url_params),
-                                                      responsible_web_contents,
-                                                      is_from_embedded_page,
-                                                      /*is_to_new_tab=*/true)) {
+        contextual_tasks_ui_service->HandleNavigation(
+            std::move(url_params), responsible_web_contents,
+            is_from_embedded_page,
+            /*is_to_new_tab=*/true,
+            /*is_same_site_or_from_ui=*/is_same_site_or_from_ui)) {
       return false;
     }
   }
@@ -4771,6 +4775,9 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
   }
 
   web_prefs->data_saver_enabled = IsDataSaverEnabled(profile);
+  web_prefs->battery_saver_enabled = battery::IsBatterySaverEnabled();
+  web_prefs->preloading_disabled = prefetch::GetPreloadPagesState(*prefs) ==
+                                   prefetch::PreloadPagesState::kNoPreloading;
 
   if (web_contents) {
 #if BUILDFLAG(IS_ANDROID)
@@ -4950,10 +4957,6 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
 
   web_prefs->prefers_default_scrollbar_styles =
       prefs->GetBoolean(prefs::kPrefersDefaultScrollbarStyles);
-#if BUILDFLAG(IS_ANDROID)
-  web_prefs->always_show_context_menu_on_touch =
-      base::FeatureList::IsEnabled(::features::kContextMenuEmptySpace);
-#endif
 
   if (web_contents->GetVisibleURL().SchemeIs(content::kChromeDevToolsScheme) &&
       base::FeatureList::IsEnabled(::features::kDevToolsAiOriginTrialsApis)) {
@@ -6885,8 +6888,8 @@ bool ChromeContentBrowserClient::ShouldForceDownloadResource(
     bool force_download = profile->GetPrefs()->GetBoolean(
         quickoffice::kQuickOfficeForceFileDownloadEnabled);
     if (force_download) {
-      std::string extension_id =
-          PluginUtils::GetExtensionIdForMimeType(browser_context, mime_type);
+      std::string extension_id = PluginUtils::GetExtensionIdForMimeType(
+          browser_context, mime_type, /*embedded=*/false);
 
       if (extension_misc::IsQuickOfficeExtension(extension_id)) {
         return true;
@@ -9207,7 +9210,7 @@ std::optional<int> ChromeContentBrowserClient::GetCpuPerformanceTierOverride(
   if (browser_context) {
     const PrefService* prefs =
         Profile::FromBrowserContext(browser_context)->GetPrefs();
-    if (int value = prefs->GetInteger(prefs::kCpuPerformanceTierPolicyOverride);
+    if (int value = prefs->GetInteger(prefs::kCpuPerformanceTierOverride);
         value != prefs::kCpuPerformanceTierOverrideNone) {
       return value;
     }

@@ -25,7 +25,6 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.widget.LinearLayout;
 
-import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.view.ViewCompat;
 import androidx.test.InstrumentationRegistry;
 import androidx.test.filters.MediumTest;
@@ -50,6 +49,7 @@ import org.chromium.base.test.params.ParameterizedRunner;
 import org.chromium.base.test.transit.ViewElement;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CallbackHelper;
+import org.chromium.base.test.util.DisableLeakChecks;
 import org.chromium.base.test.util.Feature;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -87,6 +87,7 @@ import java.util.concurrent.TimeoutException;
 @RunWith(ParameterizedRunner.class)
 @ParameterAnnotations.UseRunnerDelegate(ChromeJUnit4RunnerDelegate.class)
 @Batch(Batch.PER_CLASS)
+@DisableLeakChecks("crbug.com/512491428 (TabListEditorMenuTest)")
 public class TabListEditorMenuTest {
     private static final int TAB_COUNT = 3;
     private static final Integer TAB_ID_0 = 0;
@@ -254,13 +255,11 @@ public class TabListEditorMenuTest {
             action.getPropertyModel()
                     .set(
                             TabListEditorActionProperties.TEXT_TINT,
-                            AppCompatResources.getColorStateList(
-                                    sActivity, R.color.default_text_color_list));
+                            sActivity.getColorStateList(R.color.default_text_color_list));
             action.getPropertyModel()
                     .set(
                             TabListEditorActionProperties.ICON_TINT,
-                            AppCompatResources.getColorStateList(
-                                    sActivity, R.color.default_icon_color_tint_list));
+                            sActivity.getColorStateList(R.color.default_icon_color_tint_list));
             action.configure(
                     () -> mTabModel,
                     mSelectionDelegate,

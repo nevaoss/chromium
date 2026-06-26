@@ -41,6 +41,7 @@
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
+#include "third_party/blink/renderer/core/html/forms/html_button_element.h"
 #include "third_party/blink/renderer/core/html/html_image_element.h"
 #include "third_party/blink/renderer/core/html/shadow/shadow_element_names.h"
 #include "third_party/blink/renderer/core/layout/absolute_utils.h"
@@ -513,7 +514,8 @@ void LayoutBlockFlow::MakeChildrenNonInline(LayoutObject* insertion_point) {
 
     LayoutBlock* block = CreateAnonymousBlock();
     Children()->InsertChildNode(this, block, inline_run_start);
-    MoveChildrenTo(block, inline_run_start, child);
+    MoveChildrenTo(block, inline_run_start, child,
+                   /*full_remove_insert=*/false);
   }
 
 #if DCHECK_IS_ON()
@@ -616,8 +618,9 @@ bool LayoutBlockFlow::AllowsColumns() const {
   // We don't allow custom layout and multicol on the same object. This is
   // similar to not allowing it for flexbox, grids and tables (although those
   // don't create LayoutBlockFlow, so we don't need to check for those here).
-  if (StyleRef().IsDisplayLayoutCustomBox())
+  if (StyleRef().IsDisplayLayoutCustom()) {
     return false;
+  }
 
   // MathML layout objects don't support multicol.
   if (IsMathML())
@@ -647,9 +650,11 @@ void LayoutBlockFlow::UpdateForMulticol() {
     }
 
     // Form controls are replaced content (also when implemented as a regular
-    // block), and are therefore not supposed to support multicol.
+    // block), and are therefore not supposed to support multicol. Buttons
+    // contain regular flow content, though, so columns apply there.
     const auto* element = DynamicTo<Element>(GetNode());
-    if (element && element->IsFormControlElement()) {
+    if (element && element->IsFormControlElement() &&
+        !IsA<HTMLButtonElement>(element)) {
       return false;
     }
 

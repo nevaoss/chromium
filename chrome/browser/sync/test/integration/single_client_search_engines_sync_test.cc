@@ -60,7 +60,9 @@ class SingleClientSearchEnginesSyncTestBase : public SyncTest {
   void SetUpOnMainThread() override {
     SyncTest::SetUpOnMainThread();
 #if BUILDFLAG(IS_ANDROID)
-    if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_PHONE) {
+    const ui::DeviceFormFactor form_factor = ui::GetDeviceFormFactor();
+    if (form_factor != ui::DEVICE_FORM_FACTOR_TABLET &&
+        form_factor != ui::DEVICE_FORM_FACTOR_DESKTOP) {
       GTEST_SKIP() << "Search engines sync is only supported on Large Form "
                       "Factor (LFF) Android devices.";
     }

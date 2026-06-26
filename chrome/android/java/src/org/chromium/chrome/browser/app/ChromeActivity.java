@@ -84,6 +84,7 @@ import org.chromium.chrome.browser.TabStateThemeResourceProvider;
 import org.chromium.chrome.browser.WarmupManager;
 import org.chromium.chrome.browser.actor.ActorPictureInPictureController;
 import org.chromium.chrome.browser.actor.ActorTaskHelper;
+import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
 import org.chromium.chrome.browser.app.download.DownloadMessageUiDelegate;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
 import org.chromium.chrome.browser.app.tab_activity_glue.PopupCreatorImpl;
@@ -98,6 +99,8 @@ import org.chromium.chrome.browser.base.ColdStartTracker;
 import org.chromium.chrome.browser.bookmarks.BookmarkManagerOpener;
 import org.chromium.chrome.browser.bookmarks.BookmarkManagerOpenerImpl;
 import org.chromium.chrome.browser.bookmarks.BookmarkModel;
+import org.chromium.chrome.browser.bookmarks.BookmarkOpener;
+import org.chromium.chrome.browser.bookmarks.BookmarkOpenerImpl;
 import org.chromium.chrome.browser.bookmarks.PowerBookmarkUtils;
 import org.chromium.chrome.browser.bookmarks.TabBookmarker;
 import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils;
@@ -183,7 +186,6 @@ import org.chromium.chrome.browser.stylus_handwriting.StylusWritingCoordinator;
 import org.chromium.chrome.browser.tab.RequestDesktopUtils;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabHidingType;
-import org.chromium.chrome.browser.tab.TabImportanceManager;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabSelectionType;
@@ -230,6 +232,7 @@ import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManagerProvider;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
 import org.chromium.chrome.browser.ui.system.StatusBarColorController;
 import org.chromium.chrome.browser.webapps.AppInstallMenuHandler;
+import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.browser_ui.modaldialog.AppModalPresenter;
 import org.chromium.components.browser_ui.settings.SettingsNavigation;
 import org.chromium.components.browser_ui.util.motion.MotionEventInfo;
@@ -251,7 +254,6 @@ import org.chromium.components.prefs.PrefService;
 import org.chromium.components.profile_metrics.BrowserProfileType;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.components.webxr.XrDelegateProvider;
-import org.chromium.content_public.browser.ChildProcessImportance;
 import org.chromium.content_public.browser.ChildProcessLauncherHelper;
 import org.chromium.content_public.browser.ContentFeatureList;
 import org.chromium.content_public.browser.DeviceUtils;
@@ -1776,19 +1778,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
-        if (mNativeInitialized
-                && ChromeFeatureList.isEnabled(ChromeFeatureList.CHANGE_UNFOCUSED_PRIORITY)) {
-            ChildProcessLauncherHelper.setIgnoreMainFrameVisibilityForImportance();
-            Tab currentTab = getTabModelSelector().getCurrentTab();
-            if (currentTab != null) {
-                if (isTopResumedActivity) {
-                    TabImportanceManager.setImportance(
-                            currentTab, ChildProcessImportance.IMPORTANT);
-                } else {
-                    TabImportanceManager.setImportance(currentTab, ChildProcessImportance.MODERATE);
-                }
-            }
-        }
         super.onTopResumedActivityChanged(isTopResumedActivity);
         WindowAndroid windowAndroid = getWindowAndroid();
         if (windowAndroid != null) {
@@ -2172,9 +2161,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
         super.finishNativeInitialization();
 
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.PROCESS_RANK_POLICY_ANDROID)) {
-            ChildProcessLauncherHelper.setIgnoreMainFrameVisibilityForImportance();
-        }
+        ChildProcessLauncherHelper.setIgnoreMainFrameVisibilityForImportance();
 
         getProfileProviderSupplier().runSyncOrOnAvailable(this::initializeManualFillingComponent);
 
@@ -2270,7 +2257,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (manualFillingComponent != null) {
             manualFillingComponent.dismiss();
         }
-        return onMenuOrKeyboardAction(itemId, /* fromMenu= */ true, triggeringMotion);
+        return onMenuOrKeyboardAction(itemId, /* fromMenu= */ true, menuItemData, triggeringMotion);
     }
 
     @Override
@@ -2789,7 +2776,10 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public boolean onMenuOrKeyboardAction(
-            int id, boolean fromMenu, @Nullable MotionEventInfo triggeringMotion) {
+            int id,
+            boolean fromMenu,
+            @Nullable Bundle menuItemData,
+            @Nullable MotionEventInfo triggeringMotion) {
         for (MenuOrKeyboardActionController.MenuOrKeyboardActionHandler handler :
                 mMenuActionHandlers) {
             if (handler.handleMenuOrKeyboardAction(id, fromMenu)) return true;
@@ -2888,6 +2878,12 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             return false;
         }
 
+        if (id == R.id.add_to_reading_list_menu_id) {
+            mTabBookmarkerSupplier.get().addToReadingList(currentTab);
+            RecordUserAction.record("MobileMenuAddToReadingList");
+            return true;
+        }
+
         if (id == R.id.bookmark_this_page_id || id == R.id.bookmark_this_page_menu_id) {
             mTabBookmarkerSupplier.get().addOrEditBookmark(currentTab);
             TrackerFactory.getTrackerForProfile(currentTab.getProfile())
@@ -2896,6 +2892,21 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 RecordUserAction.record("MobileMenuAddToBookmarks");
             } else {
                 RecordUserAction.record("MobileMenuBookmarkThisPage");
+            }
+            return true;
+        }
+
+        if (id == R.id.bookmark_menu_id) {
+            if (menuItemData != null
+                    && menuItemData.containsKey(
+                            AppMenuPropertiesDelegateImpl.BOOKMARK_ID_BUNDLE_KEY)) {
+                BookmarkId bookmarkId =
+                        BookmarkId.getBookmarkIdFromString(
+                                menuItemData.getString(
+                                        AppMenuPropertiesDelegateImpl.BOOKMARK_ID_BUNDLE_KEY));
+                BookmarkOpener opener =
+                        new BookmarkOpenerImpl(mBookmarkModelSupplier, this, getComponentName());
+                opener.openBookmarkInCurrentTab(bookmarkId, currentTab.isIncognito());
             }
             return true;
         }

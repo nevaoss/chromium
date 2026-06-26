@@ -392,8 +392,12 @@ class ExtensionsMenuMediator implements Destroyable, ExtensionsMenuBridge.Observ
                                 (view) -> mMenuBridge.executeAction(entry.id))
                         .with(
                                 ExtensionsMenuItemProperties.SITE_ACCESS_TOGGLE_ON_CLICK,
-                                (buttonView, isOn) ->
-                                        mMenuBridge.onExtensionToggleSelected(entry.id, isOn))
+                                (buttonView, isOn) -> {
+                                    mMenuBridge.onExtensionToggleSelected(entry.id, isOn);
+                                    if (!isOn) {
+                                        mOnDismissMenu.run();
+                                    }
+                                })
                         .with(
                                 ExtensionsMenuItemProperties.SITE_PERMISSIONS_BUTTON_ON_CLICK,
                                 (view) -> onSitePermissionsButtonClicked(entry.id))
@@ -467,6 +471,9 @@ class ExtensionsMenuMediator implements Destroyable, ExtensionsMenuBridge.Observ
         itemModel.set(ExtensionsMenuItemProperties.TITLE, itemState.actionButton.text);
         itemModel.set(ExtensionsMenuItemProperties.ICON, itemState.actionButton.icon);
         itemModel.set(ExtensionsMenuItemProperties.IS_PINNED, itemState.contextMenuButton.isOn);
+        itemModel.set(
+                ExtensionsMenuItemProperties.CONTEXT_MENU_BUTTON_ACCESSIBLE_NAME,
+                itemState.contextMenuButton.accessibleName);
         itemModel.set(
                 ExtensionsMenuItemProperties.SITE_ACCESS_TOGGLE_CHECKED,
                 itemState.siteAccessToggle.isOn);
@@ -596,5 +603,8 @@ class ExtensionsMenuMediator implements Destroyable, ExtensionsMenuBridge.Observ
                 ExtensionsMenuProperties.SITE_SETTINGS_TOGGLE_TOOLTIP,
                 siteSettingsState.toggle.tooltipText);
         mMainPageModel.set(ExtensionsMenuProperties.SITE_SETTINGS_LABEL, siteSettingsState.label);
+        mMainPageModel.set(
+                ExtensionsMenuProperties.SITE_SETTINGS_INFO_ICON_VISIBLE,
+                siteSettingsState.hasTooltip);
     }
 }

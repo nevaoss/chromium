@@ -276,7 +276,7 @@ class SettingsOverriddenDialogInteractiveUiTest
     // These icons are arbitrary. The goal is to ensure icons are fetched, vs.
     // falling back to generated placeholder icons.
     constexpr int kFaviconSize = 32;
-    gfx::Image icon(gfx::CreateVectorIcon(vector_icons::kBusinessIcon,
+    gfx::Image icon(gfx::CreateVectorIcon(vector_icons::kBusinessOldIcon,
                                           kFaviconSize, SK_ColorRED));
     gfx::Image google_icon(gfx::CreateVectorIcon(vector_icons::kGoogleColorIcon,
                                                  kFaviconSize, SK_ColorBLUE));
@@ -546,6 +546,8 @@ IN_PROC_BROWSER_TEST_F(
                     Contains(Pair(HatsDialog::kHatsPsdUserChoice,
                                   HatsDialog::kHatsUserChoiceNewProvider)),
                     Contains(Pair(HatsDialog::kHatsPsdTimeDialogVisible, _)),
+                    Contains(Pair(HatsDialog::kHatsPsdNewExtensionId,
+                                  Not(IsEmpty()))),
                     Contains(Pair(HatsDialog::kHatsPsdNewExtensionName,
                                   "Search Override Extension")))))
             .WillOnce(testing::Return(true));

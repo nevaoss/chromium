@@ -48,7 +48,7 @@ void FFTFrame::DoPaddedFFT(base::span<const float> data) {
   padded_response.as_span().first(data.size()).copy_from(data);
 
   // Get the frequency-domain version of padded response
-  DoFFT(padded_response.Data());
+  DoFFT(padded_response.as_span());
 }
 
 std::unique_ptr<FFTFrame> FFTFrame::CreateInterpolatedFrame(
@@ -64,19 +64,20 @@ std::unique_ptr<FFTFrame> FFTFrame::CreateInterpolatedFrame(
   // circular convolution aliasing...
   int fft_size = new_frame->FftSize();
   AudioFloatArray buffer(fft_size);
-  new_frame->DoInverseFFT(buffer.Data());
+  base::span<float> buffer_span = buffer.as_span();
+  new_frame->DoInverseFFT(buffer_span);
   buffer.ZeroRange(fft_size / 2, fft_size);
 
   // Put back into frequency domain.
-  new_frame->DoFFT(buffer.Data());
+  new_frame->DoFFT(buffer_span);
 
   return new_frame;
 }
 
 void FFTFrame::ScaleFFT(float factor) {
-  vector_math::Vsmul(real_data_.Data(), 1, factor, real_data_.Data(), 1,
+  vector_math::Vsmul(real_data_.Data(), factor, real_data_.Data(),
                      real_data_.size());
-  vector_math::Vsmul(imag_data_.Data(), 1, factor, imag_data_.Data(), 1,
+  vector_math::Vsmul(imag_data_.Data(), factor, imag_data_.Data(),
                      imag_data_.size());
 }
 

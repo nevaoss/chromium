@@ -82,6 +82,7 @@
 #import "ios/chrome/browser/shared/public/commands/find_in_page_commands.h"
 #import "ios/chrome/browser/shared/public/commands/help_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_overlay_commands.h"
+#import "ios/chrome/browser/shared/public/commands/level_up_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
 #import "ios/chrome/browser/shared/public/commands/overflow_menu_customization_commands.h"
 #import "ios/chrome/browser/shared/public/commands/page_action_menu_commands.h"
@@ -231,6 +232,7 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
 @property(nonatomic, strong)
     OverflowMenuDestination* spotlightDebuggerDestination;
 @property(nonatomic, strong) OverflowMenuDestination* cobaltDestination;
+@property(nonatomic, strong) OverflowMenuDestination* levelUpDestination;
 
 @property(nonatomic, strong) OverflowMenuActionGroup* appActionsGroup;
 @property(nonatomic, strong) OverflowMenuActionGroup* pageActionsGroup;
@@ -549,6 +551,9 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
 
   // Site Info destination.
   self.siteInfoDestination = [self newSiteInfoDestination];
+
+  // Level Up destination.
+  self.levelUpDestination = [self newLevelUpDestination];
 
   [self logTranslateAvailability];
 
@@ -950,7 +955,9 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
                           systemSymbol:YES
                       monochromeSymbol:NO
                        accessibilityID:kToolsMenuHideToolbars
-                          hideItemText:nil
+                          hideItemText:
+                              l10n_util::GetNSString(
+                                  IDS_IOS_OVERFLOW_MENU_HIDE_ACTION_HIDE_TOOLBARS)
                                handler:^{
                                  [weakSelf startCollapseToolbars];
                                }];
@@ -1162,6 +1169,18 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
                             }];
 }
 
+- (OverflowMenuDestination*)newLevelUpDestination {
+  __weak __typeof(self) weakSelf = self;
+  return [self createOverflowMenuDestination:IDS_IOS_TOOLS_MENU_LEVEL_UP
+                                 destination:overflow_menu::Destination::LevelUp
+                                  symbolName:@"arrowshape.up"
+                                systemSymbol:YES
+                             accessibilityID:kToolsMenuLevelUpId
+                                     handler:^{
+                                       [weakSelf openLevelUp];
+                                     }];
+}
+
 - (OverflowMenuDestination*)newPasswordsDestination {
   __weak __typeof(self) weakSelf = self;
   return
@@ -1291,6 +1310,9 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
     case overflow_menu::Destination::Cobalt:
       // These items are unhideable.
       return nil;
+    case overflow_menu::Destination::LevelUp:
+      return l10n_util::GetNSString(
+          IDS_IOS_OVERFLOW_MENU_HIDE_DESTINATION_LEVEL_UP);
     case overflow_menu::Destination::Bookmarks:
       return l10n_util::GetNSString(
           IDS_IOS_OVERFLOW_MENU_HIDE_DESTINATION_BOOKMARKS);
@@ -1529,8 +1551,13 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
       overflow_menu::Destination::Settings,
       overflow_menu::Destination::PriceNotifications,
       overflow_menu::Destination::WhatsNew,
-      overflow_menu::Destination::Cobalt,
   };
+
+  if (IsLevelUpEnabled()) {
+    destinations.push_back(overflow_menu::Destination::LevelUp);
+  }
+
+  destinations.push_back(overflow_menu::Destination::Cobalt);
 
   return destinations;
 }
@@ -1643,7 +1670,7 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
   self.askBWGAction.enabled = [self isGeminiAvailable];
 
   if (base::FeatureList::IsEnabled(kHideToolbarsInOverflowMenu)) {
-    self.hideToolbarsAction.enabled = YES;
+    self.hideToolbarsAction.enabled = ![self isCurrentWebPageNTP];
   }
 }
 
@@ -2172,12 +2199,15 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
         return nil;
       }
       return self.cobaltDestination;
-    case overflow_menu::Destination::PriceNotifications:
+    case overflow_menu::Destination::PriceNotifications: {
       BOOL priceNotificationsActive =
           self.webState && IsPriceTrackingEnabled(ProfileIOS::FromBrowserState(
                                self.webState->GetBrowserState()));
       return (priceNotificationsActive) ? self.priceNotificationsDestination
                                         : nil;
+    }
+    case overflow_menu::Destination::LevelUp:
+      return self.levelUpDestination;
   }
 }
 
@@ -2208,6 +2238,8 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
       return [self newCobaltDestination];
     case overflow_menu::Destination::PriceNotifications:
       return [self newPriceNotificationsDestination];
+    case overflow_menu::Destination::LevelUp:
+      return [self newLevelUpDestination];
   }
 }
 
@@ -2687,6 +2719,12 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
   [self.browserCoordinatorHandler showBookmarksManager];
 }
 
+// Dismisses the menu and opens Level Up.
+- (void)openLevelUp {
+  [self dismissMenu];
+  [self.levelUpHandler showLevelUp];
+}
+
 // Dismisses the menu and opens share sheet to share Chrome's app store link
 - (void)showShareSheetForChromeApp {
   [self dismissMenu];
@@ -2829,6 +2867,7 @@ OverflowMenuFooter* CreateOverflowMenuManagedFooter(
     case overflow_menu::Destination::SpotlightDebugger:
     case overflow_menu::Destination::Cobalt:
     case overflow_menu::Destination::PriceNotifications:
+    case overflow_menu::Destination::LevelUp:
       // Most destinations have no corresponding destination and nothing special
       // to be done when their shown state is toggled.
       return;

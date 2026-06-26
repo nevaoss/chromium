@@ -522,7 +522,7 @@ std::unique_ptr<views::View> AccountSelectionBubbleView::CreateHeaderView() {
       header->AddChildView(views::CreateVectorImageButtonWithNativeTheme(
           base::BindRepeating(&FedCmAccountSelectionView::OnBackButtonClicked,
                               base::Unretained(owner_)),
-          vector_icons::kArrowBackIcon));
+          vector_icons::kArrowBackOldIcon));
   views::InstallCircleHighlightPathGenerator(back_button_.get());
   back_button_->SetTooltipText(l10n_util::GetStringUTF16(IDS_ACCNAME_BACK));
   back_button_->SetVisible(false);
@@ -758,7 +758,7 @@ std::unique_ptr<views::View> AccountSelectionBubbleView::CreateMultiIdpLoginRow(
       /*subtitle=*/std::u16string(),
       /*secondary_view=*/
       std::make_unique<views::ImageView>(ui::ImageModel::FromVectorIcon(
-          kOpenInNewIcon, ui::kColorMenuIcon, kBubbleIdpIconSize)));
+          kOpenInNewOldIcon, ui::kColorMenuIcon, kBubbleIdpIconSize)));
   button->SetBorder(views::CreateEmptyBorder(gfx::Insets::VH(
       /*vertical=*/kMultiIdpVerticalSpacing,
       /*horizontal=*/kLeftRightPadding)));
@@ -776,7 +776,7 @@ AccountSelectionBubbleView::CreateSingleIdpUseOtherAccountButton(
     int icon_margin) {
   auto icon_view =
       std::make_unique<views::ImageView>(ui::ImageModel::FromVectorIcon(
-          kOpenInNewIcon, ui::kColorMenuIcon, kIdpLoginIconSize));
+          kOpenInNewOldIcon, ui::kColorMenuIcon, kIdpLoginIconSize));
   auto button = std::make_unique<HoverButton>(
       base::BindRepeating(&FedCmAccountSelectionView::OnLoginToIdP,
                           base::Unretained(owner_), idp_metadata.config_url,

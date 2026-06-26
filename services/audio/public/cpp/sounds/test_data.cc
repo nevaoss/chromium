@@ -4,14 +4,19 @@
 
 #include "services/audio/public/cpp/sounds/test_data.h"
 
+#include <atomic>
+#include <utility>
+
 #include "base/task/single_thread_task_runner.h"
 #include "media/base/audio_bus.h"
 
 namespace audio {
 
-TestObserver::TestObserver(const base::RepeatingClosure& quit)
+TestObserver::TestObserver(base::RepeatingClosure quit,
+                           base::RepeatingClosure render)
     : task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
-      quit_(quit),
+      quit_(std::move(quit)),
+      render_(std::move(render)),
       num_play_requests_(0),
       num_stop_requests_(0) {}
 
@@ -26,25 +31,27 @@ void TestObserver::Initialize(
 
 void TestObserver::OnPlay() {
   ++num_play_requests_;
-  is_playing = true;
-  task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&TestObserver::Render, base::Unretained(this)));
+  is_playing_.store(true);
+  task_runner_->PostTask(FROM_HERE, base::BindOnce(&TestObserver::Render,
+                                                   weak_factory_.GetWeakPtr()));
 }
 
 void TestObserver::Render() {
-  if (!is_playing) {
+  if (!is_playing_.load()) {
     return;
   }
+  render_.Run();
   if (callback_->Render(base::Seconds(0), base::TimeTicks::Now(), {},
                         bus_.get())) {
-    task_runner_->PostTask(FROM_HERE, base::BindOnce(&TestObserver::Render,
-                                                     base::Unretained(this)));
+    task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(&TestObserver::Render, weak_factory_.GetWeakPtr()));
   }
 }
 
 void TestObserver::OnStop() {
   ++num_stop_requests_;
-  is_playing = false;
+  is_playing_.store(false);
   task_runner_->PostTask(FROM_HERE, quit_);
 }
 

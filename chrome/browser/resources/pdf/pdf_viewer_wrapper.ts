@@ -13,7 +13,7 @@ export type {Bookmark} from './bookmark_type.js';
 export {BrowserApi, ZoomBehavior} from './browser_api.js';
 // <if expr="enable_pdf_ink2">
 export {AnnotationBrushType, TextAlignment, TextStyle, TextTypeface} from './constants.js';
-export type {AnnotationBrush, Color, TextAnnotation, TextAttributes, TextBoxRect} from './constants.js';
+export type {AnnotationBrush, Color, TextAnnotation, TextAnnotationMessageData, TextAttributes, TextBoxRect} from './constants.js';
 // </if>
 // <if expr="enable_pdf_ink2">
 export {AnnotationMode} from './constants.js';
@@ -69,6 +69,8 @@ export type {PinchEventDetail} from './gesture_detector.js';
 // <if expr="enable_pdf_ink2">
 export {DEFAULT_TEXTBOX_WIDTH, Ink2Manager, MIN_TEXTBOX_SIZE_PX} from './ink2_manager.js';
 export type {TextBoxInit, ViewportParams} from './ink2_manager.js';
+export {UndoRedoStack} from './undo_redo_stack.js';
+export type {UndoRedoState, UndoRedoStateChangedDetail} from './undo_redo_stack.js';
 // </if>
 export type {PdfPluginElement} from './internal_plugin.js';
 export {record, recordFitTo, resetForTesting, UserAction} from './metrics.js';
@@ -82,6 +84,7 @@ export {PdfViewerPrivateProxyImpl} from './pdf_viewer_private_proxy.js';
 export type {PdfViewerPrivateProxy} from './pdf_viewer_private_proxy.js';
 // </if>
 // <if expr="enable_pdf_ink2">
+export type {GetTextInfoResult} from './pdf_viewer_private_proxy.js';
 export {hexToColor} from './pdf_viewer_utils.js';
 // </if>
 export {shouldIgnoreKeyEvents} from './pdf_viewer_utils.js';

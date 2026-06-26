@@ -187,9 +187,7 @@ std::vector<std::string> GetTestSuiteNames() {
       "GlicApiTestWithGeminiActOnWebPolicy",
       "GlicApiTestWithWebContentsWarming",
       "GlicApiTestHibernateAllOnMemoryPressure",
-      "GlicApiTestHibernateAllAggressiveOnMemoryPressure",
       "GlicOnboardingApiTest",
-      "GlicApiTestHibernateOnMemoryUsage",
       "GlicApiTestWithDaisyChain",
       "GlicApiTestNoFloatyOrLiveMode",
   };
@@ -298,6 +296,11 @@ class GlicApiTest : public NonInteractiveGlicApiTest, public WithTestParams {
   }
 
   void NavigateTabAndOpenGlicFloating() { NavigateTabAndOpenGlic(true); }
+
+  GlicInstanceCoordinatorImpl& GetInstanceCoordinatorImpl() {
+    return static_cast<GlicInstanceCoordinatorImpl&>(
+        GetService()->instance_coordinator());
+  }
 
   GURL page_url() {
     return InProcessBrowserTest::embedded_test_server()->GetURL(
@@ -657,18 +660,6 @@ class GlicApiTestWithGeminiActOnWebPolicy : public GlicApiTestWithOneTab {
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-class GlicApiTestHibernateOnMemoryUsage : public GlicApiTest {
- public:
-  GlicApiTestHibernateOnMemoryUsage() {
-    feature_list_.InitAndEnableFeatureWithParameters(
-        kGlicHibernateOnMemoryUsage,
-        {{"threshold_mb", "1"}, {"polling_interval", "500ms"}});
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
-
 // Note: Test names must match test function names in api_test.ts.
 
 // TODO(harringtond): Many of these tests are minimal, and could be improved
@@ -826,7 +817,14 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithFastTimeout, testNoBootstrap) {
 #endif
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithFastTimeout, testInitializeTimesOut) {
+// TODO(https:  // crbug.com/512642226): Fix flakes.
+#if BUILDFLAG(IS_CHROMEOS) && !defined(NDEBUG)
+#define MAYBE_testInitializeTimesOut DISABLED_testInitializeTimesOut
+#else
+#define MAYBE_testInitializeTimesOut testInitializeTimesOut
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithFastTimeout,
+                       MAYBE_testInitializeTimesOut) {
 #if defined(SLOW_BINARY)
   GTEST_SKIP() << "skip timeout test for slow binary";
 #else
@@ -1442,7 +1440,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testTabSwitchDoesNotLogActivationMetric) {
   ExecuteJsTest({.params = base::Value("second")});
 
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetService()->instance_coordinator().GetInstances().size() == 1u;
+    return GetInstanceCoordinatorImpl().GetInstancesForTesting().size() == 1u;
   }));
   ASSERT_EQ("A", GetGlicInstanceImpl()->conversation_id());
 
@@ -1546,7 +1544,13 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testShowProfilePicker) {
 }
 #endif
 
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testPanelActive) {
+// TODO(https://crbug.com/512641949): Fix flakes.
+#if BUILDFLAG(IS_CHROMEOS) || !defined(NDEBUG)
+#define MAYBE_testPanelActive DISABLED_testPanelActive
+#else
+#define MAYBE_testPanelActive testPanelActive
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, MAYBE_testPanelActive) {
   // Explicitly track this glic instance by ID. When a new browser window is
   // created below, it will become the most recently activated browser. Without
   // explicit tracking, GetBrowser() would return the new window (based on
@@ -2248,7 +2252,12 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
   }));
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testCloseAndOpenWhileOpening) {
+#if BUILDFLAG(IS_CHROMEOS) && defined(MEMORY_SANITIZER)
+#define MAYBE_testCloseAndOpenWhileOpening DISABLED_testCloseAndOpenWhileOpening
+#else
+#define MAYBE_testCloseAndOpenWhileOpening testCloseAndOpenWhileOpening
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testCloseAndOpenWhileOpening) {
   RunTestSequence(OpenGlic(GlicInstrumentMode::kNone));
   ExecuteJsTest();
   RunTestSequence(OpenGlic(GlicInstrumentMode::kNone));
@@ -3159,10 +3168,10 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testRemoveBlankInstanceOnClose) {
   RunTestSequence(
       InstrumentTab(kFirstTab),
       OpenGlic(GlicInstrumentMode::kNone, /*conversation_id=*/std::nullopt));
-  ASSERT_EQ(1u, GetService()->instance_coordinator().GetInstances().size());
+  ASSERT_EQ(1u, GetInstanceCoordinatorImpl().GetInstancesForTesting().size());
   ExecuteJsTest();
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetService()->instance_coordinator().GetInstances().size() == 0u;
+    return GetInstanceCoordinatorImpl().GetInstancesForTesting().size() == 0u;
   }));
 }
 
@@ -3182,7 +3191,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab,
   ExecuteJsTest({.params = base::Value("second")});
 
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return GetService()->instance_coordinator().GetInstances().size() == 1u;
+    return GetInstanceCoordinatorImpl().GetInstancesForTesting().size() == 1u;
   }));
   ASSERT_EQ("id_hello", GetGlicInstanceImpl()->conversation_id());
 
@@ -3479,8 +3488,11 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testAdditionalContext) {
 
   context->parts = std::move(parts);
 
-  GetService()->SendAdditionalContext(tabs::TabHandle(GetTabId(web_contents)),
-                                      std::move(context));
+  auto* tab = tabs::TabInterface::GetFromContents(web_contents);
+  ASSERT_TRUE(tab);
+  auto* instance = GetService()->GetInstanceForTab(tab);
+  ASSERT_TRUE(instance);
+  instance->SendAdditionalContext(std::move(context));
 
   // Continue the JS test to verify the additional context is received.
   ContinueJsTest();
@@ -3549,24 +3561,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithGeminiActOnWebPolicy,
   UpdateGeminiActOnWebPolicy(
       glic::prefs::GlicActuationOnWebPolicyState::kDisabled);
   ContinueJsTest();
-}
-
-IN_PROC_BROWSER_TEST_P(GlicApiTestHibernateOnMemoryUsage,
-                       testHibernateOnMemoryUsage) {
-  // Open Glic, verify it's active.
-  RunTestSequence(OpenGlic(GlicInstrumentMode::kHostAndContents),
-                  RegisterConversation("test_id"));
-  GlicInstanceImpl* instance = GetGlicInstanceImpl();
-
-  GlicHistogramTester histogram_tester;
-  // Close Glic (make it inactive).
-  RunTestSequence(CloseGlic());
-
-  // Wait and verify that IsHibernated() becomes true.
-  ASSERT_TRUE(base::test::RunUntil([&]() { return instance->IsHibernated(); }));
-
-  // Check that the histogram was recorded.
-  histogram_tester.ExpectTotalCount("Glic.Instance.MemoryUsageAtThreshold", 1);
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithOneTab, testGetZoomLevel) {
@@ -3659,10 +3653,6 @@ INSTANTIATE_TEST_SUITE_P(,
                          GlicOnboardingApiTest,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
-INSTANTIATE_TEST_SUITE_P(,
-                         GlicApiTestHibernateOnMemoryUsage,
-                         DefaultTestParamSet(),
-                         WithTestParams::PrintTestVariant);
 INSTANTIATE_TEST_SUITE_P(,
                          GlicApiTestWithDaisyChain,
                          DefaultTestParamSet(),

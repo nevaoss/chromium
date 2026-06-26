@@ -456,13 +456,15 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Security.HttpsFirstMode.NavigationEvent"
-    enum="HttpsFirstModeNavigationEvent" expires_after="2025-12-21">
+    enum="HttpsFirstModeNavigationEvent" expires_after="2027-04-01">
   <owner>cthomp@chromium.org</owner>
-  <owner>trusty-transport@chromium.org</owner>
+  <owner>chrome-swan@google.com</owner>
   <summary>
     Events for navigations that are upgraded from HTTP to HTTPS by HTTPS-First
     Mode. Recorded for eligible navigations (HTTP main frame navigations that
     are not allowlisted), if the profile is opted in to HTTPS-First Mode.
+
+    Note: This histogram was expired from 2025-12-21 through 2026-05-13.
   </summary>
 </histogram>
 
@@ -888,17 +890,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the high-water-mark of the number of pending reporters in the SCT
     auditing cache. Recorded on a timer hourly, if SCT auditing is enabled.
-  </summary>
-</histogram>
-
-<histogram name="Security.SCTAuditing.OptIn.ReportSampled" enum="Boolean"
-    expires_after="2024-05-26">
-  <owner>cthomp@chromium.org</owner>
-  <owner>trusty-transport@chromium.org</owner>
-  <summary>
-    Records whether a report was sampled to be sent to Safe Browsing. Recorded
-    for each new report seen by the SCT auditing cache that was not
-    deduplicated.
   </summary>
 </histogram>
 

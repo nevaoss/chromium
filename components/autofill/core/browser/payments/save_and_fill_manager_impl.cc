@@ -40,7 +40,11 @@ SaveAndFillManagerImpl::~SaveAndFillManagerImpl() = default;
 
 void SaveAndFillManagerImpl::OnDidAcceptCreditCardSaveAndFillSuggestion(
     FillCardCallback fill_card_callback) {
-  save_and_fill_suggestion_selected_ = true;
+  if (!logging_context_.has_logged_suggestion_accepted) {
+    autofill_metrics::LogSaveAndFillSuggestionEvent(
+        autofill_metrics::SaveAndFillSuggestionEvent::kSuggestionAccepted);
+    logging_context_.has_logged_suggestion_accepted = true;
+  }
   fill_card_callback_ = std::move(fill_card_callback);
 
   auto* form_data_importer = autofill_client_->GetFormDataImporter();
@@ -71,19 +75,35 @@ void SaveAndFillManagerImpl::OnDidAcceptCreditCardSaveAndFillSuggestion(
 }
 
 void SaveAndFillManagerImpl::OnSuggestionOffered() {
-  save_and_fill_suggestion_offered_ = true;
-}
-
-void SaveAndFillManagerImpl::MaybeAddStrikeForSaveAndFill() {
-  if (save_and_fill_suggestion_offered_ &&
-      !save_and_fill_suggestion_selected_ &&
-      !has_logged_strikes_for_form_submission_) {
-    GetSaveAndFillStrikeDatabase()->AddStrike();
-    has_logged_strikes_for_form_submission_ = true;
+  if (!logging_context_.has_logged_suggestion_shown) {
+    autofill_metrics::LogSaveAndFillSuggestionEvent(
+        autofill_metrics::SaveAndFillSuggestionEvent::kSuggestionShown);
+    logging_context_.has_logged_suggestion_shown = true;
   }
 }
 
-bool SaveAndFillManagerImpl::ShouldBlockFeature() {
+void SaveAndFillManagerImpl::MaybeAddStrikeForSaveAndFill() {
+  if (logging_context_.has_logged_suggestion_shown &&
+      !logging_context_.has_logged_suggestion_accepted &&
+      !logging_context_.has_logged_strikes_for_form_submission) {
+    GetSaveAndFillStrikeDatabase()->AddStrike();
+    logging_context_.has_logged_strikes_for_form_submission = true;
+
+    // Infer scenario based on whether upload is enabled.
+    autofill_metrics::SaveAndFillFlowScenario scenario =
+        IsCreditCardUploadEnabled()
+            ? autofill_metrics::SaveAndFillFlowScenario::kUploadSave
+            : autofill_metrics::SaveAndFillFlowScenario::
+                  kLocalSaveUploadSaveInfeasible;
+
+    autofill_metrics::LogSaveAndFillFunnelCanceled(
+        scenario,
+        autofill_metrics::SaveAndFillFunnelCanceledStage::kSuggestionIgnored);
+  }
+}
+
+std::optional<autofill_metrics::SaveAndFillSuggestionEvent>
+SaveAndFillManagerImpl::GetBlockReason() {
   SaveAndFillStrikeDatabase::StrikeDatabaseDecision decision =
       SaveAndFillStrikeDatabase::kDoNotBlock;
   if (auto* strike_database = GetSaveAndFillStrikeDatabase()) {
@@ -91,28 +111,30 @@ bool SaveAndFillManagerImpl::ShouldBlockFeature() {
   }
   switch (decision) {
     case SaveAndFillStrikeDatabase::StrikeDatabaseDecision::kDoNotBlock:
-      return false;
+      return std::nullopt;
     case SaveAndFillStrikeDatabase::StrikeDatabaseDecision::
         kMaxStrikeLimitReached:
       autofill_metrics::LogSaveAndFillStrikeDatabaseBlockReason(
           AutofillMetrics::AutofillStrikeDatabaseBlockReason::
               kMaxStrikeLimitReached);
-      return true;
+      return autofill_metrics::SaveAndFillSuggestionEvent::
+          kSuggestionNotShownStrikeDbMaxStrikeLimitReached;
     case SaveAndFillStrikeDatabase::StrikeDatabaseDecision::
         kRequiredDelayNotPassed:
       autofill_metrics::LogSaveAndFillStrikeDatabaseBlockReason(
           AutofillMetrics::AutofillStrikeDatabaseBlockReason::
               kRequiredDelayNotMet);
-      return true;
+      return autofill_metrics::SaveAndFillSuggestionEvent::
+          kSuggestionNotShownStrikeDbRequiredDelayNotMet;
   }
 }
 
 void SaveAndFillManagerImpl::MaybeLogSaveAndFillSuggestionNotShownReason(
-    autofill_metrics::SaveAndFillSuggestionNotShownReason reason) {
+    autofill_metrics::SaveAndFillSuggestionEvent reason) {
   if (logging_context_.has_logged_save_and_fill_suggestion_not_shown_reason) {
     return;
   }
-  autofill_metrics::LogSaveAndFillSuggestionNotShownReason(reason);
+  autofill_metrics::LogSaveAndFillSuggestionEvent(reason);
   logging_context_.has_logged_save_and_fill_suggestion_not_shown_reason = true;
 }
 
@@ -194,6 +216,9 @@ void SaveAndFillManagerImpl::OnUserDidDecideOnLocalSave(
       if (auto* strike_database = GetSaveAndFillStrikeDatabase()) {
         strike_database->AddStrike();
       }
+      autofill_metrics::LogSaveAndFillFunnelCanceled(
+          logging_context_.flow_scenario,
+          autofill_metrics::SaveAndFillFunnelCanceledStage::kDialogCanceled);
       break;
   }
 
@@ -278,6 +303,8 @@ void SaveAndFillManagerImpl::OnDidGetDetailsForCreateCard(
     }
     upload_details_.context_token = context_token;
     supported_card_bin_ranges_ = std::move(supported_card_bin_ranges);
+    logging_context_.flow_scenario =
+        autofill_metrics::SaveAndFillFlowScenario::kUploadSave;
     OfferUploadSaveAndFill(parsed_legal_message_lines);
   } else {
     logging_context_.last_attempt_succeeded = false;
@@ -401,6 +428,9 @@ void SaveAndFillManagerImpl::OnUserDidDecideOnUploadSave(
       if (auto* strike_database = GetSaveAndFillStrikeDatabase()) {
         strike_database->AddStrike();
       }
+      autofill_metrics::LogSaveAndFillFunnelCanceled(
+          logging_context_.flow_scenario,
+          autofill_metrics::SaveAndFillFunnelCanceledStage::kDialogCanceled);
       Reset();
       break;
   }
@@ -482,6 +512,9 @@ void SaveAndFillManagerImpl::OnPendingDialogCanceled(
     const UserProvidedCardSaveAndFillDetails&
         user_provided_card_save_and_fill_details) {
   CHECK(user_decision == CardSaveAndFillDialogUserDecision::kDeclined);
+  autofill_metrics::LogSaveAndFillFunnelCanceled(
+      logging_context_.flow_scenario,
+      autofill_metrics::SaveAndFillFunnelCanceledStage::kDialogCanceled);
   Reset();
 }
 
@@ -491,8 +524,9 @@ void SaveAndFillManagerImpl::Reset() {
   fill_card_callback_.Reset();
   supported_card_bin_ranges_.clear();
   upload_save_and_fill_dialog_accepted_ = false;
-  save_and_fill_suggestion_offered_ = false;
-  save_and_fill_suggestion_selected_ = false;
+  logging_context_.has_logged_suggestion_shown = false;
+  logging_context_.has_logged_suggestion_accepted = false;
+  logging_context_.has_logged_save_and_fill_suggestion_not_shown_reason = false;
 }
 
 SaveAndFillStrikeDatabase*

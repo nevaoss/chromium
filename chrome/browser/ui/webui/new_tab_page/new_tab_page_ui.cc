@@ -779,11 +779,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean("composeboxShowCreateImageButton",
                      ntp_composebox::IsCreateImagesEnabled(profile));
 
-  bool show_pdf_upload = aim_eligibility_service &&
-                         aim_eligibility_service->IsPdfUploadEligible() &&
-                         composebox_config.is_pdf_upload_enabled();
-  source->AddBoolean("composeboxShowPdfUpload", show_pdf_upload);
-
   source->AddBoolean("enableThreadsRail",
                      ntp_composebox::kEnableThreadsRail.Get());
 
@@ -793,6 +788,9 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
 #else
   source->AddBoolean("enableThreadsRailLogo", false);
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
+
+  source->AddBoolean("useNtpComposeboxFork",
+                     ntp_composebox::kUseNtpComposeboxFork.Get());
 
   // Action Chips LoadTimeData
 // TODO(b/502297163): Implement for Android.
@@ -972,6 +970,8 @@ NewTabPageUI::NewTabPageUI(content::WebUI* web_ui)
   auto plural_string_handler = std::make_unique<PluralStringHandler>();
   plural_string_handler->AddLocalizedString("modulesTabGroupsTabsText",
                                             IDS_SAVED_TAB_GROUP_TABS_COUNT);
+  plural_string_handler->AddLocalizedString("sharingTabs",
+                                            IDS_COMPOSE_SHARING_TABS);
   web_ui->AddMessageHandler(std::move(plural_string_handler));
 
   content::URLDataSource::Add(profile_,

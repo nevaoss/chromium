@@ -59,6 +59,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
+#include "chrome/browser/sync/device_info_sync_service_factory.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
@@ -71,6 +72,7 @@
 #include "components/optimization_guide/proto/features/actions_data.pb.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/prefs/pref_service.h"
+#include "components/sync_device_info/device_info_sync_service.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/browser_thread.h"
@@ -208,6 +210,12 @@ GlicKeyedService::GlicKeyedService(
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&GlicKeyedService::InitializeAfterConstruction,
                                 GetWeakPtr()));
+
+  experimental_triggering_state_subscription_ =
+      enabling_->RegisterOnExperimentalTriggeringStateChanged(
+          base::BindRepeating(
+              &GlicKeyedService::OnExperimentalTriggeringStateChanged,
+              base::Unretained(this)));
 }
 
 void GlicKeyedService::InitializeAfterConstruction() {
@@ -369,15 +377,6 @@ GlicSharingManager& GlicKeyedService::active_instance_sharing_manager() {
   return *sharing_manager_.get();
 }
 
-bool GlicKeyedService::IsWindowShowing() const {
-  for (const auto* instance : instance_coordinator().GetInstances()) {
-    if (instance && instance->IsShowing()) {
-      return true;
-    }
-  }
-  return false;
-}
-
 bool GlicKeyedService::IsPanelShowingForBrowser(
     const BrowserWindowInterface& bwi) const {
   return instance_coordinator().IsPanelShowingForBrowser(bwi);
@@ -385,10 +384,6 @@ bool GlicKeyedService::IsPanelShowingForBrowser(
 
 bool GlicKeyedService::IsWindowDetached() const {
   return instance_coordinator().IsDetached();
-}
-
-bool GlicKeyedService::IsWindowOrFreShowing() const {
-  return IsWindowShowing();
 }
 
 base::CallbackListSubscription
@@ -487,8 +482,6 @@ base::CallbackListSubscription GlicKeyedService::AddUserInputSubmittedCallback(
   return user_input_submitted_callback_list_.Add(std::move(callback));
 }
 
-
-
 void GlicKeyedService::ShareContextImage(tabs::TabInterface* tab,
                                          content::RenderFrameHost* frame,
                                          const ::GURL& src_url) {
@@ -578,20 +571,6 @@ GlicInstance* GlicKeyedService::GetInstanceForActiveTab(
   return instance_coordinator().GetInstanceForTab(tab_list->GetActiveTab());
 }
 
-void GlicKeyedService::SendAdditionalContext(
-    tabs::TabHandle tab_handle,
-    mojom::AdditionalContextPtr context) {
-  auto* tab = tab_handle.Get();
-  if (!tab) {
-    return;
-  }
-  auto* instance = instance_coordinator().GetInstanceForTab(tab);
-  if (!instance) {
-    return;
-  }
-  instance->host().NotifyAdditionalContext(std::move(context));
-}
-
 void GlicKeyedService::Close(
     content::RenderFrameHost* outermost_render_frame_host) {
   instance_coordinator().CloseInstanceWithFrame(outermost_render_frame_host);
@@ -610,6 +589,14 @@ GlicKeyedService::AddActOnWebCapabilityChangedCallback(
 
 GlicActorPolicyChecker& GlicKeyedService::actor_policy_checker() {
   return *actor_policy_checker_;
+}
+
+void GlicKeyedService::OnExperimentalTriggeringStateChanged() {
+  syncer::DeviceInfoSyncService* device_info_sync_service =
+      DeviceInfoSyncServiceFactory::GetForProfile(profile_);
+  if (device_info_sync_service) {
+    device_info_sync_service->RefreshLocalDeviceInfo();
+  }
 }
 
 }  // namespace glic

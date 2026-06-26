@@ -119,8 +119,8 @@ source_set("sync_integration_tests_impl") {
       "single_client_web_apks_sync_test.cc",
     ]
 
-    # Defined here so it's shared between android_sync_integration_tests (upstream)
-    # and android_live_sync_integration_tests (downstream).
+    # Defined here so it's shared between android_sync_integration_tests
+    # (upstream) and android_live_sync_integration_tests (downstream).
     deps += [
       "//chrome:chrome_android_core",
       "//chrome/browser/android/webapk:webapk_sources",

@@ -92,6 +92,13 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kBrokerFileOperationsOnDiskCacheInNetworkService);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kBypassRedirectChecksPerRequest);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kCacheControlNoStoreEnterBackForwardCache);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kChildProcessSecurityPolicyRust);
+inline constexpr const char kChildProcessSecurityPolicyRustPolicyName[] =
+    "policy";
+inline constexpr const char kChildProcessSecurityPolicyRustPolicyRustOnly[] =
+    "rust-only";
+inline constexpr const char kChildProcessSecurityPolicyRustPolicyRustAndCpp[] =
+    "rust-and-cpp";
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kClearCrossSiteCrossBrowsingContextGroupWindowName);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kCompositeBGColorAnimation);
@@ -287,6 +294,7 @@ CONTENT_EXPORT extern const base::FeatureParam<base::TimeDelta>
     kSiteIsolationForCrossOriginOpenerPolicyExpirationTimeoutParam;
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kDisableProcessReuse);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerAutoPreload);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kServiceWorkerInterceptDownloads);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kOptimizeWebRequestProxyForServiceWorkerAutoPreload);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
@@ -383,7 +391,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kGinJavaBridgeMojoSkipClearObjectsOnMainDocumentReady);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kReduceGpuPriorityOnBackground);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kSmartZoom);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kSubframeImportance);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kUserMediaScreenCapturing);
 #endif  // BUILDFLAG(IS_ANDROID)
 

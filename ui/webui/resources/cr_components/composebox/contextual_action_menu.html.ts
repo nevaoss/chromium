@@ -34,21 +34,25 @@ export function getHtml(this: ContextualActionMenuElement) {
               aria-popup="menu"
               aria-expanded="${this.shareTabsFlyoutOpen_}"
               @pointerenter="${this.onShareTabsRowPointerenter_}"
-              @pointerleave="${this.onShareTabsRowPointerleave_}">
+              @pointerleave="${this.onShareTabsRowPointerleave_}"
+              @keydown="${this.onShareTabsRowKeydown_}">
             <cr-icon icon="composebox:shareTabs"></cr-icon>
-            <span class="tab-title">${this.i18n('shareTabs')}</span>
-            <cr-icon class="share-tabs-arrow" icon="cr:chevron_right"></cr-icon>
+            <span class="tab-title">
+              ${this.sharingTabsText_}
+            </span>
+            <cr-icon class="share-tabs-arrow" icon="cr:chevron-right"></cr-icon>
           </button>
           <div class="share-tabs-flyout" role="menu"
               ?hidden="${!this.shareTabsFlyoutOpen_}"
               @pointerenter="${this.onShareTabsFlyoutPointerenter_}"
-              @pointerleave="${this.onShareTabsFlyoutPointerleave_}">
+              @pointerleave="${this.onShareTabsFlyoutPointerleave_}"
+              @keydown="${this.onShareTabsFlyoutKeydown_}">
             ${this.tabSuggestions.map((tab, index) => html`
               <div class="suggestion-container">
                 <button class="dropdown-item"
-                    role="${this.isMultiTabSelectionEnabledForShareTabsMode_() ?
+                    role="${this.enableMultiTabSelection_ ?
                         'menuitemcheckbox' : 'menuitem'}"
-                    aria-checked="${this.isMultiTabSelectionEnabledForShareTabsMode_() &&
+                    aria-checked="${this.enableMultiTabSelection_ &&
                         this.disabledTabIds.has(tab.tabId)}"
                     title="${tab.title}" data-index="${index}"
                     aria-label="${this.getInputTypeLabel_(InputType.kBrowserTab)}: ${
@@ -64,7 +68,7 @@ export function getHtml(this: ContextualActionMenuElement) {
                         this.i18n('recentTabsSuffix')}</span>
                   ` : ''}
                 </span>
-                ${this.isMultiTabSelectionEnabledForShareTabsMode_() &&
+                ${this.enableMultiTabSelection_ &&
                     this.disabledTabIds.has(tab.tabId) ? html`
                   <cr-icon class="share-tabs-check" icon="cr:check"></cr-icon>
                 ` : ''}

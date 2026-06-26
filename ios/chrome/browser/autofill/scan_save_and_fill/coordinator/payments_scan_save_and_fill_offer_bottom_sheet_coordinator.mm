@@ -5,6 +5,9 @@
 #import "ios/chrome/browser/autofill/scan_save_and_fill/coordinator/payments_scan_save_and_fill_offer_bottom_sheet_coordinator.h"
 
 #import "base/check.h"
+#import "components/autofill/core/browser/form_import/form_data_importer.h"
+#import "components/autofill/core/browser/form_import/payments/payments_form_data_importer.h"
+#import "components/autofill/ios/browser/autofill_client_ios.h"
 #import "ios/chrome/browser/autofill/model/form_suggestion_tab_helper.h"
 #import "ios/chrome/browser/autofill/scan_save_and_fill/coordinator/payments_scan_save_and_fill_offer_bottom_sheet_mediator.h"
 #import "ios/chrome/browser/autofill/scan_save_and_fill/ui/payments_scan_save_and_fill_offer_bottom_sheet_consumer.h"
@@ -37,6 +40,9 @@
   std::optional<WebStateListObserverBridge> _webStateListObserverBridge;
   std::optional<base::ScopedObservation<WebStateList, WebStateListObserver>>
       _observation;
+
+  // Whether the exit reason has been logged.
+  BOOL _exitReasonLogged;
 }
 
 - (instancetype)initWithBaseViewController:(UIViewController*)baseViewController
@@ -61,11 +67,12 @@
       [[PaymentsScanSaveAndFillOfferBottomSheetViewController alloc] init];
   _viewController.delegate = self;
   if (_params.has_value()) {
-    _mediator = [[PaymentsScanSaveAndFillOfferBottomSheetMediator alloc]
-        initWithParams:std::move(*_params)];
-
     web::WebState* webState =
         self.browser->GetWebStateList()->GetActiveWebState();
+    _mediator = [[PaymentsScanSaveAndFillOfferBottomSheetMediator alloc]
+        initWithParams:std::move(*_params)
+              webState:webState];
+
     FormSuggestionTabHelper* tabHelper =
         FormSuggestionTabHelper::FromWebState(webState);
     if (tabHelper) {
@@ -95,6 +102,8 @@
   // Dismiss right away if the presentation failed to avoid having a zombie
   // coordinator.
   if (!_viewController.presentingViewController) {
+    [self logExitReasonIfNeeded:ScanCardSuggestionBottomSheetExitReason::
+                                    kCouldNotPresent];
     id<BrowserCoordinatorCommands> handler = HandlerForProtocol(
         self.browser->GetCommandDispatcher(), BrowserCoordinatorCommands);
     [handler dismissPaymentSuggestions];
@@ -129,7 +138,12 @@
 
 #pragma mark - PaymentsScanSaveAndFillOfferBottomSheetDelegate
 
+- (void)paymentsBottomSheetViewDidAppear {
+  [_mediator scanCardBottomSheetViewDidAppear];
+}
+
 - (void)paymentsBottomSheetDidDisappear {
+  [self logExitReasonIfNeeded:ScanCardSuggestionBottomSheetExitReason::kIgnore];
   [_mediator disconnect];
   id<BrowserCoordinatorCommands> handler = HandlerForProtocol(
       self.browser->GetCommandDispatcher(), BrowserCoordinatorCommands);
@@ -137,6 +151,8 @@
 }
 
 - (void)didTapScanCardButton {
+  [self logExitReasonIfNeeded:ScanCardSuggestionBottomSheetExitReason::
+                                  kAcceptSuggestion];
   // Disable user interactions on the root view of the view controller so any
   // further user action isn't allowed. Only one action is allowed on the sheet.
   _viewController.view.userInteractionEnabled = NO;
@@ -154,7 +170,10 @@
 }
 
 - (void)didTapOnCancelButton {
+  [self logExitReasonIfNeeded:ScanCardSuggestionBottomSheetExitReason::
+                                  kRejectSuggestion];
   _viewController.delegate = nil;
+  [_mediator didCancelScanCardSuggestion];
   [_mediator disconnect];
 
   id<BrowserCoordinatorCommands> handler = HandlerForProtocol(
@@ -164,6 +183,17 @@
                                       completion:^{
                                         [weakHandler dismissPaymentSuggestions];
                                       }];
+}
+
+#pragma mark - Private
+
+// Logs the exit reason for the bottom sheet if it hasn't been logged already.
+- (void)logExitReasonIfNeeded:
+    (ScanCardSuggestionBottomSheetExitReason)exitReason {
+  if (!_exitReasonLogged) {
+    [_mediator logExitReason:exitReason];
+    _exitReasonLogged = YES;
+  }
 }
 
 @end

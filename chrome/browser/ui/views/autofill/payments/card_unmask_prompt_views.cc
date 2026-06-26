@@ -140,7 +140,7 @@ void CardUnmaskPromptViews::GotVerificationResult(
       // Create and add the error icon.
       overlay_->AddChildView(
           std::make_unique<views::ImageView>(ui::ImageModel::FromVectorIcon(
-              kBrowserToolsErrorIcon, ui::kColorAlertHighSeverity)));
+              kBrowserToolsErrorOldIcon, ui::kColorAlertHighSeverity)));
 
       // Create and add the label of the overlay, and show the error in gray.
       auto* error_label = overlay_->AddChildView(std::make_unique<views::Label>(
@@ -388,8 +388,8 @@ void CardUnmaskPromptViews::InitIfNecessary() {
   temporary_error->SetVisible(false);
   temporary_error->AddChildView(
       std::make_unique<views::ImageView>(ui::ImageModel::FromVectorIcon(
-          vector_icons::kErrorIcon, ui::kColorAlertHighSeverity,
-          gfx::GetDefaultSizeOfVectorIcon(vector_icons::kErrorIcon))));
+          vector_icons::kErrorOldIcon, ui::kColorAlertHighSeverity,
+          gfx::GetDefaultSizeOfVectorIcon(vector_icons::kErrorOldIcon))));
 
   auto error_label = std::make_unique<views::Label>(
       std::u16string(), ChromeTextContext::CONTEXT_DIALOG_BODY_TEXT_SMALL,

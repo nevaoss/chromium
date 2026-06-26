@@ -23,6 +23,7 @@
 #include "chrome/browser/file_system_access/chrome_file_system_access_permission_context.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
 #include "chrome/browser/glic/glic_pref_names.h"
+#include "chrome/browser/glic/glic_settings_util.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
@@ -927,9 +928,10 @@ void AddGlicStrings(content::WebUIDataSource* html_source, Profile* profile) {
 
   auto add_localized_url = [&](std::string_view name,
                                std::string_view url_string) {
-    html_source->AddString(name, google_util::AppendGoogleLocaleParam(
-                                     GURL(url_string), application_locale)
-                                     .spec());
+    html_source->AddString(
+        name, google_util::AppendGoogleLocaleParam(
+                  glic::GetHelpCenterUrl(url_string), application_locale)
+                  .spec());
   };
 
   add_localized_url("glicKeyboardShortcutLearnMoreUrl",
@@ -1133,6 +1135,19 @@ void AddPerformanceStrings(content::WebUIDataSource* html_source) {
        IDS_SETTINGS_PERFORMANCE_TAB_HOVER_PREVIEW_CARD_LINK_SUBTITLE},
       {"performanceInterventionEnabledLabel",
        IDS_SETTINGS_PERFORMANCE_INTERVENTION_NOTIFICATION_ENABLED_LABEL},
+      {"cpuPerformanceOverrideTitle",
+       IDS_SETTINGS_CPU_PERFORMANCE_OVERRIDE_TITLE},
+      {"cpuPerformanceOverrideDescription",
+       IDS_SETTINGS_CPU_PERFORMANCE_OVERRIDE_DESCRIPTION},
+      {"cpuPerformanceNominalTier", IDS_SETTINGS_CPU_PERFORMANCE_NOMINAL_TIER},
+      {"cpuPerformanceModel", IDS_SETTINGS_CPU_PERFORMANCE_MODEL},
+      {"cpuPerformanceCores", IDS_SETTINGS_CPU_PERFORMANCE_CORES},
+      {"cpuPerformanceTierDefault", IDS_SETTINGS_CPU_PERFORMANCE_TIER_DEFAULT},
+      {"cpuPerformanceTierUnknown", IDS_SETTINGS_CPU_PERFORMANCE_TIER_UNKNOWN},
+      {"cpuPerformanceTierLow", IDS_SETTINGS_CPU_PERFORMANCE_TIER_LOW},
+      {"cpuPerformanceTierMid", IDS_SETTINGS_CPU_PERFORMANCE_TIER_MID},
+      {"cpuPerformanceTierHigh", IDS_SETTINGS_CPU_PERFORMANCE_TIER_HIGH},
+      {"cpuPerformanceTierUltra", IDS_SETTINGS_CPU_PERFORMANCE_TIER_ULTRA},
   };
   html_source->AddLocalizedStrings(kLocalizedStrings);
 
@@ -1235,6 +1250,10 @@ void AddPerformanceStrings(content::WebUIDataSource* html_source) {
                              chromeos::settings::mojom::kPowerSubpagePath)
                              .spec());
 #endif
+
+  html_source->AddBoolean(
+      "cpuPerformanceEnabled",
+      base::FeatureList::IsEnabled(blink::features::kCpuPerformance));
 }
 
 void AddLanguagesStrings(content::WebUIDataSource* html_source,
@@ -2113,6 +2132,7 @@ void AddPeopleStrings(content::WebUIDataSource* html_source, Profile* profile) {
        IDS_SETTINGS_SYNC_SYNC_AND_NON_PERSONALIZED_SERVICES},
       {"syncUnavailableForNonGoogleAccount",
        IDS_SYNC_UNAVAILABLE_FOR_NON_GOOGLE_ACCOUNT},
+      {"googleServicesPageTitle", IDS_SETTINGS_GOOGLE_SERVICES_PAGE_TITLE},
 #if BUILDFLAG(IS_CHROMEOS)
       {"accountManagerSubMenuLabel",
        IDS_SETTINGS_ACCOUNT_MANAGER_SUBMENU_LABEL},
@@ -2122,7 +2142,6 @@ void AddPeopleStrings(content::WebUIDataSource* html_source, Profile* profile) {
       {"accountDataTypesHeading", IDS_SETTINGS_ACCOUNT_DATATYPES_HEADING},
       {"accountDataTypesBody", IDS_SETTINGS_ACCOUNT_BODY},
       {"syncDisabledUserInformation", IDS_SETTINGS_ACCOUNT_SYNC_DISABLED},
-      {"googleServicesPageTitle", IDS_SETTINGS_GOOGLE_SERVICES_PAGE_TITLE},
 #endif
 
   // Manage profile strings:

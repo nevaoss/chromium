@@ -21,6 +21,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -103,6 +104,7 @@ import org.chromium.components.omnibox.ToolConfigProto.ToolConfig;
 import org.chromium.components.omnibox.ToolModeProto.ToolMode;
 import org.chromium.content_public.browser.RenderWidgetHostView;
 import org.chromium.content_public.browser.WebContents;
+import org.chromium.ui.KeyboardVisibilityDelegate;
 import org.chromium.ui.base.Clipboard;
 import org.chromium.ui.base.MimeTypeUtils;
 import org.chromium.ui.base.TestActivity;
@@ -140,6 +142,7 @@ public class FuseboxMediatorUnitTest {
     @Mock private SnackbarManager mSnackbarManager;
     @Mock private Tracker mTracker;
     @Mock private ScrimManager mScrimManager;
+    @Mock private KeyboardVisibilityDelegate mKeyboardVisibilityDelegate;
 
     @Captor private ArgumentCaptor<Intent> mIntentCaptor;
 
@@ -176,6 +179,7 @@ public class FuseboxMediatorUnitTest {
 
         ProfileResolverJni.setInstanceForTesting(mProfileResolverNatives);
         TrackerFactory.setTrackerForTests(mTracker);
+        lenient().doReturn(mKeyboardVisibilityDelegate).when(mWindowAndroid).getKeyboardDelegate();
 
         mContext =
                 new ContextThemeWrapper(
@@ -523,25 +527,50 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
-    public void onPlusButtonClicked_recordsMetrics() {
-        var histogramWatcher =
-                HistogramWatcher.newSingleRecordWatcher(
-                        "Omnibox.MobileFusebox.AttachmentsPopupToggled", true);
-        mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED).run();
-        assertEquals(PopupState.FLOATING, (int) mModel.get(FuseboxProperties.POPUP_STATE));
-        histogramWatcher.assertExpected();
+    public void onAddButtonClicked_bottomSheet_hidesKeyboard() {
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
+        recreateMediator();
+        Runnable runnable = mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED);
+        assertNotNull(runnable);
 
-        var dismissWatcher =
-                HistogramWatcher.newSingleRecordWatcher(
-                        "Omnibox.MobileFusebox.AttachmentsPopupToggled", false);
+        // Show popup.
+        runnable.run();
+        verify(mKeyboardVisibilityDelegate).hideKeyboard(mViewHolder.parentView);
+    }
+
+    @Test
+    public void onHidePopup_bottomSheet_showsKeyboardIfFocused() {
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
+        ConstraintLayout spyParent = spy(mViewHolder.parentView);
+        doReturn(mViewHolder.addButton).when(spyParent).findFocus();
+        mViewHolder = new FuseboxViewHolder(spyParent, mPopup);
+        recreateMediator();
+
+        // Show popup first
         mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED).run();
-        assertEquals(PopupState.HIDDEN, (int) mModel.get(FuseboxProperties.POPUP_STATE));
-        dismissWatcher.assertExpected();
+
+        // Hide popup
+        mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED).run();
+
+        verify(mKeyboardVisibilityDelegate).showKeyboard(any());
+    }
+
+    @Test
+    public void onAddButtonClicked_floatingPopup_doesNotHideKeyboard() {
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(false);
+        recreateMediator();
+        Runnable runnable = mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED);
+        assertNotNull(runnable);
+
+        // Show popup.
+        runnable.run();
+        verify(mKeyboardVisibilityDelegate, never()).hideKeyboard(any());
     }
 
     @Test
     public void testPopupShowHide_triggersScrim() {
-        OmniboxFeatures.sShowBottomSheetPopup.setForTesting(true);
+        OmniboxFeatures.setIsDesktopPlatformForTesting(false);
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
         recreateMediator();
         Runnable runnable = mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED);
         assertNotNull(runnable);
@@ -557,7 +586,7 @@ public class FuseboxMediatorUnitTest {
 
     @Test
     public void testPopupShowHide_floatingMode_doesNotTriggerScrim() {
-        OmniboxFeatures.sShowBottomSheetPopup.setForTesting(false);
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(false);
         recreateMediator();
         Runnable runnable = mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED);
         assertNotNull(runnable);
@@ -565,6 +594,19 @@ public class FuseboxMediatorUnitTest {
         // Show popup.
         runnable.run();
         verify(mScrimManager, never()).showScrim(any());
+    }
+
+    @Test
+    public void testPopupShowHide_desktopPlatform_usesFloatingMode() {
+        OmniboxFeatures.setIsDesktopPlatformForTesting(true);
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
+        recreateMediator();
+        Runnable runnable = mModel.get(FuseboxProperties.BUTTON_ADD_CLICKED);
+        assertNotNull(runnable);
+
+        // Show popup.
+        runnable.run();
+        assertEquals(PopupState.FLOATING, (int) mModel.get(FuseboxProperties.POPUP_STATE));
     }
 
     @Test
@@ -694,38 +736,6 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
-    public void testAddAttachment_replacesDuringCreateImage() {
-        addAttachment("title1", "token1", FuseboxAttachmentType.ATTACHMENT_IMAGE);
-        assertEquals(1, mAttachments.size());
-
-        clickToolButton(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE);
-
-        addAttachment("title2", "token2", FuseboxAttachmentType.ATTACHMENT_IMAGE);
-        assertEquals(1, mAttachments.size());
-        assertEquals("token2", mAttachments.get(0).getToken());
-    }
-
-    @Test
-    public void testAddAttachment_replacesDuringCreateImage_imageNoThumbnail() {
-        addAttachment("title1", "token1", FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL);
-        assertEquals(1, mAttachments.size());
-
-        clickToolButton(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE);
-
-        addAttachment("title2", "token2", FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL);
-        assertEquals(1, mAttachments.size());
-        assertEquals("token2", mAttachments.get(0).getToken());
-
-        addAttachment("title3", "token3", FuseboxAttachmentType.ATTACHMENT_IMAGE);
-        assertEquals(1, mAttachments.size());
-        assertEquals("token3", mAttachments.get(0).getToken());
-
-        addAttachment("title4", "token4", FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL);
-        assertEquals(1, mAttachments.size());
-        assertEquals("token4", mAttachments.get(0).getToken());
-    }
-
-    @Test
     public void dedicatedButton_clearsAttachmentsAndAbandonsSession() {
         addAttachment("title", "token1", FuseboxAttachmentType.ATTACHMENT_TAB);
         assertEquals(
@@ -824,7 +834,7 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
-    public void testIsIncognito() {
+    public void testUpdateVisualsForState_colorScheme() {
         mMediator.updateVisualsForState(BrandedColorScheme.APP_DEFAULT);
         assertEquals(
                 BrandedColorScheme.APP_DEFAULT,
@@ -833,6 +843,16 @@ public class FuseboxMediatorUnitTest {
         mMediator.updateVisualsForState(BrandedColorScheme.INCOGNITO);
         assertEquals(
                 BrandedColorScheme.INCOGNITO,
+                mModel.get(FuseboxProperties.COLOR_SCHEME).intValue());
+
+        mMediator.updateVisualsForState(BrandedColorScheme.LIGHT_BRANDED_THEME);
+        assertEquals(
+                BrandedColorScheme.APP_DEFAULT,
+                mModel.get(FuseboxProperties.COLOR_SCHEME).intValue());
+
+        mMediator.updateVisualsForState(BrandedColorScheme.DARK_BRANDED_THEME);
+        assertEquals(
+                BrandedColorScheme.APP_DEFAULT,
                 mModel.get(FuseboxProperties.COLOR_SCHEME).intValue());
     }
 
@@ -902,7 +922,7 @@ public class FuseboxMediatorUnitTest {
         mModel.get(FuseboxProperties.POPUP_ATTACH_GALLERY_CLICKED).run();
         verify(mWindowAndroid).showCancelableIntent(mIntentCaptor.capture(), any(), any());
         Intent intent = mIntentCaptor.getValue();
-        assertFalse(intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, /* defaultValue= */ true));
+        assertTrue(intent.getBooleanExtra(Intent.EXTRA_ALLOW_MULTIPLE, /* defaultValue= */ false));
     }
 
     @Test
@@ -913,7 +933,8 @@ public class FuseboxMediatorUnitTest {
         verify(mWindowAndroid).showCancelableIntent(mIntentCaptor.capture(), any(), any());
         Intent intent = mIntentCaptor.getValue();
         assertEquals(
-                1, intent.getIntExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, /* defaultValue= */ -1));
+                FuseboxAttachmentModelList.getMaxAttachments(),
+                intent.getIntExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, /* defaultValue= */ -1));
     }
 
     @Test
@@ -1135,7 +1156,8 @@ public class FuseboxMediatorUnitTest {
     @Test
     public void testModelPickerVisibility_hidesInBottomSheet() {
         OmniboxFeatures.sShowModelPicker.setForTesting(true);
-        OmniboxFeatures.sShowBottomSheetPopup.setForTesting(true);
+        OmniboxFeatures.setIsDesktopPlatformForTesting(false);
+        OmniboxFeatures.setShowBottomSheetPopupForTesting(true);
         recreateMediator();
 
         ModelConfig config1 =
@@ -1384,13 +1406,16 @@ public class FuseboxMediatorUnitTest {
 
         addAttachment("title", "token3", FuseboxAttachmentType.ATTACHMENT_IMAGE);
         assertEquals(2, mAttachments.size());
-        assertFalse(isToolEnabled(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE));
-
-        mAttachments.remove(mAttachments.get(0), /* isFailure= */ false);
-        assertEquals(1, mAttachments.size());
         assertTrue(isToolEnabled(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE));
 
-        mAttachments.remove(mAttachments.get(0), /* isFailure= */ false);
+        var tabAttachment =
+                addAttachment("title-tab", "token-tab", FuseboxAttachmentType.ATTACHMENT_TAB);
+        assertFalse(isToolEnabled(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE));
+
+        mAttachments.remove(tabAttachment, /* isFailure= */ false);
+        assertTrue(isToolEnabled(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE));
+
+        mAttachments.clear();
         assertTrue(isToolEnabled(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE));
 
         addAttachment("title", "token4", FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL);
@@ -1399,7 +1424,7 @@ public class FuseboxMediatorUnitTest {
 
         addAttachment("title", "token5", FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL);
         assertEquals(2, mAttachments.size());
-        assertFalse(isToolEnabled(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE));
+        assertTrue(isToolEnabled(ToolMode.TOOL_MODE_IMAGE_GEN_VALUE));
     }
 
     @Test
@@ -1518,34 +1543,6 @@ public class FuseboxMediatorUnitTest {
     }
 
     @Test
-    public void testMaxAttachments() {
-        for (int i = 0; i < FuseboxAttachmentModelList.getMaxAttachments(); i++) {
-            addAttachment("title", "token" + i, FuseboxAttachmentType.ATTACHMENT_FILE);
-        }
-
-        assertEquals(FuseboxAttachmentModelList.getMaxAttachments(), mAttachments.size());
-
-        mockTab(101, /* webContentsReady= */ true);
-        mockTab(102, /* webContentsReady= */ false);
-        mockTab(103, /* webContentsReady= */ true);
-        mockTab(104, /* webContentsReady= */ false);
-        Set<Integer> newlySelectedIds = new HashSet<>();
-        newlySelectedIds.add(102);
-        newlySelectedIds.add(103);
-        newlySelectedIds.add(104);
-        mMediator.updateCurrentlyAttachedTabs(newlySelectedIds);
-        assertEquals(FuseboxAttachmentModelList.getMaxAttachments(), mAttachments.size());
-
-        mModel.get(FuseboxProperties.POPUP_ATTACH_TAB_PICKER_CLICKED).run();
-        mModel.get(FuseboxProperties.POPUP_ATTACH_CLIPBOARD_CLICKED).run();
-        mModel.get(FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED).run();
-        mModel.get(FuseboxProperties.POPUP_ATTACH_GALLERY_CLICKED).run();
-        mModel.get(FuseboxProperties.POPUP_ATTACH_FILE_CLICKED).run();
-
-        verify(mWindowAndroid, never()).showCancelableIntent(any(Intent.class), any(), any());
-    }
-
-    @Test
     public void testOnTabPickerResult_modelListNotEmpty_activatesAiMode() {
         mockTab(101, /* webContentsReady= */ true);
         mockTab(102, /* webContentsReady= */ false);
@@ -1580,83 +1577,6 @@ public class FuseboxMediatorUnitTest {
     public void testFailedUpload() {
         mMediator.onAttachmentUploadFailed();
         verify(mSnackbarManager).showSnackbar(any());
-    }
-
-    @Test
-    public void testIsMaxAttachmentCountReached_imageInImageGeneration() {
-        mInput.setRequestType(AutocompleteRequestType.IMAGE_GENERATION);
-        assertFalse(mMediator.isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_IMAGE));
-        verify(mSnackbarManager, never()).showSnackbar(any());
-
-        addAttachment("title", "token", FuseboxAttachmentType.ATTACHMENT_IMAGE);
-        assertFalse(mMediator.isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_IMAGE));
-        verify(mSnackbarManager, never()).showSnackbar(any());
-    }
-
-    @Test
-    public void testIsMaxAttachmentCountReached_imageNoThumbnailInImageGeneration() {
-        mInput.setRequestType(AutocompleteRequestType.IMAGE_GENERATION);
-        assertFalse(
-                mMediator.isMaxAttachmentCountReached(
-                        FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL));
-        verify(mSnackbarManager, never()).showSnackbar(any());
-
-        addAttachment("title", "token", FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL);
-        assertFalse(
-                mMediator.isMaxAttachmentCountReached(
-                        FuseboxAttachmentType.ATTACHMENT_IMAGE_NO_THUMBNAIL));
-        verify(mSnackbarManager, never()).showSnackbar(any());
-    }
-
-    @Test
-    public void testIsMaxAttachmentCountReached_nonImageInImageGeneration() {
-        mInput.setRequestType(AutocompleteRequestType.IMAGE_GENERATION);
-
-        assertTrue(mMediator.isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_TAB));
-
-        clearInvocations(mSnackbarManager);
-
-        assertTrue(mMediator.isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_TAB));
-    }
-
-    @Test
-    public void testIsMaxAttachmentCountReached_tabReselection() {
-        assertFalse(mMediator.isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_TAB));
-        verify(mSnackbarManager, never()).showSnackbar(any());
-    }
-
-    @Test
-    public void testIsMaxAttachmentCountReached_listFull_noTabs() {
-        while (mAttachments.getRemainingAttachments() > 0) {
-            addAttachment("title1", "token1", FuseboxAttachmentType.ATTACHMENT_FILE);
-        }
-
-        assertTrue(mMediator.isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_TAB));
-    }
-
-    @Test
-    public void testIsMaxAttachmentCountReached_listFull_withTabs() {
-        while (mAttachments.getRemainingAttachments() > 1) {
-            addAttachment("title1", "token1", FuseboxAttachmentType.ATTACHMENT_FILE);
-        }
-        addAttachment("title2", "token2", FuseboxAttachmentType.ATTACHMENT_TAB);
-
-        assertFalse(mMediator.isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_TAB));
-        verify(mSnackbarManager, never()).showSnackbar(any());
-    }
-
-    @Test
-    public void testIsMaxAttachmentCountReached_remainingAttachments() {
-        assertFalse(mMediator.isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_FILE));
-        verify(mSnackbarManager, never()).showSnackbar(any());
-    }
-
-    @Test
-    public void testIsMaxAttachmentCountReached_maxAttachmentsReached() {
-        for (int i = 0; i < FuseboxAttachmentModelList.getMaxAttachments(); i++) {
-            addAttachment("title" + i, "token" + i, FuseboxAttachmentType.ATTACHMENT_FILE);
-        }
-        assertTrue(mMediator.isMaxAttachmentCountReached(FuseboxAttachmentType.ATTACHMENT_FILE));
     }
 
     @Test
@@ -2124,5 +2044,18 @@ public class FuseboxMediatorUnitTest {
         assertEquals(1, mAttachments.get(0).getTabId());
         assertTrue(mAttachments.get(0).isSuggestedTab);
         histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void testUpdateClientControlledToolButtonList_setsCorrectIcons() {
+        OmniboxFeatures.sShowModelPicker.setForTesting(false);
+        recreateMediator();
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        List<PopupButtonData> toolButtons =
+                mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST);
+        assertThat(toolButtons).hasSize(2);
+        assertEquals(IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE_VALUE, toolButtons.get(0).iconId);
+        assertEquals(IconResourceIds.BANANA_VALUE, toolButtons.get(1).iconId);
     }
 }

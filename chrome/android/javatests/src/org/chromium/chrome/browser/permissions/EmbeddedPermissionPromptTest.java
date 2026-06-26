@@ -66,7 +66,7 @@ import java.util.concurrent.TimeUnit;
 @Features.EnableFeatures(PermissionsAndroidFeatureList.BYPASS_PEPC_SECURITY_FOR_TESTING)
 @Batch(Batch.PER_CLASS)
 @Restriction({DeviceRestriction.RESTRICTION_TYPE_NON_AUTO}) // crbug.com/394097674
-@DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/444482498
+@DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/511288462
 public class EmbeddedPermissionPromptTest {
     public enum EmbeddedPermissiontResponse {
         NEGATIVE,
@@ -185,7 +185,7 @@ public class EmbeddedPermissionPromptTest {
                 expectedPositiveButtonText,
                 expectedPositiveEphemeralButtonText,
                 expectedNegativeButtonText,
-                /*expectedPermission*/ "",
+                /* expectedPermission= */ "",
                 "promptdismiss");
     }
 
@@ -363,7 +363,7 @@ public class EmbeddedPermissionPromptTest {
                 response,
                 "You previously didn't allow location for this site",
                 "Continue not allowing",
-                /* expectedPositiveEphemeralButtonText */ "",
+                /* expectedPositiveEphemeralButtonText= */ "",
                 "Allow this time",
                 expectedPermission,
                 expectedTitle);
@@ -395,7 +395,7 @@ public class EmbeddedPermissionPromptTest {
                 response,
                 "You have allowed location on " + LOOPBACK_ADDRESS,
                 "Continue allowing",
-                /* expectedPositiveEphemeralButtonText */ "",
+                /* expectedPositiveEphemeralButtonText= */ "",
                 "Stop allowing",
                 expectedPermission,
                 expectedTitle);
@@ -465,7 +465,7 @@ public class EmbeddedPermissionPromptTest {
                 ContentSetting.BLOCK,
                 "You previously didn't allow location for this site",
                 "Continue not allowing",
-                /* expectedPositiveEphemeralButtonText */ "",
+                /* expectedPositiveEphemeralButtonText= */ "",
                 "Allow this time");
     }
 
@@ -490,7 +490,7 @@ public class EmbeddedPermissionPromptTest {
                 ContentSetting.ALLOW,
                 "You have allowed location on " + LOOPBACK_ADDRESS,
                 "Continue allowing",
-                /* expectedPositiveEphemeralButtonText */ "",
+                /* expectedPositiveEphemeralButtonText= */ "",
                 "Stop allowing");
     }
 
@@ -519,7 +519,7 @@ public class EmbeddedPermissionPromptTest {
                 ContentSetting.BLOCK,
                 "To use your location on this site, give " + productName + " access",
                 "Android settings",
-                /* expectedPositiveEphemeralButtonText */ "",
+                /* expectedPositiveEphemeralButtonText= */ "",
                 "Cancel");
     }
 
@@ -542,7 +542,7 @@ public class EmbeddedPermissionPromptTest {
                 ContentSetting.ALLOW,
                 "To use your location on this site, give " + productName + " access",
                 "Android settings",
-                /* expectedPositiveEphemeralButtonText */ "",
+                /* expectedPositiveEphemeralButtonText= */ "",
                 "Cancel");
     }
 

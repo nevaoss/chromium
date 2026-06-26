@@ -33,8 +33,8 @@ void TestPasswordStore::CallSyncEnabledOrDisabledCallbacks() {
 }
 
 void TestPasswordStore::TriggerOnLoginsRetainedForAndroid(
-    const std::vector<PasswordForm>& password_forms) {
-  fake_backend()->TriggerOnLoginsRetainedForAndroid(password_forms);
+    const std::vector<StoredCredential>& credentials) {
+  fake_backend()->TriggerOnLoginsRetainedForAndroid(credentials);
 }
 
 void TestPasswordStore::ReturnErrorOnRequest(
@@ -44,6 +44,11 @@ void TestPasswordStore::ReturnErrorOnRequest(
 
 void TestPasswordStore::SetError(ActionableError error) {
   fake_backend()->SetError(error);
+}
+
+void TestPasswordStore::SetAffiliatedMatchHelper(
+    AffiliatedMatchHelper* helper) {
+  fake_backend()->SetAffiliatedMatchHelper(helper);
 }
 
 void TestPasswordStore::NotifyAboutError() {

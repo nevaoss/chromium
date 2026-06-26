@@ -120,7 +120,6 @@ import org.chromium.ui.modaldialog.ModalDialogProperties;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.test.util.MockitoHelper;
 
-import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -937,7 +936,7 @@ public class AutofillProfilesFragmentTest {
 
         assertNotNull(
                 autofillProfileFragment.findPreference(
-                        AutofillProfilesFragment.DISABLED_SETTINGS_INFO));
+                        AutofillAiDelegate.DISABLED_SETTINGS_INFO));
     }
 
     @Test
@@ -957,7 +956,7 @@ public class AutofillProfilesFragmentTest {
 
         CardWithButtonPreference disabledSettingsInfoPref =
                 autofillProfileFragment.findPreference(
-                        AutofillProfilesFragment.DISABLED_SETTINGS_INFO);
+                        AutofillAiDelegate.DISABLED_SETTINGS_INFO);
         assertNotNull(disabledSettingsInfoPref);
         onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.card_layout))))
                 .check(matches(isDisplayed()));
@@ -999,7 +998,7 @@ public class AutofillProfilesFragmentTest {
 
         CardWithButtonPreference disabledSettingsInfoPref =
                 autofillProfileFragment.findPreference(
-                        AutofillProfilesFragment.DISABLED_SETTINGS_INFO);
+                        AutofillAiDelegate.DISABLED_SETTINGS_INFO);
         assertNotNull(disabledSettingsInfoPref);
         onView(allOf(withId(R.id.icon), isDescendantOfA(withId(R.id.card_layout))))
                 .check(matches(isDisplayed()));
@@ -1041,7 +1040,7 @@ public class AutofillProfilesFragmentTest {
 
         assertNotNull(
                 autofillProfileFragment.findPreference(
-                        AutofillProfilesFragment.DISABLED_WALLET_DATA_SHARING));
+                        AutofillAiDelegate.DISABLED_WALLET_DATA_SHARING));
     }
 
     @Test
@@ -1063,7 +1062,7 @@ public class AutofillProfilesFragmentTest {
 
         assertNull(
                 autofillProfileFragment.findPreference(
-                        AutofillProfilesFragment.DISABLED_WALLET_DATA_SHARING));
+                        AutofillAiDelegate.DISABLED_WALLET_DATA_SHARING));
     }
 
     @Test
@@ -1084,7 +1083,7 @@ public class AutofillProfilesFragmentTest {
 
         assertNull(
                 autofillProfileFragment.findPreference(
-                        AutofillProfilesFragment.DISABLED_WALLET_DATA_SHARING));
+                        AutofillAiDelegate.DISABLED_WALLET_DATA_SHARING));
     }
 
     @Test
@@ -1106,7 +1105,7 @@ public class AutofillProfilesFragmentTest {
 
         assertNull(
                 autofillProfileFragment.findPreference(
-                        AutofillProfilesFragment.DISABLED_WALLET_DATA_SHARING));
+                        AutofillAiDelegate.DISABLED_WALLET_DATA_SHARING));
     }
 
     @Test
@@ -1164,7 +1163,7 @@ public class AutofillProfilesFragmentTest {
                 new EntityInstanceWithLabels(
                         "guid2",
                         passportType,
-                        /*entityName*/ "Passport",
+                        /* entityInstanceLabel= */ "Passport",
                         /* entityInstanceSubLabel= */ "Germany",
                         /* storedInWallet= */ false,
                         /* walletEntityUrl= */ null);
@@ -1514,10 +1513,9 @@ public class AutofillProfilesFragmentTest {
 
         EntityInstance entityInstance =
                 new EntityInstance.Builder(vehicleType)
-                        .setGUID("guid1")
+                        .setGuid("guid1")
                         .setRecordType(
                                 org.chromium.components.autofill.autofill_ai.RecordType.LOCAL)
-                        .setModifiedDate(LocalDate.of(2026, 2, 12))
                         .setUseCount(0)
                         .build();
 
@@ -1949,10 +1947,9 @@ public class AutofillProfilesFragmentTest {
 
         EntityInstance entityInstance =
                 new EntityInstance.Builder(TestUtils.getVehicleEntityType())
-                        .setGUID("guid1")
+                        .setGuid("guid1")
                         .setRecordType(
                                 org.chromium.components.autofill.autofill_ai.RecordType.LOCAL)
-                        .setModifiedDate(LocalDate.of(2026, 2, 12))
                         .setUseCount(0)
                         .setRequiresReauthToSee(true)
                         .build();
@@ -1999,10 +1996,9 @@ public class AutofillProfilesFragmentTest {
 
         EntityInstance entityInstance =
                 new EntityInstance.Builder(TestUtils.getVehicleEntityType())
-                        .setGUID("guid1")
+                        .setGuid("guid1")
                         .setRecordType(
                                 org.chromium.components.autofill.autofill_ai.RecordType.LOCAL)
-                        .setModifiedDate(LocalDate.of(2026, 2, 12))
                         .setUseCount(0)
                         .setRequiresReauthToSee(true)
                         .build();

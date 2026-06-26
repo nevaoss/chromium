@@ -4,6 +4,9 @@
 
 source_set("coordinator") {
   sources = [
+    "autofill_ai_base_mediator.h",
+    "autofill_ai_base_mediator.mm",
+    "autofill_ai_base_mediator_protected.h",
     "autofill_and_passwords_coordinator.h",
     "autofill_and_passwords_coordinator.mm",
     "autofill_and_passwords_mediator.h",
@@ -51,6 +54,7 @@ source_set("unit_tests") {
   sources = [
     "autofill_and_passwords_mediator_unittest.mm",
     "identity_docs_coordinator_unittest.mm",
+    "travel_info_coordinator_unittest.mm",
     "identity_docs_mediator_unittest.mm",
     "travel_info_mediator_unittest.mm",
   ]

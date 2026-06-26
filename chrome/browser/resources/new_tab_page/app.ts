@@ -213,6 +213,8 @@ export class AppElement extends AppElementBase {
       composeButtonEnabled: {type: Boolean},
       composeboxEnabled: {type: Boolean},
 
+      hasVoiceSearchError: {type: Boolean},
+
       // =======================================================================
       // Protected properties
       // =======================================================================
@@ -266,6 +268,7 @@ export class AppElement extends AppElementBase {
       browserPromoCompletedLimit_: {type: Number},
       showBrowserPromo_: {type: Boolean},
       caretAnimationsEnabled_: {type: Boolean},
+      usePecApi_: {type: Boolean},
 
       modulesShownToUser: {
         type: Boolean,
@@ -332,6 +335,9 @@ export class AppElement extends AppElementBase {
        */
       enableThreadsRail_: {type: Boolean},
 
+      // Whether to use ntp-composebox instead of cr-composebox.
+      useNtpComposeboxFork_: {type: Boolean},
+
       // =======================================================================
       // Private properties
       // =======================================================================
@@ -349,6 +355,7 @@ export class AppElement extends AppElementBase {
     };
   }
 
+  accessor hasVoiceSearchError = false;
   accessor realboxCanShowSecondarySide: boolean = false;
   accessor realboxHadSecondarySide: boolean = false;
   accessor composeButtonEnabled: boolean =
@@ -378,6 +385,8 @@ export class AppElement extends AppElementBase {
   protected accessor showComposebox_: boolean = false;
   protected accessor caretAnimationsEnabled_: boolean =
       loadTimeData.getBoolean('caretAnimationEnabled');
+  protected accessor usePecApi_: boolean =
+      loadTimeData.getBoolean('contextualMenuUsePecApi');
   protected accessor logoEnabled_: boolean =
       loadTimeData.getBoolean('logoEnabled');
   protected accessor oneGoogleBarEnabled_: boolean =
@@ -442,6 +451,8 @@ export class AppElement extends AppElementBase {
       loadTimeData.getBoolean('composeboxShowContextMenuDescription');
   protected accessor enableThreadsRail_: boolean =
       loadTimeData.getBoolean('enableThreadsRail');
+  protected accessor useNtpComposeboxFork_: boolean =
+      loadTimeData.getBoolean('useNtpComposeboxFork');
   protected accessor energyEffectEnabled_: boolean =
       loadTimeData.getBoolean('energyEffectEnabled');
   protected accessor energyEffectAnimationEnabled_: boolean =
@@ -798,6 +809,11 @@ export class AppElement extends AppElementBase {
     }
   }
 
+  // For voice coherence: when error event is fired, this will run.
+  onVoiceSearchError() {
+    this.hasVoiceSearchError = true;
+  }
+
   // Called to update the OGB of relevant NTP state changes.
   private updateOneGoogleBarAppearance_() {
     if (this.oneGoogleBarLoaded_) {
@@ -1011,8 +1027,9 @@ export class AppElement extends AppElementBase {
     }
   }
 
-  protected onVoiceSearchOverlayClose_() {
+  onVoiceSearchOverlayClose() {
     this.showVoiceSearchOverlay_ = false;
+    this.hasVoiceSearchError = false;
   }
 
   /**

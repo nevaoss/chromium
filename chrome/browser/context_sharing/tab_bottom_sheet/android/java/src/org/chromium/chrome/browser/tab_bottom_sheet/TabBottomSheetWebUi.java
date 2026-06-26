@@ -8,6 +8,7 @@ import static org.chromium.build.NullUtil.assumeNonNull;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.Configuration;
 import android.view.View;
 import android.view.ViewTreeObserver;
 
@@ -26,6 +27,7 @@ import org.chromium.components.thinwebview.ThinWebViewAttachParams;
 import org.chromium.components.thinwebview.ThinWebViewConstraints;
 import org.chromium.components.thinwebview.ThinWebViewFactory;
 import org.chromium.components.thinwebview.internal.ThinWebViewContextMenuItemDelegate;
+import org.chromium.content_public.browser.ImeAdapter;
 import org.chromium.content_public.browser.ViewEventSink;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.ui.base.ViewAndroidDelegate;
@@ -45,6 +47,7 @@ public class TabBottomSheetWebUi {
 
     private ThinWebView mThinWebView;
     private @Nullable WebContents mWebContents;
+    private @Nullable ContentView mContentView;
 
     TabBottomSheetWebUi(
             Context context,
@@ -70,7 +73,12 @@ public class TabBottomSheetWebUi {
         }
         mWebContents = webContents;
         if (mWebContents != null) {
+            mWebContents.getEventForwarder().setCurrentTouchOffsetX(0.0f);
+            mWebContents.getEventForwarder().setCurrentTouchOffsetY(0.0f);
+            // Use a local variable to ensure we are using the correct ContentView instance.
             ContentView contentView = createContentView(mContext, mWebContents);
+            mContentView = contentView;
+
             contentView.addOnAttachStateChangeListener(
                     new View.OnAttachStateChangeListener() {
                         private final ViewTreeObserver.OnWindowFocusChangeListener mListener =
@@ -134,13 +142,30 @@ public class TabBottomSheetWebUi {
                             .setSupportTheming(true)
                             .build());
             mWebViewResizingHelper.setThinWebView(mThinWebView, mWebContents);
+            setAllowFullscreenIme(
+                    mContext.getResources().getConfiguration().orientation
+                            == Configuration.ORIENTATION_LANDSCAPE);
         } else {
             resetThinWebView();
         }
     }
 
+    void setAllowFullscreenIme(boolean allow) {
+        if (mWebContents == null) return;
+        ImeAdapter adapter = ImeAdapter.fromWebContents(mWebContents);
+        if (adapter != null) {
+            adapter.setAllowFullscreenIme(allow);
+        }
+    }
+
     @Nullable WebContents getWebContents() {
         return mWebContents;
+    }
+
+    void setIgnoreClearFocus(boolean ignoreClearFocus) {
+        if (mContentView != null) {
+            mContentView.setIgnoreClearFocus(ignoreClearFocus);
+        }
     }
 
     WebViewResizingHelper getWebViewResizingHelper() {
@@ -150,6 +175,7 @@ public class TabBottomSheetWebUi {
     void destroy() {
         // We expect the life cycle of webContents to be managed by native.
         mWebContents = null;
+        mContentView = null;
         mWebViewResizingHelper.reset();
         mThinWebView.destroy();
     }

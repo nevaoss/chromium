@@ -20,7 +20,6 @@ import android.view.View;
 import androidx.annotation.ColorInt;
 import androidx.annotation.StringRes;
 import androidx.annotation.VisibleForTesting;
-import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.content.ContextCompat;
 
 import org.chromium.base.Callback;
@@ -665,9 +664,7 @@ public class TabGridDialogMediator
         mModel.set(TabGridDialogProperties.IS_DIALOG_VISIBLE, false);
     }
 
-    /**
-     * @return a boolean indicating if the result of handling the backpress was successful.
-     */
+    /** Returns a boolean indicating if the result of handling the backpress was successful. */
     public boolean handleBackPress() {
         if (mTabListEditorControllerSupplier != null
                 && mTabListEditorControllerSupplier.hasValue()) {
@@ -677,6 +674,10 @@ public class TabGridDialogMediator
                 controller.hide();
                 return !controller.isVisible();
             }
+        }
+        // If the dialog is not visible, then the back press is not handled.
+        if (!isVisible()) {
+            return false;
         }
         hideDialog(true);
         RecordUserAction.record("TabGridDialog.Exit");
@@ -856,10 +857,8 @@ public class TabGridDialogMediator
                 TabUiThemeProvider.getTabGroupDialogBackgroundColor(context, isIncognito);
         ColorStateList tintList =
                 isIncognito
-                        ? AppCompatResources.getColorStateList(
-                                mActivity, R.color.default_icon_color_light_tint_list)
-                        : AppCompatResources.getColorStateList(
-                                mActivity, R.color.default_icon_color_tint_list);
+                        ? mActivity.getColorStateList(R.color.default_icon_color_light_tint_list)
+                        : mActivity.getColorStateList(R.color.default_icon_color_tint_list);
         @ColorInt
         int ungroupBarBackgroundColor =
                 TabUiThemeProvider.getTabGridDialogUngroupBarBackgroundColor(context, isIncognito);

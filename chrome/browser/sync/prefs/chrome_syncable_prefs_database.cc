@@ -26,10 +26,10 @@
 #include "components/translate/core/browser/translate_prefs.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
+#include "ash/constants/ash_login_pref_names.h"
 #include "ash/constants/ash_pref_names.h"
 #include "ash/public/cpp/shelf_prefs.h"
 #include "chrome/browser/ash/guest_os/guest_os_pref_names.h"
-#include "chrome/browser/ash/login/login_pref_names.h"
 #include "chromeos/ash/components/tether/pref_names.h"
 #include "components/drive/drive_pref_names.h"  // nogncheck crbug.com/40147906
 #include "components/metrics/demographics/user_demographics.h"
@@ -868,7 +868,7 @@ constexpr auto kChromeSyncablePrefsAllowlist = base::MakeFixedFlatMap<
     {ash::prefs::kDockedMagnifierScale,
      {syncable_prefs_ids::kDockedMagnifierScale, syncer::OS_PREFERENCES,
       sync_preferences::PrefSensitivity::kNone,
-      sync_preferences::MergeBehavior::kNone}},
+      sync_preferences::MergeBehavior::kCustom}},
     {ash::prefs::kDynamicColorColorScheme,
      {syncable_prefs_ids::kDynamicColorColorScheme, syncer::OS_PREFERENCES,
       sync_preferences::PrefSensitivity::kNone,
@@ -1456,7 +1456,7 @@ constexpr auto kChromeSyncablePrefsAllowlist = base::MakeFixedFlatMap<
     {ash::prefs::kAccessibilityScreenMagnifierScale,
      {syncable_prefs_ids::kAccessibilityScreenMagnifierScale,
       syncer::OS_PREFERENCES, sync_preferences::PrefSensitivity::kNone,
-      sync_preferences::MergeBehavior::kNone}},
+      sync_preferences::MergeBehavior::kCustom}},
     {ash::prefs::kAccessibilitySelectToSpeakEnabled,
      {syncable_prefs_ids::kAccessibilitySelectToSpeakEnabled,
       syncer::OS_PREFERENCES, sync_preferences::PrefSensitivity::kNone,

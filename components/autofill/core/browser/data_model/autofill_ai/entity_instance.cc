@@ -77,7 +77,7 @@ std::optional<size_t> DetermineSuffixLength(const AttributeInstance& a1,
   return length ? std::make_optional(length) : std::nullopt;
 }
 
-// Returns `s` in the demanded `format`. See `data_util::IsValidDateFormat` for
+// Returns `s` in the demanded `format`. See `data_util::IsValidAffixFormat` for
 // the valid `format` values.
 std::u16string FormatAffix(std::u16string s, std::u16string_view format) {
   // We parse the leading minus here rather than using `base::StringToInt()` to
@@ -124,6 +124,7 @@ std::u16string FormatFlightNumber(std::u16string s,
 
 std::u16string Format(
     std::u16string s,
+    FieldType type,
     base::optional_ref<const AutofillFormatString> format_string) {
   if (!format_string) {
     return s;
@@ -131,8 +132,14 @@ std::u16string Format(
 
   switch (format_string->type) {
     case FormatString_Type_AFFIX:
+      if (!IsAffixFormatStringEnabledForType(type)) {
+        break;
+      }
       return FormatAffix(std::move(s), format_string->value);
     case FormatString_Type_FLIGHT_NUMBER:
+      if (type != FLIGHT_RESERVATION_FLIGHT_NUMBER) {
+        break;
+      }
       return FormatFlightNumber(std::move(s), format_string->value);
     case FormatString_Type_DATE:
     case FormatString_Type_ICU_DATE:
@@ -147,7 +154,7 @@ bool IsMaskableRecordType(EntityInstance::RecordType record_type) {
       return false;
     case EntityInstance::RecordType::kServerWallet:
       return true;
-    case EntityInstance::RecordType::kAccessibilityAnnotator:
+    case EntityInstance::RecordType::kPersonalContext:
       return false;
   }
   NOTREACHED();
@@ -199,7 +206,8 @@ std::u16string AttributeInstance::GetInfo(
                      [&](const NameInfo&) { return GetRawInfo(field_type); },
                      [&](const StateInfo&) { return GetRawInfo(field_type); },
                      [&](const std::u16string&) {
-                       return Format(GetRawInfo(field_type), format_string);
+                       return Format(GetRawInfo(field_type), field_type,
+                                     format_string);
                      }},
       info_);
 }
@@ -367,6 +375,15 @@ bool EntityInstance::MigrationOrder(const EntityInstance& lhs,
   return lhs.use_date() > rhs.use_date();
 }
 
+std::ostream& operator<<(std::ostream& os,
+                         const EntityInstance::EntityMetadata& m) {
+  os << "- guid: " << '"' << m.guid << '"' << std::endl;
+  os << "- date modified: " << '"' << m.date_modified << '"' << std::endl;
+  os << "- use count: " << m.use_count << std::endl;
+  os << "- use date: " << '"' << m.use_date << '"' << std::endl;
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const AttributeInstance& a) {
   os << a.type() << ": " << '"'
      << a.GetInfo(a.type().field_type(), /*app_locale=*/"en-US",
@@ -384,8 +401,8 @@ std::ostream& operator<<(std::ostream& os,
     case EntityInstance::RecordType::kServerWallet:
       os << "kServerWallet" << std::endl;
       break;
-    case EntityInstance::RecordType::kAccessibilityAnnotator:
-      os << "kAccessibilityAnnotator" << std::endl;
+    case EntityInstance::RecordType::kPersonalContext:
+      os << "kPersonalContext" << std::endl;
       break;
   }
   return os;
@@ -394,12 +411,11 @@ std::ostream& operator<<(std::ostream& os,
 std::ostream& operator<<(std::ostream& os, const EntityInstance& e) {
   os << "- name: " << '"' << e.type() << '"' << std::endl;
   os << "- nickname: " << '"' << e.nickname() << '"' << std::endl;
-  os << "- guid: " << '"' << e.guid() << '"' << std::endl;
-  os << "- use date: " << '"' << e.use_date() << '"' << std::endl;
-  os << "- date modified: " << '"' << e.date_modified() << '"' << std::endl;
   os << "- record type: " << e.record_type() << std::endl;
   os << "- are attributes read only: "
      << (e.are_attributes_read_only() ? "true" : "false") << std::endl;
+  os << e.metadata() << std::endl;
+
   for (const AttributeInstance& a : e.attributes()) {
     os << "- attribute " << a << std::endl;
   }
@@ -576,7 +592,7 @@ bool EntityInstance::IsServerInstance() const {
       return false;
     case RecordType::kServerWallet:
       return true;
-    case RecordType::kAccessibilityAnnotator:
+    case RecordType::kPersonalContext:
       return false;
   }
   NOTREACHED();
@@ -700,7 +716,7 @@ bool IsMaskedStorageSupported(EntityType type,
                               EntityInstance::RecordType record_type) {
   switch (record_type) {
     case EntityInstance::RecordType::kLocal:
-    case EntityInstance::RecordType::kAccessibilityAnnotator:
+    case EntityInstance::RecordType::kPersonalContext:
       return false;
     case EntityInstance::RecordType::kServerWallet:
       break;

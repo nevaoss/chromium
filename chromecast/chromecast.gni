@@ -56,9 +56,6 @@ declare_args() {
     use_remote_service_logcat = false
   }
 
-  # Set to true to enable a CMA media backend that allows mixed audio to be
-  # output with sync'd video.
-  enable_video_with_mixed_audio = false
 
   # unified flag to pick monotonic_clock OR monotonic_clock_raw
   media_clock_monotonic_raw = !is_android && !is_cast_desktop_build
@@ -85,8 +82,6 @@ declare_args() {
   # within cast_shell.
   enable_external_mojo_services = is_linux || is_chromeos || is_android
 
-  # Support using system perfetto tracing
-  enable_perfetto_tracing = false
 
   # Recording happens at this sample rate. Must be 16000, 48000 or 96000 Hz.
   audio_input_sample_rate = 16000
@@ -94,14 +89,10 @@ declare_args() {
   # Whether use unix sockets in Cast input/output stream.
   use_unix_sockets = is_linux || is_chromeos || is_android
 
-  # Set to true to enable audio capture service for audio input.
-  enable_audio_capture_service = false
 
   # Extra rpath to use for standalone services.
   iot_service_rpath = ""
 
-  # Set to true to enable media overlay for volume bar, etc.
-  enable_media_overlay = false
 
   # Set to true to forward crashes to the system's crash handler instead of
   # handling them internally.  This disables the built-in crash handler.

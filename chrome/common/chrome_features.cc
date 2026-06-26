@@ -37,20 +37,7 @@ const base::FeatureParam<base::TimeDelta>
 BASE_FEATURE(kAppSpecificNotifications, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDisableBoostPriority, base::FEATURE_DISABLED_BY_DEFAULT);
-static constexpr base::FeatureParam<DisableBoostPriorityExemption>::Option
-    kDisableBoostPriorityOptions[] = {
-        {DisableBoostPriorityExemption::kBrowserNetwork, "BrowserNetwork"},
-        {DisableBoostPriorityExemption::kGpuBrowserNetwork,
-         "GpuBrowserNetwork"},
-        {DisableBoostPriorityExemption::kLoadingBrowserNetwork,
-         "LoadingBrowserNetwork"},
-        {DisableBoostPriorityExemption::kForegroundBrowserNetwork,
-         "ForegroundBrowserNetwork"}};
-constinit const base::FeatureParam<DisableBoostPriorityExemption>
-    kDisableBoostPriorityExemption{
-        &kDisableBoostPriority, "exempt_processes",
-        DisableBoostPriorityExemption::kForegroundBrowserNetwork,
-        &kDisableBoostPriorityOptions};
+
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_MAC)
@@ -214,6 +201,10 @@ const base::FeatureParam<double> kGlicActorApcComparisonSamplingRate{
 BASE_FEATURE(kGlicExperimentalTriggering, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicExperimentalTriggeringOptInBypass,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<std::string> kGlicExperimentalTriggeringOptInURL{
+    &kGlicExperimentalTriggering, "glic-experimental-triggering-opt-in-url",
+    "https://gemini.google.com/glic/intro?"};
 
 const base::FeatureParam<base::TimeDelta> kGlicActorPageToolTimeout{
     &kGlicActor, "glic-actor-page-tool-timeout", base::Seconds(30)};
@@ -599,39 +590,44 @@ BASE_FEATURE_PARAM(std::string,
                    kGlicShortcutsLearnMoreURL,
                    &kGlicLearnMoreURLConfig,
                    "glic-shortcuts-learn-more-url",
-                   "");
+                   "https://support.google.com/gemini?p=chrome_ks");
 BASE_FEATURE_PARAM(std::string,
                    kGlicLauncherToggleLearnMoreURL,
                    &kGlicLearnMoreURLConfig,
                    "glic-shortcuts-launcher-toggle-learn-more-url",
-                   "");
-BASE_FEATURE_PARAM(std::string,
-                   kGlicLocationToggleLearnMoreURL,
-                   &kGlicLearnMoreURLConfig,
-                   "glic-shortcuts-location-toggle-learn-more-url",
-                   "");
+                   "https://support.google.com/gemini?p=chrome_min");
+BASE_FEATURE_PARAM(
+    std::string,
+    kGlicLocationToggleLearnMoreURL,
+    &kGlicLearnMoreURLConfig,
+    "glic-shortcuts-location-toggle-learn-more-url",
+    "https://support.google.com/gemini/answer/"
+    "13594961?hl=en#location_info&zippy=%2Cwhat-location-information-do-gemini-"
+    "apps-collect-why-and-how-is-it-used");
 BASE_FEATURE_PARAM(std::string,
                    kGlicTabAccessToggleLearnMoreURL,
                    &kGlicLearnMoreURLConfig,
                    "glic-shortcuts-tab-access-toggle-learn-more-url",
-                   "");
+                   "https://support.google.com/gemini?p=chrome_PH");
 BASE_FEATURE_PARAM(
     std::string,
     kGlicTabAccessToggleLearnMoreURLDataProtected,
     &kGlicLearnMoreURLConfig,
     "glic-shortcuts-tab-access-toggle-learn-more-url-data-protected",
-    "");
+    "https://support.google.com/a/answer/15706919");
 BASE_FEATURE_PARAM(std::string,
                    kGlicDefaultTabAccessToggleLearnMoreURL,
                    &kGlicLearnMoreURLConfig,
                    "glic-default-tab-access-toggle-learn-more-url",
-                   "");
+                   "https://support.google.com/gemini/answer/"
+                   "13594961?hl=en#chrome&zippy=%2Cwhat-happens-to-my-data-"
+                   "when-i-use-gemini-in-chrome");
 BASE_FEATURE_PARAM(
     std::string,
     kGlicDefaultTabAccessToggleLearnMoreURLDataProtected,
     &kGlicLearnMoreURLConfig,
     "glic-default-tab-access-toggle-learn-more-url-data-protected",
-    "");
+    "https://support.google.com/a/answer/15706919");
 BASE_FEATURE_PARAM(std::string,
                    kGlicSettingsPageLearnMoreURL,
                    &kGlicLearnMoreURLConfig,
@@ -641,18 +637,19 @@ BASE_FEATURE_PARAM(std::string,
                    kGlicWebActuationToggleLearnMoreURL,
                    &kGlicLearnMoreURLConfig,
                    "glic-actuation-on-web-toggle-learn-more-url",
-                   "");
-BASE_FEATURE_PARAM(std::string,
-                   kGlicWebActuationToggleConsiderSafelyURL,
-                   &kGlicLearnMoreURLConfig,
-                   "glic-actuation-on-web-toggle-things-to-consider-safely-url",
-                   "");
+                   "https://support.google.com/gemini?p=gic_agent");
+BASE_FEATURE_PARAM(
+    std::string,
+    kGlicWebActuationToggleConsiderSafelyURL,
+    &kGlicLearnMoreURLConfig,
+    "glic-actuation-on-web-toggle-things-to-consider-safely-url",
+    "https://policies.google.com/terms/generative-ai/use-policy");
 BASE_FEATURE_PARAM(
     std::string,
     kGlicWebActuationToggleConsiderUnexpectedResultsURL,
     &kGlicLearnMoreURLConfig,
     "glic-actuation-on-web-toggle-things-to-consider-unexpected-results-url",
-    "");
+    "https://support.google.com/gemini?p=gic_unexpected_results");
 BASE_FEATURE_PARAM(std::string,
                    kGlicExtensionsManagementUrl,
                    &kGlicLearnMoreURLConfig,
@@ -727,15 +724,6 @@ const base::FeatureParam<bool> kGlicScrollToEnforceURLForPDF{
     &kGlicScrollTo, "glic-scroll-to-enforce-url-for-pdf", true};
 
 BASE_FEATURE(kGlicWarming, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Killswitch that controls whether the guest WebContents visibility state is
-// set to hidden when the Glic panel is warming.
-BASE_FEATURE(kGlicGuestContentsVisibilityState,
-#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_MAC) ||  BUILDFLAG(IS_LINUX)
 
 // Controls the amount of time from the GlicButtonController scheduling
 // preload to the start of preloading (if preloading is possible).

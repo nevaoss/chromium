@@ -38,6 +38,7 @@ namespace {
 using ::password_manager::PasswordForm;
 using ::password_manager::PasswordStoreInterface;
 using ::password_manager::SavedPasswordsPresenter;
+using ::password_manager::StoredCredential;
 using ::password_manager::TestPasswordStore;
 using ::testing::SizeIs;
 
@@ -54,7 +55,7 @@ scoped_refptr<RefcountedKeyedService> BuildPasswordStore(
     ProfileIOS* profile) {
   auto store = base::MakeRefCounted<password_manager::TestPasswordStore>(
       is_account_store);
-  store->Init(/*affiliated_match_helper=*/nullptr);
+  store->Init();
   return store;
 }
 
@@ -69,7 +70,7 @@ class FakePasswordStoreObserver
 
   void OnLoginsRetained(
       PasswordStoreInterface* store,
-      const std::vector<PasswordForm>& retained_passwords) override {}
+      const std::vector<StoredCredential>& retained_credentials) override {}
 
   bool WaitForLoginsChanged() { return future_.Wait(); }
 

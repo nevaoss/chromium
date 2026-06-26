@@ -117,7 +117,7 @@ suite('AutofillAiEntriesListUiReflectsEligibilityStatus', function() {
     });
     const entriesList: SettingsAutofillAiEntriesListElement =
         document.createElement('settings-autofill-ai-entries-list');
-    entriesList.prefs = settingsPrefs.prefs;
+    entriesList.prefs = settingsPrefs.prefs!;
     document.body.appendChild(entriesList);
     await flushTasks();
     return entriesList;
@@ -289,9 +289,6 @@ suite('AutofillAiEntriesListUiReflectsEligibilityStatus', function() {
   });
 
   test('DisableAddButtotWhenAddressAutofillDisabled', async function() {
-    loadTimeData.overrideValues({
-      enableYourSavedInfoPolicyAndExtentionToggleIndicators: true,
-    });
     const entriesList = await createEntriesList();
     entriesList.allowEditingPref = {
       key: '',
@@ -314,9 +311,6 @@ suite('AutofillAiEntriesListUiReflectsEligibilityStatus', function() {
   });
 
   test('DisableAddButtonWhenAiPredictionsDisabled', async function() {
-    loadTimeData.overrideValues({
-      enableYourSavedInfoPolicyAndExtentionToggleIndicators: true,
-    });
     const entriesList = await createEntriesList();
     entriesList.allowEditingPref = {
       key: '',
@@ -345,9 +339,6 @@ suite('AutofillAiEntriesListUiReflectsEligibilityStatus', function() {
   test(
       'AddressAutofillForcedTrueValueShouldNotOverrideAllowEditingPrefValue',
       async function() {
-        loadTimeData.overrideValues({
-          enableYourSavedInfoPolicyAndExtentionToggleIndicators: true,
-        });
         const entriesList = await createEntriesList();
         entriesList.allowEditingPref = {
           key: '',
@@ -516,7 +507,7 @@ suite('AutofillAiEntriesListUiTest', function() {
   async function createEntriesList(
       allowedEntityTypes: Set<number>|null = null) {
     entriesList = document.createElement('settings-autofill-ai-entries-list');
-    entriesList.prefs = settingsPrefs.prefs;
+    entriesList.prefs = settingsPrefs.prefs!;
     entriesList.allowedEntityTypes = allowedEntityTypes;
     document.body.appendChild(entriesList);
     await flushTasks();
@@ -1004,7 +995,7 @@ suite('AutofillAiEntriesListUserActionsTest', function() {
       allowedEntityTypes: Set<number>|null = null, pageName: string = '',
       metricEntityTypes: Record<number, string>|null = null) {
     entriesList = document.createElement('settings-autofill-ai-entries-list');
-    entriesList.prefs = settingsPrefs.prefs;
+    entriesList.prefs = settingsPrefs.prefs!;
     entriesList.allowedEntityTypes = allowedEntityTypes;
     entriesList.metricEntityTypes = metricEntityTypes;
     entriesList.pageName = pageName;
@@ -1194,7 +1185,7 @@ suite('AutofillAiEntriesListLongLabelsUiTest', function() {
         `prefs.${AiEnterpriseFeaturePrefName.AUTOFILL_AI}.value`,
         ModelExecutionEnterprisePolicyValue.ALLOW);
     entriesList = document.createElement('settings-autofill-ai-entries-list');
-    entriesList.prefs = settingsPrefs.prefs;
+    entriesList.prefs = settingsPrefs.prefs!;
     document.body.appendChild(entriesList);
 
     await flushTasks();

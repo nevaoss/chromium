@@ -2867,6 +2867,18 @@ inline constexpr char kSessionWaitForInitialUserActivity[] =
     "session.wait_for_initial_user_activity";
 
 //-----------------------------------------------------------------------------
+// Login screen related Prefs
+//-----------------------------------------------------------------------------
+
+// Boolean pref indicating whether the message displayed on the login screen for
+// the managed guest session should be the full warning or not.
+// True means the full warning should be displayed.
+// False means the normal warning should be displayed.
+// It's true by default, unless it's ensured that all extensions are "safe".
+inline constexpr char kManagedSessionUseFullLoginWarning[] =
+    "managed_session.use_full_warning";
+
+//-----------------------------------------------------------------------------
 // Automatic reboot related Prefs
 //-----------------------------------------------------------------------------
 
@@ -3128,6 +3140,16 @@ inline constexpr char kCertificateProvisioningStateForUser[] =
     "cert_provisioning_user_state";
 inline constexpr char kCertificateProvisioningStateForDevice[] =
     "cert_provisioning_device_state";
+
+// A boolean preference that will be registered in local_state prefs to track
+// migration of permissions on device-wide key pairs and will be registered in
+// Profile prefs to track migration of permissions on user-owned key pairs.
+inline constexpr char kKeyPermissionsOneTimeMigrationDone[] =
+    "key_permissions_one_time_migration_done";
+
+// A dictionary pref mapping public keys that identify platform keys to its
+// properties like whether it's meant for corporate usage.
+inline constexpr char kPlatformKeys[] = "platform_keys";
 
 //-----------------------------------------------------------------------------
 // TPM related Prefs
@@ -3905,6 +3927,16 @@ inline constexpr char kSkyVaultMigrationStartTime[] =
 // since wallpaper was cached.
 inline constexpr char kCustomizationDefaultWallpaperURL[] =
     "customization.default_wallpaper_url";
+
+//-----------------------------------------------------------------------------
+// Apps related Prefs
+//-----------------------------------------------------------------------------
+
+// A string pref that contains either a Chrome app ID (see
+// extensions::ExtensionId) or an Android package name (using Java package
+// naming conventions) of the preferred note-taking app. An empty value
+// indicates that the user hasn't selected an app yet.
+inline constexpr char kNoteTakingAppId[] = "settings.note_taking_app_id";
 
 // NOTE: New prefs should start with the "ash." prefix. Existing prefs moved
 // into this file should not be renamed, since they may be synced.

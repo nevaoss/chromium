@@ -167,7 +167,7 @@ constexpr PrefsForManagedContentSettingsMapEntry
          ContentSettingsType::CONTROLLED_FRAME, CONTENT_SETTING_BLOCK},
         // LocalNetworkAccess:
         // * Block takes precedence over Allow
-        // * LocalNetworkAccessAllowed/Blocked apply to both LNA permissions
+        // * LocalNetworkAccessAllowed/Blocked applies to both LNA permissions
         // * More specific permission (LocalNetworkAllowed/Blocked and
         //   LoopbackNetworkAllowed/Blocked) take precedence over the more
         //   general LocalNetworkAccessAllowed/Blocked policies
@@ -725,7 +725,7 @@ bool PolicyProvider::SetWebsiteSetting(
     const ContentSettingsPattern& primary_pattern,
     const ContentSettingsPattern& secondary_pattern,
     ContentSettingsType content_type,
-    base::Value&& value,
+    const base::Value& value,
     const ContentSettingConstraints& constraints) {
   return false;
 }

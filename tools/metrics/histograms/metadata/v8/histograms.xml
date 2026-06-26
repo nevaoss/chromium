@@ -64,12 +64,25 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="V8.CFIPageSizeMismatch" enum="BooleanOccurred"
-    expires_after="2026-06-01">
+    expires_after="2027-05-01">
+  <owner>emaxx@google.com</owner>
   <owner>sroettger@google.com</owner>
   <owner>v8-security@google.com</owner>
   <summary>
     Whether there's a mismatch between the maximum page size we assume at
     compile time and the page size we assume at runtime.
+
+    This metric is recorded once at renderer startup when the
+    ThreadIsolatedAllocator is initialized.
+  </summary>
+</histogram>
+
+<histogram name="V8.CFIPkeyMprotect" enum="PkeyMprotectResult"
+    expires_after="2026-10-01">
+  <owner>emaxx@google.com</owner>
+  <owner>v8-security@google.com</owner>
+  <summary>
+    The result of trying to pkey_mprotect the ThreadIsolationData at runtime.
 
     This metric is recorded once at renderer startup when the
     ThreadIsolatedAllocator is initialized.
@@ -1923,7 +1936,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="V8.WasmModuleSizeBytes{V8WasmSeparateAsmAndWasm}"
-    units="bytes" expires_after="2026-08-30">
+    units="bytes" expires_after="2026-11-08">
   <owner>ecmziegler@chromium.org</owner>
   <owner>wasm-runtime@google.com</owner>
   <summary>

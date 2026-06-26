@@ -320,6 +320,10 @@ class CONTENT_EXPORT PrefetchContainer
   base::WeakPtr<const PrefetchContainer> GetWeakPtr() const {
     return weak_method_factory_.GetWeakPtr();
   }
+  // Be cautious when using this, as this is like a const cast.
+  base::WeakPtr<PrefetchContainer> GetMutableWeakPtr() const {
+    return weak_method_factory_.GetMutableWeakPtr();
+  }
 
   // The status of the current prefetch. Note that |HasPrefetchStatus| will be
   // initially false until |SetPrefetchStatus| is called. |SetPrefetchStatus|
@@ -342,7 +346,7 @@ class CONTENT_EXPORT PrefetchContainer
 
   // Performs the actual modification to `resource_request_` upon redirect.
   void UpdateResourceRequest(const net::RedirectInfo& redirect_info,
-                             PrefetchUpdateHeadersParams params);
+                             const PrefetchUpdateHeadersParams& params);
 
   // Whether this prefetch is a decoy. Decoy prefetches will not store the
   // response, and not serve any prefetched resources.

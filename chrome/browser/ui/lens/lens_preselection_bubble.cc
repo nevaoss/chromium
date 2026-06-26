@@ -108,7 +108,7 @@ void LensPreselectionBubble::Init() {
   icon_view_ = AddChildView(std::make_unique<views::ImageView>());
   const gfx::VectorIcon* icon;
   if (offline_) {
-    icon = &vector_icons::kErrorOutlineIcon;
+    icon = &vector_icons::kErrorOutlineOldIcon;
   } else {
     icon = icon_;
   }
@@ -122,7 +122,7 @@ void LensPreselectionBubble::Init() {
   if (lens::IsLensOverlayContextualSearchboxEnabled(
           tab_handle_.Get()->GetBrowserWindowInterface()->GetProfile())) {
     auto button = views::CreateVectorImageButtonWithNativeTheme(
-        base::RepeatingClosure(), kHelpMenuIcon, 20,
+        base::RepeatingClosure(), kHelpMenuOldIcon, 20,
         kColorLensOverlayToastForeground, kColorLensOverlayToastForeground,
         kColorLensOverlayToastForeground);
     views::HighlightPathGenerator::Install(

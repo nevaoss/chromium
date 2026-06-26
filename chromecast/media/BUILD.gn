@@ -17,9 +17,6 @@ declare_args() {
   } else if (is_cast_audio_only) {
     cast_static_media_lib_target =
         "//chromecast/media/cma/backend/alsa:libcast_media_1.0_audio"
-  } else if (enable_video_with_mixed_audio) {
-    cast_static_media_lib_target =
-        "//chromecast/media/cma/backend/video:libcast_media_1.0_avsync"
   } else {
     cast_static_media_lib_target = ""
   }
@@ -87,7 +84,6 @@ test("cast_media_unittests") {
     "//chromecast/media/api:test_support",
     "//chromecast/media/audio:test_support",
     "//chromecast/media/audio:unittests",
-    "//chromecast/media/audio/capture_service:unittests",
     "//chromecast/media/audio/mixer_service:unittests",
     "//chromecast/media/base:monotonic_clock",
     "//chromecast/media/base:slew_volume",

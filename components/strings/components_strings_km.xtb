@@ -471,6 +471,7 @@
 <translation id="1717688554309417925">សេវា​ឥណពន្ធ និង​មូលប្បទានបត្រ</translation>
 <translation id="1719434663396780149">ការជូនដំណឹងអំពីការធ្លាក់ថ្លៃត្រូវបានបើក។ អ្នកអាចផ្លាស់ប្ដូរលក្ខណៈនេះនៅក្នុង<ph name="BEGIN_LINK" /><ph name="NOTIFICATION_SETTINGS" /><ph name="END_LINK" />។</translation>
 <translation id="1719838434204287058">24 x 30 in</translation>
+<translation id="1720318856472900922">ការសម្គាល់អត្តសញ្ញាណម៉ាស៊ីនមេ TLS WWW</translation>
 <translation id="1720941539803966190">បិទ​មេរៀន</translation>
 <translation id="1721424275792716183">* តម្រូវឲ្យបំពេញ</translation>
 <translation id="1723636263173393300">គោលការណ៍នេះ​មិនគួរ​មាន​ផ្លូវ​កាត់​ច្រើនជាង <ph name="MAX_ITEMS_LIMIT" /> ទេ។</translation>
@@ -2479,6 +2480,7 @@
 <translation id="4855395119669662878">អ្នកគ្រប់គ្រងរបស់អ្នកនឹងចាប់ផ្ដើមបង្ហោះឯកសាររបស់អ្នកទៅ <ph name="CLOUD_PROVIDER" /> នៅថ្ងៃទី <ph name="DATE_TIME" />។ សូមបន្តភ្ជាប់ឧបករណ៍​របស់​អ្នក រហូតទាល់តែការបង្ហោះឯកសាររបស់អ្នកចប់។ ក្នុងអំឡុងពេលបង្ហោះ អ្នកនឹងអាចអានបានតែឯកសារក្នុងឧបករណ៍ប៉ុណ្ណោះ។</translation>
 <translation id="485902285759009870">កំពុង​ផ្ទៀង​ផ្ទាត់​​លេខ​កូដ...</translation>
 <translation id="4860260582253463350">ដើម្បីបន្តទៅ YouTube យើងត្រូវប្រាកដថាជាអ្នក។ អ្នកនឹងទទួលបានការ​កំណត់ដែលមាតាបិតា ឬអាណាព្យាបាលរបស់អ្នកបានរៀបចំនៅក្នុង Family Link។</translation>
+<translation id="4862642413395066333">ការចុះហត្ថលេខាការឆ្លើយតប OCSP</translation>
 <translation id="4864406669374375262">បានចម្លងជួរអក្សរកំណែទៅឃ្លីបបត</translation>
 <translation id="486459320933704969">មាតាបិតា ឬ​អាណាព្យាបាល​ចាំបាច់ត្រូវនិយាយថាមិនអីទេ អ្នក​អាចចូលទៅកាន់​គេហទំព័រ​នេះបាន</translation>
 <translation id="4864801646102013152">ការកែលម្អ​ផ្ទះ</translation>
@@ -3448,6 +3450,7 @@
 <translation id="634500758737709758">ទិសដៅ</translation>
 <translation id="6348220984832452017">បម្រែបម្រួលសកម្ម</translation>
 <translation id="6349101878882523185">ដំឡើង <ph name="APP_NAME" /></translation>
+<translation id="6350739641326887427">បង់ប្រាក់​ដោយមិន​ចម្លង និង​ដាក់​កូដ Pix ចូល។ <ph name="BEGIN_LINK1" />មើលរបៀបដែលវាដំណើរការ<ph name="END_LINK1" /></translation>
 <translation id="6351658970066645919">លុប​ទិន្នន័យរុករក</translation>
 <translation id="6353505687280762741">{COUNT,plural, =0{គ្មាន}=1{ពាក្យសម្ងាត់ 1 (សម្រាប់ <ph name="DOMAIN_LIST" />, បាន​ធ្វើសមកាលកម្ម)}=2{ពាក្យសម្ងាត់ 2 (សម្រាប់ <ph name="DOMAIN_LIST" />, បាន​ធ្វើសមកាលកម្ម)}other{ពាក្យសម្ងាត់ # (សម្រាប់ <ph name="DOMAIN_LIST" />, បាន​ធ្វើសមកាលកម្ម)}}</translation>
 <translation id="6354918092619878358">SECG elliptic curve secp256r1 (aka ANSI X9.62 prime256v1, NIST P-256)</translation>
@@ -3614,7 +3617,6 @@
 <translation id="6587923378399804057">តំណដែលអ្នក​បានចម្លង</translation>
 <translation id="6591833882275308647"><ph name="DEVICE_TYPE" /> មិនត្រូវបាន​គ្រប់គ្រងទេ</translation>
 <translation id="6595495738567740002">ដើម្បីលុប​ខូគី Google ចេញពី​ឧបករណ៍នេះ សូម<ph name="BEGIN_LINK" />ចេញពី​គណនី Chrome<ph name="END_LINK" />។</translation>
-<translation id="6596325263575161958">ជម្រើសការអ៊ីនគ្រីប</translation>
 <translation id="6596573334527383067">បង្ហាញលទ្ធផលពីម្សិលមិញ</translation>
 <translation id="6597665340361269064">90 ដឺក្រេ</translation>
 <translation id="6598976221101665070">ភាពយន្ត​បែបដ្រាម៉ា</translation>
@@ -3664,6 +3666,7 @@
 <translation id="668132230070712111">បានរក្សាទុក​វីដេអូ​ទៅ Google ថាស</translation>
 <translation id="6681790815630918386">បានរក្សាទុក CVC</translation>
 <translation id="6683022854667115063">កាស</translation>
+<translation id="6686570026048064255">ដើម្បីបិទ​ការចាប់ដឹង​កូដ Pix សូមចូល​ទៅកាន់ <ph name="BEGIN_LINK1" />"ការ​កំណត់ Chrome"<ph name="END_LINK1" /></translation>
 <translation id="6687230248707087982">ស្រោមសំបុត្រ (ធម្មតា)</translation>
 <translation id="6687335167692595844">បានស្នើសុំ​ទំហំពុម្ពអក្សរ</translation>
 <translation id="6688743156324860098">ធ្វើបច្ចុប្បន្នភាព…</translation>
@@ -3889,7 +3892,6 @@
 <translation id="702275896380648118">គេហទំព័រ​នេះ​កំណត់​អ្វី​ៗ​ដែល​អ្នក​ចូលចិត្ត រួច​ណែនាំ​ការផ្សាយពាណិជ្ជកម្ម​ដល់​គេហទំព័រ​ផ្សេងទៀត។ គេហទំព័រ​នេះ​ក៏​ប្រមូល​ប្រធានបទនៃការផ្សាយពាណិជ្ជកម្ម​របស់​អ្នក​ពី Chrome ផងដែរ ដើម្បី​បង្ហាញ​ការផ្សាយពាណិជ្ជកម្ម​កាន់តែ​ពាក់ព័ន្ធ​ដល់​អ្នក។</translation>
 <translation id="7023162328967545559">ការព្រមានដោយអ្នក​គ្រប់គ្រង</translation>
 <translation id="7023765275461720661">ភ្ជាប់​គណនី រួច​បង់ប្រាក់​តាមរយៈ <ph name="BNPL_ISSUER_NAME" /> ឬ?</translation>
-<translation id="7029809446516969842">ពាក្យសម្ងាត់</translation>
 <translation id="7030164307377592766">កែប្រែ​ការកំណត់​សម្រាប់​ការបំពេញ​វិធីបង់ប្រាក់</translation>
 <translation id="7031110846419387930">ព័ត៌មាន​អំពី​កម្មវិធីរុករក​តាម​អ៊ីនធឺណិត ប្រព័ន្ធ​ប្រតិបត្តិការ ឧបករណ៍ កម្មវិធី​ដែលបាន​ដំឡើង ឯកសារ និង​អាសយដ្ឋាន IP របស់អ្នក</translation>
 <translation id="7031646650991750659">ថាតើកម្មវិធី Google Play ណាខ្លះដែលអ្នកបានដំឡើង</translation>
@@ -4500,6 +4502,7 @@
 <translation id="7947285636476623132">ពិនិត្យមើល​ឆ្នាំផុត​កំណត់​របស់អ្នក​ រួច​ព្យាយាម​ម្តង​ទៀត​</translation>
 <translation id="7947310711271925113">តន្ត្រី​ប៉ុប</translation>
 <translation id="7947813448670013867"><ph name="SEE_CHROME_TIPS_FOCUSED_FRIENDLY_MATCH_TEXT" />, ចុច Tab រួចចុច Enter ដើម្បី​ស្វែងយល់អំពី​មុខងារ Chrome</translation>
+<translation id="7948579849190819732">ផ្ទាំង​បច្ចុប្បន្ន</translation>
 <translation id="7949135979217012031">កម្មវិធី​កម្ចាត់​មេរោគ និងកម្មវិធីគ្រោះថ្នាក់</translation>
 <translation id="7950027195171824198">គ្រប់គ្រងចំណូលចិត្តខូគីរបស់អ្នកនៅក្នុងការកំណត់ Chrome</translation>
 <translation id="7951415247503192394">(32-ប៊ីត)</translation>
@@ -4908,6 +4911,7 @@
 <translation id="8597726363542221027">យានជំនិះ​មួយទឹក</translation>
 <translation id="8600271352425265729">តែពេលនេះ​ប៉ុណ្ណោះ</translation>
 <translation id="860043288473659153">ឈ្មោះ​ម្ចាស់​កាត</translation>
+<translation id="8601206103050338563">ការសម្គាល់អត្តសញ្ញាណ TLS WWW</translation>
 <translation id="8601456038554914806">បរិក្ខារ​កីឡា​លើទឹក</translation>
 <translation id="8601782593888534566">ប្រឌិត​បែបវិទ្យា​សាស្ត្រ និងស្រមើស្រមៃ</translation>
 <translation id="8604103095921958091">បានបើក​អេក្រង់​លក្ខខណ្ឌ​ប្រើប្រាស់ "ទិញឥឡូវនេះ ទូទាត់ពេលក្រោយ" ពេញអេក្រង់។</translation>

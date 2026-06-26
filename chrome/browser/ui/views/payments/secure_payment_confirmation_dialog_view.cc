@@ -265,7 +265,7 @@ void SecurePaymentConfirmationDialogView::OnModelUpdated() {
     }
     if (model_->instrument_icon()->drawsNothing()) {
       image_view->SetImage(ui::ImageModel::FromVectorIcon(
-          kCreditCardIcon, ui::kColorDialogForeground,
+          kCreditCardOldIcon, ui::kColorSysOnSurfaceSubtle,
           kSecurePaymentConfirmationIconDefaultWidthPx));
     }
   }
@@ -385,7 +385,7 @@ void SecurePaymentConfirmationDialogView::InitViews() {
       model_->merchant_origin().has_value()) {
     AddChildView(CreateNewRowView(
         ui::ImageModel::FromVectorIcon(
-            vector_icons::kStorefrontIcon, ui::kColorSysOnSurfaceSubtle,
+            vector_icons::kStorefrontOldIcon, ui::kColorSysOnSurfaceSubtle,
             kSecurePaymentConfirmationIconDefaultWidthPx),
         DialogViewID::MERCHANT_ICON, model_->merchant_name().value(),
         DialogViewID::MERCHANT_VALUE, model_->merchant_origin().value(),
@@ -393,7 +393,7 @@ void SecurePaymentConfirmationDialogView::InitViews() {
   } else {
     AddChildView(CreateNewRowView(
         ui::ImageModel::FromVectorIcon(
-            vector_icons::kStorefrontIcon, ui::kColorSysOnSurfaceSubtle,
+            vector_icons::kStorefrontOldIcon, ui::kColorSysOnSurfaceSubtle,
             kSecurePaymentConfirmationIconDefaultWidthPx),
         DialogViewID::MERCHANT_ICON,
         model_->merchant_name().value_or(
@@ -412,7 +412,7 @@ void SecurePaymentConfirmationDialogView::InitViews() {
   ui::ImageModel instrument_icon;
   if (model_->instrument_icon()->drawsNothing()) {
     instrument_icon = ui::ImageModel::FromVectorIcon(
-        kCreditCardIcon, ui::kColorSysOnSurfaceSubtle,
+        kCreditCardOldIcon, ui::kColorSysOnSurfaceSubtle,
         kSecurePaymentConfirmationIconDefaultWidthPx);
   } else {
     instrument_icon = ui::ImageModel::FromImageSkia(
@@ -429,7 +429,7 @@ void SecurePaymentConfirmationDialogView::InitViews() {
   // Total Row
   AddChildView(CreateNewRowView(
       ui::ImageModel::FromVectorIcon(
-          vector_icons::kPaymentsIcon, ui::kColorSysOnSurfaceSubtle,
+          vector_icons::kPaymentsOldIcon, ui::kColorSysOnSurfaceSubtle,
           kSecurePaymentConfirmationIconDefaultWidthPx),
       DialogViewID::TOTAL_ICON, model_->total_value(),
       DialogViewID::TOTAL_VALUE));

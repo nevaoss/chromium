@@ -25,6 +25,7 @@ virtual/unload-allowed/wpt_internal/*
 virtual/indexeddb_leveldb/wpt_internal/*
 virtual/cpu-compositing/wpt_internal/*
 virtual/gpu/wpt_internal/*
+virtual/unbounded-element-disabled/wpt_internal/*
 
 # Blocklisted tests fail unexpectedly on headless shell for at least one
 # platform, so continue running them on content shell.
@@ -383,22 +384,6 @@ external/wpt/css/css-values/viewport-units-scrollbars*
 external/wpt/css/css-variables/variable-presentation-attribute.html
 external/wpt/css/css-will-change/will-change-fixedpos-cb-*
 external/wpt/css/css-will-change/will-change-transform-zero-size-child-overflow-visible.html
-external/wpt/css/css-writing-modes/bidi-embed-011.html
-external/wpt/css/css-writing-modes/bidi-isolate-011.html
-external/wpt/css/css-writing-modes/bidi-isolate-override-001.html
-external/wpt/css/css-writing-modes/bidi-isolate-override-005.html
-external/wpt/css/css-writing-modes/bidi-isolate-override-011.html
-external/wpt/css/css-writing-modes/bidi-normal-011.html
-external/wpt/css/css-writing-modes/bidi-override-001.html
-external/wpt/css/css-writing-modes/bidi-override-005.html
-external/wpt/css/css-writing-modes/bidi-override-006.html
-external/wpt/css/css-writing-modes/bidi-override-011.html
-external/wpt/css/css-writing-modes/bidi-plaintext-001.html
-external/wpt/css/css-writing-modes/bidi-plaintext-002.html
-external/wpt/css/css-writing-modes/block-plaintext-001.html
-external/wpt/css/css-writing-modes/block-plaintext-003.html
-external/wpt/css/css-writing-modes/block-plaintext-004.html
-external/wpt/css/css-writing-modes/block-plaintext-006.html
 external/wpt/css/css-writing-modes/forms/text-input-vertical-overflow-no-scroll.html
 external/wpt/css/css-writing-modes/forms/select-multiple-keyboard-selection.optional.html
 external/wpt/css/css-writing-modes/margin-collapse-vrl-030.xht
@@ -700,7 +685,11 @@ external/wpt/video-rvfc/request-video-frame-callback-during-xr-session.https.htm
 external/wpt/video-rvfc/request-video-frame-callback-webrtc.https.html
 external/wpt/visual-viewport/page-and-offset-in-iframe.html
 external/wpt/visual-viewport/resize-event-order.html
+external/wpt/wai-aria/accessibility_properties_basic.tentative.html
+external/wpt/wai-aria/checked/checked.tentative.html
+external/wpt/wai-aria/pressed/pressed.tentative.html
 external/wpt/wai-aria/role/invalid-roles.html
+external/wpt/wai-aria/subtree/tablist.tentative.html
 external/wpt/web-animations/interfaces/Animation/finished.html
 external/wpt/web-animations/interfaces/Animation/onremove.html
 external/wpt/web-animations/timing-model/timelines/timelines.html

@@ -82,7 +82,7 @@ suite('CollapsibleAutofillSettingsCard', function() {
 
     const card: CollapsibleCardElement =
         document.createElement('collapsible-autofill-settings-card');
-    card.prefs = settingsPrefs.prefs;
+    card.prefs = settingsPrefs.prefs!;
     document.body.appendChild(card);
 
     await flushTasks();
@@ -449,9 +449,6 @@ suite('CollapsibleAutofillSettingsCard', function() {
   test(
       'EnterprisePolicyObserverTakeIntoAccountAddressEnabledPolicy',
       async function() {
-        loadTimeData.overrideValues({
-          enableYourSavedInfoPolicyAndExtentionToggleIndicators: true,
-        });
         const card = await createCollapsibleAutofillSettingsCard();
 
         const expandButton = card.shadowRoot!.querySelector('cr-expand-button');
@@ -504,9 +501,6 @@ suite('CollapsibleAutofillSettingsCard', function() {
   test(
       'EnterprisePolicyObserverTakeIntoAccountAddressEnabledExtension',
       async function() {
-        loadTimeData.overrideValues({
-          enableYourSavedInfoPolicyAndExtentionToggleIndicators: true,
-        });
         const card = await createCollapsibleAutofillSettingsCard();
 
         const expandButton = card.shadowRoot!.querySelector('cr-expand-button');
@@ -557,9 +551,6 @@ suite('CollapsibleAutofillSettingsCard', function() {
       });
 
   test('AddressAutofillDoesNotEnforceTrueValueOnToggle', async function() {
-    loadTimeData.overrideValues({
-      enableYourSavedInfoPolicyAndExtentionToggleIndicators: true,
-    });
     const card = await createCollapsibleAutofillSettingsCard(
         /*eligibleUser=*/ true,
         /*autofillAddOtherDatatypesPrefIsEnabled=*/ false,

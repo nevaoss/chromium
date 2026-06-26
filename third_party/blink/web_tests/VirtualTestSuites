@@ -104,6 +104,25 @@
     ],
     "expires": "Jan 1, 2027"
   },
+  "Service Worker interception of downloads (crbug.com/40410035). The feature",
+  "is disabled by default; this suite enables it so the new fetch-event-",
+  "download tests can verify the FetchEvent dispatch path.",
+  {
+    "prefix": "service-worker-intercept-downloads",
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": [
+      "external/wpt/service-workers/service-worker/fetch-event-download.https.html",
+      "external/wpt/service-workers/service-worker/fetch-event-download-respond-with.https.html",
+      "external/wpt/service-workers/service-worker/fetch-event-download-fallback.https.html",
+      "external/wpt/service-workers/service-worker/fetch-event-download-out-of-scope.https.html"
+    ],
+    "args": ["--enable-features=ServiceWorkerInterceptDownloads"],
+    "exclusive_tests": "ALL",
+    "owners": [
+      "jfernandez@igalia.com"
+    ],
+    "expires": "Apr 22, 2027"
+  },
   "This suite tests some android features on Linux and should never expire.",
   {
     "prefix": "android",
@@ -562,7 +581,7 @@
     ],
     "args": ["--disable-blink-features=DecoupleComputedBorderWidthFromStyle",
              "--disable-blink-features=DecoupleResolvedColumnRuleWidthFromStyle"],
-    "expires": "Apr 30, 2026",
+    "expires": "Nov 30, 2026",
     "owners": ["samomekarajr@microsoft.com", "kbabbitt@microsoft.com"]
   },
   {
@@ -2875,8 +2894,8 @@
       "external/wpt/element-timing",
       "external/wpt/css/filter-effects",
       "external/wpt/css/css-grid/animation",
-      "external/wpt/css/css-sizing/responsive-iframe/responsive-iframe.tentative.html",
-      "external/wpt/css/css-sizing/responsive-iframe/responsive-iframe-dom-content-loaded.tentative.html",
+      "external/wpt/css/css-sizing/responsive-iframe/responsive-iframe.html",
+      "external/wpt/css/css-sizing/responsive-iframe/responsive-iframe-dom-content-loaded.html",
       "external/wpt/css/printing",
       "external/wpt/largest-contentful-paint",
       "fast/forms/file/file-appearance-no-default-width.html",
@@ -2892,7 +2911,13 @@
       "wpt_internal/html/canvas/drawElementImage/webgl-ink-overflow.html",
       "wpt_internal/html/canvas/drawElementImage/webgl-scaling.html",
       "wpt_internal/html/canvas/drawElementImage/get-element-transform.html",
-      "wpt_internal/html/canvas/drawElementImage/draw-element-image-returned-matrix.html"
+      "wpt_internal/html/canvas/drawElementImage/draw-element-image-returned-matrix.html",
+      "svg/dom/getScreenCTM-getBoundingClientRect-parity.html",
+      "svg/dom/getBBox-getBoundingClientRect-consistency.html",
+      "svg/dom/getCTM-zoom-invariance.html",
+      "svg/zoom/page/zoom-getbbox-invariance.html",
+      "svg/zoom/page/zoom-getctm-invariance.html",
+      "svg/zoom/page/zoom-getscreenctm-getboundingclientrect-parity.html"
     ],
     "exclusive_tests": [
       "fast/hidpi/static"
@@ -6377,6 +6402,7 @@
       "external/wpt/svg/styling/svg-filter-render-same-origin-frame-reload-as-sandbox.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-same-origin-frame.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-sandbox-frame.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-srcdoc-frame.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-web-plugin.tentative.https.html",
       "http/tests/inspector-protocol/issues/deprecation-prevent-svg-filter-paint.js",
       "wpt_internal/svg"
@@ -6388,6 +6414,7 @@
       "external/wpt/svg/styling/svg-filter-render-same-origin-frame-reload-as-sandbox.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-same-origin-frame.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-sandbox-frame.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-srcdoc-frame.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-web-plugin.tentative.https.html",
       "http/tests/inspector-protocol/issues/deprecation-prevent-svg-filter-paint.js",
       "wpt_internal/svg/svg-filter-render.sub.https.html"
@@ -6439,5 +6466,26 @@
       "dom@chromium.org"
     ],
     "expires": "never"
+  },
+  "This is for the Unbounded Element API. See crbug.com/508672616.",
+  "This virtual suite just ensures nothing breaks when the flag is disabled.",
+  {
+    "prefix": "unbounded-element-disabled",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win",
+      "ChromeOS"
+    ],
+    "bases": [
+      "wpt_internal/html/rendering/unbounded_element"
+    ],
+    "args": [
+      "--disable-blink-features=UnboundedElement"
+    ],
+    "owners": [
+      "masonf@chromium.org"
+    ],
+    "expires": "Dec 1, 2026"
   }
 ]
