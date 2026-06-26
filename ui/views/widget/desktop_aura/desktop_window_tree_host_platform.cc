@@ -325,12 +325,6 @@ void DesktopWindowTreeHostPlatform::Init(const Widget::InitParams& params) {
   // Disable compositing on tooltips as a workaround for
   // https://crbug.com/442111.
   CreateCompositor(params.force_software_compositing ||
-<<<<<<< HEAD
-                   params.type == Widget::InitParams::TYPE_TOOLTIP);
-#if BUILDFLAG(IS_WEBOS)
-  compositor()->SetVisible(false);
-#endif  // BUILDFLAG(IS_WEBOS)
-=======
                        params.type == Widget::InitParams::TYPE_TOOLTIP,
                    begin_frame_source != nullptr);
 
@@ -340,7 +334,9 @@ void DesktopWindowTreeHostPlatform::Init(const Widget::InitParams& params) {
     compositor()->SetExternalBeginFrameControllerClientFactory(
         begin_frame_adapter_.get());
   }
->>>>>>> 2b45ed993ab1813711d28778ae9bbca8ce07bb8c
+#if BUILDFLAG(IS_WEBOS)
+  compositor()->SetVisible(false);
+#endif  // BUILDFLAG(IS_WEBOS)
 
   WindowTreeHost::OnAcceleratedWidgetAvailable();
   InitHost();
