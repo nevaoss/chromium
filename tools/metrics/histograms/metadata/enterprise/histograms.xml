@@ -134,9 +134,11 @@ chromium-metrics-reviews@google.com.
   <variant name=".DeviceSetVolume" summary="Set volume"/>
   <variant name=".DeviceStartCrdSession" summary="Device start CRD session"/>
   <variant name=".DeviceWipeUsers" summary="Wipe users"/>
+  <variant name=".ExtensionUpdateCheck" summary="Extension Update Check"/>
   <variant name=".FetchCrdAvailabilityInfo"
       summary="Fetch CRD availability info"/>
   <variant name=".FetchSupportPacket" summary="Fetch support packet"/>
+  <variant name=".QueryGeolocation" summary="Query geolocation"/>
   <variant name=".UserArcCommand" summary="ARC command"/>
 </variants>
 
@@ -253,7 +255,7 @@ chromium-metrics-reviews@google.com.
 </variants>
 
 <histogram name="Enterprise.AccountStatusCheckResult"
-    enum="EnterpriseAccountStatus" expires_after="2026-07-05">
+    enum="EnterpriseAccountStatus" expires_after="2026-10-18">
   <owner>dkuzmin@google.com</owner>
   <owner>cros-oobe@google.com</owner>
   <summary>
@@ -288,6 +290,18 @@ chromium-metrics-reviews@google.com.
     Records the reason of a failed authentication event for Entra SSO on
     Android. This metric is emitted by enterprise_auth::EntraProviderAndroid
     just before the navigation is resumed.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.AndroidEntraSso.HeaderSkipReason"
+    enum="AndroidEntraSsoHeaderSkipReason" expires_after="2027-03-30">
+  <owner>ssolarewicz@google.com</owner>
+  <owner>cec-growth@google.com</owner>
+  <summary>
+    If a header provided by the Android OS for the purpose of the Entra SSO
+    authentication event is skipped, reason is emitted via this histogram. This
+    metric is emitted by enterprise_auth::EntraProviderAndroid during parsing of
+    the authentication headers.
   </summary>
 </histogram>
 
@@ -480,7 +494,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.CBCMRemoteCommand.Executed"
-    enum="RemoteCommandExecutionStatus" expires_after="2026-05-01">
+    enum="RemoteCommandExecutionStatus" expires_after="2026-11-01">
   <owner>nicolaso@chromium.org</owner>
   <owner>zmin@chromium.org</owner>
   <owner>cbe-eng@google.com</owner>
@@ -492,7 +506,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.CBCMRemoteCommand.Received"
-    enum="RemoteCommandReceivedStatus" expires_after="2026-05-01">
+    enum="RemoteCommandReceivedStatus" expires_after="2026-11-01">
   <owner>nicolaso@chromium.org</owner>
   <owner>zmin@chromium.org</owner>
   <owner>cbe-eng@google.com</owner>
@@ -505,7 +519,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.CBCMRemoteCommandInvalidations"
-    enum="EnterprisePolicyInvalidations" expires_after="2026-05-01">
+    enum="EnterprisePolicyInvalidations" expires_after="2026-11-01">
   <owner>nicolaso@chromium.org</owner>
   <owner>zmin@chromium.org</owner>
   <owner>cbe-eng@google.com</owner>
@@ -1547,7 +1561,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.Dlp.ConfidentialContentsCount" units="entries"
-    expires_after="2026-08-16">
+    expires_after="2026-10-18">
   <owner>aidazolic@chromium.org</owner>
   <owner>chromeos-dlp@google.com</owner>
   <summary>
@@ -2633,6 +2647,18 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Enterprise.FileOpeningJob.CancelDuration" units="ms"
+    expires_after="2026-10-31">
+  <owner>valadkevich@google.com</owner>
+  <owner>cbe-cep-eng@google.com</owner>
+  <summary>
+    Records the time it takes to cancel the FileOpeningJob. The cancellation
+    waits for currently running file analysis tasks to yield or complete. This
+    provides a measure of how long the UI thread or other threads might block
+    while waiting for the background job to finish.
+  </summary>
+</histogram>
+
 <histogram name="Enterprise.File{Operation}Obfuscation.{Action}"
     enum="EnterpriseObfuscationError" expires_after="2026-09-13">
   <owner>haihan@google.com</owner>
@@ -2936,7 +2962,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.ManagedScreensaver.StartupTime.Slideshow"
-    units="ms" expires_after="2026-05-30">
+    units="ms" expires_after="2027-04-21">
   <owner>mpetrisor@chromium.org</owner>
   <owner>imprivata-eng@google.com</owner>
   <summary>
@@ -4191,6 +4217,29 @@ chromium-metrics-reviews@google.com.
   <token key="ContentAnalysisProtocol" variants="ContentAnalysisProtocol"/>
   <token key="ContentAnalysisRequestType"
       variants="ContentAnalysisRequestType"/>
+</histogram>
+
+<histogram name="Enterprise.{FileUploadEvent}.Cancelled.BatchSize"
+    units="units" expires_after="2027-05-04">
+  <owner>domfc@chromium.org</owner>
+  <owner>chrome-enterprise-data-protection@google.com</owner>
+  <summary>
+    Number of files in {FileUploadEvent} that was cancelled. Recorded every time
+    files were cancelled before scan completion.
+  </summary>
+  <token key="FileUploadEvent" variants="FileUploadEvent"/>
+</histogram>
+
+<histogram name="Enterprise.{FileUploadEvent}.Cancelled.Duration" units="ms"
+    expires_after="2027-05-04">
+  <owner>domfc@chromium.org</owner>
+  <owner>chrome-enterprise-data-protection@google.com</owner>
+  <summary>
+    Duration of the scan from the moment files were selected until the scan was
+    cancelled in {FileUploadEvent}. Recorded every time files were cancelled
+    before scan completion.
+  </summary>
+  <token key="FileUploadEvent" variants="FileUploadEvent"/>
 </histogram>
 
 <histogram

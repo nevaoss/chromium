@@ -9,6 +9,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/web_modal/browser_window_modal_dialog_delegate.h"  // nogncheck
 #include "components/input/native_web_keyboard_event.h"
 #include "components/web_modal/web_contents_modal_dialog_host.h"
 #include "components/web_modal/web_contents_modal_dialog_manager.h"
@@ -88,7 +89,7 @@ bool DevToolsWindow::HandleKeyboardEvent(
     WebContents* source,
     const input::NativeWebKeyboardEvent& event) {
   if (event.windows_key_code == 0x08) {
-    // Do not navigate back in history on Windows (http://crbug.com/74156).
+    // Do not navigate back in history on Windows (http://crbug.com/40529649).
     return true;
   }
   BrowserWindow* inspected_window = GetInspectedBrowserWindow();
@@ -134,7 +135,7 @@ void DevToolsWindow::RegisterModalDialogManager(
   web_modal::WebContentsModalDialogManager::CreateForWebContents(
       main_web_contents_);
   web_modal::WebContentsModalDialogManager::FromWebContents(main_web_contents_)
-      ->SetDelegate(browser->GetBrowserForMigrationOnly());
+      ->SetDelegate(BrowserWindowModalDialogDelegate::From(browser));
 
   // Observer `browser` destruction/removal to reset `SetDelegate(nullptr)`
   // before the dialog manager's `raw_ptr` becomes dangling.

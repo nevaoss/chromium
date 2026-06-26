@@ -109,6 +109,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".ContextualTasks"/>
   <variant name=".CustomizeChrome"/>
   <variant name=".DataSharingBubble"/>
+  <variant name=".DefaultBrowserModal"/>
   <variant name=".Emoji"/>
   <variant name=".ExtensionsWebStoreZeroStatePromo"/>
   <variant name=".Feed"/>
@@ -878,6 +879,18 @@ chromium-metrics-reviews@google.com.
 
     This is only recorded for desktop platforms when the InitialWebUIMetrics
     feature is enabled.
+  </summary>
+</histogram>
+
+<histogram
+    name="InitialWebUI.Toolbar.ProcessAlreadyExistsForTheSameProfileOnCreation"
+    enum="Boolean" expires_after="2026-09-06">
+  <owner>leimy@chromium.org</owner>
+  <owner>chrome-webium-product-eng@google.com</owner>
+  <summary>
+    Recorded during `RenderProcessHostImpl::Init()` for TopChromeWebUI
+    processes. Records true if there is already an existing RenderProcessHost
+    for TopChromeWebUI for the same profile that is initialized and not dead.
   </summary>
 </histogram>
 

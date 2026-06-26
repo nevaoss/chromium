@@ -68,7 +68,12 @@ protocol::Response InspectorMemoryAgent::getDOMCounters(
 }
 
 protocol::Response InspectorMemoryAgent::forciblyPurgeJavaScriptMemory() {
-  for (const auto& page : Page::OrdinaryPages()) {
+  // Copy Page::OrdinaryPages() to avoid UAF. Synchronous JS
+  // execution during iteration can create new pages, which causes rehashing
+  // of the OrdinaryPages() set and invalidates the iterator.
+  // See crbug.com/502089411
+  Page::PageSet pages(Page::OrdinaryPages());
+  for (const auto& page : pages) {
     for (Frame* frame = page->MainFrame(); frame;
          frame = frame->Tree().TraverseNext()) {
       LocalFrame* local_frame = DynamicTo<LocalFrame>(frame);
@@ -221,12 +226,8 @@ Vector<String> InspectorMemoryAgent::Symbolize(
     char buffer[20];
     std::snprintf(buffer, sizeof(buffer), "0x%" PRIxPTR,
                   reinterpret_cast<uintptr_t>(address));
-    if (symbols_cache_.Contains(address)) {
-      StringBuilder builder;
-      builder.Append(buffer);
-      builder.Append(" ");
-      builder.Append(symbols_cache_.at(address));
-      result.push_back(builder.ToString());
+    if (auto it = symbols_cache_.find(address); it != symbols_cache_.end()) {
+      result.push_back(StrCat({buffer, " ", it->value}));
     } else {
       result.push_back(buffer);
     }

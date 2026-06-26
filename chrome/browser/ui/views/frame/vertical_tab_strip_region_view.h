@@ -225,6 +225,11 @@ class VerticalTabStripRegionView final
     raw_ptr<VerticalTabStripRegionView> region_view_;
   };
 
+  // Handles reporting performance metrics for each side panel animation. This
+  // needs to be created per animation and the metrics are emitted during
+  // destruction of the the object.
+  class AnimationPerfReporter;
+
   // Used to create and destroy locks for the expand on hover state.
   friend class VerticalTabStripExpandOnHoverLock;
 
@@ -318,6 +323,7 @@ class VerticalTabStripRegionView final
   raw_ptr<actions::ActionItem> root_action_item_ = nullptr;
   std::unique_ptr<TabHoverCardController> hover_card_controller_;
   std::unique_ptr<HoverTabSelector> hover_tab_selector_;
+  std::unique_ptr<AnimationPerfReporter> animation_perf_reporter_;
 
   base::CallbackListSubscription collapsed_state_changed_subscription_;
   std::optional<base::CallbackListSubscription>
@@ -352,6 +358,7 @@ class VerticalTabStripRegionView final
 
   base::OneShotTimer expand_on_hover_timer_;
   bool is_expanded_on_hover_ = false;
+  std::optional<base::TimeTicks> expand_on_hover_start_time_;
   base::RetainingOneShotTimer expand_on_hover_heuristic_timer_;
   std::optional<gfx::Point> point_at_expand_on_hover_timer_start_;
   std::optional<base::TimeTicks> time_at_expand_on_hover_timer_start_;
@@ -362,6 +369,7 @@ class VerticalTabStripRegionView final
   int force_collapse_lock_count_ = 0;
   int keep_expanded_lock_count_ = 0;
   std::unique_ptr<ExpandOnHoverLock> omnibox_open_lock_;
+  std::unique_ptr<ExpandOnHoverLock> link_drag_lock_;
   base::flat_set<raw_ptr<VerticalTabStripExpandOnHoverLock>> hover_locks_;
 
   std::unique_ptr<TabHoverCardController::ScopedHideHoverCardLock>

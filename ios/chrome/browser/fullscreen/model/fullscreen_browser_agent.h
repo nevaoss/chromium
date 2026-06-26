@@ -17,6 +17,16 @@ class FullscreenBrowserAgentTest;
 class FullscreenMediatorPassKeyProvider;
 enum class FullscreenModeTransitionTrigger;
 
+// Enum representing the current state of the fullscreen UI.
+enum class FullscreenState {
+  // The toolbars are fully expanded and visible.
+  kUIExpanded,
+  // The toolbars are in the process of expanding or collapsing.
+  kInProgress,
+  // The toolbars are fully collapsed and hidden (fullscreen).
+  kUICollapsed,
+};
+
 // A class that holds the fullscreen state for a browser.
 class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
  public:
@@ -75,6 +85,12 @@ class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
   // Returns the disabled counter.
   size_t disabled_count() const { return disabled_count_; }
 
+  // Returns whether fullscreen is enabled.
+  bool IsEnabled() const;
+
+  // Returns the current fullscreen state.
+  FullscreenState State() const;
+
   // Invalidates the current inset ranges and recalculates them by notifying
   // observers.
   void InvalidateInsetRange();
@@ -88,12 +104,17 @@ class FullscreenBrowserAgent : public BrowserUserData<FullscreenBrowserAgent> {
   explicit FullscreenBrowserAgent(Browser* browser);
 
   // Updates the progress and broadcasts the change to observers.
-  void UpdateProgressAndBroadcast(CGFloat top_progress,
-                                  CGFloat bottom_progress,
+  void UpdateProgressAndBroadcast(FullscreenTransition transition,
                                   bool animated);
 
   // Notifies all observers of an updated state.
   void NotifyObserversOfUpdatedState();
+
+  // Handles animation completion.
+  void AnimationDidComplete(FullscreenTransition transition, bool finished);
+
+  // Notifies observers of transition completion.
+  void NotifyFullscreenDidTransition(FullscreenTransition transition);
 
   base::ObserverList<FullscreenBrowserAgentObserver, true> observers_;
 

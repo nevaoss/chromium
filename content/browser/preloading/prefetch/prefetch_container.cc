@@ -236,6 +236,42 @@ GetPrefetchResponseCompletedCallbackForTesting() {
   return *prefetch_response_completed_callback_for_testing;
 }
 
+void RecordPrefetchProxyPrefetchMainframeTotalTime(
+    network::mojom::URLResponseHead* head) {
+  DCHECK(head);
+
+  base::Time start = head->request_time;
+  base::Time end = head->response_time;
+
+  if (start.is_null() || end.is_null()) {
+    return;
+  }
+
+  UMA_HISTOGRAM_CUSTOM_TIMES("PrefetchProxy.Prefetch.Mainframe.TotalTime",
+                             end - start, base::Milliseconds(10),
+                             base::Seconds(30), 100);
+}
+
+void RecordPrefetchProxyPrefetchMainframeConnectTime(
+    network::mojom::URLResponseHead* head) {
+  DCHECK(head);
+
+  base::TimeTicks start = head->load_timing.connect_timing.connect_start;
+  base::TimeTicks end = head->load_timing.connect_timing.connect_end;
+
+  if (start.is_null() || end.is_null()) {
+    return;
+  }
+
+  UMA_HISTOGRAM_TIMES("PrefetchProxy.Prefetch.Mainframe.ConnectTime",
+                      end - start);
+}
+
+void RecordPrefetchProxyPrefetchMainframeRespCode(int response_code) {
+  base::UmaHistogramSparse("PrefetchProxy.Prefetch.Mainframe.RespCode",
+                           response_code);
+}
+
 }  // namespace
 
 // static
@@ -267,6 +303,11 @@ PrefetchContainer::PrefetchContainer(
   CHECK(request_);
   TRACE_EVENT_BEGIN("loading", "PrefetchContainer::LoadState::kNotStarted",
                     request().preload_pipeline_info().GetTrack());
+
+  // `PrefetchContainer` is always added to `PrefetchService` upon construction
+  // in non-test code.
+  prefetch_container_metrics_.time_added_to_prefetch_service =
+      base::TimeTicks::Now();
 
   if (pre_prefetch_container) {
     CHECK(base::FeatureList::IsEnabled(features::kPrefetchOffTheMainThread));
@@ -305,7 +346,7 @@ PrefetchContainer::~PrefetchContainer() {
   // https://chromium-review.googlesource.com/c/chromium/src/+/5657659/comments/0cfb14c0_3050963e
   //
   // TODO(crbug.com/356314759): Do it.
-  OnWillBeDestroyed();
+  NotifyObservers(&Observer::OnWillBeDestroyed);
 
   CancelStreamingURLLoaderIfNotServing();
 
@@ -352,10 +393,6 @@ PrefetchContainer::~PrefetchContainer() {
   // Destroy `assert_observer_` before `WeakPtr`s are invalidated to allow it
   // call `RemoveObserver()`.
   assert_observer_.reset();
-}
-
-void PrefetchContainer::OnWillBeDestroyed() {
-  NotifyObservers(&Observer::OnWillBeDestroyed);
 }
 
 PrefetchServingHandle PrefetchContainer::CreateServingHandle() {
@@ -734,14 +771,6 @@ PrefetchContainer::LoadState PrefetchContainer::GetLoadState() const {
   return load_state_;
 }
 
-void PrefetchContainer::OnAddedToPrefetchService() {
-  TRACE_EVENT("loading", "PrefetchContainer::OnAddedToPrefetchService",
-              request_->preload_pipeline_info().GetFlow());
-
-  prefetch_container_metrics_.time_added_to_prefetch_service =
-      base::TimeTicks::Now();
-}
-
 void PrefetchContainer::OnEligibilityCheckComplete(
     PreloadingEligibility eligibility) {
   TRACE_EVENT("loading", "PrefetchContainer::OnEligibilityCheckComplete",
@@ -974,6 +1003,54 @@ void PrefetchContainer::CancelStreamingURLLoaderIfNotServing() {
   streaming_loader_.reset();
 }
 
+// static
+std::optional<PrefetchErrorOnResponseReceived>
+PrefetchContainer::OnPrefetchResponseStarted(
+    base::WeakPtr<PrefetchContainer> prefetch_container,
+    network::mojom::URLResponseHead* head) {
+  if (!prefetch_container) {
+    // `kPrefetchWasDecoy` is used to keep the existing behavior.
+    return PrefetchErrorOnResponseReceived::kPrefetchWasDecoy;
+  }
+  return prefetch_container->OnPrefetchResponseStartedInternal(head);
+}
+
+std::optional<PrefetchErrorOnResponseReceived>
+PrefetchContainer::OnPrefetchResponseStartedInternal(
+    network::mojom::URLResponseHead* head) {
+  TRACE_EVENT("loading", "PrefetchContainer::OnPrefetchResponseStartedInternal",
+              "prefetch_url", GetURL().spec());
+  if (IsDecoy()) {
+    return PrefetchErrorOnResponseReceived::kPrefetchWasDecoy;
+  }
+
+  if (IsCrossSiteContaminated()) {
+    head->is_prefetch_with_cross_site_contamination = true;
+  }
+
+  NotifyPrefetchResponseReceived(*head);
+
+  if (!head->headers) {
+    return PrefetchErrorOnResponseReceived::kFailedInvalidHeaders;
+  }
+
+  RecordPrefetchProxyPrefetchMainframeTotalTime(head);
+  RecordPrefetchProxyPrefetchMainframeConnectTime(head);
+
+  int response_code = head->headers->response_code();
+  RecordPrefetchProxyPrefetchMainframeRespCode(response_code);
+  if (response_code < 200 || response_code >= 300) {
+    SetPrefetchStatus(PrefetchStatus::kPrefetchFailedNon2XX);
+    return PrefetchErrorOnResponseReceived::kFailedNon2XX;
+  }
+
+  if (PrefetchServiceHTMLOnly() && head->mime_type != "text/html") {
+    SetPrefetchStatus(PrefetchStatus::kPrefetchFailedMIMENotSupported);
+    return PrefetchErrorOnResponseReceived::kFailedMIMENotSupported;
+  }
+  return std::nullopt;
+}
+
 void PrefetchContainer::OnDeterminedHead(bool is_successful_determined_head) {
   TRACE_EVENT("loading", "PrefetchContainer::OnDeterminedHead",
               request_->preload_pipeline_info().GetFlow());
@@ -992,30 +1069,22 @@ void PrefetchContainer::OnDeterminedHead(bool is_successful_determined_head) {
   if (GetNonRedirectHead()) {
     prefetch_container_metrics_.time_header_determined_successfully =
         base::TimeTicks::Now();
-  }
 
-  // Propagates the header to `no_vary_search_data_` if a non-redirect response
-  // header is got.
-  MaybeSetNoVarySearchData();
+    // Propagates the header to `no_vary_search_data_` if a non-redirect
+    // response header is got.
+    CHECK(!no_vary_search_data_.has_value());
+
+    // RenderFrameHostImpl will be used to display error messages in DevTools
+    // console. Can be null when the prefetch is browser-initiated.
+    RenderFrameHostImpl* rfhi_can_be_null = nullptr;
+    if (auto* renderer_initiator_info = request().GetRendererInitiatorInfo()) {
+      rfhi_can_be_null = renderer_initiator_info->GetRenderFrameHost();
+    }
+    no_vary_search_data_ = no_vary_search::ProcessHead(
+        *GetNonRedirectHead(), GetURL(), rfhi_can_be_null);
+  }
 
   NotifyObservers(&Observer::OnDeterminedHead);
-}
-
-void PrefetchContainer::MaybeSetNoVarySearchData() {
-  CHECK(!no_vary_search_data_.has_value());
-
-  if (!GetNonRedirectHead()) {
-    return;
-  }
-
-  // RenderFrameHostImpl will be used to display error messagse in DevTools
-  // console. Can be null when the prefetch is browser-initiated.
-  RenderFrameHostImpl* rfhi_can_be_null = nullptr;
-  if (auto* renderer_initiator_info = request().GetRendererInitiatorInfo()) {
-    rfhi_can_be_null = renderer_initiator_info->GetRenderFrameHost();
-  }
-  no_vary_search_data_ = no_vary_search::ProcessHead(
-      *GetNonRedirectHead(), GetURL(), rfhi_can_be_null);
 }
 
 void PrefetchContainer::StartTimeoutTimerIfNeeded(
@@ -1342,7 +1411,22 @@ void PrefetchContainer::OnPrefetchStarted() {
   SetLoadState(PrefetchContainer::LoadState::kStarted);
   prefetch_container_metrics_.time_prefetch_started = base::TimeTicks::Now();
 
-  MakeInitialResourceRequest();
+  if (IsConstructedFromPrePrefetch()) {
+    CHECK(base::FeatureList::IsEnabled(features::kPrefetchOffTheMainThread));
+    CHECK(resource_request_for_pre_prefetch_);
+
+    // TODO(crbug.com/452389538): `resource_request_for_pre_prefetch_` was
+    // constructed from a non-main thread snapshot during PrePrefetch. We can
+    // validate `resource_request_for_pre_prefetch_` by comparing it with the
+    // strictly accurate resource request that is constructed here and modified
+    // via `URLLoaderFactory`s. This can only be done after
+    // `URLLoaderFactory::CreateLoaderAndStart` on
+    // `PrefetchStreamingURLLoader::Start()`.
+    resource_request_ = std::move(resource_request_for_pre_prefetch_);
+  } else {
+    resource_request_ =
+        MakeInitialResourceRequestForPrefetch(request(), IsDecoy());
+  }
 
   if (!IsDecoy()) {
     // The status is updated to be successful or failed when it finishes.
@@ -1380,26 +1464,6 @@ PrefetchContainer::GetResponseReaderForCurrentPrefetch() {
   PrefetchSingleRedirectHop& this_prefetch =
       GetCurrentSingleRedirectHopToPrefetch();
   return this_prefetch.response_reader().GetWeakPtr();
-}
-
-void PrefetchContainer::MakeInitialResourceRequest() {
-  if (IsConstructedFromPrePrefetch()) {
-    CHECK(base::FeatureList::IsEnabled(features::kPrefetchOffTheMainThread));
-    CHECK(resource_request_for_pre_prefetch_);
-
-    // TODO(crbug.com/452389538): `resource_request_for_pre_prefetch_` was
-    // constructed from a non-main thread snapshot during PrePrefetch. We can
-    // validate `resource_request_for_pre_prefetch_` by comparing it with the
-    // strictly accurate resource request that is constructed here and modified
-    // via `URLLoaderFactory`s. This can only be done after
-    // `URLLoaderFactory::CreateLoaderAndStart` on
-    // `PrefetchStreamingURLLoader::Start()`.
-    resource_request_ = std::move(resource_request_for_pre_prefetch_);
-    return;
-  }
-
-  resource_request_ =
-      MakeInitialResourceRequestForPrefetch(request(), IsDecoy());
 }
 
 const std::string& PrefetchContainer::GetDevtoolsRequestId() const {
@@ -1484,10 +1548,8 @@ bool PrefetchContainer::IsExactMatch(const GURL& url) const {
 }
 
 bool PrefetchContainer::IsNoVarySearchHeaderMatch(const GURL& url) const {
-  const std::optional<net::HttpNoVarySearchData>& no_vary_search_data =
-      GetNoVarySearchData();
-  return no_vary_search_data &&
-         no_vary_search_data->AreEquivalent(url, GetURL());
+  return no_vary_search_data_ &&
+         no_vary_search_data_->AreEquivalent(url, GetURL());
 }
 
 bool PrefetchContainer::ShouldWaitForNoVarySearchHeader(const GURL& url) const {
@@ -1648,7 +1710,8 @@ void PrefetchContainer::NotifyPrefetchRequestWillBeSent(
 
 void PrefetchContainer::NotifyPrefetchResponseReceived(
     const network::mojom::URLResponseHead& head) {
-  // Ensured by the caller `PrefetchService::OnPrefetchResponseStarted()`.
+  // Ensured by the caller
+  // `PrefetchContainer::OnPrefetchResponseStartedInternal()`.
   CHECK(!IsDecoy());
 
   prefetch_container_metrics_.time_url_request_started =
@@ -1685,7 +1748,7 @@ void PrefetchContainer::NotifyPrefetchResponseReceived(
 
 void PrefetchContainer::NotifyPrefetchRequestComplete(
     const network::URLLoaderCompletionStatus& completion_status) {
-  // Ensured by the caller `PrefetchService::OnPrefetchResponseStarted()`.
+  // Ensured by the caller `PrefetchContainer::OnPrefetchCompleteInternal()`.
   CHECK(!IsDecoy());
 
   auto* renderer_initiator_info = request().GetRendererInitiatorInfo();

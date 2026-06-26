@@ -52,6 +52,15 @@ if (enable_me2me_host) {
     outputs = [ "$root_build_dir/remoting/setup-url-forwarder" ]
   }
 
+  executable("migrate_host") {
+    sources = [ "migrate_host_entry_point.cc" ]
+
+    deps = [
+      ":migrate_host_main_headers",
+      "//remoting/host:remoting_core",
+    ]
+  }
+
   executable("remote_session_info") {
     sources = [ "remote_session_info_entry_point.cc" ]
 
@@ -63,6 +72,7 @@ if (enable_me2me_host) {
 
   group("remoting_dev_me2me_host") {
     deps = [
+      ":migrate_host",
       ":remote_session_info",
       ":remoting_me2me_host_copy_host_wrapper",
       ":remoting_me2me_host_copy_libremoting_core",
@@ -155,6 +165,11 @@ source_set("utils") {
   configs += [ "//build/linux:gio_config" ]
 }
 
+source_set("migrate_host_main_headers") {
+  sources = [ "migrate_host_main.h" ]
+  deps = [ "//remoting/host:host_main_headers" ]
+}
+
 source_set("remote_session_info_main_headers") {
   sources = [ "remote_session_info_main.h" ]
   deps = [ "//remoting/host:host_main_headers" ]
@@ -230,6 +245,7 @@ source_set("platform_impls") {
     "login_session_manager.h",
     "login_session_server.cc",
     "login_session_server.h",
+    "migrate_host_main.cc",
     "pipewire_audio_capturer.cc",
     "pipewire_audio_capturer.h",
     "pipewire_capture_stream.cc",
@@ -242,6 +258,8 @@ source_set("platform_impls") {
     "pipewire_mouse_cursor_capturer.h",
     "pipewire_mouse_cursor_monitor.cc",
     "pipewire_mouse_cursor_monitor.h",
+    "pipewire_utils.cc",
+    "pipewire_utils.h",
     "portal_capture_stream_manager.cc",
     "portal_capture_stream_manager.h",
     "portal_curtain_mode.cc",
@@ -272,6 +290,7 @@ source_set("platform_impls") {
   ]
   deps = [
     ":gvariant",
+    ":migrate_host_main_headers",
     ":pipewire_loader",
     ":remote_session_info_main_headers",
     ":utils",
@@ -298,6 +317,7 @@ source_set("platform_impls") {
     "//remoting/host/security_key",
     "//remoting/proto",
     "//remoting/protocol",
+    "//third_party/libei",
     "//third_party/webrtc_overrides:webrtc_component",
     "//ui/base",
     "//ui/base/x",

@@ -20,6 +20,7 @@
 #include "base/memory/ref_counted.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/rand_util.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
 #include "base/task/sequenced_task_runner_helpers.h"
@@ -52,6 +53,7 @@
 #include "components/safe_browsing/core/common/proto/csd.pb.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "components/safe_browsing/core/common/safebrowsing_switches.h"
+#include "components/safe_browsing/core/common/utils.h"
 #include "components/security_interstitials/core/unsafe_resource_locator.h"
 #include "components/url_formatter/url_fixer.h"
 #include "components/zoom/zoom_controller.h"
@@ -75,6 +77,7 @@
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/mojom/loader/referrer.mojom.h"
 #include "third_party/perfetto/include/perfetto/tracing/track.h"
+#include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -100,6 +103,8 @@ const float kProbabilityForSendingSampleRequest = 0.000001;
 const float kProbabilityForAcceptingHCAllowlistTrigger = 0.9999;
 // Threshold value used to skip the intelligent scan.
 const int kInnerTextMinThresholdBytes = 5;
+// How long to wait to run the user report callback.
+const int kUserReportCallbackTimer = 30;
 
 // Normalizes a potential command to account for capitalization, pathing, and
 // file extensions.
@@ -454,6 +459,9 @@ class ClientSideDetectionHost::ShouldClassifyUrlRequest {
   void Cancel(ClientSideDetectionType request_type) {
     // We should only log if the callback has not been answered yet.
     if (ShouldClassifyForPhishing()) {
+      base::UmaHistogramExactLinear(
+          "SBClientPhishing.PreClassificationCheckCancelActor", request_type,
+          ClientSideDetectionType_MAX + 1);
       base::UmaHistogramExactLinear(
           base::StrCat({"SBClientPhishing.PreClassificationCheckCancelActor.",
                         GetRequestTypeName(phishing_detection_request_type_)}),
@@ -858,6 +866,7 @@ ClientSideDetectionHost::ClientSideDetectionHost(
 }
 
 ClientSideDetectionHost::~ClientSideDetectionHost() {
+  MaybeRunUserReportCallback();
   if (classification_request_.get()) {
     classification_request_->Cancel();
   }
@@ -903,28 +912,62 @@ void ClientSideDetectionHost::RegisterAutofillManager() {
           kObservePreexistingManagers);
 }
 
-void ClientSideDetectionHost::ReportUnsafeSite(SkBitmap screenshot) {
+void ClientSideDetectionHost::MaybeRunUserReportCallback() {
+  user_report_timeout_timer_.Stop();
+  if (user_report_callback_) {
+    std::move(user_report_callback_).Run();
+  }
+}
+
+void ClientSideDetectionHost::ReportUnsafeSite(SkBitmap screenshot,
+                                               base::OnceClosure callback) {
   if (!screenshot.drawsNothing() &&
       screenshot.width() <= kMaxHighResScreenshotWidth &&
       screenshot.height() <= kMaxHighResScreenshotHeight) {
     screenshot_ = screenshot;
   }
+  MaybeRunUserReportCallback();
+  user_report_callback_ = std::move(callback);
+
+  // Start a 30-second timer that will run the callback if it hasn't been run
+  // yet.
+  user_report_timeout_timer_.Start(
+      FROM_HERE, base::Seconds(kUserReportCallbackTimer),
+      base::BindOnce(&ClientSideDetectionHost::MaybeRunUserReportCallback,
+                     weak_factory_.GetWeakPtr()));
+
   MaybeStartPreClassification(ClientSideDetectionType::USER_REPORT);
 }
 
 void ClientSideDetectionHost::MaybeStartPreClassification(
     ClientSideDetectionType request_type) {
   if (base::FeatureList::IsEnabled(kClientSideDetectionKillswitch)) {
+    MaybeRunUserReportCallback();
     return;
   }
 
   // Cancel any pending classification request.
   // TODO(b/447359124): Support multiple classifications on the same page.
   if (classification_request_.get()) {
-    classification_request_->Cancel(request_type);
+    if (base::FeatureList::IsEnabled(kClientSideDetectionTierSystem)) {
+      if (NewRequestTypeTierHigher(request_type)) {
+        classification_request_->Cancel(request_type);
+      } else {
+        base::UmaHistogramExactLinear(
+            base::StrCat({"SBClientPhishing.BlockingRequestType.",
+                          GetRequestTypeName(request_type)}),
+            last_request_type_, ClientSideDetectionType_MAX + 1);
+        return;
+      }
+    } else {
+      classification_request_->Cancel(request_type);
+    }
   }
 
   if (!csd_service_) {
+    if (request_type == ClientSideDetectionType::USER_REPORT) {
+      MaybeRunUserReportCallback();
+    }
     return;
   }
 
@@ -988,6 +1031,8 @@ void ClientSideDetectionHost::PrimaryPageChanged(content::Page& page) {
       ClientSideDetectionType::CLIENT_SIDE_DETECTION_TYPE_UNSPECIFIED;
   should_send_as_force_request_ = false;
 
+  MaybeRunUserReportCallback();
+
   if (base::FeatureList::IsEnabled(kClientSideDetectionOnlyESBClassification) &&
       !IsEnhancedProtectionEnabled(*delegate_->GetPrefs())) {
     return;
@@ -1008,6 +1053,16 @@ void ClientSideDetectionHost::PrimaryPageChanged(content::Page& page) {
     // and we should have the URL set in case it can match in the verdict cache
     // manager.
     content::RenderFrameHost* rfh = web_contents()->GetPrimaryMainFrame();
+    content::NavigationEntry* nav_entry =
+        web_contents()->GetController().GetLastCommittedEntry();
+    bool is_reload = nav_entry && ui::PageTransitionCoreTypeIs(
+                                      nav_entry->GetTransitionType(),
+                                      ui::PAGE_TRANSITION_RELOAD);
+
+    if (current_url_ == rfh->GetLastCommittedURL() && !is_reload) {
+      base::UmaHistogramBoolean("SBClientPhishing.SameURLAtPrimaryPageChanged",
+                                true);
+    }
     current_url_ = rfh->GetLastCommittedURL();
     return;
   }
@@ -1017,6 +1072,11 @@ void ClientSideDetectionHost::PrimaryPageChanged(content::Page& page) {
 }
 
 void ClientSideDetectionHost::DidFirstVisuallyNonEmptyPaint() {
+  if (base::FeatureList::IsEnabled(kClientSideDetectionOnlyESBClassification) &&
+      !IsEnhancedProtectionEnabled(*delegate_->GetPrefs())) {
+    return;
+  }
+
   if (base::FeatureList::IsEnabled(kClientSideDetectionNewObservers)) {
     did_first_visually_non_empty_paint_ = true;
     if (on_first_contentful_paint_) {
@@ -1033,6 +1093,11 @@ void ClientSideDetectionHost::DidFirstVisuallyNonEmptyPaint() {
 }
 
 void ClientSideDetectionHost::OnFirstContentfulPaintInPrimaryMainFrame() {
+  if (base::FeatureList::IsEnabled(kClientSideDetectionOnlyESBClassification) &&
+      !IsEnhancedProtectionEnabled(*delegate_->GetPrefs())) {
+    return;
+  }
+
   if (base::FeatureList::IsEnabled(kClientSideDetectionNewObservers)) {
     on_first_contentful_paint_ = true;
     if (did_first_visually_non_empty_paint_) {
@@ -1371,6 +1436,9 @@ void ClientSideDetectionHost::OnPhishingPreClassificationDone(
   }
 
   if (!should_classify) {
+    if (request_type == ClientSideDetectionType::USER_REPORT) {
+      MaybeRunUserReportCallback();
+    }
     return;
   }
 
@@ -1395,6 +1463,9 @@ void ClientSideDetectionHost::OnPhishingPreClassificationDone(
   rfh->GetRemoteAssociatedInterfaces()->GetInterface(&phishing_detector_);
 
   if (!phishing_detector_.is_bound()) {
+    if (request_type == ClientSideDetectionType::USER_REPORT) {
+      MaybeRunUserReportCallback();
+    }
     return;
   }
 
@@ -1497,6 +1568,9 @@ void ClientSideDetectionHost::PhishingDetectionDone(
   if (result != mojom::PhishingDetectorResult::SUCCESS &&
       result != mojom::PhishingDetectorResult::CLASSIFICATION_SKIPPED) {
     is_csd_running_ = false;
+    if (request_type == ClientSideDetectionType::USER_REPORT) {
+      MaybeRunUserReportCallback();
+    }
     return;
   }
 
@@ -1542,6 +1616,10 @@ void ClientSideDetectionHost::PhishingDetectionDone(
         did_match_high_confidence_allowlist, result);
   } else {
     is_csd_running_ = false;
+    if (request_type == ClientSideDetectionType::USER_REPORT) {
+      MaybeRunUserReportCallback();
+    }
+    return;
   }
 }
 
@@ -1820,6 +1898,14 @@ void ClientSideDetectionHost::PhishingImageEmbeddingDone(
       }
       *verdict->mutable_image_feature_embedding() =
           std::move(embedding.value());
+      // Tier 2 and higher will add embedding metadata information because lower
+      // tiers process and require the embedding metadata phishy condition to
+      // go further, whereas tier 2 and above do not.
+      if (base::FeatureList::IsEnabled(kClientSideDetectionTierSystem) &&
+          GetClientSideDetectionTypeTier(
+              verdict->client_side_detection_type()) <= 2) {
+        csd_service_->ClassifyThroughEmbeddings(verdict.get());
+      }
     } else {
       VLOG(0) << "Failed to parse image feature embedding.";
     }
@@ -2413,6 +2499,10 @@ void ClientSideDetectionHost::SendRequest(
 
   LogClientSideDetectionEvent(ClientSideDetectionEvent::kNetworkRequestSent,
                               verdict->client_side_detection_type());
+  if (verdict->client_side_detection_type() ==
+      ClientSideDetectionType::USER_REPORT) {
+    MaybeRunUserReportCallback();
+  }
   ClientSideDetectionService::ClientReportPhishingRequestCallback callback =
       base::BindOnce(&ClientSideDetectionHost::MaybeShowPhishingWarning,
                      weak_factory_.GetWeakPtr(),
@@ -2442,6 +2532,38 @@ void ClientSideDetectionHost::
     set_high_confidence_allowlist_acceptance_rate_for_testing(
         float acceptance_rate) {
   probability_for_accepting_hc_allowlist_trigger_ = acceptance_rate;
+}
+
+bool ClientSideDetectionHost::NewRequestTypeTierHigher(
+    ClientSideDetectionType new_request_type) {
+  if (last_request_type_ ==
+      ClientSideDetectionType::CLIENT_SIDE_DETECTION_TYPE_UNSPECIFIED) {
+    return true;
+  }
+
+  if (base::FeatureList::IsEnabled(kClientSideDetectionBypassTiers)) {
+    std::string bypass_tiers_list_str =
+        kClientSideDetectionBypassTiersList.Get();
+    if (!bypass_tiers_list_str.empty()) {
+      std::vector<std::string> bypass_tiers =
+          base::SplitString(bypass_tiers_list_str, ",", base::TRIM_WHITESPACE,
+                            base::SPLIT_WANT_NONEMPTY);
+      for (const std::string& tier_str : bypass_tiers) {
+        int tier_val;
+        if (base::StringToInt(tier_str, &tier_val) &&
+            static_cast<int>(new_request_type) == tier_val) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return GetTierValue(new_request_type) < GetTierValue(last_request_type_);
+}
+
+int ClientSideDetectionHost::GetTierValue(
+    ClientSideDetectionType request_type) {
+  return GetClientSideDetectionTypeTier(request_type);
 }
 
 }  // namespace safe_browsing

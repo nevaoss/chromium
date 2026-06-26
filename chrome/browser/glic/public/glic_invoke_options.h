@@ -86,6 +86,19 @@ struct Target {
       conversation = DefaultConversation();
 };
 
+// Configuration to override the default ZSS behavior for the invocation,
+// only having an impact if ZSS would be shown for the invocation.
+struct ZssConfig {
+  ZssConfig();
+  explicit ZssConfig(std::optional<std::string> additional_content);
+  ~ZssConfig();
+  ZssConfig(const ZssConfig&);
+  ZssConfig& operator=(const ZssConfig&);
+
+  // Additional content to inject into the body of the ZSS message.
+  std::optional<std::string> additional_content;
+};
+
 // The level of in-flight navigation events allowed without canceling the
 // invocation.
 enum class AllowedInflightNavigation {
@@ -132,6 +145,8 @@ struct GlicInvokeOptions {
 
   // Additional context (e.g., image data, Annotated Page Content) to be
   // included with the invocation.
+  // Warning: not fully implemented.
+  // TODO(b/504627812): finish implementing.
   glic::mojom::AdditionalContextPtr additional_context;
 
   // Defines the target for the invocation (surface and conversation).
@@ -145,6 +160,10 @@ struct GlicInvokeOptions {
   // privacy, or UX reasons.
   bool disable_zss = false;
 
+  // Configuration to override the default ZSS behavior for the invocation,
+  // only having an impact if ZSS would be shown for the invocation.
+  std::optional<ZssConfig> zss_config;
+
   // If this invocation is used by the skill feature, this specifies its ID.
   std::optional<std::string> skill_id;
 
@@ -157,6 +176,9 @@ struct GlicInvokeOptions {
 
   // The amount of time to wait before canceling the invocation.
   std::optional<base::TimeDelta> timeout;
+
+  // The amount of time to wait for actuation to complete after it starts.
+  std::optional<base::TimeDelta> actuation_timeout;
 
   // The level of navigation events allowed without canceling the invocation.
   AllowedInflightNavigation allowed_inflight_navigation =

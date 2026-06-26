@@ -194,6 +194,9 @@ void IsolatedWebAppPolicyManager::RegisterProfilePrefs(
       prefs::kIsolatedWebAppPendingInitializationCount, 0);
   registry->RegisterBooleanPref(prefs::kIsolatedWebAppUserInstallationEnabled,
                                 true);
+  // NOTE: If you add new prefs here that should be cleared during database
+  // corruption recovery, make sure to update
+  // `RemoveWebAppJob::RemoveForCorruptDatabase`.
 }
 
 // static
@@ -530,7 +533,7 @@ void IsolatedWebAppPolicyManager::DoProcessPolicy(AllAppsLock& lock,
                                            weak_ptr))
                       .Then(action_done_callback);
 
-              auto installer = IwaInstallerFactory::Create(
+              auto installer = std::make_unique<IwaInstaller>(
                   action.options, IwaInstaller::InstallSourceType::kPolicy,
                   profile_->GetURLLoaderFactory(),
                   *current_process_log_.EnsureDict("install_progress")

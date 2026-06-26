@@ -75,6 +75,12 @@ extern const base::FeatureParam<base::TimeDelta> kAwaitPageStabilityTimeout;
 BASE_DECLARE_FEATURE(kAutofillReintroduceHybridPasskeyDropdownItem);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
+// Retries capturing annotated page context during automated password change if
+// capturing failed for some reason.
+BASE_DECLARE_FEATURE(kRetryCapturePageContent);
+extern const base::FeatureParam<base::TimeDelta> kCapturePageContentDelay;
+extern const base::FeatureParam<int> kCapturePageContentRetryCount;
+
 // Enables Biometrics for the Touch To Fill feature. This only effects Android.
 BASE_DECLARE_FEATURE(kBiometricTouchToFill);
 
@@ -170,12 +176,6 @@ BASE_DECLARE_FEATURE(kPasswordFormClientsideClassifier);
 BASE_DECLARE_FEATURE(kPasswordFormGroupedAffiliations);
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
-// Enables "chunking" generated passwords by adding hyphens every 4 characters
-// to make them more readable.
-BASE_DECLARE_FEATURE(kPasswordGenerationChunking);
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
 BASE_DECLARE_FEATURE(kPasswordSaveInContextErrorResolutionOnDesktop);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
@@ -186,6 +186,9 @@ BASE_DECLARE_FEATURE(kPasswordStorePropagatesActionableErrors);
 // Enables logging the content of chrome://password-manager-internals to the
 // terminal.
 BASE_DECLARE_FEATURE(kPasswordManagerLogToTerminal);
+
+// Prevents password manager from showing save/update UI on federated login.
+BASE_DECLARE_FEATURE(kPreventPasswordManagerOnFederatedLogin);
 
 // Updates password change flow to await for local ML model availability. The
 // model has a superior performance compared to existing password manager

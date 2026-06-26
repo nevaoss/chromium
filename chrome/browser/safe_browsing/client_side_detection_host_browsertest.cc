@@ -165,7 +165,7 @@ class MockSafeBrowsingUIManager : public SafeBrowsingUIManager {
       : SafeBrowsingUIManager(
             std::make_unique<ChromeSafeBrowsingUIManagerDelegate>(),
             std::make_unique<ChromeSafeBrowsingBlockingPageFactory>(),
-            GURL(chrome::kChromeUINewTabURL)) {}
+            chrome::ChromeUINewTabURLAsGURL()) {}
 
   MockSafeBrowsingUIManager(const MockSafeBrowsingUIManager&) = delete;
   MockSafeBrowsingUIManager& operator=(const MockSafeBrowsingUIManager&) =
@@ -368,6 +368,11 @@ IN_PROC_BROWSER_TEST_F(ClientSideDetectionHostPrerenderBrowserTest,
     GTEST_SKIP();
   }
 
+  if (base::FeatureList::IsEnabled(kClientSideDetectionOnlyESBClassification)) {
+    SetSafeBrowsingState(browser()->profile()->GetPrefs(),
+                         SafeBrowsingState::ENHANCED_PROTECTION);
+  }
+
   FakeClientSideDetectionService fake_csd_service;
   fake_csd_service.SetModel(client_side_model());
 
@@ -428,6 +433,11 @@ IN_PROC_BROWSER_TEST_F(ClientSideDetectionHostPrerenderBrowserTest,
                        SamePageNavigationShouldNotAffectClientSideDetection) {
   if (base::FeatureList::IsEnabled(kClientSideDetectionKillswitch)) {
     GTEST_SKIP();
+  }
+
+  if (base::FeatureList::IsEnabled(kClientSideDetectionOnlyESBClassification)) {
+    SetSafeBrowsingState(browser()->profile()->GetPrefs(),
+                         SafeBrowsingState::ENHANCED_PROTECTION);
   }
 
   FakeClientSideDetectionService fake_csd_service;
@@ -493,6 +503,11 @@ IN_PROC_BROWSER_TEST_F(ClientSideDetectionHostPrerenderBrowserTest,
                        ClassifyPrerenderedPageAfterActivation) {
   if (base::FeatureList::IsEnabled(kClientSideDetectionKillswitch)) {
     GTEST_SKIP();
+  }
+
+  if (base::FeatureList::IsEnabled(kClientSideDetectionOnlyESBClassification)) {
+    SetSafeBrowsingState(browser()->profile()->GetPrefs(),
+                         SafeBrowsingState::ENHANCED_PROTECTION);
   }
 
   FakeClientSideDetectionService fake_csd_service;
@@ -576,7 +591,9 @@ class ClientSideDetectionHostPrerenderBrowserTest_Screenshot
 
     const SkBitmap screenshot =
         gfx::test::CreateBitmap(screenshot_width, screenshot_height);
-    csd_host->ReportUnsafeSite(screenshot);
+
+    base::test::TestFuture<void> future;
+    csd_host->ReportUnsafeSite(screenshot, future.GetCallback());
 
     // Bypass the pre-classification check to directly test the screenshot
     // plumbing.
@@ -586,6 +603,8 @@ class ClientSideDetectionHostPrerenderBrowserTest_Screenshot
         /*did_match_high_confidence_allowlist=*/false);
 
     run_loop.Run();
+
+    EXPECT_TRUE(future.IsReady());
 
     return fake_csd_service.saved_request();
   }

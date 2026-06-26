@@ -73,12 +73,12 @@ class COMPONENT_EXPORT(UNEXPORTABLE_KEYS) UnexportableKeyServiceImpl
       BackgroundTaskPriority priority,
       base::OnceCallback<void(ServiceErrorOr<UnexportableSigningKeyId>)>
           callback) override;
-  void GetAllSigningKeysForGarbageCollectionSlowlyAsync(
+  void GetAllKeysForGarbageCollectionSlowlyAsync(
       BackgroundTaskPriority priority,
       base::OnceCallback<void(ServiceErrorOr<std::vector<UnexportableKeyId>>)>
           callback) override;
   void SignSlowlyAsync(
-      UnexportableKeyId key_id,
+      UnexportableSigningKeyId key_id,
       base::span<const uint8_t> data,
       BackgroundTaskPriority priority,
       base::OnceCallback<void(ServiceErrorOr<std::vector<uint8_t>>)> callback)
@@ -135,9 +135,9 @@ class COMPONENT_EXPORT(UNEXPORTABLE_KEYS) UnexportableKeyServiceImpl
   ServiceErrorOr<scoped_refptr<RefCountedUnexportableSigningKey>>
   ExtractKeyFromMaps(UnexportableKeyId key_id);
 
-  // Callback for `GetAllSigningKeysForGarbageCollectionSlowlyAsync()`.
+  // Callback for `GetAllKeysForGarbageCollectionSlowlyAsync()`.
   ServiceErrorOr<std::vector<UnexportableKeyId>>
-  OnGetAllSigningKeysForGarbageCollectionSlowlyImpl(
+  OnGetAllKeysForGarbageCollectionSlowlyImpl(
       ServiceErrorOr<
           std::vector<scoped_refptr<RefCountedUnexportableSigningKey>>>
           keys_or_error);

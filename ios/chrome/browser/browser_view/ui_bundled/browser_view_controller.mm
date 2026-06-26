@@ -1959,7 +1959,10 @@ bool IsFullscreenNextIAEnabled() {
   agent->AddObscuredInsetRange(UIRectEdgeTop, /*min=*/topInset,
                                /*max=*/topInset);
 
-  if (IsSplitToolbarMode(self)) {
+  // Avoid adding the bottom safe area inset when Chrome Next is enabled
+  // because the bottom UI elements report heights that already include the
+  // safe area.
+  if (IsSplitToolbarMode(self) && !IsChromeNextIaEnabled()) {
     CGFloat bottomInset = self.rootSafeAreaInsets.bottom;
     if ([self collapsedBottomToolbarHeight] == 0.0) {
       // If bottom toolbar collapses completely, then the safe area inset should
@@ -1979,7 +1982,11 @@ bool IsFullscreenNextIAEnabled() {
   [self updateFootersForFullscreenProgress:agent->bottom_progress()];
   CGFloat topInset = [self topInset];
   agent->AddObscuredInset(UIRectEdgeTop, topInset);
-  if (IsSplitToolbarMode(self)) {
+
+  // Avoid adding the bottom safe area inset when Chrome Next is enabled
+  // because the bottom UI elements report heights that already include the
+  // safe area.
+  if (IsSplitToolbarMode(self) && !IsChromeNextIaEnabled()) {
     CGFloat bottomInset = self.rootSafeAreaInsets.bottom;
     if ([self collapsedBottomToolbarHeight] == 0.0) {
       bottomInset *= agent->bottom_progress();
@@ -2779,6 +2786,16 @@ bool IsFullscreenNextIAEnabled() {
   CGFloat keyboardAttachedOffset =
       keyboardHeight +
       self.toolbarCoordinator.keyboardAttachedBottomOmniboxHeight;
+  if (IsChromeNextIaEnabled()) {
+    // When the App Bar is at the bottom, the secondary toolbar is already
+    // taller by the height of the App Bar. If the App Bar is not at the bottom
+    // (e.g., in landscape), we subtract the safe area instead.
+    if (AppBarPositionForView(self.view) == AppBarPosition::kBottom) {
+      keyboardAttachedOffset -= kAppBarHeightFullscreen;
+    } else {
+      keyboardAttachedOffset -= self.view.safeAreaInsets.bottom;
+    }
+  }
   CGFloat baseHeight = [self secondaryToolbarHeightWithInset];
   CGFloat offsetRequired = isCollapsed
                                ? keyboardAttachedOffset

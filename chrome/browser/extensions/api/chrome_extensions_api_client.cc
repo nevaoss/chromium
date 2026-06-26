@@ -67,7 +67,7 @@
 
 #if BUILDFLAG(ENABLE_GUEST_VIEW)
 
-#if BUILDFLAG(ENABLE_PLATFORM_APPS)
+#if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/guest_view/app_view/chrome_app_view_guest_delegate.h"
 #endif
 
@@ -167,13 +167,13 @@ bool ChromeExtensionsAPIClient::ShouldHideBrowserNetworkRequest(
   is_sensitive_request |=
       is_browser_request &&
       request.initiator ==
-          url::Origin::Create(GURL(chrome::kChromeUINewTabURL));
+          url::Origin::Create(chrome::ChromeUINewTabURLAsGURL());
 
   // Hide requests made by the browser on behalf of the 1P WebUI NTP.
   is_sensitive_request |=
       is_browser_request &&
       request.initiator ==
-          url::Origin::Create(GURL(chrome::kChromeUINewTabPageURL));
+          url::Origin::Create(chrome::ChromeUINewTabPageURLAsGURL());
 
   // Android does not support instant.
 #if !BUILDFLAG(IS_ANDROID)
@@ -332,7 +332,7 @@ void ChromeExtensionsAPIClient::OpenFileUrlForTesting(
 
 #if BUILDFLAG(ENABLE_GUEST_VIEW)
 
-#if BUILDFLAG(ENABLE_PLATFORM_APPS)
+#if BUILDFLAG(IS_CHROMEOS)
 std::unique_ptr<AppViewGuestDelegate>
 ChromeExtensionsAPIClient::CreateAppViewGuestDelegate() const {
   return std::make_unique<ChromeAppViewGuestDelegate>();

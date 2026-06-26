@@ -23,8 +23,10 @@
 #include "chrome/browser/ui/views/web_apps/web_app_install_dialog_delegate.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_dialog_flow_view.h"
 #include "chrome/browser/ui/views/web_apps/web_app_install_intro_view.h"
+#include "chrome/browser/ui/views/web_apps/web_app_install_options_view.h"
 #include "chrome/browser/ui/web_applications/web_app_dialogs.h"
 #include "chrome/browser/ui/web_applications/web_app_info_image_source.h"
+#include "chrome/browser/web_applications/model/dialog_image_info.h"
 #include "chrome/browser/web_applications/web_app_constants.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
@@ -60,6 +62,8 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(WebAppInstallFlowDialogDelegate,
                                       kInstallDialogFlowViewId);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(WebAppInstallFlowDialogDelegate,
                                       kLearnMoreButtonId);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(WebAppInstallFlowDialogDelegate,
+                                      kCancelButtonId);
 
 std::ostream& operator<<(std::ostream& os, InstallOsType type) {
   switch (type) {
@@ -97,6 +101,8 @@ WebAppInstallFlowDialogDelegate::~WebAppInstallFlowDialogDelegate() = default;
 
 bool WebAppInstallFlowDialogDelegate::OnOkButtonClicked() {
   if (current_step_ == InstallDialogStep::kSuccessful) {
+    // TODO(b/492657179): Implement the logic to open the newly installed
+    // app in a tab/window.
     OnAccept();
     return true;
   }
@@ -114,6 +120,8 @@ bool WebAppInstallFlowDialogDelegate::OnOkButtonClicked() {
     flow_view_->UpdateStepVisibility(current_step_);
   }
 
+  UpdateDialogTitle(current_step_);
+
   // Last dialog to show the install button.
   // TODO(crbug.com/380497638): Trigger the installation earlier in the flow.
   if (current_step_ == InstallDialogStep::kSuccessful && dialog_model()) {
@@ -121,8 +129,15 @@ bool WebAppInstallFlowDialogDelegate::OnOkButtonClicked() {
     ui::DialogModel::Button* ok_button =
         dialog_model()->GetButtonByUniqueId(kPwaInstallDialogInstallButton);
     if (ok_button) {
-      dialog_model()->SetButtonLabel(ok_button,
-                                     l10n_util::GetStringUTF16(IDS_DONE));
+      dialog_model()->SetButtonLabel(
+          ok_button,
+          l10n_util::GetStringUTF16(IDS_WEB_APP_INSTALL_SUCCESS_OPEN_APP));
+    }
+    ui::DialogModel::Button* cancel_button =
+        dialog_model()->GetButtonByUniqueId(kCancelButtonId);
+    if (cancel_button) {
+      dialog_model()->SetButtonLabel(cancel_button,
+                                     l10n_util::GetStringUTF16(IDS_CLOSE));
     }
   }
 
@@ -140,6 +155,37 @@ void WebAppInstallFlowDialogDelegate::OnLearnMoreButtonClicked() {
           WindowOpenDisposition::NEW_FOREGROUND_TAB, ui::PAGE_TRANSITION_LINK,
           /*is_renderer_initiated=*/false),
       base::DoNothing());
+}
+
+// Updates dialog title based on current step.
+void WebAppInstallFlowDialogDelegate::UpdateDialogTitle(
+    InstallDialogStep step) {
+  std::u16string title;
+  switch (step) {
+    case InstallDialogStep::kInstallDialog:
+      NOTREACHED();
+    case InstallDialogStep::kInstallerOptions:
+      title = l10n_util::GetStringUTF16(dialog_type() == InstallDialogType::kDiy
+                                            ? IDS_DIY_APP_INSTALL_DIALOG_TITLE
+                                            : IDS_INSTALL_PWA_DIALOG_TITLE);
+      break;
+      // TODO(crbug.com/503767931): Localize string.
+    case InstallDialogStep::kProgress:
+      title = u"Installing app...";
+      break;
+    case InstallDialogStep::kSuccessful:
+      title = l10n_util::GetStringUTF16(IDS_WEB_APP_INSTALL_SUCCESS_TITLE);
+      break;
+  }
+
+  if (dialog_model() && dialog_model()->host()) {
+    auto* host =
+        static_cast<views::BubbleDialogModelHost*>(dialog_model()->host());
+    host->SetTitle(title);
+    host->SetAccessibleTitle(title);
+    // Clear the subtitle for all subsequent steps.
+    host->SetSubtitle(std::u16string());
+  }
 }
 
 // Builds and shows an install dialog flow according to the install_type.
@@ -186,30 +232,24 @@ void WebAppInstallFlowDialogDelegate::Show(
               delegate_weak_ptr));
 
   // kInstallerOptions
-  std::u16string label;
-  switch (os_type) {
-    case InstallOsType::kMac:
-      label = u"Installer options Mac view";
-      break;
-    case InstallOsType::kWin:
-      label = u"Installer options Windows view";
-      break;
-    case InstallOsType::kCros:
-      label = u"Installer options ChromeOS view";
-      break;
-    default:
-      label = u"Installer options Other view";
-  }
   install_step_to_view[InstallDialogStep::kInstallerOptions] =
-      views::Builder<views::Label>().SetText(label).Build();
+      std::make_unique<WebAppInstallOptionsView>(os_type);
 
   // kProgress
+  // TODO(crbug.com/503767931): Localize this text.
   install_step_to_view[InstallDialogStep::kProgress] =
       views::Builder<views::Label>().SetText(u"Progress View").Build();
 
   // kSuccessful
+  auto successful_view =
+      views::Builder<views::BoxLayoutView>()
+          .SetOrientation(views::BoxLayout::Orientation::kVertical)
+          .Build();
+  successful_view->AddChildView(WebAppIconNameAndOriginView::Create(
+      icon_image, title, start_url, dialog_image_info.is_maskable));
+
   install_step_to_view[InstallDialogStep::kSuccessful] =
-      views::Builder<views::Label>().SetText(u"Successful View").Build();
+      std::move(successful_view);
 
   auto flow_view =
       std::make_unique<WebAppInstallFlowView>(std::move(install_step_to_view));
@@ -225,6 +265,13 @@ void WebAppInstallFlowDialogDelegate::Show(
           l10n_util::GetStringUTF16(install_type == InstallDialogType::kDiy
                                         ? IDS_DIY_APP_INSTALL_DIALOG_TITLE
                                         : IDS_INSTALL_PWA_DIALOG_TITLE))
+      .SetTitle(
+          l10n_util::GetStringUTF16(install_type == InstallDialogType::kDiy
+                                        ? IDS_DIY_APP_INSTALL_DIALOG_TITLE
+                                        : IDS_INSTALL_PWA_DIALOG_TITLE))
+      // TODO(b/473080055): Use a translated string. Should use the correct
+      // subtitle if DIY vs simple and detailed like the title above.
+      .SetSubtitle(u"Access this site on a dedicated window on your computer")
       .AddExtraButton(
           base::BindRepeating(
               [](base::WeakPtr<WebAppInstallFlowDialogDelegate> delegate,
@@ -244,10 +291,12 @@ void WebAppInstallFlowDialogDelegate::Show(
                 return delegate ? delegate->OnOkButtonClicked() : true;
               },
               delegate_weak_ptr),
+          // TODO(crbug.com/503767931): Localize this text.
           ui::DialogModel::Button::Params().SetLabel(u"Next").SetId(
               WebAppInstallDialogDelegate::kPwaInstallDialogInstallButton))
       .AddCancelButton(base::BindOnce(&WebAppInstallDialogDelegate::OnCancel,
-                                      delegate_weak_ptr))
+                                      delegate_weak_ptr),
+                       ui::DialogModel::Button::Params().SetId(kCancelButtonId))
       .SetCloseActionCallback(base::BindOnce(
           &WebAppInstallDialogDelegate::OnClose, delegate_weak_ptr))
       .SetDialogDestroyingCallback(base::BindOnce(
@@ -261,8 +310,6 @@ void WebAppInstallFlowDialogDelegate::Show(
           WebAppInstallFlowDialogDelegate::kInstallDialogFlowViewId);
 
   if (install_type == InstallDialogType::kDiy) {
-    dialog_model_builder.SetSubtitle(
-        l10n_util::GetStringUTF16(IDS_DIY_APP_INSTALL_DIALOG_SUBTITLE));
     dialog_model_builder.SetInitiallyFocusedField(kInstallDialogFlowViewId);
   }
 

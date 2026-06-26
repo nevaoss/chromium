@@ -121,16 +121,14 @@
 #include "chrome/browser/apps/platform_apps/platform_app_navigation_redirector.h"
 #endif  // BUILDFLAG(ENABLE_PLATFORM_APPS)
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS)
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(ENABLE_GUEST_VIEW)
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "extensions/browser/guest_view/web_view/web_view_guest.h"
-#else   // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-#include "components/guest_view/browser/slim_web_view/slim_web_view_navigation_throttle.h"  // nogncheck
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #endif  // BUILDFLAG(ENABLE_GUEST_VIEW)
 
@@ -221,9 +219,10 @@ void HandleSSLErrorWrapper(
       is_ssl_error_override_allowed_for_origin);
 }
 
-// Returns whether `web_contents` is within a hosted app.
-bool IsInHostedApp(content::WebContents* web_contents) {
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+// Returns whether `web_contents` is within a web app.
+// TODO(crbug.com/505461569): Support Android.
+bool IsInWebApp(content::WebContents* web_contents) {
+#if !BUILDFLAG(IS_ANDROID)
   tabs::TabInterface* tab =
       tabs::TabInterface::MaybeGetFromContents(web_contents);
   return tab && web_app::AppBrowserController::IsWebApp(
@@ -390,12 +389,6 @@ void CreateAndAddChromeThrottlesForNavigation(
   extensions::WebViewGuest::MaybeCreateAndAddNavigationThrottle(registry);
 #endif  // BUILDFLAG(ENABLE_GUEST_VIEW)
 
-#else  // !BUILDFLAG(ENABLE_EXTENSIONS_CORE)
-
-#if BUILDFLAG(ENABLE_GUEST_VIEW)
-  guest_view::MaybeCreateAndAddSlimWebViewNavigationThrottle(registry);
-#endif  // BUILDFLAG(ENABLE_GUEST_VIEW)
-
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
   SupervisedUserGoogleAuthNavigationThrottle::MaybeCreateAndAdd(registry);
@@ -436,7 +429,7 @@ void CreateAndAddChromeThrottlesForNavigation(
       base::BindRepeating(&MaybeTriggerSecurityInterstitialShownEvent));
   registry.AddThrottle(std::make_unique<SSLErrorNavigationThrottle>(
       registry, base::BindOnce(&HandleSSLErrorWrapper),
-      base::BindOnce(&IsInHostedApp),
+      base::BindOnce(&IsInWebApp),
       base::BindOnce(
           &ShouldIgnoreSslInterstitialBecauseNavigationDefaultedToHttps)));
 

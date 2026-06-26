@@ -390,6 +390,10 @@ BASE_FEATURE(kSegmentationPlatformIosModuleRankerCaching,
 BASE_FEATURE(kEnableAppBackgroundRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsAppBackgroundRefreshEnabled() {
+  if (!base::FeatureList::IsEnabled(
+          crypto::features::kMigrateIOSKeychainAccessibility)) {
+    return false;
+  }
   return base::FeatureList::IsEnabled(kEnableAppBackgroundRefresh);
 }
 
@@ -458,12 +462,12 @@ BASE_FEATURE(kIOSOneTimeDefaultBrowserNotification,
 constexpr base::FeatureParam<std::string> kFRESignInHeaderTextUpdateParam{
     &kFRESignInHeaderTextUpdate,
     /*name=*/"FRESignInHeaderTextUpdateParam",
-    /*default_value=*/""};
+    /*default_value=*/"Arm1"};
 
 const std::string_view kFRESignInHeaderTextUpdateParamArm0 = "Arm0";
 const std::string_view kFRESignInHeaderTextUpdateParamArm1 = "Arm1";
 
-BASE_FEATURE(kFRESignInHeaderTextUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kFRESignInHeaderTextUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool FRESignInHeaderTextUpdate() {
   return base::FeatureList::IsEnabled(kFRESignInHeaderTextUpdate);
@@ -945,13 +949,13 @@ bool IsAssistantContainerEnabled() {
   return base::FeatureList::IsEnabled(kAssistantContainer);
 }
 
-bool ShouldShowAssistantContainerDebugElements() {
+bool IsAssistantContainerDebugEnabled() {
   if (!base::FeatureList::IsEnabled(kAssistantContainer)) {
     return false;
   }
   std::string feature_param = base::GetFieldTrialParamValueByFeature(
       kAssistantContainer, kAssistantContainerParam);
-  return feature_param == kAssistantContainerParamDebug;
+  return !feature_param.empty();
 }
 
 NSInteger GetAssistantMediumDetentPercentage() {
@@ -966,6 +970,13 @@ BASE_FEATURE(kComposeboxIpad, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsComposeboxIpadEnabled() {
   return base::FeatureList::IsEnabled(kComposeboxIpad);
+}
+
+BASE_FEATURE(kComposeboxPlusButtonBottomSheet,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsComposeboxPlusButtonBottomSheet() {
+  return base::FeatureList::IsEnabled(kComposeboxPlusButtonBottomSheet);
 }
 
 BASE_FEATURE(kChromeNextIa, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1213,4 +1224,10 @@ BASE_FEATURE(kCobrowseAimHistory, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsCobrowseAimHistoryEnabled() {
   return base::FeatureList::IsEnabled(kCobrowseAimHistory);
+}
+
+BASE_FEATURE(kAssistantAimMinimizedState, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsAssistantAimMinimizedStateEnabled() {
+  return base::FeatureList::IsEnabled(kAssistantAimMinimizedState);
 }

@@ -107,6 +107,7 @@ import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.omnibox.AutocompleteInput;
+import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteInput.SiteSearchData;
 import org.chromium.components.omnibox.AutocompleteMatch;
 import org.chromium.components.omnibox.AutocompleteMatchBuilder;
@@ -191,6 +192,7 @@ public class LocationBarMediatorTest {
     @Mock private ModalDialogManager mModalDialogManager;
     @Mock private AddToHomescreenCoordinator mAddToHomescreenCoordinator;
     @Mock private PageZoomIndicatorCoordinator mPageZoomIndicatorCoordinator;
+    @Mock private LocationBarFocusScrimHandler mScrimHandler;
 
     @Mock private LensController mLensController;
     @Mock private IdentityServicesProvider mIdentityServicesProvider;
@@ -324,7 +326,8 @@ public class LocationBarMediatorTest {
                         mPageZoomIndicatorCoordinator,
                         mFuseboxCoordinator,
                         mLocationBarEmbedder,
-                        /* omniboxChipManager= */ null);
+                        /* omniboxChipManager= */ null,
+                        mScrimHandler);
         mMediator.setCoordinators(mUrlCoordinator, mAutocompleteCoordinator, mStatusCoordinator);
         mMediator.setAddToHomescreenCoordinatorForTesting(mAddToHomescreenCoordinator);
         ObjectAnimatorShadow.setUrlAnimator(mUrlAnimator);
@@ -363,7 +366,8 @@ public class LocationBarMediatorTest {
                         mPageZoomIndicatorCoordinator,
                         mFuseboxCoordinator,
                         mLocationBarEmbedder,
-                        /* omniboxChipManager= */ null);
+                        /* omniboxChipManager= */ null,
+                        /* scrimHandler= */ null);
         tabletMediator.setCoordinators(
                 mUrlCoordinator, mAutocompleteCoordinator, mStatusCoordinator);
         return tabletMediator;
@@ -433,6 +437,7 @@ public class LocationBarMediatorTest {
         doReturn(PreloadPagesState.NO_PRELOADING)
                 .when(mPreloadPagesSettingsJni)
                 .getState(eq(mProfile));
+        mMediator.beginInput(new AutocompleteInput().setUserText("text"));
         mMediator.onSuggestionsChanged(
                 AutocompleteMatchBuilder.searchWithType(OmniboxSuggestionType.SEARCH_SUGGEST)
                         .setDisplayText("text")
@@ -481,6 +486,10 @@ public class LocationBarMediatorTest {
 
     @Test
     public void testOnSuggestionsChanged_nullMatch() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        mMediator.beginInput(new AutocompleteInput().setUserText("text"));
+
         doReturn("text").when(mUrlCoordinator).getTextWithoutAutocomplete();
         doReturn(true).when(mUrlCoordinator).shouldAutocomplete();
 
@@ -624,6 +633,47 @@ public class LocationBarMediatorTest {
     @EnableFeatures({OmniboxFeatureList.POST_DELAYED_TASK_FOCUS_TAB})
     public void testLoadUrlPostDelayedTaskFocusTab() {
         testLoadUrl_base();
+    }
+
+    @Test
+    public void testLoadUrlFromVoice_clearsFocus() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        doReturn(true).when(mLocationBarDataProvider).hasTab();
+        doReturn(mView).when(mTab).getView();
+
+        mMediator.onUrlFocusChange(true);
+        assertTrue(mMediator.isUrlBarFocused());
+
+        mMediator.loadUrlFromVoice(new GURL(TEST_URL));
+
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        verify(mView).requestFocus();
+        verify(mAutocompleteCoordinator).endInput();
+    }
+
+    @Test
+    public void testLoadUrl_clearsFocus() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        doReturn(true).when(mLocationBarDataProvider).hasTab();
+        doReturn(mView).when(mTab).getView();
+
+        mMediator.onUrlFocusChange(true);
+        assertTrue(mMediator.isUrlBarFocused());
+
+        mMediator.loadUrl(
+                new OmniboxLoadUrlParams.Builder(TEST_URL, PageTransition.TYPED)
+                        .setOpenInNewTab(false)
+                        .build());
+
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        verify(mView).requestFocus();
+        verify(mAutocompleteCoordinator).endInput();
     }
 
     public void testLoadUrlWithAutocompleteLoadCallback_base() {
@@ -1160,19 +1210,19 @@ public class LocationBarMediatorTest {
 
     @Test
     public void testOnUrlFocusChange() {
-        testOnUrlFocusChange(/* expectRetainOmniboxOnFocus= */ false);
+        testOnUrlFocusChange(/* expectDesktopMode= */ false);
     }
 
     @Test
-    public void testOnUrlFocusChange_shouldNotRetainOmniboxOnFocus() {
-        OmniboxFeatures.setShouldRetainOmniboxOnFocusForTesting(false);
-        testOnUrlFocusChange(/* expectRetainOmniboxOnFocus= */ false);
+    public void testOnUrlFocusChange_isNotDesktopMode() {
+        OmniboxFeatures.setIsDesktopModeForTesting(false);
+        testOnUrlFocusChange(/* expectDesktopMode= */ false);
     }
 
     @Test
-    public void testOnUrlFocusChange_shouldRetainOmniboxOnFocus() {
-        OmniboxFeatures.setShouldRetainOmniboxOnFocusForTesting(true);
-        testOnUrlFocusChange(/* expectRetainOmniboxOnFocus= */ true);
+    public void testOnUrlFocusChange_isDesktopMode() {
+        OmniboxFeatures.setIsDesktopModeForTesting(true);
+        testOnUrlFocusChange(/* expectDesktopMode= */ true);
     }
 
     @Test
@@ -1183,7 +1233,7 @@ public class LocationBarMediatorTest {
         verify(mStatusCoordinator).setShouldAnimateIconChanges(false);
     }
 
-    private void testOnUrlFocusChange(boolean expectRetainOmniboxOnFocus) {
+    private void testOnUrlFocusChange(boolean expectDesktopMode) {
         mProfileSupplier.set(mProfile);
         doReturn(JUnitTestGURLs.BLUE_1).when(mLocationBarDataProvider).getCurrentGurl();
         mMediator.addUrlFocusChangeListener(mUrlCoordinator);
@@ -1195,10 +1245,7 @@ public class LocationBarMediatorTest {
                 .setUrlBarData(
                         any(),
                         eq(UrlBar.ScrollType.NO_SCROLL),
-                        eq(
-                                expectRetainOmniboxOnFocus
-                                        ? UrlBarData.SELECT_ALL
-                                        : UrlBarData.SELECT_END));
+                        eq(expectDesktopMode ? UrlBarData.SELECT_ALL : UrlBarData.SELECT_END));
         verify(mStatusCoordinator).onUrlFocusChange(true);
         verify(mUrlCoordinator).onUrlFocusChange(true);
 
@@ -1248,7 +1295,8 @@ public class LocationBarMediatorTest {
                         mPageZoomIndicatorCoordinator,
                         mFuseboxCoordinator,
                         mLocationBarEmbedder,
-                        /* omniboxChipManager= */ null);
+                        /* omniboxChipManager= */ null,
+                        mScrimHandler);
         mMediator.setCoordinators(mUrlCoordinator, mAutocompleteCoordinator, mStatusCoordinator);
         int primeCount = sGeoHeaderPrimeCount;
         mProfileSupplier.set(mProfile);
@@ -1802,7 +1850,7 @@ public class LocationBarMediatorTest {
 
     @Test
     public void testRestoringText() {
-        OmniboxFeatures.setShouldRetainOmniboxOnFocusForTesting(true);
+        OmniboxFeatures.setIsDesktopModeForTesting(true);
         doReturn(JUnitTestGURLs.NTP_URL).when(mLocationBarDataProvider).getCurrentGurl();
         mTabletMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
@@ -1845,7 +1893,7 @@ public class LocationBarMediatorTest {
         mProfileSupplier.set(mProfile);
         RobolectricUtil.runAllBackgroundAndUi();
 
-        OmniboxFeatures.setShouldRetainOmniboxOnFocusForTesting(true);
+        OmniboxFeatures.setIsDesktopModeForTesting(true);
         NewTabPageDelegate newTabPageDelegate = mock(NewTabPageDelegate.class);
         doReturn(newTabPageDelegate).when(mLocationBarDataProvider).getNewTabPageDelegate();
         doReturn(JUnitTestGURLs.NTP_URL).when(mLocationBarDataProvider).getCurrentGurl();
@@ -2329,6 +2377,46 @@ public class LocationBarMediatorTest {
         org.mockito.Mockito.clearInvocations(mLocationBarLayout);
         mMediator.updateBackButtonVisibility();
         verify(mLocationBarLayout).setBackButtonVisibility(false);
+    }
+
+    @Test
+    public void testOnSuggestionsChanged_triggersScrimVisibility() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+        mMediator.beginInput(new AutocompleteInput());
+
+        // Show scrim in all contexts if there are any suggestions to show.
+        mMediator.onSuggestionsChanged(null, true);
+        verify(mScrimHandler).setVisibility(true);
+        clearInvocations(mScrimHandler);
+
+        // Show scrim on mobile devices even if there are no suggestions to show.
+        OmniboxFeatures.setIsDesktopModeForTesting(false);
+        mMediator.onSuggestionsChanged(null, false);
+        verify(mScrimHandler).setVisibility(true);
+        clearInvocations(mScrimHandler);
+
+        // On desktop, we show no suggestions in select cases, e.g. on the NTP where the omnibox is
+        // prefocused. We don't want to show the scrim in that scenario either.
+        OmniboxFeatures.setIsDesktopModeForTesting(true);
+        mMediator.beginInput(
+                new AutocompleteInput().setAutocompleteState(AutocompleteState.STANDBY));
+        verify(mScrimHandler).setVisibility(false);
+        clearInvocations(mScrimHandler);
+        mMediator.onSuggestionsChanged(null, false);
+        verify(mScrimHandler).setVisibility(false);
+        clearInvocations(mScrimHandler);
+    }
+
+    @Test
+    public void testBeginInput_triggersScrimUpdate() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+
+        mMediator.beginInput(new AutocompleteInput().setUserText("test"));
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        verify(mScrimHandler).updateScrimVisualState();
     }
 
     private FuseboxSessionState getSession() {

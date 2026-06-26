@@ -1194,8 +1194,8 @@ targets.mixin(
     name = "linux_amd_rx_5500_xt",
     swarming = targets.swarming(
         dimensions = {
-            "gpu": "1002:7340-23.2.1",
-            "os": "Ubuntu-22.04",
+            "gpu": "1002:7340-23.2.1|1002:7340-25.2.8",
+            "os": "Ubuntu-22.04|Ubuntu-24.04",
             "display_attached": "1",
             "pool": "chromium.tests.gpu",
         },
@@ -1861,6 +1861,13 @@ targets.mixin(
 )
 
 targets.mixin(
+    name = "use-ios-simulator-cache",
+    args = [
+        "--use-simulator-cache",
+    ],
+)
+
+targets.mixin(
     name = "vaapi_unittest_args",
     args = [
         "--stop-ui",
@@ -2141,22 +2148,6 @@ targets.mixin(
             "gpu": "10de:2783-32.0.15.8129",
             "os": "Windows-11",
             "pool": "chromium.tests.gpu",
-        },
-    ),
-)
-
-targets.mixin(
-    name = "win11_qualcomm_adreno_690_stable",
-    swarming = targets.swarming(
-        dimensions = {
-            "display_attached": "1",
-            # Screen scaling is mostly to ensure that pixel test output is
-            # consistent.
-            "screen_scaling_percent": "100",
-            "cpu": "arm64",
-            "gpu": "qcom:043a-27.20.1870.0",
-            "os": "Windows-11-22631",
-            "pool": "chromium.tests",
         },
     ),
 )

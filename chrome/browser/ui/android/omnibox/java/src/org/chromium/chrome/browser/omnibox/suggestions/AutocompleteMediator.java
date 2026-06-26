@@ -62,6 +62,7 @@ import org.chromium.chrome.browser.tab.Tab.LoadUrlResult;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.metrics.OmniboxEventProtos.OmniboxEventProto.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
+import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteInput.RefineActionUsage;
 import org.chromium.components.omnibox.AutocompleteInput.SiteSearchData;
 import org.chromium.components.omnibox.AutocompleteMatch;
@@ -402,7 +403,10 @@ class AutocompleteMediator
     /** Kicks off a zero-suggest request. */
     void startZeroSuggest() {
         if (!isInInputSession()) return;
-        if (shouldSuppressZeroSuggest()) return;
+        if (shouldSuppressZeroSuggest()) {
+            clearSuggestions();
+            return;
+        }
 
         if (OmniboxFeatures.sServeJavaCachedZeroSuggest.isEnabled()) {
             // Serve suggestions anticipating higher latency from the server?
@@ -513,7 +517,7 @@ class AutocompleteMediator
 
         if (mAutocompleteInput == null) return;
 
-        if (mAutocompleteInput.shouldSuppressAutomaticSuggestionsUntilUserStartsTyping()) {
+        if (mAutocompleteInput.getAutocompleteState() != AutocompleteState.ENABLED) {
             // Ensure we don't show any lingering suggestions if the user jumps between
             // an active input session and NTP on LFF where the omnibox is prefocused but
             // suggestions list are not shown.
@@ -1011,7 +1015,6 @@ class AutocompleteMediator
         // - the user accepts the input (by pressing Enter).
         // for that reason this logic should not apply UserText.
         mDelegate.setOmniboxEditingText(stripKeywordIfNecessary(text));
-        mAutocompleteInput.setSiteSearchData(null);
     }
 
     /**
@@ -1056,7 +1059,7 @@ class AutocompleteMediator
         if (!isInInputSession()) return;
         if (mShouldPreventOmniboxAutocomplete) return;
 
-        if (mAutocompleteInput.shouldSuppressAutomaticSuggestionsUntilUserStartsTyping()) {
+        if (mAutocompleteInput.getAutocompleteState() != AutocompleteState.ENABLED) {
             return;
         }
 
@@ -1091,7 +1094,6 @@ class AutocompleteMediator
         stopAutocomplete(false);
 
         if (isInZeroPrefixContext) {
-            clearSuggestions();
             startZeroSuggest();
         } else {
             boolean preventAutocomplete = !mUrlBarEditingTextProvider.shouldAutocomplete();
@@ -1257,7 +1259,7 @@ class AutocompleteMediator
         mIgnoreOmniboxItemSelection = true;
 
         // Prevent clearing the text from triggering a new autocomplete request.
-        mAutocompleteInput.setSuppressAutomaticSuggestionsUntilUserStartsTyping(true);
+        mAutocompleteInput.setAutocompleteState(AutocompleteState.STANDBY);
 
         if (siteSearchData != null) {
             // In keyword mode, the query string starts fresh/empty. The keyword is presented as a
@@ -1870,25 +1872,31 @@ class AutocompleteMediator
 
     @Override
     public void onTopResumedActivityChanged(boolean isTopResumedActivity) {
-        if (!isInInputSession()) return;
+        boolean showSuggestionsContainer = isTopResumedActivity;
 
-        if (isTopResumedActivity) {
-            installAutocompleteObservers();
-            onInputChanged();
-        } else {
-            stopAutocomplete(/* clear= */ true);
-            removeAutocompleteObservers();
+        if (isInInputSession()) {
+            // Always set the window activity focused property to true for hub search so that the
+            // dropdown container persists when search activity is dismissed.
+            // TODO(crbug.com/390011136): Find a better way to create a seamless animation when
+            // exiting hub search that dismisses the URL bar and suggestions list together.
+            showSuggestionsContainer |=
+                    mAutocompleteInput.getPageClassification()
+                            == PageClassification.ANDROID_HUB_VALUE;
+
+            if (isTopResumedActivity) {
+                installAutocompleteObservers();
+                onInputChanged();
+            } else {
+                stopAutocomplete(/* clear= */ true);
+                removeAutocompleteObservers();
+            }
         }
 
-        // Always set the window activity focused property to true for hub search so that the
-        // dropdown container persists when search activity is dismissed.
-        // TODO(crbug.com/390011136): Find a better way to create a seamless animation when
-        // exiting hub search that dismisses the URL bar and suggestions list together.
+        // TODO(crbug.com/390011136): Find a better / more appropriate name for this property. It is
+        // a misnomer: this property doesn't reflect activity window focus, but the intent to show
+        // the suggestions list container.
         mListPropertyModel.set(
-                SuggestionListProperties.ACTIVITY_WINDOW_FOCUSED,
-                mAutocompleteInput.getPageClassification() == PageClassification.ANDROID_HUB_VALUE
-                        ? true
-                        : isTopResumedActivity);
+                SuggestionListProperties.ACTIVITY_WINDOW_FOCUSED, showSuggestionsContainer);
     }
 
     /**

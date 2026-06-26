@@ -9,6 +9,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.content.Context;
@@ -254,6 +256,84 @@ public class CronetAdaptiveRequestContextTest {
 
         // Even if not expired, it should return null because the network is not available.
         assertEquals(null, computeStreamNetworkHandles(url));
+    }
+
+    @Test
+    @SmallTest
+    @Flags(
+            stringFlags = {
+                @StringFlag(
+                        name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_HOSTS_FLAG_NAME,
+                        value = "https://example.com"),
+                @StringFlag(
+                        name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_PATHS_FLAG_NAME,
+                        value = "/path")
+            },
+            boolFlags = {
+                @BoolFlag(
+                        name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_NAME,
+                        value = true)
+            })
+    @RequiresMinAndroidApi(Build.VERSION_CODES.N)
+    public void reportFallbackUsed_defaultNetwork_clearsMemory() {
+        // We need java.util.stream.Stream to be available for these tests.
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N);
+        String url = "https://example.com/path";
+        long networkHandle = 12345L;
+        Network mockNetwork = mock(Network.class);
+        when(mockNetwork.getNetworkHandle()).thenReturn(networkHandle);
+        when(mMockConnectivityManagerWrapper.getAllNetworks(any()))
+                .thenReturn(new Network[] {mockNetwork});
+        when(mMockConnectivityManagerWrapper.getDefaultNetwork()).thenReturn(mockNetwork);
+
+        // First memorize a fallback.
+        mContext.reportFallbackUsed(url, networkHandle);
+        assertEquals(networkHandle, computeStreamNetworkHandles(url).mPrimaryNetworkHandle);
+
+        // Now report default network.
+        mContext.reportFallbackUsed(url, CronetEngineBase.DEFAULT_NETWORK_HANDLE);
+
+        // Memory should be cleared.
+        assertEquals(null, computeStreamNetworkHandles(url));
+    }
+
+    @Test
+    @SmallTest
+    @Flags(
+            boolFlags = {
+                @BoolFlag(
+                        name = CronetAdaptiveRequestContext.ENABLE_ADAPTIVE_NETWORK_FOR_ALL_NAME,
+                        value = true)
+            })
+    @RequiresMinAndroidApi(Build.VERSION_CODES.N)
+    public void getUriIfAdaptive_allEnabled_returnsUri() {
+        // We need java.util.stream.Stream to be available for these tests.
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N);
+        String url = "https://random-host.com/random-path";
+        URI expectedUri = URI.create(url);
+        assertEquals(expectedUri, mContext.getUriIfAdaptive(url));
+    }
+
+    @Test
+    @SmallTest
+    @Flags(
+            boolFlags = {
+                @BoolFlag(
+                        name = CronetAdaptiveRequestContext.ADAPTIVE_NETWORK_DEV_TOAST_FLAG_NAME,
+                        value = true)
+            })
+    @RequiresMinAndroidApi(Build.VERSION_CODES.N)
+    public void reportFallbackUsed_toasts() {
+        // We need java.util.stream.Stream to be available for these tests.
+        assumeTrue(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N);
+        CronetAdaptiveRequestContext spyContext = spy(mContext);
+        String url = "https://example.com/path";
+
+        spyContext.reportFallbackUsed(url, 12345L);
+        verify(spyContext).maybeShowDevToast("example.com", "/path", false);
+
+        spyContext.reportFallbackUsed(url, CronetEngineBase.DEFAULT_NETWORK_HANDLE);
+        verify(spyContext).maybeShowDevToast("example.com", "/path", true);
     }
 
     private CronetAdaptiveRequestContext.AdaptiveStreamNetworkHandles computeStreamNetworkHandles(

@@ -1118,6 +1118,8 @@ component("net") {
     "ssl/client_cert_store.h",
     "ssl/client_cert_store_empty.cc",
     "ssl/client_cert_store_empty.h",
+    "ssl/crypto_private_key.cc",
+    "ssl/crypto_private_key.h",
     "ssl/openssl_private_key.cc",
     "ssl/openssl_private_key.h",
     "ssl/openssl_ssl_util.cc",
@@ -1874,6 +1876,10 @@ component("net") {
       "disk_cache/sql/exclusive_operation_coordinator.cc",
       "disk_cache/sql/exclusive_operation_coordinator.h",
       "disk_cache/sql/indexed_pair_set.h",
+      "disk_cache/sql/sql_async_task_manager.cc",
+      "disk_cache/sql/sql_async_task_manager.h",
+      "disk_cache/sql/sql_async_task_token.cc",
+      "disk_cache/sql/sql_async_task_token.h",
       "disk_cache/sql/sql_backend_aliases.h",
       "disk_cache/sql/sql_backend_constants.h",
       "disk_cache/sql/sql_backend_impl.cc",
@@ -1891,6 +1897,7 @@ component("net") {
       "disk_cache/sql/sql_persistent_store_queries.h",
       "disk_cache/sql/sql_read_cache_memory_monitor.cc",
       "disk_cache/sql/sql_read_cache_memory_monitor.h",
+      "disk_cache/sql/sql_tracked_sequence_bound.h",
       "disk_cache/sql/sql_write_buffer_memory_monitor.cc",
       "disk_cache/sql/sql_write_buffer_memory_monitor.h",
     ]
@@ -3123,6 +3130,7 @@ target(_test_target_type, "net_unittests") {
     "spdy/spdy_write_queue_unittest.cc",
     "ssl/client_cert_identity_unittest.cc",
     "ssl/client_cert_store_unittest-inl.h",
+    "ssl/crypto_private_key_unittest.cc",
     "ssl/openssl_private_key_unittest.cc",
     "ssl/ssl_cipher_suite_names_unittest.cc",
     "ssl/ssl_client_auth_cache_unittest.cc",
@@ -3193,6 +3201,7 @@ target(_test_target_type, "net_unittests") {
   if (is_mac) {
     sources += [
       "cert/internal/trust_store_mac_unittest.cc",
+      "proxy_resolution/mac/mac_system_proxy_resolution_service_unittest.cc",
       "socket/ephemeral_port_randomizer_mac_unittest.cc",
       "ssl/client_cert_store_mac_unittest.cc",
       "ssl/ssl_platform_key_mac_unittest.cc",
@@ -3623,9 +3632,13 @@ target(_test_target_type, "net_unittests") {
       "disk_cache/sql/eviction_candidate_aggregator_unittest.cc",
       "disk_cache/sql/exclusive_operation_coordinator_unittest.cc",
       "disk_cache/sql/indexed_pair_set_unittest.cc",
+      "disk_cache/sql/sql_async_task_manager_unittest.cc",
       "disk_cache/sql/sql_backend_impl_unittest.cc",
       "disk_cache/sql/sql_persistent_store_in_memory_index_unittest.cc",
       "disk_cache/sql/sql_persistent_store_unittest.cc",
+      "disk_cache/sql/sql_tracked_sequence_bound_unittest.cc",
+      "disk_cache/sql/test_util.cc",
+      "disk_cache/sql/test_util.h",
     ]
 
     deps += [ "//components/performance_manager/scenario_api:test_support" ]

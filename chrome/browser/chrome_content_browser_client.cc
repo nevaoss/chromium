@@ -784,7 +784,7 @@ using plugins::ChromeContentBrowserClientPluginsPart;
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
-using web_apps::ChromeContentBrowserClientIsolatedWebAppsPart;
+using web_app::ChromeContentBrowserClientIsolatedWebAppsPart;
 #endif
 
 namespace {
@@ -1950,8 +1950,8 @@ bool ChromeContentBrowserClient::ShouldUseProcessPerSite(
 
   // NTP should use process-per-site.  This is a performance optimization to
   // reduce process count associated with NTP tabs.
-  if (site_url == GURL(chrome::kChromeUINewTabURL) ||
-      site_url == GURL(chrome::kChromeUINewTabPageURL)) {
+  if (site_url == chrome::ChromeUINewTabURLAsGURL() ||
+      site_url == chrome::ChromeUINewTabPageURLAsGURL()) {
     return true;
   }
 
@@ -2275,10 +2275,10 @@ bool ChromeContentBrowserClient::HasWebRequestAPIProxy(
           browser_context);
   if (!web_request_api) {
     return false;
+  } else if (base::FeatureList::IsEnabled(
+          features::kOptimizeWebRequestProxyForServiceWorkerAutoPreload)) {
+    return web_request_api->HasWebRequestOrDeclarativeWebRequestExtension();
   } else {
-    // TODO(crbug.com/362539771): Check if the request is from guest view and
-    // use HasWebRequestOrDeclarativeWebRequestExtension() instead of using
-    // MayHaveProxies().
     return web_request_api->MayHaveProxies();
   }
 #else
@@ -3189,6 +3189,17 @@ bool ChromeContentBrowserClient::IsDataSaverEnabled(
   }
 
   return data_saver::IsDataSaverEnabled();
+}
+
+bool ChromeContentBrowserClient::IsPinchToZoomAllowed(
+    content::BrowserContext* context) {
+#if BUILDFLAG(IS_CHROMEOS)
+  if (IsRunningInAppMode()) {
+    return user_prefs::UserPrefs::Get(context)->GetBoolean(
+        ash::prefs::kKioskPinchToZoomAllowed);
+  }
+#endif
+  return true;
 }
 
 void ChromeContentBrowserClient::UpdateRendererPreferencesForWorker(
@@ -7238,7 +7249,7 @@ bool ChromeContentBrowserClient::HandleWebUI(
         (url->DomainIs(chrome::kChromeUIBookmarksHost) ||
          url->DomainIs(chrome::kChromeUIHistoryHost))) {
       // Rewrite with new tab URL
-      *url = GURL(chrome::kChromeUINewTabURL);
+      *url = chrome::ChromeUINewTabURLAsGURL();
     }
   }
 
@@ -8738,8 +8749,8 @@ bool ChromeContentBrowserClient::ShouldSuppressAXLoadComplete(
   WebContents* web_contents = WebContents::FromRenderFrameHost(rfh);
 
   const GURL& url = web_contents->GetVisibleURL();
-  return url == GURL(chrome::kChromeUINewTabURL) ||
-         url == GURL(chrome::kChromeUINewTabPageURL);
+  return url == chrome::ChromeUINewTabURLAsGURL() ||
+         url == chrome::ChromeUINewTabPageURLAsGURL();
 }
 
 void ChromeContentBrowserClient::BindAIManager(

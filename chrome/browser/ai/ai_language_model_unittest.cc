@@ -1032,9 +1032,6 @@ TEST_F(AILanguageModelTest, MultimodalInput) {
               ElementsAreArray({"UfooEU<image>EU<audio>EM"}));
 }
 
-// TODO: crbug.com/474999857 Enable on Android when download progress is
-// supported.
-#if !BUILDFLAG(IS_ANDROID)
 TEST_F(AILanguageModelTest, ModelDownload) {
   MockDownloadProgressObserver observer;
   GetAIManagerInterface()->AddModelDownloadProgressObserver(
@@ -1058,7 +1055,6 @@ TEST_F(AILanguageModelTest, ModelDownload) {
   fake_broker_->component_state().UpdateDownloadProgress(total_bytes);
   observer.ExpectReceivedNormalizedUpdate(total_bytes, total_bytes);
 }
-#endif  // !BUILDFLAG(IS_ANDROID)
 
 TEST_F(AILanguageModelTest, MeasureInputUsage) {
   auto session = CreateSession();
@@ -1191,7 +1187,8 @@ TEST_F(AILanguageModelTest, Constraint) {
   EXPECT_THAT(
       Prompt(*session, MakeInput("foo"),
              on_device_model::mojom::ResponseConstraint::NewRegex("reg")),
-      ElementsAre("Constraint: regex reg", "UfooEM"));
+      ElementsAre("Hint: constrained_decoding ", "Constraint: regex reg",
+                  "UfooEM"));
 }
 
 TEST_F(AILanguageModelTest, Prefix) {

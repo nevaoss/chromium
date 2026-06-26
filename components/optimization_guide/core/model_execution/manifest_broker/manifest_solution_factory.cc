@@ -11,6 +11,8 @@
 #include "base/containers/flat_map.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
+#include "base/logging.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/rand_util.h"
 #include "base/strings/string_util.h"
 #include "base/task/thread_pool.h"
@@ -203,7 +205,9 @@ class ManifestSolutionFactory::Solution : public ModelBrokerImpl::Solution {
   }
 
   void ReportHealthyCompletion() override {
-    // No-op
+    TRACE_EVENT("optimization_guide",
+                "ManifestSolutionFactory::Solution::ReportHealthyCompletion");
+    factory_->access_controller_->OnResponseCompleted();
   }
 
  private:
@@ -249,10 +253,12 @@ ManifestSolutionFactory::ManifestSolutionFactory(
     ModelBrokerImpl& broker_impl,
     UsageTracker& usage_tracker,
     on_device_model::ServiceClient& service_client,
+    OnDeviceModelAccessController& access_controller,
     base::OnceClosure on_init_complete)
     : broker_impl_(broker_impl),
       service_client_(service_client),
       usage_tracker_(usage_tracker),
+      access_controller_(access_controller),
       manifest_(std::move(manifest)),
       assets_(MakeAssetsMap(manifest_.GetAssets())),
       base_models_(MakeBaseModelsMap(manifest_.GetRecipes())),
@@ -307,8 +313,23 @@ void ManifestSolutionFactory::UpdateSolutions() {
   }
 }
 
+std::vector<mojom::BrokerModelInfoPtr>
+ManifestSolutionFactory::GetBrokerModels() const {
+  std::vector<mojom::BrokerModelInfoPtr> result;
+  for (const auto& [model_id, state] : base_models_) {
+    const auto& recipe = manifest_.GetRecipes().base_models().at(model_id);
+    auto info = mojom::BrokerModelInfo::New();
+    info->name = model_id;
+    if (auto path = ResolveFile(recipe.weights_file())) {
+      info->weights_path = path->AsUTF8Unsafe();
+    }
+    result.push_back(std::move(info));
+  }
+  return result;
+}
+
 std::optional<base::FilePath> ManifestSolutionFactory::ResolveFile(
-    const proto::FileReference& file) {
+    const proto::FileReference& file) const {
   auto it = assets_.find(file.asset_id());
   if (it == assets_.end() || !it->second.has_value()) {
     return std::nullopt;
@@ -390,6 +411,10 @@ void ManifestSolutionFactory::LoadSolutionConfig(
 ModelBrokerImpl::MaybeSolution
 ManifestSolutionFactory::CreateSolutionForUseCase(
     const std::string& use_case_name) {
+  auto reason = access_controller_->ShouldStartNewSession();
+  if (reason != OnDeviceModelEligibilityReason::kSuccess) {
+    return base::unexpected(reason);
+  }
   auto required_assets = manifest_.GetRequiredAssets(use_case_name);
   if (!required_assets) {
     // Use case not found in manifest.
@@ -471,13 +496,12 @@ ManifestSolutionFactory::GetOrLoadTextSafetyModel(const std::string& model_id) {
       // We should not get here unless the asset is available.
       params.ts_paths->data = *ResolveFile(recipe.weights_file());
     }
-    // TODO(holte): Add language detection model file to manifest.
-    // if (recipe.has_language_detection_model_file()) {
-    //   params.language_paths.emplace();
-    //   // We should not get here unless the asset is available.
-    //   params.language_paths->model =
-    //   *ResolveFile(recipe.language_detection_model_file());
-    // }
+    if (recipe.has_language_detection_model_file()) {
+      params.language_paths.emplace();
+      // We should not get here unless the asset is available.
+      params.language_paths->model =
+          *ResolveFile(recipe.language_detection_model_file());
+    }
     service_client_->AddPendingUsage();
     base::ThreadPool::PostTaskAndReplyWithResult(
         FROM_HERE, {base::MayBlock()},
@@ -554,9 +578,9 @@ void ManifestSolutionFactory::LoadBaseModel(const std::string& model_id,
           },
           weak_ptr_factory_.GetWeakPtr(), model_id,
           state.remote_.BindNewPipeAndPassReceiver()));
-  // Disconnects should only happen on a service crash, and we track those
-  // elsewhere.
-  state.remote_.reset_on_disconnect();
+  state.remote_.set_disconnect_with_reason_handler(
+      base::BindOnce(&ManifestSolutionFactory::OnBaseModelDisconnect,
+                     base::Unretained(this), model_id));
   state.remote_.reset_on_idle_timeout(features::GetOnDeviceModelIdleTimeout());
 }
 
@@ -599,6 +623,41 @@ void ManifestSolutionFactory::LoadAdaptation(const std::string& model_id,
           state.remote_.BindNewPipeAndPassReceiver()));
   state.remote_.reset_on_disconnect();
   state.remote_.reset_on_idle_timeout(features::GetOnDeviceModelIdleTimeout());
+}
+
+void ManifestSolutionFactory::OnBaseModelDisconnect(
+    const std::string& model_id,
+    uint32_t reason,
+    const std::string& description) {
+  TRACE_EVENT("optimization_guide",
+              "ManifestSolutionFactory::OnModelDisconnect");
+  auto it = base_models_.find(model_id);
+  CHECK(it != base_models_.end())
+      << "Base model disconnect for unknown model id: " << model_id;
+  it->second.remote_.reset();
+  const bool is_idle =
+      reason == static_cast<uint32_t>(
+                    on_device_model::ModelDisconnectReason::kIdleShutdown);
+  base::UmaHistogramBoolean(
+      "OptimizationGuide.ModelExecution.OnDeviceBaseModelIdleDisconnect",
+      is_idle);
+  if (is_idle) {
+    return;
+  }
+  LOG(ERROR) << "Base model disconnected unexpectedly; reason: " << reason
+             << ", description: " << description;
+  base::TimeDelta delay =
+      access_controller_->OnDisconnectedFromRemote() - base::Time::Now();
+  if (delay.is_positive()) {
+    // Notify providers that solutions are disabled.
+    UpdateSolutions();
+    // Check again once the delay elapses.
+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&ManifestSolutionFactory::UpdateSolutions,
+                       weak_ptr_factory_.GetWeakPtr()),
+        delay);
+  }
 }
 
 }  // namespace optimization_guide

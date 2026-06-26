@@ -777,6 +777,7 @@ chromium-metrics-reviews@google.com.
   <int value="94" label="One Time Token Service"/>
   <int value="95" label="Multistep Filter"/>
   <int value="96" label="Indigo"/>
+  <int value="97" label="Glic Invoke API"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/signin/public/base/oauth_consumer_id.h:OAuthConsumerId) -->
@@ -1066,7 +1067,7 @@ chromium-metrics-reviews@google.com.
 
 <enum name="SigninDiceTokenFetchResult">
   <int value="0" label="Success"/>
-  <int value="1" label="Abort"/>
+  <int value="1" label="Abort (deprecated)"/>
   <int value="2" label="Failure">Failed with Gaia error.</int>
   <int value="3" label="Timeout"/>
 </enum>
@@ -1251,7 +1252,8 @@ chromium-metrics-reviews@google.com.
     Sign-out forced because the account was removed from the device after a
     device restore. iOS only.
   </int>
-  <int value="16" label="User clicked turn off sync">
+  <int value="16"
+      label="(Obsolete) User clicked turn off sync. Deprecated as of 04/2026.">
     User clicked the 'Turn off sync' option within settings. Android only.
   </int>
   <int value="17" label="User clicked signout From profile menu">
@@ -1540,12 +1542,6 @@ chromium-metrics-reviews@google.com.
   <int value="7"
       label="Equal weighted buttons on history sync screen from capability
              (iOS and Android)"/>
-</enum>
-
-<enum name="SyncErrorPromptUIAction">
-  <int value="0" label="Shown"/>
-  <int value="1" label="Dismissed"/>
-  <int value="2" label="Button clicked"/>
 </enum>
 
 <!-- LINT.IfChange(TokenBindingBoundTokenPrevalence) -->

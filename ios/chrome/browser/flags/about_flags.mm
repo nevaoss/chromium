@@ -1364,7 +1364,7 @@ const FeatureEntry::FeatureVariation kPageActionMenuIconVariations[] = {
     {"Sparkles 1", kPageActionMenuIconSparkles1, nullptr},
     {"Sparkles 2", kPageActionMenuIconSparkles2, nullptr}};
 
-const FeatureEntry::FeatureParam kAssistantContainerParamDebugDetents[] = {
+const FeatureEntry::FeatureParam kAssistantContainerParamDebugMode[] = {
     {kAssistantContainerParam, kAssistantContainerParamDebug}};
 
 const FeatureEntry::FeatureParam kAssistantContainer30[] = {
@@ -1374,7 +1374,7 @@ const FeatureEntry::FeatureParam kAssistantContainer60[] = {
     {kAssistantContainerMediumDetentPercentParam, "60"}};
 
 const FeatureEntry::FeatureVariation kAssistantContainerVariations[] = {
-    {"with debug elements", kAssistantContainerParamDebugDetents, nullptr},
+    {"with debug enabled", kAssistantContainerParamDebugMode, nullptr},
     {"30% medium detent", kAssistantContainer30, nullptr},
     {"60% medium detent", kAssistantContainer60, nullptr}};
 
@@ -1446,6 +1446,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kNTPBackgroundCustomizationName,
      flag_descriptions::kNTPBackgroundCustomizationDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kNTPBackgroundCustomization)},
+    {"ntp-header-use-transforms-for-animations",
+     flag_descriptions::kNTPHeaderUseTransformsForAnimationsName,
+     flag_descriptions::kNTPHeaderUseTransformsForAnimationsDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kNTPHeaderUseTransformsForAnimations)},
     {"ntp-background-color-slider",
      flag_descriptions::kNTPBackgroundColorSliderName,
      flag_descriptions::kNTPBackgroundColorSliderDescription, flags_ui::kOsIos,
@@ -1854,10 +1859,7 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(commerce::kTabResumptionShopCard,
                                     kShopCardOverrideOptions,
                                     "TabResumptionShopCard")},
-    {"ios-shop-card-impression-limits",
-     flag_descriptions::kShopCardImpressionLimitsName,
-     flag_descriptions::kShopCardImpressionLimitsDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(commerce::kShopCardImpressionLimits)},
+
     {"ios-segmentation-ephemeral-card-ranker",
      flag_descriptions::kSegmentationPlatformEphemeralCardRankerName,
      flag_descriptions::kSegmentationPlatformEphemeralCardRankerDescription,
@@ -2559,6 +2561,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"composebox-ipad", flag_descriptions::kComposeboxIpadName,
      flag_descriptions::kComposeboxIpadDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kComposeboxIpad)},
+    {"composebox-plus-button-bottom-sheet",
+     flag_descriptions::kComposeboxPlusButtonBottomSheetName,
+     flag_descriptions::kComposeboxPlusButtonBottomSheetDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kComposeboxPlusButtonBottomSheet)},
     {"chrome-next-ia", flag_descriptions::kChromeNextIaName,
      flag_descriptions::kChromeNextIaDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kChromeNextIa,
@@ -2840,6 +2846,17 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(
          autofill::features::kAutofillUpstreamEnforceStrikeDelay)},
+    {"no-accounts-web-signin", flag_descriptions::kNoAccountWebSigninName,
+     flag_descriptions::kNoAccountWebSigninDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(switches::kNoAccountWebSignin)},
+    {"assistant-aim-minimized-state",
+     flag_descriptions::kAssistantAimMinimizedStateName,
+     flag_descriptions::kAssistantAimMinimizedStateDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kAssistantAimMinimizedState)},
+    {"lens-filter-toggle-enabled",
+     flag_descriptions::kLensFilterToggleEnabledName,
+     flag_descriptions::kLensFilterToggleEnabledDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kLensFilterToggleEnabled)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

@@ -49,6 +49,7 @@
 #include "chrome/browser/devtools/views/devtools_floaty.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/download/download_stats.h"
+#include "chrome/browser/enterprise/data_protection/data_protection_clipboard_utils.h"
 #include "chrome/browser/glic/browser_ui/glic_vector_icon_manager.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
@@ -401,6 +402,9 @@ std::string GetGlicWebContentsContextToken(
   }
   if (!params.selection_text.empty() && !params.link_url.is_empty()) {
     return "TextSelectionWithLink";
+  }
+  if (!params.link_url.is_empty()) {
+    return "Link";
   }
   return "TextSelection";
 }
@@ -1244,7 +1248,7 @@ void RenderViewContextMenu::InitMenu() {
     AppendSearchProvider();
   }
 
-  if (!params_.selection_text.empty()) {
+  if (!params_.selection_text.empty() || !params_.link_url.is_empty()) {
     MaybeAppendOpenGlicItem();
   }
 
@@ -1499,7 +1503,7 @@ void RenderViewContextMenu::RecordUsedItem(int id) {
       base::RecordAction(
           base::UserMetricsAction("MostVisited_ClickedFromContextMenu"));
     } else if (doc_url.DeprecatedGetOriginAsURL() ==
-                   GURL(chrome::kChromeUINewTabPageURL) ||
+                   chrome::ChromeUINewTabPageURLAsGURL() ||
                doc_url.DeprecatedGetOriginAsURL() ==
                    GURL(chrome::kChromeUIUntrustedNewTabPageUrl)) {
       base::RecordAction(base::UserMetricsAction(
@@ -2508,6 +2512,10 @@ void RenderViewContextMenu::AppendRotationItems() {
 
 void RenderViewContextMenu::AppendSearchProvider() {
   DCHECK(browser_context_);
+
+  if (!enterprise_data_protection::IsSearchWithAllowed(source_web_contents_)) {
+    return;
+  }
 
   base::TrimWhitespace(params_.selection_text, base::TRIM_ALL,
                        &params_.selection_text);
@@ -3651,7 +3659,29 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
 #endif  // BUILDFLAG(ENABLE_LENS_DESKTOP_GOOGLE_BRANDED_FEATURES)
       [[fallthrough]];
     }
-    case IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB:
+    case IDC_CONTENT_CONTEXT_SEARCHWEBFORNEWTAB: {
+      auto disposition = ui::DispositionFromEventFlags(
+          event_flags, WindowOpenDisposition::NEW_FOREGROUND_TAB);
+
+      content::OpenURLParams open_url_params = GetOpenURLParamsWithExtraHeaders(
+          selection_navigation_url_, /*referring_url=*/GURL(),
+          /*initiator=*/{}, disposition, ui::PAGE_TRANSITION_LINK,
+          /*extra_headers=*/std::string(), /*started_from_context_menu=*/true);
+
+      enterprise_data_protection::ShouldAllowSearchWith(
+          source_web_contents_, params_.selection_text.size(),
+          base::BindOnce(
+              [](base::WeakPtr<content::WebContents> web_contents,
+                 content::OpenURLParams params) {
+                if (!web_contents) {
+                  return;
+                }
+                web_contents->OpenURL(params,
+                                      /*navigation_handle_callback=*/{});
+              },
+              source_web_contents_->GetWeakPtr(), std::move(open_url_params)));
+      break;
+    }
     case IDC_CONTENT_CONTEXT_GOTOURL: {
       auto disposition = ui::DispositionFromEventFlags(
           event_flags, WindowOpenDisposition::NEW_FOREGROUND_TAB);
@@ -3691,7 +3721,7 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
 
     case IDC_CONTENT_CONTEXT_EMOJI: {
       // The emoji dialog is UI that can interfere with the fullscreen bubble,
-      // so drop fullscreen when it is shown. https://crbug.com/1170584
+      // so drop fullscreen when it is shown. https://crbug.com/40054574
       // TODO(avi): Do we need to attach the fullscreen block to the emoji
       // panel?
       source_web_contents_

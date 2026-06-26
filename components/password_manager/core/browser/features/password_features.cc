@@ -56,6 +56,12 @@ BASE_FEATURE(kAutofillReintroduceHybridPasskeyDropdownItem,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
+BASE_FEATURE(kRetryCapturePageContent, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<base::TimeDelta> kCapturePageContentDelay = {
+    &kRetryCapturePageContent, "retry_capture_delay", base::Seconds(0)};
+const base::FeatureParam<int> kCapturePageContentRetryCount = {
+    &kRetryCapturePageContent, "retry_count", 3};
+
 BASE_FEATURE(kBiometricTouchToFill, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kCallOnAddPasswordFillDataAsynchronously,
@@ -152,13 +158,10 @@ BASE_FEATURE(kPasswordFormClientsideClassifier,
 BASE_FEATURE(kPasswordFormGroupedAffiliations,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
-BASE_FEATURE(kPasswordGenerationChunking,
-             "PasswordGenerationChunkPassword",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-
 BASE_FEATURE(kPasswordManagerLogToTerminal, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kPreventPasswordManagerOnFederatedLogin,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kPasswordStorePropagatesActionableErrors,
              base::FEATURE_ENABLED_BY_DEFAULT);

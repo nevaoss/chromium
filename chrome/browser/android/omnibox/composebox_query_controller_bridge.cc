@@ -100,10 +100,14 @@ ComposeboxQueryControllerBridge::ComposeboxQueryControllerBridge(
     Profile* profile,
     content::WebContents* contextual_tasks_web_contents)
     : profile_{profile}, java_obj_(java_obj) {
+  is_task_scoped_ = contextual_tasks_web_contents != nullptr;
   if (contextual_tasks_web_contents &&
       !contextual_tasks_web_contents->IsBeingDestroyed()) {
     contextual_tasks_web_ui_interface_ =
         contextual_tasks::GetWebUiInterface(contextual_tasks_web_contents);
+    if (contextual_tasks_web_ui_interface_) {
+      contextual_tasks_web_ui_interface_->SetComposeboxHandler(this);
+    }
   }
 
   auto query_controller_config_params = std::make_unique<
@@ -155,6 +159,10 @@ void ComposeboxQueryControllerBridge::Destroy(JNIEnv* env) {
   }
 
   delete this;
+}
+
+void ComposeboxQueryControllerBridge::OnWebUIDestroyed(JNIEnv* env) {
+  contextual_tasks_web_ui_interface_ = nullptr;
 }
 
 size_t ComposeboxQueryControllerBridge::GetAttachmentCount() const {
@@ -631,12 +639,8 @@ void ComposeboxQueryControllerBridge::ResetInputStateModel() {
   input_state_model_.reset();
 }
 
-void ComposeboxQueryControllerBridge::ResetBlocklistedSuggestions() {
-  // TODO(crbug.com/493281303): Implement this.
-}
-
 void ComposeboxQueryControllerBridge::UpdateSuggestedTabContext(
-    std::unique_ptr<contextual_tasks::SuggestedTabInfo> suggested_tab) {
+    const contextual_tasks::SuggestedTabInfo* suggested_tab) {
   // TODO(crbug.com/493281303): Implement this.
 }
 
@@ -671,10 +675,6 @@ void ComposeboxQueryControllerBridge::UpdateModelFromUrl(const GURL& url) {
   if (input_state_model_) {
     input_state_model_->UpdateModelFromUrl(url);
   }
-}
-
-bool ComposeboxQueryControllerBridge::has_suggested_tab_context() const {
-  return false;
 }
 
 DEFINE_JNI(ComposeboxQueryControllerBridge)

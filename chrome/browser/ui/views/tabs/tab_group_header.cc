@@ -210,7 +210,6 @@ bool TabGroupHeader::OnKeyPressed(const ui::KeyEvent& event) {
         group().value(), ToggleTabGroupCollapsedStateOrigin::kKeyboard);
     views::ElementTrackerViews::GetInstance()->NotifyViewActivated(
         kTabGroupHeaderElementId, this);
-    NotifyAccessibilityEventDeprecated(ax::mojom::Event::kSelection, true);
     return true;
   }
 
@@ -388,6 +387,10 @@ bool TabGroupHeader::IsValidHoverCardTarget() const {
   DCHECK(features::IsTabGroupHoverCardsEnabled());
   return group().has_value() &&
          tab_slot_controller_->GetTabGroup(group().value()) != nullptr;
+}
+
+views::BubbleAnchor TabGroupHeader::GetAnchor() {
+  return views::BubbleAnchor(this);
 }
 
 views::BubbleBorder::Arrow TabGroupHeader::GetAnchorPosition() const {

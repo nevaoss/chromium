@@ -1518,7 +1518,7 @@ prefs when the profile is loaded.  -->
 </histogram>
 
 <histogram name="Signin.DiceMigration.ForceMigrated" enum="Boolean"
-    expires_after="2026-08-18">
+    expires_after="2026-10-18">
   <owner>ankushkush@google.com</owner>
   <owner>droger@chromium.org</owner>
   <summary>
@@ -2463,6 +2463,16 @@ the browser and content area. -->
   <summary>
     Action taken for tokens being loaded from the token database, at Chrome
     startup. Tokens can be either loaded into Chrome's token service or revoked.
+  </summary>
+</histogram>
+
+<histogram name="Signin.MagiChrome.HybridTransportSupported" enum="Boolean"
+    expires_after="2026-10-01">
+  <owner>msalama@google.com</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records whether the device supports Hybrid Transport (BLE) for MagiChrome.
+    Recorded when the Chrome sign-in URL is generated.
   </summary>
 </histogram>
 
@@ -3576,30 +3586,6 @@ kept as long as profile signout is possible -->
   </summary>
 </histogram>
 
-<histogram name="Signin.SyncErrorMessage{SyncErrorReason}"
-    enum="SyncErrorPromptUIAction" expires_after="2026-09-13">
-  <owner>triploblastic@chromium.org</owner>
-  <owner>bsazonov@chromium.org</owner>
-  <summary>
-    Records various UI and user action events related to the sync error message.
-    Android only.
-  </summary>
-  <token key="SyncErrorReason">
-    <variant name=".AuthError" summary="Auth error."/>
-    <variant name=".ClientOutOfDate" summary="Client out of date."/>
-    <variant name=".PassphraseRequired" summary="Passphrase required."/>
-    <variant name=".SyncSetupIncomplete" summary="Sync setup incomplete."/>
-    <variant name=".TrustedVaultKeyRequiredForEverything"
-        summary="Trusted vault keys required for everything."/>
-    <variant name=".TrustedVaultKeyRequiredForPasswords"
-        summary="Trusted vault keys required for passwords."/>
-    <variant name=".TrustedVaultRecoverabilityDegradedForEverything"
-        summary="Trusted vault recoverability degraded for everything."/>
-    <variant name=".TrustedVaultRecoverabilityDegradedForPasswords"
-        summary="Trusted vault recoverability degraded for passwords."/>
-  </token>
-</histogram>
-
 <histogram name="Signin.SyncOptIn.Completed{Profile}" enum="SigninAccessPoint"
     expires_after="2026-09-27">
   <owner>bsazonov@chromium.org</owner>
@@ -3642,7 +3628,7 @@ kept as long as profile signout is possible -->
 </histogram>
 
 <histogram name="Signin.SyncOptIn.OpenedSyncSettings" enum="SigninAccessPoint"
-    expires_after="2026-08-16">
+    expires_after="2026-10-18">
   <owner>rsult@google.com</owner>
   <owner>dgn@chromium.org</owner>
   <owner>chrome-signin-desktop-team@google.com</owner>

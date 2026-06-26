@@ -133,10 +133,6 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHVideoTutorialNTPSummaryFeature,
     &kIPHVideoTutorialNTPVoiceSearchFeature,
     &kIPHVideoTutorialTryNowFeature,
-    &kIPHWebFeedAwarenessFeature,
-    &kIPHWebFeedFollowFeature,
-    &kIPHWebFeedPostFollowDialogFeature,
-    &kIPHWebFeedPostFollowDialogFeatureWithUIUpdate,
 // ALL_FEATURES_ANDROID_END
 // keep-sorted end
 #else
@@ -362,6 +358,12 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHSupervisedUserProfileSigninFeature,
 // keep-sorted end
 #endif  // BUILDFLAG(IS_WIN) ||  BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
+#if BUILDFLAG(IS_WIN)
+    // keep-sorted start case=no
+    &kIPHSearchExtensionSideloadFeature,
+// keep-sorted end
+#endif  // BUILDFLAG(IS_WIN)
 
 };
 }  // namespace

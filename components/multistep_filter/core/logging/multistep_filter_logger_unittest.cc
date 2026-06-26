@@ -4,10 +4,14 @@
 
 #include "components/multistep_filter/core/logging/multistep_filter_logger.h"
 
+#include <algorithm>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "base/functional/bind.h"
+#include "base/uuid.h"
 #include "components/multistep_filter/core/logging/log_entry.h"
 #include "components/multistep_filter/core/logging/multistep_filter_log_router.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -15,16 +19,36 @@
 namespace multistep_filter {
 namespace {
 
+constexpr char kTestNav1[] = "00000000-0000-4000-8000-000000000001";
+constexpr char kTestNav2[] = "00000000-0000-4000-8000-000000000002";
+constexpr char kTestNav3[] = "00000000-0000-4000-8000-000000000003";
+
 class TestLogRouter : public MultistepFilterLogRouter {
  public:
   TestLogRouter() = default;
   ~TestLogRouter() override = default;
 
+  // MultistepFilterLogRouter:
+  void AddObserver(Observer* observer) override {}
+  void RemoveObserver(Observer* observer) override {}
   bool IsLoggingEnabled() const override { return is_logging_enabled_; }
   void SetIsLoggingEnabled(bool enabled) { is_logging_enabled_ = enabled; }
 
+  std::vector<LogEntry> GetBufferedLogs() const override {
+    std::vector<LogEntry> cloned_entries;
+    cloned_entries.reserve(entries_.size());
+    std::ranges::transform(entries_, std::back_inserter(cloned_entries),
+                           &LogEntry::Clone);
+    return cloned_entries;
+  }
+
   void RouteLogMessage(LogEntry entry) override {
     entries_.push_back(std::move(entry));
+  }
+
+  base::RepeatingCallback<void(LogEntry)> GetLogCallback() override {
+    return base::BindRepeating(&TestLogRouter::RouteLogMessage,
+                               base::Unretained(this));
   }
 
   // Returns all intercepted log entries for test verification.
@@ -35,17 +59,16 @@ class TestLogRouter : public MultistepFilterLogRouter {
   std::vector<LogEntry> entries_;
 };
 
-}  // namespace
-
 TEST(MultistepFilterLoggerTest, ScopedLogMessage) {
   TestLogRouter router;
   {
-    ScopedLogMessage(&router, "nav-1", LogEventType::kUiShown, "example.com");
+    ScopedLogMessage(&router, base::Uuid::ParseLowercase(kTestNav1),
+                     LogEventType::kUiShown, "example.com");
   }
 
   ASSERT_EQ(router.entries().size(), 1u);
   const LogEntry& entry = router.entries().front();
-  EXPECT_EQ(entry.navigation_id, "nav-1");
+  EXPECT_EQ(entry.navigation_id.AsLowercaseString(), kTestNav1);
   EXPECT_EQ(entry.event_type, LogEventType::kUiShown);
   EXPECT_EQ(entry.source_etld_plus_1, "example.com");
 }
@@ -53,14 +76,15 @@ TEST(MultistepFilterLoggerTest, ScopedLogMessage) {
 TEST(MultistepFilterLoggerTest, ScopedLogMessageWithDetail) {
   TestLogRouter router;
   {
-    ScopedLogMessage(&router, "nav-1", LogEventType::kUiShown, "example.com")
+    ScopedLogMessage(&router, base::Uuid::ParseLowercase(kTestNav1),
+                     LogEventType::kUiShown, "example.com")
         .WithDetail("key1", "val1")
         .WithDetail("key2", 42);
   }
 
   ASSERT_EQ(router.entries().size(), 1u);
   const LogEntry& entry = router.entries().front();
-  EXPECT_EQ(entry.navigation_id, "nav-1");
+  EXPECT_EQ(entry.navigation_id.AsLowercaseString(), kTestNav1);
 
   auto* val1 = entry.details.FindString("key1");
   ASSERT_TRUE(val1);
@@ -75,12 +99,13 @@ TEST(MultistepFilterLoggerTest, MacroLoggingEnabled) {
   TestLogRouter router;
   router.SetIsLoggingEnabled(true);
 
-  MULTISTEP_FILTER_LOG(&router, "nav-2", LogEventType::kUiAccepted, "test.com")
+  MULTISTEP_FILTER_LOG(&router, base::Uuid::ParseLowercase(kTestNav2),
+                       LogEventType::kUiAccepted, "test.com")
       .WithDetail("detail_key", "detail_val");
 
   ASSERT_EQ(router.entries().size(), 1u);
   const LogEntry& entry = router.entries().front();
-  EXPECT_EQ(entry.navigation_id, "nav-2");
+  EXPECT_EQ(entry.navigation_id.AsLowercaseString(), kTestNav2);
   EXPECT_EQ(entry.event_type, LogEventType::kUiAccepted);
   EXPECT_EQ(entry.source_etld_plus_1, "test.com");
 
@@ -93,10 +118,12 @@ TEST(MultistepFilterLoggerTest, MacroLoggingDisabled) {
   TestLogRouter router;
   router.SetIsLoggingEnabled(false);
 
-  MULTISTEP_FILTER_LOG(&router, "nav-3", LogEventType::kUiDismissed, "test.com")
+  MULTISTEP_FILTER_LOG(&router, base::Uuid::ParseLowercase(kTestNav3),
+                       LogEventType::kUiDismissed, "test.com")
       .WithDetail("detail_key", "detail_val");
 
   EXPECT_EQ(router.entries().size(), 0u);
 }
 
+}  // namespace
 }  // namespace multistep_filter

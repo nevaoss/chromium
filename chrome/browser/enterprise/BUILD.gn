@@ -57,7 +57,6 @@ source_set("enterprise") {
     "//components/enterprise/common/proto:connectors_proto",
     "//components/enterprise/common/proto:legacy_tech_events_proto",
     "//components/enterprise/connectors/core",
-    "//components/enterprise/connectors/core:cloud_content_scanning",
     "//components/enterprise/content",
     "//components/enterprise/core",
     "//components/enterprise/data_controls/core/browser",
@@ -162,7 +161,13 @@ source_set("enterprise") {
       "reporting/android_app_info_generator.h",
     ]
   } else {
+    public_deps += [
+      "//components/enterprise/browser/groups",
+      "//components/enterprise/browser/groups:features",
+    ]
+
     public += [
+      "groups/enterprise_groups_handler_factory.h",
       "remote_commands/clear_browsing_data_job.h",
       "remote_commands/job_profile_picker.h",
       "remote_commands/user_remote_commands_factory.h",
@@ -285,6 +290,8 @@ source_set("enterprise") {
       "connectors/analysis/content_analysis_info.h",
       "connectors/common.h",
     ]
+    public_deps +=
+        [ "//components/enterprise/connectors/core:cloud_content_scanning" ]
   }
 
   if (is_linux || is_win || is_mac) {
@@ -567,6 +574,7 @@ source_set("impl") {
 
   if (!is_chromeos) {
     sources += [
+      "groups/enterprise_groups_handler_factory.cc",
       "remote_commands/clear_browsing_data_job.cc",
       "remote_commands/job_profile_picker.cc",
       "remote_commands/user_remote_commands_factory.cc",

@@ -161,7 +161,7 @@ INSTANTIATE_TEST_SUITE_P(,
                          GetSyncTestModes(),
                          testing::PrintToStringParamName());
 
-// Android doesn't currently support PRE_ tests, see crbug.com/1117345.
+// Android doesn't currently support PRE_ tests, see crbug.com/40145099.
 #if !BUILDFLAG(IS_ANDROID)
 IN_PROC_BROWSER_TEST_P(SingleClientCommonSyncTest,
                        PRE_ShouldNotIssueGetUpdatesOnBrowserRestart) {
@@ -292,8 +292,7 @@ IN_PROC_BROWSER_TEST_P(SingleClientCommonSyncTest, PRE_ReusesSameCacheGuid) {
   if (GetSetupSyncMode() == SyncTest::SetupSyncMode::kSyncTheFeature) {
     GTEST_SKIP() << "This test applies to transport mode only.";
   }
-  ASSERT_TRUE(SetupClients());
-  ASSERT_TRUE(SetupSyncWithMode(SyncTest::SetupSyncMode::kSyncTransportOnly));
+  ASSERT_TRUE(SignIn());
 
   ASSERT_EQ(syncer::SyncService::TransportState::ACTIVE,
             GetSyncService(0)->GetTransportState());
@@ -446,7 +445,6 @@ IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest,
 IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest, HttpError) {
   ASSERT_TRUE(SetupSync());
 
-  ASSERT_TRUE(GetClient(0)->AwaitSyncTransportActive());
   ASSERT_TRUE(GetSyncService(0)->GetActiveDataTypes().Has(syncer::THEMES));
 
   // THEMES has no unsynced data.
@@ -489,7 +487,6 @@ IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest, SignInPendingState) {
 
   ASSERT_TRUE(SetupSync());
 
-  ASSERT_TRUE(GetClient(0)->AwaitSyncTransportActive());
   ASSERT_TRUE(GetSyncService(0)->GetActiveDataTypes().Has(syncer::THEMES));
 
   // THEMES has no unsynced data.
@@ -529,7 +526,7 @@ IN_PROC_BROWSER_TEST_F(SingleClientGetUnsyncedTypesTest, SignInPendingState) {
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-// Android doesn't currently support PRE_ tests, see crbug.com/1117345.
+// Android doesn't currently support PRE_ tests, see crbug.com/40145099.
 #if !BUILDFLAG(IS_ANDROID)
 class SingleClientFeatureToTransportSyncTest : public SyncTest {
  public:

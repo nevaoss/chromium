@@ -185,6 +185,15 @@ class CONTENT_EXPORT PrefetchContainer
       std::unique_ptr<const PrefetchRequest> request,
       std::unique_ptr<PrePrefetchContainer> pre_prefetch_container = nullptr);
 
+  // Called when the response for |prefetch_container| has started. Based on
+  // |head|, returns a status to inform the |PrefetchStreamingURLLoader| whether
+  // the prefetch is servable. If servable, then `std::nullopt` will be
+  // returned, otherwise a failure status is returned.
+  // This is `static` just to handle `WeakPtr` check.
+  static std::optional<PrefetchErrorOnResponseReceived>
+  OnPrefetchResponseStarted(base::WeakPtr<PrefetchContainer> prefetch_container,
+                            network::mojom::URLResponseHead* head);
+
   // Use `Create*()` above.
   // TODO(crbug.com/452389538): Receiving `PrefetchRequest` and
   // `PrePrefetchContainer` whose only `PrefetchRequest` is moved out (when
@@ -275,7 +284,13 @@ class CONTENT_EXPORT PrefetchContainer
         const network::URLLoaderCompletionStatus& completion_status) = 0;
   };
 
-  void OnWillBeDestroyed();
+  // ----------------------------------------------------------------
+  // Values that never change throughout `PrefetchContainer` lifetime.
+
+  const PrefetchRequest& request() const { return *request_; }
+
+  // Equivalent to `request().key()`.
+  const PrefetchKey& key() const;
 
   // `content::PrefetchDeduplicationEntry` overrides.
   // The initial URL that was requested to be prefetched.
@@ -287,6 +302,41 @@ class CONTENT_EXPORT PrefetchContainer
   const std::optional<net::HttpNoVarySearchData>& GetNoVarySearchHint()
       const override;
 
+  // ----------------------------------------------------------------
+  // Values that can become non-null upon transitioning to
+  // `PrefetchContainerLoadState::kDeterminedHead` or
+  // `PrefetchContainerLoadState::kFailedDeterminedHead`, and never change after
+  // that.
+
+  // `GetNonRedirect*()` methods return the `PrefetchResponseReader` or
+  // `ResponseHead` of the prefetched non-redirect response, respectively, if
+  // already received its head. Ruturns nullptr otherwise.
+  // Note: These can return non-null even on
+  // `PrefetchContainerLoadState::kFailed`.
+  //
+  // More precisely, returns non-null on:
+  // - `PrefetchContainerLoadState::kDeterminedHead` (always)
+  // - `PrefetchContainerLoadState::kCompleted` (always)
+  // - `PrefetchContainerLoadState::kFailedDeterminedHead` (in some cases)
+  // - `PrefetchContainerLoadState::kFailed` (in some cases)
+  // (See also the comment of `PrefetchResponseReader::GetHead()`)
+  //
+  // Note: When `GetNonRedirect*()` methods return non-null, it always points to
+  // the final `PrefetchResponseReader` and isn't affected by
+  // https://crbug.com/432518638, because when the non-redirect response is
+  // received all redirects are already completed.
+  const PrefetchResponseReader* GetNonRedirectResponseReader() const;
+  const network::mojom::URLResponseHead* GetNonRedirectHead() const;
+
+  // Returns the HTTP response code of the non-redirect response, if received.
+  // Note that this returns the response code even on failures, e.g. when a
+  // non-2xx response is received, or the prefetch is failed after response is
+  // received. This is for the intentional usage of getting the non-2xxx
+  // response code for failed response.
+  std::optional<int> GetResponseCode() const;
+
+  // ----------------------------------------------------------------
+
   // Returns `true` if the `prefetch_container` is stale. I.e.
   // the prefetch either is not or never will be servable to a
   // navigation.
@@ -296,13 +346,8 @@ class CONTENT_EXPORT PrefetchContainer
   // its dependencies).
   bool IsPrefetchStale() const override;
 
-  const PrefetchKey& key() const;
-
   // The current URL being fetched.
   GURL GetCurrentURL() const;
-
-  // The previous URL, if this has been redirected. Invalid to call otherwise.
-  GURL GetPreviousURL() const;
 
   // Whether or not an isolated network context is required to the next
   // prefetch.
@@ -314,22 +359,9 @@ class CONTENT_EXPORT PrefetchContainer
 
   base::WeakPtr<PrefetchResponseReader> GetResponseReaderForCurrentPrefetch();
 
-  // `OnPrefetchStarted()` creates the initial resource request based on
-  // `PrefetchRequest`. `UpdateResourceRequest()`, which will be called on
-  // redirect, may update this resource request later on.
-  // TODO(crbug.com/483079815): Remove and inline
-  // `MakeInitialResourceRequest()`.
-  void MakeInitialResourceRequest();
   const network::ResourceRequest* GetResourceRequest() const {
     return resource_request_.get();
   }
-
-  // Returns the devtools request id that should be set to resource request
-  // during `OnPrefetchStarted()`.
-  // Note that this is also called via
-  // `SetPrefetchStatusWithoutUpdatingTriggeringOutcome()`, where resource
-  // request might not yet created.
-  const std::string& GetDevtoolsRequestId() const;
 
   base::WeakPtr<PrefetchContainer> GetWeakPtr() {
     return weak_method_factory_.GetWeakPtr();
@@ -337,11 +369,6 @@ class CONTENT_EXPORT PrefetchContainer
   base::WeakPtr<const PrefetchContainer> GetWeakPtr() const {
     return weak_method_factory_.GetWeakPtr();
   }
-
-  // Sets the time that the latest earlier prefetch unmatch happened that this
-  // prefetch could've been served to. Please see
-  // `time_prefetch_match_missed_` for more details.
-  void SetPrefetchMatchMissedTimeForMetrics(base::TimeTicks time);
 
   // The status of the current prefetch. Note that |HasPrefetchStatus| will be
   // initially false until |SetPrefetchStatus| is called. |SetPrefetchStatus|
@@ -355,11 +382,6 @@ class CONTENT_EXPORT PrefetchContainer
   using LoadState = PrefetchContainerLoadState;
   void SetLoadState(LoadState prefetch_status);
   LoadState GetLoadState() const;
-
-  const PrefetchRequest& request() const { return *request_; }
-
-  // Called when it is added to `PrefetchService::owned_prefetches_`.
-  void OnAddedToPrefetchService();
 
   // Whether or not the prefetch was determined to be eligibile.
   void OnEligibilityCheckComplete(PreloadingEligibility eligibility);
@@ -415,42 +437,11 @@ class CONTENT_EXPORT PrefetchContainer
 
   bool IsStreamingURLLoaderDeletionScheduledForTesting() const;
 
-  // `GetNonRedirect*()` methods return the `PrefetchResponseReader` or
-  // `ResponseHead` of the prefetched non-redirect response, respectively, if
-  // already received its head. Ruturns nullptr otherwise.
-  // Note: These can return null even on `PrefetchContainerLoadState::kFailed`.
-  //
-  // More precisely, returns non-null on:
-  // - `PrefetchContainerLoadState::kDeterminedHead` (always)
-  // - `PrefetchContainerLoadState::kCompleted` (always)
-  // - `PrefetchContainerLoadState::kFailedDeterminedHead` (in some cases)
-  // - `PrefetchContainerLoadState::kFailed` (in some cases)
-  // (See also the comment of `PrefetchResponseReader::GetHead()`)
-  //
-  // Note: When `GetNonRedirect*()` methods return non-null, it always points to
-  // the final `PrefetchResponseReader` and isn't affected by
-  // https://crbug.com/432518638, because when the non-redirect response is
-  // received all redirects are already completed.
-  const PrefetchResponseReader* GetNonRedirectResponseReader() const;
-  const network::mojom::URLResponseHead* GetNonRedirectHead() const;
-
-  // Returns the HTTP response code of the non-redirect response, if received.
-  // Note that this returns the response code even on failures, e.g. when a
-  // non-2xx response is received, or the prefetch is failed after response is
-  // received. This is for the intentional usage of getting the non-2xxx
-  // response code for failed response.
-  std::optional<int> GetResponseCode() const;
-
   // Clears |streaming_loader_| and cancels its loading, if any of its
   // corresponding `PrefetchResponseReader` does NOT start serving.
   // This sets/notifies of a failure when called outside `PrefetchContainer`
   // dtor, so always call this asynchronously outside the dtor.
   void CancelStreamingURLLoaderIfNotServing();
-
-  // Returns whether or not this prefetch has been considered to serve for a
-  // navigation in the past. If it has, then it shouldn't be used for any future
-  // navigations.
-  bool HasPrefetchBeenConsideredToServe() const;
 
   // See `OnPrefetchResponseCompletedCallback`.
   void OnPrefetchComplete(
@@ -463,41 +454,17 @@ class CONTENT_EXPORT PrefetchContainer
   // `PrefetchResponseReader::CreateRequestHandler()`.
   PrefetchMatchResolverAction GetMatchResolverAction() const;
 
-  // Starts blocking `PrefetchMatchResolver` until non-redirect response header
-  // is determined or timeouted. `on_maybe_determined_head_callback` will be
-  // called when
-  //
-  // - `PrefetchStreamingURLLoader` succeeded/failed to fetch non-redirect
-  //   response header.
-  // - The argument `timeout` is positive and timeouted.
-  // - `PrefetchContainer` dtor if `kPrefetchUnblockOnCancel` enabled.
-  void StartBlockUntilHead(base::OnceCallback<void(PrefetchContainer&)>
-                               on_maybe_determined_head_callback,
-                           base::TimeDelta timeout);
   // Called when non-redirect response header is determined, i.e.
   // `GetNonRedirectHead()` becomes immutable.
   //
   // This method must be called at most once in the lifecycle of
   // `PrefetchContainer`.
   void OnDeterminedHead(bool is_successful_determined_head);
-  // Unblocks waiting `PrefetchMatchResolver`.
-  //
-  // This method can be called multiple times.
-  void UnblockPrefetchMatchResolver();
 
   void StartTimeoutTimerIfNeeded(base::OnceClosure on_timeout_callback);
 
-  // Returns the time between the prefetch request was sent and the time the
-  // response headers were received. Not set if the prefetch request hasn't been
-  // sent or the response headers haven't arrived.
-  std::optional<base::TimeDelta> GetPrefetchHeaderLatency() const {
-    return header_latency_;
-  }
-
-  // Allow for the serving page to metrics when changes to the prefetch occur.
-  void SetServingPageMetrics(base::WeakPtr<PrefetchServingPageMetricsContainer>
-                                 serving_page_metrics_container);
-  void UpdateServingPageMetrics();
+  // ----------------------------------------------------------------
+  // Testing:
 
   // Returns the container id used by test utilities.
   const std::string& ContainerIdForTesting() const {
@@ -533,11 +500,12 @@ class CONTENT_EXPORT PrefetchContainer
   static void SetPrefetchResponseCompletedCallbackForTesting(
       PrefetchResponseCompletedCallbackForTesting callback);
 
-  const std::optional<net::HttpNoVarySearchData>& GetNoVarySearchData() const {
+  const std::optional<net::HttpNoVarySearchData>&
+  GetNoVarySearchDataForTesting() const {
     return no_vary_search_data_;
   }
-  // Sets `no_vary_search_data_` from `GetHead()`. Exposed for tests.
-  void MaybeSetNoVarySearchData();
+
+  // ----------------------------------------------------------------
 
   // Called upon detecting a change to cookies within the redirect chain.
   //
@@ -644,10 +612,6 @@ class CONTENT_EXPORT PrefetchContainer
   // Handles loader related events. Currently used for DevTools and metrics.
   void NotifyPrefetchRequestWillBeSent(
       const network::mojom::URLResponseHeadPtr* redirect_head);
-  void NotifyPrefetchResponseReceived(
-      const network::mojom::URLResponseHead& head);
-  void NotifyPrefetchRequestComplete(
-      const network::URLLoaderCompletionStatus& completion_status);
 
   bool is_in_dtor() const { return is_in_dtor_; }
 
@@ -667,16 +631,31 @@ class CONTENT_EXPORT PrefetchContainer
       base::PassKey<PrefetchServingHandle>,
       PrefetchStatus prefetch_status);
 
+  // ----------------------------------------------------------------
+  // Metrics:
+
+  // Sets the time that the latest earlier prefetch unmatch happened that this
+  // prefetch could've been served to. Please see
+  // `time_prefetch_match_missed_` for more details.
+  void SetPrefetchMatchMissedTimeForMetrics(base::TimeTicks time);
+
+  // Returns the time between the prefetch request was sent and the time the
+  // response headers were received. Not set if the prefetch request hasn't been
+  // sent or the response headers haven't arrived.
+  std::optional<base::TimeDelta> GetPrefetchHeaderLatency() const {
+    return header_latency_;
+  }
+
+  // Allow for the serving page to metrics when changes to the prefetch occur.
+  void SetServingPageMetrics(base::WeakPtr<PrefetchServingPageMetricsContainer>
+                                 serving_page_metrics_container);
+  void UpdateServingPageMetrics();
+
   const PrefetchContainerMetrics& GetPrefetchContainerMetrics() const {
     return prefetch_container_metrics_;
   }
 
   bool HasPreloadPipelineInfoForMetrics(const PreloadPipelineInfo& other) const;
-
- protected:
-  // Updates metrics based on the result of the prefetch request.
-  void UpdatePrefetchRequestMetrics(
-      const network::mojom::URLResponseHead* head);
 
  private:
   // Update |prefetch_status_| and report prefetch status to
@@ -698,6 +677,19 @@ class CONTENT_EXPORT PrefetchContainer
     observers_.Notify(method, *this, args...);
   }
 
+  // ----------------------------------------------------------------
+  // Prefetching:
+
+  // The previous URL, if this has been redirected. Invalid to call otherwise.
+  GURL GetPreviousURL() const;
+
+  // Returns the devtools request id that should be set to resource request
+  // during `OnPrefetchStarted()`.
+  // Note that this is also called via
+  // `SetPrefetchStatusWithoutUpdatingTriggeringOutcome()`, where resource
+  // request might not yet created.
+  const std::string& GetDevtoolsRequestId() const;
+
   // Returns the `PrefetchSingleRedirectHop` to be prefetched next.
   // This is the last element in `redirect_chain_`, because, during prefetching
   // from the network, we push back `PrefetchSingleRedirectHop`s to
@@ -714,6 +706,23 @@ class CONTENT_EXPORT PrefetchContainer
   // reasons. Should only be called for the initial prefetch request and not
   // redirects.
   void OnInitialPrefetchFailedIneligible(PreloadingEligibility eligibility);
+
+  std::optional<PrefetchErrorOnResponseReceived>
+  OnPrefetchResponseStartedInternal(network::mojom::URLResponseHead* head);
+
+  // Should be called only from `OnPrefetchComplete()`, so that
+  // `OnPrefetchCompletedOrFailed()` is always called after
+  // `OnPrefetchCompleteInternal()`.
+  void OnPrefetchCompleteInternal(
+      const network::URLLoaderCompletionStatus& completion_status);
+
+  void NotifyPrefetchResponseReceived(
+      const network::mojom::URLResponseHead& head);
+  void NotifyPrefetchRequestComplete(
+      const network::URLLoaderCompletionStatus& completion_status);
+
+  // ----------------------------------------------------------------
+  // Metrics:
 
   std::string GetMetricsSuffix() const;
 
@@ -746,11 +755,9 @@ class CONTENT_EXPORT PrefetchContainer
   void RecordPrefetchPotentialCandidateServingResultHistogram(
       PrefetchPotentialCandidateServingResult matching_result);
 
-  // Should be called only from `OnPrefetchComplete()`, so that
-  // `OnPrefetchCompletedOrFailed()` is always called after
-  // `OnPrefetchCompleteInternal()`.
-  void OnPrefetchCompleteInternal(
-      const network::URLLoaderCompletionStatus& completion_status);
+  // Updates metrics based on the result of the prefetch request.
+  void UpdatePrefetchRequestMetrics(
+      const network::mojom::URLResponseHead* head);
 
   // The prefetch request parameters of the very first initiator/requester of
   // this prefetch at the time of request creation.
@@ -767,13 +774,14 @@ class CONTENT_EXPORT PrefetchContainer
   PrefetchServiceWorkerState service_worker_state_ =
       PrefetchServiceWorkerState::kAllowed;
 
-  // Information about the current prefetch request.
-  // For normal Prefetches, this is initially created via
-  // `MakeInitialResourceRequest()`, which is called from `PrefetchService` when
-  // Prefetch is dequeued and its request is actually started. For
-  // PrePrefetches, it is given via ctor and updated when a redirect happens,
-  // whether or not the redirect is handled by the same URL loader or requires a
-  // new loader with an isolated context.
+  // The `ResourceRequest` for the current prefetch request.
+  // This is initially set in `OnPrefetchStarted()`, which is called from
+  // `PrefetchService` when Prefetch is dequeued and its request is actually
+  // started.
+  // - For normal prefetches, this is created from `PrefetchRequest`.
+  // - For PrePrefetch-initiated prefetches, this is passed from ctor.
+  // This is updated upon redirects, regardless of whether the redirect is
+  // handled by the same URL loader or requires a new loader.
   std::unique_ptr<network::ResourceRequest> resource_request_;
 
   // ResourceRequest that was used for `PrePrefetch`. This should eventually be

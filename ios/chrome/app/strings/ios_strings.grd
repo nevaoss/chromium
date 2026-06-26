@@ -365,6 +365,9 @@
       <message name="IDS_IOS_AI_HUB_HIDE_READER_MODE_LABEL" desc="The button label for hiding Reader mode when it's active from the AI hub.">
         Hide Reader
       </message>
+      <message name="IDS_IOS_AI_HUB_INELIGIBLE_ACCOUNT_SNACKBAR" translateable="false" desc="Snackbar message shown when a user taps Ask Gemini but their account is ineligible.">
+        This account won't work with Gemini. Sign in with a different Google Account.
+      </message>
       <message name="IDS_IOS_AI_HUB_LENS_LABEL" desc="The button label for the Lens entry point of the AI hub.">
         Search screen
       </message>
@@ -5625,6 +5628,12 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_PHOTO_LIBRARY_ADD_USAGE_DESCRIPTION" desc="Specifies the reason for writing to the user's photo library while the app is in use [Length: unlimited] [iOS only].">
         This lets you save photos to your photo library.
       </message>
+      <message name="IDS_IOS_PICTURE_IN_PICTURE_PAUSE" desc="Accessibility label to pause the video in Picture in Picture." is_accessibility_with_no_ui="true">
+        Pause the video
+      </message>
+      <message name="IDS_IOS_PICTURE_IN_PICTURE_PLAY" desc="Accessibility label to play the video in Picture in Picture." is_accessibility_with_no_ui="true">
+        Play the video
+      </message>
       <message name="IDS_IOS_PINNED_TABS_DRAG_TO_PIN_LABEL" desc="Label displayed in the pin tab toolbar when a Tab is being dragged.">
         Drag tab here to pin it.
       </message>
@@ -6903,9 +6912,6 @@ Handoff must also be enabled in the General section of Settings, and your device
           {count, plural,
           =1 {A required field is empty. Fill it before saving.}
           other {Some required fields are empty. Fill them before saving.}}
-      </message>
-      <message name="IDS_IOS_SETTINGS_ENHANCED_AUTOFILL_SAVED_INFORMATION" desc="Text describing that the information is saved on device in the Enhanced Autofill Settings menu. [iOS only]">
-        Your saved information is stored on your device
       </message>
       <message name="IDS_IOS_SETTINGS_EXPORT_PASSWORDS_SET_UP_SCREENLOCK_CONTENT" desc="Message informing the user that in order to export the passwords, a screen lock needs to be set up on the device. This is shown as an alert message after the user tries to view or copy the password from a settings page. [Length: about two lines]">
         To export passwords, you must first set a passcode on your device.
