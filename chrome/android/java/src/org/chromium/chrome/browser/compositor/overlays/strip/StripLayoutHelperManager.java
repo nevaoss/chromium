@@ -105,6 +105,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabGroupListBottomSheetC
 import org.chromium.chrome.browser.tasks.tab_management.TabUiThemeUtil;
 import org.chromium.chrome.browser.toolbar.ToolbarFeatures;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
+import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskTrackerFactory;
 import org.chromium.chrome.browser.ui.desktop_windowing.AppHeaderUtils;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.side_panel.AndroidSidePanelEnabledFn;
@@ -606,6 +607,7 @@ public class StripLayoutHelperManager
                         isAppInDesktopWindow(),
                         mIsTopResumedActivity,
                         glicKeyedService,
+                        ChromeAndroidTaskTrackerFactory.getInstance(),
                         this::updateButtonMargins);
 
         if (!IncognitoUtils.shouldOpenIncognitoAsWindow()) {
@@ -1634,17 +1636,19 @@ public class StripLayoutHelperManager
 
                     @Override
                     public void onLoadStarted(Tab tab, boolean toDifferentDocument) {
-                        getStripLayoutHelper(tab.isIncognito()).tabLoadStarted(tab.getId());
+                        if (!toDifferentDocument) return;
+                        getStripLayoutHelper(tab.isIncognitoBranded()).tabLoadStarted(tab.getId());
                     }
 
                     @Override
                     public void onLoadStopped(Tab tab, boolean toDifferentDocument) {
-                        getStripLayoutHelper(tab.isIncognito()).tabLoadFinished(tab.getId());
+                        if (!toDifferentDocument) return;
+                        getStripLayoutHelper(tab.isIncognitoBranded()).tabLoadFinished(tab.getId());
                     }
 
                     @Override
                     public void onCrash(Tab tab) {
-                        getStripLayoutHelper(tab.isIncognito()).tabLoadFinished(tab.getId());
+                        getStripLayoutHelper(tab.isIncognitoBranded()).tabLoadFinished(tab.getId());
                     }
 
                     @Override
@@ -1810,21 +1814,27 @@ public class StripLayoutHelperManager
         // Use helper methods to calculate new visibility of strip buttons.
         boolean newGlicVisibility =
                 mTrailingButtonsCoordinator.shouldGlicBeVisible(mIsIncognito, mTabModelSelector);
+        boolean newGlicActorVisibility =
+                mTrailingButtonsCoordinator.shouldGlicActorBeVisible(
+                        mIsIncognito, mTabModelSelector);
         boolean newMsbVisibility = shouldMsbBeVisible();
 
         // Update model selector button properties.
         updateModelSelectorButtonProperties();
 
-        // Early exit if visibility of both buttons hasn't changed.
+        // Early exit if visibility of buttons hasn't changed.
         boolean glicChanged =
                 mTrailingButtonsCoordinator.isGlicButtonVisible() != newGlicVisibility;
+        boolean actorChanged =
+                mTrailingButtonsCoordinator.isGlicActorButtonVisible() != newGlicActorVisibility;
         boolean msbChanged =
                 mModelSelectorButton != null
                         && mModelSelectorButton.isVisible() != newMsbVisibility;
-        if (!glicChanged && !msbChanged) return;
+        if (!glicChanged && !actorChanged && !msbChanged) return;
 
-        // Set updated visibilities (of both buttons for simplicity).
+        // Set updated visibilities (of all buttons for simplicity).
         mTrailingButtonsCoordinator.setGlicButtonVisible(newGlicVisibility);
+        mTrailingButtonsCoordinator.setGlicActorButtonVisible(newGlicActorVisibility);
         if (mModelSelectorButton != null) mModelSelectorButton.setVisible(newMsbVisibility);
 
         // The Glic button position depends on the MSB's visibility.
@@ -1836,16 +1846,16 @@ public class StripLayoutHelperManager
     }
 
     private void updateButtonMargins() {
-        boolean isTrailingButtonsVisible = mTrailingButtonsCoordinator.isGlicButtonVisible();
+        boolean isTrailingButtonsVisible =
+                mTrailingButtonsCoordinator.isGlicButtonVisible()
+                        || mTrailingButtonsCoordinator.isGlicActorButtonVisible();
         boolean isMsbVisible = mModelSelectorButton != null && mModelSelectorButton.isVisible();
 
         // Calculate layout sizes and update margins. We use (width + end padding + start spacing)
         // to create a larger gap between buttons to meet touch target size requirements.
         float trailingButtonsTouchTargetSize =
                 isTrailingButtonsVisible
-                        ? (mTrailingButtonsCoordinator.getGlicButtonWidthWithEndPadding()
-                                + mTrailingButtonsCoordinator
-                                        .getGlicButtonStartPaddingForTouchTarget())
+                        ? mTrailingButtonsCoordinator.getTrailingButtonsWidthWithPadding()
                         : 0.0f;
         float msbTouchTargetSize =
                 isMsbVisible

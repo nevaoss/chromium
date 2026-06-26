@@ -155,9 +155,6 @@ IN_PROC_BROWSER_TEST_F(WebUIBrowserTest,
 // order of native windows vs. Browser and aren't tracking the switch over
 // of views on child guest contents properly.
 #define MAYBE_NavigatePage DISABLED_NavigatePage
-#elif BUILDFLAG(IS_MAC)
-// Flaky: https://crbug.com/507356237
-#define MAYBE_NavigatePage DISABLED_NavigatePage
 #else
 #define MAYBE_NavigatePage NavigatePage
 #endif
@@ -404,6 +401,10 @@ IN_PROC_BROWSER_TEST_F(WebUIBrowserSurfaceEmbedPixelTest,
   // output.
   EXPECT_TRUE(base::test::RunUntil(
       [&]() { return tab_contents->GetSurfaceEmbedConnector() != nullptr; }));
+
+  GURL url = embedded_https_test_server().GetURL("a.com",
+                                                 "/surface_embed/red_box.html");
+  EXPECT_TRUE(content::NavigateToURL(tab_contents, url));
 
   // Attempt to capture pixels from the WebContents until we get the expected
   // output color. The test will timeout if that doesn't happen.

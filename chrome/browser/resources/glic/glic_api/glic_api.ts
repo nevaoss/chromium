@@ -107,6 +107,8 @@ export declare interface InvokeOptions {
   autoSubmit: boolean;
   /** Feature mode to switch to. */
   featureMode: FeatureMode;
+  /** Target for actuation. */
+  actuationTarget?: ActuationTarget;
   /** Whether to suppress Zero State Suggestions. */
   disableZeroStateSuggestions: boolean;
   /** Skill ID to trigger. */
@@ -701,6 +703,13 @@ export declare interface GlicBrowserHost {
    * returned observable will be updated when the global setting changes.
    */
   getDefaultTabContextPermissionState?(): ObservableValue<boolean>;
+
+  /**
+   * Returns the zoom level of the Glic webview.
+   * The client should subscribe to this to be notified of zoom level changes.
+   * The value is a float representing the zoom factor (e.g., 1.5 for 150%).
+   */
+  getZoomLevel?(): ObservableValue<number>;
 
   /**
    * Set the state of the microphone permission in settings. Returns a promise
@@ -2997,6 +3006,20 @@ export enum FeatureMode {
 
 ///////////////////////////////////////////////
 // WARNING - GENERATED FROM MOJOM, DO NOT EDIT.
+// Target for actuation.
+export enum ActuationTarget {
+  // Will default to the agent if the target is unknown.
+  UNKNOWN = 0,
+  // Agent infers the best location based on the prompt.
+  AGENT_DECIDES = 1,
+  // Forces actuation on the initiating tab.
+  CURRENT_TAB = 2,
+  // Forces actuation in a new tab.
+  NEW_TAB = 3,
+}
+
+///////////////////////////////////////////////
+// WARNING - GENERATED FROM MOJOM, DO NOT EDIT.
 // Web client's operation modes.
 export enum WebClientMode {
   // Text operation mode.
@@ -3136,6 +3159,8 @@ export enum HostCapability {
   AUTO_LOGIN_SIGN_IN_WITH_GOOGLE = 10,
   // Indicates that the host supports sharing images via the invoke mechanism.
   SHARE_IMAGE_VIA_INVOKE = 11,
+  // Indicates that the host supports image drag and drop from the web
+  IMG_WEB_DRAG_DROP = 12,
 }
 
 ///////////////////////////////////////////////

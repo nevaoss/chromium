@@ -207,6 +207,10 @@
 	path = third_party/glib/src
 	url = https://chromium.googlesource.com/external/gitlab.gnome.org/GNOME/glib
 	gclient-condition = checkout_linux and checkout_mutter
+[submodule "third_party/gsettings-desktop-schemas/src"]
+	path = third_party/gsettings-desktop-schemas/src
+	url = https://chromium.googlesource.com/external/gitlab.gnome.org/GNOME/gsettings-desktop-schemas
+	gclient-condition = checkout_linux and checkout_mutter
 [submodule "third_party/gvdb/src"]
 	path = third_party/gvdb/src
 	url = https://chromium.googlesource.com/external/gitlab.gnome.org/GNOME/gvdb
@@ -683,6 +687,10 @@
 	path = chrome/browser/resources/webui_browser/internal
 	url = https://chrome-internal.googlesource.com/chrome/browser/resources/webui_browser/internal
 	gclient-condition = checkout_src_internal
+[submodule "chrome/browser/resources/webui_toolbar/internal"]
+	path = chrome/browser/resources/webui_toolbar/internal
+	url = https://chrome-internal.googlesource.com/chrome/browser/resources/webui_toolbar/internal
+	gclient-condition = checkout_src_internal
 [submodule "chrome/browser/spellchecker/internal"]
 	path = chrome/browser/spellchecker/internal
 	url = https://chrome-internal.googlesource.com/chrome/spellchecker/internal
@@ -879,10 +887,6 @@
 	path = third_party/widevine/scripts
 	url = https://chrome-internal.googlesource.com/chrome/deps/widevine/scripts
 	gclient-condition = checkout_src_internal
-[submodule "third_party/widevine/test/license_server"]
-	path = third_party/widevine/test/license_server
-	url = https://chrome-internal.googlesource.com/chrome/deps/widevine/test/license_server
-	gclient-condition = checkout_linux and checkout_src_internal
 [submodule "third_party/wix"]
 	path = third_party/wix
 	url = https://chrome-internal.googlesource.com/chrome/deps/wix/v3_5_2519

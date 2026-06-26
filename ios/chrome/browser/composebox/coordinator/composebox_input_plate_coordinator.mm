@@ -27,16 +27,17 @@
 #import "ios/chrome/browser/composebox/debugger/composebox_debugger_logger.h"
 #import "ios/chrome/browser/composebox/menu/coordinator/composebox_menu_coordinator.h"
 #import "ios/chrome/browser/composebox/model/ios_contextual_search_service_factory.h"
+#import "ios/chrome/browser/composebox/public/composebox_attachment_selection.h"
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/composebox/public/composebox_focus_params.h"
 #import "ios/chrome/browser/composebox/public/composebox_model_option.h"
 #import "ios/chrome/browser/composebox/public/composebox_theme.h"
 #import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/shared/coordinator/composebox_picker_presenter.h"
+#import "ios/chrome/browser/composebox/shared/ui/composebox_snackbar_presenter.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_plate_view_controller.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_plate_view_controller_delegate.h"
 #import "ios/chrome/browser/composebox/ui/composebox_metrics_recorder.h"
-#import "ios/chrome/browser/composebox/ui/composebox_snackbar_presenter.h"
 #import "ios/chrome/browser/drag_and_drop/model/drag_item_util.h"
 #import "ios/chrome/browser/favicon/model/ios_chrome_favicon_loader_factory.h"
 #import "ios/chrome/browser/feature_engagement/model/tracker_factory.h"
@@ -109,10 +110,10 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
     ComposeboxInputPlateMediatorDelegate,
     ComposeboxInputPlateViewControllerDelegate,
     ComposeboxPickerPresenterDelegate,
+    ComposeboxMenuCoordinatorInputPlateDelegate,
     LocationBarModelDelegateWebStateProvider,
     LocationBarURLLoader,
     OmniboxFocusDelegate,
-    UIDocumentPickerDelegate,
     UINavigationControllerDelegate,
     UIViewControllerTransitioningDelegate,
     WebLocationBarDelegate>
@@ -179,7 +180,8 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
       [[ComposeboxInputPlateViewController alloc] initWithTheme:_theme];
   _viewController.delegate = self;
   _pickerPresenter = [[ComposeboxPickerPresenter alloc]
-      initWithBaseViewController:_viewController];
+      initWithBaseViewController:_viewController
+                         browser:self.browser];
   _pickerPresenter.delegate = self;
 
   if (_entrypoint == ComposeboxEntrypoint::kNTPAIMButton) {
@@ -347,40 +349,14 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 }
 
 - (void)applyFocusParams:(ComposeboxFocusParams*)params {
-  _modeHolder.mode = params.initialMode;
+  _modeHolder.mode = params.toolMode;
 
-  if (params.initialModelOption != ComposeboxModelOption::kNone) {
-    [_mediator setModelOption:params.initialModelOption explicitUserAction:YES];
+  if (params.modelMode != ComposeboxModelOption::kNone) {
+    [_mediator setModelOption:params.modelMode explicitUserAction:YES];
   }
 
-  for (ComposeboxPickerImageResult* item in params.initialImages) {
-    [_mediator processImageItemProvider:item.imageProvider
-                                assetID:item.assetID
-                             completion:nil];
-  }
-
-  for (NSURL* url in params.initialFiles) {
-    GURL gurl(url.absoluteString.UTF8String);
-
-    UTType* contentType = nil;
-    BOOL accessing = [url startAccessingSecurityScopedResource];
-    [url getResourceValue:&contentType forKey:NSURLContentTypeKey error:nil];
-    BOOL isPDF = [contentType conformsToType:UTTypePDF];
-
-    auto stopAccessScopedResourcesIfNeeded = ^{
-      if (accessing) {
-        [url stopAccessingSecurityScopedResource];
-      }
-    };
-
-    [_mediator processFileURL:gurl
-                        isPDF:isPDF
-                   completion:stopAccessScopedResourcesIfNeeded];
-  }
-
-  if (!params.initialTabIDs.empty()) {
-    [_mediator attachSelectedTabsWithWebStateIDs:params.initialTabIDs
-                               cachedWebStateIDs:{}];
+  if (params.attachmentList) {
+    [_mediator updateAttachments:params.attachmentList];
   }
 }
 
@@ -481,14 +457,17 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 }
 
 - (void)composeboxViewControllerDidTapPlusButton:
-    (ComposeboxInputPlateViewController*)composeboxViewController {
+            (ComposeboxInputPlateViewController*)composeboxViewController
+                                withUIInputState:
+                                    (ComposeboxUIInputState*)state {
   if (IsComposeboxPlusButtonBottomSheet()) {
     _menuCoorinator = [[ComposeboxMenuCoordinator alloc]
         initWithBaseViewController:_viewController
                            browser:self.browser
+            preselectedAttachments:_mediator.currentAttachmentSelection
+                        inputState:state
                         entrypoint:_entrypoint];
-    // TODO(crbug.com/504900698): Pass the UIInputState and the delegate to
-    // handle actions.
+    _menuCoorinator.inputPlateDelegate = self;
     [_menuCoorinator start];
   }
 }
@@ -501,18 +480,8 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
     [self showMaxAttachmentSnackbarError];
     return;
   }
-  UIDocumentPickerViewController* picker;
-  if (lens::features::IsLensSendRawFileMediaTypesEnabled()) {
-    picker = [[UIDocumentPickerViewController alloc]
-        initForOpeningContentTypes:@[ UTTypeData ]];
-  } else {
-    picker = [[UIDocumentPickerViewController alloc]
-        initForOpeningContentTypes:@[ UTTypePDF ]];
-  }
 
-  picker.allowsMultipleSelection = NO;
-  picker.delegate = self;
-  [_viewController presentViewController:picker animated:YES completion:nil];
+  [_pickerPresenter presentFilePicker];
 }
 
 - (void)composeboxViewControllerDidTapAttachTabsButton:
@@ -620,61 +589,6 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 
   return GetWebStateForTabWithCriteria(browserList, tabSearchCriteria,
                                        _theme.incognito);
-}
-
-#pragma mark - UIDocumentPickerDelegate
-
-- (void)documentPicker:(UIDocumentPickerViewController*)controller
-    didPickDocumentsAtURLs:(NSArray<NSURL*>*)urls {
-  if (urls.count == 0) {
-    return;
-  }
-
-  [_metricsRecorder recordFilesAttached:urls.count];
-
-  NSURL* selectedURL = urls.firstObject;
-  if (!lens::features::IsLensSendRawFileMediaTypesEnabled()) {
-    [_mediator processFileURL:net::GURLWithNSURL(selectedURL) isPDF:YES];
-    return;
-  }
-
-  NSError* error = nil;
-  UTType* contentType = nil;
-
-  // Accessing the resource should be requested before using and relinquished
-  // when no longer needed.
-  // Revoking the access should be done once the resource is no longer needed,
-  // as requesting access again on a relinquished resource might fail.
-  BOOL accessing = [selectedURL startAccessingSecurityScopedResource];
-  [selectedURL getResourceValue:&contentType
-                         forKey:NSURLContentTypeKey
-                          error:&error];
-
-  auto stopAccessScopedResourcesIfNeeded = ^{
-    if (accessing) {
-      [selectedURL stopAccessingSecurityScopedResource];
-    }
-  };
-
-  if (contentType && !error) {
-    if ([contentType conformsToType:UTTypeImage]) {
-      NSItemProvider* provider =
-          [[NSItemProvider alloc] initWithContentsOfURL:selectedURL];
-      [_mediator processImageItemProvider:provider
-                                  assetID:selectedURL.absoluteString
-                               completion:stopAccessScopedResourcesIfNeeded];
-      return;
-    } else if ([contentType conformsToType:UTTypePDF]) {
-      [_mediator processFileURL:net::GURLWithNSURL(selectedURL)
-                          isPDF:YES
-                     completion:stopAccessScopedResourcesIfNeeded];
-      return;
-    }
-  }
-
-  [_mediator processFileURL:net::GURLWithNSURL(selectedURL)
-                      isPDF:NO
-                 completion:stopAccessScopedResourcesIfNeeded];
 }
 
 #pragma mark - ComposeboxInputPlateMediatorDelegate
@@ -834,8 +748,9 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   if (!_theme.isTopInputPlate) {
     offset += _viewController.inputHeight + kSnackbarBottomMargin;
   }
-  [_snackbarPresenter
-      showAttachmentLimitForImageGenerationSnackbarWithBottomOffset:offset];
+  [_snackbarPresenter showAttachmentLimitForImageGenerationSnackbar:
+                          kAttachmentLimitForImageGeneration
+                                                   withBottomOffset:offset];
 }
 
 - (void)createSnackbarPresenterIfNeeded {
@@ -888,9 +803,89 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   }
 }
 
+- (void)composeboxPickerPresenter:(ComposeboxPickerPresenter*)presenter
+             didPickFilesWithURLs:(NSArray<NSURL*>*)urls {
+  if (urls.count == 0) {
+    return;
+  }
+
+  [_metricsRecorder recordFilesAttached:urls.count];
+
+  NSURL* selectedURL = urls.firstObject;
+  if (!lens::features::IsLensSendRawFileMediaTypesEnabled()) {
+    [_mediator processFileURL:net::GURLWithNSURL(selectedURL) isPDF:YES];
+    return;
+  }
+
+  NSError* error = nil;
+  UTType* contentType = nil;
+
+  // Accessing the resource should be requested before using and relinquished
+  // when no longer needed.
+  // Revoking the access should be done once the resource is no longer needed,
+  // as requesting access again on a relinquished resource might fail.
+  BOOL accessing = [selectedURL startAccessingSecurityScopedResource];
+  [selectedURL getResourceValue:&contentType
+                         forKey:NSURLContentTypeKey
+                          error:&error];
+
+  auto stopAccessScopedResourcesIfNeeded = ^{
+    if (accessing) {
+      [selectedURL stopAccessingSecurityScopedResource];
+    }
+  };
+
+  if (contentType && !error) {
+    if ([contentType conformsToType:UTTypeImage]) {
+      NSItemProvider* provider =
+          [[NSItemProvider alloc] initWithContentsOfURL:selectedURL];
+      [_mediator processImageItemProvider:provider
+                                  assetID:selectedURL.absoluteString
+                               completion:stopAccessScopedResourcesIfNeeded];
+      return;
+    } else if ([contentType conformsToType:UTTypePDF]) {
+      [_mediator processFileURL:net::GURLWithNSURL(selectedURL)
+                          isPDF:YES
+                     completion:stopAccessScopedResourcesIfNeeded];
+      return;
+    }
+  }
+
+  [_mediator processFileURL:net::GURLWithNSURL(selectedURL)
+                      isPDF:NO
+                 completion:stopAccessScopedResourcesIfNeeded];
+}
+
 - (void)composeboxPickerPresenterDidDissmissCamera:
     (ComposeboxPickerPresenter*)presenter {
   [self focusComposebox];
+}
+
+- (void)composeboxPickerPresenter:(ComposeboxPickerPresenter*)presenter
+    handleSelectedTabsWithWebStateIDs:
+        (std::set<web::WebStateID>)selectedWebStateIDs
+                    cachedWebStateIDs:
+                        (std::set<web::WebStateID>)cachedWebStateIDs {
+  // TODO: Implement.
+}
+
+#pragma mark - ComposeboxMenuCoordinatorInputPlateDelegate
+
+- (void)composeboxMenuCoordinator:(ComposeboxMenuCoordinator*)coordinator
+                       didTapTool:(ComposeboxMode)toolMode {
+  _modeHolder.mode = toolMode;
+}
+
+- (void)composeboxMenuCoordinator:(ComposeboxMenuCoordinator*)coordinator
+                      didTapModel:(ComposeboxModelOption)modelMode {
+  [_mediator setModelOption:modelMode explicitUserAction:YES];
+}
+
+- (void)composeboxMenuCoordinator:(ComposeboxMenuCoordinator*)coordinator
+             didUpdateAttachments:(ComposeboxAttachmentSelection*)attachments {
+  if (attachments) {
+    [_mediator updateAttachments:attachments];
+  }
 }
 
 @end

@@ -1323,12 +1323,18 @@ void WebViewImpl::ResizeViewWhileAnchored(
     const gfx::Size& visible_viewport_size) {
   DCHECK(MainFrameImpl());
 
-  bool old_viewport_shrink = GetBrowserControls().ShrinkViewport();
+  const bool old_viewport_shrink = GetBrowserControls().ShrinkViewport();
+  const float old_controls_height = GetBrowserControls().TotalHeight();
 
   GetBrowserControls().SetParams(params);
 
-  if (old_viewport_shrink != GetBrowserControls().ShrinkViewport())
+  if (old_viewport_shrink != GetBrowserControls().ShrinkViewport()) {
     MainFrameImpl()->GetFrameView()->DynamicViewportUnitsChanged();
+  }
+  if (!GetBrowserControls().ShrinkViewport() &&
+      old_controls_height != GetBrowserControls().TotalHeight()) {
+    MainFrameImpl()->GetFrameView()->LargeViewportUnitsChanged();
+  }
 
   if (GetPage()->GetSettings().GetDynamicSafeAreaInsetsEnabled()) {
     GetPage()->UpdateSafeAreaInsetWithBrowserControls(GetBrowserControls(),
@@ -1724,6 +1730,7 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
                                       prefs.default_maximum_page_scale_factor);
 
   settings->SetFullscreenSupported(prefs.fullscreen_supported);
+  settings->SetTextSizeAdjustEnabled(prefs.text_size_adjust_enabled);
   settings->SetDoubleTapToZoomEnabled(prefs.double_tap_to_zoom_enabled);
   blink::WebNetworkStateNotifier::SetNetworkQualityWebHoldback(
       static_cast<blink::WebEffectiveConnectionType>(
@@ -3472,16 +3479,20 @@ void WebViewImpl::UpdateFontRenderingFromRendererPrefs() {
       gfx::FontRenderParams::SUBPIXEL_RENDERING_NONE);
   WebFontRenderStyle::SetSubpixelPositioning(
       renderer_preferences_.use_subpixel_positioning);
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
   if (!renderer_preferences_.system_font_family_name.empty()) {
     WebFontRenderStyle::SetSystemFontFamily(blink::WebString::FromUtf8(
         renderer_preferences_.system_font_family_name));
   }
+<<<<<<< HEAD
 #endif  // BUILDFLAG(IS_LINUX)
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   WebFontRenderStyle::SetAllowFakeBoldText(
       renderer_preferences_.allow_fake_bold_text);
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+>>>>>>> 9f3e9aaccba63bd2ec30334e45e0bfd07ebcc8f1
 #endif  // BUILDFLAG(IS_WIN)
 #endif  // !BUILDFLAG(IS_MAC)
 }

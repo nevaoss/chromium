@@ -62,6 +62,7 @@ namespace {
 
 const char kTestUploadUrl[] = "https://upload.com/webrtc_upload";
 const char kTestReportId[] = "test_report_id";
+const char kSessionId[] = "12345";
 constexpr int kLid = 478;
 
 bool IsValidUuid(const std::string& uuid) {
@@ -98,7 +99,7 @@ class RTCDiagnosticLoggingTest : public ChromeRenderViewHostTestHarness {
       const GURL& url,
       bool event_log_allowed = true,
       const std::string& allowed_origin = "",
-      const std::string& session_id = "12345") {
+      const std::string& session_id = kSessionId) {
     PrefService* prefs =
         Profile::FromBrowserContext(rfh->GetBrowserContext())->GetPrefs();
     prefs->SetBoolean(prefs::kWebRtcEventLogCollectionAllowed,
@@ -109,10 +110,15 @@ class RTCDiagnosticLoggingTest : public ChromeRenderViewHostTestHarness {
     prefs->SetList(prefs::kWebRTCDiagnosticLogCollectionAllowedForOrigins,
                    std::move(allowed_origins));
 
-    event_log_manager_->OnPeerConnectionAdded(
-        rfh->GetGlobalId(), kLid, base::GetCurrentProcId(), url.spec(), "");
-    event_log_manager_->OnSessionIdSetForPeerConnection(
-        rfh->GetGlobalId(), kLid, session_id, base::DoNothing());
+    base::test::TestFuture<bool> add_future;
+    event_log_manager_->OnPeerConnectionAdded(rfh->GetGlobalId(), kLid,
+                                              add_future.GetCallback());
+    EXPECT_TRUE(add_future.Get());
+
+    base::test::TestFuture<void> session_id_future;
+    event_log_manager_->OnPeerConnectionSessionIdSet(
+        rfh->GetGlobalId(), kLid, session_id, session_id_future.GetCallback());
+    EXPECT_TRUE(session_id_future.Wait());
   }
 
   void SetAuthorizedOrigins(content::RenderFrameHost* rfh,
@@ -151,13 +157,15 @@ class RTCDiagnosticLoggingTest : public ChromeRenderViewHostTestHarness {
 
     event_log_manager_ =
         webrtc_event_logging::WebRtcEventLogManager::CreateSingletonInstance();
-    event_log_manager_->SetRemoteLogsObserver(&remote_observer_,
-                                              base::DoNothing());
+    base::test::TestFuture<void> set_remote_logs_observer_future;
+    event_log_manager_->SetRemoteLogsObserver(
+        &remote_observer_, set_remote_logs_observer_future.GetCallback());
+    EXPECT_TRUE(set_remote_logs_observer_future.Wait());
 
-    base::test::TestFuture<void> future;
-    event_log_manager_->EnableForBrowserContext(profile(),
-                                                future.GetCallback());
-    EXPECT_TRUE(future.Wait());
+    base::test::TestFuture<void> enable_for_browser_context_future;
+    event_log_manager_->EnableForBrowserContext(
+        profile(), enable_for_browser_context_future.GetCallback());
+    EXPECT_TRUE(enable_for_browser_context_future.Wait());
 
     profile()->GetPrefs()->SetBoolean(prefs::kWebRtcTextLogCollectionAllowed,
                                       true);
@@ -795,7 +803,7 @@ TEST_F(RTCDiagnosticLoggingTest,
 
   base::test::TestFuture<void> future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *main_rfh(), "12345", future.GetCallback());
+      *main_rfh(), kSessionId, future.GetCallback());
   EXPECT_TRUE(future.Wait());
 
   EXPECT_FALSE(log_file_path.empty());
@@ -834,7 +842,7 @@ TEST_F(RTCDiagnosticLoggingTest, EventLogStartedAfterSessionIdSet) {
 
   base::test::TestFuture<void> session_id_future;
   event_log_manager_->OnPeerConnectionSessionIdSet(
-      main_rfh()->GetGlobalId(), kLid, "session_id",
+      main_rfh()->GetGlobalId(), kLid, kSessionId,
       session_id_future.GetCallback());
   EXPECT_TRUE(session_id_future.Wait());
 
@@ -869,7 +877,8 @@ TEST_F(RTCDiagnosticLoggingTest, EventLogCancelledAfterSessionIdSet) {
   content::GetContentClientForTesting()->browser()->StartRtcDiagnosticLogging(
       *main_rfh(), /*should_upload_on_stop=*/true, {},
       start_future.GetCallback());
-  EXPECT_TRUE(start_future.Wait());
+  std::string uuid = start_future.Get();
+  EXPECT_FALSE(uuid.empty());
 
   base::FilePath log_file_path;
   EXPECT_CALL(remote_observer_,
@@ -878,7 +887,7 @@ TEST_F(RTCDiagnosticLoggingTest, EventLogCancelledAfterSessionIdSet) {
 
   base::test::TestFuture<void> session_id_future;
   event_log_manager_->OnPeerConnectionSessionIdSet(
-      main_rfh()->GetGlobalId(), kLid, "session_id",
+      main_rfh()->GetGlobalId(), kLid, kSessionId,
       session_id_future.GetCallback());
   EXPECT_TRUE(session_id_future.Wait());
 
@@ -886,7 +895,7 @@ TEST_F(RTCDiagnosticLoggingTest, EventLogCancelledAfterSessionIdSet) {
 
   base::test::TestFuture<void> cancel_future;
   event_log_manager_->CancelLogging(main_rfh()->GetProcess()->GetDeprecatedID(),
-                                    cancel_future.GetCallback());
+                                    uuid, cancel_future.GetCallback());
   EXPECT_TRUE(cancel_future.Wait());
 
   base::test::TestFuture<void> log_manager_future;
@@ -958,7 +967,7 @@ TEST_F(RTCDiagnosticLoggingTest,
 
   base::test::TestFuture<void> future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *main_rfh(), "12345", future.GetCallback());
+      *main_rfh(), kSessionId, future.GetCallback());
   EXPECT_TRUE(future.Wait());
 
   EXPECT_FALSE(log_file_path.empty());
@@ -986,7 +995,7 @@ TEST_F(RTCDiagnosticLoggingTest,
 
   base::test::TestFuture<void> future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *main_rfh(), "12345", future.GetCallback());
+      *main_rfh(), kSessionId, future.GetCallback());
   EXPECT_TRUE(future.Wait());
 }
 
@@ -1010,7 +1019,7 @@ TEST_F(RTCDiagnosticLoggingTest,
 
   base::test::TestFuture<void> future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *main_rfh(), "12345", future.GetCallback());
+      *main_rfh(), kSessionId, future.GetCallback());
   EXPECT_TRUE(future.Wait());
 }
 
@@ -1035,7 +1044,7 @@ TEST_F(RTCDiagnosticLoggingTest,
 
   base::test::TestFuture<void> future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *main_rfh(), "12345", future.GetCallback());
+      *main_rfh(), kSessionId, future.GetCallback());
   EXPECT_TRUE(future.Wait());
 }
 
@@ -1051,7 +1060,7 @@ TEST_F(RTCDiagnosticLoggingTest,
 
   base::test::TestFuture<void> future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *main_rfh(), "12345", future.GetCallback());
+      *main_rfh(), kSessionId, future.GetCallback());
   EXPECT_TRUE(future.Wait());
 }
 
@@ -1083,7 +1092,7 @@ TEST_F(RTCDiagnosticLoggingTest,
 
   base::test::TestFuture<void> future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *otr_rfh, "12345", future.GetCallback());
+      *otr_rfh, kSessionId, future.GetCallback());
   EXPECT_TRUE(future.Wait());
 }
 
@@ -1111,7 +1120,7 @@ TEST_F(RTCDiagnosticLoggingTest,
 
   base::test::TestFuture<void> future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *main_rfh(), "12345", future.GetCallback());
+      *main_rfh(), kSessionId, future.GetCallback());
   EXPECT_TRUE(future.Wait());
 }
 
@@ -1127,9 +1136,11 @@ TEST_F(RTCDiagnosticLoggingTest,
       start_future.GetCallback());
   EXPECT_TRUE(start_future.Wait());
 
+  EXPECT_CALL(remote_observer_,
+              OnRemoteLogStarted(testing::_, testing::_, testing::_));
   base::test::TestFuture<void> event_log_future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *main_rfh(), "session_id", event_log_future.GetCallback());
+      *main_rfh(), kSessionId, event_log_future.GetCallback());
   EXPECT_TRUE(event_log_future.Wait());
 
   bool observer_called = false;
@@ -1156,9 +1167,11 @@ TEST_F(RTCDiagnosticLoggingTest,
       start_future.GetCallback());
   EXPECT_TRUE(start_future.Wait());
 
+  EXPECT_CALL(remote_observer_,
+              OnRemoteLogStarted(testing::_, testing::_, testing::_));
   base::test::TestFuture<void> event_log_future;
   rtc_diagnostic_logging::StartRtcPeerConnectionEventDiagnosticLogging(
-      *main_rfh(), "session_id", event_log_future.GetCallback());
+      *main_rfh(), kSessionId, event_log_future.GetCallback());
   EXPECT_TRUE(event_log_future.Wait());
 
   bool observer_called = false;

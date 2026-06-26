@@ -176,10 +176,10 @@
 #include "chrome/browser/translate/translate_service.h"
 #include "chrome/browser/ui/blocked_content/blocked_window_params.h"
 #include "chrome/browser/ui/blocked_content/chrome_popup_navigation_delegate.h"
-#include "chrome/browser/ui/browser_navigator.h"
-#include "chrome/browser/ui/browser_navigator_params.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/login/http_auth_coordinator.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/prefs/pref_watcher.h"
 #include "chrome/browser/ui/select_file_policy/chrome_select_file_policy.h"
 #include "chrome/browser/ui/startup/google_chrome_scheme_util.h"
@@ -362,6 +362,7 @@
 #include "content/public/browser/web_ui_url_loader_factory.h"
 #include "content/public/browser/webui_config_map.h"
 #include "content/public/common/buildflags.h"
+#include "content/public/common/child_process_id.h"
 #include "content/public/common/content_descriptors.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
@@ -553,8 +554,8 @@
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/browser.h"
-#include "chrome/browser/ui/browser_finder.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -1049,7 +1050,7 @@ void SetApplicationLocaleOnIOThread(const std::string& locale) {
 bool URLHasExtensionPermission(extensions::ProcessMap* process_map,
                                extensions::ExtensionRegistry* registry,
                                const GURL& url,
-                               int render_process_id,
+                               content::ChildProcessId render_process_id,
                                APIPermissionID permission) {
   // Includes web URLs that are part of an extension's web extent.
   const Extension* extension =
@@ -1368,7 +1369,7 @@ CreatePopupNavigationDelegate(NavigateParams params) {
 ChromeContentBrowserClient::PopupNavigationDelegateFactory
     g_popup_navigation_delegate_factory = &CreatePopupNavigationDelegate;
 
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(CHROME_FOR_TESTING)
+#if BUILDFLAG(ENABLE_DEVTOOLS_FRONTEND) && !BUILDFLAG(CHROME_FOR_TESTING)
 bool DetermineIfDevToolsUserForProcessPerSite() {
   bool is_devtools_user = false;
   // Only count uses of DevTools from within the last week.
@@ -1996,7 +1997,7 @@ bool ChromeContentBrowserClient::
 
 bool ChromeContentBrowserClient::ShouldAllowProcessPerSiteForMultipleMainFrames(
     content::BrowserContext* browser_context) {
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(ENABLE_DEVTOOLS_FRONTEND)
 #if BUILDFLAG(CHROME_FOR_TESTING)
   static bool is_devtools_user = true;
 #else
@@ -4420,7 +4421,7 @@ bool ChromeContentBrowserClient::IsPopupBypassAllowed(
 
   // Allow if it is an authorized extension process.
   const extensions::Extension* extension =
-      process_map->GetEnabledExtensionByProcessID(process->GetID().value());
+      process_map->GetEnabledExtensionByProcessID(process->GetID());
   if (process_map->CanProcessHostContextType(
           extension, *process,
           extensions::mojom::ContextType::kPrivilegedExtension)) {
@@ -4509,7 +4510,7 @@ bool ChromeContentBrowserClient::CanCreateWindow(
     auto* process_map = extensions::ProcessMap::Get(profile);
     auto* registry = extensions::ExtensionRegistry::Get(profile);
     if (!URLHasExtensionPermission(process_map, registry, opener_url,
-                                   opener->GetProcess()->GetDeprecatedID(),
+                                   opener->GetProcess()->GetID(),
                                    APIPermissionID::kBackground)) {
       return false;
     }
@@ -4811,7 +4812,8 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
       // want to use the scope of the app associated with the window, not the
       // WebContents.
       BrowserWindowInterface* browser =
-          chrome::FindBrowserWithTab(web_contents);
+          GlobalBrowserCollection::GetInstance()->FindBrowserWithTab(
+              web_contents);
       web_app::AppBrowserController* app_controller =
           browser ? web_app::AppBrowserController::From(browser) : nullptr;
       if (app_controller) {
@@ -5291,6 +5293,8 @@ std::wstring ChromeContentBrowserClient::GetAppContainerSidForSandboxType(
       return std::wstring();
     case sandbox::mojom::Sandbox::kOnDeviceModelExecution:
       return std::wstring();
+    case sandbox::mojom::Sandbox::kWebNNModelCompilation:
+      return std::wstring();
     case sandbox::mojom::Sandbox::kNoSandbox:
     case sandbox::mojom::Sandbox::kNoSandboxAndElevatedPrivileges:
     case sandbox::mojom::Sandbox::kXrCompositing:
@@ -5400,6 +5404,7 @@ bool ChromeContentBrowserClient::PreSpawnChild(
     case sandbox::mojom::Sandbox::kScreenAI:
     case sandbox::mojom::Sandbox::kAudio:
     case sandbox::mojom::Sandbox::kOnDeviceModelExecution:
+    case sandbox::mojom::Sandbox::kWebNNModelCompilation:
     case sandbox::mojom::Sandbox::kSpeechRecognition:
     case sandbox::mojom::Sandbox::kPdfConversion:
     case sandbox::mojom::Sandbox::kService:
@@ -7098,7 +7103,7 @@ bool ChromeContentBrowserClient::HandleExternalProtocol(
   // This avoids launching a new browser instance via the OS handler.
   if (std::optional<GURL> new_url =
           startup::ExtractGoogleChromeSchemeInnerUrl(url)) {
-    if (startup::ValidateUrl(*new_url)) {
+    if (startup::ValidateLaunchUrl(*new_url)) {
       auto* web_contents = web_contents_getter.Run();
       if (web_contents) {
         content::OpenURLParams params(
@@ -7813,10 +7818,10 @@ bool ChromeContentBrowserClient::IsClipboardPasteAllowed(
       render_frame_host->GetMainFrame()->GetLastCommittedOrigin().GetURL();
   auto* registry = extensions::ExtensionRegistry::Get(profile);
   if (url.SchemeIs(extensions::kExtensionScheme)) {
-    return URLHasExtensionPermission(
-        extensions::ProcessMap::Get(profile), registry, url,
-        render_frame_host->GetProcess()->GetDeprecatedID(),
-        APIPermissionID::kClipboardRead);
+    return URLHasExtensionPermission(extensions::ProcessMap::Get(profile),
+                                     registry, url,
+                                     render_frame_host->GetProcess()->GetID(),
+                                     APIPermissionID::kClipboardRead);
   }
 
   // or (4) origination from a process that at least might be running a
@@ -8860,7 +8865,14 @@ void ChromeContentBrowserClient::QueryInstalledWebAppsByManifestId(
   web_app::WebAppProvider* const provider =
       web_app::WebAppProvider::GetForLocalAppsUnchecked(profile);
 
-  webapps::AppId app_id = web_app::GenerateAppIdFromManifestId(manifest_id);
+  std::optional<webapps::ManifestId> valid_manifest_id =
+      webapps::ManifestId::Create(manifest_id);
+  if (!valid_manifest_id.has_value()) {
+    return std::move(callback).Run(std::nullopt);
+  }
+
+  webapps::AppId app_id =
+      web_app::GenerateAppIdFromManifestId(*valid_manifest_id);
 
   if (app_id.empty()) {
     return std::move(callback).Run(std::nullopt);
@@ -8880,9 +8892,10 @@ void ChromeContentBrowserClient::QueryInstalledWebAppsByManifestId(
              GURL frame_url, web_app::AppLock& lock,
              base::DictValue& debug_value)
               -> std::optional<blink::mojom::RelatedApplication> {
-            debug_value.Set("input", base::DictValue()
-                                         .Set("manifest_id", manifest_id.spec())
-                                         .Set("frame_url", frame_url.spec()));
+            debug_value.Set("input",
+                            base::DictValue()
+                                .Set("manifest_id", manifest_id.spec())
+                                .Set("frame_url", frame_url.spec()));
 
             if (!lock.registrar().AppMatches(
                     app_id, web_app::WebAppFilter::InstalledInChrome())) {
@@ -8897,7 +8910,13 @@ void ChromeContentBrowserClient::QueryInstalledWebAppsByManifestId(
 
             blink::mojom::RelatedApplication application;
             application.platform = "webapp";
-            application.id = lock.registrar().GetAppManifestId(app_id).spec();
+            std::optional<webapps::ManifestId> app_manifest_id =
+                lock.registrar().GetAppManifestId(app_id);
+            if(!app_manifest_id.has_value()){
+              debug_value.Set("manifest_id", "invalid manifest id");
+              return std::nullopt;
+            }
+            application.id = app_manifest_id->spec();
             // Note: This url is the manifest_url for purely legacy reasons
             // where Android used to implement the unique identifier using the
             // manifest url.
@@ -8914,7 +8933,8 @@ void ChromeContentBrowserClient::QueryInstalledWebAppsByManifestId(
                     .Set("manifest_url", application.url.value_or("")));
             return application;
           },
-          std::move(app_id), std::move(manifest_id), std::move(frame_url)),
+          std::move(app_id), *valid_manifest_id,
+          std::move(frame_url)),
       std::move(callback), std::move(arg_for_shutdown));
 }
 #endif  // !BUILDFLAG(IS_ANDROID)

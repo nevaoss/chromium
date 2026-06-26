@@ -304,7 +304,7 @@ IN_PROC_BROWSER_TEST_P(MultiContentsViewTabDragEntrypointsUiParamTest,
 }
 
 // TODO(crbug.com/500937645): Re-enable the test
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || (BUILDFLAG(IS_LINUX) && defined(ARCH_CPU_ARM64))
 #define MAYBE_ShowAndHideDropTarget DISABLED_ShowAndHideDropTarget
 #else
 #define MAYBE_ShowAndHideDropTarget ShowAndHideDropTarget
@@ -341,7 +341,7 @@ IN_PROC_BROWSER_TEST_P(MultiContentsViewTabDragEntrypointsUiParamTest,
 }
 
 // TODO(crbug.com/500937645): Re-enable the test
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || (BUILDFLAG(IS_LINUX) && defined(ARCH_CPU_ARM64))
 #define MAYBE_DragAndDropDisabledForChromePage \
   DISABLED_DragAndDropDisabledForChromePage
 #else
@@ -381,7 +381,8 @@ IN_PROC_BROWSER_TEST_P(MultiContentsViewTabDragEntrypointsUiParamTest,
 }
 
 // TODO(crbug.com/500937645): Re-enable the test
-#if (BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)) && defined(ARCH_CPU_ARM64)
+#if (BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)) && \
+    defined(ARCH_CPU_ARM64)
 #define MAYBE_DragAndDropDisabled DISABLED_DragAndDropDisabled
 #else
 #define MAYBE_DragAndDropDisabled DragAndDropDisabled
@@ -396,7 +397,7 @@ IN_PROC_BROWSER_TEST_F(MultiContentsViewTabDragEntrypointsUiTest,
   }
 #endif
 
-#if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
+#if BUILDFLAG(IS_LINUX)
   if (base::FeatureList::IsEnabled(features::kInitialWebUI)) {
     GTEST_SKIP() << "Skipping test because it fails with InitialWebUI enabled. "
                     "See crbug.com/477426026.";

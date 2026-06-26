@@ -149,7 +149,7 @@ void Host::NotifyContextualSkillsChanged(
   }
 }
 
-void Host::getExperimentalTriggeringUpdates(
+void Host::GetExperimentalTriggeringUpdates(
     mojo::PendingRemote<mojom::ExperimentalTriggeringUpdatesHandler> handler,
     base::OnceCallback<void(bool)> success_status_callback) {
   if (auto* client = GetPrimaryWebClient()) {
@@ -195,7 +195,7 @@ void Host::Reload() {
       UnsetWebClient(handler_info_->web_client);
     }
     Shutdown();
-    CreateContents(/*initially_hidden=*/false);
+    CreateContents();
     delegate_->OnReload();
   } else {
     contents->GetController().Reload(content::ReloadType::BYPASSING_CACHE,
@@ -209,7 +209,7 @@ void Host::OnWebContentsNavigated() {
   }
 }
 
-void Host::CreateContents(bool initially_hidden) {
+void Host::CreateContents() {
   if (contents_) {
     return;
   }

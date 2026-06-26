@@ -41,6 +41,7 @@ import("//third_party/webrtc/webrtc.gni")
 import("//third_party/widevine/cdm/widevine.gni")
 import("//tools/grit/grit_rule.gni")
 import("//ui/base/ui_features.gni")
+import("//ui/webui/webui_features.gni")
 
 assert(enable_supervised_users)
 
@@ -247,10 +248,6 @@ static_library("browser") {
     "file_util_service.h",
     "font_family_cache.cc",
     "font_family_cache.h",
-    "glic/suggestions/contextual_cueing_helper.cc",
-    "glic/suggestions/contextual_cueing_service.cc",
-    "glic/suggestions/contextual_cueing_service.h",
-    "glic/suggestions/contextual_cueing_service_factory.cc",
     "global_features.cc",
     "icon_loader.cc",
     "icon_loader.h",
@@ -342,6 +339,7 @@ static_library("browser") {
     "//chrome/browser/content_settings:content_settings_factory_impl",
     "//chrome/browser/content_settings:content_settings_util_impl",
     "//chrome/browser/content_settings:impl",
+    "//chrome/browser/ui/navigator:impl",
     "//chrome/browser/contextual_tasks:ui_impl",
 
     # TODO(crbug.com/353332589): Remove this circular dependency once the
@@ -1029,6 +1027,7 @@ static_library("browser") {
     "//chrome/browser/ui/javascript_dialogs:impl",
     "//chrome/browser/ui/login",
     "//chrome/browser/ui/login:impl",
+    "//chrome/browser/ui/navigator:impl",
     "//chrome/browser/ui/omnibox",
     "//chrome/browser/ui/omnibox:impl",
     "//chrome/browser/ui/page_info",
@@ -1351,7 +1350,6 @@ static_library("browser") {
     "//components/permissions/prediction_service",
     "//components/permissions/prediction_service:prediction_service_messages_proto",
     "//components/plus_addresses/core/browser",
-    "//components/plus_addresses/core/browser:hats_utils",
     "//components/plus_addresses/core/browser/settings",
     "//components/plus_addresses/core/browser/webdata",
     "//components/plus_addresses/core/common:prefs",
@@ -1641,6 +1639,7 @@ static_library("browser") {
     "//ui/snapshot",
     "//ui/strings",
     "//ui/webui",
+    "//ui/webui:buildflags",
 
     # TODO(crbug.com/430804948): Remove this circular dependency when the
     # following headers get componentized:
@@ -1656,9 +1655,25 @@ static_library("browser") {
     "//chrome/browser/ui/webauthn:impl",
   ]
 
+  if (enable_webui_ntp) {
+    deps += [
+      "//chrome/browser/new_tab_page",
+      "//chrome/browser/new_tab_page:impl",
+      "//chrome/browser/ui/webui/new_tab_page/action_chips:mojo_bindings",
+      "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
+    ]
+  }
+  if ((!is_ios && !is_android) || enable_webui_ntp) {
+    deps += [
+      "//ui/webui/resources/cr_components/composebox:mojo_bindings",
+      "//ui/webui/resources/cr_components/help_bubble:mojo_bindings",
+    ]
+  }
+
   if (is_android) {
     deps += [
       "//chrome/browser/ntp_customization",
+      "//chrome/browser/ui/android/lens",
       "//chrome/browser/webapps:android",
       "//chrome/browser/webapps:android_impl",
       "//chrome/browser/webapps/installable:android",
@@ -2054,46 +2069,14 @@ static_library("browser") {
       "download/android/string_utils.cc",
       "icon_loader_android.cc",
       "incognito/android/incognito_utils_android.cc",
-      "lens/android/lens_policy_utils.cc",
-      "lens/android/lens_prefs.cc",
-      "lens/android/lens_prefs.h",
       "memory_details_android.cc",
-      "optimization_guide/android/optimization_guide_bridge.cc",
-      "optimization_guide/android/optimization_guide_bridge.h",
-      "optimization_guide/android/optimization_guide_tab_url_provider_android.cc",
-      "optimization_guide/android/optimization_guide_tab_url_provider_android.h",
       "platform_util_android.cc",
       "prefetch/android/preload_pages_settings_bridge.cc",
       "preloading/android/preloading_data_bridge.cc",
       "preloading/android/preloading_feature_map.cc",
       "shell_integration_android.cc",
-      "supervised_user/android/extension_parent_approval.cc",
-      "supervised_user/android/extension_parent_approval.h",
-      "supervised_user/android/favicon_fetcher.cc",
-      "supervised_user/android/favicon_fetcher.h",
-      "supervised_user/android/supervised_user_service_bridge.cc",
-      "supervised_user/android/supervised_user_service_platform_delegate.cc",
-      "supervised_user/android/supervised_user_service_platform_delegate.h",
-      "supervised_user/android/supervised_user_web_content_handler_impl.cc",
-      "supervised_user/android/supervised_user_web_content_handler_impl.h",
-      "supervised_user/android/website_parent_approval.cc",
-      "supervised_user/android/website_parent_approval.h",
-      "supervised_user/child_accounts/child_account_service_android.cc",
-      "supervised_user/child_accounts/child_account_service_android.h",
     ]
-    sources += [
-      # TODO(crbug.com/40071344): Fold into "keyboard_accessory/android".
-      "keyboard_accessory/android/address_accessory_controller_impl.cc",
-      "keyboard_accessory/android/address_accessory_controller_impl.h",
-      "keyboard_accessory/android/affiliated_plus_profiles_cache.cc",
-      "keyboard_accessory/android/affiliated_plus_profiles_cache.h",
-      "keyboard_accessory/android/manual_filling_controller_impl.cc",
-      "keyboard_accessory/android/manual_filling_controller_impl.h",
-      "keyboard_accessory/android/password_accessory_controller_impl.cc",
-      "keyboard_accessory/android/password_accessory_controller_impl.h",
-      "keyboard_accessory/android/payment_method_accessory_controller_impl.cc",
-      "keyboard_accessory/android/payment_method_accessory_controller_impl.h",
-    ]
+
     deps += [
       "//chrome/browser/touch_to_fill/autofill/android:impl",
       "//chrome/browser/touch_to_fill/password_manager:impl",
@@ -2153,7 +2136,10 @@ static_library("browser") {
       "//chrome/browser/glic/android",
       "//chrome/browser/glic/android:jni_headers",
       "//chrome/browser/keyboard_accessory/android",
+      "//chrome/browser/keyboard_accessory/android:impl",
       "//chrome/browser/language/android:jni_headers",
+      "//chrome/browser/lens",
+      "//chrome/browser/lens:impl",
       "//chrome/browser/lifetime/android:jni_headers",
       "//chrome/browser/long_screenshots",
       "//chrome/browser/mandatory_reauth/android:mandatory_reauth",
@@ -2161,6 +2147,7 @@ static_library("browser") {
       "//chrome/browser/notifications/chime/android",
       "//chrome/browser/ntp_customization:jni_headers",
       "//chrome/browser/optimization_guide/android:jni_headers",
+      "//chrome/browser/optimization_guide/android:native",
       "//chrome/browser/page_content_annotations:factory_jni_headers",
       "//chrome/browser/page_image_service/android",
       "//chrome/browser/page_image_service/android:jni_headers",
@@ -2236,6 +2223,7 @@ static_library("browser") {
       "//components/browser_ui/accessibility/android",
       "//components/browser_ui/contacts_picker/android",
       "//components/browser_ui/device_lock/android",
+      "//components/browser_ui/media/android",
       "//components/browser_ui/modaldialog/android",
       "//components/browser_ui/notifications/android",
       "//components/browser_ui/photo_picker/android",
@@ -2381,6 +2369,9 @@ static_library("browser") {
     # Any circular includes must depend on the target
     # "browser_public_dependencies".
     allow_circular_includes_from += [
+      # TODO(crbug.com/504985497): Remove this circular dependency.
+      "//chrome/browser/keyboard_accessory/android:impl",
+
       "//chrome/browser/feed:impl",
 
       # TODO(crbug.com/335257259): Resolve circular deps caused by including
@@ -2448,6 +2439,10 @@ static_library("browser") {
       # c/b/net/stub_resolver_config_reader.h
       # c/b/net/system_network_context_manager.h
       "//chrome/browser/privacy:secure_dns_bridge",
+
+      # //chrome/browser/lens:impl includes chrome/browser/browser_process.h
+      # which is part of the //chrome/browser monolith.
+      "//chrome/browser/lens:impl",
     ]
 
     deps -= [ "//components/storage_monitor" ]
@@ -2462,6 +2457,8 @@ static_library("browser") {
     #!is_android
     deps += [
       "//chrome/browser/accessibility/live_caption:impl",
+      "//chrome/browser/dictation",
+      "//chrome/browser/dictation:impl",
       "//chrome/browser/payments:impl",
       "//chrome/browser/webapps:desktop",
       "//chrome/browser/webapps:desktop_impl",
@@ -2552,8 +2549,6 @@ static_library("browser") {
       "//chrome/browser/metrics/critical_user_journeys",
       "//chrome/browser/metrics/critical_user_journeys:impl",
       "//chrome/browser/metrics/desktop_session_duration",
-      "//chrome/browser/new_tab_page",
-      "//chrome/browser/new_tab_page:impl",
       "//chrome/browser/new_tab_page/chrome_colors",
       "//chrome/browser/page_content_annotations:fetcher",
       "//chrome/browser/password_manager/password_change",
@@ -4600,15 +4595,6 @@ static_library("browser") {
       # "browser_public_dependencies".
       allow_circular_includes_from += [ "//chrome/browser/guest_view:impl" ]
     }
-    sources += [
-      "supervised_user/extension_icon_loader.cc",
-      "supervised_user/extension_icon_loader.h",
-      "supervised_user/supervised_user_extensions_delegate_impl.cc",
-      "supervised_user/supervised_user_extensions_delegate_impl.h",
-      "supervised_user/supervised_user_extensions_manager.cc",
-      "supervised_user/supervised_user_extensions_manager.h",
-      "supervised_user/supervised_user_extensions_metrics_recorder.cc",
-    ]
 
     # Any circular includes must depend on the target
     # "browser_public_dependencies".
@@ -4727,33 +4713,6 @@ static_library("browser") {
       # ... get modularized.
       "//chrome/browser/ui/extensions:impl",
     ]
-
-    if (is_chromeos) {
-      sources += [
-        "supervised_user/chromeos/parent_access_extension_approvals_manager.cc",
-        "supervised_user/chromeos/parent_access_extension_approvals_manager.h",
-      ]
-      deps += [
-        "//chromeos/services/tts/public/mojom",
-        "//services/accessibility:buildflags",
-        "//services/accessibility/public/mojom",
-        "//ui/events/ozone/layout",
-
-        # For allow_circular_includes_from below.
-        "//chrome/browser/chromeos/extensions/login_screen/login",
-        "//chrome/browser/extensions/api/enterprise_device_attributes",
-        "//chrome/browser/extensions/api/enterprise_login",
-      ]
-      allow_circular_includes_from += [
-        # TODO(crbug.com/40227502): Currently EnterpriseDeviceAttributes
-        # internally uses profile manager. We should get rid of it.
-        "//chrome/browser/extensions/api/enterprise_device_attributes",
-
-        # For chrome::AttemptUserExit().
-        "//chrome/browser/chromeos/extensions/login_screen/login",
-        "//chrome/browser/extensions/api/enterprise_login",
-      ]
-    }
   }
 
   # TODO(https://crbug.com/356905053): Add more dependencies here and merge this
@@ -5211,7 +5170,6 @@ group("browser_generated_files") {
       "//chrome/browser/ui/webui/side_panel/customize_chrome:mojo_bindings",
       "//chrome/browser/ui/webui/side_panel/reading_list:mojo_bindings",
       "//chrome/browser/ui/webui/tab_search:mojo_bindings",
-      "//chrome/browser/ui/webui/tab_strip:mojo_bindings",
       "//chrome/browser/ui/webui/user_education_internals:mojo_bindings",
       "//chrome/browser/ui/webui/web_app_internals:mojo_bindings",
       "//chrome/browser/ui/webui/webnn_internals:mojo_bindings",
@@ -5313,10 +5271,6 @@ group("browser_generated_files") {
 
   if (is_win || is_linux || is_android || is_chromeos) {
     public_deps += [ "//chrome/browser/privacy:traffic_annotation_proto" ]
-  }
-
-  if (chrome_root_store_cert_management_ui || enable_webui_certificate_viewer) {
-    public_deps += [ "//components/server_certificate_database:proto" ]
   }
 }
 
@@ -5431,10 +5385,6 @@ grit("resources") {
 
   if (is_chromeos) {
     deps += [
-      "//chrome/browser/resources/chromeos/account_manager:css_wrapper_files",
-      "//chrome/browser/resources/chromeos/account_manager:html_wrapper_files",
-      "//chrome/browser/resources/chromeos/account_manager/components:html_wrapper_files",
-      "//chrome/browser/resources/chromeos/emulator:web_components",
       "//chrome/browser/resources/chromeos/smb_shares:web_components",
       "//chrome/browser/ui/webui/ash/login/mojom:mojom_ts__generator",
       "//url/mojom:url_mojom_gurl_js",
@@ -5510,6 +5460,7 @@ static_library("test_support") {
   sources = [
     "download/download_test_file_activity_observer.cc",
     "download/download_test_file_activity_observer.h",
+    "global_features_test_support.h",
     "history/history_test_utils.cc",
     "history/history_test_utils.h",
     "media/mock_media_engagement_service.cc",

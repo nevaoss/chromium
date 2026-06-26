@@ -145,9 +145,6 @@ public class OmniboxFeatures {
     public static final BooleanCachedFeatureParam sShowDedicatedModeButton =
             newBooleanParam(sOmniboxMultimodalInput, "show_dedicated_mode_button", false);
 
-    public static final BooleanCachedFeatureParam sShowImageGenerationButtonInIncognito =
-            newBooleanParam(sOmniboxMultimodalInput, "show_image_gen_button_in_incognito", true);
-
     public static final BooleanCachedFeatureParam sCompactFusebox =
             newBooleanParam(sOmniboxMultimodalInput, "compact_fusebox", false);
 
@@ -420,6 +417,11 @@ public class OmniboxFeatures {
     public static void setHasDesktopExperienceForTesting(Boolean hasDesktopExperience) {
         sHasDesktopExperienceForTesting = hasDesktopExperience;
         ResettersForTesting.register(() -> sHasDesktopExperienceForTesting = null);
+    }
+
+    /** Returns whether the device type is supported for Fusebox. */
+    public static boolean isFuseboxSupportedDeviceType() {
+        return !DeviceInfo.isAutomotive() && !DeviceInfo.isXr() && !DeviceInfo.isTV();
     }
 
     /**

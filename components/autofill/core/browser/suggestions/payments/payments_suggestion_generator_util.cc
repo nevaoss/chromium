@@ -1098,6 +1098,8 @@ bool IsCreditCardFooterSuggestion(
     case SuggestionType::kAddressEntry:
     case SuggestionType::kAddressEntryOnTyping:
     case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kAtMemoryInactivityNudge:
+    case SuggestionType::kOpenGemini:
     case SuggestionType::kAddressFieldByFieldFilling:
     case SuggestionType::kAutocompleteEntry:
     case SuggestionType::kComposeResumeNudge:
@@ -1134,6 +1136,7 @@ bool IsCreditCardFooterSuggestion(
     case SuggestionType::kLoyaltyCardEntry:
     case SuggestionType::kOneTimePasswordEntry:
     case SuggestionType::kLoadingThrobber:
+    case SuggestionType::kAutocompleteAtMemoryButton:
       return false;
   }
 }

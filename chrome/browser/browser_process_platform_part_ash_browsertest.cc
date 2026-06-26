@@ -91,9 +91,9 @@ IN_PROC_BROWSER_TEST_F(BrowserProcessPlatformPartAshBrowsertest,
                              KeepAliveRestartOption::DISABLED);
   ScopedProfileKeepAlive profile_keep_alive(
       profile, ProfileKeepAliveOrigin::kBrowserWindow);
-  ASSERT_EQ(1u, chrome::GetBrowserCount(profile));
+  ASSERT_EQ(1u, ProfileBrowserCollection::GetForProfile(profile)->GetSize());
   CloseBrowserSynchronously(browser());
-  ASSERT_EQ(0u, chrome::GetBrowserCount(profile));
+  ASSERT_EQ(0u, ProfileBrowserCollection::GetForProfile(profile)->GetSize());
 
   // Set the exit type to crashed.
   g_browser_process->local_state()->SetInteger(
@@ -120,7 +120,7 @@ IN_PROC_BROWSER_TEST_F(BrowserProcessPlatformPartAshBrowsertest,
       profile, /*should_trigger_session_restore=*/true);
 
   // Startup URLs should not have been applied to the browser window.
-  ASSERT_EQ(1u, chrome::GetBrowserCount(profile));
+  ASSERT_EQ(1u, ProfileBrowserCollection::GetForProfile(profile)->GetSize());
   BrowserWindowInterface* const new_browser =
       ProfileBrowserCollection::GetForProfile(profile)->GetLastActiveBrowser();
   EXPECT_NO_FATAL_FAILURE(
@@ -151,7 +151,7 @@ IN_PROC_BROWSER_TEST_F(BrowserProcessPlatformPartAshBrowsertest,
                              KeepAliveRestartOption::DISABLED);
   ScopedProfileKeepAlive profile_keep_alive(
       profile, ProfileKeepAliveOrigin::kBrowserWindow);
-  ASSERT_EQ(1u, chrome::GetBrowserCount(profile));
+  ASSERT_EQ(1u, ProfileBrowserCollection::GetForProfile(profile)->GetSize());
   CloseBrowserSynchronously(browser());
 
   // Set the startup URLS pref.
@@ -169,7 +169,7 @@ IN_PROC_BROWSER_TEST_F(BrowserProcessPlatformPartAshBrowsertest,
   // Request a new browser window.
   ui_test_utils::OpenNewEmptyWindowAndWaitUntilActivated(profile);
 
-  ASSERT_EQ(1u, chrome::GetBrowserCount(profile));
+  ASSERT_EQ(1u, ProfileBrowserCollection::GetForProfile(profile)->GetSize());
 
   BrowserWindowInterface* const pref_urls_opened_browser =
       ProfileBrowserCollection::GetForProfile(profile)->GetLastActiveBrowser();
@@ -191,7 +191,7 @@ IN_PROC_BROWSER_TEST_F(BrowserProcessPlatformPartAshBrowsertest,
   // trigger a restore or open another window with startup URLs.
   ui_test_utils::OpenNewEmptyWindowAndWaitUntilActivated(
       profile, /*should_trigger_session_restore=*/true);
-  ASSERT_EQ(2u, chrome::GetBrowserCount(profile));
+  ASSERT_EQ(2u, ProfileBrowserCollection::GetForProfile(profile)->GetSize());
   BrowserWindowInterface* const new_browser =
       ProfileBrowserCollection::GetForProfile(profile)->GetLastActiveBrowser();
   EXPECT_NO_FATAL_FAILURE(
@@ -222,7 +222,7 @@ IN_PROC_BROWSER_TEST_F(BrowserProcessPlatformPartAshBrowsertest,
                              KeepAliveRestartOption::DISABLED);
   ScopedProfileKeepAlive profile_keep_alive(
       profile, ProfileKeepAliveOrigin::kBrowserWindow);
-  ASSERT_EQ(1u, chrome::GetBrowserCount(profile));
+  ASSERT_EQ(1u, ProfileBrowserCollection::GetForProfile(profile)->GetSize());
   CloseBrowserSynchronously(browser());
 
   // Set the startup LAST_AND_URLS pref.
@@ -251,7 +251,7 @@ IN_PROC_BROWSER_TEST_F(BrowserProcessPlatformPartAshBrowsertest,
   EXPECT_EQ(pref_urls_opened_browser->profile(), profile);
   ui_test_utils::WaitUntilBrowserBecomeActive(pref_urls_opened_browser);
 
-  ASSERT_EQ(2u, chrome::GetBrowserCount(profile));
+  ASSERT_EQ(2u, ProfileBrowserCollection::GetForProfile(profile)->GetSize());
 
   auto* last_session_opened_browser =
       FindOneOtherBrowserWindowInterfaceForProfile(profile,
@@ -282,7 +282,7 @@ IN_PROC_BROWSER_TEST_F(BrowserProcessPlatformPartAshBrowsertest,
   // trigger a restore or open another window with last URLs.
   auto* new_browser = ui_test_utils::OpenNewEmptyWindowAndWaitUntilActivated(
       profile, /*should_trigger_session_restore=*/true);
-  ASSERT_EQ(3u, chrome::GetBrowserCount(profile));
+  ASSERT_EQ(3u, ProfileBrowserCollection::GetForProfile(profile)->GetSize());
   EXPECT_EQ(
       new_browser,
       ProfileBrowserCollection::GetForProfile(profile)->GetLastActiveBrowser());

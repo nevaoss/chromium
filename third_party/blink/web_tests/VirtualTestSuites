@@ -1033,22 +1033,6 @@
     "expires": "Dec 1, 2026"
   },
   {
-    "prefix": "event-timing-strict-order-disabled",
-    "owners": [
-      "mmocny@chromium.org"
-    ],
-    "platforms": [
-      "Linux"
-    ],
-    "bases": [
-      "external/wpt/event-timing"
-    ],
-    "args": [
-      "--disable-features=EventTimingReportingInStrictOrderOnly"
-    ],
-    "expires": "Dec 1, 2026"
-  },
-  {
     "prefix": "event-timing-navigation-events",
     "owners": ["mmocny@chromium.org"],
     "platforms": ["Linux", "Mac", "Win"],
@@ -2417,27 +2401,6 @@
     "owners": [
       "wangxianzhu@chromium.org"
     ]
-  },
-  {
-    "prefix": "overscroll-behavior-all-scroll-containers",
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/css/css-overscroll-behavior/overscroll-behavior-without-overflow.html",
-      "fast/scroll-behavior/overscroll-behavior.html"
-    ],
-    "exclusive_tests": "ALL",
-    "args": [
-      "--enable-features=OverscrollBehaviorRespectedOnAllScrollContainers"
-    ],
-    "owners": [
-      "perryuwang@gmail.com",
-      "flackr@chromium.org"
-    ],
-    "expires": "Jan 1, 2026"
   },
   {
     "prefix": "parakeet",
@@ -4373,10 +4336,14 @@
       "compositing/filters",
       "external/wpt/soft-navigation-heuristics/smoke/tentative/lcp.html",
       "wpt_internal/performance-timeline/performance-user-timing-mark-feature-usage.html",
-      "wpt_internal/wasm/custom_descriptors_feature.any.js"
+      "wpt_internal/wasm/custom_descriptors_feature.any.js",
+      "wpt_internal/origin_trials/webmcp/webmcp-origin-trial-disabled.https.html",
+      "wpt_internal/origin_trials/webmcp/webmcp-origin-trial-enabled.https.html"
     ],
     "exclusive_tests": [
-      "media/stable"
+      "media/stable",
+      "wpt_internal/origin_trials/webmcp/webmcp-origin-trial-disabled.https.html",
+      "wpt_internal/origin_trials/webmcp/webmcp-origin-trial-enabled.https.html"
     ],
     "args": [
       "--stable-release-mode",
@@ -6383,14 +6350,18 @@
     ],
     "bases": [
       "external/wpt/svg/styling/svg-filter-render-local-frame.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-remote-frame-in-local-frame.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-remote-frame.tentative.sub.https.html",
       "external/wpt/svg/styling/svg-filter-render-web-plugin.tentative.https.html",
+      "http/tests/inspector-protocol/issues/deprecation-prevent-svg-filter-paint.js",
       "wpt_internal/svg"
     ],
     "exclusive_tests": [
       "external/wpt/svg/styling/svg-filter-render-local-frame.tentative.https.html",
+      "external/wpt/svg/styling/svg-filter-render-remote-frame-in-local-frame.tentative.https.html",
       "external/wpt/svg/styling/svg-filter-render-remote-frame.tentative.sub.https.html",
       "external/wpt/svg/styling/svg-filter-render-web-plugin.tentative.https.html",
+      "http/tests/inspector-protocol/issues/deprecation-prevent-svg-filter-paint.js",
       "wpt_internal/svg/svg-filter-render.sub.https.html"
     ],
     "args": [
@@ -6412,5 +6383,21 @@
     "owners": [
       "masonf@chromium.org"
     ]
+  },
+  {
+    "prefix": "webmcp-kill-switch",
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": [
+      "wpt_internal/origin_trials/webmcp/webmcp-origin-trial-kill-switch.https.html"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--stable-release-mode",
+      "--disable-features=WebMCP"
+    ],
+    "owners": [
+      "dom@chromium.org"
+    ],
+    "expires": "never"
   }
 ]

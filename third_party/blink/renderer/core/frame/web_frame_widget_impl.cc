@@ -4441,18 +4441,14 @@ void WebFrameWidgetImpl::PasteAndMatchStyle() {
   focused_frame->ExecuteCommand(WebString::FromLatin1("PasteAndMatchStyle"));
 }
 
-void WebFrameWidgetImpl::PasteFromImageBytes(
-    mojo_base::BigBuffer image_bytes,
-    const String& media_format,
-    PasteFromImageBytesCallback callback) {
+void WebFrameWidgetImpl::PasteFromImageBytes(mojo_base::BigBuffer image_bytes,
+                                             const String& media_format) {
   if (image_bytes.size() == 0) {
-    std::move(callback).Run(false);
     return;
   }
 
   LocalFrame* local_frame = FocusedLocalFrameInWidget();
   if (!local_frame) {
-    std::move(callback).Run(false);
     return;
   }
 
@@ -4461,7 +4457,6 @@ void WebFrameWidgetImpl::PasteFromImageBytes(
       local_frame->Selection().ComputeVisibleSelectionInDOMTree());
 
   if (!target) {
-    std::move(callback).Run(false);
     return;
   }
 
@@ -4480,10 +4475,6 @@ void WebFrameWidgetImpl::PasteFromImageBytes(
       ClipboardEvent::Create(event_type_names::kPaste, data_transfer);
 
   target->DispatchEvent(*evt);
-
-  // If the default event handling is prevented, it indicates the paste event
-  // was handled by the app. Notify the caller of the success status.
-  std::move(callback).Run(evt->defaultPrevented());
 
   // TODO(crbug.com/453540697) - Add Paste as Fragment support
 }
@@ -4917,7 +4908,7 @@ bool WebFrameWidgetImpl::UpdateScreenRects(
 
 void WebFrameWidgetImpl::EnqueueMoveEvent() {
   if (!RuntimeEnabledFeatures::
-          DesktopPWAsAdditionalWindowingControlsEnabled()) {
+          DesktopPWAsAdditionalWindowingControlsOnMoveEnabled()) {
     return;
   }
 

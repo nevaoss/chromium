@@ -671,6 +671,12 @@ export declare type HostRequestTypes = ValidateRequestMap<{
     },
     backgroundAllowed: true,
   },
+  glicBrowserSubscribeToZoomLevel: {
+    backgroundAllowed: true,
+  },
+  glicBrowserUnsubscribeFromZoomLevel: {
+    backgroundAllowed: true,
+  },
 }>;
 
 // Types of requests to the GlicWebClient.
@@ -937,6 +943,12 @@ export declare type WebClientRequestTypes = ValidateRequestMap<{
     },
     backgroundAllowed: true,
   },
+  glicWebClientNotifyZoomLevelChanged: {
+    request: {
+      zoomFactor: number,
+    },
+    backgroundAllowed: true,
+  },
 }>;
 
 // Each host request needs to be added to either UnreportedRequests or
@@ -1055,6 +1067,8 @@ const RECORDED_REQUEST_IDS = {
   SubscribeToTabFavicon: 94,
   ShowBrowseSkillsUi: 95,
   OnExperimentalTriggeringUpdate: 96,
+  SubscribeToZoomLevel: 97,
+  UnsubscribeFromZoomLevel: 98,
 } as const satisfies HostRequestEnumNamesType;
 // LINT.ThenChange(
 //  //tools/metrics/histograms/metadata/glic/histograms.xml:ApiRequestType,
@@ -1066,11 +1080,26 @@ export const HOST_REQUEST_TYPES: HostRequestEnumNamesType&
       MAX_VALUE: Math.max(...Object.values(RECORDED_REQUEST_IDS)),
     };
 
-export function requestTypeToHistogramSuffix(type: string): string|undefined {
-  if (!type.startsWith('glicBrowser')) {
+// Provides metrics histogram information for a host request type.
+export interface HostRequestHistogramInfo {
+  // The name of the host request type, used as histogram suffix.
+  name: string;
+  // The histogram enum value for this host request type.
+  id: number;
+}
+
+export function getHostRequestHistogramInfo(requestType: string):
+    HostRequestHistogramInfo|undefined {
+  if (!requestType.startsWith('glicBrowser')) {
     return undefined;
   }
-  return type.substring(11);
+  const requestName = requestType.substring(11);
+  const id: number|undefined =
+      (HOST_REQUEST_TYPES as unknown as Record<string, number>)[requestName];
+  if (id === undefined) {
+    return undefined;
+  }
+  return {name: requestName, id: id};
 }
 
 export type AllRequestTypes = HostRequestTypes&WebClientRequestTypes;

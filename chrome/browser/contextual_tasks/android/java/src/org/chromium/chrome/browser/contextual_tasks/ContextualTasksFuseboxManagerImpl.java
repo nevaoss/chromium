@@ -123,6 +123,7 @@ public class ContextualTasksFuseboxManagerImpl implements ContextualTasksFusebox
         if (sessionState != null) {
             if (mFuseboxDataProvider.getFuseboxSessionState() == sessionState) {
                 mFuseboxDataProvider.setFuseboxSessionState(null);
+                mFuseboxDataProvider.setWebContents(null);
             }
             ComposeboxQueryControllerBridge bridge =
                     sessionState.getComposeboxQueryControllerBridge();
@@ -157,15 +158,16 @@ public class ContextualTasksFuseboxManagerImpl implements ContextualTasksFusebox
     public void ensureFuseboxSessionState(String taskId, WebContents webContents) {
         FuseboxSessionState fuseboxSessionState = mTaskSessionMap.get(taskId);
         if (fuseboxSessionState == null) {
-            fuseboxSessionState = createSessionState(webContents);
+            fuseboxSessionState = createSessionState();
             mTaskSessionMap.put(taskId, fuseboxSessionState);
         }
         mFuseboxDataProvider.setFuseboxSessionState(fuseboxSessionState);
+        mFuseboxDataProvider.setWebContents(webContents);
     }
 
     @VisibleForTesting
-    FuseboxSessionState createSessionState(WebContents webContents) {
-        return new FuseboxSessionState(webContents);
+    FuseboxSessionState createSessionState() {
+        return new FuseboxSessionState();
     }
 
     @Override
@@ -195,6 +197,7 @@ public class ContextualTasksFuseboxManagerImpl implements ContextualTasksFusebox
             setFuseboxVisible(true);
         } else {
             mFuseboxDataProvider.setFuseboxSessionState(/* fuseboxSessionState= */ null);
+            mFuseboxDataProvider.setWebContents(null);
             setFuseboxVisible(false);
         }
     }

@@ -379,15 +379,14 @@ void WebRtcEventLogManager::FinishLogging(int render_process_id,
                                           base::OnceClosure callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(&WebRtcEventLogManager::StopLoggingInternal,
-                     base::Unretained(this), render_process_id,
-                     StopLoggingAction::kStore,
-                     base::BindPostTask(content::GetUIThreadTaskRunner({}),
-                                        std::move(callback))));
+      FROM_HERE, base::BindOnce(&WebRtcEventLogManager::StopLoggingInternal,
+                                base::Unretained(this), render_process_id,
+                                StopLoggingAction::kStore, std::nullopt,
+                                std::move(callback)));
 }
 
 void WebRtcEventLogManager::CancelLogging(int render_process_id,
+                                          const std::string& diagnostic_uuid,
                                           base::OnceClosure callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
   task_runner_->PostTask(
@@ -395,8 +394,7 @@ void WebRtcEventLogManager::CancelLogging(int render_process_id,
       base::BindOnce(&WebRtcEventLogManager::StopLoggingInternal,
                      base::Unretained(this), render_process_id,
                      StopLoggingAction::kDelete,
-                     base::BindPostTask(content::GetUIThreadTaskRunner({}),
-                                        std::move(callback))));
+                     std::make_optional(diagnostic_uuid), std::move(callback)));
 }
 
 void WebRtcEventLogManager::EnableDataChannelLogging(
@@ -1157,18 +1155,21 @@ void WebRtcEventLogManager::StartRemoteLoggingInternal(
   DCHECK_EQ(result, !log_id.empty());
   DCHECK_EQ(!result, !error_message.empty());
 
-  content::GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(std::move(reply), result, log_id, error_message));
+  MaybeReply<bool, const std::string&, const std::string&>(
+      FROM_HERE, std::move(reply), result, log_id, error_message);
 }
 
-void WebRtcEventLogManager::StopLoggingInternal(int render_process_id,
-                                                StopLoggingAction action,
-                                                base::OnceClosure callback) {
+void WebRtcEventLogManager::StopLoggingInternal(
+    int render_process_id,
+    StopLoggingAction action,
+    std::optional<std::string> diagnostic_uuid,
+    base::OnceClosure callback) {
   DCHECK(task_runner_->RunsTasksInCurrentSequence());
-  base::RepeatingClosure barrier = base::BarrierClosure(2, std::move(callback));
+  base::RepeatingClosure barrier = base::BarrierClosure(
+      2, base::BindOnce(&MaybeReply<>, FROM_HERE, std::move(callback)));
   local_logs_manager_.StopLogging(render_process_id, action, barrier);
-  remote_logs_manager_.StopLogging(render_process_id, action, barrier);
+  remote_logs_manager_.StopLogging(render_process_id, action,
+                                   std::move(diagnostic_uuid), barrier);
 }
 
 void WebRtcEventLogManager::ClearCacheForBrowserContextInternal(

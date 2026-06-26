@@ -2724,51 +2724,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Blink.FencedFrame.MaxSameSiteFencedFramesInViewportAtUnload"
-    units="FrameCount" expires_after="2026-06-20">
-  <owner>averge@chromium.org</owner>
-  <owner>shivanisha@chromium.org</owner>
-  <owner>chrome-fenced-frames-core@google.com</owner>
-  <summary>
-    The maximum number of fenced frames that are visible in the viewport at once
-    for any single eTLD+1, at the moment the page unloads. This is distinct from
-    the &quot;PerPageLoad&quot; version of this metric, which may be higher than
-    this one if a site unloads some of its frames before the page unloads. Only
-    logged if the number of fenced frames in the viewport has exceeded zero at
-    some point during the page load.
-
-    Recorded when the primary content::Page enters BFCache or is destroyed.
-  </summary>
-</histogram>
-
-<histogram
-    name="Blink.FencedFrame.MaxSameSiteFencedFramesInViewportPerPageLoad"
-    units="FrameCount" expires_after="2026-06-20">
-  <owner>averge@chromium.org</owner>
-  <owner>shivanisha@chromium.org</owner>
-  <owner>chrome-fenced-frames-core@google.com</owner>
-  <summary>
-    The maximum number of fenced frames that were visible in the viewport at
-    once for any single eTLD+1, across the entire lifetime of the primary page.
-    Only logged if the number of fenced frames in the viewport has exceeded zero
-    at some point during the page load.
-
-    Recorded when the primary content::Page enters BFCache or is destroyed.
-  </summary>
-</histogram>
-
-<histogram name="Blink.FencedFrame.NotifyEventOutcome"
-    enum="FencedFrameNotifyEventOutcome" expires_after="2026-09-12">
-  <owner>lbrady@google.com</owner>
-  <owner>shivanisha@chromium.org</owner>
-  <summary>
-    Records the outcome from calling window.fence.notifyEvent() in a fenced
-    frame, whether successful or not. Note that this only logs for notifyEvent()
-    calls from within a fenced frame; calls outside of fenced frames (which will
-    fail) are not logged.
-  </summary>
-</histogram>
-
 <histogram name="Blink.Fetch.RequestResourceTime2{SchemeOrPreload}"
     units="microseconds" expires_after="2026-09-20">
   <owner>cduvall@chromium.org</owner>
@@ -3696,7 +3651,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.LCPP.CrossOriginLcpImage" enum="Boolean"
     expires_after="2026-01-11">
-  <owner>alexnj@google.com</owner>
+  <owner>chikamune@chromium.org</owner>
   <owner>
     src/third_party/blink/renderer/core/lcp_critical_path_predictor/OWNERS
   </owner>
@@ -3833,7 +3788,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.LCPP.LCPInfluencerUrlsCount" units="count"
     expires_after="2024-11-03">
-  <owner>alexnj@google.com</owner>
+  <owner>chikamune@chromium.org</owner>
   <owner>
     src/third_party/blink/renderer/core/lcp_critical_path_predictor/OWNERS
   </owner>
@@ -3848,7 +3803,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.LCPP.LCPInfluencerUrlsMaxLength" units="bytes"
     expires_after="2024-11-03">
-  <owner>alexnj@google.com</owner>
+  <owner>chikamune@chromium.org</owner>
   <owner>
     src/third_party/blink/renderer/core/lcp_critical_path_predictor/OWNERS
   </owner>
@@ -3863,7 +3818,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.LCPP.LCPInfluencerUrlsPredictionMatchCount"
     units="count" expires_after="2024-11-03">
-  <owner>alexnj@google.com</owner>
+  <owner>chikamune@chromium.org</owner>
   <owner>
     src/third_party/blink/renderer/core/lcp_critical_path_predictor/OWNERS
   </owner>
@@ -3878,7 +3833,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Blink.LCPP.LCPInfluencerUrlsPredictionMatchPercent" units="%"
     expires_after="2024-11-03">
-  <owner>alexnj@google.com</owner>
+  <owner>chikamune@chromium.org</owner>
   <owner>
     src/third_party/blink/renderer/core/lcp_critical_path_predictor/OWNERS
   </owner>
@@ -3944,8 +3899,8 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.LCPP.PreconnectPredictionCount" units="count"
-    expires_after="2026-05-09">
-  <owner>alexnj@google.com</owner>
+    expires_after="2027-04-01">
+  <owner>chikamune@chromium.org</owner>
   <owner>yoichio@chromium.org</owner>
   <owner>
     src/third_party/blink/renderer/core/lcp_critical_path_predictor/OWNERS
@@ -3959,8 +3914,8 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.LCPP.PreconnectPredictionMatchCount" units="count"
-    expires_after="2026-05-09">
-  <owner>alexnj@google.com</owner>
+    expires_after="2027-04-01">
+  <owner>chikamune@chromium.org</owner>
   <owner>yoichio@chromium.org</owner>
   <owner>
     src/third_party/blink/renderer/core/lcp_critical_path_predictor/OWNERS
@@ -3977,8 +3932,8 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Blink.LCPP.PreconnectPredictionMatchPercent" units="%"
-    expires_after="2026-05-09">
-  <owner>alexnj@google.com</owner>
+    expires_after="2027-04-01">
+  <owner>chikamune@chromium.org</owner>
   <owner>yoichio@chromium.org</owner>
   <owner>
     src/third_party/blink/renderer/core/lcp_critical_path_predictor/OWNERS

@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_WEB_APPS_WEB_APP_INSTALL_OPTIONS_VIEW_H_
 #define CHROME_BROWSER_UI_VIEWS_WEB_APPS_WEB_APP_INSTALL_OPTIONS_VIEW_H_
 
+#include <memory>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
@@ -16,7 +17,14 @@
 
 namespace views {
 class Checkbox;
+class ImageView;
+}  // namespace views
+
+namespace gfx {
+class ImageSkia;
 }
+
+class GURL;
 
 namespace web_app {
 
@@ -25,10 +33,13 @@ namespace web_app {
 class WebAppInstallOptionsView : public views::View {
  public:
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kViewId);
-
-  WebAppInstallOptionsView(InstallOsType os_type,
-                           const std::u16string& title,
-                           const gfx::ImageSkia& icon_image);
+  static std::unique_ptr<WebAppInstallOptionsView> Create(
+      InstallOsType os_type,
+      const std::u16string& title,
+      const gfx::ImageSkia& icon_image,
+      const gfx::ImageSkia& large_icon_image,
+      bool is_maskable,
+      const GURL& start_url);
   ~WebAppInstallOptionsView() override;
 
   WebAppInstallOptionsView(const WebAppInstallOptionsView&) = delete;
@@ -40,8 +51,6 @@ class WebAppInstallOptionsView : public views::View {
 
   void SetPinToShelfCheckedForTesting(bool checked);
 
-  base::WeakPtr<WebAppInstallOptionsView> GetWeakPtr();
-
   // Returns true if the "Add desktop shortcut" option is checked.
   // Only applicable for kWin.
   bool IsAddDesktopShortcutChecked() const;
@@ -50,14 +59,26 @@ class WebAppInstallOptionsView : public views::View {
   // Only applicable for kWin.
   bool IsPinToTaskBarChecked() const;
 
+  void SetAddDesktopShortcutCheckedForTesting(bool checked);
+  void SetPinToTaskBarCheckedForTesting(bool checked);
+
+  base::WeakPtr<WebAppInstallOptionsView> GetWeakPtr();
+
  private:
-  void InitView(InstallOsType os_type,
-                const std::u16string& title,
-                const gfx::ImageSkia& icon_image);
+  WebAppInstallOptionsView(InstallOsType os_type,
+                           const std::u16string& title,
+                           const gfx::ImageSkia& icon_image,
+                           const gfx::ImageSkia& large_icon_image,
+                           bool is_maskable,
+                           const GURL& start_url);
+  void MaybeApplyOsIconMasking(const gfx::ImageSkia& icon_image,
+                               bool is_maskable);
+  void OnIconMaskingCompleteWithShadow(SkBitmap masked_bitmap);
 
   raw_ptr<views::Checkbox> pin_to_shelf_checkbox_ = nullptr;
   raw_ptr<views::Checkbox> add_desktop_shortcut_checkbox_ = nullptr;
   raw_ptr<views::Checkbox> pin_to_task_bar_checkbox_ = nullptr;
+  raw_ptr<views::ImageView> icon_view_ = nullptr;
 
   base::WeakPtrFactory<WebAppInstallOptionsView> weak_ptr_factory_{this};
 };

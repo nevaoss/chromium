@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "base/containers/circular_deque.h"
 #include "base/containers/lru_cache.h"
@@ -18,6 +19,7 @@
 #include "base/threading/sequence_bound.h"
 #include "base/types/optional_ref.h"
 #include "base/values.h"
+#include "components/accessibility_annotator/core/content_annotator/content_annotations_data.h"
 #include "components/accessibility_annotator/core/data_models/entity_types.h"
 #include "components/accessibility_annotator/core/storage/accessibility_annotation_sync_bridge.h"
 #include "components/accessibility_annotator/core/storage/accessibility_annotator_backend.h"
@@ -129,9 +131,20 @@ class AccessibilityAnnotatorBackendImpl
       override;
 
  private:
+  // State of the database initialization.
+  enum class DbState {
+    kUninitialized,
+    kInitializing,
+    kReady,
+    kFailed,
+  };
+
   // Called in the backend constructor if the encryptor is available.
   // Initializes the database.
   void OnInitWithEncryptor(os_crypt_async::Encryptor encryptor);
+
+  // Called when the database initialization completes.
+  void OnDatabaseInitialized(bool success);
 
   // Performs a lookback through recent pages with the same tab and eTLD+1 to
   // join annotations that span across multiple pages. The function merges
@@ -179,6 +192,12 @@ class AccessibilityAnnotatorBackendImpl
 
   const base::FilePath db_path_;
   base::SequenceBound<AccessibilityAnnotatorDatabase> db_;
+
+  DbState db_state_ = DbState::kUninitialized;
+  // Queue of operations that were called before the database was ready, to be
+  // executed once the database is initialized.
+  std::vector<base::OnceClosure> queued_operations_;
+
   std::unique_ptr<AccessibilityAnnotationSyncBridge>
       accessibility_annotation_sync_bridge_;
 

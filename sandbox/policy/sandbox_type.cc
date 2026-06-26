@@ -50,6 +50,7 @@ constexpr char kPdfConversionSandbox[] = "pdf_conversion";
 constexpr char kXrCompositingSandbox[] = "xr_compositing";
 constexpr char kIconReaderSandbox[] = "icon_reader";
 constexpr char kMediaFoundationCdmSandbox[] = "mf_cdm";
+constexpr char kWebNNModelCompilationSandbox[] = "webnn_model_compilation";
 #endif  // BUILDFLAG(IS_WIN)
 
 #if BUILDFLAG(IS_MAC)
@@ -142,6 +143,7 @@ void SetCommandLineFlagsForSandboxType(base::CommandLine* command_line,
     case Sandbox::kVideoCapture:
 #endif
 #if BUILDFLAG(IS_WIN)
+    case Sandbox::kWebNNModelCompilation:
     case Sandbox::kNoSandboxAndElevatedPrivileges:
     case Sandbox::kXrCompositing:
     case Sandbox::kPdfConversion:
@@ -274,6 +276,8 @@ std::string StringFromUtilitySandboxType(Sandbox sandbox_type) {
       return kOnDeviceTranslationSandbox;
 #endif
 #if BUILDFLAG(IS_WIN)
+    case Sandbox::kWebNNModelCompilation:
+      return kWebNNModelCompilationSandbox;
     case Sandbox::kXrCompositing:
       return kXrCompositingSandbox;
     case Sandbox::kPdfConversion:
@@ -371,6 +375,9 @@ sandbox::mojom::Sandbox UtilitySandboxTypeFromString(
   }
   if (sandbox_string == kMediaFoundationCdmSandbox) {
     return Sandbox::kMediaFoundationCdm;
+  }
+  if (sandbox_string == kWebNNModelCompilationSandbox) {
+    return Sandbox::kWebNNModelCompilation;
   }
 #endif
 #if BUILDFLAG(IS_MAC)

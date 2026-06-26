@@ -98,6 +98,10 @@ class GlicSelectionObserver
   void ShowSelectionAffordance(const std::u16string& selected_text,
                                BrowserWindowInterface* bwi);
 
+  bool ShouldShowSelectionWidget();
+  void OnWidgetDismissed();
+  void OnWidgetPinToggled(bool is_pinned);
+
   void CopyLinkToHighlight(content::WeakDocumentPtr weak_document_ptr);
 
   void WriteLinkToClipboard(content::WeakDocumentPtr weak_document_ptr,
@@ -130,6 +134,7 @@ class GlicSelectionObserver
   int bounds_retry_count_ = 0;
 
   bool has_sent_selection_context_ = false;
+  bool is_widget_pinned_ = false;
 
   base::WeakPtr<views::Widget> selection_widget_;
 
